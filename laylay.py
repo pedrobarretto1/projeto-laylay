@@ -62,13 +62,20 @@ from mente_laylay.memoria_mental.contexto_integrado import (
     resumo_mente_integrada_para_prompt as _resumo_mente_integrada_para_prompt_mente,
 )
 from mente_laylay.memoria_mental.contexto_compartilhado import (
+    alvo_corrigido_ativo as _alvo_corrigido_ativo_mente,
     contexto_mental_ativo as _contexto_mental_ativo_mente,
     contexto_musical_ativo as _contexto_musical_ativo_mente,
     estado_mental_inicial as _estado_mental_inicial_mente,
+    estrutura_arquivo_recente as _estrutura_arquivo_recente_mente,
     fluxo_prioritario_da_ia as _fluxo_prioritario_da_ia_mente,
     intencao_reexecutavel as _intencao_reexecutavel_mente,
+    limpar_promessa_conversacional as _limpar_promessa_conversacional_mente,
     limpar_pergunta_aberta as _limpar_pergunta_aberta_mente,
     pergunta_aberta_ativa as _pergunta_aberta_ativa_mente,
+    promessa_conversacional_ativa as _promessa_conversacional_ativa_mente,
+    registrar_alvo_corrigido as _registrar_alvo_corrigido_mente,
+    registrar_estrutura_arquivo_recente as _registrar_estrutura_arquivo_recente_mente,
+    registrar_promessa_conversacional as _registrar_promessa_conversacional_mente,
     registrar_resultado_execucao as _registrar_resultado_execucao_mente,
     registrar_pergunta_aberta as _registrar_pergunta_aberta_mente,
     resolver_repeticao_ultima_acao as _resolver_repeticao_ultima_acao_mente,
@@ -1075,6 +1082,51 @@ def _limpar_pergunta_aberta() -> None:
         pass
 
 
+def _promessa_conversacional_atual() -> dict | None:
+    try:
+        return _promessa_conversacional_ativa_mente(mente_integrada_estado, ttl_s=180.0)
+    except Exception:
+        return None
+
+
+def _limpar_promessa_conversacional() -> None:
+    global mente_integrada_estado
+    try:
+        mente_integrada_estado = _limpar_promessa_conversacional_mente(mente_integrada_estado)
+    except Exception:
+        pass
+
+
+def _registrar_alvo_corrigido(alvo: str) -> None:
+    global mente_integrada_estado
+    try:
+        mente_integrada_estado = _registrar_alvo_corrigido_mente(mente_integrada_estado, alvo)
+    except Exception:
+        pass
+
+
+def _alvo_corrigido_atual() -> str:
+    try:
+        return str(_alvo_corrigido_ativo_mente(mente_integrada_estado, ttl_s=120.0) or "").strip()
+    except Exception:
+        return ""
+
+
+def _registrar_estrutura_arquivo_recente(params: dict | None) -> None:
+    global mente_integrada_estado
+    try:
+        mente_integrada_estado = _registrar_estrutura_arquivo_recente_mente(mente_integrada_estado, params)
+    except Exception:
+        pass
+
+
+def _estrutura_arquivo_recente(ttl_s: float = 900.0) -> dict | None:
+    try:
+        return _estrutura_arquivo_recente_mente(mente_integrada_estado, ttl_s=ttl_s)
+    except Exception:
+        return None
+
+
 def _texto_responde_pergunta_aberta(texto_usuario: str) -> bool:
     pergunta = _pergunta_aberta_atual()
     if not pergunta:
@@ -1469,6 +1521,14 @@ def _registrar_mente_curta(texto_usuario: str = "", resposta_ia: str = "", inten
                 estado = _limpar_pergunta_aberta_mente(estado)
         except Exception as e:
             print(f"⚠️ [PERGUNTA ABERTA] falha ao atualizar memória: {e}")
+        try:
+            estado = _registrar_promessa_conversacional_mente(
+                estado,
+                resposta_ia,
+                alvo=alvo or estado.get("ultimo_alvo") or "",
+            )
+        except Exception as e:
+            print(f"⚠️ [PROMESSA] falha ao registrar promessa conversacional: {e}")
     if intencao:
         estado["ultima_intencao"] = intencao
     if alvo:
@@ -7934,11 +7994,40 @@ def interpretar_comando_local_rapido(texto: str):
     return {"intent": "APP_OPEN", "params": {"nome_app": app_encontrado, "modo": "focus"}}
 
 
+def _extrair_app_explicito_em_comando_janela(texto: str) -> str:
+    t = _normalizar_texto_com_apelidos(texto)
+    if not t:
+        return ""
+
+    aliases_apps = {
+        "steam": {"steam"},
+        "opera": {"opera", "ópera", "operagx", "opera gx"},
+        "vscode": {"vscode", "vs code", "visual studio code", "code"},
+        "chrome": {"chrome", "google chrome"},
+        "edge": {"edge", "msedge", "microsoft edge"},
+        "brave": {"brave", "brave browser"},
+        "firefox": {"firefox", "mozilla firefox"},
+        "microsoft store": {"microsoft store", "ms store", "store", "loja microsoft"},
+    }
+
+    for app, aliases in aliases_apps.items():
+        if any(alias in t for alias in aliases):
+            return app
+    return ""
+
+
 def _resolver_comando_janela_contextual_forcado(texto: str):
     """Força continuidade de janela/app antes do fluxo livre da IA."""
     t = _normalizar_texto_com_apelidos(texto)
     if not t:
         return None
+
+    app_explicito = _extrair_app_explicito_em_comando_janela(t)
+    if app_explicito:
+        _registrar_alvo_corrigido(app_explicito)
+        if any(x in t for x in ["tela cheia", "fullscreen", "maximiza", "maximizar"]):
+            return {"intent": "MAXIMIZE_WINDOW", "params": {"nome_app": app_explicito}}
+        return {"intent": "APP_OPEN", "params": {"nome_app": app_explicito, "modo": "focus"}}
 
     if not any(x in t for x in ["ele", "ela", "isso", "esse", "essa"]):
         return None
@@ -7962,7 +8051,7 @@ def _resolver_comando_janela_contextual_forcado(texto: str):
     ultima_intencao_ctx = str(
         estado.get("ultima_acao_intent") or estado.get("ultima_intencao") or ""
     ).strip().upper()
-    ultimo_app = str(estado.get("ultimo_app_janela") or "").strip()
+    ultimo_app = _alvo_corrigido_atual() or str(estado.get("ultimo_app_janela") or "").strip()
     if not ultimo_app and ultima_intencao_ctx in {"APP_OPEN", "MAXIMIZE_WINDOW", "CLOSE_APP"}:
         candidato = str(
             (estado.get("ultima_acao_params") or {}).get("nome_app")
@@ -8032,6 +8121,11 @@ def _resolver_comando_midia_contextual_forcado(texto: str):
     if not t:
         return None
 
+    t_limpo = re.sub(r"\b(?:h+m+|hmm+|hum+|ahn+|ah+|tipo|entao|então|agora|lay|laylay|por favor|pfv)\b", " ", t)
+    t_limpo = re.sub(r"\s+", " ", t_limpo).strip()
+    if not t_limpo:
+        t_limpo = t
+
     contexto_musical = _contexto_musical_ativo()
     try:
         estado = dict(mente_integrada_estado or {})
@@ -8044,8 +8138,8 @@ def _resolver_comando_midia_contextual_forcado(texto: str):
         ultima_intencao == "MEDIA_CONTROL"
         or ultima_habilidade in {"midia", "musica", "playlist"}
     ) and (time.time() - ts_mente <= 240)
-    referencia_contextual = any(x in t for x in ["ela", "ele", "isso", "essa", "esse"])
-    menciona_midia = any(x in t for x in ["musica", "música", "som", "faixa", "trilha", "youtube", "playlist"])
+    referencia_contextual = any(x in t_limpo for x in ["ela", "ele", "isso", "essa", "esse", "anterior", "antes"])
+    menciona_midia = any(x in t_limpo for x in ["musica", "música", "som", "faixa", "trilha", "youtube", "playlist"])
     if not (contexto_musical or menciona_midia or (referencia_contextual and midia_recente)):
         return None
 
@@ -8056,16 +8150,211 @@ def _resolver_comando_midia_contextual_forcado(texto: str):
         return {"intent": "MEDIA_CONTROL", "params": params}
 
     # Ordem importa: "despausa" contem "pausa", entao vem primeiro.
-    if any(x in t for x in ["toca ela de novo", "toca ele de novo", "toca isso de novo", "toca essa de novo", "recomeca", "recomeça", "reinicia a musica", "reinicia a música", "repete essa", "repete ela"]):
+    if any(x in t_limpo for x in ["toca ela de novo", "toca ele de novo", "toca isso de novo", "toca essa de novo", "recomeca", "recomeça", "reinicia a musica", "reinicia a música", "repete essa", "repete ela"]):
+        print(f"🎵 [MIDIA:CONTEXTO] replay detectado -> '{t_limpo}'")
         return _params("replay")
-    if any(x in t for x in ["despausa", "despausar", "depausa", "depausar", "retoma", "retomar", "continua tocando", "continua ela", "continua ele", "volta a tocar"]):
+    if any(x in t_limpo for x in ["despausa", "despausar", "depausa", "depausar", "retoma", "retomar", "continua tocando", "continua ela", "continua ele", "volta a tocar"]):
+        print(f"🎵 [MIDIA:CONTEXTO] play detectado -> '{t_limpo}'")
         return _params("play")
-    if any(x in t for x in ["pausa", "pausar", "pause", "para ela", "para ele", "para isso", "para a musica", "para música"]):
+    if any(x in t_limpo for x in ["pausa", "pausar", "pause", "para ela", "para ele", "para isso", "para a musica", "para música"]):
+        print(f"🎵 [MIDIA:CONTEXTO] pause detectado -> '{t_limpo}'")
         return _params("pause")
-    if "playlist" not in t and any(x in t for x in ["proxima", "próxima", "proximo", "próximo", "pula", "passa ela", "passa essa"]):
+    if "playlist" not in t_limpo and any(x in t_limpo for x in ["proxima", "próxima", "proximo", "próximo", "pula", "passa ela", "passa essa"]):
+        print(f"🎵 [MIDIA:CONTEXTO] next detectado -> '{t_limpo}'")
         return _params("next")
-    if any(x in t for x in ["musica anterior", "música anterior", "anterior", "volta ela", "volta essa", "volta a musica", "volta a música"]):
+    if any(x in t_limpo for x in ["musica anterior", "música anterior", "anterior", "volta ela", "volta essa", "volta a musica", "volta a música", "volta para a de antes", "volta pra de antes", "volta para a anterior", "volta pra anterior", "vai para a anterior"]):
+        print(f"🎵 [MIDIA:CONTEXTO] prev detectado -> '{t_limpo}'")
         return _params("prev")
+    return None
+
+
+def _resolver_comando_arquivo_contextual_forcado(texto: str):
+    t = _normalizar_texto_com_apelidos(texto)
+    if not t:
+        return None
+
+    try:
+        estado = dict(mente_integrada_estado or {})
+    except Exception:
+        estado = {}
+
+    ultima_intencao = str(estado.get("ultima_acao_intent") or estado.get("ultima_intencao") or "").strip().upper()
+    ultima_habilidade = str(estado.get("ultima_habilidade") or "").strip().lower()
+    ts_mente = float(estado.get("ts") or 0.0)
+    if not (
+        (ultima_intencao in {"CREATE_FOLDER", "DELETE_ITEM", "CREATE_FILE", "MOVE_ITEM"} or ultima_habilidade in {"arquivo", "arquivos"})
+        and (time.time() - ts_mente <= 300)
+    ):
+        return None
+
+    estrutura = _estrutura_arquivo_recente(900.0) or {}
+    if not isinstance(estrutura, dict) or not estrutura:
+        return None
+
+    if any(p in t for p in [
+        "traz ela de volta",
+        "traz ele de volta",
+        "traz isso de volta",
+        "restaura isso",
+        "restaura ela",
+        "restaura ele",
+        "refaz isso",
+        "faz isso de novo",
+        "cria de novo",
+        "cria isso de novo",
+        "faz de novo",
+    ]):
+        nome = str(estrutura.get("nome") or estrutura.get("pasta") or estrutura.get("alvo") or "").strip()
+        if not nome:
+            return None
+        params = {"nome": nome}
+        for chave in ["pasta_pai", "pasta_interna", "mover_item", "arquivo_nome", "arquivo_conteudo", "target"]:
+            valor = estrutura.get(chave)
+            if str(valor or "").strip():
+                params[chave] = valor
+        print(f"📁 [ARQUIVO:CONTEXTO] recriando estrutura -> '{nome}'")
+        return {"intent": "CREATE_FOLDER", "params": params}
+
+    return None
+
+
+def _resolver_comando_acao_geral_contextual_forcado(texto: str):
+    t = _normalizar_texto_com_apelidos(texto)
+    if not t:
+        return None
+
+    try:
+        estado = dict(mente_integrada_estado or {})
+    except Exception:
+        estado = {}
+
+    ultima_intencao = str(estado.get("ultima_acao_intent") or estado.get("ultima_intencao") or "").strip().upper()
+    ultimo_params = estado.get("ultima_acao_params") if isinstance(estado.get("ultima_acao_params"), dict) else {}
+    if not ultima_intencao or not ultimo_params:
+        return None
+
+    try:
+        ts_mente = float(estado.get("ts") or 0.0)
+    except Exception:
+        ts_mente = 0.0
+    if not ts_mente or (time.time() - ts_mente > 300):
+        return None
+
+    pedido_de_volta = any(p in t for p in [
+        "traz de volta",
+        "traz ela de volta",
+        "traz ele de volta",
+        "traz isso de volta",
+        "restaura isso",
+        "restaura ela",
+        "restaura ele",
+        "abre de novo",
+        "abre isso de novo",
+        "abre ela de novo",
+        "abre ele de novo",
+        "coloca de novo",
+        "bota de novo",
+        "toca de novo",
+        "quero isso de novo",
+    ])
+    pedido_fechar_ref = any(p in t for p in [
+        "fecha ela",
+        "fecha ele",
+        "fecha isso",
+        "fecha essa",
+        "fecha esse",
+        "fecha de novo",
+        "fecha isso de novo",
+        "fecha ela de novo",
+        "fecha ele de novo",
+    ])
+
+    pedido_retomar_musica = any(p in t for p in [
+        "coloca de novo",
+        "coloca ela de novo",
+        "coloca isso de novo",
+        "bota de novo",
+        "bota ela de novo",
+        "toca de novo",
+        "toca ela de novo",
+    ])
+
+    if not (pedido_de_volta or pedido_fechar_ref or pedido_retomar_musica):
+        return None
+
+    if pedido_retomar_musica and ultima_intencao in {"PLAYLIST_PLAY", "PLAYLIST_LIST", "TOCAR_PLAYLIST", "TOCAR_PLAYLIST_SHUFFLE", "MEDIA_CONTROL", "MUSIC_SEARCH"}:
+        nome_playlist = str(
+            ultimo_params.get("nome_playlist")
+            or ultimo_params.get("playlist")
+            or _musica_estado_get("ultima_playlist")
+            or ""
+        ).strip()
+        if nome_playlist:
+            print(f"🧠 [CONTEXTO-GERAL] retomando playlist por repeticao natural -> '{nome_playlist}'")
+            return {"intent": "PLAYLIST_PLAY", "params": {"nome_playlist": nome_playlist}}
+        return {"intent": "MEDIA_CONTROL", "params": {"acao": "play", "platform": "music", "referencia_contextual": True}}
+
+    if ultima_intencao in {"CLOSE_APP", "APP_OPEN", "MAXIMIZE_WINDOW"}:
+        nome_app = str(
+            ultimo_params.get("nome_app")
+            or ultimo_params.get("app")
+            or estado.get("ultimo_app_janela")
+            or ""
+        ).strip()
+        if nome_app:
+            if pedido_fechar_ref:
+                print(f"🧠 [CONTEXTO-GERAL] fechando app por referencia -> '{nome_app}'")
+                return {"intent": "CLOSE_APP", "params": {"nome_app": nome_app}}
+            print(f"🧠 [CONTEXTO-GERAL] retomando app -> '{nome_app}'")
+            return {"intent": "APP_OPEN", "params": {"nome_app": nome_app, "modo": "focus"}}
+
+    if ultima_intencao in {"CLOSE_TAB", "OPEN_URL", "SITE_ENTER"}:
+        alvo = str(
+            ultimo_params.get("alvo")
+            or ultimo_params.get("url")
+            or estado.get("ultimo_site_aba")
+            or ""
+        ).strip()
+        if alvo:
+            if pedido_fechar_ref:
+                print(f"🧠 [CONTEXTO-GERAL] fechando site por referencia -> '{alvo}'")
+                return {"intent": "CLOSE_TAB", "params": {"alvo": alvo}}
+            print(f"🧠 [CONTEXTO-GERAL] retomando site -> '{alvo}'")
+            return {"intent": "OPEN_URL", "params": {"alvo": alvo}}
+
+    if ultima_intencao in {"PLAYLIST_PLAY", "PLAYLIST_LIST", "TOCAR_PLAYLIST", "TOCAR_PLAYLIST_SHUFFLE"}:
+        nome_playlist = str(
+            ultimo_params.get("nome_playlist")
+            or ultimo_params.get("playlist")
+            or _musica_estado_get("ultima_playlist")
+            or ""
+        ).strip()
+        if nome_playlist:
+            if pedido_fechar_ref:
+                return {"intent": "MEDIA_CONTROL", "params": {"acao": "pause", "platform": "music", "referencia_contextual": True}}
+            print(f"🧠 [CONTEXTO-GERAL] retomando playlist -> '{nome_playlist}'")
+            return {"intent": "PLAYLIST_PLAY", "params": {"nome_playlist": nome_playlist}}
+
+    return None
+
+
+def _resolver_comando_contextual_forcado(texto: str):
+    candidatos = [
+        ("JANELA", _resolver_comando_janela_contextual_forcado),
+        ("MIDIA", _resolver_comando_midia_contextual_forcado),
+        ("ARQUIVO", _resolver_comando_arquivo_contextual_forcado),
+        ("GERAL", _resolver_comando_acao_geral_contextual_forcado),
+    ]
+    for rota, resolver in candidatos:
+        try:
+            resultado = resolver(texto)
+        except Exception as e:
+            print(f"⚠️ [CONTEXTO-{rota}] falha ao resolver: {e}")
+            continue
+        if isinstance(resultado, dict) and str(resultado.get("intent") or "").strip():
+            saida = dict(resultado)
+            saida["_rota_contextual"] = rota
+            return saida
     return None
 
 
@@ -8119,10 +8408,18 @@ def _texto_pede_direcao_musical_generica(texto: str) -> bool:
         "me fale uma musica", "me fala uma musica", "me diga uma musica",
         "qual voce acha", "qual você acha", "voce acha que eu gostaria", "você acha que eu gostaria",
     ])
+    try:
+        estado = dict(mente_integrada_estado or {})
+    except Exception:
+        estado = {}
+    continuacao_musical = (
+        str(estado.get("ultima_intencao") or "").upper() == "MUSIC_OPINION_CHAT"
+        and any(p in t for p in ["entao me fala", "então me fala", "me fala entao", "me fala então", "entao diz", "então diz", "me diz uma", "fala uma", "entao manda", "então manda"])
+    )
     assunto_musical = any(p in t for p in [
         "musica", "música", "som", "faixa", "canção", "cancao", "ouvir", "tocar",
     ])
-    return bool(pede_escolha and assunto_musical)
+    return bool((pede_escolha and assunto_musical) or continuacao_musical)
 
 
 def _sugestao_musical_nova_conversacional(texto: str = "") -> str:
@@ -8233,7 +8530,11 @@ def _processar_confirmacao_sugestao_musical(texto: str = "") -> bool:
         "pode ser", "pode colocar", "pode tocar", "coloca", "toca",
         "manda", "bora", "vai nessa", "essa mesmo", "essa aí", "essa ai",
     ])
-    if not confirma:
+    pedir_entrega = any(p in t for p in [
+        "entao me fala", "então me fala", "me fala entao", "me fala então",
+        "me diga", "me diz", "fala uma", "me da outra", "me dá outra",
+    ])
+    if not (confirma or pedir_entrega):
         return False
 
     try:
@@ -8253,6 +8554,22 @@ def _processar_confirmacao_sugestao_musical(texto: str = "") -> bool:
     sugestao = str(estado.get("ultimo_alvo") or "").strip()
     if not sugestao or _normalizar_texto_com_apelidos(sugestao) in {"musica_nova", "musica", "música"}:
         return False
+
+    if pedir_entrega and not confirma:
+        fala = random.choice([
+            f"Então toma: {sugestao}. Essa foi a que eu escolhi pra você agora.",
+            f"Tá, sem enrolar: {sugestao}. Essa é minha aposta do momento.",
+            f"Fechado. A música que eu tô te indicando é {sugestao}.",
+        ])
+        _registrar_mente_curta(
+            texto,
+            fala,
+            intencao="MUSIC_OPINION_CHAT",
+            alvo=sugestao,
+            habilidade="musica",
+        )
+        falar_com_lipsync(fala, "calma", 1)
+        return True
 
     resultado = {"intent": "MUSIC_SEARCH", "params": {"query": sugestao, "origem": "sugestao_conversacional"}}
     print(f"⚡ [ROTEADOR SUGESTAO-MUSICAL [chat]] {resultado}")
@@ -8684,6 +9001,7 @@ def executar_intencao(resultado: dict, texto_original: str) -> bool:
         "_playlist_item_at": _playlist_item_at,
         "playlist_len": playlist_len,
         "play_playlist": play_playlist,
+        "_registrar_estrutura_arquivo_recente": _registrar_estrutura_arquivo_recente,
         "ADD_TO_PLAYLIST": ADD_TO_PLAYLIST,
         "LIST_PLAYLIST_CONTENT": LIST_PLAYLIST_CONTENT,
         "_fala_playlist_conteudo_estilosa": _fala_playlist_conteudo_estilosa,
@@ -8840,6 +9158,22 @@ def _extrair_criacao_pasta_arquivo(frase: str) -> dict:
     if not texto_local:
         return {}
 
+    combo_escreve = re.search(
+        r"\b(?:cria|criar|crie)\b.*?\bpasta\s+(?:chamada|chamado|chamadda|com nome)?\s*(?P<pasta>.+?)\s+"
+        r"(?:e\s+)?dentro(?:\s+dela|\s+da\s+pasta)?\s+"
+        r"(?:um\s+|uma\s+)?arquivo(?:\s+de\s+texto)?\s+"
+        r"(?:chamado|chamada|chamadda|com nome)?\s*(?P<arquivo>.+?)\s+"
+        r"escreve\s+(?P<conteudo>.+)$",
+        texto_local,
+        flags=re.IGNORECASE,
+    )
+    if combo_escreve:
+        pasta = str(combo_escreve.group("pasta") or "").strip(" .,!?:;\"'")
+        arquivo = str(combo_escreve.group("arquivo") or "").strip(" .,!?:;\"'")
+        conteudo = str(combo_escreve.group("conteudo") or "").strip(" .,!?:;\"'")
+        if pasta and arquivo:
+            return {"nome": pasta, "arquivo_nome": arquivo, "arquivo_conteudo": conteudo}
+
     mover_para_dentro = re.search(
         r"\b(?:cria|criar|crie)\b.*?\bpasta\s+(?:chamada|chamado|chamadda|com nome)?\s*(?P<pasta>.+?)\s+"
         r"(?:e\s+)?(?:dentro\s+dela\s+)?(?:coloca|mova|move|mover)\s+"
@@ -8937,6 +9271,29 @@ def _extrair_delete_pasta_arquivo(frase: str) -> dict:
             nome = f"{nome}.txt"
         if nome:
             return {"alvo": nome, "tipo": "arquivo"}
+
+    m_generico = re.search(
+        r"\b(?:apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir)\s+"
+        r"(?:o|a|os|as|um|uma)?\s*(?P<nome>[a-zA-Z0-9_\-.][a-zA-Z0-9_\-.\s]{0,40})$",
+        texto_local,
+        flags=re.IGNORECASE,
+    )
+    if m_generico:
+        nome = str(m_generico.group("nome") or "").strip(" .,!?:;\"'")
+        nome_norm = _normalizar_texto_com_apelidos(nome)
+        if nome and nome_norm not in {
+            "arquivo",
+            "pasta",
+            "item",
+            "negocio",
+            "negócio",
+            "isso",
+            "essa",
+            "esse",
+            "ela",
+            "ele",
+        }:
+            return {"alvo": nome}
 
     return {}
 
@@ -9337,6 +9694,10 @@ def _tentar_intencao_ai_primeiro(texto: str):
     intent = str(resultado.get("intent") or "").upper().strip()
     if intent == "CANCELAR_ACAO" and not _texto_cancela_acao_agora(bruto):
         return None
+    if intent == "MEDIA_CONTROL":
+        acao = str((resultado.get("params") or {}).get("acao") or "").strip().lower()
+        if acao and acao not in {"play", "pause", "next", "prev", "replay", "pause_play", "toggle", "resume", "retomar", "retoma", "continuar", "continua", "despausa", "despausar"}:
+            return None
     if intent not in _INTENTS_EXECUTAVEIS_MENTE:
         return None
     return resultado
@@ -9348,6 +9709,8 @@ def processar_comando_deterministico(texto: str, origem: str = "") -> bool:
         "refinar_contexto_mental": _refinar_contexto_mental,
         "texto_cancela_acao_agora": _texto_cancela_acao_agora,
         "resolver_comando_midia_contextual_forcado": _resolver_comando_midia_contextual_forcado,
+        "resolver_comando_contextual_forcado": _resolver_comando_contextual_forcado,
+        "resolver_comando_acao_geral_contextual_forcado": _resolver_comando_acao_geral_contextual_forcado,
         "resolver_repeticao_ultima_acao": _resolver_repeticao_ultima_acao,
         "tentar_intencao_ai_primeiro": _tentar_intencao_ai_primeiro,
         "detectar_intencao_deterministica": detectar_intencao_deterministica,
@@ -10009,6 +10372,7 @@ def _gerar_resposta_exec_ia_sync(texto: str):
         registrar_autoaprimoramento=_registrar_autoaprimoramento,
         texto_social_curto=_texto_social_curto,
         texto_conversa_casual_sem_acao=_texto_conversa_casual_sem_acao,
+        texto_tem_comando_explicito=_texto_tem_comando_explicito,
         texto_bloqueia_playlist_agora=_texto_bloqueia_playlist_agora,
         resposta_conversa_rapida_local=_resposta_conversa_rapida_local,
         parece_elogio_ou_agradecimento_curto=_parece_elogio_ou_agradecimento_curto,
@@ -10024,6 +10388,9 @@ def _gerar_resposta_exec_ia_sync(texto: str):
         bloquear_playlist_temporariamente=_bloquear_playlist_temporariamente,
         resolver_comando_janela_contextual_forcado=_resolver_comando_janela_contextual_forcado,
         resolver_comando_midia_contextual_forcado=_resolver_comando_midia_contextual_forcado,
+        resolver_comando_arquivo_contextual_forcado=_resolver_comando_arquivo_contextual_forcado,
+        resolver_comando_acao_geral_contextual_forcado=_resolver_comando_acao_geral_contextual_forcado,
+        resolver_comando_contextual_forcado=_resolver_comando_contextual_forcado,
         responder_contexto_janela_indisponivel=_responder_contexto_janela_indisponivel,
         emitir_resposta_curta=_emitir_resposta_curta,
         executar_intencao_curta_contextual=_executar_intencao_curta_contextual,

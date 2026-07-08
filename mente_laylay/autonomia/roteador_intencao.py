@@ -60,6 +60,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
     deletar_item = _get(ctx, "deletar_item")
     resolver_caminho = _get(ctx, "resolver_caminho")
     registrar_contexto_arquivo = _get(ctx, "registrar_contexto_arquivo")
+    registrar_estrutura_arquivo_recente = _get(ctx, "_registrar_estrutura_arquivo_recente")
     ultima_pasta_contextual = _get(ctx, "ultima_pasta_contextual")
     ultimo_arquivo_contextual = _get(ctx, "ultimo_arquivo_contextual")
     ajustar_volume = _get(ctx, "ajustar_volume_sistema")
@@ -237,6 +238,65 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             return not bool((leitura_final or {}).get("aba_aberta"))
         return False
 
+    def _host_para_alvo_web(valor: str) -> str:
+        try:
+            bruto = str(valor or "").strip()
+            if not bruto:
+                return ""
+            parsed = urllib.parse.urlparse(bruto)
+            host = str(parsed.netloc or "").strip().lower()
+            if host.startswith("www."):
+                host = host[4:]
+            return host
+        except Exception:
+            return ""
+
+    def _alvo_preciso_para_aba(alvo: str) -> str:
+        alvo_limpo = str(alvo or "").strip()
+        if not alvo_limpo:
+            return ""
+        url_ref = _montar_url_site_ou_busca(alvo_limpo) if callable(_montar_url_site_ou_busca) else alvo_limpo
+        host_ref = _host_para_alvo_web(url_ref)
+        if host_ref:
+            return host_ref
+        return alvo_limpo
+
+    def _aba_corresponde_url(alvo: str, url_esperada: str, aba: dict | None) -> bool:
+        aba = aba if isinstance(aba, dict) else {}
+        url_atual = str(aba.get("url") or "").strip().lower()
+        titulo_atual = str(aba.get("title") or aba.get("titulo") or "").strip().lower()
+        alvo_ref = str(alvo or "").strip().lower()
+        url_ref = str(url_esperada or "").strip().lower()
+        host_ref = _host_para_alvo_web(url_ref) or _host_para_alvo_web(alvo_ref)
+        if url_ref and url_atual.startswith(url_ref):
+            return True
+        if host_ref and (host_ref in url_atual or host_ref in titulo_atual):
+            return True
+        if alvo_ref and (alvo_ref in url_atual or alvo_ref in titulo_atual):
+            return True
+        return False
+
+    def _esperar_url_abrir(url: str, *, alvo: str = "", tentativas: int = 8, intervalo: float = 0.25) -> bool:
+        url_limpa = str(url or "").strip()
+        alvo_ref = _alvo_preciso_para_aba(alvo or url_limpa)
+        for _ in range(max(1, tentativas)):
+            if alvo_ref:
+                leitura = _resolver_estado_alvo(alvo_ref)
+                if bool((leitura or {}).get("aba_aberta")):
+                    return True
+            if callable(solicitar_aba):
+                try:
+                    aba_atual = solicitar_aba() or {}
+                except Exception:
+                    aba_atual = {}
+                if _aba_corresponde_url(alvo_ref, url_limpa, aba_atual):
+                    return True
+            try:
+                time.sleep(intervalo)
+            except Exception:
+                pass
+        return False
+
     def _resolver_caminho_local(valor: str) -> str:
         bruto = str(valor or "").strip()
         if not bruto:
@@ -296,7 +356,9 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         if callable(abrir_url):
             try:
                 retorno = abrir_url(url_limpa, auto_click=auto_click)
-                return False if retorno is False else True
+                if retorno is False:
+                    return False
+                return _esperar_url_abrir(url_limpa, alvo=alvo or url_limpa)
             except Exception:
                 return False
         return False
@@ -528,7 +590,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         leitura_alvo = resolver_alvo_ambiente(nome_app) if callable(resolver_alvo_ambiente) else {}
         programa_aberto = bool((leitura_alvo or {}).get("programa_aberto"))
         if bool((leitura_alvo or {}).get("aba_aberta")) and not bool((leitura_alvo or {}).get("programa_aberto")):
-            alvo_tab = nome_app
+            alvo_tab = _alvo_preciso_para_aba(nome_app)
             if destino_val == "pc_b" and callable(_enviar_pc_b):
                 _enviar_pc_b({"action": "close_specific_tab", "target": alvo_tab})
                 ok_aba = True
@@ -545,7 +607,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             )
             return True
         if (not programa_aberto) and callable(_eh_alvo_site_web) and callable(_contexto_aponta_site_web) and (_eh_alvo_site_web(nome_app) or _contexto_aponta_site_web(nome_app)):
-            alvo_tab = nome_app
+            alvo_tab = _alvo_preciso_para_aba(nome_app)
             if destino_val == "pc_b" and callable(_enviar_pc_b):
                 _enviar_pc_b({"action": "close_specific_tab", "target": alvo_tab})
                 ok_aba = True
@@ -845,6 +907,19 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                     "calma" if arquivo_ok else "irritada",
                     1 if arquivo_ok else 2,
                 )
+        if pasta_ok and callable(registrar_estrutura_arquivo_recente):
+            try:
+                registrar_estrutura_arquivo_recente({
+                    "nome": nome,
+                    "pasta_pai": pasta_pai,
+                    "pasta_interna": pasta_interna,
+                    "mover_item": mover_item,
+                    "arquivo_nome": arquivo_nome,
+                    "arquivo_conteudo": arquivo_conteudo,
+                    "target": destino_val,
+                })
+            except Exception:
+                pass
         elif pasta_ok and arquivo_nome and destino_val == "pc_b":
             if callable(falar):
                 falar(_escolher_fala_variada([
@@ -924,6 +999,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         info = solicitar_aba() if callable(solicitar_aba) else {}
         url = str(info.get("url") or "").lower() if isinstance(info, dict) else ""
         alvo_tab = str(params.get("alvo") or params.get("site") or params.get("nome") or "").strip()
+        alvo_tab_preciso = _alvo_preciso_para_aba(alvo_tab) if alvo_tab else ""
         leitura_alvo = resolver_alvo_ambiente(alvo_tab) if alvo_tab and callable(resolver_alvo_ambiente) else {}
         if alvo_tab and bool((leitura_alvo or {}).get("programa_aberto")) and callable(fechar_programa):
             mapped = APPS_MAP.get(alvo_tab.lower(), alvo_tab)
@@ -943,12 +1019,12 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             alvo_tab = str(params.get("nome_app") or params.get("query") or params.get("alvo") or "site").strip()
         ok_aba = False
         if destino_val == "pc_b" and callable(_enviar_pc_b):
-            payload = {"action": "close_specific_tab", "target": alvo_tab} if alvo_tab else {"action": "close_current_tab"}
+            payload = {"action": "close_specific_tab", "target": alvo_tab_preciso or alvo_tab} if alvo_tab else {"action": "close_current_tab"}
             _enviar_pc_b(payload)
             ok_aba = True
         elif alvo_tab and callable(enviar_chrome):
-            enviar_chrome("close_specific_tab", {"target": alvo_tab})
-            ok_aba = _esperar_aba_fechar(alvo_tab, info)
+            enviar_chrome("close_specific_tab", {"target": alvo_tab_preciso or alvo_tab})
+            ok_aba = _esperar_aba_fechar(alvo_tab_preciso or alvo_tab, info)
         elif callable(enviar_chrome):
             enviar_chrome("close_current_tab", {})
             ok_aba = _esperar_aba_fechar("", info)

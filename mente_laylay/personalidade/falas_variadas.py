@@ -182,9 +182,9 @@ def fala_por_estado_acao(
             f"Já vou abrir {alvo_txt}.",
         ],
         "app_aberto_sem_foco": [
-            f"{alvo_txt} já estava aberto, mas resistiu a vir pra frente.",
-            f"{alvo_txt} já tá aberto, só não consegui puxar ele pro foco agora.",
-            f"{alvo_txt} apareceu no radar, mas não obedeceu meu puxão de foco.",
+            f"{alvo_txt} já estava aberto, mas não consegui trazer pra frente agora.",
+            f"{alvo_txt} já tá aberto, só não respondeu ao foco dessa vez.",
+            f"Eu achei {alvo_txt} aberto, mas a janela não colaborou pra vir pro foco.",
         ],
         "app_aberto_pc_b": [
             f"Abrindo {alvo_txt} no PC B.",
@@ -193,7 +193,7 @@ def fala_por_estado_acao(
         ],
         "app_focado": [
             f"{alvo_txt} já tava aberto, só puxei pra frente.",
-            f"{alvo_txt} já existia aí, só botei na tua cara.",
+            f"{alvo_txt} já existia aí, só trouxe pro foco.",
             f"{alvo_txt} tava se escondendo. Joguei ele pra frente.",
         ],
         "ja_aberto_focado": [
@@ -253,8 +253,8 @@ def fala_por_estado_acao(
         ],
         "janela_maximizada": [
             f"Deixei {alvo_txt} em destaque.",
-            f"{alvo_txt} ficou grandão na tua frente agora.",
-            f"Maximizei {alvo_txt}. Agora não tem como fingir que não viu.",
+            f"{alvo_txt} ficou em tela cheia normal agora.",
+            f"Maximizei {alvo_txt}. Tá em destaque de verdade agora.",
         ],
         "janela_maximizada_pc_b": [
             f"Maximizei {alvo_txt} no PC B.",
@@ -317,9 +317,9 @@ def fala_por_estado_acao(
             "Tranquilo. Deixei a playlist quietinha.",
         ],
         "falha_execucao": [
-            f"Tentei mexer em {alvo_txt}, mas não rolou de verdade.",
-            f"{alvo_txt} fez corpo mole e não respondeu.",
-            f"Eu tentei, mas {alvo_txt} não colaborou. Não vou fingir serviço feito.",
+            f"Tentei mexer em {alvo_txt}, mas a ação não confirmou direito.",
+            f"Tentei executar isso em {alvo_txt}, mas ele não respondeu como devia.",
+            f"Eu tentei, mas {alvo_txt} não colaborou. Não vou fingir que deu certo.",
         ],
         "nao_encontrado": [
             f"Não achei {alvo_txt} por aqui.",

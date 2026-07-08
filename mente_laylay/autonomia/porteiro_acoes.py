@@ -195,7 +195,51 @@ def texto_tem_comando_explicito(texto: str) -> bool:
     if any(x in t for x in ["tela cheia", "fullscreen", "em foco", "pra frente", "para frente", "primeiro plano"]):
         return True
 
+    if any(x in t for x in [
+        "pausa ela",
+        "pausa ele",
+        "pausa isso",
+        "despausa ela",
+        "despausa ele",
+        "retoma ela",
+        "retoma ele",
+        "continua ela",
+        "continua ele",
+        "proxima musica",
+        "próxima música",
+        "musica anterior",
+        "música anterior",
+        "volta a musica",
+        "volta a música",
+        "volta para a de antes",
+        "volta pra de antes",
+        "volta pra anterior",
+        "toca ela de novo",
+        "repete ela",
+        "repete essa",
+    ]):
+        return True
+
+    if re.search(
+        r"\b(?:traz|trazer|abre|abrir|coloca|colocar|bota|botar|toca|tocar|restaura|restaurar|refaz|refazer)\b.*\b(?:de volta|de novo|novamente)\b",
+        t,
+    ):
+        return True
+
     if re.search(r"\b(?:pode\s+ler|pode\s+ver|le\s+eles|l[eê]\s+eles|ler\s+eles)\b", t):
+        return True
+
+    if re.search(
+        r"\b(?:traz|trazer|cria|criar|faz|refaz|restaura|restaurar)\b.*\b(?:de volta|de novo|novamente)\b",
+        t,
+    ):
+        return True
+
+    if re.search(
+        r"^\s*(?:apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir)\s+"
+        r"(?:o|a|os|as|um|uma)?\s*[a-z0-9_\-.][a-z0-9_\-.\s]{0,40}$",
+        t,
+    ):
         return True
 
     return False

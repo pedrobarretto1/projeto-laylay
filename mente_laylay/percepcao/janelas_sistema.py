@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import time
 import unicodedata
+import urllib.parse
 from typing import Any, Callable, Iterable, List, Tuple
 
 
@@ -430,6 +431,28 @@ def resolver_alvo_ambiente(
     abas: Iterable[dict],
     foco_cb: Callable[[str], bool] | None = None,
 ) -> dict:
+    def _host_sem_www(url: str) -> str:
+        try:
+            bruto = str(url or "").strip()
+            if not bruto:
+                return ""
+            host = urllib.parse.urlparse(bruto).netloc.strip().lower()
+            if host.startswith("www."):
+                host = host[4:]
+            return normalizar_alvo_ambiente(host)
+        except Exception:
+            return ""
+
+    def _aba_combina_alvo(alvo_ref: str, titulo_ref: str, url_ref: str) -> bool:
+        titulo_norm = normalizar_alvo_ambiente(titulo_ref)
+        url_norm = normalizar_alvo_ambiente(url_ref)
+        host_norm = _host_sem_www(url_ref)
+        pistas = [p for p in {titulo_norm, url_norm, host_norm} if p]
+        for pista in pistas:
+            if alvo_ref == pista or alvo_ref in pista or pista in alvo_ref:
+                return True
+        return False
+
     alvo = str(nome or "").strip()
     alvo_norm = normalizar_alvo_ambiente(alvo)
     if not alvo_norm:
@@ -450,8 +473,7 @@ def resolver_alvo_ambiente(
             continue
         titulo = str(aba.get("titulo") or "").strip()
         url = str(aba.get("url") or "").strip()
-        composto = normalizar_alvo_ambiente(f"{titulo} {url}")
-        if composto and (alvo_norm == composto or alvo_norm in composto):
+        if _aba_combina_alvo(alvo_norm, titulo, url):
             aba_aberta = True
             aba_url = url
             aba_titulo = titulo

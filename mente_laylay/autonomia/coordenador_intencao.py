@@ -60,12 +60,15 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     if _call(ctx, "texto_cancela_acao_agora", texto_norm, default=False):
         return {"intent": "CANCELAR_ACAO", "params": {}}, "imediato"
 
-    # Continuidade musical contextual vem antes da repeticao generica.
+    # Continuidade contextual unificada vem antes da repeticao generica.
     # Ex.: "toca ela de novo" deve ser replay da faixa atual, nao repetir
-    # a ultima acao registrada como "musica anterior".
-    intent_midia_contextual = _call(ctx, "resolver_comando_midia_contextual_forcado", texto_norm)
-    if isinstance(intent_midia_contextual, dict):
-        return intent_midia_contextual, "contexto-midia"
+    # cegamente a ultima acao registrada.
+    intent_contextual = _call(ctx, "resolver_comando_contextual_forcado", texto_norm)
+    if isinstance(intent_contextual, dict):
+        rota = str(intent_contextual.get("_rota_contextual") or "contexto").lower()
+        intent_limpo = dict(intent_contextual)
+        intent_limpo.pop("_rota_contextual", None)
+        return intent_limpo, f"contexto-{rota}"
 
     intent_repeticao = _call(ctx, "resolver_repeticao_ultima_acao", texto_norm)
     if isinstance(intent_repeticao, dict):

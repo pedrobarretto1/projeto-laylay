@@ -2592,6 +2592,49 @@ Validacao:
 
 - `python -m py_compile laylay.py mente_laylay/integracao/contexto_conversa.py mente_laylay/autonomia/fluxos_conversa.py mente_laylay/autonomia/comandos_imediatos.py mente_laylay/autonomia/fluxo_resposta_ia.py`
 
+64. Gerenciador de contexto imediato para falhas criticas de conversa e alvo
+
+Problemas tratados:
+
+- a Laylay prometia explicar algo e nao entregava na fala seguinte;
+- o contexto de app anterior dominava comandos novos de janela;
+- correcoes diretas como "nao lay, o opera em tela cheia" nao sobrescreviam o alvo;
+- parser de criacao de pasta + arquivo + conteudo embolava nome e texto;
+- verbos como "entra no" e "acessa" ainda nao caiam no mesmo fluxo de abrir site;
+- algumas falas tecnicas de falha estavam carismaticas demais e claras de menos.
+
+O que foi feito:
+
+- `mente_laylay/memoria_mental/contexto_compartilhado.py`
+  - adicionados campos de contexto imediato:
+    - `ultima_promessa_tipo`
+    - `ultima_promessa_texto`
+    - `ultima_promessa_alvo`
+    - `alvo_corrigido`
+  - adicionados helpers para promessa conversacional e alvo corrigido.
+- `laylay.py`
+  - criada resolucao de divida conversacional antes do fluxo principal;
+  - confirmacoes como "quero sim", "entao fale", "me explique" agora tentam entregar a explicacao prometida;
+  - correcoes explicitas de app em comandos de janela agora sobrescrevem contexto anterior;
+  - o alvo corrigido passa a ser lembrado por curto prazo;
+  - `_extrair_intencao_abrir_app(...)` passou a aceitar `entra`, `acessa`, `vai no`, `vai na`, `vai pra`, `vai pro`;
+  - `_extrair_criacao_pasta_arquivo(...)` ficou mais rigido para separar:
+    - nome da pasta
+    - nome do arquivo
+    - conteudo do arquivo
+- `mente_laylay/personalidade/falas_variadas.py`
+  - respostas de falha e foco/maximizacao ficaram mais claras e menos confusas em contexto tecnico.
+
+Intencao dessa etapa:
+
+- dar a Laylay mais atencao conversacional imediata sem endurecer a personalidade;
+- fazer correcao do usuario ter peso real;
+- impedir que Steam ou outro alvo antigo arraste comandos novos por inercia.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/contexto_compartilhado.py mente_laylay/personalidade/falas_variadas.py mente_laylay/integracao/contexto_conversa.py`
+
 ## 78. Validação real de execução para mídia, volume e emails
 
 Objetivo:

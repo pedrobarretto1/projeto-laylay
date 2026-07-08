@@ -17,6 +17,8 @@ def estado_mental_inicial() -> Dict[str, Any]:
         "ultima_pasta": "",
         "ultimo_arquivo": "",
         "ultimo_caminho_arquivo": "",
+        "ultima_estrutura_arquivo_params": {},
+        "ultima_estrutura_arquivo_ts": 0.0,
         "ultimo_escopo": "",
         "ultima_habilidade": "",
         "ultima_resposta": "",
@@ -26,6 +28,12 @@ def estado_mental_inicial() -> Dict[str, Any]:
         "ultima_acao_params": {},
         "ultima_acao_origem": "",
         "ultima_acao_texto": "",
+        "ultima_promessa_tipo": "",
+        "ultima_promessa_texto": "",
+        "ultima_promessa_alvo": "",
+        "ultima_promessa_ts": 0.0,
+        "alvo_corrigido": "",
+        "alvo_corrigido_ts": 0.0,
         "pergunta_aberta_texto": "",
         "pergunta_aberta_topico": "",
         "pergunta_aberta_origem": "",
@@ -110,6 +118,130 @@ def limpar_pergunta_aberta(estado_atual: Dict[str, Any] | None) -> Dict[str, Any
     estado["pergunta_aberta_origem"] = ""
     estado["pergunta_aberta_ts"] = 0.0
     return estado
+
+
+def registrar_promessa_conversacional(
+    estado_atual: Dict[str, Any] | None,
+    resposta: str,
+    *,
+    alvo: str = "",
+) -> Dict[str, Any]:
+    estado = dict(estado_atual or {})
+    fala = str(resposta or "").strip()
+    base = fala.lower()
+    tipo = ""
+    if any(p in base for p in [
+        "quer que eu abra minha opinião",
+        "quer que eu abrir minha opinião",
+        "quer que eu abra melhor",
+        "quer que eu explique",
+        "quer que eu detalhe",
+        "posso explicar melhor",
+        "posso abrir minha opinião",
+    ]):
+        tipo = "explicar_opiniao"
+    elif any(p in base for p in [
+        "quer que eu te explique",
+        "quer que eu explique melhor",
+        "quer que eu detalhe isso",
+        "posso te explicar",
+    ]):
+        tipo = "explicar"
+
+    if not tipo:
+        return estado
+
+    estado["ultima_promessa_tipo"] = tipo
+    estado["ultima_promessa_texto"] = fala[:240]
+    estado["ultima_promessa_alvo"] = str(alvo or estado.get("ultimo_alvo") or "").strip()[:160]
+    estado["ultima_promessa_ts"] = time.time()
+    return estado
+
+
+def limpar_promessa_conversacional(estado_atual: Dict[str, Any] | None) -> Dict[str, Any]:
+    estado = dict(estado_atual or {})
+    estado["ultima_promessa_tipo"] = ""
+    estado["ultima_promessa_texto"] = ""
+    estado["ultima_promessa_alvo"] = ""
+    estado["ultima_promessa_ts"] = 0.0
+    return estado
+
+
+def promessa_conversacional_ativa(
+    estado_atual: Dict[str, Any] | None,
+    *,
+    ttl_s: float = 180.0,
+) -> Dict[str, Any] | None:
+    estado = dict(estado_atual or {})
+    tipo = str(estado.get("ultima_promessa_tipo") or "").strip()
+    if not tipo:
+        return None
+    try:
+        ts = float(estado.get("ultima_promessa_ts") or 0.0)
+    except Exception:
+        ts = 0.0
+    if not ts or time.time() - ts > ttl_s:
+        return None
+    return {
+        "tipo": tipo,
+        "texto": str(estado.get("ultima_promessa_texto") or "").strip(),
+        "alvo": str(estado.get("ultima_promessa_alvo") or "").strip(),
+        "idade_s": max(0.0, time.time() - ts),
+    }
+
+
+def registrar_alvo_corrigido(estado_atual: Dict[str, Any] | None, alvo: str) -> Dict[str, Any]:
+    estado = dict(estado_atual or {})
+    estado["alvo_corrigido"] = str(alvo or "").strip()[:160]
+    estado["alvo_corrigido_ts"] = time.time()
+    return estado
+
+
+def alvo_corrigido_ativo(
+    estado_atual: Dict[str, Any] | None,
+    *,
+    ttl_s: float = 120.0,
+) -> str:
+    estado = dict(estado_atual or {})
+    alvo = str(estado.get("alvo_corrigido") or "").strip()
+    if not alvo:
+        return ""
+    try:
+        ts = float(estado.get("alvo_corrigido_ts") or 0.0)
+    except Exception:
+        ts = 0.0
+    if not ts or time.time() - ts > ttl_s:
+        return ""
+    return alvo
+
+
+def registrar_estrutura_arquivo_recente(
+    estado_atual: Dict[str, Any] | None,
+    params: Dict[str, Any] | None,
+) -> Dict[str, Any]:
+    estado = dict(estado_atual or {})
+    dados = dict(params or {}) if isinstance(params, dict) else {}
+    estado["ultima_estrutura_arquivo_params"] = dados
+    estado["ultima_estrutura_arquivo_ts"] = time.time() if dados else 0.0
+    return estado
+
+
+def estrutura_arquivo_recente(
+    estado_atual: Dict[str, Any] | None,
+    *,
+    ttl_s: float = 900.0,
+) -> Dict[str, Any] | None:
+    estado = dict(estado_atual or {})
+    dados = estado.get("ultima_estrutura_arquivo_params")
+    if not isinstance(dados, dict) or not dados:
+        return None
+    try:
+        ts = float(estado.get("ultima_estrutura_arquivo_ts") or 0.0)
+    except Exception:
+        ts = 0.0
+    if not ts or time.time() - ts > ttl_s:
+        return None
+    return dict(dados)
 
 
 def pergunta_aberta_ativa(

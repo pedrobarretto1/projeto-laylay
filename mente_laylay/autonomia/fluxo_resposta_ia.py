@@ -81,7 +81,7 @@ def _executar_intencao_contextual(
             contexto=contexto_autoaprimoramento,
             origem=log_prefixo,
         )
-    return executou
+    return True
 
 
 def processar_inicio_fluxo_resposta_ia(ctx: Dict[str, Any], texto: str) -> bool:
@@ -98,6 +98,7 @@ def processar_inicio_fluxo_resposta_ia(ctx: Dict[str, Any], texto: str) -> bool:
 
     texto_social_curto = _get(ctx, "_texto_social_curto")
     texto_conversa_casual_sem_acao = _get(ctx, "_texto_conversa_casual_sem_acao")
+    texto_tem_comando_explicito = _get(ctx, "_texto_tem_comando_explicito")
     resposta_conversa_rapida_local = _get(ctx, "_resposta_conversa_rapida_local")
     texto_pede_direcao_musical_generica = _get(ctx, "_texto_pede_direcao_musical_generica")
     responder_pedido_direcao_musical_generica = _get(ctx, "_responder_pedido_direcao_musical_generica")
@@ -111,8 +112,7 @@ def processar_inicio_fluxo_resposta_ia(ctx: Dict[str, Any], texto: str) -> bool:
     resolver_pergunta_curta_contextual_intencao = _get(ctx, "_resolver_pergunta_curta_contextual_intencao")
     texto_responde_pergunta_aberta = _get(ctx, "_texto_responde_pergunta_aberta")
     responder_pergunta_aberta = _get(ctx, "_responder_pergunta_aberta")
-    resolver_comando_janela_contextual_forcado = _get(ctx, "_resolver_comando_janela_contextual_forcado")
-    resolver_comando_midia_contextual_forcado = _get(ctx, "_resolver_comando_midia_contextual_forcado")
+    resolver_comando_contextual_forcado = _get(ctx, "_resolver_comando_contextual_forcado")
     responder_contexto_janela_indisponivel = _get(ctx, "_responder_contexto_janela_indisponivel")
     executar_intencao_curta_contextual = _get(ctx, "_executar_intencao_curta_contextual")
     executar_intencao = _get(ctx, "executar_intencao")
@@ -147,6 +147,12 @@ def processar_inicio_fluxo_resposta_ia(ctx: Dict[str, Any], texto: str) -> bool:
         _log("confirmacao_sugestao_musical")
         return True
 
+    if callable(texto_pede_direcao_musical_generica) and texto_pede_direcao_musical_generica(t):
+        _log("direcao_musical_generica")
+        if callable(responder_pedido_direcao_musical_generica):
+            return bool(responder_pedido_direcao_musical_generica(t))
+        return True
+
     if callable(resolver_pergunta_curta_contextual_intencao):
         intencao_curta = resolver_pergunta_curta_contextual_intencao(t)
         if isinstance(intencao_curta, dict) and str(intencao_curta.get("intent") or "").strip():
@@ -168,59 +174,39 @@ def processar_inicio_fluxo_resposta_ia(ctx: Dict[str, Any], texto: str) -> bool:
         fala = responder_pergunta_aberta(t) if callable(responder_pergunta_aberta) else ""
         return _emitir_conversa_curta(ctx, t, fala, emocao=current_emotion or "calma", nivel=emotion_level or 1)
 
-    if callable(texto_social_curto) and texto_social_curto(t):
-        _log("conversa_social_curta")
-        fala = resposta_conversa_rapida_local(t) if callable(resposta_conversa_rapida_local) else ""
-        return _emitir_conversa_curta(ctx, t, fala, emocao=current_emotion or "calma", nivel=emotion_level or 1)
-
-    if callable(texto_conversa_casual_sem_acao) and texto_conversa_casual_sem_acao(t):
-        _log("conversa_casual_sem_acao")
-        fala = resposta_conversa_rapida_local(t) if callable(resposta_conversa_rapida_local) else ""
-        return _emitir_conversa_curta(ctx, t, fala, emocao=current_emotion or "calma", nivel=emotion_level or 1)
-
-    if callable(resolver_comando_janela_contextual_forcado):
+    if callable(resolver_comando_contextual_forcado):
         try:
-            comando_janela_contextual = resolver_comando_janela_contextual_forcado(t)
-            if comando_janela_contextual:
-                _log("continuidade_janela", str(comando_janela_contextual.get("intent") or ""))
+            comando_contextual = resolver_comando_contextual_forcado(t)
+            if comando_contextual:
+                rota = str(comando_contextual.get("_rota_contextual") or "GERAL").upper()
+                intent_limpo = dict(comando_contextual)
+                intent_limpo.pop("_rota_contextual", None)
+                _log(f"continuidade_{rota.lower()}", str(intent_limpo.get("intent") or ""))
                 return _executar_intencao_contextual(
                     ctx,
-                    comando_janela_contextual,
+                    intent_limpo,
                     t,
                     log_prefixo="pre-ia",
-                    log_rota="ROTEADOR CONTEXTO-JANELA [pre-ia]",
-                    origem_resultado="contexto_janela_pre_ia",
-                    contexto_autoaprimoramento="continuidade contextual de janela",
+                    log_rota=f"ROTEADOR CONTEXTO-{rota} [pre-ia]",
+                    origem_resultado=f"contexto_{rota.lower()}_pre_ia",
+                    contexto_autoaprimoramento=f"continuidade contextual de {rota.lower()}",
                 )
         except Exception as e:
-            print(f"⚠️ [CONTEXTO-JANELA] falha no fluxo pre-ia: {e}")
-
-    if callable(resolver_comando_midia_contextual_forcado):
-        try:
-            comando_midia_contextual = resolver_comando_midia_contextual_forcado(t)
-            if comando_midia_contextual:
-                _log("continuidade_midia", str(comando_midia_contextual.get("intent") or ""))
-                return _executar_intencao_contextual(
-                    ctx,
-                    comando_midia_contextual,
-                    t,
-                    log_prefixo="pre-ia",
-                    log_rota="ROTEADOR CONTEXTO-MIDIA [pre-ia]",
-                    origem_resultado="contexto_midia_pre_ia",
-                    contexto_autoaprimoramento="continuidade contextual de midia",
-                )
-        except Exception as e:
-            print(f"⚠️ [CONTEXTO-MIDIA] falha no fluxo pre-ia: {e}")
+            print(f"⚠️ [CONTEXTO-UNIFICADO] falha no fluxo pre-ia: {e}")
 
     if callable(responder_contexto_janela_indisponivel) and responder_contexto_janela_indisponivel(t):
         _log("janela_indisponivel")
         return True
 
-    if callable(texto_pede_direcao_musical_generica) and texto_pede_direcao_musical_generica(t):
-        _log("direcao_musical_generica")
-        if callable(responder_pedido_direcao_musical_generica):
-            return bool(responder_pedido_direcao_musical_generica(t))
-        return True
+    if callable(texto_social_curto) and texto_social_curto(t) and not (callable(texto_tem_comando_explicito) and texto_tem_comando_explicito(t)):
+        _log("conversa_social_curta")
+        fala = resposta_conversa_rapida_local(t) if callable(resposta_conversa_rapida_local) else ""
+        return _emitir_conversa_curta(ctx, t, fala, emocao=current_emotion or "calma", nivel=emotion_level or 1)
+
+    if callable(texto_conversa_casual_sem_acao) and texto_conversa_casual_sem_acao(t) and not (callable(texto_tem_comando_explicito) and texto_tem_comando_explicito(t)):
+        _log("conversa_casual_sem_acao")
+        fala = resposta_conversa_rapida_local(t) if callable(resposta_conversa_rapida_local) else ""
+        return _emitir_conversa_curta(ctx, t, fala, emocao=current_emotion or "calma", nivel=emotion_level or 1)
 
     processar_aprendizado_apelido_imediato = _get(ctx, "_processar_aprendizado_apelido_imediato")
     if callable(processar_aprendizado_apelido_imediato) and processar_aprendizado_apelido_imediato(t):

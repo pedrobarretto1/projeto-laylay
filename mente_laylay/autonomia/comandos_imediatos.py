@@ -20,8 +20,9 @@ def processar_comandos_imediatos(ctx: Dict[str, Any], texto: str) -> bool:
     normalizar = _get(ctx, "_normalizar_texto_com_apelidos")
     texto_social_curto = _get(ctx, "_texto_social_curto")
     texto_conversa_casual_sem_acao = _get(ctx, "_texto_conversa_casual_sem_acao")
+    texto_tem_comando_explicito = _get(ctx, "_texto_tem_comando_explicito")
     refinar_contexto_mental = _get(ctx, "_refinar_contexto_mental")
-    resolver_comando_janela_contextual_forcado = _get(ctx, "_resolver_comando_janela_contextual_forcado")
+    resolver_comando_contextual_forcado = _get(ctx, "_resolver_comando_contextual_forcado")
     responder_contexto_janela_indisponivel = _get(ctx, "_responder_contexto_janela_indisponivel")
     processar_comandos_em_cadeia = _get(ctx, "processar_comandos_em_cadeia")
     processar_comando_deterministico = _get(ctx, "processar_comando_deterministico")
@@ -43,8 +44,11 @@ def processar_comandos_imediatos(ctx: Dict[str, Any], texto: str) -> bool:
         extra = f" | {detalhe}" if detalhe else ""
         print(f"🧭 [IMEDIATO] {etapa}{extra}")
 
-    if (callable(texto_social_curto) and texto_social_curto(t)) or (
-        callable(texto_conversa_casual_sem_acao) and texto_conversa_casual_sem_acao(t)
+    if (
+        (callable(texto_social_curto) and texto_social_curto(t))
+        or (callable(texto_conversa_casual_sem_acao) and texto_conversa_casual_sem_acao(t))
+    ) and not (
+        callable(texto_tem_comando_explicito) and texto_tem_comando_explicito(t)
     ):
         _log("ignorado_por_conversa")
         return False
@@ -52,23 +56,26 @@ def processar_comandos_imediatos(ctx: Dict[str, Any], texto: str) -> bool:
     if callable(refinar_contexto_mental):
         refinar_contexto_mental(t)
 
-    comando_janela_contextual = (
-        resolver_comando_janela_contextual_forcado(t)
-        if callable(resolver_comando_janela_contextual_forcado)
+    comando_contextual = (
+        resolver_comando_contextual_forcado(t)
+        if callable(resolver_comando_contextual_forcado)
         else None
     )
-    if comando_janela_contextual:
+    if comando_contextual:
         try:
-            _log("continuidade_janela", str(comando_janela_contextual.get("intent") or ""))
-            print(f"⚡ [ROTEADOR CONTEXTO-JANELA [imediato]] {comando_janela_contextual}")
-            executou = bool(executar_intencao(comando_janela_contextual, t)) if callable(executar_intencao) else False
+            rota = str(comando_contextual.get("_rota_contextual") or "GERAL").upper()
+            intent_limpo = dict(comando_contextual)
+            intent_limpo.pop("_rota_contextual", None)
+            _log(f"continuidade_{rota.lower()}", str(intent_limpo.get("intent") or ""))
+            print(f"⚡ [ROTEADOR CONTEXTO-{rota} [imediato]] {intent_limpo}")
+            executou = bool(executar_intencao(intent_limpo, t)) if callable(executar_intencao) else False
             if callable(registrar_resultado_execucao):
-                registrar_resultado_execucao(comando_janela_contextual, t, executou, origem="contexto_janela")
+                registrar_resultado_execucao(intent_limpo, t, executou, origem=f"contexto_{rota.lower()}")
             if executou and callable(registrar_autoaprimoramento):
-                registrar_autoaprimoramento(comando_janela_contextual, t, True, contexto="continuidade contextual de janela", origem="imediato")
-            return executou
+                registrar_autoaprimoramento(intent_limpo, t, True, contexto=f"continuidade contextual de {rota.lower()}", origem="imediato")
+            return True
         except Exception as e:
-            print(f"⚠️ [CONTEXTO-JANELA] falha ao executar: {e}")
+            print(f"⚠️ [CONTEXTO-UNIFICADO] falha ao executar: {e}")
             return False
 
     if callable(responder_contexto_janela_indisponivel) and responder_contexto_janela_indisponivel(t):
@@ -92,7 +99,7 @@ def processar_comandos_imediatos(ctx: Dict[str, Any], texto: str) -> bool:
                 registrar_resultado_execucao(comando_local, t, executou, origem="comando_local_rapido")
             if executou and callable(registrar_autoaprimoramento):
                 registrar_autoaprimoramento(comando_local, t, True, contexto="comando local rapido", origem="imediato")
-            return executou
+            return True
         except Exception as e:
             print(f"⚠️ [FOCO LOCAL] falha ao executar comando local: {e}")
             return False
@@ -123,7 +130,7 @@ def processar_comandos_imediatos(ctx: Dict[str, Any], texto: str) -> bool:
         executou = bool(executar_intencao(resultado, t)) if callable(executar_intencao) else False
         if callable(registrar_resultado_execucao):
             registrar_resultado_execucao(resultado, t, executou, origem="imediato_llm")
-        return executou
+        return True
     except Exception:
         alvo_falha = str(
             (resultado.get("params") or {}).get("nome_app")
