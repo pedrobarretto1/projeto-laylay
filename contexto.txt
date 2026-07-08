@@ -1,0 +1,3507 @@
+LAYLAY - CONTEXTO ATUAL DA REFACTORACAO
+Atualizado em 2026-07-04
+
+1. Visao geral
+
+A Laylay esta sendo reorganizada para sair de um arquivo principal muito grande e passar a funcionar como uma arquitetura modular, mas sem perder a ideia central de mente unica.
+
+O objetivo nao e dividir a personalidade em partes soltas.
+O objetivo e separar responsabilidades tecnicas para que:
+
+- o codigo fique mais facil de entender;
+- cada habilidade tenha um lugar proprio;
+- a manutencao seja menos frágil;
+- novas melhorias possam ser adicionadas com menos risco;
+- memoria, percepcao, emocao, contexto e acao continuem conversando entre si.
+
+Em resumo:
+
+A mente continua sendo uma so.
+O codigo e que foi dividido em blocos especializados.
+
+2. Regra central do projeto
+
+Todas as capacidades da Laylay devem funcionar como partes de uma mesma mente.
+Memoria, percepcao, emocao, contexto, rotinas, autonomia, cognicao e futuras arquiteturas devem compartilhar informacoes sempre que fizer sentido.
+
+Principios obrigatorios:
+
+- nada deve parecer um "fragmento isolado";
+- os modulos precisam cooperar;
+- o contexto atual deve influenciar a decisao;
+- a memoria deve reforcar aprendizado e continuidade;
+- a personalidade nao pode ser perdida;
+- a separacao deve ser modular, mas integrada.
+
+3. Como a arquitetura esta organizada
+
+A estrutura principal passou a seguir esta ideia:
+
+- `laylay.py` continua sendo a porta de entrada principal;
+- a logica pesada sai do arquivo principal e vai para modulos em portugues;
+- os modulos fazem tarefas especificas;
+- o arquivo principal faz a orquestracao e manteve os encaixes com o restante do sistema;
+- o estado compartilhado continua sendo usado para manter continuidade da mente.
+
+Fluxo geral:
+
+Entrada do usuario
+  -> interpretacao de contexto
+  -> checagem de comandos diretos
+  -> roteamento deterministico
+  -> roteamento contextual por IA, se necessario
+  -> execucao da acao
+  -> atualizacao de memoria e contexto
+  -> resposta final com personalidade
+
+4. O que ja foi feito
+
+4.1 Extracao de responsabilidades do arquivo principal
+
+O `laylay.py` deixou de concentrar tudo sozinho.
+Parte da logica foi movida para modulos menores, principalmente para:
+
+- decisao de intenções;
+- navegação e controle de sites;
+- agendamento e leitura de contexto temporal;
+- execução de comandos vindos da IA;
+- aprendizagem de rotina e musica;
+- memoria compartilhada;
+- humor e perfil emocional;
+- memoria visual;
+- manipulacao de arquivos e programas.
+
+4.2 Modulos ja criados
+
+Modulos de autonomia:
+
+- `mente_laylay/autonomia/roteador_intencao.py`
+- `mente_laylay/autonomia/agendamento_mental.py`
+- `mente_laylay/autonomia/execucao_ia.py`
+- `mente_laylay/autonomia/navegacao_mental.py`
+- `mente_laylay/autonomia/comandos_sistema.py`
+- `mente_laylay/autonomia/roteador_conteudo.py`
+- `mente_laylay/autonomia/analise_comandos.py`
+
+Modulos de memoria e contexto:
+
+- `mente_laylay/memoria_mental/contexto_compartilhado.py`
+- `mente_laylay/memoria_mental/contexto_integrado.py`
+- `mente_laylay/memoria_mental/persistencia_memoria.py`
+- `mente_laylay/memoria_mental/autoaprimoramento.py`
+- `mente_laylay/memoria_mental/aprendizado_rotina_musica.py`
+- `mente_laylay/memoria_mental/playlist_mental.py`
+
+Modulos de emocao:
+
+- `mente_laylay/emocoes/perfil_emocional.py`
+- `mente_laylay/emocoes/motor_humor.py`
+
+Modulos de cognicao e apoio:
+
+- `mente_laylay/cognicao/memoria_visual.py`
+
+Modulos de arquivos:
+
+- `mente_laylay/arquivos/roteador_arquivos.py`
+- `mente_laylay/arquivos/arquivos_sistema.py`
+
+4.3 O que esses modulos fazem
+
+`roteador_intencao.py`
+
+- decide a intencao principal de um texto;
+- aplica regras de bloqueio por emocao;
+- escolhe entre comando, conversacao, playlist, site, musica, fechamento, foco e outros fluxos;
+- ajuda a evitar que a IA fique responsavel por coisas totalmente deterministicas.
+
+`agendamento_mental.py`
+
+- lida com lembretes, compromissos e leitura contextual de agendamentos;
+- extrai contexto temporal quando o usuario fala de horario, compromisso ou rotina;
+- integra sinais de horario com contexto maior.
+
+`execucao_ia.py`
+
+- processa respostas da IA que podem conter comando;
+- filtra fala pura;
+- interpreta JSON ou respostas mistas;
+- ajuda a transformar resposta da IA em acao executavel.
+
+`navegacao_mental.py`
+
+- organiza fluxos de abertura de aplicativos, sites, imagem, pausa, proxima musica, volume e interacoes com navegador;
+- reduz duplicacao de logica entre blocos parecidos.
+
+`contexto_compartilhado.py`
+
+- centraliza leitura de contexto;
+- ajuda a decidir se algo depende de contexto;
+- integra informacoes como musica ativa, contexto mental e prioridade da IA.
+
+`persistencia_memoria.py`
+
+- salva e carrega memoria;
+- registra autocorrecao;
+- organiza persistencia entre sessoes.
+
+`autoaprimoramento.py`
+
+- registra melhoria de habilidade com o tempo;
+- ajuda a Laylay a aprender com repeticao, erro e ajuste;
+- reforca a ideia de autocorrecao e evolucao gradual.
+
+`aprendizado_rotina_musica.py`
+
+- aprende rotinas;
+- aprende feedback de musica;
+- acompanha preferencia de uso;
+- reforca padroes aprendidos.
+
+`playlist_mental.py`
+
+- gerencia nome de playlist;
+- normaliza nomes;
+- resolve playlist por contexto;
+- controla lista, quantidade de musicas e url principal.
+
+`perfil_emocional.py`
+
+- define descricao de cada emocao;
+- define comportamento emocional;
+- ajusta audio e tom de fala por emocao.
+
+`motor_humor.py`
+
+- controla humor atual;
+- registra gatilhos instintivos;
+- identifica elogio, irritacao, interrupcoes e mudancas de estado;
+- devolve reacao emocional coerente com o momento.
+
+`memoria_visual.py`
+
+- prepara a base da memoria visual;
+- apoia capturas e experiencias visuais futuras;
+- organiza estruturas para guardar eventos marcantes.
+
+5. Como a separacao esta funcionando na pratica
+
+A regra pratica atual e esta:
+
+1. `laylay.py` recebe a entrada.
+2. O texto e normalizado e passa por contexto.
+3. Se houver comando direto, o roteador tenta resolver antes da IA.
+4. Se houver necessidade de contexto mais rico, o sistema consulta memoria e rotas auxiliares.
+5. Se a IA precisar responder, a fala passa pelo processamento de fala e personalidade.
+6. O resultado executa a acao ou produz a resposta.
+7. O contexto e a memoria sao atualizados.
+
+Isso evita que tudo dependa de uma unica funcao gigante.
+
+6. O que ja melhorou com essa refatoracao
+
+- O arquivo principal ficou menos monolitico.
+- As responsabilidades ficaram mais claras.
+- Bugs ficaram mais faceis de localizar.
+- O codigo ficou mais facil de testar por blocos.
+- As melhorias futuras ficaram menos arriscadas.
+- O comportamento de emocao e humor ganhou organizacao propria.
+- O roteamento de intenções ficou mais controlado.
+- A memoria e o contexto ficaram mais consistentes.
+
+7. Como a mente unica e preservada
+
+Essa e a parte mais importante da arquitetura.
+
+Mesmo com varios modulos, a Laylay nao deve parecer varias inteligencias separadas.
+Ela deve parecer uma unica mente que:
+
+- observa o contexto;
+- lembra do que aconteceu;
+- sente o clima;
+- decide o que faz sentido;
+- responde com personalidade;
+- aprende com repeticao;
+- ajusta o comportamento com o tempo.
+
+Para isso:
+
+- os modulos recebem o mesmo contexto;
+- o estado global continua sendo compartilhado quando necessario;
+- a memoria conversa com a acao;
+- a emocao interfere na fala;
+- o contexto pode mudar a decisao;
+- o aprendizado pode corrigir o proprio comportamento.
+
+8. Pontos de cuidado
+
+Esta refatoracao e delicada porque varias partes ainda dependem do `laylay.py`.
+
+Os maiores riscos sao:
+
+- quebrar nomes de funcoes usadas por outros blocos;
+- duplicar regra que ja existe em outro modulo;
+- perder comportamento historico da Laylay;
+- remover personalidade por excesso de limpeza;
+- fragmentar demais e perder integracao;
+- alterar um fluxo sem atualizar o fluxo dependente.
+
+Por isso a regra de trabalho precisa continuar sendo:
+
+- mudar o minimo necessario;
+- preservar compatibilidade;
+- evitar duplicar logica;
+- validar com compilacao depois de cada corte grande;
+- manter a personalidade da Laylay.
+
+9. O que ainda precisa ser feito
+
+O projeto ainda nao terminou.
+
+Ainda faltam passos importantes:
+
+- separar mais o fluxo de conversa e fallback;
+- organizar melhor a limpeza de fala e transcricao;
+- reduzir ainda mais a responsabilidade de `laylay.py`;
+- revisar os pontos de comando deterministico restantes;
+- revisar regras de humor para manter dinamica sem soar estranho;
+- integrar melhor aprendizado, memoria e contexto;
+- deixar os nomes e as responsabilidades ainda mais claros.
+
+10. Proximo passo natural
+
+O proximo bloco logico da refatoracao e continuar extraindo:
+
+- o restante do fluxo de conversa;
+- a limpeza final da fala;
+- a parte que decide respostas com base no contexto;
+- mais helpers de memoria e percepcao;
+- ajustes finos de comportamento para manter a personalidade.
+
+11. Estado atual resumido
+
+Hoje a Laylay ja esta melhor estruturada do que antes:
+
+- a personalidade continua intacta;
+- o codigo esta mais modular;
+- os modulos ja estao se comunicando;
+- o sistema ainda preserva a ideia de cerebro unico;
+- a base para crescimento futuro ficou muito melhor.
+
+Resumo final:
+
+A Laylay saiu do formato de um unico bloco pesado e esta virando um sistema modular em portugues, com memoria, emocao, contexto e autonomia funcionando como partes de um unico cerebro.
+O caminho ainda nao terminou, mas a arquitetura ja esta muito mais robusta e pronta para crescer sem virar uma bagunca.
+
+12. Como fazer isso na pratica
+
+Para continuar essa refatoracao do jeito certo, o processo deve seguir sempre esta ordem:
+
+1. Identificar o bloco grande que ainda vive em `laylay.py`.
+2. Entender exatamente o que esse bloco faz e de quais variaveis ele depende.
+3. Criar um modulo novo com nome em portugues e responsabilidade bem clara.
+4. Mover apenas a logica daquele bloco para o novo modulo.
+5. Manter o `laylay.py` como ponte, sem reinventar comportamento.
+6. Passar o contexto necessario para o modulo novo em vez de criar fragmentos isolados.
+7. Reaproveitar o estado compartilhado sempre que houver memoria, emocao, rotina ou contexto comum.
+8. Validar a compatibilidade depois de cada corte com compilacao e teste rapido.
+9. Corrigir apenas o necessario, sem mexer em partes que nao estao relacionadas.
+10. Preservar personalidade, tom e comportamento historico da Laylay.
+
+Regras para nao quebrar a mente unica:
+
+- nao duplicar logica entre arquivos;
+- nao deixar um modulo decidir algo sem contexto suficiente;
+- nao transformar a separacao em varias inteligencias independentes;
+- nao remover ajustes emocionais que fazem parte da personalidade;
+- nao mudar nomes ou contratos sem atualizar os pontos que dependem deles;
+- nao seguir para o proximo corte antes de validar o atual.
+
+Modelo mental da operacao:
+
+Entrada -> leitura de contexto -> decisao -> execucao -> memoria -> resposta
+
+Se um bloco novo precisar ser criado, ele deve entrar nesse fluxo sem cortar a circulacao entre memoria, emocao, percepcao e acao.
+
+13. Progresso recente da refatoracao
+
+Depois da ultima atualizacao, o fluxo de resposta da IA foi dividido em partes menores.
+
+Camadas ja separadas:
+
+- `mente_laylay/autonomia/fluxo_resposta_ia.py`
+  - resolve o inicio do fluxo da resposta;
+  - trata aprendizado/apelido imediato;
+  - refina contexto antes da IA principal;
+  - tenta comando deterministico e comando local rapido.
+
+- `mente_laylay/autonomia/contexto_resposta_ia.py`
+  - filtra mensagens contaminadas;
+  - monta o contexto atual;
+  - injeta playlists, memoria relevante, memoria quente e topicos recentes;
+  - adiciona o retrato da mente integrada;
+  - prepara o prompt com humor.
+
+- `mente_laylay/autonomia/processamento_resposta_ia.py`
+  - limpa respostas malformadas;
+  - separa fala e comandos;
+  - extrai aprendizados;
+  - salva aprendizados;
+  - identifica tipo de interacao.
+
+- `mente_laylay/autonomia/finalizacao_execucao_ia.py`
+  - fecha o fluxo depois da execucao;
+  - organiza autocorrecao;
+  - trata desistencia quando ha falhas repetidas;
+  - preserva a fala final quando tudo da certo.
+
+- `mente_laylay/autonomia/anti_repeticao.py`
+  - controla repeticao recente de comandos;
+  - normaliza chaves de comandos;
+  - registra execucoes recentes.
+
+O que isso significa na pratica:
+
+- o corpo de resposta da IA deixou de ser um bloco unico;
+- o arquivo principal virou mais coordenador do que executor bruto;
+- o fluxo ficou mais coerente com a regra da mente unica;
+- ficou mais facil testar cada pedaco sem mexer no resto.
+
+14. Estado de manutencao atual
+
+Hoje a prioridade do projeto esta assim:
+
+1. manter o que ja foi separado funcionando;
+2. continuar reduzindo o peso de `laylay.py`;
+3. evitar regressao em comandos, playlists, janela, site e memoria;
+4. revisar importacoes e nomes quebrados;
+5. documentar cada corte novo no contexto.
+
+15. Regra de atualizacao do contexto
+
+Sempre que um novo modulo sair de `laylay.py`, este arquivo deve ser atualizado com:
+
+- nome do modulo;
+- responsabilidade dele;
+- o que saiu do arquivo principal;
+- impacto na mente unica;
+- status da estabilidade.
+
+Isso transforma `contexto.txt` em uma memoria viva da refatoracao.
+
+16. Dispatcher de comandos JSON
+
+Foi criada uma nova camada para começar a isolar o bloco mais pesado que ainda permanecia no miolo da resposta da IA:
+
+- `mente_laylay/autonomia/dispatcher_comandos_json.py`
+
+Intencao desse modulo:
+
+- concentrar a execucao dos comandos que a IA retorna em JSON;
+- reduzir a quantidade de `if/elif` viva no `laylay.py`;
+- preparar a separacao dos comandos de site, playlist, janela, arquivo, agenda, visao e notificacoes;
+- servir como ponte para o futuro corte completo do loop de execucao.
+
+Estado atual:
+
+- o dispatcher ja foi criado;
+- ele ja foi encaixado no `laylay.py` como camada principal de execucao de comandos JSON;
+- o arquivo principal agora prepara contexto, chama o dispatcher e finaliza o fluxo sem depender do bloco gigante antigo;
+- a prioridade continua sendo preservar o comportamento existente enquanto a logica sai do arquivo principal;
+- a integracao final ainda precisa de refinamento gradual para remover o bloco antigo com seguranca e sem quebrar o fluxo da mente unica.
+
+17. Estado apos a ultima costura
+
+O ponto mais pesado da execucao de comandos agora esta roteado por `mente_laylay/autonomia/dispatcher_comandos_json.py`.
+
+O que mudou:
+
+- `laylay.py` deixou de depender diretamente do loop gigante como caminho principal de execucao;
+- a chamada nova recebe contexto compartilhado com funcoes de site, playlist, janela, agenda, memoria visual e sistema;
+- o dispatcher tambem recebe o estado atual das playlists carregadas para reconhecer melhor nomes e apelidos musicais;
+- a leitura das playlists dentro do dispatcher foi normalizada para usar o dicionario compartilhado quando ele existir;
+- a estrutura ficou mais proxima da regra de mente unica, porque decisao e execucao continuam ligadas pelo mesmo contexto;
+- o bloco antigo de execucao JSON foi removido da funcao principal depois da costura final;
+- a funcao principal agora termina no dispatcher e segue para o fechamento normal do fluxo;
+- o fallback historico passou a viver somente onde ainda for necessario, sem repetir o loop inteiro no miolo da IA.
+
+18. Limpeza do executor legado
+
+Foi removida a antiga funcao `_executar_comando_autonomo` que ainda concentrava um bloco grande de comandos legados.
+
+O que foi ajustado:
+
+- o filtro `filtrar_apenas_fala` deixou de depender desse executor removido;
+- a execucao de comandos JSON continua centralizada no dispatcher novo;
+- o arquivo principal ficou mais leve e com menos duplicacao de logica;
+- a limpeza reduziu o risco de manter dois caminhos diferentes para a mesma acao.
+
+Estado atual:
+
+- o caminho principal de execucao ficou mais consistente;
+- o codigo legado que sobrava saiu do miolo da mente;
+- a separacao entre fala, contexto e acao ficou mais clara.
+
+19. Ponto de entrada restaurado
+
+O arquivo principal voltou a ter um `main()` explicito no final.
+
+O que ele faz agora:
+
+- carrega a memoria persistente;
+- inicializa a memoria de contexto diaria;
+- sobe o worker de fala em background;
+- inicia o servidor WebSocket em thread separada;
+- inicia o daemon de Gmail em background;
+- mantém o processo vivo até interrupcao manual.
+
+Isso resolveu o erro de Pylance sobre `main` indefinido e devolveu um ponto de entrada claro para a aplicacao.
+
+20. Limpeza do dispatcher
+
+O dispatcher de comandos JSON recebeu helpers internos para reduzir repeticao e deixar o fluxo mais coerente.
+
+O que foi simplificado:
+
+- leitura padronizada de destino dos comandos;
+- envio de `open_url` e `youtube_control`;
+- abertura e fechamento de aplicativos;
+- leitura das playlists ativas por um helper unico.
+
+Impacto:
+
+- menos duplicacao de logica;
+- menos risco de um ramo tratar `pc_a`, `pc_b` ou `ambos` de forma diferente sem querer;
+- manutenção mais facil sem quebrar a mente unica.
+
+21. Limpeza de playlist no arquivo principal
+
+Os fluxos antigos de playlist que ainda estavam soltos em `laylay.py` foram removidos.
+
+O que saiu:
+
+- fluxo de apagar playlist;
+- fluxo de tocar playlist em modo aleatorio;
+- fluxo de tocar faixa especifica da playlist;
+- fluxo de salvar a musica atual em playlist.
+
+O que ficou:
+
+- o conhecimento de playlist continua existindo nos modulos adequados;
+- a execucao de comandos de playlist segue pelo dispatcher e pelos modulos de memoria/navegacao;
+- o arquivo principal ficou menos poluido e mais facil de manter.
+
+22. Ajuste multi-PC no dispatcher
+
+O suporte a `ambos` foi restaurado nos caminhos principais do dispatcher.
+
+Comportamento atual:
+
+- `open_url` pode abrir no PC A e no PC B ao mesmo tempo;
+- `youtube_search` pode espelhar a busca ou o play entre os dois PCs;
+- `open_app` pode abrir o aplicativo nos dois computadores;
+- `close_app` pode fechar nos dois lados quando o comando pedir.
+
+Isso trouxe de volta a ideia de um unico cerebro controlando os dois ambientes sem perder a sintese dos comandos.
+
+O que ainda precisa ser feito:
+
+- remover o bloco legado com cuidado quando for seguro;
+- revisar se todo helper usado pelo dispatcher esta realmente sendo passado pelo contexto;
+- manter a compatibilidade dos comandos de musica, site, abas, emails e arquivos;
+- continuar reduzindo o tamanho do `laylay.py` sem mudar a personalidade.
+
+23. Ajuste do modo chat e unificacao dos fluxos de conversa
+
+Foi corrigida uma parte importante da rota de conversa.
+
+O que foi ajustado:
+
+- os wrappers de feedback, comando rapido e intencao fuzzy voltaram a compartilhar o modulo mental central `mente_laylay/autonomia/fluxos_conversa.py`;
+- o estado de playlist continua sendo sincronizado com `ultima_playlist` no arquivo principal;
+- o modo chat passou a ter ativacao e desativacao explicitas;
+- quando o modo chat esta ativo, a execucao segue pela rota de conversa pura antes de qualquer roteamento de comando;
+- isso reduz a chance de o chat cair no fluxo de acao por engano;
+- a separacao entre conversa e execucao ficou mais previsivel sem abandonar a ideia de mente unica.
+
+Importante:
+
+- `MODO_CHAT` e `conversa_ativa` agora deixam de ser so variaveis mortas;
+- o comportamento conversacional continua usando memoria, contexto e personalidade;
+- comandos ainda podem ser usados fora do modo chat;
+- o sistema ficou mais coerente para conversa longa, resposta natural e alternancia entre dialogo e acao.
+
+24. Hotkeys do modo chat
+
+Foi corrigido o problema em que o modo chat parecia travar porque os atalhos nao estavam realmente registrados.
+
+O que foi feito:
+
+- adicionado registro explicito de hotkeys globais no arranque da aplicacao;
+- `ctrl+shift+m` liga o modo chat;
+- `ctrl+shift+n` desliga o modo chat;
+- a mudanca de estado usa uma funcao centralizada para manter `MODO_CHAT` e `conversa_ativa` sincronizados;
+- o feedback do atalho roda em thread leve para nao travar a interface principal.
+
+Impacto:
+
+- o atalho deixa de depender de caminho secundario;
+- o modo chat pode ser ativado antes mesmo de enviar mensagem;
+- a aplicacao continua rodando normalmente depois de iniciar o servidor e os daemons.
+
+25. Ajuste do atalho e entrada de texto do chat
+
+O atalho do modo chat foi trocado para `ctrl+shift+c`.
+
+Tambem foi adicionado um leitor de texto do terminal enquanto o modo chat estiver ativo.
+
+O que isso significa:
+
+- com o modo chat ligado, o terminal passa a aceitar texto digitado para a Laylay;
+- a mensagem digitada segue para o fluxo normal de resposta da IA;
+- um debounce simples foi incluido para evitar ativacoes duplicadas muito proximas;
+- a ativacao continua centralizada em `MODO_CHAT` e `conversa_ativa`.
+
+26. Correcoes do cerebro unico para chat, playlists e contexto de arquivos
+
+Foi corrigido um desvio que fazia o modo chat escapar do mesmo cerebro da Laylay.
+
+O que foi ajustado:
+
+- o modo chat deixou de mandar a conversa para um caminho isolado de fala livre;
+- agora o texto do chat passa pela mesma rota de interpretacao, intencao e execucao;
+- isso evita que comandos como playlist virem respostas inventadas sobre pastas, arquivos ou musicas genéricas;
+- o contexto de arquivos passou a ser injetado apenas quando a mensagem realmente pede algo sobre arquivos, pastas, backup ou edicao de documentos;
+- a memoria de playlists foi sincronizada no carregamento e sempre que uma playlist e modificada;
+- o arranque da aplicacao agora carrega as playlists para a memoria antes de iniciar os fluxos principais.
+
+Efeito prático:
+
+- o comando `coloca a playlist anime` deve ser interpretado como habilidade de playlist, e nao como criacao de pasta;
+- a Laylay continua sendo um unico cerebro, mas com menos vazamento entre habilidades diferentes;
+- o prompt deixa de ficar contaminado com contexto de arquivos quando o assunto e musica, chat, email ou conversa normal.
+
+27. Reforco do roteamento de comandos e app URI
+
+Foram feitas correcoes para evitar comandos virando conversa e para reduzir respostas duplicadas.
+
+O que foi ajustado:
+
+- a rota principal de resposta agora tenta o interpretador de comandos imediatos antes de cair na conversa livre da IA;
+- isso ajuda a capturar pedidos como playlist, abrir app, fechar janela, site e foco sem depender da resposta completa do modelo;
+- a finalizacao da resposta foi endurecida para nao repetir a fala original quando ja existem comandos executados;
+- apps que usam URI nativa, como `ms-windows-store:`, agora podem abrir corretamente sem depender de AppOpener;
+- o objetivo continua sendo manter tudo como uma mente unica, mas com menos fala fantasma e menos mistura de contexto.
+
+28. Abertura dinamica do modo chat e ajuste de apps
+
+Foram feitos dois reforcos importantes no comportamento recente da Laylay.
+
+O que mudou:
+
+- o roteador de intencao voltou a importar `re`, corrigindo uma falha que quebrava comandos de app como abrir Steam;
+- a mensagem de ativacao do modo chat deixou de ser totalmente fixa e agora pode ser gerada pela propria Laylay com base no contexto recente;
+- se a geracao dinamica falhar, a abertura antiga continua como fallback seguro;
+- isso deixa o inicio da conversa menos automatizado e mais alinhado com a personalidade da Laylay.
+
+29. Ajuste da musica e volume com respostas variaveis
+
+Foi reforcada a parte de midia para evitar falas repetidas como "Ok." e cobrir melhor os comandos de pausa, proxima e anterior.
+
+O que mudou:
+
+- o fluxo de pausa, proxima e musica anterior agora responde com falas variadas em vez de sempre a mesma confirmacao;
+- o comando de musica anterior passou a ser tratado explicitamente no fluxo auxiliar de navegacao;
+- o volume tambem ganhou respostas mais variadas, para nao soar mecanico quando o usuario pedir mute, subir ou baixar;
+- a experiencia de midia ficou mais coerente com a personalidade unica da Laylay.
+
+30. Falas variaveis em comandos e saudacoes
+
+A personalidade da Laylay foi amarrada com variacao de fala em varios fluxos centrais, para reduzir repeticao e deixar a conversa mais natural.
+
+O que foi feito:
+
+- foi criado um helper central de falas variaveis em `mente_laylay/personalidade/falas_variadas.py`;
+- a ativacao e desativacao do modo chat passaram a usar variacoes curtas em vez de resposta unica;
+- as saudacoes principais em `laylay.py` foram diversificadas para nao repetir sempre a mesma frase;
+- os fluxos de abrir, fechar, pesquisar, volume, playlists, lembretes e navegador passaram a usar falas diferentes conforme o contexto;
+- os fluxos de conversa e sugestao tambem ganharam respostas mais flexiveis, evitando o "Ok." automatico;
+- a ideia continua sendo uma mente unica, com a mesma personalidade falando de formas diferentes sem quebrar a coerencia.
+
+Como isso funciona:
+
+- cada habilidade continua executando sua acao normalmente;
+- depois da acao, a fala escolhida vem de um pequeno conjunto de variantes curtas;
+- quando existe contexto forte, a fala pode reaproveitar o contexto para parecer mais viva;
+- quando a resposta precisa ser segura ou tecnica, o sistema ainda usa fallback claro e curto;
+- isso ajuda a manter a Laylay dinamica sem virar um robo repetitivo.
+
+31. Criacao de pasta com comando composto
+
+O detector de intencao ficou mais inteligente para pedidos com varios passos em uma so frase, especialmente na area de arquivos.
+
+O que mudou:
+
+- a frase "cria uma pasta chamada X e dentro dela um arquivo de texto chamado Y escrito Z" agora pode ser separada em partes uteis;
+- a pasta principal deixa de receber a frase inteira como nome;
+- o arquivo interno passa a ser reconhecido como segunda acao do mesmo pedido;
+- quando o conteudo do arquivo vem junto, ele tambem e salvo;
+- isso reduz erros como criar uma pasta com nome gigantesco contendo toda a frase do usuario.
+
+Como funciona:
+
+- a intencao continua sendo interpretada pela IA/roteador, sem depender de palavra-chave dura para tudo;
+- o parser tenta extrair a pasta primeiro;
+- depois busca um arquivo interno e, se existir, cria o arquivo dentro da pasta;
+- se o comando vier incompleto, a Laylay ainda pede confirmacao em vez de inventar coisas.
+
+32. Prioridade para links de Instagram
+
+Foi adicionada uma prioridade explicita para links e referencias ao Instagram direto.
+
+O que mudou:
+
+- URLs com `instagram.com/direct`, `instagram.com` ou `direct/t/` agora sao reconhecidos antes de heuristicas de playlist;
+- isso evita que frases como "este e o link para eu falar com minha namorada no insta" caiam em `PLAYLIST_PLAY`;
+- o detector de abrir app/site ganhou uma saida antecipada para Instagram quando ha link explicito;
+- o objetivo e manter o cerebro unico, mas impedir que um link de conversa seja confundido com musica.
+
+33. Aprendizado real a partir de correcoes do Pedro
+
+A Laylay passou a registrar correcoes ensinadas pelo Pedro como aprendizado semantico reutilizavel.
+
+O que mudou:
+
+- quando uma autocorrecao acontece, ela nao vira so evento de log;
+- a correcao tambem entra como memoria semantica com tipo proprio de correcao;
+- isso ajuda a Laylay a reaproveitar o que foi ensinado em respostas futuras semelhantes;
+- a memoria continua unica, mas agora com lembrancas de ensino mais fortes;
+- o objetivo e fazer a Laylay aprender de fato quando o Pedro mostra o caminho certo.
+
+34. Busca Google mais inteligente
+
+A extensao do Chrome e os roteadores de pesquisa passaram a tratar buscas web de forma mais contextuada.
+
+O que mudou:
+
+- pesquisas normais e chamadas de `GOOGLE`/`SEARCH_WEB` agora podem abrir o Google com auto clique inteligente;
+- o Google recebe um sinal explicito de que aquela pagina deve escolher o melhor resultado em vez de ficar parada na lista;
+- a selecao do resultado passou a usar uma pontuacao melhor, com mais peso para titulo, snippet, dominio e tipo de busca;
+- resultados patrocinados, links de suporte e resultados irrelevantes recebem penalidade maior;
+- buscas com cara de site, musica ou marca podem ganhar prioridade para dominios mais provaveis;
+- a intencao continua sendo uma so mente: a Laylay decide melhor o caminho, mas sem depender de palavra-chave dura para tudo.
+
+Como funciona:
+
+- o roteador de intencao marca a busca comum com `laylay_auto=true` quando faz sentido;
+- a extensao do Chrome espera a pagina carregar e procura o melhor resultado orgânico;
+- a pontuacao leva em conta o alinhamento entre query, titulo, snippet, dominio e tipo da busca;
+- se a busca for claramente um site ou uma pagina oficial, a heuristica tenta favorecer o dominio certo;
+- se a busca for ambigua, o sistema ainda tende a escolher o resultado mais coerente em vez do primeiro link bruto.
+
+35. Trava contra playlist grudenta em conversa social
+
+Foi adicionada uma protecao para impedir que contexto musical antigo tome conta de frases sociais curtas.
+
+Problema observado:
+
+- Pedro disse apenas "oi lay";
+- a Laylay respondeu modo chat, mas logo em seguida abriu uma playlist antiga;
+- isso aconteceu porque o contexto de playlist/ultima_playlist ainda estava vivo e o roteador de intencao podia interpretar frases curtas usando esse contexto antigo;
+- a mente continuava integrada, mas estava dando peso demais ao sinal musical passado e peso de menos ao sinal atual da conversa.
+
+O que mudou:
+
+- foi criada a funcao `_texto_social_curto`;
+- cumprimentos, agradecimentos, risadas e perguntas simples como "como voce ta lay?" agora sao reconhecidos como conversa curta;
+- `processar_comandos_imediatos` nao tenta transformar esse tipo de fala em comando;
+- `detectar_intencao_deterministica` tambem ignora esse tipo de fala;
+- `analisar_intencao` retorna `None` para conversa social curta antes de chamar a IA;
+- `_gerar_resposta_exec_ia_sync` agora responde social curto antes de tentar comandos;
+- o prompt da intencao recebeu regra explicita: contexto antigo de playlist nunca deve transformar saudacao em musica.
+
+Como funciona:
+
+- a memoria e o contexto continuam compartilhados como uma unica mente;
+- a diferenca e que o sinal mais recente e mais concreto ganha prioridade;
+- se Pedro disser "essa tambem" logo depois de musica, a continuidade musical ainda pode funcionar;
+- se Pedro disser "oi lay", "obrigado", "kkk" ou "como voce ta?", isso fica no campo da conversa e nao abre playlist;
+- isso reduz a sensacao de Laylay viciada em playlist sem enfraquecer as playlists quando o comando musical e real.
+
+36. Apagar pasta/arquivo como comando real
+
+Foi adicionada uma intencao de apagar itens para evitar respostas explicativas falsas sobre CMD/PowerShell.
+
+Problema observado:
+
+- Pedro pediu: "apaga a pasta roberto e dentro dela um arquivo de texto chamada antonio escrito ai meu deus";
+- a Laylay respondeu como se fosse explicar um comando de terminal, mas nao executou;
+- alem disso, frases compostas podiam ser interpretadas como texto inteiro em vez de extrair o alvo real.
+
+O que mudou:
+
+- o detector deterministico ganhou `_extrair_delete_pasta_arquivo`;
+- pedidos com "apaga/deleta/remove/exclui a pasta X e dentro dela..." agora extraem apenas `X` como alvo;
+- foi criada a intencao `DELETE_ITEM`;
+- `executar_intencao` agora passa `deletar_item` para o roteador modular;
+- `mente_laylay/autonomia/roteador_intencao.py` executa `DELETE_ITEM` usando a funcao segura de arquivos;
+- o prompt da IA tambem aprendeu `DELETE_ITEM` como reforco, para nao discursar quando deveria agir.
+- `deletar_item` agora retorna falha quando o arquivo/pasta nao existe, evitando a Laylay dizer que apagou algo que nao apagou.
+
+Como funciona:
+
+- se o pedido for para apagar uma pasta composta, a Laylay mira a pasta principal;
+- apagar a pasta remove o arquivo interno junto;
+- `deletar_item` resolve nomes simples dentro de Downloads e mantem travas contra caminhos criticos do Windows;
+- se o item nao existir, a Laylay fala que nao conseguiu, em vez de fingir que executou;
+- no PC B, a intencao e encaminhada como acao remota `deletar_item`.
+
+37. Correção forte contra playlist puxada por contexto antigo
+
+Foi reforçada a proteção contra a Laylay tocar playlist quando Pedro está apenas conversando.
+
+Problema observado:
+
+- Pedro disse "oi lay", "lay?" e "voce esta bem?";
+- mesmo sendo conversa social, a Laylay abriu a playlist anime por causa de contexto musical antigo;
+- depois Pedro disse "nao lay, sem playlist agora" e a playlist ainda tentou tocar;
+- isso mostrava que a memória musical estava com peso maior que o sinal atual do usuário.
+
+O que mudou:
+
+- `_texto_social_curto` agora reconhece melhor "voce esta bem?", "voce ta bem?", "lay?" e variações;
+- a resposta social rápida foi movida para antes do fluxo modular `_processar_inicio_fluxo_resposta_ia_mente`;
+- `mente_laylay/autonomia/fluxo_resposta_ia.py` também ganhou proteção social interna para não puxar comando antes de conversa curta;
+- foi criada `_texto_bloqueia_playlist_agora`;
+- frases como "sem playlist agora", "nao quero playlist", "chega de playlist" e similares limpam o contexto musical vivo;
+- foi criada `_bloquear_playlist_temporariamente`, que limpa `ultima_playlist`, sugestão pendente e estado de playlist sem apagar `playlists.json`;
+- o roteador ganhou `STOP_PLAYLIST_CONTEXT`;
+- `analisar_intencao` agora bloqueia intenções de playlist vindas de contexto antigo quando a playlist está bloqueada, a não ser que Pedro peça playlist explicitamente de novo.
+
+Como funciona:
+
+- conversa social curta responde como conversa, sem passar pelo roteador de comando;
+- se Pedro corta playlist, a Laylay respeita por um período e não deixa a memória antiga puxar música sozinha;
+- comandos explícitos continuam funcionando, por exemplo "coloca a playlist anime";
+- playlists salvas não são apagadas;
+- a regra preserva a mente única: memória musical continua existindo, mas perde prioridade quando o presente diz "não".
+
+38. Portão de autonomia musical
+
+Foi criada uma regra mais profunda para impedir que a Laylay aja por conta própria com música/playlist quando o contexto atual não pede isso.
+
+Motivo:
+
+- corrigir apenas frases como "oi lay" não era suficiente;
+- o problema real era que rotina aprendida, ultima_playlist ou sugestão antiga podiam empurrar a Laylay para música mesmo no começo de uma conversa;
+- isso quebrava a regra da mente única, porque um pedaço antigo da memória estava mandando mais do que o presente.
+
+Regra nova:
+
+- música e playlist só executam quando Pedro pede claramente, confirma uma sugestão recém-feita ou quando existe contexto humano forte e coerente;
+- rotina aprendida pode informar a Laylay, mas não pode executar música sozinha;
+- bem-estar pode justificar uma pergunta do tipo "quer que eu coloque algo mais leve?", mas não pode tocar sem confirmação;
+- começo de conversa, saudação, pergunta sobre como ela está ou conversa comum nunca devem virar playlist.
+
+Implementação:
+
+- `_autonomia_pode_sugerir_musica_agora` bloqueia sugestão automática de música se a conversa não aponta para música ou bem-estar;
+- `_autonomia_permite_execucao_musical` bloqueia execução de `MUSIC_SEARCH`, `PLAYLIST_PLAY`, `TOCAR_PLAYLIST` e similares sem pedido claro;
+- o roteador de intenção consulta esse portão antes de tocar música ou playlist;
+- o dispatcher JSON também consulta esse portão antes de executar `youtube_search`;
+- o prompt da IA foi reforçado para nunca usar rotina antiga, ultima_playlist ou padrão aprendido como autorização para tocar música.
+
+Efeito esperado:
+
+- "oi lay" vira conversa;
+- "voce esta bem?" vira conversa;
+- "nao lay, sem playlist agora" corta o contexto musical vivo;
+- "coloca a playlist anime" continua funcionando;
+- "coloca a brisa da madrugada" continua podendo funcionar como comando de playlist salva;
+- se Pedro disser que está cansado/triste/estressado, a Laylay pode sugerir com cuidado, mas precisa de confirmação para tocar.
+
+39. Porteiro central de ações práticas
+
+Foi criado um módulo novo para centralizar a autorização de ações práticas sem remover habilidades existentes.
+
+Arquivo novo:
+
+- `mente_laylay/autonomia/porteiro_acoes.py`
+
+Objetivo:
+
+- separar decisão de execução;
+- evitar que memória antiga, rotina musical ou resposta malformada da IA executem ações sem pedido claro;
+- preservar a regra da mente única sem deixar um fragmento antigo mandar sozinho;
+- manter compatibilidade com as funções antigas usando fachadas no `laylay.py`.
+
+O que o porteiro faz:
+
+- reconhece conversa social curta;
+- reconhece quando Pedro bloqueia playlist no momento;
+- reconhece pedido explícito de música;
+- reconhece pedido explícito de playlist;
+- decide se a Laylay pode sugerir música naquele contexto;
+- autoriza ou bloqueia ações práticas como `MUSIC_SEARCH`, `PLAYLIST_PLAY`, `TOCAR_PLAYLIST`, `TOCAR_PLAYLIST_SHUFFLE` e `youtube_search`.
+
+Integrações feitas:
+
+- `laylay.py` agora importa o porteiro central;
+- funções antigas como `_texto_social_curto`, `_texto_bloqueia_playlist_agora`, `_texto_pede_playlist_explicitamente`, `_texto_pede_musica_explicitamente`, `_autonomia_pode_sugerir_musica_agora` e `_autonomia_permite_execucao_musical` viraram fachadas compatíveis;
+- foi criada a fachada `_autorizar_acao_pratica`;
+- `roteador_intencao.py` continua usando `_autonomia_permite_execucao_musical`, mas agora essa função passa pelo porteiro central;
+- `dispatcher_comandos_json.py` passou a consultar `_autorizar_acao_pratica` antes de `youtube_search` e antes de cair em execução legada musical;
+- `roteador_conteudo.py` passou a consultar `_autorizar_acao_pratica` antes de `YOUTUBE`, `TOCAR_PLAYLIST` e `TOCAR_PLAYLIST_SHUFFLE`.
+
+Validação:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/porteiro_acoes.py mente_laylay/autonomia/roteador_intencao.py mente_laylay/autonomia/dispatcher_comandos_json.py mente_laylay/autonomia/roteador_conteudo.py`
+- teste isolado confirmou:
+  - `oi lay` é social;
+  - `PLAYLIST_PLAY` com `oi lay` é bloqueado;
+  - `MUSIC_SEARCH` com `coloca um rock no youtube` é permitido;
+  - `PLAYLIST_PLAY` com `coloca a playlist anime` é permitido;
+  - sugestão musical em começo social é bloqueada.
+
+40. Unificacao do executor de conteudo
+
+Foi reduzida a duplicacao entre o executor legado de comandos de IA e o roteador modular de conteudo.
+
+Problema:
+
+- a Laylay tinha dois caminhos diferentes para executar comandos de conteudo como playlist, YouTube, volume, abrir site e fechar aba;
+- `mente_laylay/autonomia/execucao_ia.py` e `mente_laylay/autonomia/roteador_conteudo.py` tinham responsabilidades sobrepostas;
+- isso aumentava o risco de uma acao ser entendida de um jeito em um caminho e executada de outro em outro caminho.
+
+O que mudou:
+
+- `laylay.py` agora faz `_executar_exec` tentar primeiro `mente_laylay/autonomia/roteador_conteudo.py`;
+- se o roteador modular nao assumir a acao, a Laylay cai no executor legado `mente_laylay/autonomia/execucao_ia.py`;
+- o contexto entregue ao executor modular foi ampliado com `APPS_MAP`, `falar_com_lipsync`, `play_playlist`, `ADD_TO_PLAYLIST`, `solicitar_aba_ativa`, `ativar_tela_cheia_robusta`, `_listar_playlists_salvas` e `_autorizar_acao_pratica`.
+
+Efeito:
+
+- comandos de conteudo passam a ter um caminho principal modular;
+- o executor antigo fica como compatibilidade, nao mais como competidor direto;
+- isso prepara a remocao futura da duplicacao sem quebrar comandos antigos.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_conteudo.py mente_laylay/autonomia/execucao_ia.py`
+
+41. Correcao do controle de midia no fluxo principal
+
+Foi corrigido o caminho principal de `MEDIA_CONTROL` para o PC A.
+
+Problema observado:
+
+- `proxima musica` funcionava;
+- `pausa a musica` e `musica anterior` respondiam com fala de confirmacao, mas nao executavam de forma confiavel;
+- o roteador principal ainda dependia de `youtube_control` via navegador para esses controles.
+
+O que mudou:
+
+- `laylay.py` ganhou `_executar_controle_midia_nativo`;
+- esse helper usa tecla multimidia nativa do Windows para `pause_play`, `next`, `prev` e `replay`;
+- `mente_laylay/autonomia/roteador_intencao.py` agora usa esse caminho nativo no PC A para `MEDIA_CONTROL`;
+- no `pc_b`, a Laylay continua enviando `youtube_control` remoto;
+- em `ambos`, o PC A usa controle nativo e o PC B recebe o comando remoto.
+
+Efeito:
+
+- a fala continua no mesmo jeitinho da Laylay;
+- a execucao deixa de depender do `youtube_control` do navegador no fluxo principal do PC A;
+- isso reduz a chance de confirmar uma acao sem realmente pausar ou voltar a faixa.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_intencao.py`
+
+67. Opiniao com tema real e contexto de conversa atualizado
+
+Problema:
+
+- Pedro perguntou "o que voce acha do presidente Lula?";
+- a Laylay respondeu uma opiniao abstrata, sem falar do assunto perguntado;
+- quando Pedro disse "como assim?", ela voltou para o contexto musical anterior;
+- isso acontecia porque respostas locais de conversa no `fluxo_resposta_ia.py` nao registravam a mente curta.
+
+Correcoes:
+
+- respostas locais de conversa curta/casual agora chamam `_registrar_mente_curta` com habilidade `conversa`;
+- o fluxo principal passa `_registrar_mente_curta` para `fluxo_resposta_ia.py`;
+- `conversa_natural.py` ganhou resposta de opiniao baseada no tema perguntado;
+- perguntas sobre "presidente Lula/Lula" recebem opiniao curta, clara e especifica, sem frase abstrata;
+- perguntas gerais de opiniao tentam extrair o tema e responder sobre ele.
+
+Comportamento esperado:
+
+- "o que voce acha do presidente Lula?" deve responder sobre Lula;
+- "como assim?" depois disso deve explicar a opiniao anterior, nao voltar para musica;
+- a Laylay continua tendo liberdade de opinar, mas com assunto claro.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/fluxo_resposta_ia.py mente_laylay/personalidade/conversa_natural.py`
+- teste direto de `classificar_conversa_curta_local` e `responder_conversa_curta_por_tipo` para Lula.
+
+68. Memoria de Foco Vivo
+
+Problema:
+
+- a memoria curta guardava ultima habilidade/alvo, mas nao deixava claro qual assunto estava no centro da conversa;
+- contextos antigos, principalmente musica/playlist, podiam vencer uma conversa mais recente;
+- frases como "como assim?", "apaga ela" ou "quero ouvir" dependiam demais de `ultima_habilidade` e `ultimo_alvo`;
+- isso fazia a Laylay parecer lembrar coisas, mas puxar a lembranca errada.
+
+Melhoria:
+
+- o estado mental inicial agora possui campos de foco vivo:
+  - `foco_vivo_tipo`;
+  - `foco_vivo_alvo`;
+  - `foco_vivo_topico`;
+  - `foco_vivo_habilidade`;
+  - `foco_vivo_intencao`;
+  - `foco_vivo_texto`;
+  - `foco_vivo_resposta`;
+  - `foco_vivo_ts`;
+- `_registrar_mente_curta` atualiza o foco vivo em conversas e respostas locais;
+- `_registrar_resultado_execucao` atualiza o foco vivo em comandos executados;
+- `_contexto_conversa_natural` envia `foco_vivo` para o modulo de personalidade;
+- `conversa_natural.py` usa o foco vivo antes de cair em contexto antigo de musica/playlist.
+
+Tipos inferidos:
+
+- conversa;
+- opiniao;
+- musica;
+- playlist;
+- midia;
+- arquivo;
+- janela;
+- site;
+- email;
+- agenda.
+
+Comportamento esperado:
+
+- depois de uma opiniao sobre Lula, "como assim?" deve explicar Lula, nao musica;
+- depois de criar um arquivo, referencias curtas podem usar arquivo/pasta recente;
+- depois de comando musical, perguntas curtas ainda podem explicar musica quando esse for o foco real;
+- o contexto antigo continua existindo, mas perde prioridade quando o foco recente aponta para outro assunto.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/contexto_compartilhado.py mente_laylay/personalidade/conversa_natural.py`
+- teste direto: com `ultima_habilidade=musica` e `foco_vivo=opiniao sobre presidente Lula`, "como assim?" explicou o foco de Lula.
+
+69. Ajuste de foco vivo para opiniao direta
+
+Problema:
+
+- a memoria de foco vivo ficou forte demais em algumas perguntas diretas;
+- "o que voce sacha do presidente Lula?" podia virar uma fala de retomada em vez de opiniao;
+- "claro que sim" depois de "quer que eu abra minha opiniao?" podia cair em fallback teatral;
+- "o que voce acha dela?" podia virar "minha opiniao sobre la", sem resolver o pronome pelo foco anterior;
+- uma fala de fallback citava "nao na musica", parecendo trazer playlist/musica do nada.
+
+Correcoes:
+
+- fallback de foco vivo nao menciona mais musica antiga;
+- confirmacao curta de pergunta aberta usa o foco vivo para responder a opiniao real;
+- OPINION agora tenta responder por tema antes de outros fallbacks;
+- "sacha" e tratado como "acha";
+- pronomes como `ela/ele/isso/dela/dele/la` em perguntas de opiniao tentam usar o foco vivo anterior.
+
+Comportamento esperado:
+
+- "o que voce sacha do presidente Lula?" responde sobre Lula;
+- "claro que sim" apos uma pergunta para abrir opiniao responde a opiniao, nao uma frase solta;
+- "o que voce acha dela?" depois de falar de Lula entende "dela" pelo foco vivo;
+- a Laylay nao cita musica/playlist se o assunto atual e opiniao.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/personalidade/conversa_natural.py`
+- teste direto com:
+  - `o que voce sacha do presidente lula?`;
+  - `como assim, o que voce acha dela?` com foco vivo em presidente Lula.
+
+70. Continuidade de salvar musica em playlist
+
+Problema:
+
+- "coloca essa musica na playlist anime" podia cair em fala conversacional em vez de `PLAYLIST_ADD`;
+- depois disso, "essa tambem" tambem caia em conversa/fallback;
+- a continuidade de playlist dependia demais da IA e nao de uma rota deterministica clara.
+
+Correcoes:
+
+- `detectar_intencao_deterministica` agora reconhece diretamente:
+  - "coloca essa musica na playlist X";
+  - "salva essa faixa na playlist X";
+  - "adiciona essa musica pra playlist X";
+- "essa tambem/essa também" usa a ultima playlist real (`ultima_playlist`) como continuidade e vira `PLAYLIST_ADD`;
+- `extrair_nome_playlist` recebeu um padrao mais direto para comandos de salvar musica em playlist.
+
+Comportamento esperado:
+
+- "coloca essa musica na playlist anime" deve executar `PLAYLIST_ADD` em `anime`;
+- "essa tambem" logo depois deve salvar a musica atual na mesma playlist;
+- se nao houver musica/aba do YouTube, o executor ainda deve responder que nao achou musica aberta.
+
+Validacao:
+
+- `python -m py_compile laylay.py`
+- teste local do regex confirmou `anime` como nome da playlist para "coloca essa musica na playlist anime".
+
+45. Correcao de replay musical contextual
+
+Foi corrigido o caso `toca ela de novo`.
+
+Problema observado:
+
+- a frase era entendida pelo roteador de repeticao como repeticao da ultima acao;
+- como a ultima acao podia ter sido `musica anterior`, ela virava `MEDIA_CONTROL prev`;
+- isso fazia a Laylay responder como se tivesse voltado, mas nao recomeçava a musica atual.
+
+O que mudou:
+
+- `laylay.py` agora reconhece frases naturais como `toca ela de novo`, `repete ela`, `recomeca` e `reinicia a musica` como `MEDIA_CONTROL replay`;
+- `mente_laylay/autonomia/roteador_intencao.py` separa `replay` de `prev`;
+- `replay` nao cai mais no fluxo de playlist anterior;
+- `mente_laylay/personalidade/falas_variadas.py` ganhou falas proprias para replay.
+
+Efeito esperado:
+
+- `musica anterior` continua sendo faixa anterior;
+- `toca ela de novo` recomeça/repete a musica atual;
+- a repeticao contextual nao sequestra esse comando para `prev`.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_intencao.py mente_laylay/personalidade/falas_variadas.py`
+
+46. Ajuste de prioridade entre replay musical e fallback de repeticao
+
+Foi corrigida uma quebra de conversa observada apos comandos de musica.
+
+Problema observado:
+
+- `toca ela de novo` ainda podia cair em `ROTEADOR REPETICAO`;
+- o repetidor reutilizava a ultima acao `prev`;
+- a Laylay respondia como se tivesse voltado a musica, mas o pedido real era repetir/recomecar a faixa atual;
+- depois disso, perguntas normais como `como ta indo as coisas lay?` podiam ser contaminadas pelo contexto musical e receber um complemento estranho como `Deixo isso no tom da trilha...`;
+- `pode explicar` caia em fala generica de continuidade e nao explicava o que tinha acontecido.
+
+O que mudou:
+
+- `mente_laylay/autonomia/coordenador_intencao.py` agora consulta a continuidade contextual de midia antes do repetidor generico;
+- `laylay.py` passou esse resolver contextual para o coordenador;
+- o ajuste de fala por contexto musical agora so adiciona clima de musica quando a propria fala ou o texto do usuario tambem estao em contexto musical explicito;
+- `pode explicar`, `explica melhor` e formas parecidas agora entram como pergunta curta contextual.
+
+Efeito esperado:
+
+- `toca ela de novo` vira `MEDIA_CONTROL replay`, nao `prev`;
+- `como ta indo as coisas lay?` volta a ser conversa normal;
+- `como assim?` e `pode explicar` mantem o fio da ultima resposta sem cair em fallback solto;
+- o contexto musical continua existindo, mas nao sequestra conversa comum.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/coordenador_intencao.py`
+
+47. Continuidade natural para recomendacao musical
+
+Foi corrigido o fluxo em que a Laylay tentava recomendar uma musica, nao achava um candidato confiavel e depois perdia o fio quando Pedro dizia algo como `kkkk pode me falar`.
+
+Problema observado:
+
+- `me recomenda uma musica?` gerava `MUSIC_RECOMMEND`;
+- quando a busca nao achava um resultado bom, a Laylay apenas falava que nao tinha coragem de entregar nada;
+- nenhuma pendencia de sugestao era criada;
+- a resposta seguinte `pode me falar` caia em conversa curta generica, como `Entendi a linha. Pode falar.`;
+- isso quebrava a continuidade da conversa e da habilidade.
+
+O que mudou:
+
+- quando a curadoria musical nao encontra um link confiavel, ela agora guarda uma recomendacao alternativa baseada na query/estilo que escolheu;
+- essa pendencia permite que uma continuacao natural como `pode me falar`, `me fala`, `fala sim` ou `pode fala` seja tratada como confirmacao;
+- se houver link confiavel, continua usando link direto;
+- se nao houver link, a confirmacao abre uma busca musical pelo palpite da Laylay em vez de cair no fallback.
+
+Regra geral reforcada:
+
+- quando uma habilidade cria uma expectativa de continuacao, a proxima fala curta do Pedro deve tentar resolver essa pendencia antes de cair em fallback generico;
+- isso preserva conversa natural sem transformar tudo em palavra-chave dura.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/aprendizado_rotina_musica.py`
+
+48. Execucao real da recomendacao musical confirmada
+
+Foi corrigido o caso em que Pedro aceitava uma recomendacao musical e a Laylay dizia que ia tocar, mas nao executava a busca/link.
+
+Problema observado:
+
+- `me recomenda uma musica?` criava uma sugestao;
+- `pode ser` era reconhecido como confirmacao;
+- a Laylay falava `Colocando X pra tocar entao`;
+- porem nenhum comando era enviado para abrir/buscar a musica.
+
+Causa:
+
+- o callback de tocar dentro de `_musica_registrar_feedback` usava `pendente_novo` antes dessa variavel existir;
+- a excecao era engolida pelo modulo de feedback para nao travar a Laylay;
+- isso gerava uma falsa execucao: fala de sucesso sem acao real.
+
+O que mudou:
+
+- o callback agora usa `pendente_antes`, que e a sugestao real ja confirmada;
+- se a sugestao tiver URL, envia `open_url`;
+- se nao tiver URL, envia `youtube_search` com a query/titulo/musica;
+- foram adicionados logs `🎵 [RECOMENDACAO]` para mostrar qual caminho foi usado.
+
+Efeito esperado:
+
+- ao aceitar uma recomendacao, a Laylay deve realmente abrir o link ou buscar a musica no YouTube;
+- a fala de confirmacao passa a acompanhar uma acao real.
+
+Validacao:
+
+- `python -m py_compile laylay.py`
+
+65. Mais liberdade conversacional para a Laylay
+
+Problema:
+
+- a Laylay estava ficando travada por excesso de regras negativas;
+- muitas respostas caiam em pedido de contexto, fallback ou frase curta demais;
+- a personalidade ficava menos livre, como se toda conversa precisasse virar comando, confirmacao ou bloqueio.
+
+O que mudou:
+
+- o prompt principal recebeu regras de liberdade conversacional;
+- conversa livre agora pode ter opiniao, brincadeira, leitura pessoal, discordancia leve e iniciativa;
+- a rigidez continua valendo para execucao pratica no PC, mas nao para conversa comum;
+- o classificador de conversa curta foi ajustado para preferir uma leitura conversacional quando houver sinal humano;
+- fallbacks foram reescritos para parecerem mais conversa e menos "manda o proximo pedaco";
+- pedido de recomendacao musical conversacional agora pode receber uma musica nova sugerida pela Laylay, sem usar playlists do Pedro e sem executar nada automaticamente.
+
+Comportamento esperado:
+
+- "como voce ta?", "eu to indo", "me recomenda uma musica", "o que voce acha?" devem respirar melhor;
+- a Laylay nao deve pedir confirmacao ou contexto quando conseguir responder naturalmente;
+- recomendacao musical deve ser uma sugestao nova e conversacional, nao busca automatica nem repeticao de playlist;
+- comandos continuam passando por validacao antes de afirmar execucao.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/contexto_resposta_ia.py`
+
+66. Limpeza segura inicial do codigo
+
+Objetivo:
+
+- reduzir poluicao sem mexer em fluxos vivos de comando;
+- remover apenas blocos comprovadamente sem uso;
+- preservar comportamento principal da Laylay.
+
+O que foi removido:
+
+- bloco antigo de pesquisa web local em `laylay.py`:
+  - `detectar_comando_pesquisa`;
+  - `extrair_query`;
+  - `pesquisar_duckduckgo`;
+  - `pesquisar_wikipedia`;
+  - `pesquisar_wikipedia_en`;
+  - `pesquisar_web`;
+- funcao antiga `_musicas_memoria_para_conversa`, que puxava musicas das playlists do Pedro para conversa.
+
+Motivo:
+
+- essas funcoes nao tinham chamadas reais no codigo atual;
+- a pesquisa factual ja passa pelo fluxo de intencao `SEARCH`;
+- recomendacao musical nao deve reciclar playlists do Pedro.
+
+Comportamento esperado:
+
+- nenhum comando vivo deve mudar;
+- playlist, busca direta de musica, comandos de sistema e conversa continuam funcionando;
+- pedido de recomendacao musical continua conversacional e aponta para musica nova.
+
+Validacao:
+
+- busca por referencias restantes sem resultado;
+- `python -m py_compile laylay.py`
+
+68. Segunda limpeza segura de wrappers orfaos
+
+Objetivo:
+
+- continuar a faxina sem tocar nas implementacoes reais;
+- remover arquivos duplicados que pareciam ativos, mas nao eram importados por nenhum fluxo;
+- reduzir confusao durante a refatoracao.
+
+Arquivos removidos:
+
+- `mente_laylay/autonomia/fluxo_feedback_pendente.py`;
+- `mente_laylay/autonomia/fluxo_fuzzy_intencao.py`.
+
+Motivo:
+
+- ambos eram wrappers antigos com import interno de `laylay`;
+- o comportamento real ja esta implementado em `mente_laylay/autonomia/fluxos_conversa.py`;
+- o `laylay.py` ja possui wrappers ativos que delegam para `fluxos_conversa.py`;
+- manter esses arquivos passava a impressao falsa de que existiam dois caminhos oficiais.
+
+Comportamento esperado:
+
+- nenhum comportamento deve mudar;
+- feedback pendente e fuzzy intent continuam passando pelos wrappers ativos do `laylay.py`;
+- a pasta de autonomia fica menos poluida.
+
+Validacao:
+
+- busca por referencias restantes sem resultado no codigo ativo;
+- `python -m py_compile laylay.py`
+
+69. Extracao da conversa curta para personalidade
+
+Objetivo:
+
+- reduzir o peso do `laylay.py`;
+- deixar conversa curta, elogios, reacoes, perguntas curtas e fala natural em uma area de personalidade;
+- preservar a regra de mente unica usando contexto compartilhado em vez de importar `laylay.py` dentro do modulo.
+
+Novo modulo:
+
+- `mente_laylay/personalidade/conversa_natural.py`
+
+O que foi movido para o modulo:
+
+- classificacao local de conversa curta;
+- classificacao IA-first de conversa curta;
+- respostas de agradecimento/elogio;
+- resposta contextual para perguntas curtas;
+- resposta por tipo conversacional;
+- construcao/fallback de fala livre;
+- retomada natural de topico recente.
+
+Como ficou a compatibilidade:
+
+- os nomes antigos continuam existindo em `laylay.py`;
+- agora eles sao fachadas pequenas que chamam `conversa_natural.py`;
+- o modulo novo nao importa `laylay.py`, recebe um dicionario de contexto com estado e callbacks;
+- isso evita circularidade e mantem memoria, emocao, topico e contexto funcionando como uma mente unica.
+
+Comportamento esperado:
+
+- nenhuma mudanca de comportamento intencional;
+- conversa curta deve continuar mais livre e menos travada;
+- proximas manutencoes de fala natural devem acontecer no modulo de personalidade, nao no meio do arquivo principal.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/personalidade/conversa_natural.py`
+
+70. Liberdade conversacional sem quebrar comandos
+
+Objetivo:
+
+- tirar o medo da Laylay de responder, opinar e brincar em conversa;
+- manter comandos praticos protegidos por roteador, execucao e validacao real;
+- separar claramente liberdade de personalidade de liberdade de execucao.
+
+O que mudou:
+
+- o prompt principal recebeu regras adicionais dizendo que a Laylay pode opinar, discordar de leve, sugerir caminhos e responder com hipotese honesta;
+- `contexto_resposta_ia.py` reforca que opiniao, brincadeira, gosto e papo aberto nao sao comando tecnico;
+- `conversa_natural.py` agora classifica melhor pedidos de opiniao como `OPINION`;
+- perguntas amplas deixam de virar pedido automatico de mais contexto quando a Laylay pode responder com uma leitura honesta;
+- fallbacks locais ficaram menos defensivos e menos "me da mais um pedaco";
+- a liberdade vale para conversa; execucao no PC continua exigindo validacao.
+
+Comportamento esperado:
+
+- "o que voce acha disso?" deve receber opiniao da Laylay;
+- "voce gosta?", "qual sua opiniao?", "me recomenda conceitualmente" nao devem virar trava;
+- ela pode falar como personagem, com gosto e iniciativa;
+- comandos como abrir, fechar, tocar, apagar, volume e email continuam passando pelos caminhos seguros.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/contexto_resposta_ia.py mente_laylay/personalidade/conversa_natural.py`
+- teste local: "o que voce acha disso?" classificado como `OPINION`
+
+67. Remocao de wrappers modulares orfaos
+
+Objetivo:
+
+- remover arquivos que pareciam parte da refatoracao, mas nao estavam conectados ao fluxo real;
+- evitar confusao para proximas manutencoes;
+- reduzir risco de outra IA editar um wrapper morto achando que mudou o comportamento da Laylay.
+
+Arquivos removidos:
+
+- `mente_laylay/autonomia/fluxo_llm_fallback.py`;
+- `mente_laylay/autonomia/fluxo_comando_rapido.py`.
+
+Motivo:
+
+- nao havia imports ou chamadas reais para esses arquivos;
+- ambos recriavam wrappers que ja existem em `laylay.py`;
+- usavam import interno de `laylay`, aumentando risco de circularidade;
+- um deles dependia de nome nao definido no proprio arquivo.
+
+Comportamento esperado:
+
+- nenhum comportamento deve mudar;
+- os fluxos reais continuam sendo os wrappers ativos dentro de `laylay.py` delegando para os modulos corretos;
+- a pasta `mente_laylay/autonomia` fica menos ambigua.
+
+Validacao:
+
+- busca por referencias restantes sem resultado;
+- `python -m py_compile laylay.py`
+
+64. Recomendacao musical nao deve reciclar playlists do Pedro
+
+Problema:
+
+- depois da remocao da recomendacao pratica, a conversa musical ainda podia responder usando musicas das playlists salvas;
+- isso parecia recomendacao, mas na pratica repetia musicas que Pedro provavelmente ja conhece;
+- quando Pedro pede recomendacao, a intencao natural e receber algo novo, nao uma musica ja guardada.
+
+O que mudou:
+
+- `_responder_pedido_direcao_musical_generica` nao usa mais `_musicas_memoria_para_conversa` para listar musicas salvas;
+- pedidos vagos de recomendacao passam a pedir uma direcao concreta: estilo, artista parecido ou vibe;
+- se Pedro pedir algo que nao ouviu antes, a Laylay reforca que nao vai catar nas playlists;
+- o registro mental agora marca o alvo como `musica_nova`, nao como nomes de musicas salvas.
+
+Comportamento esperado:
+
+- "me recomenda uma musica" nao deve listar musicas das playlists do Pedro;
+- "quero uma que nao ouvi antes" deve pedir direcao musical, nao repetir biblioteca salva;
+- tocar playlist e buscar musica direta continuam funcionando normalmente quando Pedro pedir explicitamente.
+
+Validacao:
+
+- `python -m py_compile laylay.py`
+
+57. Filtro de faixa unica nas buscas musicais do YouTube
+
+Foi reforcada a busca musical para evitar que recomendacoes ou buscas abram album, playlist, mix, coletanea ou video com varias musicas.
+
+Problema observado:
+
+- Pedro pedia uma musica especifica;
+- a Laylay sugeria/buscava um estilo;
+- o YouTube podia abrir um video com combo de musicas, album completo ou playlist;
+- isso quebrava a intencao de ouvir uma faixa especifica.
+
+O que mudou:
+
+- `_pontuar_resultado_youtube` agora penaliza fortemente termos como:
+  - `album`;
+  - `full album`;
+  - `playlist`;
+  - `mix`;
+  - `compilation`;
+  - `coletanea`;
+  - `top`;
+  - `best of`;
+  - `melhores musicas`;
+  - `1 hora`, `2 horas`;
+  - `completo`;
+- novo helper `_resultado_youtube_parece_faixa_unica`;
+- `_extrair_resultados_youtube_busca` descarta resultados que nao parecem uma faixa unica;
+- buscas exploratorias musicais adicionam `faixa unica` na query;
+- recomendacao musical agora analisa mais candidatos antes de desistir.
+
+Efeito esperado:
+
+- `youtube_search` deve preferir videos de uma musica so;
+- album/playlist/mix deixam de vencer a escolha automatica;
+- se nao houver faixa unica confiavel, a Laylay deve continuar procurando ou pedir mais direcao, nao entregar combo como se fosse musica.
+
+Validacao:
+
+- `python -m py_compile laylay.py`
+
+54. Recomendacao musical seguindo a direcao sugerida pelo Pedro
+
+Foi corrigido o caso em que Pedro pedia uma nova recomendacao dando uma direcao, mas a Laylay apenas trocava para outra faixa segura sem seguir a ideia.
+
+Problema observado:
+
+- Pedro dizia `quero outro estilo, um mais alternativo`;
+- a Laylay deveria usar `mais alternativo` como direcao musical;
+- em vez disso, ela podia trocar para uma faixa qualquer de outra playlist;
+- depois `pode ser` podia ser interpretado como nova troca em vez de aceitar a sugestao atual.
+
+O que mudou:
+
+- `laylay.py` ganhou `_extrair_direcao_musical_semantica`;
+- essa funcao usa a IA em modo rapido para transformar a fala do Pedro em uma query musical util;
+- fallback local pequeno existe apenas se a IA nao responder;
+- `_trocar_sugestao_musical` passa essa direcao para `_recomendar_musica_sob_demanda`;
+- quando existe direcao explicita, o fallback de faixa conhecida nao atropela a intencao: a busca tenta seguir o estilo pedido;
+- `mente_laylay/autonomia/fluxos_conversa.py` agora deixa confirmacoes locais claras (`pode ser`, `quero sim`, `pode colocar`) vencerem a interpretacao semantica ambigua.
+
+Tambem foi reforcada a fala dinamica:
+
+- se a fala original era pergunta, a fala reescrita tambem precisa continuar pergunta;
+- convites como `Quer ouvir?` ou `Posso colocar?` nao podem virar frase imperativa.
+
+Efeito esperado:
+
+- `quero outro estilo, um mais alternativo` deve gerar uma recomendacao/busca alternativa;
+- `pode ser` aceita a sugestao atual;
+- a IA pode falar de forma variada, mas sem mudar a funcao comunicativa da frase.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/fluxos_conversa.py`
+
+56. Continuidade apos busca exploratoria musical
+
+Foi corrigido o contexto quando a recomendacao vira uma busca exploratoria no YouTube.
+
+Problema observado:
+
+- Laylay sugeria uma busca como `rock alternativo brasileiro musica oficial`;
+- Pedro dizia `pode sim`;
+- a Laylay abria a busca, mas a pendencia musical era apagada;
+- em seguida `nao gostei, pega outra` caia como conversa/elogio em vez de feedback musical;
+- a fala tambem dizia `colocando a busca ... pra tocar`, o que soava estranho.
+
+O que mudou:
+
+- quando uma pendencia do tipo `recomendacao_query_fallback` e aceita, ela continua viva como busca aberta;
+- a pendencia passa a guardar `busca_aberta=True` e `acao_esperada=avaliar_busca_ou_pedir_outra`;
+- frases como `nao gostei`, `pega outra`, `busca outra`, `troca essa` agora contam como pedido de troca musical;
+- a fala de aceite de busca exploratoria foi ajustada para dizer que vai abrir/garimpar a busca, nao que vai tocar uma musica especifica.
+
+Efeito esperado:
+
+- `pode sim` abre a busca;
+- `nao gostei, pega outra` continua no fluxo musical e pede outra recomendacao;
+- a conversa nao cai em fallback/elogio por perder o contexto.
+
+Validacao:
+
+- `python -m py_compile laylay.py`
+
+55. Ajustes de recomendacao musical, fala dinamica e pedido especifico
+
+Foram corrigidos problemas observados no fluxo de recomendacao musical e na fala dinamica.
+
+Problemas observados:
+
+- Laylay repetia muito a abertura `Nao vou te empurrar nome aleatorio...`;
+- `quero um estilo mais pesado` podia virar uma query ruim como `pesada brasileira musica oficial`;
+- `tipo um rock` ainda ficava como busca exploratoria sem clareza;
+- `eu quero uma musica especifica` chamava a IA e podia gerar erros 400 em sequencia;
+- a fala dinamica podia alongar demais abertura de chat;
+- quando a IA de fala dinamica recebia erro da API, ela tentava de novo em sequencia.
+
+O que mudou:
+
+- `laylay.py` ganhou `_texto_pede_musica_especifica`;
+- `laylay.py` ganhou `_responder_pedido_musica_especifica`;
+- `processar_comandos_imediatos` agora trata pedido de musica especifica antes de chamar IA;
+- quando Pedro quer uma musica especifica, a Laylay pergunta qual faixa/artista em vez de tentar recomendar;
+- `_extrair_direcao_musical_semantica` agora corrige pedidos de musica pesada para direcoes como `rock pesado brasileiro`;
+- se Pedro disser `tipo um rock`, a direcao vira algo mais musical e pesquisavel;
+- falas de recomendacao tiveram menos dependencia da abertura `nao vou te empurrar nome aleatorio`;
+- a fala dinamica nao atua mais em abertura/fechamento de modo chat;
+- a fala dinamica recebeu instrucao para nao alongar e nao discursar;
+- se a fala dinamica encontrar erro de API, ela pausa por 60s e usa a fala base.
+
+Efeito esperado:
+
+- recomendacoes seguem melhor o estilo sugerido pelo Pedro;
+- pedido de musica especifica vira pergunta objetiva;
+- menos frases repetidas no inicio da recomendacao;
+- menos erros 400 encadeados vindos de chamadas auxiliares;
+- a personalidade continua mais livre, mas menos verbosa em momentos simples.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/fluxos_conversa.py`
+
+49. Limpeza de titulos internos na recomendacao musical
+
+Foi corrigido o caso em que a recomendacao musical podia usar um texto artificial como `(1252) Taka takab`.
+
+Problema observado:
+
+- a curadoria usava dados internos das playlists para montar uma query;
+- titulos salvos tinham prefixos como `(1252)`;
+- artista/canal podiam virar tokens repetidos, como `Taka` + `TakaB`;
+- quando a busca nao achava link perfeito, o fallback mostrava e pesquisava essa query ruim.
+
+O que mudou:
+
+- `mente_laylay/memoria_mental/playlist_mental.py` agora remove prefixos numericos como `(1252)` em `yt_clean_title`;
+- `mente_laylay/memoria_mental/curadoria_musical.py` limpa titulos e artistas antes de montar perfil;
+- a curadoria evita montar query com token repetido/contido no nome do artista;
+- `laylay.py` limpa prefixos numericos em `_normalizar_query_musical`;
+- `laylay.py` ganhou sanitizacao final para query de recomendacao antes de falar ou buscar no YouTube.
+
+Efeito esperado:
+
+- a Laylay nao deve mais recomendar/pesquisar `(1252) ...`;
+- fallback de recomendacao deve usar uma busca humana e pesquisavel;
+- dados internos de playlist deixam de vazar para a conversa.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/curadoria_musical.py mente_laylay/memoria_mental/playlist_mental.py`
+
+50. Recomendacao musical com criterio de faixa real
+
+Foi reforcada a curadoria musical para evitar recomendacoes falsas como nomes de artistas soltos ou dois artistas juntos.
+
+Problema observado:
+
+- a Laylay podia gerar uma busca como `Taka Shiny`;
+- isso nao era nome de musica, mas mistura de artistas/tokens do perfil;
+- mesmo assim ela tratava como recomendacao;
+- no YouTube, a busca ficava generica e nao apontava para uma faixa especifica.
+
+O que mudou:
+
+- `mente_laylay/memoria_mental/curadoria_musical.py` agora guarda `faixas_referencia` reais do perfil musical, com titulo e URL;
+- `laylay.py` ganhou `_resultado_recomendacao_parece_faixa_real`;
+- candidatos do YouTube agora precisam parecer uma faixa real antes de virarem recomendacao;
+- se a descoberta nova falhar, a Laylay prefere recomendar uma faixa real ja conhecida do perfil, com URL certa;
+- se nem isso existir, ela nao finge que tem uma musica: oferece uma busca exploratoria clara, como busca no YouTube.
+
+Regra nova:
+
+- recomendacao = faixa real ou link confiavel;
+- busca por estilo = pesquisa exploratoria, nao nome de musica;
+- artista + artista nao pode ser tratado como musica recomendada.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/curadoria_musical.py`
+
+51. Feedback musical com redirecionamento de estilo
+
+Foi corrigido o caso em que Pedro rejeitava uma recomendacao pedindo outro estilo, mas a Laylay interpretava como confirmacao.
+
+Problema observado:
+
+- Laylay recomendava uma musica;
+- Pedro dizia `quero um estilo diferente`;
+- o fluxo de feedback tratava a frase como SIM por causa do contexto `dar play em X`;
+- a Laylay tocava a musica antiga em vez de entender o pedido de nova recomendacao.
+
+O que mudou:
+
+- `mente_laylay/autonomia/fluxos_conversa.py` agora verifica pedido de troca antes da confirmacao musical;
+- `laylay.py` ganhou `_texto_troca_sugestao_musical`;
+- `laylay.py` ganhou `_trocar_sugestao_musical`, que limpa a sugestao antiga e pede uma nova recomendacao evitando a playlist/estilo anterior quando possivel;
+- `mente_laylay/memoria_mental/aprendizado_rotina_musica.py` nao classifica frases como `quero outra`, `estilo diferente`, `nao essa` como confirmacao simples.
+
+Regra nova:
+
+- `quero sim`, `pode ser`, `toca essa` = aceita;
+- `quero outra`, `estilo diferente`, `nao essa`, `outra vibe` = rejeita essa e pede uma nova direcao;
+- a resposta curta deve ser interpretada pelo papel que ela cumpre na conversa, nao so por conter `quero`.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/fluxos_conversa.py mente_laylay/memoria_mental/aprendizado_rotina_musica.py`
+
+52. Interpretador semantico de continuidade pendente
+
+Foi criada uma camada cognitiva para interpretar respostas curtas diante de uma pendencia, reduzindo dependencia de palavras-chave.
+
+Problema observado:
+
+- Laylay sugeria `Shaman - Amar, Sonhar`;
+- Pedro dizia `nao gostei, quero um estilo diferente`;
+- ela criava uma nova sugestao (`Tim Maia - Que Beleza`);
+- depois `quero sim` ainda tocava a sugestao antiga, porque o contexto local restaurava a pendencia anterior por cima da nova;
+- alem disso, a decisao dependia muito de palavras soltas como `quero`.
+
+O que mudou:
+
+- novo modulo `mente_laylay/cognicao/interpretador_continuidade.py`;
+- ele classifica semanticamente respostas pendentes como:
+  - `ACEITAR`;
+  - `RECUSAR`;
+  - `TROCAR_ALTERNATIVA`;
+  - `PEDIR_EXPLICACAO`;
+  - `CORRIGIR_INFORMACAO`;
+  - `MUDAR_ASSUNTO`;
+  - `INDEFINIDO`;
+- a IA e chamada primeiro quando existe pendencia curta/ambigua;
+- fallback local pequeno existe apenas como rede de seguranca quando a IA nao responde;
+- `mente_laylay/autonomia/fluxos_conversa.py` usa essa decisao antes de confirmar ou tocar musica;
+- o fluxo de troca agora atualiza o contexto local com a nova pendencia, evitando restaurar a recomendacao antiga;
+- `laylay.py` fornece o contrato do interpretador para o modulo de conversa.
+
+Regra nova:
+
+- `quero sim` apos uma nova sugestao aceita a sugestao nova;
+- `quero um estilo diferente` diante de uma sugestao e interpretado como troca, nao como aceite;
+- respostas curtas passam a ser entendidas pelo papel na conversa, nao so por palavras isoladas.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/fluxos_conversa.py mente_laylay/cognicao/interpretador_continuidade.py mente_laylay/memoria_mental/aprendizado_rotina_musica.py`
+
+53. Fala dinamica com liberdade controlada pela IA
+
+Foi adicionada uma camada geral para deixar as respostas da Laylay menos presas a moldes repetitivos.
+
+Problema observado:
+
+- muitas respostas de comando e sugestao seguiam sempre o mesmo formato;
+- exemplos como `Nao vou te vender nome aleatorio...`, `Fechado, troco o tempero...`, `Colocando X pra tocar...` ficavam com cara de template;
+- a personalidade da Laylay aparecia, mas repetia estrutura demais.
+
+O que mudou:
+
+- `laylay.py` ganhou `_temperar_fala_com_ia`;
+- toda fala curta que passa por `falar_com_lipsync` pode ser reescrita pela IA em modo rapido;
+- a IA recebe a fala base, emocao, ultima habilidade, ultima intencao e ultimo alvo;
+- ela pode escolher um tom mais natural, divertido, carinhoso, debochado leve ou estranho;
+- a acao executada continua vindo do executor, nao da fala.
+
+Travas de seguranca:
+
+- a IA nao pode mudar sucesso para falha nem falha para sucesso;
+- se a fala base era pergunta, a nova fala tambem precisa ser pergunta;
+- nao pode inventar comando, URL, JSON ou promessa de acao;
+- falas longas, logs, erros e textos com links nao sao reescritos;
+- existe cache para nao repetir chamadas iguais;
+- se a IA falhar, a fala original e usada sem quebrar o fluxo.
+
+Tambem foram melhoradas as bases das falas de recomendacao musical para dar mais variedade antes mesmo da reescrita dinamica.
+
+Validacao:
+
+- `python -m py_compile laylay.py`
+
+45. Memoria de pergunta aberta
+
+Foi aplicada a primeira versao da memoria de pergunta aberta dentro da mente integrada.
+
+Problema observado:
+
+- quando a Laylay perguntava algo e Pedro respondia curto, como `pode`, `sim`, `agora nao`, `to bem` ou `indo`, a resposta podia cair em fallback;
+- a Laylay perdia o fio da propria pergunta;
+- algumas respostas curtas eram tratadas como conversa solta ou cancelamento indevido.
+
+O que mudou:
+
+- `mente_laylay/memoria_mental/contexto_compartilhado.py` agora possui campos de pergunta aberta no estado mental;
+- o modulo tambem ganhou helpers para registrar, limpar, consultar e validar respostas curtas a perguntas abertas;
+- `laylay.py` registra automaticamente perguntas abertas quando uma resposta da Laylay termina como pergunta util;
+- respostas curtas do Pedro agora podem ser interpretadas como resposta a pergunta anterior antes de cair no fallback social;
+- `mente_laylay/memoria_mental/contexto_integrado.py` expoe a pergunta aberta pendente no resumo da mente integrada.
+
+Regra nova:
+
+- pergunta aberta tem validade curta;
+- comandos novos nao sao sequestrados por pergunta aberta;
+- a pergunta fica dentro da mente unica, compartilhada com conversa, contexto e futuras habilidades.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/contexto_compartilhado.py mente_laylay/memoria_mental/contexto_integrado.py`
+
+46. Perguntas curtas dependentes do topico
+
+Foi aplicada a primeira versao da interpretacao de perguntas curtas dependentes do topico.
+
+Problema observado:
+
+- perguntas como `como assim?`, `por que?`, `eles quem?`, `o que eles falam?` e `pode ler` podiam cair em fallback;
+- a Laylay nem sempre usava a ultima resposta, ultima acao real ou ultimo topico para explicar;
+- no caso de emails, perguntas curtas depois de um aviso podiam virar conversa generica em vez de leitura/resumo.
+
+O que mudou:
+
+- `laylay.py` ganhou `_resposta_pergunta_curta_dependente_topico`;
+- perguntas explicativas agora usam ultima resposta, ultima acao, status real, ultimo alvo, ultima habilidade e topico ativo;
+- `laylay.py` ganhou `_resolver_pergunta_curta_contextual_intencao`;
+- quando o contexto recente indica email, frases como `o que eles falam?`, `me fala deles` e `pode ler` podem virar `EMAIL_READ`;
+- a rota foi ligada tanto no fluxo de chat quanto no fluxo imediato.
+
+Regra nova:
+
+- pergunta curta nao deve ser respondida no vazio;
+- se existe um topico vivo, a Laylay explica aquele topico;
+- se existe uma acao falha recente, ela explica a falha;
+- se existe contexto de email, ela pode executar leitura/resumo;
+- se nao houver contexto confiavel, cai no comportamento neutro normal.
+
+Validacao:
+
+- `python -m py_compile laylay.py`
+
+47. Recomendacao musical contextual
+
+Foi aplicada a primeira versao da recomendacao musical sob demanda.
+
+Problema observado:
+
+- quando Pedro perguntava `tem alguma recomendacao de musica para mim?`, a Laylay interpretava como `MUSIC_SEARCH` com query literal `recomendacao de musica`;
+- isso demorava, nao escolhia uma musica real da curadoria e depois a resposta `eu quero` caia em fallback;
+- o comportamento ficava mecanico e pouco pessoal.
+
+O que mudou:
+
+- foi criado o intent `MUSIC_RECOMMEND`;
+- `coordenador_intencao.py` e `contexto_compartilhado.py` passaram a reconhecer esse intent;
+- o prompt IA-first agora diferencia tocar/buscar musica de pedir uma recomendacao da Laylay;
+- se a IA ainda retornar `MUSIC_SEARCH` para um pedido de recomendacao, o fluxo reinterpreta como `MUSIC_RECOMMEND`;
+- `laylay.py` ganhou `_recomendar_musica_sob_demanda`;
+- a recomendacao usa curadoria musical, playlist recente, perfil por estilo e resultados do YouTube;
+- a sugestao fica salva em `musica_sugestao_pendente`;
+- respostas como `eu quero`, `quero ouvir`, `manda`, `pode` e similares agora podem aceitar a recomendacao;
+- autoaprimoramento reconhece `MUSIC_RECOMMEND` como habilidade de midia.
+
+Regra nova:
+
+- recomendacao nao e busca literal;
+- `me recomenda uma musica` deve escolher uma faixa para Pedro, nao pesquisar a frase;
+- a Laylay deve perguntar antes de tocar;
+- a resposta curta posterior deve ser entendida pela memoria de continuidade.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_intencao.py mente_laylay/autonomia/coordenador_intencao.py mente_laylay/memoria_mental/contexto_compartilhado.py mente_laylay/memoria_mental/aprendizado_rotina_musica.py mente_laylay/memoria_mental/autoaprimoramento.py`
+
+48. Arquivos conectados a mente unica
+
+Foi aplicada a primeira conexao real da habilidade de arquivos com a mente integrada.
+
+Problema observado:
+
+- comandos de arquivos funcionavam como ferramenta isolada;
+- a Laylay nao guardava com clareza a ultima pasta, ultimo arquivo e caminho recente;
+- referencias como `dentro dela`, `nela`, `apaga ela` ou `esse arquivo` podiam perder o alvo;
+- um trecho do roteador deterministico estava preso dentro do extrator de criacao de pastas, deixando partes do fluxo inacessiveis e favorecendo fallbacks.
+
+O que mudou:
+
+- `contexto_compartilhado.py` ganhou campos:
+  - `ultima_pasta`;
+  - `ultimo_arquivo`;
+  - `ultimo_caminho_arquivo`;
+- `_registrar_mente_curta` agora atualiza esses campos quando a habilidade e de arquivos;
+- `laylay.py` passa callbacks de contexto de arquivo para `roteador_intencao.py`;
+- `roteador_intencao.py` registra pasta/arquivo apos criar, criar subpasta, criar arquivo, mover item e deletar item;
+- `DELETE_ITEM` agora pode resolver referencias contextuais como `ela`, `isso`, `essa pasta` e `esse arquivo`;
+- `CREATE_FOLDER` agora entende `pasta_pai` contextual como `ela/nela/dentro dela`;
+- comandos compostos como `cria uma pasta roberto e dentro dela coloca a pasta organizada` passam a gerar `mover_item`;
+- o extrator de delete foi movido para escopo global correto;
+- o roteador deterministico voltou a ficar estruturalmente acessivel depois dos extratores.
+
+Regra nova:
+
+- arquivos nao devem ser uma ferramenta solta;
+- toda acao de arquivo relevante deve alimentar a memoria curta da mente;
+- referencias posteriores devem consultar a ultima pasta/arquivo antes de cair em fallback.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_intencao.py mente_laylay/memoria_mental/contexto_compartilhado.py`
+
+45. Unificacao das falas proativas iniciais
+
+Problema observado:
+
+- a Laylay podia falar dois avisos separados sobre emails logo no inicio;
+- o briefing do dia podia ficar sem ser falado porque nao estava sendo iniciado no `main`;
+- algumas falas proativas ainda escapavam do buffer central e chamavam `falar_com_lipsync` direto;
+- isso deixava a impressao de mente fragmentada: email falava por um lado, briefing por outro.
+
+O que mudou:
+
+- `briefing_matinal` passou a ser iniciado em thread propria no `main`;
+- o aviso agrupado de emails normais agora usa `_agendar_fala_proativa`;
+- `_agendar_fala_proativa` ganhou uma pequena janela de startup para juntar briefing, emails, rotina e musica antes de falar;
+- `_compor_fala_proativa` passou a agrupar e deduplicar itens do mesmo tipo, especialmente emails;
+- foi adicionado log `🧠 [FALA PROATIVA]` para mostrar quando a Laylay esta esperando para unificar falas iniciais.
+
+Regra nova:
+
+- avisos proativos nao devem sair isolados quando fizer sentido compor uma fala unica;
+- briefing, emails, rotina e musica devem passar pela mesma mesa mental antes da fala;
+- emails repetidos devem virar um resumo unico, nao duas falas competindo.
+
+Efeito esperado:
+
+- no inicio da sessao, a Laylay deve falar menos picado;
+- se houver briefing e emails proximos, ela deve compor uma fala unica;
+- se houver varios emails, ela deve resumir em vez de tagarelar em duplicidade;
+- a fala inicial fica mais alinhada com a regra de mente unica.
+
+Validacao:
+
+- `python -m py_compile laylay2.5.py/laylay.py`
+
+49. Controle de mídia com contexto recente e logs de rota
+
+Problema observado:
+
+- `pausa a musica` funcionava, mas `pausa ela` caia em conversa curta;
+- `despausa ela` tambem caia em conversa curta;
+- `despausa a musica` podia ser confundido com pausa;
+- `proxima musica` e `musica anterior` geravam fala de sucesso, mas a ação real podia nao acontecer;
+- faltavam logs para saber se a Laylay usou playlist interna, extensão do Chrome/Opera ou tecla nativa.
+
+O que mudou:
+
+- `_resolver_comando_midia_contextual_forcado` agora usa mídia recente da mente curta;
+- `MEDIA_CONTROL` registra `ultima_habilidade=midia`, preservando referência para pronomes como `ela`;
+- `depausa/despausa` sao tratados antes de `pausa`;
+- o executor de mídia ganhou logs `🎵 [MIDIA:...]`;
+- a execução agora decide rota:
+  - se a aba atual parece YouTube, prefere extensão com `youtube_control`;
+  - se não for YouTube, cai para controle nativo do Windows;
+  - se houver playlist ativa, usa a playlist interna quando for next/prev;
+- `pause`, `play`, `pause_play`, `next`, `prev` e `replay` ficam mais separados no fluxo.
+
+Logs novos:
+
+- `🎵 [MIDIA:ENTRADA]`
+- `🎵 [MIDIA:ROTA]`
+- `🎵 [MIDIA:ENVIO]`
+- `🎵 [MIDIA:PLAYLIST]`
+- `🎵 [MIDIA:RESULTADO]`
+- `🎵 [MIDIA:NATIVO]`
+
+Validacao:
+
+- `python -m py_compile laylay2.5.py/laylay.py laylay2.5.py/mente_laylay/autonomia/roteador_intencao.py`
+
+50. Separacao real entre musica anterior e replay
+
+Problema observado:
+
+- `musica anterior` era interpretado como `prev`, mas na pratica podia apenas reiniciar a musica;
+- isso acontecia porque alguns players tratam o primeiro comando de anterior como voltar ao inicio da faixa;
+- na extensao, `prev` e `replay` estavam proximos demais e o fallback de `prev` reiniciava o video.
+
+O que mudou:
+
+- `extençao_google/content_script.js` separou `prev` de `replay`;
+- `extençao_google/background.js` separou `prev` de `replay`;
+- `prev` tenta clicar no botão anterior e, se o video continuar no inicio, tenta um segundo clique curto;
+- `replay` continua sendo reiniciar a faixa/video;
+- o fallback nativo do Windows para `prev` agora envia previous duas vezes, com intervalo curto;
+- `pause/play` no content script deixou de clicar no botão depois de chamar `video.pause()`/`video.play()`, evitando toggle duplo.
+
+Observacao:
+
+- para testar a extensao, talvez seja necessario recarregar a extensao no navegador.
+
+Validacao:
+
+- `python -m py_compile laylay2.5.py/laylay.py`
+- `node --check` nao foi executado porque Node nao esta instalado no ambiente.
+
+51. Separacao geral entre abrir site e abrir programa
+
+Problema observado:
+
+- a IA podia interpretar `abre o ifood` como `APP_OPEN`;
+- `APPS_MAP` resolvia `ifood` para `https://www.ifood.com.br`;
+- a habilidade de janela tentava abrir essa URL como programa pelo AppOpener;
+- isso gerava espera desnecessaria e erro de programa inexistente.
+
+Regra nova:
+
+- se `APP_OPEN` receber um alvo que resolve para URL, a habilidade de janelas desvia para `open_url`;
+- a regra vale para qualquer site mapeado, nao apenas iFood;
+- a habilidade consulta `APPS_MAP`, `SITES_DIRECTOS` e URLs/dominios explicitos;
+- so tenta abrir programa quando o alvo for realmente app/protocolo/programa.
+
+Efeito esperado:
+
+- `abre o ifood` abre `https://www.ifood.com.br` no navegador;
+- `abre o youtube`, `abre o instagram`, `abre o mercado livre` e sites conhecidos nao devem cair em AppOpener;
+- programas como Steam, Opera, VS Code continuam no fluxo de janela/app;
+- melhora o tempo de resposta porque evita verificacoes de janela para sites.
+
+Validacao:
+
+- `python -m py_compile laylay2.5.py/mente_laylay/autonomia/habilidade_janelas.py laylay2.5.py/mente_laylay/autonomia/roteador_intencao.py laylay2.5.py/laylay.py`
+
+52. Continuidade natural para sugestões pendentes
+
+Problema observado:
+
+- a Laylay avisava algo como `Você tem emails novos. Fala lê os emails pra ouvir`;
+- quando Pedro respondia `pode ler`, isso caia em conversa curta/fallback;
+- o fluxo de feedback pendente existia, mas era chamado depois da conversa social curta.
+
+Regra nova:
+
+- confirmações naturais como `pode ler`, `pode ver`, `pode sim`, `vai`, `faz isso` devem ser avaliadas antes do fallback social;
+- quando a Laylay avisa emails agrupados, ela registra `email_sugestao_pendente`;
+- o processador de chat e o processador imediato chamam `_handle_feedback_pendente` antes de conversa curta.
+
+Efeito esperado:
+
+- `pode ler` apos aviso de email chama leitura/resumo dos emails;
+- respostas curtas a sugestões recentes nao viram `Tá, sigo contigo`;
+- a conversa fica mais natural e menos dependente de repetir o comando completo.
+
+Validacao:
+
+- `python -m py_compile C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay2.51.py\laylay.py`
+
+53. Feedback pendente com frases mistas naturais
+
+Problema observado:
+
+- apos ler/avisar emails, ficava uma sugestao pendente viva;
+- se Pedro pedisse outro comando, como `coloca a playlist anime`, o feedback pendente podia interpretar como rejeicao dos emails;
+- isso fazia a Laylay responder sobre emails e engolir o comando novo.
+
+Regra nova:
+
+- sugestoes pendentes nao podem sequestrar comandos novos claros;
+- `pode ler` continua aceitando a sugestao pendente;
+- `coloca a playlist anime` passa para o roteador normal, mesmo se existir email pendente;
+- frases mistas sao divididas quando possivel:
+  - `agora nao, mas coloca a playlist anime` rejeita a pendencia e executa o comando;
+  - `pode ler e depois coloca a playlist anime` aceita a pendencia e tenta executar a continuacao;
+  - `agora nao, mas fiquei sabendo que...` rejeita a pendencia e deixa a conversa seguir.
+
+Arquivos envolvidos:
+
+- `mente_laylay/autonomia/fluxos_conversa.py`
+- `laylay.py`
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/fluxos_conversa.py`
+
+46. Correção do foco de janelas por processo
+
+Problema observado:
+
+- quando um app estava aberto em segundo plano, a Laylay podia tentar trazer a janela por processo;
+- esse fallback podia selecionar uma janela auxiliar, oculta ou sem titulo real;
+- o resultado era uma janela errada aparecendo, ou a Laylay dizendo que trouxe o app correto sem confirmar.
+
+O que mudou:
+
+- `mente_laylay/percepcao/janelas_sistema.py` ficou mais criterioso ao escolher HWND por processo;
+- agora a busca ignora janelas invisiveis, sem titulo, muito pequenas, com owner, toolwindows, helpers, services e webhelpers;
+- `opera` deixou de considerar `launcher.exe` como processo principal;
+- a escolha favorece janela top-level visivel, com tamanho real e processo principal coerente;
+- foi adicionado log `🪟 [JANELA:PROCESSO]` mostrando HWND, processo, titulo, tamanho e score escolhido;
+- depois de tentar focar, a Laylay valida se a janela da frente pertence ao HWND/PID esperado.
+
+Efeito esperado:
+
+- `abre a steam` com a Steam em segundo plano deve trazer a janela principal, nao uma auxiliar;
+- se o Windows bloquear o foco, a Laylay deve falhar com mais honestidade em vez de dizer que conseguiu;
+- o sistema fica mais confiavel para outros apps, nao apenas Steam.
+
+Validacao:
+
+- `python -m py_compile laylay2.5.py/mente_laylay/percepcao/janelas_sistema.py laylay2.5.py/laylay.py`
+
+47. Reativacao generica de apps abertos sem janela principal
+
+Problema observado:
+
+- alguns apps aparecem como processo aberto, mas a janela principal nao e encontrada;
+- isso pode acontecer quando o app esta minimizado estranho, em tray, com splash, com processo auxiliar ou em segundo plano;
+- focar apenas por titulo/HWND pode falhar, mesmo com o app realmente aberto.
+
+Regra nova:
+
+- se o app esta aberto mas nao vem para frente, a habilidade de janelas tenta reativar o app chamando `abrir_programa` novamente;
+- depois da reativacao, ela espera o estado do ambiente mudar e tenta focar de novo;
+- isso vale para qualquer app, nao apenas Steam;
+- a Laylay so responde sucesso se o estado/foco for confirmado.
+
+Arquivos envolvidos:
+
+- `mente_laylay/autonomia/habilidade_janelas.py`
+- `mente_laylay/percepcao/janelas_sistema.py`
+
+Efeito esperado:
+
+- apps que somem para tray ou ficam vivos sem janela devem ter uma chance real de restaurar a interface;
+- a logica deixa de ser um remendo por app e vira um ciclo geral: detectar aberto -> tentar foco -> reativar -> validar -> responder.
+
+Validacao:
+
+- `python -m py_compile laylay2.5.py/mente_laylay/autonomia/habilidade_janelas.py laylay2.5.py/laylay.py`
+
+48. Continuidade contextual de controle de mídia
+
+Problema observado:
+
+- comandos como `despausa ela` caiam em conversa curta, mesmo com música no contexto;
+- `despausa a musica` podia ser interpretado como pausa porque a palavra contem `pausa`;
+- comandos curtos com pronome (`ela`, `ele`, `isso`) precisavam usar o contexto musical vivo.
+
+O que mudou:
+
+- foi criado `_resolver_comando_midia_contextual_forcado` em `laylay.py`;
+- esse roteador roda antes da conversa curta no fluxo de chat e no fluxo imediato;
+- ele só age se houver contexto musical ativo ou menção clara a música/som/faixa/trilha/youtube/playlist;
+- a ordem de interpretação coloca `despausa/retoma/continua` antes de `pausa`;
+- pronomes como `pausa ela`, `despausa ela`, `passa ela`, `volta ela` agora podem virar `MEDIA_CONTROL` quando o contexto musical sustenta.
+
+Efeito esperado:
+
+- `pausa ela` pausa a música quando música está no contexto;
+- `despausa ela` retoma a música quando música está no contexto;
+- `despausa a musica` não deve mais virar fala de pausa;
+- comandos musicais curtos deixam de cair em resposta genérica tipo "manda o próximo pedaço".
+
+Validacao:
+
+- `python -m py_compile laylay2.5.py/laylay.py`
+
+45. Falas dinamicas unificadas em saudacoes e comandos
+
+Foi iniciada a unificacao da fala da Laylay para que comandos e conversas curtas parem de responder com textos duros, repetitivos ou desalinhados da personalidade.
+
+Problema observado:
+
+- saudacoes e perguntas pessoais ainda tinham blocos fixos demais;
+- varios comandos confirmavam acao com frases estaticas ou listas isoladas;
+- a personalidade dela ficava quebrada entre modulos, como se cada habilidade falasse com uma voz diferente.
+
+O que mudou:
+
+- `mente_laylay/personalidade/falas_variadas.py` virou a base central das confirmacoes;
+- a funcao `fala_de_confirmacao(...)` passou a aceitar:
+  - `alvo`;
+  - `contexto`;
+  - `texto_usuario`;
+- essa funcao agora observa sinais como:
+  - emocao atual;
+  - ultima habilidade usada;
+  - ultimo alvo;
+  - tom do pedido do usuario.
+
+Saudacoes ja ligadas nessa base:
+
+- cumprimento simples;
+- pergunta de bem-estar, como `como voce esta?`.
+
+Comandos ja ligados nessa base:
+
+- abrir app;
+- abrir site;
+- fechar app;
+- tocar playlist.
+
+No `mente_laylay/autonomia/roteador_intencao.py` foi adicionado um helper local `_ctx_fala()` para entregar ao modulo de personalidade uma visao minima da mente atual:
+
+- `current_emotion`;
+- `ultima_habilidade`;
+- `ultimo_alvo`.
+
+Efeito esperado:
+
+- a Laylay pode variar a fala sem perder o comando;
+- a resposta fica mais coerente com o momento da conversa;
+- confirmacoes como abrir, fechar e tocar playlist deixam de soar como blocos desconectados;
+- a personalidade passa a nascer mais do cerebro compartilhado e menos de frases soltas espalhadas pelo codigo.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_intencao.py mente_laylay/personalidade/falas_variadas.py`
+
+Lembrete importante para o proximo passo:
+
+- migrar o bloco de conversa curta e os fluxos de navegacao que ainda dependem muito de `if "x" in texto` para a interpretacao IA-first;
+- manter palavras-chave apenas como rede de seguranca, nunca como cerebro principal.
+
+46. Habilidade real de clima no cerebro principal
+
+Foi adicionada uma habilidade propria para clima e temperatura atual, para evitar que perguntas como `quantos graus ta em Boituva?` caiam em resposta genérica da IA.
+
+Problema observado:
+
+- a Laylay respondia como se nao tivesse acesso a clima em tempo real;
+- esse tipo de pergunta podia cair no fluxo generico de conversa ou em `SEARCH`;
+- o projeto ja tinha consulta de clima para o briefing matinal, mas ela nao estava integrada como habilidade geral da mente.
+
+O que mudou:
+
+- `laylay.py` ganhou `obter_clima_localidade(localidade)` usando `wttr.in` em JSON;
+- essa funcao devolve:
+  - localidade;
+  - temperatura atual;
+  - sensacao termica;
+  - umidade;
+  - vento;
+  - descricao do tempo;
+- `executar_intencao(...)` agora entrega essa capacidade ao roteador mental;
+- `mente_laylay/autonomia/roteador_intencao.py` ganhou a intencao `WEATHER`.
+
+Regras novas de interpretacao:
+
+- perguntas sobre:
+  - `quantos graus`;
+  - `temperatura`;
+  - `clima`;
+  - `como esta o tempo`;
+  - `vai chover`;
+devem virar `WEATHER`, nao conversa generica.
+
+Rede de seguranca:
+
+- se a IA ainda mandar `SEARCH` para uma pergunta claramente de clima, o proprio roteador corrige isso internamente e redireciona para `WEATHER`.
+
+Efeito esperado:
+
+- `quantos graus ta boituva?` passa a responder com temperatura real;
+- a cidade pode vir explicita ou, se nao vier, usar a cidade padrao do briefing;
+- clima deixa de ser um bloco isolado do briefing e passa a fazer parte da mente unica.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_intencao.py`
+
+47. Conversa curta e navegacao mais IA-first
+
+Foi aplicado um passo novo para reduzir a dependencia de blocos literais em conversa curta e nos comandos de navegacao.
+
+Problema observado:
+
+- conversa curta ainda caia em varios `if "x" in texto` para decidir se era cumprimento, bem-estar, recusa suave ou continuação;
+- navegacao ainda dependia demais do roteador deterministico para abrir site, abrir app, fechar programa, fechar aba e foco de janela;
+- a interpretacao da IA ja existia, mas o gatilho para chamar esse cerebro ainda estava conservador demais.
+
+O que mudou na conversa curta:
+
+- `laylay.py` ganhou `_analisar_conversa_curta_ia(texto_usuario)`;
+- esse classificador rapido devolve um JSON com tipos como:
+  - `GREETING`;
+  - `WELLBEING`;
+  - `SOFT_DECLINE`;
+  - `OPINION`;
+  - `QUESTION`;
+  - `RETAKE_TOPIC`;
+  - `THEME_CHAT`;
+  - `CONTINUE`;
+- `laylay.py` tambem ganhou `_responder_conversa_curta_por_tipo(...)`;
+- agora, em `_construir_fala_conversa(...)`, a Laylay tenta primeiro essa leitura IA-first quando a fala original vier vazia, neutra demais ou curta demais;
+- so se essa leitura nao vier confiavel ela cai nos blocos antigos por palavras.
+
+O que mudou na navegacao:
+
+- `laylay.py` ganhou `_texto_parece_navegacao_ou_janela_ia(texto)`;
+- essa funcao nao decide o comando final; ela apenas diz quando vale a pena chamar a IA antes do fallback;
+- `_tentar_intencao_ai_primeiro(...)` agora tenta IA mais cedo para comandos envolvendo:
+  - abrir site;
+  - abrir app;
+  - fechar app;
+  - fechar aba;
+  - foco;
+  - tela cheia;
+  - maximizacao.
+
+Melhoria no prompt da IA:
+
+- `analisar_intencao(...)` passou a declarar melhor intents de navegacao, incluindo:
+  - `CLOSE_APP`;
+  - `OPEN_URL`;
+  - `MAXIMIZE_WINDOW`;
+- tambem ganhou regras de desempate entre:
+  - programa real;
+  - aba/site;
+  - destino web explicito.
+
+Regra nova de arquitetura:
+
+- palavras-chave continuam existindo, mas agora servem como rede de seguranca;
+- a decisao principal tenta nascer da interpretacao da IA sempre que o texto parecer conversa curta ou navegacao de janela/site/app.
+
+Efeito esperado:
+
+- `oi lay`, `como voce ta`, `precisa nao`, `verdade`, `esse filme presta?` ficam menos presos a listas fixas;
+- `abre a steam`, `entra no instagram`, `fecha o ifood`, `deixa o opera em foco` tentam primeiro a leitura integrada da IA;
+- o fallback deterministico so assume quando a leitura IA-first nao vier clara ou nao retornar intent segura.
+
+Validacao:
+
+- `python -m py_compile laylay.py`
+
+48. Curadoria musical contextual e playlists proprias da Laylay
+
+Foi adicionada uma camada musical nova para a Laylay recomendar faixas parecidas com o estilo da playlist atual, aprender melhor o gosto musical do Pedro e manter playlists proprias em arquivo separado.
+
+Objetivo:
+
+- quando o contexto atual for musical, a Laylay pode sugerir uma faixa parecida com o clima da playlist atual;
+- essa sugestao precisa ter limite para nao ficar chata;
+- quando o Pedro pedir algo vago como `coloca uma musica`, a Laylay pode usar o estilo da playlist/contexto atual para decidir melhor;
+- a Laylay agora tambem pode manter playlists proprias, separadas das playlists do Pedro, sem quebrar a mente unica.
+
+Arquitetura nova:
+
+- modulo novo: `mente_laylay/memoria_mental/curadoria_musical.py`
+- pasta nova para as playlists dela:
+  - `memoria/playlists_laylay/`
+- arquivo novo:
+  - `memoria/playlists_laylay/playlists_da_laylay.json`
+- estado de limite/cooldown das recomendacoes:
+  - `memoria/estado_curadoria_musical.json`
+
+O que esse modulo faz:
+
+- constroi perfil musical com base em:
+  - playlist atual;
+  - titulos ja salvos;
+  - artistas recorrentes;
+  - historico de musicas por horario;
+- resolve pedidos vagos de musica para um estilo mais coerente;
+- escolhe uma recomendacao entre resultados do YouTube evitando repetir o que ja esta na playlist;
+- controla limite diario e cooldown entre recomendacoes;
+- sincroniza playlists proprias da Laylay a partir do gosto observado do Pedro.
+
+Playlists proprias da Laylay:
+
+- `xodos_que_eu_seperei`
+  - curadoria com faixas recorrentes e fortes no gosto observado;
+- `climas_que_combinam_com_voce`
+  - mistura baseada nas playlists do Pedro que mais aparecem como clima forte;
+- `descobertas_da_laylay`
+  - guarda recomendacoes aceitas pelo Pedro.
+
+Integracoes feitas no cerebro principal:
+
+- `MUSIC_SEARCH` agora pode resolver consulta vaga por estilo quando existir contexto musical real;
+- o loop de sugestao musical passou a tentar uma recomendacao contextual por estilo quando:
+  - ha contexto musical ativo;
+  - nao existe sugestao musical pendente;
+  - o limite diario/cooldown permite;
+- o feedback pendente da musica agora entende melhor quando o Pedro responde com:
+  - confirmar para tocar;
+  - ou pedir para guardar a recomendacao em uma playlist dele.
+
+Novas intents adicionadas:
+
+- `LAYLAY_PLAYLIST_LIST`
+  - lista as playlists da Laylay ou mostra o conteudo de uma delas;
+- `LAYLAY_PLAYLIST_COPY`
+  - copia uma faixa de uma playlist da Laylay para uma playlist do Pedro.
+
+Exemplos agora suportados:
+
+- `me mostra sua playlist`
+- `quais sao as playlists da laylay`
+- `coloca a musica x da sua playlist y na minha playlist z`
+- `coloca uma musica`
+  - quando houver contexto musical forte, a resposta pode usar o estilo atual em vez de uma busca totalmente solta.
+
+Regras de limite:
+
+- recomendacao contextual por estilo:
+  - maximo de 3 por dia;
+  - cooldown de 30 minutos entre sugestoes;
+- a recomendacao so nasce quando o contexto atual ja estiver claramente musical.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/curadoria_musical.py mente_laylay/autonomia/roteador_intencao.py mente_laylay/autonomia/fluxos_conversa.py`
+
+Lembretes para depois:
+
+- observar em runtime se playlist, `youtube_search`, `close_tab` e tela cheia estao entrando sempre pelo caminho modular;
+- continuar a limpeza do executor legado de conteudo quando o modular estiver estavel em uso real.
+
+42. Observabilidade da migracao modular
+
+Foi adicionada observabilidade simples no terminal para acompanhar a migracao do executor de conteudo.
+
+O que mudou:
+
+- `laylay.py` agora imprime `🧠 [EXEC] caminho modular de conteudo assumiu: ...` quando o roteador modular assume a acao;
+- `laylay.py` agora imprime `🧩 [EXEC] fallback legado assumiu: ...` quando a execucao cai no modulo antigo;
+- `mente_laylay/autonomia/execucao_ia.py` passou a se declarar explicitamente como executor legado de compatibilidade.
+
+Objetivo:
+
+- permitir verificar em uso real quais comandos ja estao vivendo no caminho modular;
+- facilitar a limpeza futura do executor legado sem adivinhar;
+- manter o cerebro unico, mas com rastreio claro de qual rota de execucao foi usada.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/execucao_ia.py`
+
+43. Roteador IA-first antes de palavras-chave
+
+Foi iniciada a troca do roteador rigido por interpretacao da IA no fluxo de comandos.
+
+Problema:
+
+- `processar_comando_deterministico` ainda ia direto para `detectar_intencao_deterministica`;
+- isso mantinha a Laylay muito dependente de palavras-chave e regex mesmo quando ja existia contexto mental e interpretacao mais rica;
+- a mente unica ficava enfraquecida porque o bloco deterministico decidia antes da interpretacao contextual da IA.
+
+O que mudou:
+
+- `laylay.py` ganhou `_tentar_intencao_ai_primeiro`;
+- esse helper tenta `analisar_intencao` antes do bloco deterministico quando a frase parece comando real, continuidade contextual ou fluxo prioritario da IA;
+- saudações sociais e bloqueio explicito de playlist continuam fora desse caminho;
+- `processar_comando_deterministico` agora prioriza `ia-first` e so cai em `deterministico` quando a interpretacao da IA nao retorna uma intencao confiavel e permitida.
+
+Escopo atual do IA-first:
+
+- playlist;
+- musica;
+- media control;
+- abrir app;
+- fechar aba;
+- volume;
+- netflix;
+- abrir site;
+- site enter;
+- agenda;
+- emails;
+- arquivos;
+- tela;
+- organizacao.
+
+Efeito:
+
+- a Laylay passa a interpretar mais pelo contexto e menos por gatilho literal;
+- o bloco de palavras-chave continua como rede de seguranca, nao como decisor principal;
+- o terminal agora mostra se a rota foi `IA-FIRST` ou `DETERMINISTICO`.
+
+Validacao:
+
+- `python -m py_compile laylay.py`
+
+44. Resolucao contextual entre programa e aba
+
+Foi adicionada uma camada de analise do ambiente para evitar casos como `fecha a steam` cair em fechamento de aba.
+
+Problema observado:
+
+- nomes ambiguos como `steam` podiam existir como app e como aba;
+- o fluxo acabava escolhendo navegador cedo demais por heuristica;
+- isso quebrava a regra da mente unica porque a decisao nascia do nome, e nao do estado real do PC.
+
+O que mudou:
+
+- `laylay.py` ganhou `_resolver_alvo_ambiente`;
+- esse helper consulta `listar_programas_abertos()` e `listar_abas_chrome()` antes de decidir;
+- `mente_laylay/autonomia/roteador_intencao.py` passou a usar essa leitura em `CLOSE_TAB`, `CLOSE_APP` e `APP_OPEN`.
+
+Regra nova:
+
+- ao fechar:
+  - se o alvo estiver aberto como programa, fecha programa;
+  - se nao estiver como programa mas existir como aba, fecha aba;
+- ao abrir:
+  - se o alvo ja estiver aberto como programa, a Laylay foca/traz para frente em vez de abrir outro;
+  - se nao estiver aberto, segue o fluxo normal de abertura.
+
+Efeito esperado:
+
+- `fecha a steam` fecha a Steam se ela estiver rodando;
+- se `steam` existir so no navegador, a aba e fechada;
+- `abre a steam` com a Steam ja aberta puxa o app para frente em vez de duplicar;
+- a decisao passa a usar o estado real do ambiente, nao apenas palavras.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_intencao.py`
+
+58. Pausa completa da recomendacao musical antiga
+
+Problema:
+
+- a habilidade de recomendacao musical estava instavel;
+- ela sugeria musicas repetidas, vagas ou inexistentes;
+- aceitacoes como "pode ser" podiam tocar a sugestao errada;
+- o fluxo criava pendencias musicais que contaminavam conversa, fallback e comandos seguintes;
+- a Laylay podia falar como se tivesse uma recomendacao confiavel sem ter titulo/link realmente validado.
+
+Decisao:
+
+- a recomendacao musical antiga foi pausada/desativada no fluxo ativo;
+- playlist, tocar musica direta, busca no YouTube, controle de midia e playlist da Laylay continuam preservados;
+- a pausa e temporaria para permitir uma futura reconstrucao melhor, modular e ligada a mente unica.
+
+O que mudou:
+
+- `MUSIC_RECOMMEND` saiu do contrato principal do prompt IA-first;
+- pedidos de recomendacao agora viram `MUSIC_RECOMMEND_DISABLED`;
+- o roteador responde com uma fala honesta dizendo que a curadoria antiga esta em manutencao;
+- pendencias antigas em `musica_sugestao_pendente` sao descartadas automaticamente;
+- sugestao musical proativa foi desligada para nao nascer sozinha em segundo plano;
+- a funcao antiga `_recomendar_musica_sob_demanda` agora retorna imediatamente para a resposta de habilidade pausada;
+- `_trocar_sugestao_musical` tambem nao tenta mais gerar outra recomendacao;
+- `MUSIC_RECOMMEND` deixou de ser intent repetivel/normal no coordenador e no contexto compartilhado.
+
+Comportamento esperado:
+
+- "me recomenda uma musica" nao tenta mais escolher musica quebrada;
+- "pode ser", "quero sim" ou "quero outra" nao puxam recomendacao antiga;
+- "coloca a playlist anime" continua funcionando;
+- "toca rock no YouTube" continua funcionando como busca direta;
+- "pausa a musica", "proxima musica" e comandos de midia continuam separados da curadoria.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_intencao.py mente_laylay/autonomia/coordenador_intencao.py mente_laylay/autonomia/fluxos_conversa.py mente_laylay/memoria_mental/contexto_compartilhado.py mente_laylay/memoria_mental/autoaprimoramento.py`
+
+59. Remocao definitiva da recomendacao musical antiga
+
+Decisao:
+
+- a recomendacao musical antiga nao ficou apenas pausada;
+- ela foi removida do fluxo ativo e dos conectores internos;
+- a nova ideia de recomendacao musical sera feita futuramente do zero, sem herdar o comportamento antigo.
+
+O que foi removido:
+
+- intents `MUSIC_RECOMMEND` e `MUSIC_RECOMMEND_DISABLED`;
+- detector `_pedido_parece_recomendacao_musical`;
+- resposta de habilidade desativada;
+- troca de sugestao musical;
+- recomendacao sob demanda;
+- busca de faixa unica feita para recomendacao;
+- sanitizacao e validacao especificas da recomendacao;
+- sugestao musical proativa por estilo;
+- feedback pendente de recomendacao musical;
+- estado `musica_sugestao_pendente`;
+- carregamento/salvamento do antigo estado de curadoria musical;
+- funcoes de recomendacao dentro de `curadoria_musical.py`.
+
+O que foi preservado:
+
+- tocar playlist;
+- adicionar musica em playlist;
+- buscar/tocar musica direta no YouTube quando Pedro pedir;
+- controle de midia;
+- playlists proprias da Laylay;
+- resolucao direta de query musical explicita.
+
+Efeito esperado:
+
+- frases como "me recomenda uma musica" nao disparam mais uma habilidade especial quebrada;
+- "pode ser", "quero sim" e "quero outra" nao puxam sugestao musical antiga;
+- o fluxo de conversa fica menos contaminado por pendencias musicais antigas;
+- a futura recomendacao musical podera nascer limpa, modular e realmente confiavel.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_intencao.py mente_laylay/autonomia/coordenador_intencao.py mente_laylay/autonomia/fluxos_conversa.py mente_laylay/memoria_mental/estado_continuidades.py mente_laylay/memoria_mental/curadoria_musical.py mente_laylay/memoria_mental/aprendizado_rotina_musica.py`
+- Observacao posterior: o wrapper `mente_laylay/autonomia/fluxo_feedback_pendente.py` foi removido na limpeza segura por estar orfao.
+
+60. Guarda local para pedido de recomendacao musical removida
+
+Problema:
+
+- depois da remocao da recomendacao musical, frases como "tem alguma musica para me recomendar" ainda podiam ser interpretadas pela IA como `MUSIC_SEARCH`;
+- em alguns casos isso chamava a API/Ollama e retornava erro 400;
+- a fala dinamica tambem tentava reescrever a mensagem de erro "cerebro desconectou", criando uma resposta confusa.
+
+O que mudou:
+
+- `processar_comandos_imediatos` agora detecta localmente pedidos de recomendacao musical removida antes de chamar IA-first;
+- essa fala nao executa comando, nao busca musica e nao chama API;
+- a resposta explica que a recomendacao musical antiga foi removida e orienta Pedro a pedir musica, artista ou estilo direto;
+- a fala dinamica nao tenta mais reescrever mensagens de erro de API/comunicacao nem respostas sobre recomendacao musical removida.
+
+Efeito esperado:
+
+- "tem alguma musica para me recomendar?" recebe resposta local segura;
+- nao deve aparecer `MUSIC_SEARCH` para esse caso;
+- nao deve ocorrer erro 400 por causa desse pedido;
+- mensagens de erro nao serao transformadas em falas fora de sentido.
+
+Validacao:
+
+- `python -m py_compile laylay.py`
+
+61. Pedido musical vago sem expor habilidade antiga
+
+Problema:
+
+- frases como "pode me recomendar uma musica?" ainda podiam passar pelo pre-fluxo e gerar log de `MUSIC_SEARCH` antes da resposta local;
+- a resposta local mencionava que uma habilidade antiga tinha sido removida, expondo bastidor que a Laylay nao deveria saber;
+- isso quebrava a naturalidade da personagem.
+
+O que mudou:
+
+- a resposta foi reescrita para pedir uma direcao musical concreta sem mencionar habilidade antiga/remocao;
+- o pre-fluxo modular `fluxo_resposta_ia.py` agora trata esse pedido antes do roteador `pre-ia`;
+- `_tentar_intencao_ai_primeiro` tambem bloqueia esse tipo de frase para nao virar `MUSIC_SEARCH`;
+- o prompt do analisador de intencao recebeu regra dizendo que pedido vago de recomendacao musical nao e comando para tocar/buscar.
+
+Comportamento esperado:
+
+- "pode me recomendar uma musica?" nao deve gerar `ROTEADOR IA-FIRST MUSIC_SEARCH`;
+- a Laylay deve responder naturalmente pedindo artista, estilo ou vibe;
+- ela nao deve dizer que uma funcao antiga existia ou foi removida.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/fluxo_resposta_ia.py`
+
+63. Refatoracao segura do contexto conversacional
+
+Objetivo:
+
+- continuar a Fase 2 do `plano_refatoracao.md` sem quebrar a mente unica;
+- tirar do `laylay.py` a montagem manual de contextos grandes de conversa;
+- manter os mesmos comportamentos, mudando a organizacao.
+
+O que foi feito:
+
+- criado e ampliado `mente_laylay/integracao/contexto_conversa.py`;
+- a montagem de contexto de conversa natural foi centralizada nesse modulo;
+- a montagem de contexto de fala curta foi centralizada nesse modulo;
+- o contexto inicial do pre-fluxo de chat foi centralizado nesse modulo;
+- o contexto do fallback conversacional tambem foi centralizado nesse modulo;
+- `processar_comandos_imediatos(...)` foi extraido para
+  `mente_laylay/autonomia/comandos_imediatos.py`;
+- `laylay.py` ficou com wrappers de compatibilidade, chamando os modulos novos.
+
+Por que isso importa:
+
+- reduz competicao de responsabilidades dentro do arquivo principal;
+- deixa mais claro o que e contexto e o que e execucao;
+- prepara a proxima etapa de limpeza de roteamento e continuidade contextual;
+- ajuda a manter a regra de mente unica sem espalhar logica concorrente.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/contexto_conversa.py mente_laylay/autonomia/fluxos_conversa.py mente_laylay/autonomia/comandos_imediatos.py mente_laylay/autonomia/fluxo_resposta_ia.py`
+
+## 78. Validação real de execução para mídia, volume e emails
+
+Objetivo:
+
+- reduzir respostas em que a Laylay parecia ter executado algo só porque a intenção foi reconhecida;
+- alinhar melhor a memória curta e o anti-mentira com o resultado real da ação.
+
+O que mudou:
+
+- `mente_laylay/autonomia/roteador_intencao.py`
+  - `_marcar_resultado(...)` agora aceita `executou` e infere falha para estados como:
+    - `falha_execucao`
+    - `nao_encontrado`
+    - `app_aberto_sem_foco`
+    - `alvo_ausente`
+    - `notificacoes_sem_suporte`
+  - `EMAIL_SYNC` deixou de marcar sucesso cego:
+    - tenta `gmail_buscar()`;
+    - só registra `emails_sincronizados` se a sincronização realmente retornar lista;
+    - em falha, grava `falha_execucao` e responde como tentativa sem confirmação.
+  - `MEDIA_CONTROL`
+    - ajuste absoluto de volume dentro do fluxo de mídia agora marca sucesso só se houve rota real de execução;
+    - `playlist_next` e `playlist_prev` passam a registrar falha quando a playlist interna não andou;
+    - comandos gerais (`pause`, `play`, `next`, `prev`, `replay`) agora gravam `falha_execucao` quando o envio/controle não confirmou.
+  - `VOLUME`
+    - `up`, `down`, `mute` e volume absoluto agora calculam `ok_volume`;
+    - a resposta e o registro da mente curta passam a distinguir sucesso real de falha de controle.
+
+Benefício prático:
+
+- a Laylay fica mais honesta sobre o que conseguiu fazer;
+- a memória recente deixa de guardar “sucesso falso” em várias ações de áudio e email;
+- isso ajuda próximos fluxos contextuais a não continuarem em cima de uma ação que na prática falhou.
+
+Validação:
+
+- `python - <<'PY' ... py_compile.compile('mente_laylay/autonomia/roteador_intencao.py', doraise=True) ... PY`
+- `python - <<'PY' ... py_compile.compile('laylay.py', doraise=True) ... PY`
+
+## 79. Validação real de fechamento de app e aba
+
+Objetivo:
+
+- impedir que a Laylay diga que fechou programa/aba sem confirmar que aquilo realmente saiu de cena;
+- alinhar `CLOSE_APP`, `CLOSE_TAB` e `FECHAR_PROGRAMA` com o mesmo padrão de honestidade já aplicado em outras ações.
+
+O que mudou:
+
+- `mente_laylay/autonomia/roteador_intencao.py`
+  - foram criados helpers locais:
+    - `_resolver_estado_alvo(nome)`
+    - `_esperar_programa_fechar(nome, tentativas, intervalo)`
+    - `_esperar_aba_fechar(alvo, aba_antes, tentativas, intervalo)`
+  - `CLOSE_TAB`
+    - se o alvo na prática era programa, agora tenta fechar e valida se o programa sumiu;
+    - para aba específica, consulta o estado depois do comando;
+    - para aba atual, compara a aba antes/depois para evitar resposta otimista.
+  - `CLOSE_APP`
+    - se o alvo for aba e não programa, valida o fechamento da aba;
+    - se for programa local, agora espera e confirma se o processo/janela realmente saiu;
+    - passa a registrar `falha_execucao` quando não consegue confirmar.
+  - `FECHAR_PROGRAMA`
+    - deixou de responder sucesso cego;
+    - agora tenta fechar, espera o estado mudar e só então afirma que fechou;
+    - também corrigiu um bloco antigo com retorno antecipado que deixava a lógica de erro mal estruturada.
+
+Benefício prático:
+
+- menos casos de “fechei” quando a janela ainda está aberta;
+- menos contaminação da memória curta com sucesso falso;
+- melhor base para contexto futuro como:
+  - “tenta de novo”
+  - “coloca ele em foco”
+  - “esse app ainda tá aberto?”
+
+Validação:
+
+- `python - <<'PY' ... py_compile.compile('mente_laylay/autonomia/roteador_intencao.py', doraise=True) ... PY`
+- `python - <<'PY' ... py_compile.compile('laylay.py', doraise=True) ... PY`
+
+## 80. Validação real e contexto melhor para arquivos
+
+Objetivo:
+
+- deixar `CREATE_FOLDER` e `DELETE_ITEM` menos frágeis;
+- impedir que referências curtas como `ela`, `esse arquivo`, `essa pasta`, `isso` apontem para o alvo errado;
+- reduzir respostas otimistas em ações de arquivo.
+
+O que mudou:
+
+- `mente_laylay/autonomia/roteador_intencao.py`
+  - novos helpers locais:
+    - `_resolver_caminho_local(...)`
+    - `_item_local_existe(...)`
+    - `_resolver_referencia_arquivo_contextual(...)`
+  - `DELETE_ITEM`
+    - agora resolve melhor referências contextuais:
+      - `essa pasta`, `ela` tendem a priorizar a última pasta;
+      - `esse arquivo`, `ele` tendem a priorizar o último arquivo;
+      - `isso` tenta usar `ultimo_alvo`, `foco_vivo` e existência real no disco;
+    - depois de deletar localmente, confirma se o item realmente sumiu;
+    - passa a registrar `falha_execucao` quando a deleção não se confirma.
+  - `CREATE_FOLDER`
+    - criação da pasta principal agora confirma existência real;
+    - criação de subpasta confirma existência real;
+    - criação de arquivo interno confirma existência real;
+    - mover item para dentro da pasta agora valida a presença do item no destino;
+    - as falas de arquivo interno deixaram de sair sempre como sucesso.
+
+Benefício prático:
+
+- menos chance de `apaga ela` mirar no arquivo quando o contexto recente era a pasta;
+- menos “criei” ou “apaguei” falso em operações locais de arquivo;
+- melhora da memória curta para próximos comandos contextuais ligados a arquivos.
+
+Validação:
+
+- `python - <<'PY' ... py_compile.compile('mente_laylay/autonomia/roteador_intencao.py', doraise=True) ... PY`
+- `python - <<'PY' ... py_compile.compile('laylay.py', doraise=True) ... PY`
+
+## 81. Consolidação de caminhos duplicados no roteador de intenções
+
+Objetivo:
+
+- reduzir competição entre fluxos quase iguais dentro de `roteador_intencao.py`;
+- evitar que um caminho novo usasse assinatura/estado novo enquanto outro ainda rodava no modelo antigo;
+- fortalecer a base da refatoração sem reescrita agressiva.
+
+O que foi corrigido:
+
+- `mente_laylay/autonomia/roteador_intencao.py`
+  - `_marcar_resultado(...)`
+    - a assinatura antiga ainda existia em um ponto crítico, enquanto vários blocos já chamavam `executou=...`;
+    - isso foi consolidado para a versão nova, com inferência de falha/sucesso mais honesta.
+  - `import time`
+    - foi normalizado no arquivo porque helpers de espera (`_esperar_programa_fechar`, `_esperar_aba_fechar`) dependem disso em runtime.
+  - `EMAIL_SYNC`
+    - voltou a usar validação real de sincronização.
+  - `MEDIA_CONTROL` e `VOLUME`
+    - foram realinhados com o fluxo novo de confirmação/registro;
+    - deixaram de registrar sucesso cego em vários cenários.
+  - `FECHAR_PROGRAMA`
+    - deixou de manter uma lógica quase duplicada de fechamento;
+    - agora delega para `CLOSE_APP`, reaproveitando a mesma inteligência de decidir entre app/aba, validar fechamento e responder com base no resultado real.
+
+Benefício prático:
+
+- menos risco de um comando fechar por um caminho e responder por outro;
+- menos duplicação silenciosa entre “fechar app” e “fechar programa”;
+- menos chance de regressão futura quando outra IA mexer no roteador sem perceber divergências internas.
+
+Validação:
+
+- `python - <<'PY' ... py_compile.compile('mente_laylay/autonomia/roteador_intencao.py', doraise=True) ... PY`
+- `python - <<'PY' ... py_compile.compile('laylay.py', doraise=True) ... PY`
+
+## 82. Consolidação entre abrir site, abrir app e maximizar janela
+
+Objetivo:
+
+- reduzir duplicação entre `OPEN_URL`, `SITE_ENTER`, `APP_OPEN` e `MAXIMIZE_WINDOW`;
+- fazer o roteador confiar mais na `habilidade_janelas` como caminho único de decisão local;
+- evitar que o mesmo alvo fosse tratado por múltiplos blocos com lógicas parecidas, mas respostas diferentes.
+
+O que mudou:
+
+- `mente_laylay/autonomia/roteador_intencao.py`
+  - novos helpers locais:
+    - `_abrir_url_com_validacao(...)`
+    - `_falar_resultado_janela(...)`
+  - `OPEN_URL`
+    - passou a reutilizar um helper de abertura/validação web;
+    - agora registra sucesso/falha de forma padronizada.
+  - `SITE_ENTER`
+    - passou a reutilizar o mesmo helper de abertura web usado por `OPEN_URL`;
+    - reduz diferença artificial entre “abrir URL” e “entrar num site sobre X”.
+  - `MAXIMIZE_WINDOW`
+    - PC B continua sendo tratado no roteador;
+    - execução local passou a confiar no retorno da `habilidade_janelas`;
+    - foi removida a duplicação do caminho local de maximização.
+  - `APP_OPEN`
+    - PC B continua tratado separadamente no roteador, inclusive quando o alvo na prática é site;
+    - execução local passou a confiar no retorno da `habilidade_janelas`;
+    - foi removido um bloco grande de fallback local duplicado que repetia:
+      - abertura de site mapeado;
+      - protocolo;
+      - foco;
+      - maximização;
+      - validação de abertura.
+
+Benefício prático:
+
+- menos “cérebros paralelos” tentando abrir/focar o mesmo alvo;
+- respostas mais consistentes entre:
+  - abrir Opera,
+  - abrir iFood,
+  - abrir Microsoft Store,
+  - colocar em foco,
+  - tela cheia;
+- melhor base para continuar refinando janela/site sem espalhar regra em dois lugares.
+
+Arquivos centrais envolvidos:
+
+- `mente_laylay/autonomia/roteador_intencao.py`
+- `mente_laylay/autonomia/habilidade_janelas.py`
+
+Validação:
+
+- `python - <<'PY' ... py_compile.compile('mente_laylay/autonomia/roteador_intencao.py', doraise=True) ... PY`
+- `python - <<'PY' ... py_compile.compile('mente_laylay/autonomia/habilidade_janelas.py', doraise=True) ... PY`
+- `python - <<'PY' ... py_compile.compile('laylay.py', doraise=True) ... PY`
+
+## 83. Consolidação do núcleo musical e de playlist
+
+Objetivo:
+
+- reduzir duplicação entre busca musical, tocar playlist e abertura de rota musical;
+- melhorar consistência entre:
+  - abrir resultado musical,
+  - tocar playlist local,
+  - tocar playlist no PC B,
+  - sugerir criação de playlist inexistente;
+- deixar a memória curta menos sujeita a “sucesso por intenção” em música.
+
+O que mudou:
+
+- `mente_laylay/autonomia/roteador_intencao.py`
+  - novos helpers:
+    - `_abrir_url_musical(url, query="")`
+    - `_sugerir_criacao_playlist(pl)`
+  - `MUSIC_SEARCH`
+    - agora centraliza a abertura do destino musical;
+    - registra `musica_aberta` ou `falha_execucao` com base na rota real;
+    - respostas passaram a distinguir sucesso de falha prática.
+  - `PLAYLIST_PLAY`
+    - modo `shuffle` agora usa a mesma helper de abertura musical;
+    - abertura no `pc_b` também usa a mesma helper;
+    - sugestão de criar playlist inexistente foi centralizada;
+    - passou a registrar status mais coerente:
+      - `playlist_aberta`
+      - `playlist_aberta_pc_b`
+      - `falha_execucao`
+  - isso reduziu repetição do padrão:
+    - pegar URL
+    - decidir destino
+    - abrir
+    - responder
+
+Benefício prático:
+
+- menos chance de playlist e busca musical responderem com lógicas diferentes para o mesmo tipo de abertura;
+- base melhor para depurar casos como:
+  - “coloca a playlist X”
+  - “toca isso”
+  - “busca tal música”
+  - “não achei a playlist, quer criar?”
+
+Validação:
+
+- `python - <<'PY' ... py_compile.compile('mente_laylay/autonomia/roteador_intencao.py', doraise=True) ... PY`
+- `python - <<'PY' ... py_compile.compile('laylay.py', doraise=True) ... PY`
+
+## 84. Limpeza segura de wrappers puros no laylay.py
+
+Objetivo:
+
+- reduzir ruído no arquivo principal sem alterar comportamento;
+- começar a transformar `laylay.py` mais em orquestrador do que em camada de repasse redundante;
+- diminuir pontos desnecessários de manutenção.
+
+O que mudou:
+
+- wrappers de uma linha que apenas repassavam chamada para módulos foram trocados por aliases diretos no `laylay.py`.
+
+Exemplos consolidados:
+
+- `_texto_pede_playlist_explicitamente`
+- `_texto_pede_musica_explicitamente`
+- `_verificar_trava_seguranca`
+- `resolver_caminho`
+- `criar_pasta`
+- `criar_ou_editar_arquivo`
+- `mover_arquivo`
+- `renomear_arquivo`
+- `deletar_item`
+- `mapear_pastas_principais`
+- `buscar_arquivo_no_pc`
+- `modular_audio_params`
+
+Motivo:
+
+- esses wrappers não adicionavam regra, contexto, validação nem adaptação;
+- manter função local para puro repasse só aumentava o tamanho do arquivo e o custo de leitura;
+- alias direto preserva o nome público usado no restante do projeto com menos ruído.
+
+Benefício prático:
+
+- `laylay.py` fica um pouco menos poluído;
+- reduz chance de outra IA editar uma casca redundante achando que ela tem lógica própria;
+- prepara melhor o terreno para futuras extrações.
+
+Validação:
+
+- `python - <<'PY' ... py_compile.compile('laylay.py', doraise=True) ... PY`
+- `python - <<'PY' ... py_compile.compile('mente_laylay/autonomia/roteador_intencao.py', doraise=True) ... PY`
+
+77. Pos-acao mais fiel em abrir URL e fechar app
+
+Problema:
+
+- `OPEN_URL` ainda podia soar como sucesso mesmo sem um caminho real de abertura;
+- `CLOSE_APP` podia confirmar fechamento sem verificar se o programa realmente saiu;
+- isso enfraquecia a sensacao de confiabilidade no ciclo interpretar -> executar -> validar -> responder.
+
+O que mudou:
+
+- `OPEN_URL` agora distingue melhor:
+  - caminho real de abertura;
+  - falha no envio/abertura;
+- `CLOSE_APP` agora reconsulta o estado do alvo depois da tentativa e ajusta a fala pelo resultado real;
+- foi adicionada fala especifica para status `site_aberto`, deixando a resposta mais consistente quando o resultado vem da habilidade de janelas.
+
+Resultado esperado:
+
+- menos casos em que a Laylay diz que abriu algo sem rota real de abertura;
+- menos casos em que ela diz que fechou app enquanto o programa continua aberto;
+- respostas pos-acao mais alinhadas ao status validado.
+
+Validacao:
+
+- `python -m py_compile mente_laylay/autonomia/roteador_intencao.py mente_laylay/personalidade/falas_variadas.py`
+
+76. Falhas mais inteligentes que "cerebro desconectou"
+
+Problema:
+
+- a mesma fala de erro estava aparecendo tanto para:
+  - intencao nao fechada;
+  - erro de execucao;
+  - falha tecnica de IA/API;
+- isso passava a sensacao de que a Laylay nao sabia diferenciar o tipo de problema.
+
+O que mudou:
+
+- foi criado um helper local para falar falhas por categoria:
+  - entendimento;
+  - execucao;
+  - timeout de IA;
+  - falha de conexao com IA/API;
+- os pontos onde `analisar_intencao` falha ou a execucao final explode passaram a usar esse tratamento mais contextual;
+- o fallback final do roteador de intencao ficou menos quebrado e menos repetitivo;
+- as mensagens de timeout/API ficaram mais claras e menos roboticas.
+
+Resultado esperado:
+
+- menos casos de "meu cerebro desconectou" para tudo;
+- quando a Laylay entender o pedido mas falhar na pratica, ela deve soar como falha de execucao e nao de entendimento;
+- quando o problema for API/Ollama, a fala deve apontar isso de forma mais coerente.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_intencao.py`
+
+75. Extracao de helpers para resposta curta e intencao contextual
+
+Problema:
+
+- o mesmo bloco de "executar intencao curta + registrar resultado + autoaprimoramento" estava repetido em mais de um fluxo;
+- o mesmo bloco de "falar resposta curta + registrar mente + salvar memoria" tambem se repetia;
+- isso aumentava o risco de divergencia silenciosa entre:
+  - chat;
+  - pre-ia;
+  - fluxo imediato.
+
+O que mudou:
+
+- foi criado um helper central para emitir resposta curta conversacional;
+- foi criado um helper central para executar intencao curta contextual;
+- o fluxo principal do chat passou a usar esses helpers;
+- o fluxo modular `fluxo_resposta_ia.py` passou a reaproveitar os mesmos helpers quando disponiveis.
+
+Resultado esperado:
+
+- menos duplicacao de logica;
+- menos chance de um fluxo registrar memoria diferente do outro;
+- base mais limpa para continuar a refatoracao do `laylay.py` sem fragmentar o comportamento.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/fluxo_resposta_ia.py`
+
+74. Pergunta aberta menos invasiva
+
+Problema:
+
+- respostas curtas a `pergunta aberta` ainda podiam engolir comandos praticos disfarçados de fala curta;
+- isso deixava frases como `pode ver`, `pode tocar`, `coloca`, `pausa ela`, `abre sim` e parecidas vulneraveis a cair como simples resposta conversacional;
+- na pratica, a pergunta aberta ainda disputava espaco com intencao contextual e comando curto.
+
+O que mudou:
+
+- a deteccao de "resposta curta a pergunta" ficou mais rigida contra sinais de comando:
+  - musica/midia;
+  - janela/site;
+  - volume;
+  - youtube/spotify/netflix;
+  - pausa/proxima/anterior/maximiza/tela cheia;
+- antes de aceitar que uma fala responde uma pergunta aberta, a Laylay agora testa:
+  - pergunta curta contextual;
+  - comando local rapido;
+  - midia contextual;
+  - janela contextual;
+- se qualquer um desses caminhos reconhecer uma acao real, a pergunta aberta nao toma a frente.
+
+Resultado esperado:
+
+- `pode ver` deve tender mais a email contextual do que a resposta vaga;
+- `pode tocar`, `pausa ela`, `abre sim`, `coloca` e semelhantes devem ter mais chance de seguir para acao/contexto certo;
+- a pergunta aberta continua existindo, mas agora respeita melhor o resto do cerebro.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/contexto_compartilhado.py`
+
+72. Fallback conversacional menos morto e menos fora do tom
+
+Problema:
+
+- algumas falas genericas demais ainda escapavam como resposta final;
+- isso gerava frases sem muita cara de Laylay, como continuacoes vazias ou respostas que pareciam so segurar lugar;
+- quando o fallback da IA escorregava, a conversa podia soar menos natural do que a conversa local ja sabia ser.
+
+O que mudou:
+
+- a deteccao de `fallback neutro` foi ampliada para cobrir frases muito genericas como:
+  - "entendi a linha";
+  - "pode falar";
+  - "to te acompanhando";
+  - "manda o proximo pedaço";
+- quando o fallback da IA cai nessas frases neutras, o modulo de fallback agora tenta reaproveitar a conversa curta local da propria Laylay;
+- o fallback agora tambem registra melhor a resposta curta escolhida na mente.
+
+Resultado esperado:
+
+- menos respostas que so parecem "enchimento";
+- mais chance de a Laylay responder no jeitinho dela mesmo quando o modelo principal vier fraco;
+- menos quebra de personagem em falas curtas de continuidade.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/personalidade/conversa_natural.py mente_laylay/autonomia/fluxos_conversa.py`
+
+73. Continuidade curta com fala mais natural
+
+Problema:
+
+- algumas respostas locais de `CONTINUE` e fallback curto ainda estavam artificiais demais;
+- isso fazia a conversa soar tecnica ou genérica onde devia soar viva e simples.
+
+O que mudou:
+
+- as respostas locais de continuidade foram reescritas para falas mais leves e diretas;
+- o fallback final da conversa tambem ficou menos duro e menos "meta".
+
+Resultado esperado:
+
+- frases como `aham`, `continua`, `pode falar`, `to ouvindo`, `me conta` devem soar mais naturais;
+- menos chance de aparecer algo como "vou responder mais como eu" no meio do papo.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/personalidade/conversa_natural.py mente_laylay/autonomia/fluxos_conversa.py`
+
+69. Pesquisa, conversa e foco vivo ficaram mais alinhados entre si
+
+Problema:
+
+- a conversa podia responder uma coisa com base pesquisada, mas o foco vivo ainda
+  carregar um tipo antigo;
+- a pesquisa podia acontecer sem entrar de forma clara na memoria curta;
+- isso abria espaco para continuacoes curtas seguirem o trilho errado.
+
+O que mudou:
+
+- em `laylay.py`:
+  - `SEARCH` agora entra no foco vivo como `pesquisa`;
+  - `WEATHER` entra como `clima`;
+  - `BRIEFING_REPEAT` volta como `conversa`;
+  - o extrator de topico do foco vivo passou a reconhecer melhor perguntas
+    factuais e explicativas;
+- em `mente_laylay/autonomia/porteiro_acoes.py`:
+  - contexto de conversa agora considera tambem `pesquisa` como parte do mesmo
+    fio humano;
+- em `mente_laylay/personalidade/conversa_natural.py`:
+  - respostas curtas dependentes de topico agora podem respeitar foco tipo
+    `pesquisa`;
+- em `mente_laylay/autonomia/roteador_intencao.py`:
+  - respostas e buscas do intent `SEARCH` passam a registrar memoria curta com
+    habilidade `pesquisa`.
+
+Comportamento esperado:
+
+- depois de uma resposta pesquisada, `como assim?`, `aham`, `nao, quis dizer...`
+  e derivados ficam mais propensos a continuar no assunto certo;
+- a busca deixa de ser um evento isolado e passa a fazer parte do mesmo estado
+  mental compartilhado.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/porteiro_acoes.py mente_laylay/personalidade/conversa_natural.py mente_laylay/autonomia/roteador_intencao.py`
+
+68. Pesquisa leve ficou mais seletiva e menos propensa a responder torto
+
+Problema:
+
+- temas baguncados podiam virar consultas ruins;
+- a busca podia aceitar um resultado so "parecido" e transformar isso em base
+  para resposta;
+- isso aumentava o risco de a Laylay responder com conviccao em cima de um
+  resumo fraco.
+
+O que mudou:
+
+- em `laylay.py` a pesquisa leve ganhou:
+  - limpeza melhor do tema;
+  - remocao de molduras conversacionais da consulta;
+  - detector de tema baguncado;
+  - pontuacao de hits por proximidade com a consulta;
+  - escolha do melhor hit entre varios resultados;
+  - confianca numerica no resultado retornado;
+- em `mente_laylay/personalidade/conversa_natural.py`, a conversa agora só usa
+  o resumo pesquisado quando a confianca estiver boa o bastante.
+
+Comportamento esperado:
+
+- se o tema vier torto demais, a Laylay prefere nao fingir base pesquisada;
+- quando usar pesquisa, a chance de ela pegar um resumo errado cai bastante;
+- a resposta continua natural, mas menos chute e mais criterio.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/personalidade/conversa_natural.py`
+
+67. Pesquisa leve tambem passou a apoiar perguntas factuais e temas culturais
+
+Problema:
+
+- a pesquisa leve estava ajudando melhor opinioes tematicas, mas ainda nao
+  cobria bem perguntas como:
+  - "quem é X?"
+  - "o que é X?"
+  - "como funciona X?"
+  - "me fala sobre X"
+- em temas de anime, filme, jogo, artista ou banda, a conversa ainda podia
+  responder de forma vaga demais.
+
+O que mudou:
+
+- em `mente_laylay/personalidade/conversa_natural.py` foi criada a extração de
+  tema pesquisavel por modo:
+  - `quem_e`
+  - `o_que_e`
+  - `como_funciona`
+  - `explica`
+  - `opiniao`
+  - `tema_cultural`
+- a conversa agora pode usar a pesquisa leve:
+  - no fluxo de `QUESTION`
+  - no fluxo de `OPINION`
+  - no fluxo de `THEME_CHAT`
+  - e como fallback conversacional antes de cair numa resposta genérica
+
+Comportamento esperado:
+
+- perguntas factuais continuam com voz natural da Laylay;
+- temas culturais ficam menos vazios e mais ancorados;
+- a Laylay pesquisa quando faz sentido, mas nao vira modo manual tecnico.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/personalidade/conversa_natural.py`
+
+66. Opiniao tematica pode se apoiar em pesquisa leve sem perder personalidade
+
+Problema:
+
+- em temas como politica, anime, filme, pessoa publica ou assunto especifico,
+  a Laylay ainda respondia so com impressao generica;
+- isso fazia algumas opinioes soarem vagas ou pouco conectadas ao tema real.
+
+O que mudou:
+
+- em `laylay.py` foi criado um pesquisador leve com cache em memoria:
+  - normaliza o tema;
+  - tenta Wikipedia em portugues;
+  - faz fallback para Wikipedia em ingles;
+  - se precisar, tenta DuckDuckGo Instant Answer;
+  - guarda o resultado por um tempo para nao ficar lenta nem repetitiva;
+- em `mente_laylay/personalidade/conversa_natural.py`, a opiniao por tema
+  agora pode usar esse contexto pesquisado antes de formar a resposta.
+
+Regra de tom:
+
+- a pesquisa nao substitui a voz da Laylay;
+- ela nao precisa dizer "pesquisei isso";
+- ela usa a base encontrada so para responder com mais substancia e menos chute.
+
+Comportamento esperado:
+
+- perguntas do tipo "o que voce acha de X?" ficam mais informadas;
+- a resposta continua vindo no jeitinho da Laylay;
+- se a pesquisa nao achar nada bom, ela cai para a opiniao contextual antiga.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/personalidade/conversa_natural.py`
+
+65. Confirmacoes curtas e correcoes humanas ficaram mais naturais
+
+Problema:
+
+- respostas como "claro", "aham", "é sim", "isso mesmo" e correções como
+  "não lay, eu quis dizer..." ainda podiam:
+  - puxar tópico antigo do nada;
+  - soar como continuação vaga demais;
+  - perder o foco do assunto real da conversa.
+
+O que mudou:
+
+- em `mente_laylay/personalidade/conversa_natural.py` foram criados detectores
+  semânticos locais para:
+  - confirmação curta;
+  - correção de conversa;
+- esses sinais agora entram no classificador de conversa curta;
+- a resposta contextual passou a:
+  - respeitar `foco_vivo`;
+  - manter o tópico/opinião atual;
+  - entender correção como ajuste de rumo, não como comando novo;
+- `retomar_topico_quando_fluido` agora evita puxar assunto antigo quando a fala
+  é só confirmação ou correção;
+- em `laylay.py`, `_responder_pergunta_aberta` passou a aceitar melhor:
+  - `aham`
+  - `uhum`
+  - `isso`
+  - `isso mesmo`
+  - `é sim`
+  - `pode ser`
+
+Comportamento esperado:
+
+- "claro que sim" depois de uma opinião deve continuar a opinião;
+- "não lay, eu quis dizer..." deve corrigir a rota do papo;
+- confirmações humanas não devem mais virar retomada aleatória de assunto.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/personalidade/conversa_natural.py`
+
+64. Elogios e agradecimentos sobem acima de heranca de comando
+
+Problema:
+
+- falas como "obrigado lay" e "voce e bem legal lay" ainda podiam cair em
+  respostas tortas, puxando playlist, comando antigo ou continuidade errada;
+- isso quebrava a naturalidade mais basica da Laylay em conversa.
+
+O que mudou:
+
+- o detector de elogio/agradecimento foi ampliado em:
+  - `mente_laylay/personalidade/conversa_natural.py`
+  - `mente_laylay/autonomia/porteiro_acoes.py`
+- agora ele reconhece melhor frases como:
+  - "voce e legal"
+  - "voce e bem legal"
+  - "voce e muito legal"
+  - "te acho legal"
+  - "gosto de voce"
+- no fluxo principal do chat em `laylay.py`, elogio/agradecimento agora entra
+  antes de qualquer tentativa de reaproveitar contexto de comando.
+
+Comportamento esperado:
+
+- "obrigado lay" deve soar como resposta afetiva/natural;
+- "voce e bem legal lay" deve ser recebido como elogio;
+- esse tipo de fala nao deve puxar playlist, janela, midia ou acao anterior.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/personalidade/conversa_natural.py mente_laylay/autonomia/porteiro_acoes.py`
+
+63. Conversa nao vira comando sem pedido realmente explicito
+
+Problema:
+
+- continuacoes de conversa como "faz o L", "claro que sim", "nao lay, to falando..."
+  ainda podiam cair em roteadores de comando;
+- isso fazia a Laylay transformar papo politico, opiniao ou correcao humana em
+  playlist, comando tecnico ou acao pratica aleatoria;
+- ao mesmo tempo, respostas curtas realmente operacionais no meio da conversa,
+  como "pode ler", precisavam continuar funcionando.
+
+O que mudou:
+
+- foi criado no `porteiro_acoes.py` um detector novo de:
+  - `texto_tem_comando_explicito`
+  - `texto_conversa_contextual_sem_comando`
+- o wrapper `_texto_conversa_casual_sem_acao` em `laylay.py` agora usa:
+  - contexto mental;
+  - foco vivo;
+  - ultimo topico;
+  - distincao entre pedido pratico claro e continuidade humana;
+- o fluxo inicial da IA (`fluxo_resposta_ia.py`) agora tenta resolver primeiro
+  perguntas curtas contextuais que sao comandos reais, antes de tratar a frase
+  como conversa casual.
+
+Comportamento esperado:
+
+- conversa continua sendo conversa por padrao;
+- comando so entra quando houver sinal pratico suficientemente claro;
+- respostas como "pode ler" continuam podendo executar quando vierem como
+  continuidade contextual valida;
+- frases como "faz o L" depois de um papo sobre Lula nao devem mais virar
+  playlist por acidente.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/porteiro_acoes.py mente_laylay/autonomia/fluxo_resposta_ia.py`
+
+65. Estabilizacao apos regressao de fluxo IA/deterministico
+
+Problemas vistos no log:
+
+- recomendacao musical conversacional nao executava quando Pedro dizia "quero ouvir";
+- `coloca a playlist anime` podia cair em `PLAYLIST_ADD` em vez de `PLAYLIST_PLAY`;
+- `organiza minha area de trabalho` podia virar criacao de pasta por erro do IA-first;
+- o modelo local Qwen/Ollama estourava contexto com `request exceeds context size`;
+- criacao composta de pasta + arquivo interpretava nome errado quando havia erro de fala como "chamadda".
+
+Correcoes aplicadas:
+
+- o coordenador de intencao agora tenta o deterministico antes do IA-first para comandos claros;
+- o detector deterministico nao entrega mais para IA fluxos que ele resolve melhor, como playlist, desktop, midia, janela e arquivos;
+- `_post_chat_llm` compacta preventivamente payload local grande antes de chamar o modelo, reduzindo 400 por contexto;
+- confirmacao de sugestao musical tambem roda antes de conversa social curta e no fluxo imediato;
+- `_extrair_criacao_pasta_arquivo` aceita `chamadda/chamado/chamada` e comandos como:
+  - "cria uma pasta chamada X e coloca um arquivo de texto chamado Y escrito nele Z".
+
+Comportamento esperado:
+
+- "me recomenda uma musica" ainda apenas recomenda;
+- "quero ouvir" logo depois deve tocar/buscar a recomendacao;
+- "coloca a playlist anime" deve tocar a playlist, nao adicionar a musica atual;
+- "organiza minha area de trabalho" deve cair em `ORGANIZAR_DESKTOP`;
+- comandos compostos de pasta + arquivo devem manter nome da pasta e arquivo separados;
+- menos 400 do modelo local por excesso de contexto.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/coordenador_intencao.py mente_laylay/autonomia/fluxo_resposta_ia.py`
+
+66. Delete contextual de arquivo/pasta
+
+Problema:
+
+- depois de criar uma pasta com arquivo dentro, Pedro disse "apaga ela";
+- a IA-first retornou `DELETE_ITEM` com `params.item = "ela"`;
+- o executor de delete nao lia `item`, apenas `alvo/nome/pasta/arquivo`;
+- alem disso, "apaga ela" era tratado como frase dependente de contexto e podia pular o deterministico.
+
+Correcoes:
+
+- `DELETE_ITEM` agora tambem aceita `params.item`;
+- quando o alvo for `ela/ele/isso/essa/esse` sem tipo explicito, o executor tenta primeiro o ultimo arquivo contextual e depois a ultima pasta;
+- `_extrair_delete_pasta_arquivo` reconhece frases curtas como "apaga ela";
+- o filtro de contexto passou a permitir verbos de delete como `apaga`, `deleta`, `remove` e `exclui`;
+- `_texto_expresso_melhor_no_deterministico` agora considera delete contextual com `ela/isso/esse`.
+
+Comportamento esperado:
+
+- apos criar `cralos/antonio.txt`, "apaga ela" deve mirar `antonio.txt` por ser o item mais recente;
+- se o contexto apontar para uma pasta e nao houver arquivo recente, "apaga ela" deve mirar a pasta;
+- se nao houver alvo contextual, a Laylay deve perguntar antes de apagar.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_intencao.py`
+
+64. Confirmacao natural de sugestao musical
+
+Problema:
+
+- a Laylay podia recomendar uma musica como conversa, por exemplo:
+  - "Vou te jogar uma nova na mesa: Carne Doce - Artemisia.";
+- quando Pedro respondia "quero ouvir", ela tratava como conversa generica;
+- o nome real da musica sugerida nao ficava como alvo executavel da mente.
+
+O que mudou:
+
+- a recomendacao musical conversacional agora registra o nome real da faixa em `ultimo_alvo`;
+- foi criada a continuação `_processar_confirmacao_sugestao_musical`;
+- respostas naturais como "quero ouvir", "pode ser", "quero sim", "pode tocar" e "coloca" agora podem confirmar a sugestao recente;
+- a confirmacao gera `MUSIC_SEARCH` usando a faixa sugerida, sem ressuscitar a habilidade antiga de recomendacao automatica;
+- o fluxo `fluxo_resposta_ia.py` verifica essa confirmacao antes de cair em conversa curta/fallback.
+
+Comportamento esperado:
+
+- "me recomenda uma musica" continua sendo conversa/opiniao;
+- "quero ouvir" logo depois deve tocar/buscar a musica sugerida;
+- a Laylay nao deve responder apenas "beleza" quando havia uma sugestao musical pendente;
+- a execucao ainda passa pelo mesmo executor e pelo mesmo porteiro de autonomia musical.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/fluxo_resposta_ia.py`
+
+63. Otimizacao geral de tempo de resposta
+
+Objetivo:
+
+- deixar a Laylay responder mais rapido sem perder personalidade, memoria, autonomia ou comandos;
+- reduzir chamadas pequenas que estavam usando contexto/tokens demais;
+- evitar que conversa curta chame IA auxiliar quando a resposta local ja consegue segurar o fluxo.
+
+O que mudou:
+
+- `enviar_mensagem` agora limita tokens em chamadas rapidas:
+  - modo rapido: no maximo 320 tokens;
+  - LLM local em fluxo normal: no maximo 640 tokens;
+- o bloco antigo `LAYLAY_TOOLS` foi removido de `enviar_mensagem`, porque era montado em toda chamada mas nao era enviado no payload;
+- `analisar_intencao` passou de `max_tokens=220` para `max_tokens=140`, suficiente para o JSON curto de intenção;
+- `conversa_natural.py` ganhou `deve_classificar_conversa_curta_com_ia`;
+- a conversa curta so chama a IA auxiliar se houver sinal real de ambiguidade conversacional, como pergunta curta, opiniao, reacao ou duvida.
+
+Resultado esperado:
+
+- comandos simples devem chegar mais rapido no executor;
+- perguntas curtas e conversas simples devem cair menos em fallback lento;
+- menos risco de erro 400 por resposta/token desnecessario;
+- a Laylay continua livre para conversar, mas sem gastar uma chamada extra quando nao precisa.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/personalidade/conversa_natural.py`
+
+63. Protecao geral contra erro 400 do modelo local
+
+Problema:
+
+- o Ollama/local LLM podia responder `400 Bad Request` em chamadas de conversa ou interpretacao;
+- quando isso acontecia, a Laylay repetia erro de API varias vezes e caia em "meu cerebro desconectou";
+- frases simples de continuidade, como "mas eu quero uma que nao tenho ouvido antes", acabavam quebrando a conversa inteira.
+
+O que mudou:
+
+- `_post_chat_llm` agora trata erro 400 de forma geral para endpoint local;
+- em caso de 400, a Laylay tenta novamente com um payload compacto e mais compativel;
+- o payload compacto remove campos que alguns modelos locais nao aceitam, reduz historico e limita tokens;
+- se o 400 persistir, entra um cooldown curto para evitar varias chamadas quebradas em sequencia;
+- chamadas de intencao recebem fallback seguro `NONE` em vez de derrubar o fluxo;
+- `processar_comandos_imediatos` ignora intencao `NONE/NENHUM` sem falar erro tecnico para Pedro.
+
+Melhoria de conversa musical ligada a isso:
+
+- frases como "quero uma que nao ouvi antes" agora sao tratadas localmente quando o contexto recente e musica;
+- a Laylay nao tenta inventar recomendacao nem chamar API;
+- ela pede uma direcao concreta, como estilo, artista ou vibe, preservando a conversa.
+
+Comportamento esperado:
+
+- erro 400 nao deve mais explodir repetidamente no terminal;
+- a conversa deve cair em fallback seguro e curto, nao em falas longas de desconexao;
+- pedidos vagos de musica continuam conversacionais e nao executam busca automaticamente.
+
+Validacao:
+
+- `python -m py_compile laylay.py`
+
+62. Opiniao musical conversacional sem comando
+
+Problema:
+
+- a remocao da recomendacao musical pratica deixou a Laylay rigida demais em conversa;
+- Pedro podia pedir "me lista musicas que voce acha que eu gostaria" e a Laylay tentava transformar isso em comando `MUSIC_SEARCH`;
+- isso gerava buscas estranhas, erro de API e respostas como se ela nao entendesse a conversa.
+
+Distincao nova:
+
+- recomendacao musical como habilidade pratica/comando continua removida;
+- opiniao musical conversacional e permitida;
+- a Laylay pode listar palpites com base nas playlists/memoria musical, sem tocar nada, sem criar pendencia e sem chamar API.
+
+O que mudou:
+
+- o detector de pedido musical vago foi ampliado para frases como:
+  - "pode me recomendar uma musica nova?";
+  - "me lista musicas que voce acha que eu gostaria";
+  - "qual voce acha que eu gostaria?";
+  - "me fale uma musica";
+- a resposta agora tenta pegar musicas reais das playlists carregadas;
+- se houver musicas, ela lista algumas como palpite/opiniao;
+- se nao houver base, ela pede estilo, artista ou vibe;
+- nada e executado automaticamente.
+
+Comportamento esperado:
+
+- "me fala uma musica" deve receber uma fala conversacional com nomes de musicas;
+- nao deve gerar `MUSIC_SEARCH` automaticamente;
+- nao deve chamar API/Ollama para esse caso;
+- se Pedro quiser executar, ele ainda precisa pedir algo direto como "toca essa", "coloca no YouTube" ou "toca rock".
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/fluxo_resposta_ia.py`

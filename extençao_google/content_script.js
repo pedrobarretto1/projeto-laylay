@@ -1,0 +1,1040 @@
+let acaoExecutada = false;
+
+function sendMessage(message) {
+  try { chrome.runtime.sendMessage(message); } catch (_) {}
+}
+
+function enviarContexto(tipo, detalhe) {
+  sendMessage({
+    type: "USER_CONTEXT",
+    kind: String(tipo || ""),
+    detail: detalhe ?? null,
+    url: location.href,
+    title: document.title,
+    ts: Date.now()
+  });
+}
+
+function _safeText(v) {
+  const s = String(v ?? "").replace(/\s+/g, " ").trim();
+  return s.length > 160 ? s.slice(0, 160) : s;
+}
+
+let _lastInteractionTs = Date.now();
+let _lastUrl = location.href;
+let _idleSent = false;
+let _netflixInitDoneForUrl = "";
+let _netflixScanRunning = false;
+
+function _markInteraction() {
+  _lastInteractionTs = Date.now();
+  _idleSent = false;
+}
+
+function _isImportantElement(el) {
+  if (!el || typeof el !== "object") return false;
+  const tag = String(el.tagName || "").toLowerCase();
+  if (tag === "a" || tag === "button" || tag === "input" || tag === "select" || tag === "textarea" || tag === "label") return true;
+  const role = String(el.getAttribute?.("role") || "").toLowerCase();
+  if (role === "button" || role === "link" || role === "menuitem" || role === "tab") return true;
+  const editable = el.isContentEditable === true;
+  if (editable) return true;
+  const type = String(el.getAttribute?.("type") || "").toLowerCase();
+  if (tag === "input" && (type === "text" || type === "search" || type === "email" || type === "password" || type === "url" || type === "number")) return true;
+  return false;
+}
+
+function _captureClick(e) {
+  try {
+    const el = e?.target;
+    if (!el || typeof el !== "object") return;
+    const important = _isImportantElement(el) || _isImportantElement(el.closest?.("a,button,input,select,textarea,[role='button'],[role='link'],[role='menuitem'],[role='tab']"));
+    if (!important) return;
+    _markInteraction();
+    const tag = String(el.tagName || "").toLowerCase();
+    const id = _safeText(el.id || "");
+    const aria = _safeText(el.getAttribute?.("aria-label") || "");
+    const text = _safeText(el.innerText || el.textContent || "");
+    const href = _safeText(el.href || el.getAttribute?.("href") || "");
+    const label = aria || text || id || tag || "click";
+    enviarContexto("click", { label, tag, id, href });
+  } catch (_) {}
+}
+
+function _emitNav() {
+  try {
+    if (location.href !== _lastUrl) {
+      _lastUrl = location.href;
+      _idleSent = false;
+    }
+    enviarContexto("nav", { url: location.href, title: document.title });
+  } catch (_) {}
+}
+
+function _hookHistory() {
+  try {
+    const origPush = history.pushState;
+    const origReplace = history.replaceState;
+    history.pushState = function () {
+      const r = origPush.apply(this, arguments);
+      _emitNav();
+      return r;
+    };
+    history.replaceState = function () {
+      const r = origReplace.apply(this, arguments);
+      _emitNav();
+      return r;
+    };
+    window.addEventListener("popstate", _emitNav);
+    window.addEventListener("hashchange", _emitNav);
+  } catch (_) {}
+}
+
+function _dispatchKey(key, code, keyCode, extras) {
+  try {
+    const opts = Object.assign({
+      key: key,
+      code: code || key,
+      keyCode: keyCode || 0,
+      which: keyCode || 0,
+      bubbles: true,
+      cancelable: true,
+      composed: true
+    }, extras || {});
+    const down = new KeyboardEvent("keydown", opts);
+    const up = new KeyboardEvent("keyup", opts);
+    const target = document.activeElement || document.body || document.documentElement;
+    try { target.dispatchEvent(down); } catch (_) {}
+    try { document.dispatchEvent(down); } catch (_) {}
+    try { target.dispatchEvent(up); } catch (_) {}
+    try { document.dispatchEvent(up); } catch (_) {}
+  } catch (_) {}
+}
+
+function _sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function focar_primeiro_filme() {
+  try {
+    if (!location.hostname.includes("netflix.com")) return;
+    if (!String(location.pathname || "").startsWith("/browse")) return;
+    const url = String(location.href || "");
+    if (_netflixInitDoneForUrl === url) return;
+
+    for (let i = 0; i < 80; i++) {
+      const profilesVisible =
+        !!document.querySelector(".profiles-gate-container, [data-uia*='profile'], .profile-icon, .profile-name");
+      const cards = document.querySelectorAll(".title-card");
+      if (!profilesVisible && cards && cards.length > 0) break;
+      await _sleep(100);
+    }
+
+    const cards2 = document.querySelectorAll(".title-card");
+    if (!cards2 || cards2.length === 0) return;
+    _netflixInitDoneForUrl = url;
+
+    if (_netflixScanRunning) return;
+    _netflixScanRunning = true;
+    try {
+      const re = /netflix\.com\/search\?q=.*&jbv=\d+/i;
+      for (let i = 0; i < 35; i++) {
+        _dispatchKey("Tab", "Tab", 9);
+        await _sleep(140);
+        const href = String(window.location.href || "");
+        if (re.test(href)) {
+          await _sleep(200);
+          _dispatchKey("Enter", "Enter", 13);
+          break;
+        }
+      }
+    } finally {
+      _netflixScanRunning = false;
+    }
+  } catch (_) {}
+}
+
+
+async function scannerNetlifx() {
+  try {
+    if (!location.hostname.includes("netflix.com")) return;
+    const re = /netflix\.com\/search\?q=.*&jbv=\d+/i;
+    for (let i = 0; i < 20; i++) {
+      _dispatchKey("Tab", "Tab", 9);
+      await _sleep(150);
+      const href = String(window.location.href || "");
+      if (re.test(href)) {
+        await _sleep(200);
+        _dispatchKey("Enter", "Enter", 13);
+        try { sendMessage({ type: "NETFLIX_EVENT", status: "filme_focado", titulo: document.title, url: href }); } catch (_) {}
+        try {
+          const el = document.documentElement;
+          const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+          if (typeof fn === "function") {
+            try { fn.call(el); } catch (_) {}
+          }
+          const onClickFS = () => {
+            const fn2 = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+            if (typeof fn2 === "function") {
+              try { fn2.call(el); } catch (_) {}
+            }
+            document.removeEventListener("click", onClickFS, true);
+          };
+          document.addEventListener("click", onClickFS, true);
+        } catch (_) {}
+        break;
+      }
+    }
+  } catch (e) {
+    try { console.warn("scannerNetlifx erro:", e); } catch (_) {}
+  }
+}
+
+async function navegarAteLupa(movie) {
+  try {
+    try { window.focus(); } catch (_) {}
+    const nome = String(movie || "").trim();
+    if (!nome) return;
+    if (!location.hostname.includes("netflix.com")) return;
+    const searchBtn =
+      document.querySelector("button.searchTab") ||
+      document.querySelector('[aria-label="Busca"]') ||
+      document.querySelector('[aria-label="Search"]') ||
+      document.querySelector('a[href*="/search"]');
+    if (!searchBtn || typeof searchBtn.click !== "function") {
+      try { console.error("[LAYLAY] Lupa não encontrada!"); } catch (_) {}
+      return;
+    }
+    try { searchBtn.click(); } catch (_) {}
+
+    let input = null;
+    for (let i = 0; i < 30; i++) {
+      input = document.querySelector('input[name="searchInput"]') || document.querySelector("input[type='text']");
+      if (input) break;
+      await _sleep(150);
+    }
+    if (!input) {
+      try { console.error("[LAYLAY] Campo de busca não apareceu!"); } catch (_) {}
+      return;
+    }
+    try { input.focus(); } catch (_) {}
+    try { input.value = nome; } catch (_) {}
+    try { input.dispatchEvent(new Event("input", { bubbles: true })); } catch (_) {}
+    await _sleep(120);
+    _dispatchKey("Enter", "Enter", 13);
+
+    for (let i = 0; i < 40; i++) {
+      const href = String(window.location.href || "");
+      if (href.includes("/search")) break;
+      await _sleep(150);
+    }
+    await _sleep(200);
+    await scannerNetlifx();
+  } catch (e) {
+    try { console.warn("navegarAteLupa erro:", e); } catch (_) {}
+  }
+}
+
+function _injectConsoleBridge() {
+  try {
+    const src = `
+      (function() {
+        if (window.__laylayConsoleHook) return;
+        window.__laylayConsoleHook = true;
+        function send(level, args) {
+          try { window.postMessage({ __laylay_console__: true, level: level, args: args }, "*"); } catch (e) {}
+        }
+        var origLog = console.log;
+        var origErr = console.error;
+        console.log = function() { try { send("log", Array.prototype.slice.call(arguments)); } catch (e) {} return origLog.apply(console, arguments); };
+        console.error = function() { try { send("error", Array.prototype.slice.call(arguments)); } catch (e) {} return origErr.apply(console, arguments); };
+        window.addEventListener("error", function(ev) {
+          try { send("error", [String(ev && ev.message || "error"), String(ev && ev.filename || ""), String(ev && ev.lineno || ""), String(ev && ev.colno || "")]); } catch (e) {}
+        });
+        window.addEventListener("unhandledrejection", function(ev) {
+          try { send("error", ["unhandledrejection", String(ev && ev.reason || "")]); } catch (e) {}
+        });
+      })();
+    `;
+    const s = document.createElement("script");
+    s.textContent = src;
+    (document.documentElement || document.head || document.body).appendChild(s);
+    s.remove();
+  } catch (_) {}
+}
+
+// ====================== SUPER PODERES LAYLAY (DOM Manipulation) ======================
+
+// Busca campos de input de busca/texto na página
+function _findSearchInput() {
+    // Ordem de prioridade: input de busca explícito → genérico de texto → qualquer input
+    const searchSelectors = [
+        'input[type="search"]',
+        'input[placeholder*="busca" i]',
+        'input[placeholder*="pesquisa" i]',
+        'input[placeholder*="search" i]',
+        'input[placeholder*="o que" i]',
+        'input[name="q"]',
+        'input[name="query"]',
+        'input[name="busca"]',
+        'input[role="searchbox"]',
+        '[role="searchbox"]',
+        '[role="combobox"]',
+        'input[type="text"]',
+    ];
+    for (const sel of searchSelectors) {
+        const el = document.querySelector(sel);
+        if (el && el.offsetParent !== null) return el;
+    }
+    return null;
+}
+
+// Digita em um input de forma que frameworks React/Vue/Angular detectem
+function _typeInElement(el, text) {
+    if (!el) return false;
+    try {
+        // Foca primeiro
+        el.focus();
+        el.click();
+        
+        // Limpa o campo existente
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+        if (nativeInputValueSetter) {
+            nativeInputValueSetter.call(el, text);
+        } else {
+            el.value = text;
+        }
+        
+        // Dispara os eventos que frameworks modernos esperam
+        el.dispatchEvent(new Event('input',   { bubbles: true, composed: true }));
+        el.dispatchEvent(new Event('change',  { bubbles: true, composed: true }));
+        el.dispatchEvent(new KeyboardEvent('keydown', { key: text.slice(-1), bubbles: true }));
+        el.dispatchEvent(new KeyboardEvent('keyup',   { key: text.slice(-1), bubbles: true }));
+        return true;
+    } catch(e) {
+        return false;
+    }
+}
+
+function _findClickableByText(text) {
+    const lowerText = text.toLowerCase().trim();
+    // Inclui inputs para achar campos de busca pelo placeholder
+    const selectors = 'a, button, [role="button"], [role="link"], span, div, label, input[type="button"], input[type="submit"], input[type="search"], input[type="text"]';
+    const elements = Array.from(document.querySelectorAll(selectors));
+    
+    // 1. Tenta match exato por texto/placeholder
+    let found = elements.find(el => {
+        const content = (el.innerText || el.textContent || el.placeholder || "").toLowerCase().trim();
+        return content === lowerText && el.offsetParent !== null;
+    });
+    
+    // 2. Tenta match parcial (contém o texto)
+    if (!found) {
+        found = elements.find(el => {
+            const content = (el.innerText || el.textContent || el.placeholder || "").toLowerCase().trim();
+            return content.includes(lowerText) && el.offsetParent !== null;
+        });
+    }
+    
+    return found;
+}
+
+function _normalizeGoogleSearchText(text) {
+    return String(text || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9\s]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function _tokenizeGoogleSearchText(text) {
+    const stop = new Set([
+        "a", "o", "os", "as", "de", "da", "do", "das", "dos", "e", "em", "no", "na", "nos", "nas",
+        "pra", "pro", "para", "por", "com", "sem", "um", "uma", "uns", "umas", "que"
+    ]);
+    return _normalizeGoogleSearchText(text)
+        .split(" ")
+        .filter((part) => part && part.length >= 2 && !stop.has(part));
+}
+
+function _getGoogleUrlParts(href) {
+    try {
+        const u = new URL(String(href || ""));
+        return {
+            host: String(u.hostname || "").toLowerCase().replace(/^www\./, ""),
+            path: String(u.pathname || "").toLowerCase(),
+            search: String(u.search || "").toLowerCase(),
+        };
+    } catch (_) {
+        return { host: "", path: "", search: "" };
+    }
+}
+
+function _scoreGoogleCandidate(query, title, snippet, href) {
+    const q = _normalizeGoogleSearchText(query);
+    const t = _normalizeGoogleSearchText(title);
+    const s = _normalizeGoogleSearchText(snippet);
+    const h = _normalizeGoogleSearchText(href);
+    const qTokens = _tokenizeGoogleSearchText(query);
+    const urlParts = _getGoogleUrlParts(href);
+    const host = _normalizeGoogleSearchText(urlParts.host);
+    const path = _normalizeGoogleSearchText(urlParts.path);
+    let score = 0;
+
+    if (!qTokens.length) return 0;
+
+    if (t === q) score += 120;
+    if (t.includes(q) || q.includes(t)) score += 45;
+    if (s.includes(q)) score += 15;
+
+    const overlapTokens = [];
+    for (const token of qTokens) {
+        if (t.includes(token)) score += 12;
+        if (s.includes(token)) score += 5;
+        if (h.includes(token)) score += 3;
+        if (host.includes(token)) score += 6;
+        if (path.includes(token)) score += 2;
+        if (t.includes(token) || s.includes(token)) overlapTokens.push(token);
+    }
+
+    const overlap = overlapTokens.length;
+    score += overlap * 8;
+
+    if (/youtube|youtu\.be/.test(h)) score += 8;
+    if (/spotify|deezer|soundcloud|music|m\.youtube|youtube\.com\/watch/.test(h)) score += 6;
+    if (/lyrics|letra|tradu[cç][aã]o|live|ao vivo|remix|cover/.test(t) && qTokens.length <= 4) score -= 10;
+
+    const wantsMusic = /(\bmusica\b|\bmusica\b|\bmusic\b|\bplaylist\b|\byoutube\b|\bspotify\b|\blyrics\b|\bletra\b|\bclipe\b|\bvideo\b|\bvideo oficial\b)/.test(q);
+    const wantsSite = /(\bsite\b|\babrir\b|\babre\b|\bentra\b|\bentrar\b|\blogin\b|\bacessar\b)/.test(q);
+    if (wantsMusic && /youtube|youtu\.be|music\.youtube|spotify|deezer|soundcloud/.test(h)) score += 14;
+
+    const hostBase = host.split(".")[0] || "";
+    if (hostBase && qTokens.includes(hostBase) && hostBase.length > 2) score += 22;
+    if (wantsSite && hostBase && qTokens.includes(hostBase)) score += 10;
+    if (wantsSite && /(home|inicio|start|main|index)$/.test(path)) score += 6;
+
+    if (host && qTokens.length >= 2 && qTokens.every((token) => host.includes(token))) score += 18;
+
+    if (/google\.(com|com\.br)$/.test(host) || /support\.google|accounts\.google/.test(host)) score -= 25;
+    if (/\/search\b/.test(path) || /\/url\b/.test(path)) score -= 18;
+    if (/adservice|doubleclick|aclk|adurl=/.test(h)) score -= 100;
+
+    return score;
+}
+
+function _extractGoogleResultCandidates() {
+    const anchors = Array.from(document.querySelectorAll('div#search a[href], #search a[href]'));
+    const candidates = [];
+    for (const a of anchors) {
+        if (!a || typeof a.href !== "string") continue;
+        const href = a.href;
+        if (!href) continue;
+        if (/google\./i.test(href) && !/https?:\/\/[^/]*google\.[^/]+\/url/i.test(href)) continue;
+        if (/googleadservices|aclk=|adurl=|\/search\?/i.test(href)) continue;
+        const h3 = a.querySelector("h3");
+        const title = String(h3?.textContent || a.textContent || "").replace(/\s+/g, " ").trim();
+        if (!title) continue;
+        const snippetNode = a.closest("div.g, div.MjjYud, div.tF2Cxc, div.Ww4FFb, div[data-ved]") || a.parentElement;
+        const snippet = String(snippetNode?.innerText || "").replace(/\s+/g, " ").trim();
+        candidates.push({ href, title, snippet });
+    }
+    return candidates;
+}
+
+function _resolveBestGoogleResult(query) {
+    const candidates = _extractGoogleResultCandidates();
+    if (!candidates.length) return null;
+
+    const ranked = candidates
+        .map((item) => ({
+            ...item,
+            score: _scoreGoogleCandidate(query, item.title, item.snippet, item.href)
+        }))
+        .filter((item) => item.score > 0)
+        .sort((a, b) => b.score - a.score);
+
+    return ranked[0] || null;
+}
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    try {
+        const payload = request.payload || request;
+        
+        if (request.action === "click") {
+            let selector = payload.selector || "";
+            let el = null;
+
+            // 🛡️ PROTEÇÃO ANTI-ALUCINAÇÃO: Fallback para :contains("Texto")
+            const containsMatch = selector.match(/:contains\(['"](.+?)['"]\)/i);
+            if (containsMatch) {
+                const textToFind = containsMatch[1].toLowerCase().trim();
+                console.log(`🔍 Buscando elemento por texto (:contains): ${textToFind}`);
+                el = _findClickableByText(textToFind);
+            } else {
+                // 1. Tenta pelo seletor CSS normal
+                if (selector && (selector.includes('[') || selector.includes('.') || selector.includes('#'))) {
+                    try { el = document.querySelector(selector); } catch(e) {}
+                }
+                // 2. Fallback: Busca por texto simples
+                if (!el && selector) {
+                    el = _findClickableByText(selector);
+                }
+            }
+
+            if (el) {
+                el.focus();
+                el.click();
+                el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+                console.log(`🤖 Laylay clicou em: ${selector || el.textContent}`);
+                if (sendResponse) sendResponse({ status: "success" });
+            } else {
+                console.warn(`⚠️ Laylay não achou o elemento: ${selector}`);
+                if (sendResponse) sendResponse({ status: "error", message: "Element not found" });
+            }
+        }
+        else if (request.action === "press") {
+            const key = payload.key || "enter";
+            let keyCode = 13;
+            if (key.toLowerCase() === "enter") keyCode = 13;
+            else if (key.toLowerCase() === "escape") keyCode = 27;
+            else if (key.toLowerCase() === "tab") keyCode = 9;
+            else if (key.toLowerCase() === "space") keyCode = 32;
+            
+            // Dispara no elemento focado E no document para garantir
+            const target = document.activeElement || document.body;
+            const opts = { key, code: key, keyCode, which: keyCode, bubbles: true, cancelable: true };
+            try { target.dispatchEvent(new KeyboardEvent("keydown", opts)); } catch(_) {}
+            try { document.dispatchEvent(new KeyboardEvent("keydown", opts)); } catch(_) {}
+            try { target.dispatchEvent(new KeyboardEvent("keyup",   opts)); } catch(_) {}
+            console.log(`🤖 Laylay apertou a tecla: ${key}`);
+            if (sendResponse) sendResponse({ status: "success" });
+        }
+        else if (request.action === "type") {
+            let el = null;
+            // Tenta seletor direto primeiro
+            if (payload.selector) {
+                try { el = document.querySelector(payload.selector); } catch(_) {}
+            }
+            // Se não achou pelo seletor, tenta achar a barra de busca da página
+            if (!el) el = _findSearchInput();
+            
+            if (el) {
+                const typed = _typeInElement(el, payload.text || "");
+                console.log(`🤖 Laylay digitou "${payload.text}" em: ${el.tagName} (${el.type || el.role || "?"})`);
+                if (sendResponse) sendResponse({ status: typed ? "success" : "partial" });
+            } else {
+                console.warn(`⚠️ Laylay não achou campo para digitar`);
+                if (sendResponse) sendResponse({ status: "error", message: "Input not found" });
+            }
+        }
+        else if (request.action === "search_in_page") {
+            // ─── NOVA AÇÃO: Clica no gatilho de busca → digita → Enter ───
+            const query = payload.query || payload.text || "";
+            console.log(`🔍 Laylay executando busca na página: "${query}"`);
+
+            async function doSearch() {
+                // PASSO 1: Tenta clicar em qualquer botão/ícone de busca que abre o input
+                const triggerSelectors = [
+                    '[data-testid*="search" i]',
+                    '[aria-label*="busca" i]',
+                    '[aria-label*="pesquis" i]',
+                    '[aria-label*="search" i]',
+                    '[placeholder*="busca" i]',
+                    '[placeholder*="pesquis" i]',
+                    'button[class*="search" i]',
+                    'a[href*="search" i]',
+                    '.search-bar', '.searchbar', '.search-input',
+                ];
+                let triggered = false;
+                for (const sel of triggerSelectors) {
+                    const el = document.querySelector(sel);
+                    if (el && el.tagName !== 'INPUT' && el.offsetParent) {
+                        try { el.click(); triggered = true; console.log(`🖱️ Clicou no trigger: ${sel}`); break; } catch(_) {}
+                    }
+                }
+                if (triggered) await new Promise(r => setTimeout(r, 600));
+
+                // PASSO 2: Achar o input
+                let input = _findSearchInput();
+                if (!input) {
+                    // Qualquer input visível como fallback
+                    const allInputs = Array.from(document.querySelectorAll('input')).filter(i => i.offsetParent !== null);
+                    input = allInputs[0] || null;
+                }
+
+                if (!input) {
+                    console.warn(`⚠️ Nenhuma barra de busca encontrada na página`);
+                    return;
+                }
+                console.log(`✏️ Input encontrado: ${input.tagName} type="${input.type}" placeholder="${input.placeholder}"`);
+
+                // PASSO 3: Digitar usando setter nativo (compatível com React/Vue)
+                input.focus();
+                input.click();
+                const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+                if (nativeSetter) {
+                    nativeSetter.call(input, query);
+                } else {
+                    input.value = query;
+                }
+                input.dispatchEvent(new Event('input',  { bubbles: true, composed: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+
+                // PASSO 4: Aguarda o React processar e pressiona Enter / clica Submit
+                await new Promise(r => setTimeout(r, 400));
+                const enterOpts = { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true };
+                input.dispatchEvent(new KeyboardEvent("keydown", enterOpts));
+                input.dispatchEvent(new KeyboardEvent("keyup",   enterOpts));
+                // Tenta também submeter o form pai
+                const form = input.closest('form');
+                if (form) {
+                    try { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); } catch(_) {}
+                    try { form.requestSubmit(); } catch(_) {}
+                }
+                // Tenta clicar botão submit explícito
+                const submitBtn = document.querySelector('button[type="submit"], input[type="submit"]');
+                if (submitBtn && submitBtn.offsetParent) submitBtn.click();
+
+                console.log(`✅ Laylay buscou: "${query}"`);
+            }
+
+            doSearch();
+            if (sendResponse) sendResponse({ status: "success" });
+        }
+        else if (request.action === "scroll") {
+            const direction = payload.direction || "down";
+            const amount = payload.amount || 400;
+            window.scrollBy({ top: direction === "down" ? amount : -amount, behavior: 'smooth' });
+            if (sendResponse) sendResponse({ status: "success" });
+        }
+        else if (request.action === "execute_js") {
+            try {
+                const code = payload.code || request.code;
+                eval(code);
+                if (sendResponse) sendResponse({ status: "success" });
+            } catch (e) {
+                console.error("Erro JS:", e);
+            }
+        }
+        else if (request.action === "youtube_control") {
+            const video = document.querySelector('video');
+            const cmd = String(payload.command || request.command || "").toLowerCase();
+            if (cmd === "pause" || cmd === "play" || cmd === "pause_play") {
+                if (video) {
+                    if (cmd === "pause" || (cmd === "pause_play" && !video.paused)) video.pause();
+                    else video.play();
+                }
+                else {
+                    const playBtn = document.querySelector('.ytp-play-button');
+                    if (playBtn) playBtn.click();
+                    else _dispatchKey("k", "KeyK", 75);
+                }
+                if (sendResponse) sendResponse({ status: "success" });
+            }
+            else if (cmd === "next") {
+                const nextBtn = document.querySelector('.ytp-next-button');
+                if (nextBtn) nextBtn.click();
+                else _dispatchKey("N", "KeyN", 78, { shiftKey: true });
+                if (sendResponse) sendResponse({ status: "success" });
+            }
+            else if (cmd === "prev") {
+                const prevBtn = document.querySelector('.ytp-prev-button');
+                if (prevBtn) {
+                    prevBtn.click();
+                    setTimeout(() => {
+                        try {
+                            const videoNow = document.querySelector('video');
+                            if (videoNow && videoNow.currentTime < 3) prevBtn.click();
+                        } catch (_) {}
+                    }, 180);
+                }
+                else _dispatchKey("P", "KeyP", 80, { shiftKey: true });
+                if (sendResponse) sendResponse({ status: "success" });
+            }
+            else if (cmd === "replay") {
+                if (video) video.currentTime = 0;
+                else {
+                    const prevBtn = document.querySelector('.ytp-prev-button');
+                    if (prevBtn) prevBtn.click();
+                    else _dispatchKey("P", "KeyP", 80, { shiftKey: true });
+                }
+                if (sendResponse) sendResponse({ status: "success" });
+            }
+        }
+    } catch (error) {
+        console.error("❌ Erro na automação:", error);
+    }
+    return true;
+});
+
+function _listenConsoleBridge() {
+  try {
+    window.addEventListener("message", (ev) => {
+      const d = ev?.data;
+      if (!d || d.__laylay_console__ !== true) return;
+      const level = String(d.level || "log");
+      const args = Array.isArray(d.args) ? d.args : [d.args];
+      const msg = _safeText(args.map((a) => {
+        try { return typeof a === "string" ? a : JSON.stringify(a); } catch (_) { return String(a); }
+      }).join(" "));
+      enviarContexto("console", { level, message: msg });
+    });
+  } catch (_) {}
+}
+
+function onceYouTubeResults() {
+  if (!location.pathname.startsWith("/results") || acaoExecutada) return;
+  const observer = new MutationObserver(() => {
+    if (acaoExecutada) return;
+    const a =
+      document.querySelector('ytd-video-renderer a#thumbnail[href*="/watch"]') ||
+      document.querySelector('a#video-title-link[href*="/watch"]') ||
+      document.querySelector('ytd-video-renderer a#video-title[href*="/watch"]');
+    if (a && a.href) {
+      acaoExecutada = true;
+      observer.disconnect();
+      try { a.click(); } catch (_) {} // Clique natural respeita a SPA do YouTube e evita reloads bizarros
+    }
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+function onceYouTubeWatch() {
+    // Reduzido para não interagir com o fluxo autoplay do YouTube (que causa mute/freeze bugs)
+    return;
+}
+
+function autoSkipAds() {
+  if (!location.hostname.includes("youtube.com")) return;
+
+  const injectSkipperCode = `
+    (function laylayAdSkipper() {
+        setInterval(() => {
+            try {
+                // 1. Clicar em "Pular Anúncio" se existir
+                const skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .videoAdUiSkipButton');
+                if (skipBtn && skipBtn.offsetParent) {
+                    skipBtn.click();
+                }
+                
+                // 2. Acelerador de In-Stream seguro (sem mexer no currentTime para não travar o buffer)
+                const player = document.getElementById('movie_player');
+                if (player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))) {
+                    const video = document.querySelector('video');
+                    if (video && !isNaN(video.duration) && video.duration > 0) {
+                        if (video.playbackRate !== 16) {
+                            video.playbackRate = 16;
+                            video.muted = true; // muta pra não assustar com o pio de 16x
+                        }
+                    }
+                } else {
+                    // Mantem a velocidade normal, restaura so se tiver acelerado
+                    const video = document.querySelector('video');
+                    if (video && video.playbackRate === 16) {
+                        video.playbackRate = 1;
+                        video.muted = false;
+                    }
+                }
+                
+                // 3. Fechar Banners de Texto/Imagem Ad
+                const overlayClose = document.querySelector('.ytp-ad-overlay-close-button');
+                if (overlayClose && overlayClose.offsetParent) {
+                    overlayClose.click();
+                }
+            } catch (e) {}
+        }, 300);
+    })();
+  `;
+
+  try {
+      const script = document.createElement("script");
+      script.textContent = injectSkipperCode;
+      (document.documentElement || document.head || document.body).appendChild(script);
+      script.remove();
+      console.log("🤖 Laylay: Motor Main-World ativo.");
+  } catch (_) {}
+}
+
+if (location.hostname.includes("youtube.com")) {
+  onceYouTubeResults();
+  onceYouTubeWatch();
+  autoSkipAds();
+}
+
+
+window.addEventListener("load", () => {
+  sendMessage({ action: "title_update", title: document.title });
+  _emitNav();
+});
+
+const titleNode = document.querySelector("head > title");
+if (titleNode) {
+  const titleObserver = new MutationObserver(() => {
+    sendMessage({ action: "title_update", title: document.title });
+    _emitNav();
+  });
+  titleObserver.observe(titleNode, { childList: true });
+}
+
+let __laylayAutoClickRunning = false;
+function _laylayAutoClickEnabledFromUrl() {
+  try {
+    const host = String(location.hostname || "");
+    if (!host.includes("google.")) return false;
+    const sp = new URLSearchParams(String(location.search || ""));
+    return String(window.location.search || "").includes("laylay_auto=true");
+  } catch (_) {
+    return false;
+  }
+}
+
+function clicarPrimeiroResultado() {
+  if (__laylayAutoClickRunning) return;
+  if (!_laylayAutoClickEnabledFromUrl()) return;
+  __laylayAutoClickRunning = true;
+
+  const reAd = /(Patrocinado|Anúncio|Anuncio)/i;
+
+  const hasAdTextUp = (node) => {
+    let cur = node;
+    for (let i = 0; i < 8 && cur; i++) {
+      const txt = String(cur.textContent || "");
+      if (reAd.test(txt)) return true;
+      cur = cur.parentElement;
+    }
+    return false;
+  };
+
+  const getQueryFromUrl = () => {
+    try {
+      const sp = new URLSearchParams(String(location.search || ""));
+      return String(sp.get("q") || sp.get("as_q") || sp.get("oq") || sp.get("query") || "").trim();
+    } catch (_) {
+      return "";
+    }
+  };
+
+  const tryFindAndReplace = () => {
+    if (!String(window.location.search || "").includes("laylay_auto=true")) return false;
+    const query = getQueryFromUrl();
+    const best = _resolveBestGoogleResult(query);
+    if (best && best.href) {
+      const link = Array.from(document.querySelectorAll("a[href]")).find((a) => a && a.href === best.href) || null;
+      if (!link || hasAdTextUp(link)) return false;
+      try { enviarContexto("auto_click", { href: best.href, title: _safeText(best.title), score: best.score, query }); } catch (_) {}
+      try { window.location.replace(best.href); } catch (_) { try { window.location.href = best.href; } catch (_) {} }
+      return true;
+    }
+
+    const h3s = document.querySelectorAll("div#search a h3");
+    for (const h3 of h3s) {
+      const p = h3?.parentElement;
+      const link = (p && String(p.tagName || "").toUpperCase() === "A") ? p : (h3?.closest ? h3.closest("a") : null);
+      const href = link && link.href ? String(link.href) : "";
+      if (!href) continue;
+      if (href.includes("googleadservices") || href.includes("aclk") || href.includes("adurl=")) continue;
+      if (hasAdTextUp(link)) continue;
+      try { enviarContexto("auto_click", { href, title: _safeText(h3.textContent || ""), query, fallback: true }); } catch (_) {}
+      try { window.location.replace(href); } catch (_) { try { window.location.href = href; } catch (_) {} }
+      return true;
+    }
+    return false;
+  };
+
+  const fail = () => {
+    __laylayAutoClickRunning = false;
+    try { sendMessage({ action: "auto_click_status", status: "erro_clique", motivo: "Link não encontrado" }); } catch (_) {}
+  };
+
+  const start = () => {
+    let tries = 0;
+    const t = setInterval(() => {
+      tries += 1;
+      if (tryFindAndReplace()) {
+        clearInterval(t);
+        try { obs.disconnect(); } catch (_) {}
+        return;
+      }
+      if (tries >= 10) {
+        clearInterval(t);
+        try { obs.disconnect(); } catch (_) {}
+        fail();
+      }
+    }, 200);
+  };
+
+  const obs = new MutationObserver(() => {
+    try { if (tryFindAndReplace()) obs.disconnect(); } catch (_) {}
+  });
+  try { obs.observe(document.documentElement, { childList: true, subtree: true }); } catch (_) {}
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start, { once: true });
+  } else {
+    start();
+  }
+}
+
+try {
+  if (_laylayAutoClickEnabledFromUrl()) {
+    clicarPrimeiroResultado();
+  }
+} catch (_) {}
+
+chrome.runtime.onMessage.addListener((request) => {
+  console.log("Comando recebido na página:", request);
+  
+  const video = document.querySelector('video');
+  
+  // --- OUTROS COMANDOS DO YOUTUBE (Volume removido) ---
+  if (video && request.action === "youtube_control" && request.command && request.command !== "set_volume") {
+    controlYouTube(String(request.command));
+  }
+
+  // --- COMANDOS ADICIONAIS (Spinning Fish, Netflix, etc) ---
+  if (request.action === "spinning_fish") {
+    try {
+        window.__laylay_fish_mode = true;
+        const target = String(request.url || "https://spinning.fish/").trim();
+        if (!location.href.includes("spinning.fish")) {
+            try { window.focus(); } catch (_) {}
+            try { window.location.href = target; } catch (_) {}
+        }
+        const tryFS = () => {
+            const el = document.documentElement;
+            const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+            if (typeof fn === "function") {
+                try { fn.call(el); } catch (_) {}
+            }
+        };
+        if (document.readyState === "complete") {
+            tryFS();
+        } else {
+            window.addEventListener("load", () => setTimeout(tryFS, 0), { once: true });
+        }
+        const onClickFS = () => {
+            if (!window.__laylay_fish_mode) return;
+            tryFS();
+            document.removeEventListener("click", onClickFS, true);
+        };
+        document.addEventListener("click", onClickFS, true);
+    } catch (_) {}
+  }
+
+  if (request.action === "close_current_tab") {
+    try {
+        const ae = document.activeElement;
+        const tag = String(ae?.tagName || "").toLowerCase();
+        const isInput = tag === "input" || tag === "textarea";
+        const isEditable = isInput || !!ae?.isContentEditable;
+        const val = isInput ? String(ae?.value || "") : String(ae?.textContent || "");
+        
+        if (isEditable && val.trim().length > 0) {
+            try { sendMessage({ action: "close_tab_status", status: "blocked_form", url: window.location.href, title: document.title }); } catch (_) {}
+            return;
+        }
+        try { sendMessage({ action: "close_tab_status", status: "closing", url: window.location.href, title: document.title }); } catch (_) {}
+        try { chrome.runtime.sendMessage({ action: "close_me" }); } catch (_) {}
+    } catch (_) {}
+  }
+
+  if (request.action === "netflix_control" && request.command) {
+    const cmd = String(request.command || "").toLowerCase();
+    if (cmd === "enter" || cmd === "play") {
+        _dispatchKey("Enter", "Enter", 13);
+    }
+    if (cmd === "scan_and_enter") {
+        try { _netflixInitDoneForUrl = ""; } catch (_) {}
+        try { scannerNetlifx(); } catch (_) {}
+    }
+  }
+
+  if (request.action === "start_netflix_navigation") {
+    try { navegarAteLupa(request.movie); } catch (_) {}
+  }
+
+  if (request.action === "GET_YT_DATA") {
+    try {
+        const rawTitle = String(document.title || "");
+        const title = rawTitle.replace(/ - YouTube$/i, "").trim();
+        const ch = document.querySelector("#upload-info #channel-name") || document.querySelector("#channel-name");
+        const canal = String(ch?.textContent || "").replace(/\s+/g, " ").trim();
+        sendMessage({ 
+            type: "YOUTUBE_DATA", 
+            requestId: request.requestId ?? null, 
+            url: window.location.href, 
+            title, 
+            canal 
+        });
+    } catch (_) {}
+  }
+
+  if (request.action === "auto_click_first_result") {
+    try {
+        if (!_laylayAutoClickEnabledFromUrl()) return;
+        clicarPrimeiroResultado();
+    } catch (_) {}
+  }
+});
+
+try {
+  document.addEventListener("click", _captureClick, true);
+  if (location.hostname.includes("youtube.com")) {
+    document.addEventListener("click", (e) => {
+      const t = e?.target;
+      if (!t) return;
+      const grid = t.closest && t.closest("ytd-rich-grid-media");
+      const anchor = t.closest && t.closest("a#video-title");
+      if (grid || anchor) {
+        sendMessage({ type: "PLAYER_EVENT", event: "user_click_detected", url: location.href, title: document.title });
+      }
+    }, true);
+    const vWatcher = new MutationObserver(() => {
+      const v = document.querySelector("video");
+      if (!v || v.__laylayBound) return;
+      v.__laylayBound = true;
+      try {
+        v.addEventListener("ended", () => {
+          const body = document.body;
+          const player = document.querySelector(".html5-video-player");
+          const isAdByClass =
+            (body && (body.classList.contains("ad-showing") || body.classList.contains("ad-interrupting"))) ||
+            (player && (player.classList.contains("ad-showing") || player.classList.contains("ad-interrupting")));
+          const isAdByUrl = String(location.href).includes("ad_id") || String(location.href).includes("doubleclick") || /[?&]pp=/.test(location.search);
+          const isAd = !!isAdByClass || !!isAdByUrl;
+          sendMessage({ type: "PLAYER_EVENT", event: "video_ended", url: location.href, title: document.title, isAd: !!isAd, duration: Math.floor(v.duration || 0) });
+        });
+      } catch (_) {}
+    });
+    vWatcher.observe(document.documentElement, { childList: true, subtree: true });
+  }
+  document.addEventListener("keydown", (e) => {
+    const el = e?.target;
+    if (_isImportantElement(el)) _markInteraction();
+  }, true);
+  document.addEventListener("input", (e) => {
+    const el = e?.target;
+    if (_isImportantElement(el)) _markInteraction();
+  }, true);
+  _hookHistory();
+  _injectConsoleBridge();
+  _listenConsoleBridge();
+} catch (_) {}
+
+try {
+  setInterval(() => {
+    if (location.href !== _lastUrl) {
+      _lastUrl = location.href;
+      _idleSent = false;
+      return;
+    }
+    const idleMs = Date.now() - _lastInteractionTs;
+    if (!_idleSent && idleMs >= 60000) {
+      _idleSent = true;
+      enviarContexto("idle", { idleMs, url: location.href, title: document.title });
+    }
+  }, 5000);
+} catch (_) {}
