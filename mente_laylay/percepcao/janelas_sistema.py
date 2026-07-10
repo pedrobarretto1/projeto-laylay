@@ -47,6 +47,167 @@ TITULOS_AUXILIARES_JANELA = {
     "dwm",
 }
 
+TITULOS_JANELA_LIXO = {
+    "",
+    "Program Manager",
+    "Settings",
+    "Configurações",
+    "Microsoft Text Input Application",
+    "Taskbar",
+    "Cortana",
+    "Search",
+    "Widget",
+    "LockApp.exe",
+}
+
+
+def pid_from_hwnd(ctypes_mod: Any, wintypes_mod: Any, hwnd: Any) -> int:
+    """Obtém o PID de uma janela Windows a partir do HWND."""
+    try:
+        pid = wintypes_mod.DWORD()
+        ctypes_mod.windll.user32.GetWindowThreadProcessId(
+            wintypes_mod.HWND(int(hwnd)),
+            ctypes_mod.byref(pid),
+        )
+        return int(pid.value or 0)
+    except Exception:
+        return 0
+
+
+def classificar_assunto(exe: str, title: str) -> str:
+    """Classifica a atividade atual em um assunto mental simples."""
+    e = str(exe or "").lower()
+    t = str(title or "").lower()
+    if "code.exe" in e or "visual studio code" in t:
+        return "Programação"
+    if "minecraft" in e or "minecraft" in t:
+        return "Gaming"
+    if "ultimaker-cura" in e or "cura" in e or "cura" in t or "prusa" in e or "slicer" in t:
+        return "Impressão 3D"
+    if "spotify" in e or "spotify" in t:
+        return "Música"
+    return ""
+
+
+def obter_janelas_abertas(gw_mod: Any) -> str:
+    """Retorna uma lista textual de janelas úteis abertas no Windows."""
+    try:
+        titulos = gw_mod.getAllTitles() if gw_mod is not None else []
+        uteis = [
+            str(t or "").strip()
+            for t in titulos
+            if str(t or "").strip() and str(t or "").strip() not in TITULOS_JANELA_LIXO
+        ]
+        return ", ".join(uteis) if uteis else "Nenhuma janela útil aberta"
+    except Exception:
+        return "Não consegui ler as janelas abertas"
+
+
+def capturar_janela_ativa(
+    gw_mod: Any,
+    psutil_mod: Any,
+    pid_from_hwnd_cb: Callable[[Any], int] | None = None,
+    classificar_assunto_cb: Callable[[str, str], str] | None = None,
+) -> dict[str, Any]:
+    """Monta um retrato consistente da janela ativa e de seu processo."""
+    janela = None
+    try:
+        janela = gw_mod.getActiveWindow() if gw_mod is not None else None
+    except Exception:
+        janela = None
+
+    titulo = ""
+    hwnd = None
+    if janela is not None:
+        try:
+            titulo = str(getattr(janela, "title", "") or "").strip()
+        except Exception:
+            titulo = ""
+        try:
+            hwnd = (
+                getattr(janela, "_hWnd", None)
+                or getattr(janela, "hWnd", None)
+                or getattr(janela, "handle", None)
+            )
+        except Exception:
+            hwnd = None
+
+    executavel = ""
+    if hwnd and callable(pid_from_hwnd_cb) and psutil_mod is not None:
+        try:
+            pid = int(pid_from_hwnd_cb(hwnd) or 0)
+            if pid:
+                executavel = str(psutil_mod.Process(pid).name() or "").strip()
+        except Exception:
+            executavel = ""
+
+    classificador = classificar_assunto_cb if callable(classificar_assunto_cb) else classificar_assunto
+    try:
+        assunto = str(classificador(executavel, titulo) or "")
+    except Exception:
+        assunto = ""
+
+    return {
+        "win": janela,
+        "title": titulo,
+        "hwnd": hwnd,
+        "exe": executavel,
+        "assunto": assunto,
+    }
+
+
+def janela_em_tela_cheia(pyautogui_mod: Any, janela: Any, proporcao: float = 0.95) -> bool:
+    """Detecta se a janela ocupa praticamente a tela inteira."""
+    try:
+        if not janela or pyautogui_mod is None:
+            return False
+        sw, sh = pyautogui_mod.size()
+        largura = int(getattr(janela, "width", 0) or 0)
+        altura = int(getattr(janela, "height", 0) or 0)
+        return bool(sw > 0 and sh > 0 and largura >= int(sw * proporcao) and altura >= int(sh * proporcao))
+    except Exception:
+        return False
+
+
+def detectar_gatilho_proativo_sistema(exe: str, title: str, assunto: str, fullscreen: bool) -> tuple[str, dict | None]:
+    """Decide qual sugestão proativa faz sentido para a janela ativa."""
+    exe_l = str(exe or "").lower()
+    title_l = str(title or "").lower()
+
+    if "code.exe" in exe_l or "visual studio code" in title_l:
+        return "SYS_MODE_CODE", {
+            "action": "combo_python",
+            "clean_tabs": True,
+            "music_query": "lofi focus",
+            "clean_empty_tabs": True,
+        }
+
+    if "steam.exe" in exe_l or (assunto == "Gaming" and not fullscreen):
+        return "SYS_MODE_GAMER", {
+            "action": "combo_gamer",
+            "pause_music": True,
+            "close_study_tabs": True,
+        }
+
+    if "explorer.exe" in exe_l and ("downloads" in title_l or "transfer" in title_l):
+        return "SYS_ORGANIZE_DOWNLOADS", {
+            "action": "combo_organize",
+            "open_downloads": True,
+        }
+
+    return "", None
+
+
+def fala_gatilho_proativo_sistema(trigger_key: str) -> str:
+    """Fala curta da Laylay para cada sugestão de sistema."""
+    if trigger_key == "SYS_MODE_CODE":
+        return "Pedro, ativo Modo Code? Limpo abas vazias e coloco música de foco."
+    if trigger_key == "SYS_MODE_GAMER":
+        return "Pedro, Modo Gamer? Pauso a música e fecho abas de estudo."
+    if trigger_key == "SYS_ORGANIZE_DOWNLOADS":
+        return "Pedro, quer que eu organize teus downloads?"
+    return ""
+
 
 def normalizar_alvo_ambiente(nome: str) -> str:
     bruto = str(nome or "").strip().lower()

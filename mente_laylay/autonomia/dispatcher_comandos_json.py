@@ -34,9 +34,6 @@ def executar_comandos_json(
     current_emotion = _get(ctx, "current_emotion", "calma")
     emotion_level = _get(ctx, "emotion_level", 1)
     enviar_comando_chrome = _get(ctx, "enviar_comando_chrome")
-    validar_e_enviar_comando = _get(ctx, "validar_e_enviar_comando")
-    ajustar_volume_sistema = _get(ctx, "ajustar_volume_sistema")
-    ajustar_volume_sistema_relativo = _get(ctx, "ajustar_volume_sistema_relativo")
     abrir_programa = _get(ctx, "abrir_programa")
     fechar_programa = _get(ctx, "fechar_programa")
     _enviar_pc_b = _get(ctx, "_enviar_pc_b")
@@ -45,11 +42,8 @@ def executar_comandos_json(
     _limpar_nome_playlist = _get(ctx, "_limpar_nome_playlist")
     _playlist_shuffle_start = _get(ctx, "_playlist_shuffle_start")
     _buscar_primeiro_video_youtube = _get(ctx, "_buscar_primeiro_video_youtube")
-    _buscar_videos_youtube_fila = _get(ctx, "_buscar_videos_youtube_fila")
-    _playlist_item = _get(ctx, "_playlist_item_at")
     add_to_playlist_url = _get(ctx, "add_to_playlist_url")
     solicitar_aba_ativa = _get(ctx, "solicitar_aba_ativa")
-    _yt_clean_title = _get(ctx, "_yt_clean_title")
     playlists_carregadas = _get(ctx, "playlists_carregadas", {})
     _playlists_load = _get(ctx, "_playlists_load")
     listar_abas_chrome = _get(ctx, "listar_abas_chrome")
@@ -65,7 +59,6 @@ def executar_comandos_json(
     _obter_contexto_perceptivo = _get(ctx, "_obter_contexto_perceptivo")
     _agendamentos_load = _get(ctx, "_agendamentos_load")
     _agendamentos_save = _get(ctx, "_agendamentos_save")
-    _fala_agendamentos_estilosa = _get(ctx, "_fala_agendamentos_estilosa")
     _gmail_nao_lidos_cache = _get(ctx, "_gmail_nao_lidos_cache")
     _gmail_buscar_nao_lidos = _get(ctx, "_gmail_buscar_nao_lidos")
     _gmail_falar_resumo_estiloso = _get(ctx, "_gmail_falar_resumo_estiloso")
@@ -74,13 +67,8 @@ def executar_comandos_json(
     _abas_sugeridas_fechar = _get(ctx, "_abas_sugeridas_fechar")
     _executar_exec = _get(ctx, "_executar_exec")
     processar_comando_deterministico = _get(ctx, "processar_comando_deterministico")
-    limpar_resposta_da_ia = _get(ctx, "limpar_resposta_da_ia")
-    _registrar_autoaprimoramento = _get(ctx, "_registrar_autoaprimoramento")
-    _registrar_autocorrecao_virtual = _get(ctx, "_registrar_autocorrecao_virtual")
     _autorizar_acao_pratica = _get(ctx, "_autorizar_acao_pratica")
     _autonomia_permite_execucao_musical = _get(ctx, "_autonomia_permite_execucao_musical")
-    _falhas_consecutivas = _get(ctx, "_falhas_consecutivas")
-    MAX_TENTATIVAS_AUTOCORRECAO = int(_get(ctx, "MAX_TENTATIVAS_AUTOCORRECAO", 3))
 
     erros_execucao: List[str] = []
     if not isinstance(comandos, list):
@@ -175,6 +163,7 @@ def executar_comandos_json(
             if isinstance(_cmd, dict) and not _cmd.get("target"):
                 if str(_cmd.get("acao", "")).strip() in {"open_url", "youtube_search", "youtube_control", "open_app", "close_app", "organizar_desktop", "capturar_tela", "volume_up", "volume_down", "volume_set", "volume_mute", "parar_midia", "tocar_playlist", "close_tab", "close_specific_tab", "notificar", "criar_pasta"}:
                     _cmd["target"] = "pc_b"
+        print(f"🎯 [PC B] Target injetado em {len(comandos)} comando(s) — usuário pediu PC B.")
 
     if not comandos and processar_comando_deterministico and processar_comando_deterministico(texto, "pos-ia-0-comandos"):
         return {"erros": [], "fala_emitida_por_acao": False, "fala_ja_emitida": fala_ja_emitida, "fala_salva_no_inicio": fala_salva_no_inicio}

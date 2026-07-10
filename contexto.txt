@@ -2562,6 +2562,3967 @@ Validacao:
 
 - `python -m py_compile laylay.py mente_laylay/autonomia/fluxo_resposta_ia.py`
 
+63. Correcoes de contexto imediato para playlist e arquivos
+
+Problema:
+
+- uma pergunta aberta recente podia sequestrar comandos claros, como "quais sao minhas playlists" ou "coloca essa musica na playlist anime";
+- depois de criar uma pasta, "apaga ela" podia virar tentativa de apagar um item literal chamado "ela";
+- depois de musica/playlist, "coloca ela de novo" podia reabrir a playlist em vez de repetir a faixa atual.
+
+O que mudou:
+
+- `_texto_responde_pergunta_aberta` agora usa o roteador deterministico como bloqueador de continuidade;
+- o executor de arquivos recebeu acesso a `estrutura_arquivo_recente`;
+- referencias como "ela", "isso" e "essa pasta" agora consultam a ultima estrutura de arquivo criada;
+- o contexto musical geral transforma "coloca ela de novo" em `MEDIA_CONTROL replay`, preservando a faixa atual.
+
+Comportamento esperado:
+
+- "quais sao minhas playlists" lista playlists mesmo se a Laylay acabou de fazer uma pergunta;
+- "coloca essa musica na playlist anime" adiciona a musica atual na playlist;
+- "essa tambem" reaproveita a playlist contextual;
+- "apaga ela" apos criar a pasta roberto apaga roberto, nao uma pasta chamada ela;
+- "coloca ela de novo" em contexto musical tenta repetir a faixa, nao reabrir playlist.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_intencao.py mente_laylay/memoria_mental/contexto_imediato.py`
+- teste isolado do roteador deterministico para playlists;
+- teste isolado do executor de arquivos com referencia "ela";
+- teste isolado da continuidade de pergunta aberta com bloqueador deterministico.
+
+64. Ordem do pre-fluxo corrigida apos teste integrado
+
+O log mostrou que a pergunta aberta ainda estava sendo avaliada antes da execucao pratica.
+Por isso comandos validos podiam cair em conversa generica mesmo com roteamento disponivel.
+
+Correcao:
+
+- `processar_execucao_pratica_precoce` passou a ocorrer antes de `processar_pergunta_aberta`;
+- comandos de playlist, arquivos, janelas e sites agora vencem uma pergunta aberta pendente;
+- respostas curtas como "quero sim" continuam disponiveis para confirmacoes conversacionais quando nao formam uma intencao pratica.
+
+Casos cobertos pelo log:
+
+- `coloca ela de novo` mantem rota `MEDIA_CONTROL replay`;
+- `quais sao minhas playlists` chega a `PLAYLIST_LIST`;
+- `coloca essa musica na playlist anime` chega a `PLAYLIST_ADD`;
+- `apaga ela` consulta a estrutura de arquivo recente antes de usar o pronome literalmente.
+
+Validacao adicional:
+
+- compilacao do fluxo principal;
+- roteamento isolado de playlist e midia;
+- executor isolado de arquivo com referencia contextual.
+
+65. Prioridade pratica no inicio do chat
+
+O teste real mostrou que ainda havia respostas como "Tô aqui, continua" para
+comandos de playlist. A causa era feedback pendente, elogio ou conversa musical
+rodando antes da execucao pratica.
+
+Correcao:
+
+- `processar_execucao_pratica_precoce` passou a ser a primeira etapa do fluxo de
+  resposta, logo depois do refinamento do contexto;
+- pendencias antigas nao podem mais engolir comandos explicitos;
+- confirmacoes curtas sem uma intencao pratica continuam seguindo para feedback
+  ou conversa natural.
+
+Validacao:
+
+- simulacao com feedback pendente confirmou que `quais sao minhas playlists`
+  chega primeiro ao comando deterministico;
+- compilacao dos modulos principais passou.
+
+67. Correcao final do filtro de playlist e referencia de arquivo
+
+O teste seguinte ainda mostrou dois pontos de integracao:
+
+- o filtro casual nao liberava todas as formas curtas de comando de playlist;
+- `apaga ela` podia ignorar o alvo salvo pela criacao e procurar literalmente
+  uma pasta chamada `ela`.
+
+Correcao aplicada:
+
+- comandos de playlist explicitos agora escapam do filtro casual e do bloqueio
+  de contexto, inclusive `me fale as minhas playlists`;
+- o detector de listagem aceita `fale`, `falar`, `diga`, `dizer` e `mostre`;
+- comandos contextuais com `essa` liberam verbos de playlist como `coloca`,
+  `salva`, `guarda`, `adiciona`, `lista` e `mostra`;
+- referencias de arquivo tambem consultam `ultimo_alvo` quando a estrutura
+  detalhada nao esta disponivel.
+
+Validacao:
+
+- `quais sao minhas playlists` -> `PLAYLIST_LIST`;
+- `me fale as minhas playlists` -> `PLAYLIST_LIST`;
+- `coloca essa musica na playlist anime` -> `PLAYLIST_ADD`;
+- `apaga ela` -> apaga o ultimo alvo existente, como `roberto`;
+- compilacao dos modulos alterados passou.
+
+68. Continuidade de playlist e ultimo alvo no executor
+
+O teste real confirmou que a listagem ja estava correta, mas ainda havia duas
+falhas de integracao:
+
+- `essa tambem` caia em conversa curta porque o preparador bloqueava a frase
+  contextual antes do detector de playlist;
+- o executor de arquivos nao recebia `ultimo_alvo`, deixando `apaga ela` sem
+  uma referencia validada.
+
+Correcao aplicada:
+
+- continuacoes `essa tambem` e variacoes agora passam para o detector contextual;
+- `executar_intencao` injeta `ultimo_alvo` no contexto compartilhado;
+- o resolver de arquivos usa esse alvo quando a estrutura detalhada nao existe.
+
+Validacao:
+
+- `essa tambem` -> `PLAYLIST_ADD` na playlist anime;
+- `apaga ela` -> remove roberto pelo alvo salvo;
+- compilacao dos modulos alterados passou.
+
+66. Filtro casual nao pode esconder comandos de playlist
+
+O teste integrado ainda mostrou que frases curtas eram classificadas como
+conversa casual antes do roteador, especialmente:
+
+- `quais sao minhas playlists`;
+- `me fale as minhas playlists`;
+- `coloca essa musica na playlist anime`.
+
+Correcao:
+
+- o filtro `_texto_conversa_casual_sem_acao` agora consulta a mesma decisao de
+  comando explicito usada pelo roteador;
+- pedidos de playlist com `quais`, `fale`, `diga`, `mostra` e formas proximas
+  entram como comandos, mesmo quando sao curtos;
+- continuacoes como `essa tambem` podem reutilizar a ultima playlist depois que
+  o comando anterior realmente foi executado.
+
+77.28. Limpeza segura de fachadas legadas sem uso
+
+Objetivo:
+
+- remover funcoes antigas que ficaram no `laylay.py` depois das extracoes;
+- reduzir ruido antes das proximas etapas de fatoracao;
+- preservar os fluxos ativos de conversa, comandos, playlist, Chrome e memoria.
+
+O que mudou:
+
+- removida a fachada `_corrigir_saida_malformada_da_ia`;
+- removidos `atualizar_humor` e o estado global antigo `humor_laylay`;
+- removido `_ws_log_invalid_message`, sem chamadores no dispatcher atual;
+- removido `executar_comando_interface`, parser textual legado de comandos;
+- removidas as fachadas antigas `atualizar_emocao` e `gerar_system_prompt_com_deboque`;
+- removida `_confirmar_execucao_com_emocao`, duplicada pelo fluxo atual de resposta;
+- removido `limpar_fala_final`, substituido pelo processamento modular atual;
+- removidos imports exclusivos dessas fachadas.
+
+O que foi preservado:
+
+- funcoes de playlist que ainda sao usadas por `fluxos_conversa.py`;
+- funcoes de apelidos/correcao fonetica que ainda compoem a memoria de nomes;
+- wrappers de comandos que ainda aparecem em callbacks, runtimes ou compatibilidade externa.
+
+Validacao:
+
+- busca em todo o projeto confirmou que os simbolos removidos nao tinham chamadas ativas;
+- `python -m py_compile laylay.py mente_laylay/autonomia/fluxos_conversa.py mente_laylay/integracao/contexto_conversa.py`;
+- `python -c "import laylay"`;
+- `git diff --check laylay.py contexto.txt`.
+
+Resultado:
+
+- o `laylay.py` caiu para aproximadamente 5488 linhas;
+- a limpeza removeu codigo morto sem alterar comportamento acessivel;
+- a proxima etapa pode continuar com wrappers/fachadas ainda vivos, mas agora com menos ruido para auditar.
+
+77.27. Remocao segura do fallback conversacional orfao
+
+Objetivo:
+
+- remover um fluxo antigo de conversa que nao possuia chamadores;
+- reduzir duplicacao entre fallback legado e o `RespostaIARuntime` atual;
+- preservar integralmente elogios, perguntas abertas, conversa curta e comandos.
+
+O que mudou:
+
+- removido `handle_llm_fallback_flow` de `mente_laylay/autonomia/fluxos_conversa.py`;
+- removidos `montar_contexto_fallback_conversa` e `montar_contexto_fallback_conversa_por_grupos` de `mente_laylay/integracao/contexto_conversa.py`;
+- removido o parser morto `processar_resposta_laylay` do `laylay.py`;
+- removidas quatro fachadas usadas exclusivamente pelo fallback antigo:
+  - `_promessa_conversacional_atual`;
+  - `_limpar_promessa_conversacional`;
+  - `_resposta_pergunta_curta_dependente_topico`;
+  - `_retomar_topico_quando_fluido`.
+- removidos imports que existiam apenas para essas fachadas.
+
+Motivo da remocao:
+
+- uma busca em todo o projeto confirmou que o handler e os dois montadores apareciam somente em suas proprias definicoes;
+- o caminho ativo usa `RespostaIARuntime`, `fluxo_resposta_ia.py`, `pre_fluxo_contextual.py` e `conversa_natural.py`;
+- manter o fallback antigo criava uma segunda implementacao de recuperacao de contexto, LLM, memoria e fala.
+
+Validacao:
+
+- confirmado que nenhuma referencia aos simbolos removidos permaneceu no codigo Python;
+- validada resposta ativa de elogio;
+- validada saudacao curta pelo tipo `GREETING`;
+- validado que pergunta de bem-estar continua sendo conversa;
+- validado que `abre a steam` continua sendo reconhecido como acao, nao conversa casual;
+- `python -m py_compile` no principal e nos modulos conversacionais;
+- `git diff --check` nos arquivos alterados.
+
+Resultado:
+
+- uma implementacao concorrente de conversa foi eliminada;
+- o fluxo ativo ficou mais facil de auditar;
+- nenhuma capacidade acessivel foi removida.
+
+77.26. Abertura contextual do modo chat em modulo de personalidade
+
+Objetivo:
+
+- retirar do `laylay.py` a geracao da fala inicial do modo chat;
+- manter a abertura variada, ligada ao historico recente e ao estado emocional;
+- preservar o `ModoChatRuntime` como coordenador da ativacao e da memoria.
+
+O que mudou:
+
+- criado `mente_laylay/personalidade/abertura_chat.py` com `AberturaChatRuntime`;
+- o modulo centraliza:
+  - leitura das ultimas mensagens;
+  - leitura da emocao e intensidade atuais;
+  - montagem do prompt curto de abertura;
+  - limpeza da resposta e fallback quando o modelo falha.
+- `_gerar_abertura_modo_chat` ficou como fachada compatível;
+- `ModoChatRuntime` continua chamando essa fachada, mantendo a mesma ligacao entre estado, fala, emocao e memoria.
+
+Cuidados preservados:
+
+- a Laylay continua podendo variar a frase conforme a conversa recente;
+- falha do modelo continua gerando uma abertura segura;
+- nenhuma regra de comando ou interpretacao foi alterada;
+- a personalidade continua recebendo o estado real da mente, sem criar uma memoria paralela.
+
+Validacao:
+
+- teste isolado com historico recente verificando o prompt contextual;
+- teste de fallback com modelo indisponivel;
+- `python -m py_compile laylay.py mente_laylay/personalidade/abertura_chat.py mente_laylay/autonomia/modo_chat.py`;
+- `python -c "import laylay"`.
+
+Resultado:
+
+- o bloco de abertura saiu do principal;
+- o `laylay.py` continua apenas integrando o runtime de personalidade ao modo chat;
+- o proximo passo pode revisar funcao morta e duplicacoes menores da camada de conversa.
+
+77.25. Orquestracao principal de resposta IA em runtime
+
+Objetivo:
+
+- retirar do `laylay.py` o bloco que coordenava chat, pre-fluxos, IA, comandos e finalizacao;
+- manter a ordem atual das etapas e a mesma memoria compartilhada;
+- reduzir a competicao entre conversa livre, comandos imediatos e fallback.
+
+O que mudou:
+
+- criado `mente_laylay/autonomia/resposta_ia_runtime.py` com `RespostaIARuntime`;
+- o runtime centraliza o ciclo:
+  - processar modo chat;
+  - preparar e executar pre-fluxos;
+  - tentar comandos imediatos;
+  - escolher modo rapido ou prompt completo;
+  - chamar o modelo;
+  - limpar e interpretar a resposta;
+  - executar comandos JSON;
+  - finalizar fala, memoria e autoaprimoramento.
+- `_gerar_resposta_exec_ia_sync` ficou como fachada compatível e delega ao runtime;
+- o runtime recebe callbacks do cerebro principal para nao duplicar memoria, emocao, personalidade, dispatcher ou estado de conversa;
+- a troca de `messages` continua passando por um setter compartilhado, preservando a memoria curta real;
+- `analisar_intencao`, `_tentar_intencao_ai_primeiro` e `processar_comandos_imediatos` nao foram duplicados: continuam usando seus runtimes/modulos existentes.
+
+Cuidados preservados:
+
+- a ordem de encerramento de modo chat, inicio de fluxo e comandos imediatos foi mantida;
+- comandos praticos continuam tendo prioridade antes da resposta livre quando o fluxo atual assim determina;
+- respostas de acao continuam passando pelo dispatcher e pela finalizacao existentes;
+- erros continuam sendo registrados sem derrubar a thread de resposta.
+
+Validacao:
+
+- teste isolado de conversa normal, incluindo LLM, dispatcher e finalizacao;
+- teste de pre-fluxo encerrando antes do LLM;
+- teste de comando imediato sem chamar o LLM;
+- `python -m py_compile laylay.py mente_laylay/autonomia/resposta_ia_runtime.py`;
+- `python -c "import laylay"`.
+
+Resultado:
+
+- o principal deixou de carregar a orquestracao completa da resposta IA;
+- a interpretacao continua em um unico cerebro, agora com uma coordenacao explicita;
+- o proximo passo pode revisar os blocos de estado conversacional e fallback que alimentam esse runtime.
+
+77.24. Estado unico de abas e despacho WebSocket
+
+Objetivo:
+
+- retirar do `laylay.py` o estado persistente de aba ativa e historico de navegacao;
+- impedir que handler, porteiro e prompt mantenham copias divergentes da percepcao do Chrome;
+- centralizar o despacho dos tipos de mensagem recebidos da extensao.
+
+O que mudou:
+
+- criado `mente_laylay/integracao/chrome_estado.py` com `ChromeEstadoRuntime`;
+- o runtime se tornou a fonte de verdade para:
+  - titulo e URL da aba ativa;
+  - ID da aba anterior;
+  - historico de troca de abas;
+  - ultima visualizacao conhecida de cada URL.
+- removidos de `laylay.py` os globais `aba_titulo_atual`, `aba_url_atual`, `aba_anterior_id`, `aba_historico` e `_tab_last_seen`;
+- o handler agora devolve alteracoes de `_tab_last_seen` explicitamente, sem modificar um dicionario compartilhado por referencia;
+- o runtime aplica os updates de evento sob lock e entrega snapshots isolados aos consumidores;
+- o porteiro de abas e o contexto do prompt passaram a ler o mesmo runtime;
+- a tabela de tipos `TABS_LIST`, `ACTIVE_TAB_URL`, `PLAYER_EVENT`, `USER_CONTEXT` e demais eventos foi movida para `dispatch_event` em `chrome_ws_handlers.py`;
+- `_ws_dispatch_data` permaneceu como fachada fina no principal;
+- removido o global morto `current_tab_title`.
+
+Cuidados preservados:
+
+- persistencia em `estado_percepcao` continua sendo feita pelo handler atual;
+- historico musical e verificacao autonoma continuam recebendo os mesmos eventos;
+- o porteiro continua ignorando a aba atual e usando o tempo da ultima visualizacao;
+- PC B e servidor WebSocket continuam usando a mesma fachada;
+- o runtime armazena percepcao, mas nao decide intencao, fala ou autonomia.
+
+Validacao:
+
+- teste isolado de `active_tab_changed` com persistencia de titulo e URL;
+- teste de duas trocas manuais, criacao de historico e fechamento da aba anterior;
+- validado que alterar um snapshot externo nao modifica o estado interno;
+- teste do despacho de evento conhecido, evento generico e `ping`;
+- `python -m py_compile` nos modulos Chrome e no `laylay.py`;
+- `python -c "import laylay"`;
+- `git diff --check` nos arquivos alterados.
+
+Resultado:
+
+- todas as habilidades observam a mesma aba ativa;
+- o estado do navegador deixou de ficar espalhado entre globais mutaveis;
+- o proximo corte pode atuar na coordenacao IA-first sem carregar divida da integracao Chrome.
+
+77.23. Fatoracao da integracao Chrome e ciclo de solicitacoes
+
+Objetivo:
+
+- retirar do `laylay.py` o estado transitorio espalhado das solicitacoes WebSocket;
+- garantir que playlist, midia, navegacao, visao e conversa consultem a mesma conexao e as mesmas respostas da extensao;
+- fundir os caminhos duplicados de abrir URL reutilizando uma aba existente.
+
+O que mudou:
+
+- criado `ChromeSolicitacoesRuntime` em `mente_laylay/integracao/chrome_ws_transport.py`;
+- o runtime agora centraliza:
+  - pedidos de lista de abas;
+  - busca de aba reciclavel por dominio;
+  - leitura da aba ativa e dados do YouTube;
+  - leitura de conteudo da pagina;
+  - IDs de correlacao, eventos, futures, timeouts e limpeza das pendencias.
+- removidos de `laylay.py` os quatro dicionarios globais `_pending_*`;
+- os handlers WebSocket agora resolvem diretamente as pendencias do runtime compartilhado;
+- `laylay.py` preservou as fachadas `solicitar_lista_abas`, `solicitar_tab_reciclagem`, `solicitar_aba_ativa` e `solicitar_conteudo_pagina`;
+- criado `mente_laylay/integracao/chrome_navegacao.py`;
+- `abrir_url_com_reciclagem` e `garantir_aba_unica` agora usam uma unica implementacao para atualizar aba do mesmo dominio, abrir nova aba ou cair no navegador do sistema;
+- removida a implementacao antiga duplicada de `solicitar_conteudo_pagina`.
+
+Cuidados preservados:
+
+- nenhum consumidor externo mudou de nome;
+- o loop WebSocket e o conjunto de extensoes continuam compartilhados com PC B e com o orquestrador principal;
+- o runtime cuida somente de transporte e estado transitorio, sem decidir intencao ou fala;
+- o contexto continua sendo uma mente unica, sem criar estado paralelo por habilidade.
+
+Validacao:
+
+- teste isolado com extensao simulada para lista de abas, reciclagem, aba ativa e conteudo de pagina;
+- validada ausencia de colisao entre IDs criados no mesmo milissegundo;
+- validada limpeza das quatro filas apos resposta;
+- teste isolado dos caminhos de aba existente, aba nova e fallback do navegador;
+- `python -m py_compile laylay.py mente_laylay/integracao/chrome_ws_transport.py mente_laylay/integracao/chrome_navegacao.py mente_laylay/integracao/chrome_ws_handlers.py mente_laylay/integracao/chrome_ws_server.py`;
+- `python -c "import laylay"`;
+- `git diff --check` nos arquivos alterados.
+
+Resultado:
+
+- o principal deixou de possuir filas WebSocket concorrentes;
+- a navegacao por abas passou a ter uma unica regra reutilizavel;
+- a integracao Chrome ficou preparada para mover, na proxima etapa, o estado persistente da aba ativa e o despacho dos eventos.
+
+77.22. Fatoracao media da voz e fila de fala
+
+Objetivo:
+
+- tirar do `laylay.py` a mecanica de fila de fala, worker de voz, fala proativa e fala dinamica;
+- manter a personalidade, o tempero de fala e a integracao com emocao/contexto;
+- preservar os nomes usados pelo restante do projeto.
+
+O que mudou:
+
+- criado `mente_laylay/personalidade/voz_runtime.py`;
+- criado `VozRuntime`, responsavel por:
+  - iniciar o worker de falas;
+  - agrupar falas em lote;
+  - reproduzir audio com Edge TTS;
+  - usar fallback pyttsx;
+  - lidar com barge-in/interrupcao;
+  - manter cache e cooldown da fala dinamica;
+  - agendar e unificar falas proativas;
+  - gerar audio Edge quando necessario.
+- `laylay.py` manteve fachadas:
+  - `_iniciar_worker_de_falas`;
+  - `_normalizar_segmento_fala`;
+  - `_flush_fala_proativa`;
+  - `_agendar_fala_proativa`;
+  - `_gerar_audio_edge`;
+  - `_extrair_json_fala_dinamica`;
+  - `_fala_dinamica_deve_tentar`;
+  - `_fala_dinamica_preserva_sentido`;
+  - `_temperar_fala_com_ia`;
+  - `falar_com_lipsync`;
+  - `_fallback_pyttsx`.
+
+Cuidados preservados:
+
+- `current_emotion`, `emotion_level` e `is_speaking` continuam no estado principal;
+- o runtime atualiza esses sinais por callback;
+- a fala dinamica continua usando o estado da mente integrada;
+- a fala proativa continua combinando briefing, email, rotina e musica;
+- a voz continua usando `FALLBACK_FALA_NEUTRA`;
+- nenhuma chamada externa precisou mudar de nome.
+
+Validacao:
+
+- teste isolado do `VozRuntime` com dependencias falsas;
+- validado worker iniciar uma unica vez;
+- validado normalizacao de segmento de fala;
+- validado extracao JSON da fala dinamica;
+- validado regra de tentativa da fala dinamica;
+- validado preservacao de sentido;
+- validado agendamento de fala proativa;
+- `python -m py_compile laylay.py mente_laylay/personalidade/voz_runtime.py`;
+- `git diff --check -- laylay.py mente_laylay/personalidade/voz_runtime.py`;
+- `python -c "import laylay; print('import_ok')"`.
+
+Resultado:
+
+- `laylay.py` ficou com 6004 linhas;
+- `voz_runtime.py` ficou com 394 linhas;
+- a voz ficou modularizada sem quebrar a regra da mente unica.
+
+77.21. Fatoracao da agenda para runtime modular
+
+Objetivo:
+
+- tirar do `laylay.py` o miolo de persistencia, disparo e loop de agendamentos;
+- manter agenda conectada a fala, Chrome, PC B, apps e execucao de playlist;
+- preservar compatibilidade com dispatcher, roteador e servicos em background.
+
+O que mudou:
+
+- `mente_laylay/autonomia/agendamento_mental.py` agora possui `AgendaRuntime`;
+- o runtime centraliza:
+  - `load`;
+  - `save`;
+  - `disparar`;
+  - `processar_ciclo`;
+  - `daemon`;
+  - execucao de comandos no disparo.
+- `laylay.py` manteve as fachadas antigas:
+  - `_agendamentos_load`;
+  - `_agendamentos_save`;
+  - `_disparar_agendamento`;
+  - `_agenda_daemon`.
+- `_enviar_pc_b` continuou no `laylay.py`, porque e uma ponte compartilhada por varias habilidades;
+- a agenda recebe callbacks para continuar funcionando como parte da mesma mente.
+
+Cuidados preservados:
+
+- lembrete `once` continua desativando apos disparar;
+- lembretes `daily` e `weekly` continuam respeitando horario e dia;
+- disparos nao repetem dentro da mesma sessao/dia;
+- comandos `open_app`, `open_url`, `youtube_search`, `notificar` e `tocar_playlist` foram preservados;
+- comandos para PC B continuam usando `_enviar_pc_b`;
+- comandos locais de Chrome continuam usando `broadcast_command` via callback.
+
+Validacao:
+
+- teste isolado do runtime com arquivo temporario;
+- validado disparo `once`, `daily` e `weekly`;
+- validado bloqueio de disparo duplicado;
+- validado persistencia JSON;
+- validado envio para app local, Chrome local, PC B e playlist;
+- `python -m py_compile laylay.py mente_laylay/autonomia/agendamento_mental.py mente_laylay/autonomia/servicos_background.py`;
+- `git diff --check -- laylay.py mente_laylay/autonomia/agendamento_mental.py`.
+
+Resultado:
+
+- `laylay.py` ficou com 6262 linhas;
+- `agendamento_mental.py` ficou com 300 linhas;
+- a agenda ficou modularizada sem quebrar a regra da mente unica.
+
+77. Linguagem aprendida extraida para modulo de cognicao
+
+Objetivo:
+
+- continuar a refatoracao segura do `laylay.py`;
+- mover a logica de apelidos, aliases e ensino leve para a camada de cognicao;
+- manter a regra da mente unica, usando a mesma memoria SQLite, a mesma normalizacao textual e a mesma fala da Laylay.
+
+O que mudou:
+
+- criado o modulo `mente_laylay/cognicao/linguagem_aprendida.py`;
+- criado `LinguagemAprendidaRuntime`;
+- movidos para o runtime:
+  - cache de apelidos aprendidos;
+  - carregamento de apelidos da memoria semantica;
+  - aplicacao de apelidos aprendidos no texto;
+  - normalizacao com apelidos;
+  - extracao de apelidos ensinaveis;
+  - salvamento de apelido na memoria SQLite;
+  - resposta imediata quando Pedro ensina um apelido.
+- `laylay.py` manteve wrappers de compatibilidade:
+  - `_carregar_apelidos_memoria`;
+  - `_aplicar_apelidos_learned`;
+  - `_normalizar_texto_com_apelidos`;
+  - `_extrair_apelido_ensinavel`;
+  - `_aprender_apelido`;
+  - `_processar_aprendizado_apelido_imediato`.
+
+Por que isso ajuda:
+
+- reduz responsabilidade direta do `laylay.py`;
+- deixa a linguagem aprendida como parte clara da cognicao;
+- prepara futuras melhorias de pronuncia, apelidos e interpretacao sem poluir o arquivo principal;
+- preserva compatibilidade com fluxos antigos que ainda chamam os nomes locais.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/cognicao/linguagem_aprendida.py`
+- teste isolado com memoria falsa para:
+  - aplicar apelido `kamai -> kamaitachi`;
+  - extrair ensino `quando eu falar nini e nikmouu`;
+  - salvar apelido e gerar fala de confirmacao.
+
+Resultado:
+
+- `laylay.py` ficou com 6948 linhas apos a extracao.
+
+77.1. Normalizacao textual movida para cognicao
+
+Objetivo:
+
+- tirar a normalizacao geral do territorio musical;
+- manter uma unica fonte para remover acentos, corrigir pronuncia comum e normalizar texto;
+- preservar compatibilidade com `playlist_mental.py` e com os wrappers antigos do `laylay.py`.
+
+O que mudou:
+
+- criado o modulo `mente_laylay/cognicao/normalizacao_linguagem.py`;
+- movidos para esse modulo:
+  - `remover_acentos`;
+  - `aplicar_correcao_fonetica`;
+  - `normalizar_texto`;
+  - a tabela `CORRECOES_FONETICAS`.
+- `mente_laylay/memoria_mental/playlist_mental.py` passou a importar essas funcoes da cognicao;
+- `laylay.py` passou a importar normalizacao da cognicao em vez de depender de playlist;
+- wrappers antigos foram mantidos:
+  - `_remover_acentos`;
+  - `_aplicar_correcao_fonetica`;
+  - `_normalizar_texto`.
+
+Por que isso ajuda:
+
+- reforca a regra de mente unica;
+- evita que playlist seja dona de uma capacidade que vale para conversa, comandos, sites, arquivos e outras habilidades;
+- prepara futuras melhorias de PLN sem duplicar correcao fonetica em varios modulos.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/cognicao/normalizacao_linguagem.py mente_laylay/memoria_mental/playlist_mental.py mente_laylay/cognicao/linguagem_aprendida.py`
+- teste isolado validando:
+  - `palylist -> playlist`;
+  - `kamaitaxi -> kamaitachi`;
+  - `spotifi -> spotify`;
+  - compatibilidade entre normalizacao da cognicao e normalizacao exportada por `playlist_mental.py`.
+
+Resultado:
+
+- `laylay.py` ficou com 6942 linhas apos a extracao e limpeza de imports duplicados.
+
+77.2. Fingerprints musicais transformados em fachadas
+
+Objetivo:
+
+- reduzir mais um trecho pequeno do `laylay.py`;
+- manter utilidades musicais puras dentro de `playlist_mental.py`;
+- preservar compatibilidade com chamadas antigas.
+
+O que mudou:
+
+- `_titulo_fingerprint` agora delega para `titulo_fingerprint` em `playlist_mental.py`;
+- `_canal_fingerprint` agora delega para `canal_fingerprint` em `playlist_mental.py`;
+- `_sim_ratio` agora delega para `sim_ratio` em `playlist_mental.py`;
+- nenhuma regra de playlist foi alterada.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/playlist_mental.py`
+- teste isolado validando fingerprint de titulo, fingerprint de canal e similaridade.
+
+Resultado:
+
+- `laylay.py` ficou com 6936 linhas.
+
+77.3. Falas de playlist movidas para personalidade
+
+Objetivo:
+
+- tirar textos de resposta de playlist do `laylay.py`;
+- deixar falas musicais/playlist na camada de personalidade;
+- manter os wrappers antigos para compatibilidade com `fluxos_conversa.py`.
+
+O que mudou:
+
+- criado `mente_laylay/personalidade/falas_playlist.py`;
+- movidas para esse modulo:
+  - `fala_playlist_sucesso`;
+  - `fala_playlist_duplicado`;
+  - `fala_playlist_duplicado_meta`.
+- `laylay.py` manteve as fachadas:
+  - `_fala_playlist_sucesso`;
+  - `_fala_playlist_duplicado`;
+  - `_fala_playlist_duplicado_meta`.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/personalidade/falas_playlist.py mente_laylay/autonomia/fluxos_conversa.py`
+- teste isolado das falas com normalizacao ASCII para evitar falso negativo de encoding no terminal.
+
+Resultado:
+
+- `laylay.py` ficou com 6931 linhas.
+
+77.4. Detector de nome explicito de playlist movido
+
+Objetivo:
+
+- tirar mais uma regra de PLN de playlist do `laylay.py`;
+- manter a interpretacao de nome de playlist junto das utilidades musicais;
+- preservar o wrapper antigo para o roteador de intencao.
+
+O que mudou:
+
+- adicionada `playlist_nome_explicito_na_frase` em `mente_laylay/memoria_mental/playlist_mental.py`;
+- a funcao aceita `normalizar_texto_cb` para continuar usando apelidos/correcoes aprendidas quando chamada pelo `laylay.py`;
+- `_playlist_nome_explicito_na_frase` no `laylay.py` virou fachada.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/playlist_mental.py mente_laylay/autonomia/roteador_intencao.py`
+- teste isolado com:
+  - `coloca essa musica na playlist anime`;
+  - `coloca essa musica na playlist`;
+  - `playlist brisa da madrugada e toca agora`;
+  - `quais sao minhas playlists`.
+
+Resultado:
+
+- `laylay.py` ficou com 6925 linhas.
+
+77.5. Movimento entre playlists extraido para o runtime
+
+Objetivo:
+
+- retirar do `laylay.py` a manipulacao direta das listas e do arquivo de playlists;
+- manter selecao, deduplicacao e persistencia dentro do mesmo runtime musical;
+- preservar a assinatura publica `mover_item_playlist` para compatibilidade.
+
+O que mudou:
+
+- adicionado `PlaylistRuntime.mover_item` em `mente_laylay/memoria_mental/playlist_runtime.py`;
+- o runtime recebe o normalizador da mente principal para continuar entendendo nomes e referencias aprendidas;
+- `mover_item_playlist` no `laylay.py` virou uma fachada fina;
+- preservados os retornos `missing_playlist`, `source_empty`, `duplicated`, titulo, origem e destino.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/playlist_runtime.py mente_laylay/memoria_mental/playlist_mental.py`
+- teste isolado com JSON temporario cobrindo movimento por titulo, faixa duplicada no destino, origem vazia e nome ausente;
+- busca de definicoes confirmou uma unica implementacao real e uma fachada de compatibilidade.
+
+Resultado:
+
+- `laylay.py` ficou com 6886 linhas.
+
+77.6. Identificacao de playlists centralizada
+
+Objetivo:
+
+- retirar do `laylay.py` as regras restantes de extracao e reconhecimento direto de nomes de playlist;
+- manter apelidos e correcoes de pronuncia conectados a mesma normalizacao da mente;
+- preservar as fachadas usadas pelos roteadores e fluxos de conversa.
+
+O que mudou:
+
+- adicionada `extrair_nome_playlist` em `mente_laylay/memoria_mental/playlist_mental.py`;
+- adicionada `detectar_playlist_nome_direto` no mesmo modulo puro;
+- adicionado `PlaylistRuntime.detectar_nome_direto`, responsável por consultar o estado atual das playlists;
+- `extrair_nome_playlist` e `_detectar_playlist_nome_direto` no `laylay.py` viraram fachadas;
+- as operacoes de listagem, que ja estavam no runtime, foram mantidas e validadas junto com a extracao.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/playlist_mental.py mente_laylay/memoria_mental/playlist_runtime.py mente_laylay/autonomia/fluxos_conversa.py mente_laylay/autonomia/roteador_intencao.py`
+- teste isolado cobrindo nome explicito, nome parcial, apelido aprendido, ambiguidade, pedido de lista geral e lista especifica.
+
+Resultado:
+
+- `laylay.py` ficou com 6841 linhas.
+
+77.7. Playlists proprias da Laylay extraidas
+
+Objetivo:
+
+- separar persistencia, curadoria e transferencia das playlists proprias da Laylay;
+- manter essa memoria ligada as playlists do Pedro e ao historico musical compartilhado;
+- evitar estado musical paralelo durante a modularizacao.
+
+O que mudou:
+
+- criado `mente_laylay/memoria_mental/playlist_laylay_runtime.py`;
+- o runtime concentra carregar, salvar, sincronizar, listar e adicionar descobertas;
+- a copia de uma faixa da Laylay para uma playlist do Pedro usa diretamente o `PlaylistRuntime` compartilhado;
+- as funcoes antigas no `laylay.py` foram preservadas como fachadas;
+- corrigido o import ausente de `datetime` em `curadoria_musical.py`;
+- removidos imports antigos que ficaram sem consumidores.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/playlist_laylay_runtime.py mente_laylay/memoria_mental/curadoria_musical.py mente_laylay/memoria_mental/playlist_runtime.py`
+- teste isolado com arquivos temporarios cobrindo curadoria, listagem, descoberta duplicada, copia para playlist do usuario e persistencia apos reinicializacao.
+
+Resultado:
+
+- `laylay.py` ficou com 6786 linhas.
+
+77.8. Estado emocional e prompt legado separados
+
+Mapeamento realizado:
+
+- `atualizar_emocao` e `gerar_system_prompt_com_deboque` nao possuem consumidores internos ativos;
+- o prompt realmente enviado ao modelo e preparado por `mente_laylay/autonomia/contexto_resposta_ia.py`;
+- o fluxo ativo recebe o retrato produzido pela mente integrada e nao depende do montador legado;
+- as duas funcoes antigas foram preservadas como fachadas para compatibilidade externa.
+
+O que mudou:
+
+- adicionada `atualizar_emocao_contextual` em `mente_laylay/emocoes/perfil_emocional.py`;
+- adicionada `montar_prompt_contextual_legado` em `mente_laylay/autonomia/contexto_resposta_ia.py`;
+- `atualizar_emocao` e `gerar_system_prompt_com_deboque` no `laylay.py` viraram fachadas;
+- o montador legado foi nomeado explicitamente para nao competir conceitualmente com o fluxo ativo;
+- nenhuma chamada da geracao real de respostas foi redirecionada.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/emocoes/perfil_emocional.py mente_laylay/autonomia/contexto_resposta_ia.py mente_laylay/memoria_mental/contexto_integrado.py`
+- teste isolado de elogio, irritacao, alegria e cansaco noturno;
+- teste da composicao do prompt legado;
+- teste do prompt ativo com retrato da mente unica, playlists e humor;
+- busca global confirmou que as fachadas legadas continuam sem consumidores internos.
+
+Resultado:
+
+- `laylay.py` ficou com 6736 linhas.
+
+77.9. Pos-processamento ativo da IA extraido
+
+Mapeamento realizado:
+
+- `_gerar_resposta_exec_ia_sync` coordena pre-fluxo, prompt, chamada ao modelo, pos-processamento, dispatcher e finalizacao;
+- preparacao do prompt, dispatcher e finalizacao ja possuem modulos dedicados;
+- o maior trecho manual seguro para extracao era a transformacao da resposta bruta antes da execucao;
+- a injecao de destino `pc_b` existia duas vezes: no `laylay.py` e no dispatcher.
+
+O que mudou:
+
+- criada `preparar_resposta_para_execucao` em `mente_laylay/autonomia/processamento_resposta_ia.py`;
+- a funcao centraliza autocorrecao, parsing, tipo de interacao, fala contextual, aprendizado e bloqueio de comandos em respostas conversacionais;
+- o `laylay.py` passou a consumir um contrato unico com fala, comandos, tipo, resposta corrigida e aprendizados;
+- removida a injecao duplicada de `pc_b` do arquivo principal;
+- o dispatcher permaneceu como ponto unico da injecao de destino e manteve o log correspondente.
+
+Correcoes encontradas durante os testes:
+
+- JSON valido contendo `open_app`, `open_url` ou outra acao nao dispara mais uma segunda chamada desnecessaria ao modelo;
+- JSON valido com `comandos: []` nao recebe mais o alerta falso de resposta malformada.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/processamento_resposta_ia.py mente_laylay/autonomia/dispatcher_comandos_json.py mente_laylay/autonomia/contexto_resposta_ia.py mente_laylay/autonomia/finalizacao_execucao_ia.py`
+- teste de acao JSON valida preservando comando;
+- teste de conversa bloqueando comando indevido;
+- teste de saida `[EXEC: ...]` recuperada pela autocorrecao;
+- teste de comando `open_app` destinado ao PC B sem execucao local;
+- teste confirmou que JSON valido nao chama o corretor uma segunda vez.
+
+Resultado:
+
+- `laylay.py` ficou com 6704 linhas.
+
+77.10. Contexto ativo do dispatcher extraido
+
+Estudo realizado:
+
+- o dispatcher recebia 53 dependencias montadas manualmente dentro de `_gerar_resposta_exec_ia_sync`;
+- 12 entradas eram carregadas ou repassadas sem uso por nenhuma acao;
+- mensagens, emocao, playlists, cache do Gmail, WebSocket e abas sugeridas precisam ser lidos novamente a cada resposta;
+- callbacks de navegacao, musica, arquivos, percepcao, agenda e autonomia podem ser ligados uma unica vez;
+- o Gmail so fica disponivel no fim da carga do modulo, portanto o runtime precisa ser criado depois dele.
+
+O que mudou:
+
+- criado `ContextoDispatcherRuntime` em `mente_laylay/integracao/contexto_execucao_ia.py`;
+- dependencias estaticas continuam explicitas e separadas por capacidade;
+- sete estados vivos entram por `estado_getter`, sem usar `globals()` escondido;
+- o runtime e inicializado depois do Gmail, quando todas as habilidades ja existem;
+- `_gerar_resposta_exec_ia_sync` passou a chamar apenas `_contexto_dispatcher_runtime.montar()`;
+- o dispatcher caiu de 53 para 41 dependencias efetivamente consumidas;
+- removidas leituras mortas de volume, fila musical, item de playlist, fala de agenda, parsing, autoaprimoramento e autocorrecao que pertencem a outras etapas do ciclo.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/contexto_execucao_ia.py mente_laylay/autonomia/dispatcher_comandos_json.py mente_laylay/autonomia/processamento_resposta_ia.py`
+- teste do contrato exato com 41 dependencias;
+- teste confirmou atualizacao dinamica de mensagens, emocao, playlists e WebSocket;
+- busca confirmou ausencia das dependencias mortas no dispatcher;
+- prova integrada runtime -> dispatcher executou app, pasta, busca musical e leitura de emails com stubs, sem erros e salvando memoria.
+
+Resultado:
+
+- `laylay.py` ficou com 6696 linhas.
+
+77.11. Contexto de finalizacao extraido
+
+Estudo realizado:
+
+- a finalizacao consome 11 dependencias e todas possuem uso real;
+- mensagens, emocao, nivel emocional e falhas consecutivas sao estado vivo;
+- envio para IA, parsing, fala, memoria e autoaprimoramento sao callbacks estaveis;
+- o dicionario de falhas precisa permanecer o mesmo objeto compartilhado para contar tentativas corretamente.
+
+O que mudou:
+
+- criado `ContextoFinalizacaoRuntime` em `mente_laylay/integracao/contexto_execucao_ia.py`;
+- o runtime monta o contrato final com o estado mais recente da mente;
+- `_falhas_consecutivas` entra por referencia, sem copia ou fragmentacao;
+- o runtime e inicializado no mesmo bootstrap do contexto do dispatcher;
+- `_gerar_resposta_exec_ia_sync` passou a usar apenas `_contexto_finalizacao_runtime.montar()` antes da finalizacao.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/contexto_execucao_ia.py mente_laylay/autonomia/finalizacao_execucao_ia.py mente_laylay/autonomia/dispatcher_comandos_json.py`
+- teste do contrato exato com 11 dependencias;
+- teste de atualizacao dinamica de mensagens, emocao, nivel e falhas;
+- teste de fala normal sem comandos;
+- teste de falha pratica acionando autoaprimoramento, IA de autocorrecao, recompensa virtual e persistencia.
+
+Resultado:
+
+- o bloco sensivel dentro de `_gerar_resposta_exec_ia_sync` caiu de 21 linhas de montagem para 3 linhas de guarda e chamada;
+- `laylay.py` ficou com 6701 linhas no total, aumento liquido de 5 linhas causado pela ligacao explicita do contrato no bootstrap;
+- a modularidade melhorou sem esconder dependencias ou criar estado paralelo.
+
+77.12. Atalhos especializados anteriores a IA extraidos
+
+Estudo realizado:
+
+- movimento entre playlists e consulta de ensinamentos ainda estavam embutidos em `_gerar_resposta_exec_ia_sync`;
+- ambos rodam somente fora do modo rapido e depois dos comandos imediatos;
+- movimento de playlist tem prioridade sobre consulta de memoria;
+- sucesso de movimento registra usuario e assistente, fala e salva memoria;
+- falha de movimento fala o erro, mas nao grava uma execucao inexistente;
+- consulta de ensinamento apenas fala a lembranca, preservando o comportamento anterior.
+
+O que mudou:
+
+- adicionada `processar_movimento_playlist_pre_ia` em `mente_laylay/autonomia/fluxo_resposta_ia.py`;
+- adicionada `processar_consulta_aprendizados_pre_ia` no mesmo modulo;
+- adicionada `processar_pre_fluxos_antes_ia` para preservar a ordem entre os handlers;
+- o contexto inicial passou a fornecer os callbacks de detectar/mover playlist e recuperar aprendizados;
+- cerca de cinquenta linhas de retornos antecipados sairam de `_gerar_resposta_exec_ia_sync`;
+- o fluxo principal agora usa uma unica chamada antes de montar o prompt.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/fluxo_resposta_ia.py mente_laylay/integracao/contexto_conversa.py mente_laylay/autonomia/processamento_resposta_ia.py`
+- teste de movimento com sucesso;
+- teste de faixa ja existente no destino;
+- teste de playlist de origem vazia;
+- teste de consulta de ensinamento e resposta especial para regra `de agora`;
+- teste sem aprendizados, permitindo seguir para a IA;
+- teste de prioridade confirmou que memoria nao roda quando movimento vence;
+- teste de excecao no detector confirmou que a consulta de memoria e o fluxo normal continuam disponiveis.
+
+Resultado:
+
+- `laylay.py` ficou com 6656 linhas.
+
+77.13. Controle do modo chat unificado
+
+Estudo realizado:
+
+- comandos textuais alteravam `MODO_CHAT` e `conversa_ativa` diretamente no fluxo principal;
+- hotkeys usavam `_definir_modo_chat`, com debounce e outra geracao de fala;
+- a hotkey ainda falava a mensagem de estado repetido, causando duplicidade;
+- somente o monitor proativo e o leitor do terminal precisam continuar lendo os globais compartilhados.
+
+O que mudou:
+
+- criado `mente_laylay/autonomia/modo_chat.py` com `ModoChatRuntime`;
+- texto e hotkey agora usam o mesmo metodo de transicao;
+- o runtime atualiza os dois estados globais pelo mesmo setter;
+- comando textual registra usuario e resposta no historico;
+- texto e hotkey falam e persistem pelo mesmo caminho;
+- repeticao dentro de 0,8 segundo e tratada sem nova fala, mensagem ou gravacao;
+- removidos o timestamp global legado e os blocos textuais duplicados de ativacao/desativacao;
+- `_definir_modo_chat` foi preservada como fachada de compatibilidade.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/modo_chat.py mente_laylay/autonomia/fluxo_resposta_ia.py`
+- teste de ativacao textual;
+- teste de historico e persistencia;
+- teste de repeticao rapida sem duplicidade;
+- teste de desativacao por hotkey usando o mesmo estado;
+- teste de fala comum seguindo para o fluxo conversacional;
+- buscas confirmaram remocao do timestamp e do atalho textual antigos.
+
+Resultado:
+
+- `laylay.py` ficou com 6652 linhas.
+
+77.14. Montagem do contexto do prompt extraida
+
+Estudo realizado:
+
+- o fluxo principal ainda montava manualmente o retrato enviado ao Qwen;
+- memoria SQLite, memoria quente, topicos recentes, aprendizados, playlists,
+  emocao, aba atual e retrato da mente integrada precisavam permanecer no
+  mesmo contexto, sem formar caminhos mentais separados;
+- `messages`, nivel de humor e aba ativa sao estados dinamicos e nao poderiam
+  ser congelados durante a inicializacao;
+- a preparacao efetiva do prompt em `contexto_resposta_ia.py` ja era estavel e
+  nao precisava ser reescrita.
+
+O que mudou:
+
+- criado `ContextoPromptRuntime` em
+  `mente_laylay/autonomia/contexto_resposta_ia.py`;
+- o runtime recebe dependencias estaveis uma unica vez e consulta o estado
+  dinamico por `estado_getter` a cada resposta;
+- o `laylay.py` deixou de montar o dicionario de contexto manualmente;
+- `_gerar_resposta_exec_ia_sync` agora apenas valida a inicializacao e chama
+  `_contexto_prompt_runtime.preparar(t)`;
+- a funcao existente `preparar_contexto_resposta_ia` foi preservada como
+  implementacao central, mantendo compatibilidade e comportamento;
+- removidos do arquivo principal os adaptadores antigos que ja nao eram
+  necessarios para essa montagem.
+
+Validacao:
+
+- compilacao de `laylay.py`, `contexto_resposta_ia.py`,
+  `contexto_execucao_ia.py` e `processamento_resposta_ia.py`;
+- comparacao byte a byte entre o prompt montado pelo caminho antigo e pelo
+  novo runtime;
+- teste com aprendizados, memoria quente, topicos, memoria resumida,
+  playlists, retrato integrado e estado emocional;
+- teste da limpeza de mensagens contaminadas por comandos antigos;
+- teste confirmou leitura dinamica de historico, humor, titulo e URL da aba;
+- busca de referencias confirmou uma unica montagem ativa no arquivo
+  principal.
+
+Resultado:
+
+- `laylay.py` ficou com 6647 linhas;
+- a preparacao do prompt ficou modular sem fragmentar a mente da Laylay.
+
+77.15. Estado emocional do prompt movido para o motor de humor
+
+Estudo realizado:
+
+- `get_status_humor_prompt` ainda compunha localmente humor, emocao, periodo,
+  percepcao viva e topico ativo;
+- a coleta desses sinais precisava continuar no cerebro central para evitar um
+  estado emocional paralelo;
+- somente a composicao textual era pura e segura para extracao.
+
+O que mudou:
+
+- criada `montar_status_humor_prompt` em
+  `mente_laylay/emocoes/motor_humor.py`;
+- a funcao recebe o contexto perceptivo e a interpretacao produzidos pela
+  mente integrada;
+- os descritores de identidade e comportamento emocional continuam vindo de
+  `perfil_emocional.py` por callbacks compartilhados;
+- `get_status_humor_prompt` foi preservada no `laylay.py` como fachada de
+  compatibilidade;
+- a fachada coleta o estado vivo e delega somente a formatacao ao motor de
+  humor.
+
+Validacao:
+
+- compilacao de `laylay.py`, `motor_humor.py` e
+  `contexto_resposta_ia.py`;
+- comparacao byte a byte em seis cenarios;
+- cobertos humor muito negativo, negativo, neutro, positivo e muito positivo;
+- cobertos periodo noturno, percepcao contextual, topico ativo, emocao vazia e
+  fallback sem contexto perceptivo.
+
+Resultado:
+
+- `laylay.py` ficou com 6629 linhas;
+- o prompt emocional permaneceu identico e ligado ao mesmo estado mental.
+
+77.16. Tesoura legada de fala extraida
+
+Estudo realizado:
+
+- `limpar_fala_final` nao possui chamadas internas no fluxo atual;
+- a limpeza ativa da IA ja passa por `limpar_resposta_da_ia`;
+- remover a funcao poderia quebrar alguma integracao externa que ainda importe
+  sua assinatura;
+- conectar a rotina antiga ao fluxo atual criaria duas limpezas concorrentes.
+
+O que mudou:
+
+- criada `limpar_fala_final_legada` em
+  `mente_laylay/autonomia/processamento_resposta_ia.py`;
+- as expressoes regulares, a ordem dos cortes e a regra de fallback foram
+  preservadas;
+- `limpar_fala_final` continua disponivel no `laylay.py` como fachada curta;
+- a rotina legada nao foi ligada artificialmente ao processamento ativo.
+
+Validacao:
+
+- compilacao de `laylay.py`, `processamento_resposta_ia.py` e
+  `contexto_resposta_ia.py`;
+- nove cenarios comparados com a implementacao anterior;
+- cobertos prefixo `Laylay:`, caixa alta, multiplas linhas, pensamento/comando,
+  colchetes, dois-pontos, texto comum, entrada vazia e fala curta;
+- busca confirmou que a fachada e a implementacao modular sao as unicas
+  definicoes restantes.
+
+Resultado:
+
+- `laylay.py` ficou com 6616 linhas;
+- a compatibilidade foi preservada sem manter a implementacao morta no arquivo
+  principal.
+
+77.17. Controle nativo de midia movido
+
+Estudo realizado:
+
+- o callback usado pelo roteador contextual ainda pressionava teclas de midia
+  diretamente no `laylay.py`;
+- `prev` possui semantica especial com dois pulsos separados por 0,18 segundo;
+- `replay` usa somente um pulso de faixa anterior e nao poderia ser fundido com
+  `prev` durante uma extracao estrutural;
+- existem caminhos historicos adicionais em `execucao_ia.py` e
+  `roteador_conteudo.py`, que nao foram alterados nesta etapa para evitar
+  regressao fora do corte atual.
+
+O que mudou:
+
+- criada `executar_controle_midia_nativo` em
+  `mente_laylay/autonomia/controle_midia.py`;
+- os codigos de tecla usados pela nova funcao vivem junto da implementacao;
+- backend `ctypes`, espera e logger podem ser injetados para teste seguro;
+- o `laylay.py` agora mantem apenas um alias de compatibilidade para o callback;
+- o roteador de intencao continua recebendo o mesmo callback pelo contexto
+  compartilhado.
+
+Validacao:
+
+- compilacao de `laylay.py`, `controle_midia.py`, `roteador_intencao.py` e
+  `execucao_ia.py`;
+- teste sem teclas reais confirmou eventos de `pause_play`, `next`, `prev` e
+  `replay`;
+- confirmada a espera exata de 0,18 segundo somente em `prev`;
+- testados comando desconhecido e falha do backend;
+- teste de integracao confirmou o caminho do roteador ate o callback nas cinco
+  acoes `pause`, `play`, `next`, `prev` e `replay`.
+
+Resultado:
+
+- `laylay.py` ficou com 6591 linhas;
+- a execucao nativa atual de midia ficou junto do modulo que decide sua rota.
+
+77.18. Coordenacao do EXEC extraida para runtime
+
+Estudo realizado:
+
+- `_executar_exec` montava um contexto com 24 dependencias a cada chamada;
+- o caminho modular precisa continuar tendo prioridade sobre o fallback
+  legado;
+- `arg` deve preservar o valor original no contexto, enquanto `c_args` usa a
+  versao textual limpa;
+- callbacks e mapas precisam ser consultados dinamicamente para nao congelar
+  o estado da mente durante a inicializacao;
+- o dispatcher guarda a fachada `_executar_exec`, portanto o novo runtime nao
+  pode criar dependencia circular com ele.
+
+O que mudou:
+
+- criado `ContextoExecRuntime` em
+  `mente_laylay/autonomia/execucao_ia.py`;
+- criado o factory `criar_contexto_exec_runtime`;
+- o runtime monta um contexto novo por execucao e injeta `arg` dinamicamente;
+- a prioridade do roteador modular e o fallback legado foram centralizados no
+  mesmo contrato;
+- `_executar_exec` ficou como fachada protegida contra uso antes do bootstrap;
+- o runtime e inicializado antes do dispatcher com as mesmas 24 dependencias
+  anteriores.
+
+Validacao:
+
+- compilacao de `laylay.py`, `execucao_ia.py`, `roteador_conteudo.py` e
+  `dispatcher_comandos_json.py`;
+- teste confirmou prioridade modular sem chamada do legado;
+- teste confirmou fallback legado quando o modular nao assume;
+- teste confirmou retorno falso quando nenhum caminho assume;
+- teste confirmou novo contexto em cada chamada e preservacao do `arg` bruto;
+- teste confirmou que excecao modular mantem a propagacao anterior e nao
+  executa o fallback indevidamente;
+- auditoria por AST confirmou as 24 dependencias, sem faltas ou duplicacoes.
+
+Resultado:
+
+- `laylay.py` ficou com 6592 linhas;
+- houve aumento liquido de uma linha devido ao bootstrap explicito, mas a
+  coordenacao do EXEC deixou de pertencer ao arquivo principal.
+
+77.19. Limpeza L1 de codigo morto confirmado
+
+Escopo de seguranca:
+
+- removidos somente nomes sem chamadores em todo o projeto Python;
+- daemons orfaos de saude, rotina, agenda e porteiro foram preservados;
+- fachadas publicas ou mantidas por compatibilidade foram preservadas;
+- `executar_comando` foi mantida porque ainda participa do fluxo ativo de
+  confirmacao de sugestoes.
+
+O que foi removido:
+
+- wrappers musicais `_buscar_videos_youtube_fila` e
+  `_tentar_proxima_musica`;
+- parser duplicado `extrair_exec_da_resposta`;
+- interpretador fuzzy antigo `interpretar_intencao_fuzzy_llm`;
+- wrappers sem chamadores `_handle_comando_rapido_flow`,
+  `_handle_fuzzy_intent_flow` e `_handle_llm_fallback_flow`;
+- segunda geracao de conversa `gerar_resposta_ia`, substituida no fluxo ativo
+  por `gerar_resposta_exec_ia`;
+- constante local `SITE_MAP`, que era criada e nunca consultada;
+- imports ligados exclusivamente aos blocos removidos;
+- imports ociosos e duplicados de bibliotecas padrao e dependencias antigas;
+- import desprotegido duplicado de `AppOpener`, preservando apenas o bloco com
+  tratamento de ausencia da dependencia.
+
+Validacao:
+
+- compilacao do arquivo principal e dos modulos ativos de conversa, resposta,
+  EXEC e conteudo;
+- busca confirmou ausencia de referencias residuais aos blocos L1;
+- auditoria AST confirmou nenhum import ocioso restante no `laylay.py`;
+- teste confirmou parser JSON ativo;
+- teste confirmou parser `[EXEC]` modular;
+- teste confirmou prioridade modular e fallback legado do runtime EXEC;
+- busca confirmou que o terminal continua chamando `gerar_resposta_exec_ia`.
+
+Resultado:
+
+- `laylay.py` ficou com 6343 linhas;
+- foram removidas 249 linhas liquidas nesta etapa;
+- capacidades desconectadas e fachadas de compatibilidade continuam
+  preservadas para decisoes especificas posteriores.
+
+77.20. Capacidades orfas reconectadas ao ciclo principal
+
+Auditoria realizada:
+
+- agenda, rotina, porteiro e monitor de saude possuíam implementacoes completas,
+  mas nenhum deles era iniciado pelo `main`;
+- a agenda ainda criava, listava e cancelava lembretes, porem sem o daemon os
+  lembretes nunca eram disparados;
+- a rotina registra atividade no maximo a cada cinco minutos e so sugere com
+  padrao aprendido suficiente;
+- o porteiro espera o startup, verifica em intervalos longos, exige RAM alta e
+  possui cooldown de sugestao;
+- o monitor de saude possui limiares, exige CPU sustentada e limita avisos;
+- nenhuma das quatro capacidades havia sido substituida por outro servico.
+
+O que mudou:
+
+- criado `mente_laylay/autonomia/servicos_background.py`;
+- `GerenciadorServicosBackground` centraliza somente o ciclo de vida das
+  threads, sem guardar contexto ou tomar decisoes pela Laylay;
+- cada servico possui trava contra inicializacao duplicada;
+- falhas dentro de uma thread nao derrubam as demais;
+- falha ao criar um servico em lote nao impede a inicializacao dos seguintes;
+- servicos encerrados saem do registro e podem ser iniciados novamente;
+- o `main` reconecta `Laylay-Agenda`, `Laylay-Rotina`, `Laylay-Porteiro` e
+  `Laylay-Saude` pelo mesmo gerenciador;
+- todos continuam consumindo os callbacks e estados da mente principal.
+
+Validacao:
+
+- compilacao do principal, gerenciador, ambiente de sistema e agenda mental;
+- teste com threads falsas, sem iniciar nenhum daemon real;
+- teste de prevencao de duplicidade;
+- teste de isolamento de excecao dentro do alvo;
+- teste de reinicio depois do encerramento;
+- teste de inicializacao em lote;
+- teste confirmou que uma falha de `start` nao bloqueia os servicos seguintes;
+- busca confirmou os quatro alvos registrados no `main`.
+
+Resultado:
+
+- `laylay.py` ficou com 6359 linhas;
+- o aumento de 16 linhas corresponde ao registro explicito das capacidades;
+- lembretes e percepcoes autonomas voltam a participar do ciclo da mente unica.
+
+70. Inventario musical antes da proxima extracao
+
+O que foi feito:
+
+- criado `inventario_musical_refatoracao.md`;
+- mapeadas as funcoes musicais e de playlist que ainda ficam no `laylay.py`;
+- identificados os modulos ja existentes em `mente_laylay`:
+  - `playlist_mental.py`;
+  - `estado_musical.py`;
+  - `busca_youtube.py`;
+  - `curadoria_musical.py`;
+  - `musica_conversacional.py`;
+  - `controle_midia.py`;
+- separado o que e utilidade pura, runtime de playlist, busca musical, fala
+  conversacional e apelidos/PLN global;
+- definido que a proxima etapa segura e a Fase M1: consolidar utilidades puras
+  de playlist antes de criar um `PlaylistRuntime`.
+
+Observacao:
+
+- nao houve mudanca de comportamento nesta etapa;
+- o objetivo foi evitar extracao no escuro em uma area sensivel da mente unica.
+
+71. Fase M1 da refatoracao musical
+
+O que foi feito:
+
+- consolidadas utilidades puras de playlist em
+  `mente_laylay/memoria_mental/playlist_mental.py`;
+- adicionadas funcoes modulares para:
+  - rotulo de item de playlist;
+  - comparacao de item de playlist;
+  - deteccao de pedido de listagem geral;
+  - formatacao da lista de playlists salvas;
+  - parse de indice ordinal;
+- o `laylay.py` manteve os nomes antigos como wrappers de compatibilidade;
+- removida logica duplicada local de:
+  - limpeza de URL do YouTube;
+  - remocao de acentos;
+  - correcao fonetica;
+  - ordinal de playlist;
+  - listagem geral de playlists.
+
+Resultado:
+
+- `laylay.py` caiu para 7516 linhas;
+- a execucao real de playlist/YouTube/Chrome nao foi alterada;
+- o proximo passo seguro e criar um `PlaylistRuntime` para mover a camada de
+  carregamento, cache e operacoes de playlist com callbacks.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/playlist_mental.py`
+
+72. Inicio do PlaylistRuntime
+
+Objetivo:
+
+- continuar a refatoracao musical sem mexer ainda no runtime de reproducao;
+- centralizar carregamento, cache e operacoes basicas de playlist em um modulo
+  proprio;
+- preservar os nomes antigos no `laylay.py` para nao quebrar roteadores.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/memoria_mental/playlist_runtime.py`;
+- `mente_laylay/memoria_mental/playlist_mental.py`.
+
+O que mudou:
+
+- criado `PlaylistRuntime`;
+- criado helper `criar_playlist_runtime`;
+- o runtime recebe callbacks/estado do cerebro principal:
+  - arquivo atual de playlists;
+  - arquivo legado;
+  - cache `playlists_carregadas`;
+  - getter de `ultima_playlist`;
+  - callback de aba ativa;
+  - callback de log;
+- movidas para o runtime as responsabilidades de:
+  - carregar playlists;
+  - salvar playlists;
+  - garantir arquivo;
+  - resolver nome contextual;
+  - listar conteudo;
+  - listar URLs;
+  - formatar playlists para prompt;
+  - listar playlists salvas;
+  - adicionar URL;
+  - adicionar da aba ativa;
+  - adicionar e verificar;
+  - apagar playlist.
+
+O que ficou no `laylay.py`:
+
+- wrappers com os nomes antigos:
+  - `_playlists_load`;
+  - `_playlists_save`;
+  - `LIST_PLAYLIST_CONTENT`;
+  - `list_playlist_urls`;
+  - `_formatar_playlists_para_prompt`;
+  - `_listar_playlists_salvas`;
+  - `_ensure_playlists_file`;
+  - `add_to_playlist_url`;
+  - `add_to_playlist_from_active_tab`;
+  - `ADD_TO_PLAYLIST`;
+  - `delete_playlist`.
+
+Cuidados:
+
+- nao foi movido ainda:
+  - `play_playlist`;
+  - `_playlist_avancar_proxima`;
+  - `_playlist_voltar_anterior`;
+  - `_playlist_shuffle_start`;
+- essas funcoes mexem com Chrome/YouTube, `playlist_state`, `indice_atual` e
+  precisam de uma fase separada.
+
+Resultado:
+
+- `laylay.py` caiu para 7396 linhas;
+- cache de playlists continua compartilhado;
+- comportamento externo esperado foi preservado.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/playlist_runtime.py mente_laylay/memoria_mental/playlist_mental.py`;
+- teste isolado com arquivo temporario:
+  - criou arquivo;
+  - adicionou musica da aba ativa falsa;
+  - listou conteudo;
+  - adicionou e verificou outra URL;
+  - apagou playlist;
+  - atualizou cache.
+
+73. PlaylistRuntime M3.1 - helpers de leitura de reproducao
+
+Objetivo:
+
+- preparar a futura extracao de reproducao de playlist;
+- mover apenas helpers de leitura, sem tocar ainda em Chrome/YouTube;
+- manter wrappers antigos no `laylay.py`.
+
+O que mudou:
+
+- `PlaylistRuntime` ganhou:
+  - `primeira_url(nome)`;
+  - `item_at(nome, idx)`;
+  - `len(nome)`;
+- os wrappers do `laylay.py` agora delegam para o runtime:
+  - `_playlist_primeira_url`;
+  - `_playlist_item_at`;
+  - `playlist_len`;
+- removidos imports antigos que sobraram sem uso.
+
+Resultado:
+
+- `laylay.py` caiu para 7393 linhas;
+- nenhum comportamento de reproducao real foi alterado;
+- a proxima etapa pode atacar `play_playlist`, `proxima`, `voltar` e `shuffle`
+  com mais seguranca.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/playlist_runtime.py mente_laylay/memoria_mental/playlist_mental.py`;
+- teste isolado com arquivo temporario validando:
+  - `len`;
+  - `primeira_url`;
+  - `item_at`;
+  - cache compartilhado.
+
+74. PlaylistRuntime M3.2 - reproducao real de playlist
+
+Objetivo:
+
+- mover a camada de reproducao de playlist para o `PlaylistRuntime`;
+- preservar os nomes antigos no `laylay.py`;
+- manter a reproducao conectada ao mesmo estado mental, sem criar cerebro separado.
+
+O que mudou:
+
+- `PlaylistRuntime` agora recebe:
+  - `playlist_state`;
+  - setter de `ultima_playlist`;
+  - setter de `indice_atual`;
+  - callback `youtube_play`;
+  - logger;
+- foram movidas para o runtime as responsabilidades de:
+  - iniciar playlist em ordem;
+  - iniciar playlist em shuffle;
+  - avancar para a proxima faixa;
+  - voltar para a faixa anterior;
+  - limpar estado quando a playlist termina;
+  - atualizar `last_url`;
+  - disparar `youtube_play` pela mesma rota forte usada antes.
+
+Wrappers preservados no `laylay.py`:
+
+- `_playlist_shuffle_start`;
+- `_playlist_avancar_proxima`;
+- `_playlist_voltar_anterior`;
+- `play_playlist`.
+
+Resultado:
+
+- `laylay.py` caiu para 7239 linhas;
+- a execucao musical continua usando o mesmo `playlist_state`;
+- a chamada real continua sendo `validar_e_enviar_comando("youtube_play", {"url": url})`,
+  agora via callback.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/playlist_runtime.py mente_laylay/memoria_mental/playlist_mental.py`;
+- teste isolado com arquivo temporario validando:
+  - `play`;
+  - `avancar_proxima`;
+  - `voltar_anterior`;
+  - `shuffle_start`;
+  - atualizacao de `playlist_state`;
+  - atualizacao de `ultima_playlist`;
+  - atualizacao de `indice_atual`;
+  - chamada do callback de YouTube.
+
+75. BuscaMusicalRuntime - fila e busca do YouTube
+
+Objetivo:
+
+- mover a camada runtime de busca musical para fora do `laylay.py`;
+- preservar wrappers antigos para roteadores, Chrome handlers e dispatcher;
+- manter a busca musical conectada ao mesmo cerebro por callbacks.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/memoria_mental/busca_musical_runtime.py`;
+- `mente_laylay/memoria_mental/busca_youtube.py`.
+
+O que mudou:
+
+- criado `BuscaMusicalRuntime`;
+- o runtime recebe:
+  - extrator de resultados do YouTube;
+  - callback para abrir URL;
+  - callback para `youtube_play`;
+  - callback de fala;
+  - callback de IA/mensagem;
+  - logger;
+- movidas para o runtime as responsabilidades de:
+  - buscar fila de videos;
+  - tentar proxima musica da fila;
+  - verificar se o video tocado corresponde ao pedido;
+  - buscar primeiro video;
+  - buscar URL silenciosa do YouTube.
+
+Wrappers preservados no `laylay.py`:
+
+- `_buscar_videos_youtube_fila`;
+- `_tentar_proxima_musica`;
+- `_verificar_musica_autonoma`;
+- `_buscar_primeiro_video_youtube`;
+- `_buscar_url_youtube_silencioso`.
+
+Cuidados:
+
+- os globais antigos `_musica_busca_fila`, `_musica_busca_query` e
+  `_musica_ultima_verificada` continuam existindo para compatibilidade;
+- os wrappers sincronizam fila/query com o runtime;
+- o handler do Chrome agora espelha `_musica_ultima_verificada` tambem no runtime.
+
+Resultado:
+
+- `laylay.py` caiu para 7165 linhas;
+- a busca musical esta mais isolada;
+- a execucao ainda passa pelo mesmo caminho do cerebro principal.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/busca_musical_runtime.py mente_laylay/memoria_mental/busca_youtube.py`;
+- teste isolado do runtime validando:
+  - tentativa de proxima musica;
+  - fila esgotada;
+  - verificador chamando proxima musica quando IA responde `NAO`.
+
+76. MusicaConversacionalRuntime - fala musical conversacional
+
+Objetivo:
+
+- mover a parte de fala musical conversacional restante para um runtime proprio;
+- preservar a diferenca entre opiniao/recomendacao conversacional e comando
+  tecnico de tocar musica;
+- manter wrappers antigos no `laylay.py`.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/memoria_mental/musica_conversacional.py`;
+- `mente_laylay/memoria_mental/musica_conversacional_runtime.py`.
+
+O que mudou:
+
+- criado `MusicaConversacionalRuntime`;
+- o runtime recebe:
+  - getter do estado mental;
+  - normalizador de texto;
+  - callback de fala;
+  - callback de memoria curta;
+  - callback de executar intencao;
+  - callback de registrar resultado;
+  - callback de autoaprimoramento;
+  - logger;
+- movidas para o runtime as responsabilidades de:
+  - detectar pedido de direcao musical conversacional;
+  - escolher sugestao musical nova;
+  - responder pedido de recomendacao sem executar nada automaticamente;
+  - processar confirmacao da sugestao e, ai sim, chamar `MUSIC_SEARCH`.
+
+Wrappers preservados no `laylay.py`:
+
+- `_texto_pede_direcao_musical_generica`;
+- `_sugestao_musical_nova_conversacional`;
+- `_responder_pedido_direcao_musical_generica`;
+- `_processar_confirmacao_sugestao_musical`.
+
+Ajuste extra:
+
+- continuacoes curtas como `me fala` agora sao aceitas quando a ultima intencao
+  foi `MUSIC_OPINION_CHAT`.
+
+Resultado:
+
+- `laylay.py` caiu para 7070 linhas;
+- a conversa musical ficou modular, mas ainda usando o mesmo estado mental.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/musica_conversacional_runtime.py mente_laylay/memoria_mental/musica_conversacional.py`;
+- teste isolado validando:
+  - pedido de recomendacao;
+  - entrega curta `me fala`;
+  - confirmacao `quero ouvir`;
+  - chamada de `MUSIC_SEARCH` por callback.
+
+76.1. Continuidade natural para `quero outra`
+
+Problema:
+
+- apos a Laylay sugerir uma musica, `quero outra` caia no fallback;
+- o runtime tratava `outra/diferente` apenas como "nao confirmar", mas nao
+  gerava uma nova sugestao.
+
+O que mudou:
+
+- `MusicaConversacionalRuntime.processar_confirmacao` agora reconhece pedido de
+  outra sugestao quando a ultima intencao e `MUSIC_OPINION_CHAT`;
+- gera uma nova sugestao;
+- registra a nova sugestao como `ultimo_alvo`;
+- fala no tom da Laylay sem executar nada automaticamente.
+
+Validacao:
+
+- teste isolado com estado `MUSIC_OPINION_CHAT`;
+- entrada `quero outra` retornou `True`;
+- nova sugestao foi registrada como alvo pendente.
+
+64. Extracao segura da busca musical do YouTube
+
+Objetivo:
+
+- continuar a fatoracao do `laylay.py` sem alterar comportamento;
+- mover logica pura de busca/curadoria de resultados musicais do YouTube para um modulo proprio;
+- manter a regra da mente unica usando fachadas no arquivo principal.
+
+O que mudou:
+
+- criado `mente_laylay/memoria_mental/busca_youtube.py`;
+- movidas para esse modulo as responsabilidades de:
+  - normalizar query musical;
+  - pontuar resultado do YouTube;
+  - detectar se um resultado parece faixa unica;
+  - extrair candidatos de HTML de busca do YouTube;
+- `laylay.py` manteve as funcoes antigas como wrappers:
+  - `_normalizar_query_musical`;
+  - `_pontuar_resultado_youtube`;
+  - `_resultado_youtube_parece_faixa_unica`;
+  - `_extrair_resultados_youtube_busca`.
+
+Motivo:
+
+- reduzir o tamanho do arquivo principal;
+- deixar a logica musical mais modular;
+- preservar compatibilidade com os fluxos que ja chamam essas funcoes;
+- evitar mexer agora na fila/autocorretor musical, que ainda depende de estado global e comandos reais.
+
+Resultado:
+
+- `laylay.py` caiu de 7269 para 7163 linhas;
+- o comportamento externo esperado permanece o mesmo;
+- a busca musical fica mais facil de testar e melhorar depois.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/busca_youtube.py`
+
+65. Extracao da formatacao visual e filtro do terminal
+
+Objetivo:
+
+- continuar reduzindo responsabilidades do `laylay.py`;
+- separar personalidade visual/logica de terminal da orquestracao principal;
+- preservar o estilo visual da Laylay e o modo de log limpo.
+
+O que mudou:
+
+- criado `mente_laylay/personalidade/terminal_laylay.py`;
+- movidas para esse modulo as responsabilidades de:
+  - escolher face por emocao;
+  - escolher cor por emocao;
+  - formatar a fala visual da Laylay no terminal;
+  - decidir se uma linha deve aparecer no log limpo.
+- `laylay.py` manteve wrappers com os nomes antigos:
+  - `_usar_cores`;
+  - `_face_para_emocao`;
+  - `_cor_para_emocao`;
+  - `_formatar_mensagem_laylay`;
+  - `_should_log_message`.
+
+Cuidado aplicado:
+
+- a instalacao do `print` filtrado continua no `laylay.py`, porque isso e parte da inicializacao do processo;
+- o filtro foi reforcado para sempre deixar passar linhas que contenham `Laylay:`, evitando sumico de fala em terminal com encoding estranho.
+
+Resultado:
+
+- `laylay.py` chegou a 7100 linhas;
+- a fala da Laylay continua aparecendo;
+- logs de debug continuam ocultos no modo limpo.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/personalidade/terminal_laylay.py mente_laylay/memoria_mental/busca_youtube.py`
+
+66. Extracao do cliente HTTP do LLM local/remoto
+
+Objetivo:
+
+- retirar do `laylay.py` a logica tecnica de chamada HTTP do modelo;
+- manter a protecao contra erro 400 do Qwen/Ollama;
+- preservar as chamadas atuais via wrapper `_post_chat_llm`.
+
+O que mudou:
+
+- criado `mente_laylay/integracao/llm_http.py`;
+- movidas para esse modulo as responsabilidades de:
+  - detectar endpoint local;
+  - escolher timeout local/remoto;
+  - compactar payload para modelo local;
+  - decidir quando compactar;
+  - produzir resposta fallback compativel com OpenAI-style;
+  - serializar chamada local com lock;
+  - tentar retry compacto em erro 400;
+  - ativar cooldown curto quando o 400 persiste.
+
+O que ficou no `laylay.py`:
+
+- variaveis de configuracao;
+- lock global;
+- cooldown global `_LLM_BAD_REQUEST_UNTIL`;
+- wrapper `_post_chat_llm`, para preservar compatibilidade com os fluxos antigos.
+
+Resultado:
+
+- `laylay.py` caiu para 7028 linhas;
+- o comportamento externo de `enviar_mensagem` e outros fluxos continua usando a mesma funcao;
+- o cliente HTTP agora esta isolado em `integracao`, que e o lugar correto para esse tipo de responsabilidade.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/llm_http.py`
+- teste local com `requests_post` falso simulando HTTP 400:
+  - fez 2 tentativas;
+  - retornou fallback compativel;
+  - ativou cooldown.
+
+67. Limpeza de wrappers e fachadas mortas no `laylay.py`
+
+Objetivo:
+
+- reduzir ruido no arquivo principal;
+- remover fachadas privadas que apenas repassavam chamada ou nao eram mais usadas;
+- preservar comportamento real da Laylay.
+
+O que foi removido:
+
+- wrappers mortos de autoaprimoramento;
+- wrappers mortos de pontuacao/filtro do YouTube apos a extracao para `busca_youtube.py`;
+- wrappers mortos de formatacao visual apos a extracao para `terminal_laylay.py`;
+- wrappers mortos de repeticao/anti-repeticao;
+- wrappers mortos de topico de conversa;
+- wrappers mortos de contexto/fala curta;
+- wrappers mortos de foco vivo;
+- wrapper morto de normalizacao web/app;
+- imports correspondentes que ficaram sem uso.
+
+Cuidados:
+
+- nao foram removidas funcoes de daemon, agenda, saude, Gmail ou entradas futuras sensiveis;
+- foi removido apenas o que a varredura indicou como sem chamada textual no projeto;
+- as funcoes reais continuam existindo nos modulos da mente quando ainda fazem sentido.
+
+Resultado:
+
+- `laylay.py` caiu de 7028 para 6872 linhas;
+- a varredura do trecho inicial nao encontrou mais wrappers privados sem referencia;
+- o arquivo principal ficou menos poluido para a proxima fase da fatoracao.
+
+Validacao:
+
+- `python -m py_compile laylay.py`
+
+68. Extracao de briefing, clima e saude do PC
+
+Objetivo:
+
+- mover percepcoes de ambiente para um modulo proprio;
+- reduzir responsabilidades do `laylay.py`;
+- preservar comandos e rotinas existentes de briefing, clima e saude;
+- manter a regra de mente unica: o modulo percebe, mas a orquestracao/fala continua integrada no principal.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/percepcao/ambiente_sistema.py`.
+
+O que foi extraido:
+
+- persistencia do estado do briefing;
+- consulta simples ao wttr.in para briefing;
+- consulta estruturada de clima por localidade;
+- montagem da fala de briefing matinal;
+- repeticao de briefing;
+- deteccao de pedido para repetir briefing;
+- leitura de temperatura da CPU;
+- identificacao de processo consumindo CPU;
+- montagem de status de saude do PC;
+- loop do monitor de saude;
+- deteccao de comando de saude do PC.
+
+O que ficou no `laylay.py`:
+
+- constantes e configuracoes;
+- wrappers com os nomes antigos:
+  - `carregar_estado_briefing`;
+  - `salvar_estado_briefing`;
+  - `obter_clima_wttr`;
+  - `obter_clima_localidade`;
+  - `briefing_matinal`;
+  - `repetir_briefing`;
+  - `_detectar_repetir_briefing`;
+  - `obter_temperatura_cpu`;
+  - `identificar_processo_culpado`;
+  - `_falar_status_saude`;
+  - `_monitor_saude_daemon`;
+  - `detectar_comando_saude`.
+
+Cuidados:
+
+- a fala final ainda passa por `falar_com_lipsync` no `laylay.py`;
+- o briefing ainda usa `enviar_mensagem`, `limpar_resposta` e `_agendar_fala_proativa` do cerebro principal;
+- o monitor de saude recebe callbacks e estado, evitando criar um cerebro separado.
+
+Resultado:
+
+- `laylay.py` caiu de 6872 para 6753 linhas;
+- briefing/clima/saude agora vivem em `percepcao`, que combina melhor com a responsabilidade do bloco.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/percepcao/ambiente_sistema.py`;
+- testes com mocks para:
+  - detectar repeticao de briefing;
+  - detectar comando de saude;
+  - consultar clima texto;
+  - consultar clima estruturado;
+  - montar briefing;
+  - montar status de saude do PC.
+
+69. Ponte/runtime do Gmail
+
+Observacao de contagem:
+
+- a contagem correta do `laylay.py` deve ser feita com Python (`len(splitlines())`);
+- `Measure-Object -Line` no PowerShell contou errado neste arquivo;
+- antes desta etapa o arquivo tinha 7612 linhas reais.
+
+Objetivo:
+
+- reduzir acoplamento direto entre `laylay.py` e `GmailMental`;
+- manter Gmail como parte da mente unica por callbacks;
+- preservar os nomes usados pelos roteadores e fluxos existentes.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/integracao/gmail_mental.py`.
+
+O que mudou:
+
+- criada `GmailRuntime` em `gmail_mental.py`;
+- criada factory `criar_gmail_runtime`;
+- `GmailRuntime` concentra:
+  - `silenciar_remetente`;
+  - `buscar_nao_lidos`;
+  - `falar_resumo_estiloso`;
+  - `resetar_check`;
+  - `daemon`;
+  - cache `nao_lidos_cache`.
+
+O que ficou no `laylay.py`:
+
+- configuracao do Gmail por variaveis de ambiente;
+- criacao de `_gmail_runtime`;
+- aliases finos usados pelo restante do sistema:
+  - `_gmail_silenciar_remetente`;
+  - `_gmail_buscar_nao_lidos`;
+  - `_gmail_falar_resumo_estiloso`;
+  - `_gmail_resetar_check`;
+  - `gmail_daemon`.
+
+Resultado:
+
+- `laylay.py` caiu de 7612 para 7598 linhas reais;
+- o corte foi pequeno porque o Gmail ja estava bem modularizado;
+- a melhoria principal foi diminuir acoplamento e deixar a integracao mais clara.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/gmail_mental.py`;
+- teste direto criando `GmailRuntime` com callbacks falsos e conferindo se os metodos expostos continuam callable.
+
+110. Memoria curta de topicos de conversa
+
+Objetivo:
+
+- mover regras de topicos recentes para `memoria_mental`;
+- preservar continuidade conversacional sem mexer em comandos;
+- reduzir o `laylay.py`.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/memoria_mental/continuidade_conversa.py`.
+
+O que mudou:
+
+- movidas as logicas equivalentes a:
+  - `_topico_memoria_valido`;
+  - `_extrair_topico_conversa`;
+  - `_atualizar_memoria_topicos`;
+  - `_formatar_topicos_conversa_local`;
+- `laylay.py` manteve wrappers com os mesmos nomes;
+- o normalizador curto continua sendo injetado pelo arquivo principal.
+
+Comportamento preservado:
+
+- topicos genericos continuam filtrados;
+- anime/manga/filme/jogo/trabalho continuam aceitos quando fazem sentido;
+- pronomes como "isso" e risadas mantem o topico anterior;
+- lista recente continua limitada;
+- formato de prompt continua igual.
+
+Resultado:
+
+- `laylay.py` caiu de 8285 para 8235 linhas reais;
+- memoria de topicos ficou no modulo de continuidade conversacional.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\memoria_mental\continuidade_conversa.py`;
+- teste direto com:
+  - topico valido;
+  - topico generico invalido;
+  - extracao de anime;
+  - manutencao de topico anterior;
+  - atualizacao e formatacao da lista.
+
+111. Filtro de contexto relevante do navegador
+
+Objetivo:
+
+- mover mais uma regra de percepcao para o modulo de alvos web;
+- manter logs/URLs sensiveis ou irrelevantes fora do contexto da Laylay;
+- continuar fatoracao de baixo risco.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/percepcao/alvos_web.py`.
+
+O que mudou:
+
+- criada `contexto_navegador_relevante`;
+- `_contexto_navegador_relevante` no `laylay.py` virou wrapper;
+- a lista de bloqueios vive agora no modulo de percepcao web.
+
+Comportamento preservado:
+
+- bloqueia localhost/callbacks;
+- bloqueia tokens e URLs de auth;
+- bloqueia extensoes do navegador;
+- permite paginas comuns e titulos uteis.
+
+Resultado:
+
+- `laylay.py` caiu de 8235 para 8220 linhas reais.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\percepcao\alvos_web.py`;
+- teste direto com:
+  - linha vazia;
+  - localhost;
+  - chrome-extension;
+  - YouTube;
+  - titulo do VS Code.
+
+112. Refino de contexto mental extraido
+
+Objetivo:
+
+- continuar em contexto sem tocar em execucao;
+- mover a extracao de campos de resultado para `contexto_compartilhado`;
+- deixar `_refinar_contexto_mental` apenas como coordenador.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/memoria_mental/contexto_compartilhado.py`.
+
+O que mudou:
+
+- criada `extrair_refino_contexto_mental`;
+- `_refinar_contexto_mental` no `laylay.py` agora chama essa funcao e depois `_registrar_mente_curta`;
+- campos extraidos:
+  - texto;
+  - intencao;
+  - alvo;
+  - escopo;
+  - habilidade.
+
+Resultado:
+
+- `laylay.py` caiu de 8220 para 8217 linhas reais;
+- a extracao de contexto ficou centralizada na memoria mental.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\memoria_mental\contexto_compartilhado.py`;
+- teste direto com:
+  - texto vazio;
+  - `APP_OPEN`;
+  - `PLAYLIST_PLAY`.
+
+98. Extracao da pesquisa contextual de temas
+
+Objetivo:
+
+- continuar a fatoracao segura do `laylay.py`;
+- mover a busca curta de contexto sobre temas para a area de cognicao;
+- preservar a regra da mente unica com wrappers de compatibilidade no arquivo principal;
+- passar a barreira das 9000 linhas sem mexer em comandos sensiveis.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/cognicao/pesquisa_contextual.py`.
+
+O que mudou:
+
+- criado o modulo `mente_laylay/cognicao/pesquisa_contextual.py`;
+- movida a logica de:
+  - normalizacao de tema para pesquisa;
+  - validacao de tema baguncado;
+  - pontuacao de resultado de busca;
+  - pesquisa contextual curta em Wikipedia/DuckDuckGo;
+- `laylay.py` manteve wrappers com os nomes antigos:
+  - `_normalizar_tema_pesquisa`;
+  - `_tema_pesquisa_bagunçado`;
+  - `_pontuar_hit_tema`;
+  - `_pesquisar_contexto_tema`;
+- o cache `_pesquisa_tema_cache` continua pertencendo ao cerebro principal e e passado ao modulo;
+- a funcao nova evita reatribuir o cache interno de forma fragil e faz poda por mutacao segura.
+
+Resultado:
+
+- `laylay.py` caiu de 9016 para 8860 linhas reais;
+- a logica de pesquisa ficou na camada correta de cognicao;
+- as chamadas antigas continuam funcionando pelo mesmo nome;
+- a refatoracao passou abaixo de 9000 linhas.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\cognicao\pesquisa_contextual.py`;
+- teste direto de normalizacao, pontuacao e consulta por cache sem rede.
+
+99. Extracao do ajuste contextual de fala
+
+Objetivo:
+
+- continuar reduzindo o `laylay.py` sem tocar em execucao de comandos;
+- mover regras de fala por horario/contexto para a area de personalidade;
+- preservar o jeito da Laylay e a regra de mente unica.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/personalidade/ajuste_contextual.py`.
+
+O que mudou:
+
+- criado o modulo `mente_laylay/personalidade/ajuste_contextual.py`;
+- movida a logica de `_ajustar_fala_por_horario`;
+- o `laylay.py` manteve um wrapper com o mesmo nome;
+- o modulo recebe por injecao:
+  - `obter_contexto_perceptivo`;
+  - `interpretar_contexto_vivo`;
+  - `escolher_fala`;
+- isso evita que a personalidade vire um cerebro separado e mantem a fala ligada ao contexto vivo.
+
+Resultado:
+
+- `laylay.py` caiu de 8860 para 8726 linhas reais;
+- a logica de fala contextual ficou no modulo certo;
+- chamadas antigas continuam funcionando.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\personalidade\ajuste_contextual.py`;
+- teste direto com contexto falso para:
+  - saudacao de bom dia;
+  - ajuste de madrugada;
+  - fala em contexto de foco.
+
+100. Extracao da composicao de fala proativa
+
+Objetivo:
+
+- continuar a fatoracao do `laylay.py`;
+- mover a montagem das falas proativas para a camada de personalidade;
+- manter briefing, emails, rotina e musica falando como uma mente unica;
+- nao alterar execucao de comandos.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/personalidade/fala_proativa.py`.
+
+O que mudou:
+
+- criado o modulo `mente_laylay/personalidade/fala_proativa.py`;
+- movida a logica de `_compor_fala_proativa`;
+- `laylay.py` manteve wrapper com o mesmo nome;
+- o modulo recebe por injecao:
+  - contexto perceptivo;
+  - normalizacao de segmento de fala;
+  - normalizacao com apelidos;
+  - ajuste de tom por emocao;
+  - fallback neutro.
+
+Resultado:
+
+- `laylay.py` caiu de 8726 para 8601 linhas reais;
+- a composicao proativa ficou em personalidade;
+- a fila/agendamento de fala proativa continua no arquivo principal por enquanto;
+- a mente unica foi preservada por callbacks, sem criar um modulo isolado.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\personalidade\fala_proativa.py`;
+- teste direto com:
+  - emails agrupados;
+  - briefing;
+  - fallback sem itens.
+
+101. Fila de fala proativa encapsulada
+
+Objetivo:
+
+- continuar com limpeza de baixo risco;
+- reduzir globais soltos no `laylay.py`;
+- deixar a fala proativa mais organizada sem alterar o comportamento.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/personalidade/fala_proativa.py`.
+
+O que mudou:
+
+- criada a classe `FilaFalaProativa`;
+- o estado da fala proativa agora fica encapsulado:
+  - lock;
+  - buffer;
+  - timer;
+  - delay;
+  - inicio do sistema;
+  - janela de startup;
+- removidos do `laylay.py` os globais soltos:
+  - `_fala_proativa_lock`;
+  - `_fala_proativa_buffer`;
+  - `_fala_proativa_timer`;
+  - `_fala_proativa_delay`;
+  - `_fala_proativa_inicio_sistema`;
+  - `_fala_proativa_janela_startup`;
+- `_flush_fala_proativa` e `_agendar_fala_proativa` continuam existindo como wrappers.
+
+Resultado:
+
+- `laylay.py` caiu de 8601 para 8576 linhas reais;
+- a logica ficou mais coesa;
+- o comportamento externo foi preservado.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\personalidade\fala_proativa.py`;
+- teste direto da fila com:
+  - agendamento;
+  - timer criado;
+  - flush;
+  - limpeza do buffer.
+
+102. Enriquecimento contextual do resultado de execucao
+
+Objetivo:
+
+- continuar com limpeza de baixo risco;
+- reduzir o corpo de `_registrar_resultado_execucao`;
+- manter o estado de ultima acao, ultimo alvo, ultimo app/site e foco vivo em um contrato compartilhado.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/memoria_mental/contexto_compartilhado.py`.
+
+O que mudou:
+
+- criada a funcao `enriquecer_resultado_execucao_contextual`;
+- o enriquecimento de estado agora vive no modulo compartilhado da mente;
+- `laylay.py` continua com `_registrar_resultado_execucao` como wrapper/coordenador;
+- o modulo recebe por injecao:
+  - normalizador de texto/apelidos;
+  - atualizador de foco vivo.
+
+Comportamento preservado:
+
+- apps continuam atualizando `ultimo_app_janela`;
+- sites continuam atualizando `ultimo_site_aba`;
+- mídia continua atualizando habilidade/escopo;
+- Microsoft Store continua sendo tratada como app sem janela contextual normal;
+- foco vivo continua sendo atualizado pelo callback principal.
+
+Resultado:
+
+- `laylay.py` caiu de 8576 para 8511 linhas reais;
+- o estado mental compartilhado ficou mais centralizado;
+- a regra de mente unica foi reforcada.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\memoria_mental\contexto_compartilhado.py`;
+- teste direto com:
+  - `APP_OPEN` para Steam;
+  - `OPEN_URL` para iFood;
+  - `MEDIA_CONTROL`;
+  - `APP_OPEN` para Microsoft Store.
+
+103. Extracao do registro de mente curta
+
+Objetivo:
+
+- continuar fatoracao de baixo risco;
+- centralizar memoria curta conversacional e contextual em `memoria_mental`;
+- reduzir o `laylay.py` sem mexer no executor de comandos.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/memoria_mental/contexto_compartilhado.py`.
+
+O que mudou:
+
+- criada a funcao `registrar_mente_curta` no modulo compartilhado;
+- `_registrar_mente_curta` continua existindo no `laylay.py` como wrapper;
+- a funcao nova recebe por injecao:
+  - normalizador de texto/apelidos;
+  - detector de alvo web;
+  - detector/registro/limpeza de pergunta aberta;
+  - registro de promessa conversacional;
+  - atualizador de foco vivo;
+  - logger.
+
+Comportamento preservado:
+
+- registra `ultima_entrada`;
+- registra `ultima_resposta`;
+- mantem historico curto de entradas;
+- registra pergunta aberta quando a Laylay pergunta algo;
+- registra promessa conversacional;
+- atualiza ultimo app, ultimo site, ultima pasta/arquivo;
+- atualiza foco vivo.
+
+Resultado:
+
+- `laylay.py` caiu de 8511 para 8457 linhas reais;
+- memoria curta ficou mais alinhada com a regra de mente unica;
+- chamadas antigas continuam funcionando.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\memoria_mental\contexto_compartilhado.py`;
+- teste direto com:
+  - conversa/pergunta aberta;
+  - app Steam;
+  - site iFood;
+  - pasta Roberto.
+
+104. Extracao do foco vivo
+
+Objetivo:
+
+- mover o nucleo de foco vivo para `memoria_mental`;
+- reduzir duplicacao e deixar o estado contextual mais centralizado;
+- preservar wrappers no `laylay.py`.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/memoria_mental/contexto_compartilhado.py`.
+
+O que mudou:
+
+- movidas para o modulo compartilhado as logicas equivalentes a:
+  - `_inferir_tipo_foco_vivo`;
+  - `_extrair_topico_foco_vivo`;
+  - `_atualizar_foco_vivo`;
+  - `_foco_vivo_atual`;
+- `laylay.py` manteve wrappers com os nomes antigos;
+- o normalizador com apelidos continua sendo injetado pelo arquivo principal.
+
+Comportamento preservado:
+
+- detecta foco de opiniao;
+- detecta foco de janela/site/musica/arquivo/email/agenda;
+- extrai topico de perguntas;
+- atualiza campos `foco_vivo_*`;
+- respeita TTL ao consultar foco vivo atual.
+
+Resultado:
+
+- `laylay.py` caiu de 8457 para 8402 linhas reais;
+- o modulo de memoria mental agora concentra melhor o contexto imediato;
+- a regra de mente unica foi reforcada.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\memoria_mental\contexto_compartilhado.py`;
+- teste direto com:
+  - opiniao sobre presidente Lula;
+  - foco de janela Steam;
+  - expiracao por TTL.
+
+105. Detector de fallback neutro movido para conversa natural
+
+Objetivo:
+
+- continuar fatoracao de baixo risco;
+- tirar do `laylay.py` uma regra de conversa curta/fallback;
+- manter o filtro que impede respostas genericas de quebrarem o fluxo.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/personalidade/conversa_natural.py`.
+
+O que mudou:
+
+- criada a funcao `fala_e_fallback_neutro` em `conversa_natural.py`;
+- `_fala_e_fallback_neutro` no `laylay.py` virou wrapper;
+- o normalizador curto continua sendo injetado pelo arquivo principal.
+
+Comportamento preservado:
+
+- frases como "pode falar", "continua", "to aqui" e "ok" continuam sendo tratadas como fallback neutro;
+- falas praticas como "Steam aberta" ou "Parei a musica" nao sao classificadas como neutras.
+
+Resultado:
+
+- `laylay.py` caiu de 8402 para 8364 linhas reais;
+- conversa natural recebeu mais uma regra que pertence ao seu dominio;
+- a logica de comandos nao foi alterada.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\personalidade\conversa_natural.py`;
+- teste direto com falas neutras e falas praticas.
+
+106. Montadores de contexto do gate e do porteiro
+
+Objetivo:
+
+- continuar fatoracao de baixo risco;
+- tirar montagens de dicionario do `laylay.py`;
+- aproximar cada contexto do modulo que usa aquela informacao.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/integracao/contexto_conversa.py`;
+- `mente_laylay/autonomia/porteiro_acoes.py`.
+
+O que mudou:
+
+- criado `montar_contexto_gate_conversa` em `contexto_conversa.py`;
+- criado `montar_contexto_porteiro_acoes` em `porteiro_acoes.py`;
+- `_contexto_gate_conversa` e `_contexto_porteiro_acoes` continuam existindo como wrappers no `laylay.py`.
+
+Comportamento preservado:
+
+- gate de conversa continua recebendo:
+  - mente;
+  - foco vivo;
+  - ultimo topico;
+- porteiro de acoes continua recebendo:
+  - bloqueio de playlist;
+  - playlist ativa;
+  - ultima playlist;
+  - mente;
+  - mensagens.
+
+Resultado:
+
+- reducao de linhas foi praticamente neutra por causa dos imports/wrappers;
+- a organizacao ficou melhor para a proxima etapa da refatoracao;
+- nenhuma regra de execucao foi alterada.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\integracao\contexto_conversa.py mente_laylay\autonomia\porteiro_acoes.py`;
+- teste direto dos dois montadores conferindo chaves e valores.
+
+107. Percepcao de alvo web versus app
+
+Objetivo:
+
+- fatorar a decisao que diferencia site/aba de aplicativo;
+- preservar a correcao de casos como iFood, Instagram, YouTube e WhatsApp Web;
+- reduzir risco de "abre site" cair em abertura de programa.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/percepcao/alvos_web.py`.
+
+O que mudou:
+
+- criado o modulo `mente_laylay/percepcao/alvos_web.py`;
+- movida a logica de:
+  - `_eh_alvo_site_web`;
+  - `_contexto_aponta_site_web`;
+  - `_normalizar_alvo_web_ou_app`;
+- `laylay.py` manteve wrappers com os nomes antigos;
+- `SITES_DIRECTOS` e `SITES_WEB_ALIAS` continuam no arquivo principal por enquanto, porque ainda sao usados por outros fluxos;
+- o modulo novo recebe essas estruturas por parametro.
+
+Comportamento preservado/reforcado:
+
+- `ifood` e reconhecido como site direto;
+- `insta`/`instagram` continuam como site;
+- dominios como `youtube.com` continuam sendo web;
+- contexto recente tambem pode indicar site/aba.
+
+Resultado:
+
+- `laylay.py` caiu de 8365 para 8332 linhas reais;
+- a percepcao site/app ficou em modulo proprio;
+- a mudanca prepara uma futura limpeza de navegacao sem mexer nos executores agora.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\percepcao\alvos_web.py`;
+- teste direto com:
+  - iFood;
+  - Instagram por alias;
+  - dominio do YouTube;
+  - contexto recente apontando web;
+  - normalizacao de alvo.
+
+108. Contexto aponta descanso movido para contexto integrado
+
+Objetivo:
+
+- continuar com fatoracao de baixo risco;
+- mover uma leitura contextual pura para o modulo de contexto integrado;
+- manter a decisao de descanso ligada a percepcao viva.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/memoria_mental/contexto_integrado.py`.
+
+O que mudou:
+
+- criada a funcao `contexto_aponta_descanso` em `contexto_integrado.py`;
+- `_contexto_aponta_descanso` no `laylay.py` virou wrapper;
+- o wrapper continua montando `ctx` e `percepcao` com as funcoes centrais da Laylay.
+
+Comportamento preservado:
+
+- descanso explicito continua vencendo quando a percepcao aponta descanso;
+- foco/musica/pesquisa/organizacao/inicio do dia continuam bloqueando descanso automatico;
+- sinais como sono/cansaco/dormir continuam indicando descanso;
+- madrugada/noite continuam inclinando descanso quando nao ha sinais de foco.
+
+Resultado:
+
+- `laylay.py` caiu de 8332 para 8313 linhas reais;
+- a leitura de descanso ficou no modulo correto de contexto integrado;
+- nenhuma execucao de comando foi alterada.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\memoria_mental\contexto_integrado.py`;
+- teste direto com:
+  - percepcao de descanso;
+  - foco vencendo noite;
+  - texto com sono;
+  - manha neutra.
+
+109. Resumo da mente integrada com extras
+
+Objetivo:
+
+- reduzir o `laylay.py`;
+- mover a coleta de extras do resumo mental para `contexto_integrado`;
+- manter a montagem do retrato da mente em um modulo central.
+
+Arquivos envolvidos:
+
+- `laylay.py`;
+- `mente_laylay/memoria_mental/contexto_integrado.py`.
+
+O que mudou:
+
+- criada `montar_resumo_mente_integrada_com_extras`;
+- `_resumo_mente_integrada_para_prompt` no `laylay.py` virou wrapper;
+- a funcao nova coleta:
+  - resumo de autoaprimoramento;
+  - aprendizados relevantes;
+  - memoria quente;
+  - topicos de conversa;
+- depois chama o resumo integrado ja existente.
+
+Comportamento preservado:
+
+- o prompt continua recebendo contexto perceptivo;
+- percepcao contextual continua entrando;
+- memoria curta da mente continua entrando;
+- autoaprimoramento, aprendizados, memoria quente e topicos continuam entrando quando disponiveis.
+
+Resultado:
+
+- `laylay.py` caiu de 8313 para 8285 linhas reais;
+- a montagem do retrato mental ficou mais centralizada.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\memoria_mental\contexto_integrado.py`;
+- teste direto com `MEMORIA_SQLITE` falso confirmando:
+  - autoaprimoramento;
+  - aprendizados;
+  - memoria quente;
+  - topicos;
+  - contexto vivo.
+
+96. Extracao do ws_handler completo para modulo
+
+Objetivo:
+
+- mover o handler principal do WebSocket para fora de `laylay.py`;
+- manter `laylay.py` apenas como montador de contexto/callbacks;
+- preservar extensao Chrome, PC B, PAGE_DATA, dispatch e limpeza de conexoes.
+
+O que foi feito:
+
+- `ws_handler_modular` foi adicionado em
+  `mente_laylay/integracao/chrome_ws_server.py`;
+- `laylay.py` manteve `ws_handler(websocket)` como wrapper;
+- o wrapper injeta callbacks para:
+  - fechar extensoes antigas;
+  - despachar mensagens Chrome;
+  - processar mensagens do PC B;
+  - processar PAGE_DATA;
+  - aplicar update de `ULTIMO_CONTEUDO_PAGINA`;
+  - conjuntos `connected_extensions` e `connected_pc_b_clients`;
+  - token do PC B.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/chrome_ws_server.py`;
+- teste fake confirmou:
+  - cliente Chrome conecta, primeira mensagem e mensagens seguintes sao
+    despachadas;
+  - cliente PC B autenticado processa mensagem remota;
+  - token invalido do PC B fecha a conexao;
+  - cleanup remove clientes ao final.
+
+Resultado:
+
+- `laylay.py` caiu para 9103 linhas reais por contagem Python;
+- o servidor WebSocket agora esta majoritariamente modularizado;
+- a regra de mente unica segue preservada porque o modulo de servidor nao decide
+  comportamento mental: ele apenas roteia eventos para callbacks da Laylay.
+
+Proximo passo recomendado:
+
+- revisar o bloco restante de Chrome/pagina:
+  - `armazenar_contexto_pagina`;
+  - `get_dicionario_contexto`;
+  - `resumir_pagina_no_dicionario`;
+- avaliar mover para um modulo de percepcao/visao de pagina.
+
+97. Extracao da memoria curta de paginas
+
+Objetivo:
+
+- mover o armazenamento e resumo de paginas para a area de percepcao;
+- deixar `laylay.py` apenas com wrappers de compatibilidade;
+- preservar a leitura de pagina usada pela extensao Chrome.
+
+O que foi feito:
+
+- criado `mente_laylay/percepcao/contexto_paginas.py`;
+- adicionada classe `ContextoPaginas`;
+- movida a logica de:
+  - `armazenar_contexto_pagina`;
+  - `get_dicionario_contexto`;
+  - `resumir_pagina_no_dicionario`;
+- `laylay.py` agora instancia `_contexto_paginas`;
+- `dicionario_paginas` virou alias para `_contexto_paginas.paginas`, mantendo
+  compatibilidade com nomes antigos.
+
+Melhoria feita durante a extracao:
+
+- o resumo da pagina agora invalida o cache do contexto;
+- antes, se o contexto tivesse sido montado antes do resumo, o texto podia nao
+  mostrar o resumo novo imediatamente.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/percepcao/contexto_paginas.py`;
+- teste direto confirmou:
+  - pagina armazenada aparece no contexto;
+  - resumo aparece no contexto apos ser gerado;
+  - limite de 6 paginas recentes e preservado.
+
+Resultado:
+
+- `laylay.py` caiu para 9016 linhas reais por contagem Python;
+- a memoria curta de paginas agora fica em percepcao, alinhada com a regra de
+  mente unica.
+
+Proximo passo recomendado:
+
+- comemorar que a linha 9000 esta logo ali;
+- procurar o proximo bloco isolado grande: talvez pesquisa/contexto de tema ou
+  TTS/audio.
+
+84. Auditoria de mente unica e conexao entre modulos
+
+Objetivo:
+
+- verificar se as habilidades extraidas para `mente_laylay` ainda conversam com o
+  cerebro principal;
+- procurar arquivos orfaos, referencias antigas e modulos desconectados;
+- validar se a refatoracao continua preservando a regra de uma mente unica.
+
+Resultado da verificacao:
+
+- `laylay.py` compila sem erro;
+- todos os modulos em `mente_laylay` compilam sem erro;
+- nao foram encontrados restos ativos do modulo antigo `navegacao_mental`;
+- nao apareceu nenhum arquivo `.py` de `mente_laylay` completamente sem referencia;
+- os modulos extraidos recentemente continuam conectados:
+  - `autonomia/controle_midia.py` entra por `roteador_intencao.py`;
+  - `arquivos/execucao_arquivos.py` entra por `roteador_intencao.py`;
+  - `integracao/gmail_mental.py` entra por `laylay.py`;
+  - `autonomia/pre_fluxo_contextual.py` entra por `comandos_imediatos.py` e
+    `fluxo_resposta_ia.py`.
+
+Observacao importante:
+
+- a mente esta conectada, mas ainda muito centralizada em `laylay.py`;
+- muitos modulos sao chamados apenas pelo arquivo principal, entao o desenho atual
+  ainda e um formato de "hub central";
+- isso nao quebra a regra da mente unica, mas mostra que a proxima etapa da
+  refatoracao deve reduzir a dependencia direta do `laylay.py` e fortalecer os
+  contratos compartilhados entre:
+  - contexto imediato;
+  - roteamento;
+  - execucao;
+  - resposta final;
+  - memoria/continuidade.
+
+Proximo passo recomendado:
+
+- seguir a refatoracao extraindo um integrador/orquestrador de fluxo principal,
+  para que `laylay.py` deixe de chamar tantos modulos diretamente e passe a
+  coordenar blocos maiores e mais claros;
+- manter `contexto_compartilhado.py` e `contexto_imediato.py` como contratos
+  centrais da mente unica.
+
+85. Extracao dos montadores de contexto do ciclo de resposta
+
+Objetivo:
+
+- reduzir o peso de `laylay.py` sem mudar o comportamento da Laylay;
+- deixar mais claro quais partes da mente alimentam o ciclo principal:
+  - memoria;
+  - percepcao;
+  - prompt;
+  - navegacao;
+  - musica;
+  - arquivos;
+  - agenda/email;
+  - execucao;
+  - autoaprimoramento.
+
+O que foi feito:
+
+- criado `mente_laylay/integracao/contexto_execucao_ia.py`;
+- extraidos montadores puros de contexto:
+  - `montar_contexto_mensagens_ia`;
+  - `montar_contexto_dispatcher_comandos`;
+  - `montar_contexto_finalizacao_ia`;
+- substituidos os dicionarios grandes dentro de `_gerar_resposta_exec_ia_sync`;
+- nenhuma decisao, comando ou fala foi movida nesta etapa;
+- os mesmos callbacks continuam sendo enviados para os mesmos executores.
+
+Resultado:
+
+- `laylay.py` ficou menor e mais legivel;
+- o ciclo principal ganhou uma separacao melhor entre areas da mente;
+- a arquitetura continua seguindo a regra de mente unica, porque os grupos sao
+  apenas organizacionais e ainda compartilham o mesmo estado/callbacks.
+
+Validacao:
+
+- `python -m py_compile laylay.py`
+- `python -m py_compile mente_laylay/integracao/contexto_execucao_ia.py`
+
+Proximo passo recomendado:
+
+- extrair o modo chat/manual e/ou o inicio do ciclo `_gerar_resposta_exec_ia_sync`
+  para um orquestrador pequeno, mantendo `laylay.py` como casca principal.
+
+86. Correcao de contagem real e extracao do ouvido Whisper
+
+Observacao:
+
+- a contagem anterior feita por PowerShell nao refletiu a contagem real de linhas;
+- a contagem confiavel por Python confirmou que `laylay.py` ainda estava com 9648
+  linhas naquele momento.
+
+O que foi feito:
+
+- criado `mente_laylay/percepcao/ouvido_whisper.py`;
+- movida a logica de:
+  - `limpar_diccao_e_ruido`;
+  - `transcrever_com_whisper`;
+- `laylay.py` manteve apenas:
+  - alias para `limpar_diccao_e_ruido`;
+  - wrapper pequeno para `transcrever_com_whisper(audio)`.
+
+Resultado:
+
+- `laylay.py` caiu de 9648 para 9553 linhas na contagem real por Python;
+- o ouvido da Laylay ficou na area correta de percepcao;
+- o comportamento foi preservado, inclusive correcoes foneticas e prompt do Whisper;
+- a regra de mente unica continua preservada, porque o `laylay.py` ainda orquestra o
+  modelo carregado e o modulo novo so executa a habilidade de ouvido.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/percepcao/ouvido_whisper.py`
+
+Proximo passo recomendado:
+
+- continuar com extracoes pequenas e seguras, priorizando blocos isolados antes de
+  mexer no miolo `_gerar_resposta_exec_ia_sync`.
+
+87. Extracao segura do envio de comandos para Chrome
+
+Objetivo:
+
+- continuar a refatoracao do `laylay.py` seguindo o plano;
+- mover uma parte real do bloco Chrome/WebSocket sem mexer ainda no handler
+  principal, que e mais sensivel por envolver PC B, memoria visual, eventos de
+  musica e percepcao.
+
+O que foi feito:
+
+- criado `mente_laylay/integracao/chrome_comandos.py`;
+- movida a logica de `validar_e_enviar_comando`;
+- `laylay.py` manteve apenas um wrapper com o mesmo nome, passando o contexto
+  compartilhado da mente;
+- `enviar_comando_chrome` continuou usando `validar_e_enviar_comando`, entao as
+  chamadas antigas permanecem compativeis.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/chrome_comandos.py`;
+- teste local do modulo:
+  - `open_url` com extensao desconectada caiu no fallback nativo;
+  - acao invalida continuou sendo bloqueada.
+
+Resultado:
+
+- `laylay.py` caiu para 9452 linhas reais por contagem Python;
+- a habilidade de Chrome ficou mais modular;
+- a regra de mente unica foi preservada porque o modulo recebe o contexto/callbacks
+  do cerebro principal e nao decide isolado.
+
+Proximo passo recomendado:
+
+- extrair aos poucos os manipuladores menores do WebSocket, comecando por
+  respostas de requests pendentes (`tabs`, `active_url`, `youtube_data`,
+  `check_tabs`, `page_content`), antes de mexer no `ws_handler` completo.
+
+88. Extracao dos handlers pequenos do WebSocket Chrome
+
+Objetivo:
+
+- continuar a extracao do bloco Chrome/WebSocket sem mover ainda o `ws_handler`
+  completo;
+- reduzir risco mexendo primeiro nos handlers que apenas resolvem requests
+  pendentes por `requestId`.
+
+O que foi feito:
+
+- criado `mente_laylay/integracao/chrome_ws_handlers.py`;
+- movida a logica de:
+  - `_ws_handle_tabs_list`;
+  - `_ws_handle_active_tab_url`;
+  - `_ws_handle_youtube_data`;
+  - `_ws_handle_check_tabs_result`;
+  - `_ws_handle_page_content`;
+- `laylay.py` manteve wrappers com os mesmos nomes para preservar compatibilidade
+  com `_ws_dispatch_data`.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/chrome_ws_handlers.py`;
+- teste direto dos handlers:
+  - lista de abas atualiza entry e aciona event;
+  - tab ativa resolve Future;
+  - dados do YouTube resolvem Future com canal;
+  - check de abas grava `tabId` e aciona event;
+  - conteudo de pagina resolve Future e remove request pendente.
+
+Resultado:
+
+- `laylay.py` caiu para 9399 linhas reais por contagem Python;
+- a integracao Chrome ficou um pouco mais modular;
+- a regra de mente unica segue preservada porque os handlers recebem os
+  dicionarios pendentes do cerebro principal.
+
+Proximo passo recomendado:
+
+- extrair `_ws_handle_player_event`, que ainda e pequeno, mas ja encosta em
+  playlist/voz;
+- depois estudar `_ws_handle_user_context`, que e maior e mistura percepcao,
+  sugestao proativa e contexto do navegador.
+
+89. Extracao do handler de eventos do player do Chrome
+
+Objetivo:
+
+- mover `_ws_handle_player_event` sem quebrar playlist automatica;
+- preservar o comportamento de:
+  - clique manual detectado;
+  - retomada de playlist apos video manual;
+  - auto-next quando o video atual termina;
+  - fala quando a playlist acaba.
+
+O que foi feito:
+
+- `handle_player_event` foi adicionado em
+  `mente_laylay/integracao/chrome_ws_handlers.py`;
+- `laylay.py` manteve o wrapper `_ws_handle_player_event`;
+- o modulo novo recebe por parametro:
+  - `playlist_state`;
+  - `_yt_clean_url`;
+  - `_playlist_avancar_proxima`;
+  - `falar_com_lipsync`.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/chrome_ws_handlers.py`;
+- teste direto confirmou:
+  - `user_click_detected` marca `user_intervened=True`;
+  - `video_ended` apos intervencao manual retoma playlist e chama proxima;
+  - `video_ended` normal chama proxima faixa.
+
+Resultado:
+
+- `laylay.py` caiu para 9378 linhas reais por contagem Python;
+- o handler ficou modular sem criar um cerebro separado.
+
+Proximo passo recomendado:
+
+- estudar `_ws_handle_user_context` antes de mover, porque ele mistura:
+  - logs do navegador;
+  - percepcao;
+  - fish mode;
+  - sugestoes proativas;
+  - contexto de sites com erro.
+
+90. Extracao do contexto de usuario vindo do Chrome
+
+Objetivo:
+
+- mover `_ws_handle_user_context` com seguranca;
+- preservar a leitura contextual do navegador sem transformar o modulo em um
+  cerebro separado.
+
+O que foi feito:
+
+- `handle_user_context` foi adicionado em
+  `mente_laylay/integracao/chrome_ws_handlers.py`;
+- `laylay.py` manteve `_ws_handle_user_context` como wrapper;
+- o modulo novo recebe contexto/callbacks e devolve updates para o orquestrador;
+- o wrapper aplica explicitamente:
+  - `estado_percepcao`;
+  - `contexto_atual_logs`;
+  - `fish_mode_active`;
+  - `fish_mode_started_ts`;
+  - `_ultimo_sugerido_ts`;
+  - `_ultimo_proativo_ts`.
+
+Comportamentos preservados:
+
+- registro de logs relevantes do navegador;
+- ativacao/desativacao do fish mode;
+- sugestao proativa em sites de modelo 3D quando o contexto indica Cura/Prusa;
+- deteccao de erro 404/console;
+- sugestao `OPEN_SITE_ALT` para erro de site de pet recente;
+- sugestao `RELOAD_PAGE` para erro de play/autoplay;
+- sugestao `EXPLAIN_ERROR` para erros gerais do navegador.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/chrome_ws_handlers.py`;
+- teste direto confirmou:
+  - log de clique atualiza percepcao;
+  - `spinning.fish` ativa fish mode;
+  - site 3D dispara fala proativa quando contexto combina;
+  - erro de console cria `EXPLAIN_ERROR` e fala para Pedro.
+
+Resultado:
+
+- `laylay.py` caiu para 9295 linhas reais por contagem Python;
+- o contexto do navegador agora esta mais modular, mas continua recebendo e
+  devolvendo estado pela mente principal.
+
+Proximo passo recomendado:
+
+- estudar `_ws_handle_action`, que ainda mistura aba ativa, historico de abas,
+  eventos de YouTube, erros da extensao e autocorrecao musical.
+
+91. Extracao do handler geral de actions do Chrome
+
+Objetivo:
+
+- mover `_ws_handle_action`, um dos blocos sensiveis da integracao Chrome;
+- preservar historico de abas, aba ativa, eventos de YouTube e falas de erro;
+- manter o `laylay.py` como aplicador do estado global.
+
+O que foi feito:
+
+- `handle_action` foi adicionado em
+  `mente_laylay/integracao/chrome_ws_handlers.py`;
+- `laylay.py` manteve `_ws_handle_action` como wrapper;
+- o modulo novo devolve updates para:
+  - `aba_titulo_atual`;
+  - `aba_url_atual`;
+  - `aba_anterior_id`;
+  - `aba_historico`;
+  - `_musica_ultima_verificada`;
+- callbacks continuam vindo do cerebro principal:
+  - `_percepcao_set`;
+  - `atualizar_contexto_por_url`;
+  - `_musica_registrar_historico`;
+  - `_verificar_musica_autonoma`;
+  - `falar_com_lipsync`.
+
+Comportamentos preservados:
+
+- `title_update`;
+- `url_update` e `active_tab_changed`;
+- registro de ultima aba vista;
+- autocorrecao musical quando YouTube muda;
+- `manual_tab_change`;
+- `tab_closed`;
+- eventos de YouTube iniciado/pausado/retomado/finalizado;
+- resultado clicado de busca YouTube;
+- erro de auto-click;
+- bloqueio de fechamento em formulario;
+- erro geral da extensao.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/chrome_ws_handlers.py`;
+- teste direto confirmou:
+  - titulo atualizado;
+  - aba ativa com YouTube atualiza contexto e dispara historico/verificacao;
+  - troca manual atualiza historico;
+  - aba fechada limpa historico e aba anterior;
+  - YouTube iniciado dispara fala;
+  - erro da extensao dispara fala irritada.
+
+Resultado:
+
+- `laylay.py` caiu para 9209 linhas reais por contagem Python;
+- a integracao Chrome esta bem mais modular;
+- a regra de mente unica segue preservada por contrato de contexto e updates.
+
+Proximo passo recomendado:
+
+- estudar `ws_handler` completo;
+- se for seguro, extrair primeiro apenas o tratamento de mensagens do PC B para
+  um modulo de integracao, deixando conexao/autenticacao no `laylay.py`.
+
+92. Extracao do processamento de mensagens do PC B
+
+Objetivo:
+
+- reduzir o `ws_handler` sem mexer na conexao/autenticacao do WebSocket;
+- mover apenas o tratamento das mensagens remotas do PC B;
+- preservar visao remota, memoria visual, fala e autocorrecao de erro remoto.
+
+O que foi feito:
+
+- criado `mente_laylay/integracao/pc_b_integracao.py`;
+- movido o processamento de:
+  - `pc_b_screenshot`;
+  - `pc_b_status`;
+  - mensagens desconhecidas do PC B;
+- `laylay.py` manteve:
+  - autenticacao do PC B;
+  - controle de clientes conectados;
+  - loop principal do WebSocket;
+  - chamada para o modulo novo com callbacks da mente.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/pc_b_integracao.py`;
+- teste direto confirmou:
+  - screenshot do PC B chama analise visual, memoria visual e fala;
+  - status ok registra sucesso;
+  - status com erro injeta mensagem de sistema e gera fala de autocorrecao;
+  - mensagem desconhecida e registrada sem quebrar fluxo.
+
+Resultado:
+
+- `laylay.py` caiu para 9172 linhas reais por contagem Python;
+- a integracao PC B ficou mais modular sem virar uma mente separada.
+
+Proximo passo recomendado:
+
+- extrair o tratamento de `PAGE_DATA` do `ws_handler`;
+- depois estudar se vale mover `ws_handler` completo para um modulo de servidor,
+  mantendo `laylay.py` apenas iniciando o servidor com callbacks.
+
+93. Extracao do tratamento de PAGE_DATA do Chrome
+
+Objetivo:
+
+- tirar do `ws_handler` o processamento direto de conteudo de pagina;
+- deixar essa responsabilidade em um modulo de integracao/visao do Chrome;
+- preservar o fluxo usado por leitura de pagina.
+
+O que foi feito:
+
+- criado `mente_laylay/integracao/chrome_page_data.py`;
+- movido o processamento de mensagens `PAGE_DATA`;
+- o modulo novo:
+  - monta `ULTIMO_CONTEUDO_PAGINA`;
+  - chama `armazenar_contexto_pagina`;
+  - agenda `resumir_pagina_no_dicionario` em thread;
+  - aciona `EVENTO_PAGINA`;
+  - registra log de pagina recebida;
+- `laylay.py` manteve apenas a chamada ao modulo e a aplicacao do update de
+  `ULTIMO_CONTEUDO_PAGINA`.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/chrome_page_data.py`;
+- teste direto confirmou:
+  - update de `ULTIMO_CONTEUDO_PAGINA`;
+  - chamada de armazenamento da pagina;
+  - acionamento do evento de pagina.
+
+Observacao:
+
+- esta etapa nao reduziu linhas no `laylay.py`, porque o wrapper ficou um pouco
+  maior que o bloco antigo;
+- mesmo assim melhora a arquitetura, pois separa visao/conteudo de pagina do loop
+  principal do WebSocket.
+
+Proximo passo recomendado:
+
+- estudar se ja vale mover o `ws_handler` completo para um modulo de servidor;
+- se parecer arriscado, extrair primeiro `broadcast_command` e
+  `solicitar_conteudo_pagina`.
+
+94. Extracao do transporte WebSocket Chrome
+
+Objetivo:
+
+- separar funcoes de transporte da extensao Chrome do `laylay.py`;
+- manter o servidor principal ainda no arquivo principal ate ficar seguro mover;
+- reduzir o acoplamento do envio WebSocket.
+
+O que foi feito:
+
+- criado `mente_laylay/integracao/chrome_ws_transport.py`;
+- movida a logica de:
+  - `broadcast_command`;
+  - `solicitar_conteudo_pagina`;
+- `laylay.py` manteve wrappers com os mesmos nomes para compatibilidade;
+- o modulo novo recebe:
+  - `connected_extensions`;
+  - `ws_loop`;
+  - `_pending_page_content_requests`;
+  - callback `broadcast_command`.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/chrome_ws_transport.py`;
+- teste direto confirmou:
+  - broadcast envia mensagem para cliente conectado;
+  - cliente com erro e removido do conjunto;
+  - solicitacao de conteudo de pagina cria `requestId` e resolve a resposta.
+
+Resultado:
+
+- `laylay.py` caiu para 9146 linhas reais por contagem Python;
+- transporte Chrome ficou modular;
+- a regra de mente unica segue preservada por wrappers e contexto compartilhado.
+
+Proximo passo recomendado:
+
+- estudar mover `start_ws_server`, `run_ws_server_in_thread` e talvez `ws_handler`
+  para um modulo `chrome_ws_server.py`;
+- fazer isso em uma etapa com muito cuidado, porque envolve conexao, autenticacao,
+  extensao Chrome e PC B.
+
+95. Extracao da infraestrutura do servidor WebSocket
+
+Objetivo:
+
+- separar a infraestrutura de servidor WebSocket do `laylay.py`;
+- manter `ws_handler` no arquivo principal por enquanto;
+- preservar a injecao de `ws_loop` usada pelo resto da mente.
+
+O que foi feito:
+
+- criado `mente_laylay/integracao/chrome_ws_server.py`;
+- movida a logica de:
+  - `start_ws_server`;
+  - `run_ws_server_in_thread`;
+- `laylay.py` manteve wrappers compatíveis com os mesmos nomes;
+- o modulo novo recebe:
+  - `handler`;
+  - callback `set_loop`;
+  - host/porta opcionais.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/chrome_ws_server.py`;
+- teste direto com monkeypatch confirmou:
+  - loop asyncio criado;
+  - callback `set_loop` chamado;
+  - handler repassado corretamente ao starter do servidor.
+
+Observacao:
+
+- esta etapa quase nao reduz linhas, porque o bloco era pequeno;
+- o ganho e arquitetural: agora a infraestrutura do servidor esta separada do
+  fluxo mental e dos handlers.
+
+Proximo passo recomendado:
+
+- estudar o que resta no `ws_handler`;
+- se o risco estiver controlado, mover o `ws_handler` completo para modulo,
+  recebendo callbacks por contexto.
+
+63. Limpeza segura de restos ativos da Netflix
+
+Objetivo:
+
+- remover codigo morto-vivo da habilidade Netflix, que Pedro nao usa no momento;
+- evitar sugestoes proativas antigas, comandos legacy e handlers da extensao relacionados a Netflix;
+- manter navegacao, YouTube, playlist, arquivos e comandos de sistema intactos.
+
+O que foi removido:
+
+- sugestoes automaticas de perfil Netflix no monitor de navegacao;
+- handlers de eventos `netflix_status`, `netflix_search_opened`, `netflix_title_opened`, `netflix_play_*`;
+- funcoes grandes de automacao antiga:
+  - `_netflix_tela_cheia_async`;
+  - `executar_automacao_netflix`;
+  - `executar_netflix_pedro`;
+  - `executar_netflix_perfil`;
+- caminho `netflix_query` no modo Code;
+- acao `netflix_search` em `validar_e_enviar_comando`;
+- confirmacao pendente `NETFLIX_PERFIL` / `ENTRAR_PERFIL_PEDRO`;
+- roteamento legacy `NETFLIX` em `roteador_conteudo.py`;
+- extracao rapida "toca X na Netflix" em `comandos_sistema.py`;
+- callback inutil `executar_netflix_perfil` em `roteador_intencao.py`;
+- classificacao `netflix_search` em `autoaprimoramento.py`.
+
+Resultado:
+
+- a busca por simbolos ativos da Netflix ficou limpa;
+- a habilidade nao deve mais disparar por acidente;
+- o arquivo principal perdeu blocos antigos de PyAutoGUI ligados a Netflix.
+
+Validacao:
+
+- `rg -n "executar_automacao_netflix|executar_netflix_perfil|executar_netflix_pedro|_netflix_tela_cheia_async|netflix_search|start_netflix_navigation|OPEN_NETFLIX|NETFLIX_PERFIL|ENTRAR_PERFIL_PEDRO|\bNETFLIX\b" laylay.py mente_laylay`
+- `python -m py_compile laylay.py mente_laylay/autonomia/fluxos_conversa.py mente_laylay/autonomia/roteador_conteudo.py mente_laylay/autonomia/comandos_sistema.py mente_laylay/autonomia/roteador_intencao.py mente_laylay/memoria_mental/autoaprimoramento.py`
+
+80. Remocao de wrappers e modulo orfao de navegacao mental
+
+Objetivo:
+
+- continuar a limpeza segura depois de chegar perto da linha 9 mil;
+- remover pontes antigas que nao eram mais chamadas;
+- evitar duplicacao entre o fluxo novo de comandos imediatos e o fluxo antigo de navegacao.
+
+O que foi removido do `laylay.py`:
+
+- imports antigos de `mente_laylay/autonomia/navegacao_mental.py`;
+- wrappers locais:
+  - `_handle_open_app_flow`;
+  - `_handle_youtube_volume_flow`;
+  - `_handle_pause_next_flow`;
+  - `_handle_youtube_music_intents`;
+  - `_handle_close_tabs_flow`;
+  - `_handle_site_flow`;
+  - `_handle_image_flow`.
+
+O que foi removido do projeto:
+
+- `mente_laylay/autonomia/navegacao_mental.py`;
+- esse modulo estava orfao, sem imports ativos e sem chamadas reais.
+
+Resultado:
+
+- `laylay.py` caiu para 9895 linhas;
+- a busca por handlers antigos ficou limpa;
+- a navegacao ativa continua sendo feita pelos fluxos novos de comandos imediatos, roteadores e executores.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/comandos_imediatos.py mente_laylay/autonomia/fluxos_conversa.py mente_laylay/autonomia/roteador_intencao.py mente_laylay/autonomia/roteador_conteudo.py mente_laylay/autonomia/orquestrador_deterministico.py mente_laylay/autonomia/roteador_deterministico.py`
+- `rg -n "navegacao_mental|handle_open_app_flow|handle_youtube_volume_flow|handle_pause_next_flow|handle_close_tabs_flow|handle_site_flow|handle_image_flow|handle_youtube_music_intents" laylay.py mente_laylay`
+
+81. Extracao do controle de midia do roteador de intencao
+
+Objetivo:
+
+- reduzir o tamanho e a complexidade de `mente_laylay/autonomia/roteador_intencao.py`;
+- isolar a execucao de `MEDIA_CONTROL`;
+- preservar o comportamento atual de pausa, play, proxima, anterior, replay e volume.
+
+O que foi criado:
+
+- `mente_laylay/autonomia/controle_midia.py`;
+- funcao `executar_media_control`.
+
+O que saiu do `roteador_intencao.py`:
+
+- o bloco grande de `if intent == "MEDIA_CONTROL"`;
+- logs internos de midia;
+- decisao de rota Chrome vs controle nativo;
+- ajuste absoluto de volume;
+- avanco/retorno pela playlist interna;
+- fala de confirmacao de midia.
+
+Como a mente unica foi preservada:
+
+- o novo modulo nao guarda estado proprio;
+- recebe `ctx` do roteador principal;
+- recebe callbacks do proprio roteador:
+  - `marcar_resultado`;
+  - `falar_por_status`;
+  - `ctx_fala`;
+- continua usando o mesmo `playlist_state`, `solicitar_aba_ativa`, `enviar_comando_chrome`, `_enviar_pc_b` e `_executar_controle_midia_nativo`.
+
+Resultado:
+
+- `roteador_intencao.py` ficou com 1659 linhas;
+- `controle_midia.py` ficou com 207 linhas;
+- o bloco de midia ficou mais facil de testar e ajustar sem mexer no resto das intencoes.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_intencao.py mente_laylay/autonomia/controle_midia.py`
+
+82. Extracao da execucao de arquivos do roteador de intencao
+
+Objetivo:
+
+- reduzir mais o tamanho de `mente_laylay/autonomia/roteador_intencao.py`;
+- mover a execucao pratica de arquivos para a area correta;
+- preservar a interpretacao ja existente em `mente_laylay/arquivos/roteador_arquivos.py`;
+- manter a regra da mente unica usando callbacks do contexto vivo.
+
+O que foi criado:
+
+- `mente_laylay/arquivos/execucao_arquivos.py`;
+- funcao `executar_intencao_arquivos`.
+
+O que saiu do `roteador_intencao.py`:
+
+- bloco completo de `CREATE_FOLDER`;
+- bloco completo de `DELETE_ITEM`;
+- variaveis locais que so existiam para esses blocos:
+  - `criar_pasta`;
+  - `criar_ou_editar_arquivo`;
+  - `mover_arquivo`;
+  - `deletar_item`;
+  - `registrar_estrutura_arquivo_recente`.
+
+Como a mente unica foi preservada:
+
+- o executor novo recebe `ctx`;
+- o roteador continua passando callbacks essenciais:
+  - `marcar_resultado`;
+  - `registrar_arquivo`;
+  - `item_local_existe`;
+  - `resolver_caminho_local`;
+  - `resolver_referencia_arquivo_contextual`;
+- o modulo novo continua usando:
+  - `criar_pasta`;
+  - `criar_ou_editar_arquivo`;
+  - `mover_arquivo`;
+  - `deletar_item`;
+  - `_enviar_pc_b`;
+  - `_registrar_estrutura_arquivo_recente`;
+  - `ultima_pasta_contextual`.
+
+Resultado:
+
+- `roteador_intencao.py` caiu para 1456 linhas;
+- `execucao_arquivos.py` ficou com 253 linhas;
+- a execucao de arquivos agora fica junto da area `arquivos`, em vez de morar no roteador central.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_intencao.py mente_laylay/arquivos/execucao_arquivos.py mente_laylay/arquivos/roteador_arquivos.py`
+- `rg -n "executar_intencao_arquivos|CREATE_FOLDER|DELETE_ITEM" mente_laylay/autonomia/roteador_intencao.py mente_laylay/arquivos/execucao_arquivos.py`
+- `rg -n "criar_pasta =|criar_ou_editar_arquivo =|mover_arquivo =|deletar_item =|registrar_estrutura_arquivo_recente =" mente_laylay/autonomia/roteador_intencao.py`
+
+83. Extracao da integracao Gmail e remocao de credencial fixa
+
+Objetivo:
+
+- continuar a fatoracao do `laylay.py`;
+- mover o bloco Gmail IMAP para um modulo proprio;
+- preservar leitura, resumo, cache, silenciamento e daemon;
+- remover credenciais hardcoded do codigo.
+
+O que foi criado:
+
+- `mente_laylay/integracao/gmail_mental.py`;
+- classe `GmailMental`.
+
+O que saiu do `laylay.py`:
+
+- funcoes diretas:
+  - `_gmail_decodificar_header`;
+  - `_gmail_extrair_remetente`;
+  - `_gmail_e_prioritario`;
+  - `_gmail_carregar_ids_vistos`;
+  - `_gmail_salvar_ids_vistos`;
+  - `_gmail_carregar_remetentes_silenciados`;
+  - `_gmail_falar_email`;
+  - logica completa de IMAP e daemon;
+- imports diretos de `email`, `email.header` e `imaplib`.
+
+O que ficou no `laylay.py`:
+
+- wrappers compativeis:
+  - `_gmail_buscar_nao_lidos`;
+  - `_gmail_falar_resumo_estiloso`;
+  - `_gmail_silenciar_remetente`;
+  - `gmail_daemon`;
+- `_gmail_nao_lidos_cache` continua existindo como referencia ao cache vivo da instancia modular.
+
+Seguranca:
+
+- `GMAIL_USER` agora vem de `os.getenv("GMAIL_USER", "")`;
+- `GMAIL_APP_PASSWORD` agora vem de `os.getenv("GMAIL_APP_PASSWORD", "")`;
+- a credencial antiga nao aparece mais no codigo atual;
+- como ela ja esteve no arquivo, se ainda nao foi feito, a senha de app do Gmail deve ser revogada/regenerada.
+
+Como configurar:
+
+- `setx GMAIL_USER "seu_email@gmail.com"`;
+- `setx GMAIL_APP_PASSWORD "senha_de_app_nova"`;
+- depois fechar e abrir o terminal.
+
+Resultado:
+
+- `laylay.py` caiu para 9613 linhas;
+- `gmail_mental.py` ficou com 322 linhas;
+- a integracao Gmail ficou isolada em `mente_laylay/integracao`.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/integracao/gmail_mental.py`
+- `rg -n "_gmail_ultimo_check|_gmail_ids_vistos|_gmail_remetentes_silenciados|_gmail_decodificar_header|_gmail_extrair_remetente|_gmail_e_prioritario" laylay.py mente_laylay`
+- `rg -n "GMAIL_APP_PASSWORD|GMAIL_USER" laylay.py mente_laylay`
+
+69. Separacao cautelosa do roteador deterministico de playlist
+
+Objetivo:
+
+- continuar a refatoracao seguindo o plano sem quebrar a mente unica;
+- tirar do `laylay.py` partes pequenas do roteador deterministico;
+- testar cada pedaco antes de avancar.
+
+O que foi extraido:
+
+- `detectar_playlist_laylay`, em `mente_laylay/autonomia/roteador_deterministico.py`;
+- `detectar_playlist_usuario`, em `mente_laylay/autonomia/roteador_deterministico.py`.
+
+Comportamentos preservados:
+
+- listagem/copia de playlist propria da Laylay;
+- tocar playlist do Pedro;
+- adicionar musica em playlist;
+- listar playlists;
+- criar playlist e adicionar musica quando a frase pedir isso;
+- compatibilidade com `_params`, destino PC B e limpeza de nome.
+
+Cuidados tomados:
+
+- os blocos mais sensiveis ficaram no `laylay.py` por enquanto:
+  - salvar musica atual em playlist;
+  - "essa tambem" usando ultima playlist;
+  - playlist por nome direto sem a palavra playlist;
+- a extracao foi feita em duas etapas separadas;
+- houve compilacao apos cada etapa.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\autonomia\roteador_deterministico.py`
+
+79. Orquestrador deterministico modular
+
+Objetivo:
+
+- fazer a limpeza maior do `detectar_intencao_deterministica`;
+- tirar a sequencia longa de detectores do `laylay.py`;
+- deixar o arquivo principal como adaptador/orquestrador de alto nivel;
+- preservar a regra de mente unica por injecao de callbacks e estado.
+
+O que foi criado:
+
+- `mente_laylay/autonomia/orquestrador_deterministico.py`;
+- funcao `detectar_intencao_deterministica_mente(texto, ctx)`.
+
+O que mudou no `laylay.py`:
+
+- `detectar_intencao_deterministica` caiu de aproximadamente 170 linhas para 28 linhas;
+- agora ela monta um `contexto` com callbacks/estado e chama o orquestrador modular;
+- imports individuais de detectores determinísticos foram removidos do `laylay.py`.
+
+Como a mente unica foi preservada:
+
+- o orquestrador nao acessa globais diretamente;
+- `laylay.py` passa:
+  - normalizador;
+  - filtros de conversa;
+  - estado musical;
+  - `mente_integrada_estado`;
+  - apps/sites conhecidos;
+  - callbacks de playlist;
+  - callbacks de abertura de app/site.
+
+Testes secos executados no orquestrador:
+
+- `coloca a playlist anime`
+  - resultado: `PLAYLIST_PLAY` com `nome_playlist=anime`;
+- `coloca ele em foco`
+  - resultado: `APP_OPEN` com `nome_app=steam`, usando estado contextual;
+- `cria uma pasta chamada roberto`
+  - resultado: `CREATE_FOLDER`;
+- `pode fechar`
+  - resultado: `CLOSE_IDLE_TABS` quando ha abas sugeridas;
+- `abre a steam`
+  - resultado: `APP_OPEN` com `nome_app=steam`.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\autonomia\orquestrador_deterministico.py mente_laylay\autonomia\roteador_deterministico.py mente_laylay\arquivos\roteador_arquivos.py`
+
+78. Consolidacao da entrada do roteador deterministico
+
+Objetivo:
+
+- deixar `detectar_intencao_deterministica` mais perto de uma funcao orquestradora;
+- mover filtros e preparo inicial para o modulo deterministico;
+- preservar a ordem e o comportamento dos detectores ja extraidos.
+
+O que foi criado:
+
+- `preparar_entrada_deterministica` em `mente_laylay/autonomia/roteador_deterministico.py`.
+
+O que essa funcao faz:
+
+- ignora texto vazio;
+- ignora conversa casual sem acao;
+- detecta `STOP_PLAYLIST_CONTEXT`;
+- ignora fala social curta;
+- normaliza texto;
+- remove marcadores como `lay`, `por favor`, `pfv`, `pra mim`;
+- aplica filtro de token solto;
+- respeita fluxo prioritario da IA;
+- evita usar contexto quando a frase nao tem verbo/acao suficiente;
+- devolve `bruto`, `texto_normalizado` e `texto_sem_destino`.
+
+Como a mente unica foi preservada:
+
+- a funcao recebe todos os detectores/callbacks do `laylay.py`;
+- ela nao importa nem acessa estado global;
+- `laylay.py` continua coordenando destino, `_params` e ordem dos detectores.
+
+Testes secos executados:
+
+- `oi lay`
+  - resultado: `status=ignorar`;
+- `sem playlist agora`
+  - resultado: `STOP_PLAYLIST_CONTEXT`;
+- `Lay, coloca a playlist anime por favor`
+  - resultado: `status=ok`, com texto preparado para os detectores.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\autonomia\roteador_deterministico.py`
+
+77. Extracao da continuidade contextual de janelas/apps
+
+Objetivo:
+
+- mover do `laylay.py` a regra que entende `ele`, `ela` e `isso` em comandos de janela;
+- manter a Laylay usando o mesmo estado mental compartilhado;
+- reduzir risco de confusao entre app atual e app anterior.
+
+O que foi movido:
+
+- `detectar_janela_contextual` para `mente_laylay/autonomia/roteador_deterministico.py`.
+
+Comportamentos preservados:
+
+- `coloca ele em foco`;
+- `deixa ela em tela cheia`;
+- `traz isso pra frente`;
+- fallback para `ultima_acao_params.nome_app` quando `ultimo_app_janela` nao existe.
+
+Como a mente unica foi preservada:
+
+- o modulo nao acessa `mente_integrada_estado` diretamente;
+- `laylay.py` passa `estado_mental=mente_integrada_estado`;
+- `laylay.py` passa `_texto_depende_de_contexto` como callback.
+
+Testes secos executados:
+
+- sem estado:
+  - `coloca ele em foco` -> `None`;
+  - `deixa ela em tela cheia` -> `None`;
+- com `ultimo_app_janela=steam`:
+  - `coloca ele em foco` -> `APP_OPEN` com `nome_app=steam`, `modo=focus`;
+  - `deixa ela em tela cheia` -> `MAXIMIZE_WINDOW` com `nome_app=steam`;
+- com `ultima_acao_intent=APP_OPEN` e `ultima_acao_params.nome_app=opera`:
+  - `coloca ele em foco` -> `APP_OPEN` com `nome_app=opera`;
+  - `deixa ela em tela cheia` -> `MAXIMIZE_WINDOW` com `nome_app=opera`.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\autonomia\roteador_deterministico.py`
+
+76. Extracao da confirmacao do Porteiro
+
+Objetivo:
+
+- mover a confirmacao de limpeza de abas sugeridas para o roteador deterministico modular;
+- preservar a regra de seguranca: so confirmar quando existem abas sugeridas pelo Porteiro.
+
+O que foi movido:
+
+- `detectar_confirmacao_porteiro` para `mente_laylay/autonomia/roteador_deterministico.py`.
+
+Comportamento:
+
+- `pode fechar` so vira `CLOSE_IDLE_TABS` se `ha_abas_sugeridas=True`;
+- `manda ver` so vira `CLOSE_IDLE_TABS` se `ha_abas_sugeridas=True`;
+- falas comuns como `oi lay` nao sao interceptadas.
+
+Como a mente unica foi preservada:
+
+- o modulo nao acessa `_abas_sugeridas_fechar` diretamente;
+- `laylay.py` passa `ha_abas_sugeridas=bool(_abas_sugeridas_fechar)`.
+
+Testes secos executados:
+
+- sem abas sugeridas:
+  - `pode fechar` -> `None`;
+  - `manda ver` -> `None`;
+- com abas sugeridas:
+  - `pode fechar` -> `CLOSE_IDLE_TABS`;
+  - `manda ver` -> `CLOSE_IDLE_TABS`;
+- `oi lay` -> `None`.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\autonomia\roteador_deterministico.py`
+
+75. Extracao do contexto musical de playlist atual
+
+Objetivo:
+
+- mover do `laylay.py` o bloco sensivel de salvar musica atual em playlist;
+- preservar a regra de contexto musical sem transformar o modulo em uma mente separada;
+- evitar regressao em frases como "essa tambem".
+
+O que foi movido para `mente_laylay/autonomia/roteador_deterministico.py`:
+
+- `detectar_playlist_contextual_musica_atual`.
+
+Comportamentos preservados:
+
+- `coloca essa musica na playlist anime`;
+- `salva essa faixa na playlist rock`;
+- `essa tambem` usando a ultima playlist real;
+- `essa tambem` nao vira comando quando nao existe `ultima_playlist`.
+
+Como a mente unica foi mantida:
+
+- o modulo nao guarda estado proprio;
+- `laylay.py` passa `ultima_playlist` via `_musica_estado_get("ultima_playlist")`;
+- `laylay.py` passa `_limpar_nome_playlist` como callback.
+
+Testes secos executados:
+
+- `coloca essa musica na playlist anime`
+  - resultado: `PLAYLIST_ADD` com `nome_playlist=anime`;
+- `essa tambem` com `ultima_playlist=anime`
+  - resultado: `PLAYLIST_ADD` com `referencia_contextual=True`;
+- `essa tambem` sem ultima playlist
+  - resultado: `None`.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\autonomia\roteador_deterministico.py`
+
+72. Desativacao segura da habilidade Netflix
+
+Motivo:
+
+- Pedro informou que nao usa a habilidade de Netflix no momento;
+- a funcionalidade pode voltar futuramente, mas agora estava poluindo o roteamento e o prompt.
+
+O que foi removido/desativado:
+
+- `NETFLIX` saiu da lista principal de intents do prompt da IA;
+- o exemplo de Netflix saiu do prompt de intencao;
+- o bloco deterministico que gerava intent `NETFLIX` foi removido;
+- `netflix` saiu do mapa de sites diretos;
+- `netflix_search`, `netflix_home`, `netflix_control` e `start_netflix_navigation` sairam da lista de acoes permitidas;
+- `NETFLIX` saiu de `INTENTS_EXECUTAVEIS`;
+- os executores principais em `roteador_intencao.py` e `execucao_ia.py` nao tratam mais `NETFLIX` como comando ativo;
+- a correcao fonetica antiga nao sugere mais `OPEN_NETFLIX`.
+
+O que ficou por enquanto:
+
+- funcoes antigas de automacao Netflix ainda existem no `laylay.py`, mas sem rota principal chamando;
+- handlers de evento antigos da extensao ainda existem como legado, para evitar uma remocao grande e arriscada nesta etapa;
+- se um dia a habilidade voltar, esses blocos podem ser reaproveitados ou movidos para um modulo proprio.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\autonomia\roteador_deterministico.py mente_laylay\autonomia\coordenador_intencao.py mente_laylay\autonomia\roteador_intencao.py mente_laylay\autonomia\execucao_ia.py`
+
+73. Modularizacao do roteamento de arquivos e pastas
+
+Objetivo:
+
+- reduzir o peso do `laylay.py`;
+- deixar a habilidade de arquivos mais isolada e testavel;
+- preservar a mente unica passando contexto imediato para o modulo de arquivos.
+
+O que foi movido para `mente_laylay/arquivos/roteador_arquivos.py`:
+
+- parser de criacao de pasta;
+- parser de criacao de pasta com arquivo dentro;
+- parser de pasta dentro de pasta;
+- parser de pedido para colocar/mover uma pasta dentro de outra;
+- parser de apagar arquivo/pasta;
+- roteador `detectar_intencao_arquivos`.
+
+O que saiu do `laylay.py`:
+
+- os parsers locais `_extrair_criacao_pasta_arquivo`;
+- os parsers locais `_extrair_delete_pasta_arquivo`;
+- o bloco inline de `CREATE_FOLDER`/`DELETE_ITEM` no roteador deterministico.
+
+Como a regra da mente unica foi preservada:
+
+- o `laylay.py` continua fornecendo `mente_integrada_estado`;
+- o modulo de arquivos recebe esse estado como `estado_mental`;
+- frases contextuais como "dentro dela" ainda podem usar a ultima acao real.
+
+Testes secos executados:
+
+- `cria uma pasta chamada roberto e dentro dela um arquivo de texto chamado carlos escreve meu deus`
+  - resultado: `CREATE_FOLDER` com `nome=roberto`, `arquivo_nome=carlos`, `arquivo_conteudo=meu deus`;
+- `apaga o roberto`
+  - resultado: `DELETE_ITEM` com `alvo=roberto`;
+- `apaga a pasta roberto`
+  - resultado: `DELETE_ITEM` com `alvo=roberto`, `tipo=pasta`;
+- `cria uma pasta chamada roberto e dentro dela coloca a pasta organizada`
+  - resultado: `CREATE_FOLDER` com `nome=roberto`, `mover_item=organizada`.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\arquivos\roteador_arquivos.py`
+
+74. Extracao de musica/playlist direta e trava do PC
+
+Objetivo:
+
+- continuar a limpeza do `detectar_intencao_deterministica`;
+- tirar regras puras de interpretacao do `laylay.py`;
+- manter helpers centrais como fonte de verdade, sem duplicar conhecimento.
+
+O que foi movido para `mente_laylay/autonomia/roteador_deterministico.py`:
+
+- `detectar_musica_ou_playlist_direta`;
+- `detectar_trava_pc`.
+
+Cuidados:
+
+- `detectar_musica_ou_playlist_direta` recebe `detectar_playlist_nome_direto` como callback;
+- `detectar_musica_ou_playlist_direta` recebe `normalizar_query_musical` como callback;
+- isso evita que o modulo novo invente sua propria memoria de playlist ou normalizacao musical;
+- comandos com a palavra `playlist` continuam passando antes pelo detector especifico de playlist.
+
+Testes secos executados:
+
+- `coloca anime`
+  - resultado: `MUSIC_SEARCH` com `query=anime`;
+- `toca musica Tim Maia`
+  - resultado: `MUSIC_SEARCH`;
+- `coloca um rock`
+  - resultado: `MUSIC_SEARCH`;
+- `coloca a playlist anime`
+  - resultado no detector novo: `None`, porque esse caso ja e tratado antes pelo detector de playlist.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\autonomia\roteador_deterministico.py`
+
+71. Extracao de detectores determinísticos de janela, abertura e fechamento
+
+Objetivo:
+
+- continuar a reducao segura do `laylay.py`;
+- separar regras deterministicas pequenas sem mexer na execucao real dos comandos;
+- facilitar manutencao futura dos comandos de app/site/janela.
+
+O que foi extraido para `mente_laylay/autonomia/roteador_deterministico.py`:
+
+- `detectar_janela_explicita`;
+- `detectar_abrir_app_ou_site`;
+- `detectar_fechar_alvo`.
+
+Comportamentos preservados:
+
+- `coloca o Opera em foco`;
+- `deixa o VS Code em tela cheia`;
+- `abre o iFood`;
+- `abre a Steam`;
+- `fecha a Steam`;
+- `fecha o site do iFood`;
+- `fecha essa aba`.
+
+Cuidados:
+
+- o bloco contextual de janela, com `ele/ela/isso` e memoria curta, ficou no `laylay.py` por enquanto;
+- a funcao antiga `_extrair_intencao_abrir_app` continua sendo usada, agora por um adaptador modular;
+- `SITES_DIRECTOS` e `APPS_MAP` continuam sendo passados pelo `laylay.py`, preservando uma unica fonte de verdade.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\autonomia\roteador_deterministico.py`
+
+70. Extracao pequena do detector de organizacao de desktop
+
+Objetivo:
+
+- continuar reduzindo o peso do `laylay.py`;
+- mover apenas um bloco deterministico pequeno e sem estado global;
+- preservar exatamente o comportamento atual do comando de organizar area de trabalho.
+
+O que foi feito:
+
+- criado `detectar_organizacao_desktop` em `mente_laylay/autonomia/roteador_deterministico.py`;
+- `laylay.py` agora chama esse detector em vez de manter a regra inline;
+- a regra continua retornando `ORGANIZAR_DESKTOP` com `left="vscode"` e `right="opera"`.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay\autonomia\roteador_deterministico.py`
+
+64. Refatoracao segura do pre-fluxo e contexto imediato
+
+Objetivo:
+
+- continuar a refatoracao seguindo o plano de mente unica;
+- reduzir responsabilidades diretas do `laylay.py`;
+- manter comportamento atual sem quebrar comandos, conversa curta, contexto, midia e janelas.
+
+O que foi feito:
+
+- criado `mente_laylay/autonomia/pre_fluxo_contextual.py`;
+- criado `mente_laylay/memoria_mental/contexto_imediato.py`;
+- criado `mente_laylay/memoria_mental/musica_conversacional.py`;
+- extraida a decisao de modo rapido de conversa para `fluxos_conversa.py`;
+- extraida a resolucao contextual de janela, midia, arquivo e acao geral para `contexto_imediato.py`;
+- extraida a fala para contexto de janela indisponivel para `contexto_imediato.py`;
+- extraida a deteccao de app explicito em comando de janela para `contexto_imediato.py`;
+- extraidas as partes puras de conversa musical generica para `musica_conversacional.py`;
+- `laylay.py` manteve wrappers de compatibilidade para nao quebrar chamadas antigas.
+
+Arquitetura resultante:
+
+- `laylay.py` continua como orquestrador;
+- `contexto_imediato.py` passa a cuidar de referencias como "ela", "ele", "isso", ultimo app, ultima aba, midia recente e arquivo recente;
+- `fluxos_conversa.py` passa a decidir se a conversa pode usar modo rapido;
+- `musica_conversacional.py` separa opiniao musical conversacional de comando pratico.
+
+Comportamento preservado:
+
+- comandos de janela continuam usando ultimo app quando a fala depende de contexto;
+- app explicito sobrescreve contexto anterior;
+- midia contextual continua entendendo pausa, despausa, proxima, anterior e replay;
+- arquivos recentes continuam permitindo recriar estrutura apagada;
+- recomendacao musical conversacional continua sem executar nada automaticamente.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/contexto_imediato.py mente_laylay/autonomia/fluxos_conversa.py`
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/musica_conversacional.py mente_laylay/memoria_mental/contexto_imediato.py mente_laylay/autonomia/fluxos_conversa.py`
+
+65. Continuidade conversacional e falhas contextuais modularizadas
+
+Objetivo:
+
+- reduzir perda de fio em respostas curtas;
+- fortalecer a camada de continuidade imediata;
+- deixar falhas de comando/conversa mais claras e menos espalhadas pelo `laylay.py`.
+
+O que foi feito:
+
+- criado `mente_laylay/memoria_mental/continuidade_conversa.py`;
+- extraida a validacao de resposta a pergunta aberta;
+- extraida a resolucao de pergunta curta contextual, como `pode ler` depois de aviso de emails;
+- extraida a geracao de resposta para pergunta aberta;
+- adicionada `fala_falha_contextual` em `mente_laylay/personalidade/falas_variadas.py`;
+- `laylay.py` manteve wrappers e continuou responsavel apenas por limpar estado, executar lipsync e acionar memoria.
+
+Beneficios:
+
+- menos regras conversacionais espalhadas no arquivo principal;
+- o fluxo de `pergunta aberta -> resposta curta` fica mais facil de auditar;
+- respostas como `pode ler` podem continuar ligadas ao contexto certo;
+- falhas tecnicas usam uma fonte unica de falas mais claras.
+
+Comportamento preservado:
+
+- pergunta aberta continua sendo limpa antes da resposta;
+- comandos de midia/janela ainda bloqueiam falso entendimento como resposta casual;
+- recuperacao por conversa local ainda acontece quando a falha nao parece comando tecnico.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/continuidade_conversa.py`
+- `python -m py_compile laylay.py mente_laylay/memoria_mental/continuidade_conversa.py mente_laylay/personalidade/falas_variadas.py mente_laylay/memoria_mental/contexto_imediato.py mente_laylay/memoria_mental/musica_conversacional.py`
+
+66. Centralizacao da execucao pratica precoce
+
+Objetivo:
+
+- reduzir competicao entre roteadores no pre-fluxo e no fluxo imediato;
+- manter a ordem de prioridade ja existente;
+- facilitar leitura dos logs quando um comando e resolvido por contexto, deterministico ou comando local.
+
+O que foi feito:
+
+- adicionada `processar_execucao_pratica_precoce(...)` em `mente_laylay/autonomia/pre_fluxo_contextual.py`;
+- essa funcao agrupa:
+  - continuidade contextual;
+  - resposta para janela indisponivel;
+  - roteador deterministico;
+  - comando local rapido;
+- `fluxo_resposta_ia.py` passou a chamar essa etapa agrupada;
+- `comandos_imediatos.py` tambem passou a usar a mesma etapa pratica compartilhada;
+- `processar_comandos_em_cadeia` continuou antes da etapa compartilhada no imediato, para preservar comportamento.
+
+Por que isso importa:
+
+- pre-fluxo e imediato deixam de repetir a mesma sequencia de decisoes;
+- fica mais claro qual familia de roteamento venceu;
+- logs de contexto agora recebem origem dinamica, como `pre-ia` ou `imediato`;
+- a regra de mente unica melhora porque a execucao pratica passa por uma porta comum.
+
+Comportamento preservado:
+
+- contexto ainda vem antes de deterministico;
+- janela indisponivel ainda responde antes de fallback;
+- deterministico ainda vem antes de comando local;
+- comando em cadeia continua prioritario no fluxo imediato.
+
+Validacao:
+
+- `python -m py_compile mente_laylay/autonomia/pre_fluxo_contextual.py mente_laylay/autonomia/comandos_imediatos.py mente_laylay/autonomia/fluxo_resposta_ia.py laylay.py`
+
+67. Porteiro unico para analise IA-first de comando
+
+Objetivo:
+
+- impedir que conversa casual caia direto no analisador IA-first de comando;
+- padronizar tratamento de `NONE`, falha de analise e ausencia de analisador;
+- reduzir competicao entre conversa, contexto, deterministico e IA-first.
+
+O que foi feito:
+
+- adicionada `analisar_intencao_com_porteiro(...)` em `mente_laylay/autonomia/pre_fluxo_contextual.py`;
+- `comandos_imediatos.py` passou a usar esse helper antes de chamar a IA de comando;
+- `_tentar_intencao_ai_primeiro(...)` em `laylay.py` tambem passou a usar o mesmo porteiro;
+- as heuristicas especificas de `_tentar_intencao_ai_primeiro(...)` foram preservadas;
+- a validacao posterior de `CANCELAR_ACAO`, `MEDIA_CONTROL` e intents executaveis continuou igual.
+
+Beneficios:
+
+- menos chance de frase social virar comando;
+- menos duplicacao de tratamento de `NONE/NENHUM`;
+- IA-first fica mais disciplinada sem perder poder quando ha sinal pratico real;
+- o fluxo fica mais facil de auditar no terminal.
+
+Comportamento preservado:
+
+- comandos explicitos ainda podem chegar na IA-first;
+- conversa casual ainda segue para fallback/conversa;
+- erros de entendimento continuam chamando fala contextual quando necessario.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/pre_fluxo_contextual.py mente_laylay/autonomia/comandos_imediatos.py mente_laylay/autonomia/fluxo_resposta_ia.py`
+
+68. Inicio da separacao do roteador deterministico
+
+Objetivo:
+
+- comecar a separar `detectar_intencao_deterministica(...)` sem reescrever o executor;
+- manter a ordem de prioridade dos comandos;
+- transformar partes coesas em detectores pequenos e testaveis.
+
+O que foi feito:
+
+- criado `mente_laylay/autonomia/roteador_deterministico.py`;
+- extraida a deteccao de volume e controle de midia para `detectar_volume_ou_midia(...)`;
+- extraida a deteccao de email, notificacao e briefing para `detectar_email_notificacao_briefing(...)`;
+- extraida a deteccao de URL direta/Instagram e visao/tela para `detectar_url_visual(...)`;
+- `laylay.py` passou a chamar esses detectores mantendo a mesma posicao dentro de `detectar_intencao_deterministica(...)`.
+
+Por que isso importa:
+
+- reduz o tamanho do bloco deterministico no `laylay.py`;
+- separa deteccao de intencao da execucao pratica;
+- facilita testes futuros por habilidade;
+- preserva a regra de mente unica porque os detectores recebem callbacks/contexto em vez de criarem estado isolado.
+
+Comportamento preservado:
+
+- comandos de volume continuam antes de playlists e apps;
+- controles de midia ainda respeitam contexto musical ativo;
+- emails/notificacoes/briefing continuam vencendo fallback conversacional;
+- pedidos de tela e links do Instagram continuam no topo do deterministico.
+
+Validacao:
+
+- `python -m py_compile laylay.py mente_laylay/autonomia/roteador_deterministico.py`
+
 63. Refatoracao segura do contexto conversacional
 
 Objetivo:
@@ -3548,3 +7509,491 @@ Comportamento esperado:
 Validacao:
 
 - `python -m py_compile laylay.py mente_laylay/autonomia/fluxo_resposta_ia.py`
+## 69. Correção de continuidade curta para playlist e arquivos
+
+Problema observado:
+- Depois de `coloca essa musica na playlist anime`, a fala `essa tambem` caia em conversa/fallback em vez de repetir `PLAYLIST_ADD` usando a playlist recente.
+- Depois de criar `roberto` com `carlos.txt`, a fala `apaga ela` virava literalmente `DELETE_ITEM alvo=ela` e tentava apagar `Downloads\ela`.
+
+Correção aplicada:
+- `mente_laylay/memoria_mental/contexto_imediato.py` agora resolve `essa tambem/essa também` como `PLAYLIST_ADD` quando o foco vivo recente é playlist.
+- `mente_laylay/memoria_mental/contexto_imediato.py` agora resolve `apaga ela/isso/essa` para a estrutura de arquivo recente, priorizando a pasta principal criada.
+- `mente_laylay/memoria_mental/contexto_compartilhado.py` agora enriquece `PLAYLIST_ADD` colocando a playlist em `ultimo_alvo`, `ultima_habilidade=playlist` e `ultimo_escopo=playlist`.
+- `laylay.py` agora trata `essa tambem/essa também` como expressão melhor resolvida pelo fluxo determinístico, evitando que conversa curta engula esse comando contextual.
+
+Validação:
+- `apaga ela` com estrutura recente `roberto/carlos.txt` resolve para `DELETE_ITEM alvo=roberto tipo=pasta`.
+- `essa tambem` com foco recente em `anime` resolve para `PLAYLIST_ADD nome_playlist=anime referencia_contextual=True`.
+- `python -m py_compile laylay.py mente_laylay\memoria_mental\contexto_imediato.py mente_laylay\memoria_mental\contexto_compartilhado.py` passou.
+
+## 70. Extração do runtime de feedback pendente
+
+Objetivo:
+- continuar o plano de fatoração sem mexer nos comandos recém-corrigidos de playlist e arquivo;
+- tirar do `laylay.py` a costura de confirmação, feedback pendente e frase mista;
+- preservar a regra de mente única usando callbacks e continuidades compartilhadas.
+
+O que mudou:
+- criado `mente_laylay/autonomia/feedback_pendente_runtime.py`;
+- o runtime centraliza:
+  - normalização de confirmação;
+  - classificação local/contextual de sim/não;
+  - interpretação de resposta pendente com contexto mental;
+  - tratamento de pendências de rotina, playlist e email;
+  - separação de frases como `agora nao, mas coloca playlist anime`;
+  - execução da continuação prática depois de limpar a pendência.
+- `laylay.py` manteve fachadas compatíveis:
+  - `_normalizar_confirmacao_texto`;
+  - `_classificar_confirmacao_local`;
+  - `_classificar_confirmacao_contextual`;
+  - `_interpretar_resposta_pendente`;
+  - `_handle_feedback_pendente`;
+  - `_separar_feedback_e_continuacao`;
+  - `_handle_feedback_pendente_misto`.
+
+Validação:
+- `python -m py_compile laylay.py mente_laylay\autonomia\feedback_pendente_runtime.py` passou;
+- teste isolado confirmou que `agora nao, mas coloca playlist anime` limpa a pendência e executa a continuação;
+- `laylay.py` caiu de 5496 para 5431 linhas.
+
+## 71. Extração do runtime de aprendizado de rotina e música
+
+Objetivo:
+- continuar a fatoração por um bloco médio sem tocar no executor central de comandos;
+- tirar do `laylay.py` a manipulação direta de carregamento, salvamento, feedback e histórico de rotina/música;
+- manter a mente única usando getters e setters para o estado real do integrador principal.
+
+O que mudou:
+- criado `mente_laylay/memoria_mental/aprendizado_runtime.py`;
+- o runtime centraliza:
+  - carregar/salvar rotinas aprendidas;
+  - logar atividade atual;
+  - carregar/salvar pesos de feedback de rotina;
+  - registrar feedback de rotina;
+  - carregar/salvar histórico musical;
+  - carregar/salvar pesos musicais;
+  - registrar histórico de música;
+  - rodar o tick do monitor de rotina.
+- `laylay.py` manteve fachadas compatíveis para os nomes antigos, mas agora elas delegam ao runtime.
+
+Validação:
+- `python -m py_compile laylay.py mente_laylay\memoria_mental\aprendizado_runtime.py` passou;
+- teste isolado com diretório temporário confirmou:
+  - carga de rotina;
+  - registro de histórico musical;
+  - feedback de rotina limpando pendência;
+  - atualização dos pesos de feedback.
+- `git diff --check` não apontou erro real, apenas aviso de CRLF;
+- `laylay.py` ficou com 5436 linhas.
+
+## 72. Extração do runtime de pesquisa contextual e imagem
+
+Objetivo:
+- mover do `laylay.py` a lógica de pesquisa contextual, busca de imagem e download direto;
+- manter as fachadas antigas para preservar compatibilidade com conversa, comandos e geração de conteúdo;
+- deixar a parte de pesquisa/opinião mais preparada para evoluções futuras.
+
+O que mudou:
+- `mente_laylay/cognicao/pesquisa_contextual.py` agora também contém:
+  - `buscar_imagem_url`;
+  - `nome_arquivo_imagem`;
+  - `baixar_imagem_direto`;
+  - `PesquisaContextualRuntime`;
+  - `criar_pesquisa_contextual_runtime`.
+- o cache de pesquisa de tema saiu do global `_pesquisa_tema_cache` e passou a viver dentro do runtime;
+- `laylay.py` mantém:
+  - `buscar_imagem_url`;
+  - `_normalizar_tema_pesquisa`;
+  - `_tema_pesquisa_bagunçado`;
+  - `_pontuar_hit_tema`;
+  - `_pesquisar_contexto_tema`;
+  - `_nome_arquivo_imagem`;
+  - `baixar_imagem_direto`;
+  mas agora todas delegam ao runtime.
+
+Validação:
+- `python -m py_compile laylay.py mente_laylay\cognicao\pesquisa_contextual.py` passou;
+- teste isolado com `requests_get` falso confirmou:
+  - normalização de tema;
+  - busca de URL de imagem;
+  - download de imagem para pasta temporária;
+  - extensão definida por content-type.
+- `git diff --check` não apontou erro real, apenas aviso de CRLF;
+- `laylay.py` caiu para 5352 linhas.
+
+## 73. Extração parcial da análise de comandos textuais
+
+Objetivo:
+- continuar a fatoração com um bloco seguro e de baixo risco;
+- tirar do `laylay.py` a lógica pura de limpeza de resposta e comandos encadeados;
+- preservar os nomes antigos usados pelo restante da mente da Laylay.
+
+O que mudou:
+- `mente_laylay/autonomia/analise_comandos.py` agora também centraliza:
+  - `limpar_resposta`;
+  - `segmentar_comandos_em_cadeia`;
+  - `executar_comando_em_texto`;
+  - `processar_comandos_em_cadeia`.
+- `laylay.py` manteve fachadas compatíveis:
+  - `limpar_resposta`;
+  - `_segmentar_comandos_em_cadeia`;
+  - `_executar_comando_em_texto`;
+  - `processar_comandos_em_cadeia`.
+- A execução real continua usando callbacks do cérebro principal, então briefing,
+  roteador determinístico, comando local e `executar_intencao` continuam ligados à
+  mesma mente.
+
+Validação:
+- `python -m py_compile laylay.py mente_laylay\autonomia\analise_comandos.py` passou;
+- teste isolado confirmou:
+  - limpeza de Markdown;
+  - segmentação de `abre o opera e depois coloca em tela cheia`;
+  - execução de duas etapas com origem `teste-1` e `teste-2`;
+- `laylay.py` caiu para 4564 linhas.
+
+## 74. Extração de helpers puros de navegação/URL
+
+Objetivo:
+- tirar do `laylay.py` a lógica pura de validar URL, montar URL/busca e classificar
+  contexto por URL;
+- manter no arquivo principal apenas a escrita no estado vivo `contexto_atual` e na
+  percepção compartilhada;
+- preservar compatibilidade com os módulos que já recebem essas funções por callback.
+
+O que mudou:
+- `mente_laylay/integracao/chrome_navegacao.py` agora também contém:
+  - `is_valid_url`;
+  - `formatar_url_ou_busca`;
+  - `classificar_contexto_por_url`.
+- `laylay.py` manteve as fachadas:
+  - `is_valid_url`;
+  - `formatar_url_ou_busca`;
+  - `atualizar_contexto_por_url`.
+- `atualizar_contexto_por_url` agora apenas consulta o classificador modular e grava
+  o resultado na mente central.
+
+Validação:
+- `python -m py_compile laylay.py mente_laylay\integracao\chrome_navegacao.py` passou;
+- teste isolado confirmou:
+  - URL válida;
+  - alvo direto `ifood`;
+  - domínio cru `example.com`;
+  - busca Google;
+  - classificação de YouTube;
+  - extração de termo em URL de busca Google;
+- import morto `urlparse` removido de `laylay.py`;
+- `laylay.py` caiu para 4532 linhas.
+
+## 75. Extração do helper de foco do Chrome
+
+Objetivo:
+- mover do `laylay.py` a lógica específica de trazer uma janela do Chrome para frente;
+- manter a função pública `trazer_chrome_para_frente` como fachada compatível;
+- deixar o módulo de navegação Chrome mais responsável pelas ações auxiliares do navegador.
+
+O que mudou:
+- `mente_laylay/integracao/chrome_navegacao.py` recebeu `trazer_chrome_para_frente`;
+- a função modular recebe `get_all_windows` e `sleep` por injeção, evitando acoplamento direto
+  com `pygetwindow` e facilitando teste isolado;
+- `laylay.py` agora só delega para o helper modular passando `gw.getAllWindows` e `time.sleep`.
+
+Validação:
+- `python -m py_compile laylay.py mente_laylay\integracao\chrome_navegacao.py` passou;
+- teste isolado com janelas falsas confirmou:
+  - janela Chrome é ativada e maximizada;
+  - ausência de Chrome retorna `False`;
+- `laylay.py` caiu para 4504 linhas.
+
+## 76. Extração de utilitários de percepção de janelas
+
+Objetivo:
+- mover do `laylay.py` pequenos utilitários ligados à percepção de janelas;
+- manter o monitor de janela ativa funcionando pelos mesmos nomes;
+- continuar reduzindo o arquivo principal sem tocar no loop sensível de monitoramento.
+
+O que mudou:
+- `mente_laylay/percepcao/janelas_sistema.py` recebeu:
+  - `pid_from_hwnd`;
+  - `classificar_assunto`;
+  - `obter_janelas_abertas`.
+- `laylay.py` manteve fachadas compatíveis:
+  - `_pid_from_hwnd`;
+  - `_classificar_assunto`;
+  - `obter_janelas_abertas`.
+- A classificação de assunto continua reconhecendo:
+  - Programação;
+  - Gaming;
+  - Impressão 3D;
+  - Música.
+
+Validação:
+- `python -m py_compile laylay.py mente_laylay\percepcao\janelas_sistema.py` passou;
+- teste isolado confirmou:
+  - classificação de VS Code;
+  - classificação de Minecraft;
+  - classificação de Cura/Impressão 3D;
+  - classificação de Spotify;
+  - filtragem de janelas inúteis como `Program Manager`;
+- `git diff --check` não apontou erro real, apenas aviso de CRLF;
+- `laylay.py` ficou em 4483 linhas pela contagem do terminal e 5243 linhas pela contagem bruta/editor.
+
+## 77. Extração da decisão de gatilhos proativos de janela
+
+Objetivo:
+- reduzir o peso do loop `monitorar_janela_ativa` sem mover o loop inteiro ainda;
+- tirar do `laylay.py` a lógica de detectar fullscreen e decidir qual sugestão de sistema faz sentido;
+- preservar as sugestões atuais de Modo Code, Modo Gamer e organização de Downloads.
+
+O que mudou:
+- `mente_laylay/percepcao/janelas_sistema.py` recebeu:
+  - `janela_em_tela_cheia`;
+  - `detectar_gatilho_proativo_sistema`;
+  - `fala_gatilho_proativo_sistema`.
+- `laylay.py` agora chama esses helpers dentro de `monitorar_janela_ativa`;
+- o loop principal continua responsável por:
+  - tempo de espera;
+  - bloqueio por fala/conversa;
+  - pendência de confirmação;
+  - atualização da mente compartilhada.
+
+Validação:
+- `python -m py_compile laylay.py mente_laylay\percepcao\janelas_sistema.py` passou;
+- teste isolado confirmou:
+  - detecção de tela cheia;
+  - gatilho `SYS_MODE_CODE` para VS Code;
+  - gatilho `SYS_MODE_GAMER` para Steam/Gaming;
+  - gatilho `SYS_ORGANIZE_DOWNLOADS` para Explorer/Downloads;
+  - bloqueio de sugestão em jogo fullscreen;
+  - fala associada ao Modo Code;
+- `git diff --check` não apontou erro real, apenas aviso de CRLF;
+- `laylay.py` ficou em 4461 linhas pela contagem do terminal e 5220 linhas pela contagem bruta/editor.
+
+## 78. Extração da captura da janela ativa
+
+Objetivo:
+- continuar reduzindo `monitorar_janela_ativa` por partes verificáveis;
+- produzir um único retrato da janela ativa em cada ciclo;
+- manter no orquestrador apenas o estado temporal e as decisões de continuidade.
+
+O que mudou:
+- `mente_laylay/percepcao/janelas_sistema.py` recebeu `capturar_janela_ativa`;
+- o helper reúne de forma defensiva:
+  - objeto da janela;
+  - título;
+  - HWND;
+  - executável associado;
+  - assunto percebido;
+- `laylay.py` passou a consumir esse retrato dentro de `monitorar_janela_ativa`;
+- temporizadores, bloqueios, sugestões e atualização da mente compartilhada continuam no fluxo original.
+
+Validação:
+- `python -m py_compile laylay.py mente_laylay\percepcao\janelas_sistema.py` passou;
+- teste isolado confirmou a captura de título, HWND, executável e assunto;
+- ausência de janela ativa e falha ao obter o processo foram tratadas sem exceção;
+- `git diff --check` não apontou erro real, apenas aviso de CRLF;
+- `laylay.py` ficou em 4448 linhas pela contagem do terminal e 5206 linhas pela contagem bruta/editor.
+
+## 79. Correções após bateria de testes integrada
+
+Origem:
+- análise do teste completo registrado no anexo de conversa;
+- separação das falhas entre interpretação, contexto, execução, fala e serviço externo.
+
+Correções aplicadas:
+- a ação prática mais recente agora vence o foco visual antigo na resolução de pronomes;
+- depois de abrir iFood, YouTube ou outro site, `fecha isso`, `fecha ele` e `fecha essa aba`
+  apontam para `CLOSE_TAB`, não para o navegador usado anteriormente;
+- comandos de arquivo chegam ao parser com o texto bruto preservado;
+- nomes compostos como `teste laylay` não perdem a segunda palavra por causa da remoção do vocativo;
+- alvos como `programa chamado inexistente xyz` são limpos para `inexistente xyz`;
+- listagens de playlists e outras enumerações estruturadas não passam pela reescrita dinâmica;
+- falas técnicas declarativas não podem virar perguntas durante a reescrita;
+- falhas técnicas mantêm os textos variados locais, sem uma segunda reescrita capaz de deformar o alvo;
+- o prompt de personalidade foi reforçado para não inventar presentes, memórias ou fatos compartilhados;
+- `PLAYLIST_PLAY` ganhou logs de resolução do nome, quantidade de faixas e confirmação do envio;
+- o runtime de playlist agora respeita falha ou exceção real do comando `youtube_play`;
+- sem extensão conectada, `youtube_play` abre diretamente a URL como fallback nativo;
+- demais comandos exclusivos da extensão retornam falha quando nenhum cliente recebeu a ação;
+- a fala é mostrada no terminal antes da geração remota de áudio, permanecendo visível mesmo se o Bing TTS falhar.
+
+Validação:
+- compilação de todos os módulos alterados passou;
+- estado simulado confirmou `OPEN_URL ifood -> fecha isso -> CLOSE_TAB ifood`;
+- estado simulado confirmou `OPEN_URL youtube -> fecha essa aba -> CLOSE_TAB youtube`;
+- parser integrado preservou pasta `teste laylay`, arquivo `exemplo` e conteúdo;
+- proteção de fala preservou a listagem real de playlists e rejeitou confirmação transformada em pergunta;
+- runtime de playlist confirmou sucesso real e propagou recusa do navegador;
+- fallback sem extensão abriu a URL musical, enquanto controle exclusivo da extensão retornou falha;
+- fala continuou registrada uma única vez no terminal durante falha simulada do TTS;
+- `git diff --check` não apontou erro real, apenas aviso de CRLF.
+
+Observação:
+- `ClientConnectorDNSError` para `speech.platform.bing.com` é falha externa de rede/DNS;
+- o projeto agora preserva a fala no terminal e tenta o TTS local mesmo nesse cenário.
+
+Complemento após teste real:
+- o primeiro ajuste corrigiu a intenção de `fecha isso`, mas a execução continuava dependente da extensão;
+- `CLOSE_TAB` agora usa `Ctrl+W` como fallback somente quando a janela ativa é um navegador;
+- alvos web como YouTube e iFood não podem mais cair no fechamento do programa Opera/Chrome;
+- a listagem geral de playlists sempre fala o retorno real de `_listar_playlists_salvas`;
+- ações práticas que falharam continuam disponíveis para `tenta de novo`;
+- confirmações práticas não podem ser reescritas em forma condicional como `se abriu` ou `talvez`.
+
+Validação complementar:
+- executor real de `CLOSE_TAB` confirmou que YouTube não chama `fechar_programa`;
+- executor real confirmou o fallback nativo e registrou `aba_fechada`;
+- executor real de `PLAYLIST_LIST` devolveu exatamente a lista recebida;
+- repetição de `CLOSE_TAB` após falha preservou alvo `ifood`;
+- fallback nativo recusou fechar quando a janela ativa simulada era o VS Code;
+- compilação e `git diff --check` passaram.
+
+Correção anti-mentira do fallback de abas:
+- enviar `Ctrl+W` deixou de ser considerado confirmação suficiente por si só;
+- quando existe alvo específico, o título da janela ativa precisa corresponder ao site;
+- partes genéricas de domínio (`www`, `com`, `br`, `http`) não contam como correspondência;
+- repetir `fecha isso` para iFood depois que a aba já saiu não fecha outra aba e registra falha real;
+- teste simulou `iFood - Opera` na primeira tentativa e `YouTube - Opera` na repetição;
+- primeira tentativa foi aceita, segunda foi recusada sem enviar atalho;
+- compilação e verificação de diferenças passaram.
+
+## 80. Extração do runtime de monitoramento de janelas
+
+Objetivo:
+- retirar do `laylay.py` o loop restante de percepção proativa de janelas;
+- preservar os mesmos tempos, bloqueios e gatilhos;
+- manter percepção, continuidade e voz conectadas à mente compartilhada.
+
+O que mudou:
+- criado `mente_laylay/percepcao/monitor_janelas.py`;
+- criado `MonitorJanelasRuntime`, responsável por:
+  - capturar e publicar o retrato da janela ativa;
+  - acompanhar mudança de HWND e estabilidade do assunto;
+  - respeitar conversa ativa, fala em andamento e confirmação pendente;
+  - bloquear proatividade durante jogo em tela cheia;
+  - observar permanência do gatilho por 12 segundos;
+  - registrar a sugestão na continuidade compartilhada;
+  - respeitar cooldown e bloqueios temporários;
+- o runtime guarda apenas temporizadores internos do monitor;
+- contexto, continuidade, bloqueios e último proativo continuam pertencendo à mente central;
+- `laylay.py` manteve as fachadas `_sugerir_assunto` e `monitorar_janela_ativa`;
+- o temporizador global órfão `_assunto_change_ts` foi removido.
+
+Preservação de comportamento:
+- o monitor não era iniciado pelo `main` antes da extração;
+- ele continua sem inicialização automática, evitando ativar proatividade inesperada;
+- nenhuma habilidade existente foi ligada ou desligada nesta etapa.
+
+Validação:
+- compilação de `laylay.py`, `monitor_janelas.py` e `janelas_sistema.py` passou;
+- teste confirmou observação e emissão de gatilho após permanência mínima;
+- teste confirmou escrita em `PENDING_CONFIRM` e atualização do último proativo;
+- teste confirmou bloqueio por confirmação pendente e conversa ativa;
+- teste confirmou bloqueio durante Gaming em tela cheia;
+- teste confirmou sugestão após 180 segundos no mesmo assunto;
+- `git diff --check` não encontrou erro real, apenas aviso de CRLF;
+- `laylay.py` ficou em 4405 linhas lógicas e 5160 linhas brutas/editor.
+
+## 81. Extração do executor de comandos legados
+
+Objetivo:
+- auditar o bloco `executar_comando` antes de removê-lo ou movê-lo;
+- preservar comandos antigos que ainda possuem chamadores ativos;
+- reduzir o arquivo principal sem misturar esse caminho com o executor moderno prematuramente.
+
+Auditoria:
+- foram encontrados três usos ativos da fachada `executar_comando`:
+  - abertura rápida de aplicativo em `fluxos_conversa.py`;
+  - abertura de site por contexto em `fluxos_conversa.py`;
+  - abertura da Cobasi durante uma sugestão confirmada;
+- o bloco possui sobreposição com:
+  - `autonomia/execucao_ia.py`;
+  - `autonomia/roteador_conteudo.py`;
+  - `autonomia/roteador_intencao.py`;
+- os efeitos e contratos ainda não são idênticos, portanto a fusão foi adiada.
+
+O que mudou:
+- criado `mente_laylay/autonomia/comandos_legados.py`;
+- extraído `executar_comando_legado`, cobrindo:
+  - controles antigos do YouTube;
+  - abrir e fechar aplicativos;
+  - fechar aba;
+  - leitura e sincronização de emails;
+  - busca refinada no YouTube;
+  - volume;
+  - abertura e pesquisa de sites;
+- dependências são recebidas pelo contexto da mente principal;
+- cache de emails é lido por getter a cada chamada, evitando fotografia antiga;
+- `laylay.py` manteve `executar_comando` como fachada compatível.
+
+Validação:
+- compilação de `laylay.py`, `comandos_legados.py` e `fluxos_conversa.py` passou;
+- testes confirmaram controles de mídia, abertura de app e fechamento de programa/aba;
+- testes confirmaram emails gerais, prioritários e sincronização;
+- testes confirmaram refinamento musical e preservação de buscas de receita;
+- testes confirmaram volume, abertura direta de site e pesquisa Google;
+- comando desconhecido continuou retornando `False`;
+- `git diff --check` não encontrou erro real, apenas aviso de CRLF;
+- `laylay.py` ficou em 4308 linhas lógicas e 5050 linhas brutas/editor.
+
+Próximo passo técnico:
+- migrar os três chamadores restantes para intenções modernas (`APP_OPEN` e `OPEN_URL`);
+- depois disso, comparar e possivelmente remover `comandos_legados.py` em favor dos executores centrais.
+
+## 82. Fusão dos comandos legados no executor central
+
+Objetivo:
+- eliminar a rota antiga de execução depois da auditoria;
+- garantir que apps e sites usem o mesmo ciclo moderno de execução e validação;
+- impedir confirmações otimistas ou falas duplicadas.
+
+O que mudou:
+- abertura rápida de aplicativo agora produz a intenção `APP_OPEN`;
+- abertura rápida e fuzzy de site agora produz a intenção `OPEN_URL`;
+- a confirmação de site alternativo da Cobasi também usa `OPEN_URL`;
+- os fluxos migrados delegam fala e confirmação ao executor moderno;
+- a fachada `executar_comando` foi removida de `laylay.py`;
+- o módulo temporário `autonomia/comandos_legados.py` foi removido após ficar órfão.
+
+Mente única:
+- interpretação antiga e execução moderna não competem mais nesses caminhos;
+- o resultado real continua sendo registrado e transformado em fala pelo executor central;
+- erros de abertura não recebem confirmação adicional afirmando sucesso.
+
+Validação:
+- testes isolados confirmaram `OPEN_APP` para `APP_OPEN`;
+- testes isolados confirmaram `OPEN_URL` e `OPEN_SITE` para `OPEN_URL`;
+- a busca rápida no YouTube preservou envio e confirmação próprios;
+- nenhuma referência a `executar_comando` ou `comandos_legados` permaneceu;
+- compilação de `laylay.py`, `fluxos_conversa.py` e `roteador_intencao.py` passou;
+- `git diff --check` não encontrou erro real, apenas avisos de CRLF;
+- `laylay.py` ficou em 4268 linhas lógicas e 5030 linhas brutas/editor.
+
+## 83. Correção da voz antecipada e extração do áudio do sistema
+
+Correção inicial:
+- o monitor de janelas recebia `falar_com_lipsync` durante a importação de
+  `laylay.py`, antes da definição dessa função;
+- a ligação passou a ser tardia por uma fachada lambda;
+- isso remove o aviso `reportUndefinedVariable` do Pylance sem mudar a voz
+  usada pelo monitor.
+
+Extração:
+- criado `mente_laylay/autonomia/audio_sistema.py`;
+- movidos para o módulo:
+  - volume absoluto;
+  - volume relativo;
+  - interrupção imediata da fala;
+  - ducking e restauração do volume de navegadores e players;
+- `laylay.py` preserva fachadas com os nomes anteriores;
+- interpretação e decisão continuam no roteador central, enquanto o novo
+  módulo apenas executa efeitos locais de áudio.
+
+Validação:
+- teste simulado confirmou volume absoluto de 30%;
+- teste simulado confirmou aumento relativo de 15%;
+- teste confirmou ducking para 15% e restauração ao volume original;
+- teste confirmou interrupção de stream ativo;
+- compilação de `laylay.py`, `audio_sistema.py`, `controle_midia.py` e
+  `voz_runtime.py` passou;
+- `git diff --check` não encontrou erro real, apenas avisos de CRLF;
+- `laylay.py` ficou em 4205 linhas lógicas e 4959 linhas brutas/editor.

@@ -65,12 +65,6 @@ def executar_comando_conteudo(c_nome: str, c_args: str, comando: str, c_upper: s
             print(f"❌ Erro ao ajustar volume do sistema: {e}")
             return False
 
-    if c == "NETFLIX":
-        if a and callable(validar_e_enviar_comando):
-            validar_e_enviar_comando("netflix_search", {"query": a})
-            return True
-        return False
-
     if c == "OPEN_SITE":
         if not a or not callable(enviar_comando_chrome):
             return False

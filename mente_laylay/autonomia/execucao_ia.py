@@ -80,12 +80,6 @@ def executar_exec(
         except Exception:
             return False
 
-    if c == "NETFLIX":
-        if a and callable(enviar_comando_chrome):
-            enviar_comando_chrome("netflix_search", {"query": a})
-            return True
-        return False
-
     if c == "OPEN_SITE":
         if not a or not callable(enviar_comando_chrome):
             return False
@@ -152,6 +146,52 @@ def executar_exec(
         return False
 
     return False
+
+
+class ContextoExecRuntime:
+    """Coordena o caminho modular e o fallback EXEC com contexto atualizado."""
+
+    def __init__(
+        self,
+        *,
+        contexto_getter: Callable[[], Dict[str, Any]],
+        executar_conteudo_cb: Callable[..., bool],
+        executar_legado_cb: Callable[[str, Any, Dict[str, Any]], bool] = executar_exec,
+        log: Callable[[str], None] = print,
+    ) -> None:
+        self.contexto_getter = contexto_getter
+        self.executar_conteudo_cb = executar_conteudo_cb
+        self.executar_legado_cb = executar_legado_cb
+        self.log = log
+
+    def montar_contexto(self, arg: Any) -> Dict[str, Any]:
+        contexto = dict(self.contexto_getter() or {})
+        contexto["arg"] = arg
+        return contexto
+
+    def executar(self, cmd: str, arg: Any) -> bool:
+        comando = str(cmd or "").strip()
+        c_args = "" if arg is None else str(arg).strip()
+        contexto = self.montar_contexto(arg)
+
+        if self.executar_conteudo_cb(
+            comando,
+            c_args,
+            comando,
+            comando.upper(),
+            contexto,
+        ):
+            self.log(f"🧠 [EXEC] caminho modular de conteudo assumiu: {comando}")
+            return True
+
+        ok_legado = bool(self.executar_legado_cb(cmd, arg, contexto))
+        if ok_legado:
+            self.log(f"🧩 [EXEC] fallback legado assumiu: {comando}")
+        return ok_legado
+
+
+def criar_contexto_exec_runtime(**kwargs: Any) -> ContextoExecRuntime:
+    return ContextoExecRuntime(**kwargs)
 
 
 def filtrar_apenas_fala(

@@ -47,6 +47,54 @@ def get_humor_prompt(ctx: Dict[str, Any]) -> str:
     return "muito brava, curta e direta, sem paciência"
 
 
+def montar_status_humor_prompt(
+    contexto: Dict[str, Any] | None,
+    percepcao: Dict[str, Any] | None,
+    *,
+    humor_fallback: int = 0,
+    emocao_fallback: str = "calma",
+    periodo_fallback: str = "",
+    descricao_emocao_cb: Callable[[str], str],
+    perfil_comportamento_cb: Callable[[str], str],
+) -> str:
+    """Combina emoção e percepção em um único retrato para o prompt."""
+    ctx = contexto if isinstance(contexto, dict) else {}
+    leitura = percepcao if isinstance(percepcao, dict) else {}
+    humor = int(ctx["humor"] if ctx else humor_fallback)
+    emocao = str(ctx["emocao"] if ctx else emocao_fallback).strip()
+    periodo = str(ctx["periodo"] if ctx else periodo_fallback).strip()
+
+    if humor <= -5:
+        base = "está muito irritada, sarcástica e impaciente"
+    elif humor <= -2:
+        base = "está levemente irritada e debochada"
+    elif humor >= 5:
+        base = "está muito fofa, carinhosa e prestativa"
+    elif humor >= 2:
+        base = "está feliz, bem-humorada e debochada"
+    else:
+        base = "está neutra e calma"
+
+    extras = []
+    if periodo in {"madrugada", "noite"}:
+        extras.append("o contexto pede baixo ritmo")
+    if leitura:
+        extras.append(
+            f"leitura contextual: {leitura['conclusao']} "
+            f"(confianca={leitura['confianca']})"
+        )
+        extras.append(f"interpretacao: {leitura['interpretacao']}")
+    if emocao:
+        extras.append(f"emoção percebida: {emocao}")
+        extras.append(f"identidade emocional: {descricao_emocao_cb(emocao)}")
+        extras.append(f"comportamento esperado: {perfil_comportamento_cb(emocao)}")
+    if ctx.get("topico_ativo"):
+        extras.append(f"tópico ativo: {ctx['topico_ativo']}")
+    if extras:
+        return base + "; " + "; ".join(extras)
+    return base
+
+
 def detectar_gatilhos_instintivos(
     ctx: Dict[str, Any],
     texto: str,

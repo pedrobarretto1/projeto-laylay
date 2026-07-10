@@ -22,6 +22,32 @@ def _normalizar_fala_cb(
     return texto or fallback_fala
 
 
+def limpar_fala_final_legada(
+    texto_completo: str,
+    fallback_fala: str = "Estou aqui, Pedro. Me fala o próximo passo.",
+) -> str:
+    """Preserva a tesoura textual antiga para integrações de compatibilidade."""
+    texto = str(texto_completo or "")
+    match = re.search(r"Laylay:\s*(.*)", texto, re.IGNORECASE | re.DOTALL)
+
+    if match:
+        fala = match.group(1).strip()
+    else:
+        fala = re.sub(
+            r"\[PENSAMENTO\]:.*?\[COMANDO\]:.*?\n",
+            "",
+            texto,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
+        fala = re.sub(r"\[.*?\]", "", fala, flags=re.IGNORECASE | re.DOTALL)
+        fala = re.sub(r"^.*?:", "", fala, flags=re.IGNORECASE)
+        fala = fala.strip()
+
+    if not fala or len(fala) < 3:
+        fala = fallback_fala
+    return fala
+
+
 def _extrair_campo_textual_json_like(texto: str, campo: str) -> str:
     bruto = str(texto or "")
     if not bruto or not campo:
@@ -84,8 +110,11 @@ def limpar_resposta_da_ia(
             comandos = dados.get("comandos", [])
             if isinstance(comandos, list):
                 comandos_finais = [c for c in comandos if isinstance(c, dict)]
-                if comandos_finais:
-                    return _normalizar_fala_cb(fala_final, limpar_texto_fala_cb, fallback_fala), comandos_finais
+                return _normalizar_fala_cb(
+                    fala_final,
+                    limpar_texto_fala_cb,
+                    fallback_fala,
+                ), comandos_finais
     except Exception:
         pass
 
@@ -176,6 +205,18 @@ def _saida_ia_parece_malformada(texto: str) -> bool:
     s = str(texto or "").strip()
     if not s:
         return False
+    texto_json = re.sub(r"^```(?:json)?\s*", "", s, flags=re.IGNORECASE)
+    texto_json = re.sub(r"\s*```$", "", texto_json, flags=re.IGNORECASE).strip()
+    try:
+        dados = json.loads(texto_json)
+        if (
+            isinstance(dados, dict)
+            and isinstance(dados.get("fala", ""), str)
+            and isinstance(dados.get("comandos", []), list)
+        ):
+            return False
+    except Exception:
+        pass
     if re.search(r"(?i)\[EXEC:.*?\]", s):
         return True
     if re.search(r"(?i)\b(open_url|youtube_search|youtube_play|close_tab|close_specific_tab|open_app|close_app)\b", s):
@@ -319,3 +360,82 @@ def extrair_tipo_interacao_da_ia(resposta_bruta: Any) -> str:
     except Exception:
         pass
     return ""
+
+
+def preparar_resposta_para_execucao(
+    texto_usuario: str,
+    resposta_bruta: Any,
+    *,
+    enviar_mensagem_cb: Optional[Callable[..., Any]],
+    limpar_texto_fala_cb: Optional[Callable[[str], str]],
+    fallback_fala: str,
+    construir_fala_cb: Optional[Callable[..., str]],
+    memoria_sqlite: Any,
+    registrar_autocorrecao_cb: Optional[Callable[..., Any]] = None,
+    log: Optional[Callable[[str], None]] = None,
+) -> Dict[str, Any]:
+    """Prepara a resposta da IA antes do dispatcher executar qualquer acao."""
+    registrar_log = log or print
+    texto = str(texto_usuario or "").strip()
+    bot_raw = resposta_bruta
+
+    corrigida = corrigir_saida_malformada_da_ia(
+        texto,
+        bot_raw,
+        enviar_mensagem_cb,
+    )
+    if corrigida:
+        try:
+            if callable(registrar_autocorrecao_cb):
+                registrar_autocorrecao_cb(
+                    "ia",
+                    "saida malformada",
+                    "saida reformatada para json valido",
+                    "segunda passada de autocorreção da resposta da IA",
+                )
+        except Exception as erro_registro:
+            registrar_log(
+                f"⚠️ [AUTOCORREÇÃO] falha ao registrar correção da saída: {erro_registro}"
+            )
+        bot_raw = corrigida
+        registrar_log("🍪 [AUTOCORREÇÃO] Saída da IA refeita em JSON válido antes de executar.")
+
+    fala_limpa, comandos = limpar_resposta_da_ia(
+        bot_raw,
+        limpar_texto_fala_cb=limpar_texto_fala_cb,
+        fallback_fala=fallback_fala,
+    )
+    tipo_interacao = extrair_tipo_interacao_da_ia(bot_raw)
+    if callable(construir_fala_cb):
+        fala_limpa = construir_fala_cb(
+            fala_limpa,
+            texto,
+            tipo_interacao,
+            comandos,
+        )
+    registrar_log(
+        f"✨ [IA] Fala limpa: '{fala_limpa}' | "
+        f"Tipo: {tipo_interacao or 'legado'} | Comandos: {len(comandos)}"
+    )
+    aprendizados = salvar_aprendizados_da_ia(bot_raw, memoria_sqlite)
+
+    if tipo_interacao in {"aprendizado", "conversa"} and comandos:
+        acoes_bloqueadas = [
+            str(comando.get("acao", ""))
+            for comando in comandos
+            if isinstance(comando, dict)
+        ]
+        registrar_log(
+            f"🧠 [INTENÇÃO] tipo={tipo_interacao}; bloqueando "
+            f"{len(comandos)} comando(s): {acoes_bloqueadas}"
+        )
+        comandos = []
+
+    return {
+        "resposta_bruta": bot_raw,
+        "fala": fala_limpa,
+        "comandos": comandos,
+        "tipo_interacao": tipo_interacao,
+        "aprendizados": aprendizados,
+        "autocorrigida": bool(corrigida),
+    }

@@ -339,3 +339,59 @@ def fala_por_estado_acao(
     if "por favor" in texto_usuario.lower() and status in {"app_aberto", "app_fechado", "ja_aberto_focado", "url_aberta"}:
         return base + " Você pediu bonitinho, então eu cooperei."
     return base
+
+
+def fala_falha_contextual(
+    categoria: str,
+    *,
+    texto_normalizado: str = "",
+    detalhe: str = "",
+    incluir_generica: bool = True,
+) -> str:
+    """Falas claras para falhas de entendimento/execucao sem prometer acao falsa."""
+    cat = str(categoria or "").strip().lower()
+    texto_norm = str(texto_normalizado or "").strip().lower()
+    alvo = str(detalhe or "").strip()
+
+    if cat == "ia_timeout":
+        return escolher([
+            "Meu modelo demorou demais pra me responder agora. Tenta de novo em alguns segundos.",
+            "Eu fiquei esperando a resposta e ela não voltou a tempo. Me chama de novo já já.",
+            "A resposta travou no caminho. Daqui a pouco eu tento de novo contigo.",
+        ])
+
+    if cat == "ia_api":
+        return escolher([
+            "Minha conexão com o cérebro local deu ruim agora. Tenta de novo daqui a pouquinho.",
+            "O meu lado da IA tropeçou feio agora. Me chama de novo em instantes.",
+            "Perdi o contato com a parte que pensa mais fundo. Se repetir já já, eu tento de novo.",
+        ])
+
+    if cat == "execucao":
+        if alvo:
+            return escolher([
+                f"Eu entendi o pedido, mas travou na hora de mexer em {alvo}.",
+                f"Peguei a ideia, só que a execução de {alvo} não fechou direito.",
+                f"Não foi falta de entender; foi {alvo} que não colaborou na prática.",
+            ])
+        return escolher([
+            "Eu entendi o que você quis, mas a execução tropeçou no caminho.",
+            "Não foi tua fala que falhou; fui eu que não consegui fechar a ação agora.",
+            "Peguei o pedido, só que a parte prática desandou no meio.",
+        ])
+
+    if any(p in texto_norm for p in ["como voce", "como você", "tudo bem", "ta bem", "tá bem", "tudo na paz", "de boa"]):
+        return escolher([
+            "Eu ouvi teu tom, só não fechei a leitura direito. Me pergunta de novo sem pressa.",
+            "Quase peguei, mas a curva ficou torta na minha cabeça. Pode repetir?",
+            "Entendi que era papo, só não encaixei tua frase direito. Tenta mais uma vez pra mim.",
+        ])
+
+    if not incluir_generica:
+        return ""
+
+    return escolher([
+        "Me perdi um pouco nessa curva. Fala de outro jeito pra mim.",
+        "Não fechei tua frase direito aqui. Repete com outras palavras?",
+        "Eu quase peguei, mas faltou encaixar a ideia. Tenta de novo pra mim.",
+    ])

@@ -8,6 +8,7 @@ INTENTS_EXECUTAVEIS = {
     "PLAYLIST_ADD",
     "PLAYLIST_PLAY",
     "PLAYLIST_LIST",
+    "PLAYLIST_DELETE",
     "LAYLAY_PLAYLIST_LIST",
     "LAYLAY_PLAYLIST_COPY",
     "MUSIC_SEARCH",
@@ -17,7 +18,6 @@ INTENTS_EXECUTAVEIS = {
     "CLOSE_APP",
     "APP_OPEN",
     "VOLUME",
-    "NETFLIX",
     "OPEN_URL",
     "SITE_ENTER",
     "MAXIMIZE_WINDOW",
@@ -60,9 +60,17 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     if _call(ctx, "texto_cancela_acao_agora", texto_norm, default=False):
         return {"intent": "CANCELAR_ACAO", "params": {}}, "imediato"
 
-    # Continuidade contextual unificada vem antes da repeticao generica.
-    # Ex.: "toca ela de novo" deve ser replay da faixa atual, nao repetir
-    # cegamente a ultima acao registrada.
+    depende_contexto = bool(_call(ctx, "texto_depende_de_contexto", texto_norm, default=False))
+
+    # Quando o usuario cita um alvo explicito, o deterministico precisa vencer
+    # o contexto antigo. Ex.: "fecha a steam" nao pode virar "foca a steam".
+    if not depende_contexto:
+        intent = _call(ctx, "detectar_intencao_deterministica", texto_norm)
+        if isinstance(intent, dict):
+            return intent, "deterministico"
+
+    # Continuidade contextual unificada vem antes da repeticao generica para
+    # pronomes e respostas curtas. Ex.: "fecha ela", "coloca ele em foco".
     intent_contextual = _call(ctx, "resolver_comando_contextual_forcado", texto_norm)
     if isinstance(intent_contextual, dict):
         rota = str(intent_contextual.get("_rota_contextual") or "contexto").lower()
@@ -74,9 +82,10 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     if isinstance(intent_repeticao, dict):
         return intent_repeticao, "repeticao"
 
-    intent = _call(ctx, "detectar_intencao_deterministica", texto_norm)
-    if isinstance(intent, dict):
-        return intent, "deterministico"
+    if depende_contexto:
+        intent = _call(ctx, "detectar_intencao_deterministica", texto_norm)
+        if isinstance(intent, dict):
+            return intent, "deterministico"
 
     intent = _call(ctx, "tentar_intencao_ai_primeiro", texto)
     if isinstance(intent, dict):

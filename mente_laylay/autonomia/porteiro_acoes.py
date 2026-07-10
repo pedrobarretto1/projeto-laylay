@@ -25,6 +25,26 @@ ACOES_MUSICA = {
 }
 
 
+def montar_contexto_porteiro_acoes(
+    *,
+    playlist_bloqueada: bool,
+    playlist_ativa: bool,
+    auto_next_playlist: bool,
+    ultima_playlist: str,
+    mente_integrada_estado: Dict[str, Any] | None,
+    messages: Any,
+) -> Dict[str, Any]:
+    """Retrato minimo para o porteiro central decidir sem executar nada."""
+    return {
+        "playlist_bloqueada": bool(playlist_bloqueada),
+        "playlist_ativa": bool(playlist_ativa),
+        "auto_next_playlist": bool(auto_next_playlist),
+        "ultima_playlist": str(ultima_playlist or "").strip(),
+        "mente": dict(mente_integrada_estado or {}),
+        "messages": messages,
+    }
+
+
 def normalizar_texto(texto: str) -> str:
     bruto = str(texto or "").lower()
     sem_acento = unicodedata.normalize("NFKD", bruto)
@@ -174,7 +194,9 @@ def texto_tem_comando_explicito(texto: str) -> bool:
         return True
 
     verbos = [
-        "abre", "abrir", "abra", "fecha", "fechar", "feche", "coloca", "coloque",
+        "abre", "abrir", "abra", "entra", "entrar", "entre", "acessa", "acessar",
+        "acesse", "vai no", "vai na", "ir no", "ir na",
+        "fecha", "fechar", "feche", "coloca", "coloque",
         "bota", "poe", "põe", "toca", "toque", "cria", "criar", "crie",
         "apaga", "apagar", "deleta", "deletar", "remove", "remover", "exclui", "excluir",
         "maximiza", "maximizar", "organiza", "organizar", "silencia", "silenciar",

@@ -51,6 +51,50 @@ def _foco_recente(contexto: Dict[str, Any], ttl_s: float = 150.0) -> Dict[str, A
     return foco
 
 
+def usar_modo_rapido_conversa(
+    texto: str,
+    *,
+    normalizar_texto=None,
+    interpretar_comando_local_rapido=None,
+    resolver_comando_contextual=None,
+) -> bool:
+    """Decide quando a conversa pode usar um prompt leve sem perder comandos."""
+    if callable(normalizar_texto):
+        try:
+            t = str(normalizar_texto(texto) or "").strip()
+        except Exception:
+            t = str(texto or "").strip().lower()
+    else:
+        t = str(texto or "").strip().lower()
+    if not t:
+        return True
+
+    if callable(interpretar_comando_local_rapido):
+        try:
+            if interpretar_comando_local_rapido(t):
+                return False
+        except Exception:
+            pass
+    if callable(resolver_comando_contextual):
+        try:
+            if resolver_comando_contextual(t):
+                return False
+        except Exception:
+            pass
+
+    palavras_pesadas = [
+        "playlist", "arquivo", "pasta", "download", "chrome", "opera", "vscode",
+        "janela", "aba", "tela cheia", "fullscreen", "youtube", "netflix",
+        "música", "musica", "memória", "memoria", "lembra", "aprendeu",
+        "foco", "maximiza", "maximizar", "fecha", "abre", "abre o", "abre a",
+        "pausa", "despausa", "retoma", "proxima", "próxima", "anterior",
+    ]
+    if any(p in t for p in palavras_pesadas):
+        return False
+
+    return len(t) <= 90
+
+
 def _pendencia_combina_com_texto(contexto: Dict[str, Any], tipo: str, texto_norm: str, alvo: str = "") -> bool:
     t = re.sub(r"\s+", " ", str(texto_norm or "").strip().lower())
     if not t:
@@ -278,14 +322,12 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
         print(f"⚠️ [SUGESTÃO] Falha ao tratar confirmação pendente: {e}")
 
     return False
-
-
 def handle_comando_rapido_flow(contexto: Dict[str, Any], texto: str) -> bool:
     extrair_comando_rapido = _get(contexto, "extrair_comando_rapido")
     enviar_comando_chrome = _get(contexto, "enviar_comando_chrome")
-    executar_comando = _get(contexto, "executar_comando")
+    executar_intencao = _get(contexto, "executar_intencao")
     confirmar_execucao_debochada = _get(contexto, "_confirmar_execucao_debochada")
-    if not callable(extrair_comando_rapido) or not callable(enviar_comando_chrome) or not callable(executar_comando) or not callable(confirmar_execucao_debochada):
+    if not callable(extrair_comando_rapido):
         return False
 
     cmd_rapido = extrair_comando_rapido(texto)
@@ -294,22 +336,22 @@ def handle_comando_rapido_flow(contexto: Dict[str, Any], texto: str) -> bool:
 
     tipo, arg = cmd_rapido
     if tipo == "OPEN_URL":
-        enviar_comando_chrome("open_url", {"url": arg})
-    elif tipo == "OPEN_APP":
-        executar_comando("OPEN_APP", arg)
-    elif tipo == "YOUTUBE":
+        if not callable(executar_intencao):
+            return False
+        return bool(executar_intencao({"intent": "OPEN_URL", "params": {"alvo": arg}}, texto))
+    if tipo == "OPEN_APP":
+        if not callable(executar_intencao):
+            return False
+        return bool(executar_intencao({"intent": "APP_OPEN", "params": {"nome_app": arg}}, texto))
+    if tipo == "YOUTUBE" and callable(enviar_comando_chrome):
         enviar_comando_chrome("youtube_search", {"query": arg})
-    elif tipo == "NETFLIX":
-        if arg:
-            enviar_comando_chrome("netflix_search", {"query": arg})
-        else:
-            enviar_comando_chrome("open_url", {"url": "https://www.netflix.com"})
-
-    confirmar_execucao_debochada(
-        texto,
-        "O comando já foi executado pelo Python. Responda só com uma fala curta debochada confirmando. Não use [EXEC].",
-    )
-    return True
+        if callable(confirmar_execucao_debochada):
+            confirmar_execucao_debochada(
+                texto,
+                "O comando já foi executado pelo Python. Responda só com uma fala curta debochada confirmando. Não use [EXEC].",
+            )
+        return True
+    return False
 
 
 def handle_fuzzy_intent_flow(contexto: Dict[str, Any], texto: str) -> bool:
@@ -331,7 +373,7 @@ def handle_fuzzy_intent_flow(contexto: Dict[str, Any], texto: str) -> bool:
     _fala_playlist_duplicado = _get(contexto, "_fala_playlist_duplicado")
     _fala_playlist_duplicado_meta = _get(contexto, "_fala_playlist_duplicado_meta")
     _fala_playlist_sucesso = _get(contexto, "_fala_playlist_sucesso")
-    executar_comando = _get(contexto, "executar_comando")
+    executar_intencao = _get(contexto, "executar_intencao")
     ultima_playlist = _get(contexto, "ultima_playlist")
 
     try:
@@ -357,16 +399,6 @@ def handle_fuzzy_intent_flow(contexto: Dict[str, Any], texto: str) -> bool:
         if callable(enviar_comando_chrome):
             enviar_comando_chrome("youtube_control", {"command": "next"})
         fala = _escolher_fala_variada(["Próxima. Bora, DJ do caos.", "Pulando pra próxima.", "Seguinte."])
-        print("Laylay [debochada lvl2]: " + fala)
-        if isinstance(messages, list):
-            messages.append({"role": "assistant", "content": fala})
-        if callable(falar_com_lipsync):
-            falar_com_lipsync(fala, "debochada", 2)
-        return True
-    if intent == "OPEN_NETFLIX":
-        if callable(abrir_url_com_reciclagem):
-            abrir_url_com_reciclagem("https://www.netflix.com/", auto_click=False)
-        fala = _escolher_fala_variada(["Netflix aberta. Agora escolhe um filme que preste.", "Netflix na tela.", "Pronto, abri a Netflix."])
         print("Laylay [debochada lvl2]: " + fala)
         if isinstance(messages, list):
             messages.append({"role": "assistant", "content": fala})
@@ -465,78 +497,8 @@ def handle_fuzzy_intent_flow(contexto: Dict[str, Any], texto: str) -> bool:
             if callable(falar_com_lipsync):
                 falar_com_lipsync(_escolher_fala_variada(["Não entendi qual site você quer. Diz o assunto ou o nome do site.", "Me fala o assunto ou o site certinho.", "Faltou o nome do site ou do assunto."]), "calma", 1)
             return True
-        if callable(executar_comando):
-            executar_comando("OPEN_SITE", topic)
-        fala = _escolher_fala_variada(["Abri pra você. Agora não me pede pra escolher por você também.", "Pronto, abri. Agora o resto é com você.", "Já deixei aberto. Sua vez de decidir."])
-        print("Laylay [debochada lvl2]: " + fala)
-        if isinstance(messages, list):
-            messages.append({"role": "assistant", "content": fala})
-        if callable(falar_com_lipsync):
-            falar_com_lipsync(fala, "debochada", 2)
-        return True
+        if not callable(executar_intencao):
+            return False
+        return bool(executar_intencao({"intent": "OPEN_URL", "params": {"alvo": topic}}, texto))
 
     return False
-
-
-def handle_llm_fallback_flow(contexto: Dict[str, Any], texto: str) -> bool:
-    processar_aprendizado_apelido_imediato = _get(contexto, "_processar_aprendizado_apelido_imediato")
-    refinar_contexto_mental = _get(contexto, "_refinar_contexto_mental")
-    messages = _get(contexto, "messages")
-    enviar_mensagem = _get(contexto, "enviar_mensagem")
-    processar_resposta_laylay = _get(contexto, "processar_resposta_laylay")
-    texto_indica_autocorrecao = _get(contexto, "_texto_indica_autocorrecao")
-    registrar_autocorrecao_virtual = _get(contexto, "_registrar_autocorrecao_virtual")
-    falar_com_lipsync = _get(contexto, "falar_com_lipsync")
-    salvar_memoria = _get(contexto, "salvar_memoria")
-    current_emotion = _get(contexto, "current_emotion", "calma")
-    emotion_level = _get(contexto, "emotion_level", 1)
-    resposta_conversa_rapida_local = _get(contexto, "_resposta_conversa_rapida_local")
-    resposta_conversa_local = _get(contexto, "_resposta_conversa_local")
-    fala_e_fallback_neutro = _get(contexto, "_fala_e_fallback_neutro")
-    registrar_mente_curta = _get(contexto, "_registrar_mente_curta")
-    _processar_aprendizado_apelido_imediato = processar_aprendizado_apelido_imediato
-    _refinar_contexto_mental = refinar_contexto_mental
-
-    if callable(_processar_aprendizado_apelido_imediato) and _processar_aprendizado_apelido_imediato(texto):
-        return True
-    if callable(_refinar_contexto_mental):
-        _refinar_contexto_mental(texto)
-    if isinstance(messages, list):
-        messages.append({"role": "user", "content": texto})
-    bot_raw = enviar_mensagem(messages) if callable(enviar_mensagem) else ""
-    fala = processar_resposta_laylay(bot_raw) if callable(processar_resposta_laylay) else bot_raw
-    fala = str(fala or "").strip()
-    if fala and callable(fala_e_fallback_neutro) and fala_e_fallback_neutro(fala):
-        print("🧭 [FALLBACK-CONVERSA] resposta neutra detectada, tentando conversa local")
-        fala_local = resposta_conversa_local(texto) if callable(resposta_conversa_local) else ""
-        fala_local = str(fala_local or "").strip()
-        if not fala_local and callable(resposta_conversa_rapida_local):
-            fala_local = resposta_conversa_rapida_local(texto)
-        fala_local = str(fala_local or "").strip()
-        if fala_local:
-            fala = fala_local
-    if not fala:
-        fala = _escolher_fala_variada([
-            "Tô aqui contigo. Me joga isso de outro jeito.",
-            "Quase peguei tua linha. Me fala de novo sem pressa.",
-            "Não encaixou bonito na minha cabeça agora. Tenta mais uma vez.",
-        ])
-    if callable(texto_indica_autocorrecao) and texto_indica_autocorrecao(fala):
-        try:
-            if callable(registrar_autocorrecao_virtual):
-                registrar_autocorrecao_virtual("conversa", texto, fala, "autocorreção espontânea na resposta local")
-        except Exception as e:
-            print(f"⚠️ [AUTOCORREÇÃO] falha ao registrar correção espontânea: {e}")
-    print(f"Laylay [{current_emotion} lvl{emotion_level}]: {fala}")
-    if isinstance(messages, list):
-        messages.append({"role": "assistant", "content": fala})
-    if callable(falar_com_lipsync):
-        falar_com_lipsync(fala, current_emotion, emotion_level)
-    if callable(registrar_mente_curta):
-        try:
-            registrar_mente_curta(texto, fala, habilidade="conversa")
-        except Exception:
-            pass
-    if callable(salvar_memoria):
-        salvar_memoria()
-    return True

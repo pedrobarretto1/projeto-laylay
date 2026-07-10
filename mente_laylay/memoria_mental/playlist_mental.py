@@ -7,25 +7,15 @@ import json
 import os
 import random
 import re
-import unicodedata
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 from urllib.parse import urlparse
 import urllib.parse
 
-
-_CORRECOES_FONETICAS = (
-    (r"\bpaly\s*list\b", "playlist"),
-    (r"\bplay\s*list\b", "playlist"),
-    (r"\bpalylist\b", "playlist"),
-    (r"\bplalyst\b", "playlist"),
-    (r"\bplalist\b", "playlist"),
-    (r"\bcamaitachi\b", "kamaitachi"),
-    (r"\bkamaitaxi\b", "kamaitachi"),
-    (r"\bkamaytachi\b", "kamaitachi"),
-    (r"\byoutub\b", "youtube"),
-    (r"\butube\b", "youtube"),
-    (r"\bspotifi\b", "spotify"),
+from mente_laylay.cognicao.normalizacao_linguagem import (
+    aplicar_correcao_fonetica,
+    normalizar_texto,
+    remover_acentos,
 )
 
 _ORDINAL_IDX = {
@@ -36,31 +26,6 @@ _ORDINAL_IDX = {
     "quinta": 4, "quinto": 4, "5ª": 4, "5º": 4,
     "última": -1, "ultimo": -1, "último": -1, "ultima": -1,
 }
-
-
-def remover_acentos(s: str) -> str:
-    try:
-        n = unicodedata.normalize("NFKD", str(s or ""))
-        return "".join(c for c in n if not unicodedata.combining(c))
-    except Exception:
-        return str(s or "")
-
-
-def aplicar_correcao_fonetica(texto: str) -> str:
-    t = str(texto or "").lower().strip()
-    if not t:
-        return ""
-    t = re.sub(r"\s+", " ", t)
-    for padrao, troca in _CORRECOES_FONETICAS:
-        t = re.sub(padrao, troca, t, flags=re.IGNORECASE)
-    return t
-
-
-def normalizar_texto(texto: str) -> str:
-    t = remover_acentos(str(texto or "").lower())
-    t = aplicar_correcao_fonetica(t)
-    t = re.sub(r"[^a-z0-9]+", " ", t)
-    return re.sub(r"\s+", " ", t).strip()
 
 
 def yt_clean_url(url: str) -> str:
@@ -148,6 +113,101 @@ def resolver_nome_playlist_contextual(nome: str, data: Dict[str, Any], ultima_pl
     if len(nm) < 4:
         return ""
     return nm
+
+
+def playlist_nome_explicito_na_frase(
+    texto: str,
+    normalizar_texto_cb: Callable[[str], str] | None = None,
+) -> bool:
+    normalizar = normalizar_texto_cb if callable(normalizar_texto_cb) else normalizar_texto
+    t = normalizar(str(texto or "").strip())
+    if not t or "playlist" not in t:
+        return False
+    m = re.search(r"\bplaylist\b\s+(.+)$", t, flags=re.IGNORECASE)
+    if not m:
+        return False
+    resto = str(m.group(1) or "").strip()
+    resto = re.sub(r"^(chamada|com nome|de nome)\s+", "", resto, flags=re.IGNORECASE)
+    resto = re.sub(
+        r"^(e\s+)?(coloca|coloque|salva|salve|guarda|guarde|adiciona|adicione|add|toca|toque|abre|abra|cria|criar|crie|apaga|apagar|limpa|limpar|remove|remover|retira|retirar)\b.*$",
+        "",
+        resto,
+        flags=re.IGNORECASE,
+    )
+    resto = resto.strip(" .,!?:;")
+    return bool(resto)
+
+
+def extrair_nome_playlist(
+    texto: str,
+    *,
+    normalizar_texto_cb: Callable[[str], str] | None = None,
+) -> str:
+    normalizar = normalizar_texto_cb if callable(normalizar_texto_cb) else normalizar_texto
+    t = normalizar(str(texto or "").strip())
+    padroes = [
+        r"(?:coloca|coloque|salva|salve|guarda|guarde|adiciona|adicione|add).{0,80}?(?:na|nessa|nesta|para a|pra|em)\s+playlist\s+(?P<nome>.+)$",
+        r"(?:na|para|a)\s+playlist\s+(?P<nome>.+?)(?:\s+(?:e\s+)?(?:coloca|coloque|salva|salve|guarda|guarde|adiciona|adicione|add|toca|toque|abre|abra|cria|criar|crie|apaga|apagar|limpa|limpar|remove|remover|retira|retirar)\b.*|$)",
+        r"playlist\s+(?:chamada|com nome)?\s*(?P<nome>.+?)(?:\s+(?:e\s+)?(?:coloca|coloque|salva|salve|guarda|guarde|adiciona|adicione|add|toca|toque|abre|abra|cria|criar|crie|apaga|apagar|limpa|limpar|remove|remover|retira|retirar)\b.*|$)",
+    ]
+    nome = ""
+    for padrao in padroes:
+        match = re.search(padrao, t, flags=re.IGNORECASE)
+        if match:
+            nome = match.group("nome")
+            break
+    return limpar_nome_playlist(nome)
+
+
+def detectar_playlist_nome_direto(
+    texto: str,
+    data: Dict[str, Any] | None,
+    *,
+    normalizar_texto_cb: Callable[[str], str] | None = None,
+) -> str:
+    normalizar = normalizar_texto_cb if callable(normalizar_texto_cb) else normalizar_texto
+    t = normalizar(str(texto or "").strip())
+    if not t:
+        return ""
+
+    data = data if isinstance(data, dict) else {}
+    resto = t
+    for gatilho in [
+        "coloca",
+        "coloque",
+        "toca",
+        "toque",
+        "abre",
+        "abra",
+        "sintoniza",
+        "sintonize",
+        "manda",
+        "manda tocar",
+    ]:
+        if resto.startswith(gatilho + " "):
+            resto = resto[len(gatilho):].strip()
+            break
+
+    resto = re.sub(
+        r"^(a|o|as|os|essa|esse|essa musica|essa música|essa playlist|esse som)\s+",
+        "",
+        resto,
+    ).strip()
+    resto = limpar_nome_playlist(resto)
+    if not resto:
+        return ""
+    if resto in data:
+        return resto
+
+    candidatos = []
+    for chave in data.keys():
+        chave_nm = limpar_nome_playlist(str(chave or ""))
+        if not chave_nm:
+            continue
+        if resto == chave_nm or resto.startswith(chave_nm) or chave_nm.startswith(resto):
+            candidatos.append(chave_nm)
+    candidatos = list(dict.fromkeys(candidatos))
+    return candidatos[0] if len(candidatos) == 1 else ""
 
 
 def playlists_save(caminho: str, data: dict) -> bool:
@@ -399,3 +459,91 @@ def detectar_mover_playlist_texto(texto: str):
         if origem and destino:
             return {"musica": musica, "origem": origem, "destino": destino}
     return None
+
+
+def playlist_item_label(item: Any) -> str:
+    if isinstance(item, dict):
+        return yt_clean_title(str(item.get("titulo") or "")) or str(item.get("url") or "essa musica")
+    return str(item or "essa musica")
+
+
+def playlist_item_match(
+    item: Any,
+    musica: str,
+    *,
+    normalizar_texto_cb: Callable[[str], str] | None = None,
+) -> bool:
+    normalizar = normalizar_texto_cb if callable(normalizar_texto_cb) else normalizar_texto
+    alvo = normalizar(str(musica or ""))
+    if not alvo or alvo in {"ela", "essa", "isso", "musica", "música"}:
+        return False
+    if isinstance(item, dict):
+        titulo = normalizar(str(item.get("titulo") or ""))
+        url = normalizar(str(item.get("url") or ""))
+        return alvo in titulo or alvo in url
+    return alvo in normalizar(str(item or ""))
+
+
+def pedido_lista_geral_playlist(
+    texto_original: str,
+    params: Dict[str, Any] | None,
+    *,
+    normalizar_texto_cb: Callable[[str], str] | None = None,
+) -> bool:
+    normalizar = normalizar_texto_cb if callable(normalizar_texto_cb) else normalizar_texto
+    texto = normalizar(str(texto_original or ""))
+    if any(kw in texto for kw in [
+        "quais sao minhas playlists",
+        "quais são minhas playlists",
+        "quais playlists eu tenho",
+        "que playlists eu tenho",
+        "listar minhas playlists",
+        "lista minhas playlists",
+        "mostra minhas playlists",
+        "mostra as playlists",
+        "quais sao as minhas playlists",
+        "quais são as minhas playlists",
+    ]):
+        return True
+
+    params = params if isinstance(params, dict) else {}
+    raw = str(
+        params.get("nome_playlist")
+        or params.get("playlist")
+        or params.get("nome")
+        or ""
+    ).strip()
+    if not raw:
+        return False
+
+    if any(sep in raw for sep in [",", ";", "|", "/"]):
+        return True
+
+    raw_norm = limpar_nome_playlist(raw)
+    return raw_norm in {"minhas playlists", "minha playlist", "playlist", "playlists"}
+
+
+def listar_playlists_salvas(data: Dict[str, Any] | None) -> str:
+    data = data if isinstance(data, dict) else {}
+    nomes = []
+    for chave, itens in sorted(data.items(), key=lambda kv: str(kv[0]).lower()):
+        nome = str(chave or "").strip()
+        if not nome:
+            continue
+        total = len(itens) if isinstance(itens, list) else 0
+        nomes.append(f"{nome} ({total})")
+    if not nomes:
+        return "Você ainda não tem nenhuma playlist salva."
+    if len(nomes) == 1:
+        return f"Sua playlist salva é {nomes[0]}."
+    return f"Suas playlists são: {', '.join(nomes)}."
+
+
+def parse_indice_ordinal(token: str) -> Optional[int]:
+    t = str(token or "").strip().lower()
+    t = re.sub(r"^\s*(toque|toca|coloca|abre)\b", " ", t).strip()
+    t = re.sub(r"^(a|o|uma|um)\s+", "", t).strip()
+    t = re.sub(r"\s+", " ", t).strip()
+    if not t:
+        return None
+    return _ORDINAL_IDX.get(t)

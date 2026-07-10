@@ -177,6 +177,82 @@ def resumo_mente_integrada_para_prompt(
     return "\n".join(blocos)
 
 
+def contexto_aponta_descanso(ctx: Dict[str, Any], percepcao: Dict[str, Any] | None = None, texto_extra: str = "") -> bool:
+    """Decide se o contexto atual pede modo descanso em vez de iniciativa."""
+    ctx = dict(ctx or {})
+    percepcao = dict(percepcao or {})
+    texto_extra = str(texto_extra or "").strip().lower()
+    amostra = " ".join([
+        str(ctx.get("assunto") or ""),
+        str(ctx.get("title") or ""),
+        " ".join(ctx.get("logs_recentes") or []),
+        str(ctx.get("topico_ativo") or ""),
+        texto_extra,
+    ]).lower()
+    sinais_descanso = ["sono", "cansad", "dorm", "descans", "boa noite", "madrugada", "sleep", "apagar"]
+    sinais_foco = ["codigo", "código", "program", "vs code", "vscode", "debug", "trabalho", "estudo", "foco"]
+
+    if percepcao.get("conclusao") == "descanso" and int(percepcao.get("confianca") or 0) >= 1:
+        return True
+    if percepcao.get("conclusao") in {"foco", "musica", "pesquisa", "organizacao", "inicio_dia"}:
+        return False
+    if any(s in amostra for s in sinais_descanso):
+        return True
+    if ctx.get("periodo") in {"madrugada", "noite"} and not any(s in amostra for s in sinais_foco):
+        return True
+    return False
+
+
+def montar_resumo_mente_integrada_com_extras(
+    *,
+    texto_usuario: str = "",
+    ctx: Dict[str, Any],
+    percepcao: Dict[str, Any] | None,
+    mente: Dict[str, Any] | None,
+    resumo_autoaprimoramento_cb: Callable[..., str] | None = None,
+    memoria_sqlite: Any = None,
+) -> str:
+    """Agrupa memoria, percepcao, emocao, humor e rotina num unico retrato."""
+    texto_base = str(texto_usuario or "").strip()
+    auto_resumo = ""
+    aprendizados = ""
+    memoria_quente = ""
+    topicos_prompt = ""
+    try:
+        if callable(resumo_autoaprimoramento_cb):
+            auto_resumo = resumo_autoaprimoramento_cb(limit=4)
+    except Exception:
+        pass
+
+    try:
+        if texto_base and memoria_sqlite is not None:
+            aprendizados = memoria_sqlite.formatar_aprendizados_relevantes_para_prompt(texto_base, limit=4)
+    except Exception:
+        pass
+
+    try:
+        if memoria_sqlite is not None:
+            memoria_quente = memoria_sqlite.formatar_memoria_quente_para_prompt(limit=4, max_chars=800)
+    except Exception:
+        pass
+
+    try:
+        if memoria_sqlite is not None:
+            topicos_prompt = memoria_sqlite.formatar_topicos_conversa_para_prompt(limit=4)
+    except Exception:
+        pass
+
+    return resumo_mente_integrada_para_prompt(
+        ctx=ctx,
+        percepcao=percepcao,
+        mente=mente,
+        auto_resumo=auto_resumo,
+        aprendizados=aprendizados,
+        memoria_quente=memoria_quente,
+        topicos_prompt=topicos_prompt,
+    )
+
+
 def interpretar_contexto_vivo(
     ctx: Optional[Dict[str, Any]] = None,
     texto_extra: str = "",

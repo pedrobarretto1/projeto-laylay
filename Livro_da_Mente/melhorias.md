@@ -491,8 +491,546 @@
 -   `F:x {}` = Finalizado
 
 ------------------------------------------------------------------------
+# ( ) Melhoria - Subsistema IoT (Casa Inteligente)
+            Objetivo
 
-# 🧠 Cognição, Visão e Memória
+            Adicionar à Laylay um subsistema de Internet das Coisas (IoT), permitindo que ela controle dispositivos físicos da casa através da rede local ou internet.
+
+            A ideia não é controlar apenas uma tomada inteligente, mas criar uma arquitetura escalável onde qualquer dispositivo compatível possa ser integrado futuramente sem alterar a inteligência principal.
+
+            Filosofia
+
+            A Laylay não deve enxergar dispositivos específicos.
+
+            Ela deve enxergar ambientes.
+
+            Exemplo:
+
+            Quarto
+                ├── Luz principal
+                ├── Luminária
+                ├── Tomada PC
+                ├── Ventilador
+                └── Sensor de temperatura
+
+            Assim a inteligência conversa com ambientes, enquanto o módulo IoT decide quais dispositivos precisam ser acionados.
+
+            Arquitetura
+            Laylay
+                    │
+                    ▼
+            Sistema IoT
+                    │
+            ┌──────┴──────────┐
+            │                 │
+            ▼                 ▼
+            Dispositivos     Sensores
+
+            O módulo IoT será responsável por:
+
+            descobrir dispositivos
+            armazenar informações
+            enviar comandos
+            receber estados
+            verificar disponibilidade
+
+            A inteligência apenas faz pedidos.
+
+            Organização sugerida
+            iot/
+
+                controlador.py
+
+                dispositivos.py
+
+                protocolos.py
+
+                descoberta.py
+
+                cenas.py
+
+                sensores.py
+
+                historico.py
+            Banco de dados
+
+            Nova tabela
+
+            iot_dispositivos
+
+            Campos
+
+            id
+
+            nome
+
+            tipo
+
+            ambiente
+
+            marca
+
+            protocolo
+
+            ip
+
+            device_id
+
+            status
+
+            ultimo_contato
+
+            ativo
+            Protocolos suportados
+
+            Inicialmente
+
+            Tuya
+            Smart Life
+            Shelly
+
+            Posteriormente
+
+            MQTT
+            ESP32
+            Arduino
+            Home Assistant
+            Zigbee
+            Matter
+            Camada de abstração
+
+            Ao invés de
+
+            ligar_tomada()
+
+            A IA utilizará
+
+            executar_dispositivo()
+
+            ligar()
+
+            desligar()
+
+            alternar()
+
+            obter_estado()
+
+            Assim qualquer dispositivo funciona da mesma maneira.
+
+            Descoberta automática
+
+            Quando a Laylay iniciar
+
+            Escaneia a rede
+
+            ↓
+
+            Encontra dispositivos
+
+            ↓
+
+            Atualiza IP
+
+            ↓
+
+            Testa conexão
+
+            ↓
+
+            Atualiza banco
+
+            Sem precisar reconfigurar tudo caso o roteador troque os IPs.
+
+            Cenas Inteligentes
+
+            Ao invés de ligar um dispositivo, a IA pode executar cenas.
+
+            Exemplo
+
+            Modo Estudo
+
+            Liga
+
+            ✔ luminária
+
+            ✔ tomada do monitor
+
+            ✔ Spotify
+
+            ✔ VSCode
+
+            ✔ GitHub
+
+            Modo Filme
+
+            Desliga
+
+            luz principal
+
+            Liga
+
+            LED
+
+            Abre streaming
+
+            Silencia notificações
+
+            Modo Dormir
+
+            Verifica arquivos não salvos
+
+            ↓
+
+            Salva projetos
+
+            ↓
+
+            Fecha programas
+
+            ↓
+
+            Desliga monitor
+
+            ↓
+
+            Desliga tomadas
+
+            ↓
+
+            Apaga luz
+
+            ↓
+
+            Deseja boa noite
+
+            Personalidade
+
+            A Laylay não deve agir como uma automação.
+
+            Ela deve conversar.
+
+            Exemplo
+
+            Pedro...
+
+            Já escureceu.
+
+            Quer que eu acenda a luminária?
+
+            Ou
+
+            Percebi que você está estudando há bastante tempo.
+
+            Posso ligar a luminária?
+            Memória
+
+            A IA aprende padrões.
+
+            Exemplo
+
+            Toda sexta
+
+            22:00
+
+            Pedro liga o LED azul.
+
+            Após algumas semanas
+
+            Pedro...
+
+            Posso ligar o LED azul?
+            Segurança
+
+            Nunca executar ações críticas automaticamente.
+
+            Exemplos
+
+            ❌ Cafeteira
+
+            ❌ Ferro de passar
+
+            ❌ Aquecedor
+
+            ❌ Chuveiro
+
+            Esses dispositivos sempre exigem confirmação.
+
+            Integração com outras habilidades
+
+            Esta melhoria deve conversar diretamente com:
+
+            Memória de Longo Prazo
+            Rotinas
+            Agendamentos
+            Contexto Temporal
+            Estado do Computador
+            Briefing Diário
+            Sistema de Emoções
+            Sistema de Preferências
+            Controle do Chrome
+            Controle de Música
+            Controle de Volume
+            Sistema de Notificações
+            Cliente Mobile (futuro)
+
+            Nenhuma informação deve ser duplicada.
+
+            Expansões futuras
+            Controle de lâmpadas RGB.
+            Sensores de temperatura e umidade.
+            Sensores de presença.
+            Cortinas inteligentes.
+            Fechaduras eletrônicas.
+            Arduino via Wi-Fi.
+            ESP32.
+            Impressora 3D.
+            Monitoramento do consumo de energia.
+            Irrigação automática das plantas.
+            Alimentador automático para animais.
+            Controle completo do quarto por voz.
+            Benefícios
+            Arquitetura escalável.
+            Independência de fabricantes.
+            Fácil adição de novos dispositivos.
+            Integração completa com os demais módulos.
+            Prepara a Laylay para evoluir de uma assistente de computador para uma assistente do ambiente físico.
+            💡 Uma ideia que acredito que você vai gostar
+
+            Pensando na filosofia da Laylay, eu adicionaria um conceito chamado "Presença".
+
+            A Laylay não deveria simplesmente ligar e desligar coisas. Ela deveria entender que existe um ambiente ao seu redor.
+
+            Por exemplo:
+
+            Se o sensor indicar que você saiu do quarto, ela pode perguntar depois de alguns minutos: "Você esqueceu a luminária ligada. Posso desligar?"
+            Se detectar que está anoitecendo enquanto você programa, ela pode sugerir ligar uma luz mais confortável.
+            Se um dia você adicionar sensores de temperatura, ela pode dizer: "O quarto chegou a 29 °C. Quer que eu ligue o ventilador?"
+
+            Isso deixa a IoT integrada à personalidade da Laylay, em vez de ser apenas um conjunto de comandos. Na minha visão, esse é o tipo de melhoria que diferencia uma automação comum de uma assistente que realmente parece acompanhar o ambiente onde vive.
+
+            ---
+
+            # Referência prática — Teste isolado com tomada inteligente Tuya/Novadigital
+
+            ## Objetivo
+
+            Este trecho serve como referência para testes futuros de integração IoT com a Laylay.
+
+            Antes de integrar qualquer dispositivo ao núcleo principal da assistente, a ideia é validar o funcionamento em um script isolado, simples e seguro.
+
+            Neste teste, foi usada uma tomada inteligente compatível com o ecossistema Tuya/Smart Life/Novadigital, controlada localmente via Python usando a biblioteca `tinytuya`.
+
+            ## Dados identificados no teste
+
+            ```text
+            IP do dispositivo: 192.168.100.48
+            Versão Tuya: 3.4
+            Tipo: Tomada inteligente
+            Biblioteca usada: tinytuya
+
+            Dados sensíveis como device_id e local_key devem permanecer censurados ou armazenados em .env.
+
+            Nunca subir essas informações para o GitHub.
+
+            Instalação da biblioteca
+            py -m pip install tinytuya
+            Descoberta do dispositivo
+
+            Com o dispositivo ligado e conectado na mesma rede Wi-Fi do computador:
+
+            py -m tinytuya scan 60
+
+            Exemplo de resultado esperado:
+
+            Unknown v3.4 Device
+            Address = 192.168.100.48
+            Device ID = **********************
+            Version = 3.4
+            Código de referência isolado
+            import tinytuya
+            import time
+
+            DEVICE_ID = "DEVICE_ID_CENSURADO"
+            IP = "192.168.100.48"
+            LOCAL_KEY = "LOCAL_KEY_CENSURADA"
+            VERSION = 3.4
+
+            tomada = tinytuya.OutletDevice(
+                dev_id=DEVICE_ID,
+                address=IP,
+                local_key=LOCAL_KEY,
+                version=VERSION
+            )
+
+            tomada.set_socketPersistent(False)
+
+            def mostrar_menu():
+                print("\n==============================")
+                print(" TESTE TOMADA INTELIGENTE")
+                print("==============================")
+                print("[1] Ligar")
+                print("[2] Desligar")
+                print("[3] Alternar liga/desliga")
+                print("[4] Ver status")
+                print("[0] Sair")
+                print("==============================")
+
+            def ver_status():
+                try:
+                    status = tomada.status()
+                    print("\nStatus recebido:")
+                    print(status)
+
+                    ligado = status.get("dps", {}).get("1")
+
+                    if ligado is True:
+                        print("Estado atual: LIGADA")
+                    elif ligado is False:
+                        print("Estado atual: DESLIGADA")
+                    else:
+                        print("Não consegui identificar o estado pelo DPS 1.")
+
+                    return ligado
+
+                except Exception as erro:
+                    print("\nErro ao ler status:")
+                    print(erro)
+                    return None
+
+            def ligar():
+                try:
+                    print("\nLigando tomada...")
+                    resposta = tomada.turn_on()
+                    print(resposta)
+                except Exception as erro:
+                    print("\nErro ao ligar:")
+                    print(erro)
+
+            def desligar():
+                try:
+                    print("\nDesligando tomada...")
+                    resposta = tomada.turn_off()
+                    print(resposta)
+                except Exception as erro:
+                    print("\nErro ao desligar:")
+                    print(erro)
+
+            def alternar():
+                estado = ver_status()
+
+                if estado is True:
+                    desligar()
+                elif estado is False:
+                    ligar()
+                else:
+                    print("\nComo não consegui saber o estado, vou tentar ligar por segurança.")
+                    ligar()
+
+            while True:
+                mostrar_menu()
+                opcao = input("Escolha uma opção: ").strip()
+
+                if opcao == "1":
+                    ligar()
+
+                elif opcao == "2":
+                    desligar()
+
+                elif opcao == "3":
+                    alternar()
+
+                elif opcao == "4":
+                    ver_status()
+
+                elif opcao == "0":
+                    print("\nSaindo do teste.")
+                    break
+
+                else:
+                    print("\nOpção inválida. Digite 1, 2, 3, 4 ou 0.")
+
+                time.sleep(0.5)
+            Observações importantes
+
+            Este código não deve ser integrado diretamente na Laylay ainda.
+
+            Ele serve apenas como referência de validação para provar que:
+
+            o dispositivo pode ser encontrado na rede;
+            o Python consegue se comunicar com ele;
+            comandos de ligar e desligar funcionam;
+            a biblioteca tinytuya é uma opção viável para IoT local.
+            Segurança
+
+            Nunca controlar automaticamente aparelhos perigosos ou de alto consumo sem confirmação explícita.
+
+            Evitar automação automática para:
+
+            Aquecedor
+            Ferro de passar
+            Chuveiro
+            Micro-ondas
+            Cafeteira sem segurança
+            Extensões com muitos aparelhos
+            PC inteiro em carga alta
+
+            Uso recomendado para testes:
+
+            Luminária
+            Carregador simples
+            LED
+            Ventilador pequeno
+            Aparelhos leves
+            Possível evolução para a Laylay
+
+            No futuro, esse código pode virar um módulo isolado:
+
+            iot/
+                controlador.py
+                dispositivos.py
+                protocolos/
+                    tuya.py
+
+            A Laylay não deve chamar diretamente tinytuya.
+
+            Ela deve usar uma camada intermediária:
+
+            iot.ligar("tomada_ventilador")
+            iot.desligar("luminaria_quarto")
+            iot.alternar("led_mesa")
+            iot.status("tomada_quarto")
+
+            Assim, no futuro, a Laylay poderá controlar dispositivos Tuya, Smart Life, Shelly, ESP32, Arduino, MQTT ou Home Assistant sem mudar sua inteligência principal.
+
+            Ideia de integração futura
+
+            Exemplo de uso com personalidade da Laylay:
+
+            Pedro: Lay, modo dormir.
+
+            Laylay:
+            Beleza. Vou desligar a luminária, fechar a música e deixar o quarto em modo descanso.
+
+            A ação real poderia envolver:
+
+            Desligar tomada da luminária
+            Pausar música
+            Reduzir volume
+            Salvar estado da sessão
+            Fechar abas opcionais
+            Registrar rotina na memória
+            Status da melhoria
+
+            Estado atual:
+
+            Teste isolado: funcional
+            Integração na Laylay: planejada
+            Prioridade: futura
+            Risco: médio, exige cuidado com credenciais e segurança elétrica
+
+            Isso deixa guardado no `melhorias.md` do jeito certo: como **referência validada**, mas sem misturar agora no código.
+
+# 🧠 ( ) Cognição, Visão e Memória
 
             ## N:4 {} Memória Visual
 

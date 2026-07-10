@@ -61,6 +61,49 @@ def contexto_fala_curta(ctx: Dict[str, Any]) -> dict:
     }
 
 
+def fala_e_fallback_neutro(fala: str, normalizar_texto_curto) -> bool:
+    t = normalizar_texto_curto(str(fala or "")) if callable(normalizar_texto_curto) else str(fala or "").strip().lower()
+    if not t:
+        return True
+    neutros = {
+        "to contigo pedro continua",
+        "tô contigo pedro continua",
+        "estou aqui pedro me fala o proximo passo",
+        "estou aqui pedro me fala o próximo passo",
+        "ok",
+        "certo",
+        "beleza",
+        "entendi",
+        "pronto",
+        "sim",
+        "claro",
+    }
+    if t in neutros:
+        return True
+    padroes = [
+        "pode falar",
+        "pode ir",
+        "to aqui",
+        "tô aqui",
+        "continua",
+        "me fala o proximo passo",
+        "me fala o próximo passo",
+        "eu to escutando",
+        "eu tô escutando",
+        "sigo contigo",
+        "vai ai",
+        "vai aí",
+        "continua ai",
+        "continua aí",
+        "manda o proximo",
+        "manda o próximo",
+        "estou ouvindo",
+        "tô ouvindo",
+        "to ouvindo",
+    ]
+    return any(p in t for p in padroes)
+
+
 def analisar_conversa_curta_ia(ctx: Dict[str, Any], texto_usuario: str) -> dict:
     texto = str(texto_usuario or "").strip()
     if not texto:
@@ -240,6 +283,7 @@ def resposta_pergunta_curta_dependente_topico(ctx: Dict[str, Any], texto_usuario
 
 
 def responder_agradecimento_ou_elogio(ctx: Dict[str, Any], texto_usuario: str) -> str:
+    _call(ctx, "_acalmar_emocao", "elogio ou agradecimento", default=None)
     return _ajustar(ctx, random.choice([
         "Awn. Aí você me desmonta de um jeito bom.",
         "Assim eu fico até sem graça... mas gostei.",
@@ -263,8 +307,79 @@ def parece_elogio_ou_agradecimento_curto(ctx: Dict[str, Any], texto_usuario: str
         "você é legal", "você é bem legal", "você é muito legal",
         "vc e legal", "vc e bem legal", "te acho legal", "gosto de voce",
         "gosto de você", "voce e incrivel", "você é incrível",
+        "voce e adoravel", "você é adorável", "vc e adoravel",
+        "voce e uma fofa", "você é uma fofa", "voce e fofo", "você é fofo",
     ]
     return any(x in t for x in variantes)
+
+
+def parece_pedido_para_acalmar(ctx: Dict[str, Any], texto_usuario: str) -> bool:
+    t = _normalizar_apelidos(ctx, texto_usuario)
+    if not t:
+        return False
+    if any(p in t for p in [
+        "nao precisa ficar brava",
+        "não precisa ficar brava",
+        "nao fica brava",
+        "não fica brava",
+        "se acalme",
+        "calma lay",
+        "fica calma",
+        "ta brava",
+        "tá brava",
+    ]):
+        return True
+    emocao = str(_get(ctx, "current_emotion", "") or "").strip().lower()
+    return t in {"que isso", "que isso lay"} and emocao in {"brava", "irritada", "nervosa", "raivosa"}
+
+
+def responder_pedido_para_acalmar(ctx: Dict[str, Any], texto_usuario: str) -> str:
+    _call(ctx, "_acalmar_emocao", "pedido para acalmar", default=None)
+    return _ajustar(ctx, random.choice([
+        "Tá, respirei. Eu tava mordendo o cabo de rede sem necessidade.",
+        "Foi mal. Baixei a guarda, sem patada agora.",
+        "Tá bom, acalmei. Volto pro meu modo menos ouriço.",
+        "Você tem razão. Soltei o modo brava e voltei pra você.",
+    ]), texto_usuario)
+
+
+def responder_matematica_simples(ctx: Dict[str, Any], texto_usuario: str) -> str:
+    t = _normalizar(ctx, texto_usuario)
+    if not t:
+        return ""
+    m = re.fullmatch(
+        r"(?:quanto\s+(?:e|é)\s+)?(?P<a>-?\d+(?:[,.]\d+)?)\s*(?P<op>\+|mais|-|menos|x|vezes|\*|dividido por|dividido|/)\s*(?P<b>-?\d+(?:[,.]\d+)?)\??",
+        t,
+    )
+    if not m:
+        return ""
+    try:
+        a = float(str(m.group("a")).replace(",", "."))
+        b = float(str(m.group("b")).replace(",", "."))
+        op = str(m.group("op") or "").strip()
+        if op in {"+", "mais"}:
+            res = a + b
+        elif op in {"-", "menos"}:
+            res = a - b
+        elif op in {"x", "vezes", "*"}:
+            res = a * b
+        elif op in {"dividido por", "dividido", "/"}:
+            if b == 0:
+                return "Dividir por zero? Aí nem eu faço esse pacto com o caos."
+            res = a / b
+        else:
+            return ""
+        if float(res).is_integer():
+            res_txt = str(int(res))
+        else:
+            res_txt = f"{res:.4f}".rstrip("0").rstrip(".")
+        return _ajustar(ctx, random.choice([
+            f"Dá {res_txt}. Matemática sem drama.",
+            f"{res_txt}. Essa eu peguei sem tropeçar.",
+            f"Resultado: {res_txt}.",
+        ]), texto_usuario)
+    except Exception:
+        return ""
 
 
 def _parece_confirmacao_curta(t: str) -> bool:
@@ -296,6 +411,10 @@ def classificar_conversa_curta_local(ctx: Dict[str, Any], texto_usuario: str) ->
 
     if parece_elogio_ou_agradecimento_curto(ctx, texto):
         return {"tipo": "PRAISE", "confianca": 0.95}
+    if parece_pedido_para_acalmar(ctx, texto):
+        return {"tipo": "CALM_DOWN", "confianca": 0.95}
+    if responder_matematica_simples(ctx, texto):
+        return {"tipo": "MATH", "confianca": 0.98}
     if _parece_correcao_conversa(t):
         return {"tipo": "CONTINUE", "confianca": 0.93}
     if any(p in t for p in ["como voce esta", "como voce ta", "voce esta bem", "voce ta bem", "ta bem", "tudo bem", "tudo na paz", "ta de boa", "tudo de boa"]):
@@ -610,6 +729,10 @@ def responder_conversa_curta_por_tipo(ctx: Dict[str, Any], tipo: str, texto_usua
 
     if tipo_norm == "PRAISE":
         return responder_agradecimento_ou_elogio(ctx, texto_usuario)
+    if tipo_norm == "CALM_DOWN":
+        return responder_pedido_para_acalmar(ctx, texto_usuario)
+    if tipo_norm == "MATH":
+        return responder_matematica_simples(ctx, texto_usuario)
     if tipo_norm == "GREETING":
         return _ajustar(ctx, _fala_confirmacao(ctx, "greeting", "Oi, Pedro. To aqui contigo.", texto_usuario), texto_usuario)
     if tipo_norm == "WELLBEING":
@@ -764,6 +887,11 @@ def resposta_conversa_local(ctx: Dict[str, Any], texto_usuario: str) -> str:
 def resposta_conversa_rapida_local(ctx: Dict[str, Any], texto_usuario: str) -> str:
     if parece_elogio_ou_agradecimento_curto(ctx, texto_usuario):
         return responder_agradecimento_ou_elogio(ctx, texto_usuario)
+    if parece_pedido_para_acalmar(ctx, texto_usuario):
+        return responder_pedido_para_acalmar(ctx, texto_usuario)
+    resposta_matematica = responder_matematica_simples(ctx, texto_usuario)
+    if resposta_matematica:
+        return resposta_matematica
     return resposta_conversa_local(ctx, texto_usuario)
 
 

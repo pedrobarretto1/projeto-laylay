@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Callable, Optional
+from typing import Any, Callable, Dict, Optional
 
 
 EMO_DESC = {
@@ -39,6 +39,77 @@ def descricao_emocao(emocao: str) -> str:
 def perfil_comportamento_emocional(emocao: str) -> str:
     emo = str(emocao or "calma").strip().lower()
     return EMO_BEHAVIOR.get(emo, EMO_BEHAVIOR["calma"])
+
+
+def atualizar_emocao_contextual(
+    messages: list | None,
+    current_emotion: str,
+    emotion_level: int,
+    contexto: Dict[str, Any] | None,
+    *,
+    normalizar_cb: Optional[Callable[[str], str]] = None,
+) -> tuple[str, int]:
+    ctx = contexto if isinstance(contexto, dict) else {}
+    emocao_atual = str(current_emotion or ctx.get("emocao") or "calma").strip()
+    try:
+        nivel_atual = int(emotion_level or ctx.get("nivel_emocao") or 1)
+    except Exception:
+        nivel_atual = 1
+
+    humor = ctx.get("humor", 0)
+    try:
+        humor = int(humor or 0)
+    except Exception:
+        humor = 0
+    if humor <= -6:
+        emocao_atual = "irritada"
+        nivel_atual = max(nivel_atual, 2)
+    elif humor >= 6:
+        emocao_atual = "alegre"
+        nivel_atual = max(nivel_atual, 2)
+    elif ctx.get("periodo") in {"madrugada", "noite"} and ctx.get("emocao") in {
+        "cansada",
+        "triste",
+    }:
+        emocao_atual = "calma"
+        nivel_atual = max(1, nivel_atual - 1)
+
+    ultimo_texto = ""
+    try:
+        for item in reversed(messages or []):
+            if isinstance(item, dict) and item.get("role") == "user":
+                ultimo_texto = str(item.get("content") or "")
+                break
+    except Exception:
+        ultimo_texto = ""
+
+    normalizar = normalizar_cb or (lambda texto: str(texto or "").lower())
+    ultimo_normalizado = normalizar(ultimo_texto)
+    elogios = [
+        "obrigado",
+        "obrigada",
+        "valeu",
+        "vlw",
+        "amei",
+        "gostei",
+        "lindo",
+        "linda",
+        "perfeito",
+        "maravilhoso",
+        "maravilhosa",
+        "fofa",
+        "fofo",
+        "bonita",
+        "bonito",
+        "você é incrível",
+        "voce e incrivel",
+    ]
+    if any(palavra in ultimo_normalizado for palavra in elogios):
+        if emocao_atual not in {"irritada", "brava"}:
+            emocao_atual = "envergonhada"
+            nivel_atual = max(nivel_atual, 2)
+
+    return emocao_atual, nivel_atual
 
 
 def modular_audio_params(emocao_atual: str, nivel_emocao: int):
@@ -129,4 +200,3 @@ def ajustar_tom_por_emocao(texto: str, emocao: str, texto_usuario: str = "", nor
         return t
 
     return t
-

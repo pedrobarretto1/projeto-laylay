@@ -344,11 +344,6 @@ def extrair_comando_rapido(texto: str, sites_directos: Optional[dict] = None):
         resto = (m_toca.group(1) or "").strip()
         if not resto:
             return None
-        if "netflix" in resto:
-            q = re.sub(r"\b(na|no)\s+netflix\b", " ", resto)
-            q = re.sub(r"\bnetflix\b", " ", q)
-            q = re.sub(r"\s+", " ", q).strip()
-            return ("NETFLIX", q)
         q = re.sub(r"\b(no|na)\s+youtube\b", " ", resto)
         q = re.sub(r"\byoutube\b", " ", q)
         q = re.sub(r"\s+", " ", q).strip()

@@ -2,13 +2,57 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     if isinstance(ctx, dict) and key in ctx:
         return ctx.get(key, default)
     return default
+
+
+def montar_prompt_contextual_legado(
+    base_system_prompt: str,
+    contexto: Dict[str, Any] | None,
+    resumo_conversa: str = "",
+    historico_long_term: str = "",
+) -> str:
+    """Preserva o montador antigo sem competir com o fluxo ativo de prompt."""
+    ctx = contexto if isinstance(contexto, dict) else {}
+    base = [str(base_system_prompt or "")]
+    base.append(
+        "ESTADO MENTAL COMPARTILHADO: "
+        f"periodo={ctx.get('periodo') or 'indefinido'} | "
+        f"emocao={ctx.get('emocao') or 'calma'}({ctx.get('nivel_emocao') or 1}) | "
+        f"humor={ctx.get('humor', 0)} | "
+        f"topico={ctx.get('topico_ativo') or 'nenhum'}"
+    )
+    if ctx.get("exe") or ctx.get("title") or ctx.get("assunto"):
+        base.append(
+            "CONTEXTO VIVO: "
+            f"app={ctx.get('exe') or 'desconhecido'} | "
+            f"janela={ctx.get('title') or 'indefinida'} | "
+            f"assunto={ctx.get('assunto') or 'indefinido'}"
+        )
+    logs_recentes = ctx.get("logs_recentes")
+    if isinstance(logs_recentes, list) and logs_recentes:
+        base.append("SINAIS RECENTES: " + " | ".join(map(str, logs_recentes[-3:])))
+    rotina_atual = ctx.get("rotina_atual")
+    if isinstance(rotina_atual, dict) and rotina_atual:
+        janelas = rotina_atual.get("janelas") or []
+        assuntos = rotina_atual.get("assuntos") or []
+        partes = []
+        if janelas:
+            partes.append("janelas=" + ", ".join(map(str, janelas[-3:])))
+        if assuntos:
+            partes.append("assuntos=" + ", ".join(map(str, assuntos[-3:])))
+        if partes:
+            base.append("ROTINA DO HORARIO: " + " | ".join(partes))
+    if resumo_conversa:
+        base.append(f"RESUMO CURTO: {resumo_conversa}")
+    if historico_long_term:
+        base.append(f"HISTORICO LONGO: {historico_long_term}")
+    return "\n".join(base)
 
 
 def preparar_contexto_resposta_ia(
@@ -129,3 +173,53 @@ def preparar_contexto_resposta_ia(
             mensagens.insert(0, {"role": "system", "content": prompt_com_humor})
 
     return mensagens, prompt_com_humor
+
+
+class ContextoPromptRuntime:
+    """Prepara o prompt ativo usando o retrato vivo da mesma mente."""
+
+    def __init__(
+        self,
+        *,
+        memoria_sqlite: Any,
+        resumo_mente_integrada: Callable[[str], str],
+        formatar_playlists: Callable[[], str],
+        get_status_humor_prompt: Callable[[], str],
+        base_system_prompt: str,
+        estado_getter: Callable[[], Dict[str, Any]],
+    ) -> None:
+        self.memoria_sqlite = memoria_sqlite
+        self.resumo_mente_integrada = resumo_mente_integrada
+        self.formatar_playlists = formatar_playlists
+        self.get_status_humor_prompt = get_status_humor_prompt
+        self.base_system_prompt = str(base_system_prompt or "")
+        self.estado_getter = estado_getter
+
+    def preparar(self, texto: str) -> Tuple[List[Dict[str, Any]], str]:
+        try:
+            estado = self.estado_getter() or {}
+        except Exception:
+            estado = {}
+        estado = estado if isinstance(estado, dict) else {}
+        t = str(texto or "").strip()
+        retrato = self.resumo_mente_integrada(t)
+        contexto = {
+            "memoria_sqlite": self.memoria_sqlite,
+            "retrato_mente_integrada": retrato,
+            "_resumo_mente_integrada_para_prompt": self.resumo_mente_integrada,
+            "aba_titulo_atual": estado.get("aba_titulo_atual", ""),
+            "aba_url_atual": estado.get("aba_url_atual", ""),
+            "_formatar_playlists_para_prompt": self.formatar_playlists,
+            "get_status_humor_prompt": self.get_status_humor_prompt,
+        }
+        return preparar_contexto_resposta_ia(
+            contexto,
+            t,
+            estado.get("messages") or [],
+            estado.get("humor_level", 0),
+            self.base_system_prompt,
+        )
+
+
+def criar_contexto_prompt_runtime(**kwargs: Any) -> ContextoPromptRuntime:
+    return ContextoPromptRuntime(**kwargs)

@@ -2,9 +2,180 @@
 
 from __future__ import annotations
 
+import ctypes
+import datetime as _dt
+import json
+import os
 import re
+import threading
 import time
 from typing import Any, Callable, Dict, Optional
+
+
+class AgendaRuntime:
+    """Runtime da agenda mantendo execucao, persistencia e loop em um modulo."""
+
+    def __init__(
+        self,
+        arquivo: str,
+        *,
+        falar_cb: Callable[[str, str, int], Any],
+        abrir_programa_cb: Callable[[str], Any],
+        enviar_pc_b_cb: Callable[[dict], Any],
+        enviar_chrome_local_cb: Callable[[dict], Any],
+        executar_exec_cb: Callable[[str, str], Any],
+        time_cb: Callable[[], float] = time.time,
+        now_cb: Callable[[], _dt.datetime] = _dt.datetime.now,
+        sleep_cb: Callable[[float], Any] = time.sleep,
+        thread_factory: Callable[..., Any] = threading.Thread,
+        log: Callable[[str], Any] = print,
+    ):
+        self.arquivo = arquivo
+        self.falar_cb = falar_cb
+        self.abrir_programa_cb = abrir_programa_cb
+        self.enviar_pc_b_cb = enviar_pc_b_cb
+        self.enviar_chrome_local_cb = enviar_chrome_local_cb
+        self.executar_exec_cb = executar_exec_cb
+        self.time_cb = time_cb
+        self.now_cb = now_cb
+        self.sleep_cb = sleep_cb
+        self.thread_factory = thread_factory
+        self.log = log
+        self._dia_map = {"seg": 0, "ter": 1, "qua": 2, "qui": 3, "sex": 4, "sab": 5, "dom": 6}
+        self._disparados: set[str] = set()
+
+    def load(self) -> list:
+        try:
+            if os.path.exists(self.arquivo):
+                with open(self.arquivo, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    return data if isinstance(data, list) else []
+        except Exception as e:
+            self.log(f"[AGENDA] Erro ao carregar: {e}")
+        return []
+
+    def save(self, lista: list):
+        try:
+            os.makedirs(os.path.dirname(self.arquivo), exist_ok=True)
+            with open(self.arquivo, "w", encoding="utf-8") as f:
+                json.dump(lista, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            self.log(f"[AGENDA] Erro ao salvar: {e}")
+
+    def disparar(self, ag: dict):
+        """Executa um agendamento: fala o texto e roda os comandos opcionais."""
+        descricao = str(ag.get("descricao") or "Pedro, chegou a hora!").strip()
+        comandos_disparo = ag.get("comandos_no_disparo") or []
+        nome = str(ag.get("nome") or ag.get("id", ""))[:30]
+        self.log(f"\n⏰ [AGENDA] Disparando: '{nome}' — {descricao}")
+        try:
+            self.falar_cb(descricao, "calma", 1)
+        except Exception as e:
+            self.log(f"[AGENDA] Erro ao falar: {e}")
+
+        if isinstance(comandos_disparo, list) and comandos_disparo:
+            th = self.thread_factory(target=lambda: self._executar_comandos(comandos_disparo), daemon=True)
+            th.start()
+
+    def _executar_comandos(self, comandos_disparo: list):
+        for cmd in comandos_disparo:
+            if not isinstance(cmd, dict):
+                continue
+            acao = str(cmd.get("acao", "")).strip()
+            alvo = str(cmd.get("alvo", "")).strip()
+            try:
+                destino = str(cmd.get("target", "pc_a")).lower().strip()
+
+                if acao == "open_app":
+                    if destino == "pc_b":
+                        self.enviar_pc_b_cb({"action": "open_app", "app": alvo})
+                    else:
+                        self.abrir_programa_cb(alvo)
+
+                elif acao in ("open_url", "youtube_search"):
+                    if acao == "youtube_search":
+                        msg_payload = {"action": "youtube_search", "query": alvo}
+                        if destino == "pc_b":
+                            url_yt = "https://www.youtube.com/results?search_query=" + alvo.replace(" ", "+")
+                            self.enviar_pc_b_cb({"action": "open_url", "url": url_yt})
+                        else:
+                            self.enviar_chrome_local_cb(msg_payload)
+                    else:
+                        msg_payload = {"action": "open_url", "url": alvo}
+                        if destino == "pc_b":
+                            self.enviar_pc_b_cb(msg_payload)
+                        else:
+                            self.enviar_chrome_local_cb(msg_payload)
+
+                elif acao == "notificar":
+                    if destino == "pc_b":
+                        self.enviar_pc_b_cb({"action": "notificar", "alvo": alvo})
+                    else:
+                        ctypes.windll.user32.MessageBoxW(0, alvo, "Laylay", 64)
+
+                elif acao == "tocar_playlist":
+                    if destino == "pc_b":
+                        alvo = alvo + " no pc b"
+                    self.executar_exec_cb("TOCAR_PLAYLIST", alvo)
+
+            except Exception as exc:
+                self.log(f"[AGENDA] Erro ao executar cmd '{acao}': {exc}")
+
+    def processar_ciclo(self) -> bool:
+        agora = self.now_cb()
+        hora_atual = agora.strftime("%H:%M")
+        dia_semana = agora.weekday()
+        lista = self.load()
+        modificado = False
+
+        for ag in list(lista):
+            if not isinstance(ag, dict) or not ag.get("ativo", True):
+                continue
+            tipo = str(ag.get("tipo", "once"))
+            ag_id = str(ag.get("id", ""))
+
+            if tipo == "once":
+                ts_exec = ag.get("ts_execucao", 0)
+                if ts_exec and self.time_cb() >= ts_exec and ag_id not in self._disparados:
+                    self._disparados.add(ag_id)
+                    self.disparar(ag)
+                    ag["ativo"] = False
+                    modificado = True
+            elif tipo in ("daily", "weekly"):
+                hora_ag = str(ag.get("hora", "")).strip()
+                if hora_ag != hora_atual:
+                    continue
+                chave = f"{ag_id}_{agora.strftime('%Y-%m-%d')}"
+                if chave in self._disparados:
+                    continue
+                dias = ag.get("dias", "todos")
+                if dias == "todos" or tipo == "daily":
+                    disparar = True
+                elif isinstance(dias, list):
+                    disparar = dia_semana in [self._dia_map.get(str(d).lower(), -1) for d in dias]
+                else:
+                    disparar = True
+                if disparar:
+                    self._disparados.add(chave)
+                    self.disparar(ag)
+
+        if modificado:
+            self.save(lista)
+        return modificado
+
+    def daemon(self):
+        """Thread daemon que verifica agendamentos a cada 30 segundos."""
+        self.log("⏰ [AGENDA] Thread de agendamentos iniciada.")
+        while True:
+            try:
+                self.processar_ciclo()
+            except Exception as exc:
+                self.log(f"[AGENDA] Erro no daemon: {exc}")
+            self.sleep_cb(30)
+
+
+def criar_agenda_runtime(*args, **kwargs) -> AgendaRuntime:
+    return AgendaRuntime(*args, **kwargs)
 
 
 def resumo_agendamentos_para_prompt(

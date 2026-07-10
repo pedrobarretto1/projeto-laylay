@@ -169,6 +169,30 @@
             "data": "2026-07-06",
             "titulo_norm": "shaman mudar demon slayer",
             "canal_norm": "oshaman oshaman"
+        },
+        {
+            "url": "https://www.youtube.com/watch?v=w6jgCsYntmg",
+            "titulo": "Yoko",
+            "canal": "terno rei terno rei",
+            "data": "2026-07-10",
+            "titulo_norm": "yoko",
+            "canal_norm": "terno rei terno rei"
+        },
+        {
+            "url": "https://www.youtube.com/watch?v=ADh95vSDZW0",
+            "titulo": "Vento na Cara",
+            "canal": "terno rei terno rei",
+            "data": "2026-07-10",
+            "titulo_norm": "vento na cara",
+            "canal_norm": "terno rei terno rei"
+        },
+        {
+            "url": "https://www.youtube.com/watch?v=ghSzmJPWo74",
+            "titulo": "Shaman - Falso Anjo (Neon Genesis Evangelion)",
+            "canal": "oShaman oShaman",
+            "data": "2026-07-10",
+            "titulo_norm": "shaman falso anjo neon genesis evangelion",
+            "canal_norm": "oshaman oshaman"
         }
     ],
     "rock": [
@@ -411,6 +435,16 @@
             "data": "2026-07-07",
             "titulo_norm": "that s life 2008 remastered",
             "canal_norm": "frank sinatra frank sinatra"
+        }
+    ],
+    "vibes": [
+        {
+            "url": "https://www.youtube.com/watch?v=ItuZ-dmcye4",
+            "titulo": "Glue Trip - Elbow Pain (Official Video)",
+            "canal": "Glue Trip Glue Trip",
+            "data": "2026-07-09",
+            "titulo_norm": "glue trip elbow pain",
+            "canal_norm": "glue trip glue trip"
         }
     ]
 }

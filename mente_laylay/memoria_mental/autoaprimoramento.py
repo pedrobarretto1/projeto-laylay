@@ -11,7 +11,6 @@ def normalizar_habilidade_autoaprimoramento(nome: str) -> str:
     mapa = {
         "open_url": "navegacao",
         "youtube_search": "musica",
-        "netflix_search": "midia",
         "playlist_add": "playlist",
         "playlist_play": "playlist",
         "playlist_list": "playlist",

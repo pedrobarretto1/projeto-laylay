@@ -12,6 +12,8 @@ from mente_laylay.personalidade.falas_variadas import escolher as _escolher_fala
 from mente_laylay.personalidade.falas_variadas import fala_de_confirmacao as _fala_de_confirmacao_variada
 from mente_laylay.personalidade.falas_variadas import fala_por_estado_acao as _fala_por_estado_acao
 from mente_laylay.autonomia.habilidade_janelas import executar_habilidade_janelas as _executar_habilidade_janelas
+from mente_laylay.autonomia.controle_midia import executar_media_control as _executar_media_control
+from mente_laylay.arquivos.execucao_arquivos import executar_intencao_arquivos as _executar_intencao_arquivos
 
 
 def _get(ctx: Dict[str, Any], nome: str, default=None):
@@ -54,19 +56,15 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
     abrir_programa = _get(ctx, "abrir_programa")
     fechar_programa = _get(ctx, "fechar_programa")
     enviar_chrome = _get(ctx, "enviar_comando_chrome")
-    criar_pasta = _get(ctx, "criar_pasta")
-    criar_ou_editar_arquivo = _get(ctx, "criar_ou_editar_arquivo")
-    mover_arquivo = _get(ctx, "mover_arquivo")
-    deletar_item = _get(ctx, "deletar_item")
     resolver_caminho = _get(ctx, "resolver_caminho")
     registrar_contexto_arquivo = _get(ctx, "registrar_contexto_arquivo")
-    registrar_estrutura_arquivo_recente = _get(ctx, "_registrar_estrutura_arquivo_recente")
     ultima_pasta_contextual = _get(ctx, "ultima_pasta_contextual")
     ultimo_arquivo_contextual = _get(ctx, "ultimo_arquivo_contextual")
+    estrutura_arquivo_recente = _get(ctx, "estrutura_arquivo_recente")
     ajustar_volume = _get(ctx, "ajustar_volume_sistema")
     ajustar_volume_rel = _get(ctx, "ajustar_volume_sistema_relativo")
     solicitar_aba = _get(ctx, "solicitar_aba_ativa")
-    entrar_netflix = _get(ctx, "executar_netflix_perfil")
+    fechar_aba_nativa = _get(ctx, "fechar_aba_ativa_nativa")
     organizar = _get(ctx, "organizar_janelas_robusto")
     ativar_full = _get(ctx, "ativar_tela_cheia_robusta")
     focar_app = _get(ctx, "focar_janela_app")
@@ -329,11 +327,34 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             return ref
         ultima_pasta = str(ultima_pasta_contextual() or "").strip() if callable(ultima_pasta_contextual) else ""
         ultimo_arquivo = str(ultimo_arquivo_contextual() or "").strip() if callable(ultimo_arquivo_contextual) else ""
-        if "pasta" in tipo_norm or ref_norm in {"ela", "essa", "essa pasta"}:
-            return ultima_pasta or ultimo_arquivo or ref
-        if "arquivo" in tipo_norm or ref_norm in {"ele", "esse", "esse arquivo"}:
-            return ultimo_arquivo or ultima_pasta or ref
+        estrutura = {}
+        if callable(estrutura_arquivo_recente):
+            try:
+                estrutura = estrutura_arquivo_recente() or {}
+            except Exception:
+                estrutura = {}
+        if not isinstance(estrutura, dict):
+            estrutura = {}
+        estrutura_pasta = str(
+            estrutura.get("nome")
+            or estrutura.get("pasta")
+            or estrutura.get("alvo")
+            or ""
+        ).strip()
+        estrutura_arquivo = str(
+            estrutura.get("arquivo_nome")
+            or estrutura.get("nome_arquivo")
+            or estrutura.get("arquivo")
+            or ""
+        ).strip()
+        if estrutura_arquivo and "." not in estrutura_arquivo:
+            estrutura_arquivo = f"{estrutura_arquivo}.txt"
         ultimo_alvo_mental = str(_get(ctx, "ultimo_alvo", "") or "").strip()
+        alvo_mental_existe = bool(ultimo_alvo_mental and _item_local_existe(ultimo_alvo_mental))
+        if "pasta" in tipo_norm or ref_norm in {"ela", "essa", "essa pasta", "isso"}:
+            return ultima_pasta or estrutura_pasta or (ultimo_alvo_mental if alvo_mental_existe else "") or ultimo_arquivo or estrutura_arquivo or ref
+        if "arquivo" in tipo_norm or ref_norm in {"ele", "esse", "esse arquivo"}:
+            return ultimo_arquivo or estrutura_arquivo or (ultimo_alvo_mental if alvo_mental_existe else "") or ultima_pasta or estrutura_pasta or ref
         if ultimo_alvo_mental and _item_local_existe(ultimo_alvo_mental):
             return ultimo_alvo_mental
         foco_vivo = _get(ctx, "foco_vivo", {}) or {}
@@ -344,7 +365,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             return ultimo_arquivo
         if ultima_pasta and _item_local_existe(ultima_pasta, "pasta"):
             return ultima_pasta
-        return ultima_pasta or ultimo_arquivo or ref
+        return ultima_pasta or estrutura_pasta or ultimo_arquivo or estrutura_arquivo or ref
 
     def _abrir_url_com_validacao(url: str, *, alvo: str = "", auto_click: bool = False) -> bool:
         url_limpa = str(url or "").strip()
@@ -783,217 +804,18 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             falar(_escolher_fala_variada(["PC bloqueado.", "Pronto, bloqueado.", "Tela travada."]), "calma", 1)
         return True
 
-    if intent == "CREATE_FOLDER":
-        nome = str(params.get("nome") or params.get("pasta") or params.get("alvo") or "").strip()
-        pasta_pai = str(params.get("pasta_pai") or params.get("parent") or "").strip()
-        pasta_interna = str(params.get("pasta_interna") or params.get("subpasta") or "").strip()
-        mover_item = str(params.get("mover_item") or params.get("mover_pasta") or params.get("item_para_mover") or "").strip()
-        arquivo_nome = str(params.get("arquivo_nome") or params.get("nome_arquivo") or params.get("arquivo") or "").strip()
-        arquivo_conteudo = str(params.get("arquivo_conteudo") or params.get("conteudo") or params.get("texto") or "").strip()
-        if pasta_pai.lower() in {"ela", "nela", "essa", "essa pasta", "dela", "dentro dela"} and callable(ultima_pasta_contextual):
-            pasta_pai = str(ultima_pasta_contextual() or "").strip()
-        if not nome:
-            if callable(falar):
-                falar(_escolher_fala_variada([
-                    "Criar qual pasta, Pedro? Me dá o nome.",
-                    "Qual pasta você quer criar?",
-                    "Me fala o nome da pasta.",
-                ]), "calma", 1)
-            return True
-        pasta_ok = False
-        if destino_val == "pc_b" and callable(_enviar_pc_b):
-            alvo_pc_b = os.path.join(pasta_pai, nome) if pasta_pai else nome
-            _enviar_pc_b({"action": "criar_pasta", "alvo": alvo_pc_b})
-            pasta_ok = True
-            _marcar_resultado("pasta_criada_pc_b", executou=True)
-            if callable(falar):
-                falar(_escolher_fala_variada([f"Pasta {nome} criada no PC B.", f"Criei {nome} no PC B.", f"PC B recebeu a pasta {nome}."]), "calma", 1)
-        else:
-            nome_resolvido = os.path.join(resolver_caminho(pasta_pai), nome) if pasta_pai and callable(resolver_caminho) else (os.path.join(pasta_pai, nome) if pasta_pai else nome)
-            sucesso = bool(criar_pasta(nome_resolvido)) if callable(criar_pasta) else False
-            if sucesso:
-                sucesso = _item_local_existe(nome_resolvido, "pasta")
-            pasta_ok = bool(sucesso)
-            if sucesso:
-                _registrar_arquivo(nome_resolvido, "arquivos")
-                _marcar_resultado("pasta_criada", executou=True)
-            else:
-                _marcar_resultado("falha_execucao", executou=False)
-            if callable(falar):
-                falar(
-                    _escolher_fala_variada([f"Pasta {nome} criada.", f"Criei a pasta {nome}.", f"Beleza, pasta {nome} pronta."])
-                    if sucesso
-                    else _escolher_fala_variada([f"Não consegui criar a pasta {nome}.", f"A pasta {nome} não quis nascer.", f"Deu ruim criando {nome}."]),
-                    "calma" if sucesso else "irritada",
-                    1 if sucesso else 2,
-                )
-        if pasta_ok and pasta_interna and callable(criar_pasta) and not destino_val == "pc_b":
-            base_principal = os.path.join(pasta_pai, nome) if pasta_pai else nome
-            caminho_interno = os.path.join(resolver_caminho(base_principal), pasta_interna) if callable(resolver_caminho) else os.path.join(base_principal, pasta_interna)
-            interna_ok = bool(criar_pasta(caminho_interno))
-            if interna_ok:
-                interna_ok = _item_local_existe(caminho_interno, "pasta")
-            if interna_ok:
-                _registrar_arquivo(caminho_interno, "arquivos")
-                _marcar_resultado("subpasta_criada", executou=True)
-            else:
-                _marcar_resultado("falha_execucao", executou=False)
-            if callable(falar):
-                falar(
-                    _escolher_fala_variada([
-                        f"Também encaixei a pasta {pasta_interna} dentro de {nome}.",
-                        f"Pronto, {pasta_interna} já está dentro de {nome}.",
-                        f"Organizei {pasta_interna} lá dentro de {nome}.",
-                    ]) if interna_ok else _escolher_fala_variada([
-                        f"Criei {nome}, mas a pasta {pasta_interna} lá dentro não foi.",
-                        f"{nome} nasceu, mas a subpasta {pasta_interna} resistiu.",
-                        f"Deu certo com {nome}, mas a interna {pasta_interna} emperrou.",
-                    ]),
-                    "calma" if interna_ok else "irritada",
-                    1 if interna_ok else 2,
-                )
-        if pasta_ok and mover_item and callable(mover_arquivo) and not destino_val == "pc_b":
-            pasta_alvo = os.path.join(pasta_pai, nome) if pasta_pai else nome
-            pasta_base = resolver_caminho(pasta_alvo) if callable(resolver_caminho) else pasta_alvo
-            mover_ok = bool(mover_arquivo(mover_item, pasta_base))
-            if mover_ok:
-                destino_movido = os.path.join(pasta_base, os.path.basename(str(mover_item).strip("/\\ ")))
-                mover_ok = _item_local_existe(destino_movido)
-                if mover_ok:
-                    _registrar_arquivo(destino_movido, "arquivos")
-                    _marcar_resultado("item_movido_para_pasta", executou=True)
-                else:
-                    _marcar_resultado("falha_execucao", executou=False)
-            if callable(falar):
-                falar(
-                    _escolher_fala_variada([
-                        f"Também coloquei {mover_item} dentro de {nome}.",
-                        f"Pronto, {mover_item} foi pra dentro de {nome}.",
-                        f"Encaixei {mover_item} lá dentro de {nome}.",
-                    ]) if mover_ok else _escolher_fala_variada([
-                        f"Criei {nome}, mas não consegui mover {mover_item} pra dentro.",
-                        f"{nome} ficou pronta, mas {mover_item} não quis entrar nela.",
-                        f"Consegui criar {nome}, mas a mudança de {mover_item} falhou.",
-                    ]),
-                    "calma" if mover_ok else "irritada",
-                    1 if mover_ok else 2,
-                )
-        if pasta_ok and arquivo_nome and callable(criar_ou_editar_arquivo) and not destino_val == "pc_b":
-            pasta_alvo = os.path.join(pasta_pai, nome) if pasta_pai else nome
-            pasta_base = resolver_caminho(pasta_alvo) if callable(resolver_caminho) else pasta_alvo
-            arquivo_limpo = arquivo_nome.strip().strip("/\\")
-            if not arquivo_limpo.lower().endswith(".txt"):
-                arquivo_limpo = f"{arquivo_limpo}.txt"
-            caminho_arquivo = os.path.join(pasta_base, arquivo_limpo)
-            arquivo_ok = bool(criar_ou_editar_arquivo(caminho_arquivo, arquivo_conteudo or "", "w"))
-            if arquivo_ok:
-                arquivo_ok = _item_local_existe(caminho_arquivo, "arquivo")
-                if arquivo_ok:
-                    _registrar_arquivo(caminho_arquivo, "arquivos")
-                    _marcar_resultado("arquivo_criado", executou=True)
-                else:
-                    _marcar_resultado("falha_execucao", executou=False)
-            if callable(falar):
-                falar(
-                    _escolher_fala_variada([
-                        f"Também criei o arquivo {arquivo_limpo} dentro de {nome}.",
-                        f"Coloquei {arquivo_limpo} dentro da pasta {nome}.",
-                        f"O arquivo {arquivo_limpo} já está lá dentro de {nome}.",
-                    ]) if arquivo_ok else _escolher_fala_variada([
-                        f"Criei {nome}, mas o arquivo {arquivo_limpo} não saiu direito.",
-                        f"A pasta {nome} foi, mas o arquivo {arquivo_limpo} emperrou.",
-                        f"{nome} nasceu, mas {arquivo_limpo} não quis aparecer lá dentro.",
-                    ]),
-                    "calma" if arquivo_ok else "irritada",
-                    1 if arquivo_ok else 2,
-                )
-        if pasta_ok and callable(registrar_estrutura_arquivo_recente):
-            try:
-                registrar_estrutura_arquivo_recente({
-                    "nome": nome,
-                    "pasta_pai": pasta_pai,
-                    "pasta_interna": pasta_interna,
-                    "mover_item": mover_item,
-                    "arquivo_nome": arquivo_nome,
-                    "arquivo_conteudo": arquivo_conteudo,
-                    "target": destino_val,
-                })
-            except Exception:
-                pass
-        elif pasta_ok and arquivo_nome and destino_val == "pc_b":
-            if callable(falar):
-                falar(_escolher_fala_variada([
-                    f"A pasta {nome} foi criada no PC B, mas o arquivo interno eu ainda não envio por lá.",
-                    f"Criei a pasta {nome} no PC B. O arquivo interno fica para o PC local.",
-                    f"Pasta pronta no PC B. O arquivo interno ainda é meu lado local.",
-                ]), "calma", 1)
-        return True
-
-    if intent == "DELETE_ITEM":
-        alvo = str(
-            params.get("alvo")
-            or params.get("item")
-            or params.get("nome")
-            or params.get("pasta")
-            or params.get("arquivo")
-            or ""
-        ).strip()
-        tipo = str(params.get("tipo") or "").strip().lower()
-        alvo = _resolver_referencia_arquivo_contextual(alvo, tipo)
-        if not alvo:
-            if callable(falar):
-                falar(_escolher_fala_variada([
-                    "Apagar o quê, Pedro? Me dá o nome certinho.",
-                    "Faltou o alvo. Eu não saio apagando no escuro.",
-                    "Me fala o que eu devo apagar antes de eu virar uma tragédia ambulante.",
-                ]), "calma", 1)
-            return True
-
-        if destino_val == "pc_b" and callable(_enviar_pc_b):
-            _enviar_pc_b({"action": "deletar_item", "alvo": alvo})
-            _marcar_resultado("item_deletado_pc_b", executou=True)
-            if callable(falar):
-                falar(_escolher_fala_variada([
-                    f"Mandei apagar {alvo} no PC B.",
-                    f"PC B recebeu a ordem pra apagar {alvo}.",
-                    f"Despachei {alvo} pro limbo no PC B.",
-                ]), "calma", 1)
-            return True
-
-        tipo_alvo = tipo
-        if not tipo_alvo:
-            caminho_alvo = _resolver_caminho_local(alvo)
-            try:
-                if caminho_alvo and os.path.isdir(caminho_alvo):
-                    tipo_alvo = "pasta"
-                elif caminho_alvo and os.path.isfile(caminho_alvo):
-                    tipo_alvo = "arquivo"
-            except Exception:
-                tipo_alvo = tipo_alvo or ""
-        sucesso = bool(deletar_item(alvo)) if callable(deletar_item) else False
-        if sucesso:
-            sucesso = not _item_local_existe(alvo, tipo_alvo)
-        if sucesso:
-            _registrar_arquivo(alvo, "arquivos")
-            _marcar_resultado("item_deletado", executou=True)
-        else:
-            _marcar_resultado("falha_execucao", executou=False)
-        if callable(falar):
-            if sucesso:
-                fala = _escolher_fala_variada([
-                    f"Apaguei {alvo}. Foi pro limbo, com recibo.",
-                    f"{alvo} apagado. Sem palestra de CMD dessa vez.",
-                    f"Pronto, removi {alvo}.",
-                ])
-            else:
-                detalhe = f"a {tipo} " if tipo else ""
-                fala = _escolher_fala_variada([
-                    f"Não consegui apagar {detalhe}{alvo}.",
-                    f"Tentei remover {alvo}, mas não achei ou o Windows fez corpo mole.",
-                    f"{alvo} resistiu à limpeza. Não consegui apagar agora.",
-                ])
-            falar(fala, "calma" if sucesso else "irritada", 1 if sucesso else 2)
-        return True
+    if intent in {"CREATE_FOLDER", "DELETE_ITEM"}:
+        return _executar_intencao_arquivos(
+            intent,
+            params,
+            destino_val,
+            ctx,
+            marcar_resultado=_marcar_resultado,
+            registrar_arquivo=_registrar_arquivo,
+            item_local_existe=_item_local_existe,
+            resolver_caminho_local=_resolver_caminho_local,
+            resolver_referencia_arquivo_contextual=_resolver_referencia_arquivo_contextual,
+        )
 
     if intent == "CLOSE_TAB":
         info = solicitar_aba() if callable(solicitar_aba) else {}
@@ -1001,7 +823,8 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         alvo_tab = str(params.get("alvo") or params.get("site") or params.get("nome") or "").strip()
         alvo_tab_preciso = _alvo_preciso_para_aba(alvo_tab) if alvo_tab else ""
         leitura_alvo = resolver_alvo_ambiente(alvo_tab) if alvo_tab and callable(resolver_alvo_ambiente) else {}
-        if alvo_tab and bool((leitura_alvo or {}).get("programa_aberto")) and callable(fechar_programa):
+        alvo_web = bool(callable(_eh_alvo_site_web) and _eh_alvo_site_web(alvo_tab))
+        if alvo_tab and not alvo_web and bool((leitura_alvo or {}).get("programa_aberto")) and callable(fechar_programa):
             mapped = APPS_MAP.get(alvo_tab.lower(), alvo_tab)
             try:
                 fechar_programa(mapped)
@@ -1023,11 +846,17 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             _enviar_pc_b(payload)
             ok_aba = True
         elif alvo_tab and callable(enviar_chrome):
-            enviar_chrome("close_specific_tab", {"target": alvo_tab_preciso or alvo_tab})
-            ok_aba = _esperar_aba_fechar(alvo_tab_preciso or alvo_tab, info)
+            enviado = bool(enviar_chrome("close_specific_tab", {"target": alvo_tab_preciso or alvo_tab}))
+            if enviado:
+                ok_aba = _esperar_aba_fechar(alvo_tab_preciso or alvo_tab, info)
+            elif callable(fechar_aba_nativa):
+                ok_aba = bool(fechar_aba_nativa(alvo_tab_preciso or alvo_tab))
         elif callable(enviar_chrome):
-            enviar_chrome("close_current_tab", {})
-            ok_aba = _esperar_aba_fechar("", info)
+            enviado = bool(enviar_chrome("close_current_tab", {}))
+            if enviado:
+                ok_aba = _esperar_aba_fechar("", info)
+            elif callable(fechar_aba_nativa):
+                ok_aba = bool(fechar_aba_nativa(""))
         _marcar_resultado("aba_fechada" if ok_aba else "falha_execucao", executou=ok_aba)
         _falar_por_status(
             "aba_fechada" if ok_aba else "falha_execucao",
@@ -1095,179 +924,15 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         return True
 
     if intent == "MEDIA_CONTROL":
-        acao = str(params.get("acao") or params.get("command") or "").strip().lower()
-        platform = str(params.get("platform") or params.get("site") or "").strip().lower()
-        nivel_bruto = params.get("nivel_volume")
-        playlist_state = _get(ctx, "playlist_state", {}) or {}
-        playlist_ativa = bool(str((playlist_state or {}).get("name") or "").strip())
-        playlist_next = _get(ctx, "_playlist_avancar_proxima")
-        playlist_prev = _get(ctx, "_playlist_voltar_anterior")
-        def _log_midia(etapa: str, msg: str) -> None:
-            try:
-                print(f"🎵 [MIDIA:{str(etapa or '').upper()}] {msg}")
-            except Exception:
-                pass
-
-        def _aba_atual_midia() -> dict:
-            try:
-                return solicitar_aba() if callable(solicitar_aba) else {}
-            except Exception as e:
-                _log_midia("ABA", f"falha ao consultar aba: {e}")
-                return {}
-
-        def _preferir_chrome_para_midia() -> bool:
-            info_aba = _aba_atual_midia()
-            url = str(info_aba.get("url") or "").lower() if isinstance(info_aba, dict) else ""
-            titulo = str(info_aba.get("title") or "").lower() if isinstance(info_aba, dict) else ""
-            preferir = bool(callable(enviar_chrome) and ("youtube." in url or "youtu.be" in url or "youtube" in titulo))
-            _log_midia("ROTA", f"acao={acao} platform={platform or '-'} playlist={playlist_ativa} url='{url[:80]}' preferir_chrome={preferir}")
-            return preferir
-
-        def _executar_cmd_midia(cmd_exec: str) -> bool:
-            _log_midia("ENVIO", f"cmd={cmd_exec} destino={destino_val or 'local'} playlist={playlist_ativa}")
-            if destino_val == "pc_b" and callable(_enviar_pc_b):
-                _enviar_pc_b({"action": "youtube_control", "command": cmd_exec})
-                return True
-            if destino_val == "ambos":
-                ok_local = False
-                if _preferir_chrome_para_midia() and callable(enviar_chrome):
-                    enviar_chrome("youtube_control", {"command": cmd_exec})
-                    ok_local = True
-                elif callable(executar_controle_midia_nativo):
-                    native_cmd = "pause_play" if cmd_exec in {"pause", "play"} else cmd_exec
-                    ok_local = bool(executar_controle_midia_nativo(native_cmd))
-                elif callable(enviar_chrome):
-                    enviar_chrome("youtube_control", {"command": cmd_exec})
-                    ok_local = True
-                if callable(_enviar_pc_b):
-                    _enviar_pc_b({"action": "youtube_control", "command": cmd_exec})
-                return ok_local
-            if playlist_ativa and callable(enviar_chrome):
-                enviar_chrome("youtube_control", {"command": cmd_exec})
-                return True
-            if _preferir_chrome_para_midia() and callable(enviar_chrome):
-                enviar_chrome("youtube_control", {"command": cmd_exec})
-                return True
-            if callable(executar_controle_midia_nativo):
-                native_cmd = "pause_play" if cmd_exec in {"pause", "play"} else cmd_exec
-                return bool(executar_controle_midia_nativo(native_cmd))
-            if callable(enviar_chrome):
-                enviar_chrome("youtube_control", {"command": cmd_exec})
-                return True
-            return False
-
-        _log_midia("ENTRADA", f"acao={acao or '-'} platform={platform or '-'} params={params}")
-        if platform in {"netflix", "netflix.com"} and acao in {"enter", "play", "assistir", "assiste"}:
-            info = solicitar_aba() if callable(solicitar_aba) else {}
-            cur_url = str(info.get("url") or "").lower() if isinstance(info, dict) else ""
-            if "netflix.com" not in cur_url:
-                return True
-            if callable(falar):
-                falar(_escolher_fala_variada(["Escaneando a vitrine... Achei! Abrindo agora.", "Achei a vitrine. Já vou abrir.", "Encontrei, abrindo agora."]), "calma", 1)
-            if callable(enviar_chrome):
-                enviar_chrome("netflix_control", {"command": "scan_and_enter"})
-            return True
-        cmd = ""
-        if acao in {"resume", "retomar", "retoma", "continuar", "continua", "despausa", "despausar"}:
-            cmd = "play"
-        elif acao in {"pause", "pausa"}:
-            cmd = "pause"
-        elif acao in {"pause_play", "play_pause", "toggle", "tocar"}:
-            cmd = "pause_play"
-        elif acao in {"play"}:
-            cmd = "play"
-        elif acao in {"next", "proxima", "próxima"}:
-            cmd = "next"
-        elif acao in {"prev", "previous", "anterior"}:
-            cmd = "prev"
-        elif acao in {"replay", "voltar", "reiniciar"}:
-            cmd = "replay"
-        if nivel_bruto not in (None, ""):
-            try:
-                nivel = int(float(str(nivel_bruto).replace(",", ".")))
-            except Exception:
-                nivel = None
-            if nivel is not None:
-                nivel = max(0, min(100, nivel))
-                ok_volume = False
-                if destino_val == "pc_b" and callable(_enviar_pc_b):
-                    _enviar_pc_b({"action": "set_volume", "level": nivel})
-                    ok_volume = True
-                elif callable(ajustar_volume):
-                    ajustar_volume(nivel)
-                    ok_volume = True
-                else:
-                    if callable(falar):
-                        falar(_escolher_fala_variada([
-                            "Não consegui mexer no volume agora.",
-                            "O volume escapou de mim desta vez.",
-                            "Tentei ajustar o volume, mas não tive acesso ao controle.",
-                        ]), "calma", 1)
-                    return False
-                _marcar_resultado("volume_ajustado" if ok_volume else "falha_execucao", executou=ok_volume)
-                _falar_por_status(
-                    "volume_ajustado" if ok_volume else "falha_execucao",
-                    f"Volume em {nivel}%." if ok_volume else "Tentei ajustar o volume, mas o controle não respondeu.",
-                    alvo="volume",
-                )
-                return bool(ok_volume)
-        if not cmd:
-            if callable(falar):
-                falar(_escolher_fala_variada(["Não entendi o controle de mídia. Fala de novo.", "Repete o comando de mídia.", "Esse controle de mídia escapou de mim."]), "calma", 1)
-            return True
-        if playlist_ativa and cmd == "next" and callable(playlist_next):
-            _log_midia("PLAYLIST", "tentando avancar pela playlist interna")
-            ok = bool(playlist_next())
-            _log_midia("RESULTADO", f"playlist_next ok={ok}")
-            if callable(falar):
-                falar(
-                    _fala_de_confirmacao_variada(
-                        "next",
-                        fallback="Trocando a música. Sem drama." if ok else "Tentei puxar a próxima da playlist, mas ela não foi.",
-                        contexto=_ctx_fala(),
-                        texto_usuario=texto_original,
-                    ),
-                    "debochada",
-                    2,
-                )
-            _marcar_resultado("midia_next_playlist" if ok else "falha_execucao", executou=ok)
-            return bool(ok)
-        if playlist_ativa and cmd == "prev" and callable(playlist_prev):
-            _log_midia("PLAYLIST", "tentando voltar pela playlist interna")
-            ok = bool(playlist_prev())
-            _log_midia("RESULTADO", f"playlist_prev ok={ok}")
-            if callable(falar):
-                falar(
-                    _fala_de_confirmacao_variada(
-                        "prev",
-                        fallback="Voltando uma faixa." if ok else "Tentei voltar a playlist, mas ela não cedeu.",
-                        contexto=_ctx_fala(),
-                        texto_usuario=texto_original,
-                    ),
-                    "debochada",
-                    2,
-                )
-            _marcar_resultado("midia_prev_playlist" if ok else "falha_execucao", executou=ok)
-            return bool(ok)
-        ok_execucao = _executar_cmd_midia(cmd)
-        _log_midia("RESULTADO", f"cmd={cmd} ok_envio={ok_execucao}")
-        if callable(falar):
-            if cmd in {"pause", "play", "pause_play"}:
-                chave_midia = "play" if cmd == "play" else ("pause" if cmd == "pause" else "pause")
-            else:
-                chave_midia = "prev" if cmd == "prev" else ("replay" if cmd == "replay" else cmd)
-            falar(
-                _fala_de_confirmacao_variada(
-                    chave_midia,
-                    fallback="Feito." if ok_execucao else "Tentei mexer na mídia, mas não consegui confirmar o caminho.",
-                    contexto=_ctx_fala(),
-                    texto_usuario=texto_original,
-                ),
-                "debochada",
-                2,
-            )
-        _marcar_resultado(f"midia_{cmd}" if ok_execucao else "falha_execucao", executou=ok_execucao)
-        return bool(ok_execucao)
+        return _executar_media_control(
+            params,
+            texto_original,
+            destino_val,
+            ctx,
+            marcar_resultado=_marcar_resultado,
+            falar_por_status=_falar_por_status,
+            ctx_fala=_ctx_fala,
+        )
 
     if intent == "MUSIC_SEARCH":
         if callable(_autonomia_permite_execucao_musical) and not _autonomia_permite_execucao_musical(intent, texto_original):
@@ -1447,28 +1112,6 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             ctx,
         )
 
-    if intent == "NETFLIX":
-        query = str(params.get("query") or params.get("nome") or params.get("titulo") or "").strip()
-        if query:
-            if destino_val == "pc_b" and callable(_enviar_pc_b):
-                _enviar_pc_b({"action": "open_url", "url": "https://www.netflix.com/search?q=" + urllib.parse.quote(query)})
-            elif callable(enviar_chrome):
-                enviar_chrome("netflix_search", {"query": query})
-            if callable(falar):
-                falar(_escolher_fala_variada([
-                    f"Abrindo Netflix para {query}.",
-                    f"Pesquisando {query} na Netflix.",
-                    f"Vou abrir a Netflix com {query}.",
-                ]), "calma", 1)
-        else:
-            if destino_val == "pc_b" and callable(_enviar_pc_b):
-                _enviar_pc_b({"action": "open_url", "url": "https://www.netflix.com"})
-            elif callable(enviar_chrome):
-                enviar_chrome("open_url", {"url": "https://www.netflix.com"})
-            if callable(falar):
-                falar(_escolher_fala_variada(["Abrindo Netflix.", "Netflix aberta.", "Já fui pra Netflix."]), "calma", 1)
-        return True
-
     if intent == "SEARCH":
         clima_like = any(
             trecho in str(texto_original or "").lower()
@@ -1629,6 +1272,33 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             falar(msg, "calma", 1)
         return True
 
+    if intent == "PLAYLIST_DELETE":
+        pl = str(params.get("nome_playlist") or params.get("playlist") or params.get("nome") or params.get("alvo") or "").strip()
+        if not pl:
+            if callable(falar):
+                falar(_escolher_fala_variada([
+                    "Qual playlist eu apago, Pedro?",
+                    "Me fala o nome da playlist antes de eu sair cortando coisa.",
+                    "Faltou o nome da playlist.",
+                ]), "calma", 1)
+            return True
+        delete_playlist = _get(ctx, "delete_playlist")
+        ok_delete = bool(delete_playlist(pl)) if callable(delete_playlist) else False
+        _marcar_resultado("playlist_deletada" if ok_delete else "falha_execucao", executou=ok_delete)
+        if ok_delete and callable(ctx.get("set_ultima_playlist")):
+            ctx["set_ultima_playlist"]("")
+        if callable(falar):
+            falar(_escolher_fala_variada([
+                f"Apaguei a playlist {pl}. Ela saiu do palco.",
+                f"Playlist {pl} deletada.",
+                f"Pronto, removi {pl} das suas playlists.",
+            ] if ok_delete else [
+                f"Tentei apagar a playlist {pl}, mas não encontrei ela.",
+                f"{pl} não apareceu nas playlists pra eu apagar.",
+                f"Procurei a playlist {pl}, mas ela não deu as caras.",
+            ]), "calma" if ok_delete else "irritada", 1 if ok_delete else 2)
+        return True
+
     if intent == "PLAYLIST_ADD":
         pl = str(params.get("nome_playlist") or params.get("playlist") or params.get("nome") or "").strip()
         if not pl:
@@ -1688,11 +1358,11 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         pl = str(params.get("nome_playlist") or params.get("playlist") or params.get("nome") or "").strip()
         if callable(pedido_lista_geral) and pedido_lista_geral(texto_original, params):
             if callable(falar):
-                falar(_escolher_fala_variada([
+                falar(
                     listar_playlists_salvas() if callable(listar_playlists_salvas) else "Sem playlists.",
-                    "Dei uma olhada e organizei suas playlists.",
-                    "Aqui estão as playlists que encontrei.",
-                ]), "calma", 1)
+                    "calma",
+                    1,
+                )
             return True
         if not pl and callable(extrair_nome_playlist):
             try:

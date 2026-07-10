@@ -1,0 +1,177 @@
+"""Montadores de contexto do ciclo principal de resposta da Laylay.
+
+Este modulo nao interpreta, nao executa comandos e nao fala com o usuario.
+Ele apenas organiza os contratos que ligam `laylay.py` aos modulos da mente.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Callable, Dict
+
+
+def _merge_grupos(*grupos: Dict[str, Any] | None) -> Dict[str, Any]:
+    contexto: Dict[str, Any] = {}
+    for grupo in grupos:
+        if isinstance(grupo, dict):
+            contexto.update(grupo)
+    return contexto
+
+
+def montar_contexto_mensagens_ia(
+    *,
+    memoria: Dict[str, Any] | None = None,
+    percepcao: Dict[str, Any] | None = None,
+    prompt: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Contexto usado para preparar o prompt principal da IA."""
+    return _merge_grupos(memoria, percepcao, prompt)
+
+
+def montar_contexto_dispatcher_comandos(
+    *,
+    base: Dict[str, Any] | None = None,
+    navegacao: Dict[str, Any] | None = None,
+    musica: Dict[str, Any] | None = None,
+    arquivos: Dict[str, Any] | None = None,
+    percepcao: Dict[str, Any] | None = None,
+    agenda_email: Dict[str, Any] | None = None,
+    execucao: Dict[str, Any] | None = None,
+    autonomia: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Contexto usado pelo dispatcher de comandos JSON.
+
+    A separacao por grupos deixa claro qual parte da mente fornece cada
+    capacidade, sem transformar esses grupos em cerebros separados.
+    """
+    return _merge_grupos(
+        base,
+        navegacao,
+        musica,
+        arquivos,
+        percepcao,
+        agenda_email,
+        execucao,
+        autonomia,
+    )
+
+
+class ContextoDispatcherRuntime:
+    """Monta o contrato do dispatcher com estado vivo da mesma mente."""
+
+    def __init__(
+        self,
+        *,
+        base: Dict[str, Any],
+        navegacao: Dict[str, Any],
+        musica: Dict[str, Any],
+        arquivos: Dict[str, Any],
+        percepcao: Dict[str, Any],
+        agenda_email: Dict[str, Any],
+        execucao: Dict[str, Any],
+        autonomia: Dict[str, Any],
+        estado_getter: Callable[[], Dict[str, Any]],
+    ) -> None:
+        self.base = dict(base or {})
+        self.navegacao = dict(navegacao or {})
+        self.musica = dict(musica or {})
+        self.arquivos = dict(arquivos or {})
+        self.percepcao = dict(percepcao or {})
+        self.agenda_email = dict(agenda_email or {})
+        self.execucao = dict(execucao or {})
+        self.autonomia = dict(autonomia or {})
+        self.estado_getter = estado_getter
+
+    def montar(self) -> Dict[str, Any]:
+        try:
+            estado = self.estado_getter() or {}
+        except Exception:
+            estado = {}
+        estado = estado if isinstance(estado, dict) else {}
+
+        base = dict(self.base)
+        base.update(
+            {
+                "messages": estado.get("messages"),
+                "current_emotion": estado.get("current_emotion", "calma"),
+                "emotion_level": estado.get("emotion_level", 1),
+            }
+        )
+        navegacao = dict(self.navegacao)
+        navegacao["_abas_sugeridas_fechar"] = estado.get("_abas_sugeridas_fechar", [])
+        musica = dict(self.musica)
+        musica["playlists_carregadas"] = estado.get("playlists_carregadas", {})
+        agenda_email = dict(self.agenda_email)
+        agenda_email["_gmail_nao_lidos_cache"] = estado.get("_gmail_nao_lidos_cache", [])
+        execucao = dict(self.execucao)
+        execucao["ws_loop"] = estado.get("ws_loop")
+
+        return montar_contexto_dispatcher_comandos(
+            base=base,
+            navegacao=navegacao,
+            musica=musica,
+            arquivos=self.arquivos,
+            percepcao=self.percepcao,
+            agenda_email=agenda_email,
+            execucao=execucao,
+            autonomia=self.autonomia,
+        )
+
+
+def criar_contexto_dispatcher_runtime(**kwargs: Any) -> ContextoDispatcherRuntime:
+    return ContextoDispatcherRuntime(**kwargs)
+
+
+def montar_contexto_finalizacao_ia(
+    *,
+    base: Dict[str, Any] | None = None,
+    ia: Dict[str, Any] | None = None,
+    voz_memoria: Dict[str, Any] | None = None,
+    autoaprimoramento: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Contexto usado para finalizar a resposta apos execucao real."""
+    return _merge_grupos(base, ia, voz_memoria, autoaprimoramento)
+
+
+class ContextoFinalizacaoRuntime:
+    """Monta o contrato final com o estado atual da mente compartilhada."""
+
+    def __init__(
+        self,
+        *,
+        ia: Dict[str, Any],
+        voz_memoria: Dict[str, Any],
+        autoaprimoramento: Dict[str, Any],
+        estado_getter: Callable[[], Dict[str, Any]],
+    ) -> None:
+        self.ia = dict(ia or {})
+        self.voz_memoria = dict(voz_memoria or {})
+        self.autoaprimoramento = dict(autoaprimoramento or {})
+        self.estado_getter = estado_getter
+
+    def montar(self) -> Dict[str, Any]:
+        try:
+            estado = self.estado_getter() or {}
+        except Exception:
+            estado = {}
+        estado = estado if isinstance(estado, dict) else {}
+
+        base = {
+            "messages": estado.get("messages"),
+            "current_emotion": estado.get("current_emotion", "calma"),
+            "emotion_level": estado.get("emotion_level", 1),
+        }
+        autoaprimoramento = dict(self.autoaprimoramento)
+        autoaprimoramento["_falhas_consecutivas"] = estado.get(
+            "_falhas_consecutivas",
+            {},
+        )
+        return montar_contexto_finalizacao_ia(
+            base=base,
+            ia=self.ia,
+            voz_memoria=self.voz_memoria,
+            autoaprimoramento=autoaprimoramento,
+        )
+
+
+def criar_contexto_finalizacao_runtime(**kwargs: Any) -> ContextoFinalizacaoRuntime:
+    return ContextoFinalizacaoRuntime(**kwargs)
