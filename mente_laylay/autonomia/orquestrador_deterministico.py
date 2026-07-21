@@ -6,12 +6,15 @@ Este modulo nao guarda estado proprio. Ele recebe callbacks e estado do
 
 from __future__ import annotations
 
+import re
 from typing import Any, Callable, Dict, Mapping
 
 from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
+from mente_laylay.cognicao.evidencia_operacional import autoriza_candidato_iot_direto
 from mente_laylay.autonomia.roteador_deterministico import (
     detectar_abrir_app_ou_site,
     detectar_confirmacao_porteiro,
+    detectar_clima,
     detectar_email_notificacao_briefing,
     detectar_fechar_alvo,
     detectar_janela_contextual,
@@ -25,6 +28,7 @@ from mente_laylay.autonomia.roteador_deterministico import (
     detectar_url_visual,
     detectar_volume_ou_midia,
     detectar_web_e_youtube,
+    normalizar_pedido_natural,
     preparar_entrada_deterministica,
 )
 
@@ -42,6 +46,47 @@ def _call(ctx: Mapping[str, Any], nome: str, *args: Any, default: Any = None, **
 
 def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -> Dict[str, Any] | None:
     """Executa a cadeia deterministica em ordem, usando dependencias injetadas."""
+    mente_previa = _get(ctx, "mente_integrada_estado", {})
+    ultimo_intent_previo = str(
+        (mente_previa or {}).get("ultima_acao_intent")
+        or (mente_previa or {}).get("ultima_intencao")
+        or ""
+    ).upper() if isinstance(mente_previa, Mapping) else ""
+    texto_previo = str(texto or "").casefold()
+    if ultimo_intent_previo == "VOLUME" and re.search(
+        r"\b(?:aumenta|sobe|coloca|deixa|abaixa|diminui)?\b.*\b(?:maximo|máximo|minimo|mínimo)\b|\bno\s+talo\b",
+        texto_previo,
+    ):
+        nivel = 0 if re.search(r"\b(?:minimo|mínimo)\b", texto_previo) else 100
+        return {"intent": "VOLUME", "params": {"acao": "set", "nivel_volume": nivel, "referencia_contextual": True}}
+
+    sugestao_indireta = _call(
+        ctx,
+        "detectar_sugestao_indireta",
+        texto,
+        _get(ctx, "mente_integrada_estado", {}),
+    )
+    if isinstance(sugestao_indireta, dict):
+        return sugestao_indireta
+
+    # O detector IoT conhece aliases, capacidades e parâmetros reais. Ele deve
+    # poder apresentar um candidato antes do filtro genérico de conversa curta;
+    # a guarda semântica impede que hipótese, negação ou comentário virem ação.
+    normalizar = _get(ctx, "normalizar_texto")
+    texto_normalizado_previo = (
+        normalizar(texto) if callable(normalizar) else str(texto or "").casefold().strip()
+    )
+    texto_operacional_iot, modalidade_iot = normalizar_pedido_natural(texto_normalizado_previo)
+    if autoriza_candidato_iot_direto(texto_operacional_iot, modalidade=modalidade_iot):
+        candidato_iot = _call(
+            ctx,
+            "detectar_intencao_iot",
+            texto_operacional_iot,
+            _get(ctx, "mente_integrada_estado", {}),
+        )
+        if isinstance(candidato_iot, dict):
+            return candidato_iot
+
     preparo = preparar_entrada_deterministica(
         texto,
         normalizar_texto=_get(ctx, "normalizar_texto"),
@@ -64,6 +109,8 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     t_sem_destino = str(preparo.get("texto_sem_destino") or "").strip()
     bruto_sem_destino = str(_call(ctx, "limpar_destino_pc_b", bruto, default=bruto) or bruto).strip()
     destino = _call(ctx, "target_from_params", {}, bruto, default="pc_a")
+    mente_atual = _get(ctx, "mente_integrada_estado", {})
+    ultimo_intent = str((mente_atual or {}).get("ultima_acao_intent") or (mente_atual or {}).get("ultima_intencao") or "").upper() if isinstance(mente_atual, Mapping) else ""
 
     def params(**kwargs: Any) -> Dict[str, Any]:
         if destino == "pc_b":
@@ -71,6 +118,12 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         return kwargs
 
     detectores: list[Callable[[], Dict[str, Any] | None]] = [
+        lambda: _call(
+            ctx,
+            "detectar_intencao_iot",
+            t,
+            _get(ctx, "mente_integrada_estado", {}),
+        ),
         lambda: detectar_url_visual(t, bruto, params_cb=params),
         lambda: detectar_playlist_contextual_musica_atual(
             t_sem_destino,
@@ -84,10 +137,12 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
             ha_abas_sugeridas=bool(_get(ctx, "abas_sugeridas_fechar")),
         ),
         lambda: detectar_email_notificacao_briefing(t, params_cb=params),
+        lambda: detectar_clima(t, params_cb=params),
         lambda: detectar_volume_ou_midia(
             t,
             params_cb=params,
             contexto_musical_ativo=bool(_call(ctx, "contexto_musical_ativo", default=False)),
+            contexto_volume_ativo=ultimo_intent == "VOLUME",
         ),
         lambda: detectar_playlist_laylay(
             t,
@@ -148,3 +203,67 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         if resultado:
             return resultado
     return None
+
+
+class DeteccaoDeterministicaRuntime:
+    def __init__(
+        self,
+        *,
+        namespace_getter: Callable[[], Dict[str, Any]],
+        estado_getter: Callable[[], Dict[str, Any]],
+        sites_diretos: Dict[str, Any],
+        apps_map: Dict[str, Any],
+    ) -> None:
+        self.namespace_getter = namespace_getter
+        self.estado_getter = estado_getter
+        self.sites_diretos = sites_diretos
+        self.apps_map = apps_map
+
+    def detectar(self, texto: str) -> Dict[str, Any] | None:
+        ns = self.namespace_getter() or {}
+
+        # A agenda tem precedência sobre a execução imediata. Se houver uma
+        # ação com prazo, resolvemos apenas o trecho operacional e envolvemos o
+        # resultado em AGENDAR_ACAO. Assim nenhum detector usa os números do
+        # horário como volume, brilho ou outro parâmetro.
+        extrair_agendamento = ns.get("_extrair_acao_agendada_local")
+        if callable(extrair_agendamento):
+            agendamento = extrair_agendamento(texto)
+            if isinstance(agendamento, dict) and agendamento.get("texto_acao"):
+                acao_base = self.detectar(str(agendamento.get("texto_acao") or ""))
+                intent_base = str((acao_base or {}).get("intent") or "").upper().strip()
+                bloqueados = {
+                    "", "AGENDAR_ACAO", "AGENDAR_LEMBRETE", "LISTAR_AGENDAMENTOS",
+                    "CANCELAR_AGENDAMENTO", "SUGGEST_ACTION", "CANCELAR_ACAO",
+                }
+                if isinstance(acao_base, dict) and intent_base not in bloqueados:
+                    params = dict(agendamento)
+                    params["acao_agendada"] = acao_base
+                    params["rota_original"] = "deterministico"
+                    return {"intent": "AGENDAR_ACAO", "params": params}
+
+        nomes = (
+            "_normalizar_texto_com_apelidos", "_texto_conversa_casual_sem_acao",
+            "_texto_bloqueia_playlist_agora", "_texto_social_curto", "_ignorar_token_solto",
+            "_fluxo_prioritario_da_ia", "_texto_expresso_melhor_no_deterministico",
+            "_texto_depende_de_contexto", "_limpar_destino_pc_b", "_target_from_params",
+            "_limpar_nome_playlist", "_musica_estado_get", "_contexto_musical_ativo",
+            "extrair_nome_playlist", "_extrair_intencao_abrir_app",
+            "_detectar_playlist_nome_direto", "_normalizar_query_musical",
+            "_detectar_intencao_iot", "_detectar_sugestao_indireta",
+        )
+        contexto = {nome.lstrip("_"): ns.get(nome) for nome in nomes}
+        contexto.update({
+            "normalizar_texto": ns.get("_normalizar_texto_com_apelidos"),
+            "abas_sugeridas_fechar": ns.get("_abas_sugeridas_fechar", []),
+            "mente_integrada_estado": self.estado_getter() or {},
+            "sites_diretos": self.sites_diretos,
+            "apps_map": self.apps_map,
+            "detectar_intencao_iot": ns.get("_detectar_intencao_iot"),
+            "detectar_sugestao_indireta": ns.get("_detectar_sugestao_indireta"),
+        })
+        return detectar_intencao_deterministica_mente(texto, contexto)
+
+
+def criar_deteccao_deterministica_runtime(**kwargs: Any) -> DeteccaoDeterministicaRuntime:
+    return DeteccaoDeterministicaRuntime(**kwargs)

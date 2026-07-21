@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import threading
 from typing import Any, Dict
 
 
@@ -25,13 +24,14 @@ def processar_page_data(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, 
     updates["ULTIMO_CONTEUDO_PAGINA"] = ultimo_conteudo
 
     armazenar_contexto_pagina = ctx.get("armazenar_contexto_pagina")
-    resumir_pagina_no_dicionario = ctx.get("resumir_pagina_no_dicionario")
     evento_pagina = ctx.get("EVENTO_PAGINA")
 
     if callable(armazenar_contexto_pagina):
         armazenar_contexto_pagina(url, title, content)
-    if callable(resumir_pagina_no_dicionario):
-        threading.Thread(target=resumir_pagina_no_dicionario, args=(url,), daemon=True).start()
+    # O conteúdo bruto já fica disponível no contexto. Antes havia aqui um
+    # segundo resumo por LLM disparado para toda página recebida. Ele competia
+    # com o resumo pedido pelo usuário e podia segurar o modelo local por até
+    # dois minutos, fazendo o comando explícito parecer travado.
     if evento_pagina is not None:
         try:
             evento_pagina.set()

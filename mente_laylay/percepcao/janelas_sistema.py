@@ -89,20 +89,6 @@ def classificar_assunto(exe: str, title: str) -> str:
     return ""
 
 
-def obter_janelas_abertas(gw_mod: Any) -> str:
-    """Retorna uma lista textual de janelas úteis abertas no Windows."""
-    try:
-        titulos = gw_mod.getAllTitles() if gw_mod is not None else []
-        uteis = [
-            str(t or "").strip()
-            for t in titulos
-            if str(t or "").strip() and str(t or "").strip() not in TITULOS_JANELA_LIXO
-        ]
-        return ", ".join(uteis) if uteis else "Nenhuma janela útil aberta"
-    except Exception:
-        return "Não consegui ler as janelas abertas"
-
-
 def capturar_janela_ativa(
     gw_mod: Any,
     psutil_mod: Any,
@@ -133,11 +119,27 @@ def capturar_janela_ativa(
             hwnd = None
 
     executavel = ""
+    caminho_processo = ""
+    memoria_processo_mb = 0.0
+    linha_comando_processo = ""
     if hwnd and callable(pid_from_hwnd_cb) and psutil_mod is not None:
         try:
             pid = int(pid_from_hwnd_cb(hwnd) or 0)
             if pid:
-                executavel = str(psutil_mod.Process(pid).name() or "").strip()
+                processo = psutil_mod.Process(pid)
+                executavel = str(processo.name() or "").strip()
+                try:
+                    caminho_processo = str(processo.exe() or "").strip()
+                except Exception:
+                    caminho_processo = ""
+                try:
+                    memoria_processo_mb = float(processo.memory_info().rss or 0) / (1024 * 1024)
+                except Exception:
+                    memoria_processo_mb = 0.0
+                try:
+                    linha_comando_processo = " ".join(map(str, processo.cmdline() or []))[:1200]
+                except Exception:
+                    linha_comando_processo = ""
         except Exception:
             executavel = ""
 
@@ -152,6 +154,9 @@ def capturar_janela_ativa(
         "title": titulo,
         "hwnd": hwnd,
         "exe": executavel,
+        "process_path": caminho_processo,
+        "process_memory_mb": memoria_processo_mb,
+        "process_cmdline": linha_comando_processo,
         "assunto": assunto,
     }
 
@@ -478,6 +483,16 @@ def focar_janela(gw_mod: Any, pyautogui_mod: Any, nome_app: str, psutil_mod: Any
         print(f"✅ Janela em foco: '{_titulo_janela(janela)}'")
         return True
     except Exception as e:
+        # Algumas APIs do Windows levantam exceção com código 0 mesmo depois
+        # de ativarem a janela. Confirme pelo estado/processo antes de falhar.
+        if _focar_hwnd_por_processo(psutil_mod, pyautogui_mod, nome_app):
+            return True
+        if "error code from windows: 0" in str(e).lower():
+            time.sleep(0.15)
+            janela_atual, _ = buscar_janela(gw_mod, nome_app)
+            if janela_atual and not getattr(janela_atual, "isMinimized", False):
+                print(f"✅ Janela ativada apesar do retorno neutro do Windows: '{_titulo_janela(janela_atual)}'")
+                return True
         print(f"❌ Erro ao focar a janela: {e}")
         return False
 
@@ -619,9 +634,26 @@ def resolver_alvo_ambiente(
     if not alvo_norm:
         return {"programa_aberto": False, "programa_em_foco": False, "aba_aberta": False, "preferido": "desconhecido", "url": "", "titulo": ""}
 
+    def _processo_auxiliar(nome_bruto: str) -> bool:
+        candidato = str(nome_bruto or "").strip().lower().replace(".exe", "")
+        candidato = unicodedata.normalize("NFKD", candidato)
+        candidato = "".join(c for c in candidato if not unicodedata.combining(c))
+        candidato = re.sub(r"[^\w\s\.-]", " ", candidato)
+        candidato = re.sub(r"\s+", " ", candidato).strip()
+        if not candidato or candidato == alvo_norm:
+            return False
+        marcadores = (
+            "service", "servico", "webhelper", "helper", "updater", "update",
+            "crashhandler", "crashpad", "reporter", "background", "broker",
+        )
+        return alvo_norm in candidato and any(marcador in candidato for marcador in marcadores)
+
     programa_aberto = False
     for item in programas or []:
-        nome_prog = normalizar_alvo_ambiente(str(item or ""))
+        item_bruto = str(item or "")
+        if _processo_auxiliar(item_bruto):
+            continue
+        nome_prog = normalizar_alvo_ambiente(item_bruto)
         if nome_prog and (alvo_norm == nome_prog or alvo_norm in nome_prog or nome_prog in alvo_norm):
             programa_aberto = True
             break

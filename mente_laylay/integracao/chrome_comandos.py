@@ -6,8 +6,14 @@ import asyncio
 import json
 import urllib.parse
 import webbrowser
-from typing import Any, Dict
-from urllib.parse import urlparse
+from typing import Any, Callable, Dict
+
+
+_ACOES_FIXADAS_NA_ABA = {"click", "type", "press", "scroll", "search_in_page"}
+_MARCADORES_PAGINA_SENSIVEL = (
+    "login", "signin", "sign-in", "password", "senha", "checkout", "pagamento",
+    "payment", "bank", "banco", "internetbanking", "carteira", "wallet",
+)
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
@@ -18,7 +24,7 @@ def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
 
 def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, payload: dict | None = None) -> bool:
     """Valida e envia comandos para a extensao Chrome, com fallback nativo."""
-    print(f"DEBUG: Entrou em validar_e_enviar_comando → action={action} | payload={payload}")
+    print(f"🌐 [CHROME:ENTRADA] action={action} payload={payload}")
 
     action = str(action or "").strip()
     payload = payload if isinstance(payload, dict) else {}
@@ -32,14 +38,58 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
     atualizar_contexto_por_url = _get(ctx, "atualizar_contexto_por_url")
     atualizar_contexto = _get(ctx, "atualizar_contexto")
     buscar_primeiro_video_youtube = _get(ctx, "_buscar_primeiro_video_youtube")
-    solicitar_tab_reciclagem = _get(ctx, "solicitar_tab_reciclagem")
+    enviar_confirmado = _get(ctx, "enviar_chrome_confirmado")
+    executar_confirmado = _get(ctx, "executar_chrome_confirmado")
+    solicitar_aba_ativa = _get(ctx, "solicitar_aba_ativa")
+    ultimo_resultado_getter = _get(ctx, "ultimo_resultado_chrome")
+    modo_jogo_ativo = _get(ctx, "modo_jogo_ativo")
+    jogo_ativo = bool(modo_jogo_ativo()) if callable(modo_jogo_ativo) else False
+    permitir_foco = bool(payload.get("permitir_foco"))
+    if jogo_ativo and not permitir_foco and action in {"open_tab", "open_url", "youtube_search", "youtube_play"}:
+        payload = {**payload, "background": True}
+        print(f"🎮 [MODO JOGO] {action} será executado em segundo plano, sem roubar o foco.")
+
+    def _enviar_extensao(msg: Dict[str, Any]) -> bool:
+        acao_msg = str(msg.get("action") or "")
+        if acao_msg in _ACOES_FIXADAS_NA_ABA and callable(executar_confirmado):
+            info = solicitar_aba_ativa(timeout_s=2.5) if callable(solicitar_aba_ativa) else {}
+            url = str((info or {}).get("url") or "")
+            tab_id = (info or {}).get("tabId")
+            if not url or tab_id is None:
+                print("❌ [Chrome] Não consegui fixar o comando à aba percebida.")
+                return False
+            if acao_msg == "type" and any(marcador in url.casefold() for marcador in _MARCADORES_PAGINA_SENSIVEL):
+                print(f"🛑 [Chrome] Digitação automática bloqueada em página sensível: {url}")
+                return False
+            msg = {**msg, "expectedUrl": url, "expectedTabId": tab_id}
+            sucesso = bool(executar_confirmado(msg, timeout_s=3.0))
+            if not sucesso and callable(ultimo_resultado_getter):
+                ultimo = ultimo_resultado_getter() or {}
+                if str(ultimo.get("status") or "") == "stale_context":
+                    print("⚠️ [Chrome] A aba mudou antes da ação; o comando foi cancelado.")
+            return sucesso
+        if callable(enviar_confirmado):
+            return bool(enviar_confirmado(msg, timeout_s=1.5))
+        if ws_loop and connected_extensions and callable(broadcast_command):
+            try:
+                futuro = asyncio.run_coroutine_threadsafe(
+                    broadcast_command(json.dumps(msg)),
+                    ws_loop,
+                )
+                return bool(futuro.result(timeout=1.5))
+            except Exception:
+                return False
+        return False
 
     prefer_com_br = False
     if action == "entrar_no_site":
         action = "open_url"
         prefer_com_br = True
 
-    if action not in allowed_actions and action not in ["click", "type", "press", "execute_js"]:
+    if action == "execute_js":
+        print("🛑 [Chrome] Execução arbitrária de JavaScript foi removida por segurança.")
+        return False
+    if action not in allowed_actions and action not in ["click", "type", "press"]:
         print(f"❌ [Chrome] Ação não autorizada: {action}")
         return False
 
@@ -57,15 +107,20 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
             print(f"[Navegação] 🔍 Termo '{raw}' não é URL. Convertendo para busca Google...")
             payload["url"] = fallback
             url = fallback
-        atualizar_contexto_por_url(url)
-
         if ws_loop and connected_extensions and callable(broadcast_command):
             msg = {"action": "open_url", "url": url}
-            asyncio.run_coroutine_threadsafe(broadcast_command(json.dumps(msg)), ws_loop)
-            print(f"📤 [Chrome] Enviando para extensão abrir/atualizar: {url}")
+            if payload.get("background"):
+                msg["background"] = True
+            if not _enviar_extensao(msg):
+                print("⚠️ [Chrome] Entrega ficou ambígua; não vou abrir uma segunda aba por fallback.")
+                return False
+            print(f"📤 [Chrome] Entrega WebSocket confirmada para abrir/atualizar: {url}")
         else:
             print("⚠️ [Fallback] Extensão não conectada, abrindo aba nativa.")
-            webbrowser.open(url)
+            try:
+                return webbrowser.open(url) is not False
+            except Exception:
+                return False
         return True
 
     if action == "close_specific_tab":
@@ -76,7 +131,9 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
         print(f"📤 [Chrome] Enviando fechamento específico → '{target}'")
         msg = {"action": "close_specific_tab", "target": target}
         if ws_loop and connected_extensions and callable(broadcast_command):
-            asyncio.run_coroutine_threadsafe(broadcast_command(json.dumps(msg)), ws_loop)
+            if not _enviar_extensao(msg):
+                print("❌ [Chrome] extensão não confirmou o fechamento específico")
+                return False
             print(f"📤 [Chrome] ✅ Comando ENVIADO → close_specific_tab | target={target}")
             return True
         print("❌ [Chrome] ws_loop ou extensão não conectada")
@@ -99,10 +156,17 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
             print("❌ [Chrome] youtube_play sem URL válida")
             return False
         if ws_loop and connected_extensions and callable(broadcast_command):
-            msg = {"action": "youtube_play", "url": url_musica}
-            asyncio.run_coroutine_threadsafe(broadcast_command(json.dumps(msg)), ws_loop)
-            print(f"📤 [Chrome] youtube_play enviado para a extensão: {url_musica}")
-            return True
+            msg = {
+                "action": "youtube_play",
+                "url": url_musica,
+                **({"background": True} if payload.get("background") else {}),
+                **({"target_tab_id": payload.get("target_tab_id")} if payload.get("target_tab_id") is not None else {}),
+            }
+            if _enviar_extensao(msg):
+                print(f"📤 [Chrome] Entrega WebSocket de youtube_play confirmada: {url_musica}")
+                return True
+            print("⚠️ [Chrome] youtube_play ficou sem confirmação; fallback bloqueado para não duplicar a faixa")
+            return False
         try:
             abriu = webbrowser.open(url_musica)
             print(f"🌐 [Chrome] youtube_play sem extensão; fallback nativo: {url_musica}")
@@ -110,6 +174,23 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
         except Exception as exc:
             print(f"❌ [Chrome] fallback de youtube_play falhou: {type(exc).__name__}: {exc}")
             return False
+
+    if action == "youtube_control":
+        command = str(payload.get("command") or "").strip().lower()
+        if not command:
+            print("❌ [Chrome] youtube_control sem comando")
+            return False
+        if not (ws_loop and connected_extensions):
+            print("❌ [Chrome] extensão desconectada; controle do YouTube não foi executado")
+            return False
+        msg = {"action": "youtube_control", "command": command}
+        if callable(executar_confirmado):
+            sucesso = bool(executar_confirmado(msg, timeout_s=3.0))
+        else:
+            sucesso = _enviar_extensao(msg)
+        if not sucesso:
+            print(f"⚠️ [Chrome] O YouTube não confirmou o comando {command}")
+        return sucesso
 
     if ws_loop and connected_extensions and callable(broadcast_command):
         if action == "youtube_search":
@@ -119,38 +200,48 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
                 return False
             url_escolhida = buscar_primeiro_video_youtube(query) if callable(buscar_primeiro_video_youtube) else ""
             if url_escolhida:
-                payload = {"url": url_escolhida}
+                payload = {
+                    "url": url_escolhida,
+                    **({"background": True} if payload.get("background") else {}),
+                }
                 action = "open_url"
                 print(f"🎯 [Chrome] youtube_search virou open_url com melhor match: {url_escolhida}")
             else:
-                msg = {"action": "youtube_search", "query": query}
-        else:
-            if action == "open_url":
-                try:
-                    purl = str(payload.get("url") or "").strip()
-                    dom = urlparse(purl).netloc or ""
-                    tab_id = solicitar_tab_reciclagem(dom, timeout_s=3.0) if callable(solicitar_tab_reciclagem) else None
-                    if tab_id is not None:
-                        msg = {"action": "update_tab", "tabId": tab_id, "url": purl}
-                        if payload.get("auto_click") is True:
-                            msg["auto_click"] = True
-                        asyncio.run_coroutine_threadsafe(broadcast_command(json.dumps(msg)), ws_loop)
-                        return True
-                    try:
-                        webbrowser.open(purl)
-                    except Exception:
-                        pass
-                    return True
-                except Exception:
-                    pass
-            msg = {"action": action, **payload}
-        if action == "youtube_search":
-            asyncio.run_coroutine_threadsafe(broadcast_command(json.dumps(msg)), ws_loop)
+                msg = {
+                    "action": "youtube_search",
+                    "query": query,
+                    **({"background": True} if payload.get("background") else {}),
+                }
         else:
             msg = {"action": action, **payload}
-            asyncio.run_coroutine_threadsafe(broadcast_command(json.dumps(msg)), ws_loop)
+        if action != "youtube_search":
+            msg = {"action": action, **payload}
+        if not _enviar_extensao(msg):
+            print(f"❌ [Chrome] A extensão não confirmou a execução de {action}.")
+            return False
     else:
         print("[WebSocket] Extensão não conectada; comando não foi enviado.")
         return False
 
     return True
+
+
+class ChromeComandosRuntime:
+    def __init__(self, *, contexto_getter: Callable[[], Dict[str, Any]]) -> None:
+        self.contexto_getter = contexto_getter
+
+    def enviar(self, action: str | None = None, payload: dict | None = None) -> bool:
+        return validar_e_enviar_comando(self.contexto_getter() or {}, action, payload)
+
+    def enviar_payload_bruto(self, payload: dict) -> bool:
+        ctx = self.contexto_getter() or {}
+        loop = _get(ctx, "ws_loop")
+        broadcast = _get(ctx, "broadcast_command")
+        if not loop or not callable(broadcast):
+            return False
+        asyncio.run_coroutine_threadsafe(broadcast(json.dumps(dict(payload or {}))), loop)
+        return True
+
+
+def criar_chrome_comandos_runtime(**kwargs: Any) -> ChromeComandosRuntime:
+    return ChromeComandosRuntime(**kwargs)

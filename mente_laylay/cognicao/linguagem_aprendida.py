@@ -84,7 +84,17 @@ class LinguagemAprendidaRuntime:
         return t_norm
 
     def normalizar_com_apelidos(self, texto: str) -> str:
-        return self.aplicar_apelidos(self.normalizar_texto(texto))
+        normalizado = self.normalizar_texto(texto)
+        # Erros de digitação curtos e muito comuns podem ser corrigidos sem
+        # tentar adivinhar palavras de domínio ou nomes próprios.
+        correcoes_seguras = {
+            "tduo": "tudo",
+            "tdo": "tudo",
+            "vc": "voce",
+        }
+        for errado, correto in correcoes_seguras.items():
+            normalizado = re.sub(rf"\b{re.escape(errado)}\b", correto, normalizado)
+        return self.aplicar_apelidos(normalizado)
 
     def extrair_apelido_ensinavel(self, texto: str):
         bruto = str(texto or "").strip()
@@ -151,6 +161,10 @@ class LinguagemAprendidaRuntime:
                 regra=f'Apelido "{alias_limpo}" aponta para "{alvo_limpo}".',
                 texto_original=str(contexto or f"{alias_limpo} é {alvo_limpo}"),
                 confianca=0.96,
+                origem="usuario",
+                evidencia=str(contexto or f"{alias_limpo} é {alvo_limpo}"),
+                status="ativo",
+                confirmado_usuario=True,
             )
             self.carregar_apelidos(force=True)
             if salvo:

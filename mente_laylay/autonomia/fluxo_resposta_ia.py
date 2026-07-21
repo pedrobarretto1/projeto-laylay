@@ -7,12 +7,19 @@ from mente_laylay.autonomia.pre_fluxo_contextual import (
     executar_pipeline_pre_fluxo,
     processar_aprendizado_apelido,
     processar_bloqueio_playlist_temporario,
+    processar_correcao_temporal,
     processar_elogio_ou_agradecimento,
+    processar_encerramento_conversa,
     processar_execucao_pratica_precoce,
     processar_feedback_pendente,
+    processar_identidade_usuario,
     processar_fluxo_musical_generico,
+    processar_opiniao_musica_atual,
     processar_pergunta_aberta,
     processar_pergunta_curta_contextual,
+    processar_resposta_pendencia_prioritaria,
+    processar_reparacao_conversacional,
+    processar_sugestao_indireta,
     responder_conversa_social_curta,
 )
 
@@ -29,31 +36,123 @@ def processar_inicio_fluxo_resposta_ia(ctx: Dict[str, Any], texto: str) -> bool:
     if not t:
         return True
 
+    encerrado, etapa_encerramento = processar_encerramento_conversa(ctx, t)
+    if encerrado:
+        print(f"🧭 [PRE-FLUXO] {etapa_encerramento}")
+        return True
+
     refinar_contexto_mental = _get(ctx, "_refinar_contexto_mental")
+    evento_temporal = {}
     if callable(refinar_contexto_mental):
-        refinar_contexto_mental(t)
+        evento_temporal = refinar_contexto_mental(t)
+    # Adaptadores antigos ainda podem não devolver o evento. Nesse caso, o
+    # registrador dedicado preserva o contrato sem duplicar a escrita quando
+    # o refinamento moderno já atualizou a consciência temporal.
+    if not isinstance(evento_temporal, dict):
+        registrar_tempo = _get(ctx, "_registrar_interacao_temporal")
+        evento_temporal = registrar_tempo(t) if callable(registrar_tempo) else {}
+
+    recarregar_contexto = _get(ctx, "_recarregar_contexto_inicio")
+    if callable(recarregar_contexto):
+        try:
+            contexto_atualizado = recarregar_contexto()
+            if isinstance(contexto_atualizado, dict):
+                ctx.clear()
+                ctx.update(contexto_atualizado)
+        except Exception as erro:
+            print(f"⚠️ [MENTE:RETRATO] falha ao atualizar contexto do turno: {erro}")
+
+    evento_temporal = evento_temporal if isinstance(evento_temporal, dict) else {}
+    tipo_evento_temporal = str(evento_temporal.get("tipo") or "")
+    falar_temporal = _get(ctx, "falar_com_lipsync")
+    if tipo_evento_temporal == "confirmacao_conclusao_necessaria":
+        candidatos = [str(item) for item in evento_temporal.get("candidatos") or []]
+        nomes = "; ou ".join(candidatos[:3])
+        if callable(falar_temporal):
+            falar_temporal(
+                f"Quero registrar isso direito: você terminou {nomes}?",
+                "curiosa", 1,
+            )
+        return True
+    if tipo_evento_temporal == "conclusao_confirmada":
+        assunto = str(evento_temporal.get("assunto") or "essa pendência")
+        if callable(falar_temporal):
+            falar_temporal(
+                f"Agora entendi. Marquei {assunto} como concluído na nossa linha do tempo.",
+                "carinhosa", 1,
+            )
+        return True
+    if tipo_evento_temporal == "conclusao_cancelada":
+        if callable(falar_temporal):
+            falar_temporal("Certo, não encerrei nenhuma pendência.", "calma", 1)
+        return True
+
+    mente_turno = _get(ctx, "mente_integrada_estado", {})
+    pendencia_turno = mente_turno.get("pendencia_atual") if isinstance(mente_turno, dict) else {}
+    periodo_cb = _get(ctx, "_contexto_horario_atual")
+    periodo = periodo_cb() if callable(periodo_cb) else "indefinido"
+    print(
+        "🧠 [CONTEXTO:TURNO] "
+        f"periodo={periodo} | "
+        f"pendencia={str((pendencia_turno or {}).get('origem') or '-')}:{str((pendencia_turno or {}).get('tipo') or '-')} | "
+        f"ultima_habilidade={str((mente_turno or {}).get('ultima_habilidade') or '-')}"
+    )
 
     def _log(etapa: str, detalhe: str = "") -> None:
         extra = f" | {detalhe}" if detalhe else ""
         print(f"🧭 [PRE-FLUXO] {etapa}{extra}")
 
+    turno_atual = dict(mente_turno.get("turno_atual") or {}) if isinstance(mente_turno, dict) else {}
+    modalidade_atual = str(
+        turno_atual.get("modalidade_geral") or turno_atual.get("modalidade") or "conversa"
+    ).lower()
+    usar_ia_principal_semantica = bool(
+        _get(ctx, "_semantica_na_resposta_principal", False)
+        and not turno_atual.get("autoriza_execucao")
+        and modalidade_atual not in {"comando", "confirmacao", "recusa", "correcao"}
+        and modalidade_atual == "misto"
+    )
+
     etapas = [
-        lambda: processar_execucao_pratica_precoce(ctx, t),
-        lambda: processar_elogio_ou_agradecimento(
-            ctx, t, emocao=current_emotion or "calma", nivel=emotion_level or 1
-        ),
-        lambda: processar_bloqueio_playlist_temporario(ctx, t),
-        lambda: processar_feedback_pendente(ctx, t),
-        lambda: processar_fluxo_musical_generico(ctx, t),
-        lambda: processar_pergunta_curta_contextual(ctx, t),
-        lambda: processar_pergunta_aberta(
-            ctx, t, emocao=current_emotion or "calma", nivel=emotion_level or 1
-        ),
-        lambda: responder_conversa_social_curta(
-            ctx, t, emocao=current_emotion or "calma", nivel=emotion_level or 1
-        ),
-        lambda: processar_aprendizado_apelido(ctx, t),
+        lambda: processar_identidade_usuario(ctx, t),
+        lambda: processar_correcao_temporal(ctx, t),
+        lambda: processar_reparacao_conversacional(ctx, t),
     ]
+    if not usar_ia_principal_semantica:
+        etapas.append(lambda: processar_opiniao_musica_atual(ctx, t))
+    etapas.extend([
+        lambda: processar_resposta_pendencia_prioritaria(ctx, t),
+        # Uma contraproposta pode conter verbo operacional ("melhor diminuir
+        # o brilho"). A sugestão pendente precisa interpretá-la antes que o
+        # executor a trate como um comando novo sem contexto.
+        lambda: processar_feedback_pendente(ctx, t),
+        lambda: processar_execucao_pratica_precoce(ctx, t),
+    ])
+    if not usar_ia_principal_semantica:
+        etapas.append(lambda: processar_elogio_ou_agradecimento(
+            ctx, t, emocao=current_emotion or "calma", nivel=emotion_level or 1
+        ))
+    etapas.extend([
+        lambda: processar_bloqueio_playlist_temporario(ctx, t),
+        lambda: processar_fluxo_musical_generico(ctx, t),
+        lambda: processar_sugestao_indireta(ctx, t),
+        lambda: processar_pergunta_curta_contextual(ctx, t),
+    ])
+
+    if usar_ia_principal_semantica:
+        _log("semantica_na_resposta_principal", "atalhos sociais locais ignorados")
+    else:
+        # Mantém exatamente a ordem legada quando a resposta principal não
+        # estiver responsável pela compreensão do turno.
+        etapas.extend([
+            lambda: processar_pergunta_aberta(
+                ctx, t, emocao=current_emotion or "calma", nivel=emotion_level or 1
+            ),
+            lambda: responder_conversa_social_curta(
+                ctx, t, emocao=current_emotion or "calma", nivel=emotion_level or 1
+            ),
+        ])
+    etapas.append(lambda: processar_aprendizado_apelido(ctx, t))
 
     if executar_pipeline_pre_fluxo(ctx, t, etapas, log_cb=_log):
         return True

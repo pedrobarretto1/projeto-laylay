@@ -27,6 +27,9 @@ def estado_percepcao_inicial() -> Dict[str, Any]:
             "titulo": "Nenhuma aba aberta",
             "url": "Nenhuma URL",
         },
+        "abas_sugeridas_fechar": [],
+        "fish_mode_active": False,
+        "fish_mode_started_ts": 0.0,
     }
 
 
@@ -44,6 +47,13 @@ def atualizar_estado_percepcao(estado_atual: Dict[str, Any] | None, **campos: An
         estado["contexto_sistema"] = {"exe": "", "title": "", "assunto": ""}
     if not isinstance(estado.get("aba_ativa"), dict):
         estado["aba_ativa"] = {"titulo": "Nenhuma aba aberta", "url": "Nenhuma URL"}
+    if not isinstance(estado.get("abas_sugeridas_fechar"), list):
+        estado["abas_sugeridas_fechar"] = []
+    estado["fish_mode_active"] = bool(estado.get("fish_mode_active", False))
+    try:
+        estado["fish_mode_started_ts"] = float(estado.get("fish_mode_started_ts") or 0.0)
+    except (TypeError, ValueError):
+        estado["fish_mode_started_ts"] = 0.0
     return estado
 
 

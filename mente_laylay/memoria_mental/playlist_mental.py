@@ -5,28 +5,16 @@ from __future__ import annotations
 import difflib
 import json
 import os
-import random
 import re
+import tempfile
 from datetime import datetime
 from typing import Any, Callable, Dict, Optional
 from urllib.parse import urlparse
 import urllib.parse
 
 from mente_laylay.cognicao.normalizacao_linguagem import (
-    aplicar_correcao_fonetica,
     normalizar_texto,
-    remover_acentos,
 )
-
-_ORDINAL_IDX = {
-    "primeira": 0, "primeiro": 0, "1ª": 0, "1º": 0,
-    "segunda": 1, "segundo": 1, "2ª": 1, "2º": 1,
-    "terceira": 2, "terceiro": 2, "3ª": 2, "3º": 2,
-    "quarta": 3, "quarto": 3, "4ª": 3, "4º": 3,
-    "quinta": 4, "quinto": 4, "5ª": 4, "5º": 4,
-    "última": -1, "ultimo": -1, "último": -1, "ultima": -1,
-}
-
 
 def yt_clean_url(url: str) -> str:
     try:
@@ -98,15 +86,15 @@ def resolver_nome_playlist_contextual(nome: str, data: Dict[str, Any], ultima_pl
     if nm in data:
         return nm
     if nm in {"ultima playlist", "ultima_playlist", "ultima_playlist_do_contexto"}:
-        atual = limpar_nome_playlist(normalizar_texto(str(ultima_playlist or "")))
-        return atual
+        atual = str(ultima_playlist or "").strip()
+        return resolver_nome_playlist_contextual(atual, data) if atual else ""
     candidatos = []
     for chave in data.keys():
-        chave_nm = limpar_nome_playlist(str(chave or ""))
+        chave_nm = limpar_nome_playlist(normalizar_texto(str(chave or "")))
         if not chave_nm:
             continue
         if chave_nm == nm or chave_nm.startswith(nm) or nm.startswith(chave_nm):
-            candidatos.append(chave_nm)
+            candidatos.append(str(chave))
     candidatos = list(dict.fromkeys(candidatos))
     if len(candidatos) == 1:
         return candidatos[0]
@@ -201,29 +189,37 @@ def detectar_playlist_nome_direto(
 
     candidatos = []
     for chave in data.keys():
-        chave_nm = limpar_nome_playlist(str(chave or ""))
+        chave_nm = limpar_nome_playlist(normalizar(str(chave or "")))
         if not chave_nm:
             continue
         if resto == chave_nm or resto.startswith(chave_nm) or chave_nm.startswith(resto):
-            candidatos.append(chave_nm)
+            candidatos.append(str(chave))
     candidatos = list(dict.fromkeys(candidatos))
     return candidatos[0] if len(candidatos) == 1 else ""
 
 
 def playlists_save(caminho: str, data: dict) -> bool:
+    temporario = ""
     try:
-        with open(caminho, "w", encoding="utf-8") as f:
+        pasta = os.path.dirname(os.path.abspath(caminho))
+        os.makedirs(pasta, exist_ok=True)
+        with tempfile.NamedTemporaryFile(
+            "w", encoding="utf-8", dir=pasta,
+            prefix=".playlists-", suffix=".tmp", delete=False,
+        ) as f:
+            temporario = f.name
             json.dump(data or {}, f, ensure_ascii=False, indent=4)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temporario, caminho)
         return True
     except Exception:
-        try:
-            with open(caminho, "w", encoding="utf-8") as f:
-                f.write("{}")
-            with open(caminho, "w", encoding="utf-8") as f:
-                json.dump(data or {}, f, ensure_ascii=False, indent=4)
-            return True
-        except Exception:
-            return False
+        if temporario:
+            try:
+                os.unlink(temporario)
+            except OSError:
+                pass
+        return False
 
 
 def ensure_playlists_file(state_file: str, legacy_file: str) -> bool:
@@ -305,11 +301,7 @@ def playlists_load(state_file: str, legacy_file: str) -> Dict[str, Any]:
                 playlists_save(state_file, data)
             return data
     except Exception:
-        try:
-            with open(state_file, "w", encoding="utf-8") as f:
-                f.write("{}")
-        except Exception:
-            pass
+        # Falha transitória de leitura nunca deve apagar as playlists.
         return {}
 
 
@@ -412,22 +404,6 @@ def add_to_playlist_url(
     return {"ok": ok, "created_file": created_file, "created_playlist": created_playlist, "duplicated": False, "duplicated_meta": False}
 
 
-def list_playlist_urls(name: str, data: Dict[str, Any]) -> list:
-    nm = limpar_nome_playlist(name)
-    if not nm:
-        return []
-    lst = data.get(nm)
-    if not isinstance(lst, list):
-        return []
-    out = []
-    for item in lst:
-        if isinstance(item, str):
-            out.append(item)
-        elif isinstance(item, dict) and item.get("url"):
-            out.append(str(item.get("url")))
-    return out
-
-
 def fala_playlist_conteudo_estilosa(info: dict, fallback_nome: str = "") -> str:
     nm = str(info.get("name") or fallback_nome or "essa").strip()
     total = int(info.get("total") or 0)
@@ -495,6 +471,8 @@ def pedido_lista_geral_playlist(
     if any(kw in texto for kw in [
         "quais sao minhas playlists",
         "quais são minhas playlists",
+        "quais minhas playlists",
+        "quais as minhas playlists",
         "quais playlists eu tenho",
         "que playlists eu tenho",
         "listar minhas playlists",
@@ -537,13 +515,3 @@ def listar_playlists_salvas(data: Dict[str, Any] | None) -> str:
     if len(nomes) == 1:
         return f"Sua playlist salva é {nomes[0]}."
     return f"Suas playlists são: {', '.join(nomes)}."
-
-
-def parse_indice_ordinal(token: str) -> Optional[int]:
-    t = str(token or "").strip().lower()
-    t = re.sub(r"^\s*(toque|toca|coloca|abre)\b", " ", t).strip()
-    t = re.sub(r"^(a|o|uma|um)\s+", "", t).strip()
-    t = re.sub(r"\s+", " ", t).strip()
-    if not t:
-        return None
-    return _ORDINAL_IDX.get(t)

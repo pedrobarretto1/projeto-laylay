@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import ast
 import re
 from typing import Any, Callable, Mapping
+
+from mente_laylay.arquivos.lixeira_laylay import existe_exclusao_pendente
 
 
 def _get(ctx: Mapping[str, Any], key: str):
@@ -20,7 +21,7 @@ def extrair_criacao_pasta_arquivo(frase: str) -> dict:
     combo_escreve = re.search(
         r"\b(?:cria|criar|crie)\b.*?\bpasta\s+(?:chamada|chamado|chamadda|com nome)?\s*(?P<pasta>.+?)\s+"
         r"(?:e\s+)?dentro(?:\s+del[ae]|\s+dess[ae]|\s+da\s+pasta|\s+do\s+diretorio|\s+do\s+diretório)?\s+"
-        r"(?:um\s+|uma\s+)?arquivo(?:\s+de\s+texto)?\s+"
+        r"(?:um\s+|uma\s+)?arquivo(?:\s+de\s+te(?:x|s)to)?\s+"
         r"(?:chamado|chamada|chamadda|com nome)?\s*(?P<arquivo>.+?)\s+"
         r"escreve\s+(?P<conteudo>.+)$",
         texto_local,
@@ -30,6 +31,22 @@ def extrair_criacao_pasta_arquivo(frase: str) -> dict:
         pasta = str(combo_escreve.group("pasta") or "").strip(" .,!?:;\"'")
         arquivo = str(combo_escreve.group("arquivo") or "").strip(" .,!?:;\"'")
         conteudo = str(combo_escreve.group("conteudo") or "").strip(" .,!?:;\"'")
+        if pasta and arquivo:
+            return {"nome": pasta, "arquivo_nome": arquivo, "arquivo_conteudo": conteudo}
+
+    combo_escrito = re.search(
+        r"\b(?:cria|criar|crie)\b.*?\bpasta\s+(?:chamada|chamado|chamadda|com nome)?\s*(?P<pasta>.+?)\s+"
+        r"(?:e\s+)?dentro(?:\s+del[ae]|\s+dess[ae]|\s+da\s+pasta)?\s+"
+        r"(?:um\s+|uma\s+)?arquivo(?:\s+de\s+te(?:x|s)to)?\s+"
+        r"(?:chamado|chamada|chamadda|com nome)?\s*(?P<arquivo>.+?)\s+"
+        r"escrito(?:\s+nele)?\s+(?P<conteudo>.+)$",
+        texto_local,
+        flags=re.IGNORECASE,
+    )
+    if combo_escrito:
+        pasta = str(combo_escrito.group("pasta") or "").strip(" .,!?:;\"'")
+        arquivo = str(combo_escrito.group("arquivo") or "").strip(" .,!?:;\"'")
+        conteudo = str(combo_escrito.group("conteudo") or "").strip(" .,!?:;\"'")
         if pasta and arquivo:
             return {"nome": pasta, "arquivo_nome": arquivo, "arquivo_conteudo": conteudo}
 
@@ -59,10 +76,23 @@ def extrair_criacao_pasta_arquivo(frase: str) -> dict:
         if pasta and interna:
             return {"nome": pasta, "pasta_interna": interna}
 
+    pasta_dentro_de_outra = re.search(
+        r"\b(?:cria|criar|crie)\s+(?:uma\s+)?pasta\s+"
+        r"(?:chamada|chamado|chamadda|com nome)?\s*(?P<nome>.+?)\s+"
+        r"dentro\s+(?!del[ae]\b|dess[ae]\b)(?:da\s+pasta\s+|do\s+diretorio\s+|do\s+diretório\s+|de\s+)?(?P<pai>.+?)$",
+        texto_local,
+        flags=re.IGNORECASE,
+    )
+    if pasta_dentro_de_outra:
+        nome = str(pasta_dentro_de_outra.group("nome") or "").strip(" .,!?:;\"'")
+        pasta_pai = str(pasta_dentro_de_outra.group("pai") or "").strip(" .,!?:;\"'")
+        if nome and pasta_pai:
+            return {"nome": nome, "pasta_pai": pasta_pai}
+
     combo = re.search(
         r"\b(?:cria|criar|crie)\b.*?\bpasta\s+(?:chamada|chamado|chamadda|com nome)?\s*(?P<pasta>.+?)\s+"
         r"(?:e\s+)?(?:dentro(?:\s+del[ae]|\s+dess[ae]|\s+da\s+pasta|\s+do\s+diretorio|\s+do\s+diretório)?\s*)?(?:coloca|cria|criar|crie)?\s*"
-        r"(?:um\s+|uma\s+)?arquivo(?:\s+de\s+texto)?\s+"
+        r"(?:um\s+|uma\s+)?arquivo(?:\s+de\s+te(?:x|s)to)?\s+"
         r"(?:chamado|chamada|chamadda|com nome)?\s*(?P<arquivo>.+?)"
         r"(?:\s+(?:escrito(?:\s+nele)?|com\s+o\s+texto|com\s+texto|contendo|que\s+diga)\s+(?P<conteudo>.+))?$",
         texto_local,
@@ -177,6 +207,37 @@ def detectar_intencao_arquivos(
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
     estado = dict(estado_mental or {})
 
+    texto_confirmacao = t.casefold().strip(" .,!?:;")
+    if existe_exclusao_pendente():
+        if texto_confirmacao in {"sim", "pode", "pode apagar", "confirma", "confirmo", "apaga"}:
+            return {"intent": "CONFIRM_DELETE_ITEM", "params": params()}
+        if texto_confirmacao in {"nao", "não", "cancela", "cancelar", "deixa", "deixa quieto"}:
+            return {"intent": "CANCEL_DELETE_ITEM", "params": params()}
+
+    if re.fullmatch(
+        r"(?:desfaz(?:er)?(?:\s+isso)?|restaura(?:r)?(?:\s+o)?\s+(?:ultimo|último)?\s*(?:arquivo|item|pasta)?|recupera(?:r)?(?:\s+o)?\s+(?:ultimo|último)?\s*(?:arquivo|item|pasta)?)",
+        texto_confirmacao,
+    ):
+        return {"intent": "RESTORE_DELETED_ITEM", "params": params()}
+
+    # "Apagar" também é uma forma natural de desligar dispositivos. Quando a
+    # frase nomeia um alvo IoT e não declara arquivo/pasta, o roteador de
+    # arquivos deve ceder ao domínio físico em vez de inventar um caminho.
+    alvo_iot_explicito = bool(re.search(
+        r"\b(?:luz|lampada|lâmpada|ventilador|tomada|dispositivo)\b",
+        t,
+        flags=re.IGNORECASE,
+    ))
+    alvo_arquivo_explicito = bool(re.search(
+        r"\b(?:arquivo|pasta|diretorio|diretório|documento|txt|pdf)\b",
+        t,
+        flags=re.IGNORECASE,
+    ))
+    if alvo_iot_explicito and not alvo_arquivo_explicito and re.search(
+        r"\b(?:apaga|apagar|desliga|desligar)\b", t, flags=re.IGNORECASE
+    ):
+        return None
+
     m_pasta_contextual = re.search(
         r"\bdentro\s+dela\b.*?\b(?:coloca|cria|criar|crie)\b\s+(?:a|uma)?\s*pasta\s+(?:chamada|com nome)?\s*(?P<nome>.+)$",
         t,
@@ -199,94 +260,3 @@ def detectar_intencao_arquivos(
         return {"intent": "CREATE_FOLDER", "params": params(**pasta_info)}
 
     return None
-
-
-def executar_comando_arquivos(c_nome: str, c_args: str, comando: str, c_upper: str, ctx: Mapping[str, Any]) -> bool:
-    c = str(c_nome or "").upper()
-    a = "" if c_args is None else str(c_args).strip()
-
-    criar_pasta = _get(ctx, "criar_pasta")
-    criar_ou_editar_arquivo = _get(ctx, "criar_ou_editar_arquivo")
-    mover_arquivo = _get(ctx, "mover_arquivo")
-    renomear_arquivo = _get(ctx, "renomear_arquivo")
-    deletar_item = _get(ctx, "deletar_item")
-    buscar_arquivo_no_pc = _get(ctx, "buscar_arquivo_no_pc")
-    falar = _get(ctx, "falar_com_lipsync")
-    organizar_janelas_robusto = _get(ctx, "organizar_janelas_robusto")
-
-    if c == "CRIAR_PASTA" and callable(criar_pasta):
-        nome = a.strip(' "\'')
-        if nome:
-            criar_pasta(nome)
-        return True
-
-    if c == "ESCREVER_ARQUIVO" and callable(criar_ou_editar_arquivo):
-        try:
-            test_str = a.strip()
-            if not test_str.startswith("("):
-                test_str = f"({test_str})"
-            args = ast.literal_eval(test_str)
-            if isinstance(args, tuple) and len(args) >= 2:
-                caminho = str(args[0])
-                conteudo = str(args[1])
-                modo = str(args[2]) if len(args) > 2 else "w"
-                criar_ou_editar_arquivo(caminho, conteudo, modo)
-                return True
-        except Exception:
-            pass
-
-        pattern = r"'(.*?)'|\"(.*?)\""
-        matches = re.findall(pattern, a, re.DOTALL)
-        args = [m[0] if m[0] else m[1] for m in matches]
-        if len(args) >= 2:
-            caminho = args[0]
-            conteudo = args[1]
-            modo = args[2] if len(args) > 2 else "w"
-            criar_ou_editar_arquivo(caminho, conteudo, modo)
-            return True
-        parts = a.split(",")
-        if len(parts) >= 2:
-            caminho = parts[0].strip(' "\'')
-            conteudo = parts[1].strip(' "\'')
-            modo = parts[2].strip(' "\'') if len(parts) > 2 else "w"
-            criar_ou_editar_arquivo(caminho, conteudo, modo)
-            return True
-        return True
-
-    if c == "MOVER" and callable(mover_arquivo):
-        parts = a.split(",")
-        if len(parts) >= 2:
-            mover_arquivo(parts[0].strip(' "\''), parts[1].strip(' "\''))
-        return True
-
-    if c == "RENOMEAR" and callable(renomear_arquivo):
-        parts = a.split(",")
-        if len(parts) >= 2:
-            renomear_arquivo(parts[0].strip(' "\''), parts[1].strip(' "\''))
-        return True
-
-    if c == "DELETAR" and callable(deletar_item):
-        deletar_item(a.strip(' "\''))
-        return True
-
-    if c == "BUSCAR_ARQUIVO" and callable(buscar_arquivo_no_pc):
-        buscar_arquivo_no_pc(a.strip(' "\''))
-        return True
-
-    if c == "ORGANIZE_WORKSPACE" and callable(organizar_janelas_robusto):
-        try:
-            match = re.search(r"ORGANIZE_WORKSPACE\((.*?)\)", comando)
-            if match:
-                argumentos = match.group(1)
-                apps = [app.strip(" '\"") for app in argumentos.split(',')]
-                app1 = apps[0] if len(apps) > 0 else "vscode"
-                app2 = apps[1] if len(apps) > 1 else "whatsapp"
-                organizar_janelas_robusto(app1, app2)
-            else:
-                organizar_janelas_robusto("vscode", "whatsapp")
-        except Exception as e:
-            print(f"❌ Falha ao entender os apps para organizar: {e}")
-            organizar_janelas_robusto("vscode", "whatsapp")
-        return True
-
-    return False

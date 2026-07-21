@@ -9,7 +9,18 @@ from typing import Any, Callable
 FALAS_ASSUNTO = {
     "Programação": "Vejo que o código tá rendendo, Pedro. Quer uma música de foco?",
     "Gaming": "Tá no modo gamer, né, Pedro. Quer que eu deixe uma música de fundo?",
-    "Impressão 3D": "Isso aí tá com cara de impressão 3D. Quer que eu te ajude a achar um modelo bom?",
+    "Impressão 3D": "Isso aí tá com cara de impressão 3D. Tô acompanhando o projeto por aqui.",
+}
+
+SUGESTOES_ASSUNTO = {
+    "Programação": (
+        "SYS_MODE_CODE",
+        {"action": "combo_python", "clean_tabs": True, "music_query": "lofi focus", "clean_empty_tabs": True},
+    ),
+    "Gaming": (
+        "SYS_MODE_GAMER",
+        {"action": "combo_gamer", "pause_music": True, "close_study_tabs": True},
+    ),
 }
 
 
@@ -32,6 +43,9 @@ class MonitorJanelasRuntime:
         detectar_gatilho: Callable[[str, str, str, bool], tuple[str, dict | None]],
         fala_gatilho: Callable[[str], str],
         falar: Callable[[str, str, int], Any],
+        preparar_sugestao: Callable[[str, dict[str, Any], str], tuple[str, dict[str, Any], str]] | None = None,
+        atualizar_modo_jogo: Callable[[dict[str, Any], bool], dict[str, Any]] | None = None,
+        interacao_iniciada: Callable[[], bool] | None = None,
         clock: Callable[[], float] = time.time,
         sleep: Callable[[float], Any] = time.sleep,
         log: Callable[[str], Any] = print,
@@ -53,6 +67,9 @@ class MonitorJanelasRuntime:
         self.detectar_gatilho = detectar_gatilho
         self.fala_gatilho = fala_gatilho
         self.falar = falar
+        self.preparar_sugestao = preparar_sugestao
+        self.atualizar_modo_jogo = atualizar_modo_jogo
+        self.interacao_iniciada = interacao_iniciada or (lambda: True)
         self.clock = clock
         self.sleep = sleep
         self.log = log
@@ -87,6 +104,22 @@ class MonitorJanelasRuntime:
         agora = float(self.clock() if agora is None else agora)
         if self._cooldown_ativo(agora):
             return False
+        sugestao = SUGESTOES_ASSUNTO.get(assunto)
+        if sugestao:
+            comando, payload = sugestao
+            if callable(self.preparar_sugestao):
+                try:
+                    comando, payload, fala = self.preparar_sugestao(comando, dict(payload or {}), fala)
+                except Exception as exc:
+                    self.log(f"⚠️ [MONITOR JANELAS] preferência de sugestão ignorada: {exc}")
+            self.continuidade_update(
+                comando_sugerido=comando,
+                comando_sugerido_payload=dict(payload),
+                comando_sugerido_estado="PENDING_CONFIRM",
+                comando_sugerido_ts=agora,
+                comando_pendente=comando,
+                comando_pendente_payload=dict(payload),
+            )
         self.ultimo_proativo_set(agora)
         self.falar(fala, "calma", 1)
         return True
@@ -101,6 +134,24 @@ class MonitorJanelasRuntime:
         executavel = str(retrato.get("exe") or "")
         assunto = str(retrato.get("assunto") or "")
         agora = float(self.clock())
+        fullscreen = bool(self.janela_em_tela_cheia(janela))
+        estado_modo_jogo: dict[str, Any] = {}
+        if callable(self.atualizar_modo_jogo):
+            try:
+                estado_modo_jogo = dict(self.atualizar_modo_jogo(retrato, fullscreen) or {})
+            except Exception as exc:
+                self.log(f"⚠️ [MODO JOGO] observação ignorada: {type(exc).__name__}: {exc}")
+
+        # Durante a inicialização, briefing/abertura possuem prioridade total.
+        # O monitor continua atualizando a percepção, mas só pode sugerir algo
+        # depois que o usuário realmente iniciar a conversa.
+        if not bool(self.interacao_iniciada()):
+            self.ultimo_hwnd = None
+            self.ultimo_assunto = ""
+            self.assunto_change_ts = 0.0
+            self.ultimo_gatilho = ""
+            self.gatilho_inicio_ts = 0.0
+            return {"status": "aguardando_primeira_interacao", "retrato": retrato}
 
         if hwnd and hwnd != self.ultimo_hwnd:
             self.ultimo_hwnd = hwnd
@@ -119,8 +170,7 @@ class MonitorJanelasRuntime:
         if self._ha_pendencia_ou_interacao() or self._cooldown_ativo(agora):
             return {"status": "bloqueado", "retrato": retrato}
 
-        fullscreen = bool(self.janela_em_tela_cheia(janela))
-        if fullscreen and assunto == "Gaming":
+        if estado_modo_jogo.get("ativo") or (fullscreen and assunto == "Gaming"):
             return {"status": "jogo_fullscreen", "retrato": retrato}
 
         gatilho, payload = self.detectar_gatilho(executavel, titulo, assunto, fullscreen)
@@ -138,6 +188,12 @@ class MonitorJanelasRuntime:
             return {"status": "observando_gatilho", "gatilho": gatilho, "retrato": retrato}
 
         if self.gatilho_inicio_ts and agora - self.gatilho_inicio_ts >= self.permanencia_gatilho_s:
+            fala = str(self.fala_gatilho(gatilho) or "")
+            if callable(self.preparar_sugestao):
+                try:
+                    gatilho, payload, fala = self.preparar_sugestao(gatilho, dict(payload or {}), fala)
+                except Exception as exc:
+                    self.log(f"⚠️ [MONITOR JANELAS] preferência de gatilho ignorada: {exc}")
             self.continuidade_update(
                 comando_sugerido=gatilho,
                 comando_sugerido_payload=payload,
@@ -147,7 +203,6 @@ class MonitorJanelasRuntime:
                 comando_pendente_payload=payload,
             )
             self.ultimo_proativo_set(agora)
-            fala = str(self.fala_gatilho(gatilho) or "")
             if fala:
                 self.falar(fala, "calma", 1)
             self.ultimo_gatilho = ""

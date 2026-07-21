@@ -33,26 +33,6 @@ class BuscaMusicalRuntime:
         self.query: str = ""
         self.ultima_verificada: str = ""
 
-    def buscar_videos_fila(self, query: str, limite: int = 5) -> list:
-        """Retorna uma fila de URLs para dar suporte a troca autonoma."""
-        try:
-            url_busca = f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(str(query or ''))}"
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-            res = requests.get(url_busca, headers=headers, timeout=5)
-            if res.status_code == 200:
-                candidatos = self.extrair_resultados_youtube(res.text, query, max(10, limite))
-                links = []
-                for item in candidatos:
-                    link = str(item.get("url") or "").strip()
-                    if link and link not in links:
-                        links.append(link)
-                    if len(links) >= limite:
-                        break
-                return links
-        except Exception as e:
-            self.log(f"[YT-SCRAPER] Erro fila: {e}")
-        return []
-
     def tentar_proxima(self) -> bool:
         if self.fila:
             prox_link = self.fila.pop(0)
@@ -110,32 +90,6 @@ Responda APENAS "SIM" se for a música certa, ou "NAO" se for o vídeo errado.
         except Exception as e:
             self.log(f"⚠️ [YT-SCRAPER] Erro: {e}")
         return None
-
-    def buscar_url_silencioso(self, query: str) -> str:
-        """Busca a URL do primeiro video do YouTube sem abrir navegador."""
-        try:
-            q = urllib.parse.quote(str(query or ""))
-            url = f"https://www.youtube.com/results?search_query={q}"
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-                "Accept-Language": "pt-BR,pt;q=0.9",
-            }
-            resp = requests.get(url, headers=headers, timeout=8)
-            if resp.status_code != 200:
-                self.log(f"[YT-SILENT] HTTP {resp.status_code} para '{query}'")
-                return ""
-            candidatos = self.extrair_resultados_youtube(resp.text, query, 1)
-            if candidatos:
-                yt_url = str(candidatos[0].get("url") or "").strip()
-                if yt_url:
-                    self.log(f"[YT-SILENT] URL encontrada: {yt_url}")
-                    return yt_url
-            self.log(f"[YT-SILENT] Nenhum videoId encontrado para '{query}'")
-            return ""
-        except Exception as e:
-            self.log(f"[YT-SILENT] Erro: {e}")
-            return ""
-
 
 def criar_busca_musical_runtime(**kwargs: Any) -> BuscaMusicalRuntime:
     return BuscaMusicalRuntime(**kwargs)

@@ -7,17 +7,33 @@ from typing import Any, Callable, Iterable
 from urllib.parse import urlparse
 
 
-def achar_aba_por_dominio(abas: Iterable[Any], dominio: str) -> int | None:
-    dominio_normalizado = str(dominio or "").strip().lower()
-    if not dominio_normalizado:
+def _url_normalizada_para_comparacao(url: str) -> tuple[str, str, str]:
+    try:
+        parsed = urlparse(str(url or "").strip())
+    except Exception:
+        return "", "", ""
+    host = str(parsed.hostname or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    path = (parsed.path or "/").rstrip("/") or "/"
+    query = str(parsed.query or "").strip()
+    return host, path, query
+
+
+def achar_aba_equivalente(abas: Iterable[Any], url_alvo: str) -> int | None:
+    """Encontra a mesma página; páginas iniciais também equivalem pelo site."""
+    host_alvo, path_alvo, query_alvo = _url_normalizada_para_comparacao(url_alvo)
+    if not host_alvo:
         return None
+    pagina_inicial = path_alvo in {"/", "/."} and not query_alvo
     for aba in abas if isinstance(abas, list) else []:
-        if not isinstance(aba, dict):
+        if not isinstance(aba, dict) or not isinstance(aba.get("id"), int):
             continue
-        tab_id = aba.get("id")
-        url = str(aba.get("url") or "").lower()
-        if isinstance(tab_id, int) and dominio_normalizado in url:
-            return tab_id
+        host, path, query = _url_normalizada_para_comparacao(str(aba.get("url") or ""))
+        if host != host_alvo:
+            continue
+        if pagina_inicial or (path == path_alvo and query == query_alvo):
+            return int(aba["id"])
     return None
 
 
@@ -74,55 +90,12 @@ def classificar_contexto_por_url(url: str) -> dict[str, str | None]:
     return {"site": "outro", "termo_busca": None}
 
 
-def trazer_chrome_para_frente(
-    *,
-    get_all_windows: Callable[[], Any],
-    sleep: Callable[[float], Any],
-) -> bool:
-    """Tenta trazer uma janela do Chrome para frente sem acoplar o módulo ao pygetwindow."""
-    try:
-        wins = []
-        try:
-            wins = list(get_all_windows() or []) if callable(get_all_windows) else []
-        except Exception:
-            wins = []
-
-        candidatos = []
-        for janela in wins:
-            try:
-                titulo = str(getattr(janela, "title", "") or "")
-            except Exception:
-                titulo = ""
-            if not titulo:
-                continue
-            titulo_norm = titulo.lower()
-            if "google chrome" in titulo_norm or "chrome" in titulo_norm:
-                candidatos.append(janela)
-
-        if not candidatos:
-            return False
-
-        janela = candidatos[0]
-        try:
-            janela.activate()
-        except Exception:
-            pass
-        try:
-            janela.maximize()
-        except Exception:
-            pass
-        sleep(0.5)
-        return True
-    except Exception:
-        return False
-
-
 def fechar_aba_ativa_nativa(
+    alvo: str = "",
     *,
     get_active_window: Callable[[], Any],
     hotkey: Callable[..., Any],
     sleep: Callable[[float], Any],
-    alvo: str = "",
 ) -> bool:
     """Fecha a aba ativa sem extensão, somente quando o foco está num navegador."""
     try:
@@ -161,8 +134,9 @@ def abrir_url_reutilizando_aba(
     abrir_fallback: Callable[[str], Any],
     auto_click: bool = False,
     corrigir_url_busca: bool = False,
+    preservar_foco: bool = False,
 ) -> bool:
-    """Atualiza uma aba do mesmo dominio ou abre uma nova quando necessario."""
+    """Reutiliza uma aba; no modo protegido, trabalha sem trocar a tela."""
     url = str(url_alvo or "").strip()
     if not url:
         return False
@@ -170,23 +144,75 @@ def abrir_url_reutilizando_aba(
         url = url.replace("searchq=", "search?q=")
 
     if conectado():
-        try:
-            dominio = urlparse(url).netloc.lower()
-        except Exception:
-            dominio = ""
         abas = solicitar_lista_abas()
-        tab_id = achar_aba_por_dominio(abas, dominio) if dominio else None
+        tab_id = achar_aba_equivalente(abas, url)
         if tab_id is not None:
+            if preservar_foco:
+                return True
             enviar_comando(
-                "update_tab",
-                {"tabId": tab_id, "url": url, "auto_click": bool(auto_click)},
+                "focus_tab",
+                {"tabId": tab_id, "url": url},
             )
             return True
-        enviar_comando("open_url", {"url": url, "auto_click": bool(auto_click)})
+        payload = {"url": url, "auto_click": bool(auto_click)}
+        if preservar_foco:
+            payload["background"] = True
+        enviar_comando("open_url", payload)
         return True
 
     try:
-        abrir_fallback(url)
-        return True
+        return abrir_fallback(url) is not False
     except Exception:
         return False
+
+
+def identificar_abas_vazias(abas: Any, *, log: Callable[[str], Any] = print) -> list[int]:
+    """Identifica abas sem conteudo sem atingir paginas de midia protegidas."""
+    lista = abas if isinstance(abas, list) else []
+    log(f"[ABAS VAZIAS] Total de abas recebidas: {len(lista)}")
+    ids: list[int] = []
+    for aba in lista:
+        if not isinstance(aba, dict):
+            continue
+        tab_id = aba.get("id")
+        url = str(aba.get("url") or "").strip().lower()
+        titulo = str(aba.get("title") or "").strip()
+        if not isinstance(tab_id, int):
+            continue
+
+        log(f"[ABAS VAZIAS] Aba {tab_id} | titulo='{titulo}' | url='{url}'")
+        vazia = url.startswith("chrome://newtab") or url == "about:blank" or not url
+        if titulo in {"", "Nova guia", "Nova aba", "New Tab", "Nova guia - Google Chrome"}:
+            vazia = True
+        titulo_lower = titulo.lower()
+        if len(titulo) <= 12 and not any(
+            nome in titulo_lower for nome in ["youtube", "netflix", "google", "spotify", "whatsapp"]
+        ):
+            vazia = True
+        if "netflix.com" in url or "youtube.com" in url:
+            vazia = False
+        if vazia:
+            ids.append(tab_id)
+            log(f"[ABAS VAZIAS] Marcada para fechar: {tab_id}")
+    return ids
+
+
+def fechar_abas_vazias(
+    *,
+    solicitar_abas: Callable[[], Any],
+    enviar_comando: Callable[[str, dict[str, Any]], Any],
+    log: Callable[[str], Any] = print,
+) -> list[int]:
+    """Consulta e fecha as abas classificadas como vazias em um unico lote."""
+    try:
+        abas = solicitar_abas()
+    except Exception as erro:
+        log(f"[ABAS VAZIAS] Falha ao consultar abas: {erro}")
+        return []
+    ids = identificar_abas_vazias(abas, log=log)
+    if not ids:
+        log("[ABAS VAZIAS] Nenhuma aba vazia detectada")
+        return []
+    log(f"[ABAS VAZIAS] Fechando {len(ids)} aba(s) em lote")
+    enviar_comando("close_tabs", {"ids": ids})
+    return ids

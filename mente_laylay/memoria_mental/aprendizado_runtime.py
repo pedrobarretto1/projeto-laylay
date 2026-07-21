@@ -8,6 +8,7 @@ getters e setters.
 from __future__ import annotations
 
 import os
+import time
 from typing import Any, Callable, Dict
 
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
@@ -39,8 +40,8 @@ class AprendizadoRuntime:
         arquivo_musica_historico: str,
         arquivo_musica_feedback: str,
         contexto_getter: Callable[[], Dict[str, Any]],
-        estado_getter: Callable[[], Dict[str, Any]],
-        estado_setter: Callable[..., None],
+        estado_getter: Callable[[], Dict[str, Any]] | None = None,
+        estado_setter: Callable[..., None] | None = None,
         log: Callable[..., Any] = print,
     ) -> None:
         self.pasta_memoria = pasta_memoria
@@ -51,6 +52,15 @@ class AprendizadoRuntime:
         self._estado_getter = estado_getter
         self._estado_setter = estado_setter
         self._log = log
+        self._estado_local: Dict[str, Any] = {
+            "rotina_dados_diarios": {},
+            "rotina_ultimo_log": 0.0,
+            "rotina_ultima_sugestao": 0.0,
+            "rotina_feedback_pesos": {},
+            "musica_dados_diarios": {},
+            "musica_feedback_pesos": {},
+            "musica_ultima_sugestao": 0.0,
+        }
 
     def _ctx(self) -> Dict[str, Any]:
         try:
@@ -60,8 +70,10 @@ class AprendizadoRuntime:
             return {}
 
     def _estado(self) -> Dict[str, Any]:
+        if not callable(self._estado_getter):
+            return self._estado_local
         try:
-            estado = self._estado_getter() if callable(self._estado_getter) else {}
+            estado = self._estado_getter()
             return estado if isinstance(estado, dict) else {}
         except Exception:
             return {}
@@ -69,6 +81,18 @@ class AprendizadoRuntime:
     def _set(self, **campos: Any) -> None:
         if callable(self._estado_setter):
             self._estado_setter(**campos)
+            return
+        self._estado_local.update(campos)
+
+    def snapshot(self) -> Dict[str, Any]:
+        estado = self._estado()
+        return {
+            chave: dict(valor) if isinstance(valor, dict) else valor
+            for chave, valor in estado.items()
+        }
+
+    def atualizar(self, **campos: Any) -> None:
+        self._set(**campos)
 
     @property
     def arquivo_feedback_rotina(self) -> str:
@@ -94,6 +118,7 @@ class AprendizadoRuntime:
             ctx.get("contexto_sistema", {}),
             ctx.get("obter_janela_ativa", lambda: None),
             salvar_cb=self.salvar_rotinas_aprendidas,
+            registrar_observacao_cb=ctx.get("registrar_observacao_aprendizado"),
         )
         self._set(rotina_ultimo_log=novo_log)
 
@@ -214,6 +239,30 @@ class AprendizadoRuntime:
         if callable(analisar_musica_cb):
             analisar_musica_cb()
 
+    def monitorar(
+        self,
+        *,
+        dias_para_aprender: int,
+        limite_rejeicao: int,
+        analisar_musica_cb: Callable[[], Any] | None = None,
+        intervalo_s: float = 60.0,
+        sleep_fn: Callable[[float], Any] = time.sleep,
+        deve_parar: Callable[[], bool] | None = None,
+    ) -> None:
+        self._log("[ROTINA] Aprendizado de rotina iniciado - vai aprender em 7 dias")
+        self.carregar_tudo()
+
+        while not (callable(deve_parar) and deve_parar()):
+            try:
+                self.monitor_tick(
+                    dias_para_aprender=dias_para_aprender,
+                    limite_rejeicao=limite_rejeicao,
+                    analisar_musica_cb=analisar_musica_cb,
+                )
+            except Exception as erro:
+                self._log(f"[ROTINA] Erro no daemon: {erro}")
+            sleep_fn(max(0.0, float(intervalo_s)))
+
 
 def criar_aprendizado_runtime(
     *,
@@ -222,8 +271,8 @@ def criar_aprendizado_runtime(
     arquivo_musica_historico: str,
     arquivo_musica_feedback: str,
     contexto_getter: Callable[[], Dict[str, Any]],
-    estado_getter: Callable[[], Dict[str, Any]],
-    estado_setter: Callable[..., None],
+    estado_getter: Callable[[], Dict[str, Any]] | None = None,
+    estado_setter: Callable[..., None] | None = None,
     log: Callable[..., Any] = print,
 ) -> AprendizadoRuntime:
     return AprendizadoRuntime(

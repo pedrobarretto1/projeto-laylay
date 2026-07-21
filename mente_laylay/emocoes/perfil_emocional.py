@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Callable, Dict, Optional
+from typing import Callable, Optional
+
+from mente_laylay.personalidade.oralidade import naturalizar_texto_para_fala
 
 
 EMO_DESC = {
@@ -41,105 +43,46 @@ def perfil_comportamento_emocional(emocao: str) -> str:
     return EMO_BEHAVIOR.get(emo, EMO_BEHAVIOR["calma"])
 
 
-def atualizar_emocao_contextual(
-    messages: list | None,
-    current_emotion: str,
-    emotion_level: int,
-    contexto: Dict[str, Any] | None,
-    *,
-    normalizar_cb: Optional[Callable[[str], str]] = None,
-) -> tuple[str, int]:
-    ctx = contexto if isinstance(contexto, dict) else {}
-    emocao_atual = str(current_emotion or ctx.get("emocao") or "calma").strip()
-    try:
-        nivel_atual = int(emotion_level or ctx.get("nivel_emocao") or 1)
-    except Exception:
-        nivel_atual = 1
-
-    humor = ctx.get("humor", 0)
-    try:
-        humor = int(humor or 0)
-    except Exception:
-        humor = 0
-    if humor <= -6:
-        emocao_atual = "irritada"
-        nivel_atual = max(nivel_atual, 2)
-    elif humor >= 6:
-        emocao_atual = "alegre"
-        nivel_atual = max(nivel_atual, 2)
-    elif ctx.get("periodo") in {"madrugada", "noite"} and ctx.get("emocao") in {
-        "cansada",
-        "triste",
-    }:
-        emocao_atual = "calma"
-        nivel_atual = max(1, nivel_atual - 1)
-
-    ultimo_texto = ""
-    try:
-        for item in reversed(messages or []):
-            if isinstance(item, dict) and item.get("role") == "user":
-                ultimo_texto = str(item.get("content") or "")
-                break
-    except Exception:
-        ultimo_texto = ""
-
-    normalizar = normalizar_cb or (lambda texto: str(texto or "").lower())
-    ultimo_normalizado = normalizar(ultimo_texto)
-    elogios = [
-        "obrigado",
-        "obrigada",
-        "valeu",
-        "vlw",
-        "amei",
-        "gostei",
-        "lindo",
-        "linda",
-        "perfeito",
-        "maravilhoso",
-        "maravilhosa",
-        "fofa",
-        "fofo",
-        "bonita",
-        "bonito",
-        "você é incrível",
-        "voce e incrivel",
-    ]
-    if any(palavra in ultimo_normalizado for palavra in elogios):
-        if emocao_atual not in {"irritada", "brava"}:
-            emocao_atual = "envergonhada"
-            nivel_atual = max(nivel_atual, 2)
-
-    return emocao_atual, nivel_atual
-
-
 def modular_audio_params(emocao_atual: str, nivel_emocao: int):
     if emocao_atual == "brava":
-        rate = f"+{12 + (nivel_emocao * 4)}%"
-        pitch = "+6%"
-        volume = "+15%"
-    elif emocao_atual == "irritada":
-        rate = f"+{6 + (nivel_emocao * 2)}%"
-        pitch = "+4%"
+        rate = f"+{8 + (nivel_emocao * 2)}%"
+        pitch = "+4Hz"
         volume = "+8%"
+    elif emocao_atual == "irritada":
+        rate = f"+{4 + nivel_emocao}%"
+        pitch = "+2Hz"
+        volume = "+4%"
     elif emocao_atual == "debochada":
-        rate = "-10%"
-        pitch = "-4%"
-        volume = "-5%"
+        rate = "-2%"
+        pitch = "-2Hz"
+        volume = "+0%"
     elif emocao_atual == "envergonhada":
-        rate = f"-{8 + (nivel_emocao * 2)}%"
-        pitch = "+2%"
-        volume = "-6%"
+        rate = f"-{4 + (nivel_emocao * 2)}%"
+        pitch = "+2Hz"
+        volume = "-4%"
     elif emocao_atual == "calma":
-        rate = f"-{15 + (nivel_emocao * 2)}%"
-        pitch = "-3%"
-        volume = "-8%"
+        rate = f"-{2 + nivel_emocao}%"
+        pitch = "-1Hz"
+        volume = "-2%"
     elif emocao_atual == "acalmando-se":
-        rate = f"-{8 + (nivel_emocao * 2)}%"
-        pitch = "-2%"
+        rate = f"-{3 + nivel_emocao}%"
+        pitch = "-2Hz"
         volume = "-3%"
+    elif emocao_atual == "alegre":
+        rate = f"+{3 + nivel_emocao}%"
+        pitch = "+2Hz"
+        volume = "+2%"
+    elif emocao_atual == "triste":
+        rate = f"-{5 + nivel_emocao}%"
+        pitch = "-2Hz"
+        volume = "-4%"
+    elif emocao_atual == "surpresa":
+        rate = f"+{2 + nivel_emocao}%"
+        pitch = "+3Hz"
+        volume = "+1%"
     else:
-        rate = "-12%"
-        pitch = "0%"
+        rate = "-3%"
+        pitch = "+0Hz"
         volume = "0%"
     return rate, pitch, volume
 
@@ -148,11 +91,18 @@ def limpar_para_voz(texto: str) -> str:
     s = str(texto or "")
     s = re.sub(r"\[EXEC:.*?\]", " ", s, flags=re.IGNORECASE | re.DOTALL)
     s = re.sub(r"```.*?```", " ", s, flags=re.DOTALL)
+    s = naturalizar_texto_para_fala(s)
+    # O caractere de porcentagem e removido pelo filtro de simbolos. Converte-lo
+    # antes mantem o valor compreensivel no TTS (CPU, RAM, volume e afins).
+    s = re.sub(r"(?<=\d)\s*%", " por cento", s)
     s = re.sub(r"[\u200d\u200c\u200b\u200e\u200f\u2060\ufeff]", " ", s)
     s = re.sub(r"[\ufe00-\ufe0f]", " ", s)
     s = re.sub(r"[\u2600-\u27bf]", " ", s)
     s = re.sub(r"[\U0001F000-\U0001FAFF]", " ", s)
     s = re.sub(r"[^\w\s\.\,\!\?\:\;\'\"\-\(\)\/]", " ", s, flags=re.UNICODE)
+    # Se a frase terminava em emoji, a oralidade pode ter acrescentado um
+    # ponto depois dele. Ao remover o emoji, não deixa combinações como "?.".
+    s = re.sub(r"([!?])\s*\.", r"\1", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
@@ -163,21 +113,12 @@ def ajustar_tom_por_emocao(texto: str, emocao: str, texto_usuario: str = "", nor
     if not t:
         return t
 
-    normalizar = normalizar_cb or (lambda s: str(s or "").lower())
-
     if emo == "envergonhada":
-        if not re.match(r"^(a-?ah|ah|e-?eu|hmm|hum|poxa|ops)", t, flags=re.IGNORECASE):
-            t = "A-ah... " + t[0].lower() + t[1:] if len(t) > 1 else "A-ah..."
         if "!" in t:
             t = t.replace("!", ".", 1)
-        if any(k in normalizar(texto_usuario) for k in ["obrigado", "obrigada", "valeu", "vlw", "lindo", "linda", "perfeito", "maravilhoso", "maravilhosa", "fofa", "fofo", "bonita", "bonito", "você é incrível", "voce e incrivel"]):
-            if not any(k in t.lower() for k in ["não exagera", "nao exagera", "sem exagero", "nada disso"]):
-                t += " Não exagera."
         return t
 
     if emo == "triste":
-        if not any(k in t.lower() for k in ["...", "ah", "poxa", "hm"]):
-            t = "Poxa... " + t[0].lower() + t[1:] if len(t) > 1 else "Poxa..."
         return t
 
     if emo == "alegre":
@@ -185,18 +126,17 @@ def ajustar_tom_por_emocao(texto: str, emocao: str, texto_usuario: str = "", nor
             t += "!"
         return t
 
+    if emo == "surpresa":
+        return t
+
     if emo == "irritada":
         if len(t) > 90:
             t = t[:90].rstrip()
-        if not any(k in t.lower() for k in ["tá", "ta", "certo", "calma", "só isso", "só", "já vai"]):
-            t = "Tá. " + t
         return t
 
     if emo == "brava":
         if len(t) > 80:
             t = t[:80].rstrip()
-        if not any(k in t.lower() for k in ["não", "nao", "nem pensar", "agora não", "agora nao", "de jeito nenhum"]):
-            t = "Não. " + t
         return t
 
     return t

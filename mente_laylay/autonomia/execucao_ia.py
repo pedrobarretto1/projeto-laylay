@@ -7,37 +7,42 @@ o roteador modular de conteudo assume o caminho principal.
 from __future__ import annotations
 
 import ast
+import asyncio
 import json
 import re
+import threading
+import time
 from typing import Any, Callable, Dict, Optional, Tuple
 
 
-def processar_comando_ia(resposta_texto: str, fallback_fala: str) -> Dict[str, Any]:
-    raw = str(resposta_texto or "")
-    m = re.search(r"\[EXEC:\s*(.*?)\]", raw, flags=re.IGNORECASE | re.DOTALL)
-    exec_raw = (m.group(1).strip() if m else "")
-    fala = re.sub(r"\[EXEC:.*?\]", " ", raw, flags=re.IGNORECASE | re.DOTALL)
-    fala = re.sub(r"\s+", " ", fala).strip() or fallback_fala
-    if not exec_raw:
-        return {"has_exec": False, "cmd": "", "arg": None, "fala": fala}
-    mm = re.match(r"^\s*([A-Z0-9_]+)\s*(?:\((.*)\))?\s*$", exec_raw)
-    if not mm:
-        return {"has_exec": True, "cmd": exec_raw.upper(), "arg": None, "fala": fala}
-    cmd = str(mm.group(1) or "").strip().upper()
-    arg_raw = (mm.group(2) or "").strip()
-    arg = None
-    if arg_raw:
-        a = arg_raw
-        if a.endswith(","):
-            a = a[:-1].strip()
-        try:
-            if (a.startswith('"') and a.endswith('"')) or (a.startswith("'") and a.endswith("'")):
-                arg = ast.literal_eval(a)
-            else:
-                arg = a
-        except Exception:
-            arg = a.strip('"').strip("'")
-    return {"has_exec": True, "cmd": cmd, "arg": arg, "fala": fala}
+_COMANDOS_OWNED_PELO_ROTEADOR_MODULAR = {
+    "YOUTUBE", "YT_VOLUME", "SET_VOLUME", "OPEN_SITE", "CLOSE_TAB",
+    "YT_PLAY", "YT_PAUSE", "YT_NEXT", "YT_REPLAY", "LISTAR_PLAYLISTS",
+    "TOCAR_PLAYLIST", "TOCAR_PLAYLIST_SHUFFLE", "ADICIONAR_A_PLAYLIST",
+    "CLICK", "TYPE", "PRESS", "CLOSE_SPECIFIC_TAB", "TELA_CHEIA", "FULLSCREEN",
+}
+
+
+def remover_prefixo_exec(texto: str) -> str:
+    if not isinstance(texto, str):
+        return ""
+    limpo = re.sub(r"^\s*\[EXEC:[^\]]+\]\s*", "", texto.strip(), flags=re.IGNORECASE).strip()
+    # Modelos locais ocasionalmente devolvem a chave do contrato como texto.
+    # Removemos apenas no inicio para preservar frases naturais como "ele fala: ...".
+    for _ in range(3):
+        novo = re.sub(
+            r'^\s*["\']?(?:fala|mensagem)["\']?\s*:\s*["\']?',
+            "",
+            limpo,
+            count=1,
+            flags=re.IGNORECASE,
+        ).strip()
+        if novo == limpo:
+            break
+        limpo = novo
+    if limpo.endswith(('"', "'")) and limpo[:1] not in {'"', "'"}:
+        limpo = limpo[:-1].rstrip()
+    return limpo
 
 
 def executar_exec(
@@ -45,49 +50,14 @@ def executar_exec(
     arg: Any,
     contexto: Dict[str, Any],
 ) -> bool:
+    """Compatibilidade mínima para comandos ainda não migrados ao roteador modular."""
     c = str(cmd or "").strip().upper()
     a = "" if arg is None else str(arg).strip()
 
-    enviar_comando_chrome = contexto.get("enviar_comando_chrome")
-    ajustar_volume_sistema = contexto.get("ajustar_volume_sistema")
     abrir_programa = contexto.get("abrir_programa")
     fechar_programa = contexto.get("fechar_programa")
-    validar_e_enviar_comando = contexto.get("validar_e_enviar_comando")
     _eh_alvo_site_web = contexto.get("_eh_alvo_site_web")
     _contexto_aponta_site_web = contexto.get("_contexto_aponta_site_web")
-    APPS_MAP = contexto.get("APPS_MAP")
-    is_valid_url = contexto.get("is_valid_url")
-    formatar_url_ou_busca = contexto.get("formatar_url_ou_busca")
-    _normalizar_texto_com_apelidos = contexto.get("_normalizar_texto_com_apelidos")
-    ctypes = contexto.get("ctypes")
-    VK_MEDIA_PLAY_PAUSE = contexto.get("VK_MEDIA_PLAY_PAUSE")
-    VK_MEDIA_NEXT_TRACK = contexto.get("VK_MEDIA_NEXT_TRACK")
-    VK_MEDIA_PREV_TRACK = contexto.get("VK_MEDIA_PREV_TRACK")
-
-    if c == "YOUTUBE":
-        if a and callable(enviar_comando_chrome):
-            enviar_comando_chrome("youtube_search", {"query": a})
-            return True
-        return False
-
-    if c in {"YT_VOLUME", "SET_VOLUME"}:
-        try:
-            m_vol = re.search(r"\d+", a)
-            nivel = int(m_vol.group()) if m_vol else 50
-            if callable(ajustar_volume_sistema):
-                ajustar_volume_sistema(nivel)
-            return True
-        except Exception:
-            return False
-
-    if c == "OPEN_SITE":
-        if not a or not callable(enviar_comando_chrome):
-            return False
-        url = a
-        if callable(is_valid_url) and not is_valid_url(url):
-            url = formatar_url_ou_busca(url, prefer_com_br=False) if callable(formatar_url_ou_busca) else url
-        enviar_comando_chrome("open_url", {"url": url})
-        return True
 
     if c == "OPEN_APP":
         if not a or len(a) < 2 or not callable(abrir_programa):
@@ -98,50 +68,11 @@ def executar_exec(
         if not a:
             return False
         if callable(_eh_alvo_site_web) and callable(_contexto_aponta_site_web) and (_eh_alvo_site_web(a) or _contexto_aponta_site_web(a)):
-            if callable(enviar_comando_chrome):
-                enviar_comando_chrome("close_specific_tab", {"target": a})
-                return True
+            # Fechamento de abas pertence ao roteador modular. Retornar falso
+            # impede que este fallback contorne suas validações.
+            return False
         if callable(fechar_programa):
             fechar_programa(a)
-            return True
-        return False
-
-    if c in ["YT_PAUSE", "YT_PLAY"]:
-        if ctypes is None or VK_MEDIA_PLAY_PAUSE is None:
-            return False
-        ctypes.windll.user32.keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
-        ctypes.windll.user32.keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 2, 0)
-        return True
-
-    if c == "YT_NEXT":
-        if ctypes is None or VK_MEDIA_NEXT_TRACK is None:
-            return False
-        ctypes.windll.user32.keybd_event(VK_MEDIA_NEXT_TRACK, 0, 0, 0)
-        ctypes.windll.user32.keybd_event(VK_MEDIA_NEXT_TRACK, 0, 2, 0)
-        return True
-
-    if c == "YT_REPLAY":
-        if ctypes is None or VK_MEDIA_PREV_TRACK is None:
-            return False
-        ctypes.windll.user32.keybd_event(VK_MEDIA_PREV_TRACK, 0, 0, 0)
-        ctypes.windll.user32.keybd_event(VK_MEDIA_PREV_TRACK, 0, 2, 0)
-        return True
-
-    if c == "CLOSE_TAB":
-        target = str(arg or "").strip()
-        if isinstance(APPS_MAP, dict) and target:
-            alvo_norm = target.lower().strip()
-            for app in sorted(APPS_MAP.keys(), key=len, reverse=True):
-                if alvo_norm == app or app in alvo_norm:
-                    if callable(fechar_programa):
-                        fechar_programa(APPS_MAP.get(app, target))
-                        return True
-                    break
-        if callable(validar_e_enviar_comando):
-            if target and len(target) > 2:
-                validar_e_enviar_comando("close_specific_tab", {"target": target})
-            else:
-                validar_e_enviar_comando("close_current_tab", {})
             return True
         return False
 
@@ -174,15 +105,22 @@ class ContextoExecRuntime:
         c_args = "" if arg is None else str(arg).strip()
         contexto = self.montar_contexto(arg)
 
-        if self.executar_conteudo_cb(
+        executou_modular = bool(self.executar_conteudo_cb(
             comando,
             c_args,
             comando,
             comando.upper(),
             contexto,
-        ):
+        ))
+        if executou_modular:
             self.log(f"🧠 [EXEC] caminho modular de conteudo assumiu: {comando}")
             return True
+
+        if comando.upper() in _COMANDOS_OWNED_PELO_ROTEADOR_MODULAR:
+            self.log(
+                f"🛡️ [EXEC] comando modular recusado ou indisponível; fallback legado bloqueado: {comando}"
+            )
+            return False
 
         ok_legado = bool(self.executar_legado_cb(cmd, arg, contexto))
         if ok_legado:
@@ -192,6 +130,72 @@ class ContextoExecRuntime:
 
 def criar_contexto_exec_runtime(**kwargs: Any) -> ContextoExecRuntime:
     return ContextoExecRuntime(**kwargs)
+
+
+class CoordenadorExecRuntime:
+    """Liga execução EXEC e processamento de resposta sem antecipar o bootstrap."""
+
+    def __init__(
+        self,
+        *,
+        contexto_exec_getter: Callable[[], Any],
+        resposta_ia_getter: Callable[[], Any],
+        loop_getter: Callable[[], Any],
+        log: Callable[..., Any] = print,
+    ) -> None:
+        self._contexto_exec_getter = contexto_exec_getter
+        self._resposta_ia_getter = resposta_ia_getter
+        self._loop_getter = loop_getter
+        self._log = log
+        self._agendamento_lock = threading.Lock()
+        self._ultima_entrada_assinatura = ""
+        self._ultima_entrada_ts = 0.0
+
+    def executar(self, cmd: str, arg: Any) -> bool:
+        runtime = self._contexto_exec_getter()
+        if runtime is None:
+            raise RuntimeError("Contexto de execução EXEC ainda não foi inicializado.")
+        return bool(runtime.executar(cmd, arg))
+
+    def processar_sync(self, texto: str) -> Any:
+        runtime = self._resposta_ia_getter()
+        if runtime is None:
+            self._log("⚠️ [IA] Runtime de resposta ainda não foi inicializado.")
+            return None
+        return runtime.processar(texto)
+
+    def _iniciar_thread(self, texto: str) -> threading.Thread:
+        thread = threading.Thread(target=self.processar_sync, args=(texto,), daemon=True)
+        thread.start()
+        return thread
+
+    def agendar(self, texto: str) -> Any:
+        assinatura = re.sub(r"\s+", " ", str(texto or "").casefold()).strip()
+        agora = time.monotonic()
+        with self._agendamento_lock:
+            if (
+                assinatura
+                and assinatura == self._ultima_entrada_assinatura
+                and agora - self._ultima_entrada_ts <= 1.0
+            ):
+                self._log(f"🧠 [ENTRADA] duplicata imediata ignorada: {texto!r}")
+                return None
+            self._ultima_entrada_assinatura = assinatura
+            self._ultima_entrada_ts = agora
+        loop = self._loop_getter()
+        if loop:
+            try:
+                return asyncio.run_coroutine_threadsafe(
+                    asyncio.to_thread(self.processar_sync, texto),
+                    loop,
+                )
+            except Exception as exc:
+                self._log(f"Erro ao jogar IA pro background: {exc}")
+        return self._iniciar_thread(texto)
+
+
+def criar_coordenador_exec_runtime(**kwargs: Any) -> CoordenadorExecRuntime:
+    return CoordenadorExecRuntime(**kwargs)
 
 
 def filtrar_apenas_fala(

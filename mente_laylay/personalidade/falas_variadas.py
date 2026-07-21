@@ -3,14 +3,61 @@
 from __future__ import annotations
 
 import random
-from typing import Iterable, Sequence
+from typing import Any, Callable, Iterable, Sequence
+
+from mente_laylay.personalidade.ritmo_natural import escolher_sem_repeticao
+from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao, inferir_confirmacao
+from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao
 
 
 def escolher(items: Sequence[str] | Iterable[str], fallback: str = "") -> str:
-    opcoes = [str(x).strip() for x in items if str(x or "").strip()]
+    return escolher_sem_repeticao(
+        items,
+        fallback=fallback,
+        escolha_aleatoria=random.choice,
+    )
+
+
+def escolher_contextual(
+    items: Sequence[str] | Iterable[str],
+    *,
+    contexto=None,
+    texto_usuario: str = "",
+    fallback: str = "",
+) -> str:
+    """Filtra as variações pelo momento antes de escolher uma delas."""
+    opcoes = [str(item).strip() for item in items if str(item).strip()]
     if not opcoes:
         return fallback
-    return random.choice(opcoes)
+    ctx = _extrair_contexto(contexto)
+    emocao = str(ctx.get("current_emotion") or ctx.get("emocao") or "").casefold()
+    funcao = str(ctx.get("funcao_comunicativa") or ctx.get("funcao") or "").casefold()
+    modo_jogo = bool(ctx.get("modo_jogo") or ctx.get("game_mode"))
+    usuario = str(texto_usuario or "").casefold()
+
+    def pontuar(fala: str) -> float:
+        base = fala.casefold()
+        pontos = 0.0
+        if modo_jogo:
+            pontos += max(0.0, 5.0 - len(fala) / 18.0)
+        if emocao in {"brava", "irritada"} or funcao in {"frustracao", "correcao"}:
+            pontos += max(0.0, 3.0 - len(fala) / 35.0)
+            if any(x in base for x in ("drama", "civilizado", "confissão", "foi de base")):
+                pontos -= 4.0
+        if funcao in {"frustracao", "correcao"} and any(
+            x in base for x in ("entendi", "corrig", "não consegui", "tentei")
+        ):
+            pontos += 2.0
+        if emocao == "envergonhada" and any(x in base for x in ("obrigada", "gostei", "feliz")):
+            pontos += 1.5
+        if usuario and any(palavra in base for palavra in usuario.split() if len(palavra) > 4):
+            pontos += 0.5
+        return pontos
+
+    notas = [(pontuar(opcao), opcao) for opcao in opcoes]
+    melhor = max(nota for nota, _ in notas)
+    candidatas = [opcao for nota, opcao in notas if nota >= melhor - 0.15]
+    return escolher(candidatas, fallback=fallback)
 
 
 def _extrair_contexto(contexto=None) -> dict:
@@ -42,9 +89,14 @@ def fala_de_confirmacao(
             "Dei pause. Silêncio estratégico.",
             "Parei a música. Agora a trilha escuta você.",
         ],
+        "play": [
+            "Retomei a música.",
+            "Dei play de novo.",
+            "A música voltou.",
+        ],
         "next": [
             "Próxima faixa. Bora.",
-            "Trocando a música. Sem drama.",
+            "Trocando a música agora.",
             "Pulando pra seguinte.",
         ],
         "prev": [
@@ -52,11 +104,16 @@ def fala_de_confirmacao(
         "Retornando uma faixa.",
         "Dei um passo atrás na música.",
     ],
-    "replay": [
-        "Recomeçando essa aí.",
-        "Voltei pro começo da música.",
-        "Repetindo ela sem trocar de faixa.",
-    ],
+        "replay": [
+            "Recomeçando essa aí.",
+            "Voltei pro começo da música.",
+            "Repetindo ela sem trocar de faixa.",
+        ],
+        "skip_ad": [
+            "Anúncio pulado.",
+            "Pulei o anúncio.",
+            "Pronto, tirei o anúncio da frente.",
+        ],
     "open_app": [
             "Abrindo agora.",
             "Já vou abrir.",
@@ -116,13 +173,14 @@ def fala_de_confirmacao(
             "Oi, tô aqui.",
             "Fala comigo.",
             "Tô por aqui.",
-            "Cheguei. Pode jogar o caos na mesa.",
+            "Oi. Tô com você.",
             "Tô acordada. O que você aprontou agora?",
         ],
         "bem_estar": [
-            "Tô bem, presente e prestando atenção em você. E aí, como você tá de verdade?",
-            "Tô firme. Um pouco feita de cabo e contexto, mas firme. E você?",
-            "Tô bem sim. Qual foi a boa de hoje?",
+            "Tô bem, presente e prestando atenção em você. E você, como tá?",
+            "Tô bem. Cabeça no lugar e curiosa pelo que vem. Mas e você, tá tudo bem por aí?",
+            "Tô bem sim. Agora fiquei curiosa com o teu lado: como você tá?",
+            "Por aqui tá tudo certo. E do teu lado, como você tá de verdade?",
         ],
         "chat_on": [
             "Modo chat ativado. Tô aqui com você.",
@@ -136,7 +194,9 @@ def fala_de_confirmacao(
             "Saí do papo e voltei pra execução.",
         ],
     }
-    base = escolher(opcoes.get(chave, []), fallback=fallback)
+    base = escolher_contextual(
+        opcoes.get(chave, []), contexto=ctx, texto_usuario=texto_usuario, fallback=fallback,
+    )
 
     if chave == "greeting":
         if ultima_habilidade == "playlist":
@@ -149,14 +209,9 @@ def fala_de_confirmacao(
         if emocao in {"alegre", "debochada"}:
             return base + random.choice([" Bora ver no que isso vai dar.", " Manda tua próxima ideia."])
 
-    if chave == "bem_estar" and emocao == "envergonhada":
-        return base + " Não repara se eu ficar meio boba."
-
     if chave in {"open_app", "open_site", "close_app", "playlist_play"} and texto_usuario:
-        if "por favor" in texto_usuario.lower():
-            return base + random.choice([" Você pediu bonitinho, então até coopero.", " Hoje eu deixo passar porque você foi educado."])
         if emocao == "brava":
-            return base + random.choice([" Mas sem inventar moda depois.", " Resolve isso logo e me poupa."])
+            return base
 
     return base
 
@@ -185,6 +240,11 @@ def fala_por_estado_acao(
             f"{alvo_txt} já estava aberto, mas não consegui trazer pra frente agora.",
             f"{alvo_txt} já tá aberto, só não respondeu ao foco dessa vez.",
             f"Eu achei {alvo_txt} aberto, mas a janela não colaborou pra vir pro foco.",
+        ],
+        "abertura_solicitada": [
+            f"Pedi para abrir {alvo_txt}, mas ele ainda não apareceu para eu confirmar.",
+            f"O comando de abertura de {alvo_txt} foi aceito; ele ainda está inicializando.",
+            f"Disparei {alvo_txt}, mas ainda não tenho uma janela ou processo para confirmar.",
         ],
         "app_aberto_pc_b": [
             f"Abrindo {alvo_txt} no PC B.",
@@ -333,12 +393,22 @@ def fala_por_estado_acao(
         ],
     }
 
-    base = escolher(opcoes.get(status, []), fallback=fallback)
-    if emocao == "brava" and status in {"app_aberto", "app_focado", "ja_aberto_focado", "url_aberta", "site_aberto_via_app"}:
-        return base + " Agora resolve isso logo."
-    if "por favor" in texto_usuario.lower() and status in {"app_aberto", "app_fechado", "ja_aberto_focado", "url_aberta"}:
-        return base + " Você pediu bonitinho, então eu cooperei."
-    return base
+    base = escolher_contextual(
+        opcoes.get(status, []), contexto=ctx, texto_usuario=texto_usuario, fallback=fallback,
+    )
+    confirmado = inferir_confirmacao(status, True)
+    return planejar_resposta_acao(
+        ResultadoAcao(
+            status=status,
+            alvo=alvo_txt,
+            texto_usuario=texto_usuario,
+            contexto=ctx,
+            executou=True if confirmado is True else None,
+            confirmado=confirmado,
+        ),
+        base,
+        emocao_preferida=emocao or "calma",
+    ).fala
 
 
 def fala_falha_contextual(
@@ -395,3 +465,37 @@ def fala_falha_contextual(
         "Não fechei tua frase direito aqui. Repete com outras palavras?",
         "Eu quase peguei, mas faltou encaixar a ideia. Tenta de novo pra mim.",
     ])
+
+
+def emitir_falha_contextual(
+    categoria: str,
+    texto_usuario: str = "",
+    *,
+    detalhe: str = "",
+    normalizar_texto: Callable[[str], str],
+    texto_parece_navegacao: Callable[[str], bool],
+    resposta_conversa_local: Callable[[str], str],
+    fala_e_fallback_neutro: Callable[[str], bool],
+    falar: Callable[..., Any],
+    log: Callable[[str], Any] = print,
+) -> None:
+    """Emite uma falha útil, tentando recuperar conversa antes do fallback."""
+    cat = str(categoria or "").strip().lower()
+    texto_norm = normalizar_texto(str(texto_usuario or "")) if callable(normalizar_texto) else str(texto_usuario or "").lower()
+    alvo = str(detalhe or "").strip()
+    direta = fala_falha_contextual(cat, texto_normalizado=texto_norm, detalhe=alvo, incluir_generica=False)
+    if direta:
+        falar(direta, "calma", 1)
+        return
+    eh_navegacao = bool(texto_parece_navegacao(texto_usuario)) if callable(texto_parece_navegacao) else False
+    if texto_usuario and not eh_navegacao:
+        try:
+            local = str(resposta_conversa_local(texto_usuario) or "").strip() if callable(resposta_conversa_local) else ""
+            neutra = bool(fala_e_fallback_neutro(local)) if callable(fala_e_fallback_neutro) else False
+            if local and not neutra:
+                log("🧭 [FALHA-CONTEXTUAL] conversa local assumiu a recuperação")
+                falar(local, "calma", 1)
+                return
+        except Exception as erro:
+            log(f"⚠️ [FALHA-CONTEXTUAL] não consegui recuperar pela conversa local: {erro}")
+    falar(fala_falha_contextual(cat, texto_normalizado=texto_norm, detalhe=alvo), "calma", 1)

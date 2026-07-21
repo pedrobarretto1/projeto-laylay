@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import random
 import re
 import os
 import time
@@ -13,7 +12,15 @@ from mente_laylay.personalidade.falas_variadas import fala_de_confirmacao as _fa
 from mente_laylay.personalidade.falas_variadas import fala_por_estado_acao as _fala_por_estado_acao
 from mente_laylay.autonomia.habilidade_janelas import executar_habilidade_janelas as _executar_habilidade_janelas
 from mente_laylay.autonomia.controle_midia import executar_media_control as _executar_media_control
+from mente_laylay.autonomia.agendamento_mental import (
+    descrever_intencao_agendada,
+    resolver_instante_lembrete,
+    resolver_referencia_contextual_lembrete,
+)
 from mente_laylay.arquivos.execucao_arquivos import executar_intencao_arquivos as _executar_intencao_arquivos
+from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao, inferir_confirmacao
+from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao
+from mente_laylay.percepcao.modo_jogo import pedido_foco_explicito
 
 
 def _get(ctx: Dict[str, Any], nome: str, default=None):
@@ -63,6 +70,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
     estrutura_arquivo_recente = _get(ctx, "estrutura_arquivo_recente")
     ajustar_volume = _get(ctx, "ajustar_volume_sistema")
     ajustar_volume_rel = _get(ctx, "ajustar_volume_sistema_relativo")
+    definir_mudo = _get(ctx, "definir_mudo_sistema")
     solicitar_aba = _get(ctx, "solicitar_aba_ativa")
     fechar_aba_nativa = _get(ctx, "fechar_aba_ativa_nativa")
     organizar = _get(ctx, "organizar_janelas_robusto")
@@ -75,6 +83,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
     cidade_padrao_clima = _get(ctx, "cidade_padrao_clima", "Boituva")
     _agendamentos_load = _get(ctx, "_agendamentos_load")
     _agendamentos_save = _get(ctx, "_agendamentos_save")
+    _agendamentos_transacionar = _get(ctx, "_agendamentos_transacionar")
     _fala_agendamentos_estilosa = _get(ctx, "_fala_agendamentos_estilosa")
     _normalizar_query_musical = _get(ctx, "_normalizar_query_musical")
     _buscar_primeiro_video_youtube = _get(ctx, "_buscar_primeiro_video_youtube")
@@ -128,13 +137,21 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
     _usar_modo_rapido_conversa = _get(ctx, "_usar_modo_rapido_conversa")
     interpretar_comando_local_rapido = _get(ctx, "interpretar_comando_local_rapido")
     _detectar_repetir_briefing = _get(ctx, "_detectar_repetir_briefing")
+    _executar_intencao_iot = _get(ctx, "_executar_intencao_iot")
+    _registrar_sugestao_indireta = _get(ctx, "_registrar_sugestao_indireta")
 
     def _reg(*args, **kwargs):
         if callable(registrar_mente_curta):
             return registrar_mente_curta(*args, **kwargs)
         return None
 
-    def _marcar_resultado(status: str, executou: bool | None = None):
+    def _marcar_resultado(
+        status: str,
+        executou: bool | None = None,
+        *,
+        confirmado: bool | None = None,
+        detalhe: str = "",
+    ):
         if callable(registrar_resultado_execucao):
             try:
                 status_norm = str(status or "").strip().lower()
@@ -146,10 +163,29 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                         "alvo_ausente",
                         "notificacoes_sem_suporte",
                     }
+                contrato = ResultadoAcao(
+                    intent=str(resultado.get("intent") or resultado.get("acao") or ""),
+                    status=status,
+                    alvo=str(
+                        params.get("alvo") or params.get("nome_app") or params.get("url")
+                        or params.get("site") or params.get("nome") or params.get("nome_playlist")
+                        or params.get("local") or params.get("query") or ""
+                    ),
+                    params=params,
+                    executou=bool(executou),
+                    confirmado=(
+                        inferir_confirmacao(status, bool(executou))
+                        if confirmado is None
+                        else bool(confirmado)
+                    ),
+                    origem="executor",
+                    detalhe=detalhe,
+                    texto_usuario=texto_original,
+                )
                 registrar_resultado_execucao(
-                    resultado,
+                    contrato,
                     texto_original,
-                    bool(executou),
+                    executou,
                     origem="executor",
                     status=status,
                 )
@@ -174,17 +210,35 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                 "volume_baixado",
                 "volume_mudo",
             }
-            falar(
-                _fala_por_estado_acao(
-                    status,
-                    fallback=fallback,
-                    alvo=alvo,
-                    contexto=_ctx_fala(),
-                    texto_usuario=texto_original,
-                ),
-                "debochada" if status not in status_calmo else "calma",
-                2 if status not in status_calmo else 1,
+            status_norm = str(status or "").strip().lower()
+            executou_status = not any(
+                termo in status_norm
+                for termo in ("falha", "erro", "indisponivel", "nao_encontrado", "sem_suporte")
             )
+            confirmado_status = inferir_confirmacao(status_norm, executou_status)
+            fala_base = _fala_por_estado_acao(
+                status,
+                fallback=fallback,
+                alvo=alvo,
+                contexto=_ctx_fala(),
+                texto_usuario=texto_original,
+            )
+            plano_status = planejar_resposta_acao(
+                ResultadoAcao(
+                    intent=str(resultado.get("intent") or resultado.get("acao") or ""),
+                    status=status_norm,
+                    alvo=alvo,
+                    params=params,
+                    executou=executou_status,
+                    confirmado=confirmado_status,
+                    texto_usuario=texto_original,
+                    contexto={"destino": destino_val},
+                ),
+                fala_base,
+                emocao_preferida="debochada" if status not in status_calmo else "calma",
+                nivel_preferido=2 if status not in status_calmo else 1,
+            )
+            falar(plano_status.fala, plano_status.emocao, plano_status.nivel)
 
     def _resolver_estado_alvo(nome: str) -> dict:
         if not nome or not callable(resolver_alvo_ambiente):
@@ -274,7 +328,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             return True
         return False
 
-    def _esperar_url_abrir(url: str, *, alvo: str = "", tentativas: int = 8, intervalo: float = 0.25) -> bool:
+    def _esperar_url_abrir(url: str, *, alvo: str = "", tentativas: int = 12, intervalo: float = 0.25) -> bool:
         url_limpa = str(url or "").strip()
         alvo_ref = _alvo_preciso_para_aba(alvo or url_limpa)
         for _ in range(max(1, tentativas)):
@@ -376,7 +430,11 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             return True
         if callable(abrir_url):
             try:
-                retorno = abrir_url(url_limpa, auto_click=auto_click)
+                retorno = abrir_url(
+                    url_limpa,
+                    auto_click=auto_click,
+                    permitir_foco=pedido_foco_explicito(texto_original),
+                )
                 if retorno is False:
                     return False
                 return _esperar_url_abrir(url_limpa, alvo=alvo or url_limpa)
@@ -389,8 +447,12 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             "ja_aberto_focado": f"{nome} já estava aberto e em foco.",
             "app_focado": f"{nome} já tava aberto, só puxei pra frente.",
             "app_aberto": f"Abrindo {nome}.",
+            "app_aberto_segundo_plano": f"Abri {nome} em segundo plano, sem tirar você do jogo.",
             "app_aberto_sem_foco": f"{nome} abriu, mas não consegui puxar ele pro foco agora.",
+            "abertura_solicitada": f"Pedi para abrir {nome}, mas ele ainda não apareceu para eu confirmar.",
             "site_aberto": f"Abrindo {nome} no navegador.",
+            "site_aberto_segundo_plano": f"Deixei {nome} no navegador em segundo plano, sem trocar sua tela.",
+            "site_ja_aberto_focado": f"{nome} já estava aberto; só trouxe a aba pra frente.",
             "protocolo_aberto": f"Abrindo {nome} pelo protocolo do sistema.",
             "nao_encontrado": f"Não achei {nome}.",
             "janela_maximizada": f"{nome.title()} maximizado e em foco.",
@@ -408,11 +470,18 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         if destino_val == "ambos":
             ok_local = False
             if query and callable(enviar_chrome):
-                enviar_chrome("youtube_search", {"query": query})
+                enviar_chrome("youtube_search", {
+                    "query": query,
+                    "permitir_foco": pedido_foco_explicito(texto_original),
+                })
                 ok_local = True
             elif callable(abrir_url):
                 try:
-                    retorno = abrir_url(url_limpa, auto_click=False)
+                    retorno = abrir_url(
+                        url_limpa,
+                        auto_click=False,
+                        permitir_foco=pedido_foco_explicito(texto_original),
+                    )
                     ok_local = False if retorno is False else True
                 except Exception:
                     ok_local = False
@@ -420,11 +489,18 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                 _enviar_pc_b({"action": "open_url", "url": url_limpa})
             return ok_local
         if query and callable(enviar_chrome):
-            enviar_chrome("youtube_search", {"query": query})
+            enviar_chrome("youtube_search", {
+                "query": query,
+                "permitir_foco": pedido_foco_explicito(texto_original),
+            })
             return True
         if callable(abrir_url):
             try:
-                retorno = abrir_url(url_limpa, auto_click=False)
+                retorno = abrir_url(
+                    url_limpa,
+                    auto_click=False,
+                    permitir_foco=pedido_foco_explicito(texto_original),
+                )
                 return False if retorno is False else True
             except Exception:
                 return False
@@ -449,7 +525,9 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
 
     intent = str(resultado.get("intent") or "").upper().strip()
     raw_params = resultado.get("params")
-    params = raw_params if isinstance(raw_params, dict) else {}
+    params = dict(raw_params) if isinstance(raw_params, dict) else {}
+    if pedido_foco_explicito(texto_original):
+        params["permitir_foco"] = True
     destino_val = destino(params, texto_original) if callable(destino) else "pc_a"
     alvo_mental = str(
         params.get("nome_playlist")
@@ -477,9 +555,39 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         habilidade = "pesquisa"
     elif intent in {"WEATHER"}:
         habilidade = "clima"
+    elif intent in {"IOT_CONTROL", "IOT_STATUS", "IOT_LIST"}:
+        habilidade = "iot"
+    elif intent in {"AGENDAR_ACAO", "AGENDAR_LEMBRETE", "LISTAR_AGENDAMENTOS", "CANCELAR_AGENDAMENTO"}:
+        habilidade = "agenda"
+    elif intent == "SUGGEST_ACTION":
+        habilidade = "sugestao"
     _reg(texto_original, "", intent, alvo_mental, destino_val, habilidade)
 
     if callable(bloqueio) and bloqueio(intent, texto_original, ctx):
+        return True
+
+    if intent == "SUGGEST_ACTION":
+        return bool(_registrar_sugestao_indireta(resultado, texto_original)) if callable(_registrar_sugestao_indireta) else False
+
+    if intent in {"IOT_CONTROL", "IOT_STATUS", "IOT_LIST"}:
+        if not callable(_executar_intencao_iot):
+            return False
+        resultado_iot = _executar_intencao_iot(resultado, texto_original)
+        if not isinstance(resultado_iot, dict) or not resultado_iot.get("handled"):
+            return False
+        _marcar_resultado(
+            str(resultado_iot.get("status") or "falha_execucao"),
+            executou=bool(resultado_iot.get("ok")),
+            confirmado=resultado_iot.get("confirmado"),
+            detalhe=str(resultado_iot.get("erro") or ""),
+        )
+        plano_iot = resultado_iot.get("plano_resposta")
+        if isinstance(plano_iot, dict) and callable(falar):
+            falar(
+                str(plano_iot.get("fala") or "Não consegui concluir a ação IoT."),
+                str(plano_iot.get("emocao") or "calma"),
+                int(plano_iot.get("nivel") or 1),
+            )
         return True
 
     if intent == "STOP_PLAYLIST_CONTEXT":
@@ -524,22 +632,17 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         try:
             if destino_val == "pc_b" and callable(_enviar_pc_b):
                 _enviar_pc_b({"action": "organizar_desktop", "left": app_esquerda, "right": app_direita})
+                _marcar_resultado("organizacao_solicitada", executou=True)
                 if callable(falar):
-                    falar(_escolher_fala_variada([
-                        "Organizando a bagunça no PC B...",
-                        "PC B em ordem. Vou ajeitar isso.",
-                        "Deixando o PC B mais limpo agora.",
-                    ]), "debochada", 2)
+                    falar("Enviei a organização ao PC B, mas ele não confirmou o layout final.", "calma", 1)
                 return True
             if callable(organizar):
                 organizar(app_esquerda, app_direita)
+            _marcar_resultado("organizacao_solicitada", executou=True)
             if callable(falar):
-                falar(_escolher_fala_variada([
-                    "Área de trabalho organizada, Pedro. VS Code à esquerda, navegador à direita. Tá limpo agora.",
-                    "Pronto. Arrumei a área e deixei tudo no lugar.",
-                    "Organizei a mesa do sistema. Ficou respirável agora.",
-                ]), "debochada", 2)
+                falar("Enviei a organização das janelas, mas ainda não conferi o layout final.", "calma", 1)
         except Exception:
+            _marcar_resultado("falha_execucao", executou=False)
             if callable(falar):
                 falar(_escolher_fala_variada([
                     "Tentei organizar a área, mas o Windows resolveu fazer drama.",
@@ -567,10 +670,14 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         return True
 
     if intent == "CLOSE_IDLE_TABS":
-        return bool(_executar_fechar_abas_paradas()) if callable(_executar_fechar_abas_paradas) else False
+        ok_abas = bool(_executar_fechar_abas_paradas()) if callable(_executar_fechar_abas_paradas) else False
+        _marcar_resultado("fechamento_abas_solicitado" if ok_abas else "falha_execucao", executou=ok_abas)
+        return ok_abas
 
     if intent == "SCREEN_CAPTURE":
-        return bool(_executar_captura_tela_intent(destino_val)) if callable(_executar_captura_tela_intent) else False
+        ok_captura = bool(_executar_captura_tela_intent(destino_val)) if callable(_executar_captura_tela_intent) else False
+        _marcar_resultado("captura_solicitada" if ok_captura else "falha_execucao", executou=ok_captura)
+        return ok_captura
 
     if intent == "MAXIMIZE_WINDOW":
         app = str(params.get("nome_app") or params.get("app") or params.get("nome") or "").strip()
@@ -608,6 +715,9 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                     "Faltou o nome do app.",
                 ]), "debochada", 2)
             return True
+        if destino_val == "ambos" and callable(_enviar_pc_b):
+            mapped_remoto = APPS_MAP.get(nome_app.lower(), nome_app)
+            _enviar_pc_b({"action": "close_app", "app": mapped_remoto})
         leitura_alvo = resolver_alvo_ambiente(nome_app) if callable(resolver_alvo_ambiente) else {}
         programa_aberto = bool((leitura_alvo or {}).get("programa_aberto"))
         if bool((leitura_alvo or {}).get("aba_aberta")) and not bool((leitura_alvo or {}).get("programa_aberto")):
@@ -681,8 +791,21 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                 if rem and (remetente_filtro == rem or remetente_filtro in rem or rem in remetente_filtro):
                     filtrados.append(e)
             emails_c = filtrados or emails_c
+        fala_emails = ""
         if callable(gmail_resumo):
-            gmail_resumo(emails_c, somente_prioritarios=somente)
+            try:
+                fala_emails = str(gmail_resumo(
+                    emails_c,
+                    somente_prioritarios=somente,
+                    emitir_proativa=False,
+                ) or "").strip()
+            except TypeError:
+                fala_emails = str(gmail_resumo(
+                    emails_c,
+                    somente_prioritarios=somente,
+                ) or "").strip()
+        if fala_emails and callable(falar):
+            falar(fala_emails, "calma", 1)
         _marcar_resultado("emails_lidos")
         return True
 
@@ -703,8 +826,20 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         return True
 
     if intent == "BRIEFING_REPEAT":
+        fala_briefing = ""
         if callable(repetir_briefing):
-            repetir_briefing()
+            retorno_briefing = repetir_briefing()
+            if isinstance(retorno_briefing, str):
+                fala_briefing = retorno_briefing.strip()
+        if fala_briefing:
+            _reg(
+                texto_original,
+                fala_briefing,
+                "BRIEFING_REPEAT",
+                "briefing do clima",
+                "conversa",
+                "briefing",
+            )
         _marcar_resultado("briefing_repetido")
         return True
 
@@ -730,13 +865,14 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                 )
             return True
         cidade = str(info.get("localidade") or local).strip()
+        cidade_fala = cidade.title() if cidade.islower() else cidade
         temp = str(info.get("temperatura_c") or "").strip()
         sens = str(info.get("sensacao_c") or "").strip()
         desc = str(info.get("descricao") or "").strip()
         umidade = str(info.get("umidade") or "").strip()
-        base = f"Agora em {cidade} está {temp} graus"
+        base = f"Agora em {cidade_fala} está {temp} graus"
         if desc:
-            base += f", com {desc}"
+            base += f", e o tempo está {desc.casefold()}"
         if sens:
             base += f". Sensação de {sens} graus"
         if umidade:
@@ -782,17 +918,15 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
     if intent == "LOCK_PC":
         if destino_val == "pc_b" and callable(_enviar_pc_b):
             _enviar_pc_b({"action": "lock_pc"})
+            _marcar_resultado("bloqueio_solicitado", executou=True)
             if callable(falar):
-                falar(_escolher_fala_variada([
-                    "Travando o PC B agora.",
-                    "PC B bloqueado.",
-                    "Tranquei o PC B.",
-                ]), "calma", 1)
+                falar("Enviei o pedido de bloqueio ao PC B, mas ele não confirmou o estado final.", "calma", 1)
             return True
         try:
             import ctypes
             ctypes.windll.user32.LockWorkStation()
         except Exception:
+            _marcar_resultado("falha_execucao", executou=False)
             if callable(falar):
                 falar(_escolher_fala_variada([
                     "Não consegui travar o Windows agora.",
@@ -800,16 +934,18 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                     "O bloqueio do Windows não quis colaborar.",
                 ]), "calma", 1)
             return True
+        _marcar_resultado("bloqueio_solicitado", executou=True)
         if callable(falar):
-            falar(_escolher_fala_variada(["PC bloqueado.", "Pronto, bloqueado.", "Tela travada."]), "calma", 1)
+            falar("Solicitei o bloqueio do PC; a chamada foi aceita, mas não consigo reler a tela depois disso.", "calma", 1)
         return True
 
-    if intent in {"CREATE_FOLDER", "DELETE_ITEM"}:
+    if intent in {"CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "CONFIRM_DELETE_ITEM", "CANCEL_DELETE_ITEM", "RESTORE_DELETED_ITEM", "FILE_TRANSACTION"}:
         return _executar_intencao_arquivos(
             intent,
             params,
             destino_val,
             ctx,
+            texto_original=texto_original,
             marcar_resultado=_marcar_resultado,
             registrar_arquivo=_registrar_arquivo,
             item_local_existe=_item_local_existe,
@@ -887,6 +1023,9 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             if callable(falar):
                 falar(_escolher_fala_variada(["Tá, mas abrir o quê? Fala o nome do app direito.", "Me diz qual app eu devo abrir.", "Faltou o nome do aplicativo."]), "debochada", 2)
             return True
+        if destino_val == "ambos" and callable(_enviar_pc_b):
+            mapped_remoto = APPS_MAP.get(nome.lower().strip(), nome)
+            _enviar_pc_b({"action": "open_app", "app": mapped_remoto, "quantidade": int(params.get("quantidade") or 1)})
         if destino_val == "pc_b" and callable(_enviar_pc_b):
             key = nome.lower().strip()
             mapped = APPS_MAP.get(key, nome)
@@ -935,7 +1074,13 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         )
 
     if intent == "MUSIC_SEARCH":
-        if callable(_autonomia_permite_execucao_musical) and not _autonomia_permite_execucao_musical(intent, texto_original):
+        origem_musical = str(params.get("origem") or "").strip().lower()
+        confirmado_contextual = origem_musical in {"continuacao_busca", "sugestao_conversacional"}
+        if callable(_autonomia_permite_execucao_musical) and not _autonomia_permite_execucao_musical(
+            intent,
+            texto_original,
+            confirmado=confirmado_contextual,
+        ):
             print("🎵 [AUTONOMIA] MUSIC_SEARCH bloqueado: sem pedido musical explícito.")
             return False
         query = str(params.get("query") or params.get("musica") or params.get("nome") or texto_original).strip()
@@ -1013,6 +1158,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                     "debochada",
                     2,
                 )
+            _marcar_resultado("playlist_musica_adicionada", executou=True)
         else:
             if callable(falar):
                 falar(
@@ -1024,6 +1170,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                     "calma",
                     1,
                 )
+            _marcar_resultado("nao_encontrado", executou=False)
         return True
 
     if intent == "VOLUME":
@@ -1064,13 +1211,26 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             if destino_val == "pc_b" and callable(_enviar_pc_b):
                 _enviar_pc_b({"action": "set_volume", "nivel": 0})
                 ok_volume = True
-            elif callable(ajustar_volume):
-                ajustar_volume(0)
-                ok_volume = True
+            elif callable(definir_mudo):
+                ok_volume = bool(definir_mudo(True))
             _marcar_resultado("volume_mudo" if ok_volume else "falha_execucao", executou=ok_volume)
             _falar_por_status(
                 "volume_mudo" if ok_volume else "falha_execucao",
                 "Mudo ligado." if ok_volume else "Tentei mutar o som, mas o controle não respondeu.",
+                alvo="volume",
+            )
+            return True
+        if acao in {"unmute", "desmudo", "desmutar"}:
+            ok_volume = False
+            if destino_val == "pc_b" and callable(_enviar_pc_b):
+                _enviar_pc_b({"action": "volume_unmute"})
+                ok_volume = True
+            elif callable(definir_mudo):
+                ok_volume = bool(definir_mudo(False))
+            _marcar_resultado("volume_desmutado" if ok_volume else "falha_execucao", executou=ok_volume)
+            _falar_por_status(
+                "volume_desmutado" if ok_volume else "falha_execucao",
+                "Som de volta." if ok_volume else "Tentei tirar do mudo, mas o controle não confirmou.",
                 alvo="volume",
             )
             return True
@@ -1092,8 +1252,8 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                 _marcar_resultado("volume_ajustado" if ok_volume else "falha_execucao", executou=ok_volume)
                 _falar_por_status(
                     "volume_ajustado" if ok_volume else "falha_execucao",
-                    "Volume ajustado." if ok_volume else "Tentei ajustar o volume, mas o controle não respondeu.",
-                    alvo="volume",
+                    f"Deixei o volume em {int(v)}%." if ok_volume else "Tentei ajustar o volume, mas o controle não respondeu.",
+                    alvo=f"volume em {int(v)}%",
                 )
                 return True
         if callable(falar):
@@ -1190,21 +1350,168 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             registrar_mente_curta(texto_original, fala_search, "SEARCH", query, "", "pesquisa")
         return True
 
+    if intent == "AGENDAR_ACAO":
+        import uuid as _uuid, datetime as _dt
+        acao_agendada = params.get("acao_agendada")
+        if not isinstance(acao_agendada, dict) or not str(acao_agendada.get("intent") or "").strip():
+            if callable(falar):
+                falar("Eu peguei o horário, mas não consegui separar qual ação deveria executar.", "calma", 1)
+            return True
+
+        agora = _dt.datetime.now()
+        atraso_segundos = params.get("atraso_segundos")
+        if atraso_segundos is None and params.get("segundos") is not None:
+            atraso_segundos = params.get("segundos")
+        hora_alvo = str(params.get("hora_alvo") or "").strip()
+        try:
+            if atraso_segundos is None and params.get("minutos") is not None:
+                atraso_segundos = int(params.get("minutos")) * 60
+            if atraso_segundos is None and params.get("horas") is not None:
+                atraso_segundos = int(params.get("horas")) * 3600
+            if atraso_segundos is not None:
+                atraso = max(1, int(atraso_segundos))
+                ts_exec = agora.timestamp() + atraso
+                if atraso % 3600 == 0:
+                    tempo_txt = f"daqui {atraso // 3600} hora(s)"
+                elif atraso % 60 == 0:
+                    tempo_txt = f"daqui {atraso // 60} minuto(s)"
+                else:
+                    tempo_txt = f"daqui {atraso} segundo(s)"
+            elif hora_alvo:
+                hora, minuto = map(int, hora_alvo.split(":"))
+                destino = agora.replace(hour=hora, minute=minuto, second=0, microsecond=0)
+                if destino <= agora:
+                    destino += _dt.timedelta(days=1)
+                ts_exec = destino.timestamp()
+                tempo_txt = f"às {hora_alvo}"
+            else:
+                raise ValueError("prazo ausente")
+        except Exception:
+            if callable(falar):
+                falar("Não consegui entender quando essa ação deve acontecer.", "calma", 1)
+            return True
+
+        intent_real = str(acao_agendada.get("intent") or "").upper().strip()
+        params_reais = dict(acao_agendada.get("params") or {})
+        alvo_real = str(
+            params_reais.get("alvo")
+            or params_reais.get("nome_app")
+            or params_reais.get("nome_playlist")
+            or params_reais.get("query")
+            or "a ação"
+        ).strip()
+        descricao = descrever_intencao_agendada({"intent": intent_real, "params": params_reais})
+        novo_ag = {
+            "id": str(_uuid.uuid4())[:8],
+            "tipo": "once",
+            "ts_execucao": ts_exec,
+            "descricao": descricao,
+            "nome": f"ação: {alvo_real}"[:30],
+            "ativo": True,
+            "criado_em": agora.isoformat(),
+            "texto_original": texto_original,
+            "intencao_no_disparo": {
+                "intent": intent_real,
+                "params": params_reais,
+            },
+            "comandos_no_disparo": [],
+        }
+        def _adicionar_acao_agendada(lista_ag):
+            if not params.get("substituir_agendamento_anterior"):
+                lista_ag.append(novo_ag)
+                return
+
+            def _mesma_acao_anterior(item):
+                if not isinstance(item, dict) or not item.get("ativo", True):
+                    return False
+                anterior = item.get("intencao_no_disparo")
+                if not isinstance(anterior, dict):
+                    return False
+                params_antigos = dict(anterior.get("params") or {})
+                alvo_antigo = str(
+                    params_antigos.get("alvo") or params_antigos.get("nome_app")
+                    or params_antigos.get("nome_playlist") or params_antigos.get("query") or ""
+                ).casefold()
+                return (
+                    str(anterior.get("intent") or "").upper() == intent_real
+                    and alvo_antigo == alvo_real.casefold()
+                )
+
+            candidatos = [indice for indice, item in enumerate(lista_ag) if _mesma_acao_anterior(item)]
+            if candidatos:
+                lista_ag.pop(candidatos[-1])
+            lista_ag.append(novo_ag)
+
+        if callable(_agendamentos_transacionar):
+            salvo = bool(_agendamentos_transacionar(_adicionar_acao_agendada))
+        else:
+            lista_ag = _agendamentos_load() if callable(_agendamentos_load) else []
+            _adicionar_acao_agendada(lista_ag)
+            salvo = bool(_agendamentos_save(lista_ag)) if callable(_agendamentos_save) else False
+        status_agenda = "acao_agendada" if salvo else "falha_execucao"
+        _marcar_resultado(status_agenda, executou=salvo)
+        _falar_por_status(
+            status_agenda,
+            _escolher_fala_variada([
+                f"Combinado. Vou executar isso {tempo_txt}.",
+                f"Ação guardada. Quando chegar {tempo_txt}, eu faço e confiro o resultado.",
+                f"Fechado. Deixei essa ação marcada para {tempo_txt}.",
+            ] if salvo else [
+                "Entendi a ação e o horário, mas não consegui salvar o agendamento.",
+                "A agenda não confirmou a gravação, então não vou prometer que isso ficou marcado.",
+            ]),
+            alvo=alvo_real,
+        )
+        registrar_mente_curta = _get(ctx, "_registrar_mente_curta")
+        if callable(registrar_mente_curta):
+            registrar_mente_curta(texto_original, descricao, "AGENDAR_ACAO", alvo_real, hora_alvo or str(atraso_segundos or ""), "agenda")
+        return True
+
     if intent == "AGENDAR_LEMBRETE":
         import uuid as _uuid, datetime as _dt
-        descricao = str(params.get("descricao") or params.get("alvo") or params.get("texto") or "").strip() or "Lembrete"
+        pendente_anterior = (
+            str(_get(ctx, "ultima_intencao", "") or "").upper() == "AGENDAR_LEMBRETE"
+            and str(_get(ctx, "ultima_habilidade", "") or "").casefold() == "agenda"
+        )
+        descricao = str(
+            params.get("descricao") or params.get("evento") or params.get("alvo")
+            or params.get("texto") or ""
+        ).strip()
+        if descricao.casefold() in {"", "lembrete", "isso", "disso", "desse evento", "do evento"}:
+            if pendente_anterior:
+                descricao = str(_get(ctx, "ultimo_alvo", "") or "").strip()
+        descricao = descricao or "Lembrete"
         minutos = params.get("minutos")
         hora_alvo = str(params.get("hora_alvo") or params.get("hora") or "").strip()
+        referencia_data = str(
+            params.get("data_hora") or params.get("data") or params.get("dia") or ""
+        ).strip()
+        if not referencia_data and pendente_anterior:
+            referencia_data = str(_get(ctx, "ultimo_escopo", "") or "").strip()
+        descricao, referencia_data = resolver_referencia_contextual_lembrete(
+            descricao,
+            referencia_data,
+            _get(ctx, "ultimas_entradas", []),
+        )
+        descricao = descricao or "Lembrete"
         ag_id = str(_uuid.uuid4())[:8]
         try:
             if minutos is not None:
                 ts_exec = _dt.datetime.now().timestamp() + int(minutos) * 60
                 tempo_txt = f"em {int(minutos)} minutos"
             elif hora_alvo:
-                hoje = _dt.date.today()
-                ts_exec = _dt.datetime.strptime(f"{hoje} {hora_alvo}", "%Y-%m-%d %H:%M").timestamp()
-                tempo_txt = f"às {hora_alvo}"
+                instante, tempo_txt = resolver_instante_lembrete(hora_alvo, referencia_data)
+                ts_exec = instante.timestamp()
             else:
+                if callable(registrar_mente_curta):
+                    registrar_mente_curta(
+                        texto_original,
+                        "",
+                        "AGENDAR_LEMBRETE",
+                        descricao,
+                        referencia_data,
+                        "agenda",
+                    )
                 if callable(falar):
                     falar(_escolher_fala_variada([
                         "Me diz o horário ou em quantos minutos eu te lembro disso.",
@@ -1221,16 +1528,26 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                 ]), "calma", 1)
             return True
         novo_ag = {"id": ag_id, "tipo": "once", "ts_execucao": ts_exec, "descricao": descricao, "comandos_no_disparo": [], "nome": descricao[:30], "ativo": True, "criado_em": _dt.datetime.now().isoformat()}
-        lista_ag = _agendamentos_load() if callable(_agendamentos_load) else []
-        lista_ag.append(novo_ag)
-        if callable(_agendamentos_save):
-            _agendamentos_save(lista_ag)
-        if callable(falar):
-            falar(_escolher_fala_variada([
+        if callable(_agendamentos_transacionar):
+            salvo = bool(_agendamentos_transacionar(lambda lista: lista.append(novo_ag)))
+        else:
+            lista_ag = _agendamentos_load() if callable(_agendamentos_load) else []
+            lista_ag.append(novo_ag)
+            salvo = bool(_agendamentos_save(lista_ag)) if callable(_agendamentos_save) else False
+        status_lembrete = "lembrete_agendado" if salvo else "falha_execucao"
+        _marcar_resultado(status_lembrete, executou=salvo)
+        _falar_por_status(
+            status_lembrete,
+            _escolher_fala_variada([
                 f"Feito. Vou te lembrar {tempo_txt} de {descricao}.",
-                f"Pronto, lembrete salvo para {tempo_txt}.",
+                f"Pronto, lembrete de {descricao} salvo para {tempo_txt}.",
                 f"Anotado. Vou te lembrar de {descricao} {tempo_txt}.",
-            ]), "debochada", 2)
+            ] if salvo else [
+                "Entendi o lembrete, mas não consegui salvar ele na agenda.",
+                "A agenda falhou ao gravar isso, então o lembrete não ficou confirmado.",
+            ]),
+            alvo=descricao,
+        )
         if callable(_get(ctx, "_registrar_mente_curta")):
             _get(ctx, "_registrar_mente_curta")(texto_original, descricao, "AGENDAR_LEMBRETE", descricao, hora_alvo or str(minutos or ""), "agenda")
         return True
@@ -1253,23 +1570,32 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                     "Faltou dizer qual agendamento eu devo apagar.",
                 ]), "debochada", 2)
             return True
-        lista_ag = _agendamentos_load() if callable(_agendamentos_load) else []
-        cancelados = 0
-        for ag in lista_ag:
-            nome = str(ag.get("nome") or ag.get("descricao") or ag.get("id") or "").lower()
-            ag_id = str(ag.get("id") or "").lower()
-            if alvo in nome or alvo == ag_id:
-                ag["ativo"] = False
-                cancelados += 1
-        if callable(_agendamentos_save):
-            _agendamentos_save(lista_ag)
+        alteracao = {"cancelados": 0}
+
+        def _cancelar(lista_ag):
+            for ag in lista_ag:
+                nome = str(ag.get("nome") or ag.get("descricao") or ag.get("id") or "").lower()
+                ag_id = str(ag.get("id") or "").lower()
+                if alvo in nome or alvo == ag_id:
+                    ag["ativo"] = False
+                    alteracao["cancelados"] += 1
+
+        if callable(_agendamentos_transacionar):
+            salvo = bool(_agendamentos_transacionar(_cancelar))
+        else:
+            lista_ag = _agendamentos_load() if callable(_agendamentos_load) else []
+            _cancelar(lista_ag)
+            salvo = bool(_agendamentos_save(lista_ag)) if callable(_agendamentos_save) else False
+        cancelados = alteracao["cancelados"]
+        cancelamento_ok = cancelados > 0 and salvo
+        status_cancelamento = "agendamento_cancelado" if cancelamento_ok else "falha_execucao"
+        _marcar_resultado(status_cancelamento, executou=cancelamento_ok)
         msg = _escolher_fala_variada([
-            f"{cancelados} agendamento(s) cancelado(s)." if cancelados else "Nao achei nenhum agendamento com esse nome.",
-            f"Apaguei {cancelados} agendamento(s)." if cancelados else "Não encontrei nenhum agendamento com esse nome.",
-            f"Feito, {cancelados} compromisso(s) saíram da lista." if cancelados else "Nada pra cancelar com esse nome.",
+            f"{cancelados} agendamento(s) cancelado(s)." if cancelamento_ok else "Não consegui confirmar o cancelamento desse agendamento.",
+            f"Apaguei {cancelados} agendamento(s)." if cancelamento_ok else "Esse agendamento não foi encontrado ou a agenda não salvou a mudança.",
+            f"Feito, {cancelados} compromisso(s) saíram da lista." if cancelamento_ok else "Nada foi cancelado de verdade com esse nome.",
         ])
-        if callable(falar):
-            falar(msg, "calma", 1)
+        _falar_por_status(status_cancelamento, msg, alvo=alvo)
         return True
 
     if intent == "PLAYLIST_DELETE":
@@ -1284,11 +1610,13 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             return True
         delete_playlist = _get(ctx, "delete_playlist")
         ok_delete = bool(delete_playlist(pl)) if callable(delete_playlist) else False
-        _marcar_resultado("playlist_deletada" if ok_delete else "falha_execucao", executou=ok_delete)
+        status_delete = "playlist_deletada" if ok_delete else "falha_execucao"
+        _marcar_resultado(status_delete, executou=ok_delete)
         if ok_delete and callable(ctx.get("set_ultima_playlist")):
             ctx["set_ultima_playlist"]("")
-        if callable(falar):
-            falar(_escolher_fala_variada([
+        _falar_por_status(
+            status_delete,
+            _escolher_fala_variada([
                 f"Apaguei a playlist {pl}. Ela saiu do palco.",
                 f"Playlist {pl} deletada.",
                 f"Pronto, removi {pl} das suas playlists.",
@@ -1296,7 +1624,9 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                 f"Tentei apagar a playlist {pl}, mas não encontrei ela.",
                 f"{pl} não apareceu nas playlists pra eu apagar.",
                 f"Procurei a playlist {pl}, mas ela não deu as caras.",
-            ]), "calma" if ok_delete else "irritada", 1 if ok_delete else 2)
+            ]),
+            alvo=pl,
+        )
         return True
 
     if intent == "PLAYLIST_ADD":
@@ -1336,22 +1666,30 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                 ]), "calma", 1)
             return True
         ok = add_to_playlist(pl, url, title, canal) if callable(add_to_playlist) else False
+        status_add = "playlist_musica_adicionada" if ok else "falha_execucao"
+        _marcar_resultado(status_add, executou=ok)
         if ok:
             if callable(ctx.get("set_ultima_playlist")):
                 ctx["set_ultima_playlist"](pl)
-            if callable(falar):
-                falar(_escolher_fala_variada([
+            _falar_por_status(
+                status_add,
+                _escolher_fala_variada([
                     f"Beleza, guardando {(_get(ctx,'_yt_clean_title', lambda x: x)(title) or 'essa música')} na playlist {pl}.",
                     f"Pronto, {(_get(ctx,'_yt_clean_title', lambda x: x)(title) or 'essa música')} foi pra playlist {pl}.",
                     f"Salvei {(_get(ctx,'_yt_clean_title', lambda x: x)(title) or 'essa música')} em {pl}.",
-                ]), "debochada", 2)
+                ]),
+                alvo=pl,
+            )
         else:
-            if callable(falar):
-                falar(_escolher_fala_variada([
+            _falar_por_status(
+                status_add,
+                _escolher_fala_variada([
                     "Ih Pedro, deu erro no meu caderninho aqui. Não consegui salvar essa porcaria não.",
                     "Meu caderninho travou e não salvou agora.",
                     "Deu ruim no registro da playlist. Tenta de novo.",
-                ]), "debochada", 2)
+                ]),
+                alvo=pl,
+            )
         return True
 
     if intent == "PLAYLIST_LIST":
@@ -1447,18 +1785,17 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             if callable(ctx.get("set_ultima_playlist")):
                 ctx["set_ultima_playlist"](pl)
             _marcar_resultado("playlist_aberta" if ok_playlist else "falha_execucao", executou=ok_playlist)
-            if callable(falar):
-                falar(
-                    _fala_de_confirmacao_variada(
-                        "playlist_play",
-                        fallback=f"Abrindo sua playlist de {pl}." if ok_playlist else f"Tentei abrir a playlist {pl}, mas a rota musical falhou.",
-                        alvo=pl,
-                        contexto=_ctx_fala(),
-                        texto_usuario=texto_original,
-                    ),
-                    "debochada",
-                    2,
-                )
+            _falar_por_status(
+                "playlist_aberta" if ok_playlist else "falha_execucao",
+                _fala_de_confirmacao_variada(
+                    "playlist_play",
+                    fallback=f"Abrindo sua playlist de {pl}." if ok_playlist else f"Tentei abrir a playlist {pl}, mas a rota musical falhou.",
+                    alvo=pl,
+                    contexto=_ctx_fala(),
+                    texto_usuario=texto_original,
+                ),
+                alvo=pl,
+            )
             return bool(ok_playlist)
         if destino_val == "pc_b":
             url = _playlist_primeira_url(pl) if callable(_playlist_primeira_url) else None
@@ -1469,18 +1806,17 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             if callable(ctx.get("set_ultima_playlist")):
                 ctx["set_ultima_playlist"](pl)
             _marcar_resultado("playlist_aberta_pc_b" if ok_playlist else "falha_execucao", executou=ok_playlist)
-            if callable(falar):
-                falar(
-                    _fala_de_confirmacao_variada(
-                        "playlist_play",
-                        fallback=f"Abrindo sua playlist de {pl} no PC B." if ok_playlist else f"Tentei abrir {pl} no PC B, mas a rota falhou.",
-                        alvo=pl,
-                        contexto=_ctx_fala(),
-                        texto_usuario=texto_original,
-                    ),
-                    "debochada",
-                    2,
-                )
+            _falar_por_status(
+                "playlist_aberta_pc_b" if ok_playlist else "falha_execucao",
+                _fala_de_confirmacao_variada(
+                    "playlist_play",
+                    fallback=f"Abrindo sua playlist de {pl} no PC B." if ok_playlist else f"Tentei abrir {pl} no PC B, mas a rota falhou.",
+                    alvo=pl,
+                    contexto=_ctx_fala(),
+                    texto_usuario=texto_original,
+                ),
+                alvo=pl,
+            )
             return bool(ok_playlist)
         ok = play_playlist(pl) if callable(play_playlist) else False
         if not ok:
@@ -1491,18 +1827,17 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             ctx["set_ultima_playlist"](pl)
         n = _playlist_len(pl) if callable(_playlist_len) else 0
         _marcar_resultado("playlist_aberta", executou=True)
-        if callable(falar):
-            falar(
-                _fala_de_confirmacao_variada(
-                    "playlist_play",
-                    fallback=f"Abrindo sua playlist de {pl}. Você já tem {n} músicas guardadas comigo.",
-                    alvo=pl,
-                    contexto=_ctx_fala(),
-                    texto_usuario=texto_original,
-                ),
-                "debochada",
-                2,
-            )
+        _falar_por_status(
+            "playlist_aberta",
+            _fala_de_confirmacao_variada(
+                "playlist_play",
+                fallback=f"Abrindo sua playlist de {pl}. Você já tem {n} músicas guardadas comigo.",
+                alvo=pl,
+                contexto=_ctx_fala(),
+                texto_usuario=texto_original,
+            ),
+            alvo=pl,
+        )
         return True
 
     if callable(falar):

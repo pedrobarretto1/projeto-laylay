@@ -2,19 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import re
 import unicodedata
 from collections import Counter
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-
-
-_STOPWORDS = {
-    "official", "video", "audio", "lyrics", "lyric", "feat", "ft", "music", "musica",
-    "música", "clipe", "oficial", "live", "ao", "vivo", "tema", "version", "versao",
-    "versão", "remix", "slowed", "sped", "up", "nightcore", "amv",
-}
 
 
 def _sem_acentos(texto: str) -> str:
@@ -72,16 +64,6 @@ def _extrair_artista(titulo: str, canal: str = "") -> str:
     if canal:
         return _limpar_nome_artista(str(canal or "").strip())
     return ""
-
-
-def _tokens_relevantes(*textos: str) -> List[str]:
-    tokens: List[str] = []
-    for texto in textos:
-        for tok in _normalizar(texto).split():
-            if len(tok) < 3 or tok in _STOPWORDS or tok.isdigit():
-                continue
-            tokens.append(tok)
-    return tokens
 
 
 def _todos_itens(playlists_usuario: Dict[str, Any]) -> List[dict]:

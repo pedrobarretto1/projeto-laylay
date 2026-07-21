@@ -53,15 +53,17 @@ def handle_youtube_data(data: Dict[str, Any], pending_active_url_requests: Dict[
     url = str(data.get("url") or "")
     title = str(data.get("title") or "")
     canal = str(data.get("canal") or data.get("channel") or "")
+    tab_id = data.get("tabId")
     if rid and rid in pending_active_url_requests:
         entry = pending_active_url_requests.get(rid)
         if isinstance(entry, asyncio.Future):
             if not entry.done():
-                entry.set_result({"url": url, "title": title, "canal": canal})
+                entry.set_result({"url": url, "title": title, "canal": canal, "tabId": tab_id})
         elif isinstance(entry, dict):
             entry["url"] = url
             entry["title"] = title
             entry["canal"] = canal
+            entry["tabId"] = tab_id
             _set_event(entry)
 
 
@@ -84,6 +86,19 @@ def handle_page_content(data: Dict[str, Any], pending_page_content_requests: Dic
         future.set_result(data)
 
 
+def handle_command_result(data: Dict[str, Any], pending_command_requests: Dict[str, Any]) -> None:
+    request_id = str(data.get("requestId") or "")
+    if not request_id:
+        return
+    entry = pending_command_requests.get(request_id)
+    if not isinstance(entry, dict):
+        return
+    entry["result"] = dict(data)
+    event = entry.get("event")
+    if event is not None:
+        event.set()
+
+
 def handle_player_event(
     data: Dict[str, Any],
     *,
@@ -96,6 +111,7 @@ def handle_player_event(
     url = str(data.get("url") or "")
     is_ad = bool(data.get("isAd"))
     duration = int(data.get("duration") or 0)
+    tab_id = data.get("tabId")
 
     if event == "user_click_detected":
         playlist_state["user_intervened"] = True
@@ -109,6 +125,21 @@ def handle_player_event(
     if not playlist_state.get("name"):
         return
 
+    now = time.time()
+    event_id = str(data.get("eventId") or "").strip()
+    clean_url = yt_clean_url(url) if callable(yt_clean_url) else str(url or "")
+    dedup_key = event_id or f"ended:{tab_id}:{clean_url}:{duration}"
+    if (
+        str(playlist_state.get("last_ended_event") or "") == dedup_key
+        and now - float(playlist_state.get("last_ended_ts") or 0.0) < 8.0
+    ):
+        print(f"🎧 [AUTO-NEXT] evento duplicado ignorado: {dedup_key}")
+        return
+    playlist_state["last_ended_event"] = dedup_key
+    playlist_state["last_ended_ts"] = now
+    if isinstance(tab_id, int):
+        playlist_state["tab_id"] = tab_id
+
     pl_nm = str(playlist_state.get("name") or "")
 
     def _falar_fim_playlist() -> None:
@@ -120,18 +151,19 @@ def handle_player_event(
         print("🎧 Vídeo manual terminou — retomando playlist")
         print("[AUTO-NEXT] Música anterior finalizada. Carregando próxima...")
         ok_next = bool(playlist_avancar_proxima()) if callable(playlist_avancar_proxima) else False
-        if not ok_next:
+        if not ok_next and playlist_state.get("last_advance_status") == "fim":
             _falar_fim_playlist()
         return
 
-    clean_url = yt_clean_url(url) if callable(yt_clean_url) else str(url or "")
     if str(playlist_state.get("last_url") or "") and str(playlist_state.get("last_url") or "") != clean_url:
         return
 
     print("[AUTO-NEXT] Música anterior finalizada. Carregando próxima...")
     ok_next = bool(playlist_avancar_proxima()) if callable(playlist_avancar_proxima) else False
-    if not ok_next:
+    if not ok_next and playlist_state.get("last_advance_status") == "fim":
         _falar_fim_playlist()
+    elif not ok_next:
+        print("⚠️ [AUTO-NEXT] não consegui abrir a próxima faixa; a playlist continua ativa")
 
 
 def montar_linha_user_context(data: Dict[str, Any]) -> tuple[str, str, Any, str, str]:
@@ -183,8 +215,6 @@ def handle_user_context(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, 
         if callable(registrar_log_navegador):
             estado_percepcao = registrar_log_navegador(estado_percepcao, linha, limite=5)
             updates["estado_percepcao"] = estado_percepcao
-            if isinstance(estado_percepcao, dict):
-                updates["contexto_atual_logs"] = list(estado_percepcao.get("logs_navegador", []) or [])
         print(f"🧠 [CTX] {linha}")
 
     now = time.time()
@@ -287,7 +317,15 @@ def handle_user_context(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, 
                 continuidades_update(comando_sugerido_estado="PENDING_CONFIRM", comando_sugerido_ts=now)
             updates["_ultimo_sugerido_ts"] = now
             if comando_sugerido == "EXPLAIN_ERROR" and not is_speaking and callable(falar_com_lipsync):
-                falar_com_lipsync("Pedro, vi um erro aqui. Quer que eu explique o que aconteceu?", "calma", 1)
+                payload_atual = continuidades_get("comando_sugerido_payload") if callable(continuidades_get) else {}
+                detalhe = str((payload_atual or {}).get("linha") or (payload_atual or {}).get("erro") or "").strip()
+                detalhe = re.sub(r"\s+", " ", detalhe)[:220].rstrip(" ,;:")
+                if detalhe:
+                    falar_com_lipsync(
+                        f"Pedro, apareceu este erro no Chrome: {detalhe}. Quer que eu explique o que significa?",
+                        "calma",
+                        1,
+                    )
 
     return updates
 
@@ -308,12 +346,87 @@ def dispatch_event(data: Dict[str, Any], handlers: Dict[str, Callable[[Dict[str,
         "PLAYER_EVENT": "player_event",
         "USER_CONTEXT": "user_context",
         "PAGE_CONTENT": "page_content",
+        "COMMAND_RESULT": "command_result",
     }
     nome_handler = por_tipo.get(tipo, "action")
     handler = handlers.get(nome_handler)
     if nome_handler == "action" and tipo != "ping":
         print(f"📥 [DEBUG Chrome] {data}")
     return handler(data) if callable(handler) else None
+
+
+class ChromeWsEventosRuntime:
+    """Coordena handlers da extensão sem possuir o estado global da Laylay."""
+
+    def __init__(
+        self,
+        *,
+        solicitacoes: Any,
+        playlist_state: Dict[str, Any],
+        yt_clean_url: Callable[[str], str],
+        playlist_avancar_proxima: Callable[[], bool],
+        falar_com_lipsync: Callable[..., Any],
+        user_context_getter: Callable[[], Dict[str, Any]],
+        aplicar_user_updates: Callable[[Dict[str, Any]], Any],
+        action_context_getter: Callable[[], Dict[str, Any]],
+        aplicar_action_updates: Callable[[Dict[str, Any]], Any],
+    ) -> None:
+        self.solicitacoes = solicitacoes
+        self.playlist_state = playlist_state
+        self.yt_clean_url = yt_clean_url
+        self.playlist_avancar_proxima = playlist_avancar_proxima
+        self.falar_com_lipsync = falar_com_lipsync
+        self.user_context_getter = user_context_getter
+        self.aplicar_user_updates = aplicar_user_updates
+        self.action_context_getter = action_context_getter
+        self.aplicar_action_updates = aplicar_action_updates
+
+    def _user_context(self, data: Dict[str, Any]) -> None:
+        updates = handle_user_context(data, self.user_context_getter() or {})
+        if isinstance(updates, dict):
+            self.aplicar_user_updates(updates)
+
+    def _action(self, data: Dict[str, Any]) -> bool:
+        updates = handle_action(data, self.action_context_getter() or {})
+        if not isinstance(updates, dict):
+            return False
+        self.aplicar_action_updates(updates)
+        return bool(updates.get("handled"))
+
+    def _command_result(self, data: Dict[str, Any]) -> bool:
+        with self.solicitacoes.pendencias_lock:
+            handle_command_result(data, self.solicitacoes.pendencias_comandos)
+        return self._action(data)
+
+    def dispatch(self, data: Dict[str, Any]) -> Any:
+        def protegido(func: Callable[[Dict[str, Any]], Any]) -> Callable[[Dict[str, Any]], Any]:
+            def executar(item: Dict[str, Any]) -> Any:
+                with self.solicitacoes.pendencias_lock:
+                    return func(item)
+            return executar
+
+        handlers = {
+            "tabs_list": protegido(lambda item: handle_tabs_list(item, self.solicitacoes.pendencias_abas)),
+            "check_tabs_result": protegido(lambda item: handle_check_tabs_result(item, self.solicitacoes.pendencias_checagem_abas)),
+            "active_tab_url": protegido(lambda item: handle_active_tab_url(item, self.solicitacoes.pendencias_aba_ativa)),
+            "youtube_data": protegido(lambda item: handle_youtube_data(item, self.solicitacoes.pendencias_aba_ativa)),
+            "player_event": lambda item: handle_player_event(
+                item,
+                playlist_state=self.playlist_state,
+                yt_clean_url=self.yt_clean_url,
+                playlist_avancar_proxima=self.playlist_avancar_proxima,
+                falar_com_lipsync=self.falar_com_lipsync,
+            ),
+            "user_context": self._user_context,
+            "page_content": protegido(lambda item: handle_page_content(item, self.solicitacoes.pendencias_conteudo_pagina)),
+            "command_result": self._command_result,
+            "action": self._action,
+        }
+        return dispatch_event(data, handlers)
+
+
+def criar_chrome_ws_eventos_runtime(**kwargs: Any) -> ChromeWsEventosRuntime:
+    return ChromeWsEventosRuntime(**kwargs)
 
 
 def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
@@ -334,6 +447,47 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
     musica_registrar_historico = ctx.get("_musica_registrar_historico")
     verificar_musica_autonoma = ctx.get("_verificar_musica_autonoma")
     falar_com_lipsync = ctx.get("falar_com_lipsync")
+    registrar_musica_atual = ctx.get("_registrar_musica_atual")
+
+    message_type = str(data.get("type") or "").strip().upper()
+    if message_type == "PAGE_SNAPSHOT":
+        snapshot = data.get("payload")
+        if isinstance(snapshot, dict) and callable(percepcao_set):
+            percepcao_set("pagina_ativa", dict(snapshot))
+            url = str(snapshot.get("url") or "")
+            title = str(snapshot.get("title") or "")
+            if url:
+                updates["aba_url_atual"] = url
+            if title:
+                updates["aba_titulo_atual"] = title
+        updates["handled"] = True
+        return updates
+
+    if message_type == "COMMAND_RESULT":
+        if callable(percepcao_set):
+            percepcao_set("ultimo_resultado_chrome", {
+                "requestId": data.get("requestId"),
+                "action": str(data.get("action") or ""),
+                "ok": data.get("ok") is True,
+                "status": str(data.get("status") or ""),
+                "message": str(data.get("message") or ""),
+                "evidence": data.get("evidence"),
+                "tab": data.get("tab"),
+                "ts": data.get("ts"),
+            })
+        updates["handled"] = True
+        return updates
+
+    if message_type == "EXTENSION_HELLO":
+        if callable(percepcao_set):
+            percepcao_set("extensao_chrome", {
+                "protocolVersion": data.get("protocolVersion"),
+                "capabilities": list(data.get("capabilities") or []),
+                "conectada": True,
+                "ts": time.time(),
+            })
+        updates["handled"] = True
+        return updates
 
     if action == "title_update":
         novo_titulo = str(data.get("title") or "").strip()
@@ -346,7 +500,7 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
         updates["handled"] = True
         return updates
 
-    if action in ("url_update", "active_tab_changed") or "url" in data:
+    if action in ("url_update", "active_tab_changed") or (not action and "url" in data):
         nova_url = str(data.get("url") or "").strip()
         novo_titulo = str(data.get("title") or "").strip()
 
@@ -381,6 +535,8 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
                     and not aba_titulo_atual.endswith(") YouTube")
                 ):
                     clean_title = re.sub(r"^\(\d+\)\s*", "", aba_titulo_atual).replace(" - YouTube", "").strip()
+                    if callable(registrar_musica_atual):
+                        registrar_musica_atual(clean_title, "tocando", aba_url_atual)
                     if callable(musica_registrar_historico):
                         threading.Thread(target=musica_registrar_historico, args=(clean_title,), daemon=True).start()
 
@@ -418,37 +574,37 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
 
     if action == "youtube_video_started":
         video_title = data.get("title", "")
+        if callable(registrar_musica_atual):
+            registrar_musica_atual(video_title, "tocando", str(data.get("url") or aba_url_atual))
         if callable(musica_registrar_historico):
             threading.Thread(target=musica_registrar_historico, args=(video_title,), daemon=True).start()
         if musica_busca_query and callable(verificar_musica_autonoma):
             threading.Thread(target=verificar_musica_autonoma, args=(video_title,), daemon=True).start()
         print(f"▶️ [YouTube] Vídeo iniciado: {video_title}")
-        if callable(falar_com_lipsync):
-            falar_com_lipsync(f"Iniciando o vídeo {video_title}. Prepare a pipoca, Pedro.", "calma", 1)
         updates["handled"] = True
         return updates
 
     if action == "youtube_video_paused":
         video_title = data.get("title", "")
+        if callable(registrar_musica_atual):
+            registrar_musica_atual(video_title, "pausada", str(data.get("url") or aba_url_atual))
         print(f"⏸️ [YouTube] Vídeo pausado: {video_title}")
-        if callable(falar_com_lipsync):
-            falar_com_lipsync(f"O vídeo {video_title} foi pausado. Precisa de algo, Pedro?", "calma", 1)
         updates["handled"] = True
         return updates
 
     if action == "youtube_video_resumed":
         video_title = data.get("title", "")
+        if callable(registrar_musica_atual):
+            registrar_musica_atual(video_title, "tocando", str(data.get("url") or aba_url_atual))
         print(f"▶️ [YouTube] Vídeo retomado: {video_title}")
-        if callable(falar_com_lipsync):
-            falar_com_lipsync(f"Retomando o vídeo {video_title}.", "calma", 1)
         updates["handled"] = True
         return updates
 
     if action == "youtube_video_ended":
         video_title = data.get("title", "")
+        if callable(registrar_musica_atual):
+            registrar_musica_atual(video_title, "finalizada", str(data.get("url") or aba_url_atual))
         print(f"⏹️ [YouTube] Vídeo finalizado: {video_title}")
-        if callable(falar_com_lipsync):
-            falar_com_lipsync(f"O vídeo {video_title} terminou. O que faremos agora, Pedro?", "calma", 1)
         updates["handled"] = True
         return updates
 
@@ -456,8 +612,6 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
         query = data.get("query", "")
         title = data.get("title", "")
         print(f"✅ [YouTube] Resultado de busca clicado para '{query}': {title}")
-        if callable(falar_com_lipsync):
-            falar_com_lipsync(f"Abrindo o vídeo '{title}' do YouTube.", "calma", 1)
         updates["handled"] = True
         return updates
 

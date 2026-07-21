@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 import re
-from typing import Any
+import threading
+import time
+from typing import Any, Callable
 
 ANSI_RESET = "\033[0m"
 ANSI_CYAN = "\033[96m"
@@ -13,6 +16,67 @@ ANSI_GREEN = "\033[92m"
 ANSI_RED = "\033[91m"
 ANSI_BLUE = "\033[94m"
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def escutar_texto_terminal(
+    *,
+    estado_ativo: Callable[[], bool],
+    processar_texto: Callable[[str], Any],
+    stdin: Any,
+    input_fn: Callable[[str], str] = input,
+    raw_print: Callable[..., Any] = print,
+    print_lock: Any = None,
+    sleep_fn: Callable[[float], Any] = time.sleep,
+    log: Callable[[str], Any] = print,
+    deve_continuar: Callable[[], bool] | None = None,
+    entrada_permitida: Callable[[], bool] | None = None,
+) -> None:
+    """Lê o chat textual e entrega cada entrada ao mesmo cérebro da Laylay."""
+    if stdin is None:
+        return
+    try:
+        if not stdin.isatty():
+            return
+    except Exception:
+        return
+
+    continuar = deve_continuar if callable(deve_continuar) else (lambda: True)
+    while continuar():
+        try:
+            if not estado_ativo() or (
+                callable(entrada_permitida) and not bool(entrada_permitida())
+            ):
+                sleep_fn(0.25)
+                continue
+            gerenciador = print_lock if print_lock is not None else nullcontext()
+            with gerenciador:
+                raw_print("")
+                raw_print("💬 Você:")
+            texto = str(input_fn("> ") or "").strip()
+            if texto:
+                try:
+                    processamento = processar_texto(texto)
+                    if isinstance(processamento, threading.Thread):
+                        processamento.join(timeout=120.0)
+                    elif callable(getattr(processamento, "result", None)):
+                        processamento.result(timeout=120.0)
+                    # A voz trabalha em fila e pode começar logo após o cérebro
+                    # terminar. Esta pequena janela impede que o novo prompt
+                    # seja desenhado em cima da resposta da Laylay.
+                    sleep_fn(0.25)
+                    while (
+                        continuar()
+                        and callable(entrada_permitida)
+                        and not bool(entrada_permitida())
+                    ):
+                        sleep_fn(0.1)
+                except Exception as erro:
+                    log(f"⚠️ [CHAT] Falha ao processar texto digitado: {erro}")
+        except (EOFError, KeyboardInterrupt):
+            sleep_fn(0.5)
+        except Exception as erro:
+            log(f"⚠️ [CHAT] Erro no leitor de texto do terminal: {erro}")
+            sleep_fn(0.5)
 
 
 def usar_cores(stdout: Any = None) -> bool:
@@ -71,7 +135,7 @@ def formatar_mensagem_laylay(
     *,
     emocao: str = "calma",
     nivel: int | None = None,
-    fallback_fala: str = "Estou aqui, Pedro. Me fala o próximo passo.",
+    fallback_fala: str = "Não consegui encaixar isso direito. Me fala de outro jeito?",
     stdout: Any = None,
 ) -> str:
     texto_limpo = str(texto or "").strip() or fallback_fala
@@ -115,8 +179,44 @@ def should_log_message(text: str, *, log_mode: str = "limpo", log_verbose: bool 
         return True
 
     if log_mode in {"limpo", "essencial"}:
-        if any(token in lower for token in ["[ia] gerando resposta", "[roteador", "[janela:", "appopener carregado", "websocket server", "inicializando", "carregando o novo ouvido", "ouvido whisper carregado"]):
+        if any(token in lower for token in [
+            "[ia] gerando resposta", "[roteador", "[janela:", "[iot:inicio]",
+            "[iot:seguranca]", "[iot:resultado]", "[ouvido]", "[ouvido:",
+            "[você disse]", "[voce disse]", "appopener carregado", "websocket server",
+            "[voz pessoal]",
+            "inicializando", "carregando o novo ouvido", "ouvido whisper carregado",
+        ]):
             return True
         return False
 
     return True
+
+
+def criar_print_filtrado(
+    *,
+    should_log: Callable[[str], bool],
+    raw_print: Callable[..., Any],
+    print_lock: Any,
+) -> Callable[..., Any]:
+    """Cria o print global filtrado sem espalhar a política de terminal."""
+
+    def print_filtrado(*args: Any, **kwargs: Any) -> None:
+        if not args:
+            return
+        if should_log(" ".join(str(arg) for arg in args)):
+            with print_lock:
+                raw_print(*args, **kwargs)
+
+    return print_filtrado
+
+
+def tratar_excecao_thread(
+    args: Any,
+    *,
+    log: Callable[..., Any],
+    traceback_mod: Any,
+) -> None:
+    """Registra falha de thread sem derrubar os demais serviços."""
+    log(f"❌ [THREAD CRASH] {args.exc_type.__name__} em {args.thread.name}: {args.exc_value}")
+    traceback_mod.print_exception(args.exc_type, args.exc_value, args.exc_traceback)
+    log("🔄 Laylay continua rodando apesar do erro...")

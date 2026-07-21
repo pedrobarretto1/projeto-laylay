@@ -11,8 +11,18 @@ class ContextoPaginas:
         self.paginas: Dict[str, Dict[str, Any]] = {}
         self.cache: Dict[str, Any] = {"versao": -1, "texto": ""}
         self.versao = 0
+        self.ultimo_conteudo = ""
         self.limite_paginas = int(limite_paginas)
         self.limite_contexto_chars = int(limite_contexto_chars)
+
+    def definir_ultimo_conteudo(self, conteudo: str) -> None:
+        self.ultimo_conteudo = str(conteudo or "")
+
+    def atual(self) -> Dict[str, Any]:
+        if not self.paginas:
+            return {}
+        url, info = max(self.paginas.items(), key=lambda item: float(item[1].get("ts") or 0.0))
+        return {"url": url, **dict(info or {})}
 
     def armazenar(self, url: str, title: str, content: str) -> None:
         agora = time.time()

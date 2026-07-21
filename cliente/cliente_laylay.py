@@ -13,9 +13,7 @@ import psutil
 import pygetwindow as gw
 import pyautogui
 import pyperclip
-from comtypes import CLSCTX_ALL
-from ctypes import cast, POINTER
-from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+from pycaw.pycaw import AudioUtilities
 from AppOpener import open as open_app, close as close_app
 
 # ====================== PROTEÇÃO ANTI-ANTIVÍRUS ======================
@@ -66,6 +64,39 @@ auto_instalar()
 
 import websockets # Importado aqui após garantir instalação
 
+
+class WebSocketCorrelacionado:
+    """Anexa o requestId e o estado final a todas as respostas do PC B."""
+
+    def __init__(self, websocket):
+        self._websocket = websocket
+        self.request_id = None
+
+    def __aiter__(self):
+        return self._websocket.__aiter__()
+
+    async def send(self, mensagem):
+        try:
+            payload = json.loads(mensagem) if isinstance(mensagem, str) else dict(mensagem)
+            if payload.get("type") in {"pc_b_status", "pc_b_screenshot"}:
+                payload.setdefault("requestId", self.request_id)
+            if payload.get("type") == "pc_b_status":
+                payload.setdefault("final", True)
+            mensagem = json.dumps(payload)
+        except Exception:
+            pass
+        return await self._websocket.send(mensagem)
+
+
+def mover_para_lixeira_pcb(caminho):
+    """Move para uma lixeira reversível do cliente em vez de apagar definitivamente."""
+    raiz = os.path.join(os.path.expanduser("~"), ".laylay", "lixeira_pc_b")
+    identificador = f"{int(time.time())}_{random.randint(100000, 999999)}"
+    destino = os.path.join(raiz, identificador, os.path.basename(caminho))
+    os.makedirs(os.path.dirname(destino), exist_ok=False)
+    shutil.move(caminho, destino)
+    return destino
+
 # Teclas de midia do Windows (para controle do YouTube)
 VK_MEDIA_PLAY_PAUSE = 0xB3
 VK_MEDIA_NEXT_TRACK = 0xB0
@@ -90,8 +121,11 @@ async def laylay_client(ip_cerebro):
     while True:
         try:
             async for websocket in websockets.connect(uri):
+                websocket = WebSocketCorrelacionado(websocket)
                 # Identifica este cliente como PC B logo ao conectar e envia token de segurança
-                TOKEN_SECRETO = "Frankzane12"
+                TOKEN_SECRETO = os.environ.get("LAYLAY_PC_B_TOKEN", "").strip()
+                if not TOKEN_SECRETO:
+                    raise RuntimeError("Defina LAYLAY_PC_B_TOKEN com o mesmo valor nos dois PCs")
                 await websocket.send(json.dumps({
                     "type": "pc_b_client",
                     "token": TOKEN_SECRETO,
@@ -103,6 +137,7 @@ async def laylay_client(ip_cerebro):
                 try:
                     async for message in websocket:
                         dados = json.loads(message)
+                        websocket.request_id = dados.get("requestId")
                         acao = dados.get("action")
 
                         # --- ABRIR APP ---
@@ -366,10 +401,24 @@ async def laylay_client(ip_cerebro):
                             pergunta = dados.get("pergunta", "O que está acontecendo nessa tela?")
                             print(f"[PC B] 📸 Capturando tela para análise remota...")
                             try:
-                                from PIL import Image as _PILImg
+                                from PIL import Image as _PILImg, ImageFilter as _PILFilter
                                 import io as _sio, base64 as _b64
 
+                                _titulo = str(getattr(gw.getActiveWindow(), "title", "") or "").lower()
+                                _sensiveis = ("senha", "password", "login", "pagamento", "payment", "checkout", "banco", "bank", "whatsapp", "telegram")
+                                if dados.get("bloquearContextoSensivel") and any(x in _titulo for x in _sensiveis):
+                                    await websocket.send(json.dumps({
+                                        "type": "pc_b_status", "status": "error", "final": True,
+                                        "action": acao, "sensitiveContext": True,
+                                        "error": "Captura bloqueada em contexto sensível."
+                                    }))
+                                    continue
+
                                 _img = pyautogui.screenshot()
+                                _largura, _altura = _img.size
+                                _caixa = (int(_largura * 0.72), int(_altura * 0.68), _largura, _altura)
+                                _canto = _img.crop(_caixa).filter(_PILFilter.GaussianBlur(radius=18))
+                                _img.paste(_canto, _caixa)
                                 _img.thumbnail((1280, 720), _PILImg.LANCZOS)
                                 _buf = _sio.BytesIO()
                                 _img.save(_buf, format="JPEG", quality=60)
@@ -380,6 +429,7 @@ async def laylay_client(ip_cerebro):
                                     "imagem_b64": _img_b64,
                                     "pergunta": pergunta
                                 }))
+                                await websocket.send(json.dumps({"type": "pc_b_status", "status": "success", "action": acao}))
                                 print(f"[PC B] ✅ Screenshot enviado ao Cérebro ({len(_img_b64)//1024}KB)")
                             except Exception as e_scr:
                                 print(f"[PC B] ❌ Erro ao capturar tela: {e_scr}")
@@ -498,10 +548,7 @@ async def laylay_client(ip_cerebro):
                             print(f"[PC B] 🗑️ Deletando item: {vitima_caminho}")
                             try:
                                 if os.path.exists(vitima_caminho):
-                                    if os.path.isdir(vitima_caminho):
-                                        shutil.rmtree(vitima_caminho)
-                                    else:
-                                        os.remove(vitima_caminho)
+                                    mover_para_lixeira_pcb(vitima_caminho)
                                     await websocket.send(json.dumps({"type": "pc_b_status", "status": "success", "action": acao, "caminho": vitima_caminho}))
                                 else:
                                     await websocket.send(json.dumps({"type": "pc_b_status", "status": "error", "action": acao, "error": "Arquivo ou pasta não encontrado."}))

@@ -7,14 +7,14 @@ callbacks do cerebro principal para continuar conectado a mesma mente.
 from __future__ import annotations
 
 import random
+import threading
 from typing import Any, Callable, Dict
 
 from mente_laylay.memoria_mental.playlist_mental import (
     add_to_playlist_url as add_to_playlist_url_mental,
     detectar_playlist_nome_direto,
-    ensure_playlists_file,
+    extrair_nome_playlist,
     limpar_nome_playlist,
-    list_playlist_urls,
     listar_playlists_salvas,
     playlist_item_at,
     playlist_item_label,
@@ -23,6 +23,8 @@ from mente_laylay.memoria_mental.playlist_mental import (
     playlist_primeira_url,
     playlists_load,
     playlists_save,
+    pedido_lista_geral_playlist,
+    playlist_nome_explicito_na_frase,
     resolver_nome_playlist_contextual,
     yt_clean_title,
     yt_clean_url,
@@ -39,9 +41,11 @@ class PlaylistRuntime:
         ultima_playlist_getter: Callable[[], str],
         ultima_playlist_setter: Callable[[str], None] | None = None,
         playlist_state: Dict[str, Any] | None = None,
-        indice_setter: Callable[[int], None] | None = None,
         youtube_play: Callable[[str], Any] | None = None,
         solicitar_aba_ativa: Callable[..., dict] | None = None,
+        normalizar_texto: Callable[[str], str] | None = None,
+        normalizar_texto_com_apelidos: Callable[[str], str] | None = None,
+        sincronizar_playlists_laylay: Callable[[], Any] | None = None,
         log: Callable[[str], None] | None = None,
     ) -> None:
         self.state_file = state_file
@@ -50,10 +54,13 @@ class PlaylistRuntime:
         self.ultima_playlist_getter = ultima_playlist_getter
         self.ultima_playlist_setter = ultima_playlist_setter
         self.playlist_state = playlist_state if isinstance(playlist_state, dict) else {}
-        self.indice_setter = indice_setter
         self.youtube_play = youtube_play
         self.solicitar_aba_ativa = solicitar_aba_ativa
+        self.normalizar_texto = normalizar_texto
+        self.normalizar_texto_com_apelidos = normalizar_texto_com_apelidos
+        self.sincronizar_playlists_laylay = sincronizar_playlists_laylay
         self.log = log or print
+        self._state_lock = threading.RLock()
 
     def _ultima_playlist(self) -> str:
         try:
@@ -65,13 +72,6 @@ class PlaylistRuntime:
         if callable(self.ultima_playlist_setter):
             try:
                 self.ultima_playlist_setter(valor)
-            except Exception:
-                pass
-
-    def _set_indice(self, valor: int) -> None:
-        if callable(self.indice_setter):
-            try:
-                self.indice_setter(int(valor or 0))
             except Exception:
                 pass
 
@@ -94,7 +94,11 @@ class PlaylistRuntime:
         self.log(f"[PLAYLIST] {prefixo_log} (Strong Reuse): {info.get('titulo') or url} | Canal: {info.get('canal') or ''}")
         if callable(self.youtube_play):
             try:
-                retorno = self.youtube_play(url)
+                tab_id = self.playlist_state.get("tab_id")
+                try:
+                    retorno = self.youtube_play(url, target_tab_id=tab_id if isinstance(tab_id, int) else None)
+                except TypeError:
+                    retorno = self.youtube_play(url)
             except Exception as exc:
                 self.log(f"⚠️ [PLAYLIST:EXECUCAO] falha ao enviar faixa: {type(exc).__name__}: {exc}")
                 return False
@@ -108,10 +112,12 @@ class PlaylistRuntime:
     def _limpar_estado_reproducao(self) -> None:
         self.playlist_state["name"] = ""
         self.playlist_state["index"] = 0
-        self._set_indice(0)
         self.playlist_state.pop("shuffle", None)
         self.playlist_state.pop("shuffle_queue", None)
         self.playlist_state.pop("shuffle_index", None)
+        self.playlist_state.pop("tab_id", None)
+        self.playlist_state.pop("last_ended_event", None)
+        self.playlist_state.pop("last_ended_ts", None)
 
     def _sync_cache(self, data: Dict[str, Any] | None) -> Dict[str, Any]:
         data = data if isinstance(data, dict) else {}
@@ -124,6 +130,9 @@ class PlaylistRuntime:
 
     def load(self) -> Dict[str, Any]:
         data = playlists_load(self.state_file, self.legacy_file)
+        if not data and isinstance(self.cache, dict) and self.cache:
+            self.log("⚠️ [PLAYLISTS] leitura vazia; mantendo o último cache válido")
+            return self.cache
         return self._sync_cache(data)
 
     def save(self, data: Dict[str, Any]) -> bool:
@@ -132,11 +141,8 @@ class PlaylistRuntime:
             self._sync_cache(data or {})
         return bool(ok)
 
-    def ensure_file(self) -> bool:
-        return bool(ensure_playlists_file(self.state_file, self.legacy_file))
-
     def resolver_nome(self, nome: str) -> str:
-        data = self.cache if isinstance(self.cache, dict) and self.cache else self.load()
+        data = self.load()
         return resolver_nome_playlist_contextual(nome, data, self._ultima_playlist())
 
     def detectar_nome_direto(
@@ -145,12 +151,59 @@ class PlaylistRuntime:
         *,
         normalizar_texto_cb: Callable[[str], str] | None = None,
     ) -> str:
-        data = self.cache if isinstance(self.cache, dict) and self.cache else self.load()
+        data = self.load()
         return detectar_playlist_nome_direto(
             texto,
             data,
             normalizar_texto_cb=normalizar_texto_cb,
         )
+
+    def nome_explicito_na_frase(self, texto: str) -> bool:
+        return playlist_nome_explicito_na_frase(
+            texto,
+            normalizar_texto_cb=self.normalizar_texto_com_apelidos,
+        )
+
+    def extrair_nome(self, texto: str) -> str:
+        nome = extrair_nome_playlist(
+            texto,
+            normalizar_texto_cb=self.normalizar_texto_com_apelidos,
+        )
+        self.log(f"[DEBUG] Nome extraído da playlist: {nome}")
+        return nome
+
+    def pedido_lista_geral(self, texto_original: str, params: dict) -> bool:
+        return pedido_lista_geral_playlist(
+            texto_original,
+            params,
+            normalizar_texto_cb=self.normalizar_texto_com_apelidos,
+        )
+
+    def detectar_nome_direto_contextual(self, texto: str) -> str:
+        return self.detectar_nome_direto(
+            texto,
+            normalizar_texto_cb=self.normalizar_texto_com_apelidos,
+        )
+
+    def mover_item_contextual(
+        self,
+        origem: str,
+        destino: str,
+        musica: str = "",
+    ) -> dict:
+        return self.mover_item(
+            origem,
+            destino,
+            musica,
+            normalizar_texto_cb=self.normalizar_texto,
+        )
+
+    def carregar_para_memoria(self) -> Dict[str, Any]:
+        playlists = self.load()
+        if callable(self.sincronizar_playlists_laylay):
+            self.sincronizar_playlists_laylay()
+        self.log(f"🎵 [PLAYLISTS] Playlists carregadas: {list(playlists.keys())}")
+        return playlists
 
     def list_content(self, nome_playlist: str) -> dict:
         nm = self.resolver_nome(nome_playlist or "")
@@ -167,9 +220,6 @@ class PlaylistRuntime:
                 if titulo:
                     titulos.append(yt_clean_title(titulo) or titulo)
         return {"ok": True, "name": nm, "total": len(lst), "last_titles": [t for t in titulos[-3:] if t]}
-
-    def list_urls(self, name: str) -> list:
-        return list_playlist_urls(name, self.load())
 
     def listar_salvas(self) -> str:
         return listar_playlists_salvas(self.load())
@@ -214,17 +264,6 @@ class PlaylistRuntime:
         except Exception:
             pass
         return res if isinstance(res, dict) else {"ok": bool(res)}
-
-    def add_from_active_tab(self, playlist_name: str) -> bool:
-        name = str(playlist_name or "").strip().lower()
-        if not name or not callable(self.solicitar_aba_ativa):
-            return False
-        info = self.solicitar_aba_ativa(timeout_s=2.0)
-        url = str(info.get("url") or "")
-        title = str(info.get("title") or "")
-        canal = str(info.get("canal") or "")
-        res = self.add_url(name, url, title, canal)
-        return bool(isinstance(res, dict) and res.get("ok"))
 
     def add_and_verify(self, nome_playlist: str, url: str, titulo: str, canal: str = "") -> bool:
         name = self.resolver_nome(nome_playlist)
@@ -360,15 +399,19 @@ class PlaylistRuntime:
         self.playlist_state["shuffle"] = True
         self.playlist_state["shuffle_queue"] = queue
         self.playlist_state["shuffle_index"] = 0
-        self._set_indice(0)
         first = queue[0]
         info = self._item_info(first)
         info["len"] = len(queue)
         return info
 
     def avancar_proxima(self) -> bool:
+        with self._state_lock:
+            return self._avancar_proxima_sem_lock()
+
+    def _avancar_proxima_sem_lock(self) -> bool:
         nm = str(self.playlist_state.get("name") or "")
         if not nm:
+            self.playlist_state["last_advance_status"] = "inativa"
             return False
         if self.playlist_state.get("shuffle") and isinstance(self.playlist_state.get("shuffle_queue"), list):
             queue = self.playlist_state.get("shuffle_queue") or []
@@ -376,27 +419,45 @@ class PlaylistRuntime:
             if idx >= len(queue):
                 self.log(f"🎵 Playlist '{nm}' terminou")
                 self._limpar_estado_reproducao()
+                self.playlist_state["last_advance_status"] = "fim"
                 return False
+            idx_anterior = int(self.playlist_state.get("shuffle_index") or 0)
             self.playlist_state["shuffle_index"] = idx
-            self._set_indice(idx)
-            return self._abrir_youtube_item(queue[idx], prefixo_log="Abrindo")
+            ok = self._abrir_youtube_item(queue[idx], prefixo_log="Abrindo")
+            if not ok:
+                self.playlist_state["shuffle_index"] = idx_anterior
+                self.playlist_state["last_advance_status"] = "falha_execucao"
+                return False
+            self.playlist_state["last_advance_status"] = "ok"
+            return True
 
         data = self.load()
         lst = data.get(nm)
         if not isinstance(lst, list) or not lst:
+            self.playlist_state["last_advance_status"] = "playlist_invalida"
             return False
-        idx = int(self.playlist_state.get("index") or 0) + 1
+        idx_anterior = int(self.playlist_state.get("index") or 0)
+        idx = idx_anterior + 1
         if idx >= len(lst):
             self.log(f"🎵 Playlist '{nm}' terminou")
             self.playlist_state["name"] = ""
             self.playlist_state["index"] = 0
-            self._set_indice(0)
+            self.playlist_state["last_advance_status"] = "fim"
             return False
         self.playlist_state["index"] = idx
-        self._set_indice(idx)
-        return self._abrir_youtube_item(lst[idx], prefixo_log="Abrindo")
+        ok = self._abrir_youtube_item(lst[idx], prefixo_log="Abrindo")
+        if not ok:
+            self.playlist_state["index"] = idx_anterior
+            self.playlist_state["last_advance_status"] = "falha_execucao"
+            return False
+        self.playlist_state["last_advance_status"] = "ok"
+        return True
 
     def voltar_anterior(self) -> bool:
+        with self._state_lock:
+            return self._voltar_anterior_sem_lock()
+
+    def _voltar_anterior_sem_lock(self) -> bool:
         nm = str(self.playlist_state.get("name") or "")
         if not nm:
             return False
@@ -407,8 +468,10 @@ class PlaylistRuntime:
                 return False
             idx = idx_atual - 1
             self.playlist_state["shuffle_index"] = idx
-            self._set_indice(idx)
-            return self._abrir_youtube_item(queue[idx], prefixo_log="Voltando")
+            ok = self._abrir_youtube_item(queue[idx], prefixo_log="Voltando")
+            if not ok:
+                self.playlist_state["shuffle_index"] = idx_atual
+            return ok
 
         data = self.load()
         lst = data.get(nm)
@@ -419,31 +482,43 @@ class PlaylistRuntime:
             return False
         idx = idx_atual - 1
         self.playlist_state["index"] = idx
-        self._set_indice(idx)
-        return self._abrir_youtube_item(lst[idx], prefixo_log="Voltando")
+        ok = self._abrir_youtube_item(lst[idx], prefixo_log="Voltando")
+        if not ok:
+            self.playlist_state["index"] = idx_atual
+        return ok
 
     def play(self, name: str) -> bool:
-        nm = self.resolver_nome(name)
+        with self._state_lock:
+            return self._play_sem_lock(name)
+
+    def _play_sem_lock(self, name: str) -> bool:
+        data = self.load()
+        nm = resolver_nome_playlist_contextual(name, data, self._ultima_playlist())
         self.log(f"🎵 [PLAYLIST:PLAY] pedido={name!r} resolvida={nm!r}")
         if not nm:
             self.log("⚠️ [PLAYLIST:PLAY] nome não corresponde a uma playlist salva")
             return False
-        data = self.load()
         lst = data.get(nm)
         if not isinstance(lst, list) or not lst:
             self.log(f"⚠️ Playlist vazia ou inexistente: {nm}")
             return False
         self.log(f"🎵 [PLAYLIST:PLAY] {nm} possui {len(lst)} faixa(s); abrindo a primeira")
-        self._set_ultima_playlist(nm)
+        estado_anterior = dict(self.playlist_state)
         self.playlist_state["name"] = nm
         self.playlist_state["index"] = 0
-        self._set_indice(0)
         self.playlist_state["user_intervened"] = False
         self.playlist_state["last_url"] = ""
         self.playlist_state.pop("shuffle", None)
         self.playlist_state.pop("shuffle_queue", None)
         self.playlist_state.pop("shuffle_index", None)
-        return self._abrir_youtube_item(lst[0], prefixo_log="Abrindo")
+        ok = self._abrir_youtube_item(lst[0], prefixo_log="Abrindo")
+        if not ok:
+            self.playlist_state.clear()
+            self.playlist_state.update(estado_anterior)
+            return False
+        self._set_ultima_playlist(nm)
+        self.playlist_state["last_advance_status"] = "ok"
+        return True
 
 
 def criar_playlist_runtime(**kwargs: Any) -> PlaylistRuntime:

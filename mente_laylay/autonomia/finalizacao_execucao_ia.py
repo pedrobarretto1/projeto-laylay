@@ -26,6 +26,7 @@ def finalizar_execucao_resposta_ia(
     enviar_mensagem = _get(ctx, "enviar_mensagem")
     limpar_resposta_da_ia = _get(ctx, "limpar_resposta_da_ia")
     falar_com_lipsync = _get(ctx, "falar_com_lipsync")
+    verificar_fala_turno = _get(ctx, "verificar_fala_turno")
     salvar_memoria = _get(ctx, "salvar_memoria")
     registrar_autoaprimoramento = _get(ctx, "_registrar_autoaprimoramento")
     registrar_autocorrecao_virtual = _get(ctx, "_registrar_autocorrecao_virtual")
@@ -69,7 +70,8 @@ def finalizar_execucao_resposta_ia(
                 f"O erro é: {erros_txt}. "
                 f"Isso já é um problema persistente do Windows (permissão, arquivo em uso, etc). "
                 f"Diga ao Pedro de forma direta, sem novas tentativas, que você esgotou as opções "
-                f"e que é um problema do sistema. Seja curta, direta e com o seu jeito debochado. "
+                f"e que é um problema do sistema. Diga explicitamente que o pedido não foi realizado. "
+                f"Seja curta, direta e com o seu jeito debochado. "
                 f"NÃO gere mais comandos. Não tente de novo. Só avise."
             )
             msg_desistencia += "\n\n[RESPOSTA OBRIGATÓRIA EM JSON: {\"fala\": \"...\", \"comandos\": []}]"
@@ -93,7 +95,7 @@ def finalizar_execucao_resposta_ia(
             msg_feedback = (
                 f"System: FALHA NA EXECUÇÃO (tentativa {tentativas}/{max_tentativas}). "
                 f"As seguintes ações falharam: {erros_txt}. "
-                f"O usuário está aguardando. Avise sobre a falha de forma natural e "
+                f"O usuário está aguardando. Diga explicitamente que o pedido não foi realizado e avise sobre a falha de forma natural e "
                 f"com o seu jeito debochado. Não repita o que já disse antes. "
                 f"Peça desculpas curtas e diga o que aconteceu ou pergunte o que ele quer fazer agora."
             )
@@ -131,6 +133,12 @@ def finalizar_execucao_resposta_ia(
                 falhas_consecutivas.pop(k, None)
 
         if fala_limpa_original and not comandos and not fala_ja_emitida and not fala_salva_no_inicio and not fala_emitida_por_acao:
+            if callable(verificar_fala_turno):
+                verificacao = verificar_fala_turno(fala_limpa_original, origem="ia_final")
+                if isinstance(verificacao, dict):
+                    if not verificacao.get("aceita", True):
+                        return
+                    fala_limpa_original = str(verificacao.get("fala") or fala_limpa_original).strip()
             print(f"Laylay: {fala_limpa_original}")
             if isinstance(messages, list):
                 messages.append({"role": "assistant", "content": fala_limpa_original})

@@ -5,47 +5,70 @@ from __future__ import annotations
 import ast
 import json
 import re
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from mente_laylay.memoria_mental.memoria_confiavel import preparar_aprendizados_confirmados
+from mente_laylay.autonomia.porteiro_acoes import texto_tem_comando_explicito
+from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+from mente_laylay.cognicao.leitura_semantica_turno import normalizar_leitura_semantica
+from mente_laylay.personalidade.higiene_fala import remover_residuos_operacionais
+
+
+_ACOES_QUE_EXIGEM_PEDIDO_ATUAL = {
+    "open_url", "open_app", "close_app", "close_tab", "close_specific_tab",
+    "youtube_search", "youtube_play", "youtube_control",
+    "capturar_tela", "organizar_desktop", "maximize_window",
+    "criar_pasta", "criar_arquivo", "deletar_item", "delete_item",
+    "ligar", "desligar", "alternar", "agendar_lembrete",
+    "ler_emails", "ler_emails_urgentes", "sincronizar_emails",
+    "ler_notificacoes", "silenciar_notificacoes", "ativar_notificacoes",
+    "fechar_abas_paradas", "lock_pc", "tocar_playlist",
+    "adicionar_playlist", "adicionar_a_playlist",
+    "listar_agendamentos", "cancelar_agendamento",
+}
+
+
+def filtrar_comandos_sem_pedido_atual(
+    texto_usuario: str,
+    comandos: List[dict],
+    *,
+    tipo_interacao: str = "",
+) -> Tuple[List[dict], List[str]]:
+    """Impede que conversa seja convertida em ação prática pela saída da IA."""
+    lista = [comando for comando in (comandos or []) if isinstance(comando, dict)]
+    if not lista:
+        return lista, []
+    decisao = classificar_modalidade_turno(
+        texto_usuario,
+        texto_tem_comando_explicito=texto_tem_comando_explicito,
+    )
+    if bool(decisao.get("autoriza_execucao")):
+        return lista, []
+
+    permitidos: List[dict] = []
+    bloqueados: List[str] = []
+    for comando in lista:
+        acao = str(comando.get("acao") or comando.get("action") or "").strip().casefold()
+        if acao in _ACOES_QUE_EXIGEM_PEDIDO_ATUAL:
+            bloqueados.append(acao)
+        else:
+            permitidos.append(comando)
+    return permitidos, bloqueados
 
 
 def _normalizar_fala_cb(
     texto: str,
     limpar_texto_fala_cb: Optional[Callable[[str], str]] = None,
-    fallback_fala: str = "Estou aqui, Pedro. Me fala o próximo passo.",
+    fallback_fala: str = "Não consegui encaixar isso direito. Me fala de outro jeito?",
 ) -> str:
     if callable(limpar_texto_fala_cb):
         try:
             texto = limpar_texto_fala_cb(texto)
         except Exception:
             pass
+    texto = remover_residuos_operacionais(texto)
     texto = re.sub(r"\s+", " ", str(texto or "")).strip()
     return texto or fallback_fala
-
-
-def limpar_fala_final_legada(
-    texto_completo: str,
-    fallback_fala: str = "Estou aqui, Pedro. Me fala o próximo passo.",
-) -> str:
-    """Preserva a tesoura textual antiga para integrações de compatibilidade."""
-    texto = str(texto_completo or "")
-    match = re.search(r"Laylay:\s*(.*)", texto, re.IGNORECASE | re.DOTALL)
-
-    if match:
-        fala = match.group(1).strip()
-    else:
-        fala = re.sub(
-            r"\[PENSAMENTO\]:.*?\[COMANDO\]:.*?\n",
-            "",
-            texto,
-            flags=re.DOTALL | re.IGNORECASE,
-        )
-        fala = re.sub(r"\[.*?\]", "", fala, flags=re.IGNORECASE | re.DOTALL)
-        fala = re.sub(r"^.*?:", "", fala, flags=re.IGNORECASE)
-        fala = fala.strip()
-
-    if not fala or len(fala) < 3:
-        fala = fallback_fala
-    return fala
 
 
 def _extrair_campo_textual_json_like(texto: str, campo: str) -> str:
@@ -89,7 +112,7 @@ def _extrair_campo_textual_json_like(texto: str, campo: str) -> str:
 def limpar_resposta_da_ia(
     resposta_bruta: Any,
     limpar_texto_fala_cb: Optional[Callable[[str], str]] = None,
-    fallback_fala: str = "Estou aqui, Pedro. Me fala o próximo passo.",
+    fallback_fala: str = "Não consegui encaixar isso direito. Me fala de outro jeito?",
 ) -> Tuple[str, List[Dict[str, Any]]]:
     """Separa fala e comandos, mesmo quando a saída da IA vem malformada."""
     if isinstance(resposta_bruta, tuple) and len(resposta_bruta) == 2:
@@ -102,6 +125,7 @@ def limpar_resposta_da_ia(
 
     texto_pre = re.sub(r"^```(?:json)?\s*", "", original, flags=re.IGNORECASE)
     texto_pre = re.sub(r"\s*```$", "", texto_pre, flags=re.IGNORECASE).strip()
+    json_invalido = False
 
     try:
         dados = json.loads(texto_pre)
@@ -116,7 +140,10 @@ def limpar_resposta_da_ia(
                     fallback_fala,
                 ), comandos_finais
     except Exception:
-        pass
+        json_invalido = bool(
+            texto_pre.startswith(("{", "["))
+            or re.search(r'(?i)["\']?(?:fala|comandos|aprendizados?|humor)["\']?\s*:', texto_pre)
+        )
 
     try:
         match_cmds = re.search(r'["\']?comandos["\']?\s*:\s*(\[.*?\])', texto_pre, re.IGNORECASE | re.DOTALL)
@@ -183,6 +210,9 @@ def limpar_resposta_da_ia(
             fala_final = txt_limpo_de_json
 
     if not comandos_finais:
+        if json_invalido:
+            print("⚠️ [IA] JSON inválido bloqueado antes da fala.")
+            return _normalizar_fala_cb("", limpar_texto_fala_cb, fallback_fala), []
         if fala_final:
             if "{" in original or "comandos" in original.lower() or "intencao" in original.lower():
                 print(f"⚠️ [IA] Resposta malformada tratada como fala: {fala_final[:60]}...")
@@ -207,8 +237,10 @@ def _saida_ia_parece_malformada(texto: str) -> bool:
         return False
     texto_json = re.sub(r"^```(?:json)?\s*", "", s, flags=re.IGNORECASE)
     texto_json = re.sub(r"\s*```$", "", texto_json, flags=re.IGNORECASE).strip()
+    parseou_json = False
     try:
         dados = json.loads(texto_json)
+        parseou_json = True
         if (
             isinstance(dados, dict)
             and isinstance(dados.get("fala", ""), str)
@@ -217,6 +249,11 @@ def _saida_ia_parece_malformada(texto: str) -> bool:
             return False
     except Exception:
         pass
+    if not parseou_json and (
+        texto_json.startswith(("{", "["))
+        or re.search(r'(?i)["\']?(?:fala|comandos|aprendizados?|humor)["\']?\s*:', texto_json)
+    ):
+        return True
     if re.search(r"(?i)\[EXEC:.*?\]", s):
         return True
     if re.search(r"(?i)\b(open_url|youtube_search|youtube_play|close_tab|close_specific_tab|open_app|close_app)\b", s):
@@ -311,30 +348,32 @@ def extrair_aprendizados_da_ia(resposta_bruta: Any) -> List[Any]:
     return aprendizados
 
 
-def salvar_aprendizados_da_ia(resposta_bruta: Any, memoria_sqlite: Any) -> List[Any]:
+def salvar_aprendizados_da_ia(
+    resposta_bruta: Any,
+    memoria_sqlite: Any,
+    texto_usuario: str = "",
+) -> List[Any]:
     aprendizados = extrair_aprendizados_da_ia(resposta_bruta)
     if not aprendizados:
         return []
+    confirmados = preparar_aprendizados_confirmados(aprendizados, texto_usuario)
+    rejeitados = len(aprendizados) - len(confirmados)
+    if rejeitados:
+        print(
+            f"🧠 [MEMÓRIA:FILTRO] {rejeitados} aprendizado(s) sem evidência do usuário foram descartados."
+        )
+    if not confirmados:
+        return []
     try:
-        salvos_semanticos = memoria_sqlite.salvar_aprendizados_semanticos(aprendizados)
-        fatos: List[str] = []
-        for item in aprendizados:
-            if isinstance(item, dict):
-                gatilho = str(item.get("gatilho") or "").strip()
-                valor = str(item.get("valor") or item.get("url") or item.get("link") or "").strip()
-                regra = str(item.get("regra") or item.get("texto") or "").strip()
-                resumo = " | ".join(p for p in [gatilho, valor, regra] if p)
-                if resumo:
-                    fatos.append(resumo)
-            else:
-                fatos.append(str(item).strip())
-        if fatos:
-            memoria_sqlite.registrar_fatos(fatos, categoria="aprendizado")
-        print(f"🧠 [MEMÓRIA] {len(salvos_semanticos) or len(aprendizados)} aprendizado(s) salvo(s): {aprendizados[:2]}")
+        salvos_semanticos = memoria_sqlite.salvar_aprendizados_semanticos(confirmados)
+        print(
+            f"🧠 [MEMÓRIA] {len(salvos_semanticos)} aprendizado(s) confirmado(s) salvo(s): "
+            f"{confirmados[:2]}"
+        )
     except Exception as e:
         print(f"⚠️ [MEMÓRIA] Falha ao salvar aprendizados da IA: {e}")
         return []
-    return aprendizados
+    return confirmados
 
 
 def extrair_tipo_interacao_da_ia(resposta_bruta: Any) -> str:
@@ -360,6 +399,55 @@ def extrair_tipo_interacao_da_ia(resposta_bruta: Any) -> str:
     except Exception:
         pass
     return ""
+
+
+def extrair_leitura_semantica_da_ia(resposta_bruta: Any, texto_usuario: str) -> Dict[str, Any]:
+    """Extrai a compreensão produzida junto da fala, sem interpretar comandos."""
+    if isinstance(resposta_bruta, dict):
+        dados = resposta_bruta
+    else:
+        bruto = str(resposta_bruta or "").strip()
+        bruto = re.sub(r"^```(?:json)?\s*", "", bruto, flags=re.IGNORECASE)
+        bruto = re.sub(r"\s*```$", "", bruto, flags=re.IGNORECASE).strip()
+        try:
+            dados = json.loads(bruto)
+        except Exception:
+            return {}
+    if not isinstance(dados, dict):
+        return {}
+    valor = dados.get("leitura_turno")
+    if isinstance(valor, list):
+        tipos = [str(item or "").strip().lower() for item in valor if str(item or "").strip()]
+        if not tipos:
+            return {}
+        tipos_pergunta = {"pergunta", "pergunta_opiniao", "pergunta_capacidade"}
+        if len(tipos) > 1:
+            modalidade = "misto"
+        elif tipos[0] == "pedido_acao":
+            modalidade = "comando"
+        elif tipos[0] in tipos_pergunta:
+            modalidade = "pergunta"
+        elif tipos[0] in {"correcao", "recusa", "confirmacao", "reacao", "deliberacao"}:
+            modalidade = tipos[0]
+        else:
+            modalidade = "conversa"
+        valor = {
+            "atos": [
+                {"tipo": tipo, "falante": "pedro", "confianca": 0.82}
+                for tipo in tipos
+            ],
+            "modalidade_geral": modalidade,
+            "ato_principal": tipos[-1],
+            "operacional": {"pedido_real": "pedido_acao" in tipos},
+            "confianca": 0.82,
+        }
+    if not isinstance(valor, dict):
+        return {}
+    return normalizar_leitura_semantica(
+        valor,
+        texto=texto_usuario,
+        origem="llm_principal",
+    )
 
 
 def preparar_resposta_para_execucao(
@@ -406,6 +494,7 @@ def preparar_resposta_para_execucao(
         fallback_fala=fallback_fala,
     )
     tipo_interacao = extrair_tipo_interacao_da_ia(bot_raw)
+    leitura_semantica = extrair_leitura_semantica_da_ia(bot_raw, texto)
     if callable(construir_fala_cb):
         fala_limpa = construir_fala_cb(
             fala_limpa,
@@ -417,7 +506,7 @@ def preparar_resposta_para_execucao(
         f"✨ [IA] Fala limpa: '{fala_limpa}' | "
         f"Tipo: {tipo_interacao or 'legado'} | Comandos: {len(comandos)}"
     )
-    aprendizados = salvar_aprendizados_da_ia(bot_raw, memoria_sqlite)
+    aprendizados = salvar_aprendizados_da_ia(bot_raw, memoria_sqlite, texto)
 
     if tipo_interacao in {"aprendizado", "conversa"} and comandos:
         acoes_bloqueadas = [
@@ -431,11 +520,23 @@ def preparar_resposta_para_execucao(
         )
         comandos = []
 
+    comandos, bloqueados_sem_pedido = filtrar_comandos_sem_pedido_atual(
+        texto,
+        comandos,
+        tipo_interacao=tipo_interacao,
+    )
+    if bloqueados_sem_pedido:
+        registrar_log(
+            "🛡️ [AUTORIZAÇÃO] conversa sem pedido prático; bloqueando ações da IA: "
+            f"{bloqueados_sem_pedido}"
+        )
+
     return {
         "resposta_bruta": bot_raw,
         "fala": fala_limpa,
         "comandos": comandos,
         "tipo_interacao": tipo_interacao,
         "aprendizados": aprendizados,
+        "leitura_semantica": leitura_semantica,
         "autocorrigida": bool(corrigida),
     }

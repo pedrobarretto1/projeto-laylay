@@ -46,6 +46,7 @@ def logar_atividade_atual(
     contexto_sistema: Dict[str, Any],
     obter_janela_ativa: Callable[[], Any],
     salvar_cb: Optional[Callable[[], None]] = None,
+    registrar_observacao_cb: Optional[Callable[[str, str, str], Any]] = None,
     intervalo_s: int = 300,
     limite_por_bloco: int = 20,
 ) -> float:
@@ -58,6 +59,11 @@ def logar_atividade_atual(
         title = (win.title if win else "").strip()[:80]
         assunto = str(contexto_sistema.get("assunto") or "").strip()
         hora = datetime.now().strftime("%H:00")
+        if callable(registrar_observacao_cb) and (title or assunto):
+            try:
+                registrar_observacao_cb(title, assunto, hora)
+            except Exception:
+                pass
 
         bloco = dados_diarios.setdefault(hora, {"janelas": [], "assuntos": []})
         if title:
@@ -235,49 +241,6 @@ def registrar_historico_musica(
         salvar_cb()
 
 
-def registrar_feedback_musica(
-    pendente: Optional[Dict[str, Any]],
-    pesos: Dict[str, int],
-    aceito: bool,
-    falar_cb: Optional[Callable[[str, str, int], None]] = None,
-    tocar_cb: Optional[Callable[[str], Any]] = None,
-    salvar_cb: Optional[Callable[[Dict[str, int]], None]] = None,
-    cooldown_min: int = 60,
-    limite_rejeicao: int = 3,
-) -> Tuple[Dict[str, int], Optional[Dict[str, Any]], float]:
-    if not pendente:
-        return pesos, None, 0.0
-
-    mus = str(pendente.get("musica") or "").strip()
-    hora = str(pendente.get("hora") or "").strip()
-    chave = musica_chave_feedback(hora, mus)
-    nome_amigavel = mus.split(" - ")[0].strip().title() or mus.title()
-    pesos = dict(pesos or {})
-    cooldown_ate = 0.0
-
-    if aceito:
-        pesos[chave] = int(pesos.get(chave, 0)) + 1
-        if callable(falar_cb):
-            falar_cb(f"Colocando {nome_amigavel} pra tocar entao.", "calma", 1)
-        if callable(tocar_cb):
-            try:
-                tocar_cb(mus)
-            except Exception:
-                pass
-    else:
-        pesos[chave] = int(pesos.get(chave, 0)) - 1
-        cooldown_ate = time.time() + (int(cooldown_min) * 60)
-        if int(pesos[chave]) <= -int(limite_rejeicao):
-            if callable(falar_cb):
-                falar_cb(f"Fechado. Nao vou mais sugerir {nome_amigavel} essa hora.", "calma", 1)
-        elif callable(falar_cb):
-            falar_cb("Beleza, nao coloco.", "calma", 1)
-
-    if callable(salvar_cb):
-        salvar_cb(pesos)
-    return pesos, None, cooldown_ate
-
-
 def normalizar_confirmacao_texto(texto: str) -> str:
     bruto = str(texto or "").strip().lower()
     sem_acento = unicodedata.normalize("NFKD", bruto)
@@ -340,63 +303,6 @@ def classificar_confirmacao_contextual(
     return None
 
 
-def analisar_e_sugerir_musica(
-    dados_diarios: Dict[str, Any],
-    pesos: Dict[str, int],
-    ultima_sugestao: float,
-    sugestao_pendente: Optional[Dict[str, Any]],
-    contexto_aponta_descanso: Callable[[], bool],
-    contexto_musical_ativo: Callable[[], bool],
-    agendar_fala_proativa: Callable[[str, str, str, int], Any],
-    bloqueio_rejeicao_min: int,
-    bloqueio_rejeicao_vezes: int,
-) -> Tuple[float, Optional[Dict[str, Any]]]:
-    agora = time.time()
-    if agora - float(ultima_sugestao or 0.0) < 1200:
-        return ultima_sugestao, sugestao_pendente
-    if contexto_aponta_descanso():
-        return ultima_sugestao, sugestao_pendente
-    if contexto_musical_ativo():
-        return ultima_sugestao, sugestao_pendente
-    if sugestao_pendente is not None:
-        return ultima_sugestao, sugestao_pendente
-
-    hora_atual = datetime.now().strftime("%H:00")
-    bloco = dados_diarios.get(hora_atual)
-    if not isinstance(bloco, dict):
-        return ultima_sugestao, sugestao_pendente
-
-    musicas_hora = bloco.get("musicas") or []
-    dias_hora = bloco.get("dias") or []
-    if len(musicas_hora) < 8 or len(set(dias_hora)) < 3:
-        return ultima_sugestao, sugestao_pendente
-
-    contagem: Dict[str, int] = {}
-    for m in musicas_hora:
-        contagem[m] = contagem.get(m, 0) + 1
-
-    total_registros = len(musicas_hora)
-    candidatos = sorted(contagem.items(), key=lambda x: x[1], reverse=True)
-    for mus, ocorrencias in candidatos:
-        if ocorrencias < total_registros * 0.4:
-            break
-        if musica_bloqueada(pesos, hora_atual, mus, bloqueio_rejeicao_vezes):
-            continue
-
-        nome_amigavel = mus.split(" - ")[0].strip().title()
-        sugestao_pendente = {"musica": mus, "hora": hora_atual, "ts": agora}
-        ultima_sugestao = agora
-        agendar_fala_proativa(
-            "musica",
-            f"Notei um padrão forte com {nome_amigavel} nesse horário. Quer que eu dê o play?",
-            "calma",
-            1,
-        )
-        return ultima_sugestao, sugestao_pendente
-
-    return ultima_sugestao, sugestao_pendente
-
-
 def analisar_e_sugerir_rotina(
     dados_diarios: Dict[str, Any],
     pesos: Dict[str, int],
@@ -441,14 +347,15 @@ def analisar_e_sugerir_rotina(
             continue
 
         nome_amigavel = nome_janela.split(" - ")[0].strip().title()
-        sugestao_pendente = {"app": nome_janela, "hora": hora_atual, "ts": agora}
-        ultima_sugestao = agora
-        agendar_fala_proativa(
+        nova_pendente = {"app": nome_janela, "hora": hora_atual, "ts": agora}
+        agendada = agendar_fala_proativa(
             "rotina",
             f"Voce costuma usar {nome_amigavel} agora. Quer que eu abra isso com aquele jeitinho de quem ja sabe o que voce vai fazer?",
             "calma",
             1,
         )
-        return ultima_sugestao, sugestao_pendente
+        if agendada is False:
+            return ultima_sugestao, sugestao_pendente
+        return agora, nova_pendente
 
     return ultima_sugestao, sugestao_pendente

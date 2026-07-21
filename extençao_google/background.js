@@ -8,24 +8,139 @@ function safeJsonParse(text) {
   try { return JSON.parse(text); } catch (_) { return null; }
 }
 
+function sendWs(message) {
+  if (!websocket || websocket.readyState !== WebSocket.OPEN) return false;
+  try {
+    websocket.send(JSON.stringify(message));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function sendCommandResult(cmd, ok, detail = {}, tab = null) {
+  const status = String(detail?.status || (ok ? "success" : "error"));
+  sendWs({
+    type: "COMMAND_RESULT",
+    requestId: cmd?.requestId ?? null,
+    action: String(cmd?.action || ""),
+    ok: Boolean(ok),
+    status,
+    message: String(detail?.message || ""),
+    evidence: detail?.evidence || null,
+    tab: tab ? { id: tab.id ?? null, url: tab.url || "", title: tab.title || "" } : null,
+    ts: Date.now(),
+  });
+}
+
+function activeTab() {
+  return new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => resolve(tabs?.[0] || null));
+  });
+}
+
+function sendToTab(tabId, message) {
+  return new Promise((resolve) => {
+    chrome.tabs.sendMessage(tabId, message, (response) => {
+      const error = chrome.runtime.lastError?.message || "";
+      resolve({ response: response || null, error });
+    });
+  });
+}
+
+function comparableUrl(rawUrl) {
+  try {
+    const parsed = new URL(String(rawUrl || ""));
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    const path = (parsed.pathname || "/").replace(/\/+$/, "") || "/";
+    return { host, path, query: parsed.searchParams.toString() };
+  } catch (_) {
+    return { host: "", path: "", query: "" };
+  }
+}
+
+function equivalentTab(tabs, targetUrl) {
+  const target = comparableUrl(targetUrl);
+  if (!target.host) return null;
+  const home = (target.path === "/" || target.path === "/.") && !target.query;
+  return (tabs || []).find((tab) => {
+    const current = comparableUrl(tab?.url || "");
+    if (current.host !== target.host) return false;
+    return home || (current.path === target.path && current.query === target.query);
+  }) || null;
+}
+
+function focusTab(tab, callback = () => {}) {
+  if (tab?.id == null) {
+    callback(false, "Aba inválida");
+    return;
+  }
+  chrome.tabs.update(tab.id, { active: true }, (updated) => {
+    const tabError = chrome.runtime.lastError?.message || "";
+    if (tabError) {
+      callback(false, tabError);
+      return;
+    }
+    chrome.windows.update(tab.windowId, { focused: true }, () => {
+      const windowError = chrome.runtime.lastError?.message || "";
+      callback(!windowError, windowError, updated || tab);
+    });
+  });
+}
+
+async function executeContentCommand(cmd, tab) {
+  let attempt = await sendToTab(tab.id, cmd);
+  if (attempt.error) {
+    await new Promise((resolve) => {
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content_script.js"] }, () => resolve());
+    });
+    attempt = await new Promise((resolve) => setTimeout(async () => resolve(await sendToTab(tab.id, cmd)), 120));
+  }
+  if (attempt.error || !attempt.response) {
+    return { status: "error", message: attempt.error || "A página não respondeu ao comando" };
+  }
+  return attempt.response;
+}
+
 async function handleCommand(cmd) {
   if (!cmd || typeof cmd !== "object") return;
 
   // --- COMANDOS DE INTERFACE (CLICK, TYPE, SCROLL, PRESS, ETC) ---
-  const uiActions = ["click", "type", "press", "scroll", "execute_js", "close_current_tab"];
+  const uiActions = ["click", "type", "press", "scroll", "search_in_page", "close_current_tab"];
   if (uiActions.includes(cmd.action)) {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const activeTab = tabs[0];
-      if (activeTab && activeTab.id) {
-        if (cmd.action === "close_current_tab") {
-          chrome.tabs.remove(activeTab.id);
-          console.log("❌ Aba atual fechada:", activeTab.id);
-        } else {
-          chrome.tabs.sendMessage(activeTab.id, cmd);
-          console.log(`🖥️ Comando de UI enviado para aba ${activeTab.id}:`, cmd.action);
-        }
+    const tab = await activeTab();
+    if (!tab?.id) {
+      sendCommandResult(cmd, false, { status: "error", message: "Nenhuma aba ativa encontrada" });
+      return;
+    }
+    const expectedUrl = String(cmd.expectedUrl || cmd.expected_url || "").trim();
+    const expectedTabId = Number(cmd.expectedTabId ?? cmd.expected_tab_id);
+    if (Number.isFinite(expectedTabId) && tab.id !== expectedTabId) {
+      sendCommandResult(cmd, false, { status: "stale_context", message: "A aba ativa mudou antes da execução" }, tab);
+      return;
+    }
+    if (expectedUrl && String(tab.url || "") !== expectedUrl) {
+      sendCommandResult(cmd, false, { status: "stale_context", message: "A aba mudou antes da execução" }, tab);
+      return;
+    }
+    if (cmd.action === "type") {
+      const sensitiveMarkers = ["login", "signin", "sign-in", "password", "senha", "checkout", "pagamento", "payment", "bank", "banco", "internetbanking", "wallet"];
+      if (sensitiveMarkers.some((marker) => String(tab.url || "").toLowerCase().includes(marker))) {
+        sendCommandResult(cmd, false, { status: "sensitive_page", message: "Digitação automática bloqueada em página sensível" }, tab);
+        return;
       }
-    });
+    }
+    if (cmd.action === "close_current_tab") {
+      chrome.tabs.remove(tab.id, () => {
+        const error = chrome.runtime.lastError?.message || "";
+        sendCommandResult(cmd, !error, { status: error ? "error" : "success", message: error }, tab);
+      });
+      return;
+    }
+    const response = await executeContentCommand(cmd, tab);
+    const ok = response?.status === "success" || response?.status === "partial";
+    sendCommandResult(cmd, ok, response || {}, tab);
+    console.log(`${ok ? "✅" : "⚠️"} Resultado ${cmd.action} na aba ${tab.id}:`, response);
     return;
   }
 
@@ -53,6 +168,7 @@ async function handleCommand(cmd) {
 if (cmd.action === "youtube_search") {
   const query = String(cmd.query || "").trim();
   if (!query) return;
+  const background = cmd.background === true;
 
   // URL formatada para busca de vídeos apenas
   const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`;
@@ -65,18 +181,18 @@ if (cmd.action === "youtube_search") {
 
     if (targetTab && targetTab.id) {
       // REUSO INTELIGENTE: atualiza a aba existente
-      chrome.tabs.update(targetTab.id, { url: url, active: true }, (tab) => {
+      chrome.tabs.update(targetTab.id, { url: url, active: !background }, (tab) => {
         lastTargetTabId = tab?.id ?? targetTab.id;
         console.log("🚀 Laylay reutilizou aba YouTube:", targetTab.id);
       });
 
       // FOCO TOTAL: traz a janela para frente (mesmo se estiver minimizada ou em outra janela)
-      if (targetTab.windowId != null) {
+      if (!background && targetTab.windowId != null) {
         chrome.windows.update(targetTab.windowId, { focused: true });
       }
     } else {
       // Só cria nova aba se realmente não tiver nenhuma do YouTube
-      chrome.tabs.create({ url, active: true }, (tab) => {
+      chrome.tabs.create({ url, active: !background }, (tab) => {
         lastTargetTabId = tab?.id ?? null;
         console.log("🚀 Laylay criou nova aba YouTube (nenhuma encontrada).");
       });
@@ -87,56 +203,25 @@ if (cmd.action === "youtube_search") {
 
   // --- CONTROLES DE MÍDIA (YOUTUBE / YOUTUBE MUSIC) ---
   if (cmd.action === "youtube_control") {
-    // Pega o comando (seja vindo direto em cmd.command ou dentro de cmd.payload)
-    const comando = cmd.command || (cmd.payload && cmd.payload.command);
-    
-    // Procura por qualquer aba do YouTube aberta
-    chrome.tabs.query({ url: "*://*.youtube.com/*" }, (tabs) => {
-      // Prioriza a aba que tem um vídeo tocando ("/watch")
-      let targetTab = tabs.find(t => t.url && t.url.includes("/watch")) || tabs[0];
-      
-      if (targetTab && targetTab.id) {
-        // Injeta o script direto na aba para forçar a ação no player
-        chrome.scripting.executeScript({
-          target: { tabId: targetTab.id },
-          func: (acao) => {
-            const video = document.querySelector('video');
-            
-            if (acao === "pause" && video) {
-                video.pause();
-            } else if (acao === "play" && video) {
-                video.play();
-            } else if (acao === "next") {
-                const nextBtn = document.querySelector('.ytp-next-button');
-                if (nextBtn) nextBtn.click();
-            } else if (acao === "prev") {
-                const prevBtn = document.querySelector('.ytp-prev-button');
-                if (prevBtn) {
-                    prevBtn.click();
-                    setTimeout(() => {
-                        try {
-                            const videoNow = document.querySelector('video');
-                            if (videoNow && videoNow.currentTime < 3) prevBtn.click();
-                        } catch (_) {}
-                    }, 180);
-                }
-            } else if (acao === "replay") {
-                if (video) video.currentTime = 0;
-                else {
-                    const prevBtn = document.querySelector('.ytp-prev-button');
-                    if (prevBtn) prevBtn.click();
-                }
-            }
-          },
-          args: [comando]
-        });
-        console.log(`📺 Sucesso! Comando de mídia [${comando}] aplicado na aba: ${targetTab.id}`);
-      } else {
-        console.warn("⚠️ Nenhuma aba do YouTube encontrada para controlar.");
-      }
+    const comando = String(cmd.command || (cmd.payload && cmd.payload.command) || "").trim();
+    const tabs = await new Promise((resolve) => {
+      chrome.tabs.query({ url: "*://*.youtube.com/*" }, (lista) => resolve(lista || []));
     });
-    
-    return; // Para a execução aqui, já resolvemos o comando
+    const targetTab = tabs.find((tab) => tab.url && tab.url.includes("/watch")) || tabs[0];
+    if (!targetTab?.id) {
+      sendCommandResult(cmd, false, { status: "not_found", message: "Nenhuma aba do YouTube encontrada" });
+      return;
+    }
+    const response = await executeContentCommand({
+      ...cmd,
+      action: "youtube_control",
+      command: comando,
+      payload: { ...(cmd.payload || {}), command: comando },
+    }, targetTab);
+    const ok = response?.status === "success" || response?.status === "partial";
+    sendCommandResult(cmd, ok, response || {}, targetTab);
+    console.log(`${ok ? "📺" : "⚠️"} Controle do YouTube [${comando}] na aba ${targetTab.id}:`, response);
+    return;
   }
 
   if (cmd.action === "netflix_search") {
@@ -187,9 +272,35 @@ if (cmd.action === "open_url" || cmd.action === "youtube_play") {
 
   const isYouTube = url.includes("youtube.com") || url.includes("youtu.be");
   const autoClick = cmd.auto_click === true || String(url).includes("laylay_auto=true");
+  const background = cmd.background === true;
 
   if (isYouTube) {
     console.log("🚀 [YouTube Strong Reuse] Usando aba única para:", url);
+
+    const requestedTabId = Number(cmd.target_tab_id ?? cmd.targetTabId);
+    if (Number.isInteger(requestedTabId)) {
+      chrome.tabs.get(requestedTabId, (sourceTab) => {
+        const error = chrome.runtime.lastError?.message || "";
+        const sourceIsYouTube = sourceTab?.id != null && /(?:youtube\.com|youtu\.be)/i.test(String(sourceTab.url || ""));
+        if (error || !sourceIsYouTube) {
+          sendCommandResult(cmd, false, { status: "source_tab_missing", message: error || "A aba da playlist não existe mais" });
+          return;
+        }
+        chrome.tabs.update(sourceTab.id, { url, active: !background }, (updatedTab) => {
+          const updateError = chrome.runtime.lastError?.message || "";
+          if (!updateError) {
+            lastTargetTabId = sourceTab.id;
+            if (!background) chrome.windows.update(sourceTab.windowId, { focused: true });
+          }
+          sendCommandResult(cmd, !updateError, {
+            status: updateError ? "error" : "playlist_tab_updated",
+            message: updateError,
+            evidence: { reused: true, playlistTab: true },
+          }, updatedTab || sourceTab);
+        });
+      });
+      return;
+    }
 
     // PRIORIDADE 1: Última aba que usamos (lastTargetTabId) - mais confiável
     if (lastTargetTabId != null) {
@@ -197,48 +308,60 @@ if (cmd.action === "open_url" || cmd.action === "youtube_play") {
         if (chrome.runtime.lastError || !tab || !tab.id) {
           lastTargetTabId = null; // aba foi fechada
           // Se falhou, tenta a busca normal (Prioridade 2)
-          realizarBuscaYouTube(url);
+          realizarBuscaYouTube(url, background);
         } else if (tab.url && tab.url.includes("youtube.com")) {
           // Atualiza a mesma aba (é isso que queremos!)
-          chrome.tabs.update(lastTargetTabId, { url: url, active: true }, (updatedTab) => {
+          chrome.tabs.update(lastTargetTabId, { url: url, active: !background }, (updatedTab) => {
             lastTargetTabId = updatedTab ? updatedTab.id : lastTargetTabId;
-            if (tab.windowId) chrome.windows.update(tab.windowId, { focused: true });
+            if (!background && tab.windowId) chrome.windows.update(tab.windowId, { focused: true });
             console.log(`♻️ REUTILIZOU aba YouTube ID=${lastTargetTabId}`);
           });
         } else {
           // Se a aba existe mas não é YouTube, tenta a busca normal
-          realizarBuscaYouTube(url);
+          realizarBuscaYouTube(url, background);
         }
       });
       return;
     }
 
     // PRIORIDADE 2: Busca normal (caso lastTargetTabId tenha morrido)
-    realizarBuscaYouTube(url);
+    realizarBuscaYouTube(url, background);
     return;
   }
 
-  // Sites normais (não-YouTube) - comportamento antigo
-  console.log(`🔄 open_url normal: ${url}`);
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const activeTab = tabs && tabs[0] ? tabs[0] : null;
-    if (activeTab && activeTab.id) {
-      chrome.tabs.update(activeTab.id, { url: url, active: true }, (tab) => {
-        if (autoClick) {
-          const tid = tab?.id ?? activeTab.id;
-          const onUpdated = (id, info) => {
-            if (id !== tid) return;
-            if (info.status === "complete") {
-              chrome.tabs.onUpdated.removeListener(onUpdated);
-              chrome.tabs.sendMessage(tid, { action: "auto_click_first_result" });
-            }
-          };
-          chrome.tabs.onUpdated.addListener(onUpdated);
-        }
+  // Sites normais: foca somente uma aba equivalente; nunca substitui a aba atual.
+  console.log(`🌐 open_url seguro: ${url}`);
+  chrome.tabs.query({}, (tabs) => {
+    const existing = equivalentTab(tabs, url);
+    if (existing?.id != null) {
+      if (background) {
+        sendCommandResult(cmd, true, {
+          status: "already_open_background",
+          evidence: { reused: true, requestedUrl: url, background: true },
+        }, existing);
+        return;
+      }
+      focusTab(existing, (ok, error, focused) => {
+        sendCommandResult(cmd, ok, {
+          status: ok ? "already_open_focused" : "error",
+          message: error || "",
+          evidence: { reused: true, requestedUrl: url },
+        }, focused || existing);
       });
-    } else {
-      chrome.tabs.create({ url: url, active: true }, (tab) => {
-        if (autoClick && tab?.id != null) {
+      return;
+    }
+    chrome.tabs.create({ url: url, active: !background }, (tab) => {
+      const error = chrome.runtime.lastError?.message || "";
+      if (error || !tab) {
+        sendCommandResult(cmd, false, { status: "error", message: error || "Não consegui criar a aba" });
+        return;
+      }
+      if (!background && tab.windowId != null) chrome.windows.update(tab.windowId, { focused: true });
+      sendCommandResult(cmd, true, {
+        status: "new_tab_created",
+        evidence: { reused: false, requestedUrl: url },
+      }, tab);
+        if (autoClick) {
           const tid = tab.id;
           const onUpdated = (id, info) => {
             if (id !== tid) return;
@@ -249,28 +372,27 @@ if (cmd.action === "open_url" || cmd.action === "youtube_play") {
           };
           chrome.tabs.onUpdated.addListener(onUpdated);
         }
-      });
-    }
+    });
   });
   return;
 }
 
 // Função auxiliar para evitar repetição de código
-function realizarBuscaYouTube(url) {
+function realizarBuscaYouTube(url, background = false) {
   chrome.tabs.query({ url: "*://*.youtube.com/*" }, (tabs) => {
     let targetTab = tabs.find(t => t.url && (t.url.includes("/watch?v=") || t.url.includes("/watch"))) ||
                     tabs.find(t => t.url && t.url.includes("youtube.com")) ||
                     tabs[0];
 
     if (targetTab && targetTab.id) {
-      chrome.tabs.update(targetTab.id, { url: url, active: true }, (updatedTab) => {
+      chrome.tabs.update(targetTab.id, { url: url, active: !background }, (updatedTab) => {
         lastTargetTabId = updatedTab ? updatedTab.id : targetTab.id;
-        if (targetTab.windowId) chrome.windows.update(targetTab.windowId, { focused: true });
+        if (!background && targetTab.windowId) chrome.windows.update(targetTab.windowId, { focused: true });
         console.log(`♻️ REUTILIZOU aba YouTube ID=${lastTargetTabId}`);
       });
     } else {
       // Só cria nova se realmente não tiver nenhuma aba YouTube
-      chrome.tabs.create({ url: url, active: true }, (newTab) => {
+      chrome.tabs.create({ url: url, active: !background }, (newTab) => {
         lastTargetTabId = newTab ? newTab.id : null;
         console.log("🆕 Criou nova aba YouTube (nenhuma encontrada)");
       });
@@ -377,15 +499,57 @@ function realizarBuscaYouTube(url) {
         chrome.tabs.sendMessage(t.id, { action: "GET_YT_DATA", requestId }, () => {
           if (chrome.runtime.lastError) {
             if (websocket && websocket.readyState === WebSocket.OPEN) {
-              websocket.send(JSON.stringify({ type: "YOUTUBE_DATA", requestId, url, title, canal: "" }));
+              websocket.send(JSON.stringify({ type: "YOUTUBE_DATA", requestId, url, title, canal: "", tabId: t?.id ?? null }));
             }
           }
         });
       } else {
         if (websocket && websocket.readyState === WebSocket.OPEN) {
-          websocket.send(JSON.stringify({ type: "YOUTUBE_DATA", requestId, url, title, canal: "" }));
+          websocket.send(JSON.stringify({ type: "YOUTUBE_DATA", requestId, url, title, canal: "", tabId: t?.id ?? null }));
         }
       }
+    });
+    return;
+  }
+
+  if (cmd.action === "get_page_content") {
+    const requestId = cmd.requestId ?? null;
+    const reply = (success, data = {}, error = "") => {
+      if (websocket && websocket.readyState === WebSocket.OPEN) {
+        websocket.send(JSON.stringify({ type: "PAGE_CONTENT", requestId, success, data, error }));
+      }
+    };
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tab = tabs && tabs[0] ? tabs[0] : null;
+      if (tab?.id == null) {
+        reply(false, {}, "Nenhuma aba ativa encontrada");
+        return;
+      }
+      const url = String(tab.url || "");
+      if (/^(chrome|edge|about|opera|chrome-extension):/i.test(url)) {
+        reply(false, { url, title: tab.title || "" }, "Esta página é protegida pelo navegador");
+        return;
+      }
+      const solicitar = (permitirInjecao) => {
+        chrome.tabs.sendMessage(tab.id, { action: "GET_PAGE_CONTENT", requestId }, (response) => {
+          if (chrome.runtime.lastError || !response) {
+            if (permitirInjecao) {
+              chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content_script.js"] }, () => {
+                if (chrome.runtime.lastError) {
+                  reply(false, { url, title: tab.title || "" }, chrome.runtime.lastError.message);
+                  return;
+                }
+                setTimeout(() => solicitar(false), 100);
+              });
+              return;
+            }
+            reply(false, { url, title: tab.title || "" }, chrome.runtime.lastError?.message || "A página não respondeu");
+            return;
+          }
+          reply(response.success !== false, response.data || {}, response.error || "");
+        });
+      };
+      solicitar(true);
     });
     return;
   }
@@ -408,6 +572,29 @@ function realizarBuscaYouTube(url) {
         };
         chrome.tabs.onUpdated.addListener(onUpdated);
       }
+    });
+    return;
+  }
+
+  if (cmd.action === "focus_tab" && cmd.tabId != null) {
+    const tabId = Number(cmd.tabId);
+    if (!Number.isInteger(tabId)) {
+      sendCommandResult(cmd, false, { status: "error", message: "Identificador de aba inválido" });
+      return;
+    }
+    chrome.tabs.get(tabId, (tab) => {
+      const error = chrome.runtime.lastError?.message || "";
+      if (error || !tab) {
+        sendCommandResult(cmd, false, { status: "error", message: error || "Aba não encontrada" });
+        return;
+      }
+      focusTab(tab, (ok, focusError, focused) => {
+        sendCommandResult(cmd, ok, {
+          status: ok ? "already_open_focused" : "error",
+          message: focusError || "",
+          evidence: { reused: true },
+        }, focused || tab);
+      });
     });
     return;
   }
@@ -537,7 +724,7 @@ function realizarBuscaYouTube(url) {
     return;
   }
 
-  if (cmd.action === "click" || cmd.action === "type" || cmd.action === "press" || cmd.action === "execute_js") {
+  if (cmd.action === "click" || cmd.action === "type" || cmd.action === "press") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs && tabs[0] && tabs[0].id) {
             const tabId = tabs[0].id;
@@ -570,7 +757,13 @@ function connectWebSocket() {
 
   websocket.onopen = () => {
     console.log("[Laylay] WebSocket CONECTADO!");
-    websocket.send(JSON.stringify({ type: "ping", message: "Extension connected" }));
+    sendWs({
+      type: "EXTENSION_HELLO",
+      protocolVersion: 2,
+      capabilities: ["page_snapshot", "command_result", "element_id", "stale_context_guard"],
+      message: "Extension connected",
+    });
+    sendActiveTabInfo(true);
   };
 
   websocket.onmessage = async (event) => {
@@ -615,10 +808,11 @@ chrome.runtime.onMessage.addListener((request, sender) => {
     return;
   }
   if (websocket && websocket.readyState === WebSocket.OPEN) {
+    const source = sender?.tab ? { tabId: sender.tab.id ?? null, windowId: sender.tab.windowId ?? null } : {};
     if (request && typeof request === "object" && (request.type === "USER_CONTEXT" || request.type === "PLAYER_EVENT" || request.action === "title_update" || request.action === "user_context")) {
-      websocket.send(JSON.stringify({ type: "USER_CONTEXT", ...request }));
+      websocket.send(JSON.stringify({ type: "USER_CONTEXT", ...request, ...source }));
     } else {
-      websocket.send(JSON.stringify(request));
+      websocket.send(JSON.stringify({ ...request, ...source }));
     }
   } else {
     console.warn("[Laylay] WS fora do ar. Reconectando...");
@@ -627,16 +821,24 @@ chrome.runtime.onMessage.addListener((request, sender) => {
 });
 
 // --- MONITORAMENTO PROATIVO DA ABA ATIVA ---
-function sendActiveTabInfo() {
+function sendActiveTabInfo(includeSnapshot = false) {
   if (websocket && websocket.readyState === WebSocket.OPEN) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const t = tabs && tabs[0] ? tabs[0] : null;
       if (t && t.url && !t.url.startsWith("chrome://") && !t.url.startsWith("edge://")) {
-        websocket.send(JSON.stringify({ 
+        sendWs({
           action: "active_tab_changed", 
+          tabId: t.id,
           url: t.url, 
           title: t.title || "Sem título" 
-        }));
+        });
+        if (includeSnapshot && t.id != null) {
+          chrome.tabs.sendMessage(t.id, { action: "GET_PAGE_SNAPSHOT" }, (response) => {
+            if (!chrome.runtime.lastError && response?.success) {
+              sendWs({ type: "PAGE_SNAPSHOT", payload: response.data || {} });
+            }
+          });
+        }
       }
     });
   }

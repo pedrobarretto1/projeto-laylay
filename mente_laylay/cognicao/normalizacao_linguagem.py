@@ -18,6 +18,8 @@ CORRECOES_FONETICAS = (
     (r"\byoutub\b", "youtube"),
     (r"\butube\b", "youtube"),
     (r"\bspotifi\b", "spotify"),
+    (r"\binstgrm\b", "instagram"),
+    (r"\binstagran\b", "instagram"),
 )
 
 
@@ -44,3 +46,11 @@ def normalizar_texto(texto: str) -> str:
     t = aplicar_correcao_fonetica(t)
     t = re.sub(r"[^a-z0-9]+", " ", t)
     return re.sub(r"\s+", " ", t).strip()
+
+
+def normalizar_texto_curto(texto: str) -> str:
+    """Normaliza caixa, acentos e espaços sem remover pontuação contextual."""
+    bruto = str(texto or "").lower()
+    sem_acento = unicodedata.normalize("NFKD", bruto)
+    sem_acento = "".join(ch for ch in sem_acento if not unicodedata.combining(ch))
+    return re.sub(r"\s+", " ", sem_acento).strip()

@@ -7,7 +7,6 @@ mente musical compartilhada por callbacks para nao criar um estado paralelo.
 from __future__ import annotations
 
 import os
-from datetime import datetime
 from typing import Any, Callable, Dict
 
 from mente_laylay.memoria_mental.curadoria_musical import (
@@ -20,7 +19,6 @@ from mente_laylay.memoria_mental.playlist_mental import (
     playlists_load,
     playlists_save,
     yt_clean_title,
-    yt_clean_url,
 )
 
 
@@ -106,33 +104,6 @@ class PlaylistLaylayRuntime:
         if not nomes:
             return "Eu ainda não montei playlists minhas por aqui."
         return f"As minhas playlists são: {', '.join(nomes)}."
-
-    def adicionar_descoberta(self, item: dict) -> None:
-        if not isinstance(item, dict):
-            return
-        data = self.load()
-        lista = data.setdefault("descobertas_da_laylay", [])
-        if not isinstance(lista, list):
-            lista = []
-            data["descobertas_da_laylay"] = lista
-        url = yt_clean_url(str(item.get("url") or "").strip())
-        for existente in lista:
-            if (
-                isinstance(existente, dict)
-                and yt_clean_url(str(existente.get("url") or "").strip()) == url
-            ):
-                self.save(data)
-                return
-        lista.append(
-            {
-                "url": url,
-                "titulo": str(item.get("titulo") or "").strip(),
-                "canal": str(item.get("canal") or "").strip(),
-                "data": str(item.get("data") or datetime.now().date().isoformat()),
-                "motivo": str(item.get("motivo") or "descoberta_da_laylay").strip(),
-            }
-        )
-        self.save(data)
 
     def copiar_faixa(
         self,

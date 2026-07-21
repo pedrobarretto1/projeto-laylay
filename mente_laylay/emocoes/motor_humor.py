@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
@@ -30,21 +30,6 @@ def ajustar_humor(ctx: Dict[str, Any], delta: int, motivo: str = "desconhecido")
 
     print(f"😤 [MOTOR DE HUMOR] {motivo} → humor agora = {humor_level}")
     return humor_level
-
-
-def get_humor_prompt(ctx: Dict[str, Any]) -> str:
-    humor_level = int(_get(ctx, "humor_level", 0))
-    if humor_level >= 7:
-        return "extasiada, carinhosa e cheia de energia"
-    if humor_level >= 4:
-        return "feliz, debochada e bem-humorada"
-    if humor_level >= 1:
-        return "calma e confiante"
-    if humor_level >= -3:
-        return "levemente irritada, sarcástica"
-    if humor_level >= -7:
-        return "irritada, impaciente e afiada"
-    return "muito brava, curta e direta, sem paciência"
 
 
 def montar_status_humor_prompt(
@@ -88,75 +73,14 @@ def montar_status_humor_prompt(
         extras.append(f"emoção percebida: {emocao}")
         extras.append(f"identidade emocional: {descricao_emocao_cb(emocao)}")
         extras.append(f"comportamento esperado: {perfil_comportamento_cb(emocao)}")
+        if ctx.get("emocao_causa"):
+            extras.append(f"causa emocional: {ctx.get('emocao_causa')}")
+        if emocao != "calma" and ctx.get("emocao_interacoes_restantes") is not None:
+            extras.append(
+                f"persistência emocional: {int(ctx.get('emocao_interacoes_restantes') or 0)} interações restantes"
+            )
     if ctx.get("topico_ativo"):
         extras.append(f"tópico ativo: {ctx['topico_ativo']}")
     if extras:
         return base + "; " + "; ".join(extras)
     return base
-
-
-def detectar_gatilhos_instintivos(
-    ctx: Dict[str, Any],
-    texto: str,
-    normalizar_cb: Callable[[str], str] = None,
-) -> Tuple[Optional[str], Optional[int]]:
-    """Reações automáticas sem passar pela IA.
-
-    Args:
-        ctx: dicionário de contexto com estado atual.
-        texto: texto do usuário.
-        normalizar_cb: função de normalização de texto (opcional).
-            Se não fornecida, usa lower() simples como fallback.
-    """
-    if normalizar_cb is not None:
-        lower = normalizar_cb(texto)
-    else:
-        lower = texto.lower()
-
-    is_speaking = bool(_get(ctx, "is_speaking", False))
-    interrupt_event = _get(ctx, "interrupt_event")
-    barge_in_count = int(_get(ctx, "barge_in_count", 0))
-    barge_in_window = float(_get(ctx, "barge_in_window", 5.0))
-    humor_last_update = float(_get(ctx, "humor_last_update", time.time()))
-
-    if is_speaking and interrupt_event is not None and getattr(interrupt_event, "is_set", lambda: False)():
-        barge_in_count += 1
-        ctx["barge_in_count"] = barge_in_count
-        if barge_in_count >= 3 and (time.time() - humor_last_update) < barge_in_window:
-            ajustar_humor(ctx, -3, "múltiplas interrupções seguidas")
-            ctx["barge_in_count"] = 0
-            return "irritada", 3
-        return None, None
-
-    if any(word in lower for word in ["cala boca", "cala a boca", "shut up", "quieta"]):
-        ajustar_humor(ctx, -4, "mandou calar a boca")
-        return "brava", 3
-
-    if any(
-        word in lower
-        for word in [
-            "obrigado",
-            "obrigada",
-            "valeu",
-            "vlw",
-            "muito bom",
-            "te amo",
-            "gostei",
-            "amei",
-            "lindo",
-            "linda",
-            "perfeito",
-            "maravilhoso",
-            "maravilhosa",
-            "fofa",
-            "fofo",
-            "bonita",
-            "bonito",
-            "você é incrível",
-            "voce e incrivel",
-        ]
-    ):
-        ajustar_humor(ctx, +2, "usuário elogiou")
-        return "envergonhada", 2
-
-    return None, None

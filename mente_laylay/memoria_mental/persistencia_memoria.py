@@ -5,7 +5,57 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional
+
+
+POLITICA_PERSISTENCIA_MENTE = {
+    "duravel": (
+        "memoria_conversa",
+        "estado_emocional",
+        "topicos_recentes",
+        "autoaprimoramento",
+        "consciencia_temporal",
+        "aprendizado_continuidade",
+        "preferencias_musicais",
+        "registro_semantico",
+        "perfil_proatividade",
+    ),
+    "sessao": (
+        "estado_musical",
+        "percepcao",
+        "conteudo_atual",
+        "focos_por_dominio",
+    ),
+    "efemero": (
+        "continuidades",
+        "promessas",
+        "perguntas_abertas",
+        "ultima_acao",
+    ),
+}
+
+
+def compactar_historico_mensagens(
+    mensagens: Any,
+    *,
+    limite: int | None = None,
+) -> list[Dict[str, Any]]:
+    """Limita o histórico durável sem remover o contrato de sistema atual."""
+    if limite is None:
+        try:
+            limite = int(os.environ.get("LAYLAY_MEMORIA_MAX_MENSAGENS", "240"))
+        except ValueError:
+            limite = 240
+    limite = max(20, min(int(limite), 2000))
+    validas = [
+        dict(item)
+        for item in (mensagens or [])
+        if isinstance(item, dict) and str(item.get("role") or "").strip()
+    ]
+    sistemas = [item for item in validas if str(item.get("role")).casefold() == "system"]
+    conversa = [item for item in validas if str(item.get("role")).casefold() != "system"]
+    reserva = 1 if sistemas else 0
+    return ([sistemas[-1]] if sistemas else []) + conversa[-max(1, limite - reserva):]
 
 
 def carregar_memoria(memoria_sqlite, base_system_prompt: str):
@@ -27,9 +77,13 @@ def carregar_memoria(memoria_sqlite, base_system_prompt: str):
     mensagens = data.get("messages", [{"role": "system", "content": base_system_prompt}])
     if not isinstance(mensagens, list) or not mensagens:
         mensagens = [{"role": "system", "content": base_system_prompt}]
-    mensagens = [m for m in mensagens if isinstance(m, dict) and m.get("role")]
+    mensagens = compactar_historico_mensagens(mensagens)
     if not mensagens:
         mensagens = [{"role": "system", "content": base_system_prompt}]
+    # O contrato atual da mente sempre vence uma cópia antiga persistida. Sem
+    # isso, melhorias no prompt só aparecem em instalações sem histórico.
+    mensagens = [m for m in mensagens if str(m.get("role") or "").lower() != "system"]
+    mensagens.insert(0, {"role": "system", "content": base_system_prompt})
 
     return {
         "messages": mensagens,
@@ -40,10 +94,21 @@ def carregar_memoria(memoria_sqlite, base_system_prompt: str):
         "historico_long_term": data.get("historico_long_term", ""),
         "current_emotion": data.get("current_emotion", data.get("emocao_atual", "calma")),
         "emotion_level": data.get("emotion_level", data.get("nivel_emocao", 1)),
+        "emotion_cause": data.get("emotion_cause", "memória carregada"),
+        "emotion_started_at": data.get("emotion_started_at", 0.0),
+        "emotion_duration_s": data.get("emotion_duration_s", 0.0),
+        "emotion_interactions_total": data.get("emotion_interactions_total", 0),
+        "emotion_interactions_left": data.get("emotion_interactions_left", 0),
+        "emotion_last_decay_at": data.get("emotion_last_decay_at", 0.0),
         "autoaprimoramento_estado": estado_auto if isinstance(estado_auto, dict) else None,
         "topicos_conversa_recente": topicos_conversa_recente,
         "ultimo_topico_conversa": ultimo_topico_conversa,
         "ultimo_topico_ts": ultimo_topico_ts,
+        "consciencia_temporal": data.get("consciencia_temporal", {}),
+        "aprendizado_continuidade": data.get("aprendizado_continuidade", {}),
+        "preferencias_musicais": data.get("preferencias_musicais", {}),
+        "registro_semantico": data.get("registro_semantico", {}),
+        "perfil_proatividade": data.get("perfil_proatividade", {}),
     }
 
 
@@ -88,13 +153,13 @@ def registrar_autocorrecao_virtual(
 
     resumo = (
         f"Autocorrecao #{estado['_autocorrecao_total']} em {origem_limpa}: "
-        f"erro='{erro_limpo[:120]}' -> correcao='{correcao_limpo[:160]}'"
+        f"erro='{erro_limpo[:120]}' -> correcao='{correcao_limpa[:160]}'"
     )
     if contexto_limpo:
         resumo += f" | contexto={contexto_limpo[:120]}"
 
     try:
-        memoria_sqlite.salvar_eventos([resumo])
+        memoria_sqlite.registrar_eventos([resumo])
     except Exception as e:
         print(f"⚠️ [AUTOCORREÇÃO] falha ao registrar evento: {e}")
 
@@ -111,6 +176,9 @@ def registrar_autocorrecao_virtual(
             regra="Quando perceber um erro próprio, corrigir a resposta e tornar a correção visível.",
             texto_original=f"{origem_limpa}: {erro_limpo} => {correcao_limpa}",
             confianca=0.92,
+            origem="autocorrecao_sistema",
+            evidencia=f"{erro_limpo} => {correcao_limpa}",
+            status="ativo",
         )
     except Exception as e:
         print(f"⚠️ [AUTOCORREÇÃO] falha ao salvar aprendizado: {e}")
@@ -123,6 +191,9 @@ def registrar_autocorrecao_virtual(
             regra="A correção ensinada pelo Pedro deve ser reaproveitada em próximas respostas semelhantes.",
             texto_original=f"{origem_limpa}: {erro_limpo} => {correcao_limpa}",
             confianca=0.95,
+            origem="autocorrecao_sistema",
+            evidencia=f"{erro_limpo} => {correcao_limpa}",
+            status="ativo",
         )
     except Exception as e:
         print(f"⚠️ [AUTOCORREÇÃO] falha ao salvar correção aprendida: {e}")
@@ -142,7 +213,7 @@ def registrar_autocorrecao_virtual(
         try:
             registrar_autoaprimoramento_cb(
                 {},
-                f"{origem_limpa} {erro_limpo} {correcao_limpo}",
+                f"{origem_limpa} {erro_limpo} {correcao_limpa}",
                 True,
                 erro=erro_limpo,
                 contexto=contexto_limpo,
@@ -153,6 +224,152 @@ def registrar_autocorrecao_virtual(
 
     print(f"🍪 [AUTOCORREÇÃO] cookie virtual #{estado['_cookie_virtual_total']} concedido para a Laylay.")
     return estado
+
+
+class PersistenciaMemoriaRuntime:
+    """Coordena SQLite e os domínios vivos da memória compartilhada."""
+
+    def __init__(
+        self,
+        *,
+        memoria_sqlite: Any,
+        base_system_prompt: str,
+        estado_obter: Callable[[str, str, Any], Any],
+        estado_atualizar: Callable[..., Any],
+        ajustar_humor_cb: Optional[Callable[[int, str], None]] = None,
+        registrar_autoaprimoramento_cb: Optional[Callable[..., None]] = None,
+        log: Callable[..., Any] = print,
+    ) -> None:
+        self.memoria_sqlite = memoria_sqlite
+        self.base_system_prompt = str(base_system_prompt or "")
+        self.estado_obter = estado_obter
+        self.estado_atualizar = estado_atualizar
+        self.ajustar_humor_cb = ajustar_humor_cb
+        self.registrar_autoaprimoramento_cb = registrar_autoaprimoramento_cb
+        self.log = log
+
+    def _obter(self, dominio: str, chave: str, padrao: Any = None) -> Any:
+        return self.estado_obter(dominio, chave, padrao)
+
+    def _atualizar(self, dominio: str, **campos: Any) -> None:
+        self.estado_atualizar(dominio, **campos)
+
+    def carregar(self) -> tuple:
+        data = carregar_memoria(self.memoria_sqlite, self.base_system_prompt)
+        estado_auto = data.get("autoaprimoramento_estado")
+        if isinstance(estado_auto, dict):
+            self._atualizar("mental", autoaprimoramento_estado=estado_auto)
+        estado_temporal = data.get("consciencia_temporal")
+        if isinstance(estado_temporal, dict):
+            self._atualizar("mental", consciencia_temporal=estado_temporal)
+        preferencias_musicais = data.get("preferencias_musicais")
+        if isinstance(preferencias_musicais, dict):
+            self._atualizar("mental", preferencias_musicais=preferencias_musicais)
+        aprendizado_continuidade = data.get("aprendizado_continuidade")
+        if isinstance(aprendizado_continuidade, dict):
+            self._atualizar(
+                "mental",
+                aprendizado_continuidade=aprendizado_continuidade,
+                ultima_decisao_semantica={},
+            )
+        registro_semantico = data.get("registro_semantico")
+        if isinstance(registro_semantico, dict):
+            self._atualizar("mental", registro_semantico=registro_semantico)
+        perfil_proatividade = data.get("perfil_proatividade")
+        if isinstance(perfil_proatividade, dict):
+            self._atualizar("mental", perfil_proatividade=perfil_proatividade)
+
+        self._atualizar(
+            "conversacional",
+            current_emotion=str(data.get("current_emotion") or "calma"),
+            emotion_level=int(data.get("emotion_level") or 1),
+            emotion_cause=str(data.get("emotion_cause") or "memória carregada"),
+            emotion_started_at=float(data.get("emotion_started_at") or 0.0),
+            emotion_duration_s=float(data.get("emotion_duration_s") or 0.0),
+            emotion_interactions_total=int(data.get("emotion_interactions_total") or 0),
+            emotion_interactions_left=int(data.get("emotion_interactions_left") or 0),
+            emotion_last_decay_at=float(data.get("emotion_last_decay_at") or 0.0),
+            topicos_conversa_recente=list(data.get("topicos_conversa_recente") or []),
+            ultimo_topico_conversa=str(data.get("ultimo_topico_conversa") or "").strip(),
+            ultimo_topico_ts=float(data.get("ultimo_topico_ts") or 0.0),
+        )
+        self._atualizar(
+            "memoria_conversa",
+            messages=data.get("messages", [{"role": "system", "content": self.base_system_prompt}]),
+            bordoes=data.get("bordoes", []),
+            resumo_conversa=data.get("resumo_conversa", ""),
+            memoria_fatos=data.get("memoria_fatos", []),
+            memoria_eventos=data.get("memoria_eventos", []),
+            historico_long_term=data.get("historico_long_term", ""),
+        )
+        return (
+            data.get("messages", [{"role": "system", "content": self.base_system_prompt}]),
+            data.get("bordoes", []),
+            data.get("resumo_conversa", ""),
+            data.get("memoria_fatos", []),
+            data.get("memoria_eventos", []),
+            data.get("historico_long_term", ""),
+            data.get("current_emotion", "calma"),
+            data.get("emotion_level", 1),
+        )
+
+    def snapshot(self) -> Dict[str, Any]:
+        return {
+            "politica_persistencia_versao": 1,
+            "messages": compactar_historico_mensagens(
+                self._obter("memoria_conversa", "messages", [])
+            ),
+            "bordoes": self._obter("memoria_conversa", "bordoes", []),
+            "resumo_conversa": self._obter("memoria_conversa", "resumo_conversa", ""),
+            "memoria_fatos": self._obter("memoria_conversa", "memoria_fatos", []),
+            "memoria_eventos": self._obter("memoria_conversa", "memoria_eventos", []),
+            "historico_long_term": self._obter("memoria_conversa", "historico_long_term", ""),
+            "current_emotion": self._obter("conversacional", "current_emotion", "calma"),
+            "emotion_level": self._obter("conversacional", "emotion_level", 1),
+            "emotion_cause": self._obter("conversacional", "emotion_cause", ""),
+            "emotion_started_at": self._obter("conversacional", "emotion_started_at", 0.0),
+            "emotion_duration_s": self._obter("conversacional", "emotion_duration_s", 0.0),
+            "emotion_interactions_total": self._obter("conversacional", "emotion_interactions_total", 0),
+            "emotion_interactions_left": self._obter("conversacional", "emotion_interactions_left", 0),
+            "emotion_last_decay_at": self._obter("conversacional", "emotion_last_decay_at", 0.0),
+            "humor_level": self._obter("conversacional", "humor_level", 0),
+            "topicos_conversa_recente": self._obter("conversacional", "topicos_conversa_recente", []),
+            "ultimo_topico_conversa": self._obter("conversacional", "ultimo_topico_conversa", ""),
+            "ultimo_topico_ts": self._obter("conversacional", "ultimo_topico_ts", 0.0),
+            "autoaprimoramento_estado": self._obter("mental", "autoaprimoramento_estado", {}),
+            "consciencia_temporal": self._obter("mental", "consciencia_temporal", {}),
+            "aprendizado_continuidade": self._obter(
+                "mental", "aprendizado_continuidade", {}
+            ),
+            "preferencias_musicais": self._obter("mental", "preferencias_musicais", {}),
+            "registro_semantico": self._obter("mental", "registro_semantico", {}),
+            "perfil_proatividade": self._obter("mental", "perfil_proatividade", {}),
+        }
+
+    def salvar(self) -> bool:
+        try:
+            salvar_memoria(self.memoria_sqlite, self.snapshot())
+            return True
+        except Exception as erro:
+            self.log(f"❌ Erro ao salvar memória: {erro}")
+            return False
+
+    def registrar_autocorrecao(self, origem: str, erro: str, correcao: str, contexto: str = "") -> None:
+        estado = registrar_autocorrecao_virtual(
+            self.memoria_sqlite,
+            self._obter("mental", "autoaprimoramento_estado", {}),
+            origem,
+            erro,
+            correcao,
+            contexto=contexto,
+            ajustar_humor_cb=self.ajustar_humor_cb,
+            registrar_autoaprimoramento_cb=self.registrar_autoaprimoramento_cb,
+        )
+        self._atualizar("mental", autoaprimoramento_estado=estado)
+
+
+def criar_persistencia_memoria_runtime(**kwargs: Any) -> PersistenciaMemoriaRuntime:
+    return PersistenciaMemoriaRuntime(**kwargs)
 
 
 def init_memoria_contexto_diaria(arquivo: str) -> Optional[str]:

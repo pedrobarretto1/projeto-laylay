@@ -6,6 +6,177 @@ import re
 from typing import Any, Callable, Dict
 
 
+def normalizar_pedido_natural(texto_normalizado: str) -> tuple[str, str]:
+    """Remove a moldura social do pedido sem apagar sua intenção prática.
+
+    Retorna ``(texto_operacional, modalidade)``; falas deliberativas continuam
+    intactas para não transformar pensamento em comando.
+    """
+    t = re.sub(r"\s+", " ", str(texto_normalizado or "")).strip()
+    if not t:
+        return "", ""
+    if re.search(
+        r"\b(?:acho que (?:eu )?vou|talvez|estou pensando em|to pensando em|"
+        r"seria bom|quem sabe|estou com vontade de|to com vontade de)\b",
+        t,
+    ):
+        return t, "deliberativo"
+
+    original = t
+    molduras = (
+        r"^(?:ei\s+)?(?:laylay?\s+)?(?:sera que\s+)?(?:voce\s+)?"
+        r"(?:pode|poderia|consegue|conseguiria)\s+",
+        r"^(?:ei\s+)?(?:laylay?\s+)?(?:sera que\s+)?(?:da|tem)\s+(?:pra|para|como)\s+"
+        r"(?:voce\s+)?",
+        r"^(?:ei\s+)?(?:laylay?\s+)?(?:faz|faca)\s+(?:o\s+)?favor\s+de\s+",
+        r"^(?:eu\s+)?queria\s+que\s+(?:voce\s+)?",
+    )
+    for padrao in molduras:
+        novo = re.sub(padrao, "", t, count=1)
+        if novo != t:
+            t = novo.strip()
+            break
+
+    # Formas do subjuntivo comuns depois de "queria que você...".
+    conjugacoes = {
+        "abrisse": "abre", "fechasse": "fecha", "ligasse": "liga",
+        "desligasse": "desliga", "colocasse": "coloca", "tocasse": "toca",
+        "pausasse": "pausa", "aumentasse": "aumenta", "abaixasse": "abaixa",
+        "diminuísse": "diminui", "diminuisse": "diminui",
+    }
+    primeira, *resto = t.split()
+    if primeira in conjugacoes:
+        t = " ".join([conjugacoes[primeira], *resto]).strip()
+    return (t or original), ("pedido" if t != original else "direto")
+
+
+def corrigir_verbo_operacional_digitado(texto_normalizado: str) -> str:
+    """Corrige somente deslizes inequívocos no primeiro verbo de um comando."""
+    t = re.sub(r"\s+", " ", str(texto_normalizado or "")).strip()
+    if not t or " " not in t:
+        return t
+    primeiro, restante = t.split(" ", 1)
+    alvos_iot = r"\b(?:ventilador|tomada|luz|lampada|lâmpada|dispositivo|aparelho)\b"
+    if not re.search(alvos_iot, restante):
+        return t
+    explicitas = {
+        "liag": "liga", "lgia": "liga", "lig": "liga",
+        "deslgia": "desliga", "deslgiar": "desligar", "deslga": "desliga",
+    }
+    corrigido = explicitas.get(primeiro)
+    if corrigido:
+        return f"{corrigido} {restante}".strip()
+    return t
+
+
+def extrair_intencao_abrir_app(
+    texto: str,
+    *,
+    normalizar_texto: Callable[[str], str],
+    limpar_destino: Callable[[str], str],
+    apps_map: Dict[str, Any],
+    sites_diretos: Dict[str, Any],
+) -> Dict[str, Any] | None:
+    """Extrai abertura explícita distinguindo aplicativo instalado de destino web."""
+    bruto = str(texto or "").strip()
+    if not bruto:
+        return None
+    t = normalizar_texto(bruto) if callable(normalizar_texto) else bruto.lower()
+    t = re.sub(r"\b(laylay|lay|por favor|pfv|pra mim|para mim)\b", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    if not t or "playlist" in t:
+        return None
+    if any(x in t for x in ["instagram.com/direct", "instagram.com", "www.instagram.com", "instagram direct", "direct/t/"]):
+        return {"intent": "OPEN_URL", "params": {"alvo": "instagram"}}
+    if re.search(r"https?://\S+", bruto) and "instagram" in t:
+        return {"intent": "OPEN_URL", "params": {"alvo": "instagram"}}
+
+    encontrado = re.search(
+        r"\b(?:pode\s+|da\s+pra\s+|dá\s+pra\s+|por favor\s+)?"
+        r"(abre|abra|abrir|inicia|iniciar|executa|executar|roda|rodar)\s+"
+        r"(?:o|a|os|as|um|uma)?\s*(.+)$",
+        t,
+    )
+    if not encontrado:
+        return None
+    nome = (encontrado.group(2) or "").strip()
+    nome = limpar_destino(nome) if callable(limpar_destino) else nome
+    nome = re.sub(r"\s+(agora|aqui|ai|aí|por favor|pfv)$", "", nome).strip()
+    nome = re.sub(r"^(o|a|os|as|um|uma)\s+", "", nome).strip()
+    nome = re.sub(r"^(?:programa|app|aplicativo)\s+(?:chamado|chamada|com\s+nome|de\s+nome)\s+", "", nome).strip()
+    if not nome or nome.casefold() in {"que", "o que", "qual", "isso", "aquilo"}:
+        return None
+
+    nome_norm = nome.lower()
+    sites = sites_diretos if isinstance(sites_diretos, dict) else {}
+    if nome_norm in sites or nome_norm.startswith("site ") or nome_norm in {"youtube", "google", "spotify", "whatsapp", "chatgpt"}:
+        return {"intent": "OPEN_URL", "params": {"alvo": nome_norm.replace("site ", "").strip()}}
+    apps = apps_map if isinstance(apps_map, dict) else {}
+    for app in sorted(apps.keys(), key=len, reverse=True):
+        if nome_norm == app or nome_norm.startswith(app + " ") or app in nome_norm:
+            return {"intent": "APP_OPEN", "params": {"nome_app": app}}
+    return {"intent": "APP_OPEN", "params": {"nome_app": nome}}
+
+
+def texto_expresso_melhor_no_deterministico(
+    texto: str,
+    *,
+    normalizar_texto: Callable[[str], str],
+) -> bool:
+    """Indica comandos explícitos cuja rota local é mais segura que IA-first."""
+    t = normalizar_texto(texto or "") if callable(normalizar_texto) else str(texto or "").lower().strip()
+    if not t:
+        return False
+    if "briefing" in t and any(p in t for p in ["repete", "repetir", "fala", "fale", "mostra", "diz", "diga"]):
+        return True
+    if any(p in t for p in ["quantos graus", "temperatura", "previsao do tempo", "previsão do tempo"]):
+        return True
+    if re.search(r"\b(?:email|emails|e-mail)\b", t) and re.search(
+        r"\b(?:le|lê|leia|ler|mostra|verifica|checa|resuma|sincroniza|atualiza)\b", t
+    ):
+        return True
+    if re.search(r"\b(?:volume|som)\b", t) and (
+        re.search(r"\b\d{1,3}\s*%?\b", t)
+        or re.search(r"\b(?:maximo|máximo|minimo|mínimo|mudo|mute|aumenta|abaixa|diminui)\b", t)
+    ):
+        return True
+    if re.search(r"\b(?:como|qual)\s+(?:esta|está|ta|tá)\s+(?:o\s+)?(?:clima|tempo)\b", t):
+        return True
+    if any(p in t for p in ["playlist", "playlists"]) and re.search(
+        r"\b(coloca|coloque|toca|toque|abre|abra|ouvir|escuta|escute|salva|salve|guarda|guarde|adiciona|adicione|lista|listar|mostra|mostrar|mostre|fale|fala|diga|diz|quais)\b",
+        t,
+    ):
+        return True
+    if re.fullmatch(r"(essa|esta|isso|essa aqui|esta aqui)\s+(tambem|também)", t):
+        return True
+    if any(v in t for v in ["organiza", "organizar", "arruma", "arrumar"]) and any(
+        alvo in t for alvo in ["area de trabalho", "área de trabalho", "desktop", "tela", "janelas", "janela"]
+    ):
+        return True
+    if any(x in t for x in ["despausa", "despausar", "retoma a musica", "retoma a música", "continua a musica", "continua a música"]):
+        return True
+    if any(x in t for x in ["pausa a musica", "pausa a música", "proxima musica", "próxima música", "musica anterior", "música anterior", "volta a musica", "volta a música"]):
+        return True
+    if re.search(r"\b(liga|ligar|ligue|desliga|desligar|desligue|alterna|alternar)\b", t) and re.search(
+        r"\b(dispositivo|aparelho|tomada|ventilador|luz|lampada|lâmpada|iot|ele|ela)\b", t
+    ):
+        return True
+    if re.search(r"\b(dispositivo|aparelho|tomada|ventilador|iot)\b", t) and re.search(
+        r"\b(status|estado|ligado|ligada|desligado|desligada|quais|lista|mostrar|mostra)\b", t
+    ):
+        return True
+    if re.match(r"^\s*(abre|abra|abrir|fecha|fechar|maximiza|maximizar|traz|coloca|bota|deixa)\b", t):
+        if any(x in t for x in ["steam", "opera", "chrome", "edge", "vscode", "vs code", "visual studio code", "janela", "foco", "tela cheia", "fullscreen"]):
+            return True
+    if re.match(r"^\s*(coloca|bota|deixa|traz|maximiza|maximizar)\b", t):
+        if any(x in t for x in ["ele", "ela", "isso"]) and any(x in t for x in ["foco", "tela cheia", "fullscreen", "na frente", "pra frente", "para frente"]):
+            return True
+    if re.match(r"^\s*(cria|criar|crie|apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir)\b", t):
+        if any(x in t for x in ["pasta", "arquivo", "ela", "ele", "isso", "essa", "esse"]):
+            return True
+    return "dentro dela" in t and "pasta" in t
+
+
 def preparar_entrada_deterministica(
     texto: str,
     *,
@@ -24,15 +195,28 @@ def preparar_entrada_deterministica(
     if not bruto:
         return {"status": "ignorar"}
 
-    if callable(texto_conversa_casual_sem_acao) and texto_conversa_casual_sem_acao(bruto):
+    normalizar = normalizar_texto if callable(normalizar_texto) else (lambda valor: str(valor or "").strip().lower())
+    inicial = corrigir_verbo_operacional_digitado(normalizar(bruto))
+    # Negação e pergunta sobre uma ação não autorizam essa ação. Exemplo:
+    # "não abre o quê?" é pedido de esclarecimento, não APP_OPEN("que").
+    if re.search(
+        r"^(?:nao|não)\s+(?:abre|abrir|abriu|fecha|fechar|ligar|liga|desligar|desliga|toca|coloca)\b.*\b(?:que|qual|porque|por que)\b",
+        inicial,
+    ):
+        return {"status": "ignorar", "modalidade": "pergunta_negativa"}
+    natural, modalidade = normalizar_pedido_natural(inicial)
+    if modalidade == "deliberativo":
+        return {"status": "ignorar", "modalidade": modalidade}
+    # O classificador de conversa recebe a parte operacional. Assim "será que
+    # você pode abrir..." não parece apenas uma pergunta casual.
+    if callable(texto_conversa_casual_sem_acao) and texto_conversa_casual_sem_acao(natural):
         return {"status": "ignorar"}
     if callable(texto_bloqueia_playlist_agora) and texto_bloqueia_playlist_agora(bruto):
         return {"status": "intent", "resultado": {"intent": "STOP_PLAYLIST_CONTEXT", "params": {}}}
     if callable(texto_social_curto) and texto_social_curto(bruto):
         return {"status": "ignorar"}
 
-    normalizar = normalizar_texto if callable(normalizar_texto) else (lambda valor: str(valor or "").strip().lower())
-    t = normalizar(bruto)
+    t = natural
     t = re.sub(r"\b(laylay|lay|por favor|pfv|pra mim|para mim)\b", " ", t)
     t = re.sub(r"\s+", " ", t).strip()
 
@@ -64,6 +248,7 @@ def preparar_entrada_deterministica(
     return {
         "status": "ok",
         "bruto": bruto,
+        "modalidade": modalidade,
         "texto_normalizado": t,
         "texto_sem_destino": limpar_destino(t),
     }
@@ -74,6 +259,7 @@ def detectar_volume_ou_midia(
     *,
     params_cb: Callable[..., Dict[str, Any]],
     contexto_musical_ativo: bool = False,
+    contexto_volume_ativo: bool = False,
 ) -> Dict[str, Any] | None:
     """Reconhece volume e controles de mídia sem depender da IA."""
     t = str(texto_normalizado or "").strip()
@@ -81,22 +267,39 @@ def detectar_volume_ou_midia(
         return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
 
-    if "volume" in t or any(p in t for p in ["mudo", "mute", "sem som", "silencio", "silêncio", "mais alto", "mais baixo"]):
+    menciona_volume = "volume" in t or bool(re.search(r"\bsom\b", t))
+    referencia_extremo = bool(re.search(
+        r"\b(?:ao|no|para|pro|pra)?\s*(?:maximo|máximo|minimo|mínimo)\b|\bno\s+talo\b",
+        t,
+    ))
+    if menciona_volume or (contexto_volume_ativo and referencia_extremo) or any(p in t for p in ["mudo", "mute", "muta", "mutar", "desmuta", "desmutar", "sem som", "silencio", "silêncio", "mais alto", "mais baixo"]):
         m_vol = re.search(r"\b(?:volume|som)\s*(?:em|no|para|pra)?\s*(\d{1,3})\s*%?\b", t)
         if m_vol:
-            return {"intent": "VOLUME", "params": params(acao="set", nivel_volume=int(m_vol.group(1)))}
-        if any(p in t for p in ["mudo", "mute", "sem som", "silencio", "silêncio", "silenciar"]):
+            nivel = max(0, min(100, int(m_vol.group(1))))
+            return {"intent": "VOLUME", "params": params(acao="set", nivel_volume=nivel)}
+        if re.search(r"\b(?:maximo|máximo)\b|\bno\s+talo\b", t):
+            return {"intent": "VOLUME", "params": params(acao="set", nivel_volume=100)}
+        if re.search(r"\b(?:minimo|mínimo)\b", t):
+            return {"intent": "VOLUME", "params": params(acao="set", nivel_volume=0)}
+        if any(p in t for p in ["desmuta", "desmutar", "tira do mudo", "com som"]):
+            return {"intent": "VOLUME", "params": params(acao="unmute")}
+        if any(p in t for p in ["mudo", "mute", "muta", "mutar", "sem som", "silencio", "silêncio", "silenciar"]):
             return {"intent": "VOLUME", "params": params(acao="mute")}
         if any(p in t for p in ["aumenta", "aumentar", "sobe", "subir", "mais alto"]):
             return {"intent": "VOLUME", "params": params(acao="up")}
         if any(p in t for p in ["abaixa", "baixa", "baixar", "diminui", "diminuir", "mais baixo"]):
             return {"intent": "VOLUME", "params": params(acao="down")}
 
+    if contexto_musical_ativo and any(x in t for x in ["despausa ela", "despausa ele", "despusa ela", "despusa ele", "depausa ela", "depausa ele", "retoma ela", "retoma ele", "continua ela", "continua ele"]):
+        return {"intent": "MEDIA_CONTROL", "params": params(acao="play", platform="music")}
     if contexto_musical_ativo and any(x in t for x in ["pausa ela", "pausa ele", "pausa isso", "para ela", "para ele", "para isso"]):
         return {"intent": "MEDIA_CONTROL", "params": params(acao="pause", platform="music")}
-    if contexto_musical_ativo and any(x in t for x in ["despausa ela", "despausa ele", "retoma ela", "retoma ele", "continua ela", "continua ele"]):
-        return {"intent": "MEDIA_CONTROL", "params": params(acao="play", platform="music")}
-    if any(x in t for x in ["despausa", "despausar", "retoma a musica", "retoma a música", "continua a musica", "continua a música", "volta a tocar", "continua tocando"]):
+    if re.search(
+        r"\b(?:pula|pule|pular|passa|tira|remove)\s+(?:(?:esse|essa|o|a)\s+)?(?:anuncio|anúncio|propaganda)\b",
+        t,
+    ):
+        return {"intent": "MEDIA_CONTROL", "params": params(acao="skip_ad", platform="youtube")}
+    if any(x in t for x in ["despausa", "despausar", "despusa", "despusar", "depausa", "depausar", "retoma a musica", "retoma a música", "continua a musica", "continua a música", "volta a tocar", "continua tocando"]):
         return {"intent": "MEDIA_CONTROL", "params": params(acao="play")}
     if any(x in t for x in ["pausa", "pause", "pausar", "para a musica", "para música", "para musica", "play pause"]):
         return {"intent": "MEDIA_CONTROL", "params": params(acao="pause")}
@@ -130,7 +333,7 @@ def detectar_email_notificacao_briefing(
             return {"intent": "EMAIL_SYNC", "params": params()}
         if any(p in t for p in ["urgente", "urgentes", "importante", "importantes", "prioritario", "prioritários", "prioritarios"]):
             return {"intent": "EMAIL_READ", "params": params(urgentes=True)}
-        if any(p in t for p in ["le", "lê", "ler", "mostra", "ver", "verifica", "checa", "quantos", "fale", "falar", "resuma", "resumo", "me fala", "me fale", "o que eles me falam", "o que falam"]):
+        if any(p in t for p in ["le", "lê", "ler", "mostra", "ver", "verifica", "checa", "quantos", "quais", "fale", "falar", "resuma", "resumo", "me fala", "me fale", "o que eles me falam", "o que falam"]):
             return {"intent": "EMAIL_READ", "params": params()}
 
     if "briefing" in t and any(p in t for p in ["fala", "fale", "mostra", "mostrar", "repete", "repetir", "diz", "diga", "conta", "contar"]):
@@ -145,6 +348,38 @@ def detectar_email_notificacao_briefing(
             return {"intent": "NOTIFICATIONS", "params": params(acao="ler")}
 
     return None
+
+
+def detectar_clima(
+    texto_normalizado: str,
+    *,
+    params_cb: Callable[..., Dict[str, Any]],
+) -> Dict[str, Any] | None:
+    """Reconhece perguntas meteorologicas diretas e preserva a localidade citada."""
+    t = str(texto_normalizado or "").strip()
+    if not t:
+        return None
+    pede_clima = (
+        any(p in t for p in ["quantos graus", "temperatura", "previsao do tempo", "previsão do tempo"])
+        or bool(re.search(r"\b(?:qual|como esta|como está|como ta|como tá)\s+(?:o\s+)?(?:clima|tempo)\b", t))
+        or bool(re.search(r"\b(?:clima|tempo)\s+(?:em|de|no|na)\s+[a-zà-ÿ]", t))
+        or bool(re.search(r"\b(?:como|qual)\s+(?:esta|está|ta|tá)\s+(?:o\s+)?(?:clima|tempo)\b", t))
+    )
+    if not pede_clima:
+        return None
+
+    local = ""
+    padroes_local = [
+        r"\b(?:em|de)\s+([a-zà-ÿ][a-zà-ÿ\s-]*?)(?:\?|$)",
+        r"\b(?:no|na)\s+([a-zà-ÿ][a-zà-ÿ\s-]*?)(?:\?|$)",
+    ]
+    for padrao in padroes_local:
+        encontrado = re.search(padrao, t, flags=re.IGNORECASE)
+        if encontrado:
+            local = str(encontrado.group(1) or "").strip(" .,!?:;")
+            break
+    params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
+    return {"intent": "WEATHER", "params": params(local=local) if local else params()}
 
 
 def detectar_url_visual(
@@ -562,22 +797,40 @@ def detectar_musica_ou_playlist_direta(
     bruto = str(texto_bruto or "").strip()
     if not t:
         return None
+    if re.search(r"\b(?:volume|som)\b", t) and re.search(
+        r"\b(?:maximo|máximo|minimo|mínimo|mudo|mute|aumenta|aumentar|abaixa|baixar|diminui|diminuir)\b",
+        t,
+    ):
+        return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
     detectar_playlist = detectar_playlist_nome_direto if callable(detectar_playlist_nome_direto) else (lambda valor: "")
     normalizar_musica = normalizar_query_musical if callable(normalizar_query_musical) else (lambda valor: str(valor or "").strip())
 
+    convite_musical = re.match(
+        r"^\s*(?:vamos\s+)?(?:ouvir|escutar)\s+(?:uma|um|algo)?\s*(.+)$",
+        t,
+    )
+    if convite_musical and "playlist" not in t:
+        q = str(convite_musical.group(1) or "").strip()
+        q = re.sub(r"^(?:musica|música|som|faixa)\s+", "", q).strip()
+        q = normalizar_musica(q)
+        if q:
+            return {"intent": "MUSIC_SEARCH", "params": params(query=q)}
+
     if re.match(r"^\s*(coloque|coloca|toca|toque|ouvir|escuta|escute|abre|abra)\b", t):
+        # Nomes já salvos vencem a interpretação genérica da palavra
+        # "música": "coloca música brasileira" pode ser uma playlist.
+        pl_direta = detectar_playlist(bruto)
+        if pl_direta:
+            if any(x in t for x in ["lista", "listar", "quais", "mostra", "o que tem", "oque tem"]):
+                return {"intent": "PLAYLIST_LIST", "params": params(nome_playlist=pl_direta)}
+            return {"intent": "PLAYLIST_PLAY", "params": params(nome_playlist=pl_direta)}
+
         if any(x in t for x in ["música", "musica", "youtube", "no youtube", "no yt", "no you tube"]):
             q = re.sub(r"^\s*(coloque|coloca|toca|toque|ouvir|escuta|escute|abre|abra)\b\s*", "", t).strip()
             q = re.sub(r"^(a|o|as|os|uma|um|essa|esse|essa música|essa musica|essa canção|essa cancao)\s+", "", q).strip()
             if q:
                 return {"intent": "MUSIC_SEARCH", "params": params(query=q)}
-
-        pl_direta = detectar_playlist(bruto)
-        if pl_direta:
-            if any(x in t for x in ["playlist", "lista", "listar", "quais", "mostra", "o que tem", "oque tem"]):
-                return {"intent": "PLAYLIST_LIST", "params": params(nome_playlist=pl_direta)}
-            return {"intent": "PLAYLIST_PLAY", "params": params(nome_playlist=pl_direta)}
 
         if not any(x in t for x in ["playlist", "música", "musica", "youtube", "yt"]):
             q = re.sub(r"^\s*(coloque|coloca|toca|toque|ouvir|escuta|escute|abre|abra)\b\s*", "", t).strip()

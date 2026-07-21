@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from mente_laylay.cognicao.coerencia_temporal import ajustar_fala_ao_periodo
+from mente_laylay.percepcao.ritmo_circadiano import adaptar_fala_ao_ritmo
+
 
 def ajustar_fala_por_horario(
     fala: str,
@@ -19,10 +22,8 @@ def ajustar_fala_por_horario(
         return fala
 
     ctx = obter_contexto_perceptivo()
-    percepcao = interpretar_contexto_vivo(ctx, texto_usuario)
     periodo = ctx["periodo"]
     texto_lower = str(texto_usuario or "").strip().lower()
-    fala_lower = fala.lower()
     contexto_gatilho = " ".join(
         [
             ctx["assunto"],
@@ -33,8 +34,6 @@ def ajustar_fala_por_horario(
         ]
     ).lower()
     contexto_descanso = any(k in contexto_gatilho for k in ["sono", "cansad", "dorm", "descans", "noite", "madrugada", "sleep"])
-    contexto_foco = any(k in contexto_gatilho for k in ["codigo", "código", "program", "vs code", "vscode", "debug", "estudo", "trabalho", "foco"])
-    contexto_musica = any(k in contexto_gatilho for k in ["musica", "música", "spotify", "youtube", "playlist", "som"])
     contexto_inicio_dia = any(k in contexto_gatilho for k in ["acord", "manh", "bom dia", "começando", "inicio do dia", "iniciando"])
 
     if "bom dia" in texto_lower:
@@ -130,30 +129,7 @@ def ajustar_fala_por_horario(
             "Boa noite, Pedro. Pode falar.",
         ])
 
-    if periodo == "madrugada" and any(k in fala_lower for k in ["bom dia", "boa tarde", "horario de dia", "dia lindo"]):
-        return "Pedro, isso aí tá com energia de madrugada. Melhor falar de café do que de bom dia."
-
-    if periodo == "madrugada" and len(texto_lower.split()) <= 5 and any(k in texto_lower for k in ["vamos", "abrir", "começar", "fazer"]):
-        return fala + " E no relógio? Já é madrugada, então vou ser objetiva."
-
-    if contexto_descanso and "?" in fala and len(fala) < 90:
-        return fala.rstrip(" .") + " E, sinceramente, esse contexto tá com cara de pausa."
-
-    if contexto_foco and len(fala) < 90 and any(k in fala_lower for k in ["vamos", "começar", "seguir", "fazer", "continuar", "partir"]):
-        return fala.rstrip(" .") + " Vamos no ritmo certo e sem meias distrações."
-
-    fala_ou_texto_musical = any(
-        k in (fala_lower + " " + texto_lower)
-        for k in ["musica", "música", "playlist", "faixa", "som", "trilha", "youtube"]
-    )
-    if contexto_musica and fala_ou_texto_musical and len(fala) < 90 and any(k in fala_lower for k in ["tranquilo", "calma", "boa", "certo", "presente"]):
-        return fala.rstrip(" .") + " Deixo isso no tom da trilha que você tá vivendo."
-
-    if percepcao.get("conclusao") == "foco" and "?" not in fala and len(fala) < 100:
-        if any(k in fala_lower for k in ["calma", "descansa", "devagar", "sem pressa"]):
-            return fala.rstrip(" .") + " O contexto tá puxando mais pra foco do que pra pausa."
-    if percepcao.get("conclusao") == "musica" and len(fala) < 100:
-        if any(k in fala_lower for k in ["abrindo", "pronto", "beleza", "certo"]):
-            return fala.rstrip(" .") + " Seu contexto musical tá bem claro pra mim agora."
-
-    return fala
+    # Fora de saudações, não inventa observações sobre o relógio, mas corrige
+    # contradições temporais objetivas em respostas prontas.
+    fala = ajustar_fala_ao_periodo(fala, periodo)
+    return adaptar_fala_ao_ritmo(fala, ctx.get("ritmo_temporal"))

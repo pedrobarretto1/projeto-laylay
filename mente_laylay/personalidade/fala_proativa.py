@@ -3,69 +3,8 @@
 from __future__ import annotations
 
 import re
-import threading
-import time
+import random
 from collections.abc import Callable
-
-
-class FilaFalaProativa:
-    """Une falas proativas próximas para evitar alertas fragmentados."""
-
-    def __init__(self, *, delay: float = 1.0, janela_startup: float = 18.0):
-        self.lock = threading.Lock()
-        self.buffer = []
-        self.timer = None
-        self.delay = delay
-        self.inicio_sistema = time.time()
-        self.janela_startup = janela_startup
-
-    def flush(
-        self,
-        *,
-        compor_fala: Callable[[list], tuple[str, str, int]],
-        falar: Callable[[str, str, int], None],
-    ) -> None:
-        with self.lock:
-            itens = list(self.buffer)
-            self.buffer = []
-            self.timer = None
-
-        if not itens:
-            return
-
-        texto, emocao, nivel = compor_fala(itens)
-        falar(texto, emocao, nivel)
-
-    def agendar(
-        self,
-        tipo: str,
-        texto: str,
-        emocao: str = "calma",
-        nivel: int = 1,
-        *,
-        flush_callback: Callable[[], None],
-        log: Callable[[str], None] = print,
-    ) -> None:
-        tipo_norm = str(tipo or "").strip().lower()
-        item = {
-            "tipo": tipo_norm,
-            "texto": str(texto or "").strip(),
-            "emocao": emocao,
-            "nivel": nivel,
-            "ts": time.time(),
-        }
-        with self.lock:
-            self.buffer.append(item)
-            if self.timer and self.timer.is_alive():
-                return
-            atraso = self.delay
-            idade_sistema = time.time() - self.inicio_sistema
-            if tipo_norm in {"briefing", "emails", "rotina", "musica"} and idade_sistema < self.janela_startup:
-                atraso = max(self.delay, self.janela_startup - idade_sistema)
-                log(f"🧠 [FALA PROATIVA] aguardando {atraso:.1f}s para unificar falas iniciais")
-            self.timer = threading.Timer(atraso, flush_callback)
-            self.timer.daemon = True
-            self.timer.start()
 
 
 def compor_fala_proativa(
@@ -81,7 +20,7 @@ def compor_fala_proativa(
         return fallback_fala_neutra, "calma", 1
 
     ctx = obter_contexto_perceptivo()
-    ordem = {"briefing": 0, "emails": 1, "rotina": 2, "musica": 3}
+    ordem = {"abertura": -1, "briefing": 0, "emails": 1, "rotina": 2, "musica": 3}
     itens_validos = sorted(
         [i for i in itens if isinstance(i, dict) and str(i.get("texto") or "").strip()],
         key=lambda i: (
@@ -129,6 +68,10 @@ def compor_fala_proativa(
     tem_briefing = "briefing" in tipos
     tem_emails = "emails" in tipos
     tem_musica = "musica" in tipos
+    if tem_briefing:
+        # O briefing já funciona como abertura. Manter ambos faria a mente se
+        # apresentar duas vezes no mesmo início.
+        itens = [item for item in itens if str(item.get("tipo") or "").lower().strip() != "abertura"]
 
     def turbinhar(texto: str) -> str:
         texto = re.sub(r"\s+", " ", str(texto or "")).strip()
@@ -137,6 +80,18 @@ def compor_fala_proativa(
         if texto[-1] not in ".!?…":
             texto += "."
         return texto
+
+    def limitar_segmento(texto: str, limite: int) -> str:
+        texto = re.sub(r"\s+", " ", str(texto or "")).strip()
+        if len(texto) <= limite:
+            return texto
+        corte = texto[:limite].rstrip()
+        ultimo_fim = max(corte.rfind("."), corte.rfind("!"), corte.rfind("?"))
+        if ultimo_fim >= int(limite * 0.55):
+            corte = corte[:ultimo_fim + 1]
+        else:
+            corte = corte.rsplit(" ", 1)[0].rstrip(" ,;:-") + "."
+        return corte
 
     for idx, item in enumerate(itens):
         tipo = str(item.get("tipo") or "").lower().strip()
@@ -151,18 +106,32 @@ def compor_fala_proativa(
             except Exception:
                 nivel = 1
 
-        if tipo == "briefing":
-            texto = turbinhar(texto)
-            texto = re.sub(r"^(Hoje|Agora|E aí|Bom dia)[, ]+", "", texto, flags=re.IGNORECASE)
+        if tipo == "abertura":
+            texto = limitar_segmento(turbinhar(texto), 180)
+        elif tipo == "briefing":
+            texto = limitar_segmento(turbinhar(texto), 420 if "rotina" not in tipos else 330)
+            if "rotina" in tipos:
+                # A oferta da rotina será a única pergunta do lote.
+                texto = re.sub(r"\s*(?:E aí|Então|O que|E o que)[^.!?]*\?\s*$", "", texto, flags=re.IGNORECASE)
+            texto = re.sub(r"^(Hoje|Agora|E aí|Bom dia)[!,. ]+", "", texto, flags=re.IGNORECASE)
             texto = texto[:1].upper() + texto[1:] if texto else texto
-            texto = f"Olha só: {texto}"
+            abertura = random.choice([
+                "Olha só.",
+                "Bom dia.",
+                "Acordei de olho no tempo.",
+            ])
+            texto = f"{abertura} {texto}"
         elif tipo == "emails":
             texto = turbinhar(texto)
             texto = texto[:1].lower() + texto[1:] if texto else texto
             texto = f"Teus emails estão querendo atenção: {texto}"
         elif tipo == "rotina":
-            texto = turbinhar(texto)
-            texto = f"Seu horário tá puxando isso aqui: {texto}"
+            texto = limitar_segmento(turbinhar(texto), 240)
+            texto = random.choice([
+                f"Lembrei de uma coisa que você costuma fazer por agora: {texto}",
+                f"Tem um costume seu que talvez seja útil agora: {texto}",
+                f"Pelo seu ritmo habitual, pensei em te lembrar disto: {texto}",
+            ])
         elif tipo == "musica":
             texto = turbinhar(texto)
             texto = f"Tem um padrão musical querendo aparecer no contexto: {texto}"
@@ -174,8 +143,8 @@ def compor_fala_proativa(
             texto = texto.replace("querendo atenção", "pedindo um ritmo mais leve")
             if tipo == "musica" and "trilha sonora" not in texto_lower:
                 texto += " Talvez hoje o melhor seja algo mais calmo."
-        if ctx["topico_ativo"] and tipo in {"briefing", "rotina"} and len(texto) < 180:
-            texto += f" Isso conversa com o que a gente vinha vendo sobre {ctx['topico_ativo']}."
+        # Uma rotina aprendida e o assunto da conversa são sinais independentes.
+        # Juntá-los só por coexistirem cria causalidade falsa e soa invasivo.
         if ctx["humor"] <= -4 and tipo in {"emails", "rotina"}:
             texto = texto.replace("querendo atenção", "sem pressa para te encher")
         if ctx["emocao"] in {"triste", "decepcionada", "cansada"} and tipo == "briefing":
@@ -206,9 +175,7 @@ def compor_fala_proativa(
 
     if ctx["periodo"] in {"madrugada", "noite"} and not tem_briefing:
         texto_final = texto_final.replace("Olha só:", "Olha só, baixando um pouco o ritmo:")
-    if ctx["topico_ativo"] and ctx["topico_ativo"].lower() in texto_final.lower():
-        texto_final = texto_final.replace("Seu horário tá puxando isso aqui:", "Seu cérebro tá puxando isso aqui junto com o contexto:")
-
     texto_final = re.sub(r"\s+", " ", texto_final).strip()
+    texto_final = limitar_segmento(texto_final, 680)
 
     return texto_final, emocao, nivel

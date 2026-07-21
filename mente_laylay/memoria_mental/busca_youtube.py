@@ -7,6 +7,23 @@ import re
 from typing import Any, Callable
 
 
+TERMOS_NAO_MUSICA = (
+    "familia da pesada", "família da pesada", "family guy", "episodio", "episódio",
+    "temporada", "desenho", "cartoon", "trailer", "react", "reaction", "review",
+    "podcast", "entrevista", "meme", "cena completa", "melhores momentos", "gameplay",
+)
+
+
+def _duracao_em_segundos(texto: str) -> int | None:
+    partes = str(texto or "").strip().split(":")
+    if len(partes) not in {2, 3} or not all(parte.isdigit() for parte in partes):
+        return None
+    valores = [int(parte) for parte in partes]
+    if len(valores) == 2:
+        return valores[0] * 60 + valores[1]
+    return valores[0] * 3600 + valores[1] * 60 + valores[2]
+
+
 def normalizar_query_musical(texto: str, normalizar_texto_cb: Callable[[str], str] | None = None) -> str:
     bruto = str(texto or "").strip()
     if not bruto:
@@ -66,6 +83,8 @@ def pontuar_resultado_youtube(
     c_tokens = [tok for tok in c.split() if len(tok) > 1]
 
     score = 0
+    if any(termo in t for termo in TERMOS_NAO_MUSICA):
+        return -500
     if q == t:
         score += 120
     if q in t or t in q:
@@ -112,6 +131,8 @@ def resultado_youtube_parece_faixa_unica(
     del canal
     t = normalizar_query_musical(titulo or "", normalizar_texto_cb)
     if not t:
+        return False
+    if any(termo in t for termo in TERMOS_NAO_MUSICA):
         return False
     termos_combo = [
         "album", "álbum", "full album", "playlist", "mix", "compilation", "coletanea",
@@ -164,18 +185,33 @@ def extrair_resultados_youtube_busca(
         if m_canal:
             canal = _html.unescape(m_canal.group(1))
 
+        duracao_texto = ""
+        m_duracao = re.search(
+            r'"lengthText":\{.*?"simpleText":"(\d{1,2}:\d{2}(?::\d{2})?)"',
+            snippet,
+            re.DOTALL,
+        )
+        if m_duracao:
+            duracao_texto = m_duracao.group(1)
+        duracao_segundos = _duracao_em_segundos(duracao_texto)
+
         if not titulo:
             continue
 
         if not resultado_youtube_parece_faixa_unica(titulo, canal, normalizar_texto_cb=normalizar_texto_cb):
             continue
+        if duracao_segundos is not None and duracao_segundos > 12 * 60:
+            continue
         score = pontuar_resultado_youtube(query, titulo, canal, normalizar_texto_cb=normalizar_texto_cb)
+        if score < 15:
+            continue
         candidatos.append({
             "video_id": video_id,
             "title": titulo,
             "channel": canal,
             "url": f"https://www.youtube.com/watch?v={video_id}",
             "score": score,
+            "duration": duracao_texto,
         })
         if len(candidatos) >= max(limite * 3, 20):
             break

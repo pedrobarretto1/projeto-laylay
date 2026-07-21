@@ -491,7 +491,7 @@
 -   `F:x {}` = Finalizado
 
 ------------------------------------------------------------------------
-# ( ) Melhoria - Subsistema IoT (Casa Inteligente)
+# (F) Melhoria - Subsistema IoT (Casa Inteligente)
             Objetivo
 
             Adicionar à Laylay um subsistema de Internet das Coisas (IoT), permitindo que ela controle dispositivos físicos da casa através da rede local ou internet.
@@ -823,7 +823,7 @@
             ## Dados identificados no teste
 
             ```text
-            IP do dispositivo: 192.168.100.48
+            IP do dispositivo: [IP_LOCAL_REMOVIDO]
             Versão Tuya: 3.4
             Tipo: Tomada inteligente
             Biblioteca usada: tinytuya
@@ -843,7 +843,7 @@
             Exemplo de resultado esperado:
 
             Unknown v3.4 Device
-            Address = 192.168.100.48
+            Address = [IP_LOCAL_REMOVIDO]
             Device ID = **********************
             Version = 3.4
             Código de referência isolado
@@ -851,7 +851,7 @@
             import time
 
             DEVICE_ID = "DEVICE_ID_CENSURADO"
-            IP = "192.168.100.48"
+            IP = "[IP_LOCAL_REMOVIDO]"
             LOCAL_KEY = "LOCAL_KEY_CENSURADA"
             VERSION = 3.4
 
@@ -1024,9 +1024,19 @@
             Estado atual:
 
             Teste isolado: funcional
-            Integração na Laylay: planejada
-            Prioridade: futura
+            Núcleo IoT com simulador: concluído
+            Integração física na Laylay: pendente
+            Persistência segura: concluída
+            Adaptador Tuya isolado: concluído
+            Integração com a mente: concluída em modo simulado
+            Teste físico controlado: ligar, validar, repetir e desligar aprovados
+            Pendente: indisponibilidade e recuperação antes de ativar na Laylay
+            Prioridade: ativa
             Risco: médio, exige cuidado com credenciais e segurança elétrica
+
+            Plano técnico de integração criado em `plano_iot.md`.
+            Próxima etapa aprovada para execução: higiene de segurança e núcleo
+            com protocolo simulado, sem acionar dispositivo físico.
 
             Isso deixa guardado no `melhorias.md` do jeito certo: como **referência validada**, mas sem misturar agora no código.
 
@@ -1349,7 +1359,35 @@
             Respostas mais humanas sem perder utilidade.
 
 
-# ⏳N:3 {} Consciência Temporal
+# ⏳ N:3 {F} Consciência Temporal
+
+            Status: versão 2 integrada à mente única em 21/07/2026.
+
+            Implementado:
+
+            ✓ tempo cronológico relativo entre interações;
+            ✓ tempo vivido e duração aproximada da sessão;
+            ✓ linha do tempo persistente de projetos, plantas, jogos, estudos e eventos;
+            ✓ etapas intermediárias de progresso;
+            ✓ pendências vivas abertas e conclusão por linguagem natural;
+            ✓ eventos futuros simples como amanhã, semana que vem e daqui alguns dias;
+            ✓ recuperação contextual de eventos antigos pelo assunto atual;
+            ✓ persistência no mesmo SQLite da memória principal;
+            ✓ resumo temporal entregue à IA com controle de relevância;
+            ✓ proteção contra cobranças aleatórias de pendências fora de contexto.
+
+            Evoluções da versão 2 implementadas:
+
+            ✓ interpretação determinística de datas complexas, horários e recorrências;
+            ✓ reagendamento da próxima ocorrência sem marcar eventos perdidos como concluídos;
+            ✓ aprendizado estatístico de duração por tipo de projeto ou evento;
+            ✓ distinção mais fiel entre tempo cronológico e convivência ativa;
+            ✓ recuperação de lembranças por relevância e envelhecimento temporal;
+            ✓ integração com memória visual sem aceitar imagem como confirmação final;
+            ✓ encerramento de pendências ambíguas somente depois de confirmação;
+            ✓ proatividade temporal calibrada pelo perfil, atividade e emoções;
+            ✓ proteção do porteiro durante conversa, jogo, reunião e foco;
+            ✓ testes de regressão e documentação em CONSCIENCIA_TEMPORAL_V2.md.
 
             Ela passa a entender a passagem do tempo.
 

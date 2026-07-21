@@ -72,7 +72,13 @@ def _resolver_url_site(nome: str, mapped: Any, ctx: Dict[str, Any]) -> str:
     return ""
 
 
-def _abrir_url_mapeada(nome: str, url: str, ctx: Dict[str, Any]) -> bool:
+def _abrir_url_mapeada(
+    nome: str,
+    url: str,
+    ctx: Dict[str, Any],
+    *,
+    permitir_foco: bool = False,
+) -> bool:
     enviar_chrome = _get(ctx, "enviar_comando_chrome")
     validar_enviar = _get(ctx, "validar_e_enviar_comando")
     url = str(url or "").strip()
@@ -83,10 +89,9 @@ def _abrir_url_mapeada(nome: str, url: str, ctx: Dict[str, Any]) -> bool:
     _log("acao", f"{nome} mapeado como site -> abrir_url {url}")
     try:
         if callable(enviar_chrome):
-            enviar_chrome("open_url", {"url": url})
-            return True
+            return bool(enviar_chrome("open_url", {"url": url, "permitir_foco": permitir_foco}))
         if callable(validar_enviar):
-            return bool(validar_enviar("open_url", {"url": url}))
+            return bool(validar_enviar("open_url", {"url": url, "permitir_foco": permitir_foco}))
     except Exception as e:
         _log("acao", f"{nome} falha ao abrir site mapeado: {e}")
         return False
@@ -182,6 +187,10 @@ def executar_habilidade_janelas(intent: str, params: Dict[str, Any], ctx: Dict[s
     mapped = apps_map.get(key, nome)
     modo = str(params.get("modo") or "").strip().lower()
     quer_maximizar = intent == "MAXIMIZE_WINDOW" or modo in {"fullscreen", "tela_cheia"}
+    modo_jogo_ativo = _get(ctx, "modo_jogo_ativo")
+    jogo_ativo = bool(modo_jogo_ativo()) if callable(modo_jogo_ativo) else False
+    permitir_foco = bool(params.get("permitir_foco")) or quer_maximizar
+    preservar_jogo = jogo_ativo and not permitir_foco
     sem_janela = _eh_app_sem_janela(nome, ctx) or (
         isinstance(mapped, str) and mapped.strip().endswith(":")
     )
@@ -189,11 +198,22 @@ def executar_habilidade_janelas(intent: str, params: Dict[str, Any], ctx: Dict[s
 
     url_site = _resolver_url_site(nome, mapped, ctx)
     if url_site:
-        ok = _abrir_url_mapeada(nome, url_site, ctx)
-        _log("resultado", f"{nome} -> {'site_aberto' if ok else 'falha_execucao'}")
+        estado_site = _ler_estado_alvo(nome, ctx)
+        aba_ja_aberta = bool(estado_site.get("aba_aberta"))
+        ok = _abrir_url_mapeada(nome, url_site, ctx, permitir_foco=permitir_foco)
+        status_site = (
+            "site_aberto_segundo_plano"
+            if ok and preservar_jogo
+            else "site_ja_aberto_focado"
+            if ok and aba_ja_aberta
+            else "site_aberto"
+            if ok
+            else "falha_execucao"
+        )
+        _log("resultado", f"{nome} -> {status_site}")
         return {
             "ok": ok,
-            "status": "site_aberto" if ok else "falha_execucao",
+            "status": status_site,
             "nome_app": nome,
             "url": url_site,
             "handled": True,
@@ -204,6 +224,9 @@ def executar_habilidade_janelas(intent: str, params: Dict[str, Any], ctx: Dict[s
     programa_em_foco = bool(estado_inicial.get("programa_em_foco"))
 
     if programa_aberto:
+        if preservar_jogo:
+            _log("resultado", f"{nome} -> app_aberto_segundo_plano (modo jogo)")
+            return {"ok": True, "status": "app_aberto_segundo_plano", "nome_app": nome, "handled": True}
         if quer_maximizar:
             _log("acao", f"{nome} já aberto -> tentar maximizar")
             foco_ok = False
@@ -265,13 +288,28 @@ def executar_habilidade_janelas(intent: str, params: Dict[str, Any], ctx: Dict[s
         }
 
     estado_pos_abertura = _aguardar_estado(nome, ctx, tentativas=7, pausa=0.35)
+    if abriu and not bool(estado_pos_abertura.get("programa_aberto")):
+        # Jogos e launchers podem aceitar a abertura antes de criarem a janela
+        # principal. A segunda espera evita um falso negativo imediato.
+        _log("acao", f"{nome} aceitou abertura; aguardando inicialização lenta")
+        estado_pos_abertura = _aguardar_estado(nome, ctx, tentativas=12, pausa=0.5)
     if not bool(estado_pos_abertura.get("programa_aberto")):
-        _log("resultado", f"{nome} -> {'nao_encontrado' if erro else 'falha_execucao'}")
+        status_sem_confirmacao = "nao_encontrado" if erro else "abertura_solicitada" if abriu else "falha_execucao"
+        _log("resultado", f"{nome} -> {status_sem_confirmacao}")
         return {
-            "ok": False,
-            "status": "nao_encontrado" if erro else "falha_execucao",
+            "ok": bool(abriu),
+            "status": status_sem_confirmacao,
             "nome_app": nome,
             "erro": erro,
+            "handled": True,
+        }
+
+    if preservar_jogo:
+        _log("resultado", f"{nome} -> app_aberto_segundo_plano (foco preservado pelo modo jogo)")
+        return {
+            "ok": True,
+            "status": "app_aberto_segundo_plano",
+            "nome_app": nome,
             "handled": True,
         }
 

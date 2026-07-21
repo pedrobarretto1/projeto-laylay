@@ -20,6 +20,201 @@ function _safeText(v) {
   return s.length > 160 ? s.slice(0, 160) : s;
 }
 
+function _laylayPageContent() {
+  try {
+    const raiz = document.querySelector("main, article, [role='main']") || document.body;
+    if (!raiz) return { success: false, data: {}, error: "A página ainda não possui conteúdo" };
+    const clone = raiz.cloneNode(true);
+    clone.querySelectorAll("script, style, noscript, svg, canvas, iframe, input, textarea, select, option, [contenteditable='true']")
+      .forEach((el) => el.remove());
+    const content = String(clone.innerText || clone.textContent || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 50000);
+    const description = String(document.querySelector("meta[name='description']")?.content || "").trim();
+    return {
+      success: true,
+      data: {
+        url: window.location.href,
+        title: document.title || "",
+        description,
+        content: content || description,
+      },
+      error: "",
+    };
+  } catch (error) {
+    return { success: false, data: {}, error: String(error?.message || error || "Falha ao ler a página") };
+  }
+}
+
+function _isVisibleElement(el) {
+  if (!el || !el.isConnected) return false;
+  const style = window.getComputedStyle(el);
+  if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) return false;
+  const rect = el.getBoundingClientRect();
+  return rect.width > 1 && rect.height > 1;
+}
+
+function _findYouTubeSkipButton() {
+  const selectors = [
+    "button.ytp-ad-skip-button-modern",
+    "button.ytp-ad-skip-button",
+    "button.ytp-skip-ad-button",
+    ".ytp-ad-skip-button-modern button",
+    ".ytp-ad-skip-button button",
+    ".ytp-skip-ad-button button",
+  ];
+  for (const selector of selectors) {
+    for (const el of document.querySelectorAll(selector)) {
+      if (_isVisibleElement(el) && !el.disabled && el.getAttribute?.("aria-disabled") !== "true") {
+        return el;
+      }
+    }
+  }
+
+  const adArea = document.querySelector(".video-ads, .ytp-ad-player-overlay, #movie_player.ad-showing");
+  if (!adArea) return null;
+  return Array.from(adArea.querySelectorAll("button, [role='button']")).find((el) => {
+    const label = _elementLabel(el).toLowerCase();
+    return _isVisibleElement(el) && /(?:pular|ignorar)\s+an[uú]ncio|skip\s+ads?/.test(label);
+  }) || null;
+}
+
+function _skipYouTubeAd(timeoutMs = 1600) {
+  return new Promise((resolve) => {
+    const deadline = Date.now() + timeoutMs;
+    const tentar = () => {
+      const button = _findYouTubeSkipButton();
+      if (button) {
+        try {
+          button.focus({ preventScroll: true });
+          button.click();
+          resolve({
+            status: "success",
+            message: "Anúncio pulado",
+            evidence: { label: _elementLabel(button) },
+          });
+          return;
+        } catch (error) {
+          resolve({ status: "error", message: String(error?.message || error || "Falha ao clicar") });
+          return;
+        }
+      }
+      if (Date.now() < deadline) {
+        setTimeout(tentar, 120);
+      } else {
+        resolve({ status: "not_found", message: "O botão de pular anúncio não está disponível" });
+      }
+    };
+    tentar();
+  });
+}
+
+function _pageKind() {
+  const host = String(location.hostname || "").toLowerCase();
+  if (host.includes("youtube.com")) return "youtube";
+  if (host.includes("netflix.com")) return "streaming";
+  if (document.querySelector("video, audio")) return "media";
+  if (document.querySelector("form, input, textarea, [contenteditable='true']")) return "interactive";
+  if (document.querySelector("article, main article")) return "article";
+  return "general";
+}
+
+function _elementLabel(el) {
+  if (!el) return "";
+  const labelledBy = String(el.getAttribute?.("aria-labelledby") || "").trim();
+  const labelledText = labelledBy
+    ? labelledBy.split(/\s+/).map((id) => document.getElementById(id)?.textContent || "").join(" ")
+    : "";
+  return _safeText(
+    el.getAttribute?.("aria-label") ||
+    labelledText ||
+    el.getAttribute?.("placeholder") ||
+    el.getAttribute?.("title") ||
+    el.innerText ||
+    el.textContent ||
+    el.getAttribute?.("name") ||
+    el.id ||
+    ""
+  );
+}
+
+let _laylayElementCounter = 0;
+function _laylayInteractiveElements(limit = 40) {
+  const selector = "a[href], button, input, textarea, select, [contenteditable='true'], [role='button'], [role='link'], [role='menuitem'], [role='tab'], [tabindex]";
+  const elements = Array.from(document.querySelectorAll(selector));
+  const result = [];
+  for (const el of elements) {
+    if (result.length >= limit || !_isVisibleElement(el)) continue;
+    const tag = String(el.tagName || "").toLowerCase();
+    const type = String(el.getAttribute?.("type") || "").toLowerCase();
+    if (tag === "input" && type === "hidden") continue;
+    let elementId = String(el.getAttribute?.("data-laylay-id") || "").trim();
+    if (!elementId) {
+      _laylayElementCounter += 1;
+      elementId = `ll-${_laylayElementCounter}`;
+      try { el.setAttribute("data-laylay-id", elementId); } catch (_) {}
+    }
+    const item = {
+      id: elementId,
+      tag,
+      role: _safeText(el.getAttribute?.("role") || ""),
+      label: _elementLabel(el),
+      type,
+      disabled: Boolean(el.disabled || el.getAttribute?.("aria-disabled") === "true"),
+    };
+    if (tag === "a") item.href = _safeText(el.href || "");
+    // Nunca expõe conteúdo digitado nem o valor de campos sensíveis.
+    if (tag === "input" || tag === "textarea" || el.isContentEditable) item.hasValue = Boolean(el.value || el.textContent);
+    result.push(item);
+  }
+  return result;
+}
+
+function _laylayPageSnapshot() {
+  try {
+    const active = document.activeElement;
+    const selection = _safeText(window.getSelection?.()?.toString() || "");
+    const headings = Array.from(document.querySelectorAll("h1, h2"))
+      .filter(_isVisibleElement)
+      .map((el) => _safeText(el.textContent || ""))
+      .filter(Boolean)
+      .slice(0, 12);
+    return {
+      success: true,
+      data: {
+        version: 1,
+        url: location.href,
+        title: document.title || "",
+        language: document.documentElement.lang || navigator.language || "",
+        kind: _pageKind(),
+        loading: document.readyState !== "complete",
+        selection,
+        focused: active && active !== document.body ? {
+          tag: String(active.tagName || "").toLowerCase(),
+          label: _elementLabel(active),
+          id: String(active.getAttribute?.("data-laylay-id") || ""),
+        } : null,
+        headings,
+        elements: _laylayInteractiveElements(),
+        ts: Date.now(),
+      },
+      error: "",
+    };
+  } catch (error) {
+    return { success: false, data: {}, error: String(error?.message || error || "Falha ao perceber a página") };
+  }
+}
+
+let _snapshotTimer = null;
+function _schedulePageSnapshot(delay = 250) {
+  clearTimeout(_snapshotTimer);
+  _snapshotTimer = setTimeout(() => {
+    const snapshot = _laylayPageSnapshot();
+    if (snapshot.success) sendMessage({ type: "PAGE_SNAPSHOT", payload: snapshot.data });
+  }, delay);
+}
+
 let _lastInteractionTs = Date.now();
 let _lastUrl = location.href;
 let _idleSent = false;
@@ -29,6 +224,7 @@ let _netflixScanRunning = false;
 function _markInteraction() {
   _lastInteractionTs = Date.now();
   _idleSent = false;
+  _schedulePageSnapshot(350);
 }
 
 function _isImportantElement(el) {
@@ -68,6 +264,7 @@ function _emitNav() {
       _idleSent = false;
     }
     enviarContexto("nav", { url: location.href, title: document.title });
+    _schedulePageSnapshot(500);
   } catch (_) {}
 }
 
@@ -461,20 +658,35 @@ function _resolveBestGoogleResult(query) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     try {
         const payload = request.payload || request;
+
+        if (request.action === "GET_PAGE_CONTENT") {
+            sendResponse(_laylayPageContent());
+            return;
+        }
+
+        if (request.action === "GET_PAGE_SNAPSHOT") {
+            sendResponse(_laylayPageSnapshot());
+            return;
+        }
         
         if (request.action === "click") {
             let selector = payload.selector || "";
             let el = null;
 
+            const elementId = String(payload.element_id || payload.elementId || "").trim();
+            if (elementId) {
+                try { el = document.querySelector(`[data-laylay-id="${CSS.escape(elementId)}"]`); } catch (_) {}
+            }
+
             // 🛡️ PROTEÇÃO ANTI-ALUCINAÇÃO: Fallback para :contains("Texto")
             const containsMatch = selector.match(/:contains\(['"](.+?)['"]\)/i);
-            if (containsMatch) {
+            if (!el && containsMatch) {
                 const textToFind = containsMatch[1].toLowerCase().trim();
                 console.log(`🔍 Buscando elemento por texto (:contains): ${textToFind}`);
                 el = _findClickableByText(textToFind);
             } else {
                 // 1. Tenta pelo seletor CSS normal
-                if (selector && (selector.includes('[') || selector.includes('.') || selector.includes('#'))) {
+                if (!el && selector && (selector.includes('[') || selector.includes('.') || selector.includes('#'))) {
                     try { el = document.querySelector(selector); } catch(e) {}
                 }
                 // 2. Fallback: Busca por texto simples
@@ -483,13 +695,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 }
             }
 
-            if (el) {
+            if (el && _isVisibleElement(el) && !el.disabled && el.getAttribute?.("aria-disabled") !== "true") {
                 el.focus();
                 el.click();
                 el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
                 el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
                 console.log(`🤖 Laylay clicou em: ${selector || el.textContent}`);
-                if (sendResponse) sendResponse({ status: "success" });
+                if (sendResponse) sendResponse({ status: "success", evidence: { elementId: el.getAttribute?.("data-laylay-id") || "", label: _elementLabel(el) } });
             } else {
                 console.warn(`⚠️ Laylay não achou o elemento: ${selector}`);
                 if (sendResponse) sendResponse({ status: "error", message: "Element not found" });
@@ -522,6 +734,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             if (!el) el = _findSearchInput();
             
             if (el) {
+                const fieldSignals = `${el.type || ""} ${el.name || ""} ${el.id || ""} ${el.autocomplete || ""} ${el.placeholder || ""}`.toLowerCase();
+                const sensitiveField = ["password", "senha", "cc-number", "credit-card", "cartao", "cartão", "cvv", "cvc"].some((marker) => fieldSignals.includes(marker));
+                if (sensitiveField) {
+                    console.warn("🛑 Digitação da Laylay bloqueada em campo sensível");
+                    if (sendResponse) sendResponse({ status: "sensitive_page", message: "Sensitive input blocked" });
+                    return true;
+                }
                 const typed = _typeInElement(el, payload.text || "");
                 console.log(`🤖 Laylay digitou "${payload.text}" em: ${el.tagName} (${el.type || el.role || "?"})`);
                 if (sendResponse) sendResponse({ status: typed ? "success" : "partial" });
@@ -567,7 +786,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
                 if (!input) {
                     console.warn(`⚠️ Nenhuma barra de busca encontrada na página`);
-                    return;
+                    throw new Error("Nenhuma barra de busca encontrada na página");
                 }
                 console.log(`✏️ Input encontrado: ${input.tagName} type="${input.type}" placeholder="${input.placeholder}"`);
 
@@ -601,8 +820,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 console.log(`✅ Laylay buscou: "${query}"`);
             }
 
-            doSearch();
-            if (sendResponse) sendResponse({ status: "success" });
+            doSearch().then(() => {
+                if (sendResponse) sendResponse({ status: "success", evidence: { query } });
+            }).catch((error) => {
+                if (sendResponse) sendResponse({ status: "error", message: String(error?.message || error || "Search failed") });
+            });
         }
         else if (request.action === "scroll") {
             const direction = payload.direction || "down";
@@ -610,19 +832,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             window.scrollBy({ top: direction === "down" ? amount : -amount, behavior: 'smooth' });
             if (sendResponse) sendResponse({ status: "success" });
         }
-        else if (request.action === "execute_js") {
-            try {
-                const code = payload.code || request.code;
-                eval(code);
-                if (sendResponse) sendResponse({ status: "success" });
-            } catch (e) {
-                console.error("Erro JS:", e);
-            }
-        }
         else if (request.action === "youtube_control") {
             const video = document.querySelector('video');
             const cmd = String(payload.command || request.command || "").toLowerCase();
-            if (cmd === "pause" || cmd === "play" || cmd === "pause_play") {
+            if (cmd === "skip_ad") {
+                // Executado somente após um pedido explícito recebido do Python.
+                // Não há observador nem clique automático em anúncios futuros.
+                _skipYouTubeAd().then((result) => {
+                    if (sendResponse) sendResponse(result);
+                });
+            }
+            else if (cmd === "pause" || cmd === "play" || cmd === "pause_play") {
                 if (video) {
                     if (cmd === "pause" || (cmd === "pause_play" && !video.paused)) video.pause();
                     else video.play();
@@ -666,9 +886,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
     } catch (error) {
         console.error("❌ Erro na automação:", error);
+        if (sendResponse) sendResponse({ status: "error", message: String(error?.message || error || "Erro na automação") });
     }
     return true;
 });
+
+window.addEventListener("load", () => _schedulePageSnapshot(300), { once: true });
+document.addEventListener("focusin", () => _schedulePageSnapshot(250), true);
+_schedulePageSnapshot(700);
 
 function _listenConsoleBridge() {
   try {
@@ -707,61 +932,9 @@ function onceYouTubeWatch() {
     return;
 }
 
-function autoSkipAds() {
-  if (!location.hostname.includes("youtube.com")) return;
-
-  const injectSkipperCode = `
-    (function laylayAdSkipper() {
-        setInterval(() => {
-            try {
-                // 1. Clicar em "Pular Anúncio" se existir
-                const skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .videoAdUiSkipButton');
-                if (skipBtn && skipBtn.offsetParent) {
-                    skipBtn.click();
-                }
-                
-                // 2. Acelerador de In-Stream seguro (sem mexer no currentTime para não travar o buffer)
-                const player = document.getElementById('movie_player');
-                if (player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))) {
-                    const video = document.querySelector('video');
-                    if (video && !isNaN(video.duration) && video.duration > 0) {
-                        if (video.playbackRate !== 16) {
-                            video.playbackRate = 16;
-                            video.muted = true; // muta pra não assustar com o pio de 16x
-                        }
-                    }
-                } else {
-                    // Mantem a velocidade normal, restaura so se tiver acelerado
-                    const video = document.querySelector('video');
-                    if (video && video.playbackRate === 16) {
-                        video.playbackRate = 1;
-                        video.muted = false;
-                    }
-                }
-                
-                // 3. Fechar Banners de Texto/Imagem Ad
-                const overlayClose = document.querySelector('.ytp-ad-overlay-close-button');
-                if (overlayClose && overlayClose.offsetParent) {
-                    overlayClose.click();
-                }
-            } catch (e) {}
-        }, 300);
-    })();
-  `;
-
-  try {
-      const script = document.createElement("script");
-      script.textContent = injectSkipperCode;
-      (document.documentElement || document.head || document.body).appendChild(script);
-      script.remove();
-      console.log("🤖 Laylay: Motor Main-World ativo.");
-  } catch (_) {}
-}
-
 if (location.hostname.includes("youtube.com")) {
   onceYouTubeResults();
   onceYouTubeWatch();
-  autoSkipAds();
 }
 
 
@@ -890,7 +1063,7 @@ chrome.runtime.onMessage.addListener((request) => {
   const video = document.querySelector('video');
   
   // --- OUTROS COMANDOS DO YOUTUBE (Volume removido) ---
-  if (video && request.action === "youtube_control" && request.command && request.command !== "set_volume") {
+  if (video && request.action === "youtube_control" && request.command && !["set_volume", "skip_ad"].includes(request.command)) {
     controlYouTube(String(request.command));
   }
 
@@ -1005,7 +1178,16 @@ try {
             (player && (player.classList.contains("ad-showing") || player.classList.contains("ad-interrupting")));
           const isAdByUrl = String(location.href).includes("ad_id") || String(location.href).includes("doubleclick") || /[?&]pp=/.test(location.search);
           const isAd = !!isAdByClass || !!isAdByUrl;
-          sendMessage({ type: "PLAYER_EVENT", event: "video_ended", url: location.href, title: document.title, isAd: !!isAd, duration: Math.floor(v.duration || 0) });
+          const videoId = String(new URL(location.href).searchParams.get("v") || location.pathname || location.href);
+          sendMessage({
+            type: "PLAYER_EVENT",
+            event: "video_ended",
+            eventId: `ended:${videoId}:${Math.floor(Date.now() / 3000)}`,
+            url: location.href,
+            title: document.title,
+            isAd: !!isAd,
+            duration: Math.floor(v.duration || 0),
+          });
         });
       } catch (_) {}
     });

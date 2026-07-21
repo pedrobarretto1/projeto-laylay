@@ -8,9 +8,58 @@ import time
 from typing import Callable, Iterable
 
 
+def assunto_coerente_com_fala(
+    assunto: str,
+    *partes_fala: str,
+    normalizar_texto: Callable[[str], str] | None = None,
+) -> bool:
+    """Exige ligação lexical mínima antes de rotular uma fala com um assunto."""
+    normalizar = normalizar_texto if callable(normalizar_texto) else (lambda valor: str(valor or "").casefold())
+    topico = re.sub(r"\s+", " ", str(normalizar(assunto) or "")).strip()
+    fala = re.sub(r"\s+", " ", str(normalizar(" ".join(map(str, partes_fala))) or "")).strip()
+    if not topico or not fala:
+        return False
+    if re.fullmatch(r"(?:nao|não)\s+\w+(?:\s+demais)?", topico):
+        return False
+    stop = {
+        "a", "o", "as", "os", "de", "da", "do", "das", "dos", "e", "em",
+        "um", "uma", "que", "eu", "voce", "você", "meu", "minha", "isso",
+        "este", "esta", "era", "foi", "sobre", "mais", "nao", "não",
+    }
+    tokens_topico = {t for t in re.findall(r"[a-z0-9à-ÿ]+", topico) if len(t) >= 3 and t not in stop}
+    tokens_fala = {t for t in re.findall(r"[a-z0-9à-ÿ]+", fala) if len(t) >= 3 and t not in stop}
+    if not tokens_topico:
+        return False
+    return bool(tokens_topico & tokens_fala or topico in fala)
+
+
+def _texto_e_resposta_sem_topico(texto_normalizado: str) -> bool:
+    """Respostas pragmáticas curtas não representam um assunto de conversa."""
+    tokens = str(texto_normalizado or "").split()
+    if not tokens or len(tokens) > 5:
+        return False
+    conjunto = set(tokens)
+    confirmacoes = {
+        "sim", "quero", "pode", "claro", "aham", "uhum", "isso", "mesmo",
+        "bora", "vai", "manda", "fechado", "ok", "certo", "beleza",
+    }
+    recusas = {
+        "nao", "não", "quero", "mais", "deixa", "pra", "para", "la", "lá",
+        "esquece", "cancela", "ele", "ela", "isso", "agora",
+    }
+    if re.fullmatch(
+        r"(?:pode|podia|vamos|vou|quero)\s+(?:escolher|escolhe|colocar|tocar|ouvir|ver|fazer)(?:\s+(?:sim|entao|então|isso))?",
+        str(texto_normalizado or "").strip(),
+    ):
+        return True
+    return bool(conjunto and (conjunto <= confirmacoes or conjunto <= recusas))
+
+
 def topico_memoria_valido(topico: str, normalizar_texto_curto: Callable[[str], str]) -> bool:
     t = normalizar_texto_curto(topico)
     if not t:
+        return False
+    if _texto_e_resposta_sem_topico(t):
         return False
     genericos = {
         "playlist", "musica", "música", "youtube", "netflix", "ia", "pc",
@@ -28,6 +77,9 @@ def extrair_topico_conversa(texto: str, topico_anterior: str = "", *, normalizar
     t = normalizar_texto_curto(texto)
     if not t:
         return str(topico_anterior or "").strip()
+    if _texto_e_resposta_sem_topico(t):
+        anterior = str(topico_anterior or "").strip()
+        return anterior if topico_memoria_valido(anterior, normalizar_texto_curto) else ""
 
     if any(p in t for p in [
         "homem aranha", "spider man", "spiderman", "peter parker", "marvel", "dc",
@@ -89,15 +141,6 @@ def atualizar_memoria_topicos(
     if len(recentes) > limite:
         recentes = recentes[-limite:]
     return recentes, topico, agora
-
-
-def formatar_topicos_conversa(ultimo_topico: str, topicos_recentes: list) -> str:
-    linhas = []
-    if ultimo_topico:
-        linhas.append(f"Tópico ativo: {ultimo_topico}")
-    if topicos_recentes:
-        linhas.append("Tópicos recentes: " + "; ".join(topicos_recentes[-5:]))
-    return "\n".join(linhas)
 
 
 def texto_responde_pergunta_aberta(
@@ -181,6 +224,7 @@ def responder_pergunta_aberta(
     pergunta = dict(pergunta_aberta or {})
     pergunta_txt = str(pergunta.get("pergunta") or "").strip()
     topico = str(pergunta.get("topico") or "").strip()
+    tipo_pergunta = str(pergunta.get("tipo") or "").strip().lower()
     try:
         t = str(normalizar_texto_curto(texto_usuario) or "").strip()
     except Exception:
@@ -194,10 +238,63 @@ def responder_pergunta_aberta(
                 pass
         return fala
 
-    if any(p in t for p in ["sim", "pode", "quero", "bora", "vai", "manda", "claro", "aham", "uhum", "isso", "isso mesmo", "é sim", "e sim", "pode ser"]):
+    proposito = str(pergunta.get("proposito") or "").strip().lower()
+    if any(p in t for p in ["trocar de assunto", "outro assunto", "mudar de assunto", "vamos trocar"]):
+        return _ajustar("Beleza. Fechamos esse fio e você pode puxar o próximo assunto.")
+    if any(p in t for p in ["aprofundar", "continuar nesse", "seguir nesse", "vamos continuar"]):
+        assunto = topico or "esse assunto"
+        return _ajustar(f"Fechado. Continuamos em {assunto}, sem trocar o fio.")
+    negou_curto = bool(re.search(
+        r"\b(?:nao|não)\b|\b(?:quero|pode|melhor)\s+(?:nao|não)\b",
+        t,
+    ))
+    confirmou_curto = not negou_curto and bool(
+        set(t.split()).intersection({"sim", "quero", "pode", "claro", "bora", "manda", "vai"})
+        or t in {"isso", "isso mesmo", "pode ser", "aham", "uhum", "fechado"}
+    )
+    if proposito == "escolha" and confirmou_curto:
+        return _ajustar("Quero, mas você precisa escolher qual dos dois. Me diz o nome e eu sigo nele.")
+    if proposito == "confirmacao_musical" and confirmou_curto:
+        return _ajustar("Fechado. Me diz o nome da música para eu não tocar a faixa errada.")
+    if proposito == "dia_usuario":
+        dia_quieto = bool(
+            re.search(r"\b(?:nao|não)\s+(?:tem|teve)\s+(?:nada|anda)\s+(?:demais|de\s+mais)\b", t)
+            or any(p in t for p in ["nada demais", "nada de mais", "nada especial", "foi normal", "dia normal"])
+        )
+        if dia_quieto:
+            return _ajustar(random.choice([
+                "Então foi um dia quieto, sem grande acontecimento. Às vezes isso é até bom; quer deixar o momento mais interessante comigo?",
+                "Nada muito fora da curva hoje, então. Quer que a gente invente alguma coisa leve agora?",
+                "Dia comum, peguei. Não vou forçar uma história onde não teve; mas ainda dá pra melhorar o resto do dia.",
+            ]))
+        return _ajustar(random.choice([
+            "Entendi. E qual pedacinho do dia ficou mais na cabeça, mesmo que tenha sido pequeno?",
+            "Peguei. Teve alguma coisinha boa ou foi tudo bem no automático?",
+            "Tá. Se quiser me contar uma parte só, eu acompanho sem transformar isso num interrogatório.",
+        ]))
+
+    # Respostas de bem-estar devem ser resolvidas antes de confirmacoes. Assim
+    # "estou bem sim" nao vira um aceite generico por conter a palavra "sim".
+    if tipo_pergunta == "bem_estar" and any(p in t for p in ["bem", "de boa", "tranquilo", "tranquila", "suave", "otimo", "ótimo", "legal", "feliz"]):
+        return _ajustar(random.choice([
+            "Que bom. Aí meu circuito até respira mais leve.",
+            "Aí sim, gosto de te ouvir assim.",
+            "Bom saber. Então seguimos com a energia um pouco mais bonita.",
+        ]))
+
+    if tipo_pergunta == "bem_estar" and any(p in t for p in ["mal", "cansado", "cansada", "triste", "mais ou menos", "indo"]):
+        return _ajustar(random.choice([
+            "Entendi. Então eu baixo um pouco o ritmo e fico contigo sem apertar.",
+            "Pego o clima. Se quiser, a gente vai mais devagar agora.",
+            "Tá, senti esse peso aí. Posso ficar no modo companhia, sem te cobrar nada.",
+        ]))
+
+    if not negou_curto and any(p in t for p in ["sim", "pode", "quero", "bora", "vai", "manda", "claro", "aham", "uhum", "isso", "isso mesmo", "é sim", "e sim", "pode ser"]):
         foco = dict(foco_vivo or {})
         foco_tipo = str(foco.get("tipo") or "").lower()
         foco_topico = str(foco.get("topico") or foco.get("alvo") or topico or "").strip()
+        if foco_topico.lower() in {"", "conversa", "chat", "ia", "opinion", "opiniao", "opinião"} and topico:
+            foco_topico = topico
         if foco_tipo in {"opiniao", "opinião", "conversa"} and foco_topico and callable(responder_conversa_curta_por_tipo):
             try:
                 return str(responder_conversa_curta_por_tipo("OPINION", f"o que voce acha de {foco_topico}?") or "").strip()
@@ -215,7 +312,14 @@ def responder_pergunta_aberta(
             "Tá, entendi o sim. Vou continuar nessa linha.",
         ]))
 
-    if any(p in t for p in ["nao", "não", "agora nao", "agora não", "melhor nao", "melhor não"]):
+    if negou_curto:
+        pergunta_norm = pergunta_txt.casefold()
+        if re.search(r"\b(?:abra|abrir|abro|abre)\b", pergunta_norm):
+            return _ajustar(random.choice([
+                "Beleza, não abro.",
+                "Tranquilo, deixo fechado.",
+                "Tá, não mexo nisso.",
+            ]))
         return _ajustar(random.choice([
             "Tranquilo, deixo isso de lado então.",
             "Beleza, sem forçar. Guardei a ideia no bolso.",
@@ -237,10 +341,6 @@ def responder_pergunta_aberta(
         ]))
 
     if pergunta_txt:
-        return _ajustar(random.choice([
-            "Peguei tua resposta para o que eu perguntei. Vou considerar isso no assunto.",
-            "Entendi. Isso responde aquela minha pergunta, então não vou puxar outro caminho do nada.",
-            "Tá, conectei com minha pergunta anterior. Seguimos por esse fio.",
-        ]))
+        return _ajustar("Entendi o que você quis dizer e vou manter isso neste assunto.")
 
     return _ajustar("Entendi. Vou seguir por esse fio.")

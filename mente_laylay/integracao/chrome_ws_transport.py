@@ -38,6 +38,9 @@ class ChromeSolicitacoesRuntime:
         self.pendencias_aba_ativa: Dict[str, Any] = {}
         self.pendencias_checagem_abas: Dict[str, Any] = {}
         self.pendencias_conteudo_pagina: Dict[str, Any] = {}
+        self.pendencias_comandos: Dict[str, Any] = {}
+        self.pendencias_lock = threading.RLock()
+        self.ultimo_resultado_comando: Dict[str, Any] = {}
         self._contador_lock = threading.Lock()
         self._contador = 0
 
@@ -67,17 +70,57 @@ class ChromeSolicitacoesRuntime:
         except Exception:
             return False
 
+    def enviar_confirmado(self, mensagem: Dict[str, Any], timeout_s: float = 1.5) -> bool:
+        """Confirma que ao menos uma extensao recebeu a mensagem no socket."""
+        loop = self._obter_loop()
+        if loop is None:
+            return False
+        try:
+            futuro = asyncio.run_coroutine_threadsafe(
+                self._transmitir(json.dumps(mensagem)),
+                loop,
+            )
+            enviados = futuro.result(timeout=max(0.1, float(timeout_s)))
+            return bool(enviados)
+        except Exception:
+            return False
+
+    def executar_confirmado(self, mensagem: Dict[str, Any], timeout_s: float = 3.0) -> bool:
+        """Aguarda a extensão devolver o resultado real de um comando de página."""
+        if not self.conectado():
+            return False
+        request_id = str(mensagem.get("requestId") or self._novo_request_id())
+        evento = threading.Event()
+        entrada = {"event": evento, "result": None}
+        with self.pendencias_lock:
+            self.pendencias_comandos[request_id] = entrada
+        payload = dict(mensagem)
+        payload["requestId"] = request_id
+        if not self._enviar_no_loop(payload):
+            with self.pendencias_lock:
+                self.pendencias_comandos.pop(request_id, None)
+            return False
+        respondeu = evento.wait(max(0.1, float(timeout_s)))
+        with self.pendencias_lock:
+            final = self.pendencias_comandos.pop(request_id, None) or entrada
+        resultado = final.get("result")
+        self.ultimo_resultado_comando = dict(resultado) if isinstance(resultado, dict) else {}
+        return bool(respondeu and isinstance(resultado, dict) and resultado.get("ok") is True)
+
     def solicitar_lista_abas(self, timeout_s: float = 6.0) -> list[Any]:
         if not self.conectado():
             return []
         request_id = self._novo_request_id()
         evento = threading.Event()
-        self.pendencias_abas[request_id] = {"event": evento, "tabs": []}
+        with self.pendencias_lock:
+            self.pendencias_abas[request_id] = {"event": evento, "tabs": []}
         if not self._enviar_no_loop({"action": "get_tabs_list", "requestId": request_id}):
-            self.pendencias_abas.pop(request_id, None)
+            with self.pendencias_lock:
+                self.pendencias_abas.pop(request_id, None)
             return []
         respondeu = evento.wait(max(0.0, float(timeout_s)))
-        entrada = self.pendencias_abas.pop(request_id, None) or {}
+        with self.pendencias_lock:
+            entrada = self.pendencias_abas.pop(request_id, None) or {}
         if not respondeu:
             return []
         abas = entrada.get("tabs")
@@ -94,20 +137,23 @@ class ChromeSolicitacoesRuntime:
 
         request_id = self._novo_request_id()
         evento = threading.Event()
-        self.pendencias_checagem_abas[request_id] = {"event": evento, "tabId": None}
+        with self.pendencias_lock:
+            self.pendencias_checagem_abas[request_id] = {"event": evento, "tabId": None}
         mensagem = {"action": "check_tabs", "requestId": request_id, "target_domain": dominio}
         if not self._enviar_no_loop(mensagem):
-            self.pendencias_checagem_abas.pop(request_id, None)
+            with self.pendencias_lock:
+                self.pendencias_checagem_abas.pop(request_id, None)
             return None
         respondeu = evento.wait(max(0.0, float(timeout_s)))
-        entrada = self.pendencias_checagem_abas.pop(request_id, None) or {}
+        with self.pendencias_lock:
+            entrada = self.pendencias_checagem_abas.pop(request_id, None) or {}
         if not respondeu:
             return None
         tab_id = entrada.get("tabId")
         return int(tab_id) if isinstance(tab_id, int) else None
 
     def solicitar_aba_ativa(self, timeout_s: float = 4.0) -> Dict[str, str]:
-        vazio = {"url": "", "title": "", "canal": ""}
+        vazio = {"url": "", "title": "", "canal": "", "tabId": None}
         if not self.conectado():
             return vazio
         loop = self._obter_loop()
@@ -117,7 +163,8 @@ class ChromeSolicitacoesRuntime:
         async def _solicitar() -> Dict[str, str]:
             request_id = self._novo_request_id()
             futuro = asyncio.get_running_loop().create_future()
-            self.pendencias_aba_ativa[request_id] = futuro
+            with self.pendencias_lock:
+                self.pendencias_aba_ativa[request_id] = futuro
             try:
                 await self._transmitir(json.dumps({"action": "get_youtube_data", "requestId": request_id}))
                 resposta = await asyncio.wait_for(futuro, timeout=max(0.0, float(timeout_s)))
@@ -127,11 +174,13 @@ class ChromeSolicitacoesRuntime:
                     "url": str(resposta.get("url") or ""),
                     "title": str(resposta.get("title") or ""),
                     "canal": str(resposta.get("canal") or ""),
+                    "tabId": resposta.get("tabId"),
                 }
             except Exception:
                 return vazio
             finally:
-                self.pendencias_aba_ativa.pop(request_id, None)
+                with self.pendencias_lock:
+                    self.pendencias_aba_ativa.pop(request_id, None)
 
         try:
             futuro = asyncio.run_coroutine_threadsafe(_solicitar(), loop)
@@ -149,7 +198,8 @@ class ChromeSolicitacoesRuntime:
 
         request_id = str(uuid.uuid4())
         futuro = asyncio.get_running_loop().create_future()
-        self.pendencias_conteudo_pagina[request_id] = futuro
+        with self.pendencias_lock:
+            self.pendencias_conteudo_pagina[request_id] = futuro
         try:
             await self._transmitir(json.dumps({"action": "get_page_content", "requestId": request_id}))
             print(f"[WS] Solicitando conteúdo da página com requestId: {request_id}")
@@ -163,20 +213,22 @@ class ChromeSolicitacoesRuntime:
             print(f"❌ Erro ao solicitar conteúdo da página: {exc}")
             return {"success": False, "error": str(exc)}
         finally:
-            self.pendencias_conteudo_pagina.pop(request_id, None)
+            with self.pendencias_lock:
+                self.pendencias_conteudo_pagina.pop(request_id, None)
 
 
-async def broadcast_command(ctx: Dict[str, Any], msg: str) -> None:
+async def broadcast_command(ctx: Dict[str, Any], msg: str) -> int:
     """Envia mensagem para todas as extensoes Chrome conectadas."""
     connected_extensions = _get(ctx, "connected_extensions", set())
-    print("DEBUG: Entrou em broadcast_command (async)")
+    enviados = 0
     for client in list(connected_extensions):
         try:
             await client.send(msg)
-            print("DEBUG: Mensagem enviada com sucesso para 1 cliente")
+            enviados += 1
         except Exception as e:
             print(f"❌ ERRO AO ENVIAR PARA CLIENTE: {type(e).__name__} → {e}")
             try:
                 connected_extensions.discard(client)
             except Exception:
                 pass
+    return enviados

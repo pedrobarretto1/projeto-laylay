@@ -178,9 +178,9 @@ def executar_comando_conteudo(c_nome: str, c_args: str, comando: str, c_upper: s
         if (selector.startswith("'") and selector.endswith("'")) or (selector.startswith('"') and selector.endswith('"')):
             selector = selector[1:-1]
         if selector.lower().startswith("js:"):
-            js_code = selector[3:].strip()
-            print(f"🤖 [SISTEMA] Executando JS extraído do CLICK: {js_code}")
-            enviar_comando_chrome("execute_js", {"code": js_code})
+            print("🛑 [SISTEMA] CLICK com JavaScript recusado por segurança.")
+            if callable(falar):
+                falar("Não executo JavaScript arbitrário na página. Posso clicar em um elemento identificado.", "calma", 1)
         else:
             enviar_comando_chrome("click", {"selector": selector})
         return True

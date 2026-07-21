@@ -16,6 +16,7 @@ def estado_continuidades_inicial() -> Dict[str, Any]:
         "rotina_sugestao_pendente": None,
         "playlist_sugestao_pendente": None,
         "email_sugestao_pendente": None,
+        "sugestoes_bloqueadas_ate": {},
     }
 
 

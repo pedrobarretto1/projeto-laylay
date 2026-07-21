@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 
 def normalizar_habilidade_autoaprimoramento(nome: str) -> str:
@@ -69,6 +69,9 @@ def inferir_habilidade_autoaprimoramento(resultado: Dict[str, Any] = None, texto
         "MEDIA_CONTROL": "midia",
         "OPEN_URL": "navegacao",
         "APP_OPEN": "navegacao",
+        "IOT_CONTROL": "iot",
+        "IOT_STATUS": "iot",
+        "IOT_LIST": "iot",
         "CLOSE_APP": "navegacao",
         "CLOSE_TAB": "navegacao",
         "CLOSE_IDLE_TABS": "navegacao",
@@ -79,6 +82,7 @@ def inferir_habilidade_autoaprimoramento(resultado: Dict[str, Any] = None, texto
         "EMAIL_SYNC": "emails",
         "NOTIFICATIONS": "sistema",
         "AGENDAR_LEMBRETE": "agenda",
+        "AGENDAR_ACAO": "agenda",
         "LISTAR_AGENDAMENTOS": "agenda",
         "CANCELAR_AGENDAMENTO": "agenda",
         "ORGANIZAR_DESKTOP": "sistema",

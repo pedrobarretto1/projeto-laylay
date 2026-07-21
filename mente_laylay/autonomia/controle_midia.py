@@ -14,6 +14,8 @@ from mente_laylay.personalidade.falas_variadas import (
     escolher as _escolher_fala_variada,
     fala_de_confirmacao as _fala_de_confirmacao_variada,
 )
+from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao
 
 
 VK_MEDIA_NEXT_TRACK = 0xB0
@@ -88,6 +90,7 @@ def executar_media_control(
     playlist_ativa = bool(str((playlist_state or {}).get("name") or "").strip())
     playlist_next = _get(ctx, "_playlist_avancar_proxima")
     playlist_prev = _get(ctx, "_playlist_voltar_anterior")
+    confirmado_execucao: bool | None = None
 
     def _log_midia(etapa: str, msg: str) -> None:
         try:
@@ -111,36 +114,48 @@ def executar_media_control(
         return preferir
 
     def _executar_cmd_midia(cmd_exec: str) -> bool:
+        nonlocal confirmado_execucao
         _log_midia("ENVIO", f"cmd={cmd_exec} destino={destino_val or 'local'} playlist={playlist_ativa}")
         if destino_val == "pc_b" and callable(_enviar_pc_b):
             _enviar_pc_b({"action": "youtube_control", "command": cmd_exec})
+            confirmado_execucao = None
             return True
         if destino_val == "ambos":
             ok_local = False
-            if _preferir_chrome_para_midia() and callable(enviar_chrome):
-                enviar_chrome("youtube_control", {"command": cmd_exec})
-                ok_local = True
+            if cmd_exec == "skip_ad" and callable(enviar_chrome):
+                ok_local = bool(enviar_chrome("youtube_control", {"command": cmd_exec}))
+                confirmado_execucao = ok_local
+            elif _preferir_chrome_para_midia() and callable(enviar_chrome):
+                ok_local = bool(enviar_chrome("youtube_control", {"command": cmd_exec}))
+                # O destino remoto continua sem confirmação conjunta; não
+                # declaramos o comando inteiro confirmado só pelo PC local.
+                confirmado_execucao = None
             elif callable(executar_controle_midia_nativo):
                 native_cmd = "pause_play" if cmd_exec in {"pause", "play"} else cmd_exec
                 ok_local = bool(executar_controle_midia_nativo(native_cmd))
+                confirmado_execucao = None
             elif callable(enviar_chrome):
-                enviar_chrome("youtube_control", {"command": cmd_exec})
-                ok_local = True
+                ok_local = bool(enviar_chrome("youtube_control", {"command": cmd_exec}))
+                confirmado_execucao = None
             if callable(_enviar_pc_b):
                 _enviar_pc_b({"action": "youtube_control", "command": cmd_exec})
             return ok_local
+        if cmd_exec == "skip_ad" and callable(enviar_chrome):
+            confirmado_execucao = bool(enviar_chrome("youtube_control", {"command": cmd_exec}))
+            return confirmado_execucao
         if playlist_ativa and callable(enviar_chrome):
-            enviar_chrome("youtube_control", {"command": cmd_exec})
-            return True
+            confirmado_execucao = bool(enviar_chrome("youtube_control", {"command": cmd_exec}))
+            return confirmado_execucao
         if _preferir_chrome_para_midia() and callable(enviar_chrome):
-            enviar_chrome("youtube_control", {"command": cmd_exec})
-            return True
+            confirmado_execucao = bool(enviar_chrome("youtube_control", {"command": cmd_exec}))
+            return confirmado_execucao
         if callable(executar_controle_midia_nativo):
             native_cmd = "pause_play" if cmd_exec in {"pause", "play"} else cmd_exec
+            confirmado_execucao = None
             return bool(executar_controle_midia_nativo(native_cmd))
         if callable(enviar_chrome):
-            enviar_chrome("youtube_control", {"command": cmd_exec})
-            return True
+            confirmado_execucao = bool(enviar_chrome("youtube_control", {"command": cmd_exec}))
+            return confirmado_execucao
         return False
 
     _log_midia("ENTRADA", f"acao={acao or '-'} platform={platform or '-'} params={params}")
@@ -159,6 +174,8 @@ def executar_media_control(
         cmd = "prev"
     elif acao in {"replay", "voltar", "reiniciar"}:
         cmd = "replay"
+    elif acao in {"skip_ad", "pular_anuncio", "pular_anúncio"}:
+        cmd = "skip_ad"
 
     if nivel_bruto not in (None, ""):
         try:
@@ -200,16 +217,15 @@ def executar_media_control(
         ok = bool(playlist_next())
         _log_midia("RESULTADO", f"playlist_next ok={ok}")
         if callable(falar):
-            falar(
-                _fala_de_confirmacao_variada(
-                    "next",
-                    fallback="Trocando a música. Sem drama." if ok else "Tentei puxar a próxima da playlist, mas ela não foi.",
-                    contexto=ctx_fala(),
-                    texto_usuario=texto_original,
-                ),
-                "debochada",
-                2,
-            )
+            fala = _escolher_fala_variada([
+                "Próxima faixa. Bora.",
+                "Pulando pra seguinte.",
+                "Trocando a música agora.",
+            ]) if ok else _escolher_fala_variada([
+                "Tentei puxar a próxima da playlist, mas ela não foi.",
+                "A próxima faixa não respondeu agora.",
+            ])
+            falar(fala, "debochada" if ok else "irritada", 2)
         marcar_resultado("midia_next_playlist" if ok else "falha_execucao", ok)
         return bool(ok)
 
@@ -218,16 +234,15 @@ def executar_media_control(
         ok = bool(playlist_prev())
         _log_midia("RESULTADO", f"playlist_prev ok={ok}")
         if callable(falar):
-            falar(
-                _fala_de_confirmacao_variada(
-                    "prev",
-                    fallback="Voltando uma faixa." if ok else "Tentei voltar a playlist, mas ela não cedeu.",
-                    contexto=ctx_fala(),
-                    texto_usuario=texto_original,
-                ),
-                "debochada",
-                2,
-            )
+            fala = _escolher_fala_variada([
+                "Voltando uma faixa.",
+                "Dei um passo atrás na playlist.",
+                "Faixa anterior voltando agora.",
+            ]) if ok else _escolher_fala_variada([
+                "Tentei voltar a playlist, mas ela não cedeu.",
+                "Não consegui confirmar a faixa anterior agora.",
+            ])
+            falar(fala, "debochada" if ok else "irritada", 2)
         marcar_resultado("midia_prev_playlist" if ok else "falha_execucao", ok)
         return bool(ok)
 
@@ -238,15 +253,56 @@ def executar_media_control(
             chave_midia = "play" if cmd == "play" else ("pause" if cmd == "pause" else "pause")
         else:
             chave_midia = "prev" if cmd == "prev" else ("replay" if cmd == "replay" else cmd)
-        falar(
-            _fala_de_confirmacao_variada(
-                chave_midia,
-                fallback="Feito." if ok_execucao else "Tentei mexer na mídia, mas não consegui confirmar o caminho.",
-                contexto=ctx_fala(),
-                texto_usuario=texto_original,
-            ),
-            "debochada",
-            2,
-        )
-    marcar_resultado(f"midia_{cmd}" if ok_execucao else "falha_execucao", ok_execucao)
+        if ok_execucao:
+            if confirmado_execucao is True:
+                fala_midia = _fala_de_confirmacao_variada(
+                    chave_midia,
+                    fallback="Feito.",
+                    contexto=ctx_fala(),
+                    texto_usuario=texto_original,
+                )
+            else:
+                falas_envio = {
+                    "next": ["Mandei passar pra próxima.", "Pedi a próxima faixa.", "Comando de próxima faixa enviado."],
+                    "prev": ["Mandei voltar pra anterior.", "Pedi a faixa anterior.", "Comando de faixa anterior enviado."],
+                    "replay": ["Mandei recomeçar essa faixa.", "Pedi pra tocar essa desde o começo."],
+                    "pause": ["Mandei pausar.", "Pedi uma pausa na música."],
+                    "play": ["Mandei retomar.", "Pedi pra música continuar."],
+                    "pause_play": ["Mandei alternar a reprodução.", "Enviei o comando de tocar ou pausar."],
+                }
+                fala_midia = _escolher_fala_variada(
+                    falas_envio.get(cmd, ["Enviei o comando de mídia."])
+                )
+            plano = planejar_resposta_acao(
+                ResultadoAcao(
+                    intent="MEDIA_CONTROL",
+                    status=f"midia_{cmd}",
+                    alvo="musica",
+                    executou=True,
+                    confirmado=confirmado_execucao,
+                    texto_usuario=texto_original,
+                ),
+                fala_midia,
+                emocao_preferida="debochada",
+                nivel_preferido=2,
+            )
+            falar(plano.fala, plano.emocao, plano.nivel)
+        else:
+            plano = planejar_resposta_acao(
+                ResultadoAcao(
+                    intent="MEDIA_CONTROL",
+                    status="falha_execucao",
+                    alvo="midia",
+                    executou=False,
+                    confirmado=False,
+                    texto_usuario=texto_original,
+                ),
+                "Tentei mexer na mídia, mas não consegui confirmar o caminho.",
+            )
+            falar(plano.fala, plano.emocao, plano.nivel)
+    marcar_resultado(
+        f"midia_{cmd}" if ok_execucao else "falha_execucao",
+        ok_execucao,
+        confirmado=confirmado_execucao if ok_execucao else False,
+    )
     return bool(ok_execucao)

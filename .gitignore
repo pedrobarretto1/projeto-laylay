@@ -7,23 +7,47 @@ yarn-error.log*
 # Build outputs
 dist/
 build/
+*.egg-info/
 *.log
 *.db
 *.sqlite
 *.sqlite3
+*.pid
 
 # Environment files
 .env
 .env.*
 !.env.example
 
+# Chaves, certificados e credenciais exportadas
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+credentials*.json
+client_secret*.json
+service-account*.json
+token*.json
+secrets*.json
+
+# Credenciais e descobertas locais TinyTuya (em qualquer pasta)
+**/tinytuya.json
+**/snapshot.json
+**/tuya-raw.json
+**/devices.json
+!**/tinytuya.example.json
+!**/snapshot.example.json
+!**/devices.example.json
+tests/teste_lampada.py
+
 # IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
-.venv/
-.venv-1/
+.venv*/
+venv*/
 
 # OS files
 .DS_Store
@@ -33,18 +57,46 @@ Thumbs.db
 *.tmp
 *.temp
 .cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Memórias locais da Laylay
-memoria/*.json
-memoria/**/*.json
-memoria/*.sqlite
-memoria/*.db
+# Memória, conversas e preferências pessoais da Laylay
+memoria/
+contexto.txt
+contexto-*.txt
+playlists.json
+
+# Áudios pessoais, datasets e modelos locais
+*.wav
+*.flac
+*.m4a
+*.ogg
+*.mp3
+*.opus
+*.pt
+*.pth
+*.onnx
+*.gguf
+*.safetensors
+
+# Gravações pessoais usadas para adaptar o reconhecimento de voz
+dados/voz_pessoal/
 
 # Ferramentas e artefatos locais
 .agents/
 .eucode/
 .uploads/
+
+# Backups e arquivos gerados pelo editor/aplicação
+*.bak
+*.backup
+*.orig
+*.rej

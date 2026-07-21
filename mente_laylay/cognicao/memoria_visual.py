@@ -10,12 +10,127 @@ import base64
 import json
 import os
 import re
+import threading
 import unicodedata
 import uuid
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timedelta
+from typing import Any, Callable, Optional
 
 MAX_MEMORIAS_VISUAIS_DIA = 5
+RETENCAO_MEMORIA_VISUAL_DIAS = 7
+_INDICE_LOCK = threading.RLock()
+_MARCADORES_VISUAIS_SENSIVEIS = (
+    "senha", "password", "login", "signin", "sign-in", "pagamento", "payment",
+    "checkout", "internet banking", "internetbanking", "banco", "bank", "wallet",
+    "carteira", "mensagem privada", "direct messages", "whatsapp", "web.telegram",
+)
+
+
+def contexto_visual_sensivel(contexto: dict | str | None) -> bool:
+    if isinstance(contexto, dict):
+        texto = " ".join(str(valor or "") for valor in contexto.values())
+    else:
+        texto = str(contexto or "")
+    base = _normalizar_texto_visual(texto)
+    return any(_normalizar_texto_visual(marcador) in base for marcador in _MARCADORES_VISUAIS_SENSIVEIS)
+
+
+def executar_captura_tela(
+    destino: str,
+    *,
+    enviar_pc_b: Callable[[dict], Any],
+    capturar_tela: Callable[[], str],
+    analisar_imagem: Callable[[str, str], str],
+    falar: Callable[..., Any],
+    estado_emocional: Callable[[], tuple[str, int]],
+    registrar_memoria: Callable[..., Any] | None = None,
+    obter_contexto: Callable[[], dict] | None = None,
+    thread_factory: Callable[..., Any] = threading.Thread,
+    log: Callable[[str], Any] = print,
+) -> bool:
+    """Executa a visão manual preservando destino, fala e processamento assíncrono."""
+    pergunta = (
+        "Você é a Laylay, assistente debochada, sarcástica e dona absoluta do PC do Pedro. "
+        "Olhe para esta tela e descreva o que o Pedro está fazendo ou o que está aberto. "
+        "Seja curta (máximo 3 linhas), direta, irônica e julgue as escolhas dele se for o caso. "
+        "Responda SEMPRE em português brasileiro, com seu jeitão de sempre."
+    )
+    contexto_atual = obter_contexto() if callable(obter_contexto) else {}
+    if contexto_visual_sensivel(contexto_atual):
+        falar("Não capturei a tela porque detectei uma página sensível, com possíveis senhas, conversa privada ou pagamento.", "calma", 1)
+        log("[VISÃO] Captura bloqueada por contexto sensível.")
+        return True
+    if str(destino or "").strip().lower() == "pc_b":
+        falar("Vou pedir ao PC B uma captura protegida; se for segura, a imagem será enviada ao serviço externo de análise.", "calma", 1)
+        confirmado = bool(enviar_pc_b({
+            "action": "capturar_tela",
+            "pergunta": pergunta,
+            "bloquearContextoSensivel": True,
+        }))
+        if not confirmado:
+            falar("Pedi a captura ao PC B, mas ele não confirmou que verificou e analisou a tela.", "calma", 1)
+            return True
+        falar("Abrindo o olho no PC B, um segundo...", "calma", 1)
+        return True
+
+    def ver_tela_local() -> None:
+        try:
+            log("[VISÃO] Capturando tela local...")
+            imagem = capturar_tela()
+            if not imagem:
+                falar("Não consegui capturar a tela.", "calma", 1)
+                return
+            falar("A imagem será enviada ao serviço externo de análise visual agora.", "calma", 1)
+            descricao = analisar_imagem(imagem, pergunta)
+            emocao, nivel = estado_emocional()
+            if callable(registrar_memoria):
+                try:
+                    registrar_memoria(
+                        imagem,
+                        descricao,
+                        motivo="captura visual manual",
+                        contexto=contexto_atual,
+                        emocao=emocao or "calma",
+                        intensidade=int(nivel or 1),
+                        tags=["visao", "captura", "manual"],
+                        origem="pc_a",
+                    )
+                except Exception as erro_memoria:
+                    log(f"[VISÃO] Falha ao registrar memória visual: {erro_memoria}")
+            falar(str(descricao or "")[:300], emocao or "debochada", nivel or 2)
+        except Exception as erro:
+            log(f"[VISÃO] Erro: {erro}")
+            falar("Tive um problema pra olhar a tela, Pedro.", "irritada", 2)
+
+    thread_factory(target=ver_tela_local, daemon=True).start()
+    falar("Tô olhando pra tela agora, um segundo...", "calma", 1)
+    return True
+
+
+class MemoriaVisualRuntime:
+    """Coordena captura manual usando o estado emocional e visual compartilhado."""
+
+    def __init__(self, *, namespace_getter: Callable[[], dict], log: Callable[[str], Any] = print) -> None:
+        self.namespace_getter = namespace_getter
+        self.log = log
+
+    def executar(self, destino: str, *, registrar_memoria: bool = False) -> bool:
+        ns = self.namespace_getter() or {}
+        return executar_captura_tela(
+            destino,
+            enviar_pc_b=ns["enviar_pc_b"],
+            capturar_tela=ns["capturar_tela"],
+            analisar_imagem=ns["analisar_imagem"],
+            falar=ns["falar"],
+            estado_emocional=ns["estado_emocional"],
+            registrar_memoria=ns["registrar_memoria"] if registrar_memoria else None,
+            obter_contexto=ns["obter_contexto"],
+            log=self.log,
+        )
+
+
+def criar_memoria_visual_runtime(**kwargs: Any) -> MemoriaVisualRuntime:
+    return MemoriaVisualRuntime(**kwargs)
 
 _PASTA_MEMORIA = ""
 _PASTA_MEMORIA_VISUAL = ""
@@ -24,12 +139,14 @@ _ARQUIVO_INDICE = ""
 
 def configurar_memoria_visual(pasta_memoria: str, max_por_dia: int = 5) -> None:
     """Define onde a memoria visual sera salva."""
-    global MAX_MEMORIAS_VISUAIS_DIA, _PASTA_MEMORIA, _PASTA_MEMORIA_VISUAL, _ARQUIVO_INDICE
+    global MAX_MEMORIAS_VISUAIS_DIA, RETENCAO_MEMORIA_VISUAL_DIAS, _PASTA_MEMORIA, _PASTA_MEMORIA_VISUAL, _ARQUIVO_INDICE
     _PASTA_MEMORIA = str(pasta_memoria or "").strip()
     _PASTA_MEMORIA_VISUAL = os.path.join(_PASTA_MEMORIA, "memoria_visual")
     _ARQUIVO_INDICE = os.path.join(_PASTA_MEMORIA, "memoria_visual_indice.json")
     MAX_MEMORIAS_VISUAIS_DIA = int(max_por_dia or 5)
+    RETENCAO_MEMORIA_VISUAL_DIAS = max(1, int(os.getenv("LAYLAY_MEMORIA_VISUAL_RETENCAO_DIAS", "7") or 7))
     os.makedirs(_PASTA_MEMORIA_VISUAL, exist_ok=True)
+    limpar_memorias_visuais_expiradas()
 
 
 def _normalizar_texto_visual(texto: str) -> str:
@@ -41,15 +158,16 @@ def _normalizar_texto_visual(texto: str) -> str:
 
 
 def _carregar_indice_memoria_visual() -> dict:
-    try:
-        if _ARQUIVO_INDICE and os.path.exists(_ARQUIVO_INDICE):
-            with open(_ARQUIVO_INDICE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, dict):
-                    data.setdefault("dias", {})
-                    return data
-    except Exception:
-        pass
+    with _INDICE_LOCK:
+        try:
+            if _ARQUIVO_INDICE and os.path.exists(_ARQUIVO_INDICE):
+                with open(_ARQUIVO_INDICE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        data.setdefault("dias", {})
+                        return data
+        except Exception:
+            pass
     return {"dias": {}}
 
 
@@ -57,8 +175,37 @@ def _salvar_indice_memoria_visual(indice: dict) -> None:
     if not _ARQUIVO_INDICE:
         return
     os.makedirs(os.path.dirname(_ARQUIVO_INDICE), exist_ok=True)
-    with open(_ARQUIVO_INDICE, "w", encoding="utf-8") as f:
-        json.dump(indice, f, ensure_ascii=False, indent=2)
+    with _INDICE_LOCK:
+        temporario = f"{_ARQUIVO_INDICE}.{uuid.uuid4().hex}.tmp"
+        with open(temporario, "w", encoding="utf-8") as f:
+            json.dump(indice, f, ensure_ascii=False, indent=2)
+        os.replace(temporario, _ARQUIVO_INDICE)
+
+
+def limpar_memorias_visuais_expiradas(agora: datetime | None = None) -> int:
+    """Remove imagens/metadados fora do prazo e reconstrói o índice."""
+    if not _PASTA_MEMORIA_VISUAL:
+        return 0
+    limite = (agora or datetime.now()).date() - timedelta(days=RETENCAO_MEMORIA_VISUAL_DIAS)
+    removidos = 0
+    with _INDICE_LOCK:
+        indice = _carregar_indice_memoria_visual()
+        dias = indice.get("dias") if isinstance(indice.get("dias"), dict) else {}
+        for dia in list(dias):
+            try:
+                expirou = datetime.strptime(dia, "%Y-%m-%d").date() < limite
+            except ValueError:
+                expirou = True
+            if not expirou:
+                continue
+            pasta = os.path.join(_PASTA_MEMORIA_VISUAL, dia)
+            if os.path.isdir(pasta):
+                import shutil
+                shutil.rmtree(pasta, ignore_errors=True)
+            removidos += len(dias.pop(dia, []) or [])
+        indice["dias"] = dias
+        _salvar_indice_memoria_visual(indice)
+    return removidos
 
 
 def _contar_memorias_visuais_no_dia(data_dia: str) -> int:
@@ -84,11 +231,17 @@ def _classificar_importancia_memoria_visual(descricao: str, motivo: str, context
 def capturar_tela_base64(qualidade: int = 60) -> str:
     """Tira screenshot da tela atual e retorna Base64."""
     try:
-        from PIL import Image
+        from PIL import Image, ImageFilter
         import io as _io
         import pyautogui
 
         img = pyautogui.screenshot()
+        # Notificações do Windows normalmente aparecem no canto inferior direito.
+        # O desfoque reduz vazamento acidental sem ocultar o centro da tarefa.
+        largura, altura = img.size
+        caixa = (int(largura * 0.72), int(altura * 0.68), largura, altura)
+        canto = img.crop(caixa).filter(ImageFilter.GaussianBlur(radius=18))
+        img.paste(canto, caixa)
         _resample = getattr(Image, "Resampling", Image).LANCZOS
         img.thumbnail((1280, 720), _resample)
         buf = _io.BytesIO()

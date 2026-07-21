@@ -2,14 +2,122 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+import re
 import threading
-from typing import Any, Dict
+import time
+import uuid
+from typing import Any, Callable, Dict
+
+from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     if isinstance(ctx, dict) and key in ctx:
         return ctx.get(key, default)
     return default
+
+
+class DestinoPCRuntime:
+    """Interpreta destino local/remoto sem guardar estado próprio."""
+
+    def __init__(self, *, normalizar_texto: Callable[[str], str]) -> None:
+        self.normalizar_texto = normalizar_texto
+
+    def resolver(self, params: dict, texto_original: str = "") -> str:
+        params = params if isinstance(params, dict) else {}
+        alvo = str(params.get("target") or "").strip().lower()
+        texto = self.normalizar_texto(str(texto_original or ""))
+        if alvo in {"pc_b", "pc b", "b", "computador_b", "computador b"}:
+            return "pc_b"
+        if any(x in texto for x in ["pc b", "pc_b", "computador b", "no b", "pro b", "pra b", "para o b"]):
+            return "pc_b"
+        if alvo in {"ambos", "both", "todos"}:
+            return "ambos"
+        return "pc_a"
+
+    def limpar_mencao(self, texto: str) -> str:
+        resultado = str(texto or "").strip()
+        resultado = re.sub(r"\b(no|pro|pra|para o|para)\s+pc\s*b\b", " ", resultado, flags=re.IGNORECASE)
+        resultado = re.sub(r"\b(no|pro|pra|para o|para)\s+b\b", " ", resultado, flags=re.IGNORECASE)
+        return re.sub(r"\s+", " ", resultado).strip(" .,!?:;")
+
+
+def criar_destino_pc_runtime(**kwargs: Any) -> DestinoPCRuntime:
+    return DestinoPCRuntime(**kwargs)
+
+
+class PCBRuntime:
+    def __init__(self, *, clientes_getter: Callable[[], Any], loop_getter: Callable[[], Any], log=print) -> None:
+        self.clientes_getter = clientes_getter
+        self.loop_getter = loop_getter
+        self.log = log
+        self._lock = threading.RLock()
+        self._pendentes: Dict[str, Dict[str, Any]] = {}
+
+    def enviar(self, payload: Dict[str, Any], timeout_s: float = 5.0) -> bool:
+        """Envia e somente retorna sucesso depois do estado final do PC B."""
+        clientes = self.clientes_getter()
+        loop = self.loop_getter()
+        if not clientes or loop is None:
+            self.log("[PC B] Nenhum cliente PC B conectado.")
+            return False
+        request_id = str(payload.get("requestId") or uuid.uuid4().hex)
+        evento = threading.Event()
+        entrada: Dict[str, Any] = {"event": evento, "result": None, "criado_em": time.time()}
+        with self._lock:
+            self._pendentes[request_id] = entrada
+        mensagem = dict(payload)
+        mensagem["requestId"] = request_id
+        mensagem["expectsFinalStatus"] = True
+        try:
+            texto = json.dumps(mensagem)
+            enviados = 0
+            for cliente in list(clientes):
+                futuro = asyncio.run_coroutine_threadsafe(cliente.send(texto), loop)
+                futuro.result(timeout=min(2.0, max(0.2, float(timeout_s))))
+                enviados += 1
+            if not enviados:
+                return False
+            self.log(f"[PC B] Solicitação {request_id} enviada; aguardando confirmação final.")
+            respondeu = evento.wait(max(0.2, float(timeout_s)))
+            with self._lock:
+                final = self._pendentes.pop(request_id, None) or entrada
+            resultado = final.get("result")
+            if not respondeu or not isinstance(resultado, dict):
+                self.log(f"[PC B] Solicitação {request_id} enviada, mas não confirmada.")
+                return False
+            status = str(resultado.get("status") or "").strip().lower()
+            return status in {"ok", "success", "completed", "concluido", "concluído"} and bool(
+                resultado.get("final", True)
+            )
+        except Exception as erro:
+            self.log(f"[PC B] Falha na solicitação {request_id}: {erro}")
+            return False
+        finally:
+            with self._lock:
+                self._pendentes.pop(request_id, None)
+
+    def registrar_status(self, data: Dict[str, Any]) -> bool:
+        request_id = str(data.get("requestId") or "")
+        if not request_id:
+            self.log("[PC B] Status sem requestId ignorado para confirmação de execução.")
+            return False
+        with self._lock:
+            entrada = self._pendentes.get(request_id)
+            if not entrada:
+                return False
+            entrada["result"] = dict(data)
+            evento = entrada.get("event")
+        if evento is not None:
+            evento.set()
+        return True
+
+
+def criar_pc_b_runtime(**kwargs: Any) -> PCBRuntime:
+    return PCBRuntime(**kwargs)
 
 
 def processar_mensagem_pc_b(data: Dict[str, Any], ctx: Dict[str, Any]) -> bool:
@@ -23,6 +131,11 @@ def processar_mensagem_pc_b(data: Dict[str, Any], ctx: Dict[str, Any]) -> bool:
         emotion_level = int(_get(ctx, "emotion_level", 1) or 1)
 
         img_b64 = data.get("imagem_b64", "")
+        if data.get("contextoSensivel") is True or data.get("sensitiveContext") is True:
+            print("🛑 [VISÃO] PC B bloqueou captura em contexto sensível.")
+            if callable(falar_com_lipsync):
+                falar_com_lipsync("Não analisei a tela do PC B porque ela estava em um contexto sensível.", "calma", 1)
+            return True
         pergunta = data.get("pergunta", "O que está acontecendo nessa tela?")
         print(f"[VISÃO] Screenshot do PC B recebido ({len(img_b64)//1024}KB). Analisando...")
 
@@ -50,37 +163,34 @@ def processar_mensagem_pc_b(data: Dict[str, Any], ctx: Dict[str, Any]) -> bool:
         return True
 
     if tipo == "pc_b_status":
+        registrar_status = _get(ctx, "registrar_status_pc_b")
+        if callable(registrar_status):
+            registrar_status(data)
         if data.get("status") == "error":
             erro_msg = data.get("error", "Erro desconhecido")
             app_err = data.get("app", "")
             acao_err = data.get("action", "")
             print(f"❌ [PC B] Falha remota: {erro_msg}")
-
-            messages = _get(ctx, "messages")
-            enviar_mensagem = _get(ctx, "enviar_mensagem")
-            limpar_resposta_da_ia = _get(ctx, "limpar_resposta_da_ia")
-
-            def _notificar_erro() -> None:
-                informacao = (
-                    f"System: IMPORTANTE! O Computador B falhou ao tentar realizar a ação '{acao_err}' no alvo '{app_err}'. "
-                    f"O Windows lá retornou o erro: '{erro_msg}'. "
-                    "Isso é uma falha de sistema, VOCÊ DEVE avisar o usuário sobre isso AGORA mesmo para que ele saiba que não funcionou."
-                )
-                if isinstance(messages, list):
-                    messages.append({"role": "system", "content": informacao})
-                try:
-                    bot_raw = enviar_mensagem(messages) if callable(enviar_mensagem) else ""
-                    fala, _ = limpar_resposta_da_ia(bot_raw) if callable(limpar_resposta_da_ia) else (str(bot_raw or ""), [])
-                    if fala:
-                        print(f"Laylay [Autocorreção PC B]: {fala}")
-                        if isinstance(messages, list):
-                            messages.append({"role": "assistant", "content": fala})
-                        if callable(falar_com_lipsync):
-                            falar_com_lipsync(fala, "decepcionada", 2)
-                except Exception as e_ia:
-                    print(f"[PC B] Erro na autocorreção remota da IA: {e_ia}")
-
-            threading.Thread(target=_notificar_erro, daemon=True).start()
+            if data.get("sensitiveContext") is True:
+                if callable(falar_com_lipsync):
+                    falar_com_lipsync("O PC B bloqueou a captura porque detectou um contexto sensível.", "calma", 1)
+                return True
+            alvo = str(app_err or "PC B").strip()
+            plano = planejar_resposta_acao(
+                ResultadoAcao(
+                    intent=str(acao_err or "ACAO_PC_B"),
+                    status="falha_execucao",
+                    alvo=alvo,
+                    executou=False,
+                    confirmado=True,
+                    detalhe=str(erro_msg or ""),
+                ),
+                f"O PC B não conseguiu concluir a ação em {alvo}. Motivo: {erro_msg}.",
+                emocao_preferida="decepcionada",
+                nivel_preferido=2,
+            )
+            if callable(falar_com_lipsync):
+                falar_com_lipsync(plano.fala, plano.emocao, plano.nivel)
         else:
             print(f"✅ [PC B] Ação {data.get('action')} em {data.get('app', '')} concluída com sucesso!")
         return True

@@ -6,8 +6,6 @@ import re
 import time
 from typing import Any, Dict
 from mente_laylay.personalidade.falas_variadas import escolher as _escolher_fala_variada
-from mente_laylay.personalidade.falas_variadas import fala_de_confirmacao as _fala_de_confirmacao_variada
-from mente_laylay.personalidade.falas_variadas import fala_por_estado_acao as _fala_por_estado_acao
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
@@ -20,6 +18,10 @@ def _parece_comando_novo(texto_norm: str) -> bool:
     """Nao deixa uma sugestao pendente engolir um comando novo completo."""
     t = re.sub(r"\s+", " ", str(texto_norm or "").strip().lower())
     if not t:
+        return False
+    if re.search(r"\b(?:melhor|prefiro|preferia|em vez|ao inves|ao invés|apenas|somente|só|so)\b", t):
+        # Com uma sugestão pendente, esses marcadores indicam refino da ideia,
+        # não um comando solto que deva ignorar o contexto.
         return False
 
     palavras = t.split()
@@ -118,6 +120,11 @@ def _pendencia_combina_com_texto(contexto: Dict[str, Any], tipo: str, texto_norm
         "pode", "pode sim", "pode ser", "quero", "quero sim", "bora", "vai", "manda",
         "ok", "beleza", "fechou", "fechado",
     }
+    negacao_generica = t in {
+        "nao", "não", "agora nao", "agora não", "nao precisa", "não precisa",
+        "deixa", "deixa quieto", "esquece", "melhor nao", "melhor não",
+    }
+    resposta_explicita = confirmacao_generica or negacao_generica
 
     if alvo_norm and alvo_norm in t:
         return True
@@ -129,7 +136,7 @@ def _pendencia_combina_com_texto(contexto: Dict[str, Any], tipo: str, texto_norm
             return True
         if confirmacao_generica and foco and foco_tipo not in {"email", "conversa", "pesquisa"} and "email" not in foco_texto:
             return False
-        return True
+        return resposta_explicita
 
     if tipo == "playlist":
         if pistas_email or (pistas_app and not pistas_musica):
@@ -138,7 +145,7 @@ def _pendencia_combina_com_texto(contexto: Dict[str, Any], tipo: str, texto_norm
             return True
         if confirmacao_generica and foco and foco_tipo not in {"playlist", "musica", "música", "midia", "conversa"}:
             return False
-        return True
+        return resposta_explicita
 
     if tipo == "rotina":
         if pistas_email or pistas_musica:
@@ -147,9 +154,9 @@ def _pendencia_combina_com_texto(contexto: Dict[str, Any], tipo: str, texto_norm
             return True
         if confirmacao_generica and foco and foco_tipo not in {"janela", "site", "conversa"}:
             return False
-        return True
+        return resposta_explicita
 
-    return True
+    return False
 
 
 def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
@@ -320,185 +327,5 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
             return True
     except Exception as e:
         print(f"⚠️ [SUGESTÃO] Falha ao tratar confirmação pendente: {e}")
-
-    return False
-def handle_comando_rapido_flow(contexto: Dict[str, Any], texto: str) -> bool:
-    extrair_comando_rapido = _get(contexto, "extrair_comando_rapido")
-    enviar_comando_chrome = _get(contexto, "enviar_comando_chrome")
-    executar_intencao = _get(contexto, "executar_intencao")
-    confirmar_execucao_debochada = _get(contexto, "_confirmar_execucao_debochada")
-    if not callable(extrair_comando_rapido):
-        return False
-
-    cmd_rapido = extrair_comando_rapido(texto)
-    if not cmd_rapido:
-        return False
-
-    tipo, arg = cmd_rapido
-    if tipo == "OPEN_URL":
-        if not callable(executar_intencao):
-            return False
-        return bool(executar_intencao({"intent": "OPEN_URL", "params": {"alvo": arg}}, texto))
-    if tipo == "OPEN_APP":
-        if not callable(executar_intencao):
-            return False
-        return bool(executar_intencao({"intent": "APP_OPEN", "params": {"nome_app": arg}}, texto))
-    if tipo == "YOUTUBE" and callable(enviar_comando_chrome):
-        enviar_comando_chrome("youtube_search", {"query": arg})
-        if callable(confirmar_execucao_debochada):
-            confirmar_execucao_debochada(
-                texto,
-                "O comando já foi executado pelo Python. Responda só com uma fala curta debochada confirmando. Não use [EXEC].",
-            )
-        return True
-    return False
-
-
-def handle_fuzzy_intent_flow(contexto: Dict[str, Any], texto: str) -> bool:
-    interpretar_intencao_fuzzy_llm = _get(contexto, "interpretar_intencao_fuzzy_llm")
-    enviar_comando_chrome = _get(contexto, "enviar_comando_chrome")
-    falar_com_lipsync = _get(contexto, "falar_com_lipsync")
-    messages = _get(contexto, "messages")
-    abrir_url_com_reciclagem = _get(contexto, "abrir_url_com_reciclagem")
-    fechar_abas_vazias = _get(contexto, "fechar_abas_vazias")
-    solicitar_lista_abas = _get(contexto, "solicitar_lista_abas")
-    selecionar_abas_para_fechar_llm = _get(contexto, "selecionar_abas_para_fechar_llm")
-    add_to_playlist_url = _get(contexto, "add_to_playlist_url")
-    solicitar_aba_ativa = _get(contexto, "solicitar_aba_ativa")
-    extrair_nome_playlist = _get(contexto, "extrair_nome_playlist")
-    _playlist_primeira_url = _get(contexto, "_playlist_primeira_url")
-    playlist_len = _get(contexto, "playlist_len")
-    _playlist_item_at = _get(contexto, "_playlist_item_at")
-    _yt_clean_title = _get(contexto, "_yt_clean_title")
-    _fala_playlist_duplicado = _get(contexto, "_fala_playlist_duplicado")
-    _fala_playlist_duplicado_meta = _get(contexto, "_fala_playlist_duplicado_meta")
-    _fala_playlist_sucesso = _get(contexto, "_fala_playlist_sucesso")
-    executar_intencao = _get(contexto, "executar_intencao")
-    ultima_playlist = _get(contexto, "ultima_playlist")
-
-    try:
-        parsed_intent = interpretar_intencao_fuzzy_llm(texto) if callable(interpretar_intencao_fuzzy_llm) else None
-    except Exception:
-        parsed_intent = None
-
-    if not isinstance(parsed_intent, dict):
-        return False
-
-    intent = str(parsed_intent.get("intent") or "").upper().strip()
-    if intent == "PAUSE_MUSIC":
-        if callable(enviar_comando_chrome):
-            enviar_comando_chrome("youtube_control", {"command": "pause_play"})
-        fala = _escolher_fala_variada(["Ok. Música pausada. Agora fala direito.", "Pausada. Agora fala comigo direito.", "Dei pause. Continua aí."])
-        print("Laylay [debochada lvl2]: " + fala)
-        if isinstance(messages, list):
-            messages.append({"role": "assistant", "content": fala})
-        if callable(falar_com_lipsync):
-            falar_com_lipsync(fala, "debochada", 2)
-        return True
-    if intent == "NEXT_MUSIC":
-        if callable(enviar_comando_chrome):
-            enviar_comando_chrome("youtube_control", {"command": "next"})
-        fala = _escolher_fala_variada(["Próxima. Bora, DJ do caos.", "Pulando pra próxima.", "Seguinte."])
-        print("Laylay [debochada lvl2]: " + fala)
-        if isinstance(messages, list):
-            messages.append({"role": "assistant", "content": fala})
-        if callable(falar_com_lipsync):
-            falar_com_lipsync(fala, "debochada", 2)
-        return True
-    if intent == "CLOSE_EMPTY_TABS":
-        if callable(fechar_abas_vazias):
-            fechar_abas_vazias()
-        fala = _escolher_fala_variada(["Limpei as abas vazias. Menos bagunça, mais cérebro.", "Abas vazias limpas.", "Organizei essas abas soltas."])
-        print("Laylay [debochada lvl2]: " + fala)
-        if isinstance(messages, list):
-            messages.append({"role": "assistant", "content": fala})
-        if callable(falar_com_lipsync):
-            falar_com_lipsync(fala, "debochada", 2)
-        return True
-    if intent == "CLOSE_TABS":
-        tabs = solicitar_lista_abas() if callable(solicitar_lista_abas) else []
-        ids = selecionar_abas_para_fechar_llm(texto, tabs) if callable(selecionar_abas_para_fechar_llm) else []
-        if ids and callable(enviar_comando_chrome):
-            enviar_comando_chrome("close_tabs", {"ids": ids})
-        fala = _fala_por_estado_acao(
-            "aba_fechada",
-            fallback="Pronto. Dei uma geral nessas abas.",
-            alvo="essas abas",
-            contexto={"current_emotion": "debochada"},
-            texto_usuario=texto,
-        )
-        print("Laylay [debochada lvl2]: " + fala)
-        if isinstance(messages, list):
-            messages.append({"role": "assistant", "content": fala})
-        if callable(falar_com_lipsync):
-            falar_com_lipsync(fala, "debochada", 2)
-        return True
-    if intent == "OPEN_SITE":
-        topic = str(parsed_intent.get("topic") or parsed_intent.get("raw") or texto).strip()
-        if "playlist" in texto.lower():
-            pl = extrair_nome_playlist(texto) if callable(extrair_nome_playlist) else ""
-            if pl:
-                if re.search(r"\b(na|nessa|nesta)\s+playlist\b", texto.lower()):
-                    info = solicitar_aba_ativa(timeout_s=2.0) if callable(solicitar_aba_ativa) else {}
-                    url = str((info or {}).get("url") or "")
-                    title = str((info or {}).get("title") or "")
-                    canal = str((info or {}).get("canal") or "")
-                    if not url:
-                        if callable(falar_com_lipsync):
-                            falar_com_lipsync(_escolher_fala_variada(["Ih Pedro, perdi o sinal do Chrome, não consegui salvar.", "Perdi o sinal do Chrome e não consegui salvar.", "A aba do Chrome sumiu de mim." ]), "calma", 1)
-                        return True
-                    if "youtube.com" not in url:
-                        if callable(falar_com_lipsync):
-                            falar_com_lipsync(_escolher_fala_variada(["Não achei música aberta pra salvar aqui.", "Não vi nenhuma música aberta pra guardar.", "Faltou uma música aberta no navegador."]), "calma", 1)
-                        return True
-                    res = add_to_playlist_url(pl, url, title, canal) if callable(add_to_playlist_url) else None
-                    ok = res.get("ok") if isinstance(res, dict) else bool(res)
-                    if ok and isinstance(res, dict) and res.get("duplicated"):
-                        if callable(falar_com_lipsync):
-                            falar_com_lipsync(_fala_playlist_duplicado(title, pl), "debochada", 2)
-                    elif ok and isinstance(res, dict) and res.get("duplicated_meta"):
-                        if callable(falar_com_lipsync):
-                            falar_com_lipsync(_fala_playlist_duplicado_meta(title, pl, bool(res.get("duplicate_other_channel"))), "debochada", 2)
-                    elif ok:
-                        created = isinstance(res, dict) and (res.get("created_file") or res.get("created_playlist"))
-                        if callable(falar_com_lipsync):
-                            falar_com_lipsync(_fala_playlist_sucesso(title, pl, bool(created)), "debochada", 2)
-                        contexto["ultima_playlist"] = pl
-                    else:
-                        if callable(falar_com_lipsync):
-                            falar_com_lipsync(_escolher_fala_variada(["Não consegui salvar. Vê se tá no YouTube e tenta de novo.", "Não deu pra salvar agora. Tenta de novo.", "O salvamento falhou. Confere a aba e tenta outra vez."]), "calma", 1)
-                    return True
-                url = _playlist_primeira_url(pl) if callable(_playlist_primeira_url) else ""
-                if not url:
-                    if callable(falar_com_lipsync):
-                        falar_com_lipsync(_escolher_fala_variada([f"Você ainda não criou a playlist {pl}. Quer que eu salve essa música nela?", f"{pl} ainda não existe. Quer que eu salve essa música nela?", f"Não achei a playlist {pl}. Posso guardar essa música aí?"]), "calma", 1)
-                    return True
-                if callable(abrir_url_com_reciclagem):
-                    abrir_url_com_reciclagem(url, auto_click=False)
-                n = playlist_len(pl) if callable(playlist_len) else 0
-                if callable(falar_com_lipsync):
-                    falar_com_lipsync(
-                        _fala_de_confirmacao_variada(
-                            "playlist_play",
-                            fallback=f"Abrindo sua playlist de {pl}. Você já tem {n} músicas guardadas comigo.",
-                            alvo=pl,
-                            contexto={"current_emotion": "debochada", "ultima_habilidade": "playlist", "ultimo_alvo": pl},
-                            texto_usuario=texto,
-                        ),
-                        "debochada",
-                        2,
-                    )
-                contexto["ultima_playlist"] = pl
-                return True
-            if callable(falar_com_lipsync):
-                falar_com_lipsync(_escolher_fala_variada(["Você quer que eu salve no vácuo? Me diz o nome dessa playlist, Pedro!", "Me diz o nome da playlist pra eu salvar certinho.", "Faltou o nome da playlist, Pedro."]), "debochada", 2)
-            return True
-        if topic.lower() in {"outro", "outros"}:
-            if callable(falar_com_lipsync):
-                falar_com_lipsync(_escolher_fala_variada(["Não entendi qual site você quer. Diz o assunto ou o nome do site.", "Me fala o assunto ou o site certinho.", "Faltou o nome do site ou do assunto."]), "calma", 1)
-            return True
-        if not callable(executar_intencao):
-            return False
-        return bool(executar_intencao({"intent": "OPEN_URL", "params": {"alvo": topic}}, texto))
 
     return False

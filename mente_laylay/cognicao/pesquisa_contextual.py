@@ -8,6 +8,7 @@ import time
 import unicodedata
 import urllib.parse
 from collections.abc import Callable
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import requests
@@ -85,6 +86,8 @@ def pesquisar_contexto_tema(
     *,
     cache: dict | None = None,
     normalizar_texto_curto: Callable[[str], str] | None = None,
+    requests_get=None,
+    clock: Callable[[], float] = time.time,
 ) -> dict:
     """Busca um contexto curto sobre um tema para opiniões mais informadas."""
     cache_ref = cache if isinstance(cache, dict) else {}
@@ -96,35 +99,103 @@ def pesquisar_contexto_tema(
         return {"ok": False, "tema": bruto, "consulta": consulta, "motivo": "tema_baguncado"}
 
     normalizar = normalizar_texto_curto or _normalizar_texto_curto_basico
+    get = requests_get or requests.get
+    headers = {
+        "User-Agent": "LaylayAssistant/2.5 (pesquisa contextual pessoal; contato local)",
+        "Accept": "application/json",
+    }
+
+    def http_get(url: str, **kwargs):
+        try:
+            return get(url, headers=headers, **kwargs)
+        except TypeError:
+            # Mantem compatibilidade com callbacks de teste ou adaptadores
+            # antigos que ainda nao aceitam o argumento headers.
+            return get(url, **kwargs)
     chave = normalizar(consulta)
-    agora = time.time()
+    agora = float(clock())
     try:
         item_cache = dict(cache_ref.get(chave) or {})
     except Exception:
         item_cache = {}
-    if item_cache and (agora - float(item_cache.get("ts") or 0.0)) < ttl_s:
-        return dict(item_cache.get("data") or {})
+    ttl_cache = float(item_cache.get("ttl_s") or ttl_s) if item_cache else ttl_s
+    if item_cache and (agora - float(item_cache.get("ts") or 0.0)) < ttl_cache:
+        encontrado = dict(item_cache.get("data") or {})
+        encontrado["evidencia_cache"] = True
+        encontrado["evidencia_idade_s"] = max(
+            0.0, agora - float(encontrado.get("evidencia_obtida_em") or item_cache.get("ts") or agora)
+        )
+        return encontrado
 
-    def cachear(data: dict) -> dict:
-        cache_ref[chave] = {"ts": agora, "data": dict(data or {})}
+    def cachear(data: dict, *, ttl_item_s: float | None = None) -> dict:
+        validade = max(0.0, float(ttl_item_s if ttl_item_s is not None else ttl_s))
+        registrado = dict(data or {})
+        registrado.update({
+            "evidencia_obtida_em": agora,
+            "evidencia_obtida_em_iso": datetime.fromtimestamp(agora, timezone.utc).isoformat(),
+            "evidencia_validade_s": validade,
+            "evidencia_expira_em": agora + validade,
+            "evidencia_expira_em_iso": datetime.fromtimestamp(agora + validade, timezone.utc).isoformat(),
+            "evidencia_idade_s": 0.0,
+            "evidencia_cache": False,
+        })
+        cache_ref[chave] = {
+            "ts": agora,
+            "ttl_s": validade,
+            "data": registrado,
+        }
         if len(cache_ref) > 80:
             antigos = list(cache_ref.keys())[:-50]
             for chave_antiga in antigos:
                 cache_ref.pop(chave_antiga, None)
-        return data
+        return dict(registrado)
 
     try:
         for lang in ("pt", "en"):
             try:
                 api = f"https://{lang}.wikipedia.org/w/api.php"
-                r = requests.get(
+                # Títulos de obras em inglês costumam funcionar melhor por
+                # consulta direta do que pela busca textual da Wikipedia.
+                r_direto = http_get(
+                    api,
+                    params={
+                        "action": "query",
+                        "format": "json",
+                        "prop": "extracts",
+                        "exintro": 1,
+                        "explaintext": 1,
+                        "redirects": 1,
+                        "titles": consulta,
+                        "utf8": 1,
+                    },
+                    timeout=4,
+                )
+                r_direto.raise_for_status()
+                paginas_diretas = ((r_direto.json().get("query") or {}).get("pages") or {})
+                for _, pagina in paginas_diretas.items():
+                    if not isinstance(pagina, dict) or "missing" in pagina:
+                        continue
+                    resumo_direto = re.sub(r"\s+", " ", str(pagina.get("extract") or "")).strip()
+                    titulo_direto = str(pagina.get("title") or consulta).strip()
+                    if resumo_direto:
+                        print(f"🔎 [PESQUISA TEMA] {consulta!r} encontrado em wikipedia_{lang} por título")
+                        return cachear({
+                            "ok": True,
+                            "tema": bruto,
+                            "consulta": consulta,
+                            "titulo": titulo_direto,
+                            "resumo": resumo_direto[:700],
+                            "fonte": f"wikipedia_{lang}",
+                            "confianca": 0.95,
+                        })
+                r = http_get(
                     api,
                     params={
                         "action": "query",
                         "format": "json",
                         "list": "search",
                         "srsearch": consulta,
-                        "srlimit": 1,
+                        "srlimit": 5,
                         "utf8": 1,
                     },
                     timeout=4,
@@ -154,7 +225,7 @@ def pesquisar_contexto_tema(
                 )
                 if score_hit < 18:
                     continue
-                r2 = requests.get(
+                r2 = http_get(
                     api,
                     params={
                         "action": "query",
@@ -175,6 +246,7 @@ def pesquisar_contexto_tema(
                     resumo = str((page or {}).get("extract") or "").strip()
                     if resumo:
                         resumo = re.sub(r"\s+", " ", resumo).strip()
+                        print(f"🔎 [PESQUISA TEMA] {consulta!r} encontrado em wikipedia_{lang} por busca")
                         return cachear({
                             "ok": True,
                             "tema": bruto,
@@ -184,11 +256,12 @@ def pesquisar_contexto_tema(
                             "fonte": f"wikipedia_{lang}",
                             "confianca": min(0.98, 0.45 + (score_hit / 140.0)),
                         })
-            except Exception:
+            except Exception as erro_wiki:
+                print(f"⚠️ [PESQUISA TEMA] wikipedia_{lang} falhou: {erro_wiki}")
                 continue
 
         try:
-            r = requests.get(
+            r = http_get(
                 "https://api.duckduckgo.com/",
                 params={
                     "q": consulta,
@@ -201,7 +274,7 @@ def pesquisar_contexto_tema(
             )
             r.raise_for_status()
             data = r.json()
-            resumo = str(data.get("AbstractText") or "").strip()
+            resumo = str(data.get("AbstractText") or data.get("Abstract") or "").strip()
             titulo = str(data.get("Heading") or consulta).strip()
             if not resumo:
                 for item in list(data.get("RelatedTopics") or []):
@@ -212,7 +285,11 @@ def pesquisar_contexto_tema(
                 resumo = re.sub(r"\s+", " ", resumo).strip()
                 score_ddg = pontuar_hit_tema(consulta, titulo, resumo, normalizar_texto_curto=normalizar)
                 if score_ddg < 14:
-                    return cachear({"ok": False, "tema": bruto, "consulta": consulta, "motivo": "resultado_fraco"})
+                    return cachear(
+                        {"ok": False, "tema": bruto, "consulta": consulta, "motivo": "resultado_fraco"},
+                        ttl_item_s=30.0,
+                    )
+                print(f"🔎 [PESQUISA TEMA] {consulta!r} encontrado no duckduckgo")
                 return cachear({
                     "ok": True,
                     "tema": bruto,
@@ -222,12 +299,16 @@ def pesquisar_contexto_tema(
                     "fonte": "duckduckgo",
                     "confianca": min(0.9, 0.4 + (score_ddg / 140.0)),
                 })
-        except Exception:
-            pass
+        except Exception as erro_ddg:
+            print(f"⚠️ [PESQUISA TEMA] duckduckgo falhou: {erro_ddg}")
     except Exception as e:
         print(f"⚠️ [PESQUISA TEMA] falha geral em '{consulta}': {e}")
 
-    return cachear({"ok": False, "tema": bruto, "consulta": consulta})
+    print(f"⚠️ [PESQUISA TEMA] nenhum contexto confiável para {consulta!r}")
+    return cachear(
+        {"ok": False, "tema": bruto, "consulta": consulta},
+        ttl_item_s=30.0,
+    )
 
 
 def buscar_imagem_url(assunto: str, *, requests_get=None) -> str | None:
@@ -332,11 +413,13 @@ class PesquisaContextualRuntime:
         normalizar_texto_curto: Callable[[str], str] | None = None,
         requests_get=None,
         pasta_downloads: str | None = None,
+        clock: Callable[[], float] = time.time,
     ) -> None:
         self.cache_tema: dict = {}
         self.normalizar_texto_curto = normalizar_texto_curto
         self.requests_get = requests_get
         self.pasta_downloads = pasta_downloads
+        self.clock = clock
 
     def normalizar_tema_pesquisa(self, tema: str) -> str:
         return normalizar_tema_pesquisa(tema)
@@ -358,6 +441,8 @@ class PesquisaContextualRuntime:
             ttl_s=ttl_s,
             cache=self.cache_tema,
             normalizar_texto_curto=self.normalizar_texto_curto,
+            requests_get=self.requests_get,
+            clock=self.clock,
         )
 
     def buscar_imagem_url(self, assunto: str) -> str | None:
@@ -380,9 +465,11 @@ def criar_pesquisa_contextual_runtime(
     normalizar_texto_curto: Callable[[str], str] | None = None,
     requests_get=None,
     pasta_downloads: str | None = None,
+    clock: Callable[[], float] = time.time,
 ) -> PesquisaContextualRuntime:
     return PesquisaContextualRuntime(
         normalizar_texto_curto=normalizar_texto_curto,
         requests_get=requests_get,
         pasta_downloads=pasta_downloads,
+        clock=clock,
     )

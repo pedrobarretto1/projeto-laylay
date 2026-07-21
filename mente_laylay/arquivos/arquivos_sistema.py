@@ -5,29 +5,33 @@ from __future__ import annotations
 import os
 import shutil
 import time
+from pathlib import Path
 from typing import Optional
+
+from mente_laylay.arquivos.lixeira_laylay import mover_para_lixeira
 
 _pastas_contexto_cache = {"ts": 0.0, "texto": ""}
 
 
 def verificar_trava_seguranca(caminho: str) -> bool:
-    """Trava de segurança para evitar que a IA mexa em pastas críticas do Windows."""
-    c = str(caminho).upper()
-    bloqueados = [
-        "C:\\WINDOWS",
-        "C:/WINDOWS",
-        "SYSTEM32",
-        "PROGRAM FILES",
-        "PROGRAMDATA",
-        "C:\\USERS\\PUBLIC",
-        "C:\\$",
-    ]
-    if c in {"C:\\", "C:/", "C:"}:
+    """Permite operações apenas dentro das pastas pessoais autorizadas."""
+    try:
+        alvo = Path(str(caminho or "")).expanduser().resolve(strict=False)
+    except (OSError, RuntimeError, ValueError):
         return False
-    for b in bloqueados:
-        if b in c:
-            return False
-    return True
+    if not str(caminho or "").strip() or alvo == Path(alvo.anchor):
+        return False
+
+    home = Path.home().resolve(strict=False)
+    permitidos = [home]
+    extras = os.environ.get("LAYLAY_ARQUIVOS_RAIZES_PERMITIDAS", "")
+    for item in extras.split(os.pathsep):
+        if item.strip():
+            try:
+                permitidos.append(Path(item.strip()).expanduser().resolve(strict=False))
+            except (OSError, RuntimeError, ValueError):
+                continue
+    return any(alvo == raiz or raiz in alvo.parents for raiz in permitidos)
 
 
 def resolver_caminho(nome_ou_caminho: str) -> str:
@@ -35,8 +39,11 @@ def resolver_caminho(nome_ou_caminho: str) -> str:
     nome_ou_caminho = str(nome_ou_caminho or "").strip(' "\'')
     if "\\" not in nome_ou_caminho and "/" not in nome_ou_caminho and ":" not in nome_ou_caminho:
         caminho_base = os.path.join(os.path.expanduser("~"), "Downloads")
-        return os.path.join(caminho_base, nome_ou_caminho)
-    return nome_ou_caminho
+        nome_ou_caminho = os.path.join(caminho_base, nome_ou_caminho)
+    try:
+        return str(Path(nome_ou_caminho).expanduser().resolve(strict=False))
+    except (OSError, RuntimeError, ValueError):
+        return nome_ou_caminho
 
 
 def criar_pasta(caminho: str) -> bool:
@@ -111,14 +118,14 @@ def deletar_item(caminho: str) -> bool:
         print(f"❌ [SEGURANÇA] Acesso negado ao deletar: {caminho}")
         return False
     try:
-        if os.path.isfile(caminho):
-            os.remove(caminho)
-        elif os.path.isdir(caminho):
-            shutil.rmtree(caminho)
-        else:
-            print(f"⚠️ [ARQUIVOS] Item não encontrado para deletar: {caminho}")
+        resultado = mover_para_lixeira(caminho)
+        if resultado.requer_confirmacao:
+            print(f"⚠️ [ARQUIVOS] Confirmação necessária antes da exclusão: {resultado.caminho}")
             return False
-        print(f"🗑️ [ARQUIVOS] Deletado: {caminho}")
+        if not resultado.sucesso:
+            print(f"⚠️ [ARQUIVOS] Item não removido ({resultado.status}): {resultado.caminho}")
+            return False
+        print(f"🗑️ [ARQUIVOS] Enviado para a Lixeira da Laylay: {resultado.caminho}")
         return True
     except Exception as e:
         print(f"❌ Erro ao deletar item: {e}")
@@ -185,3 +192,23 @@ def buscar_arquivo_no_pc(nome_arquivo: str) -> Optional[str]:
         print(f"✅ [BUSCA] Encontrado: {resultados[0]}")
         return resultados[0]
     return None
+
+
+def buscar_itens_com_nome(nome: str, limite: int = 5) -> list[str]:
+    """Localiza nomes exatos nas pastas pessoais para detectar exclusão ambígua."""
+    alvo = str(nome or "").strip(' "\'').casefold()
+    if not alvo or any(sep in alvo for sep in ("\\", "/", ":")):
+        return []
+    resultados: list[str] = []
+    base = os.path.expanduser("~")
+    for pasta in ("Downloads", "Desktop", "Documents", "Pictures"):
+        raiz = os.path.join(base, pasta)
+        if not os.path.isdir(raiz):
+            continue
+        for diretorio, pastas, arquivos in os.walk(raiz):
+            for item in [*pastas, *arquivos]:
+                if item.casefold() == alvo:
+                    resultados.append(os.path.abspath(os.path.join(diretorio, item)))
+                    if len(resultados) >= max(2, int(limite or 5)):
+                        return resultados
+    return resultados

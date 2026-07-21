@@ -110,31 +110,3 @@ def contexto_aponta_site_web(
         return False
 
     return any(g in txt for g in GATILHOS_CONTEXTO_WEB)
-
-
-def normalizar_alvo_web_ou_app(
-    alvo: str,
-    *,
-    normalizar_texto: Callable[[str], str],
-    sites_web_alias: set[str] | list[str] | tuple[str, ...],
-    sites_directos: dict[str, str],
-    mente_integrada_estado: dict[str, Any] | None,
-    contexto_perceptivo: dict[str, Any] | None,
-) -> str:
-    """Quando o contexto aponta site, devolve o alvo normalizado; caso contrário, mantém normalizado."""
-    alvo_limpo = normalizar_texto(alvo or "")
-    if not alvo_limpo:
-        return ""
-    if eh_alvo_site_web(
-        alvo_limpo,
-        normalizar_texto=normalizar_texto,
-        sites_web_alias=sites_web_alias,
-        sites_directos=sites_directos,
-    ) or contexto_aponta_site_web(
-        alvo_limpo,
-        normalizar_texto=normalizar_texto,
-        mente_integrada_estado=mente_integrada_estado,
-        contexto_perceptivo=contexto_perceptivo,
-    ):
-        return alvo_limpo
-    return alvo_limpo

@@ -5,9 +5,8 @@ from __future__ import annotations
 import os
 import re
 import shutil
-import subprocess
-import time
 import unicodedata
+import ctypes
 from typing import Callable, Optional
 
 import psutil
@@ -42,6 +41,24 @@ def normalizar_nome_app(nome_solicitado: str) -> str:
     nome = nome.lower().replace(".exe", "")
     nome = re.sub(r"\s+", " ", nome).strip()
     return nome
+
+
+def abrir_uri_sistema(uri: str) -> bool:
+    """Entrega um protocolo ao Shell do Windows sem trata-lo como aplicativo."""
+    alvo = str(uri or "").strip()
+    if not re.match(r"^[a-z][a-z0-9+.-]*:", alvo, flags=re.IGNORECASE):
+        return False
+    try:
+        codigo = ctypes.windll.shell32.ShellExecuteW(None, "open", alvo, None, None, 1)
+        return int(codigo) > 32
+    except Exception as erro_shell:
+        print(f"⚠️ [URI] ShellExecute falhou para {alvo}: {erro_shell}")
+    try:
+        os.startfile(alvo)
+        return True
+    except Exception as erro_startfile:
+        print(f"❌ [URI] O Windows recusou {alvo}: {erro_startfile}")
+        return False
 
 
 def buscar_executavel(nome_solicitado: str, roots=None) -> Optional[str]:
@@ -137,22 +154,14 @@ def abrir_programa(nome_solicitado: str, falar_cb: Optional[Callable[[str, str, 
         "loja microsoft": "ms-windows-store:",
         "loja": "ms-windows-store:",
     }
-    if alvo_limpo in _uri_map:
-        uri = _uri_map[alvo_limpo]
-        print(f"✅ [URI] Abrindo via URI do sistema: {uri}")
-        try:
-            subprocess.Popen(["cmd", "/c", "start", "", uri], shell=False)
+    uri = _uri_map.get(alvo_limpo) or (alvo if re.match(r"^[a-z][a-z0-9+.-]*:", alvo, flags=re.IGNORECASE) else "")
+    if uri:
+        print(f"🚀 [URI] Entregando ao Shell do Windows: {uri}")
+        if abrir_uri_sistema(uri):
+            print(f"✅ [URI] Protocolo aceito pelo sistema: {uri}")
             _falar(falar_cb, f"Abrindo {alvo}.", "calma", 1)
             return True
-        except Exception as _e_uri:
-            print(f"⚠️ URI falhou, tentando webbrowser: {_e_uri}")
-            try:
-                import webbrowser as _wb_uri
-                _wb_uri.open(uri)
-                _falar(falar_cb, f"Abrindo {alvo}.", "calma", 1)
-                return True
-            except Exception as _e_wb:
-                print(f"❌ webbrowser também falhou: {_e_wb}")
+        raise Exception(f"O protocolo do Windows '{uri}' não respondeu.")
 
     caminhos_customizados = {
         "xampp": r"C:\xampp\xampp-control.exe",
@@ -314,40 +323,3 @@ def fechar_programa(nome_solicitado: str, falar_cb: Optional[Callable[[str, str,
 
     _falar(falar_cb, f"Pronto, {alvo} foi fechado.", "debochada", 2)
     return fechou_algo
-
-
-def extrair_comando_rapido(texto: str, sites_directos: Optional[dict] = None):
-    if not isinstance(texto, str):
-        return None
-    if not re.search(r"\b(toca|coloca|abre|abra)\b", texto, flags=re.IGNORECASE):
-        return None
-    t = texto.lower()
-    t = re.sub(r"[,\.\!\?\:\;]+", " ", t)
-    t = re.sub(r"\b(laylay)\b", " ", t)
-    t = re.sub(r"\s+", " ", t).strip()
-
-    sites_directos = sites_directos or {}
-
-    m_abre = re.search(r"\b(?:abre|abra)\b\s+(.*)$", t)
-    if m_abre:
-        alvo = (m_abre.group(1) or "").strip()
-        alvo = re.sub(r"^(o|a|os|as|um|uma)\s+", "", alvo).strip()
-        if not alvo:
-            return None
-        for site, url in sites_directos.items():
-            if site in alvo:
-                return ("OPEN_URL", url)
-        return ("OPEN_APP", alvo)
-
-    m_toca = re.search(r"\b(?:toca|coloca)\b\s+(.*)$", t)
-    if m_toca:
-        resto = (m_toca.group(1) or "").strip()
-        if not resto:
-            return None
-        q = re.sub(r"\b(no|na)\s+youtube\b", " ", resto)
-        q = re.sub(r"\byoutube\b", " ", q)
-        q = re.sub(r"\s+", " ", q).strip()
-        if not q:
-            return None
-        return ("YOUTUBE", q)
-    return None

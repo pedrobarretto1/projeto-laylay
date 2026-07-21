@@ -11,50 +11,6 @@ def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     return default
 
 
-def montar_prompt_contextual_legado(
-    base_system_prompt: str,
-    contexto: Dict[str, Any] | None,
-    resumo_conversa: str = "",
-    historico_long_term: str = "",
-) -> str:
-    """Preserva o montador antigo sem competir com o fluxo ativo de prompt."""
-    ctx = contexto if isinstance(contexto, dict) else {}
-    base = [str(base_system_prompt or "")]
-    base.append(
-        "ESTADO MENTAL COMPARTILHADO: "
-        f"periodo={ctx.get('periodo') or 'indefinido'} | "
-        f"emocao={ctx.get('emocao') or 'calma'}({ctx.get('nivel_emocao') or 1}) | "
-        f"humor={ctx.get('humor', 0)} | "
-        f"topico={ctx.get('topico_ativo') or 'nenhum'}"
-    )
-    if ctx.get("exe") or ctx.get("title") or ctx.get("assunto"):
-        base.append(
-            "CONTEXTO VIVO: "
-            f"app={ctx.get('exe') or 'desconhecido'} | "
-            f"janela={ctx.get('title') or 'indefinida'} | "
-            f"assunto={ctx.get('assunto') or 'indefinido'}"
-        )
-    logs_recentes = ctx.get("logs_recentes")
-    if isinstance(logs_recentes, list) and logs_recentes:
-        base.append("SINAIS RECENTES: " + " | ".join(map(str, logs_recentes[-3:])))
-    rotina_atual = ctx.get("rotina_atual")
-    if isinstance(rotina_atual, dict) and rotina_atual:
-        janelas = rotina_atual.get("janelas") or []
-        assuntos = rotina_atual.get("assuntos") or []
-        partes = []
-        if janelas:
-            partes.append("janelas=" + ", ".join(map(str, janelas[-3:])))
-        if assuntos:
-            partes.append("assuntos=" + ", ".join(map(str, assuntos[-3:])))
-        if partes:
-            base.append("ROTINA DO HORARIO: " + " | ".join(partes))
-    if resumo_conversa:
-        base.append(f"RESUMO CURTO: {resumo_conversa}")
-    if historico_long_term:
-        base.append(f"HISTORICO LONGO: {historico_long_term}")
-    return "\n".join(base)
-
-
 def preparar_contexto_resposta_ia(
     ctx: Dict[str, Any],
     texto: str,
@@ -100,30 +56,10 @@ def preparar_contexto_resposta_ia(
     except Exception:
         pass
 
-    try:
-        if memoria_sqlite is not None:
-            memorias_relevantes = memoria_sqlite.formatar_aprendizados_relevantes_para_prompt(t, limit=5)
-            if memorias_relevantes:
-                contexto_extra += "\n" + memorias_relevantes + "\n"
-    except Exception:
-        pass
-
-    try:
-        if memoria_sqlite is not None:
-            memoria_quente = memoria_sqlite.formatar_memoria_quente_para_prompt(limit=6, max_chars=1200)
-            if memoria_quente:
-                contexto_extra += "\n" + memoria_quente + "\n"
-    except Exception:
-        pass
-
-    try:
-        if memoria_sqlite is not None:
-            topicos_prompt = memoria_sqlite.formatar_topicos_conversa_para_prompt(limit=5)
-            if topicos_prompt:
-                contexto_extra += "\n" + topicos_prompt + "\n"
-    except Exception:
-        pass
-
+    # O retrato da mente integrada já seleciona os aprendizados duradouros
+    # relevantes. Memória quente e tópicos da sessão vêm do estado vivo e das
+    # próprias mensagens abaixo; reler o snapshot SQLite aqui poderia reabrir
+    # uma sessão encerrada e ainda duplicava o peso dessas informações.
     if retrato_mente_integrada:
         contexto_extra += "\n" + retrato_mente_integrada + "\n"
     else:
@@ -142,14 +78,21 @@ def preparar_contexto_resposta_ia(
         "Peça mais contexto apenas quando a resposta depender de uma informação essencial; se der para responder com uma hipótese honesta, responda. "
         "Não trate opinião, brincadeira, gosto, recomendação conceitual ou papo aberto como comando técnico. "
         "Use frases como 'eu acho', 'eu iria por esse caminho', 'isso me soa como...' quando couber. "
+        "Quando pedirem sua opinião, escolha uma posição e dê um motivo curto; não concorde automaticamente, não invente certeza factual e não termine sempre pedindo validação. "
+        "Você pode mudar de ideia quando receber informação melhor, reconhecendo o motivo sem drama. "
+        "Não termine respostas com pergunta por hábito. Pergunte apenas se a resposta realmente mudar o próximo passo ou completar informação essencial. "
+        "Quando já puder ajudar, responda primeiro e só depois faça uma pergunta complementar se ela tiver propósito. "
         "A validação rígida vale para executar ações no PC; a conversa pode respirar e ter iniciativa.\n"
+        "Você pode ter gosto, reação, humor, curiosidade e discordância leve sem pedir licença, desde que não invente fatos ou memórias pessoais. "
+        "Em comandos, essa liberdade continua, mas a fala precisa declarar o resultado real: feito, não feito, pendente ou enviado sem confirmação. "
+        "A personalidade complementa o resultado; nunca o substitui.\n"
     )
 
     prompt_com_contexto = base_system_prompt + liberdade_conversacional + contexto_extra
 
     try:
         if memoria_sqlite is not None:
-            memoria_resumida = memoria_sqlite.formatar_memoria_para_prompt()
+            memoria_resumida = memoria_sqlite.formatar_memoria_para_prompt(max_eventos=0)
             if memoria_resumida:
                 prompt_com_contexto = prompt_com_contexto + "\n\n" + memoria_resumida
     except Exception:
@@ -202,6 +145,24 @@ class ContextoPromptRuntime:
             estado = {}
         estado = estado if isinstance(estado, dict) else {}
         t = str(texto or "").strip()
+        turno_atual = dict(estado.get("turno_atual") or {}) if isinstance(estado.get("turno_atual"), dict) else {}
+        modalidade_turno = str(
+            turno_atual.get("modalidade_geral") or turno_atual.get("modalidade") or ""
+        ).lower()
+        prompt_base_turno = self.base_system_prompt
+        if modalidade_turno == "misto":
+            segmentos = [
+                str(item.get("modalidade") or item.get("ato") or "conversa")
+                for item in list(turno_atual.get("segmentos") or [])
+                if isinstance(item, dict)
+            ]
+            prompt_base_turno = (
+                "INSTRUÇÃO PRIORITÁRIA DO TURNO ATUAL: o planejador detectou mais de um ato "
+                f"na mesma mensagem ({segmentos or ['conversa', 'pergunta']}). "
+                "Responda a todos em uma única fala coesa e preencha leitura_turno como lista com um tipo "
+                "por ato, na mesma ordem. Não execute nada que o porteiro não autorizou.\n\n"
+                + prompt_base_turno
+            )
         retrato = self.resumo_mente_integrada(t)
         contexto = {
             "memoria_sqlite": self.memoria_sqlite,
@@ -217,7 +178,7 @@ class ContextoPromptRuntime:
             t,
             estado.get("messages") or [],
             estado.get("humor_level", 0),
-            self.base_system_prompt,
+            prompt_base_turno,
         )
 
 

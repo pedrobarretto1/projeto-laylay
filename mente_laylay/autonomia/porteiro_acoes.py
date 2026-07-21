@@ -10,7 +10,14 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from typing import Any, Dict, Iterable
+from typing import Any, Callable, Dict, Iterable
+
+from mente_laylay.cognicao.evidencia_operacional import texto_tem_evidencia_iot_parametro
+from mente_laylay.memoria_mental.estado_continuidades import atualizar_continuidades
+from mente_laylay.memoria_mental.estado_musical import (
+    bloquear_playlist_temporariamente,
+    playlist_bloqueada_agora,
+)
 
 
 ACOES_MUSICA = {
@@ -135,9 +142,34 @@ def texto_conversa_casual_sem_acao(texto: str) -> bool:
     t = normalizar_texto(texto)
     if not t:
         return False
+    if texto_parece_pergunta_factual(t):
+        return False
+    if texto_tem_comando_explicito(t):
+        return False
     if any(p in t for p in ["em foco", "foco", "tela cheia", "fullscreen", "maximiza", "maximizar", "pra frente", "para frente", "primeiro plano"]):
         return False
     if texto_social_curto(t):
+        return True
+
+    # Perguntar se a Laylay conhece, viu ou ouviu falar de um assunto é
+    # conversa, mesmo quando o nome contém números. Não é ordem para pesquisar,
+    # abrir site ou executar qualquer ação relacionada ao tema.
+    if re.search(
+        r"\b(?:voce|você)\s+(?:viu|soube|conhece)|"
+        r"\b(?:ja\s+|já\s+)?ouviu\s+falar\b|"
+        r"\bficou\s+sabendo\b",
+        t,
+    ):
+        return True
+
+    # Horários e números também aparecem em relatos pessoais. A presença de
+    # ``17:30`` ou de uma modalidade esportiva não transforma a fala em ação.
+    relato_pessoal = bool(re.search(
+        r"\b(?:eu\s+)?(?:vou|fui|viajo|viajar|jogar|competir|participar|passar|fico|ficar)\b|"
+        r"\b(?:minha\s+semana|jogos?\s+regionais|campeonato|arremessamento\s+de\s+peso)\b",
+        t,
+    ))
+    if relato_pessoal and not texto_tem_comando_explicito(t):
         return True
 
     comandos = {
@@ -157,13 +189,15 @@ def texto_conversa_casual_sem_acao(texto: str) -> bool:
         r"^(eu to|eu estou)\s+te\s+perguntando\s+.+\??$",
         r"^o que eu estou te perguntando\??$",
         r"^(nao|não)\s+lay,?\s+.+$",
+        r"^(?:nao tem|não tem|tem nada|nao tenho|não tenho)\s+(?:nada\s+)?(?:pra|para)\s+fazer(?:\s+.+)?$",
+        r"^(?:que\s+)?(?:dia|tarde|noite|madrugada)\s+(?:chata|chato|arrastada|arrastado)$",
     ]
     if any(re.fullmatch(p, t) for p in padroes):
         return True
 
     palavras = t.split()
     if (
-        len(palavras) <= 5
+        len(palavras) <= 8
         and "http" not in t
         and not any(ch.isdigit() for ch in t)
     ):
@@ -181,6 +215,19 @@ def texto_conversa_casual_sem_acao(texto: str) -> bool:
     return False
 
 
+def texto_parece_pergunta_factual(texto: str) -> bool:
+    """Separa perguntas de conhecimento de continuidades sociais curtas."""
+    t = normalizar_texto(texto)
+    if not t:
+        return False
+    if any(p in t for p in ["como voce", "como você", "voce esta", "você está", "voce ta", "você tá"]):
+        return False
+    return bool(re.match(
+        r"^(?:quem\s+(?:e|é)|qual\s+(?:e|é)|o\s+que\s+(?:e|é)|quando\b|onde\b|por\s+que\b|porque\b|como\s+funciona\b)",
+        t,
+    ))
+
+
 def texto_tem_comando_explicito(texto: str) -> bool:
     """Detecta quando ha pedido pratico claro o bastante para nao ser tratado como papo."""
     t = normalizar_texto(texto)
@@ -190,8 +237,22 @@ def texto_tem_comando_explicito(texto: str) -> bool:
     if texto_pede_playlist_explicitamente(t) or texto_pede_musica_explicitamente(t):
         return True
 
+    if texto_tem_evidencia_iot_parametro(t):
+        return True
+
+    if re.search(r"\b(?:me\s+lembra|lembra\s+(?:de|pra)|me\s+avisa|cria\s+(?:um\s+)?lembrete|agende|agendar)\b", t):
+        return True
+
     if "http" in t or "www " in t:
         return True
+
+    if any(p in t for p in ["email", "emails", "e mail"]):
+        if any(p in t for p in [
+            "quantos", "tem algum", "tem novo", "tem novos", "chegou",
+            "chegaram", "pode ler", "le os", "ler os", "o que falam",
+            "o que chegou", "me fala dos", "me fale dos",
+        ]):
+            return True
 
     verbos = [
         "abre", "abrir", "abra", "entra", "entrar", "entre", "acessa", "acessar",
@@ -202,6 +263,7 @@ def texto_tem_comando_explicito(texto: str) -> bool:
         "maximiza", "maximizar", "organiza", "organizar", "silencia", "silenciar",
         "sincroniza", "sincronizar", "aumenta", "aumentar", "abaixa", "baixar",
         "diminui", "diminuir", "pausa", "pausar", "despausa", "retoma", "continua",
+        "liga", "ligar", "ligue", "desliga", "desligar", "desligue", "acende",
     ]
     alvos = [
         "playlist", "musica", "música", "som", "volume", "email", "emails",
@@ -210,6 +272,7 @@ def texto_tem_comando_explicito(texto: str) -> bool:
         "steam", "opera", "chrome", "edge", "vscode", "visual studio code",
         "youtube", "netflix", "spotify", "instagram", "whatsapp", "ifood",
         "microsoft store", "google",
+        "ventilador", "tomada", "lampada", "lâmpada", "luz", "dispositivo", "iot",
     ]
     if any(v in t for v in verbos) and any(a in t for a in alvos):
         return True
@@ -271,6 +334,8 @@ def texto_conversa_contextual_sem_comando(texto: str, contexto: Dict[str, Any] |
     """Protege continuidades de conversa para nao virarem comando por heranca torta."""
     t = normalizar_texto(texto)
     if not t:
+        return False
+    if texto_parece_pergunta_factual(t):
         return False
 
     if texto_tem_comando_explicito(t):
@@ -342,6 +407,117 @@ def texto_bloqueia_playlist_agora(texto: str) -> bool:
     return any(p in t for p in negativos) or ("nao" in t and "playlist" in t)
 
 
+def texto_cancela_acao_agora(texto: str) -> bool:
+    """Reconhece desistência explícita sem capturar conversa social ou janela."""
+    t = normalizar_texto(texto)
+    if not t or texto_social_curto(t):
+        return False
+    if any(token in t for token in [
+        "em foco", "na frente", "pra frente", "para frente",
+        "tela cheia", "fullscreen", "maximiza", "maximizar",
+        "abre ", "abrir ", "fecha ", "fechar ",
+        "steam", "opera", "chrome", "edge", "vscode", "vs code",
+        "visual studio code",
+    ]):
+        return False
+    padroes = [
+        r"^(deixa para la|deixa pra la|deixa quieto|deixa isso)$",
+        r"^(esquece|cancela|cancelar)$",
+        r"^(para com isso|para ai|pode parar)$",
+        r"^(nao quero mais|quero mais nao)$",
+        r"^(desiste|abandona isso)$",
+        r"^ta\s+deixa\s+pra\s+la$",
+    ]
+    return any(re.fullmatch(padrao, t) for padrao in padroes)
+
+
+class PorteiroAcoesRuntime:
+    """Liga o porteiro puro ao estado compartilhado sem executar habilidades."""
+
+    def __init__(
+        self,
+        *,
+        namespace_getter: Callable[[], Dict[str, Any]],
+        estado_runtime_getter: Callable[[], Any],
+    ) -> None:
+        self.namespace_getter = namespace_getter
+        self.estado_runtime_getter = estado_runtime_getter
+
+    def _namespace(self) -> Dict[str, Any]:
+        return self.namespace_getter() or {}
+
+    def _estado(self) -> Any:
+        return self.estado_runtime_getter()
+
+    def texto_cancela_acao_agora(self, texto: str) -> bool:
+        return texto_cancela_acao_agora(texto)
+
+    def bloquear_playlist_temporariamente(self, segundos: float = 600.0) -> None:
+        estado = self._estado()
+        estado.atualizar(
+            "continuidades",
+            atualizar_continuidades,
+            playlist_sugestao_pendente=None,
+        )
+        estado.substituir(
+            "musical",
+            bloquear_playlist_temporariamente(estado.musical, segundos),
+        )
+
+    def playlist_bloqueada_agora(self) -> bool:
+        return playlist_bloqueada_agora(self._estado().musical)
+
+    def contexto(self) -> Dict[str, Any]:
+        ns = self._namespace()
+        estado = self._estado()
+        playlist_state = ns.get("playlist_state") or {}
+        return montar_contexto_porteiro_acoes(
+            playlist_bloqueada=self.playlist_bloqueada_agora(),
+            playlist_ativa=bool(str(playlist_state.get("name") or "").strip()),
+            auto_next_playlist=bool(str(playlist_state.get("name") or "").strip()),
+            ultima_playlist=str(
+                estado.obter("musical", "ultima_playlist", "") or ""
+            ).strip(),
+            mente_integrada_estado=estado.mental,
+            messages=estado.obter("memoria_conversa", "messages", []),
+        )
+
+    def autorizar_acao_pratica(
+        self,
+        acao: str,
+        texto: str = "",
+        *,
+        confirmado: bool = False,
+        origem: str = "",
+    ) -> Dict[str, Any]:
+        return autorizar_acao_pratica(
+            acao,
+            texto,
+            self.contexto(),
+            confirmado=confirmado,
+            origem=origem,
+        )
+
+    def autonomia_permite_execucao_musical(
+        self,
+        intent: str,
+        texto: str,
+        *,
+        confirmado: bool = False,
+    ) -> bool:
+        return bool(
+            self.autorizar_acao_pratica(
+                intent,
+                texto,
+                confirmado=confirmado,
+            ).get("permitido")
+        )
+
+
+def criar_porteiro_acoes_runtime(**kwargs: Any) -> PorteiroAcoesRuntime:
+    return PorteiroAcoesRuntime(**kwargs)
+
+
 def texto_pede_playlist_explicitamente(texto: str) -> bool:
     t = normalizar_texto(texto)
     verbos = [
@@ -368,18 +544,6 @@ def texto_pede_musica_explicitamente(texto: str) -> bool:
     if texto_pede_playlist_explicitamente(t):
         return True
     return bool(re.match(r"^\s*(toca|toque|coloca|coloque|bota|poe|escuta|escute)\b\s+.+", t))
-
-
-def texto_bem_estar_pede_musica(texto: str) -> bool:
-    t = normalizar_texto(texto)
-    if not t:
-        return False
-    sinais = [
-        "to cansado", "estou cansado", "cansado", "cansada",
-        "triste", "ansioso", "ansiosa", "estressado", "estressada",
-        "preciso relaxar", "quero relaxar", "dia pesado", "to mal",
-    ]
-    return any(s in t for s in sinais)
 
 
 def texto_pede_repeticao_curta(texto: str) -> bool:
@@ -443,18 +607,6 @@ def _continua_pedido_musical_recente(texto: str, contexto: Dict[str, Any]) -> bo
         return False
     ultimo_pedido = users[-1]
     return texto_pede_playlist_explicitamente(ultimo_pedido) or texto_pede_musica_explicitamente(ultimo_pedido)
-
-
-def pode_sugerir_musica(contexto: Dict[str, Any]) -> bool:
-    """Sugestao musical precisa nascer do momento, nao de rotina solta."""
-    if bool(contexto.get("playlist_bloqueada")):
-        return False
-    users = _ultimas_mensagens_usuario(contexto.get("messages") or [])
-    if not users:
-        return False
-    if texto_social_curto(users[-1]):
-        return False
-    return any(texto_pede_musica_explicitamente(u) or texto_bem_estar_pede_musica(u) for u in users)
 
 
 def autorizar_acao_pratica(
