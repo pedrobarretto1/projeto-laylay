@@ -110,6 +110,7 @@ class FeedbackPendenteRuntime:
             "_interpretar_resposta_pendente": self.interpretar_resposta_pendente,
             "_gmail_buscar_nao_lidos": _get(ctx, "gmail_buscar_nao_lidos"),
             "_gmail_falar_resumo_estiloso": _get(ctx, "gmail_falar_resumo_estiloso"),
+            "_registrar_feedback_proatividade": _get(ctx, "registrar_feedback_proatividade"),
         }
 
         resultado = bool(handle_feedback(contexto, texto)) if callable(handle_feedback) else False
@@ -181,4 +182,3 @@ def criar_feedback_pendente_runtime(
     log: Callable[..., Any] = print,
 ) -> FeedbackPendenteRuntime:
     return FeedbackPendenteRuntime(contexto_getter=contexto_getter, log=log)
-

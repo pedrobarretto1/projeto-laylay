@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import re
 import time
+import json
+from copy import deepcopy
+from threading import Event, RLock, get_ident
 from typing import Any, Callable, Dict, Tuple
 
 from mente_laylay.autonomia.analise_comandos import (
@@ -13,7 +16,11 @@ from mente_laylay.autonomia.analise_comandos import (
 from mente_laylay.autonomia.roteador_intencao import executar_intencao
 from mente_laylay.autonomia.agendamento_mental import texto_pede_lembrete_explicito
 from mente_laylay.cognicao.arbitro_turno import CandidatoDecisao, arbitrar_turno
-from mente_laylay.especialistas.capacidades import intents_registradas
+from mente_laylay.cognicao.referencias_linguagem import valor_e_referencia_contextual
+from mente_laylay.especialistas.capacidades import INTENTS_SOMENTE_LEITURA, intents_registradas
+from mente_laylay.cognicao.evidencia_operacional import (
+    bloqueia_controle_iot_por_modalidade,
+)
 
 INTENTS_EXECUTAVEIS = set(intents_registradas())
 
@@ -35,6 +42,7 @@ DEPENDENCIAS_CICLO_COMANDOS = (
     "_detectar_repetir_briefing",
     "repetir_briefing",
     "interpretar_comando_local_rapido",
+    "_texto_parece_consulta_operacional",
 )
 
 
@@ -58,18 +66,50 @@ def _intencao_deterministica_tem_alvo_explicito(resultado: Any, texto: str) -> b
     params = resultado.get("params") if isinstance(resultado.get("params"), dict) else {}
     alvo = str(
         params.get("alvo") or params.get("nome_app") or params.get("url")
-        or params.get("site") or params.get("nome") or params.get("pasta") or ""
+        or params.get("site") or params.get("nome") or params.get("pasta")
+        or params.get("nome_playlist") or params.get("playlist") or ""
     ).strip().casefold()
-    pronomes = {"", "ele", "ela", "isso", "esse", "essa", "aqui", "ali"}
     fala = str(texto or "").strip().casefold()
-    if intent in {"CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "CONFIRM_DELETE_ITEM", "CANCEL_DELETE_ITEM", "RESTORE_DELETED_ITEM", "MOVE_ITEM", "FILE_TRANSACTION"}:
-        return alvo not in pronomes or any(nome in fala for nome in ("pasta", "arquivo", "documento"))
+    if intent in {"CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "CONFIRM_DELETE_ITEM", "CANCEL_DELETE_ITEM", "RESTORE_DELETED_ITEM", "MOVE_ITEM", "FILE_TRANSACTION", "FILE_OPEN_RESULT"}:
+        return not valor_e_referencia_contextual(alvo)
     if intent in {"APP_OPEN", "CLOSE_APP", "MAXIMIZE_WINDOW", "OPEN_URL", "CLOSE_TAB"}:
-        return alvo not in pronomes
+        # "essa aba" nomeia inequivocamente a aba ativa; não precisa herdar
+        # um nome, ao contrário de "esse app" ou "esse site".
+        if intent == "CLOSE_TAB" and not alvo and re.search(r"\b(?:fecha|fechar|encerra|encerrar)\b.*\baba\b", fala):
+            return True
+        return not valor_e_referencia_contextual(alvo)
+    if intent == "ORGANIZAR_DESKTOP":
+        if str(params.get("modo") or "").casefold() == "automatico":
+            return True
+        lados = [
+            str(params.get(chave) or "").strip()
+            for chave in ("left", "right", "esquerda", "direita")
+            if str(params.get(chave) or "").strip()
+        ]
+        return bool(lados) and all(not valor_e_referencia_contextual(valor) for valor in lados)
     if intent in {"IOT_CONTROL", "IOT_STATUS"}:
-        return alvo not in pronomes and any(
+        return not valor_e_referencia_contextual(alvo) and any(
             nome in fala for nome in ("ventilador", "tomada", "luz", "lampada", "lâmpada", "dispositivo")
         )
+    if intent in {"PLAYLIST_ADD", "PLAYLIST_PLAY", "PLAYLIST_LIST", "PLAYLIST_DELETE"}:
+        # Em PLAYLIST_ADD, "essa música" resolve a fonte pelo player atual,
+        # mas o destino dito depois de "playlist" já é um alvo explícito.
+        return not valor_e_referencia_contextual(alvo) and "playlist" in fala
+    if intent == "MUSIC_SEARCH":
+        consulta = str(
+            params.get("query") or params.get("musica") or params.get("nome") or ""
+        ).strip().casefold()
+        return bool(consulta) and not valor_e_referencia_contextual(consulta) and bool(
+            re.search(r"\b(?:coloca|colocar|bota|botar|toca|tocar|poe|põe|quero\s+ouvir)\b", fala)
+        )
+    if intent in {"MEDIA_CONTROL", "VOLUME"}:
+        acao = str(params.get("acao") or "").strip()
+        return bool(acao)
+    if intent in INTENTS_SOMENTE_LEITURA:
+        # Consultas operacionais são seguras e completas mesmo quando o retrato
+        # do jogo faz a frase parecer contextual. O detector já forneceu a
+        # habilidade; não há motivo para fazê-la esperar pela LLM local.
+        return True
     return False
 
 
@@ -87,15 +127,12 @@ def resolver_referencias_da_intencao(
     referencia = dict(snapshot.get("referencia_resolvida") or {})
     tipo = str(referencia.get("tipo") or "").casefold()
     nome = str(referencia.get("nome") or "").strip()
-    pronome_exato = re.compile(
-        r"^(?:(?:o|a|os|as)\s+)?(?:ele|ela|eles|elas|isso|esse|essa|desse|dessa|dele|dela|aqui|ali)$",
-        re.IGNORECASE,
-    )
-
     def resolver_campo(chaves: tuple[str, ...], tipos_aceitos: set[str]) -> bool:
         for chave in chaves:
             valor = str(params.get(chave) or "").strip()
-            if not valor or not pronome_exato.fullmatch(valor):
+            if not valor:
+                continue
+            if not valor_e_referencia_contextual(valor):
                 continue
             if not nome or tipo not in tipos_aceitos:
                 return False
@@ -107,10 +144,13 @@ def resolver_referencias_da_intencao(
     if intent == "MUSIC_SEARCH":
         query = str(params.get("query") or "").strip()
         query_norm = query.casefold()
-        referencia_crua = bool(re.search(
+        referencia_crua = valor_e_referencia_contextual(query) or bool(re.search(
             r"\b(?:ele|ela|dele|dela|desse|dessa)\b", query_norm
         ))
-        tipos_musicais = {"artista", "cantor", "cantora", "banda", "referencia_nomeada"}
+        tipos_musicais = {
+            "artista", "cantor", "cantora", "banda", "referencia_nomeada",
+            "musica", "playlist",
+        }
         if referencia_crua and nome and tipo in tipos_musicais:
             params["query_original"] = query[:160]
             params["query"] = nome
@@ -118,8 +158,24 @@ def resolver_referencias_da_intencao(
         elif referencia_crua:
             return None
         saida["params"] = params
+    elif intent == "SEARCH":
+        query = str(params.get("query") or "").strip()
+        if valor_e_referencia_contextual(query):
+            tipos_pesquisaveis = {
+                "referencia_nomeada", "jogo", "filme", "serie", "livro",
+                "artista", "cantor", "cantora", "banda", "musica",
+            }
+            if not nome or tipo not in tipos_pesquisaveis:
+                return None
+            params["query_original"] = query[:160]
+            params["query"] = nome
+            params["referencia_contextual"] = True
+        saida["params"] = params
     elif intent in {"APP_OPEN", "CLOSE_APP", "MAXIMIZE_WINDOW"}:
         if not resolver_campo(("nome_app", "app", "alvo"), {"app", "janela"}):
+            return None
+    elif intent == "ORGANIZAR_DESKTOP":
+        if not resolver_campo(("left", "right", "esquerda", "direita"), {"app", "janela"}):
             return None
     elif intent in {"OPEN_URL", "CLOSE_TAB", "SITE_ENTER"}:
         if not resolver_campo(("alvo", "site", "url"), {"site", "janela"}):
@@ -127,10 +183,10 @@ def resolver_referencias_da_intencao(
     elif intent in {"IOT_CONTROL", "IOT_STATUS"}:
         if not resolver_campo(("alvo", "dispositivo"), {"iot", "dispositivo"}):
             return None
-    elif intent in {"PLAYLIST_PLAY", "PLAYLIST_ADD"}:
+    elif intent in {"PLAYLIST_PLAY", "PLAYLIST_ADD", "PLAYLIST_LIST", "PLAYLIST_DELETE"}:
         if not resolver_campo(("nome_playlist", "playlist"), {"playlist"}):
             return None
-    elif intent in {"DELETE_ITEM", "MOVE_ITEM", "FILE_TRANSACTION"}:
+    elif intent in {"DELETE_ITEM", "MOVE_ITEM", "FILE_TRANSACTION", "FILE_OPEN_RESULT"}:
         if not resolver_campo(("alvo", "origem"), {"arquivo", "pasta"}):
             return None
     saida["params"] = params
@@ -279,8 +335,14 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
             or turno_atual.get("modalidade")
             or "conversa"
         ).strip().lower()
+        consulta_operacional = bool(_call(
+            ctx, "texto_parece_consulta_operacional", texto_norm, default=False
+        ))
+        intent_ia = _normalizar_intent(intent_resolvida)
         if modalidade == "confirmacao" and turno_atual.get("confirmacao_contextual_valida"):
             tipo_candidato = "resposta_pendencia"
+        elif consulta_operacional and intent_ia in INTENTS_SOMENTE_LEITURA:
+            tipo_candidato = "comando_explicito"
         elif turno_atual.get("autoriza_execucao") and modalidade in {"comando", "misto"}:
             tipo_candidato = "comando_explicito"
         else:
@@ -317,8 +379,25 @@ def executar_fluxo_intencao(
     ctx: Dict[str, Any],
     *,
     texto_original: str = "",
+    resolver_cb: Callable[
+        [str, str, Dict[str, Any]], Tuple[Dict[str, Any] | None, str]
+    ] | None = None,
 ) -> bool:
-    intent, rota = resolver_intencao(texto, origem, ctx)
+    # O pré-fluxo pode entregar em ``texto`` somente o segmento operacional
+    # (por exemplo, "desligar a luz"), enquanto ``texto_original`` ainda é
+    # "como eu faria..." ou "não desliga...". Não classifique o segmento
+    # amputado: além de gerar um candidato falso, ele seria classificado outra
+    # vez no pós-IA.
+    original = str(texto_original or texto)
+    menciona_iot = bool(re.search(
+        r"\b(?:luz|luzes|lampada|lâmpada|ventilador|tomada|dispositivo|aparelho|iot)\b",
+        original,
+        flags=re.IGNORECASE,
+    ))
+    if menciona_iot and bloqueia_controle_iot_por_modalidade(original):
+        return False
+    resolvedor = resolver_cb if callable(resolver_cb) else resolver_intencao
+    intent, rota = resolvedor(texto, origem, ctx)
     if not isinstance(intent, dict):
         return False
 
@@ -362,6 +441,29 @@ class CicloComandosRuntime:
         self.registrar_metrica_cb = registrar_metrica_cb
         self.registrar_falha_cb = registrar_falha_cb
         self.registrar_decisao_cb = registrar_decisao_cb
+        self._lock_linguagem_natural = RLock()
+        self._metricas_linguagem_natural: Dict[str, Any] = {
+            "tentativas": 0,
+            "resolvidas": 0,
+            "sem_intencao": 0,
+            "reutilizadas_no_turno": 0,
+            "rotas": {},
+            "ultima_rota": "",
+            "ultima_intent": "",
+        }
+        self._cache_decisao_turno: Dict[
+            tuple[str, str], Tuple[Dict[str, Any] | None, str]
+        ] = {}
+        self._cache_turno_id = ""
+        self._lock_execucao_turno = RLock()
+        self._execucoes_turno: Dict[tuple[str, str], Dict[str, Any]] = {}
+        self._metricas_execucao_turno: Dict[str, int] = {
+            "iniciadas": 0,
+            "reutilizadas": 0,
+            "aguardadas": 0,
+            "timeouts": 0,
+            "falhas": 0,
+        }
         namespace = self.namespace_getter() or {}
         self._servicos_estaticos = {
             nome: namespace[nome]
@@ -389,15 +491,127 @@ class CicloComandosRuntime:
         ausentes = [nome for nome in DEPENDENCIAS_CICLO_COMANDOS if nome not in servicos]
         return {"status": "saudavel" if not ausentes else "degradado", "ausentes": ausentes}
 
+    @staticmethod
+    def _normalizar_valor_acao(valor: Any) -> Any:
+        if isinstance(valor, dict):
+            metadados = {
+                "confidence", "confianca", "referencia_contextual",
+                "_semantica", "_rota_contextual",
+            }
+            return {
+                str(chave): CicloComandosRuntime._normalizar_valor_acao(item)
+                for chave, item in sorted(valor.items(), key=lambda par: str(par[0]))
+                if str(chave) not in metadados
+                and not str(chave).endswith("_original")
+            }
+        if isinstance(valor, (list, tuple, set, frozenset)):
+            itens = [CicloComandosRuntime._normalizar_valor_acao(item) for item in valor]
+            if isinstance(valor, (set, frozenset)):
+                return sorted(itens, key=lambda item: repr(item))
+            return itens
+        if valor is None or isinstance(valor, (str, int, float, bool)):
+            return valor
+        return str(valor)
+
+    def _chave_execucao_turno(
+        self, resultado: Dict[str, Any], contexto: Dict[str, Any],
+    ) -> tuple[str, str] | None:
+        turno = dict(contexto.get("turno_atual") or {})
+        turno_id = str(turno.get("id") or "").strip()
+        intent = _normalizar_intent(resultado)
+        if not turno_id or not intent:
+            return None
+        plano = contexto.get("plano_turno_atual")
+        if isinstance(plano, dict) and plano:
+            plano_id = str(plano.get("id") or "").strip()
+            fase = str(plano.get("fase") or "").strip().casefold()
+            if plano_id != turno_id or fase not in {"planejado", "resposta_planejada"}:
+                # Ações autônomas e serviços em background não podem herdar o
+                # cache de uma conversa que já terminou.
+                return None
+        params = resultado.get("params") if isinstance(resultado.get("params"), dict) else {}
+        assinatura = json.dumps(
+            {
+                "intent": intent,
+                "params": self._normalizar_valor_acao(params),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        return turno_id, assinatura
+
+    def _podar_execucoes_turno(self) -> None:
+        if len(self._execucoes_turno) <= 256:
+            return
+        concluidas = sorted(
+            (
+                (chave, registro)
+                for chave, registro in self._execucoes_turno.items()
+                if str(registro.get("status") or "") != "em_andamento"
+            ),
+            key=lambda item: float(item[1].get("ts") or 0.0),
+        )
+        for chave, _registro in concluidas[: max(0, len(self._execucoes_turno) - 192)]:
+            self._execucoes_turno.pop(chave, None)
+
     def executar_intencao(self, resultado: Dict[str, Any], texto_original: str) -> bool:
         inicio = time.perf_counter()
         intent = str((resultado or {}).get("intent") or "desconhecida")
         sucesso = False
         try:
+            contexto_execucao = self.contexto_intencao_runtime.montar()
+        except Exception as erro:
+            with self._lock_execucao_turno:
+                self._metricas_execucao_turno["falhas"] += 1
+            if callable(self.registrar_falha_cb):
+                self.registrar_falha_cb("execucao", "falha_contexto_intencao", erro=erro)
+            if callable(self.registrar_metrica_cb):
+                self.registrar_metrica_cb(
+                    "execucao", (time.perf_counter() - inicio) * 1000.0, False,
+                )
+            raise
+        chave_execucao = self._chave_execucao_turno(resultado, contexto_execucao)
+        evento_existente: Event | None = None
+        if chave_execucao is not None:
+            with self._lock_execucao_turno:
+                registro = self._execucoes_turno.get(chave_execucao)
+                if registro is not None:
+                    self._metricas_execucao_turno["reutilizadas"] += 1
+                    if str(registro.get("status") or "") == "em_andamento":
+                        if int(registro.get("thread_id") or 0) == get_ident():
+                            # Evita autoespera caso uma integração devolva a
+                            # mesma ação ao coordenador durante sua execução.
+                            return False
+                        evento_existente = registro.get("evento")
+                        self._metricas_execucao_turno["aguardadas"] += 1
+                    else:
+                        return bool(registro.get("resultado"))
+                else:
+                    self._execucoes_turno[chave_execucao] = {
+                        "status": "em_andamento",
+                        "resultado": False,
+                        "evento": Event(),
+                        "thread_id": get_ident(),
+                        "ts": time.monotonic(),
+                    }
+                    self._metricas_execucao_turno["iniciadas"] += 1
+                    self._podar_execucoes_turno()
+
+        if evento_existente is not None:
+            if not evento_existente.wait(timeout=30.0):
+                with self._lock_execucao_turno:
+                    self._metricas_execucao_turno["timeouts"] += 1
+                return False
+            with self._lock_execucao_turno:
+                concluida = self._execucoes_turno.get(chave_execucao, {})
+                return bool(concluida.get("resultado"))
+
+        try:
             sucesso = bool(executar_intencao(
                 resultado,
                 texto_original,
-                self.contexto_intencao_runtime.montar(),
+                contexto_execucao,
             ))
             if not sucesso and callable(self.registrar_decisao_cb):
                 self.registrar_decisao_cb(
@@ -405,10 +619,22 @@ class CicloComandosRuntime:
                 )
             return sucesso
         except Exception as erro:
+            with self._lock_execucao_turno:
+                self._metricas_execucao_turno["falhas"] += 1
             if callable(self.registrar_falha_cb):
                 self.registrar_falha_cb("execucao", "excecao_intencao", erro=erro)
             raise
         finally:
+            if chave_execucao is not None:
+                with self._lock_execucao_turno:
+                    registro = self._execucoes_turno.get(chave_execucao)
+                    if registro is not None:
+                        registro["status"] = "concluida" if sucesso else "falhou"
+                        registro["resultado"] = bool(sucesso)
+                        registro["ts"] = time.monotonic()
+                        evento = registro.get("evento")
+                        if isinstance(evento, Event):
+                            evento.set()
             if callable(self.registrar_metrica_cb):
                 self.registrar_metrica_cb(
                     "execucao", (time.perf_counter() - inicio) * 1000.0, sucesso,
@@ -418,12 +644,20 @@ class CicloComandosRuntime:
         runtime = self._ns().get("_interpretacao_intencao_runtime")
         return runtime.tentar_ai_primeiro(texto) if runtime is not None else None
 
-    def processar_deterministico(self, texto: str, origem: str = "", texto_original: str = "") -> bool:
+    def _montar_contexto_resolucao(self) -> Dict[str, Any]:
+        """Monta uma única visão da mente para qualquer forma de comando.
+
+        O nome histórico ``processar_deterministico`` ficou estreito demais:
+        esse contexto já reúne detector literal, continuidade, referências e
+        interpretação natural pela IA. Mantê-lo em um só lugar evita que a
+        barreira prioritária e o fluxo normal decidam com estados diferentes.
+        """
         ns = self._ns()
         contexto_execucao = self.contexto_intencao_runtime.montar()
-        contexto = {
+        return {
             "normalizar_texto": ns.get("_normalizar_texto_com_apelidos"),
             "texto_depende_de_contexto": ns.get("_texto_depende_de_contexto"),
+            "texto_parece_consulta_operacional": ns.get("_texto_parece_consulta_operacional"),
             "refinar_contexto_mental": ns.get("_refinar_contexto_mental"),
             "texto_cancela_acao_agora": ns.get("_texto_cancela_acao_agora"),
             "resolver_comando_midia_contextual_forcado": ns.get("_resolver_comando_midia_contextual_forcado"),
@@ -446,7 +680,125 @@ class CicloComandosRuntime:
                 and bool(str(contexto_execucao.get("ultimo_alvo") or "").strip())
             ),
         }
-        return executar_fluxo_intencao(texto, origem, contexto, texto_original=texto_original)
+
+    @staticmethod
+    def _copiar_resolucao(
+        resolucao: Tuple[Dict[str, Any] | None, str],
+    ) -> Tuple[Dict[str, Any] | None, str]:
+        resultado, rota = resolucao
+        return (deepcopy(resultado) if isinstance(resultado, dict) else None, str(rota or ""))
+
+    def _chave_decisao_turno(
+        self, texto: str, contexto: Dict[str, Any],
+    ) -> tuple[str, str] | None:
+        turno = dict(contexto.get("turno_atual") or {})
+        turno_id = str(turno.get("id") or "").strip()
+        if not turno_id:
+            # Sem uma identidade de turno não existe limite seguro para o
+            # cache. Clientes antigos continuam reavaliando como antes.
+            return None
+        normalizar = contexto.get("normalizar_texto")
+        try:
+            texto_normalizado = (
+                normalizar(texto) if callable(normalizar) else str(texto or "").casefold()
+            )
+        except Exception:
+            texto_normalizado = str(texto or "").casefold()
+        texto_normalizado = re.sub(r"\s+", " ", str(texto_normalizado or "")).strip()
+        return turno_id, texto_normalizado
+
+    def _resolver_decisao_canonica(
+        self,
+        texto: str,
+        origem: str,
+        contexto: Dict[str, Any] | None = None,
+    ) -> Tuple[Dict[str, Any] | None, str]:
+        contexto_resolucao = contexto or self._montar_contexto_resolucao()
+        chave = self._chave_decisao_turno(texto, contexto_resolucao)
+        with self._lock_linguagem_natural:
+            if chave is not None:
+                turno_id = chave[0]
+                if turno_id != self._cache_turno_id:
+                    self._cache_decisao_turno.clear()
+                    self._cache_turno_id = turno_id
+                if chave in self._cache_decisao_turno:
+                    self._metricas_linguagem_natural["reutilizadas_no_turno"] = (
+                        int(self._metricas_linguagem_natural.get("reutilizadas_no_turno") or 0)
+                        + 1
+                    )
+                    return self._copiar_resolucao(self._cache_decisao_turno[chave])
+
+            resolucao = resolver_intencao(texto, origem, contexto_resolucao)
+            resultado, rota = resolucao
+            intent = _normalizar_intent(resultado)
+            metricas = self._metricas_linguagem_natural
+            metricas["tentativas"] = int(metricas.get("tentativas") or 0) + 1
+            chave_rota = str(rota or "sem_intencao")
+            rotas = dict(metricas.get("rotas") or {})
+            rotas[chave_rota] = int(rotas.get(chave_rota) or 0) + 1
+            metricas["rotas"] = rotas
+            if intent:
+                metricas["resolvidas"] = int(metricas.get("resolvidas") or 0) + 1
+                metricas["ultima_rota"] = str(rota or "coordenador")
+                metricas["ultima_intent"] = intent
+            else:
+                metricas["sem_intencao"] = int(metricas.get("sem_intencao") or 0) + 1
+            if chave is not None:
+                self._cache_decisao_turno[chave] = self._copiar_resolucao(resolucao)
+            return self._copiar_resolucao(resolucao)
+
+    def decisao_ja_avaliada(self, texto: str) -> bool:
+        """Informa se o coordenador já classificou este texto no turno atual."""
+        contexto = self._montar_contexto_resolucao()
+        chave = self._chave_decisao_turno(texto, contexto)
+        if chave is None:
+            return False
+        with self._lock_linguagem_natural:
+            if chave[0] != self._cache_turno_id:
+                return False
+            return chave in self._cache_decisao_turno
+
+    def resolver_comando_natural(
+        self, texto: str, origem: str = "",
+    ) -> Tuple[Dict[str, Any] | None, str]:
+        """Resolve linguagem natural sem executar nem produzir fala.
+
+        A decisão passa pelo mesmo árbitro usado pelo fluxo operacional. Assim,
+        perguntas sobre capacidade, hipóteses e negações continuam bloqueadas,
+        enquanto pedidos naturais podem escolher qualquer intent registrado.
+        """
+        return self._resolver_decisao_canonica(texto, origem)
+
+    def diagnostico_linguagem_natural(self) -> Dict[str, Any]:
+        with self._lock_linguagem_natural:
+            metricas = dict(self._metricas_linguagem_natural)
+            metricas["rotas"] = dict(metricas.get("rotas") or {})
+        metricas.update(
+            modo="coordenador_canonico",
+            usa_contexto=True,
+            usa_memoria=True,
+            usa_catalogo_habilidades=True,
+            autoriza_execucao=False,
+        )
+        with self._lock_execucao_turno:
+            metricas["execucao_turno"] = {
+                **dict(self._metricas_execucao_turno),
+                "ativas": sum(
+                    1 for registro in self._execucoes_turno.values()
+                    if str(registro.get("status") or "") == "em_andamento"
+                ),
+            }
+        return metricas
+
+    def processar_deterministico(self, texto: str, origem: str = "", texto_original: str = "") -> bool:
+        contexto = self._montar_contexto_resolucao()
+        return executar_fluxo_intencao(
+            texto,
+            origem,
+            contexto,
+            texto_original=texto_original,
+            resolver_cb=self._resolver_decisao_canonica,
+        )
 
     def executar_texto(self, texto: str, origem: str = "") -> bool:
         ns = self._ns()

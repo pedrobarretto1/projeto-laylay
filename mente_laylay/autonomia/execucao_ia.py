@@ -150,6 +150,7 @@ class CoordenadorExecRuntime:
         self._agendamento_lock = threading.Lock()
         self._ultima_entrada_assinatura = ""
         self._ultima_entrada_ts = 0.0
+        self._geracao_entrada = 0
 
     def executar(self, cmd: str, arg: Any) -> bool:
         runtime = self._contexto_exec_getter()
@@ -157,19 +158,58 @@ class CoordenadorExecRuntime:
             raise RuntimeError("Contexto de execução EXEC ainda não foi inicializado.")
         return bool(runtime.executar(cmd, arg))
 
-    def processar_sync(self, texto: str) -> Any:
+    def processar_sync(
+        self,
+        texto: str,
+        geracao: int | None = None,
+        origem: str = "desconhecida",
+    ) -> Any:
         runtime = self._resposta_ia_getter()
         if runtime is None:
             self._log("⚠️ [IA] Runtime de resposta ainda não foi inicializado.")
             return None
+        ainda_atual = None
+        if geracao is not None:
+            ainda_atual = lambda: self._geracao_atual() == geracao
+            if origem != "desconhecida":
+                return runtime.processar(
+                    texto,
+                    ainda_atual_cb=ainda_atual,
+                    origem=origem,
+                )
+            return runtime.processar(texto, ainda_atual_cb=ainda_atual)
+        if origem != "desconhecida":
+            return runtime.processar(texto, origem=origem)
         return runtime.processar(texto)
 
-    def _iniciar_thread(self, texto: str) -> threading.Thread:
-        thread = threading.Thread(target=self.processar_sync, args=(texto,), daemon=True)
+    def processar_entrada(
+        self,
+        texto: str,
+        geracao: int | None = None,
+        origem: str = "desconhecida",
+    ) -> Any:
+        """Entrega toda entrada à resposta canônica, que cria o turno primeiro."""
+        return self.processar_sync(texto, geracao, origem)
+
+    def _geracao_atual(self) -> int:
+        with self._agendamento_lock:
+            return self._geracao_entrada
+
+    def _iniciar_thread(
+        self,
+        texto: str,
+        geracao: int,
+        origem: str = "desconhecida",
+    ) -> threading.Thread:
+        thread = threading.Thread(
+            target=self.processar_entrada,
+            args=(texto, geracao, origem),
+            daemon=True,
+        )
         thread.start()
         return thread
 
-    def agendar(self, texto: str) -> Any:
+    def agendar(self, texto: str, origem: str = "desconhecida") -> Any:
         assinatura = re.sub(r"\s+", " ", str(texto or "").casefold()).strip()
         agora = time.monotonic()
         with self._agendamento_lock:
@@ -182,16 +222,26 @@ class CoordenadorExecRuntime:
                 return None
             self._ultima_entrada_assinatura = assinatura
             self._ultima_entrada_ts = agora
+            self._geracao_entrada += 1
+            geracao = self._geracao_entrada
         loop = self._loop_getter()
         if loop:
             try:
                 return asyncio.run_coroutine_threadsafe(
-                    asyncio.to_thread(self.processar_sync, texto),
+                    asyncio.to_thread(self.processar_entrada, texto, geracao, origem),
                     loop,
                 )
             except Exception as exc:
                 self._log(f"Erro ao jogar IA pro background: {exc}")
-        return self._iniciar_thread(texto)
+        try:
+            return self._iniciar_thread(texto, geracao, origem)
+        except TypeError:
+            # Compatibilidade com adaptadores antigos que substituíam o
+            # iniciador e ainda recebem somente o texto.
+            try:
+                return self._iniciar_thread(texto, geracao)
+            except TypeError:
+                return self._iniciar_thread(texto)  # type: ignore[call-arg]
 
 
 def criar_coordenador_exec_runtime(**kwargs: Any) -> CoordenadorExecRuntime:
@@ -201,7 +251,7 @@ def criar_coordenador_exec_runtime(**kwargs: Any) -> CoordenadorExecRuntime:
 def filtrar_apenas_fala(
     texto_bruto: str,
     executar_comando_autonomo_cb: Optional[Callable[[str], Any]] = None,
-    fallback_fala: str = "Tô por aqui, Pedro. Me dá só mais um pedaço disso.",
+    fallback_fala: str = "Tô por aqui. Me dá só mais um pedaço disso.",
 ) -> str:
     if not texto_bruto:
         return fallback_fala

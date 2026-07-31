@@ -177,7 +177,7 @@ def detectar_playlist_nome_direto(
             break
 
     resto = re.sub(
-        r"^(a|o|as|os|essa|esse|essa musica|essa música|essa playlist|esse som)\s+",
+        r"^(a|o|as|os|um|uma|essa|esse|essa musica|essa música|essa playlist|esse som)\s+",
         "",
         resto,
     ).strip()
@@ -192,7 +192,29 @@ def detectar_playlist_nome_direto(
         chave_nm = limpar_nome_playlist(normalizar(str(chave or "")))
         if not chave_nm:
             continue
-        if resto == chave_nm or resto.startswith(chave_nm) or chave_nm.startswith(resto):
+        if resto == chave_nm:
+            candidatos.append(str(chave))
+            continue
+
+        # Um nome salvo pode vir seguido apenas de uma moldura operacional.
+        # Palavras descritivas pertencem ao pedido musical: se existe a
+        # playlist "rock", "rock pesado" deve procurar o gênero completo, não
+        # truncar silenciosamente o modificador e abrir a playlist.
+        if resto.startswith(chave_nm + " "):
+            sufixo = resto[len(chave_nm):].strip()
+            sufixo = re.sub(r"\s+", " ", sufixo)
+            if re.fullmatch(
+                r"(?:agora|por favor|ai|aí|pra tocar|para tocar|"
+                r"agora por favor|por favor agora)",
+                sufixo,
+            ):
+                candidatos.append(str(chave))
+                continue
+
+        # Abreviação só é segura quando Pedro disse explicitamente
+        # "playlist"; sem isso, uma palavra curta também pode ser gênero,
+        # artista ou começo de um título.
+        if "playlist" in t and chave_nm.startswith(resto):
             candidatos.append(str(chave))
     candidatos = list(dict.fromkeys(candidatos))
     return candidatos[0] if len(candidatos) == 1 else ""
@@ -404,11 +426,35 @@ def add_to_playlist_url(
     return {"ok": ok, "created_file": created_file, "created_playlist": created_playlist, "duplicated": False, "duplicated_meta": False}
 
 
-def fala_playlist_conteudo_estilosa(info: dict, fallback_nome: str = "") -> str:
+def fala_playlist_conteudo_estilosa(
+    info: dict,
+    fallback_nome: str = "",
+    *,
+    proprietario: str = "usuario",
+) -> str:
     nm = str(info.get("name") or fallback_nome or "essa").strip()
     total = int(info.get("total") or 0)
     titulos = info.get("last_titles") if isinstance(info.get("last_titles"), list) else []
     nome_fala = nm.title() if nm else "essa"
+    playlist_da_laylay = str(proprietario or "").casefold().strip() == "laylay"
+    if playlist_da_laylay:
+        if total <= 0:
+            return f"Minha playlist {nome_fala} está vazia por enquanto."
+        if not titulos:
+            return (
+                f"Minha playlist {nome_fala} tem {total} músicas. "
+                "Não consegui puxar os nomes agora."
+            )
+        faixas = "; ".join(str(x) for x in titulos[:3])
+        if total <= 3:
+            return (
+                f"Minha playlist {nome_fala} é curtinha: {total} músicas. "
+                f"As faixas que eu separei são: {faixas}."
+            )
+        return (
+            f"Minha playlist {nome_fala} tem {total} músicas. "
+            f"Algumas faixas que eu separei são: {faixas}."
+        )
     if total <= 0:
         return f"Sua playlist de {nome_fala} tá vazia por enquanto."
     if not titulos:
@@ -482,6 +528,15 @@ def pedido_lista_geral_playlist(
         "quais sao as minhas playlists",
         "quais são as minhas playlists",
     ]):
+        return True
+    # Concordância imperfeita e ditado por voz não devem empurrar uma
+    # consulta objetiva do inventário para a LLM. A correção fica restrita à
+    # estrutura inequívoca "quais + minhas + playlist(s)".
+    if re.fullmatch(
+        r"quais\s+(?:(?:sao|são|e|é)\s+)?(?:as?\s+)?minhas?\s+playlists?",
+        texto,
+        flags=re.IGNORECASE,
+    ):
         return True
 
     params = params if isinstance(params, dict) else {}

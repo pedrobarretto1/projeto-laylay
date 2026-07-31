@@ -10,10 +10,24 @@ from __future__ import annotations
 import time
 from typing import Any, Callable, Mapping
 
+from mente_laylay.integracao.registro_memoria_pessoas import PortaMemoriaPessoas
+from mente_laylay.integracao.registro_iot import PortaIoT
+
 
 class AdaptadoresAplicacaoRuntime:
     def __init__(self, namespace_getter: Callable[[], Mapping[str, Any]]) -> None:
         self._namespace_getter = namespace_getter
+        self._memoria_pessoas: PortaMemoriaPessoas | None = None
+        self._iot: PortaIoT | None = None
+
+    def conectar_memoria_pessoas(
+        self, memoria_pessoas: PortaMemoriaPessoas,
+    ) -> None:
+        """Recebe a dependência tipada depois da inicialização tardia."""
+        self._memoria_pessoas = memoria_pessoas
+
+    def conectar_iot(self, iot: PortaIoT) -> None:
+        self._iot = iot
 
     def _ns(self) -> Mapping[str, Any]:
         return self._namespace_getter()
@@ -39,6 +53,20 @@ class AdaptadoresAplicacaoRuntime:
                 )
             except Exception as erro:
                 ns["print"](f"⚠️ [APRENDIZADO] observação textual ignorada: {erro}")
+        rede = ns.get("_rede_associativa_runtime")
+        if rede is not None:
+            try:
+                rede.observar_interacao(
+                    intencao=intencao,
+                    alvo=alvo,
+                    escopo=escopo,
+                    habilidade=habilidade,
+                )
+            except Exception as erro:
+                # A rede é complementar: uma falha nunca interrompe conversa.
+                ns["print"](
+                    f"⚠️ [REDE ASSOCIATIVA] observação isolada: {type(erro).__name__}"
+                )
 
     def registrar_resultado_execucao(
         self,
@@ -59,6 +87,18 @@ class AdaptadoresAplicacaoRuntime:
                 motor.observar_resultado(resultado, texto, executou, origem=origem, status=status)
             except Exception as erro:
                 ns["print"](f"⚠️ [APRENDIZADO] resultado não observado: {erro}")
+        mapa_habilidades = ns.get("_mapa_habilidades_runtime")
+        if mapa_habilidades is not None:
+            try:
+                mapa_habilidades.registrar_resultado(
+                    resultado,
+                    status=status,
+                    executou=executou,
+                )
+            except Exception as erro:
+                ns["print"](
+                    f"⚠️ [HABILIDADES] resultado não refletido no mapa: {type(erro).__name__}"
+                )
         try:
             if isinstance(resultado, dict):
                 intent = str(resultado.get("intent") or resultado.get("acao") or "").strip()
@@ -74,6 +114,14 @@ class AdaptadoresAplicacaoRuntime:
                 alvo_objeto = str(getattr(resultado, "alvo", "") or "")
             if not intent:
                 return
+            suspender_topico = ns.get("_suspender_topico_conversacional")
+            if callable(suspender_topico):
+                try:
+                    suspender_topico("acao_operacional_executada")
+                except Exception as erro:
+                    ns["print"](
+                        f"⚠️ [CONTEXTO] não consegui suspender o assunto anterior: {type(erro).__name__}"
+                    )
             alvo = str(
                 alvo_objeto
                 or params.get("alvo")
@@ -90,13 +138,37 @@ class AdaptadoresAplicacaoRuntime:
                 (item for item in comandos if str(item.get("intent") or "").upper() == intent.upper()),
                 {},
             )
+            preservar_resultado_detalhado = bool(
+                anterior.get("status") and not status_resultado
+            )
             registro = {
                 "intent": intent.upper(),
                 "alvo": alvo or str(anterior.get("alvo") or ""),
                 "status": status_resultado or str(anterior.get("status") or ""),
-                "executou": executou if executou is not None else anterior.get("executou"),
-                "confirmado": confirmado if confirmado is not None else anterior.get("confirmado"),
+                "executou": (
+                    anterior.get("executou") if preservar_resultado_detalhado
+                    else executou if executou is not None else anterior.get("executou")
+                ),
+                "confirmado": (
+                    anterior.get("confirmado") if preservar_resultado_detalhado
+                    else confirmado if confirmado is not None else anterior.get("confirmado")
+                ),
             }
+            rede = ns.get("_rede_associativa_runtime")
+            if rede is not None:
+                try:
+                    rede.observar_resultado(
+                        intencao=intent,
+                        alvo=registro["alvo"],
+                        status=registro["status"],
+                        executou=registro["executou"],
+                        confirmado=registro["confirmado"],
+                    )
+                except Exception as erro_rede:
+                    ns["print"](
+                        "⚠️ [REDE ASSOCIATIVA] resultado isolado: "
+                        f"{type(erro_rede).__name__}"
+                    )
             comandos = [item for item in comandos if str(item.get("intent") or "").upper() != intent.upper()]
             comandos.append(registro)
             novo = ns["_atualizar_plano_turno_mente"](
@@ -130,6 +202,17 @@ class AdaptadoresAplicacaoRuntime:
     def resumo_mente_integrada_para_prompt(self, texto_usuario: str = "") -> str:
         ns = self._ns()
         resumo = ns["_resumo_mente_integrada_para_prompt_base"](texto_usuario)
+        memoria_pessoas = self._memoria_pessoas
+        pessoas = ""
+        if callable(getattr(memoria_pessoas, "contexto_para_prompt", None)):
+            try:
+                pessoas = str(memoria_pessoas.contexto_para_prompt(texto_usuario) or "").strip()
+            except Exception as erro:
+                ns["print"](
+                    f"⚠️ [MEMÓRIA:PESSOAS] contexto isolado: {type(erro).__name__}"
+                )
+        if pessoas:
+            resumo = f"{resumo}\n{pessoas}" if resumo else pessoas
         motor = ns.get("_motor_aprendizado_runtime")
         if motor is None:
             return resumo
@@ -204,7 +287,7 @@ class AdaptadoresAplicacaoRuntime:
             salvo = ns["MEMORIA_SQLITE"].salvar_aprendizado_semantico(
                 tipo="pronuncia", gatilho=str(ouvido or "").strip(),
                 valor=str(correto or "").strip(),
-                regra=f"Na voz de Pedro, {ouvido} significa {correto}.",
+                regra=f"Na voz do usuário, {ouvido} significa {correto}.",
                 texto_original=f"quando eu falar {ouvido}, quero dizer {correto}",
                 confianca=0.99, origem="usuario_voz",
                 evidencia="ensino explícito de pronúncia", status="ativo",
@@ -255,11 +338,16 @@ class AdaptadoresAplicacaoRuntime:
             "voz": ("falar_com_lipsync",), "llm": ("enviar_mensagem",),
             "memoria": ("carregar_memoria", "salvar_memoria"),
             "gmail": ("_gmail_buscar_nao_lidos", "gmail_daemon"),
-            "iot": ("_executar_intencao_iot",),
             "navegador": ("run_ws_server_in_thread", "enviar_comando_chrome"),
         }
         for modulo, dependencias in servicos.items():
             saude.validar_dependencias(modulo, ns, dependencias, callables=dependencias)
+        iot_disponivel = callable(getattr(self._iot, "executar", None))
+        saude.registrar(
+            "iot", "saudavel" if iot_disponivel else "indisponivel",
+            detalhes="contrato tipado conectado" if iot_disponivel else "contrato ausente",
+            ausentes=[] if iot_disponivel else ["servico_iot"],
+        )
         ns["print"](saude.resumo_terminal())
 
 

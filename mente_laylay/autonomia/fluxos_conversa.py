@@ -6,6 +6,10 @@ import re
 import time
 from typing import Any, Dict
 from mente_laylay.personalidade.falas_variadas import escolher as _escolher_fala_variada
+from mente_laylay.personalidade.proporcao_resposta import (
+    parece_pedido_reexplicacao,
+    parece_problema_matematico,
+)
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
@@ -57,6 +61,7 @@ def usar_modo_rapido_conversa(
     texto: str,
     *,
     normalizar_texto=None,
+    texto_depende_de_contexto=None,
     interpretar_comando_local_rapido=None,
     resolver_comando_contextual=None,
 ) -> bool:
@@ -70,6 +75,22 @@ def usar_modo_rapido_conversa(
         t = str(texto or "").strip().lower()
     if not t:
         return True
+
+    # Fórmulas são visualmente curtas, mas precisam do prompt completo e de
+    # mais espaço de geração para desenvolver a conta até a conclusão.
+    if parece_problema_matematico(texto):
+        return False
+    if parece_pedido_reexplicacao(texto):
+        return False
+    # A decisão semântica central também cobre pronomes, reparos e perguntas
+    # elípticas. Nenhuma continuação dependente do turno anterior deve perder
+    # o histórico só por possuir poucas palavras.
+    if callable(texto_depende_de_contexto):
+        try:
+            if texto_depende_de_contexto(texto):
+                return False
+        except Exception:
+            pass
 
     if callable(interpretar_comando_local_rapido):
         try:
@@ -162,6 +183,39 @@ def _pendencia_combina_com_texto(contexto: Dict[str, Any], tipo: str, texto_norm
 def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
     """Trata respostas a sugestões proativas antes de cair na conversa normal."""
     texto_norm = re.sub(r"\s+", " ", str(texto or "").strip().lower())
+    registrar_feedback_proatividade = _get(contexto, "_registrar_feedback_proatividade")
+
+    def _feedback_contextual(tipo: str, aceito=None, resultado: str = "") -> None:
+        if not callable(registrar_feedback_proatividade):
+            return
+        try:
+            registrar_feedback_proatividade(tipo, aceito, resultado=resultado)
+        except Exception:
+            pass
+
+    agora = time.time()
+    timeout_s = 600.0
+
+    # Um novo comando nunca vira uma resposta forçada à sugestão anterior.
+    # Antes de liberá-lo, porém, consolidamos como silêncio somente as ofertas
+    # que ficaram dez minutos completos sem retorno.
+    for chave, categoria, rotulo in (
+        ("_email_sugestao_pendente", "emails", "EMAIL"),
+        ("_playlist_sugestao_pendente", "musica", "PLAYLIST"),
+        ("_rotina_sugestao_pendente", "rotina", "ROTINA"),
+    ):
+        pendencia = _get(contexto, chave)
+        if not isinstance(pendencia, dict):
+            continue
+        try:
+            idade = agora - float(pendencia.get("ts", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            idade = timeout_s
+        if idade >= timeout_s:
+            print(f"[FEEDBACK {rotulo}] Sugestao expirou sem resposta apos 10 minutos.")
+            _feedback_contextual(categoria, None, "silencio")
+            contexto[chave] = None
+
     if _parece_comando_novo(texto_norm):
         return False
     if any(p in texto_norm for p in [
@@ -169,11 +223,17 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
         "cancelar", "para com isso", "nao quero mais", "não quero mais",
         "quero mais nao", "quero mais não", "pode parar", "desiste",
     ]):
-        for chave in (
-            "_rotina_sugestao_pendente",
-            "_playlist_sugestao_pendente",
+        categorias_canceladas = []
+        for chave, categoria in (
+            ("_rotina_sugestao_pendente", "rotina"),
+            ("_playlist_sugestao_pendente", "musica"),
+            ("_email_sugestao_pendente", "emails"),
         ):
+            if _get(contexto, chave) is not None:
+                categorias_canceladas.append(categoria)
             contexto[chave] = None
+        for categoria in categorias_canceladas:
+            _feedback_contextual(categoria, False, "recusa")
         if callable(_get(contexto, "_bloquear_playlist_temporariamente")):
             try:
                 _get(contexto, "_bloquear_playlist_temporariamente")(0.0)
@@ -202,11 +262,8 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
     gmail_buscar = _get(contexto, "_gmail_buscar_nao_lidos")
     gmail_resumo = _get(contexto, "_gmail_falar_resumo_estiloso")
 
-    agora = time.time()
-
     if email_sugestao_pendente is not None:
-        if agora - float(email_sugestao_pendente.get("ts", 0.0)) > 120:
-            print("[FEEDBACK EMAIL] Sugestao expirou sem resposta.")
+        if agora - float(email_sugestao_pendente.get("ts", 0.0)) >= timeout_s:
             contexto["_email_sugestao_pendente"] = None
         else:
             alvo_email = str(email_sugestao_pendente.get("remetente") or "").strip()
@@ -220,6 +277,9 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
                 elif callable(classificar_confirmacao_local):
                     confirmado = classificar_confirmacao_local(texto)
                 if confirmado is not None:
+                    _feedback_contextual(
+                        "emails", bool(confirmado), "aceita" if confirmado else "recusa",
+                    )
                     status = "SIM" if confirmado else "NAO"
                     print(f"[FEEDBACK EMAIL] Resposta: {status} para '{alvo_email or 'emails'}'")
                     if confirmado:
@@ -249,8 +309,8 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
                     return True
 
     if playlist_sugestao_pendente is not None:
-        if agora - float(playlist_sugestao_pendente.get("ts", 0.0)) > 90:
-            print("[FEEDBACK PLAYLIST] Sugestao expirou sem resposta.")
+        if agora - float(playlist_sugestao_pendente.get("ts", 0.0)) >= timeout_s:
+            contexto["_playlist_sugestao_pendente"] = None
             playlist_sugestao_pendente = None
         else:
             pl = str(playlist_sugestao_pendente.get("playlist") or "").strip()
@@ -263,6 +323,9 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
             else:
                 confirmado = None
             if confirmado is not None:
+                _feedback_contextual(
+                    "musica", bool(confirmado), "aceita" if confirmado else "recusa",
+                )
                 status = "SIM" if confirmado else "NAO"
                 print(f"[FEEDBACK PLAYLIST] Resposta: {status} para '{pl}'")
                 if confirmado:
@@ -301,8 +364,8 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
                 return True
 
     if rotina_sugestao_pendente is not None:
-        if agora - float(rotina_sugestao_pendente.get("ts", 0.0)) > 90:
-            print("[FEEDBACK ROTINA] Sugestao expirou sem resposta.")
+        if agora - float(rotina_sugestao_pendente.get("ts", 0.0)) >= timeout_s:
+            contexto["_rotina_sugestao_pendente"] = None
             rotina_sugestao_pendente = None
         else:
             app = str(rotina_sugestao_pendente.get("app") or "")
@@ -315,6 +378,9 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
             else:
                 confirmado = None
             if confirmado is not None:
+                _feedback_contextual(
+                    "rotina", bool(confirmado), "aceita" if confirmado else "recusa",
+                )
                 status = "SIM" if confirmado else "NAO"
                 print(f"[FEEDBACK ROTINA] Resposta: {status} para '{app}'")
                 if callable(registrar_feedback_rotina):

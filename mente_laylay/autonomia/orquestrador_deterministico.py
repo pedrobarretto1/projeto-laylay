@@ -9,8 +9,14 @@ from __future__ import annotations
 import re
 from typing import Any, Callable, Dict, Mapping
 
+from mente_laylay.integracao.registro_iot import PortaIoT
+
 from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
-from mente_laylay.cognicao.evidencia_operacional import autoriza_candidato_iot_direto
+from mente_laylay.cognicao.evidencia_operacional import (
+    autoriza_candidato_iot_direto,
+    bloqueia_controle_iot_por_modalidade,
+    detectar_consulta_lista_iot,
+)
 from mente_laylay.autonomia.roteador_deterministico import (
     detectar_abrir_app_ou_site,
     detectar_confirmacao_porteiro,
@@ -31,6 +37,13 @@ from mente_laylay.autonomia.roteador_deterministico import (
     normalizar_pedido_natural,
     preparar_entrada_deterministica,
 )
+from mente_laylay.cognicao.intencao_visual_jogo import detectar_pedido_visao_jogo
+from mente_laylay.cognicao.referencias_linguagem import (
+    extrair_indice_referencia_ordinal,
+)
+from mente_laylay.memoria_mental.continuidade_geral import (
+    resolver_continuacao_aditiva,
+)
 
 
 def _get(ctx: Mapping[str, Any], nome: str, default: Any = None) -> Any:
@@ -46,6 +59,32 @@ def _call(ctx: Mapping[str, Any], nome: str, *args: Any, default: Any = None, **
 
 def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -> Dict[str, Any] | None:
     """Executa a cadeia deterministica em ordem, usando dependencias injetadas."""
+    # Esta decisão usa obrigatoriamente a fala original. Normalizações feitas
+    # mais abaixo podem remover justamente o ``não`` ou a moldura ``como eu
+    # faria``; uma ação física jamais deve ser autorizada a partir desse texto
+    # já reescrito.
+    bloqueio_iot_original = bloqueia_controle_iot_por_modalidade(texto)
+
+    def _candidato_iot_seguro(texto_detector: str) -> Dict[str, Any] | None:
+        candidato = _call(
+            ctx,
+            "detectar_intencao_iot",
+            texto_detector,
+            _get(ctx, "mente_integrada_estado", {}),
+        )
+        if not isinstance(candidato, dict):
+            return None
+        intent = str(candidato.get("intent") or "").upper().strip()
+        if intent == "IOT_CONTROL" and bloqueio_iot_original:
+            return None
+        return candidato
+
+    # Consulta objetiva e sem efeito colateral. Ela não depende do runtime IoT
+    # já ter sido injetado e vence os filtros genéricos de pergunta/conversa.
+    consulta_lista_iot = detectar_consulta_lista_iot(texto)
+    if consulta_lista_iot:
+        return consulta_lista_iot
+
     mente_previa = _get(ctx, "mente_integrada_estado", {})
     ultimo_intent_previo = str(
         (mente_previa or {}).get("ultima_acao_intent")
@@ -69,6 +108,14 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     if isinstance(sugestao_indireta, dict):
         return sugestao_indireta
 
+    contexto_jogo = dict(_call(ctx, "modo_jogo_contexto", default={}) or {})
+    contexto_jogo["analise_visual_recente"] = bool(
+        _call(ctx, "visao_jogo_tem_analise_recente", default=False)
+    )
+    pedido_visao_jogo = detectar_pedido_visao_jogo(texto, contexto_jogo)
+    if pedido_visao_jogo:
+        return pedido_visao_jogo
+
     # O detector IoT conhece aliases, capacidades e parâmetros reais. Ele deve
     # poder apresentar um candidato antes do filtro genérico de conversa curta;
     # a guarda semântica impede que hipótese, negação ou comentário virem ação.
@@ -77,15 +124,28 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         normalizar(texto) if callable(normalizar) else str(texto or "").casefold().strip()
     )
     texto_operacional_iot, modalidade_iot = normalizar_pedido_natural(texto_normalizado_previo)
+    # A listagem é uma consulta sem efeito colateral. Ela costuma ter forma de
+    # pergunta e, por isso, o filtro casual abaixo pode encerrar a detecção
+    # antes da cadeia de especialistas. Antecipamos somente IOT_LIST aqui;
+    # estado e controle conservam suas rotas contextuais e guardas próprias.
+    candidato_iot_leitura = _candidato_iot_seguro(texto_operacional_iot)
+    if (
+        isinstance(candidato_iot_leitura, dict)
+        and str(candidato_iot_leitura.get("intent") or "").upper().strip()
+        == "IOT_LIST"
+    ):
+        return candidato_iot_leitura
     if autoriza_candidato_iot_direto(texto_operacional_iot, modalidade=modalidade_iot):
-        candidato_iot = _call(
-            ctx,
-            "detectar_intencao_iot",
-            texto_operacional_iot,
-            _get(ctx, "mente_integrada_estado", {}),
-        )
+        candidato_iot = candidato_iot_leitura or _candidato_iot_seguro(texto_operacional_iot)
         if isinstance(candidato_iot, dict):
             return candidato_iot
+
+    # O catálogo de recursos conhece seus dados reais e o intent de leitura.
+    # Perguntas naturais de consulta precisam chegar aqui antes dos filtros
+    # genéricos de conversa, sem conceder nenhuma operação de escrita.
+    consulta_recurso = _call(ctx, "resolver_consulta_recurso_local", texto)
+    if isinstance(consulta_recurso, dict):
+        return consulta_recurso
 
     preparo = preparar_entrada_deterministica(
         texto,
@@ -117,14 +177,59 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
             kwargs["target"] = "pc_b"
         return kwargs
 
+    # Elipses curtas não devem disputar entidades soltas na memória semântica.
+    # A continuidade oficial já sabe qual foi a ação operacional confirmada e
+    # cada intent declara quais parâmetros podem ser herdados com segurança.
+    continuacao_aditiva = resolver_continuacao_aditiva(
+        dict(mente_atual or {}) if isinstance(mente_atual, Mapping) else {},
+        texto=t_sem_destino,
+    )
+    if continuacao_aditiva:
+        params_continuacao = dict(continuacao_aditiva.get("params") or {})
+        return {
+            "intent": str(continuacao_aditiva.get("intent") or ""),
+            "params": params(**params_continuacao),
+        }
+
+    estrutura_arquivo = (
+        dict(mente_atual.get("ultima_estrutura_arquivo_params") or {})
+        if isinstance(mente_atual, Mapping)
+        and isinstance(mente_atual.get("ultima_estrutura_arquivo_params"), Mapping)
+        else {}
+    )
+    selecao_resultado_arquivo = bool(
+        str(estrutura_arquivo.get("tipo") or "") == "pesquisa_semantica"
+        and extrair_indice_referencia_ordinal(t_sem_destino) is not None
+    )
+
     detectores: list[Callable[[], Dict[str, Any] | None]] = [
-        lambda: _call(
-            ctx,
-            "detectar_intencao_iot",
-            t,
-            _get(ctx, "mente_integrada_estado", {}),
-        ),
+        lambda: _candidato_iot_seguro(t),
         lambda: detectar_url_visual(t, bruto, params_cb=params),
+        # Posicionamento espacial e organizacao da area de trabalho precisam
+        # vencer musica e abertura generica. "Steam na esquerda" descreve uma
+        # janela e nunca uma faixa chamada "steam na esquerda".
+        lambda: detectar_organizacao_desktop(t, params_cb=params),
+        # Vocabulário estrutural explícito precisa vencer o detector musical:
+        # "coloca um arquivo de texto..." não é uma busca por uma música
+        # chamada "arquivo de texto". A guarda estreita preserva playlists.
+        lambda: detectar_intencao_arquivos(
+            bruto_sem_destino,
+            params_cb=params,
+            estado_mental=_get(ctx, "mente_integrada_estado", {}),
+            normalizar_texto=_get(ctx, "normalizar_texto"),
+        ) if re.search(
+            r"\b(?:arquivo|pasta|documento|diretorio|diretório|txt)\b",
+            t,
+        ) else None,
+        # Uma seleção ordinal pertence primeiro à habilidade que publicou a
+        # lista recente. Sem esta precedência, "abra o primeiro" virava a
+        # tentativa de abrir um aplicativo literalmente chamado "primeiro".
+        lambda: detectar_intencao_arquivos(
+            t_sem_destino,
+            params_cb=params,
+            estado_mental=mente_atual,
+            normalizar_texto=_get(ctx, "normalizar_texto"),
+        ) if selecao_resultado_arquivo else None,
         lambda: detectar_playlist_contextual_musica_atual(
             t_sem_destino,
             params_cb=params,
@@ -155,8 +260,8 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
             params_cb=params,
             limpar_nome_playlist=_get(ctx, "limpar_nome_playlist"),
             extrair_nome_playlist=_get(ctx, "extrair_nome_playlist"),
+            detectar_playlist_nome_direto=_get(ctx, "detectar_playlist_nome_direto"),
         ),
-        lambda: detectar_organizacao_desktop(t, params_cb=params),
         lambda: detectar_janela_contextual(
             t,
             params_cb=params,
@@ -201,6 +306,13 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     for detector in detectores:
         resultado = detector()
         if resultado:
+            # Invariante final: nenhum detector atual ou futuro consegue
+            # contornar a modalidade original de um controle físico.
+            if (
+                str(resultado.get("intent") or "").upper().strip() == "IOT_CONTROL"
+                and bloqueio_iot_original
+            ):
+                continue
             return resultado
     return None
 
@@ -213,11 +325,13 @@ class DeteccaoDeterministicaRuntime:
         estado_getter: Callable[[], Dict[str, Any]],
         sites_diretos: Dict[str, Any],
         apps_map: Dict[str, Any],
+        iot: PortaIoT | None = None,
     ) -> None:
         self.namespace_getter = namespace_getter
         self.estado_getter = estado_getter
         self.sites_diretos = sites_diretos
         self.apps_map = apps_map
+        self.iot = iot
 
     def detectar(self, texto: str) -> Dict[str, Any] | None:
         ns = self.namespace_getter() or {}
@@ -250,7 +364,8 @@ class DeteccaoDeterministicaRuntime:
             "_limpar_nome_playlist", "_musica_estado_get", "_contexto_musical_ativo",
             "extrair_nome_playlist", "_extrair_intencao_abrir_app",
             "_detectar_playlist_nome_direto", "_normalizar_query_musical",
-            "_detectar_intencao_iot", "_detectar_sugestao_indireta",
+            "_detectar_sugestao_indireta",
+            "_resolver_consulta_recurso_local",
         )
         contexto = {nome.lstrip("_"): ns.get(nome) for nome in nomes}
         contexto.update({
@@ -259,8 +374,12 @@ class DeteccaoDeterministicaRuntime:
             "mente_integrada_estado": self.estado_getter() or {},
             "sites_diretos": self.sites_diretos,
             "apps_map": self.apps_map,
-            "detectar_intencao_iot": ns.get("_detectar_intencao_iot"),
+            "detectar_intencao_iot": getattr(self.iot, "detectar", None),
             "detectar_sugestao_indireta": ns.get("_detectar_sugestao_indireta"),
+            "modo_jogo_contexto": getattr(ns.get("_modo_jogo_runtime"), "contexto_atual", None),
+            "visao_jogo_tem_analise_recente": getattr(
+                ns.get("_visao_jogo_runtime"), "tem_analise_recente", None,
+            ),
         })
         return detectar_intencao_deterministica_mente(texto, contexto)
 

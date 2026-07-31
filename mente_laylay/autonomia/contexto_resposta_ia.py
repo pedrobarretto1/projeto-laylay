@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Tuple
 
+from mente_laylay.cognicao.guardiao_realidade_pessoal import (
+    detectar_experiencia_pessoal_inventada,
+)
+from mente_laylay.memoria_mental.identidade_usuario import contexto_identidade_usuario
+
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     if isinstance(ctx, dict) and key in ctx:
@@ -29,6 +34,9 @@ def preparar_contexto_resposta_ia(
     resumo_mente_integrada_para_prompt = _get(ctx, "_resumo_mente_integrada_para_prompt")
     retrato_mente_integrada = str(_get(ctx, "retrato_mente_integrada", "") or "").strip()
     formatar_playlists_para_prompt = _get(ctx, "_formatar_playlists_para_prompt")
+    contexto_habilidades = str(_get(ctx, "contexto_habilidades", "") or "").strip()
+    contexto_recursos = str(_get(ctx, "contexto_recursos", "") or "").strip()
+    contexto_identidade = str(_get(ctx, "contexto_identidade", "") or "").strip()
 
     contaminantes = ["adicionar_a_playlist", "editar_playlist", "tocar_playlist", "organizar_desktop", "maximize_window", "persona"]
 
@@ -36,6 +44,13 @@ def preparar_contexto_resposta_ia(
         if msg.get("role") not in ("assistant", "user"):
             return False
         c = str(msg.get("content", ""))
+        if (
+            msg.get("role") == "assistant"
+            and detectar_experiencia_pessoal_inventada(c)
+        ):
+            # A fala pode continuar no log para auditoria, mas não volta ao
+            # prompt como se a própria invenção da assistente fosse memória.
+            return True
         if msg.get("role") == "user" and not c.startswith("System:"):
             return False
         return any(tok in c for tok in contaminantes)
@@ -71,21 +86,18 @@ def preparar_contexto_resposta_ia(
         except Exception:
             pass
 
+    if contexto_habilidades:
+        contexto_extra += "\n" + contexto_habilidades + "\n"
+    if contexto_recursos:
+        contexto_extra += "\n" + contexto_recursos + "\n"
+    if contexto_identidade:
+        contexto_extra += "\n" + contexto_identidade + "\n"
+
     liberdade_conversacional = (
-        "\n\n--- LIBERDADE CONVERSACIONAL ---\n"
-        "Quando o usuário estiver conversando, responda como Laylay de forma viva, espontânea e contextual. "
-        "Você pode opinar, brincar, discordar de leve, fazer uma leitura pessoal e puxar assunto sem pedir confirmação a cada frase. "
-        "Peça mais contexto apenas quando a resposta depender de uma informação essencial; se der para responder com uma hipótese honesta, responda. "
-        "Não trate opinião, brincadeira, gosto, recomendação conceitual ou papo aberto como comando técnico. "
-        "Use frases como 'eu acho', 'eu iria por esse caminho', 'isso me soa como...' quando couber. "
-        "Quando pedirem sua opinião, escolha uma posição e dê um motivo curto; não concorde automaticamente, não invente certeza factual e não termine sempre pedindo validação. "
-        "Você pode mudar de ideia quando receber informação melhor, reconhecendo o motivo sem drama. "
-        "Não termine respostas com pergunta por hábito. Pergunte apenas se a resposta realmente mudar o próximo passo ou completar informação essencial. "
-        "Quando já puder ajudar, responda primeiro e só depois faça uma pergunta complementar se ela tiver propósito. "
-        "A validação rígida vale para executar ações no PC; a conversa pode respirar e ter iniciativa.\n"
-        "Você pode ter gosto, reação, humor, curiosidade e discordância leve sem pedir licença, desde que não invente fatos ou memórias pessoais. "
-        "Em comandos, essa liberdade continua, mas a fala precisa declarar o resultado real: feito, não feito, pendente ou enviado sem confirmação. "
-        "A personalidade complementa o resultado; nunca o substitui.\n"
+        "\n\n--- AUTORIA DA CONVERSA ---\n"
+        "A fala conversacional será entregue com suas palavras. Use o contexto abaixo, "
+        "mas não deixe lembranças antigas substituírem a mensagem atual. O código externo "
+        "não completará nem reescreverá sua personalidade.\n"
     )
 
     prompt_com_contexto = base_system_prompt + liberdade_conversacional + contexto_extra
@@ -130,6 +142,8 @@ class ContextoPromptRuntime:
         get_status_humor_prompt: Callable[[], str],
         base_system_prompt: str,
         estado_getter: Callable[[], Dict[str, Any]],
+        mapa_habilidades_prompt: Callable[..., str] | None = None,
+        mapa_recursos_prompt: Callable[[str], str] | None = None,
     ) -> None:
         self.memoria_sqlite = memoria_sqlite
         self.resumo_mente_integrada = resumo_mente_integrada
@@ -137,6 +151,8 @@ class ContextoPromptRuntime:
         self.get_status_humor_prompt = get_status_humor_prompt
         self.base_system_prompt = str(base_system_prompt or "")
         self.estado_getter = estado_getter
+        self.mapa_habilidades_prompt = mapa_habilidades_prompt
+        self.mapa_recursos_prompt = mapa_recursos_prompt
 
     def preparar(self, texto: str) -> Tuple[List[Dict[str, Any]], str]:
         try:
@@ -164,6 +180,23 @@ class ContextoPromptRuntime:
                 + prompt_base_turno
             )
         retrato = self.resumo_mente_integrada(t)
+        contexto_habilidades = ""
+        if callable(self.mapa_habilidades_prompt):
+            try:
+                contexto_habilidades = str(
+                    self.mapa_habilidades_prompt(t, turno=turno_atual) or ""
+                ).strip()
+            except Exception:
+                contexto_habilidades = ""
+        contexto_identidade = contexto_identidade_usuario(
+            estado.get("nome_usuario", "")
+        )
+        contexto_recursos = ""
+        if callable(self.mapa_recursos_prompt):
+            try:
+                contexto_recursos = str(self.mapa_recursos_prompt(t) or "").strip()
+            except Exception:
+                contexto_recursos = ""
         contexto = {
             "memoria_sqlite": self.memoria_sqlite,
             "retrato_mente_integrada": retrato,
@@ -172,6 +205,9 @@ class ContextoPromptRuntime:
             "aba_url_atual": estado.get("aba_url_atual", ""),
             "_formatar_playlists_para_prompt": self.formatar_playlists,
             "get_status_humor_prompt": self.get_status_humor_prompt,
+            "contexto_habilidades": contexto_habilidades,
+            "contexto_recursos": contexto_recursos,
+            "contexto_identidade": contexto_identidade,
         }
         return preparar_contexto_resposta_ia(
             contexto,

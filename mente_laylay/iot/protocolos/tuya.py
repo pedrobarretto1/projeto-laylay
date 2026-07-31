@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Callable, Dict
 
 from mente_laylay.iot.configuracao import carregar_dispositivo_snapshot, carregar_variaveis
@@ -57,18 +58,44 @@ class ProtocoloTuya(ProtocoloIoT):
                 for caminho in configuracao.get("snapshot_fallback_paths", ())
             ],
         ]
-        for caminho_snapshot in caminhos_snapshot:
-            if not faltando or not caminho_snapshot:
-                break
+        candidatos_snapshot: list[tuple[float, int, Dict[str, str]]] = []
+        for indice, caminho_snapshot in enumerate(caminhos_snapshot):
+            if not caminho_snapshot:
+                continue
             snapshot = carregar_dispositivo_snapshot(
                 caminho_snapshot,
                 nome=str(configuracao.get("snapshot_device_name") or ""),
                 device_id=str(valores.get("device_id") or ""),
             )
+            # Uma variável de ambiente explícita continua soberana e não pode
+            # ser completada com dados pertencentes a outro dispositivo que
+            # por acaso manteve o mesmo nome no aplicativo.
+            if (
+                valores.get("device_id")
+                and snapshot.get("device_id")
+                and snapshot["device_id"] != valores["device_id"]
+            ):
+                continue
+            if not snapshot:
+                continue
+            path = Path(caminho_snapshot)
+            if not path.is_absolute():
+                path = Path.cwd() / path
+            try:
+                modificado = float(path.stat().st_mtime)
+            except OSError:
+                modificado = 0.0
+            # O índice invertido preserva a preferência declarada quando dois
+            # arquivos são cópias com a mesma data de modificação.
+            candidatos_snapshot.append((modificado, -indice, snapshot))
+
+        for _modificado, _ordem, snapshot in sorted(candidatos_snapshot, reverse=True):
             for chave, valor in snapshot.items():
                 if not valores.get(chave):
                     valores[chave] = valor
             faltando = [chave for chave in ("device_id", "local_key", "ip") if not valores.get(chave)]
+            if not faltando:
+                break
         if faltando:
             return {}, "configuração Tuya incompleta: " + ", ".join(sorted(faltando))
 

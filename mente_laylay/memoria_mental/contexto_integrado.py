@@ -11,6 +11,7 @@ from mente_laylay.memoria_mental.continuidade_conversa import assunto_coerente_c
 from mente_laylay.cognicao.seletor_contexto import selecionar_contexto_turno
 from mente_laylay.cognicao.fundamentacao_factual import avaliar_validade_fundamentacao
 from mente_laylay.memoria_mental.registro_semantico import resumo_registro_semantico_para_prompt
+from mente_laylay.memoria_mental.continuidade_geral import resumo_continuidade_para_prompt
 
 
 def montar_contexto_perceptivo(
@@ -289,6 +290,13 @@ def resumo_mente_integrada_para_prompt(
     usar_operacional = not modalidade or modalidade in {"comando", "confirmacao", "recusa", "correcao"} or (
         modalidade == "pergunta" and referencia_contextual
     )
+    continuidade_geral_prompt = resumo_continuidade_para_prompt(
+        mente,
+        texto=texto_usuario,
+        ttl_s=900.0 if usar_operacional else 480.0,
+    )
+    if continuidade_geral_prompt and (usar_operacional or not novo_assunto or pede_referencia_fala):
+        blocos.append(continuidade_geral_prompt)
     fala_recente_para_filtro = " ".join([
         str(mente.get("ultima_afirmacao") or ""),
         str(mente.get("ultima_opiniao") or ""),
@@ -309,6 +317,13 @@ def resumo_mente_integrada_para_prompt(
             blocos.append(
                 "Limite operacional do turno: não gere comandos nem execute ações. "
                 "Responda como conversa, pergunta, correção ou esclarecimento conforme a modalidade."
+            )
+        if modalidade == "reacao":
+            blocos.append(
+                "Continuidade social imediata: esta fala curta reage ao que a própria Laylay acabou "
+                "de dizer. Continue esse comentário brevemente e com naturalidade, usando a última "
+                "fala selecionada como referente. Não mude para atendimento, não pergunte 'o que "
+                "você quer que eu faça agora?' e não invente outro assunto."
             )
         if modalidade in {"conversa", "pergunta", "reacao", "deliberacao"} and not referencia_contextual:
             blocos.append(
@@ -405,7 +420,11 @@ def resumo_mente_integrada_para_prompt(
             "Dívida conversacional ativa: entregue o que foi prometido antes de mudar de assunto. "
             + " | ".join(map(str, partes_promessa))
         )
-    focos_dominio = dict(mente.get("focos_por_dominio") or {}) if usar_operacional else {}
+    focos_dominio = (
+        dict(mente.get("focos_por_dominio") or {})
+        if usar_operacional and not continuidade_geral_prompt
+        else {}
+    )
     if focos_dominio:
         focos_resumidos = []
         for dominio in ("app", "site", "musica", "arquivo", "iot"):
@@ -464,8 +483,8 @@ def resumo_mente_integrada_para_prompt(
                 f"preferir={', '.join(favoritos[:8]) or '-'}. "
                 "Não recomende artistas marcados para evitar."
             )
-    focos_prompt = [] if novo_assunto else [("foco_conversacional", "Foco conversacional")]
-    if usar_operacional:
+    focos_prompt = [] if novo_assunto or continuidade_geral_prompt else [("foco_conversacional", "Foco conversacional")]
+    if usar_operacional and not continuidade_geral_prompt:
         focos_prompt.append(("foco_operacional", "Foco operacional"))
     for nome_foco, rotulo in focos_prompt:
         topico_foco = str(mente.get(f"{nome_foco}_topico") or "").strip()
@@ -504,7 +523,7 @@ def resumo_mente_integrada_para_prompt(
             f"{mente.get('topico_explicito_atual')} | "
             f"origem={mente.get('topico_explicito_origem') or 'indefinida'}"
         )
-    if usar_operacional and mente.get("ultima_acao_intent"):
+    if usar_operacional and mente.get("ultima_acao_intent") and not continuidade_geral_prompt:
         blocos.append(
             "Ultima acao real: "
             f"intent={mente.get('ultima_acao_intent')} | "

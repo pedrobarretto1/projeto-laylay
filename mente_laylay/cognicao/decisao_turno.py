@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable
 
+from mente_laylay.cognicao.contratos_turno import ContratoDecisaoTurno
+
 
 def criar_contrato_decisao(
     turno: Dict[str, Any] | None,
@@ -28,18 +30,18 @@ def criar_contrato_decisao(
         proprietario = "operacional"
     else:
         proprietario = "conversa"
-    return {
-        "turno_id": planejamento.get("id") or leitura.get("id"),
-        "modalidade": modalidade,
-        "proprietario": proprietario,
-        "permite_acao": permite_acao,
-        "permite_resposta": True,
-        "requer_esclarecimento": bool(leitura.get("requer_esclarecimento")),
-        "intencao": "",
-        "origem_decisao": "classificador_turno",
-        "confianca": round(float(leitura.get("confianca") or 0.0), 3),
-        "status": "planejada",
-    }
+    return ContratoDecisaoTurno(
+        turno_id=planejamento.get("id") or leitura.get("id"),
+        modalidade=modalidade,
+        proprietario=proprietario,
+        permite_acao=permite_acao,
+        permite_resposta=True,
+        requer_esclarecimento=bool(leitura.get("requer_esclarecimento")),
+        intencao="",
+        origem_decisao="classificador_turno",
+        confianca=leitura.get("confianca") or 0.0,
+        status="planejada",
+    ).como_dict()
 
 
 def consolidar_arbitragem(
@@ -47,7 +49,7 @@ def consolidar_arbitragem(
     arbitragem: Dict[str, Any] | None,
 ) -> Dict[str, Any]:
     """Anexa o vencedor real ao contrato; ausência de vencedor não autoriza ação."""
-    novo = dict(contrato or {})
+    novo = ContratoDecisaoTurno.de_mapping(contrato).como_dict()
     resultado = dict(arbitragem or {})
     decisao = resultado.get("decisao") if isinstance(resultado.get("decisao"), dict) else {}
     intent = str(decisao.get("intent") or decisao.get("acao") or "").strip().upper()
@@ -75,7 +77,7 @@ def consolidar_arbitragem(
             origem_decisao=str(resultado.get("origem") or "arbitro_sem_vencedor"),
             status="sem_acao",
         )
-    return novo
+    return ContratoDecisaoTurno.de_mapping(novo).como_dict()
 
 
 def filtrar_comandos_pelo_turno(

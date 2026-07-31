@@ -450,6 +450,9 @@ def resolver_referencia_pontuada(
     contexto_musical = bool(re.search(r"\b(?:musica|som|faixa|cancao|toca|coloca)\b", t)) or operacao == "musica_do_referente"
     contexto_app = bool(re.search(r"\b(?:abre|fecha|janela|aplicativo|app|foco)\b", t))
     contexto_iot = bool(re.search(r"\b(?:liga|desliga|luz|lampada|ventilador|tomada)\b", t))
+    contexto_arquivo = bool(re.search(
+        r"\b(?:arquivo|pasta|documento|apaga|remove|exclui|move|renomeia)\b", t
+    ))
     ativo_id = str(estado.get("entidade_ativa_id") or "")
     candidatos = []
     for chave, entidade in recentes.items():
@@ -480,6 +483,8 @@ def resolver_referencia_pontuada(
             score += 0.30 if tipo in app_tipos else -0.20
         if contexto_iot:
             score += 0.35 if tipo in iot_tipos else -0.25
+        if contexto_arquivo:
+            score += 0.35 if tipo in {"arquivo", "pasta"} else -0.25
         score = max(0.0, min(1.0, score))
         candidatos.append({
             "chave": chave,
@@ -533,7 +538,7 @@ def resumo_registro_semantico_para_prompt(
         rotulo = (
             "memória do usuário; apenas contexto pessoal"
             if tipo_proveniencia == "memoria_usuario"
-            else "opinião de Pedro; não é fato externo"
+            else "opinião do usuário; não é fato externo"
             if proveniencia.get("subtipo") == "opiniao_usuario"
             else "opinião da Laylay; não é fato"
             if tipo_proveniencia == "opiniao"
@@ -559,7 +564,7 @@ def resumo_registro_semantico_para_prompt(
     if alegacoes_bloqueadas:
         partes.append("alegações_bloqueadas=" + " | ".join(alegacoes_bloqueadas[:3]))
     partes.append(
-        "Relatos e memórias de Pedro valem para preferências, identidade e experiências dele, não como prova "
+        "Relatos e memórias do usuário valem para preferências, identidade e experiências dele, não como prova "
         "sobre o mundo. Opiniões continuam subjetivas. Respostas da Laylay com estado incerto não são fatos. "
         "Alegações contestadas ou corrigidas não podem ser reutilizadas."
     )

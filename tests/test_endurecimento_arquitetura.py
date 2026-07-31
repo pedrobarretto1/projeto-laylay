@@ -95,7 +95,7 @@ def test_historico_persistido_e_compactado_preservando_sistema() -> None:
     assert compactado[-1]["content"] == "29"
 
 
-def test_fundamentacao_bloqueia_preferencia_e_genero_inventados() -> None:
+def test_fundamentacao_permite_preferencia_mas_bloqueia_genero_inventado() -> None:
     resultado = validar_fala_com_fundamentacao(
         "Eu adoro o estilo dele! Tenho medo de ele começar a fazer axé.",
         fundamentacao={"tema": "Rodrigo Zin", "confiavel": False},
@@ -103,7 +103,9 @@ def test_fundamentacao_bloqueia_preferencia_e_genero_inventados() -> None:
     )
 
     assert resultado["acao"] == "ajustada"
-    assert "familiaridade_inventada" in resultado["problemas"]
+    assert "familiaridade_inventada" not in resultado["problemas"]
+    assert "caracteristica_sem_evidencia" in resultado["problemas"]
+    assert "axé" not in resultado["fala"]
     assert "caracteristica_sem_evidencia" in resultado["problemas"]
 
 

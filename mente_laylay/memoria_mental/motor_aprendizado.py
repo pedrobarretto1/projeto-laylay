@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict
 from mente_laylay.memoria_mental.maturidade_aprendizado import (
     MaturidadeAprendizadoRuntime,
 )
+from mente_laylay.memoria_mental.estado_continuidades import sugestao_pendente_ativa
 
 
 def _normalizar(texto: Any) -> str:
@@ -533,6 +534,14 @@ class MotorAprendizadoRuntime:
             self.log(f"⚠️ [APRENDIZADO] confirmação de hipótese falhou: {erro}")
             return None
 
+    def esquecer_por_prefixo(self, prefixo: str) -> int:
+        """Revoga aprendizados de um namespace removido pelo usuário."""
+        try:
+            return int(self.memoria.esquecer_aprendizado_por_prefixo(prefixo))
+        except Exception as erro:
+            self.log(f"⚠️ [APRENDIZADO] revogação falhou: {erro}")
+            return 0
+
     def _candidata_curiosidade(self) -> Dict[str, Any] | None:
         try:
             candidatas = self.memoria.listar_hipoteses_aprendizado(status="candidata", limit=30)
@@ -569,7 +578,7 @@ class MotorAprendizadoRuntime:
             or not callable(self.agendar_fala) or not callable(self.continuidades_update)
         ):
             return {"revisadas": alteradas, "pesquisa": pesquisa, "curiosidade": "bloqueada"}
-        if callable(self.continuidades_get) and self.continuidades_get("comando_sugerido_estado", "NONE") != "NONE":
+        if sugestao_pendente_ativa(self.continuidades_get):
             return {"revisadas": alteradas, "pesquisa": pesquisa, "curiosidade": "outra_pendencia"}
         with self._lock:
             if self._curiosidade_em_andamento:
@@ -637,10 +646,19 @@ class MotorAprendizadoRuntime:
                 )
         return "HIPÓTESES APRENDIDAS E CONFIRMADAS:\n" + "\n".join(linhas) if linhas else ""
 
-    def executar(self, deve_parar: Callable[[], bool] | None = None, intervalo_s: float = 21600.0) -> None:
+    def executar(
+        self, deve_parar: Callable[[], bool] | None = None,
+        intervalo_s: float = 21600.0,
+        aguardar_fn: Callable[[float], bool] | None = None,
+    ) -> None:
         while not (callable(deve_parar) and deve_parar()):
             self.revisar_e_exercitar_curiosidade()
-            time.sleep(max(60.0, float(intervalo_s)))
+            espera = max(60.0, float(intervalo_s))
+            if callable(aguardar_fn):
+                if aguardar_fn(espera):
+                    break
+            else:
+                time.sleep(espera)
 
 
 def criar_motor_aprendizado_runtime(**kwargs: Any) -> MotorAprendizadoRuntime:

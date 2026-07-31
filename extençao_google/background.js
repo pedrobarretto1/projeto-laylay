@@ -3,6 +3,7 @@ let websocket = null;
 const WS_URL = "ws://localhost:8080";
 
 let lastTargetTabId = null;
+const pendingPlayerEvents = new Map();
 
 function safeJsonParse(text) {
   try { return JSON.parse(text); } catch (_) { return null; }
@@ -16,6 +17,20 @@ function sendWs(message) {
   } catch (_) {
     return false;
   }
+}
+
+function queuePlayerEvent(message) {
+  const eventId = String(message?.eventId || "").trim();
+  if (!eventId) return;
+  pendingPlayerEvents.set(eventId, message);
+  while (pendingPlayerEvents.size > 24) {
+    pendingPlayerEvents.delete(pendingPlayerEvents.keys().next().value);
+  }
+}
+
+function flushPendingPlayerEvents() {
+  if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
+  for (const message of pendingPlayerEvents.values()) sendWs(message);
 }
 
 function sendCommandResult(cmd, ok, detail = {}, tab = null) {
@@ -100,6 +115,66 @@ async function executeContentCommand(cmd, tab) {
     return { status: "error", message: attempt.error || "A página não respondeu ao comando" };
   }
   return attempt.response;
+}
+
+function waitForTabComplete(tabId, timeoutMs = 9000) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (tab) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+      resolve(tab || null);
+    };
+    const onUpdated = (id, info, tab) => {
+      if (id === tabId && info.status === "complete") finish(tab);
+    };
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    chrome.tabs.onUpdated.addListener(onUpdated);
+    chrome.tabs.get(tabId, (tab) => {
+      if (!chrome.runtime.lastError && tab?.status === "complete") finish(tab);
+    });
+  });
+}
+
+async function confirmYouTubeNavigation(cmd, tab, error = "", evidence = {}) {
+  if (error || !tab?.id) {
+    sendCommandResult(cmd, false, {
+      status: "error",
+      message: error || "A aba do YouTube não ficou disponível",
+      evidence,
+    }, tab);
+    return;
+  }
+  if (cmd?.action !== "youtube_play") {
+    sendCommandResult(cmd, true, {
+      status: "playlist_tab_updated",
+      evidence,
+    }, tab);
+    return;
+  }
+
+  const readyTab = await waitForTabComplete(tab.id);
+  if (!readyTab) {
+    sendCommandResult(cmd, false, {
+      status: "navigation_timeout",
+      message: "O vídeo não terminou de carregar a tempo",
+      evidence,
+    }, tab);
+    return;
+  }
+  const response = await executeContentCommand({
+    action: "youtube_control",
+    command: "play",
+    verify_playback: true,
+  }, readyTab);
+  const playing = response?.status === "success" && response?.evidence?.playing === true;
+  sendCommandResult(cmd, playing, {
+    status: playing ? "playing_confirmed" : (response?.status || "autoplay_blocked"),
+    message: playing ? "" : (response?.message || "O player não iniciou a reprodução"),
+    evidence: { ...evidence, ...(response?.evidence || {}), playing },
+  }, readyTab);
 }
 
 async function handleCommand(cmd) {
@@ -292,11 +367,10 @@ if (cmd.action === "open_url" || cmd.action === "youtube_play") {
             lastTargetTabId = sourceTab.id;
             if (!background) chrome.windows.update(sourceTab.windowId, { focused: true });
           }
-          sendCommandResult(cmd, !updateError, {
-            status: updateError ? "error" : "playlist_tab_updated",
-            message: updateError,
-            evidence: { reused: true, playlistTab: true },
-          }, updatedTab || sourceTab);
+          void confirmYouTubeNavigation(
+            cmd, updatedTab || sourceTab, updateError,
+            { reused: true, playlistTab: true },
+          );
         });
       });
       return;
@@ -308,24 +382,31 @@ if (cmd.action === "open_url" || cmd.action === "youtube_play") {
         if (chrome.runtime.lastError || !tab || !tab.id) {
           lastTargetTabId = null; // aba foi fechada
           // Se falhou, tenta a busca normal (Prioridade 2)
-          realizarBuscaYouTube(url, background);
+          realizarBuscaYouTube(url, background, cmd);
         } else if (tab.url && tab.url.includes("youtube.com")) {
           // Atualiza a mesma aba (é isso que queremos!)
           chrome.tabs.update(lastTargetTabId, { url: url, active: !background }, (updatedTab) => {
-            lastTargetTabId = updatedTab ? updatedTab.id : lastTargetTabId;
-            if (!background && tab.windowId) chrome.windows.update(tab.windowId, { focused: true });
-            console.log(`♻️ REUTILIZOU aba YouTube ID=${lastTargetTabId}`);
+            const updateError = chrome.runtime.lastError?.message || "";
+            if (!updateError) {
+              lastTargetTabId = updatedTab ? updatedTab.id : lastTargetTabId;
+              if (!background && tab.windowId) chrome.windows.update(tab.windowId, { focused: true });
+              console.log(`♻️ REUTILIZOU aba YouTube ID=${lastTargetTabId}`);
+            }
+            void confirmYouTubeNavigation(
+              cmd, updatedTab || tab, updateError,
+              { reused: true, playlistTab: true },
+            );
           });
         } else {
           // Se a aba existe mas não é YouTube, tenta a busca normal
-          realizarBuscaYouTube(url, background);
+          realizarBuscaYouTube(url, background, cmd);
         }
       });
       return;
     }
 
     // PRIORIDADE 2: Busca normal (caso lastTargetTabId tenha morrido)
-    realizarBuscaYouTube(url, background);
+    realizarBuscaYouTube(url, background, cmd);
     return;
   }
 
@@ -378,7 +459,7 @@ if (cmd.action === "open_url" || cmd.action === "youtube_play") {
 }
 
 // Função auxiliar para evitar repetição de código
-function realizarBuscaYouTube(url, background = false) {
+function realizarBuscaYouTube(url, background = false, cmd = null) {
   chrome.tabs.query({ url: "*://*.youtube.com/*" }, (tabs) => {
     let targetTab = tabs.find(t => t.url && (t.url.includes("/watch?v=") || t.url.includes("/watch"))) ||
                     tabs.find(t => t.url && t.url.includes("youtube.com")) ||
@@ -386,15 +467,29 @@ function realizarBuscaYouTube(url, background = false) {
 
     if (targetTab && targetTab.id) {
       chrome.tabs.update(targetTab.id, { url: url, active: !background }, (updatedTab) => {
-        lastTargetTabId = updatedTab ? updatedTab.id : targetTab.id;
-        if (!background && targetTab.windowId) chrome.windows.update(targetTab.windowId, { focused: true });
-        console.log(`♻️ REUTILIZOU aba YouTube ID=${lastTargetTabId}`);
+        const updateError = chrome.runtime.lastError?.message || "";
+        if (!updateError) {
+          lastTargetTabId = updatedTab ? updatedTab.id : targetTab.id;
+          if (!background && targetTab.windowId) chrome.windows.update(targetTab.windowId, { focused: true });
+          console.log(`♻️ REUTILIZOU aba YouTube ID=${lastTargetTabId}`);
+        }
+        if (cmd) void confirmYouTubeNavigation(
+          cmd, updatedTab || targetTab, updateError,
+          { reused: true, playlistTab: true },
+        );
       });
     } else {
       // Só cria nova se realmente não tiver nenhuma aba YouTube
       chrome.tabs.create({ url: url, active: !background }, (newTab) => {
-        lastTargetTabId = newTab ? newTab.id : null;
-        console.log("🆕 Criou nova aba YouTube (nenhuma encontrada)");
+        const createError = chrome.runtime.lastError?.message || "";
+        if (!createError) {
+          lastTargetTabId = newTab ? newTab.id : null;
+          console.log("🆕 Criou nova aba YouTube (nenhuma encontrada)");
+        }
+        if (cmd) void confirmYouTubeNavigation(
+          cmd, newTab, createError,
+          { reused: false, playlistTab: true },
+        );
       });
     }
   });
@@ -764,11 +859,16 @@ function connectWebSocket() {
       message: "Extension connected",
     });
     sendActiveTabInfo(true);
+    flushPendingPlayerEvents();
   };
 
   websocket.onmessage = async (event) => {
     const cmd = safeJsonParse(event.data);
     if (!cmd) return;
+    if (cmd.type === "PLAYER_EVENT_ACK") {
+      pendingPlayerEvents.delete(String(cmd.eventId || ""));
+      return;
+    }
     if (cmd.type !== "ping") console.log("[Laylay] Comando recebido:", cmd);
     await handleCommand(cmd);
   };
@@ -796,6 +896,7 @@ setInterval(() => {
     connectWebSocket();
   } else if (websocket.readyState === WebSocket.OPEN) {
     websocket.send(JSON.stringify({ type: "ping", message: "heartbeat" }));
+    flushPendingPlayerEvents();
   }
 }, 5000);
 
@@ -807,12 +908,18 @@ chrome.runtime.onMessage.addListener((request, sender) => {
     }
     return;
   }
+  const source = sender?.tab ? { tabId: sender.tab.id ?? null, windowId: sender.tab.windowId ?? null } : {};
+  const outgoing = request && typeof request === "object" && (request.type === "USER_CONTEXT" || request.type === "PLAYER_EVENT" || request.action === "title_update" || request.action === "user_context")
+    ? { type: "USER_CONTEXT", ...request, ...source }
+    : { ...request, ...source };
+  if (request?.type === "PLAYER_EVENT" && request?.event === "video_ended") {
+    queuePlayerEvent(outgoing);
+  }
   if (websocket && websocket.readyState === WebSocket.OPEN) {
-    const source = sender?.tab ? { tabId: sender.tab.id ?? null, windowId: sender.tab.windowId ?? null } : {};
-    if (request && typeof request === "object" && (request.type === "USER_CONTEXT" || request.type === "PLAYER_EVENT" || request.action === "title_update" || request.action === "user_context")) {
-      websocket.send(JSON.stringify({ type: "USER_CONTEXT", ...request, ...source }));
+    if (outgoing && typeof outgoing === "object") {
+      websocket.send(JSON.stringify(outgoing));
     } else {
-      websocket.send(JSON.stringify({ ...request, ...source }));
+      websocket.send(JSON.stringify(request));
     }
   } else {
     console.warn("[Laylay] WS fora do ar. Reconectando...");

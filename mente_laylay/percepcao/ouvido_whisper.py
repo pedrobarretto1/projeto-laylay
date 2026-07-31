@@ -97,18 +97,6 @@ def extrair_comando_com_ativacao(texto: str) -> tuple[bool, str]:
     return True, str(match.group(1) or "").strip()
 
 
-def comando_curto_modo_jogo(texto: str) -> bool:
-    t = re.sub(r"\s+", " ", str(texto or "").casefold()).strip()
-    if not t or len(t) > 120 or len(t.split()) > 16:
-        return False
-    return bool(re.search(
-        r"\b(?:liga|ligar|desliga|desligar|acende|apaga|volume|aumenta|diminui|muta|"
-        r"pausa|pausar|continua|pr[oó]xima|anterior|abre|abrir|fecha|fechar|"
-        r"lembra|avisa|brilho|clara|escura|vermelh|azul|verde|rosa|roxo)\b",
-        t,
-    ))
-
-
 class OuvidoWhisperRuntime:
     """Captura voz com sounddevice e entrega a transcrição à mente única."""
 
@@ -132,6 +120,7 @@ class OuvidoWhisperRuntime:
         log: Callable[..., Any] = print,
         env_getter: Callable[[str, str], str] | None = None,
         deve_continuar: Callable[[], bool] | None = None,
+        atividade_visual: Callable[[str], Any] | None = None,
         monotonic: Callable[[], float] = time.monotonic,
         entrega_assincrona: bool = True,
     ) -> None:
@@ -152,6 +141,7 @@ class OuvidoWhisperRuntime:
         self.log = log
         self.env_getter = env_getter or (lambda nome, padrao="": os.getenv(nome, padrao))
         self.deve_continuar = deve_continuar or (lambda: True)
+        self.atividade_visual = atividade_visual
         self.monotonic = monotonic
         self.entrega_assincrona = bool(entrega_assincrona)
         self._lock_transcricao = threading.Lock()
@@ -339,7 +329,7 @@ class OuvidoWhisperRuntime:
             self._confirmacao_pendente = {}
             self._ativado_ate = 0.0
             if original and not self._duplicado_recente(original, agora):
-                self.log(f"🎙️ [OUVIDO] Comando confirmado por Pedro: {original}")
+                self.log(f"🎙️ [OUVIDO] Comando confirmado pelo usuário: {original}")
                 self.processar_texto(original)
             return True
         # Repetir o mesmo comando é uma confirmação natural, especialmente
@@ -356,7 +346,7 @@ class OuvidoWhisperRuntime:
         if resposta in {"nao", "não", "cancela", "cancelar", "errado", "nao foi", "não foi"}:
             self._confirmacao_pendente = {}
             self._ativado_ate = 0.0
-            self.log("🎙️ [OUVIDO] Transcrição rejeitada por Pedro.")
+            self.log("🎙️ [OUVIDO] Transcrição rejeitada pelo usuário.")
             return True
         return False
 
@@ -391,7 +381,7 @@ class OuvidoWhisperRuntime:
                 vetor,
                 language="pt",
                 initial_prompt=(
-                    "Comando curto dito por Pedro para Laylay. Ligar, desligar, luz, "
+                    "Comando curto dito pelo usuário para Laylay. Ligar, desligar, luz, "
                     "lâmpada, ventilador, brilho, volume. "
                     + (f"Vocabulário atual: {prompt_dinamico}." if prompt_dinamico else "")
                 ),
@@ -456,6 +446,15 @@ class OuvidoWhisperRuntime:
         return ouvido in referencia or SequenceMatcher(None, ouvido, referencia).ratio() >= 0.78
 
     def _entregar(self, audio: Any) -> None:
+        if callable(self.atividade_visual):
+            self.atividade_visual("listening")
+        try:
+            self._entregar_impl(audio)
+        finally:
+            if callable(self.atividade_visual):
+                self.atividade_visual("idle")
+
+    def _entregar_impl(self, audio: Any) -> None:
         with self._lock_transcricao:
             if not bool(self.escuta_permitida()):
                 return
@@ -575,20 +574,22 @@ class OuvidoWhisperRuntime:
             if self._comando_sensivel(comando):
                 self._pedir_confirmacao(comando, confianca, "acao_sensivel")
                 return
-            if bool(self.modo_jogo_ativo()) and not comando_curto_modo_jogo(comando):
-                self.log("🎮 [OUVIDO] Fala longa ou não operacional ignorada durante o modo jogo.")
-                return
             # O modo pode ter mudado enquanto o Whisper processava a frase.
             if not bool(self.escuta_permitida()):
                 return
             if self._duplicado_recente(comando, agora):
                 self.log("🎙️ [OUVIDO] Comando duplicado recente descartado.")
                 return
-            self.log(f"🎙️ [OUVIDO] Pedro: {comando}")
+            self.log(f"🎙️ [OUVIDO] Usuário: {comando}")
             try:
+                if callable(self.atividade_visual):
+                    self.atividade_visual("thinking")
                 self.processar_texto(comando)
             except Exception as erro:
                 self.log(f"⚠️ [OUVIDO] Falha ao entregar a fala para a mente: {erro}")
+            finally:
+                if callable(self.atividade_visual):
+                    self.atividade_visual("idle")
 
     def _agendar_entrega(self, audio: Any) -> None:
         if not self.entrega_assincrona:
@@ -612,8 +613,11 @@ class OuvidoWhisperRuntime:
         self._fila_audio.put_nowait(audio)
 
     def _consumir_fila_audio(self) -> None:
-        while True:
-            audio = self._fila_audio.get()
+        while self.deve_continuar():
+            try:
+                audio = self._fila_audio.get(timeout=0.25)
+            except queue.Empty:
+                continue
             try:
                 self._entregar(audio)
             finally:
@@ -626,7 +630,13 @@ class OuvidoWhisperRuntime:
         try:
             sd, np = self._dependencias()
             indice, info = self.selecionar_dispositivo()
-            self.carregar_modelo()
+            carregar_no_inicio = self._env(
+                "LAYLAY_WHISPER_CARREGAR_NO_INICIO", "0"
+            ).casefold() in {"1", "true", "sim", "yes", "on", "ligado"}
+            if carregar_no_inicio:
+                self.carregar_modelo()
+            else:
+                self.log("🎙️ [OUVIDO] Whisper será carregado somente na primeira fala.")
         except Exception as erro:
             self.log(f"⚠️ [OUVIDO] Não consegui iniciar o microfone: {erro}")
             raise RuntimeError("falha ao iniciar captura do microfone") from erro
@@ -649,13 +659,13 @@ class OuvidoWhisperRuntime:
         ultimo_log_nivel = self.monotonic()
         ultimo_fim_fala = 0.0
         pausado_por_contexto = False
+        calibracao_anunciada = False
 
         nome = self._nome_dispositivo(info)
         origem = str(getattr(self, "_origem_dispositivo", "padrão do sistema"))
         self.log(
             f"🎙️ [OUVIDO] Entrada: {nome} (índice {indice}, {self.taxa_captura} Hz, {origem})."
         )
-        self.log(f"🎙️ [OUVIDO] Calibrando o ruído ambiente por {calibracao_s:.1f} segundo...")
         try:
             with sd.InputStream(
                 device=indice,
@@ -681,6 +691,11 @@ class OuvidoWhisperRuntime:
                         self.log("🎙️ [OUVIDO] Retomado após sair do modo chat.")
                         pausado_por_contexto = False
                         ultimo_fim_fala = agora
+                    if not calibrado and not calibracao_anunciada:
+                        self.log(
+                            f"🎙️ [OUVIDO] Calibrando o ruído ambiente por {calibracao_s:.1f} segundo..."
+                        )
+                        calibracao_anunciada = True
                     falando = bool(self.esta_falando())
                     if falando:
                         self._ultima_fala_laylay_ts = agora

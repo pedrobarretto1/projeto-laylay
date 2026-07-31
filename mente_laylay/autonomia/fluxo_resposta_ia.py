@@ -7,20 +7,17 @@ from mente_laylay.autonomia.pre_fluxo_contextual import (
     executar_pipeline_pre_fluxo,
     processar_aprendizado_apelido,
     processar_bloqueio_playlist_temporario,
-    processar_correcao_temporal,
-    processar_elogio_ou_agradecimento,
+    processar_consulta_sistema_local,
     processar_encerramento_conversa,
     processar_execucao_pratica_precoce,
     processar_feedback_pendente,
-    processar_identidade_usuario,
     processar_fluxo_musical_generico,
     processar_opiniao_musica_atual,
-    processar_pergunta_aberta,
+    processar_identidade_usuario,
     processar_pergunta_curta_contextual,
     processar_resposta_pendencia_prioritaria,
-    processar_reparacao_conversacional,
+    processar_continuacao_visao_jogo,
     processar_sugestao_indireta,
-    responder_conversa_social_curta,
 )
 
 
@@ -30,13 +27,15 @@ def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     return default
 
 def processar_inicio_fluxo_resposta_ia(ctx: Dict[str, Any], texto: str) -> bool:
-    current_emotion = _get(ctx, "current_emotion", "calma")
-    emotion_level = _get(ctx, "emotion_level", 1)
     t = str(texto or "").strip()
     if not t:
         return True
 
-    encerrado, etapa_encerramento = processar_encerramento_conversa(ctx, t)
+    encerrado, etapa_encerramento = processar_encerramento_conversa(
+        ctx, t, emitir_fala=False,
+    )
+    if etapa_encerramento:
+        print(f"🧭 [PRE-FLUXO] {etapa_encerramento} | resposta reservada para a LLM")
     if encerrado:
         print(f"🧭 [PRE-FLUXO] {etapa_encerramento}")
         return True
@@ -64,28 +63,15 @@ def processar_inicio_fluxo_resposta_ia(ctx: Dict[str, Any], texto: str) -> bool:
 
     evento_temporal = evento_temporal if isinstance(evento_temporal, dict) else {}
     tipo_evento_temporal = str(evento_temporal.get("tipo") or "")
-    falar_temporal = _get(ctx, "falar_com_lipsync")
-    if tipo_evento_temporal == "confirmacao_conclusao_necessaria":
-        candidatos = [str(item) for item in evento_temporal.get("candidatos") or []]
-        nomes = "; ou ".join(candidatos[:3])
-        if callable(falar_temporal):
-            falar_temporal(
-                f"Quero registrar isso direito: você terminou {nomes}?",
-                "curiosa", 1,
-            )
-        return True
-    if tipo_evento_temporal == "conclusao_confirmada":
-        assunto = str(evento_temporal.get("assunto") or "essa pendência")
-        if callable(falar_temporal):
-            falar_temporal(
-                f"Agora entendi. Marquei {assunto} como concluído na nossa linha do tempo.",
-                "carinhosa", 1,
-            )
-        return True
-    if tipo_evento_temporal == "conclusao_cancelada":
-        if callable(falar_temporal):
-            falar_temporal("Certo, não encerrei nenhuma pendência.", "calma", 1)
-        return True
+    if tipo_evento_temporal in {
+        "confirmacao_conclusao_necessaria",
+        "conclusao_confirmada",
+        "conclusao_cancelada",
+    }:
+        print(
+            "🧠 [TEMPO] estado atualizado sem fala local | "
+            f"evento={tipo_evento_temporal}"
+        )
 
     mente_turno = _get(ctx, "mente_integrada_estado", {})
     pendencia_turno = mente_turno.get("pendencia_atual") if isinstance(mente_turno, dict) else {}
@@ -106,17 +92,29 @@ def processar_inicio_fluxo_resposta_ia(ctx: Dict[str, Any], texto: str) -> bool:
     modalidade_atual = str(
         turno_atual.get("modalidade_geral") or turno_atual.get("modalidade") or "conversa"
     ).lower()
+    turno_sem_execucao = bool(
+        not turno_atual.get("autoriza_execucao")
+        and modalidade_atual != "comando"
+    )
     usar_ia_principal_semantica = bool(
-        _get(ctx, "_semantica_na_resposta_principal", False)
-        and not turno_atual.get("autoriza_execucao")
-        and modalidade_atual not in {"comando", "confirmacao", "recusa", "correcao"}
-        and modalidade_atual == "misto"
+        turno_sem_execucao
+        or (
+            _get(ctx, "_semantica_na_resposta_principal", False)
+            and modalidade_atual == "misto"
+        )
     )
 
     etapas = [
+        # Identidade explícita precisa vencer conversa e interpretação por IA;
+        # só assim o nome confirmado se torna a fonte única da sessão.
         lambda: processar_identidade_usuario(ctx, t),
-        lambda: processar_correcao_temporal(ctx, t),
-        lambda: processar_reparacao_conversacional(ctx, t),
+        # Reações como "ficou rosa" pertencem ao resultado da ação recém
+        # executada, não ao tópico de conversa que existia antes do comando.
+        lambda: processar_consulta_sistema_local(ctx, t),
+        # Uma análise visual pode ter pedido classe, build ou qualquer outro
+        # detalhe livre. Essa continuação pertence ao mesmo fio antes dos
+        # atalhos sociais e da IA genérica.
+        lambda: processar_continuacao_visao_jogo(ctx, t),
     ]
     if not usar_ia_principal_semantica:
         etapas.append(lambda: processar_opiniao_musica_atual(ctx, t))
@@ -128,10 +126,6 @@ def processar_inicio_fluxo_resposta_ia(ctx: Dict[str, Any], texto: str) -> bool:
         lambda: processar_feedback_pendente(ctx, t),
         lambda: processar_execucao_pratica_precoce(ctx, t),
     ])
-    if not usar_ia_principal_semantica:
-        etapas.append(lambda: processar_elogio_ou_agradecimento(
-            ctx, t, emocao=current_emotion or "calma", nivel=emotion_level or 1
-        ))
     etapas.extend([
         lambda: processar_bloqueio_playlist_temporario(ctx, t),
         lambda: processar_fluxo_musical_generico(ctx, t),
@@ -139,19 +133,7 @@ def processar_inicio_fluxo_resposta_ia(ctx: Dict[str, Any], texto: str) -> bool:
         lambda: processar_pergunta_curta_contextual(ctx, t),
     ])
 
-    if usar_ia_principal_semantica:
-        _log("semantica_na_resposta_principal", "atalhos sociais locais ignorados")
-    else:
-        # Mantém exatamente a ordem legada quando a resposta principal não
-        # estiver responsável pela compreensão do turno.
-        etapas.extend([
-            lambda: processar_pergunta_aberta(
-                ctx, t, emocao=current_emotion or "calma", nivel=emotion_level or 1
-            ),
-            lambda: responder_conversa_social_curta(
-                ctx, t, emocao=current_emotion or "calma", nivel=emotion_level or 1
-            ),
-        ])
+    _log("voz_unica_llm", "conversa reservada para a LLM")
     etapas.append(lambda: processar_aprendizado_apelido(ctx, t))
 
     if executar_pipeline_pre_fluxo(ctx, t, etapas, log_cb=_log):

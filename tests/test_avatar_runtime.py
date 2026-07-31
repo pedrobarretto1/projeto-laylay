@@ -1,5 +1,6 @@
 from pathlib import Path
 import threading
+import time
 
 from cliente.avatar_laylay import FPS_ANIMACAO, INTERVALO_ANIMACAO_MS
 from mente_laylay.personalidade.avatar_runtime import (
@@ -8,6 +9,7 @@ from mente_laylay.personalidade.avatar_runtime import (
     descobrir_assets_avatar,
     normalizar_emocao_avatar,
     normalizar_estado_avatar,
+    normalizar_atividade_avatar,
     normalizar_nome_asset,
     processo_pai_esta_ativo,
     resolver_asset_avatar,
@@ -31,9 +33,9 @@ def test_movimento_visual_e_sutil_e_pode_ser_desativado():
     assert calcular_deslocamento_avatar(1.25, falando=True, movimento_ativo=False) == 0
 
 
-def test_avatar_anima_em_quinze_frames_por_segundo():
-    assert FPS_ANIMACAO == 15
-    assert INTERVALO_ANIMACAO_MS == 67
+def test_avatar_anima_em_trinta_frames_por_segundo():
+    assert FPS_ANIMACAO == 30
+    assert INTERVALO_ANIMACAO_MS == 33
 
 
 def test_supervisor_reconhece_processo_pai_e_pid_reutilizado():
@@ -172,10 +174,32 @@ def test_normaliza_estado_visual_sem_vazar_objetos_internos():
         "emotion": "animada",
         "level": 3,
         "speaking": True,
+        "activity": "speaking",
+        "intensity": 1.0,
+        "reaction_id": "",
     }
 
     irritada = normalizar_estado_avatar({"emotion": "irritada", "level": 2})
     assert irritada["emotion"] == "brava"
+
+
+def test_normaliza_atividade_visual_e_mantem_compatibilidade():
+    assert normalizar_atividade_avatar("ouvindo") == "listening"
+    assert normalizar_atividade_avatar("pensando") == "thinking"
+    assert normalizar_atividade_avatar("executando") == "executing"
+    assert normalizar_atividade_avatar("concluído") == "success"
+    assert normalizar_atividade_avatar("falha") == "error"
+    assert normalizar_atividade_avatar("estado desconhecido") == "idle"
+
+    estado = normalizar_estado_avatar({
+        "emotion": "feliz",
+        "activity": "sucesso",
+        "intensity": 9,
+        "reaction_id": "turno-42",
+    })
+    assert estado["activity"] == "success"
+    assert estado["intensity"] == 1.0
+    assert estado["reaction_id"] == "turno-42"
 
 
 def test_avatar_desativado_nao_abre_processo(tmp_path: Path):
@@ -203,6 +227,80 @@ def test_assets_ausentes_nao_impedem_a_assistente(tmp_path: Path):
 
     assert runtime.iniciar() is False
     assert any("recurso ausente" in mensagem for mensagem in logs)
+
+
+def test_avatar_encaminha_falha_de_abertura_sem_parar_a_assistente(tmp_path: Path):
+    pasta_avatar = tmp_path / "avatar" / "calma"
+    pasta_avatar.mkdir(parents=True)
+    (pasta_avatar / "laylay_calma.png").touch()
+    (pasta_avatar / "laylay_calma_falando.png").touch()
+    pasta_cliente = tmp_path / "cliente"
+    pasta_cliente.mkdir()
+    (pasta_cliente / "avatar_laylay.py").touch()
+    falhas = []
+    runtime = AvatarRuntime(
+        raiz_projeto=tmp_path,
+        estado_getter=lambda: {},
+        popen=lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("sem processo")),
+        registrar_falha=lambda *args, **kwargs: falhas.append((args, kwargs)),
+        log=lambda _texto: None,
+    )
+
+    assert runtime.iniciar() is False
+    assert falhas[0][0] == ("avatar", "abertura_janela")
+    assert isinstance(falhas[0][1]["erro"], OSError)
+
+
+def test_widget_fixado_impede_avatar_python_e_fallback_volta(tmp_path: Path):
+    pasta_avatar = tmp_path / "avatar" / "calma"
+    pasta_avatar.mkdir(parents=True)
+    (pasta_avatar / "laylay_calma.png").write_bytes(b"")
+    (pasta_avatar / "laylay_calma_falando.png").write_bytes(b"")
+    pasta_cliente = tmp_path / "cliente"
+    pasta_cliente.mkdir()
+    (pasta_cliente / "avatar_laylay.py").write_text("", encoding="utf-8")
+    externo = [True]
+    processos = []
+
+    class Processo:
+        def __init__(self):
+            self.encerrado = False
+
+        def poll(self):
+            return 0 if self.encerrado else None
+
+        def wait(self, timeout=None):
+            self.encerrado = True
+            return 0
+
+        def terminate(self):
+            self.encerrado = True
+
+    def abrir(*_args, **_kwargs):
+        processo = Processo()
+        processos.append(processo)
+        return processo
+
+    runtime = AvatarRuntime(
+        raiz_projeto=tmp_path,
+        estado_getter=lambda: {},
+        visual_externo_disponivel=lambda: externo[0],
+        popen=abrir,
+        intervalo=0.05,
+        log=lambda _texto: None,
+    )
+
+    assert runtime.iniciar() is True
+    assert processos == []
+    externo[0] = False
+    for _ in range(20):
+        if processos:
+            break
+        time.sleep(0.03)
+    try:
+        assert len(processos) == 1
+    finally:
+        runtime.parar()
 
 
 def test_avatar_comeca_a_falar_somente_depois_do_play():

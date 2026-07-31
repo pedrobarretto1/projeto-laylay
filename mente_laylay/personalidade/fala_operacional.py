@@ -219,9 +219,9 @@ def _opcoes_status(status: str, alvo: str) -> list[str]:
             f"Puxei {alvo}. A trilha está por conta dela agora.",
         ],
         "playlist_aberta": [
-            f"Abri {alvo}. Agora é só deixar a playlist conduzir.",
-            f"{alvo} já está tocando o turno dela.",
-            f"Puxei a playlist {alvo}. Som em movimento.",
+            f"Abri {alvo} e enviei a primeira faixa.",
+            f"{alvo} já está aberta; deixei a primeira faixa no navegador.",
+            f"Puxei a playlist {alvo}. O navegador ficou com a primeira faixa.",
         ],
         "playlist_deletada": [
             f"Apaguei a playlist {alvo}. Ela saiu do palco.",

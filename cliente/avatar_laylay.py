@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 import socket
 import sys
@@ -22,7 +23,7 @@ from mente_laylay.personalidade.avatar_runtime import (  # noqa: E402
 )
 
 
-FPS_ANIMACAO = 15
+FPS_ANIMACAO = 30
 INTERVALO_ANIMACAO_MS = round(1000 / FPS_ANIMACAO)
 
 
@@ -49,8 +50,13 @@ class JanelaAvatar:
         self.parent_pid = max(0, int(parent_pid or 0))
         self.parent_started = max(0.0, float(parent_started or 0.0))
         self._proxima_verificacao_pai = 0.0
+        self._proximo_reforco_topmost = 0.0
         self.emocao = "calma"
         self.falando = False
+        self.atividade = "idle"
+        self.intensidade = 0.33
+        self._reacao_id = ""
+        self._inicio_reacao = 0.0
         self._emocao_pendente = ""
         self._troca_emocao_agendada: str | None = None
         self._frame_atual = ""
@@ -83,10 +89,18 @@ class JanelaAvatar:
             borderwidth=0,
         )
         self.canvas.pack()
+        self.item_aura = self.canvas.create_oval(
+            10, 10, self.tamanho - 10, self.tamanho - 10,
+            outline="", width=2,
+        )
         self.item_imagem = self.canvas.create_image(
             self.tamanho // 2,
             self.tamanho // 2,
             anchor="center",
+        )
+        self.item_estado = self.canvas.create_oval(
+            self.tamanho - 30, 14, self.tamanho - 14, 30,
+            fill="", outline="", width=0,
         )
         self._criar_menu()
         self._vincular_eventos()
@@ -181,22 +195,79 @@ class JanelaAvatar:
 
     def _animar_movimento(self) -> None:
         try:
+            agora = time.monotonic()
             deslocamento = calcular_deslocamento_avatar(
-                time.monotonic() - self._inicio_animacao,
+                agora - self._inicio_animacao,
                 falando=self.falando,
                 movimento_ativo=bool(self.movimento_sutil.get()),
             )
+            deslocamento_x = 0
+            if self.movimento_sutil.get():
+                tempo = agora - self._inicio_animacao
+                if self.atividade == "listening":
+                    deslocamento += round(abs(math.sin(tempo * 3.0)) * 1.5)
+                elif self.atividade == "thinking":
+                    deslocamento_x = round(math.sin(tempo * 2.1) * 1.4)
+                elif self.atividade == "executing":
+                    deslocamento += round(math.sin(tempo * 8.0) * 1.8)
+                idade_reacao = agora - self._inicio_reacao
+                if self.atividade == "success" and idade_reacao < 0.75:
+                    deslocamento -= round(abs(math.sin(idade_reacao * 8.4)) * 7)
+                elif self.atividade == "error" and idade_reacao < 0.7:
+                    deslocamento_x += round(math.sin(idade_reacao * 38.0) * 5 * (1 - idade_reacao / 0.7))
             self.canvas.coords(
                 self.item_imagem,
-                self.tamanho // 2,
+                self.tamanho // 2 + deslocamento_x,
                 self.tamanho // 2 + deslocamento,
             )
+            self._atualizar_indicador_atividade(agora)
             self.root.after(INTERVALO_ANIMACAO_MS, self._animar_movimento)
         except self.tk.TclError:
             pass
 
-    def _aplicar_estado_visual(self, emocao: str, falando: bool) -> None:
+    def _atualizar_indicador_atividade(self, agora: float) -> None:
+        cores = {
+            "listening": "#60A5FA",
+            "thinking": "#A78BFA",
+            "executing": "#38BDF8",
+            "success": "#34D399",
+            "error": "#FB7185",
+        }
+        cor = cores.get(self.atividade, "")
+        if not cor:
+            self.canvas.itemconfigure(self.item_aura, outline="")
+            self.canvas.itemconfigure(self.item_estado, fill="")
+            return
+        pulso = (math.sin((agora - self._inicio_animacao) * 5.0) + 1.0) / 2.0
+        margem = 8 + round(pulso * 2)
+        self.canvas.coords(self.item_aura, margem, margem, self.tamanho - margem, self.tamanho - margem)
+        self.canvas.itemconfigure(self.item_aura, outline=cor, width=1 + round(pulso * 2))
+        self.canvas.coords(
+            self.item_estado,
+            self.tamanho - 30, 14, self.tamanho - 14, 30,
+        )
+        self.canvas.itemconfigure(self.item_estado, fill=cor)
+
+    def _aplicar_estado_visual(
+        self,
+        emocao: str,
+        falando: bool,
+        atividade: str = "idle",
+        intensidade: float = 0.33,
+        reacao_id: str = "",
+    ) -> None:
         emocao = str(emocao or "calma")
+        atividade = str(atividade or "idle")
+        if reacao_id and reacao_id != self._reacao_id:
+            self._reacao_id = reacao_id
+            self._inicio_reacao = time.monotonic()
+        elif atividade != self.atividade and atividade in {"success", "error"}:
+            self._inicio_reacao = time.monotonic()
+        self.atividade = "speaking" if falando else atividade
+        try:
+            self.intensidade = max(0.0, min(1.0, float(intensidade)))
+        except (TypeError, ValueError):
+            self.intensidade = 0.33
         if falando:
             # A emoção da voz tem prioridade e precisa aparecer junto do áudio.
             if self._troca_emocao_agendada is not None:
@@ -242,6 +313,9 @@ class JanelaAvatar:
 
     def _ler_eventos(self) -> None:
         agora = time.monotonic()
+        if agora >= self._proximo_reforco_topmost:
+            self._proximo_reforco_topmost = agora + 0.75
+            self._reforcar_topmost_sem_ativar()
         if self.parent_pid and agora >= self._proxima_verificacao_pai:
             self._proxima_verificacao_pai = agora + 0.35
             if not processo_pai_esta_ativo(self.parent_pid, self.parent_started):
@@ -258,12 +332,32 @@ class JanelaAvatar:
                     self._aplicar_estado_visual(
                         str(mensagem.get("emotion") or "calma"),
                         bool(mensagem.get("speaking", False)),
+                        str(mensagem.get("activity") or "idle"),
+                        mensagem.get("intensity", 0.33),
+                        str(mensagem.get("reaction_id") or ""),
                     )
         except BlockingIOError:
             pass
         except (OSError, ValueError, UnicodeError):
             pass
         self.root.after(50, self._ler_eventos)
+
+    def _reforcar_topmost_sem_ativar(self) -> None:
+        """Mantém o avatar sobre jogos borderless sem tomar teclado ou mouse."""
+        if sys.platform != "win32" or not bool(self.sempre_visivel.get()):
+            return
+        try:
+            import ctypes
+
+            hwnd = int(self.root.winfo_id() or 0)
+            pai = int(ctypes.windll.user32.GetParent(hwnd) or 0)
+            hwnd = pai or hwnd
+            ctypes.windll.user32.SetWindowPos(
+                hwnd, -1, 0, 0, 0, 0,
+                0x0001 | 0x0002 | 0x0010 | 0x0200,
+            )
+        except Exception:
+            pass
 
     def _iniciar_arraste(self, evento: Any) -> None:
         self._inicio_arraste = (evento.x_root, evento.y_root, self.root.winfo_x(), self.root.winfo_y())
@@ -288,6 +382,8 @@ class JanelaAvatar:
         self.tamanho = max(120, min(520, int(tamanho)))
         self.canvas.configure(width=self.tamanho, height=self.tamanho)
         self.canvas.coords(self.item_imagem, self.tamanho // 2, self.tamanho // 2)
+        self.canvas.coords(self.item_aura, 10, 10, self.tamanho - 10, self.tamanho - 10)
+        self.canvas.coords(self.item_estado, self.tamanho - 30, 14, self.tamanho - 14, 30)
         self.root.geometry(f"{self.tamanho}x{self.tamanho}")
         self._frame_atual = ""
         self._mostrar_frame(forcar=True)

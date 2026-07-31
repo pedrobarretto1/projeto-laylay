@@ -6,12 +6,20 @@ import re
 import time
 from typing import Any, Dict, Iterable
 
-from mente_laylay.cognicao.coerencia_temporal import ajustar_fala_ao_periodo
-from mente_laylay.personalidade.ritmo_natural import ajustar_encerramento_organico
 from mente_laylay.especialistas.coordenador import registrar_resultado_operacional
 from mente_laylay.cognicao.fundamentacao_factual import validar_fala_com_fundamentacao
 from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
+from mente_laylay.cognicao.guardiao_realidade_pessoal import (
+    detectar_experiencia_pessoal_inventada,
+    remover_trechos_de_realidade_inventada,
+)
 from mente_laylay.cognicao.decisao_turno import criar_contrato_decisao
+from mente_laylay.cognicao.contratos_turno import PlanoTurnoDict
+from mente_laylay.percepcao.ritmo_circadiano import (
+    detectar_consulta_horario,
+    responder_consulta_horario,
+)
+from mente_laylay.personalidade.proporcao_resposta import ajustar_proporcao_resposta
 
 
 _REFERENCIAS_CURTAS = re.compile(
@@ -30,25 +38,19 @@ _MARCADORES_TEMPO = re.compile(
     r"\b(?:hora|horário|horario|manhã|manha|tarde|noite|madrugada|hoje|agora)\b",
     re.IGNORECASE,
 )
-_FALAS_VAGAS = (
-    "estou aqui, me fala o proximo passo",
-    "estou aqui, me fala o próximo passo",
-    "tem uma ideia boa ai",
-    "tem uma ideia boa aí",
-    "lado mais humano disso",
-    "deixar a ideia respirar",
-    "lado mais vivo da coisa",
-)
 _VAZAMENTO_INTERNO = re.compile(
     r"^\s*[\[{].*(?:comandos?|aprendizados?|humor|intent|params)\s*[\"']?\s*:",
     re.IGNORECASE | re.DOTALL,
 )
+_ESTADO_TECNICO_LLM = re.compile(r"^__LAYLAY_LLM_[A-Z_]+__$")
 _ALEGACAO_EXECUCAO = re.compile(
     r"\b(?:pronto|feito|executei|abri|fechei|liguei|desliguei|toquei|coloquei|criei|apaguei|agendei)\b",
     re.IGNORECASE,
 )
 _ADMITE_NAO_EXECUCAO = re.compile(
-    r"\b(?:não consegui|nao consegui|não executei|nao executei|preciso que|qual|confirma|não entendi|nao entendi)\b",
+    r"\b(?:não consegui|nao consegui|não executei|nao executei|"
+    r"não ficou pronta|nao ficou pronta|não vou inventar|nao vou inventar|"
+    r"não vou fingir|nao vou fingir|preciso que|qual|confirma|não entendi|nao entendi)\b",
     re.IGNORECASE,
 )
 
@@ -92,7 +94,7 @@ def planejar_turno(
     turno: Dict[str, Any] | None = None,
     mente: Dict[str, Any] | None = None,
     periodo: str = "",
-) -> Dict[str, Any]:
+) -> PlanoTurnoDict:
     """Transforma a leitura do turno em um compromisso explícito da mente."""
     leitura = dict(turno or {})
     estado = dict(mente or {})
@@ -156,6 +158,7 @@ def planejar_turno(
 
     plano = {
         "id": int(leitura.get("id") or time.time_ns()),
+        "origem_entrada": str(leitura.get("origem_entrada") or "desconhecida"),
         "texto_usuario": str(texto or "").strip()[:500],
         "modalidade": str(leitura.get("modalidade_geral") or leitura.get("modalidade") or "conversa"),
         "ato_principal": str(leitura.get("ato_principal") or leitura.get("modalidade") or atos[0]["tipo"]),
@@ -199,7 +202,7 @@ def atualizar_plano_turno(
     comandos: Iterable[Dict[str, Any]] = (),
     erros: Iterable[str] = (),
     fala: str = "",
-) -> Dict[str, Any]:
+) -> PlanoTurnoDict:
     novo = dict(plano or {})
     comandos_resumo = []
     for comando in comandos or ():
@@ -235,23 +238,41 @@ def verificar_fala_turno(
     ultima_resposta: str = "",
     origem: str = "conversa",
 ) -> Dict[str, Any]:
-    """Valida coerência básica sem inventar conteúdo ou executar ações."""
+    """Valida segurança e fatos sem editar escolhas de comunicação da LLM."""
     contrato = dict(plano or {})
     texto_usuario = str(contrato.get("texto_usuario") or "")
-    original = re.sub(r"\s+", " ", str(fala or "")).strip()
-    ajustada = ajustar_encerramento_organico(original, texto_usuario)
+    ajustada = re.sub(r"\s+", " ", str(fala or "")).strip()
+
+    if _ESTADO_TECNICO_LLM.fullmatch(ajustada):
+        return {
+            "aceita": False,
+            "fala": "",
+            "acao": "bloqueada",
+            "problemas": ["estado_tecnico_llm"],
+            "pontuacao": 0.0,
+        }
+
     problemas: list[str] = []
-    if ajustada != original:
-        problemas.append("pergunta_opcional_removida")
+    if detectar_consulta_horario(texto_usuario):
+        horario_correto = responder_consulta_horario()
+        if ajustada != horario_correto:
+            problemas.append("horario_substituido_pelo_relogio_local")
+        ajustada = horario_correto
 
     if not ajustada:
         return {
-            "aceita": False, "fala": "", "acao": "bloqueada",
-            "problemas": ["fala_vazia"], "pontuacao": 0.0,
+            "aceita": False,
+            "fala": "",
+            "acao": "bloqueada",
+            "problemas": ["fala_vazia"],
+            "pontuacao": 0.0,
         }
 
     fundamentacao = contrato.get("fundamentacao_factual")
-    if not (isinstance(fundamentacao, dict) and fundamentacao.get("tema")) and contrato.get("dominio") == "musica":
+    if (
+        not (isinstance(fundamentacao, dict) and fundamentacao.get("tema"))
+        and contrato.get("dominio") == "musica"
+    ):
         referencia = dict(contrato.get("referencia_resolvida") or {})
         fundamentacao = {
             "tema": str(referencia.get("nome") or "música").strip(),
@@ -280,82 +301,62 @@ def verificar_fala_turno(
         problemas.extend(problemas_alegacoes)
         ajustada = str(validacao_alegacoes.get("fala") or ajustada).strip()
 
+    problemas_realidade = detectar_experiencia_pessoal_inventada(ajustada)
+    if problemas_realidade:
+        problemas.extend(problemas_realidade)
+        ajustada = remover_trechos_de_realidade_inventada(ajustada)
+        if not ajustada:
+            return {
+                "aceita": False,
+                "fala": "",
+                "acao": "bloqueada",
+                "problemas": problemas,
+                "pontuacao": 0.0,
+            }
+
+    ajustada_proporcional = ajustar_proporcao_resposta(
+        ajustada,
+        texto_usuario,
+        str(contrato.get("tipo_interacao") or "conversa"),
+        possui_comandos=bool(contrato.get("comandos")),
+    )
+    if ajustada_proporcional != ajustada:
+        problemas.append("resposta_reduzida_a_proporcao_do_turno")
+        ajustada = ajustada_proporcional
+
     if _VAZAMENTO_INTERNO.search(ajustada):
-        problemas.append("vazamento_formato_interno")
-        ajustada = "Minha resposta saiu em formato interno e não ficou boa. Me fala de novo que eu respondo direito."
-
-    base = _normalizar(ajustada)
-    if any(marcador in base for marcador in _FALAS_VAGAS):
-        problemas.append("resposta_vaga")
-        if contrato.get("ato_principal") == "pergunta":
-            ajustada = "Não consegui formular uma resposta concreta para essa pergunta. Pode repetir de outro jeito?"
-        elif contrato.get("requer_execucao"):
-            ajustada = "Entendi que você pediu uma ação, mas não consegui executá-la nem confirmar o resultado."
-        else:
-            ajustada = "Minha resposta ficou vaga. Vou me prender ao que você acabou de dizer."
-
-    usuario_norm = _normalizar(texto_usuario)
-    funcao_comunicativa = str(contrato.get("funcao_comunicativa") or "").strip().lower()
-    if funcao_comunicativa == "conquista" and not re.search(
-        r"\b(?:parab[eé]ns|a[ií] sim|mandou bem|boa|merecid|orgulho|nota m[aá]xima)\b",
-        ajustada,
-        flags=re.IGNORECASE,
-    ):
-        problemas.append("conquista_sem_reconhecimento")
-        ajustada = f"Aí sim, parabéns por isso. {ajustada}"
-    if funcao_comunicativa == "correcao" and not re.search(
-        r"\b(?:entendi|corrigi|corre[cç][aã]o|voc[eê] tem raz[aã]o|ajustei)\b",
-        ajustada,
-        flags=re.IGNORECASE,
-    ):
-        problemas.append("correcao_sem_reconhecimento")
-        ajustada = f"Entendi a correção. {ajustada}"
-    if not bool(contrato.get("permite_pergunta", True)) and "?" in ajustada:
-        problemas.append("pergunta_inadequada_a_funcao_emocional")
-        frases_sem_pergunta = [
-            trecho for trecho in re.split(r"(?<=[.!?])\s+", ajustada)
-            if trecho and "?" not in trecho
-        ]
-        fallbacks = {
-            "encerramento": "Até mais.",
-            "correcao": "Entendi a correção e vou considerar isso daqui para frente.",
-            "agradecimento": "Que nada. Fico feliz que tenha ajudado.",
-            "elogio": "Obrigada. Gostei de ouvir isso.",
-            "frustracao": "Entendi. Vou corrigir isso sem insistir no erro.",
-            "decepcao": "Entendi a decepção. Vou tratar isso com mais cuidado.",
+        return {
+            "aceita": False,
+            "fala": "",
+            "acao": "bloqueada",
+            "problemas": [*problemas, "vazamento_formato_interno"],
+            "pontuacao": 0.0,
         }
-        ajustada = " ".join(frases_sem_pergunta).strip() or fallbacks.get(
-            funcao_comunicativa, "Entendi o que você quis dizer."
+
+    comandos = (
+        contrato.get("comandos")
+        if isinstance(contrato.get("comandos"), list)
+        else []
+    )
+    if (
+        contrato.get("requer_execucao")
+        and not comandos
+        and str(origem) in {"ia_final", "resposta_ia"}
+        and (
+            _ALEGACAO_EXECUCAO.search(ajustada)
+            or not _ADMITE_NAO_EXECUCAO.search(ajustada)
         )
-    pede_referencia = any(x in usuario_norm for x in ("como assim", "o que quis dizer", "explica", "tipo o que"))
-    if not pede_referencia and any(x in _normalizar(ajustada) for x in ("eu tava falando de", "o ponto sobre", "o fio era")):
-        problemas.append("contexto_antigo_sem_referencia")
-        ajustada = "Eu puxei um contexto que você não pediu. Vou responder somente ao que você disse agora."
+    ):
+        problemas.append("comando_sem_execucao_confirmada")
+        ajustada = (
+            "Entendi a ação que você pediu, mas não executei nem confirmei "
+            "o resultado."
+        )
 
-    comandos = contrato.get("comandos") if isinstance(contrato.get("comandos"), list) else []
-    if contrato.get("requer_execucao") and not comandos and str(origem) in {"ia_final", "resposta_ia"}:
-        if _ALEGACAO_EXECUCAO.search(ajustada) or not _ADMITE_NAO_EXECUCAO.search(ajustada):
-            problemas.append("comando_sem_execucao_confirmada")
-            ajustada = "Entendi a ação que você pediu, mas não executei nem confirmei o resultado."
-
-    if periodo:
-        temporal = ajustar_fala_ao_periodo(ajustada, periodo)
-        if temporal != ajustada:
-            problemas.append("incoerencia_temporal_corrigida")
-            ajustada = temporal
-
-    if ultima_resposta and _normalizar(ultima_resposta) == _normalizar(ajustada):
-        problemas.append("repeticao_exata")
-        # A repetição continua registrada para diagnóstico, mas não deve vazar
-        # como uma fala metalinguística. Repetir uma resposta útil é mais
-        # natural do que comentar o funcionamento interno da própria resposta.
-
-    acao = "ajustada" if problemas else "aceita"
-    pontuacao = max(0.0, 1.0 - (0.18 * len(problemas)))
     return {
-        "aceita": True,
+        "aceita": bool(ajustada),
         "fala": ajustada,
-        "acao": acao,
+        "acao": "ajustada" if problemas else "aceita",
         "problemas": problemas,
-        "pontuacao": round(pontuacao, 2),
+        "pontuacao": round(max(0.0, 1.0 - (0.18 * len(problemas))), 2),
     }

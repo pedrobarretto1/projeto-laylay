@@ -10,6 +10,8 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Dict
 
+from mente_laylay.memoria_mental.continuidade_geral import selecionar_continuidade
+
 
 @dataclass(frozen=True)
 class DecisaoContinuidade:
@@ -175,6 +177,11 @@ def _dominio_explicito(tokens: list[str]) -> str:
 
 
 def _dominio_contextual(mente: Dict[str, Any], estrutura: Dict[str, Any]) -> tuple[str, float]:
+    continuidade = selecionar_continuidade(mente, ttl_s=900.0)
+    dominio_canonico = str(continuidade.get("dominio") or "").strip().casefold()
+    dominio_canonico = {"arquivos": "arquivo"}.get(dominio_canonico, dominio_canonico)
+    if dominio_canonico in {"arquivo", "app", "site", "iot", "musica"}:
+        return dominio_canonico, 0.96
     candidatos: list[tuple[str, float]] = []
     agora = time.time()
     focos = mente.get("focos_por_dominio") if isinstance(mente.get("focos_por_dominio"), dict) else {}
@@ -456,19 +463,21 @@ def resolver_continuidade_semantica(
                     motivo="renomeacao aplicada a estrutura recente",
                 )
         if acao == "REMOVER":
-            nome = str(
+            nome_exibicao = str(
                 estrutura.get("nome") or estrutura.get("pasta") or estrutura.get("alvo")
                 or estrutura.get("arquivo_nome") or estado.get("ultima_pasta") or estado.get("ultimo_arquivo") or ""
             ).strip()
-            if nome:
+            caminho_exato = str(estrutura.get("caminho") or "").strip()
+            alvo_remocao = caminho_exato or nome_exibicao
+            if alvo_remocao:
                 tipo = "pasta" if str(estrutura.get("nome") or estrutura.get("pasta") or estado.get("ultima_pasta") or "").strip() else "arquivo"
                 return DecisaoContinuidade(
                     operacao="REMOVER_REFERENCIA",
                     dominio="arquivo",
                     acao="REMOVER",
                     intent="DELETE_ITEM",
-                    alvo=nome,
-                    params={"alvo": nome, "tipo": tipo},
+                    alvo=nome_exibicao or os.path.basename(alvo_remocao),
+                    params={"alvo": alvo_remocao, "tipo": tipo},
                     confianca=min(0.97, confianca_dominio + 0.1),
                     motivo="acao de remocao aplicada a estrutura recente",
                 )
@@ -575,11 +584,13 @@ def interpretar_continuidade_semantica_llm(
     if dominio == "arquivo":
         if acao == "REMOVER":
             nome = str(estrutura.get("nome") or estrutura.get("pasta") or estrutura.get("arquivo_nome") or "").strip()
-            if nome:
+            caminho = str(estrutura.get("caminho") or "").strip()
+            alvo_remocao = caminho or nome
+            if alvo_remocao:
                 tipo = "pasta" if estrutura.get("nome") or estrutura.get("pasta") else "arquivo"
                 return DecisaoContinuidade(
-                    operacao=operacao, dominio=dominio, acao="REMOVER", intent="DELETE_ITEM", alvo=nome,
-                    params={"alvo": nome, "tipo": tipo}, confianca=confianca,
+                    operacao=operacao, dominio=dominio, acao="REMOVER", intent="DELETE_ITEM", alvo=nome or os.path.basename(alvo_remocao),
+                    params={"alvo": alvo_remocao, "tipo": tipo}, confianca=confianca,
                     motivo=str(dados.get("motivo") or "desambiguado pela IA"),
                 )
         if acao == "CRIAR":

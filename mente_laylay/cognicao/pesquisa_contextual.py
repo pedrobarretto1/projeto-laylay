@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 import time
 import unicodedata
 import urllib.parse
@@ -414,12 +415,20 @@ class PesquisaContextualRuntime:
         requests_get=None,
         pasta_downloads: str | None = None,
         clock: Callable[[], float] = time.time,
+        orcamento_interativo_s: float = 4.0,
+        thread_factory: Callable[..., object] = threading.Thread,
+        log: Callable[[str], object] = print,
     ) -> None:
         self.cache_tema: dict = {}
         self.normalizar_texto_curto = normalizar_texto_curto
         self.requests_get = requests_get
         self.pasta_downloads = pasta_downloads
         self.clock = clock
+        self.orcamento_interativo_s = max(0.0, float(orcamento_interativo_s))
+        self.thread_factory = thread_factory
+        self.log = log
+        self._prefetch_lock = threading.RLock()
+        self._pesquisas_em_andamento: dict[str, tuple[threading.Event, dict]] = {}
 
     def normalizar_tema_pesquisa(self, tema: str) -> str:
         return normalizar_tema_pesquisa(tema)
@@ -436,6 +445,37 @@ class PesquisaContextualRuntime:
         )
 
     def pesquisar_contexto_tema(self, tema: str, ttl_s: float = 1800.0) -> dict:
+        consulta = normalizar_tema_pesquisa(tema)
+        if not consulta or tema_pesquisa_baguncado(consulta):
+            return self._pesquisar_contexto_tema_direto(tema, ttl_s)
+
+        encontrado = self.obter_contexto_cache(tema, ttl_s=ttl_s)
+        if encontrado:
+            return encontrado
+
+        evento, recipiente, _criada = self._iniciar_pesquisa(tema, ttl_s)
+        if evento is None:
+            return {"ok": False, "tema": str(tema or ""), "consulta": consulta}
+        if evento.wait(timeout=self.orcamento_interativo_s):
+            return dict(recipiente.get("resultado") or {
+                "ok": False,
+                "tema": str(tema or ""),
+                "consulta": consulta,
+            })
+
+        self.log(
+            f"⚡ [PESQUISA TEMA] limite de {self.orcamento_interativo_s:.1f}s atingido; "
+            "continuando em segundo plano."
+        )
+        return {
+            "ok": False,
+            "tema": str(tema or ""),
+            "consulta": consulta,
+            "motivo": "pesquisa_em_background",
+            "pesquisa_pendente": True,
+        }
+
+    def _pesquisar_contexto_tema_direto(self, tema: str, ttl_s: float) -> dict:
         return pesquisar_contexto_tema(
             tema,
             ttl_s=ttl_s,
@@ -444,6 +484,87 @@ class PesquisaContextualRuntime:
             requests_get=self.requests_get,
             clock=self.clock,
         )
+
+    def _iniciar_pesquisa(
+        self,
+        tema: str,
+        ttl_s: float,
+    ) -> tuple[threading.Event | None, dict, bool]:
+        consulta = normalizar_tema_pesquisa(tema)
+        normalizar = self.normalizar_texto_curto or _normalizar_texto_curto_basico
+        chave = normalizar(consulta)
+        if not chave:
+            return None, {}, False
+
+        with self._prefetch_lock:
+            existente = self._pesquisas_em_andamento.get(chave)
+            if existente is not None:
+                return existente[0], existente[1], False
+            evento = threading.Event()
+            recipiente: dict = {}
+            self._pesquisas_em_andamento[chave] = (evento, recipiente)
+
+        def executar() -> None:
+            try:
+                recipiente["resultado"] = self._pesquisar_contexto_tema_direto(tema, ttl_s)
+            except Exception as erro:
+                recipiente["resultado"] = {
+                    "ok": False,
+                    "tema": str(tema or ""),
+                    "consulta": consulta,
+                    "motivo": "erro_pesquisa",
+                }
+                self.log(f"⚠️ [PESQUISA TEMA] falha em segundo plano: {erro}")
+            finally:
+                evento.set()
+                with self._prefetch_lock:
+                    atual = self._pesquisas_em_andamento.get(chave)
+                    if atual is not None and atual[0] is evento:
+                        self._pesquisas_em_andamento.pop(chave, None)
+
+        try:
+            thread = self.thread_factory(
+                target=executar,
+                name=f"laylay-pesquisa-{chave[:24]}",
+                daemon=True,
+            )
+            thread.start()
+        except Exception:
+            with self._prefetch_lock:
+                self._pesquisas_em_andamento.pop(chave, None)
+            raise
+        return evento, recipiente, True
+
+    def obter_contexto_cache(self, tema: str, ttl_s: float = 1800.0) -> dict:
+        """Lê somente evidência ainda válida, sem bloquear em rede."""
+        consulta = normalizar_tema_pesquisa(tema)
+        normalizar = self.normalizar_texto_curto or _normalizar_texto_curto_basico
+        chave = normalizar(consulta)
+        try:
+            item = dict(self.cache_tema.get(chave) or {})
+            agora = float(self.clock())
+            validade = float(item.get("ttl_s") or ttl_s)
+            if not item or agora - float(item.get("ts") or 0.0) >= validade:
+                return {}
+            dados = dict(item.get("data") or {})
+            dados["evidencia_cache"] = True
+            dados["evidencia_idade_s"] = max(
+                0.0,
+                agora - float(dados.get("evidencia_obtida_em") or item.get("ts") or agora),
+            )
+            return dados
+        except Exception:
+            return {}
+
+    def precarregar_contexto_tema(self, tema: str, ttl_s: float = 1800.0) -> bool:
+        """Atualiza o cache em segundo plano para falas que não exigem fonte agora."""
+        consulta = normalizar_tema_pesquisa(tema)
+        normalizar = self.normalizar_texto_curto or _normalizar_texto_curto_basico
+        chave = normalizar(consulta)
+        if not chave or self.obter_contexto_cache(tema, ttl_s=ttl_s):
+            return False
+        _evento, _recipiente, criada = self._iniciar_pesquisa(tema, ttl_s)
+        return criada
 
     def buscar_imagem_url(self, assunto: str) -> str | None:
         return buscar_imagem_url(assunto, requests_get=self.requests_get)
@@ -466,10 +587,16 @@ def criar_pesquisa_contextual_runtime(
     requests_get=None,
     pasta_downloads: str | None = None,
     clock: Callable[[], float] = time.time,
+    orcamento_interativo_s: float = 4.0,
+    thread_factory: Callable[..., object] = threading.Thread,
+    log: Callable[[str], object] = print,
 ) -> PesquisaContextualRuntime:
     return PesquisaContextualRuntime(
         normalizar_texto_curto=normalizar_texto_curto,
         requests_get=requests_get,
         pasta_downloads=pasta_downloads,
         clock=clock,
+        orcamento_interativo_s=orcamento_interativo_s,
+        thread_factory=thread_factory,
+        log=log,
     )

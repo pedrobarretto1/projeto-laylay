@@ -26,6 +26,74 @@ _APPS_DUCKING = {
 }
 
 
+def listar_processos_com_audio_ativo(*, log: Callable[[str], None] | None = None) -> set[str]:
+    """Retorna executáveis com sessão de áudio ativa e audível.
+
+    A leitura é somente perceptiva: não altera volume nem estado das sessões.
+    Falhas do COM/Pycaw degradam para um conjunto vazio para que a organização
+    de janelas continue usando foco e recência.
+    """
+    ativos: set[str] = set()
+    try:
+        from pycaw.pycaw import AudioUtilities
+
+        for sessao in AudioUtilities.GetAllSessions() or []:
+            try:
+                processo = getattr(sessao, "Process", None)
+                if processo is None:
+                    continue
+                nome = str(processo.name() or "").strip().casefold()
+                if not nome:
+                    continue
+
+                estado = getattr(sessao, "State", None)
+                if callable(estado):
+                    estado = estado()
+                if estado is None:
+                    controle_sessao = getattr(sessao, "_ctl", None)
+                    get_state = getattr(controle_sessao, "GetState", None)
+                    estado = get_state() if callable(get_state) else None
+                estado_ativo = (
+                    estado == 1
+                    or str(estado or "").strip().casefold() in {
+                        "active", "audio_session_state_active", "audiosessionstateactive",
+                    }
+                )
+                if not estado_ativo:
+                    continue
+
+                volume = getattr(sessao, "SimpleAudioVolume", None)
+                if volume is not None:
+                    get_mute = getattr(volume, "GetMute", None)
+                    get_volume = getattr(volume, "GetMasterVolume", None)
+                    if callable(get_mute) and bool(get_mute()):
+                        continue
+                    if callable(get_volume) and float(get_volume()) <= 0.001:
+                        continue
+                ativos.add(nome)
+            except Exception:
+                continue
+    except Exception as erro:
+        if callable(log):
+            log(f"[AUDIO] Leitura de processos ativos indisponível: {erro}")
+    return ativos
+
+
+def obter_volume_sistema(*, log: Callable[[str], None] = print) -> int | None:
+    """Lê o volume mestre para confirmação e reversão de ações autônomas."""
+    try:
+        from pycaw.pycaw import AudioUtilities
+
+        devices = AudioUtilities.GetSpeakers()
+        if devices is None:
+            return None
+        valor = float(devices.EndpointVolume.GetMasterVolumeLevelScalar())
+        return max(0, min(100, round(valor * 100)))
+    except Exception as erro:
+        log(f"Erro ao consultar volume: {erro}")
+        return None
+
+
 def ajustar_volume_sistema(nivel_percentual, *, log: Callable[[str], None] = print) -> bool:
     try:
         from pycaw.pycaw import AudioUtilities

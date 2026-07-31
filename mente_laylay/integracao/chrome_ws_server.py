@@ -19,7 +19,7 @@ class WebSocketTransportRuntime:
         self.extensions: set[Any] = set()
         self.clientes_pc_b: set[Any] = set()
 
-    def definir_loop(self, loop: asyncio.AbstractEventLoop) -> None:
+    def definir_loop(self, loop: asyncio.AbstractEventLoop | None) -> None:
         with self._lock:
             self._loop = loop
 
@@ -82,12 +82,18 @@ async def fechar_extensoes_anteriores(
             pass
 
 
-async def start_ws_server(handler: Callable[..., Any], *, host: str = "0.0.0.0", port: int = 8080) -> None:
+async def start_ws_server(
+    handler: Callable[..., Any], *, host: str = "0.0.0.0", port: int = 8080,
+    stop_event: threading.Event | None = None,
+) -> None:
     import websockets
 
     async with websockets.serve(handler, host, port):
         print(f"🚀 WebSocket Server Chrome rodando em http://localhost:{port}")
-        await asyncio.Future()
+        if stop_event is None:
+            await asyncio.Future()
+        while not stop_event.is_set():
+            await asyncio.sleep(0.20)
 
 
 def run_ws_server_in_thread(
@@ -96,13 +102,23 @@ def run_ws_server_in_thread(
     set_loop: Callable[[asyncio.AbstractEventLoop], Any] | None = None,
     host: str = "0.0.0.0",
     port: int = 8080,
+    stop_event: threading.Event | None = None,
 ) -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     if callable(set_loop):
         set_loop(loop)
     print("🚀 WebSocket Server Chrome iniciado (thread-safe) — ws_loop definido")
-    loop.run_until_complete(start_ws_server(handler, host=host, port=port))
+    try:
+        loop.run_until_complete(
+            start_ws_server(
+                handler, host=host, port=port, stop_event=stop_event,
+            )
+        )
+    finally:
+        if callable(set_loop):
+            set_loop(None)
+        loop.close()
 
 
 async def ws_handler_modular(websocket: Any, ctx: dict[str, Any]) -> None:
@@ -177,6 +193,28 @@ async def ws_handler_modular(websocket: Any, ctx: dict[str, Any]) -> None:
                     page_updates = processar_page_data(data) if callable(processar_page_data) else {}
                     if callable(aplicar_page_updates):
                         aplicar_page_updates(page_updates)
+
+                evento_player = (
+                    isinstance(data, dict)
+                    and data.get("type") == "PLAYER_EVENT"
+                    and str(data.get("eventId") or "").strip()
+                )
+                if evento_player:
+                    await websocket.send(json.dumps({
+                        "type": "PLAYER_EVENT_ACK",
+                        "eventId": str(data.get("eventId")),
+                    }))
+                    # Avançar uma playlist envia outro comando e aguarda o
+                    # COMMAND_RESULT nesta mesma conexão. Executar isso nesta
+                    # coroutine bloquearia a própria leitura da confirmação.
+                    if callable(dispatch_data):
+                        threading.Thread(
+                            target=dispatch_data,
+                            args=(data,),
+                            name="laylay-playlist-auto-next",
+                            daemon=True,
+                        ).start()
+                    continue
 
                 if isinstance(data, dict) and callable(dispatch_data):
                     dispatch_data(data)

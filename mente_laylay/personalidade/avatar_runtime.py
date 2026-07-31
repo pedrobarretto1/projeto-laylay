@@ -69,6 +69,31 @@ _EMOCOES_CANONICAS_AVATAR = {
     "triste",
 }
 
+_ALIAS_ATIVIDADES_AVATAR = {
+    "": "idle",
+    "idle": "idle",
+    "repouso": "idle",
+    "quieta": "idle",
+    "ouvindo": "listening",
+    "escutando": "listening",
+    "listening": "listening",
+    "pensando": "thinking",
+    "preparando": "thinking",
+    "thinking": "thinking",
+    "executando": "executing",
+    "processando": "executing",
+    "executing": "executing",
+    "falando": "speaking",
+    "speaking": "speaking",
+    "sucesso": "success",
+    "concluido": "success",
+    "concluida": "success",
+    "success": "success",
+    "erro": "error",
+    "falha": "error",
+    "error": "error",
+}
+
 
 def normalizar_nome_asset(nome: str) -> str:
     texto = unicodedata.normalize("NFKD", str(nome or ""))
@@ -82,6 +107,12 @@ def normalizar_emocao_avatar(emocao: str) -> str:
     """Converte o vocabulário expressivo da mente nos quadros disponíveis."""
     chave = normalizar_nome_asset(emocao)
     return _ALIAS_EMOCOES_AVATAR.get(chave, chave or "calma")
+
+
+def normalizar_atividade_avatar(atividade: str) -> str:
+    """Reduz estados operacionais ao vocabulário visual compartilhado."""
+    chave = normalizar_nome_asset(atividade)
+    return _ALIAS_ATIVIDADES_AVATAR.get(chave, "idle")
 
 
 def descobrir_assets_avatar(diretorio: str | os.PathLike[str]) -> dict[str, Path]:
@@ -232,11 +263,26 @@ def normalizar_estado_avatar(estado: Mapping[str, Any] | None) -> dict[str, Any]
         nivel = max(0, min(3, int(dados.get("level", dados.get("nivel", 1)))))
     except (TypeError, ValueError):
         nivel = 1
+    falando = bool(dados.get("speaking", dados.get("falando", False)))
+    atividade = normalizar_atividade_avatar(
+        str(dados.get("activity") or dados.get("atividade") or "")
+    )
+    if falando:
+        atividade = "speaking"
+    try:
+        intensidade = max(0.0, min(1.0, float(
+            dados.get("intensity", dados.get("intensidade", nivel / 3.0))
+        )))
+    except (TypeError, ValueError):
+        intensidade = max(0.0, min(1.0, nivel / 3.0))
     return {
         "type": "state",
         "emotion": emocao or "calma",
         "level": nivel,
-        "speaking": bool(dados.get("speaking", dados.get("falando", False))),
+        "speaking": falando,
+        "activity": atividade,
+        "intensity": round(intensidade, 3),
+        "reaction_id": str(dados.get("reaction_id") or dados.get("reacao_id") or "")[:80],
     }
 
 
@@ -253,6 +299,8 @@ class AvatarRuntime:
         popen: Callable[..., Any] = subprocess.Popen,
         intervalo: float = 0.10,
         heartbeat: float = 1.0,
+        visual_externo_disponivel: Callable[[], bool] | None = None,
+        registrar_falha: Callable[..., Any] | None = None,
     ) -> None:
         self.raiz_projeto = Path(raiz_projeto).resolve()
         self.estado_getter = estado_getter
@@ -261,11 +309,20 @@ class AvatarRuntime:
         self.popen = popen
         self.intervalo = max(0.05, float(intervalo))
         self.heartbeat = max(0.5, float(heartbeat))
+        self.visual_externo_disponivel = visual_externo_disponivel
+        self.registrar_falha = registrar_falha
         self._processo: Any = None
         self._socket: socket.socket | None = None
         self._porta: int | None = None
         self._thread: threading.Thread | None = None
+        self._monitor_thread: threading.Thread | None = None
+        self._controle_lock = threading.RLock()
+        self._oculto_por_externo = False
         self._parar = threading.Event()
+
+    def _relatar(self, codigo: str, erro: BaseException) -> None:
+        if callable(self.registrar_falha):
+            self.registrar_falha("avatar", codigo, erro=erro)
 
     def ativo(self) -> bool:
         valor = str(self.env_getter("LAYLAY_AVATAR_ATIVO", "1") or "").strip().casefold()
@@ -274,7 +331,11 @@ class AvatarRuntime:
     def iniciar(self) -> bool:
         if not self.ativo():
             return False
-        if self._processo is not None and self._processo.poll() is None:
+        if (
+            self._processo is not None and self._processo.poll() is None
+        ) or (
+            self._monitor_thread is not None and self._monitor_thread.is_alive()
+        ):
             return True
 
         pasta_assets = self.raiz_projeto / "avatar"
@@ -286,13 +347,39 @@ class AvatarRuntime:
         if not tem_falando:
             faltando.append("imagem falando")
         script = self.raiz_projeto / "cliente" / "avatar_laylay.py"
-        if faltando or not script.is_file():
-            detalhe = ", ".join(faltando) if faltando else str(script)
+        executavel_avatar = self.raiz_projeto / "AvatarLaylay.exe"
+        recurso_avatar = executavel_avatar if getattr(sys, "frozen", False) else script
+        if faltando or not recurso_avatar.is_file():
+            detalhe = ", ".join(faltando) if faltando else str(recurso_avatar)
             self.log(f"⚠️ [AVATAR] Não iniciado; recurso ausente: {detalhe}")
             return False
 
-        self._porta = self._reservar_porta_local()
-        self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._parar.clear()
+        externo = self._visual_externo_ativo()
+        self._oculto_por_externo = externo
+        if externo:
+            self.log("✨ [AVATAR] Widget fixado ativo; avatar Python mantido oculto.")
+            iniciado = True
+        else:
+            iniciado = self._iniciar_janela(pasta_assets, script)
+        if self.visual_externo_disponivel is not None:
+            self._monitor_thread = threading.Thread(
+                target=self._monitorar_preferencia_visual,
+                args=(pasta_assets, script),
+                name="Laylay-Avatar-Preferencia",
+                daemon=True,
+            )
+            self._monitor_thread.start()
+        return iniciado
+
+    def _iniciar_janela(self, pasta_assets: Path, script: Path) -> bool:
+        with self._controle_lock:
+            if self._parar.is_set():
+                return False
+            if self._processo is not None and self._processo.poll() is None:
+                return True
+            self._porta = self._reservar_porta_local()
+            self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         tamanho = str(self.env_getter("LAYLAY_AVATAR_TAMANHO", "230") or "230")
         pid_pai = os.getpid()
         criado_em_pai = 0.0
@@ -303,8 +390,11 @@ class AvatarRuntime:
         except Exception:
             pass
         comando = [
-            sys.executable,
-            str(script),
+            *(
+                [str(self.raiz_projeto / "AvatarLaylay.exe")]
+                if getattr(sys, "frozen", False)
+                else [sys.executable, str(script)]
+            ),
             "--port",
             str(self._porta),
             "--assets",
@@ -325,10 +415,11 @@ class AvatarRuntime:
             self._processo = self.popen(comando, **kwargs)
         except Exception as erro:
             self.log(f"⚠️ [AVATAR] Não foi possível abrir a janela: {erro}")
+            self._relatar("abertura_janela", erro)
             self._fechar_socket()
             return False
 
-        self._parar.clear()
+        self._oculto_por_externo = False
         self._thread = threading.Thread(
             target=self._publicar_estado,
             name="Laylay-Avatar-Estado",
@@ -338,22 +429,56 @@ class AvatarRuntime:
         self.log("✨ [AVATAR] Laylay apareceu no canto da tela.")
         return True
 
-    def parar(self) -> None:
+    def parar(self, timeout_s: float = 1.5) -> None:
+        prazo = time.monotonic() + max(0.0, float(timeout_s))
         self._parar.set()
-        self._enviar({"type": "shutdown"})
-        if self._thread is not None and self._thread.is_alive():
-            self._thread.join(timeout=0.6)
-        processo = self._processo
-        if processo is not None and processo.poll() is None:
-            try:
-                processo.wait(timeout=1.2)
-            except subprocess.TimeoutExpired:
+        if self._monitor_thread is not None and self._monitor_thread.is_alive():
+            self._monitor_thread.join(timeout=max(0.0, prazo - time.monotonic()))
+        self._fechar_janela(timeout_s=max(0.0, prazo - time.monotonic()))
+        self._monitor_thread = None
+
+    def _fechar_janela(self, timeout_s: float = 1.5) -> None:
+        prazo = time.monotonic() + max(0.0, float(timeout_s))
+        with self._controle_lock:
+            self._enviar({"type": "shutdown"})
+            processo = self._processo
+            if processo is not None and processo.poll() is None:
                 try:
-                    processo.terminate()
-                except OSError:
-                    pass
-        self._fechar_socket()
-        self._processo = None
+                    processo.wait(timeout=max(0.0, prazo - time.monotonic()))
+                except subprocess.TimeoutExpired:
+                    try:
+                        processo.terminate()
+                    except OSError as erro:
+                        self._relatar("encerramento_processo", erro)
+            if self._thread is not None and self._thread.is_alive():
+                self._thread.join(timeout=max(0.0, prazo - time.monotonic()))
+            self._fechar_socket()
+            self._processo = None
+            self._thread = None
+
+    def _visual_externo_ativo(self) -> bool:
+        if self.visual_externo_disponivel is None:
+            return False
+        try:
+            return bool(self.visual_externo_disponivel())
+        except Exception as erro:
+            self._relatar("visual_externo", erro)
+            return False
+
+    def _monitorar_preferencia_visual(self, pasta_assets: Path, script: Path) -> None:
+        while not self._parar.wait(0.20):
+            externo = self._visual_externo_ativo()
+            processo_ativo = bool(
+                self._processo is not None and self._processo.poll() is None
+            )
+            if externo and processo_ativo:
+                self._oculto_por_externo = True
+                self._fechar_janela()
+                self.log("✨ [AVATAR] Widget fixado assumiu a tela; avatar Python ocultado.")
+            elif not externo and self._oculto_por_externo and not processo_ativo:
+                # Se o widget for fechado ou desafixado, o avatar comum volta
+                # automaticamente. Fechar o Tk manualmente não causa relançamento.
+                self._iniciar_janela(pasta_assets, script)
 
     @staticmethod
     def _reservar_porta_local() -> int:
@@ -376,6 +501,7 @@ class AvatarRuntime:
                 atual = normalizar_estado_avatar(self.estado_getter())
             except Exception as erro:
                 self.log(f"⚠️ [AVATAR] Estado visual indisponível: {erro}")
+                self._relatar("estado_visual", erro)
                 continue
             agora = time.monotonic()
             if atual != ultimo or agora - ultimo_envio >= self.heartbeat:
@@ -390,7 +516,8 @@ class AvatarRuntime:
             dados = json.dumps(dict(mensagem), ensure_ascii=False).encode("utf-8")
             self._socket.sendto(dados, ("127.0.0.1", self._porta))
             return True
-        except OSError:
+        except OSError as erro:
+            self._relatar("envio_udp", erro)
             return False
 
     def _fechar_socket(self) -> None:

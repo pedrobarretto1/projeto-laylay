@@ -55,6 +55,58 @@ def autoriza_candidato_iot_direto(texto: str, *, modalidade: str = "") -> bool:
     ))
 
 
+def bloqueia_controle_iot_por_modalidade(texto: str) -> bool:
+    """Impede que menções, hipóteses e negações virem controle físico.
+
+    Esta guarda vive também dentro do runtime IoT: mesmo que um roteador mais
+    externo classifique mal o turno, o executor especializado não transforma
+    uma pergunta sobre *como fazer* nem um ``não desliga`` em ação real.
+    """
+    t = _normalizar(texto)
+    if not t:
+        return True
+    if re.search(
+        r"\b(?:nao|nunca|jamais)\s+(?:(?:pode|deve|vai)\s+)?"
+        r"(?:liga|ligar|ligue|acende|acender|desliga|desligar|desligue|"
+        r"apaga|apagar|muda|mudar|ajusta|ajustar|coloca|colocar|deixa|deixar)\b",
+        t,
+    ):
+        return True
+    return bool(re.search(
+        r"^(?:como\s+(?:eu\s+)?(?:faria|fa[cç]o|posso|poderia)|"
+        r"o que (?:eu )?(?:faria|fa[cç]o)|"
+        r"se eu (?:pedir|mandar)|"
+        r"talvez\b|quem sabe\b)|"
+        r"\b(?:seria|fosse)\s+(?:bom|legal|melhor)\b|"
+        r"\b(?:queria|gostaria)\s+de\s+saber\s+como\b",
+        t,
+    ))
+
+
+def detectar_consulta_lista_iot(texto: str) -> dict[str, object] | None:
+    """Reconhece somente pedidos de listagem dos dispositivos inteligentes.
+
+    É uma função pura para que a consulta exista antes mesmo de o runtime IoT
+    estar conectado ao roteador. Não reconhece controle nem altera estado.
+    """
+    t = _normalizar(texto)
+    if not re.search(r"\b(?:quais|lista|listar|liste|mostra|mostrar|mostre)\b", t):
+        return None
+    if not re.search(
+        r"\b(?:dispositivos?|aparelhos?|casa inteligente|iot)\b", t,
+    ):
+        return None
+    ambiente = ""
+    encontrado = re.search(
+        r"\b(?:do|da|de|no|na)\s+"
+        r"(quarto|sala|cozinha|banheiro|escritorio)\b",
+        t,
+    )
+    if encontrado:
+        ambiente = encontrado.group(1)
+    return {"intent": "IOT_LIST", "params": {"ambiente": ambiente}}
+
+
 def texto_tem_evidencia_iot_parametro(texto: str) -> bool:
     """Reconhece pedido de propriedade IoT sem conhecer aliases do registro."""
     t = _normalizar(texto)

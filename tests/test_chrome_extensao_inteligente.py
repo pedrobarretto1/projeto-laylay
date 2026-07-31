@@ -6,13 +6,77 @@ from unittest.mock import patch
 
 from mente_laylay.integracao.chrome_comandos import validar_e_enviar_comando
 from mente_laylay.integracao.chrome_navegacao import abrir_url_reutilizando_aba
-from mente_laylay.integracao.chrome_ws_handlers import handle_action, handle_command_result, handle_player_event
+from mente_laylay.integracao.chrome_ws_handlers import (
+    dispatch_event,
+    handle_action,
+    handle_command_result,
+    handle_player_event,
+    handle_user_context,
+)
+from mente_laylay.cognicao.erros_navegador import resumir_erro_navegador
 from mente_laylay.memoria_mental.contexto_integrado import resumo_mente_integrada_para_prompt
 from mente_laylay.memoria_mental.playlist_runtime import PlaylistRuntime
 from mente_laylay.autonomia.habilidade_janelas import executar_habilidade_janelas
 
 
 class ChromeExtensaoInteligenteTests(unittest.TestCase):
+    def test_fechamento_especifico_exige_resultado_real_da_extensao(self) -> None:
+        executados = []
+        contexto = {
+            "ALLOWED_ACTIONS": {"close_specific_tab"},
+            "connected_extensions": {"extensao"},
+            "ws_loop": object(),
+            "broadcast_command": lambda *_args: None,
+            "executar_chrome_confirmado": (
+                lambda mensagem, timeout_s: executados.append((mensagem, timeout_s)) or False
+            ),
+        }
+
+        self.assertFalse(validar_e_enviar_comando(
+            contexto, "close_specific_tab", {"target": "iot.tuya.com"},
+        ))
+        self.assertEqual(executados[0][0], {
+            "action": "close_specific_tab", "target": "iot.tuya.com",
+        })
+
+    def test_erro_oauth_e_resumido_sem_recitar_url_ou_client_id(self) -> None:
+        url = (
+            "https://discord.com/oauth2/authorize?client_id=1445298470863896667&"
+            "redirect_uri=https%3A%2F%2Fbackend.accounts.hytale.com%2Fcallback"
+        )
+        fala = resumir_erro_navegador({"title": "Discord", "url": url})
+
+        self.assertIn("Hytale com o Discord", fala)
+        self.assertNotIn("client_id", fala)
+        self.assertNotIn("144529", fala)
+        self.assertNotIn("https://", fala)
+
+    def test_percepcao_de_erro_do_chrome_fala_resumo_oral(self) -> None:
+        estado = {}
+        falas = []
+        url = (
+            "https://discord.com/oauth2/authorize?client_id=1445298470863896667&"
+            "redirect_uri=https%3A%2F%2Fbackend.accounts.hytale.com%2Fcallback"
+        )
+        handle_user_context(
+            {"kind": "nav", "title": "Discord 404", "url": url},
+            {
+                "_continuidades_get": lambda chave, padrao=None: estado.get(chave, padrao),
+                "_continuidades_update": lambda **dados: estado.update(dados),
+                "falar_com_lipsync": lambda texto, *_args: falas.append(texto),
+                "_ultimo_sugerido_ts": 0.0,
+                "_ultimo_proativo_ts": 0.0,
+                "is_speaking": False,
+                "sugestao_bloqueada_ate": {},
+                "ultimo_open_site": {},
+            },
+        )
+
+        self.assertTrue(falas)
+        self.assertIn("Hytale com o Discord", falas[-1])
+        self.assertNotIn("client_id", falas[-1])
+        self.assertNotIn("https://", falas[-1])
+
     def test_snapshot_vira_percepcao_da_mente_unica(self) -> None:
         percepcoes = {}
         snapshot = {
@@ -30,6 +94,20 @@ class ChromeExtensaoInteligenteTests(unittest.TestCase):
         self.assertTrue(updates["handled"])
         self.assertEqual(updates["aba_url_atual"], snapshot["url"])
         self.assertEqual(percepcoes["pagina_ativa"]["elements"][0]["label"], "Continuar")
+
+    def test_snapshot_e_processado_sem_imprimir_payload_bruto(self) -> None:
+        recebido = []
+        snapshot = {
+            "type": "PAGE_SNAPSHOT",
+            "payload": {"title": "Privado", "url": "https://example.com/segredo"},
+        }
+
+        with patch("builtins.print") as imprimir:
+            resultado = dispatch_event(snapshot, {"action": recebido.append})
+
+        self.assertIsNone(resultado)
+        self.assertEqual(recebido, [snapshot])
+        imprimir.assert_not_called()
 
     def test_resultado_do_comando_resolve_pendencia(self) -> None:
         event = threading.Event()
@@ -215,6 +293,50 @@ class ChromeExtensaoInteligenteTests(unittest.TestCase):
         self.assertEqual(len(avancos), 1)
         self.assertEqual(state["tab_id"], 42)
 
+    def test_faixa_curta_ou_duracao_indisponivel_tambem_avanca(self) -> None:
+        for duration in (0, 42):
+            with self.subTest(duration=duration):
+                avancos = []
+                state = {
+                    "name": "curtas",
+                    "last_url": "https://youtube.com/watch?v=curta",
+                }
+                handle_player_event(
+                    {
+                        "event": "video_ended",
+                        "eventId": f"ended:curta:{duration}",
+                        "url": state["last_url"],
+                        "duration": duration,
+                        "tabId": 7,
+                    },
+                    playlist_state=state,
+                    yt_clean_url=lambda url: url,
+                    playlist_avancar_proxima=lambda: avancos.append(True) or True,
+                    falar_com_lipsync=None,
+                )
+                self.assertEqual(avancos, [True])
+
+    def test_fim_de_anuncio_continua_sem_avancar_playlist(self) -> None:
+        avancos = []
+        state = {
+            "name": "noite",
+            "last_url": "https://youtube.com/watch?v=musica",
+        }
+        handle_player_event(
+            {
+                "event": "video_ended",
+                "eventId": "ended:anuncio:1",
+                "url": state["last_url"],
+                "duration": 30,
+                "isAd": True,
+            },
+            playlist_state=state,
+            yt_clean_url=lambda url: url,
+            playlist_avancar_proxima=lambda: avancos.append(True) or True,
+            falar_com_lipsync=None,
+        )
+        self.assertEqual(avancos, [])
+
     def test_playlist_envia_proxima_faixa_para_mesma_aba(self) -> None:
         recebidos = []
         runtime = PlaylistRuntime(
@@ -257,7 +379,7 @@ class ChromeExtensaoInteligenteTests(unittest.TestCase):
             "connected_extensions": {object()},
             "ws_loop": object(),
             "broadcast_command": lambda _message: None,
-            "enviar_chrome_confirmado": lambda message, timeout_s: recebidos.append(message) or True,
+            "executar_chrome_confirmado": lambda message, timeout_s: recebidos.append(message) or True,
             "is_valid_url": lambda url: url.startswith("https://"),
             "modo_jogo_ativo": lambda: True,
         }

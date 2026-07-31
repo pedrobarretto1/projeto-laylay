@@ -15,6 +15,14 @@ class ChromeWsContextoRuntime:
         "_conversa_estado_get", "_continuidades_get", "_continuidades_update",
         "_chrome_estado", "_contexto_paginas", "falar_com_lipsync",
     )
+    DEPENDENCIAS_COMPLETAS = DEPENDENCIAS_BASE + (
+        "_contexto_navegador_relevante", "_registrar_log_navegador_mente",
+        "_busca_musical_runtime", "atualizar_contexto_por_url",
+        "_musica_registrar_historico", "_verificar_musica_autonoma",
+        "_pc_b_runtime", "_analisar_com_groq", "registrar_memoria_visual",
+        "_memoria_conversa_get", "enviar_mensagem", "limpar_resposta_da_ia",
+        "armazenar_contexto_pagina", "resumir_pagina_no_dicionario", "EVENTO_PAGINA",
+    )
 
     def __init__(
         self,
@@ -90,9 +98,10 @@ class ChromeWsContextoRuntime:
 
     def contexto_acao(self) -> Dict[str, Any]:
         ns = self._ns()
+        busca_musical = ns["_busca_musical_runtime"]
         return ns["_chrome_estado"].contexto_handler({
-            "_musica_busca_query": ns["_busca_musical_runtime"].query,
-            "_musica_ultima_verificada": ns.get("_musica_ultima_verificada"),
+            "_musica_busca_query": busca_musical.query,
+            "_musica_ultima_verificada": getattr(busca_musical, "ultima_verificada", ""),
             "_percepcao_set": ns["_percepcao_set"],
             "atualizar_contexto_por_url": ns["atualizar_contexto_por_url"],
             "_musica_registrar_historico": ns["_musica_registrar_historico"],
@@ -119,7 +128,6 @@ class ChromeWsContextoRuntime:
         ns["_chrome_estado"].aplicar_updates(updates)
         if "_musica_ultima_verificada" in updates:
             valor = str(updates.get("_musica_ultima_verificada") or "")
-            ns["_musica_ultima_verificada"] = valor
             ns["_busca_musical_runtime"].ultima_verificada = valor
 
     def processar_pc_b(self, data: Dict[str, Any]) -> bool:

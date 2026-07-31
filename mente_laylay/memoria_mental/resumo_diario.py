@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from datetime import datetime
 from typing import Any, Callable
 
@@ -22,8 +23,28 @@ class MemoriaLaylay:
         self._enviar_mensagem = enviar_mensagem
         self._agora = agora
         self._log = log
+        self._pasta_memoria = os.path.abspath(pasta_memoria)
+        self._lock = threading.RLock()
         self.data_atual = self._agora().strftime("%d-%m-%Y")
-        self.arquivo_diario = os.path.join(pasta_memoria, f"memoria_{self.data_atual}.txt")
+        self.arquivo_diario = self._caminho_do_dia(self.data_atual)
+        self.carregar_resumo_diario()
+
+    def _caminho_do_dia(self, data: str) -> str:
+        return os.path.join(self._pasta_memoria, f"memoria_{data}.txt")
+
+    def _garantir_dia_atual(self) -> None:
+        data_agora = self._agora().strftime("%d-%m-%Y")
+        if data_agora == self.data_atual:
+            return
+        # O lote antigo já está materializado no arquivo do dia anterior. A
+        # troca não depende da LLM e, portanto, não perde memória se ela estiver
+        # lenta justamente à meia-noite.
+        self.salvar_resumo_diario()
+        self.data_atual = data_agora
+        self.arquivo_diario = self._caminho_do_dia(data_agora)
+        self.contador = 0
+        self.historico_recente = []
+        self.resumo_do_dia = ""
         self.carregar_resumo_diario()
 
     def carregar_resumo_diario(self) -> None:
@@ -31,40 +52,93 @@ class MemoriaLaylay:
             return
         try:
             with open(self.arquivo_diario, "r", encoding="utf-8") as arquivo:
-                self.resumo_do_dia = arquivo.read().strip()
+                conteudo = arquivo.read()
+            marcador_pendentes = "\n\nINTERAÇÕES PENDENTES DE CONSOLIDAÇÃO:\n"
+            cabecalho = f"RESUMO DO DIA {self.data_atual}:\n\n"
+            corpo = conteudo[len(cabecalho):] if conteudo.startswith(cabecalho) else conteudo
+            resumo, separador, pendentes = corpo.partition(marcador_pendentes)
+            resumo = resumo.strip()
+            self.resumo_do_dia = "" if resumo == "Resumo ainda em formação." else resumo
+            if separador:
+                self.historico_recente = [
+                    linha.strip()
+                    for linha in pendentes.splitlines()
+                    if linha.strip()
+                ][-50:]
+                self.contador = len(self.historico_recente)
             self._log(f"📂 [MEMÓRIA] Resumo do dia {self.data_atual} carregado")
-        except Exception:
+        except Exception as erro:
             self.resumo_do_dia = ""
+            self.historico_recente = []
+            self.contador = 0
+            self._log(f"⚠️ [MEMÓRIA] não consegui carregar o resumo diário: {erro}")
 
     def salvar_resumo_diario(self) -> None:
         try:
-            with open(self.arquivo_diario, "w", encoding="utf-8") as arquivo:
-                arquivo.write(f"RESUMO DO DIA {self.data_atual}:\n\n{self.resumo_do_dia}")
+            os.makedirs(self._pasta_memoria, exist_ok=True)
+            resumo = self.resumo_do_dia.strip() or "Resumo ainda em formação."
+            conteudo = f"RESUMO DO DIA {self.data_atual}:\n\n{resumo}"
+            if self.historico_recente:
+                conteudo += (
+                    "\n\nINTERAÇÕES PENDENTES DE CONSOLIDAÇÃO:\n"
+                    + "\n".join(self.historico_recente[-50:])
+                )
+            temporario = self.arquivo_diario + ".tmp"
+            with open(temporario, "w", encoding="utf-8") as arquivo:
+                arquivo.write(conteudo)
+                arquivo.flush()
+                os.fsync(arquivo.fileno())
+            os.replace(temporario, self.arquivo_diario)
             self._log(f"💾 [MEMÓRIA] Resumo salvo em {self.arquivo_diario}")
         except Exception as erro:
             self._log(f"⚠️ Erro ao salvar resumo: {erro}")
 
     def adicionar_interacao(self, usuario: str, resposta_ia: str) -> None:
-        self.contador += 1
-        horario = self._agora().strftime("%H:%M")
-        self.historico_recente.append(f"[{horario}] Usuário: {usuario} | Laylay: {resposta_ia}")
-        if self.contador % 5 == 0:
-            self.atualizar_resumo_diario()
+        usuario = " ".join(str(usuario or "").split()).strip()
+        resposta_ia = " ".join(str(resposta_ia or "").split()).strip()
+        if not usuario or not resposta_ia:
+            return
+        with self._lock:
+            self._garantir_dia_atual()
+            self.contador += 1
+            horario = self._agora().strftime("%H:%M")
+            self.historico_recente.append(
+                f"[{horario}] Usuário: {usuario[:2000]} | Laylay: {resposta_ia[:2000]}"
+            )
+            self.historico_recente = self.historico_recente[-50:]
+            # Materializa o turno antes de chamar a LLM. Assim, encerramento,
+            # timeout ou queda de energia não apagam o lote ainda não resumido.
+            self.salvar_resumo_diario()
+            if self.contador % 5 == 0:
+                self.atualizar_resumo_diario()
 
     def atualizar_resumo_diario(self) -> None:
-        self._log(f"🚀 [MEMÓRIA] Gerando resumo das últimas {len(self.historico_recente)} interações...")
-        texto_para_resumir = "\n".join(self.historico_recente)
-        prompt = (
-            f"Resumo atual do dia:\n{self.resumo_do_dia}\n\n"
-            f"Novas interações:\n{texto_para_resumir}\n\n"
-            "Atualize o resumo do dia de forma concisa, mantendo apenas os fatos importantes, "
-            "pedidos do Pedro, preferências e eventos relevantes. Escreva em português."
-        )
-        mensagens = [
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": "Resuma tudo acima em um texto coeso e curto."},
-        ]
-        novo_resumo = self._enviar_mensagem(mensagens)
-        self.resumo_do_dia = str(novo_resumo or "").strip()
-        self.salvar_resumo_diario()
-        self.historico_recente = []
+        with self._lock:
+            if not self.historico_recente:
+                return
+            self._log(f"🚀 [MEMÓRIA] Gerando resumo das últimas {len(self.historico_recente)} interações...")
+            texto_para_resumir = "\n".join(self.historico_recente)
+            prompt = (
+                f"Resumo atual do dia:\n{self.resumo_do_dia}\n\n"
+                f"Novas interações:\n{texto_para_resumir}\n\n"
+                "Atualize o resumo do dia de forma concisa, mantendo apenas os fatos importantes, "
+                "pedidos do usuário, preferências e eventos relevantes. Escreva em português."
+            )
+            mensagens = [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": "Resuma tudo acima em um texto coeso e curto."},
+            ]
+            try:
+                novo_resumo = str(self._enviar_mensagem(mensagens) or "").strip()
+            except Exception as erro:
+                self._log(
+                    "⚠️ [MEMÓRIA] resumo diário adiado; interações preservadas: "
+                    f"{type(erro).__name__}: {erro}"
+                )
+                return
+            if not novo_resumo or "LAYLAY_LLM_INDISPONIVEL" in novo_resumo:
+                self._log("⚠️ [MEMÓRIA] resumo diário adiado; LLM indisponível e lote preservado")
+                return
+            self.resumo_do_dia = novo_resumo
+            self.historico_recente = []
+            self.salvar_resumo_diario()

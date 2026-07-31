@@ -11,6 +11,11 @@ import time
 import uuid
 from typing import Any, Dict, Iterable
 
+from mente_laylay.memoria_mental.continuidade_geral import (
+    encerrar_continuidade,
+    registrar_evento_continuidade,
+)
+
 
 def criar_pendencia(
     *,
@@ -50,8 +55,54 @@ def registrar_pendencia(
     item = dict(pendencia or {})
     if not item.get("tipo") or not item.get("foi_falada"):
         return estado
+    atual = pendencia_ativa(estado)
+    # Algumas falas estruturadas também têm formato de pergunta. Depois que a
+    # voz termina, o analisador conversacional pode tentar cadastrá-las outra
+    # vez como ``pergunta_aberta`` ou ``promessa_conversacional``. Essa segunda
+    # leitura é genérica e não pode apagar a ação concreta que a pergunta
+    # original estava oferecendo.
+    origens_estruturadas = {
+        "observador_area_transferencia",
+        "lixeira_laylay",
+        "caixa_entrada_pessoal",
+        "esclarecimento_operacional",
+        "confirmacao_operacional",
+        "visao_jogo",
+    }
+    origens_derivadas_da_fala = {
+        "pergunta_aberta",
+        "promessa_conversacional",
+    }
+    if (
+        atual
+        and str(atual.get("origem") or "") in origens_estruturadas
+        and str(item.get("origem") or "") in origens_derivadas_da_fala
+    ):
+        return estado
+    # Uma sugestão espontânea pode acompanhar um esclarecimento, mas não pode
+    # roubar a resposta que completará o comando original. A oferta continua
+    # disponível em `oferta_pendente` como alternativa secundária.
+    if (
+        atual
+        and str(atual.get("tipo") or "") == "esclarecimento"
+        and str(atual.get("origem") or "") == "esclarecimento_operacional"
+        and str(item.get("origem") or "") == "oferta_musical"
+        and str(atual.get("dominio") or "") == str(item.get("dominio") or "")
+    ):
+        return estado
     item["status"] = "ativa"
     estado["pendencia_atual"] = item
+    estado = registrar_evento_continuidade(
+        estado,
+        evento="pendencia",
+        dominio=str(item.get("dominio") or "conversa"),
+        intent=str(item.get("intencao") or ""),
+        tipo=str(item.get("tipo") or ""),
+        texto=str(item.get("conteudo") or ""),
+        status="aguardando_resposta",
+        origem=str(item.get("origem") or ""),
+        ttl_s=max(1.0, float(item.get("expira_em") or time.time()) - time.time()),
+    )
     return estado
 
 
@@ -91,5 +142,10 @@ def limpar_pendencia(
         encerrada["status"] = str(motivo or "resolvida")
         encerrada["encerrada_em"] = time.time()
         estado["ultima_pendencia_encerrada"] = encerrada
+        estado = encerrar_continuidade(
+            estado,
+            dominio=str(item.get("dominio") or "conversa"),
+            motivo=str(motivo or "resolvida"),
+        )
     estado["pendencia_atual"] = {}
     return estado

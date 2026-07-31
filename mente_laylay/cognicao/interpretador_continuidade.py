@@ -86,7 +86,7 @@ def interpretar_resposta_pendente(
 
     if callable(interpretar_llm):
         prompt = (
-            "Voce interpreta respostas curtas do Pedro para a Laylay.\n"
+            "Voce interpreta respostas curtas do usuário para a Laylay.\n"
             "Nao execute nada. Apenas classifique a intencao semantica da resposta diante da pendencia.\n"
             "Decisoes possiveis: ACEITAR, RECUSAR, TROCAR_ALTERNATIVA, PEDIR_EXPLICACAO, "
             "CORRIGIR_INFORMACAO, MUDAR_ASSUNTO, INDEFINIDO.\n"
@@ -94,7 +94,7 @@ def interpretar_resposta_pendente(
             "{\"decisao\":\"...\",\"confianca\":0.0,\"motivo\":\"...\"}\n\n"
             f"Pendencia: {json.dumps(pend, ensure_ascii=False)}\n"
             f"Contexto recente: {contexto or 'nenhum'}\n"
-            f"Resposta do Pedro: {texto!r}\n"
+            f"Resposta do usuário: {texto!r}\n"
         )
         try:
             data = _extrair_json(interpretar_llm(prompt))

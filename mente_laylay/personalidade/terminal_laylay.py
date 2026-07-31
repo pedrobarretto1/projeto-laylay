@@ -183,7 +183,7 @@ def should_log_message(text: str, *, log_mode: str = "limpo", log_verbose: bool 
             "[ia] gerando resposta", "[roteador", "[janela:", "[iot:inicio]",
             "[iot:seguranca]", "[iot:resultado]", "[ouvido]", "[ouvido:",
             "[você disse]", "[voce disse]", "appopener carregado", "websocket server",
-            "[voz pessoal]",
+            "[voz pessoal]", "[rede associativa]", "[clipboard:",
             "inicializando", "carregando o novo ouvido", "ouvido whisper carregado",
         ]):
             return True

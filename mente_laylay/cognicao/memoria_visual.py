@@ -50,8 +50,8 @@ def executar_captura_tela(
 ) -> bool:
     """Executa a visão manual preservando destino, fala e processamento assíncrono."""
     pergunta = (
-        "Você é a Laylay, assistente debochada, sarcástica e dona absoluta do PC do Pedro. "
-        "Olhe para esta tela e descreva o que o Pedro está fazendo ou o que está aberto. "
+        "Você é a Laylay, assistente debochada, sarcástica e dona absoluta deste PC. "
+        "Olhe para esta tela e descreva o que o usuário está fazendo ou o que está aberto. "
         "Seja curta (máximo 3 linhas), direta, irônica e julgue as escolhas dele se for o caso. "
         "Responda SEMPRE em português brasileiro, com seu jeitão de sempre."
     )
@@ -100,7 +100,7 @@ def executar_captura_tela(
             falar(str(descricao or "")[:300], emocao or "debochada", nivel or 2)
         except Exception as erro:
             log(f"[VISÃO] Erro: {erro}")
-            falar("Tive um problema pra olhar a tela, Pedro.", "irritada", 2)
+            falar("Tive um problema pra olhar a tela.", "irritada", 2)
 
     thread_factory(target=ver_tela_local, daemon=True).start()
     falar("Tô olhando pra tela agora, um segundo...", "calma", 1)
@@ -251,42 +251,219 @@ def capturar_tela_base64(qualidade: int = 60) -> str:
         return ""
 
 
-def analisar_com_groq(imagem_b64: str, pergunta: str, api_key: str, model: str) -> str:
+def _resumir_erro_groq(erro: Exception) -> tuple[str, str]:
+    bruto = str(erro or "").strip()
+    seguro = re.sub(r"\bgsk_[A-Za-z0-9_-]+", "<chave_oculta>", bruto)
+    seguro = re.sub(r"(?i)bearer\s+[A-Za-z0-9._-]+", "Bearer <oculto>", seguro)
+    base = seguro.casefold()
+    if "401" in base or "authentication" in base or "invalid api key" in base:
+        return "autenticacao", seguro[:240]
+    if "decommission" in base or "model_decommissioned" in base:
+        return "modelo_desativado", seguro[:240]
+    if "404" in base or "model_not_found" in base:
+        return "modelo_indisponivel", seguro[:240]
+    if "403" in base or "permission" in base:
+        return "permissao_modelo", seguro[:240]
+    if "413" in base or "too large" in base:
+        return "imagem_grande", seguro[:240]
+    if "429" in base or "rate limit" in base or "quota" in base:
+        return "limite", seguro[:240]
+    if re.search(r"\b(?:500|502|503|504)\b", base) or "timeout" in base:
+        return "transitorio", seguro[:240]
+    return "desconhecido", seguro[:240]
+
+
+def analisar_com_groq(
+    imagem_b64: str,
+    pergunta: str,
+    api_key: str,
+    model: str,
+    *,
+    client_factory: Callable[..., Any] | None = None,
+    requests_post: Callable[..., Any] | None = None,
+    forcar_http: bool = False,
+    sleep_fn: Callable[[float], Any] | None = None,
+    max_tentativas: int = 3,
+    timeout_s: float = 35.0,
+    retry_delay_s: float = 4.0,
+    temperature: float = 0.7,
+    log: Callable[[str], Any] = print,
+) -> str:
     """Analisa uma imagem com Groq Vision."""
-    max_tentativas = 3
+    max_tentativas = max(1, min(3, int(max_tentativas)))
+    timeout_s = max(3.0, float(timeout_s))
+    retry_delay_s = max(0.0, float(retry_delay_s))
+    dormir = sleep_fn
+    from mente_laylay.percepcao.imagens_multimodais import desempacotar_imagens
+
+    imagens = desempacotar_imagens(imagem_b64)
+    imagens_envio = imagens
+    if len(imagens) >= 3:
+        # O pacote de item guarda três quadros: contexto, tooltip amplo e
+        # detalhe nativo. O detalhe fica reservado para a confirmação literal
+        # que o runtime só solicita quando a primeira leitura é insegura. Isso
+        # evita pagar pelos mesmos pixels duas vezes no limite TPM da Groq.
+        imagens_envio = imagens[:2]
+        log(
+            "🎮 [VISÃO:GROQ] pacote otimizado | "
+            f"enviadas={len(imagens_envio)} reservadas={len(imagens) - len(imagens_envio)}"
+        )
+    conteudo: list[dict[str, Any]] = [{"type": "text", "text": pergunta}]
+    for indice, imagem in enumerate(imagens_envio, start=1):
+        if len(imagens_envio) > 1:
+            dimensoes = (
+                f" ({imagem.get('width')}x{imagem.get('height')})"
+                if imagem.get("width") and imagem.get("height") else ""
+            )
+            conteudo.append({
+                "type": "text",
+                "text": f"Imagem {indice}: {imagem.get('label')}{dimensoes}",
+            })
+        conteudo.append({
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:{imagem.get('mime') or 'image/jpeg'};base64,{imagem.get('data')}"
+            },
+        })
+    payload = {
+        "model": str(model or "").strip(),
+        "messages": [
+            {
+                "role": "user",
+                "content": conteudo,
+            }
+        ],
+        "temperature": max(0.0, min(1.0, float(temperature))),
+        "top_p": 0.8,
+        "reasoning_effort": "none",
+        "max_completion_tokens": 512,
+    }
     for tentativa in range(max_tentativas):
         try:
-            from groq import Groq  # type: ignore[import-untyped]
+            usar_http = bool(forcar_http)
+            fabrica = client_factory
+            if fabrica is None and not usar_http:
+                try:
+                    from groq import Groq  # type: ignore[import-untyped]
 
-            client = Groq(api_key=str(api_key or "").strip())
-            resposta = client.chat.completions.create(
-                model=str(model or "").strip(),
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": pergunta},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{imagem_b64}"}},
-                        ],
-                    }
-                ],
-                temperature=0.8,
-                max_tokens=512,
-            )
-            texto = resposta.choices[0].message.content.strip()
-            return texto
+                    fabrica = Groq
+                except ModuleNotFoundError:
+                    usar_http = True
+                    log("ℹ️ [VISÃO:GROQ] SDK ausente; usando API HTTP direta.")
+
+            if usar_http:
+                post = requests_post
+                if post is None:
+                    import requests
+
+                    post = requests.post
+                retorno = post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {str(api_key or '').strip()}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                    timeout=timeout_s,
+                )
+                status = int(getattr(retorno, "status_code", 200) or 200)
+                if status >= 400:
+                    corpo = str(getattr(retorno, "text", "") or "")[:400]
+                    raise RuntimeError(f"HTTP {status}: {corpo}")
+                dados_resposta = retorno.json()
+                texto = str(
+                    (((dados_resposta.get("choices") or [{}])[0].get("message") or {}).get("content"))
+                    or ""
+                ).strip()
+            else:
+                client = fabrica(api_key=str(api_key or "").strip())
+                resposta = client.chat.completions.create(**payload)
+                texto = str(resposta.choices[0].message.content or "").strip()
+            texto = re.sub(r"<think>.*?</think>", "", texto, flags=re.IGNORECASE | re.DOTALL).strip()
+            if texto.casefold().startswith("<think>"):
+                log(f"⚠️ [VISÃO:GROQ] raciocínio interno sem resposta final | modelo={model}")
+                return "Falha visual: o serviço não devolveu uma resposta final."
+            if texto:
+                return texto
+            log(f"⚠️ [VISÃO:GROQ] resposta vazia | modelo={model}")
+            return "Falha visual: o serviço devolveu uma resposta vazia."
         except Exception as e:
-            erro_str = str(e).lower()
-            if "429" in erro_str or "rate limit" in erro_str or "quota" in erro_str:
-                if tentativa < max_tentativas - 1:
+            categoria, detalhe = _resumir_erro_groq(e)
+            log(
+                f"⚠️ [VISÃO:GROQ] categoria={categoria} | modelo={model} "
+                f"| tentativa={tentativa + 1}/{max_tentativas} | detalhe={detalhe}"
+            )
+            if categoria in {"limite", "transitorio"} and tentativa < max_tentativas - 1:
+                if dormir is None:
                     import time
 
-                    time.sleep(8 * (tentativa + 1))
-                    continue
-                return "Groq tá lotado agora, Pedro. Me dá uns 20 segundos ou usa o modo texto por enquanto."
-            if tentativa == max_tentativas - 1:
-                return f"Não consegui analisar a tela com Groq: {str(e)[:100]}"
-    return "Erro desconhecido no Groq Vision."
+                    time.sleep(retry_delay_s * (tentativa + 1))
+                else:
+                    dormir(retry_delay_s * (tentativa + 1))
+                continue
+            falas = {
+                "autenticacao": "Falha visual: a chave Groq foi recusada.",
+                "modelo_desativado": "Falha visual: o modelo configurado foi desativado pela Groq.",
+                "modelo_indisponivel": "Falha visual: o modelo configurado não está disponível.",
+                "permissao_modelo": "Falha visual: sua conta não tem permissão para esse modelo.",
+                "imagem_grande": "Falha visual: a imagem passou do limite do serviço.",
+                "limite": "Falha visual: a Groq atingiu o limite temporário.",
+                "transitorio": "Falha visual: o serviço Groq está temporariamente indisponível.",
+            }
+            return falas.get(categoria, "Falha visual: a chamada Groq não foi concluída.")
+    return "Falha visual: a chamada Groq não foi concluída."
+
+
+def sintetizar_texto_com_groq(
+    prompt: str,
+    api_key: str,
+    model: str,
+    *,
+    requests_post: Callable[..., Any] | None = None,
+    timeout_s: float = 18.0,
+    log: Callable[[str], Any] = print,
+) -> str:
+    """Síntese curta sem reenviar a imagem já interpretada."""
+    if not str(prompt or "").strip() or not str(api_key or "").strip():
+        return ""
+    try:
+        post = requests_post
+        if post is None:
+            import requests
+
+            post = requests.post
+        retorno = post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {str(api_key).strip()}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": str(model or "").strip(),
+                "messages": [{"role": "user", "content": str(prompt)[:12000]}],
+                "temperature": 0.2,
+                "top_p": 0.8,
+                "reasoning_effort": "none",
+                "max_completion_tokens": 380,
+            },
+            timeout=max(3.0, float(timeout_s)),
+        )
+        status = int(getattr(retorno, "status_code", 200) or 200)
+        if status >= 400:
+            raise RuntimeError(f"HTTP {status}")
+        dados = retorno.json()
+        texto = str(
+            (((dados.get("choices") or [{}])[0].get("message") or {}).get("content"))
+            or ""
+        ).strip()
+        return re.sub(
+            r"<think>.*?</think>", "", texto,
+            flags=re.IGNORECASE | re.DOTALL,
+        ).strip()
+    except Exception as erro:
+        categoria, _detalhe = _resumir_erro_groq(erro)
+        log(f"⚠️ [PESQUISA JOGO:SÍNTESE] categoria={categoria}; usando leitura visual")
+        return ""
 
 
 def registrar_memoria_visual(

@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict
 
 from mente_laylay.memoria_mental.continuidade_conversa import (
     atualizar_memoria_topicos,
+    mudanca_clara_de_topico,
     topico_memoria_valido,
 )
 from mente_laylay.personalidade.falas_variadas import emitir_falha_contextual
@@ -58,7 +59,12 @@ class RespostaConversacionalRuntime:
         ultimo_salvo = str(conversa.get("ultimo_topico_conversa") or "").strip()
         # Também cura dados ruins já persistidos por versões anteriores.
         if ultimo_salvo and not topico_memoria_valido(ultimo_salvo, normalizar):
-            conversa = dict(conversa)
+            self.suspender_topico_conversacional(
+                motivo="topico_persistido_invalido",
+                preservar_no_historico=False,
+            )
+            estado = self.estado_runtime_getter()
+            conversa = dict(estado.conversacional)
             conversa["ultimo_topico_conversa"] = ""
             conversa["ultimo_topico_ts"] = 0.0
             conversa["topicos_conversa_recente"] = [
@@ -66,6 +72,7 @@ class RespostaConversacionalRuntime:
                 if topico_memoria_valido(str(topico), normalizar)
             ]
             estado.substituir("conversacional", conversa)
+            ultimo_salvo = ""
         recentes, topico, ts = atualizar_memoria_topicos(
             texto_usuario=texto_usuario,
             topicos_recentes=conversa.get("topicos_conversa_recente", []),
@@ -73,12 +80,65 @@ class RespostaConversacionalRuntime:
             normalizar_texto_curto=normalizar,
         )
         if topico and ts:
+            if mudanca_clara_de_topico(
+                texto_usuario,
+                ultimo_salvo,
+                topico,
+                normalizar_texto_curto=normalizar,
+            ):
+                self.suspender_topico_conversacional(
+                    motivo="mudanca_clara_de_assunto",
+                    preservar_no_historico=True,
+                )
+                estado = self.estado_runtime_getter()
+                conversa = estado.conversacional
             estado.atualizar_campos(
                 "conversacional",
                 topicos_conversa_recente=recentes,
                 ultimo_topico_conversa=topico,
                 ultimo_topico_ts=ts,
             )
+
+    def suspender_topico_conversacional(
+        self,
+        motivo: str = "operacao_em_foco",
+        *,
+        preservar_no_historico: bool = True,
+    ) -> None:
+        """Retira o assunto antigo do foco sem apagar pendências operacionais."""
+        estado = self.estado_runtime_getter()
+        conversa = dict(estado.conversacional)
+        mente = dict(estado.mental)
+        topico = str(
+            conversa.get("ultimo_topico_conversa")
+            or mente.get("foco_conversacional_topico")
+            or mente.get("topico_explicito_atual")
+            or ""
+        ).strip()
+        agora = time.time()
+        historico = list(mente.get("assuntos_encerrados") or [])
+        if topico and preservar_no_historico:
+            ultimo = historico[-1] if historico else {}
+            if str((ultimo or {}).get("topico") or "").casefold() != topico.casefold():
+                historico.append({"topico": topico, "motivo": motivo, "ts": agora})
+        mente.update({
+            "assuntos_encerrados": historico[-20:],
+            "topico_conversacional_suspenso": topico,
+            "topico_conversacional_suspenso_ts": agora if topico else 0.0,
+            "foco_conversacional_topico": "",
+            "foco_conversacional_alvo": "",
+            "foco_conversacional_tipo": "",
+            "foco_conversacional_resposta": "",
+            "foco_conversacional_ts": 0.0,
+            "topico_explicito_atual": "",
+            "topico_explicito_origem": "",
+            "topico_explicito_ts": 0.0,
+            "pergunta_aberta_texto": "",
+            "pergunta_aberta_ts": 0.0,
+        })
+        conversa.update({"ultimo_topico_conversa": "", "ultimo_topico_ts": 0.0})
+        estado.substituir("mental", mente)
+        estado.substituir("conversacional", conversa)
 
     def acalmar_emocao(self, motivo: str = "") -> None:
         try:
@@ -201,9 +261,6 @@ class RespostaConversacionalRuntime:
             texto_usuario,
             detalhe=detalhe,
             normalizar_texto=ns["_normalizar_texto_com_apelidos"],
-            texto_parece_navegacao=ns["_texto_parece_navegacao_ou_janela_ia"],
-            resposta_conversa_local=ns["_resposta_conversa_local"],
-            fala_e_fallback_neutro=ns["_fala_e_fallback_neutro"],
             falar=ns["falar_com_lipsync"],
             log=self.log,
         )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import re
 from typing import Any, Callable, Dict
 
 
@@ -26,6 +27,18 @@ def texto_pede_direcao_musical_generica(
     if not t:
         return False
 
+    # Pedido de reprodução sem faixa é uma solicitação incompleta, não uma
+    # pesquisa pela faixa literal "uma música". A conversa musical escolhe uma
+    # sugestão real e mantém a confirmação/título seguinte como pendência.
+    if re.fullmatch(
+        r"(?:(?:por favor|lay|laylay)\s+)?"
+        r"(?:coloca|coloque|toca|toque|bota|bote|poe|põe|manda)\s+"
+        r"(?:(?:uma|alguma)\s+)?(?:musica|música|faixa|som)"
+        r"(?:\s+(?:ai|aí|pra mim|para mim))?[.!?]*",
+        t,
+    ):
+        return True
+
     if any(p in t for p in [
         "nao tenho ouvido antes", "não tenho ouvido antes",
         "nao ouvi antes", "não ouvi antes",
@@ -42,6 +55,7 @@ def texto_pede_direcao_musical_generica(
         "me lista", "me liste", "lista musicas", "liste musicas",
         "me fale uma musica", "me fala uma musica", "me diga uma musica",
         "qual voce acha", "qual você acha", "voce acha que eu gostaria", "você acha que eu gostaria",
+        "que tal uma musica", "que tal uma música", "que tal um som",
     ])
     estado = dict(estado_mental or {})
     continuacao_musical = (

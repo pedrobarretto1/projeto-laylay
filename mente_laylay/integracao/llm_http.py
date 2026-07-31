@@ -4,18 +4,51 @@ from __future__ import annotations
 
 import time
 import threading
+import re
 from typing import Any, Callable
 
 import requests
 
 from mente_laylay.cognicao.conversa_sobre_capacidades import resposta_conversa_sobre_capacidade
+from mente_laylay.personalidade.contingencia_natural import fala_contingencia_natural
+
+
+# Estados do transporte são dados internos. Eles não são frases da Laylay e
+# nunca devem ser enviados à personalidade, ao terminal ou ao TTS como fala.
+FALHA_LLM_TIMEOUT = "__LAYLAY_LLM_TIMEOUT__"
+FALHA_LLM_INDISPONIVEL = "__LAYLAY_LLM_INDISPONIVEL__"
+FALHA_LLM_OCUPADA = "__LAYLAY_LLM_OCUPADA__"
+
+
+def eh_estado_tecnico_llm(valor: Any) -> bool:
+    """Reconhece sentinelas mesmo depois de um limpador remover pontuação."""
+    texto = str(valor or "").casefold().strip()
+    compacto = re.sub(r"[^a-z0-9]+", "", texto)
+    return compacto in {
+        "laylayllmtimeout",
+        "laylayllmindisponivel",
+        "laylayllmocupada",
+    }
 
 
 class RespostaLLMFallback:
-    def __init__(self, content: str, status_code: int = 200):
+    def __init__(
+        self,
+        content: str,
+        status_code: int = 200,
+        *,
+        motivo: str = "",
+        classe: str = "degradacao",
+        impacto: str = "turno",
+        fallback: str = "contingencia_conversacional",
+    ):
         self.status_code = status_code
         self._content = str(content or "")
         self.text = self._content
+        self.motivo = str(motivo or "")
+        self.classe = str(classe or "degradacao")
+        self.impacto = str(impacto or "turno")
+        self.fallback = str(fallback or "contingencia_conversacional")
 
     def raise_for_status(self):
         return None
@@ -46,24 +79,31 @@ def conteudo_fallback_llm_local(data: dict) -> str:
     mensagens = data.get("messages") if isinstance(data, dict) else []
     texto = " ".join(str((m or {}).get("content") or "")[:500] for m in mensagens if isinstance(m, dict))
     baixo = texto.lower()
-    if "intent" in baixo and "json" in baixo:
-        return '{"intent":"NONE","params":{}}'
-    if "responda apenas json" in baixo or "json válido" in baixo or "json valido" in baixo:
-        return "{}"
-    if int((data or {}).get("max_tokens") or 0) <= 5:
-        return "NAO"
     ultima_usuario = ""
     for mensagem in reversed(list(mensagens or [])):
         if isinstance(mensagem, dict) and str(mensagem.get("role") or "").lower() == "user":
             ultima_usuario = str(mensagem.get("content") or "").strip()
             break
+    if "intent" in baixo and "json" in baixo:
+        return '{"intent":"NONE","params":{}}'
+    # O contrato principal de conversa merece uma fala válida mesmo quando o
+    # transporte entra em contingência. Ela não confirma ações nem inventa o
+    # conteúdo que o modelo deixou de produzir.
+    if '"fala"' in baixo and "comandos" in baixo and "json" in baixo:
+        fala = fala_contingencia_natural(ultima_usuario)
+        import json
+        return json.dumps({"fala": fala, "comandos": []}, ensure_ascii=False)
+    if "responda apenas json" in baixo or "json válido" in baixo or "json valido" in baixo:
+        return "{}"
+    if int((data or {}).get("max_tokens") or 0) <= 5:
+        return "NAO"
     resposta_capacidade = resposta_conversa_sobre_capacidade(ultima_usuario)
     if resposta_capacidade:
         return resposta_capacidade
     usuario_baixo = ultima_usuario.lower()
     if any(p in usuario_baixo for p in ("música", "musica", "playlist", "som", "faixa")):
         return "Peguei que o assunto é música, mas meu modelo travou nessa resposta. Me dá o estilo ou artista e eu continuo exatamente desse ponto."
-    return "Me perdi um pouco nessa resposta, Pedro. Segura um segundo e me fala de outro jeito."
+    return FALHA_LLM_INDISPONIVEL
 
 
 def conteudo_fallback_modo_jogo(data: dict) -> str:
@@ -80,7 +120,7 @@ def conteudo_fallback_modo_jogo(data: dict) -> str:
             return "NAO"
     except (TypeError, ValueError):
         pass
-    return "Tô poupando a placa enquanto você joga. Os comandos rápidos continuam comigo."
+    return FALHA_LLM_OCUPADA
 
 
 def compactar_payload_llm_local(data: dict) -> dict:
@@ -142,14 +182,19 @@ def post_chat_llm(
     requests_post: Callable[..., Any],
     print_fn: Callable[..., Any],
     timeout: int | None = None,
+    prioridade_interativa: bool | None = None,
+    espera_lock_interativa_s: float = 1.5,
 ) -> tuple[Any, float]:
     """Serializa chamadas locais e recupera 400 com payload compacto."""
     url = f"{base_url}/chat/completions"
-    timeout = timeout or timeout_padrao(base_url, local_timeout, remote_timeout)
+    timeout = timeout_padrao(base_url, local_timeout, remote_timeout) if timeout is None else timeout
     local = endpoint_eh_local(base_url)
 
     if local and time.time() < float(bad_request_until or 0.0):
-        return RespostaLLMFallback(conteudo_fallback_llm_local(data)), float(bad_request_until or 0.0)
+        return RespostaLLMFallback(
+            conteudo_fallback_llm_local(data),
+            motivo="circuito_temporario_ativo",
+        ), float(bad_request_until or 0.0)
 
     def _post(payload: dict):
         return requests_post(url, headers=headers, json=payload, timeout=timeout)
@@ -159,13 +204,32 @@ def post_chat_llm(
 
     pegou_lock = lock.acquire(blocking=False)
     if not pegou_lock:
-        espera_lock = min(5.0, max(0.1, float(timeout or 5.0)))
+        if prioridade_interativa is False:
+            print_fn("🧠 [IA] tarefa secundária adiada porque a conversa está usando o modelo.")
+            return RespostaLLMFallback(
+                conteudo_fallback_llm_local(data),
+                motivo="tarefa_secundaria_adiada",
+                classe="esperada",
+                impacto="nenhum",
+                fallback="adiamento_tarefa_secundaria",
+            ), float(bad_request_until or 0.0)
+        # Uma fala nova do Pedro não deve ficar vários segundos atrás de uma
+        # requisição antiga. Ainda damos uma janela curta para reaproveitar o
+        # modelo já carregado, mas depois liberamos o fluxo com fallback.
+        espera_lock = min(
+            max(0.1, float(espera_lock_interativa_s or 0.1)),
+            max(0.1, float(timeout or 0.1)),
+        )
         print_fn(f"[IA] Modelo local ocupado; aguardando no máximo {espera_lock:.1f}s...")
         pegou_lock = lock.acquire(timeout=espera_lock)
         if not pegou_lock:
             print_fn("⚠️ [IA] Modelo local continuou ocupado; chamada liberada sem bloquear o fluxo.")
+            contingencia = conteudo_fallback_llm_local(data)
+            if not (contingencia.startswith('{"fala":') and '"comandos":[]' in contingencia):
+                contingencia = FALHA_LLM_OCUPADA
             return RespostaLLMFallback(
-                "Meu modelo local está ocupado com outra tarefa agora. Tenta novamente em alguns segundos."
+                contingencia,
+                motivo="modelo_local_ocupado",
             ), float(bad_request_until or 0.0)
     try:
         payload_envio = compactar_payload_llm_local(data) if payload_precisa_compactar_llm_local(data) else data
@@ -179,11 +243,18 @@ def post_chat_llm(
                 return resp_retry, float(bad_request_until or 0.0)
             print_fn(f"⚠️ [IA] 400 persistiu no retry compacto. Corpo: {str(resp_retry.text or '')[:500]}")
             novo_bad_request_until = time.time() + 20.0
-            return RespostaLLMFallback(conteudo_fallback_llm_local(data)), novo_bad_request_until
+            return RespostaLLMFallback(
+                conteudo_fallback_llm_local(data),
+                motivo="requisicao_invalida_persistente",
+                classe="defeito",
+            ), novo_bad_request_until
         if resp.status_code >= 500:
             print_fn(f"⚠️ [IA] {resp.status_code} temporário do modelo local; usando resposta contextual.")
             novo_bad_request_until = time.time() + 10.0
-            return RespostaLLMFallback(conteudo_fallback_llm_local(data)), novo_bad_request_until
+            return RespostaLLMFallback(
+                conteudo_fallback_llm_local(data),
+                motivo="servidor_llm_temporariamente_indisponivel",
+            ), novo_bad_request_until
         return resp, float(bad_request_until or 0.0)
     finally:
         if pegou_lock:
@@ -202,39 +273,138 @@ class LLMHttpRuntime:
         requests_post: Callable[..., Any],
         print_fn: Callable[..., Any] = print,
         ao_finalizar_conversa_modo_jogo: Callable[[], Any] | None = None,
+        game_timeout: int = 15,
+        game_idle_unload_s: float = 60.0,
+        espera_lock_interativa_s: float = 1.5,
+        timer_factory: Callable[..., Any] = threading.Timer,
     ) -> None:
         self.base_url = str(base_url or "").rstrip("/")
         self.local_timeout = int(local_timeout)
         self.remote_timeout = int(remote_timeout)
+        self.game_timeout = max(1, int(game_timeout))
+        self.game_idle_unload_s = max(5.0, float(game_idle_unload_s))
+        self.espera_lock_interativa_s = max(0.1, float(espera_lock_interativa_s))
+        self.timer_factory = timer_factory
         self.requests_post = requests_post
         self.print_fn = print_fn
         self.ao_finalizar_conversa_modo_jogo = ao_finalizar_conversa_modo_jogo
-        self._lock = threading.RLock()
+        # Estado e transporte não podem compartilhar o mesmo lock: uma chamada
+        # local pode durar minutos, enquanto o monitor de jogos precisa ativar
+        # o bloqueio imediatamente para mandar o Ollama liberar a GPU.
+        self._state_lock = threading.RLock()
+        self._request_lock = threading.RLock()
         self._bad_request_until = 0.0
         self._modo_jogo_ativo = False
+        self._requisicoes_ativas = 0
+        self._game_unload_timer: Any = None
+        self._game_session_generation = 0
+        self._game_session_state = "fria"
 
     @property
     def bad_request_until(self) -> float:
-        return self._bad_request_until
+        with self._state_lock:
+            return self._bad_request_until
 
     def endpoint_eh_local(self) -> bool:
         return endpoint_eh_local(self.base_url)
 
     @property
     def modo_jogo_ativo(self) -> bool:
-        with self._lock:
+        with self._state_lock:
             return self._modo_jogo_ativo
 
+    @property
+    def requisicao_local_em_andamento(self) -> bool:
+        with self._state_lock:
+            return bool(self.endpoint_eh_local() and self._requisicoes_ativas > 0)
+
     def definir_modo_jogo(self, ativo: bool) -> None:
-        with self._lock:
+        with self._state_lock:
             self._modo_jogo_ativo = bool(ativo)
+            if not ativo:
+                self._game_session_state = "encerrada"
+                self._game_session_generation += 1
+                timer = self._game_unload_timer
+                self._game_unload_timer = None
+            else:
+                self._game_session_state = "fria"
+                timer = None
+        if timer is not None:
+            try:
+                timer.cancel()
+            except Exception:
+                pass
+
+    @property
+    def estado_sessao_jogo(self) -> str:
+        with self._state_lock:
+            return self._game_session_state
+
+    def _agendar_descarregamento_jogo(self) -> None:
+        """Renova a sessão; o modelo só sai após silêncio conversacional."""
+        with self._state_lock:
+            if not self._modo_jogo_ativo:
+                return
+            anterior = self._game_unload_timer
+            self._game_session_generation += 1
+            geracao = self._game_session_generation
+            self._game_session_state = "resfriando"
+            timer = self.timer_factory(
+                self.game_idle_unload_s,
+                lambda: self._descarregar_sessao_jogo(geracao),
+            )
+            try:
+                timer.daemon = True
+            except Exception:
+                pass
+            self._game_unload_timer = timer
+        if anterior is not None:
+            try:
+                anterior.cancel()
+            except Exception:
+                pass
+        timer.start()
+        self.print_fn(
+            f"🎮 [CONVERSA:JOGO] sessão local mantida por até "
+            f"{self.game_idle_unload_s:.0f}s de silêncio."
+        )
+
+    def _descarregar_sessao_jogo(self, geracao: int) -> None:
+        with self._state_lock:
+            if (
+                geracao != self._game_session_generation
+                or not self._modo_jogo_ativo
+            ):
+                return
+            if self._requisicoes_ativas > 0:
+                reagendar = True
+            else:
+                reagendar = False
+                self._game_unload_timer = None
+                self._game_session_state = "encerrada"
+        if reagendar:
+            self._agendar_descarregamento_jogo()
+            return
+        if callable(self.ao_finalizar_conversa_modo_jogo):
+            try:
+                self.ao_finalizar_conversa_modo_jogo()
+                self.print_fn("🎮 [CONVERSA:JOGO] sessão ociosa encerrada; VRAM liberada.")
+            except Exception as erro:
+                self.print_fn(f"⚠️ [MODO JOGO] não consegui descarregar a IA local: {erro}")
 
     def post(self, headers: dict, data: dict, timeout: int | None = None):
         dados_envio = dict(data or {})
         permitir_conversa_jogo = bool(dados_envio.pop("_laylay_conversa_modo_jogo", False))
+        prioridade_interativa = dados_envio.pop("_laylay_prioridade_interativa", None)
         local_em_jogo = self.endpoint_eh_local() and self.modo_jogo_ativo
         if local_em_jogo and not permitir_conversa_jogo:
-            return RespostaLLMFallback(conteudo_fallback_modo_jogo(dados_envio))
+            return RespostaLLMFallback(
+                conteudo_fallback_modo_jogo(dados_envio),
+                motivo="economia_modo_jogo",
+                classe="esperada",
+                impacto="nenhum",
+                fallback="bloqueio_modelo_local_em_jogo",
+            )
 
         if local_em_jogo:
             # A resposta principal pode acordar o modelo uma única vez, usando
@@ -245,7 +415,16 @@ class LLMHttpRuntime:
             except (TypeError, ValueError):
                 dados_envio["max_tokens"] = 256
             self.print_fn("🎮 [MODO JOGO] conversa solicitada; IA local acordada só para esta resposta.")
+            with self._state_lock:
+                self._game_session_state = "respondendo"
 
+        timeout_efetivo = timeout
+        if timeout_efetivo is None and local_em_jogo:
+            timeout_efetivo = self.game_timeout
+
+        with self._state_lock:
+            self._requisicoes_ativas += 1
+            bad_request_until = self._bad_request_until
         try:
             resposta, novo_limite = post_chat_llm(
                 headers,
@@ -253,20 +432,22 @@ class LLMHttpRuntime:
                 base_url=self.base_url,
                 local_timeout=self.local_timeout,
                 remote_timeout=self.remote_timeout,
-                bad_request_until=self._bad_request_until,
-                lock=self._lock,
+                bad_request_until=bad_request_until,
+                lock=self._request_lock,
                 requests_post=self.requests_post,
                 print_fn=self.print_fn,
-                timeout=timeout,
+                timeout=timeout_efetivo,
+                prioridade_interativa=prioridade_interativa,
+                espera_lock_interativa_s=self.espera_lock_interativa_s,
             )
-            self._bad_request_until = novo_limite
+            with self._state_lock:
+                self._bad_request_until = novo_limite
             return resposta
         finally:
-            if local_em_jogo and callable(self.ao_finalizar_conversa_modo_jogo):
-                try:
-                    self.ao_finalizar_conversa_modo_jogo()
-                except Exception as erro:
-                    self.print_fn(f"⚠️ [MODO JOGO] não consegui descarregar a IA local: {erro}")
+            with self._state_lock:
+                self._requisicoes_ativas = max(0, self._requisicoes_ativas - 1)
+            if local_em_jogo:
+                self._agendar_descarregamento_jogo()
 
 
 def criar_llm_http_runtime(**kwargs: Any) -> LLMHttpRuntime:
@@ -284,6 +465,7 @@ def executar_chat_llm(
     endpoint_local: bool,
     timeout: int | None = None,
     log: Callable[[str], Any] = print,
+    registrar_falha: Callable[..., Any] | None = None,
 ) -> str:
     """Executa uma chamada preparada e converte rede/payload em fala."""
     headers = {
@@ -294,17 +476,44 @@ def executar_chat_llm(
     }
     try:
         response = post_chat(headers, data, timeout=timeout) if timeout is not None else post_chat(headers, data)
+        if isinstance(response, RespostaLLMFallback) and response.motivo:
+            # Transportes externos podem devolver o mesmo contrato sem passar
+            # pelo runtime local. O relator suprime duplicatas por janela.
+            if callable(registrar_falha):
+                registrar_falha(
+                    "llm_http",
+                    response.motivo,
+                    classe=response.classe,
+                    impacto=response.impacto,
+                    fallback=response.fallback,
+                )
         if response.status_code == 401:
             log("Erro 401 (Unauthorized) no OpenRouter.")
-            return "Pedro, cheque sua chave do OpenRouter."
+            if callable(registrar_falha):
+                registrar_falha(
+                    "llm_http", "credencial_recusada",
+                    classe="defeito", impacto="turno",
+                    fallback="aviso_credencial",
+                )
+            return "Cheque sua chave do OpenRouter."
         response.raise_for_status()
         payload = response.json()
         return interpretar_payload(payload)
     except requests.exceptions.ReadTimeout as erro:
         log(f"Timeout na LLM local/API: {erro}")
-        if endpoint_local:
-            return "Meu modelo local demorou demais pra responder agora. O Ollama pode estar carregando ou ocupado; tenta de novo em alguns segundos."
-        return "A inteligência artificial demorou demais pra responder agora. Tenta de novo em alguns segundos."
+        if callable(registrar_falha):
+            registrar_falha(
+                "llm_http", "timeout_resposta", erro=erro,
+                classe="degradacao", impacto="turno",
+                fallback="contingencia_conversacional",
+            )
+        return FALHA_LLM_TIMEOUT
     except requests.exceptions.RequestException as erro:
         log(f"Erro na API: {erro}")
-        return "Minha conexão com a parte da IA falhou agora. Tenta de novo em instantes."
+        if callable(registrar_falha):
+            registrar_falha(
+                "llm_http", "transporte_indisponivel", erro=erro,
+                classe="degradacao", impacto="turno",
+                fallback="contingencia_conversacional",
+            )
+        return FALHA_LLM_INDISPONIVEL

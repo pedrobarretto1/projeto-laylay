@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from mente_laylay.autonomia.porteiro_proatividade import (
     PorteiroProatividadeRuntime,
     categoria_sugestao,
@@ -122,6 +124,51 @@ def test_confirmacao_de_sugestao_alimenta_perfil_adaptativo() -> None:
 
     assert processar_confirmacao_sugestao(contexto, "não, deixa")
     assert feedbacks == [("horario", False, "TIME_LIGHT_ON")]
+
+
+def test_sugestao_expirada_registra_silencio_sem_forcar_recusa() -> None:
+    feedbacks = []
+    continuidade = {
+        "comando_sugerido": "TIME_LIGHT_ON",
+        "comando_sugerido_payload": {},
+        "comando_sugerido_estado": "PENDING_CONFIRM",
+        "comando_sugerido_ts": 1.0,
+    }
+    contexto = {
+        "continuidades_get": lambda chave, padrao=None: continuidade.get(chave, padrao),
+        "resetar_sugestao": lambda: None,
+        "registrar_feedback_proatividade": lambda tipo, aceito, **dados: feedbacks.append(
+            (tipo, aceito, dados.get("resultado"))
+        ),
+    }
+
+    assert processar_confirmacao_sugestao(contexto, "qualquer coisa") is False
+    assert feedbacks == [("horario", None, "silencio")]
+
+
+def test_sugestao_ainda_espera_antes_de_dez_minutos() -> None:
+    feedbacks = []
+    agora = 10_000.0
+    continuidade = {
+        "comando_sugerido": "TIME_LIGHT_ON",
+        "comando_sugerido_payload": {},
+        "comando_sugerido_estado": "PENDING_CONFIRM",
+        "comando_sugerido_ts": agora - 599.0,
+    }
+    contexto = {
+        "continuidades_get": lambda chave, padrao=None: continuidade.get(chave, padrao),
+        "resetar_sugestao": lambda: continuidade.update(comando_sugerido_estado="NONE"),
+        "classificar_confirmacao_local": lambda _texto: None,
+        "registrar_feedback_proatividade": lambda tipo, aceito, **dados: feedbacks.append(
+            (tipo, aceito, dados.get("resultado"))
+        ),
+    }
+
+    with patch("mente_laylay.autonomia.sugestoes_sistema.time.time", return_value=agora):
+        assert processar_confirmacao_sugestao(contexto, "outra coisa") is False
+
+    assert feedbacks == []
+    assert continuidade["comando_sugerido_estado"] == "PENDING_CONFIRM"
 
 
 def test_mapeamento_de_comandos_mantem_categorias_independentes() -> None:

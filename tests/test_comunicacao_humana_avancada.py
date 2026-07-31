@@ -23,7 +23,7 @@ def test_funcao_emocional_define_postura_e_limite_de_pergunta() -> None:
     assert leitura["permite_pergunta"] is False
 
 
-def test_plano_carrega_contrato_emocional_e_remove_pergunta_automatica() -> None:
+def test_plano_carrega_contrato_emocional_sem_reescrever_a_llm() -> None:
     texto = "não Lay, eu quis dizer outra coisa"
     funcao = analisar_funcao_comunicativa(texto)
     plano = planejar_turno(
@@ -36,8 +36,8 @@ def test_plano_carrega_contrato_emocional_e_remove_pergunta_automatica() -> None
         "Entendi a correção. Quer conversar sobre outra coisa?",
         plano=plano,
     )
-    assert "?" not in verificada["fala"]
-    assert "pergunta_inadequada_a_funcao_emocional" in verificada["problemas"]
+    assert verificada["fala"] == "Entendi a correção. Quer conversar sobre outra coisa?"
+    assert "pergunta_inadequada_a_funcao_emocional" not in verificada["problemas"]
 
 
 def test_correcao_de_capacidade_e_persistida_como_confirmada(tmp_path) -> None:
@@ -97,4 +97,3 @@ def test_memoria_e_demonstrada_sem_anunciar_o_mecanismo() -> None:
     )
     assert fala == "Você costuma estudar no SENAI."
     assert "memória" not in fala.casefold()
-

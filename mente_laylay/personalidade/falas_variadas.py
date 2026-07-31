@@ -169,7 +169,7 @@ def fala_de_confirmacao(
             "Deixei no ponto.",
         ],
         "greeting": [
-            "Oi, Pedro.",
+            "Oi.",
             "Oi, tô aqui.",
             "Fala comigo.",
             "Tô por aqui.",
@@ -277,9 +277,9 @@ def fala_por_estado_acao(
             f"{alvo_txt} saiu do navegador agora.",
         ],
         "aba_fechada_em_vez_de_app": [
-            f"{alvo_txt} não tava aberto como programa. Fechei a aba.",
-            f"{alvo_txt} era aba, não app. Já fechei.",
-            f"Peguei {alvo_txt} no navegador e encerrei por lá.",
+            f"O {alvo_txt} estava aberto numa aba. Fechei e conferi.",
+            f"Achei o {alvo_txt} no navegador e fechei a aba certinha.",
+            f"Era uma aba do {alvo_txt}, não um programa separado. Já fechei.",
         ],
         "app_fechado_em_vez_de_aba": [
             f"{alvo_txt} tava aberto como programa, não como aba. Fechei ele.",
@@ -473,13 +473,10 @@ def emitir_falha_contextual(
     *,
     detalhe: str = "",
     normalizar_texto: Callable[[str], str],
-    texto_parece_navegacao: Callable[[str], bool],
-    resposta_conversa_local: Callable[[str], str],
-    fala_e_fallback_neutro: Callable[[str], bool],
     falar: Callable[..., Any],
     log: Callable[[str], Any] = print,
 ) -> None:
-    """Emite uma falha útil, tentando recuperar conversa antes do fallback."""
+    """Emite somente a falha operacional; nunca improvisa conversa local."""
     cat = str(categoria or "").strip().lower()
     texto_norm = normalizar_texto(str(texto_usuario or "")) if callable(normalizar_texto) else str(texto_usuario or "").lower()
     alvo = str(detalhe or "").strip()
@@ -487,15 +484,4 @@ def emitir_falha_contextual(
     if direta:
         falar(direta, "calma", 1)
         return
-    eh_navegacao = bool(texto_parece_navegacao(texto_usuario)) if callable(texto_parece_navegacao) else False
-    if texto_usuario and not eh_navegacao:
-        try:
-            local = str(resposta_conversa_local(texto_usuario) or "").strip() if callable(resposta_conversa_local) else ""
-            neutra = bool(fala_e_fallback_neutro(local)) if callable(fala_e_fallback_neutro) else False
-            if local and not neutra:
-                log("🧭 [FALHA-CONTEXTUAL] conversa local assumiu a recuperação")
-                falar(local, "calma", 1)
-                return
-        except Exception as erro:
-            log(f"⚠️ [FALHA-CONTEXTUAL] não consegui recuperar pela conversa local: {erro}")
     falar(fala_falha_contextual(cat, texto_normalizado=texto_norm, detalhe=alvo), "calma", 1)

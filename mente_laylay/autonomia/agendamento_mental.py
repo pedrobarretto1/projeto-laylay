@@ -33,6 +33,8 @@ class AgendaRuntime:
         tolerancia_recorrente_s: float = 3600.0,
         retry_base_s: float = 15.0,
         sincronizar_despertares_cb: Callable[[list], Any] | None = None,
+        notificar_evento_cb: Callable[[dict, str], bool] | None = None,
+        stop_event: threading.Event | None = None,
     ):
         self.arquivo = arquivo
         self.falar_cb = falar_cb
@@ -49,9 +51,11 @@ class AgendaRuntime:
         self.tolerancia_recorrente_s = max(60.0, float(tolerancia_recorrente_s))
         self.retry_base_s = max(1.0, float(retry_base_s))
         self.sincronizar_despertares_cb = sincronizar_despertares_cb
+        self.notificar_evento_cb = notificar_evento_cb
         self._arquivo_lock = threading.RLock()
         self._dia_map = {"seg": 0, "ter": 1, "qua": 2, "qui": 3, "sex": 4, "sab": 5, "dom": 6}
         self._disparados: set[str] = set()
+        self.stop_event = stop_event or threading.Event()
 
     def load(self) -> list:
         with self._arquivo_lock:
@@ -107,7 +111,7 @@ class AgendaRuntime:
     def fala_estilosa(self, ativos: list) -> str:
         lista = ativos if isinstance(ativos, list) else []
         if not lista:
-            return "Nenhum agendamento ativo, Pedro. Sua agenda está limpa, o que é suspeito vindo de você."
+            return "Nenhum agendamento ativo. Sua agenda está limpa, o que é suspeito vindo de você."
         nomes = []
         for agendamento in lista[:4]:
             if not isinstance(agendamento, dict):
@@ -127,9 +131,42 @@ class AgendaRuntime:
         fim = f" E mais {extra} no rodapé da bagunça." if extra > 0 else ""
         return f"Você tem {len(lista)} agendamentos ativos. Os principais: {', '.join(nomes)}.{fim}"
 
+    def retrato_para_mente(self, _texto: str = "") -> dict[str, Any]:
+        """Resume a agenda sem expor payloads executáveis ou estrutura bruta."""
+        lista = self.load()
+        ativos = []
+        inativos = 0
+        for item in lista:
+            if not isinstance(item, dict):
+                continue
+            if not bool(item.get("ativo", True)):
+                inativos += 1
+                continue
+            nome = str(
+                item.get("nome") or item.get("descricao") or "compromisso"
+            ).strip()[:100]
+            tipo = str(item.get("tipo") or "once").strip().lower()
+            quando = str(item.get("hora") or "").strip()
+            if tipo == "once" and item.get("ts_execucao"):
+                try:
+                    quando = _dt.datetime.fromtimestamp(
+                        float(item["ts_execucao"])
+                    ).strftime("%d/%m/%Y às %H:%M")
+                except (TypeError, ValueError, OSError):
+                    quando = "horário registrado"
+            dias = item.get("dias")
+            if isinstance(dias, list) and dias:
+                quando = (quando + " em " + ", ".join(map(str, dias))).strip()
+            ativos.append({"nome": nome, "tipo": tipo, "quando": quando})
+        return {
+            "agendamentos": ativos[:20],
+            "total_ativos": len(ativos),
+            "total_inativos": inativos,
+        }
+
     def disparar(self, ag: dict) -> bool:
         """Executa um agendamento: fala o texto e roda os comandos opcionais."""
-        descricao = str(ag.get("descricao") or "Pedro, chegou a hora!").strip()
+        descricao = str(ag.get("descricao") or "Chegou a hora!").strip()
         comandos_disparo = ag.get("comandos_no_disparo") or []
         intencao_disparo = ag.get("intencao_no_disparo")
         nome = str(ag.get("nome") or ag.get("id", ""))[:30]
@@ -137,11 +174,18 @@ class AgendaRuntime:
         if isinstance(intencao_disparo, dict) and callable(self.executar_intencao_cb):
             texto_original = str(ag.get("texto_original") or descricao).strip()
             return self._executar_intencao_agendada(intencao_disparo, texto_original)
-        try:
-            self.falar_cb(descricao, "calma", 1)
-        except Exception as e:
-            self.log(f"[AGENDA] Erro ao falar: {e}")
-            return False
+        entregue_central = False
+        if callable(self.notificar_evento_cb):
+            try:
+                entregue_central = bool(self.notificar_evento_cb(dict(ag), descricao))
+            except Exception as e:
+                self.log(f"[AGENDA] Central de notificações indisponível: {type(e).__name__}")
+        if not entregue_central:
+            try:
+                self.falar_cb(descricao, "calma", 1)
+            except Exception as e:
+                self.log(f"[AGENDA] Erro ao falar: {e}")
+                return False
 
         if isinstance(comandos_disparo, list) and comandos_disparo:
             th = self.thread_factory(target=lambda: self._executar_comandos(comandos_disparo), daemon=True)
@@ -279,12 +323,16 @@ class AgendaRuntime:
     def daemon(self):
         """Thread daemon que verifica agendamentos com precisão de poucos segundos."""
         self.log("⏰ [AGENDA] Thread de agendamentos iniciada.")
-        while True:
+        while not self.stop_event.is_set():
             try:
                 self.processar_ciclo()
             except Exception as exc:
                 self.log(f"[AGENDA] Erro no daemon: {exc}")
-            self.sleep_cb(5)
+            if self.stop_event.wait(5):
+                break
+
+    def encerrar(self) -> None:
+        self.stop_event.set()
 
 
 def criar_agenda_runtime(*args, **kwargs) -> AgendaRuntime:
@@ -451,8 +499,15 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
         return {"intent": "LISTAR_AGENDAMENTOS", "params": {}}
 
     if any(p in t for p in ["cancela", "cancelar", "remove", "remover", "apaga", "apagar"]) and any(p in t for p in ["agendamento", "lembrete", "compromisso", "compromissos", "agenda"]):
-        alvo = re.sub(r"^(cancela|cancelar|remove|remover|apaga|apagar)\s+", "", t).strip()
-        alvo = re.sub(r"\b(agendamento|lembrete|compromisso|compromissos|agenda)\b", " ", alvo).strip()
+        alvo = re.sub(
+            r"^(?:cancela|cancelar|remove|remover|apaga|apagar)\s+"
+            r"(?:(?:o|a|um|uma|os|as)\s+)?"
+            r"(?:agendamento|lembrete|compromisso|compromissos|agenda)"
+            r"(?:\s+(?:de|do|da|dos|das))?\s*",
+            "",
+            t,
+            count=1,
+        ).strip()
         return {"intent": "CANCELAR_AGENDAMENTO", "params": {"alvo": alvo or ""}}
 
     if texto_pede_lembrete_explicito(t, normalizar_texto_cb=lambda valor: valor):

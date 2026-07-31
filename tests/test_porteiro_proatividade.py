@@ -92,6 +92,44 @@ def test_proatividade_e_descartada_em_momento_sensivel() -> None:
     assert decisao["pontuacao"] == 0
 
 
+def test_presenca_validada_nao_e_bloqueada_so_por_jogo_e_chat_abertos() -> None:
+    porteiro = PorteiroProatividadeRuntime(
+        contexto_getter=lambda: {
+            "modo_chat": True,
+            "conversa_ativa": True,
+            "modo_jogo_ativo": True,
+            "ultima_entrada_ts": 0.0,
+        },
+        agora=lambda: 1000.0,
+    )
+
+    decisao = porteiro.avaliar(
+        tipo="presenca_jogo",
+        texto="Essa área nova ficou bonita demais.",
+    )
+
+    assert decisao["acao"] == "emitir"
+    assert "presença contextual segura" in " ".join(decisao["motivos"])
+
+
+def test_presenca_de_jogo_ainda_espera_entrada_recente() -> None:
+    porteiro = PorteiroProatividadeRuntime(
+        contexto_getter=lambda: {
+            "modo_chat": True,
+            "modo_jogo_ativo": True,
+            "ultima_entrada_ts": 990.0,
+        },
+        agora=lambda: 1000.0,
+    )
+
+    decisao = porteiro.avaliar(
+        tipo="presenca_jogo", texto="Essa luta foi bonita.",
+    )
+
+    assert decisao["acao"] == "adiar"
+    assert "entrada recente" in " ".join(decisao["motivos"])
+
+
 def test_sugestao_equivalente_nao_se_repete() -> None:
     agora = [100.0]
     porteiro = PorteiroProatividadeRuntime(
@@ -140,6 +178,25 @@ def test_flush_retem_item_enquanto_conversa_continua_ativa() -> None:
     assert len(runtime.proativa_buffer) == 1
     assert runtime.proativa_buffer[0]["adiamentos"] == 1
     assert TimerControlado.criados[-1].atraso >= 10.0
+
+
+def test_flush_entrega_presenca_de_jogo_ja_validada_com_chat_aberto() -> None:
+    falas = []
+    runtime = _voz(
+        avaliador=lambda **_dados: {"acao": "emitir", "validade_s": 120.0},
+        permitida=lambda: False,
+    )
+    runtime.falar = lambda *args, **kwargs: falas.append((args, kwargs)) or True
+    runtime.proativa_buffer = [{
+        "tipo": "presenca_jogo", "texto": "Essa área nova tem presença.",
+        "emocao": "curiosa", "nivel": 1, "forcar_inicio": False,
+        "nao_antes_ts": 0.0, "expira_ts": time.time() + 120.0,
+    }]
+
+    runtime.flush_fala_proativa()
+
+    assert falas
+    assert runtime.proativa_buffer == []
 
 
 def test_item_expirado_nao_fica_preso_na_fila() -> None:

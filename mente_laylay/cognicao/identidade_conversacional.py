@@ -15,8 +15,8 @@ IDENTIDADE_LAYLAY = {
     "papel": "assistente e interlocutora",
 }
 IDENTIDADE_USUARIO = {
-    "id": "pedro",
-    "nome": "Pedro",
+    "id": "usuario",
+    "nome": "",
     "papel": "usuario e interlocutor",
 }
 
@@ -35,9 +35,10 @@ def remover_vocativo_laylay(texto: str) -> str:
     return re.sub(r"\s+", " ", fala).strip()
 
 
-def analisar_identidade_turno(texto: str, *, falante: str = "pedro") -> Dict[str, Any]:
+def analisar_identidade_turno(texto: str, *, falante: str = "usuario") -> Dict[str, Any]:
     bruto = str(texto or "").strip()
     base = _normalizar(bruto)
+    falante_norm = "usuario" if str(falante or "").casefold() in {"usuario", "usuário", "pedro"} else str(falante)
     menciona_arquivo = bool(re.search(r"\blaylay\s*\.\s*py\b", base))
     menciona_nome = bool(re.search(r"\b(?:laylay|lay)\b", base))
     vocativo = remover_vocativo_laylay(bruto) != bruto and menciona_nome and not menciona_arquivo
@@ -54,18 +55,19 @@ def analisar_identidade_turno(texto: str, *, falante: str = "pedro") -> Dict[str
         (menciona_nome and not menciona_arquivo)
         or re.search(r"\b(?:voce|você|tu|te|contigo)\b", bruto.casefold())
     )
-    referencia_pedro = bool(
-        re.search(r"\bpedro\b", base)
-        or (falante == "pedro" and re.search(r"\b(?:eu|meu|minha|me|mim)\b", base))
+    referencia_usuario = bool(
+        falante_norm == "usuario" and re.search(r"\b(?:eu|meu|minha|me|mim)\b", base)
     )
     ambigua = bool(re.search(r"\bela\b", base) and not menciona_nome)
     return {
-        "falante": falante,
-        "interlocutor": "laylay" if falante == "pedro" else "pedro",
+        "falante": falante_norm,
+        "interlocutor": "laylay" if falante_norm == "usuario" else "usuario",
         "laylay_eu": referencia_laylay,
-        "pedro_eu": falante == "pedro",
+        "usuario_eu": falante_norm == "usuario",
+        "pedro_eu": falante_norm == "usuario",
         "referencia_laylay": referencia_laylay,
-        "referencia_pedro": referencia_pedro,
+        "referencia_usuario": referencia_usuario,
+        "referencia_pedro": referencia_usuario,
         "vocativo_laylay": vocativo,
         "texto_sem_vocativo": remover_vocativo_laylay(bruto),
         "objeto_laylay_py": menciona_arquivo,
@@ -80,9 +82,9 @@ def resumo_identidade_turno(analise: Dict[str, Any] | None) -> str:
     if not dados:
         return ""
     partes = [
-        "Identidade conversacional: quem fala agora e Pedro; quem responde e Laylay.",
-        "Na fala de Pedro, 'voce', 'tu', 'Lay' e 'Laylay' apontam para a propria Laylay.",
-        "Na resposta da Laylay, 'eu', 'meu' e 'minha' apontam para a propria Laylay; 'voce' aponta para Pedro.",
+        "Identidade conversacional: quem fala agora e o usuario; quem responde e Laylay.",
+        "Na fala do usuario, 'voce', 'tu', 'Lay' e 'Laylay' apontam para a propria Laylay.",
+        "Na resposta da Laylay, 'eu', 'meu' e 'minha' apontam para a propria Laylay; 'voce' aponta para o usuario.",
     ]
     if dados.get("objeto_laylay_py"):
         partes.append("Laylay.py e um arquivo/projeto; nao confundir o arquivo com o nome da interlocutora.")

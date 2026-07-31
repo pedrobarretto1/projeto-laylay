@@ -114,6 +114,21 @@ class SegurancaOperacionalTests(unittest.TestCase):
         self.assertTrue(legitimo["autenticado"])
         self.assertFalse(legitimo["possivel_golpe"])
 
+    def test_gmail_encaminha_falha_de_estado_sem_expor_conteudo(self):
+        falhas = []
+        with tempfile.TemporaryDirectory() as tmp:
+            estado = Path(tmp) / "gmail.json"
+            estado.write_text("{json quebrado com dado privado", encoding="utf-8")
+            gmail = GmailMental(
+                arquivo_estado=str(estado),
+                registrar_falha=lambda *args, **kwargs: falhas.append((args, kwargs)),
+                log=lambda *_: None,
+            )
+            gmail.carregar_estado()
+
+        self.assertEqual(falhas[0][0], ("gmail", "estado_leitura"))
+        self.assertIsInstance(falhas[0][1]["erro"], Exception)
+
 
 if __name__ == "__main__":
     unittest.main()

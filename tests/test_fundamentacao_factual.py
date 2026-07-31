@@ -39,6 +39,15 @@ def test_tema_geral_sem_categoria_tambem_e_extraido() -> None:
     assert extrair_tema_fundamentacao("me explica sobre fotossíntese") == "fotossíntese"
 
 
+def test_preferencia_da_laylay_nao_dispara_pesquisa_factual() -> None:
+    assert extrair_tema_fundamentacao("você gosta de Slipknot?") == ""
+    assert extrair_tema_fundamentacao("você prefere rock ou metal?") == ""
+
+
+def test_instrucao_de_estilo_nao_vira_assunto_de_pesquisa() -> None:
+    assert extrair_tema_fundamentacao("explique de um jeito simples") == ""
+
+
 def test_atualidade_combina_consulta_tempo_e_dominio_mutavel() -> None:
     clima = classificar_atualidade_factual("como está o clima agora em Boituva?")
     lancamento = classificar_atualidade_factual("quando vai sair o GTA 6?")

@@ -50,6 +50,8 @@ def test_execucao_sem_evidencia_fica_nao_confirmada_por_dominio(intent: str, sta
         ("CLOSE_APP", "app_fechado"),
         ("OPEN_URL", "url_aberta"),
         ("CREATE_FILE", "arquivo_criado"),
+        ("FILE_SEARCH", "arquivos_encontrados"),
+        ("FILE_OPEN_RESULT", "arquivo_aberto"),
     ],
 )
 def test_estado_local_realmente_observado_pode_ser_confirmado(intent: str, status: str) -> None:

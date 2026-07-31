@@ -66,7 +66,7 @@ from mente_laylay.emocoes.leitura_usuario import registrar_leitura_emocional
 from mente_laylay.memoria_mental.consciencia_temporal import atualizar_consciencia_temporal
 from mente_laylay.memoria_mental.ciclo_vida_contexto import aplicar_ciclo_vida_contexto
 from mente_laylay.memoria_mental.sessao_conversa import renovar_contexto_sessao
-from mente_laylay.memoria_mental.pendencia import pendencia_ativa
+from mente_laylay.memoria_mental.pendencia import limpar_pendencia, pendencia_ativa
 
 
 class EstadoContextoRuntime:
@@ -141,6 +141,7 @@ class EstadoContextoRuntime:
             registrar_leitura_emocional_usuario=self.registrar_leitura_emocional_usuario,
             acalmar_emocao=ns["_acalmar_emocao_conversacional"],
             definir_emocao=ns["_definir_emocao_conversacional"],
+            voz_unica_llm=True,
         )
 
     def conteudo_atual(self, texto_usuario: str = "") -> Dict[str, Any]:
@@ -392,9 +393,23 @@ class EstadoContextoRuntime:
     def resumo_mente_integrada_para_prompt(self, texto_usuario: str = "") -> str:
         ns = self._namespace()
         ctx = self.contexto_perceptivo()
+        rede = ns.get("_rede_associativa_runtime")
+        if rede is not None:
+            try:
+                sinais = rede.sinais_continuidade()
+                if sinais:
+                    ctx["associacoes_continuidade"] = sinais
+                    ctx["registrar_influencia_associativa"] = (
+                        rede.registrar_influencia_continuidade
+                    )
+            except Exception as erro:
+                ns["print"](
+                    "⚠️ [REDE ASSOCIATIVA] pista de continuidade isolada: "
+                    f"{type(erro).__name__}"
+                )
         percepcao = self.interpretar_contexto_vivo(ctx, texto_usuario)
         ctx["conteudo_atual"] = self.conteudo_atual(texto_usuario)
-        return montar_resumo_mente_integrada_com_extras(
+        resumo = montar_resumo_mente_integrada_com_extras(
             texto_usuario=texto_usuario,
             ctx=ctx,
             percepcao=percepcao,
@@ -402,6 +417,7 @@ class EstadoContextoRuntime:
             resumo_autoaprimoramento_cb=self.resumo_autoaprimoramento_para_prompt,
             memoria_sqlite=ns.get("MEMORIA_SQLITE"),
         )
+        return resumo
 
     def registrar_autoaprimoramento(
         self,
@@ -652,6 +668,36 @@ class EstadoContextoRuntime:
         mente = self._estado().mental
         pendencia = pendencia_ativa(mente, dominio="musica")
         oferta = oferta_pendente_ativa(mente, ttl_s=300.0)
+        texto_norm = str(ns["_normalizar_texto_curto"](texto_usuario) or "").strip()
+        if (
+            pendencia
+            and str(pendencia.get("tipo") or "") == "esclarecimento"
+            and str(pendencia.get("intencao") or "") == "MUSIC_SEARCH"
+        ):
+            cancelamentos = {
+                "cancela", "cancelar", "deixa", "deixa pra la", "deixa para la",
+                "nao quero", "não quero", "esquece",
+            }
+            if texto_norm in cancelamentos:
+                estado = self._estado()
+                estado.substituir(
+                    "mental",
+                    limpar_pendencia(estado.mental, motivo="cancelada"),
+                )
+                return None
+            if texto_norm and len(texto_norm.split()) <= 16:
+                estado = self._estado()
+                estado.substituir(
+                    "mental",
+                    limpar_pendencia(estado.mental, motivo="respondida"),
+                )
+                return {
+                    "intent": "MUSIC_SEARCH",
+                    "params": {
+                        "query": str(texto_usuario or "").strip(),
+                        "origem": "continuacao_busca",
+                    },
+                }
         if pendencia and str(pendencia.get("intencao") or "") == "MUSIC_SEARCH":
             oferta_unificada = {
                 "intent": "MUSIC_SEARCH",
@@ -661,7 +707,6 @@ class EstadoContextoRuntime:
             # A pendência unificada é a fonte mais nova; a estrutura legada
             # permanece apenas como compatibilidade durante a migração.
             oferta = oferta_unificada
-        texto_norm = str(ns["_normalizar_texto_curto"](texto_usuario) or "").strip()
         if oferta:
             opcoes = list(oferta.get("opcoes") or [])
             confirma = bool(
@@ -894,6 +939,8 @@ class EstadoContextoRuntime:
             "set_playlist_sugestao_pendente": lambda valor: ns["_continuidades_set"](
                 "playlist_sugestao_pendente", valor
             ),
+            "set_continuidade": ns.get("_continuidades_set"),
+            "update_continuidades": ns.get("_continuidades_update"),
             "ultimo_alvo": str(mente.get("ultimo_alvo") or "").strip(),
             "ultima_intencao": str(mente.get("ultima_intencao") or "").strip(),
             "ultimo_escopo": str(mente.get("ultimo_escopo") or "").strip(),
@@ -922,6 +969,7 @@ class EstadoContextoRuntime:
             "cidade_padrao_clima": ns["BRIEFING_CIDADE"],
             "_playlist_sugestao_pendente": continuidades_get("playlist_sugestao_pendente"),
             "turno_atual": dict(mente.get("turno_atual") or {}),
+            "plano_turno_atual": dict(mente.get("plano_turno_atual") or {}),
             "retrato_turno_atual": dict(mente.get("retrato_turno_atual") or {}),
             "especialistas_turno_atual": dict(mente.get("especialistas_turno_atual") or {}),
             "registrar_arbitragem_turno": registrar_arbitragem,

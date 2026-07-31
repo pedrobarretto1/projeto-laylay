@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from unittest.mock import patch
 
 from mente_laylay.autonomia.habilidade_janelas import executar_habilidade_janelas
@@ -7,12 +9,27 @@ from mente_laylay.autonomia.modo_chat import ModoChatRuntime
 from mente_laylay.autonomia.roteador_deterministico import (
     detectar_clima,
     detectar_musica_ou_playlist_direta,
+    detectar_playlist_laylay,
+    detectar_playlist_usuario,
+    preparar_entrada_deterministica,
+    texto_expresso_melhor_no_deterministico,
 )
+from mente_laylay.autonomia.orquestrador_deterministico import (
+    DeteccaoDeterministicaRuntime,
+    detectar_intencao_deterministica_mente,
+)
+from mente_laylay.autonomia.coordenador_intencao import (
+    resolver_intencao,
+    resolver_referencias_da_intencao,
+)
+from mente_laylay.autonomia.roteador_intencao import executar_intencao
 from mente_laylay.cognicao.linguagem_aprendida import LinguagemAprendidaRuntime
 from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.cognicao.plano_turno import atualizar_plano_turno, planejar_turno
 from mente_laylay.memoria_mental.contexto_integrado import resumo_mente_integrada_para_prompt
+from mente_laylay.memoria_mental.contexto_compartilhado import texto_depende_de_contexto
 from mente_laylay.memoria_mental.playlist_mental import pedido_lista_geral_playlist
+from mente_laylay.memoria_mental.mapa_recursos import MapaRecursosRuntime
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
 from mente_laylay.personalidade.conversa_natural import (
     classificar_conversa_curta_local,
@@ -25,13 +42,688 @@ def _params(**kwargs):
     return kwargs
 
 
+def test_referencia_contextual_usa_palavras_inteiras() -> None:
+    normalizar = lambda texto: str(texto).casefold()
+
+    assert texto_depende_de_contexto("pesquisa isso", normalizar) is True
+    assert texto_depende_de_contexto("abre o telefone", normalizar) is False
+
+
+def test_busca_contextual_resolve_assunto_e_nunca_pesquisa_pronome_cru() -> None:
+    retrato = {
+        "referencia_resolvida": {"tipo": "jogo", "nome": "Hytale"},
+    }
+    resolvida = resolver_referencias_da_intencao(
+        {"intent": "SEARCH", "params": {"query": "isso", "engine": "google"}},
+        retrato,
+    )
+
+    assert resolvida is not None
+    assert resolvida["params"]["query"] == "Hytale"
+    assert resolvida["params"]["query_original"] == "isso"
+    assert resolver_referencias_da_intencao(
+        {"intent": "SEARCH", "params": {"query": "isso", "engine": "google"}},
+        {},
+    ) is None
+
+
+def test_alvos_genericos_resolvem_por_dominio_e_bloqueiam_sem_memoria() -> None:
+    app = resolver_referencias_da_intencao(
+        {"intent": "APP_OPEN", "params": {"nome_app": "esse aplicativo"}},
+        {"referencia_resolvida": {"tipo": "janela", "nome": "Visual Studio Code"}},
+    )
+    arquivo = resolver_referencias_da_intencao(
+        {"intent": "DELETE_ITEM", "params": {"alvo": "esse arquivo"}},
+        {"referencia_resolvida": {"tipo": "arquivo", "nome": "anotacoes.txt"}},
+    )
+
+    assert app is not None and app["params"]["nome_app"] == "Visual Studio Code"
+    assert arquivo is not None and arquivo["params"]["alvo"] == "anotacoes.txt"
+    assert resolver_referencias_da_intencao(
+        {"intent": "DELETE_ITEM", "params": {"alvo": "esse arquivo"}}, {}
+    ) is None
+
+
+def test_fechar_essa_aba_e_comando_explicito_da_aba_atual() -> None:
+    resultado, rota = resolver_intencao(
+        "fecha essa aba",
+        "pre-ia",
+        {
+            "normalizar_texto": lambda texto: str(texto).casefold(),
+            "refinar_contexto_mental": lambda _texto: None,
+            "extrair_agendamento": lambda _texto: None,
+            "extrair_acao_agendada": lambda _texto: None,
+            "texto_cancela_acao_agora": lambda _texto: False,
+            "texto_depende_de_contexto": lambda _texto: True,
+            "detectar_intencao_deterministica": lambda _texto: {
+                "intent": "CLOSE_TAB", "params": {},
+            },
+            "resolver_comando_contextual_forcado": lambda _texto: None,
+            "resolver_repeticao_ultima_acao": lambda _texto: None,
+            "registrar_arbitragem_turno": lambda *_args: None,
+            "turno_atual": {"modalidade": "comando", "autoriza_execucao": True},
+            "retrato_turno_atual": {},
+        },
+    )
+
+    assert resultado == {"intent": "CLOSE_TAB", "params": {}}
+    assert rota == "deterministico-explicito"
+
+
+def test_musica_para_jogar_e_comando_local_mesmo_com_contexto_do_jogo() -> None:
+    texto = "coloca uma musica para jogar minecraft"
+    detector = detectar_musica_ou_playlist_direta(
+        texto,
+        params_cb=lambda **dados: dados,
+        detectar_playlist_nome_direto=lambda _valor: "",
+        normalizar_query_musical=lambda valor: str(valor).strip(),
+    )
+    chamadas_ia = []
+    resultado, rota = resolver_intencao(
+        texto,
+        "pre-ia",
+        {
+            "normalizar_texto": lambda valor: str(valor).casefold(),
+            "refinar_contexto_mental": lambda _texto: None,
+            "extrair_agendamento": lambda _texto: None,
+            "extrair_acao_agendada": lambda _texto: None,
+            "texto_cancela_acao_agora": lambda _texto: False,
+            "texto_depende_de_contexto": lambda _texto: True,
+            "detectar_intencao_deterministica": lambda _texto: detector,
+            "resolver_comando_contextual_forcado": lambda _texto: None,
+            "resolver_repeticao_ultima_acao": lambda _texto: None,
+            "tentar_intencao_ai_primeiro": lambda _texto: chamadas_ia.append(_texto),
+            "registrar_arbitragem_turno": lambda *_args: None,
+            "turno_atual": classificar_modalidade_turno(texto),
+            "retrato_turno_atual": {"modo_jogo_ativo": True},
+        },
+    )
+
+    assert resultado == {
+        "intent": "MUSIC_SEARCH",
+        "params": {"query": "musica para jogar minecraft"},
+    }
+    assert rota == "deterministico-explicito"
+    assert chamadas_ia == []
+
+
+def test_filtro_ia_first_nao_descarta_verbo_operacional_direto() -> None:
+    preparo = preparar_entrada_deterministica(
+        "coloca uma musica para jogar minecraft",
+        normalizar_texto=lambda texto: str(texto).casefold(),
+        texto_conversa_casual_sem_acao=lambda _texto: False,
+        texto_bloqueia_playlist_agora=lambda _texto: False,
+        texto_social_curto=lambda _texto: False,
+        ignorar_token_solto=lambda _texto: False,
+        # Reproduz a condição real que causava a regressão: o classificador
+        # legado prefere IA sempre que encontra "coloca" e "musica".
+        fluxo_prioritario_da_ia=lambda _texto: True,
+        texto_expresso_melhor_no_deterministico=lambda _texto: False,
+        texto_depende_de_contexto=lambda _texto: False,
+        limpar_destino_pc_b=lambda texto: texto,
+    )
+
+    assert preparo["status"] == "ok"
+    assert preparo["texto_normalizado"] == "coloca uma musica para jogar minecraft"
+
+
+def test_filtro_ia_first_preserva_fala_ambigua_para_a_llm() -> None:
+    preparo = preparar_entrada_deterministica(
+        "essa musica seria legal aqui",
+        normalizar_texto=lambda texto: str(texto).casefold(),
+        texto_conversa_casual_sem_acao=lambda _texto: False,
+        texto_bloqueia_playlist_agora=lambda _texto: False,
+        texto_social_curto=lambda _texto: False,
+        ignorar_token_solto=lambda _texto: False,
+        fluxo_prioritario_da_ia=lambda _texto: True,
+        texto_expresso_melhor_no_deterministico=lambda _texto: False,
+        texto_depende_de_contexto=lambda _texto: False,
+        limpar_destino_pc_b=lambda texto: texto,
+    )
+
+    assert preparo["status"] == "ignorar"
+
+
+def test_busca_contextual_nao_e_descartada_antes_do_detector() -> None:
+    preparo = preparar_entrada_deterministica(
+        "pesquisa isso",
+        normalizar_texto=lambda texto: str(texto).casefold(),
+        texto_conversa_casual_sem_acao=lambda _texto: False,
+        texto_bloqueia_playlist_agora=lambda _texto: False,
+        texto_social_curto=lambda _texto: False,
+        ignorar_token_solto=lambda _texto: False,
+        fluxo_prioritario_da_ia=lambda _texto: False,
+        texto_expresso_melhor_no_deterministico=lambda _texto: False,
+        texto_depende_de_contexto=lambda _texto: True,
+        limpar_destino_pc_b=lambda texto: texto,
+    )
+
+    assert preparo["status"] == "ok"
+
+
+def test_comando_explicito_nao_e_desviado_para_ia_pelos_filtros_de_conversa() -> None:
+    for texto in (
+        "coloca essa música na playlist alternativo",
+        "coloca o volume em 30",
+        "pula esse anúncio",
+        "abre a calculadora",
+    ):
+        preparo = preparar_entrada_deterministica(
+            texto,
+            normalizar_texto=lambda valor: str(valor).casefold(),
+            texto_conversa_casual_sem_acao=lambda _valor: True,
+            texto_bloqueia_playlist_agora=lambda _valor: False,
+            texto_social_curto=lambda _valor: True,
+            ignorar_token_solto=lambda _valor: False,
+            fluxo_prioritario_da_ia=lambda _valor: True,
+            texto_expresso_melhor_no_deterministico=lambda valor: (
+                texto_expresso_melhor_no_deterministico(
+                    valor, normalizar_texto=lambda item: str(item).casefold(),
+                )
+            ),
+            texto_depende_de_contexto=lambda _valor: True,
+            limpar_destino_pc_b=lambda valor: valor,
+        )
+
+        assert preparo["status"] == "ok", texto
+
+
+def test_playlist_add_no_modo_jogo_chega_ao_roteador_local_mesmo_com_ia_prioritaria() -> None:
+    contexto = {
+        "normalizar_texto": lambda texto: str(texto).casefold(),
+        "texto_conversa_casual_sem_acao": lambda _texto: True,
+        "texto_bloqueia_playlist_agora": lambda _texto: False,
+        "texto_social_curto": lambda _texto: True,
+        "ignorar_token_solto": lambda _texto: False,
+        "fluxo_prioritario_da_ia": lambda _texto: True,
+        "texto_expresso_melhor_no_deterministico": lambda texto: (
+            texto_expresso_melhor_no_deterministico(
+                texto, normalizar_texto=lambda item: str(item).casefold(),
+            )
+        ),
+        "texto_depende_de_contexto": lambda _texto: True,
+        "limpar_destino_pc_b": lambda texto: texto,
+        "target_from_params": lambda _params, _texto: "pc_a",
+        "detectar_intencao_iot": lambda *_args: None,
+        "limpar_nome_playlist": lambda texto: str(texto).strip(),
+        "extrair_nome_playlist": lambda _texto: "alternativo",
+        "modo_jogo_contexto": lambda: {
+            "ativo": True, "titulo": "Path of Exile 2", "processo": "poe2.exe",
+        },
+        "visao_jogo_tem_analise_recente": lambda: False,
+        "sites_diretos": {}, "apps_map": {},
+    }
+
+    assert detectar_intencao_deterministica_mente(
+        "coloca essa música na playlist alternativo", contexto,
+    ) == {
+        "intent": "PLAYLIST_ADD",
+        "params": {"nome_playlist": "alternativo"},
+    }
+    assert detectar_intencao_deterministica_mente(
+        "coloca o volume em 30", contexto,
+    ) == {
+        "intent": "VOLUME", "params": {"acao": "set", "nivel_volume": 30},
+    }
+    assert detectar_intencao_deterministica_mente(
+        "pula esse anúncio", contexto,
+    ) == {
+        "intent": "MEDIA_CONTROL",
+        "params": {"acao": "skip_ad", "platform": "youtube"},
+    }
+    contexto["extrair_intencao_abrir_app"] = lambda _texto: {
+        "intent": "APP_OPEN", "params": {"nome_app": "calculadora"},
+    }
+    assert detectar_intencao_deterministica_mente(
+        "abre a calculadora", contexto,
+    ) == {
+        "intent": "APP_OPEN", "params": {"nome_app": "calculadora"},
+    }
+
+
+def test_apagar_essa_playlist_resolve_nome_recente_antes_de_executar() -> None:
+    detectada = detectar_playlist_usuario(
+        "apaga essa playlist",
+        params_cb=_params,
+        limpar_nome_playlist=lambda texto: str(texto).strip(),
+        extrair_nome_playlist=lambda _texto: "",
+    )
+    resolvida = resolver_referencias_da_intencao(
+        detectada,
+        {"referencia_resolvida": {"tipo": "playlist", "nome": "alternativo"}},
+    )
+
+    assert detectada == {
+        "intent": "PLAYLIST_DELETE",
+        "params": {"nome_playlist": "essa playlist"},
+    }
+    assert resolvida is not None
+    assert resolvida["params"]["nome_playlist"] == "alternativo"
+    assert resolver_referencias_da_intencao(detectada, {}) is None
+
+
 def test_clima_aceita_qual_o_clima_de_boituva() -> None:
     resultado = detectar_clima("qual o clima de boituva", params_cb=_params)
     assert resultado == {"intent": "WEATHER", "params": {"local": "boituva"}}
 
 
+def test_clima_de_hoje_e_prioritario_e_nao_inventa_localidade() -> None:
+    assert texto_expresso_melhor_no_deterministico(
+        "qual o clima de hoje",
+        normalizar_texto=lambda texto: str(texto).casefold(),
+    )
+    assert detectar_clima("qual o clima de hoje", params_cb=_params) == {
+        "intent": "WEATHER",
+        "params": {},
+    }
+
+
 def test_lista_geral_aceita_quais_minhas_playlists() -> None:
     assert pedido_lista_geral_playlist("quais minhas playlists", {})
+
+
+def test_playlists_criadas_pela_laylay_nao_herdam_a_ultima_do_usuario() -> None:
+    for texto in (
+        "quais playlists voce criou?",
+        "quais playlists você montou?",
+        "que playlists são suas?",
+    ):
+        assert detectar_playlist_laylay(
+            texto,
+            params_cb=_params,
+            limpar_nome_playlist=lambda valor: str(valor).strip(),
+        ) == {
+            "intent": "LAYLAY_PLAYLIST_LIST",
+            "params": {"nome_playlist": ""},
+        }
+
+
+def test_lista_geral_de_playlist_e_consulta_local_autorizada() -> None:
+    turno = classificar_modalidade_turno("quais minhas playlists")
+
+    assert turno["modalidade"] == "comando"
+    assert turno["natureza_acao"] == "consulta"
+    assert turno["autoriza_execucao"] is True
+
+
+def test_consulta_natural_de_faixas_nomeadas_e_operacao_de_leitura() -> None:
+    texto = "quais músicas eu tenho em kamaitachi"
+    turno = classificar_modalidade_turno(texto)
+    detectada = detectar_playlist_usuario(
+        texto,
+        params_cb=_params,
+        limpar_nome_playlist=lambda valor: str(valor).strip(),
+        extrair_nome_playlist=lambda _texto: "",
+    )
+
+    assert turno["modalidade"] == "comando"
+    assert turno["natureza_acao"] == "consulta"
+    assert turno["autoriza_execucao"] is True
+    assert detectada == {
+        "intent": "PLAYLIST_LIST",
+        "params": {"nome_playlist": "kamaitachi"},
+    }
+
+
+def test_quantidade_de_playlist_com_nome_repetido_e_lida_localmente() -> None:
+    texto = "quantas musicas tem a playlist sendo sendo"
+    turno = classificar_modalidade_turno(texto)
+    detectada = detectar_playlist_usuario(
+        texto,
+        params_cb=_params,
+        limpar_nome_playlist=lambda valor: str(valor).strip(),
+        extrair_nome_playlist=lambda _texto: "",
+    )
+
+    assert turno["modalidade"] == "comando"
+    assert turno["natureza_acao"] == "consulta"
+    assert turno["autoriza_execucao"] is True
+    assert detectada == {
+        "intent": "PLAYLIST_LIST",
+        "params": {"nome_playlist": "sendo sendo"},
+    }
+
+
+def test_variantes_de_quantidade_preservam_nome_completo_da_playlist() -> None:
+    casos = (
+        "quantas faixas existem na playlist sendo sendo?",
+        "quais músicas a playlist sendo sendo tem?",
+    )
+
+    for texto in casos:
+        assert detectar_playlist_usuario(
+            texto,
+            params_cb=_params,
+            limpar_nome_playlist=lambda valor: str(valor).strip().rstrip("?"),
+            extrair_nome_playlist=lambda _texto: "",
+        ) == {
+            "intent": "PLAYLIST_LIST",
+            "params": {"nome_playlist": "sendo sendo"},
+        }
+
+
+def test_o_que_tem_em_nome_real_consulta_playlist_sem_inventar_assunto() -> None:
+    resolver_nome = lambda nome: "kamaitachi" if str(nome).strip() == "kamaitachi" else ""
+    detectada = detectar_playlist_usuario(
+        "o que tem em kamaitachi",
+        params_cb=_params,
+        limpar_nome_playlist=lambda valor: str(valor).strip(),
+        extrair_nome_playlist=lambda _texto: "",
+        detectar_playlist_nome_direto=resolver_nome,
+    )
+    desconhecida = detectar_playlist_usuario(
+        "o que tem em boituva",
+        params_cb=_params,
+        limpar_nome_playlist=lambda valor: str(valor).strip(),
+        extrair_nome_playlist=lambda _texto: "",
+        detectar_playlist_nome_direto=resolver_nome,
+    )
+
+    assert detectada == {
+        "intent": "PLAYLIST_LIST",
+        "params": {"nome_playlist": "kamaitachi"},
+    }
+    assert desconhecida is None
+
+
+def test_consulta_natural_de_playlist_vence_conversa_generativa() -> None:
+    resultado, rota = resolver_intencao(
+        "o que tem em kamaitachi",
+        "pre-ia",
+        {
+            "normalizar_texto": lambda texto: str(texto).casefold(),
+            "refinar_contexto_mental": lambda _texto: None,
+            "extrair_agendamento": lambda _texto: None,
+            "extrair_acao_agendada": lambda _texto: None,
+            "texto_cancela_acao_agora": lambda _texto: False,
+            "texto_depende_de_contexto": lambda _texto: False,
+            "detectar_intencao_deterministica": lambda _texto: {
+                "intent": "PLAYLIST_LIST",
+                "params": {"nome_playlist": "kamaitachi"},
+            },
+            "resolver_comando_contextual_forcado": lambda _texto: None,
+            "resolver_repeticao_ultima_acao": lambda _texto: None,
+            "tentar_intencao_ai_primeiro": lambda _texto: (_ for _ in ()).throw(
+                AssertionError("uma playlist real deve ser lida antes da conversa")
+            ),
+            "turno_atual": classificar_modalidade_turno("o que tem em kamaitachi"),
+            "retrato_turno_atual": {},
+            "registrar_arbitragem_turno": lambda *_args: None,
+        },
+    )
+
+    assert rota == "deterministico"
+    assert resultado == {
+        "intent": "PLAYLIST_LIST",
+        "params": {"nome_playlist": "kamaitachi"},
+    }
+
+
+def test_consulta_de_recurso_atravessa_o_roteador_real_antes_do_filtro_casual() -> None:
+    contexto = {
+        "normalizar_texto": lambda texto: str(texto).casefold(),
+        "texto_conversa_casual_sem_acao": lambda _texto: True,
+        "texto_bloqueia_playlist_agora": lambda _texto: False,
+        "texto_social_curto": lambda _texto: True,
+        "ignorar_token_solto": lambda _texto: False,
+        "fluxo_prioritario_da_ia": lambda _texto: True,
+        "texto_expresso_melhor_no_deterministico": lambda _texto: False,
+        "texto_depende_de_contexto": lambda _texto: False,
+        "limpar_destino_pc_b": lambda texto: texto,
+        "target_from_params": lambda _params, _texto: "pc_a",
+        "detectar_intencao_iot": lambda *_args: None,
+        "detectar_sugestao_indireta": lambda *_args: None,
+        "modo_jogo_contexto": lambda: {},
+        "visao_jogo_tem_analise_recente": lambda: False,
+        "resolver_consulta_recurso_local": lambda texto: (
+            {"intent": "PLAYLIST_LIST", "params": {"nome_playlist": "trap"}}
+            if "trap" in texto.casefold() else None
+        ),
+        "sites_diretos": {},
+        "apps_map": {},
+    }
+
+    assert detectar_intencao_deterministica_mente("o que tem em trap", contexto) == {
+        "intent": "PLAYLIST_LIST",
+        "params": {"nome_playlist": "trap"},
+    }
+
+
+def test_lista_iot_atravessa_filtro_casual_como_leitura_segura() -> None:
+    contexto = {
+        "normalizar_texto": lambda texto: str(texto).casefold(),
+        "texto_conversa_casual_sem_acao": lambda _texto: True,
+        "texto_bloqueia_playlist_agora": lambda _texto: False,
+        "texto_social_curto": lambda _texto: True,
+        "ignorar_token_solto": lambda _texto: False,
+        "fluxo_prioritario_da_ia": lambda _texto: True,
+        "texto_expresso_melhor_no_deterministico": lambda _texto: False,
+        "texto_depende_de_contexto": lambda _texto: False,
+        "limpar_destino_pc_b": lambda texto: texto,
+        "target_from_params": lambda _params, _texto: "pc_a",
+        "detectar_intencao_iot": lambda texto, _estado: (
+            {"intent": "IOT_LIST", "params": {"ambiente": ""}}
+            if "dispositivos" in texto else None
+        ),
+        "detectar_sugestao_indireta": lambda *_args: None,
+        "modo_jogo_contexto": lambda: {},
+        "visao_jogo_tem_analise_recente": lambda: False,
+        "resolver_consulta_recurso_local": lambda _texto: None,
+        "sites_diretos": {},
+        "apps_map": {},
+    }
+
+    assert detectar_intencao_deterministica_mente(
+        "quais dispositivos estão disponíveis?", contexto,
+    ) == {"intent": "IOT_LIST", "params": {"ambiente": ""}}
+
+
+def test_runtime_real_injeta_resolvedor_geral_de_recursos() -> None:
+    namespace = {
+        "_normalizar_texto_com_apelidos": lambda texto: str(texto).casefold(),
+        "_texto_conversa_casual_sem_acao": lambda _texto: True,
+        "_texto_bloqueia_playlist_agora": lambda _texto: False,
+        "_texto_social_curto": lambda _texto: True,
+        "_ignorar_token_solto": lambda _texto: False,
+        "_fluxo_prioritario_da_ia": lambda _texto: True,
+        "_texto_expresso_melhor_no_deterministico": lambda _texto: False,
+        "_texto_depende_de_contexto": lambda _texto: False,
+        "_limpar_destino_pc_b": lambda texto: texto,
+        "_target_from_params": lambda _params, _texto: "pc_a",
+        "_detectar_intencao_iot": lambda *_args: None,
+        "_detectar_sugestao_indireta": lambda *_args: None,
+        "_resolver_consulta_recurso_local": lambda texto: (
+            {"intent": "PLAYLIST_LIST", "params": {"nome_playlist": "kamaitachi"}}
+            if "kamaitachi" in texto.casefold() else None
+        ),
+    }
+    runtime = DeteccaoDeterministicaRuntime(
+        namespace_getter=lambda: namespace,
+        estado_getter=lambda: {},
+        sites_diretos={},
+        apps_map={},
+    )
+
+    assert runtime.detectar("o que tem em kamaitachi?") == {
+        "intent": "PLAYLIST_LIST",
+        "params": {"nome_playlist": "kamaitachi"},
+    }
+
+
+def test_lista_geral_chega_ao_intent_local_sem_passar_pela_llm() -> None:
+    contexto = {
+        "normalizar_texto": lambda texto: str(texto).casefold(),
+        "texto_conversa_casual_sem_acao": lambda _texto: False,
+        "texto_bloqueia_playlist_agora": lambda _texto: False,
+        "texto_social_curto": lambda _texto: False,
+        "ignorar_token_solto": lambda _texto: False,
+        "fluxo_prioritario_da_ia": lambda _texto: False,
+        "texto_expresso_melhor_no_deterministico": lambda _texto: True,
+        "texto_depende_de_contexto": lambda _texto: False,
+        "limpar_destino_pc_b": lambda texto: texto,
+        "target_from_params": lambda _params, _texto: "pc_a",
+        "detectar_intencao_iot": lambda *_args: None,
+        "limpar_nome_playlist": lambda texto: str(texto).strip(),
+        "extrair_nome_playlist": lambda _texto: "",
+        "sites_diretos": {},
+        "apps_map": {},
+    }
+
+    assert detectar_intencao_deterministica_mente(
+        "quais minhas playlists", contexto
+    ) == {"intent": "PLAYLIST_LIST", "params": {"nome_playlist": ""}}
+
+
+def test_autoria_da_curadoria_atravessa_o_roteador_com_intent_proprio() -> None:
+    mapa = MapaRecursosRuntime()
+    mapa.registrar(
+        "playlists_usuario",
+        arquivo="playlists.json",
+        descricao="playlists do usuário",
+        termos=("playlist", "playlists"),
+        leitor=lambda _texto: {"playlists": [{"nome": "anime", "total": 24}]},
+        intent_consulta="PLAYLIST_LIST",
+    )
+    mapa.registrar(
+        "playlists_laylay",
+        arquivo="playlists_da_laylay.json",
+        descricao="curadorias da Laylay",
+        termos=("suas playlists", "playlists que voce criou", "playlists voce criou"),
+        leitor=lambda _texto: {
+            "playlists": [{"nome": "xodos_que_eu_seperei", "total": 20}],
+        },
+        intent_consulta="LAYLAY_PLAYLIST_LIST",
+    )
+    contexto = {
+        "normalizar_texto": lambda texto: str(texto).casefold(),
+        "texto_conversa_casual_sem_acao": lambda _texto: False,
+        "texto_bloqueia_playlist_agora": lambda _texto: False,
+        "texto_social_curto": lambda _texto: False,
+        "ignorar_token_solto": lambda _texto: False,
+        "fluxo_prioritario_da_ia": lambda _texto: False,
+        "texto_expresso_melhor_no_deterministico": lambda _texto: True,
+        "texto_depende_de_contexto": lambda _texto: False,
+        "limpar_destino_pc_b": lambda texto: texto,
+        "target_from_params": lambda _params, _texto: "pc_a",
+        "detectar_intencao_iot": lambda *_args: None,
+        "limpar_nome_playlist": lambda texto: str(texto).strip(),
+        "extrair_nome_playlist": lambda _texto: "anime",
+        "sites_diretos": {},
+        "apps_map": {},
+        # É a mesma precedência do caminho real: o mapa de recursos roda antes
+        # dos detectores de domínio. A regressão só está coberta se a autoria
+        # sobreviver a essa etapa, e não apenas ao detector isolado.
+        "resolver_consulta_recurso_local": mapa.resolver_consulta,
+    }
+
+    assert detectar_intencao_deterministica_mente(
+        "quais playlists voce criou?", contexto,
+    ) == {
+        "intent": "LAYLAY_PLAYLIST_LIST",
+        "params": {},
+    }
+
+
+def test_adicionar_faixa_em_playlist_explicita_vence_ia_com_contexto() -> None:
+    resultado, rota = resolver_intencao(
+        "coloca essa música na playlist alternativo",
+        "pre-ia",
+        {
+            "normalizar_texto": lambda texto: str(texto).casefold(),
+            "refinar_contexto_mental": lambda _texto: None,
+            "extrair_agendamento": lambda _texto: None,
+            "extrair_acao_agendada": lambda _texto: None,
+            "texto_cancela_acao_agora": lambda _texto: False,
+            "texto_depende_de_contexto": lambda _texto: True,
+            "detectar_intencao_deterministica": lambda _texto: {
+                "intent": "PLAYLIST_ADD",
+                "params": {"nome_playlist": "alternativo"},
+            },
+            "resolver_comando_contextual_forcado": lambda _texto: None,
+            "resolver_repeticao_ultima_acao": lambda _texto: None,
+            "tentar_intencao_ai_primeiro": lambda _texto: (_ for _ in ()).throw(
+                AssertionError("pedido explícito não pode cair na IA")
+            ),
+            "turno_atual": {"modalidade": "comando", "autoriza_execucao": True},
+            "retrato_turno_atual": {
+                "operacao_explicita": "playlist_adicionar",
+                "intents_permitidos": ["PLAYLIST_ADD"],
+            },
+            "registrar_arbitragem_turno": lambda *_args: None,
+        },
+    )
+    assert rota == "deterministico-explicito"
+    assert resultado == {
+        "intent": "PLAYLIST_ADD",
+        "params": {"nome_playlist": "alternativo"},
+    }
+
+
+def test_playlist_add_prioriza_faixa_registrada_pelo_player() -> None:
+    adicionadas = []
+    falas = []
+    estado = {
+        "musica_atual_titulo": "Duality - Slipknot",
+        "musica_atual_url": "https://www.youtube.com/watch?v=6fVE8kSM43I",
+        "musica_atual_status": "tocando",
+        "musica_atual_ts": __import__("time").time(),
+    }
+    assert executar_intencao(
+        {"intent": "PLAYLIST_ADD", "params": {"nome_playlist": "alternativo"}},
+        "coloca essa música na playlist alternativo",
+        {
+            "_target_from_params": lambda *_args: "pc_a",
+            "_musica_estado_get": lambda chave, padrao=None: estado.get(chave, padrao),
+            "solicitar_aba_ativa": lambda: (_ for _ in ()).throw(
+                AssertionError("a aba é apenas fallback")
+            ),
+            "ADD_TO_PLAYLIST": lambda nome, url, titulo, canal: (
+                adicionadas.append((nome, url, titulo, canal)) or True
+            ),
+            "falar_com_lipsync": lambda texto, *_args: falas.append(texto),
+            "_registrar_resultado_execucao": lambda *_args, **_kwargs: None,
+            "set_ultima_playlist": lambda _valor: None,
+            "_yt_clean_title": lambda titulo: titulo,
+        },
+    ) is True
+    assert adicionadas == [(
+        "alternativo",
+        "https://www.youtube.com/watch?v=6fVE8kSM43I",
+        "Duality - Slipknot",
+        "",
+    )]
+    assert falas and "alternativo" in falas[0]
+
+
+def test_coordenador_escolhe_inventario_local_e_nao_consulta_llm() -> None:
+    texto = "quais minhas playlists"
+    turno = classificar_modalidade_turno(texto)
+    contexto = {
+        "normalizar_texto": lambda valor: str(valor).casefold(),
+        "refinar_contexto_mental": lambda _texto: None,
+        "extrair_agendamento": lambda _texto: None,
+        "extrair_acao_agendada": lambda _texto: None,
+        "texto_cancela_acao_agora": lambda _texto: False,
+        "texto_depende_de_contexto": lambda _texto: False,
+        "detectar_intencao_deterministica": lambda _texto: {
+            "intent": "PLAYLIST_LIST", "params": {"nome_playlist": ""},
+        },
+        "resolver_comando_contextual_forcado": lambda _texto: None,
+        "resolver_repeticao_ultima_acao": lambda _texto: None,
+        "interpretar_comando_local_rapido": lambda _texto: None,
+        "analisar_intencao": lambda _texto: (_ for _ in ()).throw(
+            AssertionError("a LLM não pode listar o inventário local")
+        ),
+        "retrato_turno_atual": {
+            "modalidade": turno["modalidade"],
+            "autoriza_execucao": turno["autoriza_execucao"],
+        },
+    }
+
+    resultado, rota = resolver_intencao(texto, "teste", contexto)
+
+    assert rota == "deterministico"
+    assert resultado == {"intent": "PLAYLIST_LIST", "params": {"nome_playlist": ""}}
 
 
 def test_playlist_conhecida_vence_busca_generica_com_palavra_musica() -> None:
@@ -45,6 +737,27 @@ def test_playlist_conhecida_vence_busca_generica_com_palavra_musica() -> None:
     assert resultado == {
         "intent": "PLAYLIST_PLAY",
         "params": {"nome_playlist": "música brasileira"},
+    }
+
+
+def test_rock_pesado_preserva_genero_em_vez_de_abrir_playlist_rock() -> None:
+    from mente_laylay.memoria_mental.playlist_mental import detectar_playlist_nome_direto
+
+    playlists = {"rock": [{"url": "https://example.test/rock"}]}
+    resultado = detectar_musica_ou_playlist_direta(
+        "coloca um rock pesado",
+        texto_sem_destino="coloca um rock pesado",
+        texto_bruto="coloca um rock pesado",
+        params_cb=_params,
+        detectar_playlist_nome_direto=lambda texto: detectar_playlist_nome_direto(
+            texto, playlists
+        ),
+        normalizar_query_musical=lambda texto: texto,
+    )
+
+    assert resultado == {
+        "intent": "MUSIC_SEARCH",
+        "params": {"query": "rock pesado"},
     }
 
 
@@ -63,6 +776,38 @@ def test_erro_tduo_e_corrigido_sem_fuzzy_amplo() -> None:
     assert classificar_conversa_curta_local(ctx, "tduo bem com voce lay?")["tipo"] == "WELLBEING"
 
 
+def test_playlit_e_corrigido_no_normalizador_canonico_e_lista_inventario() -> None:
+    runtime = LinguagemAprendidaRuntime(
+        memoria_sqlite=None,
+        normalizar_texto=lambda texto: str(texto).casefold(),
+        texto_social_curto=lambda _texto: False,
+        falar=lambda *_args: None,
+    )
+
+    normalizado = runtime.normalizar_com_apelidos("quais sao minha playlit")
+
+    assert normalizado == "quais sao minha playlist"
+    assert pedido_lista_geral_playlist(normalizado, {}) is True
+    assert detectar_playlist_usuario(
+        normalizado,
+        texto_bruto="quais sao minha playlit",
+        params_cb=_params,
+        limpar_nome_playlist=lambda valor: str(valor or "").strip(),
+        extrair_nome_playlist=lambda _texto: "",
+    ) == {"intent": "PLAYLIST_LIST", "params": {"nome_playlist": ""}}
+
+
+def test_prefixo_duplicado_de_comando_e_reparado_com_conservadorismo() -> None:
+    runtime = LinguagemAprendidaRuntime(
+        memoria_sqlite=None,
+        normalizar_texto=lambda texto: str(texto).casefold(),
+        texto_social_curto=lambda _texto: False,
+        falar=lambda *_args: None,
+    )
+    assert runtime.normalizar_com_apelidos("fecfecha o bloco de notas") == "fecha o bloco de notas"
+    assert runtime.normalizar_com_apelidos("fechadura nova") == "fechadura nova"
+
+
 def test_que_bom_e_reacao_breve_sem_pergunta_automatica() -> None:
     ctx = {
         "_normalizar_texto_curto": lambda texto: str(texto).casefold(),
@@ -75,6 +820,31 @@ def test_que_bom_e_reacao_breve_sem_pergunta_automatica() -> None:
     fala = responder_conversa_curta_por_tipo(ctx, leitura["tipo"], "que bom lay")
     assert "?" not in fala
     assert "como posso" not in fala.casefold()
+
+
+def test_pois_e_continua_a_ultima_fala_em_vez_de_encerrar_o_assunto() -> None:
+    texto = "pois é"
+    turno = classificar_modalidade_turno(texto)
+    assert turno["modalidade"] == "reacao"
+
+    prompt = resumo_mente_integrada_para_prompt(
+        texto_usuario=texto,
+        ctx={},
+        percepcao={},
+        mente={
+            "turno_atual": turno,
+            "ultima_resposta": (
+                "Você trocou o cajado por uma playlist pesada. "
+                "Essa combinação ficou cosmicamente ilimitada."
+            ),
+            "ultima_afirmacao": "Essa combinação ficou cosmicamente ilimitada.",
+            "continuidade_fala_ts": time.time(),
+        },
+    )
+
+    assert "Continuidade social imediata" in prompt
+    assert "Essa combinação ficou cosmicamente ilimitada" in prompt
+    assert "não pergunte 'o que você quer que eu faça agora?'" in prompt
 
 
 def test_confirmacao_de_capacidade_climatica_nao_contradiz_execucao() -> None:

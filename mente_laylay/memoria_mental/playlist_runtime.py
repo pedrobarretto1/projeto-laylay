@@ -7,7 +7,9 @@ callbacks do cerebro principal para continuar conectado a mesma mente.
 from __future__ import annotations
 
 import random
+import re
 import threading
+import unicodedata
 from typing import Any, Callable, Dict
 
 from mente_laylay.memoria_mental.playlist_mental import (
@@ -240,7 +242,39 @@ class PlaylistRuntime:
         nomes = sorted(str(nome) for nome in data.keys() if str(nome or "").strip())
         if not nomes:
             return "Nenhuma playlist salva ainda."
-        return "Playlists salvas: " + ", ".join([f"'{n}'" for n in nomes]) + "."
+        return "Playlists salvas: " + ", ".join(
+            f"'{nome}' ({len(data.get(nome) or [])})" for nome in nomes
+        ) + "."
+
+    def retrato_para_mente(self, texto: str = "") -> dict[str, Any]:
+        """Entrega dados musicais úteis sem expor URLs ou o JSON bruto."""
+        data = self.load()
+        playlists = [
+            {"nome": str(nome), "total": len(itens) if isinstance(itens, list) else 0}
+            for nome, itens in sorted(data.items(), key=lambda item: str(item[0]).casefold())
+            if str(nome or "").strip()
+        ]
+        normalizado = unicodedata.normalize("NFKD", str(texto or "").casefold())
+        normalizado = "".join(ch for ch in normalizado if not unicodedata.combining(ch))
+        normalizado = re.sub(r"\s+", " ", normalizado).strip()
+        detalhe: dict[str, Any] = {}
+        for nome, itens in data.items():
+            nome_norm = unicodedata.normalize("NFKD", str(nome).casefold())
+            nome_norm = "".join(ch for ch in nome_norm if not unicodedata.combining(ch))
+            if not nome_norm or not re.search(rf"\b{re.escape(nome_norm)}\b", normalizado):
+                continue
+            titulos = []
+            for item in itens if isinstance(itens, list) else []:
+                titulo = (
+                    str(item.get("titulo") or "").strip()
+                    if isinstance(item, dict) else ""
+                )
+                titulo = yt_clean_title(titulo)
+                if titulo:
+                    titulos.append(titulo)
+            detalhe = {"nome": str(nome), "titulos": titulos[:8]}
+            break
+        return {"playlists": playlists[:30], "detalhe": detalhe}
 
     def add_url(self, playlist_name: str, url: str, title: str = "", canal: str = "") -> dict:
         data = self.load()

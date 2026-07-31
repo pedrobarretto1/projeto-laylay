@@ -32,6 +32,8 @@ def adaptar_acao_json_para_intencao(cmd: Dict[str, Any], alvo: str = "") -> Dict
         "agendar_lembrete": ("AGENDAR_LEMBRETE", "descricao"),
         "listar_agendamentos": ("LISTAR_AGENDAMENTOS", "alvo"),
         "cancelar_agendamento": ("CANCELAR_AGENDAMENTO", "alvo"),
+        "listar_playlist": ("PLAYLIST_LIST", "nome_playlist"),
+        "playlist_list": ("PLAYLIST_LIST", "nome_playlist"),
     }
     if acao in simples:
         intent, chave_alvo = simples[acao]
@@ -42,13 +44,17 @@ def adaptar_acao_json_para_intencao(cmd: Dict[str, Any], alvo: str = "") -> Dict
         return {"intent": intent, "params": params}
 
     if acao == "organizar_desktop":
+        params_layout = {
+            "left": str(cmd.get("left") or cmd.get("esquerda") or "").strip(),
+            "right": str(cmd.get("right") or cmd.get("direita") or "").strip(),
+            "modo": str(cmd.get("modo") or "").strip(),
+            "target": destino,
+        }
+        if not params_layout["left"] and not params_layout["right"]:
+            params_layout["modo"] = params_layout["modo"] or "automatico"
         return {
             "intent": "ORGANIZAR_DESKTOP",
-            "params": {
-                "left": str(cmd.get("left") or cmd.get("esquerda") or "vscode"),
-                "right": str(cmd.get("right") or cmd.get("direita") or "opera"),
-                "target": destino,
-            },
+            "params": params_layout,
         }
     if acao in {"ligar", "desligar", "alternar"}:
         return {

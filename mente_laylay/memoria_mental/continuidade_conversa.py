@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 import re
 import time
-from typing import Callable, Iterable
+from typing import Any, Callable, Dict, Iterable
 
 
 def assunto_coerente_com_fala(
@@ -67,7 +67,9 @@ def topico_memoria_valido(topico: str, normalizar_texto_curto: Callable[[str], s
     }
     if t in genericos:
         return False
-    if len(re.findall(r"[a-z0-9_-]{3,}", t)) <= 1 and t not in {"anime", "manga", "filme", "serie", "jogo", "trabalho"}:
+    if len(re.findall(r"[a-z0-9_-]{3,}", t)) <= 1 and t not in {
+        "anime", "manga", "filme", "serie", "jogo", "trabalho", "praia", "rock", "metal",
+    }:
         return False
     return True
 
@@ -88,10 +90,11 @@ def extrair_topico_conversa(texto: str, topico_anterior: str = "", *, normalizar
         "musica", "música", "playlist", "youtube", "netflix", "homem-aranha",
     ]):
         for tema in [
-            "homem aranha", "peter parker", "marvel", "anime", "manga", "filme", "serie",
-            "jogo", "trabalho", "pc", "ia", "música", "youtube", "netflix",
+            "inteligencia artificial", "inteligência artificial", "homem aranha",
+            "peter parker", "marvel", "anime", "manga", "filme", "serie",
+            "jogo", "trabalho", "música", "youtube", "netflix", "pc", "ia",
         ]:
-            if tema in t:
+            if re.search(rf"(?<![a-z0-9à-ÿ]){re.escape(tema)}(?![a-z0-9à-ÿ])", t):
                 return tema
 
     if any(p in t for p in ["ele", "ela", "isso", "fato", "verdade", "kkk", "haha", "rs", "boa", "verdade"]):
@@ -115,6 +118,92 @@ def extrair_topico_conversa(texto: str, topico_anterior: str = "", *, normalizar
     if len(topico) < 3:
         return str(topico_anterior or "").strip()
     return topico
+
+
+def mudanca_clara_de_topico(
+    texto_usuario: str,
+    topico_anterior: str,
+    topico_novo: str,
+    *,
+    normalizar_texto_curto: Callable[[str], str],
+) -> bool:
+    """Distingue assunto novo de uma continuação curta ou pronominal."""
+    anterior = str(topico_anterior or "").strip()
+    novo = str(topico_novo or "").strip()
+    if not anterior or not novo:
+        return False
+    if not topico_memoria_valido(anterior, normalizar_texto_curto):
+        return True
+    if anterior.casefold() == novo.casefold():
+        return False
+    t = normalizar_texto_curto(texto_usuario)
+    if _texto_e_resposta_sem_topico(t):
+        return False
+    if re.match(r"^(?:e|mas|entao|então)?\s*(?:ele|ela|isso|esse|essa|aquilo|de novo)\b", t):
+        return False
+    return not assunto_coerente_com_fala(
+        anterior,
+        texto_usuario,
+        normalizar_texto=normalizar_texto_curto,
+    )
+
+
+def detectar_comentario_resultado_operacional(
+    texto: str,
+    estado_mental: Dict[str, Any] | None,
+    *,
+    agora: float | None = None,
+    ttl_s: float = 240.0,
+) -> Dict[str, Any] | None:
+    """Liga uma reação natural ao resultado operacional mais recente.
+
+    A função só reconhece comentários; pedidos explícitos continuam seguindo
+    para os roteadores de comando e nunca são executados por esta camada.
+    """
+    bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
+    t = bruto.casefold()
+    mente = dict(estado_mental or {})
+    intent = str(mente.get("ultima_acao_intent") or "").strip().upper()
+    if not bruto or not intent:
+        return None
+    ts = float(mente.get("ultima_acao_ts") or mente.get("foco_operacional_ts") or mente.get("ts") or 0.0)
+    instante = float(agora if agora is not None else time.time())
+    if ts <= 0.0 or instante - ts > float(ttl_s):
+        return None
+    if re.match(
+        r"^(?:por favor\s+)?(?:liga|ligue|desliga|desligue|deixa|deixe|coloca|"
+        r"coloque|muda|mude|ajusta|ajuste|abre|abra|fecha|feche|cria|crie|apaga|apague)\b",
+        t,
+    ):
+        return None
+    sinais = (
+        "parece", "ficou", "saiu", "funcionou", "não funcionou", "nao funcionou",
+        "deu certo", "não deu", "nao deu", "estranho", "errado", "melhor", "pior",
+        "puxou", "isso aí", "isso ai", "resultado",
+    )
+    if not any(sinal in t for sinal in sinais):
+        return None
+
+    params = dict(mente.get("ultima_acao_params") or {})
+    alvo = str(mente.get("ultima_acao_alvo") or params.get("alvo") or "o resultado").strip()
+    comentario: Dict[str, Any] = {
+        "intent": intent,
+        "alvo": alvo,
+        "params": params,
+        "texto": bruto,
+        "tipo": "comentario_resultado",
+    }
+    if intent == "IOT_CONTROL" and str(params.get("acao") or "").lower() == "ajustar_cor":
+        cores = re.findall(
+            r"\b(?:rosa|roxo|violeta|vermelho|vinho|bord[oô]|azul|verde|amarelo|laranja|branco)\b",
+            t,
+        )
+        comentario.update({
+            "tipo": "aparencia_cor",
+            "cor_pedida": str(params.get("cor") or "").strip(),
+            "cor_percebida": cores[-1] if cores else "",
+        })
+    return comentario
 
 
 def atualizar_memoria_topicos(

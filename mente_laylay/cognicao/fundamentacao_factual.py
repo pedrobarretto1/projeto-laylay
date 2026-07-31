@@ -39,6 +39,12 @@ _CONSULTA_MATEMATICA = re.compile(
     r"(?:\bquanto\s+(?:é|e|dá|da)\b.*\d|\d\s*(?:\+|-|x|×|\*|/|÷)\s*\d)",
     re.IGNORECASE,
 )
+_AFIRMACAO_ATUAL_MUTAVEL = re.compile(
+    r"\b(?:n[aã]o vai ter|vai ter|vai sair|vai lan[cç]ar|nova gera[cç][aã]o|"
+    r"exclusiv[oa]|compat[ií]vel|suporte oficial|ps\s*[3456]|playstation\s*[3456]|"
+    r"xbox|switch|pc)\b",
+    re.IGNORECASE,
+)
 _ANCORA_HISTORICA = re.compile(
     r"\b(?:em|no ano de|na década de|na decada de)\s+(?:18|19|20)\d{2}\b|"
     r"\b(?:quando nasceu|quando morreu|quem inventou|história de|historia de)\b",
@@ -123,7 +129,8 @@ def classificar_atualidade_factual(
         "confianca": 0.0,
         "motivos": [],
     }
-    if not normalizado or not eh_consulta:
+    afirmacao_mutavel = bool(_AFIRMACAO_ATUAL_MUTAVEL.search(bruto))
+    if not normalizado or (not eh_consulta and not afirmacao_mutavel):
         return {**base, "classe": "nao_consulta", "motivos": ["fala_nao_consultiva"]}
     if _CONSULTA_PESSOAL_OU_INTERNA.search(bruto):
         return {**base, "classe": "contexto_pessoal", "motivos": ["resposta_vem_da_mente_local"]}
@@ -146,6 +153,15 @@ def classificar_atualidade_factual(
                 "confianca": 0.96 if sinal_temporal else 0.88,
                 "motivos": motivos,
             }
+
+    if afirmacao_mutavel:
+        return {
+            "depende_atualidade": True,
+            "classe": "agenda_ou_disponibilidade",
+            "validade_sugerida_s": 21600.0,
+            "confianca": 0.9,
+            "motivos": ["afirmacao_sobre_plataforma_ou_disponibilidade"],
+        }
 
     if sinal_temporal:
         return {
@@ -206,31 +222,78 @@ def avaliar_validade_fundamentacao(
     return base
 
 
+def _tema_numerado_plausivel(valor: str, *, posicao_no_texto: int = 0) -> bool:
+    candidato = str(valor or "").strip()
+    achado = re.fullmatch(
+        r"(?P<nome>[A-Za-zÀ-ÿ]{2,16})(?P<separador>\s*)(?P<numero>\d{1,3})",
+        candidato,
+    )
+    if not achado:
+        return True
+    nome = achado.group("nome")
+    if nome.casefold() in {"ps", "xbox"}:
+        return False
+    return bool(
+        not achado.group("separador")
+        or len(re.findall(r"[A-Z]", nome)) >= 2
+        or (nome[:1].isupper() and posicao_no_texto > 0)
+    )
+
+
 def extrair_tema_fundamentacao(
     texto: str,
     *,
     retrato: Dict[str, Any] | None = None,
     registro_semantico: Dict[str, Any] | None = None,
 ) -> str:
+    bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
+    # Preferência pessoal da Laylay e instrução de estilo são conversa, não
+    # alegações factuais. Pesquisá-las fazia a resposta fugir da pergunta.
+    if re.search(
+        r"\b(?:voc[eê]|tu)\s+(?:gosta|curte|prefere)\b", bruto,
+        flags=re.IGNORECASE,
+    ):
+        return ""
+    if re.search(
+        r"\b(?:explique|explica|responda|fale|diga)\b.*\b(?:como\s+(?:uma\s+)?"
+        r"crian[cç]a|de\s+(?:um\s+)?jeito|de\s+forma|simples|resumid[oa]|"
+        r"detalhad[oa]|curt[oa])\b",
+        bruto, flags=re.IGNORECASE,
+    ):
+        return ""
     snapshot = dict(retrato or {})
     referencia = dict(snapshot.get("referencia_resolvida") or {})
     tipo = str(referencia.get("tipo") or "").casefold()
     nome = str(referencia.get("nome") or "").strip()
-    if nome and tipo not in _TIPOS_OPERACIONAIS:
+    if (
+        nome
+        and tipo not in _TIPOS_OPERACIONAIS
+        and _tema_numerado_plausivel(nome)
+    ):
         return nome[:160]
 
-    bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
-    preferencia_composta = re.search(
-        r"\b(?:voc[eê]|tu)\s+(?:gosta|curte)\s+(?:d[oa]|de)?\s*"
-        r"(?P<tema>[^?.,;]{2,100})\??\s*$",
+    # Títulos sequenciais costumam aparecer como GTA 6, GTA6, FIFA 27 etc.
+    # Capturar o primeiro evita que a plataforma citada depois (PS4/PS5) vire
+    # o tema principal da pesquisa.
+    titulo_numerado = re.search(
+        r"\b(?P<nome>(?!PS\s*$|Xbox\s*$)[A-Za-zÀ-ÿ]{2,16})(?P<separador>\s*)(?P<numero>\d{1,3})\b",
         bruto,
-        flags=re.IGNORECASE,
     )
-    if preferencia_composta:
-        tema = str(preferencia_composta.group("tema") or "").strip(" ,.!?;:\"'")
-        if 1 <= len(tema.split()) <= 8:
+    if titulo_numerado:
+        nome = titulo_numerado.group("nome")
+        separador = titulo_numerado.group("separador")
+        # Sem espaço, a combinação costuma ser um identificador real (GTA6,
+        # iPhone15). Com espaço, exigimos aparência de sigla/título; assim
+        # verbos comuns como "contou 20" não viram assunto pesquisável.
+        parece_titulo = _tema_numerado_plausivel(
+            f"{nome}{separador}{titulo_numerado.group('numero')}",
+            posicao_no_texto=titulo_numerado.start(),
+        )
+        if parece_titulo:
+            tema = f"{nome} {titulo_numerado.group('numero')}".strip()
             return tema[:160]
     padroes = (
+        r"^(?:voc[eê]\s+)?(?:j[aá]\s+)?(?:ouviu(?:\s+falar)?|conhece)\s+(?:d[oa]|de\s+)?(.+?)[?!.]*$",
         r"^(?:quem\s+(?:e|é)|o\s+que\s+(?:e|é))\s+(.+?)[?!.]*$",
         r"^(?:o\s+que\s+(?:voce|você)\s+acha|qual\s+(?:a\s+)?sua\s+opini[aã]o)\s+(?:d[oa]|de|sobre)\s+(.+?)[?!.]*$",
         r"^(?:fala|fale|me\s+fala|explique|me\s+explica)\s+(?:de|do|da|sobre)\s+(.+?)[?!.]*$",
@@ -329,11 +392,12 @@ _GRUPOS_ESPECIFICOS = (
     {"nascimento", "nasceu", "morreu", "falecido", "casado", "filho", "filha"},
     {"mora", "vive", "cidade", "pais", "brasileiro", "brasileira", "paulista", "carioca", "nacionalidade"},
     {"processador", "ram", "vram", "resolucao", "chipset", "nucleos", "threads"},
+    {"ps4", "ps5", "playstation", "xbox", "switch", "plataforma", "compatibilidade"},
 )
 
 _FAMILIARIDADE_INVENTADA = re.compile(
-    r"\b(?:sou\s+f[aã]|(?:eu\s+)?(?:adoro|amo|curto|gosto)\s+(?:muito\s+)?(?:d[oa]|[oa])?\s*(?:estilo|trabalho|m[uú]sicas?|filmes?|livros?)\s*(?:dele|dela)?|"
-    r"j[aá]\s+ouvi|ouvi\s+(?:tudo|o\s+cat[aá]logo)|acompanho\s+(?:ele|ela|o\s+trabalho)|"
+    r"\b(?:j[aá]\s+ouvi|(?:eu\s+)?ouvi\s+(?:(?:alg|um)as?|muitas?)\s+m[uú]sicas?|"
+    r"ouvi\s+(?:tudo|o\s+cat[aá]logo)|acompanho\s+(?:ele|ela|o\s+trabalho)|"
     r"conhe[cç]o\s+(?:bem|todo|toda)|experimentei\s+(?:todo|toda)|assisti\s+todos?|li\s+todos?)\b",
     re.IGNORECASE,
 )
@@ -343,6 +407,23 @@ _MEDIDA_ESPECIFICA = re.compile(
     r"km|kg|gramas?|metros?|milimetros?|polegadas?|watts?|w)\b",
     re.IGNORECASE,
 )
+
+
+def _plataformas_citadas(texto: str) -> set[str]:
+    normalizado = _normalizar(texto)
+    plataformas: set[str] = set()
+    for numero in (4, 5, 6):
+        if re.search(rf"\b(?:ps\s*{numero}|playstation\s*{numero})\b", normalizado):
+            plataformas.add(f"ps{numero}")
+    if re.search(r"\bxbox\s+series\s+x\b", normalizado):
+        plataformas.add("xbox_series_x")
+    if re.search(r"\bxbox\s+series\s+s\b", normalizado):
+        plataformas.add("xbox_series_s")
+    if re.search(r"\bnintendo\s+switch\s*2\b", normalizado):
+        plataformas.add("switch_2")
+    if re.search(r"\b(?:pc|windows)\b", normalizado):
+        plataformas.add("pc")
+    return plataformas
 
 
 def _titulos_citados(texto: str) -> list[str]:
@@ -448,11 +529,15 @@ def validar_fala_com_fundamentacao(
             _MEDIDA_ESPECIFICA.search(frase)
             and _normalizar(_MEDIDA_ESPECIFICA.search(frase).group(0)) not in evidencia_norm
         )
+        plataformas_frase = _plataformas_citadas(frase)
+        plataformas_evidencia = _plataformas_citadas(evidencia)
+        plataforma_sem_evidencia = bool(plataformas_frase - plataformas_evidencia)
         familiaridade_inventada = bool(_FAMILIARIDADE_INVENTADA.search(frase))
         sem_base = not bool(base.get("confiavel")) and _frase_especifica_sem_base(frase, tema)
         if (
             titulo_sem_evidencia or ano_sem_evidencia or categoria_sem_evidencia
-            or medida_sem_evidencia or familiaridade_inventada or sem_base
+            or medida_sem_evidencia or plataforma_sem_evidencia
+            or familiaridade_inventada or sem_base
         ):
             rejeitadas.append(frase)
             if titulo_sem_evidencia:
@@ -463,6 +548,8 @@ def validar_fala_com_fundamentacao(
                 problemas.append("caracteristica_sem_evidencia")
             if medida_sem_evidencia:
                 problemas.append("medida_sem_evidencia")
+            if plataforma_sem_evidencia:
+                problemas.append("plataforma_sem_evidencia")
             if familiaridade_inventada:
                 problemas.append("familiaridade_inventada")
             if sem_base:

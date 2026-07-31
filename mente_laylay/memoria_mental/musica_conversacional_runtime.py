@@ -30,6 +30,7 @@ class MusicaConversacionalRuntime:
         registrar_resultado_execucao: Callable[..., Any],
         registrar_autoaprimoramento: Callable[..., Any] | None = None,
         enviar_mensagem: Callable[..., Any] | None = None,
+        buscar_resultados_musicais: Callable[[str, int], list] | None = None,
         log: Callable[[str], None] | None = None,
     ) -> None:
         self.estado_mental_getter = estado_mental_getter
@@ -40,6 +41,7 @@ class MusicaConversacionalRuntime:
         self.registrar_resultado_execucao = registrar_resultado_execucao
         self.registrar_autoaprimoramento = registrar_autoaprimoramento
         self.enviar_mensagem = enviar_mensagem
+        self.buscar_resultados_musicais = buscar_resultados_musicais
         self.log = log or print
         self._sugestao_pendente: Dict[str, Any] = {}
 
@@ -132,7 +134,22 @@ class MusicaConversacionalRuntime:
         )
 
     def responder_pedido_direcao(self, texto: str = "") -> bool:
-        t = self.normalizar_texto(texto)
+        bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
+        t = self.normalizar_texto(bruto)
+        artista_explicito = re.search(
+            r"\b(?:m[uú]sicas?|faixas?|som|discos?|[aá]lbuns?)\s+(?:d[oa])\s+([^,?.!]{2,80})",
+            bruto,
+            flags=re.IGNORECASE,
+        )
+        if artista_explicito and callable(self.buscar_resultados_musicais):
+            artista = re.sub(
+                r"\s+(?:que|pra|para)\s+.*$",
+                "",
+                str(artista_explicito.group(1) or ""),
+                flags=re.IGNORECASE,
+            ).strip()
+            if artista:
+                return self.recomendar_artista_verificado(artista, bruto)
         quer_nova = any(p in t for p in [
             "nao tenho ouvido antes", "não tenho ouvido antes",
             "nao ouvi antes", "não ouvi antes",
@@ -140,11 +157,23 @@ class MusicaConversacionalRuntime:
             "uma nova", "musica nova", "música nova",
         ])
         sugestao = self.sugestao_nova(t)
+        pedido_execucao_sem_titulo = bool(re.search(
+            r"^(?:por favor\s+)?(?:coloca|coloque|bota|bote|poe|põe|toca|toque|manda)\s+"
+            r"(?:uma|alguma)?\s*(?:musica|música|faixa|som)(?:\s+(?:ai|aí|pra mim|para mim))?[.!?]*$",
+            bruto,
+            flags=re.IGNORECASE,
+        ))
         if quer_nova:
             fala = random.choice([
                 f"Então eu arrisco uma fora da tua prateleira: {sugestao}. Não toquei nada, só tô te dando um palpite novo.",
                 f"Beleza, sem reciclar playlist. Meu chute com coragem é {sugestao}. Se quiser outro clima, eu viro a esquina.",
                 f"Uma nova pra testar teu ouvido: {sugestao}. Pode ser que bata, pode ser que apanhe, mas é uma aposta honesta.",
+            ])
+        elif pedido_execucao_sem_titulo:
+            fala = random.choice([
+                f"Qual faixa você quer? Se quiser uma ideia, eu iria de {sugestao}.",
+                f"Me diz o nome da música. Meu palpite, se quiser, é {sugestao}.",
+                f"Qual música eu coloco? Enquanto você escolhe, minha sugestão é {sugestao}.",
             ])
         else:
             fala = random.choice([
@@ -161,14 +190,56 @@ class MusicaConversacionalRuntime:
             alvo=sugestao,
             habilidade="musica",
         )
-        self._sugestao_pendente = {"titulo": sugestao, "ts": time.time()}
+        self._sugestao_pendente = {
+            "titulo": sugestao,
+            "ts": time.time(),
+            "aceita_titulo": pedido_execucao_sem_titulo,
+        }
         return True
+
+    def _parece_titulo_em_resposta(self, texto: str) -> bool:
+        """Aceita uma faixa curta após a Laylay perguntar qual música tocar."""
+        bruto = re.sub(r"\s+", " ", str(texto or "")).strip(" .,!;:")
+        t = self.normalizar_texto(bruto)
+        if not bruto or not t or "?" in str(texto or ""):
+            return False
+        if len(bruto) > 120 or len(bruto.split()) > 14:
+            return False
+        if t in {"sim", "nao", "não", "cancela", "deixa", "esquece", "qualquer uma"}:
+            return False
+        # Não sequestra um novo comando de outro domínio enquanto uma escolha
+        # musical está pendente.
+        if re.search(
+            r"\b(?:luz|lampada|lâmpada|ventilador|tomada|dispositivo|email|agenda|"
+            r"lembrete|pasta|arquivo|programa|navegador)\b",
+            t,
+        ):
+            return False
+        return bool(re.search(r"[a-zA-ZÀ-ÿ0-9]", bruto))
 
     def processar_confirmacao(self, texto: str = "") -> bool:
         """Continua uma recomendacao conversacional sem recriar habilidade antiga."""
         t = self.normalizar_texto(texto)
         if not t:
             return False
+
+        pendente = dict(self._sugestao_pendente or {})
+        cobranca = any(p in t for p in [
+            "cade a musica", "cadê a música", "cade a música", "cadê a musica",
+            "achei que voce ia colocar", "achei que você ia colocar",
+            "pensei que voce ia colocar", "pensei que você ia colocar",
+        ])
+        if cobranca and pendente.get("titulo"):
+            sugestao = str(pendente.get("titulo") or "essa música").strip()
+            fala = (
+                f"Você tem razão de cobrar clareza: eu só sugeri {sugestao} e ainda não toquei nada. "
+                "Se você disser para tocar essa, aí eu executo de verdade."
+            )
+            self.falar(fala, "calma", 1)
+            self.registrar_mente_curta(
+                texto, fala, intencao="MUSIC_OPINION_CHAT", alvo=sugestao, habilidade="musica",
+            )
+            return True
 
         confirma = any(p in t for p in [
             "quero ouvir", "quero escutar", "quero sim", "quero ver",
@@ -189,16 +260,41 @@ class MusicaConversacionalRuntime:
             "mais alternativo", "mais alternativa", "mais rock", "mais metal",
             "mais geek", "mais nerd", "mais gamer", "mais eletronica", "mais eletrônica",
         ])
+        try:
+            pendente_valida = bool(pendente.get("titulo")) and time.time() - float(pendente.get("ts") or 0.0) <= 420
+        except Exception:
+            pendente_valida = False
+        if (
+            pendente_valida
+            and bool(pendente.get("aceita_titulo"))
+            and self._parece_titulo_em_resposta(texto)
+            and not (confirma or pedir_entrega or pede_outra)
+        ):
+            titulo_escolhido = re.sub(r"\s+", " ", str(texto or "")).strip(" .,!;:")
+            resultado = {
+                "intent": "MUSIC_SEARCH",
+                "params": {"query": titulo_escolhido, "origem": "continuacao_busca"},
+            }
+            self.log(f"⚡ [ROTEADOR CONTINUIDADE-MUSICAL [chat]] {resultado}")
+            executou = bool(self.executar_intencao(resultado, f"toca {titulo_escolhido}"))
+            self.registrar_resultado_execucao(
+                resultado, texto, executou, origem="continuacao_busca_musical"
+            )
+            if executou:
+                self._sugestao_pendente = {}
+                self.registrar_mente_curta(
+                    texto,
+                    f"Colocando {titulo_escolhido} pra tocar.",
+                    intencao="MUSIC_SEARCH",
+                    alvo=titulo_escolhido,
+                    habilidade="musica",
+                )
+            return True
         if not (confirma or pedir_entrega):
             if not pede_outra:
                 return False
 
         estado = self._estado()
-        pendente = dict(self._sugestao_pendente or {})
-        try:
-            pendente_valida = bool(pendente.get("titulo")) and time.time() - float(pendente.get("ts") or 0.0) <= 420
-        except Exception:
-            pendente_valida = False
         if not pendente_valida:
             if str(estado.get("ultima_intencao") or "").upper() != "MUSIC_OPINION_CHAT":
                 return False
@@ -276,6 +372,58 @@ class MusicaConversacionalRuntime:
             # confirmado a abertura. Nao deixe a frase cair no IA-first e
             # virar um comando sem relacao com a musica.
             self.log(f"⚠️ [MÚSICA:SUGESTÃO] execução não confirmada para {sugestao!r}")
+        return True
+
+    def recomendar_artista_verificado(self, artista: str, texto: str = "") -> bool:
+        """Sugere um resultado observado, sem confundir sugestão com reprodução."""
+        nome = re.sub(r"\s+", " ", str(artista or "")).strip(" .,!?:;")
+        if not nome or not callable(self.buscar_resultados_musicais):
+            return False
+        try:
+            candidatos = list(self.buscar_resultados_musicais(f"{nome} official audio", 6) or [])
+        except Exception as erro:
+            self.log(f"⚠️ [MÚSICA:RECOMENDAÇÃO] busca falhou: {type(erro).__name__}")
+            candidatos = []
+
+        tokens_artista = {
+            token for token in re.findall(r"[a-z0-9]{2,}", self.normalizar_texto(nome))
+            if token not in {"the", "and", "feat", "official", "audio"}
+        }
+        escolhido = None
+        for item in candidatos:
+            titulo = str(item.get("title") or "").strip()
+            canal = str(item.get("channel") or "").strip()
+            base = self.normalizar_texto(f"{titulo} {canal}")
+            if titulo and tokens_artista and tokens_artista.issubset(set(re.findall(r"[a-z0-9]{2,}", base))):
+                escolhido = dict(item)
+                break
+        if escolhido is None:
+            fala = (
+                f"Eu não consegui confirmar uma faixa de {nome} agora. "
+                "Prefiro não te passar um título no chute."
+            )
+            self.falar(fala, "calma", 1)
+            self.registrar_mente_curta(
+                texto, fala, intencao="MUSIC_RECOMMENDATION_UNVERIFIED", alvo=nome, habilidade="musica",
+            )
+            return True
+
+        titulo = str(escolhido.get("title") or "").strip()
+        query = f"{nome} {titulo}".strip()
+        fala = (
+            f"Encontrei uma faixa real para te indicar: {titulo}. "
+            "Eu ainda não toquei; quer que eu coloque agora?"
+        )
+        self._sugestao_pendente = {
+            "titulo": query,
+            "rotulo": titulo,
+            "url": str(escolhido.get("url") or ""),
+            "ts": time.time(),
+        }
+        self.falar(fala, "calma", 1)
+        self.registrar_mente_curta(
+            texto, fala, intencao="MUSIC_OPINION_CHAT", alvo=query, habilidade="musica",
+        )
         return True
 
 

@@ -7,6 +7,10 @@ yarn-error.log*
 # Build outputs
 dist/
 build/
+cliente/gamebar_laylay/artifacts/
+cliente/gamebar_laylay/bin/
+cliente/gamebar_laylay/obj/
+cliente/gamebar_laylay/AppPackages/
 *.egg-info/
 *.log
 *.db

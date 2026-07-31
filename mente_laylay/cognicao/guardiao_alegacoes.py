@@ -21,6 +21,16 @@ _OFERTA_FUTURA_SEM_MECANISMO = re.compile(
     r"(?:das?\s+novidades\s+)?quando\s+(?:sair|acontecer|chegar)\b",
     re.IGNORECASE,
 )
+_ADIAMENTO_RESPOSTA_SEM_CONTINUACAO = re.compile(
+    r"\b(?:vou\s+(?:pensar|analisar|verificar|conferir|calcular|pesquisar)|"
+    r"deixa\s+eu\s+(?:pensar|analisar|verificar|conferir|calcular)|"
+    r"preciso\s+(?:pensar|analisar|verificar|conferir|calcular))\b"
+    r"[^.!?]{0,120}\b(?:antes\s+de\s+(?:te\s+)?responder|"
+    r"(?:te\s+)?respondo\s+(?:depois|daqui\s+a\s+pouco|em\s+seguida)|"
+    r"para\s+(?:te\s+)?responder\s+(?:depois|em\s+seguida))\b|"
+    r"\b(?:j[aá]\s+te\s+respondo|respondo\s+depois)\b",
+    re.IGNORECASE,
+)
 _OFERTA_PLAYLIST_SPOTIFY_NAO_SUPORTADA = re.compile(
     r"\b(?:vou|posso|quer(?:e?s)?\s+(?:que\s+)?eu)\s+(?:fazer|criar|montar)\b"
     r"[^.!?]{0,120}\bplaylist\b[^.!?]{0,100}\b(?:no|na|pelo)\s+spotify\b",
@@ -28,6 +38,12 @@ _OFERTA_PLAYLIST_SPOTIFY_NAO_SUPORTADA = re.compile(
 )
 _PROMESSA_CRIAR_PLAYLIST = re.compile(
     r"\b(?:vou|posso)\s+(?:fazer|criar|montar)\b[^.!?]{0,120}\bplaylist\b",
+    re.IGNORECASE,
+)
+_PROMESSA_OPERACIONAL_SEM_COMANDO = re.compile(
+    r"\b(?:eu\s+)?vou\s+(?:te\s+)?(?:liberar(?:\s+o)?\s+comando|"
+    r"acionar|ativar|ligar|desligar|abrir|fechar|aquecer|esquentar|"
+    r"cozinhar|iniciar|executar|controlar)\b",
     re.IGNORECASE,
 )
 _PERGUNTA_DEPENDENTE_VAGA = re.compile(
@@ -71,6 +87,10 @@ def _comandos_normalizados(plano: Dict[str, Any]) -> list[Dict[str, Any]]:
     return resultados
 
 
+def fala_adia_resposta_sem_continuacao(fala: str) -> bool:
+    return bool(_ADIAMENTO_RESPOSTA_SEM_CONTINUACAO.search(str(fala or "")))
+
+
 def validar_alegacoes_da_fala(
     fala: str,
     *,
@@ -112,8 +132,17 @@ def validar_alegacoes_da_fala(
         if (
             _PROMESSA_SEM_MECANISMO.search(frase)
             or _OFERTA_FUTURA_SEM_MECANISMO.search(frase)
+            or _ADIAMENTO_RESPOSTA_SEM_CONTINUACAO.search(frase)
         ) and not tem_agendamento:
             problemas.append("promessa_sem_mecanismo")
+            removidas.append(frase)
+            continue
+        if (
+            origem_ia
+            and _PROMESSA_OPERACIONAL_SEM_COMANDO.search(frase)
+            and not confirmados
+        ):
+            problemas.append("promessa_operacional_sem_comando")
             removidas.append(frase)
             continue
         if (
@@ -155,6 +184,11 @@ def validar_alegacoes_da_fala(
             "Eu consigo conversar sobre isso agora, mas não acompanho novidades sozinha "
             "nem aviso depois sem criar um lembrete real."
         )
+    elif not ajustada and "promessa_operacional_sem_comando" in problemas:
+        if contrato.get("requer_execucao"):
+            ajustada = "Eu não executei essa ação nem confirmei qualquer resultado."
+        else:
+            ajustada = "Entendi. Então essa parte já está resolvida por aí."
     elif not ajustada and "estado_real_sem_leitura" in problemas:
         ajustada = "Eu ainda não consultei o estado real para afirmar isso com segurança."
     return {

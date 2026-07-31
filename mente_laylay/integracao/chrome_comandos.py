@@ -131,7 +131,16 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
         print(f"📤 [Chrome] Enviando fechamento específico → '{target}'")
         msg = {"action": "close_specific_tab", "target": target}
         if ws_loop and connected_extensions and callable(broadcast_command):
-            if not _enviar_extensao(msg):
+            # Fechamento não pode ser confirmado apenas porque o socket
+            # recebeu bytes. Quando a extensão suporta requestId, aguardamos o
+            # resultado real da ação; instalações antigas continuam na
+            # validação observável feita logo depois pelo executor.
+            confirmou_efeito = False
+            if callable(executar_confirmado):
+                confirmou_efeito = bool(executar_confirmado(msg, timeout_s=3.0))
+            else:
+                confirmou_efeito = _enviar_extensao(msg)
+            if not confirmou_efeito:
                 print("❌ [Chrome] extensão não confirmou o fechamento específico")
                 return False
             print(f"📤 [Chrome] ✅ Comando ENVIADO → close_specific_tab | target={target}")
@@ -162,10 +171,16 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
                 **({"background": True} if payload.get("background") else {}),
                 **({"target_tab_id": payload.get("target_tab_id")} if payload.get("target_tab_id") is not None else {}),
             }
-            if _enviar_extensao(msg):
-                print(f"📤 [Chrome] Entrega WebSocket de youtube_play confirmada: {url_musica}")
+            # Música exige confirmação do efeito na página. O simples aceite
+            # do WebSocket ou a navegação da aba não provam que há áudio.
+            if callable(executar_confirmado):
+                confirmou = bool(executar_confirmado(msg, timeout_s=10.0))
+            else:
+                confirmou = False
+            if confirmou:
+                print(f"📤 [Chrome] Reprodução do YouTube confirmada: {url_musica}")
                 return True
-            print("⚠️ [Chrome] youtube_play ficou sem confirmação; fallback bloqueado para não duplicar a faixa")
+            print("⚠️ [Chrome] o vídeo abriu, mas o player não confirmou a reprodução")
             return False
         try:
             abriu = webbrowser.open(url_musica)

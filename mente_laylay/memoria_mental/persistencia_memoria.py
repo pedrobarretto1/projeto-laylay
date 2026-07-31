@@ -7,6 +7,11 @@ import os
 from datetime import datetime
 from typing import Any, Callable, Dict, Optional
 
+from mente_laylay.memoria_mental.identidade_usuario import (
+    carregar_nome_usuario_confirmado,
+    normalizar_nome_usuario,
+)
+
 
 POLITICA_PERSISTENCIA_MENTE = {
     "duravel": (
@@ -19,12 +24,15 @@ POLITICA_PERSISTENCIA_MENTE = {
         "preferencias_musicais",
         "registro_semantico",
         "perfil_proatividade",
+        "iniciativa_autonoma",
+        "coordenador_oportunidades",
     ),
     "sessao": (
         "estado_musical",
         "percepcao",
         "conteudo_atual",
         "focos_por_dominio",
+        "continuidade_geral",
     ),
     "efemero": (
         "continuidades",
@@ -33,6 +41,44 @@ POLITICA_PERSISTENCIA_MENTE = {
         "ultima_acao",
     ),
 }
+
+
+def sanitizar_aprendizado_oportunidades(valor: Any) -> Dict[str, Any]:
+    """Persiste só os sinais agregados; decisões e textos da sessão ficam fora."""
+    bruto = dict(valor or {}) if isinstance(valor, dict) else {}
+    perfis_brutos = bruto.get("aprendizado")
+    perfis: Dict[str, Any] = {}
+    campos_numericos = (
+        "aceitas", "recusadas", "silencios", "correcoes", "amostras",
+        "dominancia", "sinal", "ajuste_utilidade", "ultima_resposta_ts",
+    )
+    if isinstance(perfis_brutos, dict):
+        for chave, registro in list(perfis_brutos.items())[-40:]:
+            if not isinstance(registro, dict):
+                continue
+            chave_limpa = str(chave or "").strip()[:120]
+            if not chave_limpa:
+                continue
+            seguro: Dict[str, Any] = {}
+            for campo in campos_numericos:
+                valor_campo = registro.get(campo)
+                if isinstance(valor_campo, (int, float)) and not isinstance(valor_campo, bool):
+                    seguro[campo] = valor_campo
+            for campo in ("status", "tipo", "ultima_resposta"):
+                texto = str(registro.get(campo) or "").strip()[:40]
+                if texto:
+                    seguro[campo] = texto
+            perfis[chave_limpa] = seguro
+
+    contadores_brutos = bruto.get("contadores")
+    contadores = {}
+    if isinstance(contadores_brutos, dict):
+        for campo in ("feedbacks", "aceitas", "recusadas", "silencios", "correcoes"):
+            try:
+                contadores[campo] = max(0, int(contadores_brutos.get(campo) or 0))
+            except (TypeError, ValueError):
+                contadores[campo] = 0
+    return {"versao": 1, "aprendizado": perfis, "contadores": contadores}
 
 
 def compactar_historico_mensagens(
@@ -85,6 +131,7 @@ def carregar_memoria(memoria_sqlite, base_system_prompt: str):
     mensagens = [m for m in mensagens if str(m.get("role") or "").lower() != "system"]
     mensagens.insert(0, {"role": "system", "content": base_system_prompt})
 
+    nome_usuario = carregar_nome_usuario_confirmado(memoria_sqlite)
     return {
         "messages": mensagens,
         "bordoes": data.get("bordoes", []),
@@ -109,6 +156,11 @@ def carregar_memoria(memoria_sqlite, base_system_prompt: str):
         "preferencias_musicais": data.get("preferencias_musicais", {}),
         "registro_semantico": data.get("registro_semantico", {}),
         "perfil_proatividade": data.get("perfil_proatividade", {}),
+        "iniciativa_autonoma": data.get("iniciativa_autonoma", {}),
+        "coordenador_oportunidades": sanitizar_aprendizado_oportunidades(
+            data.get("coordenador_oportunidades", {})
+        ),
+        "nome_usuario": nome_usuario,
     }
 
 
@@ -188,7 +240,7 @@ def registrar_autocorrecao_virtual(
             tipo="correcao",
             gatilho=origem_limpa or erro_limpo[:120],
             valor=correcao_limpa[:180],
-            regra="A correção ensinada pelo Pedro deve ser reaproveitada em próximas respostas semelhantes.",
+            regra="A correção ensinada pelo usuário deve ser reaproveitada em próximas respostas semelhantes.",
             texto_original=f"{origem_limpa}: {erro_limpo} => {correcao_limpa}",
             confianca=0.95,
             origem="autocorrecao_sistema",
@@ -278,6 +330,18 @@ class PersistenciaMemoriaRuntime:
         perfil_proatividade = data.get("perfil_proatividade")
         if isinstance(perfil_proatividade, dict):
             self._atualizar("mental", perfil_proatividade=perfil_proatividade)
+        iniciativa_autonoma = data.get("iniciativa_autonoma")
+        if isinstance(iniciativa_autonoma, dict):
+            self._atualizar("mental", iniciativa_autonoma=iniciativa_autonoma)
+        coordenador_oportunidades = data.get("coordenador_oportunidades")
+        if isinstance(coordenador_oportunidades, dict):
+            self._atualizar(
+                "mental", coordenador_oportunidades=coordenador_oportunidades,
+            )
+        self._atualizar(
+            "mental",
+            nome_usuario=normalizar_nome_usuario(data.get("nome_usuario")),
+        )
 
         self._atualizar(
             "conversacional",
@@ -344,6 +408,15 @@ class PersistenciaMemoriaRuntime:
             "preferencias_musicais": self._obter("mental", "preferencias_musicais", {}),
             "registro_semantico": self._obter("mental", "registro_semantico", {}),
             "perfil_proatividade": self._obter("mental", "perfil_proatividade", {}),
+            "iniciativa_autonoma": self._obter("mental", "iniciativa_autonoma", {}),
+            "coordenador_oportunidades": sanitizar_aprendizado_oportunidades(
+                self._obter("mental", "coordenador_oportunidades", {})
+            ),
+            # Cópia de conveniência. A fonte de confiança continua sendo o
+            # aprendizado semântico confirmado, carregado acima.
+            "nome_usuario": normalizar_nome_usuario(
+                self._obter("mental", "nome_usuario", "")
+            ),
         }
 
     def salvar(self) -> bool:
@@ -376,7 +449,7 @@ def init_memoria_contexto_diaria(arquivo: str) -> Optional[str]:
     if not os.path.exists(arquivo):
         with open(arquivo, "w", encoding="utf-8") as f:
             json.dump({"data": str(datetime.now().date()), "bom_dia_dito": False}, f, ensure_ascii=False, indent=2)
-        return "Bom dia, Pedro. Pronta para mais um dia de dominação digital."
+        return "Bom dia. Pronta para mais um dia de dominação digital."
 
     with open(arquivo, "r", encoding="utf-8") as f:
         try:
@@ -391,11 +464,11 @@ def init_memoria_contexto_diaria(arquivo: str) -> Optional[str]:
         contexto = {"data": hoje, "bom_dia_dito": False}
         with open(arquivo, "w", encoding="utf-8") as f:
             json.dump(contexto, f, ensure_ascii=False, indent=2)
-        return "Bom dia, Pedro. Pronta para mais um dia de dominação digital."
+        return "Bom dia. Pronta para mais um dia de dominação digital."
 
     if not bool(contexto.get("bom_dia_dito", False)):
         contexto["bom_dia_dito"] = True
         with open(arquivo, "w", encoding="utf-8") as f:
             json.dump(contexto, f, ensure_ascii=False, indent=2)
-        return "Bom dia, Pedro. Pronta para mais um dia de dominação digital."
+        return "Bom dia. Pronta para mais um dia de dominação digital."
     return None

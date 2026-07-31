@@ -63,7 +63,7 @@ async def resumir_pagina_ou_video(
 ) -> bool:
     """Resume a pagina atual, usando legendas quando houver video do YouTube."""
     if not websocket_disponivel():
-        falar("Pedro, meu WebSocket não está conectado. Não consigo ver a página.", "irritada", 2)
+        falar("Meu WebSocket não está conectado. Não consigo ver a página.", "irritada", 2)
         return False
 
     log("[RESUMO:FASE] iniciado")
@@ -72,7 +72,7 @@ async def resumir_pagina_ou_video(
         response = await solicitar_conteudo()
         if not isinstance(response, dict) or not response.get("success"):
             erro = response.get("error", "desconhecido") if isinstance(response, dict) else "resposta inválida"
-            falar(f"Pedro, não consegui pegar o conteúdo da página. Erro: {erro}", "irritada", 2)
+            falar(f"Não consegui pegar o conteúdo da página. Erro: {erro}", "irritada", 2)
             return False
 
         dados = response.get("data") if isinstance(response.get("data"), dict) else {}
@@ -81,7 +81,7 @@ async def resumir_pagina_ou_video(
         titulo = str(dados.get("title") or "")
         log(f"[RESUMO:FASE] conteudo_recebido url={url[:100]} chars={len(conteudo)}")
         if not url:
-            falar("Pedro, não consegui identificar a URL da página.", "irritada", 2)
+            falar("Não consegui identificar a URL da página.", "irritada", 2)
             return False
 
         texto_resumo = conteudo or titulo
@@ -124,7 +124,7 @@ async def resumir_pagina_ou_video(
                     "referente": _referente_principal_resumo(titulo, texto_resumo),
                     "resumo": "",
                 })
-            falar("Pedro, o conteúdo que peguei é muito curto. Não tenho muito o que resumir.", "calma", 1)
+            falar("O conteúdo que peguei é muito curto. Não tenho muito o que resumir.", "calma", 1)
             return False
 
         texto_prompt, foi_recortado = _recortar_texto_para_resumo(texto_resumo)
@@ -200,11 +200,11 @@ async def resumir_pagina_ou_video(
                 })
             return True
 
-        falar("Pedro, não consegui resumir direito agora.", "calma", 1)
+        falar("Não consegui resumir direito agora.", "calma", 1)
         return False
     except Exception as erro:
         log(f"[RESUMO] Erro ao resumir página/vídeo: {erro}")
-        falar("Pedro, deu um problema inesperado ao tentar resumir. Tenta de novo.", "irritada", 2)
+        falar("Deu um problema inesperado ao tentar resumir. Tenta de novo.", "irritada", 2)
         return False
 
 

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+import hashlib
 import shutil
+import tempfile
 import time
 from pathlib import Path
 from typing import Optional
@@ -76,6 +78,96 @@ def criar_ou_editar_arquivo(caminho: str, conteudo: str, modo: str = "w") -> boo
     except Exception as e:
         print(f"❌ Erro ao manipular arquivo: {e}")
         return False
+
+
+def escrever_arquivo_texto_seguro(
+    caminho: str,
+    conteudo: str,
+    *,
+    sobrescrever: bool = False,
+) -> dict:
+    """Grava texto sem sobrescrita implícita e confirma o conteúdo relido.
+
+    A rota cooperativa usa esta operação para manter a confirmação separada da
+    simples aceitação do comando. O texto não aparece no retorno nem nos logs.
+    """
+    caminho_resolvido = resolver_caminho(caminho)
+    if not verificar_trava_seguranca(caminho_resolvido):
+        return {
+            "ok": False,
+            "status": "acesso_negado",
+            "caminho": caminho_resolvido,
+            "confirmado": False,
+        }
+    alvo = Path(caminho_resolvido)
+    texto = str(conteudo or "")
+    try:
+        alvo.parent.mkdir(parents=True, exist_ok=True)
+        if alvo.exists() and not sobrescrever:
+            return {
+                "ok": False,
+                "status": "arquivo_existente_requer_confirmacao",
+                "caminho": str(alvo),
+                "confirmado": False,
+            }
+
+        if sobrescrever:
+            temporario = ""
+            try:
+                with tempfile.NamedTemporaryFile(
+                    "w",
+                    encoding="utf-8",
+                    dir=str(alvo.parent),
+                    prefix=f".{alvo.name}.",
+                    suffix=".laylay.tmp",
+                    delete=False,
+                ) as arquivo:
+                    temporario = arquivo.name
+                    arquivo.write(texto)
+                    arquivo.flush()
+                    os.fsync(arquivo.fileno())
+                os.replace(temporario, alvo)
+            finally:
+                if temporario and os.path.exists(temporario):
+                    try:
+                        os.remove(temporario)
+                    except OSError:
+                        pass
+        else:
+            # ``x`` garante que uma corrida entre a verificação e a escrita
+            # nunca destrua um arquivo criado por outro processo.
+            with open(alvo, "x", encoding="utf-8") as arquivo:
+                arquivo.write(texto)
+                arquivo.flush()
+                os.fsync(arquivo.fileno())
+
+        relido = alvo.read_text(encoding="utf-8")
+        esperado = hashlib.sha256(texto.encode("utf-8")).hexdigest()
+        observado = hashlib.sha256(relido.encode("utf-8")).hexdigest()
+        confirmado = relido == texto and observado == esperado
+        return {
+            "ok": confirmado,
+            "status": "arquivo_criado" if confirmado else "conteudo_nao_confirmado",
+            "caminho": str(alvo),
+            "confirmado": confirmado,
+            "tamanho": len(relido),
+            "hash": observado,
+        }
+    except FileExistsError:
+        return {
+            "ok": False,
+            "status": "arquivo_existente_requer_confirmacao",
+            "caminho": str(alvo),
+            "confirmado": False,
+        }
+    except Exception as erro:
+        print(f"❌ Erro ao gravar arquivo de forma segura: {type(erro).__name__}")
+        return {
+            "ok": False,
+            "status": "falha_execucao",
+            "caminho": str(alvo),
+            "confirmado": False,
+        }
 
 
 def mover_arquivo(origem: str, destino: str) -> bool:

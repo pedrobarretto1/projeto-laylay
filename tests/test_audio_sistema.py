@@ -7,8 +7,9 @@ from mente_laylay.autonomia import audio_sistema
 
 
 class ControleFalso:
-    def __init__(self, volume):
+    def __init__(self, volume, *, mudo=False):
         self.volume = float(volume)
+        self.mudo = bool(mudo)
         self.historico = []
 
     def GetMasterVolume(self):
@@ -17,6 +18,9 @@ class ControleFalso:
     def SetMasterVolume(self, volume, _contexto):
         self.volume = float(volume)
         self.historico.append(self.volume)
+
+    def GetMute(self):
+        return self.mudo
 
 
 class ProcessoFalso:
@@ -29,9 +33,11 @@ class ProcessoFalso:
 
 
 class SessaoFalsa:
-    def __init__(self, nome, pid, volume):
+    def __init__(self, nome, pid, volume, *, estado=None, mudo=False):
         self.Process = ProcessoFalso(nome, pid) if nome else None
-        self.SimpleAudioVolume = ControleFalso(volume)
+        self.SimpleAudioVolume = ControleFalso(volume, mudo=mudo)
+        if estado is not None:
+            self.State = estado
 
 
 @pytest.fixture(autouse=True)
@@ -102,3 +108,16 @@ def test_restauracao_sem_ativacao_nao_mexe_no_volume(monkeypatch):
 
     assert sessao.SimpleAudioVolume.volume == pytest.approx(0.44)
     assert sessao.SimpleAudioVolume.historico == []
+
+
+def test_lista_somente_processos_com_audio_ativo_e_audivel(monkeypatch):
+    chrome = SessaoFalsa("chrome.exe", 1, 0.7, estado=1)
+    spotify_pausado = SessaoFalsa("spotify.exe", 2, 0.8, estado=0)
+    discord_mudo = SessaoFalsa("discord.exe", 3, 0.8, estado=1, mudo=True)
+    edge_sem_volume = SessaoFalsa("msedge.exe", 4, 0.0, estado=1)
+    instalar_pycaw_falso(
+        monkeypatch,
+        [chrome, spotify_pausado, discord_mudo, edge_sem_volume],
+    )
+
+    assert audio_sistema.listar_processos_com_audio_ativo() == {"chrome.exe"}

@@ -11,4 +11,11 @@ def test_modo_essencial_exibe_diagnostico_e_transcricao_de_voz():
         "🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0020",
         log_mode="essencial",
     )
-
+    assert should_log_message(
+        "🧠 [REDE ASSOCIATIVA] modo=sombra | influência=desativada",
+        log_mode="limpo",
+    )
+    assert should_log_message(
+        "📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao",
+        log_mode="limpo",
+    )

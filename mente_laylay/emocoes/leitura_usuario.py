@@ -88,6 +88,7 @@ def analisar_intencao_emocional(
         ("irritacao", r"\b(?:irritad[oa]|estressad[oa]|brav[oa]|com raiva|de saco cheio)\b"),
         ("alegria", r"\b(?:feliz|animad[oa]|empolgad[oa]|contente)\b"),
         ("medo", r"\b(?:com medo|assustad[oa]|insegur[oa])\b"),
+        ("culpa", r"\b(?:culpad[oa]|com culpa|peso na consci[eê]ncia)\b"),
         ("tedio", r"\b(?:chata|chato|tedio|tédio|entediad[oa]|arrastad[oa])\b"),
         ("tedio", r"\b(?:nao tem|não tem|tem nada|nao tenho|não tenho)\s+(?:nada\s+)?(?:pra|para)\s+fazer\b"),
     )
@@ -110,7 +111,7 @@ def analisar_intencao_emocional(
         alvo = "isso"
     else:
         trecho_alvo = re.search(
-            r"\b(?:cansad[oa]|exaust[oa]|esgotad[oa]|irritad[oa]|estressad[oa]|brav[oa]|triste|preocupad[oa])\s+(?:de|com|por causa de)\s+(.+)$",
+            r"\b(?:cansad[oa]|exaust[oa]|esgotad[oa]|irritad[oa]|estressad[oa]|brav[oa]|triste|preocupad[oa]|culpad[oa])\s+(?:de|com|por causa de)\s+(.+)$",
             base,
         )
         if trecho_alvo:

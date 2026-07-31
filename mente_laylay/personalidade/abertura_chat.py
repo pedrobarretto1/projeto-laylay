@@ -7,6 +7,7 @@ import random
 from collections import deque
 from datetime import datetime
 from typing import Any, Callable, Dict
+from mente_laylay.memoria_mental.identidade_usuario import contexto_identidade_usuario
 from mente_laylay.percepcao.ritmo_circadiano import construir_contexto_temporal
 
 
@@ -45,18 +46,18 @@ class AberturaChatRuntime:
         periodo = str(temporal.get("periodo") or "").replace("manha", "manhã")
         bases = {
             "inicio": [
-                "Oi, Pedro. Acordei por aqui; o que temos para hoje?",
-                "Ei, Pedro. Tudo ligado e a cabeça no lugar.",
+                "Oi. Acordei por aqui; o que temos para hoje?",
+                "Ei. Tudo ligado e a cabeça no lugar.",
                 "Oi. Tô por aqui, curiosa pra saber qual é a de hoje.",
-                "Olá, Pedro. Pode trazer ideia, pergunta ou bagunça.",
+                "Olá. Pode trazer ideia, pergunta ou bagunça.",
                 {
-                    "madrugada": "Oi, Pedro. A madrugada está quieta e eu já estou por aqui.",
-                    "manhã": "Bom dia, Pedro. Já estou por aqui.",
-                    "tarde": "Boa tarde, Pedro. Já estou por aqui.",
-                    "noite": "Boa noite, Pedro. Já estou por aqui.",
+                    "madrugada": "Oi. A madrugada está quieta e eu já estou por aqui.",
+                    "manhã": "Bom dia. Já estou por aqui.",
+                    "tarde": "Boa tarde. Já estou por aqui.",
+                    "noite": "Boa noite. Já estou por aqui.",
                 }[periodo],
                 "Ei, cheguei quietinha, mas já estou prestando atenção.",
-                "Oi, Pedro. Sistema em pé e conversa à vontade.",
+                "Oi. Sistema em pé e conversa à vontade.",
                 "Olá. Hoje eu prometo pensar antes de puxar contexto antigo.",
             ],
             "chat": [
@@ -75,6 +76,11 @@ class AberturaChatRuntime:
         fala = random.choice(opcoes or bases.get(tipo, bases["chat"]))
         self._aberturas_recentes.append(fala.casefold())
         return fala
+
+    def gerar_local(self, tipo: str = "chat") -> str:
+        """Cria uma abertura imediata sem disputar a LLM com o usuário."""
+        tipo = "inicio" if str(tipo).lower() == "inicio" else "chat"
+        return self._fallback_variado(tipo)
 
     def gerar(self, tipo: str = "chat") -> str:
         tipo = "inicio" if str(tipo).lower() == "inicio" else "chat"
@@ -116,6 +122,7 @@ class AberturaChatRuntime:
                     "Não diga que o usuário pediu sua presença ou ativação; apenas chegue naturalmente. "
                     "Não continue receita, tutorial, resumo, tarefa, pergunta ou assunto anterior. "
                     "A abertura deve funcionar mesmo sem nenhum contexto de conversa. "
+                    f"{contexto_identidade_usuario(estado.get('nome_usuario', ''))} "
                     f"Agora são {temporal.get('hora')}, período={temporal.get('periodo')}, "
                     f"fase={temporal.get('fase')}; use um tom {temporal.get('tom_comunicacao')}. "
                     "Comece com um cumprimento simples. Não invente que viu o usuário, que ele olhou para você, "

@@ -826,6 +826,30 @@ class MemoriaSQLite:
         finally:
             conn.close()
 
+    def esquecer_aprendizado_por_prefixo(self, prefixo: str) -> int:
+        """Remove hipótese e eventos pertencentes a um perfil revogado."""
+        prefixo = str(prefixo or "").strip()
+        if not prefixo:
+            return 0
+        # LIKE trata %, _ e \\ como operadores; escapamos todos para que o
+        # chamador só consiga remover o namespace literal informado.
+        padrao = (
+            prefixo.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            + "%"
+        )
+        conn = self._conectar()
+        try:
+            eventos = int(conn.execute(
+                "DELETE FROM aprendizado_eventos WHERE chave LIKE ? ESCAPE '\\'", (padrao,),
+            ).rowcount or 0)
+            hipoteses = int(conn.execute(
+                "DELETE FROM aprendizado_hipoteses WHERE chave LIKE ? ESCAPE '\\'", (padrao,),
+            ).rowcount or 0)
+            conn.commit()
+            return eventos + hipoteses
+        finally:
+            conn.close()
+
     def revisar_hipoteses_aprendizado(
         self, *, agora: datetime | None = None, inatividade_dias: int = 30
     ) -> int:

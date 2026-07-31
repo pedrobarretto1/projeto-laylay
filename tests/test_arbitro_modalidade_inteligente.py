@@ -3,7 +3,10 @@ from __future__ import annotations
 import unittest
 
 from mente_laylay.autonomia.porteiro_acoes import texto_tem_comando_explicito
-from mente_laylay.autonomia.pre_fluxo_contextual import analisar_intencao_com_porteiro
+from mente_laylay.autonomia.pre_fluxo_contextual import (
+    analisar_intencao_com_porteiro,
+    processar_consulta_sistema_local,
+)
 from mente_laylay.autonomia.processamento_resposta_ia import filtrar_comandos_sem_pedido_atual
 from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.especialistas.operacional import construir_parecer_operacional
@@ -61,12 +64,50 @@ class ArbitroModalidadeInteligenteTests(unittest.TestCase):
         self.assertFalse(turno["autoriza_execucao"])
         self.assertTrue(turno["requer_esclarecimento"])
 
+    def test_continuacao_aditiva_chega_ao_roteador_como_comando_contextual(self) -> None:
+        turno = self.classificar("essa também")
+
+        self.assertEqual(turno["modalidade_geral"], "comando")
+        self.assertTrue(turno["autoriza_execucao"])
+        self.assertTrue(turno["depende_contexto"])
+
     def test_turno_misto_separa_conversa_de_comando(self) -> None:
         turno = self.classificar("estou cansado, desliga a luz")
         self.assertEqual(turno["modalidade_geral"], "misto")
         self.assertEqual(turno["texto_conversacional"], "estou cansado")
         self.assertEqual(turno["texto_operacional"], "desliga a luz")
         self.assertTrue(turno["autoriza_execucao"])
+
+    def test_resposta_social_nao_esconde_pergunta_em_nova_frase(self) -> None:
+        turno = self.classificar("Eu estou bem também. Você gosta de Slipknot?")
+        self.assertEqual(turno["modalidade_geral"], "misto")
+        self.assertIn("slipknot", turno["texto_conversacional"].casefold())
+        self.assertFalse(turno["autoriza_execucao"])
+
+    def test_consultas_locais_e_controle_de_midia_sao_operacionais(self) -> None:
+        for texto in (
+            "qual o estado da lâmpada?",
+            "quais programas estão abertos?",
+            "quais são os meus emails?",
+            "para a música",
+            "volta a tocar",
+            "deixa a luz mais clara",
+        ):
+            with self.subTest(texto=texto):
+                turno = self.classificar(texto)
+                self.assertEqual(turno["modalidade_geral"], "comando")
+                self.assertTrue(turno["autoriza_execucao"])
+
+    def test_lista_de_programas_vem_do_sistema_e_nao_da_llm(self) -> None:
+        falas = []
+        tratado, etapa = processar_consulta_sistema_local({
+            "listar_programas_abertos": lambda: ["Steam", "Discord"],
+            "falar_com_lipsync": lambda texto, *_: falas.append(texto),
+        }, "quais programas estão abertos?")
+
+        self.assertTrue(tratado)
+        self.assertEqual(etapa, "consulta_programas_abertos")
+        self.assertEqual(falas, ["Estão abertos agora: Steam, Discord."])
 
     def test_comandos_deterministicos_comuns_continuam_autorizados(self) -> None:
         for texto in (

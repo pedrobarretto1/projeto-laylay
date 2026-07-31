@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from unittest.mock import patch
 import json
+import os
 
 from mente_laylay.autonomia.agendamento_mental import extrair_acao_agendada_local
 from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
@@ -16,6 +18,7 @@ from mente_laylay.autonomia.porteiro_acoes import (
 )
 from mente_laylay.cognicao.evidencia_operacional import (
     autoriza_candidato_iot_direto,
+    detectar_consulta_lista_iot,
     texto_tem_evidencia_iot_parametro,
 )
 from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
@@ -98,7 +101,9 @@ def test_registro_da_lampada_tem_controles_completos():
     assert lampada.configuracao["classe_tuya"] == "bulb"
     assert lampada.configuracao["dps_estado"] == "20"
     assert lampada.configuracao["snapshot_path"] == "dados/voz_pessoal/snapshot.json"
-    assert lampada.configuracao["snapshot_fallback_paths"] == ("dados/voz_pessoal/devices.json",)
+    assert lampada.configuracao["snapshot_fallback_paths"] == (
+        "snapshot.json", "dados/voz_pessoal/devices.json", "devices.json",
+    )
     assert {"ligar", "desligar", "ajustar_brilho", "ajustar_cor", "ajustar_branco"} <= lampada.capacidades
 
 
@@ -120,6 +125,35 @@ def test_configuracao_tuya_le_arquivo_devices_em_formato_de_lista(tmp_path):
         "ip": "192.168.100.57",
         "version": "3.5",
     }
+
+
+def test_tuya_escolhe_snapshot_mais_recente_sem_sobrepor_ambiente(tmp_path):
+    antigo = tmp_path / "antigo.json"
+    novo = tmp_path / "novo.json"
+    base = {
+        "name": "LED BULB W5K",
+        "id": "lampada-id",
+        "ip": "192.168.100.57",
+        "ver": "3.5",
+    }
+    antigo.write_text(json.dumps([{**base, "key": "chave-antiga-000"}]), encoding="utf-8")
+    novo.write_text(json.dumps([{**base, "key": "chave-nova-00000"}]), encoding="utf-8")
+    os.utime(antigo, (1000, 1000))
+    os.utime(novo, (2000, 2000))
+
+    lampada = criar_dispositivo_lampada(protocolo="tuya")
+    configuracao = dict(lampada.configuracao)
+    configuracao["snapshot_path"] = str(antigo)
+    configuracao["snapshot_fallback_paths"] = (str(novo),)
+    lampada = replace(lampada, configuracao=configuracao)
+    referencias = lampada.configuracao["variaveis"]
+    ambiente_vazio = {nome: "" for nome in referencias.values()}
+
+    with patch.dict("os.environ", ambiente_vazio, clear=False):
+        dados, erro = ProtocoloTuya()._configuracao(lampada)
+
+    assert erro == ""
+    assert dados["local_key"] == "chave-nova-00000"
 
 
 def test_controlador_simulado_ajusta_brilho_e_cor_sem_afetar_ventilador():
@@ -225,6 +259,8 @@ def test_runtime_entende_energia_brilho_cor_e_branco():
     roxo_escuro = runtime.detectar("deixa a lâmpada roxo escuro")
     azul_pastel = runtime.detectar("coloca a luz azul pastel")
     comentario = runtime.detectar("acho a lâmpada azul bonita")
+    dispositivos = runtime.detectar("quais dispositivos estão disponíveis?")
+    retrato_quarto = runtime.retrato_para_mente("quais dispositivos tem no quarto?")
 
     assert ligar == {"intent": "IOT_CONTROL", "params": {"acao": "ligar", "alvo": "lampada_quarto"}}
     assert brilho["params"] == {"acao": "ajustar_brilho", "alvo": "lampada_quarto", "valor": 45}
@@ -238,7 +274,11 @@ def test_runtime_entende_energia_brilho_cor_e_branco():
     assert azul_pastel["params"]["cor"] == "azul pastel"
     assert azul_pastel["params"]["rgb"] == (166, 166, 255)
     assert comentario is None
-
+    assert dispositivos == {"intent": "IOT_LIST", "params": {"ambiente": ""}}
+    assert retrato_quarto["total_dispositivos"] == 2
+    assert {
+        item["nome"] for item in retrato_quarto["dispositivos"]
+    } == {"lampada_quarto", "tomada_ventilador"}
     azul_ciano = runtime.detectar("deixa a luz do quarto azul ciano")
     assert azul_ciano["params"]["cor"] == "azul ciano"
     assert azul_ciano["params"]["rgb"] == (0, 128, 255)
@@ -290,6 +330,16 @@ def test_runtime_entende_energia_brilho_cor_e_branco():
     )
     assert roteado["intent"] == "SUGGEST_ACTION"
     assert roteado["params"]["origem"] == "cor_iot_sem_emissao"
+
+
+def test_consulta_lista_iot_pura_identifica_ambiente_sem_runtime() -> None:
+    assert detectar_consulta_lista_iot("quais dispositivos tem no quarto?") == {
+        "intent": "IOT_LIST", "params": {"ambiente": "quarto"},
+    }
+    assert detectar_consulta_lista_iot("quais dispositivos estão disponíveis?") == {
+        "intent": "IOT_LIST", "params": {"ambiente": ""},
+    }
+    assert detectar_consulta_lista_iot("como liga a luz?") is None
 
 
 def test_parafrases_de_cor_iot_atravessam_o_porteiro_conversacional_completo():
@@ -374,6 +424,43 @@ def test_mencoes_negacoes_e_hipoteses_de_cor_nao_executam_iot():
         assert detectar_intencao_deterministica_mente(frase, contexto) is None, frase
 
 
+def test_vocativo_final_nao_vira_cor_e_desligar_tem_precedencia():
+    runtime = RuntimeIoT(
+        memoria_sqlite=MemoriaIoTFalsa(),
+        falar=lambda *_: None,
+        estado_mental_getter=lambda: {},
+        emitir_fala=False,
+        modo="simulado",
+        resolver_cor=lambda _nome: {"rgb": (0, 0, 0)},
+        log=lambda *_: None,
+    )
+
+    assert runtime.detectar("desliga a luz lay") == {
+        "intent": "IOT_CONTROL",
+        "params": {"acao": "desligar", "alvo": "lampada_quarto"},
+    }
+    assert runtime.detectar("Laylay, desliga a lâmpada, por favor") == {
+        "intent": "IOT_CONTROL",
+        "params": {"acao": "desligar", "alvo": "lampada_quarto"},
+    }
+
+
+def test_runtime_iot_bloqueia_instrucao_negacao_e_sugestao() -> None:
+    runtime = RuntimeIoT(
+        memoria_sqlite=MemoriaIoTFalsa(),
+        falar=lambda *_: None,
+        estado_mental_getter=lambda: {},
+        emitir_fala=False,
+        modo="simulado",
+        log=lambda *_: None,
+    )
+
+    assert runtime.detectar("como eu faria para desligar a luz?") is None
+    assert runtime.detectar("não desliga a luz") is None
+    assert runtime.detectar("talvez fosse legal apagar a lâmpada") is None
+    assert runtime.detectar("desliga a luz")["intent"] == "IOT_CONTROL"
+
+
 def test_guarda_operacional_distingue_pedido_de_comentario():
     assert autoriza_candidato_iot_direto("deixa a luz roxa", modalidade="direto")
     assert autoriza_candidato_iot_direto("deixa a luz roxa", modalidade="pedido")
@@ -440,13 +527,13 @@ def test_horario_da_acao_iot_nao_vira_brilho_e_e_agendado():
         "_extrair_acao_agendada_local": lambda texto: extrair_acao_agendada_local(
             texto, normalizar_texto
         ),
-        "_detectar_intencao_iot": runtime_iot.detectar,
     }
     detector = DeteccaoDeterministicaRuntime(
         namespace_getter=lambda: namespace,
         estado_getter=lambda: estado,
         sites_diretos={},
         apps_map={},
+        iot=runtime_iot,
     )
 
     assert runtime_iot.detectar("desliga a luz às 23:27") is None
@@ -473,6 +560,7 @@ def test_apagar_luz_vai_para_iot_e_nao_para_exclusao_de_arquivo():
     texto = "está bem lay, pode apagar a luz para mim"
 
     iot = runtime.detectar(texto)
+    alvo_desconhecido_ambiguo = runtime.detectar("apaga o antonio")
     arquivo = detectar_intencao_arquivos(
         texto,
         params_cb=lambda **params: params,
@@ -491,7 +579,61 @@ def test_apagar_luz_vai_para_iot_e_nao_para_exclusao_de_arquivo():
         "params": {"acao": "desligar", "alvo": "lampada_quarto"},
     }
     assert arquivo is None
+    assert alvo_desconhecido_ambiguo is None
     assert arquivo_explicito["intent"] == "DELETE_ITEM"
+
+
+def test_cadeia_completa_separa_arquivo_iot_e_musica() -> None:
+    estado = {
+        "ultima_acao_intent": "CREATE_FOLDER",
+        "ultima_acao_params": {"nome": "antonio"},
+    }
+    runtime = RuntimeIoT(
+        memoria_sqlite=MemoriaIoTFalsa(),
+        falar=lambda *_: None,
+        estado_mental_getter=lambda: estado,
+        emitir_fala=False,
+        modo="simulado",
+        log=lambda *_: None,
+    )
+    contexto = {
+        "normalizar_texto": normalizar_texto,
+        "detectar_intencao_iot": runtime.detectar,
+        "mente_integrada_estado": estado,
+        "limpar_destino_pc_b": lambda texto: texto,
+        "target_from_params": lambda *_: "pc_a",
+        "sites_diretos": {},
+        "apps_map": {},
+    }
+
+    assert detectar_intencao_deterministica_mente(
+        "cria uma pasta chamada antonio", contexto,
+    ) == {"intent": "CREATE_FOLDER", "params": {"nome": "antonio"}}
+    assert detectar_intencao_deterministica_mente(
+        "coloca um arquivo de texto chamado carlos dentro de antonio", contexto,
+    ) == {
+        "intent": "CREATE_FILE",
+        "params": {
+            "alvo": "carlos",
+            "pasta": "antonio",
+            "tipo_arquivo": "texto",
+        },
+    }
+    assert detectar_intencao_deterministica_mente(
+        "apaga o antonio", contexto,
+    ) == {"intent": "DELETE_ITEM", "params": {"alvo": "antonio"}}
+    assert detectar_intencao_deterministica_mente(
+        "apaga a pasta antonio", contexto,
+    ) == {
+        "intent": "DELETE_ITEM",
+        "params": {"alvo": "antonio", "tipo": "pasta"},
+    }
+    assert detectar_intencao_deterministica_mente(
+        "apaga a luz", contexto,
+    ) == {
+        "intent": "IOT_CONTROL",
+        "params": {"acao": "desligar", "alvo": "lampada_quarto"},
+    }
 
 
 def test_contexto_iot_com_cor_vence_reutilizacao_semantica_de_energia():

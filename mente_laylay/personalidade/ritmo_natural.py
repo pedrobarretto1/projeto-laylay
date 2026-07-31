@@ -80,10 +80,12 @@ def ajustar_uso_natural_nome(
     ultimo_uso_ts: float = 0.0,
     *,
     intervalo_s: float = 180.0,
+    nome_usuario: str = "",
 ) -> tuple[str, float]:
     """Mantém o nome quando ele tem função; remove vocativo decorativo."""
     fala = re.sub(r"\s+", " ", str(texto or "")).strip()
-    if not re.search(r"\bpedro\b", fala, flags=re.IGNORECASE):
+    nome = re.sub(r"\s+", " ", str(nome_usuario or "")).strip()
+    if not nome or not re.search(rf"\b{re.escape(nome)}\b", fala, flags=re.IGNORECASE):
         return fala, float(ultimo_uso_ts or 0.0)
 
     agora = time.time()
@@ -107,10 +109,11 @@ def ajustar_uso_natural_nome(
     if emocional or importante or (not tecnico and not recente):
         return fala, agora
 
-    # Remove apenas vocativo pontuado. Sem essa exigência, construções como
-    # "o quarto do Pedro" viravam o fragmento inválido "o quarto do".
-    limpa = re.sub(r"^Pedro\s*[,.:;!\-]+\s*", "", fala, flags=re.IGNORECASE)
-    limpa = re.sub(r"\s*,\s*Pedro(?=[.!?…]|$)", "", limpa, flags=re.IGNORECASE)
+    # Remove apenas o nome confirmado usado como vocativo pontuado. Sem essa
+    # exigência, construções como "o quarto de Ana" perderiam o nome legítimo.
+    nome_re = re.escape(nome)
+    limpa = re.sub(rf"^{nome_re}\s*[,.:;!\-]+\s*", "", fala, flags=re.IGNORECASE)
+    limpa = re.sub(rf"\s*,\s*{nome_re}(?=[.!?…]|$)", "", limpa, flags=re.IGNORECASE)
     limpa = re.sub(r"\s+([,.!?…])", r"\1", limpa)
     limpa = re.sub(r"\s{2,}", " ", limpa).strip()
     if limpa and limpa[0].islower():

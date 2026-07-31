@@ -1,0 +1,133 @@
+from mente_laylay.autonomia.roteador_deterministico import detectar_fechar_alvo
+from mente_laylay.autonomia.orquestrador_deterministico import (
+    detectar_intencao_deterministica_mente,
+)
+from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
+from mente_laylay.autonomia.coordenador_intencao import executar_fluxo_intencao
+from mente_laylay.memoria_mental.contexto_imediato import resolver_comando_janela_contextual
+from mente_laylay.memoria_mental.musica_conversacional_runtime import (
+    MusicaConversacionalRuntime,
+)
+
+
+def test_fecha_programa_que_acabou_de_abrir_resolve_ultima_janela() -> None:
+    estado = {
+        "ultima_acao_intent": "APP_OPEN",
+        "ultima_acao_params": {"nome_app": "bloco de notas"},
+        "ultimo_app_janela": "bloco de notas",
+    }
+
+    assert resolver_comando_janela_contextual(
+        "fecha o programa que voce acabou de abrir",
+        mente_integrada_estado=estado,
+    ) == {
+        "intent": "CLOSE_APP",
+        "params": {
+            "nome_app": "bloco de notas",
+            "referencia_contextual": True,
+        },
+    }
+
+
+def test_detector_nao_trata_referencia_de_janela_como_nome_literal() -> None:
+    assert detectar_fechar_alvo(
+        "fecha o programa que voce acabou de abrir",
+        params_cb=lambda **params: params,
+        sites_diretos=set(),
+        apps_map={},
+    ) is None
+
+
+def test_roteador_completo_bloqueia_iot_negado_mesmo_com_detector_permissivo() -> None:
+    chamadas = []
+
+    def detector(texto, _estado):
+        chamadas.append(texto)
+        return {"intent": "IOT_CONTROL", "params": {"acao": "desligar", "alvo": "lampada_quarto"}}
+
+    ctx = {
+        "detectar_intencao_iot": detector,
+        "normalizar_texto": lambda texto: str(texto).casefold().strip(),
+        "mente_integrada_estado": {},
+    }
+    assert detectar_intencao_deterministica_mente("não desliga a luz", ctx) is None
+    assert chamadas
+
+
+def test_roteador_completo_bloqueia_pergunta_sobre_como_controlar_iot() -> None:
+    ctx = {
+        "detectar_intencao_iot": lambda *_: {
+            "intent": "IOT_CONTROL",
+            "params": {"acao": "desligar", "alvo": "lampada_quarto"},
+        },
+        "normalizar_texto": lambda texto: str(texto).casefold().strip(),
+        "mente_integrada_estado": {},
+    }
+    assert detectar_intencao_deterministica_mente(
+        "como eu faria para desligar a luz?", ctx
+    ) is None
+
+
+def test_nome_da_faixa_resolve_pendencia_de_musica_sem_alvo() -> None:
+    falas = []
+    execucoes = []
+    runtime = MusicaConversacionalRuntime(
+        estado_mental_getter=lambda: {},
+        normalizar_texto=lambda texto: str(texto).casefold().strip(),
+        falar=lambda fala, *_: falas.append(fala),
+        registrar_mente_curta=lambda *_args, **_kwargs: None,
+        executar_intencao=lambda resultado, texto: execucoes.append((resultado, texto)) or True,
+        registrar_resultado_execucao=lambda *_args, **_kwargs: None,
+    )
+
+    assert runtime.responder_pedido_direcao("coloca uma música") is True
+    assert runtime.processar_confirmacao("Remember The Time") is True
+    assert execucoes[-1][0] == {
+        "intent": "MUSIC_SEARCH",
+        "params": {"query": "Remember The Time", "origem": "continuacao_busca"},
+    }
+
+
+def test_novo_comando_iot_nao_vira_titulo_de_musica_pendente() -> None:
+    execucoes = []
+    runtime = MusicaConversacionalRuntime(
+        estado_mental_getter=lambda: {},
+        normalizar_texto=lambda texto: str(texto).casefold().strip(),
+        falar=lambda *_: None,
+        registrar_mente_curta=lambda *_args, **_kwargs: None,
+        executar_intencao=lambda resultado, texto: execucoes.append((resultado, texto)) or True,
+        registrar_resultado_execucao=lambda *_args, **_kwargs: None,
+    )
+    runtime.responder_pedido_direcao("coloca uma música")
+    assert runtime.processar_confirmacao("liga a luz") is False
+    assert execucoes == []
+
+
+def test_mencao_iot_sem_autorizacao_e_respondida_sem_roteador_nem_llm() -> None:
+    falas = []
+    chamadas_roteador = []
+    namespace = {
+        "falar_com_lipsync": lambda fala, *_: falas.append(fala),
+        "detectar_intencao_deterministica": lambda texto: chamadas_roteador.append(texto),
+    }
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: namespace,
+        loop_getter=lambda: None,
+    )
+
+    assert runtime.processar_prioritarios("como eu faria para desligar a luz?") is True
+    assert "não alterei nada" in falas[-1]
+    assert chamadas_roteador == []
+
+    assert runtime.processar_prioritarios("não desliga a luz") is True
+    assert falas[-1] == "Pode deixar. Não vou alterar a luz."
+    assert chamadas_roteador == []
+
+
+def test_coordenador_nao_classifica_segmento_iot_amputado_da_fala_original() -> None:
+    assert executar_fluxo_intencao(
+        "desligar a luz",
+        "pre-ia",
+        {},
+        texto_original="como eu faria para desligar a luz?",
+    ) is False

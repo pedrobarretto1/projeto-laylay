@@ -149,7 +149,7 @@ def test_repeticao_util_nao_vira_comentario_sobre_o_sistema() -> None:
         ultima_resposta=fala,
     )
     assert resultado["fala"] == fala
-    assert "repeticao_exata" in resultado["problemas"]
+    assert "repeticao_exata" not in resultado["problemas"]
     assert "eu ia repetir" not in resultado["fala"].casefold()
 
 
@@ -200,11 +200,11 @@ def test_identidade_e_funcao_entram_no_prompt_integrado() -> None:
     assert "Função humana da fala atual" in prompt
 
 
-def test_verificador_reconhece_conquista_antes_de_continuar() -> None:
+def test_verificador_nao_acrescenta_reacao_social_em_python() -> None:
     texto = "tirei nota máxima na prova"
     turno = classificar_modalidade_turno(texto)
     turno["funcao_comunicativa"] = analisar_funcao_comunicativa(texto)
     plano = planejar_turno(texto, turno=turno)
     resultado = verificar_fala_turno("Sobre o que era a prova?", plano=plano)
-    assert "parabéns" in resultado["fala"].casefold()
-    assert "conquista_sem_reconhecimento" in resultado["problemas"]
+    assert resultado["fala"] == "Sobre o que era a prova?"
+    assert "conquista_sem_reconhecimento" not in resultado["problemas"]

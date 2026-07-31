@@ -13,6 +13,8 @@ from mente_laylay.autonomia.roteador_deterministico import (
     extrair_intencao_abrir_app as extrair_intencao_app_instalado,
     texto_expresso_melhor_no_deterministico,
 )
+from mente_laylay.cognicao.refinamento_pesquisa import refinar_consulta_musical
+from mente_laylay.especialistas.capacidades import INTENTS_SOMENTE_LEITURA
 
 
 PROMPT_INTERPRETACAO = """Você é o cérebro da assistente Laylay. Analise a frase do usuário e retorne apenas um JSON válido com:
@@ -23,6 +25,9 @@ Regras:
 - Corrija mentalmente erros leves de pronuncia, transcricao e ortografia antes de decidir a intencao.
 - Trate apelidos ensinados como equivalentes do nome real quando fizer sentido.
 - Use a memória curta da mente inteira quando a frase estiver incompleta. Se houver um alvo recente, reutilize-o quando fizer sentido.
+- A fala atual tem prioridade absoluta. O contexto apenas completa pronomes, elipses e respostas curtas; ele nunca substitui um alvo ou domínio citado agora.
+- Só complete uma referência pelo contexto quando o domínio ativo, a ação recente e o recurso resolvido forem compatíveis. Se estiverem ausentes ou em conflito, retorne {"intent":"NONE","params":{}}.
+- Nunca ressuscite um comando antigo só porque a mesma frase curta já apareceu antes.
 - Saudações, agradecimentos, risadas e conversa social curta NUNCA viram playlist, música, site, arquivo ou comando por causa de contexto antigo.
 - Se a frase depender do contexto recente, do que foi dito agora pouco ou de um alvo implícito, interprete isso como continuidade do mesmo cérebro e não como um pedido fragmentado.
 - Use a memória de curto prazo da última playlist real quando o assunto atual for música e o usuário disser coisas como 'coloca essa também' e não citar playlist.
@@ -30,7 +35,7 @@ Regras:
 - Ao listar playlists, use as playlists que estão no contexto 'playlists_disponiveis'.
 - Música e playlist NUNCA devem ser executadas só por rotina antiga, ultima_playlist ou padrão aprendido. Para tocar algo, precisa haver pedido atual claro do usuário ou confirmação clara de uma sugestão recém-feita.
 - Em começo de conversa, saudações e perguntas sobre bem-estar, não ofereça nem execute playlist. Responda como conversa normal.
-- Se o bem-estar do Pedro sugerir música, no máximo pergunte antes; nunca toque sem confirmação.
+- Se o bem-estar do usuário sugerir música, no máximo pergunte antes; nunca toque sem confirmação.
 - Se o usuário pedir para colocar um app em foco, maximizar, tela cheia ou trazer para frente, trate como APP_OPEN/MAXIMIZE, nunca como SEARCH nem como OPEN_SITE.
 - Frases como 'coloca o Opera em foco', 'deixa o Opera em tela cheia', 'maximiza o Opera' devem virar foco da janela do Opera, não pesquisa no navegador.
 - Frases como 'deixa o Opera em foco' ou 'coloca ele em tela cheia' NÃO são cancelamento; são comando de janela.
@@ -39,10 +44,15 @@ Regras:
 - Se o usuário pedir para abrir um site conhecido, URL, domínio ou destino web explícito, use OPEN_URL.
 - Para playlist, site e foco de janela, interprete a frase inteira e o contexto recente antes de decidir; não use apenas um verbo ou um nome isolado como gatilho principal.
 - Se o usuário estiver pedindo para TOCAR/COLOCAR música ou pedindo um gênero/artista, a intenção OBRIGATÓRIA é MUSIC_SEARCH com params.query.
+- Em pedido musical contextual, preserve em params o gênero, humor, atividade, jogo e duração entendidos. A query identifica o assunto, mas não precisa fingir que a frase inteira é título de música.
+- Se o usuário disser um título ou artista específico, preserve esse nome em params.query sem substituir por recomendação.
+- Se ele pedir uma hora, mix, playlist, álbum completo ou várias músicas, registre essa preferência em params.formato ou params.duracao.
 - Se o usuário pedir recomendação musical vaga, como 'me recomenda uma música', NÃO use MUSIC_SEARCH. Isso é conversa, não comando.
 - Para MUSIC_SEARCH, NUNCA use Google; o destino é sempre YouTube.
 - Se a frase curta bater com o nome de uma playlist salva, só trate como PLAYLIST_PLAY se houver verbo atual de ação ou pergunta pendente sobre playlist.
 - Se a frase mencionar playlist e pedir quais, mostrar ou listar, use PLAYLIST_LIST.
+- Se pedir as músicas/faixas que possui em um nome específico, use PLAYLIST_LIST com esse nome, mesmo que a palavra playlist tenha sido omitida. Não use MUSIC_SEARCH nem responda pela memória da conversa.
+- Se o contexto acabou de listar as playlists reais e o usuário perguntar 'o que tem em NOME', trate NOME como playlist somente quando ele constar em playlists_disponiveis; então use PLAYLIST_LIST. Nunca invente o que esse nome significa.
 - Se a frase mencionar playlist e pedir apagar, deletar, remover ou excluir, use PLAYLIST_DELETE.
 - Se a frase mencionar playlist, NUNCA retorne SEARCH.
 - Só use CANCELAR_ACAO para desistência explícita. Correções e conversa com 'não' não são cancelamento automático.
@@ -78,14 +88,23 @@ Regras:
 - SUGGEST_ACTION usa params.acao_sugerida={"intent":"INTENT_REAL","params":{...}}, params.descricao e params.fala em forma de pergunta.
 - Só sugira quando a relação entre necessidade e ação for clara. Comentários, opiniões e desabafos não exigem sugestão forçada.
 - A ação sugerida deve usar um intent executável existente; nunca invente comandos ou afirme que já executou.
-- Pedido sobre playlists da própria Laylay usa LAYLAY_PLAYLIST_LIST ou LAYLAY_PLAYLIST_COPY.
+- Pedido sobre playlists da própria Laylay usa LAYLAY_PLAYLIST_LIST ou LAYLAY_PLAYLIST_COPY. "Minhas playlists" pertence ao usuário; "suas playlists", "playlists que você criou/montou" e "playlists da Laylay" pertencem à Laylay.
+- As playlists próprias são curadorias locais montadas com playlists e histórico confirmados. Nunca invente uma curadoria, faixa ou conteúdo ausente do retrato real, e nunca toque ou copie uma faixa sem pedido atual.
 - SEARCH é para perguntas factuais que realmente exigem pesquisa.
+- Perguntar se você consegue executar uma habilidade é conversa sobre capacidade: retorne NONE e explique depois pelo mapa de habilidades; não execute a habilidade.
+- Perguntas que solicitam dados reais atuais de uma habilidade usam somente intents de leitura, nunca intents que alterem estado.
 - A decisão deve vir de uma única mente: combine contexto, memória curta, rotina, emoção e percepção viva.
 - Em conflito, priorize o sinal mais recente, concreto e coerente.
 Exemplos:
 Usuário: 'coloca um rock' -> {"intent":"MUSIC_SEARCH","params":{"query":"rock"}}
 Usuário: 'coloca essa música na playlist kamai' -> {"intent":"PLAYLIST_ADD","params":{"nome_playlist":"kamaitachi"}}
 Usuário: 'coloca a brisa da madrugada' -> {"intent":"PLAYLIST_PLAY","params":{"nome_playlist":"brisa da madrugada"}}
+Usuário: 'quais músicas eu tenho em kamaitachi' -> {"intent":"PLAYLIST_LIST","params":{"nome_playlist":"kamaitachi"}}
+Usuário: 'quais playlists você criou?' -> {"intent":"LAYLAY_PLAYLIST_LIST","params":{"nome_playlist":""}}
+Usuário: 'quais são minhas playlists?' -> {"intent":"PLAYLIST_LIST","params":{"nome_playlist":""}}
+Contexto: 'kamaitachi' consta em playlists_disponiveis; usuário: 'o que tem em kamaitachi?' -> {"intent":"PLAYLIST_LIST","params":{"nome_playlist":"kamaitachi"}}
+Contexto: playlist ativa 'kamaitachi'; usuário: 'quais músicas tem nela?' -> {"intent":"PLAYLIST_LIST","params":{"nome_playlist":"kamaitachi"}}
+Contexto: dispositivo ou aplicativo ativo; usuário: 'quais músicas tem nela?' -> {"intent":"NONE","params":{}}
 Usuário: 'coloca o Opera em foco' -> {"intent":"APP_OPEN","params":{"nome_app":"opera"}}
 Usuário: 'deixa o Opera em tela cheia' -> {"intent":"APP_OPEN","params":{"nome_app":"opera","modo":"fullscreen"}}
 Usuário: 'fecha a Steam' -> {"intent":"CLOSE_APP","params":{"nome_app":"steam"}}
@@ -217,6 +236,7 @@ class AdaptadoresConversacionaisRuntime:
         return usar_modo_rapido_conversa(
             texto,
             normalizar_texto=self._normalizar_texto,
+            texto_depende_de_contexto=self._texto_depende_de_contexto,
             interpretar_comando_local_rapido=self.interpretar_comando_local,
             resolver_comando_contextual=self._resolver_comando_contextual,
         )
@@ -241,61 +261,18 @@ class AdaptadoresConversacionaisRuntime:
             sites_diretos=self._sites_diretos,
         )
 
-    def resolver_query_musical_por_estilo(self, query: str, texto_original: str = "") -> Dict[str, str]:
-        bruto = query or texto_original
-        normalizada = self._normalizar_query_musical(bruto) if callable(self._normalizar_query_musical) else str(bruto or "").strip()
-        texto_base = self._normalizar_texto(f"{query} {texto_original}") if callable(self._normalizar_texto) else f"{query} {texto_original}".lower()
-        catalogo = {
-            "pesada": (
-                "Sepultura - Roots Bloody Roots official video",
-                "Slipknot - Duality official video",
-                "System Of A Down - B.Y.O.B. official video",
-                "Linkin Park - Given Up official audio",
-                "Bring Me The Horizon - Shadow Moses official video",
-            ),
-            "alternativa": (
-                "Tame Impala - The Less I Know The Better official video",
-                "Boogarins - Infinu official audio",
-                "Tagua Tagua - Inteiro Metade official video",
-            ),
-            "calma": (
-                "Men I Trust - Show Me How official video",
-                "Cigarettes After Sex - Apocalypse audio",
-                "Khruangbin - Friday Morning official audio",
-            ),
-            "animada": (
-                "Paramore - Still Into You official video",
-                "The Strokes - Reptilia official video",
-                "Franz Ferdinand - Take Me Out official video",
-            ),
-        }
-        aliases = {
-            "pesada": ("pesada", "pesado", "som pesado", "mais pesado", "heavy", "metal pesado", "rock pesado"),
-            "alternativa": ("alternativa", "alternativo", "indie", "diferente"),
-            "calma": ("calma", "calmo", "tranquila", "tranquilo", "relaxante", "suave"),
-            "animada": ("animada", "animado", "agitada", "agitado", "pra cima", "para cima"),
-        }
-        estilo = next(
-            (nome for nome, termos in aliases.items() if any(termo in texto_base for termo in termos)),
-            "",
+    def resolver_query_musical_por_estilo(
+        self,
+        query: str,
+        texto_original: str = "",
+        params: Dict[str, Any] | None = None,
+    ) -> Dict[str, str]:
+        return refinar_consulta_musical(
+            query,
+            texto_original,
+            params,
+            cursores=self._cursores_estilo_musical,
         )
-        pedido_generico = normalizada in {
-            "pesada", "pesado", "heavy", "metal pesado", "rock pesado",
-            "alternativa", "alternativo", "indie", "diferente",
-            "calma", "calmo", "tranquila", "tranquilo", "relaxante", "suave",
-            "animada", "animado", "agitada", "agitado", "pra cima", "para cima",
-        }
-        if estilo and pedido_generico:
-            opcoes = catalogo[estilo]
-            indice = self._cursores_estilo_musical.get(estilo, 0) % len(opcoes)
-            self._cursores_estilo_musical[estilo] = indice + 1
-            return {
-                "query": opcoes[indice],
-                "origem": "estilo_curado",
-                "estilo": estilo,
-                "generica": "true",
-            }
-        return {"query": normalizada, "origem": "explicita", "generica": "false"}
 
 
 class InterpretacaoIntencaoRuntime:
@@ -330,11 +307,6 @@ class InterpretacaoIntencaoRuntime:
         original = str(texto or "").strip()
         if not original:
             return None
-        agora = time.monotonic()
-        cache = self._cache_analise.get(original)
-        if cache and agora - cache[0] <= 3.0:
-            resultado_cache = cache[1]
-            return dict(resultado_cache) if isinstance(resultado_cache, dict) else None
         if self._call(ctx, "texto_cancela_acao_agora", original, default=False):
             return {"intent": "CANCELAR_ACAO", "params": {}}
         if self._call(ctx, "texto_bloqueia_playlist_agora", original, default=False):
@@ -348,6 +320,51 @@ class InterpretacaoIntencaoRuntime:
         mente = dict(estado.get("mente_integrada_estado") or {})
         playlist_state = estado.get("playlist_state") or {}
         ultima_playlist = self._call(ctx, "musica_estado_get", "ultima_playlist", default="")
+        continuidade = dict(mente.get("continuidade_geral") or {})
+        dominio_ativo = str(continuidade.get("dominio_ativo") or continuidade.get("dominio") or "").strip()
+        dominios = continuidade.get("dominios") if isinstance(continuidade.get("dominios"), dict) else {}
+        foco_dominio = dict(dominios.get(dominio_ativo) or {}) if dominio_ativo else {}
+        ultima_intencao = str(
+            foco_dominio.get("intent")
+            or foco_dominio.get("intencao")
+            or mente.get("ultima_acao_intent")
+            or mente.get("ultima_intencao")
+            or ""
+        ).upper().strip()
+        ultimo_params = (
+            foco_dominio.get("params")
+            if isinstance(foco_dominio.get("params"), dict)
+            else mente.get("ultima_acao_params")
+            if isinstance(mente.get("ultima_acao_params"), dict)
+            else {}
+        )
+        ultimo_alvo = str(
+            foco_dominio.get("alvo")
+            or foco_dominio.get("topico")
+            or ultimo_params.get("nome_playlist")
+            or ultimo_params.get("alvo")
+            or ultimo_params.get("nome_app")
+            or mente.get("ultimo_alvo")
+            or ""
+        ).strip()
+        retrato_turno = dict(mente.get("retrato_turno_atual") or {})
+        referencia_resolvida = dict(retrato_turno.get("referencia_resolvida") or {})
+        chave_cache = "\x1f".join(
+            (
+                str(corrigido or original).casefold(),
+                dominio_ativo.casefold(),
+                ultima_intencao.casefold(),
+                ultimo_alvo.casefold(),
+                str(ultima_playlist or "").casefold(),
+                str(referencia_resolvida.get("tipo") or "").casefold(),
+                str(referencia_resolvida.get("alvo") or "").casefold(),
+            )
+        )
+        agora = time.monotonic()
+        cache = self._cache_analise.get(chave_cache)
+        if cache and agora - cache[0] <= 3.0:
+            resultado_cache = cache[1]
+            return dict(resultado_cache) if isinstance(resultado_cache, dict) else None
         contexto_playlist = {
             "ultima_playlist": ultima_playlist,
             "playlist_ativa": str(playlist_state.get("name") or "").strip(),
@@ -380,15 +397,36 @@ class InterpretacaoIntencaoRuntime:
                 ),
                 "historico": historico,
                 "playlists_disponiveis": list((estado.get("playlists_carregadas") or {}).keys()),
+                "contexto_operacional": {
+                    "dominio_ativo": dominio_ativo,
+                    "ultima_intencao": ultima_intencao,
+                    "ultimo_alvo": ultimo_alvo,
+                    "referencia_resolvida": referencia_resolvida,
+                },
+                "habilidades_reais": self._call(
+                    ctx, "mapa_habilidades_prompt", original, default=""
+                ),
+                "recursos_reais": self._call(
+                    ctx, "mapa_recursos_prompt", original, default=""
+                ),
             },
         }
         enviar = ctx.get("enviar_mensagem")
         if not callable(enviar):
             return None
+        intents_vivas = ", ".join(sorted(INTENTS_EXECUTAVEIS | {"NONE"}))
+        prompt_interpretacao = (
+            f"{PROMPT_INTERPRETACAO}\n"
+            "Catálogo executável canônico desta instalação (fonte de verdade; "
+            "não invente intents fora dele): "
+            f"{intents_vivas}.\n"
+            "Escolha a habilidade pela intenção completa da fala, não por uma "
+            "frase exata nem por uma palavra isolada."
+        )
         try:
             raw = enviar(
                 [
-                    {"role": "system", "content": PROMPT_INTERPRETACAO},
+                    {"role": "system", "content": prompt_interpretacao},
                     {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
                 ],
                 _com_tools=False,
@@ -396,32 +434,49 @@ class InterpretacaoIntencaoRuntime:
                 modo_rapido=True,
             )
         except Exception as exc:
-            self._cache_analise[original] = (agora, None)
+            self._cache_analise[chave_cache] = (agora, None)
             self._log(f"⚠️ [IA-FIRST] analisador indisponível: {exc}")
             return None
         extrair = ctx.get("extrair_json_da_ia")
         texto_json = extrair(raw) if callable(extrair) else extrair_json_resposta(raw)
         if not texto_json:
-            self._cache_analise[original] = (agora, None)
+            self._cache_analise[chave_cache] = (agora, None)
             return None
         try:
             resultado = json.loads(texto_json)
         except Exception:
-            self._cache_analise[original] = (agora, None)
+            self._cache_analise[chave_cache] = (agora, None)
             return None
         if not isinstance(resultado, dict):
-            self._cache_analise[original] = (agora, None)
+            self._cache_analise[chave_cache] = (agora, None)
             return None
 
         intent = str(resultado.get("intent") or "").upper().strip()
+        consulta_operacional = bool(self._call(
+            ctx, "texto_parece_consulta_operacional", original, default=False
+        ))
+        if consulta_operacional and intent not in INTENTS_SOMENTE_LEITURA and intent != "NONE":
+            self._log("🧭 [IA-FIRST] pergunta de consulta tentou gerar ação com efeito; bloqueada")
+            self._cache_analise[chave_cache] = (agora, None)
+            return None
+        if intent == "PLAYLIST_LIST":
+            params_resultado = resultado.get("params") if isinstance(resultado.get("params"), dict) else {}
+            nome_playlist = str(params_resultado.get("nome_playlist") or "").strip()
+            playlists_reais = list((estado.get("playlists_carregadas") or {}).keys())
+            if nome_playlist and nome_playlist.casefold() not in {
+                str(nome).strip().casefold() for nome in playlists_reais
+            }:
+                self._log("🎵 [IA-FIRST] playlist não existe no catálogo real; consulta bloqueada")
+                self._cache_analise[chave_cache] = (agora, None)
+                return None
         if intent == "CANCELAR_ACAO" and not self._call(
             ctx, "texto_cancela_acao_agora", original, default=False
         ):
-            self._cache_analise[original] = (agora, None)
+            self._cache_analise[chave_cache] = (agora, None)
             return None
         if intent == "SUGGEST_ACTION" and not sugestao_acao_valida(resultado):
             self._log("🧭 [IA-FIRST] sugestão sem ação prática ignorada; seguindo como conversa")
-            self._cache_analise[original] = (agora, None)
+            self._cache_analise[chave_cache] = (agora, None)
             return None
         intents_playlist = {
             "PLAYLIST_ADD",
@@ -433,9 +488,9 @@ class InterpretacaoIntencaoRuntime:
         if self._call(ctx, "playlist_bloqueada_agora", default=False) and intent in intents_playlist:
             if not self._call(ctx, "texto_pede_playlist_explicitamente", original, default=False):
                 self._log("🎵 [PLAYLIST] Intenção musical bloqueada: contexto antigo tentou puxar playlist.")
-                self._cache_analise[original] = (agora, None)
+                self._cache_analise[chave_cache] = (agora, None)
                 return None
-        self._cache_analise[original] = (agora, dict(resultado))
+        self._cache_analise[chave_cache] = (agora, dict(resultado))
         if len(self._cache_analise) > 16:
             mais_antiga = min(self._cache_analise, key=lambda chave: self._cache_analise[chave][0])
             self._cache_analise.pop(mais_antiga, None)
@@ -446,24 +501,31 @@ class InterpretacaoIntencaoRuntime:
         bruto = str(texto or "").strip()
         if not bruto:
             return None
-        if self._call(ctx, "texto_conversa_casual_sem_acao", bruto, default=False):
-            return None
-        if self._call(ctx, "texto_social_curto", bruto, default=False):
-            return None
-        if self._call(ctx, "texto_bloqueia_playlist_agora", bruto, default=False):
-            return None
-
         normalizar = ctx.get("normalizar_texto")
         normalizado = normalizar(bruto) if callable(normalizar) else bruto
         if not normalizado:
             return None
+        consulta_operacional = bool(self._call(
+            ctx, "texto_parece_consulta_operacional", bruto, default=False
+        ))
+        if not consulta_operacional and self._call(
+            ctx, "texto_conversa_casual_sem_acao", bruto, default=False
+        ):
+            return None
+        if not consulta_operacional and self._call(ctx, "texto_social_curto", bruto, default=False):
+            return None
+        if self._call(ctx, "texto_bloqueia_playlist_agora", bruto, default=False):
+            return None
         if self._call(ctx, "texto_pede_direcao_musical_generica", normalizado, default=False):
             return None
-        if self._call(ctx, "texto_expresso_melhor_no_deterministico", normalizado, default=False):
+        if not consulta_operacional and self._call(
+            ctx, "texto_expresso_melhor_no_deterministico", normalizado, default=False
+        ):
             return None
 
         deve_tentar = bool(
             self._call(ctx, "contexto_mental_ativo", default=False)
+            or consulta_operacional
             or self._call(ctx, "texto_depende_de_contexto", normalizado, default=False)
             or self._call(ctx, "texto_parece_navegacao_ou_janela_ia", normalizado, default=False)
             or self._call(ctx, "fluxo_prioritario_da_ia", normalizado, default=False)
@@ -476,8 +538,14 @@ class InterpretacaoIntencaoRuntime:
             {
                 "_texto_tem_comando_explicito": ctx.get("texto_tem_comando_explicito"),
                 "_texto_social_curto": ctx.get("texto_social_curto"),
-                "_texto_conversa_casual_sem_acao": ctx.get("texto_conversa_casual_sem_acao"),
-                "_texto_conversa_contextual_sem_comando": ctx.get("texto_conversa_contextual_sem_comando"),
+                "_texto_conversa_casual_sem_acao": (
+                    (lambda _texto: False) if consulta_operacional
+                    else ctx.get("texto_conversa_casual_sem_acao")
+                ),
+                "_texto_conversa_contextual_sem_comando": (
+                    (lambda _texto: False) if consulta_operacional
+                    else ctx.get("texto_conversa_contextual_sem_comando")
+                ),
                 "analisar_intencao": self.analisar,
             },
             bruto,

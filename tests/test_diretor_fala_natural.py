@@ -38,7 +38,7 @@ def test_agradecimento_mecanico_e_substituido_pelo_contexto_real() -> None:
         estado_mental=mente,
     )
     assert direcao["fala"] == (
-        "Que nada, Pedro. Fico feliz que tenha ajudado com a receita da coxinha."
+        "Que nada. Fico feliz que tenha ajudado com a receita da coxinha."
     )
 
 
@@ -121,4 +121,15 @@ def test_carisma_social_nao_enfeita_resultado_operacional() -> None:
         texto,
         estado_mental=_mente_social("brincadeira", operacional=True),
     )
+    assert direcao["fala"] == texto
+
+
+def test_voz_unica_preserva_texto_mesmo_quando_diretor_trocaria_resposta() -> None:
+    texto = "Entendi. Quer conversar sobre outra coisa?"
+    direcao = dirigir_fala(
+        texto,
+        estado_mental=_mente_social("desabafo", permite_pergunta=False),
+        preservar_texto=True,
+    )
+
     assert direcao["fala"] == texto

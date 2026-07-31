@@ -8,6 +8,8 @@ import time
 import unicodedata
 from typing import Any, Callable, Dict
 
+from mente_laylay.autonomia.governanca_iniciativa import decisao_permite_emissao
+
 from mente_laylay.memoria_mental.interpretacao_temporal import proxima_ocorrencia
 
 
@@ -31,6 +33,7 @@ class MotorTemporalRuntime:
         agendar_fala: Callable[..., Any],
         interacao_iniciada: Callable[[], bool],
         conversa_ativa: Callable[[], bool],
+        registrar_oportunidade: Callable[[dict[str, Any]], Any] | None = None,
         clock: Callable[[], float] = time.time,
         log: Callable[[str], Any] = print,
     ) -> None:
@@ -40,6 +43,7 @@ class MotorTemporalRuntime:
         self.agendar_fala = agendar_fala
         self.interacao_iniciada = interacao_iniciada
         self.conversa_ativa = conversa_ativa
+        self.registrar_oportunidade = registrar_oportunidade
         self.clock = clock
         self.log = log
         self._lock = threading.Lock()
@@ -147,6 +151,24 @@ class MotorTemporalRuntime:
             candidato = self._candidato(estado, self._contexto(), agora)
             if not candidato:
                 return {"status": "sem_candidato"}
+            decisao_iniciativa = {}
+            if callable(self.registrar_oportunidade):
+                try:
+                    decisao_iniciativa = dict(self.registrar_oportunidade({
+                        "chave": f"tempo:{candidato['chave']}",
+                        "tipo": candidato["tipo"],
+                        "origem": "consciencia_temporal",
+                        "dominio": "agenda",
+                        "utilidade": 86 if candidato["tipo"] == "lembrete" else 48,
+                        "risco": "baixo",
+                        "executavel": False,
+                        "reversivel": True,
+                        "validade_s": 600.0,
+                    }) or {})
+                except Exception as erro:
+                    self.log(f"⚠️ [INICIATIVA] oportunidade temporal ignorada: {erro}")
+            if not decisao_permite_emissao(decisao_iniciativa):
+                return {"status": "bloqueado_permissao", "tipo": candidato["tipo"]}
             self._agendando = True
 
         def concluir(entregue: bool, motivo: str) -> None:
@@ -175,13 +197,21 @@ class MotorTemporalRuntime:
             return {"status": "adiado_pelo_porteiro"}
         return {"status": "agendado", "tipo": candidato["tipo"]}
 
-    def executar(self, deve_parar: Callable[[], bool] | None = None, intervalo_s: float = 120.0) -> None:
+    def executar(
+        self, deve_parar: Callable[[], bool] | None = None,
+        intervalo_s: float = 120.0,
+        aguardar_fn: Callable[[float], bool] | None = None,
+    ) -> None:
         while not (callable(deve_parar) and deve_parar()):
             try:
                 self.executar_ciclo()
             except Exception as erro:
                 self.log(f"⚠️ [TEMPO] ciclo de acompanhamento ignorado: {type(erro).__name__}: {erro}")
-            time.sleep(intervalo_s)
+            if callable(aguardar_fn):
+                if aguardar_fn(intervalo_s):
+                    break
+            else:
+                time.sleep(intervalo_s)
 
 
 def criar_motor_temporal_runtime(**kwargs: Any) -> MotorTemporalRuntime:

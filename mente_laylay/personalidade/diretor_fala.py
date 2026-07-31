@@ -84,7 +84,7 @@ def _substituir_resposta_social_mecanica(
     alvo = str(mente.get("ultima_acao_alvo") or assunto.get("titulo") or "").strip()
     if funcao == "agradecimento":
         return (
-            f"Que nada, Pedro. Fico feliz que tenha ajudado com {alvo}."
+            f"Que nada. Fico feliz que tenha ajudado com {alvo}."
             if alvo else "Que nada. Fico feliz que tenha ajudado."
         )
     if funcao == "elogio":
@@ -145,6 +145,7 @@ def dirigir_fala(
     emocao: str = "calma",
     nivel: int | None = 1,
     proativa: bool = False,
+    preservar_texto: bool = False,
     agora: float | None = None,
 ) -> Dict[str, Any]:
     """Escolhe a expressão final sem reescrever resultados ou conteúdo factual."""
@@ -158,15 +159,16 @@ def dirigir_fala(
     permite_pergunta = bool(social.get("permite_pergunta", True)) and not tem_operacao
     fala = re.sub(r"\s+", " ", str(texto or "")).strip()
     funcao = str(social.get("funcao") or "")
-    fala = _substituir_resposta_social_mecanica(fala, funcao=funcao, mente=mente)
-    fala = _lapidar_presenca_social(
-        fala,
-        funcao=funcao,
-        mente=mente,
-        operacional=tem_operacao,
-    )
-    fala = _sem_pergunta_opcional(fala, permite=permite_pergunta)
-    fala = _reduzir_abertura_repetida(fala, str(mente.get("ultima_resposta") or ""))
+    if not preservar_texto:
+        fala = _substituir_resposta_social_mecanica(fala, funcao=funcao, mente=mente)
+        fala = _lapidar_presenca_social(
+            fala,
+            funcao=funcao,
+            mente=mente,
+            operacional=tem_operacao,
+        )
+        fala = _sem_pergunta_opcional(fala, permite=permite_pergunta)
+        fala = _reduzir_abertura_repetida(fala, str(mente.get("ultima_resposta") or ""))
 
     emocao_final = str(emocao or "calma").strip().lower()
     nivel_final = max(1, min(3, int(nivel or 1)))

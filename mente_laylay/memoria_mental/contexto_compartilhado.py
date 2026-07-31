@@ -8,6 +8,12 @@ from typing import Any, Dict
 
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao, normalizar_resultado_acao
 from mente_laylay.memoria_mental.pendencia import criar_pendencia, limpar_pendencia, registrar_pendencia
+from mente_laylay.memoria_mental.continuidade_geral import (
+    estado_continuidade_geral_inicial,
+    registrar_evento_continuidade,
+    selecionar_continuidade,
+    selecionar_continuidade_por_classe,
+)
 
 from mente_laylay.memoria_mental.consciencia_temporal import (
     atualizar_consciencia_temporal,
@@ -31,6 +37,7 @@ def estado_mental_inicial() -> Dict[str, Any]:
         "diagnostico_metricas": {},
         "diagnostico_falhas": [],
         "diagnostico_decisoes": [],
+        "diagnostico_servicos": {},
         "falhas_consecutivas_execucao": {},
         "ultimas_entradas": [],
         "ultima_intencao": "",
@@ -66,7 +73,7 @@ def estado_mental_inicial() -> Dict[str, Any]:
         "ultima_resposta": "",
         "direcao_fala_atual": {},
         "historico_direcao_fala": [],
-        "nome_usuario": "Pedro",
+        "nome_usuario": "",
         "ultima_afirmacao": "",
         "ultima_pergunta": "",
         "ultima_opiniao": "",
@@ -92,6 +99,7 @@ def estado_mental_inicial() -> Dict[str, Any]:
         "ultima_acao_ok": None,
         "ultima_acao_alvo": "",
         "ultima_acao_detalhe": "",
+        "ultima_acao_ts": 0.0,
         "ultima_promessa_tipo": "",
         "ultima_promessa_texto": "",
         "ultima_promessa_alvo": "",
@@ -99,6 +107,7 @@ def estado_mental_inicial() -> Dict[str, Any]:
         "ultima_promessa_ts": 0.0,
         "oferta_pendente": {},
         "pendencia_atual": {},
+        "continuidade_geral": estado_continuidade_geral_inicial(),
         "ultima_pendencia_encerrada": {},
         "preferencias_musicais": {"artistas": {}, "faixas": {}, "estilos": {}},
         "alvo_corrigido": "",
@@ -147,6 +156,21 @@ def estado_mental_inicial() -> Dict[str, Any]:
         "assunto_estruturado_atual": {},
         "registro_semantico": estado_registro_semantico_inicial(),
         "perfil_proatividade": {},
+        "presenca_contextual": {
+            "versao": 1,
+            "historico": [],
+            "ultima_emissao": {},
+            "atividade": {},
+            "contadores": {},
+        },
+        "iniciativa_autonoma": {
+            "versao": 1,
+            "modo": "sombra",
+            "niveis": {},
+            "historico": [],
+            "contadores": {},
+            "ultima_decisao": {},
+        },
         "ts": 0.0,
     }
 
@@ -159,6 +183,18 @@ def classificar_pergunta_com_proposito(texto: str) -> Dict[str, str]:
     perguntas = re.findall(r"([^.!?…]*\?)", fala)
     pergunta = str(perguntas[-1] if perguntas else fala).strip()
     base = pergunta.casefold()
+    fala_base = fala.casefold()
+
+    if re.search(
+        r"\b(?:posso|quer(?:e?s)?\s+que\s+eu)\s+(?:te\s+)?(?:sugerir|indicar|recomendar)\b"
+        r"[^?]{0,140}\b(?:m[uú]sicas?|faixas?|discos?|[aá]lbuns?)\b",
+        fala_base,
+    ):
+        return {
+            "pergunta": pergunta,
+            "proposito": "recomendacao_musical",
+            "resposta_esperada": "sim_ou_nao",
+        }
 
     # Perguntas devolvidas por educação depois de responder ao próprio
     # bem-estar demonstram interesse, mas não abrem uma obrigação contextual.
@@ -218,6 +254,8 @@ def texto_parece_pergunta_aberta(texto: str) -> bool:
 def registrar_oferta_pendente(
     estado_atual: Dict[str, Any] | None,
     resposta: str,
+    *,
+    alvo_contexto: str = "",
 ) -> Dict[str, Any]:
     """Registra uma oferta na mente única, independentemente da habilidade."""
     estado = dict(estado_atual or {})
@@ -228,7 +266,7 @@ def registrar_oferta_pendente(
         r"\b(?:minha aposta|eu iria de|eu tentaria|eu arrisco|vou te jogar|m[uú]sica que eu t[oô] indicando)\b",
         fala.casefold(),
     ))
-    if proposito not in {"confirmacao_musical", "escolha"} and not recomendacao_implicita:
+    if proposito not in {"confirmacao_musical", "recomendacao_musical", "escolha"} and not recomendacao_implicita:
         return estado
     if recomendacao_implicita and not proposito:
         proposito = "confirmacao_musical"
@@ -267,6 +305,8 @@ def registrar_oferta_pendente(
     estado["oferta_pendente"] = {
         "tipo": "musica",
         "intent": "MUSIC_SEARCH",
+        "modo": "recomendar_artista" if proposito == "recomendacao_musical" else "tocar_opcao",
+        "contexto": str(alvo_contexto or estado.get("assunto_da_fala") or estado.get("ultimo_alvo") or "").strip()[:160],
         "opcoes": opcoes[:4],
         "pergunta": str(classificacao.get("pergunta") or "")[:240],
         "resposta_esperada": str(classificacao.get("resposta_esperada") or ""),
@@ -715,6 +755,8 @@ def intencao_reexecutavel(intent: str) -> bool:
         "IOT_CONTROL",
         "IOT_STATUS",
         "IOT_LIST",
+        "INBOX_LIST",
+        "ORGANIZAR_DESKTOP",
     }
 
 
@@ -747,6 +789,18 @@ def registrar_resultado_execucao(
     mesmo_texto = str(estado.get("ultima_acao_texto") or "").strip() == texto_curto
     mesmo_resultado = mesmo_intent and mesmo_texto
 
+    # Uma pendência visual só pode sobreviver a dados que complementem aquela
+    # análise. Quando uma ação de outro domínio foi realmente roteada, ela
+    # substitui o assunto operacional anterior e impede respostas tardias sobre
+    # inventário depois de "liga a luz", "abre o navegador" etc.
+    pendencia = dict(estado.get("pendencia_atual") or {})
+    if (
+        pendencia.get("status") == "ativa"
+        and str(pendencia.get("origem") or "") == "visao_jogo"
+        and intent not in {"GAME_VISION", "GAME_VISION_CONTINUE"}
+    ):
+        estado = limpar_pendencia(estado, motivo="substituida_por_nova_acao")
+
     if not status_final:
         status_anterior = str(estado.get("ultima_acao_status") or "").strip().lower()
         if mesmo_resultado and status_anterior:
@@ -754,8 +808,16 @@ def registrar_resultado_execucao(
         else:
             status_final = "executado" if contrato.executou is True else "falhou" if contrato.executou is False else "incerto"
 
+    reexecucao_referencia_segura = bool(
+        intent == "CREATE_FILE"
+        and params.get("conteudo_ref")
+        and contrato.confirmado is not True
+        and status_final not in {"referencia_expirada", "referencia_divergente"}
+    )
     estado["ultima_acao_status"] = status_final
-    estado["ultima_acao_reexecutavel"] = bool(intencao_reexecutavel(intent))
+    estado["ultima_acao_reexecutavel"] = bool(
+        intencao_reexecutavel(intent) or reexecucao_referencia_segura
+    )
     estado["ultima_acao_intent"] = intent
     estado["ultima_acao_params"] = dict(params)
     estado["ultima_acao_origem"] = contrato.origem
@@ -780,6 +842,60 @@ def registrar_resultado_execucao(
         if mesmo_resultado and (registro_generico or not contrato.detalhe)
         else contrato.detalhe[:300]
     )
+    estado["ultima_acao_ts"] = time.time()
+
+    if intent == "DELETE_ITEM" and status_final == "aguardando_confirmacao":
+        estado = registrar_pendencia(
+            estado,
+            criar_pendencia(
+                origem="lixeira_laylay",
+                tipo="confirmacao",
+                dominio="arquivos",
+                conteudo=f"Enviar {contrato.alvo or 'o item'} para a lixeira?",
+                opcoes=[
+                    {"rotulo": "confirmar", "intent": "CONFIRM_DELETE_ITEM"},
+                    {"rotulo": "cancelar", "intent": "CANCEL_DELETE_ITEM"},
+                ],
+                resposta_esperada="sim ou não",
+                intencao="CONFIRM_DELETE_ITEM",
+                ttl_s=90.0,
+                foi_falada=True,
+            ),
+        )
+    elif intent in {"CONFIRM_DELETE_ITEM", "CANCEL_DELETE_ITEM"}:
+        estado = limpar_pendencia(
+            estado,
+            motivo=(
+                "confirmada"
+                if intent == "CONFIRM_DELETE_ITEM" and contrato.executou
+                else "cancelada"
+            ),
+        )
+    elif intent in {"INBOX_DELETE", "INBOX_CONVERT_REMINDER"} and status_final == "aguardando_confirmacao":
+        estado = registrar_pendencia(
+            estado,
+            criar_pendencia(
+                origem="caixa_entrada_pessoal",
+                tipo="confirmacao",
+                dominio="caixa_entrada",
+                conteudo=f"Confirmar alteração na nota {contrato.alvo or ''}?".strip(),
+                opcoes=[
+                    {"rotulo": "confirmar", "intent": intent},
+                    {"rotulo": "cancelar", "intent": "CANCEL_INBOX_ACTION"},
+                ],
+                resposta_esperada="sim ou não",
+                intencao=intent,
+                ttl_s=120.0,
+                foi_falada=True,
+            ),
+        )
+    elif intent in {"INBOX_DELETE", "INBOX_CONVERT_REMINDER", "CANCEL_INBOX_ACTION"}:
+        pendencia_inbox = dict(estado.get("pendencia_atual") or {})
+        if str(pendencia_inbox.get("origem") or "") == "caixa_entrada_pessoal":
+            estado = limpar_pendencia(
+                estado,
+                motivo="cancelada" if intent == "CANCEL_INBOX_ACTION" else "confirmada",
+            )
 
     # A troca de dominio precisa acontecer no contrato-base, antes de qualquer
     # enriquecimento opcional. Assim uma ação web recente nunca deixa um app
@@ -793,6 +909,20 @@ def registrar_resultado_execucao(
     elif intent in {"APP_OPEN", "MAXIMIZE_WINDOW", "CLOSE_APP"}:
         alvo_app = str(params.get("nome_app") or params.get("app") or params.get("nome") or "").strip()
         if alvo_app:
+            estado["ultimo_app_janela"] = alvo_app
+            estado["ultimo_alvo"] = alvo_app
+    elif intent == "ORGANIZAR_DESKTOP":
+        esquerda = str(params.get("left") or params.get("esquerda") or "").strip()
+        direita = str(params.get("right") or params.get("direita") or "").strip()
+        estado["ultimo_layout_janelas"] = {
+            "left": esquerda,
+            "right": direita,
+            "modo": str(params.get("modo") or "").strip(),
+        }
+        # Uma única janela continua sendo uma referência natural válida para
+        # "agora coloca ela na direita". Com duas, o pronome seria ambíguo.
+        if bool(esquerda) ^ bool(direita):
+            alvo_app = esquerda or direita
             estado["ultimo_app_janela"] = alvo_app
             estado["ultimo_alvo"] = alvo_app
     elif intent in {"IOT_CONTROL", "IOT_STATUS"}:
@@ -817,6 +947,18 @@ def registrar_resultado_execucao(
         estado["alvo_corrigido"] = ""
         estado["alvo_corrigido_ts"] = 0.0
 
+    estado = registrar_evento_continuidade(
+        estado,
+        evento="acao",
+        intent=intent,
+        alvo=contrato.alvo,
+        texto=texto_curto,
+        params=params,
+        status=status_final,
+        origem=contrato.origem,
+        ttl_s=900.0,
+        reexecutavel=bool(intencao_reexecutavel(intent) or reexecucao_referencia_segura),
+    )
     estado["ts"] = time.time()
     return estado
 
@@ -899,6 +1041,7 @@ def enriquecer_resultado_execucao_contextual(
             or params.get("nome_playlist")
             or params.get("query")
             or params.get("nome")
+            or params.get("nome_arquivo")
             or params.get("arquivo_nome")
             or params.get("item")
             or estado.get("ultimo_alvo")
@@ -916,9 +1059,12 @@ def enriquecer_resultado_execucao_contextual(
             "PLAYLIST_PLAY": "playlist",
             "PLAYLIST_ADD": "playlist",
             "PLAYLIST_LIST": "playlist",
+            "LAYLAY_PLAYLIST_LIST": "playlist_laylay",
+            "LAYLAY_PLAYLIST_COPY": "playlist_laylay",
             "MUSIC_SEARCH": "musica",
             "MEDIA_CONTROL": "midia",
             "CREATE_FOLDER": "arquivos",
+            "CREATE_FILE": "arquivos",
             "DELETE_ITEM": "arquivos",
             "EMAIL_READ": "email",
             "EMAIL_SYNC": "email",
@@ -1058,7 +1204,36 @@ def registrar_mente_curta(
             origem=habilidade or intencao,
             emocao=emocao_atual,
         )
-        estado = registrar_oferta_pendente(estado, resposta_ia)
+        estado = registrar_oferta_pendente(
+            estado,
+            resposta_ia,
+            alvo_contexto=alvo or ultimo_topico_conversa or assunto_semantico,
+        )
+        # Esclarecimentos operacionais também pertencem à continuidade geral.
+        # Sem esta pendência, uma resposta curta como "Love Me" seria entregue
+        # à conversa comum em vez de completar o MUSIC_SEARCH iniciado antes.
+        if (
+            intencao.upper() == "MUSIC_SEARCH"
+            and not alvo
+            and re.search(
+                r"\b(?:me\s+diz|fala|qual)\b[^.!?]{0,50}\b(?:m[uú]sica|faixa|som)\b|"
+                r"\btocar\s+o\s+qu[eê]\b",
+                resposta_ia.casefold(),
+            )
+        ):
+            estado = registrar_pendencia(
+                estado,
+                criar_pendencia(
+                    origem="esclarecimento_operacional",
+                    tipo="esclarecimento",
+                    dominio="musica",
+                    conteudo=resposta_ia,
+                    resposta_esperada="nome da música, artista ou estilo",
+                    intencao="MUSIC_SEARCH",
+                    ttl_s=180.0,
+                    foi_falada=True,
+                ),
+            )
         try:
             if callable(texto_parece_pergunta_aberta_cb) and texto_parece_pergunta_aberta_cb(resposta_ia):
                 if callable(registrar_pergunta_aberta_cb):
@@ -1099,11 +1274,16 @@ def registrar_mente_curta(
             estado["ultimo_app_janela"] = alvo
         if callable(eh_alvo_site_web_cb) and eh_alvo_site_web_cb(alvo_norm):
             estado["ultimo_site_aba"] = alvo
-        if habilidade.lower() in {"arquivo", "arquivos", "sistema"} or intencao.upper() in {"CREATE_FOLDER", "DELETE_ITEM", "MOVE_ITEM", "CREATE_FILE"}:
+        if habilidade.lower() in {"arquivo", "arquivos", "pasta", "sistema"} or intencao.upper() in {"CREATE_FOLDER", "DELETE_ITEM", "MOVE_ITEM", "CREATE_FILE"}:
             alvo_limpo = str(alvo or "").strip()
             if alvo_limpo:
                 import os
-                if "." in os.path.basename(alvo_limpo):
+                if habilidade.lower() == "arquivo":
+                    estado["ultimo_arquivo"] = os.path.basename(alvo_limpo)
+                    estado["ultimo_caminho_arquivo"] = alvo_limpo
+                elif habilidade.lower() == "pasta":
+                    estado["ultima_pasta"] = alvo_limpo
+                elif "." in os.path.basename(alvo_limpo):
                     estado["ultimo_arquivo"] = os.path.basename(alvo_limpo)
                     estado["ultimo_caminho_arquivo"] = alvo_limpo
                 else:
@@ -1185,6 +1365,8 @@ def inferir_tipo_foco_vivo(
         return "clima"
     if intent in {"EMAIL_READ", "EMAIL_SYNC", "NOTIFICATIONS"} or "email" in base:
         return "email"
+    if intent in {"LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_COPY"} or hab in {"playlist_laylay", "curadoria_laylay"}:
+        return "playlist_laylay"
     if intent in {"PLAYLIST_PLAY", "PLAYLIST_ADD", "PLAYLIST_LIST", "MUSIC_SEARCH", "MEDIA_CONTROL"} or hab in {"musica", "música", "playlist", "midia"}:
         return "musica"
     if intent in {"AGENDAR_LEMBRETE", "AGENDAR_ACAO", "LISTAR_AGENDAMENTOS", "CANCELAR_AGENDAMENTO"} or hab == "agenda":
@@ -1327,6 +1509,19 @@ def atualizar_foco_vivo(
         estado["topico_explicito_atual"] = str(alvo_limpo or topico_limpo)[:160]
         estado["topico_explicito_origem"] = dominio
         estado["topico_explicito_ts"] = agora
+    estado = registrar_evento_continuidade(
+        estado,
+        evento="foco",
+        tipo=tipo,
+        intent=intencao,
+        habilidade=habilidade,
+        alvo=alvo_limpo,
+        topico=topico_limpo,
+        texto=texto,
+        resposta=resposta,
+        origem=dominio,
+        ttl_s=900.0 if dominio != "conversacional" else 480.0,
+    )
     return estado
 
 
@@ -1340,6 +1535,25 @@ def foco_por_dominio(
     try:
         estado = dict(estado_atual or {})
         chave = str(dominio or "").strip().lower()
+        oficial = selecionar_continuidade(
+            estado,
+            dominio=chave,
+            ttl_s=ttl_s,
+        )
+        if oficial:
+            return {
+                "tipo": str(oficial.get("tipo") or "").strip(),
+                "alvo": str(oficial.get("alvo") or "").strip(),
+                "topico": str(oficial.get("topico") or "").strip(),
+                "habilidade": str(oficial.get("habilidade") or "").strip(),
+                "intencao": str(oficial.get("intent") or "").strip(),
+                "texto": str(oficial.get("texto") or "").strip(),
+                "resposta": str(oficial.get("resposta") or "").strip(),
+                "escopo": str((oficial.get("params") or {}).get("modo") or "").strip(),
+                "dominio": str(oficial.get("dominio") or chave),
+                "idade_s": float(oficial.get("idade_s") or 0.0),
+                "origem_continuidade": "geral_oficial",
+            }
         foco = dict((estado.get("focos_por_dominio") or {}).get(chave) or {})
         ts = float(foco.get("ts") or 0.0)
         if not ts or time.time() - ts > ttl_s:
@@ -1360,6 +1574,27 @@ def foco_vivo_atual(
     try:
         estado = dict(estado_atual or {})
         dominio_norm = str(dominio or "auto").strip().lower()
+        oficial = selecionar_continuidade_por_classe(
+            estado,
+            classe=dominio_norm,
+            ttl_s=ttl_s,
+        )
+        if oficial:
+            dominio_oficial = str(oficial.get("dominio") or "")
+            return {
+                "tipo": str(oficial.get("tipo") or "").strip(),
+                "alvo": str(oficial.get("alvo") or "").strip(),
+                "topico": str(oficial.get("topico") or "").strip(),
+                "habilidade": str(oficial.get("habilidade") or "").strip(),
+                "intencao": str(oficial.get("intent") or "").strip(),
+                "texto": str(oficial.get("texto") or "").strip(),
+                "resposta": str(oficial.get("resposta") or "").strip(),
+                "escopo": str((oficial.get("params") or {}).get("modo") or "").strip(),
+                "dominio": "conversacional" if dominio_oficial == "conversa" else "operacional",
+                "dominio_especifico": dominio_oficial,
+                "idade_s": float(oficial.get("idade_s") or 0.0),
+                "origem_continuidade": "geral_oficial",
+            }
         if dominio_norm in {"conversa", "conversacional"}:
             prefixo = "foco_conversacional"
         elif dominio_norm in {"operacao", "operação", "operacional"}:
@@ -1424,10 +1659,23 @@ def resolver_repeticao_ultima_acao(
     if not texto_pede_repeticao_curta(texto, normalizar_texto_cb):
         return None
     estado = dict(estado_atual or {})
-    if not bool(estado.get("ultima_acao_reexecutavel")):
-        return None
-    intent = str(estado.get("ultima_acao_intent") or "").strip().upper()
-    params = estado.get("ultima_acao_params")
+    oficial = selecionar_continuidade_por_classe(
+        estado,
+        classe="operacional",
+        ttl_s=900.0,
+    )
+    if oficial:
+        if not bool(oficial.get("reexecutavel")):
+            return None
+        intent = str(oficial.get("intent") or "").strip().upper()
+        params = oficial.get("params")
+    else:
+        # Memórias de sessão anteriores à promoção oficial ainda podem ser
+        # lidas uma vez; novos turnos sempre gravam o contrato canônico.
+        if not bool(estado.get("ultima_acao_reexecutavel")):
+            return None
+        intent = str(estado.get("ultima_acao_intent") or "").strip().upper()
+        params = estado.get("ultima_acao_params")
     if not intent or not isinstance(params, dict):
         return None
     return {"intent": intent, "params": dict(params)}
@@ -1463,18 +1711,12 @@ def contexto_mental_ativo(mente_integrada_estado: Dict[str, Any], ultima_playlis
 
 
 def texto_depende_de_contexto(texto: str, normalizar_texto_cb) -> bool:
+    from mente_laylay.cognicao.referencias_linguagem import texto_tem_referencia_contextual
+
     t = normalizar_texto_cb(texto)
     if not t:
         return False
-    palavras = t.split()
-    if len(palavras) > 7:
-        return False
-    gatilhos = [
-        "essa", "esse", "isso", "ele", "ela", "aqui", "ali", "tambem", "também",
-        "de novo", "mais uma", "mais um", "essa tambem", "esse tambem",
-        "essa também", "esse também", "essa aqui", "esse aqui", "essa ai", "esse ai",
-    ]
-    return any(g in t for g in gatilhos)
+    return texto_tem_referencia_contextual(t)
 
 
 def fluxo_prioritario_da_ia(texto: str, normalizar_texto_cb, texto_depende_de_contexto_cb) -> bool:

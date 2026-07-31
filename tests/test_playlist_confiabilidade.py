@@ -35,6 +35,14 @@ def test_nome_sem_acento_preserva_chave_real_da_playlist() -> None:
     assert detectar_playlist_nome_direto("coloca musica brasileira", data) == "música brasileira"
 
 
+def test_modificador_de_genero_nao_e_engolido_por_playlist_prefixo() -> None:
+    data = {"rock": [FAIXA]}
+
+    assert detectar_playlist_nome_direto("coloca um rock pesado", data) == ""
+    assert detectar_playlist_nome_direto("coloca rock pesado", data) == ""
+    assert detectar_playlist_nome_direto("coloca rock agora", data) == "rock"
+
+
 def test_playlist_existente_e_aberta_usando_um_unico_snapshot(tmp_path) -> None:
     caminho = tmp_path / "playlists.json"
     caminho.write_text(json.dumps({"musica brasileira": [FAIXA]}), encoding="utf-8")

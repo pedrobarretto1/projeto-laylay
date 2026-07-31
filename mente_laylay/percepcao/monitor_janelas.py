@@ -5,10 +5,13 @@ from __future__ import annotations
 import time
 from typing import Any, Callable
 
+from mente_laylay.autonomia.governanca_iniciativa import decisao_permite_emissao
+from mente_laylay.memoria_mental.estado_continuidades import sugestao_pendente_ativa
+
 
 FALAS_ASSUNTO = {
-    "Programação": "Vejo que o código tá rendendo, Pedro. Quer uma música de foco?",
-    "Gaming": "Tá no modo gamer, né, Pedro. Quer que eu deixe uma música de fundo?",
+    "Programação": "Vejo que o código tá rendendo. Quer uma música de foco?",
+    "Gaming": "Tá no modo gamer, né? Quer que eu deixe uma música de fundo?",
     "Impressão 3D": "Isso aí tá com cara de impressão 3D. Tô acompanhando o projeto por aqui.",
 }
 
@@ -44,6 +47,7 @@ class MonitorJanelasRuntime:
         fala_gatilho: Callable[[str], str],
         falar: Callable[[str, str, int], Any],
         preparar_sugestao: Callable[[str, dict[str, Any], str], tuple[str, dict[str, Any], str]] | None = None,
+        registrar_oportunidade: Callable[[dict[str, Any]], Any] | None = None,
         atualizar_modo_jogo: Callable[[dict[str, Any], bool], dict[str, Any]] | None = None,
         interacao_iniciada: Callable[[], bool] | None = None,
         clock: Callable[[], float] = time.time,
@@ -68,6 +72,7 @@ class MonitorJanelasRuntime:
         self.fala_gatilho = fala_gatilho
         self.falar = falar
         self.preparar_sugestao = preparar_sugestao
+        self.registrar_oportunidade = registrar_oportunidade
         self.atualizar_modo_jogo = atualizar_modo_jogo
         self.interacao_iniciada = interacao_iniciada or (lambda: True)
         self.clock = clock
@@ -86,7 +91,7 @@ class MonitorJanelasRuntime:
 
     def _ha_pendencia_ou_interacao(self) -> bool:
         return bool(
-            self.continuidade_get("comando_sugerido_estado", "NONE") != "NONE"
+            sugestao_pendente_ativa(self.continuidade_get, agora=float(self.clock()))
             or self.esta_falando()
             or self.conversa_ativa()
         )
@@ -99,12 +104,14 @@ class MonitorJanelasRuntime:
         fala = FALAS_ASSUNTO.get(assunto, "")
         if not fala or self.esta_falando():
             return False
-        if self.continuidade_get("comando_sugerido_estado", "NONE") != "NONE":
+        if sugestao_pendente_ativa(self.continuidade_get, agora=float(self.clock())):
             return False
         agora = float(self.clock() if agora is None else agora)
         if self._cooldown_ativo(agora):
             return False
         sugestao = SUGESTOES_ASSUNTO.get(assunto)
+        comando_oportunidade = ""
+        payload_oportunidade = {}
         if sugestao:
             comando, payload = sugestao
             if callable(self.preparar_sugestao):
@@ -112,13 +119,38 @@ class MonitorJanelasRuntime:
                     comando, payload, fala = self.preparar_sugestao(comando, dict(payload or {}), fala)
                 except Exception as exc:
                     self.log(f"⚠️ [MONITOR JANELAS] preferência de sugestão ignorada: {exc}")
+            comando_oportunidade = comando
+            payload_oportunidade = dict(payload)
+        decisao_iniciativa = {}
+        if callable(self.registrar_oportunidade):
+            try:
+                decisao_iniciativa = dict(self.registrar_oportunidade({
+                    "chave": f"janela:assunto:{assunto}",
+                    "tipo": "contexto_janela",
+                    "origem": "monitor_janelas",
+                    "dominio": "rotina",
+                    "acao_proposta": {
+                        "intent": comando_oportunidade,
+                        "params": payload_oportunidade,
+                    },
+                    "utilidade": 46,
+                    "risco": "baixo",
+                    "executavel": bool(comando_oportunidade),
+                    "reversivel": True,
+                    "validade_s": 300.0,
+                }) or {})
+            except Exception as exc:
+                self.log(f"⚠️ [INICIATIVA] oportunidade de janela ignorada: {exc}")
+        if not decisao_permite_emissao(decisao_iniciativa):
+            return False
+        if sugestao:
             self.continuidade_update(
-                comando_sugerido=comando,
-                comando_sugerido_payload=dict(payload),
+                comando_sugerido=comando_oportunidade,
+                comando_sugerido_payload=payload_oportunidade,
                 comando_sugerido_estado="PENDING_CONFIRM",
                 comando_sugerido_ts=agora,
-                comando_pendente=comando,
-                comando_pendente_payload=dict(payload),
+                comando_pendente=comando_oportunidade,
+                comando_pendente_payload=payload_oportunidade,
             )
         self.ultimo_proativo_set(agora)
         self.falar(fala, "calma", 1)
@@ -194,6 +226,27 @@ class MonitorJanelasRuntime:
                     gatilho, payload, fala = self.preparar_sugestao(gatilho, dict(payload or {}), fala)
                 except Exception as exc:
                     self.log(f"⚠️ [MONITOR JANELAS] preferência de gatilho ignorada: {exc}")
+            decisao_iniciativa = {}
+            if callable(self.registrar_oportunidade):
+                try:
+                    decisao_iniciativa = dict(self.registrar_oportunidade({
+                        "chave": f"janela:gatilho:{gatilho}",
+                        "tipo": "contexto_janela",
+                        "origem": "monitor_janelas",
+                        "dominio": "navegador",
+                        "acao_proposta": {"intent": gatilho, "params": dict(payload or {})},
+                        "utilidade": 55,
+                        "risco": "baixo",
+                        "executavel": bool(gatilho),
+                        "reversivel": gatilho in {"RELOAD_PAGE", "EXPLAIN_ERROR"},
+                        "validade_s": 180.0,
+                    }) or {})
+                except Exception as exc:
+                    self.log(f"⚠️ [INICIATIVA] oportunidade de navegador ignorada: {exc}")
+            if not decisao_permite_emissao(decisao_iniciativa):
+                self.ultimo_gatilho = ""
+                self.gatilho_inicio_ts = 0.0
+                return {"status": "bloqueado_permissao", "gatilho": gatilho, "retrato": retrato}
             self.continuidade_update(
                 comando_sugerido=gatilho,
                 comando_sugerido_payload=payload,

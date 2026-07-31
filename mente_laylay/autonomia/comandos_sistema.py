@@ -11,6 +11,8 @@ from typing import Callable, Optional
 
 import psutil
 
+from mente_laylay.integracao.catalogo_steam import resolver_jogo_steam
+
 try:
     import pygetwindow as gw
 except Exception:  # pragma: no cover
@@ -162,6 +164,21 @@ def abrir_programa(nome_solicitado: str, falar_cb: Optional[Callable[[str, str, 
             _falar(falar_cb, f"Abrindo {alvo}.", "calma", 1)
             return True
         raise Exception(f"O protocolo do Windows '{uri}' não respondeu.")
+
+    # O nome comercial de um jogo quase nunca coincide com o executável.
+    # Os manifestos locais da Steam são uma fonte rápida e confiável para
+    # resolver qualquer biblioteca instalada, inclusive em outros discos.
+    jogo_steam = resolver_jogo_steam(alvo)
+    if jogo_steam:
+        uri_steam = f"steam://rungameid/{jogo_steam['appid']}"
+        print(
+            f"🎮 [STEAM] Encontrado: {jogo_steam['nome']} "
+            f"(appid={jogo_steam['appid']}, confiança={jogo_steam['confianca']})"
+        )
+        if abrir_uri_sistema(uri_steam):
+            _falar(falar_cb, f"Abrindo {jogo_steam['nome']}.", "feliz", 1)
+            return True
+        raise Exception(f"A Steam encontrou '{jogo_steam['nome']}', mas recusou a abertura.")
 
     caminhos_customizados = {
         "xampp": r"C:\xampp\xampp-control.exe",

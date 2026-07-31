@@ -133,7 +133,8 @@ def _garantir_resultado_explicito(fala: str, resultado: ResultadoAcao, classe: s
             "desliguei", "criei", "apaguei", "ajustei", "aumentei", "baixei", "silenciei",
             "agendei", "cancelei", "está ligado", "esta ligado", "está desligado", "esta desligado",
             "já estava", "ja estava", "já está", "ja esta", "já ficou", "pronto",
-            "aberto", "em foco", "trouxe", "puxei pra frente",
+            "aberto", "em foco", "trouxe", "puxei pra frente", "encontrei",
+            "procurei", "listei",
         ),
         "falha": (
             "não consegui", "nao consegui", "não foi", "nao foi", "falhou", "não respondeu",

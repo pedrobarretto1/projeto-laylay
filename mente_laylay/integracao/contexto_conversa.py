@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any, Callable, Dict
 
 from mente_laylay.cognicao.coerencia_temporal import responder_correcao_temporal
+from mente_laylay.personalidade.politica_voz_unica import voz_unica_llm_ativa
 
 
 def montar_contexto_conversa_natural(
@@ -33,6 +34,7 @@ def montar_contexto_conversa_natural(
     registrar_leitura_emocional_usuario: Callable[..., Any] | None = None,
     acalmar_emocao: Callable[..., Any] | None = None,
     definir_emocao: Callable[..., Any] | None = None,
+    voz_unica_llm: bool = False,
 ) -> Dict[str, Any]:
     return {
         "current_emotion": current_emotion,
@@ -55,6 +57,7 @@ def montar_contexto_conversa_natural(
         "_registrar_leitura_emocional_usuario": registrar_leitura_emocional_usuario,
         "_acalmar_emocao": acalmar_emocao,
         "_definir_emocao": definir_emocao,
+        "_voz_unica_llm": bool(voz_unica_llm),
     }
 
 
@@ -95,6 +98,7 @@ def montar_contexto_inicio_chat_por_grupos(
         "current_emotion": base.get("current_emotion", "calma"),
         "emotion_level": base.get("emotion_level", 1),
         "_semantica_na_resposta_principal": bool(base.get("semantica_na_resposta_principal")),
+        "_voz_unica_llm": bool(base.get("voz_unica_llm")),
         "_processar_aprendizado_apelido_imediato": memoria.get("processar_aprendizado_apelido_imediato"),
         "_refinar_contexto_mental": memoria.get("refinar_contexto_mental"),
         "_registrar_autoaprimoramento": memoria.get("registrar_autoaprimoramento"),
@@ -102,6 +106,7 @@ def montar_contexto_inicio_chat_por_grupos(
         "_registrar_interacao_temporal": memoria.get("registrar_interacao_temporal"),
         "_registrar_resultado_execucao": memoria.get("registrar_resultado_execucao"),
         "_recuperar_aprendizados": memoria.get("recuperar_aprendizados"),
+        "_salvar_identidade_usuario": memoria.get("salvar_identidade_usuario"),
         "_texto_social_curto": conversa.get("texto_social_curto"),
         "_texto_conversa_casual_sem_acao": conversa.get("texto_conversa_casual_sem_acao"),
         "_texto_tem_comando_explicito": conversa.get("texto_tem_comando_explicito"),
@@ -111,12 +116,14 @@ def montar_contexto_inicio_chat_por_grupos(
         "_resolver_pergunta_curta_contextual_intencao": conversa.get("resolver_pergunta_curta_contextual_intencao"),
         "_texto_responde_pergunta_aberta": conversa.get("texto_responde_pergunta_aberta"),
         "_responder_pergunta_aberta": conversa.get("responder_pergunta_aberta"),
+        "_suspender_topico_conversacional": conversa.get("suspender_topico_conversacional"),
         "_texto_bloqueia_playlist_agora": musica_feedback.get("texto_bloqueia_playlist_agora"),
         "_texto_pede_direcao_musical_generica": musica_feedback.get("texto_pede_direcao_musical_generica"),
         "_responder_pedido_direcao_musical_generica": musica_feedback.get("responder_pedido_direcao_musical_generica"),
         "_processar_confirmacao_sugestao_musical": musica_feedback.get("processar_confirmacao_sugestao_musical"),
         "_texto_pede_opiniao_musica_atual": musica_feedback.get("texto_pede_opiniao_musica_atual"),
         "_responder_opiniao_musica_atual": musica_feedback.get("responder_opiniao_musica_atual"),
+        "_recomendar_musica_verificada": musica_feedback.get("recomendar_musica_verificada"),
         "_handle_feedback_pendente_misto": musica_feedback.get("handle_feedback_pendente_misto"),
         "_handle_feedback_pendente": musica_feedback.get("handle_feedback_pendente"),
         "_detectar_mover_playlist_texto": musica_feedback.get("detectar_mover_playlist_texto"),
@@ -136,6 +143,7 @@ def montar_contexto_inicio_chat_por_grupos(
         "_executar_intencao_curta_contextual": execucao.get("executar_intencao_curta_contextual"),
         "falar_com_lipsync": execucao.get("falar_com_lipsync"),
         "salvar_memoria": execucao.get("salvar_memoria"),
+        "listar_programas_abertos": execucao.get("listar_programas_abertos"),
         "mensagens_append": messages.append if hasattr(messages, "append") else None,
     }
     return contexto
@@ -164,6 +172,7 @@ class ContextoInicioChatRuntime:
                 "semantica_na_resposta_principal": str(
                     getattr(ns.get("_interpretador_semantico_runtime"), "modo", "") or ""
                 ).lower() == "main",
+                "voz_unica_llm": voz_unica_llm_ativa(),
             },
             memoria={
                 "processar_aprendizado_apelido_imediato": ns.get("_processar_aprendizado_apelido_imediato"),
@@ -173,6 +182,7 @@ class ContextoInicioChatRuntime:
                 "registrar_interacao_temporal": ns.get("_registrar_interacao_temporal"),
                 "registrar_resultado_execucao": ns.get("_registrar_resultado_execucao"),
                 "recuperar_aprendizados": getattr(self.memoria_sqlite, "recuperar_aprendizados", None),
+                "salvar_identidade_usuario": ns.get("_salvar_identidade_usuario"),
             },
             conversa={
                 "texto_social_curto": ns.get("_texto_social_curto"),
@@ -184,6 +194,7 @@ class ContextoInicioChatRuntime:
                 "resolver_pergunta_curta_contextual_intencao": ns.get("_resolver_pergunta_curta_contextual_intencao"),
                 "texto_responde_pergunta_aberta": ns.get("_texto_responde_pergunta_aberta"),
                 "responder_pergunta_aberta": ns.get("_responder_pergunta_aberta"),
+                "suspender_topico_conversacional": ns.get("_suspender_topico_conversacional"),
             },
             musica_feedback={
                 "texto_bloqueia_playlist_agora": ns.get("_texto_bloqueia_playlist_agora"),
@@ -192,6 +203,7 @@ class ContextoInicioChatRuntime:
                 "processar_confirmacao_sugestao_musical": ns.get("_processar_confirmacao_sugestao_musical"),
                 "texto_pede_opiniao_musica_atual": ns.get("_texto_pede_opiniao_musica_atual"),
                 "responder_opiniao_musica_atual": ns.get("_responder_opiniao_musica_atual"),
+                "recomendar_musica_verificada": ns.get("_recomendar_musica_verificada"),
                 "handle_feedback_pendente_misto": ns.get("_handle_feedback_pendente_misto"),
                 "handle_feedback_pendente": ns.get("_handle_feedback_pendente"),
                 "bloquear_playlist_temporariamente": ns.get("_bloquear_playlist_temporariamente"),
@@ -215,6 +227,7 @@ class ContextoInicioChatRuntime:
                 "executar_intencao_curta_contextual": ns.get("_executar_intencao_curta_contextual"),
                 "falar_com_lipsync": ns.get("falar_com_lipsync"),
                 "salvar_memoria": ns.get("salvar_memoria"),
+                "listar_programas_abertos": ns.get("listar_programas_abertos"),
             },
         )
         # O refinamento substitui o dicionario mental por um novo retrato.
@@ -227,6 +240,9 @@ class ContextoInicioChatRuntime:
         )
         contexto["_contexto_horario_atual"] = ns.get("_contexto_horario_atual")
         contexto["_renovar_sessao_conversa"] = ns.get("_renovar_sessao_conversa")
+        contexto["_continuar_visao_jogo_pendente"] = ns.get(
+            "_continuar_visao_jogo_pendente"
+        )
         return contexto
 
 

@@ -7,12 +7,15 @@ import time
 import random
 from typing import Any, Callable, Dict, Iterable, Tuple
 
+from mente_laylay.integracao.registro_iot import PortaIoT
+
 from mente_laylay.memoria_mental.reparacao_conversacional import (
     detectar_reparacao_conversacional,
     registrar_correcao_alvo,
 )
 from mente_laylay.memoria_mental.musica_conversacional import sugestao_musical_nova_conversacional
 from mente_laylay.memoria_mental.contexto_compartilhado import foco_por_dominio
+from mente_laylay.memoria_mental.continuidade_geral import selecionar_continuidade
 from mente_laylay.memoria_mental.continuidade_semantica import (
     aprender_correcao_semantica,
     interpretar_continuidade_semantica_llm,
@@ -78,6 +81,31 @@ def referencia_contextual_imediata(
     ):
         dominio_pedido = "iot"
 
+    continuidade = selecionar_continuidade(
+        estado,
+        texto=texto_atual,
+        dominio=dominio_pedido,
+        ttl_s=ttl_s,
+    )
+    if continuidade:
+        dominio_cont = str(continuidade.get("dominio") or "").strip()
+        tipo_ref = {
+            "musica": "playlist" if "PLAYLIST" in str(continuidade.get("intent") or "") else "midia",
+            "playlist_laylay": "playlist_laylay",
+            "arquivos": "arquivo",
+        }.get(dominio_cont, dominio_cont)
+        alvo_cont = str(continuidade.get("alvo") or continuidade.get("topico") or "").strip()
+        params_cont = dict(continuidade.get("params") or {})
+        if alvo_cont or tipo_ref in {"midia", "volume"}:
+            return {
+                "tipo": tipo_ref,
+                "alvo": alvo_cont or ("musica" if tipo_ref == "midia" else tipo_ref),
+                "intencao": str(continuidade.get("intent") or ""),
+                "params": params_cont,
+                "dominio_explicito": bool(dominio_pedido),
+                "origem_continuidade": "geral",
+            }
+
     if dominio_pedido:
         foco_dominio = foco_por_dominio(estado, dominio_pedido, ttl_s=ttl_s)
         alvo_dominio = str(foco_dominio.get("alvo") or foco_dominio.get("topico") or "").strip()
@@ -106,6 +134,19 @@ def referencia_contextual_imediata(
         alvo_app = str(ultimo_params.get("nome_app") or ultimo_params.get("app") or ultimo_app or "").strip()
         if alvo_app:
             return {"tipo": "app", "alvo": alvo_app, "intencao": ultima_intencao, "params": ultimo_params}
+    if ultima_intencao in {"LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_COPY"}:
+        alvo_curadoria = str(
+            ultimo_params.get("nome_playlist")
+            or ultimo_params.get("origem")
+            or ""
+        ).strip()
+        if alvo_curadoria:
+            return {
+                "tipo": "playlist_laylay",
+                "alvo": alvo_curadoria,
+                "intencao": ultima_intencao,
+                "params": ultimo_params,
+            }
     if ultima_intencao in {"PLAYLIST_PLAY", "PLAYLIST_ADD", "PLAYLIST_LIST", "TOCAR_PLAYLIST", "TOCAR_PLAYLIST_SHUFFLE"}:
         if ultima_playlist:
             return {"tipo": "playlist", "alvo": ultima_playlist, "intencao": ultima_intencao, "params": ultimo_params}
@@ -124,6 +165,13 @@ def referencia_contextual_imediata(
         return {"tipo": "app", "alvo": alvo_foco, "intencao": ultima_intencao, "params": ultimo_params}
     if habilidade_foco == "site" and alvo_foco:
         return {"tipo": "site", "alvo": alvo_foco, "intencao": ultima_intencao, "params": ultimo_params}
+    if habilidade_foco == "playlist_laylay" and alvo_foco:
+        return {
+            "tipo": "playlist_laylay",
+            "alvo": alvo_foco,
+            "intencao": ultima_intencao,
+            "params": ultimo_params,
+        }
     if habilidade_foco in {"playlist", "musica", "midia"}:
         if ultima_playlist:
             return {"tipo": "playlist", "alvo": ultima_playlist, "intencao": ultima_intencao, "params": ultimo_params}
@@ -161,6 +209,36 @@ def resolver_comando_acao_geral_contextual(
     alvo_ref = str(contexto_ref.get("alvo") or "").strip()
     ultima_playlist = str(ultima_playlist or "").strip()
 
+    # Consultas elipticas usam apenas uma playlist realmente resolvida pela
+    # continuidade. Em qualquer outro dominio, nao herdamos uma playlist
+    # antiga e deixamos a frase seguir para esclarecimento ou conversa.
+    consulta_faixas_referenciada = bool(
+        re.search(r"\b(?:quais|lista|liste|mostra|mostre|fala|diz)\b", t)
+        and re.search(r"\b(?:musicas|músicas|faixas|sons)\b", t)
+        and re.search(r"\b(?:nela|nessa|nesta|dela|aqui)\b", t)
+    )
+    if consulta_faixas_referenciada:
+        if tipo_ref not in {"playlist", "playlist_laylay"}:
+            return None
+        nome_playlist = str(
+            alvo_ref
+            or ultimo_params.get("nome_playlist")
+            or ultimo_params.get("playlist")
+            or (ultima_playlist if tipo_ref == "playlist" else "")
+            or ""
+        ).strip()
+        if not nome_playlist:
+            return None
+        print(f"🎵 [CONTEXTO-GERAL] listando playlist referenciada -> '{nome_playlist}'")
+        return {
+            "intent": (
+                "LAYLAY_PLAYLIST_LIST"
+                if tipo_ref == "playlist_laylay"
+                else "PLAYLIST_LIST"
+            ),
+            "params": {"nome_playlist": nome_playlist, "referencia_contextual": True},
+        }
+
     if tipo_ref == "volume":
         if re.fullmatch(r"(?:desmuta|desmutar|tira do mudo|volta o som)", t):
             return {"intent": "VOLUME", "params": {"acao": "unmute", "referencia_contextual": True}}
@@ -175,7 +253,12 @@ def resolver_comando_acao_geral_contextual(
             print(f"🔊 [CONTEXTO-GERAL] ajustando volume recente -> {valor}%")
             return {"intent": "VOLUME", "params": {"acao": "set", "nivel_volume": valor, "referencia_contextual": True}}
 
-    tem_referencia = bool(re.search(r"\b(?:ela|ele|isso|aquilo|essa|esse|esta|este)\b", t))
+    referencia_ultima_janela = bool(re.search(
+        r"\b(?:que\s+(?:voce\s+)?(?:acabou\s+de\s+)?abrir|"
+        r"ultim[oa]\s+(?:programa|app|aplicativo|janela))\b",
+        t,
+    ))
+    tem_referencia = bool(re.search(r"\b(?:ela|ele|isso|aquilo|essa|esse|esta|este)\b", t)) or referencia_ultima_janela
     tem_repeticao = bool(re.search(r"\b(?:novamente|repete|repetir)\b|\bde\s+novo\b|\boutra\s+vez\b", t))
     tem_reversao = bool(re.search(r"\b(?:restaur\w*|recuper\w*|desfaz\w*|traz\w*|volt\w*)\b", t))
     verbo_abrir = bool(re.search(r"\b(?:abr\w*|coloc\w*|bot\w*|toc\w*|quer\w*)\b", t))
@@ -336,14 +419,36 @@ def resolver_comando_arquivo_contextual(
         ts_mente = float(estado.get("ts") or 0.0)
     except Exception:
         ts_mente = 0.0
-    if not (
-        (ultima_intencao in {"CREATE_FOLDER", "DELETE_ITEM", "CREATE_FILE", "MOVE_ITEM"} or ultima_habilidade in {"arquivo", "arquivos"})
+    estrutura = dict(estrutura_recente or {})
+    contexto_mental_recente = bool(
+        (ultima_intencao in {"CREATE_FOLDER", "DELETE_ITEM", "CREATE_FILE", "MOVE_ITEM"}
+         or ultima_habilidade in {"arquivo", "arquivos", "pasta"})
         and ts_mente
         and (time.time() - ts_mente <= ttl_s)
-    ):
+    )
+    # A estrutura já passou pelo próprio TTL no runtime. Ela continua sendo
+    # evidência válida mesmo se um registro genérico não tiver atualizado o
+    # relógio global da mente.
+    if not contexto_mental_recente and not estrutura:
         return None
 
-    estrutura = dict(estrutura_recente or {})
+    ultima_acao_params = (
+        dict(estado.get("ultima_acao_params") or {})
+        if isinstance(estado.get("ultima_acao_params"), dict)
+        else {}
+    )
+    ultimo_status = str(estado.get("ultima_acao_status") or "").strip().casefold()
+    # Resposta curta ao esclarecimento "apagar o quê?". Só é aceita logo
+    # após DELETE_ITEM sem alvo (ou explicitamente marcado como ausente).
+    if (
+        ultima_intencao == "DELETE_ITEM"
+        and (not any(str(valor or "").strip() for valor in ultima_acao_params.values())
+             or ultimo_status == "alvo_ausente")
+        and re.fullmatch(r"[a-zA-ZÀ-ÿ0-9_.-][a-zA-ZÀ-ÿ0-9_.\- ]{0,79}", t)
+        and t.casefold() not in {"sim", "não", "nao", "cancela", "cancelar"}
+    ):
+        return {"intent": "DELETE_ITEM", "params": {"alvo": t}}
+
     if not estrutura:
         return None
 
@@ -353,9 +458,10 @@ def resolver_comando_arquivo_contextual(
         t,
         flags=re.IGNORECASE,
     ):
+        caminho = str(estrutura.get("caminho") or "").strip()
         nome = str(estrutura.get("nome") or estrutura.get("pasta") or estrutura.get("alvo") or "").strip()
         arquivo_nome = str(estrutura.get("arquivo_nome") or estrutura.get("nome_arquivo") or "").strip()
-        alvo = nome or arquivo_nome
+        alvo = caminho or nome or arquivo_nome
         tipo = "pasta" if nome else ("arquivo" if arquivo_nome else "")
         if alvo:
             print(f"📁 [ARQUIVO:CONTEXTO] apagando referencia curta -> '{alvo}'")
@@ -454,9 +560,14 @@ def resolver_comando_janela_contextual(
             return {"intent": "MAXIMIZE_WINDOW", "params": {"nome_app": app_explicito}, "_alvo_corrigido": app_explicito}
         return {"intent": "APP_OPEN", "params": {"nome_app": app_explicito, "modo": "focus"}, "_alvo_corrigido": app_explicito}
 
-    if not any(x in t for x in ["ele", "ela", "isso", "esse", "essa"]):
+    referencia_ultima_janela = bool(re.search(
+        r"\b(?:que\s+(?:voce\s+)?(?:acabou\s+de\s+)?abrir|"
+        r"ultim[oa]\s+(?:programa|app|aplicativo|janela))\b",
+        t,
+    ))
+    if not referencia_ultima_janela and not any(x in t for x in ["ele", "ela", "isso", "esse", "essa"]):
         return None
-    if not any(x in t for x in ["foco", "na frente", "pra frente", "para frente", "tela cheia", "fullscreen", "maximiza", "maximizar"]):
+    if not quer_fechar and not any(x in t for x in ["foco", "na frente", "pra frente", "para frente", "tela cheia", "fullscreen", "maximiza", "maximizar"]):
         return None
 
     estado = dict(mente_integrada_estado or {})
@@ -484,6 +595,8 @@ def resolver_comando_janela_contextual(
 
     if quer_maximizar:
         return {"intent": "MAXIMIZE_WINDOW", "params": {"nome_app": ultimo_app}}
+    if quer_fechar:
+        return {"intent": "CLOSE_APP", "params": {"nome_app": ultimo_app, "referencia_contextual": True}}
     return {"intent": "APP_OPEN", "params": {"nome_app": ultimo_app, "modo": "focus"}}
 
 
@@ -530,14 +643,41 @@ class ContextoImediatoRuntime:
     def __init__(
         self,
         *,
-        namespace_getter: Callable[[], Dict[str, Any]],
         estado_runtime_getter: Callable[[], Any],
+        namespace_getter: Callable[[], Dict[str, Any]] | None = None,
+        servicos_iniciais: Dict[str, Any] | None = None,
+        iot: PortaIoT | None = None,
     ) -> None:
-        self.namespace_getter = namespace_getter
+        origem = dict(servicos_iniciais or {})
+        if not origem and callable(namespace_getter):
+            origem = dict(namespace_getter() or {})
+        permitidos = (
+            "_normalizar_texto_com_apelidos", "_alvo_corrigido_atual",
+            "_registrar_alvo_corrigido",
+            "falar_com_lipsync", "_contexto_musical_ativo",
+            "_estrutura_arquivo_recente", "_foco_vivo_atual", "enviar_mensagem",
+        )
+        self._dependencias = permitidos
+        self._servicos = self._filtrar(origem)
         self.estado_runtime_getter = estado_runtime_getter
+        self.iot = iot
+
+    def _filtrar(self, servicos: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            nome: servicos[nome]
+            for nome in self._dependencias
+            if nome in servicos
+        }
 
     def _namespace(self) -> Dict[str, Any]:
-        return self.namespace_getter() or {}
+        return dict(self._servicos)
+
+    def conectar_servicos(self, servicos: Dict[str, Any]) -> None:
+        self._servicos = self._filtrar(servicos)
+
+    @property
+    def servicos_registrados(self) -> tuple[str, ...]:
+        return tuple(sorted(self._servicos))
 
     def _estado(self) -> Any:
         return self.estado_runtime_getter()
@@ -571,7 +711,7 @@ class ContextoImediatoRuntime:
 
     def resolver_iot(self, texto: str) -> Dict[str, Any] | None:
         ns = self._namespace()
-        detector = ns.get("_detectar_intencao_iot")
+        detector = getattr(self.iot, "detectar", None)
         if not callable(detector):
             return None
         t = ns["_normalizar_texto_com_apelidos"](texto)

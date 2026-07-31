@@ -21,6 +21,9 @@ _BASE_UTILIDADE = {
     "musica": 38,
     "contexto_janela": 32,
     "observacao": 30,
+    # Já passou pela análise visual e pelo Diretor de Presença. Aqui ainda
+    # protegemos turno e fala recente, sem punir o simples fato de haver jogo.
+    "presenca_jogo": 72,
 }
 _FUNCOES_SENSIVEIS = {
     "frustracao", "decepcao", "desabafo", "tristeza", "correcao", "encerramento",
@@ -37,6 +40,7 @@ _INTERVALO_BASE_S = {
     "contexto_janela": 1200.0,
     "observacao": 1200.0,
     "aprendizado": 1800.0,
+    "presenca_jogo": 240.0,
 }
 _INTERVALO_MAX_S = 86400.0
 
@@ -209,6 +213,7 @@ class PorteiroProatividadeRuntime:
         pontos = int(_BASE_UTILIDADE.get(tipo_norm, 34))
         motivos = [f"utilidade base {pontos}"]
         prioritario = tipo_norm in _TIPOS_PRIORITARIOS
+        presenca_jogo = tipo_norm == "presenca_jogo"
         assinatura = _assinatura(tipo_norm, texto)
         with self._lock:
             self._historico = {
@@ -254,7 +259,7 @@ class PorteiroProatividadeRuntime:
         if turno_ativo and not prioritario:
             pontos -= 48
             motivos.append("resposta do usuário ainda está sendo construída")
-        if (modo_chat or conversa_ativa) and not prioritario:
+        if (modo_chat or conversa_ativa) and not prioritario and not presenca_jogo:
             pontos -= 35
             motivos.append("conversa ativa")
         if idade_entrada < 30.0 and not prioritario:
@@ -266,9 +271,11 @@ class PorteiroProatividadeRuntime:
         if funcao in _FUNCOES_SENSIVEIS and not prioritario:
             pontos -= 45
             motivos.append(f"momento sensível: {funcao}")
-        if modo_jogo and not prioritario:
+        if modo_jogo and not prioritario and not presenca_jogo:
             pontos -= 55
             motivos.append("jogo em andamento")
+        elif modo_jogo and presenca_jogo:
+            motivos.append("presença contextual segura no jogo")
         if reuniao_ativa and not prioritario:
             pontos -= 65
             motivos.append("reunião em andamento")
@@ -284,10 +291,16 @@ class PorteiroProatividadeRuntime:
             else:
                 acao = "adiar"
                 adiar_s = 10.0
-        elif (modo_chat or conversa_ativa or idade_entrada < 30.0 or idade_fala < 30.0) and not prioritario:
+        elif (
+            ((modo_chat or conversa_ativa) and not presenca_jogo)
+            or idade_entrada < 30.0
+            or idade_fala < 30.0
+        ) and not prioritario:
             acao = "adiar" if urgente or pontos >= 0 else "descartar"
             adiar_s = max(8.0, min(30.0, 30.0 - min(idade_entrada, idade_fala)))
-        elif (modo_jogo or reuniao_ativa or modo_foco) and not prioritario:
+        elif (
+            (modo_jogo and not presenca_jogo) or reuniao_ativa or modo_foco
+        ) and not prioritario:
             acao = "adiar" if urgente or pontos >= 30 else "descartar"
             adiar_s = 30.0 if acao == "adiar" else 0.0
         elif pontos >= 60:

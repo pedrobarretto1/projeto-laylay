@@ -12,14 +12,9 @@ from typing import Any, Callable, Dict
 from mente_laylay.personalidade.falas_variadas import escolher as _escolher_fala_variada
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao, inferir_confirmacao
 from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao
-from mente_laylay.arquivos.transacao_arquivos import executar_transacao_arquivo
-from mente_laylay.arquivos.lixeira_laylay import (
-    cancelar_exclusao_pendente,
-    confirmar_exclusao_pendente,
-    mover_para_lixeira,
-    restaurar_ultimo_item,
-)
-from mente_laylay.arquivos.arquivos_sistema import buscar_itens_com_nome
+from mente_laylay.personalidade.confirmacao_llm import personalizar_confirmacao_llm
+from mente_laylay.integracao.registro_arquivos import PortaArquivosLeitura
+from mente_laylay.integracao.registro_mutacoes_arquivos import PortaArquivosMutacao
 
 
 def _get(ctx: Dict[str, Any], nome: str, default=None):
@@ -38,13 +33,16 @@ def executar_intencao_arquivos(
     item_local_existe: Callable[[str, str], bool],
     resolver_caminho_local: Callable[[str], str],
     resolver_referencia_arquivo_contextual: Callable[[str, str], str],
+    arquivos_leitura: PortaArquivosLeitura | None = None,
+    arquivos_mutacao: PortaArquivosMutacao | None = None,
 ) -> bool:
     falar_original = _get(ctx, "falar_com_lipsync")
-    criar_pasta = _get(ctx, "criar_pasta")
-    criar_ou_editar_arquivo = _get(ctx, "criar_ou_editar_arquivo")
-    mover_arquivo = _get(ctx, "mover_arquivo")
-    deletar_item = _get(ctx, "deletar_item")
-    resolver_caminho = _get(ctx, "resolver_caminho")
+    criar_pasta = getattr(arquivos_mutacao, "criar_pasta", None)
+    criar_ou_editar_arquivo = getattr(arquivos_mutacao, "criar_arquivo", None)
+    escrever_arquivo_texto_seguro = getattr(arquivos_mutacao, "escrever_texto_seguro", None)
+    resolver_referencia_cooperativa = _get(ctx, "_resolver_referencia_cooperativa")
+    mover_arquivo = getattr(arquivos_mutacao, "mover_item", None)
+    resolver_caminho = getattr(arquivos_mutacao, "resolver_caminho", None)
     ultima_pasta_contextual = _get(ctx, "ultima_pasta_contextual")
     registrar_estrutura_arquivo_recente = _get(ctx, "_registrar_estrutura_arquivo_recente")
     _enviar_pc_b = _get(ctx, "_enviar_pc_b")
@@ -66,26 +64,142 @@ def executar_intencao_arquivos(
         if not status:
             falar_original(texto, emocao, nivel)
             return
+        contrato = ResultadoAcao(
+            intent=intent,
+            status=status,
+            alvo=alvo_planejado,
+            params=params,
+            executou=resultado_fala.get("executou"),
+            confirmado=inferir_confirmacao(status, resultado_fala.get("executou")),
+            texto_usuario=texto_original,
+            contexto={"destino": destino_val},
+        )
         plano = planejar_resposta_acao(
-            ResultadoAcao(
-                intent=intent,
-                status=status,
-                alvo=alvo_planejado,
-                executou=resultado_fala.get("executou"),
-                confirmado=inferir_confirmacao(status, resultado_fala.get("executou")),
-                texto_usuario=texto_original,
-                contexto={"destino": destino_val},
-            ),
+            contrato,
             texto,
             emocao_preferida=emocao,
             nivel_preferido=nivel,
         )
+        confirmacao = personalizar_confirmacao_llm(
+            contrato,
+            plano.fala,
+            classe=plano.classe,
+            emocao=plano.emocao,
+            nivel=plano.nivel,
+            enviar_mensagem=_get(ctx, "enviar_mensagem"),
+            contexto={"current_emotion": _get(ctx, "current_emotion", "calma")},
+        )
         resultado_fala["status"] = ""
         resultado_fala["executou"] = None
-        falar_original(plano.fala, plano.emocao, plano.nivel)
+        falar_resultado = _get(ctx, "_falar_resultado_operacional")
+        if callable(falar_resultado):
+            falar_resultado(
+                contrato,
+                confirmacao.fala,
+                confirmacao.emocao,
+                confirmacao.nivel,
+            )
+        else:
+            falar_original(confirmacao.fala, confirmacao.emocao, confirmacao.nivel)
+
+    if intent == "FILE_SEARCH":
+        pesquisar = getattr(arquivos_leitura, "pesquisar", None)
+        referencia_caminho = str(params.get("referencia_caminho") or "").strip()
+        if referencia_caminho:
+            confirmado = os.path.isfile(referencia_caminho)
+            marcar_resultado("caminho_encontrado" if confirmado else "resultado_expirado", confirmado)
+            if confirmado:
+                registrar_arquivo(referencia_caminho, "arquivos")
+                falar(
+                    f"O arquivo fica em {referencia_caminho}.",
+                    "calma", 1,
+                )
+            else:
+                falar("Esse resultado não está mais disponível nesse caminho.", "calma", 1)
+            return True
+        consulta = str(params.get("query") or params.get("tema") or params.get("alvo") or "").strip()
+        if not consulta:
+            marcar_resultado("consulta_vazia", False)
+            falar("O que você quer que eu procure nos seus arquivos?", "calma", 1)
+            return True
+        if not callable(pesquisar):
+            marcar_resultado("indisponivel", False)
+            falar("A pesquisa nos arquivos não está disponível agora.", "calma", 1)
+            return True
+        try:
+            pesquisa = dict(pesquisar(
+                consulta,
+                limite=int(params.get("limite") or 5),
+                forcar_indice=bool(params.get("forcar_indice")),
+                somente_projeto=bool(params.get("somente_projeto")),
+            ) or {})
+        except Exception as erro:
+            log = _get(ctx, "print") or _get(ctx, "log")
+            if callable(log):
+                log(f"⚠️ [ARQUIVOS:PESQUISA] falha isolada: {type(erro).__name__}")
+            pesquisa = {"ok": False, "status": "falha_execucao", "resultados": []}
+        resultados = [dict(item) for item in list(pesquisa.get("resultados") or []) if isinstance(item, dict)]
+        if not pesquisa.get("ok"):
+            marcar_resultado(str(pesquisa.get("status") or "falha_execucao"), False)
+            falar("Não consegui concluir essa busca nos arquivos agora.", "calma", 1)
+            return True
+        if not resultados:
+            marcar_resultado("sem_resultados", True)
+            falar(f"Procurei por {consulta}, mas não encontrei um arquivo relacionado.", "calma", 1)
+            return True
+        caminhos = [str(item.get("caminho") or "") for item in resultados if item.get("caminho")]
+        nomes = [str(item.get("nome") or os.path.basename(str(item.get("caminho") or ""))) for item in resultados]
+        if callable(registrar_estrutura_arquivo_recente):
+            registrar_estrutura_arquivo_recente({
+                "tipo": "pesquisa_semantica",
+                "consulta": consulta[:240],
+                "resultados": caminhos[:5],
+                "nomes": nomes[:5],
+                "somente_projeto": bool(params.get("somente_projeto")),
+            })
+        registrar_arquivo(caminhos[0], "arquivos")
+        aprender = _get(ctx, "_aprender_pesquisa_semantica_arquivos")
+        if callable(aprender):
+            try:
+                aprender(consulta, resultados)
+            except Exception:
+                pass
+        marcar_resultado("arquivos_encontrados", True)
+        if len(resultados) == 1:
+            motivos = ", ".join(resultados[0].get("motivos") or [])
+            complemento = f" Ele apareceu por {motivos}." if motivos else ""
+            falar(f"Encontrei {nomes[0]}.{complemento}", "feliz", 1)
+        else:
+            lista = "; ".join(f"{indice + 1}: {nome}" for indice, nome in enumerate(nomes[:3]))
+            restante = len(resultados) - 3
+            sufixo = f" E mais {restante}." if restante > 0 else ""
+            falar(
+                f"Encontrei {len(resultados)} arquivos relacionados: {lista}.{sufixo} "
+                "Você pode pedir para abrir o primeiro, o segundo ou o terceiro.",
+                "feliz", 1,
+            )
+        return True
+
+    if intent == "FILE_OPEN_RESULT":
+        abrir = getattr(arquivos_leitura, "abrir", None)
+        caminho = str(params.get("caminho") or "").strip()
+        nome = str(params.get("alvo") or os.path.basename(caminho) or "arquivo").strip()
+        sucesso = bool(abrir(caminho)) if callable(abrir) and caminho else False
+        marcar_resultado("arquivo_aberto" if sucesso else "falha_abertura", sucesso)
+        if sucesso:
+            registrar_arquivo(caminho, "arquivos")
+            falar(f"Abri {nome} para você.", "feliz", 1)
+        else:
+            falar(f"Encontrei {nome}, mas não consegui abri-lo agora.", "calma", 1)
+        return True
 
     if intent == "FILE_TRANSACTION":
-        resultado = executar_transacao_arquivo(params)
+        transacionar = getattr(arquivos_mutacao, "transacionar", None)
+        if not callable(transacionar):
+            marcar_resultado("indisponivel", False)
+            falar("As alterações de arquivos não estão disponíveis agora.", "calma", 1)
+            return True
+        resultado = transacionar(params)
         marcar_resultado(resultado.status if resultado.sucesso else "falha_execucao", resultado.sucesso)
         if resultado.sucesso:
             registrar_arquivo(resultado.destino or resultado.origem, "arquivos")
@@ -106,14 +220,24 @@ def executar_intencao_arquivos(
         return True
 
     if intent == "CANCEL_DELETE_ITEM":
-        cancelar_exclusao_pendente()
+        cancelar = getattr(arquivos_mutacao, "cancelar_exclusao", None)
+        if not callable(cancelar):
+            marcar_resultado("indisponivel", False)
+            falar("A lixeira da Laylay não está disponível agora.", "calma", 1)
+            return True
+        cancelar()
         marcar_resultado("exclusao_cancelada", False)
         if callable(falar):
             falar("Certo, cancelei a exclusão. Não mexi em nada.", "calma", 1)
         return True
 
     if intent == "CONFIRM_DELETE_ITEM":
-        resultado = confirmar_exclusao_pendente()
+        confirmar = getattr(arquivos_mutacao, "confirmar_exclusao", None)
+        if not callable(confirmar):
+            marcar_resultado("indisponivel", False)
+            falar("A lixeira da Laylay não está disponível agora.", "calma", 1)
+            return True
+        resultado = confirmar()
         marcar_resultado(resultado.status, resultado.sucesso)
         if callable(falar):
             if resultado.sucesso:
@@ -123,7 +247,12 @@ def executar_intencao_arquivos(
         return True
 
     if intent == "RESTORE_DELETED_ITEM":
-        resultado = restaurar_ultimo_item()
+        restaurar = getattr(arquivos_mutacao, "restaurar_ultimo", None)
+        if not callable(restaurar):
+            marcar_resultado("indisponivel", False)
+            falar("A restauração de arquivos não está disponível agora.", "calma", 1)
+            return True
+        resultado = restaurar()
         marcar_resultado(resultado.status, resultado.sucesso)
         if callable(falar):
             if resultado.sucesso:
@@ -142,11 +271,11 @@ def executar_intencao_arquivos(
         arquivo_nome = str(params.get("arquivo_nome") or params.get("nome_arquivo") or params.get("arquivo") or "").strip()
         arquivo_conteudo = str(params.get("arquivo_conteudo") or params.get("conteudo") or params.get("texto") or "").strip()
 
-        def registrar_contexto_criado() -> None:
+        def registrar_contexto_criado(caminho_criado: str = "") -> None:
             if not callable(registrar_estrutura_arquivo_recente):
                 return
             try:
-                registrar_estrutura_arquivo_recente({
+                dados_contexto = {
                     "nome": nome,
                     "pasta_pai": pasta_pai,
                     "pasta_interna": pasta_interna,
@@ -154,7 +283,11 @@ def executar_intencao_arquivos(
                     "arquivo_nome": arquivo_nome,
                     "arquivo_conteudo": arquivo_conteudo,
                     "target": destino_val,
-                })
+                    "tipo": "pasta",
+                }
+                if caminho_criado:
+                    dados_contexto["caminho"] = caminho_criado
+                registrar_estrutura_arquivo_recente(dados_contexto)
             except Exception:
                 pass
         if pasta_pai.lower() in {"ela", "nela", "essa", "essa pasta", "dela", "dentro dela"} and callable(ultima_pasta_contextual):
@@ -162,7 +295,7 @@ def executar_intencao_arquivos(
         if not nome:
             if callable(falar):
                 falar(_escolher_fala_variada([
-                    "Criar qual pasta, Pedro? Me dá o nome.",
+                    "Criar qual pasta? Me dá o nome.",
                     "Qual pasta você quer criar?",
                     "Me fala o nome da pasta.",
                 ]), "calma", 1)
@@ -183,9 +316,10 @@ def executar_intencao_arquivos(
                 sucesso = item_local_existe(nome_resolvido, "pasta")
             pasta_ok = bool(sucesso)
             if sucesso:
-                registrar_arquivo(nome_resolvido, "arquivos")
+                registrar_arquivo(nome_resolvido, "pasta")
                 marcar_resultado("pasta_criada", True)
-                registrar_contexto_criado()
+                caminho_criado = resolver_caminho_local(nome_resolvido)
+                registrar_contexto_criado(caminho_criado)
             else:
                 marcar_resultado("falha_execucao", False)
             # Em um pedido composto, o componente interno confirma o resultado
@@ -288,35 +422,122 @@ def executar_intencao_arquivos(
         return True
 
     if intent == "CREATE_FILE":
-        alvo = str(params.get("alvo") or params.get("nome") or params.get("arquivo") or "").strip()
-        conteudo = str(params.get("conteudo") or params.get("texto") or "")
-        if not alvo:
+        alvo = str(
+            params.get("alvo")
+            or params.get("nome")
+            or params.get("nome_arquivo")
+            or params.get("arquivo_nome")
+            or params.get("arquivo")
+            or ""
+        ).strip()
+        pasta = str(
+            params.get("pasta")
+            or params.get("pasta_pai")
+            or params.get("diretorio")
+            or params.get("diretório")
+            or ""
+        ).strip()
+        if pasta.casefold() in {
+            "dela", "dele", "nela", "nele", "essa", "esse",
+            "essa pasta", "aquela pasta", "a pasta",
+        }:
+            marcar_resultado("referencia_nao_resolvida", False)
             if callable(falar):
-                falar("Qual arquivo você quer criar, Pedro?", "calma", 1)
+                falar("Eu entendi que é dentro de uma pasta anterior, mas perdi qual era. Me diz o nome dela.", "calma", 1)
+            return True
+        tipo_arquivo = str(params.get("tipo_arquivo") or params.get("tipo") or "").strip().casefold()
+        conteudo_ref = str(params.get("conteudo_ref") or "").strip()
+        conteudo_hash = str(params.get("conteudo_hash") or "").strip()
+        sobrescrever_confirmado = params.get("sobrescrever_confirmado") is True
+        conteudo = str(params.get("conteudo") or params.get("texto") or "")
+        if conteudo_ref:
+            if not callable(resolver_referencia_cooperativa):
+                marcar_resultado("referencia_indisponivel", False)
+                if callable(falar):
+                    falar("A referência temporária ao texto não está disponível. Não criei o arquivo.", "calma", 1)
+                return True
+            try:
+                referencia = dict(resolver_referencia_cooperativa(
+                    conteudo_ref, hash_esperado=conteudo_hash,
+                ) or {})
+            except Exception:
+                referencia = {"ok": False, "status": "referencia_indisponivel"}
+            if not referencia.get("ok"):
+                marcar_resultado(str(referencia.get("status") or "referencia_expirada"), False)
+                if callable(falar):
+                    falar("A referência temporária ao texto expirou. Copie novamente antes de criar o arquivo.", "calma", 1)
+                return True
+            conteudo = str(referencia.get("conteudo") or "")
+            if conteudo_hash and str(referencia.get("hash") or "") != conteudo_hash:
+                marcar_resultado("referencia_divergente", False)
+                if callable(falar):
+                    falar("O conteúdo temporário mudou. Por segurança, não criei o arquivo.", "calma", 1)
+                return True
+        if not alvo:
+            marcar_resultado("alvo_ausente", False)
+            if callable(falar):
+                falar("Qual arquivo você quer criar?", "calma", 1)
             return True
         if destino_val == "pc_b":
             if callable(falar):
                 falar("Ainda não envio arquivo de texto direto para o PC B.", "calma", 1)
             marcar_resultado("arquivo_pc_b_nao_suportado", False)
             return True
-        caminho = resolver_caminho_local(alvo)
-        sucesso = bool(criar_ou_editar_arquivo(caminho, conteudo, "w")) if callable(criar_ou_editar_arquivo) else False
+        arquivo_limpo = alvo.strip().strip("/\\")
+        if tipo_arquivo in {"texto", "txt", "arquivo de texto"} and not arquivo_limpo.lower().endswith(".txt"):
+            arquivo_limpo = f"{arquivo_limpo}.txt"
+        if pasta:
+            pasta_base = resolver_caminho_local(pasta)
+            caminho = os.path.join(pasta_base, arquivo_limpo)
+        else:
+            caminho = resolver_caminho_local(arquivo_limpo)
+        resultado_seguro = {}
+        if conteudo_ref:
+            if callable(escrever_arquivo_texto_seguro):
+                resultado_seguro = dict(escrever_arquivo_texto_seguro(
+                    caminho, conteudo, sobrescrever=sobrescrever_confirmado,
+                ) or {})
+            sucesso = bool(
+                resultado_seguro.get("ok")
+                and resultado_seguro.get("confirmado") is True
+                and (not conteudo_hash or resultado_seguro.get("hash") == conteudo_hash)
+            )
+        else:
+            sucesso = bool(criar_ou_editar_arquivo(caminho, conteudo, "w")) if callable(criar_ou_editar_arquivo) else False
+            if sucesso:
+                sucesso = item_local_existe(caminho, "arquivo")
         if sucesso:
-            sucesso = item_local_existe(caminho, "arquivo")
-        if sucesso:
-            registrar_arquivo(caminho, "arquivos")
+            registrar_arquivo(caminho, "arquivo")
             marcar_resultado("arquivo_criado", True)
             if callable(registrar_estrutura_arquivo_recente):
                 try:
-                    registrar_estrutura_arquivo_recente({"arquivo_nome": alvo, "target": destino_val})
+                    registrar_estrutura_arquivo_recente({
+                        "arquivo_nome": arquivo_limpo,
+                        "caminho": caminho,
+                        "pasta": pasta,
+                        "tipo": "arquivo",
+                        "tipo_arquivo": tipo_arquivo,
+                        "target": destino_val,
+                    })
                 except Exception:
                     pass
         else:
-            marcar_resultado("falha_execucao", False)
+            marcar_resultado(
+                str(resultado_seguro.get("status") or "falha_execucao"), False,
+            )
         if callable(falar):
             falar(
-                _escolher_fala_variada([f"Arquivo {alvo} criado.", f"Pronto, {alvo} já existe.", f"Criei {alvo}."])
-                if sucesso else _escolher_fala_variada([f"Não consegui criar {alvo}.", f"O arquivo {alvo} não saiu direito."]),
+                _escolher_fala_variada([
+                    f"Criei {arquivo_limpo} dentro de {pasta}.",
+                    f"Pronto, {arquivo_limpo} já está em {pasta}.",
+                ] if pasta else [
+                    f"Arquivo {arquivo_limpo} criado.",
+                    f"Pronto, {arquivo_limpo} já existe.",
+                    f"Criei {arquivo_limpo}.",
+                ]) if sucesso else _escolher_fala_variada([
+                    f"Não consegui criar {arquivo_limpo}.",
+                    f"O arquivo {arquivo_limpo} não saiu direito.",
+                ]),
                 "calma" if sucesso else "irritada",
                 1 if sucesso else 2,
             )
@@ -334,9 +555,10 @@ def executar_intencao_arquivos(
         tipo = str(params.get("tipo") or "").strip().lower()
         alvo = resolver_referencia_arquivo_contextual(alvo, tipo)
         if not alvo:
+            marcar_resultado("alvo_ausente", False)
             if callable(falar):
                 falar(_escolher_fala_variada([
-                    "Apagar o quê, Pedro? Me dá o nome certinho.",
+                    "Apagar o quê? Me dá o nome certinho.",
                     "Faltou o alvo. Eu não saio apagando no escuro.",
                     "Me fala o que eu devo apagar antes de eu virar uma tragédia ambulante.",
                 ]), "calma", 1)
@@ -362,7 +584,8 @@ def executar_intencao_arquivos(
                     tipo_alvo = "arquivo"
             except Exception:
                 tipo_alvo = tipo_alvo or ""
-        candidatos = buscar_itens_com_nome(alvo)
+        buscar_itens = getattr(arquivos_mutacao, "buscar_itens", None)
+        candidatos = list(buscar_itens(alvo) or ()) if callable(buscar_itens) else []
         if len(candidatos) > 1:
             marcar_resultado("alvo_ambiguo", False)
             if callable(falar):
@@ -374,7 +597,12 @@ def executar_intencao_arquivos(
                 )
             return True
         caminho_resolvido = candidatos[0] if len(candidatos) == 1 else resolver_caminho_local(alvo)
-        resultado_lixeira = mover_para_lixeira(caminho_resolvido)
+        solicitar_exclusao = getattr(arquivos_mutacao, "solicitar_exclusao", None)
+        if not callable(solicitar_exclusao):
+            marcar_resultado("indisponivel", False)
+            falar("A lixeira da Laylay não está disponível agora.", "calma", 1)
+            return True
+        resultado_lixeira = solicitar_exclusao(caminho_resolvido)
         if resultado_lixeira.requer_confirmacao:
             marcar_resultado("aguardando_confirmacao", False)
             if callable(falar):

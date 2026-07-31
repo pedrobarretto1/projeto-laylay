@@ -16,6 +16,7 @@ from mente_laylay.personalidade.falas_variadas import (
 )
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
 from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao
+from mente_laylay.personalidade.confirmacao_llm import personalizar_confirmacao_llm
 
 
 VK_MEDIA_NEXT_TRACK = 0xB0
@@ -273,20 +274,31 @@ def executar_media_control(
                 fala_midia = _escolher_fala_variada(
                     falas_envio.get(cmd, ["Enviei o comando de mídia."])
                 )
+            contrato = ResultadoAcao(
+                intent="MEDIA_CONTROL",
+                status=f"midia_{cmd}",
+                alvo="musica",
+                params={"acao": cmd},
+                executou=True,
+                confirmado=confirmado_execucao,
+                texto_usuario=texto_original,
+            )
             plano = planejar_resposta_acao(
-                ResultadoAcao(
-                    intent="MEDIA_CONTROL",
-                    status=f"midia_{cmd}",
-                    alvo="musica",
-                    executou=True,
-                    confirmado=confirmado_execucao,
-                    texto_usuario=texto_original,
-                ),
+                contrato,
                 fala_midia,
                 emocao_preferida="debochada",
                 nivel_preferido=2,
             )
-            falar(plano.fala, plano.emocao, plano.nivel)
+            confirmacao = personalizar_confirmacao_llm(
+                contrato,
+                plano.fala,
+                classe=plano.classe,
+                emocao=plano.emocao,
+                nivel=plano.nivel,
+                enviar_mensagem=_get(ctx, "enviar_mensagem"),
+                contexto=ctx_fala(),
+            )
+            falar(confirmacao.fala, confirmacao.emocao, confirmacao.nivel)
         else:
             plano = planejar_resposta_acao(
                 ResultadoAcao(

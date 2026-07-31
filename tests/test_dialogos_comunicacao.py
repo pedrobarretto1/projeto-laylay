@@ -44,6 +44,7 @@ from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
 from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao
 from mente_laylay.personalidade.conversa_natural import (
     classificar_conversa_curta_local,
+    resposta_curta_contextual,
     resposta_pergunta_curta_dependente_topico,
     responder_relato_esportivo,
     responder_conversa_curta_por_tipo,
@@ -62,9 +63,14 @@ from mente_laylay.cognicao.resumo_conteudo import (
     resumir_pagina_ou_video,
 )
 from mente_laylay.integracao.chrome_page_data import processar_page_data
-from mente_laylay.integracao.llm_http import post_chat_llm
+from mente_laylay.integracao.llm_http import (
+    FALHA_LLM_OCUPADA,
+    FALHA_LLM_TIMEOUT,
+    post_chat_llm,
+)
 from mente_laylay.personalidade.abertura_chat import AberturaChatRuntime, abertura_soa_natural
 from mente_laylay.personalidade.fala_proativa import compor_fala_proativa
+from mente_laylay.emocoes.perfil_emocional import ajustar_tom_por_emocao
 from mente_laylay.personalidade.voz_runtime import VozRuntime
 from mente_laylay.memoria_mental.continuidade_conversa import responder_pergunta_aberta
 
@@ -79,6 +85,44 @@ class DialogosComunicacaoTests(unittest.TestCase):
             "mente_integrada_estado": {},
             "foco_vivo": {},
         }
+
+    def test_emocao_forte_nao_corta_fala_no_meio_da_frase(self) -> None:
+        fala = (
+            "Atenção: apareceu um aviso de segurança de Zenless Zone Zero: "
+            "A celebração de segundo aniversário começou. Vale conferir antes de abrir links."
+        )
+
+        self.assertEqual(ajustar_tom_por_emocao(fala, "irritada"), fala)
+        self.assertEqual(ajustar_tom_por_emocao(fala, "brava"), fala)
+
+    def test_lote_proativo_nao_contamina_todas_as_falas_com_primeira_emocao(self) -> None:
+        emocoes = []
+        fala, _emocao, _nivel = compor_fala_proativa(
+            [
+                {
+                    "tipo": "seguranca", "emocao": "irritada", "nivel": 2,
+                    "texto": "Atenção: apareceu um aviso de segurança.", "ts": 1,
+                },
+                {
+                    "tipo": "presenca_jogo", "emocao": "curiosa", "nivel": 1,
+                    "texto": "O menu de pausa está aberto e a área parece segura.", "ts": 2,
+                },
+            ],
+            obter_contexto_perceptivo=lambda: {
+                "periodo": "noite", "topico_ativo": "jogo",
+                "humor": 0, "emocao": "calma",
+            },
+            normalizar_segmento_fala=lambda texto: str(texto),
+            normalizar_texto_com_apelidos=lambda texto: str(texto).casefold(),
+            ajustar_tom_por_emocao=lambda texto, emocao, *_: (
+                emocoes.append(emocao) or texto
+            ),
+            fallback_fala_neutra="Estou aqui.",
+        )
+
+        self.assertEqual(emocoes, ["irritada", "curiosa"])
+        self.assertIn("aviso de segurança", fala)
+        self.assertIn("área parece segura", fala)
 
     def test_horario_em_relato_de_viagem_nao_vira_comando(self) -> None:
         texto = "é em Santana de Parnaíba os jogos, eu vou para lá às 17:30"
@@ -269,6 +313,44 @@ class DialogosComunicacaoTests(unittest.TestCase):
         runtime.processar("oi")
         self.assertEqual(eventos, ["inicio", "fim"])
 
+    def test_emocao_da_llm_e_aplicada_depois_da_execucao_e_antes_da_fala(self) -> None:
+        eventos = []
+
+        class Contexto:
+            @staticmethod
+            def montar():
+                return {}
+
+        runtime = RespostaIARuntime(
+            contexto_getter=lambda: {
+                "usar_modo_rapido": lambda _texto: True,
+                "processar_comandos_imediatos": lambda *_args, **_kwargs: False,
+                "get_messages": lambda: [],
+                "enviar_mensagem": lambda *_args, **_kwargs: '{"fala":"Aí sim!","comandos":[]}',
+                "preparar_resposta": lambda *_args: {
+                    "resposta_bruta": "{}", "fala": "Aí sim!", "comandos": [],
+                    "tipo_interacao": "conversa", "leitura_semantica": {},
+                    "emocao": "alegre", "nivel_emocao": 2,
+                },
+                "processar_comando_deterministico": lambda *_args: False,
+                "contexto_dispatch_runtime": Contexto(),
+                "executar_comandos_json": lambda *_args: eventos.append("execucao") or {
+                    "erros": [], "fala_ja_emitida": False,
+                    "fala_emitida_por_acao": False, "fala_salva_no_inicio": False,
+                },
+                "definir_emocao_resposta": lambda emocao, nivel, _motivo: eventos.append(
+                    ("emocao", emocao, nivel)
+                ),
+                "contexto_finalizacao_runtime": Contexto(),
+                "finalizar_execucao": lambda *_args: eventos.append("fala"),
+            },
+            log=lambda *_args: None,
+        )
+
+        runtime.processar("terminei o projeto!")
+
+        self.assertEqual(eventos, ["execucao", ("emocao", "alegre", 2), "fala"])
+
     def test_autonomia_tardia_ainda_entra_na_resposta_enfileirada(self) -> None:
         runtime = VozRuntime(
             fallback_fala="fallback", voice="voz",
@@ -311,6 +393,36 @@ class DialogosComunicacaoTests(unittest.TestCase):
         self.assertIn("10 C", fala)
         self.assertNotIn("desejo", fala.casefold())
         self.assertLess(len(fala.split()), 40)
+
+    def test_briefing_nunca_fala_sentinela_tecnica_da_llm(self) -> None:
+        fala = montar_briefing_matinal(
+            cidade="Boituva",
+            clima="céu limpo, com 17 graus Celsius",
+            enviar_mensagem_cb=lambda *_args, **_kwargs: FALHA_LLM_TIMEOUT,
+            limpar_resposta_cb=lambda texto: str(texto).replace("_", ""),
+            remover_prefixo_exec_cb=lambda texto: texto,
+        )
+
+        self.assertNotIn("LAYLAYLLM", fala.upper())
+        self.assertIn("Boituva", fala)
+        self.assertIn("17 graus", fala)
+
+    def test_repeticao_de_briefing_nunca_fala_sentinela_tecnica(self) -> None:
+        falas = []
+        runtime = AmbienteSistemaRuntime()
+        retorno = runtime.repetir_briefing_atual(
+            cidade="Boituva",
+            obter_clima=lambda: "céu limpo, com 17 graus Celsius",
+            enviar_mensagem=lambda *_args, **_kwargs: FALHA_LLM_TIMEOUT,
+            limpar_resposta=lambda texto: str(texto).replace("_", ""),
+            remover_prefixo_exec=lambda texto: texto,
+            falar=lambda texto, *_args: falas.append(texto),
+            print_fn=lambda *_args: None,
+        )
+
+        self.assertEqual(retorno, falas[0])
+        self.assertNotIn("LAYLAYLLM", retorno.upper())
+        self.assertIn("Boituva", retorno)
 
     def test_briefing_sem_clima_nao_injeta_erro_em_frase_de_sucesso(self) -> None:
         chamadas_ia = []
@@ -458,6 +570,14 @@ class DialogosComunicacaoTests(unittest.TestCase):
         self.assertTrue(entregue)
         self.assertEqual(salvos, [True])
 
+        salvos.clear()
+        pendente = executar_briefing_matinal(
+            **base,
+            agendar_fala=lambda *_args: {"entregue": False, "pendente": True},
+        )
+        self.assertTrue(pendente)
+        self.assertEqual(salvos, [])
+
     def test_abertura_rejeita_reacao_fisica_inventada_e_cumprimenta(self) -> None:
         runtime = AberturaChatRuntime(
             estado_getter=lambda: {"current_emotion": "envergonhada", "emotion_level": 3},
@@ -566,7 +686,10 @@ class DialogosComunicacaoTests(unittest.TestCase):
         finally:
             lock.release()
         self.assertEqual(chamadas_http, [])
-        self.assertIn("ocupado", resposta.json()["choices"][0]["message"]["content"])
+        self.assertEqual(
+            resposta.json()["choices"][0]["message"]["content"],
+            FALHA_LLM_OCUPADA,
+        )
 
     def test_resumo_de_pagina_recorta_conteudo_grande_sem_perder_o_final(self) -> None:
         texto = "A" * 12000 + "FINAL-IMPORTANTE"
@@ -763,6 +886,16 @@ class DialogosComunicacaoTests(unittest.TestCase):
         ))
         self.assertEqual(agenda[0]["descricao"], "participar de um campeonato de arremessamento de peso")
         self.assertEqual(datetime.fromtimestamp(agenda[0]["ts_execucao"]).weekday(), 4)
+
+    def test_cancelamento_de_lembrete_extrai_apenas_o_assunto(self) -> None:
+        resultado = extrair_agendamento_local(
+            "cancela o lembrete de beber água",
+            lambda texto: texto.casefold().replace("á", "a"),
+        )
+        self.assertEqual(resultado, {
+            "intent": "CANCELAR_AGENDAMENTO",
+            "params": {"alvo": "beber agua"},
+        })
 
     def test_volume_maximo_nunca_vira_busca_musical(self) -> None:
         resultado = detectar_musica_ou_playlist_direta(
@@ -1068,9 +1201,9 @@ class DialogosComunicacaoTests(unittest.TestCase):
             plano=plano,
             periodo="tarde",
         )
-        self.assertTrue(verificacao["aceita"])
+        self.assertFalse(verificacao["aceita"])
         self.assertIn("vazamento_formato_interno", verificacao["problemas"])
-        self.assertNotIn('"comandos"', verificacao["fala"])
+        self.assertEqual(verificacao["fala"], "")
 
     def test_verificador_nao_deixa_comando_nao_executado_parecer_sucesso(self) -> None:
         texto = "liga o ventilador"
@@ -1084,7 +1217,7 @@ class DialogosComunicacaoTests(unittest.TestCase):
         self.assertIn("comando_sem_execucao_confirmada", verificacao["problemas"])
         self.assertIn("não executei", verificacao["fala"].casefold())
 
-    def test_verificador_corrige_periodo_antes_da_fala(self) -> None:
+    def test_verificador_nao_reescreve_escolha_temporal_conversacional(self) -> None:
         plano = planejar_turno(
             "nada demais hoje",
             turno=classificar_modalidade_turno("nada demais hoje"),
@@ -1095,9 +1228,11 @@ class DialogosComunicacaoTests(unittest.TestCase):
             plano=plano,
             periodo="tarde",
         )
-        self.assertIn("incoerencia_temporal_corrigida", verificacao["problemas"])
-        self.assertIn("tarde", verificacao["fala"].casefold())
-        self.assertNotIn("noite", verificacao["fala"].casefold())
+        self.assertNotIn("incoerencia_temporal_corrigida", verificacao["problemas"])
+        self.assertEqual(
+            verificacao["fala"],
+            "Quer deixar a noite mais interessante comigo?",
+        )
 
     def test_plano_unico_entra_no_prompt_da_mente(self) -> None:
         texto = "tô cansado, coloca uma música calma"
@@ -1138,6 +1273,21 @@ class DialogosComunicacaoTests(unittest.TestCase):
         )
         self.assertEqual(falas, ["Resposta ajustada ao turno."])
         self.assertEqual(mensagens[-1]["content"], "Resposta ajustada ao turno.")
+
+    def test_correcao_conversacional_nao_vaza_nome_interno_game_vision(self) -> None:
+        ctx = self._ctx_conversa_minimo()
+        ctx["foco_vivo"] = {
+            "tipo": "contexto",
+            "topico": "GAME_VISION",
+            "resposta": "Leitura dos atributos do personagem.",
+        }
+
+        fala = resposta_curta_contextual(
+            ctx, "não lay, estou falando dos atributos", "CONTINUE",
+        )
+
+        self.assertNotIn("GAME_VISION", fala)
+        self.assertIn("tela do jogo", fala)
 
 
 if __name__ == "__main__":

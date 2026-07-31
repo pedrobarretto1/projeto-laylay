@@ -12,6 +12,12 @@ import threading
 import time
 from typing import Any, Callable, Dict
 
+from mente_laylay.cognicao.erros_navegador import (
+    resumir_erro_navegador,
+    sanitizar_texto_navegador,
+    url_sem_dados_sensiveis,
+)
+
 
 def _set_event(entry: Any) -> None:
     if not isinstance(entry, dict):
@@ -120,7 +126,9 @@ def handle_player_event(
 
     if event != "video_ended":
         return
-    if is_ad or duration < 60:
+    # A duração não é um identificador confiável de anúncio: músicas curtas são
+    # válidas e o YouTube às vezes entrega 0 quando substitui o elemento de vídeo.
+    if is_ad:
         return
     if not playlist_state.get("name"):
         return
@@ -129,12 +137,15 @@ def handle_player_event(
     event_id = str(data.get("eventId") or "").strip()
     clean_url = yt_clean_url(url) if callable(yt_clean_url) else str(url or "")
     dedup_key = event_id or f"ended:{tab_id}:{clean_url}:{duration}"
-    if (
-        str(playlist_state.get("last_ended_event") or "") == dedup_key
-        and now - float(playlist_state.get("last_ended_ts") or 0.0) < 8.0
-    ):
+    vistos = playlist_state.setdefault("ended_event_ids", [])
+    if not isinstance(vistos, list):
+        vistos = []
+        playlist_state["ended_event_ids"] = vistos
+    if dedup_key in vistos:
         print(f"🎧 [AUTO-NEXT] evento duplicado ignorado: {dedup_key}")
         return
+    vistos.append(dedup_key)
+    del vistos[:-32]
     playlist_state["last_ended_event"] = dedup_key
     playlist_state["last_ended_ts"] = now
     if isinstance(tab_id, int):
@@ -144,7 +155,7 @@ def handle_player_event(
 
     def _falar_fim_playlist() -> None:
         if callable(falar_com_lipsync):
-            falar_com_lipsync(f"Acabou o show, Pedro. Essa foi a última da playlist {pl_nm}.", "debochada", 2)
+            falar_com_lipsync(f"Acabou o show. Essa foi a última da playlist {pl_nm}.", "debochada", 2)
 
     if playlist_state.get("user_intervened"):
         playlist_state["user_intervened"] = False
@@ -176,19 +187,21 @@ def montar_linha_user_context(data: Dict[str, Any]) -> tuple[str, str, Any, str,
 
     linha = ""
     if kind == "nav":
-        linha = f"Navegação: {title} | {url}".strip()
+        linha = f"Navegação: {sanitizar_texto_navegador(title)} | {url_sem_dados_sensiveis(url)}".strip()
     elif kind == "click":
         if isinstance(detail, dict):
             label = str(detail.get("label") or "").strip()
             href = str(detail.get("href") or "").strip()
-            linha = f"Clique: {label}" + (f" | {href}" if href else "")
+            linha = f"Clique: {sanitizar_texto_navegador(label)}" + (
+                f" | {url_sem_dados_sensiveis(href)}" if href else ""
+            )
         else:
             linha = f"Clique: {str(detail)}"
     elif kind == "console":
         if isinstance(detail, dict):
             level = str(detail.get("level") or "log").strip()
             msg = str(detail.get("message") or "").strip()
-            linha = f"Console {level}: {msg}"
+            linha = f"Console {level}: {sanitizar_texto_navegador(msg)}"
         else:
             linha = f"Console: {str(detail)}"
     else:
@@ -303,7 +316,7 @@ def handle_user_context(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, 
                         comando_sugerido_payload={"url": url, "title": title, "erro": erro_txt},
                     )
                     if not is_speaking and callable(falar_com_lipsync):
-                        falar_com_lipsync("Pedro, vi que o play falhou no Chrome. Queres que eu tente recarregar a página?", "calma", 1)
+                        falar_com_lipsync("Vi que o play falhou no Chrome. Quer que eu tente recarregar a página?", "calma", 1)
             else:
                 if not _bloqueado("EXPLAIN_ERROR") and callable(continuidades_update):
                     continuidades_update(
@@ -318,14 +331,11 @@ def handle_user_context(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, 
             updates["_ultimo_sugerido_ts"] = now
             if comando_sugerido == "EXPLAIN_ERROR" and not is_speaking and callable(falar_com_lipsync):
                 payload_atual = continuidades_get("comando_sugerido_payload") if callable(continuidades_get) else {}
-                detalhe = str((payload_atual or {}).get("linha") or (payload_atual or {}).get("erro") or "").strip()
-                detalhe = re.sub(r"\s+", " ", detalhe)[:220].rstrip(" ,;:")
-                if detalhe:
-                    falar_com_lipsync(
-                        f"Pedro, apareceu este erro no Chrome: {detalhe}. Quer que eu explique o que significa?",
-                        "calma",
-                        1,
-                    )
+                falar_com_lipsync(
+                    resumir_erro_navegador(payload_atual),
+                    "curiosa",
+                    1,
+                )
 
     return updates
 
@@ -350,7 +360,10 @@ def dispatch_event(data: Dict[str, Any], handlers: Dict[str, Callable[[Dict[str,
     }
     nome_handler = por_tipo.get(tipo, "action")
     handler = handlers.get(nome_handler)
-    if nome_handler == "action" and tipo != "ping":
+    # PAGE_SNAPSHOT é percepção contínua e pode conter URLs, textos e campos
+    # inteiros da página. Ele continua sendo processado, mas não deve inundar
+    # o terminal nem expor o payload bruto a cada atualização.
+    if nome_handler == "action" and tipo not in {"ping", "PAGE_SNAPSHOT"}:
         print(f"📥 [DEBUG Chrome] {data}")
     return handler(data) if callable(handler) else None
 
@@ -621,14 +634,14 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
         if status == "erro_clique":
             print(f"❌ [AUTO-CLICK] Falhou: {motivo}")
             if callable(falar_com_lipsync):
-                falar_com_lipsync("Pedro, não achei um link orgânico pra clicar.", "calma", 1)
+                falar_com_lipsync("Não achei um link orgânico pra clicar.", "calma", 1)
         updates["handled"] = True
         return updates
 
     if action == "close_tab_status":
         status = str(data.get("status") or "").strip()
         if status == "blocked_form" and callable(falar_com_lipsync):
-            falar_com_lipsync("Tá digitando em formulário, Pedro. Eu não vou fechar e apagar teu trabalho.", "calma", 1)
+            falar_com_lipsync("Você está digitando em um formulário. Eu não vou fechar e apagar teu trabalho.", "calma", 1)
         updates["handled"] = True
         return updates
 
@@ -636,7 +649,9 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
         error_msg = data.get("message", "Erro desconhecido na extensão.")
         print(f"❌ [Chrome ERRO] {error_msg}")
         if callable(falar_com_lipsync):
-            falar_com_lipsync(f"Houve um erro no Chrome: {error_msg}. Verifique, Pedro.", "irritada", 2)
+            falar_com_lipsync(
+                resumir_erro_navegador({"erro": error_msg}), "irritada", 2
+            )
         updates["handled"] = True
         return updates
 

@@ -41,7 +41,7 @@ class BuscaMusicalRuntime:
             return True
         self.log("[CORRETOR] Fila esgotada.")
         if callable(self.falar):
-            self.falar("Pedro, não consegui achar a música certa mesmo tentando os 5 primeiros resultados.", "triste", 1)
+            self.falar("Não consegui achar a música certa mesmo tentando os 5 primeiros resultados.", "triste", 1)
         self.query = ""
         return False
 
@@ -71,8 +71,24 @@ Responda APENAS "SIM" se for a música certa, ou "NAO" se for o vídeo errado.
         except Exception as e:
             self.log(f"Erro no verificador: {e}")
 
-    def buscar_primeiro_video(self, query: str) -> str | None:
+    def buscar_primeiro_video(self, query: str, *, tipo_resultado: str = "faixa") -> str | None:
         """Scraper leve para encontrar o primeiro video valido do YouTube."""
+        candidatos = self.buscar_resultados(query, limite=8, tipo_resultado=tipo_resultado)
+        if candidatos:
+            link = str(candidatos[0].get("url") or "").strip()
+            if link:
+                self.log(f"✅ [YT-SCRAPER] Encontrado: {link}")
+                return link
+        return None
+
+    def buscar_resultados(
+        self,
+        query: str,
+        limite: int = 5,
+        *,
+        tipo_resultado: str = "faixa",
+    ) -> list[dict[str, Any]]:
+        """Consulta títulos sem abrir ou reproduzir nenhum resultado."""
         try:
             self.log(f"🔍 [YT-SCRAPER] Procurando para: '{query}'")
             url_busca = f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(str(query or ''))}"
@@ -81,15 +97,21 @@ Responda APENAS "SIM" se for a música certa, ou "NAO" se for o vídeo errado.
             }
             res = requests.get(url_busca, headers=headers, timeout=5)
             if res.status_code == 200:
-                candidatos = self.extrair_resultados_youtube(res.text, query, 8)
-                if candidatos:
-                    link = str(candidatos[0].get("url") or "").strip()
-                    if link:
-                        self.log(f"✅ [YT-SCRAPER] Encontrado: {link}")
-                        return link
+                try:
+                    resultados = self.extrair_resultados_youtube(
+                        res.text,
+                        query,
+                        max(1, int(limite)),
+                        tipo_resultado=tipo_resultado,
+                    )
+                except TypeError:
+                    resultados = self.extrair_resultados_youtube(
+                        res.text, query, max(1, int(limite))
+                    )
+                return list(resultados)
         except Exception as e:
             self.log(f"⚠️ [YT-SCRAPER] Erro: {e}")
-        return None
+        return []
 
 def criar_busca_musical_runtime(**kwargs: Any) -> BuscaMusicalRuntime:
     return BuscaMusicalRuntime(**kwargs)

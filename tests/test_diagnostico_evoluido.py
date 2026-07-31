@@ -3,10 +3,14 @@ from __future__ import annotations
 from mente_laylay.autonomia.porteiro_proatividade import PorteiroProatividadeRuntime
 from mente_laylay.memoria_mental.contexto_compartilhado import estado_mental_inicial
 from mente_laylay.memoria_mental.diagnostico_mente import (
+    DiagnosticoMenteRuntime,
     construir_diagnostico_mente,
     formatar_diagnostico_terminal,
 )
-from mente_laylay.memoria_mental.observabilidade import ObservabilidadeMenteRuntime
+from mente_laylay.memoria_mental.observabilidade import (
+    ObservabilidadeMenteRuntime,
+    classificar_falha_tecnica,
+)
 
 
 def _runtime_observabilidade(estado, agora=lambda: 100.0):
@@ -53,6 +57,66 @@ def test_historico_de_falhas_remove_url_caminho_e_mensagem_do_erro() -> None:
     assert falha["tipo"] == "runtimeerror"
 
 
+def test_classificacao_distingue_degradacao_de_defeito_sem_ler_mensagem() -> None:
+    timeout = classificar_falha_tecnica(
+        "llm_http", "timeout_resposta",
+        erro=TimeoutError("prompt privado não pode ser classificado"),
+        fallback="contingencia_conversacional",
+    )
+    defeito = classificar_falha_tecnica(
+        "turno", "erro_resposta_ia", erro=TypeError("conteúdo secreto"),
+    )
+
+    assert timeout == {
+        "classe": "degradacao",
+        "impacto": "turno",
+        "fallback": "contingencia_conversacional",
+    }
+    assert defeito == {
+        "classe": "defeito",
+        "impacto": "turno",
+        "fallback": "nenhum",
+    }
+    assert "privado" not in repr(timeout)
+    assert "secreto" not in repr(defeito)
+
+
+def test_relator_de_falhas_auxiliares_suprime_repeticao_sem_perder_diagnostico() -> None:
+    estado, agora, logs = {}, [100.0], []
+    runtime = ObservabilidadeMenteRuntime(
+        estado_getter=lambda chave, padrao=None: estado.get(chave, padrao),
+        estado_setter=lambda **campos: estado.update(campos),
+        clock=lambda: agora[0],
+        log=logs.append,
+        janela_repeticao_s=30,
+    )
+
+    primeira = runtime.relatar_falha(
+        "pesquisa jogos", "cache leitura", erro=RuntimeError("segredo"),
+    )
+    repetida = runtime.relatar_falha(
+        "pesquisa jogos", "cache leitura", erro=RuntimeError("outro segredo"),
+    )
+    agora[0] += 31
+    posterior = runtime.relatar_falha(
+        "pesquisa jogos", "cache leitura", erro=RuntimeError("segredo final"),
+    )
+
+    assert primeira["registrada"] is True
+    assert repetida == {
+        "registrada": False, "suprimidas": 1,
+        "componente": "pesquisa_jogos", "codigo": "cache_leitura",
+        "tipo": "runtimeerror",
+        "classe": "defeito", "impacto": "servico", "fallback": "nenhum",
+    }
+    assert posterior["registrada"] is True
+    assert posterior["suprimidas"] == 1
+    assert len(estado["diagnostico_falhas"]) == 2
+    assert len(logs) == 2
+    assert "segredo" not in repr(logs).casefold()
+    assert "1 repetição" in logs[-1]
+
+
 def test_historicos_sao_curtos_e_nao_persistem_texto_da_sugestao() -> None:
     estado = {}
     runtime = ObservabilidadeMenteRuntime(
@@ -68,6 +132,73 @@ def test_historicos_sao_curtos_e_nao_persistem_texto_da_sugestao() -> None:
 
     assert len(estado["diagnostico_decisoes"]) == 5
     assert all("texto" not in item for item in estado["diagnostico_decisoes"])
+
+
+def test_ciclo_de_vida_do_servico_e_agregado_sem_historico_infinito() -> None:
+    estado = {}
+    runtime = _runtime_observabilidade(estado)
+
+    runtime.registrar_evento_servico("Ouvido C:/privado", "ativo", tentativa=1)
+    runtime.registrar_evento_servico(
+        "Ouvido C:/privado", "queda", tentativa=1,
+        fallback="reinicio_agendado",
+    )
+    runtime.registrar_evento_servico(
+        "Ouvido C:/privado", "reiniciando", tentativa=2,
+    )
+    runtime.registrar_evento_servico(
+        "Ouvido C:/privado", "orfao", tentativa=2,
+        fallback="encerramento_do_processo",
+    )
+    final = runtime.registrar_evento_servico(
+        "Ouvido C:/privado", "ativo", tentativa=2,
+    )
+
+    assert len(estado["diagnostico_servicos"]) == 1
+    assert final["quedas"] == 1
+    assert final["reinicios"] == 1
+    assert final["orfaos"] == 1
+    assert final["estado"] == "ativo"
+    assert "privado" not in repr(estado["diagnostico_servicos"]).casefold()
+
+
+def test_diagnostico_consolida_protecoes_sem_recontar_eventos() -> None:
+    estado = {
+        "mental": {
+            "diagnostico_servicos": {
+                "ouvido": {
+                    "estado": "orfao", "orfaos": 2, "quedas": 2,
+                    "reinicios": 1, "falhas_inicializacao": 0,
+                },
+            },
+        },
+        "conversacional": {}, "percepcao": {}, "continuidades": {},
+    }
+    runtime = DiagnosticoMenteRuntime(
+        estado_getter=lambda: estado,
+        saude_getter=lambda: {},
+        linguagem_natural_getter=lambda: {
+            "reutilizadas_no_turno": 3,
+            "execucao_turno": {"reutilizadas": 4, "aguardadas": 2},
+        },
+        fala_operacional_getter=lambda: {"duplicadas_suprimidas": 5},
+        falar=lambda *_args: None,
+        log=lambda *_args: None,
+    )
+
+    diagnostico = runtime.snapshot()
+    texto = formatar_diagnostico_terminal(diagnostico)
+
+    assert diagnostico["protecoes_ciclo"] == {
+        "reentradas_evitadas": 3,
+        "execucoes_duplicadas_convergidas": 6,
+        "falas_duplicadas_suprimidas": 5,
+        "servicos_orfaos_atuais": 1,
+        "servicos_orfaos_detectados": 2,
+    }
+    assert "reentradas_evitadas=3" in texto
+    assert "execuções_duplicadas_convergidas=6" in texto
+    assert "órfãos_atuais=1 órfãos_detectados=2" in texto
 
 
 def test_porteiro_registra_por_que_sugestao_foi_descartada() -> None:
@@ -95,7 +226,11 @@ def test_diagnostico_exibe_latencias_falhas_e_ultima_decisao_sanitizadas() -> No
                 "tts_total": {"ultimo_ms": 450, "media_ms": 400, "max_ms": 600, "amostras": 3},
             },
             "diagnostico_falhas": [
-                {"componente": "tts", "codigo": "falha_audio", "tipo": "RuntimeError"},
+                {
+                    "componente": "tts", "codigo": "falha_audio",
+                    "tipo": "RuntimeError", "classe": "degradacao",
+                    "impacto": "fala", "fallback": "tts_local_pyttsx",
+                },
             ],
             "diagnostico_decisoes": [
                 {
@@ -103,6 +238,13 @@ def test_diagnostico_exibe_latencias_falhas_e_ultima_decisao_sanitizadas() -> No
                     "motivos": ["momento de foco"],
                 },
             ],
+            "diagnostico_servicos": {
+                "ouvido": {
+                    "estado": "reinicio_agendado", "tentativa": 2,
+                    "atraso_s": 5, "fallback": "reinicio_automatico",
+                    "quedas": 1, "reinicios": 0, "falhas_inicializacao": 0,
+                },
+            },
         },
         "conversacional": {}, "percepcao": {}, "continuidades": {},
         "memoria_conversa": {"messages": [{"content": "não pode aparecer"}]},
@@ -115,6 +257,10 @@ def test_diagnostico_exibe_latencias_falhas_e_ultima_decisao_sanitizadas() -> No
     assert "tts_total=450ms" in texto
     assert "proatividade=adiar" in texto
     assert "tts=falha_audio" in texto
+    assert "degradações=1" in texto
+    assert "classe=degradacao impacto=fala fallback=tts_local_pyttsx" in texto
+    assert "serviços de fundo: total=1 ativos=0 degradados=1 quedas=1 reinícios=0 órfãos=0" in texto
+    assert "serviço: ouvido=reinicio_agendado tentativa=2 fallback=reinicio_automatico" in texto
     assert "não pode aparecer" not in texto
 
 
@@ -124,3 +270,4 @@ def test_estado_mental_inicial_possui_telemetria_vazia() -> None:
     assert mente["diagnostico_metricas"] == {}
     assert mente["diagnostico_falhas"] == []
     assert mente["diagnostico_decisoes"] == []
+    assert mente["diagnostico_servicos"] == {}

@@ -7,13 +7,52 @@ import re
 import time
 from typing import Any, Callable, Mapping
 
+from mente_laylay.integracao.registro_iot import PortaIoT
+
+
+DEPENDENCIAS_PREFERENCIAS_SUGESTOES = (
+    "_chave_preferencia_sugestao_mente", "_motor_aprendizado_runtime",
+    "MEMORIA_SQLITE", "print", "salvar_memoria",
+    "_aplicar_preferencia_sugestao_mente",
+    "detectar_intencao_deterministica", "analisar_intencao",
+    "falar_com_lipsync", "ajustar_volume_sistema",
+)
+
 
 class PreferenciasSugestoesRuntime:
-    def __init__(self, namespace_getter: Callable[[], Mapping[str, Any]]) -> None:
-        self._namespace_getter = namespace_getter
+    def __init__(
+        self,
+        namespace_getter: Callable[[], Mapping[str, Any]] | None = None,
+        *,
+        servicos_iniciais: Mapping[str, Any] | None = None,
+        iot: PortaIoT | None = None,
+    ) -> None:
+        origem = dict(servicos_iniciais or {})
+        if not origem and callable(namespace_getter):
+            origem = dict(namespace_getter() or {})
+        self._servicos = self._filtrar(origem)
+        self.iot = iot
+
+    def conectar_iot(self, iot: PortaIoT) -> None:
+        self.iot = iot
+
+    @staticmethod
+    def _filtrar(servicos: Mapping[str, Any]) -> dict[str, Any]:
+        return {
+            nome: servicos[nome]
+            for nome in DEPENDENCIAS_PREFERENCIAS_SUGESTOES
+            if nome in servicos
+        }
 
     def _ns(self) -> Mapping[str, Any]:
-        return self._namespace_getter()
+        return dict(self._servicos)
+
+    def conectar_servicos(self, servicos: Mapping[str, Any]) -> None:
+        self._servicos = self._filtrar(servicos)
+
+    @property
+    def servicos_registrados(self) -> tuple[str, ...]:
+        return tuple(sorted(self._servicos))
 
     def obter(self, comando: str, payload: dict | None = None):
         ns = self._ns()
@@ -100,7 +139,7 @@ class PreferenciasSugestoesRuntime:
                 tipo="preferencia", gatilho=f"sugestão contextual {chave}",
                 valor=descricao,
                 regra=(
-                    f"No escopo {escopo_humano}, Pedro prefere {descricao} em vez da proposta anterior."
+                    f"No escopo {escopo_humano}, o usuário prefere {descricao} em vez da proposta anterior."
                 ),
                 texto_original=evidencia,
                 confianca=max(0.5, float(avaliacao.get("confianca_efetiva") or 0.0)),
@@ -152,12 +191,13 @@ class PreferenciasSugestoesRuntime:
             )
             if alvo_fala.casefold() not in texto_operacional.casefold():
                 texto_operacional += f" na {alvo_fala}"
-        detectores = [
+        detectores = [getattr(self.iot, "detectar", None)] + [
             ns[nome] for nome in
-            ("_detectar_intencao_iot", "detectar_intencao_deterministica", "analisar_intencao")
-            if nome in ns
+            ("detectar_intencao_deterministica", "analisar_intencao") if nome in ns
         ]
         for detectar in detectores:
+            if not callable(detectar):
+                continue
             try:
                 resultado = detectar(texto_operacional)
             except Exception:
@@ -183,7 +223,9 @@ class PreferenciasSugestoesRuntime:
         dados = dict(payload or {})
         alvo = str(dados.get("alvo") or "lampada_quarto")
         acao_luz = "ligar" if comando == "TIME_LIGHT_ON" else "desligar"
-        resultado_luz = ns["_executar_intencao_iot"](
+        if not callable(getattr(self.iot, "executar", None)):
+            return False
+        resultado_luz = self.iot.executar(
             {"intent": "IOT_CONTROL", "params": {
                 "acao": acao_luz, "alvo": alvo,
                 "origem": "usuario", "confirmado": True,
@@ -219,6 +261,10 @@ class PreferenciasSugestoesRuntime:
 
 
 def criar_preferencias_sugestoes_runtime(
-    namespace_getter: Callable[[], Mapping[str, Any]],
+    namespace_getter: Callable[[], Mapping[str, Any]] | None = None,
+    *,
+    servicos_iniciais: Mapping[str, Any] | None = None,
 ) -> PreferenciasSugestoesRuntime:
-    return PreferenciasSugestoesRuntime(namespace_getter)
+    return PreferenciasSugestoesRuntime(
+        namespace_getter, servicos_iniciais=servicos_iniciais,
+    )

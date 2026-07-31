@@ -5,6 +5,32 @@ from __future__ import annotations
 import re
 from typing import Any, Callable, Dict
 
+from mente_laylay.cognicao.referencias_linguagem import valor_e_referencia_contextual
+from mente_laylay.cognicao.normalizacao_linguagem import (
+    corrigir_erros_portugues_operacionais,
+)
+
+
+def texto_pede_clima_atual(texto_normalizado: str) -> bool:
+    """Fonte única para priorização e detecção de consultas meteorológicas."""
+    t = str(texto_normalizado or "").strip()
+    if not t:
+        return False
+    return (
+        any(p in t for p in (
+            "quantos graus", "temperatura", "previsao do tempo", "previsão do tempo",
+        ))
+        or bool(re.search(
+            r"\b(?:qual|como\s+(?:esta|está|ta|tá|e|é))\s+"
+            r"(?:o\s+)?(?:clima|tempo)\b",
+            t,
+        ))
+        or bool(re.search(
+            r"\b(?:clima|tempo)\s+(?:hoje|agora|em|de|no|na)\b",
+            t,
+        ))
+    )
+
 
 def normalizar_pedido_natural(texto_normalizado: str) -> tuple[str, str]:
     """Remove a moldura social do pedido sem apagar sua intenção prática.
@@ -51,22 +77,11 @@ def normalizar_pedido_natural(texto_normalizado: str) -> tuple[str, str]:
 
 
 def corrigir_verbo_operacional_digitado(texto_normalizado: str) -> str:
-    """Corrige somente deslizes inequívocos no primeiro verbo de um comando."""
-    t = re.sub(r"\s+", " ", str(texto_normalizado or "")).strip()
-    if not t or " " not in t:
-        return t
-    primeiro, restante = t.split(" ", 1)
-    alvos_iot = r"\b(?:ventilador|tomada|luz|lampada|lâmpada|dispositivo|aparelho)\b"
-    if not re.search(alvos_iot, restante):
-        return t
-    explicitas = {
-        "liag": "liga", "lgia": "liga", "lig": "liga",
-        "deslgia": "desliga", "deslgiar": "desligar", "deslga": "desliga",
-    }
-    corrigido = explicitas.get(primeiro)
-    if corrigido:
-        return f"{corrigido} {restante}".strip()
-    return t
+    """Compatibilidade: usa o corretor canônico, sem regra privada de IoT."""
+    corrigido, _eventos = corrigir_erros_portugues_operacionais(
+        texto_normalizado,
+    )
+    return corrigido
 
 
 def extrair_intencao_abrir_app(
@@ -104,7 +119,11 @@ def extrair_intencao_abrir_app(
     nome = re.sub(r"\s+(agora|aqui|ai|aí|por favor|pfv)$", "", nome).strip()
     nome = re.sub(r"^(o|a|os|as|um|uma)\s+", "", nome).strip()
     nome = re.sub(r"^(?:programa|app|aplicativo)\s+(?:chamado|chamada|com\s+nome|de\s+nome)\s+", "", nome).strip()
-    if not nome or nome.casefold() in {"que", "o que", "qual", "isso", "aquilo"}:
+    if (
+        not nome
+        or nome.casefold() in {"que", "o que", "qual", "isso", "aquilo"}
+        or valor_e_referencia_contextual(nome)
+    ):
         return None
 
     nome_norm = nome.lower()
@@ -127,12 +146,18 @@ def texto_expresso_melhor_no_deterministico(
     t = normalizar_texto(texto or "") if callable(normalizar_texto) else str(texto or "").lower().strip()
     if not t:
         return False
-    if "briefing" in t and any(p in t for p in ["repete", "repetir", "fala", "fale", "mostra", "diz", "diga"]):
+    t_layout = re.sub(r"^(?:agora|entao|então)\s+", "", t).strip()
+    if "briefing" in t and (
+        any(p in t for p in ["repete", "repetir", "fala", "fale", "mostra", "diz", "diga", "passa"])
+        or bool(re.search(r"\bqual\s+(?:e|é\s+)?o?\s*briefing\b", t))
+        or "briefing de hoje" in t
+    ):
         return True
-    if any(p in t for p in ["quantos graus", "temperatura", "previsao do tempo", "previsão do tempo"]):
+    if texto_pede_clima_atual(t):
         return True
     if re.search(r"\b(?:email|emails|e-mail)\b", t) and re.search(
-        r"\b(?:le|lê|leia|ler|mostra|verifica|checa|resuma|sincroniza|atualiza)\b", t
+        r"\b(?:le|lê|leia|ler|mostra|verifica|checa|resuma|sincroniza|atualiza|"
+        r"quais|quantos|lista|listar|fale|diga)\b", t
     ):
         return True
     if re.search(r"\b(?:volume|som)\b", t) and (
@@ -149,8 +174,29 @@ def texto_expresso_melhor_no_deterministico(
         return True
     if re.fullmatch(r"(essa|esta|isso|essa aqui|esta aqui)\s+(tambem|também)", t):
         return True
-    if any(v in t for v in ["organiza", "organizar", "arruma", "arrumar"]) and any(
-        alvo in t for alvo in ["area de trabalho", "área de trabalho", "desktop", "tela", "janelas", "janela"]
+    if re.search(
+        r"\b(?:pula|pule|pular|passa)\s+(?:(?:esse|essa|o|a)\s+)?"
+        r"(?:an(?:u|ú)ncio|propaganda)\b",
+        t,
+    ):
+        return True
+    if re.search(
+        r"\b(?:pausa|pause|despausa|retoma|proxima|próxima|anterior)\b",
+        t,
+    ) and re.search(r"\b(?:musica|música|video|vídeo|som|ela|ele|isso)\b", t):
+        return True
+    if any(v in t_layout for v in ["organiza", "organizar", "arruma", "arrumar"]) and any(
+        alvo in t_layout for alvo in ["area de trabalho", "área de trabalho", "desktop", "tela", "janelas", "janela"]
+    ):
+        return True
+    if re.search(r"^(?:coloca|coloque|bota|ponha|põe|poe|move|mova|posiciona|posicione|deixa|joga)\b", t_layout) and re.search(
+        r"\b(?:(?:na|a|à|para a)\s+(?:esquerda|direita)|"
+        r"(?:no|pro|para o|do)\s+lado\s+(?:esquerdo|direito))\b",
+        t_layout,
+    ):
+        return True
+    if re.search(r"\b(?:esquerda|direita)\b", t) and re.search(
+        r"\b(?:e|,)\b.*\b(?:esquerda|direita)\b", t,
     ):
         return True
     if any(x in t for x in ["despausa", "despausar", "retoma a musica", "retoma a música", "continua a musica", "continua a música"]):
@@ -168,12 +214,32 @@ def texto_expresso_melhor_no_deterministico(
     if re.match(r"^\s*(abre|abra|abrir|fecha|fechar|maximiza|maximizar|traz|coloca|bota|deixa)\b", t):
         if any(x in t for x in ["steam", "opera", "chrome", "edge", "vscode", "vs code", "visual studio code", "janela", "foco", "tela cheia", "fullscreen"]):
             return True
+    if re.match(r"^\s*(abre|abra|abrir|fecha|feche|fechar|maximiza|maximize|maximizar)\b", t):
+        alvo = re.sub(
+            r"^\s*(?:abre|abra|abrir|fecha|feche|fechar|maximiza|maximize|maximizar)\s+",
+            "", t,
+        ).strip()
+        if alvo and alvo not in {"isso", "isto", "ele", "ela", "ai", "aí", "aqui", "o que", "que"}:
+            return True
     if re.match(r"^\s*(coloca|bota|deixa|traz|maximiza|maximizar)\b", t):
         if any(x in t for x in ["ele", "ela", "isso"]) and any(x in t for x in ["foco", "tela cheia", "fullscreen", "na frente", "pra frente", "para frente"]):
             return True
     if re.match(r"^\s*(cria|criar|crie|apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir)\b", t):
         if any(x in t for x in ["pasta", "arquivo", "ela", "ele", "isso", "essa", "esse"]):
             return True
+    if re.search(
+        r"^(?:encontra|encontre|acha|ache|procura|procure|busca|buscar|pesquisa|localiza|localize)\b",
+        t,
+    ) and re.search(r"\b(?:arquivo|documento|codigo|código|imagem|foto|script|projeto)\b", t):
+        return True
+    if re.search(r"^onde\s+(?:esta|está|fica)\b", t) and re.search(
+        r"\b(?:arquivo|documento|codigo|código|imagem|foto|script)\b", t,
+    ):
+        return True
+    if re.search(r"^(?:quais?|mostra|mostre|lista|liste)\b", t) and re.search(
+        r"\b(?:arquivos|documentos|imagens|fotos|scripts)\b", t,
+    ):
+        return True
     return "dentro dela" in t and "pasta" in t
 
 
@@ -207,13 +273,25 @@ def preparar_entrada_deterministica(
     natural, modalidade = normalizar_pedido_natural(inicial)
     if modalidade == "deliberativo":
         return {"status": "ignorar", "modalidade": modalidade}
+    # Operações locais inequívocas recebem a primeira chance mesmo quando a
+    # conversa, o modo jogo ou uma referência recente fariam a entrada parecer
+    # contextual. Os detectores posteriores ainda precisam validar domínio,
+    # alvo e parâmetros antes de qualquer execução.
+    expresso_deterministico = bool(
+        callable(texto_expresso_melhor_no_deterministico)
+        and texto_expresso_melhor_no_deterministico(natural)
+    )
     # O classificador de conversa recebe a parte operacional. Assim "será que
     # você pode abrir..." não parece apenas uma pergunta casual.
-    if callable(texto_conversa_casual_sem_acao) and texto_conversa_casual_sem_acao(natural):
+    if (
+        not expresso_deterministico
+        and callable(texto_conversa_casual_sem_acao)
+        and texto_conversa_casual_sem_acao(natural)
+    ):
         return {"status": "ignorar"}
     if callable(texto_bloqueia_playlist_agora) and texto_bloqueia_playlist_agora(bruto):
         return {"status": "intent", "resultado": {"intent": "STOP_PLAYLIST_CONTEXT", "params": {}}}
-    if callable(texto_social_curto) and texto_social_curto(bruto):
+    if not expresso_deterministico and callable(texto_social_curto) and texto_social_curto(bruto):
         return {"status": "ignorar"}
 
     t = natural
@@ -225,19 +303,46 @@ def preparar_entrada_deterministica(
     if callable(ignorar_token_solto) and ignorar_token_solto(t):
         return {"status": "ignorar"}
 
+    # A preferência histórica pela IA não pode esconder comandos diretos dos
+    # especialistas locais. Ela existe para linguagem ambígua, não para uma
+    # frase que já começa com um verbo operacional. O detector do domínio
+    # ainda valida alvo e parâmetros, e o árbitro do turno continua sendo a
+    # autoridade que permite ou bloqueia a execução.
+    comando_operacional_direto = bool(re.match(
+        r"^(?:abre|abra|abrir|fecha|feche|fechar|maximiza|maximize|maximizar|"
+        r"coloca|coloque|bota|põe|poe|toca|toque|escuta|escute|ouvir|"
+        r"pausa|pause|retoma|continua|pula|pule|"
+        r"liga|ligue|ligar|desliga|desligue|desligar|"
+        r"cria|crie|criar|apaga|apague|apagar|remove|remova|remover|"
+        r"deleta|delete|deletar|exclui|exclua|excluir|"
+        r"pesquisa|pesquise|pesquisar|busca|busque|buscar|procura|procure|procurar|"
+        r"organiza|organize|organizar|move|mova|mover|renomeia|renomeie|renomear|"
+        r"salva|salve|salvar|guarda|guarde|guardar|adiciona|adicione|adicionar|"
+        r"lista|liste|listar|mostra|mostre|mostrar|"
+        r"aumenta|aumente|abaixa|abaixe|diminui|diminua|trava|trave|bloqueia|bloqueie)\b",
+        t,
+    ))
     if (
         callable(fluxo_prioritario_da_ia)
         and fluxo_prioritario_da_ia(t)
-        and not (callable(texto_expresso_melhor_no_deterministico) and texto_expresso_melhor_no_deterministico(t))
+        and not expresso_deterministico
+        and not comando_operacional_direto
     ):
         return {"status": "ignorar"}
 
-    if callable(texto_depende_de_contexto) and texto_depende_de_contexto(t):
+    if (
+        not expresso_deterministico
+        and callable(texto_depende_de_contexto)
+        and texto_depende_de_contexto(t)
+    ):
         comandos_contextuais = [
             "fecha", "fechar", "mata", "derruba", "cancela", "cancelar",
             "volume", "tela cheia", "fullscreen", "em foco", "abrir", "abre",
             "coloca", "coloque", "salva", "salve", "guarda", "guarde",
             "adiciona", "adicione", "lista", "listar", "mostra", "mostrar",
+            "toca", "toque", "liga", "ligar", "desliga", "desligar",
+            "pesquisa", "pesquisar", "busca", "buscar", "procura", "procurar",
+            "move", "mover", "renomeia", "renomear",
             "essa tambem", "essa também", "esse tambem", "esse também",
             "apaga", "apagar", "deleta", "deletar", "remove", "remover", "exclui", "excluir",
         ]
@@ -336,7 +441,11 @@ def detectar_email_notificacao_briefing(
         if any(p in t for p in ["le", "lê", "ler", "mostra", "ver", "verifica", "checa", "quantos", "quais", "fale", "falar", "resuma", "resumo", "me fala", "me fale", "o que eles me falam", "o que falam"]):
             return {"intent": "EMAIL_READ", "params": params()}
 
-    if "briefing" in t and any(p in t for p in ["fala", "fale", "mostra", "mostrar", "repete", "repetir", "diz", "diga", "conta", "contar"]):
+    if "briefing" in t and (
+        any(p in t for p in ["fala", "fale", "mostra", "mostrar", "repete", "repetir", "diz", "diga", "conta", "contar", "passa"])
+        or bool(re.search(r"\bqual\s+(?:e|é\s+)?o?\s*briefing\b", t))
+        or "briefing de hoje" in t
+    ):
         return {"intent": "BRIEFING_REPEAT", "params": params()}
 
     if "notificacao" in t or "notificacoes" in t or "notificação" in t or "notificações" in t:
@@ -359,12 +468,7 @@ def detectar_clima(
     t = str(texto_normalizado or "").strip()
     if not t:
         return None
-    pede_clima = (
-        any(p in t for p in ["quantos graus", "temperatura", "previsao do tempo", "previsão do tempo"])
-        or bool(re.search(r"\b(?:qual|como esta|como está|como ta|como tá)\s+(?:o\s+)?(?:clima|tempo)\b", t))
-        or bool(re.search(r"\b(?:clima|tempo)\s+(?:em|de|no|na)\s+[a-zà-ÿ]", t))
-        or bool(re.search(r"\b(?:como|qual)\s+(?:esta|está|ta|tá)\s+(?:o\s+)?(?:clima|tempo)\b", t))
-    )
+    pede_clima = texto_pede_clima_atual(t)
     if not pede_clima:
         return None
 
@@ -378,6 +482,8 @@ def detectar_clima(
         if encontrado:
             local = str(encontrado.group(1) or "").strip(" .,!?:;")
             break
+    if local.casefold() in {"hoje", "agora", "aqui", "hoje aqui"}:
+        local = ""
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
     return {"intent": "WEATHER", "params": params(local=local) if local else params()}
 
@@ -486,6 +592,23 @@ def detectar_playlist_laylay(
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
     limpar_nome = limpar_nome_playlist if callable(limpar_nome_playlist) else (lambda valor: str(valor or "").strip())
 
+    # Autoria expressa posse mesmo sem o pronome "sua":
+    # "quais playlists você criou?" pertence à curadoria da Laylay, não ao
+    # inventário do usuário nem à última playlist consultada.
+    referencia_autoria = bool(re.search(
+        r"\b(?:playlist|playlists)\s+(?:que\s+)?"
+        r"(?:voce|você|laylay|a\s+laylay|ela)\s+"
+        r"(?:criou|fez|montou|separou|organizou|preparou)\b",
+        t,
+        flags=re.IGNORECASE,
+    ))
+    referencia_posse = bool(re.search(
+        r"\b(?:qual|quais|que)\s+(?:playlist|playlists)\s+"
+        r"(?:e|é|sao|são)\s+(?:sua|suas|da\s+laylay|dela)\b",
+        t,
+        flags=re.IGNORECASE,
+    ))
+
     if not any(x in t for x in [
         "sua playlist",
         "suas playlists",
@@ -493,7 +616,7 @@ def detectar_playlist_laylay(
         "playlists da laylay",
         "playlist dela",
         "playlists dela",
-    ]):
+    ]) and not referencia_autoria and not referencia_posse:
         return None
 
     m_copy = re.search(
@@ -511,6 +634,12 @@ def detectar_playlist_laylay(
             ),
         }
 
+    if referencia_autoria or referencia_posse:
+        return {
+            "intent": "LAYLAY_PLAYLIST_LIST",
+            "params": params(nome_playlist=""),
+        }
+
     m_nome = re.search(r"playlist\s+(?P<nome>[a-z0-9\s_]+)$", t, flags=re.IGNORECASE)
     return {
         "intent": "LAYLAY_PLAYLIST_LIST",
@@ -525,16 +654,88 @@ def detectar_playlist_usuario(
     params_cb: Callable[..., Dict[str, Any]],
     limpar_nome_playlist: Callable[[str], str],
     extrair_nome_playlist: Callable[[str], str],
+    detectar_playlist_nome_direto: Callable[[str], str] | None = None,
 ) -> Dict[str, Any] | None:
-    """Reconhece comandos diretos sobre playlists salvas do Pedro."""
+    """Reconhece comandos diretos sobre playlists realmente salvas."""
     t = str(texto_normalizado or "").strip()
     bruto = str(texto_bruto or "")
+    # Quantidade/conteúdo com a palavra playlist depois do verbo:
+    # "quantas músicas tem a playlist sendo sendo". A forma anterior só
+    # aceitava "quantas músicas tem em sendo sendo" e deixava esta consulta
+    # objetiva escapar para a conversa generativa.
+    # Primeiro a forma em que o verbo vem no fim; caso contrário o padrão
+    # flexível abaixo poderia incorporar "tem" ao nome da playlist.
+    m_playlist_tem_quantidade = re.search(
+        r"\b(?:quantas|quais)\s+(?:as\s+)?(?:musicas|músicas|faixas)\s+"
+        r"(?:a|o|na|no|da|do)\s+playlist\s+(?P<nome>.+?)\s+"
+        r"(?:tem|possui|guarda|contem|contém)\??$",
+        t,
+        flags=re.IGNORECASE,
+    )
+    if m_playlist_tem_quantidade:
+        pl = limpar_nome_playlist(m_playlist_tem_quantidade.group("nome") or "")
+        if pl:
+            return {"intent": "PLAYLIST_LIST", "params": {"nome_playlist": pl}}
+
+    m_quantidade_playlist = re.search(
+        r"\b(?:quantas|quais)\s+(?:as\s+)?(?:musicas|músicas|faixas)\s+"
+        r"(?:(?:que\s+)?(?:eu\s+)?(?:tenho|tem|existem|estao|estão|ficam)\s+)?"
+        r"(?:n[ao]|da|do|a|o)?\s*playlist\s+(?P<nome>.+?)\??$",
+        t,
+        flags=re.IGNORECASE,
+    )
+    if m_quantidade_playlist:
+        pl = limpar_nome_playlist(m_quantidade_playlist.group("nome") or "")
+        if pl:
+            return {"intent": "PLAYLIST_LIST", "params": {"nome_playlist": pl}}
+
+    # Forma natural sem a palavra "playlist": a preposição liga a lista de
+    # faixas ao nome do catálogo que deve ser consultado.
+    m_conteudo = re.search(
+        r"\b(?:quais|quantas|lista(?:r)?|liste|mostra(?:r)?|mostre)\s+"
+        r"(?:as\s+)?(?:musicas|músicas|faixas)\s+"
+        r"(?:(?:que\s+)?(?:eu\s+)?(?:tenho|tem|estao|estão|ficam)\s+)?"
+        r"(?:em|na|no|da|do)\s+(?P<nome>.+)$",
+        t,
+        flags=re.IGNORECASE,
+    )
+    if m_conteudo:
+        pl = limpar_nome_playlist(m_conteudo.group("nome") or "")
+        if pl:
+            return {"intent": "PLAYLIST_LIST", "params": {"nome_playlist": pl}}
+
+    # "O que tem em Kamaitachi?" só vira consulta operacional quando o alvo
+    # corresponde a uma playlist real. Sem essa validação, nomes próprios
+    # desconhecidos continuam sendo perguntas normais para a conversa.
+    m_conteudo_natural = re.fullmatch(
+        r"(?:e\s+)?(?:o\s+que|oque)\s+(?:eu\s+)?(?:tenho|tem|ha|há)\s+"
+        r"(?:(?:dentro|salvo|guardado)\s+)?(?:em|na|no|da|do)\s+(?P<nome>.+?)\??",
+        t,
+        flags=re.IGNORECASE,
+    )
+    if m_conteudo_natural and callable(detectar_playlist_nome_direto):
+        nome_citado = limpar_nome_playlist(m_conteudo_natural.group("nome") or "")
+        pl = detectar_playlist_nome_direto(nome_citado) if nome_citado else ""
+        if pl:
+            return {"intent": "PLAYLIST_LIST", "params": {"nome_playlist": pl}}
     if "playlist" not in t:
         return None
 
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
     limpar_nome = limpar_nome_playlist if callable(limpar_nome_playlist) else (lambda valor: str(valor or "").strip())
     extrair_nome = extrair_nome_playlist if callable(extrair_nome_playlist) else (lambda valor: "")
+
+    m_delete_ref = re.fullmatch(
+        r"(?:apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir|tira|tirar)\s+"
+        r"(?P<ref>(?:essa|esta|aquela)\s+playlist)",
+        t,
+        flags=re.IGNORECASE,
+    )
+    if m_delete_ref:
+        return {
+            "intent": "PLAYLIST_DELETE",
+            "params": params(nome_playlist=str(m_delete_ref.group("ref") or "").strip()),
+        }
 
     m_delete = re.search(
         r"\b(?:apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir|tira|tirar)\s+"
@@ -557,7 +758,7 @@ def detectar_playlist_usuario(
         if pl:
             return {"intent": "PLAYLIST_ADD", "params": params(nome_playlist=pl)}
 
-    if re.search(r"\b(quais|lista|listar|mostra|mostrar|mostre|fale|falar|diga|dizer|o que tem|oque tem)\b", t):
+    if re.search(r"\b(quais|quantas|lista|listar|mostra|mostrar|mostre|fale|falar|diga|dizer|o que tem|oque tem)\b", t):
         pl = extrair_nome(bruto)
         if not pl:
             m = re.search(r"playlist\s+(.+)$", t)
@@ -587,16 +788,69 @@ def detectar_organizacao_desktop(
     *,
     params_cb: Callable[..., Dict[str, Any]],
 ) -> Dict[str, Any] | None:
-    """Reconhece o pedido direto de organizar janelas/area de trabalho."""
+    """Reconhece pedidos naturais e espaciais de organizacao de janelas.
+
+    O detector devolve apenas os lados realmente pedidos. Isso evita abrir ou
+    mover uma segunda janela por conta propria quando a pessoa diz somente
+    ``coloca a Steam na esquerda``.
+    """
     t = str(texto_normalizado or "").strip()
     if not t:
         return None
+    t = re.sub(r"^(?:agora|entao|então)\s+", "", t).strip()
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
+
+    if re.match(r"^(?:nao|não|nem)\b", t) or re.search(
+        r"\b(?:talvez|seria legal|estou pensando|to pensando|como eu faria|como faz|"
+        r"voc[eê] consegue|voc[eê] sabe)\b",
+        t,
+    ):
+        return None
+
+    def limpar_app(valor: str) -> str:
+        nome = re.sub(r"\s+", " ", str(valor or "")).strip(" ,.;:!?")
+        nome = re.sub(
+            r"^(?:e\s+)?(?:coloca|coloque|bota|ponha|põe|poe|move|mova|"
+            r"posiciona|posicione|deixa|deixe|joga)\s+",
+            "",
+            nome,
+        ).strip()
+        nome = re.sub(r"^(?:o|a|os|as|um|uma)\s+", "", nome).strip()
+        return re.sub(r"\s+(?:por favor|pfv|agora)$", "", nome).strip()
+
+    padrao_lado = re.compile(
+        r"^(?P<app>.+?)\s+(?:(?:na|a|à|para a)\s+"
+        r"(?P<lado>esquerda|direita)|(?:no|pro|para o|do)\s+lado\s+"
+        r"(?P<lado_genero>esquerdo|direito))"
+        r"(?:\s+(?:da|do)\s+(?:tela|desktop|monitor))?$"
+    )
+    lados: Dict[str, str] = {}
+    # A conjuncao separa os dois alvos sem quebrar nomes compostos de apps.
+    for trecho in re.split(r"\s+(?:e|,)\s+", t):
+        trecho_limpo = re.sub(
+            r"^(?:coloca|coloque|bota|ponha|põe|poe|move|mova|posiciona|"
+            r"posicione|deixa|deixe|joga)\s+",
+            "",
+            trecho.strip(),
+        )
+        encontrado = padrao_lado.match(trecho_limpo)
+        if not encontrado:
+            continue
+        app = limpar_app(encontrado.group("app"))
+        lado = encontrado.group("lado") or encontrado.group("lado_genero")
+        if app and app not in {"janela", "janelas", "programa", "app", "aplicativo"}:
+            lados["left" if lado in {"esquerda", "esquerdo"} else "right"] = app
+
+    if lados:
+        return {
+            "intent": "ORGANIZAR_DESKTOP",
+            "params": params(**lados, modo="posicionar"),
+        }
 
     if any(v in t for v in ["organiza", "organizar", "arruma", "arrumar"]) and any(
         alvo in t for alvo in ["area de trabalho", "área de trabalho", "desktop", "tela", "janelas", "janela"]
     ):
-        return {"intent": "ORGANIZAR_DESKTOP", "params": params(left="vscode", right="opera")}
+        return {"intent": "ORGANIZAR_DESKTOP", "params": params(modo="automatico")}
 
     return None
 
@@ -730,6 +984,15 @@ def detectar_fechar_alvo(
 
     alvo = re.sub(r"^(aba|site|janela|programa|app|aplicativo)\s+(do|da|de)?\s*", "", (m_close.group(2) or "").strip()).strip()
     alvo = re.sub(r"^(o|a|os|as|um|uma)\s+", "", alvo).strip()
+    if re.fullmatch(
+        r"(?:(?:programa|app|aplicativo|janela)\s+)?"
+        r"(?:que\s+(?:voce\s+)?(?:acabou\s+de\s+)?abrir|"
+        r"(?:ultimo|ultima)\s+(?:programa|app|aplicativo|janela))",
+        alvo,
+    ):
+        # É uma referência, não o nome literal de um executável. O resolvedor
+        # contextual conhece a última janela e deve decidir o alvo.
+        return None
     if not alvo or alvo in {"aba", "essa aba", "site", "janela"}:
         return {"intent": "CLOSE_TAB", "params": params()}
 

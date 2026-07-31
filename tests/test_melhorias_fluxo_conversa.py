@@ -6,6 +6,7 @@ import time
 
 from mente_laylay.autonomia.pre_fluxo_contextual import (
     analisar_intencao_com_porteiro,
+    texto_eh_conversa_social_sem_comando,
     texto_deve_evitar_llm_de_comando,
 )
 from mente_laylay.autonomia.porteiro_acoes import texto_conversa_casual_sem_acao
@@ -38,10 +39,41 @@ from mente_laylay.emocoes.perfil_emocional import limpar_para_voz
 from mente_laylay.personalidade.oralidade import naturalizar_texto_para_fala
 from mente_laylay.personalidade.ritmo_natural import ajustar_uso_natural_nome
 from mente_laylay.personalidade.abertura_chat import AberturaChatRuntime
+from mente_laylay.autonomia.modo_chat import InteracaoChatRuntime
 
 
 def _ctx_conversa_basico() -> dict:
     return {"_normalizar_texto_com_apelidos": lambda texto: str(texto or "").casefold()}
+
+
+def test_atalho_do_chat_usa_abertura_local_sem_acordar_llm() -> None:
+    chamadas = []
+
+    class AberturaFake:
+        def gerar_local(self, tipo):
+            chamadas.append(("local", tipo))
+            return "Tô te ouvindo."
+
+        def gerar(self):
+            chamadas.append(("llm", "chat"))
+            return "não deveria acontecer"
+
+    runtime = InteracaoChatRuntime(
+        estado_runtime_getter=lambda: None,
+        modo_chat_runtime_getter=lambda: None,
+        abertura_runtime_getter=lambda: AberturaFake(),
+        processar_texto=lambda *_args: None,
+        escutar_terminal=lambda *_args, **_kwargs: None,
+        keyboard_mod=None,
+        hotkey_liga="f10",
+        hotkey_desliga="f11",
+        stdin_getter=lambda: None,
+        raw_print=lambda *_args: None,
+        print_lock=None,
+    )
+
+    assert runtime.gerar_abertura() == "Tô te ouvindo."
+    assert chamadas == [("local", "chat")]
 
 
 def test_perguntas_sociais_naturais_sao_reconhecidas_sem_frase_exata() -> None:
@@ -83,6 +115,65 @@ def test_resposta_de_bem_estar_nao_repete_a_pergunta_para_pedro() -> None:
         leitura = classificar_conversa_curta_local(ctx, texto)
         fala = responder_conversa_curta_por_tipo(ctx, leitura["tipo"], texto)
         assert "?" not in fala
+
+
+def test_recusa_com_novo_assunto_nao_vira_cancelamento_operacional() -> None:
+    ctx = {
+        "_normalizar_texto_com_apelidos": lambda texto: str(texto or "").casefold(),
+        "_normalizar_texto_curto": lambda texto: str(texto or "").casefold(),
+        "mente_integrada_estado": {},
+    }
+    texto = "precisa nao eu vou sair para comer ja"
+
+    assert classificar_conversa_curta_local(ctx, texto) == {}
+    assert construir_fala_conversa(ctx, "", texto, "conversa", []) == ""
+
+
+def test_correcao_atual_prevalece_sobre_agradecimento_semantico_antigo() -> None:
+    ctx = {
+        "_normalizar_texto_com_apelidos": lambda texto: str(texto or "").casefold(),
+        "_normalizar_texto_curto": lambda texto: str(texto or "").casefold(),
+        "_texto_social_curto": lambda _texto: True,
+        "_texto_conversa_casual_sem_acao": lambda _texto: True,
+        "_texto_tem_comando_explicito": lambda _texto: False,
+        "mente_integrada_estado": {
+            "turno_atual": {
+                "modalidade": "correcao",
+                "leitura_semantica": {
+                    "uso_conversacional": True,
+                    "atos": [{"tipo": "agradecimento", "confianca": 0.91}],
+                },
+            },
+        },
+    }
+    texto = "não lay, eu ainda estou no menu"
+
+    assert classificar_conversa_curta_local(ctx, texto) == {}
+    assert texto_eh_conversa_social_sem_comando(ctx, texto) is False
+
+
+def test_recusa_isolada_so_cancela_quando_ha_pendencia_operacional() -> None:
+    base = {
+        "_normalizar_texto_com_apelidos": lambda texto: str(texto or "").casefold(),
+        "_normalizar_texto_curto": lambda texto: str(texto or "").casefold(),
+        "_ajustar_fala_por_horario": lambda fala, *_args: fala,
+    }
+    sem_pendencia = dict(base, mente_integrada_estado={})
+    com_pendencia = dict(base, mente_integrada_estado={
+        "pendencia_atual": {
+            "status": "ativa", "dominio": "iot", "intencao": "IOT_CONTROL",
+        },
+    })
+
+    leitura_sem_pendencia = classificar_conversa_curta_local(sem_pendencia, "nao precisa")
+    assert leitura_sem_pendencia.get("tipo") != "SOFT_DECLINE"
+    assert responder_conversa_curta_por_tipo(
+        sem_pendencia, leitura_sem_pendencia.get("tipo", ""), "nao precisa"
+    ) == ""
+    leitura = classificar_conversa_curta_local(com_pendencia, "nao precisa")
+    assert leitura["tipo"] == "SOFT_DECLINE"
+    fala = responder_conversa_curta_por_tipo(com_pendencia, "SOFT_DECLINE", "nao precisa")
+    assert fala
 
 
 def test_fala_social_ambigua_sem_contexto_nao_e_forcada_localmente() -> None:
@@ -178,6 +269,94 @@ def test_analisador_reaproveita_decisao_do_mesmo_texto() -> None:
     assert len(chamadas) == 1
 
 
+def test_analisador_nao_reaproveita_decisao_quando_contexto_muda() -> None:
+    chamadas = []
+    mente = {
+        "continuidade_geral": {
+            "dominio_ativo": "musica",
+            "dominios": {
+                "musica": {
+                    "intent": "PLAYLIST_PLAY",
+                    "alvo": "kamaitachi",
+                    "params": {"nome_playlist": "kamaitachi"},
+                }
+            },
+        }
+    }
+
+    def enviar(*_args, **_kwargs):
+        chamadas.append(1)
+        return '{"intent":"NONE","params":{}}'
+
+    runtime = InterpretacaoIntencaoRuntime(
+        contexto_getter=lambda: {
+            "enviar_mensagem": enviar,
+            "estado": {"mente_integrada_estado": mente},
+            "normalizar_texto": lambda texto: texto.lower(),
+        }
+    )
+
+    runtime.analisar("quais tem nela")
+    mente["continuidade_geral"] = {
+        "dominio_ativo": "iot",
+        "dominios": {
+            "iot": {
+                "intent": "IOT_CONTROL",
+                "alvo": "lampada_quarto",
+                "params": {"alvo": "lampada_quarto"},
+            }
+        },
+    }
+    runtime.analisar("quais tem nela")
+
+    assert len(chamadas) == 2
+
+
+def test_consulta_natural_pode_usar_ia_first_sem_ser_bloqueada_como_conversa() -> None:
+    runtime = InterpretacaoIntencaoRuntime(
+        contexto_getter=lambda: {
+            "enviar_mensagem": lambda *_args, **_kwargs: (
+                '{"intent":"IOT_LIST","params":{}}'
+            ),
+            "estado": {},
+            "normalizar_texto": lambda texto: str(texto).casefold(),
+            "texto_parece_consulta_operacional": lambda _texto: True,
+            "texto_conversa_casual_sem_acao": lambda _texto: True,
+            "texto_conversa_contextual_sem_comando": lambda _texto: True,
+            "texto_social_curto": lambda _texto: False,
+            "texto_bloqueia_playlist_agora": lambda _texto: False,
+            "texto_pede_direcao_musical_generica": lambda _texto: False,
+            "texto_expresso_melhor_no_deterministico": lambda _texto: False,
+        }
+    )
+
+    assert runtime.tentar_ai_primeiro("quais aparelhos estão disponíveis?") == {
+        "intent": "IOT_LIST",
+        "params": {},
+    }
+
+
+def test_consulta_natural_bloqueia_acao_de_escrita_proposta_pela_ia() -> None:
+    runtime = InterpretacaoIntencaoRuntime(
+        contexto_getter=lambda: {
+            "enviar_mensagem": lambda *_args, **_kwargs: (
+                '{"intent":"IOT_CONTROL","params":{"acao":"desligar","alvo":"luz"}}'
+            ),
+            "estado": {},
+            "normalizar_texto": lambda texto: str(texto).casefold(),
+            "texto_parece_consulta_operacional": lambda _texto: True,
+            "texto_conversa_casual_sem_acao": lambda _texto: True,
+            "texto_conversa_contextual_sem_comando": lambda _texto: True,
+            "texto_social_curto": lambda _texto: False,
+            "texto_bloqueia_playlist_agora": lambda _texto: False,
+            "texto_pede_direcao_musical_generica": lambda _texto: False,
+            "texto_expresso_melhor_no_deterministico": lambda _texto: False,
+        }
+    )
+
+    assert runtime.tentar_ai_primeiro("qual é o estado da luz?") is None
+
+
 def test_continuacao_musical_entende_estilo_geek() -> None:
     estado = {
         "ultima_resposta": "Você quer uma música de qual estilo?",
@@ -198,6 +377,14 @@ def test_continuacao_musical_entende_estilo_geek() -> None:
         "CG5 - I See a Dreamer",
         "JT Music - Join Us For A Bite",
     }
+
+
+def test_coloca_uma_musica_e_pedido_generico_com_pendencia() -> None:
+    assert texto_pede_direcao_musical_generica(
+        "coloca uma música",
+        estado_mental={},
+        normalizar_texto=lambda texto: texto.casefold(),
+    ) is True
 
 
 def test_erro_500_local_preserva_assunto_da_conversa() -> None:
@@ -422,6 +609,19 @@ def test_inicio_do_programa_nao_envia_conversa_anterior_para_abertura() -> None:
     assert "medidas da massa" not in conteudo_prompt
     assert "farinha e ovos" not in conteudo_prompt
     assert fala.startswith("Olá")
+
+
+def test_abertura_local_nao_disputa_o_modelo_com_primeira_entrada() -> None:
+    chamadas = []
+    runtime = AberturaChatRuntime(
+        estado_getter=lambda: {},
+        enviar_mensagem=lambda *_args, **_kwargs: chamadas.append(True) or "Oi",
+        limpar_resposta=lambda texto: texto,
+        remover_prefixo_exec=lambda texto: texto,
+    )
+
+    assert runtime.gerar_local("inicio")
+    assert chamadas == []
 
 
 def test_abertura_rejeita_continuacao_de_tarefa_antiga() -> None:

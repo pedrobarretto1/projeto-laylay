@@ -7,6 +7,10 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+from mente_laylay.cognicao.normalizacao_linguagem import (
+    corrigir_erros_portugues_operacionais,
+)
+
 
 APELIDOS_STOPWORDS = {
     "hoje", "amanha", "amanhã", "ontem", "agora", "depois", "antes",
@@ -36,6 +40,12 @@ class LinguagemAprendidaRuntime:
         self.falar = falar
         self.log = log
         self._apelidos_cache: dict[str, Any] = {"ts": 0.0, "mapa": {}}
+        self._metricas_tolerancia: dict[str, Any] = {
+            "normalizacoes": 0,
+            "entradas_corrigidas": 0,
+            "substituicoes": 0,
+            "ultima": {},
+        }
 
     def carregar_apelidos(self, force: bool = False) -> dict:
         """Carrega apelidos aprendidos do banco e mantém cache leve em memória."""
@@ -85,16 +95,25 @@ class LinguagemAprendidaRuntime:
 
     def normalizar_com_apelidos(self, texto: str) -> str:
         normalizado = self.normalizar_texto(texto)
-        # Erros de digitação curtos e muito comuns podem ser corrigidos sem
-        # tentar adivinhar palavras de domínio ou nomes próprios.
-        correcoes_seguras = {
-            "tduo": "tudo",
-            "tdo": "tudo",
-            "vc": "voce",
-        }
-        for errado, correto in correcoes_seguras.items():
-            normalizado = re.sub(rf"\b{re.escape(errado)}\b", correto, normalizado)
+        normalizado, correcoes = corrigir_erros_portugues_operacionais(normalizado)
+        self._metricas_tolerancia["normalizacoes"] += 1
+        if correcoes:
+            self._metricas_tolerancia["entradas_corrigidas"] += 1
+            self._metricas_tolerancia["substituicoes"] += len(correcoes)
+            self._metricas_tolerancia["ultima"] = {
+                "texto_original": str(texto or "")[:160],
+                "texto_normalizado": normalizado[:160],
+                "correcoes": [dict(item) for item in correcoes[:5]],
+            }
         return self.aplicar_apelidos(normalizado)
+
+    def diagnostico_tolerancia_portugues(self) -> dict[str, Any]:
+        return {
+            **dict(self._metricas_tolerancia),
+            "modo": "operacional_conservador",
+            "aproximacao_altera_argumentos": False,
+            "autoriza_execucao": False,
+        }
 
     def extrair_apelido_ensinavel(self, texto: str):
         bruto = str(texto or "").strip()

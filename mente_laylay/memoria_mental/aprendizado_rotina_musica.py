@@ -279,6 +279,20 @@ def classificar_confirmacao_local(texto: str) -> Optional[bool]:
         return True
     if t in nao_frases:
         return False
+    if re.search(
+        r"\b(?:nao|não)\b.*\b(?:deixa|mantenha|mantem|mantém|preserva|preserve)\b",
+        t,
+    ):
+        return False
+    if re.search(
+        r"^(?:nao\b.*\b(?:apaga|apagar|exclui|excluir|remove|remover|"
+        r"substitui|substituir|sobrescreve|sobrescrever|faz|fazer|executa|executar)\b.*|"
+        r"melhor\s+(?:nao\s+)?(?:deixar|manter)\b.*|"
+        r"(?:deixa|mantenha|mantem|preserva)\b.*\b(?:como\s+esta|assim|desse\s+jeito)|"
+        r"cancela\b.*)$",
+        t,
+    ):
+        return False
     tokens = set(t.split())
     if {"quero", "sim"} <= tokens or {"pode", "sim"} <= tokens:
         return True

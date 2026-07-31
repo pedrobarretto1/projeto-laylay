@@ -85,7 +85,7 @@ class ContextoPaginas:
         conteudo = self.paginas[url]["content"]
         prompt_resumo = f"""
     Resuma em NO MÁXIMO 2 frases o conteúdo principal desta página.
-    Foque apenas no que realmente importa para o Pedro.
+    Foque apenas no que realmente importa para o usuário.
     Página: {self.paginas[url]['title']}
 
     CONTEÚDO:

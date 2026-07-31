@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Any, Callable
 
 from mente_laylay.personalidade.ritmo_natural import escolher_sem_repeticao
+from mente_laylay.integracao.llm_http import eh_estado_tecnico_llm
 
 
 _MARCADORES_CLIMA_INDISPONIVEL = (
@@ -23,6 +24,149 @@ _MARCADORES_CLIMA_INDISPONIVEL = (
     "clima indisponível",
     "clima indisponivel",
 )
+
+_CLIMA_CACHE_LOCK = threading.RLock()
+_COORDENADAS_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+_CLIMA_ATUAL_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+
+_DESCRICOES_WMO = {
+    0: "céu limpo", 1: "predominantemente limpo", 2: "parcialmente nublado",
+    3: "nublado", 45: "neblina", 48: "neblina com geada",
+    51: "garoa fraca", 53: "garoa moderada", 55: "garoa forte",
+    56: "garoa congelante fraca", 57: "garoa congelante forte",
+    61: "chuva fraca", 63: "chuva moderada", 65: "chuva forte",
+    66: "chuva congelante fraca", 67: "chuva congelante forte",
+    71: "neve fraca", 73: "neve moderada", 75: "neve forte",
+    77: "grãos de neve", 80: "pancadas de chuva fracas",
+    81: "pancadas de chuva moderadas", 82: "pancadas de chuva fortes",
+    85: "pancadas de neve fracas", 86: "pancadas de neve fortes",
+    95: "trovoadas", 96: "trovoadas com granizo fraco",
+    99: "trovoadas com granizo forte",
+}
+
+
+def _valor_clima(valor: Any) -> str:
+    try:
+        numero = float(valor)
+    except (TypeError, ValueError):
+        return ""
+    if numero.is_integer():
+        return str(int(numero))
+    return f"{numero:.1f}".replace(".", ",")
+
+
+def _descricao_wmo(codigo: Any) -> str:
+    try:
+        return _DESCRICOES_WMO.get(int(codigo), "condições variáveis")
+    except (TypeError, ValueError):
+        return "condições variáveis"
+
+
+def obter_clima_open_meteo(
+    localidade: str,
+    *,
+    requests_get: Callable[..., Any],
+    print_fn: Callable[..., Any] = print,
+    timeout_s: float = 2.5,
+    clock: Callable[[], float] = time.time,
+) -> dict:
+    """Consulta reserva sem chave, com geocodificação e cache conservador."""
+    cidade = re.sub(r"\s+", " ", str(localidade or "Boituva")).strip() or "Boituva"
+    chave = cidade.casefold()
+    agora = float(clock())
+    with _CLIMA_CACHE_LOCK:
+        item_clima = _CLIMA_ATUAL_CACHE.get(chave)
+        if item_clima and agora - item_clima[0] < 300.0:
+            retorno = dict(item_clima[1])
+            retorno["cache"] = True
+            return retorno
+        item_coordenadas = _COORDENADAS_CACHE.get(chave)
+        coordenadas = (
+            dict(item_coordenadas[1])
+            if item_coordenadas and agora - item_coordenadas[0] < 86400.0
+            else {}
+        )
+
+    limite = max(0.5, float(timeout_s))
+    try:
+        if not coordenadas:
+            resposta_geo = requests_get(
+                "https://geocoding-api.open-meteo.com/v1/search",
+                params={
+                    "name": cidade, "count": 5, "language": "pt",
+                    "format": "json",
+                },
+                timeout=limite,
+            )
+            if int(getattr(resposta_geo, "status_code", 0) or 0) != 200:
+                return {"ok": False, "localidade": cidade, "erro": "geocodificacao"}
+            resultados = list((resposta_geo.json() or {}).get("results") or [])
+            if not resultados:
+                return {"ok": False, "localidade": cidade, "erro": "local_nao_encontrado"}
+            escolhido = next(
+                (item for item in resultados if str(item.get("country_code") or "").upper() == "BR"),
+                resultados[0],
+            )
+            coordenadas = {
+                "latitude": float(escolhido["latitude"]),
+                "longitude": float(escolhido["longitude"]),
+                "localidade": str(escolhido.get("name") or cidade).strip() or cidade,
+                "timezone": str(escolhido.get("timezone") or "auto").strip() or "auto",
+            }
+            with _CLIMA_CACHE_LOCK:
+                _COORDENADAS_CACHE[chave] = (agora, dict(coordenadas))
+
+        resposta = requests_get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": coordenadas["latitude"],
+                "longitude": coordenadas["longitude"],
+                "current": (
+                    "temperature_2m,relative_humidity_2m,apparent_temperature,"
+                    "weather_code,wind_speed_10m,wind_direction_10m"
+                ),
+                "timezone": coordenadas.get("timezone") or "auto",
+                "forecast_days": 1,
+            },
+            timeout=limite,
+        )
+        if int(getattr(resposta, "status_code", 0) or 0) != 200:
+            return {"ok": False, "localidade": cidade, "erro": "previsao"}
+        atual = dict((resposta.json() or {}).get("current") or {})
+        temperatura = _valor_clima(atual.get("temperature_2m"))
+        if not temperatura:
+            return {"ok": False, "localidade": cidade, "erro": "dados_ausentes"}
+        resultado = {
+            "ok": True,
+            "localidade": coordenadas.get("localidade") or cidade,
+            "temperatura_c": temperatura,
+            "sensacao_c": _valor_clima(atual.get("apparent_temperature")),
+            "umidade": _valor_clima(atual.get("relative_humidity_2m")),
+            "vento_kmph": _valor_clima(atual.get("wind_speed_10m")),
+            "direcao_vento": _valor_clima(atual.get("wind_direction_10m")),
+            "descricao": _descricao_wmo(atual.get("weather_code")),
+            "fonte": "open_meteo",
+            "cache": False,
+        }
+        with _CLIMA_CACHE_LOCK:
+            _CLIMA_ATUAL_CACHE[chave] = (agora, dict(resultado))
+        return resultado
+    except Exception as erro:
+        print_fn(f"⚠️ [CLIMA] fonte reserva não respondeu: {type(erro).__name__}")
+        return {"ok": False, "localidade": cidade, "erro": "fonte_reserva"}
+
+
+def _clima_compacto(dados: dict) -> str:
+    descricao = str(dados.get("descricao") or "condições variáveis").strip()
+    temperatura = str(dados.get("temperatura_c") or "").strip()
+    umidade = str(dados.get("umidade") or "").strip()
+    vento = str(dados.get("vento_kmph") or "").strip()
+    partes = [descricao, f"{temperatura}°C" if temperatura else ""]
+    if umidade:
+        partes.append(f"umidade:{umidade}%")
+    if vento:
+        partes.append(f"vento:{vento}km/h")
+    return " ".join(item for item in partes if item)
 
 
 def clima_esta_disponivel(clima: str) -> bool:
@@ -166,7 +310,9 @@ class AmbienteSistemaRuntime:
                     modo_rapido=True,
                     timeout=4,
                 )
-                fala = remover_prefixo_exec(limpar_resposta(resposta_raw)).strip()
+                fala = "" if eh_estado_tecnico_llm(resposta_raw) else remover_prefixo_exec(
+                    limpar_resposta(resposta_raw)
+                ).strip()
                 falha_ia = any(
                     trecho in fala.lower()
                     for trecho in (
@@ -232,9 +378,10 @@ def obter_clima_wttr(
     print_fn: Callable[..., Any] = print,
     timeout_s: float = 6.0,
 ) -> str:
+    cidade = str(cidade or "Boituva").strip() or "Boituva"
     try:
-        cidade = str(cidade or "Boituva").strip() or "Boituva"
-        url = f"https://wttr.in/{cidade}?format=%C+%t+umidade:%h+vento:%w&lang=pt"
+        cidade_url = urllib.parse.quote(cidade)
+        url = f"https://wttr.in/{cidade_url}?format=%C+%t+umidade:%h+vento:%w&lang=pt"
         res = requests_get(url, timeout=max(0.5, float(timeout_s)))
         if res.status_code == 200:
             clima_raw = str(res.text or "").strip()
@@ -242,10 +389,18 @@ def obter_clima_wttr(
             if umidade_match and int(umidade_match.group(1)) > 80:
                 clima_raw += " — alta umidade, chance de chuva nas próximas horas!"
             return clima_raw
-        return "Clima não disponível no momento."
-    except Exception as e:
-        print_fn(f"⚠️ [BRIEFING] wttr.in falhou: {e}")
-        return "Não consegui pegar o clima agora."
+    except Exception:
+        print_fn("⚠️ [BRIEFING] wttr.in não respondeu; usando fonte reserva.")
+    reserva = obter_clima_open_meteo(
+        cidade,
+        requests_get=requests_get,
+        print_fn=print_fn,
+        timeout_s=min(3.0, max(1.0, float(timeout_s))),
+    )
+    if reserva.get("ok"):
+        print_fn("🌦️ [BRIEFING] clima recuperado pela fonte reserva.")
+        return _clima_compacto(reserva)
+    return "Não consegui pegar o clima agora."
 
 
 def obter_clima_localidade(
@@ -261,7 +416,7 @@ def obter_clima_localidade(
         url = f"https://wttr.in/{cidade_url}?format=j1&lang=pt"
         res = requests_get(url, timeout=6)
         if res.status_code != 200:
-            return {"ok": False, "localidade": cidade, "erro": "status"}
+            raise RuntimeError("status_wttr")
         data = res.json() if res.content else {}
         atual = ((data or {}).get("current_condition") or [{}])[0] or {}
         descricao = ""
@@ -283,9 +438,14 @@ def obter_clima_localidade(
             "vento_kmph": str(atual.get("windspeedKmph") or "").strip(),
             "descricao": descricao,
         }
-    except Exception as e:
-        print_fn(f"⚠️ [CLIMA] falha ao consultar clima de {cidade}: {e}")
-        return {"ok": False, "localidade": cidade, "erro": str(e)}
+    except Exception:
+        print_fn(f"⚠️ [CLIMA] wttr.in não respondeu para {cidade}; usando fonte reserva.")
+        return obter_clima_open_meteo(
+            cidade,
+            requests_get=requests_get,
+            print_fn=print_fn,
+            timeout_s=3.0,
+        )
 
 
 def montar_briefing_matinal(
@@ -301,11 +461,11 @@ def montar_briefing_matinal(
 
     clima_fala = naturalizar_clima_resumido(clima)
     prompt_briefing = (
-        f"É de manhã e você acabou de acordar o sistema do Pedro. "
+        f"É de manhã e você acabou de acordar junto com o sistema. "
         f"Faça um briefing matinal curto na voz da Laylay: observadora, cúmplice, espontânea e "
         f"levemente debochada, sem parecer locutora de previsão do tempo. "
         f"Informe que em {cidade} o clima hoje é: {clima_fala}. "
-        f"Fale diretamente com Pedro no singular e termine com uma provocação simpática sobre qual "
+        f"Fale diretamente com o usuário no singular e termine com uma provocação simpática sobre qual "
         f"projeto vai perder a paz primeiro hoje. "
         f"Use no máximo 65 palavras e duas ou três frases. Não use metáforas sensuais, românticas ou corporais. "
         f"Não diga 'Boa manhã', não use 'vocês', não coloque destruir entre aspas e não soe institucional. "
@@ -322,7 +482,9 @@ def montar_briefing_matinal(
         modo_rapido=True,
         timeout=4,
     )
-    bot = remover_prefixo_exec_cb(limpar_resposta_cb(bot_raw)).strip()
+    bot = "" if eh_estado_tecnico_llm(bot_raw) else remover_prefixo_exec_cb(
+        limpar_resposta_cb(bot_raw)
+    ).strip()
     falha_ia = any(
         trecho in bot.lower()
         for trecho in (
@@ -371,22 +533,36 @@ def executar_briefing_matinal(
     sleep_fn(max(0.0, float(atraso_startup_s)))
     clima = obter_clima()
     entregue = False
+    pendente = False
     try:
         fala = montar_fala(clima)
-        entregue = bool(agendar_fala("briefing", fala, "calma", 1))
+        resultado_entrega = agendar_fala("briefing", fala, "calma", 1)
+        if isinstance(resultado_entrega, dict):
+            entregue = bool(resultado_entrega.get("entregue"))
+            pendente = bool(resultado_entrega.get("pendente"))
+        else:
+            entregue = bool(resultado_entrega)
     except Exception as erro:
         print_fn(f"⚠️ [BRIEFING] Falha ao montar fala: {erro}")
         fallback = (
-            f"Hoje em {cidade} o clima está {clima}. E aí, qual vai ser a bagunça de hoje, Pedro?"
+            f"Hoje em {cidade} o clima está {clima}. E aí, qual vai ser a bagunça de hoje?"
             if clima_esta_disponivel(clima)
             else montar_briefing_sem_clima(cidade)
         )
         try:
-            entregue = bool(agendar_fala("briefing", fallback, "calma", 1))
+            resultado_entrega = agendar_fala("briefing", fallback, "calma", 1)
+            if isinstance(resultado_entrega, dict):
+                entregue = bool(resultado_entrega.get("entregue"))
+                pendente = bool(resultado_entrega.get("pendente"))
+            else:
+                entregue = bool(resultado_entrega)
         except Exception as erro_fala:
             print_fn(f"⚠️ [BRIEFING] Falha ao entregar fallback: {erro_fala}")
             entregue = False
     if not entregue:
+        if pendente:
+            print_fn("📅 [BRIEFING] Fala preservada para depois do turno; estado será salvo após a entrega.")
+            return True
         print_fn("⚠️ [BRIEFING] Fala não foi entregue; estado diário não será salvo.")
         return False
     salvar_estado()
@@ -403,9 +579,9 @@ def repetir_briefing(
     if not clima_esta_disponivel(clima):
         return montar_briefing_sem_clima(cidade, repeticao=True)
     prompt_repetir = (
-        f"System: O Pedro acabou de pedir para você repetir o briefing do clima. "
+        f"System: O usuário acabou de pedir para você repetir o briefing do clima. "
         f"Fale do seu jeito, com uma provocação leve se ela surgir naturalmente, "
-        f"sem diagnosticar, rotular ou ofender o Pedro. "
+        f"sem diagnosticar, rotular ou ofender o usuário. "
         f"A informação é: em {cidade} o clima está {clima}. "
         f"Retorne somente a frase que será dita, sem JSON, rótulos ou comandos."
     )
@@ -416,7 +592,9 @@ def detectar_repetir_briefing(texto: str) -> bool:
     t = str(texto or "").lower().strip()
     triggers = [
         "repete o briefing", "repetir briefing", "briefing de novo",
-        "fala o briefing de novo", "repete o clima",
+        "fala o briefing de novo", "repete o clima", "qual o briefing",
+        "qual é o briefing", "qual e o briefing", "briefing de hoje",
+        "me passa o briefing", "me mostra o briefing",
     ]
     return any(trig in t for trig in triggers)
 
@@ -544,12 +722,14 @@ def monitor_saude_daemon(
     cpu_sustentado_segundos: float,
     print_fn: Callable[..., Any] = print,
     sleep_fn: Callable[[float], Any] = time.sleep,
+    deve_parar: Callable[[], bool] | None = None,
+    aguardar_fn: Callable[[float], bool] | None = None,
 ) -> None:
     print_fn("🩺 [SAÚDE] Monitor de saúde iniciado (CPU/RAM/Temp + anti-falso-positivo)")
     estado.setdefault("cpu_alta_desde", 0.0)
     estado.setdefault("ultimo_aviso", 0.0)
 
-    while True:
+    while not (callable(deve_parar) and deve_parar()):
         try:
             agora = time.time()
             cpu = psutil_mod.cpu_percent(interval=1)
@@ -571,7 +751,11 @@ def monitor_saude_daemon(
         except Exception as e:
             print_fn(f"⚠️ [SAÚDE] Erro no daemon: {e}")
 
-        sleep_fn(5)
+        if callable(aguardar_fn):
+            if aguardar_fn(5):
+                break
+        else:
+            sleep_fn(5)
 
 
 def detectar_comando_saude(texto: str) -> bool:

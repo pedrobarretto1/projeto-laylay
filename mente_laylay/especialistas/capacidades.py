@@ -21,6 +21,7 @@ _INTENTS_POR_DOMINIO = {
         "CLOSE_TAB", "CLOSE_IDLE_TABS", "OPEN_URL", "SITE_ENTER",
         "SCREEN_CAPTURE", "SEARCH",
     },
+    "visao": {"GAME_VISION"},
     "agenda": {
         "AGENDAR_LEMBRETE", "AGENDAR_ACAO", "LISTAR_AGENDAMENTOS",
         "CANCELAR_AGENDAMENTO", "BRIEFING_REPEAT",
@@ -28,15 +29,44 @@ _INTENTS_POR_DOMINIO = {
     "arquivos": {
         "CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "CONFIRM_DELETE_ITEM",
         "CANCEL_DELETE_ITEM", "RESTORE_DELETED_ITEM", "FILE_TRANSACTION",
+        "FILE_SEARCH", "FILE_OPEN_RESULT",
     },
     "email": {"EMAIL_READ", "EMAIL_SYNC", "NOTIFICATIONS"},
     "iot": {"IOT_CONTROL", "IOT_STATUS", "IOT_LIST"},
+    "area_transferencia": {
+        "CLIPBOARD_READ", "CLIPBOARD_TRANSFORM", "CLIPBOARD_SEARCH",
+        "CLIPBOARD_INVESTIGATE", "CLIPBOARD_WRITE", "CLIPBOARD_UNDO",
+        "CLIPBOARD_LEARN",
+    },
+    "caixa_entrada": {
+        "INBOX_ADD", "INBOX_ADD_DISCUSSION", "INBOX_LIST", "INBOX_CONVERT_REMINDER",
+        "INBOX_DELETE", "CONFIRM_INBOX_DELETE",
+        "CANCEL_INBOX_ACTION",
+    },
+    "pessoas": {
+        "PEOPLE_REMEMBER", "PEOPLE_QUERY", "PEOPLE_LIST", "PEOPLE_FORGET",
+    },
+    "cooperacao": {"COOPERATIVE_PLAN"},
     "conversa": {"WEATHER", "SUGGEST_ACTION"},
 }
 
 _CONFIRMACAO_OBRIGATORIA = {
     "DELETE_ITEM",
+    "PEOPLE_FORGET",
 }
+
+# Consultas sem efeito colateral podem ser formuladas como perguntas naturais.
+# O conjunto é usado pelo árbitro; ele não substitui a validação de alvo feita
+# pelo mapa de recursos e pelos executores.
+INTENTS_SOMENTE_LEITURA = frozenset({
+    "PLAYLIST_LIST", "LAYLAY_PLAYLIST_LIST", "LISTAR_PLAYLISTS",
+    "LISTAR_AGENDAMENTOS", "EMAIL_READ", "EMAIL_SYNC", "NOTIFICATIONS",
+    "IOT_STATUS", "IOT_LIST", "WEATHER", "RESUMIR_PAGINA",
+    "INBOX_LIST",
+    "CLIPBOARD_INVESTIGATE",
+    "FILE_SEARCH",
+    "PEOPLE_QUERY", "PEOPLE_LIST",
+})
 
 # A confirmação descreve a evidência que o executor realmente consegue obter.
 # ``variavel`` significa que há rotas confirmáveis e rotas apenas enviadas; o
@@ -63,13 +93,18 @@ _CONFIRMACAO_POR_INTENT = {
     "VOLUME": ("variavel", "algumas APIs retornam aceite, mas o PC remoto não confirma o nível final"),
     "MAXIMIZE_WINDOW": ("variavel", "a janela local pode ser relida; envio remoto não confirma"),
     "LOCK_PC": ("indisponivel", "a chamada de bloqueio não permite releitura antes do encerramento"),
-    "ORGANIZAR_DESKTOP": ("indisponivel", "o organizador não retorna o layout final observado"),
+    "ORGANIZAR_DESKTOP": (
+        "estado_observado",
+        "a seleção automática combina foco, áudio, recência e tempo aberto; a geometria "
+        "das janelas movidas é relida e comparada com o lado solicitado",
+    ),
     # Navegador
     "CLOSE_TAB": ("variavel", "a aba local é relida; envio remoto pode não responder"),
     "CLOSE_IDLE_TABS": ("indisponivel", "o executor legado não devolve as abas finais"),
     "OPEN_URL": ("estado_observado", "a URL ou aba aberta é relida"),
     "SITE_ENTER": ("variavel", "a solicitação pode ser aceita sem observar o conteúdo final"),
     "SCREEN_CAPTURE": ("indisponivel", "o roteador ainda não recebe o caminho final da captura"),
+    "GAME_VISION": ("indisponivel", "a análise visual termina de forma assíncrona"),
     "SEARCH": ("variavel", "a confirmação depende da rota de pesquisa escolhida"),
     # Agenda
     "AGENDAR_LEMBRETE": ("persistencia_local", "o lembrete salvo é confirmado pelo armazenamento"),
@@ -85,13 +120,55 @@ _CONFIRMACAO_POR_INTENT = {
     "CANCEL_DELETE_ITEM": ("estado_local", "a pendência local é removida sem apagar o item"),
     "RESTORE_DELETED_ITEM": ("estado_observado", "a restauração retorna o caminho recuperado"),
     "FILE_TRANSACTION": ("estado_observado", "origem e destino são conferidos pela transação"),
+    "FILE_SEARCH": (
+        "retorno_dados",
+        "os resultados são lidos de um índice local efêmero por nome, caminho, conteúdo, tipo e data",
+    ),
+    "FILE_OPEN_RESULT": (
+        "variavel",
+        "o caminho é validado antes da solicitação de abertura, mas o aplicativo associado pode não confirmar foco",
+    ),
     # Serviços e IoT
     "EMAIL_READ": ("retorno_dados", "as mensagens são recuperadas do serviço"),
     "EMAIL_SYNC": ("retorno_dados", "a sincronização retorna uma coleção válida"),
-    "NOTIFICATIONS": ("variavel", "somente integrações específicas retornam sucesso"),
+    "NOTIFICATIONS": ("persistencia_local", "a central persiste a triagem e as preferências por categoria"),
     "IOT_CONTROL": ("estado_observado", "o dispositivo é relido após o comando"),
     "IOT_STATUS": ("estado_observado", "o estado vem da leitura do dispositivo"),
     "IOT_LIST": ("retorno_dados", "a lista vem do runtime IoT"),
+    "CLIPBOARD_READ": ("retorno_dados", "o texto é lido diretamente da área de transferência"),
+    "CLIPBOARD_TRANSFORM": ("retorno_dados", "o resultado temporário é devolvido sem substituir o original"),
+    "CLIPBOARD_SEARCH": ("variavel", "a pesquisa é encaminhada ao navegador sem persistir o conteúdo"),
+    "CLIPBOARD_INVESTIGATE": (
+        "retorno_dados",
+        "o erro copiado é pesquisado internamente e uma síntese fundamentada é devolvida",
+    ),
+    "CLIPBOARD_WRITE": ("estado_observado", "o conteúdo escrito é relido e comparado ao resultado"),
+    "CLIPBOARD_UNDO": ("estado_observado", "o texto anterior é restaurado e relido"),
+    "CLIPBOARD_LEARN": ("persistencia_local", "o aprendizado explicitamente autorizado é salvo na memória"),
+    "INBOX_ADD": ("persistencia_local", "a nota reaparece no arquivo da caixa de entrada"),
+    "INBOX_ADD_DISCUSSION": (
+        "persistencia_local",
+        "o resumo estruturado da discussão reaparece no arquivo da caixa de entrada",
+    ),
+    "INBOX_LIST": ("retorno_dados", "as notas são lidas do armazenamento local"),
+    "INBOX_CONVERT_REMINDER": ("variavel", "a conversão é encaminhada e confirmada pela agenda"),
+    "INBOX_DELETE": ("persistencia_local", "a nota deixa de aparecer entre os itens ativos"),
+    "CONFIRM_INBOX_DELETE": ("persistencia_local", "a exclusão pendente é aplicada ao armazenamento"),
+    "CANCEL_INBOX_ACTION": ("estado_local", "a alteração pendente é descartada"),
+    "PEOPLE_REMEMBER": (
+        "persistencia_local",
+        "a pessoa, a relação e a proveniência reaparecem no armazenamento local estruturado",
+    ),
+    "PEOPLE_QUERY": ("retorno_dados", "o perfil é lido da memória local de pessoas"),
+    "PEOPLE_LIST": ("retorno_dados", "os perfis ativos são lidos da memória local"),
+    "PEOPLE_FORGET": (
+        "persistencia_local",
+        "após confirmação, o perfil deixa de aparecer entre as memórias ativas",
+    ),
+    "COOPERATIVE_PLAN": (
+        "estado_observado",
+        "o coordenador acompanha as etapas e só confirma após o executor reler o resultado",
+    ),
     "WEATHER": ("retorno_dados", "o provedor devolve dados meteorológicos válidos"),
     "SUGGEST_ACTION": ("indisponivel", "é apenas uma sugestão e não executa efeito"),
 }

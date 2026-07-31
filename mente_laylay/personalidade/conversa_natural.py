@@ -6,6 +6,7 @@ usando o estado mental compartilhado recebido pelo `ctx`.
 
 from __future__ import annotations
 
+import ast
 import json
 import random
 import re
@@ -16,6 +17,7 @@ from typing import Any, Dict
 
 from mente_laylay.personalidade.proporcao_resposta import ajustar_proporcao_resposta
 from mente_laylay.personalidade.ritmo_natural import ajustar_encerramento_organico
+from mente_laylay.personalidade.higiene_fala import remover_residuos_operacionais
 from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
 from mente_laylay.memoria_mental.continuidade_conversa import assunto_coerente_com_fala
 from mente_laylay.cognicao.conversa_sobre_capacidades import (
@@ -57,6 +59,24 @@ def _ajustar(ctx: Dict[str, Any], fala: str, texto_usuario: str = "") -> str:
     return str(_call(ctx, "_ajustar_fala_por_horario", fala_organica, texto_usuario, default=fala_organica) or fala_organica)
 
 
+def _topico_para_fala(valor: Any) -> str:
+    """Traduz identificadores da arquitetura antes de mostrá-los a Pedro."""
+    bruto = str(valor or "").strip()
+    mapa = {
+        "GAME_VISION": "o que está na tela do jogo",
+        "IOT_CONTROL": "o dispositivo que você mencionou",
+        "MUSIC_SEARCH": "a música",
+        "PLAYLIST_PLAY": "a playlist",
+        "APP_OPEN": "o programa",
+        "OPEN_URL": "o site",
+    }
+    if bruto.upper() in mapa:
+        return mapa[bruto.upper()]
+    if re.fullmatch(r"[A-Z][A-Z0-9_]{2,}", bruto):
+        return ""
+    return bruto
+
+
 def _fala_confirmacao(ctx: Dict[str, Any], chave: str, fallback: str, texto_usuario: str = "") -> str:
     return str(
         _call(
@@ -81,6 +101,37 @@ def contexto_fala_curta(ctx: Dict[str, Any]) -> dict:
         "ultimo_alvo": mente.get("ultimo_alvo", ""),
         "ultimo_topico": _get(ctx, "ultimo_topico_conversa", mente.get("ultimo_topico", "")),
     }
+
+
+_RECUSA_INICIAL = re.compile(
+    r"^\s*(?:precisa\s+n[aã]o|n[aã]o\s+precisa|agora\s+n[aã]o|"
+    r"deixa\s+quieto|deixa\s+(?:pra|para)\s+l[aá])\b[\s,;:.!-]*",
+    re.IGNORECASE,
+)
+
+
+def _recusa_tem_continuacao(texto: str) -> bool:
+    """Distingue uma recusa isolada de uma recusa seguida por assunto atual."""
+    restante = _RECUSA_INICIAL.sub("", str(texto or ""), count=1).strip()
+    if not restante:
+        return False
+    palavras = re.findall(r"[\wÀ-ÿ]+", restante, flags=re.UNICODE)
+    return len(palavras) >= 3
+
+
+def _ha_pendencia_operacional_ativa(ctx: Dict[str, Any]) -> bool:
+    """Só considera recusa operacional quando a mente contém ação acionável real."""
+    mente = dict(_get(ctx, "mente_integrada_estado", {}) or {})
+    pendencia = mente.get("pendencia_atual")
+    if isinstance(pendencia, dict) and pendencia.get("status") == "ativa":
+        dominio = str(pendencia.get("dominio") or "").strip().casefold()
+        intencao = str(pendencia.get("intencao") or "").strip()
+        if intencao or dominio in {
+            "arquivo", "iot", "musica", "navegacao", "sistema", "agenda",
+        }:
+            return True
+    oferta = mente.get("oferta_pendente")
+    return bool(isinstance(oferta, dict) and str(oferta.get("intent") or "").strip())
 
 
 def _nome_jogo_em_foco(ctx: Dict[str, Any]) -> str:
@@ -158,7 +209,7 @@ def fala_e_fallback_neutro(fala: str, normalizar_texto_curto) -> bool:
     }
     if t in neutros:
         return True
-    padroes = [
+    padroes_genericos = [
         "pode falar",
         "pode ir",
         "to aqui",
@@ -178,6 +229,12 @@ def fala_e_fallback_neutro(fala: str, normalizar_texto_curto) -> bool:
         "estou ouvindo",
         "tô ouvindo",
         "to ouvindo",
+    ]
+    # Esses marcadores identificam falha real mesmo quando a frase inclui um
+    # pequeno complemento. Já expressões como "tô aqui" só são genéricas se
+    # forem o começo de uma resposta curta; procurá-las em qualquer posição
+    # descartava falas boas como "Tudo certo... tô aqui pra escutar você".
+    marcadores_falha = [
         "nao consegui encaixar isso direito",
         "não consegui encaixar isso direito",
         "me perdi um pouco nessa resposta",
@@ -185,7 +242,13 @@ def fala_e_fallback_neutro(fala: str, normalizar_texto_curto) -> bool:
         "minha conexão com a parte da ia falhou",
         "modelo local demorou demais",
     ]
-    return any(p in t for p in padroes)
+    if any(p in t for p in marcadores_falha):
+        return True
+    palavras = t.split()
+    return len(palavras) <= 12 and any(
+        re.match(rf"^{re.escape(padrao)}(?:\b|[.!?,;:])", t)
+        for padrao in padroes_genericos
+    )
 
 
 def _registro_resumo_recente(ctx: Dict[str, Any], max_idade_s: float = 1800.0) -> dict:
@@ -367,6 +430,24 @@ def contexto_recente_indica_email(ctx: Dict[str, Any]) -> bool:
     return any(p in base for p in ["email", "emails", "gmail", "caixa", "remetente"])
 
 
+def _pede_explicacao_da_fala_anterior(texto_normalizado: str) -> bool:
+    """Distingue uma referência elíptica de uma pergunta com assunto novo."""
+    t = re.sub(r"\s+", " ", str(texto_normalizado or "")).strip(" .!?;:")
+    if not t:
+        return False
+    if re.fullmatch(
+        r"(?:como assim|o que (?:voce|você) quis dizer|"
+        r"(?:pode\s+)?(?:me\s+)?explica(?:r)?(?:\s+melhor)?(?:\s+(?:isso|aquilo|"
+        r"essa parte|o que (?:voce|você) disse))?(?:\s+melhor)?)",
+        t,
+    ):
+        return True
+    return bool(re.fullmatch(
+        r"(?:ue|ué|uai|oxi|que isso|por que|porque|pq)(?:\s+(?:isso|aquilo))?",
+        t,
+    ))
+
+
 def resposta_pergunta_curta_dependente_topico(ctx: Dict[str, Any], texto_usuario: str) -> str:
     t = _normalizar(ctx, texto_usuario)
     if not t or len(t.split()) > 10:
@@ -393,7 +474,7 @@ def resposta_pergunta_curta_dependente_topico(ctx: Dict[str, Any], texto_usuario
     topico = str(_get(ctx, "ultimo_topico_conversa", "") or "").strip()
     foco = dict(_get(ctx, "foco_vivo", {}) or {})
     foco_tipo = str(foco.get("tipo") or "").strip().lower()
-    foco_topico = str(foco.get("topico") or foco.get("alvo") or "").strip()
+    foco_topico = _topico_para_fala(foco.get("topico") or foco.get("alvo") or "")
     foco_resposta = str(foco.get("resposta") or "").strip()
     try:
         foco_idade = float(foco.get("idade_s") or 999999.0)
@@ -422,13 +503,7 @@ def resposta_pergunta_curta_dependente_topico(ctx: Dict[str, Any], texto_usuario
         if ultima_resposta:
             return _ajustar(ctx, f"Eu estava falando desta ideia: {ultima_resposta}", texto_usuario)
 
-    pede_explicacao = any(p in t for p in [
-        "como assim", "o que voce quis dizer", "o que você quis dizer",
-        "pode explicar", "explica melhor", "explica isso", "me explica",
-    ]) or bool(re.fullmatch(
-        r"(?:ue|ué|uai|oxi|que isso|por que|porque|pq)(?:\s+(?:isso|aquilo))?\??",
-        t,
-    ))
+    pede_explicacao = _pede_explicacao_da_fala_anterior(t)
     pede_referencia = any(p in t for p in [
         "eles quem", "elas quem", "ele quem", "ela quem", "isso o que", "qual deles",
         "qual delas", "onde", "quando", "e agora",
@@ -631,32 +706,32 @@ def responder_agradecimento_ou_elogio(ctx: Dict[str, Any], texto_usuario: str) -
 
     respostas_contextuais = {
         "receita": [
-            "Ah, que nada, Pedro. Fico feliz que as medidas tenham ajudado. Quando quiser ajustar outra receita, pode falar comigo.",
+            "Ah, que nada. Fico feliz que as medidas tenham ajudado. Quando quiser ajustar outra receita, pode falar comigo.",
             "Imagina. Gostei de saber que agora as quantidades ficaram mais úteis. Se aparecer outra receita, eu te ajudo a organizar.",
-            "Por nada, Pedro. Agora fiquei mais tranquila sabendo que a receita fez sentido. Quando precisar de outras medidas, tô por aqui.",
+            "Por nada. Agora fiquei mais tranquila sabendo que a receita fez sentido. Quando precisar de outras medidas, tô por aqui.",
         ],
         "resumo": [
             "Ah, que nada. Fico feliz que o resumo tenha ajudado. Se quiser aprofundar outro trecho da página, pode falar comigo.",
-            "Por nada, Pedro. Gostei de saber que consegui deixar a página mais clara.",
+            "Por nada. Gostei de saber que consegui deixar a página mais clara.",
             "Imagina. Se aquele resumo te poupou um pouco de tempo, já valeu pra mim.",
         ],
         "musica": [
             "Por nada. Fico feliz que a escolha tenha batido com o que você queria. Quando quiser outro som, me chama.",
             "Ah, imagina. Gostei de acertar teu clima musical dessa vez.",
-            "Que nada, Pedro. Bom saber que a música encaixou; eu guardo o mérito com uma vergonha discreta.",
+            "Que nada. Bom saber que a música encaixou; eu guardo o mérito com uma vergonha discreta.",
         ],
         "acao": [
             "Que nada. Fico feliz que tenha resolvido do jeito certo.",
-            "Por nada, Pedro. Gostei de saber que dessa vez a ação ficou como você queria.",
+            "Por nada. Gostei de saber que dessa vez a ação ficou como você queria.",
             "Imagina. Deu certo e você ainda agradeceu; aí complica minha tentativa de manter a pose.",
         ],
         "explicacao": [
             "Ah, que nada. Fico feliz que a explicação tenha servido. Quando quiser destrinchar outro ponto, pode falar comigo.",
-            "Por nada, Pedro. Gostei de saber que ficou mais claro.",
+            "Por nada. Gostei de saber que ficou mais claro.",
             "Imagina. Se a explicação encaixou, eu já fico toda satisfeita aqui.",
         ],
         "geral": [
-            "Ah, que nada, Pedro. Fico feliz que tenha ajudado.",
+            "Ah, que nada. Fico feliz que tenha ajudado.",
             "Por nada. Gostei de saber que foi útil pra você.",
             "Imagina. Você agradece assim e eu até perco um pouco da pose.",
         ],
@@ -683,6 +758,10 @@ def responder_agradecimento_ou_elogio(ctx: Dict[str, Any], texto_usuario: str) -
 
 def parece_elogio_ou_agradecimento_curto(ctx: Dict[str, Any], texto_usuario: str) -> bool:
     bruto = _normalizar_reconhecimento(texto_usuario)
+    # Uma correção dirigida à Laylay pode herdar uma leitura semântica antiga
+    # de agradecimento. A intenção explícita do texto atual sempre prevalece.
+    if texto_parece_correcao_conversacional(bruto):
+        return False
     # Uma avaliação dirigida a uma terceira pessoa não é elogio recebido pela
     # Laylay. Esta proteção vem antes do normalizador personalizado porque uma
     # correção fonética pode aproximar "gosto" de "gostei".
@@ -750,7 +829,112 @@ def responder_pedido_para_acalmar(ctx: Dict[str, Any], texto_usuario: str) -> st
     ]), texto_usuario)
 
 
+def _numero_matematico(valor: float) -> str:
+    if abs(valor - round(valor)) < 1e-10:
+        return str(int(round(valor)))
+    return f"{valor:.8f}".rstrip("0").rstrip(".").replace(".", ",")
+
+
+def _avaliar_expressao_linear(no: ast.AST) -> tuple[float, float]:
+    """Avalia uma AST como ``a*x + b`` sem executar código arbitrário."""
+    if isinstance(no, ast.Expression):
+        return _avaliar_expressao_linear(no.body)
+    if isinstance(no, ast.Constant) and isinstance(no.value, (int, float)):
+        return 0.0, float(no.value)
+    if isinstance(no, ast.Name) and no.id.casefold() == "x":
+        return 1.0, 0.0
+    if isinstance(no, ast.UnaryOp) and isinstance(no.op, (ast.UAdd, ast.USub)):
+        a, b = _avaliar_expressao_linear(no.operand)
+        fator = -1.0 if isinstance(no.op, ast.USub) else 1.0
+        return fator * a, fator * b
+    if isinstance(no, ast.BinOp):
+        ae, be = _avaliar_expressao_linear(no.left)
+        ad, bd = _avaliar_expressao_linear(no.right)
+        if isinstance(no.op, ast.Add):
+            return ae + ad, be + bd
+        if isinstance(no.op, ast.Sub):
+            return ae - ad, be - bd
+        if isinstance(no.op, ast.Mult):
+            if abs(ae) > 1e-12 and abs(ad) > 1e-12:
+                raise ValueError("expressão não linear")
+            if abs(ae) > 1e-12:
+                return ae * bd, be * bd
+            if abs(ad) > 1e-12:
+                return ad * be, bd * be
+            return 0.0, be * bd
+        if isinstance(no.op, ast.Div):
+            if abs(ad) > 1e-12 or abs(bd) < 1e-12:
+                raise ValueError("divisão não linear ou por zero")
+            return ae / bd, be / bd
+    raise ValueError("notação não suportada")
+
+
+def _formatar_expressao_linear(a: float, b: float) -> str:
+    partes: list[str] = []
+    if abs(a) > 1e-10:
+        if abs(a - 1.0) < 1e-10:
+            partes.append("x")
+        elif abs(a + 1.0) < 1e-10:
+            partes.append("-x")
+        else:
+            partes.append(f"{_numero_matematico(a)}x")
+    if abs(b) > 1e-10 or not partes:
+        numero = _numero_matematico(abs(b) if partes else b)
+        if partes:
+            partes.append(("+ " if b >= 0 else "- ") + numero)
+        else:
+            partes.append(numero)
+    return " ".join(partes)
+
+
+def resolver_equacao_linear_local(texto_usuario: str) -> str:
+    """Resolve com segurança uma equação linear em x e entrega passos curtos."""
+    bruto = str(texto_usuario or "")
+    if "=" not in bruto:
+        return ""
+    equacao = bruto.split(":", 1)[-1] if ":" in bruto else bruto
+    equacao = equacao.replace("–", "-").replace("—", "-").replace("−", "-")
+    equacao = equacao.replace("×", "*").replace("÷", "/").replace(",", ".")
+    equacao = equacao.strip(" \t\r\n?.!")
+    if equacao.count("=") != 1 or not re.fullmatch(r"[\d.xX+\-*/()=\s]+", equacao):
+        return ""
+    esquerda, direita = equacao.split("=", 1)
+
+    def preparar(expressao: str) -> str:
+        s = re.sub(r"\s+", "", expressao).replace("X", "x")
+        s = re.sub(r"(?<=\d)(?=[x(])|(?<=x)(?=\()|(?<=\))(?=[\dx(])", "*", s)
+        return s
+
+    try:
+        ae, be = _avaliar_expressao_linear(ast.parse(preparar(esquerda), mode="eval"))
+        ad, bd = _avaliar_expressao_linear(ast.parse(preparar(direita), mode="eval"))
+    except (SyntaxError, ValueError, TypeError, ZeroDivisionError):
+        return ""
+
+    coeficiente = ae - ad
+    constante = bd - be
+    esquerda_simples = _formatar_expressao_linear(ae, be)
+    direita_simples = _formatar_expressao_linear(ad, bd)
+    if abs(coeficiente) < 1e-10:
+        return (
+            "Simplificando os dois lados, eles ficam iguais; por isso há infinitas soluções."
+            if abs(constante) < 1e-10 else
+            "Simplificando os dois lados, surge uma contradição; portanto essa equação não tem solução."
+        )
+    solucao = constante / coeficiente
+    return (
+        f"Vamos por partes. Distribuindo os parênteses e juntando termos semelhantes, "
+        f"o lado esquerdo vira {esquerda_simples} e o direito vira {direita_simples}. "
+        f"Passando os termos, ficamos com {_numero_matematico(coeficiente)}x igual a "
+        f"{_numero_matematico(constante)}. Dividindo por {_numero_matematico(coeficiente)}, "
+        f"x é igual a {_numero_matematico(solucao)}."
+    )
+
+
 def responder_matematica_simples(ctx: Dict[str, Any], texto_usuario: str) -> str:
+    linear = resolver_equacao_linear_local(texto_usuario)
+    if linear:
+        return _ajustar(ctx, linear, texto_usuario)
     t = _normalizar(ctx, texto_usuario)
     if not t:
         return ""
@@ -810,6 +994,11 @@ def _parece_correcao_conversa(t: str) -> bool:
         r"^(?:so|só)\s+(?:to|tô|estou)\s+falando\s+.+$",
     ]
     return any(re.fullmatch(p, t) for p in padroes)
+
+
+def texto_parece_correcao_conversacional(texto: str) -> bool:
+    """Reconhece correções explícitas antes de qualquer atalho social."""
+    return _parece_correcao_conversa(_normalizar_reconhecimento(texto))
 
 
 def responder_relato_esportivo(ctx: Dict[str, Any], texto_usuario: str) -> str:
@@ -883,6 +1072,12 @@ def classificar_conversa_curta_local(ctx: Dict[str, Any], texto_usuario: str) ->
     if not t:
         return {}
 
+    # Correções precisam do contexto completo da IA principal. Esta barreira
+    # vem antes da leitura semântica armazenada, pois ela pode pertencer ao
+    # turno anterior ou ter confundido "não Lay" com reação/agradecimento.
+    if texto_parece_correcao_conversacional(texto):
+        return {}
+
     mente_turno = dict(_get(ctx, "mente_integrada_estado", {}) or {})
     turno = dict(mente_turno.get("turno_atual") or {})
     segmentos = [item for item in list(turno.get("segmentos") or []) if isinstance(item, dict)]
@@ -908,6 +1103,10 @@ def classificar_conversa_curta_local(ctx: Dict[str, Any], texto_usuario: str) ->
             "recusa": "SOFT_DECLINE",
         }
         tipo_curto = mapa_semantico.get(tipo_ato)
+        if tipo_curto == "SOFT_DECLINE" and (
+            _recusa_tem_continuacao(t) or not _ha_pendencia_operacional_ativa(ctx)
+        ):
+            return {}
         if tipo_curto:
             return {
                 "tipo": tipo_curto,
@@ -973,7 +1172,11 @@ def classificar_conversa_curta_local(ctx: Dict[str, Any], texto_usuario: str) ->
         return {}
     if re.fullmatch(r"(?:oi|ola|olá|e ai|e aí|salve|bom dia|boa tarde|boa noite)(?: lay| laylay)?", t):
         return {"tipo": "GREETING", "confianca": 0.94}
-    if any(p in t for p in ["precisa nao", "nao precisa", "agora nao", "deixa quieto", "deixa pra la", "deixa para la"]):
+    if (
+        any(p in t for p in ["precisa nao", "nao precisa", "agora nao", "deixa quieto", "deixa pra la", "deixa para la"])
+        and not _recusa_tem_continuacao(t)
+        and _ha_pendencia_operacional_ativa(ctx)
+    ):
         return {"tipo": "SOFT_DECLINE", "confianca": 0.92}
     if any(p in t for p in [
         "o que voce acha", "o que você acha", "o que voce sacha", "voce sacha",
@@ -1037,7 +1240,7 @@ def resposta_curta_contextual(ctx: Dict[str, Any], texto_usuario: str, tipo: str
     ultimo_topico = str(_get(ctx, "ultimo_topico_conversa", "") or "").strip()
     foco = dict(_get(ctx, "foco_vivo", {}) or {})
     foco_tipo = str(foco.get("tipo") or "").strip().lower()
-    foco_topico = str(foco.get("topico") or foco.get("alvo") or "").strip()
+    foco_topico = _topico_para_fala(foco.get("topico") or foco.get("alvo") or "")
     foco_resposta = str(foco.get("resposta") or "").strip()
 
     contestacao = bool(re.search(
@@ -1261,13 +1464,13 @@ def _resposta_opiniao_com_tema(ctx: Dict[str, Any], texto_usuario: str) -> str:
     }
     prompt = (
         "Voce e a Laylay respondendo uma opiniao pessoal em conversa. "
-        "Pedro e o usuario; nunca chame Pedro de Laylay e nunca fale consigo mesma como interlocutora. "
+        "A outra pessoa é o usuário; nunca a chame de Laylay e nunca fale consigo mesma como interlocutora. "
         "Escolha uma posicao clara e explique o motivo em uma ou duas frases naturais. "
-        "Nao concorde automaticamente com Pedro e nao discorde so para parecer forte. "
+        "Nao concorde automaticamente com o usuário e nao discorde so para parecer forte. "
         "Diferencie gosto pessoal de fato; se os fatos forem insuficientes, assuma a incerteza sem ficar em cima do muro. "
         "FATOS_DISPONIVEIS e um limite fechado: nao acrescente cargo, partido, crime, diagnostico, morte, "
         "parentesco, premio, data ou episodio biografico que nao esteja escrito ali. "
-        "Se Pedro trouxe informacao melhor que contradiz a opiniao anterior, voce pode mudar de ideia e dizer brevemente por que. "
+        "Se o usuário trouxe informacao melhor que contradiz a opiniao anterior, voce pode mudar de ideia e dizer brevemente por que. "
         "Nao termine perguntando se ele concorda e nao proponha nem execute comandos. "
         "Mantenha a personalidade amiga, espontanea e levemente debochada quando combinar. "
         "Retorne somente JSON valido: {\"fala\":\"...\"}."
@@ -1487,7 +1690,7 @@ def responder_conversa_curta_por_tipo(ctx: Dict[str, Any], tipo: str, texto_usua
     if tipo_norm == "MATH":
         return responder_matematica_simples(ctx, texto_usuario)
     if tipo_norm == "GREETING":
-        return _ajustar(ctx, _fala_confirmacao(ctx, "greeting", "Oi, Pedro. To aqui contigo.", texto_usuario), texto_usuario)
+        return _ajustar(ctx, _fala_confirmacao(ctx, "greeting", "Oi. To aqui contigo.", texto_usuario), texto_usuario)
     if tipo_norm == "WELLBEING":
         return _ajustar(ctx, _fala_confirmacao(ctx, "bem_estar", "Tô bem sim. E você, como tá?", texto_usuario), texto_usuario)
     if tipo_norm == "EMOTIONAL_STATE":
@@ -1510,6 +1713,12 @@ def responder_conversa_curta_por_tipo(ctx: Dict[str, Any], tipo: str, texto_usua
                 "Noite assim se arrasta mesmo. Quer que eu puxe uma música, um filme curto ou alguma ideia pra gente fazer agora?",
                 "Tá com cara de noite que precisa de um empurrãozinho. Posso escolher uma música, sugerir algo pra assistir ou inventar uma distração contigo.",
                 "Entendi: não tá pesada, só sem graça. Quer que eu salve o clima com música, alguma coisa pra ver ou uma ideia aleatória?",
+            ]), texto_usuario)
+        if emocao == "culpa":
+            return _ajustar(ctx, random.choice([
+                "Essa culpa sem um motivo claro pesa mesmo. Não vou te absolver nem te culpar no automático; quando esse peso começou a apertar?",
+                "Entendi. Antes de dizer que você tem ou não tem culpa, quero separar a sensação do que aconteceu. Você lembra quando isso começou?",
+                "Eu ouvi esse peso. Não quero preencher o que falta com suposição; teve algum momento específico que trouxe essa culpa?",
             ]), texto_usuario)
         if alvo == "laylay":
             return _ajustar(ctx, random.choice([
@@ -1561,6 +1770,8 @@ def responder_conversa_curta_por_tipo(ctx: Dict[str, Any], tipo: str, texto_usua
             "Que bom. Fico mais tranquila quando voce ta bem.",
         ]), texto_usuario)
     if tipo_norm == "SOFT_DECLINE":
+        if _recusa_tem_continuacao(texto_usuario) or not _ha_pendencia_operacional_ativa(ctx):
+            return ""
         return _ajustar(ctx, random.choice(["Fechado, sem ativar nada entao.", "Beleza, deixei quieto.", "Tranquilo. Nao mexo nisso agora."]), texto_usuario)
     if tipo_norm == "QUESTION":
         t_pergunta = _normalizar(ctx, texto_usuario)
@@ -1626,6 +1837,16 @@ def construir_fala_conversa(ctx: Dict[str, Any], fala: str, texto_usuario: str =
         return str(fala or "").strip()
 
     fala_limpa = str(fala or "").strip()
+    if bool(_get(ctx, "_voz_unica_llm", False)):
+        # No fluxo de voz única, o Python não estiliza, encurta, completa ou
+        # substitui uma conversa válida. Ele remove somente resíduos técnicos;
+        # personalidade, emoção e escolha de palavras pertencem à LLM.
+        fala_limpa = remover_residuos_operacionais(fala_limpa)
+        if not fala_limpa or bool(
+            _call(ctx, "_fala_e_fallback_neutro", fala_limpa, default=False)
+        ):
+            return ""
+        return fala_limpa
     fala_original = fala_limpa
     texto_limpo = str(texto_usuario or "").strip()
     texto_lower = texto_limpo.lower()
@@ -1688,8 +1909,12 @@ def construir_fala_conversa(ctx: Dict[str, Any], fala: str, texto_usuario: str =
         return resposta_pesquisada
 
     if re.fullmatch(r"(?:oi|ola|olá|e ai|e aí|salve|bom dia|boa tarde|boa noite)(?: lay| laylay)?", texto_lower.strip()):
-        return _ajustar(ctx, _fala_confirmacao(ctx, "greeting", "Oi, Pedro. To aqui contigo.", texto_usuario), texto_usuario)
-    if any(p in texto_lower for p in ["precisa nao", "precisa não", "nao precisa", "não precisa", "agora nao", "agora não"]):
+        return _ajustar(ctx, _fala_confirmacao(ctx, "greeting", "Oi. To aqui contigo.", texto_usuario), texto_usuario)
+    if (
+        any(p in texto_lower for p in ["precisa nao", "precisa não", "nao precisa", "não precisa", "agora nao", "agora não"])
+        and not _recusa_tem_continuacao(texto_lower)
+        and _ha_pendencia_operacional_ativa(ctx)
+    ):
         return _ajustar(ctx, random.choice(["Fechado, sem ativar nada entao.", "Beleza, deixei quieto.", "Tranquilo. Nao mexo nisso agora."]), texto_usuario)
     opiniao_direta = _resposta_opiniao_com_tema(ctx, texto_usuario)
     if opiniao_direta:
@@ -1731,6 +1956,8 @@ def resposta_conversa_local(ctx: Dict[str, Any], texto_usuario: str) -> str:
 
 
 def resposta_conversa_rapida_local(ctx: Dict[str, Any], texto_usuario: str) -> str:
+    if texto_parece_correcao_conversacional(texto_usuario):
+        return ""
     if parece_elogio_ou_agradecimento_curto(ctx, texto_usuario):
         return responder_agradecimento_ou_elogio(ctx, texto_usuario)
     if parece_pedido_para_acalmar(ctx, texto_usuario):

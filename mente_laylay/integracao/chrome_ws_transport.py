@@ -30,10 +30,14 @@ class ChromeSolicitacoesRuntime:
         obter_loop: Callable[[], Any],
         obter_extensoes: Callable[[], Any],
         transmitir: Callable[[str], Any],
+        log: Callable[[str], Any] = print,
+        registrar_falha: Callable[..., Any] | None = None,
     ) -> None:
         self._obter_loop = obter_loop
         self._obter_extensoes = obter_extensoes
         self._transmitir = transmitir
+        self.log = log
+        self.registrar_falha = registrar_falha
         self.pendencias_abas: Dict[str, Any] = {}
         self.pendencias_aba_ativa: Dict[str, Any] = {}
         self.pendencias_checagem_abas: Dict[str, Any] = {}
@@ -43,6 +47,22 @@ class ChromeSolicitacoesRuntime:
         self.ultimo_resultado_comando: Dict[str, Any] = {}
         self._contador_lock = threading.Lock()
         self._contador = 0
+
+    def _registrar_erro(self, codigo: str, erro: Exception) -> None:
+        self.log(
+            f"⚠️ [CHROME:TRANSPORTE] {codigo}: "
+            f"{type(erro).__name__}: {erro}"
+        )
+        if callable(self.registrar_falha):
+            try:
+                self.registrar_falha(
+                    "chrome_transporte", codigo, erro=erro,
+                )
+            except Exception as erro_diagnostico:
+                self.log(
+                    "⚠️ [CHROME:TRANSPORTE] diagnóstico recusou falha: "
+                    f"{type(erro_diagnostico).__name__}"
+                )
 
     def _novo_request_id(self) -> str:
         # O contador evita colisao quando dois pedidos nascem no mesmo milissegundo.
@@ -54,7 +74,8 @@ class ChromeSolicitacoesRuntime:
     def conectado(self) -> bool:
         try:
             return self._obter_loop() is not None and bool(self._obter_extensoes())
-        except Exception:
+        except Exception as erro:
+            self._registrar_erro("consulta_conexao", erro)
             return False
 
     def _enviar_no_loop(self, mensagem: Dict[str, Any]) -> bool:
@@ -67,7 +88,8 @@ class ChromeSolicitacoesRuntime:
                 loop,
             )
             return True
-        except Exception:
+        except Exception as erro:
+            self._registrar_erro("envio_assincrono", erro)
             return False
 
     def enviar_confirmado(self, mensagem: Dict[str, Any], timeout_s: float = 1.5) -> bool:
@@ -82,7 +104,8 @@ class ChromeSolicitacoesRuntime:
             )
             enviados = futuro.result(timeout=max(0.1, float(timeout_s)))
             return bool(enviados)
-        except Exception:
+        except Exception as erro:
+            self._registrar_erro("confirmacao_socket", erro)
             return False
 
     def executar_confirmado(self, mensagem: Dict[str, Any], timeout_s: float = 3.0) -> bool:
@@ -176,7 +199,8 @@ class ChromeSolicitacoesRuntime:
                     "canal": str(resposta.get("canal") or ""),
                     "tabId": resposta.get("tabId"),
                 }
-            except Exception:
+            except Exception as erro:
+                self._registrar_erro("consulta_aba_ativa", erro)
                 return vazio
             finally:
                 with self.pendencias_lock:
@@ -185,7 +209,8 @@ class ChromeSolicitacoesRuntime:
         try:
             futuro = asyncio.run_coroutine_threadsafe(_solicitar(), loop)
             return futuro.result(timeout=max(0.0, float(timeout_s)) + 0.5)
-        except Exception:
+        except Exception as erro:
+            self._registrar_erro("espera_aba_ativa", erro)
             return vazio
 
     async def solicitar_conteudo_pagina(self, timeout_s: float = 15.0) -> Dict[str, Any]:

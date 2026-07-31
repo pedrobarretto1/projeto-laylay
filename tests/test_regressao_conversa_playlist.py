@@ -121,4 +121,5 @@ def test_qual_erro_recupera_detalhe_da_sugestao_pendente() -> None:
     }, "qual erro?")
 
     assert tratado is True
-    assert "Uncaught TypeError" in falas[-1]
+    assert "falha" in falas[-1].casefold()
+    assert "Uncaught TypeError" not in falas[-1]

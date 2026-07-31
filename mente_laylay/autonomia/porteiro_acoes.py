@@ -233,6 +233,44 @@ def texto_tem_comando_explicito(texto: str) -> bool:
     t = normalizar_texto(texto)
     if not t:
         return False
+    t_operacional = re.sub(r"^(?:agora|entao|então)\s+", "", t).strip()
+
+    if re.match(r"^(?:nao|não|nem)\b", t_operacional):
+        return False
+
+    # É uma forma elíptica de comando: a operação concreta só será recuperada
+    # se existir continuidade oficial compatível. Sem esse sinal, o árbitro
+    # encerrava "essa também" como conversa antes do roteador canônico.
+    if re.fullmatch(
+        r"(?:e\s+)?(?:(?:essa|esta|esse|este|isso|ela|ele)(?:\s+(?:aqui|ai|aí))?\s+"
+        r"(?:tambem|também)|(?:tambem|também)\s+(?:essa|esta|esse|este|isso|ela|ele)|"
+        r"mais\s+(?:essa|esta|esse|este))",
+        t_operacional,
+    ):
+        return True
+
+    if re.search(r"^(?:coloca|coloque|bota|ponha|põe|poe|move|mova|posiciona|posicione|deixa|joga)\b", t_operacional) and re.search(
+        r"\b(?:(?:na|a|à|para a)\s+(?:esquerda|direita)|"
+        r"(?:no|pro|para o|do)\s+lado\s+(?:esquerdo|direito))\b",
+        t_operacional,
+    ):
+        return True
+
+    # Pesquisas locais são comandos práticos de somente leitura. Verbos como
+    # "encontra" e "localiza" não faziam parte do vocabulário operacional e
+    # o árbitro encerrava o turno como conversa antes de o especialista de
+    # arquivos receber a frase. A guarda exige verbo inicial + objeto de
+    # arquivo/código, preservando perguntas de capacidade e comentários.
+    if re.search(
+        r"^(?:encontra|encontre|acha|ache|procura|procure|busca|busque|"
+        r"pesquisa|pesquise|localiza|localize)\b",
+        t,
+    ) and re.search(
+        r"\b(?:arquivo|arquivos|documento|documentos|codigo|código|script|"
+        r"scripts|imagem|imagens|foto|fotos|projeto)\b",
+        t,
+    ):
+        return True
 
     if texto_pede_playlist_explicitamente(t) or texto_pede_musica_explicitamente(t):
         return True
@@ -437,14 +475,11 @@ class PorteiroAcoesRuntime:
     def __init__(
         self,
         *,
-        namespace_getter: Callable[[], Dict[str, Any]],
+        playlist_state_getter: Callable[[], Dict[str, Any]],
         estado_runtime_getter: Callable[[], Any],
     ) -> None:
-        self.namespace_getter = namespace_getter
+        self.playlist_state_getter = playlist_state_getter
         self.estado_runtime_getter = estado_runtime_getter
-
-    def _namespace(self) -> Dict[str, Any]:
-        return self.namespace_getter() or {}
 
     def _estado(self) -> Any:
         return self.estado_runtime_getter()
@@ -468,9 +503,8 @@ class PorteiroAcoesRuntime:
         return playlist_bloqueada_agora(self._estado().musical)
 
     def contexto(self) -> Dict[str, Any]:
-        ns = self._namespace()
         estado = self._estado()
-        playlist_state = ns.get("playlist_state") or {}
+        playlist_state = self.playlist_state_getter() or {}
         return montar_contexto_porteiro_acoes(
             playlist_bloqueada=self.playlist_bloqueada_agora(),
             playlist_ativa=bool(str(playlist_state.get("name") or "").strip()),

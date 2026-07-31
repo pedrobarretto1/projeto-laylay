@@ -843,16 +843,41 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 });
             }
             else if (cmd === "pause" || cmd === "play" || cmd === "pause_play") {
-                if (video) {
-                    if (cmd === "pause" || (cmd === "pause_play" && !video.paused)) video.pause();
-                    else video.play();
-                }
-                else {
-                    const playBtn = document.querySelector('.ytp-play-button');
-                    if (playBtn) playBtn.click();
-                    else _dispatchKey("k", "KeyK", 75);
-                }
-                if (sendResponse) sendResponse({ status: "success" });
+                const controlAndVerify = async () => {
+                    let currentVideo = video || document.querySelector('video');
+                    const shouldPause = cmd === "pause" || (
+                        cmd === "pause_play" && currentVideo && !currentVideo.paused
+                    );
+                    try {
+                        if (currentVideo) {
+                            if (shouldPause) currentVideo.pause();
+                            else await currentVideo.play();
+                        } else {
+                            const playBtn = document.querySelector('.ytp-play-button');
+                            if (playBtn) playBtn.click();
+                            else _dispatchKey("k", "KeyK", 75);
+                        }
+                        await new Promise((resolve) => setTimeout(resolve, 300));
+                        currentVideo = document.querySelector('video');
+                        const playing = Boolean(
+                            currentVideo && !currentVideo.paused && !currentVideo.ended
+                        );
+                        const paused = Boolean(currentVideo && currentVideo.paused);
+                        const verified = shouldPause ? paused : playing;
+                        if (sendResponse) sendResponse({
+                            status: verified ? "success" : "autoplay_blocked",
+                            message: verified ? "" : "O navegador não permitiu iniciar o player",
+                            evidence: { playing, paused },
+                        });
+                    } catch (error) {
+                        if (sendResponse) sendResponse({
+                            status: "autoplay_blocked",
+                            message: String(error?.message || error || "Falha ao controlar o player"),
+                            evidence: { playing: false },
+                        });
+                    }
+                };
+                void controlAndVerify();
             }
             else if (cmd === "next") {
                 const nextBtn = document.querySelector('.ytp-next-button');
@@ -1165,33 +1190,68 @@ try {
         sendMessage({ type: "PLAYER_EVENT", event: "user_click_detected", url: location.href, title: document.title });
       }
     }, true);
-    const vWatcher = new MutationObserver(() => {
-      const v = document.querySelector("video");
-      if (!v || v.__laylayBound) return;
-      v.__laylayBound = true;
+    let _laylayPlaybackSerial = 0;
+    let _laylayLastPlaybackKey = "";
+
+    const _laylayVideoId = () => {
       try {
-        v.addEventListener("ended", () => {
-          const body = document.body;
-          const player = document.querySelector(".html5-video-player");
-          const isAdByClass =
-            (body && (body.classList.contains("ad-showing") || body.classList.contains("ad-interrupting"))) ||
-            (player && (player.classList.contains("ad-showing") || player.classList.contains("ad-interrupting")));
-          const isAdByUrl = String(location.href).includes("ad_id") || String(location.href).includes("doubleclick") || /[?&]pp=/.test(location.search);
-          const isAd = !!isAdByClass || !!isAdByUrl;
-          const videoId = String(new URL(location.href).searchParams.get("v") || location.pathname || location.href);
-          sendMessage({
-            type: "PLAYER_EVENT",
-            event: "video_ended",
-            eventId: `ended:${videoId}:${Math.floor(Date.now() / 3000)}`,
-            url: location.href,
-            title: document.title,
-            isAd: !!isAd,
-            duration: Math.floor(v.duration || 0),
+        return String(new URL(location.href).searchParams.get("v") || location.pathname || location.href);
+      } catch (_) {
+        return String(location.href || location.pathname || "youtube");
+      }
+    };
+
+    const _emitLaylayVideoEnded = (v) => {
+      if (!v) return;
+      const videoId = _laylayVideoId();
+      const playbackKey = `${videoId}:${_laylayPlaybackSerial}`;
+      if (v.__laylayEndedPlaybackKey === playbackKey) return;
+
+      const body = document.body;
+      const player = document.querySelector(".html5-video-player");
+      const isAdByClass =
+        (body && (body.classList.contains("ad-showing") || body.classList.contains("ad-interrupting"))) ||
+        (player && (player.classList.contains("ad-showing") || player.classList.contains("ad-interrupting")));
+      const isAdByUrl = String(location.href).includes("ad_id") || String(location.href).includes("doubleclick");
+      const isAd = !!isAdByClass || !!isAdByUrl;
+
+      v.__laylayEndedPlaybackKey = playbackKey;
+      sendMessage({
+        type: "PLAYER_EVENT",
+        event: "video_ended",
+        eventId: `ended:${videoId}:${_laylayPlaybackSerial}:${Date.now()}`,
+        url: location.href,
+        title: document.title,
+        isAd: !!isAd,
+        duration: Number.isFinite(v.duration) ? Math.floor(v.duration) : 0,
+      });
+    };
+
+    const _bindLaylayVideo = () => {
+      const v = document.querySelector("video");
+      if (!v) return;
+      if (!v.__laylayBound) {
+        v.__laylayBound = true;
+        try {
+          v.addEventListener("playing", () => {
+            const key = `${_laylayVideoId()}:${String(v.currentSrc || v.src || "")}`;
+            if (key !== _laylayLastPlaybackKey) {
+              _laylayLastPlaybackKey = key;
+              _laylayPlaybackSerial += 1;
+              v.__laylayEndedPlaybackKey = "";
+            }
           });
-        });
-      } catch (_) {}
-    });
-    vWatcher.observe(document.documentElement, { childList: true, subtree: true });
+          v.addEventListener("ended", () => _emitLaylayVideoEnded(v));
+        } catch (_) {}
+      }
+      // Recupera o caso raro em que o script entrou depois do evento nativo.
+      if (v.ended && Number(v.currentTime || 0) > 0) _emitLaylayVideoEnded(v);
+    };
+
+    const vWatcher = new MutationObserver(_bindLaylayVideo);
+    vWatcher.observe(document.documentElement || document, { childList: true, subtree: true });
+    _bindLaylayVideo();
+    setInterval(_bindLaylayVideo, 1000);
   }
   document.addEventListener("keydown", (e) => {
     const el = e?.target;

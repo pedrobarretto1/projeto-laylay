@@ -117,7 +117,7 @@ def analisar_ato_social(
     if pontos_resposta >= 0.48 and diferenca <= -0.20:
         return {
             "tipo": "WELLBEING_REPLY", "confianca": round(min(0.98, 0.66 + abs(diferenca) / 3), 2),
-            "motivo": "Pedro informa o proprio estado ou responde a pergunta anterior",
+            "motivo": "O usuário informa o proprio estado ou responde a pergunta anterior",
             "evidencias": evidencias,
         }
     return {

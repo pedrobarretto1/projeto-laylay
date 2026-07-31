@@ -101,8 +101,23 @@ def _separar_estrutura(texto: str) -> list[str]:
     # Alguns modelos devolvem Markdown inteiro em uma linha. Preserva os
     # marcadores como limites antes que a limpeza de espaços os apague.
     s = re.sub(r"\s+(?=#{1,6}\s+)", "\n", s)
-    s = re.sub(r"\s+(?=-\s+(?:\*{1,2})?[A-ZÁÉÍÓÚÂÊÔÃÕÇ])", "\n", s)
-    s = re.sub(r"\s+(?=\d+[.)]\s+(?:\*{1,2})?[A-ZÁÉÍÓÚÂÊÔÃÕÇ])", "\n", s)
+    # Hífen também separa artista e música. Só o convertemos em marcador
+    # inline quando há uma seção estrutural clara; listas já quebradas por
+    # linha continuam sendo reconhecidas normalmente no laço abaixo.
+    if re.search(
+        r"\b(?:ingredientes|materiais|requisitos|etapas|preparo|"
+        r"modo\s+de\s+preparo)\b[^\n]{0,120}:?\s+-\s+",
+        s,
+        flags=re.IGNORECASE,
+    ):
+        s = re.sub(r"\s+(?=-\s+(?:\*{1,2})?[A-ZÁÉÍÓÚÂÊÔÃÕÇ])", "\n", s)
+    # Um número de equação seguido de ponto ("+ 9. Na segunda...") não é uma
+    # etapa numerada. Só quebramos lista inline quando há pontuação estrutural
+    # imediatamente antes do número.
+    s = re.sub(
+        r"(?<=[\.:!?])\s+(?=\d+[.)]\s+(?:\*{1,2})?[A-ZÁÉÍÓÚÂÊÔÃÕÇ])",
+        "\n", s,
+    )
     return [linha.strip() for linha in s.split("\n") if linha.strip()]
 
 
@@ -172,9 +187,89 @@ def naturalizar_texto_para_fala(texto: str) -> str:
     return re.sub(r"\s+", " ", fala).strip()
 
 
+def _oralizar_matematica(texto: str) -> str:
+    """Converte notação matemática em palavras somente na cópia para o TTS."""
+    s = str(texto or "").replace("–", "-").replace("—", "-").replace("−", "-")
+    urls: list[str] = []
+
+    def proteger_url(match: re.Match) -> str:
+        urls.append(match.group(0))
+        return f"URLPROTEGIDA{len(urls) - 1}"
+
+    # Sinais presentes em query strings não são operadores matemáticos.
+    s = re.sub(r"https?://[^\s)]+", proteger_url, s, flags=re.IGNORECASE)
+    s = re.sub(
+        r"\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}",
+        r"\1 dividido por \2",
+        s,
+        flags=re.IGNORECASE,
+    )
+    s = re.sub(r"\\sqrt\s*\{([^{}]+)\}", r"raiz quadrada de \1", s, flags=re.IGNORECASE)
+    s = re.sub(r"\\(?:times|cdot)\b|×", " vezes ", s, flags=re.IGNORECASE)
+    s = re.sub(r"\\div\b|÷", " dividido por ", s, flags=re.IGNORECASE)
+    s = s.replace(r"\(", " ").replace(r"\)", " ")
+    s = s.replace(r"\[", " ").replace(r"\]", " ").replace("$", " ")
+    s = re.sub(r"\s*=\s*", " é igual a ", s)
+    s = re.sub(r"\s*\+\s*", " mais ", s)
+    s = re.sub(r"(?<=[\d)xyzXYZ])\s*-\s*(?=[\d(xyzXYZ])", " menos ", s)
+    s = re.sub(r"(?<![\w)])-\s*(?=\d)", "menos ", s)
+    s = re.sub(r"\s*\^\s*", " elevado a ", s)
+    s = re.sub(r"(?<=\d)\s*(?=[xyzXYZ]\b)", " ", s)
+
+    for indice, url in enumerate(urls):
+        s = s.replace(f"URLPROTEGIDA{indice}", url)
+    return re.sub(r"\s+", " ", s).strip()
+
+
 def preparar_texto_para_tts(texto: str) -> str:
     """Cria uma versão oral sem modificar o texto exibido ou memorizado."""
-    fala = naturalizar_texto_para_fala(texto)
+    texto_oral = str(texto or "")
+
+    inventario = re.fullmatch(
+        r"\s*Suas playlists são:\s*(?P<itens>.+?)\.\s*",
+        texto_oral,
+        flags=re.IGNORECASE,
+    )
+    if inventario:
+        itens = re.findall(
+            r"(?:^|,\s*)([^,()]+?)\s*\(\s*\d+\s*\)",
+            str(inventario.group("itens") or ""),
+        )
+        nomes = [re.sub(r"\s+", " ", nome).strip() for nome in itens if nome.strip()]
+        if nomes:
+            if len(nomes) == 1:
+                enumeracao = nomes[0]
+            elif len(nomes) == 2:
+                enumeracao = f"{nomes[0]} e {nomes[1]}"
+            else:
+                enumeracao = f"{', '.join(nomes[:-1])} e {nomes[-1]}"
+            texto_oral = f"Você tem {len(nomes)} playlists: {enumeracao}."
+
+    if re.search(r"\bplaylist\b", texto_oral, flags=re.IGNORECASE):
+        # Rótulos editoriais do YouTube ajudam na tela, mas soam como lixo
+        # quando a assistente lê os títulos em voz alta.
+        texto_oral = re.sub(
+            r"\s*\((?:official|oficial|music\s+video|vídeo|video|audio|áudio|"
+            r"lyrics?|lyric\s+video|clipe|hd|4k)[^)]*\)",
+            "",
+            texto_oral,
+            flags=re.IGNORECASE,
+        )
+        texto_oral = re.sub(
+            r"\b(?:official|oficial)\s+(?:music\s+)?(?:video|vídeo|audio|áudio)\b|"
+            r"\b(?:HD|4K|lyrics?|lyric\s+video)\b",
+            "",
+            texto_oral,
+            flags=re.IGNORECASE,
+        )
+        # Para o TTS, “artista, com música” cria uma pausa natural. O texto
+        # visual continua exibindo o título original com hífen.
+        texto_oral = re.sub(r"\s+[-–—]\s+", ", com ", texto_oral)
+        texto_oral = re.sub(r"\s+([,.;:])", r"\1", texto_oral)
+        texto_oral = re.sub(r"\s+", " ", texto_oral).strip()
+
+    texto_oral = _oralizar_matematica(texto_oral)
+    fala = naturalizar_texto_para_fala(texto_oral)
     if not fala:
         return ""
     fala = re.sub(r"(?<=\d)\s*%", " por cento", fala)

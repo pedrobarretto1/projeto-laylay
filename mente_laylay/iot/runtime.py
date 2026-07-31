@@ -7,6 +7,10 @@ import time
 from typing import Any, Callable, Dict
 
 from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto
+from mente_laylay.cognicao.evidencia_operacional import (
+    bloqueia_controle_iot_por_modalidade,
+    detectar_consulta_lista_iot,
+)
 from mente_laylay.iot.controlador import ControladorIoT
 from mente_laylay.iot.configuracao import ler_variavel_ambiente
 from mente_laylay.iot.persistencia import PersistenciaIoT
@@ -15,6 +19,7 @@ from mente_laylay.iot.protocolos.tuya import ProtocoloTuya
 from mente_laylay.iot.registro import criar_dispositivo_lampada, criar_dispositivo_ventilador
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
 from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao
+from mente_laylay.cognicao.identidade_conversacional import remover_vocativo_laylay
 
 
 class RuntimeIoT:
@@ -69,6 +74,11 @@ class RuntimeIoT:
         )
         nomes = ",".join(item.nome for item in dispositivos)
         self.log(f"🏠 [IOT:INICIO] modo={self.modo} dispositivos={nomes}")
+        catalogados = self.registro.listar()
+        self.log(
+            "🧠 [IOT:MENTE] consulta_lista=prioritaria dispositivos="
+            + ",".join(item.nome for item in catalogados)
+        )
 
     def _aliases(self) -> list[tuple[str, str]]:
         aliases: list[tuple[str, str]] = []
@@ -78,6 +88,27 @@ class RuntimeIoT:
                 if alias_norm:
                     aliases.append((alias_norm, dispositivo.nome))
         return sorted(aliases, key=lambda item: len(item[0]), reverse=True)
+
+    def retrato_para_mente(self, texto: str = "") -> dict[str, Any]:
+        """Expõe o catálogo IoT sem credenciais, chaves ou configuração Tuya."""
+        consulta = detectar_consulta_lista_iot(texto) or {}
+        params = consulta.get("params") if isinstance(consulta, dict) else {}
+        ambiente = str((params or {}).get("ambiente") or "").strip()
+        dispositivos = self.registro.listar(ambiente)
+        return {
+            "dispositivos": [
+                {
+                    "nome": item.nome,
+                    "nome_amigavel": item.nome_amigavel,
+                    "tipo": item.tipo,
+                    "ambiente": item.ambiente,
+                    "capacidades": sorted(item.capacidades),
+                }
+                for item in dispositivos
+            ],
+            "total_dispositivos": len(dispositivos),
+            "parametros_consulta": {"ambiente": ambiente},
+        }
 
     @staticmethod
     def _nome_com_artigo(nome: str) -> str:
@@ -257,9 +288,15 @@ class RuntimeIoT:
         return ""
 
     def detectar(self, texto: str, estado_mental: Dict[str, Any] | None = None) -> Dict[str, Any] | None:
-        texto_bruto = str(texto or "").casefold().strip()
-        t = normalizar_texto(texto)
+        texto_operacional = remover_vocativo_laylay(texto)
+        consulta_lista = detectar_consulta_lista_iot(texto_operacional)
+        if consulta_lista:
+            return consulta_lista
+        texto_bruto = str(texto_operacional or "").casefold().strip()
+        t = normalizar_texto(texto_operacional)
         if not t:
+            return None
+        if bloqueia_controle_iot_por_modalidade(texto_operacional):
             return None
         # Horários pertencem à agenda. O IoT só deve receber a parte da ação
         # depois que o orquestrador separar "desliga a luz" de "às 23:27".
@@ -280,6 +317,31 @@ class RuntimeIoT:
             tonalidade = "escuro"
 
         alvo_parametro = self._resolver_alvo_texto(t, estado)
+        # Desligar/apagar é uma ação completa e vence qualquer resíduo textual.
+        # Assim, vocativos, ditado imperfeito ou adjetivos posteriores nunca
+        # transformam "desliga a luz" em uma pesquisa de cor.
+        pedido_desligar = bool(re.search(
+            r"\b(?:desliga|desligar|desligue|apaga|apagar)\b",
+            t,
+        ))
+        negou_desligar = bool(re.search(
+            r"\bnao\s+(?:desliga|desligar|desligue|apaga|apagar)\b",
+            t,
+        ))
+        alvo_e_iot_explicito = bool(re.search(
+            r"\b(?:luz|lampada|dispositivo|aparelho|tomada|ventilador|iot)\b",
+            t,
+        )) or self.registro.resolver(alvo_parametro) is not None
+        if (
+            alvo_parametro
+            and pedido_desligar
+            and not negou_desligar
+            and alvo_e_iot_explicito
+        ):
+            return {
+                "intent": "IOT_CONTROL",
+                "params": {"acao": "desligar", "alvo": alvo_parametro},
+            }
         valor_eliptico = re.fullmatch(
             r"(?:pode\s+)?(?:coloca|coloque|deixa|deixe|bota|bote|poe|põe|ajusta|ajuste|define|defina)"
             r"(?:\s+(?:ela|ele|isso))?\s+(?:em|para|pra)\s+(\d{1,3})(?:\s*(?:%|por cento))?",
@@ -525,15 +587,6 @@ class RuntimeIoT:
                     },
                 }
 
-        if re.search(r"\b(quais|lista|listar|mostra|mostrar)\b", t) and re.search(
-            r"\b(dispositivos?|aparelhos?|casa inteligente|iot)\b", t
-        ):
-            ambiente = ""
-            m_ambiente = re.search(r"\b(?:do|da|de|no|na)\s+(quarto|sala|cozinha|banheiro|escritorio)\b", t)
-            if m_ambiente:
-                ambiente = m_ambiente.group(1)
-            return {"intent": "IOT_LIST", "params": {"ambiente": ambiente}}
-
         foco_iot_recente = bool(estado.get("ultimo_dispositivo_iot"))
         pergunta_estado = bool(
             re.search(r"\b(esta|ta|ficou|continua)\s+(ligad[oa]|desligad[oa])\b", t)
@@ -559,6 +612,19 @@ class RuntimeIoT:
 
         alvo = self._resolver_alvo_texto(t, estado)
         if not alvo:
+            return None
+        # "Apaga" é ambíguo: pode significar excluir um arquivo/pasta. Um
+        # nome arbitrário só pertence ao IoT quando está cadastrado ou quando
+        # a frase declara que se trata de luz/aparelho. Isso impede que
+        # "apaga o Antonio" vire uma tentativa de desligar um dispositivo.
+        if (
+            re.search(r"\b(?:apaga|apagar)\b", t)
+            and not re.search(
+                r"\b(?:luz|lampada|dispositivo|aparelho|tomada|ventilador|iot)\b",
+                t,
+            )
+            and self.registro.resolver(alvo) is None
+        ):
             return None
         deliberativo = bool(re.search(
             r"\b(?:acho que (?:eu )?vou|talvez (?:eu )?|to pensando em|tô pensando em|estou pensando em)\b",
@@ -712,6 +778,7 @@ class RuntimeIoT:
             "status": resposta.status,
             "alvo": nome,
             "ambiente": resposta.ambiente,
+            "estado_anterior": resposta.estado_anterior,
             "estado": resposta.estado_atual,
             "confirmado": resposta.confirmado,
             "erro": resposta.erro,

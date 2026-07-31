@@ -12,6 +12,7 @@ from email.utils import parseaddr
 import json
 import os
 import re
+import threading
 import time
 from typing import Callable, Dict, Iterable, List
 
@@ -59,7 +60,11 @@ class GmailMental:
         agendar_fala_proativa: Callable[[str, str, str, int], None] | None = None,
         is_speaking_getter: Callable[[], bool] | None = None,
         modo_jogo_getter: Callable[[], bool] | None = None,
+        centralizar_notificacoes_cb: Callable[[Iterable[dict]], object] | None = None,
         categorias: Dict[str, Iterable[str]] | None = None,
+        stop_event: threading.Event | None = None,
+        registrar_falha: Callable[..., object] | None = None,
+        log: Callable[[str], object] = print,
     ) -> None:
         self.arquivo_estado = arquivo_estado
         self.usuario = usuario
@@ -72,6 +77,7 @@ class GmailMental:
         self.agendar_fala_proativa = agendar_fala_proativa
         self.is_speaking_getter = is_speaking_getter
         self.modo_jogo_getter = modo_jogo_getter
+        self.centralizar_notificacoes_cb = centralizar_notificacoes_cb
         if categorias is None:
             try:
                 configuradas = json.loads(os.getenv("GMAIL_CATEGORIAS_JSON", "") or "{}")
@@ -87,6 +93,22 @@ class GmailMental:
         self.nao_lidos_cache: list = []
         self.remetentes_silenciados: set[str] = set()
         self._ultima_busca_falhou = False
+        self.stop_event = stop_event or threading.Event()
+        self.registrar_falha = registrar_falha
+        self.log = log
+
+    def configurado(self) -> bool:
+        """Indica se o processo recebeu credenciais utilizáveis, sem expô-las."""
+        return bool(
+            self.usuario
+            and self.app_password
+            and "xxxx" not in self.app_password.casefold()
+            and "seu.email" not in self.usuario.casefold()
+        )
+
+    def _falha(self, codigo: str, erro: BaseException) -> None:
+        if callable(self.registrar_falha):
+            self.registrar_falha("gmail", codigo, erro=erro)
 
     def decodificar_header(self, valor: str) -> str:
         if not valor:
@@ -158,8 +180,8 @@ class GmailMental:
                 rems = dados.get("remetentes_silenciados", [])
                 if isinstance(rems, list):
                     self.remetentes_silenciados = {str(x).strip().lower() for x in rems if str(x).strip()}
-        except Exception:
-            pass
+        except Exception as erro:
+            self._falha("estado_leitura", erro)
 
     def salvar_estado(self) -> None:
         try:
@@ -172,8 +194,8 @@ class GmailMental:
                 f.flush()
                 os.fsync(f.fileno())
             os.replace(temporario, self.arquivo_estado)
-        except Exception:
-            pass
+        except Exception as erro:
+            self._falha("estado_escrita", erro)
 
     def silenciar_remetente(self, remetente: str) -> bool:
         rem = str(remetente or "").strip().lower()
@@ -197,7 +219,8 @@ class GmailMental:
         return False
 
     def buscar_nao_lidos(self) -> List[Dict[str, object]]:
-        if not self.usuario or not self.app_password or "xxxx" in self.app_password or "seu.email" in self.usuario:
+        if not self.configurado():
+            self._ultima_busca_falhou = True
             return []
         if imaplib is None:
             print("⚠️ [Gmail] imaplib não disponível.")
@@ -210,13 +233,19 @@ class GmailMental:
             conn.login(self.usuario, self.app_password)
             conn.select("INBOX", readonly=True)
 
-            _, data = conn.search(None, "UNSEEN")
+            # UIDs permanecem estáveis mesmo quando mensagens anteriores são
+            # apagadas. Números de sequência podem ser reutilizados e faziam
+            # um email novo colidir com outro já registrado como anunciado.
+            _, data = conn.uid("search", None, "UNSEEN")
             ids_bytes = data[0].split() if data[0] else []
             ids_recentes = ids_bytes[-20:]
 
             for uid_bytes in reversed(ids_recentes):
-                uid = uid_bytes.decode()
-                _, msg_data = conn.fetch(uid_bytes, "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT REPLY-TO AUTHENTICATION-RESULTS RETURN-PATH)])")
+                uid = f"uid:{uid_bytes.decode()}"
+                _, msg_data = conn.uid(
+                    "fetch", uid_bytes,
+                    "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT REPLY-TO AUTHENTICATION-RESULTS RETURN-PATH)])",
+                )
                 if not msg_data or not msg_data[0]:
                     continue
 
@@ -260,21 +289,21 @@ class GmailMental:
         if callable(self.continuidades_set):
             self.continuidades_set(chave, valor)
 
-    def _fala_proativa(self, tipo: str, texto: str, emocao: str, nivel: int) -> None:
+    def _fala_proativa(self, tipo: str, texto: str, emocao: str, nivel: int) -> bool:
         if callable(self.agendar_fala_proativa):
-            self.agendar_fala_proativa(tipo, texto, emocao, nivel)
+            return bool(self.agendar_fala_proativa(tipo, texto, emocao, nivel))
+        return False
 
-    def falar_email(self, email_dict: dict, prefixo: str = "") -> None:
+    def falar_email(self, email_dict: dict, prefixo: str = "") -> bool:
         rem = email_dict["remetente"]
         ass = email_dict["assunto"]
         if email_dict.get("silenciado"):
-            return
+            return False
         ass_curto = ass if len(ass) <= 60 else ass[:57] + "..."
 
         if email_dict.get("possivel_golpe"):
             texto = f"Atenção: possível golpe de {rem}: {ass_curto}. Não abra links antes de conferir o domínio."
-            self._fala_proativa("emails", texto, "irritada", 2)
-            return
+            return self._fala_proativa("seguranca", texto, "irritada", 2)
 
         if email_dict["prioritario"]:
             texto = f"{prefixo}Email importante de {rem}: {ass_curto}."
@@ -284,7 +313,7 @@ class GmailMental:
             emocao = "calma"
 
         self._continuidades("email_sugestao_pendente", {"remetente": str(rem or "").strip(), "ts": time.time()})
-        self._fala_proativa("emails", texto, emocao, 1)
+        return self._fala_proativa("emails", texto, emocao, 1)
 
     def falar_resumo_estiloso(
         self,
@@ -295,7 +324,7 @@ class GmailMental:
     ) -> str:
         emails = [e for e in (emails or []) if not (isinstance(e, dict) and e.get("silenciado"))]
         if not emails:
-            texto = "Nada novo no email, Pedro. A caixa postal tá quieta por enquanto."
+            texto = "Nada novo no email. A caixa postal tá quieta por enquanto."
             self._continuidades("email_sugestao_pendente", None)
             if emitir_proativa:
                 self._fala_proativa("emails", texto, "calma", 1)
@@ -344,15 +373,23 @@ class GmailMental:
 
     def daemon(self) -> None:
         self.carregar_estado()
-        time.sleep(8)
+        if not self.configurado():
+            self.log(
+                "⚠️ [Gmail] Monitor inativo: configure GMAIL_USER e "
+                "GMAIL_APP_PASSWORD nas variáveis de ambiente e reinicie a Laylay."
+            )
+            return
+        if self.stop_event.wait(8):
+            return
         print(f"📧 [Gmail] Daemon iniciado — verificando a cada {self.intervalo_s // 60}min")
 
         falhas_consecutivas = 0
-        while True:
+        while not self.stop_event.is_set():
             try:
                 agora = time.time()
                 if agora - self.ultimo_check < self.intervalo_s:
-                    time.sleep(30)
+                    if self.stop_event.wait(30):
+                        break
                     continue
 
                 self.ultimo_check = agora
@@ -363,59 +400,93 @@ class GmailMental:
                     falhas_consecutivas += 1
                     atraso = min(1800, 30 * (2 ** min(falhas_consecutivas - 1, 6)))
                     print(f"📧 [Gmail] Nova tentativa em {atraso}s.")
-                    time.sleep(atraso)
+                    if self.stop_event.wait(atraso):
+                        break
                     continue
                 falhas_consecutivas = 0
                 if not emails:
-                    time.sleep(30)
+                    if self.stop_event.wait(30):
+                        break
                     continue
 
                 self.nao_lidos_cache[:] = emails
                 novos = [e for e in emails if e["uid"] not in self.ids_vistos]
                 if not novos:
                     print(f"📧 [Gmail] {len(emails)} não lidos, nenhum novo para anunciar")
-                    time.sleep(30)
+                    if self.stop_event.wait(30):
+                        break
                     continue
+
+                # A central aceita a leva inteira, deduplica e decide se fala,
+                # resume ou apenas guarda conforme o contexto. O Gmail só
+                # conserva o comportamento antigo quando a central não existe.
+                if callable(self.centralizar_notificacoes_cb):
+                    try:
+                        aceitos = self.centralizar_notificacoes_cb(novos)
+                        if isinstance(aceitos, (set, list, tuple)):
+                            self.ids_vistos.update(str(uid) for uid in aceitos if str(uid))
+                        elif aceitos:
+                            self.ids_vistos.update(str(e["uid"]) for e in novos)
+                        self.salvar_estado()
+                        if self.stop_event.wait(30):
+                            break
+                        continue
+                    except Exception as erro:
+                        self.log(
+                            "⚠️ [Gmail] Central de notificações indisponível; "
+                            f"usando fluxo anterior ({type(erro).__name__})."
+                        )
 
                 if callable(self.modo_jogo_getter) and self.modo_jogo_getter():
                     print("🎮 [Gmail] Novos emails guardados em silêncio durante o jogo.")
-                    time.sleep(30)
+                    if self.stop_event.wait(30):
+                        break
                     continue
 
                 if callable(self.is_speaking_getter) and self.is_speaking_getter():
-                    time.sleep(10)
+                    if self.stop_event.wait(10):
+                        break
                     continue
 
                 prioritarios = [e for e in novos if e["prioritario"]]
                 normais = [e for e in novos if not e["prioritario"]]
 
                 for e in prioritarios[:self.max_lidos]:
-                    self.falar_email(e)
-                    self.ids_vistos.add(e["uid"])
-                    time.sleep(1.5)
+                    if self.stop_event.is_set():
+                        break
+                    if self.falar_email(e):
+                        self.ids_vistos.add(e["uid"])
+                    if self.stop_event.wait(1.5):
+                        break
 
                 normais_novos = [e for e in normais if e["uid"] not in self.ids_vistos]
                 if normais_novos:
                     n = len(normais_novos)
                     if n == 1:
-                        self.falar_email(normais_novos[0])
-                        self.ids_vistos.add(normais_novos[0]["uid"])
+                        if self.falar_email(normais_novos[0]):
+                            self.ids_vistos.add(normais_novos[0]["uid"])
                     else:
                         self._continuidades("email_sugestao_pendente", {"remetente": "", "ts": time.time()})
-                        self._fala_proativa(
+                        agendado = self._fala_proativa(
                             "emails",
                             f"Você tem {n} emails novos. Fala 'lê os emails' pra ouvir.",
                             "calma",
                             1,
                         )
-                        for e in normais_novos:
-                            self.ids_vistos.add(e["uid"])
+                        if agendado:
+                            for e in normais_novos:
+                                self.ids_vistos.add(e["uid"])
 
                 self.salvar_estado()
             except Exception as e:
-                print(f"❌ [Gmail] Erro no daemon: {e}")
+                self.log(f"❌ [Gmail] Erro no daemon: {type(e).__name__}")
+                self._falha("daemon", e)
 
-            time.sleep(30)
+            if self.stop_event.wait(30):
+                break
+
+    def encerrar(self) -> None:
+        self.stop_event.set()
 
 
 class GmailRuntime:
@@ -428,6 +499,9 @@ class GmailRuntime:
 
     def silenciar_remetente(self, remetente: str) -> bool:
         return self.mental.silenciar_remetente(remetente)
+
+    def configurado(self) -> bool:
+        return self.mental.configurado()
 
     def buscar_nao_lidos(self) -> list:
         emails = self.mental.buscar_nao_lidos()
@@ -453,6 +527,9 @@ class GmailRuntime:
     def daemon(self) -> None:
         self.mental.daemon()
 
+    def encerrar(self) -> None:
+        self.mental.encerrar()
+
 
 def criar_gmail_runtime(
     *,
@@ -467,7 +544,11 @@ def criar_gmail_runtime(
     agendar_fala_proativa: Callable[[str, str, str, int], None] | None = None,
     is_speaking_getter: Callable[[], bool] | None = None,
     modo_jogo_getter: Callable[[], bool] | None = None,
+    centralizar_notificacoes_cb: Callable[[Iterable[dict]], object] | None = None,
     categorias: Dict[str, Iterable[str]] | None = None,
+    stop_event: threading.Event | None = None,
+    registrar_falha: Callable[..., object] | None = None,
+    log: Callable[[str], object] = print,
 ) -> GmailRuntime:
     mental = GmailMental(
         arquivo_estado=arquivo_estado,
@@ -481,6 +562,10 @@ def criar_gmail_runtime(
         agendar_fala_proativa=agendar_fala_proativa,
         is_speaking_getter=is_speaking_getter,
         modo_jogo_getter=modo_jogo_getter,
+        centralizar_notificacoes_cb=centralizar_notificacoes_cb,
         categorias=categorias,
+        stop_event=stop_event,
+        registrar_falha=registrar_falha,
+        log=log,
     )
     return GmailRuntime(mental)

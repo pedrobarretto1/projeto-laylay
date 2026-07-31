@@ -99,8 +99,9 @@ def compor_fala_proativa(
         if not texto:
             continue
 
+        emocao_item = str(item.get("emocao") or "calma")
         if idx == 0:
-            emocao = str(item.get("emocao") or emocao)
+            emocao = emocao_item
             try:
                 nivel = int(item.get("nivel") or nivel)
             except Exception:
@@ -150,7 +151,11 @@ def compor_fala_proativa(
         if ctx["emocao"] in {"triste", "decepcionada", "cansada"} and tipo == "briefing":
             texto += " Vou falar sem exagero pra não pesar mais o clima."
 
-        texto = ajustar_tom_por_emocao(texto, emocao, ctx.get("topico_ativo", ""))
+        # Cada sinal conserva o próprio tom. Um alerta de segurança irritado
+        # não deve transformar (nem encurtar) a observação visual seguinte.
+        texto = ajustar_tom_por_emocao(
+            texto, emocao_item, ctx.get("topico_ativo", ""),
+        )
         partes.append(texto)
 
     if not partes:

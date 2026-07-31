@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterable
 from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.cognicao.retrato_turno import dominio_intent
 from mente_laylay.especialistas.operacional import avaliar_candidato_operacional
+from mente_laylay.especialistas.capacidades import INTENTS_SOMENTE_LEITURA
 from mente_laylay.cognicao.decisao_turno import (
     consolidar_arbitragem,
     criar_contrato_decisao,
@@ -65,7 +66,7 @@ def arbitrar_turno(
             "artista": "musica", "cantor": "musica", "cantora": "musica",
             "banda": "musica",
             "janela": "app", "app": "app", "site": "site", "iot": "iot",
-            "arquivo": "arquivo",
+            "dispositivo": "iot", "arquivo": "arquivo", "pasta": "arquivo",
         }.get(str(referencia.get("tipo") or "").lower(), "")
         tem_verbo_operacional = bool(re.search(
             r"\b(?:abre|fecha|liga|desliga|toca|coloca|bota|salva|guarda|adiciona|"
@@ -87,6 +88,20 @@ def arbitrar_turno(
             motivo = (
                 "especialista operacional nao autorizou execucao neste turno: "
                 f"{avaliacao_operacional.get('motivo') or 'sem_autorizacao'}"
+            )
+        elif (
+            candidato.tipo == "comando_explicito"
+            and intent_candidato not in INTENTS_SOMENTE_LEITURA
+            and intent_candidato != "SUGGEST_ACTION"
+            and not bool(
+                leitura.get("autoriza_execucao")
+                if "autoriza_execucao" in leitura
+                else modalidade in {"comando", "misto"}
+            )
+        ):
+            motivo = (
+                f"modalidade {modalidade} não autorizou ação com efeito "
+                "neste turno"
             )
         elif modalidade in {"deliberacao", "pergunta"} and candidato.tipo in {
             "comando_contextual", "repeticao"

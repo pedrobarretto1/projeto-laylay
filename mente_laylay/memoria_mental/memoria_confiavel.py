@@ -17,11 +17,54 @@ _STOPWORDS = {
 }
 _SINAIS_EXPLICITOS = re.compile(
     r"\b(?:meu nome (?:e|eh)|me chama de|eu (?:gosto|amo|adoro|odeio|prefiro)|"
+    r"(?:um dos|uma das) meus? .{0,50} favorit[oa]s?|meus? .{0,50} favorit[oa]s?|"
     r"nao gosto|lembra(?: de)? que|guarda(?: isso| que)?|anota(?: que)?|"
     r"quando eu|pode sempre|nao (?:abra|faca|toque|use)|na verdade|"
     r"corrigindo|nao e .+ e|isso significa)\b",
     re.IGNORECASE,
 )
+
+
+def extrair_aprendizados_pessoais_explicitos(texto_usuario: str) -> List[Dict[str, Any]]:
+    """Extrai preferências inequívocas sem depender da disciplina do modelo.
+
+    A extração é deliberadamente estreita: registra somente algo que Pedro
+    qualificou como favorito. Fatos externos, inferências e entusiasmo solto
+    continuam fora da memória durável.
+    """
+    bruto = re.sub(r"\s+", " ", str(texto_usuario or "")).strip()
+    if not bruto:
+        return []
+
+    resultados: List[Dict[str, Any]] = []
+    padroes = (
+        # "GTA 5 ..., um dos meus jogos favoritos"
+        r"(?P<valor>[A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9 '&+.:_-]{1,70}?)"
+        r"(?:\s+(?:desde|foi|é|e|era|está|esta)\b[^,.;]{0,70})?,\s*"
+        r"(?:um dos|uma das)\s+meus?\s+(?P<categoria>[A-Za-zÀ-ÿ ]{2,30}?)\s+favorit[oa]s?\b",
+        # "GTA 5 é um dos meus jogos favoritos"
+        r"(?P<valor>[A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9 '&+.:_-]{1,70}?)\s+"
+        r"(?:é|e|está|esta)\s+(?:um dos|uma das)\s+meus?\s+"
+        r"(?P<categoria>[A-Za-zÀ-ÿ ]{2,30}?)\s+favorit[oa]s?\b",
+    )
+    for padrao in padroes:
+        achado = re.search(padrao, bruto, flags=re.IGNORECASE)
+        if not achado:
+            continue
+        valor = re.sub(r"^(?:eu\s+)?(?:jogo|jogava|curto|escuto|ouço|assisto)\s+", "", achado.group("valor"), flags=re.IGNORECASE)
+        valor = valor.strip(" ,.;:-")
+        categoria = achado.group("categoria").strip().casefold()
+        if not valor or len(valor.split()) > 10:
+            continue
+        resultados.append({
+            "tipo": "preferencia",
+            "gatilho": f"{categoria} favoritos",
+            "valor": valor,
+            "regra": f"{valor} está entre os {categoria} favoritos do usuário",
+            "confianca": 0.98,
+        })
+        break
+    return resultados
 
 
 def normalizar_texto(texto: Any) -> str:
@@ -100,4 +143,3 @@ def preparar_aprendizados_confirmados(
             memoria["confianca"] = 0.94
         confirmados.append(memoria)
     return confirmados
-

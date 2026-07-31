@@ -9,6 +9,10 @@ import time
 from typing import Any, Callable, Dict
 
 from mente_laylay.autonomia.porteiro_proatividade import categoria_sugestao
+from mente_laylay.cognicao.erros_navegador import resumir_erro_navegador
+from mente_laylay.memoria_mental.estado_continuidades import (
+    SUGESTAO_SEM_RESPOSTA_TIMEOUT_S,
+)
 
 
 def _get(ctx: Dict[str, Any], chave: str, padrao: Any = None) -> Any:
@@ -150,6 +154,201 @@ def detectar_sugestao_indireta(
         return None
     mente = estado_mental if isinstance(estado_mental, dict) else {}
 
+    def _acao_confiavel(
+        acao_sugerida: Dict[str, Any],
+        *,
+        descricao: str,
+        fala: str,
+        dominio: str,
+        confianca: float,
+    ) -> Dict[str, Any]:
+        """Padroniza necessidades inequívocas sem contornar a governança central."""
+        return {
+            "intent": "SUGGEST_ACTION",
+            "params": {
+                "acao_sugerida": acao_sugerida,
+                "descricao": descricao,
+                "fala": fala,
+                "origem": "fala_indireta_confiavel",
+                "dominio": dominio,
+                "confianca": confianca,
+                "risco": "baixo",
+                "reversivel": True,
+                "execucao_autonoma_elegivel": True,
+            },
+        }
+
+    cores_contextuais = {
+        "roxa": ("roxo", (128, 0, 255)),
+        "roxo": ("roxo", (128, 0, 255)),
+        "azul": ("azul", (0, 0, 255)),
+        "vermelha": ("vermelho", (255, 0, 0)),
+        "vermelho": ("vermelho", (255, 0, 0)),
+        "verde": ("verde", (0, 255, 0)),
+        "rosa": ("rosa", (255, 105, 180)),
+        "amarela": ("amarelo", (255, 255, 0)),
+        "amarelo": ("amarelo", (255, 255, 0)),
+        "laranja": ("laranja", (255, 128, 0)),
+    }
+    preferencia_luz = re.search(
+        r"^(?:eu\s+)?(?:gosto|prefiro)\s+(?:d[aeo]\s+)?(?:usar\s+)?(?:a\s+)?"
+        r"(?:luz|lampada|iluminacao)\s+"
+        r"(roxa|roxo|azul|vermelha|vermelho|verde|rosa|amarela|amarelo|laranja)\s+"
+        r"(?:nesse|neste|a\s+esse|a\s+este)\s+hor[aá]rio\b",
+        t,
+    )
+    if preferencia_luz:
+        cor, rgb = cores_contextuais[preferencia_luz.group(1)]
+        return _acao_confiavel(
+            {
+                "intent": "IOT_CONTROL",
+                "params": {
+                    "acao": "ajustar_cor", "alvo": "lampada_quarto",
+                    "cor": cor, "rgb": rgb, "origem": "usuario_indireto",
+                },
+            },
+            descricao=f"deixar a luz {preferencia_luz.group(1)}",
+            fala=f"Quer que eu deixe a luz {preferencia_luz.group(1)}?",
+            dominio="iot",
+            confianca=0.94,
+        )
+
+    escuro = bool(re.search(
+        r"^(?:aqui|o quarto|meu quarto|esse lugar|este lugar)?\s*"
+        r"(?:esta|está|ta|tá|ficou)\s+(?:muito\s+)?(?:escuro|escura)(?:\s+(?:aqui|demais))?[.!]*$",
+        t,
+    ))
+    if escuro:
+        return _acao_confiavel(
+            {
+                "intent": "IOT_CONTROL",
+                "params": {
+                    "acao": "ligar", "alvo": "lampada_quarto",
+                    "origem": "usuario_indireto",
+                },
+            },
+            descricao="ligar a luz",
+            fala="Ficou escuro por aí. Quer que eu ligue a luz?",
+            dominio="iot",
+            confianca=0.95,
+        )
+
+    volume_alto = bool(re.search(
+        r"^(?:(?:o|a)\s+)?(?:som|audio|áudio|volume|musica|música)\s+"
+        r"(?:esta|está|ta|tá|ficou)\s+(?:muito\s+alt[oa]|alt[oa]\s+demais)(?:\s+aqui)?[.!]*$",
+        t,
+    ))
+    volume_baixo = bool(re.search(
+        r"^(?:(?:o|a)\s+)?(?:som|audio|áudio|volume|musica|música)\s+"
+        r"(?:esta|está|ta|tá|ficou)\s+(?:muito\s+baix[oa]|baix[oa]\s+demais)(?:\s+aqui)?[.!]*$",
+        t,
+    ))
+    if volume_alto or volume_baixo:
+        delta = -10 if volume_alto else 10
+        direcao = "abaixar" if volume_alto else "aumentar"
+        return _acao_confiavel(
+            {
+                "intent": "VOLUME_RELATIVE",
+                "params": {"delta": delta, "origem": "usuario_indireto"},
+            },
+            descricao=f"{direcao} um pouco o volume",
+            fala=f"O som está {'alto' if volume_alto else 'baixo'}. Quer que eu {direcao} um pouco?",
+            dominio="conforto",
+            confianca=0.95,
+        )
+
+    desejo_musical = re.search(
+        r"^(?:eu\s+)?(?:queria|gostaria\s+de|estou\s+a\s+fim\s+de|"
+        r"to\s+a\s+fim\s+de|tô\s+a\s+fim\s+de|estou\s+com\s+vontade\s+de|"
+        r"to\s+com\s+vontade\s+de|tô\s+com\s+vontade\s+de)\s+"
+        r"(?:ouvir|escutar|colocar)\s+(.+?)[.!]*$",
+        t,
+    )
+    if desejo_musical:
+        query = re.sub(r"^(?:uma|um|alguma)\s+(?:musica|música|som)\s+(?:de\s+)?", "", desejo_musical.group(1)).strip()
+        query = re.sub(r"^(?:uma|um)\s+", "", query).strip()
+        if query and query not in {"musica", "música", "alguma coisa", "qualquer coisa"}:
+            return _acao_confiavel(
+                {
+                    "intent": "MUSIC_SEARCH",
+                    "params": {"query": query, "origem": "usuario_indireto"},
+                },
+                descricao=f"colocar {query}",
+                fala=f"Você está no clima de {query}. Quer que eu coloque?",
+                dominio="musica",
+                confianca=0.95,
+            )
+
+    precisa_pausa = bool(
+        re.search(
+            r"^(?:essa|a)\s+(?:musica|música|faixa)\s+"
+            r"(?:esta|está|ta|tá)\s+me\s+(?:distraindo|atrapalhando|incomodando)[.!]*$",
+            t,
+        )
+        or re.search(r"^(?:eu\s+)?preciso\s+de\s+silencio\s+(?:agora|um\s+pouco)[.!]*$", t)
+    )
+    musica_parou = bool(re.search(
+        r"^(?:a|essa)\s+(?:musica|música|faixa)\s+(?:parou|ficou\s+pausada)[.!]*$",
+        t,
+    ))
+    musica_nao_combinou = bool(
+        re.search(
+            r"^(?:essa|a)\s+(?:musica|música|faixa)\s+"
+            r"(?:nao|não)\s+(?:combinou|encaixou)(?:\s+com\s+(?:o\s+)?clima)?[.!]*$",
+            t,
+        )
+        or re.search(r"^(?:eu\s+)?(?:nao|não)\s+gostei\s+dessa\s+(?:musica|música|faixa)[.!]*$", t)
+    )
+    if precisa_pausa or musica_parou or musica_nao_combinou:
+        acao_midia = "pause" if precisa_pausa else ("play" if musica_parou else "next")
+        descricao_midia = {
+            "pause": "pausar a música",
+            "play": "retomar a música",
+            "next": "passar para a próxima música",
+        }[acao_midia]
+        fala_midia = {
+            "pause": "Ela está atrapalhando seu foco. Quer que eu pause?",
+            "play": "A música parou. Quer que eu retome?",
+            "next": "Essa não combinou muito. Quer que eu passe para a próxima?",
+        }[acao_midia]
+        return _acao_confiavel(
+            {
+                "intent": "MEDIA_CONTROL",
+                "params": {"acao": acao_midia, "platform": "music", "origem": "usuario_indireto"},
+            },
+            descricao=descricao_midia,
+            fala=fala_midia,
+            dominio="musica",
+            confianca=0.95 if acao_midia != "next" else 0.92,
+        )
+
+    fome_sem_comida = bool(
+        re.search(
+            r"^(?:eu\s+)?(?:estou|to|tô)\s+(?:com\s+)?(?:muita\s+)?fome\s+"
+            r"(?:e|mas)\s+(?:nao|não)\s+(?:tem|tenho)\s+(?:nada|comida)(?:\s+pront[oa])?.*$",
+            t,
+        )
+        or re.search(r"^(?:eu\s+)?(?:queria|quero)\s+pedir\s+(?:alguma\s+)?comida[.!]*$", t)
+    )
+    if fome_sem_comida:
+        return {
+            "intent": "SUGGEST_ACTION",
+            "params": {
+                "acao_sugerida": {
+                    "intent": "OPEN_URL",
+                    "params": {"alvo": "https://www.ifood.com.br", "origem": "usuario_indireto"},
+                },
+                "descricao": "abrir o iFood",
+                "fala": "Tá com cara de noite sem panela. Quer que eu abra o iFood pra você escolher algo?",
+                "origem": "recomendacao_contextual",
+                "dominio": "navegador",
+                "confianca": 0.96,
+                "risco": "baixo",
+                "reversivel": False,
+                "execucao_autonoma_elegivel": False,
+            },
+        }
+
     calor = bool(
         re.search(r"\b(?:estou|to|tô|ta|tá|ficou)\s+(?:com\s+)?(?:muito\s+)?calor\b", t)
         or re.search(r"\b(?:esta|está|ta|tá|ficou)\s+(?:muito\s+)?quente\s+(?:aqui|hoje|demais)\b", t)
@@ -161,13 +360,15 @@ def detectar_sugestao_indireta(
     if not calor and not frio:
         return None
 
+    # O último dispositivo pode ser uma lâmpada; uma necessidade térmica nunca
+    # deve herdar esse alvo apenas por recência.
+    alvo = "tomada_ventilador"
     estado_iot = mente.get("ultimo_estado_iot")
-    if calor and estado_iot is True:
+    ultimo_alvo = str(mente.get("ultimo_dispositivo_iot") or "").strip()
+    if ultimo_alvo == alvo and calor and estado_iot is True:
         return None
-    if frio and estado_iot is False:
+    if ultimo_alvo == alvo and frio and estado_iot is False:
         return None
-
-    alvo = str(mente.get("ultimo_dispositivo_iot") or "tomada_ventilador").strip()
     acao = "ligar" if calor else "desligar"
     descricao = f"{acao} o ventilador"
     fala = (
@@ -175,22 +376,24 @@ def detectar_sugestao_indireta(
         if calor
         else "Esfriou por aí. Quer que eu desligue o ventilador?"
     )
-    return {
-        "intent": "SUGGEST_ACTION",
-        "params": {
-            "acao_sugerida": {
-                "intent": "IOT_CONTROL",
-                "params": {"acao": acao, "alvo": alvo, "origem": "usuario"},
+    return _acao_confiavel(
+        {
+            "intent": "IOT_CONTROL",
+            "params": {
+                "acao": acao, "alvo": alvo, "origem": "usuario_indireto",
             },
-            "descricao": descricao,
-            "fala": fala,
-            "origem": "necessidade_indireta",
         },
-    }
+        descricao=descricao,
+        fala=fala,
+        dominio="iot",
+        confianca=0.96,
+    )
 
 
-def registrar_sugestao_indireta(ctx: Dict[str, Any], resultado: Dict[str, Any]) -> bool:
+def registrar_sugestao_indireta(ctx: Dict[str, Any], resultado: Dict[str, Any] | None) -> bool:
     """Guarda uma sugestão genérica para confirmação posterior."""
+    if not isinstance(resultado, dict):
+        return False
     params = resultado.get("params") if isinstance(resultado.get("params"), dict) else {}
     acao_sugerida = params.get("acao_sugerida")
     if not isinstance(acao_sugerida, dict):
@@ -198,6 +401,32 @@ def registrar_sugestao_indireta(ctx: Dict[str, Any], resultado: Dict[str, Any]) 
     intent_sugerido = str(acao_sugerida.get("intent") or "").upper().strip()
     if not intent_sugerido or intent_sugerido in {"SUGGEST_ACTION", "CANCELAR_ACAO"}:
         return False
+    try:
+        confianca = float(params.get("confianca") or 0.0)
+    except (TypeError, ValueError):
+        confianca = 0.0
+    registrar_oportunidade = _get(ctx, "registrar_oportunidade")
+    if (
+        bool(params.get("execucao_autonoma_elegivel"))
+        and confianca >= 0.90
+        and callable(registrar_oportunidade)
+    ):
+        decisao = dict(registrar_oportunidade({
+            "tipo": "preferencia_contextual",
+            "origem": str(params.get("origem") or "fala_indireta_confiavel"),
+            "dominio": str(params.get("dominio") or ""),
+            "risco": str(params.get("risco") or "baixo"),
+            "confianca": confianca,
+            "utilidade": 100,
+            "executavel": True,
+            "reversivel": bool(params.get("reversivel")),
+            "acao_proposta": acao_sugerida,
+            "validade_s": 30.0,
+        }) or {})
+        if str(decisao.get("decisao") or "") in {
+            "executado", "execucao_falhou", "bloqueado_circuito",
+        }:
+            return True
     atualizar = _get(ctx, "continuidades_update")
     falar = _get(ctx, "falar")
     if not callable(atualizar) or not callable(falar):
@@ -237,10 +466,20 @@ def processar_confirmacao_sugestao(ctx: Dict[str, Any], texto: str) -> bool:
     payload = continuidades_get("comando_sugerido_payload") if callable(continuidades_get) else None
     estado = continuidades_get("comando_sugerido_estado", "NONE") if callable(continuidades_get) else "NONE"
     ts = continuidades_get("comando_sugerido_ts", 0.0) if callable(continuidades_get) else 0.0
+    payload = payload if isinstance(payload, dict) else {}
+    registrar_feedback = _get(ctx, "registrar_feedback_proatividade")
 
     if estado != "PENDING_CONFIRM" or not comando:
         return False
-    if time.time() - float(ts or 0.0) > 60:
+    if time.time() - float(ts or 0.0) >= SUGESTAO_SEM_RESPOSTA_TIMEOUT_S:
+        if callable(registrar_feedback):
+            try:
+                registrar_feedback(
+                    categoria_sugestao(comando, payload), None,
+                    comando=comando, payload=payload, resultado="silencio",
+                )
+            except Exception:
+                pass
         if callable(resetar_sugestao):
             resetar_sugestao()
         return False
@@ -259,10 +498,9 @@ def processar_confirmacao_sugestao(ctx: Dict[str, Any], texto: str) -> bool:
         "LEARN_CONFLICT": "substituir a preferência anterior pela nova neste mesmo contexto",
     }.get(comando, comando)
 
-    original_payload = payload if isinstance(payload, dict) else {}
-    registrar_feedback = _get(ctx, "registrar_feedback_proatividade")
+    original_payload = payload
 
-    def _feedback(aceito: bool) -> None:
+    def _feedback(aceito: bool | None, *, resultado: str = "") -> None:
         if callable(registrar_feedback):
             try:
                 registrar_feedback(
@@ -270,6 +508,7 @@ def processar_confirmacao_sugestao(ctx: Dict[str, Any], texto: str) -> bool:
                     aceito,
                     comando=comando,
                     payload=original_payload,
+                    resultado=resultado,
                 )
             except Exception:
                 pass
@@ -278,14 +517,9 @@ def processar_confirmacao_sugestao(ctx: Dict[str, Any], texto: str) -> bool:
         str(texto or ""),
         flags=re.IGNORECASE,
     ):
-        erro = re.sub(
-            r"\s+",
-            " ",
-            str(original_payload.get("linha") or original_payload.get("erro") or "").strip(),
-        )[:300].rstrip(" ,;:")
         falar = _get(ctx, "falar")
-        if erro and callable(falar):
-            falar(f"Foi este erro no Chrome: {erro}. Se quiser, eu explico como resolver.", "calma", 1)
+        if callable(falar):
+            falar(resumir_erro_navegador(original_payload, detalhado=True), "curiosa", 1)
             return True
 
     interpretar_contraproposta = _get(ctx, "interpretar_contraproposta")
@@ -297,7 +531,7 @@ def processar_confirmacao_sugestao(ctx: Dict[str, Any], texto: str) -> bool:
         if isinstance(alternativa, dict):
             intent_alt = str(alternativa.get("intent") or "").strip().upper()
             if intent_alt in _INTENTS_CONTRAPROPOSTA_SEGURAS:
-                _feedback(False)
+                _feedback(False, resultado="correcao")
                 chave = chave_preferencia_sugestao(comando, original_payload)
                 descricao_alt = descrever_intencao_alternativa(alternativa)
                 pergunta_alt = verbalizar_pergunta_alternativa(alternativa)
@@ -384,7 +618,7 @@ def processar_confirmacao_sugestao(ctx: Dict[str, Any], texto: str) -> bool:
                 executar(payload if isinstance(payload, dict) else {})
             oq = str(original_payload.get("music_query") or "lofi focus").strip().lower()
             nq = str((payload if isinstance(payload, dict) else {}).get("music_query") or oq).strip()
-            fala = f"Beleza, ambiente pronto, mas troquei o Lo-fi pelo mestre {nq}. Boa escolha, Pedro!" if nq and nq.lower() != oq else "Beleza, modo Code ligado. Eu limpei a bagunça e botei música pra tua cabeça funcionar."
+            fala = f"Beleza, ambiente pronto, mas troquei o Lo-fi pelo mestre {nq}. Boa escolha!" if nq and nq.lower() != oq else "Beleza, modo Code ligado. Eu limpei a bagunça e botei música pra tua cabeça funcionar."
             if callable(falar):
                 falar(fala, "debochada", 2)
             return True
@@ -498,9 +732,8 @@ def processar_confirmacao_sugestao(ctx: Dict[str, Any], texto: str) -> bool:
             bloqueios[comando] = time.time() + 600
         if callable(resetar_sugestao):
             resetar_sugestao()
-        resposta_local = _get(ctx, "resposta_conversa_local")
         if callable(falar):
-            falar(resposta_local(texto) if callable(resposta_local) else "Tudo bem, deixei essa sugestão quieta.", "calma", 1)
+            falar("Tudo bem, deixei essa sugestão quieta.", "calma", 1)
         return True
     return False
 
@@ -636,6 +869,7 @@ class SugestoesSistemaRuntime:
                 "continuidades_update": _get(ctx, "continuidades_update"),
                 "falar": _get(ctx, "falar"),
                 "preferencia_sugestao_get": _get(ctx, "preferencia_sugestao_get"),
+                "registrar_oportunidade": _get(ctx, "registrar_oportunidade"),
             },
             resultado,
         )
@@ -718,7 +952,6 @@ class SugestoesSistemaRuntime:
             "confirmar_execucao_debochada": self.confirmar_execucao,
             "executar_intencao": _get(ctx, "executar_intencao"),
             "sugestao_bloqueada_ate": _get(ctx, "sugestao_bloqueada_ate"),
-            "resposta_conversa_local": _get(ctx, "resposta_conversa_local"),
             "executar_sugestao_temporal": _get(ctx, "executar_sugestao_temporal"),
             "continuidades_update": _get(ctx, "continuidades_update"),
             "interpretar_contraproposta": _get(ctx, "interpretar_contraproposta"),

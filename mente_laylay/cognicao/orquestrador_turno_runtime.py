@@ -8,15 +8,180 @@ from mente_laylay.cognicao.leitura_semantica_turno import (
     aplicar_leitura_conversacional,
     comparar_com_legado,
 )
+from mente_laylay.cognicao.intencao_visual_jogo import (
+    aplicar_pedido_visual_ao_turno,
+    detectar_pedido_visao_jogo,
+)
 from mente_laylay.memoria_mental.referencia_fala import extrair_referencia_musical_verificada
 
-def iniciar_planejamento_turno(namespace_getter, texto: str) -> dict:
+
+def registrar_metrica_opcional(ns: dict, componente: str, duracao_ms: float, sucesso: bool) -> None:
+    """Registra telemetria sem depender de variáveis do escopo chamador."""
+    observabilidade = ns.get('_observabilidade_mente_runtime') if isinstance(ns, dict) else None
+    if observabilidade is None:
+        return
+    try:
+        observabilidade.registrar_metrica(componente, duracao_ms, sucesso)
+    except Exception:
+        # Telemetria nunca pode interromper uma conversa.
+        return
+
+
+def registrar_falha_opcional(
+    ns: dict,
+    componente: str,
+    codigo: str,
+    erro: BaseException,
+    *,
+    classe: str,
+    impacto: str,
+    fallback: str,
+) -> None:
+    """Torna uma degradação visível no diagnóstico sem quebrar o turno.
+
+    O objeto de observabilidade sanitiza o erro: mensagem, caminhos e conteúdo
+    do usuário não são persistidos. Se a própria telemetria falhar, o fluxo
+    principal continua intacto.
+    """
+    observabilidade = ns.get('_observabilidade_mente_runtime') if isinstance(ns, dict) else None
+    registrar = getattr(observabilidade, 'registrar_falha', None)
+    if not callable(registrar):
+        return
+    try:
+        registrar(
+            componente,
+            codigo,
+            erro=erro,
+            classe=classe,
+            impacto=impacto,
+            fallback=fallback,
+        )
+    except Exception:
+        # Observabilidade nunca pode ser uma nova causa de falha do turno.
+        return
+
+
+def resolver_repeticao_operacional_segura(ns: dict, texto: str) -> dict | None:
+    """Consulta a continuidade; em falha, deixa um diagnóstico acionável."""
+    resolver = ns.get('_resolver_repeticao_ultima_acao')
+    if not callable(resolver):
+        return None
+    try:
+        repeticao = resolver(texto)
+        return repeticao if isinstance(repeticao, dict) else None
+    except Exception as erro:
+        registrar_falha_opcional(
+            ns,
+            'continuidade_turno',
+            'falha_resolver_repeticao',
+            erro,
+            classe='defeito',
+            impacto='turno',
+            fallback='conversa_sem_repeticao',
+        )
+        return None
+
+
+def obter_contexto_jogo_seguro(ns: dict) -> dict:
+    """Obtém o modo de jogo sem esconder a perda de contexto perceptivo."""
+    modo_jogo = ns.get('_modo_jogo_runtime')
+    obter_contexto = getattr(modo_jogo, 'contexto_atual', None)
+    if not callable(obter_contexto):
+        return {}
+    try:
+        return dict(obter_contexto() or {})
+    except Exception as erro:
+        registrar_falha_opcional(
+            ns,
+            'contexto_jogo',
+            'falha_contexto_atual',
+            erro,
+            classe='degradacao',
+            impacto='turno',
+            fallback='turno_sem_contexto_jogo',
+        )
+        return {}
+
+
+def anexar_estado_visual_recente_seguro(ns: dict, jogo_contexto: dict) -> dict:
+    """Anexa a recência visual ou registra por que ela não pôde ser usada."""
+    contexto = dict(jogo_contexto or {})
+    visao_jogo = ns.get('_visao_jogo_runtime')
+    verificar = getattr(visao_jogo, 'tem_analise_recente', None)
+    if not callable(verificar):
+        return contexto
+    try:
+        contexto['analise_visual_recente'] = bool(verificar())
+    except Exception as erro:
+        contexto['analise_visual_recente'] = False
+        registrar_falha_opcional(
+            ns,
+            'contexto_visual_jogo',
+            'falha_verificar_analise_recente',
+            erro,
+            classe='degradacao',
+            impacto='turno',
+            fallback='turno_sem_memoria_visual_recente',
+        )
+    return contexto
+
+
+def aplicar_repeticao_operacional_ao_turno(turno: dict, repeticao: object) -> dict:
+    """Autoriza uma repetição somente quando a mente recuperou uma ação real.
+
+    A frase curta por si só continua ambígua. A autorização nasce do contrato
+    persistido da última ação reexecutável, não de palavras-chave isoladas.
+    """
+    resultado = dict(turno or {})
+    if not isinstance(repeticao, dict):
+        return resultado
+    intent = str(repeticao.get("intent") or "").strip().upper()
+    params = repeticao.get("params")
+    if not intent or not isinstance(params, dict):
+        return resultado
+    resultado.update(
+        modalidade="comando",
+        modalidade_geral="comando",
+        ato_principal="comando",
+        texto_operacional=str(resultado.get("texto") or "").strip(),
+        confianca=max(0.97, float(resultado.get("confianca") or 0.0)),
+        motivo="repetição explícita de ação reexecutável recuperada da mente",
+        motivo_decisao="repetição explícita de ação reexecutável recuperada da mente",
+        acao_explicita=True,
+        autoriza_execucao=True,
+        requer_esclarecimento=False,
+        depende_contexto=True,
+        natureza_acao="repeticao_operacional",
+        repeticao_operacional={"intent": intent, "params": dict(params)},
+    )
+    return resultado
+
+_ORIGENS_ENTRADA_VALIDAS = {
+    'terminal', 'voz', 'modo_jogo', 'barra', 'api', 'desconhecida',
+}
+
+
+def _normalizar_origem_entrada(origem: object) -> str:
+    valor = str(origem or 'desconhecida').strip().casefold()
+    return valor if valor in _ORIGENS_ENTRADA_VALIDAS else 'desconhecida'
+
+
+def iniciar_planejamento_turno(
+    namespace_getter,
+    texto: str,
+    *,
+    origem: str = 'desconhecida',
+) -> dict:
     inicio_diagnostico = time.perf_counter()
     sucesso = False
     ns = namespace_getter()
     observabilidade = ns.get('_observabilidade_mente_runtime')
     try:
-        resultado = _iniciar_planejamento_turno(namespace_getter, texto)
+        resultado = _iniciar_planejamento_turno(
+            namespace_getter,
+            texto,
+            origem=origem,
+        )
         sucesso = True
         return resultado
     except Exception as erro:
@@ -30,12 +195,40 @@ def iniciar_planejamento_turno(namespace_getter, texto: str) -> dict:
             )
 
 
-def _iniciar_planejamento_turno(namespace_getter, texto: str) -> dict:
+def _iniciar_planejamento_turno(
+    namespace_getter,
+    texto: str,
+    *,
+    origem: str = 'desconhecida',
+) -> dict:
     ns = namespace_getter()
     mente_antes_turno = dict(ns['_estado_compartilhado_runtime'].mental)
     pendencia_turno = ns['_pendencia_ativa_turno_mente'](mente_antes_turno) or {}
     confirmacao_contextual_valida = bool(pendencia_turno.get('intencao') and (str(pendencia_turno.get('resposta_esperada') or '') == 'sim_ou_nao' or str(pendencia_turno.get('tipo') or '') in {'confirmacao', 'escolha'}))
     turno = ns['_classificar_modalidade_turno_mente'](texto, normalizar_texto=ns['_normalizar_texto_com_apelidos'], texto_tem_comando_explicito=ns['_texto_tem_comando_explicito'], confirmacao_contextual_valida=confirmacao_contextual_valida)
+    turno['origem_entrada'] = _normalizar_origem_entrada(origem)
+    repeticao_operacional = resolver_repeticao_operacional_segura(ns, texto)
+    turno = aplicar_repeticao_operacional_ao_turno(turno, repeticao_operacional)
+    if repeticao_operacional:
+        ns['print'](
+            f"🔁 [TURNO] repetição operacional autorizada | "
+            f"intent={str(repeticao_operacional.get('intent') or '-')}"
+        )
+    jogo_contexto = obter_contexto_jogo_seguro(ns)
+    visao_jogo_runtime = ns.get('_visao_jogo_runtime')
+    jogo_contexto = anexar_estado_visual_recente_seguro(ns, jogo_contexto)
+    if jogo_contexto.get('ativo') and callable(getattr(visao_jogo_runtime, 'observar_texto_usuario', None)):
+        try:
+            visao_jogo_runtime.observar_texto_usuario(texto)
+        except Exception as erro:
+            ns['print'](f"⚠️ [VISÃO:SESSÃO] contexto ignorado: {type(erro).__name__}")
+    pedido_visao_jogo = detectar_pedido_visao_jogo(texto, jogo_contexto)
+    if pedido_visao_jogo:
+        turno = aplicar_pedido_visual_ao_turno(turno, pedido_visao_jogo)
+        ns['print'](
+            f"🎮 [VISÃO:PEDIDO] tipo={pedido_visao_jogo['params'].get('tipo')} "
+            f"| jogo={pedido_visao_jogo['params'].get('jogo') or '-'}"
+        )
     # A leitura nova nasce como observadora. Ela é persistida para comparação,
     # mas não substitui modalidade, planejamento nem autorização de execução.
     leitura_semantica = {}
@@ -76,11 +269,6 @@ def _iniciar_planejamento_turno(namespace_getter, texto: str) -> dict:
     turno['identidade'] = identidade_turno
     turno['funcao_comunicativa'] = funcao_comunicativa
     turno['encerramento_assunto'] = encerramento_assunto
-    jogo_contexto = {}
-    try:
-        jogo_contexto = dict(ns['_modo_jogo_runtime'].contexto_atual() or {})
-    except Exception:
-        pass
     retrato_turno, entidades_recentes = ns['_construir_retrato_turno_mente'](texto, turno=turno, mente=mente_antes_turno, contexto_perceptivo=ns['_obter_contexto_perceptivo'](), playlist_state=ns['playlist_state'], jogo_contexto=jogo_contexto)
     atualidade_factual = dict(retrato_turno.get('atualidade_factual') or {})
     turno['atualidade_factual'] = atualidade_factual
@@ -115,10 +303,35 @@ def _iniciar_planejamento_turno(namespace_getter, texto: str) -> dict:
         mente_antes_turno['registro_semantico'] = registro_semantico
     turno_operacional = bool(retrato_turno.get('operacao_explicita')) or str(turno.get('modalidade_geral') or turno.get('modalidade') or '') == 'comando'
     if tema_factual and (not turno_operacional):
+        inicio_pesquisa = time.perf_counter()
+        pesquisa_runtime = ns['_pesquisa_contextual_runtime']
+        modalidade_pesquisa = str(turno.get('modalidade_geral') or turno.get('modalidade') or '').casefold()
+        exige_resposta_factual_agora = bool(
+            atualidade_factual.get('depende_atualidade')
+            or modalidade_pesquisa in {'pergunta', 'misto'}
+            or funcao_atual == 'correcao'
+        )
         try:
-            pesquisa_factual = ns['_pesquisa_contextual_runtime'].pesquisar_contexto_tema(tema_factual)
+            if exige_resposta_factual_agora:
+                pesquisa_factual = pesquisa_runtime.pesquisar_contexto_tema(tema_factual)
+            else:
+                pesquisa_factual = pesquisa_runtime.obter_contexto_cache(tema_factual)
+                if not pesquisa_factual:
+                    pesquisa_runtime.precarregar_contexto_tema(tema_factual)
+                    pesquisa_factual = {
+                        'ok': False,
+                        'tema': tema_factual,
+                        'motivo': 'pesquisa_em_background',
+                    }
+                    ns['print'](f"🔎 [FUNDAMENTAÇÃO] pesquisa de {tema_factual!r} iniciada em segundo plano.")
         except Exception as erro:
             pesquisa_factual = {'ok': False, 'motivo': f"falha_pesquisa:{type(erro).__name__}"}
+        registrar_metrica_opcional(
+            ns,
+            'pesquisa_factual',
+            (time.perf_counter() - inicio_pesquisa) * 1000.0,
+            bool(pesquisa_factual.get('ok')),
+        )
         fundamentacao_factual = ns['_montar_fundamentacao_mente'](
             tema_factual,
             pesquisa_factual,
@@ -151,7 +364,7 @@ def _iniciar_planejamento_turno(namespace_getter, texto: str) -> dict:
             try:
                 if ns['_persistir_correcao_duravel_mente'](ns['MEMORIA_SQLITE'], correcao_duravel, texto):
                     atualizacoes_turno.update(ultima_correcao_persistida_chave=chave_correcao, ultima_correcao_persistida=correcao_duravel, ultima_correcao_persistida_ts=ns['time'].time())
-                    ns['print'](f"🧠 [MEMÓRIA] correção de Pedro persistida: {correcao_duravel.get('regra')}")
+                    ns['print'](f"🧠 [MEMÓRIA] correção do usuário persistida: {correcao_duravel.get('regra')}")
             except Exception as erro:
                 ns['print'](f"⚠️ [MEMÓRIA] não consegui persistir a correção: {erro}")
     ns['_estado_compartilhado_runtime'].atualizar_campos('mental', **atualizacoes_turno)
@@ -221,8 +434,13 @@ def atualizar_planejamento_turno(namespace_getter, fase: str, *, comandos=(), er
 def verificar_fala_do_turno(namespace_getter, fala: str, *, origem: str='conversa') -> dict:
     ns = namespace_getter()
     mente = ns['_estado_compartilhado_runtime'].mental
-    fala = ns['_ajustar_autorreferencia_assistente_mente'](fala)
-    verificacao = ns['_verificar_fala_turno_mente'](fala, plano=dict(mente.get('plano_turno_atual') or {}), periodo=ns['_contexto_horario_atual'](), ultima_resposta=str(mente.get('ultima_resposta') or ''), origem=origem)
+    argumentos = {
+        'plano': dict(mente.get('plano_turno_atual') or {}),
+        'periodo': ns['_contexto_horario_atual'](),
+        'ultima_resposta': str(mente.get('ultima_resposta') or ''),
+        'origem': origem,
+    }
+    verificacao = ns['_verificar_fala_turno_mente'](fala, **argumentos)
     plano = dict(mente.get('plano_turno_atual') or {})
     plano['fase'] = 'fala_verificada'
     plano['ultima_verificacao'] = dict(verificacao)

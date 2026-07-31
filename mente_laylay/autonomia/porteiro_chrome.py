@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 import json
+import threading
 from typing import Any, Callable
 
 
@@ -45,6 +46,7 @@ class PorteiroChromeRuntime:
         clock: Callable[[], float] = time.time,
         sleep: Callable[[float], Any] = time.sleep,
         log: Callable[[str], Any] = print,
+        stop_event: threading.Event | None = None,
     ) -> None:
         self.abas_sugeridas = abas_sugeridas
         self.obter_ram_percent = obter_ram_percent
@@ -60,6 +62,7 @@ class PorteiroChromeRuntime:
         self.sleep = sleep
         self.log = log
         self.ultima_sugestao_ts = 0.0
+        self.stop_event = stop_event or threading.Event()
 
     def fechar_sugeridas(self) -> bool:
         enviar = self.enviar_fechamento or (lambda _payload: None)
@@ -113,25 +116,31 @@ class PorteiroChromeRuntime:
         horas, minutos = divmod(candidatas[0]["minutos"], 60)
         tempo = f"ha {horas}h{minutos:02d}" if horas else f"ha {candidatas[0]['minutos']} min"
         mensagem = (
-            f"Pedro, a RAM ta em {int(ram_percent)}% e voce nao mexe em {len(candidatas)} abas {tempo}: "
-            f"{nomes}. Manda um 'fecha as abas paradas' se quiser limpar."
+            f"Sua memória está em {int(ram_percent)} por cento e encontrei "
+            f"{len(candidatas)} abas paradas {tempo}: {nomes}. "
+            "Se quiser aliviar um pouco, eu fecho só as que estão paradas."
         )
         self.log(f"[PORTEIRO] {mensagem}")
         try:
-            self.falar(mensagem, "irritada", 1)
+            self.falar(mensagem, "calma", 1)
         except Exception as erro:
             self.log(f"[PORTEIRO] Erro ao falar: {erro}")
         return True
 
     def daemon(self) -> None:
-        self.sleep(90)
+        if self.stop_event.wait(90):
+            return
         self.log("[PORTEIRO] Thread do Porteiro do Chrome iniciada.")
-        while True:
+        while not self.stop_event.is_set():
             try:
-                self.sleep(self.intervalo_minutos * 60)
+                if self.stop_event.wait(self.intervalo_minutos * 60):
+                    break
                 self.executar_ciclo()
             except Exception as erro:
                 self.log(f"[PORTEIRO] Erro no daemon: {erro}")
+
+    def encerrar(self) -> None:
+        self.stop_event.set()
 
 
 def criar_porteiro_chrome_runtime(**kwargs) -> PorteiroChromeRuntime:

@@ -189,6 +189,12 @@ class InteracaoChatRuntime:
         runtime = self._abertura_runtime_getter()
         if runtime is None:
             return "Modo chat ativado. Agora eu fico no papo e largo os comandos por um instante."
+        # Abrir o campo de conversa não pode acordar ou disputar a LLM com a
+        # primeira mensagem digitada. O runtime já possui variedade local e
+        # consciência do horário para esta saudação curta.
+        gerar_local = getattr(runtime, "gerar_local", None)
+        if callable(gerar_local):
+            return str(gerar_local("chat"))
         return str(runtime.gerar())
 
     def alternar_por_hotkey(self, ativo: bool) -> None:

@@ -12,10 +12,21 @@ from mente_laylay.autonomia.pre_fluxo_contextual import processar_feedback_pende
 from mente_laylay.percepcao.ritmo_circadiano import (
     RitmoCircadianoRuntime,
     construir_contexto_temporal,
+    detectar_consulta_horario,
+    responder_consulta_horario,
 )
 
 
 class RitmoCircadianoTests(unittest.TestCase):
+    def test_consulta_horario_usa_relogio_e_periodo_reais(self) -> None:
+        self.assertTrue(detectar_consulta_horario("que horas são?"))
+        self.assertTrue(detectar_consulta_horario("Lay, qual é a hora agora?"))
+        self.assertFalse(detectar_consulta_horario("que horas o jogo começa?"))
+        self.assertEqual(
+            responder_consulta_horario(datetime(2026, 7, 22, 22, 47)),
+            "São 22h47 agora. Já é noite por aqui.",
+        )
+
     def test_periodos_e_fases_cobrem_o_dia_inteiro(self) -> None:
         casos = (
             (2, "madrugada", "noite_tardia", True),

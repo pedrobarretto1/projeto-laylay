@@ -16,7 +16,15 @@ STATUS_RESULTADO_CONFIRMADO = {
     "url_aberta_via_app", "site_aberto_via_app",
     "musica_aberta", "playlist_aberta", "playlist_aberta_pc_b",
     "playlist_deletada", "playlist_musica_adicionada", "acao_agendada",
-    "lembrete_agendado", "agendamento_cancelado",
+    "lembrete_agendado", "agendamento_cancelado", "movido_para_lixeira",
+    "nota_guardada", "notas_listadas", "discussao_guardada",
+    "discussao_ja_guardada", "nota_excluida",
+    # A pesquisa semântica relê dados locais e só publica caminhos que o
+    # índice realmente devolveu. Esses estados possuem evidência de retorno,
+    # portanto não podem ser rebaixados a "comando enviado sem confirmação".
+    "arquivos_encontrados", "sem_resultados", "caminho_encontrado",
+    "arquivo_aberto",
+    "layout_confirmado",
 }
 
 

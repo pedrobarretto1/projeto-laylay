@@ -11,6 +11,35 @@ def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     return default
 
 
+def _ultima_fala_usuario(messages: Any) -> str:
+    if not isinstance(messages, list):
+        return ""
+    for mensagem in reversed(messages):
+        if not isinstance(mensagem, dict):
+            continue
+        if str(mensagem.get("role") or "").strip().lower() != "user":
+            continue
+        texto = str(mensagem.get("content") or "").strip()
+        if texto:
+            return texto
+    return ""
+
+
+def _registrar_interacao_diaria(ctx: Dict[str, Any], usuario: str, fala: str) -> None:
+    memoria = _get(ctx, "memoria_inteligente")
+    registrar = getattr(memoria, "adicionar_interacao", None)
+    if not callable(registrar) or not str(usuario or "").strip() or not str(fala or "").strip():
+        return
+    try:
+        registrar(usuario, fala)
+    except Exception as erro:
+        # A memória diária nunca pode derrubar a resposta que já foi entregue.
+        print(
+            "⚠️ [MEMÓRIA] conversa entregue, mas o registro diário falhou: "
+            f"{type(erro).__name__}: {erro}"
+        )
+
+
 def finalizar_execucao_resposta_ia(
     ctx: Dict[str, Any],
     comandos: List[Dict[str, Any]],
@@ -69,7 +98,7 @@ def finalizar_execucao_resposta_ia(
                 f"System: VOCÊ JÁ TENTOU CORRIGIR ISSO {tentativas} VEZES E CONTINUA FALHANDO. "
                 f"O erro é: {erros_txt}. "
                 f"Isso já é um problema persistente do Windows (permissão, arquivo em uso, etc). "
-                f"Diga ao Pedro de forma direta, sem novas tentativas, que você esgotou as opções "
+                f"Diga ao usuário de forma direta, sem novas tentativas, que você esgotou as opções "
                 f"e que é um problema do sistema. Diga explicitamente que o pedido não foi realizado. "
                 f"Seja curta, direta e com o seu jeito debochado. "
                 f"NÃO gere mais comandos. Não tente de novo. Só avise."
@@ -133,6 +162,7 @@ def finalizar_execucao_resposta_ia(
                 falhas_consecutivas.pop(k, None)
 
         if fala_limpa_original and not comandos and not fala_ja_emitida and not fala_salva_no_inicio and not fala_emitida_por_acao:
+            texto_usuario = _ultima_fala_usuario(messages)
             if callable(verificar_fala_turno):
                 verificacao = verificar_fala_turno(fala_limpa_original, origem="ia_final")
                 if isinstance(verificacao, dict):
@@ -142,5 +172,12 @@ def finalizar_execucao_resposta_ia(
             print(f"Laylay: {fala_limpa_original}")
             if isinstance(messages, list):
                 messages.append({"role": "assistant", "content": fala_limpa_original})
+            fala_entregue = True
             if callable(falar_com_lipsync):
-                falar_com_lipsync(fala_limpa_original, current_emotion or "calma", emotion_level or 1)
+                fala_entregue = falar_com_lipsync(
+                    fala_limpa_original,
+                    current_emotion or "calma",
+                    emotion_level or 1,
+                ) is not False
+            if fala_entregue:
+                _registrar_interacao_diaria(ctx, texto_usuario, fala_limpa_original)

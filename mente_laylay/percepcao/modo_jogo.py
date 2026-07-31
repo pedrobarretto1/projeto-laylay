@@ -139,6 +139,8 @@ class ModoJogoRuntime:
         *,
         definir_bloqueio_llm: Callable[[bool], Any],
         descarregar_modelo: Callable[[], bool],
+        llm_em_andamento: Callable[[], bool] | None = None,
+        preparar_overlays: Callable[[dict[str, Any]], Any] | None = None,
         habilitado: bool = True,
         clock: Callable[[], float] = time.monotonic,
         entrada_estavel_s: float = 4.0,
@@ -147,6 +149,8 @@ class ModoJogoRuntime:
     ) -> None:
         self.definir_bloqueio_llm = definir_bloqueio_llm
         self.descarregar_modelo = descarregar_modelo
+        self.llm_em_andamento = llm_em_andamento or (lambda: False)
+        self.preparar_overlays = preparar_overlays
         self.habilitado = bool(habilitado)
         self.clock = clock
         self.entrada_estavel_s = max(0.0, float(entrada_estavel_s))
@@ -158,6 +162,10 @@ class ModoJogoRuntime:
         self._ultimo_jogo_visto = 0.0
         self._processo_jogo = ""
         self._titulo_jogo = ""
+        self._hwnd_jogo = 0
+        self._pid_jogo = 0
+        self._caminho_jogo = ""
+        self._limites_jogo: dict[str, int] = {}
 
     @property
     def ativo(self) -> bool:
@@ -172,6 +180,10 @@ class ModoJogoRuntime:
                 "processo": self._processo_jogo,
                 "titulo": self._titulo_jogo,
                 "visto_em": self._ultimo_jogo_visto,
+                "hwnd": self._hwnd_jogo,
+                "pid": self._pid_jogo,
+                "process_path": self._caminho_jogo,
+                "limites": dict(self._limites_jogo),
             }
 
     def observar(self, retrato: dict[str, Any] | None, fullscreen: bool) -> dict[str, Any]:
@@ -194,16 +206,47 @@ class ModoJogoRuntime:
                 self._ultimo_jogo_visto = agora
                 self._processo_jogo = exe
                 self._titulo_jogo = str(retrato.get("title") or "").strip()
+                self._hwnd_jogo = int(retrato.get("hwnd") or 0)
+                self._pid_jogo = int(retrato.get("pid") or 0)
+                self._caminho_jogo = str(retrato.get("process_path") or "").strip()
+                janela = retrato.get("win")
+                limites = {
+                    "left": int(retrato.get("left") or getattr(janela, "left", 0) or 0),
+                    "top": int(retrato.get("top") or getattr(janela, "top", 0) or 0),
+                    "width": int(retrato.get("width") or getattr(janela, "width", 0) or 0),
+                    "height": int(retrato.get("height") or getattr(janela, "height", 0) or 0),
+                }
+                if limites["width"] > 0 and limites["height"] > 0:
+                    self._limites_jogo = limites
                 if self._candidato_desde is None:
                     self._candidato_desde = agora
-                if not self._ativo and agora - self._candidato_desde >= self.entrada_estavel_s:
+                try:
+                    entrada_urgente = bool(self.llm_em_andamento())
+                except Exception:
+                    entrada_urgente = False
+                if not self._ativo and (
+                    entrada_urgente
+                    or agora - self._candidato_desde >= self.entrada_estavel_s
+                ):
                     self._ativo = True
                     self.definir_bloqueio_llm(True)
                     liberou = bool(self.descarregar_modelo())
                     self.log(
-                        f"🎮 [MODO JOGO] ativo para {exe}; IA local pausada e "
+                        f"🎮 [MODO JOGO] ativo para {exe}"
+                        f"{' com entrada urgente' if entrada_urgente else ''}; IA local pausada e "
                         f"VRAM {'liberada' if liberou else 'solicitada para liberação'}."
                     )
+                # A adaptação pode falhar se o jogo trocar de HWND ou estiver
+                # recriando o swapchain naquele instante. O runtime possui
+                # backoff e deduplicação, então observar novamente é seguro.
+                if self._ativo and callable(self.preparar_overlays):
+                    try:
+                        self.preparar_overlays(retrato)
+                    except Exception as erro:
+                        self.log(
+                            "⚠️ [OVERLAY JOGO] compatibilidade ignorada: "
+                            f"{type(erro).__name__}"
+                        )
             else:
                 self._candidato_desde = None
                 if self._ativo and agora - self._ultimo_jogo_visto >= self.tolerancia_saida_s:
@@ -211,6 +254,10 @@ class ModoJogoRuntime:
                     self._ativo = False
                     self._processo_jogo = ""
                     self._titulo_jogo = ""
+                    self._hwnd_jogo = 0
+                    self._pid_jogo = 0
+                    self._caminho_jogo = ""
+                    self._limites_jogo = {}
                     self.definir_bloqueio_llm(False)
                     self.log(
                         f"🎮 [MODO JOGO] encerrado após sair de {anterior}; IA local disponível sob demanda."

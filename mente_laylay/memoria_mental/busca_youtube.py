@@ -155,6 +155,7 @@ def extrair_resultados_youtube_busca(
     limite: int = 10,
     *,
     normalizar_texto_cb: Callable[[str], str] | None = None,
+    tipo_resultado: str = "faixa",
 ) -> list[dict[str, Any]]:
     html_text = str(html_text or "")
     if not html_text:
@@ -198,11 +199,30 @@ def extrair_resultados_youtube_busca(
         if not titulo:
             continue
 
-        if not resultado_youtube_parece_faixa_unica(titulo, canal, normalizar_texto_cb=normalizar_texto_cb):
-            continue
-        if duracao_segundos is not None and duracao_segundos > 12 * 60:
-            continue
+        selecao_longa = str(tipo_resultado or "").strip().lower() == "selecao_longa"
+        if selecao_longa:
+            titulo_norm = normalizar_query_musical(titulo, normalizar_texto_cb)
+            termos_longos = (
+                "mix", "playlist", "full album", "album completo", "1 hour",
+                "1 hora", "2 hour", "2 horas", "relaxing music", "soundtrack",
+            )
+            if not any(termo in titulo_norm for termo in termos_longos):
+                continue
+            if duracao_segundos is not None and duracao_segundos < 20 * 60:
+                continue
+        else:
+            if not resultado_youtube_parece_faixa_unica(
+                titulo, canal, normalizar_texto_cb=normalizar_texto_cb
+            ):
+                continue
+            if duracao_segundos is not None and duracao_segundos > 12 * 60:
+                continue
         score = pontuar_resultado_youtube(query, titulo, canal, normalizar_texto_cb=normalizar_texto_cb)
+        # O pontuador comum pune mixes para proteger buscas de faixas únicas.
+        # Aqui o formato longo foi pedido de propósito, então revertemos essa
+        # penalização sem permitir resultados classificados como não musicais.
+        if selecao_longa and score > -400:
+            score += 100
         if score < 15:
             continue
         candidatos.append({

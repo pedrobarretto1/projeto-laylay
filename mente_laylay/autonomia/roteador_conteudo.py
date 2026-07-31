@@ -37,7 +37,7 @@ def executar_comando_conteudo(c_nome: str, c_args: str, comando: str, c_upper: s
     ativar_tela_cheia_robusta = _get(ctx, "ativar_tela_cheia_robusta")
     is_valid_url = _get(ctx, "is_valid_url")
     formatar_url_ou_busca = _get(ctx, "formatar_url_ou_busca")
-    listar_playlists = _get(ctx, "_listar_playlists_salvas")
+    musica_leitura = _get(ctx, "_registro_musica_leitura_runtime")
     autorizar_acao_pratica = _get(ctx, "_autorizar_acao_pratica")
     texto_base = str(_get(ctx, "texto") or comando or a).strip()
 
@@ -110,14 +110,14 @@ def executar_comando_conteudo(c_nome: str, c_args: str, comando: str, c_upper: s
         print("⏮️ [MÍDIA] Comando Música Anterior enviado nativamente!")
         return True
 
-    if c == "LISTAR_PLAYLISTS" and callable(falar) and callable(listar_playlists):
-        falar(listar_playlists(), "calma", 1)
+    if c == "LISTAR_PLAYLISTS" and callable(falar) and musica_leitura is not None:
+        falar(musica_leitura.listar_usuario(), "calma", 1)
         return True
 
     if c == "TOCAR_PLAYLIST" and callable(play_playlist) and callable(falar):
         nome_playlist = a.strip("\"'")
         if not nome_playlist:
-            falar("Qual playlist você quer que eu toque, Pedro?", "debochada", 2)
+            falar("Qual playlist você quer que eu toque?", "debochada", 2)
             return True
         if callable(autorizar_acao_pratica):
             decisao = autorizar_acao_pratica("TOCAR_PLAYLIST", texto_base, origem="conteudo")
@@ -134,7 +134,7 @@ def executar_comando_conteudo(c_nome: str, c_args: str, comando: str, c_upper: s
     if c == "TOCAR_PLAYLIST_SHUFFLE" and callable(playlist_shuffle) and callable(validar_e_enviar_comando) and callable(falar):
         nome_playlist = a.strip("\"'")
         if not nome_playlist:
-            falar("Qual playlist você quer que eu toque em modo aleatório, Pedro?", "debochada", 2)
+            falar("Qual playlist você quer que eu toque em modo aleatório?", "debochada", 2)
             return True
         if callable(autorizar_acao_pratica):
             decisao = autorizar_acao_pratica("TOCAR_PLAYLIST_SHUFFLE", texto_base, origem="conteudo")
@@ -162,7 +162,7 @@ def executar_comando_conteudo(c_nome: str, c_args: str, comando: str, c_upper: s
         titulo_real = str((info or {}).get("title") or titulo_musica).strip()
         canal = str((info or {}).get("canal") or "").strip()
         if not url_atual or "youtube.com" not in url_atual:
-            falar("Pedro, não tem vídeo do YouTube aberto. Abre a música primeiro.", "irritada", 2)
+            falar("Não tem vídeo do YouTube aberto. Abre a música primeiro.", "irritada", 2)
             return True
         sucesso = add_to_playlist(playlist_nome, url_atual, titulo_real, canal)
         if sucesso:
@@ -215,7 +215,7 @@ def executar_comando_conteudo(c_nome: str, c_args: str, comando: str, c_upper: s
             sucesso = ativar_tela_cheia_robusta(app_alvo)
             if callable(falar):
                 if sucesso:
-                    falar(f"{app_alvo.title()} em tela cheia agora, Pedro.", "debochada", 2)
+                    falar(f"{app_alvo.title()} em tela cheia agora.", "debochada", 2)
                 else:
                     falar(f"Não consegui colocar o {app_alvo} em tela cheia.", "irritada", 2)
             return True

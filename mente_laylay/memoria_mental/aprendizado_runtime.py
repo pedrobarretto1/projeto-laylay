@@ -248,6 +248,7 @@ class AprendizadoRuntime:
         intervalo_s: float = 60.0,
         sleep_fn: Callable[[float], Any] = time.sleep,
         deve_parar: Callable[[], bool] | None = None,
+        aguardar_fn: Callable[[float], bool] | None = None,
     ) -> None:
         self._log("[ROTINA] Aprendizado de rotina iniciado - vai aprender em 7 dias")
         self.carregar_tudo()
@@ -261,7 +262,12 @@ class AprendizadoRuntime:
                 )
             except Exception as erro:
                 self._log(f"[ROTINA] Erro no daemon: {erro}")
-            sleep_fn(max(0.0, float(intervalo_s)))
+            espera = max(0.0, float(intervalo_s))
+            if callable(aguardar_fn):
+                if aguardar_fn(espera):
+                    break
+            else:
+                sleep_fn(espera)
 
 
 def criar_aprendizado_runtime(

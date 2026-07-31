@@ -18,12 +18,40 @@ import keyboard
 from functools import partial
 import threading as _threading
 import builtins as _builtins
+
+
+def _carregar_configuracao_portatil() -> None:
+    """Carrega configurações ao lado do executável sem sobrescrever o Windows."""
+    raiz = (
+        os.path.abspath(os.path.dirname(sys.executable))
+        if getattr(sys, "frozen", False)
+        else os.path.abspath(os.path.dirname(__file__))
+    )
+    caminho = os.path.join(raiz, "configuracao.env")
+    try:
+        with open(caminho, "r", encoding="utf-8-sig") as arquivo:
+            for linha in arquivo:
+                texto = linha.strip()
+                if not texto or texto.startswith("#") or "=" not in texto:
+                    continue
+                chave, valor = texto.split("=", 1)
+                chave = chave.strip()
+                valor = valor.strip().strip('"').strip("'")
+                if chave and chave.replace("_", "").isalnum():
+                    os.environ.setdefault(chave, valor)
+    except FileNotFoundError:
+        pass
+    except OSError as erro:
+        print(f"⚠️ [CONFIGURAÇÃO] não consegui ler configuracao.env: {erro}")
+
+
+_carregar_configuracao_portatil()
 from mente_laylay.autonomia.comandos_sistema import (
     abrir_programa as _abrir_programa_mente,
     fechar_programa as _fechar_programa_mente,
 )
-from mente_laylay.autonomia.coordenador_intencao import (
-    criar_ciclo_comandos_runtime as _criar_ciclo_comandos_runtime_mente,
+from mente_laylay.autonomia.composicao_ciclo_comandos import (
+    criar_composicao_ciclo_comandos_runtime as _criar_composicao_ciclo_comandos_runtime,
 )
 from mente_laylay.cognicao.interpretacao_intencao import (
     criar_adaptadores_conversacionais_runtime as _criar_adaptadores_conversacionais_runtime_mente,
@@ -38,10 +66,26 @@ from mente_laylay.arquivos.arquivos_sistema import (
     criar_ou_editar_arquivo as _criar_ou_editar_arquivo_mente,
     criar_pasta as _criar_pasta_mente,
     deletar_item as _deletar_item_mente,
+    escrever_arquivo_texto_seguro as _escrever_arquivo_texto_seguro_mente,
     mapear_pastas_principais as _mapear_pastas_principais_mente,
     mover_arquivo as _mover_arquivo_mente,
     renomear_arquivo as _renomear_arquivo_mente,
     resolver_caminho as _resolver_caminho_mente,
+)
+from mente_laylay.arquivos.pesquisa_semantica import (
+    criar_pesquisa_semantica_arquivos_runtime as _criar_pesquisa_semantica_arquivos_runtime,
+)
+from mente_laylay.arquivos.mutacoes import (
+    criar_arquivos_mutacao_runtime as _criar_arquivos_mutacao_runtime,
+)
+from mente_laylay.integracao.registro_arquivos import (
+    registrar_arquivos_leitura as _registrar_arquivos_leitura,
+)
+from mente_laylay.integracao.registro_mutacoes_arquivos import (
+    registrar_arquivos_mutacao as _registrar_arquivos_mutacao,
+)
+from mente_laylay.integracao.registro_musica import (
+    registrar_musica_leitura as _registrar_musica_leitura,
 )
 from mente_laylay.memoria_mental.contexto_integrado import (
     resumo_mente_integrada_para_prompt as _resumo_mente_integrada_para_prompt_mente,
@@ -79,6 +123,7 @@ from mente_laylay.percepcao.janelas_sistema import (
     maximizar_janela as _maximizar_janela_mente,
     normalizar_alvo_ambiente as _normalizar_alvo_ambiente_mente,
     organizar_janelas as _organizar_janelas_mente,
+    planejar_organizacao_janelas as _planejar_organizacao_janelas_mente,
     pid_from_hwnd as _pid_from_hwnd_mente,
     resolver_alvo_ambiente as _resolver_alvo_ambiente_mente,
 )
@@ -87,6 +132,42 @@ from mente_laylay.memoria_mental.estado_compartilhado_runtime import (
 )
 from mente_laylay.memoria_mental.saude_mente import (
     criar_saude_mente_runtime as _criar_saude_mente_runtime,
+)
+from mente_laylay.memoria_mental.continuidade_geral import (
+    registrar_evento_continuidade as _registrar_evento_continuidade_geral,
+)
+from mente_laylay.especialistas.mapa_habilidades import (
+    criar_mapa_habilidades_runtime as _criar_mapa_habilidades_runtime,
+)
+from mente_laylay.especialistas.area_transferencia import (
+    criar_area_transferencia_runtime as _criar_area_transferencia_runtime,
+)
+from mente_laylay.autonomia.orquestracao_cooperativa import (
+    criar_orquestrador_cooperativo_runtime as _criar_orquestrador_cooperativo_runtime,
+    criar_quadro_cooperacao_runtime as _criar_quadro_cooperacao_runtime,
+)
+from mente_laylay.percepcao.observador_area_transferencia import (
+    classificar_resposta_oferta as _classificar_resposta_oferta_clipboard,
+    criar_observador_area_transferencia_runtime as _criar_observador_area_transferencia_runtime,
+    oferta_deve_ceder_a_novo_comando as _oferta_clipboard_deve_ceder,
+)
+from mente_laylay.memoria_mental.pendencia_acao import (
+    criar_pendencia_acao_runtime as _criar_pendencia_acao_runtime,
+)
+from mente_laylay.memoria_mental.memoria_pessoas import (
+    criar_memoria_pessoas_runtime as _criar_memoria_pessoas_runtime,
+)
+from mente_laylay.integracao.registro_memoria_pessoas import (
+    registrar_memoria_pessoas as _registrar_memoria_pessoas,
+)
+from mente_laylay.especialistas.caixa_entrada_pessoal import (
+    criar_caixa_entrada_pessoal_runtime as _criar_caixa_entrada_pessoal_runtime,
+)
+from mente_laylay.autonomia.governanca_iniciativa import (
+    detectar_comando_governanca_iniciativa as _detectar_comando_governanca_iniciativa,
+)
+from mente_laylay.autonomia.diretor_presenca import (
+    criar_diretor_presenca_runtime as _criar_diretor_presenca_runtime_mente,
 )
 from mente_laylay.memoria_mental.consciencia_temporal import (
     registrar_evento_visual_temporal as _registrar_evento_visual_temporal_mente,
@@ -104,11 +185,8 @@ from mente_laylay.percepcao.monitor_janelas import (
 from mente_laylay.cognicao.interpretador_semantico_runtime import (
     criar_interpretador_semantico_runtime as _criar_interpretador_semantico_runtime_mente,
 )
-from mente_laylay.cognicao.orquestrador_turno_runtime import (
-    iniciar_planejamento_turno as _iniciar_planejamento_turno_mente_runtime,
-    registrar_leitura_semantica_principal as _registrar_leitura_semantica_principal_mente_runtime,
-    atualizar_planejamento_turno as _atualizar_planejamento_turno_mente_runtime,
-    verificar_fala_do_turno as _verificar_fala_do_turno_mente_runtime,
+from mente_laylay.cognicao.composicao_turno import (
+    criar_composicao_turno_runtime as _criar_composicao_turno_runtime,
 )
 from mente_laylay.cognicao.decisao_turno import (
     filtrar_comandos_pelo_turno as _filtrar_comandos_pelo_turno_mente,
@@ -123,6 +201,22 @@ from mente_laylay.percepcao.modo_jogo import (
     criar_modo_jogo_runtime as _criar_modo_jogo_runtime_mente,
     descarregar_modelo_ollama as _descarregar_modelo_ollama_mente,
 )
+from mente_laylay.percepcao.compatibilidade_overlay_jogo import (
+    criar_compatibilidade_overlay_jogo_runtime as _criar_compatibilidade_overlay_jogo_runtime_mente,
+)
+from mente_laylay.percepcao.visao_jogo.composicao import (
+    criar_composicao_visao_jogo_runtime as _criar_composicao_visao_jogo_runtime,
+)
+from mente_laylay.percepcao.visao_jogo.coordenador import (
+    criar_coordenador_visao_jogo_runtime as _criar_coordenador_visao_jogo_runtime,
+)
+from mente_laylay.cognicao.intencao_visual_jogo import (
+    detectar_pedido_visao_jogo as _detectar_pedido_visao_jogo_cooperativo,
+)
+from mente_laylay.autonomia.governanca_iniciativa import (
+    decisao_permite_emissao as _decisao_permite_emissao_iniciativa,
+)
+from mente_laylay.percepcao.visao_jogo.sessao_jogo import identificar_jogo
 from mente_laylay.percepcao.ouvido_whisper import (
     criar_ouvido_whisper_runtime as _criar_ouvido_whisper_runtime_mente,
     limpar_diccao_e_ruido as _limpar_diccao_e_ruido_mente,
@@ -155,6 +249,15 @@ from mente_laylay.memoria_mental.aprendizado_runtime import (
 from mente_laylay.memoria_mental.motor_aprendizado import (
     criar_motor_aprendizado_runtime as _criar_motor_aprendizado_runtime_mente,
 )
+from mente_laylay.memoria_mental.identidade_usuario import (
+    salvar_nome_usuario_confirmado as _salvar_nome_usuario_confirmado_mente,
+)
+from mente_laylay.memoria_mental.mapa_recursos import (
+    criar_mapa_recursos_runtime as _criar_mapa_recursos_runtime,
+)
+from mente_laylay.memoria_mental.rede_associativa import (
+    criar_rede_associativa_runtime as _criar_rede_associativa_runtime_mente,
+)
 from mente_laylay.memoria_mental.resumo_diario import (
     MemoriaLaylay as _MemoriaLaylayRuntime,
 )
@@ -181,6 +284,9 @@ from mente_laylay.memoria_mental.playlist_runtime import (
 from mente_laylay.memoria_mental.playlist_laylay_runtime import (
     criar_playlist_laylay_runtime as _criar_playlist_laylay_runtime_mente,
 )
+from mente_laylay.memoria_mental.consulta_musical import (
+    criar_consulta_musical_runtime as _criar_consulta_musical_runtime_mente,
+)
 from mente_laylay.personalidade.falas_variadas import (
     escolher as _escolher_fala_variada,
     fala_de_confirmacao as _fala_de_confirmacao_variada,
@@ -194,9 +300,7 @@ from mente_laylay.personalidade.terminal_laylay import (
 )
 from mente_laylay.personalidade.voz_runtime import (
     criar_voz_runtime as _criar_voz_runtime_mente,
-)
-from mente_laylay.personalidade.avatar_runtime import (
-    criar_avatar_runtime as _criar_avatar_runtime_mente,
+    resolver_vozes_tts as _resolver_vozes_tts_mente,
 )
 from mente_laylay.personalidade.oralidade import (
     preparar_texto_para_tts as _preparar_texto_para_tts_mente,
@@ -204,20 +308,21 @@ from mente_laylay.personalidade.oralidade import (
 from mente_laylay.personalidade.orquestrador_fala_runtime import (
     criar_orquestrador_fala_runtime as _criar_orquestrador_fala_runtime_mente,
 )
-from mente_laylay.personalidade.resposta_conversacional_runtime import (
-    criar_resposta_conversacional_runtime as _criar_resposta_conversacional_runtime_mente,
+from mente_laylay.personalidade.composicao_resposta_conversacional import (
+    criar_composicao_resposta_conversacional_runtime as _criar_composicao_resposta_conversacional_runtime,
 )
 from mente_laylay.personalidade.abertura_chat import (
     criar_abertura_chat_runtime as _criar_abertura_chat_runtime_mente,
 )
-from mente_laylay.personalidade.prompt_base import ALLOWED_ACTIONS, BASE_SYSTEM_PROMPT
+from mente_laylay.personalidade.prompt_base import ALLOWED_ACTIONS
+from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT
+from mente_laylay.personalidade.politica_voz_unica import voz_unica_llm_ativa
 from mente_laylay.personalidade.conversa_natural import (
     criar_conversa_natural_runtime as _criar_conversa_natural_runtime_mente,
     fala_e_fallback_neutro as _fala_e_fallback_neutro_mente,
 )
 from mente_laylay.autonomia.execucao_ia import (
     criar_coordenador_exec_runtime as _criar_coordenador_exec_runtime_mente,
-    criar_contexto_exec_runtime as _criar_contexto_exec_runtime_mente,
     executar_exec as _executar_exec_mente,
     filtrar_apenas_fala as _filtrar_apenas_fala_mente,
     parsear_resposta_json as _parsear_resposta_json_mente,
@@ -235,8 +340,10 @@ from mente_laylay.autonomia.controle_midia import (
 from mente_laylay.autonomia.audio_sistema import (
     ajustar_volume_sistema as _ajustar_volume_sistema_mente,
     ajustar_volume_sistema_relativo as _ajustar_volume_sistema_relativo_mente,
+    obter_volume_sistema as _obter_volume_sistema_mente,
     definir_mudo_sistema as _definir_mudo_sistema_mente,
     ducking_volume as _ducking_volume_mente,
+    listar_processos_com_audio_ativo as _listar_processos_audio_ativos_mente,
 )
 from mente_laylay.autonomia.fluxo_resposta_ia import (
     processar_inicio_fluxo_resposta_ia as _processar_inicio_fluxo_resposta_ia_mente,
@@ -246,9 +353,6 @@ from mente_laylay.autonomia.modo_chat import (
     criar_interacao_chat_runtime as _criar_interacao_chat_runtime_mente,
     criar_modo_chat_runtime as _criar_modo_chat_runtime_mente,
 )
-from mente_laylay.autonomia.barra_comando import (
-    criar_barra_comando_runtime as _criar_barra_comando_runtime_mente,
-)
 from mente_laylay.autonomia.servicos_background import (
     criar_gerenciador_servicos_background as _criar_gerenciador_servicos_background_mente,
     criar_orquestrador_inicializacao as _criar_orquestrador_inicializacao_mente,
@@ -256,43 +360,46 @@ from mente_laylay.autonomia.servicos_background import (
 from mente_laylay.autonomia.porteiro_chrome import (
     criar_porteiro_chrome_runtime as _criar_porteiro_chrome_runtime_mente,
 )
-from mente_laylay.autonomia.contexto_resposta_ia import (
-    criar_contexto_prompt_runtime as _criar_contexto_prompt_runtime_mente,
+from mente_laylay.integracao.composicao_entrada_interacao import (
+    criar_composicao_entrada_interacao_runtime as _criar_composicao_entrada_interacao_runtime,
 )
-from mente_laylay.integracao.contexto_conversa import (
-    criar_contexto_inicio_chat_runtime as _criar_contexto_inicio_chat_runtime_mente,
-)
-from mente_laylay.integracao.estado_contexto_runtime import (
-    criar_estado_contexto_runtime as _criar_estado_contexto_runtime_mente,
+from mente_laylay.integracao.composicao_estado_aplicacao import (
+    criar_composicao_estado_aplicacao_runtime as _criar_composicao_estado_aplicacao_runtime,
 )
 from mente_laylay.autonomia.motor_temporal import (
     criar_motor_temporal_runtime as _criar_motor_temporal_runtime_mente,
 )
-from mente_laylay.integracao.adaptadores_aplicacao_runtime import (
-    criar_adaptadores_aplicacao_runtime as _criar_adaptadores_aplicacao_runtime_mente,
+from mente_laylay.autonomia.motor_iniciativa import (
+    criar_motor_iniciativa_runtime as _criar_motor_iniciativa_runtime_mente,
 )
-from mente_laylay.integracao.contexto_execucao_ia import (
-    criar_contexto_dispatcher_runtime as _criar_contexto_dispatcher_runtime_mente,
-    criar_contexto_finalizacao_runtime as _criar_contexto_finalizacao_runtime_mente,
-    criar_contexto_intencao_runtime as _criar_contexto_intencao_runtime_mente,
+from mente_laylay.autonomia.executor_acoes_autonomas import (
+    criar_executor_acoes_autonomas_runtime as _criar_executor_acoes_autonomas_runtime,
 )
-from mente_laylay.integracao.llm_http import (
-    criar_llm_http_runtime as _criar_llm_http_runtime_mente,
+from mente_laylay.autonomia.composicao_servicos import (
+    criar_composicao_servicos_padrao as _criar_composicao_servicos_padrao,
 )
-from mente_laylay.integracao.cliente_llm_runtime import (
-    criar_cliente_llm_runtime as _criar_cliente_llm_runtime_mente,
+from mente_laylay.autonomia.coordenador_oportunidades import (
+    criar_coordenador_oportunidades_runtime as _criar_coordenador_oportunidades_runtime_mente,
 )
-from mente_laylay.iot.resolucao_cores import resolver_cor_por_ia as _resolver_cor_por_ia_mente
-from mente_laylay.integracao.chrome_comandos import (
-    criar_chrome_comandos_runtime as _criar_chrome_comandos_runtime_mente,
+from mente_laylay.integracao.composicao_contextos_ia import (
+    criar_composicao_contextos_ia_runtime as _criar_composicao_contextos_ia_runtime,
 )
+from mente_laylay.integracao.composicao_inteligencia_externa import (
+    criar_composicao_inteligencia_externa_runtime as _criar_composicao_inteligencia_externa_runtime,
+)
+from mente_laylay.integracao.runtime_llm_portatil import (
+    criar_runtime_llm_portatil as _criar_runtime_llm_portatil,
+)
+from mente_laylay.iot.composicao import (
+    criar_composicao_iot_laylay_runtime as _criar_composicao_iot_laylay_runtime,
+)
+from mente_laylay.integracao.registro_iot import registrar_iot as _registrar_iot
 from mente_laylay.integracao.pc_b_integracao import (
     criar_destino_pc_runtime as _criar_destino_pc_runtime_mente,
     criar_pc_b_runtime as _criar_pc_b_runtime_mente,
 )
-from mente_laylay.integracao.chrome_ws_transport import (
-    ChromeSolicitacoesRuntime as _ChromeSolicitacoesRuntime,
-    broadcast_command as _broadcast_command_chrome_mente,
+from mente_laylay.integracao.composicao_chrome_comandos import (
+    criar_composicao_chrome_comandos_laylay_runtime as _criar_composicao_chrome_comandos_laylay_runtime,
 )
 from mente_laylay.integracao.chrome_navegacao import (
     abrir_url_reutilizando_aba as _abrir_url_reutilizando_aba_chrome_mente,
@@ -306,16 +413,11 @@ from mente_laylay.integracao.chrome_estado import (
     ChromeEstadoRuntime as _ChromeEstadoRuntime,
 )
 from mente_laylay.integracao.chrome_ws_server import (
-    criar_chrome_ws_runtime as _criar_chrome_ws_runtime_mente,
     criar_websocket_transport_runtime as _criar_websocket_transport_runtime_mente,
     fechar_extensoes_anteriores as _fechar_extensoes_anteriores_chrome_mente,
-    run_ws_server_in_thread as _run_ws_server_in_thread_chrome_mente,
 )
-from mente_laylay.integracao.chrome_ws_handlers import (
-    criar_chrome_ws_eventos_runtime as _criar_chrome_ws_eventos_runtime_mente,
-)
-from mente_laylay.integracao.chrome_ws_contexto import (
-    criar_chrome_ws_contexto_runtime as _criar_chrome_ws_contexto_runtime_mente,
+from mente_laylay.integracao.composicao_chrome_ws import (
+    criar_composicao_chrome_ws_laylay_runtime as _criar_composicao_chrome_ws_laylay_runtime,
 )
 from mente_laylay.integracao.ambiente_navegacao import (
     criar_ambiente_navegacao_runtime as _criar_ambiente_navegacao_runtime_mente,
@@ -332,8 +434,11 @@ from mente_laylay.autonomia.feedback_pendente_runtime import (
 from mente_laylay.cognicao.interpretador_continuidade import (
     interpretar_resposta_pendente as _interpretar_resposta_pendente_mente,
 )
-from mente_laylay.cognicao.pesquisa_contextual import (
-    criar_pesquisa_contextual_runtime as _criar_pesquisa_contextual_runtime_mente,
+from mente_laylay.integracao.composicao_visual import (
+    criar_composicao_visual_laylay_runtime as _criar_composicao_visual_laylay_runtime,
+)
+from mente_laylay.integracao.composicao_gmail import (
+    criar_composicao_gmail_laylay_runtime as _criar_composicao_gmail_laylay_runtime,
 )
 from mente_laylay.cognicao.fundamentacao_factual import (
     extrair_tema_fundamentacao as _extrair_tema_fundamentacao_mente,
@@ -341,12 +446,6 @@ from mente_laylay.cognicao.fundamentacao_factual import (
 )
 from mente_laylay.cognicao.resumo_conteudo import (
     criar_resumo_conteudo_runtime as _criar_resumo_conteudo_runtime_mente,
-)
-from mente_laylay.cognicao.selecao_abas import (
-    criar_selecao_abas_runtime as _criar_selecao_abas_runtime_mente,
-)
-from mente_laylay.cognicao.confirmacao_llm import (
-    criar_confirmacao_llm_runtime as _criar_confirmacao_llm_runtime_mente,
 )
 from mente_laylay.cognicao.normalizacao_linguagem import (
     normalizar_texto as _normalizar_texto_mente,
@@ -360,9 +459,6 @@ from mente_laylay.autonomia.dispatcher_comandos_json import (
 )
 from mente_laylay.autonomia.fluxos_conversa import (
     handle_feedback_pendente as _handle_feedback_pendente_mente,
-)
-from mente_laylay.autonomia.comandos_imediatos import (
-    criar_comandos_imediatos_runtime as _criar_comandos_imediatos_runtime_mente,
 )
 from mente_laylay.autonomia.sugestoes_sistema import (
     aplicar_preferencia_sugestao as _aplicar_preferencia_sugestao_mente,
@@ -384,8 +480,9 @@ from mente_laylay.autonomia.agendamento_mental import (
     extrair_agendamento_local as _extrair_agendamento_local_mente,
     resumo_agendamentos_para_prompt as _resumo_agendamentos_para_prompt_mente,
 )
-from mente_laylay.autonomia.orquestrador_deterministico import (
-    criar_deteccao_deterministica_runtime as _criar_deteccao_deterministica_runtime_mente,
+from mente_laylay.cognicao.investigacao_erro import InvestigadorErroRuntime
+from mente_laylay.autonomia.central_notificacoes import (
+    criar_central_notificacoes_runtime as _criar_central_notificacoes_runtime_mente,
 )
 from mente_laylay.autonomia.porteiro_acoes import (
     criar_porteiro_acoes_runtime as _criar_porteiro_acoes_runtime_mente,
@@ -416,9 +513,6 @@ _formatar_mensagem_laylay = partial(
     fallback_fala=FALLBACK_FALA_NEUTRA,
     stdout=sys.stdout,
 )
-from mente_laylay.iot.runtime import criar_runtime_iot as _criar_runtime_iot_mente
-
-
 _should_log_message = partial(
     _should_log_message_mente,
     log_mode=LOG_MODE,
@@ -440,24 +534,29 @@ _builtins.print = _print_filtrado
 print("\n╔══════════════════════════════════════╗")
 print("║  ◕‿◕ Laylay inicializando — modo essencial ║")
 print("╚══════════════════════════════════════╝")
+print(
+    "🧠 [BUILD:MENTE] continuidade=pendencia-canonica-v1 "
+    f"arquivo={os.path.abspath(__file__)}"
+)
+print(
+    "🧠 [VOZ ÚNICA] LLM autora da conversa | "
+    f"ativa={voz_unica_llm_ativa()}"
+)
 import traceback
 import asyncio
 
 from memoria_sqlite import MemoriaSQLite
-from mente_laylay.integracao.gmail_mental import (
-    DEFAULT_GMAIL_PALAVRAS_URGENTES,
-    DEFAULT_GMAIL_PRIORITARIOS,
-    criar_gmail_runtime,
+_composicao_resposta_conversacional_runtime = (
+    _criar_composicao_resposta_conversacional_runtime(
+        estado_runtime_getter=lambda: _estado_compartilhado_runtime,
+        fallback_fala=FALLBACK_FALA_NEUTRA,
+        log=print,
+    )
 )
-
-_resposta_conversacional_runtime = _criar_resposta_conversacional_runtime_mente(
-    namespace_getter=lambda: globals(),
-    estado_runtime_getter=lambda: _estado_compartilhado_runtime,
-    fallback_fala=FALLBACK_FALA_NEUTRA,
-    log=print,
-)
+_resposta_conversacional_runtime = _composicao_resposta_conversacional_runtime.runtime
 _limpar_texto_fala_ia = _resposta_conversacional_runtime.limpar_texto_fala_ia
 _atualizar_memoria_topicos = _resposta_conversacional_runtime.atualizar_memoria_topicos
+_suspender_topico_conversacional = _resposta_conversacional_runtime.suspender_topico_conversacional
 _acalmar_emocao_conversacional = _resposta_conversacional_runtime.acalmar_emocao
 _definir_emocao_conversacional = _resposta_conversacional_runtime.definir_emocao
 _avancar_emocao_conversacional = _resposta_conversacional_runtime.avancar_emocao
@@ -503,7 +602,7 @@ _texto_pede_playlist_explicitamente = _texto_pede_playlist_explicitamente_mente
 
 
 _porteiro_acoes_runtime = _criar_porteiro_acoes_runtime_mente(
-    namespace_getter=lambda: globals(),
+    playlist_state_getter=lambda: playlist_state,
     estado_runtime_getter=lambda: _estado_compartilhado_runtime,
 )
 _texto_cancela_acao_agora = _porteiro_acoes_runtime.texto_cancela_acao_agora
@@ -514,16 +613,15 @@ _autonomia_permite_execucao_musical = _porteiro_acoes_runtime.autonomia_permite_
 _autorizar_acao_pratica = _porteiro_acoes_runtime.autorizar_acao_pratica
 
 
-_estado_contexto_runtime = _criar_estado_contexto_runtime_mente(
-    namespace_getter=lambda: globals(),
+_composicao_estado_aplicacao_runtime = _criar_composicao_estado_aplicacao_runtime(
+    servicos_iniciais=globals(),
     estado_runtime_getter=lambda: _estado_compartilhado_runtime,
 )
+_estado_contexto_runtime = _composicao_estado_aplicacao_runtime.estado
 _contexto_conversa_natural = _estado_contexto_runtime.contexto_conversa_natural
 _obter_contexto_perceptivo = _estado_contexto_runtime.contexto_perceptivo
 _registrar_mente_curta_base = _estado_contexto_runtime.registrar_mente_curta
-_adaptadores_aplicacao_runtime = _criar_adaptadores_aplicacao_runtime_mente(
-    namespace_getter=lambda: globals(),
-)
+_adaptadores_aplicacao_runtime = _composicao_estado_aplicacao_runtime.adaptadores
 _registrar_mente_curta = _adaptadores_aplicacao_runtime.registrar_mente_curta
 _registrar_interacao_temporal = _estado_contexto_runtime.registrar_interacao_temporal
 _registrar_resultado_execucao_base = _estado_contexto_runtime.registrar_resultado_execucao
@@ -567,8 +665,6 @@ _responder_agradecimento_ou_elogio = _conversa_natural_runtime.responder_agradec
 _responder_conversa_curta_por_tipo = _conversa_natural_runtime.responder_conversa_curta_por_tipo
 
 
-_construir_fala_conversa = _conversa_natural_runtime.construir_fala
-_resposta_conversa_local = _conversa_natural_runtime.resposta_local
 _parece_elogio_ou_agradecimento_curto = _conversa_natural_runtime.parece_elogio_ou_agradecimento_curto
 _resposta_conversa_rapida_local = _conversa_natural_runtime.resposta_rapida_local
 
@@ -632,6 +728,8 @@ _estado_compartilhado_runtime = _criar_estado_compartilhado_runtime_mente(
         "current_emotion": "calma",
         "is_speaking": False,
         "audio_playing": False,
+        "visual_activity": "idle",
+        "visual_activity_until": 0.0,
         "emotion_level": 1,
         "humor_level": 0,
         "humor_last_update": 0.0,
@@ -658,6 +756,11 @@ _estado_compartilhado_runtime = _criar_estado_compartilhado_runtime_mente(
     },
 )
 _saude_mente_runtime = _criar_saude_mente_runtime()
+_mapa_habilidades_runtime = _criar_mapa_habilidades_runtime(
+    saude_getter=_saude_mente_runtime.snapshot,
+)
+_texto_parece_consulta_operacional = _mapa_habilidades_runtime.parece_consulta_operacional
+_responder_pergunta_capacidade_local = _mapa_habilidades_runtime.responder_pergunta_capacidade
 _observabilidade_mente_runtime = _criar_observabilidade_mente_runtime(
     estado_getter=lambda chave, padrao=None: _estado_compartilhado_runtime.obter_copia(
         "mental", chave, padrao,
@@ -665,6 +768,7 @@ _observabilidade_mente_runtime = _criar_observabilidade_mente_runtime(
     estado_setter=lambda **campos: _estado_compartilhado_runtime.atualizar_campos(
         "mental", **campos,
     ),
+    log=print,
 )
 _validacao_mente_inicial = _estado_compartilhado_runtime.validar_estrutura()
 if not _validacao_mente_inicial.get("ok"):
@@ -698,18 +802,76 @@ _estado_compartilhado_runtime.atualizar_campos(
     },
 )
 _estado_compartilhado_runtime.atualizar_campos("conversacional", is_speaking=False)
-_base_dir = os.path.abspath(os.path.dirname(__file__)) if "__file__" in globals() else os.getcwd()
+_base_dir = (
+    os.path.abspath(os.path.dirname(sys.executable))
+    if getattr(sys, "frozen", False)
+    else os.path.abspath(os.path.dirname(__file__))
+)
 PASTA_MEMORIA = os.path.join(_base_dir, "memoria")
-_avatar_runtime = _criar_avatar_runtime_mente(
-    raiz_projeto=_base_dir,
-    estado_getter=lambda: {
+def _definir_atividade_visual(atividade: str) -> None:
+    atividade = str(atividade or "idle")
+    duracao = 0.0 if atividade == "idle" else (12.0 if atividade == "listening" else 15.0)
+    _estado_compartilhado_runtime.atualizar_campos(
+        "conversacional",
+        visual_activity=atividade,
+        visual_activity_until=time.time() + duracao,
+    )
+
+
+def _estado_visual_laylay():
+    agora = time.time()
+    falando = bool(_conversa_estado_get("audio_playing", False))
+    preparando_fala = bool(_conversa_estado_get("is_speaking", False)) and not falando
+    atividade = str(_conversa_estado_get("visual_activity", "idle") or "idle")
+    if agora > float(_conversa_estado_get("visual_activity_until", 0.0) or 0.0):
+        atividade = "idle"
+    reaction_id = ""
+    plano = dict(_estado_compartilhado_runtime.mental.get("plano_turno_atual") or {})
+    atualizado = float(plano.get("atualizado_ts") or plano.get("ts") or 0.0)
+    idade_plano = agora - atualizado if atualizado else 999.0
+    fase = str(plano.get("fase") or "").strip().lower()
+    comandos = [item for item in list(plano.get("comandos") or []) if isinstance(item, dict)]
+    erros = list(plano.get("erros") or [])
+    falhou = bool(erros) or any(
+        item.get("confirmado") is False
+        or str(item.get("status") or "").lower() in {
+            "erro", "falha", "indisponivel", "não_confirmado", "nao_confirmado"
+        }
+        for item in comandos
+    )
+    if falando:
+        atividade = "speaking"
+    elif preparando_fala:
+        atividade = "thinking"
+    elif idade_plano <= 2.8 and falhou:
+        atividade = "error"
+        reaction_id = f"erro:{plano.get('id') or atualizado}"
+    elif idade_plano <= 2.2 and comandos and fase in {"executado", "tratado_pre_fluxo"}:
+        atividade = "success"
+        reaction_id = f"sucesso:{plano.get('id') or atualizado}"
+    elif idade_plano <= 8.0 and comandos and fase not in {"executado", "tratado_pre_fluxo"}:
+        atividade = "executing"
+    elif idade_plano <= 8.0 and fase in {"planejado", "resposta_planejada", "fala_verificada"}:
+        atividade = "thinking"
+    return {
         "emotion": _conversa_estado_get("current_emotion", "calma"),
         "level": _conversa_estado_get("emotion_level", 1),
-        "speaking": bool(_conversa_estado_get("audio_playing", False)),
-    },
+        "speaking": falando,
+        "activity": atividade,
+        "intensity": max(0.25, min(1.0, float(_conversa_estado_get("emotion_level", 1) or 1) / 3.0)),
+        "reaction_id": reaction_id,
+    }
+
+
+_composicao_visual_runtime = _criar_composicao_visual_laylay_runtime(
+    raiz_projeto=_base_dir,
+    estado_getter=_estado_visual_laylay,
+    registrar_falha=_observabilidade_mente_runtime.relatar_falha,
     log=print,
 )
-atexit.register(_avatar_runtime.parar)
+_gamebar_bridge_runtime = _composicao_visual_runtime.gamebar
+_avatar_runtime = _composicao_visual_runtime.avatar
+atexit.register(_composicao_visual_runtime.parar)
 # Agora as constantes que dependem de PASTA_MEMORIA
 PLAYLISTS_ARQUIVO = "playlists.json"
 PASTA_PLAYLISTS_LAYLAY = os.path.join(PASTA_MEMORIA, "playlists_laylay")
@@ -718,6 +880,7 @@ AGENDAMENTOS_ARQUIVO = os.path.join(PASTA_MEMORIA, "agendamentos.json")
 
 BRIEFING_ARQUIVO = os.path.join(PASTA_MEMORIA, "briefing_estado.json")
 GMAIL_ARQUIVO = os.path.join(PASTA_MEMORIA, "gmail_estado.json")
+CENTRAL_NOTIFICACOES_ARQUIVO = os.path.join(PASTA_MEMORIA, "central_notificacoes.json")
 ROTINA_ARQUIVO_APRENDIDO = os.path.join(PASTA_MEMORIA, "rotinas_aprendidas.json")
 MUSICA_ARQUIVO_HISTORICO = os.path.join(PASTA_MEMORIA, "aprendizado_musical.json")
 MUSICA_ARQUIVO_FEEDBACK = os.path.join(PASTA_MEMORIA, "musicas_feedback.json")
@@ -727,20 +890,7 @@ BRIEFING_CIDADE = "Boituva"                    # ← sua cidade (muda se viajar)
 _ambiente_sistema_runtime = _criar_ambiente_sistema_runtime_mente()
 
 # ====================== GMAIL VIA IMAP (App Password) ======================
-# Configure fora do codigo:
-#   setx GMAIL_USER "seu_email@gmail.com"
-#   setx GMAIL_APP_PASSWORD "senha_de_app_nova"
-GMAIL_USER = os.getenv("GMAIL_USER", "")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
-GMAIL_INTERVALO_S = int(os.getenv("GMAIL_INTERVALO_S", "300") or "300")
-GMAIL_MAX_LIDOS = int(os.getenv("GMAIL_MAX_LIDOS", "5") or "5")
-GMAIL_PRIORITARIOS = DEFAULT_GMAIL_PRIORITARIOS
-GMAIL_PALAVRAS_URGENTES = DEFAULT_GMAIL_PALAVRAS_URGENTES
-
-_pesquisa_contextual_runtime = _criar_pesquisa_contextual_runtime_mente(
-    normalizar_texto_curto=_normalizar_texto_curto,
-    requests_get=requests.get,
-)
+# Configure fora do código: GMAIL_USER e GMAIL_APP_PASSWORD.
 
 # ====================== MONITOR DE SAÚDE DO PC ======================
 SAUDE_CPU_THRESHOLD = 85          # % CPU sustentada
@@ -763,6 +913,8 @@ _contexto_prompt_runtime = None
 _contexto_exec_runtime = None
 _servicos_background_runtime = _criar_gerenciador_servicos_background_mente(
     log=print,
+    registrar_falha=_observabilidade_mente_runtime.relatar_falha,
+    registrar_evento=_observabilidade_mente_runtime.registrar_evento_servico,
     reiniciar_apos_falha=True,
     atraso_reinicio_s=5.0,
 )
@@ -775,7 +927,10 @@ _inicializacao_runtime = _criar_orquestrador_inicializacao_mente(
 # Fila para troca autonoma de musicas no YouTube
 _musica_ultima_verificada = ""
 _busca_musical_runtime = _criar_busca_musical_runtime_mente(
-    extrair_resultados_youtube=lambda html, query, limite=10: _extrair_resultados_youtube_busca(html, query, limite),
+    extrair_resultados_youtube=(
+        lambda html, query, limite=10, **kwargs:
+        _extrair_resultados_youtube_busca(html, query, limite, **kwargs)
+    ),
     abrir_url=lambda url: validar_e_enviar_comando("open_url", {"url": url}),
     youtube_play=lambda url: validar_e_enviar_comando("youtube_play", {"url": url}),
     falar=lambda texto, emocao="calma", nivel=1: falar_com_lipsync(texto, emocao, nivel),
@@ -823,6 +978,38 @@ _playlist_runtime = _criar_playlist_runtime_mente(
     sincronizar_playlists_laylay=lambda: _playlist_laylay_runtime.sincronizar(),
     log=print,
 )
+
+
+_ponte_curadoria_cooperativa = {"publicar": None}
+
+
+def _publicar_curadoria_musical_cooperativa(resumo: dict) -> bool:
+    """Publica somente contagens; títulos, URLs e histórico ficam no domínio musical."""
+    publicar = _ponte_curadoria_cooperativa.get("publicar")
+    if not callable(publicar):
+        return False
+    dados = dict(resumo or {})
+    usuarios = max(0, int(dados.get("playlists_usuario") or 0))
+    historico = max(0, int(dados.get("registros_historico") or 0))
+    curadorias = max(0, int(dados.get("curadorias") or 0))
+    publicar(
+        origem="curadoria_musical",
+        tipo="curadoria_musical_sincronizada",
+        resumo=(
+            f"{curadorias} curadoria(s) derivada(s) de {usuarios} playlist(s) "
+            f"e {historico} registro(s) confirmados"
+        ),
+        confianca=1.0,
+        relevancia=0.72,
+        sensibilidade="contagens_locais",
+        validade_s=900.0,
+        habilidades=("playlists_usuario", "aprendizado_musical", "playlist_laylay"),
+        evidencias=("persistência relida", "fontes locais confirmadas"),
+        chave_deduplicacao=f"curadoria_musical:{usuarios}:{historico}:{curadorias}",
+    )
+    return True
+
+
 _playlist_laylay_runtime = _criar_playlist_laylay_runtime_mente(
     state_file=PLAYLISTS_LAYLAY_ARQUIVO,
     cache=playlists_laylay_carregadas,
@@ -834,10 +1021,58 @@ _playlist_laylay_runtime = _criar_playlist_laylay_runtime_mente(
         titulo,
         canal,
     ),
+    publicar_cooperacao=_publicar_curadoria_musical_cooperativa,
+)
+_consulta_musical_runtime = _criar_consulta_musical_runtime_mente(
+    playlists_usuario=_playlist_runtime,
+    playlists_laylay=_playlist_laylay_runtime,
+    estado_getter=lambda: {
+        "ultima_playlist": _musica_estado_get("ultima_playlist", ""),
+        "musica_atual_titulo": _musica_estado_get("musica_atual_titulo", ""),
+        "musica_atual_status": _musica_estado_get("musica_atual_status", ""),
+        "playlist_state": playlist_state,
+    },
+)
+_registro_musica_leitura_runtime = _registrar_musica_leitura(
+    _consulta_musical_runtime
+)
+_mapa_recursos_runtime = _criar_mapa_recursos_runtime()
+_mapa_recursos_runtime.registrar(
+    "playlists_usuario",
+    arquivo=PLAYLISTS_ARQUIVO,
+    descricao="playlists reais salvas pelo usuário, com nomes, quantidades e títulos conhecidos",
+    termos=(
+        "playlist", "playlists", "faixas salvas", "musicas salvas",
+        "músicas salvas", "arquivo playlists",
+    ),
+    leitor=_registro_musica_leitura_runtime.retrato_usuario,
+    escrita_via="comandos de playlist",
+    intent_consulta="PLAYLIST_LIST",
+    parametro_detalhe="nome_playlist",
+)
+_mapa_recursos_runtime.registrar(
+    "playlists_laylay",
+    arquivo="memoria/playlists_laylay/playlists_da_laylay.json",
+    descricao="curadorias musicais montadas pela própria Laylay a partir do histórico confirmado",
+    termos=(
+        "suas playlists", "playlist da laylay", "playlists da laylay",
+        "playlist que voce criou", "playlist que você criou",
+        "playlists que voce criou", "playlists que você criou",
+        "playlists voce criou", "playlists você criou",
+        "playlists criadas por voce", "playlists criadas por você",
+        "playlists que voce montou", "playlists que você montou",
+        "xodos que eu separei", "climas que combinam comigo",
+    ),
+    leitor=_registro_musica_leitura_runtime.retrato_laylay,
+    escrita_via="curadoria musical da Laylay",
+    intent_consulta="LAYLAY_PLAYLIST_LIST",
+    parametro_detalhe="nome_playlist",
 )
 HOTKEY_MODO_CHAT_LIGA = "ctrl+shift+z"
 HOTKEY_MODO_CHAT_DESLIGA = "ctrl+f9"
-HOTKEY_BARRA_COMANDO = "ctrl+shift+space"
+# Uma tecla única evita que jogos em tela cheia conservem Ctrl/Shift como
+# pressionados ao alternar entre Raw Input, Game Bar e o hook de texto.
+HOTKEY_BARRA_COMANDO = os.environ.get("LAYLAY_HOTKEY_BARRA", "f10").strip() or "f10"
 _modo_chat_runtime = None
 _interpretacao_intencao_runtime = None
 # Contador de falhas consecutivas por AçÃO+ALVO — anti-loop de desculpas
@@ -877,32 +1112,64 @@ memoria_inteligente = _MemoriaLaylayRuntime(
 )
 
 # ====================== CONFIGURAÇÕES GLOBAIS ======================
-API_KEY = "ollama"
-MODEL = "Qwen2.5"
-OPENROUTER_BASE_URL = "http://localhost:11434/v1"
+_runtime_llm_portatil = _criar_runtime_llm_portatil(
+    raiz=_base_dir,
+    requests_get=requests.get,
+    requests_post=requests.post,
+    log=print,
+)
+API_KEY = _runtime_llm_portatil.api_key
+MODEL = _runtime_llm_portatil.modelo
+OPENROUTER_BASE_URL = _runtime_llm_portatil.base_url
+atexit.register(_runtime_llm_portatil.encerrar)
+
+
+def _descarregar_modelo_local() -> bool:
+    if _runtime_llm_portatil.backend == "portatil":
+        return _runtime_llm_portatil.descarregar()
+    return _descarregar_modelo_ollama_mente(MODEL)
 MEMORIA_CONTEXTO_ARQUIVO = os.path.join(PASTA_MEMORIA, "memoria_contexto.json")
 MEMORIA_SQLITE = MemoriaSQLite(os.path.join(PASTA_MEMORIA, "laylay_memoria.sqlite"))
+_rede_associativa_runtime = _criar_rede_associativa_runtime_mente(
+    db_path=MEMORIA_SQLITE.db_path,
+    modo=os.getenv("LAYLAY_REDE_ASSOCIATIVA_MODO", "continuidade"),
+    contexto_getter=lambda: {
+        **dict(_obter_contexto_perceptivo() or {}),
+        "modo_jogo_ativo": bool(_modo_jogo_runtime.ativo),
+        "emocao_usuario": str(
+            _estado_compartilhado_runtime.mental.get("emocao_usuario") or ""
+        ),
+    },
+    log=print,
+)
 OPENROUTER_HTTP_REFERER = os.environ.get("OPENROUTER_HTTP_REFERER", "http://localhost")
 OPENROUTER_APP_TITLE = os.environ.get("OPENROUTER_APP_TITLE", "Laylay")
-LLM_LOCAL_TIMEOUT = int(os.environ.get("LAYLAY_LLM_LOCAL_TIMEOUT", "120"))
-LLM_REMOTE_TIMEOUT = int(os.environ.get("LAYLAY_LLM_REMOTE_TIMEOUT", "30"))
-_llm_http_runtime = _criar_llm_http_runtime_mente(
+_composicao_inteligencia_externa_runtime = (
+    _criar_composicao_inteligencia_externa_runtime(
         base_url=OPENROUTER_BASE_URL,
-        local_timeout=LLM_LOCAL_TIMEOUT,
-        remote_timeout=LLM_REMOTE_TIMEOUT,
-        requests_post=requests.post,
-        print_fn=print,
-        ao_finalizar_conversa_modo_jogo=lambda: _descarregar_modelo_ollama_mente(MODEL),
+        model=MODEL,
+        api_key=API_KEY,
+        http_referer=OPENROUTER_HTTP_REFERER,
+        app_title=OPENROUTER_APP_TITLE,
+        normalizar_texto_curto=_normalizar_texto_curto,
+        requests_get=requests.get,
+        requests_post=_runtime_llm_portatil.post,
+        ao_finalizar_conversa_modo_jogo=_descarregar_modelo_local,
+        registrar_falha=_observabilidade_mente_runtime.registrar_falha,
+        log=print,
+    )
 )
+_pesquisa_contextual_runtime = _composicao_inteligencia_externa_runtime.pesquisa
+_llm_http_runtime = _composicao_inteligencia_externa_runtime.http
+LLM_LOCAL_TIMEOUT = _composicao_inteligencia_externa_runtime.local_timeout
+LLM_GAME_TIMEOUT = _composicao_inteligencia_externa_runtime.game_timeout
+LLM_REMOTE_TIMEOUT = _composicao_inteligencia_externa_runtime.remote_timeout
 _llm_endpoint_eh_local = _llm_http_runtime.endpoint_eh_local
 _post_chat_llm = _llm_http_runtime.post
 
 # ====================== GROQ VISION (substitui Gemini) ======================
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-
-# Modelo atual recomendado (2026) - Llama 4 Scout (melhor que o 3.2)
-GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
-# Alternativa mais leve (se quiser economizar): "llama-3.2-11b-vision-preview"
+GROQ_API_KEY = _composicao_inteligencia_externa_runtime.groq_api_key
+GROQ_VISION_MODEL = _composicao_inteligencia_externa_runtime.groq_model
 SITES_DIRECTOS = {
     "youtube": "https://www.youtube.com",
     "spotify": "https://open.spotify.com",
@@ -957,7 +1224,7 @@ APPS_MAP = {
     "loja microsoft": "ms-windows-store:",
     "loja": "ms-windows-store:",
 }
-VOICE = "pt-BR-FranciscaNeural"
+VOICE, VOICE_FALLBACK = _resolver_vozes_tts_mente()
 
 SITES_WEB_ALIAS = {
     "insta",
@@ -970,7 +1237,6 @@ SITES_WEB_ALIAS = {
 
 from mente_laylay.cognicao.memoria_visual import (
     MAX_MEMORIAS_VISUAIS_DIA,
-    analisar_com_groq as _analisar_com_groq_modulo,
     capturar_tela_base64 as _capturar_tela_base64_modulo,
     configurar_memoria_visual,
     criar_memoria_visual_runtime as _criar_memoria_visual_runtime_mente,
@@ -981,11 +1247,7 @@ configurar_memoria_visual(PASTA_MEMORIA, MAX_MEMORIAS_VISUAIS_DIA)
 
 
 _capturar_tela_base64 = _capturar_tela_base64_modulo
-_analisar_com_groq = partial(
-    _analisar_com_groq_modulo,
-    api_key=GROQ_API_KEY.strip(),
-    model=GROQ_VISION_MODEL,
-)
+_analisar_com_groq = _composicao_inteligencia_externa_runtime.analisar_imagem
 def registrar_memoria_visual(
     imagem_b64,
     descricao,
@@ -1023,19 +1285,21 @@ def registrar_memoria_visual(
 
 
 # ====================== COMUNICAÇÃO ======================
-_chrome_solicitacoes = _ChromeSolicitacoesRuntime(
-    obter_loop=_ws_transport_runtime.obter_loop,
-    obter_extensoes=_ws_transport_runtime.obter_extensoes,
-    transmitir=lambda mensagem: broadcast_command(mensagem),
+_composicao_chrome_comandos_runtime = _criar_composicao_chrome_comandos_laylay_runtime(
+    ws_transport=_ws_transport_runtime,
+    log=print,
+    registrar_falha=_observabilidade_mente_runtime.registrar_falha,
 )
+_chrome_solicitacoes = _composicao_chrome_comandos_runtime.solicitacoes
 
 _ambiente_navegacao_runtime = _criar_ambiente_navegacao_runtime_mente(
-    namespace_getter=lambda: globals(),
+    servicos_iniciais=globals(),
     log=print,
 )
 atualizar_contexto = _ambiente_navegacao_runtime.atualizar_contexto
 atualizar_contexto_por_url = _ambiente_navegacao_runtime.atualizar_contexto_por_url
 organizar_janelas_robusto = _ambiente_navegacao_runtime.organizar_janelas
+planejar_organizacao_desktop = _ambiente_navegacao_runtime.planejar_organizacao_janelas
 listar_programas_abertos = _ambiente_navegacao_runtime.listar_programas
 listar_abas_chrome = _ambiente_navegacao_runtime.listar_abas
 _resolver_alvo_ambiente = _ambiente_navegacao_runtime.resolver_alvo
@@ -1065,6 +1329,7 @@ threading.excepthook = thread_exception_handler
 is_valid_url = _is_valid_url_chrome_mente
 ajustar_volume_sistema = _ajustar_volume_sistema_mente
 ajustar_volume_sistema_relativo = _ajustar_volume_sistema_relativo_mente
+obter_volume_sistema = _obter_volume_sistema_mente
 definir_mudo_sistema = _definir_mudo_sistema_mente
 ducking_volume = _ducking_volume_mente
 
@@ -1080,58 +1345,30 @@ armazenar_contexto_pagina = _contexto_paginas.armazenar
 get_dicionario_contexto = _contexto_paginas.texto_contexto
 
 
-_chrome_ws_contexto_runtime = _criar_chrome_ws_contexto_runtime_mente(
-    namespace_getter=lambda: globals(),
+_composicao_chrome_ws_runtime = _criar_composicao_chrome_ws_laylay_runtime(
+    servicos_iniciais=globals(),
     monitor_saude=_saude_mente_runtime,
-)
-_contexto_user_ws = _chrome_ws_contexto_runtime.contexto_usuario
-_aplicar_user_updates_ws = _chrome_ws_contexto_runtime.aplicar_updates_usuario
-_contexto_action_ws = _chrome_ws_contexto_runtime.contexto_acao
-_aplicar_action_updates_ws = _chrome_ws_contexto_runtime.aplicar_updates_acao
-
-
-_chrome_ws_eventos_runtime = _criar_chrome_ws_eventos_runtime_mente(
     solicitacoes=_chrome_solicitacoes,
     playlist_state=playlist_state,
     yt_clean_url=lambda url: _yt_clean_url(url),
     playlist_avancar_proxima=lambda: _playlist_avancar_proxima(),
     falar_com_lipsync=lambda *args, **kwargs: falar_com_lipsync(*args, **kwargs),
-    user_context_getter=_contexto_user_ws,
-    aplicar_user_updates=_aplicar_user_updates_ws,
-    action_context_getter=_contexto_action_ws,
-    aplicar_action_updates=_aplicar_action_updates_ws,
+    ws_transport=_ws_transport_runtime,
+    fechar_extensoes_anteriores=_ws_close_other_extensions,
+    stop_event=_servicos_background_runtime.evento_parada,
 )
-
-_ws_dispatch_data = _chrome_ws_eventos_runtime.dispatch
-_processar_pc_b_ws = _chrome_ws_contexto_runtime.processar_pc_b
-_processar_page_data_ws = _chrome_ws_contexto_runtime.processar_pagina
-_aplicar_page_updates_ws = _chrome_ws_contexto_runtime.aplicar_updates_pagina
-
-
-_chrome_ws_runtime = _criar_chrome_ws_runtime_mente(
-    contexto_getter=lambda: {
-        **_ws_transport_runtime.contexto_conexoes(),
-        "token_pc_b": os.environ.get("LAYLAY_PC_B_TOKEN", "").strip(),
-        "_ws_close_other_extensions": _ws_close_other_extensions,
-        "_ws_dispatch_data": _ws_dispatch_data,
-        "_processar_mensagem_pc_b": _processar_pc_b_ws,
-        "_processar_page_data": _processar_page_data_ws,
-        "_aplicar_page_updates": _aplicar_page_updates_ws,
-    },
+_chrome_ws_contexto_runtime = _composicao_chrome_ws_runtime.contexto
+_chrome_ws_eventos_runtime = _composicao_chrome_ws_runtime.eventos
+_chrome_ws_runtime = _composicao_chrome_ws_runtime.ws
+ws_handler = _composicao_chrome_ws_runtime.handler
+run_ws_server_in_thread = _composicao_chrome_ws_runtime.executar_servidor
+_analisar_com_groq_jogo = (
+    _composicao_inteligencia_externa_runtime.analisar_imagem_jogo
 )
-
-ws_handler = _chrome_ws_runtime.handler
-
-run_ws_server_in_thread = partial(
-    _run_ws_server_in_thread_chrome_mente,
-    ws_handler,
-    set_loop=_ws_transport_runtime.definir_loop,
-    host=os.environ.get("LAYLAY_WS_HOST", "0.0.0.0").strip() or "0.0.0.0",
+_sintetizar_pesquisa_jogo = (
+    _composicao_inteligencia_externa_runtime.sintetizar_pesquisa_jogo
 )
-broadcast_command = partial(
-    _broadcast_command_chrome_mente,
-    {"connected_extensions": _ws_transport_runtime.extensions},
-)
+broadcast_command = _composicao_chrome_comandos_runtime.broadcast_command
 
 solicitar_conteudo_pagina = _chrome_solicitacoes.solicitar_conteudo_pagina
 
@@ -1141,28 +1378,6 @@ fechar_aba_ativa_nativa = partial(
     hotkey=pyautogui.hotkey,
     sleep=time.sleep,
 )
-
-_chrome_comandos_runtime = _criar_chrome_comandos_runtime_mente(
-    contexto_getter=lambda: {
-        "ALLOWED_ACTIONS": ALLOWED_ACTIONS,
-        "connected_extensions": _ws_transport_runtime.extensions,
-        "ws_loop": _ws_transport_runtime.obter_loop(),
-        "broadcast_command": broadcast_command,
-        "enviar_chrome_confirmado": _chrome_solicitacoes.enviar_confirmado,
-        "executar_chrome_confirmado": _chrome_solicitacoes.executar_confirmado,
-        "solicitar_aba_ativa": _chrome_solicitacoes.solicitar_aba_ativa,
-        "ultimo_resultado_chrome": lambda: dict(_chrome_solicitacoes.ultimo_resultado_comando),
-        "formatar_url_ou_busca": formatar_url_ou_busca,
-        "is_valid_url": is_valid_url,
-        "atualizar_contexto_por_url": atualizar_contexto_por_url,
-        "atualizar_contexto": atualizar_contexto,
-        "_buscar_primeiro_video_youtube": _buscar_primeiro_video_youtube,
-        "solicitar_tab_reciclagem": solicitar_tab_reciclagem,
-        "modo_jogo_ativo": lambda: bool(_modo_jogo_runtime.ativo),
-    }
-)
-validar_e_enviar_comando = _chrome_comandos_runtime.enviar
-enviar_comando_chrome = _chrome_comandos_runtime.enviar
 
 _remover_prefixo_exec = _remover_prefixo_exec_mente
 
@@ -1184,15 +1399,286 @@ from mente_laylay.percepcao.reconhecedor_voz_pessoal import (
 _modo_jogo_auto_habilitado = os.environ.get("LAYLAY_MODO_JOGO_AUTO", "1").casefold() not in {
     "0", "false", "nao", "não", "off", "desligado",
 }
+_overlay_jogo_runtime = _criar_compatibilidade_overlay_jogo_runtime_mente(
+    habilitado=os.environ.get(
+        "LAYLAY_OVERLAY_JOGO_BORDERLESS", "0"
+    ).casefold() not in {"0", "false", "nao", "não", "off", "desligado"},
+    log=print,
+)
 _modo_jogo_runtime = _criar_modo_jogo_runtime_mente(
     definir_bloqueio_llm=_llm_http_runtime.definir_modo_jogo,
-    descarregar_modelo=lambda: _descarregar_modelo_ollama_mente(MODEL),
+    descarregar_modelo=_descarregar_modelo_local,
+    llm_em_andamento=lambda: _llm_http_runtime.requisicao_local_em_andamento,
+    preparar_overlays=_overlay_jogo_runtime.preparar,
     habilitado=_modo_jogo_auto_habilitado,
     entrada_estavel_s=float(os.environ.get("LAYLAY_MODO_JOGO_ENTRADA_SEGUNDOS", "4")),
     tolerancia_saida_s=float(os.environ.get("LAYLAY_MODO_JOGO_SAIDA_SEGUNDOS", "45")),
     log=print,
 )
 modo_jogo_ativo = lambda: bool(_modo_jogo_runtime.ativo)
+
+
+def _turno_mental_em_andamento() -> bool:
+    plano = _estado_compartilhado_runtime.mental.get("plano_turno_atual") or {}
+    fase = str(plano.get("fase") or "").strip().casefold() if isinstance(plano, dict) else ""
+    # As fases "tratado_*", "executado", falhas e supressões já encerraram o
+    # processamento. Considerá-las ativas para sempre silenciava a presença.
+    return fase in {"planejado", "resposta_planejada"}
+
+
+def _contexto_motor_iniciativa():
+    contexto_sistema = dict(_percepcao_get("contexto_sistema", {}) or {})
+    plano = dict(_estado_compartilhado_runtime.mental.get("plano_turno_atual") or {})
+    atividade = " ".join((
+        str(contexto_sistema.get("assunto") or ""),
+        str(contexto_sistema.get("title") or ""),
+    )).casefold()
+    return {
+        "modo_chat": bool(_conversa_estado_get("modo_chat", False)),
+        "conversa_ativa": bool(_conversa_estado_get("conversa_ativa", False)),
+        "turno_ativo": _turno_mental_em_andamento(),
+        "modo_jogo_ativo": bool(_modo_jogo_runtime.ativo),
+        "modo_foco": any(item in atividade for item in (
+            "programação", "programacao", "estudo", "trabalho focado",
+        )),
+        "ultima_entrada_ts": float(
+            _estado_compartilhado_runtime.mental.get("ultima_entrada_ts") or 0.0
+        ),
+        "is_speaking": bool(_conversa_estado_get("is_speaking", False)),
+        "assunto": str(contexto_sistema.get("assunto") or ""),
+        "titulo_janela": str(contexto_sistema.get("title") or ""),
+        "musica_atual_status": str(
+            _estado_compartilhado_runtime.mental.get("musica_atual_status") or ""
+        ),
+    }
+
+
+_motor_iniciativa_runtime = _criar_motor_iniciativa_runtime_mente(
+    estado_get=lambda: dict(
+        _estado_compartilhado_runtime.mental.get("iniciativa_autonoma") or {}
+    ),
+    estado_set=lambda estado: _estado_compartilhado_runtime.atualizar_campos(
+        "mental", iniciativa_autonoma=dict(estado or {}),
+    ),
+    contexto_getter=_contexto_motor_iniciativa,
+    modo=os.environ.get("LAYLAY_INICIATIVA_MODO", "sombra").strip().casefold(),
+    registrar_decisao_cb=_observabilidade_mente_runtime.registrar_decisao,
+    capacidade_getter=_mapa_habilidades_runtime.consultar,
+    log=print,
+)
+
+
+# A visão nasce mais tarde, depois que captura, pesquisa e fala estão prontas.
+# A referência explícita evita consultar o namespace durante cada avaliação.
+_visao_jogo_runtime = None
+
+
+def _objetivos_iniciativa_atuais():
+    """Expõe objetivos contextuais já confirmados, sem criar outro estado de perfil."""
+    if not bool(_modo_jogo_runtime.ativo):
+        return []
+    runtime_visao = _visao_jogo_runtime
+    if runtime_visao is None:
+        return []
+    try:
+        contexto = dict(_modo_jogo_runtime.contexto_atual() or {})
+        identidade = identificar_jogo(contexto)
+        perfil = dict(runtime_visao.sessoes.perfil(identidade) or {})
+    except Exception:
+        return []
+    tags = {"jogo", str(identidade.get("chave") or "")}
+    for chave in ("classe", "build", "personagem"):
+        if perfil.get(chave):
+            tags.add(str(perfil[chave]))
+    if len(tags) <= 2:
+        return []
+    return [{
+        "nome": "melhorar_build_atual",
+        "tags": sorted(tags),
+        "prioridade": 7,
+        "expira_em": time.time() + 1800.0,
+    }]
+
+
+_coordenador_oportunidades_runtime = _criar_coordenador_oportunidades_runtime_mente(
+    encaminhar=_motor_iniciativa_runtime.registrar,
+    estado_get=lambda: dict(
+        _estado_compartilhado_runtime.mental.get("coordenador_oportunidades") or {}
+    ),
+    estado_set=lambda estado: _estado_compartilhado_runtime.atualizar_campos(
+        "mental", coordenador_oportunidades=dict(estado or {}),
+    ),
+    contexto_getter=_contexto_motor_iniciativa,
+    objetivos_getter=_objetivos_iniciativa_atuais,
+    log=print,
+)
+_registrar_oportunidade_iniciativa = _coordenador_oportunidades_runtime.registrar
+
+
+def _preparar_autonomia_segura_padrao() -> None:
+    """Deixa ações naturais seguras ativas sem apagar bloqueios persistidos."""
+    if os.environ.get("LAYLAY_AUTONOMIA_SEGURA", "1").casefold() in {
+        "0", "false", "nao", "não", "off", "desligado",
+    }:
+        return
+    resultado = _motor_iniciativa_runtime.ativar_perfil_seguro_padrao()
+    ativados = list(resultado.get("ativados") or [])
+    if ativados:
+        salvar_memoria()
+        print(
+            "🧭 [AUTONOMIA] perfil seguro ativo por padrão: "
+            + ",".join(ativados)
+        )
+
+
+def _registrar_feedback_proatividade(tipo, aceito=None, **dados):
+    """Mantém o aprendizado de intervalo e acrescenta qualidade contextual."""
+    resultado = str(dados.get("resultado") or "").strip().casefold()
+    perfil_intervalo = {}
+    if aceito is not None and resultado != "silencio":
+        perfil_intervalo = _porteiro_proatividade_runtime.registrar_feedback(
+            tipo, bool(aceito),
+            comando=str(dados.get("comando") or ""),
+            payload=dict(dados.get("payload") or {}),
+        )
+    perfil_contextual = _coordenador_oportunidades_runtime.registrar_feedback(
+        tipo, aceito,
+        resultado=resultado,
+        comando=str(dados.get("comando") or ""),
+        payload=dict(dados.get("payload") or {}),
+    )
+    if perfil_contextual:
+        resultado_rede = (
+            resultado
+            if resultado in {"aceita", "recusa", "silencio", "correcao"}
+            else "aceita" if aceito is True
+            else "recusa" if aceito is False
+            else ""
+        )
+        if resultado_rede:
+            try:
+                _rede_associativa_runtime.observar_feedback(
+                    categoria=str(tipo or ""),
+                    resultado=resultado_rede,
+                )
+            except Exception as erro_rede:
+                print(
+                    "⚠️ [REDE ASSOCIATIVA] feedback isolado: "
+                    f"{type(erro_rede).__name__}"
+                )
+        salvar_memoria()
+    return {"intervalo": perfil_intervalo, "contexto": perfil_contextual}
+
+
+def _preparar_sugestoes_proativas_jogo() -> None:
+    """Aplica o consentimento atual sem reverter um bloqueio posterior do usuário."""
+    if os.environ.get("LAYLAY_JOGO_PROATIVO", "1").casefold() in {
+        "0", "false", "nao", "não", "off", "desligado",
+    }:
+        return
+    estado = _motor_iniciativa_runtime.snapshot()
+    if "jogo" in dict(estado.get("permissoes") or {}):
+        return
+    _motor_iniciativa_runtime.configurar_dominio(
+        "jogo", "sugestao", confirmacao_explicita=True,
+    )
+    salvar_memoria()
+
+
+def _processar_governanca_iniciativa(pedido):
+    dados = dict(pedido or {})
+    if dados.get("acao") == "desfazer":
+        resultado = _motor_iniciativa_runtime.desfazer_ultima(
+            confirmacao_explicita=True,
+        )
+        if resultado.get("ok"):
+            falar_com_lipsync(
+                "Desfiz minha última ação autônoma e confirmei a restauração.",
+                "calma", 1,
+            )
+        else:
+            motivos = {
+                "nenhuma_acao_autonoma_reversivel": "Não tenho uma ação autônoma recente para desfazer.",
+                "prazo_para_desfazer_expirou": "A janela segura para desfazer essa ação já passou.",
+            }
+            falar_com_lipsync(
+                motivos.get(
+                    str(resultado.get("motivo") or ""),
+                    "Não consegui desfazer essa ação com confirmação segura.",
+                ),
+                "calma", 1,
+            )
+        return True
+    if dados.get("acao") == "status":
+        estado = _motor_iniciativa_runtime.permissoes_atuais()
+        dominios = dict(estado.get("dominios") or {})
+        if not dominios:
+            fala = (
+                "Minha autonomia continua em observação, sem nenhum domínio liberado. "
+                "Você pode permitir sugestões de um domínio específico quando quiser."
+            )
+        else:
+            nomes = {
+                "bloqueado": "bloqueado",
+                "sugestao": "somente sugestões",
+                "acao_reversivel": "ações reversíveis autorizadas",
+            }
+            resumo = ", ".join(
+                f"{dominio}: {nomes.get(nivel, nivel)}"
+                for dominio, nivel in dominios.items()
+            )
+            fala = f"Minhas permissões atuais são: {resumo}."
+        falar_com_lipsync(fala, "calma", 1)
+        return True
+    if dados.get("acao") == "configurar_perfil":
+        resultado = _motor_iniciativa_runtime.configurar_perfil_seguro(
+            str(dados.get("permissao") or ""),
+            confirmacao_explicita=True,
+        )
+        if not resultado.get("ok"):
+            falar_com_lipsync(
+                "Não consegui aplicar o perfil seguro sem enfraquecer as proteções.",
+                "calma", 1,
+            )
+            return True
+        if resultado.get("permissao") == "bloqueado":
+            fala = (
+                "Certo. Desativei a autonomia segura de luz, música e conforto. "
+                "Não vou agir sozinha nesses domínios."
+            )
+        else:
+            fala = (
+                "Autonomia segura ativada. Posso cuidar de luz, música e conforto "
+                "quando a necessidade estiver clara e a confiança passar de noventa por cento. "
+                "Ações arriscadas continuam bloqueadas, e você pode pedir para eu desfazer."
+            )
+        falar_com_lipsync(fala, "calma", 1)
+        salvar_memoria()
+        return True
+    resultado = _motor_iniciativa_runtime.configurar_dominio(
+        str(dados.get("dominio") or ""),
+        str(dados.get("permissao") or ""),
+        confirmacao_explicita=True,
+    )
+    if not resultado.get("ok"):
+        falar_com_lipsync(
+            "Não consegui aplicar essa permissão com segurança. Me diga o domínio e o nível desejado.",
+            "calma", 1,
+        )
+        return True
+    dominio = str(resultado.get("dominio") or "esse domínio")
+    permissao = str(resultado.get("permissao") or "bloqueado")
+    falas = {
+        "bloqueado": f"Certo. A autonomia de {dominio} ficou bloqueada.",
+        "sugestao": f"Certo. Em {dominio}, posso sugerir, mas não agir sozinha.",
+        "acao_reversivel": (
+            f"Registrei sua autorização para ações reversíveis em {dominio}. "
+            "Ações arriscadas continuam bloqueadas."
+        ),
+    }
+    falar_com_lipsync(falas[permissao], "calma", 1)
+    salvar_memoria()
+    return True
 
 _monitor_janelas_runtime = _criar_monitor_janelas_runtime_mente(
     capturar_janela=_capturar_retrato_janela_ativa,
@@ -1219,12 +1705,13 @@ _monitor_janelas_runtime = _criar_monitor_janelas_runtime_mente(
     preparar_sugestao=lambda comando, payload, fala: _preparar_sugestao_aprendida(
         comando, payload, fala
     ),
+    registrar_oportunidade=_registrar_oportunidade_iniciativa,
     atualizar_modo_jogo=_modo_jogo_runtime.observar,
     interacao_iniciada=lambda: float(
         _estado_compartilhado_runtime.mental.get("ultima_entrada_ts") or 0.0
     ) > 0.0,
     clock=time.time,
-    sleep=time.sleep,
+    sleep=_servicos_background_runtime.aguardar,
     log=print,
 )
 
@@ -1233,6 +1720,7 @@ ativar_tela_cheia_robusta = partial(
     gw,
     pyautogui,
     psutil_mod=psutil,
+    registrar_falha=_observabilidade_mente_runtime.relatar_falha,
 )
 
 focar_janela_app = partial(
@@ -1240,6 +1728,7 @@ focar_janela_app = partial(
     gw,
     pyautogui,
     psutil_mod=psutil,
+    registrar_falha=_observabilidade_mente_runtime.relatar_falha,
 )
 
 _janela_app_esta_em_foco = partial(_janela_esta_em_foco_mente, gw)
@@ -1257,6 +1746,7 @@ _normalizar_alvo_ambiente = _normalizar_alvo_ambiente_mente
 resolver_caminho = _resolver_caminho_mente
 criar_pasta = _criar_pasta_mente
 criar_ou_editar_arquivo = _criar_ou_editar_arquivo_mente
+escrever_arquivo_texto_seguro = _escrever_arquivo_texto_seguro_mente
 mover_arquivo = _mover_arquivo_mente
 renomear_arquivo = _renomear_arquivo_mente
 deletar_item = _deletar_item_mente
@@ -1274,7 +1764,7 @@ limpar_para_voz = _limpar_para_voz_mente
 
 
 _orquestrador_fala_runtime = _criar_orquestrador_fala_runtime_mente(
-    namespace_getter=lambda: globals(),
+    servicos_iniciais=globals(),
 )
 _registrar_fala_proativa_emitida = (
     _orquestrador_fala_runtime.registrar_fala_proativa_emitida
@@ -1318,6 +1808,8 @@ _porteiro_proatividade_runtime = _criar_porteiro_proatividade_runtime_mente(
 _voz_runtime = _criar_voz_runtime_mente(
     fallback_fala=FALLBACK_FALA_NEUTRA,
     voice=VOICE,
+    fallback_voice=VOICE_FALLBACK,
+    iniciar_servico_cb=_servicos_background_runtime.iniciar,
     edge_tts_mod=edge_tts,
     sounddevice_mod=sd,
     soundfile_mod=sf,
@@ -1329,6 +1821,9 @@ _voz_runtime = _criar_voz_runtime_mente(
     modular_audio_params_cb=modular_audio_params,
     compor_fala_proativa_cb=_compor_fala_proativa,
     ajustar_estado_fala_cb=_ajustar_estado_voz,
+    nome_usuario_cb=lambda: str(
+        _estado_compartilhado_runtime.mental.get("nome_usuario") or ""
+    ),
     proativa_permitida_cb=lambda: (
         not bool(_conversa_estado_get("modo_chat", False))
         and not bool(_conversa_estado_get("conversa_ativa", False))
@@ -1346,11 +1841,18 @@ _voz_runtime = _criar_voz_runtime_mente(
     # Respostas disparadas pelo mesmo turno entram numa única fala/linha.
     batch_window=0.20,
     batch_max_items=4,
+    tts_timeout_s=float(os.environ.get("LAYLAY_TTS_TIMEOUT", "8.0")),
+    stop_event=_servicos_background_runtime.evento_parada,
 )
 from mente_laylay.cognicao.modalidade_turno import (
     classificar_modalidade_turno as _classificar_modalidade_turno_mente,
 )
-from mente_laylay.memoria_mental.pendencia import pendencia_ativa as _pendencia_ativa_turno_mente
+from mente_laylay.memoria_mental.pendencia import (
+    criar_pendencia as _criar_pendencia_mente,
+    limpar_pendencia as _limpar_pendencia_mente,
+    pendencia_ativa as _pendencia_ativa_turno_mente,
+    registrar_pendencia as _registrar_pendencia_mente,
+)
 from mente_laylay.cognicao.identidade_conversacional import (
     analisar_identidade_turno as _analisar_identidade_turno_mente,
     ajustar_autorreferencia_assistente as _ajustar_autorreferencia_assistente_mente,
@@ -1396,6 +1898,20 @@ _persistencia_memoria_runtime = _criar_persistencia_memoria_runtime_mente(
 carregar_memoria = _persistencia_memoria_runtime.carregar
 salvar_memoria = _persistencia_memoria_runtime.salvar
 _registrar_autocorrecao_virtual = _persistencia_memoria_runtime.registrar_autocorrecao
+
+
+def _salvar_identidade_usuario(nome: str, texto_original: str = "") -> bool:
+    salvo = _salvar_nome_usuario_confirmado_mente(
+        MEMORIA_SQLITE,
+        nome,
+        texto_original=texto_original,
+    )
+    if salvo:
+        _estado_compartilhado_runtime.atualizar_campos(
+            "mental", nome_usuario=str(nome or "").strip(),
+        )
+        salvar_memoria()
+    return bool(salvo)
 
 init_memoria_contexto_diaria = partial(_init_memoria_contexto_diaria_mente, MEMORIA_CONTEXTO_ARQUIVO)
 carregar_estado_briefing = partial(_carregar_estado_briefing_ambiente, BRIEFING_ARQUIVO)
@@ -1462,13 +1978,93 @@ _aprendizado_runtime = _criar_aprendizado_runtime_mente(
 )
 _verificar_musica_autonoma = _busca_musical_runtime.verificar_autonoma
 _buscar_primeiro_video_youtube = _busca_musical_runtime.buscar_primeiro_video
+_chrome_comandos_runtime = _composicao_chrome_comandos_runtime.conectar_executor(
+    allowed_actions=ALLOWED_ACTIONS,
+    formatar_url_ou_busca=formatar_url_ou_busca,
+    is_valid_url=is_valid_url,
+    atualizar_contexto_por_url=atualizar_contexto_por_url,
+    atualizar_contexto=atualizar_contexto,
+    buscar_primeiro_video_youtube=_buscar_primeiro_video_youtube,
+    modo_jogo_ativo=lambda: bool(_modo_jogo_runtime.ativo),
+)
+validar_e_enviar_comando = _chrome_comandos_runtime.enviar
+enviar_comando_chrome = _chrome_comandos_runtime.enviar
 _iniciar_worker_de_falas = _voz_runtime.iniciar_worker
 _normalizar_segmento_fala = _voz_runtime.normalizar_segmento_fala
 _agendar_fala_proativa = _voz_runtime.agendar_fala_proativa
 
 
+def _recomendar_playlist_real_para_presenca(clima: str) -> str:
+    """Escolhe somente entre playlists existentes; nunca inventa nem dá play."""
+    try:
+        nomes = [
+            str(nome).strip() for nome in dict(_playlist_runtime.load() or {}).keys()
+            if str(nome).strip()
+        ]
+    except Exception as erro:
+        print(
+            "⚠️ [PRESENÇA:MÚSICA] playlists reais indisponíveis: "
+            f"{type(erro).__name__}: {erro}"
+        )
+        _observabilidade_mente_runtime.registrar_falha(
+            "presenca_musical", "falha_carregar_playlists", erro=erro,
+        )
+        nomes = []
+    if not nomes:
+        return ""
+    preferencias = {
+        "foco": ("synthwave", "devaneios", "vibes", "alternativo", "brisa"),
+        "intenso": ("rock", "alternativo", "anime", "trap"),
+        "calmo": ("brisa", "vibes", "devaneios", "musica brasileira"),
+        "sombrio": ("alternativo", "synthwave", "rock"),
+    }
+    tokens = preferencias.get(str(clima or "").casefold(), preferencias["foco"])
+    escolhida = next((
+        nome for token in tokens for nome in nomes if token in nome.casefold()
+    ), "")
+    if not escolhida:
+        return ""
+    return (
+        f"Você tá num foco bonito faz um tempo. A sua playlist {escolhida} "
+        "combina com esse ritmo, se quiser manter a cabeça embalada."
+    )
+
+
+_diretor_presenca_runtime = _criar_diretor_presenca_runtime_mente(
+    estado_get=lambda: dict(
+        _estado_compartilhado_runtime.mental.get("presenca_contextual") or {}
+    ),
+    estado_set=lambda estado: _estado_compartilhado_runtime.atualizar_campos(
+        "mental", presenca_contextual=dict(estado or {}),
+    ),
+    contexto_getter=_contexto_motor_iniciativa,
+    registrar_oportunidade=_registrar_oportunidade_iniciativa,
+    emitir_fala=lambda texto, emocao="calma", nivel=1, **dados: _agendar_fala_proativa(
+        "assistencia_clipboard"
+        if dados.get("origem") == "observador_area_transferencia"
+        else "presenca_jogo" if dados.get("dominio") == "jogo" else "diretor_presenca",
+        texto,
+        emocao,
+        nivel,
+        mesclar_turno=False,
+        ao_concluir=dados.get("ao_concluir"),
+        preservar_ate_entrega=bool(
+            dados.get("origem") == "observador_area_transferencia"
+        ),
+    ),
+    registrar_feedback=_registrar_feedback_proatividade,
+    registrar_falha=_observabilidade_mente_runtime.relatar_falha,
+    recomendacao_musical=_recomendar_playlist_real_para_presenca,
+    habilitado=os.environ.get("LAYLAY_PRESENCA", "1").casefold()
+    not in {"0", "false", "nao", "não", "off", "desligado"},
+    intervalo_ciclo_s=float(os.environ.get("LAYLAY_PRESENCA_INTERVALO", "15")),
+    stop_event=_servicos_background_runtime.evento_parada,
+    log=print,
+)
+
+
 _preferencias_sugestoes_runtime = _criar_preferencias_sugestoes_runtime_mente(
-    namespace_getter=lambda: globals(),
+    servicos_iniciais=globals(),
 )
 _preferencia_sugestao_get = _preferencias_sugestoes_runtime.obter
 _registrar_preferencia_sugestao = _preferencias_sugestoes_runtime.registrar
@@ -1491,6 +2087,7 @@ _ritmo_circadiano_runtime = _criar_ritmo_circadiano_runtime_mente(
         or _conversa_estado_get("conversa_ativa", False)
     ),
     preparar_sugestao=_preparar_sugestao_aprendida,
+    registrar_oportunidade=_registrar_oportunidade_iniciativa,
     fuso=os.environ.get("LAYLAY_FUSO_HORARIO", "America/Sao_Paulo"),
     log=print,
 )
@@ -1522,6 +2119,7 @@ _motor_temporal_runtime = _criar_motor_temporal_runtime_mente(
         _conversa_estado_get("modo_chat", False)
         or _conversa_estado_get("conversa_ativa", False)
     ),
+    registrar_oportunidade=_registrar_oportunidade_iniciativa,
     log=print,
 )
 
@@ -1546,31 +2144,85 @@ _motor_aprendizado_runtime = _criar_motor_aprendizado_runtime_mente(
 _finalizar_encerramento_assunto_apos_fala = (
     _orquestrador_fala_runtime.finalizar_encerramento_assunto
 )
-falar_com_lipsync = _orquestrador_fala_runtime.falar
 
-_iot_runtime = _criar_runtime_iot_mente(
+
+def _aprender_pesquisa_semantica_arquivos(consulta: str, resultados: list[dict]) -> bool:
+    """Registra apenas assuntos agregados após buscas úteis, nunca caminhos ou trechos."""
+    normalizada = _normalizar_texto(str(consulta or ""))
+    bloqueados = {
+        "arquivo", "arquivos", "documento", "documentos", "encontra", "procura",
+        "busca", "pesquisa", "sobre", "meu", "minha", "meus", "minhas",
+    }
+    termos = [
+        termo for termo in re.findall(r"[a-z0-9_]{3,}", normalizada)
+        if termo not in bloqueados and not termo.isdigit()
+    ][:3]
+    if not termos or not resultados:
+        return False
+    assunto = " ".join(dict.fromkeys(termos))[:80]
+    hipotese = _motor_aprendizado_runtime.registrar_evidencia(
+        chave=f"arquivos:assunto_busca:{'-'.join(assunto.split())}",
+        tipo="assunto_recorrente_pesquisa_arquivos",
+        escopo="arquivos",
+        valor={"descricao_humana": f"costuma procurar arquivos sobre {assunto}"},
+        sinal=0.3,
+        origem="pesquisa_semantica_arquivos",
+        evidencia="busca explícita com resultado local confirmado",
+        confirmado_usuario=False,
+    )
+    return bool(hipotese)
+
+
+_pesquisa_semantica_arquivos_runtime = _criar_pesquisa_semantica_arquivos_runtime(
+    projeto_raiz=os.path.abspath(os.path.dirname(__file__)),
+    log=print,
+)
+_registro_arquivos_leitura_runtime = _registrar_arquivos_leitura(
+    _pesquisa_semantica_arquivos_runtime
+)
+_arquivos_mutacao_runtime = _criar_arquivos_mutacao_runtime()
+_registro_arquivos_mutacao_runtime = _registrar_arquivos_mutacao(
+    _arquivos_mutacao_runtime
+)
+_orquestrador_fala_runtime.conectar_servicos(globals())
+falar_com_lipsync = _orquestrador_fala_runtime.falar
+_falar_resultado_operacional = _orquestrador_fala_runtime.falar_resultado_operacional
+
+_composicao_iot_runtime = _criar_composicao_iot_laylay_runtime(
     memoria_sqlite=MEMORIA_SQLITE,
     falar=lambda texto, emocao="calma", nivel=1: falar_com_lipsync(texto, emocao, nivel),
     estado_mental_getter=lambda: _estado_compartilhado_runtime.mental,
     definir_emocao=_definir_emocao_conversacional,
     emitir_fala=False,
-    resolver_cor=lambda nome: _resolver_cor_por_ia_mente(
-        nome,
-        enviar_mensagem=lambda *args, **kwargs: enviar_mensagem(*args, **kwargs),
-        log=print,
-    ),
+    enviar_mensagem=lambda *args, **kwargs: enviar_mensagem(*args, **kwargs),
     log=print,
 )
-_detectar_intencao_iot = _iot_runtime.detectar
-_executar_intencao_iot = _iot_runtime.executar
+_iot_runtime = _composicao_iot_runtime.runtime
+_registro_iot_runtime = _registrar_iot(_iot_runtime)
+_preferencias_sugestoes_runtime.conectar_iot(_registro_iot_runtime)
+_adaptadores_aplicacao_runtime.conectar_iot(_registro_iot_runtime)
+_mapa_recursos_runtime.registrar(
+    "dispositivos_iot",
+    arquivo="memória SQLite (catálogo IoT sanitizado)",
+    descricao=(
+        "dispositivos inteligentes reais configurados, seus ambientes e "
+        "as ações que a Laylay pode executar"
+    ),
+    termos=(
+        "dispositivo", "dispositivos", "aparelho", "aparelhos",
+        "casa inteligente", "iot", "o que tem no quarto",
+    ),
+    leitor=_registro_iot_runtime.retrato_para_mente,
+    escrita_via="comandos IoT",
+    intent_consulta="IOT_LIST",
+)
 _falar_status_saude = partial(
     _ambiente_sistema_runtime.falar_status_saude,
     psutil_mod=psutil,
-    falar=lambda texto, emocao="calma", nivel=1: _agendar_fala_proativa(
-        "saude",
+    falar=lambda texto, emocao="calma", nivel=1: _central_notificacoes_ingerir_sistema(
         texto,
-        emocao,
-        nivel,
+        aplicativo="monitor de saúde",
+        prioridade="alta",
     ),
     print_fn=print,
 )
@@ -1589,12 +2241,23 @@ _monitor_saude_daemon = partial(
     cpu_sustentado_segundos=SAUDE_CPU_SUSTENTADO_SEGUNDOS,
     print_fn=print,
     sleep_fn=time.sleep,
+    deve_parar=_servicos_background_runtime.deve_parar,
+    aguardar_fn=_servicos_background_runtime.aguardar,
 )
 
 
 _entregar_fala_inicial_confirmada = (
     _orquestrador_fala_runtime.entregar_fala_inicial_confirmada
 )
+
+
+def _entregar_briefing_inicial(tipo, texto, emocao="calma", nivel=1):
+    return _entregar_fala_inicial_confirmada(
+        tipo, texto, emocao, nivel,
+        adiar_se_interacao=True,
+        ao_entrega_adiada=salvar_estado_briefing,
+        detalhar=True,
+    )
 
 
 briefing_matinal = partial(
@@ -1610,7 +2273,7 @@ briefing_matinal = partial(
         limpar_resposta_cb=limpar_resposta,
         remover_prefixo_exec_cb=_remover_prefixo_exec,
     ),
-    agendar_fala=_entregar_fala_inicial_confirmada,
+    agendar_fala=_entregar_briefing_inicial,
     print_fn=print,
 )
 _estado_aprendizado_atual = _aprendizado_runtime.snapshot
@@ -1643,6 +2306,7 @@ _feedback_pendente_runtime = _criar_feedback_pendente_runtime_mente(
         "rotina_registrar_feedback": _rotina_registrar_feedback,
         "gmail_buscar_nao_lidos": _gmail_buscar_nao_lidos,
         "gmail_falar_resumo_estiloso": _gmail_falar_resumo_estiloso,
+        "registrar_feedback_proatividade": _registrar_feedback_proatividade,
         "processar_comandos_imediatos": processar_comandos_imediatos,
     },
     log=print,
@@ -1661,33 +2325,348 @@ monitor_rotina_daemon = partial(
     analisar_musica_cb=None,
     intervalo_s=60,
     sleep_fn=time.sleep,
+    deve_parar=_servicos_background_runtime.deve_parar,
+    aguardar_fn=_servicos_background_runtime.aguardar,
 )
 
 # ====================== FUNÇÕES DE PROCESSAMENTO DE LINGUAGEM ======================
-_cliente_llm_runtime = _criar_cliente_llm_runtime_mente(
-    namespace_getter=lambda: {
-        "llm_endpoint_eh_local": _llm_endpoint_eh_local,
-        "memoria_inteligente": memoria_inteligente,
-        "model": MODEL,
-        "normalizar_texto": _normalizar_texto_com_apelidos,
-        "texto_tem_comando_explicito": _texto_tem_comando_explicito,
-        "extrair_json": _extrair_json_resposta_mente,
-        "mapear_pastas": mapear_pastas_principais,
-        "contexto_logs": _estado_compartilhado_runtime.obter_copia(
-            "percepcao", "logs_navegador", []
-        ),
-        "contexto_navegador_relevante": _contexto_navegador_relevante,
-        "contexto_sistema": lambda: _percepcao_get("contexto_sistema", {}),
-        "obter_contexto_paginas": get_dicionario_contexto,
-        "resumo_mente_integrada": _resumo_mente_integrada_para_prompt,
-        "post_chat": _post_chat_llm,
-        "api_key": API_KEY,
-        "http_referer": OPENROUTER_HTTP_REFERER,
-        "app_title": OPENROUTER_APP_TITLE,
-    },
-    log=print,
+_cliente_llm_runtime = _composicao_inteligencia_externa_runtime.conectar_cliente(
+    memoria_inteligente=memoria_inteligente,
+    normalizar_texto=lambda texto: _normalizar_texto_com_apelidos(texto),
+    mapear_pastas=mapear_pastas_principais,
+    contexto_logs_getter=lambda: _estado_compartilhado_runtime.obter_copia(
+        "percepcao", "logs_navegador", []
+    ),
+    contexto_navegador_relevante=_contexto_navegador_relevante,
+    contexto_sistema_getter=lambda: _percepcao_get("contexto_sistema", {}),
+    obter_contexto_paginas=get_dicionario_contexto,
+    resumo_mente_integrada=_resumo_mente_integrada_para_prompt,
+    registrar_metrica=_observabilidade_mente_runtime.registrar_metrica,
+    interacao_ativa=lambda: bool(
+        _conversa_estado_get("modo_chat", False)
+        or _conversa_estado_get("conversa_ativa", False)
+        or _estado_compartilhado_runtime.mental.get("interacao_em_andamento")
+    ),
 )
 enviar_mensagem = _cliente_llm_runtime.enviar
+
+
+def _aprender_conteudo_area_transferencia(conteudo: str, pedido: str) -> bool:
+    """Persiste apenas conteúdo que o usuário mandou explicitamente aprender."""
+    fato = re.sub(r"\s+", " ", str(conteudo or "")).strip()[:4000]
+    if not fato:
+        return False
+    salvo = MEMORIA_SQLITE.salvar_aprendizado_semantico(
+        tipo="fato_usuario",
+        gatilho=fato[:240],
+        valor=fato,
+        regra=f"O usuário ensinou explicitamente pela área de transferência: {fato}",
+        texto_original=str(pedido or "")[:500],
+        confianca=0.98,
+        origem="area_transferencia_explicita",
+        evidencia="pedido explícito do usuário para aprender conteúdo copiado",
+        status="ativo",
+        confirmado_usuario=True,
+    )
+    return bool(salvo)
+
+
+def _observar_conteudo_area_transferencia(classificacao: dict) -> bool:
+    """Entrega somente evidências classificadas ao motor gradual da mente."""
+    chave = str(classificacao.get("chave") or "").strip()
+    descricao = str(classificacao.get("descricao") or "").strip()[:500]
+    if not chave or not descricao:
+        return False
+    hipotese = _motor_aprendizado_runtime.registrar_evidencia(
+        chave=chave,
+        tipo=str(classificacao.get("tipo") or "padrao_clipboard"),
+        escopo=str(classificacao.get("escopo") or "area_transferencia"),
+        valor={
+            "descricao_humana": descricao,
+            "origem": "area_transferencia",
+        },
+        sinal=float(classificacao.get("sinal") or 0.0),
+        origem="observacao_area_transferencia",
+        evidencia=str(classificacao.get("motivo") or "conteúdo classificado localmente"),
+        confirmado_usuario=False,
+    )
+    return bool(hipotese)
+
+
+def _observar_item_caixa_entrada(item: dict) -> None:
+    """Aprende padrões agregados das notas, nunca o texto integral como fato."""
+    for assunto in list(item.get("assuntos") or [])[:3]:
+        assunto_limpo = str(assunto or "").strip().casefold()[:80]
+        if not assunto_limpo:
+            continue
+        _motor_aprendizado_runtime.registrar_evidencia(
+            chave=f"caixa_entrada:assunto:{assunto_limpo}",
+            tipo="assunto_recorrente_caixa_entrada",
+            escopo="caixa_entrada",
+            valor={"descricao_humana": f"costuma anotar coisas sobre {assunto_limpo}"},
+            sinal=0.4,
+            origem="caixa_entrada_pessoal",
+            evidencia=f"nova {str(item.get('tipo') or 'nota')} classificada nesse assunto",
+            confirmado_usuario=False,
+        )
+
+
+_investigador_erro_clipboard_runtime = InvestigadorErroRuntime(
+    enviar_mensagem=enviar_mensagem,
+    limpar_resposta=_limpar_texto_fala_ia,
+    log=print,
+)
+_pendencia_acao_runtime = _criar_pendencia_acao_runtime(
+    estado_getter=lambda: _estado_compartilhado_runtime.mental,
+    estado_atualizar=lambda atualizador: _estado_compartilhado_runtime.atualizar(
+        "mental", atualizador,
+    ),
+    log=print,
+)
+
+
+_memoria_pessoas_runtime = _criar_memoria_pessoas_runtime(
+    caminho=os.path.join(PASTA_MEMORIA, "pessoas_relacoes.json"),
+    falar=lambda texto, emocao="calma", nivel=1: falar_com_lipsync(texto, emocao, nivel),
+    pendencia_runtime=_pendencia_acao_runtime,
+    classificar_confirmacao_contextual=(
+        _feedback_pendente_runtime.classificar_confirmacao_contextual
+    ),
+    registrar_resultado=_registrar_resultado_execucao,
+    registrar_mente_curta=_registrar_mente_curta,
+    registrar_aprendizado=_motor_aprendizado_runtime.registrar_evidencia,
+    esquecer_aprendizado=_motor_aprendizado_runtime.esquecer_por_prefixo,
+    estado_getter=lambda: _estado_compartilhado_runtime.mental,
+    estado_atualizar=lambda atualizador: _estado_compartilhado_runtime.atualizar(
+        "mental", atualizador,
+    ),
+    log=print,
+)
+_registro_memoria_pessoas_runtime = _registrar_memoria_pessoas(
+    _memoria_pessoas_runtime
+)
+_adaptadores_aplicacao_runtime.conectar_memoria_pessoas(
+    _registro_memoria_pessoas_runtime
+)
+_saude_mente_runtime.registrar(
+    "memoria_pessoas",
+    "saudavel",
+    detalhes=(
+        "memória local estruturada conectada a contexto, aprendizado, continuidade, "
+        "segurança, diagnóstico e mapa de habilidades"
+    ),
+)
+
+
+_area_transferencia_runtime = _criar_area_transferencia_runtime(
+    falar=lambda texto, emocao="calma", nivel=1: falar_com_lipsync(texto, emocao, nivel),
+    enviar_mensagem=enviar_mensagem,
+    executar_intencao=lambda resultado, texto: executar_intencao(resultado, texto),
+    registrar_operacao=_registrar_mente_curta,
+    registrar_resultado=_registrar_resultado_execucao,
+    aprender_conteudo=_aprender_conteudo_area_transferencia,
+    observar_conteudo=_observar_conteudo_area_transferencia,
+    investigar_erro=_investigador_erro_clipboard_runtime.investigar,
+    log=print,
+)
+
+
+def _registrar_oferta_area_transferencia_entregue(oferta: dict) -> None:
+    """Publica a pergunta do clipboard na pendência operacional canônica."""
+    acao = str((oferta or {}).get("acao_sugerida") or "").strip()
+    if not acao:
+        return
+    cancelada = bool((oferta or {}).get("cancelada"))
+    fala = str((oferta or {}).get("fala") or "").strip()
+    if cancelada:
+        atual = _pendencia_acao_runtime.obter()
+        if (
+            atual
+            and atual.get("origem") == "observador_area_transferencia"
+            and atual.get("acao") == acao
+        ):
+            _pendencia_acao_runtime.concluir(str(atual.get("id") or ""), "fala_nao_entregue")
+        return
+    if not fala:
+        return
+    # Confirmações destrutivas e operacionais já faladas têm precedência.
+    pendencia_geral = _pendencia_ativa_turno_mente(_estado_compartilhado_runtime.mental)
+    if str((pendencia_geral or {}).get("origem") or "") in {
+        "lixeira_laylay", "caixa_entrada_pessoal", "confirmacao_operacional",
+    }:
+        print(
+            "📋 [CLIPBOARD:CONTEXTO] oferta bloqueada por confirmação protegida "
+            f"| origem={pendencia_geral.get('origem')}"
+        )
+        return
+    pendencia = _pendencia_acao_runtime.registrar(
+        origem="observador_area_transferencia",
+        acao=acao,
+        pergunta=fala,
+        referencia=str((oferta or {}).get("assinatura") or ""),
+        metadados={
+            "tipo": str((oferta or {}).get("tipo") or ""),
+            "assinatura_clipboard": str((oferta or {}).get("assinatura") or ""),
+        },
+        ttl_s=300.0,
+    )
+    if not pendencia:
+        return
+    _estado_compartilhado_runtime.atualizar_campos(
+        "mental", ultima_resposta=fala[:180], ultima_fala_emitida_ts=time.time(),
+    )
+    print(
+        "📋 [CLIPBOARD:CONTEXTO] pendência canônica ativa "
+        f"| id={pendencia.get('id')} ação={acao}"
+    )
+    mensagens = list(_memoria_conversa_get("messages", []) or [])
+    ultima = mensagens[-1] if mensagens else {}
+    if not (
+        isinstance(ultima, dict)
+        and str(ultima.get("role") or "") == "assistant"
+        and str(ultima.get("content") or "").strip() == fala
+    ):
+        mensagens.append({"role": "assistant", "content": fala})
+        _estado_compartilhado_runtime.atualizar_campos(
+            "memoria_conversa", messages=mensagens,
+        )
+
+
+def _processar_oferta_area_transferencia_pendente(texto: str) -> bool:
+    """Resolve a oferta canônica antes da LLM e executa no máximo uma vez."""
+    atual_pendente = _pendencia_acao_runtime.obter()
+    if str((atual_pendente or {}).get("origem") or "") != "observador_area_transferencia":
+        return False
+    acao_pendente = str((atual_pendente or {}).get("acao") or "")
+    if _oferta_clipboard_deve_ceder(
+        texto,
+        acao_pendente,
+        texto_tem_comando_explicito=_texto_tem_comando_explicito,
+    ):
+        pendencia_id = str((atual_pendente or {}).get("id") or "")
+        _pendencia_acao_runtime.concluir(
+            pendencia_id, "substituida_por_novo_comando",
+        )
+        print(
+            "📋 [CLIPBOARD:CONTEXTO] oferta opcional encerrada; "
+            "novo comando manteve a prioridade"
+        )
+        return False
+    resolucao = _pendencia_acao_runtime.resolver(
+        texto,
+        classificar_dominio=_classificar_resposta_oferta_clipboard,
+        classificar_contextual=_feedback_pendente_runtime.classificar_confirmacao_contextual,
+    )
+    if not resolucao.get("tratado"):
+        return False
+    status = str(resolucao.get("status") or "")
+    pendencia = dict(resolucao.get("pendencia") or {})
+    pendencia_id = str(pendencia.get("id") or "")
+    if status in {"em_processamento", "concorrente"}:
+        print(f"📋 [CLIPBOARD:CONTEXTO] ação já em processamento | id={pendencia_id}")
+        return True
+    acao = str(pendencia.get("acao") or "")
+    print(
+        "📋 [CLIPBOARD:CONTEXTO] resposta vinculada "
+        f"| id={pendencia_id} ação={acao} | resposta={status}"
+    )
+    if status == "recusar":
+        _pendencia_acao_runtime.concluir(pendencia_id, "recusada")
+        falar_com_lipsync("Tudo bem, deixo quieto.", "calma", 1)
+        return True
+
+    esperada = str((pendencia.get("metadados") or {}).get("assinatura_clipboard") or "")
+    atual = dict(_area_transferencia_runtime.snapshot_passivo() or {})
+    if esperada and str(atual.get("assinatura") or "") != esperada:
+        _pendencia_acao_runtime.concluir(pendencia_id, "conteudo_alterado")
+        falar_com_lipsync(
+            "Você copiou outra coisa depois da minha pergunta. Não vou investigar o conteúdo novo sem te avisar.",
+            "calma", 1,
+        )
+        return True
+
+    pedidos = {
+        "investigar_erro": "pesquisa o erro que eu copiei",
+        "abrir_link": "abre o link que eu copiei",
+        "explicar_codigo": "explica o que eu copiei",
+        "resumir_texto": "resume o que eu copiei",
+    }
+    pedido = pedidos.get(acao)
+    if pedido:
+        executou = bool(_area_transferencia_runtime.processar(pedido))
+    elif acao == "guardar_ideia":
+        processar_caixa = getattr(_caixa_entrada_pessoal_runtime, "processar", None)
+        executou = bool(processar_caixa("anota a ideia que eu copiei")) if callable(processar_caixa) else False
+    else:
+        executou = False
+    _pendencia_acao_runtime.concluir(
+        pendencia_id, "concluida" if executou else "falha_execucao",
+    )
+    if not executou:
+        falar_com_lipsync("Eu entendi que você quis continuar, mas essa ação não ficou disponível agora.", "calma", 1)
+    return True
+
+
+def _encaminhar_oferta_area_transferencia(evento: dict) -> dict:
+    """Entrega assistência solicitada implicitamente pela ação de copiar."""
+    dados = dict(evento or {})
+    agendada = bool(_agendar_fala_proativa(
+        "assistencia_clipboard",
+        str(dados.get("fala") or ""),
+        str(dados.get("emocao") or "calma"),
+        int(dados.get("nivel") or 1),
+        ao_iniciar=dados.get("ao_iniciar"),
+        ao_concluir=dados.get("ao_concluir"),
+        preservar_ate_entrega=True,
+        mesclar_turno=False,
+    ))
+    return {
+        "status": "emitida" if agendada else "nao_emitida",
+        "motivo": "fila_assistencia_clipboard" if agendada else "fila_recusou",
+        "categoria": str(dados.get("categoria") or "curiosidade"),
+        "dominio": str(dados.get("dominio") or "rotina"),
+        "ts": time.time(),
+    }
+
+
+_observador_area_transferencia_runtime = _criar_observador_area_transferencia_runtime(
+    snapshot_getter=_area_transferencia_runtime.snapshot_passivo,
+    considerar_presenca=_encaminhar_oferta_area_transferencia,
+    contexto_getter=_contexto_motor_iniciativa,
+    oferta_entregue=_registrar_oferta_area_transferencia_entregue,
+    modo=os.environ.get("LAYLAY_CLIPBOARD_OBSERVADOR_MODO", "sugestao"),
+    intervalo_s=float(os.environ.get("LAYLAY_CLIPBOARD_OBSERVADOR_INTERVALO", "1")),
+    estabilidade_s=float(os.environ.get("LAYLAY_CLIPBOARD_OBSERVADOR_ESTABILIDADE", "3")),
+    stop_event=_servicos_background_runtime.evento_parada,
+    log=print,
+)
+_observador_area_transferencia_runtime.preparar_baseline()
+_saude_mente_runtime.registrar(
+    "observador_area_transferencia",
+    "saudavel",
+    detalhes=(
+        "percepção local sanitizada conectada ao modo companhia; "
+        f"modo={_observador_area_transferencia_runtime.modo}"
+    ),
+)
+_caixa_entrada_pessoal_runtime = _criar_caixa_entrada_pessoal_runtime(
+    caminho=os.path.join(PASTA_MEMORIA, "caixa_entrada_pessoal.json"),
+    falar=lambda texto, emocao="calma", nivel=1: falar_com_lipsync(texto, emocao, nivel),
+    registrar_resultado=_registrar_resultado_execucao,
+    executar_intencao=lambda resultado, texto: executar_intencao(resultado, texto),
+    contexto_getter=lambda: {
+        "messages": _memoria_conversa_get("messages", []),
+    },
+    clipboard_getter=_area_transferencia_runtime.obter_texto_seguro,
+    observar_item=_observar_item_caixa_entrada,
+    enviar_mensagem=enviar_mensagem,
+    log=print,
+)
+_confirmacao_llm_runtime = _composicao_inteligencia_externa_runtime.confirmacao
+interpretar_confirmacao_llm = _confirmacao_llm_runtime.interpretar
+_merge_intent_llm = _confirmacao_llm_runtime.mesclar
+_selecao_abas_runtime = _composicao_inteligencia_externa_runtime.selecao_abas
+selecionar_abas_para_fechar_llm = _selecao_abas_runtime.selecionar
 _interpretador_semantico_runtime = _criar_interpretador_semantico_runtime_mente(
     contexto_getter=lambda: {
         "mente": _estado_compartilhado_runtime.mental,
@@ -1701,18 +2680,6 @@ resumir_pagina_no_dicionario = partial(
     enviar_mensagem=enviar_mensagem,
 )
 
-
-_confirmacao_llm_runtime = _criar_confirmacao_llm_runtime_mente(
-    namespace_getter=lambda: {
-        "post_chat": _post_chat_llm,
-        "api_key": API_KEY,
-        "model": MODEL,
-        "http_referer": OPENROUTER_HTTP_REFERER,
-        "app_title": OPENROUTER_APP_TITLE,
-    }
-)
-interpretar_confirmacao_llm = _confirmacao_llm_runtime.interpretar
-_merge_intent_llm = _confirmacao_llm_runtime.mesclar
 
 solicitar_lista_abas = _chrome_solicitacoes.solicitar_lista_abas
 solicitar_tab_reciclagem = _chrome_solicitacoes.solicitar_tab_reciclagem
@@ -1740,17 +2707,6 @@ resumir_pagina_ou_video = _resumo_conteudo_runtime.resumir
 
 solicitar_aba_ativa = _chrome_solicitacoes.solicitar_aba_ativa
 
-_selecao_abas_runtime = _criar_selecao_abas_runtime_mente(
-    namespace_getter=lambda: {
-        "post_chat": _post_chat_llm,
-        "api_key": API_KEY,
-        "model": MODEL,
-        "http_referer": OPENROUTER_HTTP_REFERER,
-        "app_title": OPENROUTER_APP_TITLE,
-    }
-)
-selecionar_abas_para_fechar_llm = _selecao_abas_runtime.selecionar
-
 _porteiro_runtime = _criar_porteiro_chrome_runtime_mente(
     abas_sugeridas=_abas_sugeridas_fechar,
     obter_ram_percent=lambda: psutil.virtual_memory().percent,
@@ -1765,6 +2721,7 @@ _porteiro_runtime = _criar_porteiro_chrome_runtime_mente(
     idle_minutos=ABA_IDLE_MINUTOS,
     intervalo_minutos=PORTEIRO_INTERVALO_MIN,
     log=print,
+    stop_event=_servicos_background_runtime.evento_parada,
 )
 
 _porteiro_daemon = _porteiro_runtime.daemon
@@ -1798,6 +2755,7 @@ _agenda_runtime = _criar_agenda_runtime_mente(
     executar_exec_cb=lambda cmd, arg: _executar_exec(cmd, arg),
     executar_intencao_cb=lambda resultado, texto: executar_intencao(resultado, texto),
     log=print,
+    stop_event=_servicos_background_runtime.evento_parada,
 )
 
 
@@ -1806,9 +2764,50 @@ _agendamentos_save = _agenda_runtime.save
 _agendamentos_transacionar = _agenda_runtime.transacionar
 _agenda_daemon = _agenda_runtime.daemon
 _fala_agendamentos_estilosa = _agenda_runtime.fala_estilosa
+_mapa_recursos_runtime.registrar(
+    "agenda",
+    arquivo="memoria/agendamentos.json",
+    descricao="lembretes e ações agendadas reais, incluindo recorrência e horário",
+    termos=(
+        "agenda", "agendamento", "agendamentos", "lembrete", "lembretes",
+        "compromissos", "o que tenho marcado", "arquivo da agenda",
+    ),
+    leitor=_agenda_runtime.retrato_para_mente,
+    escrita_via="comandos de agenda",
+    intent_consulta="LISTAR_AGENDAMENTOS",
+)
+_mapa_recursos_runtime.registrar(
+    "caixa_entrada_pessoal",
+    arquivo="memoria/caixa_entrada_pessoal.json",
+    descricao="ideias, notas, tarefas, links e pensamentos que foram realmente guardados",
+    termos=(
+        "caixa de entrada", "minhas ideias", "ideias salvas", "ideias guardadas",
+        "ideias anotadas", "minhas notas", "notas salvas", "notas guardadas",
+        "o que guardei", "o que anotei",
+    ),
+    leitor=_caixa_entrada_pessoal_runtime.retrato_para_mente,
+    escrita_via="comandos da caixa de entrada pessoal",
+    intent_consulta="INBOX_LIST",
+    executor_consulta=_caixa_entrada_pessoal_runtime.reexecutar,
+)
+_mapa_recursos_runtime.registrar(
+    "memoria_pessoas",
+    arquivo="memoria/pessoas_relacoes.json",
+    descricao="pessoas, relações e fatos pessoais explicitamente confirmados pelo usuário",
+    termos=(
+        "pessoas que eu te falei", "pessoas que voce lembra", "quem eu te apresentei",
+        "memoria de pessoas", "relações pessoais", "relacoes pessoais",
+    ),
+    leitor=_registro_memoria_pessoas_runtime.retrato_para_mente,
+    escrita_via="memória de pessoas e relações",
+    intent_consulta="PEOPLE_QUERY",
+    parametro_detalhe="nome",
+    executor_consulta=_registro_memoria_pessoas_runtime.reexecutar,
+)
+_resolver_consulta_recurso_local = _mapa_recursos_runtime.resolver_consulta
+_executar_consulta_recurso_local = _mapa_recursos_runtime.executar_consulta
 
 _playlists_load = _playlist_runtime.load
-LIST_PLAYLIST_CONTENT = _playlist_runtime.list_content
 
 
 _fala_playlist_conteudo_estilosa = _fala_playlist_conteudo_estilosa_mente
@@ -1852,15 +2851,12 @@ detectar_mover_playlist_texto = _detectar_mover_playlist_texto_mente
 
 extrair_nome_playlist = _playlist_runtime.extrair_nome
 
-_formatar_playlists_para_prompt = _playlist_runtime.formatar_para_prompt
 
 
 _pedido_lista_geral_playlist = _playlist_runtime.pedido_lista_geral
 
 
-_listar_playlists_salvas = _playlist_runtime.listar_salvas
 _sincronizar_playlists_da_laylay = _playlist_laylay_runtime.sincronizar
-_listar_playlists_da_laylay = _playlist_laylay_runtime.listar
 _copiar_faixa_da_playlist_laylay = _playlist_laylay_runtime.copiar_faixa
 
 
@@ -1871,7 +2867,6 @@ add_to_playlist_url = _playlist_runtime.add_url
 ADD_TO_PLAYLIST = _playlist_runtime.add_and_verify
 _playlist_primeira_url = _playlist_runtime.primeira_url
 _playlist_item_at = _playlist_runtime.item_at
-playlist_len = _playlist_runtime.len
 _playlist_shuffle_start = _playlist_runtime.shuffle_start
 delete_playlist = _playlist_runtime.delete
 _playlist_avancar_proxima = _playlist_runtime.avancar_proxima
@@ -1909,7 +2904,6 @@ _sugestoes_sistema_runtime = _criar_sugestoes_sistema_runtime_mente(
         "log": print,
         "executar_intencao": executar_intencao,
         "sugestao_bloqueada_ate": sugestao_bloqueada_ate,
-        "resposta_conversa_local": _resposta_conversa_local,
         "executar_sugestao_temporal": _executar_sugestao_temporal,
         "preferencia_sugestao_get": _preferencia_sugestao_get,
         "interpretar_contraproposta": _interpretar_contraproposta_sugestao,
@@ -1917,7 +2911,8 @@ _sugestoes_sistema_runtime = _criar_sugestoes_sistema_runtime_mente(
         "confirmar_hipotese_aprendizado": _motor_aprendizado_runtime.confirmar_hipotese,
         "registrar_excecao_preferencia": _motor_aprendizado_runtime.registrar_excecao_preferencia,
         "resolver_conflito_preferencia": _motor_aprendizado_runtime.resolver_conflito_preferencia,
-        "registrar_feedback_proatividade": _porteiro_proatividade_runtime.registrar_feedback,
+        "registrar_feedback_proatividade": _registrar_feedback_proatividade,
+        "registrar_oportunidade": _registrar_oportunidade_iniciativa,
     }
 )
 _executar_combo_modo_code = _sugestoes_sistema_runtime.executar_modo_code
@@ -1930,8 +2925,9 @@ _registrar_sugestao_indireta = _sugestoes_sistema_runtime.registrar_indireta
 limpar_resposta = _limpar_resposta_mente
 
 _contexto_imediato_runtime = _criar_contexto_imediato_runtime_mente(
-    namespace_getter=lambda: globals(),
+    servicos_iniciais=globals(),
     estado_runtime_getter=lambda: _estado_compartilhado_runtime,
+    iot=_registro_iot_runtime,
 )
 _extrair_app_explicito_em_comando_janela = _contexto_imediato_runtime.extrair_app_explicito
 _resolver_comando_janela_contextual_forcado = _contexto_imediato_runtime.resolver_janela
@@ -2020,38 +3016,259 @@ _memoria_visual_runtime = _criar_memoria_visual_runtime_mente(
 )
 _executar_captura_tela_intent = _memoria_visual_runtime.executar
 
+_composicao_visao_jogo_runtime = _criar_composicao_visao_jogo_runtime(
+    db_path=MEMORIA_SQLITE.db_path,
+    registrar_falha=_observabilidade_mente_runtime.relatar_falha,
+    log=print,
+)
+_memoria_jogos_runtime = _composicao_visao_jogo_runtime.memoria
+_pesquisa_jogos_runtime = _composicao_visao_jogo_runtime.pesquisa
 
-_contexto_intencao_runtime = _criar_contexto_intencao_runtime_mente(
-    namespace_getter=lambda: globals(),
-    estado_getter=_estado_contexto_intencao,
-    monitor_saude=_saude_mente_runtime,
-    dependencias_tardias=(
-        "abrir_programa",
-        "_gmail_falar_resumo_estiloso",
-        "_gmail_buscar_nao_lidos",
-        "_gmail_silenciar_remetente",
-        "_executar_controle_midia_nativo",
+_coordenador_visao_jogo_runtime = _criar_coordenador_visao_jogo_runtime(
+    memoria_jogos=_memoria_jogos_runtime,
+    observador_inventario_getter=lambda: (
+        _composicao_visao_jogo_runtime.observador_inventario
     ),
+    diretor_presenca_getter=lambda: _diretor_presenca_runtime,
+    recomendar_playlist=_recomendar_playlist_real_para_presenca,
+    registrar_oportunidade=_registrar_oportunidade_iniciativa,
+    decisao_permite_emissao=_decisao_permite_emissao_iniciativa,
+    agendar_fala=_agendar_fala_proativa,
+    registrar_mente_curta=_registrar_mente_curta,
+    estado_mental_getter=lambda: _estado_compartilhado_runtime.mental,
+    estado_mental_substituir=lambda estado: (
+        _estado_compartilhado_runtime.substituir("mental", estado)
+    ),
+    criar_pendencia=_criar_pendencia_mente,
+    registrar_pendencia=_registrar_pendencia_mente,
+    pendencia_ativa=_pendencia_ativa_turno_mente,
+    limpar_pendencia=_limpar_pendencia_mente,
+    salvar_memoria=salvar_memoria,
+)
+_processar_sugestao_visual_proativa = (
+    _coordenador_visao_jogo_runtime.processar_sugestao_proativa
+)
+_ao_mapear_inventario_jogo = _coordenador_visao_jogo_runtime.ao_mapear_inventario
+_registrar_analise_visual_jogo = _coordenador_visao_jogo_runtime.registrar_analise
+
+
+def _registrar_progresso_visao_cooperativa(evento: dict) -> bool:
+    """Adapta o retorno assíncrono sem expor o namespace da aplicação."""
+    try:
+        runtime = _orquestrador_cooperativo_runtime
+    except NameError:
+        return False
+    registrar = getattr(runtime, "registrar_progresso_visao_jogo", None)
+    return bool(registrar(evento)) if callable(registrar) else False
+
+
+_visao_jogo_runtime = _composicao_visao_jogo_runtime.conectar_visao(
+    contexto_jogo=_modo_jogo_runtime.contexto_atual,
+    analisar_imagem=_analisar_com_groq_jogo,
+    falar=falar_com_lipsync,
+    sintetizar_texto=_sintetizar_pesquisa_jogo,
+    ao_mapear_inventario=_ao_mapear_inventario_jogo,
+    processar_sugestao_proativa=_processar_sugestao_visual_proativa,
+    registrar_analise=_registrar_analise_visual_jogo,
+    credencial_disponivel=(
+        _composicao_inteligencia_externa_runtime.credencial_visual_disponivel
+    ),
+    permitido_presenca=lambda: not bool(
+        not _diretor_presenca_runtime.presenca_habilitada("jogo")
+        or _conversa_estado_get("is_speaking", False)
+        or _turno_mental_em_andamento()
+    ),
+    interacao_iniciada=lambda: float(
+        _estado_compartilhado_runtime.mental.get("ultima_entrada_ts") or 0.0
+    ) > 0.0,
+    stop_event=_servicos_background_runtime.evento_parada,
+    progresso_cooperativo=_registrar_progresso_visao_cooperativa,
+)
+_executar_visao_jogo_intent = _visao_jogo_runtime.executar
+_observador_inventario_jogo_runtime = (
+    _composicao_visao_jogo_runtime.observador_inventario
+)
+_observador_presenca_jogo_runtime = (
+    _composicao_visao_jogo_runtime.observador_presenca
 )
 
-_ciclo_comandos_runtime = _criar_ciclo_comandos_runtime_mente(
-    namespace_getter=lambda: globals(),
-    contexto_intencao_runtime=_contexto_intencao_runtime,
+
+def _continuar_visao_jogo_pendente(texto: str) -> bool:
+    if _visao_jogo_runtime.aplicar_referencia_item(texto):
+        return True
+    if _visao_jogo_runtime.continuar_analise_recente(texto):
+        return True
+    pendencia = _pendencia_ativa_turno_mente(
+        _estado_compartilhado_runtime.mental, dominio="jogo",
+    )
+    if _visao_jogo_runtime.continuar_pendencia(texto, pendencia):
+        return True
+    return bool(_visao_jogo_runtime.processar_atualizacao_perfil(texto))
+
+
+_composicao_ciclo_comandos_runtime = _criar_composicao_ciclo_comandos_runtime(
     log=print,
     monitor_saude=_saude_mente_runtime,
-    registrar_metrica_cb=_observabilidade_mente_runtime.registrar_metrica,
-    registrar_falha_cb=_observabilidade_mente_runtime.registrar_falha,
-    registrar_decisao_cb=_observabilidade_mente_runtime.registrar_decisao,
-    dependencias_tardias=(
-        "_interpretacao_intencao_runtime",
-        "detectar_intencao_deterministica",
+    registrar_metrica=_observabilidade_mente_runtime.registrar_metrica,
+    registrar_falha=_observabilidade_mente_runtime.registrar_falha,
+    registrar_decisao=_observabilidade_mente_runtime.registrar_decisao,
+)
+executar_intencao = _composicao_ciclo_comandos_runtime.executar_intencao
+_executar_comando_em_texto = _composicao_ciclo_comandos_runtime.executar_texto
+processar_comandos_em_cadeia = _composicao_ciclo_comandos_runtime.processar_cadeia
+processar_comando_deterministico = (
+    _composicao_ciclo_comandos_runtime.processar_deterministico
+)
+resolver_comando_natural = (
+    _composicao_ciclo_comandos_runtime.resolver_comando_natural
+)
+decisao_comando_ja_avaliada = (
+    _composicao_ciclo_comandos_runtime.decisao_comando_ja_avaliada
+)
+_tentar_intencao_ai_primeiro = (
+    _composicao_ciclo_comandos_runtime.tentar_intencao_ai_primeiro
+)
+
+
+def _registrar_aprendizado_cooperativo(plano: dict, decisao: str) -> bool:
+    """Aprende a utilidade da composição sem persistir texto ou caminho privado."""
+    decisao_normalizada = str(decisao or "").strip().casefold()
+    sinais = {
+        "aceito": 0.7, "recusado": -0.6, "falhou": -0.35,
+        "cancelado": -0.25, "expirado": -0.2,
+    }
+    sinal = sinais.get(decisao_normalizada)
+    if sinal is None:
+        return False
+    metadados = dict(plano.get("metadados") or {})
+    fluxo = str(metadados.get("fluxo") or "plano_cooperativo").strip()[:80]
+    habilidades = [
+        str(item or "").strip()[:60]
+        for item in list(plano.get("habilidades") or [])
+        if str(item or "").strip()
+    ]
+    relacao = ":".join(dict.fromkeys(habilidades)) or fluxo
+    descricao = (
+        "costuma usar conteúdo copiado como entrada para criar arquivos de texto"
+        if fluxo == "clipboard_para_arquivo"
+        else f"considera útil a cooperação {relacao.replace(':', ' com ')}"
+    )
+    hipotese = _motor_aprendizado_runtime.registrar_evidencia(
+        chave=f"cooperacao:{relacao}",
+        tipo="relacao_habilidades",
+        escopo="orquestracao_cooperativa",
+        valor={"descricao_humana": descricao},
+        sinal=sinal,
+        origem="orquestracao_cooperativa",
+        evidencia=(
+            "composição confirmada e relida"
+            if decisao_normalizada == "aceito"
+            else f"composição encerrada como {decisao_normalizada}"
+        ),
+        confirmado_usuario=decisao_normalizada in {"aceito", "recusado"},
+        contexto={"fluxo": fluxo},
+    )
+    return bool(hipotese)
+
+
+def _registrar_continuidade_cooperativa(plano: dict, evento: str) -> None:
+    """Registra o ciclo sem roubar o foco da habilidade que executou a ação."""
+    metadados = dict(plano.get("metadados") or {})
+    fluxo = str(metadados.get("fluxo") or "plano_cooperativo").strip()[:80]
+
+    def atualizar(mental: dict) -> dict:
+        return _registrar_evento_continuidade_geral(
+            mental,
+            evento=f"plano_{str(evento or 'atualizado')[:30]}",
+            dominio="cooperacao",
+            intent="COOPERATIVE_PLAN",
+            habilidade="orquestracao_cooperativa",
+            tipo=fluxo,
+            alvo=str(plano.get("objetivo") or "")[:160],
+            params={"modo": fluxo},
+            status=str(plano.get("estado") or "")[:60],
+            origem="orquestracao_cooperativa",
+            ttl_s=900.0,
+            ativa=False,
+            reexecutavel=False,
+        )
+
+    _estado_compartilhado_runtime.atualizar("mental", atualizar)
+
+
+_quadro_cooperacao_runtime = _criar_quadro_cooperacao_runtime(
+    modo="sombra",
+    publicar_contexto=lambda snapshot: _estado_compartilhado_runtime.atualizar_campos(
+        "mental", cooperacao_habilidades=dict(snapshot or {}),
+    ),
+    log=print,
+)
+_ponte_curadoria_cooperativa["publicar"] = (
+    _quadro_cooperacao_runtime.publicar_evento
+)
+
+
+def _detectar_visao_jogo_cooperativa(texto: str) -> dict | None:
+    """Reusa o detector oficial e o contexto visual; não cria uma gramática paralela."""
+    try:
+        contexto = dict(_modo_jogo_runtime.contexto_atual() or {})
+        contexto["analise_visual_recente"] = bool(
+            _visao_jogo_runtime.tem_analise_recente()
+        )
+        return _detectar_pedido_visao_jogo_cooperativo(texto, contexto)
+    except Exception:
+        return None
+
+
+_orquestrador_cooperativo_runtime = _criar_orquestrador_cooperativo_runtime(
+    quadro=_quadro_cooperacao_runtime,
+    clipboard_snapshot=_area_transferencia_runtime.snapshot_passivo,
+    clipboard_getter=_area_transferencia_runtime.obter_texto_seguro,
+    executar_intencao=lambda resultado, texto: executar_intencao(resultado, texto),
+    resolver_caminho=resolver_caminho,
+    falar=lambda texto, emocao="calma", nivel=1: falar_com_lipsync(texto, emocao, nivel),
+    planejar_layout=lambda: planejar_organizacao_desktop(),
+    detectar_visao_jogo=_detectar_visao_jogo_cooperativa,
+    estado_getter=lambda: _estado_compartilhado_runtime.mental,
+    pendencia_runtime=_pendencia_acao_runtime,
+    classificar_confirmacao_contextual=(
+        _feedback_pendente_runtime.classificar_confirmacao_contextual
+    ),
+    registrar_aprendizado=_registrar_aprendizado_cooperativo,
+    registrar_decisao=_observabilidade_mente_runtime.registrar_decisao,
+    registrar_continuidade=_registrar_continuidade_cooperativa,
+    autorizar_acao=_autorizar_acao_pratica,
+    log=print,
+)
+_resolver_referencia_cooperativa = _orquestrador_cooperativo_runtime.resolver_referencia
+_saude_mente_runtime.registrar(
+    "orquestracao_cooperativa", "saudavel",
+    detalhes=(
+        "modo=sombra; fluxos ativos=clipboard_para_arquivo,"
+        "organizacao_desktop_inteligente,analise_item_jogo,curadoria_musical"
     ),
 )
-executar_intencao = _ciclo_comandos_runtime.executar_intencao
-_executar_comando_em_texto = _ciclo_comandos_runtime.executar_texto
-processar_comandos_em_cadeia = _ciclo_comandos_runtime.processar_cadeia
-processar_comando_deterministico = _ciclo_comandos_runtime.processar_deterministico
-_tentar_intencao_ai_primeiro = _ciclo_comandos_runtime.tentar_intencao_ai_primeiro
+
+
+_executor_acoes_autonomas_runtime = _criar_executor_acoes_autonomas_runtime(
+    executar_iot=_registro_iot_runtime.executar,
+    estado_mental_getter=lambda: _estado_compartilhado_runtime.mental,
+    obter_volume=lambda: obter_volume_sistema(log=print),
+    ajustar_volume=lambda nivel: ajustar_volume_sistema(nivel, log=print),
+    falar=falar_com_lipsync,
+    executar_intencao=executar_intencao,
+    controlar_midia=lambda acao: bool(
+        enviar_comando_chrome("youtube_control", {"command": acao})
+    ),
+)
+_executar_acao_autonoma_segura = _executor_acoes_autonomas_runtime.executar
+_desfazer_acao_autonoma_segura = _executor_acoes_autonomas_runtime.desfazer
+
+
+_motor_iniciativa_runtime.definir_executor(
+    _executar_acao_autonoma_segura,
+    desfazer=_desfazer_acao_autonoma_segura,
+)
 
 _musica_conversacional_runtime = _criar_musica_conversacional_runtime_mente(
     estado_mental_getter=lambda: _estado_compartilhado_runtime.mental,
@@ -2062,6 +3279,7 @@ _musica_conversacional_runtime = _criar_musica_conversacional_runtime_mente(
     registrar_resultado_execucao=_registrar_resultado_execucao,
     registrar_autoaprimoramento=_registrar_autoaprimoramento,
     enviar_mensagem=enviar_mensagem,
+    buscar_resultados_musicais=_busca_musical_runtime.buscar_resultados,
     log=print,
 )
 _texto_pede_direcao_musical_generica = _musica_conversacional_runtime.texto_pede_direcao
@@ -2069,6 +3287,7 @@ _responder_pedido_direcao_musical_generica = _musica_conversacional_runtime.resp
 _processar_confirmacao_sugestao_musical = _musica_conversacional_runtime.processar_confirmacao
 _texto_pede_opiniao_musica_atual = _musica_conversacional_runtime.texto_pede_opiniao_atual
 _responder_opiniao_musica_atual = _musica_conversacional_runtime.responder_opiniao_atual
+_recomendar_musica_verificada = _musica_conversacional_runtime.recomendar_artista_verificado
 
 ajustar_humor = _estado_contexto_runtime.ajustar_humor
 
@@ -2092,13 +3311,22 @@ limpar_diccao_e_ruido = _limpar_diccao_e_ruido_mente
 get_status_humor_prompt = _estado_contexto_runtime.status_humor_prompt
 
 parsear_resposta_json = partial(_parsear_resposta_json_mente, fallback_fala=FALLBACK_FALA_NEUTRA)
-gerar_resposta_exec_ia = _coordenador_exec_runtime.agendar
 
-_barra_comando_runtime = _criar_barra_comando_runtime_mente(
-    processar_texto=gerar_resposta_exec_ia,
+
+def _agendar_entrada_canonica(texto, canal="terminal"):
+    origem = "modo_jogo" if bool(_modo_jogo_runtime.ativo) else str(canal or "terminal")
+    return _coordenador_exec_runtime.agendar(texto, origem=origem)
+
+
+_processar_entrada_barra = partial(_agendar_entrada_canonica, canal="barra")
+_processar_entrada_voz = partial(_agendar_entrada_canonica, canal="voz")
+_processar_entrada_terminal = partial(_agendar_entrada_canonica, canal="terminal")
+
+_barra_comando_runtime = _composicao_visual_runtime.conectar_barra(
+    processar_texto=_processar_entrada_barra,
     keyboard_mod=keyboard,
     hotkey=HOTKEY_BARRA_COMANDO,
-    log=print,
+    modo_jogo_ativo=lambda: bool(_modo_jogo_runtime.ativo),
 )
 registrar_hotkey_barra_comando = _barra_comando_runtime.registrar_hotkey
 
@@ -2114,13 +3342,14 @@ _reconhecedor_voz_pessoal = _ReconhecedorVozPessoal(
 )
 
 _ouvido_whisper_runtime = _criar_ouvido_whisper_runtime_mente(
-    processar_texto=gerar_resposta_exec_ia,
+    processar_texto=_processar_entrada_voz,
     esta_falando=lambda: bool(_conversa_estado_get("is_speaking", False)),
     escuta_permitida=lambda: not bool(
         _conversa_estado_get("modo_chat", False)
         or _conversa_estado_get("conversa_ativa", False)
     ),
     modo_jogo_ativo=lambda: bool(_modo_jogo_runtime.ativo),
+    atividade_visual=_definir_atividade_visual,
     ultima_fala_laylay=lambda: str(_estado_compartilhado_runtime.mental.get("ultima_resposta") or ""),
     vocabulario_dinamico=_vocabulario_dinamico_voz,
     pronuncias_aprendidas=_pronuncias_aprendidas_voz,
@@ -2129,6 +3358,7 @@ _ouvido_whisper_runtime = _criar_ouvido_whisper_runtime_mente(
     solicitar_confirmacao=falar_com_lipsync,
     sounddevice_mod=sd,
     limpar_texto=limpar_diccao_e_ruido,
+    deve_continuar=lambda: not _servicos_background_runtime.deve_parar(),
     log=print,
 )
 
@@ -2136,7 +3366,7 @@ _interacao_chat_runtime = _criar_interacao_chat_runtime_mente(
     estado_runtime_getter=lambda: _estado_compartilhado_runtime,
     modo_chat_runtime_getter=lambda: _modo_chat_runtime,
     abertura_runtime_getter=lambda: _abertura_chat_runtime,
-    processar_texto=gerar_resposta_exec_ia,
+    processar_texto=_processar_entrada_terminal,
     escutar_terminal=_escutar_texto_terminal_mente,
     keyboard_mod=keyboard,
     hotkey_liga=HOTKEY_MODO_CHAT_LIGA,
@@ -2160,8 +3390,13 @@ _interpretacao_intencao_runtime = _criar_interpretacao_intencao_runtime_mente(
         "estado": {
             "messages": _memoria_conversa_get("messages", []),
             "mente_integrada_estado": _estado_compartilhado_runtime.mental,
-            "playlist_state": playlist_state,
-            "playlists_carregadas": _playlist_runtime.cache,
+            "playlist_state": {
+                "name": _registro_musica_leitura_runtime.estado().get(
+                    "playlist_ativa", ""
+                ),
+                "index": _registro_musica_leitura_runtime.estado().get("indice", 0),
+            },
+            "playlists_carregadas": _registro_musica_leitura_runtime.indice_usuario(),
         },
         "normalizar_texto": _normalizar_texto_com_apelidos,
         "texto_cancela_acao_agora": _texto_cancela_acao_agora,
@@ -2184,6 +3419,9 @@ _interpretacao_intencao_runtime = _criar_interpretacao_intencao_runtime_mente(
         "extrair_json_da_ia": _extrair_json_da_ia,
         "playlist_bloqueada_agora": _playlist_bloqueada_agora,
         "texto_pede_playlist_explicitamente": _texto_pede_playlist_explicitamente,
+        "texto_parece_consulta_operacional": _texto_parece_consulta_operacional,
+        "mapa_habilidades_prompt": _mapa_habilidades_runtime.contexto_para_prompt,
+        "mapa_recursos_prompt": _mapa_recursos_runtime.contexto_para_prompt,
     },
     log=print,
 )
@@ -2226,156 +3464,96 @@ analisar_intencao = _interpretacao_intencao_runtime.analisar
 
             # ====================== GMAIL IMAP — RUNTIME ======================
 
-_gmail_runtime = criar_gmail_runtime(
+_central_notificacoes_runtime = _criar_central_notificacoes_runtime_mente(
+    os.path.join(_base_dir, CENTRAL_NOTIFICACOES_ARQUIVO),
+    falar_cb=falar_com_lipsync,
+    agendar_fala_cb=_agendar_fala_proativa,
+    agenda_getter=_agendamentos_load,
+    modo_jogo_getter=lambda: bool(_modo_jogo_runtime.ativo),
+    conversa_ativa_getter=lambda: bool(_conversa_estado_get("conversa_ativa", False)),
+    is_speaking_getter=lambda: bool(_conversa_estado_get("is_speaking", False)),
+    log=print,
+)
+_central_notificacoes_executar = _central_notificacoes_runtime.executar
+_central_notificacoes_ingerir_sistema = _central_notificacoes_runtime.ingerir_alerta_sistema
+_agenda_runtime.notificar_evento_cb = _central_notificacoes_runtime.ingerir_agendamento
+_mapa_recursos_runtime.registrar(
+    "central_notificacoes",
+    arquivo="memoria/central_notificacoes.json",
+    descricao=(
+        "avisos priorizados de email, agenda, lembretes e alertas internos; "
+        "agrupa repetidos e respeita categorias silenciosas"
+    ),
+    termos=(
+        "notificacao", "notificacoes", "avisos", "alertas", "avisos importantes",
+        "o que precisa da minha atencao", "central de notificacoes",
+    ),
+    leitor=lambda _texto="": _central_notificacoes_runtime.diagnostico(),
+    escrita_via="preferências explícitas da central de notificações",
+    intent_consulta="NOTIFICATIONS",
+)
+
+_gmail_runtime = _criar_composicao_gmail_laylay_runtime(
     arquivo_estado=GMAIL_ARQUIVO,
-    usuario=GMAIL_USER,
-    app_password=GMAIL_APP_PASSWORD,
-    intervalo_s=GMAIL_INTERVALO_S,
-    max_lidos=GMAIL_MAX_LIDOS,
-    prioritarios=GMAIL_PRIORITARIOS,
-    palavras_urgentes=GMAIL_PALAVRAS_URGENTES,
     continuidades_set=_continuidades_set,
     agendar_fala_proativa=_agendar_fala_proativa,
     is_speaking_getter=lambda: bool(_conversa_estado_get("is_speaking", False)),
     modo_jogo_getter=lambda: bool(_modo_jogo_runtime.ativo),
+    centralizar_notificacoes_cb=_central_notificacoes_runtime.ingerir_emails,
+    registrar_falha=_observabilidade_mente_runtime.relatar_falha,
+    log=print,
+    stop_event=_servicos_background_runtime.evento_parada,
 )
 _gmail_nao_lidos_cache = _gmail_runtime.nao_lidos_cache
+_gmail_configurado = _gmail_runtime.configurado
 _gmail_silenciar_remetente = _gmail_runtime.silenciar_remetente
 _gmail_buscar_nao_lidos = _gmail_runtime.buscar_nao_lidos
 _gmail_falar_resumo_estiloso = _gmail_runtime.falar_resumo_estiloso
 gmail_daemon = _gmail_runtime.daemon
 
-_contexto_prompt_runtime = _criar_contexto_prompt_runtime_mente(
+_composicao_contextos_ia_runtime = _criar_composicao_contextos_ia_runtime(
     memoria_sqlite=MEMORIA_SQLITE,
-    resumo_mente_integrada=_resumo_mente_integrada_para_prompt,
-    formatar_playlists=_formatar_playlists_para_prompt,
-    get_status_humor_prompt=get_status_humor_prompt,
     base_system_prompt=BASE_SYSTEM_PROMPT,
-    estado_getter=lambda: {
-        "messages": _memoria_conversa_get("messages", []),
-        "humor_level": _conversa_estado_get("humor_level", 0),
-        "aba_titulo_atual": _chrome_estado.aba_titulo_atual,
-        "aba_url_atual": _chrome_estado.aba_url_atual,
-        "turno_atual": dict(_estado_compartilhado_runtime.mental.get("turno_atual") or {}),
-    },
-)
-
-_contexto_exec_runtime = _criar_contexto_exec_runtime_mente(
-    contexto_getter=lambda: {
-        "enviar_comando_chrome": enviar_comando_chrome,
-        "validar_e_enviar_comando": validar_e_enviar_comando,
-        "ajustar_volume_sistema": ajustar_volume_sistema,
-        "falar_com_lipsync": falar_com_lipsync,
-        "play_playlist": play_playlist,
-        "_playlist_shuffle_start": _playlist_shuffle_start,
-        "solicitar_aba_ativa": solicitar_aba_ativa,
-        "abrir_programa": abrir_programa,
-        "fechar_programa": fechar_programa,
-        "APPS_MAP": APPS_MAP,
-        "ADD_TO_PLAYLIST": ADD_TO_PLAYLIST,
-        "set_ultima_playlist": lambda valor: _musica_estado_set("ultima_playlist", valor),
-        "ativar_tela_cheia_robusta": ativar_tela_cheia_robusta,
-        "_eh_alvo_site_web": _eh_alvo_site_web,
-        "_contexto_aponta_site_web": _contexto_aponta_site_web,
-        "is_valid_url": is_valid_url,
-        "formatar_url_ou_busca": formatar_url_ou_busca,
-        "_listar_playlists_salvas": _listar_playlists_salvas,
-        "_autorizar_acao_pratica": _autorizar_acao_pratica,
-    },
+    servicos=globals(),
+    messages_getter=lambda: _memoria_conversa_get("messages", []),
+    conversa_getter=_conversa_estado_get,
+    mente_getter=lambda: _estado_compartilhado_runtime.mental,
+    aba_getter=lambda: (
+        _chrome_estado.aba_titulo_atual, _chrome_estado.aba_url_atual,
+    ),
+    musica_leitura=_registro_musica_leitura_runtime,
+    gmail_cache_getter=lambda: _gmail_nao_lidos_cache,
+    falhas_getter=lambda: _falhas_consecutivas,
+    musica_estado_set=_musica_estado_set,
+    verificar_fala_turno=lambda fala, origem="ia_final": (
+        _verificar_fala_do_turno(fala, origem=origem)
+    ),
     executar_conteudo_cb=_executar_comando_conteudo_mente,
     executar_legado_cb=_executar_exec_mente,
+    mapa_habilidades_prompt=_mapa_habilidades_runtime.contexto_para_prompt,
+    mapa_recursos_prompt=_mapa_recursos_runtime.contexto_para_prompt,
     log=print,
 )
-
-_contexto_dispatcher_runtime = _criar_contexto_dispatcher_runtime_mente(
-    base={
-        "falar_com_lipsync": falar_com_lipsync,
-        "salvar_memoria": salvar_memoria,
-    },
-    navegacao={
-        "enviar_comando_chrome": enviar_comando_chrome,
-        "_enviar_pc_b": _enviar_pc_b,
-        "interpretar_comando_local_rapido": interpretar_comando_local_rapido,
-        "solicitar_aba_ativa": solicitar_aba_ativa,
-        "listar_abas_chrome": listar_abas_chrome,
-        "listar_programas_abertos": listar_programas_abertos,
-        "organizar_janelas_robusto": organizar_janelas_robusto,
-        "ativar_tela_cheia_robusta": ativar_tela_cheia_robusta,
-    },
-    musica={
-        "_normalizar_query_musical": _normalizar_query_musical,
-        "_limpar_nome_playlist": _limpar_nome_playlist,
-        "_playlist_shuffle_start": _playlist_shuffle_start,
-        "_buscar_primeiro_video_youtube": _buscar_primeiro_video_youtube,
-        "add_to_playlist_url": add_to_playlist_url,
-        "_playlists_load": _playlists_load,
-    },
-    arquivos={
-        "executar_intencao": executar_intencao,
-    },
-    percepcao={
-        "_executar_captura_tela_intent": lambda destino: _executar_captura_tela_intent(
-            destino, registrar_memoria=True
-        ),
-    },
-    agenda_email={
-        "_agendamentos_load": _agendamentos_load,
-        "_agendamentos_save": _agendamentos_save,
-        "_agendamentos_transacionar": _agendamentos_transacionar,
-        "_gmail_buscar_nao_lidos": _gmail_buscar_nao_lidos,
-        "_gmail_falar_resumo_estiloso": _gmail_falar_resumo_estiloso,
-    },
-    execucao={
-        "_executar_fechar_abas_paradas": _executar_fechar_abas_paradas,
-        "_executar_exec": _executar_exec,
-        "processar_comando_deterministico": processar_comando_deterministico,
-    },
-    autonomia={
-        "_autorizar_acao_pratica": _autorizar_acao_pratica,
-        "_autonomia_permite_execucao_musical": _autonomia_permite_execucao_musical,
-    },
-    estado_getter=lambda: {
-        "messages": _memoria_conversa_get("messages", []),
-        "current_emotion": _conversa_estado_get("current_emotion", "calma"),
-        "emotion_level": _conversa_estado_get("emotion_level", 1),
-        "playlists_carregadas": _playlist_runtime.cache,
-        "_gmail_nao_lidos_cache": _gmail_nao_lidos_cache,
-    },
-)
-
-_contexto_finalizacao_runtime = _criar_contexto_finalizacao_runtime_mente(
-    ia={
-        "enviar_mensagem": enviar_mensagem,
-        "limpar_resposta_da_ia": limpar_resposta_da_ia,
-    },
-    voz_memoria={
-        "falar_com_lipsync": falar_com_lipsync,
-        "salvar_memoria": salvar_memoria,
-        "verificar_fala_turno": lambda fala, origem="ia_final": _verificar_fala_do_turno(
-            fala, origem=origem
-        ),
-    },
-    autoaprimoramento={
-        "_registrar_autoaprimoramento": _registrar_autoaprimoramento,
-        "_registrar_autocorrecao_virtual": _registrar_autocorrecao_virtual,
-        "MAX_TENTATIVAS_AUTOCORRECAO": MAX_TENTATIVAS_AUTOCORRECAO,
-    },
-    estado_getter=lambda: {
-        "messages": _memoria_conversa_get("messages", []),
-        "current_emotion": _conversa_estado_get("current_emotion", "calma"),
-        "emotion_level": _conversa_estado_get("emotion_level", 1),
-        "_falhas_consecutivas": _falhas_consecutivas,
-    },
-)
+_contexto_prompt_runtime = _composicao_contextos_ia_runtime.prompt
+_contexto_exec_runtime = _composicao_contextos_ia_runtime.execucao
+_contexto_dispatcher_runtime = _composicao_contextos_ia_runtime.dispatcher
+_contexto_finalizacao_runtime = _composicao_contextos_ia_runtime.finalizacao
 
 
-_deteccao_deterministica_runtime = _criar_deteccao_deterministica_runtime_mente(
-    namespace_getter=lambda: globals(),
-    estado_getter=lambda: _estado_compartilhado_runtime.mental,
+_composicao_entrada_interacao_runtime = _criar_composicao_entrada_interacao_runtime(
+    servicos=globals(),
+    estado_mental_getter=lambda: _estado_compartilhado_runtime.mental,
     sites_diretos=SITES_DIRECTOS,
     apps_map=APPS_MAP,
 )
+_deteccao_deterministica_runtime = _composicao_entrada_interacao_runtime.deteccao
 detectar_intencao_deterministica = _deteccao_deterministica_runtime.detectar
+_contexto_intencao_runtime, _ciclo_comandos_runtime = (
+    _composicao_ciclo_comandos_runtime.conectar(
+        servicos=globals(),
+        estado_getter=_estado_contexto_intencao,
+    )
+)
 
 _diagnostico_mente_runtime = _criar_diagnostico_mente_runtime(
     estado_getter=_estado_compartilhado_runtime.snapshot,
@@ -2383,48 +3561,56 @@ _diagnostico_mente_runtime = _criar_diagnostico_mente_runtime(
         _auditar_saude_mente(),
         _saude_mente_runtime.snapshot(),
     )[1],
+    rede_associativa_getter=_rede_associativa_runtime.diagnostico,
+    mapa_habilidades_getter=_mapa_habilidades_runtime.diagnostico,
+    pesquisa_arquivos_getter=_registro_arquivos_leitura_runtime.diagnostico,
+    mutacoes_arquivos_getter=_registro_arquivos_mutacao_runtime.diagnostico,
+    musica_leitura_getter=_registro_musica_leitura_runtime.diagnostico,
+    orquestracao_cooperativa_getter=_orquestrador_cooperativo_runtime.diagnostico,
+    memoria_pessoas_getter=_registro_memoria_pessoas_runtime.diagnostico,
+    linguagem_natural_getter=lambda: {
+        **_composicao_ciclo_comandos_runtime.diagnostico_linguagem_natural(),
+        "tolerancia_portugues": (
+            _linguagem_aprendida_runtime.diagnostico_tolerancia_portugues()
+        ),
+    },
+    fala_operacional_getter=_orquestrador_fala_runtime.diagnostico,
     falar=lambda texto, emocao="calma", nivel=1: falar_com_lipsync(texto, emocao, nivel),
     log=print,
 )
 _mostrar_diagnostico_mente = _diagnostico_mente_runtime.mostrar
 
-_comandos_imediatos_runtime = _criar_comandos_imediatos_runtime_mente(
-    namespace_getter=lambda: globals(),
-    loop_getter=_ws_transport_runtime.obter_loop,
+_comandos_imediatos_runtime, _contexto_inicio_chat_runtime = (
+    _composicao_entrada_interacao_runtime.conectar(
+        servicos=globals(),
+        loop_getter=_ws_transport_runtime.obter_loop,
+        estado_chat_getter=lambda: {
+            "messages": _memoria_conversa_get("messages", []),
+            "current_emotion": _conversa_estado_get("current_emotion", "calma"),
+            "emotion_level": _conversa_estado_get("emotion_level", 1),
+        },
+        memoria_sqlite=MEMORIA_SQLITE,
+    )
 )
 processar_comandos_imediatos = _comandos_imediatos_runtime.processar
 _processar_comandos_prioritarios = _comandos_imediatos_runtime.processar_prioritarios
 
-_contexto_inicio_chat_runtime = _criar_contexto_inicio_chat_runtime_mente(
-    namespace_getter=lambda: globals(),
-    estado_getter=lambda: {
-        "messages": _memoria_conversa_get("messages", []),
-        "current_emotion": _conversa_estado_get("current_emotion", "calma"),
-        "emotion_level": _conversa_estado_get("emotion_level", 1),
-    },
-    memoria_sqlite=MEMORIA_SQLITE,
-)
 _contexto_inicio_chat = _contexto_inicio_chat_runtime.montar
 
 
-_iniciar_planejamento_turno = partial(
-    _iniciar_planejamento_turno_mente_runtime, lambda: globals(),
+_composicao_turno_runtime = _criar_composicao_turno_runtime(servicos=globals())
+_iniciar_planejamento_turno = _composicao_turno_runtime.iniciar
+_atualizar_planejamento_turno = _composicao_turno_runtime.atualizar
+_verificar_fala_do_turno = _composicao_turno_runtime.verificar_fala
+_registrar_leitura_semantica_principal = (
+    _composicao_turno_runtime.registrar_leitura_semantica
 )
-
-
-_atualizar_planejamento_turno = partial(
-    _atualizar_planejamento_turno_mente_runtime, lambda: globals(),
-)
-
-
-_verificar_fala_do_turno = partial(
-    _verificar_fala_do_turno_mente_runtime, lambda: globals(),
-)
-
-
-_registrar_leitura_semantica_principal = partial(
-    _registrar_leitura_semantica_principal_mente_runtime, lambda: globals(),
-)
+_preferencias_sugestoes_runtime.conectar_servicos(globals())
+_contexto_imediato_runtime.conectar_servicos(globals())
+_ambiente_navegacao_runtime.conectar_servicos(globals())
+_composicao_chrome_ws_runtime.conectar_servicos(globals())
+_composicao_estado_aplicacao_runtime.conectar(servicos=globals())
+_composicao_resposta_conversacional_runtime.conectar(servicos=globals())
 
 
 _resposta_ia_runtime = _criar_resposta_ia_runtime_mente(
@@ -2440,9 +3626,11 @@ _resposta_ia_runtime = _criar_resposta_ia_runtime_mente(
         "processar_comandos_prioritarios": _processar_comandos_prioritarios,
         "modo_chat": _conversa_estado_get("modo_chat", False),
         "conversa_ativa": _conversa_estado_get("conversa_ativa", False),
+        "modo_jogo_ativo": lambda: bool(_modo_jogo_runtime.ativo),
         "contexto_inicio": _contexto_inicio_chat,
         "processar_inicio_fluxo": _processar_inicio_fluxo_resposta_ia_mente,
         "usar_modo_rapido": _usar_modo_rapido_conversa,
+        "texto_depende_de_contexto": _texto_depende_de_contexto,
         "processar_comandos_imediatos": processar_comandos_imediatos,
         "processar_pre_fluxos": _processar_pre_fluxos_antes_ia_mente,
         "contexto_prompt_runtime": _contexto_prompt_runtime,
@@ -2456,9 +3644,10 @@ _resposta_ia_runtime = _criar_resposta_ia_runtime_mente(
             enviar_mensagem_cb=enviar_mensagem,
             limpar_texto_fala_cb=_limpar_texto_fala_ia,
             fallback_fala=FALLBACK_FALA_NEUTRA,
-            construir_fala_cb=_construir_fala_conversa,
             memoria_sqlite=MEMORIA_SQLITE,
             registrar_autocorrecao_cb=_registrar_autocorrecao_virtual,
+            registrar_falha_cb=_observabilidade_mente_runtime.registrar_falha,
+            contexto_contingencia=dict(_estado_compartilhado_runtime.mental),
             log=print,
         ),
         "registrar_leitura_semantica_principal": _registrar_leitura_semantica_principal,
@@ -2475,9 +3664,11 @@ _resposta_ia_runtime = _criar_resposta_ia_runtime_mente(
         "executar_comandos_json": _executar_comandos_json_mente,
         "contexto_finalizacao_runtime": _contexto_finalizacao_runtime,
         "finalizar_execucao": _finalizar_execucao_resposta_ia_mente,
+        "definir_emocao_resposta": _definir_emocao_conversacional,
         "registrar_metrica_diagnostico": _observabilidade_mente_runtime.registrar_metrica,
         "registrar_falha_diagnostico": _observabilidade_mente_runtime.registrar_falha,
         "registrar_decisao_diagnostico": _observabilidade_mente_runtime.registrar_decisao,
+        "observar_feedback_presenca": _diretor_presenca_runtime.observar_resposta,
     },
     log=print,
 )
@@ -2488,56 +3679,72 @@ _resposta_ia_runtime = _criar_resposta_ia_runtime_mente(
 _auditar_saude_mente = _adaptadores_aplicacao_runtime.auditar_saude_mente
 
 
+_composicao_servicos_runtime = _criar_composicao_servicos_padrao(
+    globals(),
+    gerenciador=_servicos_background_runtime,
+    registrar_falha=_observabilidade_mente_runtime.relatar_falha,
+    log=print,
+)
+
+
 def _encerrar_laylay() -> None:
     try:
-        salvar_memoria()
+        _composicao_servicos_runtime.encerrar()
     finally:
-        _avatar_runtime.parar()
+        _runtime_llm_portatil.encerrar()
 
 def main():
     """Ponto de entrada principal da Laylay."""
+    inicio_programa_ts = time.time()
+
+    def usuario_ja_iniciou_conversa() -> bool:
+        ultima_entrada = float(
+            _estado_compartilhado_runtime.mental.get("ultima_entrada_ts") or 0.0
+        )
+        return bool(
+            ultima_entrada >= inicio_programa_ts
+            or _conversa_estado_get("modo_chat", False)
+            or _conversa_estado_get("conversa_ativa", False)
+        )
+
     _auditar_saude_mente()
-    _inicializacao_runtime.iniciar(
-        etapas={
-            "carregar memória": carregar_memoria,
-            "iniciar nova sessão conversacional": lambda: _renovar_sessao_conversa("inicio_programa", True),
-            "iniciar memória de contexto diária": init_memoria_contexto_diaria,
-            "carregar playlists": _carregar_playlists_para_memoria,
-            "iniciar worker de falas": _iniciar_worker_de_falas,
-            "iniciar avatar": _avatar_runtime.iniciar,
-        },
-        threads={
-            "Laylay-WS": run_ws_server_in_thread,
-            "Laylay-Gmail": gmail_daemon,
-            "Laylay-Agenda": _agenda_daemon,
-            "Laylay-Rotina": monitor_rotina_daemon,
-            "Laylay-Porteiro": _porteiro_daemon,
-            "Laylay-Saude": _monitor_saude_daemon,
-            "Laylay-Monitor-Janelas": _monitor_janelas_runtime.executar,
-            "Laylay-Ritmo-Circadiano": _ritmo_circadiano_runtime.executar,
-            "Laylay-Consciência-Temporal": _motor_temporal_runtime.executar,
-            "Laylay-Aprendizado": _motor_aprendizado_runtime.executar,
-            "Laylay-Ouvido": _ouvido_whisper_runtime.executar,
-        },
-        hotkeys=None,
+    resultado_inicializacao = _composicao_servicos_runtime.iniciar(_inicializacao_runtime)
+    nome_observador_clipboard = "Laylay-Observador-Área-Transferência"
+    ativos_background = set(_servicos_background_runtime.ativos())
+    if nome_observador_clipboard not in ativos_background:
+        _servicos_background_runtime.iniciar(
+            nome_observador_clipboard,
+            _observador_area_transferencia_runtime.executar,
+        )
+        ativos_background = set(_servicos_background_runtime.ativos())
+    observador_clipboard_ativo = nome_observador_clipboard in ativos_background
+    print(
+        "📋 [CLIPBOARD:INÍCIO] "
+        f"serviço={'ativo' if observador_clipboard_ativo else 'inativo'} "
+        f"modo={_observador_area_transferencia_runtime.modo}"
     )
+    if not observador_clipboard_ativo:
+        _observabilidade_mente_runtime.relatar_falha(
+            "observador_area_transferencia",
+            "servico_nao_iniciado",
+            erro=RuntimeError("thread do observador não ficou ativa"),
+        )
     briefing_pendente = carregar_estado_briefing() != time.strftime("%Y-%m-%d")
-    if briefing_pendente:
+    if usuario_ja_iniciou_conversa():
+        # Os atalhos e o terminal ficam disponíveis antes dos serviços lentos.
+        # Se a conversa já começou, uma abertura automática seria uma fala
+        # atrasada e concorrente, não uma saudação.
+        fala_inicial_entregue = False
+    elif briefing_pendente:
         fala_inicial_entregue = briefing_matinal()
     else:
-        abertura_inicial = _abertura_chat_runtime.gerar("inicio")
+        abertura_inicial = _abertura_chat_runtime.gerar_local("inicio")
         fala_inicial_entregue = _entregar_fala_inicial_confirmada(
             "abertura", abertura_inicial, "calma", 1
         )
-    if not fala_inicial_entregue:
-        abertura_fallback = _abertura_chat_runtime.gerar("inicio")
+    if not fala_inicial_entregue and not usuario_ja_iniciou_conversa():
+        abertura_fallback = _abertura_chat_runtime.gerar_local("inicio")
         print(f"╭─ ◕‿◕ Laylay: {abertura_fallback}")
-    registrar_hotkeys_modo_chat()
-    registrar_hotkey_barra_comando()
-    _servicos_background_runtime.iniciar(
-        "Laylay-Chat-Terminal",
-        _escutar_texto_do_chat_terminal,
-    )
     _inicializacao_runtime.manter_ativo(
         fala_pronta="",
         ao_encerrar=_encerrar_laylay,

@@ -4,6 +4,8 @@ import os
 import tempfile
 import unittest
 
+from mente_laylay.arquivos.mutacoes import criar_arquivos_mutacao_runtime
+from mente_laylay.integracao.registro_mutacoes_arquivos import registrar_arquivos_mutacao
 from mente_laylay.integracao.chrome_estado import ChromeEstadoRuntime
 from mente_laylay.memoria_mental.contexto_compartilhado import estado_mental_inicial
 from mente_laylay.memoria_mental.estado_compartilhado_runtime import (
@@ -394,6 +396,25 @@ class MenteUnicaTests(unittest.TestCase):
 
         self.assertTrue(estado["ultima_acao_confirmada"])
         self.assertEqual(estado["ultima_acao_status"], "ligado")
+
+    def test_acao_iot_limpa_pendencia_visual_anterior(self) -> None:
+        estado = estado_mental_inicial()
+        estado["pendencia_atual"] = {
+            "status": "ativa", "foi_falada": True, "origem": "visao_jogo",
+            "dominio": "jogo", "tipo": "complemento_visual",
+        }
+
+        estado = registrar_resultado_execucao(
+            estado,
+            {"intent": "IOT_CONTROL", "params": {"acao": "ligar", "alvo": "lampada_quarto"}},
+            "liga a luz", True, origem="roteador", status="ligado",
+        )
+
+        self.assertEqual(estado["pendencia_atual"], {})
+        self.assertEqual(
+            estado["ultima_pendencia_encerrada"]["status"],
+            "substituida_por_nova_acao",
+        )
 
     def test_fluxo_tratado_nao_transforma_falha_real_em_sucesso(self) -> None:
         estado = estado_mental_inicial()
@@ -1010,6 +1031,26 @@ class MenteUnicaTests(unittest.TestCase):
         self.assertEqual(decisao.params["novo_nome"], "antonio")
         self.assertTrue(decisao.params["origem"].endswith(os.path.join("Downloads", "teste")))
 
+    def test_apaga_pronome_usando_caminho_exato_da_pasta_criada(self) -> None:
+        mente = estado_mental_inicial()
+        mente.update({"ultima_acao_intent": "CREATE_FOLDER", "ultima_habilidade": "arquivos"})
+        caminho = os.path.join(os.path.expanduser("~"), "Downloads", "teste")
+
+        decisao = resolver_continuidade_semantica(
+            "apaga ela",
+            mente=mente,
+            estrutura_arquivo={
+                "nome": "teste",
+                "tipo": "pasta",
+                "caminho": caminho,
+                "target": "pc_a",
+            },
+        )
+
+        self.assertEqual(decisao.intent, "DELETE_ITEM")
+        self.assertEqual(decisao.params["alvo"], caminho)
+        self.assertEqual(decisao.params["tipo"], "pasta")
+
     def test_criacao_composta_emite_uma_unica_confirmacao_completa(self) -> None:
         falas = []
         with tempfile.TemporaryDirectory() as raiz:
@@ -1042,6 +1083,13 @@ class MenteUnicaTests(unittest.TestCase):
                 item_local_existe=lambda caminho, tipo: os.path.isdir(caminho) if tipo == "pasta" else os.path.isfile(caminho),
                 resolver_caminho_local=resolver,
                 resolver_referencia_arquivo_contextual=lambda alvo, _tipo: alvo,
+                arquivos_mutacao=registrar_arquivos_mutacao(
+                    criar_arquivos_mutacao_runtime(
+                        resolver_caminho_cb=resolver,
+                        criar_pasta_cb=criar_pasta,
+                        criar_arquivo_cb=criar_arquivo,
+                    )
+                ),
             )
             self.assertTrue(executou)
             self.assertEqual(len(falas), 1)
@@ -1055,9 +1103,13 @@ class MenteUnicaTests(unittest.TestCase):
         mutar = detectar_volume_ou_midia("muta o volume", params_cb=params)
         desmutar = detectar_volume_ou_midia("desmuta", params_cb=params)
         emails = detectar_email_notificacao_briefing("quais meus emails", params_cb=params)
+        emails_natural = detectar_email_notificacao_briefing(
+            "quais sao os meus emails", params_cb=params,
+        )
         self.assertEqual(mutar["params"]["acao"], "mute")
         self.assertEqual(desmutar["params"]["acao"], "unmute")
         self.assertEqual(emails["intent"], "EMAIL_READ")
+        self.assertEqual(emails_natural["intent"], "EMAIL_READ")
 
     def test_saude_pc_e_correcao_fonetica_do_instagram(self) -> None:
         self.assertTrue(detectar_comando_saude("como está o meu pc"))
@@ -1078,6 +1130,43 @@ class MenteUnicaTests(unittest.TestCase):
         )
         self.assertTrue(ok)
         self.assertEqual(chamadas, [("liga o ventilador daqui 20 segundos", "pre-ia")])
+
+    def test_tenta_de_novo_reexecuta_iot_no_pre_fluxo_sem_chamar_ia(self) -> None:
+        repeticao = {
+            "intent": "IOT_CONTROL",
+            "params": {
+                "acao": "ajustar_cor", "alvo": "lampada_quarto", "cor": "roxo",
+                "rgb": (128, 0, 255),
+            },
+        }
+        execucoes = []
+        registros = []
+        ctx = {
+            "mente_integrada_estado": {
+                "turno_atual": {"modalidade": "comando", "autoriza_execucao": True},
+            },
+            "_resolver_repeticao_ultima_acao": lambda texto: (
+                repeticao if texto == "tenta de novo" else None
+            ),
+            "executar_intencao": lambda comando, texto: (
+                execucoes.append((comando, texto)) or True
+            ),
+            "_registrar_resultado_execucao": lambda *args, **kwargs: registros.append(
+                (args, kwargs)
+            ),
+            "_registrar_autoaprimoramento": lambda *_args, **_kwargs: None,
+            "interpretar_comando_local_rapido": lambda _texto: None,
+            "_resolver_comando_contextual_forcado": lambda _texto: (_ for _ in ()).throw(
+                AssertionError("a repetição deve vencer outras rotas")
+            ),
+        }
+
+        ok, rota = processar_execucao_pratica_precoce(ctx, "tenta de novo")
+
+        self.assertTrue(ok)
+        self.assertEqual(rota, "repeticao_operacional")
+        self.assertEqual(execucoes, [(repeticao, "tenta de novo")])
+        self.assertTrue(registros)
 
     def test_confirmacao_musical_usa_sugestao_pendente(self) -> None:
         falas = []
@@ -1371,6 +1460,24 @@ class MenteUnicaTests(unittest.TestCase):
         self.assertTrue(any(p in resposta.casefold() for p in ("música", "musica", "filme", "assistir")))
         self.assertNotIn("pabllo", resposta.casefold())
         self.assertNotIn("laylay.py", resposta.casefold())
+
+    def test_culpa_e_acolhida_sem_inventar_absolvicao(self) -> None:
+        from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
+
+        texto = "eu me sinto meio culpado, mas nem sei direito por quê"
+        leitura = analisar_intencao_emocional(texto, normalizar_texto=normalizar_texto)
+        self.assertEqual(leitura["emocao"], "culpa")
+
+        ctx = {
+            "_normalizar_texto_curto": normalizar_texto,
+            "_normalizar_texto_com_apelidos": normalizar_texto,
+            "_registrar_leitura_emocional_usuario": lambda _leitura: None,
+            "mente_integrada_estado": {},
+        }
+        resposta = responder_conversa_curta_por_tipo(ctx, "EMOTIONAL_STATE", texto)
+        self.assertIn("culpa", resposta.casefold())
+        self.assertTrue(any(termo in resposta.casefold() for termo in ("quando", "momento")))
+        self.assertNotIn("desconhecido", resposta.casefold())
 
     def test_recomendacao_generica_continua_tedio_recente(self) -> None:
         ctx = {
@@ -1840,6 +1947,78 @@ class MenteUnicaTests(unittest.TestCase):
             contexto,
             "eu tirei nota maxima, e era sobre modelos personalizados de IA",
         ))
+
+    def test_consulta_operacional_de_leitura_atravessa_modalidade_pergunta(self) -> None:
+        from mente_laylay.autonomia.comandos_imediatos import processar_comandos_imediatos
+
+        executadas = []
+        contexto = {
+            "_normalizar_texto_com_apelidos": lambda texto: texto.lower(),
+            "_resolver_consulta_recurso_local": lambda _texto: {
+                "intent": "PLAYLIST_LIST",
+                "params": {"nome_playlist": "trap"},
+            },
+            "executar_intencao": lambda intent, _texto: executadas.append(intent) or True,
+            "mente_integrada_estado": {
+                "turno_atual": {
+                    "modalidade": "pergunta",
+                    "modalidade_geral": "pergunta",
+                    "autoriza_execucao": False,
+                },
+            },
+        }
+
+        self.assertTrue(processar_comandos_imediatos(contexto, "o que tem em trap?"))
+        self.assertEqual(executadas[0]["intent"], "PLAYLIST_LIST")
+
+    def test_consulta_de_recurso_usa_executor_registrado_antes_do_roteador_geral(self) -> None:
+        from mente_laylay.autonomia.comandos_imediatos import processar_comandos_imediatos
+
+        especializadas = []
+        gerais = []
+        contexto = {
+            "_normalizar_texto_com_apelidos": lambda texto: texto.lower(),
+            "_resolver_consulta_recurso_local": lambda _texto: {
+                "intent": "INBOX_LIST", "params": {"filtro": "minhas ideias"},
+            },
+            "_executar_consulta_recurso_local": (
+                lambda intent, texto: especializadas.append((intent, texto)) or True
+            ),
+            "executar_intencao": lambda intent, texto: gerais.append((intent, texto)) or True,
+            "mente_integrada_estado": {
+                "turno_atual": {
+                    "modalidade": "pergunta",
+                    "modalidade_geral": "pergunta",
+                    "autoriza_execucao": False,
+                },
+            },
+        }
+
+        self.assertTrue(processar_comandos_imediatos(contexto, "me fale as minhas ideias"))
+        self.assertEqual(especializadas[0][0]["intent"], "INBOX_LIST")
+        self.assertEqual(gerais, [])
+
+    def test_consulta_operacional_nunca_promove_escrita(self) -> None:
+        from mente_laylay.autonomia.comandos_imediatos import processar_comandos_imediatos
+
+        executadas = []
+        contexto = {
+            "_normalizar_texto_com_apelidos": lambda texto: texto.lower(),
+            "_resolver_consulta_recurso_local": lambda _texto: {
+                "intent": "DELETE_ITEM", "params": {"alvo": "teste"},
+            },
+            "executar_intencao": lambda intent, _texto: executadas.append(intent) or True,
+            "mente_integrada_estado": {
+                "turno_atual": {
+                    "modalidade": "pergunta",
+                    "modalidade_geral": "pergunta",
+                    "autoriza_execucao": False,
+                },
+            },
+        }
+
+        self.assertFalse(processar_comandos_imediatos(contexto, "como apaga a pasta?"))
+        self.assertEqual(executadas, [])
 
     def test_lembrete_daqui_minutos_e_resolvido_antes_da_ia(self) -> None:
         extrair = lambda texto: extrair_agendamento_local(texto, normalizar_texto)

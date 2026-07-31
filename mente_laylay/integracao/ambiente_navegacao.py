@@ -3,16 +3,54 @@
 from __future__ import annotations
 
 import urllib.parse
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Mapping
+
+
+DEPENDENCIAS_AMBIENTE_NAVEGACAO = (
+    "_percepcao_get", "_percepcao_set", "_classificar_contexto_por_url_chrome_mente",
+    "open_app", "APP_OPENER_AVAILABLE", "_organizar_janelas_mente", "gw",
+    "pyautogui", "ctypes", "wintypes", "_listar_programas_abertos_mente",
+    "psutil", "solicitar_lista_abas", "_normalizar_alvo_ambiente",
+    "_resolver_alvo_ambiente_mente", "_janela_app_esta_em_foco",
+    "_modo_jogo_runtime", "_abrir_url_reutilizando_aba_chrome_mente",
+    "_chrome_solicitacoes", "enviar_comando_chrome", "webbrowser",
+    "_normalizar_texto_com_apelidos", "is_valid_url", "SITES_DIRECTOS",
+    "formatar_url_ou_busca", "_fechar_abas_vazias_chrome_mente",
+    "_eh_alvo_site_web_mente", "SITES_WEB_ALIAS",
+    "_contexto_aponta_site_web_mente", "_estado_compartilhado_runtime",
+    "_obter_contexto_perceptivo", "_listar_processos_audio_ativos_mente",
+    "_planejar_organizacao_janelas_mente",
+)
 
 
 class AmbienteNavegacaoRuntime:
-    def __init__(self, *, namespace_getter: Callable[[], Dict[str, Any]], log=print) -> None:
-        self.namespace_getter = namespace_getter
+    def __init__(
+        self, *, servicos_iniciais: Mapping[str, Any] | None = None,
+        namespace_getter: Callable[[], Dict[str, Any]] | None = None, log=print,
+    ) -> None:
+        origem = dict(servicos_iniciais or {})
+        if not origem and callable(namespace_getter):
+            origem = dict(namespace_getter() or {})
+        self._servicos = self._filtrar(origem)
         self.log = log
 
+    @staticmethod
+    def _filtrar(servicos: Mapping[str, Any]) -> Dict[str, Any]:
+        return {
+            nome: servicos[nome]
+            for nome in DEPENDENCIAS_AMBIENTE_NAVEGACAO
+            if nome in servicos
+        }
+
     def _ns(self) -> Dict[str, Any]:
-        return self.namespace_getter() or {}
+        return dict(self._servicos)
+
+    def conectar_servicos(self, servicos: Mapping[str, Any]) -> None:
+        self._servicos = self._filtrar(servicos)
+
+    @property
+    def servicos_registrados(self) -> tuple[str, ...]:
+        return tuple(sorted(self._servicos))
 
     def atualizar_contexto(self, site=None, termo_busca=None, aba_id=None) -> None:
         ns = self._ns()
@@ -36,7 +74,30 @@ class AmbienteNavegacaoRuntime:
         return ns["_organizar_janelas_mente"](
             ns["gw"], ns["pyautogui"], ns["ctypes"], ns["wintypes"],
             app_esq, app_dir, abrir_app_cb=abrir_cb,
+            psutil_mod=ns.get("psutil"),
+            processos_audio_ativos_cb=ns.get("_listar_processos_audio_ativos_mente"),
         )
+
+    def planejar_organizacao_janelas(self) -> dict:
+        """Produz um plano local de layout sem mover nenhuma janela."""
+        ns = self._ns()
+        planejar = ns.get("_planejar_organizacao_janelas_mente")
+        if not callable(planejar):
+            return {
+                "ok": False, "confirmado": False,
+                "status": "planejador_indisponivel", "prioridades": [],
+            }
+        resultado = dict(planejar(
+            ns.get("gw"),
+            ctypes_mod=ns.get("ctypes"),
+            wintypes_mod=ns.get("wintypes"),
+            psutil_mod=ns.get("psutil"),
+            processos_audio_ativos_cb=ns.get("_listar_processos_audio_ativos_mente"),
+        ) or {})
+        return {
+            chave: valor for chave, valor in resultado.items()
+            if not str(chave).startswith("_")
+        }
 
     def listar_programas(self) -> list:
         ns = self._ns()

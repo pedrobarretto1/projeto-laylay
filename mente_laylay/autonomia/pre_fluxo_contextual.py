@@ -5,9 +5,22 @@ from __future__ import annotations
 import re
 from typing import Any, Callable, Dict, Iterable, Tuple
 
+from mente_laylay.arquivos.lixeira_laylay import existe_exclusao_pendente
 from mente_laylay.cognicao.conversa_sobre_capacidades import texto_discute_capacidade_futura
+from mente_laylay.cognicao.modalidade_turno import texto_tem_pergunta_reciproca_apos_resposta
 from mente_laylay.memoria_mental.sessao_conversa import texto_encerra_conversa
-from mente_laylay.personalidade.conversa_natural import tipo_reconhecimento_afetivo
+from mente_laylay.memoria_mental.continuidade_conversa import (
+    detectar_comentario_resultado_operacional,
+)
+from mente_laylay.personalidade.conversa_natural import (
+    texto_parece_correcao_conversacional,
+    tipo_reconhecimento_afetivo,
+)
+from mente_laylay.personalidade.proporcao_resposta import parece_problema_matematico
+from mente_laylay.memoria_mental.identidade_usuario import normalizar_nome_usuario
+from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
+    classificar_confirmacao_local,
+)
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
@@ -39,10 +52,25 @@ def turno_tem_pergunta_nova_apos_trecho_social(ctx: Dict[str, Any], texto: str) 
     if len(segmentos) > 1 and "pergunta" in modalidades and len(modalidades) > 1:
         return True
 
+    # Perguntas recíprocas omitem o substantivo já mencionado: "e o seu?"
+    # significa "e o seu dia?". Essa estrutura precisa funcionar mesmo quando
+    # o retrato do turno ainda é o anterior.
+    if texto_tem_pergunta_reciproca_apos_resposta(texto):
+        return True
+
     bruto = re.sub(r"\s+", " ", str(texto or "").strip().casefold())
-    if not re.search(r"[,;].+\?\s*$", bruto):
+    # O retrato mental pode ainda representar o turno anterior. Nesse caso,
+    # detectamos a pergunta nova diretamente no texto. Além de vírgula e
+    # ponto e vírgula, frases naturais costumam separar os atos com ponto ou
+    # exclamação: "estou bem também. Você gosta de Slipknot?".
+    partes = [
+        parte.strip()
+        for parte in re.split(r"[,;]|[.!](?=\s)", bruto)
+        if parte.strip()
+    ]
+    if len(partes) < 2 or not partes[-1].endswith("?"):
         return False
-    sufixo = re.split(r"[,;]", bruto)[-1].strip()
+    sufixo = partes[-1]
     sufixo = re.sub(r"^(?:lay|laylay)\s*[,;:]?\s*", "", sufixo)
     return bool(re.match(
         r"^(?:(?:e|mas)\s+)?(?:voc[eê]|tu|quem|qual|quais|o\s+que|como|"
@@ -57,6 +85,11 @@ def texto_eh_conversa_social_sem_comando(ctx: Dict[str, Any], texto: str) -> boo
     texto_tem_comando_explicito = _get(ctx, "_texto_tem_comando_explicito")
     t = str(texto or "").strip()
     if not t:
+        return False
+    # Uma correção não pode ser encerrada pelo atalho de conversa casual. Ela
+    # precisa seguir para o contexto completo, ainda que algum classificador
+    # anterior tenha marcado o turno como agradecimento ou reação social.
+    if _modalidade_turno(ctx) == "correcao" or texto_parece_correcao_conversacional(t):
         return False
     eh_social = (
         (callable(texto_social_curto) and texto_social_curto(t))
@@ -191,7 +224,9 @@ def emitir_conversa_curta(
     return True
 
 
-def processar_encerramento_conversa(ctx: Dict[str, Any], texto_usuario: str) -> Tuple[bool, str]:
+def processar_encerramento_conversa(
+    ctx: Dict[str, Any], texto_usuario: str, *, emitir_fala: bool = True,
+) -> Tuple[bool, str]:
     """Encerra o fio atual sem apagar fatos e aprendizados duradouros."""
     texto = str(texto_usuario or "").strip()
     if not texto_encerra_conversa(texto):
@@ -200,12 +235,14 @@ def processar_encerramento_conversa(ctx: Dict[str, Any], texto_usuario: str) -> 
     if callable(renovar):
         renovar("despedida_usuario", False)
     falar = _get(ctx, "falar_com_lipsync")
-    if callable(falar):
+    if emitir_fala and callable(falar):
         falar("Fechado. Encerramos por aqui; quando você voltar, começo por um contexto novo.", "calma", 1)
     salvar = _get(ctx, "salvar_memoria")
     if callable(salvar):
         salvar()
-    return True, "encerramento_conversa"
+    # Na voz única, a limpeza da sessão acontece sem ocupar a autoria da
+    # resposta. O chamador recebe a etapa, mas deixa o turno seguir à LLM.
+    return bool(emitir_fala), "encerramento_conversa"
 
 
 def processar_identidade_usuario(ctx: Dict[str, Any], texto_usuario: str) -> Tuple[bool, str]:
@@ -215,22 +252,37 @@ def processar_identidade_usuario(ctx: Dict[str, Any], texto_usuario: str) -> Tup
     norm = str(normalizar(t) if callable(normalizar) else t.casefold()).strip()
     mente = _get(ctx, "mente_integrada_estado", {})
     mente = mente if isinstance(mente, dict) else {}
-    conhecido = str(mente.get("nome_usuario") or "Pedro").strip() or "Pedro"
+    conhecido = normalizar_nome_usuario(mente.get("nome_usuario"))
 
     negacao = re.fullmatch(r"meu nome (?:nao|não) (?:e|é)\s+([a-zà-ÿ][a-zà-ÿ' -]{0,50})", norm, re.IGNORECASE)
     if negacao:
         nome_errado = str(negacao.group(1) or "").strip().title()
-        fala = f"Você tem razão: seu nome é {conhecido}, não {nome_errado}. Eu puxei esse nome do contexto errado."
+        if conhecido and conhecido.casefold() != nome_errado.casefold():
+            fala = f"Você tem razão: seu nome é {conhecido}, não {nome_errado}. Eu puxei esse nome do contexto errado."
+        else:
+            fala = f"Certo, não vou te chamar de {nome_errado}. Você ainda não me ensinou qual nome prefere."
         return emitir_conversa_curta(ctx, t, fala, emocao="calma", nivel=1), "correcao_nome_usuario"
 
-    afirmacao = re.fullmatch(r"meu nome (?:e|é)\s+([a-zà-ÿ][a-zà-ÿ' -]{0,50})", norm, re.IGNORECASE)
+    afirmacao = re.fullmatch(
+        r"(?:meu nome (?:e|é)|eu me chamo|me chamo|pode me chamar de|me chama de)\s+"
+        r"([a-zà-ÿ][a-zà-ÿ' -]{0,50})",
+        norm,
+        re.IGNORECASE,
+    )
     if not afirmacao:
         return False, ""
-    nome = re.sub(r"\s+", " ", str(afirmacao.group(1) or "")).strip().title()
-    if not nome or len(nome.split()) > 3:
+    nome = normalizar_nome_usuario(afirmacao.group(1))
+    if not nome:
         return False, ""
+    salvar_identidade = _get(ctx, "_salvar_identidade_usuario")
+    if callable(salvar_identidade) and not bool(salvar_identidade(nome, t)):
+        return emitir_conversa_curta(
+            ctx, t,
+            "Eu entendi o nome, mas não consegui guardá-lo com segurança agora.",
+            emocao="calma", nivel=1,
+        ), "identidade_usuario_falha_persistencia"
     mente["nome_usuario"] = nome
-    fala = f"Certo, seu nome é {nome}. Desculpa pela confusão; vou usar o nome certo."
+    fala = f"Prazer, {nome}. Agora sim: guardei seu nome do jeito certo."
     return emitir_conversa_curta(ctx, t, fala, emocao="calma", nivel=1), "identidade_usuario"
 
 
@@ -257,6 +309,19 @@ def responder_conversa_social_curta(
     nivel: int,
 ) -> Tuple[bool, str]:
     t = str(texto_usuario or "").strip()
+    resposta_conversa_rapida_local = _get(ctx, "_resposta_conversa_rapida_local")
+    # A matemática local não é conversa social, portanto precisa ser tentada
+    # antes do porteiro social que corretamente rejeita fórmulas.
+    if parece_problema_matematico(t) and callable(resposta_conversa_rapida_local):
+        fala_matematica = str(resposta_conversa_rapida_local(t) or "").strip()
+        if fala_matematica and re.search(
+            r"\bx\s+(?:é\s+igual|igual)\s+a\b|infinitas\s+solu[cç][oõ]es|"
+            r"n[aã]o\s+tem\s+solu[cç][aã]o",
+            fala_matematica, flags=re.IGNORECASE,
+        ):
+            return emitir_conversa_curta(
+                ctx, t, fala_matematica, emocao="curiosa", nivel=1,
+            ), "matematica_linear_local"
     if not texto_eh_conversa_social_sem_comando(ctx, t):
         return False, ""
 
@@ -267,7 +332,6 @@ def responder_conversa_social_curta(
 
     texto_social_curto = _get(ctx, "_texto_social_curto")
     texto_conversa_casual_sem_acao = _get(ctx, "_texto_conversa_casual_sem_acao")
-    resposta_conversa_rapida_local = _get(ctx, "_resposta_conversa_rapida_local")
     if not callable(resposta_conversa_rapida_local):
         return False, ""
 
@@ -319,12 +383,110 @@ def processar_resposta_pendencia_prioritaria(
         return False, ""
     mente = _get(ctx, "mente_integrada_estado", {})
     pendencia = mente.get("pendencia_atual") if isinstance(mente, dict) else {}
+    resposta = re.sub(
+        r"\s+", " ", str(texto_usuario or "").strip().casefold(),
+    ).strip(" .,!?:;")
+    pendencia_exclusao = bool(
+        existe_exclusao_pendente()
+        or (
+            isinstance(pendencia, dict)
+            and pendencia.get("status") == "ativa"
+            and str(pendencia.get("origem") or "") == "lixeira_laylay"
+        )
+    )
+    confirmar = resposta in {
+        "sim", "pode", "pode apagar", "confirma", "confirmo",
+        "manda pra lixeira", "manda para a lixeira",
+    }
+    cancelar = resposta in {
+        "nao", "não", "cancela", "cancelar", "deixa", "deixa quieto",
+    } or classificar_confirmacao_local(texto_usuario) is False
+    confirmar_oferta = confirmar or resposta in {
+        "quero", "quero sim", "claro", "bora", "manda", "pode ser",
+    }
+    oferta_musical = mente.get("oferta_pendente") if isinstance(mente, dict) else {}
+    if (
+        confirmar_oferta
+        and isinstance(oferta_musical, dict)
+        and oferta_musical.get("modo") == "recomendar_artista"
+    ):
+        recomendar = _get(ctx, "_recomendar_musica_verificada")
+        artista = str(oferta_musical.get("contexto") or "").strip()
+        if callable(recomendar) and artista:
+            ok = bool(recomendar(artista, str(texto_usuario or "").strip()))
+            return ok, "recomendacao_musical_verificada" if ok else ""
+    if pendencia_exclusao and (confirmar or cancelar):
+        executar = _get(ctx, "_executar_intencao_curta_contextual")
+        if not callable(executar):
+            return False, ""
+        intencao = {
+            "intent": "CONFIRM_DELETE_ITEM" if confirmar else "CANCEL_DELETE_ITEM",
+            "params": {},
+        }
+        ok = bool(executar(
+            intencao,
+            str(texto_usuario or "").strip(),
+            origem="confirmacao-exclusao",
+            contexto_autoaprimoramento="resposta à confirmação da lixeira",
+        ))
+        return ok, "confirmacao_exclusao" if confirmar else "cancelamento_exclusao"
     if not isinstance(pendencia, dict) or pendencia.get("status") != "ativa" or not pendencia.get("foi_falada"):
         return False, ""
     if _modalidade_turno(ctx) in {"comando", "pergunta", "correcao", "deliberacao"}:
         return False, ""
     ok, nome = processar_pergunta_curta_contextual(ctx, texto_usuario)
     return ok, "pendencia_unificada" if ok else nome
+
+
+def processar_continuacao_visao_jogo(
+    ctx: Dict[str, Any], texto_usuario: str,
+) -> Tuple[bool, str]:
+    """Entrega um complemento à análise visual que realmente o solicitou."""
+    decisao = _decisao_turno(ctx)
+    modalidade = str(
+        decisao.get("modalidade_geral") or decisao.get("modalidade") or ""
+    ).casefold()
+    # Uma pendência nunca pode sequestrar um pedido operacional novo. O
+    # executor adequado terá a oportunidade de tratá-lo logo depois.
+    if bool(decisao.get("autoriza_execucao")) or modalidade == "comando":
+        return False, ""
+    continuar = _get(ctx, "_continuar_visao_jogo_pendente")
+    if not callable(continuar):
+        return False, ""
+    try:
+        tratado = bool(continuar(str(texto_usuario or "").strip()))
+    except Exception:
+        tratado = False
+    return tratado, "continuacao_visao_jogo" if tratado else ""
+
+
+def processar_consulta_sistema_local(
+    ctx: Dict[str, Any], texto_usuario: str,
+) -> Tuple[bool, str]:
+    """Responde inventários locais sem pedir ao modelo que os adivinhe."""
+    t = re.sub(r"\s+", " ", str(texto_usuario or "").strip().casefold())
+    if not re.search(
+        r"\b(?:quais|que|lista|listar|mostra|mostrar)\b.*"
+        r"\b(?:programas|aplicativos|apps|janelas)\b.*"
+        r"\b(?:abert[oa]s?|rodando|execucao|execução)\b",
+        t,
+    ):
+        return False, ""
+    listar = _get(ctx, "listar_programas_abertos")
+    if not callable(listar):
+        return False, ""
+    try:
+        programas = [str(item).strip() for item in list(listar() or []) if str(item).strip()]
+    except Exception:
+        programas = []
+    if programas:
+        nomes = ", ".join(programas[:12])
+        fala = f"Estão abertos agora: {nomes}."
+    else:
+        fala = "Não encontrei nenhum programa com janela visível agora."
+    return emitir_conversa_curta(
+        ctx, texto_usuario, fala, emocao="calma", nivel=1,
+    ), "consulta_programas_abertos"
 
 
 def processar_pergunta_aberta(
@@ -486,6 +648,48 @@ def processar_reparacao_conversacional(ctx: Dict[str, Any], texto_usuario: str) 
     return ok, "reparacao_operacional" if ok else ""
 
 
+def processar_comentario_resultado_operacional(
+    ctx: Dict[str, Any],
+    texto_usuario: str,
+) -> Tuple[bool, str]:
+    """Responde à reação sobre a última ação sem reabrir conversa antiga."""
+    mente = _get(ctx, "mente_integrada_estado", {})
+    comentario = detectar_comentario_resultado_operacional(texto_usuario, mente)
+    if not comentario:
+        return False, ""
+
+    suspender = _get(ctx, "_suspender_topico_conversacional")
+    if callable(suspender):
+        try:
+            suspender("comentario_resultado_operacional")
+        except Exception:
+            pass
+
+    tipo = str(comentario.get("tipo") or "")
+    alvo = str(comentario.get("alvo") or "o resultado").strip()
+    fala = ""
+    if tipo == "aparencia_cor":
+        pedida = str(comentario.get("cor_pedida") or "a cor pedida").strip()
+        percebida = str(comentario.get("cor_percebida") or "outro tom").strip()
+        fala = (
+            f"Entendi — {alvo} puxou mais para {percebida} do que para {pedida}. "
+            "No próximo ajuste eu uso um tom mais fechado para corrigir isso."
+        )
+    elif re.search(r"\b(?:não|nao)\s+(?:funcionou|deu)|\b(?:errado|estranho|pior)\b", str(texto_usuario), re.I):
+        fala = f"Entendi — {alvo} não ficou como você esperava. Vou considerar esse resultado, não o assunto anterior."
+    else:
+        fala = f"Entendi o que você percebeu em {alvo}. Vou continuar a partir desse resultado."
+
+    emitir = _get(ctx, "_emitir_resposta_curta")
+    if callable(emitir):
+        return bool(emitir(texto_usuario, fala, habilidade="continuidade_operacional")), "comentario_resultado_operacional"
+    falar = _get(ctx, "falar_com_lipsync")
+    if callable(falar):
+        falar(fala, "calma", 1)
+        return True, "comentario_resultado_operacional"
+    return False, ""
+
+
 def processar_fluxo_musical_generico(ctx: Dict[str, Any], texto_usuario: str) -> Tuple[bool, str]:
     texto_pede_direcao_musical_generica = _get(ctx, "_texto_pede_direcao_musical_generica")
     responder_pedido_direcao_musical_generica = _get(ctx, "_responder_pedido_direcao_musical_generica")
@@ -557,6 +761,33 @@ def processar_contexto_unificado_precoce(
     except Exception as e:
         print(f"⚠️ [CONTEXTO-UNIFICADO] falha no fluxo {origem}: {e}")
     return False, ""
+
+
+def processar_repeticao_operacional_precoce(
+    ctx: Dict[str, Any],
+    texto_usuario: str,
+    *,
+    origem: str = "pre-ia",
+) -> Tuple[bool, str]:
+    """Reexecuta o contrato anterior antes de qualquer interpretação por IA."""
+    resolver = _get(ctx, "_resolver_repeticao_ultima_acao")
+    if not callable(resolver):
+        return False, ""
+    try:
+        repeticao = resolver(str(texto_usuario or "").strip())
+    except Exception:
+        return False, ""
+    if not isinstance(repeticao, dict) or not str(repeticao.get("intent") or "").strip():
+        return False, ""
+    ok = executar_resultado_contextual(
+        ctx,
+        repeticao,
+        texto_usuario,
+        origem_resultado=f"repeticao_{str(origem).replace('-', '_')}",
+        contexto_autoaprimoramento="repetição explícita da última ação",
+        log_rota=f"ROTEADOR REPETIÇÃO [{origem}]",
+    )
+    return ok, "repeticao_operacional" if ok else ""
 
 
 def processar_janela_indisponivel(ctx: Dict[str, Any], texto_usuario: str) -> Tuple[bool, str]:
@@ -702,6 +933,7 @@ def processar_execucao_pratica_precoce(
     if houve_local:
         return True, nome_local or "comando_local_rapido"
     etapas = [
+        lambda: processar_repeticao_operacional_precoce(ctx, texto_usuario, origem=origem),
         lambda: processar_contexto_unificado_precoce(ctx, texto_usuario, origem=origem),
         lambda: processar_janela_indisponivel(ctx, texto_usuario),
         lambda: processar_comando_deterministico_precoce(ctx, texto_usuario, origem=origem),

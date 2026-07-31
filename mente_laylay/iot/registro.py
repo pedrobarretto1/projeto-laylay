@@ -104,7 +104,14 @@ def criar_dispositivo_lampada(*, protocolo: str = "simulado") -> DispositivoIoT:
             "dps_estado": "20",
             "variaveis": nomes_variaveis_tuya(PREFIXO_TUYA_LAMPADA),
             "snapshot_path": "dados/voz_pessoal/snapshot.json",
-            "snapshot_fallback_paths": ("dados/voz_pessoal/devices.json",),
+            # O wizard do TinyTuya grava estes dois arquivos na pasta atual.
+            # O protocolo escolhe o snapshot mais novo, então um pareamento
+            # recente não fica escondido atrás da cópia pessoal antiga.
+            "snapshot_fallback_paths": (
+                "snapshot.json",
+                "dados/voz_pessoal/devices.json",
+                "devices.json",
+            ),
             "snapshot_device_name": "LED BULB W5K",
         },
     )

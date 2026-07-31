@@ -177,6 +177,48 @@ def test_ouvido_pode_ser_desativado_sem_abrir_dispositivo():
     assert any("desativado" in mensagem for mensagem in logs)
 
 
+def test_ouvido_nao_carrega_whisper_antes_da_primeira_fala():
+    ambiente = [np.zeros(1600, dtype=np.float32) for _ in range(10)]
+    sd = SoundDeviceFalso(ambiente)
+    modelos = []
+    logs = []
+    ouvido = OuvidoWhisperRuntime(
+        processar_texto=lambda _: None,
+        esta_falando=lambda: False,
+        sounddevice_mod=sd,
+        numpy_mod=np,
+        model_factory=lambda *_args, **_kwargs: modelos.append(True) or ModeloFalso(),
+        deve_continuar=lambda: sd.pos < len(sd.chunks),
+        entrega_assincrona=False,
+        log=logs.append,
+    )
+    ouvido.executar()
+    assert modelos == []
+    assert any("somente na primeira fala" in mensagem for mensagem in logs)
+
+
+def test_modo_chat_pausa_ouvido_antes_da_calibracao_e_do_modelo():
+    ambiente = [np.zeros(1600, dtype=np.float32) for _ in range(4)]
+    sd = SoundDeviceFalso(ambiente)
+    modelos = []
+    logs = []
+    ouvido = OuvidoWhisperRuntime(
+        processar_texto=lambda _: None,
+        esta_falando=lambda: False,
+        escuta_permitida=lambda: False,
+        sounddevice_mod=sd,
+        numpy_mod=np,
+        model_factory=lambda *_args, **_kwargs: modelos.append(True) or ModeloFalso(),
+        deve_continuar=lambda: sd.pos < len(sd.chunks),
+        entrega_assincrona=False,
+        log=logs.append,
+    )
+    ouvido.executar()
+    assert modelos == []
+    assert any("Pausado enquanto o modo chat" in mensagem for mensagem in logs)
+    assert not any("Calibrando o ruído" in mensagem for mensagem in logs)
+
+
 def test_ouvido_refaz_transcricao_curta_quando_vad_do_whisper_retorna_vazio():
     modelo = ModeloFalsoComRetry()
     ouvido = OuvidoWhisperRuntime(
@@ -278,7 +320,7 @@ def test_ouvido_descarta_baixa_confianca():
     assert entregues == []
 
 
-def test_modo_jogo_aceita_comando_curto_e_rejeita_conversa_longa():
+def test_modo_jogo_entrega_comando_e_conversa_natural_a_mesma_mente():
     entregues = []
     modelo = ModeloFalso("Lay, liga a luz")
     ouvido = OuvidoWhisperRuntime(
@@ -295,7 +337,10 @@ def test_modo_jogo_aceita_comando_curto_e_rejeita_conversa_longa():
     ouvido._entregar(audio)
     modelo.texto = "Lay, queria conversar sobre como foi o meu dia no campeonato"
     ouvido._entregar(audio)
-    assert entregues == ["liga a luz"]
+    assert entregues == [
+        "liga a luz",
+        "queria conversar sobre como foi o meu dia no campeonato",
+    ]
 
 
 def test_ouvido_descarta_eco_recente_da_laylay():

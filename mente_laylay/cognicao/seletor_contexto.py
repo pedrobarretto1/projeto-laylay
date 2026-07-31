@@ -87,6 +87,10 @@ def selecionar_contexto_turno(
         _normalizar(texto),
     ))
     novo_assunto = modalidade in {"conversa", "pergunta"} and not referencia and len(_tokens(texto)) >= 2
+    associacoes = [
+        dict(item) for item in list(ctx.get("associacoes_continuidade") or [])[:3]
+        if isinstance(item, dict)
+    ]
     candidatos: list[ContextoCandidato] = []
 
     def adicionar(
@@ -104,6 +108,18 @@ def selecionar_contexto_turno(
         recencia = 0.18 if idade_s <= 60 else 0.10 if idade_s <= 300 else 0.0
         dominio_ok = dominio in {"conversa", dominio_atual} or dominio_atual == "conversa"
         score = base + recencia + min(0.25, overlap * 0.35)
+        reforco_associativo = 0.0
+        if referencia and modalidade != "comando" and associacoes:
+            compatibilidades = [
+                _sobreposicao(conteudo, str(item.get("rotulo") or ""))
+                for item in associacoes
+                if int(item.get("evidencias") or 0) >= 5
+                and float(item.get("confianca") or 0.0) >= 0.65
+            ]
+            compatibilidade = max(compatibilidades, default=0.0)
+            if compatibilidade >= 0.6:
+                reforco_associativo = min(0.18, 0.12 + compatibilidade * 0.06)
+                score += reforco_associativo
         if referencia and origem in {"ultima_fala", "pergunta_aberta", "promessa"}:
             score += 0.22
         if modalidade == "comando" and dominio != dominio_atual and dominio != "conversa":
@@ -118,7 +134,8 @@ def selecionar_contexto_turno(
         evidencia = (
             f"base={base:.2f}; recencia={recencia:.2f}; sobreposicao={overlap:.2f}; "
             f"dominio={'ok' if dominio_ok else 'incompativel'}; "
-            f"turno={'novo' if novo_assunto else 'continuacao'}"
+            f"turno={'novo' if novo_assunto else 'continuacao'}; "
+            f"associacao={reforco_associativo:.2f}"
         )
         candidatos.append(ContextoCandidato(
             origem, dominio, conteudo[:500], idade_s, relacao,
@@ -147,11 +164,24 @@ def selecionar_contexto_turno(
 
     ordenados = sorted(candidatos, key=lambda c: c.pontuacao, reverse=True)
     aceitos = [c for c in ordenados if c.aceito][:max(1, int(limite or 1))]
+    influencia_associativa = any(
+        "associacao=" in item.evidencia
+        and "associacao=0.00" not in item.evidencia
+        for item in aceitos
+    )
+    if influencia_associativa:
+        registrar_influencia = ctx.get("registrar_influencia_associativa")
+        if callable(registrar_influencia):
+            try:
+                registrar_influencia()
+            except Exception:
+                pass
     return {
         "dominio_atual": dominio_atual,
         "modalidade": modalidade,
         "referencia_contextual": referencia,
         "novo_assunto": novo_assunto,
+        "influencia_associativa": influencia_associativa,
         "selecionados": [asdict(c) for c in aceitos],
         "rejeitados": [asdict(c) for c in ordenados if not c.aceito],
     }

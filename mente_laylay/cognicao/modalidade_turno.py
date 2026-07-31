@@ -53,6 +53,18 @@ def _classificar_modalidade_base(
         )
         return resultado
 
+    if re.match(
+        r"^(?:eu\s+)?(?:achei|pensei|entendi)\s+que\s+(?:voc[eê]|tu)\s+ia\s+"
+        r"(?:colocar|tocar|abrir|fechar|ligar|desligar|fazer|executar)\b",
+        t,
+    ):
+        resultado.update(
+            modalidade="reacao", confianca=0.99,
+            motivo="expectativa sobre ação passada; não autoriza execução",
+            natureza_acao="decepcao",
+        )
+        return resultado
+
     # Negar ou discutir um comando não equivale a pedir sua execução.
     if re.search(r"^(?:nao|não)\s+(?:abre|abra|fecha|feche|liga|ligue|desliga|desligue|toca|toque|coloca|apaga|remove)\b", t):
         resultado.update(
@@ -61,7 +73,12 @@ def _classificar_modalidade_base(
         )
         return resultado
     confirmacoes = {"sim", "sim pode", "pode", "pode sim", "quero", "quero sim", "eu quero", "claro", "aham", "uhum", "isso", "isso mesmo", "bora", "vai", "manda", "pode ser", "fechado", "beleza", "ok"}
-    recusas = {"nao", "não", "agora nao", "agora não", "nao precisa", "não precisa", "deixa", "deixa quieto", "esquece", "melhor nao", "melhor não", "pode nao", "pode não"}
+    recusas = {
+        "nao", "não", "agora nao", "agora não", "nao precisa", "não precisa",
+        "deixa", "deixa quieto", "deixa pra la", "deixa pra lá",
+        "deixa para la", "deixa para lá", "esquece", "melhor nao",
+        "melhor não", "pode nao", "pode não",
+    }
     if t in confirmacoes:
         resultado.update(
             modalidade="confirmacao", confianca=0.98,
@@ -74,8 +91,83 @@ def _classificar_modalidade_base(
     if t in recusas:
         resultado.update(modalidade="recusa", confianca=0.98, motivo="recusa curta explícita")
         return resultado
-    if re.fullmatch(r"(?:h+m+|hum+|entendi|tendi|ta bom|tá bom|ah ta|ah tá|ata|nossa|caramba)(?: entao| então)?", t):
+    if re.fullmatch(
+        r"(?:h+m+|hum+|entendi|tendi|ta bom|tá bom|ah ta|ah tá|ata|nossa|"
+        r"caramba|pois e|pois é|e ne|e né|ne|né)(?: entao| então)?",
+        t,
+    ):
         resultado.update(modalidade="reacao", confianca=0.92, motivo="reação curta à fala anterior")
+        return resultado
+    # O usuário pode mencionar o nome da playlist sem repetir a palavra
+    # "playlist": "quais músicas eu tenho em Kamaitachi" ainda é uma
+    # consulta ao catálogo local, não uma pergunta factual para a conversa.
+    if re.search(r"\b(?:quais|quantas|lista|listar|liste|mostra|mostrar|mostre)\b", t) and re.search(
+        r"\b(?:musicas|músicas|faixas)\b", t
+    ) and re.search(
+        r"\b(?:eu\s+tenho|tenho|tem|salvas?|guardadas?|em|na|no|da|do)\b", t
+    ):
+        resultado.update(
+            modalidade="comando", confianca=0.98,
+            motivo="consulta explícita às faixas de uma playlist local",
+            acao_explicita=True, autoriza_execucao=True, natureza_acao="consulta",
+        )
+        return resultado
+
+    # Inventários locais são consultas operacionais, mesmo quando formulados
+    # como pergunta. Sem esta distinção, "quais minhas playlists" cai na
+    # conversa generativa e a LLM pode inventar nomes em vez de ler o arquivo.
+    if re.search(r"\bplaylists?\b", t) and re.search(
+        r"\b(?:que|quais|quantas|lista|listar|liste|mostra|mostrar|mostre|"
+        r"fale|fala|diga|diz)\b",
+        t,
+    ):
+        resultado.update(
+            modalidade="comando", confianca=0.99,
+            motivo="consulta explícita ao inventário local de playlists",
+            acao_explicita=True, autoriza_execucao=True, natureza_acao="consulta",
+        )
+        return resultado
+    if re.search(r"\b(?:e-?mail|emails?)\b", t) and re.search(
+        r"\b(?:que|quais|quantos|lista|listar|mostra|mostrar|mostre|fale|fala|"
+        r"diga|diz|leia|ler|resuma|resumo)\b",
+        t,
+    ):
+        resultado.update(
+            modalidade="comando", confianca=0.99,
+            motivo="consulta explícita à caixa de e-mail",
+            acao_explicita=True, autoriza_execucao=True, natureza_acao="consulta",
+        )
+        return resultado
+    # Consultas a estado local são operações de leitura. Elas precisam chegar
+    # ao especialista determinístico em vez de cair na conversa generativa.
+    if (
+        re.search(
+            r"\b(?:como\s+(?:esta|está|ta|tá|ficou|se\s+encontra)|"
+            r"qual\s+(?:e|é)\s+(?:o\s+)?(?:status|estado)|"
+            r"mostra|mostrar|consulta|consultar|status|estado)\b",
+            t,
+        )
+        and re.search(r"\b(?:lampada|lâmpada|luz|tomada|ventilador|dispositivo|aparelho|iot)\b", t)
+    ) or re.search(
+        r"\b(?:quais|que|lista|listar|mostra|mostrar)\b.*\b(?:programas|aplicativos|apps|janelas)\b.*\b(?:abert[oa]s?|rodando|execucao|execução)\b",
+        t,
+    ):
+        resultado.update(
+            modalidade="comando", confianca=0.99,
+            motivo="consulta explícita a estado local",
+            acao_explicita=True, autoriza_execucao=True, natureza_acao="consulta",
+        )
+        return resultado
+    if re.fullmatch(
+        r"(?:para|pare|pausa|pause)\s+(?:a\s+)?m[uú]sica|"
+        r"(?:volta|retoma|continua)\s+(?:a\s+)?(?:tocar|m[uú]sica)",
+        t,
+    ):
+        resultado.update(
+            modalidade="comando", confianca=0.99,
+            motivo="controle explícito da mídia atual",
+            acao_explicita=True, autoriza_execucao=True, natureza_acao="pedido_direto",
+        )
         return resultado
     if re.search(r"\b(?:me\s+lembra|lembra\s+(?:de|pra)|me\s+avisa|cria\s+(?:um\s+)?lembrete|agende|agendar)\b", t):
         resultado.update(
@@ -143,7 +235,7 @@ def _classificar_modalidade_base(
     ))
     imperativo_direto = bool(re.search(
         r"^(?:por favor\s+)?(?:abre|abra|fecha|feche|liga|ligue|desliga|desligue|"
-        r"toca|toque|coloca|coloque|bota|põe|poe|cria|crie|apaga|remove|deleta|"
+        r"toca|toque|coloca|coloque|deixa|deixe|bota|põe|poe|cria|crie|apaga|remove|deleta|"
         r"maximiza|organiza|pausa|retoma|aumenta|abaixa|diminui|resume|resuma|"
         r"leia|verifique)\b",
         t,
@@ -195,13 +287,39 @@ def _classificar_modalidade_base(
 
 _VERBOS_COMANDO = re.compile(
     r"\b(?:abre|abrir|abra|fecha|fechar|feche|liga|ligar|ligue|desliga|desligar|"
-    r"desligue|toca|tocar|toque|coloca|colocar|coloque|bota|põe|poe|cria|criar|"
+    r"desligue|toca|tocar|toque|coloca|colocar|coloque|deixa|deixar|deixe|bota|põe|poe|cria|criar|"
     r"crie|apaga|apagar|remove|remover|deleta|deletar|maximiza|maximizar|pausa|"
     r"pausar|retoma|aumenta|abaixa|diminui|organiza|agende|agendar|me lembra|me avisa|"
-    r"leia|ler|lê|le|pesquisa|pesquisar|busca|buscar|procura|procurar|pula|pule|"
+    r"leia|ler|lê|le|pesquisa|pesquisar|busca|buscar|procura|procurar|"
+    r"encontra|encontre|achar|acha|ache|localiza|localize|pula|pule|"
     r"captura|capture|trava|bloqueia)\b",
     re.IGNORECASE,
 )
+
+
+_PERGUNTA_RECIPROCA_FINAL = re.compile(
+    r"(?:[,;]\s*|\s+)"
+    r"(?P<sufixo>(?:(?:mas\s+)?e\s+)?(?:"
+    r"(?:o|a)\s+(?:seu|sua|teu|tua)|"
+    r"(?:voc[eê]|tu)|"
+    r"(?:do|da)\s+(?:seu|teu)\s+lado|"
+    r"por\s+a[ií]|"
+    r"como\s+(?:foi|est[aá]|t[aá])\s+(?:(?:o|a)\s+)?(?:seu|sua|teu|tua)"
+    r"))\?\s*$",
+    flags=re.IGNORECASE,
+)
+
+
+def texto_tem_pergunta_reciproca_apos_resposta(texto: str) -> bool:
+    """Reconhece respostas seguidas de pergunta elíptica: ``estou bem, e o seu?``."""
+    t = re.sub(r"\s+", " ", str(texto or "").strip().casefold())
+    if not t.endswith("?"):
+        return False
+    reciproca = _PERGUNTA_RECIPROCA_FINAL.search(t)
+    if not reciproca:
+        return False
+    prefixo = t[:reciproca.start()].strip(" ,;")
+    return len(prefixo.split()) >= 2
 
 
 def _segmentar_turno_misto(texto_normalizado: str) -> list[str]:
@@ -211,13 +329,33 @@ def _segmentar_turno_misto(texto_normalizado: str) -> list[str]:
         return []
     partes = [p.strip(" ,;") for p in re.split(r"[,;]+", t) if p.strip(" ,;")]
     if len(partes) == 1:
+        # Duas frases também podem conter dois atos: "estou bem. Você gosta
+        # de Slipknot?". O legado só separava vírgula e escondia a pergunta.
+        frases = [
+            p.strip(" .!,;")
+            for p in re.split(
+                r"[.!]\s+(?=(?:voc[eê]|tu|qual|quais|quem|o\s+que|como|quando|onde|por\s+que)\b)",
+                t,
+                flags=re.IGNORECASE,
+            )
+            if p.strip(" .!,;")
+        ]
+        if len(frases) > 1:
+            partes = frases
+    if len(partes) == 1:
+        reciproca = _PERGUNTA_RECIPROCA_FINAL.search(t)
+        if reciproca and texto_tem_pergunta_reciproca_apos_resposta(t):
+            prefixo = t[:reciproca.start()].strip(" ,;")
+            pergunta = t[reciproca.start():].strip(" ,;")
+            partes = [prefixo, pergunta]
         m = _VERBOS_COMANDO.search(t)
-        if m and m.start() > 0:
+        if len(partes) == 1 and m and m.start() > 0:
             prefixo = t[:m.start()].strip(" ,;")
             comando = t[m.start():].strip(" ,;")
             # Molduras educadas pertencem ao comando, não são conversa.
             if prefixo and not re.fullmatch(
-                r"(?:voce|você)?\s*(?:pode|poderia|consegue|conseguiria|por favor|faz favor)",
+                r"(?:voce|você)?\s*(?:pode|poderia|consegue|conseguiria|por favor|faz favor)|"
+                r"(?:volta|retoma|continua)\s+a",
                 prefixo,
             ):
                 partes = [prefixo, comando]
@@ -255,12 +393,22 @@ def classificar_modalidade_turno(
     )
     deliberativo = str(principal.get("modalidade") or "") == "deliberacao"
     modalidade_principal = str(principal.get("modalidade") or "")
-    pergunta_composta_social = bool(
+    pergunta_composta_social = texto_tem_pergunta_reciproca_apos_resposta(
+        normalizado
+    ) or bool(
         modalidade_principal == "pergunta"
         and re.search(
             r"\b(?:estou|to|t[oô]|t[aá]|tudo)\b[^,;]{0,80}\b(?:bem|de boa|tranquil[oa]|suave)\b"
             r"[^,;]*[,;]\s*(?:lay(?:lay)?\s*[,;]?\s*)?"
             r"(?:voc[eê]|tu)\b[^?]{0,160}\?\s*$",
+            normalizado,
+            flags=re.IGNORECASE,
+        )
+    ) or bool(
+        modalidade_principal == "pergunta"
+        and re.search(
+            r"\b(?:estou|to|t[oô]|t[aá]|tudo)\b.{0,80}\b(?:bem|de boa|"
+            r"tranquil[oa]|suave)\b[^.!;,]{0,40}[.!;,]\s*(?:voc[eê]|tu)\b[^?]{0,160}\?\s*$",
             normalizado,
             flags=re.IGNORECASE,
         )
@@ -272,7 +420,10 @@ def classificar_modalidade_turno(
         normalizado,
     ))
     turno_protegido = (
-        modalidade_principal in {"pergunta", "deliberacao", "correcao"}
+        (
+            modalidade_principal in {"pergunta", "deliberacao", "correcao"}
+            or str(principal.get("natureza_acao") or "") == "decepcao"
+        )
         and not comando_separado
         and not pergunta_composta_social
     )
