@@ -1,0 +1,33 @@
+* text=auto
+
+# Código e documentação mantêm LF no repositório e na árvore de trabalho.
+*.py text eol=lf
+*.pyi text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf
+*.txt text eol=lf
+*.env text eol=lf
+
+# Scripts nativos do Windows preservam CRLF.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Artefatos binários nunca passam por normalização textual.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.wav binary
+*.mp3 binary
+*.onnx binary
+*.gguf binary
+*.exe binary
+*.dll binary
+*.pyd binary
+*.zip binary

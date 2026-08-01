@@ -7,6 +7,7 @@ yarn-error.log*
 # Build outputs
 dist/
 build/
+build_portatil/
 cliente/gamebar_laylay/artifacts/
 cliente/gamebar_laylay/bin/
 cliente/gamebar_laylay/obj/
@@ -77,6 +78,7 @@ memoria/
 contexto.txt
 contexto-*.txt
 playlists.json
+teste.md
 
 # Áudios pessoais, datasets e modelos locais
 *.wav
