@@ -80,6 +80,26 @@ def test_normalizador_de_resposta_descarta_comandos_malformados() -> None:
     assert contrato.como_dict()["comandos"] == [{"intent": "OK"}]
 
 
+def test_normalizador_de_resposta_aceita_campos_opcionais_nulos() -> None:
+    contrato = normalizar_resposta_preparada({
+        "fala": "Ainda estou aqui.",
+        "comandos": None,
+        "aprendizados": None,
+        "leitura_semantica": None,
+    })
+
+    assert contrato.como_dict() == {
+        "resposta_bruta": "",
+        "fala": "Ainda estou aqui.",
+        "comandos": [],
+        "tipo_interacao": "",
+        "aprendizados": [],
+        "leitura_semantica": {},
+        "autocorrigida": False,
+        "suprimir_fala": False,
+    }
+
+
 def test_contrato_normaliza_emocao_sem_quebrar_resposta_legada() -> None:
     contrato = normalizar_resposta_preparada({
         "fala": "Consegui!",

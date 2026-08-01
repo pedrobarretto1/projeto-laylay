@@ -134,21 +134,30 @@ Critério de conclusão:
 
 ## P8 — Tipagem dos caminhos críticos
 
-**Status: pendente; depende da P7.**
+**Status: em andamento — linha de base congelada e contratos centrais
+migrados.**
+
+Linha de base registrada em 1º de agosto de 2026:
+
+- 473 diagnósticos em 108 módulos antes da primeira fatia da P8;
+- categorias dominantes: `union-attr` (166), `arg-type` (117), `operator`
+  (34), `assignment` (32) e `var-annotated` (25);
+- após tipar turno, resultado de ação e composição do ciclo: 446 diagnósticos
+  em 105 módulos, sem `ignore` amplo.
 
 Objetivo: fazer a tipagem proteger primeiro os caminhos nos quais um valor
 incorreto pode executar, confirmar ou lembrar algo indevidamente.
 
 Ordem interna:
 
-1. [ ] congelar a contagem e as categorias atuais do mypy completo;
-2. [ ] corrigir acessos opcionais e contratos incompatíveis no turno,
+1. [x] congelar a contagem e as categorias atuais do mypy completo;
+2. [x] corrigir acessos opcionais e contratos incompatíveis no turno,
    resultado de ação e composição principal;
 3. [ ] tipar as fronteiras dos executores de IoT, arquivos, música, navegador
    e agenda;
 4. [ ] substituir `Any` somente nas fronteiras cujo contrato já é conhecido;
-5. [ ] ampliar gradualmente a lista de módulos verificados pela CI;
-6. [ ] impedir novos erros de tipagem nos módulos já migrados.
+5. [x] ampliar gradualmente a lista de módulos verificados pela CI;
+6. [x] impedir novos erros de tipagem nos módulos já migrados.
 
 Critério de conclusão:
 

@@ -156,8 +156,15 @@ def normalizar_resultado_acao(
             status=str(status or resultado.status),
         )
 
-    dados = dict(resultado or {}) if isinstance(resultado, dict) else {}
-    params = dados.get("params") if isinstance(dados.get("params"), dict) else {}
+    dados: Dict[str, Any] = dict(resultado) if isinstance(resultado, dict) else {}
+    params_brutos = dados.get("params")
+    params: Dict[str, Any] = (
+        dict(params_brutos) if isinstance(params_brutos, dict) else {}
+    )
+    contexto_bruto = dados.get("contexto")
+    contexto: Dict[str, Any] = (
+        dict(contexto_bruto) if isinstance(contexto_bruto, dict) else {}
+    )
     intent = str(dados.get("intent") or dados.get("acao") or "")
     alvo = str(
         dados.get("alvo")
@@ -189,7 +196,7 @@ def normalizar_resultado_acao(
         origem=str(origem or dados.get("origem") or ""),
         detalhe=str(dados.get("detalhe") or dados.get("erro") or ""),
         texto_usuario=str(texto or dados.get("texto_usuario") or ""),
-        contexto=dados.get("contexto") if isinstance(dados.get("contexto"), dict) else {},
+        contexto=contexto,
         id_solicitacao=str(dados.get("id_solicitacao") or dados.get("request_id") or ""),
         confirmacao_oferecida=str(dados.get("confirmacao_oferecida") or ""),
         evidencia_confirmacao=str(dados.get("evidencia_confirmacao") or ""),

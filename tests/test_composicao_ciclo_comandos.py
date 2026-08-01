@@ -171,6 +171,23 @@ def test_composicao_exige_conexao_antes_de_executar() -> None:
         _ = runtime.contexto
 
 
+def test_composicao_nao_publica_runtime_parcial_quando_validacao_falha() -> None:
+    runtime, *_ = _montar()
+
+    class _ContextoInvalido(_ContextoFake):
+        def validar_conexoes(self):
+            raise RuntimeError("contexto inválido")
+
+    runtime.contexto_factory = lambda **_kwargs: _ContextoInvalido()
+
+    with pytest.raises(RuntimeError, match="contexto inválido"):
+        runtime.conectar(servicos=_com_servicos_tipados(), estado_getter=lambda: {})
+    with pytest.raises(RuntimeError, match="ainda não conectado"):
+        _ = runtime.contexto
+    with pytest.raises(RuntimeError, match="ainda não conectado"):
+        _ = runtime.ciclo
+
+
 @pytest.mark.parametrize(
     ("dependencia", "mensagem"),
     (

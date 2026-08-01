@@ -78,6 +78,20 @@ def test_iot_exige_confirmacao_explicita_da_releitura() -> None:
     assert com_releitura.confirmado is True
 
 
+def test_resultado_legado_aceita_params_e_contexto_nulos() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "OPEN_URL",
+        "params": None,
+        "contexto": None,
+        "executou": False,
+    })
+
+    assert resultado.alvo == ""
+    assert resultado.params == {}
+    assert resultado.contexto == {}
+    assert resultado.confirmado is False
+
+
 def test_intent_sem_confirmacao_possivel_nao_aceita_sucesso_forcado() -> None:
     resultado = normalizar_resultado_acao({
         "intent": "LOCK_PC", "status": "bloqueio_solicitado",

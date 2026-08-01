@@ -16,6 +16,10 @@ if ($LASTEXITCODE -ne 0) { throw "compileall falhou" }
 if ($LASTEXITCODE -ne 0) { throw "Ruff encontrou uma regressão crítica" }
 
 & $Python -m mypy --follow-imports=skip `
+    mente_laylay/cognicao/contratos_turno.py `
+    mente_laylay/memoria_mental/resultado_acao.py `
+    mente_laylay/integracao/composicao_principal.py `
+    mente_laylay/autonomia/composicao_ciclo_comandos.py `
     mente_laylay/integracao/politicas_composicao.py `
     mente_laylay/percepcao/visao_jogo/analise_visual.py `
     mente_laylay/percepcao/visao_jogo/pesquisa_sintese.py `

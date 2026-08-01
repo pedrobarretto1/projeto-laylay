@@ -12,22 +12,37 @@ from mente_laylay.integracao.contexto_execucao_ia import (
     DEPENDENCIAS_EXECUCAO_INTENCAO,
     criar_contexto_intencao_runtime,
 )
-from mente_laylay.integracao.registro_iot import registrar_iot
-from mente_laylay.integracao.registro_arquivos import registrar_arquivos_leitura
-from mente_laylay.integracao.registro_mutacoes_arquivos import registrar_arquivos_mutacao
-from mente_laylay.integracao.registro_musica import registrar_musica_leitura
+from mente_laylay.integracao.composicao_principal import RegistrosPrincipais
+from mente_laylay.integracao.registro_arquivos import (
+    RegistroArquivosLeitura,
+    registrar_arquivos_leitura,
+)
+from mente_laylay.integracao.registro_conversa_llm import RegistroModeloLLM
+from mente_laylay.integracao.registro_iot import RegistroIoT, registrar_iot
+from mente_laylay.integracao.registro_musica import (
+    RegistroMusicaLeitura,
+    registrar_musica_leitura,
+)
+from mente_laylay.integracao.registro_mutacoes_arquivos import (
+    RegistroArquivosMutacao,
+    registrar_arquivos_mutacao,
+)
 from mente_laylay.integracao.registro_operacoes_musicais import (
+    RegistroOperacoesMusicais,
     registrar_operacoes_musicais,
 )
 from mente_laylay.integracao.registro_navegador import (
+    RegistroNavegadorLeitura,
+    RegistroNavegadorOperacoes,
     registrar_navegador_leitura,
     registrar_navegador_operacoes,
 )
 from mente_laylay.integracao.registro_visao_jogo import (
+    RegistroVisaoJogoAnalise,
+    RegistroVisaoJogoLeitura,
     registrar_visao_jogo_analise,
     registrar_visao_jogo_leitura,
 )
-from mente_laylay.integracao.composicao_principal import RegistrosPrincipais
 
 
 class ComposicaoCicloComandosRuntime:
@@ -52,18 +67,18 @@ class ComposicaoCicloComandosRuntime:
         self.contexto_factory = contexto_factory
         self.ciclo_factory = ciclo_factory
         self._servicos: dict[str, Any] = {}
-        self._contexto = None
-        self._ciclo = None
-        self._iot = None
-        self._arquivos_leitura = None
-        self._arquivos_mutacao = None
-        self._musica_leitura = None
-        self._musica_operacoes = None
-        self._navegador_leitura = None
-        self._navegador_operacoes = None
-        self._visao_jogo_leitura = None
-        self._visao_jogo_analise = None
-        self._modelo_llm = None
+        self._contexto: Any | None = None
+        self._ciclo: Any | None = None
+        self._iot: RegistroIoT | None = None
+        self._arquivos_leitura: RegistroArquivosLeitura | None = None
+        self._arquivos_mutacao: RegistroArquivosMutacao | None = None
+        self._musica_leitura: RegistroMusicaLeitura | None = None
+        self._musica_operacoes: RegistroOperacoesMusicais | None = None
+        self._navegador_leitura: RegistroNavegadorLeitura | None = None
+        self._navegador_operacoes: RegistroNavegadorOperacoes | None = None
+        self._visao_jogo_leitura: RegistroVisaoJogoLeitura | None = None
+        self._visao_jogo_analise: RegistroVisaoJogoAnalise | None = None
+        self._modelo_llm: RegistroModeloLLM | None = None
 
     def conectar(
         self,
@@ -177,7 +192,7 @@ class ComposicaoCicloComandosRuntime:
             self._modelo_llm = registro_modelo_llm
             self._servicos["enviar_mensagem"] = registro_modelo_llm.enviar
         snapshot = lambda: dict(self._servicos)
-        self._contexto = self.contexto_factory(
+        contexto = self.contexto_factory(
             namespace_getter=snapshot,
             estado_getter=estado_getter,
             monitor_saude=self.monitor_saude,
@@ -191,18 +206,20 @@ class ComposicaoCicloComandosRuntime:
             visao_jogo_leitura=registro_visao_leitura,
             visao_jogo_analise=registro_visao_analise,
         )
-        self._ciclo = self.ciclo_factory(
+        ciclo = self.ciclo_factory(
             namespace_getter=snapshot,
-            contexto_intencao_runtime=self._contexto,
+            contexto_intencao_runtime=contexto,
             log=self.log,
             monitor_saude=self.monitor_saude,
             registrar_metrica_cb=self.registrar_metrica,
             registrar_falha_cb=self.registrar_falha,
             registrar_decisao_cb=self.registrar_decisao,
         )
-        self._contexto.validar_conexoes()
-        self._ciclo.validar_conexoes()
-        return self._contexto, self._ciclo
+        contexto.validar_conexoes()
+        ciclo.validar_conexoes()
+        self._contexto = contexto
+        self._ciclo = ciclo
+        return contexto, ciclo
 
     def _obter_ciclo(self) -> Any:
         if self._ciclo is None:
@@ -225,7 +242,7 @@ class ComposicaoCicloComandosRuntime:
 
     @property
     def servicos_tipados_registrados(self) -> tuple[str, ...]:
-        registrados = []
+        registrados: list[str] = []
         if self._arquivos_leitura is not None:
             registrados.append("arquivos_leitura")
         if self._arquivos_mutacao is not None:

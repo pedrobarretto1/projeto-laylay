@@ -180,7 +180,7 @@ class ContratoRespostaTurno:
         object.__setattr__(self, "nivel_emocao", max(0, min(3, nivel_emocao)))
 
     def como_dict(self) -> RespostaPreparadaTurnoDict:
-        dados = {
+        dados: RespostaPreparadaTurnoDict = {
             "resposta_bruta": self.resposta_bruta,
             "fala": self.fala,
             "comandos": [dict(item) for item in self.comandos],
@@ -202,15 +202,28 @@ def normalizar_resposta_preparada(
 ) -> ContratoRespostaTurno:
     origem = dict(dados or {})
     origem.update(sobrescritas)
-    comandos = origem.get("comandos") if isinstance(origem.get("comandos"), (list, tuple)) else ()
-    aprendizados = origem.get("aprendizados") if isinstance(origem.get("aprendizados"), (list, tuple)) else ()
-    leitura = origem.get("leitura_semantica") if isinstance(origem.get("leitura_semantica"), Mapping) else {}
+    comandos_brutos = origem.get("comandos")
+    comandos: tuple[Dict[str, Any], ...] = (
+        tuple(dict(item) for item in comandos_brutos if isinstance(item, dict))
+        if isinstance(comandos_brutos, (list, tuple))
+        else ()
+    )
+    aprendizados_brutos = origem.get("aprendizados")
+    aprendizados: tuple[Any, ...] = (
+        tuple(aprendizados_brutos)
+        if isinstance(aprendizados_brutos, (list, tuple))
+        else ()
+    )
+    leitura_bruta = origem.get("leitura_semantica")
+    leitura: Mapping[str, Any] = (
+        dict(leitura_bruta) if isinstance(leitura_bruta, Mapping) else {}
+    )
     return ContratoRespostaTurno(
         resposta_bruta=origem.get("resposta_bruta", ""),
         fala=origem.get("fala", ""),
-        comandos=tuple(comandos),
+        comandos=comandos,
         tipo_interacao=origem.get("tipo_interacao", ""),
-        aprendizados=tuple(aprendizados),
+        aprendizados=aprendizados,
         leitura_semantica=leitura,
         autocorrigida=origem.get("autocorrigida", False),
         suprimir_fala=origem.get("suprimir_fala", False),
