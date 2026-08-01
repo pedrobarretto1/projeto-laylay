@@ -64,7 +64,7 @@ def test_falha_no_contexto_de_jogo_usa_fallback_e_fica_visivel() -> None:
 
 def test_falha_na_recencia_visual_nao_apaga_o_contexto_do_jogo() -> None:
     ns, estado = _namespace_observavel()
-    ns["_visao_jogo_runtime"] = _Quebra("tem_analise_recente")
+    ns["_registro_visao_jogo_leitura_runtime"] = _Quebra("tem_analise_recente")
 
     contexto = anexar_estado_visual_recente_seguro(ns, {"ativo": True, "jogo": "Teste"})
 
@@ -85,7 +85,7 @@ def test_sondagens_saudaveis_nao_geram_falha() -> None:
     ns["_modo_jogo_runtime"] = type(
         "ModoJogo", (), {"contexto_atual": lambda self: {"ativo": False}}
     )()
-    ns["_visao_jogo_runtime"] = type(
+    ns["_registro_visao_jogo_leitura_runtime"] = type(
         "Visao", (), {"tem_analise_recente": lambda self: True}
     )()
 

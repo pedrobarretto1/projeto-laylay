@@ -6,6 +6,8 @@ import asyncio
 import re
 from typing import Any, Awaitable, Callable, Dict
 
+from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
+
 
 def _recortar_texto_para_resumo(texto: str, limite: int = 7000) -> tuple[str, bool]:
     """Mantem começo e fim sem deixar uma pagina enorme travar o modelo local."""
@@ -213,18 +215,25 @@ class ResumoConteudoRuntime:
         self,
         *,
         namespace_getter: Callable[[], Dict[str, Any]],
+        modelo_llm: Any = None,
         log: Callable[[str], None] = print,
     ) -> None:
         self.namespace_getter = namespace_getter
+        self.enviar_mensagem = resolver_enviador_modelo(modelo_llm=modelo_llm)
         self.log = log
 
     async def resumir(self) -> bool:
         ns = self.namespace_getter() or {}
+        enviar = self.enviar_mensagem or resolver_enviador_modelo(
+            enviar_mensagem=ns.get("enviar_mensagem")
+        )
+        if not callable(enviar):
+            return False
         return await resumir_pagina_ou_video(
             websocket_disponivel=ns["websocket_disponivel"],
             solicitar_conteudo=ns["solicitar_conteudo"],
             falar=ns["falar"],
-            enviar_mensagem=ns["enviar_mensagem"],
+            enviar_mensagem=enviar,
             limpar_resposta=ns["limpar_resposta"],
             remover_prefixo_exec=ns["remover_prefixo_exec"],
             transcript_api=ns["transcript_api"],

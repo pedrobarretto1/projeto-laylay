@@ -213,6 +213,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             registrar_mente=_reg,
             falar_por_status=adaptador_resultado.falar_por_status,
             musica_leitura=ctx.get("_registro_musica_leitura_runtime"),
+            musica_operacoes=ctx.get("_registro_musica_operacoes_runtime"),
         ),
     )
     if despacho_musical.tratado:
@@ -230,6 +231,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             abrir_url_musical=rota_musical.abrir,
             contexto_fala=adaptador_resultado.contexto_fala,
             musica_leitura=ctx.get("_registro_musica_leitura_runtime"),
+            musica_operacoes=ctx.get("_registro_musica_operacoes_runtime"),
         ),
     )
     if despacho_playlists.tratado:

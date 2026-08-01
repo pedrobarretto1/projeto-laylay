@@ -8,15 +8,12 @@ continuam pertencendo aos runtimes e executores responsáveis.
 from __future__ import annotations
 
 import re
-import unicodedata
 from threading import RLock
 from typing import Any, Callable, Mapping
 
-
-def _normalizar(valor: Any) -> str:
-    base = unicodedata.normalize("NFKD", str(valor or "").casefold())
-    base = "".join(ch for ch in base if not unicodedata.combining(ch))
-    return re.sub(r"\s+", " ", base).strip()
+from mente_laylay.cognicao.normalizacao_linguagem import (
+    normalizar_texto_basico as _normalizar,
+)
 
 
 class MapaRecursosRuntime:

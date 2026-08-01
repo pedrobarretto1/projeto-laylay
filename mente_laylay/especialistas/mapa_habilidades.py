@@ -27,12 +27,20 @@ _DESCRICAO_DOMINIO = {
         "automaticamente por foco, áudio, uso recente e tempo aberto, ou posicionar "
         "aplicativos específicos à esquerda e à direita"
     ),
-    "navegador": "abrir sites, pesquisar, fechar abas e capturar a tela",
+    "navegador": (
+        "consultar a aba ativa e as abas abertas; abrir sites, pesquisar, controlar mídia, "
+        "interagir com controles identificados de páginas, fechar abas e capturar a tela. "
+        "A leitura não autoriza ações e comandos arbitrários de página não são expostos"
+    ),
     "visao": (
         "observar a tela do jogo; para itens, ler o quadro atual, pesquisar evidências "
         "confiáveis e cruzar o resultado com a build e o inventário conhecidos"
     ),
-    "agenda": "criar, listar e cancelar lembretes ou ações agendadas",
+    "agenda": (
+        "criar, listar e cancelar lembretes ou ações agendadas; completar naturalmente "
+        "horário ou data pendentes, persistir antes de confirmar e entregar lembretes pela "
+        "central de notificações"
+    ),
     "arquivos": (
         "pesquisar arquivos localmente por nome, caminho, conteúdo, tipo, significado e data; "
         "abrir um resultado escolhido; criar, mover, renomear, restaurar ou enviar itens à lixeira"
@@ -140,9 +148,10 @@ _MODULO_SAUDE_POR_DOMINIO = {
     "conversa": "llm",
     "cooperacao": "orquestracao_cooperativa",
     "pessoas": "memoria_pessoas",
+    "agenda": "agenda",
 }
 
-_DOMINIOS_CONVERSACIONAIS_DISPONIVEIS = frozenset({"avatar"})
+_DOMINIOS_CONVERSACIONAIS_DISPONIVEIS = frozenset({"avatar", "conversa"})
 
 
 def _normalizar(texto: Any) -> str:
@@ -372,7 +381,6 @@ class MapaHabilidadesRuntime:
             dominio in _DOMINIOS_CONVERSACIONAIS_DISPONIVEIS
             or bool((mapa.get("dominios") or {}).get(dominio, {}).get("disponiveis"))
             for dominio in dominios
-            if dominio != "conversa"
         )
         if not disponivel:
             return "Essa habilidade não está disponível nesta instalação agora."
@@ -386,6 +394,13 @@ class MapaHabilidadesRuntime:
             )
         if ("sistema" in dominios or "navegador" in dominios) and re.search(r"\b(?:fech|encerr)\w*\b", t):
             return "Consigo. Posso fechar o programa, navegador ou aba quando você fizer o pedido direto."
+        if "navegador" in dominios:
+            return (
+                "Consigo consultar a aba ativa e as abas abertas, abrir sites, pesquisar, controlar "
+                "mídia e interagir com controles de página que a habilidade reconheça. A leitura do "
+                "navegador não autoriza uma ação por conta própria, e eu não exponho um comando "
+                "arbitrário de página; cada ação real continua passando pelo porteiro e pelo executor."
+            )
         if "sistema" in dominios and re.search(
             r"\b(?:organiz|posicion|divid|esquerda|direita|janela)\w*\b", t,
         ):
@@ -401,6 +416,8 @@ class MapaHabilidadesRuntime:
                 "Consigo analisar o item visível no jogo. Eu uso o quadro atual, tento ler nome, "
                 "atributos e requisitos, busco evidência externa quando houver identificação "
                 "confiável e cruzo tudo com a build e o inventário que conheço daquela sessão. "
+                "A captura é transitória, não fica persistida e observar o jogo não autoriza uma "
+                "nova análise por conta própria. "
                 "Para avaliar um item específico, mantenha o tooltip aberto e o mouse sobre ele; "
                 "se a imagem ou a fonte não forem suficientes, eu explico o limite em vez de inventar."
             )
@@ -414,7 +431,12 @@ class MapaHabilidadesRuntime:
                 "quando você pedir; não invento músicas nem reproduzo ou copio algo sozinha."
             )
         if "agenda" in dominios:
-            return "Consigo criar, listar e cancelar lembretes e agendamentos."
+            return (
+                "Consigo criar, listar e cancelar lembretes e ações agendadas. Se faltar o horário, "
+                "eu mantenho uma pendência temporária e você pode completar naturalmente, por exemplo "
+                "com '14:30' ou 'em 15 minutos'. Só digo que ficou marcado depois de confirmar a "
+                "persistência local; a entrega passa pela central de notificações."
+            )
         if "email" in dominios:
             return (
                 "Consigo consultar emails e reunir avisos de email, agenda, lembretes e alertas internos. "
@@ -452,6 +474,13 @@ class MapaHabilidadesRuntime:
             return (
                 "Tenho um avatar visual com emoções e animações. Posso ajudar a imaginar skins e designs; "
                 "uma mudança nos PNGs ou no código só conta como feita depois que o executor confirmar."
+            )
+        if "conversa" in dominios:
+            return (
+                "Consigo conversar, explicar e raciocinar usando o modelo de linguagem disponível. "
+                "O histórico temporário, a preparação do contexto e o acesso ao modelo são separados: "
+                "o cliente de rede não lê minha memória por conta própria. Conversar também não "
+                "autoriza comandos; qualquer ação real continua passando pelo porteiro e pelo executor."
             )
         return "Consigo, desde que essa habilidade esteja configurada e você faça o pedido de execução diretamente."
 

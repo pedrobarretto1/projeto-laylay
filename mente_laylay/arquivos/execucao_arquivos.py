@@ -80,6 +80,11 @@ def executar_intencao_arquivos(
             emocao_preferida=emocao,
             nivel_preferido=nivel,
         )
+        modo_jogo = _get(ctx, "modo_jogo_ativo", False)
+        try:
+            modo_jogo_ativo = bool(modo_jogo() if callable(modo_jogo) else modo_jogo)
+        except Exception:
+            modo_jogo_ativo = False
         confirmacao = personalizar_confirmacao_llm(
             contrato,
             plano.fala,
@@ -87,7 +92,10 @@ def executar_intencao_arquivos(
             emocao=plano.emocao,
             nivel=plano.nivel,
             enviar_mensagem=_get(ctx, "enviar_mensagem"),
-            contexto={"current_emotion": _get(ctx, "current_emotion", "calma")},
+            contexto={
+                "current_emotion": _get(ctx, "current_emotion", "calma"),
+                "modo_jogo_ativo": modo_jogo_ativo,
+            },
         )
         resultado_fala["status"] = ""
         resultado_fala["executou"] = None

@@ -63,6 +63,8 @@ def inferir_habilidade_autoaprimoramento(resultado: Dict[str, Any] = None, texto
         "PLAYLIST_ADD": "playlist",
         "PLAYLIST_PLAY": "playlist",
         "PLAYLIST_LIST": "playlist",
+        "PLAYLIST_MOVE": "playlist",
+        "LEARNING_QUERY": "memoria",
         "TOCAR_PLAYLIST": "playlist",
         "TOCAR_PLAYLIST_SHUFFLE": "playlist",
         "MUSIC_SEARCH": "midia",

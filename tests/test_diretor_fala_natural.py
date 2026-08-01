@@ -64,6 +64,29 @@ def test_resultado_operacional_nao_recebe_raiva_fabricada() -> None:
     assert direcao["preservar_resultado_operacional"] is True
 
 
+def test_resultado_operacional_aceita_irritacao_com_causa_verificada() -> None:
+    mente = _mente_social("informacao", operacional=True)
+    mente["avaliacao_emocional_operacional_atual"] = {
+        "emocao": "irritada",
+        "nivel": 2,
+        "responsabilidade": "sistema",
+        "confianca": 0.96,
+        "permite_expressao": True,
+        "ts": 100.0,
+    }
+
+    direcao = dirigir_fala(
+        "Falhou de novo. Agora isso está oficialmente me irritando.",
+        estado_mental=mente,
+        emocao="irritada",
+        nivel=2,
+        agora=110.0,
+    )
+
+    assert direcao["emocao"] == "irritada"
+    assert direcao["nivel"] == 2
+
+
 def test_abertura_envergonhada_mecanica_nao_se_repete() -> None:
     mente = _mente_social("elogio", permite_pergunta=False)
     mente["ultima_resposta"] = "A-ah... obrigada."
@@ -122,6 +145,28 @@ def test_carisma_social_nao_enfeita_resultado_operacional() -> None:
         estado_mental=_mente_social("brincadeira", operacional=True),
     )
     assert direcao["fala"] == texto
+
+
+def test_deboche_afetuoso_so_aparece_em_contexto_seguro() -> None:
+    brincadeira = dirigir_fala(
+        "Tá, essa me pegou.",
+        estado_mental=_mente_social("brincadeira"),
+    )
+    vulnerabilidade = dirigir_fala(
+        "Eu ouvi.",
+        estado_mental=_mente_social("desabafo"),
+    )
+    operacao = dirigir_fala(
+        "Fechei a aba.",
+        estado_mental=_mente_social("brincadeira", operacional=True),
+    )
+
+    assert brincadeira["humor"] == "debochado_afetuoso"
+    assert brincadeira["perfil_personalidade"]["assinatura"] == (
+        "opiniao_clara_callback_relevante_sem_bordao"
+    )
+    assert vulnerabilidade["humor"] == "nenhum"
+    assert operacao["humor"] == "nenhum"
 
 
 def test_voz_unica_preserva_texto_mesmo_quando_diretor_trocaria_resposta() -> None:

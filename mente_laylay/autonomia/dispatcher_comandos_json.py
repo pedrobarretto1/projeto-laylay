@@ -23,6 +23,7 @@ def adaptar_acao_json_para_intencao(cmd: Dict[str, Any], alvo: str = "") -> Dict
         "open_url": ("OPEN_URL", "url"),
         "open_app": ("APP_OPEN", "nome_app"),
         "close_app": ("CLOSE_APP", "nome_app"),
+        "fechar_programa": ("CLOSE_APP", "nome_app"),
         "maximize_window": ("MAXIMIZE_WINDOW", "nome_app"),
         "capturar_tela": ("SCREEN_CAPTURE", "alvo"),
         "fechar_abas_paradas": ("CLOSE_IDLE_TABS", "alvo"),
@@ -136,11 +137,10 @@ def executar_comandos_json(
     """Executa ações JSON usando o contexto compartilhado da Laylay."""
     mensagens = _get(ctx, "messages")
     salvar_memoria = _get(ctx, "salvar_memoria")
-    listar_abas_chrome = _get(ctx, "listar_abas_chrome")
+    navegador_leitura = _get(ctx, "_registro_navegador_leitura_runtime")
     listar_programas_abertos = _get(ctx, "listar_programas_abertos")
     executar_intencao = _get(ctx, "executar_intencao")
-    _executar_exec = _get(ctx, "_executar_exec")
-    processar_comando_deterministico = _get(ctx, "processar_comando_deterministico")
+    executar_comando_conteudo = _get(ctx, "_executar_comando_conteudo")
     _autorizar_acao_pratica = _get(ctx, "_autorizar_acao_pratica")
 
     erros_execucao: List[str] = []
@@ -163,9 +163,6 @@ def executar_comandos_json(
                 if str(_cmd.get("acao", "")).strip() in {"open_url", "youtube_search", "youtube_control", "open_app", "close_app", "organizar_desktop", "capturar_tela", "volume_up", "volume_down", "volume_set", "volume_mute", "parar_midia", "tocar_playlist", "close_tab", "close_specific_tab", "notificar", "criar_pasta", "criar_arquivo", "deletar_item"}:
                     _cmd["target"] = "pc_b"
         print(f"🎯 [PC B] Target injetado em {len(comandos)} comando(s) — usuário pediu PC B.")
-
-    if not comandos and processar_comando_deterministico and processar_comando_deterministico(texto, "pos-ia-0-comandos"):
-        return {"erros": [], "fala_emitida_por_acao": False, "fala_ja_emitida": fala_ja_emitida, "fala_salva_no_inicio": fala_salva_no_inicio}
 
     for cmd in comandos:
         if not isinstance(cmd, dict):
@@ -201,22 +198,22 @@ def executar_comandos_json(
             if isinstance(mensagens, list):
                 mensagens.append({"role": "user", "content": info_txt + "\n\n[RESPOSTA OBRIGATÓRIA EM JSON: {\"fala\": \"...\", \"comandos\": [...]}]"})
 
-        elif acao == "verificar_abas" and callable(listar_abas_chrome):
-            abas = listar_abas_chrome(timeout_s=5.0)
+        elif acao == "verificar_abas" and navegador_leitura is not None:
+            abas = navegador_leitura.listar_abas(timeout_s=5.0)
             info_txt = "System: Abas abertas no Chrome:\n" + "\n".join([f"{i}. {str(a.get('titulo') or '')[:60]} | {str(a.get('url') or '')[:80]}" for i, a in enumerate(abas[:20], 1)]) if abas else "System: Nenhuma aba encontrada no Chrome (extensão pode estar desconectada)."
             if isinstance(mensagens, list):
                 mensagens.append({"role": "user", "content": info_txt + "\n\n[RESPOSTA OBRIGATÓRIA EM JSON: {\"fala\": \"...\", \"comandos\": [...]}]"})
 
         else:
             try:
-                if callable(_executar_exec):
+                if callable(executar_comando_conteudo):
                     if acao.lower() in {"youtube", "youtube_search", "tocar_playlist", "youtube_play"} and callable(_autorizar_acao_pratica):
                         decisao = _autorizar_acao_pratica(acao, texto, origem="json_legacy")
                         if not bool(decisao.get("permitido")):
                             print(f"🎵 [AUTONOMIA] ação legada bloqueada: {acao} ({decisao.get('motivo')}).")
                             continue
-                    executou_legado = bool(_executar_exec(acao.upper(), alvo))
-                    if not executou_legado:
+                    executou_conteudo = bool(executar_comando_conteudo(acao.upper(), alvo))
+                    if not executou_conteudo:
                         erros_execucao.append(
                             f"ação não reconhecida ou não executada: '{acao}' (alvo='{alvo}')"
                         )

@@ -7,6 +7,11 @@ from mente_laylay.autonomia.executor_playlists import (
     DependenciasExecutorPlaylists,
     executar_intencao_playlists,
 )
+from mente_laylay.autonomia.roteador_deterministico import detectar_movimento_playlist
+from mente_laylay.autonomia.orquestrador_deterministico import (
+    detectar_intencao_deterministica_mente,
+)
+from mente_laylay.especialistas.capacidades import intents_registradas
 from mente_laylay.autonomia.roteador_intencao import executar_intencao
 
 
@@ -21,9 +26,37 @@ class _MusicaLeituraFake:
     def contar_usuario(self, _nome): return self.total
 
 
+class _MusicaOperacoesFake:
+    def __init__(
+        self, *, faixa=None, adicionar=None, tocar=None, shuffle=None,
+        primeira=None, apagar=None, definir_ultima=None, definir_url=None,
+        mover=None,
+    ):
+        self._faixa = faixa or (lambda: {})
+        self._adicionar = adicionar or (lambda *_args: False)
+        self._tocar = tocar or (lambda _nome: False)
+        self._shuffle = shuffle or (lambda _nome: {})
+        self._primeira = primeira or (lambda _nome: "")
+        self._apagar = apagar or (lambda _nome: False)
+        self._definir_ultima = definir_ultima or (lambda _nome: None)
+        self._definir_url = definir_url or (lambda _url: None)
+        self._mover = mover or (lambda *_args: {})
+
+    def faixa_atual(self): return dict(self._faixa() or {})
+    def adicionar_faixa(self, *args): return bool(self._adicionar(*args))
+    def tocar_playlist(self, nome): return bool(self._tocar(nome))
+    def preparar_shuffle(self, nome): return dict(self._shuffle(nome) or {})
+    def primeira_url(self, nome): return str(self._primeira(nome) or "")
+    def apagar_playlist(self, nome): return bool(self._apagar(nome))
+    def mover_faixa(self, origem, destino, musica=""):
+        return dict(self._mover(origem, destino, musica) or {})
+    def definir_ultima_playlist(self, nome): self._definir_ultima(nome)
+    def definir_ultima_url(self, url): self._definir_url(url)
+
+
 def _dependencias(
     eventos: list[tuple], abrir=lambda *_args, **_kwargs: True,
-    musica_leitura=None,
+    musica_leitura=None, musica_operacoes=None,
 ):
     return DependenciasExecutorPlaylists(
         marcar_resultado=lambda status, **kwargs: eventos.append(
@@ -35,6 +68,7 @@ def _dependencias(
         abrir_url_musical=abrir,
         contexto_fala=lambda: {},
         musica_leitura=musica_leitura,
+        musica_operacoes=musica_operacoes,
     )
 
 
@@ -47,6 +81,87 @@ def test_executor_playlists_nao_interfere_em_outro_dominio() -> None:
 
     assert despacho == ResultadoDespacho.nao_tratado()
     assert eventos == []
+
+
+def test_movimento_playlist_vira_intent_oficial_com_parametros_completos() -> None:
+    resultado = detectar_movimento_playlist(
+        "move Duality da playlist rock para a playlist treino",
+        params_cb=lambda **kwargs: kwargs,
+        limpar_nome_playlist=lambda valor: str(valor).strip().casefold(),
+    )
+
+    assert resultado == {
+        "intent": "PLAYLIST_MOVE",
+        "params": {"musica": "Duality", "origem": "rock", "destino": "treino"},
+    }
+
+
+def test_movimento_playlist_atravessa_roteador_canonico_e_catalogo() -> None:
+    contexto = {
+        "normalizar_texto": lambda texto: str(texto).casefold(),
+        "limpar_nome_playlist": lambda valor: str(valor).strip().casefold(),
+        "texto_conversa_casual_sem_acao": lambda _texto: False,
+        "texto_bloqueia_playlist_agora": lambda _texto: False,
+        "texto_social_curto": lambda _texto: False,
+        "ignorar_token_solto": lambda _texto: False,
+        "fluxo_prioritario_da_ia": lambda _texto: False,
+        "texto_expresso_melhor_no_deterministico": lambda _texto: True,
+        "texto_depende_de_contexto": lambda _texto: False,
+        "limpar_destino_pc_b": lambda texto: texto,
+        "target_from_params": lambda *_args: "pc_a",
+    }
+
+    resultado = detectar_intencao_deterministica_mente(
+        "transfira Duality da playlist rock para a playlist treino",
+        contexto,
+    )
+
+    assert resultado == {
+        "intent": "PLAYLIST_MOVE",
+        "params": {"musica": "duality", "origem": "rock", "destino": "treino"},
+    }
+    assert "PLAYLIST_MOVE" in intents_registradas()
+
+
+def test_executor_move_faixa_pelo_caminho_canonico_e_confirma_persistencia() -> None:
+    eventos: list[tuple] = []
+    movimentos: list[tuple[str, str, str]] = []
+    ultimas: list[str] = []
+
+    despacho = executar_intencao_playlists(
+        "PLAYLIST_MOVE",
+        {"musica": "Duality", "origem": "rock", "destino": "treino"},
+        "move Duality da playlist rock para a playlist treino",
+        "pc_a",
+        {},
+        _dependencias(
+            eventos,
+            musica_operacoes=_MusicaOperacoesFake(
+                mover=lambda origem, destino, musica: movimentos.append(
+                    (origem, destino, musica)
+                ) or {
+                    "ok": True,
+                    "titulo": "Duality",
+                    "origem": origem,
+                    "destino": destino,
+                },
+                definir_ultima=ultimas.append,
+            ),
+        ),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(True)
+    assert movimentos == [("rock", "treino", "Duality")]
+    assert ultimas == ["treino"]
+    assert (
+        "resultado",
+        "playlist_faixa_movida",
+        {"executou": True, "confirmado": True},
+    ) in eventos
+    assert any(
+        evento[0] == "fala_status" and "Movi Duality" in evento[2]
+        for evento in eventos
+    )
 
 
 def test_adicao_prefere_faixa_viva_do_player_em_vez_da_aba_ativa() -> None:
@@ -73,7 +188,15 @@ def test_adicao_prefere_faixa_viva_do_player_em_vez_da_aba_ativa() -> None:
             "_yt_clean_title": lambda titulo: titulo.replace(" (Official Video)", ""),
             "set_ultima_playlist": lambda nome: eventos.append(("ultima", nome)),
         },
-        _dependencias(eventos),
+        _dependencias(eventos, musica_operacoes=_MusicaOperacoesFake(
+            faixa=lambda: {
+                "url": estado["musica_atual_url"],
+                "title": estado["musica_atual_titulo"],
+                "canal": "",
+            },
+            adicionar=lambda *args: adicoes.append(args) or True,
+            definir_ultima=lambda nome: eventos.append(("ultima", nome)),
+        )),
     )
 
     assert despacho == ResultadoDespacho.concluido()
@@ -110,7 +233,13 @@ def test_adicao_com_estado_antigo_consulta_aba_ativa() -> None:
             },
             "ADD_TO_PLAYLIST": lambda *args: adicoes.append(args) or True,
         },
-        _dependencias([]),
+        _dependencias([], musica_operacoes=_MusicaOperacoesFake(
+            faixa=lambda: {
+                "url": "https://www.youtube.com/watch?v=nova",
+                "title": "Nova", "canal": "Canal",
+            },
+            adicionar=lambda *args: adicoes.append(args) or True,
+        )),
     )
 
     assert adicoes == [
@@ -176,9 +305,15 @@ def test_listagem_especifica_estiliza_conteudo_e_atualiza_contexto() -> None:
             "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
             "set_ultima_playlist": ultimas.append,
         },
-        _dependencias([], musica_leitura=_MusicaLeituraFake(conteudo={
-            "ok": True, "name": "Rock", "total": 3,
-        })),
+        _dependencias(
+            [],
+            musica_leitura=_MusicaLeituraFake(conteudo={
+                "ok": True, "name": "Rock", "total": 3,
+            }),
+            musica_operacoes=_MusicaOperacoesFake(
+                definir_ultima=ultimas.append,
+            ),
+        ),
     )
 
     assert falas == ["Rock tem três músicas."]
@@ -218,7 +353,14 @@ def test_reproducao_local_abre_playlist_e_guarda_contexto() -> None:
             "play_playlist": lambda nome: chamadas.append(nome) or True,
             "set_ultima_playlist": lambda nome: eventos.append(("ultima", nome)),
         },
-        _dependencias(eventos, musica_leitura=_MusicaLeituraFake(total=3)),
+        _dependencias(
+            eventos,
+            musica_leitura=_MusicaLeituraFake(total=3),
+            musica_operacoes=_MusicaOperacoesFake(
+                tocar=lambda nome: chamadas.append(nome) or True,
+                definir_ultima=lambda nome: eventos.append(("ultima", nome)),
+            ),
+        ),
     )
 
     assert despacho == ResultadoDespacho.concluido()
@@ -247,6 +389,12 @@ def test_shuffle_abre_primeira_faixa_e_registra_url() -> None:
         _dependencias(
             eventos,
             abrir=lambda url, **_kwargs: aberturas.append(url) or True,
+            musica_operacoes=_MusicaOperacoesFake(
+                shuffle=lambda _nome: {
+                    "url": "https://www.youtube.com/watch?v=shuffle"
+                },
+                definir_url=urls.append,
+            ),
         ),
     )
 
@@ -275,6 +423,9 @@ def test_pc_b_abre_primeira_faixa_sem_usar_player_local() -> None:
         _dependencias(
             eventos,
             abrir=lambda url, **_kwargs: aberturas.append(url) or True,
+            musica_operacoes=_MusicaOperacoesFake(
+                primeira=lambda _nome: "https://youtube.com/watch?v=anime",
+            ),
         ),
     )
 
@@ -298,7 +449,10 @@ def test_playlist_inexistente_cria_sugestao_pendente() -> None:
             "set_playlist_sugestao_pendente": pendencias.append,
             "falar_com_lipsync": lambda *_args: None,
         },
-        _dependencias(eventos),
+        _dependencias(
+            eventos,
+            musica_operacoes=_MusicaOperacoesFake(tocar=lambda _nome: False),
+        ),
     )
 
     assert despacho == ResultadoDespacho.concluido()
@@ -318,7 +472,13 @@ def test_exclusao_bem_sucedida_limpa_ultima_playlist() -> None:
             "delete_playlist": lambda _nome: True,
             "set_ultima_playlist": lambda nome: eventos.append(("ultima", nome)),
         },
-        _dependencias(eventos),
+        _dependencias(
+            eventos,
+            musica_operacoes=_MusicaOperacoesFake(
+                apagar=lambda _nome: True,
+                definir_ultima=lambda nome: eventos.append(("ultima", nome)),
+            ),
+        ),
     )
 
     assert ("ultima", "") in eventos
@@ -343,6 +503,14 @@ def test_roteador_principal_delega_adicao_da_faixa_viva() -> None:
             "ADD_TO_PLAYLIST": lambda *args: adicoes.append(args) or True,
             "_registrar_resultado_execucao": lambda *_args, **_kwargs: None,
             "falar_com_lipsync": lambda *_args: None,
+            "_registro_musica_operacoes_runtime": _MusicaOperacoesFake(
+                faixa=lambda: {
+                    "url": estado["musica_atual_url"],
+                    "title": estado["musica_atual_titulo"],
+                    "canal": "",
+                },
+                adicionar=lambda *args: adicoes.append(args) or True,
+            ),
         },
     )
 

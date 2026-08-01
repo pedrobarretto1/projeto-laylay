@@ -94,6 +94,48 @@ def test_atalho_social_nao_engole_pergunta_temática() -> None:
     assert falas == []
 
 
+def test_atalho_social_do_jogo_aceita_somente_saudacao_e_bem_estar_simples() -> None:
+    for texto in (
+        "oi lay",
+        "boa noite, Laylay",
+        "tudo bem com você?",
+        "eu estou bem sim lay",
+        "por aqui tudo certo",
+    ):
+        falas: list[str] = []
+        tratado, etapa = responder_conversa_social_curta({
+            "mente_integrada_estado": {"turno_atual": _turno(texto)},
+            "_texto_tem_comando_explicito": lambda _texto: False,
+            "_resposta_conversa_rapida_local": lambda _texto: "Resposta social local.",
+            "_emitir_resposta_curta": lambda *_args, **_kwargs: falas.append("falou"),
+        }, texto, emocao="calma", nivel=1)
+
+        assert tratado is True, texto
+        assert etapa == "conversa_social_segura_jogo", texto
+        assert falas == ["falou"], texto
+
+
+def test_atalho_social_do_jogo_deixa_contexto_correcao_e_matematica_para_mente() -> None:
+    for texto in (
+        "não lay, eu ainda estou no menu",
+        "to terminando minha casa",
+        "minha casinha ta legal ne lay",
+        "resolva passo a passo: 3(2x-5)-4(x+1)=2(3x-7)+9",
+        "estou bem também. Você gosta de Slipknot?",
+    ):
+        falas: list[str] = []
+        tratado, etapa = responder_conversa_social_curta({
+            "mente_integrada_estado": {"turno_atual": _turno(texto)},
+            "_texto_tem_comando_explicito": lambda _texto: False,
+            "_resposta_conversa_rapida_local": lambda _texto: "Resposta local indevida.",
+            "_emitir_resposta_curta": lambda *_args, **_kwargs: falas.append("falou"),
+        }, texto, emocao="calma", nivel=1)
+
+        assert tratado is False, texto
+        assert etapa == "", texto
+        assert falas == [], texto
+
+
 def test_pre_fluxo_completo_nao_trata_apenas_bem_estar_com_retrato_atrasado() -> None:
     texto = "eu estou bem lay, voce gosta de slipknot?"
     falas: list[str] = []

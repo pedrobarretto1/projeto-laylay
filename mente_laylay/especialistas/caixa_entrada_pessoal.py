@@ -12,6 +12,8 @@ import unicodedata
 import uuid
 from pathlib import Path
 from typing import Any, Callable
+
+from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
 from urllib.parse import urlsplit
 
 from mente_laylay.personalidade.confirmacao_llm import personalizar_informacao_llm
@@ -115,6 +117,7 @@ class CaixaEntradaPessoalRuntime:
         clipboard_getter: Callable[[], str] | None = None,
         observar_item: Callable[[dict[str, Any]], Any] | None = None,
         enviar_mensagem: Callable[..., Any] | None = None,
+        modelo_llm: Any = None,
         agora: Callable[[], dt.datetime] = dt.datetime.now,
         log: Callable[[str], Any] = print,
     ) -> None:
@@ -125,7 +128,10 @@ class CaixaEntradaPessoalRuntime:
         self.contexto_getter = contexto_getter
         self.clipboard_getter = clipboard_getter
         self.observar_item = observar_item
-        self.enviar_mensagem = enviar_mensagem
+        self.enviar_mensagem = resolver_enviador_modelo(
+            modelo_llm=modelo_llm,
+            enviar_mensagem=enviar_mensagem,
+        )
         self.agora = agora
         self.log = log
         self._lock = threading.RLock()

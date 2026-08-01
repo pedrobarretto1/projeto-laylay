@@ -100,7 +100,7 @@ def test_voz_unica_tambem_preserva_recusa_correcao_e_confirmacao_sociais() -> No
         assert falas == []
 
 
-def test_voz_unica_nao_bloqueia_comando_autorizado() -> None:
+def test_pre_fluxo_nao_reclassifica_comando_autorizado() -> None:
     executados: list[str] = []
     contexto = {
         "_voz_unica_llm": True,
@@ -120,8 +120,8 @@ def test_voz_unica_nao_bloqueia_comando_autorizado() -> None:
     }
     contexto["_recarregar_contexto_inicio"] = lambda: dict(contexto)
 
-    assert processar_inicio_fluxo_resposta_ia(contexto, "desliga a luz") is True
-    assert executados == ["desliga a luz"]
+    assert processar_inicio_fluxo_resposta_ia(contexto, "desliga a luz") is False
+    assert executados == []
 
 
 def test_prompt_novo_contem_so_identidade_contexto_e_contrato() -> None:
@@ -129,6 +129,10 @@ def test_prompt_novo_contem_so_identidade_contexto_e_contrato() -> None:
     assert "Você é Laylay" in BASE_SYSTEM_PROMPT
     assert "PERSONALIDADE E PRESENÇA:" in BASE_SYSTEM_PROMPT
     assert "levemente debochada" in BASE_SYSTEM_PROMPT
+    assert "no máximo uma tirada curta por resposta" in BASE_SYSTEM_PROMPT
+    assert "evite poesia aleatória e humor forçado" in BASE_SYSTEM_PROMPT
+    assert "responda primeiro e só então acrescente personalidade" in BASE_SYSTEM_PROMPT
+    assert "Só culpe com causa e confiança explícitas" in BASE_SYSTEM_PROMPT
     assert "ciúme brincalhão" in BASE_SYSTEM_PROMPT
     assert "Nunca seja possessiva" in BASE_SYSTEM_PROMPT
     assert "Molde o tamanho à necessidade" in BASE_SYSTEM_PROMPT

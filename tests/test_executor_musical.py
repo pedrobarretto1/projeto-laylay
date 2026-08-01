@@ -6,13 +6,30 @@ from mente_laylay.autonomia.executor_musical import (
     executar_intencao_musical,
 )
 from mente_laylay.autonomia.roteador_intencao import executar_intencao
+from tests.fakes_navegador import NavegadorOperacoesFake
 
 
-def _dependencias(eventos: list[tuple], abrir=lambda *_args, **_kwargs: True):
+def _dependencias(
+    eventos: list[tuple], abrir=lambda *_args, **_kwargs: True,
+    musica_operacoes=None,
+):
     return DependenciasExecutorMusical(
         marcar_resultado=lambda status, **kwargs: eventos.append(("resultado", status, kwargs)),
         abrir_url_musical=abrir,
+        musica_operacoes=musica_operacoes,
     )
+
+
+class _MusicaOperacoesFake:
+    def __init__(self, copiar, definir=lambda _nome: None):
+        self._copiar = copiar
+        self._definir = definir
+
+    def copiar_curadoria(self, origem, musica, destino):
+        return dict(self._copiar(origem, musica, destino) or {})
+
+    def definir_ultima_playlist(self, nome):
+        self._definir(nome)
 
 
 class _MusicaLeituraFake:
@@ -211,7 +228,16 @@ def test_copia_da_curadoria_atualiza_ultima_playlist() -> None:
             "set_ultima_playlist": ultimas.append,
             "falar_com_lipsync": lambda *_args: None,
         },
-        _dependencias(eventos),
+        _dependencias(
+            eventos,
+            musica_operacoes=_MusicaOperacoesFake(
+                lambda *args: chamadas.append(args) or {
+                    "ok": True,
+                    "faixa": {"titulo": "Duality - Slipknot"},
+                },
+                definir=ultimas.append,
+            ),
+        ),
     )
 
     assert despacho == ResultadoDespacho.concluido()
@@ -230,7 +256,12 @@ def test_copia_inexistente_registra_nao_encontrado() -> None:
         {"musica": "Inexistente", "origem": "metal", "destino": "rock"},
         "copia a música",
         {"_copiar_faixa_da_playlist_laylay": lambda *_args: {"ok": False}},
-        _dependencias(eventos),
+        _dependencias(
+            eventos,
+            musica_operacoes=_MusicaOperacoesFake(
+                lambda *_args: {"ok": False}
+            ),
+        ),
     )
 
     assert eventos == [("resultado", "nao_encontrado", {"executou": False})]
@@ -238,6 +269,7 @@ def test_copia_inexistente_registra_nao_encontrado() -> None:
 
 def test_roteador_principal_delega_music_search_ao_executor_musical() -> None:
     comandos: list[tuple] = []
+    navegador = NavegadorOperacoesFake()
     resultados = []
 
     retorno = executar_intencao(
@@ -248,7 +280,7 @@ def test_roteador_principal_delega_music_search_ao_executor_musical() -> None:
             "_autonomia_permite_execucao_musical": lambda *_args, **_kwargs: True,
             "_normalizar_query_musical": lambda query: query,
             "_buscar_primeiro_video_youtube": lambda _query: "",
-            "enviar_comando_chrome": lambda *args: comandos.append(args) or True,
+            "_registro_navegador_operacoes_runtime": navegador,
             "_registrar_resultado_execucao": lambda contrato, *_args, **_kwargs: resultados.append(
                 contrato
             ),
@@ -257,5 +289,6 @@ def test_roteador_principal_delega_music_search_ao_executor_musical() -> None:
     )
 
     assert retorno is True
+    comandos.extend(navegador.chamadas)
     assert comandos and comandos[0][0] == "youtube_search"
     assert resultados and resultados[0].status == "musica_aberta"

@@ -177,7 +177,6 @@ def criar_composicao_servicos_padrao(
             "iniciar avatar": metodo("_avatar_runtime", "iniciar"),
         },
         threads={
-            "Laylay-Chat-Terminal": obrigatoria("_escutar_texto_do_chat_terminal"),
             "Laylay-WS": obrigatoria("run_ws_server_in_thread"),
             "Laylay-Gmail": obrigatoria("gmail_daemon"),
             "Laylay-Agenda": obrigatoria("_agenda_daemon"),
@@ -197,6 +196,7 @@ def criar_composicao_servicos_padrao(
             ),
         },
         threads_com_parada={
+            "Laylay-Chat-Terminal": obrigatoria("_escutar_texto_do_chat_terminal"),
             "Laylay-Monitor-Janelas": metodo("_monitor_janelas_runtime", "executar"),
         },
         threads_com_espera={
@@ -209,12 +209,14 @@ def criar_composicao_servicos_padrao(
             ("barra_comando", obrigatoria("registrar_hotkey_barra_comando")),
         ),
         encerramento=(
-            ("memoria", obrigatoria("salvar_memoria")),
-            ("rede_associativa", metodo("_rede_associativa_runtime", "encerrar")),
-            ("voz", metodo("_voz_runtime", "encerrar")),
+            # Interfaces têm afinidade de thread e precisam receber o sinal
+            # enquanto o loop proprietário ainda pode processá-lo.
             ("barra_comando", metodo("_barra_comando_runtime", "encerrar")),
             ("avatar", metodo("_avatar_runtime", "parar")),
             ("gamebar", metodo("_gamebar_bridge_runtime", "parar")),
+            ("voz", metodo("_voz_runtime", "encerrar")),
+            ("rede_associativa", metodo("_rede_associativa_runtime", "encerrar")),
+            ("memoria", obrigatoria("salvar_memoria")),
         ),
         registrar_falha=registrar_falha,
         log=log,

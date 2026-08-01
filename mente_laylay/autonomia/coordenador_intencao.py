@@ -14,12 +14,24 @@ from mente_laylay.autonomia.analise_comandos import (
     processar_comandos_em_cadeia,
 )
 from mente_laylay.autonomia.roteador_intencao import executar_intencao
-from mente_laylay.autonomia.agendamento_mental import texto_pede_lembrete_explicito
+from mente_laylay.autonomia.roteador_deterministico import (
+    detectar_playlist_contextual_musica_atual,
+)
+from mente_laylay.autonomia.agendamento_mental import (
+    extrair_complemento_temporal_lembrete,
+    texto_pede_lembrete_explicito,
+)
+from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
+    classificar_confirmacao_local,
+)
 from mente_laylay.cognicao.arbitro_turno import CandidatoDecisao, arbitrar_turno
 from mente_laylay.cognicao.referencias_linguagem import valor_e_referencia_contextual
 from mente_laylay.especialistas.capacidades import INTENTS_SOMENTE_LEITURA, intents_registradas
 from mente_laylay.cognicao.evidencia_operacional import (
     bloqueia_controle_iot_por_modalidade,
+)
+from mente_laylay.memoria_mental.continuidade_geral import (
+    resolver_continuacao_aditiva,
 )
 
 INTENTS_EXECUTAVEIS = set(intents_registradas())
@@ -35,6 +47,7 @@ DEPENDENCIAS_CICLO_COMANDOS = (
     "_resolver_comando_acao_geral_contextual_forcado",
     "_resolver_repeticao_ultima_acao",
     "detectar_intencao_deterministica",
+    "_limpar_nome_playlist",
     "_extrair_agendamento_local",
     "_extrair_acao_agendada_local",
     "_registrar_resultado_execucao",
@@ -90,6 +103,14 @@ def _intencao_deterministica_tem_alvo_explicito(resultado: Any, texto: str) -> b
     if intent in {"IOT_CONTROL", "IOT_STATUS"}:
         return not valor_e_referencia_contextual(alvo) and any(
             nome in fala for nome in ("ventilador", "tomada", "luz", "lampada", "lâmpada", "dispositivo")
+        )
+    if intent == "PLAYLIST_MOVE":
+        origem = str(params.get("origem") or params.get("playlist_origem") or "").strip()
+        destino = str(params.get("destino") or params.get("playlist_destino") or "").strip()
+        musica = str(params.get("musica") or params.get("faixa") or "").strip()
+        return bool(origem and destino and musica) and not any(
+            valor_e_referencia_contextual(valor)
+            for valor in (origem, destino, musica)
         )
     if intent in {"PLAYLIST_ADD", "PLAYLIST_PLAY", "PLAYLIST_LIST", "PLAYLIST_DELETE"}:
         # Em PLAYLIST_ADD, "essa música" resolve a fonte pelo player atual,
@@ -186,6 +207,11 @@ def resolver_referencias_da_intencao(
     elif intent in {"PLAYLIST_PLAY", "PLAYLIST_ADD", "PLAYLIST_LIST", "PLAYLIST_DELETE"}:
         if not resolver_campo(("nome_playlist", "playlist"), {"playlist"}):
             return None
+    elif intent == "PLAYLIST_MOVE":
+        if not resolver_campo(("origem", "playlist_origem"), {"playlist"}):
+            return None
+        if not resolver_campo(("destino", "playlist_destino"), {"playlist"}):
+            return None
     elif intent in {"DELETE_ITEM", "MOVE_ITEM", "FILE_TRANSACTION", "FILE_OPEN_RESULT"}:
         if not resolver_campo(("alvo", "origem"), {"arquivo", "pasta"}):
             return None
@@ -201,11 +227,30 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     # Lembretes completos são comandos locais. Eles precisam ser resolvidos
     # antes da IA-first para que uma frase como "me lembra ... daqui 5 minutos"
     # nunca seja respondida como conversa ou promessa sem agendamento real.
-    lembrete = _call(ctx, "extrair_agendamento", texto_norm)
+    lembrete = _call(ctx, "extrair_agendamento", texto)
     if isinstance(lembrete, dict) and _normalizar_intent(lembrete) in {
         "AGENDAR_LEMBRETE", "LISTAR_AGENDAMENTOS", "CANCELAR_AGENDAMENTO"
     }:
         return lembrete, "agenda"
+
+    pendencia_agenda = dict(ctx.get("pendencia_agenda") or {})
+    if pendencia_agenda:
+        decisao = classificar_confirmacao_local(texto)
+        if decisao is False:
+            return {
+                "intent": "AGENDAR_LEMBRETE",
+                "params": {"cancelar_pendente": True},
+            }, "agenda-continuacao"
+        complemento = extrair_complemento_temporal_lembrete(texto)
+        if isinstance(complemento, dict):
+            metadados = dict(pendencia_agenda.get("metadados") or {})
+            complemento.setdefault("descricao", str(metadados.get("descricao") or "lembrete"))
+            complemento.setdefault("data_hora", str(metadados.get("referencia_data") or ""))
+            complemento["pendencia_id"] = str(pendencia_agenda.get("id") or "")
+            return {
+                "intent": "AGENDAR_LEMBRETE",
+                "params": complemento,
+            }, "agenda-continuacao"
 
     agendamento = _call(ctx, "extrair_acao_agendada", texto_norm)
     if isinstance(agendamento, dict) and agendamento.get("texto_acao"):
@@ -236,14 +281,50 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
 
     depende_contexto = bool(_call(ctx, "texto_depende_de_contexto", texto_norm, default=False))
 
+    # Elipses aditivas pertencem à continuidade oficial, não a um detector de
+    # domínio específico. O coordenador consulta essa fonte diretamente para
+    # que "essa também" preserve a operação e o destino anteriores mesmo se
+    # um especialista determinístico estiver degradado ou não produzir um
+    # candidato neste turno. A arbitragem abaixo continua sendo a autoridade
+    # que permite ou bloqueia a execução.
+    continuidade_aditiva = resolver_continuacao_aditiva(
+        {"continuidade_geral": dict(ctx.get("continuidade_geral") or {})},
+        texto=texto_norm,
+    )
+
     intent_deterministica = resolver_referencias_da_intencao(
         _call(ctx, "detectar_intencao_deterministica", texto_norm),
         retrato_atual,
     )
+    # Salvaguarda local do coordenador para uma operação explícita e de baixo
+    # risco. A composição real pode manter o detector de domínio indisponível
+    # ou devolver ``None`` sem lançar erro; nesse caso o pedido não pode cair
+    # na conversa livre. Esta rota só roda quando o detector principal não
+    # produziu candidato, portanto não duplica classificação nem execução.
+    if not isinstance(intent_deterministica, dict):
+        limpar_playlist = ctx.get("limpar_nome_playlist")
+        if not callable(limpar_playlist):
+            limpar_playlist = lambda valor: str(valor or "").strip(" \t\r\n.,;:!?\"'")
+        intent_deterministica = resolver_referencias_da_intencao(
+            detectar_playlist_contextual_musica_atual(
+                texto_norm,
+                params_cb=lambda **kwargs: kwargs,
+                limpar_nome_playlist=limpar_playlist,
+            ),
+            retrato_atual,
+        )
 
     candidatos: list[CandidatoDecisao] = []
     det_explicito = _intencao_deterministica_tem_alvo_explicito(intent_deterministica, texto_norm)
-    if isinstance(intent_deterministica, dict) and (not depende_contexto or det_explicito):
+    if isinstance(continuidade_aditiva, dict) and continuidade_aditiva:
+        candidatos.append(CandidatoDecisao(
+            tipo="comando_contextual",
+            valor=continuidade_aditiva,
+            origem="continuidade-aditiva",
+            confianca=0.97,
+            evidencia=("continuidade oficial compatível", "operação aditiva segura"),
+        ))
+    elif isinstance(intent_deterministica, dict) and (not depende_contexto or det_explicito):
         candidatos.append(CandidatoDecisao(
             tipo="comando_explicito",
             valor=intent_deterministica,
@@ -283,7 +364,7 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
             evidencia=("referencia a ultima acao",),
         ))
 
-    if depende_contexto:
+    if depende_contexto and not continuidade_aditiva:
         if isinstance(intent_deterministica, dict) and not det_explicito:
             candidatos.append(CandidatoDecisao(
                 tipo="comando_contextual",
@@ -654,6 +735,14 @@ class CicloComandosRuntime:
         """
         ns = self._ns()
         contexto_execucao = self.contexto_intencao_runtime.montar()
+        pendencia_runtime = contexto_execucao.get("_pendencia_acao_runtime")
+        try:
+            pendencia_atual = dict(pendencia_runtime.obter() or {}) if pendencia_runtime is not None else {}
+        except Exception:
+            pendencia_atual = {}
+        pendencia_agenda = (
+            pendencia_atual if str(pendencia_atual.get("origem") or "") == "agenda" else {}
+        )
         return {
             "normalizar_texto": ns.get("_normalizar_texto_com_apelidos"),
             "texto_depende_de_contexto": ns.get("_texto_depende_de_contexto"),
@@ -666,6 +755,7 @@ class CicloComandosRuntime:
             "resolver_repeticao_ultima_acao": ns.get("_resolver_repeticao_ultima_acao"),
             "tentar_intencao_ai_primeiro": self.tentar_intencao_ai_primeiro,
             "detectar_intencao_deterministica": ns.get("detectar_intencao_deterministica"),
+            "limpar_nome_playlist": ns.get("_limpar_nome_playlist"),
             "extrair_agendamento": ns.get("_extrair_agendamento_local"),
             "extrair_acao_agendada": ns.get("_extrair_acao_agendada_local"),
             "executar_intencao": self.executar_intencao,
@@ -673,12 +763,16 @@ class CicloComandosRuntime:
             "registrar_autoaprimoramento": ns.get("_registrar_autoaprimoramento"),
             "turno_atual": dict(contexto_execucao.get("turno_atual") or {}),
             "retrato_turno_atual": dict(contexto_execucao.get("retrato_turno_atual") or {}),
+            "continuidade_geral": dict(
+                contexto_execucao.get("continuidade_geral") or {}
+            ),
             "registrar_arbitragem_turno": contexto_execucao.get("registrar_arbitragem_turno"),
+            "pendencia_agenda": pendencia_agenda,
             "lembrete_pendente": (
                 str(contexto_execucao.get("ultima_intencao") or "").upper() == "AGENDAR_LEMBRETE"
                 and str(contexto_execucao.get("ultima_habilidade") or "").casefold() == "agenda"
                 and bool(str(contexto_execucao.get("ultimo_alvo") or "").strip())
-            ),
+            ) or bool(pendencia_agenda),
         }
 
     @staticmethod

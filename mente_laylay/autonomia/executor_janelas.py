@@ -315,7 +315,7 @@ def _executar_fechar_app(
         return ResultadoDespacho.concluido()
 
     enviar_pc_b = _get(ctx, "_enviar_pc_b")
-    enviar_chrome = _get(ctx, "enviar_comando_chrome")
+    navegador_operacoes = _get(ctx, "_registro_navegador_operacoes_runtime")
     fechar_programa = _get(ctx, "fechar_programa")
     resolver_alvo = _get(ctx, "_resolver_alvo_ambiente")
     eh_site = _get(ctx, "_eh_alvo_site_web")
@@ -348,8 +348,8 @@ def _executar_fechar_app(
         if destino == "pc_b" and callable(enviar_pc_b):
             enviar_pc_b({"action": "close_specific_tab", "target": alvo_tab})
             ok_aba = True
-        elif callable(enviar_chrome):
-            enviado = bool(enviar_chrome("close_specific_tab", {"target": alvo_tab}))
+        elif navegador_operacoes is not None:
+            enviado = bool(navegador_operacoes.fechar_aba(alvo_tab))
             ok_aba = bool(enviado and _confirmar_aba_fechada(alvo_tab, leitura))
         else:
             ok_aba = False
@@ -375,8 +375,8 @@ def _executar_fechar_app(
         if destino == "pc_b" and callable(enviar_pc_b):
             enviar_pc_b({"action": "close_specific_tab", "target": alvo_tab})
             ok_aba = True
-        elif callable(enviar_chrome):
-            enviado = bool(enviar_chrome("close_specific_tab", {"target": alvo_tab}))
+        elif navegador_operacoes is not None:
+            enviado = bool(navegador_operacoes.fechar_aba(alvo_tab))
             ok_aba = bool(enviado and _confirmar_aba_fechada(alvo_tab, leitura))
         else:
             ok_aba = False

@@ -8,7 +8,10 @@ from mente_laylay.autonomia.pre_fluxo_contextual import (
     processar_consulta_sistema_local,
 )
 from mente_laylay.autonomia.processamento_resposta_ia import filtrar_comandos_sem_pedido_atual
-from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+from mente_laylay.cognicao.modalidade_turno import (
+    analisar_protecao_operacional,
+    classificar_modalidade_turno,
+)
 from mente_laylay.especialistas.operacional import construir_parecer_operacional
 
 
@@ -35,6 +38,18 @@ class ArbitroModalidadeInteligenteTests(unittest.TestCase):
         self.assertEqual(instrucao["modalidade_geral"], "pergunta")
         self.assertFalse(instrucao["autoriza_execucao"])
         self.assertEqual(instrucao["natureza_acao"], "instrucao_ou_explicacao")
+
+    def test_protecao_operacional_e_lida_antes_da_intencao(self) -> None:
+        casos = (
+            ("não desliga a luz", "recusa"),
+            ("como eu faria para desligar a luz?", "pergunta"),
+            ("talvez fosse legal desligar a luz", "deliberacao"),
+        )
+        for texto, modalidade in casos:
+            with self.subTest(texto=texto):
+                leitura = analisar_protecao_operacional(texto)
+                self.assertTrue(leitura["bloqueia_execucao"])
+                self.assertEqual(leitura["modalidade"], modalidade)
 
     def test_correcao_e_hipotese_nao_viram_comando_por_conter_verbo(self) -> None:
         for texto, modalidade in (

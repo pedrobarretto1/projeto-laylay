@@ -6,17 +6,13 @@ usando o estado mental compartilhado recebido pelo `ctx`.
 
 from __future__ import annotations
 
-import ast
 import json
 import random
 import re
 import time
-import unicodedata
-from collections import deque
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 
 from mente_laylay.personalidade.proporcao_resposta import ajustar_proporcao_resposta
-from mente_laylay.personalidade.ritmo_natural import ajustar_encerramento_organico
 from mente_laylay.personalidade.higiene_fala import remover_residuos_operacionais
 from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
 from mente_laylay.memoria_mental.continuidade_conversa import assunto_coerente_com_fala
@@ -28,80 +24,16 @@ from mente_laylay.cognicao.conversa_sobre_capacidades import (
 from mente_laylay.cognicao.interpretacao_social import analisar_ato_social
 
 
-def _get(ctx: Dict[str, Any], chave: str, default: Any = None) -> Any:
-    if isinstance(ctx, dict):
-        return ctx.get(chave, default)
-    return default
-
-
-def _call(ctx: Dict[str, Any], chave: str, *args, default: Any = None, **kwargs) -> Any:
-    fn = _get(ctx, chave)
-    if callable(fn):
-        return fn(*args, **kwargs)
-    return default
-
-
-def _normalizar(ctx: Dict[str, Any], texto: str) -> str:
-    # A camada com apelidos também contém as correções tipográficas seguras.
-    # Usá-la primeiro evita que "tduo bem" caia no fallback antes da correção.
-    com_apelidos = _call(ctx, "_normalizar_texto_com_apelidos", texto, default=None)
-    if com_apelidos is not None:
-        return str(com_apelidos or "")
-    return str(_call(ctx, "_normalizar_texto_curto", texto, default=str(texto or "").lower()) or "")
-
-
-def _normalizar_apelidos(ctx: Dict[str, Any], texto: str) -> str:
-    return str(_call(ctx, "_normalizar_texto_com_apelidos", texto, default=str(texto or "").lower()) or "")
-
-
-def _ajustar(ctx: Dict[str, Any], fala: str, texto_usuario: str = "") -> str:
-    fala_organica = ajustar_encerramento_organico(fala, texto_usuario)
-    return str(_call(ctx, "_ajustar_fala_por_horario", fala_organica, texto_usuario, default=fala_organica) or fala_organica)
-
-
-def _topico_para_fala(valor: Any) -> str:
-    """Traduz identificadores da arquitetura antes de mostrá-los a Pedro."""
-    bruto = str(valor or "").strip()
-    mapa = {
-        "GAME_VISION": "o que está na tela do jogo",
-        "IOT_CONTROL": "o dispositivo que você mencionou",
-        "MUSIC_SEARCH": "a música",
-        "PLAYLIST_PLAY": "a playlist",
-        "APP_OPEN": "o programa",
-        "OPEN_URL": "o site",
-    }
-    if bruto.upper() in mapa:
-        return mapa[bruto.upper()]
-    if re.fullmatch(r"[A-Z][A-Z0-9_]{2,}", bruto):
-        return ""
-    return bruto
-
-
-def _fala_confirmacao(ctx: Dict[str, Any], chave: str, fallback: str, texto_usuario: str = "") -> str:
-    return str(
-        _call(
-            ctx,
-            "_fala_de_confirmacao_variada",
-            chave,
-            fallback=fallback,
-            contexto=contexto_fala_curta(ctx),
-            texto_usuario=texto_usuario,
-            default=fallback,
-        )
-        or fallback
-    )
-
-
-def contexto_fala_curta(ctx: Dict[str, Any]) -> dict:
-    mente = dict(_get(ctx, "mente_integrada_estado", {}) or {})
-    return {
-        "current_emotion": _get(ctx, "current_emotion", "calma"),
-        "emotion_level": _get(ctx, "emotion_level", mente.get("emotion_level", 1)),
-        "ultima_habilidade": mente.get("ultima_habilidade", ""),
-        "ultimo_alvo": mente.get("ultimo_alvo", ""),
-        "ultimo_topico": _get(ctx, "ultimo_topico_conversa", mente.get("ultimo_topico", "")),
-    }
-
+from mente_laylay.personalidade.base_conversa import (
+    _ajustar,
+    _call,
+    _fala_confirmacao,
+    _get,
+    _normalizar,
+    _normalizar_apelidos,
+    _topico_para_fala,
+    contexto_fala_curta,
+)
 
 _RECUSA_INICIAL = re.compile(
     r"^\s*(?:precisa\s+n[aã]o|n[aã]o\s+precisa|agora\s+n[aã]o|"
@@ -640,365 +572,29 @@ def resposta_pergunta_curta_dependente_topico(ctx: Dict[str, Any], texto_usuario
     return ""
 
 
-_ULTIMAS_RESPOSTAS_RECONHECIMENTO: deque[str] = deque(maxlen=4)
+from mente_laylay.personalidade.leitura_social_conversa import (
+    _normalizar_reconhecimento,
+    parece_elogio_ou_agradecimento_curto,
+    parece_pedido_para_acalmar,
+    tipo_reconhecimento_afetivo,
+)
+from mente_laylay.personalidade.respostas_afetivas import (
+    responder_agradecimento_ou_elogio,
+    responder_pedido_para_acalmar,
+)
 
 
-def _normalizar_reconhecimento(texto: str) -> str:
-    bruto = unicodedata.normalize("NFKD", str(texto or "").casefold())
-    return "".join(ch for ch in bruto if not unicodedata.combining(ch))
+from mente_laylay.personalidade.contingencias_conversa import (
+    resolver_equacao_linear_local,
+    responder_matematica_simples,
+)
 
 
-def tipo_reconhecimento_afetivo(texto_usuario: str) -> str:
-    """Distingue gratidão pela ajuda de elogio dirigido à personalidade."""
-    t = _normalizar_reconhecimento(texto_usuario)
-    elogios_pessoais = (
-        "voce e incrivel", "voce e maravilhosa", "voce e maravilhoso",
-        "voce e linda", "voce e lindo", "voce e adoravel", "voce e uma fofa",
-        "voce e fofo", "voce e legal", "voce e bem legal", "voce e muito legal",
-        "gosto de voce", "te acho legal", "amo voce", "te amo",
-        "estou te elogiando", "apenas um elogio", "so um elogio",
-        "laylay e incrivel", "a laylay e incrivel", "laylay e maravilhosa",
-        "a laylay e maravilhosa", "laylay e legal", "gosto da laylay",
-    )
-    if any(sinal in t for sinal in elogios_pessoais):
-        return "elogio_pessoal"
-    if any(sinal in t for sinal in ("obrigad", "brigad", "valeu", "valew", "vlw")):
-        return "agradecimento"
-    return "elogio_resultado"
-
-
-def _escolher_reconhecimento(opcoes: list[str]) -> str:
-    candidatas = [fala for fala in opcoes if fala not in _ULTIMAS_RESPOSTAS_RECONHECIMENTO]
-    fala = random.choice(candidatas or opcoes)
-    _ULTIMAS_RESPOSTAS_RECONHECIMENTO.append(fala)
-    return fala
-
-
-def _contexto_do_agradecimento(ctx: Dict[str, Any]) -> str:
-    mente = dict(_get(ctx, "mente_integrada_estado", {}) or {})
-    partes = " ".join([
-        str(mente.get("ultima_resposta") or ""),
-        str(mente.get("ultimo_alvo") or ""),
-        str(mente.get("ultima_habilidade") or ""),
-        str(mente.get("ultima_intencao") or ""),
-        str(_get(ctx, "ultimo_topico_conversa", "") or ""),
-    ])
-    t = _normalizar_reconhecimento(partes)
-    if any(p in t for p in ("receita", "massa", "farinha", "ingrediente", "xicara", "gramas", "cozinha")):
-        return "receita"
-    if any(p in t for p in ("resumo", "pagina", "artigo", "conteudo", "resumir_pagina")):
-        return "resumo"
-    if any(p in t for p in ("musica", "playlist", "faixa", "youtube", "music_")):
-        return "musica"
-    if any(p in t for p in ("arquivo", "pasta", "aplicativo", "programa", "janela", "chrome", "iot_control")):
-        return "acao"
-    if any(p in t for p in ("codigo", "python", "estudo", "explicacao", "explicar", "senai")):
-        return "explicacao"
-    return "geral"
-
-
-def responder_agradecimento_ou_elogio(ctx: Dict[str, Any], texto_usuario: str) -> str:
-    tipo = tipo_reconhecimento_afetivo(texto_usuario)
-    contexto = _contexto_do_agradecimento(ctx)
-    nivel = 1 if tipo == "agradecimento" else 2
-    motivo = "agradeceu pela ajuda" if tipo == "agradecimento" else "recebeu elogio"
-    _call(ctx, "_definir_emocao", "envergonhada", nivel, motivo, default=None)
-
-    respostas_contextuais = {
-        "receita": [
-            "Ah, que nada. Fico feliz que as medidas tenham ajudado. Quando quiser ajustar outra receita, pode falar comigo.",
-            "Imagina. Gostei de saber que agora as quantidades ficaram mais úteis. Se aparecer outra receita, eu te ajudo a organizar.",
-            "Por nada. Agora fiquei mais tranquila sabendo que a receita fez sentido. Quando precisar de outras medidas, tô por aqui.",
-        ],
-        "resumo": [
-            "Ah, que nada. Fico feliz que o resumo tenha ajudado. Se quiser aprofundar outro trecho da página, pode falar comigo.",
-            "Por nada. Gostei de saber que consegui deixar a página mais clara.",
-            "Imagina. Se aquele resumo te poupou um pouco de tempo, já valeu pra mim.",
-        ],
-        "musica": [
-            "Por nada. Fico feliz que a escolha tenha batido com o que você queria. Quando quiser outro som, me chama.",
-            "Ah, imagina. Gostei de acertar teu clima musical dessa vez.",
-            "Que nada. Bom saber que a música encaixou; eu guardo o mérito com uma vergonha discreta.",
-        ],
-        "acao": [
-            "Que nada. Fico feliz que tenha resolvido do jeito certo.",
-            "Por nada. Gostei de saber que dessa vez a ação ficou como você queria.",
-            "Imagina. Deu certo e você ainda agradeceu; aí complica minha tentativa de manter a pose.",
-        ],
-        "explicacao": [
-            "Ah, que nada. Fico feliz que a explicação tenha servido. Quando quiser destrinchar outro ponto, pode falar comigo.",
-            "Por nada. Gostei de saber que ficou mais claro.",
-            "Imagina. Se a explicação encaixou, eu já fico toda satisfeita aqui.",
-        ],
-        "geral": [
-            "Ah, que nada. Fico feliz que tenha ajudado.",
-            "Por nada. Gostei de saber que foi útil pra você.",
-            "Imagina. Você agradece assim e eu até perco um pouco da pose.",
-        ],
-    }
-
-    if tipo == "elogio_pessoal":
-        opcoes = [
-            "Aí você me deixa sem muita defesa... obrigada. Gostei de verdade.",
-            "Tá, esse foi direto em mim. Eu aceito o elogio, só não repara na minha pose desmontando.",
-            "Você fala assim e eu fico toda sem jeito... mas obrigada, eu gostei.",
-            "Eu ia responder toda confiante, mas você estragou meu plano com esse elogio. Obrigada.",
-        ]
-    elif tipo == "elogio_resultado":
-        base = respostas_contextuais.get(contexto, respostas_contextuais["geral"])
-        opcoes = [
-            fala.replace("Por nada", "Gostei que você curtiu").replace("Ah, que nada", "Aí sim")
-            for fala in base
-        ]
-    else:
-        opcoes = respostas_contextuais.get(contexto, respostas_contextuais["geral"])
-
-    return _ajustar(ctx, _escolher_reconhecimento(opcoes), texto_usuario)
-
-
-def parece_elogio_ou_agradecimento_curto(ctx: Dict[str, Any], texto_usuario: str) -> bool:
-    bruto = _normalizar_reconhecimento(texto_usuario)
-    # Uma correção dirigida à Laylay pode herdar uma leitura semântica antiga
-    # de agradecimento. A intenção explícita do texto atual sempre prevalece.
-    if texto_parece_correcao_conversacional(bruto):
-        return False
-    # Uma avaliação dirigida a uma terceira pessoa não é elogio recebido pela
-    # Laylay. Esta proteção vem antes do normalizador personalizado porque uma
-    # correção fonética pode aproximar "gosto" de "gostei".
-    if (
-        re.search(r"\b(?:dele|dela|deles|delas)\b", bruto)
-        and not re.search(r"\b(?:obrigad|brigad|valeu|vlw)\b", bruto)
-        and not re.search(r"\b(?:lay|laylay|voce|você|te)\b", bruto)
-    ):
-        return False
-    t = _normalizar_apelidos(ctx, texto_usuario)
-    if not t:
-        return False
-    if any(p in t for p in ("nao gostei", "não gostei", "nao ficou bom", "não ficou bom")):
-        return False
-    if "?" in str(texto_usuario or "") and any(
-        p in t for p in ("qual", "como", "quando", "onde", "porque", "por que", "quanto")
-    ):
-        return False
-    variantes = [
-        "obrigado", "obrigada", "brigado", "brigada", "orbigado", "orbrigado",
-        "obigado", "obridago", "valeu", "valew", "vlw", "perfeito", "amei",
-        "gostei", "maravilhoso", "maravilhosa", "lindo", "linda", "fofo",
-        "fofa", "incrivel", "incrível", "estou te elogiando", "to te elogiando",
-        "apenas um elogio", "so um elogio", "só um elogio",
-        "voce e legal", "voce e bem legal", "voce e muito legal",
-        "você é legal", "você é bem legal", "você é muito legal",
-        "vc e legal", "vc e bem legal", "te acho legal", "gosto de voce",
-        "gosto de você", "voce e incrivel", "você é incrível",
-        "voce e adoravel", "você é adorável", "vc e adoravel",
-        "voce e uma fofa", "você é uma fofa", "voce e fofo", "você é fofo",
-        "laylay e incrivel", "a laylay e incrivel", "laylay e maravilhosa",
-        "a laylay e maravilhosa", "laylay e legal", "a laylay e legal",
-        "gosto da laylay", "amo a laylay",
-    ]
-    return any(x in t for x in variantes)
-
-
-def parece_pedido_para_acalmar(ctx: Dict[str, Any], texto_usuario: str) -> bool:
-    t = _normalizar_apelidos(ctx, texto_usuario)
-    if not t:
-        return False
-    if any(p in t for p in [
-        "nao precisa ficar brava",
-        "não precisa ficar brava",
-        "nao fica brava",
-        "não fica brava",
-        "se acalme",
-        "calma lay",
-        "fica calma",
-        "ta brava",
-        "tá brava",
-    ]):
-        return True
-    emocao = str(_get(ctx, "current_emotion", "") or "").strip().lower()
-    return t in {"que isso", "que isso lay"} and emocao in {"brava", "irritada", "nervosa", "raivosa"}
-
-
-def responder_pedido_para_acalmar(ctx: Dict[str, Any], texto_usuario: str) -> str:
-    _call(ctx, "_acalmar_emocao", "pedido para acalmar", default=None)
-    return _ajustar(ctx, random.choice([
-        "Tá, respirei. Eu tava mordendo o cabo de rede sem necessidade.",
-        "Foi mal. Baixei a guarda, sem patada agora.",
-        "Tá bom, acalmei. Volto pro meu modo menos ouriço.",
-        "Você tem razão. Soltei o modo brava e voltei pra você.",
-    ]), texto_usuario)
-
-
-def _numero_matematico(valor: float) -> str:
-    if abs(valor - round(valor)) < 1e-10:
-        return str(int(round(valor)))
-    return f"{valor:.8f}".rstrip("0").rstrip(".").replace(".", ",")
-
-
-def _avaliar_expressao_linear(no: ast.AST) -> tuple[float, float]:
-    """Avalia uma AST como ``a*x + b`` sem executar código arbitrário."""
-    if isinstance(no, ast.Expression):
-        return _avaliar_expressao_linear(no.body)
-    if isinstance(no, ast.Constant) and isinstance(no.value, (int, float)):
-        return 0.0, float(no.value)
-    if isinstance(no, ast.Name) and no.id.casefold() == "x":
-        return 1.0, 0.0
-    if isinstance(no, ast.UnaryOp) and isinstance(no.op, (ast.UAdd, ast.USub)):
-        a, b = _avaliar_expressao_linear(no.operand)
-        fator = -1.0 if isinstance(no.op, ast.USub) else 1.0
-        return fator * a, fator * b
-    if isinstance(no, ast.BinOp):
-        ae, be = _avaliar_expressao_linear(no.left)
-        ad, bd = _avaliar_expressao_linear(no.right)
-        if isinstance(no.op, ast.Add):
-            return ae + ad, be + bd
-        if isinstance(no.op, ast.Sub):
-            return ae - ad, be - bd
-        if isinstance(no.op, ast.Mult):
-            if abs(ae) > 1e-12 and abs(ad) > 1e-12:
-                raise ValueError("expressão não linear")
-            if abs(ae) > 1e-12:
-                return ae * bd, be * bd
-            if abs(ad) > 1e-12:
-                return ad * be, bd * be
-            return 0.0, be * bd
-        if isinstance(no.op, ast.Div):
-            if abs(ad) > 1e-12 or abs(bd) < 1e-12:
-                raise ValueError("divisão não linear ou por zero")
-            return ae / bd, be / bd
-    raise ValueError("notação não suportada")
-
-
-def _formatar_expressao_linear(a: float, b: float) -> str:
-    partes: list[str] = []
-    if abs(a) > 1e-10:
-        if abs(a - 1.0) < 1e-10:
-            partes.append("x")
-        elif abs(a + 1.0) < 1e-10:
-            partes.append("-x")
-        else:
-            partes.append(f"{_numero_matematico(a)}x")
-    if abs(b) > 1e-10 or not partes:
-        numero = _numero_matematico(abs(b) if partes else b)
-        if partes:
-            partes.append(("+ " if b >= 0 else "- ") + numero)
-        else:
-            partes.append(numero)
-    return " ".join(partes)
-
-
-def resolver_equacao_linear_local(texto_usuario: str) -> str:
-    """Resolve com segurança uma equação linear em x e entrega passos curtos."""
-    bruto = str(texto_usuario or "")
-    if "=" not in bruto:
-        return ""
-    equacao = bruto.split(":", 1)[-1] if ":" in bruto else bruto
-    equacao = equacao.replace("–", "-").replace("—", "-").replace("−", "-")
-    equacao = equacao.replace("×", "*").replace("÷", "/").replace(",", ".")
-    equacao = equacao.strip(" \t\r\n?.!")
-    if equacao.count("=") != 1 or not re.fullmatch(r"[\d.xX+\-*/()=\s]+", equacao):
-        return ""
-    esquerda, direita = equacao.split("=", 1)
-
-    def preparar(expressao: str) -> str:
-        s = re.sub(r"\s+", "", expressao).replace("X", "x")
-        s = re.sub(r"(?<=\d)(?=[x(])|(?<=x)(?=\()|(?<=\))(?=[\dx(])", "*", s)
-        return s
-
-    try:
-        ae, be = _avaliar_expressao_linear(ast.parse(preparar(esquerda), mode="eval"))
-        ad, bd = _avaliar_expressao_linear(ast.parse(preparar(direita), mode="eval"))
-    except (SyntaxError, ValueError, TypeError, ZeroDivisionError):
-        return ""
-
-    coeficiente = ae - ad
-    constante = bd - be
-    esquerda_simples = _formatar_expressao_linear(ae, be)
-    direita_simples = _formatar_expressao_linear(ad, bd)
-    if abs(coeficiente) < 1e-10:
-        return (
-            "Simplificando os dois lados, eles ficam iguais; por isso há infinitas soluções."
-            if abs(constante) < 1e-10 else
-            "Simplificando os dois lados, surge uma contradição; portanto essa equação não tem solução."
-        )
-    solucao = constante / coeficiente
-    return (
-        f"Vamos por partes. Distribuindo os parênteses e juntando termos semelhantes, "
-        f"o lado esquerdo vira {esquerda_simples} e o direito vira {direita_simples}. "
-        f"Passando os termos, ficamos com {_numero_matematico(coeficiente)}x igual a "
-        f"{_numero_matematico(constante)}. Dividindo por {_numero_matematico(coeficiente)}, "
-        f"x é igual a {_numero_matematico(solucao)}."
-    )
-
-
-def responder_matematica_simples(ctx: Dict[str, Any], texto_usuario: str) -> str:
-    linear = resolver_equacao_linear_local(texto_usuario)
-    if linear:
-        return _ajustar(ctx, linear, texto_usuario)
-    t = _normalizar(ctx, texto_usuario)
-    if not t:
-        return ""
-    m = re.fullmatch(
-        r"(?:quanto\s+(?:e|é)\s+)?(?P<a>-?\d+(?:[,.]\d+)?)\s*(?P<op>\+|mais|-|menos|x|vezes|\*|dividido por|dividido|/)\s*(?P<b>-?\d+(?:[,.]\d+)?)\??",
-        t,
-    )
-    if not m:
-        return ""
-    try:
-        a = float(str(m.group("a")).replace(",", "."))
-        b = float(str(m.group("b")).replace(",", "."))
-        op = str(m.group("op") or "").strip()
-        if op in {"+", "mais"}:
-            res = a + b
-        elif op in {"-", "menos"}:
-            res = a - b
-        elif op in {"x", "vezes", "*"}:
-            res = a * b
-        elif op in {"dividido por", "dividido", "/"}:
-            if b == 0:
-                return "Dividir por zero? Aí nem eu faço esse pacto com o caos."
-            res = a / b
-        else:
-            return ""
-        if float(res).is_integer():
-            res_txt = str(int(res))
-        else:
-            res_txt = f"{res:.4f}".rstrip("0").rstrip(".")
-        return _ajustar(ctx, random.choice([
-            f"Dá {res_txt}. Matemática sem drama.",
-            f"{res_txt}. Essa eu peguei sem tropeçar.",
-            f"Resultado: {res_txt}.",
-        ]), texto_usuario)
-    except Exception:
-        return ""
-
-
-def _parece_confirmacao_curta(t: str) -> bool:
-    return bool(re.fullmatch(
-        r"^(sim|isso|isso mesmo|claro|claro que sim|aham|uhum|humrum|pode|pode sim|e sim|é sim|foi sim|veio sim|veiuo sim|pode ser|bora|vai|manda|fechou|fechado)$",
-        t,
-    ))
-
-
-def _parece_correcao_conversa(t: str) -> bool:
-    padroes = [
-        r"^(nao|não)\s+lay.*$",
-        r"^(nao|não)\s+(?:e|é|eh)\s+isso\s+lay.*$",
-        r"^(a\s+nao|ah\s+nao|ah\s+n[aã]o)\s+lay.*$",
-        r"^eu\s+quis\s+dizer\s+.+$",
-        r"^eu\s+tava\s+falando\s+de\s+.+$",
-        r"^eu\s+estava\s+falando\s+de\s+.+$",
-        r"^to\s+falando\s+de\s+.+$",
-        r"^estou\s+falando\s+de\s+.+$",
-        r"^na\s+verdade\s+.+$",
-        r"^(?:so|só)\s+(?:to|tô|estou)\s+falando\s+.+$",
-    ]
-    return any(re.fullmatch(p, t) for p in padroes)
-
-
-def texto_parece_correcao_conversacional(texto: str) -> bool:
-    """Reconhece correções explícitas antes de qualquer atalho social."""
-    return _parece_correcao_conversa(_normalizar_reconhecimento(texto))
+from mente_laylay.personalidade.leitura_social_conversa import (
+    _parece_confirmacao_curta,
+    _parece_correcao_conversa,
+    texto_parece_correcao_conversacional,
+)
 
 
 def responder_relato_esportivo(ctx: Dict[str, Any], texto_usuario: str) -> str:

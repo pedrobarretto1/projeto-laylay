@@ -126,8 +126,9 @@ def montar_contexto_inicio_chat_por_grupos(
         "_recomendar_musica_verificada": musica_feedback.get("recomendar_musica_verificada"),
         "_handle_feedback_pendente_misto": musica_feedback.get("handle_feedback_pendente_misto"),
         "_handle_feedback_pendente": musica_feedback.get("handle_feedback_pendente"),
-        "_detectar_mover_playlist_texto": musica_feedback.get("detectar_mover_playlist_texto"),
-        "_mover_item_playlist": musica_feedback.get("mover_item_playlist"),
+        "_registro_musica_operacoes_runtime": musica_feedback.get(
+            "musica_operacoes"
+        ),
         "_bloquear_playlist_temporariamente": musica_feedback.get("bloquear_playlist_temporariamente"),
         "processar_comando_deterministico": comandos.get("processar_comando_deterministico"),
         "_usar_modo_rapido_conversa": comandos.get("usar_modo_rapido_conversa"),
@@ -207,8 +208,9 @@ class ContextoInicioChatRuntime:
                 "handle_feedback_pendente_misto": ns.get("_handle_feedback_pendente_misto"),
                 "handle_feedback_pendente": ns.get("_handle_feedback_pendente"),
                 "bloquear_playlist_temporariamente": ns.get("_bloquear_playlist_temporariamente"),
-                "detectar_mover_playlist_texto": ns.get("detectar_mover_playlist_texto"),
-                "mover_item_playlist": ns.get("mover_item_playlist"),
+                "musica_operacoes": ns.get(
+                    "_registro_musica_operacoes_runtime"
+                ),
             },
             comandos={
                 "processar_comando_deterministico": ns.get("processar_comando_deterministico"),

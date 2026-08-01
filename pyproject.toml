@@ -1,0 +1,38 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+extend-exclude = ["build", "dist", "memoria", "dados"]
+
+[tool.ruff.lint]
+# Adoção gradual: começam bloqueando erros de sintaxe, nomes indefinidos e
+# construções que certamente quebram em execução. Estilo entra depois.
+select = ["E9", "F63", "F7", "F82"]
+
+[tool.mypy]
+python_version = "3.14"
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+ignore_missing_imports = true
+show_error_codes = true
+
+[tool.coverage.run]
+branch = true
+source = ["mente_laylay"]
+omit = [
+  "mente_laylay/visual/*",
+]
+
+[tool.coverage.report]
+fail_under = 50
+show_missing = true
+skip_covered = true
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+]

@@ -66,6 +66,40 @@ def test_pergunta_sobre_acao_nao_recebe_autorizacao_operacional() -> None:
     assert "especialista operacional" in decisao["rejeitados"][0]["motivo"]
 
 
+def test_playlist_add_com_faixa_atual_e_autorizado_sem_memoria_anterior() -> None:
+    texto = "coloca essa musica na playlist rei do pop"
+    turno, retrato, especialistas = _montar(texto)
+
+    assert retrato["referencia_resolvida"]["origem"] == "reprodutor_atual"
+    assert especialistas["operacional"]["requer_esclarecimento"] is False
+    assert especialistas["operacional"]["autoriza_execucao"] is True
+
+    decisao = arbitrar_turno(
+        texto,
+        [CandidatoDecisao(
+            "comando_explicito",
+            {"intent": "PLAYLIST_ADD", "params": {"nome_playlist": "rei do pop"}},
+            "deterministico-explicito",
+            0.98,
+        )],
+        turno=turno,
+        retrato=retrato,
+    )
+    assert decisao["decisao"] == {
+        "intent": "PLAYLIST_ADD",
+        "params": {"nome_playlist": "rei do pop"},
+    }
+
+
+def test_playlist_add_com_a_playlist_mantem_referencia_ao_player_atual() -> None:
+    texto = "coloca essa musica a playlist rei do pop"
+    turno, retrato, especialistas = _montar(texto)
+
+    assert retrato["operacao_explicita"] == "playlist_adicionar"
+    assert retrato["referencia_resolvida"]["origem"] == "reprodutor_atual"
+    assert especialistas["operacional"]["autoriza_execucao"] is True
+
+
 def test_resultado_operacional_e_consultado_sem_gerar_segunda_fala() -> None:
     _turno, _retrato, especialistas = _montar("tô cansado, liga o ventilador")
     atualizado = registrar_resultado_operacional(especialistas, [{

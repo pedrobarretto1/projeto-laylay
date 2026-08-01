@@ -12,6 +12,8 @@ import re
 import time
 from typing import Any, Callable, Dict
 
+from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
+
 from mente_laylay.memoria_mental.musica_conversacional import (
     sugestao_musical_nova_conversacional,
     texto_pede_direcao_musical_generica,
@@ -30,6 +32,7 @@ class MusicaConversacionalRuntime:
         registrar_resultado_execucao: Callable[..., Any],
         registrar_autoaprimoramento: Callable[..., Any] | None = None,
         enviar_mensagem: Callable[..., Any] | None = None,
+        modelo_llm: Any = None,
         buscar_resultados_musicais: Callable[[str, int], list] | None = None,
         log: Callable[[str], None] | None = None,
     ) -> None:
@@ -40,7 +43,10 @@ class MusicaConversacionalRuntime:
         self.executar_intencao = executar_intencao
         self.registrar_resultado_execucao = registrar_resultado_execucao
         self.registrar_autoaprimoramento = registrar_autoaprimoramento
-        self.enviar_mensagem = enviar_mensagem
+        self.enviar_mensagem = resolver_enviador_modelo(
+            modelo_llm=modelo_llm,
+            enviar_mensagem=enviar_mensagem,
+        )
         self.buscar_resultados_musicais = buscar_resultados_musicais
         self.log = log or print
         self._sugestao_pendente: Dict[str, Any] = {}

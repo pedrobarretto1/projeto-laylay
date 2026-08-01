@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import re
 import time
-import unicodedata
 from typing import Any, Dict
+
+from .normalizacao_linguagem import normalizar_texto_basico as _normalizar
 
 
 IDENTIDADE_LAYLAY = {
@@ -19,12 +20,6 @@ IDENTIDADE_USUARIO = {
     "nome": "",
     "papel": "usuario e interlocutor",
 }
-
-
-def _normalizar(texto: str) -> str:
-    base = unicodedata.normalize("NFKD", str(texto or "").casefold())
-    base = "".join(ch for ch in base if not unicodedata.combining(ch))
-    return re.sub(r"\s+", " ", base).strip()
 
 
 def remover_vocativo_laylay(texto: str) -> str:

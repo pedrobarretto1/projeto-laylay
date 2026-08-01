@@ -9,13 +9,17 @@ from typing import Any, Callable, Dict
 from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
 from mente_laylay.autonomia.executor_comum import falar_ctx as _falar
 from mente_laylay.integracao.registro_musica import PortaMusicaLeitura
+from mente_laylay.integracao.registro_operacoes_musicais import PortaMusicaOperacoes
 from mente_laylay.personalidade.falas_variadas import (
     escolher as escolher_fala_variada,
     fala_de_confirmacao,
 )
 
 
-INTENCOES_PLAYLISTS = frozenset({"PLAYLIST_DELETE", "PLAYLIST_ADD", "PLAYLIST_LIST", "PLAYLIST_PLAY"})
+INTENCOES_PLAYLISTS = frozenset({
+    "PLAYLIST_DELETE", "PLAYLIST_ADD", "PLAYLIST_LIST", "PLAYLIST_PLAY",
+    "PLAYLIST_MOVE",
+})
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,6 +29,7 @@ class DependenciasExecutorPlaylists:
     abrir_url_musical: Callable[..., bool]
     contexto_fala: Callable[[], Dict[str, Any]]
     musica_leitura: PortaMusicaLeitura | None = None
+    musica_operacoes: PortaMusicaOperacoes | None = None
 
 
 def _get(ctx: Dict[str, Any], nome: str, default: Any = None) -> Any:
@@ -42,10 +47,9 @@ def _nome_explicito_incompleto(texto: str, ctx: Dict[str, Any]) -> bool:
     return bool(verificar(texto)) if callable(verificar) else False
 
 
-def _definir_ultima(ctx: Dict[str, Any], nome: str) -> None:
-    definir = _get(ctx, "set_ultima_playlist")
-    if callable(definir):
-        definir(nome)
+def _definir_ultima(deps: DependenciasExecutorPlaylists, nome: str) -> None:
+    if deps.musica_operacoes is not None:
+        deps.musica_operacoes.definir_ultima_playlist(nome)
 
 
 def _sugerir_criacao(ctx: Dict[str, Any], nome: str) -> None:
@@ -73,12 +77,13 @@ def _apagar(
             "Faltou o nome da playlist.",
         ]))
         return ResultadoDespacho.concluido()
-    apagar = _get(ctx, "delete_playlist")
-    ok = bool(apagar(nome)) if callable(apagar) else False
+    ok = bool(
+        deps.musica_operacoes.apagar_playlist(nome)
+    ) if deps.musica_operacoes is not None else False
     status = "playlist_deletada" if ok else "falha_execucao"
     deps.marcar_resultado(status, executou=ok)
     if ok:
-        _definir_ultima(ctx, "")
+        _definir_ultima(deps, "")
     deps.falar_por_status(status, escolher_fala_variada([
         f"Apaguei a playlist {nome}. Ela saiu do palco.",
         f"Playlist {nome} deletada.",
@@ -89,29 +94,6 @@ def _apagar(
         f"Procurei a playlist {nome}, mas ela não deu as caras.",
     ]), alvo=nome)
     return ResultadoDespacho.concluido()
-
-
-def _resolver_faixa_atual(ctx: Dict[str, Any]) -> dict:
-    obter_estado = _get(ctx, "_musica_estado_get")
-    if callable(obter_estado):
-        try:
-            instante = float(obter_estado("musica_atual_ts", 0.0) or 0.0)
-            status = str(obter_estado("musica_atual_status", "") or "").strip().casefold()
-            url = str(obter_estado("musica_atual_url", "") or "").strip()
-            titulo = str(obter_estado("musica_atual_titulo", "") or "").strip()
-            recente = bool(instante and time.time() - instante <= 7200.0)
-            utilizavel = status not in {"finalizada", "encerrada", "parada"}
-            if recente and utilizavel and "youtube.com" in url:
-                return {"url": url, "title": titulo, "canal": "", "origem": "player_atual"}
-        except Exception as erro:
-            log = _get(ctx, "log", print)
-            if callable(log):
-                log(
-                    "⚠️ [PLAYLIST:CONTEXTO] estado da música atual indisponível: "
-                    f"{type(erro).__name__}: {erro}"
-                )
-    solicitar_aba = _get(ctx, "solicitar_aba_ativa")
-    return solicitar_aba() if callable(solicitar_aba) else {}
 
 
 def _adicionar(
@@ -133,7 +115,10 @@ def _adicionar(
         ]))
         return ResultadoDespacho.concluido()
 
-    info = _resolver_faixa_atual(ctx)
+    info = (
+        deps.musica_operacoes.faixa_atual()
+        if deps.musica_operacoes is not None else {}
+    )
     url = str(info.get("url") or "") if isinstance(info, dict) else ""
     titulo = str(info.get("title") or "") if isinstance(info, dict) else ""
     canal = str(info.get("canal") or "") if isinstance(info, dict) else ""
@@ -152,12 +137,13 @@ def _adicionar(
         ]))
         return ResultadoDespacho.concluido()
 
-    adicionar = _get(ctx, "ADD_TO_PLAYLIST")
-    ok = bool(adicionar(nome, url, titulo, canal)) if callable(adicionar) else False
+    ok = bool(
+        deps.musica_operacoes.adicionar_faixa(nome, url, titulo, canal)
+    ) if deps.musica_operacoes is not None else False
     status = "playlist_musica_adicionada" if ok else "falha_execucao"
     deps.marcar_resultado(status, executou=ok)
     if ok:
-        _definir_ultima(ctx, nome)
+        _definir_ultima(deps, nome)
         limpar_titulo = _get(ctx, "_yt_clean_title", lambda valor: valor)
         titulo_limpo = limpar_titulo(titulo) or "essa música"
         deps.falar_por_status(status, escolher_fala_variada([
@@ -172,6 +158,53 @@ def _adicionar(
             "Deu ruim no registro da playlist. Tenta de novo.",
         ]), alvo=nome)
     return ResultadoDespacho.concluido()
+
+
+def _mover(
+    params: Dict[str, Any], ctx: Dict[str, Any], deps: DependenciasExecutorPlaylists,
+) -> ResultadoDespacho:
+    musica = str(params.get("musica") or params.get("faixa") or "").strip()
+    origem = str(params.get("origem") or params.get("playlist_origem") or "").strip()
+    destino = str(params.get("destino") or params.get("playlist_destino") or "").strip()
+    if not musica or not origem or not destino:
+        _falar(ctx, escolher_fala_variada([
+            "Me diz a música, a playlist de origem e a de destino.",
+            "Essa mudança veio incompleta. De qual playlist ela sai e pra qual vai?",
+            "Faltou a faixa ou uma das playlists nessa mudança.",
+        ]))
+        deps.marcar_resultado("alvo_ausente", executou=False)
+        return ResultadoDespacho.concluido(False)
+
+    resultado = (
+        deps.musica_operacoes.mover_faixa(origem, destino, musica)
+        if deps.musica_operacoes is not None else {}
+    )
+    resultado = resultado if isinstance(resultado, dict) else {}
+    if resultado.get("ok"):
+        titulo = str(resultado.get("titulo") or musica or "essa música").strip()
+        origem_real = str(resultado.get("origem") or origem).strip()
+        destino_real = str(resultado.get("destino") or destino).strip()
+        status = "playlist_faixa_movida"
+        deps.marcar_resultado(status, executou=True, confirmado=True)
+        _definir_ultima(deps, destino_real)
+        fala = f"Movi {titulo} da playlist {origem_real} pra {destino_real}."
+        if resultado.get("duplicated"):
+            fala = (
+                f"Tirei {titulo} da playlist {origem_real}; "
+                f"ela já estava em {destino_real}."
+            )
+        deps.falar_por_status(status, fala, alvo=destino_real)
+        return ResultadoDespacho.concluido(True)
+
+    erro = str(resultado.get("error") or "").strip()
+    status = "playlist_origem_vazia" if erro == "source_empty" else "falha_execucao"
+    deps.marcar_resultado(status, executou=False, confirmado=False)
+    if erro == "source_empty":
+        fala = f"Não achei nada na playlist {origem} pra mover."
+    else:
+        fala = "Não consegui confirmar essa mudança entre as playlists."
+    deps.falar_por_status(status, fala, alvo=origem)
+    return ResultadoDespacho.concluido(False)
 
 
 def _listar(
@@ -223,7 +256,7 @@ def _listar(
             f"{nome} não apareceu. Posso listar as que estão salvas.",
             f"Não encontrei {nome}. Quer que eu mostre as playlists salvas?",
         ]))
-    _definir_ultima(ctx, nome_real or nome)
+    _definir_ultima(deps, nome_real or nome)
     return ResultadoDespacho.concluido()
 
 
@@ -255,8 +288,10 @@ def _tocar(
 
     modo = str(params.get("modo") or "").strip().lower()
     if modo == "shuffle":
-        iniciar_shuffle = _get(ctx, "_playlist_shuffle_start")
-        info = iniciar_shuffle(nome) if callable(iniciar_shuffle) else None
+        info = (
+            deps.musica_operacoes.preparar_shuffle(nome)
+            if deps.musica_operacoes is not None else {}
+        )
         if not info or not str(info.get("url") or ""):
             _falar(ctx, escolher_fala_variada([
                 f"Essa playlist {nome} tá vazia. Quer que eu invente música também?",
@@ -266,10 +301,9 @@ def _tocar(
             return ResultadoDespacho.concluido()
         url = str(info.get("url") or "")
         ok = deps.abrir_url_musical(url)
-        definir_url = _get(ctx, "set_playlist_state_last_url")
-        if callable(definir_url):
-            definir_url(url)
-        _definir_ultima(ctx, nome)
+        if deps.musica_operacoes is not None:
+            deps.musica_operacoes.definir_ultima_url(url)
+        _definir_ultima(deps, nome)
         status = "playlist_aberta" if ok else "falha_execucao"
         deps.marcar_resultado(status, executou=ok)
         deps.falar_por_status(status, fala_de_confirmacao(
@@ -283,13 +317,15 @@ def _tocar(
         return ResultadoDespacho.concluido(ok)
 
     if destino == "pc_b":
-        primeira_url = _get(ctx, "_playlist_primeira_url")
-        url = primeira_url(nome) if callable(primeira_url) else None
+        url = (
+            deps.musica_operacoes.primeira_url(nome)
+            if deps.musica_operacoes is not None else ""
+        )
         if not url:
             _sugerir_criacao(ctx, nome)
             return ResultadoDespacho.concluido()
         ok = deps.abrir_url_musical(str(url or ""))
-        _definir_ultima(ctx, nome)
+        _definir_ultima(deps, nome)
         status = "playlist_aberta_pc_b" if ok else "falha_execucao"
         deps.marcar_resultado(status, executou=ok)
         deps.falar_por_status(status, fala_de_confirmacao(
@@ -302,13 +338,14 @@ def _tocar(
         ), alvo=nome)
         return ResultadoDespacho.concluido(ok)
 
-    tocar = _get(ctx, "play_playlist")
-    ok = bool(tocar(nome)) if callable(tocar) else False
+    ok = bool(
+        deps.musica_operacoes.tocar_playlist(nome)
+    ) if deps.musica_operacoes is not None else False
     if not ok:
         deps.marcar_resultado("falha_execucao", executou=False)
         _sugerir_criacao(ctx, nome)
         return ResultadoDespacho.concluido()
-    _definir_ultima(ctx, nome)
+    _definir_ultima(deps, nome)
     total = deps.musica_leitura.contar_usuario(nome) if deps.musica_leitura else 0
     deps.marcar_resultado("playlist_aberta", executou=True)
     deps.falar_por_status("playlist_aberta", fala_de_confirmacao(
@@ -336,6 +373,8 @@ def executar_intencao_playlists(
         return _apagar(params, ctx, deps)
     if intent == "PLAYLIST_ADD":
         return _adicionar(params, texto_original, ctx, deps)
+    if intent == "PLAYLIST_MOVE":
+        return _mover(params, ctx, deps)
     if intent == "PLAYLIST_LIST":
         return _listar(params, texto_original, ctx, deps)
     return _tocar(params, texto_original, destino, ctx, deps)

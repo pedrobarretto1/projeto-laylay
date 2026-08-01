@@ -27,11 +27,21 @@ class PendenciaAcaoRuntime:
         estado_atualizar: Callable[[Callable[[dict], dict]], Mapping[str, Any]],
         agora: Callable[[], float] = time.time,
         log: Callable[[str], Any] = print,
+        evento_cb: Callable[[str, Mapping[str, Any]], Any] | None = None,
     ) -> None:
         self._estado_getter = estado_getter
         self._estado_atualizar = estado_atualizar
         self._agora = agora
         self._log = log
+        self._evento_cb = evento_cb
+
+    def _emitir(self, evento: str, item: Mapping[str, Any]) -> None:
+        if not callable(self._evento_cb):
+            return
+        try:
+            self._evento_cb(str(evento or ""), dict(item or {}))
+        except Exception as erro:
+            self._log(f"⚠️ [PENDÊNCIA:AÇÃO] observação isolada: {type(erro).__name__}")
 
     def _id(self, origem: str, acao: str, referencia: str) -> str:
         material = f"{origem}|{acao}|{referencia}|{self._agora():.6f}"
@@ -89,6 +99,7 @@ class PendenciaAcaoRuntime:
             f"🧠 [PENDÊNCIA:AÇÃO] criada | id={novo['id']} "
             f"origem={origem} ação={acao}"
         )
+        self._emitir("criada", novo)
         return dict(novo)
 
     def resolver(
@@ -141,10 +152,11 @@ class PendenciaAcaoRuntime:
         self._log(
             f"🧠 [PENDÊNCIA:AÇÃO] resposta | id={id_esperado} decisão={decisao}"
         )
+        self._emitir(decisao, {**item, "status": decisao})
         return {"tratado": True, "status": decisao, "pendencia": {**item, "status": decisao}}
 
     def concluir(self, pendencia_id: str, status: str) -> bool:
-        concluida = {"valor": False}
+        concluida: dict[str, Any] = {"valor": False, "item": {}}
 
         def _atualizar(estado: dict) -> dict:
             atual = dict(estado.get(CHAVE_PENDENCIA_ACAO) or {})
@@ -155,11 +167,13 @@ class PendenciaAcaoRuntime:
             estado["ultima_pendencia_acao"] = atual
             estado[CHAVE_PENDENCIA_ACAO] = {}
             concluida["valor"] = True
+            concluida["item"] = dict(atual)
             return estado
 
         self._estado_atualizar(_atualizar)
         if concluida["valor"]:
             self._log(f"🧠 [PENDÊNCIA:AÇÃO] encerrada | id={pendencia_id} status={status}")
+            self._emitir(str(status or "concluida"), dict(concluida.get("item") or {}))
         return bool(concluida["valor"])
 
     def diagnostico(self) -> dict[str, Any]:

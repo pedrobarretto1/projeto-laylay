@@ -23,7 +23,7 @@ class AgendaRuntime:
         abrir_programa_cb: Callable[[str], Any],
         enviar_pc_b_cb: Callable[[dict], Any],
         enviar_chrome_local_cb: Callable[[dict], Any],
-        executar_exec_cb: Callable[[str, str], Any],
+        executar_comando_conteudo_cb: Callable[[str, str], Any],
         executar_intencao_cb: Callable[[Dict[str, Any], str], Any] | None = None,
         time_cb: Callable[[], float] = time.time,
         now_cb: Callable[[], _dt.datetime] = _dt.datetime.now,
@@ -41,7 +41,7 @@ class AgendaRuntime:
         self.abrir_programa_cb = abrir_programa_cb
         self.enviar_pc_b_cb = enviar_pc_b_cb
         self.enviar_chrome_local_cb = enviar_chrome_local_cb
-        self.executar_exec_cb = executar_exec_cb
+        self.executar_comando_conteudo_cb = executar_comando_conteudo_cb
         self.executar_intencao_cb = executar_intencao_cb
         self.time_cb = time_cb
         self.now_cb = now_cb
@@ -56,15 +56,29 @@ class AgendaRuntime:
         self._dia_map = {"seg": 0, "ter": 1, "qua": 2, "qui": 3, "sex": 4, "sab": 5, "dom": 6}
         self._disparados: set[str] = set()
         self.stop_event = stop_event or threading.Event()
+        self._diagnostico = {
+            "leituras": 0,
+            "gravacoes": 0,
+            "falhas_persistencia": 0,
+            "disparos_confirmados": 0,
+            "disparos_falhos": 0,
+            "retries": 0,
+            "daemon_ativo": False,
+            "ultimo_erro": "",
+            "ultimo_disparo_ts": 0.0,
+        }
 
     def load(self) -> list:
         with self._arquivo_lock:
+            self._diagnostico["leituras"] += 1
             try:
                 if os.path.exists(self.arquivo):
                     with open(self.arquivo, "r", encoding="utf-8") as f:
                         data = json.load(f)
                         return data if isinstance(data, list) else []
             except Exception as e:
+                self._diagnostico["falhas_persistencia"] += 1
+                self._diagnostico["ultimo_erro"] = type(e).__name__
                 self.log(f"[AGENDA] Erro ao carregar: {e}")
         return []
 
@@ -83,6 +97,7 @@ class AgendaRuntime:
                     f.flush()
                     os.fsync(f.fileno())
                 os.replace(temporario, self.arquivo)
+                self._diagnostico["gravacoes"] += 1
                 if callable(self.sincronizar_despertares_cb):
                     try:
                         self.sincronizar_despertares_cb(lista)
@@ -90,6 +105,8 @@ class AgendaRuntime:
                         self.log(f"[AGENDA:WINDOWS] Agenda salva, mas o despertar não foi sincronizado: {erro_despertar}")
                 return True
             except Exception as e:
+                self._diagnostico["falhas_persistencia"] += 1
+                self._diagnostico["ultimo_erro"] = type(e).__name__
                 self.log(f"[AGENDA] Erro ao salvar: {e}")
                 return False
             finally:
@@ -207,6 +224,9 @@ class AgendaRuntime:
         ag["tentativas_falhas"] = tentativas
         ag["proxima_tentativa_ts"] = agora_ts + atraso
         ag["ultimo_erro_ts"] = agora_ts
+        self._diagnostico["disparos_falhos"] += 1
+        self._diagnostico["retries"] += 1
+        self._diagnostico["ultimo_erro"] = "disparo_nao_confirmado"
         self.log(f"⏰ [AGENDA] execução não confirmada; nova tentativa em {int(atraso)}s")
 
     @staticmethod
@@ -253,7 +273,7 @@ class AgendaRuntime:
                 elif acao == "tocar_playlist":
                     if destino == "pc_b":
                         alvo = alvo + " no pc b"
-                    self.executar_exec_cb("TOCAR_PLAYLIST", alvo)
+                    self.executar_comando_conteudo_cb("TOCAR_PLAYLIST", alvo)
 
             except Exception as exc:
                 self.log(f"[AGENDA] Erro ao executar cmd '{acao}': {exc}")
@@ -277,6 +297,8 @@ class AgendaRuntime:
                 proxima = float(ag.get("proxima_tentativa_ts") or 0.0)
                 if ts_exec and agora_ts >= ts_exec and agora_ts >= proxima and ag_id not in self._disparados:
                     if self.disparar(ag):
+                        self._diagnostico["disparos_confirmados"] += 1
+                        self._diagnostico["ultimo_disparo_ts"] = agora_ts
                         self._disparados.add(ag_id)
                         self._limpar_falhas(ag)
                         ag["ativo"] = False
@@ -309,6 +331,8 @@ class AgendaRuntime:
                     if self.time_cb() < proxima:
                         continue
                     if self.disparar(ag):
+                        self._diagnostico["disparos_confirmados"] += 1
+                        self._diagnostico["ultimo_disparo_ts"] = self.time_cb()
                         self._disparados.add(chave)
                         self._limpar_falhas(ag)
                         ag["ultimo_disparo_data"] = data_atual
@@ -322,17 +346,44 @@ class AgendaRuntime:
 
     def daemon(self):
         """Thread daemon que verifica agendamentos com precisão de poucos segundos."""
+        self._diagnostico["daemon_ativo"] = True
         self.log("⏰ [AGENDA] Thread de agendamentos iniciada.")
-        while not self.stop_event.is_set():
-            try:
-                self.processar_ciclo()
-            except Exception as exc:
-                self.log(f"[AGENDA] Erro no daemon: {exc}")
-            if self.stop_event.wait(5):
-                break
+        try:
+            while not self.stop_event.is_set():
+                try:
+                    self.processar_ciclo()
+                except Exception as exc:
+                    self._diagnostico["ultimo_erro"] = type(exc).__name__
+                    self.log(f"[AGENDA] Erro no daemon: {exc}")
+                if self.stop_event.wait(5):
+                    break
+        finally:
+            self._diagnostico["daemon_ativo"] = False
 
     def encerrar(self) -> None:
         self.stop_event.set()
+
+    def diagnostico(self) -> dict[str, Any]:
+        """Expõe somente saúde e contadores; nunca payloads dos lembretes."""
+        lista = self.load()
+        ativos = [item for item in lista if isinstance(item, dict) and item.get("ativo", True)]
+        proximos = []
+        for item in ativos:
+            try:
+                ts_execucao = float(item.get("ts_execucao") or 0.0)
+            except (TypeError, ValueError):
+                ts_execucao = 0.0
+            if ts_execucao:
+                proximos.append(ts_execucao)
+        return {
+            **dict(self._diagnostico),
+            "disponivel": self._diagnostico["falhas_persistencia"] == 0 or bool(lista),
+            "persistencia_local": True,
+            "agendamentos_ativos": len(ativos),
+            "proximo_evento_ts": min(proximos) if proximos else 0.0,
+            "conteudo_exposto": False,
+            "autoriza_execucao": False,
+        }
 
 
 def criar_agenda_runtime(*args, **kwargs) -> AgendaRuntime:
@@ -487,6 +538,17 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
     bruto = str(texto or "").strip()
     if not bruto:
         return None
+    # O relógio é evidência estrutural. A normalização canônica remove ``:``,
+    # então ele precisa ser lido do texto original antes da limpeza lexical.
+    hora_bruta = ""
+    m_hora_bruta = re.search(
+        r"\b(?:às|as|a)?\s*(\d{1,2})\s*(?::|h)\s*(\d{2})\b",
+        bruto.casefold(),
+    )
+    if m_hora_bruta:
+        hora, minuto = map(int, m_hora_bruta.groups())
+        if 0 <= hora <= 23 and 0 <= minuto <= 59:
+            hora_bruta = f"{hora:02d}:{minuto:02d}"
     t = normalizar_texto_cb(bruto)
     t = re.sub(r"\b(laylay|lay|por favor|pfv|pra mim|para mim)\b", " ", t)
     t = re.sub(r"\s+", " ", t).strip()
@@ -497,6 +559,16 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
 
     if any(p in t for p in ["tenho algum compromisso", "tem algum compromisso", "meu compromisso", "compromissos de hoje", "agenda de hoje", "ver agenda", "mostrar agenda", "listar agenda", "me mostra os compromissos", "pode ver se tem", "ver se tem"]):
         return {"intent": "LISTAR_AGENDAMENTOS", "params": {}}
+
+    # Perguntar, formular hipótese ou negar uma ação não é autorização. A lista
+    # acima é somente leitura; mutações e novos lembretes param aqui.
+    if re.search(
+        r"^(?:nao|não)\b|\b(?:como\s+(?:eu\s+)?(?:faria|faço|faco)|"
+        r"voce\s+(?:consegue|pode)|você\s+(?:consegue|pode)|"
+        r"se\s+eu\s+(?:pedir|mandar)|seria\s+possivel|seria\s+possível)\b",
+        t,
+    ):
+        return None
 
     if any(p in t for p in ["cancela", "cancelar", "remove", "remover", "apaga", "apagar"]) and any(p in t for p in ["agendamento", "lembrete", "compromisso", "compromissos", "agenda"]):
         alvo = re.sub(
@@ -513,7 +585,13 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
     if texto_pede_lembrete_explicito(t, normalizar_texto_cb=lambda valor: valor):
         minutos = None
         hora_alvo = ""
-        texto_evento = t
+        gatilho = re.search(
+            r"\b(?:me\s+lembra|lembra\s+(?:de|pra|para)|me\s+avisa|"
+            r"avisa\s+(?:de|pra|para)|agende|agendar|cria(?:r)?\s+(?:um\s+)?"
+            r"lembrete|marca\s+(?:um\s+)?lembrete)\b",
+            t,
+        )
+        texto_evento = t[gatilho.start():] if gatilho else t
         referencia_data = ""
 
         m_data = re.search(
@@ -542,6 +620,14 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
                 hora_alvo = m_hora.group(1)
                 texto_evento = texto_evento.replace(hora_alvo, " ")
                 texto_evento = re.sub(r"\b(?:às|as|a)\s*", " ", texto_evento).strip()
+            elif hora_bruta:
+                hora_alvo = hora_bruta
+                texto_evento = re.sub(
+                    r"\b(?:as|a)?\s*\d{1,2}\s+\d{2}\b",
+                    " ",
+                    texto_evento,
+                    count=1,
+                ).strip()
 
         for prefixo in [
             "me lembra de", "lembra de", "me lembra pra", "lembra pra",
@@ -564,6 +650,40 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
         return {"intent": "AGENDAR_LEMBRETE", "params": params}
 
     return None
+
+
+def extrair_complemento_temporal_lembrete(texto: str) -> Optional[dict[str, Any]]:
+    """Extrai apenas tempo/data para completar uma pendência já autorizada."""
+    bruto = re.sub(r"\s+", " ", str(texto or "").casefold()).strip()
+    if not bruto:
+        return None
+    m_min = re.search(
+        r"\b(?:(?:daqui(?:\s+a)?|em)\s+)?(\d{1,3})\s*(?:min|mins|minuto|minutos)\b",
+        bruto,
+    )
+    if m_min:
+        return {"minutos": int(m_min.group(1)), "complemento_pendente": True}
+    m_hora = re.search(
+        r"\b(?:pode\s+ser\s+)?(?:às|as|a)?\s*(\d{1,2})\s*(?::|h|\s)\s*(\d{2})\b",
+        bruto,
+    )
+    if not m_hora:
+        return None
+    hora, minuto = map(int, m_hora.groups())
+    if not (0 <= hora <= 23 and 0 <= minuto <= 59):
+        return None
+    params: dict[str, Any] = {
+        "hora_alvo": f"{hora:02d}:{minuto:02d}",
+        "complemento_pendente": True,
+    }
+    data = re.search(
+        r"\b(hoje|amanh[ãa]|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|"
+        r"quinta(?:-feira)?|sexta(?:-feira)?|s[áa]bado|domingo|\d{1,2}/\d{1,2}(?:/\d{2,4})?)\b",
+        bruto,
+    )
+    if data:
+        params["data_hora"] = data.group(1)
+    return params
 
 
 def extrair_acao_agendada_local(texto: str, normalizar_texto_cb: Callable[[str], str]) -> Optional[dict]:

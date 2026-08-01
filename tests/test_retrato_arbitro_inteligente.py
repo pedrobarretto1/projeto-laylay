@@ -139,6 +139,27 @@ def test_operacao_playlist_limita_intents_herdados() -> None:
     assert any("playlist_adicionar" in item["motivo"] for item in resultado["rejeitados"])
 
 
+def test_playlist_add_resolve_essa_musica_como_faixa_atual() -> None:
+    retrato, _ = construir_retrato_turno(
+        "coloca essa musica na playlist rei do pop",
+        turno={
+            "id": 14,
+            "modalidade": "comando",
+            "modalidade_geral": "comando",
+            "autoriza_execucao": True,
+        },
+        mente={},
+        contexto_perceptivo={},
+        agora=100.0,
+    )
+
+    assert retrato["operacao_explicita"] == "playlist_adicionar"
+    assert retrato["referencia_tipo"] == "musica"
+    assert retrato["referencia_resolvida"]["nome"] == "faixa atual"
+    assert retrato["referencia_resolvida"]["origem"] == "reprodutor_atual"
+    assert retrato["referencia_resolvida"]["dados"]["validacao_no_executor"] is True
+
+
 def test_comentario_sobre_jogo_nao_herda_comando_de_musica() -> None:
     retrato, _ = construir_retrato_turno(
         "esse jogo é muito legal",

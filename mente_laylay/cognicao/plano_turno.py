@@ -13,6 +13,9 @@ from mente_laylay.cognicao.guardiao_realidade_pessoal import (
     detectar_experiencia_pessoal_inventada,
     remover_trechos_de_realidade_inventada,
 )
+from mente_laylay.cognicao.qualidade_comunicacao import (
+    avaliar_qualidade_comunicacao,
+)
 from mente_laylay.cognicao.decisao_turno import criar_contrato_decisao
 from mente_laylay.cognicao.contratos_turno import PlanoTurnoDict
 from mente_laylay.percepcao.ritmo_circadiano import (
@@ -156,6 +159,13 @@ def planejar_turno(
     if funcao_comunicativa.get("objetivo"):
         resposta_esperada = str(funcao_comunicativa.get("objetivo"))
 
+    dominio_turno = _dominio_turno(t, estado)
+    referencia_turno = dict(leitura.get("referencia_resolvida") or {})
+    if str(referencia_turno.get("tipo") or "").casefold() in {
+        "artista", "banda", "cantor", "cantora", "musica", "referencia_nomeada",
+    }:
+        dominio_turno = "musica"
+
     plano = {
         "id": int(leitura.get("id") or time.time_ns()),
         "origem_entrada": str(leitura.get("origem_entrada") or "desconhecida"),
@@ -163,7 +173,7 @@ def planejar_turno(
         "modalidade": str(leitura.get("modalidade_geral") or leitura.get("modalidade") or "conversa"),
         "ato_principal": str(leitura.get("ato_principal") or leitura.get("modalidade") or atos[0]["tipo"]),
         "atos": atos,
-        "dominio": _dominio_turno(t, estado),
+        "dominio": dominio_turno,
         "contexto_necessario": contexto_necessario,
         "requer_execucao": requer_execucao,
         "misto": misto,
@@ -313,6 +323,23 @@ def verificar_fala_turno(
                 "problemas": problemas,
                 "pontuacao": 0.0,
             }
+
+    qualidade = avaliar_qualidade_comunicacao(
+        texto_usuario,
+        ajustada,
+        plano=contrato,
+    )
+    problemas_comunicacao = list(qualidade.get("problemas") or [])
+    if problemas_comunicacao:
+        problemas.extend(problemas_comunicacao)
+        return {
+            "aceita": False,
+            "fala": ajustada,
+            "acao": "reparar",
+            "problemas": list(dict.fromkeys(problemas)),
+            "pontuacao": float(qualidade.get("pontuacao") or 0.0),
+            "foco": dict(qualidade.get("foco") or {}),
+        }
 
     ajustada_proporcional = ajustar_proporcao_resposta(
         ajustada,

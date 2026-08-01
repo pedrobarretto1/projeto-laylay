@@ -194,7 +194,8 @@ def test_ouvido_nao_carrega_whisper_antes_da_primeira_fala():
     )
     ouvido.executar()
     assert modelos == []
-    assert any("somente na primeira fala" in mensagem for mensagem in logs)
+    assert not any("somente na primeira fala" in mensagem for mensagem in logs)
+    assert not any("[OUVIDO] Entrada:" in mensagem for mensagem in logs)
 
 
 def test_modo_chat_pausa_ouvido_antes_da_calibracao_e_do_modelo():
@@ -206,6 +207,7 @@ def test_modo_chat_pausa_ouvido_antes_da_calibracao_e_do_modelo():
         processar_texto=lambda _: None,
         esta_falando=lambda: False,
         escuta_permitida=lambda: False,
+        modo_chat_ativo=lambda: True,
         sounddevice_mod=sd,
         numpy_mod=np,
         model_factory=lambda *_args, **_kwargs: modelos.append(True) or ModeloFalso(),
@@ -216,7 +218,69 @@ def test_modo_chat_pausa_ouvido_antes_da_calibracao_e_do_modelo():
     ouvido.executar()
     assert modelos == []
     assert any("Pausado enquanto o modo chat" in mensagem for mensagem in logs)
+    assert not any("Whisper será carregado" in mensagem for mensagem in logs)
+    assert not any("[OUVIDO] Entrada:" in mensagem for mensagem in logs)
     assert not any("Calibrando o ruído" in mensagem for mensagem in logs)
+
+
+def test_falha_de_captura_no_modo_chat_nao_vaza_para_supervisor():
+    class SoundDeviceComFalha(SoundDeviceFalso):
+        def InputStream(self, **kwargs):
+            self.configuracao_stream = dict(kwargs)
+
+            class Stream:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *_):
+                    return False
+
+                def read(self, _bloco):
+                    raise RuntimeError("dispositivo de entrada indisponível")
+
+            return Stream()
+
+    logs = []
+    ouvido = OuvidoWhisperRuntime(
+        processar_texto=lambda _: None,
+        esta_falando=lambda: False,
+        escuta_permitida=lambda: False,
+        modo_chat_ativo=lambda: True,
+        sounddevice_mod=SoundDeviceComFalha(),
+        numpy_mod=np,
+        log=logs.append,
+    )
+
+    ouvido.executar()
+
+    assert not any("Whisper será carregado" in mensagem for mensagem in logs)
+    assert not any("[OUVIDO] Entrada:" in mensagem for mensagem in logs)
+    assert not any("Captura do microfone encerrada" in mensagem for mensagem in logs)
+
+
+def test_falha_de_captura_fora_do_chat_continua_visivel():
+    class SoundDeviceComFalha(SoundDeviceFalso):
+        def InputStream(self, **kwargs):
+            raise RuntimeError("dispositivo de entrada indisponível")
+
+    logs = []
+    ouvido = OuvidoWhisperRuntime(
+        processar_texto=lambda _: None,
+        esta_falando=lambda: False,
+        modo_chat_ativo=lambda: False,
+        sounddevice_mod=SoundDeviceComFalha(),
+        numpy_mod=np,
+        log=logs.append,
+    )
+
+    try:
+        ouvido.executar()
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("a falha real do microfone deveria alcançar o supervisor")
+
+    assert any("Captura do microfone encerrada" in mensagem for mensagem in logs)
 
 
 def test_ouvido_refaz_transcricao_curta_quando_vad_do_whisper_retorna_vazio():

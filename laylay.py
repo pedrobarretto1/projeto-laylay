@@ -210,6 +210,22 @@ from mente_laylay.percepcao.visao_jogo.composicao import (
 from mente_laylay.percepcao.visao_jogo.coordenador import (
     criar_coordenador_visao_jogo_runtime as _criar_coordenador_visao_jogo_runtime,
 )
+from mente_laylay.percepcao.visao_jogo.portas_runtime import (
+    criar_visao_jogo_analise_runtime as _criar_visao_jogo_analise_runtime,
+    criar_visao_jogo_leitura_runtime as _criar_visao_jogo_leitura_runtime,
+)
+from mente_laylay.integracao.registro_visao_jogo import (
+    registrar_visao_jogo_analise as _registrar_visao_jogo_analise,
+    registrar_visao_jogo_leitura as _registrar_visao_jogo_leitura,
+)
+from mente_laylay.integracao.registro_conversa_llm import (
+    criar_modelo_llm_diferido_runtime as _criar_modelo_llm_diferido_runtime,
+    criar_estado_conversa_runtime as _criar_estado_conversa_runtime,
+    registrar_modelo_llm as _registrar_modelo_llm,
+)
+from mente_laylay.integracao.composicao_principal import (
+    criar_registros_principais as _criar_registros_principais,
+)
 from mente_laylay.cognicao.intencao_visual_jogo import (
     detectar_pedido_visao_jogo as _detectar_pedido_visao_jogo_cooperativo,
 )
@@ -262,7 +278,6 @@ from mente_laylay.memoria_mental.resumo_diario import (
     MemoriaLaylay as _MemoriaLaylayRuntime,
 )
 from mente_laylay.memoria_mental.playlist_mental import (
-    detectar_mover_playlist_texto as _detectar_mover_playlist_texto_mente,
     fala_playlist_conteudo_estilosa as _fala_playlist_conteudo_estilosa_mente,
     limpar_nome_playlist as _limpar_nome_playlist_mente,
     yt_clean_title as _yt_clean_title_mente,
@@ -284,8 +299,22 @@ from mente_laylay.memoria_mental.playlist_runtime import (
 from mente_laylay.memoria_mental.playlist_laylay_runtime import (
     criar_playlist_laylay_runtime as _criar_playlist_laylay_runtime_mente,
 )
+from mente_laylay.memoria_mental.operacoes_musicais_runtime import (
+    criar_operacoes_musicais_runtime as _criar_operacoes_musicais_runtime_mente,
+)
 from mente_laylay.memoria_mental.consulta_musical import (
     criar_consulta_musical_runtime as _criar_consulta_musical_runtime_mente,
+)
+from mente_laylay.integracao.registro_operacoes_musicais import (
+    registrar_operacoes_musicais as _registrar_operacoes_musicais,
+)
+from mente_laylay.integracao.navegador_runtime import (
+    criar_navegador_leitura_runtime as _criar_navegador_leitura_runtime,
+    criar_navegador_operacoes_runtime as _criar_navegador_operacoes_runtime,
+)
+from mente_laylay.integracao.registro_navegador import (
+    registrar_navegador_leitura as _registrar_navegador_leitura,
+    registrar_navegador_operacoes as _registrar_navegador_operacoes,
 )
 from mente_laylay.personalidade.falas_variadas import (
     escolher as _escolher_fala_variada,
@@ -323,7 +352,6 @@ from mente_laylay.personalidade.conversa_natural import (
 )
 from mente_laylay.autonomia.execucao_ia import (
     criar_coordenador_exec_runtime as _criar_coordenador_exec_runtime_mente,
-    executar_exec as _executar_exec_mente,
     filtrar_apenas_fala as _filtrar_apenas_fala_mente,
     parsear_resposta_json as _parsear_resposta_json_mente,
     remover_prefixo_exec as _remover_prefixo_exec_mente,
@@ -347,7 +375,6 @@ from mente_laylay.autonomia.audio_sistema import (
 )
 from mente_laylay.autonomia.fluxo_resposta_ia import (
     processar_inicio_fluxo_resposta_ia as _processar_inicio_fluxo_resposta_ia_mente,
-    processar_pre_fluxos_antes_ia as _processar_pre_fluxos_antes_ia_mente,
 )
 from mente_laylay.autonomia.modo_chat import (
     criar_interacao_chat_runtime as _criar_interacao_chat_runtime_mente,
@@ -440,6 +467,15 @@ from mente_laylay.integracao.composicao_visual import (
 from mente_laylay.integracao.composicao_gmail import (
     criar_composicao_gmail_laylay_runtime as _criar_composicao_gmail_laylay_runtime,
 )
+from mente_laylay.integracao.politicas_composicao import (
+    aprender_conteudo_area_transferencia as _aprender_conteudo_area_transferencia_mente,
+    aprender_pesquisa_semantica_arquivos as _aprender_pesquisa_semantica_arquivos_mente,
+    construir_estado_visual as _construir_estado_visual_mente,
+    observar_conteudo_area_transferencia as _observar_conteudo_area_transferencia_mente,
+    observar_item_caixa_entrada as _observar_item_caixa_entrada_mente,
+    recomendar_playlist_real_para_presenca as _recomendar_playlist_real_para_presenca_mente,
+    registrar_feedback_agenda as _registrar_feedback_agenda_mente,
+)
 from mente_laylay.cognicao.fundamentacao_factual import (
     extrair_tema_fundamentacao as _extrair_tema_fundamentacao_mente,
     montar_fundamentacao as _montar_fundamentacao_mente,
@@ -497,6 +533,9 @@ from mente_laylay.emocoes.perfil_emocional import (
     limpar_para_voz as _limpar_para_voz_mente,
     modular_audio_params as _modular_audio_params_mente,
     perfil_comportamento_emocional as _perfil_comportamento_emocional_mente,
+)
+from mente_laylay.emocoes.avaliador_eventos import (
+    criar_avaliador_eventos_emocionais_runtime as _criar_avaliador_eventos_emocionais_runtime_mente,
 )
 # from youtubesearchpython import VideosSearch (Removido por erro de proxies no ambiente)
 
@@ -792,6 +831,30 @@ sugestao_bloqueada_ate = _estado_compartilhado_runtime.vincular_dict(
     "continuidades", "sugestoes_bloqueadas_ate",
 )
 _contexto_paginas = ContextoPaginas()
+_avaliador_eventos_emocionais_runtime = (
+    _criar_avaliador_eventos_emocionais_runtime_mente(log=print)
+)
+
+
+def _avaliar_evento_emocional_operacional(resultado):
+    avaliacao = _avaliador_eventos_emocionais_runtime.avaliar(resultado)
+    if avaliacao.get("permite_expressao"):
+        _definir_emocao_conversacional(
+            str(avaliacao.get("emocao") or "calma"),
+            int(avaliacao.get("nivel") or 1),
+            str(avaliacao.get("causa") or "evento operacional"),
+        )
+    print(
+        "🎭 [EMOÇÃO:CAUSA] "
+        f"responsabilidade={avaliacao.get('responsabilidade')} "
+        f"confiança={float(avaliacao.get('confianca') or 0.0):.0%} "
+        f"emoção={avaliacao.get('emocao')} nível={avaliacao.get('nivel')} "
+        f"repetições={avaliacao.get('repeticoes')} "
+        f"expressão={bool(avaliacao.get('permite_expressao'))}"
+    )
+    return avaliacao
+
+
 _estado_compartilhado_runtime.atualizar_campos(
     "mental",
     autoaprimoramento_estado={
@@ -818,49 +881,13 @@ def _definir_atividade_visual(atividade: str) -> None:
     )
 
 
-def _estado_visual_laylay():
-    agora = time.time()
-    falando = bool(_conversa_estado_get("audio_playing", False))
-    preparando_fala = bool(_conversa_estado_get("is_speaking", False)) and not falando
-    atividade = str(_conversa_estado_get("visual_activity", "idle") or "idle")
-    if agora > float(_conversa_estado_get("visual_activity_until", 0.0) or 0.0):
-        atividade = "idle"
-    reaction_id = ""
-    plano = dict(_estado_compartilhado_runtime.mental.get("plano_turno_atual") or {})
-    atualizado = float(plano.get("atualizado_ts") or plano.get("ts") or 0.0)
-    idade_plano = agora - atualizado if atualizado else 999.0
-    fase = str(plano.get("fase") or "").strip().lower()
-    comandos = [item for item in list(plano.get("comandos") or []) if isinstance(item, dict)]
-    erros = list(plano.get("erros") or [])
-    falhou = bool(erros) or any(
-        item.get("confirmado") is False
-        or str(item.get("status") or "").lower() in {
-            "erro", "falha", "indisponivel", "não_confirmado", "nao_confirmado"
-        }
-        for item in comandos
-    )
-    if falando:
-        atividade = "speaking"
-    elif preparando_fala:
-        atividade = "thinking"
-    elif idade_plano <= 2.8 and falhou:
-        atividade = "error"
-        reaction_id = f"erro:{plano.get('id') or atualizado}"
-    elif idade_plano <= 2.2 and comandos and fase in {"executado", "tratado_pre_fluxo"}:
-        atividade = "success"
-        reaction_id = f"sucesso:{plano.get('id') or atualizado}"
-    elif idade_plano <= 8.0 and comandos and fase not in {"executado", "tratado_pre_fluxo"}:
-        atividade = "executing"
-    elif idade_plano <= 8.0 and fase in {"planejado", "resposta_planejada", "fala_verificada"}:
-        atividade = "thinking"
-    return {
-        "emotion": _conversa_estado_get("current_emotion", "calma"),
-        "level": _conversa_estado_get("emotion_level", 1),
-        "speaking": falando,
-        "activity": atividade,
-        "intensity": max(0.25, min(1.0, float(_conversa_estado_get("emotion_level", 1) or 1) / 3.0)),
-        "reaction_id": reaction_id,
-    }
+_estado_visual_laylay = partial(
+    _construir_estado_visual_mente,
+    conversa_get=_conversa_estado_get,
+    plano_get=lambda: dict(
+        _estado_compartilhado_runtime.mental.get("plano_turno_atual") or {}
+    ),
+)
 
 
 _composicao_visual_runtime = _criar_composicao_visual_laylay_runtime(
@@ -926,15 +953,19 @@ _inicializacao_runtime = _criar_orquestrador_inicializacao_mente(
 
 # Fila para troca autonoma de musicas no YouTube
 _musica_ultima_verificada = ""
+_modelo_llm_diferido_runtime = _criar_modelo_llm_diferido_runtime()
+_registro_modelo_llm_runtime = _registrar_modelo_llm(
+    _modelo_llm_diferido_runtime
+)
 _busca_musical_runtime = _criar_busca_musical_runtime_mente(
     extrair_resultados_youtube=(
         lambda html, query, limite=10, **kwargs:
         _extrair_resultados_youtube_busca(html, query, limite, **kwargs)
     ),
-    abrir_url=lambda url: validar_e_enviar_comando("open_url", {"url": url}),
-    youtube_play=lambda url: validar_e_enviar_comando("youtube_play", {"url": url}),
+    abrir_url=lambda url: _registro_navegador_operacoes_runtime.abrir_url(url),
+    youtube_play=lambda url: _registro_navegador_operacoes_runtime.tocar_youtube(url),
     falar=lambda texto, emocao="calma", nivel=1: falar_com_lipsync(texto, emocao, nivel),
-    enviar_mensagem=lambda mensagens, **kwargs: enviar_mensagem(mensagens, **kwargs),
+    enviar_mensagem=_registro_modelo_llm_runtime.enviar,
     log=print,
 )
 try:
@@ -968,11 +999,15 @@ _playlist_runtime = _criar_playlist_runtime_mente(
     ultima_playlist_getter=lambda: str(_musica_estado_get("ultima_playlist") or ""),
     ultima_playlist_setter=lambda valor: _musica_estado_set("ultima_playlist", valor),
     playlist_state=playlist_state,
-    youtube_play=lambda url, target_tab_id=None: validar_e_enviar_comando(
-        "youtube_play",
-        {"url": url, **({"target_tab_id": target_tab_id} if isinstance(target_tab_id, int) else {})},
+    youtube_play=lambda url, target_tab_id=None: (
+        _registro_navegador_operacoes_runtime.tocar_youtube(
+            url,
+            tab_id=target_tab_id if isinstance(target_tab_id, int) else None,
+        )
     ),
-    solicitar_aba_ativa=lambda **kwargs: solicitar_aba_ativa(**kwargs),
+    solicitar_aba_ativa=lambda **kwargs: (
+        _registro_navegador_leitura_runtime.aba_ativa(**kwargs)
+    ),
     normalizar_texto=lambda texto: _normalizar_texto(texto),
     normalizar_texto_com_apelidos=lambda texto: _normalizar_texto_com_apelidos(texto),
     sincronizar_playlists_laylay=lambda: _playlist_laylay_runtime.sincronizar(),
@@ -1022,6 +1057,20 @@ _playlist_laylay_runtime = _criar_playlist_laylay_runtime_mente(
         canal,
     ),
     publicar_cooperacao=_publicar_curadoria_musical_cooperativa,
+)
+_operacoes_musicais_runtime = _criar_operacoes_musicais_runtime_mente(
+    playlists_usuario=_playlist_runtime,
+    playlists_laylay=_playlist_laylay_runtime,
+    musica_estado_getter=_musica_estado_get,
+    musica_estado_setter=_musica_estado_set,
+    solicitar_aba_ativa=lambda **kwargs: (
+        _registro_navegador_leitura_runtime.aba_ativa(**kwargs)
+    ),
+    playlist_state=playlist_state,
+    log=print,
+)
+_registro_musica_operacoes_runtime = _registrar_operacoes_musicais(
+    _operacoes_musicais_runtime
 )
 _consulta_musical_runtime = _criar_consulta_musical_runtime_mente(
     playlists_usuario=_playlist_runtime,
@@ -1107,7 +1156,14 @@ _chrome_estado = _ChromeEstadoRuntime(
 # ====================== MEMÓRIA INTELIGENTE (Curto → Longo Prazo) ======================
 memoria_inteligente = _MemoriaLaylayRuntime(
     pasta_memoria=PASTA_MEMORIA,
-    enviar_mensagem=lambda mensagens: enviar_mensagem(mensagens, _com_tools=False),
+    enviar_mensagem=lambda mensagens: _registro_modelo_llm_runtime.enviar(
+        mensagens,
+        _com_tools=False,
+        max_tokens=512,
+        modo_rapido=True,
+        timeout=30,
+        _permitir_durante_interacao=True,
+    ),
     log=print,
 )
 
@@ -1301,10 +1357,7 @@ atualizar_contexto_por_url = _ambiente_navegacao_runtime.atualizar_contexto_por_
 organizar_janelas_robusto = _ambiente_navegacao_runtime.organizar_janelas
 planejar_organizacao_desktop = _ambiente_navegacao_runtime.planejar_organizacao_janelas
 listar_programas_abertos = _ambiente_navegacao_runtime.listar_programas
-listar_abas_chrome = _ambiente_navegacao_runtime.listar_abas
 _resolver_alvo_ambiente = _ambiente_navegacao_runtime.resolver_alvo
-abrir_url_com_reciclagem = _ambiente_navegacao_runtime.abrir_url
-fechar_abas_vazias = _ambiente_navegacao_runtime.fechar_abas_vazias
 _montar_url_site_ou_busca = _ambiente_navegacao_runtime.montar_url
 _eh_alvo_site_web = _ambiente_navegacao_runtime.eh_alvo_site_web
 _contexto_aponta_site_web = _ambiente_navegacao_runtime.contexto_aponta_site_web
@@ -1351,7 +1404,9 @@ _composicao_chrome_ws_runtime = _criar_composicao_chrome_ws_laylay_runtime(
     solicitacoes=_chrome_solicitacoes,
     playlist_state=playlist_state,
     yt_clean_url=lambda url: _yt_clean_url(url),
-    playlist_avancar_proxima=lambda: _playlist_avancar_proxima(),
+    playlist_avancar_proxima=(
+        _registro_musica_operacoes_runtime.avancar_proxima
+    ),
     falar_com_lipsync=lambda *args, **kwargs: falar_com_lipsync(*args, **kwargs),
     ws_transport=_ws_transport_runtime,
     fechar_extensoes_anteriores=_ws_close_other_extensions,
@@ -1469,21 +1524,21 @@ _motor_iniciativa_runtime = _criar_motor_iniciativa_runtime_mente(
 
 
 # A visão nasce mais tarde, depois que captura, pesquisa e fala estão prontas.
-# A referência explícita evita consultar o namespace durante cada avaliação.
-_visao_jogo_runtime = None
+# Até lá, a iniciativa enxerga somente a porta tipada de leitura.
+_registro_visao_jogo_leitura_runtime = None
 
 
 def _objetivos_iniciativa_atuais():
     """Expõe objetivos contextuais já confirmados, sem criar outro estado de perfil."""
     if not bool(_modo_jogo_runtime.ativo):
         return []
-    runtime_visao = _visao_jogo_runtime
-    if runtime_visao is None:
+    leitura_visao = _registro_visao_jogo_leitura_runtime
+    if leitura_visao is None:
         return []
     try:
         contexto = dict(_modo_jogo_runtime.contexto_atual() or {})
         identidade = identificar_jogo(contexto)
-        perfil = dict(runtime_visao.sessoes.perfil(identidade) or {})
+        perfil = dict(leitura_visao.perfil_atual() or {})
     except Exception:
         return []
     tags = {"jogo", str(identidade.get("chave") or "")}
@@ -1838,9 +1893,10 @@ _voz_runtime = _criar_voz_runtime_mente(
     registrar_metrica_cb=_observabilidade_mente_runtime.registrar_metrica,
     registrar_falha_cb=_observabilidade_mente_runtime.registrar_falha,
     log=print,
-    # Respostas disparadas pelo mesmo turno entram numa única fala/linha.
-    batch_window=0.20,
-    batch_max_items=4,
+    # A mente já consolida candidatos do mesmo turno antes desta fila. Aqui
+    # cada item precisa permanecer isolado para nunca costurar dois comandos.
+    batch_window=0.0,
+    batch_max_items=1,
     tts_timeout_s=float(os.environ.get("LAYLAY_TTS_TIMEOUT", "8.0")),
     stop_event=_servicos_background_runtime.evento_parada,
 )
@@ -1936,7 +1992,7 @@ repetir_briefing = partial(
     _ambiente_sistema_runtime.repetir_briefing_atual,
     cidade=BRIEFING_CIDADE,
     obter_clima=obter_clima_wttr,
-    enviar_mensagem=lambda *args, **kwargs: enviar_mensagem(*args, **kwargs),
+    enviar_mensagem=_registro_modelo_llm_runtime.enviar,
     limpar_resposta=lambda texto: limpar_resposta(texto),
     remover_prefixo_exec=lambda texto: _remover_prefixo_exec(texto),
     falar=lambda texto, emocao, nivel: falar_com_lipsync(texto, emocao, nivel),
@@ -1987,47 +2043,36 @@ _chrome_comandos_runtime = _composicao_chrome_comandos_runtime.conectar_executor
     buscar_primeiro_video_youtube=_buscar_primeiro_video_youtube,
     modo_jogo_ativo=lambda: bool(_modo_jogo_runtime.ativo),
 )
-validar_e_enviar_comando = _chrome_comandos_runtime.enviar
-enviar_comando_chrome = _chrome_comandos_runtime.enviar
+_ambiente_navegacao_runtime.conectar_navegador(
+    solicitacoes=_chrome_solicitacoes,
+    comandos=_chrome_comandos_runtime,
+)
+_navegador_leitura_runtime = _criar_navegador_leitura_runtime(
+    solicitacoes=_chrome_solicitacoes,
+    ambiente=_ambiente_navegacao_runtime,
+)
+_registro_navegador_leitura_runtime = _registrar_navegador_leitura(
+    _navegador_leitura_runtime
+)
+_navegador_operacoes_runtime = _criar_navegador_operacoes_runtime(
+    comandos=_chrome_comandos_runtime,
+    ambiente=_ambiente_navegacao_runtime,
+    fechar_aba_nativa=fechar_aba_ativa_nativa,
+)
+_registro_navegador_operacoes_runtime = _registrar_navegador_operacoes(
+    _navegador_operacoes_runtime
+)
 _iniciar_worker_de_falas = _voz_runtime.iniciar_worker
 _normalizar_segmento_fala = _voz_runtime.normalizar_segmento_fala
 _agendar_fala_proativa = _voz_runtime.agendar_fala_proativa
 
 
-def _recomendar_playlist_real_para_presenca(clima: str) -> str:
-    """Escolhe somente entre playlists existentes; nunca inventa nem dá play."""
-    try:
-        nomes = [
-            str(nome).strip() for nome in dict(_playlist_runtime.load() or {}).keys()
-            if str(nome).strip()
-        ]
-    except Exception as erro:
-        print(
-            "⚠️ [PRESENÇA:MÚSICA] playlists reais indisponíveis: "
-            f"{type(erro).__name__}: {erro}"
-        )
-        _observabilidade_mente_runtime.registrar_falha(
-            "presenca_musical", "falha_carregar_playlists", erro=erro,
-        )
-        nomes = []
-    if not nomes:
-        return ""
-    preferencias = {
-        "foco": ("synthwave", "devaneios", "vibes", "alternativo", "brisa"),
-        "intenso": ("rock", "alternativo", "anime", "trap"),
-        "calmo": ("brisa", "vibes", "devaneios", "musica brasileira"),
-        "sombrio": ("alternativo", "synthwave", "rock"),
-    }
-    tokens = preferencias.get(str(clima or "").casefold(), preferencias["foco"])
-    escolhida = next((
-        nome for token in tokens for nome in nomes if token in nome.casefold()
-    ), "")
-    if not escolhida:
-        return ""
-    return (
-        f"Você tá num foco bonito faz um tempo. A sua playlist {escolhida} "
-        "combina com esse ritmo, se quiser manter a cabeça embalada."
-    )
+_recomendar_playlist_real_para_presenca = partial(
+    _recomendar_playlist_real_para_presenca_mente,
+    carregar_playlists=_playlist_runtime.load,
+    registrar_falha=_observabilidade_mente_runtime.registrar_falha,
+    log=print,
+)
 
 
 _diretor_presenca_runtime = _criar_diretor_presenca_runtime_mente(
@@ -2146,31 +2191,11 @@ _finalizar_encerramento_assunto_apos_fala = (
 )
 
 
-def _aprender_pesquisa_semantica_arquivos(consulta: str, resultados: list[dict]) -> bool:
-    """Registra apenas assuntos agregados após buscas úteis, nunca caminhos ou trechos."""
-    normalizada = _normalizar_texto(str(consulta or ""))
-    bloqueados = {
-        "arquivo", "arquivos", "documento", "documentos", "encontra", "procura",
-        "busca", "pesquisa", "sobre", "meu", "minha", "meus", "minhas",
-    }
-    termos = [
-        termo for termo in re.findall(r"[a-z0-9_]{3,}", normalizada)
-        if termo not in bloqueados and not termo.isdigit()
-    ][:3]
-    if not termos or not resultados:
-        return False
-    assunto = " ".join(dict.fromkeys(termos))[:80]
-    hipotese = _motor_aprendizado_runtime.registrar_evidencia(
-        chave=f"arquivos:assunto_busca:{'-'.join(assunto.split())}",
-        tipo="assunto_recorrente_pesquisa_arquivos",
-        escopo="arquivos",
-        valor={"descricao_humana": f"costuma procurar arquivos sobre {assunto}"},
-        sinal=0.3,
-        origem="pesquisa_semantica_arquivos",
-        evidencia="busca explícita com resultado local confirmado",
-        confirmado_usuario=False,
-    )
-    return bool(hipotese)
+_aprender_pesquisa_semantica_arquivos = partial(
+    _aprender_pesquisa_semantica_arquivos_mente,
+    normalizar=lambda texto: _normalizar_texto(texto),
+    registrar_evidencia=_motor_aprendizado_runtime.registrar_evidencia,
+)
 
 
 _pesquisa_semantica_arquivos_runtime = _criar_pesquisa_semantica_arquivos_runtime(
@@ -2194,7 +2219,7 @@ _composicao_iot_runtime = _criar_composicao_iot_laylay_runtime(
     estado_mental_getter=lambda: _estado_compartilhado_runtime.mental,
     definir_emocao=_definir_emocao_conversacional,
     emitir_fala=False,
-    enviar_mensagem=lambda *args, **kwargs: enviar_mensagem(*args, **kwargs),
+    enviar_mensagem=_registro_modelo_llm_runtime.enviar,
     log=print,
 )
 _iot_runtime = _composicao_iot_runtime.runtime
@@ -2269,7 +2294,7 @@ briefing_matinal = partial(
     montar_fala=lambda clima: _montar_briefing_matinal_ambiente(
         cidade=BRIEFING_CIDADE,
         clima=clima,
-        enviar_mensagem_cb=enviar_mensagem,
+        enviar_mensagem_cb=_registro_modelo_llm_runtime.enviar,
         limpar_resposta_cb=limpar_resposta,
         remover_prefixo_exec_cb=_remover_prefixo_exec,
     ),
@@ -2294,20 +2319,20 @@ _feedback_pendente_runtime = _criar_feedback_pendente_runtime_mente(
         "interpretar_resposta_pendente": _interpretar_resposta_pendente_mente,
         "resumo_mente_integrada_para_prompt": _resumo_mente_integrada_para_prompt_mente,
         "mente_integrada_estado": _estado_compartilhado_runtime.mental,
-        "enviar_mensagem": enviar_mensagem,
+        "enviar_mensagem": _registro_modelo_llm_runtime.enviar,
         "handle_feedback_pendente": _handle_feedback_pendente_mente,
         "handle_sugestao_confirmacao": _handle_sugestao_confirmacao,
-        "solicitar_aba_ativa": solicitar_aba_ativa,
-        "add_to_playlist_url": add_to_playlist_url,
+        "musica_operacoes": _registro_musica_operacoes_runtime,
         "extrair_nome_playlist": extrair_nome_playlist,
         "yt_clean_title": _yt_clean_title,
         "falar_com_lipsync": falar_com_lipsync,
-        "set_ultima_playlist": lambda valor: _musica_estado_set("ultima_playlist", valor),
         "rotina_registrar_feedback": _rotina_registrar_feedback,
         "gmail_buscar_nao_lidos": _gmail_buscar_nao_lidos,
         "gmail_falar_resumo_estiloso": _gmail_falar_resumo_estiloso,
         "registrar_feedback_proatividade": _registrar_feedback_proatividade,
-        "processar_comandos_imediatos": processar_comandos_imediatos,
+        "resolver_comando_natural": resolver_comando_natural,
+        "executar_intencao": executar_intencao,
+        "registrar_resultado_execucao": _registrar_resultado_execucao,
     },
     log=print,
 )
@@ -2348,80 +2373,54 @@ _cliente_llm_runtime = _composicao_inteligencia_externa_runtime.conectar_cliente
         or _estado_compartilhado_runtime.mental.get("interacao_em_andamento")
     ),
 )
-enviar_mensagem = _cliente_llm_runtime.enviar
+_modelo_llm_diferido_runtime.conectar(_cliente_llm_runtime)
 
 
-def _aprender_conteudo_area_transferencia(conteudo: str, pedido: str) -> bool:
-    """Persiste apenas conteúdo que o usuário mandou explicitamente aprender."""
-    fato = re.sub(r"\s+", " ", str(conteudo or "")).strip()[:4000]
-    if not fato:
-        return False
-    salvo = MEMORIA_SQLITE.salvar_aprendizado_semantico(
-        tipo="fato_usuario",
-        gatilho=fato[:240],
-        valor=fato,
-        regra=f"O usuário ensinou explicitamente pela área de transferência: {fato}",
-        texto_original=str(pedido or "")[:500],
-        confianca=0.98,
-        origem="area_transferencia_explicita",
-        evidencia="pedido explícito do usuário para aprender conteúdo copiado",
-        status="ativo",
-        confirmado_usuario=True,
-    )
-    return bool(salvo)
+_aprender_conteudo_area_transferencia = partial(
+    _aprender_conteudo_area_transferencia_mente,
+    salvar_aprendizado=MEMORIA_SQLITE.salvar_aprendizado_semantico,
+)
 
 
-def _observar_conteudo_area_transferencia(classificacao: dict) -> bool:
-    """Entrega somente evidências classificadas ao motor gradual da mente."""
-    chave = str(classificacao.get("chave") or "").strip()
-    descricao = str(classificacao.get("descricao") or "").strip()[:500]
-    if not chave or not descricao:
-        return False
-    hipotese = _motor_aprendizado_runtime.registrar_evidencia(
-        chave=chave,
-        tipo=str(classificacao.get("tipo") or "padrao_clipboard"),
-        escopo=str(classificacao.get("escopo") or "area_transferencia"),
-        valor={
-            "descricao_humana": descricao,
-            "origem": "area_transferencia",
-        },
-        sinal=float(classificacao.get("sinal") or 0.0),
-        origem="observacao_area_transferencia",
-        evidencia=str(classificacao.get("motivo") or "conteúdo classificado localmente"),
-        confirmado_usuario=False,
-    )
-    return bool(hipotese)
+_observar_conteudo_area_transferencia = partial(
+    _observar_conteudo_area_transferencia_mente,
+    registrar_evidencia=_motor_aprendizado_runtime.registrar_evidencia,
+)
 
 
-def _observar_item_caixa_entrada(item: dict) -> None:
-    """Aprende padrões agregados das notas, nunca o texto integral como fato."""
-    for assunto in list(item.get("assuntos") or [])[:3]:
-        assunto_limpo = str(assunto or "").strip().casefold()[:80]
-        if not assunto_limpo:
-            continue
-        _motor_aprendizado_runtime.registrar_evidencia(
-            chave=f"caixa_entrada:assunto:{assunto_limpo}",
-            tipo="assunto_recorrente_caixa_entrada",
-            escopo="caixa_entrada",
-            valor={"descricao_humana": f"costuma anotar coisas sobre {assunto_limpo}"},
-            sinal=0.4,
-            origem="caixa_entrada_pessoal",
-            evidencia=f"nova {str(item.get('tipo') or 'nota')} classificada nesse assunto",
-            confirmado_usuario=False,
-        )
+_observar_item_caixa_entrada = partial(
+    _observar_item_caixa_entrada_mente,
+    registrar_evidencia=_motor_aprendizado_runtime.registrar_evidencia,
+)
 
 
 _investigador_erro_clipboard_runtime = InvestigadorErroRuntime(
-    enviar_mensagem=enviar_mensagem,
+    modelo_llm=_registro_modelo_llm_runtime,
     limpar_resposta=_limpar_texto_fala_ia,
     log=print,
 )
+
+
+_registrar_feedback_agenda = partial(
+    _registrar_feedback_agenda_mente,
+    registrar_evidencia=_motor_aprendizado_runtime.registrar_evidencia,
+)
+
+
+def _observar_evento_pendencia(evento: str, pendencia: dict) -> None:
+    if str((pendencia or {}).get("origem") or "") != "agenda":
+        return
+    if str(evento or "") == "expirada":
+        _registrar_feedback_agenda("silencio_qualificado", {"intent": "AGENDAR_LEMBRETE"})
+
+
 _pendencia_acao_runtime = _criar_pendencia_acao_runtime(
     estado_getter=lambda: _estado_compartilhado_runtime.mental,
     estado_atualizar=lambda atualizador: _estado_compartilhado_runtime.atualizar(
         "mental", atualizador,
     ),
     log=print,
+    evento_cb=_observar_evento_pendencia,
 )
 
 
@@ -2460,7 +2459,7 @@ _saude_mente_runtime.registrar(
 
 _area_transferencia_runtime = _criar_area_transferencia_runtime(
     falar=lambda texto, emocao="calma", nivel=1: falar_com_lipsync(texto, emocao, nivel),
-    enviar_mensagem=enviar_mensagem,
+    modelo_llm=_registro_modelo_llm_runtime,
     executar_intencao=lambda resultado, texto: executar_intencao(resultado, texto),
     registrar_operacao=_registrar_mente_curta,
     registrar_resultado=_registrar_resultado_execucao,
@@ -2659,7 +2658,7 @@ _caixa_entrada_pessoal_runtime = _criar_caixa_entrada_pessoal_runtime(
     },
     clipboard_getter=_area_transferencia_runtime.obter_texto_seguro,
     observar_item=_observar_item_caixa_entrada,
-    enviar_mensagem=enviar_mensagem,
+    modelo_llm=_registro_modelo_llm_runtime,
     log=print,
 )
 _confirmacao_llm_runtime = _composicao_inteligencia_externa_runtime.confirmacao
@@ -2672,17 +2671,13 @@ _interpretador_semantico_runtime = _criar_interpretador_semantico_runtime_mente(
         "mente": _estado_compartilhado_runtime.mental,
         "mensagens": _memoria_conversa_get("messages", []),
     },
-    enviar_mensagem=enviar_mensagem,
+    modelo_llm=_registro_modelo_llm_runtime,
     log=print,
 )
 resumir_pagina_no_dicionario = partial(
     _contexto_paginas.resumir,
-    enviar_mensagem=enviar_mensagem,
+    modelo_llm=_registro_modelo_llm_runtime,
 )
-
-
-solicitar_lista_abas = _chrome_solicitacoes.solicitar_lista_abas
-solicitar_tab_reciclagem = _chrome_solicitacoes.solicitar_tab_reciclagem
 
 
 _registrar_contexto_resumo_pagina = (
@@ -2695,7 +2690,6 @@ _resumo_conteudo_runtime = _criar_resumo_conteudo_runtime_mente(
         "websocket_disponivel": lambda: _ws_transport_runtime.obter_loop() is not None,
         "solicitar_conteudo": solicitar_conteudo_pagina,
         "falar": falar_com_lipsync,
-        "enviar_mensagem": enviar_mensagem,
         "limpar_resposta": limpar_resposta,
         "remover_prefixo_exec": _remover_prefixo_exec,
         "transcript_api": YouTubeTranscriptApi,
@@ -2705,18 +2699,13 @@ _resumo_conteudo_runtime = _criar_resumo_conteudo_runtime_mente(
 )
 resumir_pagina_ou_video = _resumo_conteudo_runtime.resumir
 
-solicitar_aba_ativa = _chrome_solicitacoes.solicitar_aba_ativa
-
 _porteiro_runtime = _criar_porteiro_chrome_runtime_mente(
     abas_sugeridas=_abas_sugeridas_fechar,
     obter_ram_percent=lambda: psutil.virtual_memory().percent,
-    listar_abas=listar_abas_chrome,
+    listar_abas=_registro_navegador_leitura_runtime.listar_abas,
     obter_estado_chrome=_chrome_estado.snapshot,
     falar=lambda texto, emocao="irritada", nivel=1: falar_com_lipsync(texto, emocao, nivel),
-    enviar_fechamento=lambda payload: (
-        asyncio.run_coroutine_threadsafe(broadcast_command(payload), loop)
-        if (loop := _ws_transport_runtime.obter_loop()) else None
-    ),
+    enviar_fechamento=_registro_navegador_operacoes_runtime.fechar_aba,
     ram_threshold=RAM_THRESHOLD_PORTEIRO,
     idle_minutos=ABA_IDLE_MINUTOS,
     intervalo_minutos=PORTEIRO_INTERVALO_MIN,
@@ -2752,7 +2741,7 @@ _agenda_runtime = _criar_agenda_runtime_mente(
         log=print,
     ),
     enviar_chrome_local_cb=_agenda_enviar_chrome_local,
-    executar_exec_cb=lambda cmd, arg: _executar_exec(cmd, arg),
+    executar_comando_conteudo_cb=lambda cmd, arg: _executar_comando_conteudo(cmd, arg),
     executar_intencao_cb=lambda resultado, texto: executar_intencao(resultado, texto),
     log=print,
     stop_event=_servicos_background_runtime.evento_parada,
@@ -2764,6 +2753,11 @@ _agendamentos_save = _agenda_runtime.save
 _agendamentos_transacionar = _agenda_runtime.transacionar
 _agenda_daemon = _agenda_runtime.daemon
 _fala_agendamentos_estilosa = _agenda_runtime.fala_estilosa
+_saude_mente_runtime.registrar(
+    "agenda",
+    "saudavel" if _agenda_runtime.diagnostico().get("disponivel") else "degradado",
+    detalhes="agenda local conectada a pendência canônica, aprendizado, diagnóstico e cooperação",
+)
 _mapa_recursos_runtime.registrar(
     "agenda",
     arquivo="memoria/agendamentos.json",
@@ -2807,9 +2801,6 @@ _mapa_recursos_runtime.registrar(
 _resolver_consulta_recurso_local = _mapa_recursos_runtime.resolver_consulta
 _executar_consulta_recurso_local = _mapa_recursos_runtime.executar_consulta
 
-_playlists_load = _playlist_runtime.load
-
-
 _fala_playlist_conteudo_estilosa = _fala_playlist_conteudo_estilosa_mente
 
 
@@ -2843,10 +2834,6 @@ _normalizar_query_musical = partial(
 _limpar_nome_playlist = _limpar_nome_playlist_mente
 
 _playlist_nome_explicito_na_frase = _playlist_runtime.nome_explicito_na_frase
-mover_item_playlist = _playlist_runtime.mover_item_contextual
-
-
-detectar_mover_playlist_texto = _detectar_mover_playlist_texto_mente
 
 
 extrair_nome_playlist = _playlist_runtime.extrair_nome
@@ -2857,32 +2844,18 @@ _pedido_lista_geral_playlist = _playlist_runtime.pedido_lista_geral
 
 
 _sincronizar_playlists_da_laylay = _playlist_laylay_runtime.sincronizar
-_copiar_faixa_da_playlist_laylay = _playlist_laylay_runtime.copiar_faixa
-
-
 _detectar_playlist_nome_direto = _playlist_runtime.detectar_nome_direto_contextual
 _carregar_playlists_para_memoria = _playlist_runtime.carregar_para_memoria
-
-add_to_playlist_url = _playlist_runtime.add_url
-ADD_TO_PLAYLIST = _playlist_runtime.add_and_verify
-_playlist_primeira_url = _playlist_runtime.primeira_url
-_playlist_item_at = _playlist_runtime.item_at
-_playlist_shuffle_start = _playlist_runtime.shuffle_start
-delete_playlist = _playlist_runtime.delete
-_playlist_avancar_proxima = _playlist_runtime.avancar_proxima
-_playlist_voltar_anterior = _playlist_runtime.voltar_anterior
-play_playlist = _playlist_runtime.play
 
 
 _executar_sugestao_temporal = _preferencias_sugestoes_runtime.executar_temporal
 
 _sugestoes_sistema_runtime = _criar_sugestoes_sistema_runtime_mente(
     contexto_getter=lambda: {
-        "fechar_abas_vazias": fechar_abas_vazias,
         "pesquisa_contextual_runtime": _pesquisa_contextual_runtime,
         "abrir_url_externo": webbrowser.open,
-        "enviar_comando_chrome": enviar_comando_chrome,
-        "solicitar_lista_abas": solicitar_lista_abas,
+        "_registro_navegador_leitura_runtime": _registro_navegador_leitura_runtime,
+        "_registro_navegador_operacoes_runtime": _registro_navegador_operacoes_runtime,
         "selecionar_abas_para_fechar_llm": selecionar_abas_para_fechar_llm,
         "abrir_caminho": os.startfile,
         "continuidades_get": _continuidades_get,
@@ -2894,7 +2867,6 @@ _sugestoes_sistema_runtime = _criar_sugestoes_sistema_runtime_mente(
         "merge_intent_llm": _merge_intent_llm,
         "falar": falar_com_lipsync,
         "messages": _memoria_conversa_get("messages", []),
-        "enviar_mensagem": enviar_mensagem,
         "limpar_resposta": limpar_resposta,
         "remover_prefixo_exec": _remover_prefixo_exec,
         "current_emotion": _conversa_estado_get("current_emotion", "calma"),
@@ -2913,7 +2885,8 @@ _sugestoes_sistema_runtime = _criar_sugestoes_sistema_runtime_mente(
         "resolver_conflito_preferencia": _motor_aprendizado_runtime.resolver_conflito_preferencia,
         "registrar_feedback_proatividade": _registrar_feedback_proatividade,
         "registrar_oportunidade": _registrar_oportunidade_iniciativa,
-    }
+    },
+    modelo_llm=_registro_modelo_llm_runtime,
 )
 _executar_combo_modo_code = _sugestoes_sistema_runtime.executar_modo_code
 _executar_combo_modo_gamer = _sugestoes_sistema_runtime.executar_modo_gamer
@@ -3062,7 +3035,7 @@ def _registrar_progresso_visao_cooperativa(evento: dict) -> bool:
     return bool(registrar(evento)) if callable(registrar) else False
 
 
-_visao_jogo_runtime = _composicao_visao_jogo_runtime.conectar_visao(
+_visao_jogo_servico = _composicao_visao_jogo_runtime.conectar_visao(
     contexto_jogo=_modo_jogo_runtime.contexto_atual,
     analisar_imagem=_analisar_com_groq_jogo,
     falar=falar_com_lipsync,
@@ -3084,7 +3057,12 @@ _visao_jogo_runtime = _composicao_visao_jogo_runtime.conectar_visao(
     stop_event=_servicos_background_runtime.evento_parada,
     progresso_cooperativo=_registrar_progresso_visao_cooperativa,
 )
-_executar_visao_jogo_intent = _visao_jogo_runtime.executar
+_registro_visao_jogo_leitura_runtime = _registrar_visao_jogo_leitura(
+    _criar_visao_jogo_leitura_runtime(visao=_visao_jogo_servico)
+)
+_registro_visao_jogo_analise_runtime = _registrar_visao_jogo_analise(
+    _criar_visao_jogo_analise_runtime(visao=_visao_jogo_servico)
+)
 _observador_inventario_jogo_runtime = (
     _composicao_visao_jogo_runtime.observador_inventario
 )
@@ -3094,16 +3072,18 @@ _observador_presenca_jogo_runtime = (
 
 
 def _continuar_visao_jogo_pendente(texto: str) -> bool:
-    if _visao_jogo_runtime.aplicar_referencia_item(texto):
+    if _registro_visao_jogo_analise_runtime.aplicar_referencia_item(texto):
         return True
-    if _visao_jogo_runtime.continuar_analise_recente(texto):
+    if _registro_visao_jogo_analise_runtime.continuar_analise_recente(texto):
         return True
     pendencia = _pendencia_ativa_turno_mente(
         _estado_compartilhado_runtime.mental, dominio="jogo",
     )
-    if _visao_jogo_runtime.continuar_pendencia(texto, pendencia):
+    if _registro_visao_jogo_analise_runtime.continuar_pendencia(texto, pendencia):
         return True
-    return bool(_visao_jogo_runtime.processar_atualizacao_perfil(texto))
+    return bool(
+        _registro_visao_jogo_analise_runtime.processar_atualizacao_perfil(texto)
+    )
 
 
 _composicao_ciclo_comandos_runtime = _criar_composicao_ciclo_comandos_runtime(
@@ -3208,12 +3188,38 @@ _ponte_curadoria_cooperativa["publicar"] = (
 )
 
 
+def _publicar_evento_agenda_cooperativo(
+    operacao: str, *, alvo: str = "", confirmado: bool = False,
+) -> dict:
+    """Publica a relação agenda-notificações sem transformar evento em permissão."""
+    operacao_segura = str(operacao or "agenda_atualizada")[:64]
+    confirmado_real = bool(confirmado)
+    return _quadro_cooperacao_runtime.publicar_evento(
+        origem="agenda",
+        tipo=operacao_segura,
+        resumo=(
+            "agenda persistida e pronta para a central de notificações"
+            if confirmado_real
+            else "operação de agenda sem confirmação de persistência"
+        ),
+        confianca=1.0 if confirmado_real else 0.0,
+        relevancia=0.75,
+        sensibilidade="media",
+        habilidades=("agenda", "central_notificacoes"),
+        evidencias=(
+            "persistencia_local_confirmada"
+            if confirmado_real else "persistencia_local_nao_confirmada",
+        ),
+        chave_deduplicacao=f"agenda:{operacao_segura}:{bool(confirmado_real)}:{str(alvo or '')[:48]}",
+    )
+
+
 def _detectar_visao_jogo_cooperativa(texto: str) -> dict | None:
     """Reusa o detector oficial e o contexto visual; não cria uma gramática paralela."""
     try:
         contexto = dict(_modo_jogo_runtime.contexto_atual() or {})
         contexto["analise_visual_recente"] = bool(
-            _visao_jogo_runtime.tem_analise_recente()
+            _registro_visao_jogo_leitura_runtime.tem_analise_recente()
         )
         return _detectar_pedido_visao_jogo_cooperativo(texto, contexto)
     except Exception:
@@ -3258,7 +3264,7 @@ _executor_acoes_autonomas_runtime = _criar_executor_acoes_autonomas_runtime(
     falar=falar_com_lipsync,
     executar_intencao=executar_intencao,
     controlar_midia=lambda acao: bool(
-        enviar_comando_chrome("youtube_control", {"command": acao})
+        _registro_navegador_operacoes_runtime.controlar_youtube(acao)
     ),
 )
 _executar_acao_autonoma_segura = _executor_acoes_autonomas_runtime.executar
@@ -3278,7 +3284,7 @@ _musica_conversacional_runtime = _criar_musica_conversacional_runtime_mente(
     executar_intencao=executar_intencao,
     registrar_resultado_execucao=_registrar_resultado_execucao,
     registrar_autoaprimoramento=_registrar_autoaprimoramento,
-    enviar_mensagem=enviar_mensagem,
+    modelo_llm=_registro_modelo_llm_runtime,
     buscar_resultados_musicais=_busca_musical_runtime.buscar_resultados,
     log=print,
 )
@@ -3299,7 +3305,7 @@ _coordenador_exec_runtime = _criar_coordenador_exec_runtime_mente(
     loop_getter=_ws_transport_runtime.obter_loop,
     log=print,
 )
-_executar_exec = _coordenador_exec_runtime.executar
+_executar_comando_conteudo = _coordenador_exec_runtime.executar
 
 
 abrir_programa = _abrir_programa_mente
@@ -3344,6 +3350,7 @@ _reconhecedor_voz_pessoal = _ReconhecedorVozPessoal(
 _ouvido_whisper_runtime = _criar_ouvido_whisper_runtime_mente(
     processar_texto=_processar_entrada_voz,
     esta_falando=lambda: bool(_conversa_estado_get("is_speaking", False)),
+    modo_chat_ativo=lambda: bool(_conversa_estado_get("modo_chat", False)),
     escuta_permitida=lambda: not bool(
         _conversa_estado_get("modo_chat", False)
         or _conversa_estado_get("conversa_ativa", False)
@@ -3383,6 +3390,10 @@ _alternar_modo_chat_por_hotkey = _interacao_chat_runtime.alternar_por_hotkey
 registrar_hotkeys_modo_chat = _interacao_chat_runtime.registrar_hotkeys
 _escutar_texto_do_chat_terminal = _interacao_chat_runtime.escutar_terminal
 _definir_messages_resposta_ia = _interacao_chat_runtime.definir_messages
+_estado_conversa_runtime = _criar_estado_conversa_runtime(
+    getter=lambda: _memoria_conversa_get("messages", []),
+    setter=_definir_messages_resposta_ia,
+)
 
 
 _interpretacao_intencao_runtime = _criar_interpretacao_intencao_runtime_mente(
@@ -3415,7 +3426,6 @@ _interpretacao_intencao_runtime = _criar_interpretacao_intencao_runtime_mente(
         "resumo_mente_integrada_para_prompt": _resumo_mente_integrada_para_prompt,
         "resumo_autoaprimoramento_para_prompt": _resumo_autoaprimoramento_para_prompt,
         "resumo_agendamentos_para_prompt": _resumo_agendamentos_para_prompt,
-        "enviar_mensagem": enviar_mensagem,
         "extrair_json_da_ia": _extrair_json_da_ia,
         "playlist_bloqueada_agora": _playlist_bloqueada_agora,
         "texto_pede_playlist_explicitamente": _texto_pede_playlist_explicitamente,
@@ -3423,6 +3433,7 @@ _interpretacao_intencao_runtime = _criar_interpretacao_intencao_runtime_mente(
         "mapa_habilidades_prompt": _mapa_habilidades_runtime.contexto_para_prompt,
         "mapa_recursos_prompt": _mapa_recursos_runtime.contexto_para_prompt,
     },
+    modelo_llm=_registro_modelo_llm_runtime,
     log=print,
 )
 
@@ -3433,7 +3444,7 @@ _abertura_chat_runtime = _criar_abertura_chat_runtime_mente(
         "current_emotion": _conversa_estado_get("current_emotion", "calma"),
         "emotion_level": _conversa_estado_get("emotion_level", 1),
     },
-    enviar_mensagem=enviar_mensagem,
+    modelo_llm=_registro_modelo_llm_runtime,
     limpar_resposta=limpar_resposta,
     remover_prefixo_exec=_remover_prefixo_exec,
     log=print,
@@ -3511,27 +3522,47 @@ _gmail_buscar_nao_lidos = _gmail_runtime.buscar_nao_lidos
 _gmail_falar_resumo_estiloso = _gmail_runtime.falar_resumo_estiloso
 gmail_daemon = _gmail_runtime.daemon
 
+_registros_principais_runtime = _criar_registros_principais(
+    memoria_pessoas=_registro_memoria_pessoas_runtime,
+    iot=_registro_iot_runtime,
+    arquivos_leitura=_registro_arquivos_leitura_runtime,
+    arquivos_mutacao=_registro_arquivos_mutacao_runtime,
+    musica_leitura=_registro_musica_leitura_runtime,
+    musica_operacoes=_registro_musica_operacoes_runtime,
+    navegador_leitura=_registro_navegador_leitura_runtime,
+    navegador_operacoes=_registro_navegador_operacoes_runtime,
+    visao_jogo_leitura=_registro_visao_jogo_leitura_runtime,
+    visao_jogo_analise=_registro_visao_jogo_analise_runtime,
+    modelo_llm=_registro_modelo_llm_runtime,
+    estado_conversa=_estado_conversa_runtime,
+)
+
 _composicao_contextos_ia_runtime = _criar_composicao_contextos_ia_runtime(
     memoria_sqlite=MEMORIA_SQLITE,
     base_system_prompt=BASE_SYSTEM_PROMPT,
     servicos=globals(),
-    messages_getter=lambda: _memoria_conversa_get("messages", []),
+    messages_getter=_estado_conversa_runtime.mensagens,
     conversa_getter=_conversa_estado_get,
     mente_getter=lambda: _estado_compartilhado_runtime.mental,
     aba_getter=lambda: (
         _chrome_estado.aba_titulo_atual, _chrome_estado.aba_url_atual,
     ),
-    musica_leitura=_registro_musica_leitura_runtime,
+    musica_leitura=_registros_principais_runtime.musica_leitura,
+    musica_operacoes=_registros_principais_runtime.musica_operacoes,
+    navegador_leitura=_registros_principais_runtime.navegador_leitura,
+    navegador_operacoes=_registros_principais_runtime.navegador_operacoes,
+    visao_jogo_leitura=_registros_principais_runtime.visao_jogo_leitura,
+    visao_jogo_analise=_registros_principais_runtime.visao_jogo_analise,
+    modelo_llm=_registro_modelo_llm_runtime,
     gmail_cache_getter=lambda: _gmail_nao_lidos_cache,
     falhas_getter=lambda: _falhas_consecutivas,
-    musica_estado_set=_musica_estado_set,
     verificar_fala_turno=lambda fala, origem="ia_final": (
         _verificar_fala_do_turno(fala, origem=origem)
     ),
     executar_conteudo_cb=_executar_comando_conteudo_mente,
-    executar_legado_cb=_executar_exec_mente,
     mapa_habilidades_prompt=_mapa_habilidades_runtime.contexto_para_prompt,
     mapa_recursos_prompt=_mapa_recursos_runtime.contexto_para_prompt,
+    registrar_tamanho_prompt=_observabilidade_mente_runtime.registrar_tamanho_prompt,
     log=print,
 )
 _contexto_prompt_runtime = _composicao_contextos_ia_runtime.prompt
@@ -3540,8 +3571,25 @@ _contexto_dispatcher_runtime = _composicao_contextos_ia_runtime.dispatcher
 _contexto_finalizacao_runtime = _composicao_contextos_ia_runtime.finalizacao
 
 
+def _diagnostico_conversa_llm_tipadas() -> dict:
+    prompt = _contexto_prompt_runtime.diagnostico()
+    modelo = _registro_modelo_llm_runtime.diagnostico()
+    estado = _estado_conversa_runtime.diagnostico()
+    return {
+        "prompt_disponivel": bool(prompt.get("disponivel")),
+        "modelo_disponivel": bool(modelo.get("disponivel")),
+        "estado_disponivel": bool(estado.get("disponivel")),
+        "requisicoes": int(modelo.get("requisicoes") or 0),
+        "falhas": int(modelo.get("falhas") or 0) + int(prompt.get("falhas") or 0),
+        "memoria_exposta": False,
+        "credencial_exposta": False,
+        "autoriza_execucao": False,
+    }
+
+
 _composicao_entrada_interacao_runtime = _criar_composicao_entrada_interacao_runtime(
     servicos=globals(),
+    registros_principais=_registros_principais_runtime,
     estado_mental_getter=lambda: _estado_compartilhado_runtime.mental,
     sites_diretos=SITES_DIRECTOS,
     apps_map=APPS_MAP,
@@ -3552,6 +3600,7 @@ _contexto_intencao_runtime, _ciclo_comandos_runtime = (
     _composicao_ciclo_comandos_runtime.conectar(
         servicos=globals(),
         estado_getter=_estado_contexto_intencao,
+        registros_principais=_registros_principais_runtime,
     )
 )
 
@@ -3566,7 +3615,15 @@ _diagnostico_mente_runtime = _criar_diagnostico_mente_runtime(
     pesquisa_arquivos_getter=_registro_arquivos_leitura_runtime.diagnostico,
     mutacoes_arquivos_getter=_registro_arquivos_mutacao_runtime.diagnostico,
     musica_leitura_getter=_registro_musica_leitura_runtime.diagnostico,
+    musica_operacoes_getter=_registro_musica_operacoes_runtime.diagnostico,
+    navegador_leitura_getter=_registro_navegador_leitura_runtime.diagnostico,
+    navegador_operacoes_getter=_registro_navegador_operacoes_runtime.diagnostico,
+    visao_jogo_leitura_getter=_registro_visao_jogo_leitura_runtime.diagnostico,
+    visao_jogo_analise_getter=_registro_visao_jogo_analise_runtime.diagnostico,
+    conversa_llm_getter=_diagnostico_conversa_llm_tipadas,
+    composicao_principal_getter=_registros_principais_runtime.diagnostico,
     orquestracao_cooperativa_getter=_orquestrador_cooperativo_runtime.diagnostico,
+    agenda_getter=_agenda_runtime.diagnostico,
     memoria_pessoas_getter=_registro_memoria_pessoas_runtime.diagnostico,
     linguagem_natural_getter=lambda: {
         **_composicao_ciclo_comandos_runtime.diagnostico_linguagem_natural(),
@@ -3574,7 +3631,10 @@ _diagnostico_mente_runtime = _criar_diagnostico_mente_runtime(
             _linguagem_aprendida_runtime.diagnostico_tolerancia_portugues()
         ),
     },
-    fala_operacional_getter=_orquestrador_fala_runtime.diagnostico,
+    fala_operacional_getter=lambda: {
+        **_orquestrador_fala_runtime.diagnostico(),
+        "emocao_causal": _avaliador_eventos_emocionais_runtime.diagnostico(),
+    },
     falar=lambda texto, emocao="calma", nivel=1: falar_com_lipsync(texto, emocao, nivel),
     log=print,
 )
@@ -3592,7 +3652,6 @@ _comandos_imediatos_runtime, _contexto_inicio_chat_runtime = (
         memoria_sqlite=MEMORIA_SQLITE,
     )
 )
-processar_comandos_imediatos = _comandos_imediatos_runtime.processar
 _processar_comandos_prioritarios = _comandos_imediatos_runtime.processar_prioritarios
 
 _contexto_inicio_chat = _contexto_inicio_chat_runtime.montar
@@ -3631,23 +3690,26 @@ _resposta_ia_runtime = _criar_resposta_ia_runtime_mente(
         "processar_inicio_fluxo": _processar_inicio_fluxo_resposta_ia_mente,
         "usar_modo_rapido": _usar_modo_rapido_conversa,
         "texto_depende_de_contexto": _texto_depende_de_contexto,
-        "processar_comandos_imediatos": processar_comandos_imediatos,
-        "processar_pre_fluxos": _processar_pre_fluxos_antes_ia_mente,
-        "contexto_prompt_runtime": _contexto_prompt_runtime,
-        "get_messages": lambda: _memoria_conversa_get("messages", []),
-        "set_messages": _definir_messages_resposta_ia,
-        "enviar_mensagem": enviar_mensagem,
+        "preparacao_conversa": _contexto_prompt_runtime,
+        "estado_conversa": _registros_principais_runtime.estado_conversa,
+        "modelo_llm": _registro_modelo_llm_runtime,
         "fallback_fala": FALLBACK_FALA_NEUTRA,
         "preparar_resposta": lambda texto, resposta_bruta: _preparar_resposta_para_execucao_mente(
             texto,
             resposta_bruta,
-            enviar_mensagem_cb=enviar_mensagem,
+            modelo_llm=_registro_modelo_llm_runtime,
             limpar_texto_fala_cb=_limpar_texto_fala_ia,
             fallback_fala=FALLBACK_FALA_NEUTRA,
             memoria_sqlite=MEMORIA_SQLITE,
             registrar_autocorrecao_cb=_registrar_autocorrecao_virtual,
             registrar_falha_cb=_observabilidade_mente_runtime.registrar_falha,
             contexto_contingencia=dict(_estado_compartilhado_runtime.mental),
+            contexto_comunicacao={
+                "plano_turno": dict(
+                    _estado_compartilhado_runtime.mental.get("plano_turno_atual") or {}
+                ),
+                "mensagens": list(_memoria_conversa_get("messages", []) or []),
+            },
             log=print,
         ),
         "registrar_leitura_semantica_principal": _registrar_leitura_semantica_principal,

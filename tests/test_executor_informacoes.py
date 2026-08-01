@@ -8,6 +8,9 @@ from mente_laylay.autonomia.executor_informacoes import (
     executar_intencao_informacoes,
 )
 from mente_laylay.autonomia.roteador_intencao import executar_intencao
+from mente_laylay.autonomia.roteador_deterministico import (
+    detectar_consulta_aprendizados,
+)
 
 
 def _dependencias(eventos: list[tuple]) -> DependenciasExecutorInformacoes:
@@ -29,6 +32,44 @@ def test_executor_informacoes_nao_interfere_em_outro_dominio() -> None:
 
     assert despacho == ResultadoDespacho.nao_tratado()
     assert eventos == []
+
+
+def test_consulta_natural_de_aprendizados_vira_intent_sem_lista_rigida() -> None:
+    assert detectar_consulta_aprendizados(
+        "me conta quais coisas você guardou sobre mim",
+        params_cb=lambda **kwargs: kwargs,
+    ) == {"intent": "LEARNING_QUERY", "params": {"limit": 3}}
+    assert detectar_consulta_aprendizados(
+        "como uma inteligência artificial aprende?",
+        params_cb=lambda **kwargs: kwargs,
+    ) is None
+
+
+def test_consulta_de_aprendizados_le_memoria_persistente_e_confirma() -> None:
+    eventos: list[tuple] = []
+    falas: list[str] = []
+
+    despacho = executar_intencao_informacoes(
+        "LEARNING_QUERY",
+        {"limit": 3},
+        "o que você aprendeu comigo?",
+        {
+            "_recuperar_aprendizados": lambda **_kwargs: [
+                "você prefere luz roxa à noite",
+                "sua namorada se chama Nanda",
+            ],
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(True)
+    assert falas and "luz roxa" in falas[0] and "Nanda" in falas[0]
+    assert eventos == [(
+        "resultado",
+        "aprendizados_consultados",
+        {"executou": True, "confirmado": True},
+    )]
 
 
 def test_email_read_filtra_prioridade_e_remetente_sem_emitir_proatividade() -> None:

@@ -465,24 +465,6 @@ def fala_playlist_conteudo_estilosa(
     return f"A playlist {nome_fala} tem {total} músicas. As últimas que você guardou foram: {ult}."
 
 
-def detectar_mover_playlist_texto(texto: str):
-    t = str(texto or "").strip()
-    padroes = [
-        r"(?:tira|remove|retira)\s+(?P<musica>.+?)\s+da\s+playlist\s+(?P<origem>.+?)\s+e\s+(?:coloca|bota|adiciona|joga)\s+(?:na|pra|para a|para)\s+playlist\s+(?P<destino>.+)",
-        r"(?:move|mova|transfere|transfira)\s+(?P<musica>.+?)\s+da\s+playlist\s+(?P<origem>.+?)\s+(?:pra|para|para a)\s+playlist\s+(?P<destino>.+)",
-    ]
-    for padrao in padroes:
-        m = re.search(padrao, t, flags=re.IGNORECASE)
-        if not m:
-            continue
-        musica = str(m.group("musica") or "").strip(" .,!?:;")
-        origem = limpar_nome_playlist(m.group("origem"))
-        destino = limpar_nome_playlist(m.group("destino"))
-        if origem and destino:
-            return {"musica": musica, "origem": origem, "destino": destino}
-    return None
-
-
 def playlist_item_label(item: Any) -> str:
     if isinstance(item, dict):
         return yt_clean_title(str(item.get("titulo") or "")) or str(item.get("url") or "essa musica")

@@ -1,8 +1,4 @@
-"""Parsing e execucao legada de respostas da IA na Laylay.
-
-Este modulo continua existindo como fallback de compatibilidade enquanto
-o roteador modular de conteudo assume o caminho principal.
-"""
+"""Coordenação de respostas da IA e da ponte modular de conteúdo."""
 
 from __future__ import annotations
 
@@ -13,14 +9,6 @@ import re
 import threading
 import time
 from typing import Any, Callable, Dict, Optional, Tuple
-
-
-_COMANDOS_OWNED_PELO_ROTEADOR_MODULAR = {
-    "YOUTUBE", "YT_VOLUME", "SET_VOLUME", "OPEN_SITE", "CLOSE_TAB",
-    "YT_PLAY", "YT_PAUSE", "YT_NEXT", "YT_REPLAY", "LISTAR_PLAYLISTS",
-    "TOCAR_PLAYLIST", "TOCAR_PLAYLIST_SHUFFLE", "ADICIONAR_A_PLAYLIST",
-    "CLICK", "TYPE", "PRESS", "CLOSE_SPECIFIC_TAB", "TELA_CHEIA", "FULLSCREEN",
-}
 
 
 def remover_prefixo_exec(texto: str) -> str:
@@ -45,54 +33,18 @@ def remover_prefixo_exec(texto: str) -> str:
     return limpo
 
 
-def executar_exec(
-    cmd: str,
-    arg: Any,
-    contexto: Dict[str, Any],
-) -> bool:
-    """Compatibilidade mínima para comandos ainda não migrados ao roteador modular."""
-    c = str(cmd or "").strip().upper()
-    a = "" if arg is None else str(arg).strip()
-
-    abrir_programa = contexto.get("abrir_programa")
-    fechar_programa = contexto.get("fechar_programa")
-    _eh_alvo_site_web = contexto.get("_eh_alvo_site_web")
-    _contexto_aponta_site_web = contexto.get("_contexto_aponta_site_web")
-
-    if c == "OPEN_APP":
-        if not a or len(a) < 2 or not callable(abrir_programa):
-            return False
-        return bool(abrir_programa(a))
-
-    if c == "FECHAR_PROGRAMA":
-        if not a:
-            return False
-        if callable(_eh_alvo_site_web) and callable(_contexto_aponta_site_web) and (_eh_alvo_site_web(a) or _contexto_aponta_site_web(a)):
-            # Fechamento de abas pertence ao roteador modular. Retornar falso
-            # impede que este fallback contorne suas validações.
-            return False
-        if callable(fechar_programa):
-            fechar_programa(a)
-            return True
-        return False
-
-    return False
-
-
 class ContextoExecRuntime:
-    """Coordena o caminho modular e o fallback EXEC com contexto atualizado."""
+    """Entrega comandos de conteúdo exclusivamente ao roteador modular."""
 
     def __init__(
         self,
         *,
         contexto_getter: Callable[[], Dict[str, Any]],
         executar_conteudo_cb: Callable[..., bool],
-        executar_legado_cb: Callable[[str, Any, Dict[str, Any]], bool] = executar_exec,
         log: Callable[[str], None] = print,
     ) -> None:
         self.contexto_getter = contexto_getter
         self.executar_conteudo_cb = executar_conteudo_cb
-        self.executar_legado_cb = executar_legado_cb
         self.log = log
 
     def montar_contexto(self, arg: Any) -> Dict[str, Any]:
@@ -113,19 +65,8 @@ class ContextoExecRuntime:
             contexto,
         ))
         if executou_modular:
-            self.log(f"🧠 [EXEC] caminho modular de conteudo assumiu: {comando}")
-            return True
-
-        if comando.upper() in _COMANDOS_OWNED_PELO_ROTEADOR_MODULAR:
-            self.log(
-                f"🛡️ [EXEC] comando modular recusado ou indisponível; fallback legado bloqueado: {comando}"
-            )
-            return False
-
-        ok_legado = bool(self.executar_legado_cb(cmd, arg, contexto))
-        if ok_legado:
-            self.log(f"🧩 [EXEC] fallback legado assumiu: {comando}")
-        return ok_legado
+            self.log(f"🧠 [CONTEÚDO] roteador modular assumiu: {comando}")
+        return executou_modular
 
 
 def criar_contexto_exec_runtime(**kwargs: Any) -> ContextoExecRuntime:
@@ -133,7 +74,7 @@ def criar_contexto_exec_runtime(**kwargs: Any) -> ContextoExecRuntime:
 
 
 class CoordenadorExecRuntime:
-    """Liga execução EXEC e processamento de resposta sem antecipar o bootstrap."""
+    """Liga conteúdo modular e processamento de resposta sem antecipar o bootstrap."""
 
     def __init__(
         self,
@@ -155,7 +96,7 @@ class CoordenadorExecRuntime:
     def executar(self, cmd: str, arg: Any) -> bool:
         runtime = self._contexto_exec_getter()
         if runtime is None:
-            raise RuntimeError("Contexto de execução EXEC ainda não foi inicializado.")
+            raise RuntimeError("Contexto modular de conteúdo ainda não foi inicializado.")
         return bool(runtime.executar(cmd, arg))
 
     def processar_sync(

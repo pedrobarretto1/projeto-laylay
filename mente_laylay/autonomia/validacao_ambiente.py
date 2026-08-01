@@ -20,6 +20,12 @@ class ValidadorAmbiente:
     def _get(self, nome: str, default: Any = None) -> Any:
         return self.ctx.get(nome, default)
 
+    def _navegador_leitura(self) -> Any:
+        return self._get("_registro_navegador_leitura_runtime")
+
+    def _navegador_operacoes(self) -> Any:
+        return self._get("_registro_navegador_operacoes_runtime")
+
     def resolver_estado_alvo(self, nome: str) -> dict:
         resolver = self._get("_resolver_alvo_ambiente")
         if not nome or not callable(resolver):
@@ -52,16 +58,16 @@ class ValidadorAmbiente:
     ) -> bool:
         alvo_limpo = str(alvo or "").strip()
         aba_antes = aba_antes if isinstance(aba_antes, dict) else {}
-        solicitar_aba = self._get("solicitar_aba_ativa")
+        navegador = self._navegador_leitura()
         for _ in range(max(1, tentativas)):
             if alvo_limpo:
                 if not bool(
                     self.resolver_estado_alvo(alvo_limpo).get("aba_aberta")
                 ):
                     return True
-            elif callable(solicitar_aba):
+            elif navegador is not None:
                 try:
-                    aba_depois = solicitar_aba() or {}
+                    aba_depois = navegador.aba_ativa() or {}
                 except Exception:
                     aba_depois = {}
                 url_antes = str(aba_antes.get("url") or "").strip().lower()
@@ -130,15 +136,15 @@ class ValidadorAmbiente:
     ) -> bool:
         url_limpa = str(url or "").strip()
         alvo_ref = self.alvo_preciso_para_aba(alvo or url_limpa)
-        solicitar_aba = self._get("solicitar_aba_ativa")
+        navegador = self._navegador_leitura()
         for _ in range(max(1, tentativas)):
             if alvo_ref and bool(
                 self.resolver_estado_alvo(alvo_ref).get("aba_aberta")
             ):
                 return True
-            if callable(solicitar_aba):
+            if navegador is not None:
                 try:
-                    aba_atual = solicitar_aba() or {}
+                    aba_atual = navegador.aba_ativa() or {}
                 except Exception:
                     aba_atual = {}
                 if self.aba_corresponde_url(alvo_ref, url_limpa, aba_atual):
@@ -159,11 +165,11 @@ class ValidadorAmbiente:
         if self.destino == "pc_b" and callable(enviar_pc_b):
             enviar_pc_b({"action": "open_url", "url": url_limpa})
             return True
-        abrir_url = self._get("abrir_url_com_reciclagem")
-        if not callable(abrir_url):
+        navegador = self._navegador_operacoes()
+        if navegador is None:
             return False
         try:
-            retorno = abrir_url(
+            retorno = navegador.abrir_url(
                 url_limpa,
                 auto_click=auto_click,
                 permitir_foco=pedido_foco_explicito(self.texto_original),

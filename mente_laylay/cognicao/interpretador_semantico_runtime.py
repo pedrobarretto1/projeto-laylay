@@ -10,6 +10,8 @@ import threading
 import time
 from typing import Any, Callable, Dict
 
+from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
+
 from mente_laylay.cognicao.leitura_semantica_turno import (
     comparar_com_legado,
     normalizar_leitura_semantica,
@@ -65,7 +67,8 @@ class InterpretadorSemanticoRuntime:
         self,
         *,
         contexto_getter: Callable[[], Dict[str, Any]],
-        enviar_mensagem: Callable[..., Any],
+        enviar_mensagem: Callable[..., Any] | None = None,
+        modelo_llm: Any = None,
         modo: str | None = None,
         timeout_s: float = 2.0,
         log: Callable[..., Any] = print,
@@ -73,7 +76,10 @@ class InterpretadorSemanticoRuntime:
         configurado = str(modo or os.getenv("LAYLAY_INTERPRETACAO_SEMANTICA", "main")).strip().lower()
         self.modo = configurado if configurado in MODOS_VALIDOS else "shadow"
         self.contexto_getter = contexto_getter
-        self.enviar_mensagem = enviar_mensagem
+        self.enviar_mensagem = resolver_enviador_modelo(
+            modelo_llm=modelo_llm,
+            enviar_mensagem=enviar_mensagem,
+        )
         self.timeout_s = max(0.2, min(10.0, float(timeout_s)))
         self.log = log
         self._cache: Dict[str, tuple[float, Dict[str, Any]]] = {}

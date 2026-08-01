@@ -5,18 +5,14 @@ from __future__ import annotations
 import re
 import threading
 import time
-import unicodedata
 from typing import Any, Callable, Dict
 
 from mente_laylay.autonomia.governanca_iniciativa import decisao_permite_emissao
+from mente_laylay.cognicao.normalizacao_linguagem import (
+    normalizar_texto_basico as _normalizar,
+)
 
 from mente_laylay.memoria_mental.interpretacao_temporal import proxima_ocorrencia
-
-
-def _normalizar(texto: Any) -> str:
-    base = unicodedata.normalize("NFKD", str(texto or "").casefold())
-    base = "".join(ch for ch in base if not unicodedata.combining(ch))
-    return re.sub(r"\s+", " ", base).strip()
 
 
 def _tokens(texto: Any) -> set[str]:

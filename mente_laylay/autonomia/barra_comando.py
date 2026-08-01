@@ -279,6 +279,10 @@ class BarraComandoRuntime:
         self._fila_interface: queue.SimpleQueue[tuple[str, Any]] = queue.SimpleQueue()
         self._thread: threading.Thread | None = None
         self._pronta = threading.Event()
+        # O chamador do encerramento nunca toca no Tk. A thread proprietária
+        # confirma por este evento que saiu do mainloop e liberou a captura.
+        self._interface_encerrada = threading.Event()
+        self._interface_encerrada.set()
         self._falha = ""
         self._hotkey_registrada = False
         self._hotkey_nativa_thread: threading.Thread | None = None
@@ -789,12 +793,14 @@ class BarraComandoRuntime:
         finally:
             if captura_global is not None:
                 captura_global.encerrar()
+            self._interface_encerrada.set()
 
     def iniciar(self) -> bool:
         with self._estado_lock:
             if self._thread is not None and self._thread.is_alive():
                 return True
             self._pronta.clear()
+            self._interface_encerrada.clear()
             self._falha = ""
             self._thread = threading.Thread(
                 target=self._executar_interface,
@@ -898,6 +904,15 @@ class BarraComandoRuntime:
             except queue.Full:
                 pass
         prazo = time.monotonic() + max(0.0, float(timeout_s))
+        thread_ativa = bool(
+            thread is not None
+            and callable(getattr(thread, "is_alive", None))
+            and thread.is_alive()
+        )
+        if thread_ativa and thread is not threading.current_thread():
+            self._interface_encerrada.wait(
+                timeout=max(0.0, prazo - time.monotonic()),
+            )
         for candidato in (thread, thread_hotkey):
             if (
                 candidato is not None

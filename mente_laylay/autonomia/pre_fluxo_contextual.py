@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, Iterable, Tuple
 from mente_laylay.arquivos.lixeira_laylay import existe_exclusao_pendente
 from mente_laylay.cognicao.conversa_sobre_capacidades import texto_discute_capacidade_futura
 from mente_laylay.cognicao.modalidade_turno import texto_tem_pergunta_reciproca_apos_resposta
+from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto
 from mente_laylay.memoria_mental.sessao_conversa import texto_encerra_conversa
 from mente_laylay.memoria_mental.continuidade_conversa import (
     detectar_comentario_resultado_operacional,
@@ -16,7 +17,6 @@ from mente_laylay.personalidade.conversa_natural import (
     texto_parece_correcao_conversacional,
     tipo_reconhecimento_afetivo,
 )
-from mente_laylay.personalidade.proporcao_resposta import parece_problema_matematico
 from mente_laylay.memoria_mental.identidade_usuario import normalizar_nome_usuario
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
@@ -301,6 +301,58 @@ def processar_correcao_temporal(ctx: Dict[str, Any], texto_usuario: str) -> Tupl
     ), "correcao_temporal"
 
 
+def _texto_social_local_seguro_modo_jogo(ctx: Dict[str, Any], texto: str) -> bool:
+    """Aceita somente atos sociais pequenos que não dependem do contexto.
+
+    Este porteiro existe para economizar a LLM durante uma partida, não para
+    substituir a conversa principal. Por isso ele é deliberadamente estreito:
+    saudações e bem-estar simples podem receber resposta local; correções,
+    comandos, matemática, assuntos do jogo e turnos compostos continuam na
+    mente principal.
+    """
+    t = str(texto or "").strip()
+    if not t:
+        return False
+    if _modalidade_turno(ctx) == "correcao" or texto_parece_correcao_conversacional(t):
+        return False
+
+    texto_tem_comando_explicito = _get(ctx, "_texto_tem_comando_explicito")
+    if callable(texto_tem_comando_explicito) and texto_tem_comando_explicito(t):
+        return False
+    if texto_discute_capacidade_futura(t):
+        return False
+
+    n = normalizar_texto(t)
+    # O nome da assistente pode aparecer como vocativo no começo ou no fim.
+    n = re.sub(r"^(?:ei\s+)?(?:lay|laylay)\s+", "", n).strip()
+    n = re.sub(r"\s+(?:lay|laylay)$", "", n).strip()
+
+    saudacoes = {
+        "oi", "ola", "e ai", "opa", "salve", "bom dia", "boa tarde",
+        "boa noite",
+    }
+    if n in saudacoes:
+        return True
+
+    perguntas_bem_estar = {
+        "tudo bem", "ta tudo bem", "como vai", "como voce esta",
+        "como voce ta", "como ta voce", "voce esta bem", "voce ta bem",
+        "ta bem", "e voce", "e com voce", "tudo bem com voce",
+    }
+    if n in perguntas_bem_estar:
+        return True
+
+    respostas_bem_estar = {
+        "to bem", "estou bem", "eu to bem", "eu estou bem", "to bem sim",
+        "estou bem sim", "eu to bem sim", "eu estou bem sim", "tudo bem",
+        "tudo bem sim", "ta tudo bem", "ta tudo bem sim", "tudo certo",
+        "ta tudo certo", "por aqui tudo bem", "por aqui tudo certo",
+        "mais ou menos", "vou bem", "estou otimo", "estou otima",
+        "to otimo", "to otima",
+    }
+    return n in respostas_bem_estar
+
+
 def responder_conversa_social_curta(
     ctx: Dict[str, Any],
     texto_usuario: str,
@@ -310,39 +362,19 @@ def responder_conversa_social_curta(
 ) -> Tuple[bool, str]:
     t = str(texto_usuario or "").strip()
     resposta_conversa_rapida_local = _get(ctx, "_resposta_conversa_rapida_local")
-    # A matemática local não é conversa social, portanto precisa ser tentada
-    # antes do porteiro social que corretamente rejeita fórmulas.
-    if parece_problema_matematico(t) and callable(resposta_conversa_rapida_local):
-        fala_matematica = str(resposta_conversa_rapida_local(t) or "").strip()
-        if fala_matematica and re.search(
-            r"\bx\s+(?:é\s+igual|igual)\s+a\b|infinitas\s+solu[cç][oõ]es|"
-            r"n[aã]o\s+tem\s+solu[cç][aã]o",
-            fala_matematica, flags=re.IGNORECASE,
-        ):
-            return emitir_conversa_curta(
-                ctx, t, fala_matematica, emocao="curiosa", nivel=1,
-            ), "matematica_linear_local"
-    if not texto_eh_conversa_social_sem_comando(ctx, t):
+    if not _texto_social_local_seguro_modo_jogo(ctx, t):
         return False, ""
 
-    # Uma resposta social seguida de uma pergunta nova é um turno composto.
-    # O atalho curto não pode consumir só a primeira metade e esconder a outra.
-    if turno_tem_pergunta_nova_apos_trecho_social(ctx, t):
-        return False, ""
-
-    texto_social_curto = _get(ctx, "_texto_social_curto")
-    texto_conversa_casual_sem_acao = _get(ctx, "_texto_conversa_casual_sem_acao")
     if not callable(resposta_conversa_rapida_local):
         return False, ""
 
     fala = resposta_conversa_rapida_local(t)
     if not str(fala or "").strip():
         return False, ""
-    if callable(texto_social_curto) and texto_social_curto(t):
-        return emitir_conversa_curta(ctx, t, fala, emocao=emocao, nivel=nivel), "conversa_social_curta"
-    if callable(texto_conversa_casual_sem_acao) and texto_conversa_casual_sem_acao(t):
-        return emitir_conversa_curta(ctx, t, fala, emocao=emocao, nivel=nivel), "conversa_casual_sem_acao"
-    return False, ""
+    return (
+        emitir_conversa_curta(ctx, t, fala, emocao=emocao, nivel=nivel),
+        "conversa_social_segura_jogo",
+    )
 
 
 def processar_pergunta_curta_contextual(
@@ -690,14 +722,23 @@ def processar_comentario_resultado_operacional(
     return False, ""
 
 
-def processar_fluxo_musical_generico(ctx: Dict[str, Any], texto_usuario: str) -> Tuple[bool, str]:
-    texto_pede_direcao_musical_generica = _get(ctx, "_texto_pede_direcao_musical_generica")
-    responder_pedido_direcao_musical_generica = _get(ctx, "_responder_pedido_direcao_musical_generica")
+def processar_confirmacao_musical_pendente(
+    ctx: Dict[str, Any], texto_usuario: str,
+) -> Tuple[bool, str]:
     processar_confirmacao_sugestao_musical = _get(ctx, "_processar_confirmacao_sugestao_musical")
     t = str(texto_usuario or "").strip()
 
     if callable(processar_confirmacao_sugestao_musical) and processar_confirmacao_sugestao_musical(t):
         return True, "confirmacao_sugestao_musical"
+    return False, ""
+
+
+def processar_pedido_direcao_musical(
+    ctx: Dict[str, Any], texto_usuario: str,
+) -> Tuple[bool, str]:
+    texto_pede_direcao_musical_generica = _get(ctx, "_texto_pede_direcao_musical_generica")
+    responder_pedido_direcao_musical_generica = _get(ctx, "_responder_pedido_direcao_musical_generica")
+    t = str(texto_usuario or "").strip()
 
     if callable(texto_pede_direcao_musical_generica) and texto_pede_direcao_musical_generica(t):
         if callable(responder_pedido_direcao_musical_generica):
@@ -706,6 +747,14 @@ def processar_fluxo_musical_generico(ctx: Dict[str, Any], texto_usuario: str) ->
         return True, "direcao_musical_generica"
 
     return False, ""
+
+
+def processar_fluxo_musical_generico(ctx: Dict[str, Any], texto_usuario: str) -> Tuple[bool, str]:
+    """Compatibilidade local; produção separa confirmação de pedido novo."""
+    confirmado = processar_confirmacao_musical_pendente(ctx, texto_usuario)
+    if confirmado[0]:
+        return confirmado
+    return processar_pedido_direcao_musical(ctx, texto_usuario)
 
 
 def processar_opiniao_musica_atual(ctx: Dict[str, Any], texto_usuario: str) -> Tuple[bool, str]:

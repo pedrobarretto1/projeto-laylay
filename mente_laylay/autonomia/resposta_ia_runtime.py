@@ -8,6 +8,7 @@ import traceback
 from typing import Any, Callable, Dict
 
 from mente_laylay.autonomia.pre_fluxo_contextual import responder_conversa_social_curta
+from mente_laylay.integracao.registro_conversa_llm import PedidoModelo
 from mente_laylay.personalidade.proporcao_resposta import limite_tokens_resposta
 
 
@@ -170,15 +171,6 @@ class RespostaIARuntime:
             except Exception:
                 depende_contexto = False
 
-            comandos_imediatos = _get(ctx, "processar_comandos_imediatos")
-            if callable(comandos_imediatos):
-                try:
-                    if comandos_imediatos(t, contexto_mental_ja_refinado=True):
-                        marcar_fase("tratado_imediato")
-                        return
-                except Exception as erro:
-                    self._log(f"⚠️ [IA] falha ao processar comandos imediatos: {erro}")
-
             # Durante uma partida, cumprimentos e respostas sociais muito
             # curtas não justificam acordar um modelo de 6+ GB. O mesmo
             # cérebro local já sabe responder a esses atos e preserva o fio
@@ -217,16 +209,18 @@ class RespostaIARuntime:
                     return
 
             if not modo_rapido:
-                pre_fluxos = _get(ctx, "processar_pre_fluxos")
-                if callable(pre_fluxos) and pre_fluxos(contexto_inicio, t):
-                    marcar_fase("tratado_pre_ia")
-                    return
-
-                prompt_runtime = _get(ctx, "contexto_prompt_runtime")
+                prompt_runtime = (
+                    _get(ctx, "preparacao_conversa")
+                    or _get(ctx, "contexto_prompt_runtime")
+                )
                 if prompt_runtime is None:
                     raise RuntimeError("Contexto do prompt ainda não foi inicializado.")
                 inicio_prompt = time.perf_counter()
-                mensagens_novas, _prompt_com_humor = prompt_runtime.preparar(t)
+                if callable(getattr(prompt_runtime, "preparar_pacote", None)):
+                    pacote_prompt = prompt_runtime.preparar_pacote(t)
+                    mensagens_novas = [dict(item) for item in pacote_prompt.mensagens]
+                else:
+                    mensagens_novas, _prompt_com_humor = prompt_runtime.preparar(t)
                 registrar_metrica = _get(ctx, "registrar_metrica_diagnostico")
                 if callable(registrar_metrica):
                     registrar_metrica(
@@ -234,34 +228,58 @@ class RespostaIARuntime:
                         (time.perf_counter() - inicio_prompt) * 1000.0,
                         True,
                     )
-                set_messages = _get(ctx, "set_messages")
-                if callable(set_messages):
-                    set_messages(mensagens_novas)
+                estado_conversa = _get(ctx, "estado_conversa")
+                if callable(getattr(estado_conversa, "substituir", None)):
+                    estado_conversa.substituir(mensagens_novas)
+                else:
+                    set_messages = _get(ctx, "set_messages")
+                    if callable(set_messages):
+                        set_messages(mensagens_novas)
 
-            get_messages = _get(ctx, "get_messages")
-            mensagens = get_messages() if callable(get_messages) else []
+            estado_conversa = _get(ctx, "estado_conversa")
+            if callable(getattr(estado_conversa, "mensagens", None)):
+                mensagens = estado_conversa.mensagens()
+            else:
+                get_messages = _get(ctx, "get_messages")
+                mensagens = get_messages() if callable(get_messages) else []
             if not isinstance(mensagens, list):
                 mensagens = []
             mensagens.append({"role": "user", "content": texto})
 
-            enviar_mensagem = _get(ctx, "enviar_mensagem")
-            if not callable(enviar_mensagem):
-                raise RuntimeError("enviar_mensagem ainda não foi inicializado.")
             inicio_llm = time.perf_counter()
-            bot_raw = enviar_mensagem(
-                mensagens,
-                _com_tools=False,
-                max_tokens=limite_tokens_resposta(
-                    t,
-                    modo_rapido=modo_rapido,
-                    depende_contexto=depende_contexto,
-                ),
+            limite_tokens = limite_tokens_resposta(
+                t,
                 modo_rapido=modo_rapido,
-                _permitir_conversa_modo_jogo=bool(
-                    _get(ctx, "modo_chat", False) or _get(ctx, "conversa_ativa", False)
-                ),
-                _prioridade_interativa=True,
+                depende_contexto=depende_contexto,
             )
+            modelo_llm = _get(ctx, "modelo_llm")
+            if callable(getattr(modelo_llm, "executar", None)):
+                pedido_modelo = PedidoModelo.criar(
+                    mensagens,
+                    com_tools=False,
+                    max_tokens=limite_tokens,
+                    modo_rapido=modo_rapido,
+                    permitir_conversa_modo_jogo=bool(
+                        _get(ctx, "modo_chat", False) or _get(ctx, "conversa_ativa", False)
+                    ),
+                    prioridade_interativa=True,
+                )
+                bot_raw = modelo_llm.executar(pedido_modelo).texto
+            else:
+                enviar_mensagem = _get(ctx, "enviar_mensagem")
+                if not callable(enviar_mensagem):
+                    raise RuntimeError("modelo LLM ainda não foi inicializado.")
+                bot_raw = enviar_mensagem(
+                    mensagens,
+                    _com_tools=False,
+                    max_tokens=limite_tokens,
+                    modo_rapido=modo_rapido,
+                    _permitir_conversa_modo_jogo=bool(
+                        _get(ctx, "modo_chat", False)
+                        or _get(ctx, "conversa_ativa", False)
+                    ),
+                    _prioridade_interativa=True,
+                )
             registrar_metrica = _get(ctx, "registrar_metrica_diagnostico")
             if callable(registrar_metrica):
                 registrar_metrica(
@@ -342,11 +360,6 @@ class RespostaIARuntime:
             atualizar_topicos = _get(ctx, "atualizar_memoria_topicos")
             if not comandos and tipo_interacao in {"conversa", "", "confirmacao"} and callable(atualizar_topicos):
                 atualizar_topicos(t, fala_limpa_original)
-
-            executar_deterministico = _get(ctx, "processar_comando_deterministico")
-            if not comandos and callable(executar_deterministico) and executar_deterministico(t, "pos-ia-0-comandos"):
-                marcar_fase("tratado_deterministico_pos_ia")
-                return
 
             dispatcher_runtime = _get(ctx, "contexto_dispatch_runtime")
             if dispatcher_runtime is None:

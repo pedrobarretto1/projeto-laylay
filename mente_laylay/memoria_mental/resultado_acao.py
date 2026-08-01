@@ -5,6 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import Any, Dict
 
+STATUS_RESULTADO_JA_SATISFEITO = {
+    "ja_aberto_focado", "site_ja_aberto_focado",
+    "ja_estava_ligado", "ja_estava_desligado",
+}
+
+
 STATUS_RESULTADO_CONFIRMADO = {
     "aba_fechada", "aba_fechada_em_vez_de_app", "app_fechado",
     "app_fechado_em_vez_de_aba", "app_focado", "ja_aberto_focado",
@@ -25,11 +31,16 @@ STATUS_RESULTADO_CONFIRMADO = {
     "arquivos_encontrados", "sem_resultados", "caminho_encontrado",
     "arquivo_aberto",
     "layout_confirmado",
-}
+} | STATUS_RESULTADO_JA_SATISFEITO
 
 
 def inferir_confirmacao(status: str, executou: bool | None) -> bool | None:
     status_norm = str(status or "").strip().lower()
+    # Em um no-op idempotente o executor não repete a ação, mas observou que o
+    # estado desejado já era verdadeiro. Portanto ``executou=False`` e
+    # ``confirmado=True`` são simultaneamente corretos.
+    if status_norm in STATUS_RESULTADO_JA_SATISFEITO:
+        return True
     if executou is False or any(
         termo in status_norm
         for termo in ("falha", "erro", "indisponivel", "nao_encontrado", "bloqueado")

@@ -44,7 +44,7 @@ DEPENDENCIAS_ORQUESTRACAO_TURNO = (
     "_saude_mente_runtime",
     "_texto_tem_comando_explicito",
     "_verificar_fala_turno_mente",
-    "_visao_jogo_runtime",
+    "_registro_visao_jogo_leitura_runtime",
     "MEMORIA_SQLITE",
     "playlist_state",
     "print",

@@ -20,8 +20,7 @@ class RotaMusical:
         if not url_limpa:
             return False
         enviar_pc_b = self.ctx.get("_enviar_pc_b")
-        enviar_chrome = self.ctx.get("enviar_comando_chrome")
-        abrir_url = self.ctx.get("abrir_url_com_reciclagem")
+        navegador = self.ctx.get("_registro_navegador_operacoes_runtime")
         permitir_foco = pedido_foco_explicito(self.texto_original)
 
         if self.destino == "pc_b" and callable(enviar_pc_b):
@@ -32,19 +31,17 @@ class RotaMusical:
 
         if self.destino == "ambos":
             ok_local = False
-            if eh_video_youtube and callable(enviar_chrome):
-                ok_local = bool(enviar_chrome(
-                    "youtube_play",
-                    {"url": url_limpa, "permitir_foco": permitir_foco},
+            if eh_video_youtube and navegador is not None:
+                ok_local = bool(navegador.tocar_youtube(
+                    url_limpa, permitir_foco=permitir_foco,
                 ))
-            elif query and callable(enviar_chrome):
-                ok_local = bool(enviar_chrome(
-                    "youtube_search",
-                    {"query": query, "permitir_foco": permitir_foco},
+            elif query and navegador is not None:
+                ok_local = bool(navegador.pesquisar_youtube(
+                    query, permitir_foco=permitir_foco,
                 ))
-            elif callable(abrir_url):
+            elif navegador is not None:
                 try:
-                    retorno = abrir_url(
+                    retorno = navegador.abrir_url(
                         url_limpa,
                         auto_click=False,
                         permitir_foco=permitir_foco,
@@ -56,19 +53,17 @@ class RotaMusical:
                 enviar_pc_b({"action": "open_url", "url": url_limpa})
             return ok_local
 
-        if eh_video_youtube and callable(enviar_chrome):
-            return bool(enviar_chrome(
-                "youtube_play",
-                {"url": url_limpa, "permitir_foco": permitir_foco},
+        if eh_video_youtube and navegador is not None:
+            return bool(navegador.tocar_youtube(
+                url_limpa, permitir_foco=permitir_foco,
             ))
-        if query and callable(enviar_chrome):
-            return bool(enviar_chrome(
-                "youtube_search",
-                {"query": query, "permitir_foco": permitir_foco},
+        if query and navegador is not None:
+            return bool(navegador.pesquisar_youtube(
+                query, permitir_foco=permitir_foco,
             ))
-        if callable(abrir_url):
+        if navegador is not None:
             try:
-                retorno = abrir_url(
+                retorno = navegador.abrir_url(
                     url_limpa,
                     auto_click=False,
                     permitir_foco=permitir_foco,

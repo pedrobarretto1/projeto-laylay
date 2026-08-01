@@ -63,6 +63,11 @@ from mente_laylay.cognicao.resumo_conteudo import (
     resumir_pagina_ou_video,
 )
 from mente_laylay.integracao.chrome_page_data import processar_page_data
+from mente_laylay.integracao.registro_conversa_llm import (
+    PedidoModelo,
+    RegistroModeloLLM,
+    ResultadoModelo,
+)
 from mente_laylay.integracao.llm_http import (
     FALHA_LLM_OCUPADA,
     FALHA_LLM_TIMEOUT,
@@ -1273,6 +1278,42 @@ class DialogosComunicacaoTests(unittest.TestCase):
         )
         self.assertEqual(falas, ["Resposta ajustada ao turno."])
         self.assertEqual(mensagens[-1]["content"], "Resposta ajustada ao turno.")
+
+    def test_finalizacao_usa_modelo_tipado_na_autocorrecao(self) -> None:
+        pedidos = []
+        falas = []
+
+        class Modelo:
+            def executar(self, pedido):
+                pedidos.append(pedido)
+                return ResultadoModelo("Falhou por aqui; não executei.", True)
+
+            def diagnostico(self):
+                return {"disponivel": True}
+
+        finalizar_execucao_resposta_ia(
+            {
+                "messages": [],
+                "current_emotion": "calma",
+                "emotion_level": 1,
+                "modelo_llm": RegistroModeloLLM.criar(Modelo()),
+                "limpar_resposta_da_ia": lambda texto: (texto, []),
+                "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+                "_falhas_consecutivas": {},
+                "MAX_TENTATIVAS_AUTOCORRECAO": 3,
+            },
+            [],
+            ["aplicativo não encontrado"],
+            "",
+            False,
+            False,
+            False,
+        )
+
+        self.assertEqual(len(pedidos), 1)
+        self.assertIsInstance(pedidos[0], PedidoModelo)
+        self.assertFalse(pedidos[0].com_tools)
+        self.assertEqual(falas, ["Falhou por aqui; não executei."])
 
     def test_correcao_conversacional_nao_vaza_nome_interno_game_vision(self) -> None:
         ctx = self._ctx_conversa_minimo()

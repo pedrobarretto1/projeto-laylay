@@ -13,11 +13,18 @@ from mente_laylay.cognicao.memoria_visual import (
 )
 from mente_laylay.cognicao.pesquisa_contextual import criar_pesquisa_contextual_runtime
 from mente_laylay.cognicao.selecao_abas import criar_selecao_abas_runtime
-from mente_laylay.integracao.cliente_llm_runtime import criar_cliente_llm_runtime
+from mente_laylay.integracao.cliente_llm_runtime import (
+    criar_cliente_llm_runtime,
+    criar_servico_modelo_llm_runtime,
+)
 from mente_laylay.integracao.conversa_jogo_remota import (
     criar_conversa_jogo_remota_runtime,
 )
 from mente_laylay.integracao.llm_http import criar_llm_http_runtime
+from mente_laylay.integracao.preparador_requisicao_llm import (
+    criar_preparador_requisicao_llm_runtime,
+)
+from mente_laylay.integracao.registro_conversa_llm import registrar_modelo_llm
 
 
 class ComposicaoInteligenciaExternaRuntime:
@@ -40,6 +47,8 @@ class ComposicaoInteligenciaExternaRuntime:
         pesquisa_factory: Callable[..., Any] = criar_pesquisa_contextual_runtime,
         llm_http_factory: Callable[..., Any] = criar_llm_http_runtime,
         cliente_factory: Callable[..., Any] = criar_cliente_llm_runtime,
+        preparador_factory: Callable[..., Any] = criar_preparador_requisicao_llm_runtime,
+        modelo_factory: Callable[..., Any] = criar_servico_modelo_llm_runtime,
         conversa_jogo_factory: Callable[..., Any] = criar_conversa_jogo_remota_runtime,
         confirmacao_factory: Callable[..., Any] = criar_confirmacao_llm_runtime,
         selecao_abas_factory: Callable[..., Any] = criar_selecao_abas_runtime,
@@ -55,9 +64,12 @@ class ComposicaoInteligenciaExternaRuntime:
         self.registrar_falha = registrar_falha
         self.log = log
         self._cliente_factory = cliente_factory
+        self._preparador_factory = preparador_factory
+        self._modelo_factory = modelo_factory
         self._confirmacao_factory = confirmacao_factory
         self._selecao_abas_factory = selecao_abas_factory
         self._cliente = None
+        self._transporte = None
         self._confirmacao = None
         self._selecao_abas = None
 
@@ -193,23 +205,36 @@ class ComposicaoInteligenciaExternaRuntime:
                 "app_title": self.app_title,
             }
 
-        self._cliente = self._cliente_factory(namespace_getter=lambda: {
-            **contexto_base(),
-            "llm_endpoint_eh_local": self.http.endpoint_eh_local,
-            "memoria_inteligente": memoria_inteligente,
-            "normalizar_texto": normalizar_texto,
-            "mapear_pastas": mapear_pastas,
-            "contexto_logs": contexto_logs_getter(),
-            "contexto_navegador_relevante": contexto_navegador_relevante,
-            "contexto_sistema": contexto_sistema_getter,
-            "obter_contexto_paginas": obter_contexto_paginas,
-            "resumo_mente_integrada": resumo_mente_integrada,
-            "registrar_metrica_diagnostico": registrar_metrica,
-            "registrar_falha_diagnostico": self.registrar_falha,
-            "interacao_ativa": interacao_ativa or (lambda: False),
-            "modo_jogo_ativo": lambda: bool(self.http.modo_jogo_ativo),
-            "conversa_jogo_remota": self.conversa_jogo.enviar,
-        }, log=self.log)
+        preparador = self._preparador_factory(
+            model=self.model,
+            endpoint_local_getter=self.http.endpoint_eh_local,
+            resumo_do_dia_getter=lambda: str(memoria_inteligente.resumo_do_dia or ""),
+            data_atual_getter=lambda: str(memoria_inteligente.data_atual or ""),
+            normalizar_texto=normalizar_texto,
+            mapear_pastas=mapear_pastas,
+            contexto_logs_getter=contexto_logs_getter,
+            contexto_navegador_relevante=contexto_navegador_relevante,
+            contexto_sistema_getter=contexto_sistema_getter,
+            obter_contexto_paginas=obter_contexto_paginas,
+            resumo_mente_integrada=resumo_mente_integrada,
+            log=self.log,
+        )
+        self._transporte = self._cliente_factory(
+            endpoint_local_getter=self.http.endpoint_eh_local,
+            post_chat=self.http.post,
+            api_key=self.api_key,
+            http_referer=self.http_referer,
+            app_title=self.app_title,
+            interacao_ativa=interacao_ativa or (lambda: False),
+            modo_jogo_ativo=lambda: bool(self.http.modo_jogo_ativo),
+            conversa_jogo_remota=self.conversa_jogo.enviar,
+            registrar_metrica=registrar_metrica,
+            registrar_falha=self.registrar_falha,
+            log=self.log,
+        )
+        self._cliente = registrar_modelo_llm(
+            self._modelo_factory(preparador=preparador, cliente=self._transporte)
+        )
         self._confirmacao = self._confirmacao_factory(namespace_getter=contexto_base)
         self._selecao_abas = self._selecao_abas_factory(namespace_getter=contexto_base)
         return self._cliente

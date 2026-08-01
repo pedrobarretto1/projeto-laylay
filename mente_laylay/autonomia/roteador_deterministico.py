@@ -6,6 +6,7 @@ import re
 from typing import Any, Callable, Dict
 
 from mente_laylay.cognicao.referencias_linguagem import valor_e_referencia_contextual
+from mente_laylay.cognicao.modalidade_turno import analisar_protecao_operacional
 from mente_laylay.cognicao.normalizacao_linguagem import (
     corrigir_erros_portugues_operacionais,
 )
@@ -41,11 +42,8 @@ def normalizar_pedido_natural(texto_normalizado: str) -> tuple[str, str]:
     t = re.sub(r"\s+", " ", str(texto_normalizado or "")).strip()
     if not t:
         return "", ""
-    if re.search(
-        r"\b(?:acho que (?:eu )?vou|talvez|estou pensando em|to pensando em|"
-        r"seria bom|quem sabe|estou com vontade de|to com vontade de)\b",
-        t,
-    ):
+    protecao = analisar_protecao_operacional(t)
+    if protecao.get("modalidade") == "deliberacao":
         return t, "deliberativo"
 
     original = t
@@ -459,6 +457,32 @@ def detectar_email_notificacao_briefing(
     return None
 
 
+def detectar_consulta_aprendizados(
+    texto_normalizado: str,
+    *,
+    params_cb: Callable[..., Dict[str, Any]],
+) -> Dict[str, Any] | None:
+    """Reconhece perguntas naturais sobre o que a Laylay aprendeu da pessoa."""
+    t = str(texto_normalizado or "").strip()
+    if not t:
+        return None
+    estruturas = (
+        r"\b(?:o\s+que|quais\s+coisas?|que\s+coisas?)\b.{0,45}\b"
+        r"(?:voce\s+)?(?:aprendeu|guardou|lembra)\b(?:.{0,30}\b(?:sobre\s+mim|comigo))?",
+        r"\b(?:o\s+que|quais\s+coisas?|que\s+coisas?)\b.{0,30}\b"
+        r"eu\s+(?:te\s+)?(?:ensinei|falei|contei)\b",
+        r"\b(?:voce\s+)?lembra\b.{0,35}\b(?:do\s+que|das\s+coisas\s+que)\b"
+        r".{0,25}\beu\s+(?:te\s+)?(?:ensinei|falei|contei)\b",
+        r"\b(?:me\s+)?(?:fala|fale|conta|conte|diz|diga|lembra|lembre)\b"
+        r".{0,35}\b(?:o\s+que|do\s+que)\b.{0,35}\b"
+        r"(?:aprendeu|eu\s+(?:te\s+)?(?:ensinei|falei|contei))\b",
+    )
+    if not any(re.search(padrao, t, flags=re.IGNORECASE) for padrao in estruturas):
+        return None
+    params = params_cb if callable(params_cb) else lambda **kwargs: kwargs
+    return {"intent": "LEARNING_QUERY", "params": params(limit=3)}
+
+
 def detectar_clima(
     texto_normalizado: str,
     *,
@@ -535,7 +559,7 @@ def detectar_playlist_contextual_musica_atual(
     m_add_musica_playlist = re.search(
         r"\b(?:coloca|coloque|salva|salve|guarda|guarde|adiciona|adicione|add)\b"
         r".{0,60}?\b(?:essa|esta|a)?\s*(?:musica|música|faixa|canção|cancao)?\b"
-        r".{0,30}?\b(?:na|nessa|nesta|para a|pra|em)\s+playlist\s+(?P<nome>.+)$",
+        r".{0,30}?\b(?:na|nessa|nesta|para a|pra|em|a)\s+playlist\s+(?P<nome>.+)$",
         t,
         flags=re.IGNORECASE,
     )
@@ -552,6 +576,45 @@ def detectar_playlist_contextual_musica_atual(
                 "params": params(nome_playlist=ultima_pl, referencia_contextual=True),
             }
 
+    return None
+
+
+def detectar_movimento_playlist(
+    texto_normalizado: str,
+    *,
+    params_cb: Callable[..., Dict[str, Any]],
+    limpar_nome_playlist: Callable[[str], str],
+) -> Dict[str, Any] | None:
+    """Reconhece a transferência explícita de uma faixa entre playlists."""
+    t = str(texto_normalizado or "").strip()
+    if not t:
+        return None
+    limpar_nome = (
+        limpar_nome_playlist
+        if callable(limpar_nome_playlist)
+        else lambda valor: str(valor or "").strip()
+    )
+    padroes = (
+        r"(?:tira|remove|retira)\s+(?P<musica>.+?)\s+da\s+playlist\s+"
+        r"(?P<origem>.+?)\s+e\s+(?:coloca|bota|adiciona|joga)\s+"
+        r"(?:na|pra|para\s+a|para)\s+playlist\s+(?P<destino>.+)",
+        r"(?:move|mova|transfere|transfira)\s+(?P<musica>.+?)\s+da\s+"
+        r"playlist\s+(?P<origem>.+?)\s+(?:pra|para\s+a|para)\s+playlist\s+"
+        r"(?P<destino>.+)",
+    )
+    for padrao in padroes:
+        encontrado = re.search(padrao, t, flags=re.IGNORECASE)
+        if not encontrado:
+            continue
+        musica = str(encontrado.group("musica") or "").strip(" .,!?:;")
+        origem = limpar_nome(encontrado.group("origem") or "")
+        destino = limpar_nome(encontrado.group("destino") or "")
+        if musica and origem and destino:
+            params = params_cb if callable(params_cb) else lambda **kwargs: kwargs
+            return {
+                "intent": "PLAYLIST_MOVE",
+                "params": params(musica=musica, origem=origem, destino=destino),
+            }
     return None
 
 

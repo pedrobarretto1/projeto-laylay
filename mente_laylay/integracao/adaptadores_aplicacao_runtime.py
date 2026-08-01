@@ -335,18 +335,64 @@ class AdaptadoresAplicacaoRuntime:
         ns["_contexto_intencao_runtime"].validar_conexoes()
         ns["_ciclo_comandos_runtime"].validar_conexoes()
         servicos = {
-            "voz": ("falar_com_lipsync",), "llm": ("enviar_mensagem",),
+            "voz": ("falar_com_lipsync",),
             "memoria": ("carregar_memoria", "salvar_memoria"),
             "gmail": ("_gmail_buscar_nao_lidos", "gmail_daemon"),
-            "navegador": ("run_ws_server_in_thread", "enviar_comando_chrome"),
+            "navegador": ("run_ws_server_in_thread",),
         }
         for modulo, dependencias in servicos.items():
             saude.validar_dependencias(modulo, ns, dependencias, callables=dependencias)
+        modelo_llm = ns.get("_registro_modelo_llm_runtime")
+        diagnostico_llm = {}
+        try:
+            diagnostico_llm = dict(modelo_llm.diagnostico() or {})
+        except Exception:
+            diagnostico_llm = {}
+        llm_disponivel = bool(
+            callable(getattr(modelo_llm, "enviar", None))
+            and diagnostico_llm.get("disponivel")
+        )
+        saude.registrar(
+            "llm",
+            "saudavel" if llm_disponivel else "degradado",
+            detalhes=(
+                "contrato tipado conectado"
+                if llm_disponivel else "contrato tipado indisponível"
+            ),
+            ausentes=[] if llm_disponivel else ["modelo_llm"],
+        )
+        navegador = ns.get("_registro_navegador_operacoes_runtime")
+        navegador_disponivel = callable(getattr(navegador, "abrir_url", None))
+        saude.registrar(
+            "navegador_tipado",
+            "saudavel" if navegador_disponivel else "indisponivel",
+            detalhes=(
+                "contrato tipado conectado"
+                if navegador_disponivel else "contrato ausente"
+            ),
+            ausentes=[] if navegador_disponivel else ["navegador_operacoes"],
+        )
         iot_disponivel = callable(getattr(self._iot, "executar", None))
         saude.registrar(
             "iot", "saudavel" if iot_disponivel else "indisponivel",
             detalhes="contrato tipado conectado" if iot_disponivel else "contrato ausente",
             ausentes=[] if iot_disponivel else ["servico_iot"],
+        )
+        agenda = ns.get("_agenda_runtime")
+        diagnostico_agenda = {}
+        try:
+            diagnostico_agenda = dict(agenda.diagnostico() or {}) if agenda is not None else {}
+        except Exception:
+            diagnostico_agenda = {"disponivel": False, "falhas_persistencia": 1}
+        agenda_disponivel = bool(diagnostico_agenda.get("disponivel"))
+        saude.registrar(
+            "agenda",
+            "saudavel" if agenda_disponivel else "degradado",
+            detalhes=(
+                "persistência e daemon da agenda observáveis"
+                if agenda_disponivel else "persistência da agenda sem confirmação"
+            ),
+            ausentes=[] if agenda_disponivel else ["persistencia_agenda"],
         )
         ns["print"](saude.resumo_terminal())
 

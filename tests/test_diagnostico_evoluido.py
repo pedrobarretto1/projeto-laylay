@@ -39,6 +39,28 @@ def test_metricas_guardam_ultimo_media_maximo_e_falhas() -> None:
     assert metrica["falhas"] == 1
 
 
+def test_metricas_marcam_orcamento_sem_cancelar_o_fluxo() -> None:
+    estado = {}
+    runtime = _runtime_observabilidade(estado)
+
+    metrica = runtime.registrar_metrica("dispatcher", 150.0, True)
+
+    assert metrica["orcamento_ms"] == 120.0
+    assert metrica["excedeu_orcamento"] is True
+    assert metrica["excessos"] == 1
+
+
+def test_tamanho_de_prompt_guarda_so_contagens_por_origem() -> None:
+    estado = {}
+    runtime = _runtime_observabilidade(estado)
+
+    medida = runtime.registrar_tamanho_prompt("prompt_memoria", 321)
+
+    assert medida["ultimo_chars"] == 321
+    assert estado["diagnostico_prompts"]["prompt_memoria"]["max_chars"] == 321
+    assert "conteudo" not in repr(estado["diagnostico_prompts"]).casefold()
+
+
 def test_historico_de_falhas_remove_url_caminho_e_mensagem_do_erro() -> None:
     estado = {}
     runtime = _runtime_observabilidade(estado)
@@ -262,6 +284,37 @@ def test_diagnostico_exibe_latencias_falhas_e_ultima_decisao_sanitizadas() -> No
     assert "serviços de fundo: total=1 ativos=0 degradados=1 quedas=1 reinícios=0 órfãos=0" in texto
     assert "serviço: ouvido=reinicio_agendado tentativa=2 fallback=reinicio_automatico" in texto
     assert "não pode aparecer" not in texto
+
+
+def test_queda_de_servico_recuperada_nao_permanece_como_falha_atual() -> None:
+    estado = {
+        "mental": {
+            "diagnostico_falhas": [{
+                "componente": "servico_laylay-ouvido",
+                "codigo": "queda_background",
+                "tipo": "RuntimeError",
+                "classe": "degradacao",
+                "impacto": "servico",
+                "fallback": "reinicio_agendado",
+                "ts": 100.0,
+            }],
+            "diagnostico_servicos": {
+                "laylay-ouvido": {
+                    "estado": "ativo", "tentativa": 2,
+                    "quedas": 1, "reinicios": 1, "ts": 110.0,
+                },
+            },
+        },
+        "conversacional": {}, "percepcao": {}, "continuidades": {},
+    }
+
+    diagnostico = construir_diagnostico_mente(estado, {})
+    texto = formatar_diagnostico_terminal(diagnostico)
+
+    assert diagnostico["falhas_recentes"] == []
+    assert diagnostico["falhas_recuperadas"] == 1
+    assert "falhas técnicas recentes: 0" in texto
+    assert "recuperadas=1" in texto
 
 
 def test_estado_mental_inicial_possui_telemetria_vazia() -> None:

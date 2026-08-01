@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-import json
 import threading
 from typing import Any, Callable
 
@@ -22,7 +21,7 @@ def fechar_abas_sugeridas(
     quantidade = len(abas_sugeridas)
     log(f"🧹 [PORTEIRO] Fechando {quantidade} aba(s) sugeridas...")
     for url in list(abas_sugeridas):
-        enviar(json.dumps({"action": "close_specific_tab", "target": str(url)[:60]}))
+        enviar(str(url))
     abas_sugeridas.clear()
     plural = "s" if quantidade > 1 else ""
     falar(f"Pronto. Limpei {quantidade} aba{plural} parada{plural}. Agora sobra RAM de verdade.", "debochada", 2)

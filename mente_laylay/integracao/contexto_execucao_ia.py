@@ -8,10 +8,20 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict
 
+from mente_laylay.integracao.registro_navegador import (
+    PortaNavegadorLeitura,
+    PortaNavegadorOperacoes,
+)
+from mente_laylay.integracao.registro_visao_jogo import (
+    PortaVisaoJogoAnalise,
+    PortaVisaoJogoLeitura,
+)
+
 from mente_laylay.integracao.registro_iot import PortaIoT
 from mente_laylay.integracao.registro_arquivos import PortaArquivosLeitura
 from mente_laylay.integracao.registro_mutacoes_arquivos import PortaArquivosMutacao
 from mente_laylay.integracao.registro_musica import PortaMusicaLeitura
+from mente_laylay.integracao.registro_operacoes_musicais import PortaMusicaOperacoes
 
 
 def _merge_grupos(*grupos: Dict[str, Any] | None) -> Dict[str, Any]:
@@ -116,32 +126,29 @@ def criar_contexto_dispatcher_runtime(**kwargs: Any) -> ContextoDispatcherRuntim
 
 DEPENDENCIAS_EXECUCAO_INTENCAO = (
     "_target_from_params", "_registrar_mente_curta", "_registrar_resultado_execucao",
-    "falar_com_lipsync", "_falar_resultado_operacional", "_enviar_pc_b", "APPS_MAP", "abrir_url_com_reciclagem",
-    "abrir_programa", "fechar_programa", "enviar_comando_chrome",
+    "falar_com_lipsync", "_falar_resultado_operacional", "_enviar_pc_b", "APPS_MAP",
+    "abrir_programa", "fechar_programa",
     "_resolver_referencia_cooperativa",
-    "ajustar_volume_sistema", "ajustar_volume_sistema_relativo", "definir_mudo_sistema", "solicitar_aba_ativa",
-    "fechar_aba_ativa_nativa", "organizar_janelas_robusto", "ativar_tela_cheia_robusta",
+    "ajustar_volume_sistema", "ajustar_volume_sistema_relativo", "definir_mudo_sistema",
+    "organizar_janelas_robusto", "ativar_tela_cheia_robusta",
     "focar_janela_app", "_gmail_configurado", "_gmail_falar_resumo_estiloso", "_gmail_buscar_nao_lidos",
     "_gmail_silenciar_remetente", "repetir_briefing", "obter_clima_localidade",
     "_agendamentos_load", "_agendamentos_save", "_agendamentos_transacionar", "_fala_agendamentos_estilosa",
+    "_pendencia_acao_runtime", "_registrar_feedback_agenda", "_publicar_evento_agenda_cooperativo",
     "_normalizar_query_musical", "_yt_clean_title", "_buscar_primeiro_video_youtube",
-    "_playlist_nome_explicito_na_frase", "_playlist_shuffle_start",
-    "_playlist_primeira_url", "_playlist_item_at", "delete_playlist",
-    "play_playlist", "_registrar_estrutura_arquivo_recente", "ADD_TO_PLAYLIST",
+    "_playlist_nome_explicito_na_frase",
+    "_registrar_estrutura_arquivo_recente",
     "_aprender_pesquisa_semantica_arquivos",
     "_fala_playlist_conteudo_estilosa", "_pedido_lista_geral_playlist",
-    "_copiar_faixa_da_playlist_laylay",
     "extrair_nome_playlist", "_resolver_query_musical_por_estilo",
     "_contexto_aponta_site_web", "_eh_alvo_site_web", "_resolver_alvo_ambiente",
     "_normalizar_texto_com_apelidos", "_montar_url_site_ou_busca",
     "_executar_fechar_abas_paradas", "_executar_captura_tela_intent",
-    "_executar_visao_jogo_intent",
     "_bloquear_playlist_temporariamente", "_autonomia_permite_execucao_musical",
     "_registrar_autoaprimoramento", "_resumo_agendamentos_para_prompt",
-    "_extrair_agendamento_local", "_playlist_avancar_proxima",
-    "_playlist_voltar_anterior", "playlist_state", "SITES_DIRECTOS",
+    "_extrair_agendamento_local", "SITES_DIRECTOS",
     "APP_OPENER_AVAILABLE", "open_app", "_contexto_aponta_descanso",
-    "_executar_controle_midia_nativo", "validar_e_enviar_comando",
+    "_executar_controle_midia_nativo",
     "_remover_prefixo_exec", "limpar_resposta", "enviar_mensagem",
     "_resumo_mente_integrada_para_prompt", "_texto_indica_autocorrecao",
     "_registrar_autocorrecao_virtual", "_atualizar_memoria_topicos",
@@ -151,6 +158,7 @@ DEPENDENCIAS_EXECUCAO_INTENCAO = (
     "_registrar_sugestao_indireta",
     "modo_jogo_ativo",
     "_musica_estado_get",
+    "_avaliar_evento_emocional_operacional",
 )
 
 
@@ -168,6 +176,11 @@ class ContextoIntencaoRuntime:
         arquivos_leitura: PortaArquivosLeitura | None = None,
         arquivos_mutacao: PortaArquivosMutacao | None = None,
         musica_leitura: PortaMusicaLeitura | None = None,
+        musica_operacoes: PortaMusicaOperacoes | None = None,
+        navegador_leitura: PortaNavegadorLeitura | None = None,
+        navegador_operacoes: PortaNavegadorOperacoes | None = None,
+        visao_jogo_leitura: PortaVisaoJogoLeitura | None = None,
+        visao_jogo_analise: PortaVisaoJogoAnalise | None = None,
     ) -> None:
         self.namespace_getter = namespace_getter
         self.estado_getter = estado_getter
@@ -177,6 +190,11 @@ class ContextoIntencaoRuntime:
         self.arquivos_leitura = arquivos_leitura
         self.arquivos_mutacao = arquivos_mutacao
         self.musica_leitura = musica_leitura
+        self.musica_operacoes = musica_operacoes
+        self.navegador_leitura = navegador_leitura
+        self.navegador_operacoes = navegador_operacoes
+        self.visao_jogo_leitura = visao_jogo_leitura
+        self.visao_jogo_analise = visao_jogo_analise
         namespace = self.namespace_getter() or {}
         self._servicos_estaticos = {
             nome: namespace[nome]
@@ -220,6 +238,16 @@ class ContextoIntencaoRuntime:
             contexto["_registro_arquivos_mutacao_runtime"] = self.arquivos_mutacao
         if self.musica_leitura is not None:
             contexto["_registro_musica_leitura_runtime"] = self.musica_leitura
+        if self.musica_operacoes is not None:
+            contexto["_registro_musica_operacoes_runtime"] = self.musica_operacoes
+        if self.navegador_leitura is not None:
+            contexto["_registro_navegador_leitura_runtime"] = self.navegador_leitura
+        if self.navegador_operacoes is not None:
+            contexto["_registro_navegador_operacoes_runtime"] = self.navegador_operacoes
+        if self.visao_jogo_leitura is not None:
+            contexto["_registro_visao_jogo_leitura_runtime"] = self.visao_jogo_leitura
+        if self.visao_jogo_analise is not None:
+            contexto["_registro_visao_jogo_analise_runtime"] = self.visao_jogo_analise
         estado = self.estado_getter() or {}
         if isinstance(estado, dict):
             contexto.update(estado)

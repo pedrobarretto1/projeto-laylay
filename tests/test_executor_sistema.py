@@ -34,22 +34,29 @@ def test_executor_sistema_nao_interfere_em_outro_dominio() -> None:
 
 
 @pytest.mark.parametrize(
-    ("intent", "callback", "status"),
+    ("intent", "status"),
     [
-        ("SCREEN_CAPTURE", "_executar_captura_tela_intent", "captura_solicitada"),
-        ("GAME_VISION", "_executar_visao_jogo_intent", "analise_visual_solicitada"),
+        ("SCREEN_CAPTURE", "captura_solicitada"),
+        ("GAME_VISION", "analise_visual_solicitada"),
     ],
 )
-def test_percepcao_preserva_retorno_booleano(intent: str, callback: str, status: str) -> None:
+def test_percepcao_preserva_retorno_booleano(intent: str, status: str) -> None:
     eventos: list[tuple] = []
     recebidos: list[object] = []
     argumento = "pc_b" if intent == "SCREEN_CAPTURE" else {"tipo": "item"}
 
+    contexto = (
+        {"_executar_captura_tela_intent": lambda valor: recebidos.append(valor) or True}
+        if intent == "SCREEN_CAPTURE"
+        else {"_registro_visao_jogo_analise_runtime": SimpleNamespace(
+            executar=lambda valor: recebidos.append(valor) or True,
+        )}
+    )
     despacho = executar_intencao_sistema(
         intent,
         argumento if isinstance(argumento, dict) else {},
         argumento if isinstance(argumento, str) else "pc_a",
-        {callback: lambda valor: recebidos.append(valor) or True},
+        contexto,
         _dependencias(eventos),
     )
 
@@ -65,7 +72,9 @@ def test_falha_visual_continua_retornando_falso_ao_roteador() -> None:
         "GAME_VISION",
         {"tipo": "item"},
         "pc_a",
-        {"_executar_visao_jogo_intent": lambda _params: False},
+        {"_registro_visao_jogo_analise_runtime": SimpleNamespace(
+            executar=lambda _params: False,
+        )},
         _dependencias(eventos),
     )
 

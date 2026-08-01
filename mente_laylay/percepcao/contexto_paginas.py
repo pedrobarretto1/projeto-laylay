@@ -5,6 +5,8 @@ from __future__ import annotations
 import time
 from typing import Any, Callable, Dict
 
+from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
+
 
 class ContextoPaginas:
     def __init__(self, *, limite_paginas: int = 6, limite_contexto_chars: int = 10000) -> None:
@@ -78,7 +80,13 @@ class ContextoPaginas:
         self.cache = {"versao": self.versao, "texto": texto}
         return texto
 
-    def resumir(self, url: str, *, enviar_mensagem: Callable[..., Any] | None) -> None:
+    def resumir(
+        self,
+        url: str,
+        *,
+        enviar_mensagem: Callable[..., Any] | None = None,
+        modelo_llm: Any = None,
+    ) -> None:
         if url not in self.paginas:
             return
 
@@ -98,7 +106,11 @@ class ContextoPaginas:
         ]
 
         try:
-            resumo = enviar_mensagem(mensagens, _com_tools=False) if callable(enviar_mensagem) else ""
+            enviar = resolver_enviador_modelo(
+                modelo_llm=modelo_llm,
+                enviar_mensagem=enviar_mensagem,
+            )
+            resumo = enviar(mensagens, _com_tools=False) if callable(enviar) else ""
             self.paginas[url]["resumo"] = str(resumo or "").strip()
             self.versao += 1
             self.cache = {"versao": -1, "texto": ""}

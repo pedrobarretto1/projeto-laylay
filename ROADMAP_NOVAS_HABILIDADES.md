@@ -30,6 +30,8 @@ A validação final precisa demonstrar, com componentes reais da composição:
 - habilidade registrada no catálogo vivo, disponível ao contexto da LLM quando
   relevante e explicável em linguagem natural com capacidades, limites,
   autorização necessária e evidência de sucesso;
+- relações entre agenda, notificações e outras habilidades publicadas no quadro
+  cooperativo, sem transformar observação em permissão nem ocultar falha parcial;
 - teste negativo garantindo que negação, hipótese e pergunta de capacidade não executem.
 
 Um teste que substitui um desses pilares por um callback sempre verdadeiro não
@@ -53,6 +55,21 @@ real da composição. As instruções permanentes para agentes estão em `AGENTS
   conversa, execução e demais habilidades reconheçam o mesmo assunto.
 - Enviar resultados, correções, aceitações e recusas ao motor de aprendizado,
   usando evidências múltiplas antes de alterar comportamentos automaticamente.
+
+### Integração da agenda aos nove pilares — concluída
+
+A agenda preserva horários antes da normalização lexical, usa a pendência de ação
+canônica para completar lembretes por respostas naturais como `14:30` e separa
+`aguardando_complemento` de execução real. Lembretes duráveis mantêm proveniência,
+feedback agregado segue para o aprendizado compartilhado e expiração qualificada
+vira sinal de silêncio sem persistir o conteúdo do lembrete. Saúde, persistência,
+disparos e retries aparecem no diagnóstico e alimentam a disponibilidade do
+catálogo vivo. A relação agenda–central de notificações é publicada no quadro
+cooperativo e falha de persistência nunca é anunciada como sucesso total.
+
+Validação automatizada: 1.658 testes e 41 subtestes aprovados, incluindo regressões
+com o normalizador usado em produção, continuidade curta, recusa segura,
+diagnóstico sanitizado, noção de capacidade e falha cooperativa parcial.
 - Classificar o que é relevante, irrelevante, temporário ou sensível antes de
   criar memória; dados privados e conteúdo ocasional não devem virar fatos.
 - Evitar mecanismos paralelos de continuidade ou memória dentro de uma

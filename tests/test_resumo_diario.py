@@ -69,6 +69,36 @@ def test_falha_da_llm_preserva_lote_para_tentar_depois(tmp_path) -> None:
     assert len(memoria.historico_recente) == 5
 
 
+def test_lote_pendente_recarregado_tenta_novamente_na_proxima_interacao(tmp_path) -> None:
+    instantes = [
+        datetime(2026, 7, 29, 22, 50),
+        datetime(2026, 7, 29, 22, 51),
+    ]
+    pasta = str(tmp_path)
+    memoria_com_falha = MemoriaLaylay(
+        pasta_memoria=pasta,
+        enviar_mensagem=lambda _mensagens: "LAYLAY_LLM_INDISPONIVEL",
+        agora=lambda: instantes[0],
+        log=lambda *_: None,
+    )
+    for indice in range(5):
+        memoria_com_falha.adicionar_interacao(f"fala {indice}", f"resposta {indice}")
+
+    memoria_recuperada = MemoriaLaylay(
+        pasta_memoria=pasta,
+        enviar_mensagem=lambda _mensagens: "Resumo recuperado sem perder o lote.",
+        agora=lambda: instantes[1],
+        log=lambda *_: None,
+    )
+    memoria_recuperada.adicionar_interacao("nova fala", "nova resposta")
+
+    conteudo = (tmp_path / "memoria_29-07-2026.txt").read_text(encoding="utf-8")
+    assert "Resumo recuperado sem perder o lote." in conteudo
+    assert "INTERAÇÕES PENDENTES" not in conteudo
+    assert memoria_recuperada.historico_recente == []
+    assert memoria_recuperada.contador == 0
+
+
 def test_conversa_normal_finalizada_entra_na_memoria_diaria() -> None:
     registros = []
     mensagens = [{"role": "user", "content": "como foi seu dia?"}]

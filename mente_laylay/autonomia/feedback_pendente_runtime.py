@@ -100,12 +100,10 @@ class FeedbackPendenteRuntime:
             "_classificar_confirmacao_contextual": self.classificar_confirmacao_contextual,
             "_classificar_confirmacao_local": self.classificar_confirmacao_local,
             "_handle_sugestao_confirmacao": _get(ctx, "handle_sugestao_confirmacao"),
-            "solicitar_aba_ativa": _get(ctx, "solicitar_aba_ativa"),
-            "add_to_playlist_url": _get(ctx, "add_to_playlist_url"),
+            "_registro_musica_operacoes_runtime": _get(ctx, "musica_operacoes"),
             "extrair_nome_playlist": _get(ctx, "extrair_nome_playlist"),
             "_yt_clean_title": _get(ctx, "yt_clean_title"),
             "falar_com_lipsync": _get(ctx, "falar_com_lipsync"),
-            "_set_ultima_playlist": _get(ctx, "set_ultima_playlist"),
             "_rotina_registrar_feedback": _get(ctx, "rotina_registrar_feedback"),
             "_interpretar_resposta_pendente": self.interpretar_resposta_pendente,
             "_gmail_buscar_nao_lidos": _get(ctx, "gmail_buscar_nao_lidos"),
@@ -166,12 +164,36 @@ class FeedbackPendenteRuntime:
             return False
 
         if resto:
-            processar_comandos = _get(self._ctx(), "processar_comandos_imediatos")
+            ctx = self._ctx()
+            resolver = _get(ctx, "resolver_comando_natural")
+            executar = _get(ctx, "executar_intencao")
             try:
-                if callable(processar_comandos) and processar_comandos(resto):
+                resolucao = (
+                    resolver(resto, "feedback-pendente-misto")
+                    if callable(resolver)
+                    else (None, "")
+                )
+                intencao, rota = (
+                    resolucao
+                    if isinstance(resolucao, tuple) and len(resolucao) == 2
+                    else (None, "")
+                )
+                if isinstance(intencao, dict) and callable(executar):
+                    executou = bool(executar(intencao, resto))
+                    registrar = _get(ctx, "registrar_resultado_execucao")
+                    if callable(registrar):
+                        registrar(
+                            intencao,
+                            resto,
+                            executou,
+                            origem=f"feedback_misto:{rota or 'coordenador'}",
+                        )
                     return True
             except Exception as e:
-                self._log(f"⚠️ [FEEDBACK MISTO] falha ao executar continuacao: {e}")
+                self._log(
+                    "⚠️ [FEEDBACK MISTO] falha na continuação canônica: "
+                    f"{type(e).__name__}: {e}"
+                )
 
         return bool(confirmado)
 

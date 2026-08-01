@@ -1,17 +1,23 @@
 from __future__ import annotations
 
 from mente_laylay.autonomia.controle_midia import executar_media_control
+from tests.fakes_navegador import NavegadorLeituraFake, NavegadorOperacoesFake
 
 
 def _ctx_base(*, enviar_chrome, aba_youtube: bool = True, nativo=None, falas=None):
     falas = falas if falas is not None else []
+    navegador = NavegadorOperacoesFake(resultado=True)
+    if callable(enviar_chrome):
+        navegador.controlar_youtube = lambda comando: bool(
+            enviar_chrome("youtube_control", {"command": comando})
+        )
     return {
         "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
-        "enviar_comando_chrome": enviar_chrome,
-        "solicitar_aba_ativa": lambda: {
+        "_registro_navegador_operacoes_runtime": navegador if callable(enviar_chrome) else None,
+        "_registro_navegador_leitura_runtime": NavegadorLeituraFake(aba={
             "url": "https://www.youtube.com/watch?v=teste" if aba_youtube else "",
             "title": "YouTube" if aba_youtube else "",
-        },
+        }),
         "_executar_controle_midia_nativo": nativo,
         "playlist_state": {},
     }

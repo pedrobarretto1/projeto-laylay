@@ -1,27 +1,24 @@
-"""Camada de comandos imediatos da Laylay.
+"""Fase operacional prioritária do turno canônico da Laylay.
 
-Esta camada roda depois do pre-fluxo de conversa e antes da conversa livre da
-IA. Ela tenta resolver comandos praticos sem competir com o fluxo social.
+Esta camada recebe o turno já criado, resolve uma única vez habilidades e
+linguagem natural e só então libera a conversa livre para a IA.
 """
 
 from __future__ import annotations
 
-import asyncio
 import re
 import unicodedata
 from typing import Any, Callable, Dict
 from mente_laylay.integracao.registro_memoria_pessoas import PortaMemoriaPessoas
 from mente_laylay.integracao.registro_iot import PortaIoT
 from mente_laylay.autonomia.pre_fluxo_contextual import (
-    analisar_intencao_com_porteiro,
-    processar_execucao_pratica_precoce,
-    texto_eh_conversa_social_sem_comando,
-)
-from mente_laylay.autonomia.coordenador_intencao import (
-    resolver_referencias_da_intencao,
+    processar_aprendizado_apelido,
+    processar_consulta_sistema_local,
+    processar_pedido_direcao_musical,
+    processar_identidade_usuario,
+    processar_sugestao_indireta,
 )
 from mente_laylay.especialistas.capacidades import (
-    INTENTS_SOMENTE_LEITURA,
     intents_registradas,
 )
 from mente_laylay.cognicao.evidencia_operacional import (
@@ -32,6 +29,10 @@ from mente_laylay.percepcao.ritmo_circadiano import (
     agora_no_fuso,
     detectar_consulta_horario,
     responder_consulta_horario,
+)
+from mente_laylay.memoria_mental.continuidade_geral import (
+    resolver_continuacao_aditiva,
+    texto_e_continuacao_aditiva,
 )
 
 
@@ -49,202 +50,6 @@ def texto_pede_resumo_pagina(texto: str) -> bool:
     return any(alvo in t for alvo in alvos) and any(pedido in t for pedido in pedidos)
 
 
-def processar_comandos_imediatos(ctx: Dict[str, Any], texto: str) -> bool:
-    normalizar = _get(ctx, "_normalizar_texto_com_apelidos")
-    refinar_contexto_mental = _get(ctx, "_refinar_contexto_mental")
-    contexto_mental_ja_refinado = bool(_get(ctx, "_contexto_mental_ja_refinado", False))
-    processar_comandos_em_cadeia = _get(ctx, "processar_comandos_em_cadeia")
-    executar_intencao = _get(ctx, "executar_intencao")
-    registrar_resultado_execucao = _get(ctx, "_registrar_resultado_execucao")
-    falar_falha_contextual = _get(ctx, "_falar_falha_contextual")
-    ws_loop = _get(ctx, "ws_loop")
-    resumir_pagina_ou_video = _get(ctx, "resumir_pagina_ou_video")
-    falar_com_lipsync = _get(ctx, "falar_com_lipsync")
-    extrair_acao_agendada = _get(ctx, "_extrair_acao_agendada_local")
-
-    t = normalizar((texto or "").strip()) if callable(normalizar) else str(texto or "").strip()
-    if not t:
-        return False
-
-    def _log(etapa: str, detalhe: str = "") -> None:
-        extra = f" | {detalhe}" if detalhe else ""
-        print(f"🧭 [IMEDIATO] {etapa}{extra}")
-
-    decisao_ja_avaliada = _get(ctx, "decisao_comando_ja_avaliada")
-    if callable(decisao_ja_avaliada):
-        try:
-            if decisao_ja_avaliada(t):
-                _log(
-                    "decisao_canonica_reutilizada",
-                    "segue para conversa sem rerotear",
-                )
-                return False
-        except Exception as erro:
-            _log("falha_guarda_decisao", type(erro).__name__)
-
-    # Perguntas sobre dados reais ("o que tem em trap?", "quais dispositivos
-    # estão disponíveis?") são classificadas corretamente como perguntas pelo
-    # árbitro conversacional. Ainda assim, elas precisam chegar aos leitores de
-    # habilidades. Fazemos isso antes da trava de modalidade, mas somente para
-    # intents explicitamente sem efeito colateral. Assim uma pergunta como
-    # "como apaga a pasta?" nunca ganha autorização de execução por esta rota.
-    resolver_consulta = _get(ctx, "_resolver_consulta_recurso_local")
-    executar_consulta_recurso = _get(ctx, "_executar_consulta_recurso_local")
-    parece_consulta = _get(ctx, "_texto_parece_consulta_operacional")
-    detectar_deterministico = _get(ctx, "detectar_intencao_deterministica")
-    try:
-        candidato_consulta = resolver_consulta(t) if callable(resolver_consulta) else None
-    except Exception as erro:
-        _log("falha_consulta_recurso", type(erro).__name__)
-        candidato_consulta = None
-    if not isinstance(candidato_consulta, dict) and callable(parece_consulta):
-        try:
-            eh_consulta_operacional = bool(parece_consulta(t))
-        except Exception:
-            eh_consulta_operacional = False
-        if eh_consulta_operacional and callable(detectar_deterministico):
-            candidato_consulta = detectar_deterministico(t)
-    if isinstance(candidato_consulta, dict):
-        intent_consulta = str(candidato_consulta.get("intent") or "").upper().strip()
-        if intent_consulta in INTENTS_SOMENTE_LEITURA:
-            _log("consulta_operacional", intent_consulta)
-            try:
-                executou = (
-                    bool(executar_consulta_recurso(candidato_consulta, t))
-                    if callable(executar_consulta_recurso)
-                    else False
-                )
-                if not executou:
-                    executou = bool(executar_intencao(candidato_consulta, t)) if callable(executar_intencao) else False
-            except Exception as erro:
-                _log("falha_execucao_consulta", type(erro).__name__)
-                if callable(falar_falha_contextual):
-                    falar_falha_contextual("execucao", t)
-                return True
-            if callable(registrar_resultado_execucao):
-                registrar_resultado_execucao(
-                    candidato_consulta, t, executou, origem="consulta_operacional",
-                )
-            # Mesmo uma consulta indisponível é um turno operacional concluído:
-            # o executor responsável explica a indisponibilidade sem deixar a
-            # LLM inventar uma resposta genérica.
-            return True
-
-    mente = _get(ctx, "mente_integrada_estado", {})
-    turno = mente.get("turno_atual") if isinstance(mente, dict) else {}
-    modalidade = str((turno or {}).get("modalidade_geral") or (turno or {}).get("modalidade") or "").lower()
-    if isinstance(turno, dict) and turno and (
-        turno.get("requer_esclarecimento")
-        or (
-            modalidade in {"conversa", "pergunta", "deliberacao", "correcao", "reacao"}
-            and not turno.get("autoriza_execucao")
-        )
-    ):
-        _log(
-            "bloqueado_pelo_arbitro",
-            str(turno.get("motivo_decisao") or turno.get("motivo") or modalidade),
-        )
-        return False
-
-    if texto_pede_resumo_pagina(t):
-        _log("resumir_pagina_direto")
-        if ws_loop and callable(resumir_pagina_ou_video):
-            asyncio.run_coroutine_threadsafe(resumir_pagina_ou_video(), ws_loop)
-        elif callable(falar_com_lipsync):
-            falar_com_lipsync("O navegador não está conectado agora, então não consigo ler essa página.", "irritada", 2)
-        return True
-
-    if texto_eh_conversa_social_sem_comando(ctx, t):
-        _log("ignorado_por_conversa")
-        return False
-
-    if callable(extrair_acao_agendada):
-        agendamento = extrair_acao_agendada(t)
-        if isinstance(agendamento, dict) and agendamento.get("texto_acao"):
-            resolver_contexto = _get(ctx, "_resolver_comando_contextual_forcado")
-            acao_base = resolver_contexto(str(agendamento.get("texto_acao") or "")) if callable(resolver_contexto) else None
-            if isinstance(acao_base, dict) and str(acao_base.get("intent") or "").strip():
-                acao_base = dict(acao_base)
-                acao_base.pop("_rota_contextual", None)
-                resultado_agenda = {
-                    "intent": "AGENDAR_ACAO",
-                    "params": {**agendamento, "acao_agendada": acao_base, "rota_original": "contextual"},
-                }
-                _log("agendamento_local", str(acao_base.get("intent") or ""))
-                executou = bool(executar_intencao(resultado_agenda, t)) if callable(executar_intencao) else False
-                if callable(registrar_resultado_execucao):
-                    registrar_resultado_execucao(resultado_agenda, t, executou, origem="agendamento_local")
-                return True
-
-    if callable(refinar_contexto_mental) and not contexto_mental_ja_refinado:
-        refinar_contexto_mental(t)
-
-    if callable(processar_comandos_em_cadeia) and processar_comandos_em_cadeia(t, "imediato"):
-        _log("comando_em_cadeia")
-        return True
-
-    try:
-        ok_pratico, nome_pratico = processar_execucao_pratica_precoce(ctx, t, origem="imediato")
-    except Exception as e:
-        print(f"⚠️ [IMEDIATO] falha na execução prática compartilhada: {e}")
-        return False
-    if ok_pratico:
-        _log(nome_pratico or "execucao_pratica")
-        return True
-
-    status_analise, resultado = analisar_intencao_com_porteiro(ctx, t)
-    if status_analise == "evitar":
-        _log("sem_sinal_pratico", "seguindo como conversa")
-        return False
-    if status_analise in {"vazio", "sem_analisador"}:
-        _log(status_analise)
-        return False
-    if status_analise == "falha":
-        _log("falha_entendimento_llm")
-        texto_tem_comando_explicito = _get(ctx, "_texto_tem_comando_explicito")
-        if not callable(texto_tem_comando_explicito) or not texto_tem_comando_explicito(t):
-            _log("falha_ignorada_sem_comando", "segue para conversa")
-            return False
-        if callable(falar_falha_contextual):
-            falar_falha_contextual("entendimento", t)
-        return True
-    if status_analise == "sem_intencao":
-        _log("sem_intencao_llm")
-        return False
-    if not isinstance(resultado, dict):
-        return False
-
-    if resultado.get("intent") == "RESUMIR_PAGINA":
-        _log("llm_resumir_pagina")
-        if ws_loop and callable(resumir_pagina_ou_video):
-            asyncio.run_coroutine_threadsafe(resumir_pagina_ou_video(), ws_loop)
-        elif callable(falar_com_lipsync):
-            falar_com_lipsync("O servidor WebSocket não está ativo. Não consigo resumir a página.", "irritada", 2)
-        return True
-
-    try:
-        _log("llm_intencao", str(resultado.get("intent") or ""))
-        executou = bool(executar_intencao(resultado, t)) if callable(executar_intencao) else False
-        if callable(registrar_resultado_execucao):
-            registrar_resultado_execucao(resultado, t, executou, origem="imediato_llm")
-        if str(resultado.get("intent") or "").upper().strip() == "SUGGEST_ACTION" and not executou:
-            _log("sugestao_invalida", "seguindo como conversa")
-            return False
-        return True
-    except Exception:
-        alvo_falha = str(
-            (resultado.get("params") or {}).get("nome_app")
-            or (resultado.get("params") or {}).get("nome_playlist")
-            or (resultado.get("params") or {}).get("query")
-            or (resultado.get("params") or {}).get("url")
-            or (resultado.get("params") or {}).get("alvo")
-            or ""
-        ).strip()
-        if callable(falar_falha_contextual):
-            falar_falha_contextual("execucao", t, detalhe=alvo_falha)
-        return True
-
-
 class ComandosImediatosRuntime:
     def __init__(
         self,
@@ -259,35 +64,70 @@ class ComandosImediatosRuntime:
         self.memoria_pessoas = memoria_pessoas
         self.iot = iot
 
-    def processar(self, texto: str, *, contexto_mental_ja_refinado: bool = False) -> bool:
-        ns = self.namespace_getter() or {}
-        nomes = (
-            "_normalizar_texto_com_apelidos", "_texto_social_curto",
-            "_texto_conversa_casual_sem_acao", "_refinar_contexto_mental",
-            "_texto_tem_comando_explicito", "_texto_conversa_contextual_sem_comando",
-            "_resolver_comando_janela_contextual_forcado", "_resolver_comando_midia_contextual_forcado",
-            "_resolver_comando_arquivo_contextual_forcado", "_resolver_comando_acao_geral_contextual_forcado",
-            "_resolver_comando_contextual_forcado", "_responder_contexto_janela_indisponivel",
-            "_resolver_repeticao_ultima_acao",
-            "_resolver_consulta_recurso_local", "_executar_consulta_recurso_local",
-            "_texto_parece_consulta_operacional",
-            "_extrair_acao_agendada_local",
-            "processar_comandos_em_cadeia", "processar_comando_deterministico",
-            "interpretar_comando_local_rapido", "analisar_intencao", "executar_intencao",
-            "decisao_comando_ja_avaliada",
-            "_registrar_resultado_execucao", "_registrar_autoaprimoramento",
-            "_falar_falha_contextual", "resumir_pagina_ou_video", "falar_com_lipsync",
-        )
-        contexto = {nome: ns.get(nome) for nome in nomes}
-        estado_runtime = ns.get("_estado_compartilhado_runtime")
-        contexto["mente_integrada_estado"] = getattr(estado_runtime, "mental", {})
-        contexto["_contexto_mental_ja_refinado"] = bool(contexto_mental_ja_refinado)
-        contexto["ws_loop"] = self.loop_getter()
-        return processar_comandos_imediatos(contexto, texto)
-
     def processar_prioritarios(self, texto: str) -> bool:
-        """Protege percepções objetivas antes dos fallbacks conversacionais."""
+        """Resolve habilidades pelo turno canônico antes da conversa livre."""
         ns = self.namespace_getter() or {}
+        estado_runtime = ns.get("_estado_compartilhado_runtime")
+        contexto_prioritario = dict(ns)
+        contexto_prioritario["mente_integrada_estado"] = getattr(
+            estado_runtime, "mental", {},
+        )
+
+        # Comandos internos iniciados por barra nunca são respostas naturais
+        # a uma oferta pendente. O diagnóstico precisa vencer clipboard,
+        # cooperação e conversa para que "/diagnostico mente" não seja lido
+        # como "sim, resuma o texto copiado".
+        detectar_diagnostico = ns.get("_detectar_pedido_diagnostico_mente")
+        if callable(detectar_diagnostico) and detectar_diagnostico(texto):
+            print("⚡ [PRIORIDADE:DIAGNÓSTICO] retrato da mente única")
+            mostrar_diagnostico = ns.get("_mostrar_diagnostico_mente")
+            if callable(mostrar_diagnostico):
+                mostrar_diagnostico()
+            return True
+
+        # Continuação operacional curta é resolvida diretamente pela fonte
+        # canônica antes de clipboard, cooperação ou LLM. O coordenador geral
+        # continua sendo a rota para todo o restante; esta barreira cobre
+        # apenas políticas aditivas explicitamente seguras, como manter a
+        # playlist e usar a nova faixa atual em ``essa também``.
+        if texto_e_continuacao_aditiva(texto):
+            continuidade_aditiva = resolver_continuacao_aditiva(
+                getattr(estado_runtime, "mental", {}),
+                texto=texto,
+            )
+            if continuidade_aditiva:
+                executar = ns.get("executar_intencao")
+                if callable(executar):
+                    try:
+                        executou = bool(executar(continuidade_aditiva, texto))
+                    except Exception as erro:
+                        print(
+                            "⚠️ [PRIORIDADE:CONTINUIDADE] falha isolada: "
+                            f"{type(erro).__name__}: {erro}"
+                        )
+                        return True
+                    registrar = ns.get("_registrar_resultado_execucao")
+                    if callable(registrar):
+                        registrar(
+                            continuidade_aditiva,
+                            texto,
+                            executou,
+                            origem="prioritario_continuidade_aditiva",
+                        )
+                    print(
+                        "⚡ [PRIORIDADE:CONTINUIDADE] "
+                        f"intent={continuidade_aditiva.get('intent')}"
+                    )
+                    return True
+
+        # Uma entrada de barra é um comando interno ou uma tentativa dele;
+        # nunca representa "sim" para uma pergunta aberta. Isso evita que um
+        # typo ou a saída concorrente do terminal entregue o clipboard para
+        # resumo por engano.
+        if str(texto or "").lstrip().startswith("/"):
+            print("⚠️ [COMANDO INTERNO] comando de barra não reconhecido")
+            return True
+
         orquestrador_cooperativo = ns.get("_orquestrador_cooperativo_runtime")
         if callable(getattr(orquestrador_cooperativo, "processar", None)):
             try:
@@ -310,6 +150,30 @@ class ComandosImediatosRuntime:
                     "⚠️ [ÁREA DE TRANSFERÊNCIA] resposta à oferta isolada: "
                     f"{type(erro).__name__}: {erro}"
                 )
+        # Estas habilidades eram atalhos do pré-fluxo. Agora pertencem à fase
+        # operacional única, depois da criação do turno e antes da conversa.
+        habilidades_prioritarias = (
+            processar_identidade_usuario,
+            processar_consulta_sistema_local,
+            processar_pedido_direcao_musical,
+            processar_sugestao_indireta,
+            processar_aprendizado_apelido,
+        )
+        for habilidade in habilidades_prioritarias:
+            try:
+                tratada, rota = habilidade(contexto_prioritario, texto)
+            except Exception as erro:
+                print(
+                    "⚠️ [PRIORIDADE:HABILIDADE] falha isolada em "
+                    f"{habilidade.__name__}: {type(erro).__name__}: {erro}"
+                )
+                continue
+            if tratada:
+                print(
+                    "⚡ [PRIORIDADE:HABILIDADE] "
+                    f"rota={rota or habilidade.__name__}"
+                )
+                return True
         memoria_pessoas = self.memoria_pessoas
         if callable(getattr(memoria_pessoas, "processar", None)):
             try:
@@ -414,7 +278,6 @@ class ComandosImediatosRuntime:
         detectar_iot = getattr(self.iot, "detectar", None)
         estado_runtime = ns.get("_estado_compartilhado_runtime")
         mente_iot = getattr(estado_runtime, "mental", {})
-        turno_prioritario = dict(mente_iot.get("turno_atual") or {}) if isinstance(mente_iot, dict) else {}
         candidato_iot = (
             detectar_iot(texto, mente_iot)
             if callable(detectar_iot)
@@ -478,13 +341,6 @@ class ComandosImediatosRuntime:
             if callable(processar_governanca):
                 processar_governanca(pedido_governanca)
             return True
-        detectar_diagnostico = ns.get("_detectar_pedido_diagnostico_mente")
-        if callable(detectar_diagnostico) and detectar_diagnostico(texto):
-            print("⚡ [PRIORIDADE:DIAGNÓSTICO] retrato da mente única")
-            mostrar_diagnostico = ns.get("_mostrar_diagnostico_mente")
-            if callable(mostrar_diagnostico):
-                mostrar_diagnostico()
-            return True
         detectar_saude = ns.get("detectar_comando_saude")
         if callable(detectar_saude) and detectar_saude(texto):
             print("⚡ [PRIORIDADE:SAÚDE] consulta objetiva do computador")
@@ -492,15 +348,22 @@ class ComandosImediatosRuntime:
             if callable(falar_saude):
                 falar_saude()
             return True
-        # O retrato congelado completa pronomes e elipses na resolução central.
-        # Não há mais uma rota particular para playlist aqui: música, arquivos,
-        # IoT, agenda e habilidades futuras passam pelo mesmo coordenador.
-        estado_runtime = ns.get("_estado_compartilhado_runtime")
-        mente = getattr(estado_runtime, "mental", {})
-        retrato = dict(mente.get("retrato_turno_atual") or {}) if isinstance(mente, dict) else {}
         if texto_pede_resumo_pagina(texto):
             print("⚡ [PRIORIDADE:RESUMO] leitura da página atual")
-            return self.processar(texto, contexto_mental_ja_refinado=False)
+            executar = ns.get("executar_intencao")
+            if not callable(executar):
+                return False
+            intencao_resumo = {"intent": "RESUMIR_PAGINA", "params": {}}
+            executou = bool(executar(intencao_resumo, texto))
+            registrar = ns.get("_registrar_resultado_execucao")
+            if callable(registrar):
+                registrar(
+                    intencao_resumo,
+                    texto,
+                    executou,
+                    origem="prioritario_resumo_pagina",
+                )
+            return True
 
         # Última barreira antes da conversa: usa o coordenador canônico inteiro,
         # não só o detector de frases literais. Esse único caminho combina
@@ -509,48 +372,11 @@ class ComandosImediatosRuntime:
         # aqui e outra no fluxo principal.
         resolver_natural = ns.get("resolver_comando_natural")
         try:
-            if callable(resolver_natural):
-                resolucao = resolver_natural(
-                    texto, "prioritario-linguagem-natural",
-                )
-            else:
-                # Compatibilidade para composições mínimas e clientes antigos.
-                # Na aplicação real o coordenador acima sempre existe, portanto
-                # esta rota não duplica a classificação de um turno normal.
-                if not bool(turno_prioritario.get("autoriza_execucao")):
-                    resolucao = (None, "")
-                    detectar_legado = None
-                else:
-                    detectar_legado = ns.get("detectar_intencao_deterministica")
-                legado = (
-                    detectar_legado(texto)
-                    if callable(detectar_legado)
-                    else None
-                )
-                intent_legado = str(
-                    (legado or {}).get("intent")
-                    if isinstance(legado, dict) else ""
-                ).upper().strip()
-                if intent_legado in {
-                    "DELETE_ITEM", "MOVE_ITEM", "FILE_TRANSACTION",
-                    "FILE_OPEN_RESULT",
-                }:
-                    resolver_arquivo = ns.get(
-                        "_resolver_comando_arquivo_contextual_forcado"
-                    )
-                    contextual = (
-                        resolver_arquivo(texto)
-                        if callable(resolver_arquivo)
-                        else None
-                    )
-                    if (
-                        isinstance(contextual, dict)
-                        and str(contextual.get("intent") or "").upper().strip()
-                        == intent_legado
-                    ):
-                        legado = contextual
-                legado = resolver_referencias_da_intencao(legado, retrato)
-                resolucao = (legado, "deterministico-compatibilidade")
+            resolucao = (
+                resolver_natural(texto, "prioritario-linguagem-natural")
+                if callable(resolver_natural)
+                else (None, "")
+            )
         except Exception as erro:
             print(
                 "⚠️ [PRIORIDADE:LINGUAGEM NATURAL] resolução falhou: "
@@ -590,52 +416,22 @@ class ComandosImediatosRuntime:
                 # A frase já foi compreendida; não a devolva à conversa para
                 # inventar incapacidade, sucesso ou um pedido de repetição.
                 return True
-            compat_playlist = (
-                rota == "deterministico-compatibilidade"
-                and str(
-                    retrato.get("operacao_explicita")
-                    or turno_prioritario.get("operacao_explicita")
-                    or ""
-                ).strip().casefold() == "playlist_adicionar"
-                and intent_detectada == "PLAYLIST_ADD"
-            )
             registrar = ns.get("_registrar_resultado_execucao")
             if callable(registrar):
-                origem_resultado = (
-                    "prioritario_playlist"
-                    if compat_playlist
-                    else "prioritario_comando_explicito"
-                    if rota == "deterministico-compatibilidade"
-                    else f"prioritario_linguagem_natural:{rota or 'coordenador'}"
-                )
                 registrar(
                     detectada,
                     texto,
                     executou,
-                    origem=origem_resultado,
+                    origem=f"prioritario_linguagem_natural:{rota or 'coordenador'}",
                 )
             autoaprimorar = ns.get("_registrar_autoaprimoramento")
             if executou and callable(autoaprimorar):
-                contexto_aprendizado = (
-                    "playlist explícita prioritária"
-                    if compat_playlist
-                    else "comando explícito prioritário"
-                    if rota == "deterministico-compatibilidade"
-                    else f"linguagem natural:{rota or 'coordenador'}"
-                )
-                origem_aprendizado = (
-                    "prioritario_playlist"
-                    if compat_playlist
-                    else "prioritario_comando_explicito"
-                    if rota == "deterministico-compatibilidade"
-                    else "prioritario_linguagem_natural"
-                )
                 autoaprimorar(
                     detectada,
                     texto,
                     True,
-                    contexto=contexto_aprendizado,
-                    origem=origem_aprendizado,
+                    contexto=f"linguagem natural:{rota or 'coordenador'}",
+                    origem="prioritario_linguagem_natural",
                 )
             # Resultado indisponível também é um turno tratado. O executor do
             # domínio é quem relata a falha real, sem fallback conversacional.

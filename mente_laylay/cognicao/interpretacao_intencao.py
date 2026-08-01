@@ -6,6 +6,8 @@ import json
 import time
 from typing import Any, Callable, Dict
 
+from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
+
 from mente_laylay.autonomia.coordenador_intencao import INTENTS_EXECUTAVEIS
 from mente_laylay.autonomia.fluxos_conversa import usar_modo_rapido_conversa
 from mente_laylay.autonomia.pre_fluxo_contextual import analisar_intencao_com_porteiro
@@ -18,7 +20,7 @@ from mente_laylay.especialistas.capacidades import INTENTS_SOMENTE_LEITURA
 
 
 PROMPT_INTERPRETACAO = """Você é o cérebro da assistente Laylay. Analise a frase do usuário e retorne apenas um JSON válido com:
-intent: (PLAYLIST_ADD, PLAYLIST_PLAY, PLAYLIST_LIST, PLAYLIST_DELETE, LAYLAY_PLAYLIST_LIST, LAYLAY_PLAYLIST_COPY, MEDIA_CONTROL, CANCELAR_ACAO, CLOSE_TAB, CLOSE_APP, APP_OPEN, OPEN_URL, MAXIMIZE_WINDOW, VOLUME, MUSIC_SEARCH, SITE_ENTER, SEARCH, WEATHER, RESUMIR_PAGINA, CREATE_FOLDER, CREATE_FILE, DELETE_ITEM, LISTAR_PLAYLISTS, TOCAR_PLAYLIST, TOCAR_PLAYLIST_SHUFFLE, AGENDAR_LEMBRETE, AGENDAR_ACAO, LISTAR_AGENDAMENTOS, CANCELAR_AGENDAMENTO, IOT_CONTROL, IOT_STATUS, IOT_LIST, SUGGEST_ACTION)
+intent: (PLAYLIST_ADD, PLAYLIST_PLAY, PLAYLIST_LIST, PLAYLIST_DELETE, PLAYLIST_MOVE, LAYLAY_PLAYLIST_LIST, LAYLAY_PLAYLIST_COPY, LEARNING_QUERY, MEDIA_CONTROL, CANCELAR_ACAO, CLOSE_TAB, CLOSE_APP, APP_OPEN, OPEN_URL, MAXIMIZE_WINDOW, VOLUME, MUSIC_SEARCH, SITE_ENTER, SEARCH, WEATHER, RESUMIR_PAGINA, CREATE_FOLDER, CREATE_FILE, DELETE_ITEM, LISTAR_PLAYLISTS, TOCAR_PLAYLIST, TOCAR_PLAYLIST_SHUFFLE, AGENDAR_LEMBRETE, AGENDAR_ACAO, LISTAR_AGENDAMENTOS, CANCELAR_AGENDAMENTO, IOT_CONTROL, IOT_STATUS, IOT_LIST, SUGGEST_ACTION)
 params: (dicionário com nome_playlist, nome_app, nivel_volume, query, acao, etc)
 Regras:
 - Retorne SOMENTE o JSON (sem markdown, sem texto extra).
@@ -54,6 +56,7 @@ Regras:
 - Se pedir as músicas/faixas que possui em um nome específico, use PLAYLIST_LIST com esse nome, mesmo que a palavra playlist tenha sido omitida. Não use MUSIC_SEARCH nem responda pela memória da conversa.
 - Se o contexto acabou de listar as playlists reais e o usuário perguntar 'o que tem em NOME', trate NOME como playlist somente quando ele constar em playlists_disponiveis; então use PLAYLIST_LIST. Nunca invente o que esse nome significa.
 - Se a frase mencionar playlist e pedir apagar, deletar, remover ou excluir, use PLAYLIST_DELETE.
+- Se pedir para mover ou transferir uma faixa de uma playlist para outra, use PLAYLIST_MOVE com params.musica, params.origem e params.destino. Não divida isso em apagar e adicionar.
 - Se a frase mencionar playlist, NUNCA retorne SEARCH.
 - Só use CANCELAR_ACAO para desistência explícita. Correções e conversa com 'não' não são cancelamento automático.
 - Mensagem curta pode continuar a ação recente somente quando o assunto atual ainda combina com ela.
@@ -89,6 +92,7 @@ Regras:
 - Só sugira quando a relação entre necessidade e ação for clara. Comentários, opiniões e desabafos não exigem sugestão forçada.
 - A ação sugerida deve usar um intent executável existente; nunca invente comandos ou afirme que já executou.
 - Pedido sobre playlists da própria Laylay usa LAYLAY_PLAYLIST_LIST ou LAYLAY_PLAYLIST_COPY. "Minhas playlists" pertence ao usuário; "suas playlists", "playlists que você criou/montou" e "playlists da Laylay" pertencem à Laylay.
+- Pergunta sobre o que a Laylay aprendeu, guardou ou lembra do que o usuário ensinou usa LEARNING_QUERY. Pergunta abstrata sobre como IA aprende continua sendo conversa.
 - As playlists próprias são curadorias locais montadas com playlists e histórico confirmados. Nunca invente uma curadoria, faixa ou conteúdo ausente do retrato real, e nunca toque ou copie uma faixa sem pedido atual.
 - SEARCH é para perguntas factuais que realmente exigem pesquisa.
 - Perguntar se você consegue executar uma habilidade é conversa sobre capacidade: retorne NONE e explique depois pelo mapa de habilidades; não execute a habilidade.
@@ -98,10 +102,12 @@ Regras:
 Exemplos:
 Usuário: 'coloca um rock' -> {"intent":"MUSIC_SEARCH","params":{"query":"rock"}}
 Usuário: 'coloca essa música na playlist kamai' -> {"intent":"PLAYLIST_ADD","params":{"nome_playlist":"kamaitachi"}}
+Usuário: 'move Duality da playlist rock para a playlist treino' -> {"intent":"PLAYLIST_MOVE","params":{"musica":"Duality","origem":"rock","destino":"treino"}}
 Usuário: 'coloca a brisa da madrugada' -> {"intent":"PLAYLIST_PLAY","params":{"nome_playlist":"brisa da madrugada"}}
 Usuário: 'quais músicas eu tenho em kamaitachi' -> {"intent":"PLAYLIST_LIST","params":{"nome_playlist":"kamaitachi"}}
 Usuário: 'quais playlists você criou?' -> {"intent":"LAYLAY_PLAYLIST_LIST","params":{"nome_playlist":""}}
 Usuário: 'quais são minhas playlists?' -> {"intent":"PLAYLIST_LIST","params":{"nome_playlist":""}}
+Usuário: 'o que você aprendeu comigo?' -> {"intent":"LEARNING_QUERY","params":{"limit":3}}
 Contexto: 'kamaitachi' consta em playlists_disponiveis; usuário: 'o que tem em kamaitachi?' -> {"intent":"PLAYLIST_LIST","params":{"nome_playlist":"kamaitachi"}}
 Contexto: playlist ativa 'kamaitachi'; usuário: 'quais músicas tem nela?' -> {"intent":"PLAYLIST_LIST","params":{"nome_playlist":"kamaitachi"}}
 Contexto: dispositivo ou aplicativo ativo; usuário: 'quais músicas tem nela?' -> {"intent":"NONE","params":{}}
@@ -282,9 +288,11 @@ class InterpretacaoIntencaoRuntime:
         self,
         *,
         contexto_getter: Callable[[], Dict[str, Any]],
+        modelo_llm: Any = None,
         log: Callable[..., Any] = print,
     ) -> None:
         self._contexto_getter = contexto_getter
+        self._enviar_mensagem = resolver_enviador_modelo(modelo_llm=modelo_llm)
         self._log = log
         self._cache_analise: Dict[str, tuple[float, Dict[str, Any] | None]] = {}
 
@@ -411,7 +419,9 @@ class InterpretacaoIntencaoRuntime:
                 ),
             },
         }
-        enviar = ctx.get("enviar_mensagem")
+        enviar = self._enviar_mensagem or resolver_enviador_modelo(
+            enviar_mensagem=ctx.get("enviar_mensagem")
+        )
         if not callable(enviar):
             return None
         intents_vivas = ", ".join(sorted(INTENTS_EXECUTAVEIS | {"NONE"}))
@@ -482,6 +492,7 @@ class InterpretacaoIntencaoRuntime:
             "PLAYLIST_ADD",
             "PLAYLIST_PLAY",
             "PLAYLIST_LIST",
+            "PLAYLIST_MOVE",
             "TOCAR_PLAYLIST",
             "TOCAR_PLAYLIST_SHUFFLE",
         }
@@ -577,9 +588,14 @@ class InterpretacaoIntencaoRuntime:
 def criar_interpretacao_intencao_runtime(
     *,
     contexto_getter: Callable[[], Dict[str, Any]],
+    modelo_llm: Any = None,
     log: Callable[..., Any] = print,
 ) -> InterpretacaoIntencaoRuntime:
-    return InterpretacaoIntencaoRuntime(contexto_getter=contexto_getter, log=log)
+    return InterpretacaoIntencaoRuntime(
+        contexto_getter=contexto_getter,
+        modelo_llm=modelo_llm,
+        log=log,
+    )
 
 
 def criar_adaptadores_conversacionais_runtime(

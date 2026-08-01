@@ -8,6 +8,12 @@ from mente_laylay.integracao.composicao_contextos_ia import (
     _EXECUCAO,
     _FINALIZACAO_GRUPOS,
 )
+from mente_laylay.integracao.registro_conversa_llm import (
+    PedidoModelo,
+    ResultadoModelo,
+)
+from tests.fakes_navegador import NavegadorLeituraFake, NavegadorOperacoesFake
+from tests.fakes_visao_jogo import VisaoJogoAnaliseFake, VisaoJogoLeituraFake
 
 
 class _MusicaLeituraFake:
@@ -23,12 +29,38 @@ class _MusicaLeituraFake:
     def diagnostico(self): return {"somente_leitura": True}
 
 
+class _MusicaOperacoesFake:
+    def __init__(self, estado=None): self.estado_mutavel = estado if estado is not None else {}
+    def apagar_playlist(self, _nome): return True
+    def adicionar_faixa(self, *_args): return True
+    def mover_faixa(self, origem, destino, _musica=""): return {"ok": True, "origem": origem, "destino": destino}
+    def tocar_playlist(self, _nome): return True
+    def preparar_shuffle(self, _nome): return {"url": "https://youtube.com/1"}
+    def primeira_url(self, _nome): return "https://youtube.com/1"
+    def avancar_proxima(self): return True
+    def voltar_anterior(self): return True
+    def definir_ultima_playlist(self, nome): self.estado_mutavel["ultima_playlist"] = nome
+    def definir_ultima_url(self, url): self.estado_mutavel["ultima_url"] = url
+    def faixa_atual(self): return {}
+    def copiar_curadoria(self, _origem, _musica, _destino): return {"ok": True}
+    def estado(self): return {"playlist_ativa": ""}
+    def diagnostico(self): return {"mutacao_disponivel": True}
+
+
+class _ModeloFake:
+    def executar(self, pedido: PedidoModelo) -> ResultadoModelo:
+        assert isinstance(pedido, PedidoModelo)
+        return ResultadoModelo("resposta tipada", True)
+
+    def diagnostico(self):
+        return {"disponivel": True, "autoriza_execucao": False}
+
+
 def _servicos_completos():
     nomes = {
         "_resumo_mente_integrada_para_prompt",
         "get_status_humor_prompt",
         "_executar_captura_tela_intent",
-        "_executar_visao_jogo_intent",
     }
     nomes.update(_EXECUCAO)
     for grupo in (*_DISPATCHER_GRUPOS.values(), *_FINALIZACAO_GRUPOS.values()):
@@ -63,7 +95,17 @@ def _montar():
             return retorno
         return criar, retorno
 
-    prompt_factory, prompt = factory("prompt")
+    class PromptFake:
+        def preparar_pacote(self, _texto):
+            from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
+            return PacotePrompt(())
+        def diagnostico(self): return {"disponivel": True}
+
+    prompt = PromptFake()
+
+    def prompt_factory(**kwargs):
+        capturado["prompt"] = kwargs
+        return prompt
     exec_factory, execucao = factory("execucao")
     dispatcher_factory, dispatcher = factory("dispatcher")
     finalizacao_factory, finalizacao = factory("finalizacao")
@@ -76,14 +118,19 @@ def _montar():
         mente_getter=lambda: {"turno_atual": estado["turno_atual"]},
         aba_getter=lambda: estado["aba"],
         musica_leitura=_MusicaLeituraFake(),
+        musica_operacoes=_MusicaOperacoesFake(musica),
+        navegador_leitura=NavegadorLeituraFake(),
+        navegador_operacoes=NavegadorOperacoesFake(),
+        visao_jogo_leitura=VisaoJogoLeituraFake(),
+        visao_jogo_analise=VisaoJogoAnaliseFake(),
+        modelo_llm=_ModeloFake(),
         gmail_cache_getter=lambda: estado["gmail"],
         falhas_getter=lambda: estado["falhas"],
-        musica_estado_set=lambda chave, valor: musica.__setitem__(chave, valor),
         verificar_fala_turno=lambda *_args, **_kwargs: True,
         executar_conteudo_cb=lambda *_args, **_kwargs: False,
-        executar_legado_cb=lambda *_args, **_kwargs: False,
         mapa_habilidades_prompt=lambda texto, **_kwargs: f"habilidades:{texto}",
         mapa_recursos_prompt=lambda texto: f"recursos:{texto}",
+        registrar_tamanho_prompt=lambda *_args: None,
         prompt_factory=prompt_factory,
         exec_factory=exec_factory,
         dispatcher_factory=dispatcher_factory,
@@ -96,11 +143,16 @@ def _montar():
 def test_composicao_cria_quatro_contextos_e_descarta_servicos_externos() -> None:
     runtime, capturado, _, _, retornos = _montar()
 
-    assert (runtime.prompt, runtime.execucao, runtime.dispatcher, runtime.finalizacao) == retornos
+    prompt, execucao, dispatcher, finalizacao = retornos
+    assert runtime.prompt.servico is prompt
+    assert (runtime.execucao, runtime.dispatcher, runtime.finalizacao) == (
+        execucao, dispatcher, finalizacao,
+    )
     assert "SEGREDO_FORA_DO_CONTEXTO" not in runtime.servicos_registrados
     assert capturado["prompt"]["base_system_prompt"] == "prompt base"
     assert callable(capturado["prompt"]["mapa_habilidades_prompt"])
     assert callable(capturado["prompt"]["mapa_recursos_prompt"])
+    assert callable(capturado["prompt"]["registrar_tamanho_prompt"])
     assert capturado["prompt"]["formatar_playlists"]() == (
         "Playlists salvas: 'rock' (0)."
     )
@@ -109,11 +161,20 @@ def test_composicao_cria_quatro_contextos_e_descarta_servicos_externos() -> None
         "rock": 0
     }
     assert "_listar_playlists_salvas" not in contexto_exec
+    assert "_registro_visao_jogo_leitura_runtime" in contexto_exec
+    assert "_registro_visao_jogo_analise_runtime" in contexto_exec
+    assert "_executar_visao_jogo_intent" not in contexto_exec
     assert "_formatar_playlists_para_prompt" not in runtime.servicos_registrados
     assert capturado["dispatcher"]["arquivos"]["executar_intencao"] is not None
     assert capturado["finalizacao"]["autoaprimoramento"][
         "MAX_TENTATIVAS_AUTOCORRECAO"
     ] == 2
+    resultado = capturado["finalizacao"]["ia"]["modelo_llm"].executar(
+        PedidoModelo.criar([], com_tools=False)
+    )
+    assert resultado.texto == "resposta tipada"
+    assert "enviar_mensagem" not in capturado["finalizacao"]["ia"]
+    assert "enviar_mensagem" not in runtime.servicos_registrados
 
 
 def test_estados_dos_contextos_continuam_vivos() -> None:
@@ -135,7 +196,7 @@ def test_estados_dos_contextos_continuam_vivos() -> None:
 def test_contexto_execucao_mantem_setter_musical_e_captura_visual_segura() -> None:
     _, capturado, _, musica, _ = _montar()
     contexto_exec = capturado["execucao"]["contexto_getter"]()
-    contexto_exec["set_ultima_playlist"]("rock")
+    contexto_exec["_registro_musica_operacoes_runtime"].definir_ultima_playlist("rock")
     assert musica == {"ultima_playlist": "rock"}
 
     capturar = capturado["dispatcher"]["percepcao"]["_executar_captura_tela_intent"]
@@ -143,6 +204,10 @@ def test_contexto_execucao_mantem_setter_musical_e_captura_visual_segura() -> No
     assert nome == "_executar_captura_tela_intent"
     assert args == ("tela",)
     assert kwargs == {"registrar_memoria": True}
+    percepcao = capturado["dispatcher"]["percepcao"]
+    assert "_registro_visao_jogo_leitura_runtime" in percepcao
+    assert "_registro_visao_jogo_analise_runtime" in percepcao
+    assert "_executar_visao_jogo_intent" not in percepcao
 
 
 def test_composicao_falha_cedo_quando_servico_obrigatorio_esta_ausente() -> None:
@@ -157,11 +222,15 @@ def test_composicao_falha_cedo_quando_servico_obrigatorio_esta_ausente() -> None
             conversa_getter=lambda _nome, padrao=None: padrao,
             mente_getter=lambda: {},
             aba_getter=lambda: ("", ""),
-            musica_leitura=_MusicaLeituraFake(),
+                musica_leitura=_MusicaLeituraFake(),
+                musica_operacoes=_MusicaOperacoesFake(),
+                navegador_leitura=NavegadorLeituraFake(),
+                navegador_operacoes=NavegadorOperacoesFake(),
+                visao_jogo_leitura=VisaoJogoLeituraFake(),
+                visao_jogo_analise=VisaoJogoAnaliseFake(),
+                modelo_llm=_ModeloFake(),
             gmail_cache_getter=lambda: [],
             falhas_getter=lambda: {},
-            musica_estado_set=lambda *_: None,
             verificar_fala_turno=lambda *_: True,
             executar_conteudo_cb=lambda *_: False,
-            executar_legado_cb=lambda *_: False,
         )

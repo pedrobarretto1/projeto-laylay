@@ -79,8 +79,7 @@ def _abrir_url_mapeada(
     *,
     permitir_foco: bool = False,
 ) -> bool:
-    enviar_chrome = _get(ctx, "enviar_comando_chrome")
-    validar_enviar = _get(ctx, "validar_e_enviar_comando")
+    navegador_operacoes = _get(ctx, "_registro_navegador_operacoes_runtime")
     url = str(url or "").strip()
     if not url:
         return False
@@ -88,10 +87,10 @@ def _abrir_url_mapeada(
         url = "https://" + url
     _log("acao", f"{nome} mapeado como site -> abrir_url {url}")
     try:
-        if callable(enviar_chrome):
-            return bool(enviar_chrome("open_url", {"url": url, "permitir_foco": permitir_foco}))
-        if callable(validar_enviar):
-            return bool(validar_enviar("open_url", {"url": url, "permitir_foco": permitir_foco}))
+        if navegador_operacoes is not None:
+            return bool(navegador_operacoes.abrir_url(
+                url, permitir_foco=permitir_foco,
+            ))
     except Exception as e:
         _log("acao", f"{nome} falha ao abrir site mapeado: {e}")
         return False

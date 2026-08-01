@@ -184,6 +184,38 @@ def corrigir_erros_portugues_operacionais(
             normalizado = re.sub(padrao, correto, normalizado, flags=re.IGNORECASE)
             eventos.append({"de": errado, "para": correto, "tipo": "exata"})
 
+    # ``coloca essa música a playlist X`` é uma forma oral comum de
+    # ``... na/à playlist X``. A correção é estreita: exige verbo de adição,
+    # referência musical e a palavra playlist. Assim, o nome do destino fica
+    # opaco e uma frase casual não ganha autorização operacional por engano.
+    if (
+        re.search(
+            r"\b(?:coloca|coloque|salva|salve|guarda|guarde|adiciona|adicione|add)\b",
+            normalizado,
+            flags=re.IGNORECASE,
+        )
+        and re.search(
+            r"\b(?:musica|música|faixa|canção|cancao)\b",
+            normalizado,
+            flags=re.IGNORECASE,
+        )
+        and re.search(r"\ba\s+playlist\b", normalizado, flags=re.IGNORECASE)
+    ):
+        corrigido = re.sub(
+            r"\ba\s+(playlist\b)",
+            r"na \1",
+            normalizado,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+        if corrigido != normalizado:
+            normalizado = corrigido
+            eventos.append({
+                "de": "a playlist",
+                "para": "na playlist",
+                "tipo": "preposicao_operacional",
+            })
+
     tokens_exatos = normalizado.split()
     determinantes = {
         "a", "o", "as", "os", "um", "uma", "uns", "umas", "meu", "minha",
@@ -303,6 +335,18 @@ def normalizar_texto(texto: str) -> str:
 def normalizar_texto_curto(texto: str) -> str:
     """Normaliza caixa, acentos e espaços sem remover pontuação contextual."""
     bruto = str(texto or "").lower()
+    sem_acento = unicodedata.normalize("NFKD", bruto)
+    sem_acento = "".join(ch for ch in sem_acento if not unicodedata.combining(ch))
+    return re.sub(r"\s+", " ", sem_acento).strip()
+
+
+def normalizar_texto_basico(texto: str) -> str:
+    """Normaliza caixa Unicode, acentos e espaços, preservando pontuação.
+
+    É o contrato básico compartilhado. Domínios que removem ou preservam
+    conjuntos específicos de símbolos devem manter normalizadores próprios.
+    """
+    bruto = str(texto or "").casefold()
     sem_acento = unicodedata.normalize("NFKD", bruto)
     sem_acento = "".join(ch for ch in sem_acento if not unicodedata.combining(ch))
     return re.sub(r"\s+", " ", sem_acento).strip()

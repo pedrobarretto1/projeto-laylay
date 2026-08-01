@@ -25,6 +25,8 @@ class MemoriaLaylay:
         self._log = log
         self._pasta_memoria = os.path.abspath(pasta_memoria)
         self._lock = threading.RLock()
+        self._ultima_tentativa_resumo_em: datetime | None = None
+        self._intervalo_retentativa_s = 30.0
         self.data_atual = self._agora().strftime("%d-%m-%Y")
         self.arquivo_diario = self._caminho_do_dia(self.data_atual)
         self.carregar_resumo_diario()
@@ -109,13 +111,22 @@ class MemoriaLaylay:
             # Materializa o turno antes de chamar a LLM. Assim, encerramento,
             # timeout ou queda de energia não apagam o lote ainda não resumido.
             self.salvar_resumo_diario()
-            if self.contador % 5 == 0:
+            if self.contador >= 5:
                 self.atualizar_resumo_diario()
 
     def atualizar_resumo_diario(self) -> None:
         with self._lock:
             if not self.historico_recente:
                 return
+            agora = self._agora()
+            if self._ultima_tentativa_resumo_em is not None:
+                try:
+                    decorrido = (agora - self._ultima_tentativa_resumo_em).total_seconds()
+                except Exception:
+                    decorrido = self._intervalo_retentativa_s
+                if decorrido < self._intervalo_retentativa_s:
+                    return
+            self._ultima_tentativa_resumo_em = agora
             self._log(f"🚀 [MEMÓRIA] Gerando resumo das últimas {len(self.historico_recente)} interações...")
             texto_para_resumir = "\n".join(self.historico_recente)
             prompt = (
@@ -141,4 +152,5 @@ class MemoriaLaylay:
                 return
             self.resumo_do_dia = novo_resumo
             self.historico_recente = []
+            self.contador = 0
             self.salvar_resumo_diario()

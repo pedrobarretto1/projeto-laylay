@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+from mente_laylay.memoria_mental.resultado_acao import (
+    ResultadoAcao,
+    STATUS_RESULTADO_JA_SATISFEITO,
+)
 from mente_laylay.personalidade.fala_operacional import estilizar_fala_operacional
 
 
@@ -30,6 +33,8 @@ def classificar_resultado(resultado: ResultadoAcao) -> str:
     status = str(resultado.status or "").strip().casefold()
     if status in STATUS_PENDENTE or "confirmacao" in status and "confirmado" not in status:
         return "pendente"
+    if status in STATUS_RESULTADO_JA_SATISFEITO and resultado.confirmado is True:
+        return "sem_acao"
     if resultado.executou is False or resultado.confirmado is False or status in STATUS_FALHA or any(
         termo in status for termo in ("falha", "erro", "indisponivel", "nao_encontrado", "bloqueado")
     ):
@@ -62,6 +67,13 @@ def _fala_compativel(fala: str, classe: str) -> bool:
         return False
     if classe == "sucesso" and any(s in base for s in sinais_falha):
         return False
+    if classe == "sem_acao":
+        sinais_sem_acao = (
+            "já estava", "ja estava", "já está", "ja esta", "já tava", "ja tava", "não mexi",
+            "nao mexi", "mantive", "nem precisei", "não vou", "nao vou",
+        )
+        if not any(s in base for s in sinais_sem_acao):
+            return False
     if classe == "pendente":
         sinais_pendencia = ("confirma", "confirmação", "confirmacao", "preciso que", "quer que eu", "posso ")
         if not any(s in base for s in sinais_pendencia):
@@ -105,6 +117,14 @@ def _ancora_resultado(resultado: ResultadoAcao, classe: str) -> str:
         return f"Ainda não mexi em {objeto}; falta sua confirmação."
     if classe == "incerto":
         return f"Enviei o comando para {objeto}, mas não consegui confirmar o resultado."
+    if classe == "sem_acao":
+        if status in {"ja_aberto_focado", "site_ja_aberto_focado"}:
+            return f"{objeto.capitalize()} já está aberto e em foco; não repeti a abertura."
+        if status == "ja_estava_ligado":
+            return f"{objeto.capitalize()} já está ligado; não repeti o comando."
+        if status == "ja_estava_desligado":
+            return f"{objeto.capitalize()} já está desligado; não repeti o comando."
+        return f"{objeto.capitalize()} já estava como você pediu; não repeti a ação."
 
     if status in {"ligado", "ja_estava_ligado"}:
         return f"{objeto.capitalize()} está ligado; confirmei o estado."
@@ -148,6 +168,10 @@ def _garantir_resultado_explicito(fala: str, resultado: ResultadoAcao, classe: s
             "ainda está inicializando", "ainda esta inicializando", "ainda não tenho", "ainda nao tenho",
             "mandei ", "pedi ", "comando de ", "comando enviado", "enviei o comando",
         ),
+        "sem_acao": (
+            "já estava", "ja estava", "já está", "ja esta", "já tava", "ja tava", "não mexi", "nao mexi",
+            "não repeti", "nao repeti", "mantive", "nem precisei", "não vou", "nao vou",
+        ),
     }
     if any(sinal in base for sinal in sinais.get(classe, ())):
         return texto
@@ -170,6 +194,8 @@ def planejar_resposta_acao(
     if not fala or not _fala_compativel(fala, classe):
         if classe == "sucesso":
             fala = f"Concluí a ação em {alvo} e confirmei o resultado."
+        elif classe == "sem_acao":
+            fala = _ancora_resultado(resultado, classe)
         elif classe == "falha":
             fala = f"Não consegui concluir a ação em {alvo}."
         elif classe == "pendente":

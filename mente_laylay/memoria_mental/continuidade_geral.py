@@ -34,6 +34,7 @@ _INTENTS_DOMINIO = {
     "OPEN_URL": "site", "CLOSE_TAB": "site", "SITE_ENTER": "site", "SEARCH": "site",
     "MUSIC_SEARCH": "musica", "MEDIA_CONTROL": "musica", "PLAYLIST_PLAY": "musica",
     "PLAYLIST_ADD": "musica", "PLAYLIST_LIST": "musica", "TOCAR_PLAYLIST": "musica",
+    "PLAYLIST_MOVE": "musica",
     "TOCAR_PLAYLIST_SHUFFLE": "musica",
     "LAYLAY_PLAYLIST_LIST": "playlist_laylay",
     "LAYLAY_PLAYLIST_COPY": "playlist_laylay",
@@ -43,6 +44,7 @@ _INTENTS_DOMINIO = {
     "FILE_SEARCH": "arquivos", "FILE_OPEN_RESULT": "arquivos",
     "AGENDAR_LEMBRETE": "agenda", "AGENDAR_ACAO": "agenda", "LISTAR_AGENDAMENTOS": "agenda",
     "CANCELAR_AGENDAMENTO": "agenda",
+    "LEARNING_QUERY": "memoria",
     "GAME_VISION": "jogo", "GAME_VISION_CONTINUE": "jogo",
     "EMAIL_READ": "email", "EMAIL_SYNC": "email", "NOTIFICATIONS": "email",
     "VOLUME": "sistema", "WEATHER": "clima",
@@ -64,6 +66,7 @@ _TIPOS_DOMINIO = {
     "caixa_entrada": "caixa_entrada", "nota": "caixa_entrada", "anotacao": "caixa_entrada",
     "conversacional": "conversa", "opiniao": "conversa", "opinião": "conversa",
     "cooperacao": "cooperacao", "cooperação": "cooperacao",
+    "memoria": "memoria", "memória": "memoria", "aprendizado": "memoria",
 }
 
 
@@ -125,7 +128,11 @@ def resolver_continuacao_aditiva(
     for dominio, bruto in dominios.items():
         item = dict(bruto or {})
         intent = str(item.get("intent") or "").upper().strip()
-        if intent not in _INTENTS_DOMINIO or not item.get("ativa", True):
+        # Uma elipse aditiva só pode herdar operações que declararam uma
+        # política própria. Filtrar aqui é importante: uma percepção ou ação
+        # mais nova de outro domínio não deve esconder o último PLAYLIST_ADD
+        # válido e transformar "essa também" em conversa livre.
+        if intent not in _POLITICAS_CONTINUACAO_ADITIVA or not item.get("ativa", True):
             continue
         try:
             idade = agora - float(item.get("ts") or 0.0)
@@ -140,9 +147,7 @@ def resolver_continuacao_aditiva(
         return {}
     selecionado = max(candidatos, key=lambda item: float(item.get("ts") or 0.0))
     intent = str(selecionado.get("intent") or "").upper().strip()
-    politica = _POLITICAS_CONTINUACAO_ADITIVA.get(intent)
-    if not politica:
-        return {}
+    politica = _POLITICAS_CONTINUACAO_ADITIVA[intent]
     status = str(selecionado.get("status") or "").casefold().strip()
     if not status or any(marcador in status for marcador in (
         "falha", "erro", "indispon", "nao_encontr", "não_encontr",

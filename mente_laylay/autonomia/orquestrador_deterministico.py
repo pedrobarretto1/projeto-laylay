@@ -21,11 +21,13 @@ from mente_laylay.autonomia.roteador_deterministico import (
     detectar_abrir_app_ou_site,
     detectar_confirmacao_porteiro,
     detectar_clima,
+    detectar_consulta_aprendizados,
     detectar_email_notificacao_briefing,
     detectar_fechar_alvo,
     detectar_janela_contextual,
     detectar_janela_explicita,
     detectar_musica_ou_playlist_direta,
+    detectar_movimento_playlist,
     detectar_organizacao_desktop,
     detectar_playlist_contextual_musica_atual,
     detectar_playlist_laylay,
@@ -147,6 +149,13 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     if isinstance(consulta_recurso, dict):
         return consulta_recurso
 
+    consulta_aprendizados = detectar_consulta_aprendizados(
+        texto_normalizado_previo,
+        params_cb=lambda **kwargs: kwargs,
+    )
+    if consulta_aprendizados:
+        return consulta_aprendizados
+
     preparo = preparar_entrada_deterministica(
         texto,
         normalizar_texto=_get(ctx, "normalizar_texto"),
@@ -230,6 +239,11 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
             estado_mental=mente_atual,
             normalizar_texto=_get(ctx, "normalizar_texto"),
         ) if selecao_resultado_arquivo else None,
+        lambda: detectar_movimento_playlist(
+            t_sem_destino,
+            params_cb=params,
+            limpar_nome_playlist=_get(ctx, "limpar_nome_playlist"),
+        ),
         lambda: detectar_playlist_contextual_musica_atual(
             t_sem_destino,
             params_cb=params,
@@ -378,7 +392,8 @@ class DeteccaoDeterministicaRuntime:
             "detectar_sugestao_indireta": ns.get("_detectar_sugestao_indireta"),
             "modo_jogo_contexto": getattr(ns.get("_modo_jogo_runtime"), "contexto_atual", None),
             "visao_jogo_tem_analise_recente": getattr(
-                ns.get("_visao_jogo_runtime"), "tem_analise_recente", None,
+                ns.get("_registro_visao_jogo_leitura_runtime"),
+                "tem_analise_recente", None,
             ),
         })
         return detectar_intencao_deterministica_mente(texto, contexto)

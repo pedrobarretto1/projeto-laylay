@@ -27,6 +27,7 @@ class _IoTNulo:
 
 def _com_memoria(servicos=None):
     resultado = dict(servicos or {})
+    resultado.setdefault("resolver_comando_natural", lambda _texto, _origem: (None, ""))
     resultado["_registro_memoria_pessoas_runtime"] = registrar_memoria_pessoas(
         _MemoriaPessoasNula()
     )
@@ -141,11 +142,13 @@ def test_registros_expostos_nao_incluem_nomes_estranhos() -> None:
     )
 
     assert runtime.servicos_deteccao_registrados == ("_texto_social_curto",)
-    assert runtime.servicos_interacao_registrados == ("_texto_social_curto",)
+    assert runtime.servicos_interacao_registrados == (
+        "_texto_social_curto", "resolver_comando_natural",
+    )
     assert runtime.servicos_tipados_registrados == ("iot", "memoria_pessoas")
 
 
-def test_composicao_entrega_consulta_natural_ao_runtime_imediato() -> None:
+def test_composicao_entrega_consulta_natural_ao_runtime_prioritario() -> None:
     executadas = []
 
     class Estado:
@@ -159,12 +162,9 @@ def test_composicao_entrega_consulta_natural_ao_runtime_imediato() -> None:
 
     servicos = _com_memoria({
         "_normalizar_texto_com_apelidos": lambda texto: str(texto).casefold(),
-        "_resolver_consulta_recurso_local": lambda _texto: {
-            "intent": "PLAYLIST_LIST",
-            "params": {"nome_playlist": "trap"},
-        },
-        "_texto_parece_consulta_operacional": lambda _texto: True,
-        "detectar_intencao_deterministica": lambda _texto: None,
+        "resolver_comando_natural": lambda _texto, _origem: ({
+            "intent": "PLAYLIST_LIST", "params": {"nome_playlist": "trap"},
+        }, "recurso"),
         "executar_intencao": lambda intent, _texto: executadas.append(intent) or True,
         "_estado_compartilhado_runtime": Estado(),
     })
@@ -180,13 +180,12 @@ def test_composicao_entrega_consulta_natural_ao_runtime_imediato() -> None:
         estado_chat_getter=dict, memoria_sqlite=None,
     )
 
-    assert comandos.processar("o que tem em trap?") is True
+    assert comandos.processar_prioritarios("o que tem em trap?") is True
     assert executadas == [{
         "intent": "PLAYLIST_LIST",
         "params": {"nome_playlist": "trap"},
     }]
-    assert "_resolver_consulta_recurso_local" in runtime.servicos_interacao_registrados
-    assert "_texto_parece_consulta_operacional" in runtime.servicos_interacao_registrados
+    assert "resolver_comando_natural" in runtime.servicos_interacao_registrados
 
 
 def test_composicao_entrega_caixa_de_entrada_ao_fluxo_prioritario() -> None:
@@ -276,6 +275,21 @@ def test_composicao_rejeita_contrato_iot_incompleto() -> None:
     servicos["_registro_iot_runtime"] = object()
 
     with pytest.raises(RuntimeError, match="operações ausentes"):
+        runtime.conectar(
+            servicos=servicos, loop_getter=lambda: None,
+            estado_chat_getter=dict, memoria_sqlite=None,
+        )
+
+
+def test_composicao_falha_cedo_sem_coordenador_canonico() -> None:
+    runtime = ComposicaoEntradaInteracaoRuntime(
+        servicos={}, estado_mental_getter=dict, sites_diretos={}, apps_map={},
+        deteccao_factory=lambda **_kwargs: object(),
+    )
+    servicos = _com_memoria()
+    servicos.pop("resolver_comando_natural")
+
+    with pytest.raises(RuntimeError, match="coordenador canônico"):
         runtime.conectar(
             servicos=servicos, loop_getter=lambda: None,
             estado_chat_getter=dict, memoria_sqlite=None,

@@ -366,6 +366,20 @@ class MenteUnicaTests(unittest.TestCase):
         plano = planejar_resposta_acao(resultado, "Pulando pra seguinte.")
         self.assertIn("não consegui confirmar", plano.fala)
 
+    def test_estado_ja_satisfeito_e_confirmado_sem_fingir_nova_execucao(self) -> None:
+        resultado = normalizar_resultado_acao(
+            {"intent": "APP_OPEN", "params": {"nome_app": "opera"}},
+            executou=False,
+            status="ja_aberto_focado",
+        )
+
+        self.assertFalse(resultado.executou)
+        self.assertTrue(resultado.confirmado)
+        self.assertEqual(classificar_resultado(resultado), "sem_acao")
+        plano = planejar_resposta_acao(resultado, "Opera já estava aberto e em foco.")
+        self.assertEqual(plano.classe, "sem_acao")
+        self.assertIn("já estava", plano.fala.casefold())
+
     def test_registro_generico_nao_apaga_confirmacao_do_executor(self) -> None:
         estado = estado_mental_inicial()
         preciso = ResultadoAcao(
@@ -1928,96 +1942,73 @@ class MenteUnicaTests(unittest.TestCase):
         self.assertTrue(sugestao_acao_valida(valida))
 
     def test_sugestao_invalida_nao_engole_conversa(self) -> None:
-        from mente_laylay.autonomia.comandos_imediatos import processar_comandos_imediatos
+        from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
 
         resultado = {
             "intent": "SUGGEST_ACTION",
             "params": {"tipo": "conversa", "assunto": "nota máxima em IA"},
         }
         contexto = {
-            "_normalizar_texto_com_apelidos": lambda texto: texto.lower(),
-            "_texto_social_curto": lambda _texto: False,
-            "_texto_conversa_casual_sem_acao": lambda _texto: False,
-            "_texto_tem_comando_explicito": lambda _texto: False,
-            "_texto_conversa_contextual_sem_comando": lambda _texto: False,
-            "analisar_intencao": lambda _texto: resultado,
+            "resolver_comando_natural": lambda _texto, _origem: (resultado, "ia"),
             "executar_intencao": lambda _resultado, _texto: False,
         }
-        self.assertFalse(processar_comandos_imediatos(
-            contexto,
-            "eu tirei nota maxima, e era sobre modelos personalizados de IA",
+        runtime = ComandosImediatosRuntime(
+            namespace_getter=lambda: contexto,
+            loop_getter=lambda: None,
+        )
+        self.assertFalse(runtime.processar_prioritarios(
+            "eu tirei nota maxima, e era sobre modelos personalizados de IA"
         ))
 
     def test_consulta_operacional_de_leitura_atravessa_modalidade_pergunta(self) -> None:
-        from mente_laylay.autonomia.comandos_imediatos import processar_comandos_imediatos
+        from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
 
         executadas = []
-        contexto = {
-            "_normalizar_texto_com_apelidos": lambda texto: texto.lower(),
-            "_resolver_consulta_recurso_local": lambda _texto: {
-                "intent": "PLAYLIST_LIST",
-                "params": {"nome_playlist": "trap"},
-            },
-            "executar_intencao": lambda intent, _texto: executadas.append(intent) or True,
-            "mente_integrada_estado": {
-                "turno_atual": {
-                    "modalidade": "pergunta",
-                    "modalidade_geral": "pergunta",
-                    "autoriza_execucao": False,
-                },
-            },
+        resultado = {
+            "intent": "PLAYLIST_LIST",
+            "params": {"nome_playlist": "trap"},
         }
-
-        self.assertTrue(processar_comandos_imediatos(contexto, "o que tem em trap?"))
+        contexto = {
+            "resolver_comando_natural": lambda _texto, _origem: (resultado, "recurso"),
+            "executar_intencao": lambda intent, _texto: executadas.append(intent) or True,
+        }
+        runtime = ComandosImediatosRuntime(
+            namespace_getter=lambda: contexto,
+            loop_getter=lambda: None,
+        )
+        self.assertTrue(runtime.processar_prioritarios("o que tem em trap?"))
         self.assertEqual(executadas[0]["intent"], "PLAYLIST_LIST")
 
-    def test_consulta_de_recurso_usa_executor_registrado_antes_do_roteador_geral(self) -> None:
-        from mente_laylay.autonomia.comandos_imediatos import processar_comandos_imediatos
+    def test_consulta_de_recurso_usa_executor_canonico(self) -> None:
+        from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
 
-        especializadas = []
-        gerais = []
+        executadas = []
+        resultado = {"intent": "INBOX_LIST", "params": {"filtro": "minhas ideias"}}
         contexto = {
-            "_normalizar_texto_com_apelidos": lambda texto: texto.lower(),
-            "_resolver_consulta_recurso_local": lambda _texto: {
-                "intent": "INBOX_LIST", "params": {"filtro": "minhas ideias"},
-            },
-            "_executar_consulta_recurso_local": (
-                lambda intent, texto: especializadas.append((intent, texto)) or True
-            ),
-            "executar_intencao": lambda intent, texto: gerais.append((intent, texto)) or True,
-            "mente_integrada_estado": {
-                "turno_atual": {
-                    "modalidade": "pergunta",
-                    "modalidade_geral": "pergunta",
-                    "autoriza_execucao": False,
-                },
-            },
+            "resolver_comando_natural": lambda _texto, _origem: (resultado, "recurso"),
+            "executar_intencao": lambda intent, texto: executadas.append((intent, texto)) or True,
         }
-
-        self.assertTrue(processar_comandos_imediatos(contexto, "me fale as minhas ideias"))
-        self.assertEqual(especializadas[0][0]["intent"], "INBOX_LIST")
-        self.assertEqual(gerais, [])
+        runtime = ComandosImediatosRuntime(
+            namespace_getter=lambda: contexto,
+            loop_getter=lambda: None,
+        )
+        self.assertTrue(runtime.processar_prioritarios("me fale as minhas ideias"))
+        self.assertEqual(executadas[0][0]["intent"], "INBOX_LIST")
 
     def test_consulta_operacional_nunca_promove_escrita(self) -> None:
-        from mente_laylay.autonomia.comandos_imediatos import processar_comandos_imediatos
+        from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
 
         executadas = []
         contexto = {
-            "_normalizar_texto_com_apelidos": lambda texto: texto.lower(),
-            "_resolver_consulta_recurso_local": lambda _texto: {
-                "intent": "DELETE_ITEM", "params": {"alvo": "teste"},
-            },
+            # A barreira canônica de modalidade rejeitou a escrita hipotética.
+            "resolver_comando_natural": lambda _texto, _origem: (None, "modalidade"),
             "executar_intencao": lambda intent, _texto: executadas.append(intent) or True,
-            "mente_integrada_estado": {
-                "turno_atual": {
-                    "modalidade": "pergunta",
-                    "modalidade_geral": "pergunta",
-                    "autoriza_execucao": False,
-                },
-            },
         }
-
-        self.assertFalse(processar_comandos_imediatos(contexto, "como apaga a pasta?"))
+        runtime = ComandosImediatosRuntime(
+            namespace_getter=lambda: contexto,
+            loop_getter=lambda: None,
+        )
+        self.assertFalse(runtime.processar_prioritarios("como apaga a pasta?"))
         self.assertEqual(executadas, [])
 
     def test_lembrete_daqui_minutos_e_resolvido_antes_da_ia(self) -> None:

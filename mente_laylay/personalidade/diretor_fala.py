@@ -14,8 +14,9 @@ _ABERTURAS_MECANICAS = re.compile(
 
 PERFIL_PERSONALIDADE = {
     "base": "carinhosa_sem_infantilizar",
-    "humor": "debochado_leve_quando_houver_intimidade",
-    "curiosidade": "seletiva",
+    "humor": "debochado_afetuoso_com_timing",
+    "curiosidade": "especifica_e_seletiva",
+    "assinatura": "opiniao_clara_callback_relevante_sem_bordao",
     "correcao": "receptiva_sem_se_defender",
     "operacional": "objetiva_com_calor_humano",
 }
@@ -159,6 +160,17 @@ def dirigir_fala(
     permite_pergunta = bool(social.get("permite_pergunta", True)) and not tem_operacao
     fala = re.sub(r"\s+", " ", str(texto or "")).strip()
     funcao = str(social.get("funcao") or "")
+    evento_operacional = dict(
+        mente.get("avaliacao_emocional_operacional_atual") or {}
+    )
+    evento_operacional_valido = bool(
+        tem_operacao
+        and evento_operacional.get("permite_expressao")
+        and str(evento_operacional.get("emocao") or "").strip().casefold()
+        == str(emocao or "").strip().casefold()
+        and instante - float(evento_operacional.get("ts") or 0.0) <= 30.0
+        and float(evento_operacional.get("confianca") or 0.0) >= 0.90
+    )
     if not preservar_texto:
         fala = _substituir_resposta_social_mecanica(fala, funcao=funcao, mente=mente)
         fala = _lapidar_presenca_social(
@@ -181,7 +193,11 @@ def dirigir_fala(
             emocao_final, nivel_final = "calma", 1
         elif funcao in {"desabafo", "inseguranca"}:
             emocao_final, nivel_final = "triste", 1
-        elif tem_operacao and emocao_final in {"brava", "irritada"}:
+        elif (
+            tem_operacao
+            and emocao_final in {"brava", "irritada"}
+            and not evento_operacional_valido
+        ):
             # Falha técnica não fabrica raiva; o resultado continua claro.
             emocao_final, nivel_final = "calma", 1
 
@@ -200,7 +216,12 @@ def dirigir_fala(
 
     palavras = len(re.findall(r"\b\w+\b", fala, flags=re.UNICODE))
     comprimento = "curto" if palavras <= 18 else "medio" if palavras <= 55 else "longo"
-    humor = "leve" if funcao in {"brincadeira", "elogio"} and not tem_operacao else "nenhum"
+    humor = (
+        "debochado_afetuoso"
+        if funcao in {"brincadeira", "elogio", "conquista", "reacao_positiva"}
+        and not tem_operacao
+        else "nenhum"
+    )
     return {
         "fala": fala,
         "tom": _tom_por_contexto(politica, emocao_final, tem_operacao),

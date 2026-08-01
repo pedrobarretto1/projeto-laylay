@@ -16,7 +16,7 @@ class _HttpFake:
 
 
 class _ClienteFake:
-    def enviar(self, *_args, **_kwargs):
+    def executar(self, *_args, **_kwargs):
         return "ok"
 
 
@@ -105,10 +105,10 @@ def test_composicao_conecta_cliente_confirmacao_e_selecao_em_segunda_fase() -> N
     assert cliente is runtime.cliente
     assert runtime.confirmacao is not None
     assert runtime.selecao_abas is not None
-    contexto = capturado["cliente"]["namespace_getter"]()
-    assert contexto["model"] == "modelo-local"
-    assert contexto["contexto_logs"] is logs
-    assert contexto["post_chat"] == runtime.http.post
+    assert capturado["cliente"]["post_chat"] == runtime.http.post
+    assert "namespace_getter" not in capturado["cliente"]
+    assert "memoria_inteligente" not in capturado["cliente"]
+    assert capturado["cliente"]["api_key"] == "ollama"
     assert capturado["confirmacao"]["namespace_getter"]()["model"] == "modelo-local"
 
 

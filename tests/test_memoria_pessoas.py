@@ -325,10 +325,11 @@ def test_fluxo_prioritario_real_intercepta_consulta_antes_da_llm(tmp_path):
         chat_factory=lambda **_kwargs: object(),
     )
     comandos, _chat = composicao.conectar(
-        servicos={
-            "_registro_memoria_pessoas_runtime": registrar_memoria_pessoas(runtime),
-            "_registro_iot_runtime": registrar_iot(_IoTNulo()),
-        },
+            servicos={
+                "_registro_memoria_pessoas_runtime": registrar_memoria_pessoas(runtime),
+                "_registro_iot_runtime": registrar_iot(_IoTNulo()),
+                "resolver_comando_natural": lambda _texto, _origem: (None, ""),
+            },
         loop_getter=lambda: None, estado_chat_getter=dict, memoria_sqlite=None,
     )
 

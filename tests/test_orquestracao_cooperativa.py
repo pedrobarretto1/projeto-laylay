@@ -10,6 +10,10 @@ from mente_laylay.arquivos.execucao_arquivos import executar_intencao_arquivos
 from mente_laylay.arquivos.mutacoes import criar_arquivos_mutacao_runtime
 from mente_laylay.integracao.registro_mutacoes_arquivos import registrar_arquivos_mutacao
 from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
+from mente_laylay.autonomia.executor_sistema import (
+    DependenciasExecutorSistema,
+    executar_intencao_sistema,
+)
 from mente_laylay.autonomia.orquestracao_cooperativa import (
     ExecutorPlanoCooperativoRuntime,
     GovernancaPlanoCooperativoRuntime,
@@ -25,6 +29,7 @@ from mente_laylay.memoria_mental.contexto_compartilhado import (
 from mente_laylay.memoria_mental.continuidade_geral import (
     registrar_evento_continuidade,
 )
+from tests.fakes_visao_jogo import VisaoJogoAnaliseFake
 
 
 def _digest(texto: str) -> str:
@@ -244,6 +249,8 @@ def test_composicao_item_jogo_reusa_detector_executor_e_fecha_assincrono() -> No
     comandos: list[dict] = []
     falas: list[str] = []
     aprendizados: list[str] = []
+    resultados_visao: list[tuple[str, dict]] = []
+    analise_tipado = VisaoJogoAnaliseFake()
     runtime_ref: list[OrquestradorCooperativoRuntime | None] = [None]
 
     def detectar(_texto: str) -> dict:
@@ -259,6 +266,19 @@ def test_composicao_item_jogo_reusa_detector_executor_e_fecha_assincrono() -> No
 
     def executar(resultado: dict, _texto: str) -> bool:
         comandos.append(resultado)
+        despacho = executar_intencao_sistema(
+            "GAME_VISION",
+            dict(resultado.get("params") or {}),
+            "pc_a",
+            {"_registro_visao_jogo_analise_runtime": analise_tipado},
+            DependenciasExecutorSistema(
+                marcar_resultado=lambda status, **kwargs: resultados_visao.append(
+                    (status, kwargs)
+                ),
+                falar_por_status=lambda *_args, **_kwargs: None,
+            ),
+        )
+        assert despacho.retorno is True
         runtime = runtime_ref[0]
         assert runtime is not None
         plano_id = resultado["params"]["_plano_cooperativo_id"]
@@ -296,6 +316,10 @@ def test_composicao_item_jogo_reusa_detector_executor_e_fecha_assincrono() -> No
     assert imediato.processar_prioritarios("essa bota é boa?") is True
     assert len(comandos) == 1
     assert comandos[0]["intent"] == "GAME_VISION"
+    assert analise_tipado.chamadas[0][0] == "executar"
+    assert resultados_visao == [
+        ("analise_visual_solicitada", {"executou": True})
+    ]
     plano_id = comandos[0]["params"]["_plano_cooperativo_id"]
     plano = quadro.obter_plano(plano_id)
     assert plano and plano["estado"] == "confirmado"

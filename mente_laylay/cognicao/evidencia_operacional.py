@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from mente_laylay.cognicao.modalidade_turno import analisar_protecao_operacional
+
 
 def _normalizar(texto: str) -> str:
     base = unicodedata.normalize("NFKD", str(texto or "").casefold())
@@ -28,18 +30,11 @@ def autoriza_candidato_iot_direto(texto: str, *, modalidade: str = "") -> bool:
     ).strip()
     if not t or str(modalidade or "").casefold() == "deliberativo":
         return False
-
-    if re.search(
-        r"^(?:nao|nunca|jamais)\b|"
-        r"\b(?:nao|nunca|jamais)\s+(?:deixa|deixe|deixar|coloca|muda|ajusta|define|bota|poe|torna)\b",
-        t,
-    ):
+    if analisar_protecao_operacional(t).get("bloqueia_execucao"):
         return False
     if re.search(
-        r"^(?:se|caso|quando)\s+(?:eu|voce|a gente)\b|"
-        r"^(?:como|por que|porque|o que acontece se)\b|"
-        r"\b(?:acho|imagino|suponho|talvez|seria bom|seria legal|quem sabe)\b|"
-        r"\b(?:voce acha|o que voce acha|eu gosto de|eu costumo|eu queria)\b",
+        r"\b(?:imagino|suponho|voce acha|o que voce acha|eu gosto de|"
+        r"eu costumo|eu queria)\b",
         t,
     ):
         return False
@@ -65,22 +60,7 @@ def bloqueia_controle_iot_por_modalidade(texto: str) -> bool:
     t = _normalizar(texto)
     if not t:
         return True
-    if re.search(
-        r"\b(?:nao|nunca|jamais)\s+(?:(?:pode|deve|vai)\s+)?"
-        r"(?:liga|ligar|ligue|acende|acender|desliga|desligar|desligue|"
-        r"apaga|apagar|muda|mudar|ajusta|ajustar|coloca|colocar|deixa|deixar)\b",
-        t,
-    ):
-        return True
-    return bool(re.search(
-        r"^(?:como\s+(?:eu\s+)?(?:faria|fa[cç]o|posso|poderia)|"
-        r"o que (?:eu )?(?:faria|fa[cç]o)|"
-        r"se eu (?:pedir|mandar)|"
-        r"talvez\b|quem sabe\b)|"
-        r"\b(?:seria|fosse)\s+(?:bom|legal|melhor)\b|"
-        r"\b(?:queria|gostaria)\s+de\s+saber\s+como\b",
-        t,
-    ))
+    return bool(analisar_protecao_operacional(t).get("bloqueia_execucao"))
 
 
 def detectar_consulta_lista_iot(texto: str) -> dict[str, object] | None:

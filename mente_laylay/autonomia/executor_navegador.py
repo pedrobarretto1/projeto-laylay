@@ -108,17 +108,16 @@ def _executar_fechar_aba(
     ctx: Dict[str, Any],
     deps: DependenciasExecutorNavegador,
 ) -> ResultadoDespacho:
-    solicitar_aba = _get(ctx, "solicitar_aba_ativa")
+    navegador_leitura = _get(ctx, "_registro_navegador_leitura_runtime")
+    navegador_operacoes = _get(ctx, "_registro_navegador_operacoes_runtime")
     resolver_alvo = _get(ctx, "_resolver_alvo_ambiente")
     eh_site = _get(ctx, "_eh_alvo_site_web")
     contexto_site = _get(ctx, "_contexto_aponta_site_web")
     fechar_programa = _get(ctx, "fechar_programa")
-    fechar_aba_nativa = _get(ctx, "fechar_aba_ativa_nativa")
-    enviar_chrome = _get(ctx, "enviar_comando_chrome")
     enviar_pc_b = _get(ctx, "_enviar_pc_b")
     apps_map = _get(ctx, "APPS_MAP", {}) or {}
 
-    info = solicitar_aba() if callable(solicitar_aba) else {}
+    info = navegador_leitura.aba_ativa() if navegador_leitura is not None else {}
     alvo = str(params.get("alvo") or params.get("site") or params.get("nome") or "").strip()
     alvo_preciso = deps.alvo_preciso_para_aba(alvo) if alvo else ""
     leitura = resolver_alvo(alvo) if alvo and callable(resolver_alvo) else {}
@@ -151,18 +150,18 @@ def _executar_fechar_aba(
         )
         enviar_pc_b(payload)
         ok = True
-    elif alvo and callable(enviar_chrome):
-        enviado = bool(enviar_chrome("close_specific_tab", {"target": alvo_preciso or alvo}))
+    elif alvo and navegador_operacoes is not None:
+        enviado = bool(navegador_operacoes.fechar_aba(alvo_preciso or alvo))
         if enviado:
             ok = deps.esperar_aba_fechar(alvo_preciso or alvo, info)
-        elif callable(fechar_aba_nativa):
-            ok = bool(fechar_aba_nativa(alvo_preciso or alvo))
-    elif callable(enviar_chrome):
-        enviado = bool(enviar_chrome("close_current_tab", {}))
+        else:
+            ok = bool(navegador_operacoes.fechar_aba_nativa(alvo_preciso or alvo))
+    elif navegador_operacoes is not None:
+        enviado = bool(navegador_operacoes.fechar_aba_atual())
         if enviado:
             ok = deps.esperar_aba_fechar("", info)
-        elif callable(fechar_aba_nativa):
-            ok = bool(fechar_aba_nativa(""))
+        else:
+            ok = bool(navegador_operacoes.fechar_aba_nativa(""))
 
     status = "aba_fechada" if ok else "falha_execucao"
     deps.marcar_resultado(status, executou=ok)
@@ -268,15 +267,15 @@ def _executar_search(
         params.get("engine") or params.get("site") or ("google" if permitir_google else "")
     ).strip().lower()
     enviar_pc_b = _get(ctx, "_enviar_pc_b")
-    enviar_chrome = _get(ctx, "enviar_comando_chrome")
+    navegador_operacoes = _get(ctx, "_registro_navegador_operacoes_runtime")
     if engine == "youtube":
         if destino == "pc_b" and callable(enviar_pc_b):
             enviar_pc_b({
                 "action": "open_url",
                 "url": "https://www.youtube.com/results?search_query=" + urllib.parse.quote_plus(query),
             })
-        elif callable(enviar_chrome):
-            enviar_chrome("youtube_search", {"query": query})
+        elif navegador_operacoes is not None:
+            navegador_operacoes.pesquisar_youtube(query)
         fala = escolher_fala_variada([
             f"Sintonizando o melhor do {query} no YouTube agora.",
             f"Botando {query} pra tocar agora.",
@@ -319,8 +318,8 @@ def _executar_search(
     url = f"https://www.google.com/search?q={urllib.parse.quote(query)}"
     if destino == "pc_b" and callable(enviar_pc_b):
         enviar_pc_b({"action": "open_url", "url": url + "&laylay_auto=true", "auto_click": True})
-    elif callable(enviar_chrome):
-        enviar_chrome("open_url", {"url": url + "&laylay_auto=true", "auto_click": True})
+    elif navegador_operacoes is not None:
+        navegador_operacoes.abrir_url(url + "&laylay_auto=true", auto_click=True)
     fala = escolher_fala_variada([
         f"Abrindo a busca para {query}.",
         f"Já procurei {query}.",

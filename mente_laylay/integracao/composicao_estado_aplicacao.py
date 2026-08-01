@@ -48,7 +48,7 @@ DEPENDENCIAS_ADAPTADORES_APLICACAO = (
     "_contexto_intencao_runtime", "_ciclo_comandos_runtime",
     "falar_com_lipsync", "enviar_mensagem", "carregar_memoria",
     "_gmail_buscar_nao_lidos", "gmail_daemon",
-    "run_ws_server_in_thread", "enviar_comando_chrome",
+    "run_ws_server_in_thread", "_registro_navegador_operacoes_runtime",
 )
 
 

@@ -7,6 +7,7 @@ import random
 from collections import deque
 from datetime import datetime
 from typing import Any, Callable, Dict
+from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
 from mente_laylay.memoria_mental.identidade_usuario import contexto_identidade_usuario
 from mente_laylay.percepcao.ritmo_circadiano import construir_contexto_temporal
 
@@ -29,13 +30,17 @@ class AberturaChatRuntime:
         self,
         *,
         estado_getter: Callable[[], Dict[str, Any]],
-        enviar_mensagem: Callable[..., Any],
+        enviar_mensagem: Callable[..., Any] | None = None,
+        modelo_llm: Any = None,
         limpar_resposta: Callable[[Any], str],
         remover_prefixo_exec: Callable[[str], str],
         log: Callable[..., Any] = print,
     ) -> None:
         self.estado_getter = estado_getter
-        self.enviar_mensagem = enviar_mensagem
+        self.enviar_mensagem = resolver_enviador_modelo(
+            modelo_llm=modelo_llm,
+            enviar_mensagem=enviar_mensagem,
+        )
         self.limpar_resposta = limpar_resposta
         self.remover_prefixo_exec = remover_prefixo_exec
         self.log = log

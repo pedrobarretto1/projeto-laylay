@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from mente_laylay.autonomia.validacao_ambiente import ValidadorAmbiente
+from tests.fakes_navegador import NavegadorLeituraFake, NavegadorOperacoesFake
 
 
 def test_resolver_estado_ausente_ou_com_erro_retorna_retrato_vazio() -> None:
@@ -41,10 +42,10 @@ def test_esperar_programa_fechar_nao_confirma_se_continua_aberto() -> None:
 def test_esperar_aba_atual_fechar_detecta_mudanca_de_url() -> None:
     validador = ValidadorAmbiente(
         {
-            "solicitar_aba_ativa": lambda: {
+            "_registro_navegador_leitura_runtime": NavegadorLeituraFake(aba={
                 "url": "https://outro.example",
                 "title": "Outra aba",
-            }
+            })
         },
         sleep_cb=lambda _segundos: None,
     )
@@ -92,13 +93,15 @@ def test_abertura_local_repassa_foco_e_exige_confirmacao_observavel() -> None:
     aberturas: list[tuple] = []
     validador = ValidadorAmbiente(
         {
-            "abrir_url_com_reciclagem": lambda *args, **kwargs: (
-                aberturas.append((args, kwargs)) or True
+            "_registro_navegador_operacoes_runtime": NavegadorOperacoesFake(
+                abrir_cb=lambda *args, **kwargs: (
+                    aberturas.append((args, kwargs)) or True
+                )
             ),
-            "solicitar_aba_ativa": lambda: {
+            "_registro_navegador_leitura_runtime": NavegadorLeituraFake(aba={
                 "url": "https://example.com/pagina",
                 "title": "Example",
-            },
+            }),
         },
         texto_original="abre o site e traz para frente",
         sleep_cb=lambda _segundos: None,

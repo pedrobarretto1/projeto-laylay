@@ -8,6 +8,7 @@ from typing import Any, Dict
 _INTENTS_POR_DOMINIO = {
     "musica": {
         "PLAYLIST_ADD", "PLAYLIST_PLAY", "PLAYLIST_LIST", "PLAYLIST_DELETE",
+        "PLAYLIST_MOVE",
         "LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_COPY", "MUSIC_SEARCH",
         "MEDIA_CONTROL", "LISTAR_PLAYLISTS", "TOCAR_PLAYLIST",
         "TOCAR_PLAYLIST_SHUFFLE", "STOP_PLAYLIST_CONTEXT",
@@ -46,6 +47,7 @@ _INTENTS_POR_DOMINIO = {
     "pessoas": {
         "PEOPLE_REMEMBER", "PEOPLE_QUERY", "PEOPLE_LIST", "PEOPLE_FORGET",
     },
+    "memoria": {"LEARNING_QUERY"},
     "cooperacao": {"COOPERATIVE_PLAN"},
     "conversa": {"WEATHER", "SUGGEST_ACTION"},
 }
@@ -66,6 +68,7 @@ INTENTS_SOMENTE_LEITURA = frozenset({
     "CLIPBOARD_INVESTIGATE",
     "FILE_SEARCH",
     "PEOPLE_QUERY", "PEOPLE_LIST",
+    "LEARNING_QUERY",
 })
 
 # A confirmação descreve a evidência que o executor realmente consegue obter.
@@ -77,6 +80,7 @@ _CONFIRMACAO_POR_INTENT = {
     "PLAYLIST_PLAY": ("variavel", "a aba pode ser observada; rotas remotas podem ficar sem retorno"),
     "PLAYLIST_LIST": ("retorno_dados", "a lista foi lida do armazenamento"),
     "PLAYLIST_DELETE": ("persistencia_local", "a ausência é conferida no armazenamento"),
+    "PLAYLIST_MOVE": ("persistencia_local", "a origem e o destino são persistidos no armazenamento"),
     "LAYLAY_PLAYLIST_LIST": ("retorno_dados", "a lista interna foi consultada"),
     "LAYLAY_PLAYLIST_COPY": ("persistencia_local", "a cópia retorna sucesso do armazenamento"),
     "MUSIC_SEARCH": ("estado_observado", "a abertura da página musical é conferida"),
@@ -85,6 +89,7 @@ _CONFIRMACAO_POR_INTENT = {
     "TOCAR_PLAYLIST": ("variavel", "depende da rota usada para reprodução"),
     "TOCAR_PLAYLIST_SHUFFLE": ("variavel", "depende da rota usada para reprodução"),
     "STOP_PLAYLIST_CONTEXT": ("estado_local", "o contexto local de playlist é limpo"),
+    "LEARNING_QUERY": ("retorno_dados", "os aprendizados foram lidos da memória persistente"),
     # Sistema
     "CANCELAR_ACAO": ("estado_local", "as pendências locais são removidas"),
     "CLOSE_APP": ("variavel", "o processo local é relido; envio remoto pode não responder"),

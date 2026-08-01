@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from mente_laylay.autonomia.roteador_deterministico import (
     corrigir_verbo_operacional_digitado,
+    detectar_playlist_contextual_musica_atual,
     detectar_organizacao_desktop,
 )
 from mente_laylay.cognicao.linguagem_aprendida import LinguagemAprendidaRuntime
 from mente_laylay.cognicao.normalizacao_linguagem import (
     corrigir_erros_portugues_operacionais,
     normalizar_texto,
+    normalizar_texto_basico,
 )
 
 
@@ -19,6 +21,11 @@ def _runtime() -> LinguagemAprendidaRuntime:
         falar=lambda *_args: None,
         log=lambda *_args: None,
     )
+
+
+def test_normalizacao_basica_compartilhada_preserva_pontuacao_contextual() -> None:
+    assert normalizar_texto_basico("  VOCÊ  está BEM?  ") == "voce esta bem?"
+    assert normalizar_texto_basico("Straße") == "strasse"
 
 
 def test_corrige_verbos_em_dominios_diferentes_sem_fuzzy_sobre_alvos() -> None:
@@ -70,6 +77,24 @@ def test_erro_de_termo_e_corrigido_quando_a_gramatica_prova_o_dominio() -> None:
     assert runtime.normalizar_com_apelidos(
         "colcoa uma muscia"
     ) == "coloca uma musica"
+
+
+def test_preposicao_oral_de_playlist_preserva_faixa_atual_e_destino() -> None:
+    runtime = _runtime()
+
+    texto = runtime.normalizar_com_apelidos(
+        "coloca essa musica a playlist rei do pop"
+    )
+
+    assert texto == "coloca essa musica na playlist rei do pop"
+    assert detectar_playlist_contextual_musica_atual(
+        texto,
+        params_cb=lambda **kwargs: kwargs,
+        limpar_nome_playlist=lambda valor: str(valor).strip(),
+    ) == {
+        "intent": "PLAYLIST_ADD",
+        "params": {"nome_playlist": "rei do pop"},
+    }
 
 
 def test_negacao_hipotese_e_conversa_nao_ganham_verbo_executavel() -> None:

@@ -252,12 +252,10 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
     classificar_confirmacao_contextual = _get(contexto, "_classificar_confirmacao_contextual")
     classificar_confirmacao_local = _get(contexto, "_classificar_confirmacao_local")
     handle_sugestao_confirmacao = _get(contexto, "_handle_sugestao_confirmacao")
-    solicitar_aba_ativa = _get(contexto, "solicitar_aba_ativa")
-    add_to_playlist_url = _get(contexto, "add_to_playlist_url")
+    musica_operacoes = _get(contexto, "_registro_musica_operacoes_runtime")
     extrair_nome_playlist = _get(contexto, "extrair_nome_playlist")
     yt_clean_title = _get(contexto, "_yt_clean_title")
     falar_com_lipsync = _get(contexto, "falar_com_lipsync")
-    resolve_ultima_playlist = _get(contexto, "_set_ultima_playlist")
     registrar_feedback_rotina = _get(contexto, "_rotina_registrar_feedback")
     gmail_buscar = _get(contexto, "_gmail_buscar_nao_lidos")
     gmail_resumo = _get(contexto, "_gmail_falar_resumo_estiloso")
@@ -329,7 +327,8 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
                 status = "SIM" if confirmado else "NAO"
                 print(f"[FEEDBACK PLAYLIST] Resposta: {status} para '{pl}'")
                 if confirmado:
-                    info = solicitar_aba_ativa(timeout_s=2.0) if callable(solicitar_aba_ativa) else {}
+                    ok = False
+                    info = musica_operacoes.faixa_atual() if musica_operacoes is not None else {}
                     url = str((info or {}).get("url") or "")
                     title = str((info or {}).get("title") or "")
                     canal = str((info or {}).get("canal") or "")
@@ -337,11 +336,11 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
                         if callable(falar_com_lipsync):
                             falar_com_lipsync(_escolher_fala_variada(["Não achei a música aberta pra salvar agora.", "Não vi música aberta pra guardar.", "Faltou uma aba de música aberta."]), "calma", 1)
                     else:
-                        res = add_to_playlist_url(pl, url, title, canal) if callable(add_to_playlist_url) else None
-                        ok = res.get("ok") if isinstance(res, dict) else bool(res)
+                        ok = bool(
+                            musica_operacoes.adicionar_faixa(pl, url, title, canal)
+                        ) if musica_operacoes is not None else False
                     if ok:
-                        if callable(resolve_ultima_playlist):
-                            resolve_ultima_playlist(pl)
+                        musica_operacoes.definir_ultima_playlist(pl)
                         titulo = yt_clean_title(title) if callable(yt_clean_title) else title
                         titulo = titulo or "essa música"
                         if callable(falar_com_lipsync):

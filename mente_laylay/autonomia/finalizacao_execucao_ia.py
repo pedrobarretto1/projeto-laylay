@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from mente_laylay.integracao.registro_conversa_llm import PedidoModelo
+
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     if isinstance(ctx, dict) and key in ctx:
@@ -40,6 +42,19 @@ def _registrar_interacao_diaria(ctx: Dict[str, Any], usuario: str, fala: str) ->
         )
 
 
+def _chamar_modelo_finalizacao(ctx: Dict[str, Any], messages: Any) -> str:
+    """Usa a porta tipada; aceita o callback antigo só fora da composição nova."""
+    modelo = _get(ctx, "modelo_llm")
+    executar = getattr(modelo, "executar", None)
+    if callable(executar):
+        resultado = executar(PedidoModelo.criar(messages, com_tools=False))
+        return str(getattr(resultado, "texto", "") or "")
+    enviar_legado = _get(ctx, "enviar_mensagem")
+    if callable(enviar_legado):
+        return str(enviar_legado(messages, _com_tools=False) or "")
+    return ""
+
+
 def finalizar_execucao_resposta_ia(
     ctx: Dict[str, Any],
     comandos: List[Dict[str, Any]],
@@ -52,6 +67,7 @@ def finalizar_execucao_resposta_ia(
     messages = _get(ctx, "messages")
     current_emotion = _get(ctx, "current_emotion", "calma")
     emotion_level = _get(ctx, "emotion_level", 1)
+    modelo_llm = _get(ctx, "modelo_llm")
     enviar_mensagem = _get(ctx, "enviar_mensagem")
     limpar_resposta_da_ia = _get(ctx, "limpar_resposta_da_ia")
     falar_com_lipsync = _get(ctx, "falar_com_lipsync")
@@ -62,7 +78,11 @@ def finalizar_execucao_resposta_ia(
     falhas_consecutivas = _get(ctx, "_falhas_consecutivas")
     max_tentativas = int(_get(ctx, "MAX_TENTATIVAS_AUTOCORRECAO", 3))
 
-    if not callable(enviar_mensagem) or not callable(limpar_resposta_da_ia):
+    modelo_disponivel = callable(getattr(modelo_llm, "executar", None))
+    if (
+        not modelo_disponivel
+        and not callable(enviar_mensagem)
+    ) or not callable(limpar_resposta_da_ia):
         return
 
     if erros_execucao:
@@ -108,7 +128,7 @@ def finalizar_execucao_resposta_ia(
                 messages.append({"role": "user", "content": msg_desistencia})
             print("🛑 [AUTOCORREÇÃO] Limite atingido. Laylay desistindo...")
             try:
-                bot_desist_raw = enviar_mensagem(messages, _com_tools=False)
+                bot_desist_raw = _chamar_modelo_finalizacao(ctx, messages)
                 fala_desist, _ = limpar_resposta_da_ia(bot_desist_raw)
                 if fala_desist:
                     print(f"Laylay [desistência]: {fala_desist}")
@@ -133,7 +153,7 @@ def finalizar_execucao_resposta_ia(
                 messages.append({"role": "user", "content": msg_feedback})
             print(f"🔄 [AUTOCORREÇÃO] {len(erros_execucao)} erro(s). Chamando IA para se corrigir...")
             try:
-                bot_corr_raw = enviar_mensagem(messages, _com_tools=False)
+                bot_corr_raw = _chamar_modelo_finalizacao(ctx, messages)
                 fala_corr, _cmds_corr = limpar_resposta_da_ia(bot_corr_raw)
                 if fala_corr:
                     print(f"Laylay [autocorreção]: {fala_corr}")

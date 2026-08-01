@@ -9,6 +9,7 @@ HABILIDADE_POR_INTENT = {
     "PLAYLIST_ADD": "playlist",
     "PLAYLIST_PLAY": "playlist",
     "PLAYLIST_LIST": "playlist",
+    "PLAYLIST_MOVE": "playlist",
     "TOCAR_PLAYLIST": "playlist",
     "TOCAR_PLAYLIST_SHUFFLE": "playlist",
     "LAYLAY_PLAYLIST_LIST": "playlist_laylay",
@@ -50,6 +51,7 @@ HABILIDADE_POR_INTENT = {
     "LISTAR_AGENDAMENTOS": "agenda",
     "CANCELAR_AGENDAMENTO": "agenda",
     "SUGGEST_ACTION": "sugestao",
+    "LEARNING_QUERY": "memoria",
 }
 
 

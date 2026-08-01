@@ -16,6 +16,18 @@ from mente_laylay.integracao.registro_iot import registrar_iot
 from mente_laylay.integracao.registro_arquivos import registrar_arquivos_leitura
 from mente_laylay.integracao.registro_mutacoes_arquivos import registrar_arquivos_mutacao
 from mente_laylay.integracao.registro_musica import registrar_musica_leitura
+from mente_laylay.integracao.registro_operacoes_musicais import (
+    registrar_operacoes_musicais,
+)
+from mente_laylay.integracao.registro_navegador import (
+    registrar_navegador_leitura,
+    registrar_navegador_operacoes,
+)
+from mente_laylay.integracao.registro_visao_jogo import (
+    registrar_visao_jogo_analise,
+    registrar_visao_jogo_leitura,
+)
+from mente_laylay.integracao.composicao_principal import RegistrosPrincipais
 
 
 class ComposicaoCicloComandosRuntime:
@@ -46,43 +58,110 @@ class ComposicaoCicloComandosRuntime:
         self._arquivos_leitura = None
         self._arquivos_mutacao = None
         self._musica_leitura = None
+        self._musica_operacoes = None
+        self._navegador_leitura = None
+        self._navegador_operacoes = None
+        self._visao_jogo_leitura = None
+        self._visao_jogo_analise = None
+        self._modelo_llm = None
 
     def conectar(
         self,
         *,
         servicos: Mapping[str, Any],
         estado_getter: Callable[[], dict[str, Any]],
+        registros_principais: RegistrosPrincipais | None = None,
     ) -> tuple[Any, Any]:
         if self._ciclo is not None:
             return self._contexto, self._ciclo
-        if "_registro_iot_runtime" not in servicos:
+        if registros_principais is not None:
+            registro_iot = registros_principais.iot
+            registro_arquivos = registros_principais.arquivos_leitura
+            registro_mutacoes = registros_principais.arquivos_mutacao
+            registro_musica = registros_principais.musica_leitura
+            registro_operacoes_musicais = registros_principais.musica_operacoes
+            registro_navegador_leitura = registros_principais.navegador_leitura
+            registro_navegador_operacoes = registros_principais.navegador_operacoes
+            registro_visao_leitura = registros_principais.visao_jogo_leitura
+            registro_visao_analise = registros_principais.visao_jogo_analise
+            registro_modelo_llm = registros_principais.modelo_llm
+        elif "_registro_iot_runtime" not in servicos:
             raise RuntimeError("dependência obrigatória ausente na composição: IoT")
-        registro_iot = registrar_iot(servicos["_registro_iot_runtime"])
+        else:
+            registro_iot = registrar_iot(servicos["_registro_iot_runtime"])
         self._iot = registro_iot
-        if "_registro_arquivos_leitura_runtime" not in servicos:
+        if registros_principais is None and "_registro_arquivos_leitura_runtime" not in servicos:
             raise RuntimeError(
                 "dependência obrigatória ausente na composição: leitura de arquivos"
             )
-        registro_arquivos = registrar_arquivos_leitura(
-            servicos["_registro_arquivos_leitura_runtime"]
-        )
+        if registros_principais is None:
+            registro_arquivos = registrar_arquivos_leitura(
+                servicos["_registro_arquivos_leitura_runtime"]
+            )
         self._arquivos_leitura = registro_arquivos
-        if "_registro_arquivos_mutacao_runtime" not in servicos:
+        if registros_principais is None and "_registro_arquivos_mutacao_runtime" not in servicos:
             raise RuntimeError(
                 "dependência obrigatória ausente na composição: mutação de arquivos"
             )
-        registro_mutacoes = registrar_arquivos_mutacao(
-            servicos["_registro_arquivos_mutacao_runtime"]
-        )
+        if registros_principais is None:
+            registro_mutacoes = registrar_arquivos_mutacao(
+                servicos["_registro_arquivos_mutacao_runtime"]
+            )
         self._arquivos_mutacao = registro_mutacoes
-        if "_registro_musica_leitura_runtime" not in servicos:
+        if registros_principais is None and "_registro_musica_leitura_runtime" not in servicos:
             raise RuntimeError(
                 "dependência obrigatória ausente na composição: leitura musical"
             )
-        registro_musica = registrar_musica_leitura(
-            servicos["_registro_musica_leitura_runtime"]
-        )
+        if registros_principais is None:
+            registro_musica = registrar_musica_leitura(
+                servicos["_registro_musica_leitura_runtime"]
+            )
         self._musica_leitura = registro_musica
+        if registros_principais is None and "_registro_musica_operacoes_runtime" not in servicos:
+            raise RuntimeError(
+                "dependência obrigatória ausente na composição: operações musicais"
+            )
+        if registros_principais is None:
+            registro_operacoes_musicais = registrar_operacoes_musicais(
+                servicos["_registro_musica_operacoes_runtime"]
+            )
+        self._musica_operacoes = registro_operacoes_musicais
+        if registros_principais is None and "_registro_navegador_leitura_runtime" not in servicos:
+            raise RuntimeError(
+                "dependência obrigatória ausente na composição: leitura do navegador"
+            )
+        if registros_principais is None:
+            registro_navegador_leitura = registrar_navegador_leitura(
+                servicos["_registro_navegador_leitura_runtime"]
+            )
+        self._navegador_leitura = registro_navegador_leitura
+        if registros_principais is None and "_registro_navegador_operacoes_runtime" not in servicos:
+            raise RuntimeError(
+                "dependência obrigatória ausente na composição: operações do navegador"
+            )
+        if registros_principais is None:
+            registro_navegador_operacoes = registrar_navegador_operacoes(
+                servicos["_registro_navegador_operacoes_runtime"]
+            )
+        self._navegador_operacoes = registro_navegador_operacoes
+        if registros_principais is None and "_registro_visao_jogo_leitura_runtime" not in servicos:
+            raise RuntimeError(
+                "dependência obrigatória ausente na composição: leitura da visão de jogo"
+            )
+        if registros_principais is None:
+            registro_visao_leitura = registrar_visao_jogo_leitura(
+                servicos["_registro_visao_jogo_leitura_runtime"]
+            )
+        self._visao_jogo_leitura = registro_visao_leitura
+        if registros_principais is None and "_registro_visao_jogo_analise_runtime" not in servicos:
+            raise RuntimeError(
+                "dependência obrigatória ausente na composição: análise da visão de jogo"
+            )
+        if registros_principais is None:
+            registro_visao_analise = registrar_visao_jogo_analise(
+                servicos["_registro_visao_jogo_analise_runtime"]
+            )
+        self._visao_jogo_analise = registro_visao_analise
         permitidos = set(DEPENDENCIAS_EXECUCAO_INTENCAO).union(
             DEPENDENCIAS_CICLO_COMANDOS
         )
@@ -91,6 +170,12 @@ class ComposicaoCicloComandosRuntime:
             for nome in permitidos
             if nome in servicos
         }
+        if registros_principais is not None:
+            # Compatibilidade interna para executores ainda anteriores à porta
+            # tipada. A fonte continua sendo RegistroModeloLLM; modelo,
+            # credenciais e cliente bruto não voltam ao namespace global.
+            self._modelo_llm = registro_modelo_llm
+            self._servicos["enviar_mensagem"] = registro_modelo_llm.enviar
         snapshot = lambda: dict(self._servicos)
         self._contexto = self.contexto_factory(
             namespace_getter=snapshot,
@@ -100,6 +185,11 @@ class ComposicaoCicloComandosRuntime:
             arquivos_leitura=registro_arquivos,
             arquivos_mutacao=registro_mutacoes,
             musica_leitura=registro_musica,
+            musica_operacoes=registro_operacoes_musicais,
+            navegador_leitura=registro_navegador_leitura,
+            navegador_operacoes=registro_navegador_operacoes,
+            visao_jogo_leitura=registro_visao_leitura,
+            visao_jogo_analise=registro_visao_analise,
         )
         self._ciclo = self.ciclo_factory(
             namespace_getter=snapshot,
@@ -144,6 +234,18 @@ class ComposicaoCicloComandosRuntime:
             registrados.append("iot")
         if self._musica_leitura is not None:
             registrados.append("musica_leitura")
+        if self._musica_operacoes is not None:
+            registrados.append("musica_operacoes")
+        if self._navegador_leitura is not None:
+            registrados.append("navegador_leitura")
+        if self._navegador_operacoes is not None:
+            registrados.append("navegador_operacoes")
+        if self._visao_jogo_leitura is not None:
+            registrados.append("visao_jogo_leitura")
+        if self._visao_jogo_analise is not None:
+            registrados.append("visao_jogo_analise")
+        if self._modelo_llm is not None:
+            registrados.append("modelo_llm")
         return tuple(registrados)
 
     def executar_intencao(self, resultado: dict, texto_original: str) -> bool:

@@ -25,7 +25,13 @@ def _codigo_seguro(valor: Any, limite: int = 96) -> str:
 def detectar_pedido_diagnostico_mente(texto: str) -> bool:
     """Aceita pedidos explícitos sem confundir conversa emocional com diagnóstico."""
     t = _normalizar(texto)
-    if t in {"/diagnostico", "/diagnostico mente", "/status interno", "/status mente"}:
+    comandos_barra = {
+        "/diagnostico", "/diagnostico mente", "/diagnostico mete",
+        "/diagostico", "/diagostico mente", "/diagostico mete",
+        "/dignostico", "/dignostico mente", "/dignostico mete",
+        "/status interno", "/status mente",
+    }
+    if t in comandos_barra:
         return True
     expressoes = (
         "diagnostico da mente",
@@ -87,6 +93,7 @@ def construir_diagnostico_mente(
     contexto_sistema = dict(percepcao.get("contexto_sistema") or {})
     aba_ativa = dict(percepcao.get("aba_ativa") or {})
     metricas_brutas = dict(mental.get("diagnostico_metricas") or {})
+    prompts_brutos = dict(mental.get("diagnostico_prompts") or {})
     latencias = {}
     for nome, registro in metricas_brutas.items():
         if not isinstance(registro, Mapping):
@@ -100,7 +107,22 @@ def construir_diagnostico_mente(
             "max_ms": round(float(registro.get("max_ms") or 0.0), 2),
             "amostras": int(registro.get("amostras") or 0),
             "falhas": int(registro.get("falhas") or 0),
+            "orcamento_ms": round(float(registro.get("orcamento_ms") or 0.0), 2),
+            "excedeu_orcamento": bool(registro.get("excedeu_orcamento", False)),
+            "excessos": int(registro.get("excessos") or 0),
         }
+    tamanhos_prompt = {}
+    for nome, registro in prompts_brutos.items():
+        if not isinstance(registro, Mapping):
+            continue
+        chave = _codigo_seguro(nome, 64)
+        if chave:
+            tamanhos_prompt[chave] = {
+                "ultimo_chars": int(registro.get("ultimo_chars") or 0),
+                "media_chars": round(float(registro.get("media_chars") or 0.0), 2),
+                "max_chars": int(registro.get("max_chars") or 0),
+                "amostras": int(registro.get("amostras") or 0),
+            }
     falhas = []
     for item in list(mental.get("diagnostico_falhas") or [])[-8:]:
         if not isinstance(item, Mapping):
@@ -112,11 +134,8 @@ def construir_diagnostico_mente(
             "classe": _codigo_seguro(item.get("classe"), 24) or "nao_classificada",
             "impacto": _codigo_seguro(item.get("impacto"), 24) or "servico",
             "fallback": _codigo_seguro(item.get("fallback"), 64) or "nenhum",
+            "ts": float(item.get("ts") or 0.0),
         })
-    falhas_por_classe = {
-        classe: sum(1 for item in falhas if item.get("classe") == classe)
-        for classe in ("esperada", "degradacao", "defeito", "nao_classificada")
-    }
     servicos_background = []
     for nome, item in dict(mental.get("diagnostico_servicos") or {}).items():
         if not isinstance(item, Mapping):
@@ -131,8 +150,39 @@ def construir_diagnostico_mente(
             "reinicios": int(item.get("reinicios") or 0),
             "falhas_inicializacao": int(item.get("falhas_inicializacao") or 0),
             "orfaos": int(item.get("orfaos") or 0),
+            "ts": float(item.get("ts") or 0.0),
         })
     servicos_background.sort(key=lambda item: str(item.get("nome") or ""))
+    # Uma queda já seguida por um evento saudável continua visível nos
+    # contadores de quedas/reinícios, mas não deve aparecer como falha atual.
+    # Isso evita que o diagnóstico assuste o usuário depois da recuperação.
+    servicos_por_nome = {
+        str(item.get("nome") or ""): item for item in servicos_background
+    }
+    falhas_ativas = []
+    falhas_recuperadas = 0
+    for falha in falhas:
+        componente = str(falha.get("componente") or "")
+        servico = (
+            servicos_por_nome.get(componente.removeprefix("servico_"))
+            if componente.startswith("servico_") else None
+        )
+        recuperada = bool(
+            falha.get("codigo") == "queda_background"
+            and servico
+            and servico.get("estado") in {"ativo", "finalizado", "encerrado"}
+            and float(servico.get("ts") or 0.0) > 0.0
+            and float(servico.get("ts") or 0.0) >= float(falha.get("ts") or 0.0) > 0.0
+        )
+        if recuperada:
+            falhas_recuperadas += 1
+        else:
+            falhas_ativas.append(falha)
+    falhas = falhas_ativas
+    falhas_por_classe = {
+        classe: sum(1 for item in falhas if item.get("classe") == classe)
+        for classe in ("esperada", "degradacao", "defeito", "nao_classificada")
+    }
     decisoes = []
     for item in list(mental.get("diagnostico_decisoes") or [])[-8:]:
         if not isinstance(item, Mapping):
@@ -296,7 +346,9 @@ def construir_diagnostico_mente(
             "status": _codigo_seguro(pendencia_acao.get("status"), 32),
         },
         "latencias": latencias,
+        "tamanhos_prompt": tamanhos_prompt,
         "falhas_recentes": falhas,
+        "falhas_recuperadas": falhas_recuperadas,
         "falhas_por_classe": falhas_por_classe,
         "servicos_background": servicos_background,
         "decisoes_recentes": decisoes,
@@ -313,7 +365,9 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
     continuidade = dict(diagnostico.get("continuidade_geral") or {})
     problemas = list(saude.get("problemas") or [])
     latencias = dict(diagnostico.get("latencias") or {})
+    tamanhos_prompt = dict(diagnostico.get("tamanhos_prompt") or {})
     falhas = list(diagnostico.get("falhas_recentes") or [])
+    falhas_recuperadas = int(diagnostico.get("falhas_recuperadas") or 0)
     falhas_por_classe = dict(diagnostico.get("falhas_por_classe") or {})
     servicos_background = list(diagnostico.get("servicos_background") or [])
     decisoes = list(diagnostico.get("decisoes_recentes") or [])
@@ -323,7 +377,15 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
     pesquisa_arquivos = dict(diagnostico.get("pesquisa_arquivos") or {})
     mutacoes_arquivos = dict(diagnostico.get("mutacoes_arquivos") or {})
     musica_leitura = dict(diagnostico.get("musica_leitura") or {})
+    musica_operacoes = dict(diagnostico.get("musica_operacoes") or {})
+    navegador_leitura = dict(diagnostico.get("navegador_leitura") or {})
+    navegador_operacoes = dict(diagnostico.get("navegador_operacoes") or {})
+    visao_jogo_leitura = dict(diagnostico.get("visao_jogo_leitura") or {})
+    visao_jogo_analise = dict(diagnostico.get("visao_jogo_analise") or {})
+    conversa_llm = dict(diagnostico.get("conversa_llm") or {})
+    composicao_principal = dict(diagnostico.get("composicao_principal") or {})
     cooperacao = dict(diagnostico.get("orquestracao_cooperativa") or {})
+    agenda = dict(diagnostico.get("agenda") or {})
     pessoas = dict(diagnostico.get("memoria_pessoas") or {})
     linguagem_natural = dict(diagnostico.get("linguagem_natural") or {})
     fala_operacional = dict(diagnostico.get("fala_operacional") or {})
@@ -436,6 +498,18 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             f"rejeitadas={int(fala_operacional.get('rejeitadas_voz') or 0)} "
             "autoriza_execução=False"
         )
+        emocao_causal = dict(fala_operacional.get("emocao_causal") or {})
+        if emocao_causal:
+            ultima_causa = dict(emocao_causal.get("ultima") or {})
+            linhas.append(
+                "  emoção causal operacional: "
+                f"avaliados={int(emocao_causal.get('avaliados') or 0)} "
+                f"expressões={int(emocao_causal.get('expressoes') or 0)} "
+                f"responsabilidade={_codigo_seguro(ultima_causa.get('responsabilidade'), 16)} "
+                f"confiança={round(float(ultima_causa.get('confianca') or 0.0) * 100):.0f}% "
+                f"emoção={_codigo_seguro(ultima_causa.get('emocao'), 16)} "
+                "autoriza_execução=False persistência_pessoal=False"
+            )
     if protecoes_ciclo:
         linhas.append(
             "  proteções do ciclo: "
@@ -478,6 +552,57 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             f"estado_disponível={bool(musica_leitura.get('estado_disponivel'))} "
             "somente_leitura=True expõe_urls=False"
         )
+    if musica_operacoes:
+        linhas.append(
+            "  operações musicais: "
+            f"mutação={bool(musica_operacoes.get('mutacao_disponivel'))} "
+            f"reprodução={bool(musica_operacoes.get('reproducao_disponivel'))} "
+            f"auto_next={bool(musica_operacoes.get('auto_next_disponivel'))} "
+            f"curadoria={bool(musica_operacoes.get('curadoria_disponivel'))} "
+            f"playlist_ativa={bool(musica_operacoes.get('playlist_ativa'))}"
+        )
+    if navegador_leitura or navegador_operacoes:
+        linhas.append(
+            "  navegador tipado: "
+            f"conectado={bool(navegador_leitura.get('conectado'))} "
+            f"leitura_aba={bool(navegador_leitura.get('leitura_aba_disponivel'))} "
+            f"listagem={bool(navegador_leitura.get('listagem_disponivel'))} "
+            f"navegação={bool(navegador_operacoes.get('navegacao_disponivel'))} "
+            f"comandos={bool(navegador_operacoes.get('comandos_disponiveis'))} "
+            "expõe_urls=False autoriza_execução=False"
+        )
+    if visao_jogo_leitura or visao_jogo_analise:
+        linhas.append(
+            "  visão de jogo tipada: "
+            f"habilitada={bool(visao_jogo_leitura.get('habilitado'))} "
+            f"credencial={bool(visao_jogo_leitura.get('credencial_disponivel'))} "
+            f"em_andamento={bool(visao_jogo_leitura.get('em_andamento'))} "
+            f"recente={bool(visao_jogo_leitura.get('analise_recente'))} "
+            f"análise={bool(visao_jogo_analise.get('analise_disponivel'))} "
+            f"continuidade={bool(visao_jogo_analise.get('continuidade_disponivel'))} "
+            f"falhas={int(visao_jogo_analise.get('falhas') or 0)} "
+            "captura_persistida=False imagem_exposta=False "
+            "autoriza_execução=False"
+        )
+    if conversa_llm:
+        linhas.append(
+            "  conversa e LLM tipadas: "
+            f"prompt={bool(conversa_llm.get('prompt_disponivel'))} "
+            f"modelo={bool(conversa_llm.get('modelo_disponivel'))} "
+            f"estado={bool(conversa_llm.get('estado_disponivel'))} "
+            f"requisições={int(conversa_llm.get('requisicoes') or 0)} "
+            f"falhas={int(conversa_llm.get('falhas') or 0)} "
+            "memória_exposta=False credencial_exposta=False "
+            "autoriza_execução=False"
+        )
+    if composicao_principal:
+        linhas.append(
+            "  composição principal: "
+            f"disponível={bool(composicao_principal.get('disponivel'))} "
+            f"registros={int(composicao_principal.get('quantidade') or 0)} "
+            f"namespace_global={bool(composicao_principal.get('namespace_global'))} "
+            "credencial_exposta=False autoriza_execução=False"
+        )
     if cooperacao:
         linhas.append(
             "  orquestração cooperativa: "
@@ -494,6 +619,18 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             f"ciclos_finalizados={int(cooperacao.get('finalizacoes_governanca') or 0)} "
             f"ativos={int(cooperacao.get('planos_ativos') or 0)} "
             f"referências_ativas={int(cooperacao.get('referencias_ativas') or 0)}"
+        )
+    if agenda:
+        linhas.append(
+            "  agenda: "
+            f"disponível={bool(agenda.get('disponivel'))} "
+            f"daemon={bool(agenda.get('daemon_ativo'))} "
+            f"ativos={int(agenda.get('agendamentos_ativos') or 0)} "
+            f"gravações={int(agenda.get('gravacoes') or 0)} "
+            f"falhas_persistência={int(agenda.get('falhas_persistencia') or 0)} "
+            f"disparos={int(agenda.get('disparos_confirmados') or 0)} "
+            f"retries={int(agenda.get('retries') or 0)} "
+            "conteúdo_exposto=False autoriza_execução=False"
         )
     if pessoas:
         linhas.append(
@@ -567,11 +704,19 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
     if latencias:
         resumo_latencias = []
         for nome, metrica in sorted(latencias.items()):
+            alerta = " ⚠" if metrica.get("excedeu_orcamento") else ""
             resumo_latencias.append(
                 f"{nome}={float(metrica.get('ultimo_ms') or 0.0):.0f}ms"
                 f" (média {float(metrica.get('media_ms') or 0.0):.0f}ms/{int(metrica.get('amostras') or 0)})"
+                f"{alerta}"
             )
         linhas.append("  latências: " + " | ".join(resumo_latencias))
+    if tamanhos_prompt:
+        resumo_prompts = [
+            f"{nome}={int(metrica.get('ultimo_chars') or 0)} chars"
+            for nome, metrica in sorted(tamanhos_prompt.items())
+        ]
+        linhas.append("  prompts: " + " | ".join(resumo_prompts))
     if decisoes:
         ultima = decisoes[-1]
         motivos = ",".join(ultima.get("motivos") or []) or "sem_motivo"
@@ -607,7 +752,8 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
         f"(esperadas={int(falhas_por_classe.get('esperada') or 0)} "
         f"degradações={int(falhas_por_classe.get('degradacao') or 0)} "
         f"defeitos={int(falhas_por_classe.get('defeito') or 0)} "
-        f"não_classificadas={int(falhas_por_classe.get('nao_classificada') or 0)})"
+        f"não_classificadas={int(falhas_por_classe.get('nao_classificada') or 0)} "
+        f"recuperadas={falhas_recuperadas})"
     )
     for falha in falhas[-5:]:
         linhas.append(
@@ -632,7 +778,15 @@ class DiagnosticoMenteRuntime:
         pesquisa_arquivos_getter: Callable[[], Mapping[str, Any]] | None = None,
         mutacoes_arquivos_getter: Callable[[], Mapping[str, Any]] | None = None,
         musica_leitura_getter: Callable[[], Mapping[str, Any]] | None = None,
+        musica_operacoes_getter: Callable[[], Mapping[str, Any]] | None = None,
+        navegador_leitura_getter: Callable[[], Mapping[str, Any]] | None = None,
+        navegador_operacoes_getter: Callable[[], Mapping[str, Any]] | None = None,
+        visao_jogo_leitura_getter: Callable[[], Mapping[str, Any]] | None = None,
+        visao_jogo_analise_getter: Callable[[], Mapping[str, Any]] | None = None,
+        conversa_llm_getter: Callable[[], Mapping[str, Any]] | None = None,
+        composicao_principal_getter: Callable[[], Mapping[str, Any]] | None = None,
         orquestracao_cooperativa_getter: Callable[[], Mapping[str, Any]] | None = None,
+        agenda_getter: Callable[[], Mapping[str, Any]] | None = None,
         memoria_pessoas_getter: Callable[[], Mapping[str, Any]] | None = None,
         linguagem_natural_getter: Callable[[], Mapping[str, Any]] | None = None,
         fala_operacional_getter: Callable[[], Mapping[str, Any]] | None = None,
@@ -646,7 +800,15 @@ class DiagnosticoMenteRuntime:
         self.pesquisa_arquivos_getter = pesquisa_arquivos_getter
         self.mutacoes_arquivos_getter = mutacoes_arquivos_getter
         self.musica_leitura_getter = musica_leitura_getter
+        self.musica_operacoes_getter = musica_operacoes_getter
+        self.navegador_leitura_getter = navegador_leitura_getter
+        self.navegador_operacoes_getter = navegador_operacoes_getter
+        self.visao_jogo_leitura_getter = visao_jogo_leitura_getter
+        self.visao_jogo_analise_getter = visao_jogo_analise_getter
+        self.conversa_llm_getter = conversa_llm_getter
+        self.composicao_principal_getter = composicao_principal_getter
         self.orquestracao_cooperativa_getter = orquestracao_cooperativa_getter
+        self.agenda_getter = agenda_getter
         self.memoria_pessoas_getter = memoria_pessoas_getter
         self.linguagem_natural_getter = linguagem_natural_getter
         self.fala_operacional_getter = fala_operacional_getter
@@ -703,6 +865,93 @@ class DiagnosticoMenteRuntime:
                     "playlist_ativa": False, "estado_disponivel": False,
                     "expondo_urls": False,
                 }
+        if callable(self.musica_operacoes_getter):
+            try:
+                diagnostico["musica_operacoes"] = dict(
+                    self.musica_operacoes_getter() or {}
+                )
+            except Exception:
+                diagnostico["musica_operacoes"] = {
+                    "mutacao_disponivel": False,
+                    "reproducao_disponivel": False,
+                    "auto_next_disponivel": False,
+                    "curadoria_disponivel": False,
+                    "playlist_ativa": False,
+                }
+        if callable(self.navegador_leitura_getter):
+            try:
+                diagnostico["navegador_leitura"] = dict(
+                    self.navegador_leitura_getter() or {}
+                )
+            except Exception:
+                diagnostico["navegador_leitura"] = {
+                    "conectado": False,
+                    "leitura_aba_disponivel": False,
+                    "listagem_disponivel": False,
+                }
+        if callable(self.navegador_operacoes_getter):
+            try:
+                diagnostico["navegador_operacoes"] = dict(
+                    self.navegador_operacoes_getter() or {}
+                )
+            except Exception:
+                diagnostico["navegador_operacoes"] = {
+                    "comandos_disponiveis": False,
+                    "navegacao_disponivel": False,
+                    "controle_pagina_disponivel": False,
+                    "fechamento_nativo_disponivel": False,
+                }
+        if callable(self.visao_jogo_leitura_getter):
+            try:
+                diagnostico["visao_jogo_leitura"] = dict(
+                    self.visao_jogo_leitura_getter() or {}
+                )
+            except Exception:
+                diagnostico["visao_jogo_leitura"] = {
+                    "habilitado": False, "credencial_disponivel": False,
+                    "em_andamento": False, "analise_recente": False,
+                    "contexto_jogo_ativo": False, "captura_persistida": False,
+                    "imagem_exposta": False, "autoriza_execucao": False,
+                }
+        if callable(self.visao_jogo_analise_getter):
+            try:
+                diagnostico["visao_jogo_analise"] = dict(
+                    self.visao_jogo_analise_getter() or {}
+                )
+            except Exception:
+                diagnostico["visao_jogo_analise"] = {
+                    "analise_disponivel": False,
+                    "continuidade_disponivel": False,
+                    "solicitacoes": 0, "aceitas": 0, "recusadas": 0,
+                    "falhas": 1, "captura_exposta": False,
+                    "prompt_exposto": False, "autoriza_execucao": False,
+                }
+        if callable(self.conversa_llm_getter):
+            try:
+                diagnostico["conversa_llm"] = dict(self.conversa_llm_getter() or {})
+            except Exception:
+                diagnostico["conversa_llm"] = {
+                    "prompt_disponivel": False, "modelo_disponivel": False,
+                    "estado_disponivel": False, "requisicoes": 0, "falhas": 1,
+                    "memoria_exposta": False, "credencial_exposta": False,
+                    "autoriza_execucao": False,
+                }
+        if callable(self.composicao_principal_getter):
+            try:
+                bruto = dict(self.composicao_principal_getter() or {})
+                diagnostico["composicao_principal"] = {
+                    "disponivel": bool(bruto.get("disponivel")),
+                    "quantidade": int(bruto.get("quantidade") or 0),
+                    "namespace_global": bool(bruto.get("namespace_global")),
+                    "credencial_exposta": bool(bruto.get("credencial_exposta")),
+                    "autoriza_execucao": bool(bruto.get("autoriza_execucao")),
+                }
+            except Exception:
+                diagnostico["composicao_principal"] = {
+                    "disponivel": False, "quantidade": 0,
+                    "namespace_global": True, "credencial_exposta": False,
+                    "autoriza_execucao": False,
+                }
         if callable(self.orquestracao_cooperativa_getter):
             try:
                 diagnostico["orquestracao_cooperativa"] = dict(
@@ -714,6 +963,49 @@ class DiagnosticoMenteRuntime:
                     "confirmados": 0, "falhas": 1, "planos_ativos": 0,
                     "referencias_ativas": 0,
                 }
+        if callable(self.agenda_getter):
+            try:
+                diagnostico["agenda"] = dict(self.agenda_getter() or {})
+            except Exception:
+                diagnostico["agenda"] = {
+                    "disponivel": False,
+                    "daemon_ativo": False,
+                    "agendamentos_ativos": 0,
+                    "gravacoes": 0,
+                    "falhas_persistencia": 1,
+                    "disparos_confirmados": 0,
+                    "retries": 0,
+                    "conteudo_exposto": False,
+                    "autoriza_execucao": False,
+                }
+        # O retrato tipado da agenda é coletado depois da auditoria geral e é
+        # mais recente. Se ele confirma persistência disponível, remova um
+        # alerta antigo do mesmo módulo em vez de publicar dois estados
+        # contraditórios no mesmo diagnóstico.
+        agenda_atual = dict(diagnostico.get("agenda") or {})
+        if agenda_atual.get("disponivel") is True:
+            saude = dict(diagnostico.get("saude") or {})
+            problemas = list(saude.get("problemas") or [])
+            problema_agenda = next(
+                (
+                    item for item in problemas
+                    if str(item.get("modulo") or "").strip().casefold() == "agenda"
+                ),
+                None,
+            )
+            if problema_agenda is not None:
+                status_anterior = str(
+                    problema_agenda.get("status") or "degradado"
+                ).strip().casefold()
+                if status_anterior in {"degradado", "indisponivel"}:
+                    saude[status_anterior] = max(
+                        0, int(saude.get(status_anterior) or 0) - 1,
+                    )
+                    saude["saudavel"] = int(saude.get("saudavel") or 0) + 1
+                saude["problemas"] = [
+                    item for item in problemas if item is not problema_agenda
+                ]
+                diagnostico["saude"] = saude
         if callable(self.memoria_pessoas_getter):
             try:
                 diagnostico["memoria_pessoas"] = dict(self.memoria_pessoas_getter() or {})

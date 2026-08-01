@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Tuple
 
+from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
+
 from mente_laylay.cognicao.guardiao_realidade_pessoal import (
     detectar_experiencia_pessoal_inventada,
 )
@@ -144,6 +146,7 @@ class ContextoPromptRuntime:
         estado_getter: Callable[[], Dict[str, Any]],
         mapa_habilidades_prompt: Callable[..., str] | None = None,
         mapa_recursos_prompt: Callable[[str], str] | None = None,
+        registrar_tamanho_prompt: Callable[[str, int], Any] | None = None,
     ) -> None:
         self.memoria_sqlite = memoria_sqlite
         self.resumo_mente_integrada = resumo_mente_integrada
@@ -153,6 +156,9 @@ class ContextoPromptRuntime:
         self.estado_getter = estado_getter
         self.mapa_habilidades_prompt = mapa_habilidades_prompt
         self.mapa_recursos_prompt = mapa_recursos_prompt
+        self.registrar_tamanho_prompt = registrar_tamanho_prompt
+        self._preparacoes = 0
+        self._falhas = 0
 
     def preparar(self, texto: str) -> Tuple[List[Dict[str, Any]], str]:
         try:
@@ -209,13 +215,54 @@ class ContextoPromptRuntime:
             "contexto_recursos": contexto_recursos,
             "contexto_identidade": contexto_identidade,
         }
-        return preparar_contexto_resposta_ia(
-            contexto,
-            t,
-            estado.get("messages") or [],
-            estado.get("humor_level", 0),
-            prompt_base_turno,
+        try:
+            resultado = preparar_contexto_resposta_ia(
+                contexto,
+                t,
+                estado.get("messages") or [],
+                estado.get("humor_level", 0),
+                prompt_base_turno,
+            )
+            if callable(self.registrar_tamanho_prompt):
+                origens = {
+                    "base": prompt_base_turno,
+                    "mente": retrato,
+                    "habilidades": contexto_habilidades,
+                    "recursos": contexto_recursos,
+                    "identidade": contexto_identidade,
+                    "historico": estado.get("messages") or [],
+                    "total": resultado[1],
+                }
+                for origem, conteudo in origens.items():
+                    if isinstance(conteudo, list):
+                        tamanho = sum(
+                            len(str(item.get("content") or ""))
+                            for item in conteudo if isinstance(item, dict)
+                        )
+                    else:
+                        tamanho = len(str(conteudo or ""))
+                    self.registrar_tamanho_prompt(f"prompt_{origem}", tamanho)
+            self._preparacoes += 1
+            return resultado
+        except Exception:
+            self._falhas += 1
+            raise
+
+    def preparar_pacote(self, texto: str) -> PacotePrompt:
+        mensagens, prompt = self.preparar(texto)
+        return PacotePrompt(
+            mensagens=tuple(dict(item) for item in mensagens if isinstance(item, dict)),
+            prompt_sistema=str(prompt or ""),
         )
+
+    def diagnostico(self) -> Dict[str, Any]:
+        return {
+            "disponivel": True,
+            "preparacoes": self._preparacoes,
+            "falhas": self._falhas,
+            "memoria_exposta": False,
+            "autoriza_execucao": False,
+        }
 
 
 def criar_contexto_prompt_runtime(**kwargs: Any) -> ContextoPromptRuntime:

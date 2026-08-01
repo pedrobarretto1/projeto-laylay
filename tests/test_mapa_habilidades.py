@@ -51,6 +51,36 @@ def test_pergunta_sobre_capacidades_mostra_todos_os_dominios() -> None:
         assert f"- {dominio} [" in contexto
 
 
+def test_llm_conhece_navegador_tipado_sem_promessa_de_execucao_arbitraria() -> None:
+    mapa = MapaHabilidadesRuntime()
+
+    contexto = mapa.contexto_para_prompt(
+        "você consegue ver minhas abas e interagir com uma página?"
+    )
+    resposta = mapa.responder_pergunta_capacidade(
+        "Lay, você consegue consultar e controlar o navegador?"
+    )
+
+    assert "- navegador [disponivel]" in contexto
+    assert "consultar a aba ativa" in contexto.casefold()
+    assert "comandos arbitrários" in contexto.casefold()
+    assert "leitura do navegador não autoriza uma ação" in resposta.casefold()
+    assert "comando arbitrário" in resposta.casefold()
+
+
+def test_llm_conhece_conversa_tipificada_sem_confundir_com_autorizacao() -> None:
+    mapa = MapaHabilidadesRuntime()
+
+    contexto = mapa.contexto_para_prompt("Lay, você consegue conversar e explicar coisas?")
+    resposta = mapa.responder_pergunta_capacidade(
+        "Lay, você consegue conversar e explicar coisas?"
+    )
+
+    assert "- conversa [" in contexto
+    assert "cliente de rede não lê minha memória" in resposta
+    assert "não autoriza comandos" in resposta
+
+
 def test_indisponibilidade_temporaria_expira_e_sucesso_recupera() -> None:
     agora = [100.0]
     mapa = MapaHabilidadesRuntime(
@@ -201,5 +231,8 @@ def test_llm_conhece_analise_cooperativa_de_item_no_jogo() -> None:
     assert "pesquisar evidências confiáveis" in contexto.casefold()
     assert "quadro atual" in resposta.casefold()
     assert "build e o inventário" in resposta.casefold()
+    assert "captura é transitória" in resposta.casefold()
+    assert "não fica persistida" in resposta.casefold()
+    assert "não autoriza uma nova análise" in resposta.casefold()
     assert "mouse sobre ele" in resposta.casefold()
     assert "em vez de inventar" in resposta.casefold()

@@ -106,7 +106,7 @@ def obter_contexto_jogo_seguro(ns: dict) -> dict:
 def anexar_estado_visual_recente_seguro(ns: dict, jogo_contexto: dict) -> dict:
     """Anexa a recência visual ou registra por que ela não pôde ser usada."""
     contexto = dict(jogo_contexto or {})
-    visao_jogo = ns.get('_visao_jogo_runtime')
+    visao_jogo = ns.get('_registro_visao_jogo_leitura_runtime')
     verificar = getattr(visao_jogo, 'tem_analise_recente', None)
     if not callable(verificar):
         return contexto
@@ -215,7 +215,7 @@ def _iniciar_planejamento_turno(
             f"intent={str(repeticao_operacional.get('intent') or '-')}"
         )
     jogo_contexto = obter_contexto_jogo_seguro(ns)
-    visao_jogo_runtime = ns.get('_visao_jogo_runtime')
+    visao_jogo_runtime = ns.get('_registro_visao_jogo_leitura_runtime')
     jogo_contexto = anexar_estado_visual_recente_seguro(ns, jogo_contexto)
     if jogo_contexto.get('ativo') and callable(getattr(visao_jogo_runtime, 'observar_texto_usuario', None)):
         try:

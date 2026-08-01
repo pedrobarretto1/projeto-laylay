@@ -10,7 +10,9 @@ from mente_laylay.autonomia.executor_comum import falar_ctx as _falar
 from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_variada
 
 
-INTENCOES_INFORMACOES = frozenset({"EMAIL_READ", "EMAIL_SYNC", "BRIEFING_REPEAT", "WEATHER"})
+INTENCOES_INFORMACOES = frozenset({
+    "EMAIL_READ", "EMAIL_SYNC", "BRIEFING_REPEAT", "WEATHER", "LEARNING_QUERY",
+})
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +168,43 @@ def _consultar_clima(
     return ResultadoDespacho.concluido()
 
 
+def _consultar_aprendizados(
+    params: Dict[str, Any],
+    ctx: Dict[str, Any],
+    deps: DependenciasExecutorInformacoes,
+) -> ResultadoDespacho:
+    recuperar = _get(ctx, "_recuperar_aprendizados")
+    try:
+        limite = max(1, min(5, int(params.get("limit") or 3)))
+    except (TypeError, ValueError):
+        limite = 3
+    if not callable(recuperar):
+        deps.marcar_resultado("habilidade_indisponivel", executou=False)
+        _falar(ctx, "Minha memória de aprendizados não está disponível agora.")
+        return ResultadoDespacho.concluido(False)
+    try:
+        aprendizados = [
+            str(item).strip() for item in (recuperar(limit=limite) or [])
+            if str(item or "").strip()
+        ]
+    except Exception:
+        deps.marcar_resultado("falha_execucao", executou=False)
+        _falar(ctx, "Tentei puxar o que aprendi, mas minha memória não respondeu direito.")
+        return ResultadoDespacho.concluido(False)
+
+    deps.marcar_resultado("aprendizados_consultados", executou=True, confirmado=True)
+    if not aprendizados:
+        _falar(ctx, "Ainda não tenho nenhum aprendizado confiável seu guardado por aqui.")
+        return ResultadoDespacho.concluido(True)
+    recortes = [item if len(item) <= 140 else item[:137] + "..." for item in aprendizados]
+    if len(recortes) == 1:
+        fala = f"Lembro disso que você me ensinou: {recortes[0]}"
+    else:
+        fala = "Lembro destas coisas que você me ensinou: " + "; ".join(recortes) + "."
+    _falar(ctx, fala)
+    return ResultadoDespacho.concluido(True)
+
+
 def executar_intencao_informacoes(
     intent: str,
     params: Dict[str, Any],
@@ -182,4 +221,6 @@ def executar_intencao_informacoes(
         return _sincronizar_emails(ctx, deps)
     if intent == "BRIEFING_REPEAT":
         return _repetir_briefing(texto_original, ctx, deps)
+    if intent == "LEARNING_QUERY":
+        return _consultar_aprendizados(params, ctx, deps)
     return _consultar_clima(params, ctx, deps)

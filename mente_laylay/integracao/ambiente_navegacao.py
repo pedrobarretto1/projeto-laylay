@@ -10,10 +10,10 @@ DEPENDENCIAS_AMBIENTE_NAVEGACAO = (
     "_percepcao_get", "_percepcao_set", "_classificar_contexto_por_url_chrome_mente",
     "open_app", "APP_OPENER_AVAILABLE", "_organizar_janelas_mente", "gw",
     "pyautogui", "ctypes", "wintypes", "_listar_programas_abertos_mente",
-    "psutil", "solicitar_lista_abas", "_normalizar_alvo_ambiente",
+    "psutil", "_normalizar_alvo_ambiente",
     "_resolver_alvo_ambiente_mente", "_janela_app_esta_em_foco",
     "_modo_jogo_runtime", "_abrir_url_reutilizando_aba_chrome_mente",
-    "_chrome_solicitacoes", "enviar_comando_chrome", "webbrowser",
+    "webbrowser",
     "_normalizar_texto_com_apelidos", "is_valid_url", "SITES_DIRECTOS",
     "formatar_url_ou_busca", "_fechar_abas_vazias_chrome_mente",
     "_eh_alvo_site_web_mente", "SITES_WEB_ALIAS",
@@ -32,6 +32,8 @@ class AmbienteNavegacaoRuntime:
         if not origem and callable(namespace_getter):
             origem = dict(namespace_getter() or {})
         self._servicos = self._filtrar(origem)
+        self._solicitacoes: Any = None
+        self._comandos: Any = None
         self.log = log
 
     @staticmethod
@@ -47,6 +49,15 @@ class AmbienteNavegacaoRuntime:
 
     def conectar_servicos(self, servicos: Mapping[str, Any]) -> None:
         self._servicos = self._filtrar(servicos)
+
+    def conectar_navegador(self, *, solicitacoes: Any, comandos: Any) -> None:
+        """Conecta transportes explícitos sem reabrir o namespace geral."""
+        if not callable(getattr(solicitacoes, "solicitar_lista_abas", None)):
+            raise RuntimeError("solicitações do navegador sem listagem de abas")
+        if not callable(getattr(comandos, "enviar", None)):
+            raise RuntimeError("executor do navegador sem envio validado")
+        self._solicitacoes = solicitacoes
+        self._comandos = comandos
 
     @property
     def servicos_registrados(self) -> tuple[str, ...]:
@@ -104,7 +115,9 @@ class AmbienteNavegacaoRuntime:
         return ns["_listar_programas_abertos_mente"](ns["gw"], ns["psutil"])
 
     def listar_abas(self, timeout_s: float = 5.0) -> list:
-        abas_brutas = self._ns()["solicitar_lista_abas"](timeout_s=timeout_s)
+        if self._solicitacoes is None:
+            return []
+        abas_brutas = self._solicitacoes.solicitar_lista_abas(timeout_s=timeout_s)
         resultado = []
         for aba in abas_brutas if isinstance(abas_brutas, list) else []:
             if not isinstance(aba, dict):
@@ -139,13 +152,15 @@ class AmbienteNavegacaoRuntime:
 
     def abrir_url(self, url: str, auto_click: bool = False, permitir_foco: bool = False) -> bool:
         ns = self._ns()
+        if self._solicitacoes is None or self._comandos is None:
+            return False
         modo_jogo = ns.get("_modo_jogo_runtime")
         preservar_foco = bool(getattr(modo_jogo, "ativo", False)) and not bool(permitir_foco)
         return bool(ns["_abrir_url_reutilizando_aba_chrome_mente"](
             url,
-            conectado=ns["_chrome_solicitacoes"].conectado,
-            solicitar_lista_abas=ns["solicitar_lista_abas"],
-            enviar_comando=ns["enviar_comando_chrome"],
+            conectado=self._solicitacoes.conectado,
+            solicitar_lista_abas=self._solicitacoes.solicitar_lista_abas,
+            enviar_comando=self._comandos.enviar,
             abrir_fallback=lambda alvo: (
                 False if preservar_foco else ns["webbrowser"].open(alvo, new=2)
             ),
@@ -170,9 +185,11 @@ class AmbienteNavegacaoRuntime:
 
     def fechar_abas_vazias(self):
         ns = self._ns()
+        if self._solicitacoes is None or self._comandos is None:
+            return False
         return ns["_fechar_abas_vazias_chrome_mente"](
-            solicitar_abas=ns["solicitar_lista_abas"],
-            enviar_comando=ns["enviar_comando_chrome"],
+            solicitar_abas=self._solicitacoes.solicitar_lista_abas,
+            enviar_comando=self._comandos.enviar,
         )
 
     def eh_alvo_site_web(self, texto: str) -> bool:

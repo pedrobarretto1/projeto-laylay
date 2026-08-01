@@ -65,6 +65,20 @@ def test_confirmacao_explicita_do_executor_tem_prioridade() -> None:
     assert contratos[0].confirmado is False
 
 
+def test_chamador_legado_nao_transforma_estado_ja_satisfeito_em_nova_execucao() -> None:
+    contratos = []
+    adaptador = _adaptador({
+        "_registrar_resultado_execucao": lambda contrato, *_args, **_kwargs: (
+            contratos.append(contrato)
+        )
+    })
+
+    adaptador.marcar_resultado("ja_aberto_focado", executou=True)
+
+    assert contratos[0].executou is False
+    assert contratos[0].confirmado is True
+
+
 def test_alvo_dos_params_preserva_prioridade_operacional() -> None:
     adaptador = _adaptador(
         None,
@@ -87,6 +101,9 @@ def test_contexto_de_fala_consulta_a_mesma_mente_do_turno() -> None:
         "current_emotion": "feliz",
         "ultima_habilidade": "iot",
         "ultimo_alvo": "luz",
+        "ultima_resposta": "",
+        "falas_recentes": [],
+        "modo_jogo_ativo": False,
     }
 
 
@@ -184,6 +201,38 @@ def test_fala_de_janela_escolhe_fallback_especifico(monkeypatch) -> None:
     )]
 
 
+def test_resultado_visivel_recebe_deboche_causal_sem_mudar_o_fato(monkeypatch) -> None:
+    falas: list[tuple] = []
+    monkeypatch.setattr(
+        modulo,
+        "fala_por_estado_acao",
+        lambda _status, **_kwargs: "Opera já estava aberto e em foco.",
+    )
+    adaptador = _adaptador({
+        "falar_com_lipsync": lambda *args: falas.append(args),
+        "modo_jogo_ativo": lambda: True,
+        "_avaliar_evento_emocional_operacional": lambda _resultado: {
+            "emocao": "debochada",
+            "nivel": 1,
+            "responsabilidade": "usuario",
+            "confianca": 0.94,
+            "repeticoes": 1,
+            "provocacao_usuario": 1,
+            "permite_expressao": True,
+            "arco": "provocacao_afetuosa",
+            "ts": 100.0,
+        },
+    }, nome_app="Opera")
+
+    adaptador.falar_por_status(
+        "ja_aberto_focado", "Opera já estava aberto.", alvo="Opera",
+    )
+
+    assert "opera já estava" in falas[0][0].casefold()
+    assert "olhos tiraram uma folguinha" in falas[0][0].casefold()
+    assert falas[0][1:] == ("debochada", 1)
+
+
 def test_falha_do_registrador_nao_interrompe_o_executor() -> None:
     adaptador = _adaptador({
         "_registrar_resultado_execucao": lambda *_args, **_kwargs: (
@@ -219,7 +268,9 @@ def test_confirmacao_confirmada_pode_receber_voz_da_llm(monkeypatch) -> None:
 
     assert chamadas_llm
     assert chamadas_llm[0][1]["modo_rapido"] is True
-    assert chamadas_llm[0][1]["timeout"] == 3
+    assert chamadas_llm[0][1]["timeout"] == 8.0
+    assert chamadas_llm[0][1]["_prioridade_interativa"] is True
+    assert chamadas_llm[0][1]["_permitir_durante_interacao"] is True
     assert falas == [("Abri o Chrome. Ele já entrou em cena sem drama.", "debochada", 2)]
 
 
@@ -244,7 +295,27 @@ def test_confirmacao_llm_contraditoria_volta_para_fala_segura(monkeypatch) -> No
     assert "chrome" in falas[0][0].casefold()
 
 
-def test_falha_operacional_nao_e_entregue_para_llm(monkeypatch) -> None:
+def test_fallback_de_autoria_expoe_motivo_sem_quebrar_o_comando(monkeypatch) -> None:
+    logs: list[str] = []
+    falas: list[tuple] = []
+    monkeypatch.setattr(
+        modulo,
+        "fala_por_estado_acao",
+        lambda _status, **_kwargs: "Abri o Chrome.",
+    )
+    adaptador = _adaptador({
+        "falar_com_lipsync": lambda *args: falas.append(args),
+        "print": logs.append,
+        "enviar_mensagem": lambda *_args, **_kwargs: "LAYLAY_LLM_INDISPONIVEL",
+    })
+
+    adaptador.falar_por_status("app_aberto", "Abrindo Chrome.", alvo="chrome")
+
+    assert falas
+    assert any("resposta_tecnica_ou_json_invalido" in item for item in logs)
+
+
+def test_falha_operacional_cotidiana_recebe_uma_fala_autoral_da_llm(monkeypatch) -> None:
     chamadas_llm: list[bool] = []
     falas: list[tuple] = []
     monkeypatch.setattr(
@@ -254,13 +325,169 @@ def test_falha_operacional_nao_e_entregue_para_llm(monkeypatch) -> None:
     )
     adaptador = _adaptador({
         "falar_com_lipsync": lambda *args: falas.append(args),
-        "enviar_mensagem": lambda *_args, **_kwargs: chamadas_llm.append(True),
+        "enviar_mensagem": lambda *_args, **_kwargs: (
+            chamadas_llm.append(True)
+            or '{"fala":"Não achei o Chrome por aqui; hoje ele resolveu brincar de invisível.",'
+               '"emocao":"debochada","nivel":1,'
+               '"status":"nao_encontrado","alvo":"chrome"}'
+        ),
     })
 
     adaptador.falar_por_status("nao_encontrado", "Não achei o Chrome.", alvo="chrome")
 
-    assert chamadas_llm == []
-    assert "não" in falas[0][0].casefold()
+    assert chamadas_llm == [True]
+    assert falas == [(
+        "Não achei o Chrome por aqui; hoje ele resolveu brincar de invisível.",
+        "debochada",
+        1,
+    )]
+
+
+def test_estado_ja_satisfeito_vira_nao_acao_consciente_autoral(monkeypatch) -> None:
+    entregas: list[tuple] = []
+    chamadas: list[object] = []
+
+    def enviar(mensagens, **_kwargs):
+        chamadas.append(mensagens)
+        return (
+            '{"fala":"O Opera já está aberto e em foco; não vou abrir de novo o que já está na sua cara.",'
+            '"emocao":"debochada","nivel":1,'
+            '"status":"ja_aberto_focado","alvo":"Opera"}'
+        )
+
+    adaptador = _adaptador({
+        "falar_com_lipsync": lambda *_args: None,
+        "enviar_mensagem": enviar,
+        "_falar_resultado_operacional": lambda *args: entregas.append(args),
+    }, nome_app="Opera")
+
+    adaptador.falar_por_status(
+        "ja_aberto_focado", "Opera já estava aberto e em foco.", alvo="Opera",
+    )
+
+    contrato, fala, emocao, nivel = entregas[0]
+    assert chamadas
+    assert contrato.executou is False
+    assert contrato.confirmado is True
+    assert "não vou abrir de novo" in fala.casefold()
+    assert (emocao, nivel) == ("debochada", 1)
+
+
+def test_estado_ja_satisfeito_aceita_classe_semantica_no_status_da_llm() -> None:
+    entregas: list[tuple] = []
+    adaptador = _adaptador({
+        "falar_com_lipsync": lambda *_args: None,
+        "enviar_mensagem": lambda *_args, **_kwargs: (
+            '{"fala":"O Opera já está aberto e em foco; não vou abrir de novo só porque seus olhos tiraram férias.",'
+            '"emocao":"debochada","nivel":2,'
+            '"status":"sem_acao","alvo":"Opera"}'
+        ),
+        "_falar_resultado_operacional": lambda *args: entregas.append(args),
+    }, nome_app="Opera")
+
+    adaptador.falar_por_status(
+        "ja_aberto_focado", "Opera já estava aberto e em foco.", alvo="Opera",
+    )
+
+    assert entregas[0][1].endswith("seus olhos tiraram férias.")
+    assert entregas[0][2:] == ("debochada", 2)
+
+
+def test_autoria_varia_abertura_que_acabou_de_usar() -> None:
+    entregas: list[tuple] = []
+    abertura = "O Opera já está aberto e em foco."
+    adaptador = _adaptador({
+        "ultima_resposta": f"{abertura} Não vou abrir de novo.",
+        "falar_com_lipsync": lambda *_args: None,
+        "enviar_mensagem": lambda *_args, **_kwargs: (
+            '{"fala":"O Opera já está aberto e em foco. Não vou abrir de novo só porque seus olhos tiraram férias.",'
+            '"emocao":"debochada","nivel":2,'
+            '"status":"sem_acao","alvo":"Opera"}'
+        ),
+        "_falar_resultado_operacional": lambda *args: entregas.append(args),
+    }, nome_app="Opera")
+
+    adaptador.falar_por_status(
+        "ja_aberto_focado", "Opera já estava aberto e em foco.", alvo="Opera",
+    )
+
+    fala = entregas[0][1]
+    assert fala.startswith("Não vou abrir de novo")
+    assert "O Opera já está aberto e em foco." in fala
+
+
+def test_pergunta_opcional_no_fim_nao_descarta_confirmacao_autoral() -> None:
+    logs: list[str] = []
+    falas: list[tuple] = []
+    adaptador = _adaptador({
+        "falar_com_lipsync": lambda *args: falas.append(args),
+        "print": logs.append,
+        "enviar_mensagem": lambda *_args, **_kwargs: (
+            '{"fala":"A lâmpada do quarto não respondeu; hoje ela resolveu testar minha paciência. Quer que eu tente de novo?",'
+            '"emocao":"irritada","nivel":1,'
+            '"status":"indisponivel","alvo":"lampada_quarto"}'
+        ),
+    }, alvo="lampada_quarto")
+
+    adaptador.falar_por_status(
+        "indisponivel", "A lâmpada do quarto não respondeu.", alvo="lampada_quarto",
+        executou=False,
+    )
+
+    assert falas[0][0].endswith("hoje ela resolveu testar minha paciência.")
+    assert "?" not in falas[0][0]
+    assert not any("FALA:AUTORIA" in item for item in logs)
+
+
+def test_autoria_rejeitada_expoe_regra_exata_que_foi_violada(monkeypatch) -> None:
+    logs: list[str] = []
+    falas: list[tuple] = []
+    monkeypatch.setattr(
+        modulo,
+        "fala_por_estado_acao",
+        lambda _status, **_kwargs: "O Opera já está aberto e em foco; não repeti a abertura.",
+    )
+    adaptador = _adaptador({
+        "falar_com_lipsync": lambda *args: falas.append(args),
+        "print": logs.append,
+        "enviar_mensagem": lambda *_args, **_kwargs: (
+            '{"fala":"O Opera já está aberto e em foco; não repeti, mas posso tentar de novo.",'
+            '"emocao":"debochada","nivel":2,'
+            '"status":"ja_aberto_focado","alvo":"Opera"}'
+        ),
+    }, nome_app="Opera")
+
+    adaptador.falar_por_status(
+        "ja_aberto_focado", "Opera já estava aberto e em foco.", alvo="Opera",
+    )
+
+    assert falas[0][0].endswith("já está aberto e em foco; não repeti a abertura.")
+    assert any(
+        "contrato_nao_preservado:promessa_ou_nova_oferta" in item
+        for item in logs
+    )
+
+
+def test_modo_jogo_mantem_fala_local_e_nao_chama_llm(monkeypatch) -> None:
+    falas: list[tuple] = []
+    chamadas: list[bool] = []
+    monkeypatch.setattr(
+        modulo,
+        "fala_por_estado_acao",
+        lambda _status, **_kwargs: "Opera já tava na tua cara.",
+    )
+    adaptador = _adaptador({
+        "falar_com_lipsync": lambda *args: falas.append(args),
+        "enviar_mensagem": lambda *_args, **_kwargs: chamadas.append(True),
+        "modo_jogo_ativo": lambda: True,
+    }, nome_app="Opera")
+
+    adaptador.falar_por_status(
+        "ja_aberto_focado", "Opera já estava aberto.", alvo="Opera",
+    )
+
+    assert chamadas == []
+    assert falas[0][0] == "Opera já tava na tua cara."
 
 
 def test_consulta_informativa_pode_ganhar_estilo_sem_perder_texto(monkeypatch) -> None:

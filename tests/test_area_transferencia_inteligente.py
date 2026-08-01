@@ -227,6 +227,7 @@ def test_composicao_entrega_continuacao_clipboard_ao_roteador_prioritario():
             MemoriaPessoasNula()
         ),
         "_registro_iot_runtime": registrar_iot(IoTNulo()),
+        "resolver_comando_natural": lambda _texto, _origem: (None, ""),
     }
     composicao = criar_composicao_entrada_interacao_runtime(
         servicos=servicos,

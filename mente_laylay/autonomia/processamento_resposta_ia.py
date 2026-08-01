@@ -23,6 +23,12 @@ from mente_laylay.personalidade.higiene_fala import remover_residuos_operacionai
 from mente_laylay.personalidade.proporcao_resposta import parece_problema_matematico
 from mente_laylay.personalidade.contingencia_natural import fala_contingencia_natural
 from mente_laylay.cognicao.contratos_turno import ContratoRespostaTurno
+from mente_laylay.cognicao.qualidade_comunicacao import (
+    avaliar_qualidade_comunicacao,
+    contingencia_comunicacao,
+    montar_mensagens_reparo_comunicacao,
+)
+from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
 
 
 _ACOES_QUE_EXIGEM_PEDIDO_ATUAL = {
@@ -883,20 +889,27 @@ def preparar_resposta_para_execucao(
     texto_usuario: str,
     resposta_bruta: Any,
     *,
-    enviar_mensagem_cb: Optional[Callable[..., Any]],
+    enviar_mensagem_cb: Optional[Callable[..., Any]] = None,
+    modelo_llm: Any = None,
     limpar_texto_fala_cb: Optional[Callable[[str], str]],
     fallback_fala: str,
     memoria_sqlite: Any,
     registrar_autocorrecao_cb: Optional[Callable[..., Any]] = None,
     registrar_falha_cb: Optional[Callable[..., Any]] = None,
     contexto_contingencia: Mapping[str, Any] | None = None,
+    contexto_comunicacao: Mapping[str, Any] | None = None,
     log: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, Any]:
     """Prepara a resposta da IA antes do dispatcher executar qualquer acao."""
+    enviar_mensagem_cb = resolver_enviador_modelo(
+        modelo_llm=modelo_llm,
+        enviar_mensagem=enviar_mensagem_cb,
+    )
     registrar_log = log or print
     texto = str(texto_usuario or "").strip()
     bot_raw = resposta_bruta
     falha_tecnica_llm = _fala_representa_falha_tecnica_llm(bot_raw)
+    comunicacao_autocorrigida = False
 
     def registrar_falha_contingencia(codigo: str) -> None:
         if not callable(registrar_falha_cb):
@@ -1085,6 +1098,82 @@ def preparar_resposta_para_execucao(
                 registrar_log("⚠️ [IA] Continuação autônoma ainda veio incompleta; mantive a resposta segura.")
         except Exception as erro:
             registrar_log(f"⚠️ [IA] não consegui concluir a resposta autonomamente: {type(erro).__name__}")
+
+    # O verificador estrutural acima protege formato e realidade. Esta etapa
+    # observa o significado do turno: se a fala ficou pela metade, não entregou
+    # o que prometeu ou abandonou o domínio confirmado, fazemos exatamente uma
+    # nova tentativa com contexto curto. O rascunho rejeitado nunca vai para a
+    # memória nem para o TTS.
+    contexto_com = dict(contexto_comunicacao or {})
+    plano_comunicacao = dict(contexto_com.get("plano_turno") or {})
+    avaliacao_comunicacao = (
+        avaliar_qualidade_comunicacao(
+            texto,
+            fala_limpa,
+            plano=plano_comunicacao,
+        )
+        if not comandos and not falha_tecnica_llm and not realidade_bloqueada
+        else {"aceita": True, "problemas": [], "foco": {}}
+    )
+    if avaliacao_comunicacao.get("requer_reparo"):
+        problemas = list(avaliacao_comunicacao.get("problemas") or [])
+        registrar_log(
+            "🧭 [COMUNICAÇÃO] reparo semântico solicitado | "
+            + ",".join(problemas)
+        )
+        fala_reparada = ""
+        if callable(enviar_mensagem_cb):
+            try:
+                reparada_raw = enviar_mensagem_cb(
+                    montar_mensagens_reparo_comunicacao(
+                        texto,
+                        fala_limpa,
+                        avaliacao_comunicacao,
+                        mensagens=contexto_com.get("mensagens"),
+                    ),
+                    _com_tools=False,
+                    max_tokens=360,
+                    modo_rapido=True,
+                    _prioridade_interativa=True,
+                )
+                candidata, comandos_reparo = limpar_resposta_da_ia(
+                    reparada_raw,
+                    limpar_texto_fala_cb=limpar_texto_fala_cb,
+                    fallback_fala=fallback_fala,
+                )
+                segunda_avaliacao = avaliar_qualidade_comunicacao(
+                    texto,
+                    candidata,
+                    plano=plano_comunicacao,
+                )
+                if candidata and not comandos_reparo and segunda_avaliacao.get("aceita"):
+                    fala_reparada = candidata
+            except Exception as erro:
+                registrar_log(
+                    "⚠️ [COMUNICAÇÃO] tentativa de reparo falhou: "
+                    f"{type(erro).__name__}"
+                )
+        if fala_reparada:
+            fala_limpa = fala_reparada
+            bot_raw = json.dumps(
+                {"fala": fala_reparada, "comandos": []},
+                ensure_ascii=False,
+            )
+            comunicacao_autocorrigida = True
+            registrar_log("🧭 [COMUNICAÇÃO] resposta reparada antes da fala e da memória.")
+        else:
+            fala_limpa = contingencia_comunicacao(
+                texto,
+                foco=avaliacao_comunicacao.get("foco"),
+            )
+            bot_raw = json.dumps(
+                {"fala": fala_limpa, "comandos": []},
+                ensure_ascii=False,
+            )
+            registrar_falha_contingencia("qualidade_comunicacao_nao_reparada")
+            registrar_log(
+                "🧭 [COMUNICAÇÃO] reparo indisponível; usei contingência contextual."
+            )
     tipo_interacao = extrair_tipo_interacao_da_ia(bot_raw)
     emocao_resposta, nivel_emocao_resposta = extrair_emocao_da_ia(bot_raw)
     leitura_semantica = extrair_leitura_semantica_da_ia(bot_raw, texto)
@@ -1147,7 +1236,7 @@ def preparar_resposta_para_execucao(
         tipo_interacao=tipo_interacao,
         aprendizados=tuple(aprendizados),
         leitura_semantica=leitura_semantica,
-        autocorrigida=bool(corrigida),
+        autocorrigida=bool(corrigida or comunicacao_autocorrigida),
         suprimir_fala=suprimir_fala,
         emocao=emocao_resposta,
         nivel_emocao=nivel_emocao_resposta,

@@ -17,6 +17,7 @@ from mente_laylay.autonomia.servicos_background import (
     OrquestradorInicializacao,
 )
 from mente_laylay.personalidade.voz_runtime import VozRuntime
+from mente_laylay.personalidade.terminal_laylay import escutar_texto_terminal
 
 
 def _agenda(tmp_path, *, relogio, executar, tolerancia=3600.0):
@@ -26,7 +27,7 @@ def _agenda(tmp_path, *, relogio, executar, tolerancia=3600.0):
         abrir_programa_cb=lambda *_: None,
         enviar_pc_b_cb=lambda *_: None,
         enviar_chrome_local_cb=lambda *_: None,
-        executar_exec_cb=lambda *_: None,
+        executar_comando_conteudo_cb=lambda *_: None,
         executar_intencao_cb=executar,
         time_cb=lambda: relogio["agora"].timestamp(),
         now_cb=lambda: relogio["agora"],
@@ -258,6 +259,46 @@ def test_encerramento_desbloqueia_servico_em_espera_sem_consumir_o_timeout():
     assert saiu.wait(0.2) is True
     assert time.monotonic() - inicio < 0.5
     assert supervisor.ativos() == ()
+
+
+def test_prompt_aberto_e_cancelado_sem_virar_falha_da_mente() -> None:
+    falhas = []
+    supervisor = GerenciadorServicosBackground(
+        log=lambda *_: None,
+        registrar_falha=lambda *args, **kwargs: falhas.append((args, kwargs)),
+    )
+    leitor_iniciado = threading.Event()
+
+    class StdinTTY:
+        @staticmethod
+        def isatty():
+            return True
+
+    def leitor(_prompt, *, deve_continuar, sleep_fn, **_kwargs):
+        leitor_iniciado.set()
+        while deve_continuar():
+            sleep_fn(0.005)
+        return None
+
+    def chat_terminal():
+        escutar_texto_terminal(
+            estado_ativo=lambda: True,
+            processar_texto=lambda _texto: None,
+            stdin=StdinTTY(),
+            raw_print=lambda *_args, **_kwargs: None,
+            sleep_fn=time.sleep,
+            log=lambda *_: None,
+            deve_continuar=lambda: not supervisor.deve_parar(),
+            ler_linha_fn=leitor,
+        )
+
+    assert supervisor.iniciar("Laylay-Chat-Terminal", chat_terminal) is True
+    assert leitor_iniciado.wait(0.3) is True
+
+    supervisor.encerrar(timeout_s=0.5)
+
+    assert supervisor.ativos() == ()
+    assert falhas == []
 
 
 def test_supervisor_nao_exibe_traceback_com_segundo_ctrl_c_no_encerramento():
@@ -542,6 +583,12 @@ def test_catalogo_padrao_valida_e_monta_todas_as_conexoes():
 
     assert len(composicao.etapas) == 10
     assert len(composicao.catalogo_threads()) == 16
+    assert "Laylay-Chat-Terminal" in composicao.threads_com_parada
+    assert "Laylay-Chat-Terminal" not in composicao.threads
+    assert tuple(nome for nome, _finalizar in composicao.encerramento) == (
+        "barra_comando", "avatar", "gamebar", "voz",
+        "rede_associativa", "memoria",
+    )
     composicao.etapas["iniciar nova sessão conversacional"]()
     assert eventos[-1] == ("inicio_programa", True)
 

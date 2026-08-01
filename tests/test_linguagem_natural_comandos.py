@@ -8,6 +8,14 @@ from mente_laylay.cognicao.interpretacao_intencao import (
 )
 from mente_laylay.especialistas.capacidades import intents_registradas
 from mente_laylay.especialistas.mapa_habilidades import MapaHabilidadesRuntime
+from mente_laylay.integracao.registro_conversa_llm import (
+    RegistroModeloLLM,
+    ResultadoModelo,
+)
+from mente_laylay.memoria_mental.contexto_compartilhado import estado_mental_inicial
+from mente_laylay.memoria_mental.continuidade_geral import (
+    registrar_evento_continuidade,
+)
 
 
 class _ContextoExecucao:
@@ -153,6 +161,88 @@ def test_detector_literal_tambem_obedece_autorizacao_geral_do_turno() -> None:
     assert rota == ""
 
 
+def test_coordenador_recupera_essa_tambem_da_continuidade_oficial() -> None:
+    estado = registrar_evento_continuidade(
+        estado_mental_inicial(),
+        evento="acao",
+        intent="PLAYLIST_ADD",
+        alvo="rei do pop",
+        params={"nome_playlist": "rei do pop"},
+        status="playlist_musica_adicionada",
+    )
+
+    resultado, rota = resolver_intencao(
+        "essa também",
+        "teste-continuacao",
+        {
+            "normalizar_texto": lambda texto: str(texto).casefold(),
+            "refinar_contexto_mental": lambda _texto: None,
+            "extrair_agendamento": lambda _texto: None,
+            "extrair_acao_agendada": lambda _texto: None,
+            "texto_cancela_acao_agora": lambda _texto: False,
+            "texto_depende_de_contexto": lambda _texto: True,
+            # Simula justamente a falha observada: o especialista não devolve
+            # candidato, mas a fonte canônica continua válida.
+            "detectar_intencao_deterministica": lambda _texto: None,
+            "resolver_comando_contextual_forcado": lambda _texto: None,
+            "resolver_repeticao_ultima_acao": lambda _texto: None,
+            "tentar_intencao_ai_primeiro": lambda _texto: (_ for _ in ()).throw(
+                AssertionError("a continuação não deveria chegar à IA")
+            ),
+            "registrar_arbitragem_turno": lambda *_args: None,
+            "continuidade_geral": estado["continuidade_geral"],
+            "turno_atual": {
+                "modalidade": "comando",
+                "modalidade_geral": "comando",
+                "autoriza_execucao": True,
+            },
+            "retrato_turno_atual": {},
+        },
+    )
+
+    assert resultado == {
+        "intent": "PLAYLIST_ADD",
+        "params": {
+            "nome_playlist": "rei do pop",
+            "referencia_contextual": True,
+        },
+    }
+    assert rota == "continuidade-aditiva"
+
+
+def test_coordenador_preserva_playlist_add_quando_detector_principal_falha() -> None:
+    resultado, rota = resolver_intencao(
+        "coloca essa musica na playlist rei do pop",
+        "chat",
+        {
+            "normalizar_texto": lambda texto: str(texto).casefold(),
+            "refinar_contexto_mental": lambda _texto: None,
+            "extrair_agendamento": lambda _texto: None,
+            "extrair_acao_agendada": lambda _texto: None,
+            "texto_cancela_acao_agora": lambda _texto: False,
+            "texto_depende_de_contexto": lambda _texto: True,
+            "detectar_intencao_deterministica": lambda _texto: None,
+            "resolver_comando_contextual_forcado": lambda _texto: None,
+            "resolver_repeticao_ultima_acao": lambda _texto: None,
+            "tentar_intencao_ai_primeiro": lambda _texto: (_ for _ in ()).throw(
+                AssertionError("pedido explícito de playlist não pode chegar à LLM")
+            ),
+            "turno_atual": {"modalidade": "comando", "autoriza_execucao": True},
+            "retrato_turno_atual": {
+                "operacao_explicita": "playlist_adicionar",
+                "intents_permitidos": ["PLAYLIST_ADD"],
+            },
+            "registrar_arbitragem_turno": lambda *_args: None,
+        },
+    )
+
+    assert resultado == {
+        "intent": "PLAYLIST_ADD",
+        "params": {"nome_playlist": "rei do pop"},
+    }
+    assert rota == "deterministico-explicito"
+
+
 def test_barreira_prioritaria_executa_resolucao_canonica_uma_vez() -> None:
     resolucoes: list[tuple[str, str]] = []
     execucoes: list[tuple[dict, str]] = []
@@ -227,6 +317,37 @@ def test_prompt_do_interpretador_recebe_catalogo_vivo_de_habilidades() -> None:
     for intent in ("FILE_SEARCH", "INBOX_LIST", "IOT_LIST", "PEOPLE_QUERY"):
         assert intent in intents_registradas()
         assert intent in prompt
+
+
+def test_interpretador_aceita_modelo_tipado_sem_callback_no_contexto() -> None:
+    pedidos = []
+
+    class Modelo:
+        def executar(self, pedido):
+            pedidos.append(pedido)
+            return ResultadoModelo('{"intent":"NONE","params":{}}', True)
+
+        def diagnostico(self):
+            return {"disponivel": True}
+
+    runtime = InterpretacaoIntencaoRuntime(
+        contexto_getter=lambda: {
+            "estado": {},
+            "normalizar_texto": lambda texto: str(texto).casefold(),
+            "texto_cancela_acao_agora": lambda _texto: False,
+            "texto_bloqueia_playlist_agora": lambda _texto: False,
+            "texto_social_curto": lambda _texto: False,
+            "texto_parece_consulta_operacional": lambda _texto: False,
+            "extrair_json_da_ia": lambda texto: texto,
+        },
+        modelo_llm=RegistroModeloLLM.criar(Modelo()),
+        log=lambda *_args: None,
+    )
+
+    runtime.analisar("cuida desse conteúdo")
+
+    assert len(pedidos) == 1
+    assert pedidos[0].com_tools is False
 
 
 def test_consulta_operacional_reconhece_quantidade_no_feminino() -> None:
@@ -311,28 +432,23 @@ def test_mesma_frase_e_reavaliada_quando_o_turno_muda() -> None:
     assert ciclo.diagnostico_linguagem_natural()["tentativas"] == 2
 
 
-def test_imediato_nao_reabre_classificacao_ja_concluida_no_turno() -> None:
-    analises = []
-    estado = type("Estado", (), {
-        "mental": {
-            "turno_atual": {
-                "id": 901,
-                "modalidade": "comando",
-                "modalidade_geral": "comando",
-                "autoriza_execucao": True,
-            },
-        },
-    })()
+def test_runtime_nao_expoe_segundo_passe_de_classificacao() -> None:
+    chamadas = []
     namespace = {
-        "_normalizar_texto_com_apelidos": lambda texto: str(texto).casefold(),
-        "_estado_compartilhado_runtime": estado,
-        "decisao_comando_ja_avaliada": lambda _texto: True,
-        "analisar_intencao": lambda texto: analises.append(texto),
+        "resolver_comando_natural": (
+            lambda texto, origem: chamadas.append((texto, origem)) or (None, "")
+        ),
     }
     runtime = ComandosImediatosRuntime(
         namespace_getter=lambda: namespace,
         loop_getter=lambda: None,
     )
 
-    assert runtime.processar("coloca uma música para jogar minecraft") is False
-    assert analises == []
+    assert not hasattr(runtime, "processar")
+    assert runtime.processar_prioritarios(
+        "coloca uma música para jogar minecraft"
+    ) is False
+    assert chamadas == [(
+        "coloca uma música para jogar minecraft",
+        "prioritario-linguagem-natural",
+    )]

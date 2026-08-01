@@ -8,6 +8,8 @@ import re
 import time
 from typing import Any, Callable, Dict
 
+from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
+
 from mente_laylay.autonomia.porteiro_proatividade import categoria_sugestao
 from mente_laylay.cognicao.erros_navegador import resumir_erro_navegador
 from mente_laylay.memoria_mental.estado_continuidades import (
@@ -685,9 +687,9 @@ def processar_confirmacao_sugestao(ctx: Dict[str, Any], texto: str) -> bool:
 
         if sugestao == "RELOAD_PAGE":
             alvo = str(original_payload.get("url") or "").strip()
-            enviar_chrome = _get(ctx, "enviar_comando_chrome")
-            if alvo and callable(enviar_chrome):
-                enviar_chrome("reload_url", {"url": alvo})
+            navegador = _get(ctx, "_registro_navegador_operacoes_runtime")
+            if alvo and navegador is not None:
+                navegador.recarregar_url(alvo)
             confirmar = _get(ctx, "confirmar_execucao_debochada")
             if callable(confirmar):
                 confirmar(texto, "O usuário confirmou e o Python recarregou a página no Chrome. Responda curto, debochada, confirmando. Não use [EXEC].")
@@ -745,13 +747,19 @@ class SugestoesSistemaRuntime:
         self,
         *,
         contexto_getter: Callable[[], Dict[str, Any]],
+        modelo_llm: Any = None,
     ) -> None:
         self.contexto_getter = contexto_getter
+        self.enviar_mensagem = resolver_enviador_modelo(modelo_llm=modelo_llm)
 
     def _ctx(self) -> Dict[str, Any]:
         try:
             contexto = self.contexto_getter() if callable(self.contexto_getter) else {}
-            return contexto if isinstance(contexto, dict) else {}
+            contexto = contexto if isinstance(contexto, dict) else {}
+            if self.enviar_mensagem is not None:
+                contexto = dict(contexto)
+                contexto["enviar_mensagem"] = self.enviar_mensagem
+            return contexto
         except Exception:
             return {}
 
@@ -759,9 +767,9 @@ class SugestoesSistemaRuntime:
         ctx = self._ctx()
         payload = dict(payload or {})
         if payload.get("clean_tabs") or payload.get("clean_empty_tabs"):
-            fechar_abas = _get(ctx, "fechar_abas_vazias")
-            if callable(fechar_abas):
-                fechar_abas()
+            navegador = _get(ctx, "_registro_navegador_operacoes_runtime")
+            if navegador is not None:
+                navegador.fechar_abas_vazias()
 
         topico = str(payload.get("image_topic") or "").strip()
         acao_imagem = str(payload.get("image_action") or "").strip().lower()
@@ -779,9 +787,9 @@ class SugestoesSistemaRuntime:
                         pass
 
         query = str(payload.get("music_query") or "lofi focus").strip()
-        enviar_chrome = _get(ctx, "enviar_comando_chrome")
-        if query and callable(enviar_chrome):
-            enviar_chrome("youtube_search", {"query": query})
+        navegador = _get(ctx, "_registro_navegador_operacoes_runtime")
+        if query and navegador is not None:
+            navegador.pesquisar_youtube(query)
         return True
 
     def detectar_indireta(self, texto: str, estado_mental: Dict[str, Any] | None = None):
@@ -877,16 +885,16 @@ class SugestoesSistemaRuntime:
     def executar_modo_gamer(self, payload: Dict[str, Any]) -> bool:
         ctx = self._ctx()
         payload = dict(payload or {})
-        enviar_chrome = _get(ctx, "enviar_comando_chrome")
-        if payload.get("pause_music") and callable(enviar_chrome):
-            enviar_chrome("youtube_control", {"command": "pause_play"})
+        navegador_operacoes = _get(ctx, "_registro_navegador_operacoes_runtime")
+        navegador_leitura = _get(ctx, "_registro_navegador_leitura_runtime")
+        if payload.get("pause_music") and navegador_operacoes is not None:
+            navegador_operacoes.controlar_youtube("pause_play")
         if payload.get("close_study_tabs"):
-            solicitar_abas = _get(ctx, "solicitar_lista_abas")
             selecionar = _get(ctx, "selecionar_abas_para_fechar_llm")
-            abas = solicitar_abas() if callable(solicitar_abas) else []
+            abas = navegador_leitura.listar_abas() if navegador_leitura is not None else []
             ids = selecionar("fechar abas de estudo", abas) if callable(selecionar) else []
-            if ids and callable(enviar_chrome):
-                enviar_chrome("close_tabs", {"ids": ids})
+            if ids and navegador_operacoes is not None:
+                navegador_operacoes.fechar_abas(ids)
         return True
 
     def executar_organizacao(self, payload: Dict[str, Any]) -> bool:
@@ -948,7 +956,12 @@ class SugestoesSistemaRuntime:
             "remover_prefixo_exec": _get(ctx, "remover_prefixo_exec"),
             "current_emotion": _get(ctx, "current_emotion", "calma"),
             "emotion_level": _get(ctx, "emotion_level", 1),
-            "enviar_comando_chrome": _get(ctx, "enviar_comando_chrome"),
+            "_registro_navegador_leitura_runtime": _get(
+                ctx, "_registro_navegador_leitura_runtime"
+            ),
+            "_registro_navegador_operacoes_runtime": _get(
+                ctx, "_registro_navegador_operacoes_runtime"
+            ),
             "confirmar_execucao_debochada": self.confirmar_execucao,
             "executar_intencao": _get(ctx, "executar_intencao"),
             "sugestao_bloqueada_ate": _get(ctx, "sugestao_bloqueada_ate"),

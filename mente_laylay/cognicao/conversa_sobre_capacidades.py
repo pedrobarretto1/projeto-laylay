@@ -7,13 +7,8 @@ sobre habilidades futuras de comandos que devem ser executados agora.
 from __future__ import annotations
 
 import re
-import unicodedata
 
-
-def _normalizar(texto: str) -> str:
-    bruto = unicodedata.normalize("NFKD", str(texto or "").casefold())
-    sem_acentos = "".join(ch for ch in bruto if not unicodedata.combining(ch))
-    return re.sub(r"\s+", " ", sem_acentos).strip()
+from .normalizacao_linguagem import normalizar_texto_basico as _normalizar
 
 
 def texto_discute_capacidade_futura(texto: str) -> bool:

@@ -71,6 +71,39 @@ def test_falha_de_leitura_nao_apaga_arquivo_nem_cache(tmp_path) -> None:
     assert any("mantendo o último cache" in item for item in logs)
 
 
+def test_movimento_so_confirma_depois_de_persistir_origem_e_destino(tmp_path) -> None:
+    caminho = tmp_path / "playlists.json"
+    caminho.write_text(
+        json.dumps({"rock": [FAIXA], "treino": []}),
+        encoding="utf-8",
+    )
+    runtime = _runtime(caminho)
+
+    resultado = runtime.mover_item_contextual("rock", "treino", "Gostava")
+    persistido = json.loads(caminho.read_text(encoding="utf-8"))
+
+    assert resultado["ok"] is True
+    assert persistido["rock"] == []
+    assert persistido["treino"][0]["titulo"] == "Gostava Tanto de Você"
+
+
+def test_movimento_nao_confirma_quando_persistencia_falha(tmp_path) -> None:
+    caminho = tmp_path / "playlists.json"
+    caminho.write_text(
+        json.dumps({"rock": [FAIXA], "treino": []}),
+        encoding="utf-8",
+    )
+    runtime = _runtime(caminho)
+    runtime.save = lambda _data: False  # type: ignore[method-assign]
+
+    resultado = runtime.mover_item_contextual("rock", "treino", "Gostava")
+
+    assert resultado["ok"] is False
+    assert resultado["error"] == "save_failed"
+    assert runtime.cache["rock"][0]["titulo"] == "Gostava Tanto de Você"
+    assert runtime.cache["treino"] == []
+
+
 def test_entrada_identica_imediata_nao_e_executada_duas_vezes() -> None:
     chamadas: list[str] = []
     logs: list[str] = []

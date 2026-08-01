@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict
 from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
 from mente_laylay.autonomia.executor_comum import falar_ctx as _falar
 from mente_laylay.integracao.registro_musica import PortaMusicaLeitura
+from mente_laylay.integracao.registro_operacoes_musicais import PortaMusicaOperacoes
 from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_variada
 
 
@@ -22,6 +23,7 @@ class DependenciasExecutorMusical:
     registrar_mente: Callable[..., Any] | None = None
     falar_por_status: Callable[..., Any] | None = None
     musica_leitura: PortaMusicaLeitura | None = None
+    musica_operacoes: PortaMusicaOperacoes | None = None
 
 
 def _get(ctx: Dict[str, Any], nome: str, default: Any = None) -> Any:
@@ -156,14 +158,15 @@ def _copiar_curadoria(
         ]))
         return ResultadoDespacho.concluido()
 
-    copiar = _get(ctx, "_copiar_faixa_da_playlist_laylay")
-    resultado = copiar(origem, musica, destino) if callable(copiar) else {"ok": False}
+    resultado = (
+        deps.musica_operacoes.copiar_curadoria(origem, musica, destino)
+        if deps.musica_operacoes is not None else {"ok": False}
+    )
     if bool(resultado.get("ok")):
         faixa = resultado.get("faixa") or {}
         titulo = str(faixa.get("titulo") or musica).strip() or musica
-        definir_ultima = _get(ctx, "set_ultima_playlist")
-        if callable(definir_ultima):
-            definir_ultima(destino)
+        if deps.musica_operacoes is not None:
+            deps.musica_operacoes.definir_ultima_playlist(destino)
         fala_resultado = escolher_fala_variada([
             f"Pronto, puxei {titulo} da minha playlist {origem} pra tua playlist {destino}.",
             f"Beleza, {titulo} saiu da minha curadoria e foi pra {destino}.",

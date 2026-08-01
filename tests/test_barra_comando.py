@@ -124,6 +124,39 @@ def test_barra_libera_hotkey_e_sinaliza_interface_no_encerramento() -> None:
     assert runtime._hotkey_registrada is False
 
 
+def test_barra_aguarda_confirmacao_da_thread_tk_sem_destruir_pelo_chamador() -> None:
+    runtime = BarraComandoRuntime(
+        processar_texto=lambda _texto: None,
+        keyboard_mod=_KeyboardFake(),
+        log=lambda *_args: None,
+    )
+    eventos = []
+
+    class ThreadFake:
+        @staticmethod
+        def is_alive():
+            return True
+
+        @staticmethod
+        def join(timeout):
+            eventos.append(("join", timeout))
+
+    class EventoFake:
+        @staticmethod
+        def wait(timeout):
+            eventos.append(("espera_tk", timeout))
+            return True
+
+    runtime._thread = ThreadFake()
+    runtime._interface_encerrada = EventoFake()
+
+    runtime.encerrar(timeout_s=0.4)
+
+    assert eventos[0][0] == "espera_tk"
+    assert eventos[1][0] == "join"
+    assert runtime._fila.get_nowait() == "encerrar"
+
+
 def test_hotkey_windows_traduz_combinacao_sem_perder_modificadores() -> None:
     assert BarraComandoRuntime._traduzir_hotkey_windows("ctrl+shift+space") == (
         0x4000 | 0x0002 | 0x0004,

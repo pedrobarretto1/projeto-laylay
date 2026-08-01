@@ -11,6 +11,23 @@ from typing import Any, Callable, Dict, Iterable
 CLASSES_FALHA_TECNICA = frozenset({"esperada", "degradacao", "defeito"})
 IMPACTOS_FALHA_TECNICA = frozenset({"nenhum", "turno", "comando", "fala", "servico"})
 
+# Limites de diagnóstico, não timeouts. Excedê-los nunca cancela uma ação;
+# apenas torna a degradação mensurável para uma otimização posterior segura.
+ORCAMENTOS_LATENCIA_MS = {
+    "interpretacao": 80.0,
+    "interpretação": 80.0,
+    "dispatcher": 120.0,
+    "execucao": 1_500.0,
+    "execução": 1_500.0,
+    "preparacao_prompt": 120.0,
+    "llm_http": 20_000.0,
+    "llm_resposta_principal": 20_000.0,
+    "visao_jogo": 8_000.0,
+    "tts_sintese": 8_000.0,
+    "tts_total": 20_000.0,
+    "turno_total": 25_000.0,
+}
+
 
 def _codigo(valor: Any, padrao: str = "sem_detalhe", limite: int = 96) -> str:
     texto = str(valor or "").strip().casefold()
@@ -117,16 +134,46 @@ class ObservabilidadeMenteRuntime:
             atual = dict(metricas.get(nome) or {})
             amostras = int(atual.get("amostras") or 0) + 1
             media_anterior = float(atual.get("media_ms") or 0.0)
+            orcamento = float(ORCAMENTOS_LATENCIA_MS.get(nome) or 0.0)
+            excedeu = bool(orcamento and duracao > orcamento)
             atual.update(
                 ultimo_ms=round(duracao, 2),
                 media_ms=round(media_anterior + (duracao - media_anterior) / amostras, 2),
                 max_ms=round(max(float(atual.get("max_ms") or 0.0), duracao), 2),
                 amostras=amostras,
                 falhas=int(atual.get("falhas") or 0) + (0 if sucesso else 1),
+                orcamento_ms=orcamento,
+                excedeu_orcamento=excedeu,
+                excessos=int(atual.get("excessos") or 0) + (1 if excedeu else 0),
                 ts=float(self.clock()),
             )
             metricas[nome] = atual
             self._atualizar(diagnostico_metricas=metricas)
+            return dict(atual)
+
+    def registrar_tamanho_prompt(self, origem: str, caracteres: int) -> Dict[str, Any]:
+        """Registra somente contagens por origem; conteúdo do prompt nunca é persistido."""
+        nome = _codigo(origem, "desconhecida", 64)
+        try:
+            tamanho = max(0, min(int(caracteres), 2_000_000))
+        except (TypeError, ValueError):
+            tamanho = 0
+        with self._lock:
+            tamanhos = dict(self._obter("diagnostico_prompts", {}) or {})
+            atual = dict(tamanhos.get(nome) or {})
+            amostras = int(atual.get("amostras") or 0) + 1
+            media_anterior = float(atual.get("media_chars") or 0.0)
+            atual.update(
+                ultimo_chars=tamanho,
+                media_chars=round(
+                    media_anterior + (tamanho - media_anterior) / amostras, 2,
+                ),
+                max_chars=max(int(atual.get("max_chars") or 0), tamanho),
+                amostras=amostras,
+                ts=float(self.clock()),
+            )
+            tamanhos[nome] = atual
+            self._atualizar(diagnostico_prompts=tamanhos)
             return dict(atual)
 
     def registrar_falha(

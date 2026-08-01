@@ -6,7 +6,7 @@ from mente_laylay.autonomia.dispatcher_comandos_json import (
     adaptar_acao_json_para_intencao,
     executar_comandos_json,
 )
-from mente_laylay.autonomia.execucao_ia import ContextoExecRuntime, executar_exec
+from mente_laylay.autonomia.execucao_ia import ContextoExecRuntime
 from mente_laylay.memoria_mental.contexto_imediato import _normalizar_com_callback
 
 
@@ -15,6 +15,7 @@ class LimpezaLegadoTests(unittest.TestCase):
         casos = (
             ({"acao": "open_url", "alvo": "https://example.com"}, "OPEN_URL"),
             ({"acao": "open_app", "alvo": "discord"}, "APP_OPEN"),
+            ({"acao": "fechar_programa", "alvo": "discord"}, "CLOSE_APP"),
             ({"acao": "youtube_search", "alvo": "Rubel"}, "MUSIC_SEARCH"),
             ({"acao": "youtube_control", "alvo": "pause"}, "MEDIA_CONTROL"),
             ({"acao": "ler_emails"}, "EMAIL_READ"),
@@ -49,36 +50,25 @@ class LimpezaLegadoTests(unittest.TestCase):
             "EMAIL_READ", "EMAIL_READ", "EMAIL_SYNC",
         ])
 
-    def test_executor_legado_nao_repete_comandos_modulares(self) -> None:
-        chrome = []
-        self.assertFalse(executar_exec(
-            "YOUTUBE",
-            "música",
-            {"enviar_comando_chrome": lambda *args: chrome.append(args)},
-        ))
-        self.assertEqual(chrome, [])
-
-    def test_recusa_modular_nao_cai_no_fallback_legado(self) -> None:
-        legado = []
+    def test_recusa_modular_nao_cai_em_segundo_executor(self) -> None:
+        chamadas = []
         runtime = ContextoExecRuntime(
             contexto_getter=lambda: {},
-            executar_conteudo_cb=lambda *_args: False,
-            executar_legado_cb=lambda *args: legado.append(args) or True,
+            executar_conteudo_cb=lambda *args: chamadas.append(args) or False,
             log=lambda _msg: None,
         )
         self.assertFalse(runtime.executar("YOUTUBE", "música"))
-        self.assertEqual(legado, [])
+        self.assertEqual(len(chamadas), 1)
 
-    def test_fallback_permanece_para_comando_ainda_legado(self) -> None:
+    def test_open_app_legado_nao_contorna_executor_canonico(self) -> None:
         abertos = []
         runtime = ContextoExecRuntime(
             contexto_getter=lambda: {"abrir_programa": lambda alvo: abertos.append(alvo) or True},
             executar_conteudo_cb=lambda *_args: False,
-            executar_legado_cb=executar_exec,
             log=lambda _msg: None,
         )
-        self.assertTrue(runtime.executar("OPEN_APP", "discord"))
-        self.assertEqual(abertos, ["discord"])
+        self.assertFalse(runtime.executar("OPEN_APP", "discord"))
+        self.assertEqual(abertos, [])
 
     def test_normalizacao_contextual_tem_uma_fonte_unica(self) -> None:
         self.assertEqual(_normalizar_com_callback("  ABC  ", lambda valor: valor.casefold()), "abc")

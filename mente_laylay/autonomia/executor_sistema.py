@@ -40,7 +40,8 @@ def _visao_jogo(
     ctx: Dict[str, Any],
     deps: DependenciasExecutorSistema,
 ) -> ResultadoDespacho:
-    executar = _get(ctx, "_executar_visao_jogo_intent")
+    analise = _get(ctx, "_registro_visao_jogo_analise_runtime")
+    executar = getattr(analise, "executar", None)
     ok = bool(executar(params)) if callable(executar) else False
     deps.marcar_resultado("analise_visual_solicitada" if ok else "falha_execucao", executou=ok)
     return ResultadoDespacho.concluido(ok)

@@ -106,6 +106,7 @@ class OuvidoWhisperRuntime:
         processar_texto: Callable[[str], Any],
         esta_falando: Callable[[], bool],
         escuta_permitida: Callable[[], bool] | None = None,
+        modo_chat_ativo: Callable[[], bool] | None = None,
         modo_jogo_ativo: Callable[[], bool] | None = None,
         ultima_fala_laylay: Callable[[], str] | None = None,
         vocabulario_dinamico: Callable[[], Any] | None = None,
@@ -127,6 +128,7 @@ class OuvidoWhisperRuntime:
         self.processar_texto = processar_texto
         self.esta_falando = esta_falando
         self.escuta_permitida = escuta_permitida or (lambda: True)
+        self.modo_chat_ativo = modo_chat_ativo or (lambda: False)
         self.modo_jogo_ativo = modo_jogo_ativo or (lambda: False)
         self.ultima_fala_laylay = ultima_fala_laylay or (lambda: "")
         self.vocabulario_dinamico = vocabulario_dinamico or (lambda: [])
@@ -635,9 +637,9 @@ class OuvidoWhisperRuntime:
             ).casefold() in {"1", "true", "sim", "yes", "on", "ligado"}
             if carregar_no_inicio:
                 self.carregar_modelo()
-            else:
-                self.log("🎙️ [OUVIDO] Whisper será carregado somente na primeira fala.")
         except Exception as erro:
+            if bool(self.modo_chat_ativo()):
+                return
             self.log(f"⚠️ [OUVIDO] Não consegui iniciar o microfone: {erro}")
             raise RuntimeError("falha ao iniciar captura do microfone") from erro
 
@@ -660,12 +662,10 @@ class OuvidoWhisperRuntime:
         ultimo_fim_fala = 0.0
         pausado_por_contexto = False
         calibracao_anunciada = False
+        entrada_anunciada = False
 
         nome = self._nome_dispositivo(info)
         origem = str(getattr(self, "_origem_dispositivo", "padrão do sistema"))
-        self.log(
-            f"🎙️ [OUVIDO] Entrada: {nome} (índice {indice}, {self.taxa_captura} Hz, {origem})."
-        )
         try:
             with sd.InputStream(
                 device=indice,
@@ -740,6 +740,16 @@ class OuvidoWhisperRuntime:
                             gravando = list(preroll)
                             silencio = 0.0
                             pico_sem_fala = 0.0
+                            if not entrada_anunciada and not bool(self.modo_chat_ativo()):
+                                if not carregar_no_inicio:
+                                    self.log(
+                                        "🎙️ [OUVIDO] Whisper será carregado somente na primeira fala."
+                                    )
+                                self.log(
+                                    f"🎙️ [OUVIDO] Entrada: {nome} "
+                                    f"(índice {indice}, {self.taxa_captura} Hz, {origem})."
+                                )
+                                entrada_anunciada = True
                             self.log(
                                 f"🎙️ [OUVIDO] Voz detectada (nível={rms:.4f}, limiar={limiar:.4f})."
                             )
@@ -765,6 +775,8 @@ class OuvidoWhisperRuntime:
                         silencio = 0.0
                         self._agendar_entrega(audio)
         except Exception as erro:
+            if bool(self.modo_chat_ativo()):
+                return
             self.log(f"⚠️ [OUVIDO] Captura do microfone encerrada: {erro}")
             raise RuntimeError("captura do microfone foi interrompida") from erro
 

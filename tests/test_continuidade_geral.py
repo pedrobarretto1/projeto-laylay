@@ -373,7 +373,7 @@ def test_continuacao_aditiva_rejeita_resultado_anterior_com_falha():
     assert resolver_continuacao_aditiva(estado, texto="mais essa") == {}
 
 
-def test_acao_nova_de_outro_dominio_bloqueia_continuacao_antiga():
+def test_acao_nova_sem_politica_nao_esconde_continuacao_aditiva_compativel():
     estado = registrar_evento_continuidade(
         estado_mental_inicial(),
         evento="acao",
@@ -391,7 +391,13 @@ def test_acao_nova_de_outro_dominio_bloqueia_continuacao_antiga():
         status="ligado",
     )
 
-    assert resolver_continuacao_aditiva(estado, texto="essa também") == {}
+    assert resolver_continuacao_aditiva(estado, texto="essa também") == {
+        "intent": "PLAYLIST_ADD",
+        "params": {
+            "nome_playlist": "sendo sendo",
+            "referencia_contextual": True,
+        },
+    }
 
 
 def test_caixa_de_entrada_publica_confirmacao_na_pendencia_oficial():

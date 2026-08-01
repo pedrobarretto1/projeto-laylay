@@ -72,7 +72,7 @@ def extrair_entidade_explicita(texto: str) -> dict:
                 return {"tipo": tipo, "nome": nome, "origem": "nome_explicito"}
 
     achado = re.search(
-        r"\b(?:gosta|curte|conhece|ouve|escuta)\s+d[oa]\s+([^,.!?;]{2,100})",
+        r"\b(?:gosta|curte|conhece|ouve|escuta)\s+(?:d[oa]|de)\s+([^,.!?;]{2,100})",
         bruto,
         flags=re.IGNORECASE,
     )
@@ -94,6 +94,51 @@ def extrair_entidade_explicita(texto: str) -> dict:
     return {}
 
 
+def _entidade_curta_ja_conhecida(
+    texto: str,
+    *,
+    entidades_recentes: Dict[str, Any] | None,
+    registro_semantico: Dict[str, Any] | None,
+) -> dict:
+    """Recupera nomes de uma palavra quando o contexto já conhece a entidade.
+
+    Uma palavra minúscula isolada pode ser conceito, lugar ou artista. Por isso
+    ela só ganha tipo quando corresponde a uma entidade recente/registrada; a
+    frase sozinha nunca força a classificação.
+    """
+    bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
+    achado = re.search(
+        r"\b(?:gosta|curte|conhece|ouve|escuta|prefere)\s+(?:d[oa]|de)\s+"
+        r"(?P<nome>[A-Za-zÀ-ÿ0-9_-]{2,60})[?!.]*$",
+        bruto,
+        flags=re.IGNORECASE,
+    )
+    if not achado:
+        return {}
+    candidato = str(achado.group("nome") or "").strip()
+    candidato_norm = candidato.casefold()
+    fontes = [
+        dict(item)
+        for item in dict(entidades_recentes or {}).values()
+        if isinstance(item, dict)
+    ]
+    registro = dict(registro_semantico or {})
+    fontes.extend(
+        dict(item)
+        for item in dict(registro.get("entidades") or {}).values()
+        if isinstance(item, dict)
+    )
+    for item in fontes:
+        nome = str(item.get("nome") or "").strip()
+        if nome and nome.casefold() == candidato_norm:
+            return {
+                "tipo": str(item.get("tipo") or "referencia_nomeada"),
+                "nome": nome,
+                "origem": "nome_curto_contextual",
+            }
+    return {}
+
+
 def _operacao_explicita(texto: str) -> tuple[str, tuple[str, ...]]:
     t = str(texto or "").casefold()
     if (
@@ -103,7 +148,11 @@ def _operacao_explicita(texto: str) -> tuple[str, tuple[str, ...]]:
     ):
         return "musica_do_referente", ("MUSIC_SEARCH",)
     if "playlist" in t:
-        if re.search(r"\b(?:coloca|coloque|bota|salva|salve|guarda|guarde|adiciona|adicione|add)\b", t) and re.search(r"\b(?:na|nessa|nesta|para a|pra|em)\s+(?:minha\s+)?playlist\b", t):
+        if re.search(r"\b(?:move|mova|transfere|transfira)\b", t) and re.search(
+            r"\bda\s+playlist\b.*\b(?:pra|para)\s+(?:a\s+)?playlist\b", t
+        ):
+            return "playlist_mover", ("PLAYLIST_MOVE",)
+        if re.search(r"\b(?:coloca|coloque|bota|salva|salve|guarda|guarde|adiciona|adicione|add)\b", t) and re.search(r"\b(?:na|nessa|nesta|para a|pra|em|a)\s+(?:minha\s+)?playlist\b", t):
             return "playlist_adicionar", ("PLAYLIST_ADD",)
         if re.search(r"\b(?:toca|toque|abre|abra|coloca|coloque|ouvir|escuta)\b", t):
             return "playlist_tocar", ("PLAYLIST_PLAY", "TOCAR_PLAYLIST", "TOCAR_PLAYLIST_SHUFFLE")
@@ -163,6 +212,12 @@ def construir_retrato_turno(
         )
 
     explicita = extrair_entidade_explicita(texto)
+    if not explicita:
+        explicita = _entidade_curta_ja_conhecida(
+            texto,
+            entidades_recentes=recentes,
+            registro_semantico=estado.get("registro_semantico"),
+        )
     if explicita:
         tipo_explicito = str(explicita.get("tipo") or "referencia_nomeada")
         recentes[tipo_explicito] = _entidade(
@@ -174,6 +229,28 @@ def construir_retrato_turno(
 
     t = str(texto or "").casefold()
     operacao, intents_permitidos = _operacao_explicita(t)
+    # Em ``coloca essa música na playlist X``, ``essa música`` não aponta para
+    # uma entidade antiga da conversa: é a fonte operacional "faixa atual".
+    # O executor de playlists ainda consulta e valida o player antes de gravar,
+    # portanto o retrato pode resolver a referência sem inventar título nem
+    # autorizar sucesso. Sem esta entidade, o especialista operacional marcava
+    # o alvo como ambíguo e descartava um PLAYLIST_ADD já detectado corretamente.
+    if operacao == "playlist_adicionar" and re.search(
+        r"\b(?:essa|esta)\s+(?:musica|música|faixa|canção|cancao)\b",
+        t,
+    ):
+        titulo_atual = str(estado.get("musica_atual_titulo") or "").strip()
+        recentes["musica"] = _entidade(
+            "musica",
+            titulo_atual or "faixa atual",
+            origem="reprodutor_atual",
+            ts=instante,
+            dados={
+                "url": str(estado.get("musica_atual_url") or "").strip(),
+                "status": str(estado.get("musica_atual_status") or "").strip(),
+                "validacao_no_executor": True,
+            },
+        )
     referencia = ""
     referencia_resolvida = {}
     referencia_candidatos = []

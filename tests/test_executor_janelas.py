@@ -7,6 +7,7 @@ from mente_laylay.autonomia.executor_janelas import (
 )
 from mente_laylay.autonomia.roteador_intencao import executar_intencao
 from mente_laylay.percepcao.janelas_sistema import maximizar_janela
+from tests.fakes_navegador import NavegadorOperacoesFake
 
 
 def _dependencias(
@@ -295,6 +296,7 @@ def test_close_app_local_preserva_mapeamento_e_confirmacao() -> None:
 def test_close_app_reconhece_site_aberto_apenas_como_aba() -> None:
     eventos: list[tuple] = []
     chrome: list[tuple] = []
+    navegador = NavegadorOperacoesFake()
 
     despacho = executar_intencao_janelas(
         "CLOSE_APP",
@@ -305,12 +307,13 @@ def test_close_app_reconhece_site_aberto_apenas_como_aba() -> None:
                 "programa_aberto": False,
                 "aba_aberta": True,
             },
-            "enviar_comando_chrome": lambda *args: chrome.append(args) or True,
+            "_registro_navegador_operacoes_runtime": navegador,
         },
         _dependencias(eventos),
     )
 
     assert despacho == ResultadoDespacho.concluido()
+    chrome.extend(navegador.chamadas)
     assert chrome == [("close_specific_tab", {"target": "host:youtube"})]
     assert eventos[0] == (
         "resultado",

@@ -10,6 +10,7 @@ import random
 import re
 import threading
 import unicodedata
+from copy import deepcopy
 from typing import Any, Callable, Dict
 
 from mente_laylay.memoria_mental.playlist_mental import (
@@ -346,7 +347,10 @@ class PlaylistRuntime:
         *,
         normalizar_texto_cb: Callable[[str], str] | None = None,
     ) -> dict:
-        data = self.load()
+        # A mudança só entra no cache depois que o arquivo confirma a gravação.
+        # Assim uma falha de disco não cria um estado em memória diferente do
+        # que será lido na próxima inicialização.
+        data = deepcopy(self.load())
         origem_nm = limpar_nome_playlist(origem)
         destino_nm = limpar_nome_playlist(destino)
         musica_txt = str(musica or "").strip()
@@ -408,7 +412,14 @@ class PlaylistRuntime:
             destino_lst.append(item)
         if not origem_lst:
             data[origem_nm] = []
-        self.save(data)
+        if not self.save(data):
+            return {
+                "ok": False,
+                "error": "save_failed",
+                "titulo": playlist_item_label(item),
+                "origem": origem_nm,
+                "destino": destino_nm,
+            }
         return {
             "ok": True,
             "duplicated": ja_existe,

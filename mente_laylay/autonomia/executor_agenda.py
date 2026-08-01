@@ -49,6 +49,18 @@ def _registrar_mente(ctx: Dict[str, Any], texto: str, resposta: str, intent: str
         registrar(texto, resposta, intent, alvo, escopo, "agenda")
 
 
+def _registrar_feedback(ctx: Dict[str, Any], evento: str, **dados: Any) -> None:
+    callback = _get(ctx, "_registrar_feedback_agenda")
+    if callable(callback):
+        callback(evento, dados)
+
+
+def _publicar_cooperacao(ctx: Dict[str, Any], operacao: str, *, alvo: str, confirmado: bool) -> None:
+    callback = _get(ctx, "_publicar_evento_agenda_cooperativo")
+    if callable(callback):
+        callback(operacao, alvo=alvo, confirmado=bool(confirmado))
+
+
 def _agendar_acao(
     params: Dict[str, Any], texto: str, ctx: Dict[str, Any], deps: DependenciasExecutorAgenda,
 ) -> ResultadoDespacho:
@@ -138,6 +150,8 @@ def _agendar_acao(
         "Entendi a ação e o horário, mas não consegui salvar o agendamento.",
         "A agenda não confirmou a gravação, então não vou prometer que isso ficou marcado.",
     ]), alvo=alvo)
+    _publicar_cooperacao(ctx, "agendar_acao", alvo=alvo, confirmado=salvo)
+    _registrar_feedback(ctx, "aceitacao" if salvo else "falha", intent="AGENDAR_ACAO")
     _registrar_mente(ctx, texto, descricao, "AGENDAR_ACAO", alvo, hora_alvo or str(atraso or ""))
     return ResultadoDespacho.concluido()
 
@@ -145,21 +159,47 @@ def _agendar_acao(
 def _agendar_lembrete(
     params: Dict[str, Any], texto: str, ctx: Dict[str, Any], deps: DependenciasExecutorAgenda,
 ) -> ResultadoDespacho:
-    pendente = (
+    pendencia_runtime = _get(ctx, "_pendencia_acao_runtime")
+    try:
+        pendencia_canonica = dict(pendencia_runtime.obter() or {}) if pendencia_runtime is not None else {}
+    except Exception:
+        pendencia_canonica = {}
+    if str(pendencia_canonica.get("origem") or "") != "agenda":
+        pendencia_canonica = {}
+    if params.get("cancelar_pendente"):
+        pendencia_id = str(pendencia_canonica.get("id") or params.get("pendencia_id") or "")
+        if pendencia_id and pendencia_runtime is not None:
+            pendencia_runtime.concluir(pendencia_id, "recusada")
+        deps.marcar_resultado("lembrete_pendente_cancelado", executou=False, confirmado=True)
+        _registrar_feedback(ctx, "recusa", intent="AGENDAR_LEMBRETE")
+        _falar(ctx, "Tudo bem. Não vou criar esse lembrete.")
+        return ResultadoDespacho.concluido()
+
+    pendente_legado = (
         str(_get(ctx, "ultima_intencao", "") or "").upper() == "AGENDAR_LEMBRETE"
         and str(_get(ctx, "ultima_habilidade", "") or "").casefold() == "agenda"
     )
+    pendente = bool(pendencia_canonica) or pendente_legado
+    metadados_pendentes = dict(pendencia_canonica.get("metadados") or {})
     descricao = str(
         params.get("descricao") or params.get("evento") or params.get("alvo") or params.get("texto") or ""
     ).strip()
     if descricao.casefold() in {"", "lembrete", "isso", "disso", "desse evento", "do evento"} and pendente:
-        descricao = str(_get(ctx, "ultimo_alvo", "") or "").strip()
+        descricao = str(
+            metadados_pendentes.get("descricao")
+            or _get(ctx, "ultimo_alvo", "")
+            or ""
+        ).strip()
     descricao = descricao or "Lembrete"
     minutos = params.get("minutos")
     hora_alvo = str(params.get("hora_alvo") or params.get("hora") or "").strip()
     referencia = str(params.get("data_hora") or params.get("data") or params.get("dia") or "").strip()
     if not referencia and pendente:
-        referencia = str(_get(ctx, "ultimo_escopo", "") or "").strip()
+        referencia = str(
+            metadados_pendentes.get("referencia_data")
+            or _get(ctx, "ultimo_escopo", "")
+            or ""
+        ).strip()
     descricao, referencia = resolver_referencia_contextual_lembrete(
         descricao, referencia, _get(ctx, "ultimas_entradas", []),
     )
@@ -173,13 +213,40 @@ def _agendar_lembrete(
             ts_exec = instante.timestamp()
         else:
             _registrar_mente(ctx, texto, "", "AGENDAR_LEMBRETE", descricao, referencia)
-            _falar(ctx, escolher_fala_variada([
+            pergunta = escolher_fala_variada([
                 "Me diz o horário ou em quantos minutos eu te lembro disso.",
                 "Fala o horário ou os minutos do lembrete.",
                 "Preciso do tempo pra guardar esse lembrete.",
-            ]))
+            ])
+            nova_pendencia = None
+            if pendencia_runtime is not None:
+                nova_pendencia = pendencia_runtime.registrar(
+                    origem="agenda",
+                    acao="completar_lembrete",
+                    pergunta=pergunta,
+                    referencia=descricao,
+                    metadados={
+                        "descricao": descricao[:160],
+                        "referencia_data": referencia[:80],
+                    },
+                    ttl_s=600.0,
+                )
+            deps.marcar_resultado(
+                "aguardando_complemento",
+                executou=False,
+                confirmado=False,
+                detalhe=(
+                    "pendencia=" + str((nova_pendencia or {}).get("id") or "")
+                    if nova_pendencia else "pendencia_nao_registrada"
+                ),
+            )
+            if pendencia_canonica:
+                _registrar_feedback(ctx, "repeticao", intent="AGENDAR_LEMBRETE")
+            _falar(ctx, pergunta)
             return ResultadoDespacho.concluido()
     except Exception:
+        deps.marcar_resultado("horario_invalido", executou=False, confirmado=False)
+        _registrar_feedback(ctx, "correcao_necessaria", intent="AGENDAR_LEMBRETE")
         _falar(ctx, escolher_fala_variada([
             "Não consegui entender o horário do lembrete. Fala no formato 12:30 ou em 15 minutos.",
             "Esse horário não bateu. Tenta 12:30 ou 15 minutos.",
@@ -191,6 +258,7 @@ def _agendar_lembrete(
         "id": str(uuid.uuid4())[:8], "tipo": "once", "ts_execucao": ts_exec,
         "descricao": descricao, "comandos_no_disparo": [], "nome": descricao[:30],
         "ativo": True, "criado_em": dt.datetime.now().isoformat(),
+        "origem": "pedido_usuario", "evidencia": "persistencia_local",
     }
     salvo = _transacionar(ctx, lambda lista: lista.append(novo))
     status = "lembrete_agendado" if salvo else "falha_execucao"
@@ -203,6 +271,18 @@ def _agendar_lembrete(
         "Entendi o lembrete, mas não consegui salvar ele na agenda.",
         "A agenda falhou ao gravar isso, então o lembrete não ficou confirmado.",
     ]), alvo=descricao)
+    pendencia_id = str(params.get("pendencia_id") or pendencia_canonica.get("id") or "")
+    if salvo and pendencia_id and pendencia_runtime is not None:
+        pendencia_runtime.concluir(pendencia_id, "concluida")
+    if salvo:
+        _registrar_feedback(
+            ctx,
+            "correcao" if params.get("complemento_pendente") else "aceitacao",
+            intent="AGENDAR_LEMBRETE",
+        )
+    else:
+        _registrar_feedback(ctx, "falha", intent="AGENDAR_LEMBRETE")
+    _publicar_cooperacao(ctx, "agendar_lembrete", alvo=descricao, confirmado=salvo)
     _registrar_mente(ctx, texto, descricao, "AGENDAR_LEMBRETE", descricao, hora_alvo or str(minutos or ""))
     return ResultadoDespacho.concluido()
 

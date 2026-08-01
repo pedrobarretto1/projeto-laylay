@@ -490,20 +490,11 @@ class VozRuntime:
             if item is None:
                 continue
 
+            # Cada item representa uma fala já consolidada pelo turno canônico.
+            # Agrupar itens só porque chegaram perto no relógio misturava
+            # respostas independentes (por exemplo, uma falha IoT com a
+            # confirmação de abertura de um app).
             lote = [item]
-            prazo = time.time() + self.batch_window
-            while len(lote) < self.batch_max_items:
-                restante = prazo - time.time()
-                if restante <= 0:
-                    break
-                try:
-                    prox = self.fila.get(timeout=restante)
-                except Empty:
-                    break
-                if prox is None:
-                    continue
-                lote.append(prox)
-                prazo = time.time() + self.batch_window
 
             for pedido in lote:
                 if not isinstance(pedido, dict) or not pedido.get("dinamizar", True):

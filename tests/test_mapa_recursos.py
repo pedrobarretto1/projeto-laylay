@@ -81,7 +81,7 @@ def test_retrato_agenda_omite_intencao_executavel(tmp_path) -> None:
         abrir_programa_cb=lambda *_: None,
         enviar_pc_b_cb=lambda *_: None,
         enviar_chrome_local_cb=lambda *_: None,
-        executar_exec_cb=lambda *_: None,
+        executar_comando_conteudo_cb=lambda *_: None,
         time_cb=lambda: agora,
         log=lambda *_: None,
     )

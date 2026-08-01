@@ -173,7 +173,18 @@ class OrquestradorFalaRuntime:
                 self._podar_confirmacoes_operacionais()
 
         try:
-            aceita = self.falar(texto, emocao, nivel)
+            contexto_resultado = getattr(resultado, "contexto", {})
+            avaliacao_evento = (
+                dict(contexto_resultado.get("avaliacao_evento") or {})
+                if isinstance(contexto_resultado, Mapping)
+                else {}
+            )
+            aceita = self.falar(
+                texto,
+                emocao,
+                nivel,
+                _avaliacao_evento=avaliacao_evento,
+            )
         except Exception:
             if chave is not None:
                 with self._lock_confirmacoes:
@@ -240,6 +251,7 @@ class OrquestradorFalaRuntime:
         nivel=None,
         wait: bool = False,
         _proativa: bool = False,
+        _avaliacao_evento: Mapping[str, Any] | None = None,
     ) -> bool:
         ns = self._ns()
         estado = ns["_estado_compartilhado_runtime"]
@@ -260,9 +272,14 @@ class OrquestradorFalaRuntime:
                     "🛡️ [GUARDIÃO:FALA] "
                     f"problemas={guardiao.get('problemas') or []}"
                 )
+        mente_direcao = dict(mental_antes)
+        if isinstance(_avaliacao_evento, Mapping) and _avaliacao_evento:
+            mente_direcao["avaliacao_emocional_operacional_atual"] = dict(
+                _avaliacao_evento
+            )
         direcao = ns["_dirigir_fala_mente"](
             fala, texto_usuario=str(plano_antes.get("texto_usuario") or ""),
-            estado_mental=mental_antes, emocao=emocao, nivel=nivel,
+            estado_mental=mente_direcao, emocao=emocao, nivel=nivel,
             proativa=_proativa, preservar_texto=True,
         )
         fala = str(direcao.get("fala") or fala)

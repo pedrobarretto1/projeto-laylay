@@ -1,146 +1,168 @@
-"""Cliente LLM ligado ao contexto vivo da mente da Laylay."""
+"""Fronteira de transporte do modelo, sem acesso à memória da Laylay."""
 
 from __future__ import annotations
 
 import os
 import time
-from typing import Any, Callable, Dict
+from typing import Any, Callable
 
 from mente_laylay.integracao.llm_http import (
     conteudo_fallback_llm_local,
     eh_estado_tecnico_llm,
     executar_chat_llm,
 )
-from mente_laylay.integracao.preparacao_llm import preparar_payload_llm, texto_pede_contexto_arquivos
+from mente_laylay.integracao.registro_conversa_llm import (
+    PedidoModelo,
+    RequisicaoTransporteLLM,
+    ResultadoModelo,
+)
 from mente_laylay.integracao.resposta_llm import interpretar_payload_llm
 
 
 class ClienteLLMRuntime:
-    """Prepara e envia mensagens sem guardar uma cópia paralela do contexto."""
+    """Executa um payload pronto; não conhece memória, prompt ou namespace."""
 
     def __init__(
         self,
         *,
-        namespace_getter: Callable[[], Dict[str, Any]],
+        endpoint_local_getter: Callable[[], bool],
+        post_chat: Callable[..., Any],
+        api_key: str = "",
+        http_referer: str = "",
+        app_title: str = "",
+        interacao_ativa: Callable[[], bool] | None = None,
+        modo_jogo_ativo: Callable[[], bool] | None = None,
+        conversa_jogo_remota: Callable[[dict[str, Any]], str] | None = None,
+        registrar_metrica: Callable[..., Any] | None = None,
+        registrar_falha: Callable[..., Any] | None = None,
         log: Callable[..., Any] = print,
     ) -> None:
-        self.namespace_getter = namespace_getter
+        self.endpoint_local_getter = endpoint_local_getter
+        self.post_chat = post_chat
+        self.api_key = str(api_key or "")
+        self.http_referer = str(http_referer or "")
+        self.app_title = str(app_title or "")
+        self.interacao_ativa = interacao_ativa or (lambda: False)
+        self.modo_jogo_ativo = modo_jogo_ativo or (lambda: False)
+        self.conversa_jogo_remota = conversa_jogo_remota
+        self.registrar_metrica = registrar_metrica
+        self.registrar_falha = registrar_falha
         self.log = log
+        self._requisicoes = 0
+        self._sucessos = 0
+        self._falhas = 0
 
-    def _ns(self) -> Dict[str, Any]:
-        return self.namespace_getter() or {}
+    def executar(self, requisicao: RequisicaoTransporteLLM) -> ResultadoModelo:
+        if not isinstance(requisicao, RequisicaoTransporteLLM):
+            raise TypeError("o cliente HTTP aceita somente RequisicaoTransporteLLM")
+        self._requisicoes += 1
+        endpoint_local = bool(self.endpoint_local_getter())
+        data = dict(requisicao.payload or {})
+        if (
+            endpoint_local
+            and not requisicao.prioridade_interativa
+            and not requisicao.permitir_durante_interacao
+            and bool(self.interacao_ativa())
+        ):
+            self.log("🧠 [IA] tarefa secundária adiada enquanto a conversa está ativa.")
+            texto = conteudo_fallback_llm_local(data)
+            return ResultadoModelo(texto=texto, sucesso=False, rota="adiada")
 
-    def enviar(
-        self,
-        mensagens: Any,
-        _com_tools: bool = True,
-        max_tokens: int = 1024,
-        modo_rapido: bool = False,
-        timeout: int | None = None,
-        _permitir_conversa_modo_jogo: bool = False,
-        _prioridade_interativa: bool = False,
-    ) -> str:
-        ns = self._ns()
-        endpoint_local = bool(ns["llm_endpoint_eh_local"]())
-        interacao_ativa = ns.get("interacao_ativa")
-        if endpoint_local and not _prioridade_interativa and callable(interacao_ativa):
-            try:
-                usuario_interagindo = bool(interacao_ativa())
-            except Exception:
-                usuario_interagindo = False
-            if usuario_interagindo:
-                self.log(
-                    "🧠 [IA] tarefa secundária adiada enquanto a conversa está ativa."
-                )
-                return conteudo_fallback_llm_local({
-                    "messages": list(mensagens or []) if isinstance(mensagens, list) else [],
-                    "max_tokens": max_tokens,
-                })
-        memoria = ns["memoria_inteligente"]
-        data = preparar_payload_llm(
-            mensagens,
-            model=ns["model"],
-            max_tokens=max_tokens,
-            modo_rapido=modo_rapido,
-            endpoint_local=endpoint_local,
-            resumo_do_dia=memoria.resumo_do_dia,
-            data_atual=memoria.data_atual,
-            texto_pede_contexto_arquivos=lambda texto: texto_pede_contexto_arquivos(
-                texto,
-                normalizar_texto=ns["normalizar_texto"],
-            ),
-            mapear_pastas=ns["mapear_pastas"],
-            contexto_logs=ns["contexto_logs"],
-            contexto_navegador_relevante=ns["contexto_navegador_relevante"],
-            contexto_sistema=ns["contexto_sistema"](),
-            obter_contexto_paginas=ns["obter_contexto_paginas"],
-            resumo_mente_integrada=ns["resumo_mente_integrada"],
-            log=self.log,
-        )
-        modo_jogo_ativo = ns.get("modo_jogo_ativo")
-        em_jogo = False
-        if callable(modo_jogo_ativo):
-            try:
-                em_jogo = bool(modo_jogo_ativo())
-            except Exception:
-                em_jogo = False
-        if endpoint_local and em_jogo and _permitir_conversa_modo_jogo:
-            conversa_remota = ns.get("conversa_jogo_remota")
-            if callable(conversa_remota):
-                resposta_remota = str(conversa_remota(data) or "").strip()
-                if resposta_remota:
-                    self.log("🎮 [CONVERSA:JOGO] rota remota preservou a GPU do jogo.")
-                    return resposta_remota
-        if _permitir_conversa_modo_jogo:
-            # Metadado interno consumido pelo transporte; nunca é enviado ao modelo.
+        em_jogo = bool(self.modo_jogo_ativo())
+        if (
+            endpoint_local
+            and em_jogo
+            and requisicao.permitir_conversa_modo_jogo
+            and callable(self.conversa_jogo_remota)
+        ):
+            resposta_remota = str(self.conversa_jogo_remota(data) or "").strip()
+            if resposta_remota:
+                self._sucessos += 1
+                self.log("🎮 [CONVERSA:JOGO] rota remota preservou a GPU do jogo.")
+                return ResultadoModelo(resposta_remota, True, "jogo_remoto")
+
+        if requisicao.permitir_conversa_modo_jogo:
             data["_laylay_conversa_modo_jogo"] = True
-        # Metadado consumido pelo transporte local. Tarefas autônomas mantêm
-        # acesso ao modelo quando ele está livre, mas não entram na frente de
-        # uma resposta solicitada diretamente pela pessoa usuária.
-        data["_laylay_prioridade_interativa"] = bool(_prioridade_interativa)
-        # Observadores, classificadores e tarefas de apoio nunca devem ocupar
-        # o modelo local pelo mesmo prazo de uma conversa solicitada por Pedro.
-        if timeout is None and endpoint_local and not _prioridade_interativa:
+        data["_laylay_prioridade_interativa"] = bool(requisicao.prioridade_interativa)
+        timeout = requisicao.timeout
+        if timeout is None and endpoint_local and not requisicao.prioridade_interativa:
             timeout = 12
         if endpoint_local:
-            mensagens_payload = list(data.get("messages") or [])
+            mensagens = list(data.get("messages") or [])
             caracteres = sum(
                 len(str(item.get("content") or ""))
-                for item in mensagens_payload if isinstance(item, dict)
+                for item in mensagens if isinstance(item, dict)
             )
             self.log(
                 "🧠 [IA:PAYLOAD] "
-                f"mensagens={len(mensagens_payload)} caracteres={caracteres} "
-                f"max_tokens={data.get('max_tokens')} rapido={bool(modo_rapido)} "
-                f"interativo={bool(_prioridade_interativa)}"
+                f"mensagens={len(mensagens)} caracteres={caracteres} "
+                f"max_tokens={data.get('max_tokens')} "
+                f"interativo={bool(requisicao.prioridade_interativa)}"
             )
-        api_key = os.environ.get("OPENROUTER_API_KEY") or ns.get("api_key", "")
         inicio = time.perf_counter()
         sucesso = False
         try:
-            resposta = executar_chat_llm(
+            texto = executar_chat_llm(
                 data,
-                post_chat=ns["post_chat"],
+                post_chat=self.post_chat,
                 interpretar_payload=lambda payload: interpretar_payload_llm(payload, log=self.log),
-                api_key=api_key,
-                http_referer=ns.get("http_referer", ""),
-                app_title=ns.get("app_title", ""),
+                api_key=os.environ.get("OPENROUTER_API_KEY") or self.api_key,
+                http_referer=self.http_referer,
+                app_title=self.app_title,
                 endpoint_local=endpoint_local,
                 timeout=timeout,
                 log=self.log,
-                registrar_falha=ns.get("registrar_falha_diagnostico"),
+                registrar_falha=self.registrar_falha,
             )
-            sucesso = not eh_estado_tecnico_llm(resposta)
-            return resposta
+            sucesso = not eh_estado_tecnico_llm(texto)
+            if sucesso:
+                self._sucessos += 1
+            else:
+                self._falhas += 1
+            return ResultadoModelo(texto=str(texto or ""), sucesso=sucesso)
+        except Exception:
+            self._falhas += 1
+            raise
         finally:
-            registrar = ns.get("registrar_metrica_diagnostico")
-            if callable(registrar):
-                registrar(
-                    "llm_http",
-                    (time.perf_counter() - inicio) * 1000.0,
-                    sucesso,
+            if callable(self.registrar_metrica):
+                self.registrar_metrica(
+                    "llm_http", (time.perf_counter() - inicio) * 1000.0, sucesso,
                 )
+
+    def diagnostico(self) -> dict[str, Any]:
+        return {
+            "disponivel": True,
+            "endpoint_local": bool(self.endpoint_local_getter()),
+            "requisicoes": self._requisicoes,
+            "sucessos": self._sucessos,
+            "falhas": self._falhas,
+            "memoria_exposta": False,
+            "credencial_exposta": False,
+            "autoriza_execucao": False,
+        }
+
+
+class ServicoModeloLLMRuntime:
+    """Compõe preparação contextual e transporte por contratos explícitos."""
+
+    def __init__(self, *, preparador: Any, cliente: ClienteLLMRuntime) -> None:
+        if not callable(getattr(preparador, "preparar", None)):
+            raise RuntimeError("preparador de requisição LLM inválido")
+        if not callable(getattr(cliente, "executar", None)):
+            raise RuntimeError("cliente LLM inválido")
+        self.preparador = preparador
+        self.cliente = cliente
+
+    def executar(self, pedido: PedidoModelo) -> ResultadoModelo:
+        return self.cliente.executar(self.preparador.preparar(pedido))
+
+    def diagnostico(self) -> dict[str, Any]:
+        return self.cliente.diagnostico()
 
 
 def criar_cliente_llm_runtime(**kwargs: Any) -> ClienteLLMRuntime:
     return ClienteLLMRuntime(**kwargs)
+
+
+def criar_servico_modelo_llm_runtime(**kwargs: Any) -> ServicoModeloLLMRuntime:
+    return ServicoModeloLLMRuntime(**kwargs)

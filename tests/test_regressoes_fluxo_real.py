@@ -668,6 +668,21 @@ def test_playlist_add_prioriza_faixa_registrada_pelo_player() -> None:
         "musica_atual_status": "tocando",
         "musica_atual_ts": __import__("time").time(),
     }
+    class _Operacoes:
+        def faixa_atual(self):
+            return {
+                "url": estado["musica_atual_url"],
+                "title": estado["musica_atual_titulo"],
+                "canal": "",
+            }
+
+        def adicionar_faixa(self, nome, url, titulo, canal):
+            adicionadas.append((nome, url, titulo, canal))
+            return True
+
+        def definir_ultima_playlist(self, _nome):
+            return None
+
     assert executar_intencao(
         {"intent": "PLAYLIST_ADD", "params": {"nome_playlist": "alternativo"}},
         "coloca essa música na playlist alternativo",
@@ -684,6 +699,7 @@ def test_playlist_add_prioriza_faixa_registrada_pelo_player() -> None:
             "_registrar_resultado_execucao": lambda *_args, **_kwargs: None,
             "set_ultima_playlist": lambda _valor: None,
             "_yt_clean_title": lambda titulo: titulo,
+            "_registro_musica_operacoes_runtime": _Operacoes(),
         },
     ) is True
     assert adicionadas == [(

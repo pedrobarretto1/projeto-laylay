@@ -5,6 +5,7 @@ from pathlib import Path
 from mente_laylay.autonomia.controle_midia import executar_media_control
 from mente_laylay.autonomia.roteador_deterministico import detectar_volume_ou_midia
 from mente_laylay.integracao.chrome_comandos import validar_e_enviar_comando
+from tests.fakes_navegador import NavegadorOperacoesFake
 
 
 def test_extensao_pula_somente_sob_comando_explicito() -> None:
@@ -58,6 +59,7 @@ def test_controle_youtube_aguarda_confirmacao_real_da_extensao() -> None:
 def test_executor_de_midia_envia_pulo_de_anuncio_ao_chrome() -> None:
     enviados: list[tuple[str, dict]] = []
     resultados: list[tuple[str, bool | None, bool | None]] = []
+    navegador = NavegadorOperacoesFake()
 
     ok = executar_media_control(
         {"acao": "skip_ad", "platform": "youtube"},
@@ -65,7 +67,7 @@ def test_executor_de_midia_envia_pulo_de_anuncio_ao_chrome() -> None:
         "local",
         {
             "falar_com_lipsync": lambda *_args: None,
-            "enviar_comando_chrome": lambda action, payload: enviados.append((action, payload)) or True,
+            "_registro_navegador_operacoes_runtime": navegador,
             "playlist_state": {},
         },
         marcar_resultado=lambda status, executou=None, confirmado=None, **_kw: resultados.append(
@@ -76,5 +78,6 @@ def test_executor_de_midia_envia_pulo_de_anuncio_ao_chrome() -> None:
     )
 
     assert ok is True
+    enviados.extend(navegador.chamadas)
     assert enviados == [("youtube_control", {"command": "skip_ad"})]
     assert resultados == [("midia_skip_ad", True, True)]

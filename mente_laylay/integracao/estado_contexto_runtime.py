@@ -897,6 +897,16 @@ class EstadoContextoRuntime:
         memoria_get = ns["_memoria_conversa_get"]
         continuidades_get = ns["_continuidades_get"]
         playlist_state = ns["playlist_state"]
+        falas_recentes = [
+            str(item.get("fala") or "").strip()[:300]
+            for item in list(mente.get("historico_direcao_fala") or [])[-6:]
+            if isinstance(item, dict) and str(item.get("fala") or "").strip()
+        ]
+        ultima_resposta = str(mente.get("ultima_resposta") or "").strip()[:300]
+        if ultima_resposta and (
+            not falas_recentes or falas_recentes[-1] != ultima_resposta
+        ):
+            falas_recentes.append(ultima_resposta)
 
         def registrar_arbitragem(texto: str, arbitragem: Dict[str, Any]) -> None:
             atual = dict(estado.mental)
@@ -945,6 +955,11 @@ class EstadoContextoRuntime:
             "ultima_intencao": str(mente.get("ultima_intencao") or "").strip(),
             "ultimo_escopo": str(mente.get("ultimo_escopo") or "").strip(),
             "ultima_habilidade": str(mente.get("ultima_habilidade") or "").strip(),
+            # A autoria operacional usa somente a fala imediatamente anterior
+            # para variar ritmo e abertura. Não é memória durável nem altera o
+            # contrato factual do comando atual.
+            "ultima_resposta": str(mente.get("ultima_resposta") or "").strip()[:500],
+            "falas_recentes": falas_recentes[-4:],
             "ultimas_entradas": list(mente.get("ultimas_entradas") or []),
             "foco_vivo": ns["_foco_vivo_atual"](),
             "_bloqueio_por_emocao": lambda intent, texto, _ctx: bloquear_por_emocao(
@@ -971,6 +986,7 @@ class EstadoContextoRuntime:
             "turno_atual": dict(mente.get("turno_atual") or {}),
             "plano_turno_atual": dict(mente.get("plano_turno_atual") or {}),
             "retrato_turno_atual": dict(mente.get("retrato_turno_atual") or {}),
+            "continuidade_geral": dict(mente.get("continuidade_geral") or {}),
             "especialistas_turno_atual": dict(mente.get("especialistas_turno_atual") or {}),
             "registrar_arbitragem_turno": registrar_arbitragem,
         }

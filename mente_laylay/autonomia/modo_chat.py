@@ -221,8 +221,13 @@ class InteracaoChatRuntime:
             self._log(f"⚠️ [CHAT] Não consegui registrar hotkeys do modo chat: {exc}")
             return False
 
-    def escutar_terminal(self) -> None:
+    def escutar_terminal(
+        self,
+        *,
+        deve_parar: Callable[[], bool] | None = None,
+    ) -> None:
         estado = self._estado_runtime_getter()
+        parar = deve_parar if callable(deve_parar) else (lambda: False)
         return self._escutar_terminal(
             estado_ativo=lambda: bool(
                 estado.obter("conversacional", "modo_chat", False)
@@ -236,6 +241,7 @@ class InteracaoChatRuntime:
             entrada_permitida=lambda: not bool(
                 estado.obter("conversacional", "is_speaking", False)
             ),
+            deve_continuar=lambda: not bool(parar()),
         )
 
     def definir_messages(self, novas_messages: Any) -> None:

@@ -7,6 +7,8 @@ import re
 from html.parser import HTMLParser
 from typing import Any, Callable
 
+from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
+
 import requests
 
 from mente_laylay.integracao.llm_http import eh_estado_tecnico_llm
@@ -64,12 +66,16 @@ class InvestigadorErroRuntime:
     def __init__(
         self,
         *,
-        enviar_mensagem: Callable[..., Any],
+        enviar_mensagem: Callable[..., Any] | None = None,
+        modelo_llm: Any = None,
         limpar_resposta: Callable[[str], str] | None = None,
         requests_get: Callable[..., Any] = requests.get,
         log: Callable[[str], Any] = print,
     ) -> None:
-        self.enviar_mensagem = enviar_mensagem
+        self.enviar_mensagem = resolver_enviador_modelo(
+            modelo_llm=modelo_llm,
+            enviar_mensagem=enviar_mensagem,
+        )
         self.limpar_resposta = limpar_resposta or (lambda valor: str(valor or "").strip())
         self.requests_get = requests_get
         self.log = log

@@ -80,10 +80,52 @@ def test_runtime_fala_resumo_e_imprime_detalhes():
             "playlist_ativa": True, "estado_disponivel": True,
             "expondo_urls": False,
         },
+        navegador_leitura_getter=lambda: {
+            "conectado": True,
+            "leitura_aba_disponivel": True,
+            "listagem_disponivel": True,
+        },
+        navegador_operacoes_getter=lambda: {
+            "comandos_disponiveis": True,
+            "navegacao_disponivel": True,
+            "controle_pagina_disponivel": True,
+            "fechamento_nativo_disponivel": True,
+        },
+        visao_jogo_leitura_getter=lambda: {
+            "habilitado": True, "credencial_disponivel": True,
+            "em_andamento": False, "analise_recente": True,
+            "contexto_jogo_ativo": True, "captura_persistida": False,
+            "imagem_exposta": False, "autoriza_execucao": False,
+        },
+        visao_jogo_analise_getter=lambda: {
+            "analise_disponivel": True, "continuidade_disponivel": True,
+            "solicitacoes": 2, "aceitas": 2, "recusadas": 0, "falhas": 0,
+            "captura_exposta": False, "prompt_exposto": False,
+            "autoriza_execucao": False,
+        },
+        conversa_llm_getter=lambda: {
+            "prompt_disponivel": True, "modelo_disponivel": True,
+            "estado_disponivel": True, "requisicoes": 4, "falhas": 0,
+            "memoria_exposta": False, "credencial_exposta": False,
+            "autoriza_execucao": False,
+        },
+        composicao_principal_getter=lambda: {
+            "disponivel": True, "quantidade": 12,
+            "namespace_global": False, "credencial_exposta": False,
+            "autoriza_execucao": False,
+        },
         fala_operacional_getter=lambda: {
             "tentativas": 3, "emitidas": 2,
             "duplicadas_suprimidas": 1, "reservadas": 0,
             "rejeitadas_voz": 0, "autoriza_execucao": False,
+            "emocao_causal": {
+                "avaliados": 4, "expressoes": 2,
+                "ultima": {
+                    "responsabilidade": "sistema", "confianca": 0.96,
+                    "emocao": "irritada",
+                },
+                "autoriza_execucao": False, "persistencia_pessoal": False,
+            },
         },
         falar=lambda texto, emocao, nivel: falas.append((texto, emocao, nivel)),
         log=logs.append,
@@ -103,8 +145,47 @@ def test_runtime_fala_resumo_e_imprime_detalhes():
     assert "cooperação=True" in logs[0]
     assert "playlist_ativa=True" in logs[0]
     assert "somente_leitura=True expõe_urls=False" in logs[0]
+    assert "navegador tipado: conectado=True" in logs[0]
+    assert "leitura_aba=True listagem=True navegação=True comandos=True" in logs[0]
+    assert "expõe_urls=False autoriza_execução=False" in logs[0]
+    assert "visão de jogo tipada: habilitada=True credencial=True" in logs[0]
+    assert "análise=True continuidade=True falhas=0" in logs[0]
+    assert "captura_persistida=False imagem_exposta=False" in logs[0]
+    assert "conversa e LLM tipadas: prompt=True modelo=True estado=True" in logs[0]
+    assert "requisições=4 falhas=0 memória_exposta=False" in logs[0]
+    assert "composição principal: disponível=True registros=12" in logs[0]
+    assert "namespace_global=False credencial_exposta=False" in logs[0]
     assert "voz operacional única: tentativas=3 emitidas=2" in logs[0]
     assert "duplicadas_suprimidas=1" in logs[0]
+    assert "emoção causal operacional: avaliados=4 expressões=2" in logs[0]
+    assert "responsabilidade=sistema confiança=96% emoção=irritada" in logs[0]
+    assert "persistência_pessoal=False" in logs[0]
+
+
+def test_snapshot_reconcilia_alerta_antigo_quando_agenda_atual_esta_disponivel():
+    runtime = DiagnosticoMenteRuntime(
+        estado_getter=lambda: {
+            "mental": {}, "conversacional": {}, "percepcao": {},
+            "continuidades": {},
+        },
+        saude_getter=lambda: {
+            "voz": {"status": "saudavel"},
+            "agenda": {
+                "status": "degradado", "ausentes": ["persistencia_agenda"],
+            },
+        },
+        agenda_getter=lambda: {
+            "disponivel": True, "daemon_ativo": True,
+            "falhas_persistencia": 0,
+        },
+        falar=lambda *_args: None,
+    )
+
+    diagnostico = runtime.snapshot()
+
+    assert diagnostico["saude"]["saudavel"] == 2
+    assert diagnostico["saude"]["degradado"] == 0
+    assert diagnostico["saude"]["problemas"] == []
 
 
 def test_diagnostico_expoe_so_metricas_seguras_da_rede_associativa():
@@ -152,6 +233,57 @@ def test_comando_prioritario_nao_passsa_pela_ia():
 
     assert runtime.processar_prioritarios("mostra o diagnóstico da mente") is True
     assert chamadas == ["diagnostico"]
+
+
+def test_diagnostico_com_barra_vence_oferta_pendente_do_clipboard():
+    chamadas = []
+    namespace = {
+        "_detectar_pedido_diagnostico_mente": detectar_pedido_diagnostico_mente,
+        "_mostrar_diagnostico_mente": lambda: chamadas.append("diagnostico"),
+        "_processar_oferta_area_transferencia_pendente": (
+            lambda _texto: chamadas.append("clipboard") or True
+        ),
+    }
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: namespace,
+        loop_getter=lambda: None,
+    )
+
+    assert runtime.processar_prioritarios("/diagnostico mente") is True
+    assert chamadas == ["diagnostico"]
+
+
+def test_diagnostico_com_erro_de_digitacao_tambem_vence_clipboard():
+    chamadas = []
+    namespace = {
+        "_detectar_pedido_diagnostico_mente": detectar_pedido_diagnostico_mente,
+        "_mostrar_diagnostico_mente": lambda: chamadas.append("diagnostico"),
+        "_processar_oferta_area_transferencia_pendente": (
+            lambda _texto: chamadas.append("clipboard") or True
+        ),
+    }
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: namespace,
+        loop_getter=lambda: None,
+    )
+
+    assert runtime.processar_prioritarios("/diagostico mente") is True
+    assert chamadas == ["diagnostico"]
+
+
+def test_comando_de_barra_desconhecido_nao_confirma_oferta_do_clipboard():
+    chamadas = []
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: {
+            "_processar_oferta_area_transferencia_pendente": (
+                lambda _texto: chamadas.append("clipboard") or True
+            ),
+        },
+        loop_getter=lambda: None,
+    )
+
+    assert runtime.processar_prioritarios("/comando digitado errado") is True
+    assert chamadas == []
 
 
 def test_consulta_de_horario_e_prioritaria_e_nao_passsa_pela_ia():

@@ -7,6 +7,73 @@ import time
 from typing import Any, Callable, Dict
 
 
+def analisar_protecao_operacional(
+    texto: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None = None,
+) -> Dict[str, Any]:
+    """Lê negação, hipótese e pergunta antes de qualquer intenção prática."""
+    normalizar = normalizar_texto if callable(normalizar_texto) else (
+        lambda valor: str(valor or "").casefold().strip()
+    )
+    t = re.sub(r"\s+", " ", str(normalizar(texto) or "")).strip()
+    neutra = {
+        "bloqueia_execucao": False,
+        "modalidade": "",
+        "natureza_acao": "nenhuma",
+        "motivo": "",
+    }
+    if not t:
+        return neutra
+    if re.search(r"^(?:nao|não)\s+\w+.*\b(?:qu[eê]|qual|porque|por que)\b", t):
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "pergunta",
+            "natureza_acao": "instrucao_ou_explicacao",
+            "motivo": "pergunta negativa sobre ação",
+        }
+    if re.search(
+        r"\b(?:acho que (?:eu )?vou|talvez|estou pensando em|to pensando em|"
+        r"seria bom|seria legal|quem sabe|tenho vontade de|estou com vontade de|"
+        r"to com vontade de|queria saber|se eu (?:pedir|quiser|mandar)|"
+        r"quando (?:voce|você|eu|a gente)|caso (?:eu|voce|você|a gente))\b",
+        t,
+    ):
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "deliberacao",
+            "natureza_acao": "hipotetica",
+            "motivo": "intenção hipotética ou reflexão",
+        }
+    if re.search(
+        r"^(?:nao|não|nunca|jamais)\s+(?:(?:pode|deve|vai)\s+)?"
+        r"(?:abre|abra|fecha|feche|liga|ligue|acende|desliga|desligue|toca|"
+        r"toque|coloca|apaga|remove|muda|ajusta|deixa)\b",
+        t,
+    ):
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "recusa",
+            "natureza_acao": "cancelamento",
+            "motivo": "negação operacional",
+        }
+    if re.search(
+        r"^(?:como(?:\s+(?:eu\s+)?)?(?:faria|fa[cç]o|posso|poderia)?|"
+        r"onde|quando|por\s+que|porque|qual\s+(?:a\s+)?forma\s+de|"
+        r"o\s+que\s+(?:eu\s+)?(?:faria|fa[cç]o)|o\s+que\s+acontece\s+se)\b"
+        r".*\b(?:abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|"
+        r"remover|usar|fazer)\b",
+        t,
+    ) or re.search(r"\b(?:queria|gostaria)\s+de\s+saber\s+como\b", t):
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "pergunta",
+            "natureza_acao": "instrucao_ou_explicacao",
+            "motivo": "pergunta informativa sobre uma ação",
+        }
+    return neutra
+
+
 def _classificar_modalidade_base(
     texto: str,
     *,
@@ -31,8 +98,15 @@ def _classificar_modalidade_base(
     if not t:
         resultado.update(modalidade="vazio", confianca=1.0, motivo="entrada vazia")
         return resultado
-    if re.search(r"^(?:nao|não)\s+\w+.*\b(?:qu[eê]|qual|porque|por que)\b", t):
-        resultado.update(modalidade="pergunta", confianca=0.99, motivo="pergunta negativa sobre ação")
+    protecao = analisar_protecao_operacional(
+        t,
+        normalizar_texto=lambda valor: str(valor or "").strip(),
+    )
+    if protecao["bloqueia_execucao"] and protecao["motivo"] == "pergunta negativa sobre ação":
+        resultado.update(
+            modalidade=protecao["modalidade"], confianca=0.99,
+            motivo=protecao["motivo"], natureza_acao=protecao["natureza_acao"],
+        )
         return resultado
     if re.search(
         r"^(?:na verdade|eu quis dizer|quis dizer|nao lay|não lay|to falando de|estou falando de|"
@@ -41,15 +115,13 @@ def _classificar_modalidade_base(
     ):
         resultado.update(modalidade="correcao", confianca=0.99, motivo="reparação explícita", natureza_acao="correcao")
         return resultado
-    if re.search(
-        r"\b(?:acho que (?:eu )?vou|talvez|estou pensando em|to pensando em|seria bom|seria legal|"
-        r"quem sabe|tenho vontade de|queria saber|se eu (?:pedir|quiser)|quando (?:voce|você)|"
-        r"caso (?:eu|voce|você))\b",
-        t,
-    ):
+    if protecao["bloqueia_execucao"]:
         resultado.update(
-            modalidade="deliberacao", confianca=0.97,
-            motivo="intenção hipotética ou reflexão", natureza_acao="hipotetica",
+            modalidade=protecao["modalidade"],
+            confianca=0.98 if protecao["modalidade"] != "deliberacao" else 0.97,
+            motivo=protecao["motivo"],
+            natureza_acao=protecao["natureza_acao"],
+            depende_contexto=protecao["modalidade"] == "recusa",
         )
         return resultado
 
@@ -65,13 +137,6 @@ def _classificar_modalidade_base(
         )
         return resultado
 
-    # Negar ou discutir um comando não equivale a pedir sua execução.
-    if re.search(r"^(?:nao|não)\s+(?:abre|abra|fecha|feche|liga|ligue|desliga|desligue|toca|toque|coloca|apaga|remove)\b", t):
-        resultado.update(
-            modalidade="recusa", confianca=0.98, motivo="negação operacional",
-            natureza_acao="cancelamento", depende_contexto=True,
-        )
-        return resultado
     confirmacoes = {"sim", "sim pode", "pode", "pode sim", "quero", "quero sim", "eu quero", "claro", "aham", "uhum", "isso", "isso mesmo", "bora", "vai", "manda", "pode ser", "fechado", "beleza", "ok"}
     recusas = {
         "nao", "não", "agora nao", "agora não", "nao precisa", "não precisa",
@@ -210,19 +275,6 @@ def _classificar_modalidade_base(
     ):
         resultado.update(modalidade="pergunta", confianca=0.98, motivo="pergunta sobre conhecimento ou capacidade", natureza_acao="capacidade")
         return resultado
-    if re.search(
-        r"^(?:como|onde|quando|por\s+que|porque|qual\s+(?:a\s+)?forma\s+de|"
-        r"o\s+que\s+acontece\s+se)\b.*\b(?:abrir|fechar|ligar|desligar|tocar|"
-        r"colocar|criar|apagar|remover|usar|fazer)\b",
-        t,
-    ):
-        resultado.update(
-            modalidade="pergunta", confianca=0.98,
-            motivo="pergunta informativa sobre uma ação",
-            natureza_acao="instrucao_ou_explicacao",
-        )
-        return resultado
-
     pedido_polido = bool(re.search(
         r"^(?:por favor\s+)?(?:pode|poderia|consegue|conseguiria)\s+"
         r"(?:abrir|abre|fechar|fecha|ligar|liga|desligar|desliga|tocar|toca|colocar|"

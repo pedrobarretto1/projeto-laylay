@@ -15,6 +15,8 @@ import threading
 import time
 import unicodedata
 from typing import Any, Callable
+
+from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
 from urllib.parse import urlsplit
 
 try:
@@ -236,6 +238,7 @@ class AreaTransferenciaRuntime:
         *,
         falar: Callable[[str, str, int], Any],
         enviar_mensagem: Callable[..., Any] | None = None,
+        modelo_llm: Any = None,
         executar_intencao: Callable[[dict, str], bool] | None = None,
         registrar_operacao: Callable[..., Any] | None = None,
         registrar_resultado: Callable[..., Any] | None = None,
@@ -248,7 +251,10 @@ class AreaTransferenciaRuntime:
         log: Callable[[str], Any] = print,
     ) -> None:
         self.falar = falar
-        self.enviar_mensagem = enviar_mensagem
+        self.enviar_mensagem = resolver_enviador_modelo(
+            modelo_llm=modelo_llm,
+            enviar_mensagem=enviar_mensagem,
+        )
         self.executar_intencao = executar_intencao
         self.registrar_operacao = registrar_operacao
         self.registrar_resultado = registrar_resultado

@@ -6,9 +6,6 @@ from mente_laylay.autonomia.roteador_deterministico import (
     detectar_playlist_contextual_musica_atual,
 )
 from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
-from mente_laylay.autonomia.orquestrador_deterministico import (
-    detectar_intencao_deterministica_mente,
-)
 from mente_laylay.autonomia.porteiro_acoes import texto_tem_comando_explicito
 from mente_laylay.integracao.chrome_ws_handlers import handle_player_event
 from mente_laylay.memoria_mental.contexto_imediato import (
@@ -65,10 +62,10 @@ def test_playlist_add_explicito_e_consumido_antes_da_llm() -> None:
 
     namespace = {
         "_estado_compartilhado_runtime": Estado(),
-        "detectar_intencao_deterministica": lambda _texto: {
+        "resolver_comando_natural": lambda _texto, _origem: ({
             "intent": "PLAYLIST_ADD",
             "params": {"nome_playlist": "alternativo"},
-        },
+        }, "deterministico-explicito"),
         "executar_intencao": lambda *args: chamadas.append(args) or True,
         "_registrar_resultado_execucao": lambda *args, **kwargs: registros.append((args, kwargs)),
     }
@@ -85,7 +82,9 @@ def test_playlist_add_explicito_e_consumido_antes_da_llm() -> None:
         "coloca essa musica na playlist alternativo",
     )]
     assert registros[0][0][2] is True
-    assert registros[0][1]["origem"] == "prioritario_playlist"
+    assert registros[0][1]["origem"] == (
+        "prioritario_linguagem_natural:deterministico-explicito"
+    )
 
 
 def test_essa_tambem_percorre_composicao_prioritaria_sem_chegar_a_llm() -> None:
@@ -108,20 +107,13 @@ def test_essa_tambem_percorre_composicao_prioritaria_sem_chegar_a_llm() -> None:
     class Estado:
         mental = mente
 
-    contexto_detector = {
-        "mente_integrada_estado": mente,
-        "normalizar_texto": lambda texto: str(texto).casefold().strip(),
-        "texto_expresso_melhor_no_deterministico": (
-            lambda texto: texto in {"essa tambem", "essa também"}
-        ),
-        "limpar_destino_pc_b": lambda texto: texto,
-        "limpar_nome_playlist": limpar_nome_playlist,
-    }
     runtime = ComandosImediatosRuntime(
         namespace_getter=lambda: {
             "_estado_compartilhado_runtime": Estado(),
-            "detectar_intencao_deterministica": lambda texto: (
-                detectar_intencao_deterministica_mente(texto, contexto_detector)
+            "resolver_comando_natural": lambda *_args: (
+                (_ for _ in ()).throw(
+                    AssertionError("continuidade segura não deveria chegar ao coordenador")
+                )
             ),
             "executar_intencao": (
                 lambda intent, texto: chamadas.append((intent, texto)) or True
@@ -142,7 +134,7 @@ def test_essa_tambem_percorre_composicao_prioritaria_sem_chegar_a_llm() -> None:
             "referencia_contextual": True,
         },
     }, "essa tambem")]
-    assert registros[0][1]["origem"] == "prioritario_comando_explicito"
+    assert registros[0][1]["origem"] == "prioritario_continuidade_aditiva"
 
 
 def test_lista_iot_e_consumida_na_prioridade_antes_da_llm() -> None:
@@ -210,7 +202,9 @@ def test_musica_contextual_no_jogo_e_executada_sem_depender_da_llm() -> None:
     runtime = ComandosImediatosRuntime(
         namespace_getter=lambda: {
             "_estado_compartilhado_runtime": Estado(),
-            "detectar_intencao_deterministica": lambda _texto: comando,
+            "resolver_comando_natural": lambda _texto, _origem: (
+                comando, "deterministico-explicito",
+            ),
             "executar_intencao": lambda intent, texto: chamadas.append((intent, texto)) or True,
             "_registrar_resultado_execucao": (
                 lambda *args, **kwargs: registros.append((args, kwargs))
@@ -223,7 +217,9 @@ def test_musica_contextual_no_jogo_e_executada_sem_depender_da_llm() -> None:
         "coloca uma musica para jogar minecraft"
     ) is True
     assert chamadas == [(comando, "coloca uma musica para jogar minecraft")]
-    assert registros[0][1]["origem"] == "prioritario_comando_explicito"
+    assert registros[0][1]["origem"] == (
+        "prioritario_linguagem_natural:deterministico-explicito"
+    )
 
 
 def test_comentario_musical_nao_ganha_execucao_prioritaria() -> None:
@@ -279,7 +275,9 @@ def test_rota_prioritaria_e_geral_para_comandos_deterministicos() -> None:
         runtime = ComandosImediatosRuntime(
             namespace_getter=lambda comando=comando: {
                 "_estado_compartilhado_runtime": Estado(),
-                "detectar_intencao_deterministica": lambda _texto: comando,
+                "resolver_comando_natural": lambda _texto, _origem: (
+                    comando, "deterministico-explicito",
+                ),
                 "executar_intencao": (
                     lambda detectada, original: chamadas.append((detectada, original)) or True
                 ),
@@ -289,6 +287,22 @@ def test_rota_prioritaria_e_geral_para_comandos_deterministicos() -> None:
 
         assert runtime.processar_prioritarios(texto) is True
         assert chamadas == [(comando, texto)]
+
+
+def test_rota_prioritaria_sem_coordenador_nao_reabre_detector_legado() -> None:
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: {
+            "detectar_intencao_deterministica": lambda _texto: (_ for _ in ()).throw(
+                AssertionError("o detector legado não pode ser reaberto")
+            ),
+            "executar_intencao": lambda *_args: (_ for _ in ()).throw(
+                AssertionError("nenhuma ação pode ser executada sem coordenador")
+            ),
+        },
+        loop_getter=lambda: None,
+    )
+
+    assert runtime.processar_prioritarios("abre a calculadora") is False
 
 
 def test_rota_prioritaria_materializa_pronome_de_arquivo_antes_de_executar() -> None:
@@ -308,13 +322,10 @@ def test_rota_prioritaria_materializa_pronome_de_arquivo_antes_de_executar() -> 
     runtime = ComandosImediatosRuntime(
         namespace_getter=lambda: {
             "_estado_compartilhado_runtime": Estado(),
-            "detectar_intencao_deterministica": lambda _texto: {
-                "intent": "DELETE_ITEM", "params": {"alvo": "ele"},
-            },
-            "_resolver_comando_arquivo_contextual_forcado": lambda _texto: {
+            "resolver_comando_natural": lambda _texto, _origem: ({
                 "intent": "DELETE_ITEM",
                 "params": {"alvo": caminho, "tipo": "arquivo"},
-            },
+            }, "contexto-arquivo"),
             "executar_intencao": (
                 lambda detectada, original: chamadas.append((detectada, original)) or True
             ),

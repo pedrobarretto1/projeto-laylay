@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 import re
-import unicodedata
 from typing import Any, Dict
 
-
-def _normalizar(texto: str) -> str:
-    base = unicodedata.normalize("NFKD", str(texto or "").casefold())
-    base = "".join(ch for ch in base if not unicodedata.combining(ch))
-    return re.sub(r"\s+", " ", base).strip()
+from mente_laylay.cognicao.normalizacao_linguagem import (
+    normalizar_texto_basico as _normalizar,
+)
 
 
 def extrair_correcao_duravel(

@@ -17,6 +17,7 @@ from mente_laylay.cognicao.erros_navegador import resumir_erro_navegador
 from mente_laylay.memoria_mental.contexto_integrado import resumo_mente_integrada_para_prompt
 from mente_laylay.memoria_mental.playlist_runtime import PlaylistRuntime
 from mente_laylay.autonomia.habilidade_janelas import executar_habilidade_janelas
+from tests.fakes_navegador import NavegadorOperacoesFake
 
 
 class ChromeExtensaoInteligenteTests(unittest.TestCase):
@@ -232,6 +233,7 @@ class ChromeExtensaoInteligenteTests(unittest.TestCase):
 
     def test_site_mapeado_existente_retorna_status_de_foco(self) -> None:
         comandos = []
+        navegador = NavegadorOperacoesFake()
         resultado = executar_habilidade_janelas(
             "APP_OPEN",
             {"nome_app": "ifood"},
@@ -239,11 +241,12 @@ class ChromeExtensaoInteligenteTests(unittest.TestCase):
                 "APPS_MAP": {"ifood": "https://www.ifood.com.br/"},
                 "_normalizar_texto_com_apelidos": lambda texto: str(texto).lower(),
                 "_resolver_alvo_ambiente": lambda _nome: {"aba_aberta": True},
-                "enviar_comando_chrome": lambda acao, payload: comandos.append((acao, payload)) or True,
+                "_registro_navegador_operacoes_runtime": navegador,
             },
         )
 
         self.assertEqual(resultado["status"], "site_ja_aberto_focado")
+        comandos.extend(navegador.chamadas)
         self.assertEqual(comandos[0][0], "open_url")
 
     def test_app_aberto_no_modo_jogo_nao_e_puxado_para_frente(self) -> None:

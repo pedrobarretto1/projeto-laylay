@@ -78,8 +78,8 @@ def executar_media_control(
 ) -> bool:
     """Executa MEDIA_CONTROL com validacao, logs e fala contextual."""
     falar = _get(ctx, "falar_com_lipsync")
-    enviar_chrome = _get(ctx, "enviar_comando_chrome")
-    solicitar_aba = _get(ctx, "solicitar_aba_ativa")
+    navegador_operacoes = _get(ctx, "_registro_navegador_operacoes_runtime")
+    navegador_leitura = _get(ctx, "_registro_navegador_leitura_runtime")
     ajustar_volume = _get(ctx, "ajustar_volume_sistema")
     _enviar_pc_b = _get(ctx, "_enviar_pc_b")
     executar_controle_midia_nativo = _get(ctx, "_executar_controle_midia_nativo")
@@ -87,10 +87,13 @@ def executar_media_control(
     acao = str(params.get("acao") or params.get("command") or "").strip().lower()
     platform = str(params.get("platform") or params.get("site") or "").strip().lower()
     nivel_bruto = params.get("nivel_volume")
-    playlist_state = _get(ctx, "playlist_state", {}) or {}
-    playlist_ativa = bool(str((playlist_state or {}).get("name") or "").strip())
-    playlist_next = _get(ctx, "_playlist_avancar_proxima")
-    playlist_prev = _get(ctx, "_playlist_voltar_anterior")
+    musica_operacoes = _get(ctx, "_registro_musica_operacoes_runtime")
+    estado_reproducao = (
+        musica_operacoes.estado() if musica_operacoes is not None else {}
+    )
+    playlist_ativa = bool(
+        str((estado_reproducao or {}).get("playlist_ativa") or "").strip()
+    )
     confirmado_execucao: bool | None = None
 
     def _log_midia(etapa: str, msg: str) -> None:
@@ -101,7 +104,7 @@ def executar_media_control(
 
     def _aba_atual_midia() -> dict:
         try:
-            return solicitar_aba() if callable(solicitar_aba) else {}
+            return navegador_leitura.aba_ativa() if navegador_leitura is not None else {}
         except Exception as e:
             _log_midia("ABA", f"falha ao consultar aba: {e}")
             return {}
@@ -110,7 +113,7 @@ def executar_media_control(
         info_aba = _aba_atual_midia()
         url = str(info_aba.get("url") or "").lower() if isinstance(info_aba, dict) else ""
         titulo = str(info_aba.get("title") or "").lower() if isinstance(info_aba, dict) else ""
-        preferir = bool(callable(enviar_chrome) and ("youtube." in url or "youtu.be" in url or "youtube" in titulo))
+        preferir = bool(navegador_operacoes is not None and ("youtube." in url or "youtu.be" in url or "youtube" in titulo))
         _log_midia("ROTA", f"acao={acao} platform={platform or '-'} playlist={playlist_ativa} url='{url[:80]}' preferir_chrome={preferir}")
         return preferir
 
@@ -123,11 +126,11 @@ def executar_media_control(
             return True
         if destino_val == "ambos":
             ok_local = False
-            if cmd_exec == "skip_ad" and callable(enviar_chrome):
-                ok_local = bool(enviar_chrome("youtube_control", {"command": cmd_exec}))
+            if cmd_exec == "skip_ad" and navegador_operacoes is not None:
+                ok_local = bool(navegador_operacoes.controlar_youtube(cmd_exec))
                 confirmado_execucao = ok_local
-            elif _preferir_chrome_para_midia() and callable(enviar_chrome):
-                ok_local = bool(enviar_chrome("youtube_control", {"command": cmd_exec}))
+            elif _preferir_chrome_para_midia() and navegador_operacoes is not None:
+                ok_local = bool(navegador_operacoes.controlar_youtube(cmd_exec))
                 # O destino remoto continua sem confirmação conjunta; não
                 # declaramos o comando inteiro confirmado só pelo PC local.
                 confirmado_execucao = None
@@ -135,27 +138,27 @@ def executar_media_control(
                 native_cmd = "pause_play" if cmd_exec in {"pause", "play"} else cmd_exec
                 ok_local = bool(executar_controle_midia_nativo(native_cmd))
                 confirmado_execucao = None
-            elif callable(enviar_chrome):
-                ok_local = bool(enviar_chrome("youtube_control", {"command": cmd_exec}))
+            elif navegador_operacoes is not None:
+                ok_local = bool(navegador_operacoes.controlar_youtube(cmd_exec))
                 confirmado_execucao = None
             if callable(_enviar_pc_b):
                 _enviar_pc_b({"action": "youtube_control", "command": cmd_exec})
             return ok_local
-        if cmd_exec == "skip_ad" and callable(enviar_chrome):
-            confirmado_execucao = bool(enviar_chrome("youtube_control", {"command": cmd_exec}))
+        if cmd_exec == "skip_ad" and navegador_operacoes is not None:
+            confirmado_execucao = bool(navegador_operacoes.controlar_youtube(cmd_exec))
             return confirmado_execucao
-        if playlist_ativa and callable(enviar_chrome):
-            confirmado_execucao = bool(enviar_chrome("youtube_control", {"command": cmd_exec}))
+        if playlist_ativa and navegador_operacoes is not None:
+            confirmado_execucao = bool(navegador_operacoes.controlar_youtube(cmd_exec))
             return confirmado_execucao
-        if _preferir_chrome_para_midia() and callable(enviar_chrome):
-            confirmado_execucao = bool(enviar_chrome("youtube_control", {"command": cmd_exec}))
+        if _preferir_chrome_para_midia() and navegador_operacoes is not None:
+            confirmado_execucao = bool(navegador_operacoes.controlar_youtube(cmd_exec))
             return confirmado_execucao
         if callable(executar_controle_midia_nativo):
             native_cmd = "pause_play" if cmd_exec in {"pause", "play"} else cmd_exec
             confirmado_execucao = None
             return bool(executar_controle_midia_nativo(native_cmd))
-        if callable(enviar_chrome):
-            confirmado_execucao = bool(enviar_chrome("youtube_control", {"command": cmd_exec}))
+        if navegador_operacoes is not None:
+            confirmado_execucao = bool(navegador_operacoes.controlar_youtube(cmd_exec))
             return confirmado_execucao
         return False
 
@@ -213,9 +216,9 @@ def executar_media_control(
             falar(_escolher_fala_variada(["Não entendi o controle de mídia. Fala de novo.", "Repete o comando de mídia.", "Esse controle de mídia escapou de mim."]), "calma", 1)
         return True
 
-    if playlist_ativa and cmd == "next" and callable(playlist_next):
+    if playlist_ativa and cmd == "next" and musica_operacoes is not None:
         _log_midia("PLAYLIST", "tentando avancar pela playlist interna")
-        ok = bool(playlist_next())
+        ok = bool(musica_operacoes.avancar_proxima())
         _log_midia("RESULTADO", f"playlist_next ok={ok}")
         if callable(falar):
             fala = _escolher_fala_variada([
@@ -230,9 +233,9 @@ def executar_media_control(
         marcar_resultado("midia_next_playlist" if ok else "falha_execucao", ok)
         return bool(ok)
 
-    if playlist_ativa and cmd == "prev" and callable(playlist_prev):
+    if playlist_ativa and cmd == "prev" and musica_operacoes is not None:
         _log_midia("PLAYLIST", "tentando voltar pela playlist interna")
-        ok = bool(playlist_prev())
+        ok = bool(musica_operacoes.voltar_anterior())
         _log_midia("RESULTADO", f"playlist_prev ok={ok}")
         if callable(falar):
             fala = _escolher_fala_variada([
@@ -300,18 +303,28 @@ def executar_media_control(
             )
             falar(confirmacao.fala, confirmacao.emocao, confirmacao.nivel)
         else:
-            plano = planejar_resposta_acao(
-                ResultadoAcao(
+            contrato_falha = ResultadoAcao(
                     intent="MEDIA_CONTROL",
                     status="falha_execucao",
                     alvo="midia",
                     executou=False,
                     confirmado=False,
                     texto_usuario=texto_original,
-                ),
+                )
+            plano = planejar_resposta_acao(
+                contrato_falha,
                 "Tentei mexer na mídia, mas não consegui confirmar o caminho.",
             )
-            falar(plano.fala, plano.emocao, plano.nivel)
+            confirmacao = personalizar_confirmacao_llm(
+                contrato_falha,
+                plano.fala,
+                classe=plano.classe,
+                emocao=plano.emocao,
+                nivel=plano.nivel,
+                enviar_mensagem=_get(ctx, "enviar_mensagem"),
+                contexto=ctx_fala(),
+            )
+            falar(confirmacao.fala, confirmacao.emocao, confirmacao.nivel)
     marcar_resultado(
         f"midia_{cmd}" if ok_execucao else "falha_execucao",
         ok_execucao,
