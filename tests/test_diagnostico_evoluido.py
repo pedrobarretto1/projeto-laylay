@@ -79,6 +79,26 @@ def test_historico_de_falhas_remove_url_caminho_e_mensagem_do_erro() -> None:
     assert falha["tipo"] == "runtimeerror"
 
 
+def test_falha_operacional_guarda_apenas_metadados_sanitizados_do_turno() -> None:
+    estado = {}
+    runtime = _runtime_observabilidade(estado)
+
+    runtime.registrar_falha(
+        "executor arquivos",
+        "falha escrita",
+        erro=RuntimeError("conteúdo secreto"),
+        dominio="Arquivos locais",
+        fase="Pós criação",
+        turno_id=r"C:\privado\turno-42",
+    )
+
+    falha = estado["diagnostico_falhas"][-1]
+    assert falha["dominio"] == "arquivos_locais"
+    assert falha["fase"] == "pós_criação"
+    assert "privado" not in falha["turno_id"]
+    assert "secreto" not in repr(falha).casefold()
+
+
 def test_classificacao_distingue_degradacao_de_defeito_sem_ler_mensagem() -> None:
     timeout = classificar_falha_tecnica(
         "llm_http", "timeout_resposta",

@@ -267,6 +267,32 @@ def test_copia_inexistente_registra_nao_encontrado() -> None:
     assert eventos == [("resultado", "nao_encontrado", {"executou": False})]
 
 
+def test_copia_normaliza_retorno_legado_malformado_sem_quebrar_turno() -> None:
+    eventos: list[tuple] = []
+    ultimas: list[str] = []
+
+    class _OperacoesLegadas:
+        def copiar_curadoria(self, *_args):
+            return True
+
+        def definir_ultima_playlist(self, nome):
+            ultimas.append(nome)
+
+    despacho = executar_intencao_musical(
+        "LAYLAY_PLAYLIST_COPY",
+        {"musica": "Duality", "origem": "metal", "destino": "rock"},
+        "copia essa música",
+        {"falar_com_lipsync": lambda *_args: None},
+        _dependencias(eventos, musica_operacoes=_OperacoesLegadas()),
+    )
+
+    assert despacho == ResultadoDespacho.concluido()
+    assert ultimas == ["rock"]
+    assert eventos == [(
+        "resultado", "playlist_musica_adicionada", {"executou": True}
+    )]
+
+
 def test_roteador_principal_delega_music_search_ao_executor_musical() -> None:
     comandos: list[tuple] = []
     navegador = NavegadorOperacoesFake()

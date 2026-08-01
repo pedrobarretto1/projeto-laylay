@@ -15,3 +15,43 @@ def falar_ctx(
     falar = ctx.get("falar_com_lipsync")
     if callable(falar):
         falar(texto, emocao, nivel)
+
+
+def relatar_falha_ctx(
+    ctx: Dict[str, Any],
+    componente: str,
+    codigo: str,
+    *,
+    erro: BaseException | type[BaseException] | None = None,
+    classe: str = "",
+    impacto: str = "",
+    fallback: str = "",
+    dominio: str = "",
+    fase: str = "",
+) -> bool:
+    """Publica falha sanitizada sem permitir que a telemetria derrube o fluxo."""
+    relator = ctx.get("_registrar_falha_tecnica")
+    if not callable(relator):
+        relator = ctx.get("registrar_falha_diagnostico")
+    if not callable(relator):
+        return False
+
+    turno = ctx.get("turno_atual")
+    turno_id = turno.get("id") if isinstance(turno, dict) else ctx.get("turno_id")
+    try:
+        relator(
+            componente,
+            codigo,
+            erro=erro,
+            classe=classe,
+            impacto=impacto,
+            fallback=fallback,
+            dominio=dominio,
+            fase=fase,
+            turno_id=turno_id,
+        )
+        return True
+    except Exception:
+        # A observabilidade é uma proteção; sua própria falha nunca pode
+        # substituir nem mascarar o resultado operacional original.
+        return False

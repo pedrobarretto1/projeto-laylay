@@ -245,6 +245,26 @@ def test_composicao_congela_somente_servicos_da_allowlist() -> None:
     assert ciclo.validacoes == 1
 
 
+def test_composicao_injeta_relator_tecnico_sem_expor_observabilidade_interna() -> None:
+    falhas: list[tuple] = []
+    runtime, _contexto, _ciclo, capturado = _montar()
+    runtime.registrar_falha = lambda *args, **kwargs: falhas.append((args, kwargs))
+
+    runtime.conectar(
+        servicos=_com_servicos_tipados(),
+        estado_getter=lambda: {},
+    )
+
+    contexto = capturado["contexto"]["namespace_getter"]()
+    contexto["_registrar_falha_tecnica"](
+        "executor", "falha", dominio="teste", fase="execucao",
+    )
+    assert falhas == [(("executor", "falha"), {
+        "dominio": "teste", "fase": "execucao",
+    })]
+    assert "_observabilidade_mente_runtime" not in contexto
+
+
 def test_composicao_encaminha_api_estavel_ao_ciclo_conectado() -> None:
     runtime, contexto, ciclo, _ = _montar()
     primeiro = runtime.conectar(

@@ -185,6 +185,8 @@ class ComposicaoCicloComandosRuntime:
             for nome in permitidos
             if nome in servicos
         }
+        if callable(self.registrar_falha):
+            self._servicos["_registrar_falha_tecnica"] = self.registrar_falha
         if registros_principais is not None:
             # Compatibilidade interna para executores ainda anteriores à porta
             # tipada. A fonte continua sendo RegistroModeloLLM; modelo,

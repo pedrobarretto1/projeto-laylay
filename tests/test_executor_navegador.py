@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
 from mente_laylay.autonomia.executor_navegador import (
     DependenciasExecutorNavegador,
@@ -140,6 +142,39 @@ def test_close_tab_no_pc_b_preserva_alvo_preciso() -> None:
     assert despacho == ResultadoDespacho.concluido()
     assert remotos == [{"action": "close_specific_tab", "target": "host:youtube"}]
     assert eventos[0] == ("resultado", "aba_fechada", {"executou": True})
+
+
+def test_falha_ao_fechar_programa_e_observavel_sem_inventar_estado() -> None:
+    eventos: list[tuple] = []
+    falhas: list[tuple] = []
+
+    def fechar_com_erro(_alvo: str) -> None:
+        raise RuntimeError("detalhe privado")
+
+    despacho = executar_intencao_navegador(
+        "CLOSE_TAB",
+        {"alvo": "opera"},
+        "fecha o opera",
+        "pc_a",
+        {
+            "_registro_navegador_leitura_runtime": SimpleNamespace(
+                aba_ativa=lambda: {},
+            ),
+            "_resolver_alvo_ambiente": lambda _alvo: {"programa_aberto": True},
+            "_eh_alvo_site_web": lambda _alvo: False,
+            "fechar_programa": fechar_com_erro,
+            "_registrar_falha_tecnica": (
+                lambda *args, **kwargs: falhas.append((args, kwargs))
+            ),
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido()
+    assert eventos[0] == ("resultado", "app_fechado_em_vez_de_aba", {"executou": True})
+    assert falhas[0][0] == ("executor_navegador", "falha_fechar_programa")
+    assert falhas[0][1]["dominio"] == "navegador"
+    assert "detalhe privado" not in repr(falhas[0][0]).casefold()
 
 
 def test_search_de_clima_continua_redirecionando_sem_abrir_google() -> None:

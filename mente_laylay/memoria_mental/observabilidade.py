@@ -109,7 +109,7 @@ class ObservabilidadeMenteRuntime:
         self.log = log
         self.janela_repeticao_s = max(1.0, float(janela_repeticao_s))
         self._lock = threading.RLock()
-        self._falhas_auxiliares: Dict[tuple[str, str, str], Dict[str, Any]] = {}
+        self._falhas_auxiliares: Dict[tuple[str, ...], Dict[str, Any]] = {}
 
     def _obter(self, chave: str, padrao: Any) -> Any:
         try:
@@ -185,6 +185,9 @@ class ObservabilidadeMenteRuntime:
         classe: str = "",
         impacto: str = "",
         fallback: str = "",
+        dominio: str = "",
+        fase: str = "",
+        turno_id: Any = None,
     ) -> Dict[str, Any]:
         tipo = ""
         if isinstance(erro, BaseException):
@@ -206,6 +209,12 @@ class ObservabilidadeMenteRuntime:
             **classificacao,
             "ts": float(self.clock()),
         }
+        if dominio:
+            evento["dominio"] = _codigo(dominio, "desconhecido", 48)
+        if fase:
+            evento["fase"] = _codigo(fase, "desconhecida", 48)
+        if turno_id is not None and str(turno_id).strip():
+            evento["turno_id"] = _codigo(turno_id, "desconhecido", 48)
         with self._lock:
             eventos = list(self._obter("diagnostico_falhas", []) or [])
             eventos.append(evento)
@@ -221,6 +230,9 @@ class ObservabilidadeMenteRuntime:
         classe: str = "",
         impacto: str = "",
         fallback: str = "",
+        dominio: str = "",
+        fase: str = "",
+        turno_id: Any = None,
     ) -> Dict[str, Any]:
         """Registra uma falha operacional sem repetir o mesmo aviso em cascata.
 
@@ -244,7 +256,17 @@ class ObservabilidadeMenteRuntime:
             fallback=fallback,
         )
         agora = float(self.clock())
-        chave = (componente_limpo, codigo_limpo, tipo)
+        dominio_limpo = _codigo(dominio, "", 48) if dominio else ""
+        fase_limpa = _codigo(fase, "", 48) if fase else ""
+        turno_limpo = _codigo(turno_id, "", 48) if turno_id is not None else ""
+        metadados = {}
+        if dominio_limpo:
+            metadados["dominio"] = dominio_limpo
+        if fase_limpa:
+            metadados["fase"] = fase_limpa
+        if turno_limpo:
+            metadados["turno_id"] = turno_limpo
+        chave = (componente_limpo, codigo_limpo, tipo, dominio_limpo, fase_limpa)
         with self._lock:
             anterior = dict(self._falhas_auxiliares.get(chave) or {})
             if anterior and agora - float(anterior.get("ts") or 0.0) < self.janela_repeticao_s:
@@ -257,6 +279,7 @@ class ObservabilidadeMenteRuntime:
                     "codigo": codigo_limpo,
                     "tipo": tipo,
                     **classificacao,
+                    **metadados,
                 }
             suprimidas = int(anterior.get("suprimidas") or 0)
             self._falhas_auxiliares[chave] = {"ts": agora, "suprimidas": 0}
@@ -266,6 +289,7 @@ class ObservabilidadeMenteRuntime:
             codigo_limpo,
             erro=erro,
             **classificacao,
+            **metadados,
         )
         if callable(self.log):
             repeticao = f" | {suprimidas} repetição(ões) anterior(es) suprimida(s)" if suprimidas else ""

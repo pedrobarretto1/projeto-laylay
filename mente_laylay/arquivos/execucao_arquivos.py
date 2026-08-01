@@ -15,6 +15,7 @@ from mente_laylay.personalidade.planejador_resposta import planejar_resposta_aca
 from mente_laylay.personalidade.confirmacao_llm import personalizar_confirmacao_llm
 from mente_laylay.integracao.registro_arquivos import PortaArquivosLeitura
 from mente_laylay.integracao.registro_mutacoes_arquivos import PortaArquivosMutacao
+from mente_laylay.autonomia.executor_comum import relatar_falha_ctx
 
 
 def _get(ctx: Dict[str, Any], nome: str, default=None):
@@ -144,6 +145,16 @@ def executar_intencao_arquivos(
                 somente_projeto=bool(params.get("somente_projeto")),
             ) or {})
         except Exception as erro:
+            relatar_falha_ctx(
+                ctx,
+                "executor_arquivos",
+                "falha_pesquisa",
+                erro=erro,
+                impacto="comando",
+                fallback="resultado_falha_execucao",
+                dominio="arquivos",
+                fase="pesquisar",
+            )
             log = _get(ctx, "print") or _get(ctx, "log")
             if callable(log):
                 log(f"⚠️ [ARQUIVOS:PESQUISA] falha isolada: {type(erro).__name__}")
@@ -172,8 +183,18 @@ def executar_intencao_arquivos(
         if callable(aprender):
             try:
                 aprender(consulta, resultados)
-            except Exception:
-                pass
+            except Exception as erro:
+                relatar_falha_ctx(
+                    ctx,
+                    "executor_arquivos",
+                    "falha_aprendizado_pesquisa",
+                    erro=erro,
+                    classe="degradacao",
+                    impacto="servico",
+                    fallback="pesquisa_sem_aprendizado",
+                    dominio="arquivos",
+                    fase="pos_pesquisa",
+                )
         marcar_resultado("arquivos_encontrados", True)
         if len(resultados) == 1:
             motivos = ", ".join(resultados[0].get("motivos") or [])
@@ -298,8 +319,18 @@ def executar_intencao_arquivos(
                 if caminho_criado:
                     dados_contexto["caminho"] = caminho_criado
                 registrar_estrutura_arquivo_recente(dados_contexto)
-            except Exception:
-                pass
+            except Exception as erro:
+                relatar_falha_ctx(
+                    ctx,
+                    "executor_arquivos",
+                    "falha_registro_contexto_pasta",
+                    erro=erro,
+                    classe="degradacao",
+                    impacto="servico",
+                    fallback="pasta_criada_sem_contexto",
+                    dominio="arquivos",
+                    fase="pos_criacao",
+                )
         if pasta_pai.lower() in {"ela", "nela", "essa", "essa pasta", "dela", "dentro dela"} and callable(ultima_pasta_contextual):
             pasta_pai = str(ultima_pasta_contextual() or "").strip()
         if not nome:
@@ -470,7 +501,17 @@ def executar_intencao_arquivos(
                 referencia = dict(resolver_referencia_cooperativa(
                     conteudo_ref, hash_esperado=conteudo_hash,
                 ) or {})
-            except Exception:
+            except Exception as erro:
+                relatar_falha_ctx(
+                    ctx,
+                    "executor_arquivos",
+                    "falha_referencia_cooperativa",
+                    erro=erro,
+                    impacto="comando",
+                    fallback="referencia_indisponivel",
+                    dominio="arquivos",
+                    fase="resolver_referencia",
+                )
                 referencia = {"ok": False, "status": "referencia_indisponivel"}
             if not referencia.get("ok"):
                 marcar_resultado(str(referencia.get("status") or "referencia_expirada"), False)
@@ -529,8 +570,18 @@ def executar_intencao_arquivos(
                         "tipo_arquivo": tipo_arquivo,
                         "target": destino_val,
                     })
-                except Exception:
-                    pass
+                except Exception as erro:
+                    relatar_falha_ctx(
+                        ctx,
+                        "executor_arquivos",
+                        "falha_registro_contexto_arquivo",
+                        erro=erro,
+                        classe="degradacao",
+                        impacto="servico",
+                        fallback="arquivo_criado_sem_contexto",
+                        dominio="arquivos",
+                        fase="pos_criacao",
+                    )
         else:
             marcar_resultado(
                 str(resultado_seguro.get("status") or "falha_execucao"), False,

@@ -169,22 +169,33 @@ Critério de conclusão:
 
 ## P9 — Exceções, fallbacks e falhas silenciosas
 
-**Status: pendente; pode começar após a linha de base da P7.**
+**Status: em andamento — contrato de falha e primeira fatia operacional
+concluídos.**
+
+Linha de base registrada em 1º de agosto de 2026:
+
+- 623 capturas de exceção nos pacotes críticos inspecionados; o número inclui
+  proteções legítimas de integrações opcionais e não é uma meta de remoção;
+- falhas agora podem carregar domínio, fase e identificador sanitizado do
+  turno, sem persistir mensagem, caminho ou conteúdo privado;
+- o relator técnico foi conectado ao contexto único dos executores, sem expor
+  o objeto interno de observabilidade;
+- a primeira fatia removeu silêncios em arquivos, música e navegador.
 
 Objetivo: manter o isolamento das integrações opcionais sem permitir que um
 defeito real desapareça em uma resposta genérica.
 
-1. [ ] classificar capturas amplas por falha esperada, degradação externa ou
-   defeito interno;
+1. [ ] classificar as capturas amplas restantes por falha esperada, degradação
+   externa ou defeito interno;
 2. [ ] priorizar os blocos silenciosos em execução de comandos, persistência,
    contexto, LLM, áudio e navegador;
 3. [ ] preservar exceções amplas somente nas fronteiras que realmente precisam
    impedir a queda de um serviço;
-4. [ ] registrar categoria, domínio, fase e identificador do turno sem expor
+4. [x] registrar categoria, domínio, fase e identificador do turno sem expor
    conteúdo privado;
-5. [ ] impedir que fallback conversacional afirme sucesso, falha ou ausência de
+5. [x] impedir que fallback conversacional afirme sucesso, falha ou ausência de
    capacidade sem evidência operacional;
-6. [ ] testar timeout, dependência ausente, retorno malformado e falha parcial
+6. [x] testar timeout, dependência ausente, retorno malformado e falha parcial
    em cooperação.
 
 Critério de conclusão:

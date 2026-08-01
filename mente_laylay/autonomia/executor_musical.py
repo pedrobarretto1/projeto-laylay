@@ -7,7 +7,10 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict
 
 from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
-from mente_laylay.autonomia.executor_comum import falar_ctx as _falar
+from mente_laylay.autonomia.executor_comum import (
+    falar_ctx as _falar,
+    relatar_falha_ctx,
+)
 from mente_laylay.integracao.registro_musica import PortaMusicaLeitura
 from mente_laylay.integracao.registro_operacoes_musicais import PortaMusicaOperacoes
 from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_variada
@@ -60,7 +63,18 @@ def _pesquisar(
                 perfil = resolver_estilo(query, texto_original)
             if isinstance(perfil, dict) and str(perfil.get("query") or "").strip():
                 query = str(perfil.get("query") or query).strip()
-        except Exception:
+        except Exception as erro:
+            relatar_falha_ctx(
+                ctx,
+                "executor_musical",
+                "falha_resolucao_estilo",
+                erro=erro,
+                classe="degradacao",
+                impacto="servico",
+                fallback="consulta_original",
+                dominio="musica",
+                fase="refinar_pesquisa",
+            )
             perfil = {}
     if not query:
         fala = escolher_fala_variada([

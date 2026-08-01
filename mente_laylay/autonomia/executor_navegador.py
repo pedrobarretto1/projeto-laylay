@@ -7,7 +7,10 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict
 
 from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
-from mente_laylay.autonomia.executor_comum import falar_ctx as _falar
+from mente_laylay.autonomia.executor_comum import (
+    falar_ctx as _falar,
+    relatar_falha_ctx,
+)
 from mente_laylay.cognicao.refinamento_pesquisa import refinar_consulta_web
 from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_variada
 
@@ -126,8 +129,17 @@ def _executar_fechar_aba(
         mapped = apps_map.get(alvo.lower(), alvo)
         try:
             fechar_programa(mapped)
-        except Exception:
-            pass
+        except Exception as erro:
+            relatar_falha_ctx(
+                ctx,
+                "executor_navegador",
+                "falha_fechar_programa",
+                erro=erro,
+                impacto="comando",
+                fallback="confirmar_estado_janela",
+                dominio="navegador",
+                fase="fechar_aba",
+            )
         ok = deps.esperar_programa_fechar(alvo)
         status = "app_fechado_em_vez_de_aba" if ok else "falha_execucao"
         deps.marcar_resultado(status, executou=ok)
@@ -233,7 +245,18 @@ def _executar_search(
         if not pl and callable(extrair_playlist):
             try:
                 pl = str(extrair_playlist(texto_original) or "").strip()
-            except Exception:
+            except Exception as erro:
+                relatar_falha_ctx(
+                    ctx,
+                    "executor_navegador",
+                    "falha_extrair_playlist",
+                    erro=erro,
+                    classe="degradacao",
+                    impacto="servico",
+                    fallback="playlist_recente",
+                    dominio="navegador",
+                    fase="abrir_playlist",
+                )
                 pl = ""
         if not pl:
             pl = str(_get(ctx, "ultima_playlist", "") or "").strip()
@@ -311,7 +334,17 @@ def _executar_search(
             )
             if bot and callable(registrar):
                 registrar(texto_original, bot, "SEARCH", query, "", "pesquisa")
-        except Exception:
+        except Exception as erro:
+            relatar_falha_ctx(
+                ctx,
+                "executor_navegador",
+                "falha_resposta_conversacional",
+                erro=erro,
+                impacto="turno",
+                fallback="saudacao_local",
+                dominio="navegador",
+                fase="pesquisa_conversacional",
+            )
             _falar(ctx, escolher_fala_variada(["Oi.", "Fala comigo.", "Tô por aqui."]))
         return ResultadoDespacho.concluido()
 
