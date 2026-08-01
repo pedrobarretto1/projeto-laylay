@@ -77,9 +77,11 @@ class EstadoContextoRuntime:
         *,
         namespace_getter: Callable[[], Dict[str, Any]],
         estado_runtime_getter: Callable[[], Any],
+        registrar_falha: Callable[..., Any] | None = None,
     ) -> None:
         self.namespace_getter = namespace_getter
         self.estado_runtime_getter = estado_runtime_getter
+        self.registrar_falha = registrar_falha
 
     def _namespace(self) -> Dict[str, Any]:
         return self.namespace_getter() or {}
@@ -416,6 +418,14 @@ class EstadoContextoRuntime:
             mente=self._estado().mental,
             resumo_autoaprimoramento_cb=self.resumo_autoaprimoramento_para_prompt,
             memoria_sqlite=ns.get("MEMORIA_SQLITE"),
+            registrar_falha=(
+                self.registrar_falha
+                or getattr(
+                    ns.get("_observabilidade_mente_runtime"),
+                    "relatar_falha",
+                    None,
+                )
+            ),
         )
         return resumo
 

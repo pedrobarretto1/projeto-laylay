@@ -61,3 +61,24 @@ def test_retrato_integrado_recupera_duravel_uma_vez_e_nao_rele_snapshot_de_sessa
 
     assert memoria.relevantes == 1
     assert resumo.count("MEMÓRIA DURÁVEL RELEVANTE") == 1
+
+
+def test_retrato_integrado_degrada_sem_apagar_falha_de_persistencia() -> None:
+    falhas = []
+
+    class MemoriaFalha:
+        def formatar_aprendizados_relevantes_para_prompt(self, *_args, **_kwargs):
+            raise RuntimeError("conteúdo privado")
+
+    resumo = montar_resumo_mente_integrada_com_extras(
+        texto_usuario="assunto atual",
+        ctx={"periodo": "tarde", "emocao": "calma", "nivel_emocao": 1, "humor": 0},
+        percepcao={},
+        mente={},
+        memoria_sqlite=MemoriaFalha(),
+        registrar_falha=lambda *args, **kwargs: falhas.append((args, kwargs)),
+    )
+
+    assert resumo
+    assert falhas[0][0] == ("memoria_prompt", "falha_aprendizados_sqlite")
+    assert falhas[0][1]["fallback"] == "resumo_sem_aprendizados"

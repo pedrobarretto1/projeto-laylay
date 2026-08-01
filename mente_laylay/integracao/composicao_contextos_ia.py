@@ -125,6 +125,7 @@ class ComposicaoContextosIARuntime:
         mapa_habilidades_prompt: Callable[..., str] | None = None,
         mapa_recursos_prompt: Callable[[str], str] | None = None,
         registrar_tamanho_prompt: Callable[[str, int], Any] | None = None,
+        registrar_falha: Callable[..., Any] | None = None,
         prompt_factory: Callable[..., Any] = criar_contexto_prompt_runtime,
         exec_factory: Callable[..., Any] = criar_contexto_exec_runtime,
         dispatcher_factory: Callable[..., Any] = criar_contexto_dispatcher_runtime,
@@ -185,6 +186,7 @@ class ComposicaoContextosIARuntime:
         self.dispatcher = dispatcher_factory(
             **grupos,
             estado_getter=self._estado_dispatcher,
+            registrar_falha=registrar_falha,
         )
         finalizacao = {
             nome: self._grupo(chaves)
@@ -195,6 +197,7 @@ class ComposicaoContextosIARuntime:
         self.finalizacao = finalizacao_factory(
             **finalizacao,
             estado_getter=self._estado_finalizacao,
+            registrar_falha=registrar_falha,
         )
 
         usados = {

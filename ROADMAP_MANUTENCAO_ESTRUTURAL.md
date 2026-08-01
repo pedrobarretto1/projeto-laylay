@@ -169,8 +169,7 @@ Critério de conclusão:
 
 ## P9 — Exceções, fallbacks e falhas silenciosas
 
-**Status: em andamento — contrato de falha e primeira fatia operacional
-concluídos.**
+**Status: concluída em 1º de agosto de 2026.**
 
 Linha de base registrada em 1º de agosto de 2026:
 
@@ -180,16 +179,21 @@ Linha de base registrada em 1º de agosto de 2026:
   turno, sem persistir mensagem, caminho ou conteúdo privado;
 - o relator técnico foi conectado ao contexto único dos executores, sem expor
   o objeto interno de observabilidade;
-- a primeira fatia removeu silêncios em arquivos, música e navegador.
+- a primeira fatia removeu silêncios em arquivos, música e navegador;
+- a fatia final conectou persistência do prompt, montagem de contexto, sessão
+  da LLM e voz ao mesmo relator, inclusive nos fallbacks que preservam o fluxo;
+- a classificação adotada distingue controle esperado, degradação de fronteira
+  externa e defeito de contrato interno. Limpezas best-effort continuam locais,
+  enquanto toda falha com efeito no turno, comando, fala ou serviço é publicada.
 
 Objetivo: manter o isolamento das integrações opcionais sem permitir que um
 defeito real desapareça em uma resposta genérica.
 
-1. [ ] classificar as capturas amplas restantes por falha esperada, degradação
+1. [x] classificar as capturas amplas restantes por falha esperada, degradação
    externa ou defeito interno;
-2. [ ] priorizar os blocos silenciosos em execução de comandos, persistência,
+2. [x] priorizar os blocos silenciosos em execução de comandos, persistência,
    contexto, LLM, áudio e navegador;
-3. [ ] preservar exceções amplas somente nas fronteiras que realmente precisam
+3. [x] preservar exceções amplas somente nas fronteiras que realmente precisam
    impedir a queda de um serviço;
 4. [x] registrar categoria, domínio, fase e identificador do turno sem expor
    conteúdo privado;
@@ -197,6 +201,15 @@ defeito real desapareça em uma resposta genérica.
    capacidade sem evidência operacional;
 6. [x] testar timeout, dependência ausente, retorno malformado e falha parcial
    em cooperação.
+
+Validação de conclusão:
+
+- Ruff e compilação aprovados;
+- barreira gradual do mypy aprovada em 20 arquivos-fonte;
+- 1.756 testes e 45 subtestes aprovados;
+- cobertura total de 64%, acima do piso estrutural de 50%;
+- auditoria local confirmou fallback seguro para falhas de persistência,
+  getters de contexto, timer/descarregamento da LLM e adaptação/entrega de voz.
 
 Critério de conclusão:
 

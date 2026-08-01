@@ -1211,7 +1211,7 @@ _composicao_inteligencia_externa_runtime = (
         requests_get=requests.get,
         requests_post=_runtime_llm_portatil.post,
         ao_finalizar_conversa_modo_jogo=_descarregar_modelo_local,
-        registrar_falha=_observabilidade_mente_runtime.registrar_falha,
+        registrar_falha=_observabilidade_mente_runtime.relatar_falha,
         log=print,
     )
 )
@@ -3563,6 +3563,7 @@ _composicao_contextos_ia_runtime = _criar_composicao_contextos_ia_runtime(
     mapa_habilidades_prompt=_mapa_habilidades_runtime.contexto_para_prompt,
     mapa_recursos_prompt=_mapa_recursos_runtime.contexto_para_prompt,
     registrar_tamanho_prompt=_observabilidade_mente_runtime.registrar_tamanho_prompt,
+    registrar_falha=_observabilidade_mente_runtime.relatar_falha,
     log=print,
 )
 _contexto_prompt_runtime = _composicao_contextos_ia_runtime.prompt

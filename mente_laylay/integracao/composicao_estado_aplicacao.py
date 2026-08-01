@@ -32,7 +32,7 @@ DEPENDENCIAS_ESTADO_CONTEXTO = (
     "_memoria_conversa_get", "_continuidades_get", "playlist_state",
     "_musica_estado_set", "_continuidades_set", "_continuidades_update",
     "falar_com_lipsync", "_estrutura_arquivo_recente", "_gmail_nao_lidos_cache",
-    "BRIEFING_CIDADE",
+    "BRIEFING_CIDADE", "_observabilidade_mente_runtime",
 )
 
 DEPENDENCIAS_ADAPTADORES_APLICACAO = (
@@ -64,6 +64,7 @@ class ComposicaoEstadoAplicacaoRuntime:
         *,
         servicos_iniciais: Mapping[str, Any],
         estado_runtime_getter: Callable[[], Any],
+        registrar_falha: Callable[..., Any] | None = None,
         estado_factory: Callable[..., Any] = criar_estado_contexto_runtime,
         adaptadores_factory: Callable[..., Any] = criar_adaptadores_aplicacao_runtime,
     ) -> None:
@@ -77,6 +78,7 @@ class ComposicaoEstadoAplicacaoRuntime:
         self.estado = estado_factory(
             namespace_getter=self._snapshot_estado,
             estado_runtime_getter=estado_runtime_getter,
+            registrar_falha=registrar_falha,
         )
         self.adaptadores = adaptadores_factory(
             namespace_getter=self._snapshot_adaptadores,

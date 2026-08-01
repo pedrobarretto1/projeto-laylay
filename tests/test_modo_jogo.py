@@ -419,6 +419,42 @@ def test_nova_fala_renova_sessao_e_timer_antigo_nao_descarrega() -> None:
     assert descarregamentos == [True]
 
 
+def test_falha_no_timer_de_descarga_nao_quebra_resposta_e_vai_ao_diagnostico() -> None:
+    falhas = []
+
+    class TimerFalho:
+        def __init__(self, _intervalo, _callback):
+            self.daemon = False
+
+        def start(self):
+            raise RuntimeError("detalhe privado")
+
+    class Resposta:
+        status_code = 200
+        text = "ok"
+
+    runtime = LLMHttpRuntime(
+        base_url="http://localhost:11434/v1",
+        local_timeout=10,
+        remote_timeout=10,
+        requests_post=lambda *_args, **_kwargs: Resposta(),
+        print_fn=lambda *_args: None,
+        timer_factory=TimerFalho,
+        registrar_falha=lambda *args, **kwargs: falhas.append((args, kwargs)),
+    )
+    runtime.definir_modo_jogo(True)
+
+    resposta = runtime.post({}, {
+        "messages": [{"role": "user", "content": "oi"}],
+        "_laylay_conversa_modo_jogo": True,
+    })
+
+    assert resposta.status_code == 200
+    assert runtime.estado_sessao_jogo == "fria"
+    assert falhas[0][0] == ("llm_http", "falha_iniciar_timer_jogo")
+    assert falhas[0][1]["fallback"] == "sessao_jogo_sem_descarga_automatica"
+
+
 def test_conversa_no_jogo_usa_timeout_curto_sem_alterar_modelo() -> None:
     chamadas = []
 

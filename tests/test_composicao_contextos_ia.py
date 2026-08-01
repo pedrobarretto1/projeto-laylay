@@ -131,6 +131,7 @@ def _montar():
         mapa_habilidades_prompt=lambda texto, **_kwargs: f"habilidades:{texto}",
         mapa_recursos_prompt=lambda texto: f"recursos:{texto}",
         registrar_tamanho_prompt=lambda *_args: None,
+        registrar_falha=lambda *_args, **_kwargs: None,
         prompt_factory=prompt_factory,
         exec_factory=exec_factory,
         dispatcher_factory=dispatcher_factory,
@@ -153,6 +154,8 @@ def test_composicao_cria_quatro_contextos_e_descarta_servicos_externos() -> None
     assert callable(capturado["prompt"]["mapa_habilidades_prompt"])
     assert callable(capturado["prompt"]["mapa_recursos_prompt"])
     assert callable(capturado["prompt"]["registrar_tamanho_prompt"])
+    assert callable(capturado["dispatcher"]["registrar_falha"])
+    assert callable(capturado["finalizacao"]["registrar_falha"])
     assert capturado["prompt"]["formatar_playlists"]() == (
         "Playlists salvas: 'rock' (0)."
     )

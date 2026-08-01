@@ -17,6 +17,7 @@ from mente_laylay.personalidade.ritmo_natural import (
     ajustar_uso_natural_nome,
 )
 from mente_laylay.percepcao.dispositivos_audio import selecionar_dispositivo_audio
+from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
 
 
 VOZ_TTS_PADRAO = "pt-BR-FranciscaNeural"
@@ -129,13 +130,42 @@ class VozRuntime:
         self.proativa_janela_startup = proativa_janela_startup
         self.tts_timeout_s = max(0.05, float(tts_timeout_s))
 
+    def _relatar_falha(
+        self,
+        codigo: str,
+        erro: BaseException,
+        *,
+        classe: str = "degradacao",
+        impacto: str = "fala",
+        fallback: str = "nenhum",
+        fase: str = "entrega_fala",
+    ) -> bool:
+        return relatar_falha_opcional(
+            self.registrar_falha_cb,
+            "voz",
+            codigo,
+            erro=erro,
+            classe=classe,
+            impacto=impacto,
+            fallback=fallback,
+            dominio="audio",
+            fase=fase,
+        )
+
     def iniciar_turno_resposta(self) -> None:
         """Reserva o canal de voz até a mente concluir a resposta do usuário."""
         chave = 0.0
         if callable(self.chave_turno_cb):
             try:
                 chave = float(self.chave_turno_cb() or 0.0)
-            except Exception:
+            except Exception as erro:
+                self._relatar_falha(
+                    "falha_chave_turno",
+                    erro,
+                    impacto="servico",
+                    fallback="turno_sem_chave",
+                    fase="iniciar_turno",
+                )
                 chave = 0.0
         with self._turno_lock:
             self._turno_resposta_ativo = True
@@ -147,7 +177,14 @@ class VozRuntime:
         if callable(self.chave_turno_cb):
             try:
                 chave = float(self.chave_turno_cb() or 0.0)
-            except Exception:
+            except Exception as erro:
+                self._relatar_falha(
+                    "falha_chave_turno",
+                    erro,
+                    impacto="servico",
+                    fallback="turno_sem_chave",
+                    fase="sincronizar_turno",
+                )
                 chave = 0.0
         with self._turno_lock:
             if self._turno_resposta_ativo:
@@ -167,19 +204,28 @@ class VozRuntime:
                 self.proativa_timer.daemon = True
                 self.proativa_timer.start()
 
-    @staticmethod
-    def _concluir_itens_proativos(itens: list[dict], entregue: bool, motivo: str, log=print) -> None:
+    def _concluir_itens_proativos(
+        self, itens: list[dict], entregue: bool, motivo: str, log=None,
+    ) -> None:
+        log_fn = log or self.log
         for item in itens:
             callback = item.get("ao_concluir") if isinstance(item, dict) else None
             if callable(callback):
                 try:
                     callback(bool(entregue), str(motivo or ""))
                 except Exception as erro:
-                    log(f"⚠️ [FALA PROATIVA] callback falhou: {erro}")
+                    log_fn(f"⚠️ [FALA PROATIVA] callback falhou: {erro}")
+                    self._relatar_falha(
+                        "falha_callback_conclusao_proativa",
+                        erro,
+                        impacto="servico",
+                        fallback="conclusao_sem_callback",
+                        fase="finalizar_fala_proativa",
+                    )
 
-    @staticmethod
-    def _iniciar_itens_proativos(itens: list[dict], log=print) -> None:
+    def _iniciar_itens_proativos(self, itens: list[dict], log=None) -> None:
         """Ativa o contexto da fala antes de ela ficar audível ao usuário."""
+        log_fn = log or self.log
         for item in itens:
             if not isinstance(item, dict) or item.get("_inicio_notificado"):
                 continue
@@ -189,7 +235,14 @@ class VozRuntime:
                 try:
                     callback()
                 except Exception as erro:
-                    log(f"⚠️ [FALA PROATIVA] callback de início falhou: {erro}")
+                    log_fn(f"⚠️ [FALA PROATIVA] callback de início falhou: {erro}")
+                    self._relatar_falha(
+                        "falha_callback_inicio_proativa",
+                        erro,
+                        impacto="servico",
+                        fallback="fala_sem_callback_inicio",
+                        fase="iniciar_fala_proativa",
+                    )
 
     def _retirar_proativas_do_turno(self, chave: float) -> list[dict]:
         with self.proativa_lock:
@@ -213,7 +266,13 @@ class VozRuntime:
             return principal
         try:
             proativa, _emocao, _nivel = self.compor_fala_proativa_cb(itens)
-        except Exception:
+        except Exception as erro:
+            self._relatar_falha(
+                "falha_compor_fala_mesclada",
+                erro,
+                fallback="concatenacao_segura",
+                fase="compor_fala",
+            )
             proativa = " ".join(str(item.get("texto") or "") for item in itens)
         principal_norm = self.normalizar_segmento_fala(principal)
         proativa_norm = self.normalizar_segmento_fala(proativa)
@@ -382,7 +441,7 @@ class VozRuntime:
                 emo = str(item.get("emocao") or "calma")
                 try:
                     nivel = int(item.get("nivel") or 1)
-                except Exception:
+                except (TypeError, ValueError):
                     nivel = 1
             if texto[-1] not in ".!?…":
                 texto += "."
@@ -404,6 +463,12 @@ class VozRuntime:
                 texto_voz = self.preparar_tts(texto_exibicao) or texto_exibicao
             except Exception as erro_oralidade:
                 self.log(f"⚠️ [VOZ] adaptação oral ignorada: {erro_oralidade}")
+                self._relatar_falha(
+                    "falha_adaptacao_oral",
+                    erro_oralidade,
+                    fallback="texto_original",
+                    fase="preparar_tts",
+                )
                 texto_voz = texto_exibicao
             self.log("")
             self.log(self.formatar_mensagem(texto_exibicao, emocao=emocao, nivel=nivel))
@@ -478,7 +543,9 @@ class VozRuntime:
             if temp_file and os.path.exists(temp_file):
                 try:
                     os.unlink(temp_file)
-                except Exception:
+                except OSError:
+                    # Limpeza best-effort: o áudio já foi encerrado e o SO
+                    # pode manter o arquivo temporário bloqueado por instantes.
                     pass
 
     def worker_de_falas(self):
@@ -537,6 +604,13 @@ class VozRuntime:
                                     self.registrar_fala_emitida_cb(pedido.get("texto", ""), itens_mesclados)
                                 except Exception as erro_registro:
                                     self.log(f"⚠️ [FALA PROATIVA] falha ao registrar contexto: {erro_registro}")
+                                    self._relatar_falha(
+                                        "falha_registrar_contexto_proativo",
+                                        erro_registro,
+                                        impacto="servico",
+                                        fallback="fala_entregue_sem_registro",
+                                        fase="finalizar_fala",
+                                    )
                             self._concluir_itens_proativos(itens_mesclados, True, "mesclada_ao_turno", self.log)
                         with self._turno_lock:
                             if pedido is self._pedido_turno_pendente:
@@ -545,8 +619,15 @@ class VozRuntime:
                         if ev is not None:
                             try:
                                 ev.set()
-                            except Exception:
-                                pass
+                            except Exception as erro:
+                                self._relatar_falha(
+                                    "falha_sinalizar_fala_concluida",
+                                    erro,
+                                    classe="defeito",
+                                    impacto="servico",
+                                    fallback="espera_expira_pelo_chamador",
+                                    fase="finalizar_fala",
+                                )
 
     def encerrar(self, timeout_s: float = 1.0) -> None:
         self.stop_event.set()
@@ -554,6 +635,13 @@ class VozRuntime:
             self.fila.put_nowait(None)
         except Exception as erro:
             self.log(f"⚠️ [FALA] fila não aceitou sinal de encerramento: {erro}")
+            self._relatar_falha(
+                "falha_encerrar_fila",
+                erro,
+                impacto="servico",
+                fallback="encerramento_por_evento",
+                fase="encerrar_servico",
+            )
         thread = self._worker_thread
         if (
             thread is not None
@@ -688,7 +776,14 @@ class VozRuntime:
         if inicio_forcado and callable(self.proativa_permitida_cb):
             try:
                 inicio_ainda_pertinente = bool(self.proativa_permitida_cb())
-            except Exception:
+            except Exception as erro:
+                self._relatar_falha(
+                    "falha_porteiro_inicio",
+                    erro,
+                    impacto="servico",
+                    fallback="abertura_descartada",
+                    fase="avaliar_fala_proativa",
+                )
                 inicio_ainda_pertinente = False
             if not inicio_ainda_pertinente:
                 # O briefing/abertura pode ter sido preparado enquanto os
@@ -727,7 +822,14 @@ class VozRuntime:
                     self.log("🧠 [FALA PROATIVA] descartada para não atravessar a conversa")
                     concluir(False, "conversa_ativa")
                     return
-            except Exception:
+            except Exception as erro:
+                self._relatar_falha(
+                    "falha_porteiro_proativo",
+                    erro,
+                    impacto="servico",
+                    fallback="fala_proativa_descartada",
+                    fase="avaliar_fala_proativa",
+                )
                 concluir(False, "falha_porteiro")
                 return
 
@@ -735,6 +837,12 @@ class VozRuntime:
             texto, emocao, nivel = self.compor_fala_proativa_cb(itens)
         except Exception as erro:
             self.log(f"⚠️ [FALA PROATIVA] falha ao compor lote: {type(erro).__name__}: {erro}")
+            self._relatar_falha(
+                "falha_compor_lote_proativo",
+                erro,
+                fallback="ultimo_item_valido",
+                fase="compor_fala_proativa",
+            )
             ultimo = next(
                 (item for item in reversed(itens) if isinstance(item, dict) and str(item.get("texto") or "").strip()),
                 {},
@@ -755,9 +863,22 @@ class VozRuntime:
                         self.registrar_fala_emitida_cb(texto, itens)
                     except Exception as erro_registro:
                         self.log(f"⚠️ [FALA PROATIVA] falha ao registrar contexto: {erro_registro}")
+                        self._relatar_falha(
+                            "falha_registrar_contexto_proativo",
+                            erro_registro,
+                            impacto="servico",
+                            fallback="fala_entregue_sem_registro",
+                            fase="finalizar_fala_proativa",
+                        )
             concluir(entregue, "entregue" if entregue else "fila_recusou")
         except Exception as erro:
             self.log(f"⚠️ [FALA PROATIVA] falha ao entregar lote: {type(erro).__name__}: {erro}")
+            self._relatar_falha(
+                "falha_entregar_lote_proativo",
+                erro,
+                fallback="lote_descartado",
+                fase="entregar_fala_proativa",
+            )
             concluir(False, "falha_entrega")
 
     def agendar_fala_proativa(
@@ -799,6 +920,13 @@ class VozRuntime:
                 ) or {}
             except Exception as erro:
                 self.log(f"⚠️ [FALA PROATIVA] porteiro falhou: {erro}")
+                self._relatar_falha(
+                    "falha_politica_proativa",
+                    erro,
+                    impacto="servico",
+                    fallback="politica_compatibilidade",
+                    fase="agendar_fala_proativa",
+                )
                 politica = {}
         acao_politica = str(politica.get("acao") or "").strip().lower()
         if preservar_ate_entrega:
@@ -846,7 +974,14 @@ class VozRuntime:
                     if callable(ao_concluir):
                         ao_concluir(False, "conversa_ativa")
                     return False
-            except Exception:
+            except Exception as erro:
+                self._relatar_falha(
+                    "falha_porteiro_proativo",
+                    erro,
+                    impacto="servico",
+                    fallback="fala_proativa_descartada",
+                    fase="agendar_fala_proativa",
+                )
                 if callable(ao_concluir):
                     ao_concluir(False, "falha_porteiro")
                 return False
@@ -928,7 +1063,14 @@ class VozRuntime:
         if not _proativa and callable(self.chave_turno_cb):
             try:
                 chave = float(self.chave_turno_cb() or 0.0)
-            except Exception:
+            except Exception as erro:
+                self._relatar_falha(
+                    "falha_chave_turno",
+                    erro,
+                    impacto="servico",
+                    fallback="turno_sem_chave",
+                    fase="enfileirar_fala",
+                )
                 chave = 0.0
             if chave > 0:
                 itens_mesclados = self._retirar_proativas_do_turno(chave)
@@ -1026,12 +1168,20 @@ class VozRuntime:
                 "⚠️ [FALA] fallback local desativado nesta execução: "
                 f"{type(e).__name__}: {e}"
             )
+            self._relatar_falha(
+                "falha_fallback_local",
+                e,
+                classe="defeito",
+                fallback="nenhum",
+                fase="fallback_tts",
+            )
             return False
         finally:
             if caminho and os.path.exists(caminho):
                 try:
                     os.unlink(caminho)
-                except Exception:
+                except OSError:
+                    # Mesma fronteira best-effort da limpeza do TTS neural.
                     pass
 
 

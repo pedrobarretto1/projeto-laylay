@@ -122,6 +122,7 @@ class ComposicaoInteligenciaExternaRuntime:
             requests_post=requests_post,
             print_fn=log,
             ao_finalizar_conversa_modo_jogo=ao_finalizar_conversa_modo_jogo,
+            registrar_falha=registrar_falha,
         )
         self.analisar_imagem = partial(
             analisar_imagem_fn,

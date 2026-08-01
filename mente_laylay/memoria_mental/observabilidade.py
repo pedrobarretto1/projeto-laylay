@@ -89,6 +89,41 @@ def classificar_falha_tecnica(
     }
 
 
+def relatar_falha_opcional(
+    registrar: Callable[..., Any] | None,
+    componente: str,
+    codigo: str,
+    *,
+    erro: BaseException | type[BaseException] | None = None,
+    classe: str = "",
+    impacto: str = "",
+    fallback: str = "",
+    dominio: str = "",
+    fase: str = "",
+    turno_id: Any = None,
+) -> bool:
+    """Usa um relator opcional sem deixar a telemetria mascarar a falha original."""
+    if not callable(registrar):
+        return False
+    try:
+        registrar(
+            componente,
+            codigo,
+            erro=erro,
+            classe=classe,
+            impacto=impacto,
+            fallback=fallback,
+            dominio=dominio,
+            fase=fase,
+            turno_id=turno_id,
+        )
+        return True
+    except Exception:
+        # Esta é a última fronteira de proteção: observabilidade defeituosa
+        # nunca pode substituir o resultado que ela tentava registrar.
+        return False
+
+
 class ObservabilidadeMenteRuntime:
     """Atualiza somente telemetria técnica curta no domínio mental."""
 

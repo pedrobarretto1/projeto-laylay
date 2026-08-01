@@ -6,6 +6,8 @@ import re
 from datetime import datetime
 from typing import Any, Callable, Dict, Optional
 
+from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
+
 from mente_laylay.memoria_mental.consciencia_temporal import resumo_temporal_para_prompt
 from mente_laylay.memoria_mental.continuidade_conversa import assunto_coerente_com_fala
 from mente_laylay.cognicao.seletor_contexto import selecionar_contexto_turno
@@ -593,6 +595,7 @@ def montar_resumo_mente_integrada_com_extras(
     mente: Dict[str, Any] | None,
     resumo_autoaprimoramento_cb: Callable[..., str] | None = None,
     memoria_sqlite: Any = None,
+    registrar_falha: Callable[..., Any] | None = None,
 ) -> str:
     """Agrupa memoria, percepcao, emocao, humor e rotina num unico retrato."""
     texto_base = str(texto_usuario or "").strip()
@@ -601,14 +604,34 @@ def montar_resumo_mente_integrada_com_extras(
     try:
         if callable(resumo_autoaprimoramento_cb):
             auto_resumo = resumo_autoaprimoramento_cb(limit=4)
-    except Exception:
-        pass
+    except Exception as erro:
+        relatar_falha_opcional(
+            registrar_falha,
+            "memoria_prompt",
+            "falha_resumo_autoaprimoramento",
+            erro=erro,
+            classe="degradacao",
+            impacto="turno",
+            fallback="resumo_sem_autoaprimoramento",
+            dominio="memoria",
+            fase="montar_prompt",
+        )
 
     try:
         if texto_base and memoria_sqlite is not None:
             aprendizados = memoria_sqlite.formatar_aprendizados_relevantes_para_prompt(texto_base, limit=4)
-    except Exception:
-        pass
+    except Exception as erro:
+        relatar_falha_opcional(
+            registrar_falha,
+            "memoria_prompt",
+            "falha_aprendizados_sqlite",
+            erro=erro,
+            classe="degradacao",
+            impacto="turno",
+            fallback="resumo_sem_aprendizados",
+            dominio="memoria",
+            fase="montar_prompt",
+        )
 
     return resumo_mente_integrada_para_prompt(
         texto_usuario=texto_base,

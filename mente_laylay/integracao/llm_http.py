@@ -11,6 +11,7 @@ import requests
 
 from mente_laylay.cognicao.conversa_sobre_capacidades import resposta_conversa_sobre_capacidade
 from mente_laylay.personalidade.contingencia_natural import fala_contingencia_natural
+from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
 
 
 # Estados do transporte são dados internos. Eles não são frases da Laylay e
@@ -149,7 +150,7 @@ def compactar_payload_llm_local(data: dict) -> dict:
     novo["messages"] = mensagens
     try:
         novo["max_tokens"] = min(int(novo.get("max_tokens") or 512), 384)
-    except Exception:
+    except (TypeError, ValueError):
         novo["max_tokens"] = 384
     return novo
 
@@ -164,7 +165,7 @@ def payload_precisa_compactar_llm_local(data: dict) -> bool:
             total_chars += len(str(msg.get("content") or ""))
     try:
         max_tokens = int((data or {}).get("max_tokens") or 0)
-    except Exception:
+    except (TypeError, ValueError):
         max_tokens = 0
     # Qwen 7B local costuma estar em 4096 tokens; compactar antes evita 400.
     return total_chars > 9500 or max_tokens > 640
@@ -277,6 +278,7 @@ class LLMHttpRuntime:
         game_idle_unload_s: float = 60.0,
         espera_lock_interativa_s: float = 1.5,
         timer_factory: Callable[..., Any] = threading.Timer,
+        registrar_falha: Callable[..., Any] | None = None,
     ) -> None:
         self.base_url = str(base_url or "").rstrip("/")
         self.local_timeout = int(local_timeout)
@@ -288,6 +290,7 @@ class LLMHttpRuntime:
         self.requests_post = requests_post
         self.print_fn = print_fn
         self.ao_finalizar_conversa_modo_jogo = ao_finalizar_conversa_modo_jogo
+        self.registrar_falha = registrar_falha
         # Estado e transporte não podem compartilhar o mesmo lock: uma chamada
         # local pode durar minutos, enquanto o monitor de jogos precisa ativar
         # o bloqueio imediatamente para mandar o Ollama liberar a GPU.
@@ -299,6 +302,28 @@ class LLMHttpRuntime:
         self._game_unload_timer: Any = None
         self._game_session_generation = 0
         self._game_session_state = "fria"
+
+    def _relatar(
+        self,
+        codigo: str,
+        erro: BaseException,
+        *,
+        classe: str = "degradacao",
+        impacto: str = "servico",
+        fallback: str = "sessao_jogo_sem_descarga_automatica",
+        fase: str = "ciclo_sessao_jogo",
+    ) -> bool:
+        return relatar_falha_opcional(
+            self.registrar_falha,
+            "llm_http",
+            codigo,
+            erro=erro,
+            classe=classe,
+            impacto=impacto,
+            fallback=fallback,
+            dominio="llm",
+            fase=fase,
+        )
 
     @property
     def bad_request_until(self) -> float:
@@ -332,8 +357,10 @@ class LLMHttpRuntime:
         if timer is not None:
             try:
                 timer.cancel()
-            except Exception:
-                pass
+            except Exception as erro:
+                # Timer é uma fronteira substituível; falhar ao cancelar não
+                # invalida a resposta já entregue, mas precisa aparecer no diagnóstico.
+                self._relatar("falha_cancelar_timer_jogo", erro)
 
     @property
     def estado_sessao_jogo(self) -> str:
@@ -355,15 +382,27 @@ class LLMHttpRuntime:
             )
             try:
                 timer.daemon = True
-            except Exception:
-                pass
+            except Exception as erro:
+                self._relatar(
+                    "falha_configurar_timer_jogo",
+                    erro,
+                    fallback="timer_sem_daemon",
+                )
             self._game_unload_timer = timer
         if anterior is not None:
             try:
                 anterior.cancel()
-            except Exception:
-                pass
-        timer.start()
+            except Exception as erro:
+                self._relatar("falha_cancelar_timer_anterior", erro)
+        try:
+            timer.start()
+        except Exception as erro:
+            with self._state_lock:
+                if self._game_unload_timer is timer:
+                    self._game_unload_timer = None
+                    self._game_session_state = "fria"
+            self._relatar("falha_iniciar_timer_jogo", erro)
+            return
         self.print_fn(
             f"🎮 [CONVERSA:JOGO] sessão local mantida por até "
             f"{self.game_idle_unload_s:.0f}s de silêncio."
@@ -391,6 +430,11 @@ class LLMHttpRuntime:
                 self.print_fn("🎮 [CONVERSA:JOGO] sessão ociosa encerrada; VRAM liberada.")
             except Exception as erro:
                 self.print_fn(f"⚠️ [MODO JOGO] não consegui descarregar a IA local: {erro}")
+                self._relatar(
+                    "falha_descarregar_modelo_jogo",
+                    erro,
+                    fallback="modelo_mantido_carregado",
+                )
 
     def post(self, headers: dict, data: dict, timeout: int | None = None):
         dados_envio = dict(data or {})

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
+
 
 def falar_ctx(
     ctx: Dict[str, Any],
@@ -38,20 +40,15 @@ def relatar_falha_ctx(
 
     turno = ctx.get("turno_atual")
     turno_id = turno.get("id") if isinstance(turno, dict) else ctx.get("turno_id")
-    try:
-        relator(
-            componente,
-            codigo,
-            erro=erro,
-            classe=classe,
-            impacto=impacto,
-            fallback=fallback,
-            dominio=dominio,
-            fase=fase,
-            turno_id=turno_id,
-        )
-        return True
-    except Exception:
-        # A observabilidade é uma proteção; sua própria falha nunca pode
-        # substituir nem mascarar o resultado operacional original.
-        return False
+    return relatar_falha_opcional(
+        relator,
+        componente,
+        codigo,
+        erro=erro,
+        classe=classe,
+        impacto=impacto,
+        fallback=fallback,
+        dominio=dominio,
+        fase=fase,
+        turno_id=turno_id,
+    )

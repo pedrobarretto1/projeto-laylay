@@ -22,6 +22,7 @@ from mente_laylay.integracao.registro_arquivos import PortaArquivosLeitura
 from mente_laylay.integracao.registro_mutacoes_arquivos import PortaArquivosMutacao
 from mente_laylay.integracao.registro_musica import PortaMusicaLeitura
 from mente_laylay.integracao.registro_operacoes_musicais import PortaMusicaOperacoes
+from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
 
 
 def _merge_grupos(*grupos: Dict[str, Any] | None) -> Dict[str, Any]:
@@ -75,6 +76,7 @@ class ContextoDispatcherRuntime:
         execucao: Dict[str, Any],
         autonomia: Dict[str, Any],
         estado_getter: Callable[[], Dict[str, Any]],
+        registrar_falha: Callable[..., Any] | None = None,
     ) -> None:
         self.base = dict(base or {})
         self.navegacao = dict(navegacao or {})
@@ -85,11 +87,23 @@ class ContextoDispatcherRuntime:
         self.execucao = dict(execucao or {})
         self.autonomia = dict(autonomia or {})
         self.estado_getter = estado_getter
+        self.registrar_falha = registrar_falha
 
     def montar(self) -> Dict[str, Any]:
         try:
             estado = self.estado_getter() or {}
-        except Exception:
+        except Exception as erro:
+            relatar_falha_opcional(
+                self.registrar_falha,
+                "contexto_dispatcher",
+                "falha_estado_getter",
+                erro=erro,
+                classe="defeito",
+                impacto="turno",
+                fallback="estado_vazio",
+                dominio="contexto",
+                fase="montar_dispatcher",
+            )
             estado = {}
         estado = estado if isinstance(estado, dict) else {}
 
@@ -279,16 +293,29 @@ class ContextoFinalizacaoRuntime:
         voz_memoria: Dict[str, Any],
         autoaprimoramento: Dict[str, Any],
         estado_getter: Callable[[], Dict[str, Any]],
+        registrar_falha: Callable[..., Any] | None = None,
     ) -> None:
         self.ia = dict(ia or {})
         self.voz_memoria = dict(voz_memoria or {})
         self.autoaprimoramento = dict(autoaprimoramento or {})
         self.estado_getter = estado_getter
+        self.registrar_falha = registrar_falha
 
     def montar(self) -> Dict[str, Any]:
         try:
             estado = self.estado_getter() or {}
-        except Exception:
+        except Exception as erro:
+            relatar_falha_opcional(
+                self.registrar_falha,
+                "contexto_finalizacao",
+                "falha_estado_getter",
+                erro=erro,
+                classe="defeito",
+                impacto="turno",
+                fallback="estado_vazio",
+                dominio="contexto",
+                fase="montar_finalizacao",
+            )
             estado = {}
         estado = estado if isinstance(estado, dict) else {}
 
