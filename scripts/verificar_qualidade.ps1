@@ -20,6 +20,17 @@ if ($LASTEXITCODE -ne 0) { throw "Ruff encontrou uma regressão crítica" }
     mente_laylay/memoria_mental/resultado_acao.py `
     mente_laylay/integracao/composicao_principal.py `
     mente_laylay/autonomia/composicao_ciclo_comandos.py `
+    mente_laylay/integracao/registro_iot.py `
+    mente_laylay/integracao/registro_arquivos.py `
+    mente_laylay/integracao/registro_mutacoes_arquivos.py `
+    mente_laylay/integracao/registro_musica.py `
+    mente_laylay/integracao/registro_operacoes_musicais.py `
+    mente_laylay/integracao/registro_navegador.py `
+    mente_laylay/autonomia/executor_navegador.py `
+    mente_laylay/autonomia/executor_integracoes.py `
+    mente_laylay/autonomia/executor_agenda.py `
+    mente_laylay/autonomia/executor_musical.py `
+    mente_laylay/arquivos/execucao_arquivos.py `
     mente_laylay/integracao/politicas_composicao.py `
     mente_laylay/percepcao/visao_jogo/analise_visual.py `
     mente_laylay/percepcao/visao_jogo/pesquisa_sintese.py `

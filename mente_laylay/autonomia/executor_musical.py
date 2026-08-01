@@ -158,12 +158,16 @@ def _copiar_curadoria(
         ]))
         return ResultadoDespacho.concluido()
 
-    resultado = (
+    retorno = (
         deps.musica_operacoes.copiar_curadoria(origem, musica, destino)
         if deps.musica_operacoes is not None else {"ok": False}
     )
+    resultado: Dict[str, Any] = (
+        dict(retorno) if isinstance(retorno, dict) else {"ok": bool(retorno)}
+    )
     if bool(resultado.get("ok")):
-        faixa = resultado.get("faixa") or {}
+        faixa_bruta = resultado.get("faixa")
+        faixa = dict(faixa_bruta) if isinstance(faixa_bruta, dict) else {}
         titulo = str(faixa.get("titulo") or musica).strip() or musica
         if deps.musica_operacoes is not None:
             deps.musica_operacoes.definir_ultima_playlist(destino)

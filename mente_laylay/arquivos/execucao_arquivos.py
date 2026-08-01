@@ -52,10 +52,12 @@ def executar_intencao_arquivos(
         params.get("alvo") or params.get("nome") or params.get("pasta") or params.get("arquivo") or "arquivo"
     ).strip()
 
-    def marcar_resultado(status: str, executou: bool | None) -> None:
+    def _marcar_resultado(status: str, executou: bool | None) -> None:
         resultado_fala["status"] = str(status or "")
         resultado_fala["executou"] = executou
         marcar_resultado_original(status, executou)
+
+    marcar_resultado = _marcar_resultado
 
     def falar(texto: str, emocao: str = "calma", nivel: int = 1) -> None:
         if not callable(falar_original):
@@ -597,9 +599,10 @@ def executar_intencao_arquivos(
         if len(candidatos) > 1:
             marcar_resultado("alvo_ambiguo", False)
             if callable(falar):
-                caminhos = "; ".join(candidatos[:3])
+                caminhos_texto = "; ".join(candidatos[:3])
                 falar(
-                    f"Encontrei mais de um item com esse nome e não apaguei nenhum. Diga o caminho completo: {caminhos}.",
+                    "Encontrei mais de um item com esse nome e não apaguei "
+                    f"nenhum. Diga o caminho completo: {caminhos_texto}.",
                     "calma",
                     1,
                 )

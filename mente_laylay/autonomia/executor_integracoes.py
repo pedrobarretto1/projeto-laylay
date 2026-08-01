@@ -112,6 +112,18 @@ def _executar_arquivos(
     ctx: Dict[str, Any],
     deps: DependenciasExecutorIntegracoes,
 ) -> ResultadoDespacho:
+    def registrar_arquivo_local(alvo: str, tipo: str = "arquivos") -> None:
+        registrar_arquivo(ctx, alvo, tipo)
+
+    def item_local_existe_local(valor: str, tipo: str = "") -> bool:
+        return item_local_existe(ctx, valor, tipo, deps.arquivos_mutacao)
+
+    def resolver_caminho_local_tipado(valor: str) -> str:
+        return resolver_caminho_local(ctx, valor, deps.arquivos_mutacao)
+
+    def resolver_referencia_local(alvo: str, tipo: str = "") -> str:
+        return resolver_referencia_arquivo_contextual(ctx, alvo, tipo)
+
     retorno = executar_intencao_arquivos(
         intent,
         params,
@@ -119,18 +131,10 @@ def _executar_arquivos(
         ctx,
         texto_original=texto,
         marcar_resultado=deps.marcar_resultado,
-        registrar_arquivo=lambda alvo, tipo="arquivos": registrar_arquivo(
-            ctx, alvo, tipo
-        ),
-        item_local_existe=lambda valor, tipo="": item_local_existe(
-            ctx, valor, tipo, deps.arquivos_mutacao
-        ),
-        resolver_caminho_local=lambda valor: resolver_caminho_local(
-            ctx, valor, deps.arquivos_mutacao
-        ),
-        resolver_referencia_arquivo_contextual=lambda alvo, tipo="": (
-            resolver_referencia_arquivo_contextual(ctx, alvo, tipo)
-        ),
+        registrar_arquivo=registrar_arquivo_local,
+        item_local_existe=item_local_existe_local,
+        resolver_caminho_local=resolver_caminho_local_tipado,
+        resolver_referencia_arquivo_contextual=resolver_referencia_local,
         arquivos_leitura=deps.arquivos_leitura,
         arquivos_mutacao=deps.arquivos_mutacao,
     )

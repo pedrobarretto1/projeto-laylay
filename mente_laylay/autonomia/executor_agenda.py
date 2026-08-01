@@ -71,14 +71,17 @@ def _agendar_acao(
 
     agora = dt.datetime.now()
     atraso = params.get("atraso_segundos")
-    if atraso is None and params.get("segundos") is not None:
-        atraso = params.get("segundos")
+    segundos = params.get("segundos")
+    if atraso is None and segundos is not None:
+        atraso = segundos
     hora_alvo = str(params.get("hora_alvo") or "").strip()
     try:
-        if atraso is None and params.get("minutos") is not None:
-            atraso = int(params.get("minutos")) * 60
-        if atraso is None and params.get("horas") is not None:
-            atraso = int(params.get("horas")) * 3600
+        minutos = params.get("minutos")
+        horas = params.get("horas")
+        if atraso is None and minutos is not None:
+            atraso = int(minutos) * 60
+        if atraso is None and horas is not None:
+            atraso = int(horas) * 3600
         if atraso is not None:
             atraso_int = max(1, int(atraso))
             ts_exec = agora.timestamp() + atraso_int
@@ -108,7 +111,7 @@ def _agendar_acao(
         or params_reais.get("nome_playlist") or params_reais.get("query") or "a ação"
     ).strip()
     descricao = descrever_intencao_agendada({"intent": intent_real, "params": params_reais})
-    novo = {
+    novo: Dict[str, Any] = {
         "id": str(uuid.uuid4())[:8], "tipo": "once", "ts_execucao": ts_exec,
         "descricao": descricao, "nome": f"ação: {alvo}"[:30], "ativo": True,
         "criado_em": agora.isoformat(), "texto_original": texto,
@@ -254,7 +257,7 @@ def _agendar_lembrete(
         ]))
         return ResultadoDespacho.concluido()
 
-    novo = {
+    novo: Dict[str, Any] = {
         "id": str(uuid.uuid4())[:8], "tipo": "once", "ts_execucao": ts_exec,
         "descricao": descricao, "comandos_no_disparo": [], "nome": descricao[:30],
         "ativo": True, "criado_em": dt.datetime.now().isoformat(),
