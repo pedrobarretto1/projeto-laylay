@@ -220,20 +220,20 @@ Critério de conclusão:
 
 ## P10 — Redução da raiz de composição
 
-**Status: pendente; depende das fronteiras tipadas da P8.**
+**Status: concluída em 01/08/2026.**
 
 Objetivo: fazer `laylay.py` cuidar apenas de configuração, composição, ciclo de
 vida e início da aplicação.
 
-1. [ ] inventariar as responsabilidades ainda presentes em `laylay.py`;
-2. [ ] mover regras de domínio restantes para o pacote proprietário;
-3. [ ] substituir as conexões restantes por `globals()` por registros ou portas
+1. [x] inventariar as responsabilidades ainda presentes em `laylay.py`;
+2. [x] mover regras de domínio restantes para o pacote proprietário;
+3. [x] substituir as conexões restantes por `globals()` por registros ou portas
    tipadas já existentes;
-4. [ ] centralizar configuração e construção dos runtimes sem criar um novo
+4. [x] centralizar configuração e construção dos runtimes sem criar um novo
    arquivo monolítico;
-5. [ ] preservar um único supervisor de serviços e uma única sequência de
+5. [x] preservar um único supervisor de serviços e uma única sequência de
    encerramento;
-6. [ ] reduzir a raiz em fatias pequenas, com teste de composição real em cada
+6. [x] reduzir a raiz em fatias pequenas, com teste de composição real em cada
    fatia.
 
 Critério de conclusão:
@@ -242,6 +242,22 @@ Critério de conclusão:
 - módulos de `mente_laylay` não importam a raiz da aplicação;
 - a composição falha cedo quando uma dependência obrigatória está ausente;
 - a raiz fica substancialmente menor sem alterar os fluxos protegidos.
+
+Evidências de conclusão:
+
+- iniciativa, clipboard, cooperação, identidade, memória visual, briefing e
+  demais adaptadores de domínio foram movidos para `mente_laylay/integracao`;
+- as conexões de composição não recebem mais `globals()` diretamente: um único
+  registro allowlist congela apenas os serviços conhecidos e rejeita publicação
+  fora do contrato;
+- serviços tardios são publicados explicitamente no registro, e dependências
+  obrigatórias ausentes falham antes do início dos serviços;
+- `laylay.py` passou de 3.816 para 3.412 linhas e conserva somente configuração,
+  composição, observabilidade da raiz e ciclo de vida;
+- nenhum módulo de `mente_laylay` importa a raiz;
+- regressões específicas da P10 e importação real da composição passaram;
+- verificação final: Ruff aprovado, mypy aprovado em 20 fontes, 1.761 testes e
+  45 subtestes aprovados, cobertura global de 63%.
 
 ## P11 — Decomposição dos módulos grandes
 

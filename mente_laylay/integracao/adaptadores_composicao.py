@@ -1,0 +1,183 @@
+"""Adaptadores pequenos que mantêm comportamento fora da raiz de composição."""
+
+from __future__ import annotations
+
+import os
+import time
+from typing import Any, Callable
+
+
+def avaliar_evento_emocional_operacional(
+    resultado: Any,
+    *,
+    avaliador: Any,
+    definir_emocao: Callable[[str, int, str], Any],
+    log: Callable[[str], Any] = print,
+) -> dict[str, Any]:
+    avaliacao = dict(avaliador.avaliar(resultado) or {})
+    if avaliacao.get("permite_expressao"):
+        definir_emocao(
+            str(avaliacao.get("emocao") or "calma"),
+            int(avaliacao.get("nivel") or 1),
+            str(avaliacao.get("causa") or "evento operacional"),
+        )
+    log(
+        "🎭 [EMOÇÃO:CAUSA] "
+        f"responsabilidade={avaliacao.get('responsabilidade')} "
+        f"confiança={float(avaliacao.get('confianca') or 0.0):.0%} "
+        f"emoção={avaliacao.get('emocao')} nível={avaliacao.get('nivel')} "
+        f"repetições={avaliacao.get('repeticoes')} "
+        f"expressão={bool(avaliacao.get('permite_expressao'))}"
+    )
+    return avaliacao
+
+
+def definir_atividade_visual(
+    atividade: str,
+    *,
+    atualizar_estado: Callable[..., Any],
+    clock: Callable[[], float] = time.time,
+) -> None:
+    atividade_segura = str(atividade or "idle")
+    duracao = (
+        0.0 if atividade_segura == "idle"
+        else 12.0 if atividade_segura == "listening"
+        else 15.0
+    )
+    atualizar_estado(
+        visual_activity=atividade_segura,
+        visual_activity_until=clock() + duracao,
+    )
+
+
+def publicar_curadoria_musical_cooperativa(
+    resumo: dict[str, Any], *, publicar_getter: Callable[[], Any],
+) -> bool:
+    publicar = publicar_getter()
+    if not callable(publicar):
+        return False
+    dados = dict(resumo or {})
+    usuarios = max(0, int(dados.get("playlists_usuario") or 0))
+    historico = max(0, int(dados.get("registros_historico") or 0))
+    curadorias = max(0, int(dados.get("curadorias") or 0))
+    publicar(
+        origem="curadoria_musical",
+        tipo="curadoria_musical_sincronizada",
+        resumo=(
+            f"{curadorias} curadoria(s) derivada(s) de {usuarios} playlist(s) "
+            f"e {historico} registro(s) confirmados"
+        ),
+        confianca=1.0,
+        relevancia=0.72,
+        sensibilidade="contagens_locais",
+        validade_s=900.0,
+        habilidades=("playlists_usuario", "aprendizado_musical", "playlist_laylay"),
+        evidencias=("persistência relida", "fontes locais confirmadas"),
+        chave_deduplicacao=f"curadoria_musical:{usuarios}:{historico}:{curadorias}",
+    )
+    return True
+
+
+def descarregar_modelo_local(
+    *, runtime_portatil: Any, modelo: str,
+    descarregar_ollama: Callable[[str], bool],
+) -> bool:
+    if runtime_portatil.backend == "portatil":
+        return bool(runtime_portatil.descarregar())
+    return bool(descarregar_ollama(modelo))
+
+
+def registrar_memoria_visual_integrada(
+    imagem_b64: Any,
+    descricao: Any,
+    motivo: str = "captura manual",
+    contexto: Any = "",
+    emocao: str = "",
+    intensidade: int = 1,
+    tags: Any = None,
+    origem: str = "pc_a",
+    *,
+    registrar_memoria: Callable[..., Any],
+    registrar_evento_temporal: Callable[..., dict[str, Any]],
+    estado_mental_getter: Callable[[], dict[str, Any]],
+    atualizar_estado: Callable[..., Any],
+    log: Callable[[str], Any] = print,
+) -> Any:
+    caminho = registrar_memoria(
+        imagem_b64,
+        descricao,
+        motivo=motivo,
+        contexto=contexto,
+        emocao=emocao,
+        intensidade=intensidade,
+        tags=tags,
+        origem=origem,
+    )
+    if caminho:
+        try:
+            temporal = registrar_evento_temporal(
+                estado_mental_getter().get("consciencia_temporal"),
+                str(descricao or ""),
+                memoria_id=os.path.basename(str(caminho)),
+                contexto=contexto if isinstance(contexto, dict) else {},
+            )
+            atualizar_estado(consciencia_temporal=temporal)
+        except Exception as erro:
+            log(
+                "⚠️ [TEMPO:VISÃO] memória visual não entrou na linha do tempo: "
+                f"{erro}"
+            )
+    return caminho
+
+
+def salvar_identidade_usuario(
+    nome: str,
+    texto_original: str = "",
+    *,
+    persistir_nome: Callable[..., bool],
+    atualizar_estado: Callable[..., Any],
+    salvar_memoria: Callable[[], Any],
+) -> bool:
+    salvo = persistir_nome(nome, texto_original=texto_original)
+    if salvo:
+        atualizar_estado(nome_usuario=str(nome or "").strip())
+        salvar_memoria()
+    return bool(salvo)
+
+
+def entregar_briefing_inicial(
+    tipo: Any,
+    texto: str,
+    emocao: str = "calma",
+    nivel: int = 1,
+    *,
+    entregar: Callable[..., Any],
+    salvar_estado: Callable[..., Any],
+) -> Any:
+    return entregar(
+        tipo, texto, emocao, nivel,
+        adiar_se_interacao=True,
+        ao_entrega_adiada=salvar_estado,
+        detalhar=True,
+    )
+
+
+def observar_evento_pendencia_agenda(
+    evento: str,
+    pendencia: dict[str, Any],
+    *,
+    registrar_feedback: Callable[[str, dict[str, Any]], Any],
+) -> None:
+    if str((pendencia or {}).get("origem") or "") == "agenda" and str(evento or "") == "expirada":
+        registrar_feedback("silencio_qualificado", {"intent": "AGENDAR_LEMBRETE"})
+
+
+def agendar_entrada_canonica(
+    texto: str,
+    canal: str = "terminal",
+    *,
+    modo_jogo_ativo: Callable[[], bool],
+    agendar: Callable[..., Any],
+) -> Any:
+    origem = "modo_jogo" if modo_jogo_ativo() else str(canal or "terminal")
+    return agendar(texto, origem=origem)
