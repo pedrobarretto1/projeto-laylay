@@ -360,21 +360,21 @@ Implementação e evidências:
 
 ## P13 — Higiene de distribuição e versão final
 
-**Status: pendente; encerra o ciclo.**
+**Status: concluída em 02/08/2026; ciclo encerrado.**
 
 Objetivo: transformar a base consolidada em uma versão portátil verificável e
 segura para uso em outro computador.
 
-1. [ ] executar o portão completo de qualidade, incluindo auditoria de
+1. [x] executar o portão completo de qualidade, incluindo auditoria de
    dependências;
-2. [ ] validar que credenciais, memória pessoal e arquivos Tuya continuam fora
+2. [x] validar que credenciais, memória pessoal e arquivos Tuya continuam fora
    do pacote e do versionamento;
-3. [ ] verificar instalação limpa, migração de memória e ausência de caminhos
+3. [x] verificar instalação limpa, migração de memória e ausência de caminhos
    absolutos da máquina de desenvolvimento;
-4. [ ] testar ausência de Ollama, indisponibilidade de rede e integrações
+4. [x] testar ausência de Ollama, indisponibilidade de rede e integrações
    opcionais desativadas;
-5. [ ] validar terminal, atalhos, voz, avatar, navegador e modo jogo no pacote;
-6. [ ] gerar relatório final com testes, cobertura, tipagem restante, limitações
+5. [x] validar terminal, atalhos, voz, avatar, navegador e modo jogo no pacote;
+6. [x] gerar relatório final com testes, cobertura, tipagem restante, limitações
    conhecidas e instruções de recuperação.
 
 Critério de conclusão:
@@ -383,6 +383,27 @@ Critério de conclusão:
 - dados privados não entram no artefato;
 - a versão possui evidência reproduzível de qualidade e limitações conhecidas;
 - o próximo ciclo pode começar sem carregar dívida não documentada deste.
+
+Implementação e evidências:
+
+- o build agora remove integralmente `dist` e `work` antes de montar, impedindo
+  resíduos de memória ou credenciais de uma compilação privada anterior;
+- memória pessoal e playlists foram separadas de credenciais Tuya, configuração
+  privada e amostras de voz por autorizações explícitas diferentes;
+- `verificar_pacote.py` audita versionamento, arquivos privados, credenciais,
+  autorização IoT, caminhos pessoais, modelo, motores e artefatos obrigatórios;
+- o próprio `Laylay.exe` ganhou um smoke de distribuição sem rede ou hardware,
+  cobrindo chat, atalhos, voz, avatar, navegador, modo jogo, memória gravável e
+  seleção do backend portátil sem Ollama;
+- a migração de memória JSON legada para SQLite foi protegida por regressão;
+- foi gerado um pacote completo de 2,79 GB, com 1.887 arquivos, modelo GGUF e
+  motores Vulkan/CPU; a auditoria encontrou zero memória e zero arquivos
+  privados;
+- o relatório `empacotamento/RELATORIO_DISTRIBUICAO_P13.md` registra evidências,
+  limitações físicas conhecidas, comandos reproduzíveis e recuperação;
+- verificação final: Ruff aprovado, mypy aprovado em 20 fontes, 1.808 testes e
+  45 subtestes aprovados, cobertura global de 64% e nenhuma vulnerabilidade
+  conhecida nas dependências.
 
 ## Ordem recomendada
 

@@ -50,8 +50,18 @@ if (-not $PularInstalacaoDependencias) {
     if ($LASTEXITCODE -ne 0) { throw "Falha ao instalar dependências de build." }
 }
 
-New-Item -ItemType Directory -Path $Dist -Force | Out-Null
-New-Item -ItemType Directory -Path $Work -Force | Out-Null
+# Uma montagem nova nunca pode herdar memória ou credenciais de outra. Limpar
+# apenas dist/work preserva downloads grandes já verificados no cache do build.
+foreach ($CaminhoLimpo in @($Dist, $Work)) {
+    $Resolvido = [System.IO.Path]::GetFullPath($CaminhoLimpo)
+    if (Test-Path -LiteralPath $CaminhoLimpo) {
+        if (-not $Resolvido.StartsWith($Build, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "Recusei limpar caminho fora da área de build: $Resolvido"
+        }
+        Remove-Item -LiteralPath $Resolvido -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $Resolvido -Force | Out-Null
+}
 
 Write-Host "Compilando Laylay.exe..."
 & $Python -m PyInstaller --noconfirm --clean --distpath $Dist --workpath (Join-Path $Work "laylay") (Join-Path $PSScriptRoot "Laylay.spec")
@@ -95,24 +105,55 @@ if ($IncluirConfiguracoesPrivadas -and (Test-Path -LiteralPath (Join-Path $Raiz 
 $MemoriaDestino = Join-Path $Pacote "memoria"
 if ($IncluirMemoriaPessoal) {
     Copiar-Pasta (Join-Path $Raiz "memoria") "memoria"
-    foreach ($Arquivo in @("playlists.json", "devices.json", "tinytuya.json", "snapshot.json")) {
+    foreach ($Arquivo in @("playlists.json")) {
         $OrigemArquivo = Join-Path $Raiz $Arquivo
         if (Test-Path -LiteralPath $OrigemArquivo -PathType Leaf) {
             Copy-Item -LiteralPath $OrigemArquivo -Destination (Join-Path $Pacote $Arquivo) -Force
         }
     }
-    if ($IncluirConfiguracoesPrivadas) {
-        Copiar-Pasta (Join-Path $Raiz "dados\voz_pessoal") "dados\voz_pessoal"
-    }
 } else {
     New-Item -ItemType Directory -Path $MemoriaDestino -Force | Out-Null
 }
+if ($IncluirConfiguracoesPrivadas) {
+    foreach ($Arquivo in @("devices.json", "tinytuya.json", "snapshot.json", "tuya-raw.json")) {
+        $OrigemArquivo = Join-Path $Raiz $Arquivo
+        if (Test-Path -LiteralPath $OrigemArquivo -PathType Leaf) {
+            Copy-Item -LiteralPath $OrigemArquivo -Destination (Join-Path $Pacote $Arquivo) -Force
+        }
+    }
+    Copiar-Pasta (Join-Path $Raiz "dados\voz_pessoal") "dados\voz_pessoal"
+}
 
-foreach ($Arquivo in @("README_PORTATIL.md", "LICENCAS_TERCEIROS.md")) {
+foreach ($Arquivo in @("README_PORTATIL.md", "LICENCAS_TERCEIROS.md", "RELATORIO_DISTRIBUICAO_P13.md")) {
     $OrigemArquivo = Join-Path $PSScriptRoot $Arquivo
     if (Test-Path -LiteralPath $OrigemArquivo) {
         Copy-Item -LiteralPath $OrigemArquivo -Destination (Join-Path $Pacote $Arquivo) -Force
     }
+}
+
+Write-Host "Auditando privacidade e estrutura do pacote..."
+$ArgsAuditoria = @(
+    (Join-Path $PSScriptRoot "verificar_pacote.py"),
+    $Pacote,
+    "--raiz-projeto", $Raiz
+)
+if ($SemModelo) { $ArgsAuditoria += "--sem-modelo" }
+if ($IncluirMemoriaPessoal) { $ArgsAuditoria += "--permitir-memoria" }
+if ($IncluirConfiguracoesPrivadas) { $ArgsAuditoria += "--permitir-privados" }
+& $Python @ArgsAuditoria
+if ($LASTEXITCODE -ne 0) { throw "A auditoria recusou o pacote portátil." }
+
+Write-Host "Executando smoke test dentro do Laylay.exe..."
+$SmokeAnterior = $env:LAYLAY_SMOKE_DISTRIBUICAO
+$ExigirModeloAnterior = $env:LAYLAY_SMOKE_EXIGIR_MODELO
+try {
+    $env:LAYLAY_SMOKE_DISTRIBUICAO = "1"
+    $env:LAYLAY_SMOKE_EXIGIR_MODELO = $(if ($SemModelo) { "0" } else { "1" })
+    & (Join-Path $Pacote "Laylay.exe")
+    if ($LASTEXITCODE -ne 0) { throw "O smoke test do executável portátil falhou." }
+} finally {
+    $env:LAYLAY_SMOKE_DISTRIBUICAO = $SmokeAnterior
+    $env:LAYLAY_SMOKE_EXIGIR_MODELO = $ExigirModeloAnterior
 }
 
 $TamanhoGb = [math]::Round(((Get-ChildItem -LiteralPath $Pacote -Recurse -File | Measure-Object Length -Sum).Sum / 1GB), 2)

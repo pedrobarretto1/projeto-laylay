@@ -46,6 +46,10 @@ def _carregar_configuracao_portatil() -> None:
 
 
 _carregar_configuracao_portatil()
+if os.environ.get("LAYLAY_SMOKE_DISTRIBUICAO", "").casefold() in {"1", "true", "sim"}:
+    from mente_laylay.integracao.smoke_distribuicao import main as _smoke_distribuicao_main
+
+    raise SystemExit(_smoke_distribuicao_main(os.path.dirname(sys.executable)))
 from mente_laylay.autonomia.comandos_sistema import (
     abrir_programa as _abrir_programa_mente,
     fechar_programa as _fechar_programa_mente,

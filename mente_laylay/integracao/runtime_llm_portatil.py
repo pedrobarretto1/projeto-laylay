@@ -112,9 +112,7 @@ class RuntimeLLMPortatil:
             return "portatil"
         if self._backend_solicitado in {"ollama", "remote", "remoto"}:
             return "remoto" if self._backend_solicitado in {"remote", "remoto"} else "ollama"
-        tem_portatil = self.caminho_modelo.is_file() and any(
-            caminho.is_file() for caminho, _gpu in self._candidatos_servidor()
-        )
+        tem_portatil = self.modelo_disponivel and self.motor_disponivel
         return "portatil" if (getattr(sys, "frozen", False) and tem_portatil) else "ollama"
 
     @property
@@ -129,6 +127,14 @@ class RuntimeLLMPortatil:
     @property
     def api_key(self) -> str:
         return str(self.ambiente.get("LAYLAY_LLM_API_KEY", "local") or "local")
+
+    @property
+    def modelo_disponivel(self) -> bool:
+        return self.caminho_modelo.is_file()
+
+    @property
+    def motor_disponivel(self) -> bool:
+        return any(caminho.is_file() for caminho, _gpu in self._candidatos_servidor())
 
     def _saudavel(self) -> bool:
         try:
