@@ -45,10 +45,17 @@ def normalizar_nome_app(nome_solicitado: str) -> str:
     return nome
 
 
+def _parece_uri(alvo: str) -> bool:
+    texto = str(alvo or "").strip()
+    if re.match(r"^[a-zA-Z]:[\\/]", texto):
+        return False
+    return bool(re.match(r"^[a-z][a-z0-9+.-]*:", texto, flags=re.IGNORECASE))
+
+
 def abrir_uri_sistema(uri: str) -> bool:
     """Entrega um protocolo ao Shell do Windows sem trata-lo como aplicativo."""
     alvo = str(uri or "").strip()
-    if not re.match(r"^[a-z][a-z0-9+.-]*:", alvo, flags=re.IGNORECASE):
+    if not _parece_uri(alvo):
         return False
     try:
         codigo = ctypes.windll.shell32.ShellExecuteW(None, "open", alvo, None, None, 1)
@@ -156,7 +163,7 @@ def abrir_programa(nome_solicitado: str, falar_cb: Optional[Callable[[str, str, 
         "loja microsoft": "ms-windows-store:",
         "loja": "ms-windows-store:",
     }
-    uri = _uri_map.get(alvo_limpo) or (alvo if re.match(r"^[a-z][a-z0-9+.-]*:", alvo, flags=re.IGNORECASE) else "")
+    uri = _uri_map.get(alvo_limpo) or (alvo if _parece_uri(alvo) else "")
     if uri:
         print(f"🚀 [URI] Entregando ao Shell do Windows: {uri}")
         if abrir_uri_sistema(uri):

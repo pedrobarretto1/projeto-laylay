@@ -20,9 +20,27 @@ def fechar_abas_sugeridas(
         return True
     quantidade = len(abas_sugeridas)
     log(f"🧹 [PORTEIRO] Fechando {quantidade} aba(s) sugeridas...")
+    falhas: list[str] = []
+    fechadas = 0
     for url in list(abas_sugeridas):
-        enviar(str(url))
-    abas_sugeridas.clear()
+        try:
+            resultado = enviar(str(url))
+            if resultado is False:
+                falhas.append(str(url))
+            else:
+                fechadas += 1
+        except Exception as erro:
+            falhas.append(str(url))
+            log(f"⚠️ [PORTEIRO] falha ao fechar aba: {type(erro).__name__}")
+    abas_sugeridas[:] = falhas
+    if falhas:
+        falar(
+            f"Fechei {fechadas} aba(s), mas {len(falhas)} não respondeu. "
+            "Mantive essas na lista para não fingir que a limpeza terminou.",
+            "irritada",
+            1,
+        )
+        return False
     plural = "s" if quantidade > 1 else ""
     falar(f"Pronto. Limpei {quantidade} aba{plural} parada{plural}. Agora sobra RAM de verdade.", "debochada", 2)
     return True

@@ -311,21 +311,21 @@ Implementação concluída:
 
 ## P12 — Cobertura orientada a risco e integração real
 
-**Status: pendente; pode avançar junto das P8–P11.**
+**Status: concluída em 02/08/2026.**
 
 Objetivo: usar cobertura para proteger comportamento operacional, não apenas
 elevar uma porcentagem.
 
-1. [ ] priorizar módulos de baixa cobertura que controlam arquivos, janelas,
+1. [x] priorizar módulos de baixa cobertura que controlam arquivos, janelas,
    navegador, mídia, persistência e contexto;
-2. [ ] cobrir caminhos negativos e ramificações de falha, não apenas sucesso;
-3. [ ] adicionar testes de composição real para os fluxos que hoje dependem de
+2. [x] cobrir caminhos negativos e ramificações de falha, não apenas sucesso;
+3. [x] adicionar testes de composição real para os fluxos que hoje dependem de
    muitos mocks;
-4. [ ] testar idempotência, repetição, cancelamento e confirmação em todos os
+4. [x] testar idempotência, repetição, cancelamento e confirmação nos principais
    executores mutáveis;
-5. [ ] testar concorrência entre chat, voz, proatividade, visão e serviços de
+5. [x] testar concorrência entre chat, voz, proatividade, visão e serviços de
    fundo;
-6. [ ] elevar a cobertura mínima somente depois que os caminhos prioritários
+6. [x] elevar a cobertura mínima somente depois que os caminhos prioritários
    estiverem protegidos.
 
 Critério de conclusão:
@@ -335,6 +335,28 @@ Critério de conclusão:
 - falhas parciais de cooperação nunca aparecem como sucesso integral;
 - os módulos operacionais críticos deixam de concentrar lacunas relevantes;
 - a nova meta de cobertura é sustentada por testes úteis e estáveis.
+
+Implementação e evidências:
+
+- foram adicionadas matrizes de risco para arquivos mutáveis, mídia, navegador,
+  persistência, serviços concorrentes e comandos do sistema;
+- criação repetida, sobrescrita confirmada, cancelamento, lixeira, falhas de
+  mídia, fechamento parcial de abas e isolamento de serviços passaram a ter
+  regressões explícitas;
+- o teste de composição inicia chat, voz, proatividade e visão em threads reais
+  e comprova que a queda de um serviço não cancela os demais;
+- o porteiro do navegador agora preserva abas que falharam e nunca anuncia uma
+  limpeza integral depois de sucesso apenas parcial;
+- o executor do navegador deixou de confirmar o fechamento de aplicativo quando
+  o envio do comando falha;
+- caminhos absolutos do Windows, como `C:\...`, deixaram de ser confundidos com
+  protocolos URI na abertura de programas;
+- a cobertura de `comandos_sistema.py` subiu de 17% para 69%; arquivos, mídia,
+  persistência e porteiro do navegador também receberam proteção orientada aos
+  seus ramos operacionais;
+- a meta mínima global subiu de 50% para 60% somente após a nova matriz passar;
+- verificação final: Ruff aprovado, mypy aprovado em 20 fontes, 1.801 testes e
+  45 subtestes aprovados, cobertura global de 64%.
 
 ## P13 — Higiene de distribuição e versão final
 

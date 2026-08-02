@@ -170,8 +170,8 @@ def test_falha_ao_fechar_programa_e_observavel_sem_inventar_estado() -> None:
         _dependencias(eventos),
     )
 
-    assert despacho == ResultadoDespacho.concluido()
-    assert eventos[0] == ("resultado", "app_fechado_em_vez_de_aba", {"executou": True})
+    assert despacho == ResultadoDespacho.concluido(False)
+    assert eventos[0] == ("resultado", "falha_execucao", {"executou": False})
     assert falhas[0][0] == ("executor_navegador", "falha_fechar_programa")
     assert falhas[0][1]["dominio"] == "navegador"
     assert "detalhe privado" not in repr(falhas[0][0]).casefold()

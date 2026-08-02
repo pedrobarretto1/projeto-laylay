@@ -127,9 +127,11 @@ def _executar_fechar_aba(
     alvo_web = bool(callable(eh_site) and eh_site(alvo))
     if alvo and not alvo_web and bool((leitura or {}).get("programa_aberto")) and callable(fechar_programa):
         mapped = apps_map.get(alvo.lower(), alvo)
+        envio_ok = True
         try:
             fechar_programa(mapped)
         except Exception as erro:
+            envio_ok = False
             relatar_falha_ctx(
                 ctx,
                 "executor_navegador",
@@ -140,7 +142,7 @@ def _executar_fechar_aba(
                 dominio="navegador",
                 fase="fechar_aba",
             )
-        ok = deps.esperar_programa_fechar(alvo)
+        ok = bool(envio_ok and deps.esperar_programa_fechar(alvo))
         status = "app_fechado_em_vez_de_aba" if ok else "falha_execucao"
         deps.marcar_resultado(status, executou=ok)
         deps.falar_por_status(
@@ -149,7 +151,7 @@ def _executar_fechar_aba(
             if ok else f"Tentei fechar {alvo} como programa, mas ele resistiu.",
             alvo=alvo,
         )
-        return ResultadoDespacho.concluido()
+        return ResultadoDespacho.concluido(ok)
 
     if not alvo and callable(contexto_site) and contexto_site(texto_original):
         alvo = str(params.get("nome_app") or params.get("query") or params.get("alvo") or "site").strip()
