@@ -261,19 +261,19 @@ Evidências de conclusão:
 
 ## P11 — Decomposição dos módulos grandes
 
-**Status: pendente; depende da P10 para evitar apenas deslocar o monólito.**
+**Status: concluída em 02/08/2026.**
 
 Objetivo: reduzir o custo de entendimento e o risco de regressão nos maiores
 núcleos do sistema.
 
 Prioridade inicial:
 
-1. [ ] `personalidade/conversa_natural.py`;
-2. [ ] `autonomia/processamento_resposta_ia.py`;
-3. [ ] `percepcao/janelas_sistema.py`;
-4. [ ] `autonomia/roteador_deterministico.py`;
-5. [ ] `memoria_mental/diagnostico_mente.py`;
-6. [ ] demais módulos acima de mil linhas, somente quando houver mais de uma
+1. [x] `personalidade/conversa_natural.py`;
+2. [x] `autonomia/processamento_resposta_ia.py`;
+3. [x] `percepcao/janelas_sistema.py`;
+4. [x] `autonomia/roteador_deterministico.py`;
+5. [x] `memoria_mental/diagnostico_mente.py`;
+6. [x] demais módulos acima de mil linhas, somente quando houver mais de uma
    responsabilidade comprovada.
 
 Regras da decomposição:
@@ -290,6 +290,24 @@ Critério de conclusão:
 - as dependências entre submódulos são explícitas;
 - os testes deixam de depender de detalhes internos da fachada antiga;
 - nenhuma decomposição muda personalidade ou comportamento por acidente.
+
+Implementação concluída:
+
+- conversa natural separada em classificação curta e continuidade/resumos,
+  mantendo a fachada e o runtime públicos;
+- processamento da IA separado entre higiene/recuperação textual e preparação
+  operacional da resposta;
+- janelas separadas entre observação/priorização de layout e manipulação do
+  sistema;
+- detectores de playlist retirados do roteador determinístico central;
+- apresentação do diagnóstico retirada da construção do retrato mental;
+- auditoria dos demais módulos grandes separou também o pré-fluxo musical; os
+  runtimes de voz e contexto, o repositório da rede associativa e a fachada de
+  conversa permaneceram coesos por responsabilidade;
+- contratos arquiteturais adicionados para garantir que as fachadas deleguem
+  aos novos módulos, sem ciclos nem estado duplicado;
+- verificação final: Ruff aprovado, mypy aprovado em 20 fontes, 1.766 testes e
+  45 subtestes aprovados, cobertura global de 63%.
 
 ## P12 — Cobertura orientada a risco e integração real
 

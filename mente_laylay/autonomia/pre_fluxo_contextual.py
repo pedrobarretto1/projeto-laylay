@@ -21,12 +21,13 @@ from mente_laylay.memoria_mental.identidade_usuario import normalizar_nome_usuar
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
-
-
-def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
-    if isinstance(ctx, dict) and key in ctx:
-        return ctx.get(key, default)
-    return default
+from mente_laylay.autonomia.base_pre_fluxo import _get
+from mente_laylay.autonomia.pre_fluxo_musical import (
+    processar_confirmacao_musical_pendente,
+    processar_fluxo_musical_generico,
+    processar_opiniao_musica_atual,
+    processar_pedido_direcao_musical,
+)
 
 
 def _modalidade_turno(ctx: Dict[str, Any]) -> str:
@@ -720,55 +721,6 @@ def processar_comentario_resultado_operacional(
         falar(fala, "calma", 1)
         return True, "comentario_resultado_operacional"
     return False, ""
-
-
-def processar_confirmacao_musical_pendente(
-    ctx: Dict[str, Any], texto_usuario: str,
-) -> Tuple[bool, str]:
-    processar_confirmacao_sugestao_musical = _get(ctx, "_processar_confirmacao_sugestao_musical")
-    t = str(texto_usuario or "").strip()
-
-    if callable(processar_confirmacao_sugestao_musical) and processar_confirmacao_sugestao_musical(t):
-        return True, "confirmacao_sugestao_musical"
-    return False, ""
-
-
-def processar_pedido_direcao_musical(
-    ctx: Dict[str, Any], texto_usuario: str,
-) -> Tuple[bool, str]:
-    texto_pede_direcao_musical_generica = _get(ctx, "_texto_pede_direcao_musical_generica")
-    responder_pedido_direcao_musical_generica = _get(ctx, "_responder_pedido_direcao_musical_generica")
-    t = str(texto_usuario or "").strip()
-
-    if callable(texto_pede_direcao_musical_generica) and texto_pede_direcao_musical_generica(t):
-        if callable(responder_pedido_direcao_musical_generica):
-            ok = bool(responder_pedido_direcao_musical_generica(t))
-            return ok, "direcao_musical_generica" if ok else ""
-        return True, "direcao_musical_generica"
-
-    return False, ""
-
-
-def processar_fluxo_musical_generico(ctx: Dict[str, Any], texto_usuario: str) -> Tuple[bool, str]:
-    """Compatibilidade local; produção separa confirmação de pedido novo."""
-    confirmado = processar_confirmacao_musical_pendente(ctx, texto_usuario)
-    if confirmado[0]:
-        return confirmado
-    return processar_pedido_direcao_musical(ctx, texto_usuario)
-
-
-def processar_opiniao_musica_atual(ctx: Dict[str, Any], texto_usuario: str) -> Tuple[bool, str]:
-    detectar = _get(ctx, "_texto_pede_opiniao_musica_atual")
-    responder = _get(ctx, "_responder_opiniao_musica_atual")
-    if not callable(detectar) or not callable(responder):
-        return False, ""
-    try:
-        if not detectar(texto_usuario):
-            return False, ""
-        return bool(responder(texto_usuario)), "opiniao_musica_atual"
-    except Exception as erro:
-        print(f"⚠️ [MÚSICA:OPINIÃO] falha no fluxo conversacional: {erro}")
-        return False, ""
 
 
 def resolver_contexto_unificado(ctx: Dict[str, Any], texto: str) -> Tuple[Dict[str, Any] | None, str]:
