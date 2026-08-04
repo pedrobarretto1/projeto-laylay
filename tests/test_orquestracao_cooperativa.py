@@ -36,6 +36,39 @@ def _digest(texto: str) -> str:
     return hashlib.sha256(texto.encode("utf-8")).hexdigest()
 
 
+def test_consenso_de_habilidades_e_publicado_sem_autorizar_execucao() -> None:
+    quadro = QuadroCooperacaoRuntime(modo="sombra", log=lambda _texto: None)
+    runtime = OrquestradorCooperativoRuntime(
+        quadro=quadro,
+        clipboard_snapshot=lambda: {},
+        clipboard_getter=lambda: "",
+        executar_intencao=lambda *_args: False,
+        resolver_caminho=lambda valor: valor,
+        falar=lambda *_args: None,
+        log=lambda _texto: None,
+    )
+
+    registro = runtime.registrar_deliberacao_turno({
+        "participantes": [
+            "conversa", "memoria_aprendizado", "pesquisa_factual", "personalidade",
+        ],
+        "pareceres": [
+            {"habilidade": "conversa", "ativacao": 0.94},
+            {"habilidade": "pesquisa_factual", "ativacao": 0.59},
+        ],
+        "evidencias_compartilhadas": ["origem:usuario", "tema:rock"],
+    })
+    evento = quadro.snapshot()["eventos_recentes"][-1]
+
+    assert registro["publicado"] is True
+    assert registro["autoriza_execucao"] is False
+    assert evento["tipo"] == "coalizao_cognitiva_formada"
+    assert set(evento["habilidades"]) == {
+        "conversa", "memoria_aprendizado", "pesquisa_factual", "personalidade",
+    }
+    assert quadro.diagnostico()["confirmados"] == 0
+
+
 def _montar_fluxo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, conteudo_inicial: str):
     monkeypatch.setenv("LAYLAY_ARQUIVOS_RAIZES_PERMITIDAS", str(tmp_path))
     clipboard = {"texto": conteudo_inicial, "bloqueado": False}

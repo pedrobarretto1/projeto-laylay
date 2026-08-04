@@ -97,6 +97,26 @@ def test_recusa_natural_encerra_sem_autorizar() -> None:
     assert runtime.obter() is None
 
 
+def test_adiamento_recusa_antes_de_um_contextual_incorreto_aceitar() -> None:
+    runtime, _estado = _runtime()
+    runtime.registrar(
+        origem="observador_area_transferencia",
+        acao="resumir_texto",
+        pergunta="Quer que eu faça um resumo?",
+    )
+
+    resposta = runtime.resolver(
+        "deixa para depois",
+        classificar_dominio=classificar_resposta_oferta,
+        # Simula o erro visto no terminal: o interpretador contextual tentou
+        # aceitar. A decisão local de adiamento precisa ter precedência.
+        classificar_contextual=lambda *_args: True,
+    )
+
+    assert resposta["status"] == "recusar"
+    assert resposta["pendencia"]["acao"] == "resumir_texto"
+
+
 def test_oferta_opcional_cede_a_comando_novo_sem_classifica_lo_como_recusa() -> None:
     eh_comando = lambda texto: texto.startswith("coloca ") or texto == "essa também"
 

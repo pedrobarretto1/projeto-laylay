@@ -239,6 +239,10 @@ def executar_intencao_arquivos(
                 falas = {
                     "movido": f"Corrigi o destino e confirmei: agora está em {resultado.destino}.",
                     "renomeado": f"Corrigi o nome e confirmei: agora é {os.path.basename(resultado.destino)}.",
+                    "ja_com_mesmo_nome": (
+                        f"{os.path.basename(resultado.origem)} já está com esse nome e tipo. "
+                        "Não precisei alterar nada."
+                    ),
                     "conteudo_atualizado": f"Corrigi o conteúdo de {os.path.basename(resultado.origem)} e conferi o arquivo.",
                 }
                 falar(falas.get(resultado.status, "Corrigi o arquivo e confirmei o resultado."), "calma", 1)

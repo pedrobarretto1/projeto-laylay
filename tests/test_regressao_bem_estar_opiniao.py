@@ -247,6 +247,46 @@ def test_pedido_com_assunto_novo_nao_explica_a_fala_anterior() -> None:
     )
 
 
+def test_pedido_para_explicar_isso_de_jeito_simples_preserva_a_fala_anterior() -> None:
+    import time
+
+    contexto = {
+        "mente_integrada_estado": {
+            "ultima_resposta": "Eu prefiro rock porque ele passeia por mais climas.",
+            "ultima_opiniao": "Rock me parece mais variado.",
+            "ultima_afirmacao": "Rock me parece mais variado.",
+            "continuidade_fala_ts": time.time(),
+        },
+        "_normalizar_texto_curto": lambda texto: str(texto).casefold(),
+        "_normalizar_texto_com_apelidos": lambda texto: str(texto).casefold(),
+        "_extrair_json_da_ia": lambda texto: texto,
+        "enviar_mensagem": lambda *_args, **_kwargs: (
+            '{"fala":"De forma simples: o rock varia mais de clima."}'
+        ),
+        "ultimo_topico_conversa": "rock",
+        "foco_vivo": {},
+    }
+
+    fala = resposta_pergunta_curta_dependente_topico(
+        contexto,
+        "Agora explica isso de um jeito simples.",
+    )
+
+    assert fala == "De forma simples: o rock varia mais de clima."
+
+
+def test_guardiao_rejeita_laylay_comendo_em_resposta_a_cansaco() -> None:
+    from mente_laylay.cognicao.guardiao_realidade_pessoal import (
+        detectar_experiencia_pessoal_inventada,
+    )
+
+    fala = "Ah, cansado? Tô aqui, sem pedir nada, só comendo arroz e bebendo água."
+
+    assert detectar_experiencia_pessoal_inventada(fala) == [
+        "experiencia_fisica_inventada",
+    ]
+
+
 def test_opiniao_sem_fonte_nao_inventa_repertorio_nem_chama_usuario_de_laylay() -> None:
     chamadas_llm: list[object] = []
     ctx = {

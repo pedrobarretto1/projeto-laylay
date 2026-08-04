@@ -405,7 +405,419 @@ Implementação e evidências:
   45 subtestes aprovados, cobertura global de 64% e nenhuma vulnerabilidade
   conhecida nas dependências.
 
+## Ciclo de estabilização pós-P13 — evidências de uso real
+
+**Status geral: pendente.**
+
+Origem: sessão manual completa registrada após o fechamento da P13. A suíte
+automatizada protegeu contratos isolados importantes, mas o teste de ponta a
+ponta revelou regressões na composição entre linguagem natural, pendências,
+continuidade, executores e autoria da resposta.
+
+Leitura correta das evidências:
+
+- a memória de pessoas foi persistida; as consultas naturais é que não chegaram
+  ao leitor correto;
+- consultas de estado IoT foram executadas corretamente; a fala final misturou
+  confirmação com uma âncora de incerteza;
+- pausar e retomar mídia foram classificados corretamente, mas a extensão não
+  confirmou a execução;
+- o detector isolado de clima reconhece as frases testadas, portanto a falha
+  está na composição da entrada real antes da LLM;
+- o modo jogo não foi exercitado nessa sessão e não pode ser classificado como
+  aprovado nem reprovado por ela;
+- a avaliação de saúde estrutural e a avaliação de uso diário são dimensões
+  diferentes: o código pode passar o portão técnico e ainda ter bloqueadores de
+  integração perceptíveis para a pessoa usuária.
+
+### P14 — Bloqueadores de verdade, segurança e isolamento do turno
+
+**Prioridade: P0. Status: concluída em 2026-08-02.**
+
+Objetivo: impedir execução no domínio errado, vazamento técnico e respostas que
+afirmam simultaneamente sucesso e falha.
+
+1. [x] tornar o resultado de uma ação atômico por turno, com `intent`, alvo,
+   status, evidência e domínio vindos do mesmo evento;
+2. [x] impedir que alvo ou status antigos atravessem domínios, como uma leitura
+   de e-mail herdar o alvo de um lembrete;
+3. [x] garantir uma única classe epistêmica por fala: sucesso confirmado,
+   falha, cancelamento, pendência ou desconhecido — nunca duas delas juntas;
+4. [x] tratar cancelamento confirmado como desfecho válido, sem prefixo de
+   falha ou “não consegui concluir”;
+5. [x] bloquear sentinelas técnicas da LLM em todas as saídas, inclusive
+   continuações, confirmações, resumos e respostas produzidas por habilidades;
+6. [x] restringir operações destrutivas da memória de pessoas a uma referência
+   pessoal explícita ou a uma identidade conhecida;
+7. [x] reservar substantivos operacionais explícitos, como arquivo e pasta, ao
+   domínio correspondente; com ou sem erro ortográfico, eles nunca podem virar
+   `PEOPLE_FORGET`;
+8. [x] impedir que perguntas sobre dados pessoais recebam lembranças inventadas:
+   toda afirmação deve apontar para memória persistida ou declarar ausência;
+9. [x] fazer ofertas opcionais, como analisar a área de transferência, cederem
+   silenciosamente quando a mensagem seguinte inicia outro assunto;
+10. [x] consumir uma oferta somente com aceitação, recusa ou referência
+   semanticamente vinculada a ela.
+
+Critério de conclusão:
+
+- zero execução destrutiva em domínio diferente do pedido;
+- zero afirmação pessoal sem evidência na memória;
+- zero sentinela técnica visível;
+- zero resposta com sucesso e falha combinados;
+- perguntas novas não são engolidas por ofertas opcionais;
+- os casos exatos da sessão passam pela entrada real do chat, não apenas por
+  detectores unitários.
+
+Implementação e evidências:
+
+- `ultima_acao_contrato` passou a registrar atomicamente identidade, domínio,
+  alvo, status, execução, confirmação e evidência do mesmo evento; o diagnóstico
+  não completa mais campos vazios com partes de ações antigas;
+- a continuidade por domínio só herda campos quando permanece no mesmo
+  `intent`, impedindo contaminação silenciosa entre contratos diferentes;
+- cancelamento ganhou classe epistêmica própria e fala compatível, enquanto
+  consultas informativas confirmadas descartam âncoras contraditórias de falha;
+- sentinelas da LLM são reconhecidas por um detector central e absorvidas tanto
+  na validação do turno quanto na fronteira final antes da voz;
+- exclusão de memória pessoal exige linguagem pessoal explícita, e termos como
+  `arquivo`, `aquivo`, `pasta` e `documento` ficam reservados ao domínio
+  operacional;
+- consultas sobre pessoas sem registro são interceptadas antes da LLM e recebem
+  uma declaração explícita de ausência de memória confirmada;
+- ofertas opcionais do clipboard cedem também a perguntas naturais com assunto
+  próprio, preservando aceites, recusas e respostas indiretas relacionadas;
+- regressões novas cobrem as frases reais da sessão e variantes próximas em
+  `tests/test_p14_integridade_turno.py`, `tests/test_memoria_pessoas.py` e
+  `tests/test_adaptador_resultado.py`;
+- portão final: Ruff aprovado, mypy aprovado nos 20 módulos tipados, 1.816 testes
+  e 45 subtestes aprovados.
+
+### P15 — Continuidade semântica, referências e episódios de conversa
+
+**Prioridade: P1. Status: concluída em 2026-08-02.**
+
+Objetivo: manter o referente e o assunto corretos em continuações naturais,
+sem ressuscitar entidades antigas.
+
+1. [x] interpretar “agora explique com mais detalhes” como transformação da
+   resposta imediatamente anterior, preservando o assunto;
+2. [x] aceitar variações e erros leves em consultas sobre pessoas já
+   memorizadas, incluindo perguntas de relação formuladas em ordem diferente;
+3. [x] definir uma ordem única de saliência: pendência canônica ativa, entidade
+   da ação atual, último resultado confirmado do mesmo domínio e só então
+   referências antigas;
+4. [x] invalidar referências obsoletas quando uma operação mais recente cria
+   ou seleciona outra entidade do mesmo domínio;
+5. [x] remover modificadores de repetição do alvo de aplicativo, como “de
+   novo”, “novamente” e “outra vez”, preservando a intenção de repetir/focar;
+6. [x] segmentar discussões da caixa de entrada por episódio e assunto atual;
+7. [x] excluir comandos, resultados operacionais, logs e assuntos encerrados do
+   resumo de uma ideia;
+8. [x] pedir confirmação em vez de salvar quando o assunto corrente não tiver
+   confiança suficiente.
+
+Critério de conclusão:
+
+- pronomes e continuações apontam para a entidade mais recente e compatível;
+- consultas sobre uma pessoa recém-memorizada retornam os dados persistidos;
+- uma ideia salva representa a discussão atual, não uma operação anterior;
+- repetir a abertura de um aplicativo não incorpora “de novo” ao seu nome.
+
+Implementação e evidências:
+
+- pedidos de detalhamento usam a fala imediatamente anterior como fonte e
+  levam somente o assunto, a fala e o ponto central ao modelo; se ele estiver
+  indisponível, a resposta local conserva explicitamente o mesmo referente;
+- `selecionar_referente_saliente` centraliza a ordem pendência canônica, ação
+  atual, continuidade confirmada do domínio e referências anteriores;
+- uma nova ação substitui atomicamente a entidade anterior do mesmo domínio,
+  sem completar alvos vazios com dados obsoletos;
+- consultas sobre pessoas aceitam erro leve em “sabe” e perguntas de relação
+  em ordem invertida, mantendo a memória persistida como única fonte factual;
+- a normalização compartilhada de aplicativos remove `de novo`, `novamente`,
+  `outra vez` e `mais uma vez` apenas quando aparecem como sufixo operacional;
+- a caixa de entrada agora delimita o episódio atual, ignora logs, fallbacks e
+  comandos operacionais, e usa a pendência canônica antes de salvar um recorte
+  cuja proposta não esteja suficientemente clara;
+- as regressões específicas estão em `tests/test_p15_continuidade_semantica.py`,
+  com variações adicionais em `tests/test_memoria_pessoas.py`;
+- portão final: Ruff aprovado, mypy isolado aprovado, 1.823 testes e 45
+  subtestes aprovados.
+
+### P16 — Linguagem natural operacional e comandos de leitura
+
+**Prioridade: P1. Status: concluída em 2026-08-02.**
+
+Objetivo: fazer frases naturais alcançarem habilidades existentes antes que a
+LLM tente improvisar uma resposta.
+
+1. [x] ampliar a consulta da caixa de entrada para construções como “me fale
+   minhas ideias”, sem depender de uma frase exata;
+2. [x] reconhecer perguntas naturais sobre compromissos como leitura direta da
+   agenda, sem pedir autorização para uma operação somente leitura;
+3. [x] unificar a extração de duração para segundos, minutos e horas em
+   lembretes e continuações;
+4. [x] separar o texto do lembrete do trecho temporal, impedindo descrições como
+   “beber água daqui a trinta segundos” depois de reagendar;
+5. [x] garantir que clima e temperatura atravessem o detector determinístico na
+   composição real do chat antes da LLM;
+6. [x] proibir respostas sobre clima atual sem evidência de um provedor ou uma
+   mensagem explícita de indisponibilidade;
+7. [x] adicionar tolerância para erros ortográficos operacionais frequentes sem
+   criar correções agressivas em conversa comum;
+8. [x] preservar controles de mídia em erros leves, como uma grafia incompleta
+   de “passa para a próxima”, sem confundir conversa comum com execução;
+9. [x] interpretar perguntas de seguimento sobre e-mails já lidos, como
+   urgência, usando os resultados observados em vez de uma suposição da LLM;
+10. [x] medir resolução natural por habilidade e por frase real, distinguindo
+   conversa legítima de comando não reconhecido.
+
+Critério de conclusão:
+
+- agenda, clima, caixa de entrada e lembretes respondem às variações testadas;
+- nenhuma informação temporal atual é inventada pela LLM;
+- lembretes relativos preservam descrição e horário corretos;
+- os testes atravessam a mesma composição usada pelo terminal e pela voz.
+
+Implementação e evidências:
+
+- a caixa de entrada reconhece pedidos flexíveis para falar, contar, mostrar ou
+  relembrar ideias e notas, mantendo frases criativas sem intenção de leitura
+  fora do executor;
+- a agenda intercepta consultas naturais somente leitura antes da LLM e usa
+  uma única extração relativa, em `atraso_segundos`, para números escritos ou
+  falados em segundos, minutos e horas;
+- o trecho temporal é removido antes de persistir a descrição, enquanto
+  preposições internas como em `consulta de dentista` são preservadas;
+- consultas de clima comuns e variantes ortográficas atravessam o detector
+  determinístico; falha ou exceção do provedor gera `clima_indisponivel`, e o
+  verificador final impede uma resposta conversacional de inventar o clima;
+- a tolerância ortográfica ganhou apenas termos operacionais comprovados e a
+  forma incompleta `passa para a proxma`, sem aproximar nomes de arquivos,
+  faixas, pessoas ou conversa comum;
+- perguntas como `algum deles é urgente?` só reutilizam o domínio de e-mail
+  quando a leitura anterior foi observada como `emails_lidos`, voltando ao
+  leitor e ao cache reais em vez de pedir uma classificação factual à LLM;
+- o diagnóstico de linguagem natural agora mede habilidade e moldura da frase
+  por contadores sanitizados, além de separar comando não reconhecido de
+  conversa legítima sem armazenar o texto da pessoa;
+- `tests/test_p16_linguagem_natural_operacional.py` cobre frases reais,
+  negativas próximas, terminal/voz e composição; regressões antigas de agenda,
+  clima, caixa, comunicação e decisão única também permaneceram verdes;
+- portão final: Ruff, compilação e mypy isolado em sete fontes aprovados,
+  1.833 testes e 45 subtestes aprovados.
+
+### P17 — Mídia, pesquisa musical e evidência do navegador
+
+**Prioridade: P2. Status: concluída em 2026-08-02.**
+
+Objetivo: transformar pedidos musicais em conteúdo realmente reproduzível e
+distinguir classificação correta de confirmação externa ausente.
+
+1. [x] revisar o protocolo de confirmação da extensão para pausar, retomar e
+   avançar, incluindo identidade da aba e estado observável do player;
+2. [x] manter a resposta honesta quando o navegador não confirmar a ação, sem
+   repetir o comando nem anunciar sucesso presumido;
+3. [x] aplicar o refinamento contextual também a trabalho, estudo e outras
+   atividades pela rota completa, não apenas dentro do refinador isolado;
+4. [x] separar no resultado `consulta_pedida`, `consulta_resolvida` e
+   `alvo_executado`;
+5. [x] confirmar que a seleção final é um vídeo/faixa reproduzível, e não apenas
+   uma página de busca;
+6. [x] fazer a autoria da confirmação usar o alvo realmente executado para não
+   acusar divergência depois de um refinamento legítimo.
+
+Critério de conclusão:
+
+- pausar e retomar possuem confirmação observável ou falha explícita;
+- pedidos por atividade escolhem uma faixa concreta e explicável;
+- pesquisa, execução e fala final concordam sobre o mesmo alvo;
+- nenhum timeout da extensão produz falso sucesso ou reprodução duplicada.
+
+Implementação e evidências:
+
+- a resolução musical agora preserva título, canal e URL da faixa concreta; se
+  nenhum vídeo reproduzível for encontrado, a Laylay encerra com falha explícita
+  sem abrir uma página de resultados como substituta;
+- o contrato operacional separa `consulta_pedida`, `consulta_resolvida` e
+  `alvo_executado`, e a autoria recebe o título efetivamente selecionado;
+- a camada Python deixou de reduzir a resposta da extensão a um booleano: estado
+  do player, aba, status e mensagem permanecem disponíveis até o executor;
+- pausar, retomar, avançar, voltar e reiniciar usam a identidade observada da
+  aba; a extensão valida mudança de reprodução ou de faixa antes de confirmar;
+- timeouts e ausência de mudança falham uma única vez, sem repetição automática
+  nem fala de sucesso presumido;
+- refinamento contextual validado pela rota completa para trabalho/programação,
+  estudo, treino, descanso e jogo;
+- portão final: Ruff, compilação Python, sintaxe JavaScript e mypy isolado em
+  sete fontes aprovados; 1.840 testes e 45 subtestes aprovados.
+
+### P18 — Semântica operacional e apresentação fiel do sistema
+
+**Prioridade: P2. Status: concluída em 2026-08-02.**
+
+Objetivo: responder de forma natural sem distorcer o pedido nem a realidade do
+sistema operacional.
+
+1. [x] tratar sugestões indiretas, como “talvez fosse legal deixar a luz
+   vermelha”, segundo confiança e política de autonomia, sem transformá-las em
+   uma recusa que a pessoa não fez;
+2. [x] impedir que perguntas de estado IoT tentem interpretar formas de “estar”
+   como nomes de cor;
+3. [x] separar “janelas visíveis/abertas” de “processos em segundo plano” na
+   observação e na fala;
+4. [x] filtrar overlays, componentes do sistema e processos sem janela da lista
+   apresentada como aplicativos visíveis;
+5. [x] distinguir na fala se um aplicativo foi iniciado, apenas focalizado ou
+   já estava aberto e em foco, usando o estado anterior e o posterior;
+6. [x] manter personalidade e emoção depois da verdade operacional, sem usar
+   humor para esconder status, dúvida ou falha;
+7. [x] auditar por que a emoção causal foi avaliada várias vezes sem nenhuma
+   expressão na sessão e decidir se foi contenção correta ou perda de sinal.
+
+Critério de conclusão:
+
+- a fala nunca atribui ao usuário uma decisão que ele não tomou;
+- consultas de estado não acionam extração de cor;
+- a lista de programas explica claramente janela, aba e processo;
+- personalidade varia sem mudar o significado do resultado.
+
+Implementação e evidências:
+
+- propostas indiretas de iluminação agora viram `SUGGEST_ACTION` com confiança,
+  reversibilidade e elegibilidade autônoma explícitas; uma hipótese não é mais
+  narrada como recusa nem executada como ordem;
+- consultas de estado IoT vencem a extração de propriedades e cores antes de
+  qualquer resolução livre, inclusive em “como está a lâmpada?”;
+- a percepção publica um retrato separado de janelas visíveis, processos
+  relevantes em segundo plano e componentes filtrados; overlays e janelas do
+  sistema não aparecem mais como aplicativos da pessoa;
+- a consulta local explica que abas pertencem ao navegador e não são processos
+  ou aplicativos separados;
+- `app_iniciado_focado`, `app_focado` e `ja_aberto_focado` preservam três fatos
+  distintos: início novo, foco de janela existente e não-ação confirmada;
+- a autoria operacional precisa abrir pela verdade e pelo alvo observados; só
+  depois pode acrescentar personalidade, emoção ou deboche;
+- a emoção causal registra contenções, taxa e motivo da última decisão, tornando
+  explícito quando o silêncio emocional foi prudência e não perda de sinal;
+- regressões próprias da P18 cobrem sugestão indireta, estado IoT, inventário de
+  janelas/processos, ciclo de abertura e auditoria emocional.
+- portão final: 1.847 testes e 45 subtestes aprovados; `py_compile`, Ruff,
+  `git diff --check` e mypy isolado nas fontes tipadas alteradas também
+  aprovados.
+
+### P19 — Observabilidade, contexto e custo por turno
+
+**Prioridade: P3. Status: concluída em 2026-08-02.**
+
+Objetivo: fazer o diagnóstico representar o que realmente aconteceu e revelar
+contaminação ou trabalho duplicado antes que virem comportamento visível.
+
+1. [x] alinhar saúde da LLM, contadores de falha e lista de falhas recentes;
+2. [x] mostrar cada pendência com origem, ação, idade, prazo e motivo de ainda
+   estar ativa;
+3. [x] distinguir serviços ativos, intencionalmente desativados, encerrados e
+   degradados;
+4. [x] corrigir a última ação para que domínio, alvo e status pertençam ao mesmo
+   evento confirmado;
+5. [x] separar métricas brutas, selecionadas, truncadas e efetivamente enviadas
+   no orçamento do prompt;
+6. [x] medir normalizações únicas por turno e eliminar reaplicações idênticas em
+   camadas sucessivas;
+7. [x] registrar por que uma intenção natural não foi resolvida, sem despejar
+   conteúdo privado no log;
+8. [x] perfilar a latência total da voz separando síntese, fila, reprodução e
+   bloqueios externos.
+
+Critério de conclusão:
+
+- um diagnóstico explica cada degradação observada na sessão;
+- “falhas recentes: zero” não aparece quando houve vazamento técnico ou backend
+  degradado;
+- as métricas do prompt fecham matematicamente e deixam claro o que foi enviado;
+- pendências antigas e normalizações duplicadas ficam visíveis e auditáveis.
+
+Implementação e evidências:
+
+- a saúde viva da LLM agora reconcilia disponibilidade do contrato, estado do
+  backend, falhas consecutivas e falhas recentes sanitizadas;
+- pendências são apresentadas com origem, ação, idade, prazo, motivo e status,
+  sem expor pergunta, referência ou conteúdo privado;
+- serviços de fundo possuem classes distintas para ativos, desativados por
+  configuração, encerrados e degradados;
+- a última ação continua compatível com leitores antigos, mas recebe uma
+  auditoria atômica separada com domínio, fonte, identificador e coerência;
+- o orçamento do prompt fecha as etapas de preparação e transporte com números
+  de caracteres brutos, selecionados, truncados, injetados e enviados;
+- a normalização reutiliza resultados idênticos no mesmo turno e publica
+  contadores de trabalho único e reaplicações evitadas;
+- intenções naturais não resolvidas registram apenas motivo, moldura e rota;
+- a voz mede separadamente fila, síntese, bloqueio externo, reprodução e total;
+- portão final: 1.855 testes e 45 subtestes aprovados; regressão focada com 38
+  testes aprovada; `py_compile`, Ruff, `git diff --check` e mypy isolado em
+  cinco fontes aprovados.
+
+### P20 — Requalificação de uso diário
+
+**Prioridade: portão final. Status: automação concluída em 2026-08-02; validação manual pendente.**
+
+Objetivo: provar que as correções funcionam juntas no mesmo fluxo em que as
+regressões apareceram.
+
+1. [x] transformar cada falha da sessão manual em regressão pela entrada real;
+2. [x] executar uma conversa longa misturando memória, arquivos, agenda, IoT,
+   mídia, clima, caixa de entrada e área de transferência;
+3. [x] repetir a matriz no terminal e por voz;
+4. [x] executar uma matriz própria do modo jogo, ausente no teste atual;
+5. [x] verificar zero falsa execução, zero alvo cruzado, zero contradição e zero
+   sentinela técnica;
+6. [x] confirmar que todas as pendências encerram, expiram ou cedem a outro
+   assunto de forma observável;
+7. [ ] realizar novo teste manual antes de declarar a versão estável para uso
+   diário.
+
+Critério de conclusão:
+
+- todos os casos da sessão original e suas variações passam em conjunto;
+- terminal, voz e modo jogo preservam os mesmos contratos;
+- o resultado manual concorda com os testes automatizados;
+- o ciclo só é encerrado depois da validação da pessoa usuária.
+
+Implementação e evidências automatizadas:
+
+- uma matriz integrada passa pela entrada canônica, pelo coordenador de turno,
+  pelo árbitro, pelos detectores reais e pela continuidade compartilhada;
+- a conversa longa cobre agenda, IoT, música, clima, caixa de entrada, área de
+  transferência, memória de pessoas e pesquisa de arquivos;
+- terminal, voz e modo jogo produzem os mesmos contratos operacionais para os
+  mesmos pedidos;
+- o modo jogo preserva visão, música e IoT sem cruzar o nome do jogo com o alvo
+  físico;
+- perguntas hipotéticas, negações e consultas de capacidade terminam sem
+  executar ações;
+- aceite, recusa, expiração e cessão de pendências são observados pelo mesmo
+  runtime canônico;
+- a requalificação encontrou e corrigiu três lacunas de composição: leitura de
+  estado IoT antes do filtro casual, `CLIPBOARD_READ` como consulta segura e
+  `GAME_VISION` como leitura explícita permitida pelo árbitro;
+- a primeira execução manual da Matriz A encontrou quatro regressões que a
+  simulação não expunha: consultas de leitura vetadas pelo parecer operacional,
+  `e-mails` perdido após normalização, busca de arquivo devolvida à conversa e
+  parser musical incompatível com os metadados atuais do YouTube;
+- as correções agora preservam consultas somente de leitura no árbitro,
+  reconhecem `email`, `e-mail` e `e mails`, antecipam clima/email/pesquisa de
+  arquivo antes do filtro casual e resolvem novamente vídeos concretos do
+  YouTube; identificadores como `C418` também não podem ser alterados pela fala;
+- regressão P20: 10 testes aprovados; matriz ampliada: 200 testes aprovados;
+- portão automatizado completo após a correção manual: 1.869 testes e 45
+  subtestes aprovados;
+- o roteiro `TESTE_MANUAL_P20_REQUALIFICACAO.md` é o último requisito ainda
+  aberto e deve ser executado na aplicação completa antes do fechamento.
+
 ## Ordem recomendada
+
+### Ciclo histórico concluído
 
 1. P7 — base estável;
 2. P8 e P9 — contratos tipados e falhas observáveis;
@@ -413,6 +825,14 @@ Implementação e evidências:
 4. P11 — módulos grandes;
 5. P12 — cobertura das lacunas encontradas durante a migração;
 6. P13 — distribuição e fechamento do ciclo.
+
+### Novo ciclo de estabilização
+
+1. P14 — bloquear falsos estados, vazamentos e ações no domínio errado;
+2. P15 e P16 — restaurar continuidade e cobertura da linguagem natural;
+3. P17 e P18 — corrigir integrações externas e apresentação operacional;
+4. P19 — tornar diagnóstico, contexto e custo confiáveis;
+5. P20 — requalificar a versão em uso real.
 
 Cada fase deve atualizar o retrato de métricas, registrar apenas decisões ainda
 úteis e marcar seus itens somente depois da suíte completa. Nenhuma fase deste

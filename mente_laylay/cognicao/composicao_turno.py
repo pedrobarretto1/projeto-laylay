@@ -34,6 +34,7 @@ DEPENDENCIAS_ORQUESTRACAO_TURNO = (
     "_normalizar_texto_com_apelidos",
     "_obter_contexto_perceptivo",
     "_observabilidade_mente_runtime",
+    "_orquestrador_cooperativo_runtime",
     "_pendencia_ativa_turno_mente",
     "_persistir_correcao_duravel_mente",
     "_pesquisa_contextual_runtime",

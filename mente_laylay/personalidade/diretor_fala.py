@@ -6,21 +6,16 @@ import re
 import time
 from typing import Any, Dict
 
+from mente_laylay.personalidade.perfil_amizade import (
+    PERFIL_PERSONALIDADE,
+    selecionar_postura_amizade,
+)
+
 
 _ABERTURAS_MECANICAS = re.compile(
     r"^(?:a-?ah\.\.\.|aí sim\.\.\.|ai sim\.\.\.|entendi[,.]|tá[,.]|ta[,.])\s*",
     re.IGNORECASE,
 )
-
-PERFIL_PERSONALIDADE = {
-    "base": "carinhosa_sem_infantilizar",
-    "humor": "debochado_afetuoso_com_timing",
-    "curiosidade": "especifica_e_seletiva",
-    "assinatura": "opiniao_clara_callback_relevante_sem_bordao",
-    "correcao": "receptiva_sem_se_defender",
-    "operacional": "objetiva_com_calor_humano",
-}
-
 
 def _sem_pergunta_opcional(texto: str, *, permite: bool) -> str:
     fala = str(texto or "").strip()
@@ -157,7 +152,17 @@ def dirigir_fala(
     operacional = dict(especialistas.get("operacional") or {})
     politica = str(social.get("politica_resposta") or "responder_diretamente")
     tem_operacao = bool(operacional.get("ativo"))
-    permite_pergunta = bool(social.get("permite_pergunta", True)) and not tem_operacao
+    postura_amiga = selecionar_postura_amizade(
+        texto_usuario,
+        estado_mental=mente,
+        operacional=tem_operacao,
+        proativa=proativa,
+    )
+    permite_pergunta = bool(
+        social.get("permite_pergunta", True)
+        and postura_amiga.permite_pergunta
+        and not tem_operacao
+    )
     fala = re.sub(r"\s+", " ", str(texto or "")).strip()
     funcao = str(social.get("funcao") or "")
     evento_operacional = dict(
@@ -216,12 +221,7 @@ def dirigir_fala(
 
     palavras = len(re.findall(r"\b\w+\b", fala, flags=re.UNICODE))
     comprimento = "curto" if palavras <= 18 else "medio" if palavras <= 55 else "longo"
-    humor = (
-        "debochado_afetuoso"
-        if funcao in {"brincadeira", "elogio", "conquista", "reacao_positiva"}
-        and not tem_operacao
-        else "nenhum"
-    )
+    humor = postura_amiga.humor if postura_amiga.max_tirada and not tem_operacao else "nenhum"
     return {
         "fala": fala,
         "tom": _tom_por_contexto(politica, emocao_final, tem_operacao),
@@ -235,6 +235,7 @@ def dirigir_fala(
         "formato": "fala",
         "preservar_resultado_operacional": tem_operacao,
         "perfil_personalidade": dict(PERFIL_PERSONALIDADE),
+        "postura_amizade": postura_amiga.como_dict(),
         "texto_usuario": str(texto_usuario or "")[:300],
         "ts": instante,
     }

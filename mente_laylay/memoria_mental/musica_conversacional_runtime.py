@@ -16,7 +16,11 @@ from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_mode
 
 from mente_laylay.memoria_mental.musica_conversacional import (
     sugestao_musical_nova_conversacional,
+    texto_pede_musica_sem_titulo,
     texto_pede_direcao_musical_generica,
+)
+from mente_laylay.memoria_mental.encerramento_assunto import (
+    classificar_encerramento_assunto,
 )
 
 
@@ -163,12 +167,10 @@ class MusicaConversacionalRuntime:
             "uma nova", "musica nova", "música nova",
         ])
         sugestao = self.sugestao_nova(t)
-        pedido_execucao_sem_titulo = bool(re.search(
-            r"^(?:por favor\s+)?(?:coloca|coloque|bota|bote|poe|põe|toca|toque|manda)\s+"
-            r"(?:uma|alguma)?\s*(?:musica|música|faixa|som)(?:\s+(?:ai|aí|pra mim|para mim))?[.!?]*$",
+        pedido_execucao_sem_titulo = texto_pede_musica_sem_titulo(
             bruto,
-            flags=re.IGNORECASE,
-        ))
+            normalizar_texto=self.normalizar_texto,
+        )
         if quer_nova:
             fala = random.choice([
                 f"Então eu arrisco uma fora da tua prateleira: {sugestao}. Não toquei nada, só tô te dando um palpite novo.",
@@ -177,9 +179,9 @@ class MusicaConversacionalRuntime:
             ])
         elif pedido_execucao_sem_titulo:
             fala = random.choice([
-                f"Qual faixa você quer? Se quiser uma ideia, eu iria de {sugestao}.",
-                f"Me diz o nome da música. Meu palpite, se quiser, é {sugestao}.",
-                f"Qual música eu coloco? Enquanto você escolhe, minha sugestão é {sugestao}.",
+                f"Eu topo. Qual faixa ou clima você quer? Se quiser meu palpite, eu iria de {sugestao}.",
+                f"Boa. Me dá um rumo: qual música ou estilo? Meu chute é {sugestao}.",
+                f"Fechado, mas não vou adivinhar a faixa. Qual clima você quer? Eu apostaria em {sugestao}.",
             ])
         else:
             fala = random.choice([
@@ -209,6 +211,11 @@ class MusicaConversacionalRuntime:
         t = self.normalizar_texto(bruto)
         if not bruto or not t or "?" in str(texto or ""):
             return False
+        # Atos sociais fecham o assunto; não são títulos só porque são curtos.
+        # A classificação é compartilhada com o restante da mente para evitar
+        # uma lista musical paralela de "obrigado", "valeu", "perfeito" etc.
+        if classificar_encerramento_assunto(bruto, self._estado()):
+            return False
         if len(bruto) > 120 or len(bruto.split()) > 14:
             return False
         if t in {"sim", "nao", "não", "cancela", "deixa", "esquece", "qualquer uma"}:
@@ -223,12 +230,42 @@ class MusicaConversacionalRuntime:
             return False
         return bool(re.search(r"[a-zA-ZÀ-ÿ0-9]", bruto))
 
+    def _sincronizar_pendencia_com_resultado_real(self) -> None:
+        """Descarta a cópia local quando outra rota já concluiu a música."""
+        pendente = dict(self._sugestao_pendente or {})
+        if not pendente:
+            return
+        estado = self._estado()
+        contrato = dict(estado.get("ultima_acao_contrato") or {})
+        intent = str(
+            contrato.get("intent") or estado.get("ultima_acao_intent") or ""
+        ).strip().upper()
+        executou = contrato.get("executou")
+        confirmado = contrato.get("confirmado")
+        if not contrato:
+            confirmado = estado.get("ultima_acao_confirmada")
+            executou = estado.get("ultima_acao_ok")
+        try:
+            resultado_posterior = float(estado.get("ultima_acao_ts") or 0.0) >= float(
+                pendente.get("ts") or 0.0
+            )
+        except (TypeError, ValueError):
+            resultado_posterior = False
+        if (
+            resultado_posterior
+            and intent in {"MUSIC_SEARCH", "PLAYLIST_PLAY"}
+            and executou is True
+            and confirmado is True
+        ):
+            self._sugestao_pendente = {}
+
     def processar_confirmacao(self, texto: str = "") -> bool:
         """Continua uma recomendacao conversacional sem recriar habilidade antiga."""
         t = self.normalizar_texto(texto)
         if not t:
             return False
 
+        self._sincronizar_pendencia_com_resultado_real()
         pendente = dict(self._sugestao_pendente or {})
         cobranca = any(p in t for p in [
             "cade a musica", "cadê a música", "cade a música", "cadê a musica",

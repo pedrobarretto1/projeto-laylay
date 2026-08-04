@@ -16,6 +16,40 @@ def _normalizar(texto: str, normalizar_texto: Callable[[str], str] | None = None
     return str(texto or "").strip().lower()
 
 
+def texto_pede_musica_sem_titulo(
+    texto: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None = None,
+) -> bool:
+    """Reconhece vontade musical vaga sem transformar a frase em busca.
+
+    "Eu queria ouvir uma música" comunica uma intenção real, mas não fornece
+    uma faixa pesquisável. Mantemos isso no fluxo musical conversacional para
+    pedir a escolha seguinte, em vez de deixar uma camada posterior inventar
+    uma playlist ou pesquisar a frase literalmente.
+    """
+    t = _normalizar(texto, normalizar_texto)
+    if not t:
+        return False
+
+    direto = (
+        r"(?:(?:por favor|lay|laylay)\s+)?"
+        r"(?:coloca|coloque|toca|toque|bota|bote|poe|põe|manda)\s+"
+    )
+    desejo = (
+        r"(?:(?:eu\s+)?(?:queria|gostaria\s+de|estou\s+a\s+fim\s+de|"
+        r"to\s+a\s+fim\s+de|tô\s+a\s+fim\s+de|estou\s+com\s+vontade\s+de|"
+        r"to\s+com\s+vontade\s+de|tô\s+com\s+vontade\s+de)\s+"
+        r"(?:ouvir|escutar|colocar))\s+"
+    )
+    return bool(re.fullmatch(
+        rf"(?:{direto}|{desejo})(?:(?:uma|alguma|qualquer)\s+)?"
+        r"(?:musica|música|faixa|som)"
+        r"(?:\s+(?:ai|aí|pra\s+mim|para\s+mim|agora|mesmo|na\s+verdade|s[oó]))?[.!?]*",
+        t,
+    ))
+
+
 def texto_pede_direcao_musical_generica(
     texto: str,
     *,
@@ -30,12 +64,9 @@ def texto_pede_direcao_musical_generica(
     # Pedido de reprodução sem faixa é uma solicitação incompleta, não uma
     # pesquisa pela faixa literal "uma música". A conversa musical escolhe uma
     # sugestão real e mantém a confirmação/título seguinte como pendência.
-    if re.fullmatch(
-        r"(?:(?:por favor|lay|laylay)\s+)?"
-        r"(?:coloca|coloque|toca|toque|bota|bote|poe|põe|manda)\s+"
-        r"(?:(?:uma|alguma)\s+)?(?:musica|música|faixa|som)"
-        r"(?:\s+(?:ai|aí|pra mim|para mim))?[.!?]*",
-        t,
+    if texto_pede_musica_sem_titulo(
+        texto,
+        normalizar_texto=normalizar_texto,
     ):
         return True
 

@@ -43,6 +43,19 @@ def _carregar_configuracao_portatil() -> None:
         pass
     except OSError as erro:
         print(f"⚠️ [CONFIGURAÇÃO] não consegui ler configuracao.env: {erro}")
+    # A chave configurada pela interface vive fora do projeto e é protegida
+    # pelo DPAPI. Variáveis externas continuam tendo precedência.
+    try:
+        from mente_laylay.integracao.configuracao_aplicacao import (
+            carregar_segredo_no_ambiente,
+        )
+
+        carregar_segredo_no_ambiente()
+    except Exception as erro:
+        print(
+            "⚠️ [CONFIGURAÇÃO] credencial protegida indisponível: "
+            f"{type(erro).__name__}."
+        )
 
 
 _carregar_configuracao_portatil()
@@ -124,6 +137,7 @@ from mente_laylay.percepcao.janelas_sistema import (
     janela_esta_em_foco as _janela_esta_em_foco_mente,
     janela_em_tela_cheia as _janela_em_tela_cheia_mente,
     listar_programas_abertos as _listar_programas_abertos_mente,
+    observar_programas_abertos as _observar_programas_abertos_mente,
     maximizar_janela as _maximizar_janela_mente,
     normalizar_alvo_ambiente as _normalizar_alvo_ambiente_mente,
     organizar_janelas as _organizar_janelas_mente,
@@ -226,6 +240,12 @@ from mente_laylay.integracao.registro_conversa_llm import (
     criar_modelo_llm_diferido_runtime as _criar_modelo_llm_diferido_runtime,
     criar_estado_conversa_runtime as _criar_estado_conversa_runtime,
     registrar_modelo_llm as _registrar_modelo_llm,
+)
+from mente_laylay.integracao.desktop_bridge import (
+    criar_desktop_bridge_runtime as _criar_desktop_bridge_runtime,
+)
+from mente_laylay.integracao.configuracao_aplicacao import (
+    criar_configuracao_aplicacao_runtime as _criar_configuracao_aplicacao_runtime,
 )
 from mente_laylay.integracao.composicao_principal import (
     criar_registros_principais as _criar_registros_principais,
@@ -886,6 +906,9 @@ _base_dir = (
     if getattr(sys, "frozen", False)
     else os.path.abspath(os.path.dirname(__file__))
 )
+_configuracao_aplicacao_runtime = _criar_configuracao_aplicacao_runtime(
+    raiz=_base_dir,
+)
 PASTA_MEMORIA = os.path.join(_base_dir, "memoria")
 _definir_atividade_visual = partial(
     _definir_atividade_visual_mente,
@@ -1014,7 +1037,7 @@ _playlist_runtime = _criar_playlist_runtime_mente(
     ultima_playlist_setter=lambda valor: _musica_estado_set("ultima_playlist", valor),
     playlist_state=playlist_state,
     youtube_play=lambda url, target_tab_id=None: (
-        _registro_navegador_operacoes_runtime.tocar_youtube(
+        _registro_navegador_operacoes_runtime.tocar_youtube_detalhado(
             url,
             tab_id=target_tab_id if isinstance(target_tab_id, int) else None,
         )
@@ -1179,6 +1202,7 @@ _descarregar_modelo_local = partial(
 )
 MEMORIA_CONTEXTO_ARQUIVO = os.path.join(PASTA_MEMORIA, "memoria_contexto.json")
 MEMORIA_SQLITE = MemoriaSQLite(os.path.join(PASTA_MEMORIA, "laylay_memoria.sqlite"))
+_recuperar_aprendizados = MEMORIA_SQLITE.consultar_aprendizados
 _rede_associativa_runtime = _criar_rede_associativa_runtime_mente(
     db_path=MEMORIA_SQLITE.db_path,
     modo=os.getenv("LAYLAY_REDE_ASSOCIATIVA_MODO", "continuidade"),
@@ -1205,6 +1229,9 @@ _composicao_inteligencia_externa_runtime = (
         requests_post=_runtime_llm_portatil.post,
         ao_finalizar_conversa_modo_jogo=_descarregar_modelo_local,
         registrar_falha=_observabilidade_mente_runtime.relatar_falha,
+        registrar_orcamento_prompt=(
+            _observabilidade_mente_runtime.registrar_orcamento_prompt
+        ),
         log=print,
     )
 )
@@ -1326,6 +1353,7 @@ atualizar_contexto_por_url = _ambiente_navegacao_runtime.atualizar_contexto_por_
 organizar_janelas_robusto = _ambiente_navegacao_runtime.organizar_janelas
 planejar_organizacao_desktop = _ambiente_navegacao_runtime.planejar_organizacao_janelas
 listar_programas_abertos = _ambiente_navegacao_runtime.listar_programas
+observar_programas_abertos = _ambiente_navegacao_runtime.observar_programas
 _resolver_alvo_ambiente = _ambiente_navegacao_runtime.resolver_alvo
 _montar_url_site_ou_busca = _ambiente_navegacao_runtime.montar_url
 _eh_alvo_site_web = _ambiente_navegacao_runtime.eh_alvo_site_web
@@ -1808,6 +1836,7 @@ _aprendizado_runtime = _criar_aprendizado_runtime_mente(
 )
 _verificar_musica_autonoma = _busca_musical_runtime.verificar_autonoma
 _buscar_primeiro_video_youtube = _busca_musical_runtime.buscar_primeiro_video
+_resolver_primeiro_video_youtube = _busca_musical_runtime.resolver_primeiro_video
 _chrome_comandos_runtime = _composicao_chrome_comandos_runtime.conectar_executor(
     allowed_actions=ALLOWED_ACTIONS,
     formatar_url_ou_busca=formatar_url_ou_busca,
@@ -2287,7 +2316,14 @@ _encaminhar_oferta_area_transferencia = (
 _observador_area_transferencia_runtime = _criar_observador_area_transferencia_runtime(
     snapshot_getter=_area_transferencia_runtime.snapshot_passivo,
     considerar_presenca=_encaminhar_oferta_area_transferencia,
-    contexto_getter=_contexto_motor_iniciativa,
+    contexto_getter=lambda: {
+        **_contexto_motor_iniciativa(),
+        "clipboard_ofertas_silenciadas": dict(
+            _estado_compartilhado_runtime.mental.get(
+                "clipboard_ofertas_silenciadas", {}
+            ) or {}
+        ),
+    },
     oferta_entregue=_registrar_oferta_area_transferencia_entregue,
     modo=os.environ.get("LAYLAY_CLIPBOARD_OBSERVADOR_MODO", "sugestao"),
     intervalo_s=float(os.environ.get("LAYLAY_CLIPBOARD_OBSERVADOR_INTERVALO", "1")),
@@ -2315,6 +2351,7 @@ _caixa_entrada_pessoal_runtime = _criar_caixa_entrada_pessoal_runtime(
     clipboard_getter=_area_transferencia_runtime.obter_texto_seguro,
     observar_item=_observar_item_caixa_entrada,
     modelo_llm=_registro_modelo_llm_runtime,
+    pendencia_runtime=_pendencia_acao_runtime,
     log=print,
 )
 _confirmacao_llm_runtime = _composicao_inteligencia_externa_runtime.confirmacao
@@ -2470,6 +2507,10 @@ _linguagem_aprendida_runtime = _criar_linguagem_aprendida_runtime_mente(
     normalizar_texto=_normalizar_texto,
     texto_social_curto=lambda texto: _texto_social_curto(texto),
     falar=lambda fala, emocao, nivel: falar_com_lipsync(fala, emocao, nivel),
+    turno_id_getter=lambda: (
+        dict(_estado_compartilhado_runtime.mental.get("turno_atual") or {}).get("id")
+        or _estado_compartilhado_runtime.mental.get("ultima_entrada_ts")
+    ),
     log=print,
 )
 _normalizar_texto_com_apelidos = _linguagem_aprendida_runtime.normalizar_com_apelidos
@@ -2801,6 +2842,9 @@ _orquestrador_cooperativo_runtime = _criar_orquestrador_cooperativo_runtime(
     quadro=_quadro_cooperacao_runtime,
     clipboard_snapshot=_area_transferencia_runtime.snapshot_passivo,
     clipboard_getter=_area_transferencia_runtime.obter_texto_seguro,
+    marcar_clipboard_consumido=(
+        _observador_area_transferencia_runtime.marcar_conteudo_consumido
+    ),
     executar_intencao=lambda resultado, texto: executar_intencao(resultado, texto),
     resolver_caminho=resolver_caminho,
     falar=lambda texto, emocao="calma", nivel=1: falar_com_lipsync(texto, emocao, nivel),
@@ -2967,6 +3011,48 @@ _definir_messages_resposta_ia = _interacao_chat_runtime.definir_messages
 _estado_conversa_runtime = _criar_estado_conversa_runtime(
     getter=lambda: _memoria_conversa_get("messages", []),
     setter=_definir_messages_resposta_ia,
+)
+
+
+def _estado_terminal_2() -> dict:
+    conversa = _estado_compartilhado_runtime.snapshot().get("conversacional", {})
+    modo_chat = bool(conversa.get("modo_chat") or conversa.get("conversa_ativa"))
+    ouvido_ativo = bool(_ouvido_whisper_runtime.ativo()) and (
+        "Laylay-Ouvido" in set(_servicos_background_runtime.ativos())
+    )
+    return {
+        "visual_activity": conversa.get("visual_activity", "idle"),
+        "current_emotion": conversa.get("current_emotion", "calma"),
+        "emotion_level": conversa.get("emotion_level", 1),
+        "is_speaking": conversa.get("is_speaking", False),
+        "voice_available": ouvido_ativo,
+        "interaction_mode": "chat" if modo_chat else "voice",
+    }
+
+
+_reinicio_aplicacao_solicitado = _threading.Event()
+
+
+def _solicitar_reinicio_aplicacao() -> bool:
+    if _reinicio_aplicacao_solicitado.is_set():
+        return False
+    _reinicio_aplicacao_solicitado.set()
+    return True
+
+
+_desktop_bridge_runtime = _criar_desktop_bridge_runtime(
+    enviar_entrada=lambda texto: _agendar_entrada_canonica(texto, canal="desktop"),
+    historico_getter=_estado_conversa_runtime.mensagens,
+    estado_getter=_estado_terminal_2,
+    modo_setter=lambda ativo: _definir_modo_chat(ativo, origem="terminal_2"),
+    configuracao_getter=_configuracao_aplicacao_runtime.estado,
+    configuracao_setter=_configuracao_aplicacao_runtime.atualizar,
+    reiniciar_aplicacao=_solicitar_reinicio_aplicacao,
+    port=int(os.environ.get("LAYLAY_TERMINAL_2_PORTA", "0") or 0),
+    log=print,
+)
+_voz_runtime.registrar_observador_inicio_fala(
+    _desktop_bridge_runtime.publicar_fala_final,
 )
 
 
@@ -3161,7 +3247,11 @@ def _diagnostico_conversa_llm_tipadas() -> dict:
         "modelo_disponivel": bool(modelo.get("disponivel")),
         "estado_disponivel": bool(estado.get("disponivel")),
         "requisicoes": int(modelo.get("requisicoes") or 0),
+        "prompts_rapidos": int(prompt.get("preparacoes_rapidas") or 0),
         "falhas": int(modelo.get("falhas") or 0) + int(prompt.get("falhas") or 0),
+        "falhas_consecutivas": int(modelo.get("falhas_consecutivas") or 0),
+        "estado": str(modelo.get("estado") or "saudavel"),
+        "ultima_falha_codigo": str(modelo.get("ultima_falha_codigo") or ""),
         "memoria_exposta": False,
         "credencial_exposta": False,
         "autoriza_execucao": False,
@@ -3213,6 +3303,7 @@ _diagnostico_mente_runtime = _criar_diagnostico_mente_runtime(
     orquestracao_cooperativa_getter=_orquestrador_cooperativo_runtime.diagnostico,
     agenda_getter=_agenda_runtime.diagnostico,
     memoria_pessoas_getter=_registro_memoria_pessoas_runtime.diagnostico,
+    aprendizado_getter=MEMORIA_SQLITE.diagnostico_aprendizados,
     linguagem_natural_getter=lambda: {
         **_composicao_ciclo_comandos_runtime.diagnostico_linguagem_natural(),
         "tolerancia_portugues": (
@@ -3327,12 +3418,14 @@ _resposta_ia_runtime = _criar_resposta_ia_runtime_mente(
         "executar_comandos_json": _executar_comandos_json_mente,
         "contexto_finalizacao_runtime": _contexto_finalizacao_runtime,
         "finalizar_execucao": _finalizar_execucao_resposta_ia_mente,
+        "registrar_mente_curta": _registrar_mente_curta,
+        "salvar_memoria": salvar_memoria,
         "definir_emocao_resposta": _definir_emocao_conversacional,
         "registrar_metrica_diagnostico": _observabilidade_mente_runtime.registrar_metrica,
         "registrar_falha_diagnostico": _observabilidade_mente_runtime.registrar_falha,
         "registrar_decisao_diagnostico": _observabilidade_mente_runtime.registrar_decisao,
         "observar_feedback_presenca": _diretor_presenca_runtime.observar_resposta,
-    },
+                            },
     log=print,
 )
 
@@ -3352,6 +3445,7 @@ _composicao_servicos_runtime = _criar_composicao_servicos_padrao(
 
 def _encerrar_laylay() -> None:
     try:
+        _desktop_bridge_runtime.parar()
         _composicao_servicos_runtime.encerrar()
     finally:
         _runtime_llm_portatil.encerrar()
@@ -3370,6 +3464,13 @@ def main():
             or _conversa_estado_get("conversa_ativa", False)
         )
 
+    if os.environ.get("LAYLAY_TERMINAL_2", "1").casefold() not in {
+        "0", "false", "nao", "não", "off", "desligado",
+    }:
+        _desktop_bridge_runtime.iniciar()
+        _desktop_bridge_runtime.iniciar_cliente(
+            os.path.join(_base_dir, "cliente", "terminal_laylay_2.py")
+        )
     _auditar_saude_mente()
     resultado_inicializacao = _composicao_servicos_runtime.iniciar(_inicializacao_runtime)
     nome_observador_clipboard = "Laylay-Observador-Área-Transferência"
@@ -3411,6 +3512,18 @@ def main():
     _inicializacao_runtime.manter_ativo(
         fala_pronta="",
         ao_encerrar=_encerrar_laylay,
+        deve_encerrar=_reinicio_aplicacao_solicitado.is_set,
     )
+    if _reinicio_aplicacao_solicitado.is_set():
+        argumentos = (
+            [sys.executable, *sys.argv[1:]]
+            if getattr(sys, "frozen", False)
+            else [sys.executable, os.path.abspath(__file__), *sys.argv[1:]]
+        )
+        print("♻️ [LAYLAY] serviços encerrados; iniciando uma sessão limpa.")
+        try:
+            os.execv(sys.executable, argumentos)
+        except OSError as erro:
+            print(f"⚠️ [LAYLAY] não consegui reiniciar o processo: {erro}")
 if __name__ == "__main__":
     main()

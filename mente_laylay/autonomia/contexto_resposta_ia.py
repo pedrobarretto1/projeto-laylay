@@ -6,10 +6,15 @@ from typing import Any, Callable, Dict, List, Tuple
 
 from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
 
+from mente_laylay.cognicao.contrato_fala import formatar_contrato_fala_para_prompt
 from mente_laylay.cognicao.guardiao_realidade_pessoal import (
     detectar_experiencia_pessoal_inventada,
 )
 from mente_laylay.memoria_mental.identidade_usuario import contexto_identidade_usuario
+from mente_laylay.personalidade.perfil_amizade import (
+    formatar_postura_para_prompt,
+    selecionar_postura_amizade,
+)
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
@@ -39,6 +44,8 @@ def preparar_contexto_resposta_ia(
     contexto_habilidades = str(_get(ctx, "contexto_habilidades", "") or "").strip()
     contexto_recursos = str(_get(ctx, "contexto_recursos", "") or "").strip()
     contexto_identidade = str(_get(ctx, "contexto_identidade", "") or "").strip()
+    contexto_postura = str(_get(ctx, "contexto_postura", "") or "").strip()
+    contexto_contrato_fala = str(_get(ctx, "contexto_contrato_fala", "") or "").strip()
 
     contaminantes = ["adicionar_a_playlist", "editar_playlist", "tocar_playlist", "organizar_desktop", "maximize_window", "persona"]
 
@@ -94,6 +101,10 @@ def preparar_contexto_resposta_ia(
         contexto_extra += "\n" + contexto_recursos + "\n"
     if contexto_identidade:
         contexto_extra += "\n" + contexto_identidade + "\n"
+    if contexto_contrato_fala:
+        contexto_extra += "\n" + contexto_contrato_fala + "\n"
+    if contexto_postura:
+        contexto_extra += "\n" + contexto_postura + "\n"
 
     liberdade_conversacional = (
         "\n\n--- AUTORIA DA CONVERSA ---\n"
@@ -158,6 +169,7 @@ class ContextoPromptRuntime:
         self.mapa_recursos_prompt = mapa_recursos_prompt
         self.registrar_tamanho_prompt = registrar_tamanho_prompt
         self._preparacoes = 0
+        self._preparacoes_rapidas = 0
         self._falhas = 0
 
     def preparar(self, texto: str) -> Tuple[List[Dict[str, Any]], str]:
@@ -197,6 +209,20 @@ class ContextoPromptRuntime:
         contexto_identidade = contexto_identidade_usuario(
             estado.get("nome_usuario", "")
         )
+        postura = selecionar_postura_amizade(
+            t,
+            estado_mental=estado,
+            operacional=bool(
+                dict(
+                    dict(estado.get("especialistas_turno_atual") or {}).get("operacional")
+                    or {}
+                ).get("ativo")
+            ),
+        )
+        contexto_postura = formatar_postura_para_prompt(postura)
+        contexto_contrato_fala = formatar_contrato_fala_para_prompt(
+            estado.get("contrato_fala_atual")
+        )
         contexto_recursos = ""
         if callable(self.mapa_recursos_prompt):
             try:
@@ -214,6 +240,8 @@ class ContextoPromptRuntime:
             "contexto_habilidades": contexto_habilidades,
             "contexto_recursos": contexto_recursos,
             "contexto_identidade": contexto_identidade,
+            "contexto_contrato_fala": contexto_contrato_fala,
+            "contexto_postura": contexto_postura,
         }
         try:
             resultado = preparar_contexto_resposta_ia(
@@ -230,6 +258,8 @@ class ContextoPromptRuntime:
                     "habilidades": contexto_habilidades,
                     "recursos": contexto_recursos,
                     "identidade": contexto_identidade,
+                    "contrato_fala": contexto_contrato_fala,
+                    "postura": contexto_postura,
                     "historico": estado.get("messages") or [],
                     "total": resultado[1],
                 }
@@ -255,10 +285,38 @@ class ContextoPromptRuntime:
             prompt_sistema=str(prompt or ""),
         )
 
+    def preparar_instrucao_rapida(self, texto: str) -> str:
+        """Entrega somente o contrato do turno para o payload rápido.
+
+        O retorno é efêmero: não contém memória durável, não substitui o
+        prompt-base e não autoriza ações. A resposta principal continua sendo
+        produzida pela mesma LLM, sem uma chamada adicional.
+        """
+        try:
+            estado = self.estado_getter() or {}
+        except Exception:
+            estado = {}
+        estado = estado if isinstance(estado, dict) else {}
+        try:
+            instrucao = formatar_contrato_fala_para_prompt(
+                estado.get("contrato_fala_atual"),
+                compacto=True,
+            )
+            if instrucao and callable(self.registrar_tamanho_prompt):
+                self.registrar_tamanho_prompt(
+                    "prompt_contrato_fala_rapido", len(instrucao),
+                )
+            self._preparacoes_rapidas += 1
+            return instrucao
+        except Exception:
+            self._falhas += 1
+            raise
+
     def diagnostico(self) -> Dict[str, Any]:
         return {
             "disponivel": True,
             "preparacoes": self._preparacoes,
+            "preparacoes_rapidas": self._preparacoes_rapidas,
             "falhas": self._falhas,
             "memoria_exposta": False,
             "autoriza_execucao": False,

@@ -209,7 +209,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         ctx,
         DependenciasExecutorMusical(
             marcar_resultado=adaptador_resultado.marcar_resultado,
-            abrir_url_musical=rota_musical.abrir,
+            abrir_url_musical=rota_musical.abrir_detalhado,
             registrar_mente=_reg,
             falar_por_status=adaptador_resultado.falar_por_status,
             musica_leitura=ctx.get("_registro_musica_leitura_runtime"),

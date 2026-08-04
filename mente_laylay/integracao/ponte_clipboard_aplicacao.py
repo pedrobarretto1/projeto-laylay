@@ -145,6 +145,17 @@ class PonteClipboardAplicacaoRuntime:
         )
         if status == "recusar":
             self._pendencias.concluir(pendencia_id, "recusada")
+            estado = dict(self._estado_mental_getter() or {})
+            silenciadas = dict(
+                estado.get("clipboard_ofertas_silenciadas") or {}
+            )
+            # Recusar uma oferta é feedback contextual, não uma proibição
+            # permanente. Evitamos repetir a mesma categoria por dez minutos,
+            # mesmo que outro aplicativo publique uma nova assinatura.
+            silenciadas[acao] = float(self._clock()) + 600.0
+            self._estado_mental_atualizar(
+                clipboard_ofertas_silenciadas=silenciadas,
+            )
             self._falar("Tudo bem, deixo quieto.", "calma", 1)
             return True
 

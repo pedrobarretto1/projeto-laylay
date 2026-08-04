@@ -42,6 +42,15 @@ def normalizar_nome_app(nome_solicitado: str) -> str:
     nome = "".join([c for c in nome if not unicodedata.combining(c)])
     nome = nome.lower().replace(".exe", "")
     nome = re.sub(r"\s+", " ", nome).strip()
+    # "abre o Opera de novo" ainda se refere ao Opera. O modificador é uma
+    # instrução de repetição/foco, nunca parte do nome do aplicativo. Removê-lo
+    # aqui mantém todos os abridores e fechadores alinhados, sem uma regra
+    # paralela em cada roteador.
+    nome = re.sub(
+        r"(?:\s+(?:de novo|novamente|outra vez|mais uma vez))+$",
+        "",
+        nome,
+    ).strip()
     return nome
 
 

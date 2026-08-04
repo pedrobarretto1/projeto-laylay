@@ -67,6 +67,10 @@ from mente_laylay.memoria_mental.consciencia_temporal import atualizar_conscienc
 from mente_laylay.memoria_mental.ciclo_vida_contexto import aplicar_ciclo_vida_contexto
 from mente_laylay.memoria_mental.sessao_conversa import renovar_contexto_sessao
 from mente_laylay.memoria_mental.pendencia import limpar_pendencia, pendencia_ativa
+from mente_laylay.cognicao.esclarecimento_operacional import (
+    limpar_esclarecimento_operacional,
+    resolver_esclarecimento_operacional,
+)
 
 
 class EstadoContextoRuntime:
@@ -676,6 +680,32 @@ class EstadoContextoRuntime:
     ) -> Dict[str, Any] | None:
         ns = self._namespace()
         mente = self._estado().mental
+        esclarecimento = resolver_esclarecimento_operacional(
+            texto_usuario,
+            mente,
+            texto_tem_comando_explicito=ns.get("_texto_tem_comando_explicito"),
+        )
+        tipo_esclarecimento = str(esclarecimento.get("tipo") or "")
+        if tipo_esclarecimento in {"cancelar", "substituir"}:
+            estado = self._estado()
+            estado.substituir(
+                "mental",
+                limpar_esclarecimento_operacional(
+                    estado.mental,
+                    motivo=("cancelada" if tipo_esclarecimento == "cancelar" else "substituida"),
+                ),
+            )
+            return None
+        if tipo_esclarecimento == "executar":
+            intencao = esclarecimento.get("intencao")
+            if isinstance(intencao, dict):
+                estado = self._estado()
+                estado.substituir(
+                    "mental",
+                    limpar_esclarecimento_operacional(estado.mental, motivo="respondida"),
+                )
+                return dict(intencao)
+
         pendencia = pendencia_ativa(mente, dominio="musica")
         oferta = oferta_pendente_ativa(mente, ttl_s=300.0)
         texto_norm = str(ns["_normalizar_texto_curto"](texto_usuario) or "").strip()

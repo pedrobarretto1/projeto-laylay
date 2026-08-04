@@ -72,6 +72,29 @@ def test_consulta_de_aprendizados_le_memoria_persistente_e_confirma() -> None:
     )]
 
 
+def test_consulta_humaniza_registro_antigo_de_afinidade() -> None:
+    eventos: list[tuple] = []
+    falas: list[str] = []
+    despacho = executar_intencao_informacoes(
+        "LEARNING_QUERY", {"limit": 3}, "o que você aprendeu comigo?",
+        {
+            "_recuperar_aprendizados": lambda **_kwargs: [{
+                "texto": "o usuário gosto de nirvana",
+                "regra": "o usuário gosto de nirvana",
+                "valor": "Nirvana",
+                "chave": "preferencia:afinidade:nirvana",
+                "natureza": "confirmado",
+                "confirmado_usuario": True,
+            }],
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(True)
+    assert falas == ["Do que lembro com segurança, você gosta de Nirvana."]
+
+
 def test_email_read_filtra_prioridade_e_remetente_sem_emitir_proatividade() -> None:
     eventos: list[tuple] = []
     recebidos: list[tuple] = []
@@ -101,7 +124,14 @@ def test_email_read_filtra_prioridade_e_remetente_sem_emitir_proatividade() -> N
         {"somente_prioritarios": True, "emitir_proativa": False},
     )]
     assert falas == ["Um email importante da Ana."]
-    assert eventos == [("resultado", "emails_lidos", {})]
+    assert eventos == [(
+        "resultado",
+        "emails_lidos",
+        {
+            "executou": True,
+            "confirmado": True,
+        },
+    )]
 
 
 @pytest.mark.parametrize("retorno, status", [([], "emails_sincronizados"), (None, "falha_execucao")])
@@ -169,7 +199,10 @@ def test_weather_formata_dados_confirmados_e_registra_consulta() -> None:
     assert despacho == ResultadoDespacho.concluido()
     assert "Boituva" in falas[0]
     assert "21 graus" in falas[0]
-    assert eventos == [("resultado", "clima_consultado", {})]
+    assert eventos == [(
+        "resultado", "clima_consultado",
+        {"executou": True, "confirmado": True},
+    )]
 
 
 def test_weather_indisponivel_preserva_fala_sem_registrar_sucesso() -> None:
@@ -190,7 +223,41 @@ def test_weather_indisponivel_preserva_fala_sem_registrar_sucesso() -> None:
 
     assert despacho == ResultadoDespacho.concluido()
     assert falas and "Boituva" in falas[0]
-    assert eventos == []
+    assert eventos == [(
+        "resultado", "clima_indisponivel",
+        {"executou": False, "confirmado": False},
+    )]
+
+
+def test_weather_responde_diretamente_se_vai_chover() -> None:
+    eventos: list[tuple] = []
+    falas: list[str] = []
+
+    executar_intencao_informacoes(
+        "WEATHER",
+        {},
+        "vai chover hoje?",
+        {
+            "cidade_padrao_clima": "Boituva",
+            "obter_clima_localidade": lambda _local: {
+                "ok": True,
+                "localidade": "Boituva",
+                "temperatura_c": 21,
+                "sensacao_c": 19,
+                "descricao": "Smoky haze",
+                "umidade": 51,
+                "chance_chuva_pct": 18,
+                "previsao_chuva_disponivel": True,
+            },
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+        },
+        _dependencias(eventos),
+    )
+
+    assert falas
+    assert "não indica chuva significativa" in falas[0].casefold()
+    assert "18%" in falas[0]
+    assert "21 graus" in falas[0]
 
 
 def test_roteador_principal_delega_weather_ao_executor_informacoes() -> None:

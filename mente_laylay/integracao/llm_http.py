@@ -9,6 +9,7 @@ from typing import Any, Callable
 
 import requests
 
+from mente_laylay.cognicao.estado_tecnico_llm import eh_estado_tecnico_llm
 from mente_laylay.cognicao.conversa_sobre_capacidades import resposta_conversa_sobre_capacidade
 from mente_laylay.personalidade.contingencia_natural import fala_contingencia_natural
 from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
@@ -19,17 +20,6 @@ from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
 FALHA_LLM_TIMEOUT = "__LAYLAY_LLM_TIMEOUT__"
 FALHA_LLM_INDISPONIVEL = "__LAYLAY_LLM_INDISPONIVEL__"
 FALHA_LLM_OCUPADA = "__LAYLAY_LLM_OCUPADA__"
-
-
-def eh_estado_tecnico_llm(valor: Any) -> bool:
-    """Reconhece sentinelas mesmo depois de um limpador remover pontuação."""
-    texto = str(valor or "").casefold().strip()
-    compacto = re.sub(r"[^a-z0-9]+", "", texto)
-    return compacto in {
-        "laylayllmtimeout",
-        "laylayllmindisponivel",
-        "laylayllmocupada",
-    }
 
 
 class RespostaLLMFallback:
@@ -78,7 +68,7 @@ def timeout_padrao(base_url: str, local_timeout: int, remote_timeout: int) -> in
 
 def conteudo_fallback_llm_local(data: dict) -> str:
     mensagens = data.get("messages") if isinstance(data, dict) else []
-    texto = " ".join(str((m or {}).get("content") or "")[:500] for m in mensagens if isinstance(m, dict))
+    texto = " ".join(str((m or {}).get("content") or "")[:500] for m in list(mensagens or []) if isinstance(m, dict))
     baixo = texto.lower()
     ultima_usuario = ""
     for mensagem in reversed(list(mensagens or [])):
@@ -110,7 +100,7 @@ def conteudo_fallback_llm_local(data: dict) -> str:
 def conteudo_fallback_modo_jogo(data: dict) -> str:
     """Mantém contratos JSON válidos sem acordar o modelo durante uma partida."""
     mensagens = data.get("messages") if isinstance(data, dict) else []
-    texto = " ".join(str((m or {}).get("content") or "")[:500] for m in mensagens if isinstance(m, dict))
+    texto = " ".join(str((m or {}).get("content") or "")[:500] for m in list(mensagens or []) if isinstance(m, dict))
     baixo = texto.casefold()
     if "intent" in baixo and "json" in baixo:
         return '{"intent":"NONE","params":{}}'
@@ -125,12 +115,20 @@ def conteudo_fallback_modo_jogo(data: dict) -> str:
 
 
 def compactar_payload_llm_local(data: dict) -> dict:
+    """Reduz o payload sem separar a identidade do fio da conversa.
+
+    O primeiro ``system`` é o contrato permanente da Laylay. Os demais são
+    retratos auxiliares (memória, navegador, páginas etc.). Manter simplesmente
+    o primeiro item da lista era incorreto porque versões antigas do preparador
+    podiam antepor o resumo diário. Além disso, limitar qualquer ``system`` a
+    2.500 caracteres removia metade do contrato atual.
+    """
     novo = dict(data or {})
     novo.pop("response_format", None)
     novo.pop("tools", None)
     novo.pop("tool_choice", None)
     novo["stream"] = False
-    mensagens = []
+    normalizadas = []
     for msg in list(novo.get("messages") or []):
         if not isinstance(msg, dict):
             continue
@@ -140,13 +138,87 @@ def compactar_payload_llm_local(data: dict) -> dict:
         content = str(msg.get("content") or "")
         if not content.strip():
             continue
-        limite = 2500 if role == "system" else 1200
-        mensagens.append({"role": role, "content": content[:limite]})
-    if not mensagens:
+        normalizadas.append({"role": role, "content": content})
+
+    if not normalizadas:
         mensagens = [{"role": "user", "content": "Responda em português, curto e natural."}]
-    if len(mensagens) > 6:
-        sistemas = [m for m in mensagens if m["role"] == "system"][:1]
-        mensagens = sistemas + [m for m in mensagens if m["role"] != "system"][-5:]
+    else:
+        sistemas = [m for m in normalizadas if m["role"] == "system"]
+        dialogo = [m for m in normalizadas if m["role"] != "system"][-5:]
+
+        principal = next(
+            (
+                m for m in sistemas
+                if "você é laylay" in m["content"].casefold()
+                or "voce e laylay" in m["content"].casefold()
+                or "formato estrutural obrigatório do json" in m["content"].casefold()
+                or "formato estrutural obrigatorio do json" in m["content"].casefold()
+            ),
+            sistemas[0] if sistemas else None,
+        )
+        auxiliares = [m for m in sistemas if m is not principal][-2:]
+
+        def compactar_auxiliar(mensagem: dict[str, str]) -> str:
+            conteudo = str(mensagem.get("content") or "")
+            if "--- MENTE INTEGRADA ---" not in conteudo:
+                return conteudo[:500]
+            # O retrato mental pode passar de 9 mil caracteres. Um corte pelo
+            # começo preserva regras gerais, mas perde exatamente o referente
+            # recente usado por "por quê?" e "explica isso". Mantemos só os
+            # blocos operacionais/conversacionais que fecham o turno atual.
+            prefixos = (
+                "--- MENTE INTEGRADA ---",
+                "PLANO ÚNICO DESTE TURNO:",
+                "RETRATO CONGELADO DESTE TURNO:",
+                "ASSUNTO ESTRUTURADO:",
+                "Turno atual:",
+                "Contexto selecionado pelo filtro:",
+                "Continuidade ativa:",
+                "Ultima acao real:",
+                "Última ação real:",
+                "Prioridade do turno:",
+                "Limite operacional do turno:",
+            )
+            linhas = [linha.strip() for linha in conteudo.splitlines() if linha.strip()]
+            escolhidas = [
+                linha for linha in linhas
+                if any(linha.startswith(prefixo) for prefixo in prefixos)
+            ]
+            if not escolhidas:
+                return conteudo[:1100]
+            reduzido = "\n".join(dict.fromkeys(escolhidas))
+            return reduzido[:2200]
+
+        mensagens = []
+        if principal is not None:
+            mensagens.append({
+                "role": "system",
+                "content": principal["content"][:5500],
+            })
+        for auxiliar in auxiliares:
+            mensagens.append({
+                "role": "system",
+                "content": compactar_auxiliar(auxiliar),
+            })
+
+        # Reserva o restante para os últimos atos completos. É esse trecho que
+        # permite entender continuidades como "por quê?" e "explica isso".
+        limite_total = 12000
+        usados = sum(len(m["content"]) for m in mensagens)
+        recentes_reverso = []
+        for msg in reversed(dialogo):
+            restante = limite_total - usados
+            if restante <= 0:
+                break
+            conteudo = msg["content"][: min(1600, restante)]
+            if not conteudo:
+                continue
+            recentes_reverso.append({"role": msg["role"], "content": conteudo})
+            usados += len(conteudo)
+        mensagens.extend(reversed(recentes_reverso))
+
+        if not mensagens:
+            mensagens = [{"role": "user", "content": "Responda em português, curto e natural."}]
     novo["messages"] = mensagens
     try:
         novo["max_tokens"] = min(int(novo.get("max_tokens") or 512), 384)
@@ -171,6 +243,14 @@ def payload_precisa_compactar_llm_local(data: dict) -> bool:
     return total_chars > 9500 or max_tokens > 640
 
 
+def _caracteres_payload(data: dict) -> int:
+    mensagens = data.get("messages") if isinstance(data, dict) else []
+    return sum(
+        len(str(item.get("content") or ""))
+        for item in list(mensagens or []) if isinstance(item, dict)
+    )
+
+
 def post_chat_llm(
     headers: dict,
     data: dict,
@@ -185,6 +265,7 @@ def post_chat_llm(
     timeout: int | None = None,
     prioridade_interativa: bool | None = None,
     espera_lock_interativa_s: float = 1.5,
+    registrar_orcamento_prompt: Callable[..., Any] | None = None,
 ) -> tuple[Any, float]:
     """Serializa chamadas locais e recupera 400 com payload compacto."""
     url = f"{base_url}/chat/completions"
@@ -201,6 +282,19 @@ def post_chat_llm(
         return requests_post(url, headers=headers, json=payload, timeout=timeout)
 
     if not local:
+        if callable(registrar_orcamento_prompt):
+            total = _caracteres_payload(data)
+            try:
+                registrar_orcamento_prompt(
+                    etapa="transporte",
+                    brutos=total,
+                    selecionados=total,
+                    truncados=0,
+                    injetados=0,
+                    enviados=total,
+                )
+            except Exception:
+                pass
         return _post(data), float(bad_request_until or 0.0)
 
     pegou_lock = lock.acquire(blocking=False)
@@ -234,10 +328,38 @@ def post_chat_llm(
             ), float(bad_request_until or 0.0)
     try:
         payload_envio = compactar_payload_llm_local(data) if payload_precisa_compactar_llm_local(data) else data
+        if callable(registrar_orcamento_prompt):
+            bruto = _caracteres_payload(data)
+            enviado = _caracteres_payload(payload_envio)
+            try:
+                registrar_orcamento_prompt(
+                    etapa="transporte",
+                    brutos=bruto,
+                    selecionados=enviado,
+                    truncados=max(0, bruto - enviado),
+                    injetados=0,
+                    enviados=enviado,
+                )
+            except Exception:
+                pass
         resp = _post(payload_envio)
         if resp.status_code == 400:
             print_fn(f"⚠️ [IA] 400 do modelo local. Corpo: {str(resp.text or '')[:500]}")
             retry_data = compactar_payload_llm_local(payload_envio)
+            if callable(registrar_orcamento_prompt):
+                bruto_retry = _caracteres_payload(payload_envio)
+                enviado_retry = _caracteres_payload(retry_data)
+                try:
+                    registrar_orcamento_prompt(
+                        etapa="transporte_retry",
+                        brutos=bruto_retry,
+                        selecionados=enviado_retry,
+                        truncados=max(0, bruto_retry - enviado_retry),
+                        injetados=0,
+                        enviados=enviado_retry,
+                    )
+                except Exception:
+                    pass
             resp_retry = _post(retry_data)
             if resp_retry.status_code != 400:
                 print_fn("✓ [IA] Requisição local recuperada com payload compacto.")
@@ -279,6 +401,7 @@ class LLMHttpRuntime:
         espera_lock_interativa_s: float = 1.5,
         timer_factory: Callable[..., Any] = threading.Timer,
         registrar_falha: Callable[..., Any] | None = None,
+        registrar_orcamento_prompt: Callable[..., Any] | None = None,
     ) -> None:
         self.base_url = str(base_url or "").rstrip("/")
         self.local_timeout = int(local_timeout)
@@ -291,6 +414,7 @@ class LLMHttpRuntime:
         self.print_fn = print_fn
         self.ao_finalizar_conversa_modo_jogo = ao_finalizar_conversa_modo_jogo
         self.registrar_falha = registrar_falha
+        self.registrar_orcamento_prompt = registrar_orcamento_prompt
         # Estado e transporte não podem compartilhar o mesmo lock: uma chamada
         # local pode durar minutos, enquanto o monitor de jogos precisa ativar
         # o bloqueio imediatamente para mandar o Ollama liberar a GPU.
@@ -483,6 +607,7 @@ class LLMHttpRuntime:
                 timeout=timeout_efetivo,
                 prioridade_interativa=prioridade_interativa,
                 espera_lock_interativa_s=self.espera_lock_interativa_s,
+                registrar_orcamento_prompt=self.registrar_orcamento_prompt,
             )
             with self._state_lock:
                 self._bad_request_until = novo_limite
@@ -501,7 +626,7 @@ def criar_llm_http_runtime(**kwargs: Any) -> LLMHttpRuntime:
 def executar_chat_llm(
     data: dict,
     *,
-    post_chat: Callable[[dict, dict], Any],
+    post_chat: Callable[..., Any],
     interpretar_payload: Callable[[dict], str],
     api_key: str,
     http_referer: str,
@@ -540,6 +665,22 @@ def executar_chat_llm(
                     fallback="aviso_credencial",
                 )
             return "Cheque sua chave do OpenRouter."
+        if response.status_code == 404 and not endpoint_local:
+            modelo = re.sub(
+                r"[^A-Za-z0-9._:/-]+", "",
+                str((data or {}).get("model") or "configurado"),
+            )[:160]
+            log(
+                "Erro 404 na OpenRouter: o modelo "
+                f"{modelo or 'configurado'} não existe ou está sem provedor ativo."
+            )
+            if callable(registrar_falha):
+                registrar_falha(
+                    "llm_http", "modelo_remoto_indisponivel",
+                    classe="defeito", impacto="turno",
+                    fallback="troca_modelo_openrouter",
+                )
+            return FALHA_LLM_INDISPONIVEL
         response.raise_for_status()
         payload = response.json()
         return interpretar_payload(payload)

@@ -10,17 +10,25 @@ STATUS_RESULTADO_JA_SATISFEITO = {
     "ja_estava_ligado", "ja_estava_desligado",
 }
 
+STATUS_RESULTADO_CANCELADO = {
+    "cancelado", "cancelada", "acao_cancelada", "exclusao_cancelada",
+    "cancelamento_confirmado",
+}
+
 
 STATUS_RESULTADO_CONFIRMADO = {
     "aba_fechada", "aba_fechada_em_vez_de_app", "app_fechado",
-    "app_fechado_em_vez_de_aba", "app_focado", "ja_aberto_focado",
+    "app_fechado_em_vez_de_aba", "app_focado", "app_iniciado_focado",
+    "ja_aberto_focado",
     "janela_maximizada", "pasta_criada", "subpasta_criada", "arquivo_criado",
     "item_deletado", "item_movido_para_pasta", "emails_lidos",
     "emails_sincronizados", "remetente_silenciado", "clima_consultado",
     "briefing_repetido", "dispositivos_listados",
+    "playlists_listadas",
     "app_aberto", "url_aberta", "site_aberto",
     "url_aberta_via_app", "site_aberto_via_app",
-    "musica_aberta", "playlist_aberta", "playlist_aberta_pc_b",
+    "musica_aberta", "musica_reproduzindo",
+    "playlist_aberta", "playlist_aberta_pc_b",
     "playlist_deletada", "playlist_musica_adicionada", "acao_agendada",
     "lembrete_agendado", "agendamento_cancelado", "movido_para_lixeira",
     "nota_guardada", "notas_listadas", "discussao_guardada",
@@ -105,6 +113,8 @@ class ResultadoAcao:
 
     @property
     def estado_final(self) -> str:
+        if self.status in STATUS_RESULTADO_CANCELADO:
+            return "cancelado"
         if self.confirmado is True:
             return "confirmado"
         if self.executou is False or self.confirmado is False:
@@ -132,7 +142,8 @@ class ResultadoAcao:
             "confirmacao_oferecida": self.confirmacao_oferecida,
             "evidencia_confirmacao": self.evidencia_confirmacao,
             "estado_confirmacao": (
-                "confirmado" if self.confirmado is True
+                "cancelado" if self.status in STATUS_RESULTADO_CANCELADO
+                else "confirmado" if self.confirmado is True
                 else "falhou" if self.executou is False or self.confirmado is False
                 else "nao_confirmado"
             ),

@@ -8,6 +8,8 @@ from mente_laylay.autonomia.processamento_resposta_ia import (
 from mente_laylay.cognicao.plano_turno import planejar_turno, verificar_fala_turno
 from mente_laylay.cognicao.qualidade_comunicacao import (
     avaliar_qualidade_comunicacao,
+    contingencia_comunicacao,
+    montar_mensagens_reparo_comunicacao,
 )
 from mente_laylay.cognicao.retrato_turno import construir_retrato_turno
 
@@ -72,6 +74,79 @@ def test_opiniao_musical_natural_e_fundamentada_pelo_foco_e_aceita() -> None:
         plano=_plano_musical(),
     )
     assert avaliacao["aceita"] is True
+
+
+def test_preferencia_pessoal_nao_pode_ser_trocada_por_tirada_sem_ancora() -> None:
+    avaliacao = avaliar_qualidade_comunicacao(
+        "eu gosto de rock",
+        "Se não tiver um riff forte, é só um som. E se tiver, é show.",
+    )
+    assert avaliacao["aceita"] is False
+    assert "preferencia_pessoal_nao_reconhecida" in avaliacao["problemas"]
+
+
+def test_preferencia_pessoal_reconhecida_com_clareza_e_aceita() -> None:
+    avaliacao = avaliar_qualidade_comunicacao(
+        "eu gosto de rock",
+        "Rock, boa. Qual banda mais te pega?",
+    )
+    assert avaliacao["aceita"] is True
+
+
+def test_preferencia_de_terceiro_nao_pode_ser_atribuida_ao_usuario() -> None:
+    avaliacao = avaliar_qualidade_comunicacao(
+        "minha namorada gosta de funk",
+        "Você gosta de funk, então vou lembrar disso para as próximas músicas.",
+    )
+
+    assert avaliacao["aceita"] is False
+    assert "preferencia_de_terceiro_atribuida_ao_usuario" in avaliacao["problemas"]
+
+
+def test_contingencia_reconhece_preferencia_de_terceiro_sem_inventar() -> None:
+    fala = contingencia_comunicacao(
+        "tipo isso, e minha namorada gosta de funk"
+    )
+
+    assert fala == "Entendi — sua namorada gosta de funk."
+
+
+def test_como_assim_rejeita_referente_solto_e_nova_metafora() -> None:
+    avaliacao = avaliar_qualidade_comunicacao(
+        "como assim?",
+        (
+            "Porque rock é só uma vibe de baterista que não para, e o outro "
+            "que não desce. Se não tiver isso, é só um som de aparelho."
+        ),
+        ultima_resposta="Se não tiver um riff forte, é só um som. E se tiver, é show.",
+    )
+    assert avaliacao["aceita"] is False
+    assert "referente_indefinido_na_resposta" in avaliacao["problemas"]
+    assert "explicacao_permaneceu_nebulosa" in avaliacao["problemas"]
+
+
+def test_como_assim_aceita_explicacao_literal_da_fala_anterior() -> None:
+    avaliacao = avaliar_qualidade_comunicacao(
+        "como assim?",
+        "Quis dizer que eu associo rock a riffs marcantes e energia de show.",
+        ultima_resposta="Se não tiver um riff forte, é só um som. E se tiver, é show.",
+    )
+    assert avaliacao["aceita"] is True
+
+
+def test_reparo_recebe_fala_anterior_e_regra_de_explicacao_direta() -> None:
+    avaliacao = avaliar_qualidade_comunicacao(
+        "como assim?",
+        "É só uma vibe e o outro que não desce.",
+        ultima_resposta="Rock me parece mais versátil.",
+    )
+    mensagens = montar_mensagens_reparo_comunicacao(
+        "como assim?",
+        "É só uma vibe e o outro que não desce.",
+        avaliacao,
+    )
+    assert "Rock me parece mais versátil" in mensagens[1]["content"]
+    assert "não tente explicar uma metáfora com outra" in mensagens[0]["content"]
 
 
 def test_relato_de_limpeza_nao_recebe_receita_especifica_inventada() -> None:

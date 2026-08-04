@@ -544,63 +544,117 @@ def janela_esta_em_foco(gw_mod: Any, nome_app: str) -> bool:
         return False
 
 
-def listar_programas_abertos(gw_mod: Any, psutil_mod: Any) -> List[str]:
-    nomes_ignorar = {
-        "",
-        "program manager",
-        "default ime",
-        "msctfmonitor task window",
-        "nvidia graphics card",
-        "realtek",
-        "settingsynchost",
-        "applicationframehost",
+_TITULOS_NAO_APRESENTAVEIS = {
+    "",
+    "program manager",
+    "default ime",
+    "msctfmonitor task window",
+    "nvidia graphics card",
+    "nvidia geforce overlay",
+    "realtek",
+    "settingsynchost",
+    "applicationframehost",
+    "windows input experience",
+    "task switching",
+    "desktopwindowxamlsource",
+}
+
+_PROCESSOS_RELEVANTES_APRESENTAVEIS = {
+    "spotify": "Spotify",
+    "discord": "Discord",
+    "steam": "Steam",
+    "whatsapp": "WhatsApp",
+    "telegram": "Telegram",
+    "obs": "OBS",
+    "slack": "Slack",
+    "zoom": "Zoom",
+    "teams": "Teams",
+    "minecraft": "Minecraft",
+    "valorant": "Valorant",
+    "figma": "Figma",
+}
+
+
+def _titulo_apresentavel_como_janela(titulo: str) -> bool:
+    """Aceita somente títulos que representam uma janela útil para a pessoa."""
+    texto = re.sub(r"\s+", " ", str(titulo or "")).strip()
+    normalizado = normalizar_alvo_ambiente(texto)
+    lixo = {
+        normalizar_alvo_ambiente(item)
+        for item in (*TITULOS_JANELA_LIXO, *TITULOS_AUXILIARES_JANELA)
     }
-    encontrados = set()
+    if (
+        not texto
+        or normalizado in _TITULOS_NAO_APRESENTAVEIS
+        or normalizado in lixo
+        or len(texto) < 2
+        or not any(c.isalpha() for c in texto)
+    ):
+        return False
+    return not any(
+        marcador in normalizado
+        for marcador in (
+            "overlay", "ime ui", "task window", "input experience",
+            "desktopwindowxamlsource",
+        )
+    )
+
+
+def observar_programas_abertos(gw_mod: Any, psutil_mod: Any) -> dict[str, List[str]]:
+    """Separa janelas apresentáveis de processos relevantes sem janela.
+
+    Processo em execução não é sinônimo de aplicativo visível. O retrato
+    estruturado conserva essa diferença para que nenhuma resposta diga que um
+    serviço ou overlay está "aberto na tela".
+    """
+    janelas_visiveis: set[str] = set()
+    filtrados: set[str] = set()
     try:
         for janela in gw_mod.getAllWindows():
             titulo = _titulo_janela(janela)
-            if not titulo:
+            if not _titulo_apresentavel_como_janela(titulo):
+                if titulo:
+                    filtrados.add(titulo)
                 continue
-            if titulo.lower() in nomes_ignorar:
-                continue
-            if len(titulo) < 2:
-                continue
-            if not any(c.isalpha() for c in titulo):
-                continue
-            encontrados.add(titulo)
+            janelas_visiveis.add(titulo)
     except Exception as e:
         print(f"⚠️ [VERIFICAR_PROGRAMAS] Erro com pygetwindow: {e}")
 
-    apps_relevantes = [
-        "spotify",
-        "discord",
-        "steam",
-        "whatsapp",
-        "telegram",
-        "obs",
-        "slack",
-        "zoom",
-        "teams",
-        "minecraft",
-        "valorant",
-        "figma",
-    ]
+    processos_relevantes: set[str] = set()
+    titulos_normalizados = " ".join(
+        normalizar_alvo_ambiente(titulo) for titulo in janelas_visiveis
+    )
     try:
         for proc in psutil_mod.process_iter(["name"]):
             try:
                 nome = str(proc.info["name"] or "").lower()
-                for app in apps_relevantes:
+                for app, apresentacao in _PROCESSOS_RELEVANTES_APRESENTAVEIS.items():
                     if app in nome:
-                        encontrados.add(nome.replace(".exe", "").capitalize())
+                        if app not in titulos_normalizados:
+                            processos_relevantes.add(apresentacao)
                         break
             except (psutil_mod.NoSuchProcess, psutil_mod.AccessDenied):
                 continue
     except Exception as e:
         print(f"⚠️ [VERIFICAR_PROGRAMAS] Erro com psutil: {e}")
 
-    resultado = sorted(encontrados)
-    print(f"📋 [VERIFICAR_PROGRAMAS] Janelas encontradas: {resultado}")
-    return resultado
+    retrato = {
+        "janelas_visiveis": sorted(janelas_visiveis),
+        "processos_segundo_plano": sorted(processos_relevantes),
+        "componentes_filtrados": sorted(filtrados),
+    }
+    print(
+        "📋 [VERIFICAR_PROGRAMAS] "
+        f"janelas={retrato['janelas_visiveis']} "
+        f"segundo_plano={retrato['processos_segundo_plano']} "
+        f"filtrados={len(retrato['componentes_filtrados'])}"
+    )
+    return retrato
+
+
+def listar_programas_abertos(gw_mod: Any, psutil_mod: Any) -> List[str]:
+    """Compatibilidade: devolve somente janelas reais e apresentáveis."""
+    return observar_programas_abertos(gw_mod, psutil_mod)["janelas_visiveis"]
 
 
 def resolver_alvo_ambiente(

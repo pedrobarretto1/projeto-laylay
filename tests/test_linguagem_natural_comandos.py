@@ -271,6 +271,77 @@ def test_barreira_prioritaria_executa_resolucao_canonica_uma_vez() -> None:
     assert len(registros) == 1
 
 
+def test_barreira_prioritaria_entrega_busca_de_codigo_ao_executor_local() -> None:
+    execucoes: list[tuple[dict, str]] = []
+    registros: list[tuple] = []
+    estado = type("Estado", (), {"mental": {}})()
+    namespace = {
+        "_estado_compartilhado_runtime": estado,
+        "_normalizar_texto_com_apelidos": lambda valor: str(valor).casefold(),
+        "resolver_comando_natural": lambda *_args: (_ for _ in ()).throw(
+            AssertionError("a busca explícita não deve depender da LLM")
+        ),
+        "executar_intencao": lambda intent, texto: execucoes.append((intent, texto)) or True,
+        "_registrar_resultado_execucao": lambda *args, **kwargs: registros.append((args, kwargs)),
+    }
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: namespace,
+        loop_getter=lambda: None,
+    )
+
+    texto = "Encontra o código que controla a lâmpada."
+    assert runtime.processar_prioritarios(texto) is True
+    assert execucoes == [(
+        {
+            "intent": "FILE_SEARCH",
+            "params": {
+                "query": "código que controla a lâmpada",
+                "somente_projeto": False,
+            },
+        },
+        texto,
+    )]
+    assert len(registros) == 1
+    assert registros[0][1]["origem"] == "prioritario_busca_arquivos"
+
+
+def test_barreira_prioritaria_abre_resultado_por_ordinal_curto() -> None:
+    caminho = r"C:\projeto\controlador.py"
+    estado = type("Estado", (), {
+        "mental": {
+            "ultima_estrutura_arquivo_params": {
+                "tipo": "pesquisa_semantica",
+                "consulta": "código que controla a lâmpada",
+                "resultados": [caminho],
+                "nomes": ["controlador.py"],
+            },
+        },
+    })()
+    execucoes: list[tuple[dict, str]] = []
+    namespace = {
+        "_estado_compartilhado_runtime": estado,
+        "_normalizar_texto_com_apelidos": lambda valor: str(valor).casefold(),
+        "resolver_comando_natural": lambda *_args: (_ for _ in ()).throw(
+            AssertionError("a seleção ordinal deve usar a continuidade de arquivos")
+        ),
+        "executar_intencao": lambda intent, texto: execucoes.append((intent, texto)) or True,
+        "_registrar_resultado_execucao": lambda *_args, **_kwargs: None,
+    }
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: namespace,
+        loop_getter=lambda: None,
+    )
+
+    assert runtime.processar_prioritarios("o primeiro") is True
+    assert execucoes == [(
+        {
+            "intent": "FILE_OPEN_RESULT",
+            "params": {"caminho": caminho, "alvo": "controlador.py", "indice": 1},
+        },
+        "o primeiro",
+    )]
+
+
 def test_comando_reconhecido_com_falha_nao_cai_na_conversa_generica() -> None:
     estado = type("Estado", (), {"mental": {}})()
     namespace = {

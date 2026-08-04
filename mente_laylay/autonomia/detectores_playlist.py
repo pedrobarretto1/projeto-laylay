@@ -22,7 +22,11 @@ def detectar_playlist_contextual_musica_atual(
     m_add_musica_playlist = re.search(
         r"\b(?:coloca|coloque|salva|salve|guarda|guarde|adiciona|adicione|add)\b"
         r".{0,60}?\b(?:essa|esta|a)?\s*(?:musica|música|faixa|canção|cancao)?\b"
-        r".{0,30}?\b(?:na|nessa|nesta|para a|pra|em|a)\s+playlist\s+(?P<nome>.+)$",
+        # A preposição isolada ``a`` não pertence a esta etapa: em
+        # ``coloca a playlist rock`` ela é o artigo do objeto que deve tocar.
+        # A tolerância para ``coloca essa música a playlist`` é feita antes,
+        # pela normalização gramatical estreita, que a transforma em ``na``.
+        r".{0,30}?\b(?:na|nessa|nesta|para a|pra|em)\s+playlist\s+(?P<nome>.+)$",
         t,
         flags=re.IGNORECASE,
     )

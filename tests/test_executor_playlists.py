@@ -30,7 +30,7 @@ class _MusicaOperacoesFake:
     def __init__(
         self, *, faixa=None, adicionar=None, tocar=None, shuffle=None,
         primeira=None, apagar=None, definir_ultima=None, definir_url=None,
-        mover=None,
+        mover=None, estado=None,
     ):
         self._faixa = faixa or (lambda: {})
         self._adicionar = adicionar or (lambda *_args: False)
@@ -41,6 +41,7 @@ class _MusicaOperacoesFake:
         self._definir_ultima = definir_ultima or (lambda _nome: None)
         self._definir_url = definir_url or (lambda _url: None)
         self._mover = mover or (lambda *_args: {})
+        self._estado = estado or (lambda: {})
 
     def faixa_atual(self): return dict(self._faixa() or {})
     def adicionar_faixa(self, *args): return bool(self._adicionar(*args))
@@ -52,6 +53,7 @@ class _MusicaOperacoesFake:
         return dict(self._mover(origem, destino, musica) or {})
     def definir_ultima_playlist(self, nome): self._definir_ultima(nome)
     def definir_ultima_url(self, url): self._definir_url(url)
+    def estado(self): return dict(self._estado() or {})
 
 
 def _dependencias(
@@ -451,13 +453,78 @@ def test_playlist_inexistente_cria_sugestao_pendente() -> None:
         },
         _dependencias(
             eventos,
+            musica_leitura=_MusicaLeituraFake(),
             musica_operacoes=_MusicaOperacoesFake(tocar=lambda _nome: False),
         ),
     )
 
     assert despacho == ResultadoDespacho.concluido()
     assert pendencias and pendencias[0]["playlist"] == "nova"
+    assert (
+        "resultado",
+        "playlist_nao_encontrada",
+        {"executou": False, "confirmado": False},
+    ) in eventos
+
+
+def test_playlist_existente_com_falha_de_player_nao_e_chamada_de_inexistente() -> None:
+    eventos: list[tuple] = []
+    pendencias: list[dict] = []
+
+    executar_intencao_playlists(
+        "PLAYLIST_PLAY",
+        {"nome_playlist": "sendo sendo"},
+        "coloca a playlit sendo sendo",
+        "pc_a",
+        {
+            "_autonomia_permite_execucao_musical": lambda *_args: True,
+            "set_playlist_sugestao_pendente": pendencias.append,
+        },
+        _dependencias(
+            eventos,
+            musica_leitura=_MusicaLeituraFake(
+                conteudo={"ok": True, "name": "sendo sendo", "total": 9},
+                total=9,
+            ),
+            musica_operacoes=_MusicaOperacoesFake(tocar=lambda _nome: False),
+        ),
+    )
+
+    assert pendencias == []
     assert ("resultado", "falha_execucao", {"executou": False}) in eventos
+    assert any(
+        evento[0] == "fala_status" and "existe" in evento[2].casefold()
+        for evento in eventos
+    )
+
+
+def test_playlist_aberta_sem_confirmacao_preserva_sucesso_parcial() -> None:
+    eventos: list[tuple] = []
+
+    executar_intencao_playlists(
+        "PLAYLIST_PLAY",
+        {"nome_playlist": "sendo sendo"},
+        "coloca a playlit sendo sendo",
+        "pc_a",
+        {"_autonomia_permite_execucao_musical": lambda *_args: True},
+        _dependencias(
+            eventos,
+            musica_leitura=_MusicaLeituraFake(
+                conteudo={"ok": True, "name": "sendo sendo", "total": 9},
+                total=9,
+            ),
+            musica_operacoes=_MusicaOperacoesFake(
+                tocar=lambda _nome: True,
+                estado=lambda: {"status_avanco": "enviado_sem_confirmacao"},
+            ),
+        ),
+    )
+
+    assert (
+        "resultado",
+        "playlist_enviada_sem_confirmacao",
+        {"executou": True, "confirmado": None},
+    ) in eventos
 
 
 def test_exclusao_bem_sucedida_limpa_ultima_playlist() -> None:

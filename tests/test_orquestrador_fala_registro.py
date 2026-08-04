@@ -178,3 +178,22 @@ def test_rejeicao_da_voz_libera_nova_tentativa_do_resultado() -> None:
     diagnostico = runtime.diagnostico()
     assert diagnostico["rejeitadas_voz"] == 1
     assert diagnostico["emitidas"] == 1
+
+
+def test_observador_recebe_apenas_fala_aceita_pela_fronteira_final() -> None:
+    runtime, _estado, _voz, _logs = _runtime_de_fala(
+        voz=_VozFalsa([False, True]),
+    )
+    publicadas = []
+    runtime.registrar_observador_fala_final(
+        lambda texto, emocao, nivel, **dados: publicadas.append(
+            (texto, emocao, nivel, dados),
+        )
+    )
+
+    assert runtime.falar("candidato recusado") is False
+    assert runtime.falar("resposta consolidada", "feliz", 2) is True
+
+    assert publicadas == [
+        ("resposta consolidada", "feliz", 2, {"proativa": False}),
+    ]

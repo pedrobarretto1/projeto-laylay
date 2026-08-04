@@ -436,6 +436,76 @@ def texto_pede_lembrete_explicito(texto: str, normalizar_texto_cb: Callable[[str
     ))
 
 
+_NUMEROS_DURACAO = {
+    "zero": 0, "um": 1, "uma": 1, "dois": 2, "duas": 2,
+    "tres": 3, "três": 3, "quatro": 4, "cinco": 5, "seis": 6,
+    "sete": 7, "oito": 8, "nove": 9, "dez": 10, "onze": 11,
+    "doze": 12, "treze": 13, "catorze": 14, "quatorze": 14,
+    "quinze": 15, "dezesseis": 16, "dezessete": 17,
+    "dezoito": 18, "dezenove": 19, "vinte": 20, "trinta": 30,
+    "quarenta": 40, "cinquenta": 50, "sessenta": 60,
+    "setenta": 70, "oitenta": 80, "noventa": 90, "cem": 100,
+    "cento": 100, "duzentos": 200, "trezentos": 300,
+    "quatrocentos": 400, "quinhentos": 500, "seiscentos": 600,
+    "setecentos": 700, "oitocentos": 800, "novecentos": 900,
+}
+_PALAVRAS_DURACAO = "|".join(
+    sorted((re.escape(item) for item in _NUMEROS_DURACAO), key=len, reverse=True)
+)
+_PADRAO_DURACAO_RELATIVA = re.compile(
+    rf"\b(?:(?P<marcador>daqui(?:\s+a)?|em)\s+)?"
+    rf"(?P<valor>\d{{1,4}}|(?:{_PALAVRAS_DURACAO})"
+    rf"(?:\s+e\s+(?:{_PALAVRAS_DURACAO})){{0,2}})\s*"
+    r"(?P<unidade>seg(?:undo)?s?|min(?:uto)?s?|h(?:ora)?s?)\b",
+    flags=re.IGNORECASE,
+)
+
+
+def _numero_duracao(valor: str) -> int | None:
+    bruto = str(valor or "").strip().casefold()
+    if bruto.isdigit():
+        return int(bruto)
+    partes = [parte for parte in re.split(r"\s+e\s+|\s+", bruto) if parte]
+    if not partes or any(parte not in _NUMEROS_DURACAO for parte in partes):
+        return None
+    return sum(_NUMEROS_DURACAO[parte] for parte in partes)
+
+
+def extrair_duracao_relativa(
+    texto: str,
+    *,
+    exigir_marcador: bool = False,
+) -> Optional[dict[str, Any]]:
+    """Extrai segundos, minutos ou horas para uma representação canônica.
+
+    O trecho reconhecido é devolvido para que o chamador possa removê-lo da
+    descrição do lembrete sem reconstruir a frase nem misturar tempo e alvo.
+    """
+    bruto = re.sub(r"\s+", " ", str(texto or "").casefold()).strip()
+    for encontrado in _PADRAO_DURACAO_RELATIVA.finditer(bruto):
+        if exigir_marcador and not encontrado.group("marcador"):
+            continue
+        valor = _numero_duracao(encontrado.group("valor"))
+        if valor is None or valor <= 0:
+            continue
+        unidade = str(encontrado.group("unidade") or "").casefold()
+        if unidade.startswith("seg"):
+            fator, nome = 1, "segundos"
+        elif unidade.startswith("min"):
+            fator, nome = 60, "minutos"
+        else:
+            fator, nome = 3600, "horas"
+        return {
+            "atraso_segundos": valor * fator,
+            "valor": valor,
+            "unidade": nome,
+            "trecho": encontrado.group(0),
+            "inicio": encontrado.start(),
+            "fim": encontrado.end(),
+        }
+    return None
+
+
 def resolver_instante_lembrete(
     hora_alvo: str,
     referencia_data: str = "",
@@ -557,7 +627,21 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
     t = re.sub(r"\b(\d{1,2})\s*[h:]\s*(\d{2})\b", r"\1:\2", t)
     t = re.sub(r"\b(\d{1,2})\s*horas?\s*(\d{2})\b", r"\1:\2", t)
 
-    if any(p in t for p in ["tenho algum compromisso", "tem algum compromisso", "meu compromisso", "compromissos de hoje", "agenda de hoje", "ver agenda", "mostrar agenda", "listar agenda", "me mostra os compromissos", "pode ver se tem", "ver se tem"]):
+    consulta_agenda = bool(
+        any(p in t for p in [
+            "tenho algum compromisso", "tem algum compromisso", "meu compromisso",
+            "compromissos de hoje", "agenda de hoje", "ver agenda", "mostrar agenda",
+            "listar agenda", "me mostra os compromissos", "pode ver se tem", "ver se tem",
+            "o que tenho na agenda", "o que eu tenho na agenda", "o que esta na agenda",
+            "o que está na agenda", "tem algo marcado", "ha algo marcado", "há algo marcado",
+        ])
+        or bool(re.search(
+            r"\b(?:quais?|quantos?)\s+(?:sao\s+|são\s+)?(?:os\s+)?"
+            r"(?:meus\s+)?(?:compromissos|agendamentos|lembretes)\b",
+            t,
+        ))
+    )
+    if consulta_agenda:
         return {"intent": "LISTAR_AGENDAMENTOS", "params": {}}
 
     # Perguntar, formular hipótese ou negar uma ação não é autorização. A lista
@@ -583,7 +667,7 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
         return {"intent": "CANCELAR_AGENDAMENTO", "params": {"alvo": alvo or ""}}
 
     if texto_pede_lembrete_explicito(t, normalizar_texto_cb=lambda valor: valor):
-        minutos = None
+        atraso_segundos = None
         hora_alvo = ""
         gatilho = re.search(
             r"\b(?:me\s+lembra|lembra\s+(?:de|pra|para)|me\s+avisa|"
@@ -603,16 +687,15 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
             referencia_data = m_data.group(1)
             texto_evento = texto_evento.replace(m_data.group(0), " ")
 
-        padrao_minutos = r"\b(?:(?:daqui(?:\s+a)?|em)\s+)?(\d{1,3})\s*(?:min|mins|minuto|minutos)\b"
-        m_min = re.search(padrao_minutos, t)
-        if m_min:
-            try:
-                minutos = int(m_min.group(1))
-            except Exception:
-                minutos = None
-            texto_evento = re.sub(padrao_minutos, " ", texto_evento).strip()
+        duracao = extrair_duracao_relativa(t, exigir_marcador=True)
+        if duracao:
+            atraso_segundos = int(duracao["atraso_segundos"])
+            texto_evento = re.sub(
+                re.escape(str(duracao["trecho"])), " ", texto_evento,
+                count=1, flags=re.IGNORECASE,
+            ).strip()
 
-        if minutos is None:
+        if atraso_segundos is None:
             m_hora = re.search(r"\b(?:às|as|a)\s*(\d{1,2}:\d{2})\b", t)
             if not m_hora:
                 m_hora = re.search(r"\b(\d{1,2}:\d{2})\b", t)
@@ -636,13 +719,18 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
             "me lembra", "lembra", "me avisa", "avisa",
         ]:
             texto_evento = re.sub(rf"^\s*{re.escape(prefixo)}\s*", " ", texto_evento, flags=re.IGNORECASE)
-        texto_evento = re.sub(r"\b(de|do|da|para|pra|pro|no|na|em)\b", " ", texto_evento)
+        # Retira apenas a ligação deixada pelo gatilho. Preposições internas
+        # pertencem à descrição ("consulta de dentista") e não ao horário.
+        texto_evento = re.sub(
+            r"^\s*(?:de|do|da|para|pra|pro)\s+", " ", texto_evento,
+            count=1,
+        )
         texto_evento = re.sub(r"\s+", " ", texto_evento).strip(" .,!?:;")
         descricao = texto_evento or "lembrete"
 
-        params = {"descricao": descricao}
-        if minutos is not None:
-            params["minutos"] = minutos
+        params: dict[str, Any] = {"descricao": descricao}
+        if atraso_segundos is not None:
+            params["atraso_segundos"] = atraso_segundos
         if hora_alvo:
             params["hora_alvo"] = hora_alvo
         if referencia_data:
@@ -657,12 +745,12 @@ def extrair_complemento_temporal_lembrete(texto: str) -> Optional[dict[str, Any]
     bruto = re.sub(r"\s+", " ", str(texto or "").casefold()).strip()
     if not bruto:
         return None
-    m_min = re.search(
-        r"\b(?:(?:daqui(?:\s+a)?|em)\s+)?(\d{1,3})\s*(?:min|mins|minuto|minutos)\b",
-        bruto,
-    )
-    if m_min:
-        return {"minutos": int(m_min.group(1)), "complemento_pendente": True}
+    duracao = extrair_duracao_relativa(bruto)
+    if duracao:
+        return {
+            "atraso_segundos": int(duracao["atraso_segundos"]),
+            "complemento_pendente": True,
+        }
     m_hora = re.search(
         r"\b(?:pode\s+ser\s+)?(?:às|as|a)?\s*(\d{1,2})\s*(?::|h|\s)\s*(\d{2})\b",
         bruto,

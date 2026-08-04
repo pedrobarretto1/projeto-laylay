@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 
+from mente_laylay.cognicao.contrato_fala import construir_contrato_semantico_fala
 from mente_laylay.cognicao.leitura_semantica_turno import (
     aplicar_leitura_conversacional,
     comparar_com_legado,
@@ -13,6 +14,9 @@ from mente_laylay.cognicao.intencao_visual_jogo import (
     detectar_pedido_visao_jogo,
 )
 from mente_laylay.memoria_mental.referencia_fala import extrair_referencia_musical_verificada
+from mente_laylay.memoria_mental.memoria_confiavel import (
+    extrair_aprendizados_pessoais_explicitos,
+)
 
 
 def registrar_metrica_opcional(ns: dict, componente: str, duracao_ms: float, sucesso: bool) -> None:
@@ -297,7 +301,17 @@ def _iniciar_planejamento_turno(
         escolhida = dict(retrato_turno.get('referencia_resolvida') or {})
         ns['print'](f"🧠 [REFERÊNCIA] candidatos=[{resumo_candidatos}] | escolhido={escolhida.get('nome') or '-'} | operacao={retrato_turno.get('operacao_explicita') or '-'}")
     fundamentacao_factual = {}
-    tema_factual = ns['_extrair_tema_fundamentacao_mente'](texto, retrato=retrato_turno, registro_semantico=registro_semantico)
+    aprendizados_explicitos = extrair_aprendizados_pessoais_explicitos(texto)
+    turno['aprendizados_explicitos'] = aprendizados_explicitos
+    tema_factual = ns['_extrair_tema_fundamentacao_mente'](
+        texto, retrato=retrato_turno, registro_semantico=registro_semantico,
+    )
+    # Uma declaração pessoal pode ativar memória e pesquisa ao mesmo tempo.
+    # A memória guarda a preferência confirmada; a pesquisa apenas enriquece
+    # a conversa. Nenhuma das duas substitui a resposta humana do turno.
+    if not tema_factual and aprendizados_explicitos:
+        tema_factual = str(aprendizados_explicitos[0].get('valor') or '').strip()[:160]
+    turno['tema_factual'] = tema_factual
     if tema_factual and (not dict(retrato_turno.get('referencia_resolvida') or {}).get('nome')):
         registro_semantico = ns['_atualizar_registro_turno_mente'](registro_semantico, texto, retrato={'entidade_explicita': {'tipo': 'tema', 'nome': tema_factual, 'origem': 'tema_pesquisavel'}}, funcao=funcao_atual, encerramento=encerramento_assunto)
         mente_antes_turno['registro_semantico'] = registro_semantico
@@ -337,6 +351,11 @@ def _iniciar_planejamento_turno(
             pesquisa_factual,
             atualidade=atualidade_factual,
         )
+        fundamentacao_factual.update({
+            'papel_cooperativo': 'enriquecimento_auxiliar',
+            'nao_substitui_resposta_principal': True,
+            'declaracao_pessoal_explicita': bool(aprendizados_explicitos),
+        })
         ns['print'](f"🔎 [FUNDAMENTAÇÃO] tema={tema_factual!r} | confiavel={fundamentacao_factual.get('confiavel')} | fonte={fundamentacao_factual.get('fonte') or '-'} | confianca={float(fundamentacao_factual.get('confianca') or 0.0):.2f}")
     mente_antes_turno['fundamentacao_factual_turno'] = fundamentacao_factual
     turno['retrato_id'] = retrato_turno.get('id')
@@ -344,12 +363,48 @@ def _iniciar_planejamento_turno(
     turno['referencia_resolvida'] = dict(retrato_turno.get('referencia_resolvida') or {})
     turno['operacao_explicita'] = str(retrato_turno.get('operacao_explicita') or '')
     especialistas = ns['_construir_parecer_especialistas_mente'](texto, turno=turno, funcao_comunicativa=funcao_comunicativa, retrato=retrato_turno, saude=ns['_saude_mente_runtime'].snapshot())
+    deliberacao = dict(especialistas.get('deliberacao') or {})
+    orquestrador_cooperativo = ns.get('_orquestrador_cooperativo_runtime')
+    registrar_consenso = getattr(orquestrador_cooperativo, 'registrar_deliberacao_turno', None)
+    if deliberacao and callable(registrar_consenso):
+        try:
+            publicacao_consenso = dict(registrar_consenso(deliberacao) or {})
+        except Exception as erro:
+            publicacao_consenso = {
+                'publicado': False,
+                'motivo': f'falha_publicacao:{type(erro).__name__}',
+            }
+            ns['print'](
+                f"⚠️ [COOPERAÇÃO:CONSENSO] publicação isolada falhou: {type(erro).__name__}"
+            )
+        deliberacao['quadro_canonico'] = publicacao_consenso
+        especialistas['deliberacao'] = deliberacao
     turno['especialistas'] = especialistas
     assunto_estruturado = ns['_atualizar_assunto_estruturado_mente'](mente_antes_turno.get('assunto_estruturado_atual') if isinstance(mente_antes_turno.get('assunto_estruturado_atual'), dict) else {}, texto, turno=turno, retrato=retrato_turno, encerramento=encerramento_assunto)
     plano = ns['_planejar_turno_mente'](texto, turno=turno, mente=mente_antes_turno, periodo=ns['_contexto_horario_atual']())
     plano['fundamentacao_factual'] = fundamentacao_factual
     plano['atualidade_factual'] = atualidade_factual
-    atualizacoes_turno = {'ultima_entrada_ts': ns['time'].time(), 'turno_atual': turno, 'plano_turno_atual': plano, 'identidade_turno_atual': identidade_turno, 'identidade_turno_resumo': ns['_resumo_identidade_turno_mente'](identidade_turno), 'funcao_comunicativa_atual': funcao_comunicativa, 'retrato_turno_atual': retrato_turno, 'entidades_recentes': entidades_recentes, 'especialistas_turno_atual': especialistas, 'assunto_estruturado_atual': assunto_estruturado, 'registro_semantico': registro_semantico, 'fundamentacao_factual_turno': fundamentacao_factual, **limpeza_pergunta_turno}
+    plano['deliberacao_habilidades'] = dict(especialistas.get('deliberacao') or {})
+    mensagens_recentes = list(
+        getattr(ns['_estado_compartilhado_runtime'], 'memoria_conversa', {}).get('messages', [])
+        or []
+    )
+    falas_recentes = [
+        str(item.get('content') or '').strip()
+        for item in mensagens_recentes
+        if isinstance(item, dict) and str(item.get('role') or '').casefold() == 'assistant'
+    ][-3:]
+    contrato_fala = construir_contrato_semantico_fala(
+        texto,
+        turno=turno,
+        plano=plano,
+        funcao_comunicativa=funcao_comunicativa,
+        mente=mente_antes_turno,
+        falas_recentes=falas_recentes,
+    )
+    turno['contrato_fala'] = contrato_fala
+    plano['contrato_fala'] = contrato_fala
+    atualizacoes_turno = {'ultima_entrada_ts': ns['time'].time(), 'turno_atual': turno, 'plano_turno_atual': plano, 'contrato_fala_atual': contrato_fala, 'identidade_turno_atual': identidade_turno, 'identidade_turno_resumo': ns['_resumo_identidade_turno_mente'](identidade_turno), 'funcao_comunicativa_atual': funcao_comunicativa, 'retrato_turno_atual': retrato_turno, 'entidades_recentes': entidades_recentes, 'especialistas_turno_atual': especialistas, 'assunto_estruturado_atual': assunto_estruturado, 'registro_semantico': registro_semantico, 'fundamentacao_factual_turno': fundamentacao_factual, **limpeza_pergunta_turno}
     if leitura_semantica:
         atualizacoes_turno['leitura_semantica_turno'] = leitura_semantica
     if correcao_interpretacao:
@@ -448,6 +503,16 @@ def verificar_fala_do_turno(namespace_getter, fala: str, *, origem: str='convers
     avaliacoes.append({'plano_id': plano.get('id'), 'origem': str(origem or 'conversa'), 'pontuacao': float(verificacao.get('pontuacao') or 0.0), 'problemas': list(verificacao.get('problemas') or []), 'acao': str(verificacao.get('acao') or ''), 'ts': ns['time'].time()})
     metricas = dict(mente.get('metricas_verificador') or {})
     metricas['falas_verificadas'] = int(metricas.get('falas_verificadas') or 0) + 1
+    aderencia_contrato = dict(verificacao.get('aderencia_contrato') or {})
+    if aderencia_contrato.get('avaliado'):
+        metricas['contratos_verificados'] = int(metricas.get('contratos_verificados') or 0) + 1
+        estrategia = str(aderencia_contrato.get('estrategia') or 'resposta_direta')[:64]
+        chave_estrategia = f'estrategia:{estrategia}'
+        metricas[chave_estrategia] = int(metricas.get(chave_estrategia) or 0) + 1
+        if aderencia_contrato.get('problemas'):
+            metricas['contratos_rejeitados'] = int(metricas.get('contratos_rejeitados') or 0) + 1
+        else:
+            metricas['contratos_aprovados'] = int(metricas.get('contratos_aprovados') or 0) + 1
     if verificacao.get('problemas'):
         metricas['falas_ajustadas'] = int(metricas.get('falas_ajustadas') or 0) + 1
         for problema in verificacao.get('problemas') or []:

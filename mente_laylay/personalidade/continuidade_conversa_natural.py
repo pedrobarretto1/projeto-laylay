@@ -151,7 +151,8 @@ def _pede_explicacao_da_fala_anterior(texto_normalizado: str) -> bool:
     if re.fullmatch(
         r"(?:como assim|o que (?:voce|você) quis dizer|"
         r"(?:pode\s+)?(?:me\s+)?explica(?:r)?(?:\s+melhor)?(?:\s+(?:isso|aquilo|"
-        r"essa parte|o que (?:voce|você) disse))?(?:\s+melhor)?)",
+        r"essa parte|o que (?:voce|você) disse))?(?:\s+(?:melhor|com mais detalhes|"
+        r"mais detalhadamente))?)",
         t,
     ):
         return True
@@ -160,9 +161,83 @@ def _pede_explicacao_da_fala_anterior(texto_normalizado: str) -> bool:
         t,
     ))
 
+
+def _pede_detalhamento_da_fala_anterior(texto_normalizado: str) -> bool:
+    """Reconhece pedidos de expansão, inclusive a formulação longa real.
+
+    Não basta identificar que existe uma referência: este pedido precisa usar a
+    resposta anterior como fonte, em vez de recair num tópico histórico.
+    """
+    t = re.sub(r"\s+", " ", str(texto_normalizado or "")).strip(" .!?;:")
+    return bool(re.fullmatch(
+        r"(?:agora\s+)?(?:pode\s+)?(?:me\s+)?(?:explica|explique|detalha|detalhe)"
+        r"(?:\s+(?:isso|aquilo|essa parte|o que (?:voce|você) disse))?"
+        r"\s+(?:melhor|com mais detalhes|mais detalhadamente|"
+        r"de (?:um )?jeito (?:simples|f[aá]cil|claro)|"
+        r"de forma (?:simples|f[aá]cil|clara))",
+        t,
+    ))
+
+
+def _expandir_fala_anterior(
+    ctx: Dict[str, Any],
+    *,
+    texto_usuario: str,
+    assunto: str,
+    fala_anterior: str,
+    ideia: str,
+) -> str:
+    """Pede uma expansão limitada e verificável da fala imediatamente anterior."""
+    if not fala_anterior:
+        return ""
+    payload = {
+        "pedido": str(texto_usuario or "").strip(),
+        "assunto": str(assunto or "").strip(),
+        "fala_anterior": fala_anterior[:900],
+        "ponto_central": str(ideia or "").strip()[:500],
+    }
+    prompt = (
+        "Expanda apenas a resposta imediatamente anterior da Laylay, em português. "
+        "Preserve o assunto informado e não troque para memórias, comandos ou temas antigos. "
+        "Não invente fatos: explique o ponto central com duas ou três frases úteis. "
+        "Retorne somente JSON válido: {\"fala\":\"...\"}."
+    )
+    try:
+        bruto = _call(
+            ctx,
+            "enviar_mensagem",
+            [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+            ],
+            _com_tools=False,
+            max_tokens=260,
+            modo_rapido=True,
+            default="",
+        )
+        extraido = _call(ctx, "_extrair_json_da_ia", bruto, default=bruto)
+        dados = json.loads(extraido) if extraido else {}
+        fala = str(dados.get("fala") or "").strip() if isinstance(dados, dict) else ""
+        if fala:
+            return _ajustar(ctx, fala, texto_usuario)
+    except Exception as exc:
+        print(f"⚠️ [CONVERSA:CONTINUIDADE] detalhamento local indisponível: {type(exc).__name__}")
+
+    # A degradação preserva explicitamente o mesmo referente. É preferível a
+    # uma frase genérica que dê a impressão de ter perdido o fio.
+    base = ideia or fala_anterior
+    prefixo = f"Sobre {assunto}, " if assunto else "Sobre o que eu acabei de dizer, "
+    return _ajustar(
+        ctx,
+        f"{prefixo}o ponto central é este: {base}. Não quero puxar outro assunto enquanto você está pedindo esse detalhe.",
+        texto_usuario,
+    )
+
 def resposta_pergunta_curta_dependente_topico(ctx: Dict[str, Any], texto_usuario: str) -> str:
     t = _normalizar(ctx, texto_usuario)
-    if not t or len(t.split()) > 10:
+    pede_detalhamento = _pede_detalhamento_da_fala_anterior(t)
+    pede_explicacao = _pede_explicacao_da_fala_anterior(t) or pede_detalhamento
+    if not t or (len(t.split()) > 10 and not pede_explicacao):
         return ""
 
     mente = dict(_get(ctx, "mente_integrada_estado", {}) or {})
@@ -215,7 +290,6 @@ def resposta_pergunta_curta_dependente_topico(ctx: Dict[str, Any], texto_usuario
         if ultima_resposta:
             return _ajustar(ctx, f"Eu estava falando desta ideia: {ultima_resposta}", texto_usuario)
 
-    pede_explicacao = _pede_explicacao_da_fala_anterior(t)
     pede_referencia = any(p in t for p in [
         "eles quem", "elas quem", "ele quem", "ela quem", "isso o que", "qual deles",
         "qual delas", "onde", "quando", "e agora",
@@ -233,6 +307,22 @@ def resposta_pergunta_curta_dependente_topico(ctx: Dict[str, Any], texto_usuario
             ctx,
             "Minha resposta anterior ficou vaga e não explicou nada de verdade. Desconsidera aquilo; eu preciso responder ao que você disse, não enfeitar a dúvida.",
             texto_usuario,
+        )
+
+    if pede_detalhamento and continuidade_idade <= 300 and ultima_resposta:
+        assunto = assunto_da_fala or topico
+        assunto_valido = assunto_coerente_com_fala(
+            assunto,
+            ultima_opiniao or ultima_afirmacao,
+            ultima_resposta,
+            normalizar_texto=lambda valor: _normalizar(ctx, valor),
+        )
+        return _expandir_fala_anterior(
+            ctx,
+            texto_usuario=texto_usuario,
+            assunto=assunto if assunto_valido else "",
+            fala_anterior=ultima_resposta,
+            ideia=ultima_opiniao or ultima_afirmacao,
         )
 
     # A estrutura da ultima fala vence focos operacionais antigos. Ela guarda

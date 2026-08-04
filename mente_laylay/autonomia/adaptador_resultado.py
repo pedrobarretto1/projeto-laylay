@@ -230,9 +230,26 @@ class AdaptadorResultadoOperacional:
         if contrato.intent in INTENTS_INFORMATIVOS:
             # A frase factual inteira vira âncora literal. A LLM pode cercá-la
             # com a voz da Laylay, mas não resumir, trocar ou omitir os dados.
+            # Listagens válidas não precisam ganhar um prefixo operacional.
+            # Porém, se uma fala de sucesso contém incerteza ou falha, usamos a
+            # versão saneada pelo contrato para nunca misturar duas verdades.
+            fala_informativa = fala_base
+            base_norm = str(fala_base or "").casefold()
+            contradiz_sucesso = plano.classe == "sucesso" and any(
+                sinal in base_norm
+                for sinal in (
+                    "não consegui", "nao consegui", "não confirmei",
+                    "nao confirmei", "não respondeu", "nao respondeu",
+                    "não executei", "nao executei", "falhou",
+                )
+            )
+            if contradiz_sucesso or plano.classe in {
+                "falha", "cancelado", "pendente", "sem_acao",
+            }:
+                fala_informativa = plano.fala
             confirmacao = personalizar_informacao_llm(
-                fala_base,
-                fatos_obrigatorios=[fala_base],
+                fala_informativa,
+                fatos_obrigatorios=[fala_informativa],
                 enviar_mensagem=self.ctx.get("enviar_mensagem"),
                 emocao="calma",
                 nivel=1,
@@ -283,6 +300,7 @@ class AdaptadorResultadoOperacional:
         falas = {
             "ja_aberto_focado": f"{nome} já estava aberto e em foco.",
             "app_focado": f"{nome} já tava aberto, só puxei pra frente.",
+            "app_iniciado_focado": f"Iniciei {nome} e trouxe a nova janela para o foco.",
             "app_aberto": f"Abrindo {nome}.",
             "app_aberto_segundo_plano": (
                 f"Abri {nome} em segundo plano, sem tirar você do jogo."

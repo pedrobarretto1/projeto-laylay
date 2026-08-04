@@ -58,6 +58,7 @@ def preparar_payload_llm(
     contexto_sistema: Any = None,
     obter_contexto_paginas: Callable[[], str] | None = None,
     resumo_mente_integrada: Callable[[str], str] | None = None,
+    registrar_orcamento_prompt: Callable[..., Any] | None = None,
     log: Callable[[str], Any] = print,
 ) -> dict:
     try:
@@ -74,6 +75,10 @@ def preparar_payload_llm(
         limite_tokens = min(limite_tokens, 640)
 
     originais = list(mensagens) if isinstance(mensagens, list) else []
+    caracteres_brutos = sum(
+        len(str(item.get("content") or ""))
+        for item in originais if isinstance(item, dict)
+    )
     mensagens_envio: list[Any] = []
     if originais:
         prompt_sistema = originais[0]
@@ -82,11 +87,20 @@ def preparar_payload_llm(
         else:
             historico = originais[-10:] if len(originais) > 11 else originais[1:]
         mensagens_envio = [prompt_sistema] + historico
+    caracteres_selecionados = sum(
+        len(str(item.get("content") or ""))
+        for item in mensagens_envio if isinstance(item, dict)
+    )
 
     ultimo_texto_usuario = _ultima_fala_usuario(originais)
     if not modo_rapido:
         if resumo_do_dia:
-            mensagens_envio.insert(0, {
+            # O prompt permanente precisa continuar na posição zero. O
+            # transporte local usa essa posição para distinguir o contrato da
+            # Laylay de contextos auxiliares descartáveis sob pressão de
+            # tokens. Inserir o resumo antes dele fazia a compactação preservar
+            # o resumo e eliminar personalidade, segurança e formato JSON.
+            mensagens_envio.insert(1 if mensagens_envio else 0, {
                 "role": "system",
                 "content": f"RESUMO DO DIA {data_atual}:\n{resumo_do_dia}\n\nUse isso como contexto de longo prazo.",
             })
@@ -163,4 +177,21 @@ def preparar_payload_llm(
         ):
             data["response_format"] = {"type": "json_object"}
             break
+    if callable(registrar_orcamento_prompt):
+        caracteres_enviados = sum(
+            len(str(item.get("content") or ""))
+            for item in mensagens_envio if isinstance(item, dict)
+        )
+        try:
+            registrar_orcamento_prompt(
+                etapa="preparacao",
+                brutos=caracteres_brutos,
+                selecionados=caracteres_selecionados,
+                truncados=max(0, caracteres_brutos - caracteres_selecionados),
+                injetados=max(0, caracteres_enviados - caracteres_selecionados),
+                enviados=caracteres_enviados,
+            )
+        except Exception:
+            # Telemetria nunca bloqueia a criação do payload.
+            pass
     return data

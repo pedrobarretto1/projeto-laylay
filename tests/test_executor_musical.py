@@ -90,7 +90,61 @@ def test_music_search_com_link_direto_nao_repassa_query_ao_navegador() -> None:
 
     assert despacho == ResultadoDespacho.concluido()
     assert aberturas == [(url, {"query": ""})]
-    assert eventos == [("resultado", "musica_aberta", {"executou": True})]
+    assert eventos == [(
+        "resultado", "musica_reproduzindo", {
+            "executou": True,
+            "confirmado": True,
+            "detalhe": "confirmacao_legada",
+        },
+    )]
+
+
+def test_music_search_video_aberto_nao_e_reportado_como_falha() -> None:
+    eventos: list[tuple] = []
+    falas: list[tuple] = []
+    url = "https://www.youtube.com/watch?v=minecraft01"
+
+    despacho = executar_intencao_musical(
+        "MUSIC_SEARCH",
+        {"query": "musica para jogar minecraft"},
+        "coloca uma música para jogar Minecraft",
+        {
+            "_autonomia_permite_execucao_musical": lambda *_args, **_kwargs: True,
+            "_resolver_query_musical_por_estilo": lambda *_args: {
+                "query": "C418 - Sweden Minecraft Volume Alpha",
+                "tipo_resultado": "faixa",
+            },
+            "_resolver_primeiro_video_youtube": lambda *_args, **_kwargs: {
+                "url": url, "title": "C418 - Sweden - Minecraft Volume Alpha",
+            },
+        },
+        DependenciasExecutorMusical(
+            marcar_resultado=lambda status, **kwargs: eventos.append(
+                ("resultado", status, kwargs)
+            ),
+            abrir_url_musical=lambda *_args, **_kwargs: {
+                "ok": True,
+                "confirmado": None,
+                "status": "video_aberto_sem_confirmacao",
+            },
+            falar_por_status=lambda status, fala, **kwargs: falas.append(
+                (status, fala, kwargs)
+            ),
+        ),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(True)
+    assert eventos == [(
+        "resultado", "musica_enviada_sem_confirmacao", {
+            "executou": True,
+            "confirmado": None,
+            "detalhe": "video_aberto_sem_confirmacao",
+        },
+    )]
+    assert falas and falas[0][0] == "musica_enviada_sem_confirmacao"
+    fala = falas[0][1].casefold()
+    assert "abri" in fala
+    assert "não vou fingir" in fala
 
 
 def test_music_search_por_estilo_refina_query_e_abre_busca() -> None:
@@ -107,7 +161,10 @@ def test_music_search_por_estilo_refina_query_e_abre_busca() -> None:
             "_resolver_query_musical_por_estilo": lambda *_args: {
                 "query": "heavy metal mix"
             },
-            "_buscar_primeiro_video_youtube": lambda _query: "",
+            "_resolver_primeiro_video_youtube": lambda _query: {
+                "url": "https://www.youtube.com/watch?v=heavymetal01",
+                "title": "Heavy Metal Mix",
+            },
         },
         _dependencias(
             eventos,
@@ -116,8 +173,9 @@ def test_music_search_por_estilo_refina_query_e_abre_busca() -> None:
     )
 
     assert despacho == ResultadoDespacho.concluido()
-    assert "heavy+metal+mix" in aberturas[0][0]
-    assert aberturas[0][1] == {"query": "heavy metal mix"}
+    assert aberturas == [(
+        "https://www.youtube.com/watch?v=heavymetal01", {"query": ""},
+    )]
 
 
 def test_music_search_contextual_usa_faixa_curada_em_vez_da_frase_literal() -> None:
@@ -305,7 +363,10 @@ def test_roteador_principal_delega_music_search_ao_executor_musical() -> None:
             "_target_from_params": lambda *_args: "pc_a",
             "_autonomia_permite_execucao_musical": lambda *_args, **_kwargs: True,
             "_normalizar_query_musical": lambda query: query,
-            "_buscar_primeiro_video_youtube": lambda _query: "",
+            "_resolver_primeiro_video_youtube": lambda _query: {
+                "url": "https://www.youtube.com/watch?v=duality0001",
+                "title": "Slipknot - Duality [OFFICIAL VIDEO]",
+            },
             "_registro_navegador_operacoes_runtime": navegador,
             "_registrar_resultado_execucao": lambda contrato, *_args, **_kwargs: resultados.append(
                 contrato
@@ -316,5 +377,5 @@ def test_roteador_principal_delega_music_search_ao_executor_musical() -> None:
 
     assert retorno is True
     comandos.extend(navegador.chamadas)
-    assert comandos and comandos[0][0] == "youtube_search"
-    assert resultados and resultados[0].status == "musica_aberta"
+    assert comandos and comandos[0][0] == "youtube_play"
+    assert resultados and resultados[0].status == "musica_reproduzindo"

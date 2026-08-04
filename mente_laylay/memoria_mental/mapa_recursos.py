@@ -13,6 +13,7 @@ from typing import Any, Callable, Mapping
 
 from mente_laylay.cognicao.normalizacao_linguagem import (
     normalizar_texto_basico as _normalizar,
+    texto_pede_opiniao,
 )
 
 
@@ -68,6 +69,12 @@ class MapaRecursosRuntime:
     def _parece_pedido_de_dados(texto: str) -> bool:
         consulta = _normalizar(texto)
         if not consulta:
+            return False
+        # Um nome conhecido pelo catálogo (por exemplo, a playlist ``rock``)
+        # não transforma uma pergunta de opinião numa consulta operacional.
+        # Além de preservar a conversa, isto impede que o dado real citado
+        # escolha silenciosamente uma habilidade só por compartilhar o nome.
+        if texto_pede_opiniao(texto):
             return False
         # Negação, hipótese e perguntas sobre capacidade não autorizam nem
         # mesmo consultas locais. Elas pertencem à conversa/deliberação.

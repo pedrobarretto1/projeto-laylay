@@ -70,6 +70,13 @@ def executar_transacao_arquivo(params: Dict[str, Any]) -> ResultadoTransacaoArqu
                 return ResultadoTransacaoArquivo(False, "nome_invalido", origem=origem)
             destino = os.path.join(os.path.dirname(origem), novo_nome)
         destino = os.path.normpath(destino)
+        if os.path.normcase(destino) == os.path.normcase(origem):
+            return ResultadoTransacaoArquivo(
+                True,
+                "ja_com_mesmo_nome",
+                origem=origem,
+                destino=origem,
+            )
         if not verificar_trava_seguranca(destino):
             return ResultadoTransacaoArquivo(False, "destino_bloqueado", origem, destino)
         if os.path.exists(destino):

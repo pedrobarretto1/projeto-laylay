@@ -9,6 +9,7 @@ from typing import Any, Dict
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao, normalizar_resultado_acao
 from mente_laylay.memoria_mental.pendencia import criar_pendencia, limpar_pendencia, registrar_pendencia
 from mente_laylay.memoria_mental.continuidade_geral import (
+    normalizar_dominio_continuidade,
     registrar_evento_continuidade,
 )
 
@@ -160,6 +161,20 @@ def registrar_resultado_execucao(
         else contrato.detalhe[:300]
     )
     estado["ultima_acao_ts"] = time.time()
+    # Fonte canônica atômica: leitores não podem completar campos vazios com
+    # pedaços de ações anteriores. Um alvo vazio continua sendo informação
+    # válida deste evento, e não uma oportunidade para herdar outro domínio.
+    estado["ultima_acao_contrato"] = {
+        "id_solicitacao": contrato.id_solicitacao,
+        "intent": intent,
+        "alvo": contrato.alvo,
+        "status": status_final,
+        "dominio": normalizar_dominio_continuidade(intent=intent),
+        "executou": contrato.executou,
+        "confirmado": contrato.confirmado,
+        "origem": contrato.origem,
+        "evidencia_confirmacao": contrato.evidencia_confirmacao,
+    }
 
     if intent == "DELETE_ITEM" and status_final == "aguardando_confirmacao":
         estado = registrar_pendencia(
@@ -213,6 +228,21 @@ def registrar_resultado_execucao(
                 estado,
                 motivo="cancelada" if intent == "CANCEL_INBOX_ACTION" else "confirmada",
             )
+
+    # Ciclo de vida geral da pendência: se a ação aguardada realmente terminou
+    # e teve confirmação, a resposta seguinte já pertence a um novo turno. Sem
+    # isso, módulos de domínio podem conservar uma escolha antiga e interpretar
+    # um agradecimento, uma saudação ou outro assunto como parâmetro da ação.
+    pendencia_resolvida = dict(estado.get("pendencia_atual") or {})
+    intencao_pendente = str(pendencia_resolvida.get("intencao") or "").strip().upper()
+    if (
+        pendencia_resolvida.get("status") == "ativa"
+        and intencao_pendente
+        and intencao_pendente == intent
+        and contrato.executou is True
+        and contrato.confirmado is True
+    ):
+        estado = limpar_pendencia(estado, motivo="resolvida_por_execucao")
 
     # A troca de dominio precisa acontecer no contrato-base, antes de qualquer
     # enriquecimento opcional. Assim uma ação web recente nunca deixa um app

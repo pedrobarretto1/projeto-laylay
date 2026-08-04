@@ -12,6 +12,9 @@ from mente_laylay.cognicao.proveniencia_informacao import (
     classificar_proveniencia_informacao,
     limitar_proveniencia_invalida,
 )
+from mente_laylay.memoria_mental.memoria_confiavel import (
+    extrair_aprendizados_pessoais_explicitos,
+)
 
 
 _TIPOS_OPERACIONAIS = {
@@ -247,13 +250,23 @@ def extrair_tema_fundamentacao(
     registro_semantico: Dict[str, Any] | None = None,
 ) -> str:
     bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
-    # Preferência pessoal da Laylay e instrução de estilo são conversa, não
-    # alegações factuais. Pesquisá-las fazia a resposta fugir da pergunta.
+    # Perguntas sobre a preferência da própria Laylay e instruções de estilo
+    # continuam conversacionais. Já uma preferência declarada pelo usuário
+    # pode cooperar com memória e pesquisa: a declaração é a evidência pessoal
+    # e a pesquisa serve apenas como enriquecimento auxiliar.
     if re.search(
         r"\b(?:voc[eê]|tu)\s+(?:gosta|curte|prefere)\b", bruto,
         flags=re.IGNORECASE,
     ):
         return ""
+    referencia_previa = re.search(
+        r"\b(?:dele|dela|deles|delas|desse|dessa|disso)\b",
+        bruto,
+        flags=re.IGNORECASE,
+    )
+    preferencias_declaradas = extrair_aprendizados_pessoais_explicitos(bruto)
+    if preferencias_declaradas and not referencia_previa:
+        return str(preferencias_declaradas[0].get("valor") or "").strip()[:160]
     if re.search(
         r"\b(?:explique|explica|responda|fale|diga)\b.*\b(?:como\s+(?:uma\s+)?"
         r"crian[cç]a|de\s+(?:um\s+)?jeito|de\s+forma|simples|resumid[oa]|"
@@ -471,13 +484,41 @@ def _grupo_presente(tokens: set[str], grupo: set[str]) -> bool:
     )
 
 
+def _fala_social_sem_alegacao_externa(frase: str) -> bool:
+    """Distingue reação conversacional de uma afirmação factual pesquisável."""
+    texto = _normalizar(frase)
+    if not texto:
+        return False
+    if _titulos_citados(frase) or _MEDIDA_ESPECIFICA.search(frase):
+        return False
+    if re.search(r"\b(?:18|19|20)\d{2}\b", texto):
+        return False
+    if re.search(
+        r"\b(?:nasceu|morreu|lancou|criou|fundou|ganhou|foi desenvolvido|"
+        r"foi publicado|se passa em|e conhecido|pertence|possui|produz|"
+        r"mistura|combina elementos)\b",
+        texto,
+    ):
+        return False
+    return bool(re.search(
+        r"\b(?:entendi|legal|boa|interessante|curioso|curiosa|gosto|prefiro|"
+        r"combina com voce|te pega|voce curte|me conta|qual|o que)\b",
+        texto,
+    ))
+
+
 def _fallback_sem_inventar(tema: str, texto_usuario: str) -> str:
     nome = str(tema or "esse tema").strip()
     usuario = _normalizar(texto_usuario)
+    if extrair_aprendizados_pessoais_explicitos(texto_usuario):
+        return (
+            f"{nome.capitalize()}, então. Boa, isso já me dá uma pista melhor do seu gosto. "
+            "O que mais te pega nisso?"
+        )
     if re.search(r"\b(?:gosto|curto|adoro|sou fa|tambem gosto)\b", usuario):
         return (
-            f"Entendo. Eu ainda não encontrei informação confiável o bastante sobre {nome} "
-            "para citar obras ou características sem chutar. Posso acompanhar o que você conhece dele sem fingir repertório."
+            f"Entendi o que você quis dizer sobre {nome}. Posso seguir por esse fio "
+            "sem inventar detalhes que eu ainda não confirmei."
         )
     if re.search(r"\b(?:voce gosta|você gosta|voce curte|você curte|o que acha|qual sua opiniao)\b", str(texto_usuario or ""), flags=re.IGNORECASE):
         return (
@@ -510,6 +551,10 @@ def validar_fala_com_fundamentacao(
         str(texto_usuario or ""),
     ))
     evidencia_norm = _normalizar(evidencia)
+    preferencia_declarada = bool(
+        base.get("declaracao_pessoal_explicita")
+        or extrair_aprendizados_pessoais_explicitos(texto_usuario)
+    )
     problemas: list[str] = []
     frases = [parte.strip() for parte in re.split(r"(?<=[.!?])\s+", original) if parte.strip()]
     rejeitadas: list[str] = []
@@ -533,7 +578,14 @@ def validar_fala_com_fundamentacao(
         plataformas_evidencia = _plataformas_citadas(evidencia)
         plataforma_sem_evidencia = bool(plataformas_frase - plataformas_evidencia)
         familiaridade_inventada = bool(_FAMILIARIDADE_INVENTADA.search(frase))
-        sem_base = not bool(base.get("confiavel")) and _frase_especifica_sem_base(frase, tema)
+        reacao_social_preferencia = bool(
+            preferencia_declarada and _fala_social_sem_alegacao_externa(frase)
+        )
+        sem_base = bool(
+            not base.get("confiavel")
+            and _frase_especifica_sem_base(frase, tema)
+            and not reacao_social_preferencia
+        )
         if (
             titulo_sem_evidencia or ano_sem_evidencia or categoria_sem_evidencia
             or medida_sem_evidencia or plataforma_sem_evidencia

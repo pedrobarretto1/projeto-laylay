@@ -35,7 +35,7 @@ _DIAGNOSTICO_PERMITIDO = {
     "curadoria_disponivel", "playlist_ativa",
 }
 _ESTADO_PERMITIDO = {
-    "playlist_ativa", "indice", "modo_aleatorio", "status_avanco",
+    "playlist_ativa", "indice", "modo_aleatorio", "status_avanco", "tab_id",
 }
 
 

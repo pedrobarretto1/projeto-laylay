@@ -19,6 +19,9 @@ INTENTS_REPARAVEIS = {
     "IOT_STATUS",
     "PLAYLIST_PLAY",
     "PLAYLIST_ADD",
+    "MUSIC_SEARCH",
+    "SEARCH",
+    "FILE_SEARCH",
     "MEDIA_CONTROL",
     "VOLUME",
     "AGENDAR_ACAO",
@@ -126,8 +129,10 @@ def _dominio_da_intencao(intent: str) -> str:
         return "site"
     if intent in {"IOT_CONTROL", "IOT_STATUS"}:
         return "iot"
-    if intent in {"PLAYLIST_PLAY", "PLAYLIST_ADD", "MEDIA_CONTROL"}:
+    if intent in {"PLAYLIST_PLAY", "PLAYLIST_ADD", "MEDIA_CONTROL", "MUSIC_SEARCH"}:
         return "musica"
+    if intent in {"SEARCH", "FILE_SEARCH"}:
+        return "pesquisa"
     if intent == "VOLUME":
         return "volume"
     if intent == "AGENDAR_ACAO":
@@ -135,6 +140,28 @@ def _dominio_da_intencao(intent: str) -> str:
     if intent in {"CREATE_FOLDER", "CREATE_FILE"}:
         return "arquivo"
     return ""
+
+
+def _consulta_corrigida(query_anterior: str, trecho: str, alvo_extraido: str) -> str:
+    """Combina uma qualificação natural com a consulta anterior.
+
+    ``não, é do Henrique Mendonça`` especifica a busca anterior; não pode
+    substituir o título por apenas ``Henrique Mendonça``. O mesmo mecanismo é
+    compartilhado por música, busca web e pesquisa de arquivos.
+    """
+    anterior = re.sub(r"\s+", " ", str(query_anterior or "")).strip(" .,!?:;-")
+    bruto = re.sub(r"\s+", " ", str(trecho or "")).strip(" .,!?:;-")
+    qualificacao = re.search(
+        r"\b(?:[ée]\s+)?(?:do|da|de|com|vers[aã]o\s+do|vers[aã]o\s+da)\s+(.+)$",
+        bruto,
+        re.I,
+    )
+    if qualificacao and anterior:
+        detalhe = qualificacao.group(1).strip(" .,!?:;-")
+        if detalhe and detalhe.casefold() not in anterior.casefold():
+            return f"{anterior} {detalhe}"[:220]
+    novo = re.sub(r"^(?:[ée]\s+)?(?:do|da|de)\s+", "", str(alvo_extraido or bruto), flags=re.I)
+    return re.sub(r"\s+", " ", novo).strip(" .,!?:;-")[:220]
 
 
 def _extrair_nivel_volume(trecho: str) -> int | None:
@@ -395,7 +422,16 @@ def detectar_reparacao_conversacional(
             "texto": bruto,
         }
     intent_anterior = intent_corrigido
-    if intent_anterior in {"APP_OPEN", "MAXIMIZE_WINDOW", "CLOSE_APP"}:
+    if intent_anterior in {"MUSIC_SEARCH", "SEARCH", "FILE_SEARCH"}:
+        consulta_anterior = str(params.get("query") or params.get("alvo") or "").strip()
+        consulta_corrigida = _consulta_corrigida(consulta_anterior, trecho_correto, alvo_novo)
+        if not consulta_corrigida:
+            return None
+        params["query"] = consulta_corrigida
+        params.pop("alvo", None)
+        alvo_novo = consulta_corrigida
+        resumo_correcao = consulta_corrigida
+    elif intent_anterior in {"APP_OPEN", "MAXIMIZE_WINDOW", "CLOSE_APP"}:
         params["nome_app"] = alvo_novo
         params.pop("app", None)
     elif intent_anterior in {"OPEN_URL", "CLOSE_TAB"}:

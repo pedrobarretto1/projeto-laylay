@@ -62,6 +62,7 @@ class RequisicaoTransporteLLM:
 @runtime_checkable
 class PortaPreparacaoConversa(Protocol):
     def preparar_pacote(self, texto: str) -> PacotePrompt: ...
+    def preparar_instrucao_rapida(self, texto: str) -> str: ...
     def diagnostico(self) -> dict[str, Any]: ...
 
 
@@ -75,6 +76,9 @@ class PortaModeloLLM(Protocol):
 class PortaEstadoConversa(Protocol):
     def mensagens(self) -> list[dict[str, Any]]: ...
     def substituir(self, mensagens: Sequence[Mapping[str, Any]]) -> None: ...
+    def iniciar_turno(self, turno_id: Any, texto_usuario: str) -> list[dict[str, Any]]: ...
+    def concluir_turno(self, turno_id: Any, fala_assistente: str) -> bool: ...
+    def abortar_turno(self, turno_id: Any) -> bool: ...
     def diagnostico(self) -> dict[str, Any]: ...
 
 
@@ -104,11 +108,23 @@ class RegistroPreparacaoConversa:
             raise RuntimeError("preparador da conversa devolveu um pacote inválido")
         return PacotePrompt(_copiar_mensagens(pacote.mensagens), pacote.prompt_sistema)
 
+    def preparar_instrucao_rapida(self, texto: str) -> str:
+        preparar = getattr(self.servico, "preparar_instrucao_rapida", None)
+        if not callable(preparar):
+            # Compatibilidade com preparadores anteriores. Na composição real
+            # o método é obrigatório por comportamento, mas adaptadores de
+            # teste e extensões antigas continuam seguros e sem autoridade.
+            return ""
+        return str(preparar(str(texto or "")) or "").strip()
+
     def diagnostico(self) -> dict[str, Any]:
         bruto = dict(self.servico.diagnostico() or {})
         return {
             chave: bruto[chave]
-            for chave in ("disponivel", "preparacoes", "falhas", "memoria_exposta", "autoriza_execucao")
+            for chave in (
+                "disponivel", "preparacoes", "preparacoes_rapidas", "falhas",
+                "memoria_exposta", "autoriza_execucao",
+            )
             if chave in bruto
         }
 
@@ -198,21 +214,120 @@ class EstadoConversaRuntime:
             raise RuntimeError("estado da conversa exige leitura e escrita explícitas")
         self._getter = getter
         self._setter = setter
+        self._lock = threading.RLock()
+        self._turnos: dict[str, dict[str, Any]] = {}
+
+    @staticmethod
+    def _chave_turno(turno_id: Any) -> str:
+        chave = str(turno_id or "").strip()
+        if not chave:
+            raise ValueError("turno da conversa exige identificador")
+        return chave
+
+    def _mensagens_sem_lock(self) -> list[dict[str, Any]]:
+        bruto = self._getter()
+        return [
+            dict(item) for item in bruto if isinstance(item, Mapping)
+        ] if isinstance(bruto, list) else []
+
+    def _substituir_sem_lock(
+        self,
+        mensagens: Sequence[Mapping[str, Any]],
+    ) -> None:
+        self._setter([
+            dict(item) for item in mensagens if isinstance(item, Mapping)
+        ])
+
+    def _limitar_turnos(self) -> None:
+        while len(self._turnos) > 128:
+            primeira = next(iter(self._turnos))
+            del self._turnos[primeira]
 
     def mensagens(self) -> list[dict[str, Any]]:
-        bruto = self._getter()
-        return [dict(item) for item in bruto if isinstance(item, Mapping)] if isinstance(bruto, list) else []
+        with self._lock:
+            return self._mensagens_sem_lock()
 
     def substituir(self, mensagens: Sequence[Mapping[str, Any]]) -> None:
-        self._setter([dict(item) for item in mensagens if isinstance(item, Mapping)])
+        with self._lock:
+            self._substituir_sem_lock(mensagens)
+
+    def iniciar_turno(
+        self,
+        turno_id: Any,
+        texto_usuario: str,
+    ) -> list[dict[str, Any]]:
+        """Publica a entrada uma única vez antes de chamar o modelo."""
+        chave = self._chave_turno(turno_id)
+        texto = str(texto_usuario or "").strip()
+        if not texto:
+            raise ValueError("turno da conversa exige texto do usuário")
+        with self._lock:
+            existente = self._turnos.get(chave)
+            if existente is not None:
+                if existente.get("texto_usuario") != texto:
+                    raise RuntimeError(
+                        "identificador de turno reutilizado com outro texto"
+                    )
+                if existente.get("status") == "abortado":
+                    existente["status"] = "iniciado"
+                return self._mensagens_sem_lock()
+
+            mensagens = self._mensagens_sem_lock()
+            mensagens.append({"role": "user", "content": texto})
+            self._substituir_sem_lock(mensagens)
+            self._turnos[chave] = {
+                "status": "iniciado",
+                "texto_usuario": texto,
+                "fala_assistente": "",
+            }
+            self._limitar_turnos()
+            # O pedido ao modelo usa exatamente o lote que acabou de ser
+            # publicado. Isso mantém o turno íntegro mesmo quando um adaptador
+            # de estado confirma a escrita de forma diferida.
+            return [dict(item) for item in mensagens]
+
+    def concluir_turno(self, turno_id: Any, fala_assistente: str) -> bool:
+        """Publica no máximo uma resposta final para a entrada do turno."""
+        chave = self._chave_turno(turno_id)
+        fala = str(fala_assistente or "").strip()
+        if not fala:
+            return False
+        with self._lock:
+            existente = self._turnos.get(chave)
+            if existente is None:
+                raise RuntimeError("turno concluído sem entrada registrada")
+            if existente.get("status") == "concluido":
+                return False
+
+            mensagens = self._mensagens_sem_lock()
+            mensagens.append({"role": "assistant", "content": fala})
+            self._substituir_sem_lock(mensagens)
+            existente["status"] = "concluido"
+            existente["fala_assistente"] = fala
+            return True
+
+    def abortar_turno(self, turno_id: Any) -> bool:
+        """Encerra uma tentativa sem fabricar uma fala da assistente."""
+        chave = self._chave_turno(turno_id)
+        with self._lock:
+            existente = self._turnos.get(chave)
+            if existente is None or existente.get("status") == "concluido":
+                return False
+            existente["status"] = "abortado"
+            return True
 
     def diagnostico(self) -> dict[str, Any]:
-        return {
-            "disponivel": True,
-            "mensagens": len(self.mensagens()),
-            "memoria_duravel": False,
-            "autoriza_execucao": False,
-        }
+        with self._lock:
+            estados = [str(item.get("status") or "") for item in self._turnos.values()]
+            return {
+                "disponivel": True,
+                "mensagens": len(self._mensagens_sem_lock()),
+                "turnos_iniciados": estados.count("iniciado"),
+                "turnos_concluidos": estados.count("concluido"),
+                "turnos_abortados": estados.count("abortado"),
+                "memoria_duravel": False,
+                "autoriza_execucao": False,
+            }
 
 
 def registrar_preparacao_conversa(servico: Any) -> RegistroPreparacaoConversa:

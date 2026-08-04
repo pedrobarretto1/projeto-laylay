@@ -58,6 +58,52 @@ def test_playlist_existente_e_aberta_usando_um_unico_snapshot(tmp_path) -> None:
     assert abertas == [FAIXA["url"]]
 
 
+def test_autoplay_sem_confirmacao_mantem_fila_ativa_e_permite_proxima(tmp_path) -> None:
+    caminho = tmp_path / "playlists.json"
+    segunda = {
+        "url": "https://www.youtube.com/watch?v=segunda",
+        "titulo": "Segunda",
+        "canal": "Teste",
+    }
+    caminho.write_text(
+        json.dumps({"sendo sendo": [FAIXA, segunda]}), encoding="utf-8",
+    )
+    retornos = iter([
+        {
+            "ok": False,
+            "confirmado": False,
+            "status": "autoplay_blocked",
+            "tab": {"id": 42, "url": FAIXA["url"]},
+            "evidence": {"playing": False, "playlistTab": True},
+        },
+        {
+            "ok": True,
+            "confirmado": True,
+            "status": "playing_confirmed",
+            "tab": {"id": 42, "url": segunda["url"]},
+        },
+    ])
+    estado: dict = {}
+    runtime = PlaylistRuntime(
+        state_file=str(caminho),
+        legacy_file=str(tmp_path / "legado.json"),
+        cache={},
+        ultima_playlist_getter=lambda: "",
+        playlist_state=estado,
+        youtube_play=lambda *_args, **_kwargs: next(retornos),
+        log=lambda _linha: None,
+    )
+
+    assert runtime.play("sendo sendo") is True
+    assert estado["name"] == "sendo sendo"
+    assert estado["index"] == 0
+    assert estado["tab_id"] == 42
+    assert estado["last_advance_status"] == "enviado_sem_confirmacao"
+    assert runtime.avancar_proxima() is True
+    assert estado["index"] == 1
+    assert estado["last_advance_status"] == "ok"
+
+
 def test_falha_de_leitura_nao_apaga_arquivo_nem_cache(tmp_path) -> None:
     caminho = tmp_path / "playlists.json"
     conteudo_incompleto = '{"musica brasileira": ['

@@ -79,6 +79,33 @@ def test_erro_de_termo_e_corrigido_quando_a_gramatica_prova_o_dominio() -> None:
     ) == "coloca uma musica"
 
 
+def test_erro_inequivoco_em_termo_operacional_usa_aproximacao_compartilhada() -> None:
+    runtime = _runtime()
+
+    corrigido = runtime.normalizar_com_apelidos(
+        "eu gosto de programacao, encontra o codgio que controla a lampada"
+    )
+
+    assert corrigido == (
+        "eu gosto de programacao encontra o codigo que controla a lampada"
+    )
+    diagnostico = runtime.diagnostico_tolerancia_portugues()
+    assert diagnostico["ultima"]["correcoes"] == [{
+        "de": "codgio",
+        "para": "codigo",
+        "tipo": "termo_operacional_aproximado",
+    }]
+
+
+def test_aproximacao_de_termo_nao_altera_conversa_nem_nome_de_entidade() -> None:
+    runtime = _runtime()
+
+    assert runtime.normalizar_com_apelidos("eu gosto de codgio") == "eu gosto de codgio"
+    assert runtime.normalizar_com_apelidos(
+        "cria um arquivo chamado Codgio"
+    ) == "cria um arquivo chamado codgio"
+
+
 def test_preposicao_oral_de_playlist_preserva_faixa_atual_e_destino() -> None:
     runtime = _runtime()
 

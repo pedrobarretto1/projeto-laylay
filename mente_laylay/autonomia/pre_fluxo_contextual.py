@@ -21,6 +21,10 @@ from mente_laylay.memoria_mental.identidade_usuario import normalizar_nome_usuar
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
+from mente_laylay.cognicao.esclarecimento_operacional import (
+    detectar_esclarecimento_operacional,
+    registrar_esclarecimento_operacional,
+)
 from mente_laylay.autonomia.base_pre_fluxo import _get
 from mente_laylay.autonomia.pre_fluxo_musical import (
     processar_confirmacao_musical_pendente,
@@ -500,23 +504,45 @@ def processar_consulta_sistema_local(
     t = re.sub(r"\s+", " ", str(texto_usuario or "").strip().casefold())
     if not re.search(
         r"\b(?:quais|que|lista|listar|mostra|mostrar)\b.*"
-        r"\b(?:programas|aplicativos|apps|janelas)\b.*"
+        r"\b(?:programas|aplicativos|apps|janelas|processos)\b.*"
         r"\b(?:abert[oa]s?|rodando|execucao|execução)\b",
         t,
     ):
         return False, ""
+    observar = _get(ctx, "observar_programas_abertos")
     listar = _get(ctx, "listar_programas_abertos")
-    if not callable(listar):
+    if not callable(observar) and not callable(listar):
         return False, ""
     try:
-        programas = [str(item).strip() for item in list(listar() or []) if str(item).strip()]
+        retrato = dict(observar() or {}) if callable(observar) else {
+            "janelas_visiveis": list(listar() or []),
+            "processos_segundo_plano": [],
+        }
     except Exception:
-        programas = []
-    if programas:
-        nomes = ", ".join(programas[:12])
-        fala = f"Estão abertos agora: {nomes}."
+        retrato = {"janelas_visiveis": [], "processos_segundo_plano": []}
+    janelas = [
+        str(item).strip() for item in list(retrato.get("janelas_visiveis") or [])
+        if str(item).strip()
+    ]
+    processos = [
+        str(item).strip()
+        for item in list(retrato.get("processos_segundo_plano") or [])
+        if str(item).strip()
+    ]
+    partes = []
+    if janelas:
+        partes.append(f"Janelas visíveis: {', '.join(janelas[:12])}.")
     else:
-        fala = "Não encontrei nenhum programa com janela visível agora."
+        partes.append("Não encontrei programa com janela visível agora.")
+    if processos:
+        partes.append(
+            "Em segundo plano, sem janela visível: "
+            f"{', '.join(processos[:8])}."
+        )
+    else:
+        partes.append("Não incluí serviços ou componentes internos do sistema.")
+    partes.append("As abas continuam dentro da janela do navegador, não como aplicativos separados.")
+    fala = " ".join(partes)
     return emitir_conversa_curta(
         ctx, texto_usuario, fala, emocao="calma", nivel=1,
     ), "consulta_programas_abertos"
@@ -620,6 +646,50 @@ def processar_sugestao_indireta(ctx: Dict[str, Any], texto_usuario: str) -> Tupl
     return ok, "sugestao_indireta" if ok else ""
 
 
+def processar_esclarecimento_operacional(
+    ctx: Dict[str, Any], texto_usuario: str,
+) -> Tuple[bool, str]:
+    """Pergunta o dado faltante antes que uma frase vaga chegue à LLM.
+
+    A classificação é deliberadamente central e só opera quando identifica um
+    intent canônico mas nenhum alvo executável. A pergunta é registrada como
+    pendência da mente única, permitindo que a resposta seguinte volte ao
+    mesmo comando de forma natural.
+    """
+    contrato = detectar_esclarecimento_operacional(texto_usuario)
+    if not isinstance(contrato, dict):
+        return False, ""
+
+    fala = str(contrato.get("fala") or "").strip()
+    if not fala:
+        return False, ""
+    emitida = emitir_conversa_curta(
+        ctx,
+        texto_usuario,
+        fala,
+        emocao="calma",
+        nivel=1,
+    )
+    if not emitida:
+        return False, ""
+
+    estado_runtime = _get(ctx, "_estado_compartilhado_runtime")
+    estado_atual = getattr(estado_runtime, "mental", None)
+    if not isinstance(estado_atual, dict):
+        estado_atual = _get(ctx, "mente_integrada_estado", {})
+    novo_estado = registrar_esclarecimento_operacional(estado_atual, contrato)
+    if callable(getattr(estado_runtime, "substituir", None)):
+        estado_runtime.substituir("mental", novo_estado)
+    else:
+        ctx["mente_integrada_estado"] = novo_estado
+
+    print(
+        "🧭 [ESCLARECIMENTO:OPERACIONAL] "
+        f"intent={contrato.get('intent')} | campo={contrato.get('campo')}"
+    )
+    return True, "esclarecimento_operacional"
+
+
 def processar_reparacao_conversacional(ctx: Dict[str, Any], texto_usuario: str) -> Tuple[bool, str]:
     texto_norm = str(texto_usuario or "").casefold()
     # "não, Lay, faça X" é uma correção que já contém um novo comando
@@ -667,9 +737,9 @@ def processar_reparacao_conversacional(ctx: Dict[str, Any], texto_usuario: str) 
             falar(fala, "calma", 1)
         return True, "reparacao_conversacional"
 
-    if callable(falar):
-        resumo = str(reparacao.get("resumo_correcao") or alvo_novo).strip()
-        falar(f"Foi mal, corrigi: agora é {resumo}.", "calma", 1)
+    # A correção operacional não fala antes de agir: o executor já produz a
+    # confirmação canônica. Assim evitamos duas falas para uma única ação e a
+    # resposta final reflete o resultado real, não só a intenção corrigida.
     ok = executar_resultado_contextual(
         ctx,
         reparacao["intencao"],
@@ -701,7 +771,37 @@ def processar_comentario_resultado_operacional(
     tipo = str(comentario.get("tipo") or "")
     alvo = str(comentario.get("alvo") or "o resultado").strip()
     fala = ""
-    if tipo == "aparencia_cor":
+    if tipo == "questiona_autoria":
+        intent = str(comentario.get("intent") or "").upper()
+        status = str(comentario.get("status") or "").casefold()
+        confirmado = comentario.get("confirmado") is True
+        nomes = {
+            "MUSIC_SEARCH": "abrir uma música",
+            "PLAYLIST_PLAY": "abrir a playlist",
+            "APP_OPEN": "abrir o programa",
+            "OPEN_URL": "abrir a página",
+            "IOT_CONTROL": "ajustar o dispositivo",
+            "CREATE_FILE": "criar o arquivo",
+            "CREATE_FOLDER": "criar a pasta",
+        }
+        acao = nomes.get(intent, "executar essa ação")
+        referencia = f" — {alvo} —" if alvo else ""
+        if confirmado:
+            fala = (
+                f"Eu entendi sua fala como um pedido e decidi {acao}{referencia}. "
+                "Foi uma ação minha, não algo que você já tinha escolhido."
+            )
+        elif status in {"falha_execucao", "falhou", "indisponivel", "incerto"}:
+            fala = (
+                f"Eu interpretei sua fala como um pedido implícito e tentei {acao}{referencia} "
+                "mas o resultado não confirmou. Foi erro meu me adiantar."
+            )
+        else:
+            fala = (
+                f"Eu interpretei sua fala como um pedido implícito e tentei {acao}{referencia}. "
+                "Foi iniciativa minha; eu devia ter perguntado antes."
+            )
+    elif tipo == "aparencia_cor":
         pedida = str(comentario.get("cor_pedida") or "a cor pedida").strip()
         percebida = str(comentario.get("cor_percebida") or "outro tom").strip()
         fala = (

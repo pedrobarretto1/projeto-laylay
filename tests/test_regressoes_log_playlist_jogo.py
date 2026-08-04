@@ -45,6 +45,25 @@ def test_adicionar_musica_em_playlist_vence_replay_contextual() -> None:
     }
 
 
+def test_artigo_da_playlist_nao_vira_preposicao_de_adicao() -> None:
+    dependencias = {
+        "params_cb": lambda **kwargs: kwargs,
+        "limpar_nome_playlist": limpar_nome_playlist,
+    }
+
+    assert detectar_playlist_contextual_musica_atual(
+        "coloca a playlist rei do pop",
+        **dependencias,
+    ) is None
+    assert detectar_playlist_contextual_musica_atual(
+        "coloca na playlist rei do pop",
+        **dependencias,
+    ) == {
+        "intent": "PLAYLIST_ADD",
+        "params": {"nome_playlist": "rei do pop"},
+    }
+
+
 def test_playlist_add_explicito_e_consumido_antes_da_llm() -> None:
     chamadas = []
     registros = []

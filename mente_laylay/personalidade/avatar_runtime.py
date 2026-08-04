@@ -325,8 +325,17 @@ class AvatarRuntime:
             self.registrar_falha("avatar", codigo, erro=erro)
 
     def ativo(self) -> bool:
-        valor = str(self.env_getter("LAYLAY_AVATAR_ATIVO", "1") or "").strip().casefold()
-        return valor not in {"0", "false", "nao", "não", "off"}
+        # A interface desktop é a fonte explícita desta preferência. Ausência
+        # significa desligado: iniciar a Laylay nunca deve abrir um mascote por
+        # surpresa. A chave antiga continua funcionando como bloqueio mestre.
+        mascote = str(
+            self.env_getter("LAYLAY_MASCOT_ENABLED", "0") or ""
+        ).strip().casefold()
+        legado = str(
+            self.env_getter("LAYLAY_AVATAR_ATIVO", "1") or ""
+        ).strip().casefold()
+        falsos = {"0", "false", "nao", "não", "off", "desligado", ""}
+        return mascote not in falsos and legado not in falsos
 
     def iniciar(self) -> bool:
         if not self.ativo():

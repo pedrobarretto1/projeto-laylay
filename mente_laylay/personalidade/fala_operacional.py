@@ -144,6 +144,10 @@ def _opcoes_status(status: str, alvo: str) -> list[str]:
             f"{alvo} já estava aberto; puxei pro foco.",
             f"Coloquei {alvo} na frente. É todo seu.",
         ],
+        "app_iniciado_focado": [
+            f"Iniciei {alvo} e trouxe a nova janela pra frente.",
+            f"Abri {alvo}; a janela nova já está em foco.",
+        ],
         "ja_aberto_focado": [
             f"{alvo} já estava aberto e na frente. Pela primeira vez, nenhum drama.",
             f"{alvo} já estava exatamente onde você queria.",

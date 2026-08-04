@@ -10,6 +10,7 @@ DEPENDENCIAS_AMBIENTE_NAVEGACAO = (
     "_percepcao_get", "_percepcao_set", "_classificar_contexto_por_url_chrome_mente",
     "open_app", "APP_OPENER_AVAILABLE", "_organizar_janelas_mente", "gw",
     "pyautogui", "ctypes", "wintypes", "_listar_programas_abertos_mente",
+    "_observar_programas_abertos_mente",
     "psutil", "_normalizar_alvo_ambiente",
     "_resolver_alvo_ambiente_mente", "_janela_app_esta_em_foco",
     "_modo_jogo_runtime", "_abrir_url_reutilizando_aba_chrome_mente",
@@ -113,6 +114,17 @@ class AmbienteNavegacaoRuntime:
     def listar_programas(self) -> list:
         ns = self._ns()
         return ns["_listar_programas_abertos_mente"](ns["gw"], ns["psutil"])
+
+    def observar_programas(self) -> dict[str, list[str]]:
+        ns = self._ns()
+        observar = ns.get("_observar_programas_abertos_mente")
+        if not callable(observar):
+            return {
+                "janelas_visiveis": list(self.listar_programas()),
+                "processos_segundo_plano": [],
+                "componentes_filtrados": [],
+            }
+        return dict(observar(ns["gw"], ns["psutil"]) or {})
 
     def listar_abas(self, timeout_s: float = 5.0) -> list:
         if self._solicitacoes is None:

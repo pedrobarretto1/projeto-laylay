@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any, Callable, Dict
 
 from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
 from mente_laylay.autonomia.executor_comum import falar_ctx as _falar
+from mente_laylay.memoria_mental.memoria_confiavel import normalizar_texto
 from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_variada
 
 
@@ -24,6 +26,36 @@ class DependenciasExecutorInformacoes:
 
 def _get(ctx: Dict[str, Any], nome: str, default: Any = None) -> Any:
     return ctx.get(nome, default)
+
+
+def _humanizar_aprendizado(item: Dict[str, Any]) -> str:
+    """Converte o registro interno em uma lembrança dirigida à pessoa."""
+    texto = str(item.get("texto") or item.get("regra") or "").strip()
+    valor = str(item.get("valor") or "").strip()
+    chave = str(item.get("chave") or "").casefold()
+    if chave.startswith("preferencia:afinidade:") and valor:
+        regra = str(item.get("regra") or texto).casefold()
+        if "não gosta" in regra or "nao gosta" in regra:
+            return f"você não gosta de {valor}"
+        if "prefere" in regra:
+            return f"você prefere {valor}"
+        if "adora" in regra:
+            return f"você adora {valor}"
+        if " ama " in f" {regra} ":
+            return f"você ama {valor}"
+        if "curte" in regra:
+            return f"você curte {valor}"
+        return f"você gosta de {valor}"
+    substituicoes = (
+        (r"^o usuário\s+gosto\s+de\s+", "você gosta de "),
+        (r"^o usuário\s+curto\s+", "você curte "),
+        (r"^o usuário\s+adoro\s+", "você adora "),
+        (r"^o usuário\s+amo\s+", "você ama "),
+        (r"^o usuário\s+", "você "),
+    )
+    for padrao, troca in substituicoes:
+        texto = re.sub(padrao, troca, texto, flags=re.IGNORECASE)
+    return texto
 
 
 def _ler_emails(
@@ -68,7 +100,11 @@ def _ler_emails(
             fala = str(resumir(emails, somente_prioritarios=somente) or "").strip()
     if fala:
         _falar(ctx, fala)
-    deps.marcar_resultado("emails_lidos")
+    deps.marcar_resultado(
+        "emails_lidos",
+        executou=True,
+        confirmado=True,
+    )
     return ResultadoDespacho.concluido()
 
 
@@ -128,6 +164,7 @@ def _repetir_briefing(
 
 def _consultar_clima(
     params: Dict[str, Any],
+    texto_original: str,
     ctx: Dict[str, Any],
     deps: DependenciasExecutorInformacoes,
 ) -> ResultadoDespacho:
@@ -136,13 +173,23 @@ def _consultar_clima(
         or params.get("query") or _get(ctx, "cidade_padrao_clima", "Boituva")
     ).strip()
     obter = _get(ctx, "obter_clima_localidade")
-    info = obter(local) if callable(obter) else {"ok": False, "localidade": local}
+    try:
+        info = obter(local) if callable(obter) else {"ok": False, "localidade": local}
+    except Exception:
+        info = {"ok": False, "localidade": local}
+    if not isinstance(info, dict):
+        info = {"ok": False, "localidade": local}
     if not info.get("ok"):
         _falar(ctx, escolher_fala_variada([
             f"Tentei sentir o clima de {local}, mas minha antena do tempo falhou agora.",
             f"Fui olhar o tempo em {local}, mas não consegui puxar essa informação agora.",
             f"O clima de {local} escapou de mim por enquanto. Se quiser, tenta de novo em instantes.",
         ]))
+        deps.marcar_resultado(
+            "clima_indisponivel",
+            executou=False,
+            confirmado=False,
+        )
         return ResultadoDespacho.concluido()
 
     cidade = str(info.get("localidade") or local).strip()
@@ -159,17 +206,45 @@ def _consultar_clima(
     if umidade:
         base += f" e umidade em {umidade}%"
     base += "."
-    _falar(ctx, escolher_fala_variada([
-        base,
-        f"Dei uma espiada no tempo: {base}",
-        f"Clima na mesa. {base}",
-    ]))
-    deps.marcar_resultado("clima_consultado")
+    pergunta_chuva = "chov" in str(texto_original or "").casefold()
+    if pergunta_chuva:
+        chance_bruta = info.get("chance_chuva_pct")
+        try:
+            chance = max(0, min(100, int(float(chance_bruta))))
+        except (TypeError, ValueError):
+            chance = None
+        descricao_norm = descricao.casefold()
+        chuva_agora = any(
+            termo in descricao_norm
+            for termo in ("chuva", "chuvoso", "garoa", "rain", "drizzle", "tempestade")
+        )
+        if chuva_agora:
+            resposta_chuva = "Sim, está chovendo ou há chuva indicada agora."
+        elif chance is None:
+            resposta_chuva = "Não consegui confirmar a chance de chuva para hoje."
+        elif chance >= 60:
+            resposta_chuva = f"Sim, há uma chance alta de chuva hoje: até {chance}%."
+        elif chance >= 30:
+            resposta_chuva = f"Pode chover hoje; a chance chega a {chance}%."
+        else:
+            resposta_chuva = (
+                f"A previsão não indica chuva significativa hoje; "
+                f"a chance máxima é de {chance}%."
+            )
+        _falar(ctx, f"{resposta_chuva} {base}")
+    else:
+        _falar(ctx, escolher_fala_variada([
+            base,
+            f"Dei uma espiada no tempo: {base}",
+            f"Clima na mesa. {base}",
+        ]))
+    deps.marcar_resultado("clima_consultado", executou=True, confirmado=True)
     return ResultadoDespacho.concluido()
 
 
 def _consultar_aprendizados(
     params: Dict[str, Any],
+    texto_original: str,
     ctx: Dict[str, Any],
     deps: DependenciasExecutorInformacoes,
 ) -> ResultadoDespacho:
@@ -178,29 +253,86 @@ def _consultar_aprendizados(
         limite = max(1, min(5, int(params.get("limit") or 3)))
     except (TypeError, ValueError):
         limite = 3
+    try:
+        offset = max(0, int(params.get("offset") or 0))
+    except (TypeError, ValueError):
+        offset = 0
+    consulta = str(params.get("query") or params.get("consulta") or "").strip()
+    modo = str(params.get("modo") or "listar").strip().casefold()
     if not callable(recuperar):
         deps.marcar_resultado("habilidade_indisponivel", executou=False)
         _falar(ctx, "Minha memória de aprendizados não está disponível agora.")
         return ResultadoDespacho.concluido(False)
     try:
-        aprendizados = [
-            str(item).strip() for item in (recuperar(limit=limite) or [])
-            if str(item or "").strip()
-        ]
+        try:
+            brutos = recuperar(consulta=consulta, limit=limite, offset=offset) or []
+        except TypeError:
+            # Compatibilidade temporária com adaptadores anteriores à visão
+            # unificada. A origem continua marcada como legado, nunca como
+            # confirmação direta do usuário.
+            brutos = recuperar(limit=limite) or []
     except Exception:
         deps.marcar_resultado("falha_execucao", executou=False)
         _falar(ctx, "Tentei puxar o que aprendi, mas minha memória não respondeu direito.")
         return ResultadoDespacho.concluido(False)
 
+    aprendizados: list[Dict[str, Any]] = []
+    for item in brutos if isinstance(brutos, (list, tuple)) else []:
+        if isinstance(item, dict):
+            registro = dict(item)
+            texto = str(registro.get("texto") or "").strip()
+        else:
+            texto = str(item or "").strip()
+            registro = {
+                "texto": texto,
+                "fonte": "fato_legado",
+                "natureza": "registro_antigo",
+                "confirmado_usuario": False,
+            }
+        if texto:
+            registro["texto"] = texto
+            aprendizados.append(registro)
+
     deps.marcar_resultado("aprendizados_consultados", executou=True, confirmado=True)
     if not aprendizados:
-        _falar(ctx, "Ainda não tenho nenhum aprendizado confiável seu guardado por aqui.")
+        if modo == "verificar" and consulta:
+            fala = (
+                "Não encontrei isso entre os aprendizados confiáveis que tenho sobre você. "
+                "Prefiro admitir a lacuna a completar no chute."
+            )
+        elif offset:
+            fala = "Não achei outros aprendizados confiáveis além daqueles."
+        else:
+            fala = "Ainda não tenho nenhum aprendizado confiável seu guardado por aqui."
+        _falar(ctx, fala)
         return ResultadoDespacho.concluido(True)
-    recortes = [item if len(item) <= 140 else item[:137] + "..." for item in aprendizados]
-    if len(recortes) == 1:
-        fala = f"Lembro disso que você me ensinou: {recortes[0]}"
+
+    def descrever(item: Dict[str, Any]) -> str:
+        texto = _humanizar_aprendizado(item)
+        recorte = texto if len(texto) <= 160 else texto[:157] + "..."
+        natureza = str(item.get("natureza") or "").casefold()
+        if item.get("confirmado_usuario") or natureza == "confirmado":
+            return recorte
+        if natureza == "padrao_percebido" or item.get("fonte") == "hipotese_madura":
+            return f"percebi com boa confiança o padrão: {recorte}"
+        if natureza == "observado_confiavel":
+            return f"observei com boa confiança que {recorte}"
+        return f"tenho este registro antigo, ainda sem confirmação direta: {recorte}"
+
+    recortes = [descrever(item) for item in aprendizados]
+    if modo == "verificar" and consulta:
+        consulta_norm = normalizar_texto(consulta)
+        registro_norm = normalizar_texto(recortes[0])
+        consulta_negada = bool(re.search(r"\bnao\b", consulta_norm))
+        registro_negado = bool(re.search(r"\b(?:voce\s+)?nao\b", registro_norm))
+        prefixo = "Sim" if consulta_negada == registro_negado else "Não"
+        fala = f"{prefixo}. {recortes[0].capitalize()}."
+    elif modo == "origem":
+        fala = f"Minha base para isso é o que você me contou diretamente: {recortes[0]}."
+    elif len(recortes) == 1:
+        fala = f"Do que lembro com segurança, {recortes[0]}."
     else:
-        fala = "Lembro destas coisas que você me ensinou: " + "; ".join(recortes) + "."
+        fala = "Do que lembro com segurança: " + "; ".join(recortes) + "."
     _falar(ctx, fala)
     return ResultadoDespacho.concluido(True)
 
@@ -222,5 +354,5 @@ def executar_intencao_informacoes(
     if intent == "BRIEFING_REPEAT":
         return _repetir_briefing(texto_original, ctx, deps)
     if intent == "LEARNING_QUERY":
-        return _consultar_aprendizados(params, ctx, deps)
-    return _consultar_clima(params, ctx, deps)
+        return _consultar_aprendizados(params, texto_original, ctx, deps)
+    return _consultar_clima(params, texto_original, ctx, deps)

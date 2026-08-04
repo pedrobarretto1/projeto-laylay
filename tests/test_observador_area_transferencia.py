@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from mente_laylay.especialistas.area_transferencia import (
     AreaTransferenciaRuntime,
     classificar_conteudo_passivo,
@@ -28,7 +30,7 @@ def test_resposta_da_oferta_reutiliza_linguagem_natural_compartilhada() -> None:
     )
     recusas = (
         "não", "não quero", "agora não", "não precisa", "deixa quieto",
-        "não investiga isso",
+        "não investiga isso", "deixa para depois", "melhor deixar isso pra depois",
     )
 
     for texto in aceites:
@@ -228,6 +230,37 @@ def test_erro_novo_estavel_vira_oportunidade_sem_texto_bruto() -> None:
     assert eventos[0]["fala"].endswith("Quer que eu investigue?")
 
 
+def test_recusa_recente_silencia_nova_oferta_da_mesma_acao() -> None:
+    agora = [0.0]
+    clipboard = ClipboardFalso("inicial")
+    area = _area(clipboard)
+    eventos = []
+    runtime = ObservadorAreaTransferenciaRuntime(
+        snapshot_getter=area.snapshot_passivo,
+        considerar_presenca=lambda evento: eventos.append(evento) or {
+            "status": "emitida"
+        },
+        contexto_getter=lambda: {
+            "clipboard_ofertas_silenciadas": {
+                "investigar_erro": time.time() + 600.0,
+            },
+        },
+        estabilidade_s=1,
+        clock=lambda: agora[0],
+        log=lambda *_args: None,
+    )
+    runtime.observar_uma_vez()
+    clipboard.texto = "Traceback: RuntimeError: falha nova"
+    runtime.observar_uma_vez()
+    agora[0] = 1.1
+
+    resultado = runtime.observar_uma_vez()
+
+    assert resultado["status"] == "silenciada_por_recusa"
+    assert resultado["acao_sugerida"] == "investigar_erro"
+    assert eventos == []
+
+
 def test_oferta_aceita_respostas_naturais_sem_comando_exato() -> None:
     for texto in ("sim", "pode", "dá uma olhada", "investiga isso pra mim"):
         assert classificar_resposta_oferta(texto, "investigar_erro") == "aceitar"
@@ -288,6 +321,31 @@ def test_modo_sombra_classifica_sem_publicar() -> None:
     assert resultado["status"] == "sombra"
     assert eventos == []
     assert resultado["evento"]["executar_automaticamente"] is False
+
+
+def test_conteudo_consumido_por_comando_explicito_nao_gera_oferta() -> None:
+    agora = [0.0]
+    clipboard = ClipboardFalso("inicial")
+    area = _area(clipboard)
+    eventos = []
+    runtime = ObservadorAreaTransferenciaRuntime(
+        snapshot_getter=area.snapshot_passivo,
+        considerar_presenca=lambda evento: eventos.append(evento) or {"status": "emitida"},
+        estabilidade_s=1,
+        clock=lambda: agora[0],
+        log=lambda *_args: None,
+    )
+    runtime.observar_uma_vez()
+    clipboard.texto = "texto longo " * 80
+    assert runtime.observar_uma_vez()["status"] == "estabilizando"
+
+    assert runtime.marcar_conteudo_consumido(area.snapshot_passivo()) is True
+    agora[0] = 2.0
+
+    assert runtime.observar_uma_vez()["status"] in {
+        "duplicada_conteudo", "sem_mudanca",
+    }
+    assert eventos == []
 
 
 def test_segredo_e_texto_curto_sao_silenciosos_e_deduplicados() -> None:

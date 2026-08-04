@@ -321,22 +321,29 @@ class OrquestradorInicializacao:
         *,
         fala_pronta: str,
         ao_encerrar: Callable[[], Any] | None = None,
+        deve_encerrar: Callable[[], bool] | None = None,
     ) -> None:
         if str(fala_pronta or "").strip():
             self.log(fala_pronta)
+        encerramento_solicitado = False
         try:
             while True:
+                if callable(deve_encerrar) and deve_encerrar():
+                    encerramento_solicitado = True
+                    self.log("\n♻️ Reinício solicitado pelo Terminal 2.1...")
+                    break
                 self.sleep(1)
         except KeyboardInterrupt:
+            encerramento_solicitado = True
             self.log("\n🛑 Encerrando Laylay por Ctrl+C...")
-            if callable(ao_encerrar):
+        finally:
+            if encerramento_solicitado and callable(ao_encerrar):
                 try:
                     ao_encerrar()
                 except KeyboardInterrupt:
                     self.log("🛑 Encerramento acelerado por novo Ctrl+C.")
                 except Exception as erro:
                     self.log(f"⚠️ [MAIN] Falha ao salvar memória no encerramento: {erro}")
-        finally:
             try:
                 self.servicos.encerrar()
             except KeyboardInterrupt:

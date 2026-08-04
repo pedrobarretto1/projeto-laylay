@@ -344,6 +344,37 @@ def test_mapa_recursos_nao_converte_negacao_hipotese_ou_opiniao_em_consulta() ->
     assert mapa.resolver_consulta("o que você acha da minha ideia?") is None
 
 
+def test_nome_real_de_playlist_nao_converte_opiniao_em_consulta() -> None:
+    mapa = MapaRecursosRuntime()
+    mapa.registrar(
+        "playlists_usuario",
+        arquivo="playlists.json",
+        descricao="playlists reais",
+        termos=("playlist", "musicas salvas"),
+        leitor=lambda texto: {
+            "detalhe": (
+                {"nome": "rock", "titulos": ["Faixa real"]}
+                if "rock" in texto.casefold() else {}
+            ),
+        },
+        intent_consulta="PLAYLIST_LIST",
+        parametro_detalhe="nome_playlist",
+    )
+
+    for frase in (
+        "o que você acha de rock?",
+        "o que acha do gênero rock?",
+        "acha do gênero rock?",
+        "qual sua opinião sobre rock?",
+    ):
+        assert mapa.resolver_consulta(frase) is None
+
+    assert mapa.resolver_consulta("o que tem em rock?") == {
+        "intent": "PLAYLIST_LIST",
+        "params": {"nome_playlist": "rock"},
+    }
+
+
 def test_mapa_recursos_formata_notas_sem_metadados_internos() -> None:
     mapa = MapaRecursosRuntime()
     mapa.registrar(

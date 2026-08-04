@@ -95,6 +95,7 @@ def executar_media_control(
         str((estado_reproducao or {}).get("playlist_ativa") or "").strip()
     )
     confirmado_execucao: bool | None = None
+    detalhe_execucao = ""
 
     def _log_midia(etapa: str, msg: str) -> None:
         try:
@@ -117,6 +118,48 @@ def executar_media_control(
         _log_midia("ROTA", f"acao={acao} platform={platform or '-'} playlist={playlist_ativa} url='{url[:80]}' preferir_chrome={preferir}")
         return preferir
 
+    def _controlar_chrome_com_evidencia(cmd_exec: str) -> bool:
+        nonlocal confirmado_execucao, detalhe_execucao
+        if navegador_operacoes is None:
+            confirmado_execucao = False
+            detalhe_execucao = "navegador_indisponivel"
+            return False
+        tab_id = (estado_reproducao or {}).get("tab_id")
+        if not isinstance(tab_id, int):
+            aba = _aba_atual_midia()
+            tab_id = aba.get("tabId") if isinstance(aba, dict) else None
+        controlar_detalhado = getattr(
+            navegador_operacoes, "controlar_youtube_detalhado", None,
+        )
+        if callable(controlar_detalhado):
+            try:
+                retorno = controlar_detalhado(
+                    cmd_exec,
+                    tab_id=tab_id if isinstance(tab_id, int) else None,
+                )
+            except TypeError:
+                retorno = controlar_detalhado(cmd_exec)
+            dados = dict(retorno) if isinstance(retorno, dict) else {}
+            ok = bool(dados.get("ok"))
+            confirmado = dados.get("confirmado")
+            confirmado_execucao = (
+                bool(confirmado) if confirmado is not None else None
+            )
+            detalhe_execucao = str(
+                dados.get("message") or dados.get("status") or ""
+            ).strip()
+            return ok
+        try:
+            ok = bool(navegador_operacoes.controlar_youtube(
+                cmd_exec,
+                tab_id=tab_id if isinstance(tab_id, int) else None,
+            ))
+        except TypeError:
+            ok = bool(navegador_operacoes.controlar_youtube(cmd_exec))
+        confirmado_execucao = ok
+        detalhe_execucao = "confirmacao_legada" if ok else "falha_execucao"
+        return ok
+
     def _executar_cmd_midia(cmd_exec: str) -> bool:
         nonlocal confirmado_execucao
         _log_midia("ENVIO", f"cmd={cmd_exec} destino={destino_val or 'local'} playlist={playlist_ativa}")
@@ -127,10 +170,9 @@ def executar_media_control(
         if destino_val == "ambos":
             ok_local = False
             if cmd_exec == "skip_ad" and navegador_operacoes is not None:
-                ok_local = bool(navegador_operacoes.controlar_youtube(cmd_exec))
-                confirmado_execucao = ok_local
+                ok_local = _controlar_chrome_com_evidencia(cmd_exec)
             elif _preferir_chrome_para_midia() and navegador_operacoes is not None:
-                ok_local = bool(navegador_operacoes.controlar_youtube(cmd_exec))
+                ok_local = _controlar_chrome_com_evidencia(cmd_exec)
                 # O destino remoto continua sem confirmação conjunta; não
                 # declaramos o comando inteiro confirmado só pelo PC local.
                 confirmado_execucao = None
@@ -139,27 +181,23 @@ def executar_media_control(
                 ok_local = bool(executar_controle_midia_nativo(native_cmd))
                 confirmado_execucao = None
             elif navegador_operacoes is not None:
-                ok_local = bool(navegador_operacoes.controlar_youtube(cmd_exec))
+                ok_local = _controlar_chrome_com_evidencia(cmd_exec)
                 confirmado_execucao = None
             if callable(_enviar_pc_b):
                 _enviar_pc_b({"action": "youtube_control", "command": cmd_exec})
             return ok_local
         if cmd_exec == "skip_ad" and navegador_operacoes is not None:
-            confirmado_execucao = bool(navegador_operacoes.controlar_youtube(cmd_exec))
-            return confirmado_execucao
+            return _controlar_chrome_com_evidencia(cmd_exec)
         if playlist_ativa and navegador_operacoes is not None:
-            confirmado_execucao = bool(navegador_operacoes.controlar_youtube(cmd_exec))
-            return confirmado_execucao
+            return _controlar_chrome_com_evidencia(cmd_exec)
         if _preferir_chrome_para_midia() and navegador_operacoes is not None:
-            confirmado_execucao = bool(navegador_operacoes.controlar_youtube(cmd_exec))
-            return confirmado_execucao
+            return _controlar_chrome_com_evidencia(cmd_exec)
         if callable(executar_controle_midia_nativo):
             native_cmd = "pause_play" if cmd_exec in {"pause", "play"} else cmd_exec
             confirmado_execucao = None
             return bool(executar_controle_midia_nativo(native_cmd))
         if navegador_operacoes is not None:
-            confirmado_execucao = bool(navegador_operacoes.controlar_youtube(cmd_exec))
-            return confirmado_execucao
+            return _controlar_chrome_com_evidencia(cmd_exec)
         return False
 
     _log_midia("ENTRADA", f"acao={acao or '-'} platform={platform or '-'} params={params}")
@@ -285,6 +323,7 @@ def executar_media_control(
                 executou=True,
                 confirmado=confirmado_execucao,
                 texto_usuario=texto_original,
+                detalhe=detalhe_execucao,
             )
             plano = planejar_resposta_acao(
                 contrato,
@@ -313,7 +352,12 @@ def executar_media_control(
                 )
             plano = planejar_resposta_acao(
                 contrato_falha,
-                "Tentei mexer na mídia, mas não consegui confirmar o caminho.",
+                (
+                    "O navegador não confirmou o controle de mídia; "
+                    "não repeti o comando."
+                    if detalhe_execucao
+                    else "Tentei mexer na mídia, mas não consegui confirmar o caminho."
+                ),
             )
             confirmacao = personalizar_confirmacao_llm(
                 contrato_falha,
@@ -329,5 +373,6 @@ def executar_media_control(
         f"midia_{cmd}" if ok_execucao else "falha_execucao",
         ok_execucao,
         confirmado=confirmado_execucao if ok_execucao else False,
+        detalhe=detalhe_execucao,
     )
     return bool(ok_execucao)

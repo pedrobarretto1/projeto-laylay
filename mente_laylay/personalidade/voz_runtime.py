@@ -121,6 +121,7 @@ class VozRuntime:
         self._ultima_solicitacao_fala = ""
         self._ultima_solicitacao_fala_ts = 0.0
         self._fallback_tts_disponivel = pyttsx3_mod is not None
+        self._observadores_inicio_fala: list[Callable[..., Any]] = []
 
         self.proativa_lock = threading.Lock()
         self.proativa_buffer: list[dict] = []
@@ -129,6 +130,48 @@ class VozRuntime:
         self.proativa_inicio_sistema = time.time()
         self.proativa_janela_startup = proativa_janela_startup
         self.tts_timeout_s = max(0.05, float(tts_timeout_s))
+
+    def registrar_observador_inicio_fala(
+        self, observador: Callable[..., Any],
+    ) -> None:
+        """Observa a fala consolidada quando ela entra em reprodução.
+
+        A notificação parte da fila de voz, depois dos ajustes naturais do
+        texto e antes do trabalho bloqueante do TTS. Consumidores visuais,
+        como o Terminal 2, recebem assim exatamente a fala que será ouvida
+        sem precisar esperar o áudio terminar.
+        """
+        if not callable(observador):
+            raise TypeError("observador de início de fala deve ser chamável")
+        if observador not in self._observadores_inicio_fala:
+            self._observadores_inicio_fala.append(observador)
+
+    def _notificar_inicio_fala(
+        self,
+        texto: str,
+        emocao: str,
+        nivel: int,
+        *,
+        proativa: bool = False,
+    ) -> None:
+        for observador in tuple(self._observadores_inicio_fala):
+            try:
+                observador(
+                    texto, emocao, nivel,
+                    proativa=bool(proativa),
+                )
+            except Exception as erro:
+                self.log(
+                    "⚠️ [VOZ:OBSERVADOR] consumidor isolado falhou: "
+                    f"{type(erro).__name__}"
+                )
+                self._relatar_falha(
+                    "falha_observador_inicio_fala",
+                    erro,
+                    impacto="servico",
+                    fallback="fala_mantida_sem_consumidor_visual",
+                    fase="iniciar_fala",
+                )
 
     def _relatar_falha(
         self,
@@ -483,34 +526,66 @@ class VozRuntime:
             rate = self._normalizar_percentual_edge(rate)
             volume = self._normalizar_percentual_edge(volume)
             inicio_sintese = time.perf_counter()
-            self._sintetizar_edge(
-                texto_voz,
-                temp_file,
-                rate=rate,
-                pitch=pitch,
-                volume=volume,
-            )
-            if callable(self.registrar_metrica_cb):
-                self.registrar_metrica_cb(
-                    "tts_sintese", (time.perf_counter() - inicio_sintese) * 1000.0, True,
+            sintese_ok = False
+            try:
+                self._sintetizar_edge(
+                    texto_voz,
+                    temp_file,
+                    rate=rate,
+                    pitch=pitch,
+                    volume=volume,
                 )
+                sintese_ok = True
+            finally:
+                if callable(self.registrar_metrica_cb):
+                    self.registrar_metrica_cb(
+                        "tts_sintese",
+                        (time.perf_counter() - inicio_sintese) * 1000.0,
+                        sintese_ok,
+                    )
 
-            data, samplerate = self.sf.read(temp_file)
-
+            inicio_externo = time.perf_counter()
+            externo_ok = False
             self.ducking_volume(True)
             try:
-                self.sd.play(data, samplerate, device=self._selecionar_saida_audio())
+                data, samplerate = self.sf.read(temp_file)
+                dispositivo = self._selecionar_saida_audio()
+                self.sd.play(data, samplerate, device=dispositivo)
+                externo_ok = True
+                if callable(self.registrar_metrica_cb):
+                    self.registrar_metrica_cb(
+                        "tts_bloqueio_externo",
+                        (time.perf_counter() - inicio_externo) * 1000.0,
+                        True,
+                    )
                 # A fila fica ocupada durante a síntese, mas o avatar só deve
                 # mexer a boca quando o dispositivo realmente recebeu o áudio.
                 self.ajustar_estado_fala_cb("audio_playing", True)
-                while self.sd.get_stream().active:
-                    if self.interrupt_event.is_set():
-                        self.sd.stop()
-                        self.log("🛑 [BARGE-IN] Fala interrompida pelo usuário!")
-                        break
-                    time.sleep(0.03)
+                inicio_reproducao = time.perf_counter()
+                reproducao_ok = False
+                try:
+                    while self.sd.get_stream().active:
+                        if self.interrupt_event.is_set():
+                            self.sd.stop()
+                            self.log("🛑 [BARGE-IN] Fala interrompida pelo usuário!")
+                            break
+                        time.sleep(0.03)
+                    reproducao_ok = True
+                finally:
+                    if callable(self.registrar_metrica_cb):
+                        self.registrar_metrica_cb(
+                            "tts_reproducao",
+                            (time.perf_counter() - inicio_reproducao) * 1000.0,
+                            reproducao_ok,
+                        )
                 sucesso = True
             finally:
+                if not externo_ok and callable(self.registrar_metrica_cb):
+                    self.registrar_metrica_cb(
+                        "tts_bloqueio_externo",
+                        (time.perf_counter() - inicio_externo) * 1000.0,
+                        False,
+                    )
                 self.ducking_volume(False)
 
         except Exception as e:
@@ -556,6 +631,14 @@ class VozRuntime:
                 continue
             if item is None:
                 continue
+            if isinstance(item, dict) and callable(self.registrar_metrica_cb):
+                enfileirado = float(item.get("enfileirado_monotonic") or 0.0)
+                if enfileirado > 0.0:
+                    self.registrar_metrica_cb(
+                        "tts_fila",
+                        max(0.0, (time.monotonic() - enfileirado) * 1000.0),
+                        True,
+                    )
 
             # Cada item representa uma fala já consolidada pelo turno canônico.
             # Agrupar itens só porque chegaram perto no relógio misturava
@@ -592,6 +675,14 @@ class VozRuntime:
             self.ajustar_estado_fala_cb("current_emotion", emocao)
             self.ajustar_estado_fala_cb("emotion_level", nivel)
             self.ajustar_estado_fala_cb("is_speaking", True)
+            proativa = bool(lote) and all(
+                bool(pedido.get("proativa"))
+                for pedido in lote
+                if isinstance(pedido, dict)
+            )
+            self._notificar_inicio_fala(
+                texto_final, emocao, nivel, proativa=proativa,
+            )
             try:
                 self.reproduzir_fala(texto_final, emocao, nivel)
             finally:
@@ -1125,6 +1216,8 @@ class VozRuntime:
             "dinamizar": True,
             "prioridade": self._prioridade_candidato_fala(texto),
             "proativas_mescladas": itens_mesclados,
+            "proativa": bool(_proativa),
+            "enfileirado_monotonic": time.monotonic(),
         }
         if not _proativa and callable(self.chave_turno_cb):
             with self._turno_lock:

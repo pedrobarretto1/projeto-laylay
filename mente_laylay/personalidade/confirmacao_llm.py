@@ -60,6 +60,7 @@ RAIZES_POR_STATUS: dict[str, tuple[str, ...]] = {
     "movido_para_lixeira": ("lixeira", "mov", "enviei"),
     "item_movido_para_pasta": ("mov", "mudei"),
     "app_aberto": ("abri", "aberto"),
+    "app_iniciado_focado": ("iniciei", "abri", "nova", "foco", "frente"),
     "app_focado": ("foco", "frente", "trouxe", "puxei"),
     "ja_aberto_focado": ("aberto", "foco", "frente"),
     "site_ja_aberto_focado": ("aberto", "foco", "frente", "aba"),
@@ -71,7 +72,10 @@ RAIZES_POR_STATUS: dict[str, tuple[str, ...]] = {
     "aba_fechada": ("aba", "feche"),
     "janela_maximizada": ("maximiz", "tela"),
     "musica_aberta": ("toc", "musica", "som"),
+    "musica_reproduzindo": ("toc", "reprodu", "player", "som"),
+    "musica_enviada_sem_confirmacao": ("abri", "enviei", "player", "confirm"),
     "playlist_aberta": ("playlist", "faixa", "toc"),
+    "playlist_enviada_sem_confirmacao": ("playlist", "faixa", "fila", "confirm"),
     "playlist_deletada": ("playlist", "apague", "remov"),
     "playlist_musica_adicionada": ("playlist", "adicione", "salv", "guarde"),
     "acao_agendada": ("agend", "lembrete"),
@@ -140,12 +144,16 @@ def _timeout_autoria_operacional() -> float:
 
 
 def _elegivel(resultado: ResultadoAcao, classe: str, fala: str) -> bool:
-    if not _ativada() or classe not in {"sucesso", "sem_acao", "falha"}:
+    if not _ativada() or classe not in {"sucesso", "sem_acao", "falha", "incerto"}:
         return False
     if classe in {"sucesso", "sem_acao"} and resultado.confirmado is not True:
         return False
     if classe == "falha" and not (
         resultado.executou is False or resultado.confirmado is False
+    ):
+        return False
+    if classe == "incerto" and not (
+        resultado.executou is True and resultado.confirmado is None
     ):
         return False
     if resultado.intent in INTENTS_INFORMATIVOS:
@@ -216,6 +224,13 @@ def _motivo_contrato_invalido(
         return "nao_acao_ambigua"
     if classe == "falha" and not sinais_falha:
         return "falha_ocultada"
+    sinais_incerteza = re.search(
+        r"\b(?:nao confirmou|sem confirmacao|nao consegui confirmar|"
+        r"nao posso confirmar|reproducao nao confirmada|audio nao confirmado)\b",
+        base,
+    )
+    if classe == "incerto" and not sinais_incerteza:
+        return "incerteza_ocultada"
     if classe != "falha" and re.search(
         r"\b(?:talvez|acho que|vou tentar|posso tentar|quer que eu|ainda vou|"
         r"deixa eu (?:ver|tentar)|se voce quiser|se quiser)\b",
@@ -229,6 +244,19 @@ def _motivo_contrato_invalido(
     concretos = _tokens_concretos(resultado)
     if concretos and not any(token in base for token in concretos):
         return "alvo_concreto_ausente"
+    # Identificadores alfanuméricos são fatos indivisíveis: aceitar apenas
+    # outro token do mesmo alvo permitia à LLM trocar C418 por C410 enquanto
+    # preservava palavras como "Sweden". Todo identificador com dígito precisa
+    # sobreviver literalmente à personalização.
+    identificadores = {token for token in concretos if any(ch.isdigit() for ch in token)}
+    if identificadores and not all(token in base for token in identificadores):
+        return "identificador_concreto_divergente"
+    primeira_frase = re.split(r"(?<=[.!?])\s+", texto, maxsplit=1)[0]
+    primeira_base = _normalizar(primeira_frase)
+    if raizes and not any(raiz in primeira_base for raiz in raizes):
+        return "verdade_operacional_nao_abre_fala"
+    if concretos and not any(token in primeira_base for token in concretos):
+        return "alvo_operacional_nao_abre_fala"
     return ""
 
 
@@ -440,6 +468,11 @@ def personalizar_confirmacao_llm(
         "falha": (
             "A ação falhou ou não foi confirmada; admita isso com clareza e nunca finja sucesso. "
         ),
+        "incerto": (
+            "Parte da ação foi observada, mas o resultado final permanece sem confirmação. "
+            "Diga exatamente o que ocorreu e o que não foi confirmado; não peça autorização, "
+            "não trate como falha total e não afirme conclusão completa. "
+        ),
     }.get(classe, "")
     sistema = (
         f"{IDENTIDADE_VOZ_LAYLAY} "
@@ -450,8 +483,9 @@ def personalizar_confirmacao_llm(
         f"{regra_classe}"
         "O contrato é verdade imutável: não altere ação, alvo, estado, números ou certeza; "
         "não prometa nem ofereça outra ação, não use 'se quiser', não faça pergunta e não "
-        "acrescente fatos. A personalidade deve estar dentro da confirmação factual, não em "
-        "uma segunda resposta genérica. "
+        "acrescente fatos. A primeira frase deve começar pelo resultado e pelo alvo observados; "
+        "só depois deles pode vir humor, emoção ou deboche. A personalidade deve continuar na "
+        "mesma resposta, mas nunca esconder o status. "
         "Se ultima_fala_operacional ou falas_recentes_a_nao_repetir estiverem preenchidas, "
         "não reutilize nenhuma abertura, ordem de ideias ou tirada dessa lista. Varie "
         "naturalmente começando pela recusa, pelo resultado, pela observação ou pela tirada, "

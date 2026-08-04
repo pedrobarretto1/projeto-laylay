@@ -86,6 +86,7 @@ DEPENDENCIAS_CONTEXTO_CHAT = (
     "_executar_intencao_curta_contextual", "falar_com_lipsync", "salvar_memoria",
     "_contexto_horario_atual", "_renovar_sessao_conversa",
     "_continuar_visao_jogo_pendente", "listar_programas_abertos",
+    "observar_programas_abertos",
     "_salvar_identidade_usuario",
 )
 

@@ -119,6 +119,24 @@ def test_roteador_entende_busca_natural_e_bloqueia_hipotese() -> None:
     ) is None
 
 
+def test_acha_com_moldura_de_opiniao_nao_vira_pesquisa_de_arquivo() -> None:
+    for frase in (
+        "o que você acha de rock?",
+        "o que acha do gênero rock?",
+        "acha do gênero rock?",
+        "acha que rock é bom?",
+        "qual sua opinião sobre rock?",
+    ):
+        assert detectar_intencao_arquivos(frase, params_cb=_params) is None
+
+    comando = detectar_intencao_arquivos(
+        "acha o arquivo do gênero rock", params_cb=_params,
+    )
+    assert comando is not None
+    assert comando["intent"] == "FILE_SEARCH"
+    assert "gênero rock" in comando["params"]["query"]
+
+
 def test_selecao_natural_abre_resultado_recente_em_vez_de_app() -> None:
     estado = {
         "ultima_estrutura_arquivo_params": {

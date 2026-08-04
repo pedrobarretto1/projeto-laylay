@@ -211,6 +211,53 @@ class ObservabilidadeMenteRuntime:
             self._atualizar(diagnostico_prompts=tamanhos)
             return dict(atual)
 
+    def registrar_orcamento_prompt(
+        self,
+        *,
+        etapa: str,
+        brutos: int,
+        selecionados: int,
+        truncados: int,
+        enviados: int,
+        injetados: int = 0,
+    ) -> Dict[str, Any]:
+        """Registra o fechamento numérico do prompt sem guardar seu conteúdo."""
+        def _inteiro(valor: Any) -> int:
+            try:
+                return max(0, min(int(valor), 2_000_000))
+            except (TypeError, ValueError):
+                return 0
+
+        registro: Dict[str, Any] = {
+            "etapa": _codigo(etapa, "desconhecida", 32),
+            "brutos": _inteiro(brutos),
+            "selecionados": _inteiro(selecionados),
+            "truncados": _inteiro(truncados),
+            "injetados": _inteiro(injetados),
+            "enviados": _inteiro(enviados),
+            "ts": float(self.clock()),
+        }
+        registro["fecha_selecao"] = (
+            registro["brutos"]
+            == registro["selecionados"] + registro["truncados"]
+        )
+        registro["fecha_envio"] = (
+            registro["enviados"]
+            == registro["selecionados"] + registro["injetados"]
+        )
+        with self._lock:
+            atual = dict(self._obter("diagnostico_orcamento_prompt", {}) or {})
+            etapas = dict(atual.get("etapas") or {})
+            etapas[registro["etapa"]] = dict(registro)
+            atual.update(
+                etapas=etapas,
+                ultima=dict(registro),
+                inconsistencias=int(atual.get("inconsistencias") or 0)
+                + (0 if registro["fecha_selecao"] and registro["fecha_envio"] else 1),
+            )
+            self._atualizar(diagnostico_orcamento_prompt=atual)
+        return dict(registro)
+
     def registrar_falha(
         self,
         componente: str,

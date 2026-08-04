@@ -32,20 +32,26 @@ class LinguagemAprendidaRuntime:
         normalizar_texto: Callable[[str], str],
         texto_social_curto: Callable[[str], bool],
         falar: Callable[[str, str, int], Any],
+        turno_id_getter: Callable[[], Any] | None = None,
         log: Callable[..., Any] = print,
     ) -> None:
         self.memoria_sqlite = memoria_sqlite
         self.normalizar_texto = normalizar_texto
         self.texto_social_curto = texto_social_curto
         self.falar = falar
+        self.turno_id_getter = turno_id_getter
         self.log = log
         self._apelidos_cache: dict[str, Any] = {"ts": 0.0, "mapa": {}}
         self._metricas_tolerancia: dict[str, Any] = {
             "normalizacoes": 0,
             "entradas_corrigidas": 0,
             "substituicoes": 0,
+            "normalizacoes_unicas_turno": 0,
+            "reaplicacoes_identicas": 0,
             "ultima": {},
         }
+        self._cache_normalizacao_turno: dict[tuple[str, str], str] = {}
+        self._ultimo_turno_cache = ""
 
     def carregar_apelidos(self, force: bool = False) -> dict:
         """Carrega apelidos aprendidos do banco e mantém cache leve em memória."""
@@ -94,6 +100,21 @@ class LinguagemAprendidaRuntime:
         return t_norm
 
     def normalizar_com_apelidos(self, texto: str) -> str:
+        turno_id = ""
+        if callable(self.turno_id_getter):
+            try:
+                turno_id = str(self.turno_id_getter() or "").strip()
+            except Exception:
+                turno_id = ""
+        chave = (turno_id, str(texto or "")) if turno_id else None
+        if chave is not None:
+            if turno_id != self._ultimo_turno_cache:
+                self._cache_normalizacao_turno.clear()
+                self._ultimo_turno_cache = turno_id
+            if chave in self._cache_normalizacao_turno:
+                self._metricas_tolerancia["normalizacoes"] += 1
+                self._metricas_tolerancia["reaplicacoes_identicas"] += 1
+                return self._cache_normalizacao_turno[chave]
         normalizado = self.normalizar_texto(texto)
         normalizado, correcoes = corrigir_erros_portugues_operacionais(normalizado)
         self._metricas_tolerancia["normalizacoes"] += 1
@@ -105,7 +126,11 @@ class LinguagemAprendidaRuntime:
                 "texto_normalizado": normalizado[:160],
                 "correcoes": [dict(item) for item in correcoes[:5]],
             }
-        return self.aplicar_apelidos(normalizado)
+        resultado = self.aplicar_apelidos(normalizado)
+        self._metricas_tolerancia["normalizacoes_unicas_turno"] += 1
+        if chave is not None:
+            self._cache_normalizacao_turno[chave] = resultado
+        return resultado
 
     def diagnostico_tolerancia_portugues(self) -> dict[str, Any]:
         return {

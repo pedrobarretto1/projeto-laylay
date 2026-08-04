@@ -20,7 +20,7 @@ from mente_laylay.especialistas.capacidades import INTENTS_SOMENTE_LEITURA
 
 
 PROMPT_INTERPRETACAO = """Você é o cérebro da assistente Laylay. Analise a frase do usuário e retorne apenas um JSON válido com:
-intent: (PLAYLIST_ADD, PLAYLIST_PLAY, PLAYLIST_LIST, PLAYLIST_DELETE, PLAYLIST_MOVE, LAYLAY_PLAYLIST_LIST, LAYLAY_PLAYLIST_COPY, LEARNING_QUERY, MEDIA_CONTROL, CANCELAR_ACAO, CLOSE_TAB, CLOSE_APP, APP_OPEN, OPEN_URL, MAXIMIZE_WINDOW, VOLUME, MUSIC_SEARCH, SITE_ENTER, SEARCH, WEATHER, RESUMIR_PAGINA, CREATE_FOLDER, CREATE_FILE, DELETE_ITEM, LISTAR_PLAYLISTS, TOCAR_PLAYLIST, TOCAR_PLAYLIST_SHUFFLE, AGENDAR_LEMBRETE, AGENDAR_ACAO, LISTAR_AGENDAMENTOS, CANCELAR_AGENDAMENTO, IOT_CONTROL, IOT_STATUS, IOT_LIST, SUGGEST_ACTION)
+intent: (PLAYLIST_ADD, PLAYLIST_PLAY, PLAYLIST_LIST, PLAYLIST_DELETE, PLAYLIST_MOVE, LAYLAY_PLAYLIST_LIST, LAYLAY_PLAYLIST_COPY, LEARNING_QUERY, MEDIA_CONTROL, CANCELAR_ACAO, CLOSE_TAB, CLOSE_APP, APP_OPEN, OPEN_URL, MAXIMIZE_WINDOW, VOLUME, MUSIC_SEARCH, SITE_ENTER, SEARCH, WEATHER, RESUMIR_PAGINA, FILE_SEARCH, FILE_OPEN_RESULT, CREATE_FOLDER, CREATE_FILE, DELETE_ITEM, LISTAR_PLAYLISTS, TOCAR_PLAYLIST, TOCAR_PLAYLIST_SHUFFLE, AGENDAR_LEMBRETE, AGENDAR_ACAO, LISTAR_AGENDAMENTOS, CANCELAR_AGENDAMENTO, IOT_CONTROL, IOT_STATUS, IOT_LIST, SUGGEST_ACTION)
 params: (dicionário com nome_playlist, nome_app, nivel_volume, query, acao, etc)
 Regras:
 - Retorne SOMENTE o JSON (sem markdown, sem texto extra).
@@ -84,6 +84,7 @@ Regras:
 - Se houver lâmpada em foco, um pedido curto de cor continua nesse dispositivo; não transforme "coloca um azul" ou "deixa rosa" em busca musical.
 - Lâmpadas não emitem preto. Nesse caso, use SUGGEST_ACTION para explicar que preto é ausência de luz e perguntar se deve desligar a lâmpada.
 - Perguntar se um dispositivo está ligado usa IOT_STATUS. Listar dispositivos inteligentes usa IOT_LIST.
+- Pedidos para encontrar código, arquivo, documento ou caminho local usam FILE_SEARCH; nunca responda que não possui acesso antes de consultar essa habilidade.
 - Nunca trate comentário casual sobre um aparelho como comando IoT; precisa haver pedido ou pergunta atual.
 - Planos, propostas e comentários sobre uma habilidade futura da Laylay são conversa. Frases como 'vou te dar uma habilidade', 'você vai poder controlar a luz' e 'o que acha dessa capacidade?' devem retornar NONE.
 - Referências como 'desliga ele' só continuam IoT quando o foco operacional recente for um dispositivo IoT.

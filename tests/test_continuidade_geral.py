@@ -50,6 +50,63 @@ def test_um_contrato_preserva_dominios_sem_contaminacao():
     assert musica["alvo"] == "Duality - Slipknot"
 
 
+def test_resultado_confirmado_fecha_pendencia_da_mesma_intencao() -> None:
+    estado = registrar_pendencia(
+        estado_mental_inicial(),
+        criar_pendencia(
+            origem="oferta_musical",
+            tipo="escolha",
+            dominio="musica",
+            conteudo="Qual música você quer?",
+            intencao="MUSIC_SEARCH",
+            foi_falada=True,
+        ),
+    )
+
+    estado = registrar_resultado_execucao(
+        estado,
+        {
+            "intent": "MUSIC_SEARCH",
+            "params": {"query": "Remember The Time"},
+            "status": "musica_reproduzindo",
+            "executou": True,
+            "confirmado": True,
+        },
+        "Remember The Time",
+    )
+
+    assert estado["pendencia_atual"] == {}
+    assert estado["ultima_pendencia_encerrada"]["status"] == "resolvida_por_execucao"
+
+
+def test_resultado_sem_confirmacao_preserva_pendencia_da_mesma_intencao() -> None:
+    estado = registrar_pendencia(
+        estado_mental_inicial(),
+        criar_pendencia(
+            origem="oferta_musical",
+            tipo="escolha",
+            dominio="musica",
+            conteudo="Qual música você quer?",
+            intencao="MUSIC_SEARCH",
+            foi_falada=True,
+        ),
+    )
+
+    estado = registrar_resultado_execucao(
+        estado,
+        {
+            "intent": "MUSIC_SEARCH",
+            "params": {"query": "Remember The Time"},
+            "status": "musica_enviada_sem_confirmacao",
+            "executou": True,
+            "confirmado": None,
+        },
+        "Remember The Time",
+    )
+
+    assert estado["pendencia_atual"]["status"] == "ativa"
+
+
 def test_referencia_imediata_prefere_a_continuidade_geral():
     estado = estado_mental_inicial()
     estado = registrar_evento_continuidade(

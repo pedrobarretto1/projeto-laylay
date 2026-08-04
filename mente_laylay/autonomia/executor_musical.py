@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import urllib.parse
 from dataclasses import dataclass
 from typing import Any, Callable, Dict
+from urllib.parse import urlparse
 
 from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
 from mente_laylay.autonomia.executor_comum import (
@@ -22,7 +22,7 @@ INTENCOES_MUSICAIS = frozenset({"MUSIC_SEARCH", "LAYLAY_PLAYLIST_LIST", "LAYLAY_
 @dataclass(frozen=True, slots=True)
 class DependenciasExecutorMusical:
     marcar_resultado: Callable[..., Any]
-    abrir_url_musical: Callable[..., bool]
+    abrir_url_musical: Callable[..., Any]
     registrar_mente: Callable[..., Any] | None = None
     falar_por_status: Callable[..., Any] | None = None
     musica_leitura: PortaMusicaLeitura | None = None
@@ -33,6 +33,37 @@ def _get(ctx: Dict[str, Any], nome: str, default: Any = None) -> Any:
     return ctx.get(nome, default)
 
 
+def _url_video_youtube(url: str) -> bool:
+    try:
+        parsed = urlparse(str(url or "").strip())
+        host = parsed.netloc.casefold().removeprefix("www.")
+        return bool(
+            host == "youtu.be"
+            or (host.endswith("youtube.com") and parsed.path == "/watch")
+        )
+    except Exception:
+        return False
+
+
+def _normalizar_evidencia_execucao(retorno: Any) -> dict[str, Any]:
+    if isinstance(retorno, dict):
+        dados = dict(retorno)
+        ok = bool(dados.get("ok"))
+        confirmado = dados.get("confirmado")
+        return {
+            **dados,
+            "ok": ok,
+            "confirmado": (
+                bool(confirmado) if confirmado is not None else None
+            ),
+        }
+    return {
+        "ok": bool(retorno),
+        "confirmado": True if retorno is True else False,
+        "status": "confirmacao_legada" if retorno is True else "falha_execucao",
+    }
+
+
 def _pesquisar(
     params: Dict[str, Any],
     texto_original: str,
@@ -40,15 +71,18 @@ def _pesquisar(
     deps: DependenciasExecutorMusical,
 ) -> ResultadoDespacho:
     origem = str(params.get("origem") or "").strip().lower()
-    confirmado = origem in {"continuacao_busca", "sugestao_conversacional"}
+    pedido_confirmado = origem in {"continuacao_busca", "sugestao_conversacional"}
     permitir = _get(ctx, "_autonomia_permite_execucao_musical")
-    if callable(permitir) and not permitir("MUSIC_SEARCH", texto_original, confirmado=confirmado):
+    if callable(permitir) and not permitir(
+        "MUSIC_SEARCH", texto_original, confirmado=pedido_confirmado,
+    ):
         print("🎵 [AUTONOMIA] MUSIC_SEARCH bloqueado: sem pedido musical explícito.")
         return ResultadoDespacho.concluido(False)
 
-    query = str(
+    consulta_pedida = str(
         params.get("query") or params.get("musica") or params.get("nome") or texto_original
     ).strip()
+    query = consulta_pedida
     normalizar = _get(ctx, "_normalizar_query_musical")
     if callable(normalizar):
         query = normalizar(query or texto_original)
@@ -104,32 +138,107 @@ def _pesquisar(
             f"🧭 [PESQUISA:MUSICA] origem={origem_pesquisa} "
             f"tipo={tipo_resultado} consulta={query!r}"
         )
+    resolver_video = _get(ctx, "_resolver_primeiro_video_youtube")
     buscar_video = _get(ctx, "_buscar_primeiro_video_youtube")
-    link = ""
-    if callable(buscar_video):
+    selecao: Dict[str, Any] = {}
+    if callable(resolver_video):
         try:
-            link = buscar_video(query, tipo_resultado=tipo_resultado)
+            selecao_bruta = resolver_video(query, tipo_resultado=tipo_resultado)
         except TypeError:
-            link = buscar_video(query)
-    url = link or ("https://www.youtube.com/results?search_query=" + urllib.parse.quote_plus(query))
-    ok = deps.abrir_url_musical(url, query=query if not link else "")
-    deps.marcar_resultado("musica_aberta" if ok else "falha_execucao", executou=ok)
+            selecao_bruta = resolver_video(query)
+        if isinstance(selecao_bruta, dict):
+            selecao = dict(selecao_bruta)
+    elif callable(buscar_video):
+        try:
+            link_legado = buscar_video(query, tipo_resultado=tipo_resultado)
+        except TypeError:
+            link_legado = buscar_video(query)
+        if str(link_legado or "").strip():
+            selecao = {"url": str(link_legado).strip(), "title": query}
+
+    link = str(selecao.get("url") or "").strip()
+    titulo_resolvido = str(
+        selecao.get("title") or selecao.get("titulo") or query
+    ).strip()
+    canal_resolvido = str(
+        selecao.get("channel") or selecao.get("canal") or ""
+    ).strip()
+    params["consulta_pedida"] = consulta_pedida
+    params["consulta_resolvida"] = query
+
+    if not _url_video_youtube(link):
+        params["alvo_executado"] = ""
+        fala_resultado = escolher_fala_variada([
+            f"Não achei uma faixa reproduzível para {query}; não abri uma busca fingindo que era música.",
+            f"A busca por {query} não chegou a um vídeo confiável, então não toquei nada.",
+            f"Não consegui resolver {query} em uma faixa concreta. Parei antes de abrir qualquer resultado duvidoso.",
+        ])
+        deps.marcar_resultado(
+            "musica_nao_resolvida", executou=False, confirmado=False,
+            detalhe="nenhum_video_reproduzivel",
+        )
+        if callable(deps.falar_por_status):
+            deps.falar_por_status(
+                "musica_nao_resolvida",
+                fala_resultado,
+                alvo=query,
+                executou=False,
+                confirmado=False,
+                detalhe="nenhum_video_reproduzivel",
+            )
+        else:
+            _falar(ctx, fala_resultado, "calma", 1)
+        return ResultadoDespacho.concluido(False)
+
+    params["alvo_executado"] = titulo_resolvido
+    params["alvo_executado_url"] = link
+    if canal_resolvido:
+        params["alvo_executado_canal"] = canal_resolvido
+    # O alvo do contrato e da autoria passa a ser a seleção real, enquanto a
+    # formulação original continua disponível em ``consulta_pedida``.
+    params["query"] = titulo_resolvido
+    evidencia = _normalizar_evidencia_execucao(
+        deps.abrir_url_musical(link, query="")
+    )
+    ok = bool(evidencia.get("ok"))
+    confirmado_execucao = evidencia.get("confirmado")
+    if ok and confirmado_execucao is True:
+        status = "musica_reproduzindo"
+    elif ok:
+        status = "musica_enviada_sem_confirmacao"
+    else:
+        status = "falha_execucao"
+    detalhe_execucao = str(
+        evidencia.get("message") or evidencia.get("mensagem")
+        or evidencia.get("status") or ""
+    ).strip()
+    deps.marcar_resultado(
+        status,
+        executou=ok,
+        confirmado=confirmado_execucao if ok else False,
+        detalhe=detalhe_execucao,
+    )
     fala_resultado = escolher_fala_variada([
-            f"Sintonizando o melhor do {query} no YouTube agora.",
-            f"Botando {query} pra tocar agora.",
-            f"Já achei {query}.",
+            f"{titulo_resolvido} está tocando agora.",
+            f"Pronto, confirmei {titulo_resolvido} em reprodução.",
+            f"Achei {titulo_resolvido} e o player confirmou o som.",
+        ] if ok and confirmado_execucao is True else [
+            f"Abri {titulo_resolvido}, mas o player não confirmou a reprodução. "
+            "Não vou fingir que o áudio já começou.",
+            f"Abri {titulo_resolvido}, só não vou fingir que ouvi o player começar.",
         ] if ok else [
-            f"Tentei puxar {query}, mas a rota musical falhou agora.",
-            f"Fui atrás de {query}, mas não consegui abrir esse som direito.",
-            f"Quase puxei {query}, mas a trilha não respondeu do jeito certo.",
+            f"Tentei tocar {titulo_resolvido}, mas o navegador não confirmou a reprodução.",
+            f"Achei {titulo_resolvido}, porém o player não respondeu; não repeti o comando.",
+            f"A seleção foi {titulo_resolvido}, mas a reprodução falhou de forma explícita.",
         ])
     if callable(deps.falar_por_status):
         deps.falar_por_status(
-            "musica_aberta" if ok else "falha_execucao",
+            status,
             fala_resultado,
-            alvo=query,
+            alvo=titulo_resolvido,
             executou=ok,
-            confirmado=True if ok else False,
+            confirmado=confirmado_execucao if ok else False,
+            detalhe=detalhe_execucao,
         )
     else:
         _falar(

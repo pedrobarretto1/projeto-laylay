@@ -12,6 +12,8 @@ from mente_laylay.cognicao.modalidade_turno import (
     analisar_protecao_operacional,
     classificar_modalidade_turno,
 )
+from mente_laylay.cognicao.linguagem_aprendida import LinguagemAprendidaRuntime
+from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto
 from mente_laylay.especialistas.operacional import construir_parecer_operacional
 
 
@@ -93,6 +95,40 @@ class ArbitroModalidadeInteligenteTests(unittest.TestCase):
         self.assertEqual(turno["texto_operacional"], "desliga a luz")
         self.assertTrue(turno["autoriza_execucao"])
 
+    def test_turno_misto_reconhece_busca_natural_de_codigo(self) -> None:
+        turno = self.classificar(
+            "eu gosto de programacao, encontra o codigo que controla a lampada"
+        )
+
+        self.assertEqual(turno["modalidade_geral"], "misto")
+        self.assertEqual(turno["texto_conversacional"], "eu gosto de programacao")
+        self.assertEqual(
+            turno["texto_operacional"],
+            "encontra o codigo que controla a lampada",
+        )
+        self.assertTrue(turno["autoriza_execucao"])
+
+    def test_turno_misto_tolera_erro_em_termo_da_busca_de_codigo(self) -> None:
+        linguagem = LinguagemAprendidaRuntime(
+            memoria_sqlite=None,
+            normalizar_texto=normalizar_texto,
+            texto_social_curto=lambda _texto: False,
+            falar=lambda *_args: None,
+            log=lambda *_args: None,
+        )
+        turno = classificar_modalidade_turno(
+            "eu gosto de programacao, encontra o codgio que controla a lampada",
+            normalizar_texto=linguagem.normalizar_com_apelidos,
+            texto_tem_comando_explicito=texto_tem_comando_explicito,
+        )
+
+        self.assertEqual(turno["modalidade_geral"], "misto")
+        self.assertEqual(
+            turno["texto_operacional"],
+            "encontra o codigo que controla a lampada",
+        )
+        self.assertTrue(turno["autoriza_execucao"])
+
     def test_resposta_social_nao_esconde_pergunta_em_nova_frase(self) -> None:
         turno = self.classificar("Eu estou bem também. Você gosta de Slipknot?")
         self.assertEqual(turno["modalidade_geral"], "misto")
@@ -122,7 +158,11 @@ class ArbitroModalidadeInteligenteTests(unittest.TestCase):
 
         self.assertTrue(tratado)
         self.assertEqual(etapa, "consulta_programas_abertos")
-        self.assertEqual(falas, ["Estão abertos agora: Steam, Discord."])
+        self.assertEqual(falas, [
+            "Janelas visíveis: Steam, Discord. "
+            "Não incluí serviços ou componentes internos do sistema. "
+            "As abas continuam dentro da janela do navegador, não como aplicativos separados."
+        ])
 
     def test_comandos_deterministicos_comuns_continuam_autorizados(self) -> None:
         for texto in (

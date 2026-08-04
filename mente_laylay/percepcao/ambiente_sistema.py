@@ -125,6 +125,7 @@ def obter_clima_open_meteo(
                     "temperature_2m,relative_humidity_2m,apparent_temperature,"
                     "weather_code,wind_speed_10m,wind_direction_10m"
                 ),
+                "hourly": "precipitation_probability,precipitation",
                 "timezone": coordenadas.get("timezone") or "auto",
                 "forecast_days": 1,
             },
@@ -132,7 +133,21 @@ def obter_clima_open_meteo(
         )
         if int(getattr(resposta, "status_code", 0) or 0) != 200:
             return {"ok": False, "localidade": cidade, "erro": "previsao"}
-        atual = dict((resposta.json() or {}).get("current") or {})
+        dados_previsao = resposta.json() or {}
+        atual = dict(dados_previsao.get("current") or {})
+        horario = dict(dados_previsao.get("hourly") or {})
+        chances_chuva = []
+        for valor in horario.get("precipitation_probability") or ():
+            try:
+                chances_chuva.append(max(0, min(100, int(float(valor)))))
+            except (TypeError, ValueError):
+                continue
+        precipitacoes = []
+        for valor in horario.get("precipitation") or ():
+            try:
+                precipitacoes.append(max(0.0, float(valor)))
+            except (TypeError, ValueError):
+                continue
         temperatura = _valor_clima(atual.get("temperature_2m"))
         if not temperatura:
             return {"ok": False, "localidade": cidade, "erro": "dados_ausentes"}
@@ -145,6 +160,9 @@ def obter_clima_open_meteo(
             "vento_kmph": _valor_clima(atual.get("wind_speed_10m")),
             "direcao_vento": _valor_clima(atual.get("wind_direction_10m")),
             "descricao": _descricao_wmo(atual.get("weather_code")),
+            "chance_chuva_pct": max(chances_chuva) if chances_chuva else None,
+            "precipitacao_max_mm": max(precipitacoes) if precipitacoes else None,
+            "previsao_chuva_disponivel": bool(chances_chuva or precipitacoes),
             "fonte": "open_meteo",
             "cache": False,
         }
@@ -419,6 +437,18 @@ def obter_clima_localidade(
             raise RuntimeError("status_wttr")
         data = res.json() if res.content else {}
         atual = ((data or {}).get("current_condition") or [{}])[0] or {}
+        dias = list((data or {}).get("weather") or [])
+        horas = list((dias[0] or {}).get("hourly") or []) if dias else []
+        chances_chuva = []
+        for hora in horas:
+            if not isinstance(hora, dict):
+                continue
+            try:
+                chances_chuva.append(max(0, min(100, int(float(
+                    hora.get("chanceofrain") or 0
+                )))))
+            except (TypeError, ValueError):
+                continue
         descricao = ""
         try:
             descricao = str((((atual.get("lang_pt") or atual.get("weatherDesc")) or [{}])[0] or {}).get("value") or "").strip()
@@ -437,6 +467,9 @@ def obter_clima_localidade(
             "umidade": str(atual.get("humidity") or "").strip(),
             "vento_kmph": str(atual.get("windspeedKmph") or "").strip(),
             "descricao": descricao,
+            "chance_chuva_pct": max(chances_chuva) if chances_chuva else None,
+            "precipitacao_max_mm": None,
+            "previsao_chuva_disponivel": bool(chances_chuva),
         }
     except Exception:
         print_fn(f"⚠️ [CLIMA] wttr.in não respondeu para {cidade}; usando fonte reserva.")

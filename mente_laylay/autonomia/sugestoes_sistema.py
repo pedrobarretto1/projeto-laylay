@@ -156,6 +156,22 @@ def detectar_sugestao_indireta(
         return None
     mente = estado_mental if isinstance(estado_mental, dict) else {}
 
+    def _limpar_alvo_indireto(valor: str) -> str:
+        """Remove vícios de fala sem transformar uma vontade vaga em busca."""
+        limpo = re.sub(r"\s+", " ", str(valor or "")).strip(" .,!?:;-")
+        limpo = re.sub(
+            r"\b(?:na\s+verdade|mesmo|s[oó]|assim|a[ií]|ent[aã]o|tipo)\b[.!?,;:-]*$",
+            "",
+            limpo,
+        ).strip(" .,!?:;-")
+        return limpo
+
+    def _alvo_indireto_concreto(valor: str, *, categorias_genericas: set[str]) -> bool:
+        normalizado = _limpar_alvo_indireto(valor).casefold()
+        normalizado = re.sub(r"^(?:uma|um|alguma|algum|qualquer)\s+", "", normalizado)
+        normalizado = re.sub(r"^(?:musica|música|som|faixa|coisa)\b", "", normalizado).strip()
+        return bool(normalizado and normalizado not in categorias_genericas)
+
     def _acao_confiavel(
         acao_sugerida: Dict[str, Any],
         *,
@@ -192,6 +208,38 @@ def detectar_sugestao_indireta(
         "amarelo": ("amarelo", (255, 255, 0)),
         "laranja": ("laranja", (255, 128, 0)),
     }
+    proposta_luz = re.search(
+        r"^(?:eu\s+)?(?:talvez\s+)?(?:fosse|seria)\s+(?:bem\s+)?legal\s+"
+        r"(?:deixar|colocar|botar)\s+(?:a\s+)?(?:luz|lampada|iluminacao)\s+"
+        r"(roxa|roxo|azul|vermelha|vermelho|verde|rosa|amarela|amarelo|laranja)[.!]*$",
+        t,
+    )
+    if proposta_luz:
+        cor_pedida = proposta_luz.group(1)
+        cor, rgb = cores_contextuais[cor_pedida]
+        # A ação é inequívoca, mas "talvez/seria legal" ainda é uma proposta,
+        # não uma autorização. A governança recebe o contrato sem atribuir uma
+        # recusa inexistente nem executar por conta própria.
+        return {
+            "intent": "SUGGEST_ACTION",
+            "params": {
+                "acao_sugerida": {
+                    "intent": "IOT_CONTROL",
+                    "params": {
+                        "acao": "ajustar_cor", "alvo": "lampada_quarto",
+                        "cor": cor, "rgb": rgb, "origem": "usuario_indireto",
+                    },
+                },
+                "descricao": f"deixar a luz {cor_pedida}",
+                "fala": f"Também achei que a luz {cor_pedida} combinaria. Quer que eu ajuste?",
+                "origem": "proposta_indireta_usuario",
+                "dominio": "iot",
+                "confianca": 0.88,
+                "risco": "baixo",
+                "reversivel": True,
+                "execucao_autonoma_elegivel": False,
+            },
+        }
     preferencia_luz = re.search(
         r"^(?:eu\s+)?(?:gosto|prefiro)\s+(?:d[aeo]\s+)?(?:usar\s+)?(?:a\s+)?"
         r"(?:luz|lampada|iluminacao)\s+"
@@ -267,9 +315,13 @@ def detectar_sugestao_indireta(
         t,
     )
     if desejo_musical:
-        query = re.sub(r"^(?:uma|um|alguma)\s+(?:musica|música|som)\s+(?:de\s+)?", "", desejo_musical.group(1)).strip()
+        query = _limpar_alvo_indireto(desejo_musical.group(1))
+        query = re.sub(r"^(?:uma|um|alguma)\s+(?:musica|música|som)\s+(?:de\s+)?", "", query).strip()
         query = re.sub(r"^(?:uma|um)\s+", "", query).strip()
-        if query and query not in {"musica", "música", "alguma coisa", "qualquer coisa"}:
+        if _alvo_indireto_concreto(
+            query,
+            categorias_genericas={"musica", "música", "alguma coisa", "qualquer coisa", "coisa"},
+        ):
             return _acao_confiavel(
                 {
                     "intent": "MUSIC_SEARCH",

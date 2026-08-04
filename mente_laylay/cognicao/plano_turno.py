@@ -15,9 +15,12 @@ from mente_laylay.cognicao.guardiao_realidade_pessoal import (
 )
 from mente_laylay.cognicao.qualidade_comunicacao import (
     avaliar_qualidade_comunicacao,
+    contingencia_comunicacao,
 )
 from mente_laylay.cognicao.decisao_turno import criar_contrato_decisao
 from mente_laylay.cognicao.contratos_turno import PlanoTurnoDict
+from mente_laylay.cognicao.estado_tecnico_llm import eh_estado_tecnico_llm
+from mente_laylay.autonomia.roteador_deterministico import texto_pede_clima_atual
 from mente_laylay.percepcao.ritmo_circadiano import (
     detectar_consulta_horario,
     responder_consulta_horario,
@@ -45,7 +48,6 @@ _VAZAMENTO_INTERNO = re.compile(
     r"^\s*[\[{].*(?:comandos?|aprendizados?|humor|intent|params)\s*[\"']?\s*:",
     re.IGNORECASE | re.DOTALL,
 )
-_ESTADO_TECNICO_LLM = re.compile(r"^__LAYLAY_LLM_[A-Z_]+__$")
 _ALEGACAO_EXECUCAO = re.compile(
     r"\b(?:pronto|feito|executei|abri|fechei|liguei|desliguei|toquei|coloquei|criei|apaguei|agendei)\b",
     re.IGNORECASE,
@@ -253,7 +255,7 @@ def verificar_fala_turno(
     texto_usuario = str(contrato.get("texto_usuario") or "")
     ajustada = re.sub(r"\s+", " ", str(fala or "")).strip()
 
-    if _ESTADO_TECNICO_LLM.fullmatch(ajustada):
+    if eh_estado_tecnico_llm(ajustada):
         return {
             "aceita": False,
             "fala": "",
@@ -268,6 +270,23 @@ def verificar_fala_turno(
         if ajustada != horario_correto:
             problemas.append("horario_substituido_pelo_relogio_local")
         ajustada = horario_correto
+
+    # Clima atual é dado externo e mutável. Se a pergunta escapou do detector
+    # determinístico, a resposta conversacional não pode preencher números ou
+    # condições meteorológicas por plausibilidade. O executor WEATHER fala os
+    # dados diretamente quando o provedor confirma a consulta.
+    fundamentacao_clima = contrato.get("fundamentacao_factual")
+    clima_fundamentado = bool(
+        isinstance(fundamentacao_clima, dict)
+        and fundamentacao_clima.get("confiavel")
+        and fundamentacao_clima.get("evidencia_dentro_validade", True)
+    )
+    if texto_pede_clima_atual(_normalizar(texto_usuario)) and not clima_fundamentado:
+        problemas.append("clima_atual_sem_evidencia")
+        ajustada = (
+            "Não consegui consultar o provedor de clima agora. "
+            "Prefiro te avisar disso a inventar temperatura ou previsão."
+        )
 
     if not ajustada:
         return {
@@ -328,7 +347,9 @@ def verificar_fala_turno(
         texto_usuario,
         ajustada,
         plano=contrato,
+        ultima_resposta=ultima_resposta,
     )
+    aderencia_contrato = dict(qualidade.get("aderencia_contrato") or {})
     problemas_comunicacao = list(qualidade.get("problemas") or [])
     if problemas_comunicacao:
         problemas.extend(problemas_comunicacao)
@@ -339,6 +360,12 @@ def verificar_fala_turno(
             "problemas": list(dict.fromkeys(problemas)),
             "pontuacao": float(qualidade.get("pontuacao") or 0.0),
             "foco": dict(qualidade.get("foco") or {}),
+            "aderencia_contrato": aderencia_contrato,
+            "fala_contingencia": contingencia_comunicacao(
+                texto_usuario,
+                foco=qualidade.get("foco"),
+                contrato_reparo=qualidade.get("contrato_reparo"),
+            ),
         }
 
     ajustada_proporcional = ajustar_proporcao_resposta(
@@ -386,4 +413,5 @@ def verificar_fala_turno(
         "acao": "ajustada" if problemas else "aceita",
         "problemas": problemas,
         "pontuacao": round(max(0.0, 1.0 - (0.18 * len(problemas))), 2),
+        "aderencia_contrato": aderencia_contrato,
     }

@@ -176,6 +176,28 @@ def detectar_comentario_resultado_operacional(
         t,
     ):
         return None
+    pergunta_autoria = bool(re.search(
+        r"^(?:(?:mas|ent[aã]o)\s+)?(?:por\s+que|porque)\s+(?:voce|você)\s+"
+        r"(?:colocou|abriu|fechou|mudou|ligou|desligou|criou|apagou|fez)\b",
+        t,
+    ))
+    if pergunta_autoria:
+        params = dict(mente.get("ultima_acao_params") or {})
+        return {
+            "intent": intent,
+            "alvo": str(
+                mente.get("ultima_acao_alvo")
+                or params.get("alvo")
+                or params.get("query")
+                or "a ação"
+            ).strip(),
+            "params": params,
+            "texto": bruto,
+            "tipo": "questiona_autoria",
+            "status": str(mente.get("ultima_acao_status") or "").strip(),
+            "executou": mente.get("ultima_acao_ok"),
+            "confirmado": mente.get("ultima_acao_confirmada"),
+        }
     sinais = (
         "parece", "ficou", "saiu", "funcionou", "não funcionou", "nao funcionou",
         "deu certo", "não deu", "nao deu", "estranho", "errado", "melhor", "pior",

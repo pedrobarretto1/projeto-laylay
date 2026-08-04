@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import time
 import unicodedata
 from typing import Any, Callable, Mapping
 
@@ -50,6 +51,11 @@ def construir_diagnostico_mente(
     continuidades = dict(dominios.get("continuidades") or {})
     turno = dict(mental.get("turno_atual") or {})
     plano = dict(mental.get("plano_turno_atual") or {})
+    contrato_fala = dict(mental.get("contrato_fala_atual") or {})
+    roteiro_concreto = dict(contrato_fala.get("roteiro_concreto") or {})
+    metricas_verificador = dict(mental.get("metricas_verificador") or {})
+    ultima_verificacao = dict(plano.get("ultima_verificacao") or {})
+    ultima_aderencia = dict(ultima_verificacao.get("aderencia_contrato") or {})
     modulos = {str(nome): dict(registro or {}) for nome, registro in dict(saude or {}).items()}
     totais = {"saudavel": 0, "degradado": 0, "indisponivel": 0}
     problemas = []
@@ -67,25 +73,89 @@ def construir_diagnostico_mente(
 
     continuidade_oficial = dict(mental.get("continuidade_geral") or {})
     acao_oficial = selecionar_continuidade_por_classe(mental, classe="operacional")
-    ultima_acao = {
-        "intent": acao_oficial.get("intent") or mental.get("ultima_acao_intent") or mental.get("ultima_intencao") or "",
-        "alvo": acao_oficial.get("alvo") or mental.get("ultima_acao_alvo") or mental.get("ultimo_alvo") or "",
-        "status": acao_oficial.get("status") or mental.get("ultima_acao_status") or "",
-        "confirmado": mental.get("ultima_acao_confirmada"),
+    contrato_acao = dict(mental.get("ultima_acao_contrato") or {})
+    if contrato_acao:
+        ultima_acao = {
+            "id_evento": contrato_acao.get("id_solicitacao") or "",
+            "intent": contrato_acao.get("intent") or "",
+            "alvo": contrato_acao.get("alvo") or "",
+            "status": contrato_acao.get("status") or "",
+            "confirmado": contrato_acao.get("confirmado"),
+            "dominio": contrato_acao.get("dominio") or "",
+            "fonte": "contrato_atomico",
+            "coerente": True,
+        }
+    elif acao_oficial:
+        # O evento oficial é lido como unidade. Campo vazio não autoriza
+        # misturar o alvo ou status de outra ação legada.
+        ultima_acao = {
+            "id_evento": acao_oficial.get("id_solicitacao") or "",
+            "intent": acao_oficial.get("intent") or "",
+            "alvo": acao_oficial.get("alvo") or "",
+            "status": acao_oficial.get("status") or "",
+            "confirmado": None,
+            "dominio": acao_oficial.get("dominio") or "",
+            "fonte": "continuidade_operacional",
+            "coerente": True,
+        }
+    else:
+        ultima_acao = {
+            "id_evento": "",
+            "intent": mental.get("ultima_acao_intent") or mental.get("ultima_intencao") or "",
+            "alvo": mental.get("ultima_acao_alvo") or "",
+            "status": mental.get("ultima_acao_status") or "",
+            "confirmado": mental.get("ultima_acao_confirmada"),
+            "dominio": "",
+            "fonte": "legado_nao_atomico",
+            "coerente": False,
+        }
+
+    ultima_acao_auditoria = {
+        chave: ultima_acao.pop(chave)
+        for chave in ("id_evento", "dominio", "fonte", "coerente")
     }
 
-    pendencias = sum(
-        1
-        for valor in continuidades.values()
-        if bool(valor) and valor not in ({}, [], "", "NONE", "none")
-    )
+    agora = time.time()
+    pendencias_detalhadas = []
+    for chave, valor in continuidades.items():
+        if not bool(valor) or valor in ({}, [], "", "NONE", "none"):
+            continue
+        registro = dict(valor) if isinstance(valor, Mapping) else {}
+        criada_em = float(registro.get("criada_em") or registro.get("ts") or 0.0)
+        expira_em = float(registro.get("expira_em") or 0.0)
+        pendencias_detalhadas.append({
+            "origem": _codigo_seguro(chave, 48),
+            "acao": _codigo_seguro(
+                registro.get("acao") or registro.get("tipo") or "continuidade_contextual",
+                48,
+            ),
+            "idade_s": round(max(0.0, agora - criada_em), 1) if criada_em else None,
+            "prazo_s": round(max(0.0, expira_em - agora), 1) if expira_em else None,
+            "motivo": _codigo_seguro(
+                registro.get("motivo") or "aguardando_continuidade", 64,
+            ),
+            "status": _codigo_seguro(registro.get("status") or "ativa", 32),
+        })
     pendencia_acao = dict(mental.get("pendencia_acao_canonica") or {})
     if pendencia_acao.get("status") in {"ativa", "em_processamento"}:
-        pendencias += 1
+        criada_em = float(pendencia_acao.get("criada_em") or 0.0)
+        expira_em = float(pendencia_acao.get("expira_em") or 0.0)
+        pendencias_detalhadas.append({
+            "origem": _codigo_seguro(pendencia_acao.get("origem"), 48),
+            "acao": _codigo_seguro(pendencia_acao.get("acao"), 48),
+            "idade_s": round(max(0.0, agora - criada_em), 1) if criada_em else None,
+            "prazo_s": round(max(0.0, expira_em - agora), 1) if expira_em else None,
+            "motivo": _codigo_seguro(
+                pendencia_acao.get("motivo") or "aguardando_resposta", 64,
+            ),
+            "status": _codigo_seguro(pendencia_acao.get("status"), 32),
+        })
+    pendencias = len(pendencias_detalhadas)
     contexto_sistema = dict(percepcao.get("contexto_sistema") or {})
     aba_ativa = dict(percepcao.get("aba_ativa") or {})
     metricas_brutas = dict(mental.get("diagnostico_metricas") or {})
     prompts_brutos = dict(mental.get("diagnostico_prompts") or {})
+    orcamento_prompt_bruto = dict(mental.get("diagnostico_orcamento_prompt") or {})
     latencias = {}
     for nome, registro in metricas_brutas.items():
         if not isinstance(registro, Mapping):
@@ -115,6 +185,25 @@ def construir_diagnostico_mente(
                 "max_chars": int(registro.get("max_chars") or 0),
                 "amostras": int(registro.get("amostras") or 0),
             }
+    orcamento_prompt = {
+        "inconsistencias": int(orcamento_prompt_bruto.get("inconsistencias") or 0),
+        "etapas": {},
+    }
+    for etapa, registro in dict(orcamento_prompt_bruto.get("etapas") or {}).items():
+        if not isinstance(registro, Mapping):
+            continue
+        nome_etapa = _codigo_seguro(etapa, 32)
+        if not nome_etapa:
+            continue
+        orcamento_prompt["etapas"][nome_etapa] = {
+            "brutos": int(registro.get("brutos") or 0),
+            "selecionados": int(registro.get("selecionados") or 0),
+            "truncados": int(registro.get("truncados") or 0),
+            "injetados": int(registro.get("injetados") or 0),
+            "enviados": int(registro.get("enviados") or 0),
+            "fecha_selecao": bool(registro.get("fecha_selecao")),
+            "fecha_envio": bool(registro.get("fecha_envio")),
+        }
     falhas = []
     for item in list(mental.get("diagnostico_falhas") or [])[-8:]:
         if not isinstance(item, Mapping):
@@ -144,6 +233,23 @@ def construir_diagnostico_mente(
             "orfaos": int(item.get("orfaos") or 0),
             "ts": float(item.get("ts") or 0.0),
         })
+    estados_servico = {
+        "ativos": {"ativo", "rodando"},
+        "desativados": {
+            "desativado", "desabilitado", "nao_configurado", "não_configurado",
+            "inativo_por_configuracao",
+        },
+        "encerrados": {"finalizado", "encerrado", "parado", "concluido"},
+    }
+    for item in servicos_background:
+        estado_servico = str(item.get("estado") or "desconhecido")
+        item["classe_estado"] = next(
+            (
+                classe for classe, estados in estados_servico.items()
+                if estado_servico in estados
+            ),
+            "degradados",
+        )
     servicos_background.sort(key=lambda item: str(item.get("nome") or ""))
     # Uma queda já seguida por um evento saudável continua visível nos
     # contadores de quedas/reinícios, mas não deve aparecer como falha atual.
@@ -319,7 +425,52 @@ def construir_diagnostico_mente(
             "autoriza_execucao": bool(turno.get("autoriza_execucao", False)),
             "erros": [_codigo_seguro(item) for item in list(plano.get("erros") or [])[:5]],
         },
+        "contrato_fala": {
+            "ativo": bool(contrato_fala),
+            "funcao": _codigo_seguro(contrato_fala.get("funcao"), 48),
+            "atos": [
+                _codigo_seguro(item, 32)
+                for item in list(contrato_fala.get("atos") or [])[:6]
+            ],
+            "referente": _codigo_seguro(contrato_fala.get("referente"), 64),
+            "max_frases": int(contrato_fala.get("max_frases") or 0),
+            "permite_metafora": bool(contrato_fala.get("permite_metafora", False)),
+            "cooperacao_considerada": bool(
+                contrato_fala.get("cooperacao_considerada", False)
+            ),
+            "estrategia_concreta": _codigo_seguro(
+                roteiro_concreto.get("estrategia"), 64,
+            ),
+            "primeira_frase_responde_nucleo": bool(
+                roteiro_concreto.get("primeira_frase_responde_nucleo", False)
+            ),
+            "autoriza_execucao": False,
+        },
+        "verificador_fala": {
+            "falas_verificadas": int(metricas_verificador.get("falas_verificadas") or 0),
+            "contratos_verificados": int(
+                metricas_verificador.get("contratos_verificados") or 0
+            ),
+            "contratos_aprovados": int(
+                metricas_verificador.get("contratos_aprovados") or 0
+            ),
+            "contratos_rejeitados": int(
+                metricas_verificador.get("contratos_rejeitados") or 0
+            ),
+            "ultima_estrategia": _codigo_seguro(
+                ultima_aderencia.get("estrategia"), 64,
+            ),
+            "ultimo_nucleo_atendido": bool(
+                ultima_aderencia.get("nucleo_atendido", False)
+            ),
+            "ultimos_problemas": [
+                _codigo_seguro(item, 72)
+                for item in list(ultima_aderencia.get("problemas") or [])[:6]
+            ],
+            "autoriza_execucao": False,
+        },
         "ultima_acao": ultima_acao,
+        "ultima_acao_auditoria": ultima_acao_auditoria,
         "continuidade_geral": {
             "modo": _codigo_seguro(continuidade_oficial.get("modo") or "oficial", 24),
             "fonte_autoritativa": bool(continuidade_oficial.get("fonte_autoritativa", True)),
@@ -331,6 +482,7 @@ def construir_diagnostico_mente(
             "site": aba_ativa.get("url") or "",
         },
         "pendencias": pendencias,
+        "pendencias_detalhadas": pendencias_detalhadas,
         "pendencia_acao": {
             "ativa": pendencia_acao.get("status") in {"ativa", "em_processamento"},
             "origem": _codigo_seguro(pendencia_acao.get("origem"), 48),
@@ -339,6 +491,7 @@ def construir_diagnostico_mente(
         },
         "latencias": latencias,
         "tamanhos_prompt": tamanhos_prompt,
+        "orcamento_prompt": orcamento_prompt,
         "falhas_recentes": falhas,
         "falhas_recuperadas": falhas_recuperadas,
         "falhas_por_classe": falhas_por_classe,
@@ -370,6 +523,7 @@ class DiagnosticoMenteRuntime:
         orquestracao_cooperativa_getter: Callable[[], Mapping[str, Any]] | None = None,
         agenda_getter: Callable[[], Mapping[str, Any]] | None = None,
         memoria_pessoas_getter: Callable[[], Mapping[str, Any]] | None = None,
+        aprendizado_getter: Callable[[], Mapping[str, Any]] | None = None,
         linguagem_natural_getter: Callable[[], Mapping[str, Any]] | None = None,
         fala_operacional_getter: Callable[[], Mapping[str, Any]] | None = None,
         falar: Callable[[str, str, int], Any],
@@ -392,6 +546,7 @@ class DiagnosticoMenteRuntime:
         self.orquestracao_cooperativa_getter = orquestracao_cooperativa_getter
         self.agenda_getter = agenda_getter
         self.memoria_pessoas_getter = memoria_pessoas_getter
+        self.aprendizado_getter = aprendizado_getter
         self.linguagem_natural_getter = linguagem_natural_getter
         self.fala_operacional_getter = fala_operacional_getter
         self.falar = falar
@@ -515,9 +670,63 @@ class DiagnosticoMenteRuntime:
                 diagnostico["conversa_llm"] = {
                     "prompt_disponivel": False, "modelo_disponivel": False,
                     "estado_disponivel": False, "requisicoes": 0, "falhas": 1,
+                    "falhas_consecutivas": 1, "estado": "degradado",
+                    "ultima_falha_codigo": "diagnostico_indisponivel",
                     "memoria_exposta": False, "credencial_exposta": False,
                     "autoriza_execucao": False,
                 }
+        # O diagnóstico vivo do transporte vence a auditoria feita apenas na
+        # inicialização. Capacidade conectada não significa backend saudável.
+        llm_atual = dict(diagnostico.get("conversa_llm") or {})
+        if llm_atual:
+            estado_llm = str(llm_atual.get("estado") or "saudavel").casefold()
+            consecutivas = int(llm_atual.get("falhas_consecutivas") or 0)
+            degradada = estado_llm in {"degradado", "indisponivel"} or consecutivas > 0
+            saude = dict(diagnostico.get("saude") or {})
+            problemas = list(saude.get("problemas") or [])
+            problema_llm = next(
+                (
+                    item for item in problemas
+                    if str(item.get("modulo") or "").strip().casefold() == "llm"
+                ),
+                None,
+            )
+            if degradada and problema_llm is None:
+                saude["saudavel"] = max(0, int(saude.get("saudavel") or 0) - 1)
+                saude["degradado"] = int(saude.get("degradado") or 0) + 1
+                problemas.append({
+                    "modulo": "llm",
+                    "status": "degradado",
+                    "ausentes": ["backend_responsivo"],
+                })
+            elif not degradada and problema_llm is not None:
+                anterior = str(problema_llm.get("status") or "degradado").casefold()
+                if anterior in {"degradado", "indisponivel"}:
+                    saude[anterior] = max(0, int(saude.get(anterior) or 0) - 1)
+                    saude["saudavel"] = int(saude.get("saudavel") or 0) + 1
+                problemas = [item for item in problemas if item is not problema_llm]
+            saude["problemas"] = problemas
+            diagnostico["saude"] = saude
+            if degradada and not any(
+                str(item.get("componente") or "").startswith("llm")
+                for item in list(diagnostico.get("falhas_recentes") or [])
+            ):
+                falhas = list(diagnostico.get("falhas_recentes") or [])
+                falhas.append({
+                    "componente": "llm_http",
+                    "codigo": _codigo_seguro(
+                        llm_atual.get("ultima_falha_codigo") or "backend_degradado", 80,
+                    ),
+                    "tipo": "",
+                    "classe": "degradacao",
+                    "impacto": "turno",
+                    "fallback": "contingencia_conversacional",
+                    "ts": 0.0,
+                })
+                diagnostico["falhas_recentes"] = falhas[-8:]
+                classes = dict(diagnostico.get("falhas_por_classe") or {})
+                classes["degradacao"] = int(classes.get("degradacao") or 0) + 1
+                diagnostico["falhas_por_classe"] = classes
         if callable(self.composicao_principal_getter):
             try:
                 bruto = dict(self.composicao_principal_getter() or {})
@@ -596,6 +805,22 @@ class DiagnosticoMenteRuntime:
                     "ativas": 0, "relacoes_ativas": 0, "fatos_ativos": 0,
                     "correcoes": 0, "esquecimentos": 0, "ambiguidades": 0,
                     "falhas": 1, "persistencia_local": True, "envio_externo": False,
+                }
+        if callable(self.aprendizado_getter):
+            try:
+                diagnostico["memoria_aprendizado"] = dict(
+                    self.aprendizado_getter() or {}
+                )
+            except Exception:
+                diagnostico["memoria_aprendizado"] = {
+                    "disponivel": False,
+                    "semanticos": {},
+                    "hipoteses": {},
+                    "legados": 0,
+                    "persistencia_local": True,
+                    "conteudo_exposto": False,
+                    "autoriza_execucao": False,
+                    "falhas": 1,
                 }
         if callable(self.linguagem_natural_getter):
             try:

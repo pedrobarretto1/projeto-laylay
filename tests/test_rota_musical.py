@@ -84,6 +84,28 @@ def test_link_direto_nao_declara_sucesso_se_player_nao_confirmar() -> None:
     assert rota.abrir("https://youtu.be/abc") is False
 
 
+def test_video_aberto_com_autoplay_bloqueado_e_sucesso_parcial() -> None:
+    class _NavegadorParcial:
+        def tocar_youtube_detalhado(self, *_args, **_kwargs):
+            return {
+                "ok": False,
+                "confirmado": False,
+                "status": "autoplay_blocked",
+                "message": "O navegador não permitiu iniciar o player",
+                "tab": {"id": 12, "url": "https://youtu.be/abc"},
+            }
+
+    rota = RotaMusical({
+        "_registro_navegador_operacoes_runtime": _NavegadorParcial(),
+    })
+
+    resultado = rota.abrir_detalhado("https://youtu.be/abc")
+
+    assert resultado["ok"] is True
+    assert resultado["confirmado"] is None
+    assert resultado["status"] == "video_aberto_sem_confirmacao"
+
+
 def test_abertura_local_respeita_confirmacao_tipado() -> None:
     rota_confirmada = RotaMusical({
         "_registro_navegador_operacoes_runtime": NavegadorOperacoesFake()

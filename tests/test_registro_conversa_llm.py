@@ -77,6 +77,119 @@ def test_estado_conversa_e_temporario_e_defensivo() -> None:
     assert porta.diagnostico()["memoria_duravel"] is False
 
 
+def test_estado_conversa_publica_cada_lado_do_turno_uma_unica_vez() -> None:
+    estado = [{"role": "system", "content": "personalidade"}]
+    porta = EstadoConversaRuntime(
+        getter=lambda: estado,
+        setter=lambda novas: estado.__setitem__(slice(None), novas),
+    )
+
+    porta.iniciar_turno("turno-1", "Você prefere rock ou metal?")
+    porta.iniciar_turno("turno-1", "Você prefere rock ou metal?")
+    assert porta.concluir_turno("turno-1", "Eu prefiro rock.") is True
+    assert porta.concluir_turno("turno-1", "Resposta duplicada.") is False
+
+    assert [item["role"] for item in estado] == ["system", "user", "assistant"]
+    assert estado[-1]["content"] == "Eu prefiro rock."
+    assert porta.diagnostico()["turnos_concluidos"] == 1
+
+
+def test_fluxo_llm_preserva_historico_e_mente_em_conversa_de_tres_turnos() -> None:
+    historico: list[dict] = []
+    registros_mente: list[tuple[tuple, dict]] = []
+    topicos: list[tuple[str, str]] = []
+    salvamentos: list[bool] = []
+    respostas = iter((
+        "Eu prefiro rock.",
+        "Porque ele passeia por mais climas sem perder a força.",
+        "Em resumo: o rock me parece mais variado.",
+    ))
+
+    class PromptComHistorico:
+        def preparar_pacote(self, _texto):
+            mensagens = [dict(item) for item in historico]
+            if not mensagens:
+                mensagens.append({"role": "system", "content": "personalidade"})
+            return PacotePrompt(tuple(mensagens))
+
+    class ModeloSequencial:
+        def __init__(self):
+            self.pedidos = []
+
+        def executar(self, pedido):
+            self.pedidos.append(pedido)
+            return ResultadoModelo(next(respostas), True)
+
+    class Contexto:
+        @staticmethod
+        def montar():
+            return {}
+
+    modelo = ModeloSequencial()
+    estado = EstadoConversaRuntime(
+        getter=lambda: historico,
+        setter=lambda novas: historico.__setitem__(slice(None), novas),
+    )
+
+    def finalizar(_ctx, _comandos, _erros, fala, *_args):
+        return {
+            "fala": fala,
+            "registrar_no_historico": True,
+            "tipo": "conversa",
+        }
+
+    runtime = RespostaIARuntime(
+        contexto_getter=lambda: {
+            "usar_modo_rapido": lambda _texto: False,
+            "preparacao_conversa": PromptComHistorico(),
+            "estado_conversa": estado,
+            "modelo_llm": modelo,
+            "preparar_resposta": lambda _texto, bruto: {
+                "resposta_bruta": bruto,
+                "fala": bruto,
+                "comandos": [],
+                "tipo_interacao": "conversa",
+                "leitura_semantica": {},
+            },
+            "contexto_dispatch_runtime": Contexto(),
+            "executar_comandos_json": lambda *_args: {
+                "erros": [],
+                "fala_ja_emitida": False,
+                "fala_emitida_por_acao": False,
+                "fala_salva_no_inicio": False,
+            },
+            "contexto_finalizacao_runtime": Contexto(),
+            "finalizar_execucao": finalizar,
+            "atualizar_memoria_topicos": (
+                lambda usuario, fala: topicos.append((usuario, fala))
+            ),
+            "registrar_mente_curta": (
+                lambda *args, **kwargs: registros_mente.append((args, kwargs))
+            ),
+            "salvar_memoria": lambda: salvamentos.append(True),
+        },
+        log=lambda *_args: None,
+    )
+
+    runtime.processar("Você prefere rock ou metal?")
+    runtime.processar("Por quê?")
+    runtime.processar("Agora explica isso de um jeito simples.")
+
+    segundo_prompt = [item["content"] for item in modelo.pedidos[1].mensagens]
+    terceiro_prompt = [item["content"] for item in modelo.pedidos[2].mensagens]
+    assert "Você prefere rock ou metal?" in segundo_prompt
+    assert "Eu prefiro rock." in segundo_prompt
+    assert "Por quê?" in terceiro_prompt
+    assert "Porque ele passeia por mais climas sem perder a força." in terceiro_prompt
+    assert [item["role"] for item in historico] == [
+        "system", "user", "assistant", "user", "assistant", "user", "assistant",
+    ]
+    assert historico[-1]["content"] == "Em resumo: o rock me parece mais variado."
+    assert len(registros_mente) == 3
+    assert len(topicos) == 3
+    assert len(salvamentos) == 3
+
+
 def test_fluxo_real_de_resposta_prefere_portas_tipadas_ao_adaptador_legado() -> None:
     eventos = []
     historico = []

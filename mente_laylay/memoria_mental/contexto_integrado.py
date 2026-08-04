@@ -214,6 +214,23 @@ def resumo_mente_integrada_para_prompt(
                 "Demonstre memória de forma sutil. Pode expressar preferência leve quando houver base no "
                 "contexto, mas nunca invente experiência pessoal, capacidade ou resultado."
             )
+            deliberacao = (
+                especialistas.get("deliberacao")
+                if isinstance(especialistas.get("deliberacao"), dict)
+                else {}
+            )
+            if deliberacao:
+                blocos.append(
+                    "DELIBERAÇÃO COLETIVA DAS HABILIDADES: "
+                    f"arquitetura={deliberacao.get('arquitetura') or 'consenso_distribuido'} | "
+                    f"participantes={deliberacao.get('participantes') or []} | "
+                    f"contribuições={deliberacao.get('conclusao_conjunta') or []}. "
+                    "Nenhuma habilidade vence as demais. Combine as contribuições compatíveis numa "
+                    "conclusão única. Memória e aprendizado atuam silenciosamente; pesquisa apenas "
+                    "enriquece. Se uma habilidade auxiliar falhar, preserve o sentido humano da fala "
+                    "e não troque a resposta por um aviso técnico ou pedido para repetir informações "
+                    "que já estão no contexto. Só o executor canônico pode afirmar que uma ação ocorreu."
+                )
 
     retrato_turno = mente.get("retrato_turno_atual") if isinstance(mente, dict) else {}
     if isinstance(retrato_turno, dict) and retrato_turno:

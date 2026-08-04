@@ -16,7 +16,7 @@ class BuscaMusicalRuntime:
     def __init__(
         self,
         *,
-        extrair_resultados_youtube: Callable[[str, str, int], list],
+        extrair_resultados_youtube: Callable[..., list],
         abrir_url: Callable[[str], Any],
         youtube_play: Callable[[str], Any] | None = None,
         falar: Callable[[str, str, int], Any] | None = None,
@@ -73,13 +73,37 @@ Responda APENAS "SIM" se for a música certa, ou "NAO" se for o vídeo errado.
 
     def buscar_primeiro_video(self, query: str, *, tipo_resultado: str = "faixa") -> str | None:
         """Scraper leve para encontrar o primeiro video valido do YouTube."""
-        candidatos = self.buscar_resultados(query, limite=8, tipo_resultado=tipo_resultado)
-        if candidatos:
-            link = str(candidatos[0].get("url") or "").strip()
-            if link:
-                self.log(f"✅ [YT-SCRAPER] Encontrado: {link}")
-                return link
+        resultado = self.resolver_primeiro_video(
+            query, tipo_resultado=tipo_resultado,
+        )
+        link = str(resultado.get("url") or "").strip()
+        if link:
+            return link
         return None
+
+    def resolver_primeiro_video(
+        self, query: str, *, tipo_resultado: str = "faixa",
+    ) -> dict[str, Any]:
+        """Resolve uma consulta para um vídeo concreto com identidade preservada.
+
+        A URL sozinha não permite que as camadas seguintes expliquem qual alvo
+        foi realmente escolhido. O contrato detalhado mantém título, canal e
+        pontuação até a execução e a fala final.
+        """
+        candidatos = self.buscar_resultados(
+            query, limite=8, tipo_resultado=tipo_resultado,
+        )
+        if not candidatos:
+            return {}
+        primeiro = dict(candidatos[0] or {})
+        link = str(primeiro.get("url") or "").strip()
+        if not link:
+            return {}
+        self.log(
+            "✅ [YT-SCRAPER] Resolvido: "
+            f"{primeiro.get('title') or query} | {link}"
+        )
+        return primeiro
 
     def buscar_resultados(
         self,

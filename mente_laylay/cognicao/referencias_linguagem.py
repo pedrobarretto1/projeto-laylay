@@ -73,7 +73,7 @@ def extrair_indice_referencia_ordinal(texto: str) -> int | None:
 _REPARO_DO_TURNO_ANTERIOR = re.compile(
     r"^\s*(?:n[aã]o\s+(?:entendi|compreendi|acompanhei)|"
     r"n[aã]o\s+ficou\s+claro|como\s+assim|por\s+qu[eê]|"
-    r"explica(?:\s+isso)?\s+(?:de\s+novo|melhor)|"
+    r"(?:agora\s+)?explica(?:\s+(?:isso|aquilo|essa parte))?\s+(?:de\s+novo|melhor|com\s+mais\s+detalhes|mais\s+detalhadamente)|"
     r"repete(?:\s+isso)?|refaz(?:\s+isso)?|mais\s+devagar)\s*[.!?]*\s*$",
     re.IGNORECASE,
 )
@@ -93,6 +93,12 @@ def texto_tem_referencia_contextual(texto: str) -> bool:
     return bool(
         _REFERENCIA_NO_TEXTO.search(bruto)
         or _REPARO_DO_TURNO_ANTERIOR.search(bruto)
+        or re.fullmatch(
+            r"\s*(?:e\s+)?(?:o\s+que\s+mais|tem\s+mais|mostra\s+mais|"
+            r"me\s+fala\s+mais|(?:de|do|da|dos|das)\s+.+?)\s*[.!?]*\s*",
+            bruto,
+            flags=re.IGNORECASE,
+        )
         or extrair_indice_referencia_ordinal(bruto) is not None
     )
 

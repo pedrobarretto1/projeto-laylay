@@ -42,6 +42,20 @@ a execução segura dos comandos.
 - [x] P13 — Evitar aberturas cíclicas usando histórico curto e reconciliar alertas técnicos recuperados.
 - [x] P14 — Escalar repetições redundantes de deboche para irritação e bronca brava.
 
+### Camada de amizade natural — aplicada
+
+- [x] Centralizar essência, assinatura verbal e limites em um único perfil canônico.
+- [x] Escolher por turno uma postura amiga, acolhedora, receptiva, brincalhona,
+  opinativa, prestativa ou operacional sem dar autoridade prática à personalidade.
+- [x] Entregar a mesma postura ao prompt e ao diretor final, evitando regras sociais
+  divergentes antes e depois da geração.
+- [x] Preservar resultado operacional como prioridade e bloquear pergunta opcional,
+  intimidade inventada e humor sem causa em comandos.
+- [x] Rejeitar fala de atendimento mecânico, interrogatório, poesia decorativa e
+  resposta que ignora um estado pessoal explicitamente informado.
+- [x] Cobrir a integração por testes de identidade, contexto dinâmico, conversa,
+  vulnerabilidade, opinião e segurança operacional.
+
 ## Versão final planejada
 
 ### P15 — Contrato emocional causal canônico
@@ -171,6 +185,10 @@ aplicável.
 - Diagnóstico atual: quedas recuperadas permanecem nos contadores históricos,
   mas não são anunciadas como falhas ativas; retratos tipados mais recentes
   eliminam alertas contraditórios da agenda.
+- Assinatura verbal ativa: doce e firme, observadora, opinativa e autoconfiante,
+  com cumplicidade e deboche seco apoiados em detalhes concretos.
+- Linguagem concreta por padrão: poesia e metáforas são exceção, reservadas a
+  pedidos criativos ou a uma comparação curta que realmente esclareça algo.
 
 ## Critérios globais de conclusão
 

@@ -43,6 +43,7 @@ class OrquestradorCooperativoRuntime:
         executar_intencao: Callable[[dict[str, Any], str], bool],
         resolver_caminho: Callable[[str], str],
         falar: Callable[[str, str, int], Any],
+        marcar_clipboard_consumido: Callable[[Mapping[str, Any]], Any] | None = None,
         planejar_layout: Callable[[], Mapping[str, Any]] | None = None,
         detectar_visao_jogo: Callable[[str], Mapping[str, Any] | None] | None = None,
         estado_getter: Callable[[], Mapping[str, Any]] = lambda: {},
@@ -58,6 +59,7 @@ class OrquestradorCooperativoRuntime:
         self.quadro = quadro
         self.clipboard_snapshot = clipboard_snapshot
         self.clipboard_getter = clipboard_getter
+        self.marcar_clipboard_consumido = marcar_clipboard_consumido
         self.executar_intencao = executar_intencao
         self.resolver_caminho = resolver_caminho
         self.falar = falar
@@ -80,6 +82,61 @@ class OrquestradorCooperativoRuntime:
         self.executor_plano = executor_plano or ExecutorPlanoCooperativoRuntime(
             quadro=quadro, governanca=self.governanca, log=log,
         )
+
+    def registrar_deliberacao_turno(
+        self,
+        deliberacao: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Publica no quadro a coalizão cognitiva, sem transformar fala em ação.
+
+        O quadro recebe somente metadados e evidências sanitizadas. A presença
+        de uma habilidade executora não autoriza execução; os porteiros
+        canônicos continuam sendo a única fronteira de efeitos externos.
+        """
+        dados = dict(deliberacao or {})
+        participantes = [
+            str(item)[:80] for item in list(dados.get("participantes") or [])
+            if str(item).strip()
+        ][:8]
+        # Conversa + personalidade é o caminho básico de uma única resposta,
+        # não uma cooperação que mereça poluir quadro e terminal. Publicamos
+        # apenas quando outra habilidade realmente contribuiu para o consenso.
+        contribuintes_especializados = set(participantes).difference({
+            "conversa", "personalidade",
+        })
+        if len(participantes) < 2 or not contribuintes_especializados:
+            return {}
+        evidencias = [
+            str(item)[:160]
+            for item in list(dados.get("evidencias_compartilhadas") or [])
+            if str(item).strip()
+        ][:8]
+        assinatura = _hash_texto("|".join(sorted(participantes)))[:24]
+        evento = self.quadro.publicar_evento(
+            origem="deliberador_habilidades",
+            tipo="coalizao_cognitiva_formada",
+            resumo=f"{len(participantes)} habilidades chegaram a uma conclusão conjunta",
+            confianca=max(
+                (float(item.get("ativacao") or 0.0) for item in list(dados.get("pareceres") or []) if isinstance(item, Mapping)),
+                default=0.0,
+            ),
+            relevancia=1.0,
+            sensibilidade="metadados_locais",
+            validade_s=120.0,
+            habilidades=participantes,
+            evidencias=evidencias,
+            chave_deduplicacao=f"coalizao_turno:{assinatura}",
+        )
+        self.log(
+            "🤝 [COOPERAÇÃO:CONSENSO] "
+            f"habilidades={','.join(participantes)} | sem_vencedor=True"
+        )
+        return {
+            "evento_id": str(evento.get("id") or ""),
+            "participantes": participantes,
+            "publicado": True,
+            "autoriza_execucao": False,
+        }
 
     def _processar_analise_item_jogo(
         self, pedido: Mapping[str, Any], texto: str,
@@ -668,6 +725,13 @@ class OrquestradorCooperativoRuntime:
             self.falar("O conteúdo copiado parece sensível. Não vou colocá-lo em um arquivo.", "preocupada", 2)
             self._registrar_decisao("bloqueado", "conteúdo sensível")
             return True
+        if callable(self.marcar_clipboard_consumido):
+            try:
+                self.marcar_clipboard_consumido(snapshot)
+            except Exception:
+                # A deduplicação passiva é auxiliar e nunca pode impedir um
+                # pedido explícito de seguir pela rota segura.
+                pass
         conteudo = str(self.clipboard_getter() or "")
         assinatura = str(snapshot.get("assinatura") or "")
         if not conteudo or not assinatura or _hash_texto(conteudo) != assinatura:

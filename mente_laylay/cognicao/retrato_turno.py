@@ -152,14 +152,37 @@ def _operacao_explicita(texto: str) -> tuple[str, tuple[str, ...]]:
             r"\bda\s+playlist\b.*\b(?:pra|para)\s+(?:a\s+)?playlist\b", t
         ):
             return "playlist_mover", ("PLAYLIST_MOVE",)
-        if re.search(r"\b(?:coloca|coloque|bota|salva|salve|guarda|guarde|adiciona|adicione|add)\b", t) and re.search(r"\b(?:na|nessa|nesta|para a|pra|em|a)\s+(?:minha\s+)?playlist\b", t):
+        verbo_adicao = re.search(
+            r"\b(?:coloca|coloque|bota|salva|salve|guarda|guarde|adiciona|adicione|add)\b",
+            t,
+        )
+        destino_adicao = re.search(
+            r"\b(?:na|nessa|nesta|para a|pra|em)\s+(?:minha\s+)?playlist\b",
+            t,
+        )
+        # A forma oral sem crase só é adição quando há uma faixa explícita.
+        # Isso preserva ``essa música a playlist`` sem confundir o artigo de
+        # ``coloca a playlist rock``, que é um pedido para tocar a playlist.
+        destino_adicao_oral = (
+            re.search(r"\b(?:musica|música|faixa|canção|cancao)\b", t)
+            and re.search(r"\ba\s+(?:minha\s+)?playlist\b", t)
+        )
+        if verbo_adicao and (destino_adicao or destino_adicao_oral):
             return "playlist_adicionar", ("PLAYLIST_ADD",)
         if re.search(r"\b(?:toca|toque|abre|abra|coloca|coloque|ouvir|escuta)\b", t):
             return "playlist_tocar", ("PLAYLIST_PLAY", "TOCAR_PLAYLIST", "TOCAR_PLAYLIST_SHUFFLE")
     if re.search(r"\b(?:luz|lampada|lâmpada|ventilador|tomada|dispositivo)\b", t):
         return "iot", ("IOT_CONTROL", "IOT_STATUS", "IOT_LIST")
     if re.search(r"\b(?:arquivo|pasta|documento)\b", t):
-        return "arquivo", ("CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "MOVE_ITEM", "FILE_TRANSACTION")
+        return "arquivo", (
+            "FILE_SEARCH", "FILE_OPEN_RESULT", "CREATE_FOLDER", "CREATE_FILE",
+            "DELETE_ITEM", "MOVE_ITEM", "FILE_TRANSACTION",
+        )
+    if re.search(r"\b(?:codigo|código|script)\b", t) and re.search(
+        r"\b(?:encontra|encontre|acha|ache|procura|procure|localiza|localize)\b",
+        t,
+    ):
+        return "arquivo", ("FILE_SEARCH",)
     return "", ()
 
 

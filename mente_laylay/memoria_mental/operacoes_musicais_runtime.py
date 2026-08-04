@@ -117,6 +117,11 @@ class OperacoesMusicaisRuntime:
             "status_avanco": str(
                 self.playlist_state.get("last_advance_status") or ""
             ).strip(),
+            "tab_id": (
+                self.playlist_state.get("tab_id")
+                if isinstance(self.playlist_state.get("tab_id"), int)
+                else None
+            ),
         }
 
     def diagnostico(self) -> dict[str, Any]:

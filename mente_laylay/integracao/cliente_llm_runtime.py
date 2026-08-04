@@ -51,6 +51,9 @@ class ClienteLLMRuntime:
         self._requisicoes = 0
         self._sucessos = 0
         self._falhas = 0
+        self._falhas_consecutivas = 0
+        self._estado_atual = "saudavel"
+        self._ultima_falha_codigo = ""
 
     def executar(self, requisicao: RequisicaoTransporteLLM) -> ResultadoModelo:
         if not isinstance(requisicao, RequisicaoTransporteLLM):
@@ -78,6 +81,9 @@ class ClienteLLMRuntime:
             resposta_remota = str(self.conversa_jogo_remota(data) or "").strip()
             if resposta_remota:
                 self._sucessos += 1
+                self._falhas_consecutivas = 0
+                self._estado_atual = "saudavel"
+                self._ultima_falha_codigo = ""
                 self.log("🎮 [CONVERSA:JOGO] rota remota preservou a GPU do jogo.")
                 return ResultadoModelo(resposta_remota, True, "jogo_remoto")
 
@@ -117,11 +123,20 @@ class ClienteLLMRuntime:
             sucesso = not eh_estado_tecnico_llm(texto)
             if sucesso:
                 self._sucessos += 1
+                self._falhas_consecutivas = 0
+                self._estado_atual = "saudavel"
+                self._ultima_falha_codigo = ""
             else:
                 self._falhas += 1
+                self._falhas_consecutivas += 1
+                self._estado_atual = "degradado"
+                self._ultima_falha_codigo = "estado_tecnico"
             return ResultadoModelo(texto=str(texto or ""), sucesso=sucesso)
         except Exception:
             self._falhas += 1
+            self._falhas_consecutivas += 1
+            self._estado_atual = "degradado"
+            self._ultima_falha_codigo = "excecao_transporte"
             raise
         finally:
             if callable(self.registrar_metrica):
@@ -136,6 +151,9 @@ class ClienteLLMRuntime:
             "requisicoes": self._requisicoes,
             "sucessos": self._sucessos,
             "falhas": self._falhas,
+            "falhas_consecutivas": self._falhas_consecutivas,
+            "estado": self._estado_atual,
+            "ultima_falha_codigo": self._ultima_falha_codigo,
             "memoria_exposta": False,
             "credencial_exposta": False,
             "autoriza_execucao": False,

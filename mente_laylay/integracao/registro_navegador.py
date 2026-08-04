@@ -23,6 +23,9 @@ class PortaNavegadorOperacoes(Protocol):
     def tocar_youtube(
         self, url: str, *, tab_id: int | None = None, permitir_foco: bool = False,
     ) -> bool: ...
+    def tocar_youtube_detalhado(
+        self, url: str, *, tab_id: int | None = None, permitir_foco: bool = False,
+    ) -> dict[str, Any]: ...
     def controlar_youtube(self, comando: str) -> bool: ...
     def fechar_aba(self, alvo: str) -> bool: ...
     def fechar_aba_atual(self) -> bool: ...
@@ -38,7 +41,8 @@ class PortaNavegadorOperacoes(Protocol):
 
 _LEITURAS = ("conectado", "aba_ativa", "listar_abas", "diagnostico")
 _OPERACOES = (
-    "abrir_url", "pesquisar_youtube", "tocar_youtube", "controlar_youtube",
+    "abrir_url", "pesquisar_youtube", "tocar_youtube",
+    "tocar_youtube_detalhado", "controlar_youtube",
     "fechar_aba", "fechar_aba_atual", "fechar_abas", "recarregar_url",
     "fechar_aba_nativa",
     "fechar_abas_vazias", "clicar", "digitar", "pressionar", "diagnostico",
@@ -126,6 +130,14 @@ class RegistroNavegadorOperacoes:
         return bool(self.servico.tocar_youtube(
             url, tab_id=tab_id, permitir_foco=permitir_foco,
         ))
+
+    def tocar_youtube_detalhado(
+        self, url: str, *, tab_id: int | None = None, permitir_foco: bool = False,
+    ) -> dict[str, Any]:
+        retorno = self.servico.tocar_youtube_detalhado(
+            url, tab_id=tab_id, permitir_foco=permitir_foco,
+        )
+        return dict(retorno or {})
 
     def controlar_youtube(self, comando: str) -> bool:
         return bool(self.servico.controlar_youtube(comando))

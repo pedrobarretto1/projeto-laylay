@@ -43,6 +43,7 @@ class ComposicaoInteligenciaExternaRuntime:
         requests_post: Callable[..., Any],
         ao_finalizar_conversa_modo_jogo: Callable[[], Any],
         registrar_falha: Callable[..., Any] | None = None,
+        registrar_orcamento_prompt: Callable[..., Any] | None = None,
         env_getter: Callable[[str, str], str] = os.getenv,
         pesquisa_factory: Callable[..., Any] = criar_pesquisa_contextual_runtime,
         llm_http_factory: Callable[..., Any] = criar_llm_http_runtime,
@@ -62,6 +63,7 @@ class ComposicaoInteligenciaExternaRuntime:
         self.http_referer = str(http_referer or "")
         self.app_title = str(app_title or "")
         self.registrar_falha = registrar_falha
+        self.registrar_orcamento_prompt = registrar_orcamento_prompt
         self.log = log
         self._cliente_factory = cliente_factory
         self._preparador_factory = preparador_factory
@@ -123,6 +125,7 @@ class ComposicaoInteligenciaExternaRuntime:
             print_fn=log,
             ao_finalizar_conversa_modo_jogo=ao_finalizar_conversa_modo_jogo,
             registrar_falha=registrar_falha,
+            registrar_orcamento_prompt=registrar_orcamento_prompt,
         )
         self.analisar_imagem = partial(
             analisar_imagem_fn,
@@ -218,6 +221,7 @@ class ComposicaoInteligenciaExternaRuntime:
             contexto_sistema_getter=contexto_sistema_getter,
             obter_contexto_paginas=obter_contexto_paginas,
             resumo_mente_integrada=resumo_mente_integrada,
+            registrar_orcamento_prompt=self.registrar_orcamento_prompt,
             log=self.log,
         )
         self._transporte = self._cliente_factory(

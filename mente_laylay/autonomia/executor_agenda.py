@@ -194,7 +194,13 @@ def _agendar_lembrete(
             or ""
         ).strip()
     descricao = descricao or "Lembrete"
-    minutos = params.get("minutos")
+    atraso_segundos = params.get("atraso_segundos")
+    # Compatibilidade de leitura com agendamentos produzidos por versões
+    # anteriores. Novas extrações usam somente ``atraso_segundos``.
+    if atraso_segundos is None and params.get("segundos") is not None:
+        atraso_segundos = params.get("segundos")
+    minutos_legado = params.get("minutos")
+    horas_legado = params.get("horas")
     hora_alvo = str(params.get("hora_alvo") or params.get("hora") or "").strip()
     referencia = str(params.get("data_hora") or params.get("data") or params.get("dia") or "").strip()
     if not referencia and pendente:
@@ -208,17 +214,30 @@ def _agendar_lembrete(
     )
     descricao = descricao or "Lembrete"
     try:
-        if minutos is not None:
-            ts_exec = dt.datetime.now().timestamp() + int(minutos) * 60
-            tempo_txt = f"em {int(minutos)} minutos"
+        if atraso_segundos is None and minutos_legado is not None:
+            atraso_segundos = int(minutos_legado) * 60
+        if atraso_segundos is None and horas_legado is not None:
+            atraso_segundos = int(horas_legado) * 3600
+        if atraso_segundos is not None:
+            atraso_int = max(1, int(atraso_segundos))
+            ts_exec = dt.datetime.now().timestamp() + atraso_int
+            if atraso_int % 3600 == 0:
+                quantidade = atraso_int // 3600
+                tempo_txt = f"em {quantidade} hora" + ("s" if quantidade != 1 else "")
+            elif atraso_int % 60 == 0:
+                quantidade = atraso_int // 60
+                tempo_txt = f"em {quantidade} minuto" + ("s" if quantidade != 1 else "")
+            else:
+                quantidade = atraso_int
+                tempo_txt = f"em {quantidade} segundo" + ("s" if quantidade != 1 else "")
         elif hora_alvo:
             instante, tempo_txt = resolver_instante_lembrete(hora_alvo, referencia)
             ts_exec = instante.timestamp()
         else:
             _registrar_mente(ctx, texto, "", "AGENDAR_LEMBRETE", descricao, referencia)
             pergunta = escolher_fala_variada([
-                "Me diz o horário ou em quantos minutos eu te lembro disso.",
-                "Fala o horário ou os minutos do lembrete.",
+                "Me diz o horário ou daqui a quantos segundos, minutos ou horas eu te lembro disso.",
+                "Fala o horário ou a duração do lembrete.",
                 "Preciso do tempo pra guardar esse lembrete.",
             ])
             nova_pendencia = None
@@ -251,8 +270,8 @@ def _agendar_lembrete(
         deps.marcar_resultado("horario_invalido", executou=False, confirmado=False)
         _registrar_feedback(ctx, "correcao_necessaria", intent="AGENDAR_LEMBRETE")
         _falar(ctx, escolher_fala_variada([
-            "Não consegui entender o horário do lembrete. Fala no formato 12:30 ou em 15 minutos.",
-            "Esse horário não bateu. Tenta 12:30 ou 15 minutos.",
+            "Não consegui entender o horário do lembrete. Fala 12:30 ou uma duração, como 30 segundos.",
+            "Esse horário não bateu. Tenta 12:30, 15 minutos ou 2 horas.",
             "Me passa a hora num formato mais certinho.",
         ]))
         return ResultadoDespacho.concluido()
@@ -286,7 +305,10 @@ def _agendar_lembrete(
     else:
         _registrar_feedback(ctx, "falha", intent="AGENDAR_LEMBRETE")
     _publicar_cooperacao(ctx, "agendar_lembrete", alvo=descricao, confirmado=salvo)
-    _registrar_mente(ctx, texto, descricao, "AGENDAR_LEMBRETE", descricao, hora_alvo or str(minutos or ""))
+    _registrar_mente(
+        ctx, texto, descricao, "AGENDAR_LEMBRETE", descricao,
+        hora_alvo or str(atraso_segundos or ""),
+    )
     return ResultadoDespacho.concluido()
 
 

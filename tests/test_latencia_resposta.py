@@ -6,8 +6,10 @@ import time
 
 from mente_laylay.autonomia.processamento_resposta_ia import preparar_resposta_para_execucao
 from mente_laylay.integracao.llm_http import (
+    FALHA_LLM_INDISPONIVEL,
     FALHA_LLM_TIMEOUT,
     RespostaLLMFallback,
+    compactar_payload_llm_local,
     executar_chat_llm,
     post_chat_llm,
 )
@@ -89,6 +91,59 @@ def test_prompt_rapido_limita_saida_sem_reduzir_resposta_complexa() -> None:
 
     assert rapido["max_tokens"] == 160
     assert completo["max_tokens"] == 640
+
+
+def test_compactacao_local_preserva_contrato_e_continuidade_recente() -> None:
+    principal = (
+        "Você é Laylay. "
+        + "P" * 4900
+        + " FORMATO ESTRUTURAL OBRIGATÓRIO DO JSON"
+    )
+    payload = preparar_payload_llm(
+        [
+            {"role": "system", "content": principal},
+            {"role": "user", "content": "Você prefere rock ou metal?"},
+            {"role": "assistant", "content": "Eu prefiro rock."},
+            {"role": "user", "content": "Por quê?"},
+            {
+                "role": "assistant",
+                "content": "Porque ele passeia por mais climas sem perder a força.",
+            },
+            {
+                "role": "user",
+                "content": "Agora explica isso de um jeito simples.",
+            },
+        ],
+        model="teste",
+        max_tokens=640,
+        endpoint_local=True,
+        resumo_do_dia="R" * 7000,
+        resumo_mente_integrada=lambda _texto: (
+            "--- MENTE INTEGRADA ---\n"
+            + ("regra auxiliar sem relação\n" * 180)
+            + "Turno atual: modalidade=pergunta | autoriza_execucao=False\n"
+            + "Contexto selecionado pelo filtro: ultima_fala[conversa]: "
+            + "Eu prefiro rock porque ele passeia por mais climas.\n"
+            + ("cauda sem relação\n" * 180)
+        ),
+    )
+
+    compacto = compactar_payload_llm_local(payload)
+    conteudos = [item["content"] for item in compacto["messages"]]
+
+    assert conteudos[0].startswith("Você é Laylay")
+    assert "FORMATO ESTRUTURAL OBRIGATÓRIO DO JSON" in conteudos[0]
+    assert "Você prefere rock ou metal?" in conteudos
+    assert "Eu prefiro rock." in conteudos
+    assert "Por quê?" in conteudos
+    assert "Porque ele passeia por mais climas sem perder a força." in conteudos
+    assert conteudos[-1] == "Agora explica isso de um jeito simples."
+    assert any(
+        "Contexto selecionado pelo filtro" in conteudo
+        and "prefiro rock" in conteudo
+        for conteudo in conteudos
+    )
+    assert sum(len(item) for item in conteudos) <= 12000
 
 
 def test_retrato_mental_ja_presente_nao_e_montado_nem_enviado_duas_vezes() -> None:
@@ -400,6 +455,38 @@ def test_timeout_local_nao_expoe_ollama_nem_cria_ciclo_de_repeticao() -> None:
     assert verificada["aceita"] is False
     assert verificada["fala"] == ""
     assert verificada["problemas"] == ["estado_tecnico_llm"]
+
+
+def test_404_openrouter_identifica_modelo_indisponivel_sem_expor_payload() -> None:
+    falhas = []
+    logs = []
+
+    class Resposta404:
+        status_code = 404
+
+        def raise_for_status(self):
+            raise requests.exceptions.HTTPError("404 com corpo privado")
+
+    resposta = executar_chat_llm(
+        {"model": "qwen/modelo-antigo", "messages": [{"role": "user", "content": "segredo"}]},
+        post_chat=lambda *_args, **_kwargs: Resposta404(),
+        interpretar_payload=lambda _payload: "",
+        api_key="chave-secreta",
+        http_referer="http://localhost",
+        app_title="Laylay",
+        endpoint_local=False,
+        log=logs.append,
+        registrar_falha=lambda *args, **kwargs: falhas.append((args, kwargs)),
+    )
+
+    assert resposta == FALHA_LLM_INDISPONIVEL
+    assert logs == [
+        "Erro 404 na OpenRouter: o modelo qwen/modelo-antigo não existe ou está sem provedor ativo."
+    ]
+    assert "segredo" not in " ".join(logs)
+    assert falhas == [(('llm_http', 'modelo_remoto_indisponivel'), {
+        'classe': 'defeito', 'impacto': 'turno', 'fallback': 'troca_modelo_openrouter',
+    })]
 
 
 def test_fallback_contextual_do_transporte_e_classificado_uma_vez() -> None:

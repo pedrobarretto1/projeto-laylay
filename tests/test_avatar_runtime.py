@@ -18,6 +18,10 @@ from mente_laylay.personalidade.avatar_runtime import (
 from mente_laylay.personalidade.voz_runtime import VozRuntime
 
 
+def _mascote_ativo(nome, padrao=""):
+    return "1" if nome == "LAYLAY_MASCOT_ENABLED" else padrao
+
+
 def test_normaliza_nome_de_asset_com_acentos_e_separadores():
     assert normalizar_nome_asset("Laylay_Envergonháda Falando") == "laylay_envergonhada_falando"
 
@@ -207,11 +211,27 @@ def test_avatar_desativado_nao_abre_processo(tmp_path: Path):
     runtime = AvatarRuntime(
         raiz_projeto=tmp_path,
         estado_getter=lambda: {},
-        env_getter=lambda nome, padrao="": "0" if nome == "LAYLAY_AVATAR_ATIVO" else padrao,
+        env_getter=lambda nome, padrao="": "0"
+        if nome == "LAYLAY_MASCOT_ENABLED" else padrao,
         popen=lambda *args, **kwargs: chamadas.append((args, kwargs)),
         log=lambda _texto: None,
     )
 
+    assert runtime.iniciar() is False
+    assert chamadas == []
+
+
+def test_avatar_fica_desligado_quando_preferencia_nao_existe(tmp_path: Path):
+    chamadas = []
+    runtime = AvatarRuntime(
+        raiz_projeto=tmp_path,
+        estado_getter=lambda: {},
+        env_getter=lambda _nome, padrao="": padrao,
+        popen=lambda *args, **kwargs: chamadas.append((args, kwargs)),
+        log=lambda _texto: None,
+    )
+
+    assert runtime.ativo() is False
     assert runtime.iniciar() is False
     assert chamadas == []
 
@@ -221,6 +241,7 @@ def test_assets_ausentes_nao_impedem_a_assistente(tmp_path: Path):
     runtime = AvatarRuntime(
         raiz_projeto=tmp_path,
         estado_getter=lambda: {},
+        env_getter=_mascote_ativo,
         popen=lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("não deveria abrir")),
         log=logs.append,
     )
@@ -241,6 +262,7 @@ def test_avatar_encaminha_falha_de_abertura_sem_parar_a_assistente(tmp_path: Pat
     runtime = AvatarRuntime(
         raiz_projeto=tmp_path,
         estado_getter=lambda: {},
+        env_getter=_mascote_ativo,
         popen=lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("sem processo")),
         registrar_falha=lambda *args, **kwargs: falhas.append((args, kwargs)),
         log=lambda _texto: None,
@@ -284,12 +306,14 @@ def test_widget_fixado_impede_avatar_python_e_fallback_volta(tmp_path: Path):
     runtime = AvatarRuntime(
         raiz_projeto=tmp_path,
         estado_getter=lambda: {},
+        env_getter=_mascote_ativo,
         visual_externo_disponivel=lambda: externo[0],
         popen=abrir,
         intervalo=0.05,
         log=lambda _texto: None,
     )
 
+    assert runtime.iniciar() is True
     assert runtime.iniciar() is True
     assert processos == []
     externo[0] = False

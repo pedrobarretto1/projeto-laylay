@@ -8,6 +8,9 @@ import re
 _EXPERIENCIA_FISICA = re.compile(
     r"\b(?:eu\s+)?(?:t[oô]|estou|fico|fiquei)\s+"
     r"(?:comendo|bebendo|fumando|cozinhando|guardando)\b|"
+    r"\b(?:eu\s+)?(?:t[oô]|estou)\s+(?:aqui|por\s+aqui)\b"
+    r"[^.!?]{0,80}\b(?:s[oó]\s+)?"
+    r"(?:comendo|bebendo|fumando|cozinhando|guardando)\b|"
     r"\beu\s+(?:comi|bebi|fumei|cozinhei|guardei|recebi)\b|"
     r"\beu\s+(?:j[aá]\s+)?fiz\s+(?:um|uma)\s+"
     r"(?:bolo|biscoito|comida|receita|caf[eé]|almo[cç]o|jantar)\b|"
@@ -28,10 +31,21 @@ _PASSADO_COMPARTILHADO_FABRICADO = re.compile(
 )
 _CORPO_OU_SENTIDOS_INVENTADOS = re.compile(
     r"\bmeu\s+(?:sistema\s+digestivo|est[oô]mago|paladar|corpo|nariz|boca)\b|"
+    r"\b(?:eu\s+)?(?:t[oô]|estou)\s+com\s+(?:o\s+)?corpo\b|"
     r"\b(?:eu\s+)?(?:t[oô]|estou|fico|fiquei)\s+"
     r"(?:com\s+(?:fome|sede)|respirando|saboreando|mastigando|sentindo\s+o\s+cheiro|"
     r"com\s+vontade\s+de\s+(?:comer|beber|provar|experimentar))\b|"
-    r"\beu\s+(?:j[aá]\s+)?(?:vi|provei|experimentei|saboreei|cheirei)\b",
+    r"\b(?:eu\s+)?(?:t[oô]|estou)\s+(?:morrendo|quase\s+morrendo)\s+de\s+"
+    r"(?:fome|sede|sono)\b|"
+    r"\bme\s+(?:matando|deixando)\s+de\s+(?:fome|sede)\b|"
+    r"\beu\s+(?:j[aá]\s+)?(?:vi|provei|experimentei|saboreei|cheirei)\b|"
+    r"\bme\s+deix(?:a|ou|aria)\s+com\s+(?:os\s+)?olhos\b|"
+    r"\bmeus?\s+olhos\b",
+    re.IGNORECASE,
+)
+_RELACAO_PESSOAL_INVENTADA = re.compile(
+    r"\b(?:meu|minha)\s+(?:irm[aã]o|irm[aã]|pai|m[aã]e|namorad[oa]|"
+    r"marido|esposa|primo|prima|tio|tia|av[oó])\b",
     re.IGNORECASE,
 )
 _ACAO_FISICA_FUTURA = re.compile(
@@ -59,6 +73,8 @@ def detectar_experiencia_pessoal_inventada(fala: str) -> list[str]:
         problemas.append("corpo_ou_sentidos_inventados")
     if _ACAO_FISICA_FUTURA.search(texto):
         problemas.append("capacidade_fisica_futura_inventada")
+    if _RELACAO_PESSOAL_INVENTADA.search(texto):
+        problemas.append("relacao_pessoal_inventada")
     return problemas
 
 

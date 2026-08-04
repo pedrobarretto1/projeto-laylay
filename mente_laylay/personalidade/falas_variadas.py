@@ -256,6 +256,10 @@ def fala_por_estado_acao(
             f"{alvo_txt} já existia aí, só trouxe pro foco.",
             f"{alvo_txt} tava se escondendo. Joguei ele pra frente.",
         ],
+        "app_iniciado_focado": [
+            f"Iniciei {alvo_txt} e trouxe a nova janela pra frente.",
+            f"Abri {alvo_txt}; ele acabou de chegar e já está em foco.",
+        ],
         "ja_aberto_focado": [
             f"{alvo_txt} já tava na tua cara.",
             f"{alvo_txt} já estava aberto e em foco. Nem precisei encostar.",

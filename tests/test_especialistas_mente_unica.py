@@ -66,6 +66,26 @@ def test_pergunta_sobre_acao_nao_recebe_autorizacao_operacional() -> None:
     assert "especialista operacional" in decisao["rejeitados"][0]["motivo"]
 
 
+def test_consulta_somente_leitura_nao_e_vetada_por_ter_forma_de_pergunta() -> None:
+    texto = "vai chover hoje?"
+    turno, retrato, especialistas = _montar(texto)
+
+    assert especialistas["operacional"]["autoriza_execucao"] is False
+    decisao = arbitrar_turno(
+        texto,
+        [CandidatoDecisao(
+            "comando_explicito",
+            {"intent": "WEATHER", "params": {}},
+            "deterministico",
+            0.90,
+        )],
+        turno=turno,
+        retrato=retrato,
+    )
+
+    assert decisao["decisao"] == {"intent": "WEATHER", "params": {}}
+
+
 def test_playlist_add_com_faixa_atual_e_autorizado_sem_memoria_anterior() -> None:
     texto = "coloca essa musica na playlist rei do pop"
     turno, retrato, especialistas = _montar(texto)
@@ -136,3 +156,34 @@ def test_plano_e_prompt_recebem_os_dois_pareceres() -> None:
     assert "ESPECIALISTAS DA MESMA MENTE" in prompt
     assert "autoriza_execução=True" in prompt
     assert "uma única fala" in prompt
+
+
+def test_preferencia_forma_coalizao_sem_habilidade_vencedora() -> None:
+    texto = "eu gosto de rock"
+    turno = classificar_modalidade_turno(texto)
+    turno["aprendizados_explicitos"] = [{
+        "tipo": "preferencia", "valor": "rock", "confianca": 0.98,
+    }]
+    turno["tema_factual"] = "rock"
+    funcao = analisar_funcao_comunicativa(texto)
+    retrato, _ = construir_retrato_turno(
+        texto, turno=turno, mente={}, contexto_perceptivo={}, agora=100.0,
+    )
+    especialistas = construir_parecer_especialistas(
+        texto, turno=turno, funcao_comunicativa=funcao, retrato=retrato,
+    )
+    turno["especialistas"] = especialistas
+    plano = planejar_turno(texto, turno=turno, mente={})
+    prompt = resumo_mente_integrada_para_prompt(
+        texto_usuario=texto, ctx={}, percepcao={},
+        mente={"turno_atual": turno, "plano_turno_atual": plano},
+    )
+
+    deliberacao = especialistas["deliberacao"]
+    assert deliberacao["arquitetura"] == "consenso_distribuido"
+    assert deliberacao["regras"]["sem_vencedor_isolado"] is True
+    assert {"conversa", "memoria_aprendizado", "pesquisa_factual", "personalidade"} <= set(
+        deliberacao["participantes"]
+    )
+    assert "DELIBERAÇÃO COLETIVA DAS HABILIDADES" in prompt
+    assert "Nenhuma habilidade vence as demais" in prompt

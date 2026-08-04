@@ -145,6 +145,7 @@ def montar_contexto_inicio_chat_por_grupos(
         "falar_com_lipsync": execucao.get("falar_com_lipsync"),
         "salvar_memoria": execucao.get("salvar_memoria"),
         "listar_programas_abertos": execucao.get("listar_programas_abertos"),
+        "observar_programas_abertos": execucao.get("observar_programas_abertos"),
         "mensagens_append": messages.append if hasattr(messages, "append") else None,
     }
     return contexto
@@ -182,7 +183,10 @@ class ContextoInicioChatRuntime:
                 "registrar_mente_curta": ns.get("_registrar_mente_curta"),
                 "registrar_interacao_temporal": ns.get("_registrar_interacao_temporal"),
                 "registrar_resultado_execucao": ns.get("_registrar_resultado_execucao"),
-                "recuperar_aprendizados": getattr(self.memoria_sqlite, "recuperar_aprendizados", None),
+                "recuperar_aprendizados": (
+                    getattr(self.memoria_sqlite, "consultar_aprendizados", None)
+                    or getattr(self.memoria_sqlite, "recuperar_aprendizados", None)
+                ),
                 "salvar_identidade_usuario": ns.get("_salvar_identidade_usuario"),
             },
             conversa={
@@ -230,6 +234,7 @@ class ContextoInicioChatRuntime:
                 "falar_com_lipsync": ns.get("falar_com_lipsync"),
                 "salvar_memoria": ns.get("salvar_memoria"),
                 "listar_programas_abertos": ns.get("listar_programas_abertos"),
+                "observar_programas_abertos": ns.get("observar_programas_abertos"),
             },
         )
         # O refinamento substitui o dicionario mental por um novo retrato.

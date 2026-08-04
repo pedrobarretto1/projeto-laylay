@@ -63,7 +63,12 @@ def finalizar_execucao_resposta_ia(
     fala_ja_emitida: bool,
     fala_emitida_por_acao: bool,
     fala_salva_no_inicio: bool,
-) -> None:
+) -> Dict[str, Any]:
+    resultado_final = {
+        "fala": "",
+        "registrar_no_historico": False,
+        "tipo": "sem_fala",
+    }
     messages = _get(ctx, "messages")
     current_emotion = _get(ctx, "current_emotion", "calma")
     emotion_level = _get(ctx, "emotion_level", 1)
@@ -83,7 +88,7 @@ def finalizar_execucao_resposta_ia(
         not modelo_disponivel
         and not callable(enviar_mensagem)
     ) or not callable(limpar_resposta_da_ia):
-        return
+        return resultado_final
 
     if erros_execucao:
         erros_txt = " | ".join(erros_execucao)
@@ -138,6 +143,11 @@ def finalizar_execucao_resposta_ia(
                         falar_com_lipsync(fala_desist, "irritada", 3)
                     if callable(salvar_memoria):
                         salvar_memoria()
+                    return {
+                        "fala": fala_desist,
+                        "registrar_no_historico": True,
+                        "tipo": "desistencia",
+                    }
             except Exception as desist_err:
                 print(f"❌ [DESISTÊNCIA] Falha até no aviso: {desist_err}")
         else:
@@ -173,6 +183,11 @@ def finalizar_execucao_resposta_ia(
                         falar_com_lipsync(fala_corr, current_emotion or "calma", emotion_level or 1)
                     if callable(salvar_memoria):
                         salvar_memoria()
+                    return {
+                        "fala": fala_corr,
+                        "registrar_no_historico": True,
+                        "tipo": "autocorrecao",
+                    }
             except Exception as feedback_err:
                 print(f"❌ [AUTOCORREÇÃO] Falha no loop de feedback: {feedback_err}")
     else:
@@ -187,8 +202,16 @@ def finalizar_execucao_resposta_ia(
                 verificacao = verificar_fala_turno(fala_limpa_original, origem="ia_final")
                 if isinstance(verificacao, dict):
                     if not verificacao.get("aceita", True):
-                        return
-                    fala_limpa_original = str(verificacao.get("fala") or fala_limpa_original).strip()
+                        contingencia = str(
+                            verificacao.get("fala_contingencia") or ""
+                        ).strip()
+                        if not contingencia:
+                            return resultado_final
+                        fala_limpa_original = contingencia
+                    else:
+                        fala_limpa_original = str(
+                            verificacao.get("fala") or fala_limpa_original
+                        ).strip()
             print(f"Laylay: {fala_limpa_original}")
             if isinstance(messages, list):
                 messages.append({"role": "assistant", "content": fala_limpa_original})
@@ -201,3 +224,10 @@ def finalizar_execucao_resposta_ia(
                 ) is not False
             if fala_entregue:
                 _registrar_interacao_diaria(ctx, texto_usuario, fala_limpa_original)
+            return {
+                "fala": fala_limpa_original,
+                "registrar_no_historico": True,
+                "tipo": "conversa",
+                "audio_entregue": bool(fala_entregue),
+            }
+    return resultado_final

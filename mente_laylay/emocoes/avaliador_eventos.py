@@ -51,6 +51,7 @@ class AvaliacaoEventoEmocional:
     repeticoes: int = 1
     provocacao_usuario: int = 0
     permite_expressao: bool = False
+    motivo_expressao: str = "evento_neutro_sem_expressao"
     arco: str = "neutro"
     ts: float = 0.0
 
@@ -73,9 +74,11 @@ class AvaliadorEventosEmocionaisRuntime:
         self.log = log
         self._lock = threading.RLock()
         self._historico: list[dict[str, Any]] = []
-        self._metricas = {
+        self._metricas: dict[str, Any] = {
             "avaliados": 0,
             "expressoes": 0,
+            "contencoes": 0,
+            "contencoes_por_motivo": {},
             "responsabilidade_usuario": 0,
             "responsabilidade_laylay": 0,
             "responsabilidade_sistema": 0,
@@ -176,6 +179,7 @@ class AvaliadorEventosEmocionaisRuntime:
             responsabilidade, confianca = self._responsabilidade_explicita(resultado)
             emocao, nivel, provocacao = "calma", 1, 0
             permite, arco = False, "neutro"
+            motivo_expressao = "evento_neutro_sem_expressao"
             repeticoes = 1
             causa = f"resultado {status or classe} observado"
 
@@ -186,6 +190,7 @@ class AvaliadorEventosEmocionaisRuntime:
                 repeticoes = falhas_anteriores + 1
                 causa = f"sucesso após {falhas_anteriores} falhas consecutivas"
                 self._metricas["recuperacoes"] += 1
+                motivo_expressao = "alivio_causal_confirmado"
             elif classe == "redundancia_visivel":
                 responsabilidade = responsabilidade or "usuario"
                 confianca = max(confianca, 0.94 if entrada_confiavel else 0.70)
@@ -194,14 +199,23 @@ class AvaliadorEventosEmocionaisRuntime:
                 provocacao = min(3, repeticoes) if permite else 0
                 if not permite:
                     emocao, nivel, arco = "calma", 1, "observacao"
+                    motivo_expressao = (
+                        "contexto_sensivel"
+                        if sensivel
+                        else "entrada_ou_responsabilidade_sem_confianca"
+                    )
                 elif repeticoes == 1:
                     emocao, nivel, arco = "debochada", 1, "provocacao_afetuosa"
+                    motivo_expressao = "redundancia_confirmada"
                 elif repeticoes == 2:
                     emocao, nivel, arco = "debochada", 2, "provocacao_afetuosa"
+                    motivo_expressao = "redundancia_confirmada_repetida"
                 elif repeticoes == 3:
                     emocao, nivel, arco = "irritada", 2, "bronca_brincalhona"
+                    motivo_expressao = "redundancia_confirmada_repetida"
                 else:
                     emocao, nivel, arco = "brava", 3, "bronca_brincalhona"
+                    motivo_expressao = "redundancia_confirmada_repetida"
                 causa = (
                     f"{repeticoes} pedidos redundantes consecutivos do usuário "
                     "com estado já confirmado"
@@ -222,14 +236,33 @@ class AvaliadorEventosEmocionaisRuntime:
                     permite = not sensivel
                     arco = "irritacao_compartilhada"
                     causa = f"{repeticoes} falhas consecutivas do sistema em {resultado.alvo or intent}"
+                    motivo_expressao = (
+                        "contexto_sensivel"
+                        if sensivel
+                        else "falha_sistema_repetida"
+                    )
                 elif responsabilidade == "laylay" and confianca >= 0.90:
                     emocao, nivel, permite = "envergonhada", 1, True
                     arco = "autorreparo"
                     causa = "falha atribuída à própria interpretação da Laylay"
+                    motivo_expressao = "autoria_da_falha_confirmada"
                 elif responsabilidade == "usuario" and confianca >= 0.90 and not sensivel:
                     emocao, nivel, permite = "debochada", 1, True
                     provocacao, arco = 1, "provocacao_afetuosa"
                     causa = "engano do usuário confirmado pelo executor"
+                    motivo_expressao = "engano_usuario_confirmado"
+                elif sensivel:
+                    motivo_expressao = "contexto_sensivel"
+                elif repeticoes < 2 and responsabilidade == "sistema":
+                    motivo_expressao = "falha_sistema_isolada"
+                elif responsabilidade == "laylay":
+                    motivo_expressao = "autoria_da_falha_incerta"
+                else:
+                    motivo_expressao = "responsabilidade_ambigua"
+            elif classe == "sucesso":
+                motivo_expressao = "sucesso_rotineiro_sem_reacao_causal"
+            elif classe == "incerto":
+                motivo_expressao = "resultado_incerto"
 
             avaliacao = AvaliacaoEventoEmocional(
                 emocao=emocao,
@@ -240,6 +273,7 @@ class AvaliadorEventosEmocionaisRuntime:
                 repeticoes=repeticoes,
                 provocacao_usuario=provocacao,
                 permite_expressao=permite,
+                motivo_expressao=motivo_expressao,
                 arco=arco,
                 ts=agora,
             ).como_dict()
@@ -259,13 +293,25 @@ class AvaliadorEventosEmocionaisRuntime:
                 self._metricas["ambiguos"] += 1
             if permite:
                 self._metricas["expressoes"] += 1
+            else:
+                self._metricas["contencoes"] += 1
+                motivos = self._metricas["contencoes_por_motivo"]
+                motivos[motivo_expressao] = int(motivos.get(motivo_expressao) or 0) + 1
             self._ultima = dict(avaliacao)
             return avaliacao
 
     def diagnostico(self) -> dict[str, Any]:
         with self._lock:
+            avaliados = int(self._metricas.get("avaliados") or 0)
+            expressoes = int(self._metricas.get("expressoes") or 0)
             return {
                 **dict(self._metricas),
+                "taxa_expressao": round(expressoes / avaliados, 3) if avaliados else 0.0,
+                "ultima_decisao_expressao": (
+                    "expressar"
+                    if self._ultima.get("permite_expressao")
+                    else "conter"
+                ) if self._ultima else "sem_amostras",
                 "historico_efemero": len(self._historico),
                 "ultima": dict(self._ultima),
                 "autoriza_execucao": False,

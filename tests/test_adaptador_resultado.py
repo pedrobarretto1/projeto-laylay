@@ -518,3 +518,36 @@ def test_consulta_informativa_pode_ganhar_estilo_sem_perder_texto(monkeypatch) -
         "debochada",
         2,
     )]
+
+
+def test_status_iot_confirmado_remove_ancora_de_incerteza_contraditoria(monkeypatch) -> None:
+    falas: list[tuple] = []
+    monkeypatch.setattr(
+        modulo,
+        "fala_por_estado_acao",
+        lambda _status, **_kwargs: (
+            "Enviei o comando, mas ainda não consegui confirmar. "
+            "A lâmpada do quarto está desligada. Estado conferido."
+        ),
+    )
+    adaptador = AdaptadorResultadoOperacional(
+        {"intent": "IOT_STATUS"},
+        {"alvo": "lampada_quarto"},
+        "como está a lâmpada do quarto?",
+        "pc_a",
+        {"falar_com_lipsync": lambda *args: falas.append(args)},
+    )
+
+    adaptador.falar_por_status(
+        "desligado",
+        "A lâmpada do quarto está desligada.",
+        alvo="lâmpada do quarto",
+        executou=True,
+        confirmado=True,
+    )
+
+    assert falas
+    fala = falas[0][0].casefold()
+    assert "está desligada" in fala or "está desligado" in fala
+    assert "não consegui" not in fala
+    assert "nao consegui" not in fala

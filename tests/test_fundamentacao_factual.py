@@ -44,6 +44,13 @@ def test_preferencia_da_laylay_nao_dispara_pesquisa_factual() -> None:
     assert extrair_tema_fundamentacao("você prefere rock ou metal?") == ""
 
 
+def test_preferencia_declarada_pelo_usuario_pode_ativar_pesquisa_auxiliar() -> None:
+    assert extrair_tema_fundamentacao("eu gosto de rock") == "rock"
+    assert extrair_tema_fundamentacao(
+        "faz sentido kkk, eu também gosto de programação"
+    ) == "programação"
+
+
 def test_instrucao_de_estilo_nao_vira_assunto_de_pesquisa() -> None:
     assert extrair_tema_fundamentacao("explique de um jeito simples") == ""
 
@@ -309,6 +316,23 @@ def test_opiniao_subjetiva_sem_detalhe_continua_permitida() -> None:
         texto_usuario="eu gosto bastante dele",
     )
     assert resultado["acao"] == "aceita"
+
+
+def test_pesquisa_auxiliar_sem_fonte_nao_sequestra_preferencia_declarada() -> None:
+    base = _sem_fonte("rock")
+    base.update({
+        "papel_cooperativo": "enriquecimento_auxiliar",
+        "nao_substitui_resposta_principal": True,
+        "declaracao_pessoal_explicita": True,
+    })
+    resultado = validar_fala_com_fundamentacao(
+        "Rock, boa. Isso já me dá uma pista melhor do seu gosto.",
+        fundamentacao=base,
+        texto_usuario="eu gosto de rock",
+    )
+
+    assert resultado["acao"] == "aceita"
+    assert "não encontrei" not in resultado["fala"].casefold()
 
 
 def test_afirmacao_declarativa_sobre_qualquer_tema_exige_base() -> None:

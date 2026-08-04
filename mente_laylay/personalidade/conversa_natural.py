@@ -361,7 +361,7 @@ def resposta_curta_contextual(ctx: Dict[str, Any], texto_usuario: str, tipo: str
     if tipo_norm == "REACTION":
         ultima_acao_status = str(mente.get("ultima_acao_status") or "").strip().lower()
         if re.fullmatch(r"^(ah+ bom|a+ bom|ata|ah ta|ah tá)$", t):
-            if ultima_acao_status in {"executado", "ligado", "desligado", "app_focado", "app_aberto", "sucesso"}:
+            if ultima_acao_status in {"executado", "ligado", "desligado", "app_focado", "app_iniciado_focado", "app_aberto", "sucesso"}:
                 return _ajustar(ctx, random.choice([
                     "Aí sim. Agora respondeu direito.",
                     "Pois é, dessa vez foi.",
@@ -427,7 +427,7 @@ def _resposta_opiniao_com_tema(ctx: Dict[str, Any], texto_usuario: str) -> str:
     if texto_discute_capacidade_futura(texto_usuario):
         return _ajustar(ctx, resposta_conversa_sobre_capacidade(texto_usuario), texto_usuario)
 
-    m = re.search(r"(?:o que voce acha|o que você acha|o que voce sacha|voce sacha|voce acha|você acha|qual sua opiniao|qual sua opinião)\s+(?:(?:do|da|de|sobre)\s+)?(?P<tema>.+)$", t)
+    m = re.search(r"(?:o que (?:voce |você )?acha|o que voce sacha|voce sacha|voce acha|você acha|qual sua opiniao|qual sua opinião)\s+(?:(?:do|da|de|sobre)\s+)?(?P<tema>.+)$", t)
     tema = ""
     consultar_fatos = False
     if m:

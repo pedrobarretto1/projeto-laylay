@@ -20,6 +20,15 @@ def test_voz_unica_e_contrato_permanente() -> None:
     assert voz_unica_llm_ativa({"LAYLAY_VOZ_UNICA_LLM": "0"}) is True
 
 
+def test_guardiao_rejeita_corpo_e_relacao_pessoal_inventados() -> None:
+    assert detectar_experiencia_pessoal_inventada(
+        "Nirvana me deixa com os olhos no teto."
+    ) == ["corpo_ou_sentidos_inventados"]
+    assert detectar_experiencia_pessoal_inventada(
+        "Meu irmão também gosta de funk."
+    ) == ["relacao_pessoal_inventada"]
+
+
 def test_fala_valida_da_llm_nao_e_reescrita_pelo_python() -> None:
     fala = "Claro, eu gostei dessa ideia justamente porque ela parece tua."
     contexto = {
@@ -144,6 +153,18 @@ def test_prompt_novo_contem_so_identidade_contexto_e_contrato() -> None:
     assert "Não transforme uma informação simples em declaração solene" in BASE_SYSTEM_PROMPT
     assert "Evite explicar que é \"só uma conversa\"" in BASE_SYSTEM_PROMPT
     assert "Tenha gostos sem fingir experiências" in BASE_SYSTEM_PROMPT
+    assert "doce sem ser mole, firme sem ser arrogante" in BASE_SYSTEM_PROMPT
+    assert "opinião própria" in BASE_SYSTEM_PROMPT
+    assert "deboche seco com timing" in BASE_SYSTEM_PROMPT
+    assert "Não concorde por reflexo" in BASE_SYSTEM_PROMPT
+    assert "Fale de forma concreta" in BASE_SYSTEM_PROMPT
+    assert "Não use alma, universo, neblina, estrelas" in BASE_SYSTEM_PROMPT
+    assert "Metáfora é exceção" in BASE_SYSTEM_PROMPT
+    assert "linguagem vívida quando o usuário pedir criação artística" in BASE_SYSTEM_PROMPT
+    assert "Não comece por hábito" in BASE_SYSTEM_PROMPT
+    assert "reaja ao detalhe real antes do tema" in BASE_SYSTEM_PROMPT
+    assert "Deboche bom é curto, específico e situacional" in BASE_SYSTEM_PROMPT
+    assert "nunca vulnerabilidade, dor, erro, inteligência ou valor da pessoa" in BASE_SYSTEM_PROMPT
     assert "Use contexto e memória" in BASE_SYSTEM_PROMPT
     assert "COMANDOS:" in BASE_SYSTEM_PROMPT
     assert "no mesmo turno" in BASE_SYSTEM_PROMPT
@@ -231,6 +252,14 @@ def test_guardiao_detecta_o_surto_do_bolo_sem_bloquear_emocao() -> None:
     ) == []
 
 
+def test_guardiao_detecta_experiencia_fisica_intercalada_por_frase_de_apoio() -> None:
+    problemas = detectar_experiencia_pessoal_inventada(
+        "Ah, cansado? Tô aqui, sem pedir nada, só comendo arroz e bebendo água."
+    )
+
+    assert "experiencia_fisica_inventada" in problemas
+
+
 def test_guardiao_detecta_corpo_cozinha_e_passado_compartilhado_falsos() -> None:
     corpo = detectar_experiencia_pessoal_inventada(
         "Não sei se isso faz bem pro meu sistema digestivo; eu já vi pessoas provarem."
@@ -294,6 +323,23 @@ def test_memoria_falsa_e_reescrita_sem_matar_a_brincadeira() -> None:
 
     assert "Daquela vez" not in resposta["fala"]
     assert "nossa invenção" in resposta["fala"]
+    assert resposta["suprimir_fala"] is False
+
+
+def test_inventacao_total_sem_reparo_vira_contingencia_contextual() -> None:
+    resposta = preparar_resposta_para_execucao(
+        "eu gosto de funk",
+        '{"fala":"Meu irmão também gosta de funk.","comandos":[]}',
+        enviar_mensagem_cb=lambda *_args, **_kwargs: (
+            '{"fala":"Meus olhos até brilham com funk.","comandos":[]}'
+        ),
+        limpar_texto_fala_cb=lambda fala: fala,
+        fallback_fala="fallback",
+        memoria_sqlite=None,
+        log=lambda _texto: None,
+    )
+
+    assert resposta["fala"] == "Peguei: você gosta de funk."
     assert resposta["suprimir_fala"] is False
 
 

@@ -100,6 +100,7 @@ def escutar_texto_terminal(
         return
 
     continuar = deve_continuar if callable(deve_continuar) else (lambda: True)
+    exibir_cabecalho = True
     while continuar():
         try:
             if not estado_ativo() or (
@@ -108,9 +109,10 @@ def escutar_texto_terminal(
                 sleep_fn(0.25)
                 continue
             gerenciador = print_lock if print_lock is not None else nullcontext()
-            with gerenciador:
-                raw_print("")
-                raw_print("💬 Você:")
+            if exibir_cabecalho:
+                with gerenciador:
+                    raw_print("")
+                    raw_print("💬 Você:")
             leitor = ler_linha_fn or ler_linha_terminal_interrompivel
             texto_bruto = leitor(
                 "> ",
@@ -131,6 +133,7 @@ def escutar_texto_terminal(
                 continue
             texto = str(texto_bruto or "").strip()
             if texto:
+                exibir_cabecalho = True
                 try:
                     processamento = processar_texto(texto)
                     if isinstance(processamento, threading.Thread):
@@ -149,6 +152,11 @@ def escutar_texto_terminal(
                         sleep_fn(0.1)
                 except Exception as erro:
                     log(f"⚠️ [CHAT] Falha ao processar texto digitado: {erro}")
+            else:
+                # Enter vazio apenas abre uma nova linha de entrada. Repetir o
+                # cabeçalho faria o terminal exibir vários blocos idênticos de
+                # ``💬 Você:`` sem que houvesse um novo turno de verdade.
+                exibir_cabecalho = False
         except (EOFError, KeyboardInterrupt):
             sleep_fn(0.5)
         except Exception as erro:

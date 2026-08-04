@@ -286,6 +286,33 @@ def _tocar(
         ]), "debochada", 2)
         return ResultadoDespacho.concluido()
 
+    info_playlist = (
+        deps.musica_leitura.consultar_usuario(nome)
+        if deps.musica_leitura is not None else {}
+    )
+    total_playlist = (
+        deps.musica_leitura.contar_usuario(nome)
+        if deps.musica_leitura is not None else 0
+    )
+    playlist_encontrada = bool(info_playlist.get("ok")) or total_playlist > 0
+    if deps.musica_leitura is not None and not playlist_encontrada:
+        deps.marcar_resultado(
+            "playlist_nao_encontrada", executou=False, confirmado=False,
+        )
+        _sugerir_criacao(ctx, nome)
+        return ResultadoDespacho.concluido()
+    if (
+        deps.musica_leitura is not None
+        and int(info_playlist.get("total") or total_playlist) <= 0
+    ):
+        deps.marcar_resultado("playlist_vazia", executou=False, confirmado=False)
+        _falar(ctx, escolher_fala_variada([
+            f"A playlist {nome} existe, mas está vazia.",
+            f"{nome} está criada, só ainda não tem música para tocar.",
+            f"Achei {nome}, mas ela está sem faixas por enquanto.",
+        ]))
+        return ResultadoDespacho.concluido()
+
     modo = str(params.get("modo") or "").strip().lower()
     if modo == "shuffle":
         info = (
@@ -343,18 +370,39 @@ def _tocar(
     ) if deps.musica_operacoes is not None else False
     if not ok:
         deps.marcar_resultado("falha_execucao", executou=False)
-        _sugerir_criacao(ctx, nome)
+        deps.falar_por_status(
+            "falha_execucao",
+            f"A playlist {nome} existe, mas o navegador não conseguiu abrir a primeira faixa.",
+            alvo=nome,
+        )
         return ResultadoDespacho.concluido()
     _definir_ultima(deps, nome)
-    total = deps.musica_leitura.contar_usuario(nome) if deps.musica_leitura else 0
-    deps.marcar_resultado("playlist_aberta", executou=True)
-    deps.falar_por_status("playlist_aberta", fala_de_confirmacao(
+    total = total_playlist
+    obter_estado = getattr(deps.musica_operacoes, "estado", None)
+    estado_reproducao = dict(obter_estado() or {}) if callable(obter_estado) else {}
+    sem_confirmacao = (
+        str(estado_reproducao.get("status_avanco") or "").strip()
+        == "enviado_sem_confirmacao"
+    )
+    status = "playlist_enviada_sem_confirmacao" if sem_confirmacao else "playlist_aberta"
+    if sem_confirmacao:
+        # A primeira faixa foi entregue e a fila ficou ativa. O estado do
+        # áudio é desconhecido, não uma falha nem uma autorização pendente.
+        deps.marcar_resultado(status, executou=True, confirmado=None)
+    else:
+        deps.marcar_resultado(status, executou=True)
+    deps.falar_por_status(status, fala_de_confirmacao(
         "playlist_play",
-        fallback=f"Abrindo sua playlist de {nome}. Você já tem {total} músicas guardadas comigo.",
+        fallback=(
+            f"Abri a primeira faixa de {nome} e mantive a fila com {total} músicas ativa, "
+            "mas o player não confirmou o áudio."
+            if sem_confirmacao else
+            f"Abrindo sua playlist de {nome}. Você já tem {total} músicas guardadas comigo."
+        ),
         alvo=nome,
         contexto=deps.contexto_fala(),
         texto_usuario=texto,
-    ), alvo=nome)
+    ), alvo=nome, executou=True, confirmado=None if sem_confirmacao else True)
     return ResultadoDespacho.concluido()
 
 

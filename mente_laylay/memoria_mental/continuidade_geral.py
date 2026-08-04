@@ -41,10 +41,12 @@ _INTENTS_DOMINIO = {
     "IOT_CONTROL": "iot", "IOT_STATUS": "iot", "IOT_LIST": "iot",
     "CREATE_FOLDER": "arquivos", "CREATE_FILE": "arquivos", "MOVE_ITEM": "arquivos",
     "DELETE_ITEM": "arquivos", "CONFIRM_DELETE_ITEM": "arquivos", "CANCEL_DELETE_ITEM": "arquivos",
-    "FILE_SEARCH": "arquivos", "FILE_OPEN_RESULT": "arquivos",
+    "FILE_SEARCH": "arquivos", "FILE_OPEN_RESULT": "arquivos", "FILE_TRANSACTION": "arquivos",
     "AGENDAR_LEMBRETE": "agenda", "AGENDAR_ACAO": "agenda", "LISTAR_AGENDAMENTOS": "agenda",
     "CANCELAR_AGENDAMENTO": "agenda",
     "LEARNING_QUERY": "memoria",
+    "PEOPLE_REMEMBER": "pessoas", "PEOPLE_QUERY": "pessoas",
+    "PEOPLE_LIST": "pessoas", "PEOPLE_FORGET": "pessoas",
     "GAME_VISION": "jogo", "GAME_VISION_CONTINUE": "jogo",
     "EMAIL_READ": "email", "EMAIL_SYNC": "email", "NOTIFICATIONS": "email",
     "VOLUME": "sistema", "WEATHER": "clima",
@@ -67,6 +69,7 @@ _TIPOS_DOMINIO = {
     "conversacional": "conversa", "opiniao": "conversa", "opinião": "conversa",
     "cooperacao": "cooperacao", "cooperação": "cooperacao",
     "memoria": "memoria", "memória": "memoria", "aprendizado": "memoria",
+    "pessoa": "pessoas", "pessoas": "pessoas", "memoria_pessoas": "pessoas",
 }
 
 
@@ -196,18 +199,20 @@ def _params_seguros(params: Dict[str, Any] | None) -> Dict[str, Any]:
         "item", "platform", "modo", "nivel_volume", "cor", "rgb", "temperatura", "brilho",
         "jogo", "pergunta", "nota_id", "tipo_nota", "filtro", "caminho", "indice",
         "forcar_indice", "somente_projeto", "referencia_caminho",
+        "operacao", "origem", "destino", "novo_nome",
         "left", "right", "esquerda", "direita", "layout",
         # Referências opacas da cooperação podem ser repetidas enquanto vivem
         # em RAM. O conteúdo bruto nunca entra neste contrato.
         "conteudo_ref", "conteudo_hash", "sobrescrever_confirmado",
         "plano_cooperativo_id",
+        "limit", "offset", "consulta",
     }
     seguro: Dict[str, Any] = {}
     for chave, valor in dict(params or {}).items():
         if chave not in permitidos or isinstance(valor, (dict, set)):
             continue
         if isinstance(valor, (list, tuple)):
-            itens = []
+            itens: list[Any] = []
             for item in list(valor)[:8]:
                 if isinstance(item, (bool, int, float)):
                     itens.append(item)
@@ -281,18 +286,21 @@ def registrar_evento_continuidade(
         "ts": agora,
         "expira_em": agora + max(1.0, float(ttl_s or 900.0)),
     }
-    # Campos vazios do evento novo não apagam uma referência útil recente.
-    for chave in ("intent", "habilidade", "tipo", "alvo", "topico", "texto", "resposta", "status", "origem"):
-        if not item[chave] and registro.get(chave):
-            item[chave] = registro[chave]
-    if not item["params"] and isinstance(registro.get("params"), dict):
-        item["params"] = dict(registro["params"])
+    intent_mudou = bool(
+        item.get("intent")
+        and registro.get("intent")
+        and item.get("intent") != registro.get("intent")
+    )
+    # Só o mesmo contrato pode completar seus próprios campos. Quando a
+    # intenção muda, um vazio pertence ao evento novo e não herda entidade,
+    # status ou parâmetros do evento anterior no mesmo domínio.
+    if not intent_mudou:
+        for chave in ("intent", "habilidade", "tipo", "alvo", "topico", "texto", "resposta", "status", "origem"):
+            if not item[chave] and registro.get(chave):
+                item[chave] = registro[chave]
+        if not item["params"] and isinstance(registro.get("params"), dict):
+            item["params"] = dict(registro["params"])
     if item["reexecutavel"] is None:
-        intent_mudou = bool(
-            item.get("intent")
-            and registro.get("intent")
-            and item.get("intent") != registro.get("intent")
-        )
         item["reexecutavel"] = False if intent_mudou else bool(registro.get("reexecutavel", False))
     dominios[dominio_norm] = item
     historico = list(continuidade.get("historico") or [])
@@ -335,7 +343,7 @@ def _dominio_pedido_no_texto(texto: str) -> str:
     regras = (
         ("musica", r"\b(m[uú]sica|faixa|playlist|pausa|despausa|toca|replay)\b"),
         ("iot", r"\b(luz|l[aâ]mpada|tomada|ventilador|dispositivo)\b"),
-        ("arquivos", r"\b(arquivo|pasta|diret[oó]rio|\.txt)\b"),
+        ("arquivos", r"\b(arquivo|pasta|diret[oó]rio|extens[aã]o|formato|markdown)\b|\.(?:txt|md)\b"),
         ("agenda", r"\b(agenda|lembrete|agendamento|compromisso)\b"),
         ("jogo", r"\b(jogo|item|invent[aá]rio|build|atributo|equipamento)\b"),
         ("email", r"\b(e-?mail|caixa de entrada)\b"),
@@ -373,6 +381,72 @@ def selecionar_continuidade(
     registro["dominio"] = dominio_norm
     registro["idade_s"] = max(0.0, idade)
     return registro
+
+
+def selecionar_referente_saliente(
+    estado_atual: Dict[str, Any] | None,
+    *,
+    texto: str = "",
+    dominio: str = "",
+    ttl_s: float = 900.0,
+) -> Dict[str, Any]:
+    """Escolhe um referente por uma ordem única e auditável.
+
+    A ordem evita o problema clássico de uma entidade antiga vencer uma ação
+    recém-confirmada: pendência canônica ativa, contrato da ação atual,
+    resultado oficial do mesmo domínio e, por último, o foco histórico.
+    """
+    estado = dict(estado_atual or {})
+    agora = time.time()
+    dominio_norm = normalizar_dominio_continuidade(dominio) if dominio else _dominio_pedido_no_texto(texto)
+
+    pendencia = dict(estado.get("pendencia_acao_canonica") or {})
+    if pendencia.get("status") in {"ativa", "em_processamento"}:
+        try:
+            ativa = float(pendencia.get("expira_em") or 0.0) > agora
+        except (TypeError, ValueError):
+            ativa = False
+        if ativa:
+            alvo = str(pendencia.get("referencia") or "").strip()
+            dados = dict(pendencia.get("metadados") or {})
+            dominio_pendente = normalizar_dominio_continuidade(
+                habilidade=str(pendencia.get("origem") or ""),
+                intent=str(dados.get("intent") or ""),
+            )
+            if not dominio_norm or dominio_pendente == dominio_norm:
+                return {
+                    "fonte_salienca": "pendencia_canonica",
+                    "dominio": dominio_pendente,
+                    "intent": str(dados.get("intent") or ""),
+                    "alvo": alvo,
+                    "params": dados,
+                    "status": str(pendencia.get("status") or ""),
+                }
+
+    contrato = dict(estado.get("ultima_acao_contrato") or {})
+    try:
+        contrato_recente = agora - float(estado.get("ultima_acao_ts") or 0.0) <= ttl_s
+    except (TypeError, ValueError):
+        contrato_recente = False
+    dominio_contrato = normalizar_dominio_continuidade(
+        dominio=str(contrato.get("dominio") or ""), intent=str(contrato.get("intent") or ""),
+    )
+    if contrato_recente and contrato.get("intent") and (not dominio_norm or dominio_contrato == dominio_norm):
+        return {
+            "fonte_salienca": "acao_atual",
+            "dominio": dominio_contrato,
+            "intent": str(contrato.get("intent") or ""),
+            "alvo": str(contrato.get("alvo") or ""),
+            "status": str(contrato.get("status") or ""),
+            "confirmado": contrato.get("confirmado"),
+        }
+
+    oficial = selecionar_continuidade(
+        estado, texto=texto, dominio=dominio_norm, ttl_s=ttl_s,
+    )
+    if oficial:
+        return {"fonte_salienca": "continuidade_dominio", **oficial}
+    return {}
 
 
 def selecionar_continuidade_por_classe(

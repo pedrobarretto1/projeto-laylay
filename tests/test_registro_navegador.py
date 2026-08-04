@@ -14,6 +14,7 @@ from mente_laylay.integracao.registro_navegador import (
     registrar_navegador_leitura,
     registrar_navegador_operacoes,
 )
+from mente_laylay.autonomia.rota_musical import RotaMusical
 
 
 class _Solicitacoes:
@@ -40,6 +41,24 @@ class _Comandos:
     def __init__(self): self.chamadas = []
     def enviar(self, acao, payload):
         self.chamadas.append((acao, payload)); return True
+    def enviar_detalhado(self, acao, payload):
+        self.chamadas.append((acao, payload))
+        return {
+            "ok": False,
+            "confirmado": False,
+            "status": "autoplay_blocked",
+            "tab": {"id": 7},
+        }
+
+
+class _ComandosSequenciais:
+    def __init__(self, retornos):
+        self.retornos = iter(retornos)
+        self.chamadas = []
+
+    def enviar_detalhado(self, acao, payload):
+        self.chamadas.append((acao, dict(payload)))
+        return dict(next(self.retornos))
 
 
 def _registros():
@@ -99,6 +118,103 @@ def test_diagnostico_de_operacoes_nao_publica_payloads() -> None:
     assert "segredo" not in serializado
     assert "tab_id" not in serializado.casefold()
     assert diagnostico["comandos_disponiveis"] is True
+
+
+def test_operacoes_preservam_resultado_detalhado_do_player() -> None:
+    _, operacoes, _, comandos = _registros()
+
+    resultado = operacoes.tocar_youtube_detalhado(
+        "https://youtube.com/watch?v=segredo", tab_id=7,
+    )
+
+    assert resultado["ok"] is False
+    assert resultado["confirmado"] is False
+    assert resultado["status"] == "autoplay_blocked"
+    assert resultado["tab"] == {"id": 7}
+    assert comandos.chamadas[0] == (
+        "youtube_play",
+        {
+            "url": "https://youtube.com/watch?v=segredo",
+            "permitir_foco": False,
+            "target_tab_id": 7,
+        },
+    )
+    assert comandos.chamadas[1] == (
+        "youtube_control", {"command": "play", "target_tab_id": 7},
+    )
+
+
+def test_operacoes_repetem_play_na_mesma_aba_e_confirmam_audio_real() -> None:
+    comandos = _ComandosSequenciais([
+        {
+            "ok": False,
+            "confirmado": False,
+            "status": "autoplay_blocked",
+            "tab": {"id": 23},
+            "evidence": {"playing": False, "audible": False},
+        },
+        {
+            "ok": True,
+            "confirmado": True,
+            "status": "success",
+            "tab": {"id": 23},
+            "evidence": {"playing": True, "audible": True, "muted": False},
+        },
+    ])
+    operacoes = criar_navegador_operacoes_runtime(
+        comandos=comandos, ambiente=_Ambiente(),
+    )
+
+    resultado = operacoes.tocar_youtube_detalhado(
+        "https://youtube.com/watch?v=segredo",
+    )
+
+    assert resultado["ok"] is True
+    assert resultado["confirmado"] is True
+    assert resultado["status"] == "playing_confirmed"
+    assert resultado["evidence"]["audible"] is True
+    assert comandos.chamadas[-1] == (
+        "youtube_control", {"command": "play", "target_tab_id": 23},
+    )
+
+
+def test_operacoes_nao_confirmam_so_por_video_estar_rodando_mudo() -> None:
+    comandos = _ComandosSequenciais([
+        {
+            "ok": False, "confirmado": False,
+            "status": "autoplay_blocked", "tab": {"id": 24},
+        },
+        {
+            "ok": True, "confirmado": True, "status": "success",
+            "tab": {"id": 24},
+            "evidence": {"playing": True, "audible": False, "muted": True},
+        },
+    ])
+    operacoes = criar_navegador_operacoes_runtime(
+        comandos=comandos, ambiente=_Ambiente(),
+    )
+
+    resultado = operacoes.tocar_youtube_detalhado(
+        "https://youtube.com/watch?v=segredo",
+    )
+
+    assert resultado["ok"] is False
+    assert resultado["confirmado"] is False
+    assert resultado["status"] == "autoplay_blocked"
+    assert resultado["retry_evidence"]["muted"] is True
+
+
+def test_registro_tipado_e_rota_preservam_video_aberto_sem_audio_confirmado() -> None:
+    _, operacoes, *_ = _registros()
+    rota = RotaMusical({"_registro_navegador_operacoes_runtime": operacoes})
+
+    resultado = rota.abrir_detalhado(
+        "https://youtube.com/watch?v=segredo",
+    )
+
+    assert resultado["ok"] is True
+    assert resultado["confirmado"] is None
+    assert resultado["status"] == "video_aberto_sem_confirmacao"
 
 
 def test_contexto_da_llm_recebe_apenas_origem_sem_credenciais_ou_query() -> None:

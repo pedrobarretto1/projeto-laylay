@@ -28,6 +28,7 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
 
     action = str(action or "").strip()
     payload = payload if isinstance(payload, dict) else {}
+    msg: Dict[str, Any] = {}
 
     allowed_actions = set(_get(ctx, "ALLOWED_ACTIONS", set()) or set())
     connected_extensions = _get(ctx, "connected_extensions", set())
@@ -174,13 +175,45 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
             # Música exige confirmação do efeito na página. O simples aceite
             # do WebSocket ou a navegação da aba não provam que há áudio.
             if callable(executar_confirmado):
-                confirmou = bool(executar_confirmado(msg, timeout_s=10.0))
+                confirmou = bool(executar_confirmado(msg, timeout_s=20.0))
             else:
                 confirmou = False
             if confirmou:
                 print(f"📤 [Chrome] Reprodução do YouTube confirmada: {url_musica}")
                 return True
-            print("⚠️ [Chrome] o vídeo abriu, mas o player não confirmou a reprodução")
+            getter_resultado = _get(ctx, "ultimo_resultado_chrome")
+            bruto_resultado = (
+                getter_resultado() if callable(getter_resultado) else {}
+            )
+            resultado_extensao = (
+                dict(bruto_resultado) if isinstance(bruto_resultado, dict) else {}
+            )
+            mesma_acao = (
+                str(resultado_extensao.get("action") or "").strip()
+                == "youtube_play"
+            )
+            status_extensao = str(
+                resultado_extensao.get("status") or ""
+            ).strip()
+            mensagem_extensao = str(
+                resultado_extensao.get("message") or ""
+            ).strip()
+            if mesma_acao and status_extensao == "autoplay_blocked":
+                print(
+                    "⚠️ [Chrome] vídeo aberto; a extensão confirmou a navegação, "
+                    "mas não confirmou o áudio"
+                )
+            elif mesma_acao:
+                detalhe = f": {mensagem_extensao}" if mensagem_extensao else ""
+                print(
+                    "⚠️ [Chrome] youtube_play respondeu "
+                    f"status={status_extensao or 'sem_status'}{detalhe}"
+                )
+            else:
+                print(
+                    "⚠️ [Chrome] a extensão não devolveu confirmação do "
+                    "youtube_play dentro do prazo"
+                )
             return False
         try:
             abriu = webbrowser.open(url_musica)
@@ -198,9 +231,17 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
         if not (ws_loop and connected_extensions):
             print("❌ [Chrome] extensão desconectada; controle do YouTube não foi executado")
             return False
-        msg = {"action": "youtube_control", "command": command}
+        msg = {
+            "action": "youtube_control",
+            "command": command,
+            **(
+                {"target_tab_id": payload.get("target_tab_id")}
+                if payload.get("target_tab_id") is not None else {}
+            ),
+        }
         if callable(executar_confirmado):
-            sucesso = bool(executar_confirmado(msg, timeout_s=3.0))
+            timeout_controle = 6.0 if command in {"play", "pause_play"} else 3.0
+            sucesso = bool(executar_confirmado(msg, timeout_s=timeout_controle))
         else:
             sucesso = _enviar_extensao(msg)
         if not sucesso:
@@ -247,6 +288,37 @@ class ChromeComandosRuntime:
 
     def enviar(self, action: str | None = None, payload: dict | None = None) -> bool:
         return validar_e_enviar_comando(self.contexto_getter() or {}, action, payload)
+
+    def enviar_detalhado(
+        self, action: str | None = None, payload: dict | None = None,
+    ) -> dict[str, Any]:
+        """Envia o comando sem descartar a evidência devolvida pela extensão."""
+        acao = str(action or "").strip()
+        ctx = self.contexto_getter() or {}
+        ok = validar_e_enviar_comando(ctx, acao, payload)
+        getter = _get(ctx, "ultimo_resultado_chrome")
+        bruto = getter() if callable(getter) else {}
+        resultado = dict(bruto) if isinstance(bruto, dict) else {}
+        mesma_acao = str(resultado.get("action") or "").strip() == acao
+        if mesma_acao:
+            confirmado = bool(resultado.get("ok") is True)
+            return {
+                "ok": bool(ok and confirmado),
+                "confirmado": confirmado,
+                "status": str(resultado.get("status") or "").strip(),
+                "message": str(resultado.get("message") or "").strip(),
+                "evidence": resultado.get("evidence"),
+                "tab": resultado.get("tab"),
+                "request_id": str(resultado.get("requestId") or "").strip(),
+            }
+        return {
+            "ok": bool(ok),
+            "confirmado": None if ok else False,
+            "status": "enviado_sem_evidencia" if ok else "sem_confirmacao",
+            "message": "",
+            "evidence": None,
+            "tab": None,
+        }
 
     def enviar_payload_bruto(self, payload: dict) -> bool:
         ctx = self.contexto_getter() or {}

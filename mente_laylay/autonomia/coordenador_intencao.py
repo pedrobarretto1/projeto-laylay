@@ -27,12 +27,14 @@ from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
 from mente_laylay.cognicao.arbitro_turno import CandidatoDecisao, arbitrar_turno
 from mente_laylay.cognicao.referencias_linguagem import valor_e_referencia_contextual
 from mente_laylay.especialistas.capacidades import INTENTS_SOMENTE_LEITURA, intents_registradas
+from mente_laylay.autonomia.classificacao_habilidade import classificar_habilidade_intent
 from mente_laylay.cognicao.evidencia_operacional import (
     bloqueia_controle_iot_por_modalidade,
 )
 from mente_laylay.memoria_mental.continuidade_geral import (
     resolver_continuacao_aditiva,
 )
+from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
 
 INTENTS_EXECUTAVEIS = set(intents_registradas())
 
@@ -223,6 +225,25 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     texto_norm = _call(ctx, "normalizar_texto", texto, default=str(texto or ""))
     _call(ctx, "refinar_contexto_mental", texto_norm)
     retrato_atual = dict(ctx.get("retrato_turno_atual") or {})
+    turno_congelado = dict(ctx.get("turno_atual") or {})
+    trecho_operacional = str(turno_congelado.get("texto_operacional") or "").strip()
+    moldura_nao_autoriza_recorte = bool(
+        re.match(r"^(?:nao|não)\b", str(texto_norm or "").strip())
+        or "?" in str(texto or "")
+        or re.match(
+            r"^(?:como\s+(?:eu\s+)?faria|voc[eê]\s+consegue|"
+            r"se\s+eu\s+pedir)\b",
+            str(texto_norm or "").strip(),
+        )
+    )
+    texto_deteccao = (
+        _call(ctx, "normalizar_texto", trecho_operacional, default=trecho_operacional)
+        if trecho_operacional
+        and str(turno_congelado.get("modalidade_geral") or "") == "misto"
+        and bool(turno_congelado.get("autoriza_execucao"))
+        and not moldura_nao_autoriza_recorte
+        else texto_norm
+    )
 
     # Lembretes completos são comandos locais. Eles precisam ser resolvidos
     # antes da IA-first para que uma frase como "me lembra ... daqui 5 minutos"
@@ -293,21 +314,45 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     )
 
     intent_deterministica = resolver_referencias_da_intencao(
-        _call(ctx, "detectar_intencao_deterministica", texto_norm),
+        _call(ctx, "detectar_intencao_deterministica", texto_deteccao),
         retrato_atual,
     )
+    # Salvaguarda de leitura do próprio projeto. O detector composto pode
+    # estar degradado ou ausente em uma instalação parcial; uma busca explícita
+    # de arquivo/código continua sendo segura e não deve cair na conversa livre.
+    # Aceitamos somente FILE_SEARCH aqui: mutações permanecem exclusivamente
+    # no caminho determinístico principal e em suas políticas de confirmação.
+    busca_codigo_explicita = (
+        ("codigo" in texto_deteccao or "código" in texto_deteccao)
+        and any(
+            verbo in texto_deteccao
+            for verbo in ("encontra", "encontre", "ache", "localiza", "localize")
+        )
+    )
+    if _normalizar_intent(intent_deterministica) in {"", "NONE"} and busca_codigo_explicita:
+        consulta_arquivo = detectar_intencao_arquivos(
+            texto_deteccao,
+            params_cb=lambda **kwargs: kwargs,
+            estado_mental={},
+            normalizar_texto=ctx.get("normalizar_texto"),
+        )
+        if (
+            isinstance(consulta_arquivo, dict)
+            and _normalizar_intent(consulta_arquivo) == "FILE_SEARCH"
+        ):
+            intent_deterministica = consulta_arquivo
     # Salvaguarda local do coordenador para uma operação explícita e de baixo
     # risco. A composição real pode manter o detector de domínio indisponível
     # ou devolver ``None`` sem lançar erro; nesse caso o pedido não pode cair
     # na conversa livre. Esta rota só roda quando o detector principal não
     # produziu candidato, portanto não duplica classificação nem execução.
-    if not isinstance(intent_deterministica, dict):
+    if _normalizar_intent(intent_deterministica) in {"", "NONE"}:
         limpar_playlist = ctx.get("limpar_nome_playlist")
         if not callable(limpar_playlist):
             limpar_playlist = lambda valor: str(valor or "").strip(" \t\r\n.,;:!?\"'")
         intent_deterministica = resolver_referencias_da_intencao(
             detectar_playlist_contextual_musica_atual(
-                texto_norm,
+                texto_deteccao,
                 params_cb=lambda **kwargs: kwargs,
                 limpar_nome_playlist=limpar_playlist,
             ),
@@ -315,7 +360,7 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
         )
 
     candidatos: list[CandidatoDecisao] = []
-    det_explicito = _intencao_deterministica_tem_alvo_explicito(intent_deterministica, texto_norm)
+    det_explicito = _intencao_deterministica_tem_alvo_explicito(intent_deterministica, texto_deteccao)
     if isinstance(continuidade_aditiva, dict) and continuidade_aditiva:
         candidatos.append(CandidatoDecisao(
             tipo="comando_contextual",
@@ -531,6 +576,12 @@ class CicloComandosRuntime:
             "rotas": {},
             "ultima_rota": "",
             "ultima_intent": "",
+            "por_habilidade": {},
+            "por_moldura": {},
+            "comandos_nao_reconhecidos": 0,
+            "conversas_legitimas": 0,
+            "ultima_classificacao": "",
+            "ultima_nao_resolvida": {},
         }
         self._cache_decisao_turno: Dict[
             tuple[str, str], Tuple[Dict[str, Any] | None, str]
@@ -782,6 +833,29 @@ class CicloComandosRuntime:
         resultado, rota = resolucao
         return (deepcopy(resultado) if isinstance(resultado, dict) else None, str(rota or ""))
 
+    @staticmethod
+    def _moldura_linguagem_natural(texto: str) -> str:
+        t = re.sub(r"\s+", " ", str(texto or "").casefold()).strip()
+        if re.fullmatch(
+            r"(?:sim|nao|não|pode|isso|essa|esse|ela|ele|essa tambem|essa também|"
+            r"tenta de novo|de novo)",
+            t,
+        ):
+            return "continuacao"
+        if "?" in str(texto or "") or re.match(
+            r"^(?:o que|qual|quais|quantos|quantas|como|tem|ha|há|me fala|me fale)\b",
+            t,
+        ):
+            return "pergunta"
+        if re.match(
+            r"^(?:abre|fecha|coloca|toca|pausa|passa|liga|desliga|cria|apaga|"
+            r"remove|pesquisa|busca|procura|organiza|salva|guarda|lista|mostra|"
+            r"lembra|cancela)\b",
+            t,
+        ):
+            return "pedido_direto"
+        return "fala_natural"
+
     def _chave_decisao_turno(
         self, texto: str, contexto: Dict[str, Any],
     ) -> tuple[str, str] | None:
@@ -831,12 +905,56 @@ class CicloComandosRuntime:
             rotas = dict(metricas.get("rotas") or {})
             rotas[chave_rota] = int(rotas.get(chave_rota) or 0) + 1
             metricas["rotas"] = rotas
+            moldura = self._moldura_linguagem_natural(texto)
+            por_moldura = dict(metricas.get("por_moldura") or {})
+            por_moldura[moldura] = int(por_moldura.get(moldura) or 0) + 1
+            metricas["por_moldura"] = por_moldura
             if intent:
                 metricas["resolvidas"] = int(metricas.get("resolvidas") or 0) + 1
                 metricas["ultima_rota"] = str(rota or "coordenador")
                 metricas["ultima_intent"] = intent
+                habilidade = classificar_habilidade_intent(intent) or "outros"
+                por_habilidade = dict(metricas.get("por_habilidade") or {})
+                por_habilidade[habilidade] = int(por_habilidade.get(habilidade) or 0) + 1
+                metricas["por_habilidade"] = por_habilidade
+                metricas["ultima_classificacao"] = f"resolvida:{habilidade}:{moldura}"
             else:
                 metricas["sem_intencao"] = int(metricas.get("sem_intencao") or 0) + 1
+                parece_operacional = bool(_call(
+                    contexto_resolucao,
+                    "texto_parece_consulta_operacional",
+                    texto,
+                    default=False,
+                ))
+                chave_classificacao = (
+                    "comandos_nao_reconhecidos" if parece_operacional
+                    else "conversas_legitimas"
+                )
+                metricas[chave_classificacao] = int(metricas.get(chave_classificacao) or 0) + 1
+                metricas["ultima_classificacao"] = (
+                    "comando_nao_reconhecido" if parece_operacional
+                    else "conversa_legitima"
+                ) + f":{moldura}"
+                motivo = (
+                    "nenhuma_habilidade_atingiu_confianca"
+                    if parece_operacional else "fala_classificada_como_conversa"
+                )
+                metricas["ultima_nao_resolvida"] = {
+                    "motivo": motivo,
+                    "moldura": moldura,
+                    "rota": chave_rota,
+                    "parecia_operacional": parece_operacional,
+                }
+                if callable(self.registrar_decisao_cb):
+                    try:
+                        self.registrar_decisao_cb(
+                            "linguagem_natural",
+                            "nao_resolvida",
+                            (motivo, f"moldura_{moldura}", f"rota_{chave_rota}"),
+                            categoria="operacional" if parece_operacional else "conversa",
+                        )
+                    except Exception:
+                        pass
             if chave is not None:
                 self._cache_decisao_turno[chave] = self._copiar_resolucao(resolucao)
             return self._copiar_resolucao(resolucao)
@@ -867,6 +985,8 @@ class CicloComandosRuntime:
         with self._lock_linguagem_natural:
             metricas = dict(self._metricas_linguagem_natural)
             metricas["rotas"] = dict(metricas.get("rotas") or {})
+            metricas["por_habilidade"] = dict(metricas.get("por_habilidade") or {})
+            metricas["por_moldura"] = dict(metricas.get("por_moldura") or {})
         metricas.update(
             modo="coordenador_canonico",
             usa_contexto=True,

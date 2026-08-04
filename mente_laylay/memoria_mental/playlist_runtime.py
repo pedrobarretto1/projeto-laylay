@@ -95,6 +95,8 @@ class PlaylistRuntime:
         if not url:
             return False
         self.log(f"[PLAYLIST] {prefixo_log} (Strong Reuse): {info.get('titulo') or url} | Canal: {info.get('canal') or ''}")
+        confirmado = None
+        status_entrega = ""
         if callable(self.youtube_play):
             try:
                 tab_id = self.playlist_state.get("tab_id")
@@ -105,11 +107,36 @@ class PlaylistRuntime:
             except Exception as exc:
                 self.log(f"⚠️ [PLAYLIST:EXECUCAO] falha ao enviar faixa: {type(exc).__name__}: {exc}")
                 return False
-            if retorno is False:
+            if isinstance(retorno, dict):
+                status_entrega = str(retorno.get("status") or "").strip()
+                confirmado = retorno.get("confirmado")
+                tab = retorno.get("tab")
+                if isinstance(tab, dict) and isinstance(tab.get("id"), int):
+                    self.playlist_state["tab_id"] = tab["id"]
+                # ``autoplay_blocked`` só é devolvido pela extensão depois de
+                # a navegação terminar e o controle ``play`` ser tentado na
+                # página. Portanto a faixa foi entregue à aba, embora o áudio
+                # não tenha sido confirmado. Isso é evidência suficiente para
+                # manter a fila ativa, mas não para afirmar que está tocando.
+                entregue = bool(retorno.get("ok")) or status_entrega == "autoplay_blocked"
+            else:
+                entregue = retorno is not False
+                confirmado = True if entregue else False
+            if not entregue:
                 self.log("⚠️ [PLAYLIST:EXECUCAO] navegador recusou o comando youtube_play")
+                self.playlist_state["last_delivery_status"] = status_entrega or "falha_execucao"
+                self.playlist_state["last_play_confirmed"] = False
                 return False
         self.playlist_state["last_url"] = url
-        self.log(f"✅ [PLAYLIST:EXECUCAO] faixa enviada | playlist={self.playlist_state.get('name') or '-'}")
+        self.playlist_state["last_delivery_status"] = status_entrega or "enviado"
+        self.playlist_state["last_play_confirmed"] = confirmado is True
+        if confirmado is False:
+            self.log(
+                "⚠️ [PLAYLIST:EXECUCAO] faixa aberta; reprodução não confirmada "
+                f"| playlist={self.playlist_state.get('name') or '-'}"
+            )
+        else:
+            self.log(f"✅ [PLAYLIST:EXECUCAO] faixa enviada | playlist={self.playlist_state.get('name') or '-'}")
         return True
 
     def _limpar_estado_reproducao(self) -> None:
@@ -213,6 +240,14 @@ class PlaylistRuntime:
         if not nm:
             return {"ok": False, "error": "missing_name", "name": "", "total": 0, "last_titles": []}
         data = self.load()
+        if nm not in data:
+            return {
+                "ok": False,
+                "error": "playlist_not_found",
+                "name": nm,
+                "total": 0,
+                "last_titles": [],
+            }
         lst = data.get(nm)
         if not isinstance(lst, list):
             lst = []
@@ -473,7 +508,10 @@ class PlaylistRuntime:
                 self.playlist_state["shuffle_index"] = idx_anterior
                 self.playlist_state["last_advance_status"] = "falha_execucao"
                 return False
-            self.playlist_state["last_advance_status"] = "ok"
+            self.playlist_state["last_advance_status"] = (
+                "ok" if self.playlist_state.get("last_play_confirmed") is not False
+                else "enviado_sem_confirmacao"
+            )
             return True
 
         data = self.load()
@@ -495,7 +533,10 @@ class PlaylistRuntime:
             self.playlist_state["index"] = idx_anterior
             self.playlist_state["last_advance_status"] = "falha_execucao"
             return False
-        self.playlist_state["last_advance_status"] = "ok"
+        self.playlist_state["last_advance_status"] = (
+            "ok" if self.playlist_state.get("last_play_confirmed") is not False
+            else "enviado_sem_confirmacao"
+        )
         return True
 
     def voltar_anterior(self) -> bool:
@@ -562,7 +603,10 @@ class PlaylistRuntime:
             self.playlist_state.update(estado_anterior)
             return False
         self._set_ultima_playlist(nm)
-        self.playlist_state["last_advance_status"] = "ok"
+        self.playlist_state["last_advance_status"] = (
+            "ok" if self.playlist_state.get("last_play_confirmed") is not False
+            else "enviado_sem_confirmacao"
+        )
         return True
 
 

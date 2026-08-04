@@ -31,6 +31,7 @@ class PreparadorRequisicaoLLMRuntime:
         contexto_sistema_getter: Callable[[], Any],
         obter_contexto_paginas: Callable[..., Any],
         resumo_mente_integrada: Callable[..., Any],
+        registrar_orcamento_prompt: Callable[..., Any] | None = None,
         log: Callable[..., Any] = print,
     ) -> None:
         self.model = str(model or "").strip()
@@ -44,6 +45,7 @@ class PreparadorRequisicaoLLMRuntime:
         self.contexto_sistema_getter = contexto_sistema_getter
         self.obter_contexto_paginas = obter_contexto_paginas
         self.resumo_mente_integrada = resumo_mente_integrada
+        self.registrar_orcamento_prompt = registrar_orcamento_prompt
         self.log = log
 
     def preparar(self, pedido: PedidoModelo) -> RequisicaoTransporteLLM:
@@ -67,6 +69,7 @@ class PreparadorRequisicaoLLMRuntime:
             contexto_sistema=self.contexto_sistema_getter(),
             obter_contexto_paginas=self.obter_contexto_paginas,
             resumo_mente_integrada=self.resumo_mente_integrada,
+            registrar_orcamento_prompt=self.registrar_orcamento_prompt,
             log=self.log,
         )
         return RequisicaoTransporteLLM(

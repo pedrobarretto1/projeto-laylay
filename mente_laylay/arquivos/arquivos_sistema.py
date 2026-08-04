@@ -117,6 +117,7 @@ def escrever_arquivo_texto_seguro(
                 with tempfile.NamedTemporaryFile(
                     "w",
                     encoding="utf-8",
+                    newline="",
                     dir=str(alvo.parent),
                     prefix=f".{alvo.name}.",
                     suffix=".laylay.tmp",
@@ -136,12 +137,16 @@ def escrever_arquivo_texto_seguro(
         else:
             # ``x`` garante que uma corrida entre a verificação e a escrita
             # nunca destrua um arquivo criado por outro processo.
-            with open(alvo, "x", encoding="utf-8") as arquivo:
+            # Preserva exatamente o texto do clipboard. No Windows, a
+            # tradução automática de quebras pode transformar CRLF e causar
+            # um falso ``conteudo_nao_confirmado`` depois da releitura.
+            with open(alvo, "x", encoding="utf-8", newline="") as arquivo:
                 arquivo.write(texto)
                 arquivo.flush()
                 os.fsync(arquivo.fileno())
 
-        relido = alvo.read_text(encoding="utf-8")
+        with open(alvo, "r", encoding="utf-8", newline="") as arquivo:
+            relido = arquivo.read()
         esperado = hashlib.sha256(texto.encode("utf-8")).hexdigest()
         observado = hashlib.sha256(relido.encode("utf-8")).hexdigest()
         confirmado = relido == texto and observado == esperado

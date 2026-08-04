@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html as _html
+import json
 import re
 from typing import Any, Callable
 
@@ -12,6 +13,14 @@ TERMOS_NAO_MUSICA = (
     "temporada", "desenho", "cartoon", "trailer", "react", "reaction", "review",
     "podcast", "entrevista", "meme", "cena completa", "melhores momentos", "gameplay",
 )
+
+
+def _decodificar_texto_json(valor: str) -> str:
+    """Decodifica o texto de um campo JSON sem depender do layout ao redor."""
+    try:
+        return str(json.loads(f'"{valor}"') or "")
+    except (TypeError, ValueError):
+        return _html.unescape(str(valor or ""))
 
 
 def _duracao_em_segundos(texto: str) -> int | None:
@@ -172,19 +181,35 @@ def extrair_resultados_youtube_busca(
         snippet = html_text[match.start(): match.start() + 3500]
         titulo = ""
         canal = ""
-        m_titulo = re.search(r'"title":\{"runs":\[\{"text":"([^"]+)"\}\]\}', snippet, re.DOTALL)
+        m_titulo = re.search(
+            r'"title":\{"runs":\[\{"text":"((?:\\.|[^"\\])*)"',
+            snippet,
+            re.DOTALL,
+        )
         if m_titulo:
-            titulo = _html.unescape(m_titulo.group(1))
+            titulo = _decodificar_texto_json(m_titulo.group(1))
         else:
-            m_titulo = re.search(r'"title":\{"simpleText":"([^"]+)"\}', snippet, re.DOTALL)
+            m_titulo = re.search(
+                r'"title":\{"simpleText":"((?:\\.|[^"\\])*)"',
+                snippet,
+                re.DOTALL,
+            )
             if m_titulo:
-                titulo = _html.unescape(m_titulo.group(1))
+                titulo = _decodificar_texto_json(m_titulo.group(1))
 
-        m_canal = re.search(r'"longBylineText":\{"runs":\[\{"text":"([^"]+)"\}\]\}', snippet, re.DOTALL)
+        m_canal = re.search(
+            r'"longBylineText":\{"runs":\[\{"text":"((?:\\.|[^"\\])*)"',
+            snippet,
+            re.DOTALL,
+        )
         if not m_canal:
-            m_canal = re.search(r'"ownerText":\{"runs":\[\{"text":"([^"]+)"\}\]\}', snippet, re.DOTALL)
+            m_canal = re.search(
+                r'"ownerText":\{"runs":\[\{"text":"((?:\\.|[^"\\])*)"',
+                snippet,
+                re.DOTALL,
+            )
         if m_canal:
-            canal = _html.unescape(m_canal.group(1))
+            canal = _decodificar_texto_json(m_canal.group(1))
 
         duracao_texto = ""
         m_duracao = re.search(

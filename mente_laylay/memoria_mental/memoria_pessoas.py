@@ -39,6 +39,8 @@ _RELACOES_RE = "|".join(sorted(_RELACOES_NORMALIZADAS, key=len, reverse=True))
 _PALAVRAS_NAO_NOME = {
     "ela", "ele", "isso", "alguem", "alguém", "pessoa", "minha", "meu",
     "outra", "outro", "quem", "qual", "lay", "laylay", "voce", "você",
+    "eu", "mim", "comigo", "usuario", "usuário",
+    "gosta", "trabalha", "mora", "estuda", "joga", "prefere", "odeia",
 }
 
 _GENEROS_MUSICAIS = {
@@ -432,7 +434,9 @@ class MemoriaPessoasRuntime:
         padroes = (
             rf"\b(?:a |o |outra |outro )?(?P<nome>[a-z][a-z' -]{{1,80}}?) (?:e|eh) (?:a |o )?(?:minha|meu) (?P<rel>{_RELACOES_RE})\b",
             rf"\b(?:minha|meu) (?P<rel>{_RELACOES_RE}) (?:se chama|chama|e|eh) (?P<nome>[a-z][a-z' -]{{1,80}}?)(?:\s*(?:,| e | mas | que |$))",
-            rf"\b(?:minha|meu) (?P<rel>{_RELACOES_RE}) (?P<nome>[a-z][a-z'-]{{1,35}})(?:\s|,|$)",
+            rf"\b(?:minha|meu) (?P<rel>{_RELACOES_RE}) "
+            rf"(?P<nome>(?!(?:gosta|trabalha|mora|estuda|joga|prefere|odeia)\b)"
+            rf"[a-z][a-z'-]{{1,35}})(?:\s|,|$)",
             rf"\b(?:tenho|conheco) (?:uma|um) (?P<rel>{_RELACOES_RE}) (?:chamada|chamado) (?P<nome>[a-z][a-z' -]{{1,80}}?)(?:\s*(?:,| e | mas | que |$))",
             # Forma conversacional comum: "tenho uma namorada e o nome dela é
             # Nanda". O vínculo e o nome estão explícitos; não é inferência da
@@ -458,13 +462,14 @@ class MemoriaPessoasRuntime:
     def _extrair_fatos(self, texto: str, nome: str) -> list[dict[str, str]]:
         t = _normalizar(texto)
         nome_n = re.escape(_normalizar(nome))
+        sujeito = rf"(?:{nome_n}|ela|ele|(?:minha|meu) (?:{_RELACOES_RE}))"
         fatos: list[dict[str, str]] = []
         padroes = (
-            ("gosta_de", rf"\b(?:{nome_n}|ela|ele) gosta (?P<prep>de|do|da|dos|das) (?P<valor>[^,.!?]{{2,100}})"),
-            ("trabalha_em", rf"\b(?:{nome_n}|ela|ele) trabalha (?:em|na|no) (?P<valor>[^,.!?]{{2,100}})"),
-            ("mora_em", rf"\b(?:{nome_n}|ela|ele) mora (?:em|na|no) (?P<valor>[^,.!?]{{2,100}})"),
-            ("estuda", rf"\b(?:{nome_n}|ela|ele) estuda (?P<valor>[^,.!?]{{2,100}})"),
-            ("joga", rf"\b(?:{nome_n}|ela|ele) joga (?P<valor>[^,.!?]{{2,100}})"),
+            ("gosta_de", rf"\b{sujeito} gosta (?P<prep>de|do|da|dos|das) (?P<valor>[^,.!?]{{2,100}})"),
+            ("trabalha_em", rf"\b{sujeito} trabalha (?:em|na|no) (?P<valor>[^,.!?]{{2,100}})"),
+            ("mora_em", rf"\b{sujeito} mora (?:em|na|no) (?P<valor>[^,.!?]{{2,100}})"),
+            ("estuda", rf"\b{sujeito} estuda (?P<valor>[^,.!?]{{2,100}})"),
+            ("joga", rf"\b{sujeito} joga (?P<valor>[^,.!?]{{2,100}})"),
         )
         for chave, padrao in padroes:
             achado = re.search(padrao, t)
@@ -486,12 +491,37 @@ class MemoriaPessoasRuntime:
         t = _normalizar(bruto)
         pessoa = None
         nome = ""
+        relacao_mencionada = re.search(
+            rf"\b(?:minha|meu) (?P<rel>{_RELACOES_RE}) (?="
+            r"gosta (?:de|do|da|dos|das)|trabalha (?:em|na|no)|"
+            r"mora (?:em|na|no)|estuda |joga )",
+            t,
+        )
+        if relacao_mencionada:
+            relacao = _RELACOES_NORMALIZADAS.get(
+                relacao_mencionada.group("rel"), relacao_mencionada.group("rel")
+            )
+            candidatas_relacao = [
+                item for item in self._ativas(dados)
+                if any(
+                    registro.get("tipo") == relacao
+                    and registro.get("status") == "ativo"
+                    for registro in item.get("relacoes") or []
+                )
+            ]
+            if len(candidatas_relacao) == 1:
+                pessoa = candidatas_relacao[0]
+                nome = str(pessoa.get("nome") or "")
+            elif len(candidatas_relacao) > 1:
+                dados["metricas"]["ambiguidades"] += 1
+                self._salvar(dados)
+                return False
         achado = re.search(
             r"\b(?P<nome>[a-z][a-z'-]{1,35}) (?=gosta (?:de|do|da|dos|das)|trabalha (?:em|na|no)|"
             r"mora (?:em|na|no)|estuda |joga )",
             t,
         )
-        if achado and achado.group("nome") not in {"ela", "ele"}:
+        if not pessoa and achado and achado.group("nome") not in {"ela", "ele"}:
             nome = _nome_apresentacao(achado.group("nome"))
             candidatas = self._por_nome(dados, nome)
             if len(candidatas) > 1:
@@ -500,7 +530,7 @@ class MemoriaPessoasRuntime:
                 self.falar(f"Eu lembro de mais de uma pessoa chamada {nome}. Qual delas você quis dizer?", "curiosa", 1)
                 return True
             pessoa = candidatas[0] if candidatas else None
-        elif re.search(r"\b(?:ela|ele) (?:gosta (?:de|do|da|dos|das)|trabalha |mora |estuda |joga )", t):
+        elif not pessoa and re.search(r"\b(?:ela|ele) (?:gosta (?:de|do|da|dos|das)|trabalha |mora |estuda |joga )", t):
             pessoa = self._ultima(dados)
             nome = str((pessoa or {}).get("nome") or "")
         if not nome or not _nome_valido(nome):
@@ -640,9 +670,32 @@ class MemoriaPessoasRuntime:
         t = _normalizar(texto)
         if not t:
             return None
+        # Correções leves só dentro de construções inequívocas de consulta.
+        # Elas não são um corretor global de conversa e, por isso, não mudam
+        # nomes nem frases livres que a pessoa quis escrever de propósito.
+        t = re.sub(r"\b(?:voce\s+)?abe\s+(?:sobre|da|do)\b", "voce sabe sobre", t)
+        t = re.sub(r"\bqual\s+(?:a\s+)?relacao\s+da\b", "qual a relacao da", t)
+        # "Mim" referencia o próprio usuário. Nunca deve virar uma entidade
+        # da memória de terceiros; essa consulta pertence ao aprendizado pessoal.
+        if re.search(
+            r"\b(?:o que (?:voce )?(?:sabe|lembra)|me (?:fala|conte)) "
+            r"(?:sobre|de) (?:mim|comigo)\b",
+            t,
+        ):
+            return None
         if re.search(r"\b(?:quais|quem sao as) pessoas (?:voce |a laylay )?(?:lembra|conhece|que eu te falei)", t) or re.search(r"\b(?:quem eu (?:ja )?te apresentei|de quem eu (?:ja )?te falei)\b", t):
             return {"intent": "PEOPLE_LIST"}
-        apagar = re.search(r"\b(?:esquece|esqueca|apaga|remove) (?:tudo )?(?:que sabe )?(?:sobre |da |do |a |o )?(?P<nome>[a-z][a-z' -]{1,80})$", t)
+        substantivo_operacional = re.search(
+            r"\b(?:arquivo|aquivo|pasta|documento|diretorio|atalho|programa|app|aplicativo)\b",
+            t,
+        )
+        apagar = None if substantivo_operacional else re.search(
+            r"\b(?:"
+            r"(?:esquece|esqueca) (?:tudo )?(?:que sabe )?(?:sobre |da |do |a |o )?"
+            r"|(?:apaga|remove) (?:(?:a |o )?memoria (?:sobre |da |do )?|o que sabe sobre )"
+            r")(?P<nome>[a-z][a-z' -]{1,80})$",
+            t,
+        )
         if apagar and _nome_valido(apagar.group("nome")):
             return {"intent": "PEOPLE_FORGET", "nome": _nome_apresentacao(apagar.group("nome"))}
         reversa = re.search(rf"\bquem (?:e|eh) (?:a |o )?(?:minha|meu) (?P<rel>{_RELACOES_RE})\b", t)
@@ -662,7 +715,7 @@ class MemoriaPessoasRuntime:
             }
         consulta = re.search(
             r"\b(?:quem (?:e|eh)|o que (?:voce )?(?:sabe|lembra) (?:sobre|da|do)|"
-            r"me (?:fala|conte) (?:sobre|da|do)) (?P<nome>[a-z][a-z' -]{1,80})$",
+            r"me (?:fala|conte) (?:sobre|da|do)) (?:a |o )?(?P<nome>[a-z][a-z' -]{1,80})$",
             t,
         )
         if consulta and _nome_valido(consulta.group("nome")):
@@ -673,6 +726,19 @@ class MemoriaPessoasRuntime:
         relacao_com = re.search(r"\bqual (?:e )?(?:a )?minha relacao com (?P<nome>[a-z][a-z' -]{1,80})$", t)
         if relacao_com and _nome_valido(relacao_com.group("nome")):
             return {"intent": "PEOPLE_QUERY", "nome": _nome_apresentacao(relacao_com.group("nome"))}
+        relacao_invertida = re.search(
+            r"\bqual (?:e )?(?:a )?relacao (?:da|do|de) (?P<nome>[a-z][a-z' -]{1,80}?)"
+            r"(?:\s+(?:comigo|com a gente|pra mim|para mim))?$",
+            t,
+        )
+        if relacao_invertida and _nome_valido(relacao_invertida.group("nome")):
+            return {"intent": "PEOPLE_QUERY", "nome": _nome_apresentacao(relacao_invertida.group("nome"))}
+        relacao_eliptica = re.search(
+            r"\b(?P<nome>[a-z][a-z' -]{1,80}) (?:e|eh) (?:minha|meu) (?:o que|quem)$",
+            t,
+        )
+        if relacao_eliptica and _nome_valido(relacao_eliptica.group("nome")):
+            return {"intent": "PEOPLE_QUERY", "nome": _nome_apresentacao(relacao_eliptica.group("nome"))}
         gosto = re.search(r"\bo que (?P<nome>[a-z][a-z' -]{1,50}) gosta\b", t)
         if gosto and _nome_valido(gosto.group("nome")):
             return {"intent": "PEOPLE_QUERY", "nome": _nome_apresentacao(gosto.group("nome"))}
@@ -747,15 +813,22 @@ class MemoriaPessoasRuntime:
             alvo = str(pedido.get("nome") or pedido.get("relacao") or "essa pessoa")
             fala, status = f"Você ainda não me contou nada confiável sobre {alvo}.", "nao_encontrado"
         elif len(pessoas) > 1:
-            nomes = ", ".join(p.get("nome") for p in pessoas[:4])
+            nomes = ", ".join(str(p.get("nome") or "") for p in pessoas[:4])
             fala, status = f"Encontrei mais de uma possibilidade: {nomes}. Qual delas você quis dizer?", "ambiguo"
             dados["metricas"]["ambiguidades"] += 1
         else:
             pessoa = pessoas[0]
             dados["ultimo_id"] = pessoa["id"]
-            fala, status = self._descricao(pessoa), "pessoa_encontrada"
+            if pedido.get("modo") == "complemento":
+                fala = (
+                    f"Não tenho outro fato confirmado sobre {pessoa.get('nome')} "
+                    "além do que já te contei."
+                )
+                status = "sem_outros_fatos"
+            else:
+                fala, status = self._descricao(pessoa), "pessoa_encontrada"
         self._salvar(dados)
-        alvo = pessoas[0].get("nome") if len(pessoas) == 1 else str(pedido.get("nome") or "")
+        alvo = str(pessoas[0].get("nome") or "") if len(pessoas) == 1 else str(pedido.get("nome") or "")
         self._emitir(texto, fala, intent="PEOPLE_QUERY", alvo=alvo, status=status)
         return True
 
@@ -881,6 +954,16 @@ class MemoriaPessoasRuntime:
             ultima = self._ultima(dados)
             relevantes = [ultima] if ultima else []
         if not relevantes:
+            pedido = self._detectar_pedido(texto)
+            if pedido and pedido.get("intent") == "PEOPLE_QUERY":
+                referente = str(
+                    pedido.get("nome") or pedido.get("relacao") or "essa pessoa"
+                ).strip()
+                return (
+                    "MEMÓRIA DE PESSOAS RELEVANTE: não há memória confirmada "
+                    f"sobre {referente}. Declare a ausência com sinceridade e "
+                    "não invente lembranças, fatos, relações ou experiências."
+                )
             return ""
         linhas = [
             "MEMÓRIA DE PESSOAS RELEVANTE: use apenas como relato confirmado do usuário; "
@@ -946,12 +1029,20 @@ class MemoriaPessoasRuntime:
 
     def reexecutar(self, resultado: dict[str, Any], texto: str) -> bool:
         intent = str(resultado.get("intent") or "").upper().strip()
-        params = resultado.get("params") if isinstance(resultado.get("params"), dict) else {}
+        params: dict[str, Any] = (
+            dict(resultado.get("params") or {})
+            if isinstance(resultado.get("params"), dict) else {}
+        )
         if intent == "PEOPLE_LIST":
             return self._listar(texto)
         if intent == "PEOPLE_QUERY":
             nome = str(params.get("nome") or params.get("alvo") or "").strip()
-            return self._consultar(texto, {"intent": intent, "nome": nome}) if nome else False
+            pedido = {
+                "intent": intent,
+                "nome": nome,
+                "modo": str(params.get("modo") or "").strip(),
+            }
+            return self._consultar(texto, pedido) if nome else False
         return False
 
 

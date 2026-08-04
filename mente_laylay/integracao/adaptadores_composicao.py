@@ -27,7 +27,8 @@ def avaliar_evento_emocional_operacional(
         f"confiança={float(avaliacao.get('confianca') or 0.0):.0%} "
         f"emoção={avaliacao.get('emocao')} nível={avaliacao.get('nivel')} "
         f"repetições={avaliacao.get('repeticoes')} "
-        f"expressão={bool(avaliacao.get('permite_expressao'))}"
+        f"expressão={bool(avaliacao.get('permite_expressao'))} "
+        f"motivo={avaliacao.get('motivo_expressao')}"
     )
     return avaliacao
 

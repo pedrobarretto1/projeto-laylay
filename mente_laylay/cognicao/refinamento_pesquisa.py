@@ -103,13 +103,13 @@ def _contexto_musical(texto: str, params: Mapping[str, Any]) -> str:
         return "minecraft"
     if re.search(r"\b(?:rpg|path of exile|poe|diablo|baldur|skyrim)\b", contexto):
         return "rpg"
-    if re.search(r"\b(?:competitiv|ranked|fps|fragpunk|valorant|cs2|counter strike|overwatch)\b", contexto):
+    if re.search(r"\b(?:competitiv\w*|ranked|fps|fragpunk|valorant|cs2|counter strike|overwatch)\b", contexto):
         return "competitivo"
-    if re.search(r"\b(?:estud|foco|concentr|trabalh|program|codigo|código)\b", contexto):
+    if re.search(r"\b(?:estud\w*|foco|concentr\w*|trabalh\w*|program\w*|codigo)\b", contexto):
         return "estudo"
-    if re.search(r"\b(?:academia|treino|malhar|exercicio|exercício)\b", contexto):
+    if re.search(r"\b(?:academia|trein\w*|malhar|exercicio)\b", contexto):
         return "academia"
-    if re.search(r"\b(?:relax|descans|dormir|sono|calm)\b", contexto):
+    if re.search(r"\b(?:relax\w*|descans\w*|dormir|sono|calm\w*)\b", contexto):
         return "relaxar"
     return ""
 

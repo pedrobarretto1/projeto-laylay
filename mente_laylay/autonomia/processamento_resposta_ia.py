@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 from mente_laylay.memoria_mental.memoria_confiavel import (
     extrair_aprendizados_pessoais_explicitos,
+    normalizar_texto as normalizar_texto_memoria,
     preparar_aprendizados_confirmados,
 )
 from mente_laylay.autonomia.porteiro_acoes import texto_tem_comando_explicito
@@ -194,8 +195,27 @@ def salvar_aprendizados_da_ia(
     memoria_sqlite: Any,
     texto_usuario: str = "",
 ) -> List[Any]:
-    aprendizados = extrair_aprendizados_da_ia(resposta_bruta)
-    aprendizados.extend(extrair_aprendizados_pessoais_explicitos(texto_usuario))
+    aprendizados_ia = extrair_aprendizados_da_ia(resposta_bruta)
+    explicitos = extrair_aprendizados_pessoais_explicitos(texto_usuario)
+    # O extrator determinístico preserva literalmente o que a pessoa disse e
+    # tem precedência sobre interpretações criativas do modelo. Quando ele já
+    # confirmou uma preferência, identidade ou regra, outra versão do mesmo
+    # tipo gerada pela LLM não pode transformá-la em instruções inventadas.
+    tipos_explicitos = {
+        normalizar_texto_memoria(item.get("tipo"))
+        for item in explicitos if isinstance(item, dict)
+    }
+    aprendizados: List[Any] = list(explicitos)
+    for item in aprendizados_ia:
+        if explicitos and not isinstance(item, dict):
+            continue
+        tipo = (
+            normalizar_texto_memoria(item.get("tipo"))
+            if isinstance(item, dict) else ""
+        )
+        if tipo and tipo in tipos_explicitos:
+            continue
+        aprendizados.append(item)
     unicos: List[Any] = []
     assinaturas = set()
     for item in aprendizados:
@@ -562,11 +582,23 @@ def preparar_resposta_para_execucao(
     # memória nem para o TTS.
     contexto_com = dict(contexto_comunicacao or {})
     plano_comunicacao = dict(contexto_com.get("plano_turno") or {})
+    mensagens_comunicacao = list(contexto_com.get("mensagens") or [])
+    ultima_resposta_comunicacao = next(
+        (
+            str(item.get("content") or "").strip()
+            for item in reversed(mensagens_comunicacao)
+            if isinstance(item, Mapping)
+            and str(item.get("role") or "").strip().casefold() == "assistant"
+            and str(item.get("content") or "").strip()
+        ),
+        "",
+    )
     avaliacao_comunicacao = (
         avaliar_qualidade_comunicacao(
             texto,
             fala_limpa,
             plano=plano_comunicacao,
+            ultima_resposta=ultima_resposta_comunicacao,
         )
         if not comandos and not falha_tecnica_llm and not realidade_bloqueada
         else {"aceita": True, "problemas": [], "foco": {}}
@@ -585,7 +617,7 @@ def preparar_resposta_para_execucao(
                         texto,
                         fala_limpa,
                         avaliacao_comunicacao,
-                        mensagens=contexto_com.get("mensagens"),
+                        mensagens=mensagens_comunicacao,
                     ),
                     _com_tools=False,
                     max_tokens=360,
@@ -601,6 +633,7 @@ def preparar_resposta_para_execucao(
                     texto,
                     candidata,
                     plano=plano_comunicacao,
+                    ultima_resposta=ultima_resposta_comunicacao,
                 )
                 if candidata and not comandos_reparo and segunda_avaliacao.get("aceita"):
                     fala_reparada = candidata
@@ -621,6 +654,7 @@ def preparar_resposta_para_execucao(
             fala_limpa = contingencia_comunicacao(
                 texto,
                 foco=avaliacao_comunicacao.get("foco"),
+                contrato_reparo=avaliacao_comunicacao.get("contrato_reparo"),
             )
             bot_raw = json.dumps(
                 {"fala": fala_limpa, "comandos": []},
@@ -635,9 +669,11 @@ def preparar_resposta_para_execucao(
     leitura_semantica = extrair_leitura_semantica_da_ia(bot_raw, texto)
     suprimir_fala = False
     if realidade_bloqueada:
-        fala_limpa = ""
-        suprimir_fala = True
-        registrar_log("⚠️ [IA:REALIDADE] invenção pessoal bloqueada antes da fala.")
+        fala_limpa = contingencia_comunicacao(texto)
+        bot_raw = json.dumps({"fala": fala_limpa, "comandos": []}, ensure_ascii=False)
+        registrar_log(
+            "⚠️ [IA:REALIDADE] invenção pessoal substituída por contingência contextual."
+        )
     elif not comandos and falha_tecnica_llm:
         fala_limpa = _fala_contingencia_sem_llm(texto, contexto_contingencia)
         registrar_log("🛟 [IA] Contingência conversacional manteve o turno aberto.")

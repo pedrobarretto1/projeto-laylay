@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 from mente_laylay.memoria_mental.resultado_acao import (
     ResultadoAcao,
+    STATUS_RESULTADO_CANCELADO,
     STATUS_RESULTADO_JA_SATISFEITO,
 )
 from mente_laylay.personalidade.fala_operacional import estilizar_fala_operacional
@@ -31,7 +32,15 @@ STATUS_PENDENTE = {"confirmacao_necessaria", "aguardando_confirmacao", "pendente
 
 def classificar_resultado(resultado: ResultadoAcao) -> str:
     status = str(resultado.status or "").strip().casefold()
-    if status in STATUS_PENDENTE or "confirmacao" in status and "confirmado" not in status:
+    if status in STATUS_RESULTADO_CANCELADO:
+        return "cancelado"
+    confirmacao_realmente_pendente = (
+        status in STATUS_PENDENTE
+        or "requer_confirmacao" in status
+        or "confirmacao_necessaria" in status
+        or "aguardando_confirmacao" in status
+    )
+    if confirmacao_realmente_pendente:
         return "pendente"
     if status in STATUS_RESULTADO_JA_SATISFEITO and resultado.confirmado is True:
         return "sem_acao"
@@ -74,12 +83,24 @@ def _fala_compativel(fala: str, classe: str) -> bool:
         )
         if not any(s in base for s in sinais_sem_acao):
             return False
+    if classe == "cancelado":
+        sinais_cancelamento = (
+            "cancelei", "cancelado", "cancelada", "mantive", "não mexi",
+            "nao mexi", "deixei como", "deixa como",
+        )
+        if not any(s in base for s in sinais_cancelamento):
+            return False
     if classe == "pendente":
         sinais_pendencia = ("confirma", "confirmação", "confirmacao", "preciso que", "quer que eu", "posso ")
         if not any(s in base for s in sinais_pendencia):
             return False
     if classe == "incerto" and any(s in base for s in sinais_certeza_execucao):
-        return False
+        sinais_incerteza = (
+            "não confirmou", "nao confirmou", "sem confirmação", "sem confirmacao",
+            "não consegui confirmar", "nao consegui confirmar",
+        )
+        if not any(s in base for s in sinais_incerteza):
+            return False
     return True
 
 
@@ -117,6 +138,8 @@ def _ancora_resultado(resultado: ResultadoAcao, classe: str) -> str:
         return f"Ainda não mexi em {objeto}; falta sua confirmação."
     if classe == "incerto":
         return f"Enviei o comando para {objeto}, mas não consegui confirmar o resultado."
+    if classe == "cancelado":
+        return f"Cancelei o pedido em {objeto}; não mexi em nada."
     if classe == "sem_acao":
         if status in {"ja_aberto_focado", "site_ja_aberto_focado"}:
             return f"{objeto.capitalize()} já está aberto e em foco; não repeti a abertura."
@@ -134,6 +157,10 @@ def _ancora_resultado(resultado: ResultadoAcao, classe: str) -> str:
         return f"Ajustei {objeto} e o comando respondeu."
     if "fechad" in status or "deletad" in status or "cancelad" in status:
         return f"Concluí o fechamento de {objeto}."
+    if status == "app_iniciado_focado":
+        return f"Iniciei {objeto} e confirmei a nova janela em foco."
+    if status == "app_focado":
+        return f"{objeto.capitalize()} já estava aberto; só trouxe a janela para o foco."
     if "abert" in status or "focad" in status:
         return f"Deixei {objeto} aberto e em foco."
     if "criad" in status:
@@ -164,6 +191,7 @@ def _garantir_resultado_explicito(fala: str, resultado: ResultadoAcao, classe: s
         "pendente": ("ainda não", "ainda nao", "confirma", "falta sua", "antes de mexer"),
         "incerto": (
             "não consegui confirmar", "nao consegui confirmar", "sem confirmação", "sem confirmacao",
+            "não confirmou", "nao confirmou",
             "não sei se", "nao sei se", "ainda não apareceu", "ainda nao apareceu",
             "ainda está inicializando", "ainda esta inicializando", "ainda não tenho", "ainda nao tenho",
             "mandei ", "pedi ", "comando de ", "comando enviado", "enviei o comando",
@@ -171,6 +199,10 @@ def _garantir_resultado_explicito(fala: str, resultado: ResultadoAcao, classe: s
         "sem_acao": (
             "já estava", "ja estava", "já está", "ja esta", "já tava", "ja tava", "não mexi", "nao mexi",
             "não repeti", "nao repeti", "mantive", "nem precisei", "não vou", "nao vou",
+        ),
+        "cancelado": (
+            "cancelei", "cancelado", "cancelada", "mantive", "não mexi", "nao mexi",
+            "deixei como", "deixa como",
         ),
     }
     if any(sinal in base for sinal in sinais.get(classe, ())):
@@ -200,6 +232,8 @@ def planejar_resposta_acao(
             fala = f"Não consegui concluir a ação em {alvo}."
         elif classe == "pendente":
             fala = f"Preciso da sua confirmação antes de mexer em {alvo}."
+        elif classe == "cancelado":
+            fala = f"Cancelei o pedido em {alvo}; não mexi em nada."
         else:
             fala = f"Enviei o comando para {alvo}, mas não consegui confirmar a resposta."
     fala = _contextualizar_turno_misto(fala, resultado.texto_usuario)
@@ -211,7 +245,7 @@ def planejar_resposta_acao(
         # Uma falha técnica pede clareza, não raiva automática. A emoção pode
         # vir do contexto real da conversa, mas o erro sozinho não a fabrica.
         emocao, nivel = (emocao or "calma"), 1
-    elif classe in {"pendente", "incerto"}:
+    elif classe in {"pendente", "incerto", "cancelado"}:
         emocao, nivel = "calma", 1
     elif not emocao:
         emocao, nivel = "calma", 1

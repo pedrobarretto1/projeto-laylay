@@ -45,6 +45,7 @@ from mente_laylay.cognicao.referencias_linguagem import (
 )
 from mente_laylay.memoria_mental.continuidade_geral import (
     resolver_continuacao_aditiva,
+    selecionar_referente_saliente,
 )
 
 
@@ -126,15 +127,15 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         normalizar(texto) if callable(normalizar) else str(texto or "").casefold().strip()
     )
     texto_operacional_iot, modalidade_iot = normalizar_pedido_natural(texto_normalizado_previo)
-    # A listagem é uma consulta sem efeito colateral. Ela costuma ter forma de
-    # pergunta e, por isso, o filtro casual abaixo pode encerrar a detecção
-    # antes da cadeia de especialistas. Antecipamos somente IOT_LIST aqui;
-    # estado e controle conservam suas rotas contextuais e guardas próprias.
+    # Listagem e estado são consultas sem efeito colateral. Elas costumam ter
+    # forma de pergunta e, por isso, o filtro casual abaixo pode encerrar a
+    # detecção antes da cadeia de especialistas. Controle físico continua
+    # dependendo das guardas de modalidade logo abaixo.
     candidato_iot_leitura = _candidato_iot_seguro(texto_operacional_iot)
     if (
         isinstance(candidato_iot_leitura, dict)
         and str(candidato_iot_leitura.get("intent") or "").upper().strip()
-        == "IOT_LIST"
+        in {"IOT_LIST", "IOT_STATUS"}
     ):
         return candidato_iot_leitura
     if autoriza_candidato_iot_direto(texto_operacional_iot, modalidade=modalidade_iot):
@@ -149,12 +150,65 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     if isinstance(consulta_recurso, dict):
         return consulta_recurso
 
+    # Consultas objetivas de leitura não precisam de autorização operacional e
+    # não podem ser descartadas por um classificador genérico de conversa. A
+    # cadeia completa continua abaixo para continuações e ações com efeito.
+    consulta_email = detectar_email_notificacao_briefing(
+        texto_normalizado_previo,
+        params_cb=lambda **kwargs: kwargs,
+        contexto_email_ativo=False,
+    )
+    if (
+        isinstance(consulta_email, dict)
+        and str(consulta_email.get("intent") or "").upper() == "EMAIL_READ"
+        and modalidade_iot != "deliberativo"
+    ):
+        return consulta_email
+
+    consulta_clima = detectar_clima(
+        texto_normalizado_previo,
+        params_cb=lambda **kwargs: kwargs,
+    )
+    if consulta_clima and modalidade_iot != "deliberativo":
+        return consulta_clima
+
+    consulta_arquivo = detectar_intencao_arquivos(
+        texto,
+        params_cb=lambda **kwargs: kwargs,
+        estado_mental=mente_previa if isinstance(mente_previa, Mapping) else {},
+        normalizar_texto=normalizar if callable(normalizar) else None,
+    )
+    if (
+        isinstance(consulta_arquivo, dict)
+        and str(consulta_arquivo.get("intent") or "").upper() == "FILE_SEARCH"
+    ):
+        return consulta_arquivo
+
     consulta_aprendizados = detectar_consulta_aprendizados(
         texto_normalizado_previo,
         params_cb=lambda **kwargs: kwargs,
     )
     if consulta_aprendizados:
         return consulta_aprendizados
+
+    referente_atual = selecionar_referente_saliente(
+        dict(mente_previa or {}) if isinstance(mente_previa, Mapping) else {},
+        ttl_s=600.0,
+    )
+    contexto_email_ativo = bool(
+        str(referente_atual.get("dominio") or "") == "email"
+        and str(referente_atual.get("intent") or "").upper() == "EMAIL_READ"
+        and str(referente_atual.get("status") or "") == "emails_lidos"
+        and referente_atual.get("confirmado") is not False
+    )
+    if contexto_email_ativo:
+        seguimento_email = detectar_email_notificacao_briefing(
+            texto_normalizado_previo,
+            params_cb=lambda **kwargs: kwargs,
+            contexto_email_ativo=True,
+        )
+        if seguimento_email:
+            return seguimento_email
 
     preparo = preparar_entrada_deterministica(
         texto,
@@ -255,7 +309,11 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
             params_cb=params,
             ha_abas_sugeridas=bool(_get(ctx, "abas_sugeridas_fechar")),
         ),
-        lambda: detectar_email_notificacao_briefing(t, params_cb=params),
+        lambda: detectar_email_notificacao_briefing(
+            t,
+            params_cb=params,
+            contexto_email_ativo=contexto_email_ativo,
+        ),
         lambda: detectar_clima(t, params_cb=params),
         lambda: detectar_volume_ou_midia(
             t,

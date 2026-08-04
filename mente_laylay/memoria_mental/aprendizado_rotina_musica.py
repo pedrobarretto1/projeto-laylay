@@ -253,6 +253,18 @@ def classificar_confirmacao_local(texto: str) -> Optional[bool]:
     t = normalizar_confirmacao_texto(texto)
     if not t:
         return None
+    # Adiar uma oferta ou confirmação significa não executar agora. Esta regra
+    # é compartilhada por todas as pendências (clipboard, arquivos, agenda,
+    # música etc.), evitando que o classificador contextual transforme
+    # "deixa para depois" em aceite por eliminação.
+    if re.fullmatch(
+        r"(?:melhor\s+)?(?:deixa|deixar|deixe|deixamos|vamos\s+deixar)"
+        r"(?:\s+(?:isso|essa|esse|ela|ele))?\s+(?:pra|para)\s+depois|"
+        r"(?:isso\s+)?(?:fica|pode\s+ficar)\s+(?:pra|para)\s+depois|"
+        r"(?:a\s+gente\s+)?(?:ve|vemos|faz|fazemos)(?:\s+isso)?\s+depois",
+        t,
+    ):
+        return False
     if any(p in t for p in [
         "estilo diferente", "outro estilo", "outra vibe", "outra pegada",
         "uma diferente", "outra musica", "outra música",

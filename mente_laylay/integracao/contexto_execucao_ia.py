@@ -140,6 +140,7 @@ def criar_contexto_dispatcher_runtime(**kwargs: Any) -> ContextoDispatcherRuntim
 
 DEPENDENCIAS_EXECUCAO_INTENCAO = (
     "_target_from_params", "_registrar_mente_curta", "_registrar_resultado_execucao",
+    "_recuperar_aprendizados",
     "falar_com_lipsync", "_falar_resultado_operacional", "_enviar_pc_b", "APPS_MAP",
     "abrir_programa", "fechar_programa",
     "_resolver_referencia_cooperativa",
@@ -150,6 +151,7 @@ DEPENDENCIAS_EXECUCAO_INTENCAO = (
     "_agendamentos_load", "_agendamentos_save", "_agendamentos_transacionar", "_fala_agendamentos_estilosa",
     "_pendencia_acao_runtime", "_registrar_feedback_agenda", "_publicar_evento_agenda_cooperativo",
     "_normalizar_query_musical", "_yt_clean_title", "_buscar_primeiro_video_youtube",
+    "_resolver_primeiro_video_youtube",
     "_playlist_nome_explicito_na_frase",
     "_registrar_estrutura_arquivo_recente",
     "_aprender_pesquisa_semantica_arquivos",

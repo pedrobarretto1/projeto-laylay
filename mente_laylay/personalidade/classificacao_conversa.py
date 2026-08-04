@@ -11,6 +11,7 @@ import re
 from typing import Any, Dict
 
 from mente_laylay.cognicao.interpretacao_social import analisar_ato_social
+from mente_laylay.cognicao.normalizacao_linguagem import texto_pede_opiniao
 from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
 from mente_laylay.personalidade.base_conversa import _call, _get, _normalizar
 from mente_laylay.personalidade.contingencias_conversa import responder_matematica_simples
@@ -218,7 +219,7 @@ def classificar_conversa_curta_local(ctx: Dict[str, Any], texto_usuario: str) ->
         and not recusa_tem_continuacao(t) and ha_pendencia_operacional_ativa(ctx)
     ):
         return {"tipo": "SOFT_DECLINE", "confianca": 0.92}
-    if any(p in t for p in [
+    if texto_pede_opiniao(texto_usuario) or any(p in t for p in [
         "o que voce acha", "o que você acha", "o que voce sacha", "voce sacha", "voce acha", "você acha",
         "qual sua opiniao", "qual sua opinião", "me da sua opiniao", "me dá sua opinião",
         "voce gosta", "você gosta", "voce curte", "você curte", "qual voce prefere", "qual você prefere",
@@ -265,4 +266,3 @@ def deve_classificar_conversa_curta_com_ia(ctx: Dict[str, Any], texto_usuario: s
         "tendi", "entendi", "ata", "kkk", "haha",
     ]
     return any(s in texto.lower() or s in t for s in sinais_conversa)
-

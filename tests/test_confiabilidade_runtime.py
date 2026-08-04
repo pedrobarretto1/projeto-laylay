@@ -369,6 +369,30 @@ def test_inicializacao_registra_controles_antes_das_threads_pesadas():
     assert ordem == ["etapa", "hotkeys", ("threads", ("Whisper",))]
 
 
+def test_inicializacao_encerra_controladamente_quando_interface_pede_reinicio():
+    eventos = []
+
+    class _ServicosFake:
+        def encerrar(self):
+            eventos.append("servicos_encerrados")
+
+    verificacoes = iter((False, True))
+    runtime = OrquestradorInicializacao(
+        servicos=_ServicosFake(),
+        log=lambda texto: eventos.append(texto),
+        sleep=lambda _segundos: None,
+    )
+
+    runtime.manter_ativo(
+        fala_pronta="",
+        ao_encerrar=lambda: eventos.append("estado_salvo"),
+        deve_encerrar=lambda: next(verificacoes),
+    )
+
+    assert "estado_salvo" in eventos
+    assert eventos[-1] == "servicos_encerrados"
+
+
 def test_composicao_adapta_servicos_cooperativos_sem_repetir_regra_no_main():
     class Gerenciador:
         deve_parar = staticmethod(lambda: False)

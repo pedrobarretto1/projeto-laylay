@@ -74,6 +74,7 @@ _CORRECOES_TERMOS_OPERACIONAIS = {
     "playlit": "playlist",
     "playlits": "playlists",
     "playlsit": "playlist",
+    "plaulist": "playlist",
     "muscia": "musica",
     "muisca": "musica",
     "lampda": "lampada",
@@ -83,7 +84,22 @@ _CORRECOES_TERMOS_OPERACIONAIS = {
     "arquvio": "arquivo",
     "arqivo": "arquivo",
     "emial": "email",
+    "compromiso": "compromisso",
+    "compromisos": "compromissos",
+    "lembrente": "lembrete",
+    "lenbrete": "lembrete",
+    "temperatira": "temperatura",
 }
+
+# Vocabulário pequeno e deliberadamente sem nomes próprios. A aproximação só
+# é aplicada quando um verbo ou marcador de consulta já provou que o token faz
+# parte da moldura operacional. Argumentos livres continuam opacos.
+_TERMOS_OPERACIONAIS_CANONICOS = (
+    "playlist", "playlists", "musica", "musicas", "lampada", "lampadas",
+    "dispositivo", "dispositivos", "arquivo", "arquivos", "codigo", "codigos",
+    "email", "emails", "compromisso", "compromissos", "lembrete", "lembretes",
+    "temperatura",
+)
 
 _ERROS_VERBAIS_EXPLICITOS = {
     "colcoa": "coloca",
@@ -163,6 +179,31 @@ def _verbo_operacional_proximo(token: str) -> str:
     return candidatos[0][1]
 
 
+def _termo_operacional_proximo(token: str) -> str:
+    """Corrige um único deslize inequívoco em substantivo operacional."""
+    token = str(token or "").strip()
+    if (
+        len(token) < 5
+        or not token.isalpha()
+        or not token.isascii()
+        or token in _TERMOS_OPERACIONAIS_CANONICOS
+    ):
+        return ""
+    candidatos = sorted(
+        (
+            (_distancia_damerau_levenshtein(token, termo), termo)
+            for termo in _TERMOS_OPERACIONAIS_CANONICOS
+            if abs(len(token) - len(termo)) <= 1
+        ),
+        key=lambda item: (item[0], len(item[1]), item[1]),
+    )
+    if not candidatos or candidatos[0][0] > 1:
+        return ""
+    if len(candidatos) > 1 and candidatos[1][0] == candidatos[0][0]:
+        return ""
+    return candidatos[0][1]
+
+
 def corrigir_erros_portugues_operacionais(
     texto: str,
 ) -> tuple[str, list[dict[str, Any]]]:
@@ -216,6 +257,25 @@ def corrigir_erros_portugues_operacionais(
                 "tipo": "preposicao_operacional",
             })
 
+    # Erro leve muito comum em controle de mídia. A correção só existe dentro
+    # da construção completa de avanço, então nomes de faixa ou arquivo
+    # chamados "proxma" continuam opacos em qualquer outro contexto.
+    if re.search(
+        r"\b(?:passa|pasa|pula|pule)(?:\s+(?:para|pra|pro))?\s+(?:a\s+)?"
+        r"proxma(?:\s+(?:musica|música|faixa))?\b",
+        normalizado,
+        flags=re.IGNORECASE,
+    ):
+        corrigido = re.sub(
+            r"\bproxma\b", "proxima", normalizado,
+            count=1, flags=re.IGNORECASE,
+        )
+        if corrigido != normalizado:
+            normalizado = corrigido
+            eventos.append({
+                "de": "proxma", "para": "proxima", "tipo": "termo_operacional",
+            })
+
     tokens_exatos = normalizado.split()
     determinantes = {
         "a", "o", "as", "os", "um", "uma", "uns", "umas", "meu", "minha",
@@ -228,10 +288,22 @@ def corrigir_erros_portugues_operacionais(
         "app", "aplicativo", "programa", "musica", "faixa",
     }
     for indice, token in enumerate(tokens_exatos):
-        correto = _CORRECOES_TERMOS_OPERACIONAIS.get(token)
-        if not correto:
-            continue
         anteriores = tokens_exatos[:indice]
+        moldura_forte = bool(
+            any(item in marcadores_consulta for item in anteriores)
+            or any(
+                item in _VERBOS_OPERACIONAIS
+                or item in _ERROS_VERBAIS_EXPLICITOS
+                for item in anteriores
+            )
+        )
+        correcao_termo = _CORRECOES_TERMOS_OPERACIONAIS.get(token)
+        tipo_correcao = "termo_operacional"
+        if not correcao_termo and moldura_forte:
+            correcao_termo = _termo_operacional_proximo(token)
+            tipo_correcao = "termo_operacional_aproximado"
+        if not correcao_termo:
+            continue
         if any(item in _INTRODUCOES_DE_ENTIDADE for item in anteriores):
             continue
         if indice and tokens_exatos[indice - 1] in nomes_de_estrutura:
@@ -247,11 +319,11 @@ def corrigir_erros_portugues_operacionais(
         )
         if not moldura_operacional:
             continue
-        tokens_exatos[indice] = correto
+        tokens_exatos[indice] = correcao_termo
         eventos.append({
             "de": token,
-            "para": correto,
-            "tipo": "termo_operacional",
+            "para": correcao_termo,
+            "tipo": tipo_correcao,
         })
     normalizado = " ".join(tokens_exatos)
 
@@ -350,3 +422,25 @@ def normalizar_texto_basico(texto: str) -> str:
     sem_acento = unicodedata.normalize("NFKD", bruto)
     sem_acento = "".join(ch for ch in sem_acento if not unicodedata.combining(ch))
     return re.sub(r"\s+", " ", sem_acento).strip()
+
+
+def texto_pede_opiniao(texto: str) -> bool:
+    """Reconhece molduras de opinião sem autorizar uma ação operacional.
+
+    ``acha`` é ambíguo em português: pode significar tanto ``encontre`` quanto
+    ``qual é a sua opinião``. A camada compartilhada resolve apenas as formas
+    inequivocamente conversacionais. Pedidos como ``acha o arquivo`` continuam
+    disponíveis para o roteador de arquivos.
+    """
+    t = normalizar_texto_basico(texto)
+    if not t:
+        return False
+    return bool(re.search(
+        r"(?:^|\b)(?:o\s+que|oque)\s+(?:voce\s+)?acha\b|"
+        r"^(?:e\s+)?(?:voce\s+)?acha\s+(?:que\b|(?:de|do|da|dos|das|sobre)\b|"
+        r"(?:legal|bom|boa|ruim|interessante)\b)|"
+        r"\bqual\s+(?:e\s+)?(?:a\s+)?sua\s+opiniao\b|"
+        r"\b(?:me\s+(?:da|diz)|quero)\s+(?:a\s+)?sua\s+opiniao\b|"
+        r"\bo\s+que\s+(?:voce\s+)?pensa\s+(?:de|do|da|dos|das|sobre)\b",
+        t,
+    ))

@@ -46,12 +46,10 @@ def arbitrar_turno(
     leitura = dict(turno or classificar_modalidade_turno(texto))
     modalidade = str(leitura.get("modalidade_geral") or leitura.get("modalidade") or "conversa")
     snapshot = dict(retrato or {})
-    painel_especialistas = leitura.get("especialistas") if isinstance(leitura.get("especialistas"), dict) else {}
-    parecer_operacional = (
-        painel_especialistas.get("operacional")
-        if isinstance(painel_especialistas.get("operacional"), dict)
-        else {}
-    )
+    painel_bruto = leitura.get("especialistas")
+    painel_especialistas = painel_bruto if isinstance(painel_bruto, dict) else {}
+    parecer_bruto = painel_especialistas.get("operacional")
+    parecer_operacional = parecer_bruto if isinstance(parecer_bruto, dict) else {}
     intents_permitidos = {str(x).upper() for x in snapshot.get("intents_permitidos") or []}
     aceitos: list[CandidatoDecisao] = []
     rejeitados: list[Dict[str, Any]] = []
@@ -84,7 +82,11 @@ def arbitrar_turno(
         )
         if not isinstance(candidato.valor, dict) or not candidato.valor.get("intent"):
             motivo = "candidato sem intencao executavel"
-        elif parecer_operacional and not avaliacao_operacional.get("permitido"):
+        elif (
+            parecer_operacional
+            and intent_candidato not in INTENTS_SOMENTE_LEITURA
+            and not avaliacao_operacional.get("permitido")
+        ):
             motivo = (
                 "especialista operacional nao autorizou execucao neste turno: "
                 f"{avaliacao_operacional.get('motivo') or 'sem_autorizacao'}"

@@ -35,6 +35,13 @@ class _Pendencias:
         self.conclusoes.append((identificador, status))
         self.atual = None
 
+    def resolver(self, texto, *, classificar_dominio, **_kwargs):
+        return {
+            "tratado": True,
+            "status": classificar_dominio(texto),
+            "pendencia": dict(self.atual or {}),
+        }
+
 
 def test_registro_allowlist_nao_vaza_namespace_e_falha_cedo() -> None:
     salvar = lambda: None
@@ -83,6 +90,41 @@ def test_ponte_clipboard_publica_pergunta_na_memoria_compartilhada() -> None:
     assert pendencias.atual["origem"] == "observador_area_transferencia"
     assert mental["ultima_fala_emitida_ts"] == 42.0
     assert mensagens[-1] == {"role": "assistant", "content": "Quer que eu resuma?"}
+
+
+def test_recusa_clipboard_silencia_a_mesma_acao_temporariamente() -> None:
+    pendencias = _Pendencias()
+    mental = {}
+    falas = []
+    ponte = criar_ponte_clipboard_aplicacao_runtime(
+        pendencias=pendencias,
+        estado_mental_getter=lambda: mental,
+        estado_mental_atualizar=lambda **campos: mental.update(campos),
+        memoria_conversa_getter=lambda: [],
+        memoria_conversa_setter=lambda _novas: None,
+        pendencia_protegida_getter=lambda _estado: None,
+        oferta_deve_ceder=lambda *_args, **_kwargs: False,
+        texto_tem_comando_explicito=lambda _texto: False,
+        classificar_resposta=lambda _texto: "recusar",
+        classificar_confirmacao=lambda _texto, **_kwargs: "recusar",
+        area_transferencia=SimpleNamespace(snapshot_passivo=lambda: {}),
+        caixa_entrada_getter=lambda: None,
+        falar=lambda fala, *_args: falas.append(fala),
+        agendar_fala=lambda *_args, **_kwargs: True,
+        clock=lambda: 100.0,
+        log=lambda _texto: None,
+    )
+    pendencias.registrar(
+        origem="observador_area_transferencia",
+        acao="resumir_texto",
+        metadados={},
+    )
+
+    assert ponte.processar_oferta_pendente("não precisa") is True
+    assert mental["clipboard_ofertas_silenciadas"] == {
+        "resumir_texto": 700.0,
+    }
+    assert falas == ["Tudo bem, deixo quieto."]
 
 
 def test_ponte_iniciativa_exige_conexao_e_monta_contexto() -> None:

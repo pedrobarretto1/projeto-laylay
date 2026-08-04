@@ -7,6 +7,10 @@ import unicodedata
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+from mente_laylay.memoria_mental.memoria_confiavel import (
+    extrair_aprendizados_pessoais_explicitos,
+)
+
 
 _LOG = logging.getLogger(__name__)
 
@@ -1047,17 +1051,242 @@ class MemoriaSQLite:
         finally:
             conn.close()
 
-    def recuperar_aprendizados(self, limit: int = 5) -> List[str]:
+    @staticmethod
+    def _texto_aprendizado_semantico(item: Dict[str, Any]) -> str:
+        """Produz uma descrição humana sem expor o registro bruto da memória."""
+        regra = str(item.get("regra") or "").strip()
+        original = str(item.get("texto_original") or "").strip()
+        gatilho = str(item.get("gatilho") or "").strip()
+        valor = str(item.get("valor") or "").strip()
+        if regra:
+            return regra
+        if original:
+            return original
+        if gatilho and valor and valor.casefold() not in gatilho.casefold():
+            return f"{gatilho}: {valor}"
+        return valor or gatilho
+
+    @staticmethod
+    def _texto_hipotese_aprendizado(item: Dict[str, Any]) -> str:
+        valor = item.get("valor")
+        if isinstance(valor, dict):
+            for chave in ("descricao_humana", "descricao", "regra", "valor"):
+                texto = str(valor.get(chave) or "").strip()
+                if texto:
+                    return texto
+            return ""
+        if isinstance(valor, (list, tuple)):
+            return ", ".join(str(parte).strip() for parte in valor if str(parte).strip())
+        return str(valor or "").strip()
+
+    def consultar_aprendizados(
+        self,
+        *,
+        consulta: str = "",
+        limit: int = 5,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """Lê a memória aprendida por uma visão única, segura e deduplicada.
+
+        Aprendizados semânticos explícitos, hipóteses realmente maduras e
+        fatos legados continuam em tabelas distintas por proveniência. Esta
+        consulta apenas os reúne para leitura; não promove uma hipótese nem
+        grava uma nova memória.
+        """
+        try:
+            limite = max(1, min(20, int(limit or 5)))
+        except (TypeError, ValueError):
+            limite = 5
+        try:
+            deslocamento = max(0, int(offset or 0))
+        except (TypeError, ValueError):
+            deslocamento = 0
+        tokens_consulta = set(self._tokens_relevancia(consulta))
+        candidatos: List[Dict[str, Any]] = []
+
+        for item_original in self.listar_aprendizados_semanticos(limit=500):
+            item = dict(item_original)
+            status = str(item.get("status") or "").casefold()
+            origem = self._normalizar_texto(item.get("origem"))
+            confianca = float(item.get("confianca") or 0.0)
+            confirmado = bool(item.get("confirmado_usuario"))
+            if status != "ativo" or origem in {
+                "ia", "assistente", "resposta ia", "fala ia",
+            }:
+                continue
+            # Sem confirmação direta, apenas registros de alta confiança podem
+            # ser relatados como aprendizado. Os demais continuam guardados,
+            # mas não viram afirmação sobre a pessoa.
+            if not confirmado and confianca < 0.85:
+                continue
+            # Compatibilidade segura com registros antigos nos quais a LLM
+            # inventou uma regra, embora a evidência guardada contenha uma
+            # preferência direta. Reconstruímos apenas a visão de leitura;
+            # o banco original permanece intacto e auditável.
+            if confirmado and str(item.get("tipo") or "").casefold() == "preferencia":
+                explicitos = extrair_aprendizados_pessoais_explicitos(
+                    str(item.get("evidencia") or "")
+                )
+                if explicitos:
+                    texto_item = self._normalizar_texto(" ".join((
+                        str(item.get("gatilho") or ""),
+                        str(item.get("valor") or ""),
+                        str(item.get("regra") or ""),
+                    )))
+                    explicito = next((
+                        candidato for candidato in explicitos
+                        if self._normalizar_texto(candidato.get("valor")) in texto_item
+                    ), explicitos[0])
+                    item.update(explicito)
+                    item["chave_semantica"] = self._chave_semantica_preferencia(
+                        explicito.get("gatilho"), explicito.get("valor"),
+                        explicito.get("regra"),
+                    )
+            texto = self._texto_aprendizado_semantico(item)
+            if not texto:
+                continue
+            candidatos.append({
+                "texto": texto,
+                "fonte": "aprendizado_semantico",
+                "natureza": "confirmado" if confirmado else "observado_confiavel",
+                "tipo": str(item.get("tipo") or "regra"),
+                "confianca": round(confianca, 3),
+                "confirmado_usuario": confirmado,
+                "chave": str(item.get("chave_semantica") or ""),
+                "gatilho": str(item.get("gatilho") or ""),
+                "valor": str(item.get("valor") or ""),
+                "regra": str(item.get("regra") or ""),
+                "atualizado_em": str(item.get("atualizado_em") or ""),
+            })
+
+        for item in self.listar_hipoteses_aprendizado(status="ativa", limit=500):
+            confianca = float(item.get("confianca") or 0.0)
+            positivos = int(item.get("evidencias_positivas") or 0)
+            if confianca < 0.68 or positivos < 2:
+                continue
+            texto = self._texto_hipotese_aprendizado(item)
+            if not texto:
+                continue
+            candidatos.append({
+                "texto": texto,
+                "fonte": "hipotese_madura",
+                "natureza": "padrao_percebido",
+                "tipo": str(item.get("tipo") or "padrao"),
+                "confianca": round(confianca, 3),
+                "confirmado_usuario": False,
+                "chave": str(item.get("chave") or ""),
+                "atualizado_em": str(item.get("atualizado_em") or ""),
+            })
+
         conn = self._conectar()
         try:
-            cur = conn.cursor()
-            rows = cur.execute(
-                "SELECT texto FROM fatos WHERE categoria = 'aprendizado' ORDER BY id DESC LIMIT ?",
-                (limit,),
+            rows = conn.execute(
+                "SELECT texto, criado_em FROM fatos "
+                "WHERE categoria = 'aprendizado' ORDER BY id DESC LIMIT 500"
             ).fetchall()
-            return [row[0] for row in rows]
         finally:
             conn.close()
+        for texto, criado_em in rows:
+            texto_limpo = str(texto or "").strip()
+            if texto_limpo:
+                candidatos.append({
+                    "texto": texto_limpo,
+                    "fonte": "fato_legado",
+                    "natureza": "registro_antigo",
+                    "tipo": "legado",
+                    "confianca": 0.7,
+                    "confirmado_usuario": False,
+                    "chave": "",
+                    "atualizado_em": str(criado_em or ""),
+                })
+
+        def pontuar(item: Dict[str, Any]) -> tuple[float, str]:
+            alvo = " ".join((
+                str(item.get("texto") or ""), str(item.get("tipo") or ""),
+                str(item.get("chave") or ""),
+            ))
+            tokens_alvo = set(self._tokens_relevancia(alvo))
+            intersecao = tokens_consulta.intersection(tokens_alvo)
+            relevancia = (
+                len(intersecao) / max(1, len(tokens_consulta))
+                if tokens_consulta else 1.0
+            )
+            confirmado = 0.25 if item.get("confirmado_usuario") else 0.0
+            fonte = 0.12 if item.get("fonte") == "aprendizado_semantico" else 0.0
+            chave = str(item.get("chave") or "").casefold()
+            tipo = str(item.get("tipo") or "").casefold()
+            pessoal = 0.0
+            if not tokens_consulta:
+                if chave.startswith("preferencia:afinidade:"):
+                    pessoal = 0.50
+                elif tipo == "identidade":
+                    pessoal = 0.35
+                elif tipo == "apelido":
+                    pessoal = 0.25
+            return (
+                relevancia + confirmado + fonte + pessoal
+                + float(item.get("confianca") or 0.0) * 0.1,
+                str(item.get("atualizado_em") or ""),
+            )
+
+        if tokens_consulta:
+            candidatos = [
+                item for item in candidatos
+                if tokens_consulta.intersection(set(self._tokens_relevancia(
+                    " ".join((
+                        str(item.get("texto") or ""), str(item.get("tipo") or ""),
+                        str(item.get("chave") or ""),
+                    ))
+                )))
+            ]
+        candidatos.sort(key=pontuar, reverse=True)
+
+        vistos: set[str] = set()
+        unicos: List[Dict[str, Any]] = []
+        for item in candidatos:
+            chave = str(item.get("chave") or "").strip().casefold()
+            assinatura = chave or self._normalizar_texto(item.get("texto"))
+            if not assinatura or assinatura in vistos:
+                continue
+            vistos.add(assinatura)
+            unicos.append(item)
+        return unicos[deslocamento:deslocamento + limite]
+
+    def diagnostico_aprendizados(self) -> Dict[str, Any]:
+        """Retorna somente contagens e saúde, nunca o conteúdo memorizado."""
+        conn = self._conectar()
+        try:
+            semanticos = {
+                str(status or "desconhecido"): int(total or 0)
+                for status, total in conn.execute(
+                    "SELECT status, COUNT(*) FROM aprendizados_semanticos GROUP BY status"
+                ).fetchall()
+            }
+            hipoteses = {
+                str(status or "desconhecido"): int(total or 0)
+                for status, total in conn.execute(
+                    "SELECT status, COUNT(*) FROM aprendizado_hipoteses GROUP BY status"
+                ).fetchall()
+            }
+            legados = int(conn.execute(
+                "SELECT COUNT(*) FROM fatos WHERE categoria = 'aprendizado'"
+            ).fetchone()[0] or 0)
+        finally:
+            conn.close()
+        return {
+            "disponivel": True,
+            "semanticos": semanticos,
+            "hipoteses": hipoteses,
+            "legados": legados,
+            "persistencia_local": True,
+            "conteudo_exposto": False,
+            "autoriza_execucao": False,
+        }
+
+    def recuperar_aprendizados(self, limit: int = 5) -> List[str]:
+        """Compatibilidade legada; novas consultas usam a visão estruturada."""
+        itens = self.consultar_aprendizados(limit=limit)
+        return [str(item.get("texto") or "") for item in itens if item.get("texto")]
 
     @classmethod
     def _chave_semantica_preferencia(cls, gatilho: Any, valor: Any, regra: Any = "") -> str:
@@ -1066,6 +1295,15 @@ class MemoriaSQLite:
         valor_norm = cls._normalizar_texto(valor)
         regra_norm = cls._normalizar_texto(regra)
         base = " ".join(x for x in (gatilho_norm, regra_norm) if x).strip()
+
+        # Gostar de rock e gostar de programação são afinidades independentes,
+        # não duas opções exclusivas do mesmo campo. A chave pelo objeto evita
+        # que uma declaração apague a outra e permite corrigir exatamente a
+        # afinidade citada depois.
+        if gatilho_norm.startswith("afinidade com "):
+            objeto = gatilho_norm.removeprefix("afinidade com ").strip()
+            if objeto:
+                return f"preferencia:afinidade:{objeto}"
 
         tokens = set(cls._tokens_relevancia(base))
         if "cor" in tokens and tokens.intersection({"luz", "lampada", "iluminacao"}):

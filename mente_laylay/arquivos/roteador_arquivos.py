@@ -7,12 +7,14 @@ import re
 from typing import Any, Callable, Mapping
 
 from mente_laylay.arquivos.lixeira_laylay import existe_exclusao_pendente
+from mente_laylay.arquivos.nome_natural import limpar_nome_arquivo_natural
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
 from mente_laylay.cognicao.referencias_linguagem import (
     extrair_indice_referencia_ordinal,
 )
+from mente_laylay.cognicao.normalizacao_linguagem import texto_pede_opiniao
 
 
 def _get(ctx: Mapping[str, Any], key: str):
@@ -235,8 +237,8 @@ def extrair_delete_pasta_arquivo(
         flags=re.IGNORECASE,
     )
     if m_arquivo:
-        nome = str(m_arquivo.group("nome") or "").strip(" .,!?:;\"'")
-        if nome and not nome.lower().endswith(".txt"):
+        nome = limpar_nome_arquivo_natural(m_arquivo.group("nome") or "")
+        if nome and not os.path.splitext(nome)[1]:
             nome = f"{nome}.txt"
         if nome:
             return {"alvo": nome, "tipo": "arquivo"}
@@ -248,7 +250,7 @@ def extrair_delete_pasta_arquivo(
         flags=re.IGNORECASE,
     )
     if m_generico:
-        nome = str(m_generico.group("nome") or "").strip(" .,!?:;\"'")
+        nome = limpar_nome_arquivo_natural(m_generico.group("nome") or "")
         normalizar = normalizar_texto if callable(normalizar_texto) else (lambda valor: str(valor or "").strip().lower())
         nome_norm = normalizar(nome)
         if nome and nome_norm not in {
@@ -326,6 +328,17 @@ def detectar_intencao_arquivos(
         texto_confirmacao,
     ))
     indice = extrair_indice_referencia_ordinal(texto_confirmacao)
+    # Depois de uma busca que acabou de listar opções, uma resposta curta como
+    # "o primeiro" já é uma seleção inequívoca. Fora desse contexto o ordinal
+    # solto continua não operacional, evitando transformar relatos como "foi o
+    # primeiro jogo" em abertura de arquivo.
+    if indice is None and resultados_recentes and re.fullmatch(
+        r"(?:(?:o|a)\s+)?(?:primeir[oa]|segund[oa]|terceir[oa]|quart[oa]|"
+        r"quint[oa]|sext[oa]|s[eé]tim[oa]|oitav[oa]|non[oa]|d[eé]cim[oa]|"
+        r"\d{1,2}(?:\s*[ºª])?)",
+        texto_confirmacao,
+    ):
+        indice = extrair_indice_referencia_ordinal(f"abre {texto_confirmacao}")
     if indice is not None and resultados_recentes and not bloqueia_selecao:
         if 0 <= indice < len(resultados_recentes):
             nome = nomes_recentes[indice] if indice < len(nomes_recentes) else os.path.basename(resultados_recentes[indice])
@@ -363,11 +376,14 @@ def detectar_intencao_arquivos(
 
     # Perguntas hipotéticas, negativas e sobre capacidade não autorizam nem
     # mesmo uma consulta de leitura; o mapa vivo responde sobre a habilidade.
-    bloqueia_pesquisa = bool(re.search(
-        r"\b(?:voce|você|lay|laylay)\s+(?:consegue|pode|sabe|é capaz|e capaz)\b|"
-        r"\b(?:como eu faria|se eu pedir|nao procura|não procura|nao busque|não busque)\b",
-        texto_confirmacao,
-    ))
+    bloqueia_pesquisa = bool(
+        texto_pede_opiniao(texto_confirmacao)
+        or re.search(
+            r"\b(?:voce|você|lay|laylay)\s+(?:consegue|pode|sabe|é capaz|e capaz)\b|"
+            r"\b(?:como eu faria|se eu pedir|nao procura|não procura|nao busque|não busque)\b",
+            texto_confirmacao,
+        )
+    )
     padroes_pesquisa = (
         r"^(?:encontra|encontre|achar|ache|acha|procura|procure|buscar|busca|pesquisa|pesquise|localiza|localize)\b",
         r"^onde\s+(?:esta|está|fica)\b.*\b(?:arquivo|documento|codigo|código|imagem|foto|script)\b",

@@ -43,7 +43,7 @@ def _criar_pacote():
         musica_leitura=_servico_com("listar_usuario", "consultar_usuario", "contar_usuario", "formatar_prompt", "retrato_usuario", "indice_usuario", "listar_laylay", "retrato_laylay", "estado", "diagnostico"),
         musica_operacoes=_servico_com("apagar_playlist", "adicionar_faixa", "mover_faixa", "tocar_playlist", "preparar_shuffle", "primeira_url", "avancar_proxima", "voltar_anterior", "definir_ultima_playlist", "definir_ultima_url", "faixa_atual", "copiar_curadoria", "estado", "diagnostico"),
         navegador_leitura=_servico_com("conectado", "aba_ativa", "listar_abas", "diagnostico"),
-        navegador_operacoes=_servico_com("abrir_url", "pesquisar_youtube", "tocar_youtube", "controlar_youtube", "fechar_aba", "fechar_aba_atual", "fechar_abas", "recarregar_url", "fechar_aba_nativa", "fechar_abas_vazias", "clicar", "digitar", "pressionar", "diagnostico"),
+        navegador_operacoes=_servico_com("abrir_url", "pesquisar_youtube", "tocar_youtube", "tocar_youtube_detalhado", "controlar_youtube", "fechar_aba", "fechar_aba_atual", "fechar_abas", "recarregar_url", "fechar_aba_nativa", "fechar_abas_vazias", "clicar", "digitar", "pressionar", "diagnostico"),
         visao_jogo_leitura=_servico_com("em_andamento", "tem_analise_recente", "observar_texto_usuario", "perfil_atual", "diagnostico"),
         visao_jogo_analise=_servico_com("executar", "aplicar_referencia_item", "continuar_analise_recente", "continuar_pendencia", "processar_atualizacao_perfil", "diagnostico"),
         modelo_llm=_Modelo(),

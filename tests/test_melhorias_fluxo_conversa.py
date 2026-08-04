@@ -387,6 +387,14 @@ def test_coloca_uma_musica_e_pedido_generico_com_pendencia() -> None:
     ) is True
 
 
+def test_vontade_de_ouvir_musica_sem_titulo_fica_no_fluxo_musical() -> None:
+    assert texto_pede_direcao_musical_generica(
+        "eu queria ouvir uma música na verdade",
+        estado_mental={},
+        normalizar_texto=lambda texto: texto.casefold(),
+    ) is True
+
+
 def test_erro_500_local_preserva_assunto_da_conversa() -> None:
     class Resposta500:
         status_code = 500

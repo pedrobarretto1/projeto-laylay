@@ -16,11 +16,13 @@ _STOPWORDS = {
     "os", "para", "por", "que", "se", "ser", "sou", "um", "uma",
 }
 _SINAIS_EXPLICITOS = re.compile(
-    r"\b(?:meu nome (?:e|eh)|me chama de|eu (?:gosto|amo|adoro|odeio|prefiro)|"
+    r"(?:^\s*(?:tamb[eé]m\s+)?(?:n[aã]o\s+)?(?:gosto|curto|amo|adoro|odeio|prefiro)\b|"
+    r"\b(?:meu nome (?:e|eh)|me chama de|eu (?:tamb[eé]m\s+)?"
+    r"(?:n[aã]o\s+)?(?:gosto|curto|amo|adoro|odeio|prefiro)|"
     r"(?:um dos|uma das) meus? .{0,50} favorit[oa]s?|meus? .{0,50} favorit[oa]s?|"
-    r"nao gosto|lembra(?: de)? que|guarda(?: isso| que)?|anota(?: que)?|"
-    r"quando eu|pode sempre|nao (?:abra|faca|toque|use)|na verdade|"
-    r"corrigindo|nao e .+ e|isso significa)\b",
+    r"n[aã]o gosto|lembra(?: de)? que|guarda(?: isso| que)?|anota(?: que)?|"
+    r"quando eu|pode sempre|n[aã]o (?:abra|faca|toque|use)|na verdade|"
+    r"corrigindo|n[aã]o e .+ e|isso significa)\b)",
     re.IGNORECASE,
 )
 
@@ -28,15 +30,59 @@ _SINAIS_EXPLICITOS = re.compile(
 def extrair_aprendizados_pessoais_explicitos(texto_usuario: str) -> List[Dict[str, Any]]:
     """Extrai preferências inequívocas sem depender da disciplina do modelo.
 
-    A extração é deliberadamente estreita: registra somente algo que Pedro
-    qualificou como favorito. Fatos externos, inferências e entusiasmo solto
-    continuam fora da memória durável.
+    A extração é deliberadamente estreita: registra favoritos e gostos que o
+    próprio usuário declarou na primeira pessoa. Fatos externos, inferências e
+    entusiasmo solto continuam fora da memória durável.
     """
     bruto = re.sub(r"\s+", " ", str(texto_usuario or "")).strip()
-    if not bruto:
+    # Uma pergunta sobre a própria memória ("eu gosto de sertanejo?") não é
+    # uma nova afirmação. Promovê-la a fato inverteria exatamente o dado que a
+    # pessoa está tentando conferir.
+    declaracao_enquadrada = bool(re.search(
+        r"\b(?:sabia|sabe)\s+que\s+(?:eu\s+)?(?:tamb[eé]m\s+)?"
+        r"(?:n[aã]o\s+)?(?:gosto|curto|adoro|amo|prefiro)\b",
+        bruto,
+        flags=re.IGNORECASE,
+    ))
+    if not bruto or ("?" in bruto and not declaracao_enquadrada):
         return []
 
     resultados: List[Dict[str, Any]] = []
+    afinidades = re.finditer(
+        r"(?:^|\beu\s+)(?:tamb[eé]m\s+)?(?P<negacao>n[aã]o\s+)?"
+        r"(?P<verbo>gosto|curto|adoro|amo|prefiro)\s+"
+        r"(?:(?:muito|bastante|demais)\s+)?"
+        r"(?:d[oa]s?|de|da|do)\s+(?P<valor>.+?)"
+        r"(?=\s*,?\s+(?:mas|e\s+eu|e\s+tamb[eé]m)\b|[,.!?;]|$)",
+        bruto,
+        flags=re.IGNORECASE,
+    )
+    for achado in afinidades:
+        valor = str(achado.group("valor") or "").strip(" ,.;:-")
+        valor = re.sub(r"\s+", " ", valor)
+        if not valor or len(valor) > 90 or len(valor.split()) > 12:
+            continue
+        negado = bool(achado.group("negacao"))
+        verbo = str(achado.group("verbo") or "gosto").casefold()
+        if negado:
+            regra = f"você não gosta de {valor}"
+        elif verbo == "prefiro":
+            regra = f"você prefere {valor}"
+        elif verbo in {"adoro", "amo"}:
+            conjugado = "adora" if verbo == "adoro" else "ama"
+            regra = f"você {conjugado} {valor}"
+        else:
+            conjugado = "curte" if verbo == "curto" else "gosta"
+            preposicao = "" if conjugado == "curte" else " de"
+            regra = f"você {conjugado}{preposicao} {valor}"
+        resultados.append({
+            "tipo": "preferencia",
+            "gatilho": f"afinidade com {valor}",
+            "valor": valor,
+            "regra": regra,
+            "confianca": 0.98,
+        })
+
     padroes = (
         # "GTA 5 ..., um dos meus jogos favoritos"
         r"(?P<valor>[A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9 '&+.:_-]{1,70}?)"

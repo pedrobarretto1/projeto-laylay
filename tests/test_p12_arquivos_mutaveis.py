@@ -50,6 +50,22 @@ def test_sobrescrita_confirmada_e_atomica_e_revalidada(tmp_path, monkeypatch) ->
     assert not list(tmp_path.glob("*.laylay.tmp"))
 
 
+def test_escrita_segura_preserva_crlf_do_clipboard(tmp_path, monkeypatch) -> None:
+    _autorizar(monkeypatch, tmp_path)
+    alvo = tmp_path / "conteudo copiado.txt"
+    texto = "primeira linha\r\nsegunda linha\r\n"
+
+    resultado = arquivos_sistema.escrever_arquivo_texto_seguro(
+        str(alvo), texto,
+    )
+
+    assert resultado["ok"] is True
+    assert resultado["confirmado"] is True
+    assert resultado["status"] == "arquivo_criado"
+    with open(alvo, "r", encoding="utf-8", newline="") as arquivo:
+        assert arquivo.read() == texto
+
+
 def test_mover_e_renomear_cobrem_sucesso_e_falha(tmp_path, monkeypatch) -> None:
     _autorizar(monkeypatch, tmp_path)
     origem = tmp_path / "origem.txt"
@@ -111,4 +127,3 @@ def test_busca_exata_respeita_limite_e_rejeita_caminho(tmp_path, monkeypatch) ->
 
     assert len(encontrados) == 2
     assert arquivos_sistema.buscar_itens_com_nome("um/alvo.txt") == []
-

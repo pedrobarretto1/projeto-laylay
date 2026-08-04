@@ -705,6 +705,31 @@ def test_clara_e_escura_sem_cor_ajustam_brilho_e_aceitam_erro_de_digitacao():
     assert mais_clara["params"]["valor"] == 70
 
 
+def test_status_por_pronome_continua_dispositivo_iot_mesmo_apos_falha() -> None:
+    estado = {
+        "ultimo_dispositivo_iot": "lampada_quarto",
+        "ultima_acao_intent": "IOT_CONTROL",
+        "ultima_acao_params": {"acao": "ligar", "alvo": "lampada_quarto"},
+    }
+    runtime = RuntimeIoT(
+        memoria_sqlite=MemoriaIoTFalsa(),
+        falar=lambda *_: None,
+        estado_mental_getter=lambda: estado,
+        emitir_fala=False,
+        modo="simulado",
+        log=lambda *_: None,
+    )
+
+    feminina = runtime.detectar("Como ela está agora?", estado)
+    masculina = runtime.detectar("Como ele está agora?", estado)
+
+    assert feminina == {
+        "intent": "IOT_STATUS",
+        "params": {"acao": "status", "alvo": "lampada_quarto"},
+    }
+    assert masculina == feminina
+
+
 def test_aumentar_brilho_dela_preserva_contexto_e_parte_da_cor_atual():
     estado = {}
     runtime = RuntimeIoT(

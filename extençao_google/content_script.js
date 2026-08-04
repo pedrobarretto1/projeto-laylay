@@ -844,30 +844,96 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
             else if (cmd === "pause" || cmd === "play" || cmd === "pause_play") {
                 const controlAndVerify = async () => {
-                    let currentVideo = video || document.querySelector('video');
+                    const waitFor = async (predicate, timeoutMs, intervalMs = 150) => {
+                        const startedAt = Date.now();
+                        let value = predicate();
+                        while (!value && Date.now() - startedAt < timeoutMs) {
+                            await new Promise((resolve) => setTimeout(resolve, intervalMs));
+                            value = predicate();
+                        }
+                        return value;
+                    };
+                    let currentVideo = video || await waitFor(
+                        () => document.querySelector('video'), 3500
+                    );
                     const shouldPause = cmd === "pause" || (
                         cmd === "pause_play" && currentVideo && !currentVideo.paused
                     );
+                    let failureMessage = "";
+                    let attempts = 0;
                     try {
                         if (currentVideo) {
                             if (shouldPause) currentVideo.pause();
-                            else await currentVideo.play();
+                            else {
+                                attempts += 1;
+                                try {
+                                    await currentVideo.play();
+                                } catch (error) {
+                                    failureMessage = String(
+                                        error?.message || error || "O player recusou o primeiro play"
+                                    );
+                                }
+                            }
                         } else {
                             const playBtn = document.querySelector('.ytp-play-button');
+                            attempts += 1;
                             if (playBtn) playBtn.click();
                             else _dispatchKey("k", "KeyK", 75);
                         }
-                        await new Promise((resolve) => setTimeout(resolve, 300));
-                        currentVideo = document.querySelector('video');
-                        const playing = Boolean(
-                            currentVideo && !currentVideo.paused && !currentVideo.ended
+                        currentVideo = await waitFor(
+                            () => document.querySelector('video'), 2500
                         );
+                        let playing = Boolean(currentVideo && await waitFor(
+                            () => !currentVideo.paused && !currentVideo.ended, 2200
+                        ));
+                        // Alguns players recusam video.play() sem gesto, mas aceitam
+                        // o clique no próprio controle. Fazemos uma única tentativa
+                        // observável e só então classificamos como autoplay bloqueado.
+                        if (!shouldPause && !playing) {
+                            const playBtn = document.querySelector('.ytp-play-button');
+                            attempts += 1;
+                            if (playBtn) playBtn.click();
+                            else if (currentVideo) {
+                                try { await currentVideo.play(); }
+                                catch (error) {
+                                    failureMessage = String(
+                                        error?.message || error || failureMessage
+                                    );
+                                }
+                            }
+                            currentVideo = await waitFor(
+                                () => document.querySelector('video'), 1500
+                            );
+                            playing = Boolean(currentVideo && await waitFor(
+                                () => !currentVideo.paused && !currentVideo.ended, 2500
+                            ));
+                        }
+                        // O YouTube pode iniciar o elemento ainda sem dados suficientes.
+                        // Esperamos um estado reproduzível antes de confirmar o efeito.
+                        if (!shouldPause && playing && currentVideo.readyState < 2) {
+                            await waitFor(
+                                () => currentVideo.readyState >= 2, 1800
+                            );
+                        }
                         const paused = Boolean(currentVideo && currentVideo.paused);
-                        const verified = shouldPause ? paused : playing;
+                        const muted = Boolean(currentVideo && currentVideo.muted);
+                        const volume = currentVideo ? Number(currentVideo.volume) : 0;
+                        const readyState = currentVideo ? Number(currentVideo.readyState) : 0;
+                        const audible = Boolean(playing && !muted && volume > 0 && readyState >= 2);
+                        const verified = shouldPause ? paused : audible;
                         if (sendResponse) sendResponse({
-                            status: verified ? "success" : "autoplay_blocked",
-                            message: verified ? "" : "O navegador não permitiu iniciar o player",
-                            evidence: { playing, paused },
+                            status: verified ? "success" : (
+                                playing ? "playing_muted" : "autoplay_blocked"
+                            ),
+                            message: verified ? "" : (
+                                playing
+                                    ? "O vídeo iniciou, mas o áudio está mudo ou sem volume"
+                                    : (failureMessage || "O navegador não permitiu iniciar o player")
+                            ),
+                            evidence: {
+                                playing, paused, audible, muted, volume,
+                                readyState, attempts,
+                            },
                         });
                     } catch (error) {
                         if (sendResponse) sendResponse({
@@ -880,12 +946,41 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 void controlAndVerify();
             }
             else if (cmd === "next") {
+                const beforeUrl = window.location.href;
+                const beforeTitle = document.title;
+                const beforeVideoId = new URL(beforeUrl).searchParams.get("v") || "";
                 const nextBtn = document.querySelector('.ytp-next-button');
                 if (nextBtn) nextBtn.click();
                 else _dispatchKey("N", "KeyN", 78, { shiftKey: true });
-                if (sendResponse) sendResponse({ status: "success" });
+                const startedAt = Date.now();
+                const verifyNext = () => {
+                    const afterUrl = window.location.href;
+                    const afterTitle = document.title;
+                    const afterVideoId = new URL(afterUrl).searchParams.get("v") || "";
+                    const changed = Boolean(
+                        (afterVideoId && afterVideoId !== beforeVideoId)
+                        || afterUrl !== beforeUrl
+                        || afterTitle !== beforeTitle
+                    );
+                    if (changed || Date.now() - startedAt >= 2800) {
+                        if (sendResponse) sendResponse({
+                            status: changed ? "success" : "state_not_changed",
+                            message: changed ? "" : "A faixa não mudou após o comando",
+                            evidence: {
+                                beforeUrl, afterUrl, beforeVideoId, afterVideoId,
+                                beforeTitle, afterTitle, changed,
+                            },
+                        });
+                        return;
+                    }
+                    setTimeout(verifyNext, 120);
+                };
+                setTimeout(verifyNext, 120);
             }
             else if (cmd === "prev") {
+                const beforeUrl = window.location.href;
+                const beforeTitle = document.title;
+                const beforeVideoId = new URL(beforeUrl).searchParams.get("v") || "";
                 const prevBtn = document.querySelector('.ytp-prev-button');
                 if (prevBtn) {
                     prevBtn.click();
@@ -897,7 +992,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     }, 180);
                 }
                 else _dispatchKey("P", "KeyP", 80, { shiftKey: true });
-                if (sendResponse) sendResponse({ status: "success" });
+                setTimeout(() => {
+                    const afterUrl = window.location.href;
+                    const afterTitle = document.title;
+                    const afterVideoId = new URL(afterUrl).searchParams.get("v") || "";
+                    const changed = Boolean(
+                        (afterVideoId && afterVideoId !== beforeVideoId)
+                        || afterUrl !== beforeUrl
+                        || afterTitle !== beforeTitle
+                    );
+                    if (sendResponse) sendResponse({
+                        status: changed ? "success" : "state_not_changed",
+                        message: changed ? "" : "A faixa anterior não foi observada",
+                        evidence: {
+                            beforeUrl, afterUrl, beforeVideoId, afterVideoId,
+                            beforeTitle, afterTitle, changed,
+                        },
+                    });
+                }, 800);
             }
             else if (cmd === "replay") {
                 if (video) video.currentTime = 0;
@@ -906,7 +1018,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     if (prevBtn) prevBtn.click();
                     else _dispatchKey("P", "KeyP", 80, { shiftKey: true });
                 }
-                if (sendResponse) sendResponse({ status: "success" });
+                setTimeout(() => {
+                    const videoNow = document.querySelector('video');
+                    const currentTime = Number(videoNow?.currentTime || 0);
+                    const restarted = Boolean(videoNow && currentTime <= 2.5);
+                    if (sendResponse) sendResponse({
+                        status: restarted ? "success" : "state_not_changed",
+                        message: restarted ? "" : "O reinício da faixa não foi observado",
+                        evidence: {
+                            currentTime,
+                            restarted,
+                            url: window.location.href,
+                            title: document.title,
+                        },
+                    });
+                }, 350);
             }
         }
     } catch (error) {

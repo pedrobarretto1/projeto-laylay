@@ -21,11 +21,16 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
     saude = dict(diagnostico.get("saude") or {})
     interacao = dict(diagnostico.get("interacao") or {})
     turno = dict(diagnostico.get("turno") or {})
+    contrato_fala = dict(diagnostico.get("contrato_fala") or {})
+    verificador_fala = dict(diagnostico.get("verificador_fala") or {})
     acao = dict(diagnostico.get("ultima_acao") or {})
+    acao_auditoria = dict(diagnostico.get("ultima_acao_auditoria") or {})
     continuidade = dict(diagnostico.get("continuidade_geral") or {})
     problemas = list(saude.get("problemas") or [])
     latencias = dict(diagnostico.get("latencias") or {})
     tamanhos_prompt = dict(diagnostico.get("tamanhos_prompt") or {})
+    orcamento_prompt = dict(diagnostico.get("orcamento_prompt") or {})
+    pendencias_detalhadas = list(diagnostico.get("pendencias_detalhadas") or [])
     falhas = list(diagnostico.get("falhas_recentes") or [])
     falhas_recuperadas = int(diagnostico.get("falhas_recuperadas") or 0)
     falhas_por_classe = dict(diagnostico.get("falhas_por_classe") or {})
@@ -47,6 +52,7 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
     cooperacao = dict(diagnostico.get("orquestracao_cooperativa") or {})
     agenda = dict(diagnostico.get("agenda") or {})
     pessoas = dict(diagnostico.get("memoria_pessoas") or {})
+    aprendizado = dict(diagnostico.get("memoria_aprendizado") or {})
     linguagem_natural = dict(diagnostico.get("linguagem_natural") or {})
     fala_operacional = dict(diagnostico.get("fala_operacional") or {})
     pendencia_acao = dict(diagnostico.get("pendencia_acao") or {})
@@ -67,8 +73,33 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             f"execução_autorizada={turno.get('autoriza_execucao')}"
         ),
         (
+            f"  contrato de fala: ativo={bool(contrato_fala.get('ativo'))} "
+            f"função={contrato_fala.get('funcao') or '-'} "
+            f"atos={','.join(contrato_fala.get('atos') or []) or '-'} "
+            f"referente={contrato_fala.get('referente') or '-'} "
+            f"máximo_frases={int(contrato_fala.get('max_frases') or 0)} "
+            f"metáfora={bool(contrato_fala.get('permite_metafora'))} "
+            f"geração={contrato_fala.get('estrategia_concreta') or '-'} "
+            f"núcleo_primeiro={bool(contrato_fala.get('primeira_frase_responde_nucleo'))} "
+            f"cooperação={bool(contrato_fala.get('cooperacao_considerada'))} "
+            "autoriza_execução=False"
+        ),
+        (
+            "  verificador de fala: "
+            f"contratos={int(verificador_fala.get('contratos_verificados') or 0)} "
+            f"aprovados={int(verificador_fala.get('contratos_aprovados') or 0)} "
+            f"rejeitados={int(verificador_fala.get('contratos_rejeitados') or 0)} "
+            f"última_estratégia={verificador_fala.get('ultima_estrategia') or '-'} "
+            f"núcleo_atendido={bool(verificador_fala.get('ultimo_nucleo_atendido'))} "
+            f"problemas={','.join(verificador_fala.get('ultimos_problemas') or []) or '-'} "
+            "autoriza_execução=False"
+        ),
+        (
             f"  última ação: intent={acao.get('intent') or '-'} alvo={acao.get('alvo') or '-'} "
-            f"status={acao.get('status') or '-'} confirmada={acao.get('confirmado')}"
+            f"status={acao.get('status') or '-'} confirmada={acao.get('confirmado')} "
+            f"domínio={acao_auditoria.get('dominio') or '-'} "
+            f"fonte={acao_auditoria.get('fonte') or '-'} "
+            f"coerente={bool(acao_auditoria.get('coerente'))}"
         ),
         (
             f"  continuidade geral: modo={continuidade.get('modo') or 'oficial'} "
@@ -106,6 +137,23 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             f"ação={pendencia_acao.get('acao') or '-'} "
             f"status={pendencia_acao.get('status') or '-'}",
         )
+    for pendencia in pendencias_detalhadas[:8]:
+        idade = (
+            f"{float(pendencia.get('idade_s')):.1f}s"
+            if pendencia.get("idade_s") is not None else "desconhecida"
+        )
+        prazo = (
+            f"{float(pendencia.get('prazo_s')):.1f}s"
+            if pendencia.get("prazo_s") is not None else "sem_prazo"
+        )
+        linhas.insert(
+            7,
+            "  pendência: "
+            f"origem={pendencia.get('origem') or '-'} "
+            f"ação={pendencia.get('acao') or '-'} idade={idade} prazo={prazo} "
+            f"motivo={pendencia.get('motivo') or '-'} "
+            f"status={pendencia.get('status') or '-'}",
+        )
     if habilidades:
         linhas.append(
             "  mapa de habilidades: "
@@ -135,7 +183,21 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
                 f"normalizações={int(tolerancia.get('normalizacoes') or 0)} "
                 f"entradas_corrigidas={int(tolerancia.get('entradas_corrigidas') or 0)} "
                 f"substituições={int(tolerancia.get('substituicoes') or 0)} "
+                "únicas_turno="
+                f"{int(tolerancia.get('normalizacoes_unicas_turno') or 0)} "
+                "reaplicações="
+                f"{int(tolerancia.get('reaplicacoes_identicas') or 0)} "
                 "aproxima_argumentos=False autoriza_execução=False"
+            )
+        nao_resolvida = dict(linguagem_natural.get("ultima_nao_resolvida") or {})
+        if nao_resolvida:
+            linhas.append(
+                "  intenção natural não resolvida: "
+                f"motivo={nao_resolvida.get('motivo') or '-'} "
+                f"moldura={nao_resolvida.get('moldura') or '-'} "
+                f"rota={nao_resolvida.get('rota') or '-'} "
+                f"parecia_operacional={bool(nao_resolvida.get('parecia_operacional'))} "
+                "conteúdo_exposto=False"
             )
         execucao_turno = dict(linguagem_natural.get("execucao_turno") or {})
         if execucao_turno:
@@ -165,6 +227,9 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
                 "  emoção causal operacional: "
                 f"avaliados={int(emocao_causal.get('avaliados') or 0)} "
                 f"expressões={int(emocao_causal.get('expressoes') or 0)} "
+                f"contenções={int(emocao_causal.get('contencoes') or 0)} "
+                f"decisão={_codigo_seguro(emocao_causal.get('ultima_decisao_expressao'), 12)} "
+                f"motivo={_codigo_seguro(ultima_causa.get('motivo_expressao'), 38)} "
                 f"responsabilidade={_codigo_seguro(ultima_causa.get('responsabilidade'), 16)} "
                 f"confiança={round(float(ultima_causa.get('confianca') or 0.0) * 100):.0f}% "
                 f"emoção={_codigo_seguro(ultima_causa.get('emocao'), 16)} "
@@ -253,6 +318,9 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             f"requisições={int(conversa_llm.get('requisicoes') or 0)} "
             f"falhas={int(conversa_llm.get('falhas') or 0)} "
             "memória_exposta=False credencial_exposta=False "
+            f"contratos_rápidos={int(conversa_llm.get('prompts_rapidos') or 0)} "
+            f"consecutivas={int(conversa_llm.get('falhas_consecutivas') or 0)} "
+            f"saúde_backend={conversa_llm.get('estado') or 'desconhecida'} "
             "autoriza_execução=False"
         )
     if composicao_principal:
@@ -303,6 +371,21 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             f"ambiguidades={int(pessoas.get('ambiguidades') or 0)} "
             f"falhas={int(pessoas.get('falhas') or 0)} "
             "persistência_local=True envio_externo=False"
+        )
+    if aprendizado:
+        semanticos = dict(aprendizado.get("semanticos") or {})
+        hipoteses = dict(aprendizado.get("hipoteses") or {})
+        linhas.append(
+            "  memória e aprendizado: "
+            f"disponível={bool(aprendizado.get('disponivel'))} "
+            f"semânticos_ativos={int(semanticos.get('ativo') or 0)} "
+            f"não_verificados={int(semanticos.get('nao_verificado') or 0)} "
+            f"contraditos={int(semanticos.get('contradito') or 0)} "
+            f"hipóteses_ativas={int(hipoteses.get('ativa') or 0)} "
+            f"candidatas={int(hipoteses.get('candidata') or 0)} "
+            f"enfraquecidas={int(hipoteses.get('enfraquecida') or 0)} "
+            f"legados={int(aprendizado.get('legados') or 0)} "
+            "persistência_local=True conteúdo_exposto=False autoriza_execução=False"
         )
     ultima_iniciativa = dict(iniciativa.get("ultima") or {})
     if ultima_iniciativa:
@@ -377,6 +460,18 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             for nome, metrica in sorted(tamanhos_prompt.items())
         ]
         linhas.append("  prompts: " + " | ".join(resumo_prompts))
+    etapas_prompt = dict(orcamento_prompt.get("etapas") or {})
+    for etapa, metrica in sorted(etapas_prompt.items()):
+        linhas.append(
+            f"  orçamento do prompt ({etapa}): "
+            f"brutos={int(metrica.get('brutos') or 0)} "
+            f"selecionados={int(metrica.get('selecionados') or 0)} "
+            f"truncados={int(metrica.get('truncados') or 0)} "
+            f"injetados={int(metrica.get('injetados') or 0)} "
+            f"enviados={int(metrica.get('enviados') or 0)} "
+            f"fecha_seleção={bool(metrica.get('fecha_selecao'))} "
+            f"fecha_envio={bool(metrica.get('fecha_envio'))}"
+        )
     if decisoes:
         ultima = decisoes[-1]
         motivos = ",".join(ultima.get("motivos") or []) or "sem_motivo"
@@ -385,22 +480,21 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             f"categoria={ultima.get('categoria') or '-'} motivo={motivos}"
         )
     if servicos_background:
-        estados_saudaveis = {"ativo", "finalizado", "encerrado"}
-        ativos = sum(1 for item in servicos_background if item.get("estado") == "ativo")
-        degradados = sum(
-            1 for item in servicos_background
-            if item.get("estado") not in estados_saudaveis
-        )
+        ativos = sum(1 for item in servicos_background if item.get("classe_estado") == "ativos")
+        desativados = sum(1 for item in servicos_background if item.get("classe_estado") == "desativados")
+        encerrados = sum(1 for item in servicos_background if item.get("classe_estado") == "encerrados")
+        degradados = sum(1 for item in servicos_background if item.get("classe_estado") == "degradados")
         quedas = sum(int(item.get("quedas") or 0) for item in servicos_background)
         reinicios = sum(int(item.get("reinicios") or 0) for item in servicos_background)
         orfaos = sum(int(item.get("orfaos") or 0) for item in servicos_background)
         linhas.append(
             "  serviços de fundo: "
             f"total={len(servicos_background)} ativos={ativos} degradados={degradados} "
-            f"quedas={quedas} reinícios={reinicios} órfãos={orfaos}"
+            f"quedas={quedas} reinícios={reinicios} órfãos={orfaos} "
+            f"desativados={desativados} encerrados={encerrados}"
         )
         for servico in servicos_background:
-            if servico.get("estado") in estados_saudaveis:
+            if servico.get("classe_estado") != "degradados":
                 continue
             linhas.append(
                 f"  serviço: {servico.get('nome') or '-'}={servico.get('estado') or '-'} "

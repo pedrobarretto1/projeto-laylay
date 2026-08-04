@@ -118,6 +118,7 @@ class CaixaEntradaPessoalRuntime:
         observar_item: Callable[[dict[str, Any]], Any] | None = None,
         enviar_mensagem: Callable[..., Any] | None = None,
         modelo_llm: Any = None,
+        pendencia_runtime: Any = None,
         agora: Callable[[], dt.datetime] = dt.datetime.now,
         log: Callable[[str], Any] = print,
     ) -> None:
@@ -128,6 +129,7 @@ class CaixaEntradaPessoalRuntime:
         self.contexto_getter = contexto_getter
         self.clipboard_getter = clipboard_getter
         self.observar_item = observar_item
+        self.pendencia_runtime = pendencia_runtime
         self.enviar_mensagem = resolver_enviador_modelo(
             modelo_llm=modelo_llm,
             enviar_mensagem=enviar_mensagem,
@@ -147,7 +149,8 @@ class CaixaEntradaPessoalRuntime:
             except Exception as erro:
                 self.log(f"⚠️ [CAIXA DE ENTRADA] leitura falhou: {type(erro).__name__}")
                 return {"versao": self.VERSAO, "itens": []}
-            itens = dados.get("itens") if isinstance(dados, dict) else []
+            itens_brutos = dados.get("itens") if isinstance(dados, dict) else []
+            itens = itens_brutos if isinstance(itens_brutos, list) else []
             return {
                 "versao": self.VERSAO,
                 "itens": [dict(item) for item in itens if isinstance(item, dict)],
@@ -201,11 +204,42 @@ class CaixaEntradaPessoalRuntime:
         ))
         if pede_registro and refere_discussao:
             return "adicionar_discussao"
+        # "Anota essa ideia" normalmente aponta para a proposta anterior.
+        # Quando, além da proposta, já houve uma sugestão substantiva da
+        # Laylay, o objeto correto é o episódio inteiro — não a última resposta
+        # curta do usuário (por exemplo, "quero um estilo"). Sem sugestão útil,
+        # preservamos o comportamento simples de guardar apenas a fala anterior.
+        pedido_generico_ideia = bool(re.fullmatch(
+            r"(?:anota|anote|guarda|guarde|salva|salve|registra|registre)\s+"
+            r"(?:(?:essa|esta|minha|a)\s+)?ideia[.!?]*",
+            t,
+        ))
+        if pede_registro and pedido_generico_ideia:
+            trecho, _topico = self._recortar_discussao(texto)
+            if (
+                any(
+                    item.get("role") == "user"
+                    and self._parece_proposta_usuario(str(item.get("content") or ""))
+                    for item in trecho
+                )
+                and self._sugestoes_uteis(trecho)
+            ):
+                return "adicionar_discussao"
         if re.search(r"\b(?:apaga|apague|exclui|exclua|remove|remova)\b", t) and re.search(
             r"\b(?:nota|ideia|tarefa|pensamento|item|anotacao|anotação)\b", t
         ):
             return "excluir"
-        if re.search(r"\b(?:quais|mostra|mostre|lista|liste|o que tem|o que guardei|o que anotei)\b", t) and re.search(
+        pedido_natural_de_ideias = bool(re.search(
+            r"\b(?:me\s+)?(?:fala|fale|diz|diga|conta|conte|lembra|lembre)\b"
+            r".{0,28}\b(?:minhas\s+)?(?:ideias|notas|anotacoes|anotações)\b|"
+            r"\b(?:quero|gostaria\s+de)\s+(?:ver|relembrar)\b"
+            r".{0,24}\b(?:minhas\s+)?(?:ideias|notas)\b",
+            t,
+        ))
+        if (pedido_natural_de_ideias or re.search(
+            r"\b(?:quais|mostra|mostre|lista|liste|o que tem|o que guardei|o que anotei)\b",
+            t,
+        )) and re.search(
             r"\b(?:caixa de entrada|nota|notas|ideia|ideias|tarefa|tarefas|anotei|guardei)\b", t
         ):
             return "listar"
@@ -249,6 +283,12 @@ class CaixaEntradaPessoalRuntime:
             conteudo = re.sub(r"\s+", " ", str(item.get("content") or "")).strip()
             if papel not in {"user", "assistant"} or not conteudo:
                 continue
+            if not self._mensagem_evidencia_discussao(papel, conteudo):
+                # Logs, confirmações operacionais e respostas-fallback não
+                # pertencem a uma ideia. Eles encerram o episódio anterior em
+                # vez de virarem matéria-prima do resumo.
+                ignorar_resposta_do_comando = papel == "user"
+                continue
             if papel == "user" and _normalizar(conteudo) == _normalizar(atual):
                 # Uma tentativa anterior do mesmo pedido e a resposta que ela
                 # produziu não fazem parte da ideia discutida.
@@ -261,6 +301,39 @@ class CaixaEntradaPessoalRuntime:
                 ignorar_resposta_do_comando = False
             limpas.append({"role": papel, "content": conteudo[:2000]})
         return limpas
+
+    @staticmethod
+    def _mensagem_evidencia_discussao(papel: str, conteudo: str) -> bool:
+        base = _normalizar(conteudo)
+        if not base:
+            return False
+        if re.match(r"^(?:[🧠⚡🏠🪟🎙️📋❌⚠️]|\[)", conteudo.strip()):
+            return False
+        if re.search(
+            r"\b(?:plano:fase|roteador|janela:|iot:|diagnostico|"
+            r"resultado\]|servicos\]|timeout na llm|llm indisponivel)\b",
+            base,
+        ):
+            return False
+        if papel == "assistant" and re.search(
+            r"\b(?:entendi a acao que voce pediu|nao executei nem confirmei|"
+            r"minha resposta escapou|modelo local demorou|fala tecnica)\b",
+            base,
+        ):
+            return False
+        # Só comandos claramente operacionais são removidos. "quero criar um
+        # avatar" continua sendo uma proposta; "cria um arquivo" não.
+        if papel == "user" and re.match(
+            r"^(?:abre|fecha|liga|desliga|pausa|toca|coloca|cria|apaga|"
+            r"move|organiza|mostra|lista|consulta|cancela)\b",
+            base,
+        ) and re.search(
+            r"\b(?:arquivo|pasta|programa|app|navegador|aba|playlist|"
+            r"musica|luz|lampada|ventilador|lembrete|email)\b",
+            base,
+        ):
+            return False
+        return True
 
     @staticmethod
     def _parece_proposta_usuario(conteudo: str) -> bool:
@@ -323,6 +396,97 @@ class CaixaEntradaPessoalRuntime:
             return [], topico
         return trecho, topico
 
+    def _confianca_discussao(
+        self, trecho: list[dict[str, str]], topico: str
+    ) -> tuple[float, str]:
+        """Mede se há um episódio de ideia, não apenas falas soltas recentes."""
+        if not trecho:
+            return 0.0, "sem_conversa"
+        ideia = self._ideia_principal(trecho)
+        sugestoes = self._sugestoes_uteis(trecho)
+        aspiracao_clara = bool(re.search(
+            r"\b(?:quero|queria|preciso|vamos)\b.{0,80}\b(?:avatar|modo|projeto|versao|versão|skin|ideia)\b",
+            _normalizar(ideia),
+        ))
+        if not ideia or not (self._parece_proposta_usuario(ideia) or (aspiracao_clara and sugestoes)):
+            return 0.25 if topico else 0.0, "sem_proposta_atual"
+        decisoes = [
+            item for item in trecho
+            if item["role"] == "user" and re.search(
+                r"\b(?:vamos|fechado|decid|gostei|prefiro|pode fazer)\b",
+                _normalizar(item["content"]),
+            )
+        ]
+        confianca = 0.62 + (0.22 if sugestoes else 0.0) + (0.10 if topico else 0.0) + (0.08 if decisoes else 0.0)
+        return min(1.0, confianca), "episodio_atual" if confianca >= 0.70 else "evidencia_insuficiente"
+
+    def _pedir_confirmacao_discussao(
+        self, texto: str, trecho: list[dict[str, str]], topico: str, motivo: str
+    ) -> bool:
+        pendencia = self.pendencia_runtime
+        registrar = getattr(pendencia, "registrar", None)
+        if not callable(registrar):
+            self.falar(
+                "Encontrei pedaços de conversa, mas não uma ideia atual com segurança. Me diz qual assunto você quer guardar.",
+                "calma", 1,
+            )
+            return True
+        pergunta = "Encontrei mais de um assunto ou pouca evidência da ideia atual. Confirma que quer salvar esse episódio mesmo?"
+        nova = registrar(
+            origem="caixa_entrada_pessoal",
+            acao="salvar_discussao",
+            pergunta=pergunta,
+            referencia=str(topico or "discussao")[:160],
+            metadados={"trecho": trecho[-10:], "topico": topico[:120], "motivo": motivo},
+            ttl_s=180.0,
+        )
+        if not nova:
+            self.falar("Já existe uma confirmação em andamento. Vamos fechar aquela antes de guardar outra ideia.", "calma", 1)
+            return True
+        self._registrar(
+            {"intent": "INBOX_ADD_DISCUSSION", "params": {"alvo": str(topico or "discussão")[:180]}},
+            texto, False, status="aguardando_confirmacao",
+        )
+        self.falar(pergunta, "calma", 1)
+        return True
+
+    def _resolver_pendencia_discussao(self, texto: str) -> bool:
+        pendencia_runtime = self.pendencia_runtime
+        obter = getattr(pendencia_runtime, "obter", None)
+        resolver = getattr(pendencia_runtime, "resolver", None)
+        concluir = getattr(pendencia_runtime, "concluir", None)
+        if not (callable(obter) and callable(resolver) and callable(concluir)):
+            return False
+        atual = obter()
+        if not isinstance(atual, dict) or str(atual.get("origem") or "") != "caixa_entrada_pessoal" or str(atual.get("acao") or "") != "salvar_discussao":
+            return False
+        resolucao = resolver(texto)
+        if not resolucao.get("tratado"):
+            return False
+        item = dict(resolucao.get("pendencia") or {})
+        pendencia_id = str(item.get("id") or "")
+        if resolucao.get("status") == "recusar":
+            concluir(pendencia_id, "recusada")
+            self._registrar({"intent": "CANCEL_INBOX_ACTION", "params": {}}, texto, True, status="cancelado")
+            self.falar("Tudo bem, não guardei uma conversa que eu não consegui identificar direito.", "calma", 1)
+            return True
+        if resolucao.get("status") != "aceitar":
+            return True
+        metadados = dict(item.get("metadados") or {})
+        trecho = [
+            {"role": str(fala.get("role") or ""), "content": str(fala.get("content") or "")}
+            for fala in list(metadados.get("trecho") or [])
+            if isinstance(fala, dict) and str(fala.get("role") or "") in {"user", "assistant"}
+        ]
+        tratado = self._adicionar_discussao(
+            texto,
+            trecho_forcado=trecho,
+            topico_forcado=str(metadados.get("topico") or ""),
+            confirmado=True,
+        )
+        concluir(pendencia_id, "concluida")
+        return tratado
+
     @staticmethod
     def _titulo_discussao(topico: str, ideia: str) -> str:
         ideia_norm = _normalizar(ideia)
@@ -360,7 +524,11 @@ class CaixaEntradaPessoalRuntime:
     @staticmethod
     def _sugestoes_uteis(trecho: list[dict[str, str]]) -> list[str]:
         sugestoes: list[str] = []
+        fala_usuario_anterior = ""
         for item in trecho:
+            if item["role"] == "user":
+                fala_usuario_anterior = str(item["content"] or "")
+                continue
             if item["role"] != "assistant":
                 continue
             fala = re.sub(r"\s+", " ", item["content"]).strip()
@@ -371,16 +539,36 @@ class CaixaEntradaPessoalRuntime:
                 base,
             ):
                 continue
+            pedido_sugestao_anterior = bool(re.search(
+                r"^(?:quero|me (?:manda|da|dá|sugere|mostra)|"
+                r"pode (?:me )?(?:dar|da|dá|sugerir|mandar|mostrar)|"
+                r"qual|quais)\b.{0,80}\b(?:estilo|ideia|sugestao|sugestão|"
+                r"opcao|opção|cor|cores|aparencia|aparência|skin|versao|versão)\b",
+                _normalizar(fala_usuario_anterior),
+            ))
             partes = re.split(r"(?<=[.!?])\s+|\s+[—-]\s+", fala)
             candidatas = [
                 parte.strip(" -") for parte in partes
                 if re.search(
-                    r"\b(?:podemos|posso|sugiro|adicionar|criar|fazer|usar|"
+                    r"\b(?:podemos|posso|sugiro|sugestao|sugestão|talvez|recomendo|"
+                    r"eu iria|ficaria|adicionar|criar|fazer|usar|"
                     r"uma (?:skin|versao|versão|com)|descri(?:cao|ção))\b",
                     _normalizar(parte),
                 )
                 and not parte.strip().endswith("?")
             ]
+            if pedido_sugestao_anterior and not candidatas:
+                candidatas = [
+                    parte.strip(" -")
+                    for parte in partes
+                    if len(parte.split()) >= 4
+                    and not parte.strip().endswith("?")
+                    and not re.search(
+                        r"\b(?:nao sei|não sei|nao entendi|não entendi|"
+                        r"me fala de outro jeito|resposta escapou)\b",
+                        _normalizar(parte),
+                    )
+                ][:2]
             if candidatas:
                 sugestao = " ".join(candidatas)[:360]
                 if _normalizar(sugestao) not in {_normalizar(valor) for valor in sugestoes}:
@@ -528,12 +716,12 @@ class CaixaEntradaPessoalRuntime:
             r"^(?:(?:essa|esta|uma|a|esse|este|um|o|minha|meu)\s+)?"
             r"(?:ideia|nota|tarefa|pensamento|link)?\s*",
             "", conteudo, flags=re.IGNORECASE,
-        ).strip(" ,:-")
+        ).strip(" .,!?:;-")
         conteudo = re.sub(
             r"\s+(?:na|no|para a|em)\s+(?:minha\s+)?(?:caixa de entrada|anotacoes|anotações|notas)\s*$",
             "", conteudo, flags=re.IGNORECASE,
-        ).strip(" ,:-")
-        generico = not conteudo or _normalizar(conteudo) in {
+        ).strip(" .,!?:;-")
+        generico = not conteudo or not re.search(r"[A-Za-zÀ-ÿ0-9]", conteudo) or _normalizar(conteudo) in {
             "isso", "essa", "ela", "essa ideia", "essa nota", "esse pensamento",
         } or bool(re.match(r"^(?:isso|essa ideia|essa nota)\s+para\s+eu\s+ver\b", _normalizar(conteudo)))
         if generico:
@@ -558,7 +746,7 @@ class CaixaEntradaPessoalRuntime:
             return True
         agora = self.agora()
         tipo = _classificar_tipo(conteudo, texto)
-        item = {
+        item: dict[str, Any] = {
             "id": uuid.uuid4().hex[:10],
             "tipo": tipo,
             "conteudo": conteudo,
@@ -579,7 +767,7 @@ class CaixaEntradaPessoalRuntime:
         }
         self._registrar(resultado, texto, ok, status="nota_guardada" if ok else "falha_execucao")
         if ok:
-            self._ultimo_id = item["id"]
+            self._ultimo_id = str(item["id"])
             if callable(self.observar_item):
                 try:
                     self.observar_item(dict(item))
@@ -591,8 +779,18 @@ class CaixaEntradaPessoalRuntime:
             self.falar("Entendi a nota, mas o arquivo não confirmou a gravação.", "calma", 1)
         return True
 
-    def _adicionar_discussao(self, texto: str) -> bool:
-        trecho, topico = self._recortar_discussao(texto)
+    def _adicionar_discussao(
+        self,
+        texto: str,
+        *,
+        trecho_forcado: list[dict[str, str]] | None = None,
+        topico_forcado: str = "",
+        confirmado: bool = False,
+    ) -> bool:
+        trecho, topico = (
+            (list(trecho_forcado or []), str(topico_forcado or ""))
+            if trecho_forcado is not None else self._recortar_discussao(texto)
+        )
         if not trecho:
             self.falar(
                 "Não achei uma discussão recente para resumir. Me diz qual ideia você quer guardar.",
@@ -608,6 +806,10 @@ class CaixaEntradaPessoalRuntime:
                 2,
             )
             return True
+
+        confianca, motivo = self._confianca_discussao(trecho, topico)
+        if not confirmado and confianca < 0.70:
+            return self._pedir_confirmacao_discussao(texto, trecho, topico, motivo)
 
         try:
             estrutura = self._resumir_discussao_llm(trecho, topico)
@@ -821,6 +1023,8 @@ class CaixaEntradaPessoalRuntime:
         return True
 
     def processar(self, texto: str) -> bool:
+        if self._resolver_pendencia_discussao(texto):
+            return True
         operacao = self.detectar(texto)
         if not operacao:
             return False
@@ -849,7 +1053,10 @@ class CaixaEntradaPessoalRuntime:
     def reexecutar(self, resultado: dict[str, Any], texto: str) -> bool:
         """Executa novamente apenas consultas consideradas seguras pela mente."""
         intent = str(resultado.get("intent") or "").upper().strip()
-        params = resultado.get("params") if isinstance(resultado.get("params"), dict) else {}
+        params: dict[str, Any] = (
+            dict(resultado.get("params") or {})
+            if isinstance(resultado.get("params"), dict) else {}
+        )
         if intent != "INBOX_LIST":
             return False
         return self._listar(str(params.get("filtro") or texto))

@@ -43,7 +43,9 @@ _DESCRICAO_DOMINIO = {
     ),
     "arquivos": (
         "pesquisar arquivos localmente por nome, caminho, conteúdo, tipo, significado e data; "
-        "abrir um resultado escolhido; criar, mover, renomear, restaurar ou enviar itens à lixeira"
+        "abrir um resultado escolhido; criar, mover, renomear, restaurar ou enviar itens à lixeira. "
+        "Trocar uma extensão textual, como .txt por .md, é uma renomeação do arquivo e não "
+        "uma conversão automática do conteúdo"
     ),
     "email": (
         "sincronizar e consultar emails; reunir emails, agenda, lembretes e alertas "
@@ -64,6 +66,11 @@ _DESCRICAO_DOMINIO = {
         "aprender pessoas e relações afirmadas explicitamente pelo usuário; consultar quem são, "
         "recordar fatos confirmados com proveniência, corrigir relações antigas e esquecer um "
         "perfil somente após confirmação"
+    ),
+    "memoria": (
+        "consultar aprendizados persistentes e locais sobre o usuário; distinguir o que foi "
+        "confirmado diretamente, o que é apenas um padrão maduro e o que veio de registros "
+        "antigos; omitir hipóteses fracas, contraditas ou não verificadas"
     ),
     "cooperacao": (
         "combinar habilidades por um plano único; compartilhar referências temporárias sem "
@@ -91,6 +98,7 @@ _TERMOS_DOMINIO = {
     "agenda": ("lembrete", "agenda", "agendar", "compromisso", "horario"),
     "arquivos": (
         "arquivo", "pasta", "lixeira", "renome", "mover", "documento",
+        "extensao", "extensão", "formato", ".txt", ".md", "markdown",
         "encontra o arquivo", "procura nos arquivos", "codigo que controla",
         "arquivos falam", "imagem que usei",
     ),
@@ -115,6 +123,13 @@ _TERMOS_DOMINIO = {
         "o que sabe sobre", "o que lembra sobre", "minha irma", "meu irmao",
         "minha amiga", "meu amigo", "minha mae", "meu pai", "esquece sobre",
         "minha namorada", "meu namorado", "minha esposa", "meu marido",
+    ),
+    "memoria": (
+        "memoria sobre mim", "memória sobre mim", "consulta sua memoria",
+        "consulta sua memória", "aprendeu comigo",
+        "aprendeu sobre mim", "guardou sobre mim", "lembra sobre mim",
+        "lembra que eu", "o que eu te ensinei", "o que eu te contei",
+        "seus aprendizados", "aprendizados sobre mim",
     ),
     "cooperacao": (
         "combinar habilidades", "usar habilidades juntas", "orquestracao",
@@ -392,6 +407,17 @@ class MapaHabilidadesRuntime:
                 "O índice fica só na memória, não envia seus arquivos para a internet e a busca não altera nada. "
                 "Depois você pode pedir naturalmente para abrir um dos resultados."
             )
+        if "arquivos" in dominios and re.search(
+            r"\b(?:renome|mud|troc|alter)\w*\b.*\b(?:nome|tipo|extensao|formato)\b|"
+            r"\b(?:extensao|formato)\b.*\b(?:renome|mud|troc|alter)\w*\b",
+            t,
+        ):
+            return (
+                "Consigo renomear um arquivo recente e trocar extensões textuais conhecidas, "
+                "como .txt por .md. Isso muda o nome e o tipo indicado pela extensão, mas não "
+                "converte o conteúdo. O executor confere o caminho de origem e o novo nome antes "
+                "de eu confirmar o resultado."
+            )
         if ("sistema" in dominios or "navegador" in dominios) and re.search(r"\b(?:fech|encerr)\w*\b", t):
             return "Consigo. Posso fechar o programa, navegador ou aba quando você fizer o pedido direto."
         if "navegador" in dominios:
@@ -461,6 +487,14 @@ class MapaHabilidadesRuntime:
                 "Consigo lembrar pessoas e relações que você me contar explicitamente, consultar fatos "
                 "confirmados sobre elas e corrigir uma relação antiga sem manter as duas como verdade. "
                 "Esses perfis ficam locais, não são enviados para fora e eu só os esqueço após sua confirmação."
+            )
+        if "memoria" in dominios:
+            return (
+                "Consigo consultar o que aprendi sobre você na memória persistente local. Eu separo "
+                "o que você confirmou diretamente de padrões que só amadureceram com evidências e "
+                "de registros antigos; hipóteses fracas, contraditas ou não verificadas não viram "
+                "fatos na resposta. O contexto desta conversa é temporário e não é automaticamente "
+                "uma memória durável. Consultar essa memória é somente leitura e não autoriza ações."
             )
         if "cooperacao" in dominios:
             return (

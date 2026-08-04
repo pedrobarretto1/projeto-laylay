@@ -317,6 +317,36 @@ class RuntimeIoT:
             tonalidade = "escuro"
 
         alvo_parametro = self._resolver_alvo_texto(t, estado)
+        # Consultar estado é leitura e tem precedência sobre qualquer palavra
+        # que também possa parecer uma descrição de cor. Em particular,
+        # "como está a lâmpada?" nunca deve mandar "está" ao resolvedor livre
+        # de cores nem herdar um ajuste cromático anterior.
+        foco_iot_recente = bool(estado.get("ultimo_dispositivo_iot"))
+        pergunta_estado = bool(
+            re.search(r"\b(?:esta|ta|ficou|continua)\s+(?:ligad[oa]|desligad[oa])\b", t)
+            or (
+                re.search(
+                    r"\b(?:como\s+(?:(?:ele|ela|isso|esse|essa)\s+)?"
+                    r"(?:esta|ta|ficou|continua)|"
+                    r"qual(?:\s+e)?\s+(?:o\s+)?(?:status|estado)|"
+                    r"ver|ve|consulta|status|estado)\b",
+                    t,
+                )
+                and (
+                    re.search(
+                        r"\b(?:dispositivo|aparelho|tomada|ventilador|lampada|luz|iot)\b",
+                        t,
+                    )
+                    or foco_iot_recente
+                    and re.search(r"\b(?:ele|ela|dele|dela|disso)\b", t)
+                )
+            )
+        )
+        if pergunta_estado and alvo_parametro:
+            return {
+                "intent": "IOT_STATUS",
+                "params": {"acao": "status", "alvo": alvo_parametro},
+            }
         # Desligar/apagar é uma ação completa e vence qualquer resíduo textual.
         # Assim, vocativos, ditado imperfeito ou adjetivos posteriores nunca
         # transformam "desliga a luz" em uma pesquisa de cor.
@@ -587,21 +617,12 @@ class RuntimeIoT:
                     },
                 }
 
-        foco_iot_recente = bool(estado.get("ultimo_dispositivo_iot"))
-        pergunta_estado = bool(
-            re.search(r"\b(esta|ta|ficou|continua)\s+(ligad[oa]|desligad[oa])\b", t)
-            or re.search(r"\b(qual|como|ver|ve|consulta|status|estado)\b", t)
-            and (
-                re.search(r"\b(dispositivo|aparelho|tomada|ventilador|lampada|luz|iot)\b", t)
-                or foco_iot_recente and re.search(r"\b(ele|ela|dele|dela|disso)\b", t)
-            )
-        )
         acoes = (
             (r"\b(desliga|desligar|desligue|apaga|apagar)\b", "desligar"),
             (r"\b(liga|ligar|ligue|acende)\b", "ligar"),
             (r"\b(alterna|alternar|troca o estado|muda o estado)\b", "alternar"),
         )
-        acao = "status" if pergunta_estado else ""
+        acao = ""
         if not acao:
             for padrao, nome_acao in acoes:
                 if re.search(padrao, t):

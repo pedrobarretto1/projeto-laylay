@@ -7,6 +7,10 @@ from mente_laylay.especialistas.capacidades import consultar_capacidade, intents
 from mente_laylay.especialistas.operacional import anexar_resultados_operacionais
 from mente_laylay.memoria_mental.resultado_acao import normalizar_resultado_acao
 from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao
+from mente_laylay.personalidade.confirmacao_llm import (
+    _motivo_contrato_invalido,
+    personalizar_confirmacao_llm,
+)
 
 
 def test_todo_intent_documenta_como_confirma_resultado() -> None:
@@ -131,3 +135,75 @@ def test_parecer_operacional_so_libera_conclusao_quando_todos_confirmam() -> Non
     assert parcial["pode_afirmar_conclusao"] is False
     assert parcial["sem_confirmacao"]
     assert completo["pode_afirmar_conclusao"] is True
+
+
+def test_autoria_nao_pode_trocar_identificador_alfanumerico_da_musica() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "MUSIC_SEARCH",
+        "params": {"query": "C418 - Sweden Minecraft Volume Alpha"},
+        "alvo": "C418 - Sweden Minecraft Volume Alpha",
+        "status": "musica_nao_resolvida",
+        "executou": False,
+        "confirmado": False,
+    })
+
+    motivo = _motivo_contrato_invalido(
+        "Não encontrei C410 - Sweden Minecraft Volume Alpha.",
+        resultado=resultado,
+        classe="falha",
+        status_declarado="musica_nao_resolvida",
+        alvo_declarado="C418 - Sweden Minecraft Volume Alpha",
+    )
+
+    assert motivo == "identificador_concreto_divergente"
+
+
+def test_autoria_pode_personalizar_execucao_parcial_sem_pedir_permissao() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "MUSIC_SEARCH",
+        "params": {"query": "C418 - Sweden"},
+        "alvo": "C418 - Sweden",
+        "status": "musica_enviada_sem_confirmacao",
+        "executou": True,
+        "confirmado": None,
+    })
+
+    confirmacao = personalizar_confirmacao_llm(
+        resultado,
+        "Abri C418 - Sweden, mas o player não confirmou a reprodução.",
+        classe="incerto",
+        emocao="calma",
+        nivel=1,
+        enviar_mensagem=lambda *_args, **_kwargs: (
+            '{"fala":"Abri C418 - Sweden, mas o player não confirmou o áudio.",'
+            '"emocao":"calma","nivel":1,'
+            '"status":"musica_enviada_sem_confirmacao",'
+            '"alvo":"C418 - Sweden"}'
+        ),
+        contexto={},
+    )
+
+    assert confirmacao.usada_llm is True
+    assert "não confirmou" in confirmacao.fala.casefold()
+    assert "confirma antes" not in confirmacao.fala.casefold()
+
+
+def test_autoria_rejeita_parcial_que_finge_confirmacao_total() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "MUSIC_SEARCH",
+        "params": {"query": "C418 - Sweden"},
+        "alvo": "C418 - Sweden",
+        "status": "musica_enviada_sem_confirmacao",
+        "executou": True,
+        "confirmado": None,
+    })
+
+    motivo = _motivo_contrato_invalido(
+        "Pronto, C418 - Sweden está tocando.",
+        resultado=resultado,
+        classe="incerto",
+        status_declarado="musica_enviada_sem_confirmacao",
+        alvo_declarado="C418 - Sweden",
+    )
+
+    assert motivo == "incerteza_ocultada"

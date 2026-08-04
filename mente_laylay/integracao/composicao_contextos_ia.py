@@ -57,7 +57,7 @@ _DISPATCHER_GRUPOS = {
     ),
     "musica": (
         "_normalizar_query_musical", "_limpar_nome_playlist",
-        "_buscar_primeiro_video_youtube",
+        "_buscar_primeiro_video_youtube", "_resolver_primeiro_video_youtube",
     ),
     "arquivos": ("executar_intencao",),
     "agenda_email": (
@@ -229,6 +229,7 @@ class ComposicaoContextosIARuntime:
             "aba_titulo_atual": titulo,
             "aba_url_atual": url,
             "turno_atual": dict(mente.get("turno_atual") or {}),
+            "contrato_fala_atual": dict(mente.get("contrato_fala_atual") or {}),
             "nome_usuario": str(mente.get("nome_usuario") or "").strip(),
         }
 

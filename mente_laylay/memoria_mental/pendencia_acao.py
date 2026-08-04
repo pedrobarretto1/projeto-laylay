@@ -65,6 +65,7 @@ class PendenciaAcaoRuntime:
         pergunta: str,
         referencia: str = "",
         metadados: Mapping[str, Any] | None = None,
+        motivo: str = "aguardando_resposta",
         ttl_s: float = 300.0,
     ) -> dict[str, Any] | None:
         origem, acao = str(origem or "").strip(), str(acao or "").strip()
@@ -78,6 +79,7 @@ class PendenciaAcaoRuntime:
             "pergunta": str(pergunta or "").strip()[:300],
             "referencia": str(referencia or "").strip()[:160],
             "metadados": dict(metadados or {}),
+            "motivo": str(motivo or "aguardando_resposta").strip()[:96],
             "status": "ativa",
             "criada_em": instante,
             "expira_em": instante + max(1.0, float(ttl_s or 300.0)),
@@ -178,12 +180,18 @@ class PendenciaAcaoRuntime:
 
     def diagnostico(self) -> dict[str, Any]:
         item = self.obter(incluir_processando=True)
+        agora = float(self._agora())
+        criada_em = float((item or {}).get("criada_em") or 0.0)
+        expira_em = float((item or {}).get("expira_em") or 0.0)
         return {
             "ativa": bool(item),
             "id": str((item or {}).get("id") or ""),
             "origem": str((item or {}).get("origem") or ""),
             "acao": str((item or {}).get("acao") or ""),
             "status": str((item or {}).get("status") or "sem_pendencia"),
+            "idade_s": round(max(0.0, agora - criada_em), 1) if criada_em else None,
+            "prazo_s": round(max(0.0, expira_em - agora), 1) if expira_em else None,
+            "motivo": str((item or {}).get("motivo") or ""),
         }
 
 

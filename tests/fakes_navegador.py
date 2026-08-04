@@ -62,8 +62,34 @@ class NavegadorOperacoesFake:
             payload["target_tab_id"] = tab_id
         return self._registrar("youtube_play", payload)
 
-    def controlar_youtube(self, comando: str) -> bool:
-        return self._registrar("youtube_control", {"command": comando})
+    def tocar_youtube_detalhado(
+        self, url: str, *, tab_id: int | None = None, permitir_foco: bool = False,
+    ) -> dict[str, Any]:
+        ok = self.tocar_youtube(
+            url, tab_id=tab_id, permitir_foco=permitir_foco,
+        )
+        return {
+            "ok": ok, "confirmado": ok,
+            "status": "playing_confirmed" if ok else "falha_execucao",
+        }
+
+    def controlar_youtube(self, comando: str, *, tab_id: int | None = None) -> bool:
+        payload: dict[str, Any] = {"command": comando}
+        if isinstance(tab_id, int):
+            payload["target_tab_id"] = tab_id
+        return self._registrar("youtube_control", payload)
+
+    def controlar_youtube_detalhado(
+        self, comando: str, *, tab_id: int | None = None,
+    ) -> dict[str, Any]:
+        try:
+            ok = self.controlar_youtube(comando, tab_id=tab_id)
+        except TypeError:
+            ok = self.controlar_youtube(comando)
+        return {
+            "ok": ok, "confirmado": ok,
+            "status": "success" if ok else "falha_execucao",
+        }
 
     def fechar_aba(self, alvo: str) -> bool:
         return self._registrar("close_specific_tab", {"target": alvo})

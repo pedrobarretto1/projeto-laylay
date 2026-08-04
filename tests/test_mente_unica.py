@@ -366,6 +366,39 @@ class MenteUnicaTests(unittest.TestCase):
         plano = planejar_resposta_acao(resultado, "Pulando pra seguinte.")
         self.assertIn("não consegui confirmar", plano.fala)
 
+    def test_sem_confirmacao_de_audio_nao_vira_pedido_de_permissao(self) -> None:
+        resultado = ResultadoAcao(
+            intent="MUSIC_SEARCH",
+            status="musica_enviada_sem_confirmacao",
+            alvo="C418 - Sweden",
+            executou=True,
+            confirmado=None,
+        )
+
+        self.assertEqual(classificar_resultado(resultado), "incerto")
+        plano = planejar_resposta_acao(
+            resultado,
+            "Abri C418 - Sweden, mas o player não confirmou a reprodução.",
+        )
+
+        self.assertEqual(plano.classe, "incerto")
+        self.assertIn("abri c418", plano.fala.casefold())
+        self.assertIn("não confirmou", plano.fala.casefold())
+        self.assertNotIn("preciso da sua confirmação", plano.fala.casefold())
+        self.assertEqual(plano.fala.casefold().count("c418"), 1)
+        self.assertNotIn("enviei o comando para", plano.fala.casefold())
+
+    def test_status_de_confirmacao_real_continua_pendente(self) -> None:
+        resultado = ResultadoAcao(
+            intent="DELETE_ITEM",
+            status="aguardando_confirmacao",
+            alvo="teste.txt",
+            executou=False,
+            confirmado=False,
+        )
+
+        self.assertEqual(classificar_resultado(resultado), "pendente")
+
     def test_estado_ja_satisfeito_e_confirmado_sem_fingir_nova_execucao(self) -> None:
         resultado = normalizar_resultado_acao(
             {"intent": "APP_OPEN", "params": {"nome_app": "opera"}},
@@ -2016,7 +2049,7 @@ class MenteUnicaTests(unittest.TestCase):
         parsed = extrair("me lembra de ir pegar um refri daqui 5 minutos")
         self.assertEqual(parsed, {
             "intent": "AGENDAR_LEMBRETE",
-            "params": {"descricao": "ir pegar um refri", "minutos": 5},
+            "params": {"descricao": "ir pegar um refri", "atraso_segundos": 300},
         })
         chamadas_ia = []
         intent, rota = resolver_intencao(
@@ -2057,7 +2090,7 @@ class MenteUnicaTests(unittest.TestCase):
             normalizar_texto,
         )
         self.assertEqual(resultado["intent"], "AGENDAR_LEMBRETE")
-        self.assertEqual(resultado["params"]["descricao"], "participar campeonato")
+        self.assertEqual(resultado["params"]["descricao"], "participar do campeonato")
         self.assertEqual(resultado["params"]["data_hora"], "sexta")
         self.assertNotIn("hora_alvo", resultado["params"])
 

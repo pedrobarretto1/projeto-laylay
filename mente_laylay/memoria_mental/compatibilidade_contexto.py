@@ -36,6 +36,25 @@ def resolver_repeticao_ultima_acao(
     if not texto_pede_repeticao_curta(texto, normalizar_texto_cb):
         return None
     estado = dict(estado_atual or {})
+    # Exclusao bem-sucedida ou aguardando confirmacao nunca e repetida. Uma
+    # tentativa que falhou antes de tocar no disco pode ser refeita porque o
+    # executor ainda exigira a confirmacao canonica se encontrar o item.
+    intent_recente = str(estado.get("ultima_acao_intent") or "").strip().upper()
+    status_recente = str(estado.get("ultima_acao_status") or "").strip().casefold()
+    params_recentes = estado.get("ultima_acao_params")
+    falhas_retentaveis_exclusao = {
+        "falha_execucao", "nao_encontrado", "alvo_ambiguo",
+        "referencia_nao_resolvida", "falhou",
+    }
+    if (
+        intent_recente == "DELETE_ITEM"
+        and status_recente in falhas_retentaveis_exclusao
+        and estado.get("ultima_acao_ok") is not True
+        and estado.get("ultima_acao_confirmada") is not True
+        and isinstance(params_recentes, dict)
+        and str(params_recentes.get("alvo") or "").strip()
+    ):
+        return {"intent": "DELETE_ITEM", "params": dict(params_recentes)}
     oficial = selecionar_continuidade_por_classe(
         estado,
         classe="operacional",

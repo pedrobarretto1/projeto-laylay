@@ -1136,6 +1136,32 @@ class DialogosComunicacaoTests(unittest.TestCase):
             "Rubel - Quando Bate Aquela Saudade",
         )
 
+    def test_explicar_isso_prioriza_ultima_fala_real_sobre_rotulo_antigo(self) -> None:
+        mente = estado_mental_inicial()
+        mente.update({
+            "ultima_afirmacao": "Eu prefiro rock.",
+            "ultima_resposta": (
+                "O erro de sincronização indica que o serviço perdeu o contato "
+                "com o servidor durante a operação."
+            ),
+            "continuidade_fala_ts": time.time(),
+        })
+
+        selecao = selecionar_contexto_turno(
+            "Me explica isso de forma simples.",
+            turno=classificar_modalidade_turno(
+                "Me explica isso de forma simples."
+            ),
+            mente=mente,
+        )
+
+        ultima = next(
+            item for item in selecao["selecionados"]
+            if item["origem"] == "ultima_fala"
+        )
+        self.assertIn("erro de sincronização", ultima["conteudo"])
+        self.assertNotIn("prefiro rock", ultima["conteudo"])
+
     def test_jornada_comando_misto_preserva_conversa_e_executa_so_a_acao(self) -> None:
         turno = classificar_modalidade_turno("tô cansado, coloca uma música calma")
         self.assertEqual(turno["ato_principal"], "comando")
@@ -1255,7 +1281,7 @@ class DialogosComunicacaoTests(unittest.TestCase):
     def test_finalizacao_verifica_fala_antes_de_emitir(self) -> None:
         falas = []
         mensagens = []
-        finalizar_execucao_resposta_ia(
+        resultado = finalizar_execucao_resposta_ia(
             {
                 "messages": mensagens,
                 "current_emotion": "calma",
@@ -1278,6 +1304,37 @@ class DialogosComunicacaoTests(unittest.TestCase):
         )
         self.assertEqual(falas, ["Resposta ajustada ao turno."])
         self.assertEqual(mensagens[-1]["content"], "Resposta ajustada ao turno.")
+        self.assertEqual(resultado["fala"], "Resposta ajustada ao turno.")
+        self.assertTrue(resultado["registrar_no_historico"])
+
+    def test_finalizacao_entrega_contingencia_em_vez_de_encerrar_muda(self) -> None:
+        falas = []
+        resultado = finalizar_execucao_resposta_ia(
+            {
+                "messages": [{"role": "user", "content": "eu gosto de rock"}],
+                "current_emotion": "calma",
+                "emotion_level": 1,
+                "enviar_mensagem": lambda *_args, **_kwargs: "",
+                "limpar_resposta_da_ia": lambda texto: (texto, []),
+                "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+                "verificar_fala_turno": lambda _fala, **_kwargs: {
+                    "aceita": False,
+                    "fala": "",
+                    "fala_contingencia": "Peguei: você gosta de rock.",
+                },
+                "_falhas_consecutivas": {},
+            },
+            [],
+            [],
+            "Resposta incoerente.",
+            False,
+            False,
+            False,
+        )
+
+        self.assertEqual(falas, ["Peguei: você gosta de rock."])
+        self.assertEqual(resultado["fala"], "Peguei: você gosta de rock.")
+        self.assertTrue(resultado["registrar_no_historico"])
 
     def test_finalizacao_usa_modelo_tipado_na_autocorrecao(self) -> None:
         pedidos = []

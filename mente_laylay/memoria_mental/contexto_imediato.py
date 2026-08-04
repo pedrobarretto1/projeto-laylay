@@ -74,7 +74,11 @@ def referencia_contextual_imediata(
         dominio_pedido = "site"
     elif re.search(r"\b(pausa|despausa|proxima|próxima|anterior|musica|música|faixa|playlist|toca|replay)\b", texto_norm):
         dominio_pedido = "musica"
-    elif re.search(r"\b(arquivo|pasta|diretorio|diretório|texto|\.txt)\b", texto_norm):
+    elif re.search(
+        r"\b(arquivo|pasta|diretorio|diretório|texto|extensao|extensão|formato|markdown)\b|"
+        r"\.(?:txt|md)\b",
+        texto_norm,
+    ):
         dominio_pedido = "arquivo"
     elif re.search(r"\b(liga|ligar|desliga|desligar|estado|status)\b", texto_norm) and re.search(
         r"\b(ele|ela|isso|dispositivo|aparelho|tomada|ventilador|luz|lampada|lâmpada)\b", texto_norm
@@ -208,6 +212,81 @@ def resolver_comando_acao_geral_contextual(
     tipo_ref = str(contexto_ref.get("tipo") or "").strip().lower()
     alvo_ref = str(contexto_ref.get("alvo") or "").strip()
     ultima_playlist = str(ultima_playlist or "").strip()
+
+    if tipo_ref == "pessoas" and alvo_ref and re.fullmatch(
+        r"(?:e\s+)?(?:o\s+que\s+mais|tem\s+mais|mais\s+alguma\s+coisa|"
+        r"me\s+fala\s+mais)[?.!]*",
+        t,
+    ):
+        return {
+            "intent": "PEOPLE_QUERY",
+            "params": {
+                "nome": alvo_ref,
+                "modo": "complemento",
+                "referencia_contextual": True,
+            },
+        }
+
+    if tipo_ref == "memoria":
+        consulta = str(
+            ultimo_params.get("query") or ultimo_params.get("consulta") or ""
+        ).strip()
+        try:
+            limite = max(1, min(5, int(ultimo_params.get("limit") or 3)))
+        except (TypeError, ValueError):
+            limite = 3
+        try:
+            offset = max(0, int(ultimo_params.get("offset") or 0))
+        except (TypeError, ValueError):
+            offset = 0
+        if re.fullmatch(
+            r"(?:e\s+)?(?:o\s+que\s+mais|tem\s+mais|mais\s+alguma\s+coisa|"
+            r"quais\s+outros|mostra\s+mais|me\s+fala\s+mais)[?.!]*",
+            t,
+        ):
+            return {
+                "intent": "LEARNING_QUERY",
+                "params": {
+                    "query": consulta, "limit": limite, "offset": offset + limite,
+                    "modo": "listar", "referencia_contextual": True,
+                },
+            }
+        complemento = re.fullmatch(
+            r"(?:e\s+)?(?:de|do|da|dos|das)\s+(?P<tema>.+?)[?.!]*",
+            t,
+        )
+        if complemento and consulta:
+            tema = str(complemento.group("tema") or "").strip(" .?!")
+            consulta_continuada = re.sub(
+                r"\b(?:de|do|da|dos|das)\s+.+$",
+                f"de {tema}",
+                consulta,
+                flags=re.IGNORECASE,
+            )
+            if consulta_continuada == consulta:
+                consulta_continuada = tema
+            return {
+                "intent": "LEARNING_QUERY",
+                "params": {
+                    "query": consulta_continuada,
+                    "limit": 1,
+                    "offset": 0,
+                    "modo": "verificar",
+                    "referencia_contextual": True,
+                },
+            }
+        if re.fullmatch(
+            r"(?:isso\s+)?(?:ainda\s+vale|continua\s+valendo|esta\s+certo|"
+            r"está\s+certo)[?.!]*",
+            t,
+        ) and consulta:
+            return {
+                "intent": "LEARNING_QUERY",
+                "params": {
+                    "query": consulta, "limit": 1, "offset": 0,
+                    "modo": "verificar", "referencia_contextual": True,
+                },
+            }
 
     # Consultas elipticas usam apenas uma playlist realmente resolvida pela
     # continuidade. Em qualquer outro dominio, nao herdamos uma playlist
@@ -893,14 +972,17 @@ class ContextoImediatoRuntime:
         estrutura = ns["_estrutura_arquivo_recente"](900.0)
         mente = self._estado().mental
         verbo_arquivo = bool(re.search(
-            r"\b(apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir|cria|criar|move|mover|renomeia|renomear)\b",
+            r"\b(apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir|cria|criar|"
+            r"move|mover|renomeia|renomear|muda|mudar|troca|trocar|altera|alterar)\b",
             t,
         ))
         contexto_arquivo = bool(
-            re.search(r"\b(pasta|arquivo|documento|txt)\b", t)
+            re.search(r"\b(pasta|arquivo|documento|txt|md|markdown|extensao|formato)\b", t)
             or estrutura
             or str(mente.get("ultima_habilidade") or "").lower() in {"arquivo", "arquivos"}
-            or str(mente.get("ultima_intencao") or "").upper() in {"CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "MOVE_ITEM"}
+            or str(mente.get("ultima_intencao") or "").upper() in {
+                "CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "MOVE_ITEM", "FILE_TRANSACTION",
+            }
         )
         if verbo_arquivo and contexto_arquivo:
             resolvedores = [

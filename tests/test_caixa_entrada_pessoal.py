@@ -63,6 +63,104 @@ def test_essa_ideia_recupera_contexto_anterior_sem_salvar_o_comando(tmp_path):
     assert item["origem"] == "conversa"
 
 
+def test_anota_essa_ideia_com_ponto_recupera_fala_anterior(tmp_path) -> None:
+    mensagens = [
+        {
+            "role": "user",
+            "content": "Acho que seria legal criar uma nova aparência para o avatar.",
+        },
+        {"role": "assistant", "content": "Quer que eu sugira algo rápido?"},
+    ]
+    runtime, *_ = criar_runtime(tmp_path, mensagens=mensagens)
+
+    assert runtime.processar("Anota essa ideia.") is True
+
+    item = itens_salvos(tmp_path)[0]
+    assert item["conteudo"] == (
+        "Acho que seria legal criar uma nova aparência para o avatar."
+    )
+    assert item["origem"] == "conversa"
+
+
+def test_anota_essa_ideia_salva_proposta_e_sugestao_em_vez_da_continuacao_curta(
+    tmp_path,
+) -> None:
+    mensagens = [
+        {
+            "role": "user",
+            "content": "Acho que seria legal criar uma aparência espacial para o avatar.",
+        },
+        {
+            "role": "assistant",
+            "content": "Interessante! Quer que eu sugira um estilo ou cores pra começar?",
+        },
+        {"role": "user", "content": "quero um estilo"},
+        {
+            "role": "assistant",
+            "content": (
+                "Talvez algo com luzes suaves, bordas leves e um olho que "
+                "brilha como estrela. Tipo um ser do espaço com um toque de humor."
+            ),
+        },
+    ]
+    runtime, *_ = criar_runtime(tmp_path, mensagens=mensagens)
+
+    assert runtime.processar("Anota essa ideia.") is True
+
+    item = itens_salvos(tmp_path)[0]
+    assert item["tipo"] == "ideia_discutida"
+    assert item["ideia_original"] == (
+        "Acho que seria legal criar uma aparência espacial para o avatar."
+    )
+    assert item["conteudo"] != "quero um estilo"
+    assert item["sugestoes_laylay"] == [
+        "Talvez algo com luzes suaves, bordas leves e um olho que brilha como estrela."
+    ]
+    assert item["origem"] == "conversa_resumida"
+
+
+def test_anota_ideia_reconhece_estilo_direto_como_sugestao_da_laylay(
+    tmp_path,
+) -> None:
+    mensagens = [
+        {
+            "role": "user",
+            "content": "Acho que seria legal criar uma aparência espacial para o avatar.",
+        },
+        {
+            "role": "assistant",
+            "content": (
+                "Espacial? Como um drone de colete com luvas de neblina? "
+                "Tá, mas só se for com cara de eu sei o que estou fazendo."
+            ),
+        },
+        {"role": "user", "content": "Quero um estilo."},
+        {
+            "role": "assistant",
+            "content": (
+                "Cinza metálico com reflexos de estrelas, como se fosse um robô "
+                "que só falava em frases curtas e com sotaque de outro planeta."
+            ),
+        },
+    ]
+    runtime, *_ = criar_runtime(tmp_path, mensagens=mensagens)
+
+    assert runtime.processar("Anota essa ideia.") is True
+
+    item = itens_salvos(tmp_path)[0]
+    assert item["tipo"] == "ideia_discutida"
+    assert item["ideia_original"].startswith(
+        "Acho que seria legal criar uma aparência espacial"
+    )
+    assert item["sugestoes_laylay"] == [
+        (
+            "Cinza metálico com reflexos de estrelas, como se fosse um robô "
+            "que só falava em frases curtas e com sotaque de outro planeta."
+        ),
+    ]
+    assert item["conteudo"] != "Quero um estilo."
+
+
 def test_guarda_isso_para_amanha_usa_contexto_e_data_de_revisao(tmp_path):
     mensagens = [{"role": "user", "content": "Pesquisar um microfone melhor"}]
     runtime, *_ = criar_runtime(tmp_path, mensagens=mensagens)

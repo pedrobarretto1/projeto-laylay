@@ -10,7 +10,8 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Dict
 
-from mente_laylay.memoria_mental.continuidade_geral import selecionar_continuidade
+from mente_laylay.arquivos.nome_natural import nome_com_nova_extensao_textual
+from mente_laylay.memoria_mental.continuidade_geral import selecionar_referente_saliente
 
 
 @dataclass(frozen=True)
@@ -97,7 +98,9 @@ def _acao_semantica(tokens: list[str]) -> str:
         return "RETROCEDER"
     if _tem_radical(tokens, "mov", "transfer"):
         return "MOVER"
-    if _tem_radical(tokens, "renome", "mud") and set(tokens).intersection({"nome", "chama", "chamado"}):
+    if _tem_radical(tokens, "renome", "mud", "troc", "alter") and set(tokens).intersection(
+        {"nome", "chama", "chamado", "tipo", "extensao", "formato"}
+    ):
         return "RENOMEAR"
     if _tem_radical(tokens, "minimiz"):
         return "MINIMIZAR"
@@ -113,6 +116,9 @@ def _acao_da_intencao(intent: str, params: Dict[str, Any] | None = None) -> str:
         return "REMOVER"
     if intent == "MOVE_ITEM":
         return "MOVER"
+    if intent == "FILE_TRANSACTION":
+        operacao = str(dados.get("operacao") or "").casefold()
+        return "RENOMEAR" if operacao == "renomear" else "MOVER" if operacao == "mover" else ""
     if intent in {"APP_OPEN", "OPEN_URL"}:
         return "ABRIR"
     if intent in {"CLOSE_APP", "CLOSE_TAB"}:
@@ -157,13 +163,16 @@ def _acao_aprendida_para_contexto(
     suportadas = {
         "CRIAR", "REMOVER", "ABRIR", "FECHAR", "LIGAR", "DESLIGAR",
         "PAUSAR", "RETOMAR", "EXECUTAR", "AVANCAR", "RETROCEDER",
+        "RENOMEAR", "MOVER",
     }
     return acao if acao in suportadas else ""
 
 
 def _dominio_explicito(tokens: list[str]) -> str:
     conjunto = set(tokens)
-    if conjunto.intersection({"pasta", "arquivo", "documento", "txt"}):
+    if conjunto.intersection({
+        "pasta", "arquivo", "documento", "txt", "md", "markdown", "extensao", "formato",
+    }):
         return "arquivo"
     if conjunto.intersection({"ventilador", "tomada", "lampada", "luz", "dispositivo"}):
         return "iot"
@@ -177,14 +186,17 @@ def _dominio_explicito(tokens: list[str]) -> str:
 
 
 def _dominio_contextual(mente: Dict[str, Any], estrutura: Dict[str, Any]) -> tuple[str, float]:
-    continuidade = selecionar_continuidade(mente, ttl_s=900.0)
+    continuidade = selecionar_referente_saliente(mente, ttl_s=900.0)
     dominio_canonico = str(continuidade.get("dominio") or "").strip().casefold()
     dominio_canonico = {"arquivos": "arquivo"}.get(dominio_canonico, dominio_canonico)
     if dominio_canonico in {"arquivo", "app", "site", "iot", "musica"}:
         return dominio_canonico, 0.96
     candidatos: list[tuple[str, float]] = []
     agora = time.time()
-    focos = mente.get("focos_por_dominio") if isinstance(mente.get("focos_por_dominio"), dict) else {}
+    focos: dict[str, Any] = (
+        dict(mente.get("focos_por_dominio") or {})
+        if isinstance(mente.get("focos_por_dominio"), dict) else {}
+    )
     for dominio, foco in focos.items():
         if not isinstance(foco, dict):
             continue
@@ -203,7 +215,9 @@ def _dominio_contextual(mente: Dict[str, Any], estrutura: Dict[str, Any]) -> tup
     if not candidatos:
         habilidade = str(mente.get("ultima_habilidade") or "").casefold()
         intent = str(mente.get("ultima_acao_intent") or mente.get("ultima_intencao") or "").upper()
-        if habilidade in {"arquivo", "arquivos"} or intent in {"CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "MOVE_ITEM"}:
+        if habilidade in {"arquivo", "arquivos"} or intent in {
+            "CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "MOVE_ITEM", "FILE_TRANSACTION",
+        }:
             return "arquivo", 0.72
         if intent in {"IOT_CONTROL", "IOT_STATUS"}:
             return "iot", 0.70
@@ -214,8 +228,14 @@ def _dominio_contextual(mente: Dict[str, Any], estrutura: Dict[str, Any]) -> tup
         if intent in {"APP_OPEN", "CLOSE_APP", "MAXIMIZE_WINDOW"}:
             return "app", 0.68
         return "", 0.0
-    aprendizado = mente.get("aprendizado_continuidade") if isinstance(mente.get("aprendizado_continuidade"), dict) else {}
-    conflitos = aprendizado.get("preferencias_conflito") if isinstance(aprendizado.get("preferencias_conflito"), dict) else {}
+    aprendizado: dict[str, Any] = (
+        dict(mente.get("aprendizado_continuidade") or {})
+        if isinstance(mente.get("aprendizado_continuidade"), dict) else {}
+    )
+    conflitos: dict[str, Any] = (
+        dict(aprendizado.get("preferencias_conflito") or {})
+        if isinstance(aprendizado.get("preferencias_conflito"), dict) else {}
+    )
     origem_atual = max(candidatos, key=lambda item: item[1])[0]
     candidatos_ajustados = []
     for dominio, pontuacao in candidatos:
@@ -370,6 +390,17 @@ def resolver_continuidade_semantica(
     tokens = normalizado.split()
     if not tokens:
         return DecisaoContinuidade()
+    if re.match(
+        r"^(?:como\s+(?:eu\s+)?(?:faria|mudaria|trocaria|alteraria)|"
+        r"se\s+(?:eu\s+)?(?:mudar|mudasse|trocar|trocasse)|"
+        r"nao\s+(?:muda|mude|troca|troque|altera|altere|renomeia|renomeie))\b",
+        normalizado,
+    ):
+        return DecisaoContinuidade(
+            operacao="BLOQUEAR_SEM_AUTORIZACAO",
+            confianca=0.99,
+            motivo="hipotese ou negacao nao autoriza mutacao de arquivo",
+        )
     if "playlist" in tokens:
         return DecisaoContinuidade()
 
@@ -414,7 +445,10 @@ def resolver_continuidade_semantica(
         return DecisaoContinuidade(operacao=relacao or acao, confianca=0.25, motivo="dominio ambiguo")
 
     ultimo_intent = str(estado.get("ultima_acao_intent") or estado.get("ultima_intencao") or "").upper()
-    ultimo_params = estado.get("ultima_acao_params") if isinstance(estado.get("ultima_acao_params"), dict) else {}
+    ultimo_params: Dict[str, Any] = (
+        dict(estado.get("ultima_acao_params") or {})
+        if isinstance(estado.get("ultima_acao_params"), dict) else {}
+    )
     # Reversão só é segura quando a ação anterior realmente terminou. Se ainda
     # está pendente ou falhou, o roteador deve preservar o cancelamento normal.
     rejeicao_de_efeito = {"quero", "mais", "nao"} <= set(tokens)
@@ -433,25 +467,48 @@ def resolver_continuidade_semantica(
         acao = _acao_aprendida_para_contexto(estado, dominio, acao_anterior)
     if dominio == "arquivo":
         if acao == "RENOMEAR":
-            novo_nome_match = re.search(
-                r"\b(?:para|pra|como|de)\s+(?:o\s+|a\s+)?([a-z0-9_.-]+)\s*$",
-                normalizado,
-            )
+            caminho_atual = str(estrutura.get("caminho") or "").strip()
             nome_atual = str(
-                estrutura.get("nome") or estrutura.get("pasta") or estrutura.get("alvo")
-                or estrutura.get("arquivo_nome") or estado.get("ultima_pasta") or estado.get("ultimo_arquivo") or ""
+                os.path.basename(caminho_atual) if caminho_atual else (
+                    estrutura.get("arquivo_nome") or estrutura.get("nome_arquivo")
+                    or estrutura.get("nome") or estrutura.get("pasta") or estrutura.get("alvo")
+                    or estado.get("ultimo_arquivo") or estado.get("ultima_pasta") or ""
+                )
             ).strip()
-            novo_nome = str(novo_nome_match.group(1) if novo_nome_match else "").strip()
+            troca_extensao = bool(set(tokens).intersection({"tipo", "extensao", "formato"}))
+            novo_nome = ""
+            if troca_extensao:
+                nova_extensao = re.search(
+                    r"\b(?:para|pra)\s+(?:(?:um|uma|o|a)\s+)?(\.?[a-z0-9]{1,12})\s*$",
+                    normalizado,
+                )
+                if nova_extensao:
+                    novo_nome = nome_com_nova_extensao_textual(
+                        nome_atual,
+                        nova_extensao.group(1),
+                    )
+            else:
+                novo_nome_match = re.search(
+                    r"\b(?:para|pra|como|de)\s+(?:(?:um|uma|o|a)\s+)?"
+                    r"([a-z0-9_.-]+)\s*$",
+                    normalizado,
+                )
+                novo_nome = str(
+                    novo_nome_match.group(1) if novo_nome_match else ""
+                ).strip()
             if nome_atual and novo_nome:
-                pasta_pai = str(estrutura.get("pasta_pai") or "Downloads").strip()
-                home = os.path.expanduser("~")
-                bases = {
-                    "downloads": os.path.join(home, "Downloads"),
-                    "desktop": os.path.join(home, "Desktop"),
-                    "documentos": os.path.join(home, "Documents"),
-                }
-                base = bases.get(pasta_pai.casefold(), pasta_pai)
-                origem = os.path.join(base, nome_atual) if base else nome_atual
+                if caminho_atual:
+                    origem = caminho_atual
+                else:
+                    pasta_pai = str(estrutura.get("pasta_pai") or "Downloads").strip()
+                    home_usuario = os.path.expanduser("~")
+                    bases = {
+                        "downloads": os.path.join(home_usuario, "Downloads"),
+                        "desktop": os.path.join(home_usuario, "Desktop"),
+                        "documentos": os.path.join(home_usuario, "Documents"),
+                    }
+                    base = bases.get(pasta_pai.casefold(), pasta_pai)
+                    origem = os.path.join(base, nome_atual) if base else nome_atual
                 return DecisaoContinuidade(
                     operacao="RENOMEAR_REFERENCIA",
                     dominio="arquivo",
@@ -530,7 +587,10 @@ def interpretar_continuidade_semantica_llm(
         return DecisaoContinuidade()
     estado = dict(mente or {})
     estrutura = dict(estrutura_arquivo or {})
-    ultimo_params = estado.get("ultima_acao_params") if isinstance(estado.get("ultima_acao_params"), dict) else {}
+    ultimo_params: Dict[str, Any] = (
+        dict(estado.get("ultima_acao_params") or {})
+        if isinstance(estado.get("ultima_acao_params"), dict) else {}
+    )
     payload = {
         "fala": str(texto or "")[:180],
         "ultima_intencao": str(estado.get("ultima_acao_intent") or estado.get("ultima_intencao") or ""),

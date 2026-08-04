@@ -90,3 +90,27 @@ def test_open_meteo_reutiliza_cache_por_cinco_minutos():
     assert primeira["ok"] and segunda["ok"]
     assert segunda["cache"] is True
     assert len(chamadas) == 2
+
+
+def test_wttr_expoe_probabilidade_de_chuva_do_dia() -> None:
+    resposta = _Resposta({
+        "current_condition": [{
+            "temp_C": "21", "FeelsLikeC": "19", "humidity": "51",
+            "weatherDesc": [{"value": "Smoky haze"}],
+        }],
+        "weather": [{
+            "hourly": [
+                {"time": "0", "chanceofrain": "10"},
+                {"time": "1200", "chanceofrain": "65"},
+                {"time": "1800", "chanceofrain": "30"},
+            ],
+        }],
+    })
+
+    dados = obter_clima_localidade(
+        "Boituva", requests_get=lambda *_args, **_kwargs: resposta,
+    )
+
+    assert dados["ok"] is True
+    assert dados["chance_chuva_pct"] == 65
+    assert dados["previsao_chuva_disponivel"] is True

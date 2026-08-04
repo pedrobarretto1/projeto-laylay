@@ -332,10 +332,19 @@ def executar_habilidade_janelas(intent: str, params: Dict[str, Any], ctx: Dict[s
 
     _log("acao", f"{nome} abriu -> tentar foco")
     foco_ok = _tentar_foco_com_reativacao(nome, mapped, ctx, focar_app, abrir_programa)
-    _log("resultado", f"{nome} -> {'app_focado' if foco_ok else 'app_aberto'}")
+    status_final = "app_iniciado_focado" if foco_ok else "app_aberto"
+    _log("resultado", f"{nome} -> {status_final}")
     return {
         "ok": True,
-        "status": "app_focado" if foco_ok else "app_aberto",
+        "status": status_final,
         "nome_app": nome,
+        "estado_anterior": {
+            "programa_aberto": programa_aberto,
+            "programa_em_foco": programa_em_foco,
+        },
+        "estado_posterior": {
+            "programa_aberto": True,
+            "programa_em_foco": bool(foco_ok),
+        },
         "handled": True,
     }

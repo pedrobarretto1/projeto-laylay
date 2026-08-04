@@ -169,11 +169,25 @@ async function confirmYouTubeNavigation(cmd, tab, error = "", evidence = {}) {
     command: "play",
     verify_playback: true,
   }, readyTab);
-  const playing = response?.status === "success" && response?.evidence?.playing === true;
-  sendCommandResult(cmd, playing, {
-    status: playing ? "playing_confirmed" : (response?.status || "autoplay_blocked"),
-    message: playing ? "" : (response?.message || "O player não iniciou a reprodução"),
-    evidence: { ...evidence, ...(response?.evidence || {}), playing },
+  const playing = response?.evidence?.playing === true;
+  const tabMuted = readyTab?.mutedInfo?.muted === true;
+  const audible = response?.status === "success"
+    && response?.evidence?.audible === true
+    && !tabMuted;
+  sendCommandResult(cmd, audible, {
+    status: audible ? "playing_confirmed" : (response?.status || "autoplay_blocked"),
+    message: audible ? "" : (
+      tabMuted
+        ? "O vídeo iniciou, mas a aba do navegador está silenciada"
+        : (response?.message || "O player não iniciou a reprodução")
+    ),
+    evidence: {
+      ...evidence,
+      ...(response?.evidence || {}),
+      playing,
+      audible,
+      tabMuted,
+    },
   }, readyTab);
 }
 
@@ -282,9 +296,18 @@ if (cmd.action === "youtube_search") {
     const tabs = await new Promise((resolve) => {
       chrome.tabs.query({ url: "*://*.youtube.com/*" }, (lista) => resolve(lista || []));
     });
-    const targetTab = tabs.find((tab) => tab.url && tab.url.includes("/watch")) || tabs[0];
+    const requestedTabId = Number(cmd.target_tab_id ?? cmd.targetTabId);
+    const targetTab = Number.isInteger(requestedTabId)
+      ? tabs.find((tab) => tab.id === requestedTabId)
+      : (tabs.find((tab) => tab.url && tab.url.includes("/watch")) || tabs[0]);
     if (!targetTab?.id) {
-      sendCommandResult(cmd, false, { status: "not_found", message: "Nenhuma aba do YouTube encontrada" });
+      sendCommandResult(cmd, false, {
+        status: Number.isInteger(requestedTabId) ? "source_tab_missing" : "not_found",
+        message: Number.isInteger(requestedTabId)
+          ? "A aba de mídia observada não está mais disponível"
+          : "Nenhuma aba do YouTube encontrada",
+        evidence: { requestedTabId: Number.isInteger(requestedTabId) ? requestedTabId : null },
+      });
       return;
     }
     const response = await executeContentCommand({

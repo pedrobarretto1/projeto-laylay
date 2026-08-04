@@ -25,6 +25,7 @@ from mente_laylay.autonomia.coordenador_intencao import (
 from mente_laylay.autonomia.roteador_intencao import executar_intencao
 from mente_laylay.cognicao.linguagem_aprendida import LinguagemAprendidaRuntime
 from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto
 from mente_laylay.cognicao.plano_turno import atualizar_plano_turno, planejar_turno
 from mente_laylay.memoria_mental.contexto_integrado import resumo_mente_integrada_para_prompt
 from mente_laylay.memoria_mental.contexto_compartilhado import texto_depende_de_contexto
@@ -259,6 +260,19 @@ def test_playlist_add_no_modo_jogo_chega_ao_roteador_local_mesmo_com_ia_priorita
     ) == {
         "intent": "PLAYLIST_ADD",
         "params": {"nome_playlist": "alternativo"},
+    }
+    contexto["extrair_nome_playlist"] = lambda _texto: "rei do pop"
+    assert detectar_intencao_deterministica_mente(
+        "coloca a playlist rei do pop", contexto,
+    ) == {
+        "intent": "PLAYLIST_PLAY",
+        "params": {"nome_playlist": "rei do pop"},
+    }
+    assert detectar_intencao_deterministica_mente(
+        "coloca na playlist rei do pop", contexto,
+    ) == {
+        "intent": "PLAYLIST_ADD",
+        "params": {"nome_playlist": "rei do pop"},
     }
     assert detectar_intencao_deterministica_mente(
         "coloca o volume em 30", contexto,
@@ -756,6 +770,86 @@ def test_playlist_conhecida_vence_busca_generica_com_palavra_musica() -> None:
     }
 
 
+def test_opiniao_sobre_genero_homonimo_nao_toca_nem_lista_playlist() -> None:
+    for frase in (
+        "o que você acha de rock?",
+        "o que acha do gênero rock?",
+        "acha do gênero rock?",
+    ):
+        resultado = detectar_musica_ou_playlist_direta(
+            frase,
+            texto_bruto=frase,
+            params_cb=_params,
+            detectar_playlist_nome_direto=lambda texto: (
+                "rock" if "rock" in texto.casefold() else ""
+            ),
+            normalizar_query_musical=lambda texto: texto,
+        )
+        assert resultado is None
+
+
+def test_opiniao_sobre_rock_atravessa_roteador_real_sem_comando() -> None:
+    mapa = MapaRecursosRuntime()
+    mapa.registrar(
+        "playlists_usuario",
+        arquivo="playlists.json",
+        descricao="playlists reais",
+        termos=("playlist", "musicas salvas"),
+        leitor=lambda texto: {
+            "detalhe": (
+                {"nome": "rock", "titulos": ["Faixa real"]}
+                if "rock" in texto.casefold() else {}
+            ),
+        },
+        intent_consulta="PLAYLIST_LIST",
+        parametro_detalhe="nome_playlist",
+    )
+    contexto = {
+        "normalizar_texto": lambda texto: str(texto).casefold(),
+        "texto_conversa_casual_sem_acao": lambda _texto: False,
+        "texto_bloqueia_playlist_agora": lambda _texto: False,
+        "texto_social_curto": lambda _texto: False,
+        "ignorar_token_solto": lambda _texto: False,
+        "fluxo_prioritario_da_ia": lambda _texto: False,
+        "texto_expresso_melhor_no_deterministico": lambda _texto: False,
+        "texto_depende_de_contexto": lambda _texto: False,
+        "limpar_destino_pc_b": lambda texto: texto,
+        "target_from_params": lambda _params, _texto: "pc_a",
+        "detectar_intencao_iot": lambda *_args: None,
+        "detectar_sugestao_indireta": lambda *_args: None,
+        "modo_jogo_contexto": lambda: {},
+        "visao_jogo_tem_analise_recente": lambda: False,
+        "resolver_consulta_recurso_local": mapa.resolver_consulta,
+        "detectar_playlist_nome_direto": lambda texto: (
+            "rock" if "rock" in str(texto).casefold() else ""
+        ),
+        "normalizar_query_musical": lambda texto: texto,
+        "sites_diretos": {},
+        "apps_map": {},
+    }
+
+    assert detectar_intencao_deterministica_mente(
+        "o que você acha de rock?", contexto,
+    ) is None
+    assert detectar_intencao_deterministica_mente(
+        "o que tem em rock?", contexto,
+    ) == {"intent": "PLAYLIST_LIST", "params": {"nome_playlist": "rock"}}
+
+
+def test_formas_naturais_de_acha_chegam_ao_classificador_de_opiniao() -> None:
+    contexto = {
+        "normalizar_texto": lambda texto: str(texto).casefold(),
+        "mente_integrada_estado": {},
+    }
+    for frase in (
+        "o que você acha de rock?",
+        "o que acha do gênero rock?",
+        "acha do gênero rock?",
+        "qual sua opinião sobre rock?",
+    ):
+        assert classificar_conversa_curta_local(contexto, frase)["tipo"] == "OPINION"
+
+
 def test_rock_pesado_preserva_genero_em_vez_de_abrir_playlist_rock() -> None:
     from mente_laylay.memoria_mental.playlist_mental import detectar_playlist_nome_direto
 
@@ -811,6 +905,228 @@ def test_playlit_e_corrigido_no_normalizador_canonico_e_lista_inventario() -> No
         limpar_nome_playlist=lambda valor: str(valor or "").strip(),
         extrair_nome_playlist=lambda _texto: "",
     ) == {"intent": "PLAYLIST_LIST", "params": {"nome_playlist": ""}}
+
+
+def test_playlit_em_pedido_de_reproducao_vira_playlist_play() -> None:
+    runtime = LinguagemAprendidaRuntime(
+        memoria_sqlite=None,
+        normalizar_texto=lambda texto: str(texto).casefold(),
+        texto_social_curto=lambda _texto: False,
+        falar=lambda *_args: None,
+    )
+    normalizado = runtime.normalizar_com_apelidos("coloca a playlit sendo sendo")
+
+    assert normalizado == "coloca a playlist sendo sendo"
+    assert detectar_musica_ou_playlist_direta(
+        normalizado,
+        texto_bruto="coloca a playlit sendo sendo",
+        params_cb=_params,
+        detectar_playlist_nome_direto=lambda texto: (
+            "sendo sendo" if "sendo sendo" in texto else ""
+        ),
+        normalizar_query_musical=lambda texto: texto,
+    ) == {
+        "intent": "PLAYLIST_PLAY",
+        "params": {"nome_playlist": "sendo sendo"},
+    }
+
+
+def test_plaulist_em_pedido_de_reproducao_vira_playlist_play() -> None:
+    runtime = LinguagemAprendidaRuntime(
+        memoria_sqlite=None,
+        normalizar_texto=lambda texto: str(texto).casefold(),
+        texto_social_curto=lambda _texto: False,
+        falar=lambda *_args: None,
+    )
+    normalizado = runtime.normalizar_com_apelidos("coloca a plaulist sendo sendo")
+
+    assert normalizado == "coloca a playlist sendo sendo"
+    assert detectar_musica_ou_playlist_direta(
+        normalizado,
+        texto_bruto="coloca a plaulist sendo sendo",
+        params_cb=_params,
+        detectar_playlist_nome_direto=lambda texto: (
+            "sendo sendo" if "sendo sendo" in texto else ""
+        ),
+        normalizar_query_musical=lambda texto: texto,
+    ) == {
+        "intent": "PLAYLIST_PLAY",
+        "params": {"nome_playlist": "sendo sendo"},
+    }
+
+
+def test_coordenador_preserva_busca_de_codigo_se_detector_composto_degradar() -> None:
+    texto = "encontra o código que controla a lâmpada"
+    resultado, rota = resolver_intencao(texto, "terminal", {
+        "normalizar_texto": lambda valor: str(valor or "").casefold(),
+        "refinar_contexto_mental": lambda _texto: None,
+        "retrato_turno_atual": {
+            "modalidade": "comando", "autoriza_execucao": True,
+        },
+        "turno_atual": {
+            "modalidade": "comando", "autoriza_execucao": True,
+        },
+        "texto_depende_de_contexto": lambda _texto: False,
+        "detectar_intencao_deterministica": lambda _texto: None,
+        "resolver_comando_contextual_forcado": lambda _texto: None,
+        "resolver_repeticao_ultima_acao": lambda _texto: None,
+        "tentar_intencao_ai_primeiro": lambda _texto: (_ for _ in ()).throw(
+            AssertionError("a busca local não deve depender da LLM")
+        ),
+    })
+
+    assert rota == "deterministico-explicito"
+    assert resultado == {
+        "intent": "FILE_SEARCH",
+        "params": {
+            "query": "código que controla a lâmpada",
+            "somente_projeto": False,
+        },
+    }
+
+
+def test_coordenador_preserva_busca_de_codigo_quando_detector_retorna_none_json() -> None:
+    texto = "encontra o código que controla a lâmpada"
+    resultado, rota = resolver_intencao(texto, "terminal", {
+        "normalizar_texto": lambda valor: str(valor or "").casefold(),
+        "refinar_contexto_mental": lambda _texto: None,
+        "retrato_turno_atual": {
+            "modalidade": "comando", "autoriza_execucao": True,
+        },
+        "turno_atual": {
+            "modalidade": "comando", "autoriza_execucao": True,
+        },
+        "texto_depende_de_contexto": lambda _texto: False,
+        "detectar_intencao_deterministica": lambda _texto: {
+            "intent": "NONE", "params": {},
+        },
+        "resolver_comando_contextual_forcado": lambda _texto: None,
+        "resolver_repeticao_ultima_acao": lambda _texto: None,
+        "tentar_intencao_ai_primeiro": lambda _texto: (_ for _ in ()).throw(
+            AssertionError("a busca local não deve depender da LLM")
+        ),
+    })
+
+    assert rota == "deterministico-explicito"
+    assert resultado["intent"] == "FILE_SEARCH"
+    assert resultado["params"]["query"] == "código que controla a lâmpada"
+
+
+def test_coordenador_separa_preferencia_do_comando_em_turno_composto() -> None:
+    texto = "eu gosto de programação, encontra o código que controla a lâmpada"
+    entradas_detector: list[str] = []
+    turno = classificar_modalidade_turno(texto)
+
+    def detectar(trecho: str):
+        entradas_detector.append(trecho)
+        if trecho == "encontra o código que controla a lâmpada":
+            return {
+                "intent": "FILE_SEARCH",
+                "params": {
+                    "query": "código que controla a lâmpada",
+                    "somente_projeto": False,
+                },
+            }
+        return None
+
+    resultado, rota = resolver_intencao(texto, "terminal", {
+        "normalizar_texto": lambda valor: str(valor or "").casefold(),
+        "refinar_contexto_mental": lambda _texto: None,
+        "retrato_turno_atual": turno,
+        "turno_atual": turno,
+        "texto_depende_de_contexto": lambda _texto: False,
+        "detectar_intencao_deterministica": detectar,
+        "resolver_comando_contextual_forcado": lambda _texto: None,
+        "resolver_repeticao_ultima_acao": lambda _texto: None,
+    })
+
+    assert rota == "deterministico-explicito"
+    assert entradas_detector == ["encontra o código que controla a lâmpada"]
+    assert resultado == {
+        "intent": "FILE_SEARCH",
+        "params": {
+            "query": "código que controla a lâmpada",
+            "somente_projeto": False,
+        },
+    }
+
+
+def test_coordenador_recebe_termo_operacional_corrigido_em_turno_composto() -> None:
+    texto = "eu gosto de programacao, encontra o codgio que controla a lampada"
+    entradas_detector: list[str] = []
+    linguagem = LinguagemAprendidaRuntime(
+        memoria_sqlite=None,
+        normalizar_texto=normalizar_texto,
+        texto_social_curto=lambda _texto: False,
+        falar=lambda *_args: None,
+        log=lambda *_args: None,
+    )
+    turno = classificar_modalidade_turno(
+        texto,
+        normalizar_texto=linguagem.normalizar_com_apelidos,
+    )
+
+    def detectar(trecho: str):
+        entradas_detector.append(trecho)
+        if trecho == "encontra o codigo que controla a lampada":
+            return {
+                "intent": "FILE_SEARCH",
+                "params": {
+                    "query": "codigo que controla a lampada",
+                    "somente_projeto": False,
+                },
+            }
+        return None
+
+    resultado, rota = resolver_intencao(texto, "terminal", {
+        "normalizar_texto": linguagem.normalizar_com_apelidos,
+        "refinar_contexto_mental": lambda _texto: None,
+        "retrato_turno_atual": turno,
+        "turno_atual": turno,
+        "texto_depende_de_contexto": lambda _texto: False,
+        "detectar_intencao_deterministica": detectar,
+        "resolver_comando_contextual_forcado": lambda _texto: None,
+        "resolver_repeticao_ultima_acao": lambda _texto: None,
+    })
+
+    assert rota == "deterministico-explicito"
+    assert entradas_detector == ["encontra o codigo que controla a lampada"]
+    assert resultado == {
+        "intent": "FILE_SEARCH",
+        "params": {
+            "query": "codigo que controla a lampada",
+            "somente_projeto": False,
+        },
+    }
+
+
+def test_coordenador_nunca_remove_negacao_ao_recortar_turno_misto() -> None:
+    entradas_detector: list[str] = []
+
+    def detectar(trecho: str):
+        entradas_detector.append(trecho)
+        return None
+
+    resolver_intencao("não desliga a luz", "terminal", {
+        "normalizar_texto": lambda valor: str(valor or "").casefold(),
+        "refinar_contexto_mental": lambda _texto: None,
+        "retrato_turno_atual": {
+            "modalidade": "misto", "autoriza_execucao": False,
+        },
+        "turno_atual": {
+            "modalidade": "misto",
+            "modalidade_geral": "misto",
+            "autoriza_execucao": True,
+            "texto_operacional": "desliga a luz",
+        },
+        "texto_depende_de_contexto": lambda _texto: False,
+        "detectar_intencao_deterministica": detectar,
+        "resolver_comando_contextual_forcado": lambda _texto: None,
+        "resolver_repeticao_ultima_acao": lambda _texto: None,
+        "tentar_intencao_ai_primeiro": lambda _texto: None,
+    })
+
+    assert entradas_detector == ["não desliga a luz"]
 
 
 def test_prefixo_duplicado_de_comando_e_reparado_com_conservadorismo() -> None:
@@ -937,7 +1253,7 @@ def test_jogo_lento_pode_aparecer_na_segunda_janela_de_confirmacao() -> None:
                 "focar_janela_app": lambda _nome: True,
             },
         )
-    assert resultado["status"] == "app_focado"
+    assert resultado["status"] == "app_iniciado_focado"
     assert resultado["ok"] is True
 
 

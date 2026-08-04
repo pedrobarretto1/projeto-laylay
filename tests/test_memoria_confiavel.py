@@ -75,6 +75,9 @@ class MemoriaConfiavelTests(unittest.TestCase):
         }, ensure_ascii=False)
         resultado = salvar_aprendizados_da_ia(resposta, self.memoria, "eu gosto de Rubel")
         self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["gatilho"], "afinidade com Rubel")
+        self.assertEqual(resultado[0]["regra"], "você gosta de Rubel")
+        self.assertEqual(len(self.memoria.listar_aprendizados_semanticos()), 1)
         prompt = self.memoria.formatar_aprendizados_relevantes_para_prompt(
             "me recomenda algo do Rubel"
         )

@@ -2,6 +2,7 @@ import sys
 
 from mente_laylay.personalidade import terminal_laylay
 from mente_laylay.personalidade.terminal_laylay import (
+    escutar_texto_terminal,
     ler_linha_terminal_interrompivel,
     should_log_message,
 )
@@ -81,3 +82,35 @@ def test_leitura_windows_preserva_texto_e_backspace(monkeypatch):
     )
 
     assert resultado == "oá"
+
+
+def test_entrada_vazia_nao_duplica_cabecalho_do_usuario():
+    entradas = iter(["", "", "oi lay"])
+    ativo = {"valor": True}
+    impresso = []
+    processados = []
+
+    class StdinTTY:
+        @staticmethod
+        def isatty():
+            return True
+
+    def leitor(_prompt, **_kwargs):
+        return next(entradas)
+
+    def processar(texto):
+        processados.append(texto)
+        ativo["valor"] = False
+
+    escutar_texto_terminal(
+        estado_ativo=lambda: True,
+        processar_texto=processar,
+        stdin=StdinTTY(),
+        raw_print=lambda texto="", **_kwargs: impresso.append(texto),
+        sleep_fn=lambda _tempo: None,
+        deve_continuar=lambda: ativo["valor"],
+        ler_linha_fn=leitor,
+    )
+
+    assert processados == ["oi lay"]
+    assert impresso.count("💬 Você:") == 1

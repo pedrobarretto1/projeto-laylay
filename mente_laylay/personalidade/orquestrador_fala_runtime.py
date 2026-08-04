@@ -7,7 +7,9 @@ import time
 from threading import RLock
 from typing import Any, Callable, Mapping
 
+from mente_laylay.cognicao.estado_tecnico_llm import eh_estado_tecnico_llm
 from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
+from mente_laylay.personalidade.contingencia_natural import fala_contingencia_natural
 
 
 DEPENDENCIAS_ORQUESTRADOR_FALA = (
@@ -38,6 +40,14 @@ class OrquestradorFalaRuntime:
             "duplicadas_suprimidas": 0,
             "rejeitadas_voz": 0,
         }
+        self._observadores_fala_final: list[Callable[..., Any]] = []
+
+    def registrar_observador_fala_final(self, observador: Callable[..., Any]) -> None:
+        """Observa somente falas que atravessaram a fronteira final da voz."""
+        if not callable(observador):
+            raise TypeError("observador de fala final deve ser chamável")
+        if observador not in self._observadores_fala_final:
+            self._observadores_fala_final.append(observador)
 
     @staticmethod
     def _filtrar(servicos: Mapping[str, Any]) -> dict[str, Any]:
@@ -260,6 +270,18 @@ class OrquestradorFalaRuntime:
         # A fala já foi escrita pela LLM ou pelo executor operacional. Esta
         # fronteira não corrige estilo, autorreferência nem injeta memória.
         fala = str(texto or "").strip()
+        if eh_estado_tecnico_llm(fala):
+            ns["print"]("⚠️ [FALA] estado técnico da LLM absorvido antes da voz")
+            if plano_antes.get("requer_execucao"):
+                fala = (
+                    "Minha resposta não ficou pronta agora, mas não vou "
+                    "confirmar uma ação sem evidência."
+                )
+            else:
+                fala = fala_contingencia_natural(
+                    str(plano_antes.get("texto_usuario") or ""),
+                    contexto=mental_antes,
+                )
         # Resultados operacionais são validados pelo executor. Nas conversas,
         # toda rota de fala passa por este guardião, inclusive atalhos locais.
         if not plano_antes.get("requer_execucao"):
@@ -288,6 +310,18 @@ class OrquestradorFalaRuntime:
         aceita = ns["_voz_runtime"].falar(
             fala, emocao, nivel, wait=wait, _proativa=_proativa,
         )
+        if aceita is not False:
+            for observador in tuple(self._observadores_fala_final):
+                try:
+                    observador(
+                        fala, emocao, nivel,
+                        proativa=bool(_proativa),
+                    )
+                except Exception as erro:
+                    ns["print"](
+                        "⚠️ [FALA:OBSERVADOR] consumidor isolado falhou: "
+                        f"{type(erro).__name__}"
+                    )
         if aceita is not False and not _proativa:
             mental = dict(estado.mental)
             plano = dict(mental.get("plano_turno_atual") or {})

@@ -142,10 +142,15 @@ def selecionar_contexto_turno(
             round(score, 3), aceito, evidencia,
         ))
 
-    ultima_fala = " ".join(filter(None, [
-        str(mente.get("ultima_afirmacao") or ""),
-        str(mente.get("ultima_pergunta") or ""),
-    ])) or str(mente.get("ultima_resposta") or "")
+    # A fala efetivamente entregue vence rótulos semânticos mais antigos.
+    # Antes, uma afirmação velha podia ocultar uma explicação operacional
+    # recém-falada e quebrar continuidades como "explica isso melhor".
+    ultima_fala = str(mente.get("ultima_resposta") or "").strip() or " ".join(
+        filter(None, [
+            str(mente.get("ultima_afirmacao") or ""),
+            str(mente.get("ultima_pergunta") or ""),
+        ])
+    )
     adicionar("ultima_fala", "conversa", ultima_fala, _idade(mente, "continuidade_fala_ts"), "fala_imediata", 0.40)
     adicionar("pergunta_aberta", "conversa", str(mente.get("pergunta_aberta_texto") or ""), _idade(mente, "pergunta_aberta_ts"), "resposta_esperada", 0.56)
     adicionar("promessa", "conversa", str(mente.get("ultima_promessa_texto") or ""), _idade(mente, "ultima_promessa_ts"), "divida_conversacional", 0.60)

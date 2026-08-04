@@ -48,6 +48,16 @@ def test_ponto_entrada_nao_reintroduz_consulta_global_continua() -> None:
         ), f"uso global fora da composição: {linha.strip()}"
 
 
+def test_terminal_observa_inicio_da_voz_sem_esperar_fala_finalizar() -> None:
+    fonte = (RAIZ / "laylay.py").read_text(encoding="utf-8")
+
+    assert "_voz_runtime.registrar_observador_inicio_fala(" in fonte
+    assert not (
+        "_orquestrador_fala_runtime.registrar_observador_fala_final(\n"
+        "    _desktop_bridge_runtime.publicar_fala_final,"
+    ) in fonte
+
+
 def test_contratos_filtrados_nao_declaram_credenciais_e_nao_duplicam_nomes() -> None:
     contratos = (
         DEPENDENCIAS_PREFERENCIAS_SUGESTOES,

@@ -83,6 +83,40 @@ def test_consulta_natural_e_pronome_usam_memoria_sem_llm(tmp_path):
     assert runtime.processar("o que você sabe sobre Ana?") is True
     assert "Ana é sua irmã" in falas[-1]
     assert "gosta de rock" in falas[-1]
+
+    assert runtime.reexecutar(
+        {
+            "intent": "PEOPLE_QUERY",
+            "params": {"nome": "Ana", "modo": "complemento"},
+        },
+        "o que mais?",
+    ) is True
+    assert falas[-1] == (
+        "Não tenho outro fato confirmado sobre Ana além do que já te contei."
+    )
+
+
+def test_autorreferencia_mim_nao_vira_pessoa_chamada_mim(tmp_path):
+    runtime, *_resto = criar_runtime(tmp_path)
+    falas = _resto[2]
+
+    assert runtime.processar("o que voce sabe sobre mim?") is False
+    assert falas == []
+    if (tmp_path / "pessoas.json").exists():
+        assert dados_salvos(tmp_path)["pessoas"] == []
+
+
+def test_consultas_de_pessoa_toleram_erro_leve_e_ordem_invertida(tmp_path):
+    runtime, *_resto = criar_runtime(tmp_path)
+    falas = _resto[2]
+    runtime.processar("Nanda é minha namorada e ela gosta de rock")
+
+    assert runtime.processar("o que voce abe sobre a Nanda?") is True
+    assert "Nanda é sua namorada" in falas[-1]
+    assert runtime.processar("qual a relacao da Nanda comigo?") is True
+    assert "Nanda é sua namorada" in falas[-1]
+    assert runtime.processar("Nanda é minha o que?") is True
+    assert "Nanda é sua namorada" in falas[-1]
     assert runtime.processar("o que ela gosta?") is True
     assert "gosta de rock" in falas[-1]
 
@@ -139,6 +173,20 @@ def test_namorada_com_nome_em_oracao_separada_e_fato_continuado(tmp_path):
     assert runtime.processar("o que você sabe sobre minha namorada") is True
     assert "Nanda é sua namorada" in falas[-1]
     assert "gosta de rock" in falas[-1]
+
+
+def test_relacao_explicita_em_fato_nao_cria_pessoa_chamada_gosta(tmp_path):
+    runtime, *_resto = criar_runtime(tmp_path)
+    falas = _resto[2]
+
+    runtime.processar("Eu tenho uma namorada e o nome dela é Nanda.")
+    runtime.processar("minha namorada gosta de funk")
+
+    pessoas = dados_salvos(tmp_path)["pessoas"]
+    assert [pessoa["nome"] for pessoa in pessoas] == ["Nanda"]
+    assert pessoas[0]["fatos"][0]["valor"] == "funk"
+    assert runtime.processar("o que você sabe sobre minha namorada?") is True
+    assert falas[-1] == "Nanda é sua namorada. Você me contou que ela gosta de funk."
 
 
 def test_preferencia_musical_continuada_guarda_genero_e_artista_sem_substituir(tmp_path):
@@ -236,6 +284,31 @@ def test_esquecimento_usa_pendencia_canonica_e_recusa_preserva(tmp_path):
     assert runtime.processar("não, deixa como está") is True
     assert dados_salvos(tmp_path)["pessoas"][0]["status"] == "ativa"
     assert aprendizados[-1]["valor"]["descricao_humana"].endswith("recusado")
+
+
+def test_pedido_de_apagar_arquivo_ou_pasta_nunca_vira_esquecimento_de_pessoa(tmp_path):
+    runtime, pendencia, *_ = criar_runtime(tmp_path)
+
+    for texto in (
+        "apaga o arquivo exemplo",
+        "apaga o aquivo exemplo",
+        "remove a pasta teste",
+        "apaga o documento da Nanda",
+    ):
+        assert runtime.processar(texto) is False
+        assert pendencia.obter() is None
+
+
+def test_consulta_sem_memoria_declara_ausencia_em_vez_de_inventar(tmp_path):
+    runtime, *_resto = criar_runtime(tmp_path)
+    falas = _resto[2]
+
+    assert runtime.processar("o que voce sabe sobre a Nanda?") is True
+    assert falas[-1] == "Você ainda não me contou nada confiável sobre Nanda."
+    assert "Nanda" in runtime.contexto_para_prompt("o que voce sabe sobre a Nanda?")
+    assert "não há memória confirmada" in runtime.contexto_para_prompt(
+        "o que voce sabe sobre a Nanda?"
+    )
 
 
 def test_esquecimento_confirmado_faz_soft_delete(tmp_path):

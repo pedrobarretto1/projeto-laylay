@@ -23,6 +23,7 @@ class RespostaIARuntime:
         self._contexto_getter = contexto_getter
         self._log = log
         self._process_lock = threading.RLock()
+        self._sequencia_turnos = 0
 
     def _contexto(self) -> Dict[str, Any]:
         try:
@@ -111,6 +112,12 @@ class RespostaIARuntime:
             sincronizar_turno_voz()
         obter_turno = _get(ctx, "obter_turno_atual")
         turno = obter_turno() if callable(obter_turno) else {}
+        self._sequencia_turnos += 1
+        turno_conversa_id = str(
+            (turno.get("id") if isinstance(turno, dict) else "") or ""
+        ).strip() or f"resposta-ia-{self._sequencia_turnos}"
+        estado_conversa_turno = None
+        turno_conversa_iniciado = False
         if isinstance(turno, dict):
             self._log(
                 "🧠 [TURNO] "
@@ -165,6 +172,7 @@ class RespostaIARuntime:
 
             modo_rapido_cb = _get(ctx, "usar_modo_rapido")
             modo_rapido = bool(modo_rapido_cb(t)) if callable(modo_rapido_cb) else False
+            instrucao_rapida = ""
             depende_contexto_cb = _get(ctx, "texto_depende_de_contexto")
             try:
                 depende_contexto = bool(depende_contexto_cb(t)) if callable(depende_contexto_cb) else False
@@ -208,11 +216,11 @@ class RespostaIARuntime:
                     self._log("⚡ [CONVERSA:JOGO] resposta social local imediata.")
                     return
 
+            prompt_runtime = (
+                _get(ctx, "preparacao_conversa")
+                or _get(ctx, "contexto_prompt_runtime")
+            )
             if not modo_rapido:
-                prompt_runtime = (
-                    _get(ctx, "preparacao_conversa")
-                    or _get(ctx, "contexto_prompt_runtime")
-                )
                 if prompt_runtime is None:
                     raise RuntimeError("Contexto do prompt ainda não foi inicializado.")
                 inicio_prompt = time.perf_counter()
@@ -235,16 +243,66 @@ class RespostaIARuntime:
                     set_messages = _get(ctx, "set_messages")
                     if callable(set_messages):
                         set_messages(mensagens_novas)
+            elif callable(getattr(prompt_runtime, "preparar_instrucao_rapida", None)):
+                inicio_prompt_rapido = time.perf_counter()
+                try:
+                    instrucao_rapida = str(
+                        prompt_runtime.preparar_instrucao_rapida(t) or ""
+                    ).strip()
+                    registrar_metrica = _get(ctx, "registrar_metrica_diagnostico")
+                    if callable(registrar_metrica):
+                        registrar_metrica(
+                            "preparacao_prompt_rapido",
+                            (time.perf_counter() - inicio_prompt_rapido) * 1000.0,
+                            True,
+                        )
+                except Exception as erro:
+                    instrucao_rapida = ""
+                    self._log(
+                        "⚠️ [PROMPT:RÁPIDO] contrato de fala indisponível: "
+                        f"{type(erro).__name__}"
+                    )
+                    registrar_falha = _get(ctx, "registrar_falha_diagnostico")
+                    if callable(registrar_falha):
+                        registrar_falha(
+                            "prompt_rapido", "falha_contrato_fala", erro=erro,
+                        )
 
             estado_conversa = _get(ctx, "estado_conversa")
-            if callable(getattr(estado_conversa, "mensagens", None)):
+            estado_conversa_turno = estado_conversa
+            iniciar_turno = getattr(estado_conversa, "iniciar_turno", None)
+            if callable(iniciar_turno):
+                mensagens = iniciar_turno(turno_conversa_id, t)
+                turno_conversa_iniciado = True
+            elif callable(getattr(estado_conversa, "mensagens", None)):
                 mensagens = estado_conversa.mensagens()
+                mensagens.append({"role": "user", "content": t})
+                substituir = getattr(estado_conversa, "substituir", None)
+                if callable(substituir):
+                    substituir(mensagens)
+                turno_conversa_iniciado = True
             else:
                 get_messages = _get(ctx, "get_messages")
                 mensagens = get_messages() if callable(get_messages) else []
             if not isinstance(mensagens, list):
                 mensagens = []
-            mensagens.append({"role": "user", "content": texto})
+            if not turno_conversa_iniciado:
+                mensagens.append({"role": "user", "content": t})
+
+            # A instrução rápida participa apenas deste pedido. Ela não entra
+            # no histórico e por isso não reaparece como memória ou como fala
+            # do usuário em turnos futuros.
+            mensagens_modelo = [dict(item) for item in mensagens if isinstance(item, dict)]
+            if instrucao_rapida:
+                indice_usuario = len(mensagens_modelo)
+                for indice in range(len(mensagens_modelo) - 1, -1, -1):
+                    if str(mensagens_modelo[indice].get("role") or "").casefold() == "user":
+                        indice_usuario = indice
+                        break
+                mensagens_modelo.insert(indice_usuario, {
+                    "role": "system",
+                    "content": instrucao_rapida,
+                })
 
             inicio_llm = time.perf_counter()
             limite_tokens = limite_tokens_resposta(
@@ -255,7 +313,7 @@ class RespostaIARuntime:
             modelo_llm = _get(ctx, "modelo_llm")
             if callable(getattr(modelo_llm, "executar", None)):
                 pedido_modelo = PedidoModelo.criar(
-                    mensagens,
+                    mensagens_modelo,
                     com_tools=False,
                     max_tokens=limite_tokens,
                     modo_rapido=modo_rapido,
@@ -270,7 +328,7 @@ class RespostaIARuntime:
                 if not callable(enviar_mensagem):
                     raise RuntimeError("modelo LLM ainda não foi inicializado.")
                 bot_raw = enviar_mensagem(
-                    mensagens,
+                    mensagens_modelo,
                     _com_tools=False,
                     max_tokens=limite_tokens,
                     modo_rapido=modo_rapido,
@@ -289,6 +347,9 @@ class RespostaIARuntime:
                 )
             self._log(f"🤖 [IA] Resposta bruta recebida (tamanho {len(str(bot_raw))} chars)")
             if descartar_se_obsoleta():
+                abortar = getattr(estado_conversa_turno, "abortar_turno", None)
+                if callable(abortar) and turno_conversa_iniciado:
+                    abortar(turno_conversa_id)
                 return True
 
             preparar_resposta = _get(ctx, "preparar_resposta")
@@ -303,6 +364,9 @@ class RespostaIARuntime:
                     True,
                 )
             if descartar_se_obsoleta():
+                abortar = getattr(estado_conversa_turno, "abortar_turno", None)
+                if callable(abortar) and turno_conversa_iniciado:
+                    abortar(turno_conversa_id)
                 return True
             bot_raw = resposta.get("resposta_bruta", bot_raw)
             suprimir_fala = bool(resposta.get("suprimir_fala"))
@@ -352,14 +416,16 @@ class RespostaIARuntime:
             if suprimir_fala and not comandos:
                 marcar_fase("resposta_tecnica_suprimida")
                 self._log("⚠️ [IA] Turno técnico encerrado sem contaminar a conversa.")
+                abortar = getattr(estado_conversa_turno, "abortar_turno", None)
+                if callable(abortar) and turno_conversa_iniciado:
+                    abortar(turno_conversa_id)
                 return True
 
             if descartar_se_obsoleta():
+                abortar = getattr(estado_conversa_turno, "abortar_turno", None)
+                if callable(abortar) and turno_conversa_iniciado:
+                    abortar(turno_conversa_id)
                 return True
-
-            atualizar_topicos = _get(ctx, "atualizar_memoria_topicos")
-            if not comandos and tipo_interacao in {"conversa", "", "confirmacao"} and callable(atualizar_topicos):
-                atualizar_topicos(t, fala_limpa_original)
 
             dispatcher_runtime = _get(ctx, "contexto_dispatch_runtime")
             if dispatcher_runtime is None:
@@ -423,7 +489,7 @@ class RespostaIARuntime:
             finalizar = _get(ctx, "finalizar_execucao")
             if finalizacao_runtime is None or not callable(finalizar):
                 raise RuntimeError("Contexto de finalizacao ainda não foi inicializado.")
-            finalizar(
+            resultado_finalizacao = finalizar(
                 finalizacao_runtime.montar(),
                 comandos,
                 erros_execucao,
@@ -432,7 +498,50 @@ class RespostaIARuntime:
                 fala_emitida_por_acao,
                 fala_salva_no_inicio,
             )
+            resultado_finalizacao = (
+                resultado_finalizacao
+                if isinstance(resultado_finalizacao, dict)
+                else {}
+            )
+            fala_final = str(resultado_finalizacao.get("fala") or "").strip()
+            registrar_historico = bool(
+                resultado_finalizacao.get("registrar_no_historico")
+            )
+            concluir = getattr(estado_conversa_turno, "concluir_turno", None)
+            registrado = False
+            if (
+                registrar_historico
+                and fala_final
+                and callable(concluir)
+                and turno_conversa_iniciado
+            ):
+                registrado = bool(concluir(turno_conversa_id, fala_final))
+            if registrado:
+                atualizar_topicos = _get(ctx, "atualizar_memoria_topicos")
+                if (
+                    not comandos
+                    and tipo_interacao in {"conversa", "", "confirmacao"}
+                    and callable(atualizar_topicos)
+                ):
+                    atualizar_topicos(t, fala_final)
+                registrar_mente_curta = _get(ctx, "registrar_mente_curta")
+                if callable(registrar_mente_curta):
+                    registrar_mente_curta(
+                        t,
+                        fala_final,
+                        habilidade="conversa",
+                    )
+                salvar_memoria = _get(ctx, "salvar_memoria")
+                if callable(salvar_memoria):
+                    salvar_memoria()
+            elif turno_conversa_iniciado:
+                abortar = getattr(estado_conversa_turno, "abortar_turno", None)
+                if callable(abortar):
+                    abortar(turno_conversa_id)
         except Exception as erro:
+            abortar = getattr(estado_conversa_turno, "abortar_turno", None)
+            if callable(abortar) and turno_conversa_iniciado:
+                abortar(turno_conversa_id)
             self._log(f"❌ Erro grave na geração da resposta IA: {erro}")
             registrar_falha = _get(ctx, "registrar_falha_diagnostico")
             if callable(registrar_falha):

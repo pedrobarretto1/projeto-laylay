@@ -64,8 +64,9 @@ INTENTS_SOMENTE_LEITURA = frozenset({
     "PLAYLIST_LIST", "LAYLAY_PLAYLIST_LIST", "LISTAR_PLAYLISTS",
     "LISTAR_AGENDAMENTOS", "EMAIL_READ", "EMAIL_SYNC", "NOTIFICATIONS",
     "IOT_STATUS", "IOT_LIST", "WEATHER", "RESUMIR_PAGINA",
+    "GAME_VISION",
     "INBOX_LIST",
-    "CLIPBOARD_INVESTIGATE",
+    "CLIPBOARD_READ", "CLIPBOARD_INVESTIGATE",
     "FILE_SEARCH",
     "PEOPLE_QUERY", "PEOPLE_LIST",
     "LEARNING_QUERY",
@@ -223,7 +224,10 @@ def consultar_capacidade(
         }
     snapshot = dict(saude or {})
     dominio = str(registro.get("dominio") or "")
-    estado_dominio = snapshot.get(dominio) if isinstance(snapshot.get(dominio), dict) else {}
+    estado_bruto = snapshot.get(dominio)
+    estado_dominio: Dict[str, Any] = (
+        dict(estado_bruto) if isinstance(estado_bruto, dict) else {}
+    )
     if str(estado_dominio.get("status") or "").lower() == "indisponivel":
         registro.update(disponivel=False, motivo="componente_indisponivel")
     return registro

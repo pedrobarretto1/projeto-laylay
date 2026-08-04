@@ -14,6 +14,7 @@ from mente_laylay.integracao.registro_iot import PortaIoT
 from mente_laylay.autonomia.pre_fluxo_contextual import (
     processar_aprendizado_apelido,
     processar_consulta_sistema_local,
+    processar_esclarecimento_operacional,
     processar_pedido_direcao_musical,
     processar_identidade_usuario,
     processar_sugestao_indireta,
@@ -34,6 +35,11 @@ from mente_laylay.memoria_mental.continuidade_geral import (
     resolver_continuacao_aditiva,
     texto_e_continuacao_aditiva,
 )
+from mente_laylay.cognicao.esclarecimento_operacional import (
+    detectar_esclarecimento_operacional,
+    limpar_esclarecimento_operacional,
+)
+from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
@@ -48,6 +54,39 @@ def texto_pede_resumo_pagina(texto: str) -> bool:
     alvos = ("pagina", "site", "video", "aba")
     pedidos = ("resume", "resuma", "resumir", "explica", "explique", "o que essa", "o que esta")
     return any(alvo in t for alvo in alvos) and any(pedido in t for pedido in pedidos)
+
+
+def _texto_normalizado_local(texto: str) -> str:
+    base = unicodedata.normalize("NFKD", str(texto or "").casefold())
+    sem_acentos = "".join(ch for ch in base if not unicodedata.combining(ch))
+    return re.sub(r"\s+", " ", sem_acentos).strip()
+
+
+def texto_recusa_musica_agora(texto: str) -> bool:
+    """Reconhece uma recusa atual sem convertê-la em comando musical."""
+    t = _texto_normalizado_local(texto)
+    return bool(
+        re.search(
+            r"\bnao\s+(?:coloca|coloque|bota|toque|toca|abre|inicia|inicie)\s+"
+            r"(?:uma\s+)?(?:musica|playlist|som|faixa)\b",
+            t,
+        )
+        or re.search(r"\bsem\s+(?:musica|playlist|som)\s+agora\b", t)
+    )
+
+
+def texto_pergunta_como_apagar_item(texto: str) -> bool:
+    """Separa pedido de instrução de uma exclusão realmente autorizada."""
+    t = _texto_normalizado_local(texto)
+    return bool(
+        re.match(
+            r"^(?:como\s+(?:eu\s+)?(?:faria|faco|posso|poderia)|"
+            r"o\s+que\s+(?:eu\s+)?(?:faria|faco))\b",
+            t,
+        )
+        and re.search(r"\b(?:apagar|excluir|deletar|remover)\b", t)
+        and re.search(r"\b(?:arquivo|pasta|item|documento)\b", t)
+    )
 
 
 class ComandosImediatosRuntime:
@@ -128,6 +167,51 @@ class ComandosImediatosRuntime:
             print("⚠️ [COMANDO INTERNO] comando de barra não reconhecido")
             return True
 
+        # Um pedido operacional novo (inclusive uma nova frase vaga como
+        # "queria ouvir uma música") substitui uma pergunta antiga de campo
+        # faltante. Isso evita que, depois de trocar de assunto, uma palavra
+        # curta seja acidentalmente usada para completar o comando anterior.
+        texto_tem_comando = ns.get("_texto_tem_comando_explicito")
+        try:
+            novo_comando = bool(texto_tem_comando(texto)) if callable(texto_tem_comando) else False
+        except Exception:
+            novo_comando = False
+        if novo_comando or detectar_esclarecimento_operacional(texto):
+            if callable(getattr(estado_runtime, "substituir", None)):
+                estado_runtime.substituir(
+                    "mental",
+                    limpar_esclarecimento_operacional(
+                        getattr(estado_runtime, "mental", {}),
+                        motivo="substituida",
+                    ),
+                )
+
+        if texto_recusa_musica_agora(texto):
+            bloquear = ns.get("_bloquear_playlist_temporariamente")
+            if callable(bloquear):
+                try:
+                    bloquear(600.0)
+                except Exception:
+                    pass
+            falar = ns.get("falar_com_lipsync")
+            if callable(falar):
+                falar("Pode deixar, não vou tocar nada agora.", "calma", 1)
+            print("🛡️ [PRIORIDADE:MÚSICA] recusa atual respeitada; nenhum comando criado")
+            return True
+
+        if texto_pergunta_como_apagar_item(texto):
+            falar = ns.get("falar_com_lipsync")
+            if callable(falar):
+                falar(
+                    "Você pode apagar pelo Explorador de Arquivos. Se pedir para mim, "
+                    "eu confirmo o item antes e o envio para a lixeira, onde ainda dá "
+                    "para restaurar.",
+                    "calma",
+                    1,
+                )
+            print("🛡️ [PRIORIDADE:ARQUIVOS] explicação segura sem executar exclusão")
+            return True
+
         orquestrador_cooperativo = ns.get("_orquestrador_cooperativo_runtime")
         if callable(getattr(orquestrador_cooperativo, "processar", None)):
             try:
@@ -156,6 +240,7 @@ class ComandosImediatosRuntime:
             processar_identidade_usuario,
             processar_consulta_sistema_local,
             processar_pedido_direcao_musical,
+            processar_esclarecimento_operacional,
             processar_sugestao_indireta,
             processar_aprendizado_apelido,
         )
@@ -232,6 +317,63 @@ class ComandosImediatosRuntime:
                     "⚠️ [CAIXA DE ENTRADA] falha isolada: "
                     f"{type(erro).__name__}: {erro}"
                 )
+
+        # Busca local de arquivos é uma habilidade de leitura e não deve
+        # depender da classificação da LLM. O coordenador canônico continua
+        # responsável pela linguagem natural geral, mas esta porta garante
+        # que pedidos explícitos como "encontra o código que controla X"
+        # cheguem ao executor mesmo se o detector composto estiver degradado
+        # ou o retrato de modalidade do turno tiver sido classificado cedo
+        # demais. O próprio detector bloqueia perguntas de capacidade,
+        # hipóteses e negações. FILE_SEARCH e a seleção FILE_OPEN_RESULT são
+        # operações locais de leitura aceitas aqui.
+        normalizar = ns.get("_normalizar_texto_com_apelidos")
+        try:
+            texto_arquivo = normalizar(texto) if callable(normalizar) else texto
+        except Exception:
+            texto_arquivo = texto
+        try:
+            candidato_arquivo = detectar_intencao_arquivos(
+                texto_arquivo,
+                params_cb=lambda **kwargs: kwargs,
+                estado_mental=getattr(estado_runtime, "mental", {}),
+                normalizar_texto=normalizar,
+            )
+        except Exception as erro:
+            print(
+                "⚠️ [PRIORIDADE:ARQUIVOS] detecção de leitura falhou: "
+                f"{type(erro).__name__}: {erro}"
+            )
+            candidato_arquivo = None
+        if (
+            isinstance(candidato_arquivo, dict)
+            and str(candidato_arquivo.get("intent") or "").upper()
+            in {"FILE_SEARCH", "FILE_OPEN_RESULT"}
+        ):
+            executar = ns.get("executar_intencao")
+            if not callable(executar):
+                return False
+            try:
+                executou = bool(executar(candidato_arquivo, texto))
+            except Exception as erro:
+                print(
+                    "⚠️ [PRIORIDADE:ARQUIVOS] busca falhou: "
+                    f"{type(erro).__name__}: {erro}"
+                )
+                return True
+            registrar = ns.get("_registrar_resultado_execucao")
+            if callable(registrar):
+                registrar(
+                    candidato_arquivo,
+                    texto,
+                    executou,
+                    origem="prioritario_busca_arquivos",
+                )
+            print(
+                "⚡ [PRIORIDADE:ARQUIVOS] leitura local tratada | "
+                f"intent={str(candidato_arquivo.get('intent') or '').upper()}"
+            )
+            return True
         resolver_repeticao = ns.get("_resolver_repeticao_ultima_acao")
         if callable(resolver_repeticao) and callable(getattr(caixa_entrada, "reexecutar", None)):
             try:
@@ -265,6 +407,11 @@ class ComandosImediatosRuntime:
                 fala = (
                     "É só me pedir diretamente para desligar a luz. "
                     "Como você perguntou apenas como fazer, não alterei nada agora."
+                )
+            elif re.search(r"\btalvez\b", texto_iot, flags=re.IGNORECASE):
+                fala = (
+                    "Pode ser uma boa. Como você falou como possibilidade, deixei a "
+                    "luz como está; se quiser, eu desligo."
                 )
             else:
                 fala = "Pode deixar. Não vou alterar a luz."
@@ -396,6 +543,17 @@ class ComandosImediatosRuntime:
             and intent_detectada in set(intents_registradas())
             and intent_detectada != "SUGGEST_ACTION"
         ):
+            # Um comando novo e completo vence a pergunta anterior. Sem essa
+            # limpeza, uma resposta curta futura poderia completar uma ação
+            # que o usuário já abandonou ao formular o novo pedido.
+            if callable(getattr(estado_runtime, "substituir", None)):
+                estado_runtime.substituir(
+                    "mental",
+                    limpar_esclarecimento_operacional(
+                        getattr(estado_runtime, "mental", {}),
+                        motivo="substituida",
+                    ),
+                )
             print(
                 "⚡ [PRIORIDADE:LINGUAGEM NATURAL] "
                 f"intent={intent_detectada} | rota={rota or 'coordenador'}"

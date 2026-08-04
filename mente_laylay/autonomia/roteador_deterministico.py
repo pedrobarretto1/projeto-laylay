@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Any, Callable, Dict
 
 from mente_laylay.cognicao.referencias_linguagem import valor_e_referencia_contextual
 from mente_laylay.cognicao.modalidade_turno import analisar_protecao_operacional
 from mente_laylay.cognicao.normalizacao_linguagem import (
     corrigir_erros_portugues_operacionais,
+    texto_pede_opiniao,
 )
 from mente_laylay.autonomia.detectores_playlist import (
     detectar_confirmacao_porteiro,
@@ -35,6 +37,11 @@ def texto_pede_clima_atual(texto_normalizado: str) -> bool:
         ))
         or bool(re.search(
             r"\b(?:clima|tempo)\s+(?:hoje|agora|em|de|no|na)\b",
+            t,
+        ))
+        or bool(re.search(
+            r"\b(?:vai\s+chover|chove(?:r)?\s+hoje|como\s+fica\s+(?:o\s+)?tempo|"
+            r"tempo\s+por\s+(?:ai|aí|aqui))\b",
             t,
         ))
     )
@@ -413,7 +420,20 @@ def detectar_volume_ou_midia(
         return {"intent": "MEDIA_CONTROL", "params": params(acao="play")}
     if any(x in t for x in ["pausa", "pause", "pausar", "para a musica", "para música", "para musica", "play pause"]):
         return {"intent": "MEDIA_CONTROL", "params": params(acao="pause")}
-    if ("playlist" not in t) and any(x in t for x in ["proxima musica", "próxima música", "proxima", "próxima", "pula", "proximo", "próximo"]):
+    proxima_por_fala_natural = bool(re.fullmatch(
+        r"(?:passa|pasa|pula|pule)(?:\s+(?:para|pra|pro))?\s+(?:a\s+)?"
+        r"(?:proxima|próxima|proxma)(?:\s+(?:musica|música|faixa))?",
+        t,
+    ))
+    proxima_curta = bool(re.fullmatch(
+        r"(?:a\s+)?(?:proxima|próxima|proximo|próximo|pula|pule)", t,
+    ))
+    proxima_nomeada = bool(re.search(
+        r"\b(?:proxima|próxima)\s+(?:musica|música|faixa)\b", t,
+    ))
+    if "playlist" not in t and (
+        proxima_por_fala_natural or proxima_curta or proxima_nomeada
+    ):
         return {"intent": "MEDIA_CONTROL", "params": params(acao="next")}
     if any(x in t for x in ["volta a musica", "música anterior", "musica anterior", "anterior"]):
         return {"intent": "MEDIA_CONTROL", "params": params(acao="prev")}
@@ -425,6 +445,7 @@ def detectar_email_notificacao_briefing(
     texto_normalizado: str,
     *,
     params_cb: Callable[..., Dict[str, Any]],
+    contexto_email_ativo: bool = False,
 ) -> Dict[str, Any] | None:
     """Reconhece pedidos diretos de email, notificacao e briefing."""
     t = str(texto_normalizado or "").strip()
@@ -432,7 +453,21 @@ def detectar_email_notificacao_briefing(
         return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
 
-    if "email" in t or "emails" in t or "e-mail" in t:
+    # Depois de uma leitura confirmada, pronomes como "deles" referem-se ao
+    # lote observado pelo executor. Essa rota volta ao mesmo leitor/cache; não
+    # pede à LLM que adivinhe a urgência das mensagens.
+    if contexto_email_ativo and re.search(
+        r"\b(?:(?:algum|alguns|quais|quantos|tem|tinha|e)\b.{0,28})?"
+        r"(?:urgente|urgentes|importante|importantes|prioritario|prioritarios|prioritários)\b",
+        t,
+    ):
+        return {
+            "intent": "EMAIL_READ",
+            "params": params(urgentes=True, referencia_contextual=True),
+        }
+
+    menciona_email = bool(re.search(r"\be(?:\s|-)?mails?\b", t))
+    if menciona_email:
         if any(p in t for p in ["calar a boca", "silencia esse remetente", "silencia a shein", "manda a shein", "manda o remetente", "silenciar esse email", "ignorar esse email", "não me enche"]):
             alvo = ""
             m_alvo = re.search(r"manda a\s+(?P<alvo>[a-z0-9\s]+?)\s+calar a boca", t, flags=re.IGNORECASE)
@@ -473,7 +508,43 @@ def detectar_consulta_aprendizados(
     t = str(texto_normalizado or "").strip()
     if not t:
         return None
+    t = unicodedata.normalize("NFKD", t.casefold())
+    t = "".join(ch for ch in t if not unicodedata.combining(ch))
+    t = re.sub(r"\s+", " ", t).strip()
+    # Explicações abstratas pertencem à conversa. Esta rota consulta apenas o
+    # que a memória persistente aprendeu sobre a pessoa.
+    if re.search(
+        r"\b(?:como|o que e|explique|explica)\b.{0,35}\b"
+        r"(?:ia|inteligencia artificial|machine learning|aprendizado de maquina)\b",
+        t,
+    ):
+        return None
+    verificacao = re.search(
+        r"\b(?:voce\s+)?(?:ainda\s+)?lembra\s+que\s+(?P<consulta>.+?)[?.!]*$",
+        t,
+    )
+    if verificacao:
+        consulta = str(verificacao.group("consulta") or "").strip(" .?!")
+        params = params_cb if callable(params_cb) else lambda **kwargs: kwargs
+        return {
+            "intent": "LEARNING_QUERY",
+            "params": params(limit=3, query=consulta, modo="verificar"),
+        }
+    consulta_pessoal = re.fullmatch(
+        r"(?P<consulta>(?:eu\s+)?(?:nao\s+)?(?:gosto|curto|amo|adoro|odeio|prefiro)"
+        r"(?:\s+(?:muito|bastante|demais))?\s+(?:de|do|da|dos|das)\s+.+?)\s*\?",
+        t,
+    )
+    if consulta_pessoal:
+        consulta = str(consulta_pessoal.group("consulta") or "").strip()
+        params = params_cb if callable(params_cb) else lambda **kwargs: kwargs
+        return {
+            "intent": "LEARNING_QUERY",
+            "params": params(limit=3, query=consulta, modo="verificar"),
+        }
     estruturas = (
+        r"\b(?:o\s+que|quais\s+coisas?)\b.{0,25}\b"
+        r"(?:voce\s+)?sabe\b.{0,20}\bsobre\s+mim\b",
         r"\b(?:o\s+que|quais\s+coisas?|que\s+coisas?)\b.{0,45}\b"
         r"(?:voce\s+)?(?:aprendeu|guardou|lembra)\b(?:.{0,30}\b(?:sobre\s+mim|comigo))?",
         r"\b(?:o\s+que|quais\s+coisas?|que\s+coisas?)\b.{0,30}\b"
@@ -483,6 +554,11 @@ def detectar_consulta_aprendizados(
         r"\b(?:me\s+)?(?:fala|fale|conta|conte|diz|diga|lembra|lembre)\b"
         r".{0,35}\b(?:o\s+que|do\s+que)\b.{0,35}\b"
         r"(?:aprendeu|eu\s+(?:te\s+)?(?:ensinei|falei|contei))\b",
+        r"\b(?:quais|mostra|liste|lista|fala|fale|conte|diz|diga)\b"
+        r".{0,30}\b(?:seus?|os|meus?)\s+aprendizados\b",
+        r"\b(?:seus?|os)\s+aprendizados\b",
+        r"\b(?:o\s+que|quais\s+coisas?)\b.{0,35}\b"
+        r"(?:lembra|guardou)\b.{0,25}\bsobre\s+mim\b",
     )
     if not any(re.search(padrao, t, flags=re.IGNORECASE) for padrao in estruturas):
         return None
@@ -648,7 +724,8 @@ def detectar_janela_contextual(
     ultima_intencao_ctx = str(estado.get("ultima_acao_intent") or estado.get("ultima_intencao") or "").strip().upper()
     ultimo_app = str(estado.get("ultimo_app_janela") or "").strip()
     if not ultimo_app and ultima_intencao_ctx in {"APP_OPEN", "MAXIMIZE_WINDOW", "CLOSE_APP"}:
-        ultimos_params = estado.get("ultima_acao_params") if isinstance(estado.get("ultima_acao_params"), dict) else {}
+        params_brutos = estado.get("ultima_acao_params")
+        ultimos_params = params_brutos if isinstance(params_brutos, dict) else {}
         ultimo_app = str(
             ultimos_params.get("nome_app")
             or ultimos_params.get("app")
@@ -825,6 +902,11 @@ def detectar_musica_ou_playlist_direta(
     base = str(texto_sem_destino or t).strip()
     bruto = str(texto_bruto or "").strip()
     if not t:
+        return None
+    # Nomes de gêneros também podem ser nomes de playlists. A pergunta
+    # ``o que você acha de rock?`` deve chegar à conversa, não tocar nem listar
+    # a playlist homônima.
+    if texto_pede_opiniao(bruto or t):
         return None
     if re.search(r"\b(?:volume|som)\b", t) and re.search(
         r"\b(?:maximo|máximo|minimo|mínimo|mudo|mute|aumenta|aumentar|abaixa|baixar|diminui|diminuir)\b",

@@ -76,9 +76,24 @@ def oferta_deve_ceder_a_novo_comando(
     """
     if classificar_resposta_oferta(texto, acao_sugerida) != "ignorar":
         return False
-    return bool(
+    if bool(
         callable(texto_tem_comando_explicito)
         and texto_tem_comando_explicito(texto)
+    ):
+        return True
+    base = unicodedata.normalize("NFKD", str(texto or "").casefold())
+    fala = " ".join(
+        "".join(c for c in base if not unicodedata.combining(c)).split()
+    )
+    # Uma pergunta com assunto próprio é uma nova interação, não uma resposta
+    # contextual a "quer que eu...?". Aceites indiretos continuam disponíveis
+    # ao classificador contextual porque não têm esse formato interrogativo.
+    return bool(
+        "?" in str(texto or "")
+        or re.match(
+            r"^(?:o que|quem|qual|quais|como|onde|quando|por que|porque)\b",
+            fala,
+        )
     )
 
 
@@ -147,6 +162,33 @@ class ObservadorAreaTransferenciaRuntime:
             self._assinatura_atual = assinatura
             self._diagnostico["ultima_decisao"] = "baseline_preparada"
         return {"status": "baseline"}
+
+    def marcar_conteudo_consumido(self, snapshot: Mapping[str, Any] | None = None) -> bool:
+        """Silencia a oferta passiva quando o usuário já usou o conteúdo.
+
+        Observação e execução vivem em threads distintas. Sem esta marca, o
+        mesmo texto podia ser salvo num arquivo e logo depois gerar a pergunta
+        "quer que eu faça um resumo?". Só a assinatura sanitizada atravessa a
+        fronteira; o conteúdo bruto permanece dentro da habilidade.
+        """
+        dados = dict(snapshot or {})
+        assinatura_conteudo = str(dados.get("assinatura") or "").strip()
+        assinatura_evento = self._assinatura_snapshot(dados)
+        if not assinatura_conteudo:
+            return False
+        agora = float(self.clock())
+        with self._lock:
+            self._conteudos_ofertados[assinatura_conteudo] = agora
+            if assinatura_evento:
+                self._assinatura_atual = assinatura_evento
+                self._lembrar(assinatura_evento)
+                if str(self._pendente.get("assinatura") or "") in {
+                    assinatura_evento,
+                    assinatura_conteudo,
+                }:
+                    self._pendente = {}
+            self._diagnostico["ultima_decisao"] = "conteudo_consumido_explicitamente"
+        return True
 
     def _finalizar_assinatura(self, assinatura: str) -> None:
         with self._lock:
@@ -309,6 +351,22 @@ class ObservadorAreaTransferenciaRuntime:
             self._finalizar_assinatura(assinatura)
             self._diagnostico["ignoradas"] += 1
             return {"status": "ignorada", "tipo": tipo}
+        contexto = self._contexto()
+        acao_sugerida = str(evento.get("acao_sugerida") or "")
+        silenciadas = dict(contexto.get("clipboard_ofertas_silenciadas") or {})
+        try:
+            silenciada_ate = float(silenciadas.get(acao_sugerida) or 0.0)
+        except (TypeError, ValueError):
+            silenciada_ate = 0.0
+        if acao_sugerida and silenciada_ate > time.time():
+            self._finalizar_assinatura(assinatura)
+            self._diagnostico["ignoradas"] += 1
+            self._diagnostico["ultima_decisao"] = "silenciada_por_recusa"
+            return {
+                "status": "silenciada_por_recusa",
+                "tipo": tipo,
+                "acao_sugerida": acao_sugerida,
+            }
         if self.modo == "sombra" or not callable(self.considerar_presenca):
             self._finalizar_assinatura(assinatura)
             self._diagnostico["ultima_decisao"] = "sombra"

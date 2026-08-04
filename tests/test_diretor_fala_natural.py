@@ -163,7 +163,10 @@ def test_deboche_afetuoso_so_aparece_em_contexto_seguro() -> None:
 
     assert brincadeira["humor"] == "debochado_afetuoso"
     assert brincadeira["perfil_personalidade"]["assinatura"] == (
-        "opiniao_clara_callback_relevante_sem_bordao"
+        "detalhe_concreto_opiniao_clara_cumplicidade_sem_bordao"
+    )
+    assert brincadeira["perfil_personalidade"]["linguagem"] == (
+        "concreta_com_metafora_apenas_quando_util"
     )
     assert vulnerabilidade["humor"] == "nenhum"
     assert operacao["humor"] == "nenhum"

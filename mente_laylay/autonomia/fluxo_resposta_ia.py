@@ -6,11 +6,13 @@ from typing import Any, Dict
 from mente_laylay.autonomia.pre_fluxo_contextual import (
     executar_pipeline_pre_fluxo,
     processar_bloqueio_playlist_temporario,
+    processar_comentario_resultado_operacional,
     processar_confirmacao_musical_pendente,
     processar_encerramento_conversa,
     processar_feedback_pendente,
     processar_opiniao_musica_atual,
     processar_pergunta_curta_contextual,
+    processar_reparacao_conversacional,
     processar_resposta_pendencia_prioritaria,
     processar_continuacao_visao_jogo,
 )
@@ -24,6 +26,8 @@ CATEGORIAS_PRE_FLUXO_PERMITIDAS = frozenset({
 })
 
 ETAPAS_PRE_FLUXO_AUDITADAS = (
+    ("reparacao_conversacional", "continuidade"),
+    ("comentario_resultado_operacional", "continuidade"),
     ("continuacao_visao_jogo", "continuidade"),
     ("opiniao_musica_atual", "continuidade"),
     ("resposta_pendencia_prioritaria", "pendencia"),
@@ -121,6 +125,12 @@ def processar_inicio_fluxo_resposta_ia(ctx: Dict[str, Any], texto: str) -> bool:
     # é preservar respostas vinculadas ao estado já criado neste mesmo turno:
     # continuidade, pendências, confirmações e proteções explícitas.
     etapas = [lambda: processar_continuacao_visao_jogo(ctx, t)]
+    # Correções e perguntas sobre a autoria de uma ação pertencem ao contrato
+    # operacional recente. Elas não podem cair na LLM como conversa solta.
+    etapas.extend([
+        lambda: processar_reparacao_conversacional(ctx, t),
+        lambda: processar_comentario_resultado_operacional(ctx, t),
+    ])
     if not usar_ia_principal_semantica:
         etapas.append(lambda: processar_opiniao_musica_atual(ctx, t))
     etapas.extend([

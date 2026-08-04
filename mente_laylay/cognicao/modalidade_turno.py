@@ -98,6 +98,28 @@ def _classificar_modalidade_base(
     if not t:
         resultado.update(modalidade="vazio", confianca=1.0, motivo="entrada vazia")
         return resultado
+
+    # Adiamentos curtos encerram ou pausam a ação anterior. Embora comecem
+    # por verbos no imperativo ("deixa", "vemos", "fazemos"), não autorizam
+    # uma nova execução. Esta leitura precisa vir antes do detector geral de
+    # imperativos para que "deixa para depois" não vire um comando sem alvo.
+    if re.fullmatch(
+        r"(?:melhor\s+)?(?:deixa|deixar|deixe|deixamos|vamos\s+deixar)"
+        r"(?:\s+(?:isso|essa|esse|ela|ele))?\s+(?:pra|para)\s+depois|"
+        r"(?:isso\s+)?(?:fica|pode\s+ficar)\s+(?:pra|para)\s+depois|"
+        r"(?:a\s+gente\s+)?(?:ve|v[eê]|vemos|faz|fazemos)"
+        r"(?:\s+isso)?\s+depois",
+        t,
+    ):
+        resultado.update(
+            modalidade="recusa",
+            confianca=0.99,
+            motivo="adiamento explícito sem autorização",
+            natureza_acao="adiamento",
+            depende_contexto=True,
+            autoriza_execucao=False,
+        )
+        return resultado
     protecao = analisar_protecao_operacional(
         t,
         normalizar_texto=lambda valor: str(valor or "").strip(),
@@ -252,7 +274,8 @@ def _classificar_modalidade_base(
         )
         return resultado
     if re.search(
-        r"^(?:pesquisa|pesquisar|busca|buscar|procura|procurar)\b\s+.+|"
+        r"^(?:pesquisa|pesquisar|busca|buscar|procura|procurar|encontra|encontre|"
+        r"acha|ache|localiza|localize)\b\s+.+|"
         r"^(?:pula|pule|passa|tira|remove)\b.*\b(?:anuncio|anúncio|propaganda)\b|"
         r"^(?:proxima|próxima)\s+(?:musica|música|faixa)|^(?:musica|música)\s+anterior|"
         r"^(?:olha|veja|ver|captura|capture)\b.*\b(?:minha\s+)?tela\b|^tira\s+(?:um\s+)?print\b|"
@@ -278,7 +301,8 @@ def _classificar_modalidade_base(
     pedido_polido = bool(re.search(
         r"^(?:por favor\s+)?(?:pode|poderia|consegue|conseguiria)\s+"
         r"(?:abrir|abre|fechar|fecha|ligar|liga|desligar|desliga|tocar|toca|colocar|"
-        r"coloca|criar|apagar|ler|leia|verificar|verifique|resumir|resuma|resume)\b",
+        r"coloca|criar|apagar|ler|leia|verificar|verifique|resumir|resuma|resume|"
+        r"encontrar|encontra|achar|acha|localizar|localiza)\b",
         t,
     ))
     pedido_para_mim = bool(re.search(
@@ -289,7 +313,7 @@ def _classificar_modalidade_base(
         r"^(?:por favor\s+)?(?:abre|abra|fecha|feche|liga|ligue|desliga|desligue|"
         r"toca|toque|coloca|coloque|deixa|deixe|bota|põe|poe|cria|crie|apaga|remove|deleta|"
         r"maximiza|organiza|pausa|retoma|aumenta|abaixa|diminui|resume|resuma|"
-        r"leia|verifique)\b",
+        r"leia|verifique|encontra|encontre|acha|ache|localiza|localize)\b",
         t,
     ))
     comando_detectado = False
@@ -300,7 +324,8 @@ def _classificar_modalidade_base(
             comando_detectado = False
     capacidade_ambigua = bool(re.search(
         r"^(?:voce|você)\s+(?:pode|poderia|consegue|conseguiria)\s+"
-        r"(?:abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|ler|verificar|resumir)\b",
+        r"(?:abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|ler|verificar|resumir|"
+        r"encontrar|achar|localizar)\b",
         t,
     )) and not pedido_para_mim
     if capacidade_ambigua:

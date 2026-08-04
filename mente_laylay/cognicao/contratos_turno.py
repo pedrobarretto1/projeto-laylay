@@ -29,6 +29,41 @@ class AtoTurnoDict(TypedDict, total=False):
     requer_execucao: bool
 
 
+class RoteiroGeracaoConcretaDict(TypedDict, total=False):
+    versao: int
+    estrategia: str
+    ancora_literal: str
+    nucleo_resposta: str
+    sequencia: list[str]
+    exigencias_concretude: list[str]
+    abstracoes_a_concretizar: list[str]
+    base_permitida: list[str]
+    primeira_frase_responde_nucleo: bool
+    autoriza_execucao: bool
+    origem: str
+
+
+class ContratoFalaDict(TypedDict, total=False):
+    versao: int
+    turno_id: Any
+    funcao: str
+    atos: list[str]
+    referente: str
+    conteudos_obrigatorios: list[str]
+    inferencias_proibidas: list[str]
+    estrutura: list[str]
+    max_frases: int
+    permite_pergunta: bool
+    permite_humor: bool
+    permite_metafora: bool
+    fala_anterior_relevante: str
+    respostas_recentes_evitar: list[str]
+    cooperacao_considerada: bool
+    roteiro_concreto: RoteiroGeracaoConcretaDict
+    autoriza_execucao: bool
+    origem: str
+
+
 class LeituraTurnoDict(TypedDict, total=False):
     id: int
     origem_entrada: str
@@ -41,6 +76,10 @@ class LeituraTurnoDict(TypedDict, total=False):
     segmentos: list[Dict[str, Any]]
     texto_operacional: str
     texto_conversacional: str
+    tema_factual: str
+    aprendizados_explicitos: list[Dict[str, Any]]
+    especialistas: Dict[str, Any]
+    contrato_fala: ContratoFalaDict
 
 
 class PlanoTurnoDict(TypedDict, total=False):
@@ -59,6 +98,8 @@ class PlanoTurnoDict(TypedDict, total=False):
     comandos: list[Dict[str, Any]]
     erros: list[str]
     decisao_turno: Dict[str, Any]
+    deliberacao_habilidades: Dict[str, Any]
+    contrato_fala: ContratoFalaDict
 
 
 class RespostaPreparadaTurnoDict(TypedDict, total=False):
