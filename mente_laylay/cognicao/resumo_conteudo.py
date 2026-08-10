@@ -4,9 +4,165 @@ from __future__ import annotations
 
 import asyncio
 import re
+import unicodedata
 from typing import Any, Awaitable, Callable, Dict
 
+from mente_laylay.cognicao.estado_tecnico_llm import eh_estado_tecnico_llm
 from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
+
+
+def _normalizar_ruido_pagina(texto: str) -> str:
+    base = str(texto or "").replace("\u200b", "").replace("\ufeff", "")
+    base = unicodedata.normalize("NFKD", base.casefold())
+    sem_acentos = "".join(ch for ch in base if not unicodedata.combining(ch))
+    return re.sub(r"\s+", " ", sem_acentos).strip()
+
+
+def _sinais_campanha_doacao(trecho: str) -> set[str]:
+    """Identifica assinaturas específicas de campanhas, não o tema do texto."""
+    t = _normalizar_ruido_pagina(trecho)
+    sinais: set[str] = set()
+    if re.search(
+        r"\b(?:pedimos|we ask)\b.{0,160}\b(?:por cento|percent)\b"
+        r".{0,160}\b(?:leitores?|leitoras|readers?)\b.{0,160}"
+        r"\b(?:doam|doe|donate)\b",
+        t,
+    ):
+        sinais.add("pedido_percentual")
+    if re.search(
+        r"\b(?:todas as pessoas|everyone)\b.{0,100}"
+        r"\b(?:lendo|reading)\b.{0,140}"
+        r"\b(?:doassem|doasse|doar|gave|donated)\b",
+        t,
+    ):
+        sinais.add("leitura_coletiva")
+    if re.search(
+        r"\b(?:atingiriamos|alcancariamos|reach)\b.{0,100}"
+        r"\b(?:meta|goal)\b.{0,100}\b(?:poucas horas|few hours)\b",
+        t,
+    ):
+        sinais.add("meta_em_horas")
+    if re.search(r"\b(?:doar|donate)\b.{0,100}\b(?:talvez depois|maybe later)\b", t):
+        sinais.add("botoes_doacao")
+    if "wikipedia nao esta a venda" in t or "wikipedia is not for sale" in t:
+        sinais.add("nao_esta_a_venda")
+    if (
+        "tentamos entrar em contato antes" in t
+        or "we tried to contact you before" in t
+    ):
+        sinais.add("contato_anterior")
+    if (
+        "nossa campanha vai acabar" in t
+        or "our fundraiser will soon" in t
+        or "fundraiser will soon" in t
+    ):
+        sinais.add("campanha_encerrando")
+    if (
+        ("precisamos de ajuda" in t or "we need your help" in t)
+        and ("wikipedia" in t or "contato" in t or "contact" in t)
+    ):
+        sinais.add("pedido_de_ajuda")
+    return sinais
+
+
+def _trecho_e_ruido_de_interface(trecho: str) -> bool:
+    """Reconhece avisos de interface; não tenta julgar o assunto do artigo."""
+    t = _normalizar_ruido_pagina(trecho)
+    if not t:
+        return True
+    if any(marcador in t for marcador in (
+        "desculpe incomodar",
+        "sorry to interrupt",
+        "nossa campanha vai acabar",
+        "our fundraiser will soon",
+        "origem: wikipedia, a enciclopedia livre",
+        "from wikipedia, the free encyclopedia",
+    )):
+        return True
+    # Não basta mencionar leitores e doações: esse pode ser justamente o
+    # assunto de um artigo. As assinaturas exigem chamadas próprias de banner.
+    if _sinais_campanha_doacao(t):
+        return True
+    if any(marcador in t for marcador in (
+        "aceitar todos os cookies",
+        "accept all cookies",
+        "assine nossa newsletter",
+        "subscribe to our newsletter",
+    )):
+        return True
+    return False
+
+
+def _limpar_texto_capturado(texto: str) -> str:
+    """Remove navegação evidente sem reescrever o conteúdo observado.
+
+    A extensão entrega ``innerText``. Em páginas enciclopédicas, o bloco
+    principal ainda pode começar pelo seletor de idiomas e pelo índice. Além
+    de produzir um resumo inútil, essa enumeração leva dezenas de alfabetos
+    sem relação com o artigo ao Qt/TTS. A limpeza é deliberadamente estreita:
+    só corta prefixos reconhecíveis e mantém o restante literalmente.
+    """
+    limpo = str(texto or "").replace("\u200b", "").replace("\ufeff", "")
+    limpo = re.sub(r"\s+", " ", limpo).strip()
+    prefixos_navegacao = (
+        r"^alternar\s+o\s+[íi]ndice\b.{0,4500}?"
+        r"origem:\s*wikip[ée]dia,\s*a\s+enciclop[ée]dia\s+livre\.?\s*",
+        r"^jump\s+to\s+content\b.{0,4500}?"
+        r"from\s+wikipedia,\s+the\s+free\s+encyclopedia\.?\s*",
+    )
+    for padrao in prefixos_navegacao:
+        filtrado = re.sub(padrao, "", limpo, count=1, flags=re.IGNORECASE)
+        if filtrado != limpo:
+            limpo = filtrado.strip()
+            break
+    # Banners dinâmicos costumam ser injetados como as primeiras frases do
+    # próprio ``main``. Removemos somente padrões inequívocos nos primeiros
+    # trechos; uma eventual discussão sobre doações dentro do artigo continua
+    # preservada mais adiante.
+    sentencas = re.split(r"(?<=[.!?])\s+", limpo)
+    # Uma campanha é composta por frases, valores e botões independentes. Se
+    # ao menos duas assinaturas aparecem juntas no prefixo, tratamos tudo
+    # entre a primeira e a última como um único bloco. Assim valores e datas
+    # variáveis não viram o começo do resumo quando a extensão está antiga.
+    sinais_prefixo = [
+        _sinais_campanha_doacao(parte)
+        for parte in sentencas[:16]
+    ]
+    indices_campanha = [
+        indice for indice, sinais in enumerate(sinais_prefixo) if sinais
+    ]
+    sinais_distintos = set().union(*sinais_prefixo) if sinais_prefixo else set()
+    intervalo_campanha: tuple[int, int] | None = None
+    if len(sinais_distintos) >= 2 and indices_campanha:
+        intervalo_campanha = (
+            min(indices_campanha),
+            max(indices_campanha),
+        )
+
+    limpo = " ".join(
+        parte.strip()
+        for indice, parte in enumerate(sentencas)
+        if parte.strip()
+        and not (
+            intervalo_campanha is not None
+            and intervalo_campanha[0] <= indice <= intervalo_campanha[1]
+        )
+        and not (indice < 8 and _trecho_e_ruido_de_interface(parte))
+    )
+    # Referências numéricas soltas não acrescentam sentido ao resumo falado.
+    limpo = re.sub(r"\[(?:\d{1,4}|nota\s+\d{1,4})\]", "", limpo, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", limpo).strip()
+
+
+def _titulo_limpo_resumo(titulo: str) -> str:
+    nome = str(titulo or "esta página").strip()
+    nome = re.sub(
+        r"\s*[-–—|]\s*wikip[ée]dia(?:,\s*a\s+enciclop[ée]dia\s+livre)?\s*$",
+        "",
+        nome,
+        flags=re.IGNORECASE,
+    ).strip()
+    return nome or "esta página"
 
 
 def _recortar_texto_para_resumo(texto: str, limite: int = 7000) -> tuple[str, bool]:
@@ -21,18 +177,27 @@ def _recortar_texto_para_resumo(texto: str, limite: int = 7000) -> tuple[str, bo
 
 def _resumo_extrativo_seguro(titulo: str, texto: str) -> str:
     """Entrega algo útil mesmo quando o modelo está indisponível."""
-    limpo = re.sub(r"\s+", " ", str(texto or "")).strip()
-    sentencas = [parte.strip() for parte in re.split(r"(?<=[.!?])\s+", limpo) if len(parte.strip()) >= 25]
+    limpo = _limpar_texto_capturado(texto)
+    sentencas = [
+        parte.strip()
+        for parte in re.split(
+            r"(?<=[.!?])\s+(?=[A-ZÀ-Ý0-9“\"])",
+            limpo,
+        )
+        if len(parte.strip()) >= 25
+    ]
     partes: list[str] = []
     for sentenca in sentencas:
-        trecho = sentenca[:260].strip()
+        trecho = sentenca.strip()
+        if len(trecho) > 340:
+            trecho = trecho[:337].rsplit(" ", 1)[0].rstrip(" ,;:") + "…"
         if trecho and trecho.casefold() not in {item.casefold() for item in partes}:
             partes.append(trecho)
-        if len(partes) >= 2:
+        if len(partes) >= 3:
             break
     if not partes and limpo:
         partes = [limpo[:360].strip()]
-    nome = str(titulo or "esta página").strip()
+    nome = _titulo_limpo_resumo(titulo)
     corpo = " ".join(partes).strip()
     if corpo:
         return f"A página é sobre “{nome}”. Pelo conteúdo que consegui ler: {corpo}"
@@ -78,6 +243,12 @@ async def resumir_pagina_ou_video(
             return False
 
         dados = response.get("data") if isinstance(response.get("data"), dict) else {}
+        log(
+            "[RESUMO:CAPTURA] "
+            f"extrator={dados.get('extractor_version') or 'legado'} "
+            f"raiz={str(dados.get('root_selector') or '-').strip()[:80]} "
+            f"origem={str(dados.get('content_source') or '-').strip()[:30]}"
+        )
         url = str(dados.get("url") or "")
         conteudo = str(dados.get("content") or "")
         titulo = str(dados.get("title") or "")
@@ -86,7 +257,7 @@ async def resumir_pagina_ou_video(
             falar("Não consegui identificar a URL da página.", "irritada", 2)
             return False
 
-        texto_resumo = conteudo or titulo
+        texto_resumo = _limpar_texto_capturado(conteudo or titulo)
         if "youtube.com/watch" in url:
             video_id_match = re.search(r"v=([a-zA-Z0-9_-]+)", url)
             if video_id_match:
@@ -98,7 +269,7 @@ async def resumir_pagina_ou_video(
                     log(f"[RESUMO] Legendas completas obtidas ({len(texto_resumo)} caracteres)")
                 except Exception as erro:
                     log(f"[RESUMO] Não consegui pegar legendas: {erro}")
-                    texto_resumo = conteudo or titulo
+                    texto_resumo = _limpar_texto_capturado(conteudo or titulo)
 
         if len(texto_resumo.strip()) < 30:
             log("[RESUMO:FASE] conteúdo curto; repetindo captura após a página estabilizar")
@@ -109,11 +280,14 @@ async def resumir_pagina_ou_video(
                 segundo_conteudo = str(segundos_dados.get("content") or "")
                 segundo_titulo = str(segundos_dados.get("title") or "")
                 segundo_url = str(segundos_dados.get("url") or "")
-                if len((segundo_conteudo or segundo_titulo).strip()) > len(texto_resumo.strip()):
+                segundo_texto = _limpar_texto_capturado(
+                    segundo_conteudo or segundo_titulo
+                )
+                if len(segundo_texto) > len(texto_resumo.strip()):
                     conteudo = segundo_conteudo
                     titulo = segundo_titulo or titulo
                     url = segundo_url or url
-                    texto_resumo = conteudo or titulo
+                    texto_resumo = segundo_texto
                     log(f"[RESUMO:FASE] captura recuperada chars={len(texto_resumo)}")
 
         if len(texto_resumo.strip()) < 30:
@@ -157,6 +331,11 @@ async def resumir_pagina_ou_video(
                     modo_rapido=True,
                     max_tokens=320,
                     timeout=max(1, int(timeout_llm_s)),
+                    # Esta é a resposta do pedido atual, não uma tarefa de
+                    # fundo. Sem prioridade, o cliente local adia a chamada
+                    # por detectar a própria interação ainda ativa.
+                    _prioridade_interativa=True,
+                    _permitir_durante_interacao=True,
                 ),
                 timeout=max(1.0, float(timeout_llm_s)) + 2.0,
             )
@@ -172,12 +351,47 @@ async def resumir_pagina_ou_video(
                     "referente": _referente_principal_resumo(titulo, fala_fallback),
                 })
             return True
+        except Exception as erro_llm:
+            # O cliente HTTP pode propagar ``ReadTimeout``/``HTTPError`` em vez
+            # de deixar ``asyncio.wait_for`` vencer. O conteúdo da página já
+            # foi observado neste ponto; perder o resumo por causa da etapa
+            # criativa seria transformar uma degradação da LLM em falha da
+            # habilidade inteira. O extrativo local não inventa informação.
+            log(
+                "[RESUMO] A geração externa falhou; usando leitura local: "
+                f"{type(erro_llm).__name__}"
+            )
+            fallback = _resumo_extrativo_seguro(titulo, texto_prompt)
+            fala_fallback = (
+                "A parte criativa não respondeu, então fui direto pelo texto. "
+                f"{fallback}"
+            )
+            falar(fala_fallback, "calma", 1)
+            if callable(registrar_contexto):
+                registrar_contexto({
+                    "status": "concluido", "titulo": titulo, "url": url,
+                    "conteudo": texto_resumo[:1600], "resumo": fala_fallback,
+                    "referente": _referente_principal_resumo(
+                        titulo, fala_fallback,
+                    ),
+                })
+            return True
         resposta = remover_prefixo_exec(limpar_resposta(resposta_bruta))
-        falha_ia = any(trecho in resposta.casefold() for trecho in (
-            "demorou demais pra responder", "conexão com a parte da ia falhou",
-            "conexao com a parte da ia falhou", "cheque sua chave do openrouter",
-            "modelo local está ocupado", "modelo local esta ocupado",
-        ))
+        falha_ia = (
+            # O transporte usa sentinelas internas, e o limpador de fala pode
+            # retirar seus sublinhados. Verificamos antes e depois da limpeza
+            # para que um estado técnico nunca seja confundido com um resumo.
+            eh_estado_tecnico_llm(resposta_bruta)
+            or eh_estado_tecnico_llm(resposta)
+            or any(trecho in resposta.casefold() for trecho in (
+                "demorou demais pra responder",
+                "conexão com a parte da ia falhou",
+                "conexao com a parte da ia falhou",
+                "cheque sua chave do openrouter",
+                "modelo local está ocupado",
+                "modelo local esta ocupado",
+            ))
+        )
         if falha_ia:
             log(f"[RESUMO] A IA não concluiu: {resposta}")
             fallback = _resumo_extrativo_seguro(titulo, texto_prompt)
@@ -228,7 +442,17 @@ class ResumoConteudoRuntime:
             enviar_mensagem=ns.get("enviar_mensagem")
         )
         if not callable(enviar):
-            return False
+            # Ler a página não depende da etapa criativa. Se a porta do
+            # modelo estiver temporariamente ausente, deixamos o fluxo chegar
+            # ao extrativo local em vez de encerrar a habilidade em silêncio.
+            self.log(
+                "[RESUMO] modelo indisponível; a leitura local será usada"
+            )
+
+            def enviar_indisponivel(*_args: Any, **_kwargs: Any) -> str:
+                raise RuntimeError("modelo de resumo indisponível")
+
+            enviar = enviar_indisponivel
         return await resumir_pagina_ou_video(
             websocket_disponivel=ns["websocket_disponivel"],
             solicitar_conteudo=ns["solicitar_conteudo"],

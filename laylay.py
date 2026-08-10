@@ -19,6 +19,17 @@ from functools import partial
 import threading as _threading
 import builtins as _builtins
 
+from mente_laylay.integracao.instancia_unica import adquirir_instancia_unica
+
+
+_instancia_unica_runtime = adquirir_instancia_unica(
+    sys.executable if getattr(sys, "frozen", False) else __file__
+)
+if not _instancia_unica_runtime.adquirida:
+    print("⚠️ [INICIALIZAÇÃO] A Laylay já está aberta. Não iniciei uma segunda instância.")
+    raise SystemExit(0)
+atexit.register(_instancia_unica_runtime.liberar)
+
 
 def _carregar_configuracao_portatil() -> None:
     """Carrega configurações ao lado do executável sem sobrescrever o Windows."""
@@ -101,6 +112,7 @@ from mente_laylay.integracao.registro_arquivos import (
 from mente_laylay.integracao.registro_mutacoes_arquivos import (
     registrar_arquivos_mutacao as _registrar_arquivos_mutacao,
 )
+from mente_laylay.integracao.reinicio_processo import construir_argumentos_reinicio
 from mente_laylay.integracao.registro_musica import (
     registrar_musica_leitura as _registrar_musica_leitura,
 )
@@ -1267,6 +1279,8 @@ SITES_DIRECTOS = {
     "linkedin": "https://www.linkedin.com",
     "facebook": "https://www.facebook.com",
     "amazon": "https://www.amazon.com.br",
+    "prime video": "https://www.primevideo.com/",
+    "amazon prime video": "https://www.primevideo.com/",
     "mercadolivre": "https://www.mercadolivre.com.br",
 }
 APPS_MAP = {
@@ -2331,6 +2345,9 @@ _observador_area_transferencia_runtime = _criar_observador_area_transferencia_ru
     stop_event=_servicos_background_runtime.evento_parada,
     log=print,
 )
+_area_transferencia_runtime.conectar_observador_passivo(
+    _observador_area_transferencia_runtime.marcar_conteudo_consumido
+)
 _observador_area_transferencia_runtime.preparar_baseline()
 _saude_mente_runtime.registrar(
     "observador_area_transferencia",
@@ -2388,6 +2405,7 @@ _resumo_conteudo_runtime = _criar_resumo_conteudo_runtime_mente(
         "transcript_api": YouTubeTranscriptApi,
         "registrar_contexto_resumo": _registrar_contexto_resumo_pagina,
     },
+    modelo_llm=_registro_modelo_llm_runtime,
     log=print,
 )
 resumir_pagina_ou_video = _resumo_conteudo_runtime.resumir
@@ -2542,6 +2560,9 @@ _pedido_lista_geral_playlist = _playlist_runtime.pedido_lista_geral
 
 _sincronizar_playlists_da_laylay = _playlist_laylay_runtime.sincronizar
 _detectar_playlist_nome_direto = _playlist_runtime.detectar_nome_direto_contextual
+_detectar_playlist_laylay_nome_direto = (
+    _playlist_laylay_runtime.detectar_nome_direto_contextual
+)
 _carregar_playlists_para_memoria = _playlist_runtime.carregar_para_memoria
 
 
@@ -3515,13 +3536,15 @@ def main():
         deve_encerrar=_reinicio_aplicacao_solicitado.is_set,
     )
     if _reinicio_aplicacao_solicitado.is_set():
-        argumentos = (
-            [sys.executable, *sys.argv[1:]]
-            if getattr(sys, "frozen", False)
-            else [sys.executable, os.path.abspath(__file__), *sys.argv[1:]]
+        argumentos = construir_argumentos_reinicio(
+            sys.executable,
+            script=__file__,
+            argumentos=sys.argv[1:],
+            empacotado=bool(getattr(sys, "frozen", False)),
         )
         print("♻️ [LAYLAY] serviços encerrados; iniciando uma sessão limpa.")
         try:
+            _instancia_unica_runtime.liberar()
             os.execv(sys.executable, argumentos)
         except OSError as erro:
             print(f"⚠️ [LAYLAY] não consegui reiniciar o processo: {erro}")

@@ -33,6 +33,35 @@ def _mutacoes(**callbacks):
     return registrar_arquivos_mutacao(criar_arquivos_mutacao_runtime(**callbacks))
 
 
+def test_referencia_pronominal_prefere_caminho_confirmado_da_estrutura(tmp_path) -> None:
+    caminho = tmp_path / "teste.md"
+    caminho.write_text("ok", encoding="utf-8")
+    ctx = {
+        "ultimo_alvo": "teste",
+        "ultima_pasta_contextual": lambda: "",
+        "ultimo_arquivo_contextual": lambda: "teste",
+        "estrutura_arquivo_recente": lambda: {
+            "tipo": "arquivo",
+            "arquivo_nome": "teste.md",
+            "caminho": str(caminho),
+        },
+        "resolver_caminho": lambda valor: valor,
+    }
+
+    assert resolver_referencia_arquivo_contextual(
+        ctx, "ele", "arquivo",
+    ) == str(caminho)
+
+
+def test_quero_ele_de_volta_restaura_ultima_exclusao() -> None:
+    resultado = detectar_intencao_arquivos(
+        "quero ele de volta",
+        params_cb=lambda **kwargs: kwargs,
+        estado_mental={},
+    )
+    assert resultado == {"intent": "RESTORE_DELETED_ITEM", "params": {}}
+
+
 def test_referencia_explicita_nao_e_substituida_pela_memoria() -> None:
     ctx = {
         "ultima_pasta_contextual": lambda: "C:/antiga",
@@ -175,6 +204,156 @@ def test_pronome_dela_resolve_ultima_pasta_criada() -> None:
             "tipo_arquivo": "texto",
         },
     }
+
+
+def test_continuidade_de_arquivo_escreve_localiza_e_abre_o_mesmo_caminho(tmp_path) -> None:
+    arquivo = tmp_path / "teste manutenção" / "exemplo.txt"
+    arquivo.parent.mkdir()
+    arquivo.write_text("", encoding="utf-8")
+    estado = {
+        "ultima_estrutura_arquivo_params": {
+            "tipo": "arquivo",
+            "arquivo_nome": "exemplo.txt",
+            "caminho": str(arquivo),
+        },
+    }
+
+    assert detectar_intencao_arquivos(
+        'Escreve "teste concluído" nele.',
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    ) == {
+        "intent": "CREATE_FILE",
+        "params": {
+            "alvo": str(arquivo),
+            "conteudo": "teste concluído",
+            "editar_existente": True,
+        },
+    }
+    assert detectar_intencao_arquivos(
+        "Onde ele fica?",
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    )["params"]["referencia_caminho"] == str(arquivo)
+    assert detectar_intencao_arquivos(
+        "Abre ele.",
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    ) == {
+        "intent": "FILE_OPEN_RESULT",
+        "params": {"caminho": str(arquivo), "alvo": "exemplo.txt"},
+    }
+    assert detectar_intencao_arquivos(
+        "Apaga ele.",
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    ) == {
+        "intent": "DELETE_ITEM",
+        "params": {"alvo": str(arquivo), "tipo": "arquivo"},
+    }
+
+
+def test_pesquisa_de_arquivos_remove_caminhos_duplicados(tmp_path) -> None:
+    arquivo = tmp_path / "controlador.py"
+    arquivo.write_text("# luz", encoding="utf-8")
+    falas: list[str] = []
+
+    class Leitura:
+        def pesquisar(self, *_args, **_kwargs):
+            item = {
+                "caminho": str(arquivo),
+                "nome": "controlador.py",
+                "motivos": ["conteúdo"],
+            }
+            return {"ok": True, "resultados": [item, dict(item)]}
+
+    tratado = executar_intencao_arquivos(
+        "FILE_SEARCH",
+        {"query": "código que controla a lâmpada"},
+        "pc_a",
+        {
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+            "_registrar_estrutura_arquivo_recente": lambda _dados: None,
+        },
+        texto_original="encontra o código que controla a lâmpada",
+        marcar_resultado=lambda *_args, **_kwargs: None,
+        registrar_arquivo=lambda *_args: None,
+        item_local_existe=lambda *_args: False,
+        resolver_caminho_local=lambda valor: valor,
+        resolver_referencia_arquivo_contextual=lambda valor, _tipo: valor,
+        arquivos_leitura=Leitura(),
+        arquivos_mutacao=_mutacoes(),
+    )
+
+    assert tratado is True
+    assert len(falas) == 1
+    assert "Encontrei controlador.py" in falas[0]
+    assert "2 arquivos" not in falas[0]
+
+
+def test_escrita_nomeada_reaproveita_caminho_contextual_do_arquivo(tmp_path) -> None:
+    arquivo = tmp_path / "teste manutenção" / "exemplo.txt"
+    estado = {
+        "ultima_estrutura_arquivo_params": {
+            "tipo": "arquivo",
+            "arquivo_nome": "exemplo.txt",
+            "caminho": str(arquivo),
+        },
+    }
+
+    resultado = detectar_intencao_arquivos(
+        "escreve teste concluido dentro do exemplo.txt",
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    )
+
+    assert resultado == {
+        "intent": "CREATE_FILE",
+        "params": {
+            "alvo": str(arquivo),
+            "conteudo": "teste concluido",
+            "editar_existente": True,
+        },
+    }
+
+
+def test_executor_atualiza_arquivo_existente_sem_criar_outro(tmp_path) -> None:
+    arquivo = tmp_path / "exemplo.txt"
+    arquivo.write_text("antigo", encoding="utf-8")
+    resultados: list[tuple[str, bool | None]] = []
+
+    def criar(caminho: str, conteudo: str, _modo: str) -> bool:
+        with open(caminho, "w", encoding="utf-8") as stream:
+            stream.write(conteudo)
+        return True
+
+    tratado = executar_intencao_arquivos(
+        "CREATE_FILE",
+        {
+            "alvo": str(arquivo),
+            "conteudo": "teste concluído",
+            "editar_existente": True,
+        },
+        "pc_a",
+        {
+            "falar_com_lipsync": lambda *_args: None,
+            "_registrar_estrutura_arquivo_recente": lambda _dados: None,
+        },
+        texto_original='escreve "teste concluído" nele',
+        marcar_resultado=lambda status, executou, **_kwargs: resultados.append((status, executou)),
+        registrar_arquivo=lambda *_args: None,
+        item_local_existe=lambda caminho, tipo: os.path.isfile(caminho) if tipo == "arquivo" else os.path.exists(caminho),
+        resolver_caminho_local=lambda valor: str(valor),
+        resolver_referencia_arquivo_contextual=lambda alvo, _tipo: alvo,
+        arquivos_mutacao=_mutacoes(
+            resolver_caminho_cb=lambda valor: str(valor),
+            criar_arquivo_cb=criar,
+        ),
+    )
+
+    assert tratado is True
+    assert arquivo.read_text(encoding="utf-8") == "teste concluído"
+    assert resultados[-1] == ("conteudo_atualizado", True)
 
 
 def test_executor_aceita_contrato_ia_e_combina_pasta_com_arquivo(tmp_path) -> None:

@@ -11,7 +11,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from typing import Any, Dict, Iterable, Mapping
+from collections.abc import Iterable
+from typing import Any, Dict, Mapping
 
 from mente_laylay.memoria_mental.memoria_confiavel import (
     extrair_aprendizados_pessoais_explicitos,
@@ -20,11 +21,21 @@ from mente_laylay.memoria_mental.memoria_confiavel import (
 from mente_laylay.cognicao.validacao_contrato_fala import (
     validar_aderencia_contrato_fala,
 )
+from mente_laylay.cognicao.reacao_social_curta import (
+    classificar_provocacao_curta,
+    resposta_contingencia_provocacao,
+)
+from mente_laylay.personalidade.variacao_fala import escolher_variacao
 
 
 _FINAL_INCOMPLETO = re.compile(
     r"(?:\b(?:mas|porque|porém|porem|então|entao|e|ou|que|se|quando|como|"
     r"apesar\s+de|só\s+que|so\s+que)\b|[:;,—-])\s*[.!?…]*$",
+    re.IGNORECASE,
+)
+_CONTRASTE_TRUNCADO = re.compile(
+    r"(?:^|[.!?…]\s+)(?:j[aá]|quanto\s+(?:ao|[àa]))\s+"
+    r"(?:o|a|os|as)?\s*[\wÀ-ÿ'-]+(?:\s+[\wÀ-ÿ'-]+){0,2}[.!?…]*$",
     re.IGNORECASE,
 )
 _RESPOSTA_VAZIA_DISFARCADA = re.compile(
@@ -46,8 +57,9 @@ _PERGUNTA_DE_POSICAO = re.compile(
     re.IGNORECASE,
 )
 _MARCADORES_POSICAO = re.compile(
-    r"\b(?:sim|n[aã]o|gosto|curto|prefiro|acho|iria|escolheria|conhe[cç]o|"
-    r"me\s+parece|me\s+interessa|fico\s+curiosa)\b",
+    r"\b(?:sim|n[aã]o|gosto|curto|prefiro|acho|iria|escolheria|escolho|"
+    r"conhe[cç]o|me\s+parece|me\s+interessa|fico\s+(?:curiosa|com)|"
+    r"vou\s+de|meu\s+voto\s+vai)\b",
     re.IGNORECASE,
 )
 _EVASAO_OPINIAO = re.compile(
@@ -149,9 +161,94 @@ _CONSELHO_PRESCRITIVO = re.compile(
     re.IGNORECASE,
 )
 
+# O verificador só pode impedir a entrega quando o núcleo comunicativo realmente
+# se perdeu. Os demais itens são observações de estilo: não justificam apagar uma
+# fala válida da LLM nem substituí-la por uma mensagem sobre o próprio sistema.
+_PROBLEMAS_BLOQUEANTES = frozenset({
+    "fala_vazia",
+    "resposta_incompleta",
+    "entrega_prometida_ausente",
+    "pergunta_direta_nao_respondida",
+    "opiniao_evitada_sem_necessidade",
+    "deriva_de_dominio",
+    "preferencia_pessoal_nao_reconhecida",
+    "preferencia_de_terceiro_atribuida_ao_usuario",
+    "resposta_generica_sem_conteudo",
+    "saudacao_nao_respondida_no_inicio",
+    "ato_opiniao_nao_respondido",
+    "esclarecimento_sem_explicacao",
+    "esclarecimento_sem_ancora_anterior",
+    "esclarecimento_comecou_por_outra_metafora",
+    "ato_estado_pessoal_nao_reconhecido",
+    "estado_pessoal_nao_reconhecido",
+    "bem_estar_nao_respondido_no_inicio",
+    "agradecimento_nao_reconhecido",
+    "agradecimento_retomou_assunto_antigo",
+    "agradecimento_abriu_nova_pergunta",
+    "adiamento_nao_reconhecido",
+    "adiamento_nao_foi_curto",
+    "conselho_especifico_nao_solicitado",
+    "referente_indefinido_na_resposta",
+    "explicacao_permaneceu_nebulosa",
+    "abstracao_sem_apoio_concreto",
+})
+
 
 def _normalizar(texto: Any) -> str:
     return re.sub(r"\s+", " ", str(texto or "")).strip()
+
+
+def _opcoes_preferencia(texto_usuario: str) -> list[str]:
+    """Extrai escolhas simples sem transformar a resposta em classificação rígida."""
+    match = re.search(
+        r"\bprefere\s+(.+?)\s+ou\s+(.+?)(?:[?!.]|$)",
+        _normalizar(texto_usuario),
+        re.IGNORECASE,
+    )
+    if not match:
+        return []
+    return [
+        parte.strip(" ,.!?;:\"'")
+        for parte in match.groups()
+        if parte.strip(" ,.!?;:\"'")
+    ]
+
+
+def _respondeu_posicao(texto_usuario: str, resposta: str) -> bool:
+    """Aceita tanto 'prefiro X' quanto respostas naturais como 'X, fácil'."""
+    if _MARCADORES_POSICAO.search(resposta):
+        return True
+    primeira = re.split(r"(?<=[.!?…])\s+", _normalizar(resposta), maxsplit=1)[0]
+    primeira = re.sub(r"^(?:eu\s+)?(?:fico\s+com|vou\s+de|escolho)\s+", "", primeira, flags=re.I)
+    for opcao in _opcoes_preferencia(texto_usuario):
+        if re.match(rf"^{re.escape(opcao)}(?:\b|\s*[,;:!.-])", primeira, re.IGNORECASE):
+            return True
+    return False
+
+
+def _preferencia_contingencia(
+    opcoes: Iterable[str],
+    *,
+    reconhecimento: str = "",
+) -> str:
+    """Produz uma preferência estável sem depender de outra chamada à LLM."""
+    canonicas = sorted(
+        {
+            str(opcao or "").strip(" ,.!?;:\"'")
+            for opcao in opcoes
+            if str(opcao or "").strip(" ,.!?;:\"'")
+        },
+        key=str.casefold,
+    )
+    if not canonicas:
+        return ""
+    assinatura = "laylay|" + "|".join(opcao.casefold() for opcao in canonicas)
+    indice = hashlib.sha256(assinatura.encode("utf-8")).digest()[0]
+    escolhida = canonicas[indice % len(canonicas)]
+    return (
+        f"{reconhecimento}Eu prefiro {escolhida}, porque entre as opções é a que "
+        "mais combina com meu jeito direto e ainda me dá variedade."
+    )
 
 
 def _foco_do_plano(plano: Mapping[str, Any] | None) -> Dict[str, Any]:
@@ -206,13 +303,17 @@ def avaliar_qualidade_comunicacao(
         problemas.append("fala_vazia")
     else:
         palavras = re.findall(r"[\wÀ-ÿ]+", resposta, flags=re.UNICODE)
-        if _FINAL_INCOMPLETO.search(resposta) or _RESPOSTA_VAZIA_DISFARCADA.fullmatch(resposta):
+        if (
+            _FINAL_INCOMPLETO.search(resposta)
+            or _CONTRASTE_TRUNCADO.search(resposta)
+            or _RESPOSTA_VAZIA_DISFARCADA.fullmatch(resposta)
+        ):
             problemas.append("resposta_incompleta")
         if _PEDIDO_DE_ENTREGA.search(usuario) and len(palavras) < 7:
             problemas.append("entrega_prometida_ausente")
         if (
             _PERGUNTA_DE_POSICAO.search(usuario)
-            and not _MARCADORES_POSICAO.search(resposta)
+            and not _respondeu_posicao(usuario, resposta)
         ):
             problemas.append("pergunta_direta_nao_respondida")
         if _PERGUNTA_DE_POSICAO.search(usuario) and _EVASAO_OPINIAO.search(resposta):
@@ -317,8 +418,13 @@ def avaliar_qualidade_comunicacao(
         problemas.extend(aderencia_contrato.get("problemas") or [])
 
     problemas = list(dict.fromkeys(problemas))
+    bloqueantes = [
+        item for item in problemas if item in _PROBLEMAS_BLOQUEANTES
+    ]
     return {
-        "aceita": not problemas,
+        # Observações de estilo continuam disponíveis para diagnóstico, mas
+        # somente a perda real do núcleo comunicativo pode apagar uma fala.
+        "aceita": not bloqueantes,
         "requer_reparo": bool(problemas),
         "problemas": problemas,
         "foco": foco,
@@ -326,6 +432,8 @@ def avaliar_qualidade_comunicacao(
         "pontuacao": max(0.0, 1.0 - (0.25 * len(problemas))),
         "aderencia_contrato": aderencia_contrato,
         "contrato_reparo": dict(aderencia_contrato.get("contrato_reparo") or {}),
+        "problemas_bloqueantes": bloqueantes,
+        "somente_consultiva": bool(problemas) and not bloqueantes,
     }
 
 
@@ -397,6 +505,7 @@ def contingencia_comunicacao(
     *,
     foco: Mapping[str, Any] | None = None,
     contrato_reparo: Mapping[str, Any] | None = None,
+    falas_evitar: Iterable[str] = (),
 ) -> str:
     """Último recurso contextual quando a única tentativa de reparo também falha."""
     texto = _normalizar(texto_usuario)
@@ -405,6 +514,38 @@ def contingencia_comunicacao(
     estrategia = str(contrato.get("estrategia") or "").strip()
     atos = {str(item or "").casefold() for item in contrato.get("atos_obrigatorios") or []}
     referente = str(contrato.get("referente") or "").strip()
+
+    contingencia_provocacao = resposta_contingencia_provocacao(
+        texto,
+        evitar=falas_evitar,
+    )
+    if contingencia_provocacao:
+        return contingencia_provocacao
+
+    saudacao = bool(re.match(
+        r"^(?:oi|ol[aá]|opa|e\s+a[ií]|bom\s+dia|boa\s+tarde|boa\s+noite)\b",
+        texto,
+        re.IGNORECASE,
+    ))
+    pergunta_bem_estar = bool(_PERGUNTA_SOCIAL_LAYLAY.search(texto))
+    if estrategia == "reciprocidade_social" or pergunta_bem_estar:
+        prefixo = "Oi! " if saudacao else ""
+        return f"{prefixo}Tô bem por aqui. E você, como tá?"
+    if estrategia == "saudacao_simples" or (saudacao and "?" not in texto):
+        return escolher_variacao(
+            ["Oi! Tô aqui.", "Opa, tô por aqui.", "Oi. Cheguei inteira dessa vez kkk."],
+            evitar=falas_evitar,
+        )
+    if estrategia == "encerramento_social":
+        return escolher_variacao(
+            ["Imagina. Tô contigo.", "De nada. Eu reclamo, mas entrego kkk.", "Por nada. Ficou resolvido."],
+            evitar=falas_evitar,
+        )
+    if estrategia == "adiamento_literal":
+        return escolher_variacao(
+            ["Tá bom, deixamos isso para depois.", "Beleza, fica para depois.", "Combinado. A gente deixa isso quieto por enquanto."],
+            evitar=falas_evitar,
+        )
 
     # Em uma fala composta, a contingência não pode escolher só a saudação ou
     # o estado pessoal e abandonar a pergunta seguinte. Se até o reparo único
@@ -418,18 +559,9 @@ def contingencia_comunicacao(
                 if parte.strip(" .,!?:;\"'")
             ]
             if len(opcoes) >= 2:
-                # A contingência ainda representa a personalidade da Laylay.
-                # Uma assinatura estável torna a escolha consistente mesmo se
-                # o usuário inverter a ordem das opções em outro turno.
-                canonicas = sorted(opcoes, key=str.casefold)
-                assinatura = "laylay|" + "|".join(
-                    opcao.casefold() for opcao in canonicas
-                )
-                indice = hashlib.sha256(assinatura.encode("utf-8")).digest()[0]
-                escolhida = canonicas[indice % len(canonicas)]
-                return (
-                    f"{reconhecimento}Eu prefiro {escolhida}, porque combina mais "
-                    "com meu jeito direto e ainda dá espaço para bastante variedade."
+                return _preferencia_contingencia(
+                    opcoes,
+                    reconhecimento=reconhecimento,
                 )
             return (
                 f"{reconhecimento}Eu gosto mais de {referente}, porque é o que "
@@ -439,22 +571,54 @@ def contingencia_comunicacao(
             f"{reconhecimento}Eu não consegui concluir todas as partes dessa resposta "
             "sem inventar; prefiro assumir isso a ignorar metade do que você disse."
         )
+    if estrategia == "opiniao_com_criterio" or _PERGUNTA_DE_POSICAO.search(texto):
+        opcoes = _opcoes_preferencia(referente or texto)
+        if not opcoes and referente:
+            opcoes = [
+                parte.strip(" .,!?:;\"'")
+                for parte in re.split(r"\s+ou\s+", referente, flags=re.I)
+                if parte.strip(" .,!?:;\"'")
+            ]
+        preferencia = _preferencia_contingencia(opcoes)
+        if preferencia:
+            return preferencia
     estado_pessoal = _ESTADO_PESSOAL.search(texto)
     if estado_pessoal:
         estado = str(estado_pessoal.group("estado") or "").casefold()
         if estado.startswith("cans"):
-            return "Poxa, então pega mais leve hoje. Você não precisa funcionar no máximo o tempo todo."
+            return escolher_variacao([
+                "Poxa, então pega mais leve hoje. Você não precisa funcionar no máximo o tempo todo.",
+                "Então pega mais leve hoje, viu? Nem todo dia precisa ser vivido no modo desempenho máximo.",
+                "Cansaço cobra caro quando a gente finge que ele não existe. Pega mais leve hoje.",
+            ], evitar=falas_evitar)
         if estado.startswith("trist") or estado == "mal":
-            return "Poxa. Eu ouvi que você não tá bem; não vou tentar cobrir isso com frase bonita."
+            return escolher_variacao([
+                "Poxa. Eu ouvi que você não tá bem; não vou tentar cobrir isso com frase bonita.",
+                "Isso parece estar pesado hoje. Não vou jogar positividade vazia em cima.",
+                "Eu entendi que você não tá bem. Posso só ficar com você nessa conversa sem maquiar o momento.",
+            ], evitar=falas_evitar)
         if estado.startswith("preocup") or estado.startswith("ansios"):
-            return "Entendo. Parece que isso tá ocupando espaço demais na sua cabeça hoje."
+            return escolher_variacao([
+                "Entendo. Parece que isso tá ocupando espaço demais na sua cabeça hoje.",
+                "Isso tá fazendo barulho demais na sua cabeça, né? Vamos por partes.",
+                "Parece que a preocupação resolveu monopolizar seu dia. Eu tô acompanhando.",
+            ], evitar=falas_evitar)
         if estado.startswith("feliz") or estado.startswith("animad"):
-            return "Boa, dá pra sentir que você tá num dia melhor."
+            return escolher_variacao([
+                "Boa, dá pra sentir que você tá num dia melhor.",
+                "Aí gostei. Guarda um pouco dessa animação porque o dia adora cobrar juros kkk.",
+                "Que bom. Hoje você veio com energia de gente que venceu uma pequena batalha.",
+            ], evitar=falas_evitar)
     preferencias = extrair_aprendizados_pessoais_explicitos(texto)
     if preferencias:
         regra = str(preferencias[0].get("regra") or "").strip()
         if regra:
-            return f"Peguei: {regra}."
+            molde = escolher_variacao([
+                "Peguei: {regra}.",
+                "Tá guardado do jeito certo: {regra}.",
+                "Certo, o ponto importante é este: {regra}.",
+            ], evitar=falas_evitar)
+            return molde.format(regra=regra)
     preferencia_terceiro = re.search(
         r"\b(?:minha|meu)\s+(?P<relacao>namorada|namorado|esposa|marido|"
         r"amiga|amigo|irma|irmã|irmao|irmão)\s+gosta\s+(?:de|do|da|dos|das)\s+"
@@ -465,23 +629,75 @@ def contingencia_comunicacao(
     if preferencia_terceiro:
         relacao = str(preferencia_terceiro.group("relacao") or "essa pessoa").strip()
         valor = str(preferencia_terceiro.group("valor") or "").strip()
-        return f"Entendi — sua {relacao} gosta de {valor}."
+        molde = escolher_variacao([
+            "Entendi — sua {relacao} gosta de {valor}.",
+            "Certo: sua {relacao} gosta de {valor}.",
+            "Agora ficou claro, quem gosta de {valor} é sua {relacao}.",
+        ], evitar=falas_evitar)
+        return molde.format(relacao=relacao, valor=valor)
     if re.search(r"\b(?:tudo\s+bem|como\s+(?:voc[eê]|vai\s+voc[eê]))\b", texto, re.I):
-        return "Tô bem por aqui. E você, como tá?"
+        return escolher_variacao([
+            "Tô bem por aqui. E você, como tá?",
+            "Tô bem, com a cabeça no lugar por enquanto kkk. E você?",
+            "Por aqui tá tudo certo. Agora quero saber de você.",
+        ], evitar=falas_evitar)
     if re.search(r"\b(?:eu\s+)?(?:estou|t[oô])\s+bem\b", texto, re.I):
-        return "Que bom. Fico feliz de saber."
+        return escolher_variacao([
+            "Que bom. Fico feliz de saber.",
+            "Bom saber. Pelo menos uma coisa decidiu colaborar hoje kkk.",
+            "Ótimo. Então seguimos sem drama por enquanto.",
+        ], evitar=falas_evitar)
     if _PERGUNTA_DE_POSICAO.search(texto) and nome:
-        return f"{nome} me interessa, mas não vou inventar um detalhe só para deixar a resposta bonita."
+        molde = escolher_variacao([
+            "{nome} me interessa, mas não vou inventar um detalhe só para deixar a resposta bonita.",
+            "Tenho interesse em {nome}, só não vou fabricar uma opinião específica pra parecer convincente.",
+            "{nome} rende conversa, mas detalhe inventado continua sendo detalhe inventado. Prefiro ser honesta.",
+        ], evitar=falas_evitar)
+        return molde.format(nome=nome)
     if _PEDIDO_DE_ENTREGA.search(texto):
-        return "Eu não consegui fechar essa resposta com a qualidade que você pediu. Prefiro não te entregar só metade."
+        return escolher_variacao([
+            "Eu não consegui fechar essa resposta com a qualidade que você pediu. Prefiro não te entregar só metade.",
+            "Isso ainda não ficou completo o bastante pra eu te entregar fingindo confiança.",
+            "A resposta não chegou inteira. Melhor admitir agora do que te vender meia solução como se estivesse pronta.",
+        ], evitar=falas_evitar)
     if re.search(r"\b(?:obrigad[oa]|valeu|vlw)\b", texto, re.I):
-        return "Imagina. Fico feliz que tenha ajudado."
+        return escolher_variacao([
+            "Imagina. Fico feliz que tenha ajudado.",
+            "De nada. Eu reclamo, mas entrego kkk.",
+            "Sempre às ordens — com moderação, porque eu também tenho pose.",
+        ], evitar=falas_evitar)
     if re.search(r"(?:\bkk+k*\b|\brsrs+\b|😂|🤣)", texto, re.I):
-        return "Kkkkk, tá bom, essa me pegou."
+        return escolher_variacao([
+            "Kkkkk, tá bom, essa me pegou.",
+            "Tá, essa foi boa kkk. Não vou nem tentar manter a pose.",
+            "Kkkkk, ponto seu. Aproveita porque eu não distribuo vitória assim sempre.",
+        ], evitar=falas_evitar)
     if re.search(r"\b(?:faz sentido|concordo|justo)\b", texto, re.I):
-        return "Justo. Dessa vez a gente tá na mesma página."
+        return escolher_variacao([
+            "Justo. Dessa vez a gente tá na mesma página.",
+            "Pois é, dessa vez nosso único neurônio compartilhado trabalhou direito kkk.",
+            "Concordamos sem precisar de audiência pública. Um pequeno milagre.",
+        ], evitar=falas_evitar)
     if re.search(r"\bdiscordo\b|\bn[aã]o concordo\b", texto, re.I):
-        return "Justo. Você não precisa concordar comigo pra conversa continuar boa."
+        return escolher_variacao([
+            "Justo. Você não precisa concordar comigo pra conversa continuar boa.",
+            "Tá certo, discordar não quebra nada. Só deixa a conversa menos preguiçosa.",
+            "Tudo bem. Eu tenho opinião, não contrato de obediência kkk.",
+        ], evitar=falas_evitar)
     if "?" in texto:
-        return "Pera, minha resposta saiu torta e eu não vou inventar uma resposta só pra preencher o silêncio."
-    return "Pera, eu li isso, mas minha resposta saiu torta. Não vou fingir que encaixou."
+        return escolher_variacao([
+            "Essa eu não consegui fechar sem chutar. Me dá um detalhe a mais?",
+            "Faltou uma peça aí. Me dá mais um detalhe pra eu não inventar moda?",
+            "Dá pra responder, mas agora seria no chute. Explica só um pouquinho melhor?",
+        ], evitar=falas_evitar)
+    if len(texto.split()) <= 4:
+        return escolher_variacao([
+            "Essa chegou meio solta. Me dá só um pouco mais de contexto que eu acompanho.",
+            "Você largou metade da ideia na mesa kkk. Completa pra mim.",
+            "Tá, mas isso veio sem legenda. Me dá só mais um pouco de contexto.",
+        ], evitar=falas_evitar)
+    return escolher_variacao([
+        "Peguei a ideia, mas faltou contexto pra eu reagir sem viajar. Continua daí.",
+        "Eu acompanhei o começo, mas ainda falta uma peça. Continua que eu encaixo.",
+        "A ideia chegou, só não veio inteira. Desenvolve mais um pouco pra eu não chutar.",
+    ], evitar=falas_evitar)

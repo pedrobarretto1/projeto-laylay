@@ -436,33 +436,35 @@ def fala_playlist_conteudo_estilosa(
     total = int(info.get("total") or 0)
     titulos = info.get("last_titles") if isinstance(info.get("last_titles"), list) else []
     nome_fala = nm.title() if nm else "essa"
+    quantidade_faixas = f"{total} música" if total == 1 else f"{total} músicas"
     playlist_da_laylay = str(proprietario or "").casefold().strip() == "laylay"
     if playlist_da_laylay:
         if total <= 0:
             return f"Minha playlist {nome_fala} está vazia por enquanto."
         if not titulos:
             return (
-                f"Minha playlist {nome_fala} tem {total} músicas. "
+                f"Minha playlist {nome_fala} tem {quantidade_faixas}. "
                 "Não consegui puxar os nomes agora."
             )
         faixas = "; ".join(str(x) for x in titulos[:3])
         if total <= 3:
             return (
-                f"Minha playlist {nome_fala} é curtinha: {total} músicas. "
+                f"Minha playlist {nome_fala} é curtinha: {quantidade_faixas}. "
                 f"As faixas que eu separei são: {faixas}."
             )
         return (
-            f"Minha playlist {nome_fala} tem {total} músicas. "
+            f"Minha playlist {nome_fala} tem {quantidade_faixas}. "
             f"Algumas faixas que eu separei são: {faixas}."
         )
     if total <= 0:
         return f"Sua playlist de {nome_fala} tá vazia por enquanto."
     if not titulos:
-        return f"Sua playlist de {nome_fala} tem {total} músicas. Não consegui puxar os nomes agora."
+        return f"Sua playlist de {nome_fala} tem {quantidade_faixas}. Não consegui puxar os nomes agora."
     ult = "; ".join(str(x) for x in titulos[:3])
     if total <= 3:
-        return f"A playlist {nome_fala} é curtinha: {total} músicas. As principais são {ult}."
-    return f"A playlist {nome_fala} tem {total} músicas. As últimas que você guardou foram: {ult}."
+        rotulo = "A principal é" if total == 1 else "As principais são"
+        return f"A playlist {nome_fala} é curtinha: {quantidade_faixas}. {rotulo} {ult}."
+    return f"A playlist {nome_fala} tem {quantidade_faixas}. As últimas que você guardou foram: {ult}."
 
 
 def playlist_item_label(item: Any) -> str:

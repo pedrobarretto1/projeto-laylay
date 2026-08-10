@@ -21,6 +21,38 @@ def _get(ctx: Mapping[str, Any], key: str):
     return ctx.get(key)
 
 
+def _arquivo_recente(estado: Mapping[str, Any]) -> tuple[str, str]:
+    """Retorna o ultimo arquivo concreto publicado pela mente unica.
+
+    A estrutura recente e a fonte canonica para pronomes de arquivo.  Nao
+    usamos ``ultimo_alvo`` aqui porque ele pode pertencer a conversa, pessoa,
+    aplicativo ou qualquer outro dominio.
+    """
+    estrutura = (
+        dict(estado.get("ultima_estrutura_arquivo_params") or {})
+        if isinstance(estado.get("ultima_estrutura_arquivo_params"), Mapping)
+        else {}
+    )
+    tipo = str(estrutura.get("tipo") or "").strip().casefold()
+    if tipo == "arquivo":
+        caminho = str(estrutura.get("caminho") or "").strip()
+        nome = str(
+            estrutura.get("arquivo_nome")
+            or estrutura.get("nome_arquivo")
+            or estrutura.get("arquivo")
+            or (os.path.basename(caminho) if caminho else "")
+        ).strip()
+        return caminho, nome
+    return "", ""
+
+
+def _remover_aspas_pareadas(valor: str) -> str:
+    texto = str(valor or "").strip()
+    if len(texto) >= 2 and texto[0] == texto[-1] and texto[0] in {'"', "'"}:
+        return texto[1:-1].strip()
+    return texto
+
+
 def extrair_criacao_pasta_arquivo(frase: str) -> dict:
     """Extrai pasta, arquivo e conteudo de pedidos naturais de criacao."""
     texto_local = re.sub(r"\s+", " ", str(frase or "").strip())
@@ -295,7 +327,11 @@ def detectar_intencao_arquivos(
             return {"intent": "CANCEL_DELETE_ITEM", "params": params()}
 
     if re.fullmatch(
-        r"(?:desfaz(?:er)?(?:\s+isso)?|restaura(?:r)?(?:\s+o)?\s+(?:ultimo|último)?\s*(?:arquivo|item|pasta)?|recupera(?:r)?(?:\s+o)?\s+(?:ultimo|último)?\s*(?:arquivo|item|pasta)?)",
+        r"(?:desfaz(?:er)?(?:\s+isso)?|"
+        r"restaura(?:r)?(?:\s+o)?\s+(?:ultimo|último)?\s*(?:arquivo|item|pasta)?|"
+        r"recupera(?:r)?(?:\s+o)?\s+(?:ultimo|último)?\s*(?:arquivo|item|pasta)?|"
+        r"(?:eu\s+)?quero\s+(?:ele|ela|isso|o\s+arquivo|a\s+pasta)\s+de\s+volta|"
+        r"traz\s+(?:ele|ela|isso|o\s+arquivo|a\s+pasta)\s+de\s+volta)",
         texto_confirmacao,
     ):
         return {"intent": "RESTORE_DELETED_ITEM", "params": params()}
@@ -320,6 +356,89 @@ def detectar_intencao_arquivos(
         for item in list(pesquisa_recente.get("nomes") or [])
     ]
     consulta_recente = str(pesquisa_recente.get("consulta") or "").strip()
+    arquivo_recente_caminho, arquivo_recente_nome = _arquivo_recente(estado)
+
+    pergunta_caminho_arquivo = bool(re.fullmatch(
+        r"(?:onde\s+(?:(?:ele|ela|esse|essa|este|esta|o\s+arquivo|esse\s+arquivo)\s+)?"
+        r"(?:fica|esta|está)|onde\s+(?:fica|esta|está)\s+"
+        r"(?:ele|ela|esse|essa|este|esta|o\s+arquivo|esse\s+arquivo)|"
+        r"qual\s+(?:e|é)\s+o\s+caminho(?:\s+(?:dele|dela|desse\s+arquivo))?|"
+        r"mostra\s+o\s+caminho(?:\s+(?:dele|dela|desse\s+arquivo))?)",
+        texto_confirmacao,
+    ))
+    if pergunta_caminho_arquivo and arquivo_recente_caminho:
+        return {
+            "intent": "FILE_SEARCH",
+            "params": params(
+                query=arquivo_recente_nome or os.path.basename(arquivo_recente_caminho),
+                referencia_caminho=arquivo_recente_caminho,
+                alvo=arquivo_recente_nome or os.path.basename(arquivo_recente_caminho),
+            ),
+        }
+
+    if arquivo_recente_caminho and re.fullmatch(
+        r"(?:abre|abra|abrir|mostra|mostre)\s+"
+        r"(?:ele|ela|isso|esse|essa|este|esta|o\s+arquivo|esse\s+arquivo)",
+        texto_confirmacao,
+    ):
+        return {
+            "intent": "FILE_OPEN_RESULT",
+            "params": params(
+                caminho=arquivo_recente_caminho,
+                alvo=arquivo_recente_nome or os.path.basename(arquivo_recente_caminho),
+            ),
+        }
+
+    # Exclusão por pronome só pode herdar um artefato de arquivo tipado. Isso
+    # impede que um referente recente de outro domínio (pessoa, conversa,
+    # aplicativo) seja promovido a alvo destrutivo por engano.
+    if arquivo_recente_caminho and re.fullmatch(
+        r"(?:apaga|apague|exclui|exclua|deleta|delete|remove|remova)\s+"
+        r"(?:ele|isso|esse|este|o\s+arquivo|esse\s+arquivo|este\s+arquivo)",
+        texto_confirmacao,
+    ):
+        return {
+            "intent": "DELETE_ITEM",
+            "params": params(
+                alvo=arquivo_recente_caminho,
+                tipo="arquivo",
+            ),
+        }
+
+    # Edicao explicita de um arquivo existente. O conteudo e o alvo ficam
+    # separados antes de qualquer normalizacao que possa destruir aspas ou a
+    # extensao. Pronomes so sao aceitos quando a mente publicou um caminho de
+    # arquivo concreto no turno anterior.
+    escrita = re.fullmatch(
+        r"(?:escreve|escreva|grava|grave)\s+(?P<conteudo>.+?)\s+"
+        r"(?:(?P<pronome>nele|nela|dentro\s+dele|dentro\s+dela|nesse\s+arquivo|"
+        r"neste\s+arquivo)|dentro\s+(?:do|da)\s+(?:arquivo\s+)?(?P<alvo>.+))",
+        t.rstrip(" .,!?:;"),
+        flags=re.IGNORECASE,
+    )
+    if escrita:
+        conteudo = _remover_aspas_pareadas(escrita.group("conteudo") or "")
+        alvo_declarado = str(escrita.group("alvo") or "").strip(" .,!?:;\"'")
+        alvo = alvo_declarado
+        if escrita.group("pronome"):
+            alvo = arquivo_recente_caminho
+        elif arquivo_recente_caminho and alvo_declarado:
+            nome_declarado = limpar_nome_arquivo_natural(alvo_declarado).casefold()
+            nomes_equivalentes = {
+                arquivo_recente_nome.casefold(),
+                os.path.basename(arquivo_recente_caminho).casefold(),
+            }
+            if nome_declarado in nomes_equivalentes:
+                alvo = arquivo_recente_caminho
+        if conteudo and alvo:
+            return {
+                "intent": "CREATE_FILE",
+                "params": params(
+                    alvo=alvo,
+                    conteudo=conteudo,
+                    editar_existente=True,
+                ),
+            }
 
     # Continuidade direta da última busca, sem depender de uma lista paralela.
     bloqueia_selecao = bool(re.search(
@@ -390,7 +509,27 @@ def detectar_intencao_arquivos(
         r"^(?:quais?|mostra|mostre|lista|liste)\s+(?:os\s+|meus\s+|as\s+|minhas\s+)?"
         r"(?:arquivos|documentos|imagens|fotos|scripts)\b.*\b(?:fala|falam|sobre|com|relacionad)\w*",
     )
-    if not bloqueia_pesquisa and any(re.search(padrao, texto_confirmacao) for padrao in padroes_pesquisa):
+    iniciou_com_verbo_generico = bool(re.search(padroes_pesquisa[0], texto_confirmacao))
+    marcador_local = bool(
+        re.search(
+            r"\b(?:arquivo|arquivos|pasta|pastas|documento|documentos|diretorio|"
+            r"diretório|diretorios|diretórios|codigo|código|script|scripts|imagem|"
+            r"imagens|foto|fotos|planilha|planilhas|pdf|txt|caminho|caminhos|atalho|"
+            r"atalhos|projeto|computador|pc|disco|downloads|desktop)\b|"
+            r"\.[a-z0-9]{1,8}\b|\b(?:nos?|dentro\s+dos?)\s+meus\s+arquivos\b|"
+            r"\b(?:neste|nesse|no)\s+computador\b",
+            texto_confirmacao,
+        )
+    )
+    corresponde_pesquisa = any(
+        re.search(padrao, texto_confirmacao) for padrao in padroes_pesquisa
+    )
+    # Verbos como "pesquisa", "busca" e "procura" também descrevem uma
+    # pesquisa web. Sem evidência explícita de arquivo ou armazenamento local,
+    # este especialista deve ceder ao roteador do navegador.
+    if iniciou_com_verbo_generico and not marcador_local:
+        corresponde_pesquisa = False
+    if not bloqueia_pesquisa and corresponde_pesquisa:
         consulta = texto_confirmacao
         consulta = re.sub(
             r"^(?:encontra|encontre|achar|ache|acha|procura|procure|buscar|busca|pesquisa|pesquise|localiza|localize)\s+",

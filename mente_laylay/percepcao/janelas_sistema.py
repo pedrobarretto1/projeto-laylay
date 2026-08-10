@@ -508,7 +508,15 @@ def maximizar_janela(
                     pyautogui_mod.hotkey("win", "up")
             except Exception as erro:
                 _relatar_falha_janela(registrar_falha, "maximizacao_atalho", erro)
-            return True
+            time.sleep(0.25)
+            janela_confirmada, _ = buscar_janela(gw_mod, nome_app)
+            return bool(
+                janela_confirmada
+                and (
+                    getattr(janela_confirmada, "isMaximized", False)
+                    or janela_em_tela_cheia(pyautogui_mod, janela_confirmada)
+                )
+            )
         print(f"⚠️ Nenhuma janela encontrada para o app: {termo_busca}")
         return False
     try:
@@ -524,8 +532,21 @@ def maximizar_janela(
         except Exception:
             if pyautogui_mod is not None and not getattr(janela, "isMaximized", False):
                 pyautogui_mod.hotkey("win", "up")
-        print(f"✅ Janela maximizada: '{_titulo_janela(janela)}'")
-        return True
+        time.sleep(0.25)
+        janela_confirmada, _ = buscar_janela(gw_mod, nome_app)
+        janela_confirmada = janela_confirmada or janela
+        maximizou = bool(
+            getattr(janela_confirmada, "isMaximized", False)
+            or janela_em_tela_cheia(pyautogui_mod, janela_confirmada)
+        )
+        if maximizou:
+            print(f"✅ Janela maximizada: '{_titulo_janela(janela_confirmada)}'")
+        else:
+            print(
+                "⚠️ A janela recebeu o comando, mas a maximização não foi "
+                f"confirmada: '{_titulo_janela(janela_confirmada)}'"
+            )
+        return maximizou
     except Exception as e:
         print(f"❌ Erro ao manipular a janela: {e}")
         _relatar_falha_janela(registrar_falha, "maximizacao_janela", e)

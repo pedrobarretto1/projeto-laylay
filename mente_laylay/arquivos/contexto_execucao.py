@@ -111,10 +111,14 @@ def resolver_referencia_arquivo_contextual(
     alvo_mental_existe = bool(
         ultimo_alvo and item_local_existe(ctx, ultimo_alvo)
     )
+    estrutura_existe = bool(
+        estrutura_caminho
+        and item_local_existe(ctx, estrutura_caminho, estrutura_tipo)
+    )
     if "pasta" in tipo_norm or ref_norm in {"ela", "essa", "essa pasta", "isso"}:
         return (
-            ultima_pasta
-            or (estrutura_caminho if estrutura_tipo == "pasta" else "")
+            (estrutura_caminho if estrutura_tipo == "pasta" and estrutura_existe else "")
+            or ultima_pasta
             or estrutura_pasta
             or (ultimo_alvo if alvo_mental_existe else "")
             or ultimo_arquivo
@@ -123,8 +127,8 @@ def resolver_referencia_arquivo_contextual(
         )
     if "arquivo" in tipo_norm or ref_norm in {"ele", "esse", "esse arquivo"}:
         return (
-            ultimo_arquivo
-            or (estrutura_caminho if estrutura_tipo == "arquivo" else "")
+            (estrutura_caminho if estrutura_tipo == "arquivo" and estrutura_existe else "")
+            or ultimo_arquivo
             or estrutura_arquivo
             or (ultimo_alvo if alvo_mental_existe else "")
             or ultima_pasta

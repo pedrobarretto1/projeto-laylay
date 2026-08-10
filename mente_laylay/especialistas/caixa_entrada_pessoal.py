@@ -13,7 +13,13 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable
 
+from mente_laylay.autonomia.agendamento_mental import (
+    extrair_parametros_temporais_lembrete,
+)
 from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
+from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
+    classificar_confirmacao_local,
+)
 from urllib.parse import urlsplit
 
 from mente_laylay.personalidade.confirmacao_llm import personalizar_informacao_llm
@@ -183,10 +189,16 @@ class CaixaEntradaPessoalRuntime:
         t = _normalizar(texto)
         if not t:
             return ""
-        if self._pendencia and t in {"sim", "confirmo", "pode", "pode sim", "isso", "manda"}:
-            return "confirmar"
-        if self._pendencia and t in {"nao", "não", "cancela", "deixa", "melhor nao", "melhor não"}:
-            return "cancelar"
+        if self._pendencia:
+            decisao = classificar_confirmacao_local(texto)
+            if decisao is True:
+                return "confirmar"
+            if decisao is False:
+                return "cancelar"
+            # Mantém as confirmações curtas históricas que são específicas da
+            # caixa e não fazem parte do vocabulário compartilhado.
+            if t in {"confirmo", "isso"}:
+                return "confirmar"
         if re.search(r"\b(?:transforma|transforme|converte|converta)\b", t) and re.search(
             r"\b(?:nota|ideia|tarefa|isso|ela)\b", t
         ) and "lembrete" in t:
@@ -197,6 +209,7 @@ class CaixaEntradaPessoalRuntime:
         ))
         refere_discussao = bool(re.search(
             r"\b(?:nossa (?:ideia|conversa|discussao)|essa (?:conversa|discussao)|"
+            r"essa ideia .{0,30}(?:sua ideia|suas sugestoes|sugestoes da laylay)|"
             r"o que (?:discutimos|conversamos)|discussao inteira|conversa inteira|"
             r"minha ideia .{0,30}(?:sua ideia|suas sugestoes|sugestoes da laylay)|"
             r"ideia e .{0,20}(?:sugestoes|ideia da laylay)|resumo .{0,20}conversa)\b",
@@ -910,6 +923,21 @@ class CaixaEntradaPessoalRuntime:
         self.falar(personalizada.fala, personalizada.emocao, personalizada.nivel)
         return True
 
+    def ultimo_item_salvo(self) -> dict[str, Any] | None:
+        """Expõe a nota confirmada mais recente para cooperação canônica.
+
+        O retorno é uma cópia; consumidores podem usá-lo como referência de
+        outra habilidade sem adquirir permissão para alterar o armazenamento.
+        """
+        ultimo_id = str(self._ultimo_id or "").strip()
+        if not ultimo_id:
+            return None
+        item = next((
+            registro for registro in reversed(self._carregar()["itens"])
+            if str(registro.get("id") or "") == ultimo_id
+        ), None)
+        return dict(item) if isinstance(item, dict) else None
+
     def _filtrar(self, texto: str) -> list[dict[str, Any]]:
         itens = [item for item in self._carregar()["itens"] if item.get("status") == "ativo"]
         t = _normalizar(texto)
@@ -979,6 +1007,13 @@ class CaixaEntradaPessoalRuntime:
             self.falar("Não encontrei uma nota ativa para fazer isso.", "calma", 1)
             return True
         self._pendencia = {"acao": acao, "item_id": item["id"], "texto": texto}
+        if acao == "converter":
+            parametros_temporais = extrair_parametros_temporais_lembrete(texto)
+            self._pendencia["params_agenda"] = {
+                chave: parametros_temporais[chave]
+                for chave in ("atraso_segundos", "hora_alvo", "data_hora")
+                if chave in parametros_temporais
+            }
         intent = "INBOX_DELETE" if acao == "excluir" else "INBOX_CONVERT_REMINDER"
         self._registrar(
             {
@@ -1014,7 +1049,10 @@ class CaixaEntradaPessoalRuntime:
 
         resultado_agenda = {
             "intent": "AGENDAR_LEMBRETE",
-            "params": {"descricao": str(item.get("conteudo") or "")[:500]},
+            "params": {
+                "descricao": str(item.get("conteudo") or "")[:500],
+                **dict(pendencia.get("params_agenda") or {}),
+            },
         }
         ok = bool(self.executar_intencao(resultado_agenda, pendencia.get("texto", ""))) if callable(self.executar_intencao) else False
         self._registrar(resultado_agenda, pendencia.get("texto", ""), ok, status="conversao_iniciada" if ok else "falha_execucao")

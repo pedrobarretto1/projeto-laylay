@@ -33,7 +33,8 @@ def parece_pedido_reexplicacao(texto: str) -> bool:
     return bool(re.search(
         r"\b(?:n[aã]o\s+entendi|n[aã]o\s+compreendi|n[aã]o\s+ficou\s+claro|"
         r"fiquei\s+(?:perdido|perdida|confuso|confusa)|explica\s+(?:de\s+novo|melhor|"
-        r"mais\s+devagar)|refaz(?:\s+(?:a\s+explica[cç][aã]o|os\s+passos?))?|"
+        r"mais\s+devagar|(?:isso\s+)?(?:de\s+um\s+jeito|de\s+forma)\s+simples)|"
+        r"refaz(?:\s+(?:a\s+explica[cç][aã]o|os\s+passos?))?|"
         r"repete\s+(?:a\s+explica[cç][aã]o|os\s+passos?))\b",
         base,
     ))

@@ -166,7 +166,8 @@ def finalizar_execucao_resposta_ia(
                 bot_corr_raw = _chamar_modelo_finalizacao(ctx, messages)
                 fala_corr, _cmds_corr = limpar_resposta_da_ia(bot_corr_raw)
                 if fala_corr:
-                    print(f"Laylay [autocorreção]: {fala_corr}")
+                    if bool(_get(ctx, "log_verbose", False)):
+                        print(f"Laylay [autocorreção]: {fala_corr}")
                     try:
                         if callable(registrar_autocorrecao_virtual):
                             registrar_autocorrecao_virtual(
@@ -212,7 +213,12 @@ def finalizar_execucao_resposta_ia(
                         fala_limpa_original = str(
                             verificacao.get("fala") or fala_limpa_original
                         ).strip()
-            print(f"Laylay: {fala_limpa_original}")
+            # A mesma fala será emitida pela fronteira oficial abaixo, que já
+            # formata o balão e publica no Terminal 2.x. Este print cru fazia
+            # cada resposta conversacional aparecer duas vezes no modo limpo;
+            # fica disponível somente no log técnico explícito.
+            if bool(_get(ctx, "log_verbose", False)):
+                print(f"Laylay: {fala_limpa_original}")
             if isinstance(messages, list):
                 messages.append({"role": "assistant", "content": fala_limpa_original})
             fala_entregue = True

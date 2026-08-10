@@ -103,6 +103,14 @@ def adaptar_acao_json_para_intencao(cmd: Dict[str, Any], alvo: str = "") -> Dict
                 "target": destino,
             },
         }
+    if acao in {"playlist_create", "criar_playlist"}:
+        return {
+            "intent": "PLAYLIST_CREATE",
+            "params": {
+                "nome_playlist": str(cmd.get("playlist") or cmd.get("alvo") or alvo),
+                "target": destino,
+            },
+        }
     if acao in {"close_tab", "close_specific_tab"}:
         return {
             "intent": "CLOSE_TAB",

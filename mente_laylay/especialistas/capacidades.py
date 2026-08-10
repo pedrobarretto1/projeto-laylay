@@ -7,9 +7,9 @@ from typing import Any, Dict
 
 _INTENTS_POR_DOMINIO = {
     "musica": {
-        "PLAYLIST_ADD", "PLAYLIST_PLAY", "PLAYLIST_LIST", "PLAYLIST_DELETE",
+        "PLAYLIST_CREATE", "PLAYLIST_ADD", "PLAYLIST_PLAY", "PLAYLIST_LIST", "PLAYLIST_DELETE",
         "PLAYLIST_MOVE",
-        "LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_COPY", "MUSIC_SEARCH",
+        "LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_PLAY", "LAYLAY_PLAYLIST_COPY", "MUSIC_SEARCH",
         "MEDIA_CONTROL", "LISTAR_PLAYLISTS", "TOCAR_PLAYLIST",
         "TOCAR_PLAYLIST_SHUFFLE", "STOP_PLAYLIST_CONTEXT",
     },
@@ -77,12 +77,14 @@ INTENTS_SOMENTE_LEITURA = frozenset({
 # ResultadoAcao decide por chamada, sem promover ``executou=True`` a sucesso.
 _CONFIRMACAO_POR_INTENT = {
     # Música
+    "PLAYLIST_CREATE": ("persistencia_local", "a playlist vazia reaparece no armazenamento local"),
     "PLAYLIST_ADD": ("persistencia_local", "a faixa reaparece no armazenamento da playlist"),
     "PLAYLIST_PLAY": ("variavel", "a aba pode ser observada; rotas remotas podem ficar sem retorno"),
     "PLAYLIST_LIST": ("retorno_dados", "a lista foi lida do armazenamento"),
     "PLAYLIST_DELETE": ("persistencia_local", "a ausência é conferida no armazenamento"),
     "PLAYLIST_MOVE": ("persistencia_local", "a origem e o destino são persistidos no armazenamento"),
     "LAYLAY_PLAYLIST_LIST": ("retorno_dados", "a lista interna foi consultada"),
+    "LAYLAY_PLAYLIST_PLAY": ("estado_observado", "a curadoria foi entregue ao player"),
     "LAYLAY_PLAYLIST_COPY": ("persistencia_local", "a cópia retorna sucesso do armazenamento"),
     "MUSIC_SEARCH": ("estado_observado", "a abertura da página musical é conferida"),
     "MEDIA_CONTROL": ("variavel", "Chrome pode responder; tecla global e PC remoto não informam o estado final"),

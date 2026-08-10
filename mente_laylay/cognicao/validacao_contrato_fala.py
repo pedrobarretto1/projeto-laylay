@@ -13,12 +13,14 @@ from typing import Any, Mapping
 
 
 _POSICAO = re.compile(
-    r"\b(?:eu\s+)?(?:gosto|curto|prefiro|acho|escolheria|iria\s+de|"
+    r"\b(?:eu\s+)?(?:gosto|curto|prefiro|acho|escolheria|escolho|iria\s+de|"
+    r"fico\s+com|vou\s+de|meu\s+voto\s+vai\s+(?:para|pra)|"
     r"me\s+parece|me\s+interessa)\b",
     re.IGNORECASE,
 )
 _SAUDACAO = re.compile(
-    r"\b(?:oi|ol[aá]|e\s+a[ií]|bom\s+dia|boa\s+tarde|boa\s+noite|fala)\b",
+    r"\b(?:oi|ol[aá]|e\s+a[ií]|bom\s+dia|boa\s+tarde|boa\s+noite|fala|"
+    r"t[oô]\s+aqui|estou\s+aqui|por\s+aqui|presente)\b",
     re.IGNORECASE,
 )
 _ESTADO_POSITIVO = re.compile(
@@ -38,7 +40,8 @@ _ESTADO_USUARIO = re.compile(
     re.IGNORECASE,
 )
 _PRIMEIRA_PESSOA = re.compile(
-    r"\b(?:eu\s+)?(?:t[oô]|estou|vou|fico)|\bpor\s+aqui\b|\baqui\b",
+    r"\b(?:eu\s+)?(?:t[oô]|estou|vou|fico)|\bpor\s+aqui\b|\baqui\b|"
+    r"\btudo\s+bem\b|\bbem\s+por\s+aqui\b|\btranquil[ao]\b",
     re.IGNORECASE,
 )
 _EXPERIENCIA_FISICA = re.compile(
@@ -63,6 +66,25 @@ _ABSTRACAO_ISOLADA = re.compile(
     r"\b(?:[ée]|eh|parece|vira|traz|d[aá])\s+(?:uma?\s+)?"
     r"(?:energia|vibe|sensa[cç][aã]o|alma|universo|ritmo|ess[eê]ncia)"
     r"\s*[.!?…]*$",
+    re.IGNORECASE,
+)
+_COMPARACAO_METAFORICA = re.compile(
+    r"\b(?:[ée]|parece|soa)\s+como\s+(?:um|uma|o|a)\b|"
+    r"\btipo\s+(?:um|uma)\b",
+    re.IGNORECASE,
+)
+_RECONHECE_AGRADECIMENTO = re.compile(
+    r"\b(?:de nada|por nada|imagina|eu que agrade[cç]o|tamo junto|"
+    r"disponha|foi um prazer)\b",
+    re.IGNORECASE,
+)
+_RETOMADA_OPERACIONAL = re.compile(
+    r"\b(?:continuar|tocar|m[uú]sica|playlist|arquivo|pasta|app|aplicativo|"
+    r"janela|luz|l[aâ]mpada|comando|tarefa|resumo|pesquisa)\b",
+    re.IGNORECASE,
+)
+_ACEITE_ADIAMENTO = re.compile(
+    r"\b(?:t[aá](?:\s+bom)?|beleza|combinado|deixamos|fica|deixa)\b",
     re.IGNORECASE,
 )
 _CONECTOR_CRITERIO = re.compile(
@@ -117,6 +139,24 @@ def _tem_criterio_concreto(resposta: str, *, referente: str = "") -> bool:
     if not _CONECTOR_CRITERIO.search(resposta):
         return False
     return len(_tokens_relevantes(resposta, referente=referente)) >= 2
+
+
+def _encontrar_posicao(resposta: str, referente: str) -> re.Match[str] | None:
+    """Reconhece preferência explícita sem exigir sempre o verbo 'prefiro'."""
+    posicao = _POSICAO.search(resposta)
+    if posicao:
+        return posicao
+    opcoes = [
+        parte.strip(" ,.!?;:\"'")
+        for parte in re.split(r"\s+ou\s+", referente, flags=re.IGNORECASE)
+        if parte.strip(" ,.!?;:\"'")
+    ]
+    primeira = _frases(resposta)[0] if _frases(resposta) else resposta
+    for opcao in opcoes:
+        direta = re.search(rf"^\s*{re.escape(opcao)}(?:\b|\s*[,;:!.-])", primeira, re.I)
+        if direta:
+            return direta
+    return None
 
 
 def _termos_ancora(texto: str) -> set[str]:
@@ -202,7 +242,7 @@ def validar_aderencia_contrato_fala(
             problemas.append("saudacao_inferiu_estado_oculto")
 
     if estrategia in {"opiniao_com_criterio", "resposta_multiacto"} and "opiniao" in atos:
-        posicao = _POSICAO.search(resposta)
+        posicao = _encontrar_posicao(resposta, referente)
         if not posicao:
             problemas.append("ato_opiniao_nao_respondido")
         elif estrategia == "opiniao_com_criterio" and not _POSICAO.search(primeira):
@@ -218,6 +258,11 @@ def validar_aderencia_contrato_fala(
             problemas.append("esclarecimento_sem_explicacao")
         if ancora and not (ancora & resposta_ancoras):
             problemas.append("esclarecimento_sem_ancora_anterior")
+        # O usuário pediu uma reformulação literal. Começar por outra imagem
+        # figurada ("rock é como...") preserva palavras do assunto, mas não
+        # esclarece o que foi dito e costuma produzir comparações sem sentido.
+        if primeira and _COMPARACAO_METAFORICA.search(primeira):
+            problemas.append("esclarecimento_comecou_por_outra_metafora")
 
     if estrategia in {"acolhimento_literal", "resposta_multiacto"} and "estado_pessoal" in atos:
         indice_estado = _indice_reconhecimento_estado(usuario, resposta)
@@ -236,6 +281,22 @@ def validar_aderencia_contrato_fala(
         if _EXPERIENCIA_FISICA.search(resposta):
             problemas.append("bem_estar_com_experiencia_fisica")
 
+    if estrategia == "encerramento_social":
+        if not _RECONHECE_AGRADECIMENTO.search(primeira):
+            problemas.append("agradecimento_nao_reconhecido")
+        usuario_norm = _normalizar(usuario)
+        retomada = _RETOMADA_OPERACIONAL.search(resposta)
+        if retomada and retomada.group(0) not in usuario_norm:
+            problemas.append("agradecimento_retomou_assunto_antigo")
+        if "?" in resposta:
+            problemas.append("agradecimento_abriu_nova_pergunta")
+
+    if estrategia == "adiamento_literal":
+        if not _ACEITE_ADIAMENTO.search(primeira):
+            problemas.append("adiamento_nao_reconhecido")
+        if len(re.findall(r"[\wÀ-ÿ]+", resposta)) > 16 or "?" in resposta:
+            problemas.append("adiamento_nao_foi_curto")
+
     if not bool(contrato.get("permite_metafora", False)):
         for parte in partes:
             if _ABSTRACAO_ISOLADA.search(parte):
@@ -249,10 +310,16 @@ def validar_aderencia_contrato_fala(
         "opiniao_nao_veio_na_primeira_frase",
         "esclarecimento_sem_explicacao",
         "esclarecimento_sem_ancora_anterior",
+        "esclarecimento_comecou_por_outra_metafora",
         "ato_estado_pessoal_nao_reconhecido",
         "estado_pessoal_nao_veio_na_primeira_frase",
         "bem_estar_nao_respondido_no_inicio",
         "resposta_generica_sem_conteudo",
+        "agradecimento_nao_reconhecido",
+        "agradecimento_retomou_assunto_antigo",
+        "agradecimento_abriu_nova_pergunta",
+        "adiamento_nao_reconhecido",
+        "adiamento_nao_foi_curto",
     }
     return {
         "avaliado": True,

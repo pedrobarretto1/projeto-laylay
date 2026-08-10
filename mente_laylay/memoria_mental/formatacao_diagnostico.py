@@ -19,6 +19,8 @@ def _codigo_seguro(valor: Any, limite: int = 96) -> str:
 
 def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
     saude = dict(diagnostico.get("saude") or {})
+    saude_estrutural = dict(diagnostico.get("saude_estrutural") or saude)
+    saude_operacional = dict(diagnostico.get("saude_operacional") or {})
     interacao = dict(diagnostico.get("interacao") or {})
     turno = dict(diagnostico.get("turno") or {})
     contrato_fala = dict(diagnostico.get("contrato_fala") or {})
@@ -60,8 +62,18 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
     linhas = [
         "🩺 [DIAGNÓSTICO:MENTE]",
         (
-            f"  módulos: saudáveis={saude.get('saudavel', 0)} "
-            f"degradados={saude.get('degradado', 0)} indisponíveis={saude.get('indisponivel', 0)}"
+            f"  módulos: saudáveis={saude_estrutural.get('saudavel', 0)} "
+            f"degradados={saude_estrutural.get('degradado', 0)} "
+            f"indisponíveis={saude_estrutural.get('indisponivel', 0)} "
+            "(saúde estrutural)"
+        ),
+        (
+            f"  operação observada: estado={saude_operacional.get('estado') or 'sem_amostras'} "
+            f"amostras={int(saude_operacional.get('amostras_passivas') or 0)} "
+            f"falhas_impactantes={int(saude_operacional.get('falhas_impactantes') or 0)} "
+            f"serviços_degradados={int(saude_operacional.get('servicos_degradados') or 0)} "
+            f"problemas_fala_atual={int(saude_operacional.get('problemas_fala_atual') or 0)} "
+            f"probes={bool(saude_operacional.get('probes_executados'))}"
         ),
         (
             f"  interação: emoção={interacao.get('emocao')} nível={interacao.get('nivel')} "

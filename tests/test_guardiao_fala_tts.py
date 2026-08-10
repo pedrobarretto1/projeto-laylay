@@ -289,6 +289,51 @@ def test_fallback_tts_quebrado_e_desativado_apos_primeira_falha() -> None:
     assert sum("fallback local desativado" in log for log in logs) == 1
 
 
+def test_cache_com_quebrado_migra_para_sapi_nativo_sem_repetir_pyttsx() -> None:
+    chamadas: list[str] = []
+
+    class PyttsxQuebrado:
+        @staticmethod
+        def init():
+            chamadas.append("pyttsx")
+            raise IndentationError("cache COM inválido")
+
+    class SoundFile:
+        @staticmethod
+        def read(_caminho):
+            return [0.0], 16000
+
+    class SoundDevice:
+        @staticmethod
+        def play(*_args, **_kwargs):
+            chamadas.append("play")
+
+        @staticmethod
+        def wait():
+            return None
+
+    runtime = VozRuntime(
+        fallback_fala="fallback", voice="voz",
+        edge_tts_mod=None, sounddevice_mod=SoundDevice,
+        soundfile_mod=SoundFile, pyttsx3_mod=PyttsxQuebrado,
+        limpar_para_voz_cb=lambda texto: texto,
+        formatar_mensagem_cb=lambda texto, **_kwargs: texto,
+        ducking_volume_cb=lambda _ativo: None,
+        modular_audio_params_cb=lambda *_args: ("+0%", "+0Hz", "+0%"),
+        compor_fala_proativa_cb=lambda _itens: ("", "calma", 1),
+        ajustar_estado_fala_cb=lambda *_args: None,
+        interrupt_event=threading.Event(),
+        log=lambda *_args: None,
+    )
+    runtime._sintetizar_sapi_windows = lambda *_args, **_kwargs: True
+    runtime._selecionar_saida_audio = lambda: 0
+
+    assert runtime.fallback_pyttsx("Oi", "calma") is True
+    assert runtime.fallback_pyttsx("Oi de novo", "calma") is True
+    assert chamadas.count("pyttsx") == 1
+    assert chamadas.count("play") == 2
+
+
 def test_fala_inicial_pendente_e_cancelada_se_conversa_comecou() -> None:
     conclusoes = []
     falas = []

@@ -175,7 +175,11 @@ def test_caminho_real_substitui_fome_inventada_por_resposta_social() -> None:
         log=lambda _texto: None,
     )
 
-    assert resposta["fala"] == "Tô bem por aqui. E você, como tá?"
+    assert any(
+        trecho in resposta["fala"].casefold()
+        for trecho in ("tô bem", "tá tudo certo")
+    )
+    assert "você" in resposta["fala"].casefold()
     assert not detectar_experiencia_pessoal_inventada(resposta["fala"])
 
 

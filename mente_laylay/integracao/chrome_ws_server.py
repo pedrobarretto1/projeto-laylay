@@ -10,6 +10,18 @@ import threading
 from typing import Any, Callable
 
 
+class ErroPortaWebSocketOcupada(OSError):
+    """Falha permanente desta execução; reiniciar a thread não libera a porta."""
+
+    reiniciavel = False
+
+
+def _porta_ja_esta_ocupada(erro: OSError) -> bool:
+    return int(getattr(erro, "winerror", 0) or getattr(erro, "errno", 0) or 0) in {
+        48, 98, 10048,
+    }
+
+
 class WebSocketTransportRuntime:
     """Fonte única do estado vivo de transporte Chrome e PC B."""
 
@@ -88,12 +100,23 @@ async def start_ws_server(
 ) -> None:
     import websockets
 
-    async with websockets.serve(handler, host, port):
-        print(f"🚀 WebSocket Server Chrome rodando em http://localhost:{port}")
-        if stop_event is None:
-            await asyncio.Future()
-        while not stop_event.is_set():
-            await asyncio.sleep(0.20)
+    try:
+        async with websockets.serve(handler, host, port):
+            print(f"🚀 WebSocket Server Chrome rodando em http://localhost:{port}")
+            if stop_event is None:
+                await asyncio.Future()
+            while not stop_event.is_set():
+                await asyncio.sleep(0.20)
+    except OSError as erro:
+        if not _porta_ja_esta_ocupada(erro):
+            raise
+        print(
+            f"⚠️ [WEBSOCKET] A porta {port} já está em uso. "
+            "O serviço foi desativado nesta instância sem entrar em loop."
+        )
+        raise ErroPortaWebSocketOcupada(
+            f"porta WebSocket {port} ocupada"
+        ) from erro
 
 
 def run_ws_server_in_thread(
@@ -108,7 +131,6 @@ def run_ws_server_in_thread(
     asyncio.set_event_loop(loop)
     if callable(set_loop):
         set_loop(loop)
-    print("🚀 WebSocket Server Chrome iniciado (thread-safe) — ws_loop definido")
     try:
         loop.run_until_complete(
             start_ws_server(

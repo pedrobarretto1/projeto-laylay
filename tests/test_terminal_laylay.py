@@ -114,3 +114,43 @@ def test_entrada_vazia_nao_duplica_cabecalho_do_usuario():
 
     assert processados == ["oi lay"]
     assert impresso.count("💬 Você:") == 1
+
+
+def test_lock_de_impressao_permanece_ativo_durante_leitura_da_linha():
+    ativo = {"valor": True}
+    profundidade = {"valor": 0}
+    processados = []
+
+    class StdinTTY:
+        @staticmethod
+        def isatty():
+            return True
+
+    class LockObservavel:
+        def __enter__(self):
+            profundidade["valor"] += 1
+
+        def __exit__(self, *_args):
+            profundidade["valor"] -= 1
+
+    def leitor(_prompt, **_kwargs):
+        assert profundidade["valor"] == 1
+        return "oi lay"
+
+    def processar(texto):
+        processados.append(texto)
+        ativo["valor"] = False
+
+    escutar_texto_terminal(
+        estado_ativo=lambda: True,
+        processar_texto=processar,
+        stdin=StdinTTY(),
+        raw_print=lambda *_args, **_kwargs: None,
+        print_lock=LockObservavel(),
+        sleep_fn=lambda _tempo: None,
+        deve_continuar=lambda: ativo["valor"],
+        ler_linha_fn=leitor,
+    )
+
+    assert processados == ["oi lay"]
+    assert profundidade["valor"] == 0

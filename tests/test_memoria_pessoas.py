@@ -155,6 +155,21 @@ def test_forma_natural_tenho_uma_amiga_chamada_e_consulta_lembra(tmp_path):
     assert "Beatriz é sua amiga" in falas[-1]
 
 
+def test_pedido_de_lembrete_nunca_vira_consulta_de_pessoa(tmp_path):
+    runtime, *_resto = criar_runtime(tmp_path)
+    falas = _resto[2]
+
+    for texto in (
+        "me lembra de beber água",
+        "lembra de revisar o código amanhã",
+        "me lembra de fazer uma coisa amanhã",
+    ):
+        assert runtime.processar(texto) is False
+
+    assert falas == []
+    assert not (tmp_path / "pessoas.json").exists()
+
+
 def test_namorada_com_nome_em_oracao_separada_e_fato_continuado(tmp_path):
     runtime, *_resto = criar_runtime(tmp_path)
     falas = _resto[2]

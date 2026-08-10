@@ -85,7 +85,16 @@ def _notificacoes(
         fala_central = str(retorno.get("fala") or "").strip()
         deps.marcar_resultado(status, executou=ok, confirmado=ok)
         if fala_central:
-            deps.falar_por_status(status, fala_central, alvo=alvo or "notificacoes")
+            # A fala precisa usar o mesmo resultado observado pela central.
+            # Sem estes campos, o adaptador reconstruía um contrato incerto e
+            # dizia que a leitura não fora confirmada apesar do retorno válido.
+            deps.falar_por_status(
+                status,
+                fala_central,
+                alvo=alvo or "notificacoes",
+                executou=ok,
+                confirmado=ok,
+            )
         return ResultadoDespacho.concluido(ok)
 
     if acao in {"silenciar", "mute", "desativar"}:

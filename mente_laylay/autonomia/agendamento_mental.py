@@ -459,6 +459,21 @@ _PADRAO_DURACAO_RELATIVA = re.compile(
     r"(?P<unidade>seg(?:undo)?s?|min(?:uto)?s?|h(?:ora)?s?)\b",
     flags=re.IGNORECASE,
 )
+_PADRAO_DATA_LEMBRETE = re.compile(
+    r"\b(hoje|amanh[ãa]|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|"
+    r"quinta(?:-feira)?|sexta(?:-feira)?|s[áa]bado|domingo|\d{1,2}/\d{1,2}(?:/\d{2,4})?)\b",
+    flags=re.IGNORECASE,
+)
+_PADRAO_RELOGIO_NUMERICO = re.compile(
+    r"\b(?:pode\s+ser\s+)?(?:às|as|a)?\s*(?P<hora>\d{1,2})\s*"
+    r"(?::|h|\s)\s*(?P<minuto>\d{2})\b",
+    flags=re.IGNORECASE,
+)
+_PADRAO_RELOGIO_HORAS = re.compile(
+    r"\b(?:pode\s+ser\s+)?(?:(?P<marcador>às|as|a)\s+)?"
+    r"(?P<hora>\d{1,2})\s+horas?\b",
+    flags=re.IGNORECASE,
+)
 
 
 def _numero_duracao(valor: str) -> int | None:
@@ -504,6 +519,94 @@ def extrair_duracao_relativa(
             "fim": encontrado.end(),
         }
     return None
+
+
+def _extrair_horario_absoluto(
+    texto: str,
+    *,
+    referencia_data: str = "",
+) -> Optional[dict[str, Any]]:
+    """Reconhece relógio numérico e ``10 horas`` quando há âncora absoluta."""
+    bruto = re.sub(r"\s+", " ", str(texto or "").casefold()).strip()
+    if not bruto:
+        return None
+
+    encontrado = _PADRAO_RELOGIO_NUMERICO.search(bruto)
+    if encontrado is None:
+        natural = _PADRAO_RELOGIO_HORAS.search(bruto)
+        tem_data = bool(
+            _PADRAO_DATA_LEMBRETE.search(bruto)
+            or _PADRAO_DATA_LEMBRETE.search(str(referencia_data or ""))
+        )
+        # Sem ``às`` nem uma data, "10 horas" continua sendo duração. Isso
+        # preserva continuações antigas como "duas horas" e elimina a
+        # ambiguidade somente quando a frase realmente ancora um relógio.
+        if natural is None or (not natural.group("marcador") and not tem_data):
+            return None
+        encontrado = natural
+
+    hora = int(encontrado.group("hora"))
+    minuto_txt = encontrado.groupdict().get("minuto")
+    minuto = int(minuto_txt) if minuto_txt is not None else 0
+    if not (0 <= hora <= 23 and 0 <= minuto <= 59):
+        return None
+    return {
+        "hora_alvo": f"{hora:02d}:{minuto:02d}",
+        "trecho": encontrado.group(0),
+    }
+
+
+def _extrair_parametros_temporais_lembrete(
+    texto: str,
+    *,
+    referencia_data: str = "",
+    aceitar_duracao_sem_marcador: bool = False,
+) -> tuple[dict[str, Any], str]:
+    """Extrai data e tempo e informa o trecho temporal removível da descrição."""
+    bruto = re.sub(r"\s+", " ", str(texto or "").casefold()).strip()
+    if not bruto:
+        return {}, ""
+
+    data = _PADRAO_DATA_LEMBRETE.search(bruto)
+    duracao = extrair_duracao_relativa(bruto, exigir_marcador=True)
+    if duracao:
+        return {"atraso_segundos": int(duracao["atraso_segundos"])}, str(
+            duracao["trecho"]
+        )
+
+    horario = _extrair_horario_absoluto(
+        bruto,
+        referencia_data=referencia_data,
+    )
+    if horario:
+        params: dict[str, Any] = {"hora_alvo": str(horario["hora_alvo"])}
+        if data:
+            params["data_hora"] = data.group(1)
+        return params, str(horario["trecho"])
+
+    if aceitar_duracao_sem_marcador:
+        duracao = extrair_duracao_relativa(bruto)
+        if duracao:
+            return {"atraso_segundos": int(duracao["atraso_segundos"])}, str(
+                duracao["trecho"]
+            )
+
+    return ({"data_hora": data.group(1)} if data else {}), ""
+
+
+def extrair_parametros_temporais_lembrete(
+    texto: str,
+    *,
+    referencia_data: str = "",
+    aceitar_duracao_sem_marcador: bool = False,
+) -> dict[str, Any]:
+    """API canônica para reutilizar data/hora ao criar um lembrete."""
+    params, _trecho = _extrair_parametros_temporais_lembrete(
+        texto,
+        referencia_data=referencia_data,
+        aceitar_duracao_sem_marcador=aceitar_duracao_sem_marcador,
+    )
+    return params
 
 
 def resolver_instante_lembrete(
@@ -575,7 +678,8 @@ def resolver_referencia_contextual_lembrete(
     """Resolve ``isso/disso`` apenas contra um relato futuro recente."""
     descricao_limpa = str(descricao or "").strip()
     generica = descricao_limpa.casefold() in {
-        "", "lembrete", "isso", "disso", "desse evento", "do evento",
+        "", "lembrete", "isso", "disso", "dela", "dele", "essa ideia",
+        "essa nota", "desse evento", "do evento",
     }
     if not generica:
         return descricao_limpa, str(referencia_data or "").strip()
@@ -620,7 +724,10 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
         if 0 <= hora <= 23 and 0 <= minuto <= 59:
             hora_bruta = f"{hora:02d}:{minuto:02d}"
     t = normalizar_texto_cb(bruto)
-    t = re.sub(r"\b(laylay|lay|por favor|pfv|pra mim|para mim)\b", " ", t)
+    # O nome só é vocativo quando abre a fala. Removê-lo globalmente apagava
+    # o próprio alvo em descrições como "testar a Laylay".
+    t = re.sub(r"^\s*(?:laylay|lay)\b[\s,;:!\-]*", " ", t)
+    t = re.sub(r"\b(?:por favor|pfv|pra mim|para mim)\b", " ", t)
     t = re.sub(r"\s+", " ", t).strip()
     if not t:
         return None
@@ -678,39 +785,33 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
         texto_evento = t[gatilho.start():] if gatilho else t
         referencia_data = ""
 
-        m_data = re.search(
-            r"\b(hoje|amanh[ãa]|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|"
-            r"quinta(?:-feira)?|sexta(?:-feira)?|s[áa]bado|domingo|\d{1,2}/\d{1,2}(?:/\d{2,4})?)\b",
-            t,
-        )
+        m_data = _PADRAO_DATA_LEMBRETE.search(t)
         if m_data:
             referencia_data = m_data.group(1)
             texto_evento = texto_evento.replace(m_data.group(0), " ")
 
-        duracao = extrair_duracao_relativa(t, exigir_marcador=True)
-        if duracao:
-            atraso_segundos = int(duracao["atraso_segundos"])
+        temporal, trecho_temporal = _extrair_parametros_temporais_lembrete(
+            t,
+            referencia_data=referencia_data,
+        )
+        if "atraso_segundos" in temporal:
+            atraso_segundos = int(temporal["atraso_segundos"])
+        elif temporal.get("hora_alvo"):
+            hora_alvo = str(temporal["hora_alvo"])
+        if trecho_temporal:
             texto_evento = re.sub(
-                re.escape(str(duracao["trecho"])), " ", texto_evento,
+                re.escape(trecho_temporal), " ", texto_evento,
                 count=1, flags=re.IGNORECASE,
             ).strip()
 
-        if atraso_segundos is None:
-            m_hora = re.search(r"\b(?:às|as|a)\s*(\d{1,2}:\d{2})\b", t)
-            if not m_hora:
-                m_hora = re.search(r"\b(\d{1,2}:\d{2})\b", t)
-            if m_hora:
-                hora_alvo = m_hora.group(1)
-                texto_evento = texto_evento.replace(hora_alvo, " ")
-                texto_evento = re.sub(r"\b(?:às|as|a)\s*", " ", texto_evento).strip()
-            elif hora_bruta:
-                hora_alvo = hora_bruta
-                texto_evento = re.sub(
-                    r"\b(?:as|a)?\s*\d{1,2}\s+\d{2}\b",
-                    " ",
-                    texto_evento,
-                    count=1,
-                ).strip()
+        if atraso_segundos is None and not hora_alvo and hora_bruta:
+            hora_alvo = hora_bruta
+            texto_evento = re.sub(
+                r"\b(?:as|a)?\s*\d{1,2}\s+\d{2}\b",
+                " ",
+                texto_evento,
+                count=1,
+            ).strip()
 
         for prefixo in [
             "me lembra de", "lembra de", "me lembra pra", "lembra pra",
@@ -718,7 +819,12 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
             "marca pra mim", "agendar", "lembra às", "lembra as",
             "me lembra", "lembra", "me avisa", "avisa",
         ]:
-            texto_evento = re.sub(rf"^\s*{re.escape(prefixo)}\s*", " ", texto_evento, flags=re.IGNORECASE)
+            texto_evento = re.sub(
+                rf"^\s*{re.escape(prefixo)}(?=\s|$)\s*",
+                " ",
+                texto_evento,
+                flags=re.IGNORECASE,
+            )
         # Retira apenas a ligação deixada pelo gatilho. Preposições internas
         # pertencem à descrição ("consulta de dentista") e não ao horário.
         texto_evento = re.sub(
@@ -726,6 +832,9 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
             count=1,
         )
         texto_evento = re.sub(r"\s+", " ", texto_evento).strip(" .,!?:;")
+        texto_evento = re.sub(
+            r"\blaylay\b", "Laylay", texto_evento, flags=re.IGNORECASE,
+        )
         descricao = texto_evento or "lembrete"
 
         params: dict[str, Any] = {"descricao": descricao}
@@ -740,37 +849,21 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
     return None
 
 
-def extrair_complemento_temporal_lembrete(texto: str) -> Optional[dict[str, Any]]:
+def extrair_complemento_temporal_lembrete(
+    texto: str,
+    *,
+    referencia_data: str = "",
+) -> Optional[dict[str, Any]]:
     """Extrai apenas tempo/data para completar uma pendência já autorizada."""
-    bruto = re.sub(r"\s+", " ", str(texto or "").casefold()).strip()
-    if not bruto:
-        return None
-    duracao = extrair_duracao_relativa(bruto)
-    if duracao:
-        return {
-            "atraso_segundos": int(duracao["atraso_segundos"]),
-            "complemento_pendente": True,
-        }
-    m_hora = re.search(
-        r"\b(?:pode\s+ser\s+)?(?:às|as|a)?\s*(\d{1,2})\s*(?::|h|\s)\s*(\d{2})\b",
-        bruto,
+    params, _trecho = _extrair_parametros_temporais_lembrete(
+        texto,
+        referencia_data=referencia_data,
+        aceitar_duracao_sem_marcador=True,
     )
-    if not m_hora:
+    # Uma data isolada ainda não completa a pendência de horário.
+    if not ({"hora_alvo", "atraso_segundos"} & set(params)):
         return None
-    hora, minuto = map(int, m_hora.groups())
-    if not (0 <= hora <= 23 and 0 <= minuto <= 59):
-        return None
-    params: dict[str, Any] = {
-        "hora_alvo": f"{hora:02d}:{minuto:02d}",
-        "complemento_pendente": True,
-    }
-    data = re.search(
-        r"\b(hoje|amanh[ãa]|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|"
-        r"quinta(?:-feira)?|sexta(?:-feira)?|s[áa]bado|domingo|\d{1,2}/\d{1,2}(?:/\d{2,4})?)\b",
-        bruto,
-    )
-    if data:
-        params["data_hora"] = data.group(1)
+    params["complemento_pendente"] = True
     return params
 
 

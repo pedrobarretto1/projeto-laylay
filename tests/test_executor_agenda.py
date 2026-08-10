@@ -38,6 +38,27 @@ def test_executor_agenda_nao_interfere_em_outro_dominio() -> None:
     assert eventos == []
 
 
+def test_lembrete_dela_usa_ideia_publicada_pela_caixa_de_entrada() -> None:
+    eventos: list[tuple] = []
+    agenda: list[dict] = []
+
+    despacho = executar_intencao_agenda(
+        "AGENDAR_LEMBRETE",
+        {"descricao": "dela", "hora_alvo": "11:00", "data_hora": "amanha"},
+        "me lembra dela amanhã às 11 horas",
+        {
+            "_agendamentos_transacionar": _transacao(agenda),
+            "ultima_habilidade": "caixa_entrada",
+            "ultimo_alvo": "Criar uma aparência espacial para o avatar",
+            "ultimas_entradas": [],
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido()
+    assert agenda[0]["descricao"] == "Criar uma aparência espacial para o avatar"
+
+
 def test_agendar_acao_relativa_preserva_intencao_para_disparo() -> None:
     eventos: list[tuple] = []
     agenda: list[dict] = []

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import os
 import re
+import subprocess
 import tempfile
 import threading
 import time
@@ -121,6 +123,7 @@ class VozRuntime:
         self._ultima_solicitacao_fala = ""
         self._ultima_solicitacao_fala_ts = 0.0
         self._fallback_tts_disponivel = pyttsx3_mod is not None
+        self._fallback_tts_sapi_windows = False
         self._observadores_inicio_fala: list[Callable[..., Any]] = []
 
         self.proativa_lock = threading.Lock()
@@ -1227,12 +1230,83 @@ class VozRuntime:
             done_event.wait()
         return True
 
+    @staticmethod
+    def _sintetizar_sapi_windows(
+        texto: str,
+        caminho: str,
+        *,
+        velocidade: int,
+    ) -> bool:
+        """Gera WAV pelo SAPI sem depender do cache COM do pyttsx3."""
+        if os.name != "nt" or not texto or not caminho:
+            return False
+        texto_b64 = base64.b64encode(texto.encode("utf-8")).decode("ascii")
+        caminho_b64 = base64.b64encode(caminho.encode("utf-8")).decode("ascii")
+        script = (
+            "$ErrorActionPreference='Stop';"
+            "Add-Type -AssemblyName System.Speech;"
+            "$t=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($env:LAYLAY_SAPI_TEXT_B64));"
+            "$p=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($env:LAYLAY_SAPI_PATH_B64));"
+            "$s=New-Object System.Speech.Synthesis.SpeechSynthesizer;"
+            "$s.Rate=[int]$env:LAYLAY_SAPI_RATE;"
+            "$s.SetOutputToWaveFile($p);$s.Speak($t);$s.Dispose();"
+        )
+        powershell = os.path.join(
+            os.environ.get("SystemRoot", r"C:\Windows"),
+            "System32", "WindowsPowerShell", "v1.0", "powershell.exe",
+        )
+        ambiente = os.environ.copy()
+        ambiente.update({
+            "LAYLAY_SAPI_TEXT_B64": texto_b64,
+            "LAYLAY_SAPI_PATH_B64": caminho_b64,
+            "LAYLAY_SAPI_RATE": str(int(velocidade)),
+        })
+        try:
+            subprocess.run(
+                [powershell, "-NoProfile", "-NonInteractive", "-Command", script],
+                check=True,
+                capture_output=True,
+                timeout=25,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                env=ambiente,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return False
+        try:
+            return os.path.getsize(caminho) > 44
+        except OSError:
+            return False
+
+    def _reproduzir_wav_local(self, caminho: str) -> bool:
+        if self.sf is None or self.sd is None:
+            return False
+        data, sr_val = self.sf.read(caminho)
+        self.ducking_volume(True)
+        try:
+            self.sd.play(data, sr_val, device=self._selecionar_saida_audio())
+            self.ajustar_estado_fala_cb("audio_playing", True)
+            self.sd.wait()
+        finally:
+            self.ajustar_estado_fala_cb("audio_playing", False)
+            self.ducking_volume(False)
+        return True
+
     def fallback_pyttsx(self, texto: str, emocao_atual: str):
         if not self._fallback_tts_disponivel:
             return False
         caminho = None
         try:
             texto_voz = self.limpar_para_voz(texto) or self.fallback_fala
+            if self._fallback_tts_sapi_windows:
+                temp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+                caminho = temp.name
+                temp.close()
+                velocidade = -1 if "calma" in str(emocao_atual).lower() else 0
+                if not self._sintetizar_sapi_windows(
+                    texto_voz, caminho, velocidade=velocidade,
+                ):
+                    raise RuntimeError("sintetizador nativo do Windows indisponível")
+                return self._reproduzir_wav_local(caminho)
             engine = self.pyttsx3.init()
             engine.setProperty("rate", 150 if "calma" in str(emocao_atual).lower() else 170)
             temp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
@@ -1240,22 +1314,38 @@ class VozRuntime:
             temp.close()
             engine.save_to_file(texto_voz, caminho)
             engine.runAndWait()
-            data, sr_val = self.sf.read(caminho)
-
-            self.ducking_volume(True)
-            try:
-                self.sd.play(data, sr_val, device=self._selecionar_saida_audio())
-                self.ajustar_estado_fala_cb("audio_playing", True)
-                self.sd.wait()
-            finally:
-                self.ajustar_estado_fala_cb("audio_playing", False)
-                self.ducking_volume(False)
-
-            return True
+            return self._reproduzir_wav_local(caminho)
         except Exception as e:
             # Alguns ambientes Windows ficam com o cache COM gerado inválido
             # (por exemplo, um arquivo SpeechLib com IndentationError). Não
             # tente importar o mesmo fallback quebrado a cada fala.
+            velocidade = -1 if "calma" in str(emocao_atual).lower() else 0
+            if not caminho:
+                temp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+                caminho = temp.name
+                temp.close()
+            sapi_ok = bool(
+                self.sf is not None
+                and self.sd is not None
+                and self._sintetizar_sapi_windows(
+                    self.limpar_para_voz(texto) or self.fallback_fala,
+                    str(caminho or ""),
+                    velocidade=velocidade,
+                )
+            )
+            if sapi_ok:
+                try:
+                    reproduziu = self._reproduzir_wav_local(str(caminho))
+                except Exception:
+                    reproduziu = False
+                if reproduziu:
+                    self._fallback_tts_sapi_windows = True
+                    self.log(
+                        "⚠️ [FALA] pyttsx3 indisponível; usando o sintetizador "
+                        "nativo do Windows nesta execução."
+                    )
+                    return True
+
             self._fallback_tts_disponivel = False
             self.log(
                 "⚠️ [FALA] fallback local desativado nesta execução: "

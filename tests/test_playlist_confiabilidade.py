@@ -168,3 +168,19 @@ def test_entrada_identica_imediata_nao_e_executada_duas_vezes() -> None:
     assert segundo is None
     assert chamadas == ["coloca musica brasileira"]
     assert any("duplicata imediata ignorada" in item for item in logs)
+
+
+def test_criar_playlist_vazia_persiste_e_nao_duplica(tmp_path) -> None:
+    caminho = tmp_path / "playlists.json"
+    runtime = _runtime(caminho)
+
+    primeira = runtime.create("VMZ")
+    segunda = runtime.create("vmz")
+
+    assert primeira == {
+        "ok": True, "criada": True, "status": "playlist_criada", "nome": "vmz",
+    }
+    assert segunda == {
+        "ok": True, "criada": False, "status": "playlist_ja_existia", "nome": "vmz",
+    }
+    assert json.loads(caminho.read_text(encoding="utf-8"))["vmz"] == []

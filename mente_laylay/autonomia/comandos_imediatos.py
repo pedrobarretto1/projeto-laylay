@@ -6,8 +6,10 @@ linguagem natural e só então libera a conversa livre para a IA.
 
 from __future__ import annotations
 
+import asyncio
 import re
 import unicodedata
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from typing import Any, Callable, Dict
 from mente_laylay.integracao.registro_memoria_pessoas import PortaMemoriaPessoas
 from mente_laylay.integracao.registro_iot import PortaIoT
@@ -40,6 +42,7 @@ from mente_laylay.cognicao.esclarecimento_operacional import (
     limpar_esclarecimento_operacional,
 )
 from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
+from mente_laylay.autonomia.analise_comandos import segmentar_comandos_em_cadeia
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
@@ -75,6 +78,17 @@ def texto_recusa_musica_agora(texto: str) -> bool:
     )
 
 
+def texto_pede_continuacao_musical_curta(texto: str) -> bool:
+    """Seleciona apenas elipses que exigem um contexto musical real."""
+    t = _texto_normalizado_local(texto).strip(" .,!?:;")
+    return bool(re.fullmatch(
+        r"(?:(?:tenta|manda|coloca|toca)\s+outr[ao](?:\s+(?:musica|faixa))?|"
+        r"(?:continua|continue)(?:\s+(?:a|essa|ela|musica|tocando))?|"
+        r"(?:pausa|pause))",
+        t,
+    ))
+
+
 def texto_pergunta_como_apagar_item(texto: str) -> bool:
     """Separa pedido de instrução de uma exclusão realmente autorizada."""
     t = _texto_normalizado_local(texto)
@@ -87,6 +101,30 @@ def texto_pergunta_como_apagar_item(texto: str) -> bool:
         and re.search(r"\b(?:apagar|excluir|deletar|remover)\b", t)
         and re.search(r"\b(?:arquivo|pasta|item|documento)\b", t)
     )
+
+
+def segmentar_composto_caixa_agenda(texto: str) -> tuple[str, str] | None:
+    """Reconhece a cooperação explícita entre uma ideia e seu lembrete.
+
+    O primeiro trecho pertence à caixa de entrada, que é uma habilidade
+    prioritária e não passa pelo executor genérico de intents. Por isso esta
+    combinação precisa ser coordenada antes da cadeia comum. A detecção é
+    estreita: não transforma uma conversa com ``e`` em duas ações.
+    """
+    partes = segmentar_comandos_em_cadeia(texto)
+    if len(partes) != 2:
+        return None
+    primeira, segunda = partes
+    a = _texto_normalizado_local(primeira)
+    b = _texto_normalizado_local(segunda)
+    guarda_ideia = bool(
+        re.search(r"\b(?:guarda|guarde|salva|salve|anota|anote)\b", a)
+        and re.search(r"\b(?:ideia|nota|sugestao|sugestoes|discussao)\b", a)
+    )
+    cria_lembrete = bool(
+        re.search(r"\b(?:(?:me\s+)?lembra|lembre|agenda|agende)\b", b)
+    )
+    return (primeira, segunda) if guarda_ideia and cria_lembrete else None
 
 
 class ComandosImediatosRuntime:
@@ -102,6 +140,244 @@ class ComandosImediatosRuntime:
         self.loop_getter = loop_getter
         self.memoria_pessoas = memoria_pessoas
         self.iot = iot
+
+    def _processar_resumo_pagina(
+        self,
+        texto: str,
+        ns: Dict[str, Any],
+    ) -> bool:
+        """Executa ou recusa o resumo com um resultado observável.
+
+        O resumo usa o loop do WebSocket porque a resposta da extensão chega
+        nele. Ainda assim, o turno que recebeu o pedido não pode terminar
+        antes dessa tarefa: isso publicava ``tratado_prioritario`` com plano
+        vazio e, na prática, fazia o comando parecer ignorado. Fora da própria
+        thread do loop, aguardamos a conclusão e registramos exatamente um
+        resultado. A forma assíncrona fica reservada ao caso raro em que esta
+        função já é chamada pelo loop do navegador, evitando deadlock.
+        """
+        if not texto_pede_resumo_pagina(texto):
+            return False
+        print("⚡ [PRIORIDADE:RESUMO] leitura da página atual")
+        intencao_resumo = {"intent": "RESUMIR_PAGINA", "params": {}}
+        registrar = ns.get("_registrar_resultado_execucao")
+        resumir = ns.get("resumir_pagina_ou_video")
+        loop = self.loop_getter()
+
+        def registrar_conclusao(executou: bool, status: str) -> None:
+            if callable(registrar):
+                registrar(
+                    intencao_resumo,
+                    texto,
+                    executou,
+                    origem="prioritario_resumo_pagina",
+                    status=status,
+                )
+
+        loop_fechado = getattr(loop, "is_closed", None)
+        loop_rodando = getattr(loop, "is_running", None)
+        indisponivel = (
+            not callable(resumir)
+            or loop is None
+            or (callable(loop_fechado) and loop_fechado())
+            or (callable(loop_rodando) and not loop_rodando())
+        )
+        if indisponivel:
+            registrar_conclusao(False, "executor_indisponivel")
+            falar = ns.get("falar_com_lipsync")
+            if callable(falar):
+                falar(
+                    "Não consigo ler a página porque o navegador não está conectado agora.",
+                    "calma",
+                    1,
+                )
+            return True
+
+        corrotina = None
+        try:
+            corrotina = resumir()
+            futuro = asyncio.run_coroutine_threadsafe(corrotina, loop)
+        except Exception as erro:
+            if corrotina is not None and callable(getattr(corrotina, "close", None)):
+                corrotina.close()
+            print(
+                "⚠️ [PRIORIDADE:RESUMO] executor não iniciou: "
+                f"{type(erro).__name__}"
+            )
+            registrar_conclusao(False, "falha_execucao")
+            falar = ns.get("falar_com_lipsync")
+            if callable(falar):
+                falar("Não consegui iniciar a leitura desta página.", "calma", 1)
+            return True
+
+        def concluir_resumo(tarefa: Any) -> None:
+            try:
+                executou = bool(tarefa.result())
+            except Exception as erro:
+                print(
+                    "⚠️ [PRIORIDADE:RESUMO] executor falhou: "
+                    f"{type(erro).__name__}"
+                )
+                executou = False
+            registrar_conclusao(
+                executou,
+                "resumo_concluido" if executou else "falha_execucao",
+            )
+
+        try:
+            loop_atual = asyncio.get_running_loop()
+        except RuntimeError:
+            loop_atual = None
+
+        if loop_atual is loop:
+            # Nunca bloqueia a thread que precisa receber PAGE_DATA. Esse ramo
+            # não é usado pelo terminal/voz, mas preserva a ponte WebSocket se
+            # uma origem futura entregar o turno pelo próprio loop.
+            futuro.add_done_callback(concluir_resumo)
+            return True
+
+        try:
+            executou = bool(futuro.result(timeout=45.0))
+        except FutureTimeoutError:
+            futuro.cancel()
+            print("⚠️ [PRIORIDADE:RESUMO] leitura excedeu 45s e foi cancelada")
+            registrar_conclusao(False, "timeout_execucao")
+            falar = ns.get("falar_com_lipsync")
+            if callable(falar):
+                falar(
+                    "A página demorou demais para responder. Não vou fingir "
+                    "que consegui resumir.",
+                    "calma",
+                    1,
+                )
+            return True
+        except Exception as erro:
+            print(
+                "⚠️ [PRIORIDADE:RESUMO] executor falhou: "
+                f"{type(erro).__name__}"
+            )
+            registrar_conclusao(False, "falha_execucao")
+            falar = ns.get("falar_com_lipsync")
+            if callable(falar):
+                falar("Não consegui concluir a leitura desta página.", "calma", 1)
+            return True
+
+        registrar_conclusao(
+            executou,
+            "resumo_concluido" if executou else "falha_execucao",
+        )
+        return True
+
+    def _processar_busca_arquivo_e_abrir_resultado(
+        self,
+        texto: str,
+        ns: Dict[str, Any],
+        estado_runtime: Any,
+    ) -> bool:
+        """Executa busca e seleção ordinal como duas etapas observáveis."""
+        normalizar = ns.get("_normalizar_texto_com_apelidos")
+        partes = segmentar_comandos_em_cadeia(
+            texto,
+            normalizar_texto=normalizar if callable(normalizar) else None,
+        )
+        if len(partes) != 2:
+            return False
+
+        def detectar(trecho: str) -> dict[str, Any] | None:
+            try:
+                texto_local = (
+                    normalizar(trecho) if callable(normalizar) else trecho
+                )
+            except Exception:
+                texto_local = trecho
+            candidato = detectar_intencao_arquivos(
+                texto_local,
+                params_cb=lambda **kwargs: kwargs,
+                estado_mental=getattr(estado_runtime, "mental", {}),
+                normalizar_texto=normalizar,
+            )
+            return candidato if isinstance(candidato, dict) else None
+
+        primeira = detectar(partes[0])
+        if str((primeira or {}).get("intent") or "").upper() != "FILE_SEARCH":
+            return False
+
+        # A segunda parte precisa ser realmente uma seleção ordinal. Não
+        # promovemos outros compostos de arquivo por esta rota estreita.
+        segunda_norm = _texto_normalizado_local(partes[1]).strip(" .,!?:;")
+        if not re.fullmatch(
+            r"(?:abre|abra|abrir)\s+(?:(?:o|a)\s+)?"
+            r"(?:primeir[oa]|segund[oa]|terceir[oa]|quart[oa]|quint[oa]|"
+            r"sext[oa]|s[eé]tim[oa]|oitav[oa]|non[oa]|d[eé]cim[oa]|\d{1,2})"
+            r"(?:\s+resultado)?",
+            segunda_norm,
+        ):
+            return False
+
+        executar = ns.get("executar_intencao")
+        registrar = ns.get("_registrar_resultado_execucao")
+        falar = ns.get("falar_com_lipsync")
+        if not callable(executar):
+            return False
+
+        try:
+            busca_executada = bool(executar(primeira, partes[0]))
+        except Exception as erro:
+            print(
+                "⚠️ [PRIORIDADE:ARQUIVOS] busca composta falhou: "
+                f"{type(erro).__name__}: {erro}"
+            )
+            busca_executada = False
+        if callable(registrar):
+            registrar(
+                primeira,
+                partes[0],
+                busca_executada,
+                origem="prioritario_cooperativo_busca_arquivo:1",
+            )
+        if not busca_executada:
+            if callable(falar):
+                falar(
+                    "Não consegui concluir a busca, então não tentei abrir um "
+                    "resultado que não foi confirmado.",
+                    "calma",
+                    1,
+                )
+            return True
+
+        # O executor da busca publica os resultados na mente compartilhada
+        # antes de retornar. Relê-la agora é o que permite ao mesmo detector
+        # resolver naturalmente ``o primeiro resultado``.
+        segunda = detectar(partes[1])
+        if str((segunda or {}).get("intent") or "").upper() != "FILE_OPEN_RESULT":
+            if callable(falar):
+                falar(
+                    "A busca terminou, mas não apareceu um primeiro resultado "
+                    "válido para eu abrir.",
+                    "calma",
+                    1,
+                )
+            return True
+        try:
+            abertura_executada = bool(executar(segunda, partes[1]))
+        except Exception as erro:
+            print(
+                "⚠️ [PRIORIDADE:ARQUIVOS] abertura composta falhou: "
+                f"{type(erro).__name__}: {erro}"
+            )
+            abertura_executada = False
+        if callable(registrar):
+            registrar(
+                segunda,
+                partes[1],
+                abertura_executada,
+                origem="prioritario_cooperativo_busca_arquivo:2",
+            )
+        print(
+            "⚡ [PRIORIDADE:ARQUIVOS] busca+abertura tratadas | "
+            f"busca={busca_executada} abertura={abertura_executada}"
+        )
+        return True
 
     def processar_prioritarios(self, texto: str) -> bool:
         """Resolve habilidades pelo turno canônico antes da conversa livre."""
@@ -167,6 +443,70 @@ class ComandosImediatosRuntime:
             print("⚠️ [COMANDO INTERNO] comando de barra não reconhecido")
             return True
 
+        # É uma leitura explícita da aba atual. Ela precisa vencer caixa de
+        # entrada, clipboard e especialistas genéricos; nenhum deles deve
+        # consumir o pedido e deixar um plano vazio.
+        if self._processar_resumo_pagina(texto, ns):
+            return True
+
+        # Curadorias próprias têm identidade e ordinal próprios. Consultamos o
+        # detector canônico diretamente nesta barreira para que ``sua primeira
+        # playlist`` não seja rebaixada a conversa ou confundida com uma lista
+        # do usuário por classificadores genéricos executados mais adiante.
+        texto_curadoria = _texto_normalizado_local(texto)
+        menciona_curadoria = bool(re.search(
+            r"\b(?:sua|suas|dela|da\s+laylay)\s+"
+            r"(?:(?:primeira|segunda|terceira|quarta|quinta|\d+[ªa]?)\s+)?"
+            r"playlists?\b|"
+            r"\bplaylists?\s+(?:da\s+laylay|dela|que\s+(?:voce|você)\s+"
+            r"(?:criou|fez|montou|separou|organizou|preparou))\b",
+            texto_curadoria,
+        ))
+        detectar_deterministico = ns.get("detectar_intencao_deterministica")
+        try:
+            curadoria = (
+                detectar_deterministico(texto)
+                if menciona_curadoria and callable(detectar_deterministico)
+                else None
+            )
+        except Exception as erro:
+            print(
+                "⚠️ [PRIORIDADE:CURADORIA] detecção falhou sem bloquear o "
+                f"turno: {type(erro).__name__}: {erro}"
+            )
+            curadoria = None
+        intent_curadoria = str(
+            (curadoria or {}).get("intent")
+            if isinstance(curadoria, dict) else ""
+        ).upper().strip()
+        if intent_curadoria in {
+            "LAYLAY_PLAYLIST_PLAY", "LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_COPY",
+        }:
+            executar = ns.get("executar_intencao")
+            if not callable(executar):
+                return False
+            try:
+                executou = bool(executar(curadoria, texto))
+            except Exception as erro:
+                print(
+                    "⚠️ [PRIORIDADE:CURADORIA] execução falhou: "
+                    f"{type(erro).__name__}: {erro}"
+                )
+                return True
+            registrar = ns.get("_registrar_resultado_execucao")
+            if callable(registrar):
+                registrar(
+                    curadoria,
+                    texto,
+                    executou,
+                    origem="prioritario_curadoria_laylay",
+                )
+            print(
+                "⚡ [PRIORIDADE:CURADORIA] "
+                f"intent={intent_curadoria} executou={executou}"
+            )
+            return True
+
         # Um pedido operacional novo (inclusive uma nova frase vaga como
         # "queria ouvir uma música") substitui uma pergunta antiga de campo
         # faltante. Isso evita que, depois de trocar de assunto, uma palavra
@@ -185,6 +525,182 @@ class ComandosImediatosRuntime:
                         motivo="substituida",
                     ),
                 )
+
+        caixa_entrada = ns.get("_caixa_entrada_pessoal_runtime")
+        composto_caixa_agenda = segmentar_composto_caixa_agenda(texto)
+        if (
+            composto_caixa_agenda
+            and callable(getattr(caixa_entrada, "processar", None))
+        ):
+            primeira, segunda = composto_caixa_agenda
+            falar = ns.get("falar_com_lipsync")
+            try:
+                guardou = bool(caixa_entrada.processar(primeira))
+            except Exception as erro:
+                print(
+                    "⚠️ [PRIORIDADE:COOPERAÇÃO] caixa de entrada falhou: "
+                    f"{type(erro).__name__}: {erro}"
+                )
+                guardou = False
+            if not guardou:
+                if callable(falar):
+                    falar(
+                        "Não consegui guardar a ideia, então não criei um lembrete "
+                        "solto sem o contexto dela.",
+                        "calma",
+                        1,
+                    )
+                return True
+
+            resolver = ns.get("resolver_comando_natural")
+            try:
+                resolucao = (
+                    resolver(segunda, "prioritario-cooperativo-caixa-agenda")
+                    if callable(resolver)
+                    else (None, "")
+                )
+            except Exception as erro:
+                print(
+                    "⚠️ [PRIORIDADE:COOPERAÇÃO] agenda não foi resolvida: "
+                    f"{type(erro).__name__}: {erro}"
+                )
+                resolucao = (None, "")
+            comando_agenda = (
+                resolucao[0]
+                if isinstance(resolucao, tuple) and len(resolucao) == 2
+                else None
+            )
+            item_salvo = None
+            obter_item_salvo = getattr(caixa_entrada, "ultimo_item_salvo", None)
+            if callable(obter_item_salvo):
+                try:
+                    item_salvo = obter_item_salvo()
+                except Exception:
+                    item_salvo = None
+            if isinstance(comando_agenda, dict) and isinstance(item_salvo, dict):
+                comando_agenda = {
+                    **comando_agenda,
+                    "params": dict(comando_agenda.get("params") or {}),
+                }
+                descricao_nota = str(
+                    item_salvo.get("titulo")
+                    or item_salvo.get("ideia_original")
+                    or item_salvo.get("conteudo")
+                    or ""
+                ).strip()
+                if descricao_nota:
+                    comando_agenda["params"]["descricao"] = descricao_nota[:500]
+                nota_id = str(item_salvo.get("id") or "").strip()
+                if nota_id:
+                    comando_agenda["params"]["referencia_nota"] = nota_id
+            intent_agenda = str(
+                (comando_agenda or {}).get("intent")
+                if isinstance(comando_agenda, dict)
+                else ""
+            ).upper().strip()
+            executar = ns.get("executar_intencao")
+            executou_agenda = False
+            if intent_agenda in {"AGENDAR_LEMBRETE", "SCHEDULE"} and callable(executar):
+                try:
+                    executou_agenda = bool(executar(comando_agenda, segunda))
+                except Exception as erro:
+                    print(
+                        "⚠️ [PRIORIDADE:COOPERAÇÃO] agenda falhou: "
+                        f"{type(erro).__name__}: {erro}"
+                    )
+            if isinstance(comando_agenda, dict):
+                registrar = ns.get("_registrar_resultado_execucao")
+                if callable(registrar):
+                    registrar(
+                        comando_agenda,
+                        segunda,
+                        executou_agenda,
+                        origem="prioritario_cooperativo_caixa_agenda",
+                    )
+            if not executou_agenda and callable(falar):
+                falar(
+                    "Guardei a ideia, mas não consegui criar nem confirmar o "
+                    "lembrete. A nota continua salva.",
+                    "calma",
+                    1,
+                )
+            print(
+                "⚡ [PRIORIDADE:COOPERAÇÃO] caixa+agenda | "
+                f"nota=True agenda={executou_agenda}"
+            )
+            return True
+
+        if self._processar_busca_arquivo_e_abrir_resultado(
+            texto,
+            ns,
+            estado_runtime,
+        ):
+            return True
+
+        # Uma frase pode pedir duas habilidades cooperando no mesmo turno.
+        # O ciclo canônico já sabia segmentar e executar a cadeia, mas essa
+        # porta nunca era chamada pela fase prioritária; por isso o texto
+        # inteiro escapava para a conversa e a Laylay às vezes confirmava uma
+        # etapa inexistente. Cada trecho volta ao mesmo resolvedor canônico e
+        # mantém suas próprias evidências, permissões e resultados.
+        processar_cadeia = ns.get("processar_comandos_em_cadeia")
+        if callable(processar_cadeia):
+            try:
+                if processar_cadeia(texto, "prioritario-cooperativo"):
+                    print("⚡ [PRIORIDADE:COOPERAÇÃO] cadeia natural executada")
+                    return True
+            except Exception as erro:
+                print(
+                    "⚠️ [PRIORIDADE:COOPERAÇÃO] cadeia natural falhou sem "
+                    f"bloquear o turno: {type(erro).__name__}: {erro}"
+                )
+
+        # Elipses musicais curtas precisam usar o estado real da última ação,
+        # antes que a conversa livre tente lhes dar outro significado. O
+        # resolvedor contextual só devolve candidato quando existe música
+        # recente; por isso um ``continua`` fora desse domínio segue o fluxo
+        # normal. A execução e o registro permanecem inteiramente canônicos.
+        if texto_pede_continuacao_musical_curta(texto):
+            resolver_midia = ns.get("_resolver_comando_midia_contextual_forcado")
+            try:
+                continuacao_musical = (
+                    resolver_midia(texto) if callable(resolver_midia) else None
+                )
+            except Exception as erro:
+                print(
+                    "⚠️ [PRIORIDADE:MÚSICA] continuidade falhou sem bloquear "
+                    f"o turno: {type(erro).__name__}: {erro}"
+                )
+                continuacao_musical = None
+            intent_musical = str(
+                (continuacao_musical or {}).get("intent")
+                if isinstance(continuacao_musical, dict) else ""
+            ).upper().strip()
+            if intent_musical in {"MUSIC_SEARCH", "MEDIA_CONTROL"}:
+                executar = ns.get("executar_intencao")
+                if not callable(executar):
+                    return False
+                try:
+                    executou = bool(executar(continuacao_musical, texto))
+                except Exception as erro:
+                    print(
+                        "⚠️ [PRIORIDADE:MÚSICA] execução contextual falhou: "
+                        f"{type(erro).__name__}: {erro}"
+                    )
+                    return True
+                registrar = ns.get("_registrar_resultado_execucao")
+                if callable(registrar):
+                    registrar(
+                        continuacao_musical,
+                        texto,
+                        executou,
+                        origem="prioritario_continuidade_musical",
+                    )
+                print(
+                    "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | "
+                    f"intent={intent_musical}"
+                )
+                return True
 
         if texto_recusa_musica_agora(texto):
             bloquear = ns.get("_bloquear_playlist_temporariamente")
@@ -306,7 +822,6 @@ class ComandosImediatosRuntime:
                     "⚠️ [ÁREA DE TRANSFERÊNCIA] falha isolada: "
                     f"{type(erro).__name__}: {erro}"
                 )
-        caixa_entrada = ns.get("_caixa_entrada_pessoal_runtime")
         if callable(getattr(caixa_entrada, "processar", None)):
             try:
                 if caixa_entrada.processar(texto):
@@ -318,15 +833,16 @@ class ComandosImediatosRuntime:
                     f"{type(erro).__name__}: {erro}"
                 )
 
-        # Busca local de arquivos é uma habilidade de leitura e não deve
+        # Busca e restauração local de arquivos não devem
         # depender da classificação da LLM. O coordenador canônico continua
         # responsável pela linguagem natural geral, mas esta porta garante
         # que pedidos explícitos como "encontra o código que controla X"
         # cheguem ao executor mesmo se o detector composto estiver degradado
         # ou o retrato de modalidade do turno tiver sido classificado cedo
         # demais. O próprio detector bloqueia perguntas de capacidade,
-        # hipóteses e negações. FILE_SEARCH e a seleção FILE_OPEN_RESULT são
-        # operações locais de leitura aceitas aqui.
+        # hipóteses e negações. FILE_SEARCH e FILE_OPEN_RESULT são leituras;
+        # RESTORE_DELETED_ITEM é uma mutação reversível, mas só nasce de uma
+        # referência explícita ao último item enviado à lixeira.
         normalizar = ns.get("_normalizar_texto_com_apelidos")
         try:
             texto_arquivo = normalizar(texto) if callable(normalizar) else texto
@@ -345,11 +861,18 @@ class ComandosImediatosRuntime:
                 f"{type(erro).__name__}: {erro}"
             )
             candidato_arquivo = None
-        if (
-            isinstance(candidato_arquivo, dict)
-            and str(candidato_arquivo.get("intent") or "").upper()
-            in {"FILE_SEARCH", "FILE_OPEN_RESULT"}
-        ):
+        intent_arquivo = str(
+            (candidato_arquivo or {}).get("intent")
+            if isinstance(candidato_arquivo, dict) else ""
+        ).upper()
+        params_arquivo = dict(
+            (candidato_arquivo or {}).get("params") or {}
+        ) if isinstance(candidato_arquivo, dict) else {}
+        operacao_arquivo_prioritaria = (
+            intent_arquivo in {"FILE_SEARCH", "FILE_OPEN_RESULT", "RESTORE_DELETED_ITEM"}
+            or (intent_arquivo == "CREATE_FILE" and bool(params_arquivo.get("editar_existente")))
+        )
+        if isinstance(candidato_arquivo, dict) and operacao_arquivo_prioritaria:
             executar = ns.get("executar_intencao")
             if not callable(executar):
                 return False
@@ -370,7 +893,7 @@ class ComandosImediatosRuntime:
                     origem="prioritario_busca_arquivos",
                 )
             print(
-                "⚡ [PRIORIDADE:ARQUIVOS] leitura local tratada | "
+                "⚡ [PRIORIDADE:ARQUIVOS] operação contextual tratada | "
                 f"intent={str(candidato_arquivo.get('intent') or '').upper()}"
             )
             return True
@@ -495,23 +1018,6 @@ class ComandosImediatosRuntime:
             if callable(falar_saude):
                 falar_saude()
             return True
-        if texto_pede_resumo_pagina(texto):
-            print("⚡ [PRIORIDADE:RESUMO] leitura da página atual")
-            executar = ns.get("executar_intencao")
-            if not callable(executar):
-                return False
-            intencao_resumo = {"intent": "RESUMIR_PAGINA", "params": {}}
-            executou = bool(executar(intencao_resumo, texto))
-            registrar = ns.get("_registrar_resultado_execucao")
-            if callable(registrar):
-                registrar(
-                    intencao_resumo,
-                    texto,
-                    executou,
-                    origem="prioritario_resumo_pagina",
-                )
-            return True
-
         # Última barreira antes da conversa: usa o coordenador canônico inteiro,
         # não só o detector de frases literais. Esse único caminho combina
         # linguagem natural, catálogo de habilidades, contexto, referências e

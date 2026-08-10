@@ -207,7 +207,26 @@ def _consultar_clima(
         base += f" e umidade em {umidade}%"
     base += "."
     pergunta_chuva = "chov" in str(texto_original or "").casefold()
-    if pergunta_chuva:
+    pergunta_maxima = bool(re.search(
+        r"\b(?:temperatura\s+)?maxima\b|\bmaximo\b",
+        normalizar_texto(texto_original),
+    ))
+    pergunta_minima = bool(re.search(
+        r"\b(?:temperatura\s+)?minima\b|\bminimo\b",
+        normalizar_texto(texto_original),
+    ))
+    if pergunta_maxima or pergunta_minima:
+        chave = "temperatura_max_c" if pergunta_maxima else "temperatura_min_c"
+        rotulo = "máxima" if pergunta_maxima else "mínima"
+        valor = str(info.get(chave) or "").strip()
+        if valor:
+            _falar(ctx, f"A temperatura {rotulo} prevista hoje em {cidade_fala} é de {valor} graus.")
+        else:
+            _falar(
+                ctx,
+                f"Consegui ver o tempo atual, mas o provedor não informou a temperatura {rotulo} de hoje.",
+            )
+    elif pergunta_chuva:
         chance_bruta = info.get("chance_chuva_pct")
         try:
             chance = max(0, min(100, int(float(chance_bruta))))

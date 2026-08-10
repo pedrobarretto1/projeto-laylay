@@ -31,6 +31,7 @@ class _MusicaLeituraFake:
 
 class _MusicaOperacoesFake:
     def __init__(self, estado=None): self.estado_mutavel = estado if estado is not None else {}
+    def criar_playlist(self, nome): return {"ok": True, "criada": True, "nome": nome}
     def apagar_playlist(self, _nome): return True
     def adicionar_faixa(self, *_args): return True
     def mover_faixa(self, origem, destino, _musica=""): return {"ok": True, "origem": origem, "destino": destino}

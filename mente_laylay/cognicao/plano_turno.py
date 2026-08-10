@@ -351,7 +351,8 @@ def verificar_fala_turno(
     )
     aderencia_contrato = dict(qualidade.get("aderencia_contrato") or {})
     problemas_comunicacao = list(qualidade.get("problemas") or [])
-    if problemas_comunicacao:
+    problemas_bloqueantes = list(qualidade.get("problemas_bloqueantes") or [])
+    if problemas_bloqueantes:
         problemas.extend(problemas_comunicacao)
         return {
             "aceita": False,
@@ -367,6 +368,10 @@ def verificar_fala_turno(
                 contrato_reparo=qualidade.get("contrato_reparo"),
             ),
         }
+    if problemas_comunicacao:
+        # Estilo, proporção e variedade são sinais para evolução, não licença
+        # para trocar uma resposta válida por um fallback genérico.
+        problemas.extend(problemas_comunicacao)
 
     ajustada_proporcional = ajustar_proporcao_resposta(
         ajustada,

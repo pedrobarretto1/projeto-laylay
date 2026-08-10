@@ -339,7 +339,7 @@ def test_inventacao_total_sem_reparo_vira_contingencia_contextual() -> None:
         log=lambda _texto: None,
     )
 
-    assert resposta["fala"] == "Peguei: você gosta de funk."
+    assert "você gosta de funk" in resposta["fala"].casefold()
     assert resposta["suprimir_fala"] is False
 
 

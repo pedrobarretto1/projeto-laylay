@@ -207,3 +207,85 @@ def test_autoria_rejeita_parcial_que_finge_confirmacao_total() -> None:
     )
 
     assert motivo == "incerteza_ocultada"
+
+
+def test_autoria_operacional_se_corrige_antes_de_usar_fala_local() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "APP_OPEN",
+        "params": {"nome_app": "Opera"},
+        "alvo": "Opera",
+        "status": "ja_aberto_focado",
+        "executou": False,
+        "confirmado": True,
+    })
+    chamadas = []
+
+    def modelo(*_args, **_kwargs):
+        chamadas.append(1)
+        if len(chamadas) == 1:
+            return (
+                '{"fala":"Abri o Opera de novo.","emocao":"calma","nivel":1,'
+                '"status":"ja_aberto_focado","alvo":"Opera"}'
+            )
+        return (
+            '{"fala":"O Opera já estava aberto e em foco; não repeti a abertura.",'
+            '"emocao":"debochada","nivel":1,'
+            '"status":"ja_aberto_focado","alvo":"Opera"}'
+        )
+
+    confirmacao = personalizar_confirmacao_llm(
+        resultado,
+        "Opera já estava aberto e em foco; não repeti a abertura.",
+        classe="sem_acao",
+        emocao="calma",
+        nivel=1,
+        enviar_mensagem=modelo,
+        contexto={},
+    )
+
+    assert len(chamadas) == 2
+    assert confirmacao.usada_llm is True
+    assert "não repeti" in confirmacao.fala.casefold()
+
+
+def test_autoria_operacional_remove_enxerto_literal_de_contexto_antigo() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "AGENDAR_LEMBRETE",
+        "alvo": "revisar o código",
+        "status": "lembrete_agendado",
+        "executou": True,
+        "confirmado": True,
+    })
+    chamadas = []
+
+    def modelo(*_args, **_kwargs):
+        chamadas.append(1)
+        if len(chamadas) == 1:
+            return (
+                '{"fala":"Agendei revisar o código. Você ainda não me contou nada '
+                'confiável sobre Beber Água.","emocao":"calma","nivel":1,'
+                '"status":"lembrete_agendado","alvo":"revisar o código"}'
+            )
+        return (
+            '{"fala":"Agendei o lembrete de revisar o código.",'
+            '"emocao":"calma","nivel":1,'
+            '"status":"lembrete_agendado","alvo":"revisar o código"}'
+        )
+
+    confirmacao = personalizar_confirmacao_llm(
+        resultado,
+        "Agendei o lembrete de revisar o código.",
+        classe="sucesso",
+        emocao="calma",
+        nivel=1,
+        enviar_mensagem=modelo,
+        contexto={
+            "ultima_resposta": (
+                "Você ainda não me contou nada confiável sobre Beber Água."
+            ),
+        },
+    )
+
+    assert len(chamadas) == 2
+    assert confirmacao.usada_llm is True
+    assert "Beber Água" not in confirmacao.fala

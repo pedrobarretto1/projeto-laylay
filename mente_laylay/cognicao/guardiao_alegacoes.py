@@ -61,6 +61,20 @@ _EXECUCAO_ALEGADA_SEM_RESULTADO = re.compile(
     r"\ba[ií]\s+vai\b[^.!?]{0,100}\bpra\s+voc[eê]\b",
     re.IGNORECASE,
 )
+_CONCLUSAO_TOTAL_ALEGADA = re.compile(
+    r"\b(?:conclu[ií]|terminei|finalizei)\b[^.!?]{0,80}"
+    r"\b(?:tudo|todas?\s+as\s+etapas|as\s+duas\s+etapas|o\s+pedido\s+completo)\b|"
+    r"\b(?:tudo|todas?\s+as\s+etapas|as\s+duas\s+etapas|o\s+pedido\s+completo)\b"
+    r"[^.!?]{0,40}\b(?:pront[oa]s?|feit[oa]s?|conclu[ií]d[oa]s?)\b",
+    re.IGNORECASE,
+)
+_AGENDAMENTO_ALEGADO = re.compile(
+    r"\b(?:agendei|marquei|programei|criei)\b[^.!?]{0,120}"
+    r"\b(?:lembrete|agenda|rever|amanh[aã]|hoje|sexta|"
+    r"\d{1,2}\s*(?:h|horas?))\b|"
+    r"\b(?:vou\s+te\s+lembrar|te\s+lembrarei)\b",
+    re.IGNORECASE,
+)
 _ESTADO_REAL_FORTE = re.compile(
     r"\b(?:a\s+)?(?:cpu|processador|ram|mem[oó]ria|placa\s+de\s+v[ií]deo|volume|"
     r"l[aâ]mpada|luz|ventilador|temperatura)\s+(?:est[aá]|ficou|segue|continua)\s+"
@@ -74,6 +88,9 @@ _PERSONALIDADE_SEGURA = re.compile(
 )
 _INTENTS_AGENDAMENTO = {
     "AGENDAR_LEMBRETE", "AGENDAR_ACAO", "CREATE_REMINDER", "SCHEDULE_ACTION",
+}
+_INTENTS_ANOTACAO = {
+    "INBOX_ADD", "INBOX_ADD_DISCUSSION",
 }
 
 
@@ -103,8 +120,16 @@ def validar_alegacoes_da_fala(
     frases = [parte.strip() for parte in re.split(r"(?<=[.!?])\s+", original) if parte.strip()]
     comandos_normalizados = _comandos_normalizados(contrato)
     confirmados = [item for item in comandos_normalizados if item.get("confirmado") is True]
+    sem_confirmacao = [
+        item for item in comandos_normalizados if item.get("confirmado") is not True
+    ]
+    plano_parcial = bool(confirmados and sem_confirmacao)
     tem_agendamento = any(
         str(item.get("intent") or "").upper() in _INTENTS_AGENDAMENTO
+        for item in confirmados
+    )
+    tem_anotacao = any(
+        str(item.get("intent") or "").upper() in _INTENTS_ANOTACAO
         for item in confirmados
     )
     origem_ia = str(origem or "").lower() in {
@@ -114,7 +139,19 @@ def validar_alegacoes_da_fala(
     mantidas: list[str] = []
     removidas: list[str] = []
     oferta_dependente_removida = False
+    conclusao_total_rejeitada = False
+    agendamento_rejeitado = False
     for frase in frases:
+        if plano_parcial and _CONCLUSAO_TOTAL_ALEGADA.search(frase):
+            problemas.append("conclusao_total_com_plano_parcial")
+            removidas.append(frase)
+            conclusao_total_rejeitada = True
+            continue
+        if _AGENDAMENTO_ALEGADO.search(frase) and not tem_agendamento:
+            problemas.append("etapa_agendamento_sem_resultado")
+            removidas.append(frase)
+            agendamento_rejeitado = True
+            continue
         if _OFERTA_PLAYLIST_SPOTIFY_NAO_SUPORTADA.search(frase):
             problemas.append("oferta_capacidade_nao_suportada")
             removidas.append(frase)
@@ -164,7 +201,18 @@ def validar_alegacoes_da_fala(
             continue
         mantidas.append(frase)
     ajustada = " ".join(mantidas).strip()
-    if "execucao_alegada_sem_resultado" in problemas:
+    if agendamento_rejeitado:
+        ajustada = (
+            "Guardei a ideia, mas não criei nem confirmei o lembrete."
+            if tem_anotacao
+            else "O lembrete não foi criado nem confirmado."
+        )
+    elif conclusao_total_rejeitada:
+        ajustada = (
+            "Concluí apenas a etapa confirmada; a outra etapa ainda não tem "
+            "resultado confirmado."
+        )
+    elif "execucao_alegada_sem_resultado" in problemas:
         if any(item.get("executou") is True for item in comandos_normalizados):
             ajustada = "Eu me adiantei na fala: o comando foi enviado, mas não consegui confirmar o resultado."
         else:

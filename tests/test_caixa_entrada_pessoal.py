@@ -63,6 +63,24 @@ def test_essa_ideia_recupera_contexto_anterior_sem_salvar_o_comando(tmp_path):
     assert item["origem"] == "conversa"
 
 
+def test_essa_ideia_junto_com_sugestoes_salva_a_discussao_real(tmp_path) -> None:
+    mensagens = [
+        {"role": "user", "content": "Quero uma aparência espacial para o avatar."},
+        {
+            "role": "assistant",
+            "content": "Eu usaria cinza metálico, estrelas discretas e olhos lilás.",
+        },
+    ]
+    runtime, *_ = criar_runtime(tmp_path, mensagens=mensagens)
+
+    assert runtime.processar("Guarda essa ideia junto com suas sugestões") is True
+
+    item = itens_salvos(tmp_path)[0]
+    assert item["tipo"] == "ideia_discutida"
+    assert "junto com suas sugestões" not in item["conteudo"].casefold()
+    assert runtime.ultimo_item_salvo()["id"] == item["id"]
+
+
 def test_anota_essa_ideia_com_ponto_recupera_fala_anterior(tmp_path) -> None:
     mensagens = [
         {
@@ -226,6 +244,17 @@ def test_recusa_mantem_nota_ativa(tmp_path):
     assert itens_salvos(tmp_path)[0]["status"] == "ativo"
 
 
+def test_recusa_natural_composta_mantem_nota_ativa(tmp_path):
+    runtime, falas, resultados, _ = criar_runtime(tmp_path)
+    runtime.processar("anota essa ideia: manter isto")
+    runtime.processar("apaga essa nota")
+
+    assert runtime.processar("não, deixa como está") is True
+    assert itens_salvos(tmp_path)[0]["status"] == "ativo"
+    assert falas[-1] == "Certo, não alterei a nota."
+    assert resultados[-1][0][0]["intent"] == "CANCEL_INBOX_ACTION"
+
+
 def test_converter_em_lembrete_exige_confirmacao_e_reusa_agenda(tmp_path):
     runtime, falas, resultados, execucoes = criar_runtime(tmp_path)
     runtime.processar("anota a tarefa revisar os testes")
@@ -241,6 +270,25 @@ def test_converter_em_lembrete_exige_confirmacao_e_reusa_agenda(tmp_path):
     }
     assert resultados[-1][0][0]["intent"] == "AGENDAR_LEMBRETE"
     assert itens_salvos(tmp_path)[0]["status"] == "ativo"
+
+
+def test_converter_em_lembrete_preserva_data_hora_e_descricao(tmp_path):
+    runtime, _falas, _resultados, execucoes = criar_runtime(tmp_path)
+    runtime.processar("anota a ideia de revisar a interface")
+
+    assert runtime.processar(
+        "transforma essa ideia em lembrete para amanhã às 18 horas"
+    ) is True
+    assert runtime.processar("sim") is True
+
+    assert execucoes[-1] == ({
+        "intent": "AGENDAR_LEMBRETE",
+        "params": {
+            "descricao": "de revisar a interface",
+            "hora_alvo": "18:00",
+            "data_hora": "amanhã",
+        },
+    }, "transforma essa ideia em lembrete para amanhã às 18 horas")
 
 
 def test_runtime_prioritario_intercepta_caixa_sem_chamar_llm(tmp_path):

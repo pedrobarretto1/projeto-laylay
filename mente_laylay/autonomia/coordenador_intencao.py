@@ -114,10 +114,17 @@ def _intencao_deterministica_tem_alvo_explicito(resultado: Any, texto: str) -> b
             valor_e_referencia_contextual(valor)
             for valor in (origem, destino, musica)
         )
-    if intent in {"PLAYLIST_ADD", "PLAYLIST_PLAY", "PLAYLIST_LIST", "PLAYLIST_DELETE"}:
+    if intent in {"PLAYLIST_CREATE", "PLAYLIST_ADD", "PLAYLIST_PLAY", "PLAYLIST_LIST", "PLAYLIST_DELETE"}:
         # Em PLAYLIST_ADD, "essa música" resolve a fonte pelo player atual,
         # mas o destino dito depois de "playlist" já é um alvo explícito.
         return not valor_e_referencia_contextual(alvo) and "playlist" in fala
+    if intent in {"LAYLAY_PLAYLIST_PLAY", "LAYLAY_PLAYLIST_COPY"}:
+        # O detector da curadoria resolve o ordinal para ``#N`` ou para um
+        # nome catalogado. A posse "sua" é contexto de domínio, não um alvo
+        # incompleto que precise voltar à conversa livre.
+        return bool(alvo) and (
+            alvo.startswith("#") or not valor_e_referencia_contextual(alvo)
+        )
     if intent == "MUSIC_SEARCH":
         consulta = str(
             params.get("query") or params.get("musica") or params.get("nome") or ""
@@ -150,6 +157,7 @@ def resolver_referencias_da_intencao(
     referencia = dict(snapshot.get("referencia_resolvida") or {})
     tipo = str(referencia.get("tipo") or "").casefold()
     nome = str(referencia.get("nome") or "").strip()
+    dados_referencia = dict(referencia.get("dados") or {})
     def resolver_campo(chaves: tuple[str, ...], tipos_aceitos: set[str]) -> bool:
         for chave in chaves:
             valor = str(params.get(chave) or "").strip()
@@ -160,7 +168,10 @@ def resolver_referencias_da_intencao(
             if not nome or tipo not in tipos_aceitos:
                 return False
             params[f"{chave}_original"] = valor[:160]
-            params[chave] = nome
+            valor_resolvido = nome
+            if tipo in {"arquivo", "pasta"}:
+                valor_resolvido = str(dados_referencia.get("caminho") or nome).strip()
+            params[chave] = valor_resolvido
             params["referencia_contextual"] = True
         return True
 
@@ -206,7 +217,7 @@ def resolver_referencias_da_intencao(
     elif intent in {"IOT_CONTROL", "IOT_STATUS"}:
         if not resolver_campo(("alvo", "dispositivo"), {"iot", "dispositivo"}):
             return None
-    elif intent in {"PLAYLIST_PLAY", "PLAYLIST_ADD", "PLAYLIST_LIST", "PLAYLIST_DELETE"}:
+    elif intent in {"PLAYLIST_CREATE", "PLAYLIST_PLAY", "PLAYLIST_ADD", "PLAYLIST_LIST", "PLAYLIST_DELETE"}:
         if not resolver_campo(("nome_playlist", "playlist"), {"playlist"}):
             return None
     elif intent == "PLAYLIST_MOVE":
@@ -262,9 +273,12 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
                 "intent": "AGENDAR_LEMBRETE",
                 "params": {"cancelar_pendente": True},
             }, "agenda-continuacao"
-        complemento = extrair_complemento_temporal_lembrete(texto)
+        metadados = dict(pendencia_agenda.get("metadados") or {})
+        complemento = extrair_complemento_temporal_lembrete(
+            texto,
+            referencia_data=str(metadados.get("referencia_data") or ""),
+        )
         if isinstance(complemento, dict):
-            metadados = dict(pendencia_agenda.get("metadados") or {})
             complemento.setdefault("descricao", str(metadados.get("descricao") or "lembrete"))
             complemento.setdefault("data_hora", str(metadados.get("referencia_data") or ""))
             complemento["pendencia_id"] = str(pendencia_agenda.get("id") or "")
@@ -313,8 +327,31 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
         texto=texto_norm,
     )
 
+    # O detector de domínio recebe a fala original sempre que o turno inteiro
+    # é operacional. A forma normalizada remove pontuação útil de argumentos
+    # (por exemplo, transforma ``resultado.md`` em ``resultado md``). O
+    # orquestrador determinístico já cria sua própria cópia normalizada para
+    # comparar verbos, portanto manter o original aqui não reduz tolerância a
+    # português e preserva nomes, URLs, aspas e extensões.
+    preservar_argumentos_arquivo = bool(
+        str(turno_congelado.get("modalidade_geral") or "") != "misto"
+        and re.search(
+            r"\b(?:arquivo|pasta|documento|escreve|escreva|grava|grave)\b",
+            str(texto or ""),
+            flags=re.IGNORECASE,
+        )
+        and (
+            bool(re.search(r"\.[a-z0-9]{1,8}\b", str(texto or ""), re.IGNORECASE))
+            or '"' in str(texto or "")
+            or "'" in str(texto or "")
+            or bool(re.search(r"\b(?:nele|nela|dentro\s+dele|dentro\s+dela)\b", str(texto or ""), re.IGNORECASE))
+        )
+    )
+    texto_detector_deterministico = (
+        str(texto or "") if preservar_argumentos_arquivo else texto_deteccao
+    )
     intent_deterministica = resolver_referencias_da_intencao(
-        _call(ctx, "detectar_intencao_deterministica", texto_deteccao),
+        _call(ctx, "detectar_intencao_deterministica", texto_detector_deterministico),
         retrato_atual,
     )
     # Salvaguarda de leitura do próprio projeto. O detector composto pode
@@ -355,6 +392,9 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
                 texto_deteccao,
                 params_cb=lambda **kwargs: kwargs,
                 limpar_nome_playlist=limpar_playlist,
+                ultima_playlist=_call(
+                    ctx, "musica_estado_get", "ultima_playlist", default="",
+                ),
             ),
             retrato_atual,
         )
@@ -819,6 +859,7 @@ class CicloComandosRuntime:
             ),
             "registrar_arbitragem_turno": contexto_execucao.get("registrar_arbitragem_turno"),
             "pendencia_agenda": pendencia_agenda,
+            "pendencia_acao_runtime": pendencia_runtime,
             "lembrete_pendente": (
                 str(contexto_execucao.get("ultima_intencao") or "").upper() == "AGENDAR_LEMBRETE"
                 and str(contexto_execucao.get("ultima_habilidade") or "").casefold() == "agenda"
@@ -850,7 +891,7 @@ class CicloComandosRuntime:
         if re.match(
             r"^(?:abre|fecha|coloca|toca|pausa|passa|liga|desliga|cria|apaga|"
             r"remove|pesquisa|busca|procura|organiza|salva|guarda|lista|mostra|"
-            r"lembra|cancela)\b",
+            r"escreve|grava|lembra|cancela)\b",
             t,
         ):
             return "pedido_direto"
@@ -914,6 +955,18 @@ class CicloComandosRuntime:
                 metricas["ultima_rota"] = str(rota or "coordenador")
                 metricas["ultima_intent"] = intent
                 habilidade = classificar_habilidade_intent(intent) or "outros"
+                pendencia_agenda = dict(
+                    contexto_resolucao.get("pendencia_agenda") or {}
+                )
+                pendencia_runtime = contexto_resolucao.get("pendencia_acao_runtime")
+                if pendencia_agenda and habilidade != "agenda" and pendencia_runtime is not None:
+                    try:
+                        pendencia_runtime.concluir(
+                            str(pendencia_agenda.get("id") or ""),
+                            "substituida_por_troca_dominio",
+                        )
+                    except Exception:
+                        pass
                 por_habilidade = dict(metricas.get("por_habilidade") or {})
                 por_habilidade[habilidade] = int(por_habilidade.get(habilidade) or 0) + 1
                 metricas["por_habilidade"] = por_habilidade
@@ -1028,12 +1081,65 @@ class CicloComandosRuntime:
         )
 
     def processar_cadeia(self, texto: str, origem: str = "") -> bool:
-        normalizar = self._ns().get("_normalizar_texto_com_apelidos")
+        ns = self._ns()
+        normalizar = ns.get("_normalizar_texto_com_apelidos")
+
+        def executar_trecho_isolado(trecho: str, origem_trecho: str) -> bool:
+            """Resolve cada etapa contra seu texto, preservando o estado vivo.
+
+            O turno compartilhado descreve a frase composta inteira. Reutilizar
+            seu ``texto_operacional`` ao resolver uma etapa isolada pode fazer
+            a primeira ordem herdar a segunda (por exemplo, a busca herdar
+            ``abre o primeiro resultado``). O contexto continua sendo o mesmo,
+            mas a moldura operacional passa a representar somente a etapa.
+            """
+            contexto = self._montar_contexto_resolucao()
+            self.log(
+                "🧩 [COOPERAÇÃO:CADEIA] resolvendo etapa isolada | "
+                f"origem={origem_trecho} trecho={str(trecho or '')[:120]}"
+            )
+            turno = dict(contexto.get("turno_atual") or {})
+            turno.update({
+                "texto_operacional": str(trecho or "").strip(),
+                "modalidade": "comando",
+                "modalidade_geral": "comando",
+                "autoriza_execucao": True,
+                "requer_esclarecimento": False,
+            })
+            contexto["turno_atual"] = turno
+            return executar_fluxo_intencao(
+                trecho,
+                origem_trecho,
+                contexto,
+                resolver_cb=self._resolver_decisao_canonica,
+            )
+
+        def relatar_falha(trecho: str, indice: int, concluidas: int) -> None:
+            self.log(
+                "⚠️ [COOPERAÇÃO:CADEIA] etapa não executada | "
+                f"indice={indice} concluidas={concluidas} trecho={trecho[:120]}"
+            )
+            falar = ns.get("falar_com_lipsync")
+            if not callable(falar):
+                return
+            if concluidas:
+                fala = (
+                    "A primeira parte foi concluída, mas a segunda não. "
+                    "Parei ali para não fingir que o pedido inteiro deu certo."
+                )
+            else:
+                fala = (
+                    "Não consegui executar a primeira parte, então não avancei "
+                    "para a próxima sem a dependência certa."
+                )
+            falar(fala, "calma", 1)
+
         return processar_comandos_em_cadeia(
             texto,
             origem,
             normalizar_texto=normalizar,
-            executar_trecho=self.executar_texto,
+            executar_trecho=executar_trecho_isolado,
+            relatar_falha=relatar_falha,
         )
 
 

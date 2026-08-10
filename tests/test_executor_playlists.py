@@ -7,11 +7,18 @@ from mente_laylay.autonomia.executor_playlists import (
     DependenciasExecutorPlaylists,
     executar_intencao_playlists,
 )
+from mente_laylay.autonomia.adaptador_resultado import AdaptadorResultadoOperacional
+from mente_laylay.autonomia.detectores_playlist import (
+    detectar_playlist_contextual_musica_atual,
+    detectar_playlist_usuario,
+)
 from mente_laylay.autonomia.roteador_deterministico import detectar_movimento_playlist
 from mente_laylay.autonomia.orquestrador_deterministico import (
     detectar_intencao_deterministica_mente,
 )
 from mente_laylay.especialistas.capacidades import intents_registradas
+from mente_laylay.memoria_mental.contexto_compartilhado import registrar_resultado_execucao
+from mente_laylay.memoria_mental.continuidade_geral import resolver_continuacao_aditiva
 from mente_laylay.autonomia.roteador_intencao import executar_intencao
 
 
@@ -30,7 +37,7 @@ class _MusicaOperacoesFake:
     def __init__(
         self, *, faixa=None, adicionar=None, tocar=None, shuffle=None,
         primeira=None, apagar=None, definir_ultima=None, definir_url=None,
-        mover=None, estado=None,
+        mover=None, estado=None, criar=None,
     ):
         self._faixa = faixa or (lambda: {})
         self._adicionar = adicionar or (lambda *_args: False)
@@ -42,6 +49,9 @@ class _MusicaOperacoesFake:
         self._definir_url = definir_url or (lambda _url: None)
         self._mover = mover or (lambda *_args: {})
         self._estado = estado or (lambda: {})
+        self._criar = criar or (lambda nome: {
+            "ok": True, "criada": True, "status": "playlist_criada", "nome": nome,
+        })
 
     def faixa_atual(self): return dict(self._faixa() or {})
     def adicionar_faixa(self, *args): return bool(self._adicionar(*args))
@@ -54,6 +64,7 @@ class _MusicaOperacoesFake:
     def definir_ultima_playlist(self, nome): self._definir_ultima(nome)
     def definir_ultima_url(self, url): self._definir_url(url)
     def estado(self): return dict(self._estado() or {})
+    def criar_playlist(self, nome): return dict(self._criar(nome) or {})
 
 
 def _dependencias(
@@ -158,7 +169,11 @@ def test_executor_move_faixa_pelo_caminho_canonico_e_confirma_persistencia() -> 
     assert (
         "resultado",
         "playlist_faixa_movida",
-        {"executou": True, "confirmado": True},
+        {
+            "executou": True, "confirmado": True,
+            "alvo_resolvido": "treino",
+            "params_resolvidos": {"nome_playlist": "treino"},
+        },
     ) in eventos
     assert any(
         evento[0] == "fala_status" and "Movi Duality" in evento[2]
@@ -209,7 +224,12 @@ def test_adicao_prefere_faixa_viva_do_player_em_vez_da_aba_ativa() -> None:
         "",
     )]
     assert ("ultima", "rock") in eventos
-    assert ("resultado", "playlist_musica_adicionada", {"executou": True}) in eventos
+    assert (
+        "resultado", "playlist_musica_adicionada", {
+            "executou": True, "alvo_resolvido": "rock",
+            "params_resolvidos": {"nome_playlist": "rock"},
+        },
+    ) in eventos
 
 
 def test_adicao_com_estado_antigo_consulta_aba_ativa() -> None:
@@ -368,7 +388,12 @@ def test_reproducao_local_abre_playlist_e_guarda_contexto() -> None:
     assert despacho == ResultadoDespacho.concluido()
     assert chamadas == ["rock"]
     assert ("ultima", "rock") in eventos
-    assert ("resultado", "playlist_aberta", {"executou": True}) in eventos
+    assert (
+        "resultado", "playlist_aberta", {
+            "executou": True, "alvo_resolvido": "rock",
+            "params_resolvidos": {"nome_playlist": "rock"},
+        },
+    ) in eventos
 
 
 def test_shuffle_abre_primeira_faixa_e_registra_url() -> None:
@@ -403,7 +428,12 @@ def test_shuffle_abre_primeira_faixa_e_registra_url() -> None:
     assert despacho == ResultadoDespacho.concluido()
     assert aberturas == ["https://www.youtube.com/watch?v=shuffle"]
     assert urls == aberturas
-    assert ("resultado", "playlist_aberta", {"executou": True}) in eventos
+    assert (
+        "resultado", "playlist_aberta", {
+            "executou": True, "alvo_resolvido": "rock",
+            "params_resolvidos": {"nome_playlist": "rock"},
+        },
+    ) in eventos
 
 
 def test_pc_b_abre_primeira_faixa_sem_usar_player_local() -> None:
@@ -433,7 +463,12 @@ def test_pc_b_abre_primeira_faixa_sem_usar_player_local() -> None:
 
     assert despacho == ResultadoDespacho.concluido()
     assert aberturas == ["https://youtube.com/watch?v=anime"]
-    assert ("resultado", "playlist_aberta_pc_b", {"executou": True}) in eventos
+    assert (
+        "resultado", "playlist_aberta_pc_b", {
+            "executou": True, "alvo_resolvido": "anime",
+            "params_resolvidos": {"nome_playlist": "anime"},
+        },
+    ) in eventos
 
 
 def test_playlist_inexistente_cria_sugestao_pendente() -> None:
@@ -463,7 +498,11 @@ def test_playlist_inexistente_cria_sugestao_pendente() -> None:
     assert (
         "resultado",
         "playlist_nao_encontrada",
-        {"executou": False, "confirmado": False},
+        {
+            "executou": False, "confirmado": False,
+            "alvo_resolvido": "nova",
+            "params_resolvidos": {"nome_playlist": "nova"},
+        },
     ) in eventos
 
 
@@ -491,7 +530,12 @@ def test_playlist_existente_com_falha_de_player_nao_e_chamada_de_inexistente() -
     )
 
     assert pendencias == []
-    assert ("resultado", "falha_execucao", {"executou": False}) in eventos
+    assert (
+        "resultado", "falha_execucao", {
+            "executou": False, "alvo_resolvido": "sendo sendo",
+            "params_resolvidos": {"nome_playlist": "sendo sendo"},
+        },
+    ) in eventos
     assert any(
         evento[0] == "fala_status" and "existe" in evento[2].casefold()
         for evento in eventos
@@ -523,7 +567,10 @@ def test_playlist_aberta_sem_confirmacao_preserva_sucesso_parcial() -> None:
     assert (
         "resultado",
         "playlist_enviada_sem_confirmacao",
-        {"executou": True, "confirmado": None},
+        {
+            "executou": True, "alvo_resolvido": "sendo sendo",
+            "params_resolvidos": {"nome_playlist": "sendo sendo"},
+        },
     ) in eventos
 
 
@@ -549,7 +596,12 @@ def test_exclusao_bem_sucedida_limpa_ultima_playlist() -> None:
     )
 
     assert ("ultima", "") in eventos
-    assert ("resultado", "playlist_deletada", {"executou": True}) in eventos
+    assert (
+        "resultado", "playlist_deletada", {
+            "executou": True, "alvo_resolvido": "antiga",
+            "params_resolvidos": {"nome_playlist": "antiga"},
+        },
+    ) in eventos
 
 
 def test_roteador_principal_delega_adicao_da_faixa_viva() -> None:
@@ -585,3 +637,89 @@ def test_roteador_principal_delega_adicao_da_faixa_viva() -> None:
     assert adicoes == [(
         "rock", "https://youtube.com/watch?v=atual", "Atual", ""
     )]
+
+
+def test_criacao_vazia_tem_intent_proprio_e_resultado_confirmado() -> None:
+    detectado = detectar_playlist_usuario(
+        "cria uma playlist chamada vmz",
+        params_cb=lambda **kwargs: kwargs,
+        limpar_nome_playlist=lambda valor: str(valor).strip().casefold(),
+        extrair_nome_playlist=lambda _valor: "",
+    )
+    assert detectado == {
+        "intent": "PLAYLIST_CREATE",
+        "params": {"nome_playlist": "vmz"},
+    }
+
+    eventos: list[tuple] = []
+    despacho = executar_intencao_playlists(
+        "PLAYLIST_CREATE",
+        {"nome_playlist": "vmz"},
+        "cria uma playlist chamada VMZ",
+        "pc_a",
+        {"falar_com_lipsync": lambda *_args: None},
+        _dependencias(
+            eventos,
+            musica_operacoes=_MusicaOperacoesFake(criar=lambda nome: {
+                "ok": True, "criada": True, "status": "playlist_criada", "nome": nome,
+            }),
+        ),
+    )
+    assert despacho == ResultadoDespacho.concluido(True)
+    assert (
+        "resultado", "playlist_criada", {
+            "executou": True,
+            "confirmado": True,
+            "alvo_resolvido": "vmz",
+            "params_resolvidos": {"nome_playlist": "vmz"},
+        },
+    ) in eventos
+
+
+def test_referencias_curtas_usam_playlist_ativa_sem_adivinhar() -> None:
+    kwargs = {
+        "params_cb": lambda **params: params,
+        "limpar_nome_playlist": lambda valor: str(valor).strip(),
+        "ultima_playlist": "sendo sendo",
+    }
+    assert detectar_playlist_contextual_musica_atual(
+        "essa também", **kwargs,
+    ) == {
+        "intent": "PLAYLIST_ADD",
+        "params": {"nome_playlist": "sendo sendo", "referencia_contextual": True},
+    }
+    assert detectar_playlist_contextual_musica_atual(
+        "o que tem nela?", **kwargs,
+    ) == {
+        "intent": "PLAYLIST_LIST",
+        "params": {"nome_playlist": "sendo sendo", "referencia_contextual": True},
+    }
+
+
+def test_alvo_resolvido_do_executor_alimenta_continuidade_aditiva_real() -> None:
+    estado: dict = {}
+
+    def registrar(contrato, texto, executou, **kwargs):
+        nonlocal estado
+        estado = registrar_resultado_execucao(
+            estado, contrato, texto, executou, **kwargs,
+        )
+
+    adaptador = AdaptadorResultadoOperacional(
+        {"intent": "PLAYLIST_ADD"}, {},
+        "coloca essa música na playlist sendo sendo", "pc_a",
+        {"_registrar_resultado_execucao": registrar},
+    )
+    adaptador.marcar_resultado(
+        "playlist_musica_adicionada",
+        True,
+        confirmado=True,
+        alvo_resolvido="sendo sendo",
+        params_resolvidos={"nome_playlist": "sendo sendo"},
+    )
+
+    assert estado["ultima_acao_alvo"] == "sendo sendo"
+    assert resolver_continuacao_aditiva(estado, texto="essa também") == {
+        "intent": "PLAYLIST_ADD",
+        "params": {"nome_playlist": "sendo sendo", "referencia_contextual": True},
+    }

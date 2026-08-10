@@ -335,6 +335,39 @@ class PlaylistRuntime:
             pass
         return res if isinstance(res, dict) else {"ok": bool(res)}
 
+    def create(self, nome_playlist: str) -> dict:
+        """Cria uma playlist vazia e confirma a persistência local."""
+        nome = limpar_nome_playlist(str(nome_playlist or ""))
+        if not nome:
+            return {"ok": False, "criada": False, "status": "alvo_ausente", "nome": ""}
+        with self._state_lock:
+            data = self.load()
+            if nome in data:
+                return {
+                    "ok": isinstance(data.get(nome), list),
+                    "criada": False,
+                    "status": "playlist_ja_existia",
+                    "nome": nome,
+                }
+            data[nome] = []
+            if not self.save(data):
+                return {
+                    "ok": False,
+                    "criada": False,
+                    "status": "falha_persistencia",
+                    "nome": nome,
+                }
+            confirmado = self.load()
+            ok = nome in confirmado and isinstance(confirmado.get(nome), list)
+            if ok:
+                self._set_ultima_playlist(nome)
+            return {
+                "ok": ok,
+                "criada": ok,
+                "status": "playlist_criada" if ok else "falha_confirmacao",
+                "nome": nome,
+            }
+
     def add_and_verify(self, nome_playlist: str, url: str, titulo: str, canal: str = "") -> bool:
         name = self.resolver_nome(nome_playlist)
         if not name:

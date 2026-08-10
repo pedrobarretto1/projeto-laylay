@@ -297,6 +297,7 @@ def texto_tem_comando_explicito(texto: str) -> bool:
         "acesse", "vai no", "vai na", "ir no", "ir na",
         "fecha", "fechar", "feche", "coloca", "coloque",
         "bota", "poe", "põe", "toca", "toque", "cria", "criar", "crie",
+        "escreve", "escrever", "escreva", "grava", "gravar", "grave",
         "apaga", "apagar", "deleta", "deletar", "remove", "remover", "exclui", "excluir",
         "maximiza", "maximizar", "organiza", "organizar", "silencia", "silenciar",
         "sincroniza", "sincronizar", "aumenta", "aumentar", "abaixa", "baixar",

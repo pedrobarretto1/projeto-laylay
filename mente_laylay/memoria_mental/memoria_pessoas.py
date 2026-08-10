@@ -667,7 +667,8 @@ class MemoriaPessoasRuntime:
         return False
 
     def _detectar_pedido(self, texto: str) -> dict[str, Any] | None:
-        t = _normalizar(texto)
+        bruto = str(texto or "").strip()
+        t = _normalizar(bruto)
         if not t:
             return None
         # Correções leves só dentro de construções inequívocas de consulta.
@@ -720,8 +721,22 @@ class MemoriaPessoasRuntime:
         )
         if consulta and _nome_valido(consulta.group("nome")):
             return {"intent": "PEOPLE_QUERY", "nome": _nome_apresentacao(consulta.group("nome"))}
-        lembra = re.search(r"\b(?:voce )?lembra (?:da|do|de) (?P<nome>[a-z][a-z' -]{1,80})$", t)
-        if lembra and _nome_valido(lembra.group("nome")):
+        # ``me lembra de X`` e ``lembra de X`` são pedidos de agenda, não
+        # consultas sobre uma pessoa chamada ``X``. O padrão antigo buscava
+        # ``lembra de`` em qualquer posição e, por isso, capturava frases como
+        # ``me lembra de beber água`` antes que o coordenador da agenda pudesse
+        # vê-las. Uma consulta de pessoa precisa estar dirigida à Laylay
+        # (``você lembra...``) ou ser inequivocamente interrogativa.
+        lembra = re.search(
+            r"^(?:voce )?lembra (?:da|do|de) "
+            r"(?P<nome>[a-z][a-z' -]{1,80})$",
+            t,
+        )
+        consulta_lembranca = bool(
+            lembra
+            and (t.startswith("voce lembra ") or "?" in bruto)
+        )
+        if consulta_lembranca and _nome_valido(lembra.group("nome")):
             return {"intent": "PEOPLE_QUERY", "nome": _nome_apresentacao(lembra.group("nome"))}
         relacao_com = re.search(r"\bqual (?:e )?(?:a )?minha relacao com (?P<nome>[a-z][a-z' -]{1,80})$", t)
         if relacao_com and _nome_valido(relacao_com.group("nome")):

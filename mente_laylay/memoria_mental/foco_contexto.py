@@ -72,9 +72,9 @@ def inferir_tipo_foco_vivo(
         return "clima"
     if intent in {"EMAIL_READ", "EMAIL_SYNC", "NOTIFICATIONS"} or "email" in base:
         return "email"
-    if intent in {"LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_COPY"} or hab in {"playlist_laylay", "curadoria_laylay"}:
+    if intent in {"LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_PLAY", "LAYLAY_PLAYLIST_COPY"} or hab in {"playlist_laylay", "curadoria_laylay"}:
         return "playlist_laylay"
-    if intent in {"PLAYLIST_PLAY", "PLAYLIST_ADD", "PLAYLIST_LIST", "PLAYLIST_MOVE", "MUSIC_SEARCH", "MEDIA_CONTROL"} or hab in {"musica", "música", "playlist", "midia"}:
+    if intent in {"PLAYLIST_CREATE", "PLAYLIST_PLAY", "PLAYLIST_ADD", "PLAYLIST_LIST", "PLAYLIST_MOVE", "MUSIC_SEARCH", "MEDIA_CONTROL"} or hab in {"musica", "música", "playlist", "midia"}:
         return "musica"
     if intent in {"AGENDAR_LEMBRETE", "AGENDAR_ACAO", "LISTAR_AGENDAMENTOS", "CANCELAR_AGENDAMENTO"} or hab == "agenda":
         return "agenda"

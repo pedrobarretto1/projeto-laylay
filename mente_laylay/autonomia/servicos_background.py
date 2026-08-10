@@ -122,7 +122,12 @@ class GerenciadorServicosBackground:
                     return
                 except Exception as erro:
                     falhas_consecutivas += 1
-                    havera_reinicio = self.reiniciar_apos_falha and not self._parar.is_set()
+                    erro_reiniciavel = getattr(erro, "reiniciavel", True) is not False
+                    havera_reinicio = (
+                        self.reiniciar_apos_falha
+                        and erro_reiniciavel
+                        and not self._parar.is_set()
+                    )
                     fallback = "reinicio_agendado" if havera_reinicio else "servico_indisponivel"
                     self.log(
                         f"[SERVICOS] {nome} encerrou com erro: {type(erro).__name__}"
@@ -133,7 +138,11 @@ class GerenciadorServicosBackground:
                     self._relatar_falha(
                         nome, "queda_background", erro, fallback=fallback,
                     )
-                    if not self.reiniciar_apos_falha or self._parar.is_set():
+                    if (
+                        not self.reiniciar_apos_falha
+                        or not erro_reiniciavel
+                        or self._parar.is_set()
+                    ):
                         return
                     atraso = min(60.0, self.atraso_reinicio_s * (2 ** min(falhas_consecutivas - 1, 4)))
                     self._registrar_evento(

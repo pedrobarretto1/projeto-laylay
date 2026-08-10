@@ -8,6 +8,9 @@ from mente_laylay.cognicao.qualidade_comunicacao import (
     contingencia_comunicacao,
     montar_mensagens_reparo_comunicacao,
 )
+from mente_laylay.personalidade.continuidade_conversa_natural import (
+    resposta_pergunta_curta_dependente_topico,
+)
 
 
 def _plano_multiacto() -> dict:
@@ -110,3 +113,41 @@ def test_preferencia_degradada_e_estavel_quando_opcoes_invertem() -> None:
 
     assert "prefiro rock" in direta
     assert "prefiro rock" in invertida
+
+
+def test_por_que_nao_explicita_ambiguidade_sem_repetir_exclusao() -> None:
+    fala = resposta_pergunta_curta_dependente_topico(
+        {
+            "normalizar_texto": lambda valor: str(valor).casefold(),
+            "ajustar_resposta_contextual": lambda fala, _texto: fala,
+            "mente_integrada_estado": {
+                "ultima_acao_intent": "DELETE_ITEM",
+                "ultima_acao_status": "alvo_ambiguo",
+                "ultima_acao_alvo": "teste",
+            },
+        },
+        "por que não?",
+    )
+
+    assert "mais de um item" in fala
+    assert "não apaguei nada" in fala.casefold()
+
+
+def test_feedback_de_falha_nao_vira_nova_exclusao() -> None:
+    resultado = classificar_modalidade_turno(
+        "você não conseguil apagar um arquivo",
+    )
+
+    assert resultado["modalidade"] == "reacao"
+    assert resultado["natureza_acao"] == "feedback_resultado"
+    assert resultado["autoriza_execucao"] is False
+
+
+def test_feedback_de_falha_nao_vira_nova_exclusao() -> None:
+    resultado = classificar_modalidade_turno(
+        "você não conseguil apagar um arquivo",
+    )
+
+    assert resultado["modalidade"] == "reacao"
+    assert resultado["natureza_acao"] == "feedback_resultado"
+    assert resultado["autoriza_execucao"] is False

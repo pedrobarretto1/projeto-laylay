@@ -117,3 +117,32 @@ def test_runtime_entende_nome_falado_da_curadoria_e_copia_com_seguranca(tmp_path
         "rock", "https://www.youtube.com/watch?v=dual",
         "Slipknot - Duality", "Slipknot",
     )]
+
+
+def test_runtime_seleciona_primeira_curadoria_e_copia_primeira_faixa(tmp_path) -> None:
+    arquivo = tmp_path / "playlists_da_laylay.json"
+    arquivo.write_text(json.dumps({
+        "xodos_que_eu_seperei": [_faixa("Slipknot - Duality", "dual")],
+        "climas_que_combinam_com_voce": [_faixa("C418 - Sweden", "mine")],
+    }), encoding="utf-8")
+    copias: list[tuple[str, str, str, str]] = []
+    runtime = PlaylistLaylayRuntime(
+        state_file=str(arquivo),
+        cache={},
+        playlists_usuario_getter=lambda: {},
+        historico_musical_getter=lambda: {},
+        adicionar_playlist_usuario=lambda *args: copias.append(args) or {"ok": True},
+    )
+
+    selecao = runtime.selecionar("#1")
+    resultado = runtime.copiar_faixa("#1", "__primeira__", "teste curadoria")
+
+    assert selecao["ok"] is True
+    assert selecao["playlist"] == "climas que combinam com você"
+    assert selecao["faixa"]["titulo"] == "C418 - Sweden"
+    assert resultado["ok"] is True
+    assert resultado["origem"] == "climas que combinam com você"
+    assert copias == [(
+        "teste curadoria", "https://www.youtube.com/watch?v=mine",
+        "C418 - Sweden", "C418",
+    )]

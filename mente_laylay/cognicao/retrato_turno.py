@@ -148,6 +148,8 @@ def _operacao_explicita(texto: str) -> tuple[str, tuple[str, ...]]:
     ):
         return "musica_do_referente", ("MUSIC_SEARCH",)
     if "playlist" in t:
+        if re.search(r"\b(?:cria|criar|crie|faz|fazer)\b", t):
+            return "playlist_criar", ("PLAYLIST_CREATE",)
         if re.search(r"\b(?:move|mova|transfere|transfira)\b", t) and re.search(
             r"\bda\s+playlist\b.*\b(?:pra|para)\s+(?:a\s+)?playlist\b", t
         ):
@@ -215,6 +217,23 @@ def construir_retrato_turno(
         recentes["playlist"] = _entidade(
             "playlist", nome_playlist, origem="reprodutor", ts=instante,
             dados={"indice": playlist.get("index"), "url": playlist.get("last_url")},
+        )
+    estrutura = dict(estado.get("ultima_estrutura_arquivo_params") or {})
+    caminho_estrutura = str(estrutura.get("caminho") or "").strip()
+    tipo_estrutura = str(estrutura.get("tipo") or "").strip().casefold()
+    if caminho_estrutura and tipo_estrutura in {"arquivo", "pasta"}:
+        nome_estrutura = str(
+            estrutura.get("arquivo_nome")
+            or estrutura.get("nome")
+            or estrutura.get("pasta")
+            or caminho_estrutura
+        ).strip()
+        recentes[tipo_estrutura] = _entidade(
+            tipo_estrutura,
+            nome_estrutura,
+            origem="estrutura_arquivo_confirmada",
+            ts=instante,
+            dados={**estrutura, "caminho": caminho_estrutura},
         )
     focos = dict(estado.get("focos_por_dominio") or {})
     for dominio, foco in focos.items():

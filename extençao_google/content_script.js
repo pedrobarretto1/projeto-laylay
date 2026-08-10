@@ -1,4 +1,5 @@
 let acaoExecutada = false;
+const LAYLAY_PAGE_EXTRACTOR_VERSION = 3;
 
 function sendMessage(message) {
   try { chrome.runtime.sendMessage(message); } catch (_) {}
@@ -20,15 +21,69 @@ function _safeText(v) {
   return s.length > 160 ? s.slice(0, 160) : s;
 }
 
+function _looksLikePageChrome(text) {
+  const value = String(text || "").toLocaleLowerCase("pt-BR");
+  if (!value) return true;
+  if (/(desculpe incomodar|sorry to interrupt|campanha vai acabar|fundraiser will soon|wikipédia não está à venda|wikipedia is not for sale|tentamos entrar em contato antes|we tried to contact you before)/i.test(value)) {
+    return true;
+  }
+  if (/(pedimos|we ask).{0,160}(por cento|percent).{0,160}(leitores|leitoras|readers).{0,160}(doam|doe|donate)/i.test(value)) {
+    return true;
+  }
+  return /(todas as pessoas|everyone).{0,100}(lendo|reading).{0,140}(doassem|doasse|gave|donated)/i.test(value);
+}
+
 function _laylayPageContent() {
   try {
-    const raiz = document.querySelector("main, article, [role='main']") || document.body;
+    // Prefere o corpo editorial. ``main`` costuma incluir seletores de idioma,
+    // barras e índices (especialmente na Wikipédia), que não são o artigo.
+    const chromeSelector = [
+      "#centralNotice", "#siteNotice", "#frb-inline", ".centralNotice",
+      "[id*='fundraising']", "[class*='fundraising']"
+    ].join(", ");
+    const preferredSelectors = [
+      "[itemprop='articleBody']",
+      "#mw-content-text .mw-parser-output",
+      "#mw-content-text",
+      "article",
+      "main",
+      "[role='main']",
+    ];
+    let raiz = null;
+    let rootSelector = "body";
+    for (const selector of preferredSelectors) {
+      const candidate = document.querySelector(selector);
+      if (candidate && !candidate.closest(chromeSelector)) {
+        raiz = candidate;
+        rootSelector = selector;
+        break;
+      }
+    }
+    raiz = raiz || document.body;
     if (!raiz) return { success: false, data: {}, error: "A página ainda não possui conteúdo" };
     const clone = raiz.cloneNode(true);
-    clone.querySelectorAll("script, style, noscript, svg, canvas, iframe, input, textarea, select, option, [contenteditable='true']")
+    clone.querySelectorAll(
+      "script, style, noscript, svg, canvas, iframe, input, textarea, select, option, " +
+      "nav, header, footer, aside, [role='navigation'], [contenteditable='true'], " +
+      ".mw-jump-link, .mw-portlet-lang, .vector-page-toolbar, .noprint, " +
+      "#centralNotice, #siteNotice, #frb-inline, .centralNotice, " +
+      "[id*='fundraising'], [class*='fundraising']"
+    )
       .forEach((el) => el.remove());
-    const content = String(clone.innerText || clone.textContent || "")
-      .replace(/\s+/g, " ")
+    const paragraphs = Array.from(clone.querySelectorAll("p"))
+      .map((el) => String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim())
+      .filter((text) => text.length >= 80 && !_looksLikePageChrome(text));
+    const editorialText = paragraphs.join(" ");
+    const rawCandidate = String(clone.innerText || clone.textContent || "").trim();
+    const rawContent = editorialText.length >= 200
+      ? editorialText
+      : (_looksLikePageChrome(rawCandidate) ? "" : rawCandidate);
+    const contentSource = editorialText.length >= 200
+      ? "paragraphs"
+      : (rawContent ? "raw" : "description");
+    const content = rawContent
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
       .trim()
       .slice(0, 50000);
     const description = String(document.querySelector("meta[name='description']")?.content || "").trim();
@@ -39,6 +94,10 @@ function _laylayPageContent() {
         title: document.title || "",
         description,
         content: content || description,
+        extractor_version: LAYLAY_PAGE_EXTRACTOR_VERSION,
+        root_selector: rootSelector,
+        content_source: contentSource,
+        paragraph_count: paragraphs.length,
       },
       error: "",
     };

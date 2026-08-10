@@ -178,6 +178,38 @@ def test_pedido_criativo_e_unica_excecao_para_metafora() -> None:
     assert contrato["max_frases"] == 6
 
 
+def test_agradecimento_e_adiamento_encerram_sem_puxar_contexto_antigo() -> None:
+    agradecimento = construir_contrato_semantico_fala("Obrigado, Lay")
+    adiamento = construir_contrato_semantico_fala("Deixa para depois.")
+
+    assert agradecimento["roteiro_concreto"]["estrategia"] == "encerramento_social"
+    assert agradecimento["max_frases"] == 1
+    assert adiamento["roteiro_concreto"]["estrategia"] == "adiamento_literal"
+    assert adiamento["max_frases"] == 1
+
+
+def test_agradecimento_nao_pode_retomar_midia_e_adiamento_deve_ser_curto() -> None:
+    contrato_agradecimento = construir_contrato_semantico_fala("Obrigado, Lay")
+    contrato_adiamento = construir_contrato_semantico_fala("Deixa para depois.")
+
+    agradecimento = validar_aderencia_contrato_fala(
+        "Obrigado, Lay",
+        "De nada. É só o que eu faço quando alguém me pede pra continuar.",
+        contrato_fala=contrato_agradecimento,
+    )
+    adiamento = validar_aderencia_contrato_fala(
+        "Deixa para depois.",
+        (
+            "Tá, deixa pro dia que você já tá com o pé na porta. "
+            "A gente volta quando o mundo mudar de tom."
+        ),
+        contrato_fala=contrato_adiamento,
+    )
+
+    assert "agradecimento_retomou_assunto_antigo" in agradecimento["problemas"]
+    assert "adiamento_nao_foi_curto" in adiamento["problemas"]
+
+
 def test_contrato_de_comando_permanece_sem_autoridade() -> None:
     contrato = construir_contrato_semantico_fala(
         "Liga a luz",
@@ -507,9 +539,11 @@ def test_p4_caminho_composto_publica_metricas_do_contrato() -> None:
     )
     metricas = dict(estado.mental.get("metricas_verificador") or {})
 
-    assert resultado["aceita"] is False
+    assert resultado["aceita"] is True
     assert metricas["contratos_verificados"] == 1
-    assert metricas["contratos_rejeitados"] == 1
+    assert metricas.get("contratos_rejeitados", 0) == 0
+    assert metricas["contratos_aprovados"] == 1
+    assert metricas["contratos_com_observacoes"] == 1
     assert metricas["estrategia:opiniao_com_criterio"] == 1
 
 

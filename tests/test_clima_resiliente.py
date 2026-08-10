@@ -99,6 +99,8 @@ def test_wttr_expoe_probabilidade_de_chuva_do_dia() -> None:
             "weatherDesc": [{"value": "Smoky haze"}],
         }],
         "weather": [{
+            "maxtempC": "28",
+            "mintempC": "16",
             "hourly": [
                 {"time": "0", "chanceofrain": "10"},
                 {"time": "1200", "chanceofrain": "65"},
@@ -114,3 +116,5 @@ def test_wttr_expoe_probabilidade_de_chuva_do_dia() -> None:
     assert dados["ok"] is True
     assert dados["chance_chuva_pct"] == 65
     assert dados["previsao_chuva_disponivel"] is True
+    assert dados["temperatura_max_c"] == "28"
+    assert dados["temperatura_min_c"] == "16"

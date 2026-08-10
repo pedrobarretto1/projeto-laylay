@@ -120,6 +120,34 @@ def test_supervisor_reinicia_servico_apos_falha_sem_duplicar_a_mente():
     assert "Ouvido" not in supervisor.ativos()
 
 
+def test_supervisor_nao_reinicia_falha_marcada_como_permanente():
+    chamadas = []
+    esperas = []
+    eventos = []
+    supervisor = GerenciadorServicosBackground(
+        reiniciar_apos_falha=True,
+        atraso_reinicio_s=2,
+        sleep=esperas.append,
+        log=lambda *_: None,
+        registrar_evento=lambda *args, **kwargs: eventos.append((args, kwargs)),
+    )
+
+    class PortaOcupada(OSError):
+        reiniciavel = False
+
+    def servico():
+        chamadas.append(1)
+        raise PortaOcupada("porta ocupada")
+
+    supervisor._iniciados.add("Laylay-WS")
+    supervisor._executar_protegido("Laylay-WS", servico)
+
+    assert chamadas == [1]
+    assert esperas == []
+    assert [args[1] for args, _kwargs in eventos] == ["ativo", "queda"]
+    assert eventos[-1][1]["fallback"] == "servico_indisponivel"
+
+
 def test_supervisor_encaminha_queda_de_servico_ao_diagnostico_central():
     falhas = []
     supervisor = GerenciadorServicosBackground(

@@ -185,6 +185,10 @@ class ComposicaoCicloComandosRuntime:
             for nome in permitidos
             if nome in servicos
         }
+        # Fala de erro parcial é auxiliar, não uma dependência estrutural do
+        # ciclo. Instalações sem interface de voz continuam válidas.
+        if callable(servicos.get("falar_com_lipsync")):
+            self._servicos["falar_com_lipsync"] = servicos["falar_com_lipsync"]
         if callable(self.registrar_falha):
             self._servicos["_registrar_falha_tecnica"] = self.registrar_falha
         if registros_principais is not None:

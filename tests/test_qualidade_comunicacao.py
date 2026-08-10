@@ -6,6 +6,7 @@ from mente_laylay.autonomia.processamento_resposta_ia import (
     preparar_resposta_para_execucao,
 )
 from mente_laylay.cognicao.plano_turno import planejar_turno, verificar_fala_turno
+from mente_laylay.cognicao.contrato_fala import construir_contrato_semantico_fala
 from mente_laylay.cognicao.qualidade_comunicacao import (
     avaliar_qualidade_comunicacao,
     contingencia_comunicacao,
@@ -54,6 +55,19 @@ def test_fragmento_ah_mas_e_bloqueado_antes_da_voz() -> None:
     assert resultado["aceita"] is False
     assert resultado["acao"] == "reparar"
     assert "resposta_incompleta" in resultado["problemas"]
+
+
+def test_contraste_sem_predicado_e_resposta_interrompida() -> None:
+    avaliacao = avaliar_qualidade_comunicacao(
+        "Você prefere rock ou metal?",
+        (
+            "Prefiro rock porque ele permite variar mais entre melodias e peso. "
+            "Já o metal."
+        ),
+    )
+
+    assert avaliacao["aceita"] is False
+    assert "resposta_incompleta" in avaliacao["problemas_bloqueantes"]
 
 
 def test_nirvana_musical_nao_pode_derivar_para_conceito_filosofico() -> None:
@@ -108,7 +122,9 @@ def test_contingencia_reconhece_preferencia_de_terceiro_sem_inventar() -> None:
         "tipo isso, e minha namorada gosta de funk"
     )
 
-    assert fala == "Entendi — sua namorada gosta de funk."
+    assert "namorada" in fala.casefold()
+    assert "funk" in fala.casefold()
+    assert "você gosta" not in fala.casefold()
 
 
 def test_como_assim_rejeita_referente_solto_e_nova_metafora() -> None:
@@ -132,6 +148,26 @@ def test_como_assim_aceita_explicacao_literal_da_fala_anterior() -> None:
         ultima_resposta="Se não tiver um riff forte, é só um som. E se tiver, é show.",
     )
     assert avaliacao["aceita"] is True
+
+
+def test_reexplicacao_literal_nao_pode_comecar_por_outra_metafora() -> None:
+    anterior = "Prefiro rock porque ele varia mais entre melodias e peso."
+    contrato = construir_contrato_semantico_fala(
+        "Explica isso de um jeito simples.",
+        mente={"ultima_resposta": anterior},
+    )
+    avaliacao = avaliar_qualidade_comunicacao(
+        "Explica isso de um jeito simples.",
+        "Rock é como um filme de domingo. Metal é como um filme de ação.",
+        plano={"contrato_fala": contrato, "comandos": []},
+        ultima_resposta=anterior,
+    )
+
+    assert avaliacao["aceita"] is False
+    assert (
+        "esclarecimento_comecou_por_outra_metafora"
+        in avaliacao["problemas_bloqueantes"]
+    )
 
 
 def test_reparo_recebe_fala_anterior_e_regra_de_explicacao_direta() -> None:
@@ -241,3 +277,115 @@ def test_falha_do_reparo_semantico_usa_contingencia_contextual() -> None:
     assert "Nirvana" in resposta["fala"]
     assert "estado de paz" not in resposta["fala"]
     assert resposta["comandos"] == []
+
+
+def test_observacao_apenas_estilistica_nao_apaga_fala_original_nem_chama_reparo() -> None:
+    chamadas = []
+    original = "Entendi teu ponto. Quer continuar por aqui? Ou prefere mudar de assunto?"
+
+    resposta = preparar_resposta_para_execucao(
+        "tava falando disso só por falar",
+        json.dumps({"fala": original, "comandos": []}, ensure_ascii=False),
+        enviar_mensagem_cb=lambda *_args, **_kwargs: chamadas.append(True) or "{}",
+        limpar_texto_fala_cb=lambda texto: texto,
+        fallback_fala="fallback",
+        memoria_sqlite=_MemoriaSemAprendizado(),
+        log=lambda *_args: None,
+    )
+
+    assert chamadas == []
+    assert resposta["fala"] == original
+
+
+def test_brincadeira_declarada_nao_vira_falha_tecnica_se_reparo_falhar() -> None:
+    falhas = []
+    resposta = preparar_resposta_para_execucao(
+        "tava tirando uma onda só",
+        '{"fala":"Entendi.","comandos":[]}',
+        enviar_mensagem_cb=lambda *_args, **_kwargs: '{"fala":"Tá.","comandos":[]}',
+        limpar_texto_fala_cb=lambda texto: texto,
+        fallback_fala="fallback",
+        memoria_sqlite=_MemoriaSemAprendizado(),
+        registrar_falha_cb=lambda *args, **kwargs: falhas.append((args, kwargs)),
+        contexto_comunicacao={
+            "plano_turno": {
+                "contrato_fala": construir_contrato_semantico_fala(
+                    "tava tirando uma onda só"
+                )
+            }
+        },
+        log=lambda *_args: None,
+    )
+
+    assert any(
+        item in resposta["fala"].casefold()
+        for item in ("eu saquei", "era zoeira", "tá explicado")
+    )
+    assert falhas == []
+    assert resposta["autocorrigida"] is True
+
+
+def test_observacao_de_estilo_nao_reprova_fala_que_respondeu_o_nucleo() -> None:
+    texto = "Você prefere rock ou metal?"
+    contrato = construir_contrato_semantico_fala(texto)
+    plano = {"texto_usuario": texto, "contrato_fala": contrato, "comandos": []}
+
+    avaliacao = avaliar_qualidade_comunicacao(
+        texto,
+        "Rock, fácil.",
+        plano=plano,
+    )
+    verificacao = verificar_fala_turno(
+        "Rock, fácil.",
+        plano=plano,
+    )
+
+    assert "opiniao_sem_criterio_concreto" in avaliacao["problemas"]
+    assert avaliacao["problemas_bloqueantes"] == []
+    assert avaliacao["aceita"] is True
+    assert verificacao["aceita"] is True
+
+
+def test_pergunta_de_preferencia_sem_posicao_continua_bloqueada() -> None:
+    texto = "Você prefere rock ou metal?"
+    contrato = construir_contrato_semantico_fala(texto)
+    plano = {"texto_usuario": texto, "contrato_fala": contrato, "comandos": []}
+
+    avaliacao = avaliar_qualidade_comunicacao(
+        texto,
+        "São dois estilos musicais bastante conhecidos.",
+        plano=plano,
+    )
+
+    assert avaliacao["aceita"] is False
+    assert "pergunta_direta_nao_respondida" in avaliacao["problemas_bloqueantes"]
+
+
+def test_contingencia_responde_bem_estar_e_preferencia_sem_pedir_repeticao() -> None:
+    social = contingencia_comunicacao("Oi Lay, tudo bem com você?")
+    preferencia = contingencia_comunicacao("Você prefere rock ou metal?")
+
+    assert "tô bem" in social.casefold()
+    assert "e você" in social.casefold()
+    assert any(opcao in preferencia.casefold() for opcao in ("rock", "metal"))
+    assert "prefiro" in preferencia.casefold()
+    assert "explica" not in preferencia.casefold()
+
+
+def test_timeout_nao_chama_reparo_e_usa_contingencia_especifica() -> None:
+    chamadas = []
+
+    resposta = preparar_resposta_para_execucao(
+        "Oi Lay, tudo bem com você?",
+        "__LAYLAY_LLM_TIMEOUT__",
+        enviar_mensagem_cb=lambda *_args, **_kwargs: chamadas.append(True),
+        limpar_texto_fala_cb=lambda texto: texto,
+        fallback_fala="fallback",
+        memoria_sqlite=_MemoriaSemAprendizado(),
+        contexto_contingencia={},
+        log=lambda *_args: None,
+    )
+
+    assert chamadas == []
+    assert "tô bem" in resposta["fala"].casefold()
+    assert "tenta mais uma vez" not in resposta["fala"].casefold()

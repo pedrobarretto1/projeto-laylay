@@ -34,6 +34,9 @@ class OperacoesMusicaisRuntime:
     def apagar_playlist(self, nome: str) -> bool:
         return bool(self.playlists_usuario.delete(nome))
 
+    def criar_playlist(self, nome: str) -> dict[str, Any]:
+        return dict(self.playlists_usuario.create(nome) or {})
+
     def adicionar_faixa(
         self, nome: str, url: str, titulo: str, canal: str = "",
     ) -> bool:
@@ -108,6 +111,14 @@ class OperacoesMusicaisRuntime:
         self, origem: str, musica: str, destino: str,
     ) -> dict[str, Any]:
         return dict(self.playlists_laylay.copiar_faixa(origem, musica, destino) or {})
+
+    def selecionar_curadoria(
+        self, nome: str = "", indice_faixa: int = 0,
+    ) -> dict[str, Any]:
+        selecionar = getattr(self.playlists_laylay, "selecionar", None)
+        if not callable(selecionar):
+            return {"ok": False, "erro": "curadoria_indisponivel"}
+        return dict(selecionar(nome, indice_faixa) or {})
 
     def estado(self) -> dict[str, Any]:
         return {

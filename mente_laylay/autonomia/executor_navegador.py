@@ -113,45 +113,19 @@ def _executar_fechar_aba(
 ) -> ResultadoDespacho:
     navegador_leitura = _get(ctx, "_registro_navegador_leitura_runtime")
     navegador_operacoes = _get(ctx, "_registro_navegador_operacoes_runtime")
-    resolver_alvo = _get(ctx, "_resolver_alvo_ambiente")
-    eh_site = _get(ctx, "_eh_alvo_site_web")
     contexto_site = _get(ctx, "_contexto_aponta_site_web")
-    fechar_programa = _get(ctx, "fechar_programa")
     enviar_pc_b = _get(ctx, "_enviar_pc_b")
-    apps_map = _get(ctx, "APPS_MAP", {}) or {}
 
     info = navegador_leitura.aba_ativa() if navegador_leitura is not None else {}
     alvo = str(params.get("alvo") or params.get("site") or params.get("nome") or "").strip()
     alvo_preciso = deps.alvo_preciso_para_aba(alvo) if alvo else ""
-    leitura = resolver_alvo(alvo) if alvo and callable(resolver_alvo) else {}
-    alvo_web = bool(callable(eh_site) and eh_site(alvo))
-    if alvo and not alvo_web and bool((leitura or {}).get("programa_aberto")) and callable(fechar_programa):
-        mapped = apps_map.get(alvo.lower(), alvo)
-        envio_ok = True
-        try:
-            fechar_programa(mapped)
-        except Exception as erro:
-            envio_ok = False
-            relatar_falha_ctx(
-                ctx,
-                "executor_navegador",
-                "falha_fechar_programa",
-                erro=erro,
-                impacto="comando",
-                fallback="confirmar_estado_janela",
-                dominio="navegador",
-                fase="fechar_aba",
-            )
-        ok = bool(envio_ok and deps.esperar_programa_fechar(alvo))
-        status = "app_fechado_em_vez_de_aba" if ok else "falha_execucao"
-        deps.marcar_resultado(status, executou=ok)
-        deps.falar_por_status(
-            status,
-            f"{alvo} estava aberto como programa. Fechei ele, não a aba."
-            if ok else f"Tentei fechar {alvo} como programa, mas ele resistiu.",
-            alvo=alvo,
-        )
-        return ResultadoDespacho.concluido(ok)
+
+    # CLOSE_TAB autoriza somente o fechamento de uma aba. O resolvedor de
+    # janelas pode enxergar o título da aba dentro do título do navegador e
+    # concluir, por engano, que o alvo é um programa aberto. Escalar esse
+    # comando para ``fechar_programa`` encerrava o navegador inteiro (por
+    # exemplo, "fecha a aba do Prime Video" fechava o Opera). Fechar um app
+    # continua sendo responsabilidade exclusiva de CLOSE_APP.
 
     if not alvo and callable(contexto_site) and contexto_site(texto_original):
         alvo = str(params.get("nome_app") or params.get("query") or params.get("alvo") or "site").strip()

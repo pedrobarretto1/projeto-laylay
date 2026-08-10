@@ -105,12 +105,16 @@ class AdaptadoresAplicacaoRuntime:
                 params = resultado.get("params") if isinstance(resultado.get("params"), dict) else {}
                 status_resultado = str(status or resultado.get("status") or "").strip()
                 confirmado = resultado.get("confirmado")
+                confirmacao_oferecida = resultado.get("confirmacao_oferecida")
+                evidencia_confirmacao = resultado.get("evidencia_confirmacao")
                 alvo_objeto = ""
             else:
                 intent = str(getattr(resultado, "intent", "") or getattr(resultado, "acao", "")).strip()
                 params = dict(getattr(resultado, "params", {}) or {})
                 status_resultado = str(status or getattr(resultado, "status", "") or "").strip()
                 confirmado = getattr(resultado, "confirmado", None)
+                confirmacao_oferecida = getattr(resultado, "confirmacao_oferecida", None)
+                evidencia_confirmacao = getattr(resultado, "evidencia_confirmacao", None)
                 alvo_objeto = str(getattr(resultado, "alvo", "") or "")
             if not intent:
                 return
@@ -152,6 +156,16 @@ class AdaptadoresAplicacaoRuntime:
                 "confirmado": (
                     anterior.get("confirmado") if preservar_resultado_detalhado
                     else confirmado if confirmado is not None else anterior.get("confirmado")
+                ),
+                "confirmacao_oferecida": (
+                    confirmacao_oferecida
+                    if confirmacao_oferecida not in (None, "")
+                    else anterior.get("confirmacao_oferecida")
+                ),
+                "evidencia_confirmacao": (
+                    evidencia_confirmacao
+                    if evidencia_confirmacao not in (None, "")
+                    else anterior.get("evidencia_confirmacao")
                 ),
             }
             rede = ns.get("_rede_associativa_runtime")

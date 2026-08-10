@@ -3,8 +3,9 @@ from __future__ import annotations
 from mente_laylay.autonomia.agendamento_mental import (
     AgendaRuntime,
     extrair_agendamento_local,
+    extrair_complemento_temporal_lembrete,
 )
-from mente_laylay.autonomia.coordenador_intencao import resolver_intencao
+from mente_laylay.autonomia.coordenador_intencao import CicloComandosRuntime, resolver_intencao
 from mente_laylay.autonomia.executor_agenda import (
     DependenciasExecutorAgenda,
     executar_intencao_agenda,
@@ -58,6 +59,59 @@ def test_linguagem_real_preserva_relogio_que_normalizador_remove() -> None:
     assert resultado == {
         "intent": "AGENDAR_LEMBRETE",
         "params": {"descricao": "lavar ele", "hora_alvo": "14:30"},
+    }
+
+
+def test_horario_natural_com_amanha_e_absoluto_e_preserva_laylay() -> None:
+    for texto in (
+        "me lembra amanhã 10 horas de testar a Laylay",
+        "me lembra amanhã às 10 horas de testar a Laylay",
+    ):
+        resultado = extrair_agendamento_local(texto, normalizar_texto)
+
+        assert resultado == {
+            "intent": "AGENDAR_LEMBRETE",
+            "params": {
+                "descricao": "testar a Laylay",
+                "hora_alvo": "10:00",
+                "data_hora": "amanha",
+            },
+        }
+
+
+def test_referencia_dela_nao_e_cortada_pelo_prefixo_de_lembrete() -> None:
+    resultado = extrair_agendamento_local(
+        "me lembra dela amanhã às 11 horas",
+        normalizar_texto,
+    )
+
+    assert resultado == {
+        "intent": "AGENDAR_LEMBRETE",
+        "params": {
+            "descricao": "dela",
+            "hora_alvo": "11:00",
+            "data_hora": "amanha",
+        },
+    }
+
+
+def test_complemento_com_data_nao_confunde_horario_com_duracao() -> None:
+    horario = extrair_complemento_temporal_lembrete(
+        "10 horas",
+        referencia_data="amanhã",
+    )
+    duracao = extrair_complemento_temporal_lembrete(
+        "daqui 10 horas",
+        referencia_data="amanhã",
+    )
+
+    assert horario == {
+        "hora_alvo": "10:00",
+        "complemento_pendente": True,
+    }
+    assert duracao == {
+        "atraso_segundos": 36_000,
+        "complemento_pendente": True,
     }
 
 
@@ -193,6 +247,70 @@ def test_aprendizado_recebe_aceitacao_correcao_recusa_repeticao_e_silencio() -> 
         _deps([]),
     )
     assert "correcao" in feedbacks
+
+
+def test_troca_clara_de_dominio_encerra_pendencia_da_agenda() -> None:
+    runtime, estado = _pendencia()
+    runtime.registrar(
+        origem="agenda",
+        acao="completar_lembrete",
+        pergunta="Qual horário?",
+        referencia="água",
+        metadados={"descricao": "beber água", "referencia_data": "amanhã"},
+    )
+
+    class Contexto:
+        def montar(self):
+            return {
+                "_pendencia_acao_runtime": runtime,
+                "turno_atual": {
+                    "id": "troca-dominio",
+                    "modalidade": "comando",
+                    "modalidade_geral": "comando",
+                    "autoriza_execucao": True,
+                },
+                "retrato_turno_atual": {},
+                "registrar_arbitragem_turno": lambda *_args: None,
+            }
+
+    interpretador = type(
+        "Interpretador",
+        (),
+        {
+            "tentar_ai_primeiro": lambda _self, _texto: {
+                "intent": "APP_OPEN",
+                "params": {"nome_app": "chrome"},
+            },
+        },
+    )()
+    servicos = {
+        "_interpretacao_intencao_runtime": interpretador,
+        "_normalizar_texto_com_apelidos": lambda texto: str(texto).casefold(),
+        "_texto_depende_de_contexto": lambda _texto: False,
+        "_refinar_contexto_mental": lambda _texto: None,
+        "_texto_cancela_acao_agora": lambda _texto: False,
+        "_resolver_comando_midia_contextual_forcado": lambda _texto: None,
+        "_resolver_comando_contextual_forcado": lambda _texto: None,
+        "_resolver_comando_acao_geral_contextual_forcado": lambda _texto: None,
+        "_resolver_repeticao_ultima_acao": lambda _texto: None,
+        "detectar_intencao_deterministica": lambda _texto: None,
+        "_extrair_agendamento_local": lambda texto: extrair_agendamento_local(
+            texto, normalizar_texto,
+        ),
+        "_extrair_acao_agendada_local": lambda _texto: None,
+        "_texto_parece_consulta_operacional": lambda _texto: True,
+    }
+    ciclo = CicloComandosRuntime(
+        namespace_getter=lambda: servicos,
+        contexto_intencao_runtime=Contexto(),
+        log=lambda *_args: None,
+    )
+
+    resultado, _rota = ciclo.resolver_comando_natural("abre o chrome", "terminal")
+
+    assert resultado and resultado["intent"] == "APP_OPEN"
+    assert runtime.obter() is None
+    assert estado["ultima_pendencia_acao"]["status"] == "substituida_por_troca_dominio"
 
 
 def test_cooperacao_nao_publica_falha_como_confirmacao_total() -> None:

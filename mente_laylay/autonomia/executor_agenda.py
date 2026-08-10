@@ -187,12 +187,24 @@ def _agendar_lembrete(
     descricao = str(
         params.get("descricao") or params.get("evento") or params.get("alvo") or params.get("texto") or ""
     ).strip()
-    if descricao.casefold() in {"", "lembrete", "isso", "disso", "desse evento", "do evento"} and pendente:
+    referencias_genericas = {
+        "", "lembrete", "isso", "disso", "dela", "dele", "essa ideia",
+        "essa nota", "desse evento", "do evento",
+    }
+    if descricao.casefold() in referencias_genericas and pendente:
         descricao = str(
             metadados_pendentes.get("descricao")
             or _get(ctx, "ultimo_alvo", "")
             or ""
         ).strip()
+    elif descricao.casefold() in referencias_genericas and str(
+        _get(ctx, "ultima_habilidade", "") or ""
+    ).casefold() in {"caixa", "caixa_entrada", "caixa de entrada", "inbox"}:
+        # Em uma cadeia cooperativa, "guarda essa ideia e me lembra dela"
+        # referencia a nota que acabou de ser confirmada, não a palavra
+        # literal "dela". Só aceitamos o alvo publicado pela habilidade de
+        # caixa para não puxar uma entidade antiga de outro domínio.
+        descricao = str(_get(ctx, "ultimo_alvo", "") or "").strip()
     descricao = descricao or "Lembrete"
     atraso_segundos = params.get("atraso_segundos")
     # Compatibilidade de leitura com agendamentos produzidos por versões

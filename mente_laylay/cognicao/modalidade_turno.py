@@ -137,6 +137,21 @@ def _classificar_modalidade_base(
     ):
         resultado.update(modalidade="correcao", confianca=0.99, motivo="reparação explícita", natureza_acao="correcao")
         return resultado
+    if re.search(
+        r"^(?:voce|você|tu)\s+(?:nao|não)\s+"
+        r"(?:conseguiu|conseguil|consegue|conseguiu|pode|pôde)\b|"
+        r"^(?:voce|você|tu)\s+(?:falhou|errou)\b",
+        t,
+    ):
+        resultado.update(
+            modalidade="reacao",
+            confianca=0.99,
+            motivo="observação sobre resultado anterior; não autoriza nova execução",
+            natureza_acao="feedback_resultado",
+            depende_contexto=True,
+            autoriza_execucao=False,
+        )
+        return resultado
     if protecao["bloqueia_execucao"]:
         resultado.update(
             modalidade=protecao["modalidade"],
@@ -369,7 +384,7 @@ _VERBOS_COMANDO = re.compile(
     r"pausar|retoma|aumenta|abaixa|diminui|organiza|agende|agendar|me lembra|me avisa|"
     r"leia|ler|lê|le|pesquisa|pesquisar|busca|buscar|procura|procurar|"
     r"encontra|encontre|achar|acha|ache|localiza|localize|pula|pule|"
-    r"captura|capture|trava|bloqueia)\b",
+    r"captura|capture|trava|bloqueia|escreve|escrever|escreva|grava|gravar|grave)\b",
     re.IGNORECASE,
 )
 

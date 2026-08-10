@@ -43,6 +43,7 @@ from mente_laylay.cognicao.intencao_visual_jogo import detectar_pedido_visao_jog
 from mente_laylay.cognicao.referencias_linguagem import (
     extrair_indice_referencia_ordinal,
 )
+from mente_laylay.cognicao.modalidade_turno import analisar_protecao_operacional
 from mente_laylay.memoria_mental.continuidade_geral import (
     resolver_continuacao_aditiva,
     selecionar_referente_saliente,
@@ -143,6 +144,63 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         if isinstance(candidato_iot, dict):
             return candidato_iot
 
+    # A posse/ordem de uma curadoria precisa ser resolvida antes do recurso
+    # genérico ``playlist``. Caso contrário, ``sua primeira playlist`` é
+    # capturada como uma lista do usuário e perde justamente a identidade e o
+    # ordinal. Só promovemos aqui uma lista com alvo concreto ou uma ação
+    # própria inequívoca; negação, hipótese e pergunta de instrução continuam
+    # bloqueando qualquer execução.
+    playlist_laylay_previa = ""
+    if isinstance(mente_previa, Mapping) and ultimo_intent_previo in {
+        "LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_PLAY", "LAYLAY_PLAYLIST_COPY",
+    }:
+        playlist_laylay_previa = str(
+            mente_previa.get("ultima_acao_alvo")
+            or mente_previa.get("ultimo_alvo")
+            or ""
+        ).strip()
+    candidato_playlist_laylay = detectar_playlist_laylay(
+        texto_operacional_iot,
+        params_cb=lambda **kwargs: kwargs,
+        limpar_nome_playlist=(
+            _get(ctx, "limpar_nome_playlist")
+            if callable(_get(ctx, "limpar_nome_playlist"))
+            else lambda valor: str(valor or "").strip()
+        ),
+        playlist_laylay_recente=playlist_laylay_previa,
+        detectar_nome_direto=_get(ctx, "detectar_playlist_laylay_nome_direto"),
+    )
+    if isinstance(candidato_playlist_laylay, dict):
+        intent_laylay = str(candidato_playlist_laylay.get("intent") or "").upper()
+        params_laylay = dict(candidato_playlist_laylay.get("params") or {})
+        alvo_laylay = str(
+            params_laylay.get("nome_playlist")
+            or params_laylay.get("origem")
+            or ""
+        ).strip()
+        nome_catalogado = ""
+        detectar_nome_laylay = _get(ctx, "detectar_playlist_laylay_nome_direto")
+        if callable(detectar_nome_laylay) and alvo_laylay:
+            try:
+                nome_catalogado = str(detectar_nome_laylay(alvo_laylay) or "").strip()
+            except Exception:
+                nome_catalogado = ""
+        leitura_especifica = (
+            intent_laylay == "LAYLAY_PLAYLIST_LIST"
+            and bool(alvo_laylay)
+            and (alvo_laylay.startswith("#") or bool(nome_catalogado))
+        )
+        protecao_laylay = analisar_protecao_operacional(
+            texto,
+            normalizar_texto=normalizar if callable(normalizar) else None,
+        )
+        acao_segura = (
+            intent_laylay in {"LAYLAY_PLAYLIST_PLAY", "LAYLAY_PLAYLIST_COPY"}
+            and not protecao_laylay.get("bloqueia_execucao")
+        )
+        if leitura_especifica or acao_segura:
+            return candidato_playlist_laylay
+
     # O catálogo de recursos conhece seus dados reais e o intent de leitura.
     # Perguntas naturais de consulta precisam chegar aqui antes dos filtros
     # genéricos de conversa, sem conceder nenhuma operação de escrita.
@@ -234,6 +292,15 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     destino = _call(ctx, "target_from_params", {}, bruto, default="pc_a")
     mente_atual = _get(ctx, "mente_integrada_estado", {})
     ultimo_intent = str((mente_atual or {}).get("ultima_acao_intent") or (mente_atual or {}).get("ultima_intencao") or "").upper() if isinstance(mente_atual, Mapping) else ""
+    playlist_laylay_recente = ""
+    if isinstance(mente_atual, Mapping) and ultimo_intent in {
+        "LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_PLAY", "LAYLAY_PLAYLIST_COPY",
+    }:
+        playlist_laylay_recente = str(
+            mente_atual.get("ultima_acao_alvo")
+            or mente_atual.get("ultimo_alvo")
+            or ""
+        ).strip()
 
     def params(**kwargs: Any) -> Dict[str, Any]:
         if destino == "pc_b":
@@ -281,7 +348,8 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
             estado_mental=_get(ctx, "mente_integrada_estado", {}),
             normalizar_texto=_get(ctx, "normalizar_texto"),
         ) if re.search(
-            r"\b(?:arquivo|pasta|documento|diretorio|diretório|txt)\b",
+            r"\b(?:arquivo|pasta|documento|diretorio|diretório|txt|"
+            r"escreve|escreva|escrever|grava|grave|gravar)\b",
             t,
         ) else None,
         # Uma seleção ordinal pertence primeiro à habilidade que publicou a
@@ -325,6 +393,8 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
             t,
             params_cb=params,
             limpar_nome_playlist=_get(ctx, "limpar_nome_playlist"),
+            playlist_laylay_recente=playlist_laylay_recente,
+            detectar_nome_direto=_get(ctx, "detectar_playlist_laylay_nome_direto"),
         ),
         lambda: detectar_playlist_usuario(
             t,
@@ -436,6 +506,7 @@ class DeteccaoDeterministicaRuntime:
             "_limpar_nome_playlist", "_musica_estado_get", "_contexto_musical_ativo",
             "extrair_nome_playlist", "_extrair_intencao_abrir_app",
             "_detectar_playlist_nome_direto", "_normalizar_query_musical",
+            "_detectar_playlist_laylay_nome_direto",
             "_detectar_sugestao_indireta",
             "_resolver_consulta_recurso_local",
         )

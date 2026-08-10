@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from mente_laylay.autonomia.analise_comandos import segmentar_comandos_em_cadeia
 from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
 from mente_laylay.autonomia.coordenador_intencao import CicloComandosRuntime
 from mente_laylay.autonomia.coordenador_intencao import resolver_intencao
@@ -29,6 +30,118 @@ class _ContextoExecucao:
             "retrato_turno_atual": dict(self._retrato),
             "registrar_arbitragem_turno": lambda *_args: None,
         }
+
+
+def test_cadeia_natural_separa_duas_ordens_sem_cortar_conversa() -> None:
+    assert segmentar_comandos_em_cadeia(
+        "cria uma pasta chamada teste e coloca um arquivo dentro dela"
+    ) == [
+        "cria uma pasta chamada teste",
+        "coloca um arquivo dentro dela",
+    ]
+    assert segmentar_comandos_em_cadeia(
+        "encontra o código da lâmpada e abre o primeiro resultado"
+    ) == [
+        "encontra o código da lâmpada",
+        "abre o primeiro resultado",
+    ]
+    assert segmentar_comandos_em_cadeia(
+        "você prefere rock e metal?"
+    ) == ["você prefere rock e metal"]
+
+
+def test_cadeia_preserva_extensao_e_pontuacao_dos_argumentos() -> None:
+    assert segmentar_comandos_em_cadeia(
+        "Cria uma pasta chamada teste composto e coloca um arquivo chamado resultado.md dentro dela.",
+        normalizar_texto=lambda texto: str(texto).casefold().replace(".", " "),
+    ) == [
+        "Cria uma pasta chamada teste composto",
+        "coloca um arquivo chamado resultado.md dentro dela.",
+    ]
+
+
+def test_barreira_prioritaria_entrega_cadeia_ao_ciclo_canonico() -> None:
+    chamadas: list[tuple[str, str]] = []
+    estado = type("Estado", (), {"mental": {}})()
+    namespace = {
+        "_estado_compartilhado_runtime": estado,
+        "processar_comandos_em_cadeia": lambda texto, origem: (
+            chamadas.append((texto, origem)) or True
+        ),
+        "resolver_comando_natural": lambda *_args: (_ for _ in ()).throw(
+            AssertionError("a cadeia tratada não deve cair na conversa")
+        ),
+    }
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: namespace,
+        loop_getter=lambda: None,
+    )
+
+    texto = "abre o Opera e depois maximiza a janela"
+    assert runtime.processar_prioritarios(texto) is True
+    assert chamadas == [(texto, "prioritario-cooperativo")]
+
+
+def test_composto_caixa_agenda_exige_as_duas_etapas_confirmadas() -> None:
+    chamadas: list[tuple[str, str]] = []
+    comandos_executados: list[dict] = []
+
+    class Caixa:
+        def processar(self, texto: str) -> bool:
+            chamadas.append(("caixa", texto))
+            return True
+
+        @staticmethod
+        def ultimo_item_salvo() -> dict:
+            return {
+                "id": "nota-espacial",
+                "titulo": "Aparência espacial para o avatar",
+                "conteudo": "Criar uma aparência espacial para o avatar",
+            }
+
+    estado = type("Estado", (), {"mental": {}})()
+    comando_agenda = {
+        "intent": "AGENDAR_LEMBRETE",
+        "params": {"descricao": "essa ideia", "dia": "amanhã", "hora": "11:00"},
+    }
+    namespace = {
+        "_estado_compartilhado_runtime": estado,
+        "_caixa_entrada_pessoal_runtime": Caixa(),
+        "processar_comandos_em_cadeia": lambda *_args: (_ for _ in ()).throw(
+            AssertionError("a cadeia especial não deve cair no executor genérico")
+        ),
+        "resolver_comando_natural": lambda texto, origem: (
+            chamadas.append((origem, texto)) or (comando_agenda, "agenda")
+        ),
+        "executar_intencao": lambda comando, texto: (
+            comandos_executados.append(comando)
+            or chamadas.append((str(comando["intent"]), texto))
+            or True
+        ),
+        "_registrar_resultado_execucao": lambda *_args, **_kwargs: None,
+    }
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: namespace,
+        loop_getter=lambda: None,
+    )
+
+    texto = (
+        "Guarda essa ideia junto com suas sugestões e me lembra dela "
+        "amanhã às 11 horas"
+    )
+    assert runtime.processar_prioritarios(texto) is True
+    assert chamadas == [
+        ("caixa", "Guarda essa ideia junto com suas sugestões"),
+        (
+            "prioritario-cooperativo-caixa-agenda",
+            "me lembra dela amanhã às 11 horas",
+        ),
+        ("AGENDAR_LEMBRETE", "me lembra dela amanhã às 11 horas"),
+    ]
+    assert comandos_executados[0]["params"]["descricao"] == (
+        "Aparência espacial para o avatar"
+    )
+    assert comandos_executados[0]["params"]["referencia_nota"] == "nota-espacial"
 
 
 class _InterpretadorNatural:
@@ -339,6 +452,30 @@ def test_barreira_prioritaria_abre_resultado_por_ordinal_curto() -> None:
             "params": {"caminho": caminho, "alvo": "controlador.py", "indice": 1},
         },
         "o primeiro",
+    )]
+
+
+def test_barreira_prioritaria_restaura_ultimo_item_sem_cair_na_llm() -> None:
+    estado = type("Estado", (), {"mental": {}})()
+    execucoes: list[tuple[dict, str]] = []
+    namespace = {
+        "_estado_compartilhado_runtime": estado,
+        "_normalizar_texto_com_apelidos": lambda valor: str(valor).casefold(),
+        "resolver_comando_natural": lambda *_args: (_ for _ in ()).throw(
+            AssertionError("a restauração contextual não deve cair na conversa")
+        ),
+        "executar_intencao": lambda intent, texto: execucoes.append((intent, texto)) or True,
+        "_registrar_resultado_execucao": lambda *_args, **_kwargs: None,
+    }
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: namespace,
+        loop_getter=lambda: None,
+    )
+
+    assert runtime.processar_prioritarios("quero ele de volta") is True
+    assert execucoes == [(
+        {"intent": "RESTORE_DELETED_ITEM", "params": {}},
+        "quero ele de volta",
     )]
 
 

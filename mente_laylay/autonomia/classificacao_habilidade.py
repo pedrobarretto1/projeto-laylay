@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 
 HABILIDADE_POR_INTENT = {
+    "PLAYLIST_CREATE": "playlist",
     "PLAYLIST_ADD": "playlist",
     "PLAYLIST_PLAY": "playlist",
     "PLAYLIST_LIST": "playlist",
@@ -13,6 +14,7 @@ HABILIDADE_POR_INTENT = {
     "TOCAR_PLAYLIST": "playlist",
     "TOCAR_PLAYLIST_SHUFFLE": "playlist",
     "LAYLAY_PLAYLIST_LIST": "playlist_laylay",
+    "LAYLAY_PLAYLIST_PLAY": "playlist_laylay",
     "LAYLAY_PLAYLIST_COPY": "playlist_laylay",
     "APP_OPEN": "navegacao",
     "CLOSE_APP": "navegacao",

@@ -228,26 +228,30 @@ def executar_habilidade_janelas(intent: str, params: Dict[str, Any], ctx: Dict[s
             return {"ok": True, "status": "app_aberto_segundo_plano", "nome_app": nome, "handled": True}
         if quer_maximizar:
             _log("acao", f"{nome} já aberto -> tentar maximizar")
-            foco_ok = False
+            maximizou = False
             if callable(ativar_full):
                 try:
-                    foco_ok = bool(ativar_full(mapped))
+                    maximizou = bool(ativar_full(mapped))
                 except Exception:
-                    foco_ok = False
+                    maximizou = False
             estado_pos = _aguardar_estado(nome, ctx, tentativas=4, pausa=0.2)
-            foco_ok = bool(estado_pos.get("programa_em_foco")) or foco_ok
-            if not foco_ok:
-                foco_ok = _tentar_foco_com_reativacao(nome, mapped, ctx, focar_app, abrir_programa)
-                if foco_ok and callable(ativar_full):
+            em_foco = bool(estado_pos.get("programa_em_foco"))
+            if not maximizou:
+                em_foco = _tentar_foco_com_reativacao(
+                    nome, mapped, ctx, focar_app, abrir_programa,
+                ) or em_foco
+                if em_foco and callable(ativar_full):
                     try:
-                        foco_ok = bool(ativar_full(mapped)) or foco_ok
+                        maximizou = bool(ativar_full(mapped))
                     except Exception:
                         pass
-            _log("resultado", f"{nome} -> {'janela_maximizada' if foco_ok else 'falha_execucao'}")
+            status = "janela_maximizada" if maximizou else "maximizacao_nao_confirmada"
+            _log("resultado", f"{nome} -> {status}")
             return {
-                "ok": foco_ok,
-                "status": "janela_maximizada" if foco_ok else "falha_execucao",
+                "ok": maximizou,
+                "status": status,
                 "nome_app": nome,
+                "foco_confirmado": em_foco,
                 "handled": True,
             }
 
@@ -314,19 +318,21 @@ def executar_habilidade_janelas(intent: str, params: Dict[str, Any], ctx: Dict[s
 
     if quer_maximizar:
         _log("acao", f"{nome} abriu -> tentar maximizar")
-        foco_ok = False
+        maximizou = False
         if callable(ativar_full):
             try:
-                foco_ok = bool(ativar_full(mapped))
+                maximizou = bool(ativar_full(mapped))
             except Exception:
-                foco_ok = False
+                maximizou = False
         estado_pos = _aguardar_estado(nome, ctx, tentativas=4, pausa=0.2)
-        foco_ok = bool(estado_pos.get("programa_em_foco")) or foco_ok
-        _log("resultado", f"{nome} -> {'janela_maximizada' if foco_ok else 'app_aberto_sem_foco'}")
+        em_foco = bool(estado_pos.get("programa_em_foco"))
+        status = "janela_maximizada" if maximizou else "maximizacao_nao_confirmada"
+        _log("resultado", f"{nome} -> {status}")
         return {
-            "ok": foco_ok,
-            "status": "janela_maximizada" if foco_ok else "app_aberto_sem_foco",
+            "ok": maximizou,
+            "status": status,
             "nome_app": nome,
+            "foco_confirmado": em_foco,
             "handled": True,
         }
 

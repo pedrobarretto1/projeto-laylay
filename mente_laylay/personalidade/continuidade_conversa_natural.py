@@ -157,7 +157,8 @@ def _pede_explicacao_da_fala_anterior(texto_normalizado: str) -> bool:
     ):
         return True
     return bool(re.fullmatch(
-        r"(?:ue|ué|uai|oxi|que isso|por que|porque|pq)(?:\s+(?:isso|aquilo))?",
+        r"(?:ue|ué|uai|oxi|que isso|por que|porque|pq)"
+        r"(?:\s+(?:nao|não))?(?:\s+(?:isso|aquilo))?",
         t,
     ))
 
@@ -245,7 +246,13 @@ def resposta_pergunta_curta_dependente_topico(ctx: Dict[str, Any], texto_usuario
     ultima_resposta_norm = _normalizar(ctx, ultima_resposta)
     ultima_intencao = str(mente.get("ultima_acao_intent") or mente.get("ultima_intencao") or "").strip().upper()
     ultimo_status = str(mente.get("ultima_acao_status") or "").strip().lower()
-    ultimo_alvo = str(mente.get("ultimo_alvo") or mente.get("ultimo_app_janela") or mente.get("ultimo_site_aba") or "").strip()
+    ultimo_alvo = str(
+        mente.get("ultima_acao_alvo")
+        or mente.get("ultimo_alvo")
+        or mente.get("ultimo_app_janela")
+        or mente.get("ultimo_site_aba")
+        or ""
+    ).strip()
     ultima_habilidade = str(mente.get("ultima_habilidade") or "").strip().lower()
     ultima_afirmacao = str(mente.get("ultima_afirmacao") or "").strip()
     ultima_opiniao = str(mente.get("ultima_opiniao") or "").strip()
@@ -378,8 +385,22 @@ def resposta_pergunta_curta_dependente_topico(ctx: Dict[str, Any], texto_usuario
                 f"Sobre {foco_topico}. Eu compactei demais, posso destrinchar.",
             ]), texto_usuario)
 
-    if ultimo_status in {"falhou", "nao_encontrado", "não_encontrado", "app_aberto_sem_foco"}:
+    status_falhou = (
+        ultimo_status in {
+            "falhou", "falha_execucao", "nao_encontrado", "não_encontrado",
+            "app_aberto_sem_foco", "alvo_ambiguo", "alvo_ausente",
+            "referencia_nao_resolvida", "indisponivel",
+        }
+        or any(marcador in ultimo_status for marcador in ("falha", "erro", "indispon"))
+    )
+    if status_falhou:
         alvo = ultimo_alvo or "isso"
+        if ultimo_status == "alvo_ambiguo":
+            return _ajustar(
+                ctx,
+                f"Porque encontrei mais de um item que poderia ser {alvo}. Não apaguei nada sem um caminho exato.",
+                texto_usuario,
+            )
         if "foco" in ultimo_status or "sem_foco" in ultimo_status:
             return _ajustar(ctx, random.choice([
                 f"Quer dizer que eu vi {alvo} aberto, mas nao consegui puxar ele pra frente de verdade.",

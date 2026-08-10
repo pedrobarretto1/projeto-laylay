@@ -29,6 +29,7 @@ DEPENDENCIAS_DETECCAO = (
     "_limpar_destino_pc_b", "_target_from_params", "_limpar_nome_playlist",
     "_musica_estado_get", "_contexto_musical_ativo", "extrair_nome_playlist",
     "_extrair_intencao_abrir_app", "_detectar_playlist_nome_direto",
+    "_detectar_playlist_laylay_nome_direto",
     "_normalizar_query_musical",
     "_detectar_sugestao_indireta", "_abas_sugeridas_fechar",
     "_modo_jogo_runtime", "_registro_visao_jogo_leitura_runtime",

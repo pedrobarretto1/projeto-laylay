@@ -1,8 +1,9 @@
 """Personalização segura e opcional das confirmações operacionais.
 
 O executor continua sendo a única fonte da verdade. A LLM recebe um contrato
-já concluído e pode somente reescrever sua confirmação; qualquer saída lenta,
-inválida ou contraditória devolve a fala determinística original.
+já concluído e pode somente reescrever sua confirmação. Uma primeira redação
+inválida recebe uma correção autoral; só indisponibilidade ou duas violações do
+contrato devolvem a fala determinística original.
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ INTENTS_INFORMATIVOS = frozenset({
     "IOT_STATUS", "PLAYLIST_LIST", "LIST_PLAYLIST_CONTENT", "READ_EMAILS",
     "READ_URGENT_EMAILS", "LER_EMAILS", "LER_EMAILS_URGENTES",
     "WEATHER", "CLIMA", "LISTAR_AGENDAMENTOS", "LER_NOTIFICACOES",
+    "NOTIFICATIONS",
     # A confirmação não recebe o tipo original no novo turno. Reescrevê-la
     # fazia a LLM chamar uma pasta de "arquivo"; preserve a fala factual.
     "CONFIRM_DELETE_ITEM",
@@ -56,6 +58,7 @@ RAIZES_POR_STATUS: dict[str, tuple[str, ...]] = {
     "pasta_criada": ("pasta", "criei", "criad"),
     "subpasta_criada": ("pasta", "criei", "criad"),
     "arquivo_criado": ("arquivo", "criei", "criad"),
+    "conteudo_atualizado": ("arquivo", "escrevi", "atualiz", "texto"),
     "item_deletado": ("apague", "remov", "lixeira"),
     "movido_para_lixeira": ("lixeira", "mov", "enviei"),
     "item_movido_para_pasta": ("mov", "mudei"),
@@ -386,6 +389,45 @@ def _abertura_ja_usada(fala: str, falas_anteriores: Any) -> bool:
     )
 
 
+def _reaproveitou_contexto_antigo(
+    fala: str,
+    *,
+    falas_anteriores: Any,
+    fala_segura: str,
+) -> bool:
+    """Detecta enxerto literal de um turno antigo numa confirmação nova.
+
+    A repetição de termos operacionais curtos é normal. O problema é copiar um
+    trecho longo de uma fala anterior que não pertence à confirmação factual
+    atual, como anexar uma consulta antiga de pessoas ao resultado da agenda.
+    """
+    atual = _normalizar(fala)
+    segura = _normalizar(fala_segura)
+    tokens_seguros = set(re.findall(r"[a-z0-9]+", segura))
+    anteriores = (
+        list(falas_anteriores or [])
+        if isinstance(falas_anteriores, (list, tuple))
+        else [falas_anteriores]
+    )
+    for anterior in anteriores:
+        tokens = re.findall(r"[a-z0-9]+", _normalizar(anterior))
+        if len(tokens) < 7:
+            continue
+        # Sete palavras reduzem falsos positivos de expressões inevitáveis
+        # ("já está aberto e em foco") e ainda capturam contaminações inteiras.
+        for indice in range(0, len(tokens) - 6):
+            tokens_fragmento = tokens[indice : indice + 7]
+            fragmento = " ".join(tokens_fragmento)
+            # Artigos ou flexões pequenas podem fazer a confirmação nova
+            # repetir o mesmo fato obrigatório com outra superfície. Se quase
+            # todo o fragmento já pertence à fala segura, não é contaminação.
+            if len(set(tokens_fragmento) & tokens_seguros) >= 5:
+                continue
+            if fragmento in atual and fragmento not in segura:
+                return True
+    return False
+
+
 def personalizar_confirmacao_llm(
     resultado: ResultadoAcao,
     fala_segura: str,
@@ -527,6 +569,16 @@ def personalizar_confirmacao_llm(
             status_declarado=str(dados_candidatos.get("status") or ""),
             alvo_declarado=str(dados_candidatos.get("alvo") or ""),
         )
+        historico_contextual = [
+            *list(retrato.get("falas_recentes") or [])[-4:],
+            str(retrato.get("ultima_resposta") or "").strip(),
+        ]
+        if not motivo and _reaproveitou_contexto_antigo(
+            fala_candidata,
+            falas_anteriores=historico_contextual,
+            fala_segura=fallback.fala,
+        ):
+            motivo = "contexto_antigo_reaproveitado"
         if motivo == "pergunta_na_confirmacao":
             fala_sem_pergunta = _remover_pergunta_opcional(fala_candidata)
             motivo_sem_pergunta = _motivo_contrato_invalido(
@@ -541,13 +593,50 @@ def personalizar_confirmacao_llm(
         return fala_candidata, motivo
 
     dados = _extrair_json(resposta)
-    if not dados:
+    if not dados and eh_estado_tecnico_llm(resposta):
         return _com_motivo_fallback(fallback, "resposta_tecnica_ou_json_invalido")
-    fala, motivo_contrato = validar_dados(dados)
+    fala, motivo_contrato = validar_dados(dados) if dados else ("", "json_invalido")
     if motivo_contrato:
-        return _com_motivo_fallback(
-            fallback, f"contrato_nao_preservado:{motivo_contrato}",
-        )
+        # O modelo está disponível, mas a primeira redação violou o contrato.
+        # Dê à própria Laylay uma única chance de corrigir a fala antes de cair
+        # no texto local. Segurança continua vencendo se a segunda vier errada.
+        try:
+            resposta_corrigida = enviar_mensagem(
+                [
+                    {"role": "system", "content": sistema},
+                    {"role": "user", "content": json.dumps(contrato, ensure_ascii=False)},
+                    {
+                        "role": "user",
+                        "content": (
+                            "Sua proposta anterior foi rejeitada por "
+                            f"{motivo_contrato}. Escreva outra fala realmente nova, "
+                            "corrigindo exatamente esse ponto e preservando todos os "
+                            "fatos do contrato. Retorne somente o JSON solicitado."
+                        ),
+                    },
+                ],
+                _com_tools=False,
+                max_tokens=120,
+                modo_rapido=True,
+                timeout=_timeout_autoria_operacional(),
+                _prioridade_interativa=True,
+                _permitir_durante_interacao=True,
+            )
+            dados_corrigidos = _extrair_json(resposta_corrigida)
+            fala_corrigida, motivo_corrigido = (
+                validar_dados(dados_corrigidos)
+                if dados_corrigidos else ("", "json_invalido")
+            )
+            if not motivo_corrigido:
+                dados = dados_corrigidos
+                fala = fala_corrigida
+                motivo_contrato = ""
+        except Exception:
+            pass
+        if motivo_contrato:
+            return _com_motivo_fallback(
+                fallback, f"contrato_nao_preservado:{motivo_contrato}",
+            )
 
     historico_variacao = list(retrato.get("falas_recentes") or [])[-4:]
     ultima_variacao = str(retrato.get("ultima_resposta") or "").strip()

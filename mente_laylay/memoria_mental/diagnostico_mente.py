@@ -39,6 +39,50 @@ def detectar_pedido_diagnostico_mente(texto: str) -> bool:
     return any(expressao in t for expressao in expressoes)
 
 
+def _atualizar_retratos_saude(diagnostico: Mapping[str, Any]) -> dict[str, Any]:
+    """Separa conexão estrutural de comportamento observado sem executar probes."""
+    retrato = dict(diagnostico or {})
+    estrutural = dict(retrato.get("saude") or {})
+    falhas = [
+        dict(item) for item in list(retrato.get("falhas_recentes") or [])
+        if isinstance(item, Mapping)
+    ]
+    servicos = [
+        dict(item) for item in list(retrato.get("servicos_background") or [])
+        if isinstance(item, Mapping)
+    ]
+    verificador = dict(retrato.get("verificador_fala") or {})
+    falhas_impactantes = sum(
+        1 for item in falhas
+        if str(item.get("classe") or "nao_classificada") != "esperada"
+    )
+    servicos_degradados = sum(
+        1 for item in servicos if item.get("classe_estado") == "degradados"
+    )
+    problemas_fala_atual = len(list(verificador.get("ultimos_problemas") or []))
+    falas_verificadas = int(verificador.get("falas_verificadas") or 0)
+    amostras = len(falhas) + len(servicos) + falas_verificadas
+    if falhas_impactantes or servicos_degradados or problemas_fala_atual:
+        estado_operacional = "degradado"
+    elif amostras:
+        estado_operacional = "saudavel"
+    else:
+        estado_operacional = "sem_amostras"
+
+    retrato["saude_estrutural"] = estrutural
+    retrato["saude_operacional"] = {
+        "estado": estado_operacional,
+        "amostras_passivas": amostras,
+        "falhas_ativas": len(falhas),
+        "falhas_impactantes": falhas_impactantes,
+        "servicos_degradados": servicos_degradados,
+        "problemas_fala_atual": problemas_fala_atual,
+        "fonte": "telemetria_passiva",
+        "probes_executados": False,
+    }
+    return retrato
+
+
 def construir_diagnostico_mente(
     estado: Mapping[str, Any] | None,
     saude: Mapping[str, Any] | None,
@@ -407,7 +451,7 @@ def construir_diagnostico_mente(
         "plasticidade_perfis": int(plasticidade_rede.get("perfis") or 0),
         "plasticidade_amostras": int(plasticidade_rede.get("amostras") or 0),
     }
-    return {
+    diagnostico = {
         "saude": {**totais, "problemas": problemas},
         "interacao": {
             "emocao": conversa.get("current_emotion") or "calma",
@@ -500,6 +544,7 @@ def construir_diagnostico_mente(
         "iniciativa": iniciativa,
         "rede_associativa": rede_segura,
     }
+    return _atualizar_retratos_saude(diagnostico)
 
 
 class DiagnosticoMenteRuntime:
@@ -865,7 +910,7 @@ class DiagnosticoMenteRuntime:
                 int(item.get("orfaos") or 0) for item in servicos
             ),
         }
-        return diagnostico
+        return _atualizar_retratos_saude(diagnostico)
 
     def mostrar(self) -> dict[str, Any]:
         diagnostico = self.snapshot()

@@ -139,6 +139,9 @@ def _atos_relevantes(atos: Iterable[Any]) -> list[str]:
         "bem_estar",
         "opiniao",
         "esclarecimento",
+        "agradecimento",
+        "adiamento",
+        "provocacao_curta",
     }
     saida: list[str] = []
     for item in atos:
@@ -161,6 +164,12 @@ def _sequencia_multiacto(atos: Iterable[str]) -> tuple[str, ...]:
         sequencia.append("declarar a posição e dar um critério concreto")
     if "esclarecimento" in presentes:
         sequencia.append("explicar literalmente a fala anterior")
+    if "agradecimento" in presentes:
+        sequencia.append("reconhecer o agradecimento e encerrar sem retomar a tarefa anterior")
+    if "adiamento" in presentes:
+        sequencia.append("aceitar o adiamento de forma curta e literal")
+    if "provocacao_curta" in presentes:
+        sequencia.append("reagir à cutucada atual com limite ou deboche proporcional")
     sequencia.append("adicionar personalidade somente depois de responder todos os atos")
     return tuple(sequencia)
 
@@ -271,6 +280,31 @@ def construir_roteiro_geracao_concreta(
         sequencia = (
             "cumprimentar de volta",
             "fazer no máximo uma pergunta simples, se couber",
+        )
+    elif "agradecimento" in especiais:
+        estrategia = "encerramento_social"
+        ancora = bruto
+        nucleo = "reconhecer brevemente o agradecimento e encerrar o assunto atual"
+        sequencia = (
+            "responder ao agradecimento",
+            "não recuperar tarefa, sugestão ou pendência anterior",
+        )
+    elif "adiamento" in especiais:
+        estrategia = "adiamento_literal"
+        ancora = bruto
+        nucleo = "aceitar de forma curta que o assunto ficou para depois"
+        sequencia = (
+            "confirmar o adiamento",
+            "encerrar sem metáfora, promessa ou pergunta",
+        )
+    elif "provocacao_curta" in especiais:
+        estrategia = "reacao_social_curta"
+        ancora = bruto
+        nucleo = "reagir diretamente à provocação atual sem tratá-la como falha de comunicação"
+        sequencia = (
+            "mostrar que a cutucada foi compreendida",
+            "usar no máximo uma tirada curta ou estabelecer um limite leve",
+            "não inventar um assunto anterior para preencher a resposta",
         )
     else:
         estrategia = "resposta_direta"

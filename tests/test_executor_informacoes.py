@@ -260,6 +260,33 @@ def test_weather_responde_diretamente_se_vai_chover() -> None:
     assert "21 graus" in falas[0]
 
 
+def test_weather_responde_a_temperatura_maxima_em_vez_da_atual() -> None:
+    eventos: list[tuple] = []
+    falas: list[str] = []
+
+    executar_intencao_informacoes(
+        "WEATHER",
+        {},
+        "Qual será a temperatura máxima hoje?",
+        {
+            "cidade_padrao_clima": "Boituva",
+            "obter_clima_localidade": lambda _local: {
+                "ok": True,
+                "localidade": "Boituva",
+                "temperatura_c": 21,
+                "temperatura_max_c": 28,
+                "temperatura_min_c": 17,
+            },
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+        },
+        _dependencias(eventos),
+    )
+
+    assert falas == [
+        "A temperatura máxima prevista hoje em Boituva é de 28 graus."
+    ]
+
+
 def test_roteador_principal_delega_weather_ao_executor_informacoes() -> None:
     resultados = []
 

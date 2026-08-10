@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from typing import Any, Mapping
 
@@ -90,6 +91,35 @@ def _resposta_social_curta(texto: str) -> str:
     return ""
 
 
+def _preferencia_local(texto: str) -> str:
+    """Responde a uma escolha explícita mesmo quando o modelo expirou."""
+    match = re.search(
+        r"\bprefere\s+(.+?)\s+ou\s+(.+?)(?:[?!.]|$)",
+        texto,
+        re.IGNORECASE,
+    )
+    if not match:
+        return ""
+    opcoes = sorted(
+        {
+            parte.strip(" ,.!?;:\"'")
+            for parte in match.groups()
+            if parte.strip(" ,.!?;:\"'")
+        },
+        key=str.casefold,
+    )
+    if len(opcoes) < 2:
+        return ""
+    assinatura = "laylay|" + "|".join(opcao.casefold() for opcao in opcoes)
+    escolhida = opcoes[
+        hashlib.sha256(assinatura.encode("utf-8")).digest()[0] % len(opcoes)
+    ]
+    return (
+        f"Eu prefiro {escolhida}, porque entre as opções combina mais com meu "
+        "jeito direto e ainda dá espaço para variar."
+    )
+
+
 def fala_contingencia_natural(
     texto_usuario: Any,
     contexto: Mapping[str, Any] | None = None,
@@ -97,6 +127,20 @@ def fala_contingencia_natural(
     """Mantém humanidade sem fingir que a resposta da IA foi concluída."""
     bruto = re.sub(r"\s+", " ", str(texto_usuario or "")).strip()
     texto = bruto.casefold()
+    saudacao = bool(re.match(
+        r"^(?:oi|ol[aá]|opa|e\s+a[ií]|bom\s+dia|boa\s+tarde|boa\s+noite)\b",
+        texto,
+        re.IGNORECASE,
+    ))
+    pergunta_bem_estar = bool(re.search(
+        r"\b(?:tudo\s+bem\s+(?:com\s+)?voc[eê]|"
+        r"como\s+(?:voc[eê]|a\s+laylay|lay|laylay)\s+(?:est[aá]|vai))\b",
+        bruto,
+        re.IGNORECASE,
+    ))
+    if pergunta_bem_estar:
+        prefixo = "Oi! " if saudacao else ""
+        return f"{prefixo}Tô bem por aqui. E você, como tá?"
     if re.fullmatch(
         r"(?:oi|ol[aá]|opa|e a[ií]|bom dia|boa tarde|boa noite)"
         r"(?:[, ]+(?:lay|laylay))?[!?. ]*",
@@ -104,9 +148,20 @@ def fala_contingencia_natural(
     ):
         return "Oi. Tô aqui."
 
+    if re.fullmatch(
+        r"(?:deixa|deixe|vamos deixar|pode deixar) (?:isso )?"
+        r"(?:para|pra) depois[!?. ]*",
+        texto,
+    ):
+        return "Tá bom, deixamos isso para depois."
+
     social = _resposta_social_curta(bruto)
     if social:
         return social
+
+    preferencia = _preferencia_local(bruto)
+    if preferencia:
+        return preferencia
 
     visual = _resposta_sobre_visual_recente(
         bruto,

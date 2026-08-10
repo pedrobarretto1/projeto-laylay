@@ -97,6 +97,44 @@ def test_correcao_nao_substitui_clipboard_automaticamente():
     assert registros[-1][1]["intencao"] == "CLIPBOARD_TRANSFORM"
 
 
+def test_maiusculas_sao_transformadas_localmente_sem_resposta_antiga():
+    chamadas_llm = []
+    clipboard = ClipboardFalso("texto Misto")
+    falas = []
+    runtime = AreaTransferenciaRuntime(
+        falar=lambda fala, *_: falas.append(fala),
+        enviar_mensagem=lambda *_args, **_kwargs: chamadas_llm.append(True),
+        leitor=clipboard.ler,
+        escritor=clipboard.escrever,
+        log=lambda *_: None,
+    )
+
+    assert runtime.processar("coloca o que eu copiei em letras maiúsculas") is True
+    assert chamadas_llm == []
+    assert falas[-1].startswith("TEXTO MISTO")
+    assert "TEXTO MISTO. Se quiser" in falas[-1]
+    assert clipboard.texto == "texto Misto"
+
+    assert runtime.processar("copia o resultado") is True
+    assert clipboard.texto == "TEXTO MISTO"
+
+
+def test_uso_explicito_silencia_oferta_passiva_do_mesmo_conteudo():
+    consumidos = []
+    clipboard = ClipboardFalso("um texto grande de teste")
+    runtime = AreaTransferenciaRuntime(
+        falar=lambda *_args: None,
+        leitor=clipboard.ler,
+        escritor=clipboard.escrever,
+        marcar_consumido=lambda snapshot: consumidos.append(dict(snapshot)),
+        log=lambda *_: None,
+    )
+
+    assert runtime.processar("o que eu copiei?") is True
+    assert len(consumidos) == 1
+    assert consumidos[0]["assinatura"]
+
+
 def test_confirmacao_explicita_copia_e_desfazer_restaura_original():
     runtime, clipboard, falas, *_ = criar_runtime("eu foi", "Eu fui.")
     runtime.processar("corrige o texto que eu copiei")

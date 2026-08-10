@@ -131,3 +131,26 @@ def test_conversa_normal_finalizada_entra_na_memoria_diaria() -> None:
     )
 
     assert registros == [("como foi seu dia?", "Foi tranquilo. E o seu?")]
+
+
+def test_finalizacao_limpa_nao_imprime_a_mesma_fala_crua(capsys) -> None:
+    falas = []
+    finalizar_execucao_resposta_ia(
+        {
+            "messages": [{"role": "user", "content": "oi"}],
+            "current_emotion": "calma",
+            "emotion_level": 1,
+            "enviar_mensagem": lambda *_args, **_kwargs: "",
+            "limpar_resposta_da_ia": lambda texto: (texto, []),
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala) or True,
+            "verificar_fala_turno": lambda fala, **_kwargs: {
+                "aceita": True, "fala": fala,
+            },
+            "_falhas_consecutivas": {},
+            "log_verbose": False,
+        },
+        [], [], "Oi, tô aqui.", False, False, False,
+    )
+
+    assert falas == ["Oi, tô aqui."]
+    assert "Laylay: Oi, tô aqui." not in capsys.readouterr().out

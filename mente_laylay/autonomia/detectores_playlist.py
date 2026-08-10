@@ -43,6 +43,19 @@ def detectar_playlist_contextual_musica_atual(
                 "params": params(nome_playlist=ultima_pl, referencia_contextual=True),
             }
 
+    if re.fullmatch(
+        r"(?:e\s+)?(?:o\s+que|oque)\s+(?:eu\s+)?(?:tenho|tem|ha|há)\s+"
+        r"(?:dentro\s+)?(?:nela|nessa|nesta)(?:\s+playlist)?\??",
+        t,
+        flags=re.IGNORECASE,
+    ):
+        ultima_pl = str(ultima_playlist or "").strip()
+        if ultima_pl:
+            return {
+                "intent": "PLAYLIST_LIST",
+                "params": params(nome_playlist=ultima_pl, referencia_contextual=True),
+            }
+
     return None
 
 def detectar_movimento_playlist(
@@ -111,6 +124,8 @@ def detectar_playlist_laylay(
     *,
     params_cb: Callable[..., Dict[str, Any]],
     limpar_nome_playlist: Callable[[str], str],
+    playlist_laylay_recente: str = "",
+    detectar_nome_direto: Callable[[str], str] | None = None,
 ) -> Dict[str, Any] | None:
     """Reconhece comandos sobre as playlists próprias da Laylay."""
     t = str(texto_normalizado or "").strip()
@@ -118,6 +133,52 @@ def detectar_playlist_laylay(
         return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
     limpar_nome = limpar_nome_playlist if callable(limpar_nome_playlist) else (lambda valor: str(valor or "").strip())
+
+    # Depois que uma curadoria foi listada ou tocada, "dessa playlist" é uma
+    # referência válida. A faixa omitida significa a primeira apresentada;
+    # não se inventa título nem se confunde a lista própria com a do usuário.
+    m_copy_contextual = re.search(
+        r"(?:copia|copie|coloca|coloque|adiciona|adicione)\s+"
+        r"(?:uma\s+)?(?:musica|música|faixa)\s+(?:dessa|desta|daquela)\s+playlist\s+"
+        r"(?:na|para(?:\s+a)?|pra)\s+(?:minha\s+)?playlist\s+(?P<destino>.+?)\??$",
+        t,
+        flags=re.IGNORECASE,
+    )
+    origem_recente = str(playlist_laylay_recente or "").strip()
+
+    # A resposta curta com o nome de uma curadoria só é operacional quando o
+    # próprio catálogo confirma o nome e existe um fio recente da Laylay. A
+    # forma explícita ``playlist <nome>`` também é inequívoca. Assim o nome
+    # manual continua natural sem sequestrar uma conversa que apenas mencione
+    # as mesmas palavras.
+    nome_direto = ""
+    if callable(detectar_nome_direto):
+        try:
+            nome_direto = str(detectar_nome_direto(t) or "").strip()
+        except Exception:
+            nome_direto = ""
+    if nome_direto and (
+        origem_recente
+        or re.match(r"^(?:a\s+)?playlist\s+", t, flags=re.IGNORECASE)
+    ):
+        return {
+            "intent": "LAYLAY_PLAYLIST_LIST",
+            "params": params(
+                nome_playlist=nome_direto,
+                referencia_contextual=bool(origem_recente),
+            ),
+        }
+
+    if m_copy_contextual and origem_recente:
+        return {
+            "intent": "LAYLAY_PLAYLIST_COPY",
+            "params": params(
+                musica="__primeira__",
+                origem=origem_recente,
+                destino=limpar_nome(m_copy_contextual.group("destino") or ""),
+                referencia_contextual=True,
+            ),
+        }
 
     # Autoria expressa posse mesmo sem o pronome "sua":
     # "quais playlists você criou?" pertence à curadoria da Laylay, não ao
@@ -135,6 +196,12 @@ def detectar_playlist_laylay(
         t,
         flags=re.IGNORECASE,
     ))
+    referencia_curadoria = bool(re.search(
+        r"\b(?:sua|suas|da\s+laylay|dela)\s+"
+        r"(?:(?:primeira|segunda|terceira|quarta|quinta|\d+[ªa]?)\s+)?playlists?\b",
+        t,
+        flags=re.IGNORECASE,
+    ))
 
     if not any(x in t for x in [
         "sua playlist",
@@ -143,8 +210,22 @@ def detectar_playlist_laylay(
         "playlists da laylay",
         "playlist dela",
         "playlists dela",
-    ]) and not referencia_autoria and not referencia_posse:
+    ]) and not referencia_autoria and not referencia_posse and not referencia_curadoria:
         return None
+
+    ordinal = ""
+    m_ordinal = re.search(
+        r"\b(?P<ordem>primeira|segunda|terceira|quarta|quinta|\d+)[ªa]?\s+playlist\b",
+        t,
+        flags=re.IGNORECASE,
+    )
+    if m_ordinal:
+        mapa_ordem = {
+            "primeira": 1, "segunda": 2, "terceira": 3,
+            "quarta": 4, "quinta": 5,
+        }
+        token = str(m_ordinal.group("ordem") or "").casefold()
+        ordinal = f"#{mapa_ordem.get(token, int(token) if token.isdigit() else 1)}"
 
     m_copy = re.search(
         r"(?:coloca|bota|adiciona|salva|guarda)\s+(?P<musica>.+?)\s+da\s+(?:sua|da\s+laylay|dela)\s+playlist\s+(?P<origem>.+?)\s+(?:na|minha|para a|pra)\s+playlist\s+(?P<destino>.+)$",
@@ -159,6 +240,22 @@ def detectar_playlist_laylay(
                 origem=limpar_nome(m_copy.group("origem") or ""),
                 destino=limpar_nome(m_copy.group("destino") or ""),
             ),
+        }
+
+    if re.search(r"\b(?:toca|toque|coloca|coloque|abre|abra|bota|escuta|ouvir)\b", t):
+        return {
+            "intent": "LAYLAY_PLAYLIST_PLAY",
+            "params": params(nome_playlist=ordinal),
+        }
+
+    if ordinal and re.search(
+        r"\b(?:quais|quantas|lista|mostra|o\s+que|oque|tem|conteudo|conteúdo)\b",
+        t,
+        flags=re.IGNORECASE,
+    ):
+        return {
+            "intent": "LAYLAY_PLAYLIST_LIST",
+            "params": params(nome_playlist=ordinal),
         }
 
     if referencia_autoria or referencia_posse:
@@ -283,6 +380,18 @@ def detectar_playlist_usuario(
         pl = limpar_nome(m_create_add.group("nome") or "")
         if pl:
             return {"intent": "PLAYLIST_ADD", "params": params(nome_playlist=pl)}
+
+    m_create = re.fullmatch(
+        r"(?:por\s+favor\s+)?(?:cria|criar|crie|faz|fazer)\s+"
+        r"(?:uma\s+)?playlist\s+(?:chamada|com\s+o?\s*nome|de\s+nome)?\s*"
+        r"(?P<nome>.+?)\??",
+        t,
+        flags=re.IGNORECASE,
+    )
+    if m_create:
+        pl = limpar_nome(m_create.group("nome") or "")
+        if pl:
+            return {"intent": "PLAYLIST_CREATE", "params": params(nome_playlist=pl)}
 
     if re.search(r"\b(quais|quantas|lista|listar|mostra|mostrar|mostre|fale|falar|diga|dizer|o que tem|oque tem)\b", t):
         pl = extrair_nome(bruto)

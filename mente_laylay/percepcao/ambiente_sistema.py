@@ -126,6 +126,7 @@ def obter_clima_open_meteo(
                     "weather_code,wind_speed_10m,wind_direction_10m"
                 ),
                 "hourly": "precipitation_probability,precipitation",
+                "daily": "temperature_2m_max,temperature_2m_min",
                 "timezone": coordenadas.get("timezone") or "auto",
                 "forecast_days": 1,
             },
@@ -136,6 +137,7 @@ def obter_clima_open_meteo(
         dados_previsao = resposta.json() or {}
         atual = dict(dados_previsao.get("current") or {})
         horario = dict(dados_previsao.get("hourly") or {})
+        diario = dict(dados_previsao.get("daily") or {})
         chances_chuva = []
         for valor in horario.get("precipitation_probability") or ():
             try:
@@ -161,6 +163,12 @@ def obter_clima_open_meteo(
             "direcao_vento": _valor_clima(atual.get("wind_direction_10m")),
             "descricao": _descricao_wmo(atual.get("weather_code")),
             "chance_chuva_pct": max(chances_chuva) if chances_chuva else None,
+            "temperatura_max_c": _valor_clima(
+                next(iter(diario.get("temperature_2m_max") or ()), None)
+            ),
+            "temperatura_min_c": _valor_clima(
+                next(iter(diario.get("temperature_2m_min") or ()), None)
+            ),
             "precipitacao_max_mm": max(precipitacoes) if precipitacoes else None,
             "previsao_chuva_disponivel": bool(chances_chuva or precipitacoes),
             "fonte": "open_meteo",
@@ -468,6 +476,12 @@ def obter_clima_localidade(
             "vento_kmph": str(atual.get("windspeedKmph") or "").strip(),
             "descricao": descricao,
             "chance_chuva_pct": max(chances_chuva) if chances_chuva else None,
+            "temperatura_max_c": str(
+                ((dias[0] or {}).get("maxtempC") if dias else "") or ""
+            ).strip(),
+            "temperatura_min_c": str(
+                ((dias[0] or {}).get("mintempC") if dias else "") or ""
+            ).strip(),
             "precipitacao_max_mm": None,
             "previsao_chuva_disponivel": bool(chances_chuva),
         }

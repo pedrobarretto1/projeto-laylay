@@ -66,6 +66,17 @@ def test_alvo_preciso_remove_www_e_preserva_nome_sem_url() -> None:
     assert validador.alvo_preciso_para_aba("calculadora") == "calculadora"
 
 
+def test_alvo_preciso_nao_troca_nome_da_aba_pelo_host_da_busca() -> None:
+    validador = ValidadorAmbiente({
+        "_montar_url_site_ou_busca": lambda alvo: (
+            "https://www.google.com/search?q=prime+video"
+            if alvo == "prime video" else alvo
+        )
+    })
+
+    assert validador.alvo_preciso_para_aba("prime video") == "prime video"
+
+
 def test_correspondencia_de_url_aceita_url_host_ou_titulo() -> None:
     validador = ValidadorAmbiente({})
 

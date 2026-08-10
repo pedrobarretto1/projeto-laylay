@@ -269,6 +269,48 @@ def test_listagem_da_curadoria_repassa_nome_especifico() -> None:
     assert falas == ["Minha seleção metal."]
 
 
+def test_reproducao_da_curadoria_preserva_autoria_e_evidencia() -> None:
+    eventos: list[tuple] = []
+    falas: list[tuple] = []
+    aberturas: list[str] = []
+
+    class _CuradoriaOperacoes:
+        def selecionar_curadoria(self, nome="", indice_faixa=0):
+            assert nome == "#1"
+            assert indice_faixa == 0
+            return {
+                "ok": True,
+                "playlist": "climas que combinam com você",
+                "faixa": {
+                    "url": "https://www.youtube.com/watch?v=mine",
+                    "titulo": "C418 - Sweden",
+                },
+            }
+
+    despacho = executar_intencao_musical(
+        "LAYLAY_PLAYLIST_PLAY",
+        {"nome_playlist": "#1"},
+        "toca a sua primeira playlist",
+        {},
+        DependenciasExecutorMusical(
+            marcar_resultado=lambda status, **kwargs: eventos.append((status, kwargs)),
+            abrir_url_musical=lambda url, **_kwargs: aberturas.append(url) or {
+                "ok": True, "confirmado": True, "status": "playing_confirmed",
+            },
+            falar_por_status=lambda status, fala, **kwargs: falas.append(
+                (status, fala, kwargs)
+            ),
+            musica_operacoes=_CuradoriaOperacoes(),
+        ),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(True)
+    assert aberturas == ["https://www.youtube.com/watch?v=mine"]
+    assert eventos[0][0] == "playlist_laylay_reproduzindo"
+    assert eventos[0][1]["alvo_resolvido"] == "climas que combinam com você"
+    assert "minha playlist" in falas[0][1].casefold()
+
+
 def test_copia_da_curadoria_atualiza_ultima_playlist() -> None:
     eventos: list[tuple] = []
     ultimas: list[str] = []

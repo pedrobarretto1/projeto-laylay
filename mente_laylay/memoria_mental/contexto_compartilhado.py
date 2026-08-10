@@ -69,6 +69,7 @@ def intencao_reexecutavel(intent: str) -> bool:
         "BRIEFING_REPEAT",
         "SITE_ENTER",
         "LAYLAY_PLAYLIST_LIST",
+        "LAYLAY_PLAYLIST_PLAY",
         "PLAYLIST_LIST",
         "IOT_CONTROL",
         "IOT_STATUS",
@@ -367,7 +368,7 @@ def enriquecer_resultado_execucao_contextual(
             estado["ultima_habilidade"] = "midia"
             estado["ultimo_alvo"] = str(params.get("platform") or params.get("acao") or "musica").strip() or "musica"
             estado["ultimo_escopo"] = str(params.get("platform") or "music").strip()
-        elif intent in {"PLAYLIST_ADD", "PLAYLIST_MOVE"}:
+        elif intent in {"PLAYLIST_CREATE", "PLAYLIST_ADD", "PLAYLIST_MOVE"}:
             playlist = str(
                 params.get("destino") or params.get("playlist_destino")
                 or params.get("nome_playlist") or params.get("playlist")
@@ -408,11 +409,13 @@ def enriquecer_resultado_execucao_contextual(
             "SITE_ENTER": "site",
             "SEARCH": "pesquisa",
             "WEATHER": "clima",
+            "PLAYLIST_CREATE": "playlist",
             "PLAYLIST_PLAY": "playlist",
             "PLAYLIST_ADD": "playlist",
             "PLAYLIST_LIST": "playlist",
             "PLAYLIST_MOVE": "playlist",
             "LAYLAY_PLAYLIST_LIST": "playlist_laylay",
+            "LAYLAY_PLAYLIST_PLAY": "playlist_laylay",
             "LAYLAY_PLAYLIST_COPY": "playlist_laylay",
             "MUSIC_SEARCH": "musica",
             "MEDIA_CONTROL": "midia",

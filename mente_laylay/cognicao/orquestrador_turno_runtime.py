@@ -472,7 +472,10 @@ def atualizar_planejamento_turno(namespace_getter, fase: str, *, comandos=(), er
             anterior = dict(por_intent.get(chave) or {})
             mesclado = dict(anterior)
             mesclado.update(item)
-            for campo in ('status', 'executou', 'confirmado'):
+            for campo in (
+                'status', 'executou', 'confirmado',
+                'confirmacao_oferecida', 'evidencia_confirmacao',
+            ):
                 if item.get(campo) in (None, '') and anterior.get(campo) not in (None, ''):
                     mesclado[campo] = anterior[campo]
             por_intent[chave] = mesclado
@@ -509,10 +512,14 @@ def verificar_fala_do_turno(namespace_getter, fala: str, *, origem: str='convers
         estrategia = str(aderencia_contrato.get('estrategia') or 'resposta_direta')[:64]
         chave_estrategia = f'estrategia:{estrategia}'
         metricas[chave_estrategia] = int(metricas.get(chave_estrategia) or 0) + 1
-        if aderencia_contrato.get('problemas'):
+        if not verificacao.get('aceita', True):
             metricas['contratos_rejeitados'] = int(metricas.get('contratos_rejeitados') or 0) + 1
         else:
             metricas['contratos_aprovados'] = int(metricas.get('contratos_aprovados') or 0) + 1
+            if aderencia_contrato.get('problemas'):
+                metricas['contratos_com_observacoes'] = int(
+                    metricas.get('contratos_com_observacoes') or 0
+                ) + 1
     if verificacao.get('problemas'):
         metricas['falas_ajustadas'] = int(metricas.get('falas_ajustadas') or 0) + 1
         for problema in verificacao.get('problemas') or []:

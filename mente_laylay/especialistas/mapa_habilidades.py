@@ -18,7 +18,7 @@ from mente_laylay.especialistas.capacidades import CAPACIDADES, consultar_capaci
 
 _DESCRICAO_DOMINIO = {
     "musica": (
-        "buscar e controlar música; listar, tocar e editar playlists do usuário; "
+        "buscar e controlar música; criar, listar, tocar e editar playlists do usuário; "
         "montar curadorias próprias com o histórico confirmado e copiar uma faixa "
         "delas somente quando o usuário pedir"
     ),
@@ -451,7 +451,7 @@ class MapaHabilidadesRuntime:
             return "Consigo consultar e controlar os dispositivos inteligentes que estiverem configurados e online."
         if "musica" in dominios:
             return (
-                "Consigo buscar e controlar músicas, além de listar, tocar e editar suas playlists. "
+                "Consigo buscar e controlar músicas, além de criar, listar, tocar e editar suas playlists. "
                 "Também monto curadorias minhas usando apenas suas playlists e o histórico musical "
                 "confirmado. Posso mostrar essas seleções e copiar uma faixa para uma playlist sua "
                 "quando você pedir; não invento músicas nem reproduzo ou copio algo sozinha."

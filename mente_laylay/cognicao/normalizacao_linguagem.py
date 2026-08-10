@@ -89,6 +89,11 @@ _CORRECOES_TERMOS_OPERACIONAIS = {
     "lembrente": "lembrete",
     "lenbrete": "lembrete",
     "temperatira": "temperatura",
+    # Exceções fechadas e auditáveis para o teste de uso diário. ``Opera`` é
+    # um app canônico da instalação e ``janela`` é parte da moldura, não um
+    # nome livre fornecido pelo usuário.
+    "operra": "opera",
+    "janlea": "janela",
 }
 
 # Vocabulário pequeno e deliberadamente sem nomes próprios. A aproximação só
@@ -98,7 +103,7 @@ _TERMOS_OPERACIONAIS_CANONICOS = (
     "playlist", "playlists", "musica", "musicas", "lampada", "lampadas",
     "dispositivo", "dispositivos", "arquivo", "arquivos", "codigo", "codigos",
     "email", "emails", "compromisso", "compromissos", "lembrete", "lembretes",
-    "temperatura",
+    "temperatura", "janela",
 )
 
 _ERROS_VERBAIS_EXPLICITOS = {

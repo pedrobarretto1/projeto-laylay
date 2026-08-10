@@ -8,6 +8,7 @@ from mente_laylay.autonomia.executor_navegador import (
     executar_intencao_navegador,
 )
 from mente_laylay.autonomia.roteador_intencao import executar_intencao
+from tests.fakes_navegador import NavegadorOperacoesFake
 
 
 def _dependencias(
@@ -144,37 +145,37 @@ def test_close_tab_no_pc_b_preserva_alvo_preciso() -> None:
     assert eventos[0] == ("resultado", "aba_fechada", {"executou": True})
 
 
-def test_falha_ao_fechar_programa_e_observavel_sem_inventar_estado() -> None:
+def test_close_tab_nao_escala_para_fechar_programa() -> None:
     eventos: list[tuple] = []
-    falhas: list[tuple] = []
-
-    def fechar_com_erro(_alvo: str) -> None:
-        raise RuntimeError("detalhe privado")
+    programas_fechados: list[str] = []
+    navegador = NavegadorOperacoesFake()
 
     despacho = executar_intencao_navegador(
         "CLOSE_TAB",
-        {"alvo": "opera"},
-        "fecha o opera",
+        {"alvo": "prime video"},
+        "fecha a aba do Prime Video",
         "pc_a",
         {
             "_registro_navegador_leitura_runtime": SimpleNamespace(
-                aba_ativa=lambda: {},
+                aba_ativa=lambda: {
+                    "title": "Prime Video",
+                    "url": "https://www.primevideo.com/",
+                },
             ),
             "_resolver_alvo_ambiente": lambda _alvo: {"programa_aberto": True},
             "_eh_alvo_site_web": lambda _alvo: False,
-            "fechar_programa": fechar_com_erro,
-            "_registrar_falha_tecnica": (
-                lambda *args, **kwargs: falhas.append((args, kwargs))
-            ),
+            "fechar_programa": programas_fechados.append,
+            "_registro_navegador_operacoes_runtime": navegador,
         },
         _dependencias(eventos),
     )
 
-    assert despacho == ResultadoDespacho.concluido(False)
-    assert eventos[0] == ("resultado", "falha_execucao", {"executou": False})
-    assert falhas[0][0] == ("executor_navegador", "falha_fechar_programa")
-    assert falhas[0][1]["dominio"] == "navegador"
-    assert "detalhe privado" not in repr(falhas[0][0]).casefold()
+    assert despacho == ResultadoDespacho.concluido()
+    assert programas_fechados == []
+    assert navegador.chamadas == [(
+        "close_specific_tab", {"target": "host:prime video"},
+    )]
+    assert eventos[0] == ("resultado", "aba_fechada", {"executou": True})
 
 
 def test_search_de_clima_continua_redirecionando_sem_abrir_google() -> None:

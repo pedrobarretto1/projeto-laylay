@@ -105,7 +105,26 @@ class ValidadorAmbiente:
             return ""
         montar_url = self._get("_montar_url_site_ou_busca")
         url_ref = montar_url(alvo_limpo) if callable(montar_url) else alvo_limpo
-        return self.host_para_alvo_web(url_ref) or alvo_limpo
+        host = self.host_para_alvo_web(url_ref)
+        try:
+            partes = urllib.parse.urlparse(str(url_ref or ""))
+            consulta = urllib.parse.parse_qs(partes.query)
+            host_busca = host in {
+                "google.com", "google.com.br", "bing.com",
+                "duckduckgo.com", "search.yahoo.com",
+            }
+            # Um nome livre como "Prime Video" pode ser convertido pelo
+            # montador em uma busca do Google. Nesse caso, ``google.com`` não
+            # é o alvo da aba: o título/nome original é. Preservá-lo permite
+            # que a extensão encontre a aba correta por URL ou título.
+            if host_busca and (
+                str(partes.path or "").casefold().startswith("/search")
+                or "q" in consulta
+            ):
+                return alvo_limpo
+        except (TypeError, ValueError):
+            pass
+        return host or alvo_limpo
 
     def aba_corresponde_url(
         self, alvo: str, url_esperada: str, aba: dict | None

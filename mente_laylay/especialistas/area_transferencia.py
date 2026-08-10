@@ -244,6 +244,7 @@ class AreaTransferenciaRuntime:
         registrar_resultado: Callable[..., Any] | None = None,
         aprender_conteudo: Callable[[str, str], Any] | None = None,
         observar_conteudo: Callable[[dict[str, Any]], Any] | None = None,
+        marcar_consumido: Callable[[dict[str, Any]], Any] | None = None,
         investigar_erro: Callable[[str], Any] | None = None,
         leitor: Callable[[], Any] | None = None,
         escritor: Callable[[str], Any] | None = None,
@@ -260,6 +261,7 @@ class AreaTransferenciaRuntime:
         self.registrar_resultado = registrar_resultado
         self.aprender_conteudo = aprender_conteudo
         self.observar_conteudo = observar_conteudo
+        self.marcar_consumido = marcar_consumido
         self.investigar_erro = investigar_erro
         self.leitor = leitor or (pyperclip.paste if pyperclip is not None else None)
         self.escritor = escritor or (pyperclip.copy if pyperclip is not None else None)
@@ -269,6 +271,26 @@ class AreaTransferenciaRuntime:
         self._resultado_pendente: dict[str, Any] = {}
         self._ultima_escrita: dict[str, Any] = {}
         self._conteudos_observados: set[str] = set()
+
+    def conectar_observador_passivo(
+        self, marcar_consumido: Callable[[dict[str, Any]], Any] | None,
+    ) -> None:
+        """Conecta tardiamente o observador, sem criar um segundo estado."""
+        self.marcar_consumido = marcar_consumido
+
+    def _marcar_uso_explicito(self, conteudo: str) -> None:
+        if not callable(self.marcar_consumido):
+            return
+        try:
+            self.marcar_consumido({
+                "assinatura": _digest(conteudo),
+                "sequencia_evento": _sequencia_clipboard_windows(),
+            })
+        except Exception as erro:
+            self.log(
+                "⚠️ [CLIPBOARD:OBSERVADOR] consumo explícito não marcado: "
+                f"{type(erro).__name__}"
+            )
 
     def _observar_aprendizado_automatico(self, conteudo: str) -> None:
         assinatura = _digest(conteudo)
@@ -327,6 +349,10 @@ class AreaTransferenciaRuntime:
             return "corrigir"
         if re.search(r"\b(?:traduz|traduza|traduzir)\b", t):
             return "traduzir"
+        if re.search(r"\b(?:maiuscul(?:a|as|o|os)?|caixa alta)\b", t):
+            return "maiusculas"
+        if re.search(r"\b(?:minuscul(?:a|as|o|os)?|caixa baixa)\b", t):
+            return "minusculas"
         if re.search(r"\b(?:explica|explique|explicar)\b", t):
             return "explicar"
         if re.search(
@@ -388,6 +414,8 @@ class AreaTransferenciaRuntime:
                     "resumir": "CLIPBOARD_TRANSFORM",
                     "corrigir": "CLIPBOARD_TRANSFORM",
                     "traduzir": "CLIPBOARD_TRANSFORM",
+                    "maiusculas": "CLIPBOARD_TRANSFORM",
+                    "minusculas": "CLIPBOARD_TRANSFORM",
                     "explicar": "CLIPBOARD_TRANSFORM",
                     "pesquisar": "CLIPBOARD_SEARCH",
                     "investigar": "CLIPBOARD_INVESTIGATE",
@@ -440,6 +468,37 @@ class AreaTransferenciaRuntime:
         self.falar(fala, "calma", 1)
 
     def _transformar(self, operacao: str, conteudo: str, texto_usuario: str) -> bool:
+        # Caixa alta/baixa são transformações exatas e locais. Passá-las pela
+        # LLM introduzia latência e, quando o detector falhava, a conversa
+        # chegava a repetir uma resposta antiga de outro domínio.
+        if operacao in {"maiusculas", "minusculas"}:
+            resultado = conteudo.upper() if operacao == "maiusculas" else conteudo.lower()
+            with self._lock:
+                self._resultado_pendente = {
+                    "original": conteudo,
+                    "original_hash": _digest(conteudo),
+                    "resultado": resultado,
+                    "operacao": operacao,
+                    "ts": self.relogio(),
+                }
+            fala_resultado = (
+                resultado if len(resultado) <= 1200
+                else resultado[:1197].rstrip() + "..."
+            )
+            separador = (
+                " "
+                if fala_resultado.rstrip().endswith((".", "!", "?", "…"))
+                else ". "
+            )
+            self.falar(
+                fala_resultado
+                + separador
+                + "Se quiser substituir o que está copiado, diga: copia o resultado.",
+                "calma",
+                1,
+            )
+            self._registrar(operacao, sucesso=True, tamanho=len(conteudo))
+            return True
         if not callable(self.enviar_mensagem):
             self.falar("A transformação de texto está indisponível agora.", "calma", 1)
             return True
@@ -578,6 +637,11 @@ class AreaTransferenciaRuntime:
             self._registrar(operacao, sucesso=False, tamanho=len(conteudo))
             return True
 
+        # O usuário já usou deliberadamente este conteúdo. O observador
+        # passivo não deve perguntar logo depois se ele quer um resumo do
+        # mesmo texto.
+        self._marcar_uso_explicito(conteudo)
+
         if operacao == "aprender":
             if not callable(self.aprender_conteudo):
                 self.falar("Minha memória duradoura não está disponível agora.", "calma", 1)
@@ -604,7 +668,9 @@ class AreaTransferenciaRuntime:
             self._ler_em_voz(conteudo)
             self._registrar("read", sucesso=True, tamanho=len(conteudo))
             return True
-        if operacao in {"resumir", "corrigir", "traduzir", "explicar"}:
+        if operacao in {
+            "resumir", "corrigir", "traduzir", "explicar", "maiusculas", "minusculas",
+        }:
             return self._transformar(operacao, conteudo, texto)
         if operacao == "pesquisar" and callable(self.investigar_erro):
             classificacao = classificar_conteudo_passivo(conteudo)

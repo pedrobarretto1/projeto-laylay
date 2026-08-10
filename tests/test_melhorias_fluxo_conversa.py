@@ -17,7 +17,11 @@ from mente_laylay.cognicao.conversa_sobre_capacidades import (
 )
 from mente_laylay.cognicao.interpretacao_intencao import InterpretacaoIntencaoRuntime
 from mente_laylay.cognicao.interpretacao_social import analisar_ato_social
-from mente_laylay.cognicao.resumo_conteudo import resumir_pagina_ou_video
+from mente_laylay.cognicao.resumo_conteudo import (
+    ResumoConteudoRuntime,
+    _limpar_texto_capturado,
+    resumir_pagina_ou_video,
+)
 from mente_laylay.integracao.llm_http import post_chat_llm
 from mente_laylay.memoria_mental.contexto_compartilhado import registrar_mente_curta
 from mente_laylay.memoria_mental.sessao_conversa import (
@@ -488,6 +492,255 @@ def test_conteudo_curto_da_pagina_e_recapturado_antes_de_falhar() -> None:
     assert registros[-1]["status"] == "concluido"
     assert registros[-1]["referente"] == "Coxinha"
     assert "salgado" in falas[-1].casefold()
+
+
+def test_resumo_de_pagina_preserva_resultado_quando_transporte_llm_falha() -> None:
+    falas: list[str] = []
+    registros: list[dict] = []
+
+    def enviar_com_falha(*_args, **_kwargs):
+        raise TimeoutError("modelo local não respondeu")
+
+    resultado = asyncio.run(resumir_pagina_ou_video(
+        websocket_disponivel=lambda: True,
+        solicitar_conteudo=lambda: asyncio.sleep(0, result={
+            "success": True,
+            "data": {
+                "url": "https://exemplo.test/artigo",
+                "title": "Artigo sobre manutenção",
+                "content": (
+                    "A manutenção preventiva reduz falhas inesperadas. "
+                    "O artigo recomenda testes pequenos antes da implantação."
+                ),
+            },
+        }),
+        falar=lambda fala, *_args: falas.append(fala),
+        enviar_mensagem=enviar_com_falha,
+        limpar_resposta=lambda texto: texto,
+        remover_prefixo_exec=lambda texto: texto,
+        transcript_api=object(),
+        registrar_contexto=registros.append,
+        log=lambda *_args: None,
+    ))
+
+    assert resultado is True
+    assert registros[-1]["status"] == "concluido"
+    assert "manutenção preventiva" in falas[-1].casefold()
+
+
+def test_runtime_de_resumo_sem_modelo_ainda_le_pagina_e_responde() -> None:
+    falas: list[str] = []
+    registros: list[dict] = []
+    logs: list[str] = []
+
+    runtime = ResumoConteudoRuntime(
+        namespace_getter=lambda: {
+            "websocket_disponivel": lambda: True,
+            "solicitar_conteudo": lambda: asyncio.sleep(0, result={
+                "success": True,
+                "data": {
+                    "url": "https://exemplo.test/manutencao",
+                    "title": "Guia de manutenção",
+                    "content": (
+                        "A manutenção preventiva reduz falhas inesperadas. "
+                        "Testes pequenos ajudam a validar cada mudança."
+                    ),
+                },
+            }),
+            "falar": lambda fala, *_args: falas.append(fala),
+            "limpar_resposta": lambda texto: texto,
+            "remover_prefixo_exec": lambda texto: texto,
+            "transcript_api": object(),
+            "registrar_contexto_resumo": registros.append,
+        },
+        log=logs.append,
+    )
+
+    assert asyncio.run(runtime.resumir()) is True
+    assert any("modelo indisponível" in item for item in logs)
+    assert falas and "manutenção preventiva" in falas[-1].casefold()
+    assert registros[-1]["status"] == "concluido"
+    assert "direto pelo texto" in falas[-1].casefold()
+
+
+def test_resumo_absorve_sentinela_da_llm_e_entrega_leitura_local() -> None:
+    falas: list[str] = []
+    registros: list[dict] = []
+
+    resultado = asyncio.run(resumir_pagina_ou_video(
+        websocket_disponivel=lambda: True,
+        solicitar_conteudo=lambda: asyncio.sleep(0, result={
+            "success": True,
+            "data": {
+                "url": "https://exemplo.test/artigo",
+                "title": "História da China - Wikipédia, a enciclopédia livre",
+                "content": (
+                    "Alternar o índice História da China 98 idiomas "
+                    "Afrikaans العربية Беларуская বাংলা 中文 "
+                    "Origem: Wikipédia, a enciclopédia livre. "
+                    "Desculpe incomodar, mas nossa campanha vai acabar em breve. "
+                    "É segunda-feira, pedimos que se junte aos 2 por cento de "
+                    "leitores e leitoras que doam. "
+                    "Os primeiros registros escritos conhecidos da história "
+                    "da China pertencem à Dinastia Shang. "
+                    "A civilização chinesa se desenvolveu inicialmente no "
+                    "vale do rio Amarelo."
+                ),
+            },
+        }),
+        falar=lambda fala, *_args: falas.append(fala),
+        enviar_mensagem=(
+            lambda *_args, **_kwargs: "__LAYLAY_LLM_INDISPONIVEL__"
+        ),
+        # Reproduz o limpador real que pode remover os sublinhados antes da
+        # barreira final da voz.
+        limpar_resposta=lambda texto: str(texto).replace("_", ""),
+        remover_prefixo_exec=lambda texto: texto,
+        transcript_api=object(),
+        registrar_contexto=registros.append,
+        log=lambda *_args: None,
+    ))
+
+    assert resultado is True
+    assert falas and "primeiros registros" in falas[-1].casefold()
+    assert "alternar o índice" not in falas[-1].casefold()
+    assert "98 idiomas" not in falas[-1].casefold()
+    assert "africaans" not in falas[-1].casefold()
+    assert "campanha" not in falas[-1].casefold()
+    assert "2 por cento" not in falas[-1].casefold()
+    assert "leitores e leitoras" not in falas[-1].casefold()
+    assert "história da china”" in falas[-1].casefold()
+    assert "laylayllm" not in falas[-1].casefold()
+    assert registros[-1]["status"] == "concluido"
+    assert registros[-1]["resumo"] == falas[-1]
+
+
+def test_resumo_remove_bloco_completo_da_campanha_atual_da_wikipedia() -> None:
+    falas: list[str] = []
+
+    resultado = asyncio.run(resumir_pagina_ou_video(
+        websocket_disponivel=lambda: True,
+        solicitar_conteudo=lambda: asyncio.sleep(0, result={
+            "success": True,
+            "data": {
+                "url": "https://pt.wikipedia.org/wiki/História_da_China",
+                "title": "História da China - Wikipédia",
+                "content": (
+                    "É segunda-feira, pedimos que se junte aos 2 por cento de "
+                    "leitores e leitoras que doam. Se todas as pessoas lendo "
+                    "isto doassem R$ 15, atingiríamos nossa meta em poucas "
+                    "horas. Doar R$ 15 Talvez depois 10 de agosto: A Wikipédia "
+                    "não está à venda Desculpe, tentamos entrar em contato "
+                    "antes, mas é segunda-feira, 10 de agosto, e precisamos de "
+                    "ajuda. Os primeiros registros escritos conhecidos da "
+                    "história da China pertencem à Dinastia Shang. A "
+                    "civilização chinesa se desenvolveu inicialmente no vale "
+                    "do rio Amarelo."
+                ),
+            },
+        }),
+        falar=lambda fala, *_args: falas.append(fala),
+        enviar_mensagem=lambda *_args, **_kwargs: "LAYLAY_LLM_TIMEOUT",
+        limpar_resposta=lambda texto: texto,
+        remover_prefixo_exec=lambda texto: texto,
+        transcript_api=object(),
+        log=lambda *_args: None,
+    ))
+
+    assert resultado is True
+    fala = falas[-1].casefold()
+    assert "primeiros registros" in fala
+    assert "dinastia shang" in fala
+    assert "rio amarelo" in fala
+    for ruido in (
+        "2 por cento",
+        "r$ 15",
+        "atingiríamos nossa meta",
+        "talvez depois",
+        "não está à venda",
+        "precisamos de ajuda",
+    ):
+        assert ruido not in fala
+
+
+def test_prompt_do_resumo_chega_limpo_e_tem_prioridade_interativa() -> None:
+    chamadas: list[tuple[list[dict], dict]] = []
+    falas: list[str] = []
+
+    def enviar(mensagens, **kwargs):
+        chamadas.append((mensagens, kwargs))
+        return (
+            "A história registrada da China começa na dinastia Shang e passa "
+            "por sucessivas unificações políticas e transformações sociais."
+        )
+
+    resultado = asyncio.run(resumir_pagina_ou_video(
+        websocket_disponivel=lambda: True,
+        solicitar_conteudo=lambda: asyncio.sleep(0, result={
+            "success": True,
+            "data": {
+                "url": "https://pt.wikipedia.org/wiki/História_da_China",
+                "title": "História da China - Wikipédia",
+                "content": (
+                    "Alternar o índice História da China 98 idiomas Afrikaans "
+                    "العربية Origem: Wikipédia, a enciclopédia livre. "
+                    "Desculpe incomodar, mas nossa campanha vai acabar em breve. "
+                    "É segunda-feira, pedimos que se junte aos 2 por cento de "
+                    "leitores e leitoras que doam. Os primeiros registros "
+                    "escritos conhecidos da história da China pertencem à "
+                    "Dinastia Shang. A civilização chinesa surgiu no vale do "
+                    "rio Amarelo."
+                ),
+            },
+        }),
+        falar=lambda fala, *_args: falas.append(fala),
+        enviar_mensagem=enviar,
+        limpar_resposta=lambda texto: texto,
+        remover_prefixo_exec=lambda texto: texto,
+        transcript_api=object(),
+        log=lambda *_args: None,
+    ))
+
+    assert resultado is True
+    prompt = chamadas[0][0][0]["content"].casefold()
+    opcoes = chamadas[0][1]
+    assert "dinastia shang" in prompt
+    assert "rio amarelo" in prompt
+    assert "alternar o índice" not in prompt
+    assert "98 idiomas" not in prompt
+    assert "campanha" not in prompt
+    assert "2 por cento" not in prompt
+    assert opcoes["_prioridade_interativa"] is True
+    assert opcoes["_permitir_durante_interacao"] is True
+    assert falas == [
+        "A história registrada da China começa na dinastia Shang e passa "
+        "por sucessivas unificações políticas e transformações sociais."
+    ]
+
+
+def test_limpeza_preserva_artigo_legitimo_sobre_leitores_e_doacoes() -> None:
+    artigo = (
+        "Uma pesquisa com leitores mostrou que dois por cento fazem doações "
+        "recorrentes. O estudo analisou hábitos de financiamento coletivo."
+    )
+
+    assert _limpar_texto_capturado(artigo) == artigo
+
+
+def test_limpeza_da_campanha_nao_depende_de_data_valor_ou_espaco() -> None:
+    capturado = (
+        "Desculpe incomodar, nossa campanha vai acabar em breve. "
+        "Se todas as pessoas lendo\u00a0isto doassem R$\u200b 27, "
+        "atingiríamos nossa meta em poucas horas. Doar R$ 27 Talvez depois "
+        "31 de dezembro: A Wikipédia não está à venda. "
+        "A história documentada preserva fontes de diferentes períodos."
+    )
+
+    limpo = _limpar_texto_capturado(capturado)
+
+    assert limpo == (
+        "A história documentada preserva fontes de diferentes períodos."
+    )
 
 
 def test_correcao_de_capacidade_futura_fica_registrada() -> None:

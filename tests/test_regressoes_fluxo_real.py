@@ -352,6 +352,40 @@ def test_playlists_criadas_pela_laylay_nao_herdam_a_ultima_do_usuario() -> None:
         }
 
 
+def test_curadoria_entende_ordinal_reproducao_e_copia_contextual() -> None:
+    limpar = lambda valor: str(valor).strip(" ?")
+    assert detectar_playlist_laylay(
+        "quais músicas tem na sua primeira playlist?",
+        params_cb=_params,
+        limpar_nome_playlist=limpar,
+    ) == {
+        "intent": "LAYLAY_PLAYLIST_LIST",
+        "params": {"nome_playlist": "#1"},
+    }
+    assert detectar_playlist_laylay(
+        "toca uma das suas playlists",
+        params_cb=_params,
+        limpar_nome_playlist=limpar,
+    ) == {
+        "intent": "LAYLAY_PLAYLIST_PLAY",
+        "params": {"nome_playlist": ""},
+    }
+    assert detectar_playlist_laylay(
+        "copia uma música dessa playlist para minha playlist teste curadoria",
+        params_cb=_params,
+        limpar_nome_playlist=limpar,
+        playlist_laylay_recente="xodós que eu separei",
+    ) == {
+        "intent": "LAYLAY_PLAYLIST_COPY",
+        "params": {
+            "musica": "__primeira__",
+            "origem": "xodós que eu separei",
+            "destino": "teste curadoria",
+            "referencia_contextual": True,
+        },
+    }
+
+
 def test_lista_geral_de_playlist_e_consulta_local_autorizada() -> None:
     turno = classificar_modalidade_turno("quais minhas playlists")
 

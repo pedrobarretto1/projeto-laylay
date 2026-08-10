@@ -6,6 +6,28 @@ import re
 from typing import Callable, List, Optional
 
 
+_INICIO_ETAPA_OPERACIONAL = re.compile(
+    r"^(?:"
+    r"abr(?:e|a)|fech(?:a|e)|maximiz(?:a|e)|minimiz(?:a|e)|"
+    r"cri(?:a|e)|coloc(?:a|que)|bot(?:a|e)|toc(?:a|que)|"
+    r"adicion(?:a|e)|salv(?:a|e)|guard(?:a|e)|anot(?:a|e)|"
+    r"apag(?:a|ue)|exclu(?:i|a)|delet(?:a|e)|remov(?:e|a)|"
+    r"encontr(?:a|e)|procur(?:a|e)|pesquis(?:a|e)|busc(?:a|que)|"
+    r"copi(?:a|e)|escrev(?:e|a)|grav(?:a|e)|mov(?:e|a)|renomei(?:a|e)|mud(?:a|e)|"
+    r"lig(?:a|ue)|deslig(?:a|ue)|paus(?:a|e)|continu(?:a|e)|"
+    r"retom(?:a|e)|organiz(?:a|e)|agend(?:a|e)|cancel(?:a|e)|"
+    r"(?:me\s+)?lembr(?:a|e)|resum(?:e|a)|explic(?:a|que)|"
+    r"mostr(?:a|e)|list(?:a|e)|diz|diga|fal(?:a|e)"
+    r")\b",
+    flags=re.IGNORECASE,
+)
+
+
+def _parece_etapa_operacional(texto: str) -> bool:
+    """Limita o ``e`` simples a duas ordens, sem cortar conversa comum."""
+    return bool(_INICIO_ETAPA_OPERACIONAL.match(str(texto or "").strip()))
+
+
 def limpar_resposta(texto: str) -> str:
     """Remove marcas visuais da resposta sem alterar o conteúdo semântico."""
     texto = str(texto or "")
@@ -32,12 +54,36 @@ def segmentar_comandos_em_cadeia(
     if not t:
         return []
 
+    # Localizamos o conector na fala original. A cópia normalizada serve só
+    # para reconhecer verbos; devolver seus segmentos destruiria argumentos
+    # como ``resultado.md``, URLs, aspas e nomes com pontuação.
+    bruto_operacional = re.sub(
+        r"\b(laylay|lay|por favor|pfv)\b", " ", bruto,
+        flags=re.IGNORECASE,
+    )
+    bruto_operacional = re.sub(r"\s+", " ", bruto_operacional).strip()
     for sep in (r"\be depois\b", r"\bem seguida\b", r"\bdepois\b", r"\bent[aã]o\b"):
-        partes = re.split(sep, t, maxsplit=1)
-        if len(partes) > 1:
-            partes = [p.strip() for p in partes if p and p.strip()]
-            if len(partes) > 1:
-                return partes[:2]
+        encontrado = re.search(sep, bruto_operacional, flags=re.IGNORECASE)
+        if encontrado:
+            partes_brutas = [
+                bruto_operacional[:encontrado.start()].strip(" ,!?;:"),
+                bruto_operacional[encontrado.end():].strip(" ,!?;:"),
+            ]
+            if all(partes_brutas):
+                return partes_brutas[:2]
+
+    # O conectivo simples também forma uma cadeia quando ambos os lados são
+    # ordens reconhecíveis ("cria a pasta e coloca um arquivo nela"). A
+    # validação dos dois verbos impede falsos cortes em frases como
+    # "você prefere rock e metal?" ou "liga a luz e o ventilador".
+    for encontrado in re.finditer(r"\be\b", bruto_operacional, flags=re.IGNORECASE):
+        esquerda_bruta = bruto_operacional[:encontrado.start()].strip(" ,!?;:")
+        direita_bruta = bruto_operacional[encontrado.end():].strip(" ,!?;:")
+        normalizar = normalizar_texto if callable(normalizar_texto) else str.lower
+        esquerda = str(normalizar(esquerda_bruta) or "").strip()
+        direita = str(normalizar(direita_bruta) or "").strip()
+        if _parece_etapa_operacional(esquerda) and _parece_etapa_operacional(direita):
+            return [esquerda_bruta, direita_bruta]
 
     return [t]
 
@@ -84,17 +130,27 @@ def processar_comandos_em_cadeia(
     normalizar_texto: Optional[Callable[[str], str]] = None,
     segmentar: Callable[..., List[str]] = segmentar_comandos_em_cadeia,
     executar_trecho: Optional[Callable[[str, str], bool]] = None,
+    relatar_falha: Optional[Callable[[str, int, int], object]] = None,
 ) -> bool:
     """Executa comandos naturais encadeados, mantendo compatibilidade com o fluxo antigo."""
-    texto_normalizado = normalizar_texto(texto) if callable(normalizar_texto) else str(texto or "")
-    partes = segmentar(texto_normalizado, normalizar_texto=None)
+    partes = segmentar(texto, normalizar_texto=normalizar_texto)
     if len(partes) < 2:
         return False
 
-    executou_algum = False
     tag = origem or "cadeia"
     for idx, parte in enumerate(partes[:2], start=1):
-        if callable(executar_trecho) and executar_trecho(parte, f"{tag}-{idx}"):
-            executou_algum = True
+        executou = bool(
+            callable(executar_trecho)
+            and executar_trecho(parte, f"{tag}-{idx}")
+        )
+        if not executou:
+            if callable(relatar_falha):
+                relatar_falha(parte, idx, idx - 1)
+            # Etapas posteriores podem depender do resultado que faltou. Não
+            # avançamos nem declaramos o composto concluído pela metade.
+            break
 
-    return executou_algum
+    # A cadeia foi reconhecida e consumida, mesmo quando uma etapa falhou. A
+    # falha já foi relatada acima; devolver False faria o fluxo reprocessar a
+    # frase inteira e poderia duplicar as etapas que tiveram sucesso.
+    return True

@@ -109,26 +109,29 @@ def escutar_texto_terminal(
                 sleep_fn(0.25)
                 continue
             gerenciador = print_lock if print_lock is not None else nullcontext()
-            if exibir_cabecalho:
-                with gerenciador:
+            # Enquanto uma linha está sendo digitada, os logs aguardam o Enter.
+            # Isso preserva tanto o texto visual quanto a associação entre o
+            # prompt e o buffer lido no console do Windows.
+            with gerenciador:
+                if exibir_cabecalho:
                     raw_print("")
                     raw_print("💬 Você:")
-            leitor = ler_linha_fn or ler_linha_terminal_interrompivel
-            texto_bruto = leitor(
-                "> ",
-                stdin=stdin,
-                deve_continuar=lambda: bool(
-                    continuar()
-                    and estado_ativo()
-                    and (
-                        not callable(entrada_permitida)
-                        or bool(entrada_permitida())
-                    )
-                ),
-                input_fn=input_fn,
-                raw_print=raw_print,
-                sleep_fn=sleep_fn,
-            )
+                leitor = ler_linha_fn or ler_linha_terminal_interrompivel
+                texto_bruto = leitor(
+                    "> ",
+                    stdin=stdin,
+                    deve_continuar=lambda: bool(
+                        continuar()
+                        and estado_ativo()
+                        and (
+                            not callable(entrada_permitida)
+                            or bool(entrada_permitida())
+                        )
+                    ),
+                    input_fn=input_fn,
+                    raw_print=raw_print,
+                    sleep_fn=sleep_fn,
+                )
             if texto_bruto is None:
                 continue
             texto = str(texto_bruto or "").strip()

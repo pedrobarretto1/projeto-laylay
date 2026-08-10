@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from mente_laylay.integracao.composicao_entrada_interacao import (
@@ -215,6 +217,77 @@ def test_composicao_entrega_caixa_de_entrada_ao_fluxo_prioritario() -> None:
     assert comandos.processar_prioritarios("anota essa ideia") is True
     assert recebidos == ["anota essa ideia"]
     assert "_caixa_entrada_pessoal_runtime" in runtime.servicos_interacao_registrados
+
+
+def test_composicao_aguarda_resumo_e_publica_resultado_antes_de_encerrar_turno(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    chamadas_resumo: list[str] = []
+    registros: list[tuple[bool, str]] = []
+    esperas: list[float | None] = []
+    callbacks: list[object] = []
+    loop = object()
+
+    async def resumir() -> bool:
+        chamadas_resumo.append("executado")
+        return True
+
+    class FuturoControlado:
+        def result(self, timeout=None):
+            esperas.append(timeout)
+            # O teste não substitui a habilidade compartilhada; apenas faz o
+            # papel do agendamento entre threads. A corrotina ainda é fechada
+            # abaixo porque este futuro controlado não possui um event loop.
+            corrotina.close()
+            chamadas_resumo.append("agendado")
+            return True
+
+        def add_done_callback(self, callback):
+            callbacks.append(callback)
+
+    corrotina = None
+
+    def agendar(recebida, loop_recebido):
+        nonlocal corrotina
+        assert loop_recebido is loop
+        corrotina = recebida
+        return FuturoControlado()
+
+    monkeypatch.setattr(
+        "mente_laylay.autonomia.comandos_imediatos."
+        "asyncio.run_coroutine_threadsafe",
+        agendar,
+    )
+    servicos = _com_memoria({
+        "_estado_compartilhado_runtime": SimpleNamespace(mental={}),
+        "resumir_pagina_ou_video": resumir,
+        "falar_com_lipsync": lambda *_args: None,
+        "_registrar_resultado_execucao": (
+            lambda _intent, _texto, executou, **kwargs:
+            registros.append((executou, kwargs.get("status", "")))
+        ),
+    })
+    runtime = ComposicaoEntradaInteracaoRuntime(
+        servicos=servicos,
+        estado_mental_getter=dict,
+        sites_diretos={},
+        apps_map={},
+        deteccao_factory=lambda **_kwargs: object(),
+        chat_factory=lambda **_kwargs: object(),
+    )
+    comandos, _chat = runtime.conectar(
+        servicos=servicos,
+        loop_getter=lambda: loop,
+        estado_chat_getter=dict,
+        memoria_sqlite=None,
+    )
+
+    assert comandos.processar_prioritarios("Resume a página atual") is True
+    assert esperas == [45.0]
+    assert callbacks == []
+    assert chamadas_resumo == ["agendado"]
+    assert registros == [(True, "resumo_concluido")]
+    assert "resumir_pagina_ou_video" in runtime.servicos_interacao_registrados
 
 
 def test_composicao_falha_cedo_sem_memoria_de_pessoas_obrigatoria() -> None:

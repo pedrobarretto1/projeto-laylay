@@ -8,6 +8,7 @@ from typing import Any, Protocol, runtime_checkable
 
 @runtime_checkable
 class PortaMusicaOperacoes(Protocol):
+    def criar_playlist(self, nome: str) -> dict[str, Any]: ...
     def apagar_playlist(self, nome: str) -> bool: ...
     def adicionar_faixa(self, nome: str, url: str, titulo: str, canal: str = "") -> bool: ...
     def mover_faixa(self, origem: str, destino: str, musica: str = "") -> dict[str, Any]: ...
@@ -20,12 +21,13 @@ class PortaMusicaOperacoes(Protocol):
     def definir_ultima_url(self, url: str) -> None: ...
     def faixa_atual(self) -> dict[str, Any]: ...
     def copiar_curadoria(self, origem: str, musica: str, destino: str) -> dict[str, Any]: ...
+    def selecionar_curadoria(self, nome: str = "", indice_faixa: int = 0) -> dict[str, Any]: ...
     def estado(self) -> dict[str, Any]: ...
     def diagnostico(self) -> dict[str, Any]: ...
 
 
 _OPERACOES = (
-    "apagar_playlist", "adicionar_faixa", "mover_faixa", "tocar_playlist",
+    "criar_playlist", "apagar_playlist", "adicionar_faixa", "mover_faixa", "tocar_playlist",
     "preparar_shuffle", "primeira_url", "avancar_proxima", "voltar_anterior",
     "definir_ultima_playlist", "definir_ultima_url", "faixa_atual",
     "copiar_curadoria", "estado", "diagnostico",
@@ -59,6 +61,9 @@ class RegistroOperacoesMusicais:
 
     def apagar_playlist(self, nome: str) -> bool:
         return bool(self.servico.apagar_playlist(nome))
+
+    def criar_playlist(self, nome: str) -> dict[str, Any]:
+        return dict(self.servico.criar_playlist(nome) or {})
 
     def adicionar_faixa(self, nome: str, url: str, titulo: str, canal: str = "") -> bool:
         return bool(self.servico.adicionar_faixa(nome, url, titulo, canal))
@@ -98,6 +103,28 @@ class RegistroOperacoesMusicais:
 
     def copiar_curadoria(self, origem: str, musica: str, destino: str) -> dict[str, Any]:
         return dict(self.servico.copiar_curadoria(origem, musica, destino) or {})
+
+    def selecionar_curadoria(
+        self, nome: str = "", indice_faixa: int = 0,
+    ) -> dict[str, Any]:
+        selecionar = getattr(self.servico, "selecionar_curadoria", None)
+        if not callable(selecionar):
+            return {"ok": False, "erro": "curadoria_indisponivel"}
+        retorno = dict(selecionar(nome, indice_faixa) or {})
+        faixa_bruta = retorno.get("faixa")
+        faixa = dict(faixa_bruta) if isinstance(faixa_bruta, dict) else {}
+        # Esta porta executa reprodução, por isso a URL pode atravessar apenas
+        # neste método mutável e não aparece no retrato de leitura/prompt.
+        return {
+            "ok": bool(retorno.get("ok")),
+            "playlist": str(retorno.get("playlist") or "").strip(),
+            "erro": str(retorno.get("erro") or "").strip(),
+            "faixa": {
+                "url": str(faixa.get("url") or "").strip(),
+                "titulo": str(faixa.get("titulo") or "").strip(),
+                "canal": str(faixa.get("canal") or "").strip(),
+            },
+        }
 
     def estado(self) -> dict[str, Any]:
         bruto = dict(self.servico.estado() or {})

@@ -327,6 +327,7 @@ def preparar_entrada_deterministica(
         r"liga|ligue|ligar|desliga|desligue|desligar|"
         r"cria|crie|criar|apaga|apague|apagar|remove|remova|remover|"
         r"deleta|delete|deletar|exclui|exclua|excluir|"
+        r"escreve|escreva|escrever|grava|grave|gravar|"
         r"pesquisa|pesquise|pesquisar|busca|busque|buscar|procura|procure|procurar|"
         r"organiza|organize|organizar|move|mova|mover|renomeia|renomeie|renomear|"
         r"salva|salve|salvar|guarda|guarde|guardar|adiciona|adicione|adicionar|"
@@ -355,6 +356,7 @@ def preparar_entrada_deterministica(
             "toca", "toque", "liga", "ligar", "desliga", "desligar",
             "pesquisa", "pesquisar", "busca", "buscar", "procura", "procurar",
             "move", "mover", "renomeia", "renomear",
+            "escreve", "escrever", "escreva", "grava", "gravar", "grave",
             "essa tambem", "essa também", "esse tambem", "esse também",
             "apaga", "apagar", "deleta", "deletar", "remove", "remover", "exclui", "excluir",
         ]
@@ -821,12 +823,29 @@ def detectar_fechar_alvo(
     sites = sites_diretos if sites_diretos is not None else set()
     apps = apps_map if apps_map is not None else {}
 
-    m_close = re.search(r"\b(fecha|fechar|mata|derruba|encerra|encerrar)\s+(?:o|a|os|as|um|uma|essa|esse)?\s*(.+)$", base)
+    if re.fullmatch(
+        r"(?:fecha|fechar|encerra|encerrar|limpa|limpar)\s+"
+        r"(?:(?:as|essas)\s+)?abas\s+"
+        r"(?:paradas|inativas|ociosas|sem\s+uso)[.!?]*",
+        base,
+        flags=re.IGNORECASE,
+    ):
+        return {"intent": "CLOSE_IDLE_TABS", "params": params()}
+
+    # Artigos longos vêm primeiro e a fronteira impede ``a`` de consumir o
+    # começo de ``as``. Antes, "fecha as abas" produzia o alvo ``s abas``.
+    m_close = re.search(
+        r"\b(fecha|fechar|mata|derruba|encerra|encerrar)\s+"
+        r"(?:(?:essas|esses|essa|esse|estas|estes|esta|este|uma|um|as|os|a|o)\b\s*)?"
+        r"(.+)$",
+        base,
+        flags=re.IGNORECASE,
+    )
     if not m_close:
         return None
 
     alvo = re.sub(r"^(aba|site|janela|programa|app|aplicativo)\s+(do|da|de)?\s*", "", (m_close.group(2) or "").strip()).strip()
-    alvo = re.sub(r"^(o|a|os|as|um|uma)\s+", "", alvo).strip()
+    alvo = re.sub(r"^(?:uma|um|as|os|a|o)\s+", "", alvo).strip()
     if re.fullmatch(
         r"(?:(?:programa|app|aplicativo|janela)\s+)?"
         r"(?:que\s+(?:voce\s+)?(?:acabou\s+de\s+)?abrir|"
@@ -865,7 +884,11 @@ def detectar_web_e_youtube(
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
     sites = sites_diretos if sites_diretos is not None else set()
 
-    m_google = re.search(r"\b(pesquisa|pesquisar|busca|buscar|procura|procurar)\s+(?:no google\s+)?(?:sobre\s+)?(.+)$", base)
+    m_google = re.search(
+        r"\b(pesquisa|pesquisar|busca|buscar|procura|procurar)\s+"
+        r"(?:no google\s+)?(?:(?:sobre|por)\s+)?(.+)$",
+        base,
+    )
     if m_google and "youtube" not in t:
         query = (m_google.group(2) or "").strip()
         if query:

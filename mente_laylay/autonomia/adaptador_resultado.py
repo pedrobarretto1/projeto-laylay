@@ -31,6 +31,7 @@ STATUS_EXECUCAO_FALHOU = frozenset({
 STATUS_FALA_CALMA = frozenset({
     "emails_lidos",
     "emails_sincronizados",
+    "notificacoes_lidas",
     "clima_consultado",
     "volume_ajustado",
     "volume_aumentado",
@@ -102,7 +103,16 @@ class AdaptadorResultadoOperacional:
         *,
         confirmado: bool | None = None,
         detalhe: str = "",
+        alvo_resolvido: str = "",
+        params_resolvidos: Dict[str, Any] | None = None,
     ) -> None:
+        """Publica também as resoluções descobertas durante a execução.
+
+        ``self.params`` descreve o pedido recebido, mas alguns executores só
+        descobrem o alvo real durante a ação. Devolver esse alvo no contrato
+        canônico mantém referências como ``ele`` e ``essa também`` ligadas ao
+        resultado efetivamente confirmado.
+        """
         registrar = self.ctx.get("_registrar_resultado_execucao")
         if not callable(registrar):
             return
@@ -117,11 +127,19 @@ class AdaptadorResultadoOperacional:
                 executou = (
                     status_norm not in STATUS_EXECUCAO_FALHOU
                 )
+            params_finais = dict(self.params)
+            if isinstance(params_resolvidos, dict):
+                params_finais.update({
+                    chave: valor
+                    for chave, valor in params_resolvidos.items()
+                    if valor is not None and str(valor).strip()
+                })
+            alvo_final = str(alvo_resolvido or "").strip() or self.alvo_dos_params()
             contrato = ResultadoAcao(
                 intent=self.intent,
                 status=status,
-                alvo=self.alvo_dos_params(),
-                params=self.params,
+                alvo=alvo_final,
+                params=params_finais,
                 executou=bool(executou),
                 confirmado=(
                     inferir_confirmacao(status, bool(executou))
@@ -167,13 +185,19 @@ class AdaptadorResultadoOperacional:
             )
         contexto_fala = self.contexto_fala()
         modo_jogo_ativo = bool(contexto_fala.get("modo_jogo_ativo"))
-        fala_base = fala_por_estado_acao(
-            status,
-            fallback=fallback,
-            alvo=alvo,
-            contexto=contexto_fala,
-            texto_usuario=self.texto_original,
-        )
+        if self.intent == "NOTIFICATIONS" and str(fallback or "").strip():
+            # O resumo da central já é o dado observado. Passá-lo pelo gerador
+            # de confirmação antes de montar o contrato acrescentava uma
+            # âncora operacional artificial e podia rebaixá-lo a incerteza.
+            fala_base = str(fallback).strip()
+        else:
+            fala_base = fala_por_estado_acao(
+                status,
+                fallback=fallback,
+                alvo=alvo,
+                contexto=contexto_fala,
+                texto_usuario=self.texto_original,
+            )
         if status_norm in STATUS_RESULTADO_JA_SATISFEITO and not modo_jogo_ativo:
             objeto = str(alvo or "isso").strip()
             if status_norm in {"ja_aberto_focado", "site_ja_aberto_focado"}:
@@ -321,6 +345,9 @@ class AdaptadorResultadoOperacional:
             "protocolo_aberto": f"Abrindo {nome} pelo protocolo do sistema.",
             "nao_encontrado": f"Não achei {nome}.",
             "janela_maximizada": f"{nome.title()} maximizado e em foco.",
+            "maximizacao_nao_confirmada": (
+                f"{nome} está aberto, mas eu não consegui confirmar que a janela foi maximizada."
+            ),
             "falha_execucao": (
                 f"Tentei mexer em {nome}, mas não rolou de verdade."
             ),

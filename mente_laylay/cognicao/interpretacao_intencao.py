@@ -20,7 +20,7 @@ from mente_laylay.especialistas.capacidades import INTENTS_SOMENTE_LEITURA
 
 
 PROMPT_INTERPRETACAO = """Você é o cérebro da assistente Laylay. Analise a frase do usuário e retorne apenas um JSON válido com:
-intent: (PLAYLIST_ADD, PLAYLIST_PLAY, PLAYLIST_LIST, PLAYLIST_DELETE, PLAYLIST_MOVE, LAYLAY_PLAYLIST_LIST, LAYLAY_PLAYLIST_COPY, LEARNING_QUERY, MEDIA_CONTROL, CANCELAR_ACAO, CLOSE_TAB, CLOSE_APP, APP_OPEN, OPEN_URL, MAXIMIZE_WINDOW, VOLUME, MUSIC_SEARCH, SITE_ENTER, SEARCH, WEATHER, RESUMIR_PAGINA, FILE_SEARCH, FILE_OPEN_RESULT, CREATE_FOLDER, CREATE_FILE, DELETE_ITEM, LISTAR_PLAYLISTS, TOCAR_PLAYLIST, TOCAR_PLAYLIST_SHUFFLE, AGENDAR_LEMBRETE, AGENDAR_ACAO, LISTAR_AGENDAMENTOS, CANCELAR_AGENDAMENTO, IOT_CONTROL, IOT_STATUS, IOT_LIST, SUGGEST_ACTION)
+intent: (PLAYLIST_CREATE, PLAYLIST_ADD, PLAYLIST_PLAY, PLAYLIST_LIST, PLAYLIST_DELETE, PLAYLIST_MOVE, LAYLAY_PLAYLIST_LIST, LAYLAY_PLAYLIST_PLAY, LAYLAY_PLAYLIST_COPY, LEARNING_QUERY, MEDIA_CONTROL, CANCELAR_ACAO, CLOSE_TAB, CLOSE_APP, APP_OPEN, OPEN_URL, MAXIMIZE_WINDOW, VOLUME, MUSIC_SEARCH, SITE_ENTER, SEARCH, WEATHER, RESUMIR_PAGINA, FILE_SEARCH, FILE_OPEN_RESULT, CREATE_FOLDER, CREATE_FILE, DELETE_ITEM, LISTAR_PLAYLISTS, TOCAR_PLAYLIST, TOCAR_PLAYLIST_SHUFFLE, AGENDAR_LEMBRETE, AGENDAR_ACAO, LISTAR_AGENDAMENTOS, CANCELAR_AGENDAMENTO, IOT_CONTROL, IOT_STATUS, IOT_LIST, SUGGEST_ACTION)
 params: (dicionário com nome_playlist, nome_app, nivel_volume, query, acao, etc)
 Regras:
 - Retorne SOMENTE o JSON (sem markdown, sem texto extra).
@@ -92,7 +92,7 @@ Regras:
 - SUGGEST_ACTION usa params.acao_sugerida={"intent":"INTENT_REAL","params":{...}}, params.descricao e params.fala em forma de pergunta.
 - Só sugira quando a relação entre necessidade e ação for clara. Comentários, opiniões e desabafos não exigem sugestão forçada.
 - A ação sugerida deve usar um intent executável existente; nunca invente comandos ou afirme que já executou.
-- Pedido sobre playlists da própria Laylay usa LAYLAY_PLAYLIST_LIST ou LAYLAY_PLAYLIST_COPY. "Minhas playlists" pertence ao usuário; "suas playlists", "playlists que você criou/montou" e "playlists da Laylay" pertencem à Laylay.
+- Pedido sobre playlists da própria Laylay usa LAYLAY_PLAYLIST_LIST, LAYLAY_PLAYLIST_PLAY ou LAYLAY_PLAYLIST_COPY. "Minhas playlists" pertence ao usuário; "suas playlists", "playlists que você criou/montou" e "playlists da Laylay" pertencem à Laylay.
 - Pergunta sobre o que a Laylay aprendeu, guardou ou lembra do que o usuário ensinou usa LEARNING_QUERY. Pergunta abstrata sobre como IA aprende continua sendo conversa.
 - As playlists próprias são curadorias locais montadas com playlists e histórico confirmados. Nunca invente uma curadoria, faixa ou conteúdo ausente do retrato real, e nunca toque ou copie uma faixa sem pedido atual.
 - SEARCH é para perguntas factuais que realmente exigem pesquisa.

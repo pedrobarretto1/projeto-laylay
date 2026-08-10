@@ -11,6 +11,8 @@ import re
 from dataclasses import asdict, dataclass
 from typing import Any, Mapping
 
+from mente_laylay.cognicao.reacao_social_curta import classificar_provocacao_curta
+
 
 IDENTIDADE_VOZ_LAYLAY = (
     "Você é Laylay: uma amiga digital carismática, esperta e presente; doce sem ser "
@@ -94,6 +96,11 @@ POSTURAS = {
         "acompanhar a brincadeira sem abandonar o assunto real",
         "debochado_afetuoso", True, 1, 1, 3, "cumplicidade",
     ),
+    "firme_debochada": PosturaAmizade(
+        "firme_debochada", "firme_e_solto",
+        "reagir à provocação atual sem tratá-la como erro técnico, sem escalar a ofensa e sem inventar contexto",
+        "debochado_com_limite", True, 1, 1, 2, "limite_social",
+    ),
     "opinativa": PosturaAmizade(
         "opinativa", "seguro_e_natural",
         "dar uma posição clara com uma razão concreta",
@@ -142,6 +149,12 @@ def selecionar_postura_amizade(
         or dict(mente.get("funcao_comunicativa_atual") or {}).get("funcao")
         or ""
     ).strip().casefold()
+
+    provocacao = classificar_provocacao_curta(texto)
+    if provocacao:
+        if provocacao.get("tom") == "limite_firme":
+            return POSTURAS["firme_debochada"]
+        return POSTURAS["brincalhona"]
 
     if funcao in {"desabafo", "inseguranca", "decepcao", "frustracao"} or re.search(
         r"\b(?:to|tô|estou)\s+(?:cansad[oa]|triste|mal|preocupad[oa]|ansios[oa])\b|"

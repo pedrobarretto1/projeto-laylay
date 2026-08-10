@@ -60,6 +60,7 @@ def inferir_habilidade_autoaprimoramento(resultado: Dict[str, Any] = None, texto
     intent = str(resultado.get("intent") or resultado.get("acao") or resultado.get("action") or "").lower()
     t = f"{intent} {texto}"
     mapa_intent = {
+        "PLAYLIST_CREATE": "playlist",
         "PLAYLIST_ADD": "playlist",
         "PLAYLIST_PLAY": "playlist",
         "PLAYLIST_LIST": "playlist",

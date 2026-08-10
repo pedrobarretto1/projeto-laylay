@@ -8,6 +8,7 @@ from typing import Any, Dict
 STATUS_RESULTADO_JA_SATISFEITO = {
     "ja_aberto_focado", "site_ja_aberto_focado",
     "ja_estava_ligado", "ja_estava_desligado",
+    "playlist_ja_existia",
 }
 
 STATUS_RESULTADO_CANCELADO = {
@@ -21,14 +22,17 @@ STATUS_RESULTADO_CONFIRMADO = {
     "app_fechado_em_vez_de_aba", "app_focado", "app_iniciado_focado",
     "ja_aberto_focado",
     "janela_maximizada", "pasta_criada", "subpasta_criada", "arquivo_criado",
+    "conteudo_atualizado",
     "item_deletado", "item_movido_para_pasta", "emails_lidos",
-    "emails_sincronizados", "remetente_silenciado", "clima_consultado",
+    "emails_sincronizados", "notificacoes_lidas", "remetente_silenciado",
+    "clima_consultado",
     "briefing_repetido", "dispositivos_listados",
     "playlists_listadas",
     "app_aberto", "url_aberta", "site_aberto",
     "url_aberta_via_app", "site_aberto_via_app",
     "musica_aberta", "musica_reproduzindo",
     "playlist_aberta", "playlist_aberta_pc_b",
+    "playlist_criada",
     "playlist_deletada", "playlist_musica_adicionada", "acao_agendada",
     "lembrete_agendado", "agendamento_cancelado", "movido_para_lixeira",
     "nota_guardada", "notas_listadas", "discussao_guardada",

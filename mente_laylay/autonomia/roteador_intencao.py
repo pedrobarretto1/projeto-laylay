@@ -266,6 +266,23 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
     if despacho_integracoes.tratado:
         return despacho_integracoes.retorno
 
+    if intent == "RESUMIR_PAGINA":
+        # O resumo assíncrono é iniciado pelo fluxo prioritário, que possui o
+        # loop do WebSocket e registra o resultado real ao concluir. Se este
+        # intent chegar ao roteador sem aquele executor, a ação não ocorreu.
+        adaptador_resultado.marcar_resultado(
+            "executor_indisponivel",
+            executou=False,
+            confirmado=False,
+        )
+        if callable(falar):
+            falar(
+                "Não consegui iniciar a leitura da página por este caminho.",
+                "calma",
+                1,
+            )
+        return False
+
     if callable(falar):
         falar(_escolher_fala_variada([
             "Eu não fechei tua intenção direito agora. Tenta falar de outro jeito pra mim.",

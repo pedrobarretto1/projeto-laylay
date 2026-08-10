@@ -79,6 +79,17 @@ def test_erro_de_termo_e_corrigido_quando_a_gramatica_prova_o_dominio() -> None:
     ) == "coloca uma musica"
 
 
+def test_corrige_alias_conhecido_e_termo_de_janela_sem_aproximar_nomes_livres() -> None:
+    runtime = _runtime()
+
+    assert runtime.normalizar_com_apelidos(
+        "abre o operra e maximiza a janlea"
+    ) == "abre o opera e maximiza a janela"
+    assert runtime.normalizar_com_apelidos(
+        "cria um arquivo chamado operra"
+    ) == "cria um arquivo chamado operra"
+
+
 def test_erro_inequivoco_em_termo_operacional_usa_aproximacao_compartilhada() -> None:
     runtime = _runtime()
 

@@ -96,6 +96,18 @@ diagnóstico sanitizado, noção de capacidade e falha cooperativa parcial.
 - o diagnóstico da mente informa tentativas, resoluções e a rota usada, mas a
   camada de linguagem natural nunca autoriza execução por conta própria.
 
+### Continuidade operacional de playlists e arquivos — concluída
+
+- o executor publica no contexto canônico o nome e o caminho realmente
+  resolvidos, em vez de conservar pronomes como `ela` e `ele` como alvos;
+- referências como `essa também`, `o que tem nela?`, `por que não?` e
+  `quero ele de volta` permanecem ligadas à ação correta;
+- playlists vazias podem ser criadas explicitamente com linguagem natural,
+  sem converter o pedido em adição de uma faixa inexistente;
+- comentários sobre uma falha anterior não são confundidos com uma nova ordem;
+- validação automatizada: 2.103 testes, 8 testes ignorados e 45 subtestes
+  aprovados na suíte completa.
+
 ## Ordem planejada
 
 ### 1. Área de transferência inteligente — concluída

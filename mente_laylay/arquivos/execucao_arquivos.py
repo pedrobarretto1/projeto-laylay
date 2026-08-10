@@ -53,10 +53,31 @@ def executar_intencao_arquivos(
         params.get("alvo") or params.get("nome") or params.get("pasta") or params.get("arquivo") or "arquivo"
     ).strip()
 
-    def _marcar_resultado(status: str, executou: bool | None) -> None:
+    def _marcar_resultado(
+        status: str,
+        executou: bool | None,
+        *,
+        alvo_resolvido: str = "",
+        params_resolvidos: Dict[str, Any] | None = None,
+        confirmado: bool | None = None,
+    ) -> None:
         resultado_fala["status"] = str(status or "")
         resultado_fala["executou"] = executou
-        marcar_resultado_original(status, executou)
+        if alvo_resolvido:
+            resultado_fala["alvo"] = str(alvo_resolvido)
+        if isinstance(params_resolvidos, dict):
+            resultado_fala["params_resolvidos"] = dict(params_resolvidos)
+        kwargs: Dict[str, Any] = {}
+        if alvo_resolvido:
+            kwargs["alvo_resolvido"] = str(alvo_resolvido)
+        if isinstance(params_resolvidos, dict):
+            kwargs["params_resolvidos"] = dict(params_resolvidos)
+        if confirmado is not None:
+            kwargs["confirmado"] = confirmado
+        try:
+            marcar_resultado_original(status, executou, **kwargs)
+        except TypeError:
+            marcar_resultado_original(status, executou)
 
     marcar_resultado = _marcar_resultado
 
@@ -70,8 +91,15 @@ def executar_intencao_arquivos(
         contrato = ResultadoAcao(
             intent=intent,
             status=status,
-            alvo=alvo_planejado,
-            params=params,
+            alvo=str(resultado_fala.get("alvo") or alvo_planejado),
+            params={
+                **params,
+                **(
+                    dict(resultado_fala.get("params_resolvidos") or {})
+                    if isinstance(resultado_fala.get("params_resolvidos"), dict)
+                    else {}
+                ),
+            },
             executou=resultado_fala.get("executou"),
             confirmado=inferir_confirmacao(status, resultado_fala.get("executou")),
             texto_usuario=texto_original,
@@ -159,7 +187,23 @@ def executar_intencao_arquivos(
             if callable(log):
                 log(f"⚠️ [ARQUIVOS:PESQUISA] falha isolada: {type(erro).__name__}")
             pesquisa = {"ok": False, "status": "falha_execucao", "resultados": []}
-        resultados = [dict(item) for item in list(pesquisa.get("resultados") or []) if isinstance(item, dict)]
+        resultados_brutos = [
+            dict(item)
+            for item in list(pesquisa.get("resultados") or [])
+            if isinstance(item, dict)
+        ]
+        resultados = []
+        caminhos_vistos: set[str] = set()
+        for item in resultados_brutos:
+            caminho_item = str(item.get("caminho") or "").strip()
+            if caminho_item:
+                chave = os.path.normcase(os.path.abspath(caminho_item))
+            else:
+                chave = f"nome:{str(item.get('nome') or '').strip().casefold()}"
+            if chave in caminhos_vistos:
+                continue
+            caminhos_vistos.add(chave)
+            resultados.append(item)
         if not pesquisa.get("ok"):
             marcar_resultado(str(pesquisa.get("status") or "falha_execucao"), False)
             falar("Não consegui concluir essa busca nos arquivos agora.", "calma", 1)
@@ -219,6 +263,13 @@ def executar_intencao_arquivos(
         marcar_resultado("arquivo_aberto" if sucesso else "falha_abertura", sucesso)
         if sucesso:
             registrar_arquivo(caminho, "arquivos")
+            if callable(registrar_estrutura_arquivo_recente):
+                registrar_estrutura_arquivo_recente({
+                    "tipo": "arquivo",
+                    "arquivo_nome": nome,
+                    "caminho": caminho,
+                    "target": destino_val,
+                })
             falar(f"Abri {nome} para você.", "feliz", 1)
         else:
             falar(f"Encontrei {nome}, mas não consegui abri-lo agora.", "calma", 1)
@@ -494,6 +545,7 @@ def executar_intencao_arquivos(
         conteudo_ref = str(params.get("conteudo_ref") or "").strip()
         conteudo_hash = str(params.get("conteudo_hash") or "").strip()
         sobrescrever_confirmado = params.get("sobrescrever_confirmado") is True
+        editar_existente = params.get("editar_existente") is True
         conteudo = str(params.get("conteudo") or params.get("texto") or "")
         if conteudo_ref:
             if not callable(resolver_referencia_cooperativa):
@@ -546,6 +598,21 @@ def executar_intencao_arquivos(
             caminho = os.path.join(pasta_base, arquivo_limpo)
         else:
             caminho = resolver_caminho_local(arquivo_limpo)
+        if editar_existente and not item_local_existe(caminho, "arquivo"):
+            marcar_resultado(
+                "arquivo_nao_encontrado",
+                False,
+                alvo_resolvido=caminho,
+                params_resolvidos={"alvo": caminho, "caminho": caminho},
+                confirmado=False,
+            )
+            if callable(falar):
+                falar(
+                    f"Não encontrei {os.path.basename(caminho) or arquivo_limpo} para escrever nele.",
+                    "calma",
+                    1,
+                )
+            return True
         resultado_seguro = {}
         if conteudo_ref:
             if callable(escrever_arquivo_texto_seguro):
@@ -563,7 +630,6 @@ def executar_intencao_arquivos(
                 sucesso = item_local_existe(caminho, "arquivo")
         if sucesso:
             registrar_arquivo(caminho, "arquivo")
-            marcar_resultado("arquivo_criado", True)
             if callable(registrar_estrutura_arquivo_recente):
                 try:
                     registrar_estrutura_arquivo_recente({
@@ -586,13 +652,29 @@ def executar_intencao_arquivos(
                         dominio="arquivos",
                         fase="pos_criacao",
                     )
+            status_sucesso = "conteudo_atualizado" if editar_existente else "arquivo_criado"
+            marcar_resultado(
+                status_sucesso,
+                True,
+                alvo_resolvido=caminho,
+                params_resolvidos={
+                    "alvo": caminho,
+                    "caminho": caminho,
+                    "nome_arquivo": arquivo_limpo,
+                    "tipo": "arquivo",
+                },
+                confirmado=True,
+            )
         else:
             marcar_resultado(
                 str(resultado_seguro.get("status") or "falha_execucao"), False,
             )
         if callable(falar):
             falar(
-                _escolher_fala_variada([
+                (
+                    f"Escrevi o texto em {arquivo_limpo} e conferi o arquivo."
+                    if editar_existente and sucesso
+                    else _escolher_fala_variada([
                     f"Criei {arquivo_limpo} dentro de {pasta}.",
                     f"Pronto, {arquivo_limpo} já está em {pasta}.",
                 ] if pasta else [
@@ -602,7 +684,8 @@ def executar_intencao_arquivos(
                 ]) if sucesso else _escolher_fala_variada([
                     f"Não consegui criar {arquivo_limpo}.",
                     f"O arquivo {arquivo_limpo} não saiu direito.",
-                ]),
+                ])
+                ),
                 "calma" if sucesso else "irritada",
                 1 if sucesso else 2,
             )
@@ -670,7 +753,16 @@ def executar_intencao_arquivos(
             return True
         resultado_lixeira = solicitar_exclusao(caminho_resolvido)
         if resultado_lixeira.requer_confirmacao:
-            marcar_resultado("aguardando_confirmacao", False)
+            marcar_resultado(
+                "aguardando_confirmacao",
+                False,
+                alvo_resolvido=resultado_lixeira.caminho or caminho_resolvido,
+                params_resolvidos={
+                    "alvo": resultado_lixeira.caminho or caminho_resolvido,
+                    "caminho": resultado_lixeira.caminho or caminho_resolvido,
+                    "tipo": tipo_alvo,
+                },
+            )
             if callable(falar):
                 falar(
                     f"Confirma que quer enviar esse item para a lixeira? O caminho completo é {resultado_lixeira.caminho}.",

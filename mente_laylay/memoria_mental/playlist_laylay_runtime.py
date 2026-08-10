@@ -7,6 +7,7 @@ mente musical compartilhada por callbacks para nao criar um estado paralelo.
 from __future__ import annotations
 
 import os
+import re
 import unicodedata
 from typing import Any, Callable, Dict, Mapping
 
@@ -124,26 +125,95 @@ class PlaylistLaylayRuntime:
         }
         return aliases.get(chave, chave.replace("_", " ").strip())
 
+    def _resolver_chave(self, nome: str, data: Mapping[str, Any]) -> str:
+        """Resolve nome falado, alias ou ordinal sem misturar posse."""
+        nome_bruto = str(nome or "").strip()
+        chaves = [
+            str(chave) for chave, itens in sorted(
+                data.items(), key=lambda kv: str(kv[0]).casefold()
+            )
+            if isinstance(itens, list)
+        ]
+        ordinal = re.fullmatch(r"#?\s*(\d+)", nome_bruto)
+        if ordinal:
+            indice = int(ordinal.group(1)) - 1
+            return chaves[indice] if 0 <= indice < len(chaves) else ""
+
+        nome_limpo = limpar_nome_playlist(nome_bruto)
+        if not nome_limpo:
+            return chaves[0] if chaves else ""
+        nome_norm = self._nome_falado(nome_limpo).casefold()
+        aliases = {
+            "xodós que eu separei": "xodos_que_eu_seperei",
+            "xodos que eu separei": "xodos_que_eu_seperei",
+            "xodos que eu seperei": "xodos_que_eu_seperei",
+            "climas que combinam comigo": "climas_que_combinam_com_voce",
+            "climas que combinam com você": "climas_que_combinam_com_voce",
+            "climas que combinam com voce": "climas_que_combinam_com_voce",
+        }
+        chave_real = aliases.get(nome_norm, nome_limpo)
+        if chave_real in data:
+            return chave_real
+        candidatos = [
+            chave for chave in chaves
+            if self._nome_falado(chave).casefold() == nome_norm
+        ]
+        return candidatos[0] if len(candidatos) == 1 else ""
+
+    def detectar_nome_direto_contextual(self, texto: str) -> str:
+        """Confirma um nome falado contra as curadorias realmente existentes.
+
+        O detector não adivinha nem escolhe a primeira lista quando o texto
+        está vazio. Isso permite usar uma resposta curta como ``climas que
+        combinam com você`` sem transformar qualquer frase solta em playlist.
+        """
+        nome = re.sub(
+            r"^\s*(?:a\s+)?playlist\s+",
+            "",
+            str(texto or "").strip(),
+            count=1,
+            flags=re.IGNORECASE,
+        ).strip(" .,!?:;")
+        if not nome:
+            return ""
+        data = self.load()
+        chave = self._resolver_chave(nome, data)
+        return self._nome_falado(chave) if chave else ""
+
+    def selecionar(self, nome: str = "", indice_faixa: int = 0) -> dict[str, Any]:
+        """Seleciona uma playlist/faixa própria com identidade explícita."""
+        data = self.sincronizar()
+        chave = self._resolver_chave(nome, data)
+        itens = data.get(chave) if chave else None
+        if not isinstance(itens, list) or not itens:
+            return {
+                "ok": False,
+                "erro": "playlist_vazia_ou_nao_encontrada",
+                "playlist": self._nome_falado(chave or nome),
+            }
+        indice = max(0, int(indice_faixa or 0))
+        if indice >= len(itens):
+            return {
+                "ok": False,
+                "erro": "faixa_nao_encontrada",
+                "playlist": self._nome_falado(chave),
+            }
+        item = itens[indice]
+        faixa = dict(item) if isinstance(item, dict) else {"url": str(item or "")}
+        return {
+            "ok": bool(str(faixa.get("url") or "").strip()),
+            "playlist": self._nome_falado(chave),
+            "chave": chave,
+            "faixa": faixa,
+        }
+
     def listar(self, nome: str = "") -> str:
         data = self.sincronizar()
-        nome_limpo = limpar_nome_playlist(nome or "")
-        if nome_limpo:
-            nome_norm = self._nome_falado(nome_limpo).casefold()
-            aliases = {
-                "xodós que eu separei": "xodos_que_eu_seperei",
-                "xodos que eu separei": "xodos_que_eu_seperei",
-                "xodos que eu seperei": "xodos_que_eu_seperei",
-                "climas que combinam comigo": "climas_que_combinam_com_voce",
-                "climas que combinam com você": "climas_que_combinam_com_voce",
-                "climas que combinam com voce": "climas_que_combinam_com_voce",
-            }
-            chave_real = aliases.get(nome_norm, nome_limpo)
-            if chave_real not in data:
-                candidatos = [
-                    chave for chave in data
-                    if self._nome_falado(chave).casefold() == nome_norm
-                ]
-                chave_real = candidatos[0] if len(candidatos) == 1 else chave_real
+        nome_bruto = str(nome or "").strip()
+        if nome_bruto:
+            chave_real = self._resolver_chave(nome_bruto, data)
+            if not chave_real:
+                return f"Não encontrei uma playlist minha chamada {nome_bruto}."
             itens = data.get(chave_real)
             itens = itens if isinstance(itens, list) else []
             return fala_playlist_conteudo_estilosa(
@@ -221,7 +291,15 @@ class PlaylistLaylayRuntime:
         destino_usuario: str,
     ) -> dict:
         data = self.sincronizar()
-        faixa = encontrar_faixa_playlist(data, nome_playlist_laylay, musica)
+        chave = self._resolver_chave(nome_playlist_laylay, data)
+        if str(musica or "").strip() in {"", "__primeira__"}:
+            itens = data.get(chave) if chave else None
+            faixa = (
+                dict(itens[0]) if isinstance(itens, list) and itens
+                and isinstance(itens[0], dict) else None
+            )
+        else:
+            faixa = encontrar_faixa_playlist(data, chave or nome_playlist_laylay, musica)
         if not faixa:
             return {"ok": False, "erro": "nao_encontrada"}
         resultado = self.adicionar_playlist_usuario(
@@ -234,6 +312,7 @@ class PlaylistLaylayRuntime:
             "ok": bool(isinstance(resultado, dict) and resultado.get("ok")),
             "faixa": faixa,
             "destino": destino_usuario,
+            "origem": self._nome_falado(chave or nome_playlist_laylay),
         }
 
 

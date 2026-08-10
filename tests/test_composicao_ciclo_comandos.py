@@ -7,6 +7,7 @@ import pytest
 from mente_laylay.autonomia.composicao_ciclo_comandos import (
     ComposicaoCicloComandosRuntime,
 )
+from mente_laylay.autonomia.coordenador_intencao import CicloComandosRuntime
 from mente_laylay.integracao.registro_iot import registrar_iot
 from mente_laylay.integracao.registro_arquivos import registrar_arquivos_leitura
 from mente_laylay.arquivos.mutacoes import criar_arquivos_mutacao_runtime
@@ -49,6 +50,7 @@ class _MusicaLeituraNula:
 
 
 class _MusicaOperacoesNula:
+    def criar_playlist(self, _nome): return {"ok": True, "criada": True}
     def apagar_playlist(self, _nome): return False
     def adicionar_faixa(self, *_args): return False
     def mover_faixa(self, _origem, _destino, _musica=""): return {"ok": False}
@@ -288,6 +290,63 @@ def test_composicao_encaminha_api_estavel_ao_ciclo_conectado() -> None:
     assert runtime.decisao_comando_ja_avaliada("traz o opera") is True
     assert [item[0] for item in ciclo.chamadas] == [
         "intencao", "texto", "cadeia", "deterministico", "ia", "natural", "decisao",
+    ]
+
+
+def test_cadeia_resolve_cada_etapa_sem_reusar_texto_operacional_composto() -> None:
+    executadas: list[dict] = []
+
+    class Contexto:
+        @staticmethod
+        def montar():
+            return {
+                "turno_atual": {
+                    "id": "turno-composto",
+                    "modalidade": "misto",
+                    "modalidade_geral": "misto",
+                    "autoriza_execucao": True,
+                    # Simula o recorte congelado incorreto que existia no
+                    # turno inteiro e não pode contaminar a primeira etapa.
+                    "texto_operacional": "abre o primeiro resultado",
+                },
+                "retrato_turno_atual": {},
+                "continuidade_geral": {},
+            }
+
+    def detectar(texto: str):
+        normalizado = str(texto).casefold()
+        if normalizado.startswith("encontra o código"):
+            return {
+                "intent": "FILE_SEARCH",
+                "params": {"query": "código que controla a lâmpada"},
+            }
+        if normalizado == "abre o primeiro resultado":
+            return {
+                "intent": "FILE_OPEN_RESULT",
+                "params": {"caminho": r"C:\projeto\controlador.py"},
+            }
+        return None
+
+    runtime = CicloComandosRuntime(
+        namespace_getter=lambda: {
+            "_normalizar_texto_com_apelidos": lambda texto: str(texto).casefold(),
+            "_texto_depende_de_contexto": lambda _texto: False,
+            "_texto_parece_consulta_operacional": lambda _texto: True,
+            "detectar_intencao_deterministica": detectar,
+        },
+        contexto_intencao_runtime=Contexto(),
+        log=lambda *_args: None,
+    )
+    runtime.executar_intencao = (
+        lambda intencao, _texto: executadas.append(intencao) or True
+    )
+
+    assert runtime.processar_cadeia(
+        "Encontra o código que controla a lâmpada e abre o primeiro resultado",
+        "teste",
+    ) is True
+    assert [item["intent"] for item in executadas] == [
+        "FILE_SEARCH", "FILE_OPEN_RESULT",
     ]
 
 

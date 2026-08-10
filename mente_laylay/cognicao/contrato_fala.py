@@ -18,6 +18,7 @@ from mente_laylay.cognicao.geracao_concreta import (
     construir_roteiro_geracao_concreta,
     normalizar_roteiro_geracao_concreta,
 )
+from mente_laylay.cognicao.reacao_social_curta import classificar_provocacao_curta
 from mente_laylay.cognicao.normalizacao_linguagem import texto_pede_opiniao
 from mente_laylay.personalidade.proporcao_resposta import parece_pedido_reexplicacao
 
@@ -230,6 +231,15 @@ def construir_contrato_semantico_fala(
         r"descricao artistica|metafora|imagine|imagina)\b",
         base,
     ))
+    agradecimento = bool(re.fullmatch(
+        r"(?:obrigad[oa]|valeu|vlw)(?:[, ]+(?:lay|laylay))?[!?. ]*",
+        base,
+    ))
+    adiamento = bool(re.fullmatch(
+        r"(?:deixa|deixe|vamos deixar|pode deixar) (?:isso )?para depois[!?. ]*",
+        base,
+    ))
+    provocacao_curta = classificar_provocacao_curta(bruto)
 
     atos = _atos_base(planejamento)
     for ativo, nome in (
@@ -238,6 +248,9 @@ def construir_contrato_semantico_fala(
         (pergunta_bem_estar, "bem_estar"),
         (opiniao, "opiniao"),
         (esclarecimento, "esclarecimento"),
+        (agradecimento, "agradecimento"),
+        (adiamento, "adiamento"),
+        (bool(provocacao_curta), "provocacao_curta"),
     ):
         if ativo and nome not in atos:
             atos.append(nome)
@@ -261,6 +274,14 @@ def construir_contrato_semantico_fala(
         ))
     if esclarecimento:
         obrigatorios.append("explicar literalmente a fala anterior antes de acrescentar comparação")
+    if agradecimento:
+        obrigatorios.append("reconhecer o agradecimento brevemente e encerrar sem recuperar a tarefa anterior")
+    if adiamento:
+        obrigatorios.append("aceitar o adiamento em uma frase curta e literal")
+    if provocacao_curta:
+        obrigatorios.append(
+            "reagir à provocação atual como fala social, sem transformá-la em erro técnico ou assunto inventado"
+        )
     if len(atos) > 1:
         obrigatorios.append("responder a todos os atos da mensagem em uma única fala coesa")
 
@@ -278,6 +299,15 @@ def construir_contrato_semantico_fala(
         proibidas.append("não trocar uma opinião clara por abstração vaga sobre energia ou sensação")
     if esclarecimento:
         proibidas.append("não explicar uma metáfora com outra metáfora")
+    if agradecimento:
+        proibidas.append("não continuar, recomendar nem reabrir o assunto anterior depois do agradecimento")
+    if adiamento:
+        proibidas.append("não transformar um adiamento simples em metáfora, promessa ou novo assunto")
+    if provocacao_curta:
+        proibidas.extend((
+            "não pedir que o usuário repita uma provocação que já foi compreendida",
+            "não escalar a ofensa nem responder como mensagem de sistema",
+        ))
     recentes = _itens_unicos(falas_recentes, limite_item=320)[-3:]
     if recentes:
         proibidas.append("não repetir literalmente uma resposta recente")
@@ -287,6 +317,8 @@ def construir_contrato_semantico_fala(
         max_frases = 2
     if pergunta_bem_estar and not opiniao:
         max_frases = 2
+    if agradecimento or adiamento:
+        max_frases = 1
     if bool(planejamento.get("requer_execucao")):
         max_frases = 2
     if criativo:

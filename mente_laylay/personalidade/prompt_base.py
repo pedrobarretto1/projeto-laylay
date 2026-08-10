@@ -160,6 +160,7 @@ LISTA DE AÇÕES PERMITIDAS:
 - "tocar_playlist"   → inicia a reprodução de uma playlist salva (alvo = nome da playlist)
 
 - PLAYLIST
+- "playlist_create"      → cria uma playlist vazia, sem adicionar a faixa atual. (alvo = nome da playlist)
 - "adicionar_a_playlist" → cria a playlist (se não existir) e já salva a música que está tocando no momento (aba ativa do YouTube). (alvo = nome da playlist)
 - "tocar_playlist"       → inicia a reprodução de uma playlist salva. (alvo = nome da playlist)
 FALLBACKS:

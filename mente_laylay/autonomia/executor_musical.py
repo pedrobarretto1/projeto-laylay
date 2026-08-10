@@ -16,7 +16,10 @@ from mente_laylay.integracao.registro_operacoes_musicais import PortaMusicaOpera
 from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_variada
 
 
-INTENCOES_MUSICAIS = frozenset({"MUSIC_SEARCH", "LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_COPY"})
+INTENCOES_MUSICAIS = frozenset({
+    "MUSIC_SEARCH", "LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_PLAY",
+    "LAYLAY_PLAYLIST_COPY",
+})
 
 
 @dataclass(frozen=True, slots=True)
@@ -256,13 +259,92 @@ def _listar_curadoria(
     nome = str(
         params.get("nome_playlist") or params.get("playlist") or params.get("nome") or ""
     ).strip()
+    nome_resolvido = nome
+    selecionar = getattr(deps.musica_operacoes, "selecionar_curadoria", None)
+    if nome and callable(selecionar):
+        selecao = dict(selecionar(nome, 0) or {})
+        nome_resolvido = str(selecao.get("playlist") or nome).strip()
     fala = (
-        deps.musica_leitura.listar_laylay(nome)
+        deps.musica_leitura.listar_laylay(nome_resolvido)
         if deps.musica_leitura is not None
         else "Ainda não montei playlists minhas por aqui."
     )
     _falar(ctx, fala)
+    try:
+        deps.marcar_resultado(
+            "curadoria_listada",
+            executou=True,
+            confirmado=True,
+            alvo_resolvido=nome_resolvido or "playlists da Laylay",
+            params_resolvidos={"nome_playlist": nome_resolvido},
+        )
+    except TypeError:
+        deps.marcar_resultado("curadoria_listada", executou=True, confirmado=True)
     return ResultadoDespacho.concluido()
+
+
+def _tocar_curadoria(
+    params: Dict[str, Any], ctx: Dict[str, Any], deps: DependenciasExecutorMusical,
+) -> ResultadoDespacho:
+    nome = str(
+        params.get("nome_playlist") or params.get("playlist") or params.get("nome") or ""
+    ).strip()
+    selecionar = getattr(deps.musica_operacoes, "selecionar_curadoria", None)
+    selecao = dict(selecionar(nome, 0) or {}) if callable(selecionar) else {}
+    playlist = str(selecao.get("playlist") or nome or "uma das minhas playlists").strip()
+    faixa_bruta = selecao.get("faixa")
+    faixa = dict(faixa_bruta) if isinstance(faixa_bruta, dict) else {}
+    url = str(faixa.get("url") or "").strip()
+    titulo = str(faixa.get("titulo") or "a primeira faixa").strip()
+    if not selecao.get("ok") or not _url_video_youtube(url):
+        try:
+            deps.marcar_resultado(
+                "curadoria_nao_encontrada", executou=False, confirmado=False,
+                alvo_resolvido=playlist,
+            )
+        except TypeError:
+            deps.marcar_resultado("curadoria_nao_encontrada", executou=False, confirmado=False)
+        _falar(ctx, f"Não achei uma faixa reproduzível na minha playlist {playlist}.")
+        return ResultadoDespacho.concluido(False)
+
+    evidencia = _normalizar_evidencia_execucao(deps.abrir_url_musical(url, query=""))
+    ok = bool(evidencia.get("ok"))
+    confirmado = evidencia.get("confirmado") if ok else False
+    status = (
+        "playlist_laylay_reproduzindo" if ok and confirmado is True
+        else "playlist_laylay_enviada_sem_confirmacao" if ok
+        else "falha_execucao"
+    )
+    try:
+        deps.marcar_resultado(
+            status,
+            executou=ok,
+            confirmado=confirmado,
+            alvo_resolvido=playlist,
+            params_resolvidos={
+                "nome_playlist": playlist,
+                "alvo_executado": titulo,
+                "alvo_executado_url": url,
+            },
+        )
+    except TypeError:
+        deps.marcar_resultado(status, executou=ok, confirmado=confirmado)
+    if ok and confirmado is True:
+        fala = f"Escolhi {titulo} da minha playlist {playlist} e confirmei a reprodução."
+    elif ok:
+        fala = (
+            f"Abri {titulo} da minha playlist {playlist}, mas o player ainda não "
+            "confirmou o áudio."
+        )
+    else:
+        fala = f"Tentei abrir {titulo} da minha playlist {playlist}, mas o navegador recusou."
+    if callable(deps.falar_por_status):
+        deps.falar_por_status(
+            status, fala, alvo=playlist, executou=ok, confirmado=confirmado,
+        )
+    else:
+        _falar(ctx, fala)
+    return ResultadoDespacho.concluido(ok)
 
 
 def _copiar_curadoria(
@@ -341,4 +423,6 @@ def executar_intencao_musical(
         return _pesquisar(params, texto_original, ctx, deps)
     if intent == "LAYLAY_PLAYLIST_LIST":
         return _listar_curadoria(params, ctx, deps)
+    if intent == "LAYLAY_PLAYLIST_PLAY":
+        return _tocar_curadoria(params, ctx, deps)
     return _copiar_curadoria(params, ctx, deps)

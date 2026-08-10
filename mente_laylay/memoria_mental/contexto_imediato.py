@@ -138,7 +138,7 @@ def referencia_contextual_imediata(
         alvo_app = str(ultimo_params.get("nome_app") or ultimo_params.get("app") or ultimo_app or "").strip()
         if alvo_app:
             return {"tipo": "app", "alvo": alvo_app, "intencao": ultima_intencao, "params": ultimo_params}
-    if ultima_intencao in {"LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_COPY"}:
+    if ultima_intencao in {"LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_PLAY", "LAYLAY_PLAYLIST_COPY"}:
         alvo_curadoria = str(
             ultimo_params.get("nome_playlist")
             or ultimo_params.get("origem")
@@ -151,7 +151,7 @@ def referencia_contextual_imediata(
                 "intencao": ultima_intencao,
                 "params": ultimo_params,
             }
-    if ultima_intencao in {"PLAYLIST_PLAY", "PLAYLIST_ADD", "PLAYLIST_LIST", "TOCAR_PLAYLIST", "TOCAR_PLAYLIST_SHUFFLE"}:
+    if ultima_intencao in {"PLAYLIST_CREATE", "PLAYLIST_PLAY", "PLAYLIST_ADD", "PLAYLIST_LIST", "TOCAR_PLAYLIST", "TOCAR_PLAYLIST_SHUFFLE"}:
         if ultima_playlist:
             return {"tipo": "playlist", "alvo": ultima_playlist, "intencao": ultima_intencao, "params": ultimo_params}
     if ultima_intencao == "MEDIA_CONTROL":
@@ -566,6 +566,15 @@ def resolver_comando_midia_contextual(
     t_limpo = re.sub(r"\b(?:h+m+|hmm+|hum+|ahn+|ah+|tipo|entao|então|agora|lay|laylay|por favor|pfv)\b", " ", t)
     t_limpo = re.sub(r"\s+", " ", t_limpo).strip() or t
 
+    # Agradecimento encerra o pedido anterior; nunca é título, query ou ordem
+    # de reprodução só porque existe uma música recente.
+    if re.fullmatch(
+        r"(?:muito\s+)?(?:obrigado|obrigada|valeu|vlw)(?:\s+(?:lay|laylay))?",
+        t_limpo.strip(" .,!?:;"),
+        flags=re.IGNORECASE,
+    ):
+        return None
+
     # Um pedido explícito para guardar/adicionar em playlist pertence ao
     # roteador de playlist. Herdar o último contexto musical aqui transformava
     # "coloca essa música na playlist X" em replay.
@@ -588,7 +597,17 @@ def resolver_comando_midia_contextual(
     ) and ts_mente and (time.time() - ts_mente <= ttl_s)
     referencia_contextual = any(x in t_limpo for x in ["ela", "ele", "isso", "essa", "esse", "anterior", "antes"])
     menciona_midia = any(x in t_limpo for x in ["musica", "música", "som", "faixa", "trilha", "youtube", "playlist"])
-    if not (contexto_musical or menciona_midia or (referencia_contextual and midia_recente)):
+    comando_curto_midia = bool(re.fullmatch(
+        r"(?:pausa|pause|continua|continue|retoma|retome)",
+        t_limpo,
+        flags=re.IGNORECASE,
+    ))
+    if not (
+        contexto_musical
+        or menciona_midia
+        or (referencia_contextual and midia_recente)
+        or (comando_curto_midia and midia_recente)
+    ):
         return None
 
     def _params(acao: str) -> Dict[str, Any]:
@@ -601,7 +620,10 @@ def resolver_comando_midia_contextual(
     if any(x in t_limpo for x in ["toca ela de novo", "toca ele de novo", "toca isso de novo", "toca essa de novo", "recomeca", "recomeça", "reinicia a musica", "reinicia a música", "repete essa", "repete ela"]):
         print(f"🎵 [MIDIA:CONTEXTO] replay detectado -> '{t_limpo}'")
         return _params("replay")
-    if any(x in t_limpo for x in ["despausa", "despausar", "despusa", "despusar", "depausa", "depausar", "retoma", "retomar", "continua tocando", "continua ela", "continua ele", "volta a tocar"]):
+    if (
+        any(x in t_limpo for x in ["despausa", "despausar", "despusa", "despusar", "depausa", "depausar", "retoma", "retomar", "continua tocando", "continua ela", "continua ele", "volta a tocar"])
+        or re.fullmatch(r"(?:continua|continue)", t_limpo, flags=re.IGNORECASE)
+    ):
         print(f"🎵 [MIDIA:CONTEXTO] play detectado -> '{t_limpo}'")
         return _params("play")
     if any(x in t_limpo for x in ["pausa", "pausar", "pause", "para ela", "para ele", "para isso", "para a musica", "para música"]):

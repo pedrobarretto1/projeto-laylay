@@ -23,6 +23,7 @@ from mente_laylay.cognicao.guardiao_realidade_pessoal import (
 from mente_laylay.personalidade.higiene_fala import remover_residuos_operacionais
 from mente_laylay.personalidade.proporcao_resposta import parece_problema_matematico
 from mente_laylay.personalidade.contingencia_natural import fala_contingencia_natural
+from mente_laylay.personalidade.autoria_conversacional import criar_fala_autoral
 from mente_laylay.cognicao.contratos_turno import ContratoRespostaTurno
 from mente_laylay.cognicao.qualidade_comunicacao import (
     avaliar_qualidade_comunicacao,
@@ -404,7 +405,7 @@ def preparar_resposta_para_execucao(
 
     recuperavel_localmente = _saida_conversacional_recuperavel_localmente(bot_raw)
     corrigida = None
-    if not recuperavel_localmente:
+    if not recuperavel_localmente and not falha_tecnica_llm:
         corrigida = corrigir_saida_malformada_da_ia(
             texto,
             bot_raw,
@@ -593,6 +594,13 @@ def preparar_resposta_para_execucao(
         ),
         "",
     )
+    falas_recentes_comunicacao = [
+        str(item.get("content") or "").strip()
+        for item in mensagens_comunicacao
+        if isinstance(item, Mapping)
+        and str(item.get("role") or "").strip().casefold() == "assistant"
+        and str(item.get("content") or "").strip()
+    ][-5:]
     avaliacao_comunicacao = (
         avaliar_qualidade_comunicacao(
             texto,
@@ -605,12 +613,20 @@ def preparar_resposta_para_execucao(
     )
     if avaliacao_comunicacao.get("requer_reparo"):
         problemas = list(avaliacao_comunicacao.get("problemas") or [])
+        somente_consultiva = bool(avaliacao_comunicacao.get("somente_consultiva"))
         registrar_log(
-            "🧭 [COMUNICAÇÃO] reparo semântico solicitado | "
+            "🧭 [COMUNICAÇÃO] "
+            + ("observação consultiva | " if somente_consultiva else "reparo semântico solicitado | ")
             + ",".join(problemas)
         )
+        if somente_consultiva:
+            # Uma preferência estilística não pode apagar uma fala completa da
+            # LLM. Ela fica disponível para diagnóstico e melhoria futura, mas
+            # não adiciona latência, não chama reparo e não produz fallback.
+            avaliacao_comunicacao = {**avaliacao_comunicacao, "requer_reparo": False}
         fala_reparada = ""
-        if callable(enviar_mensagem_cb):
+        reparo_modelo_indisponivel = False
+        if not somente_consultiva and callable(enviar_mensagem_cb):
             try:
                 reparada_raw = enviar_mensagem_cb(
                     montar_mensagens_reparo_comunicacao(
@@ -622,7 +638,11 @@ def preparar_resposta_para_execucao(
                     _com_tools=False,
                     max_tokens=360,
                     modo_rapido=True,
+                    timeout=12,
                     _prioridade_interativa=True,
+                )
+                reparo_modelo_indisponivel = _fala_representa_falha_tecnica_llm(
+                    reparada_raw
                 )
                 candidata, comandos_reparo = limpar_resposta_da_ia(
                     reparada_raw,
@@ -637,12 +657,19 @@ def preparar_resposta_para_execucao(
                 )
                 if candidata and not comandos_reparo and segunda_avaliacao.get("aceita"):
                     fala_reparada = candidata
+                elif candidata:
+                    registrar_log(
+                        "🧭 [COMUNICAÇÃO] reparo rejeitado | "
+                        + ",".join(segunda_avaliacao.get("problemas") or ["motivo_desconhecido"])
+                    )
             except Exception as erro:
                 registrar_log(
                     "⚠️ [COMUNICAÇÃO] tentativa de reparo falhou: "
                     f"{type(erro).__name__}"
                 )
-        if fala_reparada:
+        if somente_consultiva:
+            pass
+        elif fala_reparada:
             fala_limpa = fala_reparada
             bot_raw = json.dumps(
                 {"fala": fala_reparada, "comandos": []},
@@ -651,25 +678,77 @@ def preparar_resposta_para_execucao(
             comunicacao_autocorrigida = True
             registrar_log("🧭 [COMUNICAÇÃO] resposta reparada antes da fala e da memória.")
         else:
-            fala_limpa = contingencia_comunicacao(
+            fala_segura = contingencia_comunicacao(
                 texto,
                 foco=avaliacao_comunicacao.get("foco"),
                 contrato_reparo=avaliacao_comunicacao.get("contrato_reparo"),
+                falas_evitar=falas_recentes_comunicacao,
             )
+            autoria = criar_fala_autoral(
+                texto,
+                fala_segura,
+                enviar_mensagem=None if reparo_modelo_indisponivel else enviar_mensagem_cb,
+                mensagens=mensagens_comunicacao,
+                foco=avaliacao_comunicacao.get("foco"),
+                contrato_reparo=avaliacao_comunicacao.get("contrato_reparo"),
+            )
+            fala_limpa = fala_segura
+            if autoria.usada_llm:
+                avaliacao_autoral = avaliar_qualidade_comunicacao(
+                    texto,
+                    autoria.fala,
+                    plano=plano_comunicacao,
+                    ultima_resposta=ultima_resposta_comunicacao,
+                )
+                if avaliacao_autoral.get("aceita"):
+                    fala_limpa = autoria.fala
+                    comunicacao_autocorrigida = True
+                    registrar_log(
+                        "✍️ [COMUNICAÇÃO] Laylay criou a contingência final com voz própria."
+                    )
+                else:
+                    registrar_log(
+                        "⚠️ [COMUNICAÇÃO] autoria final rejeitada | "
+                        + ",".join(
+                            avaliacao_autoral.get("problemas")
+                            or ["contrato_nao_preservado"]
+                        )
+                    )
+            else:
+                registrar_log(
+                    "⚠️ [COMUNICAÇÃO] autoria final indisponível | "
+                    f"motivo={autoria.motivo_fallback or 'desconhecido'}"
+                )
             bot_raw = json.dumps(
                 {"fala": fala_limpa, "comandos": []},
                 ensure_ascii=False,
             )
-            registrar_falha_contingencia("qualidade_comunicacao_nao_reparada")
-            registrar_log(
-                "🧭 [COMUNICAÇÃO] reparo indisponível; usei contingência contextual."
+            estrategia_reparo = str(
+                dict(avaliacao_comunicacao.get("contrato_reparo") or {}).get("estrategia") or ""
             )
+            if autoria.usada_llm and fala_limpa == autoria.fala:
+                registrar_log(
+                    "🧭 [COMUNICAÇÃO] turno recuperado pela autoria conversacional."
+                )
+            elif estrategia_reparo == "reacao_social_curta":
+                comunicacao_autocorrigida = True
+                registrar_log(
+                    "🧭 [COMUNICAÇÃO] reação social recuperada sem expor o reparo."
+                )
+            else:
+                registrar_falha_contingencia("qualidade_comunicacao_nao_reparada")
+                registrar_log(
+                    "🧭 [COMUNICAÇÃO] reparo indisponível; usei contingência contextual."
+                )
     tipo_interacao = extrair_tipo_interacao_da_ia(bot_raw)
     emocao_resposta, nivel_emocao_resposta = extrair_emocao_da_ia(bot_raw)
     leitura_semantica = extrair_leitura_semantica_da_ia(bot_raw, texto)
     suprimir_fala = False
     if realidade_bloqueada:
-        fala_limpa = contingencia_comunicacao(texto)
+        fala_limpa = contingencia_comunicacao(
+            texto,
+            falas_evitar=falas_recentes_comunicacao,
+        )
         bot_raw = json.dumps({"fala": fala_limpa, "comandos": []}, ensure_ascii=False)
         registrar_log(
             "⚠️ [IA:REALIDADE] invenção pessoal substituída por contingência contextual."
