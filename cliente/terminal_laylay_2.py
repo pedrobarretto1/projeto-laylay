@@ -87,13 +87,16 @@ class PonteWorker(QObject):
     falha = Signal(str)
     terminou = Signal()
 
-    def __init__(self, host: str, port: int, token: str) -> None:
+    def __init__(
+        self, host: str, port: int, token: str, *, session_id: str = "",
+    ) -> None:
         super().__init__()
         self.transporte = TransporteDesktopCliente(
             host, port, token,
             ao_mensagem=self.mensagem.emit,
             ao_conexao=self.conectado.emit,
             ao_falha=self.falha.emit,
+            session_id=session_id,
         )
 
     def parar(self) -> None:
@@ -652,10 +655,19 @@ class PaginaConfiguracoes(QWidget):
 class JanelaLaylay(QMainWindow):
     enviar_json = Signal(dict)
 
-    def __init__(self, worker: PonteWorker, raiz: Path) -> None:
+    def __init__(
+        self,
+        worker: PonteWorker,
+        raiz: Path,
+        *,
+        session_id: str = "",
+        parent_pid: int = 0,
+    ) -> None:
         super().__init__()
         self.worker = worker
         self.raiz = raiz
+        self._session_id = str(session_id or "").strip()[:8]
+        self._parent_pid = max(0, int(parent_pid or 0))
         self.preferencias = QSettings("Laylay", "Terminal2")
         self._ultima_mensagem: tuple[str, str, float] = ("", "", 0.0)
         self._envios: dict[str, MensagemWidget] = {}
@@ -668,11 +680,14 @@ class JanelaLaylay(QMainWindow):
         self._voz_disponivel = False
         self._modo_pendente = False
         self._reinicio_requisicao_id = ""
+        self._timeouts_envio: dict[str, QTimer] = {}
+        self._fases_envio: dict[str, str] = {}
         self._feed_em_espera = True
         self._ultima_atividade_evento = ""
         self._limiar_auto_scroll = 96
         self._sidebar_expandida = bool(self.preferencias.value("sidebar_expandida", True, type=bool))
-        self.setWindowTitle("Laylay — Terminal 2.1")
+        titulo_sessao = f" · {self._session_id}" if self._session_id else ""
+        self.setWindowTitle(f"Laylay — Terminal 2.1{titulo_sessao}")
         self.setMinimumSize(375, 620)
         self.resize(1320, 820)
         self._montar()
@@ -1134,9 +1149,64 @@ class JanelaLaylay(QMainWindow):
         )
         if mensagem is not None:
             self._envios[mensagem_id] = mensagem
-        self.enviar_json.emit({"type": "input_submit", "id": mensagem_id, "text": texto})
         self._mostrar_indicador_pensando()
-        self.adicionar_evento("Pedido enviado", "A mente recebeu uma nova entrada.", "info")
+        enviado = bool(self.worker.enfileirar({
+            "type": "input_submit", "id": mensagem_id, "text": texto,
+        }))
+        if not enviado:
+            self._falhar_envio(
+                mensagem_id,
+                "A ponte ainda não estava pronta para receber a mensagem.",
+            )
+            return
+        self._armar_timeout_envio(mensagem_id, fase="ack", intervalo_ms=3_500)
+        self.adicionar_evento(
+            "Mensagem enviada à ponte",
+            "Aguardando a confirmação de recebimento da mente.",
+            "info",
+        )
+
+    def _armar_timeout_envio(
+        self, mensagem_id: str, *, fase: str, intervalo_ms: int,
+    ) -> None:
+        self._encerrar_timeout_envio(mensagem_id)
+        timeout = QTimer(self)
+        timeout.setSingleShot(True)
+        timeout.setInterval(max(100, int(intervalo_ms)))
+        timeout.timeout.connect(
+            lambda mid=mensagem_id: self._expirar_envio(mid)
+        )
+        self._timeouts_envio[mensagem_id] = timeout
+        self._fases_envio[mensagem_id] = str(fase)
+        timeout.start()
+
+    def _encerrar_timeout_envio(self, mensagem_id: str) -> None:
+        timeout = self._timeouts_envio.pop(str(mensagem_id or ""), None)
+        if timeout is not None:
+            timeout.stop()
+            timeout.deleteLater()
+        self._fases_envio.pop(str(mensagem_id or ""), None)
+
+    def _falhar_envio(self, mensagem_id: str, detalhe: str) -> None:
+        self._encerrar_timeout_envio(mensagem_id)
+        mensagem = self._envios.pop(mensagem_id, None)
+        if mensagem is not None:
+            mensagem.definir_status("failed", detalhe)
+        self._remover_indicador_pensando()
+        self.adicionar_evento("Mensagem não entregue", detalhe, "error")
+
+    def _expirar_envio(self, mensagem_id: str) -> None:
+        if mensagem_id not in self._envios:
+            return
+        fase = self._fases_envio.get(mensagem_id)
+        self._falhar_envio(
+            mensagem_id,
+            (
+                "A ponte não confirmou o recebimento. Tente novamente."
+                if fase == "ack"
+                else "A resposta demorou além do limite. Você pode tentar novamente."
+            ),
+        )
 
     def _mostrar_indicador_pensando(self) -> None:
         if self._indicador_pensando is not None:
@@ -1217,6 +1287,9 @@ class JanelaLaylay(QMainWindow):
             self.enviar_json.emit({"type": "ready", "id": uuid.uuid4().hex})
         elif tipo == "assistant_message":
             self._remover_indicador_pensando()
+            for mensagem_id in tuple(self._timeouts_envio):
+                self._encerrar_timeout_envio(mensagem_id)
+            self._envios.clear()
             self.adicionar_mensagem(
                 "assistant", str(msg.get("text") or ""),
                 timestamp=msg.get("timestamp"),
@@ -1233,9 +1306,18 @@ class JanelaLaylay(QMainWindow):
             if mensagem is not None:
                 if aceito:
                     mensagem.definir_status("accepted")
-                    self._envios.pop(mensagem_id, None)
+                    self._armar_timeout_envio(
+                        mensagem_id, fase="resposta", intervalo_ms=75_000,
+                    )
+                    self.adicionar_evento(
+                        "Pedido recebido",
+                        "A mente confirmou a entrada e está processando.",
+                        "success",
+                    )
                 else:
-                    mensagem.definir_status("failed", str(msg.get("message") or ""))
+                    self._falhar_envio(
+                        mensagem_id, str(msg.get("message") or "Pedido recusado."),
+                    )
         elif tipo == "state":
             self._atualizar_estado(msg)
             if isinstance(msg.get("event"), dict):
@@ -1279,7 +1361,9 @@ class JanelaLaylay(QMainWindow):
                 })
             mensagem = self._envios.get(mensagem_id)
             if mensagem is not None:
-                mensagem.definir_status("failed", str(msg.get("message") or ""))
+                self._falhar_envio(
+                    mensagem_id, str(msg.get("message") or "Erro desconhecido"),
+                )
             self.adicionar_evento("A ponte recusou uma ação", str(msg.get("message") or "Erro desconhecido"), "error")
 
     def _atualizar_estado(self, estado: dict) -> None:
@@ -1292,6 +1376,8 @@ class JanelaLaylay(QMainWindow):
         self.marca_status.setText(f"{rotulo.casefold()} · {emocao}")
         self.diag_atividade.setText(f"Atividade\n{rotulo} · emoção {emocao}")
         self.avatar_side.atualizar(atividade, emocao)
+        if atividade in {"thinking", "executing"} and self._envios:
+            self._mostrar_indicador_pensando()
         assinatura_atividade = f"{atividade}:{rotulo}:{emocao}"
         if (
             atividade in {"thinking", "executing", "speaking", "listening", "reconnecting"}
@@ -1324,7 +1410,14 @@ class JanelaLaylay(QMainWindow):
         self.ponto.setStyleSheet(f"color: {PALETA['sucesso'] if conectado else PALETA['erro']};")
         self.status.setText("Pronta" if conectado else "Reconectando")
         self.status_mente.setText("●  Mente conectada" if conectado else "●  Reconectando")
-        self.diag_conexao.setText("Ponte\nConectada e autenticada" if conectado else "Ponte\nReconectando")
+        identidade = (
+            f" · sessão {self._session_id} · PID {self._parent_pid}"
+            if self._session_id else ""
+        )
+        self.diag_conexao.setText(
+            ("Ponte\nConectada e autenticada" if conectado else "Ponte\nReconectando")
+            + identidade
+        )
         self._aplicar_modo()
         if conectado:
             self.adicionar_evento("Mente conectada", "A interface e o núcleo estão sincronizados.", "success")
@@ -1332,8 +1425,11 @@ class JanelaLaylay(QMainWindow):
         else:
             self._remover_indicador_pensando()
             self.adicionar_evento("Reconectando", "A interface perdeu a ponte temporariamente.", "warning")
-            for mensagem in tuple(self._envios.values()):
-                mensagem.definir_status("failed", "A conexão caiu antes de confirmar o recebimento.")
+            for mensagem_id in tuple(self._envios):
+                self._falhar_envio(
+                    mensagem_id,
+                    "A conexão caiu antes de confirmar o recebimento.",
+                )
 
     def falha_conexao(self, detalhe: str) -> None:
         self.adicionar_evento("Conexão interrompida", detalhe, "warning")
@@ -1487,21 +1583,98 @@ def configuracao_ponte() -> tuple[str, int, str]:
     return host, port, token
 
 
+def processo_esta_ativo(pid: int) -> bool:
+    """Verifica o pai sem alterar seu estado.
+
+    No Windows, ``os.kill(pid, 0)`` não é um probe POSIX seguro: a chamada
+    passa pelo mecanismo de encerramento de processos e pode matar justamente
+    o núcleo que abriu o Terminal. Consultamos apenas o código de saída com o
+    menor direito de acesso necessário. Uma recusa de acesso ainda significa
+    que existe um processo naquele PID.
+    """
+    try:
+        pid = int(pid or 0)
+    except (TypeError, ValueError):
+        return False
+    if pid <= 0:
+        return True
+
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+
+        process_query_limited_information = 0x1000
+        error_access_denied = 5
+        still_active = 259
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        open_process = kernel32.OpenProcess
+        open_process.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        open_process.restype = wintypes.HANDLE
+        get_exit_code = kernel32.GetExitCodeProcess
+        get_exit_code.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD))
+        get_exit_code.restype = wintypes.BOOL
+        close_handle = kernel32.CloseHandle
+        close_handle.argtypes = (wintypes.HANDLE,)
+        close_handle.restype = wintypes.BOOL
+
+        ctypes.set_last_error(0)
+        handle = open_process(process_query_limited_information, False, pid)
+        if not handle:
+            return ctypes.get_last_error() == error_access_denied
+        try:
+            codigo_saida = wintypes.DWORD()
+            if not get_exit_code(handle, ctypes.byref(codigo_saida)):
+                # Uma falha transitória de leitura não autoriza fechar a UI.
+                return True
+            return codigo_saida.value == still_active
+        finally:
+            close_handle(handle)
+
+    try:
+        os.kill(pid, 0)
+        return True
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+
+
 def main() -> int:
     host, port, token = configuracao_ponte()
+    session_id = os.environ.get("LAYLAY_DESKTOP_SESSION", "").strip()
+    try:
+        parent_pid = int(os.environ.get("LAYLAY_PARENT_PID", "0") or 0)
+    except ValueError:
+        parent_pid = 0
     raiz = Path(os.environ.get("LAYLAY_PROJECT_ROOT") or Path(__file__).resolve().parents[1]).resolve()
     app = QApplication(sys.argv)
     app.setApplicationName("Laylay Terminal 2.1")
     app.setOrganizationName("Laylay")
     familia = carregar_fontes_interface()
     app.setFont(QFont(familia, 10))
-    worker = PonteWorker(host, port, token)
+    worker = PonteWorker(host, port, token, session_id=session_id)
     thread = QThread()
     worker.moveToThread(thread)
     thread.started.connect(worker.executar)
     worker.terminou.connect(thread.quit)
-    janela = JanelaLaylay(worker, raiz)
+    janela = JanelaLaylay(
+        worker, raiz, session_id=session_id, parent_pid=parent_pid,
+    )
     janela.show()
+    monitor_pai = QTimer(app)
+    monitor_pai.setInterval(1_500)
+
+    def encerrar_se_orfao() -> None:
+        if parent_pid and not processo_esta_ativo(parent_pid):
+            print(
+                "⚠️ [TERMINAL 2:CLIENTE] processo pai encerrou; "
+                f"fechando sessão={session_id[:8]}"
+            )
+            janela.close()
+            app.quit()
+
+    monitor_pai.timeout.connect(encerrar_se_orfao)
+    monitor_pai.start()
     thread.start()
     codigo = app.exec()
     worker.parar()

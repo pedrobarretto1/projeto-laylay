@@ -75,7 +75,7 @@ def _resposta_social_curta(texto: str) -> str:
         flags=re.IGNORECASE,
     ):
         return escolher_variacao([
-            "Poxa. Se quiser falar do que aconteceu, eu fico aqui com você.",
+            "Poxa. Quer me contar o que aconteceu? Eu fico aqui com você.",
             "Eu ouvi que você não está bem. Não vou cobrir isso com frase bonita.",
             "Isso parece pesado agora. Pode falar no seu ritmo, sem cerimônia.",
         ])

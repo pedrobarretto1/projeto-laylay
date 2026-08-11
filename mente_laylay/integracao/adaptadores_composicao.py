@@ -162,5 +162,15 @@ def agendar_entrada_canonica(
     modo_jogo_ativo: Callable[[], bool],
     agendar: Callable[..., Any],
 ) -> Any:
-    origem = "modo_jogo" if modo_jogo_ativo() else str(canal or "terminal")
+    canal_normalizado = str(canal or "terminal").strip().casefold() or "terminal"
+    # O Terminal 2 já possui contexto de jogo dentro da mente. Consultar o
+    # lock do detector antes de sequer agendar a mensagem fazia a entrada do
+    # desktop ficar presa enquanto uma transição de jogo descarregava a LLM.
+    # A origem continua sendo desktop; o turno consulta o contexto atualizado
+    # no lugar correto, sem bloquear a porta de entrada.
+    origem = (
+        "desktop"
+        if canal_normalizado == "desktop"
+        else "modo_jogo" if modo_jogo_ativo() else canal_normalizado
+    )
     return agendar(texto, origem=origem)

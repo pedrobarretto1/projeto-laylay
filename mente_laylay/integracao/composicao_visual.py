@@ -106,6 +106,15 @@ class ComposicaoVisualLaylayRuntime:
 
     def parar(self) -> None:
         """Finalizador de emergência para a saída normal do interpretador."""
+        if self._barra is not None:
+            try:
+                self._barra.encerrar()
+            except Exception as erro:
+                self.log(
+                    "⚠️ [VISUAL] barra não encerrou corretamente: "
+                    f"{type(erro).__name__}"
+                )
+                self._relatar("encerramento_barra", erro)
         self.avatar.parar()
         self.gamebar.parar()
 

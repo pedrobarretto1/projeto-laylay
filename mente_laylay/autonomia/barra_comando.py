@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import os
 import queue
 import threading
@@ -485,6 +486,23 @@ class BarraComandoRuntime:
         return bool(resultado["ok"])
 
     def _executar_interface(self) -> None:
+        """Mantém criação, destruição e coleta dos objetos Tcl na mesma thread.
+
+        ``root.destroy()`` encerra o mainloop, mas widgets e callbacks formam
+        ciclos Python. Se esses ciclos forem coletados depois pela thread
+        principal, o Tcl aborta o processo com ``Tcl_AsyncDelete``. A camada
+        interna deixa todo o frame Tk morrer aqui e a coleta é concluída antes
+        de sinalizar o encerramento ao supervisor.
+        """
+        try:
+            self._executar_interface_tk()
+        finally:
+            try:
+                gc.collect()
+            finally:
+                self._interface_encerrada.set()
+
+    def _executar_interface_tk(self) -> None:
         captura_global: CapturaTextoGlobal | None = None
         try:
             tk = self._carregar_tk()
@@ -793,7 +811,6 @@ class BarraComandoRuntime:
         finally:
             if captura_global is not None:
                 captura_global.encerrar()
-            self._interface_encerrada.set()
 
     def iniciar(self) -> bool:
         with self._estado_lock:

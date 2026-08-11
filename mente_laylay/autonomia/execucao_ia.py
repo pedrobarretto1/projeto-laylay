@@ -165,15 +165,35 @@ class CoordenadorExecRuntime:
             self._ultima_entrada_ts = agora
             self._geracao_entrada += 1
             geracao = self._geracao_entrada
+        # O Terminal 2 possui transporte e ciclo de vida próprios. Vincular a
+        # sua entrada ao loop da extensão Chrome fazia uma mensagem ficar
+        # órfã quando esse loop ainda estava subindo, era reiniciado ou estava
+        # ocupado. O worker dedicado preserva a mesma mente serializada pelo
+        # ``RespostaIARuntime`` sem criar dependência entre os dois canais.
+        if origem == "desktop":
+            return self._iniciar_thread(texto, geracao, origem)
         loop = self._loop_getter()
-        if loop:
+        loop_ativo = False
+        if loop is not None:
             try:
-                return asyncio.run_coroutine_threadsafe(
+                loop_ativo = bool(loop.is_running()) and not bool(loop.is_closed())
+            except (AttributeError, RuntimeError):
+                loop_ativo = False
+        if loop_ativo:
+            try:
+                futuro = asyncio.run_coroutine_threadsafe(
                     asyncio.to_thread(self.processar_entrada, texto, geracao, origem),
                     loop,
                 )
+                futuro.add_done_callback(self._observar_agendamento_assincrono)
+                return futuro
             except Exception as exc:
                 self._log(f"Erro ao jogar IA pro background: {exc}")
+        elif loop is not None:
+            self._log(
+                "🧠 [ENTRADA] loop compartilhado ainda não está ativo; "
+                "usando worker dedicado"
+            )
         try:
             return self._iniciar_thread(texto, geracao, origem)
         except TypeError:
@@ -183,6 +203,18 @@ class CoordenadorExecRuntime:
                 return self._iniciar_thread(texto, geracao)
             except TypeError:
                 return self._iniciar_thread(texto)  # type: ignore[call-arg]
+
+    def _observar_agendamento_assincrono(self, futuro: Any) -> None:
+        """Torna falhas do loop visíveis sem repetir uma entrada incerta."""
+        try:
+            futuro.result()
+        except asyncio.CancelledError:
+            self._log("⚠️ [ENTRADA] processamento assíncrono cancelado")
+        except Exception as erro:
+            self._log(
+                "⚠️ [ENTRADA] worker assíncrono encerrou com erro: "
+                f"{type(erro).__name__}: {erro}"
+            )
 
 
 def criar_coordenador_exec_runtime(**kwargs: Any) -> CoordenadorExecRuntime:

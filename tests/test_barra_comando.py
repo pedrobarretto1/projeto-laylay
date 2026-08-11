@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+import subprocess
+import sys
+
 from mente_laylay.autonomia.barra_comando import BarraComandoRuntime, CapturaTextoGlobal
 
 
@@ -40,6 +44,44 @@ class _Evento:
     def __init__(self, nome, tipo="down") -> None:
         self.name = nome
         self.event_type = tipo
+
+
+def test_barra_tk_encerra_sem_async_delete_na_thread_errada() -> None:
+    if sys.platform != "win32":
+        return
+    raiz = Path(__file__).parents[1]
+    codigo = r'''
+import time
+from mente_laylay.autonomia.barra_comando import BarraComandoRuntime
+
+class Keyboard:
+    def add_hotkey(self, *args, **kwargs): return 1
+    def remove_hotkey(self, *args, **kwargs): return None
+    def hook(self, *args, **kwargs): return 1
+    def unhook(self, *args, **kwargs): return None
+
+barra = BarraComandoRuntime(
+    processar_texto=lambda _texto: None,
+    keyboard_mod=Keyboard(),
+    log=lambda *_args: None,
+)
+assert barra.iniciar() is True
+time.sleep(0.15)
+barra.encerrar(timeout_s=2.0)
+print("encerramento_tk_confirmado")
+'''
+    resultado = subprocess.run(
+        [sys.executable, "-c", codigo],
+        cwd=raiz,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    saida = f"{resultado.stdout}\n{resultado.stderr}"
+    assert resultado.returncode == 0, saida
+    assert "encerramento_tk_confirmado" in saida
+    assert "Tcl_AsyncDelete" not in saida
 
 
 def test_barra_normaliza_e_entrega_para_a_mesma_mente() -> None:

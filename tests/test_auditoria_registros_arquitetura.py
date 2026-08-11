@@ -52,13 +52,13 @@ def test_terminal_observa_fala_final_antes_da_fila_de_voz() -> None:
     fonte = (RAIZ / "laylay.py").read_text(encoding="utf-8")
 
     assert (
-        "_orquestrador_fala_runtime.registrar_observador_fala_final("
+        "_orquestrador_fala_runtime.registrar_observador_texto_final("
         in fonte
     )
     assert "LAYLAY_PUBLICACAO_VISUAL_ANTECIPADA" in fonte
-    # O observador da voz permanece como compatibilidade para falas que não
-    # nascem no orquestrador (por exemplo, uma proatividade direta).
-    assert "_voz_runtime.registrar_observador_inicio_fala(" in fonte
+    # A conversa textual não depende do TTS: áudio indisponível não pode
+    # esconder uma resposta já consolidada.
+    assert "_voz_runtime.registrar_observador_inicio_fala(" not in fonte
 
 
 def test_inicializacao_e_abertura_do_chat_sao_silenciosas_por_padrao() -> None:

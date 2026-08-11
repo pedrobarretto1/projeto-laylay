@@ -3201,11 +3201,10 @@ _otimizacoes_desempenho_refs["desktop_bridge"] = _desktop_bridge_runtime
 _publicacao_visual_antecipada_ativa = _flag_desempenho_ativa(
     "LAYLAY_PUBLICACAO_VISUAL_ANTECIPADA"
 )
-if _publicacao_visual_antecipada_ativa:
-    _orquestrador_fala_runtime.registrar_observador_fala_final(
-        _desktop_bridge_runtime.publicar_fala_final,
-    )
-_voz_runtime.registrar_observador_inicio_fala(
+# O Terminal é um canal textual: sua resposta não pode depender de síntese,
+# reprodução ou aceitação da fila de voz. A flag permanece no diagnóstico da
+# implantação, mas a entrega correta do texto é uma garantia funcional.
+_orquestrador_fala_runtime.registrar_observador_texto_final(
     _desktop_bridge_runtime.publicar_fala_final,
 )
 

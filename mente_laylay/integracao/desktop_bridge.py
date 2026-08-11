@@ -205,9 +205,20 @@ class DesktopBridgeRuntime:
         self.rate_window_s = max(1.0, float(rate_window_s))
         self.log = log
         self.token = secrets.token_urlsafe(32)
+        self.session_id = secrets.token_hex(8)
+        self.parent_pid = os.getpid()
+        self.started_at = time.time()
         self._server: socket.socket | None = None
         self._client: socket.socket | None = None
+        # Uma conexão TCP ainda não é uma sessão autenticada. Manter o socket
+        # pendente separado impede o poll de publicar ``state`` antes do
+        # ``snapshot`` e derrubar o próprio handshake do Terminal 2.
+        self._client_pending: socket.socket | None = None
         self._client_lock = threading.RLock()
+        # Estado, ACK e fala final podem partir de threads diferentes. Sem uma
+        # trava de escrita, dois JSONL pequenos ainda podem se intercalar no
+        # mesmo socket e fazer o cliente descartar a conexão inteira.
+        self._send_lock = threading.RLock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._poll_thread: threading.Thread | None = None
@@ -220,8 +231,27 @@ class DesktopBridgeRuntime:
         return self.host, self.port
 
     def iniciar(self) -> dict[str, Any]:
-        if self._thread and self._thread.is_alive():
+        if self._server is not None and self._thread and self._thread.is_alive():
             return self.diagnostico()
+        # Uma exceção antiga podia matar somente a thread acceptora e deixar o
+        # socket em listen. Nesse estado o TCP aceitava no backlog, mas ninguém
+        # lia o hello. Fechamos toda sobra antes de reconstruir a ponte.
+        servidor_antigo, self._server = self._server, None
+        if servidor_antigo is not None:
+            try:
+                servidor_antigo.close()
+            except OSError:
+                pass
+        with self._client_lock:
+            clientes_antigos = (self._client, self._client_pending)
+            self._client = None
+            self._client_pending = None
+        for cliente_antigo in clientes_antigos:
+            if cliente_antigo is not None:
+                try:
+                    cliente_antigo.close()
+                except OSError:
+                    pass
         servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         servidor.bind((self.host, self.port))
@@ -231,14 +261,25 @@ class DesktopBridgeRuntime:
         self._server = servidor
         self._stop.clear()
         self._thread = threading.Thread(target=self._servir, name="Laylay-Desktop-Bridge", daemon=True)
-        self._poll_thread = threading.Thread(target=self._publicar_estados, name="Laylay-Desktop-State", daemon=True)
+        if not self._poll_thread or not self._poll_thread.is_alive():
+            self._poll_thread = threading.Thread(target=self._publicar_estados, name="Laylay-Desktop-State", daemon=True)
         self._thread.start()
-        self._poll_thread.start()
-        self.log(f"🖥️ [TERMINAL 2] ponte ativa em {self.host}:{self.port}")
+        if not self._poll_thread.is_alive():
+            self._poll_thread.start()
+        self.log(
+            f"🖥️ [TERMINAL 2] ponte ativa em {self.host}:{self.port} "
+            f"| sessão={self.session_id[:8]} pid={self.parent_pid}"
+        )
         return self.diagnostico()
 
     def iniciar_cliente(self, caminho: str | os.PathLike[str]) -> bool:
-        if not self._server:
+        if self._processo is not None and self._processo.poll() is None:
+            self.log(
+                "🖥️ [TERMINAL 2] interface já ativa "
+                f"| sessão={self.session_id[:8]} pid={self._processo.pid}"
+            )
+            return True
+        if not self._server or not self._thread or not self._thread.is_alive():
             self.iniciar()
         arquivo = Path(caminho).resolve()
         if not arquivo.is_file():
@@ -250,10 +291,18 @@ class DesktopBridgeRuntime:
             "LAYLAY_DESKTOP_PORT": str(self.port),
             "LAYLAY_DESKTOP_TOKEN": self.token,
             "LAYLAY_PROJECT_ROOT": str(arquivo.parents[1]),
+            "LAYLAY_DESKTOP_SESSION": self.session_id,
+            "LAYLAY_PARENT_PID": str(self.parent_pid),
+            "LAYLAY_PARENT_STARTED_AT": str(self.started_at),
         })
         comando = [sys.executable, str(arquivo)]
         try:
             self._processo = subprocess.Popen(comando, env=ambiente, cwd=str(arquivo.parents[1]))
+            self.log(
+                "🖥️ [TERMINAL 2] interface iniciada "
+                f"| sessão={self.session_id[:8]} pid={self._processo.pid} "
+                f"python={Path(sys.executable).name} arquivo={arquivo}"
+            )
             return True
         except Exception as erro:
             self.log(f"⚠️ [TERMINAL 2] interface indisponível: {type(erro).__name__}: {erro}")
@@ -274,40 +323,41 @@ class DesktopBridgeRuntime:
                 cliente.close()
                 continue
             with self._client_lock:
-                if self._client is not None:
+                if self._client is not None or self._client_pending is not None:
                     self._enviar_socket(cliente, {"type": "error", "code": "client_busy", "message": "Outra interface já está conectada."})
                     cliente.close()
                     continue
-                self._client = cliente
+                self._client_pending = cliente
             try:
                 self._atender(cliente)
+            except Exception as erro:
+                # Um getter de snapshot/configuração jamais pode matar a única
+                # thread que aceita o Terminal. A sessão falha, a ponte fica.
+                self.log(
+                    "⚠️ [TERMINAL 2:PONTE] sessão encerrada durante o atendimento "
+                    f"| tipo={type(erro).__name__}"
+                )
             finally:
                 with self._client_lock:
                     if self._client is cliente:
                         self._client = None
+                    if self._client_pending is cliente:
+                        self._client_pending = None
                 try:
                     cliente.close()
                 except OSError:
                     pass
 
     def _atender(self, cliente: socket.socket) -> None:
-        # Heartbeats chegam a cada oito segundos. Um prazo maior evita o estado
-        # inválido que ``socket.makefile`` pode assumir após timeout parcial.
-        cliente.settimeout(15.0)
-        arquivo = cliente.makefile("rb")
+        # ``socket.makefile().readline()`` pode deixar o buffer interno
+        # inutilizável depois de um timeout no Windows. O protocolo já é
+        # JSONL, então mantemos o buffer diretamente sobre ``recv``; um
+        # intervalo ocioso nunca invalida a sessão autenticada.
+        cliente.settimeout(0.5)
         autenticado = False
         requisicoes: deque[float] = deque()
-        while not self._stop.is_set():
-            try:
-                linha = arquivo.readline(self.max_message_bytes + 1)
-            except socket.timeout:
-                continue
-            except OSError:
-                break
-            if not linha:
-                break
-            if len(linha) > self.max_message_bytes or not linha.endswith(b"\n"):
-                self._erro(cliente, "message_too_large", "Mensagem acima do limite permitido.")
+        for linha in self._iterar_linhas_cliente(cliente):
+            if self._stop.is_set():
                 break
             agora = time.monotonic()
             while requisicoes and agora - requisicoes[0] > self.rate_window_s:
@@ -326,11 +376,31 @@ class DesktopBridgeRuntime:
                 continue
             tipo = msg["type"]
             if tipo == "hello":
-                autenticado = True
-                snapshot = {"type": "snapshot", "messages": sanitizar_historico(self.historico_getter()), "state": sanitizar_estado(self.estado_getter()), "events": list(self._eventos)[-30:]}
+                snapshot = {
+                    "type": "snapshot",
+                    "messages": sanitizar_historico(self.historico_getter()),
+                    "state": sanitizar_estado(self.estado_getter()),
+                    "events": list(self._eventos)[-30:],
+                    "session": {
+                        "id": self.session_id,
+                        "parent_pid": self.parent_pid,
+                        "started_at": self.started_at,
+                    },
+                }
                 if callable(self.configuracao_getter):
                     snapshot["settings"] = sanitizar_configuracao(self.configuracao_getter())
-                self._enviar_socket(cliente, snapshot)
+                if not self._enviar_socket(cliente, snapshot):
+                    raise ConnectionError("não foi possível confirmar o snapshot")
+                with self._client_lock:
+                    if self._client_pending is not cliente:
+                        raise ConnectionError("sessão pendente deixou de ser válida")
+                    self._client_pending = None
+                    self._client = cliente
+                autenticado = True
+                self.log(
+                    "🖥️ [TERMINAL 2:PONTE] sessão autenticada "
+                    f"| sessão={self.session_id[:8]}"
+                )
             elif tipo == "ready":
                 self._enviar_socket(cliente, {"type": "state", **sanitizar_estado(self.estado_getter())})
             elif tipo == "heartbeat":
@@ -343,13 +413,19 @@ class DesktopBridgeRuntime:
                     self._enviar_socket(cliente, {
                         "type": "input_ack", "id": entrada_id,
                         "accepted": aceito,
-                        "message": "" if aceito else "A entrada canônica recusou o pedido.",
+                        "message": (
+                            "" if aceito
+                            else "A entrada canônica recusou o pedido."
+                        ),
                     })
                 except Exception as erro:
                     self._enviar_socket(cliente, {
                         "type": "input_ack", "id": entrada_id,
                         "accepted": False,
-                        "message": f"A entrada canônica recusou o pedido: {type(erro).__name__}",
+                        "message": (
+                            "A entrada canônica recusou o pedido: "
+                            f"{type(erro).__name__}"
+                        ),
                     })
             elif tipo == "mode_set":
                 requisicao_id = msg.get("id") or secrets.token_hex(6)
@@ -442,6 +518,37 @@ class DesktopBridgeRuntime:
                         "message": f"Não consegui iniciar o reinício ({type(erro).__name__}).",
                     })
 
+    def _iterar_linhas_cliente(self, cliente: socket.socket):
+        """Produz mensagens JSONL sem transformar timeout em corrupção do leitor."""
+        buffer = b""
+        while not self._stop.is_set():
+            try:
+                bloco = cliente.recv(min(16_384, self.max_message_bytes + 1))
+            except socket.timeout:
+                continue
+            except OSError:
+                return
+            if not bloco:
+                return
+            buffer += bloco
+            while b"\n" in buffer:
+                linha, buffer = buffer.split(b"\n", 1)
+                if not linha:
+                    continue
+                if len(linha) + 1 > self.max_message_bytes:
+                    self._erro(
+                        cliente, "message_too_large",
+                        "Mensagem acima do limite permitido.",
+                    )
+                    return
+                yield linha
+            if len(buffer) > self.max_message_bytes:
+                self._erro(
+                    cliente, "message_too_large",
+                    "Mensagem acima do limite permitido.",
+                )
+                return
+
     def publicar_fala_final(
         self,
         texto: str,
@@ -469,7 +576,14 @@ class DesktopBridgeRuntime:
     def _publicar_estados(self) -> None:
         ultimo_envio = 0.0
         while not self._stop.wait(0.35):
-            estado = sanitizar_estado(self.estado_getter())
+            try:
+                estado = sanitizar_estado(self.estado_getter())
+            except Exception as erro:
+                self.log(
+                    "⚠️ [TERMINAL 2:PONTE] estado indisponível "
+                    f"| tipo={type(erro).__name__}"
+                )
+                continue
             chave = json.dumps(estado, ensure_ascii=False, sort_keys=True)
             agora = time.monotonic()
             if chave != self._ultimo_estado or agora - ultimo_envio >= 4.0:
@@ -482,14 +596,33 @@ class DesktopBridgeRuntime:
             cliente = self._client
         return self._enviar_socket(cliente, mensagem) if cliente else False
 
-    @staticmethod
-    def _enviar_socket(cliente: socket.socket | None, mensagem: Mapping[str, Any]) -> bool:
+    def _enviar_socket(
+        self,
+        cliente: socket.socket | None,
+        mensagem: Mapping[str, Any],
+    ) -> bool:
         if cliente is None:
             return False
         try:
-            cliente.sendall((json.dumps(dict(mensagem), ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8"))
+            pacote = (
+                json.dumps(
+                    dict(mensagem), ensure_ascii=False, separators=(",", ":"),
+                )
+                + "\n"
+            ).encode("utf-8")
+            with self._send_lock:
+                cliente.sendall(pacote)
             return True
         except OSError:
+            with self._client_lock:
+                if self._client is cliente:
+                    self._client = None
+                if self._client_pending is cliente:
+                    self._client_pending = None
+            try:
+                cliente.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
             return False
 
     def _erro(self, cliente: socket.socket, codigo: str, mensagem: str) -> None:
@@ -499,7 +632,11 @@ class DesktopBridgeRuntime:
         self._stop.set()
         with self._client_lock:
             cliente, self._client = self._client, None
-        for sock in (cliente, self._server):
+            pendente, self._client_pending = self._client_pending, None
+        sockets = tuple(
+            dict.fromkeys(sock for sock in (cliente, pendente, self._server) if sock)
+        )
+        for sock in sockets:
             if sock:
                 try:
                     sock.shutdown(socket.SHUT_RDWR)
@@ -521,7 +658,22 @@ class DesktopBridgeRuntime:
     def diagnostico(self) -> dict[str, Any]:
         with self._client_lock:
             conectado = self._client is not None
-        return {"disponivel": self._server is not None, "host": self.host, "port": self.port, "cliente_conectado": conectado, "somente_loopback": True, "autenticado": bool(self.token), "autoriza_execucao": False}
+            handshake = self._client_pending is not None
+        thread_viva = bool(self._thread and self._thread.is_alive())
+        return {
+            "disponivel": self._server is not None and thread_viva
+            and not self._stop.is_set(),
+            "host": self.host,
+            "port": self.port,
+            "cliente_conectado": conectado,
+            "cliente_em_handshake": handshake,
+            "thread_viva": thread_viva,
+            "sessao": self.session_id[:8],
+            "pid": self.parent_pid,
+            "somente_loopback": True,
+            "autenticado": bool(self.token),
+            "autoriza_execucao": False,
+        }
 
 
 def criar_desktop_bridge_runtime(**kwargs: Any) -> DesktopBridgeRuntime:

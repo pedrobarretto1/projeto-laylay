@@ -1,8 +1,34 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
+import subprocess
+import sys
+import time
 
 import pytest
+
+
+@pytest.mark.skipif(os.name != "nt", reason="regressão específica do Windows")
+def test_probe_do_processo_pai_nao_encerra_um_processo_vivo() -> None:
+    from cliente.terminal_laylay_2 import processo_esta_ativo
+
+    processo = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(30)"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    pid = processo.pid
+    try:
+        assert processo_esta_ativo(pid) is True
+        time.sleep(0.25)
+        assert processo.poll() is None
+    finally:
+        if processo.poll() is None:
+            processo.terminate()
+        processo.wait(timeout=5)
+
+    assert processo_esta_ativo(pid) is False
 
 
 def _criar_janela_qt(monkeypatch):
@@ -176,8 +202,9 @@ def test_indicador_pensando_tem_ciclo_efemero_sem_duplicacao(monkeypatch) -> Non
     # Estados e confirmações positivas não criam outro indicador nem o retiram
     # enquanto a resposta final ainda não chegou.
     janela.receber({"type": "state", "activity": "thinking"})
+    pedido_id = worker.enviadas[-1]["id"]
     janela.receber({
-        "type": "input_ack", "id": worker.enviadas[-1]["id"], "accepted": True,
+        "type": "input_ack", "id": pedido_id, "accepted": True,
     })
     assert janela._indicador_pensando is indicador
     assert len(janela.feed.findChildren(IndicadorPensando)) == 1
@@ -199,6 +226,43 @@ def test_indicador_pensando_tem_ciclo_efemero_sem_duplicacao(monkeypatch) -> Non
     assert janela._indicador_pensando is not None
     janela.estado_conexao(False)
     assert janela._indicador_pensando is None
+    assert janela._envios == {}
+    assert janela._timeouts_envio == {}
+    # Um estado atrasado da sessão anterior não pode ressuscitar um balão sem
+    # pedido nem timeout — era a origem literal do “pensando para sempre”.
+    janela.estado_conexao(True)
+    janela.receber({"type": "state", "activity": "thinking"})
+    _processar_layout(app)
+    assert janela._indicador_pensando is None
+    janela.close()
+
+
+def test_envio_recusado_localmente_nao_deixa_pensamento_infinito(monkeypatch) -> None:
+    app, worker, janela = _criar_janela_qt(monkeypatch)
+    worker.enfileirar = lambda _mensagem: False
+
+    janela.enviar_texto("Mensagem que não entrou na ponte")
+    _processar_layout(app)
+
+    assert janela._indicador_pensando is None
+    assert not janela._timeouts_envio
+    assert "Mensagem não entregue" in janela.eventos.toPlainText()
+    janela.close()
+
+
+def test_estado_pensando_restaura_indicador_de_pedido_pendente(monkeypatch) -> None:
+    app, _worker, janela = _criar_janela_qt(monkeypatch)
+    janela.enviar_texto("Teste de atividade")
+    janela._remover_indicador_pensando()
+    assert janela._indicador_pensando is None
+
+    janela.receber({
+        "type": "state", "activity": "thinking",
+        "activity_label": "Pensando", "emotion": "curiosa",
+    })
+    _processar_layout(app)
+
+    assert janela._indicador_pensando is not None
     janela.close()
 
 

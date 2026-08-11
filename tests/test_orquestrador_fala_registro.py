@@ -203,6 +203,26 @@ def test_observador_recebe_apenas_fala_aceita_pela_fronteira_final() -> None:
     assert _voz.falas[-1][1]["_texto_publicado_antecipado"] is True
 
 
+def test_texto_final_chega_ao_terminal_mesmo_se_a_voz_recusar() -> None:
+    runtime, _estado, voz, _logs = _runtime_de_fala(
+        voz=_VozFalsa([False]),
+    )
+    publicadas = []
+    runtime.registrar_observador_texto_final(
+        lambda texto, emocao, nivel, **dados: publicadas.append(
+            (texto, emocao, nivel, dados),
+        ) or True
+    )
+
+    assert runtime.falar("Resposta visual independente.", "feliz", 2) is False
+
+    assert publicadas == [(
+        "Resposta visual independente.", "feliz", 2,
+        {"proativa": False, "mensagem_id": "turno:turno-1"},
+    )]
+    assert voz.falas[-1][1]["_texto_publicado_antecipado"] is True
+
+
 def test_publicacao_visual_imediata_registra_latencia_sem_esperar_audio() -> None:
     runtime, _estado, voz, _logs = _runtime_de_fala()
     metricas = []

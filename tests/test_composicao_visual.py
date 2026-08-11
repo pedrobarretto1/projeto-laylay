@@ -122,3 +122,42 @@ def test_composicao_visual_exige_conexao_da_barra_e_encerra_visuais(tmp_path) ->
 
     assert avatar.paradas == 1
     assert gamebar.paradas == 1
+
+
+def test_finalizador_de_emergencia_encerra_barra_antes_dos_outros_visuais(
+    tmp_path,
+) -> None:
+    ordem = []
+
+    class Barra:
+        @staticmethod
+        def encerrar():
+            ordem.append("barra")
+
+    class Avatar:
+        @staticmethod
+        def parar():
+            ordem.append("avatar")
+
+    class GameBar(_GameBarFake):
+        def parar(self):
+            ordem.append("gamebar")
+
+    runtime = ComposicaoVisualLaylayRuntime(
+        raiz_projeto=tmp_path,
+        estado_getter=lambda: {},
+        gamebar_factory=lambda **_kwargs: GameBar(),
+        avatar_factory=lambda **_kwargs: Avatar(),
+        barra_factory=lambda **_kwargs: Barra(),
+        log=lambda *_: None,
+    )
+    runtime.conectar_barra(
+        processar_texto=lambda _texto: None,
+        keyboard_mod=object(),
+        hotkey="f10",
+        modo_jogo_ativo=lambda: False,
+    )
+
+    runtime.parar()
+
+    assert ordem == ["barra", "avatar", "gamebar"]

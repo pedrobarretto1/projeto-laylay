@@ -45,6 +45,21 @@ class OrquestradorFalaRuntime:
             "rejeitadas_voz": 0,
         }
         self._observadores_fala_final: list[Callable[..., Any]] = []
+        self._observadores_texto_final: list[Callable[..., Any]] = []
+
+    def registrar_observador_texto_final(
+        self, observador: Callable[..., Any],
+    ) -> None:
+        """Publica o texto consolidado sem depender da fila de áudio.
+
+        A interface desktop é um canal textual. Uma indisponibilidade ou uma
+        deduplicação da voz não pode esconder uma resposta que já atravessou
+        os guardiões conversacionais.
+        """
+        if not callable(observador):
+            raise TypeError("observador de texto final deve ser chamável")
+        if observador not in self._observadores_texto_final:
+            self._observadores_texto_final.append(observador)
 
     def registrar_observador_fala_final(self, observador: Callable[..., Any]) -> None:
         """Observa somente falas que atravessaram a fronteira final da voz."""
@@ -331,12 +346,32 @@ class OrquestradorFalaRuntime:
             if _proativa
             else (f"turno:{turno_id}" if turno_id else "")
         )
+        inicio_publicacao_texto = time.perf_counter()
+        texto_publicado = False
+        for observador in tuple(self._observadores_texto_final):
+            try:
+                resultado_observador = observador(
+                    fala, emocao, nivel,
+                    proativa=bool(_proativa),
+                    mensagem_id=mensagem_id,
+                )
+                texto_publicado = (
+                    resultado_observador is not False or texto_publicado
+                )
+            except Exception as erro:
+                ns["print"](
+                    "⚠️ [TEXTO:OBSERVADOR] consumidor isolado falhou: "
+                    f"{type(erro).__name__}"
+                )
         aceita = ns["_voz_runtime"].falar(
             fala, emocao, nivel, wait=wait, _proativa=_proativa,
-            _texto_publicado_antecipado=bool(self._observadores_fala_final),
+            _texto_publicado_antecipado=bool(
+                self._observadores_texto_final
+                or self._observadores_fala_final
+            ),
         )
         if aceita is not False:
-            inicio_publicacao = time.perf_counter()
+            inicio_publicacao_fala = time.perf_counter()
             publicada = False
             for observador in tuple(self._observadores_fala_final):
                 try:
@@ -353,7 +388,9 @@ class OrquestradorFalaRuntime:
                     )
             registrar_metrica = ns.get("_registrar_metrica_diagnostico")
             if callable(registrar_metrica) and self._observadores_fala_final:
-                duracao_ms = (time.perf_counter() - inicio_publicacao) * 1000.0
+                duracao_ms = (
+                    time.perf_counter() - inicio_publicacao_fala
+                ) * 1000.0
                 try:
                     registrar_metrica(
                         "tts_texto_visivel", duracao_ms, publicada,
@@ -365,6 +402,22 @@ class OrquestradorFalaRuntime:
                     registrar_metrica(
                         "tts_texto_visivel", duracao_ms, publicada,
                     )
+        registrar_metrica = ns.get("_registrar_metrica_diagnostico")
+        if callable(registrar_metrica) and self._observadores_texto_final:
+            duracao_ms = (
+                time.perf_counter() - inicio_publicacao_texto
+            ) * 1000.0
+            try:
+                registrar_metrica(
+                    "tts_texto_visivel", duracao_ms, texto_publicado,
+                    turno_id=turno_id,
+                    rota="publicacao_visual_independente",
+                    fase="texto_final",
+                )
+            except TypeError:
+                registrar_metrica(
+                    "tts_texto_visivel", duracao_ms, texto_publicado,
+                )
         if aceita is not False and not _proativa:
             mental = dict(estado.mental)
             plano = dict(mental.get("plano_turno_atual") or {})

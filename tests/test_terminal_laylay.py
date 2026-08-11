@@ -1,4 +1,5 @@
 import sys
+import threading
 
 from mente_laylay.personalidade import terminal_laylay
 from mente_laylay.personalidade.terminal_laylay import (
@@ -25,6 +26,10 @@ def test_modo_essencial_exibe_diagnostico_e_transcricao_de_voz():
     assert should_log_message(
         "📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao",
         log_mode="limpo",
+    )
+    assert should_log_message(
+        "🖥️ [TERMINAL 2:ENTRADA] recebida | id=abc123",
+        log_mode="essencial",
     )
 
 
@@ -116,7 +121,7 @@ def test_entrada_vazia_nao_duplica_cabecalho_do_usuario():
     assert impresso.count("💬 Você:") == 1
 
 
-def test_lock_de_impressao_permanece_ativo_durante_leitura_da_linha():
+def test_lock_de_impressao_nao_bloqueia_a_mente_enquanto_aguarda_teclado():
     ativo = {"valor": True}
     profundidade = {"valor": 0}
     processados = []
@@ -134,7 +139,7 @@ def test_lock_de_impressao_permanece_ativo_durante_leitura_da_linha():
             profundidade["valor"] -= 1
 
     def leitor(_prompt, **_kwargs):
-        assert profundidade["valor"] == 1
+        assert profundidade["valor"] == 0
         return "oi lay"
 
     def processar(texto):
@@ -154,3 +159,55 @@ def test_lock_de_impressao_permanece_ativo_durante_leitura_da_linha():
 
     assert processados == ["oi lay"]
     assert profundidade["valor"] == 0
+
+
+def test_log_de_outra_thread_funciona_enquanto_terminal_aguarda_enter():
+    leitura_iniciada = threading.Event()
+    liberar_leitura = threading.Event()
+    log_concluido = threading.Event()
+    ativo = {"valor": True}
+    print_lock = threading.RLock()
+
+    class StdinTTY:
+        @staticmethod
+        def isatty():
+            return True
+
+    def leitor(_prompt, **_kwargs):
+        leitura_iniciada.set()
+        liberar_leitura.wait(2.0)
+        return "oi lay"
+
+    def processar(_texto):
+        ativo["valor"] = False
+
+    thread_terminal = threading.Thread(
+        target=escutar_texto_terminal,
+        kwargs={
+            "estado_ativo": lambda: True,
+            "processar_texto": processar,
+            "stdin": StdinTTY(),
+            "raw_print": lambda *_args, **_kwargs: None,
+            "print_lock": print_lock,
+            "sleep_fn": lambda _tempo: None,
+            "deve_continuar": lambda: ativo["valor"],
+            "ler_linha_fn": leitor,
+        },
+    )
+    thread_terminal.start()
+    try:
+        assert leitura_iniciada.wait(0.5)
+
+        def escrever_log() -> None:
+            with print_lock:
+                log_concluido.set()
+
+        thread_log = threading.Thread(target=escrever_log)
+        thread_log.start()
+        assert log_concluido.wait(0.5)
+        thread_log.join(timeout=0.5)
+    finally:
+        liberar_leitura.set()
+        thread_terminal.join(timeout=2.0)
+
+    assert not thread_terminal.is_alive()
