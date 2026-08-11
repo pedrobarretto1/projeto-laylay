@@ -78,8 +78,9 @@ def test_bronca_brincalhona_local_fica_mais_forte_na_quarta_repeticao() -> None:
     )
 
     assert fala.startswith("Opera já estava aberto e em foco.")
-    assert "Chega, criatura" in fala
-    assert "quarta vez" in fala
+    assert "opera" in fala.casefold()
+    assert any(marcador in fala.casefold() for marcador in ("quarta", "quatro"))
+    assert len(fala.split(". ")) <= 2
 
 
 def test_transcricao_de_baixa_confianca_nao_culpa_usuario() -> None:
@@ -186,7 +187,8 @@ def test_expressao_preserva_resultado_e_acrescenta_uma_unica_tirada() -> None:
     )
 
     assert fala.startswith("Opera já estava aberto e em foco.")
-    assert "olhos tiraram uma folguinha" in fala
+    assert fala.casefold().count("opera") >= 2
+    assert len(fala.split(". ")) <= 2
 
 
 def test_nao_acao_confirmada_continua_sendo_redundancia_e_nao_falha() -> None:

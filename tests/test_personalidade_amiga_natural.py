@@ -97,6 +97,8 @@ def test_prompt_do_turno_recebe_postura_social_sem_inflar_identidade() -> None:
 
     assert "POSTURA SOCIAL DESTE TURNO" in prompt
     assert "Postura: acolhedora" in prompt
+    assert "RETRATO EXPRESSIVO EFÊMERO" in prompt
+    assert "Não force tirada neste turno" in prompt
     assert "não cria, autoriza, altera nem confirma comandos" in prompt
 
 
@@ -110,6 +112,9 @@ def test_diretor_publica_a_mesma_postura_usada_na_voz() -> None:
     assert direcao["postura_amizade"]["nome"] == "acolhedora"
     assert direcao["humor"] == "nenhum"
     assert direcao["perfil_personalidade"] == PERFIL_PERSONALIDADE
+    assert direcao["retrato_expressivo"]["postura"] == "acolhedora"
+    assert direcao["retrato_expressivo"]["orcamento_humor"] == 0
+    assert direcao["retrato_expressivo"]["autoriza_execucao"] is False
 
 
 def test_qualidade_rejeita_atendimento_que_ignora_estado_pessoal() -> None:

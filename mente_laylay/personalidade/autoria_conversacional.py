@@ -16,6 +16,7 @@ from mente_laylay.cognicao.guardiao_realidade_pessoal import (
     detectar_experiencia_pessoal_inventada,
 )
 from mente_laylay.integracao.llm_http import eh_estado_tecnico_llm
+from mente_laylay.personalidade.antirrepeticao import repeticao_estrutural
 from mente_laylay.personalidade.prompt_voz_unica import IDENTIDADE_VOZ_LAYLAY
 
 
@@ -139,4 +140,6 @@ def criar_fala_autoral(
     normalizada = fala.casefold()
     if any(normalizada == item.casefold() for item in recentes):
         return FalaAutoral(fallback, False, "fala_recente_repetida")
+    if repeticao_estrutural(fala, recentes):
+        return FalaAutoral(fallback, False, "molde_recente_repetido")
     return FalaAutoral(fala, True)

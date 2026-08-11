@@ -58,6 +58,25 @@ a execução segura dos comandos.
 
 ## Versão final planejada
 
+### Fundação contextual v2 — aplicada
+
+- [x] Compartilhar a mesma versão do perfil e os mesmos invariantes sociais entre
+  o prompt completo e o modo rápido, sem chamada adicional à LLM.
+- [x] Publicar um retrato expressivo efêmero por turno com postura, sensibilidade,
+  timing, orçamento de humor, moldes recentes e `autoriza_execucao=False`.
+- [x] Suspender deboche em vulnerabilidade e correção, permitir no máximo uma
+  tirada ancorada no detalhe atual e criar intervalo depois de humor recente.
+- [x] Detectar repetição por abertura, sequência, pergunta final e molde, além da
+  igualdade literal, preservando fatos operacionais obrigatórios.
+- [x] Substituir reações causais e contingências sociais únicas por variações
+  contextuais sem apagar resultado, alvo ou incerteza observada.
+- [x] Validar prompts, autoria, vulnerabilidade, comandos, latência, variedade e
+  integração pela suíte completa: 2.310 testes e 45 subtestes aprovados.
+
+Esta fundação melhora timing e variedade, mas não conclui P15–P21: o contrato
+emocional canônico, aprendizado relacional, política comportamental e sincronização
+multimodal continuam separados abaixo para migração e validação próprias.
+
 ### P15 — Contrato emocional causal canônico
 
 - [ ] Representar cada evento com origem, causa, responsabilidade, confiança,

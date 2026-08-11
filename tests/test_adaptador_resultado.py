@@ -229,7 +229,8 @@ def test_resultado_visivel_recebe_deboche_causal_sem_mudar_o_fato(monkeypatch) -
     )
 
     assert "opera já estava" in falas[0][0].casefold()
-    assert "olhos tiraram uma folguinha" in falas[0][0].casefold()
+    assert falas[0][0].casefold().count("opera") >= 2
+    assert len(falas[0][0].split(". ")) <= 2
     assert falas[0][1:] == ("debochada", 1)
 
 

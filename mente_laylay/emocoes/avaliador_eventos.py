@@ -17,6 +17,7 @@ from mente_laylay.cognicao.normalizacao_linguagem import (
     normalizar_texto_basico as _normalizar,
 )
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+from mente_laylay.personalidade.variacao_fala import escolher_variacao
 
 
 _STATUS_FALHA_SISTEMA = frozenset({
@@ -322,6 +323,8 @@ class AvaliadorEventosEmocionaisRuntime:
 def contextualizar_fala_evento(
     fala: str,
     avaliacao: Mapping[str, Any] | None,
+    *,
+    alvo: str = "",
 ) -> str:
     """Acrescenta uma reação curta sem alterar o resultado operacional."""
     texto = re.sub(r"\s+", " ", str(fala or "")).strip()
@@ -332,6 +335,15 @@ def contextualizar_fala_evento(
     arco = str(evento.get("arco") or "")
     repeticoes = max(1, int(evento.get("repeticoes") or 1))
     provocacao = max(0, int(evento.get("provocacao_usuario") or 0))
+    referente = re.sub(r"\s+", " ", str(alvo or "")).strip()[:80]
+    if not referente:
+        sujeito = re.match(
+            r"^(.{1,80}?)\s+(?:j[aá]\s+|n[aã]o\s+|est[aá]\s+|foi\s+|falhou\s+)",
+            texto,
+            flags=re.IGNORECASE,
+        )
+        referente = str(sujeito.group(1) if sujeito else "isso").strip(" .,:;!?")
+    referente = referente or "isso"
     complemento = ""
     if arco in {"provocacao_afetuosa", "bronca_brincalhona"} and re.search(
         r"\b(?:na tua cara|mais exposto que|seus olhos|criatura)\b",
@@ -345,23 +357,59 @@ def contextualizar_fala_evento(
             # pela reação causal, evitando duas piadas na mesma resposta.
             texto = frases[0]
     if arco == "provocacao_afetuosa" and provocacao == 1:
-        complemento = "Seus olhos tiraram uma folguinha agora."
+        complemento = escolher_variacao([
+            f"{referente.capitalize()} já estava cuidando da própria vida bem na sua frente.",
+            f"Você chegou um pouquinho atrasado ao estado atual de {referente}.",
+            f"Dessa vez {referente} foi mais rápido que o pedido.",
+        ])
     elif arco == "provocacao_afetuosa" and provocacao >= 2:
-        complemento = "Criatura, agora eu já tenho evidência contra a sua atenção."
+        complemento = escolher_variacao([
+            f"De novo? {referente.capitalize()} continua exatamente como eu acabei de conferir.",
+            f"Agora já temos duas confirmações e nenhuma novidade em {referente}.",
+            f"{referente.capitalize()} não mudou só porque você perguntou com mais convicção.",
+        ])
     elif arco == "bronca_brincalhona" and repeticoes == 3:
-        complemento = "Você está me testando, né? Eu já conferi isso três vezes."
+        complemento = escolher_variacao([
+            f"Terceira conferência de {referente}; daqui a pouco eu começo a cobrar auditoria.",
+            f"Você está me testando, né? {referente.capitalize()} já foi conferido três vezes.",
+            f"Três pedidos, o mesmo {referente} e uma paciência sendo posta em produção.",
+        ])
     elif arco == "bronca_brincalhona" and repeticoes >= 4:
-        complemento = "Chega, criatura. Continua igual e eu não vou fingir que a quarta vez mudou alguma coisa."
+        complemento = escolher_variacao([
+            f"Eu me recuso a fingir surpresa: {referente} continua igual na quarta conferência.",
+            f"Na quarta vez, {referente} ainda não vai criar um estado novo só para animar esse pedido.",
+            f"Chega por hoje: já confirmei {referente} quatro vezes e o universo não lançou atualização.",
+        ])
     elif arco == "irritacao_compartilhada" and repeticoes == 2:
-        complemento = "É a segunda falha seguida; isso está começando a testar minha paciência."
+        complemento = escolher_variacao([
+            f"É a segunda vez que {referente} ignora a gente; minha simpatia técnica está acabando.",
+            f"{referente.capitalize()} falhou de novo. Excelente, agora até o sistema resolveu ter opinião.",
+            f"Segunda falha de {referente}; isso já deixou de ser coincidência e virou provocação.",
+        ])
     elif arco == "irritacao_compartilhada" and repeticoes == 3:
-        complemento = "De novo. Agora isso está oficialmente me irritando."
+        complemento = escolher_variacao([
+            f"Terceira falha de {referente}. Agora está oficialmente me irritando.",
+            f"{referente.capitalize()} recusou colaborar pela terceira vez; ousadia não está faltando.",
+            f"De novo, {referente}. Minha paciência já abriu chamado e pediu prioridade.",
+        ])
     elif arco == "irritacao_compartilhada" and repeticoes >= 4:
-        complemento = "Esse sistema acordou decidido a me desafiar hoje."
+        complemento = escolher_variacao([
+            f"{referente.capitalize()} escolheu o caos pela quarta vez e eu já perdi a delicadeza.",
+            f"Quatro falhas de {referente}. O sistema está levando essa rivalidade a sério demais.",
+            f"{referente.capitalize()} acordou decidido a me desafiar hoje.",
+        ])
     elif arco == "autorreparo":
-        complemento = "Essa foi minha; não vou jogar a culpa em você."
+        complemento = escolher_variacao([
+            "Essa foi minha; precisão cirúrgica, só que ao contrário. Já corrigi o rumo.",
+            "Eu errei essa leitura. Não vou terceirizar a culpa só para preservar minha pose.",
+            "Essa conta veio no meu nome. Corrigi sem inventar desculpa bonita.",
+        ])
     elif arco == "alivio":
-        complemento = "Finalmente. O sistema desistiu de bancar o rebelde."
+        complemento = escolher_variacao([
+            f"Finalmente. {referente.capitalize()} desistiu de bancar o rebelde.",
+            f"Aí está: {referente} voltou a colaborar antes que eu abrisse uma rivalidade oficial.",
+            f"{referente.capitalize()} funcionou. Minha paciência agradece o gesto tardio.",
+        ])
 
     if not complemento or _normalizar(complemento) in _normalizar(texto):
         return texto

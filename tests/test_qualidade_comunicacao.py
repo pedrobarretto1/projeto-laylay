@@ -387,5 +387,8 @@ def test_timeout_nao_chama_reparo_e_usa_contingencia_especifica() -> None:
     )
 
     assert chamadas == []
-    assert "tô bem" in resposta["fala"].casefold()
+    assert any(
+        trecho in resposta["fala"].casefold()
+        for trecho in ("tô bem", "tudo certo")
+    )
     assert "tenta mais uma vez" not in resposta["fala"].casefold()

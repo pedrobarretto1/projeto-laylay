@@ -16,6 +16,10 @@ from mente_laylay.personalidade.perfil_amizade import (
     formatar_postura_para_prompt,
     selecionar_postura_amizade,
 )
+from mente_laylay.personalidade.retrato_expressivo import (
+    construir_retrato_expressivo,
+    formatar_retrato_expressivo_para_prompt,
+)
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
@@ -62,6 +66,9 @@ def preparar_contexto_resposta_ia(
     contexto_recursos = str(_get(ctx, "contexto_recursos", "") or "").strip()
     contexto_identidade = str(_get(ctx, "contexto_identidade", "") or "").strip()
     contexto_postura = str(_get(ctx, "contexto_postura", "") or "").strip()
+    contexto_retrato_expressivo = str(
+        _get(ctx, "contexto_retrato_expressivo", "") or ""
+    ).strip()
     contexto_contrato_fala = str(_get(ctx, "contexto_contrato_fala", "") or "").strip()
 
     contaminantes = ["adicionar_a_playlist", "editar_playlist", "tocar_playlist", "organizar_desktop", "maximize_window", "persona"]
@@ -122,6 +129,8 @@ def preparar_contexto_resposta_ia(
         contexto_extra += "\n" + contexto_contrato_fala + "\n"
     if contexto_postura:
         contexto_extra += "\n" + contexto_postura + "\n"
+    if contexto_retrato_expressivo:
+        contexto_extra += "\n" + contexto_retrato_expressivo + "\n"
 
     liberdade_conversacional = (
         "\n\n--- AUTORIA DA CONVERSA ---\n"
@@ -245,6 +254,14 @@ class ContextoPromptRuntime:
             ),
         )
         contexto_postura = formatar_postura_para_prompt(postura)
+        retrato_expressivo = construir_retrato_expressivo(
+            t,
+            estado_mental=estado,
+            operacional=postura.nome == "operacional_amigavel",
+        )
+        contexto_retrato_expressivo = formatar_retrato_expressivo_para_prompt(
+            retrato_expressivo,
+        )
         contexto_contrato_fala = formatar_contrato_fala_para_prompt(
             estado.get("contrato_fala_atual"),
             # O contrato compacto preserva atos, referente, obrigações,
@@ -302,6 +319,7 @@ class ContextoPromptRuntime:
             "contexto_identidade": contexto_identidade,
             "contexto_contrato_fala": contexto_contrato_fala,
             "contexto_postura": contexto_postura,
+            "contexto_retrato_expressivo": contexto_retrato_expressivo,
         }
         try:
             resultado = preparar_contexto_resposta_ia(
@@ -320,6 +338,7 @@ class ContextoPromptRuntime:
                     "identidade": contexto_identidade,
                     "contrato_fala": contexto_contrato_fala,
                     "postura": contexto_postura,
+                    "retrato_expressivo": contexto_retrato_expressivo,
                     "historico": estado.get("messages") or [],
                     "total": resultado[1],
                 }
@@ -358,9 +377,25 @@ class ContextoPromptRuntime:
             estado = {}
         estado = estado if isinstance(estado, dict) else {}
         try:
-            instrucao = formatar_contrato_fala_para_prompt(
+            contrato = formatar_contrato_fala_para_prompt(
                 estado.get("contrato_fala_atual"),
                 compacto=True,
+            )
+            operacional = bool(
+                dict(
+                    dict(estado.get("especialistas_turno_atual") or {}).get("operacional")
+                    or {}
+                ).get("ativo")
+            )
+            retrato = formatar_retrato_expressivo_para_prompt(
+                construir_retrato_expressivo(
+                    texto,
+                    estado_mental=estado,
+                    operacional=operacional,
+                )
+            )
+            instrucao = "\n\n".join(
+                trecho for trecho in (contrato, retrato) if str(trecho or "").strip()
             )
             if instrucao and callable(self.registrar_tamanho_prompt):
                 self.registrar_tamanho_prompt(

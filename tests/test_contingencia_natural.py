@@ -12,7 +12,10 @@ def test_fallback_reage_ao_progresso_sem_mencionar_falha_tecnica() -> None:
 def test_fallback_nao_finge_responder_pergunta_incompleta() -> None:
     fala = fala_contingencia_natural("essa bota é boa?")
 
-    assert "não quero responder pela metade" in fala
+    assert any(
+        trecho in fala.casefold()
+        for trecho in ("sem chutar", "faltou uma peça", "seria no chute")
+    )
 
 
 def test_opiniao_visual_reutiliza_detalhes_da_ultima_observacao() -> None:
@@ -36,16 +39,28 @@ def test_opiniao_visual_reutiliza_detalhes_da_ultima_observacao() -> None:
 def test_resposta_de_bem_estar_nao_cai_no_fallback_generico() -> None:
     fala = fala_contingencia_natural("to bem sim lay")
 
-    assert fala == "Aí sim, bom saber."
+    assert any(
+        trecho in fala.casefold()
+        for trecho in ("bom saber", "que bom", "ótimo")
+    )
     assert "acompanhando daqui" not in fala
 
 
 def test_bem_estar_negativo_recebe_acolhimento() -> None:
     fala = fala_contingencia_natural("não tô muito bem lay")
 
-    assert "quer me contar" in fala.casefold()
+    assert any(
+        trecho in fala.casefold()
+        for trecho in ("quer me contar", "não está bem", "parece pesado")
+    )
     assert "acompanhando daqui" not in fala
 
 
 def test_agradecimento_curto_tem_resposta_social() -> None:
-    assert fala_contingencia_natural("obrigado lay") == "Imagina. Tô contigo."
+    fala = fala_contingencia_natural("obrigado lay")
+
+    assert any(
+        trecho in fala.casefold()
+        for trecho in ("de nada", "que nada", "por nada")
+    )
+    assert "acompanhando daqui" not in fala.casefold()

@@ -342,7 +342,10 @@ def test_falha_do_reparo_mantem_turno_aberto_sem_inventar_resposta() -> None:
         log=lambda *_args: None,
     )
 
-    assert "não quero responder pela metade" in resposta["fala"]
+    assert any(
+        trecho in resposta["fala"].casefold()
+        for trecho in ("sem chutar", "faltou uma peça", "seria no chute")
+    )
     assert resposta["suprimir_fala"] is False
     assert falhas == [(
         ("resposta_llm", "saida_nao_entregavel"),
@@ -554,7 +557,8 @@ def test_timeout_nao_vaza_estado_interno_e_mantem_turno_aberto() -> None:
 
     assert chamadas == []
     assert "__LAYLAY" not in resposta["fala"]
-    assert resposta["fala"] == "Entendi. Continua — eu tô acompanhando daqui."
+    assert len(resposta["fala"].split()) >= 6
+    assert "erro interno" not in resposta["fala"].casefold()
     assert resposta["suprimir_fala"] is False
 
 

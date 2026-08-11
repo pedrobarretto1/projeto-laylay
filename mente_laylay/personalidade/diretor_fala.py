@@ -10,6 +10,7 @@ from mente_laylay.personalidade.perfil_amizade import (
     PERFIL_PERSONALIDADE,
     selecionar_postura_amizade,
 )
+from mente_laylay.personalidade.retrato_expressivo import construir_retrato_expressivo
 
 
 _ABERTURAS_MECANICAS = re.compile(
@@ -158,6 +159,11 @@ def dirigir_fala(
         operacional=tem_operacao,
         proativa=proativa,
     )
+    retrato_expressivo = construir_retrato_expressivo(
+        texto_usuario,
+        estado_mental=mente,
+        operacional=tem_operacao,
+    )
     permite_pergunta = bool(
         social.get("permite_pergunta", True)
         and postura_amiga.permite_pergunta
@@ -236,6 +242,7 @@ def dirigir_fala(
         "preservar_resultado_operacional": tem_operacao,
         "perfil_personalidade": dict(PERFIL_PERSONALIDADE),
         "postura_amizade": postura_amiga.como_dict(),
+        "retrato_expressivo": retrato_expressivo.como_dict(),
         "texto_usuario": str(texto_usuario or "")[:300],
         "ts": instante,
     }

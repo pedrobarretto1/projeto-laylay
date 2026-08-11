@@ -303,7 +303,11 @@ class AdaptadorResultadoOperacional:
         # autora: a LLM. No jogo preservamos as frases locais, rápidas e sem
         # custo de inferência, inclusive a reação causal curta.
         fala_final = (
-            contextualizar_fala_evento(confirmacao.fala, avaliacao_evento)
+            contextualizar_fala_evento(
+                confirmacao.fala,
+                avaliacao_evento,
+                alvo=contrato.alvo,
+            )
             if modo_jogo_ativo
             else confirmacao.fala
         )

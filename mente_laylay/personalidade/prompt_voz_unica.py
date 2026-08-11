@@ -1,12 +1,16 @@
 """Prompt compacto: identidade, contexto e contrato operacional da Laylay."""
 
 from mente_laylay.personalidade.perfil_amizade import (
+    CONTRATO_AMIZADE_COMPACTO,
     CONTRATO_AMIZADE_PROMPT,
     IDENTIDADE_VOZ_LAYLAY,
+    VERSAO_PERFIL_PERSONALIDADE,
 )
 
 
-BASE_SYSTEM_PROMPT = IDENTIDADE_VOZ_LAYLAY + "\n\n" + CONTRATO_AMIZADE_PROMPT + """
+_MARCA_PERFIL = f"[PERFIL_SOCIAL:{VERSAO_PERFIL_PERSONALIDADE}]"
+
+BASE_SYSTEM_PROMPT = _MARCA_PERFIL + "\n" + IDENTIDADE_VOZ_LAYLAY + "\n\n" + CONTRATO_AMIZADE_PROMPT + """
 
 CONTEXTO E REALIDADE:
 - Use contexto e memória, priorize o turno atual, responda a todos os atos e não force assunto antigo.
@@ -35,7 +39,7 @@ Retorne somente JSON válido, sem markdown nem texto externo:
 # conversa simples, sem comando e sem dependência contextual. Ele preserva a
 # mesma identidade e o mesmo formato, mas não repete catálogos e regras que o
 # código determinístico já resolveu antes de consultar a LLM.
-BASE_SYSTEM_PROMPT_RAPIDO = IDENTIDADE_VOZ_LAYLAY + """
+BASE_SYSTEM_PROMPT_RAPIDO = _MARCA_PERFIL + "\n" + IDENTIDADE_VOZ_LAYLAY + "\n" + CONTRATO_AMIZADE_COMPACTO + """
 
 RESPOSTA RÁPIDA:
 - Responda diretamente ao turno atual em português brasileiro natural.

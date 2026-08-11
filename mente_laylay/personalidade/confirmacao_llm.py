@@ -20,6 +20,7 @@ from mente_laylay.cognicao.normalizacao_linguagem import (
 from mente_laylay.integracao.llm_http import eh_estado_tecnico_llm
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
 from mente_laylay.personalidade.prompt_voz_unica import IDENTIDADE_VOZ_LAYLAY
+from mente_laylay.personalidade.antirrepeticao import repeticao_estrutural
 
 
 EMOCOES_PERMITIDAS = frozenset({
@@ -650,7 +651,10 @@ def personalizar_confirmacao_llm(
     if ultima_variacao and ultima_variacao not in historico_variacao:
         historico_variacao.append(ultima_variacao)
     fala = _variar_abertura_repetida(fala, historico_variacao)
-    if _abertura_ja_usada(fala, historico_variacao):
+    if (
+        _abertura_ja_usada(fala, historico_variacao)
+        or repeticao_estrutural(fala, historico_variacao)
+    ):
         # Uma única segunda amostra é mais natural que alternar dois moldes
         # mecanicamente. Só ocorre em pedidos realmente repetidos e conserva o
         # mesmo contrato imutável.
@@ -685,6 +689,7 @@ def personalizar_confirmacao_llm(
             if (
                 not motivo_variado
                 and not _abertura_ja_usada(fala_variada, historico_variacao)
+                and not repeticao_estrutural(fala_variada, historico_variacao)
             ):
                 dados = dados_variados
                 fala = fala_variada

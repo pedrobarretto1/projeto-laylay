@@ -6,6 +6,8 @@ import hashlib
 import re
 from typing import Any, Mapping
 
+from mente_laylay.personalidade.variacao_fala import escolher_variacao
+
 
 def _ultima_observacao_visual(contexto: Any) -> str:
     if not isinstance(contexto, Mapping):
@@ -72,22 +74,38 @@ def _resposta_social_curta(texto: str) -> str:
         limpo,
         flags=re.IGNORECASE,
     ):
-        return "Poxa... quer me contar o que aconteceu? Tô aqui com você."
+        return escolher_variacao([
+            "Poxa. Se quiser falar do que aconteceu, eu fico aqui com você.",
+            "Eu ouvi que você não está bem. Não vou cobrir isso com frase bonita.",
+            "Isso parece pesado agora. Pode falar no seu ritmo, sem cerimônia.",
+        ])
     if re.fullmatch(
         r"(?:eu\s+)?(?:to|t[oô]|estou)\s+(?:muito\s+)?bem"
         r"(?:\s+sim)?(?:\s+(?:lay|laylay))?",
         limpo,
         flags=re.IGNORECASE,
     ):
-        return "Aí sim, bom saber."
+        return escolher_variacao([
+            "Bom saber. Pelo menos uma coisa decidiu colaborar hoje.",
+            "Que bom. Seguimos sem precisar inventar drama por enquanto.",
+            "Ótimo. Gosto quando o dia entrega uma notícia simples e boa.",
+        ])
     if re.fullmatch(
         r"(?:obrigad[oa]|valeu)(?:\s+(?:lay|laylay))?",
         limpo,
         flags=re.IGNORECASE,
     ):
-        return "Imagina. Tô contigo."
+        return escolher_variacao([
+            "Que nada. Fico feliz que tenha ajudado.",
+            "De nada. Eu reclamo um pouco, mas entrego.",
+            "Por nada. Minha pose agradece o reconhecimento.",
+        ])
     if re.fullmatch(r"(?:k{2,}|h+a+h+a+)(?:\s+.*)?", limpo, flags=re.IGNORECASE):
-        return "Kkkkk, tá bom, essa me pegou."
+        return escolher_variacao([
+            "Kkkkk, essa me pegou. Ponto seu.",
+            "Tá, essa foi boa. Minha pose sofreu um dano leve.",
+            "Kkkkk, aproveita a vitória porque eu não distribuo assim toda hora.",
+        ])
     return ""
 
 
@@ -140,20 +158,33 @@ def fala_contingencia_natural(
     ))
     if pergunta_bem_estar:
         prefixo = "Oi! " if saudacao else ""
-        return f"{prefixo}Tô bem por aqui. E você, como tá?"
+        resposta = escolher_variacao([
+            "Tô bem por aqui. E você, como tá?",
+            "Por aqui está tudo certo. Agora quero saber de você.",
+            "Tô bem, com a cabeça no lugar por enquanto. E você?",
+        ])
+        return prefixo + resposta
     if re.fullmatch(
         r"(?:oi|ol[aá]|opa|e a[ií]|bom dia|boa tarde|boa noite)"
         r"(?:[, ]+(?:lay|laylay))?[!?. ]*",
         texto,
     ):
-        return "Oi. Tô aqui."
+        return escolher_variacao([
+            "Oi. Tô aqui.",
+            "Opa. Pode falar.",
+            "Oi, cheguei. Qual é a de hoje?",
+        ])
 
     if re.fullmatch(
         r"(?:deixa|deixe|vamos deixar|pode deixar) (?:isso )?"
         r"(?:para|pra) depois[!?. ]*",
         texto,
     ):
-        return "Tá bom, deixamos isso para depois."
+        return escolher_variacao([
+            "Combinado. A gente deixa isso para depois.",
+            "Beleza, fica para outro momento.",
+            "Fechado. Isso sai da mesa por enquanto.",
+        ])
 
     social = _resposta_social_curta(bruto)
     if social:
@@ -188,5 +219,13 @@ def fala_contingencia_natural(
         r"^(?:como|qual|quais|por que|porque|onde|quando|quem|o que|e esse|e essa)\b",
         texto,
     ):
-        return "Pera, essa eu não quero responder pela metade. Tenta mais uma vez comigo."
-    return "Entendi. Continua — eu tô acompanhando daqui."
+        return escolher_variacao([
+            "Essa eu não consegui fechar sem chutar. Me dá um detalhe a mais?",
+            "Faltou uma peça aí. Explica só um pouco mais para eu não inventar moda.",
+            "Dá para responder, mas agora seria no chute. Completa só essa parte.",
+        ])
+    return escolher_variacao([
+        "A ideia chegou, só não veio inteira. Continua daí.",
+        "Peguei o começo. Desenvolve mais um pouco para eu acompanhar direito.",
+        "Eu acompanhei até aqui; falta só uma peça para isso fechar.",
+    ])
