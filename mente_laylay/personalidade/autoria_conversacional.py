@@ -110,6 +110,8 @@ def criar_fala_autoral(
             timeout=12,
             _prioridade_interativa=True,
             _permitir_durante_interacao=True,
+            _tipo_chamada="reparo_comunicacao",
+            _classe_timeout="rapida",
         )
     except Exception as erro:
         return FalaAutoral(

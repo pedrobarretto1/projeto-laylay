@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+import threading
 from typing import Any, Callable, Dict
 
 from mente_laylay.iot.configuracao import carregar_dispositivo_snapshot, carregar_variaveis
 from mente_laylay.iot.contratos import DispositivoIoT, ResultadoProtocolo
 from mente_laylay.iot.protocolos.base import ProtocoloIoT
+from mente_laylay.memoria_mental.implantacao_desempenho import flag_desempenho_ativa
 
 
 ClienteFactory = Callable[..., Any]
@@ -26,6 +28,8 @@ class ProtocoloTuya(ProtocoloIoT):
         self._cliente_factory = cliente_factory or self._criar_cliente_padrao
         self.timeout = max(0.5, float(timeout))
         self.tentativas = max(1, int(tentativas))
+        self._config_cache_lock = threading.RLock()
+        self._config_cache: dict[str, tuple[tuple[Any, ...], Dict[str, Any]]] = {}
 
     @staticmethod
     def _criar_cliente_padrao(**dados: Any) -> Any:
@@ -58,6 +62,37 @@ class ProtocoloTuya(ProtocoloIoT):
                 for caminho in configuracao.get("snapshot_fallback_paths", ())
             ],
         ]
+        assinatura_arquivos: list[tuple[str, int, int]] = []
+        for caminho_snapshot in caminhos_snapshot:
+            if not caminho_snapshot:
+                continue
+            path = Path(caminho_snapshot)
+            if not path.is_absolute():
+                path = Path.cwd() / path
+            try:
+                estado = path.stat()
+                assinatura_arquivos.append(
+                    (str(path.resolve()), int(estado.st_mtime_ns), int(estado.st_size))
+                )
+            except OSError:
+                assinatura_arquivos.append((str(path), 0, 0))
+        assinatura = (
+            tuple(sorted((str(chave), str(valor)) for chave, valor in valores.items())),
+            tuple(assinatura_arquivos),
+            str(configuracao.get("snapshot_device_name") or ""),
+            str(configuracao.get("classe_tuya") or "outlet"),
+            str(configuracao.get("dps_estado") or "1"),
+            self.timeout,
+            self.tentativas,
+        )
+        chave_cache = str(dispositivo.nome or "").strip().casefold()
+        cache_ativo = flag_desempenho_ativa("LAYLAY_CACHE_TUYA_ATIVO")
+        if cache_ativo:
+            with self._config_cache_lock:
+                anterior = self._config_cache.get(chave_cache)
+                if anterior is not None and anterior[0] == assinatura:
+                    return dict(anterior[1]), ""
+
         candidatos_snapshot: list[tuple[float, int, Dict[str, str]]] = []
         for indice, caminho_snapshot in enumerate(caminhos_snapshot):
             if not caminho_snapshot:
@@ -110,7 +145,7 @@ class ProtocoloTuya(ProtocoloIoT):
         if not dps.isdigit():
             return {}, "DPS de estado Tuya inválido"
 
-        return {
+        dados_finais = {
             "device_id": valores["device_id"],
             "local_key": valores["local_key"],
             "ip": valores["ip"],
@@ -119,7 +154,11 @@ class ProtocoloTuya(ProtocoloIoT):
             "timeout": self.timeout,
             "tentativas": self.tentativas,
             "classe_tuya": str(configuracao.get("classe_tuya") or "outlet").strip().lower(),
-        }, ""
+        }
+        if cache_ativo:
+            with self._config_cache_lock:
+                self._config_cache[chave_cache] = (assinatura, dict(dados_finais))
+        return dados_finais, ""
 
     def _cliente(self, dispositivo: DispositivoIoT) -> tuple[Any | None, Dict[str, Any], str]:
         dados, erro = self._configuracao(dispositivo)

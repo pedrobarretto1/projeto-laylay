@@ -6,6 +6,10 @@ import re
 import time
 from typing import Any, Callable, Dict
 
+from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
+    classificar_confirmacao_local,
+)
+
 
 def analisar_protecao_operacional(
     texto: str,
@@ -48,7 +52,7 @@ def analisar_protecao_operacional(
     if re.search(
         r"^(?:nao|não|nunca|jamais)\s+(?:(?:pode|deve|vai)\s+)?"
         r"(?:abre|abra|fecha|feche|liga|ligue|acende|desliga|desligue|toca|"
-        r"toque|coloca|apaga|remove|muda|ajusta|deixa)\b",
+        r"toque|coloca|apaga|remove|muda|ajusta|deixa|resume|resuma|explique)\b",
         t,
     ):
         return {
@@ -62,7 +66,7 @@ def analisar_protecao_operacional(
         r"onde|quando|por\s+que|porque|qual\s+(?:a\s+)?forma\s+de|"
         r"o\s+que\s+(?:eu\s+)?(?:faria|fa[cç]o)|o\s+que\s+acontece\s+se)\b"
         r".*\b(?:abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|"
-        r"remover|usar|fazer)\b",
+        r"remover|usar|fazer|resumir|explicar)\b",
         t,
     ) or re.search(r"\b(?:queria|gostaria)\s+de\s+saber\s+como\b", t):
         return {
@@ -174,14 +178,18 @@ def _classificar_modalidade_base(
         )
         return resultado
 
-    confirmacoes = {"sim", "sim pode", "pode", "pode sim", "quero", "quero sim", "eu quero", "claro", "aham", "uhum", "isso", "isso mesmo", "bora", "vai", "manda", "pode ser", "fechado", "beleza", "ok"}
-    recusas = {
-        "nao", "não", "agora nao", "agora não", "nao precisa", "não precisa",
-        "deixa", "deixa quieto", "deixa pra la", "deixa pra lá",
-        "deixa para la", "deixa para lá", "esquece", "melhor nao",
-        "melhor não", "pode nao", "pode não",
-    }
-    if t in confirmacoes:
+    decisao_curta = classificar_confirmacao_local(t)
+    # Verbos curtos podem confirmar uma pendência ("abre") ou iniciar um
+    # comando que ainda carece de alvo. Sem pendência válida, deixamos o
+    # classificador operacional decidir e pedir o alvo, em vez de convertê-los
+    # em confirmação social.
+    verbo_operacional_sem_contexto = bool(re.fullmatch(
+        r"(?:abre|coloca|toca|play|da play|fecha|liga|desliga|apaga|remove)",
+        t,
+    ))
+    if decisao_curta is True and (
+        confirmacao_contextual_valida or not verbo_operacional_sem_contexto
+    ):
         resultado.update(
             modalidade="confirmacao", confianca=0.98,
             motivo=("confirmação ligada a pendência ativa" if confirmacao_contextual_valida else "confirmação social sem pendência acionável"),
@@ -190,7 +198,7 @@ def _classificar_modalidade_base(
             autoriza_execucao=bool(confirmacao_contextual_valida),
         )
         return resultado
-    if t in recusas:
+    if decisao_curta is False:
         resultado.update(modalidade="recusa", confianca=0.98, motivo="recusa curta explícita")
         return resultado
     if re.fullmatch(
@@ -278,8 +286,9 @@ def _classificar_modalidade_base(
         )
         return resultado
     if re.search(
-        r"^(?:o\s+que\s+(?:essa|esta)\s+(?:pagina|página|site|video|vídeo)\b|"
-        r"(?:resume|resuma|resumir|leia|ler|verifique)\b.*\b(?:pagina|página|site|video|vídeo))",
+        r"^(?:o\s+que\s+(?:essa|esta)\s+(?:pagina|página|site|video|vídeo|aba)\b|"
+        r"(?:resume|resuma|resumir|leia|ler|verifique|explica|explique)\b.*"
+        r"\b(?:pagina|página|site|video|vídeo|aba)\b)",
         t,
     ):
         resultado.update(

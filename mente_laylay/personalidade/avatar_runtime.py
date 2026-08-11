@@ -337,6 +337,27 @@ class AvatarRuntime:
         falsos = {"0", "false", "nao", "não", "off", "desligado", ""}
         return mascote not in falsos and legado not in falsos
 
+    def diagnostico(self) -> dict[str, Any]:
+        pasta_assets = self.raiz_projeto / "avatar"
+        assets = descobrir_assets_avatar(pasta_assets)
+        tem_parado, tem_falando = verificar_quadros_avatar(assets)
+        script = self.raiz_projeto / "cliente" / "avatar_laylay.py"
+        executavel = self.raiz_projeto / "AvatarLaylay.exe"
+        recurso = executavel if getattr(sys, "frozen", False) else script
+        processo_ativo = bool(
+            self._processo is not None and self._processo.poll() is None
+        )
+        visual_externo = self._visual_externo_ativo()
+        return {
+            "preferencia_ativa": self.ativo(),
+            "assets_disponiveis": bool(tem_parado and tem_falando),
+            "recurso_disponivel": recurso.is_file(),
+            "processo_ativo": processo_ativo,
+            "visual_externo_ativo": visual_externo,
+            "ativo_observado": processo_ativo or visual_externo,
+            "autoriza_execucao": False,
+        }
+
     def iniciar(self) -> bool:
         if not self.ativo():
             return False

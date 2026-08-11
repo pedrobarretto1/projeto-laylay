@@ -143,8 +143,20 @@ class CaixaEntradaPessoalRuntime:
         self.agora = agora
         self.log = log
         self._lock = threading.RLock()
-        self._pendencia: dict[str, Any] = {}
         self._ultimo_id = ""
+
+    def _pendencia_operacional(self) -> dict[str, Any]:
+        obter = getattr(self.pendencia_runtime, "obter", None)
+        if not callable(obter):
+            return {}
+        atual = obter()
+        if not isinstance(atual, dict):
+            return {}
+        if str(atual.get("origem") or "") != "caixa_entrada_pessoal":
+            return {}
+        if str(atual.get("acao") or "") not in {"excluir_nota", "converter_nota"}:
+            return {}
+        return dict(atual)
 
     def _carregar(self) -> dict[str, Any]:
         with self._lock:
@@ -189,16 +201,12 @@ class CaixaEntradaPessoalRuntime:
         t = _normalizar(texto)
         if not t:
             return ""
-        if self._pendencia:
+        if self._pendencia_operacional():
             decisao = classificar_confirmacao_local(texto)
             if decisao is True:
                 return "confirmar"
             if decisao is False:
                 return "cancelar"
-            # Mantém as confirmações curtas históricas que são específicas da
-            # caixa e não fazem parte do vocabulário compartilhado.
-            if t in {"confirmo", "isso"}:
-                return "confirmar"
         if re.search(r"\b(?:transforma|transforme|converte|converta)\b", t) and re.search(
             r"\b(?:nota|ideia|tarefa|isso|ela)\b", t
         ) and "lembrete" in t:
@@ -1006,15 +1014,39 @@ class CaixaEntradaPessoalRuntime:
         if not item:
             self.falar("Não encontrei uma nota ativa para fazer isso.", "calma", 1)
             return True
-        self._pendencia = {"acao": acao, "item_id": item["id"], "texto": texto}
+        metadados: dict[str, Any] = {
+            "item_id": item["id"],
+            "texto_origem": str(texto or "")[:300],
+        }
         if acao == "converter":
             parametros_temporais = extrair_parametros_temporais_lembrete(texto)
-            self._pendencia["params_agenda"] = {
+            metadados["params_agenda"] = {
                 chave: parametros_temporais[chave]
                 for chave in ("atraso_segundos", "hora_alvo", "data_hora")
                 if chave in parametros_temporais
             }
         intent = "INBOX_DELETE" if acao == "excluir" else "INBOX_CONVERT_REMINDER"
+        pergunta = (
+            "Confirma que quer enviar essa nota para os itens excluídos?"
+            if acao == "excluir"
+            else "Confirma que quer transformar essa nota em lembrete?"
+        )
+        registrar = getattr(self.pendencia_runtime, "registrar", None)
+        nova = registrar(
+            origem="caixa_entrada_pessoal",
+            acao="excluir_nota" if acao == "excluir" else "converter_nota",
+            pergunta=pergunta,
+            referencia=str(item["id"]),
+            metadados=metadados,
+            ttl_s=180.0,
+        ) if callable(registrar) else None
+        if not nova:
+            self.falar(
+                "Já existe uma confirmação em andamento. Vamos resolver aquela primeiro.",
+                "calma",
+                1,
+            )
+            return True
         self._registrar(
             {
                 "intent": intent,
@@ -1024,25 +1056,26 @@ class CaixaEntradaPessoalRuntime:
             False,
             status="aguardando_confirmacao",
         )
-        verbo = "enviar essa nota para os itens excluídos" if acao == "excluir" else "transformar essa nota em lembrete"
-        self.falar(f"Confirma que quer {verbo}?", "calma", 1)
+        self.falar(pergunta, "calma", 1)
         return True
 
-    def _confirmar(self, texto: str) -> bool:
-        pendencia = dict(self._pendencia)
-        self._pendencia = {}
+    def _confirmar(self, texto: str, pendencia: dict[str, Any]) -> bool:
         if not pendencia:
             return False
+        metadados = dict(pendencia.get("metadados") or {})
         dados = self._carregar()
-        item = next((i for i in dados["itens"] if i.get("id") == pendencia.get("item_id")), None)
+        item = next(
+            (i for i in dados["itens"] if i.get("id") == metadados.get("item_id")),
+            None,
+        )
         if not item:
             self.falar("A nota pendente não está mais disponível.", "calma", 1)
             return True
-        if pendencia.get("acao") == "excluir":
+        if pendencia.get("acao") == "excluir_nota":
             item["status"] = "excluido"
             item["atualizado_em"] = self.agora().isoformat()
             ok = self._salvar(dados)
-            resultado = {"intent": "INBOX_DELETE", "params": {"nota_id": item["id"], "alvo": str(item.get("conteudo"))[:180]}}
+            resultado = {"intent": "CONFIRM_INBOX_DELETE", "params": {"nota_id": item["id"], "alvo": str(item.get("conteudo"))[:180]}}
             self._registrar(resultado, texto, ok, status="nota_excluida" if ok else "falha_execucao")
             self.falar("Enviei a nota para os itens excluídos." if ok else "Não consegui confirmar a exclusão.", "calma", 1)
             return True
@@ -1051,17 +1084,49 @@ class CaixaEntradaPessoalRuntime:
             "intent": "AGENDAR_LEMBRETE",
             "params": {
                 "descricao": str(item.get("conteudo") or "")[:500],
-                **dict(pendencia.get("params_agenda") or {}),
+                **dict(metadados.get("params_agenda") or {}),
             },
         }
-        ok = bool(self.executar_intencao(resultado_agenda, pendencia.get("texto", ""))) if callable(self.executar_intencao) else False
-        self._registrar(resultado_agenda, pendencia.get("texto", ""), ok, status="conversao_iniciada" if ok else "falha_execucao")
+        texto_origem = str(metadados.get("texto_origem") or texto)
+        ok = bool(self.executar_intencao(resultado_agenda, texto_origem)) if callable(self.executar_intencao) else False
+        self._registrar(resultado_agenda, texto_origem, ok, status="conversao_iniciada" if ok else "falha_execucao")
         if not ok:
             self.falar("Não consegui encaminhar essa nota para a agenda.", "calma", 1)
         return True
 
+    def _resolver_pendencia_operacional(self, texto: str) -> bool:
+        atual = self._pendencia_operacional()
+        if not atual:
+            return False
+        resolver = getattr(self.pendencia_runtime, "resolver", None)
+        concluir = getattr(self.pendencia_runtime, "concluir", None)
+        if not (callable(resolver) and callable(concluir)):
+            return False
+        resolucao = resolver(texto)
+        if not resolucao.get("tratado"):
+            return False
+        pendencia = dict(resolucao.get("pendencia") or atual)
+        pendencia_id = str(pendencia.get("id") or "")
+        if resolucao.get("status") == "recusar":
+            concluir(pendencia_id, "recusada")
+            self._registrar(
+                {"intent": "CANCEL_INBOX_ACTION", "params": {}},
+                texto,
+                True,
+                status="cancelado",
+            )
+            self.falar("Certo, não alterei a nota.", "calma", 1)
+            return True
+        if resolucao.get("status") != "aceitar":
+            return True
+        tratado = self._confirmar(texto, pendencia)
+        concluir(pendencia_id, "concluida" if tratado else "falha_execucao")
+        return tratado
+
     def processar(self, texto: str) -> bool:
         if self._resolver_pendencia_discussao(texto):
+            return True
+        if self._resolver_pendencia_operacional(texto):
             return True
         operacao = self.detectar(texto)
         if not operacao:
@@ -1074,18 +1139,6 @@ class CaixaEntradaPessoalRuntime:
             return self._listar(texto)
         if operacao in {"excluir", "converter_lembrete"}:
             return self._pedir_confirmacao(texto, "excluir" if operacao == "excluir" else "converter")
-        if operacao == "confirmar":
-            return self._confirmar(texto)
-        if operacao == "cancelar":
-            self._pendencia = {}
-            self._registrar(
-                {"intent": "CANCEL_INBOX_ACTION", "params": {}},
-                texto,
-                True,
-                status="cancelado",
-            )
-            self.falar("Certo, não alterei a nota.", "calma", 1)
-            return True
         return False
 
     def reexecutar(self, resultado: dict[str, Any], texto: str) -> bool:
@@ -1128,8 +1181,20 @@ class CaixaEntradaPessoalRuntime:
                 for tipo in ("nota", "ideia", "ideia_discutida", "tarefa", "link", "pensamento")
             },
             "ultimo_id": self._ultimo_id,
-            "pendencia": bool(self._pendencia),
+            "pendencia": bool(self._pendencia_operacional()),
+            "persistencia_disponivel": bool(
+                self.caminho.exists()
+                or (
+                    self.caminho.parent.exists()
+                    and os.access(self.caminho.parent, os.W_OK)
+                )
+            ),
+            "pendencia_canonica": self.pendencia_runtime is not None,
+            "conteudo_exposto": False,
+            "autoriza_execucao": False,
         }
+
+    diagnostico = snapshot
 
 
 def criar_caixa_entrada_pessoal_runtime(**kwargs: Any) -> CaixaEntradaPessoalRuntime:

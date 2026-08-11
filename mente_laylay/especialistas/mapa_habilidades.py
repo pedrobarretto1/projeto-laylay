@@ -29,7 +29,8 @@ _DESCRICAO_DOMINIO = {
     ),
     "navegador": (
         "consultar a aba ativa e as abas abertas; abrir sites, pesquisar, controlar mídia, "
-        "interagir com controles identificados de páginas, fechar abas e capturar a tela. "
+        "resumir o conteúdo da página atual, interagir com controles identificados de páginas, "
+        "fechar abas e capturar a tela. "
         "A leitura não autoriza ações e comandos arbitrários de página não são expostos"
     ),
     "visao": (
@@ -153,6 +154,7 @@ _STATUS_RECUPERADOS = {
     "sucesso", "executado", "confirmado", "aberto", "concluido", "ok",
     "playlist_aberta", "cor_ajustada", "branco_ajustado", "ligado", "desligado",
     "arquivo_criado", "pasta_criada", "arquivos_encontrados", "arquivo_aberto",
+    "resumo_concluido",
 }
 
 _MODULO_SAUDE_POR_DOMINIO = {
@@ -182,16 +184,32 @@ class MapaHabilidadesRuntime:
         self,
         *,
         saude_getter: Callable[[], Mapping[str, Any]] | None = None,
+        operacional_getter: Callable[[], Mapping[str, Any]] | None = None,
         relogio: Callable[[], float] = time.time,
         ttl_indisponivel_s: float = 120.0,
         ttl_observacao_s: float = 300.0,
     ) -> None:
         self._saude_getter = saude_getter
+        self._operacional_getter = operacional_getter
         self._relogio = relogio
         self._ttl_indisponivel_s = max(1.0, float(ttl_indisponivel_s))
         self._ttl_observacao_s = max(self._ttl_indisponivel_s, float(ttl_observacao_s))
         self._observacoes: dict[str, dict[str, Any]] = {}
         self._lock = RLock()
+
+    def conectar_disponibilidade_operacional(
+        self, getter: Callable[[], Mapping[str, Any]],
+    ) -> None:
+        """Conecta tardiamente o retrato vivo sem criar outro catálogo."""
+        self._operacional_getter = getter
+
+    def _operacional(self) -> dict[str, Any]:
+        if not callable(self._operacional_getter):
+            return {}
+        try:
+            return dict(self._operacional_getter() or {})
+        except Exception:
+            return {}
 
     def _saude(self) -> dict[str, Any]:
         if not callable(self._saude_getter):
@@ -250,6 +268,9 @@ class MapaHabilidadesRuntime:
     def snapshot(self) -> dict[str, Any]:
         agora = self._relogio()
         saude = self._saude()
+        operacional = self._operacional()
+        operacional_dominios = dict(operacional.get("dominios") or {})
+        operacional_capacidades = dict(operacional.get("capacidades") or {})
         capacidades: dict[str, dict[str, Any]] = {}
         with self._lock:
             expiradas = [
@@ -280,18 +301,68 @@ class MapaHabilidadesRuntime:
                 registro["estado"] = "disponivel" if registro.get("disponivel") else "indisponivel"
                 if observacao:
                     registro["ultimo_status"] = observacao.get("status")
+            estado_operacional = dict(
+                operacional_capacidades.get(nome)
+                or operacional_dominios.get(dominio_catalogo)
+                or {}
+            )
+            if estado_operacional:
+                estado_vivo = str(estado_operacional.get("estado") or "").strip()
+                if estado_vivo == "indisponivel":
+                    registro.update(
+                        disponivel=False,
+                        estado="indisponivel",
+                        motivo=str(
+                            estado_operacional.get("motivo")
+                            or "precondicao_operacional_ausente"
+                        ),
+                        ausentes=list(estado_operacional.get("ausentes") or []),
+                    )
+                elif estado_vivo == "degradado":
+                    registro.update(
+                        estado="degradado",
+                        motivo=str(
+                            estado_operacional.get("motivo")
+                            or "capacidade_operacional_degradada"
+                        ),
+                        ausentes=list(estado_operacional.get("ausentes") or []),
+                    )
+                elif estado_vivo == "disponivel":
+                    registro.update(
+                        estado="disponivel",
+                        disponivel=True,
+                        motivo=str(estado_operacional.get("motivo") or "operacional"),
+                        ausentes=[],
+                    )
+                registro["evidencia_operacional_recente"] = bool(
+                    estado_operacional.get("evidencia_recente")
+                )
             capacidades[nome] = registro
 
         dominios: dict[str, dict[str, Any]] = {}
         for dominio, descricao in _DESCRICAO_DOMINIO.items():
             itens = [item for item in capacidades.values() if item.get("dominio") == dominio]
             disponiveis = sum(bool(item.get("disponivel")) for item in itens)
+            estado_operacional = dict(operacional_dominios.get(dominio) or {})
+            estado_calculado = (
+                "disponivel" if disponiveis == len(itens)
+                else "indisponivel" if not disponiveis else "parcial"
+            )
+            if not itens and dominio in _DOMINIOS_CONVERSACIONAIS_DISPONIVEIS:
+                estado_calculado = "disponivel"
+            if estado_operacional.get("estado"):
+                estado_calculado = str(estado_operacional.get("estado"))
             dominios[dominio] = {
                 "descricao": descricao,
                 "total": len(itens),
                 "disponiveis": disponiveis,
-                "estado": "disponivel" if disponiveis == len(itens) else "indisponivel" if not disponiveis else "parcial",
+                "estado": estado_calculado,
                 "intents": [item["intent"] for item in itens],
+                "motivo": str(estado_operacional.get("motivo") or ""),
+                "ausentes": list(estado_operacional.get("ausentes") or []),
+                "evidencia_operacional_recente": bool(
+                    estado_operacional.get("evidencia_recente")
+                ),
             }
         return {"dominios": dominios, "capacidades": capacidades, "observacoes_ativas": len(observacoes)}
 
@@ -393,8 +464,8 @@ class MapaHabilidadesRuntime:
         mapa = self.snapshot()
         dominios = self.dominios_relevantes(t)
         disponivel = any(
-            dominio in _DOMINIOS_CONVERSACIONAIS_DISPONIVEIS
-            or bool((mapa.get("dominios") or {}).get(dominio, {}).get("disponiveis"))
+            str((mapa.get("dominios") or {}).get(dominio, {}).get("estado") or "")
+            in {"disponivel", "parcial", "degradado"}
             for dominio in dominios
         )
         if not disponivel:
@@ -422,8 +493,9 @@ class MapaHabilidadesRuntime:
             return "Consigo. Posso fechar o programa, navegador ou aba quando você fizer o pedido direto."
         if "navegador" in dominios:
             return (
-                "Consigo consultar a aba ativa e as abas abertas, abrir sites, pesquisar, controlar "
-                "mídia e interagir com controles de página que a habilidade reconheça. A leitura do "
+                "Consigo consultar a aba ativa e as abas abertas, resumir a página atual, abrir sites, "
+                "pesquisar, controlar mídia e interagir com controles de página que a habilidade "
+                "reconheça. A leitura do "
                 "navegador não autoriza uma ação por conta própria, e eu não exponho um comando "
                 "arbitrário de página; cada ação real continua passando pelo porteiro e pelo executor."
             )

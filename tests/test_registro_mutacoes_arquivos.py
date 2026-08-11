@@ -9,10 +9,30 @@ from mente_laylay.arquivos.mutacoes import criar_arquivos_mutacao_runtime
 from mente_laylay.integracao.registro_mutacoes_arquivos import (
     registrar_arquivos_mutacao,
 )
+from mente_laylay.memoria_mental.pendencia_acao import PendenciaAcaoRuntime
+
+
+def _pendencia_runtime() -> PendenciaAcaoRuntime:
+    estado: dict = {}
+
+    def atualizar(mutador):
+        novo = mutador(dict(estado))
+        estado.clear()
+        estado.update(novo)
+        return dict(estado)
+
+    return PendenciaAcaoRuntime(
+        estado_getter=lambda: estado,
+        estado_atualizar=atualizar,
+        log=lambda *_args: None,
+    )
 
 
 def _registro_real(tmp_path: Path):
-    lixeira = LixeiraLaylay(str(tmp_path / ".lixeira_teste"))
+    lixeira = LixeiraLaylay(
+        str(tmp_path / ".lixeira_teste"),
+        pendencia_runtime=_pendencia_runtime(),
+    )
     runtime = criar_arquivos_mutacao_runtime(
         solicitar_exclusao_cb=lixeira.mover,
         confirmar_exclusao_cb=lixeira.confirmar_pendente,
@@ -104,4 +124,3 @@ def test_registro_rejeita_servico_incompleto_na_composicao() -> None:
 
     with pytest.raises(RuntimeError, match="serviço de mutação de arquivos inválido"):
         registrar_arquivos_mutacao(_Incompleto())
-

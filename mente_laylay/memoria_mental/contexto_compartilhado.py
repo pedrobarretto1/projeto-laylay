@@ -177,25 +177,10 @@ def registrar_resultado_execucao(
         "evidencia_confirmacao": contrato.evidencia_confirmacao,
     }
 
-    if intent == "DELETE_ITEM" and status_final == "aguardando_confirmacao":
-        estado = registrar_pendencia(
-            estado,
-            criar_pendencia(
-                origem="lixeira_laylay",
-                tipo="confirmacao",
-                dominio="arquivos",
-                conteudo=f"Enviar {contrato.alvo or 'o item'} para a lixeira?",
-                opcoes=[
-                    {"rotulo": "confirmar", "intent": "CONFIRM_DELETE_ITEM"},
-                    {"rotulo": "cancelar", "intent": "CANCEL_DELETE_ITEM"},
-                ],
-                resposta_esperada="sim ou não",
-                intencao="CONFIRM_DELETE_ITEM",
-                ttl_s=90.0,
-                foi_falada=True,
-            ),
-        )
-    elif intent in {"CONFIRM_DELETE_ITEM", "CANCEL_DELETE_ITEM"}:
+    # Exclusão e caixa de entrada usam ``pendencia_acao_canonica``. Esta
+    # camada registra somente o resultado e limpa estados legados que possam
+    # ter vindo de uma sessão anterior; não cria uma segunda pendência.
+    if intent in {"CONFIRM_DELETE_ITEM", "CANCEL_DELETE_ITEM"}:
         estado = limpar_pendencia(
             estado,
             motivo=(
@@ -204,25 +189,7 @@ def registrar_resultado_execucao(
                 else "cancelada"
             ),
         )
-    elif intent in {"INBOX_DELETE", "INBOX_CONVERT_REMINDER"} and status_final == "aguardando_confirmacao":
-        estado = registrar_pendencia(
-            estado,
-            criar_pendencia(
-                origem="caixa_entrada_pessoal",
-                tipo="confirmacao",
-                dominio="caixa_entrada",
-                conteudo=f"Confirmar alteração na nota {contrato.alvo or ''}?".strip(),
-                opcoes=[
-                    {"rotulo": "confirmar", "intent": intent},
-                    {"rotulo": "cancelar", "intent": "CANCEL_INBOX_ACTION"},
-                ],
-                resposta_esperada="sim ou não",
-                intencao=intent,
-                ttl_s=120.0,
-                foi_falada=True,
-            ),
-        )
-    elif intent in {"INBOX_DELETE", "INBOX_CONVERT_REMINDER", "CANCEL_INBOX_ACTION"}:
+    elif intent in {"CONFIRM_INBOX_DELETE", "CANCEL_INBOX_ACTION"}:
         pendencia_inbox = dict(estado.get("pendencia_atual") or {})
         if str(pendencia_inbox.get("origem") or "") == "caixa_entrada_pessoal":
             estado = limpar_pendencia(

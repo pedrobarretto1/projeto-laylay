@@ -554,6 +554,8 @@ def personalizar_confirmacao_llm(
             # adiava por detectar a própria interação ainda ativa.
             _prioridade_interativa=True,
             _permitir_durante_interacao=True,
+            _tipo_chamada="autoria_operacional",
+            _classe_timeout="rapida",
         )
     except Exception as erro:
         return _com_motivo_fallback(
@@ -621,6 +623,11 @@ def personalizar_confirmacao_llm(
                 timeout=_timeout_autoria_operacional(),
                 _prioridade_interativa=True,
                 _permitir_durante_interacao=True,
+                _tipo_chamada=(
+                    "reparo_json" if motivo_contrato == "json_invalido"
+                    else "reparo_factual"
+                ),
+                _classe_timeout="rapida",
             )
             dados_corrigidos = _extrair_json(resposta_corrigida)
             fala_corrigida, motivo_corrigido = (
@@ -667,6 +674,8 @@ def personalizar_confirmacao_llm(
                 timeout=_timeout_autoria_operacional(),
                 _prioridade_interativa=True,
                 _permitir_durante_interacao=True,
+                _tipo_chamada="reparo_comunicacao",
+                _classe_timeout="rapida",
             )
             dados_variados = _extrair_json(resposta_variada)
             fala_variada, motivo_variado = validar_dados(dados_variados)
@@ -753,6 +762,8 @@ def personalizar_informacao_llm(
             timeout=_timeout_autoria_operacional(),
             _prioridade_interativa=True,
             _permitir_durante_interacao=True,
+            _tipo_chamada="autoria_operacional",
+            _classe_timeout="rapida",
         )
     except Exception:
         return fallback

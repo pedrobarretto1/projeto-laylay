@@ -7,6 +7,8 @@ import time
 from typing import Any, Dict, Iterable
 
 from mente_laylay.memoria_mental.registro_semantico import renovar_registro_semantico_sessao
+from mente_laylay.memoria_mental.pendencia_acao import CHAVE_PENDENCIA_ACAO
+from mente_laylay.memoria_mental.continuidade_geral import estado_continuidade_geral_inicial
 
 
 def texto_encerra_conversa(texto: str) -> bool:
@@ -63,7 +65,10 @@ def renovar_contexto_sessao(
             "ultima_entrada", "ultimas_entradas", "ultima_entrada_ts", "ultima_resposta",
             "direcao_fala_atual", "historico_direcao_fala",
             "ultima_intencao", "ultimo_alvo", "ultimo_escopo", "ultima_habilidade",
+            "ultimo_app_janela", "ultimo_site_aba", "ultimo_layout_janelas",
+            "continuidade_geral",
             "pendencia_atual", "ultima_pendencia_encerrada", "oferta_pendente",
+            CHAVE_PENDENCIA_ACAO,
             "ultimo_resumo_pagina", "capacidade_futura", "foco_vivo", "focos_por_dominio",
             "conteudo_atual", "turno_atual", "plano_turno_atual", "ultima_decisao_semantica",
             "contrato_fala_atual",
@@ -74,9 +79,11 @@ def renovar_contexto_sessao(
         prefixos=(
             "pergunta_aberta_", "ultima_promessa_", "foco_conversacional_",
             "foco_operacional_", "topico_explicito_", "ultima_acao_",
+            "ultima_estrutura_arquivo_",
         ),
     )
     mental_novo.update({
+        "continuidade_geral": estado_continuidade_geral_inicial(),
         "registro_semantico": renovar_registro_semantico_sessao(
             (mental or {}).get("registro_semantico") if isinstance(mental, dict) else {},
             motivo=motivo,

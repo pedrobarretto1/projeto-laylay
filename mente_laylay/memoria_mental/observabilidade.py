@@ -7,6 +7,10 @@ import threading
 import time
 from typing import Any, Callable, Dict, Iterable
 
+from mente_laylay.memoria_mental.implantacao_desempenho import (
+    sinal_regressao_por_falha,
+)
+
 
 CLASSES_FALHA_TECNICA = frozenset({"esperada", "degradacao", "defeito"})
 IMPACTOS_FALHA_TECNICA = frozenset({"nenhum", "turno", "comando", "fala", "servico"})
@@ -14,6 +18,8 @@ IMPACTOS_FALHA_TECNICA = frozenset({"nenhum", "turno", "comando", "fala", "servi
 # Limites de diagnóstico, não timeouts. Excedê-los nunca cancela uma ação;
 # apenas torna a degradação mensurável para uma otimização posterior segura.
 ORCAMENTOS_LATENCIA_MS = {
+    "startup_chat_pronto": 3_000.0,
+    "startup_servicos_completos": 10_000.0,
     "interpretacao": 80.0,
     "interpretação": 80.0,
     "dispatcher": 120.0,
@@ -24,9 +30,17 @@ ORCAMENTOS_LATENCIA_MS = {
     "llm_resposta_principal": 20_000.0,
     "visao_jogo": 8_000.0,
     "tts_sintese": 8_000.0,
+    "tts_sintese_primeiro_trecho": 2_000.0,
+    "tts_fila": 1_000.0,
+    "tts_texto_visivel": 1_000.0,
+    "tts_primeiro_audio": 10_000.0,
+    "tts_reproducao": 20_000.0,
     "tts_total": 20_000.0,
     "turno_total": 25_000.0,
 }
+
+LIMITE_AMOSTRAS_PERCENTIL = 128
+LIMITE_TRACES_TURNO = 40
 
 
 def _codigo(valor: Any, padrao: str = "sem_detalhe", limite: int = 96) -> str:
@@ -35,6 +49,66 @@ def _codigo(valor: Any, padrao: str = "sem_detalhe", limite: int = 96) -> str:
     texto = re.sub(r"[^a-z0-9áàâãéêíóôõúç_.: -]+", "", texto)
     texto = re.sub(r"\s+", "_", texto).strip("_.:-")
     return (texto or padrao)[:limite]
+
+
+def _identificador_tecnico(valor: Any, padrao: str = "desconhecido", limite: int = 64) -> str:
+    """Aceita somente identificadores; frases, caminhos e URLs nunca viram telemetria."""
+    texto = str(valor or "").strip()
+    if (
+        not texto
+        or re.search(r"https?://|\\|\s|(?:api[_-]?key|token|senha|secret)", texto, re.IGNORECASE)
+        or not re.fullmatch(r"[A-Za-z0-9À-ÿ_.:/-]+", texto)
+    ):
+        return padrao
+    return texto.casefold()[:limite]
+
+
+def _percentil(amostras: Iterable[Any], percentual: int) -> float:
+    valores = sorted(float(item) for item in amostras)
+    if not valores:
+        return 0.0
+    posicao = max(0, min(len(valores) - 1, ((percentual * len(valores) + 99) // 100) - 1))
+    return round(valores[posicao], 2)
+
+
+def _inteiro_limitado(valor: Any, teto: int) -> int:
+    try:
+        return max(0, min(int(valor), teto))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _acumular_metrica(
+    anterior: Dict[str, Any],
+    *,
+    duracao: float,
+    sucesso: bool,
+    orcamento: float,
+) -> Dict[str, Any]:
+    atual = dict(anterior or {})
+    amostras = int(atual.get("amostras") or 0) + 1
+    media_anterior = float(atual.get("media_ms") or 0.0)
+    janela = [
+        max(0.0, min(float(item), 600000.0))
+        for item in list(atual.get("_janela_ms") or [])[-(LIMITE_AMOSTRAS_PERCENTIL - 1):]
+        if isinstance(item, (int, float))
+    ]
+    janela.append(duracao)
+    excedeu = bool(orcamento and duracao > orcamento)
+    atual.update(
+        ultimo_ms=round(duracao, 2),
+        media_ms=round(media_anterior + (duracao - media_anterior) / amostras, 2),
+        p50_ms=_percentil(janela, 50),
+        p95_ms=_percentil(janela, 95),
+        max_ms=round(max(float(atual.get("max_ms") or 0.0), duracao), 2),
+        amostras=amostras,
+        falhas=int(atual.get("falhas") or 0) + (0 if sucesso else 1),
+        orcamento_ms=orcamento,
+        excedeu_orcamento=excedeu,
+        excessos=int(atual.get("excessos") or 0) + (1 if excedeu else 0),
+        _janela_ms=janela,
+    )
+    return atual
 
 
 def classificar_falha_tecnica(
@@ -136,6 +210,7 @@ class ObservabilidadeMenteRuntime:
         limite_eventos: int = 20,
         log: Callable[[str], Any] | None = None,
         janela_repeticao_s: float = 30.0,
+        observar_implantacao: Callable[[str], Any] | None = None,
     ) -> None:
         self.estado_getter = estado_getter
         self.estado_setter = estado_setter
@@ -143,8 +218,10 @@ class ObservabilidadeMenteRuntime:
         self.limite_eventos = max(5, int(limite_eventos))
         self.log = log
         self.janela_repeticao_s = max(1.0, float(janela_repeticao_s))
+        self.observar_implantacao = observar_implantacao
         self._lock = threading.RLock()
         self._falhas_auxiliares: Dict[tuple[str, ...], Dict[str, Any]] = {}
+        self._trace_local = threading.local()
 
     def _obter(self, chave: str, padrao: Any) -> Any:
         try:
@@ -158,32 +235,223 @@ class ObservabilidadeMenteRuntime:
         except Exception:
             pass
 
-    def registrar_metrica(self, componente: str, duracao_ms: float, sucesso: bool = True) -> Dict[str, Any]:
+    def iniciar_trace_turno(
+        self,
+        turno_id: Any,
+        *,
+        origem: str = "desconhecida",
+        rota: str = "roteamento",
+    ) -> Dict[str, Any]:
+        trace = {
+            "turno_id": _identificador_tecnico(turno_id, "turno_desconhecido", 72),
+            "origem": _identificador_tecnico(origem, "desconhecida", 32),
+            "rota": _identificador_tecnico(rota, "roteamento", 48),
+            "fase": "entrada",
+            "backend": "desconhecido",
+            "modelo": "desconhecido",
+            "tipo_chamada": "nenhuma",
+            "tamanho_prompt_chars": 0,
+            "limite_saida_tokens": 0,
+        }
+        self._trace_local.atual = dict(trace)
+        with self._lock:
+            traces = list(self._obter("diagnostico_traces_turno", []) or [])
+            traces.append({
+                **trace,
+                "etapas": {},
+                "chamadas_llm": 0,
+                "finalizado": False,
+                "sucesso": None,
+                "ts_inicio": float(self.clock()),
+                "ts_atualizacao": float(self.clock()),
+            })
+            self._atualizar(diagnostico_traces_turno=traces[-LIMITE_TRACES_TURNO:])
+        return dict(trace)
+
+    def atualizar_trace_turno(self, turno_id: Any = None, **campos: Any) -> Dict[str, Any]:
+        atual = dict(getattr(self._trace_local, "atual", {}) or {})
+        id_limpo = _identificador_tecnico(
+            turno_id or atual.get("turno_id"), "turno_desconhecido", 72,
+        )
+        permitidos = {
+            "origem": ("desconhecida", 32),
+            "rota": ("roteamento", 48),
+            "backend": ("desconhecido", 48),
+            "modelo": ("desconhecido", 80),
+            "tipo_chamada": ("nenhuma", 48),
+            "fase": ("entrada", 48),
+        }
+        atual["turno_id"] = id_limpo
+        for chave, (padrao, limite) in permitidos.items():
+            if chave in campos:
+                atual[chave] = _identificador_tecnico(campos[chave], padrao, limite)
+        for chave, teto in {
+            "tamanho_prompt_chars": 2_000_000,
+            "limite_saida_tokens": 100_000,
+        }.items():
+            if chave in campos:
+                try:
+                    atual[chave] = max(0, min(int(campos[chave]), teto))
+                except (TypeError, ValueError):
+                    atual[chave] = 0
+        self._trace_local.atual = dict(atual)
+        with self._lock:
+            traces = list(self._obter("diagnostico_traces_turno", []) or [])
+            for indice in range(len(traces) - 1, -1, -1):
+                if str(traces[indice].get("turno_id") or "") == id_limpo:
+                    traces[indice] = {
+                        **dict(traces[indice]),
+                        **atual,
+                        "ts_atualizacao": float(self.clock()),
+                    }
+                    break
+            self._atualizar(diagnostico_traces_turno=traces[-LIMITE_TRACES_TURNO:])
+        return dict(atual)
+
+    def obter_trace_corrente(self) -> Dict[str, Any]:
+        return dict(getattr(self._trace_local, "atual", {}) or {})
+
+    def finalizar_trace_turno(self, turno_id: Any = None, *, sucesso: bool = True) -> None:
+        atual = self.atualizar_trace_turno(turno_id)
+        id_limpo = str(atual.get("turno_id") or "")
+        with self._lock:
+            traces = list(self._obter("diagnostico_traces_turno", []) or [])
+            for indice in range(len(traces) - 1, -1, -1):
+                if str(traces[indice].get("turno_id") or "") == id_limpo:
+                    traces[indice] = {
+                        **dict(traces[indice]),
+                        "finalizado": True,
+                        "sucesso": bool(sucesso),
+                        "ts_atualizacao": float(self.clock()),
+                    }
+                    break
+            self._atualizar(diagnostico_traces_turno=traces[-LIMITE_TRACES_TURNO:])
+        self._trace_local.atual = {}
+
+    def registrar_metrica(
+        self,
+        componente: str,
+        duracao_ms: float,
+        sucesso: bool = True,
+        **contexto: Any,
+    ) -> Dict[str, Any]:
         nome = _codigo(componente, "desconhecido", 64)
         try:
             duracao = max(0.0, min(float(duracao_ms), 600000.0))
         except (TypeError, ValueError):
             duracao = 0.0
         with self._lock:
-            metricas = dict(self._obter("diagnostico_metricas", {}) or {})
-            atual = dict(metricas.get(nome) or {})
-            amostras = int(atual.get("amostras") or 0) + 1
-            media_anterior = float(atual.get("media_ms") or 0.0)
-            orcamento = float(ORCAMENTOS_LATENCIA_MS.get(nome) or 0.0)
-            excedeu = bool(orcamento and duracao > orcamento)
-            atual.update(
-                ultimo_ms=round(duracao, 2),
-                media_ms=round(media_anterior + (duracao - media_anterior) / amostras, 2),
-                max_ms=round(max(float(atual.get("max_ms") or 0.0), duracao), 2),
-                amostras=amostras,
-                falhas=int(atual.get("falhas") or 0) + (0 if sucesso else 1),
-                orcamento_ms=orcamento,
-                excedeu_orcamento=excedeu,
-                excessos=int(atual.get("excessos") or 0) + (1 if excedeu else 0),
-                ts=float(self.clock()),
+            trace_atual = dict(getattr(self._trace_local, "atual", {}) or {})
+            contexto_trace = {
+                **trace_atual,
+                **{
+                    chave: valor
+                    for chave, valor in contexto.items()
+                    if chave in {
+                        "turno_id", "origem", "rota", "fase", "backend", "modelo", "tipo_chamada",
+                        "tamanho_prompt_chars", "limite_saida_tokens",
+                    }
+                },
+            }
+            turno_id = _identificador_tecnico(
+                contexto_trace.get("turno_id"), "", 72,
             )
+            rota = _identificador_tecnico(contexto_trace.get("rota"), "", 48)
+            backend = _identificador_tecnico(
+                contexto_trace.get("backend"), "desconhecido", 48,
+            )
+            modelo = _identificador_tecnico(
+                contexto_trace.get("modelo"), "desconhecido", 80,
+            )
+            tipo_chamada = _identificador_tecnico(
+                contexto_trace.get("tipo_chamada"), "nenhuma", 48,
+            )
+            fase = _identificador_tecnico(
+                contexto_trace.get("fase"), "entrada", 48,
+            )
+            if turno_id:
+                self._trace_local.atual = {
+                    **trace_atual,
+                    "turno_id": turno_id,
+                    "origem": _identificador_tecnico(
+                        contexto_trace.get("origem"), "desconhecida", 32,
+                    ),
+                    "rota": rota or "roteamento",
+                    "fase": fase,
+                    "backend": backend,
+                    "modelo": modelo,
+                    "tipo_chamada": tipo_chamada,
+                    "tamanho_prompt_chars": _inteiro_limitado(
+                        contexto_trace.get("tamanho_prompt_chars"), 2_000_000,
+                    ),
+                    "limite_saida_tokens": _inteiro_limitado(
+                        contexto_trace.get("limite_saida_tokens"), 100_000,
+                    ),
+                }
+            metricas = dict(self._obter("diagnostico_metricas", {}) or {})
+            orcamento = float(ORCAMENTOS_LATENCIA_MS.get(nome) or 0.0)
+            atual = _acumular_metrica(
+                dict(metricas.get(nome) or {}),
+                duracao=duracao,
+                sucesso=sucesso,
+                orcamento=orcamento,
+            )
+            atual["ts"] = float(self.clock())
             metricas[nome] = atual
-            self._atualizar(diagnostico_metricas=metricas)
+
+            metricas_rotas = dict(self._obter("diagnostico_metricas_rotas", {}) or {})
+            if rota:
+                por_rota = dict(metricas_rotas.get(rota) or {})
+                metrica_rota = _acumular_metrica(
+                    dict(por_rota.get(nome) or {}),
+                    duracao=duracao,
+                    sucesso=sucesso,
+                    orcamento=orcamento,
+                )
+                metrica_rota["ts"] = float(self.clock())
+                por_rota[nome] = metrica_rota
+                metricas_rotas[rota] = por_rota
+
+            traces = list(self._obter("diagnostico_traces_turno", []) or [])
+            if turno_id:
+                for indice in range(len(traces) - 1, -1, -1):
+                    trace = dict(traces[indice] or {})
+                    if str(trace.get("turno_id") or "") != turno_id:
+                        continue
+                    etapas = dict(trace.get("etapas") or {})
+                    etapas[nome] = {
+                        "duracao_ms": round(duracao, 2),
+                        "sucesso": bool(sucesso),
+                    }
+                    trace.update(
+                        rota=rota or str(trace.get("rota") or "roteamento"),
+                        fase=fase,
+                        backend=backend,
+                        modelo=modelo,
+                        tipo_chamada=tipo_chamada,
+                        tamanho_prompt_chars=_inteiro_limitado(
+                            contexto_trace.get("tamanho_prompt_chars"), 2_000_000,
+                        ),
+                        limite_saida_tokens=_inteiro_limitado(
+                            contexto_trace.get("limite_saida_tokens"), 100_000,
+                        ),
+                        etapas=etapas,
+                        ts_atualizacao=float(self.clock()),
+                    )
+                    if nome == "llm_http":
+                        trace["chamadas_llm"] = int(trace.get("chamadas_llm") or 0) + 1
+                        chamadas_por_tipo = dict(trace.get("chamadas_llm_por_tipo") or {})
+                        chamadas_por_tipo[tipo_chamada] = (
+                            int(chamadas_por_tipo.get(tipo_chamada) or 0) + 1
+                        )
+                        trace["chamadas_llm_por_tipo"] = chamadas_por_tipo
+                    traces[indice] = trace
+                    break
+            self._atualizar(
+                diagnostico_metricas=metricas,
+                diagnostico_metricas_rotas=metricas_rotas,
+                diagnostico_traces_turno=traces[-LIMITE_TRACES_TURNO:],
+            )
             return dict(atual)
 
     def registrar_tamanho_prompt(self, origem: str, caracteres: int) -> Dict[str, Any]:
@@ -301,6 +569,16 @@ class ObservabilidadeMenteRuntime:
             eventos = list(self._obter("diagnostico_falhas", []) or [])
             eventos.append(evento)
             self._atualizar(diagnostico_falhas=eventos[-self.limite_eventos:])
+        sinal = sinal_regressao_por_falha(codigo, fallback)
+        if (
+            sinal
+            and classificacao["classe"] != "esperada"
+            and callable(self.observar_implantacao)
+        ):
+            try:
+                self.observar_implantacao(sinal)
+            except Exception:
+                pass
         return dict(evento)
 
     def relatar_falha(
@@ -354,6 +632,16 @@ class ObservabilidadeMenteRuntime:
             if anterior and agora - float(anterior.get("ts") or 0.0) < self.janela_repeticao_s:
                 anterior["suprimidas"] = int(anterior.get("suprimidas") or 0) + 1
                 self._falhas_auxiliares[chave] = anterior
+                sinal = sinal_regressao_por_falha(codigo_limpo, fallback)
+                if (
+                    sinal
+                    and classificacao["classe"] != "esperada"
+                    and callable(self.observar_implantacao)
+                ):
+                    try:
+                        self.observar_implantacao(sinal)
+                    except Exception:
+                        pass
                 return {
                     "registrada": False,
                     "suprimidas": anterior["suprimidas"],

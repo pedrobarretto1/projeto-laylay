@@ -251,6 +251,59 @@ class RuntimeLLMPortatil:
             )
         return self.requests_post_original(url, **kwargs)
 
+    def preaquecer(
+        self,
+        *,
+        interacao_ativa: Callable[[], bool] | None = None,
+        timeout_s: float = 30.0,
+    ) -> bool:
+        """Carrega o modelo local sem expor memória nem ocupar a UI.
+
+        É uma tarefa descartável de infraestrutura. Se o usuário já começou a
+        interagir, ela cede o lugar ao turno real; falha de aquecimento não
+        degrada a mente nem é tratada como falha conversacional.
+        """
+        base_local = any(
+            host in self.base_url.casefold()
+            for host in ("localhost", "127.0.0.1", "0.0.0.0")
+        )
+        if self.backend == "remoto" or not base_local:
+            return False
+        if callable(interacao_ativa) and interacao_ativa():
+            self.log("🧠 [IA:PREAQUECIMENTO] dispensado; conversa já começou.")
+            return False
+        payload = {
+            "model": self.modelo,
+            "messages": [
+                {"role": "system", "content": "Responda somente OK."},
+                {"role": "user", "content": "OK"},
+            ],
+            "max_tokens": 1,
+            "temperature": 0,
+            "stream": False,
+        }
+        try:
+            resposta = self.post(
+                f"{self.base_url}/chat/completions",
+                json=payload,
+                timeout=max(3.0, float(timeout_s)),
+                headers={"Authorization": f"Bearer {self.api_key}"},
+            )
+            status = int(getattr(resposta, "status_code", 200) or 0)
+            if status >= 400:
+                self.log(
+                    "⚠️ [IA:PREAQUECIMENTO] modelo local não confirmou prontidão."
+                )
+                return False
+            self.log("🧠 [IA:PREAQUECIMENTO] modelo local pronto para o primeiro turno.")
+            return True
+        except Exception as erro:
+            self.log(
+                "⚠️ [IA:PREAQUECIMENTO] adiado sem afetar a conversa: "
+                f"{type(erro).__name__}."
+            )
+            return False
+
     def descarregar(self) -> bool:
         """Libera RAM/VRAM, mantendo o runtime apto a reiniciar sob demanda."""
         if self.backend != "portatil":

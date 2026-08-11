@@ -416,6 +416,17 @@ class QuadroCooperacaoRuntime:
             "tamanho_conteudo": int(metadados.get("tamanho_conteudo") or 0),
             "quantidade_janelas": int(metadados.get("quantidade_janelas") or 0),
         }
+        resultado_plano = dict(plano.get("resultado") or {})
+        resultado_publico = {
+            chave: resultado_plano[chave]
+            for chave in (
+                "status", "confirmado", "falhas_parciais", "interrompido",
+            )
+            if chave in resultado_plano
+            and isinstance(
+                resultado_plano[chave], (str, int, float, bool, type(None)),
+            )
+        }
         return {
             "id": str(plano.get("id") or ""),
             "objetivo": str(plano.get("objetivo") or ""),
@@ -441,8 +452,18 @@ class QuadroCooperacaoRuntime:
                 "orcamento_ms": int(item.get("orcamento_ms") or 0),
                 "duracao_ms": int(item.get("duracao_ms") or 0),
                 "evidencia_esperada": str(item.get("evidencia_esperada") or ""),
+                "resultado": {
+                    chave: valor
+                    for chave, valor in dict(item.get("resultado") or {}).items()
+                    if chave in {
+                        "status", "confirmado", "evidencia", "motivo",
+                        "orcamento_excedido",
+                    }
+                    and isinstance(valor, (str, int, float, bool, type(None)))
+                },
             } for item in list(plano.get("etapas") or []) if isinstance(item, Mapping)],
             "metadados": metadados_publicos,
+            "resultado": resultado_publico,
         }
 
     def plano_publico(self, plano: Mapping[str, Any]) -> dict[str, Any]:
@@ -460,6 +481,7 @@ class QuadroCooperacaoRuntime:
                 "relevancia": float(evento.get("relevancia") or 0.0),
                 "sensibilidade": str(evento.get("sensibilidade") or ""),
                 "habilidades": list(evento.get("habilidades") or []),
+                "evidencias": list(evento.get("evidencias") or []),
                 "tem_referencia": bool(evento.get("tem_referencia")),
                 "estado": str(evento.get("estado") or ""),
             } for evento in list(self._eventos)[-8:]]

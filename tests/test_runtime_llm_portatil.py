@@ -119,3 +119,51 @@ def test_configuracao_explicita_de_modelo_e_endpoint_tem_prioridade(tmp_path) ->
     assert runtime.base_url == "http://maquina:9000/v1"
     assert runtime.caminho_modelo == modelo
     assert runtime.modelo == "laylay-teste"
+
+
+def test_preaquecimento_local_e_minimo_e_nao_le_memoria(tmp_path) -> None:
+    posts: list[tuple[str, dict]] = []
+    runtime = RuntimeLLMPortatil(
+        raiz=tmp_path,
+        ambiente={"LAYLAY_LLM_BACKEND": "ollama", "LAYLAY_LLM_MODEL": "teste"},
+        requests_post=lambda url, **kwargs: (
+            posts.append((url, kwargs)) or SimpleNamespace(status_code=200)
+        ),
+        log=lambda *_args: None,
+    )
+
+    assert runtime.preaquecer() is True
+    assert posts[0][0].endswith("/v1/chat/completions")
+    payload = posts[0][1]["json"]
+    assert payload["max_tokens"] == 1
+    assert "memória" not in str(payload).casefold()
+    assert "memory" not in str(payload).casefold()
+
+
+def test_preaquecimento_cede_se_usuario_ja_interagiu(tmp_path) -> None:
+    posts: list[bool] = []
+    runtime = RuntimeLLMPortatil(
+        raiz=tmp_path,
+        ambiente={"LAYLAY_LLM_BACKEND": "ollama"},
+        requests_post=lambda *_args, **_kwargs: posts.append(True),
+        log=lambda *_args: None,
+    )
+
+    assert runtime.preaquecer(interacao_ativa=lambda: True) is False
+    assert posts == []
+
+
+def test_preaquecimento_nunca_chama_endpoint_remoto(tmp_path) -> None:
+    posts: list[bool] = []
+    runtime = RuntimeLLMPortatil(
+        raiz=tmp_path,
+        ambiente={
+            "LAYLAY_LLM_BACKEND": "auto",
+            "LAYLAY_LLM_BASE_URL": "https://openrouter.ai/api/v1",
+        },
+        requests_post=lambda *_args, **_kwargs: posts.append(True),
+        log=lambda *_args: None,
+    )
+
+    assert runtime.preaquecer() is False
+    assert posts == []

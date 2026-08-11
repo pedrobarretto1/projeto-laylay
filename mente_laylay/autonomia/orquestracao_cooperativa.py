@@ -138,6 +138,378 @@ class OrquestradorCooperativoRuntime:
             "autoriza_execucao": False,
         }
 
+    def _plano_ativo_por_fluxo(self, fluxo: str) -> dict[str, Any] | None:
+        snapshot = self.quadro.snapshot()
+        for plano in reversed(list(snapshot.get("planos_recentes") or [])):
+            if (
+                str((plano.get("metadados") or {}).get("fluxo") or "") == fluxo
+                and str(plano.get("estado") or "") not in ESTADOS_FINAIS
+            ):
+                return self.quadro.obter_plano(str(plano.get("id") or ""))
+        return None
+
+    def registrar_resultado_agenda(
+        self, operacao: str, *, alvo: str = "", confirmado: bool = False,
+    ) -> dict[str, Any]:
+        """Publica agenda e alimenta uma composição caixa→agenda ativa."""
+        confirmado_real = bool(confirmado)
+        evento = self.quadro.publicar_evento(
+            origem="agenda",
+            tipo=str(operacao or "agenda_atualizada")[:64],
+            resumo=(
+                "agenda persistida e pronta para a central de notificações"
+                if confirmado_real
+                else "operação de agenda sem confirmação de persistência"
+            ),
+            confianca=1.0 if confirmado_real else 0.0,
+            relevancia=0.75,
+            sensibilidade="media",
+            habilidades=("agenda", "central_notificacoes"),
+            evidencias=(
+                "persistencia_local_confirmada"
+                if confirmado_real else "persistencia_local_nao_confirmada",
+            ),
+            chave_deduplicacao=(
+                f"agenda:{str(operacao or '')[:64]}:{confirmado_real}:"
+                f"{_hash_texto(str(alvo or ''))[:16]}"
+            ),
+        )
+        plano = self._plano_ativo_por_fluxo("caixa_para_agenda")
+        if plano:
+            self.quadro.atualizar_etapa(
+                str(plano.get("id") or ""), "agendar",
+                "confirmado" if confirmado_real else "falhou",
+                resultado={
+                    "status": (
+                        "lembrete_persistido"
+                        if confirmado_real else "persistencia_agenda_falhou"
+                    ),
+                    "confirmado": confirmado_real,
+                    "evidencia": (
+                        "persistencia_local_confirmada"
+                        if confirmado_real else "persistencia_local_nao_confirmada"
+                    ),
+                },
+            )
+        return evento
+
+    def processar_caixa_para_agenda(
+        self,
+        *,
+        item_salvo: Mapping[str, Any],
+        comando_agenda: Mapping[str, Any],
+        texto_agenda: str,
+    ) -> dict[str, Any]:
+        """Executa só a agenda; a nota já precisa estar persistida e relida."""
+        item = dict(item_salvo or {})
+        comando = dict(comando_agenda or {})
+        nota_id = str(item.get("id") or "").strip()
+        if not nota_id:
+            return {"ok": False, "status": "nota_sem_evidencia"}
+        evento = self.quadro.publicar_evento(
+            origem="caixa_entrada",
+            tipo="nota_persistida_para_lembrete",
+            resumo="nota confirmada oferecida como referência para a agenda",
+            confianca=1.0,
+            relevancia=0.95,
+            sensibilidade="metadados_locais",
+            habilidades=("caixa_entrada", "agenda"),
+            evidencias=("nota_persistida_relida",),
+            chave_deduplicacao="",
+        )
+        plano = self.quadro.criar_plano(
+            objetivo="guardar uma nota e criar um lembrete relacionado",
+            evento_ids=(str(evento.get("id") or ""),),
+            etapas=(
+                {
+                    "id": "guardar_nota", "habilidade": "caixa_entrada",
+                    "acao": "confirmar_nota_persistida", "intent": "INBOX_ADD",
+                    "evidencia_esperada": "nota_persistida_relida",
+                },
+                {
+                    "id": "agendar", "habilidade": "agenda",
+                    "acao": "criar_lembrete_da_nota", "intent": "AGENDAR_LEMBRETE",
+                    "depende_de": ["guardar_nota"],
+                    "evidencia_esperada": "persistencia_local_confirmada",
+                },
+            ),
+            confianca=1.0,
+            risco="baixo",
+            autorizacao="explicita_no_pedido",
+            politica_falha_parcial="interromper",
+            metadados={"fluxo": "caixa_para_agenda", "nome": "nota e lembrete"},
+        )
+        plano_id = str(plano.get("id") or "")
+        self.quadro.atualizar_etapa(
+            plano_id, "guardar_nota", "confirmado",
+            resultado={
+                "status": "nota_persistida", "confirmado": True,
+                "evidencia": "nota_persistida_relida",
+            },
+        )
+
+        def executar_agenda(_etapa: Mapping[str, Any], _plano: Mapping[str, Any]) -> dict[str, Any]:
+            tratado = bool(self.executar_intencao(comando, texto_agenda))
+            atual = self.quadro.obter_plano(plano_id) or {}
+            etapa = next((
+                parte for parte in list(atual.get("etapas") or [])
+                if str(parte.get("id") or "") == "agendar"
+            ), {})
+            confirmado = str(etapa.get("estado") or "") == "confirmado"
+            return {
+                "ok": tratado and confirmado,
+                "confirmado": confirmado,
+                "status": (
+                    "lembrete_persistido" if confirmado
+                    else "confirmacao_agenda_ausente" if tratado
+                    else "agenda_nao_executada"
+                ),
+                "evidencia": (
+                    "persistencia_local_confirmada" if confirmado else ""
+                ),
+            }
+
+        return self.executor_plano.executar(
+            plano_id,
+            {"criar_lembrete_da_nota": executar_agenda},
+            contexto_execucao={"texto": texto_agenda, "confirmado": True},
+        )
+
+    def processar_investigacao_clipboard(
+        self, conteudo: str, *, investigador: Any,
+    ) -> dict[str, Any]:
+        """Coordena leitura, pesquisa e síntese sem publicar o conteúdo bruto."""
+        texto = str(conteudo or "")
+        if not texto:
+            return {"ok": False, "fala": "Não encontrei texto copiado para investigar."}
+        referencia = self.quadro.guardar_referencia(
+            texto, tipo="erro_clipboard", ttl_s=180.0,
+        )
+        evento = self.quadro.publicar_evento(
+            origem="area_transferencia",
+            tipo="erro_copiado_confirmado",
+            resumo=f"conteúdo copiado confirmado para investigação ({len(texto)} caracteres)",
+            confianca=1.0,
+            relevancia=0.98,
+            sensibilidade="conteudo_privado_temporario",
+            habilidades=("area_transferencia", "pesquisa", "conversa_llm"),
+            evidencias=("conteudo_presente", "autorizacao_explicita"),
+            referencia=str(referencia.get("token") or ""),
+        )
+        plano = self.quadro.criar_plano(
+            objetivo="investigar e explicar o erro copiado",
+            evento_ids=(str(evento.get("id") or ""),),
+            etapas=(
+                {
+                    "id": "ler_clipboard", "habilidade": "area_transferencia",
+                    "acao": "ler_referencia_clipboard", "intent": "CLIPBOARD_READ",
+                    "evidencia_esperada": "hash_e_tamanho_confirmados",
+                },
+                {
+                    "id": "pesquisar", "habilidade": "pesquisa",
+                    "acao": "pesquisar_erro", "intent": "CLIPBOARD_SEARCH",
+                    "depende_de": ["ler_clipboard"], "obrigatoria": False,
+                    "politica_falha": "continuar",
+                    "evidencia_esperada": "fontes_encontradas_ou_limite_explicito",
+                },
+                {
+                    "id": "sintetizar", "habilidade": "conversa_llm",
+                    "acao": "sintetizar_erro", "intent": "CLIPBOARD_INVESTIGATE",
+                    "depende_de": ["ler_clipboard"],
+                    "evidencia_esperada": "fala_factual_ou_fallback_explicito",
+                },
+            ),
+            confianca=0.99,
+            risco="baixo",
+            autorizacao="confirmacao_explicita",
+            politica_falha_parcial="continuar_independentes",
+            metadados={
+                "fluxo": "clipboard_pesquisa_llm",
+                "tamanho_conteudo": len(texto),
+            },
+        )
+        trabalho: dict[str, Any] = {}
+
+        def ler(_etapa: Mapping[str, Any], _plano: Mapping[str, Any]) -> dict[str, Any]:
+            resolvida = self.quadro.resolver_referencia(
+                str(referencia.get("token") or ""),
+                hash_esperado=str(referencia.get("hash") or ""),
+            )
+            trabalho["conteudo"] = str(resolvida.get("conteudo") or "")
+            return {
+                "ok": bool(resolvida.get("ok")),
+                "confirmado": bool(resolvida.get("ok")),
+                "status": str(resolvida.get("status") or "referencia_indisponivel"),
+                "evidencia": "hash_e_tamanho_confirmados" if resolvida.get("ok") else "",
+            }
+
+        def pesquisar(_etapa: Mapping[str, Any], _plano: Mapping[str, Any]) -> dict[str, Any]:
+            pesquisa = dict(investigador.pesquisar(trabalho.get("conteudo", "")) or {})
+            trabalho["pesquisa"] = pesquisa
+            encontrou = bool(pesquisa.get("resultados"))
+            return {
+                "ok": encontrou,
+                "confirmado": encontrou,
+                "status": "fontes_encontradas" if encontrou else "fontes_indisponiveis",
+                "evidencia": "fontes_encontradas" if encontrou else "limite_explicito",
+            }
+
+        def sintetizar(_etapa: Mapping[str, Any], _plano: Mapping[str, Any]) -> dict[str, Any]:
+            pesquisa = dict(trabalho.get("pesquisa") or {})
+            resultado = dict(investigador.sintetizar(
+                trabalho.get("conteudo", ""),
+                consulta=str(pesquisa.get("consulta") or ""),
+                resultados=[
+                    dict(item) for item in list(pesquisa.get("resultados") or [])
+                    if isinstance(item, Mapping)
+                ],
+            ) or {})
+            trabalho["resultado"] = resultado
+            confirmou = bool(resultado.get("ok") and resultado.get("fala"))
+            evidencia = (
+                "sintese_llm_confirmada"
+                if resultado.get("sintese_llm")
+                else "fallback_factual_explicito"
+            )
+            return {
+                "ok": confirmou, "confirmado": confirmou,
+                "status": "sintese_pronta" if confirmou else "sintese_indisponivel",
+                "evidencia": evidencia if confirmou else "",
+            }
+
+        try:
+            execucao = self.executor_plano.executar(
+                str(plano.get("id") or ""),
+                {
+                    "ler_referencia_clipboard": ler,
+                    "pesquisar_erro": pesquisar,
+                    "sintetizar_erro": sintetizar,
+                },
+                contexto_execucao={
+                    "texto": "investigar o erro copiado", "confirmado": True,
+                },
+            )
+            resultado = dict(trabalho.get("resultado") or {})
+            cooperacao = {
+                "estado": str(execucao.get("estado") or "falhou"),
+                "status": str(execucao.get("status") or "falhou"),
+                "plano_id": str(plano.get("id") or ""),
+            }
+            if not resultado:
+                resultado = {
+                    "ok": False,
+                    "fala": "Não consegui autorizar a investigação do texto copiado agora.",
+                }
+            resultado["cooperacao"] = cooperacao
+            return resultado
+        finally:
+            self.quadro.consumir_referencia(str(referencia.get("token") or ""))
+
+    def registrar_curadoria_musical(
+        self, resumo: Mapping[str, Any],
+    ) -> bool:
+        """Registra a prova das três fontes depois da persistência confirmada."""
+        dados = dict(resumo or {})
+        usuarios = max(0, int(dados.get("playlists_usuario") or 0))
+        historico = max(0, int(dados.get("registros_historico") or 0))
+        curadorias = max(0, int(dados.get("curadorias") or 0))
+        evento = self.quadro.publicar_evento(
+            origem="curadoria_musical",
+            tipo="curadoria_musical_sincronizada",
+            resumo=(
+                f"{curadorias} curadoria(s) derivada(s) de {usuarios} playlist(s) "
+                f"e {historico} registro(s) confirmados"
+            ),
+            confianca=1.0,
+            relevancia=0.72,
+            sensibilidade="contagens_locais",
+            habilidades=("playlists_usuario", "aprendizado_musical", "playlist_laylay"),
+            evidencias=("persistencia_relida", "fontes_locais_confirmadas"),
+            chave_deduplicacao=f"curadoria_musical:{usuarios}:{historico}:{curadorias}",
+        )
+        plano = self.quadro.criar_plano(
+            objetivo="atualizar curadorias musicais próprias",
+            evento_ids=(str(evento.get("id") or ""),),
+            etapas=(
+                {
+                    "id": "playlists", "habilidade": "playlists_usuario",
+                    "acao": "ler_playlists_confirmadas",
+                    "evidencia_esperada": "playlists_locais_confirmadas",
+                },
+                {
+                    "id": "historico", "habilidade": "aprendizado_musical",
+                    "acao": "ler_historico_confirmado", "obrigatoria": False,
+                    "politica_falha": "continuar",
+                    "evidencia_esperada": "historico_confirmado_ou_vazio",
+                },
+                {
+                    "id": "persistir", "habilidade": "playlist_laylay",
+                    "acao": "persistir_curadorias", "depende_de": ["playlists"],
+                    "evidencia_esperada": "persistencia_relida",
+                },
+            ),
+            confianca=1.0,
+            risco="baixo",
+            autorizacao="somente_leitura",
+            politica_falha_parcial="continuar_independentes",
+            metadados={"fluxo": "curadoria_musical"},
+        )
+        plano_id = str(plano.get("id") or "")
+        playlists_ok = usuarios > 0
+        historico_ok = historico > 0
+        persistencia_ok = curadorias > 0
+        for etapa_id, ok, evidencia in (
+            ("playlists", playlists_ok, "playlists_locais_confirmadas"),
+            ("historico", historico_ok, "historico_confirmado"),
+        ):
+            self.quadro.atualizar_etapa(
+                plano_id, etapa_id, "confirmado" if ok else "falhou",
+                resultado={
+                    "status": evidencia if ok else f"{etapa_id}_sem_evidencia",
+                    "confirmado": ok,
+                    "evidencia": evidencia if ok else "",
+                },
+            )
+        self.quadro.atualizar_etapa(
+            plano_id, "persistir",
+            (
+                "confirmado" if persistencia_ok and playlists_ok
+                else "bloqueado" if not playlists_ok else "falhou"
+            ),
+            resultado={
+                "status": (
+                    "persistencia_relida" if persistencia_ok and playlists_ok
+                    else "dependencia_nao_confirmada" if not playlists_ok
+                    else "persistencia_sem_evidencia"
+                ),
+                "confirmado": persistencia_ok and playlists_ok,
+                "evidencia": (
+                    "persistencia_relida" if persistencia_ok and playlists_ok else ""
+                ),
+            },
+        )
+        obrigatorias_ok = playlists_ok and persistencia_ok
+        parcial = obrigatorias_ok and not historico_ok
+        if parcial:
+            self.quadro.registrar_falha_parcial()
+        estado = "confirmado" if obrigatorias_ok else "falhou"
+        status = (
+            "plano_confirmado_com_falha_parcial"
+            if parcial else "plano_confirmado"
+            if obrigatorias_ok else "fontes_curadoria_incompletas"
+        )
+        final = self.quadro.atualizar_plano(
+            plano_id, estado,
+            resultado={
+                "status": status, "confirmado": obrigatorias_ok,
+                "falhas_parciais": 1 if parcial else 0,
+            },
+        ) or plano
+        self.governanca.finalizar(
+            final, decisao="aceito" if obrigatorias_ok else "falhou", motivo=status,
+        )
+        return obrigatorias_ok
+
     def _processar_analise_item_jogo(
         self, pedido: Mapping[str, Any], texto: str,
     ) -> bool:

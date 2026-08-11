@@ -49,6 +49,13 @@ DEPENDENCIAS_ADAPTADORES_APLICACAO = (
     "falar_com_lipsync", "enviar_mensagem", "carregar_memoria",
     "_gmail_buscar_nao_lidos", "gmail_daemon",
     "run_ws_server_in_thread", "_registro_navegador_operacoes_runtime",
+    "_pendencia_acao_runtime", "_classificar_confirmacao_local",
+    "_registro_navegador_leitura_runtime", "_registro_iot_runtime",
+    "_area_transferencia_runtime", "_caixa_entrada_pessoal_runtime",
+    "_central_notificacoes_runtime", "_avatar_runtime",
+    "_registro_visao_jogo_leitura_runtime",
+    "_registro_visao_jogo_analise_runtime",
+    "_registro_modelo_llm_runtime", "_agenda_runtime",
 )
 
 

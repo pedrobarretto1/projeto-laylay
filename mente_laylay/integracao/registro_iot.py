@@ -18,6 +18,8 @@ class PortaIoT(Protocol):
 
     def retrato_para_mente(self, texto: str = "") -> dict[str, Any]: ...
 
+    def diagnostico(self) -> dict[str, Any]: ...
+
 
 _OPERACOES_OBRIGATORIAS = ("detectar", "executar", "retrato_para_mente")
 
@@ -65,6 +67,23 @@ class RegistroIoT:
                 dispositivos_sanitizados.append(dispositivo)
         retrato["dispositivos"] = dispositivos_sanitizados
         return retrato
+
+    def diagnostico(self) -> dict[str, Any]:
+        metodo = getattr(self.servico, "diagnostico", None)
+        if callable(metodo):
+            bruto = dict(metodo() or {})
+        else:
+            retrato = self.retrato_para_mente()
+            bruto = {
+                "configurado": bool(retrato.get("dispositivos")),
+                "provedor_disponivel": False,
+                "total_dispositivos": len(retrato.get("dispositivos") or []),
+            }
+        permitidos = {
+            "configurado", "modo", "provedor_disponivel", "total_dispositivos",
+            "evidencia_recente", "credenciais_expostas", "autoriza_execucao",
+        }
+        return {chave: bruto[chave] for chave in permitidos if chave in bruto}
 
 
 def registrar_iot(servico: Any) -> RegistroIoT:

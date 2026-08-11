@@ -326,25 +326,54 @@ class MemoriaSQLite:
         resumo = data.get("resumo_conversa") or ""
         preferencias = data.get("preferencias") or {}
 
-        if isinstance(fatos, list):
-            self.registrar_fatos(fatos)
-        if isinstance(eventos, list):
-            self.registrar_eventos(eventos)
-        if isinstance(preferencias, dict):
-            for chave, valor in preferencias.items():
-                self.salvar_preferencia(chave, valor)
-        if resumo:
-            self.salvar_resumo(resumo)
-
         conn = self._conectar()
         try:
             cur = conn.cursor()
+            agora = datetime.now().isoformat(" ")
+            if isinstance(fatos, list):
+                cur.executemany(
+                    "INSERT OR IGNORE INTO fatos(texto, categoria, criado_em) "
+                    "VALUES(?, ?, ?)",
+                    [
+                        (texto.strip(), "geral", agora)
+                        for texto in fatos
+                        if isinstance(texto, str) and texto.strip()
+                    ],
+                )
+            if isinstance(eventos, list):
+                cur.executemany(
+                    "INSERT OR IGNORE INTO eventos(texto, criado_em) VALUES(?, ?)",
+                    [
+                        (texto.strip(), agora)
+                        for texto in eventos
+                        if isinstance(texto, str) and texto.strip()
+                    ],
+                )
+            if isinstance(preferencias, dict):
+                cur.executemany(
+                    "INSERT INTO preferencias(chave, valor, atualizado_em) "
+                    "VALUES(?, ?, ?) ON CONFLICT(chave) DO UPDATE SET "
+                    "valor = excluded.valor, atualizado_em = excluded.atualizado_em",
+                    [
+                        (str(chave).strip(), str(valor), agora)
+                        for chave, valor in preferencias.items()
+                        if isinstance(chave, str) and chave.strip()
+                    ],
+                )
+            if isinstance(resumo, str) and resumo.strip():
+                cur.execute(
+                    "INSERT INTO resumos(tipo, texto, criado_em) VALUES(?, ?, ?)",
+                    ("geral", resumo.strip(), agora),
+                )
             cur.execute(
                 "INSERT INTO estado(id, payload, atualizado_em) VALUES(1, ?, ?) "
                 "ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, atualizado_em = excluded.atualizado_em",
-                (payload, datetime.now().isoformat(" ")),
+                (payload, agora),
             )
             conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             conn.close()
 

@@ -457,7 +457,7 @@ def test_acao_nova_sem_politica_nao_esconde_continuacao_aditiva_compativel():
     }
 
 
-def test_caixa_de_entrada_publica_confirmacao_na_pendencia_oficial():
+def test_resultado_da_caixa_nao_cria_segunda_pendencia_paralela():
     estado = registrar_resultado_execucao(
         estado_mental_inicial(),
         {
@@ -470,8 +470,7 @@ def test_caixa_de_entrada_publica_confirmacao_na_pendencia_oficial():
         status="aguardando_confirmacao",
     )
 
-    assert estado["pendencia_atual"]["origem"] == "caixa_entrada_pessoal"
-    assert estado["pendencia_atual"]["dominio"] == "caixa_entrada"
+    assert estado["pendencia_atual"] == {}
     assert estado["continuidade_geral"]["dominio_ativo"] == "caixa_entrada"
 
     estado = registrar_resultado_execucao(

@@ -276,16 +276,20 @@ def classificar_confirmacao_local(texto: str) -> Optional[bool]:
         "sim", "sim pode", "pode", "pode sim", "quero", "quero sim", "eu quero",
         "eu quero sim", "quero ouvir", "quero ver", "quero essa", "quero ele",
         "claro", "bora", "vai", "vai la", "manda", "manda ver",
-        "ok", "beleza", "blz", "coloca", "toca", "da play", "play",
+        "ok", "beleza", "blz", "confirmo", "isso", "isso mesmo", "pode ser",
+        "fechado", "aham", "uhum", "exato", "correto", "foi isso",
+        "coloca", "toca", "da play", "play",
         "abre", "abre sim", "pode abrir", "pode colocar",
         "pode falar", "pode fala", "pode me falar", "pode me fala",
         "fala", "fala sim", "me fala", "me fala sim",
     }
     nao_frases = {
         "nao", "nao precisa", "nao agora", "agora nao", "deixa",
-        "deixa quieto", "esquece", "para", "cancela", "pode nao",
+        "deixa quieto", "esquece", "para", "cancela", "cancelar", "pode nao",
         "melhor nao", "nem", "nope", "precisa nao", "precisa não",
-        "não precisa", "agora não", "pode não",
+        "não precisa", "agora não", "pode não", "deixa pra la", "deixa para la",
+        "para com isso", "nao quero mais", "quero mais nao", "pode parar", "desiste",
+        "errado", "nao foi",
     }
     if t in sim_frases:
         return True

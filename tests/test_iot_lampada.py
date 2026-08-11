@@ -156,6 +156,79 @@ def test_tuya_escolhe_snapshot_mais_recente_sem_sobrepor_ambiente(tmp_path):
     assert dados["local_key"] == "chave-nova-00000"
 
 
+def test_tuya_reutiliza_configuracao_ate_snapshot_mudar(tmp_path):
+    arquivo = tmp_path / "devices.json"
+    base = {
+        "name": "LED BULB W5K",
+        "id": "lampada-id",
+        "ip": "192.168.100.57",
+        "ver": "3.5",
+    }
+    arquivo.write_text(json.dumps([{**base, "key": "chave-inicial"}]), encoding="utf-8")
+    lampada = criar_dispositivo_lampada(protocolo="tuya")
+    configuracao = dict(lampada.configuracao)
+    configuracao["snapshot_path"] = str(arquivo)
+    configuracao["snapshot_fallback_paths"] = ()
+    lampada = replace(lampada, configuracao=configuracao)
+    ambiente_vazio = {
+        nome: "" for nome in lampada.configuracao["variaveis"].values()
+    }
+    protocolo = ProtocoloTuya()
+
+    with (
+        patch.dict("os.environ", ambiente_vazio, clear=False),
+        patch(
+            "mente_laylay.iot.protocolos.tuya.carregar_dispositivo_snapshot",
+            wraps=carregar_dispositivo_snapshot,
+        ) as carregar,
+    ):
+        primeiro, erro_primeiro = protocolo._configuracao(lampada)
+        segundo, erro_segundo = protocolo._configuracao(lampada)
+        arquivo.write_text(
+            json.dumps([{**base, "key": "chave-atualizada-e-maior"}]),
+            encoding="utf-8",
+        )
+        terceiro, erro_terceiro = protocolo._configuracao(lampada)
+
+    assert erro_primeiro == erro_segundo == erro_terceiro == ""
+    assert primeiro == segundo
+    assert terceiro["local_key"] == "chave-atualizada-e-maior"
+    assert carregar.call_count == 2
+
+
+def test_chave_mestre_desativa_cache_tuya(tmp_path, monkeypatch):
+    arquivo = tmp_path / "devices.json"
+    arquivo.write_text(json.dumps([{
+        "name": "LED BULB W5K",
+        "id": "lampada-id",
+        "key": "chave-local",
+        "ip": "192.168.100.57",
+        "ver": "3.5",
+    }]), encoding="utf-8")
+    lampada = criar_dispositivo_lampada(protocolo="tuya")
+    configuracao = dict(lampada.configuracao)
+    configuracao["snapshot_path"] = str(arquivo)
+    configuracao["snapshot_fallback_paths"] = ()
+    lampada = replace(lampada, configuracao=configuracao)
+    ambiente_vazio = {
+        nome: "" for nome in lampada.configuracao["variaveis"].values()
+    }
+    protocolo = ProtocoloTuya()
+    monkeypatch.setenv("LAYLAY_OTIMIZACOES_DESEMPENHO", "0")
+
+    with (
+        patch.dict("os.environ", ambiente_vazio, clear=False),
+        patch(
+            "mente_laylay.iot.protocolos.tuya.carregar_dispositivo_snapshot",
+            wraps=carregar_dispositivo_snapshot,
+        ) as carregar,
+    ):
+        protocolo._configuracao(lampada)
+        protocolo._configuracao(lampada)
+
+    assert carregar.call_count == 2
+
+
 def test_controlador_simulado_ajusta_brilho_e_cor_sem_afetar_ventilador():
     lampada = criar_dispositivo_lampada()
     ventilador = criar_dispositivo_ventilador()

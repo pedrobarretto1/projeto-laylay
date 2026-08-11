@@ -32,8 +32,10 @@ from mente_laylay.cognicao.evidencia_operacional import (
     bloqueia_controle_iot_por_modalidade,
 )
 from mente_laylay.memoria_mental.continuidade_geral import (
+    normalizar_dominio_continuidade,
     resolver_continuacao_aditiva,
 )
+from mente_laylay.memoria_mental.pendencia_acao import dominio_pendencia
 from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
 
 INTENTS_EXECUTAVEIS = set(intents_registradas())
@@ -859,6 +861,7 @@ class CicloComandosRuntime:
             ),
             "registrar_arbitragem_turno": contexto_execucao.get("registrar_arbitragem_turno"),
             "pendencia_agenda": pendencia_agenda,
+            "pendencia_acao": pendencia_atual,
             "pendencia_acao_runtime": pendencia_runtime,
             "lembrete_pendente": (
                 str(contexto_execucao.get("ultima_intencao") or "").upper() == "AGENDAR_LEMBRETE"
@@ -955,14 +958,23 @@ class CicloComandosRuntime:
                 metricas["ultima_rota"] = str(rota or "coordenador")
                 metricas["ultima_intent"] = intent
                 habilidade = classificar_habilidade_intent(intent) or "outros"
-                pendencia_agenda = dict(
-                    contexto_resolucao.get("pendencia_agenda") or {}
+                pendencia_acao = dict(
+                    contexto_resolucao.get("pendencia_acao")
+                    or contexto_resolucao.get("pendencia_agenda")
+                    or {}
                 )
                 pendencia_runtime = contexto_resolucao.get("pendencia_acao_runtime")
-                if pendencia_agenda and habilidade != "agenda" and pendencia_runtime is not None:
+                dominio_atual = dominio_pendencia(pendencia_acao)
+                dominio_novo = normalizar_dominio_continuidade(intent=intent)
+                if (
+                    pendencia_acao
+                    and dominio_atual
+                    and dominio_novo != dominio_atual
+                    and pendencia_runtime is not None
+                ):
                     try:
                         pendencia_runtime.concluir(
-                            str(pendencia_agenda.get("id") or ""),
+                            str(pendencia_acao.get("id") or ""),
                             "substituida_por_troca_dominio",
                         )
                     except Exception:

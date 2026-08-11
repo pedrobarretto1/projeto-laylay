@@ -184,14 +184,27 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
     """Trata respostas a sugestões proativas antes de cair na conversa normal."""
     texto_norm = re.sub(r"\s+", " ", str(texto or "").strip().lower())
     registrar_feedback_proatividade = _get(contexto, "_registrar_feedback_proatividade")
+    registrar_feedback_aprendizado = _get(contexto, "_registrar_feedback_aprendizado")
+    classificar_confirmacao_contextual = _get(contexto, "_classificar_confirmacao_contextual")
+    classificar_confirmacao_local = _get(contexto, "_classificar_confirmacao_local")
 
     def _feedback_contextual(tipo: str, aceito=None, resultado: str = "") -> None:
-        if not callable(registrar_feedback_proatividade):
-            return
-        try:
-            registrar_feedback_proatividade(tipo, aceito, resultado=resultado)
-        except Exception:
-            pass
+        if callable(registrar_feedback_proatividade):
+            try:
+                registrar_feedback_proatividade(tipo, aceito, resultado=resultado)
+            except Exception:
+                pass
+        if callable(registrar_feedback_aprendizado):
+            try:
+                registrar_feedback_aprendizado(
+                    tipo=resultado or "feedback",
+                    aceito=aceito,
+                    resultado=resultado,
+                    origem=tipo,
+                    confianca=1.0 if aceito is not None else 0.6,
+                )
+            except Exception:
+                pass
 
     agora = time.time()
     timeout_s = 600.0
@@ -218,11 +231,7 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
 
     if _parece_comando_novo(texto_norm):
         return False
-    if any(p in texto_norm for p in [
-        "deixa pra la", "deixa para la", "deixa quieto", "esquece", "cancela",
-        "cancelar", "para com isso", "nao quero mais", "não quero mais",
-        "quero mais nao", "quero mais não", "pode parar", "desiste",
-    ]):
+    if callable(classificar_confirmacao_local) and classificar_confirmacao_local(texto) is False:
         categorias_canceladas = []
         for chave, categoria in (
             ("_rotina_sugestao_pendente", "rotina"),
@@ -249,8 +258,6 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
     rotina_sugestao_pendente = _get(contexto, "_rotina_sugestao_pendente")
     playlist_sugestao_pendente = _get(contexto, "_playlist_sugestao_pendente")
     email_sugestao_pendente = _get(contexto, "_email_sugestao_pendente")
-    classificar_confirmacao_contextual = _get(contexto, "_classificar_confirmacao_contextual")
-    classificar_confirmacao_local = _get(contexto, "_classificar_confirmacao_local")
     handle_sugestao_confirmacao = _get(contexto, "_handle_sugestao_confirmacao")
     musica_operacoes = _get(contexto, "_registro_musica_operacoes_runtime")
     extrair_nome_playlist = _get(contexto, "extrair_nome_playlist")

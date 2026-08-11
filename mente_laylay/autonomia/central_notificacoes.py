@@ -64,6 +64,8 @@ class CentralNotificacoesRuntime:
         modo_jogo_getter: Callable[[], bool] | None = None,
         conversa_ativa_getter: Callable[[], bool] | None = None,
         is_speaking_getter: Callable[[], bool] | None = None,
+        contexto_atualizar_cb: Callable[..., Any] | None = None,
+        registrar_aprendizado_cb: Callable[..., Any] | None = None,
         time_cb: Callable[[], float] = time.time,
         log: Callable[[str], Any] = print,
     ) -> None:
@@ -74,10 +76,13 @@ class CentralNotificacoesRuntime:
         self.modo_jogo_getter = modo_jogo_getter
         self.conversa_ativa_getter = conversa_ativa_getter
         self.is_speaking_getter = is_speaking_getter
+        self.contexto_atualizar_cb = contexto_atualizar_cb
+        self.registrar_aprendizado_cb = registrar_aprendizado_cb
         self.time_cb = time_cb
         self.log = log
         self._lock = threading.RLock()
         self._estado = self._carregar()
+        self._publicar_preferencias("persistencia_local")
 
     @staticmethod
     def _estado_padrao() -> dict[str, Any]:
@@ -121,6 +126,65 @@ class CentralNotificacoesRuntime:
             arquivo.flush()
             os.fsync(arquivo.fileno())
         os.replace(temporario, self.arquivo_estado)
+
+    def _publicar_preferencias(
+        self,
+        proveniencia: str,
+        *,
+        categoria: str = "",
+        modo: str = "",
+    ) -> None:
+        """Publica somente preferências sanitizadas na mente compartilhada."""
+        if not callable(self.contexto_atualizar_cb):
+            return
+        with self._lock:
+            retrato = {
+                "ativa": bool(self._estado.get("ativa", True)),
+                "valores": dict(self._estado.get("preferencias") or {}),
+                "ultima_categoria": categoria or str(
+                    self._estado.get("ultima_categoria") or ""
+                ),
+                "ultimo_modo": modo,
+                "proveniencia": str(proveniencia or "runtime"),
+                "confianca": 1.0,
+                "ts": float(self.time_cb()),
+            }
+        try:
+            self.contexto_atualizar_cb(preferencias_notificacoes=retrato)
+        except Exception as erro:
+            self.log(
+                "⚠️ [NOTIFICAÇÕES] preferências não publicadas no contexto: "
+                f"{type(erro).__name__}"
+            )
+
+    def _aprender_preferencia(self, categoria: str, modo: str) -> None:
+        if not callable(self.registrar_aprendizado_cb):
+            return
+        descricao = {
+            "silenciar": f"prefere guardar avisos de {categoria} em silêncio",
+            "interromper": f"aceita interrupções para avisos de {categoria}",
+            "resumir": f"prefere receber avisos de {categoria} em resumo",
+        }.get(modo, f"prefere o modo {modo} para avisos de {categoria}")
+        try:
+            self.registrar_aprendizado_cb(
+                chave=f"notificacoes:{categoria}",
+                tipo="preferencia_notificacao",
+                escopo="notificacoes",
+                valor={
+                    "categoria": categoria,
+                    "modo": modo,
+                    "descricao_humana": descricao,
+                },
+                sinal=1.0,
+                origem="preferencia_notificacao_explicita",
+                evidencia=f"usuário definiu {categoria} como {modo}",
+                confirmado_usuario=True,
+            )
+        except Exception as erro:
+            self.log(
+                "⚠️ [NOTIFICAÇÕES] preferência não enviada ao aprendizado: "
+                f"{type(erro).__name__}"
+            )
 
     def _categoria(self, evento: Mapping[str, Any]) -> str:
         if bool(evento.get("possivel_golpe")):
@@ -361,6 +425,12 @@ class CentralNotificacoesRuntime:
             self._estado.setdefault("preferencias", {})[categoria] = modo
             self._estado["ultima_categoria"] = categoria
             self._salvar()
+        self._publicar_preferencias(
+            "preferencia_explicita_usuario",
+            categoria=categoria,
+            modo=modo,
+        )
+        self._aprender_preferencia(categoria, modo)
         if modo == "silenciar":
             return True, f"Fechado. Vou guardar avisos de {categoria} em silêncio."
         if modo == "interromper":
@@ -379,11 +449,13 @@ class CentralNotificacoesRuntime:
             with self._lock:
                 self._estado["ativa"] = False
                 self._salvar()
+            self._publicar_preferencias("preferencia_explicita_usuario", modo="silenciar")
             return {"ok": True, "status": "notificacoes_silenciadas", "fala": "Tudo bem. A central fica em silêncio e continua guardando os avisos para quando você pedir."}
         if acao in {"ativar", "reativar"} and not categoria:
             with self._lock:
                 self._estado["ativa"] = True
                 self._salvar()
+            self._publicar_preferencias("preferencia_explicita_usuario", modo="ativar")
             return {"ok": True, "status": "notificacoes_ativadas", "fala": "Central acordada de novo. Vou avisar com critério, sem virar uma sirene com ansiedade."}
         modo = "silenciar" if acao in {"silenciar", "dispensar", "ignorar"} else "interromper" if acao in {"interromper", "priorizar", "importante"} else "resumir"
         ok, fala = self.definir_preferencia(categoria, modo)
@@ -436,11 +508,18 @@ class CentralNotificacoesRuntime:
     def diagnostico(self) -> dict[str, Any]:
         with self._lock:
             eventos = list(self._estado.get("eventos") or [])
+            pasta = os.path.dirname(self.arquivo_estado) or "."
             return {
                 "ativa": bool(self._estado.get("ativa", True)),
                 "eventos": len(eventos),
                 "importantes": sum(e.get("prioridade") in {"alta", "critica"} for e in eventos if isinstance(e, dict)),
                 "preferencias": dict(self._estado.get("preferencias") or {}),
+                "persistencia_disponivel": bool(
+                    os.path.exists(self.arquivo_estado)
+                    or (os.path.isdir(pasta) and os.access(pasta, os.W_OK))
+                ),
+                "conteudo_exposto": False,
+                "autoriza_execucao": False,
             }
 
 

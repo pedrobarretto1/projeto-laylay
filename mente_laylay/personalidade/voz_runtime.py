@@ -14,12 +14,13 @@ from collections import deque
 from queue import Empty, Queue
 from typing import Any, Callable, Mapping, Optional
 
+from mente_laylay.memoria_mental.implantacao_desempenho import flag_desempenho_ativa
+from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
+from mente_laylay.percepcao.dispositivos_audio import selecionar_dispositivo_audio
 from mente_laylay.personalidade.ritmo_natural import (
     ajustar_abertura_repetida,
     ajustar_uso_natural_nome,
 )
-from mente_laylay.percepcao.dispositivos_audio import selecionar_dispositivo_audio
-from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
 
 
 VOZ_TTS_PADRAO = "pt-BR-FranciscaNeural"
@@ -58,6 +59,7 @@ class VozRuntime:
         interrupt_event: Any,
         registrar_fala_emitida_cb: Callable[[str, list], Any] | None = None,
         registrar_metrica_cb: Callable[[str, float, bool], Any] | None = None,
+        trace_context_getter: Callable[[], Mapping[str, Any]] | None = None,
         registrar_falha_cb: Callable[..., Any] | None = None,
         fallback_voice: str = "",
         thread_factory: Callable[..., Any] = threading.Thread,
@@ -97,7 +99,10 @@ class VozRuntime:
         self.chave_turno_cb = chave_turno_cb
         self.registrar_fala_emitida_cb = registrar_fala_emitida_cb
         self.registrar_metrica_cb = registrar_metrica_cb
+        self.trace_context_getter = trace_context_getter
         self.registrar_falha_cb = registrar_falha_cb
+        self._trace_reproducao_atual: dict[str, Any] = {}
+        self._texto_pronto_reproducao_atual = 0.0
         self._ultima_chave_turno_emitida = 0.0
         self._pedido_turno_pendente: dict | None = None
         self._ultima_fala_normal_ts = 0.0
@@ -175,6 +180,44 @@ class VozRuntime:
                     fallback="fala_mantida_sem_consumidor_visual",
                     fase="iniciar_fala",
                 )
+
+    def _obter_trace_contexto(self) -> dict[str, Any]:
+        if not callable(self.trace_context_getter):
+            return {}
+        try:
+            bruto = self.trace_context_getter()
+            return dict(bruto or {}) if isinstance(bruto, Mapping) else {}
+        except Exception:
+            return {}
+
+    def _registrar_metrica_voz(
+        self,
+        componente: str,
+        duracao_ms: float,
+        sucesso: bool,
+        trace_context: Mapping[str, Any] | None = None,
+    ) -> None:
+        if not callable(self.registrar_metrica_cb):
+            return
+        metadados = dict(trace_context or self._trace_reproducao_atual or {})
+        if not metadados:
+            # O worker é duradouro. Sem este marcador explícito, o thread-local
+            # da observabilidade poderia atribuir uma fala proativa ao último
+            # turno de usuário reproduzido pela mesma thread.
+            metadados = {
+                "turno_id": "fala-sem-turno",
+                "rota": "fala_autonoma",
+                "origem": "proatividade",
+            }
+        try:
+            self.registrar_metrica_cb(
+                componente,
+                duracao_ms,
+                sucesso,
+                **metadados,
+            )
+        except TypeError:
+            self.registrar_metrica_cb(componente, duracao_ms, sucesso)
 
     def _relatar_falha(
         self,
@@ -348,6 +391,34 @@ class VozRuntime:
         return padrao
 
     @staticmethod
+    def _segmentar_fala_para_inicio_rapido(texto: str) -> list[str]:
+        """Separa um começo curto sem cortar frase nem alterar falas pequenas."""
+        limpo = re.sub(r"\s+", " ", str(texto or "")).strip()
+        ativo = flag_desempenho_ativa(
+            "LAYLAY_TTS_ANTECIPAR_PRIMEIRA_FRASE"
+        )
+        if not ativo or len(limpo) < 280:
+            return [limpo] if limpo else []
+        frases = [
+            parte.strip()
+            for parte in re.split(r"(?<=[.!?…])\s+", limpo)
+            if parte.strip()
+        ]
+        if len(frases) < 2 or len(frases[0]) > 240:
+            return [limpo]
+        quantidade = 1
+        primeiro = frases[0]
+        if len(primeiro) < 45 and len(frases) > 2:
+            combinado = f"{primeiro} {frases[1]}".strip()
+            if len(combinado) <= 220:
+                primeiro = combinado
+                quantidade = 2
+        restante = " ".join(frases[quantidade:]).strip()
+        if len(restante) < 60:
+            return [limpo]
+        return [primeiro, restante]
+
+    @staticmethod
     def _prioridade_candidato_fala(texto: str) -> int:
         """Prioriza resultado/correção e rebaixa respostas vazias de contexto."""
         base = re.sub(r"\s+", " ", str(texto or "")).strip().casefold()
@@ -500,7 +571,10 @@ class VozRuntime:
         return texto_final, emo, nivel
 
     def reproduzir_fala(self, texto: str, emocao: str, nivel: int):
-        temp_file = None
+        arquivos_temporarios: list[str] = []
+        thread_restante: threading.Thread | None = None
+        cancelar_restante = threading.Event()
+        restante_arquivo = ""
         inicio_total = time.perf_counter()
         sucesso = False
         try:
@@ -519,79 +593,188 @@ class VozRuntime:
             self.log("")
             self.log(self.formatar_mensagem(texto_exibicao, emocao=emocao, nivel=nivel))
 
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
-                temp_file = f.name
-
             rate, pitch, volume = self.modular_audio_params(emocao, nivel)
             # A fronteira do TTS também valida os parâmetros. Assim, uma
             # emoção nova ou um perfil externo não consegue derrubar a voz
             # inteira por devolver ``0%`` ou uma string vazia.
             rate = self._normalizar_percentual_edge(rate)
             volume = self._normalizar_percentual_edge(volume)
+            segmentos = self._segmentar_fala_para_inicio_rapido(texto_voz)
+            if not segmentos:
+                segmentos = [texto_voz]
+
+            def novo_arquivo_audio() -> str:
+                with tempfile.NamedTemporaryFile(
+                    suffix=".mp3", delete=False,
+                ) as arquivo:
+                    caminho = arquivo.name
+                arquivos_temporarios.append(caminho)
+                return caminho
+
+            primeiro_arquivo = novo_arquivo_audio()
             inicio_sintese = time.perf_counter()
-            sintese_ok = False
+            inicio_sintese_monotonic = time.monotonic()
+            primeira_sintese_ok = False
             try:
                 self._sintetizar_edge(
-                    texto_voz,
-                    temp_file,
+                    segmentos[0],
+                    primeiro_arquivo,
                     rate=rate,
                     pitch=pitch,
                     volume=volume,
                 )
-                sintese_ok = True
+                primeira_sintese_ok = True
             finally:
-                if callable(self.registrar_metrica_cb):
-                    self.registrar_metrica_cb(
-                        "tts_sintese",
-                        (time.perf_counter() - inicio_sintese) * 1000.0,
-                        sintese_ok,
-                    )
+                self._registrar_metrica_voz(
+                    "tts_sintese_primeiro_trecho",
+                    (time.perf_counter() - inicio_sintese) * 1000.0,
+                    primeira_sintese_ok,
+                )
+
+            restante_estado: dict[str, Any] = {
+                "ok": len(segmentos) == 1,
+                "erro": None,
+                "fim_monotonic": time.monotonic(),
+            }
+            if len(segmentos) > 1:
+                restante_arquivo = novo_arquivo_audio()
+
+                def sintetizar_restante() -> None:
+                    try:
+                        self._sintetizar_edge(
+                            segmentos[1],
+                            restante_arquivo,
+                            rate=rate,
+                            pitch=pitch,
+                            volume=volume,
+                        )
+                        restante_estado["ok"] = True
+                    except Exception as erro:
+                        restante_estado["erro"] = erro
+                    finally:
+                        restante_estado["fim_monotonic"] = time.monotonic()
+                        if cancelar_restante.is_set():
+                            try:
+                                os.unlink(restante_arquivo)
+                            except OSError:
+                                pass
+
+                thread_restante = threading.Thread(
+                    target=sintetizar_restante,
+                    daemon=True,
+                    name="Laylay-TTS-Restante",
+                )
+                thread_restante.start()
 
             inicio_externo = time.perf_counter()
             externo_ok = False
+            reproducao_ms = 0.0
+            interrompida = False
+            fallback_restante = ""
             self.ducking_volume(True)
             try:
-                data, samplerate = self.sf.read(temp_file)
                 dispositivo = self._selecionar_saida_audio()
-                self.sd.play(data, samplerate, device=dispositivo)
-                externo_ok = True
-                if callable(self.registrar_metrica_cb):
-                    self.registrar_metrica_cb(
-                        "tts_bloqueio_externo",
-                        (time.perf_counter() - inicio_externo) * 1000.0,
-                        True,
-                    )
-                # A fila fica ocupada durante a síntese, mas o avatar só deve
-                # mexer a boca quando o dispositivo realmente recebeu o áudio.
-                self.ajustar_estado_fala_cb("audio_playing", True)
-                inicio_reproducao = time.perf_counter()
-                reproducao_ok = False
-                try:
+                caminhos = [primeiro_arquivo]
+                for indice, caminho in enumerate(caminhos):
+                    data, samplerate = self.sf.read(caminho)
+                    self.sd.play(data, samplerate, device=dispositivo)
+                    if indice == 0:
+                        externo_ok = True
+                        self._registrar_metrica_voz(
+                            "tts_bloqueio_externo",
+                            (time.perf_counter() - inicio_externo) * 1000.0,
+                            True,
+                        )
+                        self._registrar_metrica_voz(
+                            "tts_primeiro_audio",
+                            (
+                                (
+                                    time.monotonic()
+                                    - self._texto_pronto_reproducao_atual
+                                ) * 1000.0
+                                if self._texto_pronto_reproducao_atual > 0.0
+                                else (
+                                    time.perf_counter() - inicio_total
+                                ) * 1000.0
+                            ),
+                            True,
+                        )
+                    # A boca acompanha somente o áudio já entregue ao player.
+                    self.ajustar_estado_fala_cb("audio_playing", True)
+                    inicio_trecho = time.perf_counter()
                     while self.sd.get_stream().active:
                         if self.interrupt_event.is_set():
                             self.sd.stop()
                             self.log("🛑 [BARGE-IN] Fala interrompida pelo usuário!")
+                            interrompida = True
                             break
                         time.sleep(0.03)
-                    reproducao_ok = True
-                finally:
-                    if callable(self.registrar_metrica_cb):
-                        self.registrar_metrica_cb(
-                            "tts_reproducao",
-                            (time.perf_counter() - inicio_reproducao) * 1000.0,
-                            reproducao_ok,
-                        )
-                sucesso = True
+                    reproducao_ms += (
+                        time.perf_counter() - inicio_trecho
+                    ) * 1000.0
+                    self.ajustar_estado_fala_cb("audio_playing", False)
+
+                    if indice == 0 and len(segmentos) > 1 and not interrompida:
+                        assert thread_restante is not None
+                        thread_restante.join(self.tts_timeout_s + 0.5)
+                        if thread_restante.is_alive():
+                            cancelar_restante.set()
+                            fallback_restante = segmentos[1]
+                            self.log(
+                                "⚠️ [VOZ] restante neural ainda não ficou "
+                                "pronto; usando fallback somente nele."
+                            )
+                        elif restante_estado.get("ok"):
+                            caminhos.append(restante_arquivo)
+                        else:
+                            fallback_restante = segmentos[1]
+                            erro_restante = restante_estado.get("erro")
+                            self.log(
+                                "⚠️ [VOZ] segundo trecho neural falhou: "
+                                f"{type(erro_restante).__name__}"
+                            )
+                            if isinstance(erro_restante, Exception):
+                                self._relatar_falha(
+                                    "falha_sintese_restante",
+                                    erro_restante,
+                                    fallback="tts_local_apenas_restante",
+                                    fase="sintetizar_restante",
+                                )
+                if interrompida:
+                    cancelar_restante.set()
+                sucesso = externo_ok and not fallback_restante
             finally:
-                if not externo_ok and callable(self.registrar_metrica_cb):
-                    self.registrar_metrica_cb(
+                fim_sintese = (
+                    time.monotonic()
+                    if thread_restante is not None and thread_restante.is_alive()
+                    else float(
+                        restante_estado.get("fim_monotonic") or time.monotonic()
+                    )
+                )
+                self._registrar_metrica_voz(
+                    "tts_sintese",
+                    max(
+                        0.0,
+                        (fim_sintese - inicio_sintese_monotonic) * 1000.0,
+                    ),
+                    bool(primeira_sintese_ok and restante_estado.get("ok")),
+                )
+                self._registrar_metrica_voz(
+                    "tts_reproducao", reproducao_ms, externo_ok,
+                )
+                if not externo_ok:
+                    self._registrar_metrica_voz(
                         "tts_bloqueio_externo",
                         (time.perf_counter() - inicio_externo) * 1000.0,
                         False,
                     )
                 self.ducking_volume(False)
 
+            if fallback_restante and not interrompida:
+                sucesso = bool(self.fallback_pyttsx(fallback_restante, emocao))
+
         except Exception as e:
+            cancelar_restante.set()
             self.ajustar_estado_fala_cb("audio_playing", False)
             self.log(f"❌ [FALA] Erro no áudio: {type(e).__name__} → {e}")
             if callable(self.registrar_falha_cb):
@@ -612,19 +795,27 @@ class VozRuntime:
                         classe="defeito", impacto="fala", fallback="nenhum",
                     )
         finally:
-            if callable(self.registrar_metrica_cb):
-                self.registrar_metrica_cb(
-                    "tts_total", (time.perf_counter() - inicio_total) * 1000.0, sucesso,
-                )
+            self._registrar_metrica_voz(
+                "tts_total", (time.perf_counter() - inicio_total) * 1000.0, sucesso,
+            )
             self.ajustar_estado_fala_cb("audio_playing", False)
             self.ajustar_estado_fala_cb("is_speaking", False)
-            if temp_file and os.path.exists(temp_file):
-                try:
-                    os.unlink(temp_file)
-                except OSError:
-                    # Limpeza best-effort: o áudio já foi encerrado e o SO
-                    # pode manter o arquivo temporário bloqueado por instantes.
-                    pass
+            for caminho in arquivos_temporarios:
+                if (
+                    caminho
+                    and os.path.exists(caminho)
+                    and not (
+                        thread_restante is not None
+                        and thread_restante.is_alive()
+                        and caminho == restante_arquivo
+                    )
+                ):
+                    try:
+                        os.unlink(caminho)
+                    except OSError:
+                        # Limpeza best-effort: o áudio pode continuar bloqueado
+                        # por alguns instantes depois do encerramento.
+                        pass
 
     def worker_de_falas(self):
         while not self.stop_event.is_set():
@@ -634,13 +825,14 @@ class VozRuntime:
                 continue
             if item is None:
                 continue
-            if isinstance(item, dict) and callable(self.registrar_metrica_cb):
+            if isinstance(item, dict):
                 enfileirado = float(item.get("enfileirado_monotonic") or 0.0)
                 if enfileirado > 0.0:
-                    self.registrar_metrica_cb(
+                    self._registrar_metrica_voz(
                         "tts_fila",
                         max(0.0, (time.monotonic() - enfileirado) * 1000.0),
                         True,
+                        item.get("trace_context"),
                     )
 
             # Cada item representa uma fala já consolidada pelo turno canônico.
@@ -683,12 +875,35 @@ class VozRuntime:
                 for pedido in lote
                 if isinstance(pedido, dict)
             )
-            self._notificar_inicio_fala(
-                texto_final, emocao, nivel, proativa=proativa,
+            publicada_antecipada = bool(lote) and all(
+                bool(pedido.get("texto_publicado_antecipado"))
+                for pedido in lote
+                if isinstance(pedido, dict)
             )
+            if not publicada_antecipada:
+                self._notificar_inicio_fala(
+                    texto_final, emocao, nivel, proativa=proativa,
+                )
+            enfileirado = float(
+                lote[0].get("enfileirado_monotonic") or 0.0
+            ) if lote and isinstance(lote[0], dict) else 0.0
+            trace_context = dict(
+                lote[0].get("trace_context") or {}
+            ) if lote and isinstance(lote[0], dict) else {}
+            if enfileirado > 0.0 and not publicada_antecipada:
+                self._registrar_metrica_voz(
+                    "tts_texto_visivel",
+                    max(0.0, (time.monotonic() - enfileirado) * 1000.0),
+                    True,
+                    trace_context,
+                )
             try:
+                self._trace_reproducao_atual = trace_context
+                self._texto_pronto_reproducao_atual = enfileirado
                 self.reproduzir_fala(texto_final, emocao, nivel)
             finally:
+                self._trace_reproducao_atual = {}
+                self._texto_pronto_reproducao_atual = 0.0
                 for pedido in lote:
                     if isinstance(pedido, dict):
                         itens_mesclados = list(pedido.get("proativas_mescladas") or [])
@@ -1136,7 +1351,15 @@ class VozRuntime:
             self.proativa_timer.start()
         return True
 
-    def falar(self, texto: str, emocao: str = "calma", nivel: Optional[int] = None, wait: bool = False, _proativa: bool = False) -> bool:
+    def falar(
+        self,
+        texto: str,
+        emocao: str = "calma",
+        nivel: Optional[int] = None,
+        wait: bool = False,
+        _proativa: bool = False,
+        _texto_publicado_antecipado: bool = False,
+    ) -> bool:
         # Algumas rotas convergem na mesma confirmação operacional. Se ambas
         # chegarem quase juntas, a fila não deve reproduzir a frase duas vezes.
         # A janela curta não interfere num pedido posterior de "repete".
@@ -1182,6 +1405,9 @@ class VozRuntime:
                                     "emocao": emocao,
                                     "nivel": nivel if nivel is not None else 1,
                                     "prioridade": prioridade_nova,
+                                    "texto_publicado_antecipado": bool(
+                                        _texto_publicado_antecipado
+                                    ),
                                 })
                                 pedido_existente.setdefault("proativas_mescladas", []).extend(itens_mesclados)
                                 self.log("🧠 [FALA] candidato do turno substituído por resposta mais útil")
@@ -1220,7 +1446,11 @@ class VozRuntime:
             "prioridade": self._prioridade_candidato_fala(texto),
             "proativas_mescladas": itens_mesclados,
             "proativa": bool(_proativa),
+            "texto_publicado_antecipado": bool(
+                _texto_publicado_antecipado
+            ),
             "enfileirado_monotonic": time.monotonic(),
+            "trace_context": self._obter_trace_contexto(),
         }
         if not _proativa and callable(self.chave_turno_cb):
             with self._turno_lock:

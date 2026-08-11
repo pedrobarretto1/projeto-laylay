@@ -214,6 +214,10 @@ class AdaptadoresAplicacaoRuntime:
             ns["print"](f"⚠️ [PLANO] não consegui anexar resultado real: {erro}")
 
     def resumo_mente_integrada_para_prompt(self, texto_usuario: str = "") -> str:
+        from mente_laylay.memoria_mental.contexto_integrado import (
+            compactar_contexto_integrado_para_prompt,
+        )
+
         ns = self._ns()
         resumo = ns["_resumo_mente_integrada_para_prompt_base"](texto_usuario)
         memoria_pessoas = self._memoria_pessoas
@@ -228,10 +232,15 @@ class AdaptadoresAplicacaoRuntime:
         if pessoas:
             resumo = f"{resumo}\n{pessoas}" if resumo else pessoas
         motor = ns.get("_motor_aprendizado_runtime")
-        if motor is None:
-            return resumo
-        aprendido = str(motor.resumo_para_prompt() or "").strip()
-        return f"{resumo}\n{aprendido}" if aprendido else resumo
+        if motor is not None:
+            aprendido = str(motor.resumo_para_prompt() or "").strip()
+            if aprendido:
+                resumo = f"{resumo}\n{aprendido}" if resumo else aprendido
+        return compactar_contexto_integrado_para_prompt(
+            resumo,
+            texto_usuario=texto_usuario,
+            limite_chars=2400,
+        )
 
     def registrar_feedback_rotina(self, aceito: bool) -> None:
         ns = self._ns()
@@ -242,6 +251,13 @@ class AdaptadoresAplicacaoRuntime:
             limite_rejeicao=ns["ROTINA_BLOQUEIO_REJEICAO_VEZES"],
         )
         ns["_motor_aprendizado_runtime"].registrar_feedback_rotina(pendente, bool(aceito))
+
+    def registrar_feedback_contextual(self, **dados: Any) -> Any:
+        motor = self._ns().get("_motor_aprendizado_runtime")
+        metodo = getattr(motor, "registrar_feedback_contextual", None)
+        if not callable(metodo):
+            return None
+        return metodo(**dados)
 
     def registrar_contexto_resumo_pagina(self, registro) -> None:
         ns = self._ns()
@@ -339,7 +355,13 @@ class AdaptadoresAplicacaoRuntime:
         ns = self._ns()
         estado = ns["_estado_compartilhado_runtime"]
         saude = ns["_saude_mente_runtime"]
-        estrutura = estado.validar_estrutura()
+        estrutura = estado.validar_estrutura(conexoes={
+            "estado_compartilhado": estado,
+            "pendencia_runtime": ns.get("_pendencia_acao_runtime"),
+            "classificador_confirmacao": ns.get("_classificar_confirmacao_local"),
+            "motor_aprendizado": ns.get("_motor_aprendizado_runtime"),
+            "aprendizado_runtime": ns.get("_aprendizado_runtime"),
+        })
         saude.registrar(
             "estado_compartilhado", "saudavel" if estrutura.get("ok") else "degradado",
             detalhes="dominios conectados" if estrutura.get("ok") else "estrutura incompleta",
@@ -375,22 +397,120 @@ class AdaptadoresAplicacaoRuntime:
             ),
             ausentes=[] if llm_disponivel else ["modelo_llm"],
         )
-        navegador = ns.get("_registro_navegador_operacoes_runtime")
-        navegador_disponivel = callable(getattr(navegador, "abrir_url", None))
-        saude.registrar(
-            "navegador_tipado",
-            "saudavel" if navegador_disponivel else "indisponivel",
-            detalhes=(
-                "contrato tipado conectado"
-                if navegador_disponivel else "contrato ausente"
-            ),
-            ausentes=[] if navegador_disponivel else ["navegador_operacoes"],
+        navegador_leitura = ns.get("_registro_navegador_leitura_runtime")
+        navegador_operacoes = ns.get("_registro_navegador_operacoes_runtime")
+        try:
+            diag_navegador_leitura = dict(navegador_leitura.diagnostico() or {})
+            diag_navegador_operacoes = dict(navegador_operacoes.diagnostico() or {})
+        except Exception:
+            diag_navegador_leitura = {}
+            diag_navegador_operacoes = {}
+        navegador_contrato = bool(
+            diag_navegador_leitura.get("leitura_aba_disponivel")
+            and diag_navegador_leitura.get("listagem_disponivel")
+            and diag_navegador_operacoes.get("comandos_disponiveis")
+            and diag_navegador_operacoes.get("navegacao_disponivel")
         )
-        iot_disponivel = callable(getattr(self._iot, "executar", None))
+        navegador_conectado = bool(diag_navegador_leitura.get("conectado"))
+        navegador_disponivel = navegador_contrato and navegador_conectado
+        navegador_status = (
+            "saudavel" if navegador_disponivel
+            else "degradado" if navegador_contrato
+            else "indisponivel"
+        )
+        navegador_ausentes = []
+        if not navegador_contrato:
+            navegador_ausentes.append("contrato_navegador")
+        if navegador_contrato and not navegador_conectado:
+            navegador_ausentes.append("chrome_ws_conectado")
+        saude.registrar(
+            "navegador",
+            navegador_status,
+            detalhes=(
+                "contrato e conexão observados"
+                if navegador_disponivel else "disponibilidade operacional limitada"
+            ),
+            ausentes=navegador_ausentes,
+        )
+        # Nome legado preservado como espelho, sempre vindo da mesma fonte viva.
+        saude.registrar(
+            "navegador_tipado", navegador_status,
+            detalhes="espelho da saúde operacional do navegador",
+            ausentes=navegador_ausentes,
+        )
+
+        iot = ns.get("_registro_iot_runtime") or self._iot
+        try:
+            diagnostico_iot = dict(iot.diagnostico() or {})
+        except Exception:
+            diagnostico_iot = {}
+        iot_disponivel = bool(
+            diagnostico_iot.get("configurado")
+            and diagnostico_iot.get("provedor_disponivel")
+            and int(diagnostico_iot.get("total_dispositivos") or 0) > 0
+        )
         saude.registrar(
             "iot", "saudavel" if iot_disponivel else "indisponivel",
-            detalhes="contrato tipado conectado" if iot_disponivel else "contrato ausente",
-            ausentes=[] if iot_disponivel else ["servico_iot"],
+            detalhes=(
+                "configuração, provedor e dispositivos observados"
+                if iot_disponivel else "pré-condições IoT incompletas"
+            ),
+            ausentes=[] if iot_disponivel else ["configuracao_ou_provedor_iot"],
+        )
+
+        diagnosticos_simples = {
+            "area_transferencia": (
+                ns.get("_area_transferencia_runtime"), "leitura_disponivel",
+                "leitor_clipboard",
+            ),
+            "caixa_entrada": (
+                ns.get("_caixa_entrada_pessoal_runtime"),
+                "persistencia_disponivel", "persistencia_caixa",
+            ),
+            "central_notificacoes": (
+                ns.get("_central_notificacoes_runtime"),
+                "persistencia_disponivel", "persistencia_notificacoes",
+            ),
+        }
+        for modulo, (runtime, chave, ausente) in diagnosticos_simples.items():
+            try:
+                retrato = dict(runtime.diagnostico() or {})
+            except Exception:
+                retrato = {}
+            disponivel = bool(retrato.get(chave))
+            saude.registrar(
+                modulo, "saudavel" if disponivel else "degradado",
+                detalhes="pré-condições observadas" if disponivel else "retrato operacional incompleto",
+                ausentes=[] if disponivel else [ausente],
+            )
+
+        avatar = ns.get("_avatar_runtime")
+        try:
+            diagnostico_avatar = dict(avatar.diagnostico() or {})
+        except Exception:
+            diagnostico_avatar = {}
+        avatar_preferido = bool(diagnostico_avatar.get("preferencia_ativa"))
+        avatar_pronto = bool(
+            avatar_preferido
+            and diagnostico_avatar.get("assets_disponiveis")
+            and (
+                diagnostico_avatar.get("processo_ativo")
+                or diagnostico_avatar.get("visual_externo_ativo")
+            )
+        )
+        saude.registrar(
+            "avatar",
+            "saudavel" if avatar_pronto else "degradado" if avatar_preferido else "indisponivel",
+            detalhes=(
+                "visual observado" if avatar_pronto
+                else "preferência desativada" if not avatar_preferido
+                else "visual configurado sem processo ativo"
+            ),
+            ausentes=(
+                [] if avatar_pronto
+                else ["preferencia_avatar_ativa"] if not avatar_preferido
+                else ["processo_ou_widget_avatar"]
+            ),
         )
         agenda = ns.get("_agenda_runtime")
         diagnostico_agenda = {}

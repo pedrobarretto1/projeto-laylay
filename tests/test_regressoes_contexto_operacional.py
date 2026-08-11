@@ -10,6 +10,24 @@ from mente_laylay.memoria_mental.contexto_imediato import resolver_comando_janel
 from mente_laylay.memoria_mental.musica_conversacional_runtime import (
     MusicaConversacionalRuntime,
 )
+from mente_laylay.memoria_mental.pendencia_acao import (
+    CHAVE_PENDENCIA_ACAO,
+    PendenciaAcaoRuntime,
+)
+
+
+def _pendencia(estado: dict) -> PendenciaAcaoRuntime:
+    def atualizar(mutador):
+        novo = mutador(dict(estado))
+        estado.clear()
+        estado.update(novo)
+        return dict(estado)
+
+    return PendenciaAcaoRuntime(
+        estado_getter=lambda: estado,
+        estado_atualizar=atualizar,
+        log=lambda *_args: None,
+    )
 
 
 def test_fecha_programa_que_acabou_de_abrir_resolve_ultima_janela() -> None:
@@ -73,13 +91,15 @@ def test_roteador_completo_bloqueia_pergunta_sobre_como_controlar_iot() -> None:
 def test_nome_da_faixa_resolve_pendencia_de_musica_sem_alvo() -> None:
     falas = []
     execucoes = []
+    estado: dict = {}
     runtime = MusicaConversacionalRuntime(
-        estado_mental_getter=lambda: {},
+        estado_mental_getter=lambda: estado,
         normalizar_texto=lambda texto: str(texto).casefold().strip(),
         falar=lambda fala, *_: falas.append(fala),
         registrar_mente_curta=lambda *_args, **_kwargs: None,
         executar_intencao=lambda resultado, texto: execucoes.append((resultado, texto)) or True,
         registrar_resultado_execucao=lambda *_args, **_kwargs: None,
+        pendencia_runtime=_pendencia(estado),
     )
 
     assert runtime.responder_pedido_direcao("coloca uma música") is True
@@ -93,13 +113,15 @@ def test_nome_da_faixa_resolve_pendencia_de_musica_sem_alvo() -> None:
 def test_vontade_natural_de_ouvir_musica_cria_pendencia_sem_inventar_playlist() -> None:
     falas = []
     execucoes = []
+    estado: dict = {}
     runtime = MusicaConversacionalRuntime(
-        estado_mental_getter=lambda: {},
+        estado_mental_getter=lambda: estado,
         normalizar_texto=lambda texto: str(texto).casefold().strip(),
         falar=lambda fala, *_: falas.append(fala),
         registrar_mente_curta=lambda *_args, **_kwargs: None,
         executar_intencao=lambda resultado, texto: execucoes.append((resultado, texto)) or True,
         registrar_resultado_execucao=lambda *_args, **_kwargs: None,
+        pendencia_runtime=_pendencia(estado),
     )
 
     assert runtime.responder_pedido_direcao("eu queria ouvir uma música na verdade") is True
@@ -115,13 +137,15 @@ def test_vontade_natural_de_ouvir_musica_cria_pendencia_sem_inventar_playlist() 
 
 def test_novo_comando_iot_nao_vira_titulo_de_musica_pendente() -> None:
     execucoes = []
+    estado: dict = {}
     runtime = MusicaConversacionalRuntime(
-        estado_mental_getter=lambda: {},
+        estado_mental_getter=lambda: estado,
         normalizar_texto=lambda texto: str(texto).casefold().strip(),
         falar=lambda *_: None,
         registrar_mente_curta=lambda *_args, **_kwargs: None,
         executar_intencao=lambda resultado, texto: execucoes.append((resultado, texto)) or True,
         registrar_resultado_execucao=lambda *_args, **_kwargs: None,
+        pendencia_runtime=_pendencia(estado),
     )
     runtime.responder_pedido_direcao("coloca uma música")
     assert runtime.processar_confirmacao("liga a luz") is False
@@ -130,13 +154,15 @@ def test_novo_comando_iot_nao_vira_titulo_de_musica_pendente() -> None:
 
 def test_agradecimento_nao_vira_titulo_de_musica_pendente() -> None:
     execucoes = []
+    estado: dict = {}
     runtime = MusicaConversacionalRuntime(
-        estado_mental_getter=lambda: {},
+        estado_mental_getter=lambda: estado,
         normalizar_texto=lambda texto: str(texto).casefold().strip(),
         falar=lambda *_: None,
         registrar_mente_curta=lambda *_args, **_kwargs: None,
         executar_intencao=lambda resultado, texto: execucoes.append((resultado, texto)) or True,
         registrar_resultado_execucao=lambda *_args, **_kwargs: None,
+        pendencia_runtime=_pendencia(estado),
     )
     runtime.responder_pedido_direcao("coloca uma música")
 
@@ -155,6 +181,7 @@ def test_execucao_musical_confirmada_invalida_copia_local_da_pendencia() -> None
         registrar_mente_curta=lambda *_args, **_kwargs: None,
         executar_intencao=lambda resultado, texto: execucoes.append((resultado, texto)) or True,
         registrar_resultado_execucao=lambda *_args, **_kwargs: None,
+        pendencia_runtime=_pendencia(estado),
     )
     runtime.responder_pedido_direcao("coloca uma música")
     estado.update({
@@ -168,7 +195,7 @@ def test_execucao_musical_confirmada_invalida_copia_local_da_pendencia() -> None
     })
 
     assert runtime.processar_confirmacao("obrigado lay") is False
-    assert runtime._sugestao_pendente == {}
+    assert estado.get(CHAVE_PENDENCIA_ACAO, {}) == {}
     assert execucoes == []
 
 

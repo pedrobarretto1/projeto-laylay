@@ -354,6 +354,83 @@ class MotorAprendizadoRuntime:
             evidencia=texto, confirmado_usuario=bool(re.search(r"\b(?:gosto|adoro|amo|odeio|detesto|prefiro)\b", _normalizar(texto))),
         )
 
+    def registrar_feedback_contextual(
+        self,
+        *,
+        tipo: str,
+        aceito: bool | None,
+        resultado: str = "",
+        origem: str,
+        confianca: float = 1.0,
+        alvo: str = "",
+    ) -> Dict[str, Any] | None:
+        """Registra feedback efêmero sem promovê-lo a preferência durável.
+
+        Aceitação, recusa, correção, repetição e silêncio são evidências sobre
+        uma interação específica. Mesmo quando explícitos, não equivalem a
+        ``sempre faça assim``; por isso nunca usam ``confirmado_usuario``.
+        """
+        evento = _normalizar(tipo or resultado or "feedback") or "feedback"
+        origem_limpa = _normalizar(origem) or "desconhecida"
+        alvo_limpo = re.sub(r"\s+", " ", str(alvo or "").strip())[:120]
+        confianca_evento = max(0.0, min(1.0, float(confianca or 0.0)))
+        if evento in {"silencio", "silencio qualificado"} or aceito is None:
+            sinal = 0.15 * confianca_evento
+        elif evento in {"correcao", "repeticao"}:
+            sinal = -0.35 * confianca_evento
+        else:
+            sinal = (0.45 if aceito else -0.45) * confianca_evento
+        contexto = self._contexto()
+        contexto.update({
+            "origem_feedback": origem_limpa,
+            "confianca_evento": confianca_evento,
+        })
+        chave_alvo = _normalizar(alvo_limpo)[:80] or "geral"
+        return self.registrar_evidencia(
+            chave=f"feedback_contextual:{origem_limpa}:{evento}:{chave_alvo}",
+            tipo="feedback_contextual",
+            escopo=origem_limpa,
+            valor={
+                "evento": evento,
+                "aceito": aceito,
+                "alvo": alvo_limpo,
+                "descricao_humana": f"feedback {evento} no domínio {origem_limpa}",
+            },
+            sinal=sinal,
+            origem=f"feedback_contextual:{origem_limpa}",
+            evidencia=str(resultado or tipo or "")[:500],
+            confirmado_usuario=False,
+            contexto=contexto,
+        )
+
+    def observar_evento_pendencia(
+        self, evento: str, pendencia: Dict[str, Any] | None,
+    ) -> Dict[str, Any] | None:
+        dados = dict(pendencia or {})
+        origem = str(dados.get("origem") or "").strip()
+        # A agenda já publica sinais especializados no mesmo motor.
+        if not origem or origem == "agenda":
+            return None
+        evento_norm = _normalizar(evento)
+        mapa = {
+            "aceitar": ("aceitacao", True, 1.0),
+            "recusar": ("recusa", False, 1.0),
+            "recusada": ("recusa", False, 1.0),
+            "expirada": ("silencio", None, 0.7),
+        }
+        interpretado = mapa.get(evento_norm)
+        if not interpretado:
+            return None
+        tipo, aceito, confianca = interpretado
+        return self.registrar_feedback_contextual(
+            tipo=tipo,
+            aceito=aceito,
+            resultado=evento_norm,
+            origem=origem,
+            confianca=confianca,
+            alvo=str(dados.get("referencia") or "")[:120],
+        )
+
     @staticmethod
     def _assinatura_acao(intent: str, params: Dict[str, Any]) -> tuple[str, str, str]:
         acao = str(params.get("acao") or params.get("modo") or "").strip().lower()
@@ -435,6 +512,33 @@ class MotorAprendizadoRuntime:
         self, texto_usuario: str, resposta_ia: str, *, habilidade: str = "", alvo: str = ""
     ) -> None:
         self.observar_texto_usuario(texto_usuario, habilidade=habilidade, alvo=alvo)
+        texto_normalizado = _normalizar(texto_usuario)
+        if re.search(
+            r"\b(?:na verdade|quis dizer|voce errou|você errou|nao lay|não lay|"
+            r"nao foi isso|não foi isso|corrigindo)\b",
+            texto_normalizado,
+        ):
+            self.registrar_feedback_contextual(
+                tipo="correcao",
+                aceito=False,
+                resultado=texto_usuario,
+                origem=habilidade or "conversa",
+                confianca=0.9,
+                alvo=alvo,
+            )
+        elif re.search(
+            r"^(?:tenta|tente|faz|faca|faça|repete|repita)\s+(?:de novo|outra vez)$|"
+            r"^(?:de novo|outra vez)$",
+            texto_normalizado,
+        ):
+            self.registrar_feedback_contextual(
+                tipo="repeticao",
+                aceito=False,
+                resultado=texto_usuario,
+                origem=habilidade or "conversa",
+                confianca=0.85,
+                alvo=alvo,
+            )
         resposta = _normalizar(resposta_ia)
         sinais_lacuna = (
             "nao sei", "nao tenho informacao", "nao tenho informacoes",

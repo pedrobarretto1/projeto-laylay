@@ -183,6 +183,7 @@ class MensagemWidget(QFrame):
         *, mensagem_id: str = "", status: str = "accepted",
     ) -> None:
         super().__init__()
+        self.papel = papel
         self.mensagem_id = mensagem_id
         self.texto = texto
         self.setObjectName("messageUser" if papel == "user" else "messageLaylay")
@@ -197,13 +198,13 @@ class MensagemWidget(QFrame):
         lay.setSpacing(7)
         meta = QLabel(("VOCÊ" if papel == "user" else "LAYLAY") + (f"  ·  {horario}" if horario else ""))
         meta.setObjectName("messageMeta")
-        corpo = QLabel(texto)
-        corpo.setObjectName("messageText")
-        corpo.setWordWrap(True)
-        corpo.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
-        corpo.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.corpo = QLabel(texto)
+        self.corpo.setObjectName("messageText")
+        self.corpo.setWordWrap(True)
+        self.corpo.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        self.corpo.setTextInteractionFlags(Qt.TextSelectableByMouse)
         lay.addWidget(meta)
-        lay.addWidget(corpo)
+        lay.addWidget(self.corpo)
         self.status = QLabel()
         self.status.setObjectName("messageStatus")
         self.retry = QPushButton("Tentar novamente")
@@ -220,6 +221,17 @@ class MensagemWidget(QFrame):
         self.largura_preferida = min(
             self.maximumWidth(), max(natural, 180 + min(680, len(self.texto) * 3)),
         )
+
+    def atualizar_texto(self, texto: str) -> None:
+        texto = str(texto or "").strip()
+        if not texto or texto == self.texto:
+            return
+        self.texto = texto
+        self.corpo.setText(texto)
+        self.largura_preferida = min(
+            self.maximumWidth(), max(180, 180 + min(680, len(texto) * 3)),
+        )
+        self.updateGeometry()
 
     def definir_status(self, status: str, detalhe: str = "") -> None:
         mapa = {
@@ -1004,6 +1016,18 @@ class JanelaLaylay(QMainWindow):
         texto = str(texto or "").strip()
         if not texto:
             return None
+        if mensagem_id:
+            for existente in self.feed.findChildren(MensagemWidget):
+                if (
+                    existente.papel == papel
+                    and existente.mensagem_id == mensagem_id
+                ):
+                    existente.atualizar_texto(texto)
+                    self._ultima_mensagem = (papel, texto, time.monotonic())
+                    QTimer.singleShot(0, self._ajustar_larguras_mensagens)
+                    if rolar_ao_final is not False and self._esta_perto_do_final():
+                        self._agendar_rolagem_final()
+                    return existente
         agora = time.monotonic()
         anterior_papel, anterior_texto, anterior_ts = self._ultima_mensagem
         if not mensagem_id and papel == anterior_papel and texto == anterior_texto and agora - anterior_ts < 1.5:
@@ -1193,7 +1217,11 @@ class JanelaLaylay(QMainWindow):
             self.enviar_json.emit({"type": "ready", "id": uuid.uuid4().hex})
         elif tipo == "assistant_message":
             self._remover_indicador_pensando()
-            self.adicionar_mensagem("assistant", str(msg.get("text") or ""), timestamp=msg.get("timestamp"))
+            self.adicionar_mensagem(
+                "assistant", str(msg.get("text") or ""),
+                timestamp=msg.get("timestamp"),
+                mensagem_id=str(msg.get("id") or ""),
+            )
             self.avatar_side.atualizar("speaking", str(msg.get("emotion") or "calma"))
             self.adicionar_evento("Resposta entregue", "A fala final chegou à conversa.", "success")
         elif tipo == "input_ack":

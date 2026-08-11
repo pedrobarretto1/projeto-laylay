@@ -621,6 +621,8 @@ def interpretar_continuidade_semantica_llm(
             _com_tools=False,
             max_tokens=100,
             modo_rapido=True,
+            _tipo_chamada="interpretacao",
+            _classe_timeout="rapida",
         )
         match = re.search(r"\{.*\}", str(bruto or ""), re.DOTALL)
         dados = json.loads(match.group(0)) if match else {}

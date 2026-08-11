@@ -145,6 +145,8 @@ class InterpretadorSemanticoRuntime:
                     {"role": "system", "content": PROMPT_LEITURA_SEMANTICA},
                     {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
                 ],
+                _tipo_chamada="interpretacao",
+                _classe_timeout="rapida",
                 _com_tools=False,
                 max_tokens=420,
                 modo_rapido=True,

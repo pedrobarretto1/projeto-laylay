@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT_RAPIDO
+
 
 def _ultima_fala_usuario(mensagens: list[Any]) -> str:
     for mensagem in reversed(mensagens):
@@ -42,6 +44,68 @@ def texto_pede_contexto_arquivos(
     return any(gatilho in t for gatilho in gatilhos)
 
 
+def texto_pede_contexto_pagina(texto: str) -> bool:
+    t = str(texto or "").strip().casefold()
+    return any(sinal in t for sinal in (
+        "página atual", "pagina atual", "essa página", "essa pagina",
+        "nesta página", "nesta pagina", "site atual", "esse site",
+        "neste site", "aba atual", "essa aba", "nesta aba",
+        "o que está na tela", "o que esta na tela", "conteúdo da página",
+        "conteudo da pagina", "resume a página", "resuma a página",
+        "resume a pagina", "resuma a pagina", "vídeo atual", "video atual",
+    ))
+
+
+def texto_pede_resumo_diario(texto: str) -> bool:
+    t = str(texto or "").strip().casefold()
+    return any(sinal in t for sinal in (
+        "hoje nós", "hoje nos", "hoje a gente", "o que fizemos hoje",
+        "o que aconteceu hoje", "resumo do dia", "sobre o nosso dia",
+        "conversa de hoje", "conversamos hoje", "lembra de hoje",
+    ))
+
+
+def _eh_prompt_principal_laylay(conteudo: str) -> bool:
+    t = str(conteudo or "").casefold()
+    return (
+        ("você é laylay" in t or "voce e laylay" in t)
+        and (
+            "formato estrutural obrigatório do json" in t
+            or "formato estrutural obrigatorio do json" in t
+            or "retorne somente json válido" in t
+            or "retorne somente json valido" in t
+        )
+    )
+
+
+def _selecionar_historico_com_orcamento(
+    mensagens: list[Any],
+    *,
+    limite_chars: int,
+    limite_mensagens: int,
+) -> list[dict[str, Any]]:
+    """Mantém os atos recentes completos, em vez de cortar mensagens ao meio."""
+    dialogo = [
+        dict(item) for item in mensagens
+        if isinstance(item, dict)
+        and str(item.get("role") or "").casefold() in {"user", "assistant"}
+        and str(item.get("content") or "").strip()
+    ]
+    selecionadas_reverso: list[dict[str, Any]] = []
+    usados = 0
+    for item in reversed(dialogo):
+        if len(selecionadas_reverso) >= max(1, int(limite_mensagens)):
+            break
+        custo = len(str(item.get("content") or ""))
+        # A fala atual nunca é descartada, ainda que seja excepcionalmente
+        # grande. Tarefas especializadas não passam por este orçamento.
+        if selecionadas_reverso and usados + custo > limite_chars:
+            break
+        selecionadas_reverso.append(item)
+        usados += custo
+    return list(reversed(selecionadas_reverso))
+
+
 def preparar_payload_llm(
     mensagens: Any,
     *,
@@ -59,6 +123,7 @@ def preparar_payload_llm(
     obter_contexto_paginas: Callable[[], str] | None = None,
     resumo_mente_integrada: Callable[[str], str] | None = None,
     registrar_orcamento_prompt: Callable[..., Any] | None = None,
+    otimizacao_prompt_ativa: bool = True,
     log: Callable[[str], Any] = print,
 ) -> dict:
     try:
@@ -70,7 +135,7 @@ def preparar_payload_llm(
         # Qwen local a 10-13 tokens/s, permitir 320 tokens fazia uma saudação
         # ultrapassar o timeout do modo jogo. Explicações e matemática nunca
         # entram neste modo e preservam seus limites completos.
-        limite_tokens = min(limite_tokens, 160)
+        limite_tokens = min(limite_tokens, 128 if otimizacao_prompt_ativa else 160)
     elif endpoint_local:
         limite_tokens = min(limite_tokens, 640)
 
@@ -82,7 +147,28 @@ def preparar_payload_llm(
     mensagens_envio: list[Any] = []
     if originais:
         prompt_sistema = originais[0]
-        if modo_rapido:
+        if (
+            otimizacao_prompt_ativa
+            and modo_rapido
+            and isinstance(prompt_sistema, dict)
+            and str(prompt_sistema.get("role") or "").casefold() == "system"
+            and _eh_prompt_principal_laylay(str(prompt_sistema.get("content") or ""))
+        ):
+            prompt_sistema = {
+                "role": "system",
+                "content": BASE_SYSTEM_PROMPT_RAPIDO,
+            }
+        prompt_principal = bool(
+            isinstance(prompt_sistema, dict)
+            and _eh_prompt_principal_laylay(str(prompt_sistema.get("content") or ""))
+        )
+        if otimizacao_prompt_ativa and prompt_principal:
+            historico = _selecionar_historico_com_orcamento(
+                originais[1:],
+                limite_chars=1200 if modo_rapido else 2600,
+                limite_mensagens=4 if modo_rapido else 8,
+            )
+        elif modo_rapido:
             historico = originais[-4:] if len(originais) > 5 else originais[1:]
         else:
             historico = originais[-10:] if len(originais) > 11 else originais[1:]
@@ -94,7 +180,9 @@ def preparar_payload_llm(
 
     ultimo_texto_usuario = _ultima_fala_usuario(originais)
     if not modo_rapido:
-        if resumo_do_dia:
+        if resumo_do_dia and (
+            not otimizacao_prompt_ativa or texto_pede_resumo_diario(ultimo_texto_usuario)
+        ):
             # O prompt permanente precisa continuar na posição zero. O
             # transporte local usa essa posição para distinguir o contrato da
             # Laylay de contextos auxiliares descartáveis sob pressão de
@@ -102,7 +190,11 @@ def preparar_payload_llm(
             # o resumo e eliminar personalidade, segurança e formato JSON.
             mensagens_envio.insert(1 if mensagens_envio else 0, {
                 "role": "system",
-                "content": f"RESUMO DO DIA {data_atual}:\n{resumo_do_dia}\n\nUse isso como contexto de longo prazo.",
+                "content": (
+                    f"MEMÓRIA OBSERVADA DO DIA {data_atual}:\n{resumo_do_dia}\n\n"
+                    "Responda à pergunta sobre hoje somente com estes registros. "
+                    "Não invente acontecimentos e não diga que não há memória se há interações listadas."
+                ),
             })
 
         try:
@@ -144,7 +236,15 @@ def preparar_payload_llm(
                         "role": "system",
                         "content": f"Contexto do sistema: app_ativo={exe or 'desconhecido'} | janela='{titulo}' | assunto='{assunto or 'indefinido'}'.",
                     })
-            paginas = obter_contexto_paginas() if callable(obter_contexto_paginas) else ""
+            paginas = (
+                obter_contexto_paginas()
+                if callable(obter_contexto_paginas)
+                and (
+                    not otimizacao_prompt_ativa
+                    or texto_pede_contexto_pagina(ultimo_texto_usuario)
+                )
+                else ""
+            )
             if paginas:
                 mensagens_envio.append({
                     "role": "system",

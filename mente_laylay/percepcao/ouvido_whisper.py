@@ -21,6 +21,9 @@ from mente_laylay.percepcao.normalizacao_fonetica import (
     normalizar_fonetico,
 )
 from mente_laylay.percepcao.dispositivos_audio import selecionar_dispositivo_audio
+from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
+    classificar_confirmacao_local,
+)
 
 def limpar_diccao_e_ruido(texto_falado: str) -> str:
     """Filtro anti-ruido + corretor de diccao para reduzir alucinacoes do Whisper."""
@@ -327,7 +330,8 @@ class OuvidoWhisperRuntime:
             return False
         resposta = normalizar_fonetico(comando)
         original = str(pendente.get("comando") or "").strip()
-        if resposta in {"sim", "isso", "exato", "confirmo", "pode", "foi isso", "correto"}:
+        decisao = classificar_confirmacao_local(resposta)
+        if decisao is True:
             self._confirmacao_pendente = {}
             self._ativado_ate = 0.0
             if original and not self._duplicado_recente(original, agora):
@@ -345,7 +349,7 @@ class OuvidoWhisperRuntime:
                 self.log(f"🎙️ [OUVIDO] Comando confirmado pela repetição: {original}")
                 self.processar_texto(original)
             return True
-        if resposta in {"nao", "não", "cancela", "cancelar", "errado", "nao foi", "não foi"}:
+        if decisao is False:
             self._confirmacao_pendente = {}
             self._ativado_ate = 0.0
             self.log("🎙️ [OUVIDO] Transcrição rejeitada pelo usuário.")

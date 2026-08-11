@@ -58,25 +58,7 @@ def publicar_curadoria_musical_cooperativa(
     if not callable(publicar):
         return False
     dados = dict(resumo or {})
-    usuarios = max(0, int(dados.get("playlists_usuario") or 0))
-    historico = max(0, int(dados.get("registros_historico") or 0))
-    curadorias = max(0, int(dados.get("curadorias") or 0))
-    publicar(
-        origem="curadoria_musical",
-        tipo="curadoria_musical_sincronizada",
-        resumo=(
-            f"{curadorias} curadoria(s) derivada(s) de {usuarios} playlist(s) "
-            f"e {historico} registro(s) confirmados"
-        ),
-        confianca=1.0,
-        relevancia=0.72,
-        sensibilidade="contagens_locais",
-        validade_s=900.0,
-        habilidades=("playlists_usuario", "aprendizado_musical", "playlist_laylay"),
-        evidencias=("persistência relida", "fontes locais confirmadas"),
-        chave_deduplicacao=f"curadoria_musical:{usuarios}:{historico}:{curadorias}",
-    )
-    return True
+    return bool(publicar(dados))
 
 
 def descarregar_modelo_local(

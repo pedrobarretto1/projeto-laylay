@@ -39,6 +39,17 @@ def detectar_pedido_diagnostico_mente(texto: str) -> bool:
     return any(expressao in t for expressao in expressoes)
 
 
+def _identificador_tecnico_seguro(valor: Any, limite: int = 72) -> str:
+    texto = str(valor or "").strip()
+    if (
+        not texto
+        or re.search(r"https?://|\\|\s|(?:api[_-]?key|token|senha|secret)", texto, re.IGNORECASE)
+        or not re.fullmatch(r"[A-Za-z0-9À-ÿ_.:/-]+", texto)
+    ):
+        return ""
+    return texto.casefold()[:limite]
+
+
 def _atualizar_retratos_saude(diagnostico: Mapping[str, Any]) -> dict[str, Any]:
     """Separa conexão estrutural de comportamento observado sem executar probes."""
     retrato = dict(diagnostico or {})
@@ -198,6 +209,9 @@ def construir_diagnostico_mente(
     contexto_sistema = dict(percepcao.get("contexto_sistema") or {})
     aba_ativa = dict(percepcao.get("aba_ativa") or {})
     metricas_brutas = dict(mental.get("diagnostico_metricas") or {})
+    metricas_rotas_brutas = dict(mental.get("diagnostico_metricas_rotas") or {})
+    traces_brutos = list(mental.get("diagnostico_traces_turno") or [])
+    orcamento_llm_bruto = dict(mental.get("diagnostico_orcamento_llm") or {})
     prompts_brutos = dict(mental.get("diagnostico_prompts") or {})
     orcamento_prompt_bruto = dict(mental.get("diagnostico_orcamento_prompt") or {})
     latencias = {}
@@ -210,6 +224,8 @@ def construir_diagnostico_mente(
         latencias[chave] = {
             "ultimo_ms": round(float(registro.get("ultimo_ms") or 0.0), 2),
             "media_ms": round(float(registro.get("media_ms") or 0.0), 2),
+            "p50_ms": round(float(registro.get("p50_ms") or 0.0), 2),
+            "p95_ms": round(float(registro.get("p95_ms") or 0.0), 2),
             "max_ms": round(float(registro.get("max_ms") or 0.0), 2),
             "amostras": int(registro.get("amostras") or 0),
             "falhas": int(registro.get("falhas") or 0),
@@ -217,6 +233,129 @@ def construir_diagnostico_mente(
             "excedeu_orcamento": bool(registro.get("excedeu_orcamento", False)),
             "excessos": int(registro.get("excessos") or 0),
         }
+    latencias_por_rota = {}
+    for rota_bruta, metricas_rota in list(metricas_rotas_brutas.items())[:16]:
+        rota = _identificador_tecnico_seguro(rota_bruta, 48)
+        if not rota or not isinstance(metricas_rota, Mapping):
+            continue
+        resumo_rota = {}
+        for nome, registro in metricas_rota.items():
+            if not isinstance(registro, Mapping):
+                continue
+            chave = _codigo_seguro(nome, 64)
+            if not chave:
+                continue
+            resumo_rota[chave] = {
+                "ultimo_ms": round(float(registro.get("ultimo_ms") or 0.0), 2),
+                "media_ms": round(float(registro.get("media_ms") or 0.0), 2),
+                "p50_ms": round(float(registro.get("p50_ms") or 0.0), 2),
+                "p95_ms": round(float(registro.get("p95_ms") or 0.0), 2),
+                "max_ms": round(float(registro.get("max_ms") or 0.0), 2),
+                "amostras": int(registro.get("amostras") or 0),
+                "falhas": int(registro.get("falhas") or 0),
+            }
+        if resumo_rota:
+            latencias_por_rota[rota] = resumo_rota
+    traces_turno = []
+    for bruto in traces_brutos[-8:]:
+        if not isinstance(bruto, Mapping):
+            continue
+        turno_id = _identificador_tecnico_seguro(bruto.get("turno_id"), 72)
+        if not turno_id:
+            continue
+        etapas = {}
+        for nome, etapa in dict(bruto.get("etapas") or {}).items():
+            if not isinstance(etapa, Mapping):
+                continue
+            chave = _codigo_seguro(nome, 64)
+            if chave:
+                etapas[chave] = {
+                    "duracao_ms": round(float(etapa.get("duracao_ms") or 0.0), 2),
+                    "sucesso": bool(etapa.get("sucesso", False)),
+                }
+        traces_turno.append({
+            "turno_id": turno_id,
+            "origem": _identificador_tecnico_seguro(bruto.get("origem"), 32),
+            "rota": _identificador_tecnico_seguro(bruto.get("rota"), 48),
+            "fase": _identificador_tecnico_seguro(bruto.get("fase"), 48),
+            "backend": _identificador_tecnico_seguro(bruto.get("backend"), 48),
+            "modelo": _identificador_tecnico_seguro(bruto.get("modelo"), 80),
+            "tipo_chamada": _identificador_tecnico_seguro(bruto.get("tipo_chamada"), 48),
+            "chamadas_llm": int(bruto.get("chamadas_llm") or 0),
+            "chamadas_llm_por_tipo": {
+                _identificador_tecnico_seguro(tipo, 48): int(quantidade or 0)
+                for tipo, quantidade in dict(
+                    bruto.get("chamadas_llm_por_tipo") or {}
+                ).items()
+                if _identificador_tecnico_seguro(tipo, 48)
+            },
+            "tamanho_prompt_chars": int(bruto.get("tamanho_prompt_chars") or 0),
+            "limite_saida_tokens": int(bruto.get("limite_saida_tokens") or 0),
+            "finalizado": bool(bruto.get("finalizado", False)),
+            "sucesso": bruto.get("sucesso") if isinstance(bruto.get("sucesso"), bool) else None,
+            "etapas": etapas,
+        })
+    orcamento_llm = {
+        "modo": _identificador_tecnico_seguro(
+            orcamento_llm_bruto.get("modo"), 32,
+        ) or "desativado",
+        "limite_chamadas_turno": int(
+            orcamento_llm_bruto.get("limite_chamadas_turno") or 0
+        ),
+        "turnos": int(orcamento_llm_bruto.get("turnos") or 0),
+        "chamadas_autorizadas": int(
+            orcamento_llm_bruto.get("chamadas_autorizadas") or 0
+        ),
+        "chamadas_bloqueadas": int(
+            orcamento_llm_bruto.get("chamadas_bloqueadas") or 0
+        ),
+        "chamadas_por_tipo": {
+            _identificador_tecnico_seguro(tipo, 48): int(quantidade or 0)
+            for tipo, quantidade in dict(
+                orcamento_llm_bruto.get("chamadas_por_tipo") or {}
+            ).items()
+            if _identificador_tecnico_seguro(tipo, 48)
+        },
+        "bloqueios_por_motivo": {
+            _identificador_tecnico_seguro(motivo, 48): int(quantidade or 0)
+            for motivo, quantidade in dict(
+                orcamento_llm_bruto.get("bloqueios_por_motivo") or {}
+            ).items()
+            if _identificador_tecnico_seguro(motivo, 48)
+        },
+        "falhas_consecutivas": int(
+            orcamento_llm_bruto.get("falhas_consecutivas") or 0
+        ),
+        "circuito_aberto": bool(
+            orcamento_llm_bruto.get("circuito_aberto", False)
+        ),
+        "circuito_restante_s": round(float(
+            orcamento_llm_bruto.get("circuito_restante_s") or 0.0
+        ), 2),
+        "probe_em_andamento": bool(
+            orcamento_llm_bruto.get("probe_em_andamento", False)
+        ),
+        "conteudo_persistido": False,
+        "autoriza_execucao": False,
+    }
+    implantacao_bruta = dict(
+        mental.get("diagnostico_implantacao_desempenho") or {}
+    )
+    implantacao_desempenho = {
+        "modo": _codigo_seguro(implantacao_bruta.get("modo"), 24) or "gradual",
+        "mestre_ativa": bool(implantacao_bruta.get("mestre_ativa", True)),
+        "revertido": bool(implantacao_bruta.get("revertido", False)),
+        "motivo": _codigo_seguro(implantacao_bruta.get("motivo"), 32),
+        "eventos_janela": int(implantacao_bruta.get("eventos_janela") or 0),
+        "consecutivos": int(implantacao_bruta.get("consecutivos") or 0),
+        "flags": {
+            _codigo_seguro(nome, 32): bool(ativa)
+            for nome, ativa in dict(implantacao_bruta.get("flags") or {}).items()
+            if _codigo_seguro(nome, 32)
+        },
+        "conteudo_exposto": False,
+        "autoriza_execucao": False,
+    }
     tamanhos_prompt = {}
     for nome, registro in prompts_brutos.items():
         if not isinstance(registro, Mapping):
@@ -534,6 +673,10 @@ def construir_diagnostico_mente(
             "status": _codigo_seguro(pendencia_acao.get("status"), 32),
         },
         "latencias": latencias,
+        "latencias_por_rota": latencias_por_rota,
+        "traces_turno": traces_turno,
+        "orcamento_llm": orcamento_llm,
+        "implantacao_desempenho": implantacao_desempenho,
         "tamanhos_prompt": tamanhos_prompt,
         "orcamento_prompt": orcamento_prompt,
         "falhas_recentes": falhas,
@@ -571,6 +714,13 @@ class DiagnosticoMenteRuntime:
         aprendizado_getter: Callable[[], Mapping[str, Any]] | None = None,
         linguagem_natural_getter: Callable[[], Mapping[str, Any]] | None = None,
         fala_operacional_getter: Callable[[], Mapping[str, Any]] | None = None,
+        estrutura_getter: Callable[[], Mapping[str, Any]] | None = None,
+        disponibilidade_operacional_getter: Callable[[], Mapping[str, Any]] | None = None,
+        area_transferencia_getter: Callable[[], Mapping[str, Any]] | None = None,
+        caixa_entrada_getter: Callable[[], Mapping[str, Any]] | None = None,
+        notificacoes_getter: Callable[[], Mapping[str, Any]] | None = None,
+        iot_getter: Callable[[], Mapping[str, Any]] | None = None,
+        avatar_getter: Callable[[], Mapping[str, Any]] | None = None,
         falar: Callable[[str, str, int], Any],
         log: Callable[[str], Any] = print,
     ) -> None:
@@ -594,6 +744,13 @@ class DiagnosticoMenteRuntime:
         self.aprendizado_getter = aprendizado_getter
         self.linguagem_natural_getter = linguagem_natural_getter
         self.fala_operacional_getter = fala_operacional_getter
+        self.estrutura_getter = estrutura_getter
+        self.disponibilidade_operacional_getter = disponibilidade_operacional_getter
+        self.area_transferencia_getter = area_transferencia_getter
+        self.caixa_entrada_getter = caixa_entrada_getter
+        self.notificacoes_getter = notificacoes_getter
+        self.iot_getter = iot_getter
+        self.avatar_getter = avatar_getter
         self.falar = falar
         self.log = log
 
@@ -607,6 +764,28 @@ class DiagnosticoMenteRuntime:
         diagnostico = construir_diagnostico_mente(
             self.estado_getter(), self.saude_getter(), rede,
         )
+        coletores = {
+            "conexoes_estruturais": self.estrutura_getter,
+            "disponibilidade_operacional": self.disponibilidade_operacional_getter,
+            "area_transferencia": self.area_transferencia_getter,
+            "caixa_entrada": self.caixa_entrada_getter,
+            "central_notificacoes": self.notificacoes_getter,
+            "iot": self.iot_getter,
+            "avatar": self.avatar_getter,
+        }
+        for chave, getter in coletores.items():
+            if not callable(getter):
+                continue
+            try:
+                diagnostico[chave] = dict(getter() or {})
+            except Exception as erro:
+                diagnostico[chave] = {
+                    "disponivel": False,
+                    "falhas": 1,
+                    "motivo": f"diagnostico_falhou:{type(erro).__name__.casefold()}",
+                    "conteudo_exposto": False,
+                    "autoriza_execucao": False,
+                }
         if callable(self.mapa_habilidades_getter):
             try:
                 diagnostico["habilidades"] = dict(self.mapa_habilidades_getter() or {})
@@ -910,7 +1089,32 @@ class DiagnosticoMenteRuntime:
                 int(item.get("orfaos") or 0) for item in servicos
             ),
         }
-        return _atualizar_retratos_saude(diagnostico)
+        diagnostico = _atualizar_retratos_saude(diagnostico)
+        operacional = dict(diagnostico.get("disponibilidade_operacional") or {})
+        dominios_operacionais = dict(operacional.get("dominios") or {})
+        indisponiveis = sorted(
+            nome for nome, item in dominios_operacionais.items()
+            if isinstance(item, Mapping)
+            and str(item.get("estado") or "") == "indisponivel"
+        )
+        degradados = sorted(
+            nome for nome, item in dominios_operacionais.items()
+            if isinstance(item, Mapping)
+            and str(item.get("estado") or "") == "degradado"
+        )
+        operacional_saude = dict(diagnostico.get("saude_operacional") or {})
+        operacional_saude.update({
+            "capacidades_indisponiveis": indisponiveis,
+            "capacidades_degradadas": degradados,
+            "probes_executados": False,
+        })
+        criticos_indisponiveis = {
+            nome for nome in indisponiveis if nome not in {"avatar"}
+        }
+        if criticos_indisponiveis or degradados:
+            operacional_saude["estado"] = "degradado"
+        diagnostico["saude_operacional"] = operacional_saude
+        return diagnostico
 
     def mostrar(self) -> dict[str, Any]:
         diagnostico = self.snapshot()
@@ -918,12 +1122,24 @@ class DiagnosticoMenteRuntime:
         saude = dict(diagnostico.get("saude") or {})
         problemas = int(saude.get("degradado") or 0) + int(saude.get("indisponivel") or 0)
         falhas = len(diagnostico.get("falhas_recentes") or [])
-        if problemas or falhas:
+        saude_operacional = dict(diagnostico.get("saude_operacional") or {})
+        indisponiveis = list(saude_operacional.get("capacidades_indisponiveis") or [])
+        degradadas = list(saude_operacional.get("capacidades_degradadas") or [])
+        limitacoes = [
+            nome for nome in [*indisponiveis, *degradadas]
+            if nome != "avatar"
+        ]
+        if problemas or falhas or limitacoes:
             partes = []
             if problemas:
                 partes.append(f"{problemas} módulo{'s' if problemas != 1 else ''} pedindo atenção")
             if falhas:
                 partes.append(f"{falhas} falha{'s' if falhas != 1 else ''} técnica{'s' if falhas != 1 else ''} recente{'s' if falhas != 1 else ''}")
+            if limitacoes:
+                nomes = ", ".join(limitacoes[:3])
+                partes.append(
+                    f"disponibilidade limitada em {nomes}"
+                )
             fala = f"Encontrei {' e '.join(partes)}. Deixei o diagnóstico seguro no terminal."
             emocao, nivel = "focada", 2
         else:

@@ -114,6 +114,36 @@ class MemoriaLaylay:
             if self.contador >= 5:
                 self.atualizar_resumo_diario()
 
+    def contexto_do_dia_para_prompt(self, limite_chars: int = 1800) -> str:
+        """Expõe resumo e lote pendente apenas quando o turno pedir o dia.
+
+        O lote já está persistido no arquivo diário. Usá-lo como recuperação
+        evita a falsa resposta "não tenho memória" enquanto a LLM de
+        consolidação ainda não terminou, sem promover essas falas a fatos
+        duráveis separados.
+        """
+        with self._lock:
+            self._garantir_dia_atual()
+            partes: list[str] = []
+            if self.resumo_do_dia.strip():
+                partes.append("Resumo consolidado:\n" + self.resumo_do_dia.strip())
+            if self.historico_recente:
+                cabecalho = "Interações recentes ainda não consolidadas:"
+                disponivel = max(200, int(limite_chars) - len("\n\n".join(partes)) - len(cabecalho) - 2)
+                escolhidas_reverso: list[str] = []
+                usados = 0
+                for linha in reversed(self.historico_recente):
+                    linha = str(linha or "").strip()
+                    if not linha:
+                        continue
+                    if escolhidas_reverso and usados + len(linha) + 1 > disponivel:
+                        break
+                    escolhidas_reverso.append(linha)
+                    usados += len(linha) + 1
+                if escolhidas_reverso:
+                    partes.append(cabecalho + "\n" + "\n".join(reversed(escolhidas_reverso)))
+            return "\n\n".join(partes)[: max(200, int(limite_chars))].strip()
+
     def atualizar_resumo_diario(self) -> None:
         with self._lock:
             if not self.historico_recente:

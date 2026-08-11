@@ -10,6 +10,7 @@ from mente_laylay.percepcao.observador_area_transferencia import (
     ObservadorAreaTransferenciaRuntime,
     classificar_resposta_oferta,
 )
+from mente_laylay.memoria_mental.pendencia_acao import PendenciaAcaoRuntime
 
 
 class ClipboardFalso:
@@ -21,6 +22,23 @@ class ClipboardFalso:
 
     def escrever(self, texto):
         self.texto = texto
+
+
+def _pendencias() -> PendenciaAcaoRuntime:
+    estado = {}
+
+    def atualizar(transformar):
+        novo = transformar(dict(estado))
+        estado.clear()
+        estado.update(novo)
+        return dict(estado)
+
+    return PendenciaAcaoRuntime(
+        estado_getter=lambda: estado,
+        estado_atualizar=atualizar,
+        agora=lambda: 100.0,
+        log=lambda *_args: None,
+    )
 
 
 def test_resposta_da_oferta_reutiliza_linguagem_natural_compartilhada() -> None:
@@ -383,6 +401,7 @@ def test_escrita_da_propria_laylay_nao_gera_sugestao() -> None:
         enviar_mensagem=lambda *_args, **_kwargs: "resultado " * 120,
         leitor=clipboard.ler,
         escritor=clipboard.escrever,
+        pendencia_runtime=_pendencias(),
         log=lambda *_args: None,
     )
     area.processar("resume o que eu copiei")

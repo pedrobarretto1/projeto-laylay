@@ -161,6 +161,9 @@ def _montar_fluxo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, conteudo_inic
             (dict(plano), str(decisao)),
         ),
         registrar_decisao=lambda *_args, **_kwargs: None,
+        autorizar_acao=lambda *_args, **_kwargs: {
+            "permitido": True, "motivo": "teste_explicito",
+        },
         log=lambda _texto: None,
     )
     orquestrador_ref[0] = orquestrador
@@ -564,6 +567,18 @@ def _plano_generico(
     )
 
 
+def _governanca_autorizada(
+    quadro: QuadroCooperacaoRuntime,
+) -> GovernancaPlanoCooperativoRuntime:
+    return GovernancaPlanoCooperativoRuntime(
+        quadro=quadro,
+        autorizar_acao=lambda *_args, **_kwargs: {
+            "permitido": True, "motivo": "teste_explicito",
+        },
+        log=lambda _texto: None,
+    )
+
+
 def test_contrato_rejeita_dependencia_futura_e_etapa_nao_idempotente() -> None:
     quadro = QuadroCooperacaoRuntime(log=lambda _texto: None)
 
@@ -596,7 +611,10 @@ def test_executor_continua_etapa_independente_apos_falha_opcional() -> None:
         politica="continuar_independentes",
     )
     chamadas: list[str] = []
-    executor = ExecutorPlanoCooperativoRuntime(quadro=quadro, log=lambda _texto: None)
+    executor = ExecutorPlanoCooperativoRuntime(
+        quadro=quadro, governanca=_governanca_autorizada(quadro),
+        log=lambda _texto: None,
+    )
 
     resultado = executor.executar(str(plano["id"]), {
         "enriquecer": lambda etapa, _plano: (
@@ -631,7 +649,10 @@ def test_dependencia_falha_bloqueia_etapa_dependente() -> None:
         },
     ), politica="continuar_independentes")
     chamadas: list[str] = []
-    executor = ExecutorPlanoCooperativoRuntime(quadro=quadro, log=lambda _texto: None)
+    executor = ExecutorPlanoCooperativoRuntime(
+        quadro=quadro, governanca=_governanca_autorizada(quadro),
+        log=lambda _texto: None,
+    )
 
     resultado = executor.executar(str(plano["id"]), {
         "ler": lambda _etapa, _plano: {
@@ -658,7 +679,8 @@ def test_orcamento_excedido_interrompe_proximas_etapas() -> None:
     ), orcamento_ms=50)
     chamadas: list[str] = []
     executor = ExecutorPlanoCooperativoRuntime(
-        quadro=quadro, relogio=lambda: relogio[0], log=lambda _texto: None,
+        quadro=quadro, governanca=_governanca_autorizada(quadro),
+        relogio=lambda: relogio[0], log=lambda _texto: None,
     )
 
     def lenta(_etapa, _plano):
@@ -681,7 +703,10 @@ def test_cancelamento_impede_execucao_e_repeticao_final_e_idempotente() -> None:
     cancelado = _plano_generico(quadro, ({"id": "acao", "acao": "agir"},))
     chamadas: list[str] = []
     quadro.solicitar_cancelamento(str(cancelado["id"]), "usuario_recusou")
-    executor = ExecutorPlanoCooperativoRuntime(quadro=quadro, log=lambda _texto: None)
+    executor = ExecutorPlanoCooperativoRuntime(
+        quadro=quadro, governanca=_governanca_autorizada(quadro),
+        log=lambda _texto: None,
+    )
 
     resultado = executor.executar(str(cancelado["id"]), {
         "agir": lambda _etapa, _plano: chamadas.append("agir") or {},

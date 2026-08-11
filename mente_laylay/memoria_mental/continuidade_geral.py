@@ -29,12 +29,16 @@ def estado_continuidade_geral_inicial() -> Dict[str, Any]:
 
 
 _INTENTS_DOMINIO = {
-    "APP_OPEN": "app", "CLOSE_APP": "app", "MAXIMIZE_WINDOW": "app",
+    "APP_OPEN": "app", "CLOSE_APP": "app", "FECHAR_PROGRAMA": "app",
+    "MAXIMIZE_WINDOW": "app",
     "ORGANIZAR_DESKTOP": "app",
-    "OPEN_URL": "site", "CLOSE_TAB": "site", "SITE_ENTER": "site", "SEARCH": "site",
+    "OPEN_URL": "site", "CLOSE_TAB": "site", "CLOSE_IDLE_TABS": "site",
+    "SITE_ENTER": "site", "SEARCH": "site", "SCREEN_CAPTURE": "site",
+    "RESUMIR_PAGINA": "site",
     "MUSIC_SEARCH": "musica", "MEDIA_CONTROL": "musica", "PLAYLIST_PLAY": "musica",
     "PLAYLIST_CREATE": "musica", "PLAYLIST_ADD": "musica", "PLAYLIST_LIST": "musica", "TOCAR_PLAYLIST": "musica",
-    "PLAYLIST_MOVE": "musica",
+    "PLAYLIST_MOVE": "musica", "PLAYLIST_DELETE": "musica",
+    "LISTAR_PLAYLISTS": "musica", "STOP_PLAYLIST_CONTEXT": "musica",
     "TOCAR_PLAYLIST_SHUFFLE": "musica",
     "LAYLAY_PLAYLIST_LIST": "playlist_laylay",
     "LAYLAY_PLAYLIST_PLAY": "playlist_laylay",
@@ -42,15 +46,24 @@ _INTENTS_DOMINIO = {
     "IOT_CONTROL": "iot", "IOT_STATUS": "iot", "IOT_LIST": "iot",
     "CREATE_FOLDER": "arquivos", "CREATE_FILE": "arquivos", "MOVE_ITEM": "arquivos",
     "DELETE_ITEM": "arquivos", "CONFIRM_DELETE_ITEM": "arquivos", "CANCEL_DELETE_ITEM": "arquivos",
+    "RESTORE_DELETED_ITEM": "arquivos",
     "FILE_SEARCH": "arquivos", "FILE_OPEN_RESULT": "arquivos", "FILE_TRANSACTION": "arquivos",
     "AGENDAR_LEMBRETE": "agenda", "AGENDAR_ACAO": "agenda", "LISTAR_AGENDAMENTOS": "agenda",
-    "CANCELAR_AGENDAMENTO": "agenda",
+    "CANCELAR_AGENDAMENTO": "agenda", "BRIEFING_REPEAT": "agenda",
     "LEARNING_QUERY": "memoria",
     "PEOPLE_REMEMBER": "pessoas", "PEOPLE_QUERY": "pessoas",
     "PEOPLE_LIST": "pessoas", "PEOPLE_FORGET": "pessoas",
     "GAME_VISION": "jogo", "GAME_VISION_CONTINUE": "jogo",
     "EMAIL_READ": "email", "EMAIL_SYNC": "email", "NOTIFICATIONS": "email",
-    "VOLUME": "sistema", "WEATHER": "clima",
+    "VOLUME": "sistema", "LOCK_PC": "sistema", "CANCELAR_ACAO": "sistema",
+    "WEATHER": "clima", "SUGGEST_ACTION": "conversa",
+    "CLIPBOARD_READ": "area_transferencia",
+    "CLIPBOARD_TRANSFORM": "area_transferencia",
+    "CLIPBOARD_SEARCH": "area_transferencia",
+    "CLIPBOARD_INVESTIGATE": "area_transferencia",
+    "CLIPBOARD_WRITE": "area_transferencia",
+    "CLIPBOARD_UNDO": "area_transferencia",
+    "CLIPBOARD_LEARN": "area_transferencia",
     "INBOX_ADD": "caixa_entrada", "INBOX_ADD_DISCUSSION": "caixa_entrada",
     "INBOX_LIST": "caixa_entrada",
     "INBOX_CONVERT_REMINDER": "caixa_entrada", "INBOX_DELETE": "caixa_entrada",
@@ -58,6 +71,10 @@ _INTENTS_DOMINIO = {
     "CANCEL_INBOX_ACTION": "caixa_entrada",
     "COOPERATIVE_PLAN": "cooperacao",
 }
+
+# Aliases internos que usam o contrato de continuidade sem serem habilidades
+# públicas. Qualquer outra diferença entre continuidade e catálogo é defeito.
+INTENTS_CONTINUIDADE_INTERNAS = frozenset({"MOVE_ITEM", "GAME_VISION_CONTINUE"})
 
 _TIPOS_DOMINIO = {
     "janela": "app", "app": "app", "site": "site", "navegador": "site",
@@ -69,6 +86,7 @@ _TIPOS_DOMINIO = {
     "caixa_entrada": "caixa_entrada", "nota": "caixa_entrada", "anotacao": "caixa_entrada",
     "conversacional": "conversa", "opiniao": "conversa", "opinião": "conversa",
     "cooperacao": "cooperacao", "cooperação": "cooperacao",
+    "area_transferencia": "area_transferencia", "clipboard": "area_transferencia",
     "memoria": "memoria", "memória": "memoria", "aprendizado": "memoria",
     "pessoa": "pessoas", "pessoas": "pessoas", "memoria_pessoas": "pessoas",
 }
@@ -186,6 +204,11 @@ def normalizar_dominio_continuidade(
         if chave:
             return chave[:40]
     return "conversa"
+
+
+def intents_continuidade_registradas() -> frozenset[str]:
+    """Expõe a cobertura canônica sem obrigar testes a importar detalhes."""
+    return frozenset(_INTENTS_DOMINIO)
 
 
 def _texto_seguro(valor: Any, limite: int = 240) -> str:

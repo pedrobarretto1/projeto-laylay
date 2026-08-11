@@ -248,6 +248,7 @@ class AreaTransferenciaRuntime:
         investigar_erro: Callable[[str], Any] | None = None,
         leitor: Callable[[], Any] | None = None,
         escritor: Callable[[str], Any] | None = None,
+        pendencia_runtime: Any = None,
         relogio: Callable[[], float] = time.time,
         log: Callable[[str], Any] = print,
     ) -> None:
@@ -265,6 +266,7 @@ class AreaTransferenciaRuntime:
         self.investigar_erro = investigar_erro
         self.leitor = leitor or (pyperclip.paste if pyperclip is not None else None)
         self.escritor = escritor or (pyperclip.copy if pyperclip is not None else None)
+        self.pendencia_runtime = pendencia_runtime
         self.relogio = relogio
         self.log = log
         self._lock = threading.RLock()
@@ -272,11 +274,139 @@ class AreaTransferenciaRuntime:
         self._ultima_escrita: dict[str, Any] = {}
         self._conteudos_observados: set[str] = set()
 
+    def _pendencia_temporaria(self, acao: str) -> dict[str, Any]:
+        if self.pendencia_runtime is None:
+            return {}
+        try:
+            item = dict(self.pendencia_runtime.obter() or {})
+        except Exception:
+            return {}
+        if (
+            str(item.get("origem") or "") != "area_transferencia"
+            or str(item.get("acao") or "") != str(acao or "")
+        ):
+            return {}
+        return item
+
+    def _encerrar_pendencia_temporaria(self, status: str) -> None:
+        if self.pendencia_runtime is None:
+            return
+        try:
+            item = dict(self.pendencia_runtime.obter() or {})
+            if str(item.get("origem") or "") in {
+                "area_transferencia", "observador_area_transferencia",
+            }:
+                self.pendencia_runtime.concluir(
+                    str(item.get("id") or ""), str(status or "concluida"),
+                )
+        except Exception:
+            pass
+
+    def _publicar_resultado_temporario(
+        self,
+        *,
+        original: str,
+        resultado: str,
+        operacao: str,
+    ) -> str:
+        instante = float(self.relogio())
+        original_hash = _digest(original)
+        resultado_hash = _digest(resultado)
+        referencia = _digest(
+            f"{original_hash}|{resultado_hash}|{operacao}|{instante:.6f}"
+        )
+        with self._lock:
+            self._resultado_pendente = {
+                "referencia": referencia,
+                "original": original,
+                "resultado": resultado,
+                "ts": instante,
+            }
+        if self.pendencia_runtime is None:
+            return referencia
+        self._encerrar_pendencia_temporaria("substituida_por_novo_resultado")
+        try:
+            criada = self.pendencia_runtime.registrar(
+                origem="area_transferencia",
+                dominio="area_transferencia",
+                acao="copiar_resultado",
+                pergunta="Resultado temporário pronto para copiar.",
+                referencia=referencia,
+                metadados={
+                    "operacao": str(operacao or "")[:40],
+                    "original_hash": original_hash,
+                    "resultado_hash": resultado_hash,
+                    "tamanho_resultado": len(resultado),
+                },
+                ttl_s=self.TTL_RESULTADO_S,
+            )
+        except Exception:
+            criada = None
+        if not criada:
+            with self._lock:
+                self._resultado_pendente = {}
+            return ""
+        return referencia
+
+    def _publicar_desfazer_temporario(self, *, original: str, resultado: str) -> str:
+        instante = float(self.relogio())
+        resultado_hash = _digest(resultado)
+        referencia = _digest(f"undo|{resultado_hash}|{instante:.6f}")
+        with self._lock:
+            self._ultima_escrita = {
+                "referencia": referencia,
+                "original": original,
+                "resultado_hash": resultado_hash,
+                "ts": instante,
+            }
+        if self.pendencia_runtime is None:
+            return referencia
+        self._encerrar_pendencia_temporaria("resultado_copiado")
+        try:
+            criada = self.pendencia_runtime.registrar(
+                origem="area_transferencia",
+                dominio="area_transferencia",
+                acao="desfazer_clipboard",
+                pergunta="Alteração temporária disponível para desfazer.",
+                referencia=referencia,
+                metadados={
+                    "operacao": "desfazer",
+                    "resultado_hash": resultado_hash,
+                },
+                ttl_s=self.TTL_RESULTADO_S,
+            )
+        except Exception:
+            criada = None
+        if not criada:
+            with self._lock:
+                self._ultima_escrita = {}
+            return ""
+        return referencia
+
     def conectar_observador_passivo(
         self, marcar_consumido: Callable[[dict[str, Any]], Any] | None,
     ) -> None:
         """Conecta tardiamente o observador, sem criar um segundo estado."""
         self.marcar_consumido = marcar_consumido
+
+    def diagnostico(self) -> dict[str, Any]:
+        """Expõe somente pré-condições e contagens, nunca o clipboard bruto."""
+        with self._lock:
+            resultado_pendente = bool(self._resultado_pendente)
+            desfazer_pendente = bool(self._ultima_escrita)
+            observados = len(self._conteudos_observados)
+        return {
+            "leitura_disponivel": callable(self.leitor),
+            "escrita_disponivel": callable(self.escritor),
+            "investigacao_disponivel": callable(self.investigar_erro),
+            "transformacao_llm_disponivel": callable(self.enviar_mensagem),
+            "pendencia_canonica": self.pendencia_runtime is not None,
+            "resultado_pendente": resultado_pendente,
+            "desfazer_pendente": desfazer_pendente,
+            "operacoes": observados,
+            "conteudo_exposto": False,
+            "autoriza_execucao": False,
+        }
 
     def _marcar_uso_explicito(self, conteudo: str) -> None:
         if not callable(self.marcar_consumido):
@@ -473,14 +603,11 @@ class AreaTransferenciaRuntime:
         # chegava a repetir uma resposta antiga de outro domínio.
         if operacao in {"maiusculas", "minusculas"}:
             resultado = conteudo.upper() if operacao == "maiusculas" else conteudo.lower()
-            with self._lock:
-                self._resultado_pendente = {
-                    "original": conteudo,
-                    "original_hash": _digest(conteudo),
-                    "resultado": resultado,
-                    "operacao": operacao,
-                    "ts": self.relogio(),
-                }
+            referencia = self._publicar_resultado_temporario(
+                original=conteudo,
+                resultado=resultado,
+                operacao=operacao,
+            )
             fala_resultado = (
                 resultado if len(resultado) <= 1200
                 else resultado[:1197].rstrip() + "..."
@@ -490,10 +617,13 @@ class AreaTransferenciaRuntime:
                 if fala_resultado.rstrip().endswith((".", "!", "?", "…"))
                 else ". "
             )
+            complemento = (
+                "Se quiser substituir o que está copiado, diga: copia o resultado."
+                if referencia
+                else "O resultado ficou pronto, mas não consegui manter a referência para copiá-lo depois."
+            )
             self.falar(
-                fala_resultado
-                + separador
-                + "Se quiser substituir o que está copiado, diga: copia o resultado.",
+                fala_resultado + separador + complemento,
                 "calma",
                 1,
             )
@@ -523,6 +653,8 @@ class AreaTransferenciaRuntime:
                 max_tokens=420,
                 modo_rapido=False,
                 _prioridade_interativa=True,
+                _tipo_chamada="principal",
+                _classe_timeout="longa",
             )
             resultado = _extrair_texto_resposta(bruto)
         except Exception as erro:
@@ -532,17 +664,14 @@ class AreaTransferenciaRuntime:
             self.falar("Não consegui transformar o texto agora, então mantive o conteúdo original intacto.", "calma", 1)
             self._registrar(operacao, sucesso=False, tamanho=len(conteudo))
             return True
-        with self._lock:
-            self._resultado_pendente = {
-                "original": conteudo,
-                "original_hash": _digest(conteudo),
-                "resultado": resultado,
-                "operacao": operacao,
-                "ts": self.relogio(),
-            }
+        referencia = self._publicar_resultado_temporario(
+            original=conteudo,
+            resultado=resultado,
+            operacao=operacao,
+        )
         fala_resultado = resultado if len(resultado) <= 1200 else resultado[:1197].rstrip() + "..."
         complemento = ""
-        if operacao in {"corrigir", "traduzir"}:
+        if operacao in {"corrigir", "traduzir"} and referencia:
             complemento = " Se quiser substituir o que está copiado, diga: copia o resultado."
         self.falar(fala_resultado + complemento, "calma", 1)
         self._registrar(operacao, sucesso=True, tamanho=len(conteudo))
@@ -551,14 +680,26 @@ class AreaTransferenciaRuntime:
     def _copiar_resultado(self) -> bool:
         with self._lock:
             pendente = dict(self._resultado_pendente)
-        if not pendente or self.relogio() - float(pendente.get("ts") or 0.0) > self.TTL_RESULTADO_S:
+        referencia = self._pendencia_temporaria("copiar_resultado")
+        if (
+            not pendente
+            or not referencia
+            or str(referencia.get("referencia") or "") != str(pendente.get("referencia") or "")
+            or self.relogio() - float(pendente.get("ts") or 0.0) > self.TTL_RESULTADO_S
+        ):
+            with self._lock:
+                self._resultado_pendente = {}
             self.falar("Não tenho um resultado recente esperando para ser copiado.", "calma", 1)
             return True
         atual, status = self._ler()
         if status != "ok":
             self._falar_sem_texto(status)
             return True
-        if _digest(atual) != str(pendente.get("original_hash") or ""):
+        metadados = dict(referencia.get("metadados") or {})
+        if _digest(atual) != str(metadados.get("original_hash") or ""):
+            self._encerrar_pendencia_temporaria("conteudo_alterado")
+            with self._lock:
+                self._resultado_pendente = {}
             self.falar(
                 "Você copiou outra coisa depois da transformação. Não vou sobrescrever esse conteúdo novo.",
                 "calma", 1,
@@ -578,12 +719,8 @@ class AreaTransferenciaRuntime:
             self.falar("Tentei copiar o resultado, mas não consegui confirmar a alteração.", "calma", 1)
             self._registrar("write", sucesso=False, tamanho=len(resultado))
             return True
+        self._publicar_desfazer_temporario(original=atual, resultado=resultado)
         with self._lock:
-            self._ultima_escrita = {
-                "original": atual,
-                "resultado_hash": _digest(resultado),
-                "ts": self.relogio(),
-            }
             self._resultado_pendente = {}
         self.falar("Copiei o resultado e guardei o original temporariamente, caso você queira desfazer.", "feliz", 1)
         self._registrar("write", sucesso=True, tamanho=len(resultado))
@@ -592,11 +729,22 @@ class AreaTransferenciaRuntime:
     def _desfazer(self) -> bool:
         with self._lock:
             anterior = dict(self._ultima_escrita)
-        if not anterior or self.relogio() - float(anterior.get("ts") or 0.0) > self.TTL_RESULTADO_S:
+        referencia = self._pendencia_temporaria("desfazer_clipboard")
+        if (
+            not anterior
+            or not referencia
+            or str(referencia.get("referencia") or "") != str(anterior.get("referencia") or "")
+            or self.relogio() - float(anterior.get("ts") or 0.0) > self.TTL_RESULTADO_S
+        ):
+            with self._lock:
+                self._ultima_escrita = {}
             self.falar("Não tenho uma alteração recente da área de transferência para desfazer.", "calma", 1)
             return True
         atual, status = self._ler()
         if status != "ok" or _digest(atual) != str(anterior.get("resultado_hash") or ""):
+            self._encerrar_pendencia_temporaria("conteudo_alterado")
+            with self._lock:
+                self._ultima_escrita = {}
             self.falar("O conteúdo copiado mudou depois da minha alteração, então não vou sobrescrevê-lo.", "calma", 1)
             return True
         try:
@@ -607,6 +755,7 @@ class AreaTransferenciaRuntime:
         if estado == "ok" and confirmado == str(anterior.get("original") or ""):
             with self._lock:
                 self._ultima_escrita = {}
+            self._encerrar_pendencia_temporaria("desfeita")
             self.falar("Desfiz a alteração e restaurei o texto que estava copiado antes.", "feliz", 1)
             self._registrar("undo", sucesso=True, tamanho=len(confirmado))
         else:

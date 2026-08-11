@@ -65,6 +65,7 @@ from mente_laylay.cognicao.pesquisa_contextual import pesquisar_contexto_tema
 from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto
 from mente_laylay.percepcao.ambiente_sistema import detectar_comando_saude
 from mente_laylay.memoria_mental.musica_conversacional_runtime import MusicaConversacionalRuntime
+from mente_laylay.memoria_mental.pendencia_acao import PendenciaAcaoRuntime
 from mente_laylay.personalidade.conversa_natural import (
     resposta_conversa_rapida_local,
     responder_conversa_curta_por_tipo,
@@ -79,6 +80,20 @@ def criar_estado() -> EstadoCompartilhadoRuntime:
         mental=estado_mental_inicial(),
         conversacional={"current_emotion": "calma", "is_speaking": False},
         memoria_conversa={"messages": [], "memoria_fatos": [], "memoria_eventos": []},
+    )
+
+
+def criar_pendencia_teste(estado: dict) -> PendenciaAcaoRuntime:
+    def atualizar(mutador):
+        novo = mutador(dict(estado))
+        estado.clear()
+        estado.update(novo)
+        return dict(estado)
+
+    return PendenciaAcaoRuntime(
+        estado_getter=lambda: estado,
+        estado_atualizar=atualizar,
+        log=lambda *_args: None,
     )
 
 
@@ -1218,13 +1233,15 @@ class MenteUnicaTests(unittest.TestCase):
     def test_confirmacao_musical_usa_sugestao_pendente(self) -> None:
         falas = []
         execucoes = []
+        estado: dict = {}
         runtime = MusicaConversacionalRuntime(
-            estado_mental_getter=lambda: {},
+            estado_mental_getter=lambda: estado,
             normalizar_texto=normalizar_texto,
             falar=lambda fala, *_args: falas.append(fala),
             registrar_mente_curta=lambda *_args, **_kwargs: None,
             executar_intencao=lambda intent, texto: execucoes.append((intent, texto)) or True,
             registrar_resultado_execucao=lambda *_args, **_kwargs: None,
+            pendencia_runtime=criar_pendencia_teste(estado),
         )
         self.assertTrue(runtime.responder_pedido_direcao("me recomenda uma música nova"))
         self.assertTrue(runtime.processar_confirmacao("quero algo mais pesado"))
@@ -1235,13 +1252,15 @@ class MenteUnicaTests(unittest.TestCase):
     def test_recomendacao_respeita_artista_e_eu_quero_confirma(self) -> None:
         falas = []
         execucoes = []
+        estado: dict = {}
         runtime = MusicaConversacionalRuntime(
-            estado_mental_getter=lambda: {},
+            estado_mental_getter=lambda: estado,
             normalizar_texto=normalizar_texto,
             falar=lambda fala, *_args: falas.append(fala),
             registrar_mente_curta=lambda *_args, **_kwargs: None,
             executar_intencao=lambda intent, texto: execucoes.append((intent, texto)) or True,
             registrar_resultado_execucao=lambda *_args, **_kwargs: None,
+            pendencia_runtime=criar_pendencia_teste(estado),
         )
         self.assertTrue(runtime.responder_pedido_direcao("me recomenda uma música do Rubel"))
         self.assertIn("Rubel - ", falas[-1])

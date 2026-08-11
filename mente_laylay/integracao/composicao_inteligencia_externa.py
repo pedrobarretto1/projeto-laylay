@@ -64,6 +64,13 @@ class ComposicaoInteligenciaExternaRuntime:
         self.app_title = str(app_title or "")
         self.registrar_falha = registrar_falha
         self.registrar_orcamento_prompt = registrar_orcamento_prompt
+        desativados = {"0", "false", "nao", "não", "off", "desligado"}
+        mestre_ativa = str(
+            env_getter("LAYLAY_OTIMIZACOES_DESEMPENHO", "1") or "1"
+        ).casefold() not in desativados
+        self.otimizacao_prompt_ativa = mestre_ativa and str(
+            env_getter("LAYLAY_OTIMIZACAO_PROMPT_ATIVA", "1") or "1"
+        ).casefold() not in desativados
         self.log = log
         self._cliente_factory = cliente_factory
         self._preparador_factory = preparador_factory
@@ -72,6 +79,7 @@ class ComposicaoInteligenciaExternaRuntime:
         self._selecao_abas_factory = selecao_abas_factory
         self._cliente = None
         self._transporte = None
+        self._preparador = None
         self._confirmacao = None
         self._selecao_abas = None
 
@@ -196,6 +204,7 @@ class ComposicaoInteligenciaExternaRuntime:
         resumo_mente_integrada: Callable[..., Any],
         registrar_metrica: Callable[..., Any] | None = None,
         interacao_ativa: Callable[[], bool] | None = None,
+        orcamento_turno: Any = None,
     ) -> Any:
         if self._cliente is not None:
             return self._cliente
@@ -212,7 +221,11 @@ class ComposicaoInteligenciaExternaRuntime:
         preparador = self._preparador_factory(
             model=self.model,
             endpoint_local_getter=self.http.endpoint_eh_local,
-            resumo_do_dia_getter=lambda: str(memoria_inteligente.resumo_do_dia or ""),
+            resumo_do_dia_getter=lambda: str(
+                memoria_inteligente.contexto_do_dia_para_prompt()
+                if callable(getattr(memoria_inteligente, "contexto_do_dia_para_prompt", None))
+                else memoria_inteligente.resumo_do_dia or ""
+            ),
             data_atual_getter=lambda: str(memoria_inteligente.data_atual or ""),
             normalizar_texto=normalizar_texto,
             mapear_pastas=mapear_pastas,
@@ -222,8 +235,10 @@ class ComposicaoInteligenciaExternaRuntime:
             obter_contexto_paginas=obter_contexto_paginas,
             resumo_mente_integrada=resumo_mente_integrada,
             registrar_orcamento_prompt=self.registrar_orcamento_prompt,
+            otimizacao_prompt_ativa=self.otimizacao_prompt_ativa,
             log=self.log,
         )
+        self._preparador = preparador
         self._transporte = self._cliente_factory(
             endpoint_local_getter=self.http.endpoint_eh_local,
             post_chat=self.http.post,
@@ -235,6 +250,7 @@ class ComposicaoInteligenciaExternaRuntime:
             conversa_jogo_remota=self.conversa_jogo.enviar,
             registrar_metrica=registrar_metrica,
             registrar_falha=self.registrar_falha,
+            orcamento_turno=orcamento_turno,
             log=self.log,
         )
         self._cliente = registrar_modelo_llm(
@@ -243,6 +259,12 @@ class ComposicaoInteligenciaExternaRuntime:
         self._confirmacao = self._confirmacao_factory(namespace_getter=contexto_base)
         self._selecao_abas = self._selecao_abas_factory(namespace_getter=contexto_base)
         return self._cliente
+
+    def desativar_otimizacao_prompt(self) -> None:
+        """Retorna ao prompt completo no restante da sessão."""
+        self.otimizacao_prompt_ativa = False
+        if self._preparador is not None:
+            self._preparador.otimizacao_prompt_ativa = False
 
     @property
     def cliente(self) -> Any:

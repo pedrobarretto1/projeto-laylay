@@ -5,6 +5,8 @@ from __future__ import annotations
 import time
 from typing import Any, Dict
 
+from mente_laylay.memoria_mental.pendencia_acao import CHAVE_PENDENCIA_ACAO
+
 
 POLITICAS_CONTEXTO: Dict[str, Dict[str, Any]] = {
     "pergunta_aberta": {"ts": "pergunta_aberta_ts", "ttl_s": 120.0, "prefixos": ("pergunta_aberta_",)},
@@ -58,6 +60,21 @@ def aplicar_ciclo_vida_contexto(
             estado["ultima_pendencia_encerrada"] = encerrada
             estado["pendencia_atual"] = {}
             expirados.append("pendencia_atual")
+
+    pendencia_canonica = estado.get(CHAVE_PENDENCIA_ACAO)
+    if isinstance(pendencia_canonica, dict) and pendencia_canonica:
+        try:
+            canonica_expirada = instante >= float(
+                pendencia_canonica.get("expira_em") or 0.0
+            )
+        except (TypeError, ValueError):
+            canonica_expirada = True
+        if canonica_expirada:
+            encerrada = dict(pendencia_canonica)
+            encerrada.update(status="expirada", encerrada_em=instante)
+            estado["ultima_pendencia_acao"] = encerrada
+            estado[CHAVE_PENDENCIA_ACAO] = {}
+            expirados.append(CHAVE_PENDENCIA_ACAO)
 
     for nome, regra in POLITICAS_CONTEXTO.items():
         objeto = str(regra.get("objeto") or "")

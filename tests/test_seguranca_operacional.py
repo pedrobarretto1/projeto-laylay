@@ -10,6 +10,24 @@ from mente_laylay.autonomia.agenda_windows import sincronizar_despertares_window
 from mente_laylay.cognicao.memoria_visual import executar_captura_tela
 from mente_laylay.integracao.chrome_comandos import validar_e_enviar_comando
 from mente_laylay.integracao.gmail_mental import GmailMental
+from mente_laylay.memoria_mental.pendencia_acao import PendenciaAcaoRuntime
+
+
+def _lixeira(raiz: str) -> LixeiraLaylay:
+    estado: dict = {}
+
+    def atualizar(mutador):
+        novo = mutador(dict(estado))
+        estado.clear()
+        estado.update(novo)
+        return dict(estado)
+
+    pendencia = PendenciaAcaoRuntime(
+        estado_getter=lambda: estado,
+        estado_atualizar=atualizar,
+        log=lambda *_args: None,
+    )
+    return LixeiraLaylay(raiz, pendencia_runtime=pendencia)
 
 
 class SegurancaOperacionalTests(unittest.TestCase):
@@ -18,7 +36,7 @@ class SegurancaOperacionalTests(unittest.TestCase):
             alvo = Path(tmp) / "pasta"
             alvo.mkdir()
             (alvo / "dado.txt").write_text("seguro", encoding="utf-8")
-            lixeira = LixeiraLaylay(str(Path(tmp) / "lixeira"))
+            lixeira = _lixeira(str(Path(tmp) / "lixeira"))
 
             primeira = lixeira.mover(str(alvo))
             self.assertTrue(primeira.requer_confirmacao)
@@ -36,7 +54,7 @@ class SegurancaOperacionalTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             alvo = Path(tmp) / "anotacao.txt"
             alvo.write_text("não apagar sem confirmar", encoding="utf-8")
-            lixeira = LixeiraLaylay(str(Path(tmp) / "lixeira"))
+            lixeira = _lixeira(str(Path(tmp) / "lixeira"))
 
             primeira = lixeira.mover(str(alvo))
             self.assertTrue(primeira.requer_confirmacao)

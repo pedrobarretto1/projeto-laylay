@@ -64,7 +64,7 @@ def test_reparo_discursivo_e_contextual_sem_depender_do_assunto() -> None:
 
 
 def test_fala_curta_dependente_recebe_espaco_para_resposta_completa() -> None:
-    assert limite_tokens_resposta("como assim?", depende_contexto=True) == 640
+    assert limite_tokens_resposta("como assim?", depende_contexto=True) == 512
 
 
 def _payload(mensagens, resumo_cb):
@@ -89,7 +89,7 @@ def test_prompt_rapido_limita_saida_sem_reduzir_resposta_complexa() -> None:
         endpoint_local=True,
     )
 
-    assert rapido["max_tokens"] == 160
+    assert rapido["max_tokens"] == 128
     assert completo["max_tokens"] == 640
 
 

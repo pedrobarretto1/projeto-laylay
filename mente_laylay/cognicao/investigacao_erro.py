@@ -96,13 +96,38 @@ class InvestigadorErroRuntime:
             self.log(f"⚠️ [CLIPBOARD:INVESTIGAÇÃO] pesquisa interna falhou: {type(erro).__name__}")
             return []
 
-    def investigar(self, conteudo: str) -> dict[str, Any]:
+    def pesquisar(self, conteudo: str) -> dict[str, Any]:
+        """Pesquisa sem sintetizar, permitindo evidência por etapa cooperativa."""
         erro = str(conteudo or "").strip()[:4000]
         consulta = extrair_consulta_erro(erro)
         if not consulta:
-            return {"ok": False, "fala": "Não consegui identificar o erro copiado."}
+            return {
+                "ok": False,
+                "erro": erro,
+                "consulta": "",
+                "resultados": [],
+            }
         self.log(f"🔎 [CLIPBOARD:INVESTIGAÇÃO] consulta interna={consulta!r}")
         resultados = self._buscar(consulta)
+        return {
+            "ok": bool(resultados),
+            "erro": erro,
+            "consulta": consulta,
+            "resultados": resultados,
+        }
+
+    def sintetizar(
+        self,
+        conteudo: str,
+        *,
+        consulta: str,
+        resultados: list[dict[str, str]],
+    ) -> dict[str, Any]:
+        """Produz a resposta final sem esconder ausência de pesquisa ou LLM."""
+        erro = str(conteudo or "").strip()[:4000]
+        consulta = str(consulta or extrair_consulta_erro(erro)).strip()
+        if not consulta:
+            return {"ok": False, "fala": "Não consegui identificar o erro copiado."}
         evidencias = "\n".join(
             f"- {item['titulo']}: {item['resumo']}" for item in resultados
         ) or "Nenhum resultado web confiável ficou disponível; deixe essa limitação explícita."
@@ -132,6 +157,8 @@ class InvestigadorErroRuntime:
                     timeout=20,
                     _permitir_conversa_modo_jogo=True,
                     _prioridade_interativa=True,
+                    _tipo_chamada="principal",
+                    _classe_timeout="normal",
                 )
             except TypeError:
                 bruto = self.enviar_mensagem(mensagens)
@@ -172,3 +199,17 @@ class InvestigadorErroRuntime:
             "pesquisa_web": bool(resultados),
             "sintese_llm": sintese_llm,
         }
+
+    def investigar(self, conteudo: str) -> dict[str, Any]:
+        pesquisa = self.pesquisar(conteudo)
+        consulta = str(pesquisa.get("consulta") or "")
+        if not consulta:
+            return {"ok": False, "fala": "Não consegui identificar o erro copiado."}
+        return self.sintetizar(
+            conteudo,
+            consulta=consulta,
+            resultados=[
+                dict(item) for item in list(pesquisa.get("resultados") or [])
+                if isinstance(item, dict)
+            ],
+        )

@@ -19,6 +19,27 @@ from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
 CHAVE_PENDENCIA_ACAO = "pendencia_acao_canonica"
 
 
+_DOMINIO_POR_ORIGEM = {
+    "agenda": "agenda",
+    "area_transferencia": "area_transferencia",
+    "observador_area_transferencia": "area_transferencia",
+    "caixa_entrada_pessoal": "caixa_entrada",
+    "lixeira_laylay": "arquivos",
+    "memoria_pessoas": "pessoas",
+    "musica_conversacional": "musica",
+}
+
+
+def dominio_pendencia(item: Mapping[str, Any] | None) -> str:
+    """Retorna o domínio canônico sem expor os metadados da pendência."""
+    dados = dict(item or {})
+    explicito = str(dados.get("dominio") or "").strip().casefold()
+    if explicito:
+        return explicito[:40]
+    origem = str(dados.get("origem") or "").strip().casefold()
+    return _DOMINIO_POR_ORIGEM.get(origem, "")
+
+
 class PendenciaAcaoRuntime:
     def __init__(
         self,
@@ -64,6 +85,7 @@ class PendenciaAcaoRuntime:
         acao: str,
         pergunta: str,
         referencia: str = "",
+        dominio: str = "",
         metadados: Mapping[str, Any] | None = None,
         motivo: str = "aguardando_resposta",
         ttl_s: float = 300.0,
@@ -78,6 +100,7 @@ class PendenciaAcaoRuntime:
             "acao": acao,
             "pergunta": str(pergunta or "").strip()[:300],
             "referencia": str(referencia or "").strip()[:160],
+            "dominio": str(dominio or "").strip().casefold()[:40],
             "metadados": dict(metadados or {}),
             "motivo": str(motivo or "aguardando_resposta").strip()[:96],
             "status": "ativa",
@@ -88,8 +111,15 @@ class PendenciaAcaoRuntime:
 
         def _atualizar(estado: dict) -> dict:
             atual = dict(estado.get(CHAVE_PENDENCIA_ACAO) or {})
-            if atual.get("status") == "em_processamento":
-                return estado
+            if atual.get("status") in {"ativa", "em_processamento"}:
+                try:
+                    ainda_valida = float(atual.get("expira_em") or 0.0) > instante
+                except (TypeError, ValueError):
+                    ainda_valida = False
+                if ainda_valida:
+                    return estado
+                atual.update(status="expirada", encerrada_em=instante)
+                estado["ultima_pendencia_acao"] = atual
             estado[CHAVE_PENDENCIA_ACAO] = novo
             resultado["registrada"] = True
             return estado

@@ -68,6 +68,20 @@ def test_llm_conhece_navegador_tipado_sem_promessa_de_execucao_arbitraria() -> N
     assert "comando arbitrário" in resposta.casefold()
 
 
+def test_mapa_conhece_resumo_sem_transformar_pergunta_em_execucao() -> None:
+    mapa = MapaHabilidadesRuntime()
+
+    capacidade = mapa.consultar("RESUMIR_PAGINA")
+    resposta = mapa.responder_pergunta_capacidade(
+        "Você consegue resumir a página atual?"
+    )
+
+    assert capacidade["disponivel"] is True
+    assert capacidade["proprietario"].endswith("comandos_imediatos")
+    assert "resumir a página atual" in resposta.casefold()
+    assert mapa.responder_pergunta_capacidade("resume a página atual") == ""
+
+
 def test_llm_conhece_conversa_tipificada_sem_confundir_com_autorizacao() -> None:
     mapa = MapaHabilidadesRuntime()
 

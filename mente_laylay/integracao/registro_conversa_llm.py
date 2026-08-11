@@ -31,6 +31,8 @@ class PedidoModelo:
     permitir_conversa_modo_jogo: bool = False
     prioridade_interativa: bool = False
     permitir_durante_interacao: bool = False
+    tipo_chamada: str = "principal"
+    classe_timeout: str = "normal"
 
     @classmethod
     def criar(
@@ -57,6 +59,8 @@ class RequisicaoTransporteLLM:
     permitir_conversa_modo_jogo: bool = False
     prioridade_interativa: bool = False
     permitir_durante_interacao: bool = False
+    tipo_chamada: str = "principal"
+    classe_timeout: str = "normal"
 
 
 @runtime_checkable
@@ -123,7 +127,8 @@ class RegistroPreparacaoConversa:
             chave: bruto[chave]
             for chave in (
                 "disponivel", "preparacoes", "preparacoes_rapidas", "falhas",
-                "memoria_exposta", "autoriza_execucao",
+                "otimizacao_prompt_ativa", "fontes_consultadas",
+                "fontes_poupadas", "memoria_exposta", "autoriza_execucao",
             )
             if chave in bruto
         }
@@ -157,6 +162,8 @@ class RegistroModeloLLM:
             permitir_conversa_modo_jogo=bool(opcoes.pop("_permitir_conversa_modo_jogo", False)),
             prioridade_interativa=bool(opcoes.pop("_prioridade_interativa", False)),
             permitir_durante_interacao=bool(opcoes.pop("_permitir_durante_interacao", False)),
+            tipo_chamada=str(opcoes.pop("_tipo_chamada", "principal") or "principal"),
+            classe_timeout=str(opcoes.pop("_classe_timeout", "normal") or "normal"),
         )
         return self.executar(pedido).texto
 
@@ -167,6 +174,7 @@ class RegistroModeloLLM:
             for chave in (
                 "disponivel", "endpoint_local", "requisicoes", "sucessos", "falhas",
                 "memoria_exposta", "credencial_exposta", "autoriza_execucao",
+                "orcamento_turno",
             )
             if chave in bruto
         }

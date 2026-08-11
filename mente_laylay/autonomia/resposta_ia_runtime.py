@@ -16,6 +16,33 @@ def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     return ctx.get(key, default) if isinstance(ctx, dict) else default
 
 
+def _registrar_metrica(
+    ctx: Dict[str, Any],
+    componente: str,
+    duracao_ms: float,
+    sucesso: bool,
+    **metadados: Any,
+) -> None:
+    registrar = _get(ctx, "registrar_metrica_diagnostico")
+    if not callable(registrar):
+        return
+    try:
+        registrar(componente, duracao_ms, sucesso, **metadados)
+    except TypeError:
+        # Adaptadores antigos e dublês de teste aceitam somente os três
+        # argumentos históricos. Telemetria enriquecida nunca quebra o turno.
+        registrar(componente, duracao_ms, sucesso)
+
+
+def _atualizar_trace(ctx: Dict[str, Any], turno_id: str, **campos: Any) -> None:
+    atualizar = _get(ctx, "atualizar_trace_diagnostico")
+    if callable(atualizar):
+        try:
+            atualizar(turno_id, **campos)
+        except Exception:
+            pass
+
+
 class RespostaIARuntime:
     """Coordena conversa, comandos e finalizacao usando o contexto da mente."""
 
@@ -44,6 +71,24 @@ class RespostaIARuntime:
             ctx = self._contexto()
             inicio_total = time.perf_counter()
             sucesso = False
+            self._sequencia_turnos += 1
+            trace_id = f"turno-{self._sequencia_turnos:06d}"
+            iniciar_trace = _get(ctx, "iniciar_trace_diagnostico")
+            if callable(iniciar_trace):
+                try:
+                    iniciar_trace(trace_id, origem=origem, rota="roteamento")
+                except Exception:
+                    pass
+            iniciar_orcamento_llm = _get(ctx, "iniciar_orcamento_llm_turno")
+            if callable(iniciar_orcamento_llm):
+                try:
+                    iniciar_orcamento_llm(
+                        trace_id,
+                        classe="normal",
+                        ainda_atual_cb=ainda_atual_cb,
+                    )
+                except Exception:
+                    pass
             iniciar_turno_voz = _get(ctx, "iniciar_turno_voz")
             finalizar_turno_voz = _get(ctx, "finalizar_turno_voz")
             if callable(iniciar_turno_voz):
@@ -53,14 +98,29 @@ class RespostaIARuntime:
                     texto,
                     ainda_atual_cb=ainda_atual_cb,
                     origem=origem,
+                    trace_id=trace_id,
                 )
                 sucesso = resultado_turno is not False
             finally:
-                registrar_metrica = _get(ctx, "registrar_metrica_diagnostico")
-                if callable(registrar_metrica):
-                    registrar_metrica(
-                        "turno_total", (time.perf_counter() - inicio_total) * 1000.0, sucesso,
-                    )
+                _registrar_metrica(
+                    ctx,
+                    "turno_total",
+                    (time.perf_counter() - inicio_total) * 1000.0,
+                    sucesso,
+                    turno_id=trace_id,
+                )
+                finalizar_trace = _get(ctx, "finalizar_trace_diagnostico")
+                if callable(finalizar_trace):
+                    try:
+                        finalizar_trace(trace_id, sucesso=sucesso)
+                    except Exception:
+                        pass
+                finalizar_orcamento_llm = _get(ctx, "finalizar_orcamento_llm_turno")
+                if callable(finalizar_orcamento_llm):
+                    try:
+                        finalizar_orcamento_llm(trace_id, sucesso=sucesso)
+                    except Exception:
+                        pass
                 if callable(finalizar_turno_voz):
                     finalizar_turno_voz()
 
@@ -70,8 +130,10 @@ class RespostaIARuntime:
         *,
         ainda_atual_cb: Callable[[], bool] | None = None,
         origem: str = "desconhecida",
+        trace_id: str = "",
     ) -> None:
         ctx = self._contexto()
+        inicio_serializado = time.perf_counter()
         t = str(texto or "").strip()
         if not t:
             return
@@ -112,10 +174,9 @@ class RespostaIARuntime:
             sincronizar_turno_voz()
         obter_turno = _get(ctx, "obter_turno_atual")
         turno = obter_turno() if callable(obter_turno) else {}
-        self._sequencia_turnos += 1
         turno_conversa_id = str(
             (turno.get("id") if isinstance(turno, dict) else "") or ""
-        ).strip() or f"resposta-ia-{self._sequencia_turnos}"
+        ).strip() or trace_id or f"resposta-ia-{self._sequencia_turnos}"
         estado_conversa_turno = None
         turno_conversa_iniciado = False
         if isinstance(turno, dict):
@@ -134,6 +195,18 @@ class RespostaIARuntime:
         def marcar_fase(fase: str) -> None:
             if callable(atualizar_plano):
                 atualizar_plano(fase)
+            rotas_fase = {
+                "tratado_modo_chat": "modo_chat",
+                "tratado_prioritario": "comando_prioritario",
+                "tratado_pre_fluxo": "pre_fluxo",
+                "resposta_tecnica_suprimida": "resposta_tecnica",
+            }
+            dados_trace = {"fase": fase}
+            if fase in rotas_fase:
+                dados_trace["rota"] = rotas_fase[fase]
+            elif fase.startswith("tratado_social"):
+                dados_trace["rota"] = "social_local"
+            _atualizar_trace(ctx, trace_id, **dados_trace)
 
         def resposta_ainda_atual() -> bool:
             if not callable(ainda_atual_cb):
@@ -216,6 +289,15 @@ class RespostaIARuntime:
                     self._log("⚡ [CONVERSA:JOGO] resposta social local imediata.")
                     return
 
+            _registrar_metrica(
+                ctx,
+                "roteamento_pre_llm",
+                (time.perf_counter() - inicio_serializado) * 1000.0,
+                True,
+                turno_id=trace_id,
+                rota="llm_rapida" if modo_rapido else "llm_normal",
+            )
+
             prompt_runtime = (
                 _get(ctx, "preparacao_conversa")
                 or _get(ctx, "contexto_prompt_runtime")
@@ -229,13 +311,14 @@ class RespostaIARuntime:
                     mensagens_novas = [dict(item) for item in pacote_prompt.mensagens]
                 else:
                     mensagens_novas, _prompt_com_humor = prompt_runtime.preparar(t)
-                registrar_metrica = _get(ctx, "registrar_metrica_diagnostico")
-                if callable(registrar_metrica):
-                    registrar_metrica(
-                        "preparacao_prompt",
-                        (time.perf_counter() - inicio_prompt) * 1000.0,
-                        True,
-                    )
+                _registrar_metrica(
+                    ctx,
+                    "preparacao_prompt",
+                    (time.perf_counter() - inicio_prompt) * 1000.0,
+                    True,
+                    turno_id=trace_id,
+                    rota="llm_normal",
+                )
                 estado_conversa = _get(ctx, "estado_conversa")
                 if callable(getattr(estado_conversa, "substituir", None)):
                     estado_conversa.substituir(mensagens_novas)
@@ -249,13 +332,14 @@ class RespostaIARuntime:
                     instrucao_rapida = str(
                         prompt_runtime.preparar_instrucao_rapida(t) or ""
                     ).strip()
-                    registrar_metrica = _get(ctx, "registrar_metrica_diagnostico")
-                    if callable(registrar_metrica):
-                        registrar_metrica(
-                            "preparacao_prompt_rapido",
-                            (time.perf_counter() - inicio_prompt_rapido) * 1000.0,
-                            True,
-                        )
+                    _registrar_metrica(
+                        ctx,
+                        "preparacao_prompt_rapido",
+                        (time.perf_counter() - inicio_prompt_rapido) * 1000.0,
+                        True,
+                        turno_id=trace_id,
+                        rota="llm_rapida",
+                    )
                 except Exception as erro:
                     instrucao_rapida = ""
                     self._log(
@@ -305,45 +389,72 @@ class RespostaIARuntime:
                 })
 
             inicio_llm = time.perf_counter()
+            sucesso_llm = False
             limite_tokens = limite_tokens_resposta(
                 t,
                 modo_rapido=modo_rapido,
                 depende_contexto=depende_contexto,
             )
+            rota_llm = "llm_rapida" if modo_rapido else "llm_normal"
+            configurar_orcamento_llm = _get(ctx, "configurar_orcamento_llm_turno")
+            if callable(configurar_orcamento_llm):
+                try:
+                    configurar_orcamento_llm(
+                        classe="rapida" if modo_rapido else "normal",
+                    )
+                except Exception:
+                    pass
+            _atualizar_trace(
+                ctx,
+                trace_id,
+                rota=rota_llm,
+                tipo_chamada="principal",
+            )
             modelo_llm = _get(ctx, "modelo_llm")
-            if callable(getattr(modelo_llm, "executar", None)):
-                pedido_modelo = PedidoModelo.criar(
-                    mensagens_modelo,
-                    com_tools=False,
-                    max_tokens=limite_tokens,
-                    modo_rapido=modo_rapido,
-                    permitir_conversa_modo_jogo=bool(
-                        _get(ctx, "modo_chat", False) or _get(ctx, "conversa_ativa", False)
-                    ),
-                    prioridade_interativa=True,
-                )
-                bot_raw = modelo_llm.executar(pedido_modelo).texto
-            else:
-                enviar_mensagem = _get(ctx, "enviar_mensagem")
-                if not callable(enviar_mensagem):
-                    raise RuntimeError("modelo LLM ainda não foi inicializado.")
-                bot_raw = enviar_mensagem(
-                    mensagens_modelo,
-                    _com_tools=False,
-                    max_tokens=limite_tokens,
-                    modo_rapido=modo_rapido,
-                    _permitir_conversa_modo_jogo=bool(
-                        _get(ctx, "modo_chat", False)
-                        or _get(ctx, "conversa_ativa", False)
-                    ),
-                    _prioridade_interativa=True,
-                )
-            registrar_metrica = _get(ctx, "registrar_metrica_diagnostico")
-            if callable(registrar_metrica):
-                registrar_metrica(
+            try:
+                if callable(getattr(modelo_llm, "executar", None)):
+                    pedido_modelo = PedidoModelo.criar(
+                        mensagens_modelo,
+                        com_tools=False,
+                        max_tokens=limite_tokens,
+                        modo_rapido=modo_rapido,
+                        permitir_conversa_modo_jogo=bool(
+                            _get(ctx, "modo_chat", False) or _get(ctx, "conversa_ativa", False)
+                        ),
+                        prioridade_interativa=True,
+                        tipo_chamada="principal",
+                        classe_timeout="rapida" if modo_rapido else "normal",
+                    )
+                    resultado_modelo = modelo_llm.executar(pedido_modelo)
+                    bot_raw = resultado_modelo.texto
+                    sucesso_llm = bool(getattr(resultado_modelo, "sucesso", True))
+                else:
+                    enviar_mensagem = _get(ctx, "enviar_mensagem")
+                    if not callable(enviar_mensagem):
+                        raise RuntimeError("modelo LLM ainda não foi inicializado.")
+                    bot_raw = enviar_mensagem(
+                        mensagens_modelo,
+                        _com_tools=False,
+                        max_tokens=limite_tokens,
+                        modo_rapido=modo_rapido,
+                        _permitir_conversa_modo_jogo=bool(
+                            _get(ctx, "modo_chat", False)
+                            or _get(ctx, "conversa_ativa", False)
+                        ),
+                        _prioridade_interativa=True,
+                        _tipo_chamada="principal",
+                        _classe_timeout="rapida" if modo_rapido else "normal",
+                    )
+                    sucesso_llm = True
+            finally:
+                _registrar_metrica(
+                    ctx,
                     "llm_resposta_principal",
                     (time.perf_counter() - inicio_llm) * 1000.0,
-                    True,
+                    sucesso_llm,
+                    turno_id=trace_id,
+                    rota=rota_llm,
+                    tipo_chamada="principal",
                 )
             self._log(f"🤖 [IA] Resposta bruta recebida (tamanho {len(str(bot_raw))} chars)")
             if descartar_se_obsoleta():
@@ -356,12 +467,18 @@ class RespostaIARuntime:
             if not callable(preparar_resposta):
                 raise RuntimeError("Preparador de resposta ainda não foi inicializado.")
             inicio_preparacao = time.perf_counter()
-            resposta = preparar_resposta(t, bot_raw)
-            if callable(registrar_metrica):
-                registrar_metrica(
+            sucesso_preparacao = False
+            try:
+                resposta = preparar_resposta(t, bot_raw)
+                sucesso_preparacao = True
+            finally:
+                _registrar_metrica(
+                    ctx,
                     "pos_processamento_resposta",
                     (time.perf_counter() - inicio_preparacao) * 1000.0,
-                    True,
+                    sucesso_preparacao,
+                    turno_id=trace_id,
+                    rota=rota_llm,
                 )
             if descartar_se_obsoleta():
                 abortar = getattr(estado_conversa_turno, "abortar_turno", None)
@@ -448,12 +565,14 @@ class RespostaIARuntime:
                 )
                 sucesso_dispatch = True
             finally:
-                registrar_metrica = _get(ctx, "registrar_metrica_diagnostico")
-                if callable(registrar_metrica):
-                    registrar_metrica(
-                        "dispatcher", (time.perf_counter() - inicio_execucao) * 1000.0,
-                        sucesso_dispatch,
-                    )
+                _registrar_metrica(
+                    ctx,
+                    "dispatcher",
+                    (time.perf_counter() - inicio_execucao) * 1000.0,
+                    sucesso_dispatch,
+                    turno_id=trace_id,
+                    rota=rota_llm,
+                )
             erros_execucao = list(dispatch.get("erros", []) or [])
             fala_ja_emitida = bool(dispatch.get("fala_ja_emitida", False))
             fala_emitida_por_acao = bool(dispatch.get("fala_emitida_por_acao", False))

@@ -38,6 +38,7 @@ class MusicaConversacionalRuntime:
         enviar_mensagem: Callable[..., Any] | None = None,
         modelo_llm: Any = None,
         buscar_resultados_musicais: Callable[[str, int], list] | None = None,
+        pendencia_runtime: Any = None,
         log: Callable[[str], None] | None = None,
     ) -> None:
         self.estado_mental_getter = estado_mental_getter
@@ -52,8 +53,51 @@ class MusicaConversacionalRuntime:
             enviar_mensagem=enviar_mensagem,
         )
         self.buscar_resultados_musicais = buscar_resultados_musicais
+        self.pendencia_runtime = pendencia_runtime
         self.log = log or print
-        self._sugestao_pendente: Dict[str, Any] = {}
+
+    def _sugestao_pendente(self) -> Dict[str, Any]:
+        obter = getattr(self.pendencia_runtime, "obter", None)
+        if not callable(obter):
+            return {}
+        atual = obter()
+        if not isinstance(atual, dict):
+            return {}
+        if str(atual.get("origem") or "") != "musica_conversacional":
+            return {}
+        if str(atual.get("acao") or "") != "confirmar_sugestao_musical":
+            return {}
+        metadados = dict(atual.get("metadados") or {})
+        metadados.setdefault("ts", atual.get("criada_em"))
+        metadados["pendencia_id"] = str(atual.get("id") or "")
+        return metadados
+
+    def _registrar_sugestao_pendente(self, dados: Dict[str, Any]) -> bool:
+        registrar = getattr(self.pendencia_runtime, "registrar", None)
+        concluir = getattr(self.pendencia_runtime, "concluir", None)
+        if not callable(registrar):
+            return False
+        atual = self._sugestao_pendente()
+        if atual and callable(concluir):
+            concluir(str(atual.get("pendencia_id") or ""), "substituida")
+        metadados = dict(dados or {})
+        metadados["ts"] = float(metadados.get("ts") or time.time())
+        titulo = str(metadados.get("titulo") or "").strip()
+        nova = registrar(
+            origem="musica_conversacional",
+            acao="confirmar_sugestao_musical",
+            pergunta="Quer que eu coloque essa sugestão para tocar?",
+            referencia=titulo[:160],
+            metadados=metadados,
+            ttl_s=420.0,
+        )
+        return bool(nova)
+
+    def _limpar_sugestao_pendente(self, status: str = "concluida") -> None:
+        atual = self._sugestao_pendente()
+        concluir = getattr(self.pendencia_runtime, "concluir", None)
+        if atual and callable(concluir):
+            concluir(str(atual.get("pendencia_id") or ""), status)
 
     def _estado(self) -> Dict[str, Any]:
         try:
@@ -198,11 +242,11 @@ class MusicaConversacionalRuntime:
             alvo=sugestao,
             habilidade="musica",
         )
-        self._sugestao_pendente = {
+        self._registrar_sugestao_pendente({
             "titulo": sugestao,
             "ts": time.time(),
             "aceita_titulo": pedido_execucao_sem_titulo,
-        }
+        })
         return True
 
     def _parece_titulo_em_resposta(self, texto: str) -> bool:
@@ -232,7 +276,7 @@ class MusicaConversacionalRuntime:
 
     def _sincronizar_pendencia_com_resultado_real(self) -> None:
         """Descarta a cópia local quando outra rota já concluiu a música."""
-        pendente = dict(self._sugestao_pendente or {})
+        pendente = self._sugestao_pendente()
         if not pendente:
             return
         estado = self._estado()
@@ -257,7 +301,7 @@ class MusicaConversacionalRuntime:
             and executou is True
             and confirmado is True
         ):
-            self._sugestao_pendente = {}
+            self._limpar_sugestao_pendente("concluida_por_outra_rota")
 
     def processar_confirmacao(self, texto: str = "") -> bool:
         """Continua uma recomendacao conversacional sem recriar habilidade antiga."""
@@ -266,7 +310,7 @@ class MusicaConversacionalRuntime:
             return False
 
         self._sincronizar_pendencia_com_resultado_real()
-        pendente = dict(self._sugestao_pendente or {})
+        pendente = self._sugestao_pendente()
         cobranca = any(p in t for p in [
             "cade a musica", "cadê a música", "cade a música", "cadê a musica",
             "achei que voce ia colocar", "achei que você ia colocar",
@@ -324,7 +368,7 @@ class MusicaConversacionalRuntime:
                 resultado, texto, executou, origem="continuacao_busca_musical"
             )
             if executou:
-                self._sugestao_pendente = {}
+                self._limpar_sugestao_pendente()
                 self.registrar_mente_curta(
                     texto,
                     f"Colocando {titulo_escolhido} pra tocar.",
@@ -365,7 +409,7 @@ class MusicaConversacionalRuntime:
                 alvo=nova,
                 habilidade="musica",
             )
-            self._sugestao_pendente = {"titulo": nova, "ts": time.time()}
+            self._registrar_sugestao_pendente({"titulo": nova, "ts": time.time()})
             self.falar(fala, "calma", 1)
             return True
 
@@ -391,7 +435,7 @@ class MusicaConversacionalRuntime:
         executou = bool(self.executar_intencao(resultado, texto_execucao))
         self.registrar_resultado_execucao(resultado, texto, executou, origem="confirmacao_sugestao_musical")
         if executou:
-            self._sugestao_pendente = {}
+            self._limpar_sugestao_pendente()
             self.registrar_mente_curta(
                 texto,
                 f"Colocando {sugestao} pra tocar.",
@@ -457,12 +501,12 @@ class MusicaConversacionalRuntime:
             f"Encontrei uma faixa real para te indicar: {titulo}. "
             "Eu ainda não toquei; quer que eu coloque agora?"
         )
-        self._sugestao_pendente = {
+        self._registrar_sugestao_pendente({
             "titulo": query,
             "rotulo": titulo,
             "url": str(escolhido.get("url") or ""),
             "ts": time.time(),
-        }
+        })
         self.falar(fala, "calma", 1)
         self.registrar_mente_curta(
             texto, fala, intencao="MUSIC_OPINION_CHAT", alvo=query, habilidade="musica",

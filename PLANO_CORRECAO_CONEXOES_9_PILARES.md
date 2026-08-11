@@ -22,17 +22,34 @@ Os testes verdes são a linha de base, não a prova de que as conexões estão
 corretas. Uma fase só termina quando os novos testes de integração demonstrarem
 os pilares no caminho real da composição.
 
+## Progresso verificado
+
+- 10/08/2026 — Fases 0 e 1 concluídas.
+- Catálogo vivo: 73 intents; todas possuem classificação, continuidade,
+  proprietário importável, invocação natural, autorização, evidência, limites
+  e dependências.
+- `MOVE_ITEM` e `GAME_VISION_CONTINUE` ficaram declaradas como aliases internos,
+  sem aparecer como capacidades públicas incompletas.
+- `RESUMIR_PAGINA` passou a integrar catálogo, mapa vivo, continuidade,
+  confirmação por retorno e arbitragem canônica de modalidade.
+- Validação da etapa: 2.208 testes e 45 subtestes aprovados.
+- 10/08/2026 — Fase 3 concluída: rotina e música usam o estado mental
+  compartilhado; confirmações e recusas curtas partem do mesmo classificador;
+  feedback contextual e preferências de notificações alimentam o motor
+  canônico com origem, confiança e proveniência.
+- Validação da Fase 3: 2.218 testes e 45 subtestes aprovados.
+
 ## Regras para executar este plano
 
-- [ ] Trabalhar em uma fase por vez.
-- [ ] Criar primeiro a regressão que demonstra o problema.
-- [ ] Reutilizar os serviços compartilhados; não criar outro estado ou
+- [x] Trabalhar em uma fase por vez.
+- [x] Criar primeiro a regressão que demonstra o problema.
+- [x] Reutilizar os serviços compartilhados; não criar outro estado ou
       interpretador dentro da habilidade.
-- [ ] Não alterar memória durável do usuário durante testes automatizados.
-- [ ] Não transformar conversa, hipótese, pergunta ou negação em autorização.
-- [ ] Não anunciar sucesso sem evidência observada da etapa correspondente.
-- [ ] Rodar os testes focados e a suíte completa antes de concluir cada fase.
-- [ ] Atualizar este documento somente depois que os critérios de aceite passarem.
+- [x] Não alterar memória durável do usuário durante testes automatizados.
+- [x] Não transformar conversa, hipótese, pergunta ou negação em autorização.
+- [x] Não anunciar sucesso sem evidência observada da etapa correspondente.
+- [x] Rodar os testes focados e a suíte completa antes de concluir cada fase.
+- [x] Atualizar este documento somente depois que os critérios de aceite passarem.
 
 ## Fase 0 — Criar as invariáveis das conexões
 
@@ -42,17 +59,17 @@ na auditoria.
 
 ### Implementação
 
-- [ ] Criar `tests/test_integridade_conexoes_habilidades.py`.
-- [ ] Verificar que toda intent pública, determinística ou produzida pela LLM
+- [x] Criar `tests/test_integridade_conexoes_habilidades.py`.
+- [x] Verificar que toda intent pública, determinística ou produzida pela LLM
       pertence ao catálogo vivo.
-- [ ] Verificar que toda intent catalogada possui uma classificação de habilidade.
-- [ ] Exigir uma política de continuidade para toda intent: mapeamento canônico
+- [x] Verificar que toda intent catalogada possui uma classificação de habilidade.
+- [x] Exigir uma política de continuidade para toda intent: mapeamento canônico
       ou declaração explícita e justificada de que continuidade não se aplica.
-- [ ] Verificar que cada capacidade tem exatamente um proprietário executável:
+- [x] Verificar que cada capacidade tem exatamente um proprietário executável:
       executor central ou runtime especializado registrado.
-- [ ] Verificar que aliases legados apontam para uma intent canônica e não
+- [x] Verificar que aliases legados apontam para uma intent canônica e não
       aparecem como capacidades independentes incompletas.
-- [ ] Exigir metadados de invocação natural, autorização, evidência, limites e
+- [x] Exigir metadados de invocação natural, autorização, evidência, limites e
       dependências no contrato vivo de cada capacidade.
 
 ### Arquivos principais
@@ -67,10 +84,10 @@ na auditoria.
 
 ### Critérios de aceite
 
-- [ ] A regressão falha com o estado atual pelos motivos auditados.
-- [ ] Nenhuma intent executável pode ficar invisível para a consciência da Laylay.
-- [ ] Nenhuma capacidade fantasma pode ser anunciada como disponível.
-- [ ] O teste compara fontes independentes; não pode comparar o mapa apenas com
+- [x] A regressão falha com o estado auditado pelos motivos registrados acima.
+- [x] Nenhuma intent executável pode ficar invisível para a consciência da Laylay.
+- [x] Nenhuma capacidade fantasma pode ser anunciada como disponível.
+- [x] O teste compara fontes independentes; não pode comparar o mapa apenas com
       o catálogo que o próprio mapa utiliza.
 
 ## Fase 1 — Corrigir catálogo, linguagem e segurança do resumo
@@ -80,18 +97,18 @@ na auditoria.
 
 ### Implementação
 
-- [ ] Registrar `RESUMIR_PAGINA` no domínio do navegador.
-- [ ] Definir sua classificação, política de continuidade, dependências, limites
+- [x] Registrar `RESUMIR_PAGINA` no domínio do navegador.
+- [x] Definir sua classificação, política de continuidade, dependências, limites
       e evidência de confirmação.
-- [ ] Fazer seus resultados alimentarem o mapa vivo e o diagnóstico.
-- [ ] Substituir a busca simples por palavras-chave pela arbitragem canônica de
+- [x] Fazer seus resultados alimentarem o mapa vivo e o diagnóstico.
+- [x] Substituir a busca simples por palavras-chave pela arbitragem canônica de
       modalidade e autorização.
-- [ ] Bloquear execução para negação, hipótese, sugestão, pergunta instrucional e
+- [x] Bloquear execução para negação, hipótese, sugestão, pergunta instrucional e
       pergunta de capacidade.
-- [ ] Preservar o comando direto e suas variantes naturais.
-- [ ] Resolver `CONFIRM_INBOX_DELETE`: remover a intent fantasma ou implementar
+- [x] Preservar o comando direto e suas variantes naturais.
+- [x] Resolver `CONFIRM_INBOX_DELETE`: remover a intent fantasma ou implementar
       proprietário, detector, executor e testes completos.
-- [ ] Formalizar `MOVE_ITEM` e `GAME_VISION_CONTINUE` como aliases canônicos ou
+- [x] Formalizar `MOVE_ITEM` e `GAME_VISION_CONTINUE` como aliases canônicos ou
       retirar as referências órfãs.
 
 ### Regressões obrigatórias
@@ -115,12 +132,12 @@ Você consegue resumir páginas?
 
 ### Critérios de aceite
 
-- [ ] `mapa.consultar("RESUMIR_PAGINA")` retorna capacidade real e contextual.
-- [ ] Perguntas sobre a habilidade descrevem acesso, limites e disponibilidade
+- [x] `mapa.consultar("RESUMIR_PAGINA")` retorna capacidade real e contextual.
+- [x] Perguntas sobre a habilidade descrevem acesso, limites e disponibilidade
       atuais sem autorizar execução.
-- [ ] Falha de Chrome, conteúdo vazio ou LLM indisponível aparece como falha ou
+- [x] Falha de Chrome, conteúdo vazio ou LLM indisponível aparece como falha ou
       resultado parcial, nunca como sucesso inventado.
-- [ ] Todos os casos positivos e negativos atravessam o caminho de composição
+- [x] Todos os casos positivos e negativos atravessam o caminho de composição
       usado por `laylay.py`.
 
 ## Fase 2 — Unificar contexto, continuidade e ciclo de sessão
@@ -130,18 +147,18 @@ Você consegue resumir páginas?
 
 ### Implementação
 
-- [ ] Limpar `pendencia_acao_canonica` ao renovar uma sessão.
-- [ ] Incluir a pendência canônica no ciclo de expiração global, sem depender de
+- [x] Limpar `pendencia_acao_canonica` ao renovar uma sessão.
+- [x] Incluir a pendência canônica no ciclo de expiração global, sem depender de
       uma futura chamada a `obter()`.
-- [ ] Migrar `MusicaConversacionalRuntime._sugestao_pendente` para
+- [x] Migrar `MusicaConversacionalRuntime._sugestao_pendente` para
       `PendenciaAcaoRuntime`.
-- [ ] Migrar exclusão e conversão da caixa de entrada de `self._pendencia` para a
+- [x] Migrar exclusão e conversão da caixa de entrada de `self._pendencia` para a
       pendência canônica já usada pelas discussões.
-- [ ] Substituir a pendência privada da lixeira por uma única referência canônica.
-- [ ] Publicar no contexto compartilhado apenas referência sanitizada, hash,
+- [x] Substituir a pendência privada da lixeira por uma única referência canônica.
+- [x] Publicar no contexto compartilhado apenas referência sanitizada, hash,
       operação e TTL para resultados temporários do clipboard; nunca o conteúdo
       sensível bruto.
-- [ ] Eliminar leituras com `OR` entre estado privado e estado compartilhado.
+- [x] Eliminar leituras com `OR` entre estado privado e estado compartilhado.
 
 ### Arquivos principais
 
@@ -157,15 +174,15 @@ Você consegue resumir páginas?
 
 ### Critérios de aceite
 
-- [ ] Abrir uma confirmação, renovar a sessão e responder `sim` não executa a
+- [x] Abrir uma confirmação, renovar a sessão e responder `sim` não executa a
       ação antiga.
-- [ ] Troca inequívoca de domínio encerra ou suspende a pendência conforme a
+- [x] Troca inequívoca de domínio encerra ou suspende a pendência conforme a
       política canônica.
-- [ ] Música, caixa, clipboard e lixeira publicam e consomem a mesma instância de
+- [x] Música, caixa, clipboard e lixeira publicam e consomem a mesma instância de
       pendência.
-- [ ] Testes não podem escrever diretamente em atributos privados para preparar
+- [x] Testes não podem escrever diretamente em atributos privados para preparar
       a continuidade.
-- [ ] `tenta de novo`, `continua`, `essa também`, `ele` e `ela` resolvem somente
+- [x] `tenta de novo`, `continua`, `essa também`, `ele` e `ela` resolvem somente
       referências válidas da sessão atual.
 
 ## Fase 3 — Unificar aprendizado e interpretação natural
@@ -175,16 +192,16 @@ Você consegue resumir páginas?
 
 ### Implementação
 
-- [ ] Conectar `AprendizadoRuntime` aos getters e setters do estado compartilhado
+- [x] Conectar `AprendizadoRuntime` aos getters e setters do estado compartilhado
       ou absorver seu comportamento no motor de aprendizado canônico.
-- [ ] Remover a ilha `_estado_local` usada por rotina e música em produção.
-- [ ] Fazer cada domínio enviar aceitação, recusa, correção, repetição e silêncio
+- [x] Remover a ilha `_estado_local` usada por rotina e música em produção.
+- [x] Fazer cada domínio enviar aceitação, recusa, correção, repetição e silêncio
       qualificado ao mesmo motor, com origem e confiança.
-- [ ] Tornar o classificador compartilhado a única fonte para confirmações e
+- [x] Tornar o classificador compartilhado a única fonte para confirmações e
       recusas curtas.
-- [ ] Remover vocabulários particulares de `sim`, `não`, `pode ser`, `isso` e
+- [x] Remover vocabulários particulares de `sim`, `não`, `pode ser`, `isso` e
       `confirmo` dos domínios.
-- [ ] Conectar as preferências da central de notificações ao contexto e ao motor
+- [x] Conectar as preferências da central de notificações ao contexto e ao motor
       de aprendizado, mantendo persistência própria apenas para dados duráveis.
 
 ### Arquivos principais
@@ -201,12 +218,12 @@ Você consegue resumir páginas?
 
 ### Critérios de aceite
 
-- [ ] O snapshot compartilhado contém o aprendizado musical realmente usado pela
+- [x] O snapshot compartilhado contém o aprendizado musical realmente usado pela
       autonomia, com proveniência e confiança.
-- [ ] Uma única correção não promove automaticamente uma preferência durável.
-- [ ] As mesmas respostas curtas produzem a mesma interpretação em todos os
+- [x] Uma única correção não promove automaticamente uma preferência durável.
+- [x] As mesmas respostas curtas produzem a mesma interpretação em todos os
       domínios quando o contexto é equivalente.
-- [ ] `deixa para depois`, `precisa não` e agradecimentos encerram corretamente a
+- [x] `deixa para depois`, `precisa não` e agradecimentos encerram corretamente a
       pendência sem retomar um domínio antigo.
 
 ## Fase 4 — Tornar diagnóstico e consciência operacionais
@@ -216,16 +233,16 @@ Você consegue resumir páginas?
 
 ### Implementação
 
-- [ ] Ampliar `validar_estrutura()` para conferir continuidade geral, pendências,
+- [x] Ampliar `validar_estrutura()` para conferir continuidade geral, pendências,
       classificador, motor de aprendizado e identidade dos runtimes compartilhados.
-- [ ] Integrar ao diagnóstico global: resumo de página, clipboard/investigador,
+- [x] Integrar ao diagnóstico global: resumo de página, clipboard/investigador,
       caixa de entrada, central de notificações e IoT operacional.
-- [ ] Substituir disponibilidade baseada apenas em `callable()` por pré-condições
+- [x] Substituir disponibilidade baseada apenas em `callable()` por pré-condições
       reais: configuração, credencial, conexão, serviço e evidência recente.
-- [ ] Alinhar `navegador` e `navegador_tipado` numa única fonte de saúde.
-- [ ] Derivar a disponibilidade do avatar de preferência, processo e assets reais;
+- [x] Alinhar `navegador` e `navegador_tipado` numa única fonte de saúde.
+- [x] Derivar a disponibilidade do avatar de preferência, processo e assets reais;
       um domínio com zero intents não pode ficar disponível por cálculo vazio.
-- [ ] Fazer falhas e recuperações recentes atualizarem o catálogo sem desligar uma
+- [x] Fazer falhas e recuperações recentes atualizarem o catálogo sem desligar uma
       habilidade inteira por causa de um único alvo inexistente.
 
 ### Arquivos principais
@@ -240,14 +257,20 @@ Você consegue resumir páginas?
 
 ### Critérios de aceite
 
-- [ ] Função existente com WebSocket desconectado não aparece como navegador
+- [x] Função existente com WebSocket desconectado não aparece como navegador
       plenamente disponível.
-- [ ] Credencial ou provedor ausente produz estado degradado ou indisponível.
-- [ ] `/diagnostico mente` distingue saúde estrutural de disponibilidade operacional.
-- [ ] A Laylay responde naturalmente o que consegue fazer agora e por que uma
+- [x] Credencial ou provedor ausente produz estado degradado ou indisponível.
+- [x] `/diagnostico mente` distingue saúde estrutural de disponibilidade operacional.
+- [x] A Laylay responde naturalmente o que consegue fazer agora e por que uma
       capacidade está limitada.
-- [ ] O diagnóstico acusa deliberadamente uma conexão privada ou ausente criada
+- [x] O diagnóstico acusa deliberadamente uma conexão privada ou ausente criada
       por fixture de teste.
+
+### Validação concluída
+
+- 326 testes focados dos runtimes, contratos e domínios integrados passaram.
+- Suíte completa: 2225 testes e 45 subtestes passaram.
+- O diagnóstico permanece passivo: nenhuma verificação autoriza ou executa ações.
 
 ## Fase 5 — Completar a orquestração cooperativa
 
@@ -256,14 +279,14 @@ Você consegue resumir páginas?
 
 ### Implementação
 
-- [ ] Publicar caixa de entrada → agenda no quadro cooperativo.
-- [ ] Publicar clipboard → pesquisa → LLM no quadro cooperativo.
-- [ ] Completar a prova cooperativa da curadoria musical.
-- [ ] Garantir que cada etapa mantenha autorização, executor e evidência próprios.
-- [ ] Fazer a governança falhar fechada quando o porteiro não estiver conectado.
-- [ ] Substituir o rótulo `sombra` ou fazer o modo realmente governar a execução;
+- [x] Publicar caixa de entrada → agenda no quadro cooperativo.
+- [x] Publicar clipboard → pesquisa → LLM no quadro cooperativo.
+- [x] Completar a prova cooperativa da curadoria musical.
+- [x] Garantir que cada etapa mantenha autorização, executor e evidência próprios.
+- [x] Fazer a governança falhar fechada quando o porteiro não estiver conectado.
+- [x] Substituir o rótulo `sombra` ou fazer o modo realmente governar a execução;
       o diagnóstico não pode anunciar sombra enquanto ações reais são executadas.
-- [ ] Impedir que uma etapa confirmada transforme uma falha posterior em sucesso
+- [x] Impedir que uma etapa confirmada transforme uma falha posterior em sucesso
       completo.
 
 ### Arquivos principais
@@ -279,12 +302,21 @@ Você consegue resumir páginas?
 
 ### Critérios de aceite
 
-- [ ] Caixa → agenda não anuncia lembrete criado quando a agenda falha.
-- [ ] Clipboard → pesquisa → LLM identifica claramente falha parcial e preserva
+- [x] Caixa → agenda não anuncia lembrete criado quando a agenda falha.
+- [x] Clipboard → pesquisa → LLM identifica claramente falha parcial e preserva
       privacidade do texto copiado.
-- [ ] Instanciar governança sem porteiro não autoriza nenhuma etapa.
-- [ ] O quadro expõe participantes, dependências, estado, evidência e resultado
+- [x] Instanciar governança sem porteiro não autoriza nenhuma etapa.
+- [x] O quadro expõe participantes, dependências, estado, evidência e resultado
       final sem duplicar conteúdo sensível.
+
+### Validação concluída
+
+- 63 testes focados da orquestração, linguagem natural, investigação e curadoria
+  passaram.
+- 274 testes e 8 subtestes dos domínios integrados passaram.
+- Suíte completa: 2233 testes e 45 subtestes passaram.
+- Ruff, compilação dos módulos alterados e `git diff --check` passaram; restaram
+  apenas avisos de normalização CRLF já presentes na árvore de trabalho.
 
 ## Fase 6 — Fechamento e regressão completa
 
@@ -293,15 +325,15 @@ Você consegue resumir páginas?
 
 ### Definição de pronto por capacidade
 
-- [ ] Contexto temporário compartilhado, mínimo e encerrado corretamente.
-- [ ] Memória durável separada do contexto e acompanhada de proveniência.
-- [ ] Aprendizado integrado para aceitação, recusa, correção, repetição e silêncio.
-- [ ] Linguagem natural interpretada pelo contrato canônico.
-- [ ] Continuidade e referências resolvidas pela pendência oficial.
-- [ ] Segurança separando conversa, autorização, execução e confirmação observada.
-- [ ] Diagnóstico com saúde, falha e resultado verificável.
-- [ ] Consciência viva com invocação, autorização, evidência, dependências e limites.
-- [ ] Cooperação testada quando houver mais de uma habilidade ou fonte de dados.
+- [x] Contexto temporário compartilhado, mínimo e encerrado corretamente.
+- [x] Memória durável separada do contexto e acompanhada de proveniência.
+- [x] Aprendizado integrado para aceitação, recusa, correção, repetição e silêncio.
+- [x] Linguagem natural interpretada pelo contrato canônico.
+- [x] Continuidade e referências resolvidas pela pendência oficial.
+- [x] Segurança separando conversa, autorização, execução e confirmação observada.
+- [x] Diagnóstico com saúde, falha e resultado verificável.
+- [x] Consciência viva com invocação, autorização, evidência, dependências e limites.
+- [x] Cooperação testada quando houver mais de uma habilidade ou fonte de dados.
 
 ### Validação automatizada
 
@@ -314,15 +346,36 @@ Executar, no mínimo:
 .\.venv314\Scripts\python.exe -m pytest -q
 ```
 
-### Validação manual final
+### Validação final reproduzível
 
-- [ ] Testar resumo de página positivo, negado, hipotético e instrucional.
-- [ ] Abrir uma confirmação, reiniciar a conversa e responder `sim`.
-- [ ] Confirmar e recusar ações em música, caixa de entrada, clipboard e lixeira.
-- [ ] Desligar ou desconectar Chrome, Gmail e Tuya e conferir mapa e diagnóstico.
-- [ ] Testar caixa → lembrete com sucesso e falha deliberada da agenda.
-- [ ] Testar investigação do clipboard com pesquisa ou LLM indisponível.
-- [ ] Perguntar naturalmente à Laylay o que ela pode fazer em cada domínio.
+- [x] Resumo de página positivo, negado, hipotético e instrucional coberto por
+      fixtures sem autorizar falsos pedidos.
+- [x] Uma confirmação permanece na mente compartilhada ao recriar o runtime da
+      conversa e `sim` é consumido pela pendência oficial.
+- [x] Aceitação e recusa em música, caixa de entrada, clipboard e lixeira
+      cobertas pelos respectivos executores e pendências canônicas.
+- [x] Chrome desconectado e provedores/credenciais ausentes de conversa, visão,
+      Gmail e IoT simulados sem executar probes nem alterar serviços reais.
+- [x] Caixa → lembrete coberto com persistência confirmada e falha deliberada da
+      agenda, sem transformar sucesso parcial em conclusão total.
+- [x] Investigação do clipboard coberta com pesquisa indisponível, fallback
+      factual, porteiro ausente e descarte da referência privada.
+- [x] Perguntas naturais cobertas individualmente para música, sistema,
+      navegador, visão, agenda, arquivos, email, IoT, conversa, caixa de entrada
+      e área de transferência, sem autorização de execução.
+
+### Validação concluída
+
+- Os quatro comandos mínimos desta fase passaram: 15, 43, 46 e 2245 testes,
+  respectivamente; a suíte completa também executou 45 subtestes.
+- A bateria cruzada das Fases 1 a 6 e dos principais domínios passou com 269
+  testes.
+- Foram adicionadas 12 regressões finais para recriação da conversa e
+  consciência natural por domínio.
+- Ruff, compilação e `git diff --check` passaram; permaneceram somente avisos de
+  normalização CRLF já existentes na árvore de trabalho.
+- As indisponibilidades externas foram simuladas por diagnóstico passivo; nenhum
+  dispositivo, conta ou serviço real foi desligado durante a validação.
 
 ## Resultado esperado
 

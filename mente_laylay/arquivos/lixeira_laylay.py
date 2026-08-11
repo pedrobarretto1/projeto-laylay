@@ -15,7 +15,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 @dataclass(frozen=True)
@@ -28,13 +28,36 @@ class ResultadoLixeira:
 
 
 class LixeiraLaylay:
-    def __init__(self, raiz: str | None = None) -> None:
+    def __init__(
+        self,
+        raiz: str | None = None,
+        *,
+        pendencia_runtime: Any = None,
+        agora: Callable[[], float] = time.time,
+    ) -> None:
         base = Path(raiz or os.getenv("LAYLAY_LIXEIRA_DIR") or (Path.home() / ".laylay" / "lixeira"))
         self.raiz = base.resolve()
         self.itens = self.raiz / "itens"
         self.indice = self.raiz / "indice.json"
         self._lock = threading.RLock()
-        self._pendente: dict[str, Any] = {}
+        self._pendencia_runtime = pendencia_runtime
+        self._agora = agora
+
+    def configurar_pendencia_runtime(self, pendencia_runtime: Any) -> None:
+        self._pendencia_runtime = pendencia_runtime
+
+    def _pendencia(self) -> dict[str, Any]:
+        obter = getattr(self._pendencia_runtime, "obter", None)
+        if not callable(obter):
+            return {}
+        atual = obter()
+        if not isinstance(atual, dict):
+            return {}
+        if str(atual.get("origem") or "") != "lixeira_laylay":
+            return {}
+        if str(atual.get("acao") or "") != "confirmar_exclusao":
+            return {}
+        return dict(atual)
 
     def _carregar(self) -> list[dict[str, Any]]:
         try:
@@ -51,11 +74,14 @@ class LixeiraLaylay:
 
     def tem_confirmacao_pendente(self) -> bool:
         with self._lock:
-            return bool(self._pendente and time.time() < float(self._pendente.get("expira_em") or 0))
+            return bool(self._pendencia())
 
     def cancelar_pendente(self) -> None:
         with self._lock:
-            self._pendente = {}
+            pendencia = self._pendencia()
+            concluir = getattr(self._pendencia_runtime, "concluir", None)
+            if pendencia and callable(concluir):
+                concluir(str(pendencia.get("id") or ""), "cancelada")
 
     def mover(self, caminho: str, *, confirmado: bool = False) -> ResultadoLixeira:
         origem = Path(caminho).expanduser().resolve()
@@ -64,12 +90,22 @@ class LixeiraLaylay:
 
         with self._lock:
             if not confirmado:
-                self._pendente = {"caminho": str(origem), "expira_em": time.time() + 90.0}
+                registrar = getattr(self._pendencia_runtime, "registrar", None)
+                nova = registrar(
+                    origem="lixeira_laylay",
+                    acao="confirmar_exclusao",
+                    pergunta=f"Enviar {origem.name} para a lixeira?",
+                    referencia=str(origem)[:160],
+                    metadados={"caminho": str(origem)[:500], "intent": "CONFIRM_DELETE_ITEM"},
+                    ttl_s=90.0,
+                ) if callable(registrar) else None
+                if not nova:
+                    return ResultadoLixeira("confirmacao_indisponivel", False, str(origem))
                 return ResultadoLixeira(
                     "aguardando_confirmacao", False, str(origem), requer_confirmacao=True
                 )
 
-            identificador = f"{int(time.time())}_{uuid.uuid4().hex}"
+            identificador = f"{int(self._agora())}_{uuid.uuid4().hex}"
             destino = self.itens / identificador / origem.name
             destino.parent.mkdir(parents=True, exist_ok=False)
             try:
@@ -84,20 +120,32 @@ class LixeiraLaylay:
                 "origem": str(origem),
                 "destino": str(destino),
                 "nome": origem.name,
-                "apagado_em": time.time(),
+                "apagado_em": self._agora(),
                 "restaurado_em": None,
             })
             self._salvar(registros)
-            self._pendente = {}
             return ResultadoLixeira("movido_para_lixeira", True, str(origem), str(destino))
 
     def confirmar_pendente(self) -> ResultadoLixeira:
         with self._lock:
-            if not self.tem_confirmacao_pendente():
-                self._pendente = {}
+            pendencia = self._pendencia()
+            if not pendencia:
                 return ResultadoLixeira("sem_confirmacao_pendente", False)
-            caminho = str(self._pendente.get("caminho") or "")
-        return self.mover(caminho, confirmado=True)
+            resolver = getattr(self._pendencia_runtime, "resolver", None)
+            concluir = getattr(self._pendencia_runtime, "concluir", None)
+            if not (callable(resolver) and callable(concluir)):
+                return ResultadoLixeira("confirmacao_indisponivel", False)
+            resolucao = resolver("sim")
+            if resolucao.get("status") not in {"aceitar", "em_processamento"}:
+                return ResultadoLixeira("confirmacao_concorrente", False)
+            metadados = dict(pendencia.get("metadados") or {})
+            caminho = str(metadados.get("caminho") or pendencia.get("referencia") or "")
+        resultado = self.mover(caminho, confirmado=True)
+        concluir(
+            str(pendencia.get("id") or ""),
+            "concluida" if resultado.sucesso else "falha_execucao",
+        )
+        return resultado
 
     def restaurar_ultimo(self) -> ResultadoLixeira:
         with self._lock:
@@ -119,7 +167,7 @@ class LixeiraLaylay:
                 shutil.move(str(atual), str(origem))
             except OSError:
                 return ResultadoLixeira("falha_restaurar", False, str(origem), str(atual))
-            item["restaurado_em"] = time.time()
+            item["restaurado_em"] = self._agora()
             self._salvar(registros)
             shutil.rmtree(atual.parent, ignore_errors=True)
             return ResultadoLixeira("restaurado", True, str(origem), str(atual))
@@ -146,3 +194,7 @@ def existe_exclusao_pendente() -> bool:
 
 def restaurar_ultimo_item() -> ResultadoLixeira:
     return _RUNTIME.restaurar_ultimo()
+
+
+def configurar_pendencia_exclusao(pendencia_runtime: Any) -> None:
+    _RUNTIME.configurar_pendencia_runtime(pendencia_runtime)

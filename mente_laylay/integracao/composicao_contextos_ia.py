@@ -125,6 +125,7 @@ class ComposicaoContextosIARuntime:
         mapa_habilidades_prompt: Callable[..., str] | None = None,
         mapa_recursos_prompt: Callable[[str], str] | None = None,
         registrar_tamanho_prompt: Callable[[str, int], Any] | None = None,
+        otimizacao_prompt_ativa: bool = True,
         registrar_falha: Callable[..., Any] | None = None,
         prompt_factory: Callable[..., Any] = criar_contexto_prompt_runtime,
         exec_factory: Callable[..., Any] = criar_contexto_exec_runtime,
@@ -157,6 +158,7 @@ class ComposicaoContextosIARuntime:
             mapa_habilidades_prompt=mapa_habilidades_prompt,
             mapa_recursos_prompt=mapa_recursos_prompt,
             registrar_tamanho_prompt=registrar_tamanho_prompt,
+            otimizacao_prompt_ativa=otimizacao_prompt_ativa,
         ))
         execucao = self._grupo(_EXECUCAO)
         execucao["_registro_musica_leitura_runtime"] = self.musica_leitura

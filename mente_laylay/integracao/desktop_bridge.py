@@ -442,10 +442,24 @@ class DesktopBridgeRuntime:
                         "message": f"Não consegui iniciar o reinício ({type(erro).__name__}).",
                     })
 
-    def publicar_fala_final(self, texto: str, emocao: str = "calma", nivel: int = 1, **_: Any) -> None:
+    def publicar_fala_final(
+        self,
+        texto: str,
+        emocao: str = "calma",
+        nivel: int = 1,
+        **dados: Any,
+    ) -> bool:
         fala = _texto_seguro(texto)
-        if fala:
-            self._publicar({"type": "assistant_message", "text": fala, "emotion": _texto_seguro(emocao, 32) or "calma", "emotion_level": max(1, min(3, int(nivel or 1))), "timestamp": time.time()})
+        if not fala:
+            return False
+        return self._publicar({
+            "type": "assistant_message",
+            "id": _texto_seguro(dados.get("mensagem_id"), 96),
+            "text": fala,
+            "emotion": _texto_seguro(emocao, 32) or "calma",
+            "emotion_level": max(1, min(3, int(nivel or 1))),
+            "timestamp": time.time(),
+        })
 
     def publicar_evento(self, titulo: str, detalhe: str = "", *, nivel: str = "info") -> None:
         evento = {"title": _texto_seguro(titulo, 120), "detail": _texto_seguro(detalhe, 500), "level": nivel if nivel in {"info", "success", "warning", "error"} else "info", "timestamp": time.time()}

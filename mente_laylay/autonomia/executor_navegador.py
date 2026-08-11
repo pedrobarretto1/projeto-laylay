@@ -293,7 +293,17 @@ def _executar_search(
         try:
             if isinstance(messages, list):
                 messages.append({"role": "user", "content": texto_original})
-            bot_raw = enviar_mensagem(messages) if callable(enviar_mensagem) else ""
+            bot_raw = ""
+            if callable(enviar_mensagem):
+                try:
+                    bot_raw = enviar_mensagem(
+                        messages,
+                        _tipo_chamada="principal",
+                        _classe_timeout="normal",
+                    )
+                except TypeError:
+                    # Compatibilidade com portas antigas e dublês mínimos.
+                    bot_raw = enviar_mensagem(messages)
             bot = (
                 remover_prefixo(limpar_resposta(bot_raw))
                 if callable(remover_prefixo) and callable(limpar_resposta)

@@ -75,6 +75,8 @@ class FeedbackPendenteRuntime:
                 _com_tools=False,
                 max_tokens=120,
                 modo_rapido=True,
+                _tipo_chamada="continuacao",
+                _classe_timeout="rapida",
             )
 
         interpretador = _get(ctx, "interpretar_resposta_pendente")
@@ -109,6 +111,7 @@ class FeedbackPendenteRuntime:
             "_gmail_buscar_nao_lidos": _get(ctx, "gmail_buscar_nao_lidos"),
             "_gmail_falar_resumo_estiloso": _get(ctx, "gmail_falar_resumo_estiloso"),
             "_registrar_feedback_proatividade": _get(ctx, "registrar_feedback_proatividade"),
+            "_registrar_feedback_aprendizado": _get(ctx, "registrar_feedback_aprendizado"),
         }
 
         resultado = bool(handle_feedback(contexto, texto)) if callable(handle_feedback) else False

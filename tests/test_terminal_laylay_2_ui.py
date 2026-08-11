@@ -274,6 +274,31 @@ def test_auto_scroll_respeita_leitura_e_segue_mensagem_do_usuario(monkeypatch) -
     janela.close()
 
 
+def test_resposta_do_mesmo_turno_atualiza_balao_sem_duplicar(monkeypatch) -> None:
+    app, _worker, janela = _criar_janela_qt(monkeypatch)
+    from cliente.terminal_laylay_2 import MensagemWidget
+
+    janela.receber({
+        "type": "assistant_message",
+        "id": "turno:42",
+        "text": "Primeiro candidato.",
+        "emotion": "calma",
+    })
+    janela.receber({
+        "type": "assistant_message",
+        "id": "turno:42",
+        "text": "Resposta final mais útil.",
+        "emotion": "feliz",
+    })
+    _processar_layout(app)
+
+    mensagens = janela.feed.findChildren(MensagemWidget)
+    assert len(mensagens) == 1
+    assert mensagens[0].texto == "Resposta final mais útil."
+    assert mensagens[0].corpo.text() == "Resposta final mais útil."
+    janela.close()
+
+
 def test_animacao_de_entrada_nao_fica_presa_ao_historico(monkeypatch) -> None:
     app, _worker, janela = _criar_janela_qt(monkeypatch)
     from PySide6.QtTest import QTest

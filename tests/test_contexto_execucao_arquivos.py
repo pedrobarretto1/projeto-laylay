@@ -23,6 +23,10 @@ from mente_laylay.memoria_mental.contexto_compartilhado import (
     registrar_resultado_execucao,
 )
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+from mente_laylay.memoria_mental.pendencia_acao import (
+    CHAVE_PENDENCIA_ACAO,
+    PendenciaAcaoRuntime,
+)
 from mente_laylay.integracao.adaptadores_aplicacao_runtime import (
     AdaptadoresAplicacaoRuntime,
 )
@@ -31,6 +35,20 @@ from mente_laylay.autonomia import pre_fluxo_contextual
 
 def _mutacoes(**callbacks):
     return registrar_arquivos_mutacao(criar_arquivos_mutacao_runtime(**callbacks))
+
+
+def _pendencia_lixeira(estado: dict) -> PendenciaAcaoRuntime:
+    def atualizar(mutador):
+        novo = mutador(dict(estado))
+        estado.clear()
+        estado.update(novo)
+        return dict(estado)
+
+    return PendenciaAcaoRuntime(
+        estado_getter=lambda: estado,
+        estado_atualizar=atualizar,
+        log=lambda *_args: None,
+    )
 
 
 def test_referencia_pronominal_prefere_caminho_confirmado_da_estrutura(tmp_path) -> None:
@@ -591,7 +609,11 @@ def test_recusa_natural_cancela_lixeira_no_fluxo_integrado(
 ) -> None:
     arquivo = tmp_path / "teste governanca.txt"
     arquivo.write_text("preservar", encoding="utf-8")
-    runtime_lixeira = lixeira_laylay.LixeiraLaylay(str(tmp_path / ".lixeira"))
+    estado_canonico: dict = {}
+    runtime_lixeira = lixeira_laylay.LixeiraLaylay(
+        str(tmp_path / ".lixeira"),
+        pendencia_runtime=_pendencia_lixeira(estado_canonico),
+    )
     monkeypatch.setattr(lixeira_laylay, "_RUNTIME", runtime_lixeira)
     pendencia_fisica = runtime_lixeira.mover(str(arquivo), confirmado=False)
     assert pendencia_fisica.status == "aguardando_confirmacao"
@@ -647,9 +669,16 @@ def test_recusa_natural_cancela_lixeira_no_fluxo_integrado(
     assert "não executei nem confirmei" not in falas[0].casefold()
 
 
-def test_resultado_da_lixeira_entra_e_sai_da_pendencia_unica() -> None:
+def test_resultado_da_lixeira_nao_cria_pendencia_paralela() -> None:
+    canonica = {
+        "id": "pendencia-lixeira",
+        "origem": "lixeira_laylay",
+        "acao": "confirmar_exclusao",
+        "status": "ativa",
+        "expira_em": time.time() + 90,
+    }
     estado = registrar_resultado_execucao(
-        {},
+        {CHAVE_PENDENCIA_ACAO: canonica},
         ResultadoAcao(
             intent="DELETE_ITEM",
             status="aguardando_confirmacao",
@@ -663,8 +692,8 @@ def test_resultado_da_lixeira_entra_e_sai_da_pendencia_unica() -> None:
         status="aguardando_confirmacao",
     )
 
-    assert estado["pendencia_atual"]["origem"] == "lixeira_laylay"
-    assert estado["pendencia_atual"]["status"] == "ativa"
+    assert estado.get("pendencia_atual", {}) == {}
+    assert estado[CHAVE_PENDENCIA_ACAO] == canonica
 
     estado = registrar_resultado_execucao(
         estado,
@@ -680,8 +709,8 @@ def test_resultado_da_lixeira_entra_e_sai_da_pendencia_unica() -> None:
         status="movido_para_lixeira",
     )
 
-    assert estado["pendencia_atual"] == {}
-    assert estado["ultima_pendencia_encerrada"]["status"] == "confirmada"
+    assert estado.get("pendencia_atual", {}) == {}
+    assert estado[CHAVE_PENDENCIA_ACAO] == canonica
 
 
 def test_registro_generico_nao_transforma_pendencia_em_execucao_confirmada() -> None:

@@ -104,6 +104,16 @@ def test_composto_caixa_agenda_exige_as_duas_etapas_confirmadas() -> None:
         "intent": "AGENDAR_LEMBRETE",
         "params": {"descricao": "essa ideia", "dia": "amanhã", "hora": "11:00"},
     }
+
+    class Orquestrador:
+        @staticmethod
+        def processar_caixa_para_agenda(**dados) -> dict:
+            comando = dados["comando_agenda"]
+            texto = dados["texto_agenda"]
+            comandos_executados.append(comando)
+            chamadas.append((str(comando["intent"]), texto))
+            return {"ok": True, "status": "plano_confirmado"}
+
     namespace = {
         "_estado_compartilhado_runtime": estado,
         "_caixa_entrada_pessoal_runtime": Caixa(),
@@ -119,6 +129,7 @@ def test_composto_caixa_agenda_exige_as_duas_etapas_confirmadas() -> None:
             or True
         ),
         "_registrar_resultado_execucao": lambda *_args, **_kwargs: None,
+        "_orquestrador_cooperativo_runtime": Orquestrador(),
     }
     runtime = ComandosImediatosRuntime(
         namespace_getter=lambda: namespace,

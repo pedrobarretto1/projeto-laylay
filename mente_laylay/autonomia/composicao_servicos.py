@@ -16,27 +16,39 @@ class ComposicaoServicosLaylayRuntime:
         *,
         gerenciador: Any,
         etapas: Mapping[str, Callable[[], Any]],
+        etapas_diferidas: Mapping[str, Callable[[], Any]] | None = None,
         threads: Mapping[str, Callable[[], Any]],
         threads_com_parada: Mapping[str, Callable[..., Any]] | None = None,
         threads_com_espera: Mapping[str, Callable[..., Any]] | None = None,
         hotkeys: Sequence[tuple[str, Callable[[], Any]]] = (),
         encerramento: Sequence[tuple[str, Callable[[], Any]]] = (),
         registrar_falha: Callable[..., Any] | None = None,
+        registrar_metrica: Callable[..., Any] | None = None,
         log: Callable[[str], Any] = print,
         monotonic: Callable[[], float] = time.monotonic,
         timeout_encerramento_s: float = 1.5,
+        inicializacao_diferida: bool = True,
     ) -> None:
         self.gerenciador = gerenciador
         self.etapas = dict(etapas or {})
+        self.etapas_diferidas = dict(etapas_diferidas or {})
         self.threads = dict(threads or {})
         self.threads_com_parada = dict(threads_com_parada or {})
         self.threads_com_espera = dict(threads_com_espera or {})
         self.hotkeys = tuple(hotkeys or ())
         self.encerramento = tuple(encerramento or ())
         self.registrar_falha = registrar_falha
+        self.registrar_metrica = registrar_metrica
         self.log = log
         self.monotonic = monotonic
         self.timeout_encerramento_s = max(0.0, float(timeout_encerramento_s))
+        self.inicializacao_diferida = bool(inicializacao_diferida)
+        self._prontidao = {
+            "fase": "nao_iniciada",
+            "chat_pronto_ms": 0.0,
+            "servicos_completos_ms": 0.0,
+            "diferidas": {},
+        }
 
     def _relatar(self, componente: str, codigo: str, erro: BaseException) -> None:
         if callable(self.registrar_falha):
@@ -73,11 +85,102 @@ class ComposicaoServicosLaylayRuntime:
         return resultados
 
     def iniciar(self, orquestrador: Any) -> dict[str, dict[str, bool]]:
-        return orquestrador.iniciar(
-            etapas=self.etapas,
+        inicio = self.monotonic()
+        etapas_imediatas = dict(self.etapas)
+        etapas_diferidas = dict(self.etapas_diferidas)
+        if not self.inicializacao_diferida:
+            etapas_imediatas.update(etapas_diferidas)
+            etapas_diferidas = {}
+        resultado = orquestrador.iniciar(
+            etapas=etapas_imediatas,
             threads=self.catalogo_threads(),
             hotkeys=self.registrar_hotkeys,
         )
+        chat_pronto_ms = max(0.0, (self.monotonic() - inicio) * 1000.0)
+        self._prontidao = {
+            "fase": "chat_pronto",
+            "chat_pronto_ms": chat_pronto_ms,
+            "servicos_completos_ms": 0.0,
+            "diferidas": {},
+        }
+        self._registrar_metrica_startup(
+            "startup_chat_pronto", chat_pronto_ms, True,
+        )
+        self.log(f"⚡ [INICIALIZAÇÃO] chat pronto em {chat_pronto_ms:.0f}ms")
+        if not etapas_diferidas:
+            self._marcar_servicos_completos(inicio, {})
+            return resultado
+
+        def concluir_etapas_diferidas() -> None:
+            concluidas: dict[str, bool] = {}
+            for descricao, target in etapas_diferidas.items():
+                if bool(getattr(self.gerenciador, "deve_parar", lambda: False)()):
+                    concluidas[descricao] = False
+                    break
+                parcial = orquestrador.executar_etapas({descricao: target})
+                concluidas.update(parcial)
+            self._marcar_servicos_completos(inicio, concluidas)
+
+        agendada = bool(self.gerenciador.iniciar(
+            "Laylay-Inicializacao-Diferida", concluir_etapas_diferidas,
+        ))
+        resultado["etapas_diferidas"] = {"agendada": agendada}
+        if not agendada:
+            self.log(
+                "⚠️ [INICIALIZAÇÃO] fase de background indisponível; "
+                "revertendo as etapas secundárias para o fluxo síncrono"
+            )
+            concluidas: dict[str, bool] = {}
+            for descricao, target in etapas_diferidas.items():
+                parcial = orquestrador.executar_etapas({descricao: target})
+                concluidas.update(parcial)
+            self._marcar_servicos_completos(inicio, concluidas)
+            resultado["etapas_diferidas"]["revertida_sincrona"] = True
+        return resultado
+
+    def _registrar_metrica_startup(
+        self, nome: str, duracao_ms: float, sucesso: bool,
+    ) -> None:
+        if not callable(self.registrar_metrica):
+            return
+        try:
+            self.registrar_metrica(
+                nome, duracao_ms, sucesso,
+                rota="inicializacao", fase=self._prontidao.get("fase", "inicio"),
+            )
+        except TypeError:
+            self.registrar_metrica(nome, duracao_ms, sucesso)
+
+    def _marcar_servicos_completos(
+        self, inicio: float, resultados: Mapping[str, bool],
+    ) -> None:
+        duracao_ms = max(0.0, (self.monotonic() - inicio) * 1000.0)
+        sucesso = all(resultados.values()) if resultados else True
+        self._prontidao = {
+            **self._prontidao,
+            "fase": "servicos_completos" if sucesso else "degradada",
+            "servicos_completos_ms": duracao_ms,
+            "diferidas": dict(resultados),
+        }
+        self._registrar_metrica_startup(
+            "startup_servicos_completos", duracao_ms, sucesso,
+        )
+        self.log(
+            "✅ [INICIALIZAÇÃO] serviços completos em "
+            f"{duracao_ms:.0f}ms"
+            if sucesso
+            else "⚠️ [INICIALIZAÇÃO] serviços secundários degradados"
+        )
+
+    def estado_prontidao(self) -> dict[str, Any]:
+        return {
+            "fase": str(self._prontidao.get("fase") or "nao_iniciada"),
+            "chat_pronto_ms": float(self._prontidao.get("chat_pronto_ms") or 0.0),
+            "servicos_completos_ms": float(
+                self._prontidao.get("servicos_completos_ms") or 0.0
+            ),
+            "diferidas": dict(self._prontidao.get("diferidas") or {}),
+        }
 
     @staticmethod
     def _invocar_finalizador(finalizar: Callable[..., Any], restante_s: float) -> Any:
@@ -139,7 +242,9 @@ def criar_composicao_servicos_padrao(
     *,
     gerenciador: Any,
     registrar_falha: Callable[..., Any] | None = None,
+    registrar_metrica: Callable[..., Any] | None = None,
     log: Callable[[str], Any] = print,
+    inicializacao_diferida: bool = True,
 ) -> ComposicaoServicosLaylayRuntime:
     """Resolve somente as conexões do ponto de entrada e valida nomes cedo."""
     ns = dict(namespace or {})
@@ -164,15 +269,17 @@ def criar_composicao_servicos_padrao(
         gerenciador=gerenciador,
         etapas={
             "carregar memória": obrigatoria("carregar_memoria"),
-            "iniciar rede associativa": metodo("_rede_associativa_runtime", "iniciar"),
             "ativar autonomia segura": obrigatoria("_preparar_autonomia_segura_padrao"),
-            "preparar sugestões no modo jogo": obrigatoria("_preparar_sugestoes_proativas_jogo"),
             "iniciar nova sessão conversacional": lambda: renovar_sessao(
                 "inicio_programa", True,
             ),
             "iniciar memória de contexto diária": obrigatoria("init_memoria_contexto_diaria"),
             "carregar playlists": obrigatoria("_carregar_playlists_para_memoria"),
             "iniciar worker de falas": obrigatoria("_iniciar_worker_de_falas"),
+        },
+        etapas_diferidas={
+            "iniciar rede associativa": metodo("_rede_associativa_runtime", "iniciar"),
+            "preparar sugestões no modo jogo": obrigatoria("_preparar_sugestoes_proativas_jogo"),
             "iniciar ponte Xbox Game Bar": metodo("_gamebar_bridge_runtime", "iniciar"),
             "iniciar avatar": metodo("_avatar_runtime", "iniciar"),
         },
@@ -219,5 +326,7 @@ def criar_composicao_servicos_padrao(
             ("memoria", obrigatoria("salvar_memoria")),
         ),
         registrar_falha=registrar_falha,
+        registrar_metrica=registrar_metrica,
         log=log,
+        inicializacao_diferida=inicializacao_diferida,
     )

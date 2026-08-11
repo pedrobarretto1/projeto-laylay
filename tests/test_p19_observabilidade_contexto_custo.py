@@ -267,6 +267,7 @@ def test_voz_separa_fila_sintese_reproducao_e_bloqueio_externo() -> None:
     runtime._sintetizar_edge = lambda *_args, **_kwargs: None  # type: ignore[method-assign]
     runtime._selecionar_saida_audio = lambda: None  # type: ignore[method-assign]
 
+    runtime._texto_pronto_reproducao_atual = time.monotonic() - 0.02
     runtime.reproduzir_fala("teste", "calma", 1)
 
     runtime.fila.put({
@@ -286,5 +287,9 @@ def test_voz_separa_fila_sintese_reproducao_e_bloqueio_externo() -> None:
     nomes = {item[0] for item in metricas}
     assert {
         "tts_fila", "tts_sintese", "tts_bloqueio_externo",
-        "tts_reproducao", "tts_total",
+        "tts_primeiro_audio", "tts_reproducao", "tts_total",
     } <= nomes
+    primeiro_audio = next(
+        item[1] for item in metricas if item[0] == "tts_primeiro_audio"
+    )
+    assert primeiro_audio >= 15.0

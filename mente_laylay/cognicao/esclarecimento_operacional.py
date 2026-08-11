@@ -27,6 +27,9 @@ from mente_laylay.memoria_mental.pendencia import (
     pendencia_ativa,
     registrar_pendencia,
 )
+from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
+    classificar_confirmacao_local,
+)
 
 
 ORIGEM_ESCLARECIMENTO_OPERACIONAL = "esclarecimento_operacional"
@@ -192,10 +195,7 @@ def limpar_esclarecimento_operacional(
 
 
 def _texto_e_cancelamento(texto: str) -> bool:
-    return _normalizar(texto) in {
-        "nao", "cancela", "cancelar", "deixa", "deixa quieto", "esquece",
-        "nao quero", "nao precisa", "deixa pra la", "deixa para la",
-    }
+    return classificar_confirmacao_local(texto) is False
 
 
 def _valor_de_resposta(texto: str) -> str:

@@ -189,11 +189,24 @@ def compactar_payload_llm_local(data: dict) -> dict:
             reduzido = "\n".join(dict.fromkeys(escolhidas))
             return reduzido[:2200]
 
+        try:
+            limite_saida = int(novo.get("max_tokens") or 512)
+        except (TypeError, ValueError):
+            limite_saida = 512
+        if limite_saida <= 128:
+            limite_total, limite_principal = 5000, 2800
+        elif limite_saida <= 256:
+            limite_total, limite_principal = 7000, 4200
+        elif limite_saida <= 400:
+            limite_total, limite_principal = 8500, 5000
+        else:
+            limite_total, limite_principal = 12000, 5500
+
         mensagens = []
         if principal is not None:
             mensagens.append({
                 "role": "system",
-                "content": principal["content"][:5500],
+                "content": principal["content"][:limite_principal],
             })
         for auxiliar in auxiliares:
             mensagens.append({
@@ -203,7 +216,6 @@ def compactar_payload_llm_local(data: dict) -> dict:
 
         # Reserva o restante para os últimos atos completos. É esse trecho que
         # permite entender continuidades como "por quê?" e "explica isso".
-        limite_total = 12000
         usados = sum(len(m["content"]) for m in mensagens)
         recentes_reverso = []
         for msg in reversed(dialogo):
@@ -221,7 +233,9 @@ def compactar_payload_llm_local(data: dict) -> dict:
             mensagens = [{"role": "user", "content": "Responda em português, curto e natural."}]
     novo["messages"] = mensagens
     try:
-        novo["max_tokens"] = min(int(novo.get("max_tokens") or 512), 384)
+        # Compactar contexto não deve mutilar a resposta de uma explicação ou
+        # conta. O teto de saída já foi escolhido pelo perfil conversacional.
+        novo["max_tokens"] = min(int(novo.get("max_tokens") or 512), 800)
     except (TypeError, ValueError):
         novo["max_tokens"] = 384
     return novo
@@ -239,8 +253,18 @@ def payload_precisa_compactar_llm_local(data: dict) -> bool:
         max_tokens = int((data or {}).get("max_tokens") or 0)
     except (TypeError, ValueError):
         max_tokens = 0
-    # Qwen 7B local costuma estar em 4096 tokens; compactar antes evita 400.
-    return total_chars > 9500 or max_tokens > 640
+    # O limiar acompanha a proporção da resposta. Pedidos curtos não precisam
+    # carregar um contexto maior que a própria tarefa; matemática e
+    # explicações preservam uma janela mais ampla.
+    if max_tokens <= 128:
+        limite_chars = 5000
+    elif max_tokens <= 256:
+        limite_chars = 7000
+    elif max_tokens <= 400:
+        limite_chars = 8500
+    else:
+        limite_chars = 9500
+    return total_chars > limite_chars or max_tokens > 800
 
 
 def _caracteres_payload(data: dict) -> int:

@@ -52,15 +52,6 @@ class AprendizadoRuntime:
         self._estado_getter = estado_getter
         self._estado_setter = estado_setter
         self._log = log
-        self._estado_local: Dict[str, Any] = {
-            "rotina_dados_diarios": {},
-            "rotina_ultimo_log": 0.0,
-            "rotina_ultima_sugestao": 0.0,
-            "rotina_feedback_pesos": {},
-            "musica_dados_diarios": {},
-            "musica_feedback_pesos": {},
-            "musica_ultima_sugestao": 0.0,
-        }
 
     def _ctx(self) -> Dict[str, Any]:
         try:
@@ -71,7 +62,7 @@ class AprendizadoRuntime:
 
     def _estado(self) -> Dict[str, Any]:
         if not callable(self._estado_getter):
-            return self._estado_local
+            return {}
         try:
             estado = self._estado_getter()
             return estado if isinstance(estado, dict) else {}
@@ -79,17 +70,57 @@ class AprendizadoRuntime:
             return {}
 
     def _set(self, **campos: Any) -> None:
-        if callable(self._estado_setter):
-            self._estado_setter(**campos)
+        if not callable(self._estado_setter):
+            self._log("⚠️ [APRENDIZADO] estado compartilhado indisponível; atualização ignorada")
             return
-        self._estado_local.update(campos)
+        combinado = {**self._estado(), **campos}
+        self._estado_setter(
+            **campos,
+            proveniencia=self._proveniencia(),
+            confianca=self._confianca(combinado),
+        )
+
+    def _proveniencia(self) -> Dict[str, str]:
+        return {
+            "rotina": self.arquivo_rotina,
+            "rotina_feedback": self.arquivo_feedback_rotina,
+            "musica_historico": self.arquivo_musica_historico,
+            "musica_feedback": self.arquivo_musica_feedback,
+            "estado_vivo": "mente_compartilhada",
+        }
+
+    @staticmethod
+    def _confianca(estado: Dict[str, Any]) -> Dict[str, float]:
+        def _pontuar(pesos: Any, observacoes: Any) -> float:
+            valores = [
+                abs(float(valor))
+                for valor in dict(pesos or {}).values()
+                if isinstance(valor, (int, float))
+            ]
+            forca = max(valores, default=0.0)
+            volume = len(dict(observacoes or {}))
+            return round(min(1.0, max(forca / 3.0, volume / 7.0)), 3)
+
+        return {
+            "rotina": _pontuar(
+                estado.get("rotina_feedback_pesos"),
+                estado.get("rotina_dados_diarios"),
+            ),
+            "musica": _pontuar(
+                estado.get("musica_feedback_pesos"),
+                estado.get("musica_dados_diarios"),
+            ),
+        }
 
     def snapshot(self) -> Dict[str, Any]:
         estado = self._estado()
-        return {
+        snapshot = {
             chave: dict(valor) if isinstance(valor, dict) else valor
             for chave, valor in estado.items()
         }
+        snapshot["proveniencia"] = self._proveniencia()
+        snapshot["confianca"] = self._confianca(estado)
+        return snapshot
 
     def atualizar(self, **campos: Any) -> None:
         self._set(**campos)

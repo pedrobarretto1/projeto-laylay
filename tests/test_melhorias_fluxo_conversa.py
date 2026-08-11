@@ -19,6 +19,7 @@ from mente_laylay.cognicao.interpretacao_intencao import InterpretacaoIntencaoRu
 from mente_laylay.cognicao.interpretacao_social import analisar_ato_social
 from mente_laylay.cognicao.resumo_conteudo import (
     ResumoConteudoRuntime,
+    _compactar_resumo_final,
     _limpar_texto_capturado,
     resumir_pagina_ou_video,
 )
@@ -716,6 +717,118 @@ def test_prompt_do_resumo_chega_limpo_e_tem_prioridade_interativa() -> None:
         "A história registrada da China começa na dinastia Shang e passa "
         "por sucessivas unificações políticas e transformações sociais."
     ]
+
+
+def test_resumo_final_remove_meta_limita_frases_e_descarta_final_quebrado() -> None:
+    resumo = (
+        "Claro! Aqui está um resumo claro e direto do conteúdo: "
+        "A China possui uma história antiga. "
+        "Os registros escritos começam na dinastia Shang. "
+        "A dinastia Qin unificou o território. "
+        "O império adotou uma escrita comum. "
+        "Períodos de unidade se alternaram com fragmentações. "
+        "A cultura também recebeu influências políticas de."
+    )
+
+    compacto = _compactar_resumo_final(resumo, max_frases=5)
+
+    assert compacto.startswith("A China possui")
+    assert "Claro" not in compacto
+    assert "políticas de." not in compacto
+    assert compacto.count(".") == 5
+
+
+def test_resumo_final_remove_vocativo_incorreto_da_propria_laylay() -> None:
+    resumo = (
+        "Claro, Laylay. Aqui está um resumo claro e direto do conteúdo: "
+        "Os primeiros registros escritos da China datam da dinastia Shang. "
+        "A civilização se desenvolveu no vale do rio Amarelo."
+    )
+
+    compacto = _compactar_resumo_final(resumo)
+
+    assert compacto == (
+        "Os primeiros registros escritos da China datam da dinastia Shang. "
+        "A civilização se desenvolveu no vale do rio Amarelo."
+    )
+    assert "Laylay" not in compacto
+
+
+def test_resumo_llm_incompleto_e_entregue_apenas_ate_ultima_frase_inteira() -> None:
+    falas: list[str] = []
+
+    resultado = asyncio.run(resumir_pagina_ou_video(
+        websocket_disponivel=lambda: True,
+        solicitar_conteudo=lambda: asyncio.sleep(0, result={
+            "success": True,
+            "data": {
+                "url": "https://exemplo.test/china",
+                "title": "História da China",
+                "content": (
+                    "Os registros escritos começam na dinastia Shang. "
+                    "A dinastia Qin unificou o território chinês."
+                ),
+            },
+        }),
+        falar=lambda fala, *_args: falas.append(fala),
+        enviar_mensagem=lambda *_args, **_kwargs: (
+            "Claro! Aqui está um resumo claro e direto do conteúdo: "
+            "Os registros começam na dinastia Shang. "
+            "A dinastia Qin unificou o território. "
+            "Depois vieram influências de."
+        ),
+        limpar_resposta=lambda texto: texto,
+        remover_prefixo_exec=lambda texto: texto,
+        transcript_api=object(),
+        log=lambda *_args: None,
+    ))
+
+    assert resultado is True
+    assert falas == [
+        "Os registros começam na dinastia Shang. "
+        "A dinastia Qin unificou o território."
+    ]
+
+
+def test_resumo_identico_reutiliza_cache_sem_nova_chamada_llm() -> None:
+    falas: list[str] = []
+    chamadas_llm = []
+    cache: dict[str, dict] = {}
+
+    def enviar(*_args, **_kwargs):
+        chamadas_llm.append(True)
+        return (
+            "A página descreve a história registrada da China. "
+            "Os primeiros documentos conhecidos pertencem à dinastia Shang."
+        )
+
+    parametros = {
+        "websocket_disponivel": lambda: True,
+        "solicitar_conteudo": lambda: asyncio.sleep(0, result={
+            "success": True,
+            "data": {
+                "url": "https://exemplo.test/china",
+                "title": "História da China",
+                "content": (
+                    "Os registros escritos começam na dinastia Shang. "
+                    "A dinastia Qin unificou o território chinês."
+                ),
+            },
+        }),
+        "falar": lambda fala, *_args: falas.append(fala),
+        "enviar_mensagem": enviar,
+        "limpar_resposta": lambda texto: texto,
+        "remover_prefixo_exec": lambda texto: texto,
+        "transcript_api": object(),
+        "cache_resumos": cache,
+        "log": lambda *_args: None,
+    }
+
+    assert asyncio.run(resumir_pagina_ou_video(**parametros)) is True
+    assert asyncio.run(resumir_pagina_ou_video(**parametros)) is True
+
+    assert chamadas_llm == [True]
+    assert falas[0] == falas[1]
 
 
 def test_limpeza_preserva_artigo_legitimo_sobre_leitores_e_doacoes() -> None:

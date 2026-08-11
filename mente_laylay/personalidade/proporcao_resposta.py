@@ -168,17 +168,17 @@ def limite_tokens_resposta(
 ) -> int:
     perfil = classificar_proporcao(texto_usuario, "")
     limites = {
-        "curta": 320,
-        "objetiva": 420,
-        "emocional": 520,
-        "explicativa": 640,
-        "normal": 520,
-        "tecnica": 420,
+        "curta": 128,
+        "objetiva": 224,
+        "emocional": 320,
+        "explicativa": 512,
+        "normal": 384,
+        "tecnica": 320,
         "matematica": 800,
     }
     limite = limites.get(perfil, 520)
     if depende_contexto and perfil in {"curta", "objetiva"}:
         limite = max(limite, limites["explicativa"])
     if modo_rapido:
-        return min(limite, 384)
+        return min(limite, 128)
     return limite

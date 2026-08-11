@@ -431,6 +431,8 @@ def corrigir_saida_malformada_da_ia(
             _com_tools=False,
             max_tokens=240,
             modo_rapido=True,
+            _tipo_chamada="reparo_json",
+            _classe_timeout="rapida",
         )
         if corrigida and str(corrigida).strip():
             candidata = re.sub(r"^```(?:json)?\s*", "", str(corrigida).strip(), flags=re.IGNORECASE)
@@ -537,6 +539,8 @@ def _recuperar_fala_no_mesmo_turno(
             max_tokens=320,
             modo_rapido=True,
             _prioridade_interativa=True,
+            _tipo_chamada="reparo_comunicacao",
+            _classe_timeout="rapida",
         )
         fala, _comandos_descartados = limpar_resposta_da_ia(
             reparada,

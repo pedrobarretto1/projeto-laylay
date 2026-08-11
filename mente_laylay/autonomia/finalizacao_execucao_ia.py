@@ -47,11 +47,21 @@ def _chamar_modelo_finalizacao(ctx: Dict[str, Any], messages: Any) -> str:
     modelo = _get(ctx, "modelo_llm")
     executar = getattr(modelo, "executar", None)
     if callable(executar):
-        resultado = executar(PedidoModelo.criar(messages, com_tools=False))
+        resultado = executar(PedidoModelo.criar(
+            messages,
+            com_tools=False,
+            tipo_chamada="autoria_operacional",
+            classe_timeout="rapida",
+        ))
         return str(getattr(resultado, "texto", "") or "")
     enviar_legado = _get(ctx, "enviar_mensagem")
     if callable(enviar_legado):
-        return str(enviar_legado(messages, _com_tools=False) or "")
+        return str(enviar_legado(
+            messages,
+            _com_tools=False,
+            _tipo_chamada="autoria_operacional",
+            _classe_timeout="rapida",
+        ) or "")
     return ""
 
 

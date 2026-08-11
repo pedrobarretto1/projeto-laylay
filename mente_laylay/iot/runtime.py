@@ -110,6 +110,21 @@ class RuntimeIoT:
             "parametros_consulta": {"ambiente": ambiente},
         }
 
+    def diagnostico(self) -> dict[str, Any]:
+        dispositivos = self.registro.listar()
+        protocolos = list(getattr(self.controlador, "protocolos", ()) or ())
+        return {
+            "configurado": bool(dispositivos),
+            "modo": self.modo,
+            "provedor_disponivel": bool(protocolos),
+            "total_dispositivos": len(dispositivos),
+            "evidencia_recente": bool(
+                self.estado_mental_getter().get("ultimo_estado_iot") is not None
+            ),
+            "credenciais_expostas": False,
+            "autoriza_execucao": False,
+        }
+
     @staticmethod
     def _nome_com_artigo(nome: str) -> str:
         nome = re.sub(r"\s+", " ", str(nome or "").strip())

@@ -633,7 +633,14 @@ def test_catalogo_padrao_valida_e_monta_todas_as_conexoes():
         namespace, gerenciador=Gerenciador(), log=lambda *_: None,
     )
 
-    assert len(composicao.etapas) == 10
+    assert len(composicao.etapas) == 6
+    assert len(composicao.etapas_diferidas) == 4
+    assert tuple(composicao.etapas_diferidas) == (
+        "iniciar rede associativa",
+        "preparar sugestões no modo jogo",
+        "iniciar ponte Xbox Game Bar",
+        "iniciar avatar",
+    )
     assert len(composicao.catalogo_threads()) == 16
     assert "Laylay-Chat-Terminal" in composicao.threads_com_parada
     assert "Laylay-Chat-Terminal" not in composicao.threads
@@ -643,6 +650,90 @@ def test_catalogo_padrao_valida_e_monta_todas_as_conexoes():
     )
     composicao.etapas["iniciar nova sessão conversacional"]()
     assert eventos[-1] == ("inicio_programa", True)
+
+
+def test_inicializacao_em_duas_fases_libera_chat_antes_das_etapas_pesadas() -> None:
+    ordem = []
+    diferida = []
+    metricas = []
+
+    class Gerenciador:
+        deve_parar = staticmethod(lambda: False)
+
+        def iniciar(self, nome, target):
+            diferida.append((nome, target))
+            return True
+
+    class Orquestrador:
+        def iniciar(self, *, etapas, threads, hotkeys):
+            for target in etapas.values():
+                target()
+            hotkeys()
+            ordem.append("threads")
+            return {
+                "etapas": {nome: True for nome in etapas},
+                "threads": {nome: True for nome in threads},
+            }
+
+        def executar_etapas(self, etapas):
+            for target in etapas.values():
+                target()
+            return {nome: True for nome in etapas}
+
+    relogio = iter((10.0, 10.025, 10.080))
+    composicao = ComposicaoServicosLaylayRuntime(
+        gerenciador=Gerenciador(),
+        etapas={"memoria": lambda: ordem.append("memoria")},
+        etapas_diferidas={"avatar": lambda: ordem.append("avatar")},
+        threads={"entrada": lambda: None},
+        hotkeys=(("chat", lambda: ordem.append("hotkey")),),
+        registrar_metrica=lambda *args, **kwargs: metricas.append((args, kwargs)),
+        monotonic=lambda: next(relogio),
+        log=lambda *_: None,
+    )
+
+    resultado = composicao.iniciar(Orquestrador())
+
+    assert ordem == ["memoria", "hotkey", "threads"]
+    assert resultado["etapas_diferidas"] == {"agendada": True}
+    assert composicao.estado_prontidao()["fase"] == "chat_pronto"
+    assert diferida[0][0] == "Laylay-Inicializacao-Diferida"
+
+    diferida[0][1]()
+
+    assert ordem[-1] == "avatar"
+    assert composicao.estado_prontidao()["fase"] == "servicos_completos"
+    assert {item[0][0] for item in metricas} == {
+        "startup_chat_pronto", "startup_servicos_completos",
+    }
+
+
+def test_chave_de_reversao_executa_todas_as_etapas_sincronamente() -> None:
+    ordem = []
+
+    class Gerenciador:
+        deve_parar = staticmethod(lambda: False)
+
+    class Orquestrador:
+        def iniciar(self, *, etapas, threads, hotkeys):
+            for target in etapas.values():
+                target()
+            return {"etapas": {}, "threads": {}}
+
+    composicao = ComposicaoServicosLaylayRuntime(
+        gerenciador=Gerenciador(),
+        etapas={"memoria": lambda: ordem.append("memoria")},
+        etapas_diferidas={"avatar": lambda: ordem.append("avatar")},
+        threads={},
+        inicializacao_diferida=False,
+        log=lambda *_: None,
+    )
+
+    resultado = composicao.iniciar(Orquestrador())
+
+    assert ordem == ["memoria", "avatar"]
+    assert "etapas_diferidas" not in resultado
+    assert composicao.estado_prontidao()["fase"] == "servicos_completos"
 
 
 def test_worker_de_voz_e_entregue_ao_supervisor_sem_criar_thread_lateral() -> None:
@@ -713,3 +804,27 @@ def test_sqlite_usa_wal_e_aceita_escritas_de_servicos_concorrentes(tmp_path):
 
     preferencias = memoria.carregar_preferencias()
     assert all(preferencias[f"servico_{numero}"] == str(numero) for numero in range(24))
+
+
+def test_salvar_estado_usa_uma_conexao_e_uma_transacao(tmp_path) -> None:
+    memoria = MemoriaSQLite(str(tmp_path / "mente.sqlite"))
+    conectar_original = memoria._conectar
+    conexoes = []
+
+    def conectar_contado():
+        conexoes.append(True)
+        return conectar_original()
+
+    memoria._conectar = conectar_contado  # type: ignore[method-assign]
+    memoria.salvar_estado(
+        memoria_fatos=["fato novo"],
+        memoria_eventos=["evento novo"],
+        preferencias={"tema": "escuro"},
+        resumo_conversa="resumo integrado",
+    )
+
+    assert conexoes == [True]
+    assert memoria.carregar_fatos()[0] == "fato novo"
+    assert memoria.carregar_eventos()[0] == "evento novo"
+    assert memoria.carregar_preferencias()["tema"] == "escuro"
+    assert memoria.carregar_resumos()[0] == "resumo integrado"

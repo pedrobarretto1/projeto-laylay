@@ -195,5 +195,33 @@ def test_observador_recebe_apenas_fala_aceita_pela_fronteira_final() -> None:
     assert runtime.falar("resposta consolidada", "feliz", 2) is True
 
     assert publicadas == [
-        ("resposta consolidada", "feliz", 2, {"proativa": False}),
+        (
+            "resposta consolidada", "feliz", 2,
+            {"proativa": False, "mensagem_id": "turno:turno-1"},
+        ),
     ]
+    assert _voz.falas[-1][1]["_texto_publicado_antecipado"] is True
+
+
+def test_publicacao_visual_imediata_registra_latencia_sem_esperar_audio() -> None:
+    runtime, _estado, voz, _logs = _runtime_de_fala()
+    metricas = []
+    runtime.conectar_servicos({
+        **runtime._servicos,
+        "_registrar_metrica_diagnostico": (
+            lambda *args, **kwargs: metricas.append((args, kwargs))
+        ),
+    })
+    publicadas = []
+    runtime.registrar_observador_fala_final(
+        lambda texto, *_args, **_kwargs: publicadas.append(texto) or True
+    )
+
+    assert runtime.falar("Resposta pronta.") is True
+
+    assert publicadas == ["Resposta pronta."]
+    assert voz.falas[-1][1]["wait"] is False
+    assert any(
+        args[0] == "tts_texto_visivel" and kwargs["fase"] == "texto_final"
+        for args, kwargs in metricas
+    )

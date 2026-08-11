@@ -373,12 +373,19 @@ def formatar_contrato_fala_para_prompt(
         roteiro = normalizar_roteiro_geracao_concreta(dados.get("roteiro_concreto"))
         linhas_compactas = [
             "--- CONTRATO SEMÂNTICO EFÊMERO DA FALA ---",
-            f"Atos: {atos}." + (f" Referente: {referente}." if referente else ""),
+            f"Atos: {atos}.",
         ]
+        if referente:
+            linhas_compactas.append(f"Referente concreto: {referente}.")
         if obrigatorios:
             linhas_compactas.append("Responda: " + " | ".join(obrigatorios) + ".")
         if proibidas:
             linhas_compactas.append("Não faça: " + " | ".join(proibidas) + ".")
+        recentes = _itens_unicos(
+            dados.get("respostas_recentes_evitar") or (), limite_item=180,
+        )
+        if recentes:
+            linhas_compactas.append("Evite repetir: " + " || ".join(recentes) + ".")
         if roteiro:
             sequencia = _itens_unicos(roteiro.get("sequencia") or (), limite_item=160)
             linhas_compactas.append(
@@ -391,6 +398,22 @@ def formatar_contrato_fala_para_prompt(
                 "Termos abstratos só podem aparecer se forem explicados, na mesma frase, "
                 "por uma característica descritiva ou observável."
             )
+            abstracoes = _itens_unicos(
+                roteiro.get("abstracoes_a_concretizar") or (), limite_item=48,
+            )
+            if abstracoes:
+                linhas_compactas.append(
+                    "Abstrações que exigem explicação concreta: "
+                    + ", ".join(abstracoes)
+                    + "."
+                )
+            bases = _itens_unicos(
+                roteiro.get("base_permitida") or (), limite_item=120,
+            )
+            if bases:
+                linhas_compactas.append(
+                    "Base permitida para afirmar: " + " | ".join(bases) + "."
+                )
         anterior = _texto_curto(dados.get("fala_anterior_relevante"), 360)
         if anterior:
             linhas_compactas.append(f"Explique esta fala anterior: {anterior}")
@@ -398,7 +421,8 @@ def formatar_contrato_fala_para_prompt(
             f"Até {int(dados.get('max_frases') or 3)} frases; "
             f"humor={'sim' if dados.get('permite_humor') else 'não'}; "
             f"metáfora={'sim' if dados.get('permite_metafora') else 'não'}. "
-            "Isto orienta só a fala e não autoriza, executa nem confirma ações."
+            "Isto orienta só a fala e não autoriza, executa nem confirma ações; "
+            "nunca cria, autoriza, executa ou confirma comandos."
         )
         return "\n".join(linhas_compactas)
     linhas = [

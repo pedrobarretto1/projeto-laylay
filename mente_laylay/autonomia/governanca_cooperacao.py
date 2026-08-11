@@ -51,7 +51,10 @@ class GovernancaPlanoCooperativoRuntime:
         if risco in self.RISCOS_COM_CONFIRMACAO and not confirmado:
             return {"permitido": False, "motivo": "confirmacao_explicita_necessaria"}
         if not callable(self.autorizar_acao):
-            return {"permitido": True, "motivo": autorizacao}
+            self.log(
+                "⚠️ [COOPERAÇÃO] porteiro canônico ausente; execução bloqueada"
+            )
+            return {"permitido": False, "motivo": "porteiro_indisponivel"}
         acao = str(etapa.get("intent") or etapa.get("acao") or "")
         try:
             decisao = dict(self.autorizar_acao(

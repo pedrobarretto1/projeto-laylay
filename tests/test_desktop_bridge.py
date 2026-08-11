@@ -188,9 +188,13 @@ def test_fala_final_publicada_uma_vez_e_candidato_nao_vaza(ponte) -> None:
         _linha(cliente)
         # Um candidato interno não possui API na ponte; somente a fronteira
         # consolidada abaixo pode publicar assistant_message.
-        runtime.publicar_fala_final("Resposta confirmada", "feliz", 2)
+        runtime.publicar_fala_final(
+            "Resposta confirmada", "feliz", 2,
+            mensagem_id="turno:abc",
+        )
         mensagem = _linha(cliente)
         assert mensagem["type"] == "assistant_message"
+        assert mensagem["id"] == "turno:abc"
         assert mensagem["text"] == "Resposta confirmada"
 
 

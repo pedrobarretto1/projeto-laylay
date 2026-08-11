@@ -30,6 +30,12 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
     continuidade = dict(diagnostico.get("continuidade_geral") or {})
     problemas = list(saude.get("problemas") or [])
     latencias = dict(diagnostico.get("latencias") or {})
+    latencias_por_rota = dict(diagnostico.get("latencias_por_rota") or {})
+    traces_turno = list(diagnostico.get("traces_turno") or [])
+    orcamento_llm = dict(diagnostico.get("orcamento_llm") or {})
+    implantacao_desempenho = dict(
+        diagnostico.get("implantacao_desempenho") or {}
+    )
     tamanhos_prompt = dict(diagnostico.get("tamanhos_prompt") or {})
     orcamento_prompt = dict(diagnostico.get("orcamento_prompt") or {})
     pendencias_detalhadas = list(diagnostico.get("pendencias_detalhadas") or [])
@@ -47,6 +53,13 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
     musica_operacoes = dict(diagnostico.get("musica_operacoes") or {})
     navegador_leitura = dict(diagnostico.get("navegador_leitura") or {})
     navegador_operacoes = dict(diagnostico.get("navegador_operacoes") or {})
+    disponibilidade = dict(diagnostico.get("disponibilidade_operacional") or {})
+    conexoes = dict(diagnostico.get("conexoes_estruturais") or {})
+    area_transferencia = dict(diagnostico.get("area_transferencia") or {})
+    caixa_entrada = dict(diagnostico.get("caixa_entrada") or {})
+    central_notificacoes = dict(diagnostico.get("central_notificacoes") or {})
+    iot = dict(diagnostico.get("iot") or {})
+    avatar = dict(diagnostico.get("avatar") or {})
     visao_jogo_leitura = dict(diagnostico.get("visao_jogo_leitura") or {})
     visao_jogo_analise = dict(diagnostico.get("visao_jogo_analise") or {})
     conversa_llm = dict(diagnostico.get("conversa_llm") or {})
@@ -331,10 +344,20 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             f"falhas={int(conversa_llm.get('falhas') or 0)} "
             "memória_exposta=False credencial_exposta=False "
             f"contratos_rápidos={int(conversa_llm.get('prompts_rapidos') or 0)} "
+            f"prompt_otimizado={bool(conversa_llm.get('otimizacao_prompt_ativa'))} "
             f"consecutivas={int(conversa_llm.get('falhas_consecutivas') or 0)} "
             f"saúde_backend={conversa_llm.get('estado') or 'desconhecida'} "
             "autoriza_execução=False"
         )
+        fontes_poupadas_prompt = dict(
+            conversa_llm.get("fontes_prompt_poupadas") or {}
+        )
+        if fontes_poupadas_prompt:
+            partes_fontes = ",".join(
+                f"{str(nome)}:{int(valor or 0)}"
+                for nome, valor in sorted(fontes_poupadas_prompt.items())
+            )
+            linhas.append(f"  fontes de prompt poupadas: {partes_fontes}")
     if composicao_principal:
         linhas.append(
             "  composição principal: "
@@ -383,6 +406,40 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             f"ambiguidades={int(pessoas.get('ambiguidades') or 0)} "
             f"falhas={int(pessoas.get('falhas') or 0)} "
             "persistência_local=True envio_externo=False"
+        )
+    if disponibilidade:
+        dominios = dict(disponibilidade.get("dominios") or {})
+        resumo = ", ".join(
+            f"{nome}={item.get('estado') or 'desconhecido'}"
+            for nome, item in sorted(dominios.items())
+            if isinstance(item, Mapping)
+        )
+        linhas.append(
+            "  disponibilidade operacional: " + resumo
+            + f" probes={bool(disponibilidade.get('probes_executados'))}"
+        )
+    if conexoes:
+        linhas.append(
+            "  conexões dos pilares: "
+            f"ok={bool(conexoes.get('ok'))} "
+            f"ausentes={len(conexoes.get('ausentes') or [])} "
+            f"inválidas={len(conexoes.get('invalidos') or [])}"
+        )
+    if area_transferencia or caixa_entrada or central_notificacoes:
+        linhas.append(
+            "  contexto e memória operacional: "
+            f"clipboard={bool(area_transferencia.get('leitura_disponivel'))} "
+            f"investigação={bool(area_transferencia.get('investigacao_disponivel'))} "
+            f"caixa_persistente={bool(caixa_entrada.get('persistencia_disponivel'))} "
+            f"notificações_persistentes={bool(central_notificacoes.get('persistencia_disponivel'))}"
+        )
+    if iot or avatar:
+        linhas.append(
+            "  presença e ambiente: "
+            f"iot_configurado={bool(iot.get('configurado'))} "
+            f"iot_provedor={bool(iot.get('provedor_disponivel'))} "
+            f"avatar_preferido={bool(avatar.get('preferencia_ativa'))} "
+            f"avatar_ativo={bool(avatar.get('ativo_observado'))}"
         )
     if aprendizado:
         semanticos = dict(aprendizado.get("semanticos") or {})
@@ -462,10 +519,65 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             alerta = " ⚠" if metrica.get("excedeu_orcamento") else ""
             resumo_latencias.append(
                 f"{nome}={float(metrica.get('ultimo_ms') or 0.0):.0f}ms"
-                f" (média {float(metrica.get('media_ms') or 0.0):.0f}ms/{int(metrica.get('amostras') or 0)})"
+                f" (média {float(metrica.get('media_ms') or 0.0):.0f}ms"
+                f" p50={float(metrica.get('p50_ms') or 0.0):.0f}ms"
+                f" p95={float(metrica.get('p95_ms') or 0.0):.0f}ms"
+                f"/{int(metrica.get('amostras') or 0)})"
                 f"{alerta}"
             )
         linhas.append("  latências: " + " | ".join(resumo_latencias))
+    if latencias_por_rota:
+        rotas = []
+        for rota, metricas_rota in sorted(latencias_por_rota.items()):
+            turno_rota = dict(metricas_rota or {}).get("turno_total")
+            if isinstance(turno_rota, Mapping):
+                rotas.append(
+                    f"{rota}=p50 {float(turno_rota.get('p50_ms') or 0.0):.0f}ms/"
+                    f"p95 {float(turno_rota.get('p95_ms') or 0.0):.0f}ms"
+                )
+        if rotas:
+            linhas.append("  latência por rota: " + " | ".join(rotas))
+    if traces_turno:
+        trace = dict(traces_turno[-1] or {})
+        etapas = dict(trace.get("etapas") or {})
+        etapas_txt = ",".join(
+            f"{nome}:{float(dados.get('duracao_ms') or 0.0):.0f}ms"
+            for nome, dados in sorted(etapas.items())
+            if isinstance(dados, Mapping)
+        )
+        linhas.append(
+            "  trace recente: "
+            f"id={trace.get('turno_id') or '-'} rota={trace.get('rota') or '-'} "
+            f"fase={trace.get('fase') or '-'} "
+            f"llm={int(trace.get('chamadas_llm') or 0)} "
+            f"tipo={trace.get('tipo_chamada') or '-'} etapas={etapas_txt or '-'}"
+        )
+    if orcamento_llm and orcamento_llm.get("modo") != "desativado":
+        tipos = ",".join(
+            f"{tipo}:{int(quantidade or 0)}"
+            for tipo, quantidade in sorted(
+                dict(orcamento_llm.get("chamadas_por_tipo") or {}).items()
+            )
+        ) or "-"
+        linhas.append(
+            "  orçamento LLM: "
+            f"limite={int(orcamento_llm.get('limite_chamadas_turno') or 0)} "
+            f"autorizadas={int(orcamento_llm.get('chamadas_autorizadas') or 0)} "
+            f"bloqueadas={int(orcamento_llm.get('chamadas_bloqueadas') or 0)} "
+            f"tipos={tipos} circuito={bool(orcamento_llm.get('circuito_aberto'))}"
+        )
+    if implantacao_desempenho:
+        flags = dict(implantacao_desempenho.get("flags") or {})
+        ativas = sum(1 for ativa in flags.values() if ativa)
+        linhas.append(
+            "  implantação de desempenho: "
+            f"modo={implantacao_desempenho.get('modo') or 'gradual'} "
+            f"ativas={ativas}/{len(flags)} "
+            f"revertida={bool(implantacao_desempenho.get('revertido'))} "
+            f"motivo={implantacao_desempenho.get('motivo') or '-'} "
+            f"sinais={int(implantacao_desempenho.get('eventos_janela') or 0)} "
+            "autoriza_execução=False"
+        )
     if tamanhos_prompt:
         resumo_prompts = [
             f"{nome}={int(metrica.get('ultimo_chars') or 0)} chars"

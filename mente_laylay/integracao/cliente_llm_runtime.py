@@ -7,9 +7,14 @@ import time
 from typing import Any, Callable
 
 from mente_laylay.integracao.llm_http import (
+    FALHA_LLM_OCUPADA,
     conteudo_fallback_llm_local,
     eh_estado_tecnico_llm,
     executar_chat_llm,
+)
+from mente_laylay.integracao.orcamento_llm_turno import (
+    DecisaoOrcamentoLLM,
+    OrcamentoLLMTurnoRuntime,
 )
 from mente_laylay.integracao.registro_conversa_llm import (
     PedidoModelo,
@@ -17,6 +22,21 @@ from mente_laylay.integracao.registro_conversa_llm import (
     ResultadoModelo,
 )
 from mente_laylay.integracao.resposta_llm import interpretar_payload_llm
+
+
+def _registrar_metrica_compat(
+    registrar: Callable[..., Any] | None,
+    componente: str,
+    duracao_ms: float,
+    sucesso: bool,
+    **metadados: Any,
+) -> None:
+    if not callable(registrar):
+        return
+    try:
+        registrar(componente, duracao_ms, sucesso, **metadados)
+    except TypeError:
+        registrar(componente, duracao_ms, sucesso)
 
 
 class ClienteLLMRuntime:
@@ -35,6 +55,7 @@ class ClienteLLMRuntime:
         conversa_jogo_remota: Callable[[dict[str, Any]], str] | None = None,
         registrar_metrica: Callable[..., Any] | None = None,
         registrar_falha: Callable[..., Any] | None = None,
+        orcamento_turno: OrcamentoLLMTurnoRuntime | None = None,
         log: Callable[..., Any] = print,
     ) -> None:
         self.endpoint_local_getter = endpoint_local_getter
@@ -47,6 +68,7 @@ class ClienteLLMRuntime:
         self.conversa_jogo_remota = conversa_jogo_remota
         self.registrar_metrica = registrar_metrica
         self.registrar_falha = registrar_falha
+        self.orcamento_turno = orcamento_turno
         self.log = log
         self._requisicoes = 0
         self._sucessos = 0
@@ -61,6 +83,11 @@ class ClienteLLMRuntime:
         self._requisicoes += 1
         endpoint_local = bool(self.endpoint_local_getter())
         data = dict(requisicao.payload or {})
+        mensagens = list(data.get("messages") or [])
+        caracteres = sum(
+            len(str(item.get("content") or ""))
+            for item in mensagens if isinstance(item, dict)
+        )
         if (
             endpoint_local
             and not requisicao.prioridade_interativa
@@ -71,6 +98,24 @@ class ClienteLLMRuntime:
             texto = conteudo_fallback_llm_local(data)
             return ResultadoModelo(texto=texto, sucesso=False, rota="adiada")
 
+        decisao_orcamento: DecisaoOrcamentoLLM | None = None
+        if self.orcamento_turno is not None:
+            decisao_orcamento = self.orcamento_turno.autorizar_chamada(
+                tipo_chamada=requisicao.tipo_chamada,
+                classe_timeout=requisicao.classe_timeout,
+                timeout_solicitado=requisicao.timeout,
+            )
+            if not decisao_orcamento.permitida:
+                self.log(
+                    "⚡ [IA:ORÇAMENTO] transporte não iniciado | "
+                    f"tipo={requisicao.tipo_chamada} motivo={decisao_orcamento.motivo}"
+                )
+                return ResultadoModelo(
+                    texto=FALHA_LLM_OCUPADA,
+                    sucesso=False,
+                    rota="orcamento_bloqueado",
+                )
+
         em_jogo = bool(self.modo_jogo_ativo())
         if (
             endpoint_local
@@ -78,6 +123,7 @@ class ClienteLLMRuntime:
             and requisicao.permitir_conversa_modo_jogo
             and callable(self.conversa_jogo_remota)
         ):
+            inicio_remoto = time.perf_counter()
             resposta_remota = str(self.conversa_jogo_remota(data) or "").strip()
             if resposta_remota:
                 self._sucessos += 1
@@ -85,20 +131,38 @@ class ClienteLLMRuntime:
                 self._estado_atual = "saudavel"
                 self._ultima_falha_codigo = ""
                 self.log("🎮 [CONVERSA:JOGO] rota remota preservou a GPU do jogo.")
+                conclusao = (
+                    self.orcamento_turno.concluir_chamada(
+                        decisao_orcamento, sucesso=True,
+                    )
+                    if self.orcamento_turno is not None else {"atual": True}
+                )
+                _registrar_metrica_compat(
+                    self.registrar_metrica,
+                    "llm_http",
+                    (time.perf_counter() - inicio_remoto) * 1000.0,
+                    True,
+                    backend="jogo_remoto",
+                    modelo=str(data.get("model") or "desconhecido"),
+                    tipo_chamada=requisicao.tipo_chamada,
+                    tamanho_prompt_chars=caracteres,
+                    limite_saida_tokens=int(data.get("max_tokens") or 0),
+                )
+                if not conclusao.get("atual", True):
+                    return ResultadoModelo(
+                        FALHA_LLM_OCUPADA, False, "resposta_obsoleta",
+                    )
                 return ResultadoModelo(resposta_remota, True, "jogo_remoto")
 
         if requisicao.permitir_conversa_modo_jogo:
             data["_laylay_conversa_modo_jogo"] = True
         data["_laylay_prioridade_interativa"] = bool(requisicao.prioridade_interativa)
         timeout = requisicao.timeout
+        if decisao_orcamento is not None and decisao_orcamento.timeout_s is not None:
+            timeout = max(1, int(decisao_orcamento.timeout_s))
         if timeout is None and endpoint_local and not requisicao.prioridade_interativa:
             timeout = 12
         if endpoint_local:
-            mensagens = list(data.get("messages") or [])
-            caracteres = sum(
-                len(str(item.get("content") or ""))
-                for item in mensagens if isinstance(item, dict)
-            )
             self.log(
                 "🧠 [IA:PAYLOAD] "
                 f"mensagens={len(mensagens)} caracteres={caracteres} "
@@ -107,6 +171,8 @@ class ClienteLLMRuntime:
             )
         inicio = time.perf_counter()
         sucesso = False
+        resultado: ResultadoModelo | None = None
+        conclusao_orcamento = {"atual": True}
         try:
             texto = executar_chat_llm(
                 data,
@@ -131,7 +197,7 @@ class ClienteLLMRuntime:
                 self._falhas_consecutivas += 1
                 self._estado_atual = "degradado"
                 self._ultima_falha_codigo = "estado_tecnico"
-            return ResultadoModelo(texto=str(texto or ""), sucesso=sucesso)
+            resultado = ResultadoModelo(texto=str(texto or ""), sucesso=sucesso)
         except Exception:
             self._falhas += 1
             self._falhas_consecutivas += 1
@@ -139,10 +205,33 @@ class ClienteLLMRuntime:
             self._ultima_falha_codigo = "excecao_transporte"
             raise
         finally:
-            if callable(self.registrar_metrica):
-                self.registrar_metrica(
-                    "llm_http", (time.perf_counter() - inicio) * 1000.0, sucesso,
+            _registrar_metrica_compat(
+                self.registrar_metrica,
+                "llm_http",
+                (time.perf_counter() - inicio) * 1000.0,
+                sucesso,
+                backend="local" if endpoint_local else "openrouter",
+                modelo=str(data.get("model") or "desconhecido"),
+                tipo_chamada=requisicao.tipo_chamada,
+                tamanho_prompt_chars=caracteres,
+                limite_saida_tokens=int(data.get("max_tokens") or 0),
+            )
+            if self.orcamento_turno is not None:
+                conclusao_orcamento = self.orcamento_turno.concluir_chamada(
+                    decisao_orcamento,
+                    sucesso=sucesso,
                 )
+        if not conclusao_orcamento.get("atual", True):
+            return ResultadoModelo(
+                texto=FALHA_LLM_OCUPADA,
+                sucesso=False,
+                rota="resposta_obsoleta",
+            )
+        return resultado or ResultadoModelo(
+            texto=FALHA_LLM_OCUPADA,
+            sucesso=False,
+            rota="sem_resultado",
+        )
 
     def diagnostico(self) -> dict[str, Any]:
         return {
@@ -157,6 +246,10 @@ class ClienteLLMRuntime:
             "memoria_exposta": False,
             "credencial_exposta": False,
             "autoriza_execucao": False,
+            "orcamento_turno": (
+                self.orcamento_turno.diagnostico()
+                if self.orcamento_turno is not None else {"modo": "desativado"}
+            ),
         }
 
 

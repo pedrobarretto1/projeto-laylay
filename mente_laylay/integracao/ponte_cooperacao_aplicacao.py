@@ -113,6 +113,12 @@ class PonteCooperacaoAplicacaoRuntime:
     def publicar_evento_agenda(
         self, operacao: str, *, alvo: str = "", confirmado: bool = False,
     ) -> dict[str, Any]:
+        orquestrador = self._orquestrador_getter()
+        registrar = getattr(orquestrador, "registrar_resultado_agenda", None)
+        if callable(registrar):
+            return dict(registrar(
+                operacao, alvo=alvo, confirmado=bool(confirmado),
+            ) or {})
         operacao_segura = str(operacao or "agenda_atualizada")[:64]
         confirmado_real = bool(confirmado)
         return self._quadro_getter().publicar_evento(

@@ -16,6 +16,7 @@ from mente_laylay.memoria_mental.contexto_compartilhado import (
 from mente_laylay.memoria_mental.musica_conversacional_runtime import (
     MusicaConversacionalRuntime,
 )
+from mente_laylay.memoria_mental.pendencia_acao import PendenciaAcaoRuntime
 
 
 def _norm(texto: str) -> str:
@@ -26,14 +27,28 @@ def _runtime_musical(resultados=None):
     falas = []
     registros = []
     execucoes = []
+    estado: dict = {}
+
+    def atualizar(mutador):
+        novo = mutador(dict(estado))
+        estado.clear()
+        estado.update(novo)
+        return dict(estado)
+
+    pendencia = PendenciaAcaoRuntime(
+        estado_getter=lambda: estado,
+        estado_atualizar=atualizar,
+        log=lambda *_args: None,
+    )
     runtime = MusicaConversacionalRuntime(
-        estado_mental_getter=lambda: {},
+        estado_mental_getter=lambda: estado,
         normalizar_texto=_norm,
         falar=lambda fala, *_: falas.append(fala),
         registrar_mente_curta=lambda *args, **kwargs: registros.append((args, kwargs)),
         executar_intencao=lambda resultado, texto: execucoes.append((resultado, texto)) or True,
         registrar_resultado_execucao=lambda *args, **kwargs: None,
         buscar_resultados_musicais=lambda query, limite: list(resultados or []),
+        pendencia_runtime=pendencia,
     )
     return runtime, falas, registros, execucoes
 
@@ -119,8 +134,12 @@ def test_recomendacao_observada_distingue_sugerir_de_tocar() -> None:
 
 
 def test_cobranca_de_musica_nao_inventa_execucao() -> None:
-    runtime, falas, _registros, execucoes = _runtime_musical([])
-    runtime._sugestao_pendente = {"titulo": "MF DOOM Doomsday", "ts": time.time()}
+    runtime, falas, _registros, execucoes = _runtime_musical([{
+        "title": "MF DOOM - Doomsday (Official Audio)",
+        "channel": "MF DOOM",
+        "url": "https://www.youtube.com/watch?v=12345678901",
+    }])
+    assert runtime.recomendar_artista_verificado("MF DOOM", "quero sim") is True
     assert runtime.processar_confirmacao("cadê a música?") is True
     assert "ainda não toquei" in falas[-1]
     assert execucoes == []

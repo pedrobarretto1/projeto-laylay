@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 import threading
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Mapping
 
 from mente_laylay.memoria_mental.estado_continuidades import atualizar_continuidades
 from mente_laylay.memoria_mental.estado_continuidades import limpar_sugestao_atual
@@ -130,7 +130,7 @@ class EstadoCompartilhadoRuntime:
         self.continuidades = self._preparar_dominio(continuidades)
         self.musical = self._preparar_dominio(musical)
         self.percepcao = self._preparar_dominio(percepcao)
-        self.mental = self._preparar_dominio(mental)
+        self.mental = self._normalizar_mental(self._preparar_dominio(mental))
         self.conversacional = self._preparar_dominio(conversacional)
         self.memoria_conversa = self._preparar_dominio(memoria_conversa)
 
@@ -159,6 +159,8 @@ class EstadoCompartilhadoRuntime:
         with self._lock:
             novo = self._preparar_dominio(estado)
             nome = self._nome_atributo(dominio)
+            if nome == "mental":
+                novo = self._normalizar_mental(novo)
             setattr(self, nome, novo)
             return novo
 
@@ -187,7 +189,10 @@ class EstadoCompartilhadoRuntime:
                     novo[chave] = atual
                 else:
                     novo[chave] = self._preparar_valor(valor)
-            setattr(self, self._nome_atributo(dominio), novo)
+            nome = self._nome_atributo(dominio)
+            if nome == "mental":
+                novo = self._normalizar_mental(novo)
+            setattr(self, nome, novo)
             return novo
 
     def snapshot(self) -> Dict[str, Dict[str, Any]]:
@@ -239,7 +244,11 @@ class EstadoCompartilhadoRuntime:
             setattr(self, self._nome_atributo(dominio), novo)
             return vinculada
 
-    def validar_estrutura(self) -> Dict[str, Any]:
+    def validar_estrutura(
+        self,
+        *,
+        conexoes: Mapping[str, Any] | None = None,
+    ) -> Dict[str, Any]:
         """Valida os contratos minimos que mantem os modulos na mesma mente."""
         obrigatorios = {
             "continuidades": ("comando_sugerido_estado", "sugestoes_bloqueadas_ate"),
@@ -250,7 +259,7 @@ class EstadoCompartilhadoRuntime:
             ),
             "mental": (
                 "ultima_intencao", "ultima_acao_status", "consciencia_temporal",
-                "falhas_consecutivas_execucao",
+                "falhas_consecutivas_execucao", "continuidade_geral",
             ),
             "conversacional": ("current_emotion", "is_speaking"),
             "memoria_conversa": ("messages", "memoria_fatos", "memoria_eventos"),
@@ -278,10 +287,64 @@ class EstadoCompartilhadoRuntime:
                 invalidos.append("percepcao.abas_sugeridas_fechar")
             if not isinstance(self.mental.get("falhas_consecutivas_execucao"), dict):
                 invalidos.append("mental.falhas_consecutivas_execucao")
+            if not isinstance(self.mental.get("continuidade_geral"), dict):
+                invalidos.append("mental.continuidade_geral")
+            pendencia = self.mental.get("pendencia_acao_canonica")
+            if pendencia is not None and not isinstance(pendencia, dict):
+                invalidos.append("mental.pendencia_acao_canonica")
+
+        conexoes_status: dict[str, bool] = {}
+        ligados = dict(conexoes or {})
+        if ligados:
+            estado_publicado = ligados.get("estado_compartilhado")
+            conexoes_status["estado_compartilhado"] = estado_publicado is self
+            if estado_publicado is not self:
+                invalidos.append("estado_compartilhado:identidade_divergente")
+
+            pendencia_runtime = ligados.get("pendencia_runtime")
+            getter_pendencia = getattr(pendencia_runtime, "_estado_getter", None)
+            if callable(getter_pendencia):
+                try:
+                    pendencia_compartilha = getter_pendencia() is self.mental
+                except Exception:
+                    pendencia_compartilha = False
+            else:
+                pendencia_compartilha = False
+            conexoes_status["pendencia_runtime"] = pendencia_compartilha
+            if not pendencia_compartilha:
+                invalidos.append("pendencia_runtime:estado_privado")
+
+            classificador = ligados.get("classificador_confirmacao")
+            classificador_ok = callable(classificador)
+            conexoes_status["classificador_confirmacao"] = classificador_ok
+            if not classificador_ok:
+                ausentes.append("classificador_confirmacao")
+
+            motor = ligados.get("motor_aprendizado")
+            motor_ok = callable(getattr(motor, "registrar_feedback_contextual", None))
+            conexoes_status["motor_aprendizado"] = motor_ok
+            if not motor_ok:
+                ausentes.append("motor_aprendizado.registrar_feedback_contextual")
+
+            aprendizado = ligados.get("aprendizado_runtime")
+            if aprendizado is not None:
+                aprendizado_ok = bool(
+                    callable(getattr(aprendizado, "_estado_getter", None))
+                    and callable(getattr(aprendizado, "_estado_setter", None))
+                    and str(
+                        dict(aprendizado.snapshot() or {})
+                        .get("proveniencia", {})
+                        .get("estado_vivo", "")
+                    ) == "mente_compartilhada"
+                )
+                conexoes_status["aprendizado_runtime"] = aprendizado_ok
+                if not aprendizado_ok:
+                    invalidos.append("aprendizado_runtime:estado_privado")
         return {
             "ok": not ausentes and not invalidos,
             "ausentes": ausentes,
             "invalidos": invalidos,
+            "conexoes": conexoes_status,
         }
 
     def continuidades_get(self, chave: str, default: Any = None) -> Any:
@@ -385,6 +448,16 @@ class EstadoCompartilhadoRuntime:
                 self._lock,
             )
         return valor
+
+    def _normalizar_mental(self, estado: Dict[str, Any]) -> Dict[str, Any]:
+        """Migra somente a forma inválida; pendências reais são preservadas."""
+        novo = dict(estado or {})
+        pendencia = novo.get("pendencia_acao_canonica")
+        if not isinstance(pendencia, dict):
+            novo["pendencia_acao_canonica"] = DictEstadoSincronizado({}, self._lock)
+        elif not isinstance(pendencia, DictEstadoSincronizado):
+            novo["pendencia_acao_canonica"] = self._preparar_valor(dict(pendencia))
+        return novo
 
     @classmethod
     def _copiar_dominio(cls, estado: Dict[str, Any]) -> Dict[str, Any]:

@@ -16,6 +16,91 @@ from mente_laylay.memoria_mental.registro_semantico import resumo_registro_seman
 from mente_laylay.memoria_mental.continuidade_geral import resumo_continuidade_para_prompt
 
 
+_PREFIXOS_CONTEXTO_PRIORITARIO = (
+    "--- MENTE INTEGRADA ---",
+    "ATUALIDADE FACTUAL DO TURNO:",
+    "PROVENIÊNCIA DA INFORMAÇÃO DO TURNO:",
+    "FUNDAMENTAÇÃO FACTUAL",
+    "ALEGAÇÃO CONTESTADA:",
+    "PLANO ÚNICO DESTE TURNO:",
+    "ESPECIALISTAS DA MESMA MENTE:",
+    "DELIBERAÇÃO COLETIVA DAS HABILIDADES:",
+    "RETRATO CONGELADO DESTE TURNO:",
+    "Turno atual:",
+    "Limite operacional do turno:",
+    "Contexto selecionado pelo filtro:",
+    "Continuidade",
+    "Pergunta aberta",
+    "Dívida",
+    "Ultima acao real:",
+    "Última ação real:",
+    "MEMÓRIA DE PESSOAS",
+    "APREND",
+)
+
+
+def compactar_contexto_integrado_para_prompt(
+    texto: str,
+    *,
+    texto_usuario: str = "",
+    limite_chars: int = 2400,
+) -> str:
+    """Seleciona fatos completos do retrato antes da fronteira da LLM.
+
+    A compactação tardia do transporte cortava o retrato por posição. Aqui a
+    seleção acontece onde a semântica ainda é conhecida: plano, referente,
+    segurança, evidência e continuidade têm prioridade; regras estáticas já
+    presentes no prompt-base cedem espaço. Linhas pequenas permanecem
+    inteiras, evitando fabricar fatos pela junção de fragmentos.
+    """
+    bruto = str(texto or "").strip()
+    try:
+        limite = max(600, int(limite_chars))
+    except (TypeError, ValueError):
+        limite = 2400
+    if len(bruto) <= limite:
+        return bruto
+
+    linhas = list(dict.fromkeys(
+        linha.strip() for linha in bruto.splitlines() if linha.strip()
+    ))
+    termos_usuario = {
+        token for token in re.findall(r"[a-z0-9_à-ÿ]+", str(texto_usuario or "").casefold())
+        if len(token) >= 4
+    }
+
+    def pontuacao(indice_linha: tuple[int, str]) -> tuple[int, int]:
+        indice, linha = indice_linha
+        pontos = 0
+        if any(linha.startswith(prefixo) for prefixo in _PREFIXOS_CONTEXTO_PRIORITARIO):
+            pontos += 500
+        baixo = linha.casefold()
+        pontos += 35 * sum(1 for termo in termos_usuario if termo in baixo)
+        if any(sinal in baixo for sinal in (
+            "autoriza_execucao", "evidência", "evidencia", "referência=",
+            "referencia=", "não execute", "nao execute", "confirm",
+        )):
+            pontos += 120
+        # Em empate, preserve a ordem e os dados mais próximos do turno.
+        return pontos, -indice
+
+    ranqueadas = sorted(enumerate(linhas), key=pontuacao, reverse=True)
+    escolhidos: set[int] = set()
+    usados = 0
+    for indice, linha in ranqueadas:
+        custo = len(linha) + (1 if escolhidos else 0)
+        if custo > limite - usados:
+            continue
+        escolhidos.add(indice)
+        usados += custo
+        if usados >= limite:
+            break
+
+    if not escolhidos and linhas:
+        return linhas[0][:limite].rstrip()
+    return "\n".join(linhas[i] for i in sorted(escolhidos))
+
+
 def montar_contexto_perceptivo(
     *,
     periodo: str,

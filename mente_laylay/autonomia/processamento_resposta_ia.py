@@ -476,6 +476,8 @@ def preparar_resposta_para_execucao(
                 max_tokens=260,
                 modo_rapido=True,
                 _prioridade_interativa=True,
+                _tipo_chamada="reparo_factual",
+                _classe_timeout="rapida",
             )
             fala_reparada, comandos_reparados = limpar_resposta_da_ia(
                 reparada_raw,
@@ -555,6 +557,8 @@ def preparar_resposta_para_execucao(
                 max_tokens=800 if tarefa_matematica else 420,
                 modo_rapido=False,
                 _prioridade_interativa=True,
+                _tipo_chamada="continuacao",
+                _classe_timeout="normal",
             )
             fala_corrigida, comandos_corrigidos = limpar_resposta_da_ia(
                 resposta_imediata,
@@ -640,6 +644,8 @@ def preparar_resposta_para_execucao(
                     modo_rapido=True,
                     timeout=12,
                     _prioridade_interativa=True,
+                    _tipo_chamada="reparo_comunicacao",
+                    _classe_timeout="rapida",
                 )
                 reparo_modelo_indisponivel = _fala_representa_falha_tecnica_llm(
                     reparada_raw

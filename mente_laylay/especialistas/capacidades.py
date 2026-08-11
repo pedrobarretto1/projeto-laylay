@@ -20,7 +20,7 @@ _INTENTS_POR_DOMINIO = {
     },
     "navegador": {
         "CLOSE_TAB", "CLOSE_IDLE_TABS", "OPEN_URL", "SITE_ENTER",
-        "SCREEN_CAPTURE", "SEARCH",
+        "SCREEN_CAPTURE", "SEARCH", "RESUMIR_PAGINA",
     },
     "visao": {"GAME_VISION"},
     "agenda": {
@@ -54,6 +54,8 @@ _INTENTS_POR_DOMINIO = {
 
 _CONFIRMACAO_OBRIGATORIA = {
     "DELETE_ITEM",
+    "INBOX_DELETE",
+    "INBOX_CONVERT_REMINDER",
     "PEOPLE_FORGET",
 }
 
@@ -114,6 +116,10 @@ _CONFIRMACAO_POR_INTENT = {
     "SCREEN_CAPTURE": ("indisponivel", "o roteador ainda não recebe o caminho final da captura"),
     "GAME_VISION": ("indisponivel", "a análise visual termina de forma assíncrona"),
     "SEARCH": ("variavel", "a confirmação depende da rota de pesquisa escolhida"),
+    "RESUMIR_PAGINA": (
+        "retorno_dados",
+        "o conteúdo da aba é lido e o resumo final é entregue no próprio turno",
+    ),
     # Agenda
     "AGENDAR_LEMBRETE": ("persistencia_local", "o lembrete salvo é confirmado pelo armazenamento"),
     "AGENDAR_ACAO": ("persistencia_local", "a ação salva é confirmada pelo armazenamento"),
@@ -181,6 +187,102 @@ _CONFIRMACAO_POR_INTENT = {
     "SUGGEST_ACTION": ("indisponivel", "é apenas uma sugestão e não executa efeito"),
 }
 
+# O contrato abaixo é consumido pela consciência e pelo diagnóstico. Ele não
+# substitui detector nem executor: descreve como cada domínio pode ser pedido,
+# quem é responsável pela execução e quais condições limitam o resultado.
+_CONTRATO_POR_DOMINIO = {
+    "musica": {
+        "invocacao_natural": ("toca uma música", "abre minha playlist", "pausa a música"),
+        "proprietario": "mente_laylay.autonomia.executor_musical",
+        "dependencias": ("catálogo local quando aplicável", "player ou navegador"),
+        "limites": "reprodução remota pode ser enviada sem confirmação de áudio",
+    },
+    "sistema": {
+        "invocacao_natural": ("abre o Opera", "maximiza a janela", "organiza a área de trabalho"),
+        "proprietario": "mente_laylay.autonomia.executor_sistema",
+        "dependencias": ("sistema operacional", "resolvedor de janelas"),
+        "limites": "algumas ações remotas não permitem reler o estado final",
+    },
+    "navegador": {
+        "invocacao_natural": ("abre este site", "fecha esta aba", "resume a página atual"),
+        "proprietario": "mente_laylay.autonomia.executor_navegador",
+        "dependencias": ("WebSocket do navegador", "extensão Laylay carregada"),
+        "limites": "só interage com ações reconhecidas e conteúdo acessível da aba",
+    },
+    "visao": {
+        "invocacao_natural": ("olha minha tela", "analisa este item"),
+        "proprietario": "mente_laylay.autonomia.executor_sistema",
+        "dependencias": ("captura de tela", "provedor visual configurado"),
+        "limites": "não afirma detalhes ilegíveis ou ausentes da imagem",
+    },
+    "agenda": {
+        "invocacao_natural": ("me lembra amanhã", "lista meus lembretes"),
+        "proprietario": "mente_laylay.autonomia.agendamento_mental",
+        "dependencias": ("relógio local", "armazenamento da agenda"),
+        "limites": "data ou horário ambíguo exige esclarecimento",
+    },
+    "arquivos": {
+        "invocacao_natural": ("cria um arquivo", "encontra este código", "apaga esse arquivo"),
+        "proprietario": "mente_laylay.arquivos.execucao_arquivos",
+        "dependencias": ("sistema de arquivos", "índice local para pesquisa"),
+        "limites": "opera somente em caminhos resolvidos e exclusão exige confirmação",
+    },
+    "email": {
+        "invocacao_natural": ("quais e-mails novos eu tenho", "mostra minhas notificações"),
+        "proprietario": "mente_laylay.autonomia.executor_informacoes",
+        "dependencias": ("serviço de e-mail ou central de notificações",),
+        "limites": "retorna apenas integrações configuradas e dados realmente lidos",
+    },
+    "iot": {
+        "invocacao_natural": ("liga a lâmpada", "como está o ventilador"),
+        "proprietario": "mente_laylay.iot.controlador",
+        "dependencias": ("Tuya configurada", "dispositivo disponível na rede"),
+        "limites": "confirma controle somente após reler o dispositivo",
+    },
+    "area_transferencia": {
+        "invocacao_natural": ("o que eu copiei", "coloca isso em maiúsculas"),
+        "proprietario": "mente_laylay.especialistas.area_transferencia",
+        "dependencias": ("área de transferência local",),
+        "limites": "conteúdo sensível não é persistido sem pedido explícito",
+    },
+    "caixa_entrada": {
+        "invocacao_natural": ("anota esta ideia", "me fale minhas ideias"),
+        "proprietario": "mente_laylay.especialistas.caixa_entrada_pessoal",
+        "dependencias": ("armazenamento local da caixa de entrada",),
+        "limites": "exclusão e conversão em lembrete exigem confirmação",
+    },
+    "pessoas": {
+        "invocacao_natural": ("minha namorada se chama Nanda", "o que sabe sobre Nanda"),
+        "proprietario": "mente_laylay.memoria_mental.memoria_pessoas",
+        "dependencias": ("memória local de pessoas e relações",),
+        "limites": "só guarda relações afirmadas e esquecer exige confirmação",
+    },
+    "memoria": {
+        "invocacao_natural": ("o que você aprendeu comigo",),
+        "proprietario": "mente_laylay.memoria_mental.aprendizado_runtime",
+        "dependencias": ("memória de aprendizado com proveniência",),
+        "limites": "não promove inferência isolada a fato confirmado",
+    },
+    "cooperacao": {
+        "invocacao_natural": ("faz estas etapas juntas",),
+        "proprietario": "mente_laylay.autonomia.orquestracao_cooperativa",
+        "dependencias": ("porteiro", "executores participantes"),
+        "limites": "cada etapa mantém autorização e evidência próprias",
+    },
+    "conversa": {
+        "invocacao_natural": ("vai chover hoje", "o que você sugere"),
+        "proprietario": "mente_laylay.autonomia.fluxos_conversa",
+        "dependencias": ("provedor da habilidade quando necessário",),
+        "limites": "sugestões não autorizam execução por conta própria",
+    },
+}
+
+_PROPRIETARIO_POR_INTENT = {
+    "RESUMIR_PAGINA": "mente_laylay.autonomia.comandos_imediatos",
+    "NOTIFICATIONS": "mente_laylay.autonomia.central_notificacoes",
+    "WEATHER": "mente_laylay.autonomia.executor_informacoes",
+}
+
 _INTENTS_CATALOGADAS = {intent for intents in _INTENTS_POR_DOMINIO.values() for intent in intents}
 if _INTENTS_CATALOGADAS != set(_CONFIRMACAO_POR_INTENT):
     faltantes = sorted(_INTENTS_CATALOGADAS - set(_CONFIRMACAO_POR_INTENT))
@@ -200,6 +302,17 @@ CAPACIDADES: Dict[str, Dict[str, Any]] = {
         "confirma_resultado": _CONFIRMACAO_POR_INTENT[intent][0] != "indisponivel",
         "confirmacao_variavel": _CONFIRMACAO_POR_INTENT[intent][0] == "variavel",
         "estado_sem_confirmacao": "nao_confirmado",
+        "invocacao_natural": _CONTRATO_POR_DOMINIO[dominio]["invocacao_natural"],
+        "autorizacao": (
+            "confirmacao_explicita"
+            if intent in _CONFIRMACAO_OBRIGATORIA
+            else "pedido_atual_autorizado"
+        ),
+        "proprietario": _PROPRIETARIO_POR_INTENT.get(
+            intent, _CONTRATO_POR_DOMINIO[dominio]["proprietario"]
+        ),
+        "dependencias": _CONTRATO_POR_DOMINIO[dominio]["dependencias"],
+        "limites": _CONTRATO_POR_DOMINIO[dominio]["limites"],
     }
     for dominio, intents in _INTENTS_POR_DOMINIO.items()
     for intent in intents

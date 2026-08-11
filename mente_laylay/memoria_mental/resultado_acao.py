@@ -41,7 +41,7 @@ STATUS_RESULTADO_CONFIRMADO = {
     # índice realmente devolveu. Esses estados possuem evidência de retorno,
     # portanto não podem ser rebaixados a "comando enviado sem confirmação".
     "arquivos_encontrados", "sem_resultados", "caminho_encontrado",
-    "arquivo_aberto",
+    "arquivo_aberto", "resumo_concluido",
     "layout_confirmado",
 } | STATUS_RESULTADO_JA_SATISFEITO
 

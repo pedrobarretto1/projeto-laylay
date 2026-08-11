@@ -5,6 +5,7 @@ import json
 
 from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
 from mente_laylay.especialistas.caixa_entrada_pessoal import CaixaEntradaPessoalRuntime
+from mente_laylay.memoria_mental.pendencia_acao import PendenciaAcaoRuntime
 
 
 def criar_runtime(
@@ -15,6 +16,20 @@ def criar_runtime(
     resultados = []
     execucoes = []
     instante = dt.datetime(2026, 7, 27, 20, 30)
+    estado: dict = {}
+
+    def atualizar(mutador):
+        novo = mutador(dict(estado))
+        estado.clear()
+        estado.update(novo)
+        return dict(estado)
+
+    pendencia = PendenciaAcaoRuntime(
+        estado_getter=lambda: estado,
+        estado_atualizar=atualizar,
+        agora=lambda: instante.timestamp(),
+        log=lambda *_args: None,
+    )
     runtime = CaixaEntradaPessoalRuntime(
         caminho=tmp_path / "caixa.json",
         falar=lambda fala, *_args: falas.append(fala),
@@ -24,6 +39,7 @@ def criar_runtime(
         clipboard_getter=lambda: clipboard,
         observar_item=observar_item,
         enviar_mensagem=enviar_mensagem,
+        pendencia_runtime=pendencia,
         agora=lambda: instante,
         log=lambda *_args: None,
     )
@@ -232,7 +248,7 @@ def test_exclusao_exige_confirmacao_e_e_soft_delete(tmp_path):
 
     assert runtime.processar("sim") is True
     assert itens_salvos(tmp_path)[0]["status"] == "excluido"
-    assert resultados[-1][0][0]["intent"] == "INBOX_DELETE"
+    assert resultados[-1][0][0]["intent"] == "CONFIRM_INBOX_DELETE"
 
 
 def test_recusa_mantem_nota_ativa(tmp_path):

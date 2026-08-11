@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Callable, Dict, List, Tuple
 
 from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
@@ -21,6 +22,22 @@ def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     if isinstance(ctx, dict) and key in ctx:
         return ctx.get(key, default)
     return default
+
+
+def _texto_pede_contexto_musical(texto: str) -> bool:
+    return bool(re.search(
+        r"\b(?:m[uú]sica|playlist|faixa|som|rock|metal|funk|sertanejo|"
+        r"artista|banda|[áa]lbum|youtube|spotify|tocando)\b",
+        str(texto or "").casefold(),
+    ))
+
+
+def _texto_pede_contexto_da_aba(texto: str) -> bool:
+    t = str(texto or "").casefold()
+    return any(sinal in t for sinal in (
+        "página", "pagina", "site", "aba", "navegador", "chrome", "opera",
+        "na tela", "esse vídeo", "esse video", "vídeo atual", "video atual",
+    ))
 
 
 def preparar_contexto_resposta_ia(
@@ -158,6 +175,7 @@ class ContextoPromptRuntime:
         mapa_habilidades_prompt: Callable[..., str] | None = None,
         mapa_recursos_prompt: Callable[[str], str] | None = None,
         registrar_tamanho_prompt: Callable[[str, int], Any] | None = None,
+        otimizacao_prompt_ativa: bool = True,
     ) -> None:
         self.memoria_sqlite = memoria_sqlite
         self.resumo_mente_integrada = resumo_mente_integrada
@@ -168,9 +186,16 @@ class ContextoPromptRuntime:
         self.mapa_habilidades_prompt = mapa_habilidades_prompt
         self.mapa_recursos_prompt = mapa_recursos_prompt
         self.registrar_tamanho_prompt = registrar_tamanho_prompt
+        self.otimizacao_prompt_ativa = bool(otimizacao_prompt_ativa)
         self._preparacoes = 0
         self._preparacoes_rapidas = 0
         self._falhas = 0
+        self._fontes_consultadas: Dict[str, int] = {}
+        self._fontes_poupadas: Dict[str, int] = {}
+
+    def _registrar_fonte(self, nome: str, consultada: bool) -> None:
+        destino = self._fontes_consultadas if consultada else self._fontes_poupadas
+        destino[nome] = int(destino.get(nome) or 0) + 1
 
     def preparar(self, texto: str) -> Tuple[List[Dict[str, Any]], str]:
         try:
@@ -221,21 +246,56 @@ class ContextoPromptRuntime:
         )
         contexto_postura = formatar_postura_para_prompt(postura)
         contexto_contrato_fala = formatar_contrato_fala_para_prompt(
-            estado.get("contrato_fala_atual")
+            estado.get("contrato_fala_atual"),
+            # O contrato compacto preserva atos, referente, obrigações,
+            # proibições e limites. A versão longa duplicava o roteiro e as
+            # respostas recentes em todo turno normal.
+            compacto=self.otimizacao_prompt_ativa,
         )
+        if self.otimizacao_prompt_ativa and contexto_contrato_fala:
+            contexto_contrato_fala = contexto_contrato_fala.replace(
+                "--- CONTRATO SEMÂNTICO EFÊMERO DA FALA ---",
+                "--- CONTRATO SEMÂNTICO DA FALA DESTE TURNO (COMPACTO) ---",
+                1,
+            )
+            contexto_contrato_fala = contexto_contrato_fala.replace(
+                "Geração concreta:", "Roteiro concreto:", 1,
+            )
+            contexto_contrato_fala = contexto_contrato_fala.replace(
+                "Isto orienta só a fala e não autoriza, executa nem confirma ações; "
+                "nunca cria, autoriza, executa ou confirma comandos.",
+                "Este contrato orienta somente a fala e nunca cria, autoriza, "
+                "executa ou confirma comandos.",
+                1,
+            )
         contexto_recursos = ""
         if callable(self.mapa_recursos_prompt):
             try:
                 contexto_recursos = str(self.mapa_recursos_prompt(t) or "").strip()
             except Exception:
                 contexto_recursos = ""
+        usar_contexto_aba = (
+            not self.otimizacao_prompt_ativa or _texto_pede_contexto_da_aba(t)
+        )
+        usar_contexto_musical = (
+            not self.otimizacao_prompt_ativa or _texto_pede_contexto_musical(t)
+        )
+        usar_memoria_legada = bool(
+            self.memoria_sqlite is not None
+            and (not self.otimizacao_prompt_ativa or not retrato)
+        )
+        self._registrar_fonte("aba", usar_contexto_aba)
+        self._registrar_fonte("playlists", usar_contexto_musical)
+        self._registrar_fonte("memoria_legada", usar_memoria_legada)
         contexto = {
-            "memoria_sqlite": self.memoria_sqlite,
+            "memoria_sqlite": self.memoria_sqlite if usar_memoria_legada else None,
             "retrato_mente_integrada": retrato,
             "_resumo_mente_integrada_para_prompt": self.resumo_mente_integrada,
-            "aba_titulo_atual": estado.get("aba_titulo_atual", ""),
-            "aba_url_atual": estado.get("aba_url_atual", ""),
-            "_formatar_playlists_para_prompt": self.formatar_playlists,
+            "aba_titulo_atual": estado.get("aba_titulo_atual", "") if usar_contexto_aba else "",
+            "aba_url_atual": estado.get("aba_url_atual", "") if usar_contexto_aba else "",
+            "_formatar_playlists_para_prompt": (
+                self.formatar_playlists if usar_contexto_musical else None
+            ),
             "get_status_humor_prompt": self.get_status_humor_prompt,
             "contexto_habilidades": contexto_habilidades,
             "contexto_recursos": contexto_recursos,
@@ -318,6 +378,9 @@ class ContextoPromptRuntime:
             "preparacoes": self._preparacoes,
             "preparacoes_rapidas": self._preparacoes_rapidas,
             "falhas": self._falhas,
+            "otimizacao_prompt_ativa": self.otimizacao_prompt_ativa,
+            "fontes_consultadas": dict(self._fontes_consultadas),
+            "fontes_poupadas": dict(self._fontes_poupadas),
             "memoria_exposta": False,
             "autoriza_execucao": False,
         }

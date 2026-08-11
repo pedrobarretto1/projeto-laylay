@@ -11,6 +11,7 @@ from mente_laylay.especialistas.area_transferencia import (
     classificar_conteudo_para_aprendizado,
 )
 from mente_laylay.especialistas.mapa_habilidades import MapaHabilidadesRuntime
+from mente_laylay.memoria_mental.pendencia_acao import PendenciaAcaoRuntime
 
 
 class ClipboardFalso:
@@ -24,6 +25,23 @@ class ClipboardFalso:
         self.texto = texto
 
 
+def _pendencias(agora=lambda: 100.0):
+    estado = {}
+
+    def atualizar(transformar):
+        novo = transformar(dict(estado))
+        estado.clear()
+        estado.update(novo)
+        return dict(estado)
+
+    return PendenciaAcaoRuntime(
+        estado_getter=lambda: estado,
+        estado_atualizar=atualizar,
+        agora=agora,
+        log=lambda *_args: None,
+    ), estado
+
+
 def criar_runtime(texto="Texto original", resposta_llm="Texto transformado"):
     clipboard = ClipboardFalso(texto)
     falas = []
@@ -32,6 +50,7 @@ def criar_runtime(texto="Texto original", resposta_llm="Texto transformado"):
     resultados = []
     aprendizados = []
     observacoes = []
+    pendencias, estado = _pendencias()
     runtime = AreaTransferenciaRuntime(
         falar=lambda fala, *_: falas.append(fala),
         enviar_mensagem=lambda *_args, **_kwargs: resposta_llm,
@@ -42,11 +61,13 @@ def criar_runtime(texto="Texto original", resposta_llm="Texto transformado"):
         observar_conteudo=lambda classificacao: observacoes.append(classificacao) or True,
         leitor=clipboard.ler,
         escritor=clipboard.escrever,
+        pendencia_runtime=pendencias,
         log=lambda *_: None,
     )
     runtime._resultados_teste = resultados
     runtime._aprendizados_teste = aprendizados
     runtime._observacoes_teste = observacoes
+    runtime._estado_pendencias_teste = estado
     return runtime, clipboard, falas, execucoes, registros
 
 
@@ -80,6 +101,7 @@ def test_segredo_nao_e_lido_nem_enviado_para_llm():
         enviar_mensagem=lambda *args, **kwargs: chamadas.append((args, kwargs)),
         leitor=clipboard.ler,
         escritor=clipboard.escrever,
+        pendencia_runtime=_pendencias()[0],
         log=lambda *_: None,
     )
     assert runtime.processar("resume o que eu copiei") is True
@@ -106,6 +128,7 @@ def test_maiusculas_sao_transformadas_localmente_sem_resposta_antiga():
         enviar_mensagem=lambda *_args, **_kwargs: chamadas_llm.append(True),
         leitor=clipboard.ler,
         escritor=clipboard.escrever,
+        pendencia_runtime=_pendencias()[0],
         log=lambda *_: None,
     )
 

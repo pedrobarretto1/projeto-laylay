@@ -20,6 +20,10 @@ DEPENDENCIAS_ORQUESTRADOR_FALA = (
     "_agendar_fala_proativa",
 )
 
+DEPENDENCIAS_OPCIONAIS_ORQUESTRADOR_FALA = (
+    "_registrar_metrica_diagnostico",
+)
+
 
 class OrquestradorFalaRuntime:
     def __init__(
@@ -49,11 +53,21 @@ class OrquestradorFalaRuntime:
         if observador not in self._observadores_fala_final:
             self._observadores_fala_final.append(observador)
 
+    def remover_observador_fala_final(self, observador: Callable[..., Any]) -> bool:
+        """Reverte publicação antecipada sem afetar o fallback no início da voz."""
+        if observador not in self._observadores_fala_final:
+            return False
+        self._observadores_fala_final.remove(observador)
+        return True
+
     @staticmethod
     def _filtrar(servicos: Mapping[str, Any]) -> dict[str, Any]:
         return {
             nome: servicos[nome]
-            for nome in DEPENDENCIAS_ORQUESTRADOR_FALA
+            for nome in (
+                *DEPENDENCIAS_ORQUESTRADOR_FALA,
+                *DEPENDENCIAS_OPCIONAIS_ORQUESTRADOR_FALA,
+            )
             if nome in servicos
         }
 
@@ -307,20 +321,49 @@ class OrquestradorFalaRuntime:
         fala = str(direcao.get("fala") or fala)
         emocao = str(direcao.get("emocao") or emocao or "calma")
         nivel = int(direcao.get("nivel") or nivel or 1)
+        turno_id = str(
+            dict(mental_antes.get("turno_atual") or {}).get("id")
+            or plano_antes.get("id")
+            or ""
+        ).strip()
+        mensagem_id = (
+            f"proativa:{time.time_ns()}"
+            if _proativa
+            else (f"turno:{turno_id}" if turno_id else "")
+        )
         aceita = ns["_voz_runtime"].falar(
             fala, emocao, nivel, wait=wait, _proativa=_proativa,
+            _texto_publicado_antecipado=bool(self._observadores_fala_final),
         )
         if aceita is not False:
+            inicio_publicacao = time.perf_counter()
+            publicada = False
             for observador in tuple(self._observadores_fala_final):
                 try:
-                    observador(
+                    resultado_observador = observador(
                         fala, emocao, nivel,
                         proativa=bool(_proativa),
+                        mensagem_id=mensagem_id,
                     )
+                    publicada = resultado_observador is not False or publicada
                 except Exception as erro:
                     ns["print"](
                         "⚠️ [FALA:OBSERVADOR] consumidor isolado falhou: "
                         f"{type(erro).__name__}"
+                    )
+            registrar_metrica = ns.get("_registrar_metrica_diagnostico")
+            if callable(registrar_metrica) and self._observadores_fala_final:
+                duracao_ms = (time.perf_counter() - inicio_publicacao) * 1000.0
+                try:
+                    registrar_metrica(
+                        "tts_texto_visivel", duracao_ms, publicada,
+                        turno_id=turno_id,
+                        rota="publicacao_visual",
+                        fase="texto_final",
+                    )
+                except TypeError:
+                    registrar_metrica(
+                        "tts_texto_visivel", duracao_ms, publicada,
                     )
         if aceita is not False and not _proativa:
             mental = dict(estado.mental)

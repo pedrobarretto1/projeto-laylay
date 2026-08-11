@@ -41,6 +41,7 @@ from mente_laylay.cognicao.esclarecimento_operacional import (
     detectar_esclarecimento_operacional,
     limpar_esclarecimento_operacional,
 )
+from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
 from mente_laylay.autonomia.analise_comandos import segmentar_comandos_em_cadeia
 
@@ -52,11 +53,18 @@ def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
 
 
 def texto_pede_resumo_pagina(texto: str) -> bool:
+    """Reconhece um pedido real de resumo, nunca mera menção ou hipótese."""
     t = str(texto or "").strip().lower()
     t = "".join(ch for ch in unicodedata.normalize("NFD", t) if unicodedata.category(ch) != "Mn")
     alvos = ("pagina", "site", "video", "aba")
     pedidos = ("resume", "resuma", "resumir", "explica", "explique", "o que essa", "o que esta")
-    return any(alvo in t for alvo in alvos) and any(pedido in t for pedido in pedidos)
+    if not (any(alvo in t for alvo in alvos) and any(pedido in t for pedido in pedidos)):
+        return False
+    turno = classificar_modalidade_turno(texto)
+    return bool(
+        turno.get("autoriza_execucao")
+        and str(turno.get("modalidade") or "") in {"comando", "misto"}
+    )
 
 
 def _texto_normalizado_local(texto: str) -> str:
@@ -598,16 +606,33 @@ class ComandosImediatosRuntime:
                 if isinstance(comando_agenda, dict)
                 else ""
             ).upper().strip()
-            executar = ns.get("executar_intencao")
             executou_agenda = False
-            if intent_agenda in {"AGENDAR_LEMBRETE", "SCHEDULE"} and callable(executar):
+            orquestrador = ns.get("_orquestrador_cooperativo_runtime")
+            cooperar_caixa_agenda = getattr(
+                orquestrador, "processar_caixa_para_agenda", None,
+            )
+            if (
+                intent_agenda in {"AGENDAR_LEMBRETE", "SCHEDULE"}
+                and isinstance(item_salvo, dict)
+                and callable(cooperar_caixa_agenda)
+            ):
                 try:
-                    executou_agenda = bool(executar(comando_agenda, segunda))
+                    resultado_cooperativo = dict(cooperar_caixa_agenda(
+                        item_salvo=item_salvo,
+                        comando_agenda=comando_agenda,
+                        texto_agenda=segunda,
+                    ) or {})
+                    executou_agenda = bool(resultado_cooperativo.get("ok"))
                 except Exception as erro:
                     print(
                         "⚠️ [PRIORIDADE:COOPERAÇÃO] agenda falhou: "
                         f"{type(erro).__name__}: {erro}"
                     )
+            elif intent_agenda in {"AGENDAR_LEMBRETE", "SCHEDULE"}:
+                print(
+                    "⚠️ [PRIORIDADE:COOPERAÇÃO] governança caixa+agenda "
+                    "indisponível; agenda não executada"
+                )
             if isinstance(comando_agenda, dict):
                 registrar = ns.get("_registrar_resultado_execucao")
                 if callable(registrar):
