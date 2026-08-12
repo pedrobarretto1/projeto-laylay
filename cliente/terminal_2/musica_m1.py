@@ -187,7 +187,10 @@ class VisualizadorLetra(QTextBrowser):
 
     def __init__(self) -> None:
         super().__init__()
+
         self._conteudo_html = ""
+        self._permitir_scroll_interno = False
+
         self.setObjectName("musicLyricsText")
         self.setReadOnly(True)
         self.setOpenExternalLinks(False)
@@ -197,6 +200,21 @@ class VisualizadorLetra(QTextBrowser):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.document().setDocumentMargin(0)
+
+    def definir_scroll_interno(self, permitir: bool) -> None:
+        self._permitir_scroll_interno = bool(permitir)
+
+        if not permitir:
+            self.verticalScrollBar().setValue(0)
+
+    def wheelEvent(self, event) -> None:  # noqa: N802
+        if not self._permitir_scroll_interno:
+            # Não deixa o QTextBrowser mover a letra dentro da caixa.
+            # O evento continua para o scroll principal da página.
+            event.ignore()
+            return
+
+        super().wheelEvent(event)
 
     def setText(self, texto: str) -> None:  # noqa: N802
         self._conteudo_html = str(texto or "")
@@ -1112,6 +1130,7 @@ class PaginaMusicaM1(QWidget):
 
     def _configurar_expansao_letra(self) -> None:
         if self._letra_expandida:
+            self.letra_texto.definir_scroll_interno(True)
             self.letra_texto.setMinimumHeight(250)
             self.letra_texto.setMaximumHeight(360)
             self.letra_texto.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -1120,6 +1139,7 @@ class PaginaMusicaM1(QWidget):
             self._animacao_rolagem_letra.stop()
             self._animacao_rolagem_letra.deleteLater()
             self._animacao_rolagem_letra = None
+        self.letra_texto.definir_scroll_interno(False)
         self.letra_texto.verticalScrollBar().setValue(0)
         self.letra_texto.setMinimumHeight(132)
         self.letra_texto.setMaximumHeight(132)
