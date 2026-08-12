@@ -2878,7 +2878,6 @@ _ponte_cooperacao_aplicacao_runtime = _criar_ponte_cooperacao_aplicacao_runtime(
         _estado_compartilhado_runtime.mental, dominio="jogo",
     ),
     contexto_jogo_getter=_modo_jogo_runtime.contexto_atual,
-    capacidade_getter=_mapa_habilidades_runtime.consultar,
     detectar_pedido_visao=_detectar_pedido_visao_jogo_cooperativo,
     registrar_evidencia=_motor_aprendizado_runtime.registrar_evidencia,
     estado_mental_atualizar=lambda atualizador: _estado_compartilhado_runtime.atualizar(
@@ -3204,6 +3203,7 @@ _dashboard_terminal_runtime = _criar_dashboard_terminal_runtime(
         "mental", {}
     ),
     contexto_jogo_getter=_modo_jogo_runtime.contexto_atual,
+    capacidade_getter=_mapa_habilidades_runtime.consultar,
     psutil_mod=psutil,
     projeto="Laylay",
     cidade=BRIEFING_CIDADE,

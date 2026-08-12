@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import ast
+import inspect
 from pathlib import Path
 
 import pytest
@@ -11,6 +13,9 @@ from mente_laylay.integracao.desktop_bridge import (
     classificar_resultado_acao,
     sanitizar_dashboard_estado,
     validar_mensagem_cliente,
+)
+from mente_laylay.integracao.ponte_cooperacao_aplicacao import (
+    PonteCooperacaoAplicacaoRuntime,
 )
 
 
@@ -46,6 +51,35 @@ def _dashboard(capacidade_getter=None) -> DashboardTerminalRuntime:
         psutil_mod=_Psutil,
         log=lambda _texto: None,
     )
+
+
+def test_raiz_liga_catalogo_vivo_ao_dashboard_e_nao_a_ponte_cooperativa() -> None:
+    raiz = Path(__file__).resolve().parents[1] / "laylay.py"
+    arvore = ast.parse(raiz.read_text(encoding="utf-8"))
+    kwargs_por_destino: dict[str, set[str]] = {}
+    for no in ast.walk(arvore):
+        if not isinstance(no, ast.Assign) or not isinstance(no.value, ast.Call):
+            continue
+        for alvo in no.targets:
+            if isinstance(alvo, ast.Name):
+                kwargs_por_destino[alvo.id] = {
+                    item.arg for item in no.value.keywords if item.arg is not None
+                }
+
+    assert "capacidade_getter" in kwargs_por_destino[
+        "_dashboard_terminal_runtime"
+    ]
+    assert "capacidade_getter" not in kwargs_por_destino[
+        "_ponte_cooperacao_aplicacao_runtime"
+    ]
+    parametros_ponte = set(
+        inspect.signature(PonteCooperacaoAplicacaoRuntime.__init__).parameters
+    ) - {"self"}
+    parametros_dashboard = set(
+        inspect.signature(DashboardTerminalRuntime.__init__).parameters
+    ) - {"self"}
+    assert kwargs_por_destino["_ponte_cooperacao_aplicacao_runtime"] <= parametros_ponte
+    assert kwargs_por_destino["_dashboard_terminal_runtime"] <= parametros_dashboard
 
 
 def test_catalogo_rapido_deriva_disponibilidade_do_mapa_vivo() -> None:
