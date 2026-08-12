@@ -158,6 +158,48 @@ def test_autoria_nao_pode_trocar_identificador_alfanumerico_da_musica() -> None:
     assert motivo == "identificador_concreto_divergente"
 
 
+def test_autoria_nao_inventa_que_playlist_confirmada_esta_vazia() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "PLAYLIST_ADD",
+        "alvo": "vmz",
+        "status": "playlist_musica_adicionada",
+        "executou": True,
+        "confirmado": True,
+        "params": {"nome_playlist": "vmz", "titulo": "Bad Girl"},
+    })
+
+    motivo = _motivo_contrato_invalido(
+        "Salvei Bad Girl na playlist vmz. A playlist está vazia.",
+        resultado=resultado,
+        classe="sucesso",
+        status_declarado="playlist_musica_adicionada",
+        alvo_declarado="vmz",
+    )
+
+    assert motivo == "estado_operacional_nao_evidenciado"
+
+
+def test_autoria_operacional_rejeita_metafora_sem_evidencia() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "PLAYLIST_ADD",
+        "alvo": "vmz",
+        "status": "playlist_musica_adicionada",
+        "executou": True,
+        "confirmado": True,
+        "params": {"nome_playlist": "vmz", "titulo": "Amanhecer"},
+    })
+
+    motivo = _motivo_contrato_invalido(
+        "Salvei Amanhecer na playlist vmz. Como se o celular tivesse coração.",
+        resultado=resultado,
+        classe="sucesso",
+        status_declarado="playlist_musica_adicionada",
+        alvo_declarado="vmz",
+    )
+
+    assert motivo == "metafora_operacional_nao_ancorada"
+
+
 def test_autoria_pode_personalizar_execucao_parcial_sem_pedir_permissao() -> None:
     resultado = normalizar_resultado_acao({
         "intent": "MUSIC_SEARCH",

@@ -11,9 +11,17 @@ from mente_laylay.memoria_mental.contexto_compartilhado import (
     registrar_resultado_execucao,
 )
 from mente_laylay.memoria_mental.contexto_imediato import (
+    ContextoImediatoRuntime,
     referencia_contextual_imediata,
     resolver_comando_acao_geral_contextual,
 )
+from mente_laylay.autonomia.coordenador_intencao import resolver_intencao
+from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto
+from mente_laylay.memoria_mental.estado_compartilhado_runtime import (
+    EstadoCompartilhadoRuntime,
+)
+from mente_laylay.memoria_mental.foco_contexto import atualizar_foco_vivo
 from mente_laylay.memoria_mental.pendencia import criar_pendencia, limpar_pendencia, registrar_pendencia
 from mente_laylay.integracao.estado_contexto_runtime import EstadoContextoRuntime
 from mente_laylay.memoria_mental.continuidade_semantica import resolver_continuidade_semantica
@@ -127,6 +135,198 @@ def test_referencia_imediata_prefere_a_continuidade_geral():
     assert referencia["origem_continuidade"] == "geral"
     assert referencia["tipo"] == "playlist"
     assert referencia["alvo"] == "alternativo"
+
+
+def test_open_url_confirmado_fecha_ele_como_aba_mesmo_apos_fala_conversacional():
+    estado = registrar_resultado_execucao(
+        estado_mental_inicial(),
+        {
+            "intent": "OPEN_URL",
+            "params": {"alvo": "ifood"},
+            "status": "url_aberta",
+            "executou": True,
+            "confirmado": True,
+        },
+        "abre o ifood",
+    )
+    # Reproduz o turno real: a confirmação falada foi registrada depois da
+    # ação e, por ser uma fala sem intent, tornou ``conversa`` o domínio ativo.
+    estado = atualizar_foco_vivo(
+        estado,
+        texto="abre o ifood",
+        resposta="Ifood já está aberto e em foco.",
+        normalizar_texto_cb=lambda valor: str(valor).casefold(),
+    )
+    assert estado["continuidade_geral"]["dominio_ativo"] == "conversa"
+
+    referencia = referencia_contextual_imediata(
+        mente_integrada_estado=estado,
+        foco_vivo={},
+        texto_atual="fecha ele",
+        normalizar_texto=lambda valor: str(valor).casefold(),
+    )
+    comando = resolver_comando_acao_geral_contextual("fecha ele", referencia)
+
+    assert referencia["tipo"] == "site"
+    assert referencia["alvo"] == "ifood"
+    assert referencia["origem_continuidade"] == "contrato_confirmado"
+    assert comando == {"intent": "CLOSE_TAB", "params": {"alvo": "ifood"}}
+
+
+def test_sequencia_real_open_url_ifood_fecha_ele_chega_ao_close_tab():
+    mental = registrar_resultado_execucao(
+        estado_mental_inicial(),
+        {
+            "intent": "OPEN_URL",
+            "params": {"alvo": "ifood"},
+            "status": "url_aberta",
+            "executou": True,
+            "confirmado": True,
+        },
+        "abre o ifood",
+    )
+    mental = atualizar_foco_vivo(
+        mental,
+        texto="abre o ifood",
+        resposta="Ifood já está aberto e em foco.",
+        normalizar_texto_cb=normalizar_texto,
+    )
+    estado = EstadoCompartilhadoRuntime(mental=mental)
+    contexto_imediato = ContextoImediatoRuntime(
+        estado_runtime_getter=lambda: estado,
+        servicos_iniciais={
+            "_normalizar_texto_com_apelidos": normalizar_texto,
+            "_alvo_corrigido_atual": lambda: "",
+            "_registrar_alvo_corrigido": lambda _alvo: None,
+            "falar_com_lipsync": lambda *_args: None,
+            "_contexto_musical_ativo": lambda: False,
+            "_estrutura_arquivo_recente": lambda _ttl: {},
+            "_foco_vivo_atual": lambda **_kwargs: {},
+            "enviar_mensagem": lambda *_args, **_kwargs: None,
+        },
+    )
+    turno = classificar_modalidade_turno(
+        "fecha ele", normalizar_texto=normalizar_texto,
+    )
+
+    resultado, rota = resolver_intencao(
+        "fecha ele",
+        "terminal",
+        {
+            "normalizar_texto": normalizar_texto,
+            "refinar_contexto_mental": lambda _texto: None,
+            "extrair_agendamento": lambda _texto: None,
+            "extrair_acao_agendada": lambda _texto: None,
+            "texto_cancela_acao_agora": lambda _texto: False,
+            "texto_depende_de_contexto": lambda _texto: True,
+            "detectar_intencao_deterministica": lambda _texto: None,
+            "resolver_comando_contextual_forcado": contexto_imediato.resolver,
+            "resolver_repeticao_ultima_acao": lambda _texto: None,
+            "tentar_intencao_ai_primeiro": lambda _texto: None,
+            "registrar_arbitragem_turno": lambda *_args: None,
+            "turno_atual": turno,
+            "retrato_turno_atual": {},
+            "continuidade_geral": dict(
+                estado.mental.get("continuidade_geral") or {}
+            ),
+        },
+    )
+
+    assert resultado is not None
+    assert resultado["intent"] == "CLOSE_TAB"
+    assert resultado["params"]["alvo"] == "ifood"
+    assert rota == "contexto-semantica"
+
+
+def test_fecha_ele_preserva_distincao_entre_app_e_aba():
+    estado = registrar_resultado_execucao(
+        estado_mental_inicial(),
+        {
+            "intent": "APP_OPEN",
+            "params": {"nome_app": "steam"},
+            "status": "app_iniciado_focado",
+            "executou": True,
+            "confirmado": True,
+        },
+        "abre a steam",
+    )
+    estado = atualizar_foco_vivo(
+        estado,
+        texto="abre a steam",
+        resposta="Steam está aberta.",
+        normalizar_texto_cb=lambda valor: str(valor).casefold(),
+    )
+
+    referencia = referencia_contextual_imediata(
+        mente_integrada_estado=estado,
+        foco_vivo={},
+        texto_atual="fecha ele",
+        normalizar_texto=lambda valor: str(valor).casefold(),
+    )
+
+    assert referencia["tipo"] == "app"
+    assert resolver_comando_acao_geral_contextual("fecha ele", referencia) == {
+        "intent": "CLOSE_APP",
+        "params": {"nome_app": "steam"},
+    }
+
+
+def test_acao_web_nao_confirmada_nao_ganha_salienca_de_contrato():
+    estado = registrar_resultado_execucao(
+        estado_mental_inicial(),
+        {
+            "intent": "OPEN_URL",
+            "params": {"alvo": "ifood"},
+            "status": "falha_execucao",
+            "executou": False,
+            "confirmado": False,
+        },
+        "abre o ifood",
+    )
+    estado = atualizar_foco_vivo(
+        estado,
+        texto="abre o ifood",
+        resposta="Não consegui abrir.",
+        normalizar_texto_cb=lambda valor: str(valor).casefold(),
+    )
+
+    referencia = referencia_contextual_imediata(
+        mente_integrada_estado=estado,
+        foco_vivo={},
+        texto_atual="fecha ele",
+        normalizar_texto=lambda valor: str(valor).casefold(),
+    )
+
+    assert referencia.get("origem_continuidade") != "contrato_confirmado"
+
+
+def test_acao_web_apenas_enviada_nao_ganha_salienca_de_contrato():
+    estado = registrar_resultado_execucao(
+        estado_mental_inicial(),
+        {
+            "intent": "OPEN_URL",
+            "params": {"alvo": "ifood"},
+            "status": "url_enviada_sem_confirmacao",
+            "executou": True,
+            "confirmado": None,
+        },
+        "abre o ifood",
+    )
+    estado = atualizar_foco_vivo(
+        estado,
+        texto="abre o ifood",
+        resposta="Enviei a abertura, mas não consegui confirmar.",
+        normalizar_texto_cb=lambda valor: str(valor).casefold(),
+    )
+
+    referencia = referencia_contextual_imediata(
+        mente_integrada_estado=estado,
+        foco_vivo={},
+        texto_atual="fecha ele",
+        normalizar_texto=lambda valor: str(valor).casefold(),
+    )
+
+    assert referencia.get("origem_continuidade") != "contrato_confirmado"
 
 
 def test_curadoria_da_laylay_mantem_propriedade_na_continuidade() -> None:

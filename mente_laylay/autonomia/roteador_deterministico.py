@@ -159,11 +159,21 @@ def texto_expresso_melhor_no_deterministico(
     if not t:
         return False
     t_layout = re.sub(r"^(?:agora|entao|então)\s+", "", t).strip()
-    if "briefing" in t and (
-        any(p in t for p in ["repete", "repetir", "fala", "fale", "mostra", "diz", "diga", "passa"])
-        or bool(re.search(r"\bqual\s+(?:e|é\s+)?o?\s*briefing\b", t))
-        or "briefing de hoje" in t
-    ):
+    # O porteiro consulta os próprios detectores canônicos: ele só decide se a
+    # rota local deve receber a frase, sem manter uma segunda lista de formas
+    # linguísticas para visão ou briefing.
+    visual = detectar_url_visual(
+        t,
+        str(texto or ""),
+        params_cb=lambda **kwargs: kwargs,
+    )
+    if str((visual or {}).get("intent") or "").upper() == "SCREEN_CAPTURE":
+        return True
+    informacao = detectar_email_notificacao_briefing(
+        t,
+        params_cb=lambda **kwargs: kwargs,
+    )
+    if str((informacao or {}).get("intent") or "").upper() == "BRIEFING_REPEAT":
         return True
     if texto_pede_clima_atual(t):
         return True
@@ -275,6 +285,18 @@ def preparar_entrada_deterministica(
 
     normalizar = normalizar_texto if callable(normalizar_texto) else (lambda valor: str(valor or "").strip().lower())
     inicial = corrigir_verbo_operacional_digitado(normalizar(bruto))
+    protecao_original = analisar_protecao_operacional(inicial)
+    if (
+        protecao_original.get("bloqueia_execucao")
+        and re.search(
+            r"\b(?:tela|print|screenshot|pagina|página|site|aba|video|vídeo|briefing)\b",
+            inicial,
+        )
+    ):
+        return {
+            "status": "ignorar",
+            "modalidade": str(protecao_original.get("modalidade") or "protegida"),
+        }
     # Negação e pergunta sobre uma ação não autorizam essa ação. Exemplo:
     # "não abre o quê?" é pedido de esclarecimento, não APP_OPEN("que").
     if re.search(
@@ -453,6 +475,8 @@ def detectar_email_notificacao_briefing(
     t = str(texto_normalizado or "").strip()
     if not t:
         return None
+    if analisar_protecao_operacional(t).get("bloqueia_execucao"):
+        return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
 
     # Depois de uma leitura confirmada, pronomes como "deles" referem-se ao
@@ -608,6 +632,8 @@ def detectar_url_visual(
     bruto = str(texto_bruto or "")
     if not t:
         return None
+    if analisar_protecao_operacional(t).get("bloqueia_execucao"):
+        return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
 
     if any(x in t for x in ["instagram.com/direct", "instagram.com", "www.instagram.com", "instagram direct", "direct/t/"]):
@@ -617,6 +643,7 @@ def detectar_url_visual(
 
     if any(p in t for p in [
         "o que voce ve na tela", "o que você vê na tela", "o que ta na tela", "o que tá na tela",
+        "o que tem na minha tela", "o que ha na minha tela", "o que há na minha tela",
         "olha minha tela", "olha a tela", "ver minha tela", "captura a tela", "tira print",
         "screenshot", "print da tela",
         "guarda esse momento", "salva esse momento", "memoriza isso", "lembra dessa tela",

@@ -106,6 +106,40 @@ def test_autorreferencia_mim_nao_vira_pessoa_chamada_mim(tmp_path):
         assert dados_salvos(tmp_path)["pessoas"] == []
 
 
+def test_cargo_publico_nao_vira_consulta_da_memoria_pessoal(tmp_path):
+    runtime, *_resto = criar_runtime(tmp_path)
+    falas = _resto[2]
+    resultados = _resto[3]
+
+    for texto in (
+        "o que você sabe sobre o presidente da China?",
+        "quem é o primeiro ministro do Canadá?",
+        "me fala sobre a governadora desse estado",
+    ):
+        assert runtime.processar(texto) is False
+
+    assert falas == []
+    assert resultados == []
+
+
+def test_filtro_de_cargo_publico_preserva_relacao_pessoal(tmp_path):
+    runtime, *_resto = criar_runtime(tmp_path)
+    falas = _resto[2]
+    runtime.processar("Ana é minha irmã")
+
+    assert runtime.processar("o que você sabe sobre minha irmã?") is True
+    assert "Ana é sua irmã" in falas[-1]
+
+
+def test_titulo_isolado_pode_continuar_sendo_nome_pessoal_confirmado(tmp_path):
+    runtime, *_resto = criar_runtime(tmp_path)
+    falas = _resto[2]
+    runtime.processar("Rei é meu amigo")
+
+    assert runtime.processar("o que você sabe sobre Rei?") is True
+    assert "Rei é seu amigo" in falas[-1]
+
+
 def test_consultas_de_pessoa_toleram_erro_leve_e_ordem_invertida(tmp_path):
     runtime, *_resto = criar_runtime(tmp_path)
     falas = _resto[2]

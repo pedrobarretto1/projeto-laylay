@@ -297,10 +297,26 @@ def verificar_fala_turno(
             "pontuacao": 0.0,
         }
 
+    # Bloqueie o protocolo interno antes de qualquer reparo factual. Um JSON
+    # vazado contém aspas e títulos aparentes; se chegar primeiro à validação
+    # de obras, pode ser transformado em conversa e escapar deste guardião.
+    if _VAZAMENTO_INTERNO.search(ajustada):
+        return {
+            "aceita": False,
+            "fala": "",
+            "acao": "bloqueada",
+            "problemas": ["vazamento_formato_interno"],
+            "pontuacao": 0.0,
+        }
+
     fundamentacao = contrato.get("fundamentacao_factual")
+    titulo_citado_na_fala = bool(re.search(
+        r'["“][^"”]{2,100}["”]|\'[^\']{2,100}\'',
+        ajustada,
+    ))
     if (
         not (isinstance(fundamentacao, dict) and fundamentacao.get("tema"))
-        and contrato.get("dominio") == "musica"
+        and (contrato.get("dominio") == "musica" or titulo_citado_na_fala)
     ):
         referencia = dict(contrato.get("referencia_resolvida") or {})
         fundamentacao = {

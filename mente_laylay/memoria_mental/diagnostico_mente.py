@@ -63,16 +63,33 @@ def _atualizar_retratos_saude(diagnostico: Mapping[str, Any]) -> dict[str, Any]:
         if isinstance(item, Mapping)
     ]
     verificador = dict(retrato.get("verificador_fala") or {})
-    falhas_impactantes = sum(
+    linguagem = dict(retrato.get("linguagem_natural") or {})
+    auditoria_acao = dict(retrato.get("ultima_acao_auditoria") or {})
+    ultima_acao = dict(retrato.get("ultima_acao") or {})
+    falhas_tecnicas_impactantes = sum(
         1 for item in falhas
         if str(item.get("classe") or "nao_classificada") != "esperada"
     )
+    comandos_nao_reconhecidos = max(
+        0, int(linguagem.get("comandos_nao_reconhecidos") or 0),
+    )
+    contrato_incoerente = int(
+        bool(ultima_acao.get("intent"))
+        and auditoria_acao.get("coerente") is False
+    )
+    falhas_semanticas = comandos_nao_reconhecidos + contrato_incoerente
+    falhas_impactantes = falhas_tecnicas_impactantes + falhas_semanticas
     servicos_degradados = sum(
         1 for item in servicos if item.get("classe_estado") == "degradados"
     )
     problemas_fala_atual = len(list(verificador.get("ultimos_problemas") or []))
     falas_verificadas = int(verificador.get("falas_verificadas") or 0)
-    amostras = len(falhas) + len(servicos) + falas_verificadas
+    tentativas_linguagem = max(0, int(linguagem.get("tentativas") or 0))
+    resolvidas_linguagem = max(0, int(linguagem.get("resolvidas") or 0))
+    amostras = (
+        len(falhas) + len(servicos) + falas_verificadas
+        + tentativas_linguagem
+    )
     if falhas_impactantes or servicos_degradados or problemas_fala_atual:
         estado_operacional = "degradado"
     elif amostras:
@@ -86,6 +103,12 @@ def _atualizar_retratos_saude(diagnostico: Mapping[str, Any]) -> dict[str, Any]:
         "amostras_passivas": amostras,
         "falhas_ativas": len(falhas),
         "falhas_impactantes": falhas_impactantes,
+        "falhas_tecnicas_impactantes": falhas_tecnicas_impactantes,
+        "falhas_semanticas": falhas_semanticas,
+        "comandos_nao_reconhecidos": comandos_nao_reconhecidos,
+        "contratos_incoerentes": contrato_incoerente,
+        "tentativas_linguagem": tentativas_linguagem,
+        "resolvidas_linguagem": resolvidas_linguagem,
         "servicos_degradados": servicos_degradados,
         "problemas_fala_atual": problemas_fala_atual,
         "fonte": "telemetria_passiva",

@@ -4,6 +4,7 @@ from mente_laylay.autonomia.roteador_deterministico import (
     corrigir_verbo_operacional_digitado,
     detectar_playlist_contextual_musica_atual,
     detectar_organizacao_desktop,
+    detectar_web_e_youtube,
 )
 from mente_laylay.cognicao.linguagem_aprendida import LinguagemAprendidaRuntime
 from mente_laylay.cognicao.normalizacao_linguagem import (
@@ -36,6 +37,9 @@ def test_corrige_verbos_em_dominios_diferentes_sem_fuzzy_sobre_alvos() -> None:
         "orgniza minha área de trabalho"
     ) == "organiza minha area de trabalho"
     assert runtime.normalizar_com_apelidos("pesqisa esse erro") == "pesquisa esse erro"
+    assert runtime.normalizar_com_apelidos(
+        "pequisa sobre o presidente da china"
+    ) == "pesquisa sobre o presidente da china"
     assert runtime.normalizar_com_apelidos("liag o ventilador") == "liga o ventilador"
     assert runtime.normalizar_com_apelidos("adciona essa também") == "adiciona essa tambem"
     assert runtime.normalizar_com_apelidos("colcoa isso") == "coloca isso"
@@ -54,6 +58,25 @@ def test_fluxo_real_do_detector_recebe_comando_corrigido() -> None:
     }
 
 
+def test_pequisa_corrigida_chega_ao_detector_de_busca_sem_alterar_o_tema() -> None:
+    runtime = _runtime()
+    texto = runtime.normalizar_com_apelidos(
+        "pequisa sobre o presidente da China"
+    )
+
+    assert detectar_web_e_youtube(
+        texto,
+        params_cb=lambda **kwargs: kwargs,
+        sites_diretos=set(),
+    ) == {
+        "intent": "SEARCH",
+        "params": {
+            "query": "o presidente da china",
+            "engine": "google",
+        },
+    }
+
+
 def test_nome_de_arquivo_e_pasta_permanece_opaco() -> None:
     runtime = _runtime()
 
@@ -66,6 +89,15 @@ def test_nome_de_arquivo_e_pasta_permanece_opaco() -> None:
     assert runtime.normalizar_com_apelidos(
         "cria uma pasta playlit"
     ) == "cria uma pasta playlit"
+    assert runtime.normalizar_com_apelidos(
+        "cria um arquivo chamado pequisa"
+    ) == "cria um arquivo chamado pequisa"
+    assert runtime.normalizar_com_apelidos(
+        "abre o arquivo pequisa.txt"
+    ) == "abre o arquivo pequisa txt"
+    assert runtime.normalizar_com_apelidos(
+        "Pequisa é minha amiga"
+    ) == "pequisa e minha amiga"
 
 
 def test_erro_de_termo_e_corrigido_quando_a_gramatica_prova_o_dominio() -> None:
@@ -115,6 +147,21 @@ def test_aproximacao_de_termo_nao_altera_conversa_nem_nome_de_entidade() -> None
     assert runtime.normalizar_com_apelidos(
         "cria um arquivo chamado Codgio"
     ) == "cria um arquivo chamado codgio"
+
+
+def test_vom_e_recuperado_so_como_avaliacao_contextual_final() -> None:
+    runtime = _runtime()
+
+    assert runtime.normalizar_com_apelidos(
+        "o comunismo è vom?"
+    ) == "o comunismo e bom"
+    assert runtime.normalizar_com_apelidos("vom é minha amiga") == "vom e minha amiga"
+    assert runtime.normalizar_com_apelidos(
+        "cria um arquivo chamado vom"
+    ) == "cria um arquivo chamado vom"
+    assert runtime.normalizar_com_apelidos(
+        "abre o arquivo vom.txt"
+    ) == "abre o arquivo vom txt"
 
 
 def test_preposicao_oral_de_playlist_preserva_faixa_atual_e_destino() -> None:

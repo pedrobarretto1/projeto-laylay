@@ -59,6 +59,7 @@ def intencao_reexecutavel(intent: str) -> bool:
         "OPEN_URL",
         "CLOSE_TAB",
         "PLAYLIST_PLAY",
+        "PLAYLIST_ADD",
         "MUSIC_SEARCH",
         "VOLUME",
         "MEDIA_CONTROL",
@@ -165,16 +166,32 @@ def registrar_resultado_execucao(
     # Fonte canônica atômica: leitores não podem completar campos vazios com
     # pedaços de ações anteriores. Um alvo vazio continua sendo informação
     # válida deste evento, e não uma oportunidade para herdar outro domínio.
+    contrato_anterior = (
+        dict(estado.get("ultima_acao_contrato") or {})
+        if mesmo_resultado else {}
+    )
     estado["ultima_acao_contrato"] = {
-        "id_solicitacao": contrato.id_solicitacao,
+        "id_solicitacao": (
+            str(contrato_anterior.get("id_solicitacao") or "")
+            if registro_generico and not contrato.id_solicitacao
+            else contrato.id_solicitacao
+        ),
         "intent": intent,
-        "alvo": contrato.alvo,
+        "alvo": str(estado.get("ultima_acao_alvo") or ""),
         "status": status_final,
         "dominio": normalizar_dominio_continuidade(intent=intent),
-        "executou": contrato.executou,
-        "confirmado": contrato.confirmado,
-        "origem": contrato.origem,
-        "evidencia_confirmacao": contrato.evidencia_confirmacao,
+        "executou": estado.get("ultima_acao_ok"),
+        "confirmado": estado.get("ultima_acao_confirmada"),
+        "origem": (
+            str(contrato_anterior.get("origem") or "")
+            if registro_generico and contrato_anterior.get("origem")
+            else contrato.origem
+        ),
+        "evidencia_confirmacao": (
+            str(contrato_anterior.get("evidencia_confirmacao") or "")
+            if registro_generico and contrato_anterior.get("evidencia_confirmacao")
+            else contrato.evidencia_confirmacao
+        ),
     }
 
     # Exclusão e caixa de entrada usam ``pendencia_acao_canonica``. Esta

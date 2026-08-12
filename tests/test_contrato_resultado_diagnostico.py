@@ -11,7 +11,10 @@ from mente_laylay.cognicao.plano_turno import atualizar_plano_turno
 from mente_laylay.integracao.adaptadores_aplicacao_runtime import (
     AdaptadoresAplicacaoRuntime,
 )
-from mente_laylay.memoria_mental.diagnostico_mente import construir_diagnostico_mente
+from mente_laylay.memoria_mental.diagnostico_mente import (
+    DiagnosticoMenteRuntime,
+    construir_diagnostico_mente,
+)
 from mente_laylay.memoria_mental.formatacao_diagnostico import (
     formatar_diagnostico_terminal,
 )
@@ -237,3 +240,53 @@ def test_diagnostico_separa_estrutura_saudavel_de_operacao_degradada_sem_probe()
     assert "(saúde estrutural)" in texto
     assert "operação observada: estado=degradado" in texto
     assert "probes=False" in texto
+
+
+def test_diagnostico_degrada_quando_comando_natural_some_sem_falha_tecnica() -> None:
+    runtime = DiagnosticoMenteRuntime(
+        estado_getter=lambda: {
+            "mental": {}, "conversacional": {},
+            "percepcao": {}, "continuidades": {},
+        },
+        saude_getter=lambda: {"llm": {"status": "saudavel"}},
+        linguagem_natural_getter=lambda: {
+            "tentativas": 4,
+            "resolvidas": 3,
+            "sem_intencao": 1,
+            "comandos_nao_reconhecidos": 1,
+            "conversas_legitimas": 0,
+        },
+        falar=lambda *_args: None,
+        log=lambda *_args: None,
+    )
+
+    diagnostico = runtime.snapshot()
+    operacional = diagnostico["saude_operacional"]
+
+    assert operacional["estado"] == "degradado"
+    assert operacional["falhas_tecnicas_impactantes"] == 0
+    assert operacional["falhas_semanticas"] == 1
+    assert operacional["comandos_nao_reconhecidos"] == 1
+    assert operacional["tentativas_linguagem"] == 4
+    texto = formatar_diagnostico_terminal(diagnostico)
+    assert "falhas_semânticas=1" in texto
+    assert "comandos_perdidos=1" in texto
+
+
+def test_diagnostico_conta_ultima_acao_legada_como_contrato_incoerente() -> None:
+    diagnostico = construir_diagnostico_mente(
+        {
+            "mental": {
+                "ultima_acao_intent": "PLAYLIST_ADD",
+                "ultima_acao_status": "",
+                "ultima_acao_confirmada": None,
+            },
+            "conversacional": {}, "percepcao": {}, "continuidades": {},
+        },
+        {"llm": {"status": "saudavel"}},
+    )
+
+    assert diagnostico["ultima_acao"]["intent"] == "PLAYLIST_ADD"
+    assert diagnostico["ultima_acao_auditoria"]["coerente"] is False
+    assert diagnostico["saude_operacional"]["contratos_incoerentes"] == 1
+    assert diagnostico["saude_operacional"]["estado"] == "degradado"

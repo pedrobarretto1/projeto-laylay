@@ -56,6 +56,40 @@ _ARTISTAS_CANONICOS = {
 }
 _CHAVES_MULTIVALORADAS = {"gosta_de", "joga"}
 
+_CARGOS_OU_TITULOS_PUBLICOS_RE = (
+    r"presidente|vice presidente|primeir[oa] ministr[oa]|governador(?:a)?|"
+    r"prefeit[oa]|ministr[oa]|senador(?:a)?|deputad[oa]|chanceler|"
+    r"rei|rainha|imperador(?:a)?|papa"
+)
+
+
+def _consulta_sobre_cargo_publico(texto_normalizado: str) -> bool:
+    """Separa conhecimento factual público da memória pessoal do usuário."""
+    t = str(texto_normalizado or "").strip()
+    moldura = re.search(
+        r"\b(?:quem (?:e|eh)|o que (?:voce )?(?:sabe|lembra) "
+        r"(?:sobre|da|do)|me (?:fala|conte) (?:sobre|da|do))\s+"
+        r"(?P<alvo>.+)$",
+        t,
+    )
+    if not moldura:
+        return False
+    alvo = str(moldura.group("alvo") or "").strip()
+    cargo = re.search(rf"\b(?:{_CARGOS_OU_TITULOS_PUBLICOS_RE})\b", alvo)
+    if not cargo:
+        return False
+    # Um título isolado também pode ser nome ou apelido de alguém realmente
+    # apresentado pelo usuário (por exemplo, ``Rei``). Artigo, complemento ou
+    # nome depois do cargo dão a evidência factual necessária para desviar a
+    # pergunta da memória pessoal.
+    antes = alvo[:cargo.start()].strip()
+    depois = alvo[cargo.end():].strip()
+    return bool(
+        antes in {"o", "a", "do", "da"}
+        or depois
+        or " " in str(cargo.group(0) or "").strip()
+    )
+
 
 def _normalizar(texto: Any) -> str:
     base = unicodedata.normalize("NFKD", str(texto or "").casefold())
@@ -683,6 +717,11 @@ class MemoriaPessoasRuntime:
             r"(?:sobre|de) (?:mim|comigo)\b",
             t,
         ):
+            return None
+        # Cargos e títulos públicos pertencem à consulta factual (e podem
+        # exigir pesquisa atual), não ao arquivo local de pessoas apresentadas
+        # pelo usuário. A memória pessoal não deve sequestrar essa pergunta.
+        if _consulta_sobre_cargo_publico(t):
             return None
         if re.search(r"\b(?:quais|quem sao as) pessoas (?:voce |a laylay )?(?:lembra|conhece|que eu te falei)", t) or re.search(r"\b(?:quem eu (?:ja )?te apresentei|de quem eu (?:ja )?te falei)\b", t):
             return {"intent": "PEOPLE_LIST"}

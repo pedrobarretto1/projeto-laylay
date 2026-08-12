@@ -72,6 +72,45 @@ def test_resultado_atomico_nao_herda_alvo_de_outro_dominio() -> None:
     }
 
 
+def test_registro_generico_do_mesmo_turno_nao_apaga_confirmacao_observada() -> None:
+    comando = {
+        "intent": "OPEN_URL",
+        "params": {"alvo": "ifood"},
+    }
+    mente = registrar_resultado_execucao(
+        {},
+        {
+            **comando,
+            "alvo": "ifood",
+            "status": "url_aberta",
+            "executou": True,
+            "confirmado": True,
+            "origem": "executor_navegador",
+        },
+        "abre o ifood",
+    )
+
+    mente = registrar_resultado_execucao(
+        mente,
+        comando,
+        "abre o ifood",
+        True,
+        origem="prioritario_linguagem_natural",
+    )
+
+    assert mente["ultima_acao_contrato"] == {
+        "id_solicitacao": "",
+        "intent": "OPEN_URL",
+        "alvo": "ifood",
+        "status": "url_aberta",
+        "dominio": "site",
+        "executou": True,
+        "confirmado": True,
+        "origem": "executor_navegador",
+        "evidencia_confirmacao": "a URL ou aba aberta é relida",
+    }
+
+
 def test_cancelamento_confirmado_e_desfecho_valido_sem_prefixo_de_falha() -> None:
     plano = planejar_resposta_acao(
         ResultadoAcao(

@@ -112,6 +112,7 @@ _ERROS_VERBAIS_EXPLICITOS = {
     "orgniza": "organiza",
     "oragniza": "organiza",
     "pesqisa": "pesquisa",
+    "pequisa": "pesquisa",
     "procuar": "procura",
     "encotra": "encontra",
     "adciona": "adiciona",
@@ -127,7 +128,7 @@ _ERROS_VERBAIS_EXPLICITOS = {
 }
 
 _ERROS_VERBAIS_QUE_EXIGEM_DOMINIO = {
-    "liag", "lgia",
+    "liag", "lgia", "pequisa",
 }
 
 
@@ -229,6 +230,21 @@ def corrigir_erros_portugues_operacionais(
         if re.search(padrao, normalizado, flags=re.IGNORECASE):
             normalizado = re.sub(padrao, correto, normalizado, flags=re.IGNORECASE)
             eventos.append({"de": errado, "para": correto, "tipo": "exata"})
+
+    # Recupera um erro conversacional muito estreito somente quando ``vom``
+    # ocupa sozinho o predicativo final de uma avaliação (``X é vom``). Não é
+    # uma troca global: nomes, títulos e argumentos como ``arquivo vom`` ou
+    # ``chamado vom`` continuam opacos.
+    if re.fullmatch(r".+\s+(?:e|eh)\s+vom", normalizado, flags=re.IGNORECASE):
+        corrigido = re.sub(
+            r"\bvom$", "bom", normalizado,
+            count=1, flags=re.IGNORECASE,
+        )
+        if corrigido != normalizado:
+            normalizado = corrigido
+            eventos.append({
+                "de": "vom", "para": "bom", "tipo": "conversa_contextual",
+            })
 
     # ``coloca essa música a playlist X`` é uma forma oral comum de
     # ``... na/à playlist X``. A correção é estreita: exige verbo de adição,
@@ -360,10 +376,19 @@ def corrigir_erros_portugues_operacionais(
         if indice and any(anterior not in _MOLDURA_ANTES_DO_VERBO for anterior in tokens[:indice]):
             break
         candidato_explicito = _ERROS_VERBAIS_EXPLICITOS.get(token)
+        pesquisa_com_moldura_explicita = bool(
+            token == "pequisa"
+            and indice + 1 < len(tokens)
+            and (
+                tokens[indice + 1] in {"sobre", "por"}
+                or tokens[indice + 1:indice + 3] == ["no", "google"]
+            )
+        )
         if (
             candidato_explicito
             and token in _ERROS_VERBAIS_QUE_EXIGEM_DOMINIO
             and not tem_dominio_explicito
+            and not pesquisa_com_moldura_explicita
         ):
             candidato_explicito = ""
         candidato_aproximado = (

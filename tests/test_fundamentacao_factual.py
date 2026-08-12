@@ -26,6 +26,21 @@ def _com_fonte(tema: str, resumo: str) -> dict:
     }, agora=100.0)
 
 
+def test_recomendacao_conversacional_nao_inventa_titulo_sem_fundamentacao() -> None:
+    resultado = verificar_fala_turno(
+        'Tá, vou sugerir: "A Night in the Garden" de The Killers.',
+        plano={
+            "texto_usuario": "quero sim",
+            "dominio": "conversa",
+            "comandos": [],
+        },
+        origem="resposta_ia",
+    )
+
+    assert "obra_sem_evidencia" in resultado["problemas"]
+    assert "A Night in the Garden" not in resultado["fala"]
+
+
 def test_followup_encontra_tema_na_entidade_resolvida() -> None:
     tema = extrair_tema_fundamentacao(
         "eu também gosto das músicas dele",

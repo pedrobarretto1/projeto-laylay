@@ -85,6 +85,8 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             f"  operação observada: estado={saude_operacional.get('estado') or 'sem_amostras'} "
             f"amostras={int(saude_operacional.get('amostras_passivas') or 0)} "
             f"falhas_impactantes={int(saude_operacional.get('falhas_impactantes') or 0)} "
+            f"falhas_semânticas={int(saude_operacional.get('falhas_semanticas') or 0)} "
+            f"comandos_perdidos={int(saude_operacional.get('comandos_nao_reconhecidos') or 0)} "
             f"serviços_degradados={int(saude_operacional.get('servicos_degradados') or 0)} "
             f"problemas_fala_atual={int(saude_operacional.get('problemas_fala_atual') or 0)} "
             f"probes={bool(saude_operacional.get('probes_executados'))}"
@@ -187,7 +189,7 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             f"disponíveis={int(habilidades.get('disponiveis') or 0)} "
             f"indisponíveis={int(habilidades.get('indisponiveis') or 0)} "
             f"observações={int(habilidades.get('observacoes_ativas') or 0)} "
-            "autoriza_execução=False"
+            "registro_estrutural=True autoriza_execução=False"
         )
     if linguagem_natural:
         linhas.append(
@@ -424,7 +426,8 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             "  conexões dos pilares: "
             f"ok={bool(conexoes.get('ok'))} "
             f"ausentes={len(conexoes.get('ausentes') or [])} "
-            f"inválidas={len(conexoes.get('invalidos') or [])}"
+            f"inválidas={len(conexoes.get('invalidos') or [])} "
+            "validação=estrutural"
         )
     if terminal_dashboard:
         linhas.append(

@@ -197,6 +197,18 @@ def _motivo_contrato_invalido(
         return "tamanho_invalido"
     if texto.count("?") > 0:
         return "pergunta_na_confirmacao"
+    frases = [
+        parte.strip()
+        for parte in re.split(r"(?<=[.!?])\s+", texto)
+        if parte.strip()
+    ]
+    if len(frases) > 2:
+        return "fala_operacional_prolixa"
+    # Resultado operacional não é espaço para poesia desconectada. Além de
+    # esconder a informação útil, construções desse tipo vinham acrescentando
+    # celular, pão, frio e outros cenários que o executor nunca observou.
+    if re.search(r"\bcomo se\b", base):
+        return "metafora_operacional_nao_ancorada"
     # Alguns modelos devolvem no campo ``status`` a classe semântica que
     # acabaram de receber (``sem_acao``/``sucesso``/``falha``), em vez do
     # status específico do executor. Isso não é uma contradição: a segurança
@@ -255,6 +267,17 @@ def _motivo_contrato_invalido(
     identificadores = {token for token in concretos if any(ch.isdigit() for ch in token)}
     if identificadores and not all(token in base for token in identificadores):
         return "identificador_concreto_divergente"
+    verdade_observada = _normalizar(" ".join((
+        resultado.status,
+        resultado.alvo,
+        resultado.detalhe,
+        json.dumps(resultado.params, ensure_ascii=False, default=str),
+        json.dumps(resultado.contexto, ensure_ascii=False, default=str),
+    )))
+    # "A playlist está vazia" é uma alegação verificável, não uma tirada. A
+    # autoria só pode usá-la quando essa informação veio no contrato factual.
+    if re.search(r"\bvazi[ao]s?\b", base) and "vazi" not in verdade_observada:
+        return "estado_operacional_nao_evidenciado"
     primeira_frase = re.split(r"(?<=[.!?])\s+", texto, maxsplit=1)[0]
     primeira_base = _normalizar(primeira_frase)
     if raizes and not any(raiz in primeira_base for raiz in raizes):

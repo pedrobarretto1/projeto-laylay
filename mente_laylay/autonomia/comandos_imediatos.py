@@ -443,6 +443,50 @@ class ComandosImediatosRuntime:
                     )
                     return True
 
+        # Repetições explícitas usam a mesma fonte canônica que planejou o
+        # turno. A lista de operações reexecutáveis permanece centralizada em
+        # ``contexto_compartilhado.intencao_reexecutavel``; esta barreira não
+        # mantém vocabulário, destinos ou estados paralelos. Assim pedidos
+        # como ``tenta de novo`` refazem um PLAYLIST_ADD que falhou sem cair na
+        # conversa livre e sem adivinhar outra playlist.
+        resolver_repeticao = ns.get("_resolver_repeticao_ultima_acao")
+        try:
+            repeticao_canonica = (
+                resolver_repeticao(texto)
+                if callable(resolver_repeticao)
+                else None
+            )
+        except Exception as erro:
+            print(
+                "⚠️ [PRIORIDADE:REPETIÇÃO] falha isolada: "
+                f"{type(erro).__name__}: {erro}"
+            )
+            repeticao_canonica = None
+        if isinstance(repeticao_canonica, dict):
+            executar = ns.get("executar_intencao")
+            if callable(executar):
+                try:
+                    executou = bool(executar(repeticao_canonica, texto))
+                except Exception as erro:
+                    print(
+                        "⚠️ [PRIORIDADE:REPETIÇÃO] execução falhou: "
+                        f"{type(erro).__name__}: {erro}"
+                    )
+                    return True
+                registrar = ns.get("_registrar_resultado_execucao")
+                if callable(registrar):
+                    registrar(
+                        repeticao_canonica,
+                        texto,
+                        executou,
+                        origem="prioritario_repeticao_canonica",
+                    )
+                print(
+                    "⚡ [PRIORIDADE:REPETIÇÃO] "
+                    f"intent={repeticao_canonica.get('intent')}"
+                )
+                return True
+
         # Uma entrada de barra é um comando interno ou uma tentativa dele;
         # nunca representa "sim" para uma pergunta aberta. Isso evita que um
         # typo ou a saída concorrente do terminal entregue o clipboard para

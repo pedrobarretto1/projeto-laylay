@@ -168,18 +168,24 @@ def _adicionar(
     nome = _nome_playlist(params)
     if not nome:
         if _nome_explicito_incompleto(texto, ctx):
+            deps.marcar_resultado(
+                "alvo_ausente", executou=False, confirmado=False,
+            )
             _falar(ctx, escolher_fala_variada([
                 "Qual playlist é essa? Me diz o nome certo ou me ensina o apelido.",
                 "Essa playlist veio meio torta. Me passa o nome certo.",
                 "Preciso do nome da playlist ou do apelido que eu já conheço.",
             ]))
-            return ResultadoDespacho.concluido()
+            return ResultadoDespacho.concluido(False)
         nome = str(_get(ctx, "ultima_playlist", "") or "").strip()
     if not nome:
+        deps.marcar_resultado(
+            "alvo_ausente", executou=False, confirmado=False,
+        )
         _falar(ctx, escolher_fala_variada([
             "Me diz o nome da playlist.", "Qual playlist você quer?", "Faltou o nome da playlist.",
         ]))
-        return ResultadoDespacho.concluido()
+        return ResultadoDespacho.concluido(False)
 
     info = (
         deps.musica_operacoes.faixa_atual()
@@ -189,19 +195,27 @@ def _adicionar(
     titulo = str(info.get("title") or "") if isinstance(info, dict) else ""
     canal = str(info.get("canal") or "") if isinstance(info, dict) else ""
     if not url:
+        _marcar_com_alvo(
+            deps, "faixa_atual_indisponivel", nome,
+            executou=False, confirmado=False,
+        )
         _falar(ctx, escolher_fala_variada([
             "Ih, perdi o sinal do Chrome e não consegui salvar.",
             "Perdi a janela do Chrome e não consegui salvar.",
             "Não achei a aba certa para salvar isso.",
         ]))
-        return ResultadoDespacho.concluido()
+        return ResultadoDespacho.concluido(False)
     if "youtube.com" not in url:
+        _marcar_com_alvo(
+            deps, "fonte_musical_invalida", nome,
+            executou=False, confirmado=False,
+        )
         _falar(ctx, escolher_fala_variada([
             "Não achei música aberta pra salvar aqui.",
             "Não vi nenhuma música aberta para guardar.",
             "Faltou uma música aberta no navegador.",
         ]))
-        return ResultadoDespacho.concluido()
+        return ResultadoDespacho.concluido(False)
 
     ok = bool(
         deps.musica_operacoes.adicionar_faixa(nome, url, titulo, canal)
@@ -223,7 +237,7 @@ def _adicionar(
             "Meu caderninho travou e não salvou agora.",
             "Deu ruim no registro da playlist. Tenta de novo.",
         ]), alvo=nome)
-    return ResultadoDespacho.concluido()
+    return ResultadoDespacho.concluido(ok)
 
 
 def _mover(

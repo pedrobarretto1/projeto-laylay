@@ -85,6 +85,55 @@ def referencia_contextual_imediata(
     ):
         dominio_pedido = "iot"
 
+    # Uma confirmação operacional recente é mais saliente que a fala usada
+    # para apresentá-la. Sem esta guarda, a resposta "iFood já está aberto"
+    # podia registrar um foco conversacional logo após OPEN_URL e fazer
+    # ``fecha ele`` perder o site, embora o contrato confirmado continuasse
+    # vivo. O recorte é deliberadamente estreito: exige verbo de fechamento,
+    # pronome e uma ação confirmada de app/site; não transforma conversa em
+    # autorização nem confunde aba com processo do navegador.
+    contrato_acao = (
+        dict(estado.get("ultima_acao_contrato") or {})
+        if isinstance(estado.get("ultima_acao_contrato"), dict)
+        else {}
+    )
+    fecha_referencia_curta = bool(
+        re.fullmatch(
+            r"(?:fecha|fechar|encerra|encerrar)\s+"
+            r"(?:ele|ela|isso|esse|essa|este|esta)[?.!]*",
+            texto_norm,
+        )
+    )
+    intent_contrato = str(contrato_acao.get("intent") or "").strip().upper()
+    if (
+        fecha_referencia_curta
+        and contrato_acao.get("executou") is True
+        and contrato_acao.get("confirmado") is True
+        and intent_contrato in {"OPEN_URL", "APP_OPEN", "MAXIMIZE_WINDOW"}
+    ):
+        alvo_contrato = str(contrato_acao.get("alvo") or "").strip()
+        if not alvo_contrato:
+            if intent_contrato == "OPEN_URL":
+                alvo_contrato = str(
+                    ultimo_params.get("alvo") or ultimo_params.get("url")
+                    or ultimo_site or ""
+                ).strip()
+            else:
+                alvo_contrato = str(
+                    ultimo_params.get("nome_app") or ultimo_params.get("app")
+                    or ultimo_app or ""
+                ).strip()
+        if alvo_contrato:
+            tipo_contrato = "site" if intent_contrato == "OPEN_URL" else "app"
+            return {
+                "tipo": tipo_contrato,
+                "alvo": alvo_contrato,
+                "intencao": intent_contrato,
+                "params": dict(ultimo_params),
+                "dominio_explicito": False,
+                "origem_continuidade": "contrato_confirmado",
+            }
+
     continuidade = selecionar_continuidade(
         estado,
         texto=texto_atual,

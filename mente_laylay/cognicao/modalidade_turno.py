@@ -49,10 +49,25 @@ def analisar_protecao_operacional(
             "natureza_acao": "hipotetica",
             "motivo": "intenção hipotética ou reflexão",
         }
+    if (
+        re.search(
+            r"^(?:voce|você|tu)\s+(?:pode|poderia|consegue|conseguiria|sabe)\s+(?:me\s+)?"
+            r"(?:ver|olhar|olha|resume|resuma|resumir|mostrar|passar)\b",
+            t,
+        )
+        and not re.search(r"\b(?:pra|para)\s+mim\b", t)
+    ):
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "pergunta",
+            "natureza_acao": "capacidade",
+            "motivo": "pergunta sobre capacidade; não é autorização",
+        }
     if re.search(
-        r"^(?:nao|não|nunca|jamais)\s+(?:(?:pode|deve|vai)\s+)?"
+        r"^(?:nao|não|nunca|jamais)\s+(?:(?:pode|deve|vai)\s+)?(?:me\s+)?"
         r"(?:abre|abra|fecha|feche|liga|ligue|acende|desliga|desligue|toca|"
-        r"toque|coloca|apaga|remove|muda|ajusta|deixa|resume|resuma|explique)\b",
+        r"toque|coloca|apaga|remove|muda|ajusta|deixa|olha|olhe|veja|ver|"
+        r"captura|capture|mostra|mostre|passa|passe|resume|resuma|explique)\b",
         t,
     ):
         return {
@@ -66,7 +81,7 @@ def analisar_protecao_operacional(
         r"onde|quando|por\s+que|porque|qual\s+(?:a\s+)?forma\s+de|"
         r"o\s+que\s+(?:eu\s+)?(?:faria|fa[cç]o)|o\s+que\s+acontece\s+se)\b"
         r".*\b(?:abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|"
-        r"remover|usar|fazer|resumir|explicar)\b",
+        r"remover|usar|fazer|resumir|explicar|ver|olhar|mostrar|passar)\b",
         t,
     ) or re.search(r"\b(?:queria|gostaria)\s+de\s+saber\s+como\b", t):
         return {
@@ -287,6 +302,7 @@ def _classificar_modalidade_base(
         return resultado
     if re.search(
         r"^(?:o\s+que\s+(?:essa|esta)\s+(?:pagina|página|site|video|vídeo|aba)\b|"
+        r"(?:(?:me|pra\s+mim|para\s+mim)\s+)?"
         r"(?:resume|resuma|resumir|leia|ler|verifique|explica|explique)\b.*"
         r"\b(?:pagina|página|site|video|vídeo|aba)\b)",
         t,
@@ -294,6 +310,29 @@ def _classificar_modalidade_base(
         resultado.update(
             modalidade="comando", confianca=0.97,
             motivo="consulta explícita de conteúdo atual",
+            acao_explicita=True, autoriza_execucao=True, natureza_acao="consulta",
+        )
+        return resultado
+    if re.search(
+        r"^(?:o\s+que\s+(?:tem|ha|há|aparece)\s+(?:na|em)\s+(?:minha\s+)?tela\b|"
+        r"(?:olha|olhe|veja|ver|captura|capture)\b.*\b(?:minha\s+)?tela\b|"
+        r"tira\s+(?:um\s+)?print\b)",
+        t,
+    ):
+        resultado.update(
+            modalidade="comando", confianca=0.99,
+            motivo="consulta visual explícita da tela atual",
+            acao_explicita=True, autoriza_execucao=True, natureza_acao="consulta",
+        )
+        return resultado
+    if re.search(
+        r"^(?:(?:me\s+)?(?:passa|passe|mostra|mostre|fala|fale|diz|diga|"
+        r"repete|repita)\b.*\bbriefing\b|qual\s+(?:e|é)\s+(?:o\s+)?briefing\b)",
+        t,
+    ):
+        resultado.update(
+            modalidade="comando", confianca=0.99,
+            motivo="consulta explícita ao briefing observado",
             acao_explicita=True, autoriza_execucao=True, natureza_acao="consulta",
         )
         return resultado
@@ -323,9 +362,9 @@ def _classificar_modalidade_base(
         resultado.update(modalidade="pergunta", confianca=0.98, motivo="pergunta sobre conhecimento ou capacidade", natureza_acao="capacidade")
         return resultado
     pedido_polido = bool(re.search(
-        r"^(?:por favor\s+)?(?:pode|poderia|consegue|conseguiria)\s+"
+        r"^(?:por favor\s+)?(?:pode|poderia|consegue|conseguiria)\s+(?:me\s+)?"
         r"(?:abrir|abre|fechar|fecha|ligar|liga|desligar|desliga|tocar|toca|colocar|"
-        r"coloca|criar|apagar|ler|leia|verificar|verifique|resumir|resuma|resume|"
+        r"coloca|criar|apagar|ler|leia|ver|olhar|mostrar|passar|verificar|verifique|resumir|resuma|resume|"
         r"encontrar|encontra|achar|acha|localizar|localiza)\b",
         t,
     ))
@@ -347,8 +386,8 @@ def _classificar_modalidade_base(
         except Exception:
             comando_detectado = False
     capacidade_ambigua = bool(re.search(
-        r"^(?:voce|você)\s+(?:pode|poderia|consegue|conseguiria)\s+"
-        r"(?:abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|ler|verificar|resumir|"
+        r"^(?:voce|você)\s+(?:pode|poderia|consegue|conseguiria)\s+(?:me\s+)?"
+        r"(?:abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|ler|ver|olhar|mostrar|passar|verificar|resumir|"
         r"encontrar|achar|localizar)\b",
         t,
     )) and not pedido_para_mim

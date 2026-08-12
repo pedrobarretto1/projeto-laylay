@@ -271,6 +271,7 @@ def test_adicao_com_estado_antigo_consulta_aba_ativa() -> None:
 
 def test_nome_explicito_incompleto_nao_usa_ultima_playlist() -> None:
     falas: list[str] = []
+    eventos: list[tuple] = []
 
     despacho = executar_intencao_playlists(
         "PLAYLIST_ADD",
@@ -285,10 +286,15 @@ def test_nome_explicito_incompleto_nao_usa_ultima_playlist() -> None:
                 AssertionError("não deve tentar adicionar")
             ),
         },
-        _dependencias([]),
+        _dependencias(eventos),
     )
 
-    assert despacho == ResultadoDespacho.concluido()
+    assert despacho == ResultadoDespacho.concluido(False)
+    assert eventos == [(
+        "resultado",
+        "alvo_ausente",
+        {"executou": False, "confirmado": False},
+    )]
     assert falas
 
 
