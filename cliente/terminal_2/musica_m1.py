@@ -743,9 +743,8 @@ class PaginaMusicaM1(QWidget):
         self.letra.conteudo.addWidget(self.letra_estado)
         self.letra_texto = VisualizadorLetra()
         self._configurar_expansao_letra()
-        self._efeito_letra = QGraphicsOpacityEffect(self.letra_texto)
-        self._efeito_letra.setOpacity(1.0)
-        self.letra_texto.setGraphicsEffect(self._efeito_letra)
+        self._efeito_letra: QGraphicsOpacityEffect | None = None
+
         self.letra_texto.hide()
         self.letra.conteudo.addWidget(self.letra_texto)
         self.letra_progresso = QProgressBar()
@@ -1339,35 +1338,84 @@ class PaginaMusicaM1(QWidget):
     ) -> None:
         if self.letra_texto.text() == conteudo:
             return
+
         rolagem_anterior = self.letra_texto.verticalScrollBar().value()
+
         self._versao_render_letra += 1
         versao = self._versao_render_letra
+
+        # Interrompe qualquer transição anterior.
         if self._animacao_letra is not None:
             self._animacao_letra.stop()
             self._animacao_letra.deleteLater()
             self._animacao_letra = None
+
+        # Remove qualquer efeito antigo antes de atualizar o texto.
+        if self.letra_texto.graphicsEffect() is not None:
+            self.letra_texto.setGraphicsEffect(None)
+
+        self._efeito_letra = None
+
         self.letra_texto.setText(conteudo)
+
         if self._letra_expandida and linha_ativa is not None:
             QTimer.singleShot(
                 0,
                 lambda: self._acompanhar_linha_ativa(
-                    linha_ativa, total_linhas, rolagem_anterior, versao,
+                    linha_ativa,
+                    total_linhas,
+                    rolagem_anterior,
+                    versao,
                 ),
             )
+
+        # Sem animação: o QTextBrowser fica completamente normal.
         if self._reduzir_movimento or not self.letra_texto.isVisible():
-            self._efeito_letra.setOpacity(1.0)
             return
-        inicio = 0.68 if self._letra_expandida else 0.18
-        self._efeito_letra.setOpacity(inicio)
+
+        inicio = 0.68 if self._letra_expandida else 0.35
+
+        efeito = QGraphicsOpacityEffect(self.letra_texto)
+        efeito.setOpacity(inicio)
+
+        self.letra_texto.setGraphicsEffect(efeito)
+        self._efeito_letra = efeito
+
         animacao = QPropertyAnimation(
-            self._efeito_letra, b"opacity", self.letra_texto,
+            efeito,
+            b"opacity",
+            self.letra_texto,
         )
-        animacao.setDuration(260 if self._letra_expandida else 420)
+
+        animacao.setDuration(
+            260 if self._letra_expandida else 340
+        )
+
         animacao.setStartValue(inicio)
-        animacao.setKeyValueAt(0.35, 0.86 if self._letra_expandida else 0.72)
+        animacao.setKeyValueAt(
+            0.35,
+            0.86 if self._letra_expandida else 0.78,
+        )
         animacao.setEndValue(1.0)
         animacao.setEasingCurve(QEasingCurve.OutCubic)
+
         self._animacao_letra = animacao
+
+        def finalizar() -> None:
+            if self._animacao_letra is animacao:
+                self._animacao_letra = None
+
+            # Parte importante:
+            # terminou a animação -> remove totalmente o QGraphicsEffect.
+            if self.letra_texto.graphicsEffect() is efeito:
+                self.letra_texto.setGraphicsEffect(None)
+
+            if self._efeito_letra is efeito:
+                self._efeito_letra = None
+
+            animacao.deleteLater()
+
+        animacao.finished.connect(finalizar)
         animacao.start()
 
     def _acompanhar_linha_ativa(
