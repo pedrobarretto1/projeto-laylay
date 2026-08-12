@@ -361,7 +361,7 @@ class Composer(QFrame):
         self.botao = QPushButton()
         self.botao.setObjectName("sendButton")
         self.botao.setIcon(icone_terminal("send"))
-        self.botao.setIconSize(QSize(22, 22))
+        self.botao.setIconSize(QSize(18, 18))
         self.botao.setFixedSize(42, 42)
         self.botao.setToolTip("Enviar mensagem")
         self.botao.setAccessibleName("Enviar mensagem")
@@ -1340,15 +1340,40 @@ class JanelaLaylay(QMainWindow):
                 }}
                 #musicSessionAction:hover {{ background: #241B20; border-color: #773845; color: {PALETA['texto']}; }}
                 #musicSessionAction:disabled {{ color: #5F646B; border-color: #292F35; }}
-                #musicPreset {{ background: #1B2026; border: 1px solid #303741; border-radius: 10px; padding: 12px; text-align: left; color: #D5D0D3; min-height: 58px; font-size: 12px; }}
-                #musicPreset:hover {{ background: #272027; border-color: #78404C; color: {PALETA['texto']}; }}
-                #musicPreset[activePlaylist="true"] {{ background: #2B1C22; border-color: #A94B5D; color: {PALETA['rosa']}; }}
-                #musicPreset[presetTone="0"] {{ border-left: 4px solid #D85258; }}
-                #musicPreset[presetTone="1"] {{ border-left: 4px solid #7657C7; }}
-                #musicPreset[presetTone="2"] {{ border-left: 4px solid #2D9C6A; }}
-                #musicPreset[presetTone="3"] {{ border-left: 4px solid #466FC5; }}
-                #musicPreset[presetTone="4"] {{ border-left: 4px solid #B05C9C; }}
-                #musicPreset[presetTone="5"] {{ border-left: 4px solid #C58A3A; }}
+                #musicPreset {{
+                    background: #171C21;
+                    border: 1px solid #292F36;
+                    border-radius: 9px;
+
+                    padding: 7px 9px;
+                    text-align: left;
+
+                    color: #D8D4D7;
+
+                    min-height: 42px;
+                    max-height: 48px;
+
+                    font-size: 11px;
+                }}
+
+                #musicPreset:hover {{
+                    background: #1D2228;
+                    border-color: #4B353C;
+                    color: #F5F1F3;
+                }}
+
+                #musicPreset[activePlaylist="true"] {{
+                    background: #25191E;
+                    border-color: #8D3E4D;
+                    color: #FF647B;
+                }}
+
+                #musicPreset[presetTone="0"] {{ border-left: 3px solid #D85258; }}
+                #musicPreset[presetTone="1"] {{ border-left: 3px solid #7657C7; }}
+                #musicPreset[presetTone="2"] {{ border-left: 3px solid #2D9C6A; }}
+                #musicPreset[presetTone="3"] {{ border-left: 3px solid #466FC5; }}
+                #musicPreset[presetTone="4"] {{ border-left: 3px solid #B05C9C; }}
+                #musicPreset[presetTone="5"] {{ border-left: 3px solid #C58A3A; }}
                 #musicQueueDetail {{
                     color: #777F89;
                     font-size: 9px;
