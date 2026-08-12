@@ -717,6 +717,15 @@ class PaginaMusicaM1(QWidget):
         self.letra_texto.setGraphicsEffect(self._efeito_letra)
         self.letra_texto.hide()
         self.letra.conteudo.addWidget(self.letra_texto)
+        self.letra_progresso = QProgressBar()
+        self.letra_progresso.setObjectName("musicLyricsProgress")
+        self.letra_progresso.setRange(0, 1000)
+        self.letra_progresso.setValue(0)
+        self.letra_progresso.setTextVisible(False)
+        self.letra_progresso.setFixedHeight(3)
+        self.letra_progresso.hide()
+
+        self.letra.conteudo.addWidget(self.letra_progresso)
         rodape_letra = QHBoxLayout()
         self.letra_fonte = QLabel("")
         self.letra_fonte.setObjectName("musicLyricsSource")
@@ -1103,8 +1112,8 @@ class PaginaMusicaM1(QWidget):
 
     def _configurar_expansao_letra(self) -> None:
         if self._letra_expandida:
-            self.letra_texto.setMinimumHeight(230)
-            self.letra_texto.setMaximumHeight(340)
+            self.letra_texto.setMinimumHeight(250)
+            self.letra_texto.setMaximumHeight(360)
             self.letra_texto.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
             return
         if self._animacao_rolagem_letra is not None:
@@ -1112,8 +1121,8 @@ class PaginaMusicaM1(QWidget):
             self._animacao_rolagem_letra.deleteLater()
             self._animacao_rolagem_letra = None
         self.letra_texto.verticalScrollBar().setValue(0)
-        self.letra_texto.setMinimumHeight(116)
-        self.letra_texto.setMaximumHeight(116)
+        self.letra_texto.setMinimumHeight(132)
+        self.letra_texto.setMaximumHeight(132)
         self.letra_texto.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
     def _aplicar_letra(self, musica: dict) -> None:
@@ -1137,6 +1146,16 @@ class PaginaMusicaM1(QWidget):
         disponivel = status == "available" and bool(
             letra.get("lines") or str(letra.get("plain_text") or "").strip()
         )
+        sincronizada = bool(
+            disponivel
+            and letra.get("synced") is True
+            and letra.get("lines")
+        )
+
+        self.letra_progresso.setVisible(sincronizada)
+
+        if not sincronizada:
+            self.letra_progresso.setValue(0)
         self.letra_estado.setText(
             "Letra sincronizada com o tempo observado do player."
             if disponivel and letra.get("synced") is True else
@@ -1160,6 +1179,37 @@ class PaginaMusicaM1(QWidget):
         if linhas:
             tempos = [float(item.get("time_seconds") or 0.0) for item in linhas]
             atual = bisect_right(tempos, max(0.0, float(posicao))) - 1
+            # Progresso dentro da linha atual
+            if 0 <= atual < len(linhas):
+                inicio_linha = tempos[atual]
+
+                if atual + 1 < len(tempos):
+                    fim_linha = tempos[atual + 1]
+                else:
+                    fim_linha = max(
+                        inicio_linha + 4.0,
+                        self._duracao_base,
+                    )
+
+                duracao_linha = max(
+                    0.1,
+                    fim_linha - inicio_linha,
+                )
+
+                progresso_linha = (
+                    float(posicao) - inicio_linha
+                ) / duracao_linha
+
+                progresso_linha = max(
+                    0.0,
+                    min(1.0, progresso_linha),
+                )
+
+                self.letra_progresso.setValue(
+                    int(progresso_linha * 1000)
+                )
+            else:
+                self.letra_progresso.setValue(0)
             if atual == self._linha_letra_atual:
                 return
             self._linha_letra_atual = atual
@@ -1167,17 +1217,69 @@ class PaginaMusicaM1(QWidget):
                 max(0, atual - 1), min(len(linhas), max(2, atual + 3)),
             )
             blocos: list[str] = []
+
             for indice in indices:
-                texto = html.escape(str(linhas[indice].get("text") or ""))
-                if indice == atual:
+                texto = html.escape(
+                    str(linhas[indice].get("text") or "")
+                )
+
+                distancia = indice - atual
+
+                # Linha sendo cantada agora
+                if distancia == 0:
                     blocos.append(
-                        f'<div style="color:#FF5C76;font-size:17px;font-weight:650;'
-                        f'margin:7px 0;text-align:center;">{texto}</div>'
+                        f'<div style="'
+                        f'color:#FF647B;'
+                        f'font-size:20px;'
+                        f'font-weight:700;'
+                        f'margin:10px 0 11px 0;'
+                        f'text-align:center;'
+                        f'">{texto}</div>'
                     )
+
+                # Linha anterior
+                elif distancia == -1:
+                    blocos.append(
+                        f'<div style="'
+                        f'color:#565D66;'
+                        f'font-size:12px;'
+                        f'margin:3px 0;'
+                        f'text-align:center;'
+                        f'">{texto}</div>'
+                    )
+
+                # Próxima linha
+                elif distancia == 1:
+                    blocos.append(
+                        f'<div style="'
+                        f'color:#A6ABB2;'
+                        f'font-size:14px;'
+                        f'font-weight:550;'
+                        f'margin:5px 0;'
+                        f'text-align:center;'
+                        f'">{texto}</div>'
+                    )
+
+                # Linha que vem depois
+                elif distancia == 2:
+                    blocos.append(
+                        f'<div style="'
+                        f'color:#656C75;'
+                        f'font-size:12px;'
+                        f'margin:3px 0;'
+                        f'text-align:center;'
+                        f'">{texto}</div>'
+                    )
+
+                # Quando a letra completa está aberta
                 else:
                     blocos.append(
-                        f'<div style="color:#8E949C;font-size:13px;'
-                        f'margin:4px 0;text-align:center;">{texto}</div>'
+                        f'<div style="'
+                        f'color:#666D75;'
+                        f'font-size:12px;'
+                        f'margin:4px 0;'
+                        f'text-align:center;'
+                        f'">{texto}</div>'
                     )
             self._trocar_texto_letra(
                 "".join(blocos), linha_ativa=atual, total_linhas=len(linhas),

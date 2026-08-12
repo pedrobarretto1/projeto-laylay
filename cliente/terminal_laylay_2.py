@@ -1404,9 +1404,37 @@ class JanelaLaylay(QMainWindow):
                 }}
                 #musicSuggestion {{ background: #251A20; border: 1px solid #58303A; border-radius: 10px; padding: 13px; color: #E28D9C; font-size: 12px; }}
                 #musicContextBasis {{ color: #A5ABB3; background: #171D22; border: 1px solid #303740; border-radius: 9px; padding: 8px 10px; font-size: 10px; }}
-                #musicLyrics {{ border-color: #332930; }}
-                #musicLyricsText {{ background: #11161B; border-top: 1px solid #34272E; border-bottom: 1px solid #34272E; padding: 18px; color: #C9C5C8; }}
-                #musicLyricsSource {{ color: #838B95; font-size: 10px; }}
+                #musicLyrics {{
+                    border-color: #382B31;
+                }}
+
+                #musicLyricsText {{
+                    background: #101519;
+                    border: 1px solid #272E35;
+                    border-radius: 11px;
+                    padding: 21px 26px;
+                    color: #C9C5C8;
+                    selection-background-color: #66313D;
+                }}
+
+                #musicLyricsProgress {{
+                    background: #22282E;
+                    border: 0;
+                    border-radius: 1px;
+                    min-height: 3px;
+                    max-height: 3px;
+                }}
+
+                #musicLyricsProgress::chunk {{
+                    background: #FF5C76;
+                    border: 0;
+                    border-radius: 1px;
+                }}
+
+                #musicLyricsSource {{
+                    color: #747C85;
+                    font-size: 9px;
+                }}
                 #musicSystemBar {{ background: #252B32; border: 0; border-radius: 3px; min-height: 6px; max-height: 6px; }}
                 #musicSystemBar::chunk {{ background: #C64257; border-radius: 3px; }}
                 #musicSystemBar[available="false"]::chunk {{ background: #343A41; }}
