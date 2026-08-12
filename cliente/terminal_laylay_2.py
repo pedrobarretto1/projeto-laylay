@@ -1196,7 +1196,58 @@ class JanelaLaylay(QMainWindow):
                 #musicVolumeSlider::add-page:vertical {{ background: {PALETA['rosa']}; border-radius: 2px; }}
                 #musicVolumeSlider::handle:vertical {{ background: #F5F1F3; border: 1px solid #C84A5F; height: 15px; margin: 0 -5px; border-radius: 7px; }}
                 #musicVolumeSlider:disabled {{ opacity: 0.45; }}
-                #musicAudioOutput {{ color: #F2EEF0; font-size: 12px; font-weight: 650; padding: 8px; background: #1A1F25; border: 1px solid #2D343B; border-radius: 8px; }}
+                #musicAudioDevice {{
+                    background: #171C21;
+                    border: 1px solid #2A3138;
+                    border-radius: 10px;
+                }}
+
+                #musicAudioDevice[available="true"] {{
+                    background: #181C21;
+                    border-color: #3A3238;
+                }}
+
+                #musicAudioDeviceIcon {{
+                    color: #565E67;
+                    font-size: 10px;
+                }}
+
+                #musicAudioDevice[available="true"] #musicAudioDeviceIcon {{
+                    color: {PALETA['rosa']};
+                }}
+
+                #musicAudioOutput {{
+                    color: #F2EEF0;
+                    background: transparent;
+                    border: 0;
+                    padding: 0;
+                    font-size: 12px;
+                    font-weight: 650;
+                }}
+
+                #musicAudioOutputMeta {{
+                    color: #7E8690;
+                    font-size: 9px;
+                }}
+
+                #musicAudioManage {{
+                    background: transparent;
+                    border: 0;
+                    border-radius: 7px;
+                    padding: 5px 8px;
+                    color: #737B84;
+                    font-size: 10px;
+                }}
+
+                #musicAudioManage:hover {{
+                    background: #221C20;
+                    color: #D9D4D7;
+                }}
+
+                #musicAudioManage:disabled {{
+                    background: transparent;
+                    color: #525960;
+                }}
                 #musicWaveform {{ background: transparent; }}
                 #musicHeroProgress {{ background: #232930; border: 0; border-radius: 2px; min-height: 4px; max-height: 4px; }}
                 #musicHeroProgress::chunk {{ background: {PALETA['rosa']}; border-radius: 2px; }}

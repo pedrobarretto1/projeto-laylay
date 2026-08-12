@@ -640,19 +640,57 @@ class PaginaMusicaM1(QWidget):
         self.contexto_sugestao.setWordWrap(True)
         self.contexto.conteudo.addWidget(self.contexto_sugestao)
 
-        self.audio = CartaoMusica("Saída de áudio", detalhe="M3")
-        self.audio_saida = QLabel("Aguardando a saída padrão do sistema.")
+        self.audio = CartaoMusica("Saída de áudio", detalhe="observada")
+        self.audio.conteudo.setSpacing(7)
+
+        self.audio_dispositivo = QFrame()
+        self.audio_dispositivo.setObjectName("musicAudioDevice")
+        self.audio_dispositivo.setProperty("available", False)
+
+        audio_layout = QHBoxLayout(self.audio_dispositivo)
+        audio_layout.setContentsMargins(11, 8, 8, 8)
+        audio_layout.setSpacing(9)
+
+        # Indicador visual
+        self.audio_icone = QLabel("●")
+        self.audio_icone.setObjectName("musicAudioDeviceIcon")
+        self.audio_icone.setAlignment(Qt.AlignCenter)
+        self.audio_icone.setFixedWidth(16)
+
+        # Nome + origem
+        audio_textos = QVBoxLayout()
+        audio_textos.setContentsMargins(0, 0, 0, 0)
+        audio_textos.setSpacing(1)
+
+        self.audio_saida = QLabel("Aguardando saída de áudio")
         self.audio_saida.setObjectName("musicAudioOutput")
-        self.audio_saida.setWordWrap(True)
-        self.audio.conteudo.addWidget(self.audio_saida)
-        self.audio_origem = _estado_futuro(
-            "A seleção é somente observada nesta fase; a troca continua no Windows."
+        self.audio_saida.setWordWrap(False)
+        self.audio_saida.setTextInteractionFlags(Qt.TextSelectableByMouse)
+
+        self.audio_origem = QLabel("Aguardando o Windows")
+        self.audio_origem.setObjectName("musicAudioOutputMeta")
+        self.audio_origem.setWordWrap(False)
+        self.audio_origem.setToolTip(
+            "A saída é somente observada; a troca continua sob controle do Windows."
         )
-        self.audio.conteudo.addWidget(self.audio_origem)
-        gerenciar = QPushButton("Gerenciar dispositivos  ›")
-        gerenciar.setObjectName("musicFutureButton")
-        gerenciar.setEnabled(False)
-        self.audio.conteudo.addWidget(gerenciar)
+
+        audio_textos.addWidget(self.audio_saida)
+        audio_textos.addWidget(self.audio_origem)
+
+        self.audio_gerenciar = QPushButton("Gerenciar  ›")
+        self.audio_gerenciar.setObjectName("musicAudioManage")
+        self.audio_gerenciar.setEnabled(False)
+        self.audio_gerenciar.setFixedHeight(28)
+        self.audio_gerenciar.setSizePolicy(
+            QSizePolicy.Fixed,
+            QSizePolicy.Fixed,
+        )
+
+        audio_layout.addWidget(self.audio_icone)
+        audio_layout.addLayout(audio_textos, 1)
+        audio_layout.addWidget(self.audio_gerenciar)
+
+        self.audio.conteudo.addWidget(self.audio_dispositivo)
 
         self.audicao = CartaoMusica("Modo de audição", detalhe="M3")
         self.audicao_estado = _estado_futuro(
@@ -1274,16 +1312,42 @@ class PaginaMusicaM1(QWidget):
         )
         audio = musica.get("audio_output")
         audio = audio if isinstance(audio, dict) else {}
-        if audio.get("available") is True and str(audio.get("name") or "").strip():
-            self.audio_saida.setText(str(audio.get("name") or ""))
-            origem = str(audio.get("source") or "saída observada")
-            self.audio_origem.setText(
-                f"{origem.capitalize()}. A troca continua sob controle do Windows."
+        audio_disponivel = (
+            audio.get("available") is True
+            and bool(str(audio.get("name") or "").strip())
+        )
+
+        if audio_disponivel:
+            self.audio_saida.setText(
+                str(audio.get("name") or "Saída de áudio")
             )
-        else:
-            self.audio_saida.setText("Nenhuma saída de áudio observada.")
+
+            origem = str(
+                audio.get("source") or "Padrão do sistema"
+            ).strip()
+
             self.audio_origem.setText(
-                "O Terminal não vai adivinhar seus fones ou alto-falantes."
+                origem.capitalize()
+            )
+
+        else:
+            self.audio_saida.setText(
+                "Nenhuma saída observada"
+            )
+            self.audio_origem.setText(
+                "Aguardando o Windows"
+            )
+
+        if self.audio_dispositivo.property("available") != audio_disponivel:
+            self.audio_dispositivo.setProperty(
+                "available",
+                audio_disponivel,
+            )
+            self.audio_dispositivo.style().unpolish(
+                self.audio_dispositivo
+            )
+            self.audio_dispositivo.style().polish(
+                self.audio_dispositivo
             )
         self.audicao_estado.setText(
             (
