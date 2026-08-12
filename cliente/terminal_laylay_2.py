@@ -36,20 +36,27 @@ except ImportError as erro:  # pragma: no cover
         "O Terminal Laylay 2.1 precisa de PySide6. Instale com: pip install PySide6"
     ) from erro
 
+from cliente.terminal_2.dashboard import (
+    ChipEstado,
+    PaginaModulo,
+    PainelCentralInteligente,
+    PainelLateralDashboard,
+)
+
 
 PALETA = {
-    "fundo": "#121114",
-    "sidebar": "#19171D",
-    "superficie": "#1E1B22",
-    "elevada": "#26222B",
-    "hover": "#2D2833",
-    "borda": "#39333F",
-    "texto": "#F4F0F6",
-    "secundario": "#B1A9B6",
-    "apagado": "#7E7684",
-    "violeta": "#A98AE8",
-    "ciano": "#72CAD6",
-    "rosa": "#E987B8",
+    "fundo": "#0D1014",
+    "sidebar": "#111419",
+    "superficie": "#15191E",
+    "elevada": "#1C2026",
+    "hover": "#242A31",
+    "borda": "#2C3239",
+    "texto": "#F3F2F4",
+    "secundario": "#B4B5BA",
+    "apagado": "#777C84",
+    "violeta": "#FF5C73",
+    "ciano": "#FF7588",
+    "rosa": "#FF5C73",
     "sucesso": "#68C79A",
     "erro": "#ED7888",
 }
@@ -671,6 +678,7 @@ class JanelaLaylay(QMainWindow):
         self.preferencias = QSettings("Laylay", "Terminal2")
         self._ultima_mensagem: tuple[str, str, float] = ("", "", 0.0)
         self._envios: dict[str, MensagemWidget] = {}
+        self._acoes_por_envio: dict[str, str] = {}
         self._indicador_pensando: IndicadorPensando | None = None
         self._container_indicador: QWidget | None = None
         self._animacoes: list[QPropertyAnimation] = []
@@ -685,11 +693,14 @@ class JanelaLaylay(QMainWindow):
         self._feed_em_espera = True
         self._ultima_atividade_evento = ""
         self._limiar_auto_scroll = 96
+        self._pagina_principal = "inicio"
+        self._provedor_modelo = ""
+        self._dashboard_recebido = False
         self._sidebar_expandida = bool(self.preferencias.value("sidebar_expandida", True, type=bool))
         titulo_sessao = f" · {self._session_id}" if self._session_id else ""
-        self.setWindowTitle(f"Laylay — Terminal 2.1{titulo_sessao}")
+        self.setWindowTitle(f"Laylay — Terminal 3.0 · P3{titulo_sessao}")
         self.setMinimumSize(375, 620)
-        self.resize(1320, 820)
+        self.resize(1680, 940)
         self._montar()
         self._atalhos()
         self._estilizar()
@@ -739,9 +750,12 @@ class JanelaLaylay(QMainWindow):
         self.nav_label.setObjectName("sideSection")
         side.addWidget(self.nav_label)
         for nome, simbolo, texto in (
-            ("conversa", "◌", "Conversa"),
-            ("atividade", "⌁", "Atividade"),
-            ("diagnostico", "◇", "Diagnóstico"),
+            ("inicio", "⌂", "Início"),
+            ("conversa", "▢", "Conversa"),
+            ("automacao", "⌘", "Automação"),
+            ("musica", "♫", "Música"),
+            ("memoria", "▣", "Memória"),
+            ("sistema", "▤", "Sistema"),
             ("configuracoes", "⚙", "Configurações"),
         ):
             botao = QPushButton(f"{simbolo}   {texto}")
@@ -752,7 +766,7 @@ class JanelaLaylay(QMainWindow):
             botao.clicked.connect(lambda _v=False, n=nome: self.selecionar_pagina(n))
             self._nav[nome] = botao
             side.addWidget(botao)
-        self._nav["conversa"].setChecked(True)
+        self._nav["inicio"].setChecked(True)
         side.addSpacing(18)
         self.recentes_label = QLabel("RECENTES")
         self.recentes_label.setObjectName("sideSection")
@@ -790,7 +804,7 @@ class JanelaLaylay(QMainWindow):
         self.avancar = QToolButton(text="→")
         self.avancar.setEnabled(False)
         self.avancar.setToolTip("Sem conversa seguinte nesta versão")
-        self.titulo_header = QLabel("Conversa atual")
+        self.titulo_header = QLabel("Início")
         self.titulo_header.setObjectName("headerTitle")
         hlay.addWidget(self.menu_compacto)
         hlay.addWidget(self.voltar)
@@ -798,6 +812,13 @@ class JanelaLaylay(QMainWindow):
         hlay.addSpacing(8)
         hlay.addWidget(self.titulo_header)
         hlay.addStretch()
+        self.chip_modelo = ChipEstado("Modelo", "Aguardando")
+        self.chip_microfone = ChipEstado("Microfone", "Aguardando")
+        self.chip_memoria = ChipEstado("Memória", "Aguardando")
+        hlay.addWidget(self.chip_modelo)
+        hlay.addWidget(self.chip_microfone)
+        hlay.addWidget(self.chip_memoria)
+        hlay.addSpacing(4)
         self.alternador = AlternadorModo()
         self.alternador.modo_solicitado.connect(self.solicitar_modo)
         hlay.addWidget(self.alternador)
@@ -812,8 +833,13 @@ class JanelaLaylay(QMainWindow):
 
         self.paginas = QStackedWidget()
         conversa = QWidget()
-        conversa_lay = QVBoxLayout(conversa)
-        conversa_lay.setContentsMargins(26, 0, 26, 18)
+        conversa_lay = QHBoxLayout(conversa)
+        conversa_lay.setContentsMargins(18, 10, 18, 18)
+        conversa_lay.setSpacing(12)
+        self.chat_surface = QFrame(objectName="chatSurface")
+        chat_lay = QVBoxLayout(self.chat_surface)
+        chat_lay.setContentsMargins(8, 0, 8, 0)
+        chat_lay.setSpacing(0)
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.NoFrame)
@@ -828,6 +854,7 @@ class JanelaLaylay(QMainWindow):
         self.feed_lay.setContentsMargins(22, 34, 22, 24)
         self.feed_lay.setSpacing(20)
         self.vazio = QFrame(objectName="emptyState")
+        self.vazio.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Minimum)
         vazio_lay = QVBoxLayout(self.vazio)
         vazio_lay.setContentsMargins(32, 50, 32, 50)
         vazio_lay.setSpacing(10)
@@ -837,10 +864,12 @@ class JanelaLaylay(QMainWindow):
         vazio_h = QLabel("Pode chegar. A mente está do outro lado.")
         vazio_h.setObjectName("emptyTitle")
         vazio_h.setAlignment(Qt.AlignCenter)
+        vazio_h.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         vazio_p = QLabel("Converse, peça alguma coisa ou traga aquela bagunça que você chama de ideia.")
         vazio_p.setObjectName("emptyCopy")
         vazio_p.setAlignment(Qt.AlignCenter)
         vazio_p.setWordWrap(True)
+        vazio_p.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         vazio_lay.addWidget(vazio_t)
         vazio_lay.addWidget(vazio_h)
         vazio_lay.addWidget(vazio_p)
@@ -851,7 +880,7 @@ class JanelaLaylay(QMainWindow):
         self._timer_auto_scroll = QTimer(self)
         self._timer_auto_scroll.setSingleShot(True)
         self._timer_auto_scroll.timeout.connect(self._rolar_ao_final)
-        conversa_lay.addWidget(self.scroll, 1)
+        chat_lay.addWidget(self.scroll, 1)
         self.voice_surface = QFrame(objectName="voiceSurface")
         voice_lay = QHBoxLayout(self.voice_surface)
         voice_lay.setContentsMargins(18, 12, 18, 12)
@@ -863,10 +892,18 @@ class JanelaLaylay(QMainWindow):
         voice_lay.addWidget(self.voice_text)
         voice_lay.addStretch()
         self.voice_surface.hide()
-        conversa_lay.addWidget(self.voice_surface)
+        chat_lay.addWidget(self.voice_surface)
         self.composer = Composer()
         self.composer.enviar.connect(self.enviar_texto)
-        conversa_lay.addWidget(self.composer)
+        chat_lay.addWidget(self.composer)
+        conversa_lay.addWidget(self.chat_surface, 1)
+        self.central_inteligente = PainelCentralInteligente()
+        self.central_inteligente.acao_solicitada.connect(
+            self.enviar_acao_rapida,
+        )
+        self.painel_lateral = PainelLateralDashboard()
+        conversa_lay.addWidget(self.central_inteligente)
+        conversa_lay.addWidget(self.painel_lateral)
         self.paginas.addWidget(conversa)
 
         atividade = QWidget()
@@ -925,8 +962,27 @@ class JanelaLaylay(QMainWindow):
         self.configuracoes.reiniciar.connect(self.reiniciar_laylay)
         self.configuracoes.manter_sidebar.toggled.connect(self._preferencia_sidebar)
         self.paginas.addWidget(self.configuracoes)
+        self.pagina_automacao = PaginaModulo(
+            "Automação",
+            "Rotinas, ações rápidas e fluxos cooperativos aparecerão aqui com autorização e confirmação reais.",
+            "P3",
+        )
+        self.pagina_musica = PaginaModulo(
+            "Música",
+            "Playlists, faixa atual e controles serão ligados ao estado observado do player, sem confundir vídeo aberto com áudio tocando.",
+            "P4",
+        )
+        self.pagina_memoria = PaginaModulo(
+            "Memória",
+            "Fatos, relações, preferências e lembretes serão exibidos por uma projeção sanitizada da memória canônica.",
+            "P2",
+        )
+        self.paginas.addWidget(self.pagina_automacao)
+        self.paginas.addWidget(self.pagina_musica)
+        self.paginas.addWidget(self.pagina_memoria)
         centro_lay.addWidget(self.paginas, 1)
         geral.addWidget(centro, 1)
+        self.selecionar_pagina("inicio")
 
     def _atalhos(self) -> None:
         QShortcut(QKeySequence("Ctrl+L"), self, activated=self.composer.editor.setFocus)
@@ -945,7 +1001,7 @@ class JanelaLaylay(QMainWindow):
             #newChatButton:hover {{ background: {PALETA['hover']}; border-color: #51475A; }}
             QPushButton[nav="true"] {{ background: transparent; border: 0; border-radius: 8px; text-align: left; padding: 10px 12px; color: {PALETA['secundario']}; }}
             QPushButton[nav="true"]:hover {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
-            QPushButton[nav="true"]:checked {{ background: #2A2431; color: {PALETA['texto']}; border-left: 2px solid {PALETA['violeta']}; }}
+            QPushButton[nav="true"]:checked {{ background: #2A1C22; color: {PALETA['texto']}; border-left: 2px solid {PALETA['violeta']}; }}
             #recentItem {{ color: {PALETA['secundario']}; padding: 9px 12px; background: transparent; border: 0; border-radius: 8px; text-align: left; }}
             #recentItem:hover {{ color: {PALETA['texto']}; background: {PALETA['elevada']}; }}
             #mindStatus {{ color: {PALETA['apagado']}; padding: 8px; font-size: 11px; }}
@@ -955,6 +1011,12 @@ class JanelaLaylay(QMainWindow):
             QToolButton:hover {{ background: {PALETA['elevada']}; border-color: {PALETA['borda']}; color: {PALETA['texto']}; }}
             #topbar {{ background: {PALETA['fundo']}; border-bottom: 1px solid #242127; }}
             #headerTitle {{ font-weight: 650; }}
+            #statusChip {{ background: #11151A; border: 1px solid {PALETA['borda']}; border-radius: 9px; }}
+            #statusChipText {{ color: {PALETA['secundario']}; font-size: 11px; }}
+            #statusChipDot {{ color: {PALETA['apagado']}; font-size: 9px; }}
+            #statusChipDot[state="online"] {{ color: {PALETA['sucesso']}; }}
+            #statusChipDot[state="error"] {{ color: {PALETA['erro']}; }}
+            #statusChipDot[state="unavailable"] {{ color: #9A7E4C; }}
             #connectionDot {{ color: {PALETA['erro']}; font-size: 9px; }}
             #statusLabel {{ color: {PALETA['apagado']}; font-size: 11px; }}
             #modeSwitch {{ background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 9px; }}
@@ -1005,6 +1067,31 @@ class JanelaLaylay(QMainWindow):
             #secondaryButton {{ background: {PALETA['elevada']}; border: 1px solid {PALETA['borda']}; border-radius: 8px; padding: 10px 15px; font-weight: 600; }}
             #diagnosticValue {{ background: {PALETA['superficie']}; border-left: 2px solid {PALETA['ciano']}; padding: 12px 15px; font-family: 'Cascadia Code'; font-size: 12px; }}
             #eventLog {{ font-family: 'Cascadia Code'; background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 9px; color: {PALETA['secundario']}; padding: 14px; font-size: 11px; }}
+            #chatSurface {{ background: #0F1317; border: 1px solid #222830; border-radius: 13px; }}
+            #intelligencePanel {{ background: #11151A; border: 1px solid #59313A; border-radius: 14px; }}
+            #intelligenceTitle {{ font-size: 18px; font-weight: 700; }}
+            #liveBadge {{ color: {PALETA['rosa']}; background: #301D23; border: 1px solid #5A303A; border-radius: 10px; padding: 4px 8px; font-size: 10px; }}
+            #dashboardRail {{ background: transparent; }}
+            #dashboardCard, #modulePlaceholder {{ background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 12px; }}
+            #dashboardCardTitle {{ font-size: 14px; font-weight: 700; }}
+            #dashboardCardHint {{ color: {PALETA['apagado']}; font-size: 9px; }}
+            #dashboardEmpty, #dashboardActivity {{ color: {PALETA['apagado']}; font-size: 11px; }}
+            #dashboardMetricLabel {{ color: {PALETA['secundario']}; font-size: 11px; }}
+            #dashboardMetricValue {{ color: {PALETA['texto']}; font-size: 11px; font-weight: 700; }}
+            #contextItem {{ background: #1A1F25; border: 1px solid #2A3037; border-radius: 8px; }}
+            #contextLabel {{ color: {PALETA['apagado']}; font-size: 9px; }}
+            #contextValue {{ color: {PALETA['secundario']}; font-size: 10px; font-weight: 650; }}
+            #musicTitle {{ font-size: 13px; font-weight: 700; }}
+            #musicControlsPlaceholder {{ color: #5F646B; font-size: 15px; padding: 5px; }}
+            QPushButton[dashboardAction="true"] {{ background: #1A1F25; border: 1px solid #30363E; border-radius: 9px; padding: 10px 8px; text-align: left; color: {PALETA['secundario']}; font-size: 10px; }}
+            QPushButton[dashboardAction="true"]:hover {{ background: #262027; border-color: #74404C; color: {PALETA['texto']}; }}
+            QPushButton[dashboardAction="true"]:disabled {{ background: #15191E; border-color: #242A30; color: #565B62; }}
+            QPushButton[dashboardAction="true"][actionState="sending"],
+            QPushButton[dashboardAction="true"][actionState="received"],
+            QPushButton[dashboardAction="true"][actionState="executing"] {{ background: #241D22; border-color: #8B4352; color: {PALETA['rosa']}; }}
+            QPushButton[dashboardAction="true"][actionState="confirmed"] {{ background: #16231F; border-color: #356E5A; color: {PALETA['sucesso']}; }}
+            QPushButton[dashboardAction="true"][actionState="partial"] {{ background: #282219; border-color: #806233; color: #E5B965; }}
+            QPushButton[dashboardAction="true"][actionState="failed"] {{ background: #28191C; border-color: #7A303B; color: {PALETA['erro']}; }}
             QScrollBar:vertical {{ background: transparent; width: 9px; margin: 2px; }}
             QScrollBar::handle:vertical {{ background: #49424F; min-height: 32px; border-radius: 4px; }}
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
@@ -1073,7 +1160,8 @@ class JanelaLaylay(QMainWindow):
             if self.conversa_atual.text() == "Conversa atual":
                 titulo = texto[:34] + ("…" if len(texto) > 34 else "")
                 self.conversa_atual.setText(titulo)
-                self.titulo_header.setText(titulo)
+                if self._pagina_principal == "conversa":
+                    self.titulo_header.setText(titulo)
         else:
             linha.addWidget(mensagem)
             linha.addStretch(1)
@@ -1139,6 +1227,18 @@ class JanelaLaylay(QMainWindow):
         animacao.start()
 
     def enviar_texto(self, texto: str) -> None:
+        self._enviar_pedido(texto, tipo="chat", acao_id="")
+
+    def enviar_acao_rapida(self, acao_id: str, texto: str) -> None:
+        self._enviar_pedido(texto, tipo="quick_action", acao_id=acao_id)
+
+    def _enviar_pedido(
+        self,
+        texto: str,
+        *,
+        tipo: str,
+        acao_id: str,
+    ) -> None:
         # Um novo pedido reposiciona a única presença efêmera sempre depois da
         # mensagem mais recente, sem acumular indicadores no feed.
         self._remover_indicador_pensando()
@@ -1150,9 +1250,17 @@ class JanelaLaylay(QMainWindow):
         if mensagem is not None:
             self._envios[mensagem_id] = mensagem
         self._mostrar_indicador_pensando()
-        enviado = bool(self.worker.enfileirar({
+        payload = {
             "type": "input_submit", "id": mensagem_id, "text": texto,
-        }))
+            "kind": tipo,
+        }
+        if tipo == "quick_action":
+            payload["action"] = str(acao_id or "")
+            self._acoes_por_envio[mensagem_id] = str(acao_id or "")
+            self.central_inteligente.definir_estado_acao(
+                acao_id, "sending", "Enviando para a mente canônica",
+            )
+        enviado = bool(self.worker.enfileirar(payload))
         if not enviado:
             self._falhar_envio(
                 mensagem_id,
@@ -1192,6 +1300,11 @@ class JanelaLaylay(QMainWindow):
         mensagem = self._envios.pop(mensagem_id, None)
         if mensagem is not None:
             mensagem.definir_status("failed", detalhe)
+        acao_id = self._acoes_por_envio.pop(mensagem_id, "")
+        if acao_id:
+            self.central_inteligente.definir_estado_acao(
+                acao_id, "failed", detalhe,
+            )
         self._remover_indicador_pensando()
         self.adicionar_evento("Mensagem não entregue", detalhe, "error")
 
@@ -1260,6 +1373,24 @@ class JanelaLaylay(QMainWindow):
             "settings": settings,
         })
 
+    def _atualizar_status_configuracao(self, settings: dict) -> None:
+        provedor = str(settings.get("provider") or "").strip().casefold()
+        modelo = str(settings.get("model") or "").strip()
+        nomes = {
+            "ollama": "Local",
+            "portatil": "Portátil",
+            "openrouter": "OpenRouter",
+        }
+        origem = nomes.get(provedor, provedor or "Aguardando")
+        self._provedor_modelo = origem
+        valor = f"{origem} configurado" if modelo else origem
+        if not self._dashboard_recebido:
+            self.chip_modelo.definir(
+                valor,
+                estado="pending" if self._conectado else "error",
+            )
+            self.central_inteligente.definir_contexto("modo", origem)
+
     def reiniciar_laylay(self) -> None:
         requisicao_id = uuid.uuid4().hex
         self._reinicio_requisicao_id = requisicao_id
@@ -1282,18 +1413,25 @@ class JanelaLaylay(QMainWindow):
             for evento in msg.get("events", []):
                 self.adicionar_evento(evento.get("title", "Evento"), evento.get("detail", ""), evento.get("level", "info"))
             self._atualizar_estado(msg.get("state") or {})
+            if isinstance(msg.get("dashboard"), dict):
+                self._atualizar_dashboard(msg["dashboard"])
             if isinstance(msg.get("settings"), dict):
                 self.configuracoes.preencher(msg["settings"])
+                self._atualizar_status_configuracao(msg["settings"])
             self.enviar_json.emit({"type": "ready", "id": uuid.uuid4().hex})
         elif tipo == "assistant_message":
-            self._remover_indicador_pensando()
-            for mensagem_id in tuple(self._timeouts_envio):
+            mensagem_id = str(msg.get("id") or "")
+            if mensagem_id not in self._envios and len(self._envios) == 1:
+                mensagem_id = next(iter(self._envios))
+            if mensagem_id:
                 self._encerrar_timeout_envio(mensagem_id)
-            self._envios.clear()
+                self._envios.pop(mensagem_id, None)
+            if not self._envios:
+                self._remover_indicador_pensando()
             self.adicionar_mensagem(
                 "assistant", str(msg.get("text") or ""),
                 timestamp=msg.get("timestamp"),
-                mensagem_id=str(msg.get("id") or ""),
+                mensagem_id=str(msg.get("id") or mensagem_id),
             )
             self.avatar_side.atualizar("speaking", str(msg.get("emotion") or "calma"))
             self.adicionar_evento("Resposta entregue", "A fala final chegou à conversa.", "success")
@@ -1323,6 +1461,38 @@ class JanelaLaylay(QMainWindow):
             if isinstance(msg.get("event"), dict):
                 ev = msg["event"]
                 self.adicionar_evento(ev.get("title", "Evento"), ev.get("detail", ""), ev.get("level", "info"))
+        elif tipo == "dashboard_state":
+            if isinstance(msg.get("dashboard"), dict):
+                self._atualizar_dashboard(msg["dashboard"])
+        elif tipo == "action_state":
+            mensagem_id = str(msg.get("id") or "")
+            acao_id = str(
+                msg.get("action") or self._acoes_por_envio.get(mensagem_id) or ""
+            )
+            estado_acao = str(msg.get("state") or "")
+            resumo = str(msg.get("summary") or "")
+            if acao_id:
+                self.central_inteligente.definir_estado_acao(
+                    acao_id, estado_acao, resumo,
+                )
+            if estado_acao in {
+                "awaiting_confirmation", "confirmed", "partial", "failed",
+            }:
+                self._acoes_por_envio.pop(mensagem_id, None)
+                niveis = {
+                    "confirmed": "success", "partial": "warning",
+                    "failed": "error", "awaiting_confirmation": "info",
+                }
+                titulos = {
+                    "confirmed": "Ação confirmada",
+                    "partial": "Ação parcialmente concluída",
+                    "failed": "Ação não confirmada",
+                    "awaiting_confirmation": "Confirmação necessária",
+                }
+                self.adicionar_evento(
+                    titulos[estado_acao], resumo, niveis[estado_acao],
+                    atividade_confirmada=estado_acao == "confirmed",
+                )
         elif tipo == "mode_state":
             self._modo_pendente = False
             self._modo = str(msg.get("mode") or self._modo)
@@ -1333,8 +1503,11 @@ class JanelaLaylay(QMainWindow):
         elif tipo == "settings_state":
             if isinstance(msg.get("settings"), dict):
                 self.configuracoes.preencher(msg["settings"])
+                self._atualizar_status_configuracao(msg["settings"])
         elif tipo == "settings_result":
             self.configuracoes.resultado(msg)
+            if isinstance(msg.get("settings"), dict):
+                self._atualizar_status_configuracao(msg["settings"])
             self.adicionar_evento(
                 "Configuração salva" if msg.get("saved") else "Configuração recusada",
                 str(msg.get("message") or ""), "success" if msg.get("saved") else "error",
@@ -1366,12 +1539,93 @@ class JanelaLaylay(QMainWindow):
                 )
             self.adicionar_evento("A ponte recusou uma ação", str(msg.get("message") or "Erro desconhecido"), "error")
 
+    def _atualizar_dashboard(self, dashboard: dict) -> None:
+        if dashboard.get("schema_version") != 1:
+            return
+        self._dashboard_recebido = True
+        saude = dashboard.get("health")
+        if not isinstance(saude, dict):
+            saude = {}
+        llm = saude.get("llm") if isinstance(saude.get("llm"), dict) else {}
+        estado_llm = str(llm.get("state") or "unavailable")
+        provedor = str(llm.get("provider_label") or self._provedor_modelo or "Modelo")
+        rotulo_llm = str(llm.get("label") or "Indisponível")
+        frescor_llm = str(llm.get("freshness") or "unavailable")
+        if frescor_llm == "stale":
+            rotulo_llm += " · antigo"
+        cor_llm = {
+            "online": "online",
+            "ready": "pending",
+            "degraded": "error",
+            "unavailable": "unavailable",
+        }.get(estado_llm, "pending")
+        if frescor_llm == "stale":
+            cor_llm = "pending"
+        elif frescor_llm == "unavailable":
+            cor_llm = "unavailable"
+        self.chip_modelo.definir(f"{provedor} · {rotulo_llm}", estado=cor_llm)
+        modelo = str(llm.get("model") or "").strip()
+        self.chip_modelo.setToolTip(
+            f"Modelo observado: {modelo}" if modelo else "Modelo não informado pelo runtime"
+        )
+
+        memoria = (
+            saude.get("memory") if isinstance(saude.get("memory"), dict) else {}
+        )
+        estado_memoria = str(memoria.get("state") or "unavailable")
+        rotulo_memoria = str(memoria.get("label") or "Indisponível")
+        frescor_memoria = str(memoria.get("freshness") or "unavailable")
+        if frescor_memoria == "stale":
+            rotulo_memoria += " · antiga"
+        cor_memoria = {
+            "online": "online",
+            "degraded": "error",
+            "unavailable": "unavailable",
+        }.get(estado_memoria, "pending")
+        if frescor_memoria == "stale":
+            cor_memoria = "pending"
+        elif frescor_memoria == "unavailable":
+            cor_memoria = "unavailable"
+        self.chip_memoria.definir(rotulo_memoria, estado=cor_memoria)
+
+        microfone = (
+            saude.get("microphone")
+            if isinstance(saude.get("microphone"), dict) else {}
+        )
+        estado_microfone = str(microfone.get("state") or "unavailable")
+        rotulo_microfone = str(microfone.get("label") or "Indisponível")
+        frescor_microfone = str(
+            microfone.get("freshness") or "unavailable"
+        )
+        if frescor_microfone == "stale":
+            rotulo_microfone += " · antigo"
+        cor_microfone = {
+            "online": "online",
+            "paused": "pending",
+            "degraded": "error",
+            "unavailable": "unavailable",
+        }.get(estado_microfone, "pending")
+        if frescor_microfone == "stale":
+            cor_microfone = "pending"
+        elif frescor_microfone == "unavailable":
+            cor_microfone = "unavailable"
+        self.chip_microfone.definir(rotulo_microfone, estado=cor_microfone)
+        self.central_inteligente.aplicar_dashboard(dashboard)
+        self.painel_lateral.aplicar_dashboard(dashboard)
+
     def _atualizar_estado(self, estado: dict) -> None:
         atividade = str(estado.get("activity") or "idle")
         rotulo = str(estado.get("activity_label") or "Pronta")
         emocao = str(estado.get("emotion") or "calma")
         self._modo = str(estado.get("interaction_mode") or self._modo)
         self._voz_disponivel = bool(estado.get("voice_available", False))
+        if not self._dashboard_recebido:
+            if not self._voz_disponivel:
+                self.chip_microfone.definir("Indisponível", estado="unavailable")
+            elif self._modo == "voice":
+                self.chip_microfone.definir("Ativo", estado="online")
+            else:
+                self.chip_microfone.definir("Pausado no chat", estado="pending")
         self.status.setText(rotulo)
         self.marca_status.setText(f"{rotulo.casefold()} · {emocao}")
         self.diag_atividade.setText(f"Atividade\n{rotulo} · emoção {emocao}")
@@ -1399,6 +1653,15 @@ class JanelaLaylay(QMainWindow):
             "Ouvindo pelo microfone da Laylay" if self._voz_disponivel
             else "Ouvido indisponível — volte ao Chat para continuar"
         )
+        if not self._conectado:
+            self.chip_microfone.definir("Sem ponte", estado="unavailable")
+        elif not self._dashboard_recebido:
+            if not self._voz_disponivel:
+                self.chip_microfone.definir("Indisponível", estado="unavailable")
+            elif self._modo == "voice":
+                self.chip_microfone.definir("Ativo", estado="online")
+            else:
+                self.chip_microfone.definir("Pausado no chat", estado="pending")
         self.diag_modo.setText(
             f"Interação\n{'Voz' if self._modo == 'voice' else 'Chat'} · "
             f"ouvido {'disponível' if self._voz_disponivel else 'indisponível'}"
@@ -1406,10 +1669,26 @@ class JanelaLaylay(QMainWindow):
 
     def estado_conexao(self, conectado: bool) -> None:
         self._conectado = conectado
+        self.central_inteligente.definir_conectada(conectado)
         self.configuracoes.definir_conectada(conectado)
         self.ponto.setStyleSheet(f"color: {PALETA['sucesso'] if conectado else PALETA['erro']};")
         self.status.setText("Pronta" if conectado else "Reconectando")
         self.status_mente.setText("●  Mente conectada" if conectado else "●  Reconectando")
+        if conectado and not self._dashboard_recebido:
+            self.chip_modelo.definir(
+                f"{self._provedor_modelo} configurado"
+                if self._provedor_modelo else "Aguardando estado",
+                estado="pending",
+            )
+        else:
+            if not conectado:
+                self._dashboard_recebido = False
+                self.chip_modelo.definir("Sem ponte", estado="error")
+                self.chip_memoria.definir("Reconectando", estado="unavailable")
+                self.central_inteligente.invalidar_dashboard()
+                self.painel_lateral.invalidar_dashboard()
+        if conectado and not self._dashboard_recebido:
+            self.chip_memoria.definir("Aguardando", estado="pending")
         identidade = (
             f" · sessão {self._session_id} · PID {self._parent_pid}"
             if self._session_id else ""
@@ -1434,12 +1713,21 @@ class JanelaLaylay(QMainWindow):
     def falha_conexao(self, detalhe: str) -> None:
         self.adicionar_evento("Conexão interrompida", detalhe, "warning")
 
-    def adicionar_evento(self, titulo: str, detalhe: str = "", nivel: str = "info") -> None:
+    def adicionar_evento(
+        self,
+        titulo: str,
+        detalhe: str = "",
+        nivel: str = "info",
+        *,
+        atividade_confirmada: bool = False,
+    ) -> None:
         cores = {"error": PALETA["erro"], "warning": PALETA["rosa"], "success": PALETA["sucesso"], "info": PALETA["ciano"]}
         self.eventos.append(
             f'<span style="color:{cores.get(nivel, PALETA["ciano"])}">{time.strftime("%H:%M")}  {titulo}</span>'
             f'<br><span style="color:{PALETA["secundario"]}">{detalhe}</span><br>'
         )
+        if atividade_confirmada:
+            self.central_inteligente.registrar_evento(titulo)
 
     def nova_conversa(self) -> None:
         self._remover_indicador_pensando()
@@ -1453,13 +1741,17 @@ class JanelaLaylay(QMainWindow):
                     if filho.widget():
                         filho.widget().deleteLater()
         self.vazio = QFrame(objectName="emptyState")
+        self.vazio.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Minimum)
         lay = QVBoxLayout(self.vazio)
         titulo = QLabel("◕‿◕  Tela limpa. Memória intacta.")
         titulo.setObjectName("emptyTitle")
         titulo.setAlignment(Qt.AlignCenter)
+        titulo.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         texto = QLabel("Nova sessão visual; a mente da Laylay não esqueceu nada.")
         texto.setObjectName("emptyCopy")
         texto.setAlignment(Qt.AlignCenter)
+        texto.setWordWrap(True)
+        texto.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         lay.addWidget(titulo)
         lay.addWidget(texto)
         self.feed_lay.addStretch()
@@ -1467,19 +1759,44 @@ class JanelaLaylay(QMainWindow):
         self.feed_lay.addStretch()
         self._feed_em_espera = True
         self._envios.clear()
+        self._acoes_por_envio.clear()
         self.conversa_atual.setText("Conversa atual")
-        self.titulo_header.setText("Conversa atual")
         self.selecionar_pagina("conversa")
         self.composer.editor.setFocus()
         self.adicionar_evento("Nova conversa visual", "O histórico canônico e a memória foram preservados.", "info")
 
     def selecionar_pagina(self, nome: str) -> None:
-        mapa = {"conversa": 0, "atividade": 1, "diagnostico": 2, "configuracoes": 3}
+        mapa = {
+            "inicio": 0,
+            "conversa": 0,
+            "atividade": 1,
+            "diagnostico": 2,
+            "sistema": 2,
+            "configuracoes": 3,
+            "automacao": 4,
+            "musica": 5,
+            "memoria": 6,
+        }
         self.paginas.setCurrentIndex(mapa.get(nome, 0))
+        if nome in {"inicio", "conversa"}:
+            self._pagina_principal = nome
+        titulos = {
+            "inicio": "Início",
+            "conversa": self.conversa_atual.text(),
+            "atividade": "Atividade",
+            "diagnostico": "Diagnóstico",
+            "sistema": "Sistema",
+            "configuracoes": "Configurações",
+            "automacao": "Automação",
+            "musica": "Música",
+            "memoria": "Memória",
+        }
+        self.titulo_header.setText(titulos.get(nome, "Laylay"))
         for chave, botao in self._nav.items():
             botao.setChecked(chave == nome)
         if nome == "configuracoes" and self._conectado:
             self.enviar_json.emit({"type": "settings_get", "id": uuid.uuid4().hex})
+        self._aplicar_responsividade()
 
     def alternar_sidebar(self) -> None:
         self._sidebar_expandida = not self._sidebar_expandida
@@ -1533,6 +1850,15 @@ class JanelaLaylay(QMainWindow):
         largura = self.width()
         estreita = largura < 760
         compacta = largura < 920
+        inicio_ativo = (
+            self.paginas.currentIndex() == 0
+            and self._pagina_principal == "inicio"
+        )
+        self.central_inteligente.setVisible(inicio_ativo and largura >= 1450)
+        self.painel_lateral.setVisible(inicio_ativo and largura >= 1650)
+        self.chip_memoria.setVisible(largura >= 1420)
+        self.chip_modelo.setVisible(largura >= 1160)
+        self.chip_microfone.setVisible(largura >= 980)
         self.menu_compacto.setVisible(estreita)
         self.voltar.setVisible(not estreita)
         self.avancar.setVisible(not estreita)
@@ -1547,11 +1873,11 @@ class JanelaLaylay(QMainWindow):
         else:
             self.sidebar.show()
             self._aplicar_sidebar()
-        margem = 8 if estreita else 26
+        margem = 6 if estreita else 18
         pagina_conversa = self.paginas.widget(0)
         if pagina_conversa is not None and pagina_conversa.layout() is not None:
             pagina_conversa.layout().setContentsMargins(
-                margem, 0, margem, 12 if estreita else 18,
+                margem, 6 if estreita else 10, margem, 12 if estreita else 18,
             )
         self.feed_lay.setContentsMargins(
             4 if estreita else 22,

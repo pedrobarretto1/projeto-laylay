@@ -60,6 +60,7 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
     central_notificacoes = dict(diagnostico.get("central_notificacoes") or {})
     iot = dict(diagnostico.get("iot") or {})
     avatar = dict(diagnostico.get("avatar") or {})
+    terminal_dashboard = dict(diagnostico.get("terminal_dashboard") or {})
     visao_jogo_leitura = dict(diagnostico.get("visao_jogo_leitura") or {})
     visao_jogo_analise = dict(diagnostico.get("visao_jogo_analise") or {})
     conversa_llm = dict(diagnostico.get("conversa_llm") or {})
@@ -424,6 +425,16 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             f"ok={bool(conexoes.get('ok'))} "
             f"ausentes={len(conexoes.get('ausentes') or [])} "
             f"inválidas={len(conexoes.get('invalidos') or [])}"
+        )
+    if terminal_dashboard:
+        linhas.append(
+            "  Terminal 3 dashboard: "
+            f"estado={terminal_dashboard.get('status') or 'unavailable'} "
+            f"sequência={int(terminal_dashboard.get('sequence') or 0)} "
+            f"coleta={bool(terminal_dashboard.get('coleta_em_andamento'))} "
+            f"fontes_pendentes={int(terminal_dashboard.get('fontes_pendentes') or 0)} "
+            f"falhas={int(terminal_dashboard.get('falhas') or 0)} "
+            "autoriza_execução=False"
         )
     if area_transferencia or caixa_entrada or central_notificacoes:
         linhas.append(

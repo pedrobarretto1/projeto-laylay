@@ -9,8 +9,10 @@ from __future__ import annotations
 
 from collections import deque
 import json
+import math
 import os
 from pathlib import Path
+import re
 import secrets
 import socket
 import subprocess
@@ -20,6 +22,10 @@ import time
 from typing import Any, Callable, Mapping, Sequence
 
 from mente_laylay.integracao.configuracao_aplicacao import ErroConfiguracaoAplicacao
+from mente_laylay.integracao.acoes_terminal import (
+    IDS_ACOES_RAPIDAS,
+    definicao_acao_rapida,
+)
 
 
 TIPOS_CLIENTE = frozenset({
@@ -29,6 +35,15 @@ TIPOS_CLIENTE = frozenset({
 TIPOS_BACKEND = frozenset({
     "snapshot", "input_ack", "assistant_message", "state", "error",
     "mode_state", "settings_state", "settings_result", "restart_result",
+    "dashboard_state", "action_state",
+})
+
+_ESTADOS_ACAO_RAPIDA = frozenset({
+    "sending", "received", "executing", "awaiting_confirmation",
+    "confirmed", "partial", "failed",
+})
+_ESTADOS_DISPONIBILIDADE_ACAO = frozenset({
+    "available", "degraded", "requires_input", "unavailable",
 })
 
 
@@ -39,6 +54,46 @@ class ErroProtocoloDesktop(ValueError):
 def _texto_seguro(valor: Any, limite: int = 8_000) -> str:
     texto = str(valor or "").replace("\x00", "").strip()
     return texto[:limite]
+
+
+_PADRAO_TEXTO_PRIVADO_DASHBOARD = re.compile(
+    r"(?ix)(?:"
+    r"\b(?:senha|password|token|api[ _-]?key|chave[ _-]?api|cpf|cnpj|cvv|pin|pix)\b"
+    r"|\bsk-(?:or-v1-)?[a-z0-9_-]{8,}\b"
+    r"|\bgh[pousr]_[a-z0-9]{16,}\b"
+    r"|\beyj[a-z0-9_-]{6,}\.[a-z0-9_-]{6,}\.[a-z0-9_-]{6,}\b"
+    r"|https?://|(?:[a-z]:\\)|(?:\\\\[\w.-]+\\)"
+    r"|\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b"
+    r"|\b(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?\d{4,5}[- ]?\d{4}\b"
+    r")"
+)
+_PADRAO_TEMA_SENSIVEL_DASHBOARD = re.compile(
+    r"(?ix)\b(?:"
+    r"sa[uú]de|doen[çc]a|diagn[oó]stico|m[eé]dic[oa]|medica[çc][aã]o|"
+    r"rem[eé]dio|terapia|sexual|[ií]ntim[oa]|religi[aã]o|religioso|"
+    r"pol[ií]tica|partido|voto|sal[aá]rio|d[ií]vida|conta banc[aá]ria|"
+    r"cart[aã]o|endere[çc]o"
+    r")\b"
+)
+
+
+def _texto_publico_dashboard(valor: Any, limite: int, *, fallback: str) -> str:
+    texto = _texto_seguro(valor, limite)
+    if not texto or _PADRAO_TEXTO_PRIVADO_DASHBOARD.search(texto):
+        return fallback
+    return texto
+
+
+def _texto_memoria_publico_dashboard(
+    valor: Any,
+    limite: int,
+    *,
+    fallback: str,
+) -> str:
+    texto = _texto_publico_dashboard(valor, limite, fallback=fallback)
+    if texto != fallback and _PADRAO_TEMA_SENSIVEL_DASHBOARD.search(texto):
+        return fallback
+    return texto
 
 
 def sanitizar_historico(
@@ -114,6 +169,290 @@ def sanitizar_configuracao(configuracao: Mapping[str, Any] | None) -> dict[str, 
     }
 
 
+def _numero_dashboard(
+    valor: Any,
+    *,
+    minimo: float,
+    maximo: float,
+) -> float | None:
+    if isinstance(valor, bool):
+        return None
+    try:
+        numero = float(valor)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(numero) or numero < minimo or numero > maximo:
+        return None
+    return round(numero, 1)
+
+
+def _frescor_dashboard(valor: Any, *, disponivel: bool) -> str:
+    if not disponivel:
+        return "unavailable"
+    frescor = str(valor or "").casefold().strip()
+    if frescor in {"fresh", "stale", "unavailable"}:
+        return frescor
+    return "fresh" if disponivel else "unavailable"
+
+
+def _inteiro_dashboard(valor: Any, *, minimo: int = 0, maximo: int) -> int:
+    if isinstance(valor, bool):
+        return minimo
+    try:
+        numero = int(valor)
+    except (TypeError, ValueError, OverflowError):
+        return minimo
+    return max(minimo, min(maximo, numero))
+
+
+def _saude_dashboard(valor: Any) -> dict[str, Any]:
+    bruto = dict(valor) if isinstance(valor, Mapping) else {}
+    estado = str(bruto.get("state") or "unavailable").casefold().strip()
+    permitidos = {
+        "online", "ready", "paused", "degraded", "unavailable", "unknown",
+    }
+    if estado not in permitidos:
+        estado = "unavailable"
+    observado = _numero_dashboard(
+        bruto.get("observed_at"), minimo=0, maximo=9_999_999_999,
+    ) or 0.0
+    frescor = _frescor_dashboard(
+        bruto.get("freshness"),
+        disponivel=estado != "unavailable" and observado > 0,
+    )
+    if frescor == "unavailable":
+        estado = "unavailable"
+    resultado = {
+        "state": estado,
+        "label": _texto_publico_dashboard(
+            bruto.get("label"), 80, fallback="Indisponível",
+        ),
+        "freshness": frescor,
+        "observed_at": observado,
+    }
+    if estado == "unavailable":
+        resultado["label"] = "Indisponível"
+    if "provider" in bruto:
+        provedor = str(bruto.get("provider") or "").casefold().strip()
+        if provedor in {"ollama", "portatil", "openrouter"}:
+            resultado["provider"] = provedor
+        resultado["provider_label"] = _texto_publico_dashboard(
+            bruto.get("provider_label"), 40, fallback="—",
+        )
+        resultado["model"] = _texto_publico_dashboard(
+            bruto.get("model"), 120, fallback="",
+        )
+    return resultado
+
+
+def _metrica_dashboard(
+    valor: Any,
+    *,
+    unidade: str,
+    minimo: float,
+    maximo: float,
+    max_age_s: float,
+) -> dict[str, Any]:
+    bruto = dict(valor) if isinstance(valor, Mapping) else {}
+    numero = _numero_dashboard(bruto.get("value"), minimo=minimo, maximo=maximo)
+    observado = _numero_dashboard(
+        bruto.get("observed_at"), minimo=0, maximo=9_999_999_999,
+    ) or 0.0
+    frescor = _frescor_dashboard(
+        bruto.get("freshness"),
+        disponivel=numero is not None and observado > 0,
+    )
+    if frescor == "unavailable":
+        numero = None
+    return {
+        "value": numero,
+        "unit": unidade,
+        "freshness": frescor,
+        "observed_at": observado,
+        "max_age_s": max_age_s,
+    }
+
+
+def sanitizar_dashboard_estado(
+    dashboard: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Allowlist da projeção pública; nenhum estado interno cru atravessa."""
+    bruto = dict(dashboard) if isinstance(dashboard, Mapping) else {}
+    saude = dict(bruto.get("health") or {}) if isinstance(
+        bruto.get("health"), Mapping,
+    ) else {}
+    contexto = dict(bruto.get("context") or {}) if isinstance(
+        bruto.get("context"), Mapping,
+    ) else {}
+    sistema = dict(bruto.get("system") or {}) if isinstance(
+        bruto.get("system"), Mapping,
+    ) else {}
+    status = str(bruto.get("status") or "unavailable").casefold().strip()
+    if status not in {"ok", "partial", "unavailable"}:
+        status = "unavailable"
+    memoria: list[dict[str, Any]] = []
+    itens = bruto.get("memory_recent")
+    if isinstance(itens, (list, tuple)):
+        for item in itens:
+            if not isinstance(item, Mapping):
+                continue
+            tipo = str(item.get("kind") or "").casefold().strip()
+            fonte = str(item.get("source") or "").casefold().strip()
+            if tipo not in {"reminder", "preference", "task"}:
+                continue
+            fonte_por_tipo = {
+                "reminder": "agenda_confirmed",
+                "preference": "user_confirmed",
+                "task": "executor_confirmed",
+            }
+            if fonte != fonte_por_tipo[tipo]:
+                continue
+            resumo = _texto_memoria_publico_dashboard(
+                item.get("summary"), 160,
+                fallback={
+                    "reminder": "Você tem um lembrete",
+                    "preference": "Preferência confirmada",
+                    "task": "Ação concluída",
+                }[tipo],
+            )
+            if not resumo:
+                continue
+            memoria.append({
+                "kind": tipo,
+                "summary": resumo,
+                "detail": _texto_memoria_publico_dashboard(
+                    item.get("detail"), 100, fallback="",
+                ),
+                "source": fonte,
+                "timestamp": _numero_dashboard(
+                    item.get("timestamp"), minimo=0, maximo=9_999_999_999,
+                ) or 0.0,
+            })
+            if len(memoria) >= 3:
+                break
+    contexto_observado = _numero_dashboard(
+        contexto.get("observed_at"), minimo=0, maximo=9_999_999_999,
+    ) or 0.0
+    contexto_disponivel = contexto_observado > 0 and any(
+        chave in contexto
+        for chave in (
+            "project", "mode", "interaction_mode", "city", "game_active",
+        )
+    )
+    frescor_contexto = _frescor_dashboard(
+        contexto.get("freshness"), disponivel=contexto_disponivel,
+    )
+    jogo_ativo = (
+        contexto.get("game_active") is True
+        and frescor_contexto != "unavailable"
+    )
+    contexto_publico = {
+        "project": _texto_publico_dashboard(
+            contexto.get("project"), 80, fallback="Laylay",
+        ),
+        "mode": _texto_publico_dashboard(
+            contexto.get("mode"), 40, fallback="—",
+        ),
+        "interaction_mode": (
+            str(contexto.get("interaction_mode") or "chat").casefold().strip()
+            if str(contexto.get("interaction_mode") or "").casefold().strip()
+            in {"chat", "voice"} else "chat"
+        ),
+        "city": _texto_publico_dashboard(
+            contexto.get("city"), 80, fallback="—",
+        ),
+        "game_active": jogo_ativo,
+        "game_name": (
+            _texto_publico_dashboard(
+                contexto.get("game_name"), 100, fallback="Jogo detectado",
+            ) if jogo_ativo else ""
+        ),
+        "freshness": frescor_contexto,
+        "observed_at": contexto_observado,
+    }
+    acoes_publicas: list[dict[str, str]] = []
+    for item in list(bruto.get("quick_actions") or ())[:12]:
+        if not isinstance(item, Mapping):
+            continue
+        acao_id = _texto_seguro(item.get("id"), 48)
+        if acao_id not in IDS_ACOES_RAPIDAS:
+            continue
+        estado_acao = _texto_seguro(item.get("state"), 32).casefold()
+        if estado_acao not in _ESTADOS_DISPONIBILIDADE_ACAO:
+            estado_acao = "unavailable"
+        acoes_publicas.append({
+            "id": acao_id,
+            "state": estado_acao,
+            "reason": _texto_publico_dashboard(
+                item.get("reason"), 120, fallback="",
+            ),
+        })
+    resultado = {
+        "schema_version": 1,
+        "status": status,
+        "generated_at": _numero_dashboard(
+            bruto.get("generated_at"), minimo=0, maximo=9_999_999_999,
+        ) or 0.0,
+        "sequence": _inteiro_dashboard(
+            bruto.get("sequence"), maximo=2_147_483_647,
+        ),
+        "health": {
+            "llm": _saude_dashboard(saude.get("llm")),
+            "microphone": _saude_dashboard(saude.get("microphone")),
+            "memory": _saude_dashboard(saude.get("memory")),
+        },
+        "context": contexto_publico,
+        "memory_recent": memoria,
+        "quick_actions": acoes_publicas,
+        "system": {
+            "cpu_percent": _metrica_dashboard(
+                sistema.get("cpu_percent"), unidade="%", minimo=0, maximo=100,
+                max_age_s=5.0,
+            ),
+            "ram_percent": _metrica_dashboard(
+                sistema.get("ram_percent"), unidade="%", minimo=0, maximo=100,
+                max_age_s=5.0,
+            ),
+            "disk_percent": _metrica_dashboard(
+                sistema.get("disk_percent"), unidade="%", minimo=0, maximo=100,
+                max_age_s=20.0,
+            ),
+            "temperature_c": _metrica_dashboard(
+                sistema.get("temperature_c"), unidade="°C", minimo=0, maximo=125,
+                max_age_s=120.0,
+            ),
+            "uptime_seconds": _metrica_dashboard(
+                sistema.get("uptime_seconds"), unidade="s", minimo=0,
+                maximo=20 * 365 * 24 * 3600, max_age_s=20.0,
+            ),
+        },
+    }
+    saudes_publicas = tuple(resultado["health"].values())
+    sistema_publico = resultado["system"]
+    metricas_principais = (
+        sistema_publico["cpu_percent"], sistema_publico["ram_percent"],
+        sistema_publico["disk_percent"], sistema_publico["uptime_seconds"],
+    )
+    tem_algum_dado = any(
+        item.get("state") != "unavailable" for item in saudes_publicas
+    ) or resultado["context"]["freshness"] != "unavailable" or any(
+        item.get("value") is not None for item in metricas_principais
+    )
+    tem_degradacao = any(
+        item.get("state") in {"degraded", "unavailable"}
+        or item.get("freshness") in {"stale", "unavailable"}
+        for item in saudes_publicas
+    ) or resultado["context"]["freshness"] in {"stale", "unavailable"} or any(
+        item.get("value") is None or item.get("freshness") != "fresh"
+        for item in metricas_principais
+    )
+    if not tem_algum_dado:
+        resultado["status"] = "unavailable"
+    elif tem_degradacao and resultado["status"] == "ok":
+        resultado["status"] = "partial"
+    return resultado
+
+
 def validar_mensagem_cliente(
     mensagem: Mapping[str, Any],
     *,
@@ -136,7 +475,21 @@ def validar_mensagem_cliente(
         texto = _texto_seguro(mensagem.get("text"), 8_000)
         if not texto:
             raise ErroProtocoloDesktop("entrada vazia")
-        return {"type": tipo, "text": texto, "id": _texto_seguro(mensagem.get("id"), 80)}
+        tipo_entrada = _texto_seguro(mensagem.get("kind"), 24).casefold() or "chat"
+        if tipo_entrada not in {"chat", "quick_action"}:
+            raise ErroProtocoloDesktop("origem da entrada inválida")
+        acao_id = _texto_seguro(mensagem.get("action"), 48)
+        if tipo_entrada == "quick_action" and acao_id not in IDS_ACOES_RAPIDAS:
+            raise ErroProtocoloDesktop("ação rápida inválida")
+        if tipo_entrada == "chat":
+            acao_id = ""
+        return {
+            "type": tipo,
+            "text": texto,
+            "id": _texto_seguro(mensagem.get("id"), 80),
+            "kind": tipo_entrada,
+            "action": acao_id,
+        }
     if tipo == "mode_set":
         modo = str(mensagem.get("mode") or "").casefold().strip()
         if modo not in {"chat", "voice"}:
@@ -169,6 +522,54 @@ def validar_mensagem_cliente(
     return {"type": tipo, "id": _texto_seguro(mensagem.get("id"), 80)}
 
 
+def classificar_resultado_acao(
+    plano: Mapping[str, Any] | None,
+    *,
+    acao_id: str,
+) -> dict[str, str]:
+    """Converte somente evidência do plano no estado público do botão."""
+    dados = dict(plano or {})
+    definicao = definicao_acao_rapida(acao_id)
+    intent_esperada = str(definicao.get("intent") or "").upper()
+    comandos = [
+        dict(item) for item in list(dados.get("comandos") or ())
+        if isinstance(item, Mapping)
+    ]
+    relevantes = [
+        item for item in comandos
+        if not intent_esperada
+        or str(item.get("intent") or "").upper() == intent_esperada
+    ]
+    estados = " ".join(
+        str(item.get("status") or "").casefold() for item in relevantes
+    )
+    if "aguardando_confirmacao" in estados or "aguardando confirmação" in estados:
+        estado = "awaiting_confirmation"
+    elif relevantes and all(
+        item.get("executou") is True and item.get("confirmado") is True
+        for item in relevantes
+    ):
+        estado = "confirmed"
+    else:
+        sucessos = sum(item.get("executou") is True for item in relevantes)
+        falhas = sum(item.get("executou") is False for item in relevantes)
+        if sucessos:
+            estado = "partial"
+        elif falhas or relevantes or dados.get("erros"):
+            estado = "failed"
+        else:
+            # Uma fala final sem comando correspondente não prova que o clique
+            # operacional foi executado.
+            estado = "failed"
+    resumo = {
+        "awaiting_confirmation": "Aguardando sua confirmação",
+        "confirmed": "Resultado confirmado pela mente",
+        "partial": "A ação terminou sem confirmação completa",
+        "failed": "A ação não foi confirmada",
+    }[estado]
+    return {"state": estado, "summary": resumo}
+
+
 class DesktopBridgeRuntime:
     """Servidor de uma sessão; fechar o cliente nunca encerra a mente."""
 
@@ -178,6 +579,8 @@ class DesktopBridgeRuntime:
         enviar_entrada: Callable[[str], Any],
         historico_getter: Callable[[], Sequence[Mapping[str, Any]]],
         estado_getter: Callable[[], Mapping[str, Any]],
+        dashboard_getter: Callable[[], Mapping[str, Any]] | None = None,
+        resultado_acao_getter: Callable[[], Mapping[str, Any]] | None = None,
         modo_setter: Callable[[bool], Any] | None = None,
         configuracao_getter: Callable[[], Mapping[str, Any]] | None = None,
         configuracao_setter: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None,
@@ -187,6 +590,8 @@ class DesktopBridgeRuntime:
         max_message_bytes: int = 65_536,
         rate_limit: int = 24,
         rate_window_s: float = 5.0,
+        dashboard_interval_s: float = 1.0,
+        dashboard_getter_timeout_s: float = 0.2,
         log: Callable[[str], Any] = print,
     ) -> None:
         if host not in {"127.0.0.1", "localhost", "::1"}:
@@ -194,6 +599,8 @@ class DesktopBridgeRuntime:
         self.enviar_entrada = enviar_entrada
         self.historico_getter = historico_getter
         self.estado_getter = estado_getter
+        self.dashboard_getter = dashboard_getter
+        self.resultado_acao_getter = resultado_acao_getter
         self.modo_setter = modo_setter
         self.configuracao_getter = configuracao_getter
         self.configuracao_setter = configuracao_setter
@@ -203,6 +610,10 @@ class DesktopBridgeRuntime:
         self.max_message_bytes = max(1_024, int(max_message_bytes))
         self.rate_limit = max(2, int(rate_limit))
         self.rate_window_s = max(1.0, float(rate_window_s))
+        self.dashboard_interval_s = max(0.25, float(dashboard_interval_s))
+        self.dashboard_getter_timeout_s = max(
+            0.02, float(dashboard_getter_timeout_s),
+        )
         self.log = log
         self.token = secrets.token_urlsafe(32)
         self.session_id = secrets.token_hex(8)
@@ -222,9 +633,17 @@ class DesktopBridgeRuntime:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._poll_thread: threading.Thread | None = None
+        self._dashboard_thread: threading.Thread | None = None
+        self._dashboard_source_lock = threading.RLock()
+        self._dashboard_source_pending: tuple[
+            threading.Thread, dict[str, Any]
+        ] | None = None
         self._processo: subprocess.Popen[Any] | None = None
         self._ultimo_estado = ""
+        self._ultimo_dashboard = ""
         self._eventos: deque[dict[str, Any]] = deque(maxlen=120)
+        self._entradas_lock = threading.RLock()
+        self._entradas_pendentes: deque[dict[str, str]] = deque(maxlen=64)
 
     @property
     def endereco(self) -> tuple[str, int]:
@@ -263,9 +682,20 @@ class DesktopBridgeRuntime:
         self._thread = threading.Thread(target=self._servir, name="Laylay-Desktop-Bridge", daemon=True)
         if not self._poll_thread or not self._poll_thread.is_alive():
             self._poll_thread = threading.Thread(target=self._publicar_estados, name="Laylay-Desktop-State", daemon=True)
+        if (
+            callable(self.dashboard_getter)
+            and (not self._dashboard_thread or not self._dashboard_thread.is_alive())
+        ):
+            self._dashboard_thread = threading.Thread(
+                target=self._publicar_dashboard,
+                name="Laylay-Desktop-Dashboard",
+                daemon=True,
+            )
         self._thread.start()
         if not self._poll_thread.is_alive():
             self._poll_thread.start()
+        if self._dashboard_thread and not self._dashboard_thread.is_alive():
+            self._dashboard_thread.start()
         self.log(
             f"🖥️ [TERMINAL 2] ponte ativa em {self.host}:{self.port} "
             f"| sessão={self.session_id[:8]} pid={self.parent_pid}"
@@ -343,6 +773,8 @@ class DesktopBridgeRuntime:
                         self._client = None
                     if self._client_pending is cliente:
                         self._client_pending = None
+                with self._entradas_lock:
+                    self._entradas_pendentes.clear()
                 try:
                     cliente.close()
                 except OSError:
@@ -376,6 +808,7 @@ class DesktopBridgeRuntime:
                 continue
             tipo = msg["type"]
             if tipo == "hello":
+                dashboard_snapshot: dict[str, Any] | None = None
                 snapshot = {
                     "type": "snapshot",
                     "messages": sanitizar_historico(self.historico_getter()),
@@ -389,8 +822,15 @@ class DesktopBridgeRuntime:
                 }
                 if callable(self.configuracao_getter):
                     snapshot["settings"] = sanitizar_configuracao(self.configuracao_getter())
+                if callable(self.dashboard_getter):
+                    dashboard_snapshot = self._obter_dashboard_seguro()
+                    snapshot["dashboard"] = dashboard_snapshot
                 if not self._enviar_socket(cliente, snapshot):
                     raise ConnectionError("não foi possível confirmar o snapshot")
+                if dashboard_snapshot is not None:
+                    self._ultimo_dashboard = self._assinatura_dashboard(
+                        dashboard_snapshot,
+                    )
                 with self._client_lock:
                     if self._client_pending is not cliente:
                         raise ConnectionError("sessão pendente deixou de ser válida")
@@ -407,9 +847,22 @@ class DesktopBridgeRuntime:
                 self._enviar_socket(cliente, {"type": "state", "heartbeat": True, **sanitizar_estado(self.estado_getter())})
             elif tipo == "input_submit":
                 entrada_id = msg.get("id") or secrets.token_hex(6)
+                pendente = {
+                    "id": str(entrada_id),
+                    "text": str(msg["text"]),
+                    "kind": str(msg.get("kind") or "chat"),
+                    "action": str(msg.get("action") or ""),
+                    "state": "sending",
+                }
+                with self._entradas_lock:
+                    self._entradas_pendentes.append(pendente)
                 try:
                     retorno = self.enviar_entrada(msg["text"])
                     aceito = retorno is not False
+                    if not aceito:
+                        self._remover_entrada_pendente(str(entrada_id))
+                    else:
+                        pendente["state"] = "received"
                     self._enviar_socket(cliente, {
                         "type": "input_ack", "id": entrada_id,
                         "accepted": aceito,
@@ -418,7 +871,18 @@ class DesktopBridgeRuntime:
                             else "A entrada canônica recusou o pedido."
                         ),
                     })
+                    with self._entradas_lock:
+                        ainda_pendente = pendente in self._entradas_pendentes
+                    if (
+                        aceito and ainda_pendente
+                        and pendente["kind"] == "quick_action"
+                    ):
+                        self._publicar_estado_acao(
+                            pendente, "received",
+                            "Pedido recebido pela mente canônica",
+                        )
                 except Exception as erro:
+                    self._remover_entrada_pendente(str(entrada_id))
                     self._enviar_socket(cliente, {
                         "type": "input_ack", "id": entrada_id,
                         "accepted": False,
@@ -549,6 +1013,59 @@ class DesktopBridgeRuntime:
                 )
                 return
 
+    def _resultado_acao_atual(self) -> dict[str, Any]:
+        if not callable(self.resultado_acao_getter):
+            return {}
+        try:
+            valor = self.resultado_acao_getter()
+            return dict(valor) if isinstance(valor, Mapping) else {}
+        except Exception as erro:
+            self.log(
+                "⚠️ [TERMINAL 3:AÇÃO] resultado indisponível "
+                f"| tipo={type(erro).__name__}"
+            )
+            return {}
+
+    def _selecionar_entrada_pendente(
+        self,
+        plano: Mapping[str, Any] | None = None,
+    ) -> dict[str, str] | None:
+        texto_turno = _texto_seguro(dict(plano or {}).get("texto_usuario"), 8_000)
+        with self._entradas_lock:
+            if not self._entradas_pendentes:
+                return None
+            if texto_turno:
+                for item in self._entradas_pendentes:
+                    if item.get("text") == texto_turno:
+                        return item
+            return self._entradas_pendentes[0]
+
+    def _remover_entrada_pendente(self, entrada_id: str) -> dict[str, str] | None:
+        with self._entradas_lock:
+            for item in tuple(self._entradas_pendentes):
+                if item.get("id") == entrada_id:
+                    self._entradas_pendentes.remove(item)
+                    return item
+        return None
+
+    def _publicar_estado_acao(
+        self,
+        entrada: Mapping[str, Any],
+        estado: str,
+        resumo: str,
+    ) -> bool:
+        estado = str(estado or "")
+        if estado not in _ESTADOS_ACAO_RAPIDA:
+            return False
+        return self._publicar({
+            "type": "action_state",
+            "id": _texto_seguro(entrada.get("id"), 80),
+            "action": _texto_seguro(entrada.get("action"), 48),
+            "state": estado,
+            "summary": _texto_seguro(resumo, 180),
+            "timestamp": time.time(),
+        })
+
     def publicar_fala_final(
         self,
         texto: str,
@@ -559,14 +1076,30 @@ class DesktopBridgeRuntime:
         fala = _texto_seguro(texto)
         if not fala:
             return False
-        return self._publicar({
+        plano = self._resultado_acao_atual()
+        pendente = self._selecionar_entrada_pendente(plano)
+        mensagem_id = (
+            str(pendente.get("id") or "") if pendente
+            else _texto_seguro(dados.get("mensagem_id"), 96)
+        )
+        publicado = self._publicar({
             "type": "assistant_message",
-            "id": _texto_seguro(dados.get("mensagem_id"), 96),
+            "id": mensagem_id,
             "text": fala,
             "emotion": _texto_seguro(emocao, 32) or "calma",
             "emotion_level": max(1, min(3, int(nivel or 1))),
             "timestamp": time.time(),
         })
+        if pendente:
+            self._remover_entrada_pendente(str(pendente.get("id") or ""))
+            if pendente.get("kind") == "quick_action":
+                resultado = classificar_resultado_acao(
+                    plano, acao_id=str(pendente.get("action") or ""),
+                )
+                self._publicar_estado_acao(
+                    pendente, resultado["state"], resultado["summary"],
+                )
+        return publicado
 
     def publicar_evento(self, titulo: str, detalhe: str = "", *, nivel: str = "info") -> None:
         evento = {"title": _texto_seguro(titulo, 120), "detail": _texto_seguro(detalhe, 500), "level": nivel if nivel in {"info", "success", "warning", "error"} else "info", "timestamp": time.time()}
@@ -584,12 +1117,111 @@ class DesktopBridgeRuntime:
                     f"| tipo={type(erro).__name__}"
                 )
                 continue
+            if estado.get("activity") == "executing":
+                plano = self._resultado_acao_atual()
+                pendente = self._selecionar_entrada_pendente(plano)
+                if (
+                    pendente
+                    and pendente.get("kind") == "quick_action"
+                    and pendente.get("state") != "executing"
+                ):
+                    pendente["state"] = "executing"
+                    self._publicar_estado_acao(
+                        pendente, "executing", "A mente iniciou a execução",
+                    )
             chave = json.dumps(estado, ensure_ascii=False, sort_keys=True)
             agora = time.monotonic()
             if chave != self._ultimo_estado or agora - ultimo_envio >= 4.0:
                 self._ultimo_estado = chave
                 ultimo_envio = agora
                 self._publicar({"type": "state", "heartbeat": True, **estado})
+
+    def _obter_dashboard_seguro(self) -> dict[str, Any]:
+        if not callable(self.dashboard_getter) or self._stop.is_set():
+            return sanitizar_dashboard_estado({})
+        with self._dashboard_source_lock:
+            if self._stop.is_set():
+                return sanitizar_dashboard_estado({})
+            pendente = self._dashboard_source_pending
+            if pendente is None:
+                caixa: dict[str, Any] = {}
+
+                def executar() -> None:
+                    try:
+                        caixa["valor"] = self.dashboard_getter()
+                    except Exception as erro:
+                        caixa["erro_tipo"] = type(erro).__name__
+
+                thread = threading.Thread(
+                    target=executar,
+                    name="Laylay-Terminal3-Dashboard-Getter",
+                    daemon=True,
+                )
+                self._dashboard_source_pending = (thread, caixa)
+                thread.start()
+            else:
+                thread, caixa = pendente
+        thread.join(timeout=self.dashboard_getter_timeout_s)
+        if thread.is_alive():
+            self.log(
+                "⚠️ [TERMINAL 3:DASHBOARD] retrato indisponível "
+                "| tipo=TimeoutError"
+            )
+            return sanitizar_dashboard_estado({})
+        with self._dashboard_source_lock:
+            if self._dashboard_source_pending == (thread, caixa):
+                self._dashboard_source_pending = None
+        erro_tipo = str(caixa.get("erro_tipo") or "")
+        if erro_tipo:
+            # Mensagens de exceções podem carregar caminhos ou conteúdo. Só a
+            # classe atravessa o diagnóstico técnico.
+            self.log(
+                "⚠️ [TERMINAL 3:DASHBOARD] retrato indisponível "
+                f"| tipo={erro_tipo}"
+            )
+            return sanitizar_dashboard_estado({})
+        return sanitizar_dashboard_estado(caixa.get("valor"))
+
+    @staticmethod
+    def _assinatura_dashboard(dashboard: Mapping[str, Any]) -> str:
+        def sem_temporal(valor: Any) -> Any:
+            if isinstance(valor, Mapping):
+                return {
+                    chave: sem_temporal(item)
+                    for chave, item in valor.items()
+                    if chave not in {"generated_at", "sequence", "observed_at"}
+                }
+            if isinstance(valor, list):
+                return [sem_temporal(item) for item in valor]
+            return valor
+
+        return json.dumps(
+            sem_temporal(dict(dashboard)),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+
+    def _publicar_dashboard(self) -> None:
+        ultimo_envio = time.monotonic()
+        while not self._stop.wait(self.dashboard_interval_s):
+            with self._client_lock:
+                conectado = self._client is not None
+            if not conectado:
+                ultimo_envio = time.monotonic()
+                continue
+            dashboard = self._obter_dashboard_seguro()
+            assinatura = self._assinatura_dashboard(dashboard)
+            agora = time.monotonic()
+            if assinatura != self._ultimo_dashboard or agora - ultimo_envio >= 10.0:
+                enviado = self._publicar({
+                    "type": "dashboard_state",
+                    "dashboard": dashboard,
+                    "timestamp": time.time(),
+                })
+                if enviado:
+                    self._ultimo_dashboard = assinatura
+                    ultimo_envio = agora
 
     def _publicar(self, mensagem: Mapping[str, Any]) -> bool:
         with self._client_lock:
@@ -654,6 +1286,10 @@ class DesktopBridgeRuntime:
                 processo.wait(timeout=max(0.1, timeout_s))
             except subprocess.TimeoutExpired:
                 processo.kill()
+        limite = time.monotonic() + max(0.0, float(timeout_s))
+        for thread in (self._thread, self._poll_thread, self._dashboard_thread):
+            if thread and thread.is_alive() and thread is not threading.current_thread():
+                thread.join(timeout=max(0.0, limite - time.monotonic()))
 
     def diagnostico(self) -> dict[str, Any]:
         with self._client_lock:
@@ -673,6 +1309,14 @@ class DesktopBridgeRuntime:
             "somente_loopback": True,
             "autenticado": bool(self.token),
             "autoriza_execucao": False,
+            "dashboard_disponivel": callable(self.dashboard_getter),
+            "dashboard_thread_viva": bool(
+                self._dashboard_thread and self._dashboard_thread.is_alive()
+            ),
+            "dashboard_fonte_pendente": bool(
+                self._dashboard_source_pending
+                and self._dashboard_source_pending[0].is_alive()
+            ),
         }
 
 

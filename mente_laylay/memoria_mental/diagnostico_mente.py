@@ -721,6 +721,7 @@ class DiagnosticoMenteRuntime:
         notificacoes_getter: Callable[[], Mapping[str, Any]] | None = None,
         iot_getter: Callable[[], Mapping[str, Any]] | None = None,
         avatar_getter: Callable[[], Mapping[str, Any]] | None = None,
+        dashboard_getter: Callable[[], Mapping[str, Any]] | None = None,
         falar: Callable[[str, str, int], Any],
         log: Callable[[str], Any] = print,
     ) -> None:
@@ -751,6 +752,7 @@ class DiagnosticoMenteRuntime:
         self.notificacoes_getter = notificacoes_getter
         self.iot_getter = iot_getter
         self.avatar_getter = avatar_getter
+        self.dashboard_getter = dashboard_getter
         self.falar = falar
         self.log = log
 
@@ -772,6 +774,7 @@ class DiagnosticoMenteRuntime:
             "central_notificacoes": self.notificacoes_getter,
             "iot": self.iot_getter,
             "avatar": self.avatar_getter,
+            "terminal_dashboard": self.dashboard_getter,
         }
         for chave, getter in coletores.items():
             if not callable(getter):

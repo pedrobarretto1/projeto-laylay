@@ -269,6 +269,9 @@ from mente_laylay.integracao.registro_conversa_llm import (
 from mente_laylay.integracao.desktop_bridge import (
     criar_desktop_bridge_runtime as _criar_desktop_bridge_runtime,
 )
+from mente_laylay.integracao.dashboard_terminal import (
+    criar_dashboard_terminal_runtime as _criar_dashboard_terminal_runtime,
+)
 from mente_laylay.integracao.configuracao_aplicacao import (
     criar_configuracao_aplicacao_runtime as _criar_configuracao_aplicacao_runtime,
 )
@@ -2875,6 +2878,7 @@ _ponte_cooperacao_aplicacao_runtime = _criar_ponte_cooperacao_aplicacao_runtime(
         _estado_compartilhado_runtime.mental, dominio="jogo",
     ),
     contexto_jogo_getter=_modo_jogo_runtime.contexto_atual,
+    capacidade_getter=_mapa_habilidades_runtime.consultar,
     detectar_pedido_visao=_detectar_pedido_visao_jogo_cooperativo,
     registrar_evidencia=_motor_aprendizado_runtime.registrar_evidencia,
     estado_mental_atualizar=lambda atualizador: _estado_compartilhado_runtime.atualizar(
@@ -3186,10 +3190,35 @@ def _solicitar_reinicio_aplicacao() -> bool:
     return True
 
 
+_configuracao_llm_ativa_dashboard = _configuracao_aplicacao_runtime.estado()
+_dashboard_terminal_runtime = _criar_dashboard_terminal_runtime(
+    # Configurações salvas exigem reinício; o painel deve continuar mostrando
+    # o provedor/modelo realmente carregado neste processo, não o próximo.
+    configuracao_getter=lambda: dict(_configuracao_llm_ativa_dashboard),
+    llm_getter=lambda: _diagnostico_conversa_llm_tipadas(),
+    interacao_getter=_estado_terminal_2,
+    memoria_saude_getter=MEMORIA_SQLITE.diagnostico_aprendizados,
+    agenda_getter=_agenda_runtime.load,
+    aprendizados_getter=MEMORIA_SQLITE.consultar_aprendizados,
+    estado_mental_getter=lambda: _estado_compartilhado_runtime.snapshot().get(
+        "mental", {}
+    ),
+    contexto_jogo_getter=_modo_jogo_runtime.contexto_atual,
+    psutil_mod=psutil,
+    projeto="Laylay",
+    cidade=BRIEFING_CIDADE,
+    log=print,
+)
+
+
 _desktop_bridge_runtime = _criar_desktop_bridge_runtime(
     enviar_entrada=lambda texto: _agendar_entrada_canonica(texto, canal="desktop"),
     historico_getter=_estado_conversa_runtime.mensagens,
     estado_getter=_estado_terminal_2,
+    dashboard_getter=_dashboard_terminal_runtime.snapshot,
+    resultado_acao_getter=lambda: dict(
+        _estado_compartilhado_runtime.mental.get("plano_turno_atual") or {}
+    ),
     modo_setter=lambda ativo: _definir_modo_chat(ativo, origem="terminal_2"),
     configuracao_getter=_configuracao_aplicacao_runtime.estado,
     configuracao_setter=_configuracao_aplicacao_runtime.atualizar,
@@ -3406,6 +3435,7 @@ def _diagnostico_conversa_llm_tipadas() -> dict:
         "modelo_disponivel": bool(modelo.get("disponivel")),
         "estado_disponivel": bool(estado.get("disponivel")),
         "requisicoes": int(modelo.get("requisicoes") or 0),
+        "sucessos": int(modelo.get("sucessos") or 0),
         "prompts_rapidos": int(prompt.get("preparacoes_rapidas") or 0),
         "otimizacao_prompt_ativa": bool(prompt.get("otimizacao_prompt_ativa")),
         "fontes_prompt_consultadas": dict(prompt.get("fontes_consultadas") or {}),
@@ -3510,6 +3540,7 @@ _diagnostico_mente_runtime = _criar_diagnostico_mente_runtime(
     notificacoes_getter=_central_notificacoes_runtime.diagnostico,
     iot_getter=_registro_iot_runtime.diagnostico,
     avatar_getter=_avatar_runtime.diagnostico,
+    dashboard_getter=_dashboard_terminal_runtime.diagnostico,
     falar=lambda texto, emocao="calma", nivel=1: falar_com_lipsync(texto, emocao, nivel),
     log=print,
 )
@@ -3651,6 +3682,7 @@ _composicao_servicos_runtime = _criar_composicao_servicos_padrao(
 
 def _encerrar_laylay() -> None:
     try:
+        _dashboard_terminal_runtime.parar()
         _desktop_bridge_runtime.parar()
         _composicao_servicos_runtime.encerrar()
     finally:

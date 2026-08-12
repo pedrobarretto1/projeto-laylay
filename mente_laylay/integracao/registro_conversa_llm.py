@@ -173,6 +173,7 @@ class RegistroModeloLLM:
             chave: bruto[chave]
             for chave in (
                 "disponivel", "endpoint_local", "requisicoes", "sucessos", "falhas",
+                "estado", "falhas_consecutivas", "ultima_falha_codigo",
                 "memoria_exposta", "credencial_exposta", "autoriza_execucao",
                 "orcamento_turno",
             )
