@@ -200,9 +200,22 @@ class VisualizadorLetra(QTextBrowser):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.document().setDocumentMargin(0)
+        self.verticalScrollBar().valueChanged.connect(
+        self._travar_scroll_compacto
+        )
+    def _travar_scroll_compacto(self, valor: int) -> None:
+        if not self._permitir_scroll_interno and valor != 0:
+            self.verticalScrollBar().setValue(0)
 
     def definir_scroll_interno(self, permitir: bool) -> None:
         self._permitir_scroll_interno = bool(permitir)
+
+        # No modo karaokê compacto, o QTextBrowser não recebe eventos
+        # do mouse. A rodinha passa direto para a página principal.
+        self.setAttribute(
+            Qt.WA_TransparentForMouseEvents,
+            not permitir,
+        )
 
         if not permitir:
             self.verticalScrollBar().setValue(0)
