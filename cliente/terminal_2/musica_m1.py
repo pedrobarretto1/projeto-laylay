@@ -761,7 +761,18 @@ class PaginaMusicaM1(QWidget):
             item = fila[indice] if isinstance(fila[indice], dict) else {}
             item_id = str(item.get("item_id") or "").strip()
             linha["item_id"] = item_id
-            linha["number"].setText(str(indice + 1))
+
+            primeira = indice == 0
+            numero = linha["number"]
+
+            numero.setText("▂▅▃" if primeira else str(indice + 1))
+
+            for alvo in (widget, numero):
+                if alvo.property("queueTop") != primeira:
+                    alvo.setProperty("queueTop", primeira)
+                    alvo.style().unpolish(alvo)
+                    alvo.style().polish(alvo)
+
             linha["title"].setText(str(item.get("title") or "Faixa sem título"))
             linha["detail"].setText(str(item.get("channel") or "Canal não informado"))
             duracao = float(item.get("duration_seconds") or 0.0)

@@ -1285,6 +1285,21 @@ class JanelaLaylay(QMainWindow):
                     background: transparent;
                     border: 0;
                 }}
+                #musicQueueItem[queueTop="true"] {{
+                    background: #21181D;
+                    border: 0;
+                }}
+
+                #musicQueueItem[queueTop="true"]:hover {{
+                    background: #281B21;
+                }}
+
+                #musicQueueNumber[queueTop="true"] {{
+                    color: {PALETA['rosa']};
+                    font-size: 12px;
+                    font-weight: 700;
+                    letter-spacing: -1px;
+                }}
                 #musicSuggestion {{ background: #251A20; border: 1px solid #58303A; border-radius: 10px; padding: 13px; color: #E28D9C; font-size: 12px; }}
                 #musicContextBasis {{ color: #A5ABB3; background: #171D22; border: 1px solid #303740; border-radius: 9px; padding: 8px 10px; font-size: 10px; }}
                 #musicLyrics {{ border-color: #332930; }}
