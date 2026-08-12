@@ -61,10 +61,12 @@ def test_terminal_observa_fala_final_antes_da_fila_de_voz() -> None:
     assert "_voz_runtime.registrar_observador_inicio_fala(" not in fonte
 
 
-def test_inicializacao_e_abertura_do_chat_sao_silenciosas_por_padrao() -> None:
+def test_abertura_e_silenciosa_mas_briefing_inicial_continua_ativo_por_padrao() -> None:
     fonte = (RAIZ / "laylay.py").read_text(encoding="utf-8")
 
     assert 'os.environ.get("LAYLAY_FALAS_INICIAIS", "0")' in fonte
+    assert 'os.environ.get("LAYLAY_BRIEFING_INICIAL", "1")' in fonte
+    assert 'if tipo_fala_inicial == "briefing":' in fonte
     assert "deve_emitir_fala=lambda ativo: (\n        not ativo\n    )" in fonte
 
 

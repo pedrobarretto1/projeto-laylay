@@ -8,6 +8,7 @@ import random
 import re
 import threading
 import time
+import unicodedata
 import urllib.parse
 from datetime import datetime
 from typing import Any, Callable
@@ -233,6 +234,81 @@ def montar_briefing_sem_clima(cidade: str, *, repeticao: bool = False) -> str:
     )
 
 
+def fala_briefing_ancorada(fala: str, *, cidade: str) -> bool:
+    """Aceita autoria criativa somente quando ela continua falando do clima observado."""
+    bruto = unicodedata.normalize("NFKD", str(fala or "").casefold())
+    texto = "".join(ch for ch in bruto if not unicodedata.combining(ch))
+    cidade_bruta = unicodedata.normalize("NFKD", str(cidade or "").casefold())
+    cidade_normalizada = "".join(
+        ch for ch in cidade_bruta if not unicodedata.combining(ch)
+    ).strip()
+    menciona_cidade = bool(cidade_normalizada and cidade_normalizada in texto)
+    menciona_clima = bool(re.search(
+        r"\b(?:clima|tempo|sol|ensolarad[oa]|chuva|chuvoso|nublad[oa]|nuvens?|"
+        r"vento|umidade|garoa|neve|neblina|temperatura|calor|frio|graus?)\b|"
+        r"-?\d+(?:[.,]\d+)?\s*(?:°|graus?\b)",
+        texto,
+    ))
+    return menciona_cidade and menciona_clima
+
+
+def fala_repeticao_briefing_adequada(fala: str, *, cidade: str) -> bool:
+    """Exige conteúdo e presença equivalentes ao briefing inicial.
+
+    A repetição pode mudar as palavras, mas não pode degradar para uma linha
+    mecânica de telemetria nem para uma resposta curta sem personalidade.
+    """
+    texto = re.sub(r"\s+", " ", str(fala or "")).strip()
+    palavras = re.findall(r"[\wÀ-ÿ]+", texto)
+    return (
+        fala_briefing_ancorada(texto, cidade=cidade)
+        and 18 <= len(palavras) <= 85
+        and len(re.findall(r"[.!?]", texto)) >= 2
+    )
+
+
+def montar_repeticao_briefing_local(cidade: str, clima: str) -> str:
+    """Produz uma repetição rica e variável quando a LLM não responde bem."""
+    local = re.sub(r"\s+", " ", str(cidade or "Boituva")).strip() or "Boituva"
+    clima_fala = naturalizar_clima_resumido(clima)
+    opcoes = (
+        (
+            f"Em {local}, o tempo continua {clima_fala}. O céu não mudou o roteiro, "
+            "só trouxe o relatório de volta. Agora diz: qual projeto vai perder a paz primeiro?"
+        ),
+        (
+            f"Resumo da rodada: em {local}, o dia segue {clima_fala}. Nada de suspense "
+            "meteorológico por enquanto. A pergunta importante continua: qual projeto você vai tirar do sossego primeiro?"
+        ),
+        (
+            f"{local} continua com {clima_fala}. O clima fez a parte dele sem drama; "
+            "agora falta você decidir onde começa a bagunça produtiva de hoje. Qual é o primeiro alvo?"
+        ),
+    )
+    return escolher_sem_repeticao(
+        opcoes,
+        fallback=opcoes[0],
+        escolha_aleatoria=random.choice,
+    )
+
+
+def selecionar_fala_inicial(
+    *,
+    usuario_iniciou: bool,
+    briefing_pendente: bool,
+    briefing_ativo: bool,
+    abertura_ativa: bool,
+) -> str:
+    """Separa o briefing útil da saudação decorativa de inicialização."""
+    if usuario_iniciou:
+        return ""
+    if briefing_ativo and briefing_pendente:
+        return "briefing"
+    if abertura_ativa:
+        return "abertura"
+    return ""
+
+
 def lapidar_fala_briefing(fala: str, *, cidade: str, clima: str) -> str:
     """Corrige artificialidades do modelo sem alterar os dados meteorológicos."""
     texto = re.sub(r"\s+", " ", str(fala or "")).strip()
@@ -323,8 +399,11 @@ class AmbienteSistemaRuntime:
                     {
                         "role": "system",
                         "content": (
-                            "Você está repetindo o briefing diário da Laylay. Responda na personalidade dela, "
-                            "com clareza e sem criar, sugerir ou executar comandos. Retorne apenas a fala."
+                            "Você está repetindo o briefing diário da Laylay. Mude a formulação, mas mantenha "
+                            "a mesma energia e riqueza da abertura: duas ou três frases, de 25 a 65 palavras, "
+                            "voz espontânea, cúmplice e levemente debochada. Informe cidade e clima com clareza, "
+                            "sem soar como painel de telemetria ou locutora. Termine com uma pergunta ou provocação "
+                            "simpática ligada ao dia do usuário. Não crie nem execute comandos. Retorne apenas a fala."
                         ),
                     },
                     {"role": "user", "content": prompt},
@@ -346,8 +425,12 @@ class AmbienteSistemaRuntime:
                         "conexao com a parte da ia falhou", "cheque sua chave",
                     )
                 )
-                if not fala or falha_ia:
-                    fala = f"O briefing é esse: em {cidade}, o clima está {clima}."
+                if (
+                    not fala
+                    or falha_ia
+                    or not fala_repeticao_briefing_adequada(fala, cidade=cidade)
+                ):
+                    fala = montar_repeticao_briefing_local(cidade, clima)
                 fala = lapidar_fala_briefing(fala, cidade=cidade, clima=clima)
                 falar(fala, "calma", 1)
                 return fala
@@ -547,7 +630,12 @@ def montar_briefing_matinal(
         )
     )
     palavras = bot.split()
-    if falha_ia or tom_inadequado or len(palavras) > 85:
+    if (
+        falha_ia
+        or tom_inadequado
+        or len(palavras) > 85
+        or not fala_briefing_ancorada(bot, cidade=cidade)
+    ):
         bot = ""
     fallback = (
         f"Em {cidade}, o dia amanheceu {clima_fala}. O céu já entregou o relatório. "
@@ -625,12 +713,13 @@ def repetir_briefing(
 ) -> Any:
     if not clima_esta_disponivel(clima):
         return montar_briefing_sem_clima(cidade, repeticao=True)
+    clima_fala = naturalizar_clima_resumido(clima)
     prompt_repetir = (
-        f"System: O usuário acabou de pedir para você repetir o briefing do clima. "
-        f"Fale do seu jeito, com uma provocação leve se ela surgir naturalmente, "
-        f"sem diagnosticar, rotular ou ofender o usuário. "
-        f"A informação é: em {cidade} o clima está {clima}. "
-        f"Retorne somente a frase que será dita, sem JSON, rótulos ou comandos."
+        "O usuário pediu o briefing novamente. Reconte-o com palavras novas, mas preserve a mesma "
+        "intensidade da abertura da Laylay: espontânea, cúmplice, clara e levemente debochada. "
+        f"Diga que em {cidade} o clima está {clima_fala}. Use duas ou três frases, entre 25 e 65 "
+        "palavras, e termine com uma pergunta ou provocação simpática sobre o dia. Não pareça uma "
+        "locutora nem uma tela de telemetria. Retorne somente a fala, sem JSON, rótulos ou comandos."
     )
     return gerar_resposta_exec_sync_cb(prompt_repetir)
 

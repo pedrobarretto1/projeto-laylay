@@ -329,6 +329,7 @@ from mente_laylay.percepcao.ambiente_sistema import (
     obter_clima_localidade as _obter_clima_localidade_ambiente,
     obter_clima_wttr as _obter_clima_wttr_ambiente,
     salvar_estado_briefing as _salvar_estado_briefing_ambiente,
+    selecionar_fala_inicial as _selecionar_fala_inicial_ambiente,
 )
 from mente_laylay.memoria_mental.persistencia_memoria import (
     criar_persistencia_memoria_runtime as _criar_persistencia_memoria_runtime_mente,
@@ -1790,6 +1791,7 @@ _voz_runtime = _criar_voz_runtime_mente(
     ),
     interrupt_event=interrupt_event,
     registrar_fala_emitida_cb=_registrar_fala_proativa_emitida,
+    publicar_texto_proativo_cb=_orquestrador_fala_runtime.publicar_texto_proativo,
     registrar_metrica_cb=_observabilidade_mente_runtime.registrar_metrica,
     trace_context_getter=_observabilidade_mente_runtime.obter_trace_corrente,
     registrar_falha_cb=_observabilidade_mente_runtime.registrar_falha,
@@ -3743,18 +3745,24 @@ def main():
     falas_iniciais_ativas = str(
         os.environ.get("LAYLAY_FALAS_INICIAIS", "0") or "0"
     ).strip().casefold() in {"1", "true", "sim", "on", "ligado"}
-    if falas_iniciais_ativas and not usuario_ja_iniciou_conversa():
-        briefing_pendente = (
+    briefing_inicial_ativo = str(
+        os.environ.get("LAYLAY_BRIEFING_INICIAL", "1") or "1"
+    ).strip().casefold() not in {"0", "false", "nao", "não", "off", "desligado"}
+    tipo_fala_inicial = _selecionar_fala_inicial_ambiente(
+        usuario_iniciou=usuario_ja_iniciou_conversa(),
+        briefing_pendente=(
             carregar_estado_briefing() != time.strftime("%Y-%m-%d")
-        )
-        if briefing_pendente:
-            fala_inicial_entregue = briefing_matinal()
-        else:
-            abertura_inicial = _abertura_chat_runtime.gerar_local("inicio")
-            fala_inicial_entregue = _entregar_fala_inicial_confirmada(
-                "abertura", abertura_inicial, "calma", 1,
-            )
-        if not fala_inicial_entregue:
+        ),
+        briefing_ativo=briefing_inicial_ativo,
+        abertura_ativa=falas_iniciais_ativas,
+    )
+    if tipo_fala_inicial == "briefing":
+        briefing_matinal()
+    elif tipo_fala_inicial == "abertura":
+        abertura_inicial = _abertura_chat_runtime.gerar_local("inicio")
+        if not _entregar_fala_inicial_confirmada(
+            "abertura", abertura_inicial, "calma", 1,
+        ):
             abertura_fallback = _abertura_chat_runtime.gerar_local("inicio")
             print(f"╭─ ◕‿◕ Laylay: {abertura_fallback}")
     _inicializacao_runtime.manter_ativo(

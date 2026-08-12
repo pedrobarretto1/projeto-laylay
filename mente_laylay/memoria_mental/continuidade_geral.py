@@ -101,6 +101,11 @@ _POLITICAS_CONTINUACAO_ADITIVA = {
     "PLAYLIST_ADD": {
         "preservar_params": ("nome_playlist", "playlist"),
         "exige_um_dos_params": ("nome_playlist", "playlist"),
+        # Alguns executores descobrem o destino apenas durante a execucao e
+        # o publicam no alvo do contrato atomico. A politica declara a
+        # correspondencia; o resolvedor geral nunca adivinha uma chave de
+        # dominio por conta propria.
+        "param_alvo_fallback": "nome_playlist",
     },
 }
 
@@ -143,7 +148,8 @@ def resolver_continuacao_aditiva(
     if not texto_e_continuacao_aditiva(texto):
         return {}
 
-    continuidade = dict((estado_atual or {}).get("continuidade_geral") or {})
+    estado = dict(estado_atual or {})
+    continuidade = dict(estado.get("continuidade_geral") or {})
     dominios = dict(continuidade.get("dominios") or {})
     agora = time.time()
     candidatos: list[Dict[str, Any]] = []
@@ -165,30 +171,81 @@ def resolver_continuacao_aditiva(
             continue
         candidatos.append({**item, "dominio": dominio, "idade_s": max(0.0, idade)})
 
-    if not candidatos:
-        return {}
-    selecionado = max(candidatos, key=lambda item: float(item.get("ts") or 0.0))
-    intent = str(selecionado.get("intent") or "").upper().strip()
-    politica = _POLITICAS_CONTINUACAO_ADITIVA[intent]
-    status = str(selecionado.get("status") or "").casefold().strip()
-    if not status or any(marcador in status for marcador in (
-        "falha", "erro", "indispon", "nao_encontr", "não_encontr",
-        "aguardando", "pendente", "cancel", "recus",
-    )):
-        return {}
-    anteriores = dict(selecionado.get("params") or {})
-    exigidos = tuple(politica.get("exige_um_dos_params") or ())
-    if exigidos and not any(
-        str(anteriores.get(chave) or "").strip() for chave in exigidos
+    # O contrato atomico do ultimo resultado e a segunda fonte oficial. Ele
+    # evita que uma projecao de dominio ausente/incompleta transforme uma
+    # referencia clara em conversa livre. Somente um resultado observado e
+    # confirmado pode entrar; pedido, hipotese ou falha ficam de fora.
+    contrato = dict(estado.get("ultima_acao_contrato") or {})
+    intent_contrato = str(
+        contrato.get("intent") or estado.get("ultima_acao_intent") or ""
+    ).upper().strip()
+    if intent_contrato in _POLITICAS_CONTINUACAO_ADITIVA:
+        try:
+            ts_contrato = float(estado.get("ultima_acao_ts") or 0.0)
+            idade_contrato = agora - ts_contrato
+        except (TypeError, ValueError):
+            ts_contrato = 0.0
+            idade_contrato = ttl_s + 1.0
+        if (
+            ts_contrato > 0.0
+            and idade_contrato <= ttl_s
+            and contrato.get("executou") is True
+            and contrato.get("confirmado") is True
+        ):
+            politica = _POLITICAS_CONTINUACAO_ADITIVA[intent_contrato]
+            params_contrato = dict(estado.get("ultima_acao_params") or {})
+            chave_alvo = str(politica.get("param_alvo_fallback") or "").strip()
+            alvo_contrato = str(
+                contrato.get("alvo") or estado.get("ultima_acao_alvo") or ""
+            ).strip()
+            if chave_alvo and alvo_contrato and not str(
+                params_contrato.get(chave_alvo) or ""
+            ).strip():
+                params_contrato[chave_alvo] = alvo_contrato
+            candidatos.append({
+                "intent": intent_contrato,
+                "status": str(
+                    contrato.get("status") or estado.get("ultima_acao_status") or ""
+                ),
+                "params": params_contrato,
+                "ts": ts_contrato,
+                "idade_s": max(0.0, idade_contrato),
+                "fonte": "ultimo_resultado_confirmado",
+            })
+
+    # Tenta os registros do mais recente para o mais antigo. Uma projecao
+    # recente, mas incompleta, nao pode esconder o contrato atomico valido.
+    # Em empate, a projecao de dominio continua preferida quando estiver
+    # completa; a fonte atomica entra apenas como recuperacao.
+    for selecionado in sorted(
+        candidatos,
+        key=lambda item: float(item.get("ts") or 0.0),
+        reverse=True,
     ):
-        return {}
-    params = {
-        chave: anteriores[chave]
-        for chave in tuple(politica.get("preservar_params") or ())
-        if chave in anteriores and str(anteriores.get(chave) or "").strip()
-    }
-    params["referencia_contextual"] = True
-    return {"intent": intent, "params": params}
+        intent = str(selecionado.get("intent") or "").upper().strip()
+        politica = _POLITICAS_CONTINUACAO_ADITIVA.get(intent)
+        if not politica:
+            continue
+        status = str(selecionado.get("status") or "").casefold().strip()
+        if not status or any(marcador in status for marcador in (
+            "falha", "erro", "indispon", "nao_encontr", "não_encontr",
+            "aguardando", "pendente", "cancel", "recus",
+        )):
+            continue
+        anteriores = dict(selecionado.get("params") or {})
+        exigidos = tuple(politica.get("exige_um_dos_params") or ())
+        if exigidos and not any(
+            str(anteriores.get(chave) or "").strip() for chave in exigidos
+        ):
+            continue
+        params = {
+            chave: anteriores[chave]
+            for chave in tuple(politica.get("preservar_params") or ())
+            if chave in anteriores and str(anteriores.get(chave) or "").strip()
+        }
+        params["referencia_contextual"] = True
+        return {"intent": intent, "params": params}
+    return {}
 
 
 def normalizar_dominio_continuidade(

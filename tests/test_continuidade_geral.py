@@ -1,3 +1,7 @@
+import time
+
+import pytest
+
 from mente_laylay.memoria_mental.continuidade_geral import (
     registrar_evento_continuidade,
     resolver_continuacao_aditiva,
@@ -655,6 +659,95 @@ def test_acao_nova_sem_politica_nao_esconde_continuacao_aditiva_compativel():
             "referencia_contextual": True,
         },
     }
+
+
+def test_essa_tambem_recupera_destino_do_ultimo_resultado_confirmado():
+    """Reproduz o runtime quando a projecao derivada chega incompleta."""
+    agora = time.time()
+    estado = estado_mental_inicial()
+    estado.update({
+        "continuidade_geral": {
+            "dominios": {
+                "musica": {
+                    "intent": "PLAYLIST_ADD",
+                    "params": {},
+                    "status": "playlist_musica_adicionada",
+                    "ativa": True,
+                    "ts": agora,
+                    "expira_em": agora + 900.0,
+                },
+            },
+        },
+        "ultima_acao_intent": "PLAYLIST_ADD",
+        "ultima_acao_params": {},
+        "ultima_acao_alvo": "vmz",
+        "ultima_acao_status": "playlist_musica_adicionada",
+        "ultima_acao_ok": True,
+        "ultima_acao_confirmada": True,
+        "ultima_acao_ts": agora,
+        "ultima_acao_contrato": {
+            "intent": "PLAYLIST_ADD",
+            "alvo": "vmz",
+            "status": "playlist_musica_adicionada",
+            "dominio": "musica",
+            "executou": True,
+            "confirmado": True,
+        },
+    })
+
+    assert resolver_continuacao_aditiva(estado, texto="essa tambem") == {
+        "intent": "PLAYLIST_ADD",
+        "params": {
+            "nome_playlist": "vmz",
+            "referencia_contextual": True,
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    ("intent", "executou", "confirmado", "idade_s"),
+    [
+        ("PLAYLIST_ADD", False, False, 0.0),
+        ("PLAYLIST_ADD", True, False, 0.0),
+        ("PLAYLIST_ADD", True, True, 301.0),
+        ("DELETE_ITEM", True, True, 0.0),
+    ],
+)
+def test_fallback_atomico_nao_promove_resultado_inseguro_ou_expirado(
+    intent: str,
+    executou: bool,
+    confirmado: bool,
+    idade_s: float,
+):
+    agora = time.time()
+    estado = estado_mental_inicial()
+    estado.update({
+        "continuidade_geral": {},
+        "ultima_acao_intent": intent,
+        "ultima_acao_params": {},
+        "ultima_acao_alvo": "vmz",
+        "ultima_acao_status": (
+            "playlist_musica_adicionada" if executou else "falha_execucao"
+        ),
+        "ultima_acao_ok": executou,
+        "ultima_acao_confirmada": confirmado,
+        "ultima_acao_ts": agora - idade_s,
+        "ultima_acao_contrato": {
+            "intent": intent,
+            "alvo": "vmz",
+            "status": (
+                "playlist_musica_adicionada" if executou else "falha_execucao"
+            ),
+            "executou": executou,
+            "confirmado": confirmado,
+        },
+    })
+
+    assert resolver_continuacao_aditiva(
+        estado,
+        texto="essa também",
+        ttl_s=300.0,
+    ) == {}
 
 
 def test_resultado_da_caixa_nao_cria_segunda_pendencia_paralela():

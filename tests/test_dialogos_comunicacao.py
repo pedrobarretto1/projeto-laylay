@@ -54,9 +54,13 @@ from mente_laylay.autonomia.pre_fluxo_contextual import analisar_intencao_com_po
 from mente_laylay.percepcao.ambiente_sistema import (
     AmbienteSistemaRuntime,
     executar_briefing_matinal,
+    fala_briefing_ancorada,
+    fala_repeticao_briefing_adequada,
     lapidar_fala_briefing,
     montar_briefing_matinal,
+    montar_repeticao_briefing_local,
     naturalizar_clima_resumido,
+    selecionar_fala_inicial,
 )
 from mente_laylay.cognicao.resumo_conteudo import (
     _recortar_texto_para_resumo,
@@ -428,6 +432,70 @@ class DialogosComunicacaoTests(unittest.TestCase):
         self.assertEqual(retorno, falas[0])
         self.assertNotIn("LAYLAYLLM", retorno.upper())
         self.assertIn("Boituva", retorno)
+        self.assertTrue(fala_repeticao_briefing_adequada(retorno, cidade="Boituva"))
+
+    def test_fallback_da_repeticao_mantem_intensidade_e_varia_a_fala(self) -> None:
+        primeira = montar_repeticao_briefing_local(
+            "Boituva", "Ensolarado +25°C umidade:52% vento:↙7km/h",
+        )
+        segunda = montar_repeticao_briefing_local(
+            "Boituva", "Ensolarado +25°C umidade:52% vento:↙7km/h",
+        )
+
+        self.assertNotEqual(primeira, segunda)
+        for fala in (primeira, segunda):
+            self.assertTrue(fala_repeticao_briefing_adequada(fala, cidade="Boituva"))
+            self.assertIn("25 graus", fala)
+            self.assertNotIn("umidade:", fala)
+
+    def test_repeticao_de_briefing_rejeita_fallback_de_musica_da_llm(self) -> None:
+        falas = []
+        runtime = AmbienteSistemaRuntime()
+        retorno = runtime.repetir_briefing_atual(
+            cidade="Boituva",
+            obter_clima=lambda: "ensolarado, 25 graus e umidade em 52 por cento",
+            enviar_mensagem=lambda *_args, **_kwargs: (
+                "Peguei que o assunto é música, mas meu modelo travou nessa resposta."
+            ),
+            limpar_resposta=lambda texto: texto,
+            remover_prefixo_exec=lambda texto: texto,
+            falar=lambda texto, *_args: falas.append(texto),
+            print_fn=lambda *_args: None,
+        )
+
+        self.assertEqual(retorno, falas[0])
+        self.assertTrue(fala_briefing_ancorada(retorno, cidade="Boituva"))
+        self.assertIn("25 graus", retorno)
+        self.assertNotIn("música", retorno.casefold())
+
+    def test_briefing_inicial_e_independente_da_saudacao_de_startup(self) -> None:
+        self.assertEqual(
+            selecionar_fala_inicial(
+                usuario_iniciou=False,
+                briefing_pendente=True,
+                briefing_ativo=True,
+                abertura_ativa=False,
+            ),
+            "briefing",
+        )
+        self.assertEqual(
+            selecionar_fala_inicial(
+                usuario_iniciou=False,
+                briefing_pendente=False,
+                briefing_ativo=True,
+                abertura_ativa=False,
+            ),
+            "",
+        )
+        self.assertEqual(
+            selecionar_fala_inicial(
+                usuario_iniciou=True,
+                briefing_pendente=True,
+                briefing_ativo=True,
+                abertura_ativa=True,
+            ),
+            "",
+        )
 
     def test_briefing_sem_clima_nao_injeta_erro_em_frase_de_sucesso(self) -> None:
         chamadas_ia = []
@@ -547,6 +615,43 @@ class DialogosComunicacaoTests(unittest.TestCase):
         runtime.flush_fala_proativa()
         self.assertEqual(confirmacoes, [(True, "entregue")])
         self.assertEqual(falas_registradas, [("Clima. Rotina.", 2)])
+
+    def test_lote_proativo_publica_texto_antes_de_entrar_na_voz(self) -> None:
+        eventos = []
+        runtime = VozRuntime(
+            fallback_fala="fallback",
+            voice="voz",
+            edge_tts_mod=None,
+            sounddevice_mod=None,
+            soundfile_mod=None,
+            pyttsx3_mod=None,
+            limpar_para_voz_cb=lambda texto: texto,
+            formatar_mensagem_cb=lambda texto, **_kwargs: texto,
+            ducking_volume_cb=lambda _ativo: None,
+            modular_audio_params_cb=lambda *_args: ("", "", ""),
+            compor_fala_proativa_cb=lambda _itens: (
+                "Briefing completo de hoje.", "calma", 1,
+            ),
+            ajustar_estado_fala_cb=lambda *_args: None,
+            proativa_permitida_cb=lambda: True,
+            interrupt_event=threading.Event(),
+            publicar_texto_proativo_cb=lambda texto, *_args: eventos.append(
+                ("terminal", texto),
+            ),
+        )
+        runtime.falar = lambda texto, *_args, **_kwargs: eventos.append(
+            ("voz", texto),
+        ) or True
+        runtime.proativa_buffer = [
+            {"tipo": "briefing", "texto": "Clima.", "forcar_inicio": True},
+        ]
+
+        runtime.flush_fala_proativa()
+
+        self.assertEqual(eventos, [
+            ("terminal", "Briefing completo de hoje."),
+            ("voz", "Briefing completo de hoje."),
+        ])
 
     def test_briefing_so_salva_estado_depois_de_entrega_confirmada(self) -> None:
         salvos = []
@@ -747,13 +852,16 @@ class DialogosComunicacaoTests(unittest.TestCase):
         retorno = runtime.repetir_briefing_atual(
             cidade="Boituva",
             obter_clima=lambda: "ensolarado, 19 C",
-            enviar_mensagem=lambda *_args, **_kwargs: "fala:fala:Sol em Boituva hoje.",
+            enviar_mensagem=lambda *_args, **_kwargs: (
+                "fala:fala:Em Boituva, o sol continua firme e o dia segue com 19 graus. "
+                "O céu repetiu o relatório sem reclamar. Qual projeto vai perder a paz primeiro?"
+            ),
             limpar_resposta=lambda texto: texto,
             remover_prefixo_exec=remover_prefixo_exec,
             falar=lambda fala, *_args: falas.append(fala),
         )
-        self.assertEqual(retorno, "Sol em Boituva hoje.")
-        self.assertEqual(falas, ["Sol em Boituva hoje."])
+        self.assertEqual(retorno, falas[0])
+        self.assertTrue(fala_repeticao_briefing_adequada(retorno, cidade="Boituva"))
 
     def test_protesto_brincalhao_nao_vira_acolhimento_emocional_generico(self) -> None:
         ctx = {

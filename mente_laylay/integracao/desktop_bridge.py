@@ -1077,17 +1077,24 @@ class DesktopBridgeRuntime:
         if not fala:
             return False
         plano = self._resultado_acao_atual()
-        pendente = self._selecionar_entrada_pendente(plano)
+        proativa = bool(dados.get("proativa"))
+        # Uma fala autônoma não responde a nenhum balão do usuário. Associá-la
+        # à entrada pendente faria o recibo sumir e a resposta real do turno
+        # ficar sem destino.
+        pendente = None if proativa else self._selecionar_entrada_pendente(plano)
         mensagem_id = (
             str(pendente.get("id") or "") if pendente
             else _texto_seguro(dados.get("mensagem_id"), 96)
         )
+        if proativa and not mensagem_id:
+            mensagem_id = f"proativa:{time.time_ns()}"
         publicado = self._publicar({
             "type": "assistant_message",
             "id": mensagem_id,
             "text": fala,
             "emotion": _texto_seguro(emocao, 32) or "calma",
             "emotion_level": max(1, min(3, int(nivel or 1))),
+            "proactive": proativa,
             "timestamp": time.time(),
         })
         if pendente:

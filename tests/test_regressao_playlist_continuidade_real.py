@@ -213,3 +213,49 @@ def test_essa_tambem_usa_nova_faixa_e_preserva_playlist_no_fluxo_real() -> None:
     assert continuidade["intent"] == "PLAYLIST_ADD"
     assert continuidade["params"]["nome_playlist"] == "vmz"
     assert continuidade["status"] == "playlist_musica_adicionada"
+
+
+def test_essa_tambem_usa_contrato_confirmado_se_projecao_perder_o_destino() -> None:
+    composicao = _ComposicaoPlaylistReal()
+    comando = {
+        "intent": "PLAYLIST_ADD",
+        "params": {"nome_playlist": "vmz"},
+    }
+    composicao.operacoes.faixa = {
+        "url": "https://www.youtube.com/watch?v=venus",
+        "title": "Venus",
+        "canal": "VMZ",
+    }
+    assert composicao.executar_turno(
+        comando, "coloca essa musica na playlist vmz",
+    ) is True
+
+    # Reproduz a divergencia vista no terminal: a execucao deixou um contrato
+    # atomico completo, mas a projecao por dominio perdeu os parametros.
+    mental = dict(composicao.estado.mental)
+    continuidade = dict(mental.get("continuidade_geral") or {})
+    dominios = dict(continuidade.get("dominios") or {})
+    musica = dict(dominios.get("musica") or {})
+    musica["params"] = {}
+    dominios["musica"] = musica
+    continuidade["dominios"] = dominios
+    mental["continuidade_geral"] = continuidade
+    mental["ultima_acao_params"] = {}
+    composicao.estado.substituir("mental", mental)
+    composicao.operacoes.faixa = {
+        "url": "https://www.youtube.com/watch?v=saturno",
+        "title": "Saturno",
+        "canal": "VMZ",
+    }
+
+    assert composicao.imediatos.processar_prioritarios("essa tambem") is True
+
+    assert composicao.operacoes.adicoes[-1] == (
+        "vmz",
+        "https://www.youtube.com/watch?v=saturno",
+        "Saturno",
+        "VMZ",
+    )
+    assert composicao.estado.mental["ultima_acao_status"] == (
+        "playlist_musica_adicionada"
+    )

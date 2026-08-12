@@ -58,6 +58,7 @@ class VozRuntime:
         chave_turno_cb: Callable[[], float] | None = None,
         interrupt_event: Any,
         registrar_fala_emitida_cb: Callable[[str, list], Any] | None = None,
+        publicar_texto_proativo_cb: Callable[[str, str, int], Any] | None = None,
         registrar_metrica_cb: Callable[[str, float, bool], Any] | None = None,
         trace_context_getter: Callable[[], Mapping[str, Any]] | None = None,
         registrar_falha_cb: Callable[..., Any] | None = None,
@@ -98,6 +99,7 @@ class VozRuntime:
         self.avaliar_proatividade_cb = avaliar_proatividade_cb
         self.chave_turno_cb = chave_turno_cb
         self.registrar_fala_emitida_cb = registrar_fala_emitida_cb
+        self.publicar_texto_proativo_cb = publicar_texto_proativo_cb
         self.registrar_metrica_cb = registrar_metrica_cb
         self.trace_context_getter = trace_context_getter
         self.registrar_falha_cb = registrar_falha_cb
@@ -1160,6 +1162,14 @@ class VozRuntime:
             emocao = str(ultimo.get("emocao") or "calma")
             nivel = int(ultimo.get("nivel") or 1)
         try:
+            if callable(self.publicar_texto_proativo_cb):
+                try:
+                    self.publicar_texto_proativo_cb(texto, emocao, nivel)
+                except Exception as erro_publicacao:
+                    self.log(
+                        "⚠️ [FALA PROATIVA] canal textual indisponível: "
+                        f"{type(erro_publicacao).__name__}"
+                    )
             self._iniciar_itens_proativos(itens, self.log)
             entregue = bool(self.falar(texto, emocao, nivel, wait=True, _proativa=True))
             if entregue:

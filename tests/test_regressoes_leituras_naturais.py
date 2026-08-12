@@ -70,6 +70,7 @@ def _criar_detector(
         ("o que tem na minha tela?", "SCREEN_CAPTURE"),
         ("me resume essa pagina", "RESUMIR_PAGINA"),
         ("me passa o briefing de hoje", "BRIEFING_REPEAT"),
+        ("qual o briefing de hoje?", "BRIEFING_REPEAT"),
     ),
 )
 def test_modalidade_reconhece_leituras_exatas_como_comando(
@@ -183,11 +184,15 @@ def test_composicao_real_entrega_tela_e_briefing_aos_executores_sem_llm() -> Non
     assert runtime.processar_prioritarios("olha minha tela") is True
     assert runtime.processar_prioritarios("o que tem na minha tela?") is True
     assert runtime.processar_prioritarios("me passa o briefing de hoje") is True
+    assert runtime.processar_prioritarios("qual o briefing de hoje?") is True
 
-    assert intencoes == ["SCREEN_CAPTURE", "SCREEN_CAPTURE", "BRIEFING_REPEAT"]
+    assert intencoes == [
+        "SCREEN_CAPTURE", "SCREEN_CAPTURE", "BRIEFING_REPEAT", "BRIEFING_REPEAT",
+    ]
     assert evidencias == [
         ("tela", "pc_a"),
         ("tela", "pc_a"),
+        ("briefing", "observado"),
         ("briefing", "observado"),
     ]
     assert contratos

@@ -240,7 +240,15 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
             ),
         }
         if callable(executar_confirmado):
-            timeout_controle = 6.0 if command in {"play", "pause_play"} else 3.0
+            # O play pode exigir uma segunda tentativa observável depois do
+            # bloqueio de autoplay. A pausa tem um caminho curto próprio na
+            # extensão. Os prazos cobrem essa verificação, não um sucesso
+            # presumido pelo simples envio no socket.
+            timeout_controle = (
+                12.0
+                if command in {"play", "pause_play"}
+                else (5.0 if command == "pause" else 3.0)
+            )
             sucesso = bool(executar_confirmado(msg, timeout_s=timeout_controle))
         else:
             sucesso = _enviar_extensao(msg)

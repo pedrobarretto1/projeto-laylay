@@ -68,6 +68,40 @@ class OrquestradorFalaRuntime:
         if observador not in self._observadores_fala_final:
             self._observadores_fala_final.append(observador)
 
+    def publicar_texto_proativo(
+        self,
+        texto: str,
+        emocao: str = "calma",
+        nivel: int = 1,
+    ) -> bool:
+        """Entrega uma fala autônoma aos canais textuais antes do TTS.
+
+        Falas de turno já atravessam :meth:`falar`. O lote proativo nasce na
+        fila de voz, por isso precisa desta fronteira específica para não
+        desaparecer do Terminal nem ser associado a uma entrada do usuário.
+        """
+        fala = str(texto or "").strip()
+        if not fala:
+            return False
+        mensagem_id = f"proativa:{time.time_ns()}"
+        publicado = False
+        for observador in tuple(self._observadores_texto_final):
+            try:
+                resultado = observador(
+                    fala,
+                    str(emocao or "calma"),
+                    max(1, min(3, int(nivel or 1))),
+                    proativa=True,
+                    mensagem_id=mensagem_id,
+                )
+                publicado = resultado is not False or publicado
+            except Exception as erro:
+                self._ns()["print"](
+                    "⚠️ [TEXTO PROATIVO:OBSERVADOR] consumidor isolado falhou: "
+                    f"{type(erro).__name__}"
+                )
+        return publicado
+
     def remover_observador_fala_final(self, observador: Callable[..., Any]) -> bool:
         """Reverte publicação antecipada sem afetar o fallback no início da voz."""
         if observador not in self._observadores_fala_final:

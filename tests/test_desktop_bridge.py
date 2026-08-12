@@ -235,6 +235,25 @@ def test_fala_final_publicada_uma_vez_e_candidato_nao_vaza(ponte) -> None:
         assert mensagem["text"] == "Resposta confirmada"
 
 
+def test_fala_proativa_nao_consume_resposta_pendente_do_usuario(ponte) -> None:
+    runtime, _ = ponte
+    with socket.create_connection(runtime.endereco, timeout=1.0) as cliente:
+        _enviar(cliente, type="hello", token=runtime.token)
+        _linha(cliente)
+        runtime._entradas_pendentes.append({
+            "id": "turno-usuario", "kind": "message", "action": "",
+        })
+
+        assert runtime.publicar_fala_final(
+            "Briefing automático.", proativa=True,
+        ) is True
+        mensagem = _linha_do_tipo(cliente, "assistant_message")
+
+        assert mensagem["proactive"] is True
+        assert mensagem["id"].startswith("proativa:")
+        assert runtime._entradas_pendentes[0]["id"] == "turno-usuario"
+
+
 def test_rate_limit_e_desconexao_nao_derrubam_runtime() -> None:
     runtime = DesktopBridgeRuntime(
         enviar_entrada=lambda _texto: None,

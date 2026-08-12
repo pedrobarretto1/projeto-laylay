@@ -327,7 +327,8 @@ def _classificar_modalidade_base(
         return resultado
     if re.search(
         r"^(?:(?:me\s+)?(?:passa|passe|mostra|mostre|fala|fale|diz|diga|"
-        r"repete|repita)\b.*\bbriefing\b|qual\s+(?:e|é)\s+(?:o\s+)?briefing\b)",
+        r"repete|repita)\b.*\bbriefing\b|"
+        r"qual\s+(?:(?:e|é)\s+)?(?:o\s+)?briefing\b)",
         t,
     ):
         resultado.update(

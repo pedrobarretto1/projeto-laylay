@@ -918,6 +918,37 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     const shouldPause = cmd === "pause" || (
                         cmd === "pause_play" && currentVideo && !currentVideo.paused
                     );
+                    if (shouldPause) {
+                        try {
+                            if (currentVideo) currentVideo.pause();
+                            else {
+                                const playBtn = document.querySelector('.ytp-play-button');
+                                if (playBtn) playBtn.click();
+                                else _dispatchKey("k", "KeyK", 75);
+                            }
+                            currentVideo = currentVideo || await waitFor(
+                                () => document.querySelector('video'), 1800
+                            );
+                            const pausedConfirmed = Boolean(currentVideo && await waitFor(
+                                () => currentVideo.paused, 1800
+                            ));
+                            if (sendResponse) sendResponse({
+                                status: pausedConfirmed ? "success" : "state_not_changed",
+                                message: pausedConfirmed ? "" : "O player não confirmou a pausa",
+                                evidence: {
+                                    playing: Boolean(currentVideo && !currentVideo.paused),
+                                    paused: Boolean(currentVideo && currentVideo.paused),
+                                },
+                            });
+                        } catch (error) {
+                            if (sendResponse) sendResponse({
+                                status: "error",
+                                message: String(error?.message || error || "Falha ao pausar o player"),
+                                evidence: { paused: false },
+                            });
+                        }
+                        return;
+                    }
                     let failureMessage = "";
                     let attempts = 0;
                     try {
@@ -1270,13 +1301,6 @@ try {
 chrome.runtime.onMessage.addListener((request) => {
   console.log("Comando recebido na página:", request);
   
-  const video = document.querySelector('video');
-  
-  // --- OUTROS COMANDOS DO YOUTUBE (Volume removido) ---
-  if (video && request.action === "youtube_control" && request.command && !["set_volume", "skip_ad"].includes(request.command)) {
-    controlYouTube(String(request.command));
-  }
-
   // --- COMANDOS ADICIONAIS (Spinning Fish, Netflix, etc) ---
   if (request.action === "spinning_fish") {
     try {
