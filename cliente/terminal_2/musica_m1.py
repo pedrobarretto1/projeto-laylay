@@ -160,6 +160,98 @@ class MiniEqualizadorFila(QWidget):
                 int(centro + altura / 2),
             )
 
+class CartaoPlaylist(QPushButton):
+    """Preset compacto de playlist para a sessão musical."""
+
+    def __init__(self, indice: int) -> None:
+        super().__init__()
+
+        tom = str(indice % 6)
+
+        self.setObjectName("musicPreset")
+        self.setProperty("presetTone", tom)
+
+        self.setFixedHeight(52)
+        self.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Fixed,
+        )
+        self.setCursor(Qt.PointingHandCursor)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(7, 6, 10, 6)
+        layout.setSpacing(9)
+
+        # Quadradinho colorido
+        self.icone_caixa = QFrame()
+        self.icone_caixa.setObjectName("musicPresetIconBox")
+        self.icone_caixa.setProperty("presetTone", tom)
+        self.icone_caixa.setFixedSize(36, 36)
+        self.icone_caixa.setAttribute(
+            Qt.WA_TransparentForMouseEvents,
+            True,
+        )
+
+        icone_layout = QHBoxLayout(self.icone_caixa)
+        icone_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.icone = QLabel("♫")
+        self.icone.setObjectName("musicPresetIcon")
+        self.icone.setAlignment(Qt.AlignCenter)
+        self.icone.setAttribute(
+            Qt.WA_TransparentForMouseEvents,
+            True,
+        )
+
+        icone_layout.addWidget(self.icone)
+
+        # Nome + quantidade
+        textos = QVBoxLayout()
+        textos.setContentsMargins(0, 0, 0, 0)
+        textos.setSpacing(1)
+
+        self.titulo = QLabel("Playlist")
+        self.titulo.setObjectName("musicPresetTitle")
+        self.titulo.setAttribute(
+            Qt.WA_TransparentForMouseEvents,
+            True,
+        )
+
+        self.quantidade = QLabel("0 faixas")
+        self.quantidade.setObjectName("musicPresetCount")
+        self.quantidade.setAttribute(
+            Qt.WA_TransparentForMouseEvents,
+            True,
+        )
+
+        textos.addWidget(self.titulo)
+        textos.addWidget(self.quantidade)
+
+        layout.addWidget(self.icone_caixa)
+        layout.addLayout(textos, 1)
+
+    def definir(
+        self,
+        nome: str,
+        quantidade: int,
+        *,
+        ativo: bool = False,
+    ) -> None:
+        self.titulo.setText(nome)
+
+        self.quantidade.setText(
+            f"{quantidade} faixa"
+            if quantidade == 1
+            else f"{quantidade} faixas"
+        )
+
+        self.setProperty("activePlaylist", ativo)
+        self.titulo.setProperty("activePlaylist", ativo)
+
+        for widget in (self, self.titulo):
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
+
 
 class CartaoMusica(QFrame):
     def __init__(self, titulo: str, *, detalhe: str = "") -> None:
@@ -771,17 +863,22 @@ class PaginaMusicaM1(QWidget):
     def _garantir_botoes_playlist(self, quantidade: int) -> None:
         while len(self.preset_botoes) < max(0, quantidade):
             indice = len(self.preset_botoes)
-            botao = QPushButton("Playlist\n0 faixas")
-            botao.setObjectName("musicPreset")
+
+            botao = CartaoPlaylist(indice)
             botao.setEnabled(False)
-            botao.setIcon(icone_terminal("music"))
-            botao.setIconSize(QSize(22, 22))
-            botao.setProperty("presetTone", str(indice % 6))
             botao.hide()
+
             botao.clicked.connect(
-                lambda _v=False, pos=indice: self._acionar_playlist(pos),
+                lambda _v=False, pos=indice:
+                self._acionar_playlist(pos),
             )
-            self.playlists_grade.addWidget(botao, indice // 2, indice % 2)
+
+            self.playlists_grade.addWidget(
+                botao,
+                indice // 2,
+                indice % 2,
+            )
+
             self.preset_botoes.append(botao)
 
     def _construir_barra_lateral(self) -> None:
@@ -1059,18 +1156,26 @@ class PaginaMusicaM1(QWidget):
             nome = str(item.get("name") or "Playlist")
             nome_visual = nome.capitalize() if nome.islower() else nome
             quantidade = max(0, int(item.get("count") or 0))
-            botao.setText(
-                f"{nome_visual}\n{quantidade} faixa{'s' if quantidade != 1 else ''}"
+            ativo = (
+                nome.casefold()
+                == self._playlist_ativa.casefold()
             )
-            botao.setToolTip(f'Tocar a playlist "{nome}" pela mente da Laylay')
+
+            botao.definir(
+                nome_visual,
+                quantidade,
+                ativo=ativo,
+            )
+
+            botao.setToolTip(
+                f'Tocar a playlist "{nome}" pela mente da Laylay'
+            )
+
             botao.setAccessibleName(
-                f"Playlist {nome}, {quantidade} faixa{'s' if quantidade != 1 else ''}"
+                f"Playlist {nome}, "
+                f"{quantidade} faixa"
+                f"{'s' if quantidade != 1 else ''}"
             )
-            botao.setProperty(
-                "activePlaylist", nome.casefold() == self._playlist_ativa.casefold(),
-            )
-            botao.style().unpolish(botao)
-            botao.style().polish(botao)
             botao.show()
         total = len(self._catalogo)
         self.playlists_estado.setText(

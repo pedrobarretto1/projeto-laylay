@@ -1344,36 +1344,88 @@ class JanelaLaylay(QMainWindow):
                     background: #171C21;
                     border: 1px solid #292F36;
                     border-radius: 9px;
-
-                    padding: 7px 9px;
+                    padding: 0;
                     text-align: left;
-
-                    color: #D8D4D7;
-
-                    min-height: 42px;
-                    max-height: 48px;
-
-                    font-size: 11px;
                 }}
 
                 #musicPreset:hover {{
                     background: #1D2228;
-                    border-color: #4B353C;
-                    color: #F5F1F3;
+                    border-color: #4A353C;
                 }}
 
                 #musicPreset[activePlaylist="true"] {{
-                    background: #25191E;
-                    border-color: #8D3E4D;
+                    background: #24191E;
+                    border-color: #8B3C4B;
+                }}
+
+                #musicPresetTitle {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #E8E4E6;
+                    font-size: 11px;
+                    font-weight: 650;
+                }}
+
+                #musicPresetTitle[activePlaylist="true"] {{
                     color: #FF647B;
                 }}
 
-                #musicPreset[presetTone="0"] {{ border-left: 3px solid #D85258; }}
-                #musicPreset[presetTone="1"] {{ border-left: 3px solid #7657C7; }}
-                #musicPreset[presetTone="2"] {{ border-left: 3px solid #2D9C6A; }}
-                #musicPreset[presetTone="3"] {{ border-left: 3px solid #466FC5; }}
-                #musicPreset[presetTone="4"] {{ border-left: 3px solid #B05C9C; }}
-                #musicPreset[presetTone="5"] {{ border-left: 3px solid #C58A3A; }}
+                #musicPresetCount {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #7F8790;
+                    font-size: 9px;
+                }}
+
+                #musicPresetIcon {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #F5F1F3;
+                    font-size: 16px;
+                    font-weight: 700;
+                }}
+
+
+                /* caixas coloridas */
+
+                #musicPresetIconBox[presetTone="0"] {{
+                    background: #472326;
+                    border: 1px solid #713239;
+                    border-radius: 7px;
+                }}
+
+                #musicPresetIconBox[presetTone="1"] {{
+                    background: #302651;
+                    border: 1px solid #55428A;
+                    border-radius: 7px;
+                }}
+
+                #musicPresetIconBox[presetTone="2"] {{
+                    background: #183C2E;
+                    border: 1px solid #28634A;
+                    border-radius: 7px;
+                }}
+
+                #musicPresetIconBox[presetTone="3"] {{
+                    background: #1C2E4B;
+                    border: 1px solid #325387;
+                    border-radius: 7px;
+                }}
+
+                #musicPresetIconBox[presetTone="4"] {{
+                    background: #40243A;
+                    border: 1px solid #6C3B61;
+                    border-radius: 7px;
+                }}
+
+                #musicPresetIconBox[presetTone="5"] {{
+                    background: #46351D;
+                    border: 1px solid #74562A;
+                    border-radius: 7px;
+                }}
                 #musicQueueDetail {{
                     color: #777F89;
                     font-size: 9px;
