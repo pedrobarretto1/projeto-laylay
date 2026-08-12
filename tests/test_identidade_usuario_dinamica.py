@@ -7,6 +7,8 @@ from mente_laylay.memoria_mental.contexto_compartilhado import estado_mental_ini
 from mente_laylay.memoria_mental.identidade_usuario import (
     carregar_nome_usuario_confirmado,
     contexto_identidade_usuario,
+    extrair_nome_usuario_explicito,
+    reconciliar_nome_usuario_confirmado,
     salvar_nome_usuario_confirmado,
 )
 
@@ -49,6 +51,62 @@ def test_nome_nao_confirmado_nao_vira_identidade(tmp_path) -> None:
     assert carregar_nome_usuario_confirmado(memoria) == ""
 
 
+def test_nome_explicito_aceita_correcao_natural_sem_aceitar_pergunta() -> None:
+    assert extrair_nome_usuario_explicito("não lay, meu nome è pedro") == "Pedro"
+    assert extrair_nome_usuario_explicito(
+        "meu nome não é Antônio, meu nome é Pedro"
+    ) == "Pedro"
+    assert extrair_nome_usuario_explicito("qual é meu nome?") == ""
+    assert extrair_nome_usuario_explicito("se meu nome fosse Pedro") == ""
+
+
+def test_memorias_que_apenas_mencionam_nome_nao_colidem_com_identidade(tmp_path) -> None:
+    memoria = MemoriaSQLite(str(tmp_path / "mente.sqlite"))
+    assert salvar_nome_usuario_confirmado(
+        memoria, "Pedro", texto_original="meu nome é Pedro",
+    )
+    memoria.salvar_aprendizado_semantico(
+        tipo="preferencia",
+        gatilho="nome da playlist",
+        valor="VMZ",
+        regra="usar VMZ como nome da playlist",
+        origem="usuario_explicito",
+        evidencia="o nome da playlist é VMZ",
+        status="ativo",
+        confirmado_usuario=True,
+    )
+
+    itens = memoria.listar_aprendizados_semanticos(limit=20)
+    identidade = next(item for item in itens if item.get("tipo") == "identidade")
+    playlist = next(item for item in itens if item.get("tipo") == "preferencia")
+    assert identidade["status"] == "ativo"
+    assert identidade["chave_semantica"] == "identidade:nome_usuario"
+    assert playlist["chave_semantica"] != "identidade:nome_usuario"
+    assert carregar_nome_usuario_confirmado(memoria) == "Pedro"
+
+
+def test_reconciliacao_recupera_e_canonicaliza_evidencia_legada(tmp_path) -> None:
+    memoria = MemoriaSQLite(str(tmp_path / "mente.sqlite"))
+    memoria.salvar_aprendizado_semantico(
+        tipo="regra",
+        gatilho="nome do usuário é Pedro",
+        regra="nome do usuário é Pedro",
+        origem="usuario_explicito",
+        evidencia="não lay, meu nome è pedro",
+        status="ativo",
+        confirmado_usuario=True,
+    )
+
+    assert reconciliar_nome_usuario_confirmado(memoria) == "Pedro"
+    itens = memoria.listar_aprendizados_semanticos(limit=20)
+    canonico = next(
+        item for item in itens
+        if item.get("tipo") == "identidade" and item.get("status") == "ativo"
+    )
+    assert canonico["valor"] == "Pedro"
+    assert canonico["chave_semantica"] == "identidade:nome_usuario"
+
+
 def test_ensino_explicito_atualiza_estado_e_chama_persistencia() -> None:
     falas: list[str] = []
     persistidos: list[tuple[str, str]] = []
@@ -67,6 +125,29 @@ def test_ensino_explicito_atualiza_estado_e_chama_persistencia() -> None:
     assert mente["nome_usuario"] == "Ana Clara"
     assert persistidos == [("Ana Clara", "pode me chamar de ana clara")]
     assert "Ana Clara" in falas[-1]
+
+
+def test_correcao_com_prefixo_atualiza_identidade_sem_passar_pela_llm() -> None:
+    falas: list[str] = []
+    salvos: list[tuple[str, str]] = []
+    mente = {"nome_usuario": ""}
+    ctx = {
+        "mente_integrada_estado": mente,
+        "_normalizar_texto_com_apelidos": lambda texto: texto.casefold(),
+        "_salvar_identidade_usuario": (
+            lambda nome, texto: salvos.append((nome, texto)) or True
+        ),
+        "_emitir_resposta_curta": lambda _texto, fala, **_kwargs: falas.append(fala),
+    }
+
+    tratado, etapa = processar_identidade_usuario(
+        ctx, "não lay, meu nome è pedro",
+    )
+
+    assert tratado is True
+    assert etapa == "identidade_usuario"
+    assert mente["nome_usuario"] == "Pedro"
+    assert salvos == [("Pedro", "não lay, meu nome è pedro")]
 
 
 def test_falha_de_persistencia_nao_finge_que_aprendeu() -> None:

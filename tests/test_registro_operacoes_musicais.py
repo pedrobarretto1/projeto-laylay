@@ -85,3 +85,45 @@ def test_faixa_antiga_cai_para_aba_ativa() -> None:
         aba={"url": "https://youtube.com/watch?v=nova", "title": "Nova"},
     )
     assert registro.faixa_atual()["title"] == "Nova"
+
+
+def test_faixa_audivel_em_outra_aba_vence_memoria_recente() -> None:
+    registro, *_ = _criar(
+        estado={
+            "musica_atual_ts": time.time(),
+            "musica_atual_status": "tocando",
+            "musica_atual_url": "https://youtube.com/watch?v=antiga",
+            "musica_atual_titulo": "Antiga",
+        },
+        aba={
+            "url": "https://youtube.com/watch?v=nova",
+            "title": "Nova",
+            "canal": "Canal",
+            "source": "audible_youtube_tab",
+            "playingConfirmed": True,
+            "audibleConfirmed": True,
+        },
+    )
+
+    faixa = registro.faixa_atual()
+    assert faixa["title"] == "Nova"
+    assert faixa["origem"] == "audible_youtube_tab"
+
+
+def test_aba_sem_reproducao_nao_apaga_memoria_recente_confirmada() -> None:
+    registro, *_ = _criar(
+        estado={
+            "musica_atual_ts": time.time(),
+            "musica_atual_status": "tocando",
+            "musica_atual_url": "https://youtube.com/watch?v=viva",
+            "musica_atual_titulo": "Faixa viva",
+        },
+        aba={
+            "url": "https://youtube.com/watch?v=pausada",
+            "title": "Pausada",
+            "playingConfirmed": False,
+            "audibleConfirmed": False,
+        },
+    )
+
+    assert registro.faixa_atual()["title"] == "Faixa viva"

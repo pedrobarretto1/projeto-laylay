@@ -108,6 +108,23 @@ def _retrato_inicial() -> dict[str, Any]:
         },
         "memory_recent": [],
         "quick_actions": [],
+        "music": {
+            "title": "",
+            "channel": "",
+            "artwork_url": "",
+            "state": "unavailable",
+            "position_seconds": 0.0,
+            "duration_seconds": 0.0,
+            "playlist": "",
+            "controls_available": False,
+            "freshness": "unavailable",
+            "observed_at": 0.0,
+        },
+        "routines": {
+            "items": [],
+            "freshness": "unavailable",
+            "observed_at": 0.0,
+        },
         "system": {
             "cpu_percent": _metrica_indisponivel("%", 5.0),
             "ram_percent": _metrica_indisponivel("%", 5.0),
@@ -158,6 +175,7 @@ class DashboardTerminalRuntime:
         psutil_mod: Any,
         capacidade_getter: Callable[[str], Mapping[str, Any]] | None = None,
         temperatura_getter: Callable[[], Any] | None = None,
+        musica_getter: Callable[[], Mapping[str, Any]] | None = None,
         projeto: str = "Laylay",
         cidade: str = "",
         intervalo_s: float = 1.5,
@@ -178,6 +196,7 @@ class DashboardTerminalRuntime:
         self.capacidade_getter = capacidade_getter
         self.psutil = psutil_mod
         self.temperatura_getter = temperatura_getter
+        self.musica_getter = musica_getter
         self.projeto = _texto(projeto, 80) or "Laylay"
         self.cidade = _texto(cidade, 80)
         self.intervalo_s = max(0.25, float(intervalo_s))
@@ -286,15 +305,145 @@ class DashboardTerminalRuntime:
             limite = float(metrica.get("max_age_s") or 0.0)
             if observado <= 0 or (limite > 0 and agora - observado > limite):
                 metrica["freshness"] = "stale"
+        musica = retrato.get("music")
+        if isinstance(musica, dict) and musica.get("freshness") != "unavailable":
+            observado = float(musica.get("observed_at") or 0.0)
+            idade_musica = agora - observado if observado > 0 else float("inf")
+            if idade_musica > 30.0:
+                musica.update({
+                    "title": "",
+                    "channel": "",
+                    "artwork_url": "",
+                    "state": "unavailable",
+                    "position_seconds": 0.0,
+                    "duration_seconds": 0.0,
+                    "controls_available": False,
+                    "freshness": "unavailable",
+                    "observed_at": 0.0,
+                })
+            elif observado <= 0 or idade_musica > 12.0:
+                musica["freshness"] = "stale" if observado else "unavailable"
+                musica["controls_available"] = False
+        rotinas = retrato.get("routines")
+        if isinstance(rotinas, dict) and rotinas.get("freshness") != "unavailable":
+            observado = float(rotinas.get("observed_at") or 0.0)
+            if observado <= 0 or agora - observado > 60.0:
+                rotinas["freshness"] = "stale" if observado else "unavailable"
         if any(
             isinstance(item, dict) and item.get("freshness") == "stale"
             for item in (
                 *saude.values(),
                 contexto,
                 *sistema.values(),
+                musica,
+                rotinas,
             )
         ):
             retrato["status"] = "partial"
+
+    def _musica(self, agora: float) -> dict[str, Any]:
+        if not callable(self.musica_getter):
+            return deepcopy(_retrato_inicial()["music"])
+        bruto = dict(self.musica_getter() or {})
+        player = dict(bruto.get("player") or {}) if isinstance(
+            bruto.get("player"), Mapping,
+        ) else bruto
+        estado = _texto(
+            player.get("state") or player.get("musica_atual_status"), 24,
+        ).casefold()
+        aliases = {
+            "tocando": "playing", "reproduzindo": "playing",
+            "pausada": "paused", "pausado": "paused",
+            "finalizada": "ended", "finalizado": "ended",
+        }
+        estado = aliases.get(estado, estado)
+        if estado not in {"playing", "paused", "ended"}:
+            estado = "unknown" if player else "unavailable"
+        observado = _instante_iso(
+            player.get("observed_at") or bruto.get("musica_atual_ts")
+        )
+        titulo = _texto(
+            player.get("title") or bruto.get("musica_atual_titulo"), 180,
+        )
+        if not titulo and estado == "unavailable":
+            observado = 0.0
+        idade = agora - observado if observado > 0 else float("inf")
+        controles = bool(
+            player.get("controls_available") is True
+            and observado > 0
+            and idade <= 12.0
+        )
+        video_id = _texto(player.get("video_id"), 20)
+        artwork_url = (
+            f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
+            if re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id) else ""
+        )
+        expirado = idade > 30.0
+        return {
+            "title": "" if expirado else titulo,
+            "channel": "" if expirado else _texto(player.get("channel"), 120),
+            "artwork_url": "" if expirado else artwork_url,
+            "state": "unavailable" if expirado else estado,
+            "position_seconds": 0.0 if expirado else (_numero(
+                player.get("position_seconds"), minimo=0, maximo=86_400,
+            ) or 0.0),
+            "duration_seconds": 0.0 if expirado else (_numero(
+                player.get("duration_seconds"), minimo=0, maximo=86_400,
+            ) or 0.0),
+            "playlist": _texto(
+                bruto.get("playlist") or bruto.get("name")
+                or bruto.get("playlist_ativa"), 100,
+            ),
+            "controls_available": controles,
+            "freshness": (
+                "fresh" if observado > 0 and idade <= 12.0
+                else "stale" if observado > 0 and idade <= 30.0
+                else "unavailable"
+            ),
+            "observed_at": observado if idade <= 30.0 else 0.0,
+        }
+
+    def _rotinas_publicas(self, agora: float) -> dict[str, Any]:
+        itens: list[dict[str, Any]] = []
+        dias_validos = {"seg", "ter", "qua", "qui", "sex", "sab", "dom"}
+        for item in self.agenda_getter() or ():
+            if not isinstance(item, Mapping) or not bool(item.get("ativo", True)):
+                continue
+            tipo = _texto(item.get("tipo"), 20).casefold()
+            if tipo not in {"daily", "weekly"}:
+                continue
+            if _texto(item.get("origem"), 40).casefold() != "pedido_usuario":
+                continue
+            if _texto(item.get("evidencia"), 40).casefold() != "persistencia_local":
+                continue
+            nome = _publicar_texto_memoria(
+                item.get("nome") or item.get("descricao"),
+                fallback="Rotina pessoal",
+            )
+            hora = _texto(item.get("hora"), 8)
+            if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", hora):
+                hora = "—"
+            dias_brutos = item.get("dias") if isinstance(item.get("dias"), list) else []
+            dias = [
+                _texto(dia, 3).casefold() for dia in dias_brutos
+                if _texto(dia, 3).casefold() in dias_validos
+            ]
+            if tipo == "daily" and not dias:
+                dias = ["todos"]
+            itens.append({
+                "name": nome,
+                "time": hora,
+                "days": dias[:7],
+                "active": True,
+                "can_disable": True,
+            })
+            if len(itens) >= 6:
+                break
+        return {
+            "items": itens,
+            "freshness": "fresh",
+            "observed_at": agora,
+        }
 
     @staticmethod
     def _calcular_status(
@@ -740,6 +889,49 @@ class DashboardTerminalRuntime:
         except Exception:
             falhas_secoes += 1
             acoes_rapidas = list(anterior.get("quick_actions") or [])
+        try:
+            musica = self._chamar_limitado(
+                "music", lambda: self._musica(agora), timeout_s=0.25,
+            )
+        except Exception:
+            falhas_secoes += 1
+            musica = dict(anterior.get("music") or _retrato_inicial()["music"])
+            if musica.get("observed_at"):
+                musica["freshness"] = "stale"
+            musica["controls_available"] = False
+        # A primeira projeção precisa nascer coerente. A coleta continua fora
+        # da thread da UI, mas não publicamos sequence=1 com memória ainda no
+        # placeholder para logo em seguida substituí-la por outro snapshot.
+        memoria_inicial: dict[str, Any] | None = None
+        memoria_recente_inicial: list[dict[str, Any]] | None = None
+        rotinas_iniciais: dict[str, Any] | None = None
+        if (
+            (saude_anterior.get("memory") or {}).get("state")
+            == "unavailable"
+        ):
+            try:
+                memoria_inicial = self._chamar_limitado(
+                    "memory_health", lambda: self._saude_memoria(agora),
+                    timeout_s=1.0,
+                )
+                memoria_recente_inicial, falhas_memoria = self._memoria_recente(agora)
+                rotinas_iniciais = self._chamar_limitado(
+                    "memory_routines", lambda: self._rotinas_publicas(agora),
+                    timeout_s=0.5,
+                )
+                falhas_secoes += int(falhas_memoria)
+                if falhas_memoria and memoria_inicial.get("state") == "online":
+                    memoria_inicial.update(state="degraded", label="Degradada")
+            except Exception:
+                falhas_secoes += 1
+                if memoria_inicial is not None:
+                    memoria_inicial.update(
+                        state="degraded", label="Degradada",
+                    )
+                if memoria_recente_inicial is None:
+                    memoria_recente_inicial = []
+                if rotinas_iniciais is None:
+                    rotinas_iniciais = deepcopy(_retrato_inicial()["routines"])
         metricas_principais = (
             sistema.get("cpu_percent", {}),
             sistema.get("ram_percent", {}),
@@ -759,10 +951,20 @@ class DashboardTerminalRuntime:
             cache_atual = self._cache
             saude_atual = cache_atual.get("health") or {}
             memoria = dict(
-                saude_atual.get("memory")
+                memoria_inicial
+                or saude_atual.get("memory")
                 or _saude_indisponivel("Aguardando estado")
             )
-            memoria_recente = list(cache_atual.get("memory_recent") or [])
+            memoria_recente = list(
+                memoria_recente_inicial
+                if memoria_recente_inicial is not None
+                else cache_atual.get("memory_recent") or []
+            )
+            rotinas = dict(
+                rotinas_iniciais
+                or cache_atual.get("routines")
+                or _retrato_inicial()["routines"]
+            )
             temperatura_atual = dict(
                 (cache_atual.get("system") or {}).get("temperature_c")
                 or _metrica_indisponivel("°C", 120)
@@ -786,8 +988,12 @@ class DashboardTerminalRuntime:
                 "context": contexto,
                 "memory_recent": memoria_recente,
                 "quick_actions": list(acoes_rapidas or []),
+                "music": musica,
+                "routines": rotinas,
                 "system": sistema,
             }
+            if memoria_inicial is not None:
+                self._memoria_ultima_coleta = float(self.monotonic())
             self._coleta_em_andamento = False
             self._falhas += falhas_secoes
         self._agendar_memoria()
@@ -834,6 +1040,20 @@ class DashboardTerminalRuntime:
                 )
         memoria_recente, falhas_recentes = self._memoria_recente(agora)
         falhas += int(falhas_recentes)
+        try:
+            rotinas = self._chamar_limitado(
+                "memory_routines", lambda: self._rotinas_publicas(agora),
+                timeout_s=0.5,
+            )
+        except Exception:
+            falhas += 1
+            with self._lock:
+                rotinas = dict(
+                    self._cache.get("routines")
+                    or _retrato_inicial()["routines"]
+                )
+            if rotinas.get("observed_at"):
+                rotinas["freshness"] = "stale"
         if falhas and memoria.get("state") == "online":
             memoria.update(state="degraded", label="Degradada")
         with self._lock:
@@ -841,6 +1061,7 @@ class DashboardTerminalRuntime:
                 return
             self._cache["health"]["memory"] = memoria
             self._cache["memory_recent"] = list(memoria_recente)[:3]
+            self._cache["routines"] = rotinas
             self._cache["generated_at"] = agora
             self._cache["sequence"] = int(self._cache.get("sequence") or 0) + 1
             self._falhas += falhas

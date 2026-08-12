@@ -545,6 +545,51 @@ def detectar_consulta_aprendizados(
         t,
     ):
         return None
+    consulta_identidade = bool(re.fullmatch(
+        r"(?:qual (?:e )?(?:o )?meu nome|como (?:e que )?eu me chamo|"
+        r"(?:voce )?(?:sabe|lembra) (?:qual (?:e )?)?(?:o )?meu nome|"
+        r"(?:voce )?lembra do meu nome)[?.!]*",
+        t,
+    ))
+    if consulta_identidade:
+        params = params_cb if callable(params_cb) else lambda **kwargs: kwargs
+        return {
+            "intent": "LEARNING_QUERY",
+            "params": params(
+                limit=1,
+                query="nome do usuario",
+                modo="identidade",
+            ),
+        }
+    consulta_preferencias = bool(re.fullmatch(
+        r"(?:(?:do que|o que) eu (?:gosto|prefiro|curto)|"
+        r"quais (?:sao )?(?:as )?minhas preferencias|"
+        r"(?:voce )?(?:sabe|lembra) (?:d[oa] que eu gosto|das minhas preferencias))"
+        r"[?.!]*",
+        t,
+    ))
+    if consulta_preferencias:
+        params = params_cb if callable(params_cb) else lambda **kwargs: kwargs
+        return {
+            "intent": "LEARNING_QUERY",
+            "params": params(limit=5, query="preferencia", modo="listar"),
+        }
+    consultas_fato_pessoal = (
+        (r"(?:onde eu moro|qual (?:e )?(?:a )?minha cidade)[?.!]*", "mora local"),
+        (
+            r"(?:com o que eu trabalho|qual (?:e )?(?:a )?minha profissao)"
+            r"[?.!]*",
+            "trabalho profissao",
+        ),
+        (r"(?:o que eu estudo|qual (?:e )?(?:a )?minha area de estudo)[?.!]*", "estudo"),
+    )
+    for padrao, consulta in consultas_fato_pessoal:
+        if re.fullmatch(padrao, t):
+            params = params_cb if callable(params_cb) else lambda **kwargs: kwargs
+            return {
+                "intent": "LEARNING_QUERY",
+                "params": params(limit=3, query=consulta, modo="listar"),
+            }
     verificacao = re.search(
         r"\b(?:voce\s+)?(?:ainda\s+)?lembra\s+que\s+(?P<consulta>.+?)[?.!]*$",
         t,

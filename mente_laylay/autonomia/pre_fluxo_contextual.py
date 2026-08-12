@@ -17,7 +17,10 @@ from mente_laylay.personalidade.conversa_natural import (
     texto_parece_correcao_conversacional,
     tipo_reconhecimento_afetivo,
 )
-from mente_laylay.memoria_mental.identidade_usuario import normalizar_nome_usuario
+from mente_laylay.memoria_mental.identidade_usuario import (
+    extrair_nome_usuario_explicito,
+    normalizar_nome_usuario,
+)
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
@@ -268,15 +271,7 @@ def processar_identidade_usuario(ctx: Dict[str, Any], texto_usuario: str) -> Tup
             fala = f"Certo, não vou te chamar de {nome_errado}. Você ainda não me ensinou qual nome prefere."
         return emitir_conversa_curta(ctx, t, fala, emocao="calma", nivel=1), "correcao_nome_usuario"
 
-    afirmacao = re.fullmatch(
-        r"(?:meu nome (?:e|é)|eu me chamo|me chamo|pode me chamar de|me chama de)\s+"
-        r"([a-zà-ÿ][a-zà-ÿ' -]{0,50})",
-        norm,
-        re.IGNORECASE,
-    )
-    if not afirmacao:
-        return False, ""
-    nome = normalizar_nome_usuario(afirmacao.group(1))
+    nome = extrair_nome_usuario_explicito(t)
     if not nome:
         return False, ""
     salvar_identidade = _get(ctx, "_salvar_identidade_usuario")

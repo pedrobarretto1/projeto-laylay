@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict
 from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
 from mente_laylay.autonomia.executor_comum import falar_ctx as _falar
 from mente_laylay.memoria_mental.memoria_confiavel import normalizar_texto
+from mente_laylay.memoria_mental.identidade_usuario import normalizar_nome_usuario
 from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_variada
 
 
@@ -299,6 +300,17 @@ def _consultar_aprendizados(
         offset = 0
     consulta = str(params.get("query") or params.get("consulta") or "").strip()
     modo = str(params.get("modo") or "listar").strip().casefold()
+    if modo == "identidade":
+        mente = _get(ctx, "mente_integrada_estado", {})
+        nome = normalizar_nome_usuario(
+            mente.get("nome_usuario") if isinstance(mente, dict) else ""
+        )
+        if nome:
+            deps.marcar_resultado(
+                "aprendizados_consultados", executou=True, confirmado=True,
+            )
+            _falar(ctx, f"Seu nome é {nome}.")
+            return ResultadoDespacho.concluido(True)
     if not callable(recuperar):
         deps.marcar_resultado("habilidade_indisponivel", executou=False)
         _falar(ctx, "Minha memória de aprendizados não está disponível agora.")
@@ -332,6 +344,33 @@ def _consultar_aprendizados(
         if texto:
             registro["texto"] = texto
             aprendizados.append(registro)
+
+    if modo == "identidade":
+        nome = ""
+        for item in aprendizados:
+            if str(item.get("chave") or "") == "identidade:nome_usuario":
+                nome = normalizar_nome_usuario(item.get("valor"))
+            if not nome:
+                achado = re.search(
+                    r"\bnome (?:confirmado )?do usu[aá]rio (?:e|é|eh|è)\s+"
+                    r"([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ' -]{0,59})",
+                    str(item.get("texto") or ""),
+                    flags=re.IGNORECASE,
+                )
+                nome = normalizar_nome_usuario(achado.group(1)) if achado else ""
+            if nome:
+                break
+        deps.marcar_resultado(
+            "aprendizados_consultados", executou=True, confirmado=True,
+        )
+        if nome:
+            _falar(ctx, f"Seu nome é {nome}.")
+        else:
+            _falar(
+                ctx,
+                "Ainda não tenho seu nome confirmado na memória. Se quiser, diga “meu nome é...” e eu guardo.",
+            )
+        return ResultadoDespacho.concluido(True)
 
     deps.marcar_resultado("aprendizados_consultados", executou=True, confirmado=True)
     if not aprendizados:

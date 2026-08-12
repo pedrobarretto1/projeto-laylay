@@ -175,8 +175,12 @@ class ChromeSolicitacoesRuntime:
         tab_id = entrada.get("tabId")
         return int(tab_id) if isinstance(tab_id, int) else None
 
-    def solicitar_aba_ativa(self, timeout_s: float = 4.0) -> Dict[str, str]:
-        vazio = {"url": "", "title": "", "canal": "", "tabId": None}
+    def solicitar_aba_ativa(self, timeout_s: float = 4.0) -> Dict[str, Any]:
+        vazio = {
+            "url": "", "title": "", "canal": "", "tabId": None,
+            "source": "", "playingConfirmed": False,
+            "audibleConfirmed": False,
+        }
         if not self.conectado():
             return vazio
         loop = self._obter_loop()
@@ -198,6 +202,9 @@ class ChromeSolicitacoesRuntime:
                     "title": str(resposta.get("title") or ""),
                     "canal": str(resposta.get("canal") or ""),
                     "tabId": resposta.get("tabId"),
+                    "source": str(resposta.get("source") or ""),
+                    "playingConfirmed": resposta.get("playingConfirmed") is True,
+                    "audibleConfirmed": resposta.get("audibleConfirmed") is True,
                 }
             except Exception as erro:
                 self._registrar_erro("consulta_aba_ativa", erro)

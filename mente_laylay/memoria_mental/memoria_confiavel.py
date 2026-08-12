@@ -8,7 +8,8 @@ from typing import Any, Dict, Iterable, List
 
 
 TIPOS_DURAVEIS = {
-    "apelido", "correcao", "identidade", "permissao", "preferencia", "regra", "rotina"
+    "apelido", "correcao", "fato_pessoal", "identidade", "permissao",
+    "preferencia", "regra", "rotina",
 }
 _STOPWORDS = {
     "a", "ao", "as", "com", "como", "da", "das", "de", "do", "dos", "e", "em",
@@ -19,6 +20,8 @@ _SINAIS_EXPLICITOS = re.compile(
     r"(?:^\s*(?:tamb[eé]m\s+)?(?:n[aã]o\s+)?(?:gosto|curto|amo|adoro|odeio|prefiro)\b|"
     r"\b(?:meu nome (?:e|eh)|me chama de|eu (?:tamb[eé]m\s+)?"
     r"(?:n[aã]o\s+)?(?:gosto|curto|amo|adoro|odeio|prefiro)|"
+    r"eu\s+(?:moro\s+em|trabalho\s+como|estudo)|"
+    r"minha\s+profiss[aã]o\s+(?:e|é|eh)|fa[cç]o\s+faculdade\s+de|"
     r"(?:um dos|uma das) meus? .{0,50} favorit[oa]s?|meus? .{0,50} favorit[oa]s?|"
     r"n[aã]o gosto|lembra(?: de)? que|guarda(?: isso| que)?|anota(?: que)?|"
     r"quando eu|pode sempre|n[aã]o (?:abra|faca|toque|use)|na verdade|"
@@ -28,11 +31,12 @@ _SINAIS_EXPLICITOS = re.compile(
 
 
 def extrair_aprendizados_pessoais_explicitos(texto_usuario: str) -> List[Dict[str, Any]]:
-    """Extrai preferências inequívocas sem depender da disciplina do modelo.
+    """Extrai preferências e fatos estáveis inequívocos da própria pessoa.
 
-    A extração é deliberadamente estreita: registra favoritos e gostos que o
-    próprio usuário declarou na primeira pessoa. Fatos externos, inferências e
-    entusiasmo solto continuam fora da memória durável.
+    A extração é deliberadamente estreita: registra favoritos, local de
+    residência, profissão e área de estudo que o próprio usuário declarou.
+    Fatos externos, estados momentâneos e inferências continuam fora da
+    memória durável.
     """
     bruto = re.sub(r"\s+", " ", str(texto_usuario or "")).strip()
     # Uma pergunta sobre a própria memória ("eu gosto de sertanejo?") não é
@@ -110,6 +114,52 @@ def extrair_aprendizados_pessoais_explicitos(texto_usuario: str) -> List[Dict[st
             "confianca": 0.98,
         })
         break
+
+    limite_fato = (
+        r"(?=\s*,?\s+(?:mas|e\s+(?:eu\s+)?(?:moro|trabalho|estudo|fa[cç]o))\b|"
+        r"[.!?;]|$)"
+    )
+    padroes_fatos = (
+        (
+            r"(?:^|[,;]\s*|\be\s+)(?:eu\s+)?moro\s+em\s+"
+            rf"(?P<valor>.+?){limite_fato}",
+            "local onde mora",
+            "você mora em {valor}",
+            60,
+            7,
+        ),
+        (
+            r"(?:^|[,;]\s*|\be\s+)(?:(?:eu\s+)?trabalho\s+como|minha\s+profiss[aã]o\s+"
+            r"(?:e|é|eh|è))\s+"
+            rf"(?P<valor>.+?){limite_fato}",
+            "profissão",
+            "você trabalha como {valor}",
+            80,
+            10,
+        ),
+        (
+            r"(?:^|[,;]\s*|\be\s+)(?:(?:eu\s+)?estudo|fa[cç]o\s+faculdade\s+de)\s+"
+            rf"(?P<valor>.+?){limite_fato}",
+            "área de estudo",
+            "você estuda {valor}",
+            80,
+            10,
+        ),
+    )
+    for padrao, gatilho, regra, max_chars, max_palavras in padroes_fatos:
+        achado = re.search(padrao, bruto, flags=re.IGNORECASE)
+        if not achado:
+            continue
+        valor = re.sub(r"\s+", " ", str(achado.group("valor") or "")).strip(" ,.;:-")
+        if not valor or len(valor) > max_chars or len(valor.split()) > max_palavras:
+            continue
+        resultados.append({
+            "tipo": "fato_pessoal",
+            "gatilho": gatilho,
+            "valor": valor,
+            "regra": regra.format(valor=valor),
+            "confianca": 0.98,
+        })
     return resultados
 
 

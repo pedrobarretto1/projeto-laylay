@@ -45,6 +45,105 @@ def test_consulta_natural_de_aprendizados_vira_intent_sem_lista_rigida() -> None
     ) is None
 
 
+@pytest.mark.parametrize(
+    "texto",
+    ("qual é meu nome?", "como eu me chamo?", "você lembra do meu nome?"),
+)
+def test_consulta_do_proprio_nome_usa_memoria_confirmada(texto: str) -> None:
+    assert detectar_consulta_aprendizados(
+        texto,
+        params_cb=lambda **kwargs: kwargs,
+    ) == {
+        "intent": "LEARNING_QUERY",
+        "params": {
+            "limit": 1,
+            "query": "nome do usuario",
+            "modo": "identidade",
+        },
+    }
+
+
+def test_consulta_do_nome_responde_do_estado_sem_chamar_llm_ou_inventar() -> None:
+    eventos: list[tuple] = []
+    falas: list[str] = []
+    despacho = executar_intencao_informacoes(
+        "LEARNING_QUERY",
+        {"limit": 1, "query": "nome do usuario", "modo": "identidade"},
+        "qual é meu nome?",
+        {
+            "mente_integrada_estado": {"nome_usuario": "Pedro"},
+            "_recuperar_aprendizados": lambda **_kwargs: pytest.fail(
+                "o estado confirmado deve responder sem uma segunda busca"
+            ),
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(True)
+    assert falas == ["Seu nome é Pedro."]
+    assert eventos == [(
+        "resultado",
+        "aprendizados_consultados",
+        {"executou": True, "confirmado": True},
+    )]
+
+
+def test_consulta_do_nome_sem_registro_admite_a_lacuna() -> None:
+    falas: list[str] = []
+    despacho = executar_intencao_informacoes(
+        "LEARNING_QUERY",
+        {"limit": 1, "query": "nome do usuario", "modo": "identidade"},
+        "qual é meu nome?",
+        {
+            "mente_integrada_estado": {"nome_usuario": ""},
+            "_recuperar_aprendizados": lambda **_kwargs: [],
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+        },
+        _dependencias([]),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(True)
+    assert "Ainda não tenho seu nome confirmado" in falas[0]
+    assert "Seu nome é você" not in falas[0]
+
+
+def test_consulta_natural_de_preferencias_usa_a_mesma_memoria() -> None:
+    for texto in ("do que eu gosto?", "quais são minhas preferências?"):
+        assert detectar_consulta_aprendizados(
+            texto,
+            params_cb=lambda **kwargs: kwargs,
+        ) == {
+            "intent": "LEARNING_QUERY",
+            "params": {
+                "limit": 5,
+                "query": "preferencia",
+                "modo": "listar",
+            },
+        }
+
+
+@pytest.mark.parametrize(
+    ("texto", "query"),
+    (
+        ("onde eu moro?", "mora local"),
+        ("qual é minha profissão?", "trabalho profissao"),
+        ("o que eu estudo?", "estudo"),
+    ),
+)
+def test_consultas_de_fatos_pessoais_usam_memoria_geral(
+    texto: str,
+    query: str,
+) -> None:
+    assert detectar_consulta_aprendizados(
+        texto,
+        params_cb=lambda **kwargs: kwargs,
+    ) == {
+        "intent": "LEARNING_QUERY",
+        "params": {"limit": 3, "query": query, "modo": "listar"},
+    }
+
+
 def test_consulta_de_aprendizados_le_memoria_persistente_e_confirma() -> None:
     eventos: list[tuple] = []
     falas: list[str] = []

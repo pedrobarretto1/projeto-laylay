@@ -168,7 +168,7 @@ def test_p1_navegacao_preserva_indices_legados(monkeypatch) -> None:
         ("inicio", 0),
         ("conversa", 0),
         ("diagnostico", 2),
-        ("sistema", 2),
+        ("sistema", 7),
         ("configuracoes", 3),
         ("automacao", 4),
         ("musica", 5),

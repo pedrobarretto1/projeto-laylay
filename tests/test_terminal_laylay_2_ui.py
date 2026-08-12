@@ -170,10 +170,10 @@ def test_baloes_ampliados_respeitam_limites_e_viewport_estreito(monkeypatch) -> 
 
     assert laylay is not None
     assert usuario is not None
-    assert laylay.maximumWidth() == LARGURA_MAXIMA_MENSAGEM_LAYLAY == 860
-    assert usuario.maximumWidth() == LARGURA_MAXIMA_MENSAGEM_USUARIO == 760
-    assert laylay.width() > 740
-    assert usuario.width() > 650
+    assert laylay.maximumWidth() == LARGURA_MAXIMA_MENSAGEM_LAYLAY == 560
+    assert usuario.maximumWidth() == LARGURA_MAXIMA_MENSAGEM_USUARIO == 520
+    assert laylay.width() >= 540
+    assert usuario.width() >= 500
 
     janela.resize(375, 667)
     _processar_layout(app)

@@ -1118,6 +1118,11 @@ playlist_state = _estado_compartilhado_runtime.vincular_dict(
     "playlist_state",
     {"name": "", "index": 0, "user_intervened": False, "last_url": ""},
 )
+# A playlist pode continuar entre reinícios, mas o player é uma observação
+# efêmera da extensão. Restaurá-lo faria a faixa da sessão anterior parecer
+# atual até o navegador responder novamente.
+playlist_state.pop("player", None)
+playlist_state.pop("tab_id", None)
 _playlist_runtime = _criar_playlist_runtime_mente(
     state_file=playlists_state_file,
     legacy_file=playlists_legacy_file,
@@ -3177,6 +3182,10 @@ def _estado_terminal_2() -> dict:
         "emotion_level": conversa.get("emotion_level", 1),
         "is_speaking": conversa.get("is_speaking", False),
         "voice_available": ouvido_ativo,
+        "microphone_level": (
+            _ouvido_whisper_runtime.nivel_microfone()
+            if ouvido_ativo else 0.0
+        ),
         "interaction_mode": "chat" if modo_chat else "voice",
     }
 
@@ -3206,6 +3215,11 @@ _dashboard_terminal_runtime = _criar_dashboard_terminal_runtime(
     ),
     contexto_jogo_getter=_modo_jogo_runtime.contexto_atual,
     capacidade_getter=_mapa_habilidades_runtime.consultar,
+    musica_getter=lambda: {
+        **dict(_registro_musica_leitura_runtime.estado() or {}),
+        "player": dict(playlist_state.get("player") or {}),
+        "playlist": str(playlist_state.get("name") or ""),
+    },
     psutil_mod=psutil,
     projeto="Laylay",
     cidade=BRIEFING_CIDADE,

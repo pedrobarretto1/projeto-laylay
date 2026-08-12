@@ -60,16 +60,22 @@ def handle_youtube_data(data: Dict[str, Any], pending_active_url_requests: Dict[
     title = str(data.get("title") or "")
     canal = str(data.get("canal") or data.get("channel") or "")
     tab_id = data.get("tabId")
+    resultado = {
+        "url": url,
+        "title": title,
+        "canal": canal,
+        "tabId": tab_id,
+        "source": str(data.get("source") or ""),
+        "playingConfirmed": data.get("playingConfirmed") is True,
+        "audibleConfirmed": data.get("audibleConfirmed") is True,
+    }
     if rid and rid in pending_active_url_requests:
         entry = pending_active_url_requests.get(rid)
         if isinstance(entry, asyncio.Future):
             if not entry.done():
-                entry.set_result({"url": url, "title": title, "canal": canal, "tabId": tab_id})
+                entry.set_result(resultado)
         elif isinstance(entry, dict):
-            entry["url"] = url
-            entry["title"] = title
-            entry["canal"] = canal
-            entry["tabId"] = tab_id
+            entry.update(resultado)
             _set_event(entry)
 
 
@@ -118,6 +124,92 @@ def handle_player_event(
     is_ad = bool(data.get("isAd"))
     duration = int(data.get("duration") or 0)
     tab_id = data.get("tabId")
+
+    if event == "player_unavailable":
+        # Ausência observada é evidência, não silêncio. Limpa somente o
+        # player efêmero; identidade/posição da playlist continuam intactas.
+        atual = playlist_state.get("player")
+        idade = (
+            time.time() - float((atual or {}).get("observed_at") or 0.0)
+            if isinstance(atual, dict) else float("inf")
+        )
+        if data.get("authoritative") is True or idade > 12.0:
+            playlist_state.pop("player", None)
+            playlist_state.pop("tab_id", None)
+        return
+
+    if event == "player_state":
+        try:
+            position = max(0.0, float(data.get("currentTime") or 0.0))
+        except (TypeError, ValueError):
+            position = 0.0
+        try:
+            total = max(0.0, float(data.get("duration") or 0.0))
+        except (TypeError, ValueError):
+            total = 0.0
+        estado = str(data.get("state") or "").strip().casefold()
+        if estado not in {"playing", "paused", "ended"}:
+            estado = "paused" if data.get("paused") is True else "playing"
+        fonte = str(data.get("source") or "").strip().casefold()
+        prioridade = 100
+        if fonte == "audible_youtube_tab" or data.get("audibleConfirmed") is True:
+            prioridade = 400
+        elif fonte == "playing_youtube_tab" or data.get("playingConfirmed") is True:
+            prioridade = 320
+        elif estado == "playing":
+            prioridade = 280
+        elif fonte == "active_youtube_tab" or data.get("tabActive") is True:
+            prioridade = 180
+        elif fonte == "youtube_tab_fallback":
+            prioridade = 120
+        try:
+            observado_origem = max(0.0, float(data.get("observedAt") or 0.0))
+        except (TypeError, ValueError):
+            observado_origem = 0.0
+        atual = playlist_state.get("player")
+        if isinstance(atual, dict):
+            mesmo_tab = isinstance(tab_id, int) and tab_id == atual.get("tab_id")
+            mesmo_video = bool(
+                str(data.get("videoId") or "").strip()
+                and str(data.get("videoId") or "").strip()
+                == str(atual.get("video_id") or "").strip()
+            )
+            idade_atual = time.time() - float(atual.get("observed_at") or 0.0)
+            prioridade_atual = int(atual.get("_priority") or 0)
+            origem_atual = float(atual.get("_source_observed_at") or 0.0)
+            atrasado = bool(
+                observado_origem > 0 and origem_atual > 0
+                and observado_origem < origem_atual
+            )
+            # A mesma aba pode trocar de vídeo ou de estado imediatamente.
+            # Outra aba só assume enquanto o retrato atual estiver vivo se
+            # trouxer evidência pelo menos tão forte (tocando/audível).
+            if atrasado and (mesmo_tab or mesmo_video):
+                return
+            if (
+                not mesmo_tab and not mesmo_video and idade_atual <= 12.0
+                and prioridade < prioridade_atual
+            ):
+                return
+        player = {
+            "title": str(data.get("title") or "").replace(" - YouTube", "").strip()[:180],
+            "channel": str(data.get("channel") or "").strip()[:120],
+            "video_id": str(data.get("videoId") or "").strip()[:20],
+            "url": url[:500],
+            "state": estado,
+            "position_seconds": min(position, 86_400.0),
+            "duration_seconds": min(total, 86_400.0),
+            "observed_at": time.time(),
+            "controls_available": True,
+            "_priority": prioridade,
+            "_source_observed_at": observado_origem,
+            "source": fonte,
+        }
+        if isinstance(tab_id, int):
+            player["tab_id"] = tab_id
+            playlist_state["tab_id"] = tab_id
+        playlist_state["player"] = player
+        return
 
     if event == "user_click_detected":
         playlist_state["user_intervened"] = True

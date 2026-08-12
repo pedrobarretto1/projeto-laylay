@@ -1298,8 +1298,32 @@ try {
   }
 } catch (_) {}
 
-chrome.runtime.onMessage.addListener((request) => {
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   console.log("Comando recebido na página:", request);
+
+  if (request.action === "PROBE_YT_PLAYER") {
+    try {
+      const video = document.querySelector("video");
+      const playing = !!video && !video.paused && !video.ended;
+      const muted = !!video?.muted;
+      const volume = Number(video?.volume ?? 0);
+      const readyState = Number(video?.readyState ?? 0);
+      const rawTitle = String(document.title || "");
+      const channelNode = document.querySelector("#upload-info #channel-name") || document.querySelector("#channel-name");
+      sendResponse({
+        ok: !!video,
+        playing,
+        audible: playing && !muted && volume > 0 && readyState >= 2,
+        paused: !!video?.paused,
+        title: rawTitle.replace(/ - YouTube$/i, "").trim(),
+        channel: String(channelNode?.textContent || "").replace(/\s+/g, " ").trim(),
+        url: window.location.href,
+      });
+    } catch (_) {
+      sendResponse({ ok: false, playing: false, audible: false });
+    }
+    return true;
+  }
   
   // --- COMANDOS ADICIONAIS (Spinning Fish, Netflix, etc) ---
   if (request.action === "spinning_fish") {
@@ -1369,14 +1393,24 @@ chrome.runtime.onMessage.addListener((request) => {
         const title = rawTitle.replace(/ - YouTube$/i, "").trim();
         const ch = document.querySelector("#upload-info #channel-name") || document.querySelector("#channel-name");
         const canal = String(ch?.textContent || "").replace(/\s+/g, " ").trim();
-        sendMessage({ 
+        const resultado = {
             type: "YOUTUBE_DATA", 
             requestId: request.requestId ?? null, 
             url: window.location.href, 
             title, 
             canal 
-        });
-    } catch (_) {}
+        };
+        if (request.directResponse === true && typeof sendResponse === "function") {
+          sendResponse(resultado);
+        } else {
+          sendMessage(resultado);
+        }
+    } catch (_) {
+      if (request.directResponse === true && typeof sendResponse === "function") {
+        sendResponse(null);
+      }
+    }
+    return true;
   }
 
   if (request.action === "auto_click_first_result") {
@@ -1401,6 +1435,8 @@ try {
     }, true);
     let _laylayPlaybackSerial = 0;
     let _laylayLastPlaybackKey = "";
+    let _laylayLastPlayerStateAt = 0;
+    let _laylayLastPlayerSignature = "";
 
     const _laylayVideoId = () => {
       try {
@@ -1436,6 +1472,35 @@ try {
       });
     };
 
+    const _emitLaylayPlayerState = (v, force = false) => {
+      if (!v) return;
+      const now = Date.now();
+      const state = v.ended ? "ended" : (v.paused ? "paused" : "playing");
+      const position = Number.isFinite(v.currentTime) ? Number(v.currentTime) : 0;
+      const duration = Number.isFinite(v.duration) ? Number(v.duration) : 0;
+      const title = String(document.title || "").replace(/ - YouTube$/i, "").trim();
+      const channelNode = document.querySelector("#upload-info #channel-name") || document.querySelector("#channel-name");
+      const channel = String(channelNode?.textContent || "").replace(/\s+/g, " ").trim();
+      const signature = `${_laylayVideoId()}:${state}:${Math.floor(position)}:${Math.floor(duration)}:${title}`;
+      if (!force && signature === _laylayLastPlayerSignature && now - _laylayLastPlayerStateAt < 3000) return;
+      if (!force && now - _laylayLastPlayerStateAt < 900) return;
+      _laylayLastPlayerStateAt = now;
+      _laylayLastPlayerSignature = signature;
+      sendMessage({
+        type: "PLAYER_EVENT",
+        event: "player_state",
+        url: location.href,
+        videoId: _laylayVideoId(),
+        title,
+        channel,
+        state,
+        paused: !!v.paused,
+        currentTime: position,
+        duration,
+        observedAt: now,
+      });
+    };
+
     const _bindLaylayVideo = () => {
       const v = document.querySelector("video");
       if (!v) return;
@@ -1449,10 +1514,19 @@ try {
               _laylayPlaybackSerial += 1;
               v.__laylayEndedPlaybackKey = "";
             }
+            _emitLaylayPlayerState(v, true);
           });
-          v.addEventListener("ended", () => _emitLaylayVideoEnded(v));
+          v.addEventListener("play", () => _emitLaylayPlayerState(v, true));
+          v.addEventListener("pause", () => _emitLaylayPlayerState(v, true));
+          v.addEventListener("loadedmetadata", () => _emitLaylayPlayerState(v, true));
+          v.addEventListener("timeupdate", () => _emitLaylayPlayerState(v, false));
+          v.addEventListener("ended", () => {
+            _emitLaylayPlayerState(v, true);
+            _emitLaylayVideoEnded(v);
+          });
         } catch (_) {}
       }
+      _emitLaylayPlayerState(v, false);
       // Recupera o caso raro em que o script entrou depois do evento nativo.
       if (v.ended && Number(v.currentTime || 0) > 0) _emitLaylayVideoEnded(v);
     };

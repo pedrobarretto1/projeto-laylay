@@ -159,6 +159,7 @@ class OuvidoWhisperRuntime:
         self._ultimo_comando_assinatura = ""
         self._ultimo_comando_ts = 0.0
         self._ultima_metricas_transcricao: dict[str, Any] = {}
+        self._nivel_microfone = 0.0
         self.modelo = None
         self.dispositivo: int | None = None
         self.taxa_captura = 16000
@@ -174,6 +175,13 @@ class OuvidoWhisperRuntime:
         return self._env("LAYLAY_MICROFONE_ATIVO", "1").casefold() not in {
             "0", "false", "nao", "não", "off", "desligado",
         }
+
+    def nivel_microfone(self) -> float:
+        """Nível normalizado e efêmero para visualização; não expõe áudio."""
+        try:
+            return max(0.0, min(1.0, float(self._nivel_microfone)))
+        except (TypeError, ValueError):
+            return 0.0
 
     def _dependencias(self) -> tuple[Any, Any]:
         sd = self.sd
@@ -683,6 +691,7 @@ class OuvidoWhisperRuntime:
                     chunk = np.asarray(dados, dtype=np.float32).reshape(-1).copy()
                     agora = self.monotonic()
                     if not bool(self.escuta_permitida()):
+                        self._nivel_microfone = 0.0
                         gravando.clear()
                         preroll.clear()
                         blocos_voz = 0
@@ -702,6 +711,7 @@ class OuvidoWhisperRuntime:
                         calibracao_anunciada = True
                     falando = bool(self.esta_falando())
                     if falando:
+                        self._nivel_microfone = 0.0
                         self._ultima_fala_laylay_ts = agora
                         gravando.clear()
                         preroll.clear()
@@ -732,6 +742,9 @@ class OuvidoWhisperRuntime:
                         continue
 
                     limiar = max(limiar_minimo, ruido * 1.7)
+                    self._nivel_microfone = max(
+                        0.0, min(1.0, rms / max(limiar * 1.8, 0.001)),
+                    )
                     if not gravando:
                         pico_sem_fala = max(pico_sem_fala, rms)
                         # Só adapte o piso com blocos que já parecem silêncio. Antes,
@@ -779,6 +792,7 @@ class OuvidoWhisperRuntime:
                         silencio = 0.0
                         self._agendar_entrega(audio)
         except Exception as erro:
+            self._nivel_microfone = 0.0
             if bool(self.modo_chat_ativo()):
                 return
             self.log(f"⚠️ [OUVIDO] Captura do microfone encerrada: {erro}")

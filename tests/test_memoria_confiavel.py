@@ -9,6 +9,7 @@ import unittest
 from memoria_sqlite import MemoriaSQLite
 from mente_laylay.autonomia.processamento_resposta_ia import salvar_aprendizados_da_ia
 from mente_laylay.memoria_mental.memoria_confiavel import (
+    extrair_aprendizados_pessoais_explicitos,
     preparar_aprendizados_confirmados,
     usuario_sustenta_aprendizado,
 )
@@ -45,6 +46,44 @@ class MemoriaConfiavelTests(unittest.TestCase):
         self.assertEqual(salvos[0]["status"], "ativo")
         self.assertTrue(salvos[0]["confirmado_usuario"])
         self.assertIn("eu gosto de Rubel", salvos[0]["evidencia"])
+
+    def test_fatos_pessoais_estaveis_explicitos_entram_na_memoria_geral(self) -> None:
+        extraidos = extrair_aprendizados_pessoais_explicitos(
+            "eu moro em Boituva e trabalho como programador"
+        )
+
+        self.assertEqual(
+            [(item["gatilho"], item["valor"]) for item in extraidos],
+            [("local onde mora", "Boituva"), ("profissão", "programador")],
+        )
+        salvos = preparar_aprendizados_confirmados(
+            extraidos,
+            "eu moro em Boituva e trabalho como programador",
+        )
+        self.assertEqual(len(salvos), 2)
+        self.assertTrue(all(item["confirmado_usuario"] for item in salvos))
+
+    def test_estado_momentaneo_e_pergunta_nao_viram_fato_duravel(self) -> None:
+        self.assertEqual(
+            extrair_aprendizados_pessoais_explicitos("hoje estou cansado"),
+            [],
+        )
+        self.assertEqual(
+            extrair_aprendizados_pessoais_explicitos("onde eu moro?"),
+            [],
+        )
+
+    def test_fato_pessoal_corrigido_substitui_o_valor_anterior(self) -> None:
+        for texto in ("eu moro em Itu", "eu moro em Boituva"):
+            resposta = json.dumps({"fala": "Entendi.", "comandos": []})
+            salvar_aprendizados_da_ia(resposta, self.memoria, texto)
+
+        ativos = [
+            item for item in self.memoria.listar_aprendizados_semanticos()
+            if item.get("tipo") == "fato_pessoal" and item.get("status") == "ativo"
+        ]
+        self.assertEqual(len(ativos), 1)
+        self.assertEqual(ativos[0]["valor"], "Boituva")
 
     def test_saida_da_ia_sem_evidencia_nao_e_salva_nem_duplicada_como_fato(self) -> None:
         resposta = json.dumps({

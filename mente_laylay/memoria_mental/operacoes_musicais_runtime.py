@@ -69,7 +69,27 @@ class OperacoesMusicaisRuntime:
         self.playlist_state["last_url"] = str(url or "").strip()
 
     def faixa_atual(self) -> dict[str, Any]:
-        """Resolve a faixa viva antes de consultar a aba ativa do navegador."""
+        """Prefere a reprodução observada; memória recente é só fallback."""
+        aba_observada: dict[str, Any] = {}
+        try:
+            aba_observada = dict(self.solicitar_aba_ativa() or {})
+        except Exception as erro:
+            self.log(
+                "⚠️ [PLAYLIST:CONTEXTO] reprodução do navegador indisponível: "
+                f"{type(erro).__name__}: {erro}"
+            )
+        url_observada = str(aba_observada.get("url") or "").strip()
+        reproducao_confirmada = bool(
+            aba_observada.get("audibleConfirmed") is True
+            or aba_observada.get("playingConfirmed") is True
+        )
+        if "youtube.com" in url_observada.casefold() and reproducao_confirmada:
+            return {
+                **aba_observada,
+                "origem": str(
+                    aba_observada.get("source") or "player_navegador_observado"
+                ),
+            }
         try:
             instante = float(self.musica_estado_getter("musica_atual_ts", 0.0) or 0.0)
             status = str(
@@ -98,14 +118,11 @@ class OperacoesMusicaisRuntime:
                 "⚠️ [PLAYLIST:CONTEXTO] estado da música atual indisponível: "
                 f"{type(erro).__name__}: {erro}"
             )
-        try:
-            return dict(self.solicitar_aba_ativa() or {})
-        except Exception as erro:
-            self.log(
-                "⚠️ [PLAYLIST:CONTEXTO] aba ativa indisponível: "
-                f"{type(erro).__name__}: {erro}"
-            )
-            return {}
+        # Compatibilidade com uma extensão antiga ou uma aba pausada: ela só
+        # entra quando não há faixa recente confirmada na mente.
+        if "youtube.com" in url_observada.casefold():
+            return aba_observada
+        return {}
 
     def copiar_curadoria(
         self, origem: str, musica: str, destino: str,

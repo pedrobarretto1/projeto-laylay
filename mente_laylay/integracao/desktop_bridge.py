@@ -23,8 +23,9 @@ from typing import Any, Callable, Mapping, Sequence
 
 from mente_laylay.integracao.configuracao_aplicacao import ErroConfiguracaoAplicacao
 from mente_laylay.integracao.acoes_terminal import (
+    IDS_ACOES_PAINEL,
     IDS_ACOES_RAPIDAS,
-    definicao_acao_rapida,
+    definicao_acao_terminal,
 )
 
 
@@ -137,12 +138,19 @@ def sanitizar_estado(estado: Mapping[str, Any] | None) -> dict[str, Any]:
     modo = str(bruto.get("interaction_mode") or "").casefold().strip()
     if modo not in {"chat", "voice"}:
         modo = "chat" if bool(bruto.get("modo_chat", True)) else "voice"
+    try:
+        nivel_microfone = float(bruto.get("microphone_level") or 0.0)
+    except (TypeError, ValueError):
+        nivel_microfone = 0.0
+    if not math.isfinite(nivel_microfone):
+        nivel_microfone = 0.0
     return {
         "activity": atividade if atividade in mapa else "idle",
         "activity_label": mapa.get(atividade, "Pronta"),
         "emotion": emocao[:32] or "calma",
         "emotion_level": max(1, min(3, int(bruto.get("emotion_level") or 1))),
         "voice_available": bool(bruto.get("voice_available", False)),
+        "microphone_level": max(0.0, min(1.0, nivel_microfone)),
         "interaction_mode": modo,
     }
 
@@ -287,6 +295,12 @@ def sanitizar_dashboard_estado(
     sistema = dict(bruto.get("system") or {}) if isinstance(
         bruto.get("system"), Mapping,
     ) else {}
+    musica = dict(bruto.get("music") or {}) if isinstance(
+        bruto.get("music"), Mapping,
+    ) else {}
+    rotinas = dict(bruto.get("routines") or {}) if isinstance(
+        bruto.get("routines"), Mapping,
+    ) else {}
     status = str(bruto.get("status") or "unavailable").casefold().strip()
     if status not in {"ok", "partial", "unavailable"}:
         status = "unavailable"
@@ -387,6 +401,84 @@ def sanitizar_dashboard_estado(
                 item.get("reason"), 120, fallback="",
             ),
         })
+    musica_observada = _numero_dashboard(
+        musica.get("observed_at"), minimo=0, maximo=9_999_999_999,
+    ) or 0.0
+    musica_estado = _texto_seguro(musica.get("state"), 24).casefold()
+    if musica_estado not in {"playing", "paused", "ended", "unknown"}:
+        musica_estado = "unavailable"
+    musica_frescor = _frescor_dashboard(
+        musica.get("freshness"),
+        disponivel=musica_observada > 0 and musica_estado != "unavailable",
+    )
+    if musica_frescor == "unavailable":
+        musica_estado = "unavailable"
+    duracao = _numero_dashboard(
+        musica.get("duration_seconds"), minimo=0, maximo=86_400,
+    ) or 0.0
+    posicao = min(
+        _numero_dashboard(
+            musica.get("position_seconds"), minimo=0, maximo=86_400,
+        ) or 0.0,
+        duracao if duracao > 0 else 86_400.0,
+    )
+    musica_publica = {
+        "title": _texto_publico_dashboard(
+            musica.get("title"), 180, fallback="",
+        ),
+        "channel": _texto_publico_dashboard(
+            musica.get("channel"), 120, fallback="",
+        ),
+        "artwork_url": (
+            _texto_seguro(musica.get("artwork_url"), 180)
+            if re.fullmatch(
+                r"https://i\.ytimg\.com/vi/[A-Za-z0-9_-]{11}/(?:hqdefault|maxresdefault)\.jpg",
+                _texto_seguro(musica.get("artwork_url"), 180),
+            ) else ""
+        ),
+        "state": musica_estado,
+        "position_seconds": posicao,
+        "duration_seconds": duracao,
+        "playlist": _texto_publico_dashboard(
+            musica.get("playlist"), 100, fallback="",
+        ),
+        "controls_available": bool(
+            musica.get("controls_available") is True
+            and musica_frescor == "fresh"
+        ),
+        "freshness": musica_frescor,
+        "observed_at": musica_observada,
+    }
+    rotinas_observadas = _numero_dashboard(
+        rotinas.get("observed_at"), minimo=0, maximo=9_999_999_999,
+    ) or 0.0
+    rotinas_frescor = _frescor_dashboard(
+        rotinas.get("freshness"), disponivel=rotinas_observadas > 0,
+    )
+    rotinas_publicas: list[dict[str, Any]] = []
+    pares_dias = {"seg", "ter", "qua", "qui", "sex", "sab", "dom", "todos"}
+    if rotinas_frescor != "unavailable":
+        for item in list(rotinas.get("items") or ())[:6]:
+            if not isinstance(item, Mapping) or item.get("active") is not True:
+                continue
+            nome = _texto_memoria_publico_dashboard(
+                item.get("name"), 120, fallback="Rotina pessoal",
+            )
+            horario = _texto_seguro(item.get("time"), 8)
+            if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d|—", horario):
+                horario = "—"
+            dias = [
+                _texto_seguro(dia, 5).casefold()
+                for dia in list(item.get("days") or ())[:7]
+                if _texto_seguro(dia, 5).casefold() in pares_dias
+            ]
+            rotinas_publicas.append({
+                "name": nome,
+                "time": horario,
+                "days": dias,
+                "active": True,
+                "can_disable": item.get("can_disable") is True,
+            })
     resultado = {
         "schema_version": 1,
         "status": status,
@@ -404,6 +496,12 @@ def sanitizar_dashboard_estado(
         "context": contexto_publico,
         "memory_recent": memoria,
         "quick_actions": acoes_publicas,
+        "music": musica_publica,
+        "routines": {
+            "items": rotinas_publicas,
+            "freshness": rotinas_frescor,
+            "observed_at": rotinas_observadas,
+        },
         "system": {
             "cpu_percent": _metrica_dashboard(
                 sistema.get("cpu_percent"), unidade="%", minimo=0, maximo=100,
@@ -476,11 +574,13 @@ def validar_mensagem_cliente(
         if not texto:
             raise ErroProtocoloDesktop("entrada vazia")
         tipo_entrada = _texto_seguro(mensagem.get("kind"), 24).casefold() or "chat"
-        if tipo_entrada not in {"chat", "quick_action"}:
+        if tipo_entrada not in {"chat", "quick_action", "panel_action"}:
             raise ErroProtocoloDesktop("origem da entrada inválida")
         acao_id = _texto_seguro(mensagem.get("action"), 48)
         if tipo_entrada == "quick_action" and acao_id not in IDS_ACOES_RAPIDAS:
             raise ErroProtocoloDesktop("ação rápida inválida")
+        if tipo_entrada == "panel_action" and acao_id not in IDS_ACOES_PAINEL:
+            raise ErroProtocoloDesktop("ação de painel inválida")
         if tipo_entrada == "chat":
             acao_id = ""
         return {
@@ -529,7 +629,7 @@ def classificar_resultado_acao(
 ) -> dict[str, str]:
     """Converte somente evidência do plano no estado público do botão."""
     dados = dict(plano or {})
-    definicao = definicao_acao_rapida(acao_id)
+    definicao = definicao_acao_terminal(acao_id)
     intent_esperada = str(definicao.get("intent") or "").upper()
     comandos = [
         dict(item) for item in list(dados.get("comandos") or ())
@@ -875,7 +975,7 @@ class DesktopBridgeRuntime:
                         ainda_pendente = pendente in self._entradas_pendentes
                     if (
                         aceito and ainda_pendente
-                        and pendente["kind"] == "quick_action"
+                        and pendente["kind"] in {"quick_action", "panel_action"}
                     ):
                         self._publicar_estado_acao(
                             pendente, "received",
@@ -1099,7 +1199,7 @@ class DesktopBridgeRuntime:
         })
         if pendente:
             self._remover_entrada_pendente(str(pendente.get("id") or ""))
-            if pendente.get("kind") == "quick_action":
+            if pendente.get("kind") in {"quick_action", "panel_action"}:
                 resultado = classificar_resultado_acao(
                     plano, acao_id=str(pendente.get("action") or ""),
                 )
@@ -1129,7 +1229,7 @@ class DesktopBridgeRuntime:
                 pendente = self._selecionar_entrada_pendente(plano)
                 if (
                     pendente
-                    and pendente.get("kind") == "quick_action"
+                    and pendente.get("kind") in {"quick_action", "panel_action"}
                     and pendente.get("state") != "executing"
                 ):
                     pendente["state"] = "executing"

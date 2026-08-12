@@ -82,10 +82,11 @@ def test_snapshot_remove_sistema_e_estado_remove_dados_privados() -> None:
         "visual_activity": "thinking", "current_emotion": "feliz",
         "credencial": "não",
     }) == {
-        "activity": "thinking", "activity_label": "Pensando",
-        "emotion": "feliz", "emotion_level": 1, "voice_available": False,
-        "interaction_mode": "chat",
-    }
+            "activity": "thinking", "activity_label": "Pensando",
+            "emotion": "feliz", "emotion_level": 1, "voice_available": False,
+            "microphone_level": 0.0,
+            "interaction_mode": "chat",
+        }
 
 
 def test_configuracao_sanitizada_nunca_devolve_segredo() -> None:

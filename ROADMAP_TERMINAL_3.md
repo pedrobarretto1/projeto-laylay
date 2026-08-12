@@ -171,7 +171,7 @@ Evidência da implementação:
 
 ## P4 — Música, rotinas e páginas completas
 
-Status: **pendente**
+Status: **implementada — aguardando validação real no Windows**
 
 Escopo:
 
@@ -190,9 +190,38 @@ Critérios de aceite:
 - Ausência da extensão, sensor ou serviço aparece como indisponibilidade local.
 - Memória exibida preserva fonte, privacidade e distinção temporal/durável.
 
+Evidência da implementação:
+
+- Automação, Música, Memória e Sistema agora possuem páginas próprias; o
+  antigo placeholder não decide nem simula estado operacional.
+- A extensão publica título, canal, posição, duração e estado real do elemento
+  de vídeo. A capa é derivada exclusivamente do identificador observado do
+  YouTube e a ponte aceita somente a origem pública `i.ytimg.com` esperada.
+- Anterior, pausar/continuar e próxima faixa entram pela linguagem natural da
+  mente como `panel_action`. O botão pendente não altera o estado exibido; só
+  um novo evento observado da extensão muda `tocando`, `pausado` ou
+  `finalizado`.
+- A captura da faixa para playlists não depende mais da aba em foco: a
+  extensão sonda todas as abas do YouTube, prefere áudio confirmado, depois
+  reprodução confirmada e usa a aba ativa apenas como último recurso.
+- Rotinas mostram apenas registros recorrentes ativos, persistidos por pedido
+  do usuário. Cancelar envia um pedido canônico e a rotina permanece visível
+  até a agenda confirmar a mudança em outro snapshot.
+- O modo jogo permanece automático e somente leitura na interface, pois não
+  existe hoje uma capacidade canônica confiável de ligá-lo manualmente.
+- A página Sistema mantém histórico curto apenas de amostras frescas de
+  CPU/RAM/disco. Sensor ausente, dado antigo ou fonte indisponível aparecem
+  como `—`, `antigo` ou indisponível.
+- A página Memória reutiliza a projeção da P2; não lê SQLite/JSON, não exibe
+  payload executável e conserva a origem visual de lembrete, preferência e
+  ação confirmada.
+- Validação automatizada: 11 regressões próprias da P4/extensão, 109 testes
+  focados de UI/ponte/dashboard/extensão e suíte completa com 2432 testes e 45 subtestes
+  aprovados em 2026-08-12. Ruff e `git diff --check` aprovados.
+
 ## P5 — Acabamento e robustez Windows
 
-Status: **pendente**
+Status: **implementada; aguardando validação visual real no Windows**
 
 Escopo:
 
@@ -202,6 +231,39 @@ Escopo:
 - Avaliar barra de título sem moldura, arraste, maximização e resize nativos.
 - Fazer stress de abrir, fechar, reiniciar, reconectar e alternar Chat/Voz.
 - Medir consumo e fluidez com histórico longo.
+
+Implementação desta etapa:
+
+- A conversa recebeu cabeçalho contextual, balões compactos, avatar por fala
+  da Laylay, compositor com acesso ao modo de voz e hierarquia visual próxima
+  da referência aprovada.
+- A navegação, envio, microfone e controles musicais deixaram de depender de
+  glifos de fonte e passaram a usar SVGs locais.
+- O ouvido publica somente um nível RMS normalizado e efêmero; o Terminal não
+  recebe, grava nem persiste amostras de áudio. O waveform reflete esse valor.
+- O painel lateral ganhou barras baseadas em telemetria real, capa musical
+  com a mesma thumbnail segura da página Música (e disco genérico como fallback),
+  progresso e tempos observados e controles que continuam entrando pela porta
+  canônica, sem mudança otimista.
+- A moldura personalizada foi avaliada e não ativada. A moldura nativa continua
+  sendo a escolha consciente nesta versão por preservar resize, DPI e estabilidade
+  após os incidentes nativos de Qt/Tcl; o restante do shell aproxima o visual sem
+  trocar robustez por uma semelhança puramente cosmética.
+- A largura responsiva desconta o avatar da fala e continua sem rolagem horizontal
+  em 375 px. Uma regressão com 90 mensagens preserva a posição de leitura.
+- Controles legados de voltar, avançar e título permanecem filhos do cabeçalho
+  e ocultos; trocar de página ou redimensionar não os promove a mini janelas.
+- A navegação ganhou atalhos `Ctrl+1` a `Ctrl+7`, ordem de Tab, nomes
+  acessíveis e foco visível. `LAYLAY_REDUZIR_MOVIMENTO=1` conserva o estado
+  visual sem animações obrigatórias.
+- Processos Qt independentes abriram, navegaram, alternaram Chat/Voz,
+  redimensionaram e fecharam nas escalas 100%, 125% e 150%, sem falha nativa.
+- O player efêmero não é restaurado entre sessões. Ao reconectar, a extensão
+  publica a faixa realmente observada (tocando ou pausada) ou uma ausência
+  explícita que limpa o resíduo anterior sem apagar a playlist persistida.
+- Validação automatizada: 12 regressões próprias da P5, 104 testes focados,
+  Ruff, compilação e `git diff --check` aprovados; suíte completa com 2444 testes
+  e 45 subtestes aprovada em 2026-08-12.
 
 Critérios de aceite:
 
@@ -250,3 +312,5 @@ Critérios de aceite:
 | 2026-08-11 | P1 | Concluída | Shell em três áreas, navegação, chips, placeholders honestos e ações canônicas; testes automatizados aprovados e validação visual real aprovada pelo usuário. |
 | 2026-08-11 | P2 | Implementada | Estado vivo sanitizado, coleta isolada, memória pública, telemetria, deduplicação, reconexão e diagnóstico; 23 regressões próprias, 111 focadas e suíte completa com 2355 testes + 45 subtestes aprovados. Aguardando validação real no Windows. |
 | 2026-08-11 | P3 | Implementada | Catálogo vivo das ações, correlação por pedido, estados observáveis e atividade somente confirmada; 10 regressões próprias, 62 focadas, 77 de capacidades e suíte completa com 2365 testes + 45 subtestes aprovados. Aguardando validação real no Windows. |
+| 2026-08-12 | P4 | Implementada | Páginas reais de Automação, Música, Memória e Sistema; player observado pela extensão, seleção da aba audível independente do foco, controles canônicos não otimistas, rotinas persistidas, jogo automático e histórico local. 11 regressões próprias, 109 focadas e suíte completa com 2432 testes + 45 subtestes aprovados. Aguardando validação real no Windows e recarga da extensão. |
+| 2026-08-12 | P5 | Implementada | Acabamento fiel sem moldura arriscada: SVGs locais, conversa com avatar e balões, waveform RMS efêmero, telemetria visual, player compacto com thumbnail real e reconciliação limpa entre sessões, acessibilidade, movimento reduzido, DPI 100/125/150%, responsividade com histórico longo e correção das mini janelas órfãs. 12 regressões próprias, 104 focadas e suíte completa com 2444 testes + 45 subtestes aprovados. Aguardando validação visual real no Windows. |

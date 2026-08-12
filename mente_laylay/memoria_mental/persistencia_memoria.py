@@ -8,8 +8,8 @@ from datetime import datetime
 from typing import Any, Callable, Dict, Optional
 
 from mente_laylay.memoria_mental.identidade_usuario import (
-    carregar_nome_usuario_confirmado,
     normalizar_nome_usuario,
+    reconciliar_nome_usuario_confirmado,
 )
 
 
@@ -131,7 +131,7 @@ def carregar_memoria(memoria_sqlite, base_system_prompt: str):
     mensagens = [m for m in mensagens if str(m.get("role") or "").lower() != "system"]
     mensagens.insert(0, {"role": "system", "content": base_system_prompt})
 
-    nome_usuario = carregar_nome_usuario_confirmado(memoria_sqlite)
+    nome_usuario = reconciliar_nome_usuario_confirmado(memoria_sqlite)
     return {
         "messages": mensagens,
         "bordoes": data.get("bordoes", []),

@@ -4,6 +4,9 @@ const WS_URL = "ws://localhost:8080";
 
 let lastTargetTabId = null;
 const pendingPlayerEvents = new Map();
+let playerDiscoveryRunning = false;
+let playerDiscoveryQueued = false;
+let playerDiscoveryTimer = null;
 
 function safeJsonParse(text) {
   try { return JSON.parse(text); } catch (_) { return null; }
@@ -61,6 +64,183 @@ function sendToTab(tabId, message) {
       resolve({ response: response || null, error });
     });
   });
+}
+
+// Estas funções são executadas dentro da aba pelo service worker. Elas não
+// dependem do content_script, portanto também enxergam abas que já estavam
+// abertas quando a extensão foi instalada ou recarregada.
+function inspectYouTubePlayerInPage() {
+  try {
+    const video = document.querySelector("video");
+    const playing = !!video && !video.paused && !video.ended;
+    const muted = !!video?.muted;
+    const volume = Number(video?.volume ?? 0);
+    const readyState = Number(video?.readyState ?? 0);
+    const rawTitle = String(document.title || "");
+    const channelNode =
+      document.querySelector("#upload-info #channel-name") ||
+      document.querySelector("#channel-name") ||
+      document.querySelector("ytmusic-player-bar .subtitle");
+    let videoId = "";
+    try {
+      const parsed = new URL(location.href);
+      videoId = String(parsed.searchParams.get("v") || parsed.pathname || "").slice(0, 80);
+    } catch (_) {}
+    return {
+      ok: !!video,
+      playing,
+      audible: playing && !muted && volume > 0 && readyState >= 2,
+      paused: !!video?.paused,
+      title: rawTitle.replace(/ - YouTube$/i, "").trim(),
+      channel: String(channelNode?.textContent || "").replace(/\s+/g, " ").trim(),
+      url: String(location.href || ""),
+      videoId,
+      currentTime: Number.isFinite(video?.currentTime) ? Number(video.currentTime) : 0,
+      duration: Number.isFinite(video?.duration) ? Number(video.duration) : 0,
+    };
+  } catch (_) {
+    return { ok: false, playing: false, audible: false };
+  }
+}
+
+function inspectYouTubeDataInPage() {
+  try {
+    const rawTitle = String(document.title || "");
+    const channelNode =
+      document.querySelector("#upload-info #channel-name") ||
+      document.querySelector("#channel-name") ||
+      document.querySelector("ytmusic-player-bar .subtitle");
+    return {
+      url: String(location.href || ""),
+      title: rawTitle.replace(/ - YouTube$/i, "").trim(),
+      canal: String(channelNode?.textContent || "").replace(/\s+/g, " ").trim(),
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+function executeScriptResult(tabId, func) {
+  return new Promise((resolve) => {
+    chrome.scripting.executeScript(
+      { target: { tabId }, world: "ISOLATED", func },
+      (results) => {
+        const error = chrome.runtime.lastError?.message || "";
+        resolve({ response: results?.[0]?.result || null, error });
+      },
+    );
+  });
+}
+
+async function probeYouTubeTab(tab) {
+  if (tab?.id == null) return { tab, response: null, error: "missing_tab" };
+  let result = await sendToTab(tab.id, { action: "PROBE_YT_PLAYER" });
+  if (!result.response) {
+    result = await executeScriptResult(tab.id, inspectYouTubePlayerInPage);
+  }
+  return { tab, response: result.response || null, error: result.error || "" };
+}
+
+async function readYouTubeTabData(tab, requestId = null) {
+  if (tab?.id == null) return { response: null, error: "missing_tab" };
+  let result = await sendToTab(tab.id, {
+    action: "GET_YT_DATA", requestId, directResponse: true,
+  });
+  if (!result.response) {
+    result = await executeScriptResult(tab.id, inspectYouTubeDataInPage);
+  }
+  return result;
+}
+
+async function findBestYouTubeCandidate(activeFallback = true) {
+  const youtubeTabs = await new Promise((resolve) => {
+    chrome.tabs.query({
+      url: ["*://*.youtube.com/*", "*://youtube.com/*"],
+    }, (tabs) => resolve(Array.isArray(tabs) ? tabs : []));
+  });
+  const probes = await Promise.all(youtubeTabs.map(probeYouTubeTab));
+  const scored = probes.map((item) => {
+    const tab = item.tab || {};
+    const probe = item.response || {};
+    let score = 0;
+    if (probe.audible === true) score += 1000;
+    else if (tab.audible === true) score += 800;
+    if (probe.playing === true) score += 500;
+    if (String(tab.url || "").includes("/watch")) score += 80;
+    if (tab.active === true) score += 20;
+    score += Math.min(10, Math.max(0, Number(tab.lastAccessed || 0) / 1e15));
+    return { ...item, score };
+  }).sort((a, b) => b.score - a.score);
+  if (scored[0]) return scored[0];
+  if (!activeFallback) return null;
+  const active = await activeTab();
+  return active ? { tab: active, response: null, score: 0 } : null;
+}
+
+async function discoverExistingYouTubePlayback() {
+  if (playerDiscoveryRunning) {
+    playerDiscoveryQueued = true;
+    return false;
+  }
+  playerDiscoveryRunning = true;
+  try {
+    const escolhido = await findBestYouTubeCandidate(false);
+    const tab = escolhido?.tab || null;
+    const probe = escolhido?.response || {};
+    const playerObserved = (
+      probe.ok === true || probe.playing === true || probe.paused === true
+    );
+    if (!tab || !playerObserved) {
+      return sendWs({
+        type: "PLAYER_EVENT",
+        event: "player_unavailable",
+        source: "youtube_tabs_probe",
+        authoritative: true,
+        observedAt: Date.now(),
+      });
+    }
+    const dataResult = await readYouTubeTabData(tab);
+    const dados = dataResult.response || {};
+    return sendWs({
+      type: "PLAYER_EVENT",
+      event: "player_state",
+      source: (
+        probe.audible === true || tab.audible === true ? "audible_youtube_tab"
+          : probe.playing === true ? "playing_youtube_tab"
+          : tab.active === true ? "active_youtube_tab"
+          : "youtube_tab_fallback"
+      ),
+      authoritative: true,
+      url: String(dados.url || probe.url || tab.url || ""),
+      videoId: String(probe.videoId || ""),
+      title: String(dados.title || probe.title || tab.title || "")
+        .replace(/ - YouTube$/i, "").trim(),
+      channel: String(dados.canal || probe.channel || ""),
+      state: probe.playing === true ? "playing" : "paused",
+      paused: probe.paused === true,
+      currentTime: Number(probe.currentTime || 0),
+      duration: Number(probe.duration || 0),
+      tabId: tab.id ?? null,
+      tabActive: tab.active === true,
+      audibleConfirmed: probe.audible === true || tab.audible === true,
+      playingConfirmed: probe.playing === true,
+      observedAt: Date.now(),
+    });
+  } finally {
+    playerDiscoveryRunning = false;
+    if (playerDiscoveryQueued) {
+      playerDiscoveryQueued = false;
+      setTimeout(() => void discoverExistingYouTubePlayback(), 120);
+    }
+  }
+}
+
+function schedulePlayerDiscovery(delayMs = 120) {
+  if (playerDiscoveryTimer != null) clearTimeout(playerDiscoveryTimer);
+  playerDiscoveryTimer = setTimeout(() => {
+    playerDiscoveryTimer = null;
+    void discoverExistingYouTubePlayback();
+  }, Math.max(0, Number(delayMs) || 0));
 }
 
 function comparableUrl(rawUrl) {
@@ -609,23 +789,28 @@ function realizarBuscaYouTube(url, background = false, cmd = null) {
 
   if (cmd.action === "get_youtube_data") {
     const requestId = cmd.requestId ?? null;
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const t = tabs && tabs[0] ? tabs[0] : null;
-      const url = t?.url || "";
-      const title = t?.title || "";
-      if (t?.id != null) {
-        chrome.tabs.sendMessage(t.id, { action: "GET_YT_DATA", requestId }, () => {
-          if (chrome.runtime.lastError) {
-            if (websocket && websocket.readyState === WebSocket.OPEN) {
-              websocket.send(JSON.stringify({ type: "YOUTUBE_DATA", requestId, url, title, canal: "", tabId: t?.id ?? null }));
-            }
-          }
-        });
-      } else {
-        if (websocket && websocket.readyState === WebSocket.OPEN) {
-          websocket.send(JSON.stringify({ type: "YOUTUBE_DATA", requestId, url, title, canal: "", tabId: t?.id ?? null }));
-        }
-      }
+    const escolhido = await findBestYouTubeCandidate(true);
+    const t = escolhido?.tab || null;
+    const probe = escolhido?.response || {};
+    let dados = null;
+    if (t?.id != null) {
+      const result = await readYouTubeTabData(t, requestId);
+      dados = result.response || null;
+    }
+    sendWs({
+      type: "YOUTUBE_DATA",
+      requestId,
+      url: String(dados?.url || probe.url || t?.url || ""),
+      title: String(dados?.title || probe.title || t?.title || "").replace(/ - YouTube$/i, "").trim(),
+      canal: String(dados?.canal || probe.channel || ""),
+      tabId: t?.id ?? null,
+      source: (
+        probe.audible === true || t?.audible === true ? "audible_youtube_tab"
+          : probe.playing === true ? "playing_youtube_tab"
+          : "youtube_tab_fallback"
+      ),
+      playingConfirmed: probe.playing === true,
+      audibleConfirmed: probe.audible === true || t?.audible === true,
     });
     return;
   }
@@ -878,11 +1063,15 @@ function connectWebSocket() {
     sendWs({
       type: "EXTENSION_HELLO",
       protocolVersion: 2,
-      capabilities: ["page_snapshot", "command_result", "element_id", "stale_context_guard"],
+      capabilities: [
+        "page_snapshot", "command_result", "element_id",
+        "stale_context_guard", "canonical_player_sync_v2",
+      ],
       message: "Extension connected",
     });
     sendActiveTabInfo(true);
     flushPendingPlayerEvents();
+    void discoverExistingYouTubePlayback();
   };
 
   websocket.onmessage = async (event) => {
@@ -920,6 +1109,10 @@ setInterval(() => {
   } else if (websocket.readyState === WebSocket.OPEN) {
     websocket.send(JSON.stringify({ type: "ping", message: "heartbeat" }));
     flushPendingPlayerEvents();
+    // O estado do player é efêmero. Renovamos a observação junto do
+    // heartbeat para manter faixa, progresso e controles sincronizados mesmo
+    // quando a aba já existia antes da extensão ou perdeu seus listeners.
+    schedulePlayerDiscovery(0);
   }
 }, 5000);
 
@@ -937,6 +1130,13 @@ chrome.runtime.onMessage.addListener((request, sender) => {
     : { ...request, ...source };
   if (request?.type === "PLAYER_EVENT" && request?.event === "video_ended") {
     queuePlayerEvent(outgoing);
+  }
+  if (request?.type === "PLAYER_EVENT" && request?.event === "player_state") {
+    // Várias abas do YouTube possuem seu próprio content script. Encaminhar
+    // todas diretamente criava uma corrida em que uma aba pausada antiga
+    // podia sobrescrever a faixa audível. O background elege uma única aba.
+    schedulePlayerDiscovery(80);
+    return;
   }
   if (websocket && websocket.readyState === WebSocket.OPEN) {
     if (outgoing && typeof outgoing === "object") {
@@ -976,11 +1176,22 @@ function sendActiveTabInfo(includeSnapshot = false) {
 
 chrome.tabs.onActivated.addListener(() => {
   sendActiveTabInfo();
+  schedulePlayerDiscovery(80);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (tab.active && (changeInfo.url || changeInfo.title)) {
     sendActiveTabInfo();
   }
+  if (
+    String(tab?.url || "").includes("youtube.com") &&
+    (changeInfo.url || changeInfo.title || changeInfo.audible !== undefined || changeInfo.status === "complete")
+  ) {
+    schedulePlayerDiscovery(180);
+  }
 }); 
+
+chrome.tabs.onRemoved.addListener(() => {
+  schedulePlayerDiscovery(80);
+});
 

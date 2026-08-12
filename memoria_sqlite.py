@@ -472,10 +472,26 @@ class MemoriaSQLite:
         if status_limpo not in {"ativo", "nao_verificado", "contradito", "expirado"}:
             status_limpo = "nao_verificado"
         evidencia_limpa = str(evidencia or texto_original or "").strip()[:1000]
-        base_chave = self._normalizar_texto(
-            " ".join((gatilho_limpo, valor_limpo, regra_limpa))
+        gatilho_identidade = self._normalizar_texto(gatilho_limpo)
+        identidade_explicita = bool(
+            (
+                tipo_limpo == "identidade"
+                and gatilho_identidade in {
+                    "nome do usuario", "nome de usuario", "identidade do usuario",
+                }
+            )
+            or (
+                tipo_limpo == "correcao"
+                and gatilho_identidade in {"corrigir nome", "correcao do nome"}
+                and bool(re.search(
+                    r"\bmeu nome n[aã]o (?:e|é|eh|è)\b.{1,80}"
+                    r"\b(?:meu nome )?(?:e|é|eh|è)\b",
+                    evidencia_limpa,
+                    flags=re.IGNORECASE,
+                ))
+            )
         )
-        if "nome" in base_chave and tipo_limpo in {"correcao", "identidade", "preferencia", "regra"}:
+        if identidade_explicita:
             chave_semantica = "identidade:nome_usuario"
         elif tipo_limpo == "preferencia":
             chave_semantica = self._chave_semantica_preferencia(
