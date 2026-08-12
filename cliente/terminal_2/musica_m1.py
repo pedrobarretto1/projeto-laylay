@@ -392,13 +392,12 @@ class PaginaMusicaM1(QWidget):
 
         # 5 músicas de 58px + espaços entre elas
         self.fila_scroll.setFixedHeight(322)
-
         self.fila_lista = QWidget()
         self.fila_lista.setObjectName("musicQueueList")
 
         self.fila_lista_layout = QVBoxLayout(self.fila_lista)
-        self.fila_lista_layout.setContentsMargins(0, 0, 0, 0)
-        self.fila_lista_layout.setSpacing(8)
+        self.fila_lista_layout.setContentsMargins(0, 2, 0, 2)
+        self.fila_lista_layout.setSpacing(2)
         self.fila_lista_layout.setAlignment(Qt.AlignTop)
 
         self.fila_scroll.setWidget(self.fila_lista)
@@ -413,9 +412,8 @@ class PaginaMusicaM1(QWidget):
 
             linha = QPushButton()
             linha.setObjectName("musicQueueItem")
-            linha.setFixedHeight(58)
+            linha.setFixedHeight(54)
             linha.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-
             linha.setCursor(Qt.PointingHandCursor)
             linha.setEnabled(False)
             linha.clicked.connect(
@@ -423,31 +421,49 @@ class PaginaMusicaM1(QWidget):
             )
 
             lay = QHBoxLayout(linha)
-            lay.setContentsMargins(7, 7, 7, 7)
-            lay.setSpacing(8)
+            lay.setContentsMargins(5, 4, 7, 4)
+            lay.setSpacing(9)
+
             numero = QLabel(str(indice))
             numero.setObjectName("musicQueueNumber")
-            capa = CapaMusicaGenerica(42)
+            numero.setFixedWidth(18)
+            numero.setAlignment(Qt.AlignCenter)
+
+            capa = CapaMusicaGenerica(36)
+
             textos = QVBoxLayout()
-            textos.setSpacing(1)
+            textos.setSpacing(0)
+
             titulo = QLabel("Aguardando faixa observada")
             titulo.setObjectName("musicQueueText")
             titulo.setWordWrap(True)
+
             detalhe = QLabel("")
             detalhe.setObjectName("musicQueueDetail")
+
             textos.addWidget(titulo)
             textos.addWidget(detalhe)
+
             duracao = QLabel("—")
             duracao.setObjectName("musicQueueDuration")
+            duracao.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            duracao.setFixedWidth(34)
+
             lay.addWidget(numero)
             lay.addWidget(capa)
             lay.addLayout(textos, 1)
             lay.addWidget(duracao)
+
             linha.hide()
             self.fila_lista_layout.addWidget(linha)
+
             self.fila_linhas.append({
-                "widget": linha, "number": numero, "cover": capa,
-                "title": titulo, "detail": detalhe, "duration": duracao,
+                "widget": linha,
+                "number": numero,
+                "cover": capa,
+                "title": titulo,
+                "detail": detalhe,
+                "duration": duracao,
                 "item_id": "",
             })
 

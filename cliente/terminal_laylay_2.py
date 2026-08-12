@@ -1076,194 +1076,243 @@ class JanelaLaylay(QMainWindow):
             QWidget.setTabOrder(atual, proximo)
 
     def _estilizar(self) -> None:
-        self.setStyleSheet(f"""
-            * {{ font-family: 'Segoe UI Variable', 'Segoe UI'; color: {PALETA['texto']}; font-size: 14px; }}
-            #root, #mainSurface, QScrollArea, QScrollArea > QWidget > QWidget {{ background: {PALETA['fundo']}; }}
-            #sidebar {{ background: #11151A; border-right: 1px solid #2B3037; }}
-            #brand {{ font-size: 21px; font-weight: 700; }}
-            #brandCaption {{ color: {PALETA['apagado']}; font-size: 10px; }}
-            #sideSection, #eyebrow {{ color: {PALETA['apagado']}; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; }}
-            #newChatButton {{ background: {PALETA['elevada']}; border: 1px solid {PALETA['borda']}; border-radius: 11px; text-align: left; padding: 12px 14px; min-height: 22px; font-weight: 600; }}
-            #newChatButton:hover {{ background: {PALETA['hover']}; border-color: #51475A; }}
-            QPushButton[nav="true"] {{ background: transparent; border: 0; border-radius: 9px; text-align: left; padding: 12px 14px; min-height: 22px; color: {PALETA['secundario']}; }}
-            QPushButton[nav="true"]:hover {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
-            QPushButton[nav="true"]:checked {{ background: #2A1C22; color: {PALETA['texto']}; border-left: 2px solid {PALETA['violeta']}; }}
-            QPushButton:focus, QToolButton:focus, QTextEdit:focus, QComboBox:focus, QCheckBox:focus {{ border: 1px solid {PALETA['rosa']}; outline: 0; }}
-            #recentItem {{ color: {PALETA['secundario']}; padding: 9px 12px; background: transparent; border: 0; border-radius: 8px; text-align: left; }}
-            #recentItem:hover {{ color: {PALETA['texto']}; background: {PALETA['elevada']}; }}
-            #mindStatus {{ color: {PALETA['apagado']}; padding: 8px; font-size: 11px; }}
-            #footerSettings {{ background: transparent; border: 0; border-radius: 8px; text-align: left; padding: 10px; color: {PALETA['secundario']}; }}
-            #footerSettings:hover {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
-            #collapseButton, QToolButton {{ background: transparent; border: 1px solid transparent; border-radius: 7px; min-width: 34px; min-height: 32px; color: {PALETA['secundario']}; }}
-            QToolButton:hover {{ background: {PALETA['elevada']}; border-color: {PALETA['borda']}; color: {PALETA['texto']}; }}
-            #topbar {{ background: #0C1014; border-bottom: 1px solid #242A31; min-height: 58px; }}
-            #headerTitle {{ font-weight: 650; }}
-            #statusChip {{ background: #11151A; border: 1px solid {PALETA['borda']}; border-radius: 9px; }}
-            #statusChipText {{ color: {PALETA['secundario']}; font-size: 11px; }}
-            #statusChipDot {{ color: {PALETA['apagado']}; font-size: 9px; }}
-            #statusChipDot[state="online"] {{ color: {PALETA['sucesso']}; }}
-            #statusChipDot[state="error"] {{ color: {PALETA['erro']}; }}
-            #statusChipDot[state="unavailable"] {{ color: #9A7E4C; }}
-            #connectionDot {{ color: {PALETA['erro']}; font-size: 9px; }}
-            #statusLabel {{ color: {PALETA['apagado']}; font-size: 11px; }}
-            #modeSwitch {{ background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 9px; }}
-            QPushButton[segment="true"] {{ background: transparent; border: 0; border-radius: 6px; padding: 6px 12px; color: {PALETA['apagado']}; font-size: 11px; font-weight: 650; }}
-            QPushButton[segment="true"]:checked {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
-            QPushButton[segment="true"]:disabled {{ color: #5E5763; }}
-            #emptyState {{ background: transparent; }}
-            #emptyMark {{ color: {PALETA['violeta']}; font-size: 28px; }}
-            #emptyTitle {{ font-size: 23px; font-weight: 650; }}
-            #emptyCopy {{ color: {PALETA['secundario']}; font-size: 14px; }}
-            #messageLaylay {{ background: #1B2026; border: 1px solid #242B33; border-radius: 13px; }}
-            #messageUser {{ background: #2A1D22; border: 1px solid #3B292F; border-radius: 13px; }}
-            #messageMeta {{ color: {PALETA['apagado']}; font-size: 9px; font-weight: 700; letter-spacing: 1px; }}
-            #messageText {{ font-size: 15px; line-height: 1.45; }}
-            #messageStatus {{ color: {PALETA['apagado']}; font-size: 10px; }}
-            #messageStatus[delivery="pending"] {{ color: {PALETA['ciano']}; }}
-            #messageStatus[delivery="failed"] {{ color: {PALETA['erro']}; }}
-            #thinkingIndicator {{ background: #1B2026; border: 1px solid #343A42; border-radius: 13px; }}
-            #thinkingMeta {{ color: {PALETA['apagado']}; font-size: 9px; font-weight: 700; letter-spacing: 1px; }}
-            #thinkingDots {{ color: {PALETA['ciano']}; font-size: 20px; font-weight: 700; }}
-            #retryButton {{ background: transparent; border: 1px solid {PALETA['erro']}; color: {PALETA['erro']}; border-radius: 7px; padding: 5px 9px; font-size: 10px; }}
-            #composer {{ background: #171A1F; border: 1px solid #493039; border-radius: 15px; }}
-            #composer:focus-within {{ border-color: #665677; }}
-            #composerEdit {{ background: transparent; border: 0; selection-background-color: #5D497A; font-size: 15px; }}
-            #composerHint {{ color: #77747A; font-size: 10px; }}
-            #composerMic {{ background: #D8445B; border: 1px solid #F0647A; border-radius: 22px; }}
-            #composerMic:hover {{ background: #ED536C; }}
-            #sendButton {{ background: {PALETA['texto']}; color: {PALETA['fundo']}; border: 0; border-radius: 21px; font-size: 20px; font-weight: 700; }}
-            #sendButton:hover {{ background: #FFF7FA; }}
-            #sendButton:disabled {{ background: #49434D; color: #7D7482; }}
-            #voiceSurface {{ background: #172123; border: 1px solid #2F5559; border-radius: 10px; }}
-            #voiceDot {{ color: {PALETA['ciano']}; font-size: 17px; }}
-            #voiceText {{ color: #B7DCE0; }}
-            #pageTitle {{ font-size: 28px; font-weight: 650; }}
-            #pageDescription {{ color: {PALETA['secundario']}; font-size: 14px; max-width: 700px; }}
-            #sectionTitle {{ font-size: 17px; font-weight: 650; padding-top: 4px; }}
-            #fieldLabel {{ color: {PALETA['secundario']}; font-size: 11px; font-weight: 650; }}
-            QPushButton[provider="true"] {{ background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 10px; padding: 13px 15px; text-align: left; color: {PALETA['secundario']}; }}
-            QPushButton[provider="true"]:hover {{ background: {PALETA['elevada']}; }}
-            QPushButton[provider="true"]:checked {{ background: #292332; border-color: {PALETA['violeta']}; color: {PALETA['texto']}; }}
-            #settingsField {{ background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 8px; padding: 10px 12px; selection-background-color: #5D497A; }}
-            #settingsField:focus {{ border-color: {PALETA['violeta']}; }}
-            #settingsField:read-only {{ color: {PALETA['apagado']}; background: #19171C; }}
-            #keyState {{ color: {PALETA['ciano']}; font-size: 11px; }}
-            #settingsBanner {{ background: #22202A; border-left: 3px solid {PALETA['ciano']}; padding: 11px 13px; color: {PALETA['secundario']}; }}
-            #settingsBanner[kind="success"] {{ border-left-color: {PALETA['sucesso']}; }}
-            #settingsBanner[kind="error"] {{ border-left-color: {PALETA['erro']}; }}
-            #settingsNote {{ color: {PALETA['secundario']}; background: {PALETA['superficie']}; padding: 13px; border-radius: 8px; }}
-            #primaryButton {{ background: {PALETA['violeta']}; color: #161219; border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 700; }}
-            #primaryButton:hover {{ background: #B99AF0; }}
-            #secondaryButton {{ background: {PALETA['elevada']}; border: 1px solid {PALETA['borda']}; border-radius: 8px; padding: 10px 15px; font-weight: 600; }}
-            #diagnosticValue {{ background: {PALETA['superficie']}; border-left: 2px solid {PALETA['ciano']}; padding: 12px 15px; font-family: 'Cascadia Code'; font-size: 12px; }}
-            #eventLog {{ font-family: 'Cascadia Code'; background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 9px; color: {PALETA['secundario']}; padding: 14px; font-size: 11px; }}
-            #chatSurface {{ background: #0E1216; border: 1px solid #222830; border-radius: 15px; }}
-            #chatHeader {{ background: transparent; border-bottom: 1px solid #20262D; }}
-            #chatGreeting {{ font-size: 20px; font-weight: 700; color: #F8F5F7; }}
-            #chatGreetingSub {{ color: {PALETA['secundario']}; font-size: 13px; }}
-            #microphoneWaveform {{ background: transparent; }}
-            #intelligencePanel {{ background: #11151A; border: 1px solid #73323E; border-radius: 16px; }}
-            #intelligenceTitle {{ font-size: 18px; font-weight: 700; }}
-            #liveBadge {{ color: {PALETA['rosa']}; background: #301D23; border: 1px solid #5A303A; border-radius: 10px; padding: 4px 8px; font-size: 10px; }}
-            #dashboardRail {{ background: transparent; }}
-            #dashboardCard, #modulePlaceholder {{ background: #15191E; border: 1px solid #2D333A; border-radius: 14px; }}
-            #dashboardCardTitle {{ font-size: 14px; font-weight: 700; }}
-            #dashboardCardHint {{ color: {PALETA['apagado']}; font-size: 9px; }}
-            #dashboardEmpty, #dashboardActivity {{ color: {PALETA['apagado']}; font-size: 11px; }}
-            #dashboardMetricLabel {{ color: {PALETA['secundario']}; font-size: 11px; }}
-            #dashboardMetricValue {{ color: {PALETA['texto']}; font-size: 11px; font-weight: 700; }}
-            #contextItem {{ background: #1A1F25; border: 1px solid #2A3037; border-radius: 8px; }}
-            #contextLabel {{ color: {PALETA['apagado']}; font-size: 9px; }}
-            #contextValue {{ color: {PALETA['secundario']}; font-size: 10px; font-weight: 650; }}
-            #musicTitle {{ font-size: 13px; font-weight: 700; }}
-            #musicControlsPlaceholder {{ color: #5F646B; font-size: 15px; padding: 5px; }}
-            #musicPage, #musicScroll, #musicScroll > QWidget > QWidget,
-            #musicPageBody {{ background: #0D1115; }}
-            #musicPageTitle {{ color: #F8F4F6; font-size: 29px; font-weight: 700; }}
-            #musicPageDescription {{ color: {PALETA['secundario']}; font-size: 15px; }}
-            #musicHeaderButton, #musicMoreButton {{ background: #15191E; border: 1px solid #2D333A; border-radius: 10px; padding: 10px 15px; color: {PALETA['secundario']}; font-size: 12px; }}
-            #musicHeaderButton:hover {{ background: #211A1F; border-color: #713541; color: {PALETA['texto']}; }}
-            #musicHero, #musicModule, #musicQueue, #musicLyrics {{ background: #14191E; border: 1px solid #293039; border-radius: 14px; }}
-            #musicHero {{ min-height: 306px; }}
-            #musicPageTitle, #musicHeroTitle, #musicModuleTitle {{ font-family: 'Segoe UI Variable', 'Segoe UI'; }}
-            #musicHeroTitle {{ color: #F8F4F6; font-size: 27px; font-weight: 700; }}
-            #musicHeroSubtitle {{ color: {PALETA['secundario']}; font-size: 15px; }}
-            #musicNowBadge {{ color: {PALETA['rosa']}; background: #29191E; border: 1px solid #54303A; border-radius: 7px; padding: 5px 9px; font-size: 10px; font-weight: 700; }}
-            #musicVolumeReadout {{ color: {PALETA['apagado']}; font-size: 10px; font-weight: 700; }}
-            #musicVolumeSlider {{ min-width: 22px; max-width: 22px; }}
-            #musicVolumeSlider::groove:vertical {{ background: #2A3037; width: 5px; border-radius: 2px; }}
-            #musicVolumeSlider::sub-page:vertical {{ background: #2A3037; border-radius: 2px; }}
-            #musicVolumeSlider::add-page:vertical {{ background: {PALETA['rosa']}; border-radius: 2px; }}
-            #musicVolumeSlider::handle:vertical {{ background: #F5F1F3; border: 1px solid #C84A5F; height: 15px; margin: 0 -5px; border-radius: 7px; }}
-            #musicVolumeSlider:disabled {{ opacity: 0.45; }}
-            #musicAudioOutput {{ color: #F2EEF0; font-size: 12px; font-weight: 650; padding: 8px; background: #1A1F25; border: 1px solid #2D343B; border-radius: 8px; }}
-            #musicWaveform {{ background: transparent; }}
-            #musicHeroProgress {{ background: #232930; border: 0; border-radius: 2px; min-height: 4px; max-height: 4px; }}
-            #musicHeroProgress::chunk {{ background: {PALETA['rosa']}; border-radius: 2px; }}
-            #musicTime {{ color: {PALETA['apagado']}; font-size: 12px; }}
-            #musicTransportControl {{ background: transparent; border: 0; border-radius: 23px; min-width: 46px; min-height: 46px; }}
-            #musicTransportControl:hover {{ background: #281C22; }}
-            #musicTransportControl[activeControl="true"] {{ background: #321C24; color: {PALETA['rosa']}; border: 1px solid #8D3C4C; }}
-            #musicPrimaryControl {{ background: #B9384D; border: 1px solid #F05B72; border-radius: 29px; min-width: 58px; min-height: 58px; }}
-            #musicPrimaryControl:hover {{ background: #D9455D; }}
-            #musicPrimaryControl:disabled, #musicTransportControl:disabled {{ background: #1B2025; border-color: #30363D; }}
-            #musicObservedState {{ color: {PALETA['apagado']}; font-size: 11px; }}
-            #musicModuleTitle {{ color: #F3F0F2; font-size: 16px; font-weight: 700; }}
-            #musicModuleHint {{ color: {PALETA['apagado']}; font-size: 10px; }}
-            #musicSideRail {{ background: transparent; min-width: 265px; max-width: 315px; }}
-            #musicSideLabel {{ color: {PALETA['secundario']}; font-size: 12px; }}
-            #musicSideValue {{ color: #F4F1F3; font-size: 12px; font-weight: 700; }}
-            #musicFutureState {{ color: #9298A1; font-size: 12px; line-height: 1.4; }}
-            #musicQueuePlaceholder {{ background: #191E24; border: 1px solid #272E35; border-radius: 9px; }}
-            #musicQueueNumber {{ color: {PALETA['apagado']}; font-size: 11px; min-width: 16px; }}
-            #musicQueueText {{ color: #E3DEE1; font-size: 12px; font-weight: 600; }}
-            #musicFutureButton {{ background: #191E23; border: 1px solid #303740; border-radius: 9px; padding: 10px 12px; color: #9298A1; text-align: left; font-size: 11px; }}
-            #musicFutureButton:hover {{ background: #241D22; border-color: #75404B; color: #E7E1E4; }}
-            #musicSessionAction {{ background: #151A1F; border: 1px solid #343A42; border-radius: 21px; min-height: 42px; padding: 0 16px; color: {PALETA['secundario']}; font-size: 12px; }}
-            #musicSessionAction:hover {{ background: #241B20; border-color: #773845; color: {PALETA['texto']}; }}
-            #musicSessionAction:disabled {{ color: #5F646B; border-color: #292F35; }}
-            #musicPreset {{ background: #1B2026; border: 1px solid #303741; border-radius: 10px; padding: 12px; text-align: left; color: #D5D0D3; min-height: 58px; font-size: 12px; }}
-            #musicPreset:hover {{ background: #272027; border-color: #78404C; color: {PALETA['texto']}; }}
-            #musicPreset[activePlaylist="true"] {{ background: #2B1C22; border-color: #A94B5D; color: {PALETA['rosa']}; }}
-            #musicPreset[presetTone="0"] {{ border-left: 4px solid #D85258; }}
-            #musicPreset[presetTone="1"] {{ border-left: 4px solid #7657C7; }}
-            #musicPreset[presetTone="2"] {{ border-left: 4px solid #2D9C6A; }}
-            #musicPreset[presetTone="3"] {{ border-left: 4px solid #466FC5; }}
-            #musicPreset[presetTone="4"] {{ border-left: 4px solid #B05C9C; }}
-            #musicPreset[presetTone="5"] {{ border-left: 4px solid #C58A3A; }}
-            #musicQueueDetail, #musicQueueDuration, #musicCatalogState {{ color: #89919B; font-size: 10px; }}
-            #musicQueueItem {{ background: #171C21; border: 1px solid #2C333B; border-radius: 9px; text-align: left; padding: 0; }}
-            #musicQueueItem:hover {{ background: #211B20; border-color: #6A3742; }}
-            #musicQueueItem:focus {{ border-color: #C84A5F; }}
-            #musicQueueItem:disabled {{ background: #151A1F; border-color: #252C33; }}
-            #musicSuggestion {{ background: #251A20; border: 1px solid #58303A; border-radius: 10px; padding: 13px; color: #E28D9C; font-size: 12px; }}
-            #musicContextBasis {{ color: #A5ABB3; background: #171D22; border: 1px solid #303740; border-radius: 9px; padding: 8px 10px; font-size: 10px; }}
-            #musicLyrics {{ border-color: #332930; }}
-            #musicLyricsText {{ background: #11161B; border-top: 1px solid #34272E; border-bottom: 1px solid #34272E; padding: 18px; color: #C9C5C8; }}
-            #musicLyricsSource {{ color: #838B95; font-size: 10px; }}
-            #musicSystemBar {{ background: #252B32; border: 0; border-radius: 3px; min-height: 6px; max-height: 6px; }}
-            #musicSystemBar::chunk {{ background: #C64257; border-radius: 3px; }}
-            #musicSystemBar[available="false"]::chunk {{ background: #343A41; }}
-            #railMusicControl {{ background: transparent; border: 0; border-radius: 18px; min-width: 36px; min-height: 36px; color: {PALETA['texto']}; font-size: 16px; }}
-            #railMusicControl:hover {{ background: #2B2025; color: {PALETA['rosa']}; }}
-            QPushButton[dashboardAction="true"] {{ background: #1A1F25; border: 1px solid #30363E; border-radius: 9px; padding: 10px 8px; text-align: left; color: {PALETA['secundario']}; font-size: 10px; }}
-            QPushButton[dashboardAction="true"]:hover {{ background: #262027; border-color: #74404C; color: {PALETA['texto']}; }}
-            QPushButton[dashboardAction="true"]:disabled {{ background: #15191E; border-color: #242A30; color: #565B62; }}
-            QPushButton[dashboardAction="true"][actionState="sending"],
-            QPushButton[dashboardAction="true"][actionState="received"],
-            QPushButton[dashboardAction="true"][actionState="executing"] {{ background: #241D22; border-color: #8B4352; color: {PALETA['rosa']}; }}
-            QPushButton[dashboardAction="true"][actionState="confirmed"] {{ background: #16231F; border-color: #356E5A; color: {PALETA['sucesso']}; }}
-            QPushButton[dashboardAction="true"][actionState="partial"] {{ background: #282219; border-color: #806233; color: #E5B965; }}
-            QPushButton[dashboardAction="true"][actionState="failed"] {{ background: #28191C; border-color: #7A303B; color: {PALETA['erro']}; }}
-            QProgressBar {{ background: #15191E; border: 1px solid #30363E; border-radius: 4px; min-height: 7px; max-height: 7px; }}
-            QProgressBar::chunk {{ background: {PALETA['violeta']}; border-radius: 3px; }}
-            #systemSparkline {{ color: {PALETA['rosa']}; font-size: 18px; letter-spacing: 1px; }}
-            QScrollBar:vertical {{ background: transparent; width: 9px; margin: 2px; }}
-            QScrollBar::handle:vertical {{ background: #49424F; min-height: 32px; border-radius: 4px; }}
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
-            QComboBox QAbstractItemView {{ background: {PALETA['superficie']}; selection-background-color: {PALETA['elevada']}; border: 1px solid {PALETA['borda']}; }}
-            QCheckBox {{ color: {PALETA['secundario']}; spacing: 8px; }}
-        """)
+            self.setStyleSheet(f"""
+                * {{ font-family: 'Segoe UI Variable', 'Segoe UI'; color: {PALETA['texto']}; font-size: 14px; }}
+                #root, #mainSurface, QScrollArea, QScrollArea > QWidget > QWidget {{ background: {PALETA['fundo']}; }}
+                #sidebar {{ background: #11151A; border-right: 1px solid #2B3037; }}
+                #brand {{ font-size: 21px; font-weight: 700; }}
+                #brandCaption {{ color: {PALETA['apagado']}; font-size: 10px; }}
+                #sideSection, #eyebrow {{ color: {PALETA['apagado']}; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; }}
+                #newChatButton {{ background: {PALETA['elevada']}; border: 1px solid {PALETA['borda']}; border-radius: 11px; text-align: left; padding: 12px 14px; min-height: 22px; font-weight: 600; }}
+                #newChatButton:hover {{ background: {PALETA['hover']}; border-color: #51475A; }}
+                QPushButton[nav="true"] {{ background: transparent; border: 0; border-radius: 9px; text-align: left; padding: 12px 14px; min-height: 22px; color: {PALETA['secundario']}; }}
+                QPushButton[nav="true"]:hover {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
+                QPushButton[nav="true"]:checked {{ background: #2A1C22; color: {PALETA['texto']}; border-left: 2px solid {PALETA['violeta']}; }}
+                QPushButton:focus, QToolButton:focus, QTextEdit:focus, QComboBox:focus, QCheckBox:focus {{ border: 1px solid {PALETA['rosa']}; outline: 0; }}
+                #recentItem {{ color: {PALETA['secundario']}; padding: 9px 12px; background: transparent; border: 0; border-radius: 8px; text-align: left; }}
+                #recentItem:hover {{ color: {PALETA['texto']}; background: {PALETA['elevada']}; }}
+                #mindStatus {{ color: {PALETA['apagado']}; padding: 8px; font-size: 11px; }}
+                #footerSettings {{ background: transparent; border: 0; border-radius: 8px; text-align: left; padding: 10px; color: {PALETA['secundario']}; }}
+                #footerSettings:hover {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
+                #collapseButton, QToolButton {{ background: transparent; border: 1px solid transparent; border-radius: 7px; min-width: 34px; min-height: 32px; color: {PALETA['secundario']}; }}
+                QToolButton:hover {{ background: {PALETA['elevada']}; border-color: {PALETA['borda']}; color: {PALETA['texto']}; }}
+                #topbar {{ background: #0C1014; border-bottom: 1px solid #242A31; min-height: 58px; }}
+                #headerTitle {{ font-weight: 650; }}
+                #statusChip {{ background: #11151A; border: 1px solid {PALETA['borda']}; border-radius: 9px; }}
+                #statusChipText {{ color: {PALETA['secundario']}; font-size: 11px; }}
+                #statusChipDot {{ color: {PALETA['apagado']}; font-size: 9px; }}
+                #statusChipDot[state="online"] {{ color: {PALETA['sucesso']}; }}
+                #statusChipDot[state="error"] {{ color: {PALETA['erro']}; }}
+                #statusChipDot[state="unavailable"] {{ color: #9A7E4C; }}
+                #connectionDot {{ color: {PALETA['erro']}; font-size: 9px; }}
+                #statusLabel {{ color: {PALETA['apagado']}; font-size: 11px; }}
+                #modeSwitch {{ background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 9px; }}
+                QPushButton[segment="true"] {{ background: transparent; border: 0; border-radius: 6px; padding: 6px 12px; color: {PALETA['apagado']}; font-size: 11px; font-weight: 650; }}
+                QPushButton[segment="true"]:checked {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
+                QPushButton[segment="true"]:disabled {{ color: #5E5763; }}
+                #emptyState {{ background: transparent; }}
+                #emptyMark {{ color: {PALETA['violeta']}; font-size: 28px; }}
+                #emptyTitle {{ font-size: 23px; font-weight: 650; }}
+                #emptyCopy {{ color: {PALETA['secundario']}; font-size: 14px; }}
+                #messageLaylay {{ background: #1B2026; border: 1px solid #242B33; border-radius: 13px; }}
+                #messageUser {{ background: #2A1D22; border: 1px solid #3B292F; border-radius: 13px; }}
+                #messageMeta {{ color: {PALETA['apagado']}; font-size: 9px; font-weight: 700; letter-spacing: 1px; }}
+                #messageText {{ font-size: 15px; line-height: 1.45; }}
+                #messageStatus {{ color: {PALETA['apagado']}; font-size: 10px; }}
+                #messageStatus[delivery="pending"] {{ color: {PALETA['ciano']}; }}
+                #messageStatus[delivery="failed"] {{ color: {PALETA['erro']}; }}
+                #thinkingIndicator {{ background: #1B2026; border: 1px solid #343A42; border-radius: 13px; }}
+                #thinkingMeta {{ color: {PALETA['apagado']}; font-size: 9px; font-weight: 700; letter-spacing: 1px; }}
+                #thinkingDots {{ color: {PALETA['ciano']}; font-size: 20px; font-weight: 700; }}
+                #retryButton {{ background: transparent; border: 1px solid {PALETA['erro']}; color: {PALETA['erro']}; border-radius: 7px; padding: 5px 9px; font-size: 10px; }}
+                #composer {{ background: #171A1F; border: 1px solid #493039; border-radius: 15px; }}
+                #composer:focus-within {{ border-color: #665677; }}
+                #composerEdit {{ background: transparent; border: 0; selection-background-color: #5D497A; font-size: 15px; }}
+                #composerHint {{ color: #77747A; font-size: 10px; }}
+                #composerMic {{ background: #D8445B; border: 1px solid #F0647A; border-radius: 22px; }}
+                #composerMic:hover {{ background: #ED536C; }}
+                #sendButton {{ background: {PALETA['texto']}; color: {PALETA['fundo']}; border: 0; border-radius: 21px; font-size: 20px; font-weight: 700; }}
+                #sendButton:hover {{ background: #FFF7FA; }}
+                #sendButton:disabled {{ background: #49434D; color: #7D7482; }}
+                #voiceSurface {{ background: #172123; border: 1px solid #2F5559; border-radius: 10px; }}
+                #voiceDot {{ color: {PALETA['ciano']}; font-size: 17px; }}
+                #voiceText {{ color: #B7DCE0; }}
+                #pageTitle {{ font-size: 28px; font-weight: 650; }}
+                #pageDescription {{ color: {PALETA['secundario']}; font-size: 14px; max-width: 700px; }}
+                #sectionTitle {{ font-size: 17px; font-weight: 650; padding-top: 4px; }}
+                #fieldLabel {{ color: {PALETA['secundario']}; font-size: 11px; font-weight: 650; }}
+                QPushButton[provider="true"] {{ background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 10px; padding: 13px 15px; text-align: left; color: {PALETA['secundario']}; }}
+                QPushButton[provider="true"]:hover {{ background: {PALETA['elevada']}; }}
+                QPushButton[provider="true"]:checked {{ background: #292332; border-color: {PALETA['violeta']}; color: {PALETA['texto']}; }}
+                #settingsField {{ background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 8px; padding: 10px 12px; selection-background-color: #5D497A; }}
+                #settingsField:focus {{ border-color: {PALETA['violeta']}; }}
+                #settingsField:read-only {{ color: {PALETA['apagado']}; background: #19171C; }}
+                #keyState {{ color: {PALETA['ciano']}; font-size: 11px; }}
+                #settingsBanner {{ background: #22202A; border-left: 3px solid {PALETA['ciano']}; padding: 11px 13px; color: {PALETA['secundario']}; }}
+                #settingsBanner[kind="success"] {{ border-left-color: {PALETA['sucesso']}; }}
+                #settingsBanner[kind="error"] {{ border-left-color: {PALETA['erro']}; }}
+                #settingsNote {{ color: {PALETA['secundario']}; background: {PALETA['superficie']}; padding: 13px; border-radius: 8px; }}
+                #primaryButton {{ background: {PALETA['violeta']}; color: #161219; border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 700; }}
+                #primaryButton:hover {{ background: #B99AF0; }}
+                #secondaryButton {{ background: {PALETA['elevada']}; border: 1px solid {PALETA['borda']}; border-radius: 8px; padding: 10px 15px; font-weight: 600; }}
+                #diagnosticValue {{ background: {PALETA['superficie']}; border-left: 2px solid {PALETA['ciano']}; padding: 12px 15px; font-family: 'Cascadia Code'; font-size: 12px; }}
+                #eventLog {{ font-family: 'Cascadia Code'; background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 9px; color: {PALETA['secundario']}; padding: 14px; font-size: 11px; }}
+                #chatSurface {{ background: #0E1216; border: 1px solid #222830; border-radius: 15px; }}
+                #chatHeader {{ background: transparent; border-bottom: 1px solid #20262D; }}
+                #chatGreeting {{ font-size: 20px; font-weight: 700; color: #F8F5F7; }}
+                #chatGreetingSub {{ color: {PALETA['secundario']}; font-size: 13px; }}
+                #microphoneWaveform {{ background: transparent; }}
+                #intelligencePanel {{ background: #11151A; border: 1px solid #73323E; border-radius: 16px; }}
+                #intelligenceTitle {{ font-size: 18px; font-weight: 700; }}
+                #liveBadge {{ color: {PALETA['rosa']}; background: #301D23; border: 1px solid #5A303A; border-radius: 10px; padding: 4px 8px; font-size: 10px; }}
+                #dashboardRail {{ background: transparent; }}
+                #dashboardCard, #modulePlaceholder {{ background: #15191E; border: 1px solid #2D333A; border-radius: 14px; }}
+                #dashboardCardTitle {{ font-size: 14px; font-weight: 700; }}
+                #dashboardCardHint {{ color: {PALETA['apagado']}; font-size: 9px; }}
+                #dashboardEmpty, #dashboardActivity {{ color: {PALETA['apagado']}; font-size: 11px; }}
+                #dashboardMetricLabel {{ color: {PALETA['secundario']}; font-size: 11px; }}
+                #dashboardMetricValue {{ color: {PALETA['texto']}; font-size: 11px; font-weight: 700; }}
+                #contextItem {{ background: #1A1F25; border: 1px solid #2A3037; border-radius: 8px; }}
+                #contextLabel {{ color: {PALETA['apagado']}; font-size: 9px; }}
+                #contextValue {{ color: {PALETA['secundario']}; font-size: 10px; font-weight: 650; }}
+                #musicTitle {{ font-size: 13px; font-weight: 700; }}
+                #musicControlsPlaceholder {{ color: #5F646B; font-size: 15px; padding: 5px; }}
+                #musicPage, #musicScroll, #musicScroll > QWidget > QWidget,
+                #musicPageBody {{ background: #0D1115; }}
+                #musicPageTitle {{ color: #F8F4F6; font-size: 29px; font-weight: 700; }}
+                #musicPageDescription {{ color: {PALETA['secundario']}; font-size: 15px; }}
+                #musicHeaderButton, #musicMoreButton {{ background: #15191E; border: 1px solid #2D333A; border-radius: 10px; padding: 10px 15px; color: {PALETA['secundario']}; font-size: 12px; }}
+                #musicHeaderButton:hover {{ background: #211A1F; border-color: #713541; color: {PALETA['texto']}; }}
+                #musicHero, #musicModule, #musicQueue, #musicLyrics {{ background: #14191E; border: 1px solid #293039; border-radius: 14px; }}
+                #musicHero {{ min-height: 306px; }}
+                #musicPageTitle, #musicHeroTitle, #musicModuleTitle {{ font-family: 'Segoe UI Variable', 'Segoe UI'; }}
+                #musicHeroTitle {{ color: #F8F4F6; font-size: 27px; font-weight: 700; }}
+                #musicHeroSubtitle {{ color: {PALETA['secundario']}; font-size: 15px; }}
+                #musicNowBadge {{ color: {PALETA['rosa']}; background: #29191E; border: 1px solid #54303A; border-radius: 7px; padding: 5px 9px; font-size: 10px; font-weight: 700; }}
+                #musicVolumeReadout {{ color: {PALETA['apagado']}; font-size: 10px; font-weight: 700; }}
+                #musicVolumeSlider {{ min-width: 22px; max-width: 22px; }}
+                #musicVolumeSlider::groove:vertical {{ background: #2A3037; width: 5px; border-radius: 2px; }}
+                #musicVolumeSlider::sub-page:vertical {{ background: #2A3037; border-radius: 2px; }}
+                #musicVolumeSlider::add-page:vertical {{ background: {PALETA['rosa']}; border-radius: 2px; }}
+                #musicVolumeSlider::handle:vertical {{ background: #F5F1F3; border: 1px solid #C84A5F; height: 15px; margin: 0 -5px; border-radius: 7px; }}
+                #musicVolumeSlider:disabled {{ opacity: 0.45; }}
+                #musicAudioOutput {{ color: #F2EEF0; font-size: 12px; font-weight: 650; padding: 8px; background: #1A1F25; border: 1px solid #2D343B; border-radius: 8px; }}
+                #musicWaveform {{ background: transparent; }}
+                #musicHeroProgress {{ background: #232930; border: 0; border-radius: 2px; min-height: 4px; max-height: 4px; }}
+                #musicHeroProgress::chunk {{ background: {PALETA['rosa']}; border-radius: 2px; }}
+                #musicTime {{ color: {PALETA['apagado']}; font-size: 12px; }}
+                #musicTransportControl {{ background: transparent; border: 0; border-radius: 23px; min-width: 46px; min-height: 46px; }}
+                #musicTransportControl:hover {{ background: #281C22; }}
+                #musicTransportControl[activeControl="true"] {{ background: #321C24; color: {PALETA['rosa']}; border: 1px solid #8D3C4C; }}
+                #musicPrimaryControl {{ background: #B9384D; border: 1px solid #F05B72; border-radius: 29px; min-width: 58px; min-height: 58px; }}
+                #musicPrimaryControl:hover {{ background: #D9455D; }}
+                #musicPrimaryControl:disabled, #musicTransportControl:disabled {{ background: #1B2025; border-color: #30363D; }}
+                #musicObservedState {{ color: {PALETA['apagado']}; font-size: 11px; }}
+                #musicModuleTitle {{ color: #F3F0F2; font-size: 16px; font-weight: 700; }}
+                #musicModuleHint {{ color: {PALETA['apagado']}; font-size: 10px; }}
+                #musicSideRail {{ background: transparent; min-width: 265px; max-width: 315px; }}
+                #musicSideLabel {{ color: {PALETA['secundario']}; font-size: 12px; }}
+                #musicSideValue {{ color: #F4F1F3; font-size: 12px; font-weight: 700; }}
+                #musicFutureState {{ color: #9298A1; font-size: 12px; line-height: 1.4; }}
+                #musicQueuePlaceholder {{ background: #191E24; border: 1px solid #272E35; border-radius: 9px; }}
+                #musicQueueScroll,
+                #musicQueueScroll > QWidget > QWidget,
+                #musicQueueList {{
+                    background: transparent;
+                    border: 0;
+                }}
+
+                #musicQueueNumber {{
+                    color: #777F89;
+                    font-size: 10px;
+                    min-width: 18px;
+                }}
+
+                #musicQueueText {{
+                    color: #E9E6E8;
+                    font-size: 11px;
+                    font-weight: 600;
+                }}
+                #musicFutureButton {{ background: #191E23; border: 1px solid #303740; border-radius: 9px; padding: 10px 12px; color: #9298A1; text-align: left; font-size: 11px; }}
+                #musicFutureButton:hover {{ background: #241D22; border-color: #75404B; color: #E7E1E4; }}
+                #musicSessionAction {{ background: #151A1F; border: 1px solid #343A42; border-radius: 21px; min-height: 42px; padding: 0 16px; color: {PALETA['secundario']}; font-size: 12px; }}
+                #musicSessionAction:hover {{ background: #241B20; border-color: #773845; color: {PALETA['texto']}; }}
+                #musicSessionAction:disabled {{ color: #5F646B; border-color: #292F35; }}
+                #musicPreset {{ background: #1B2026; border: 1px solid #303741; border-radius: 10px; padding: 12px; text-align: left; color: #D5D0D3; min-height: 58px; font-size: 12px; }}
+                #musicPreset:hover {{ background: #272027; border-color: #78404C; color: {PALETA['texto']}; }}
+                #musicPreset[activePlaylist="true"] {{ background: #2B1C22; border-color: #A94B5D; color: {PALETA['rosa']}; }}
+                #musicPreset[presetTone="0"] {{ border-left: 4px solid #D85258; }}
+                #musicPreset[presetTone="1"] {{ border-left: 4px solid #7657C7; }}
+                #musicPreset[presetTone="2"] {{ border-left: 4px solid #2D9C6A; }}
+                #musicPreset[presetTone="3"] {{ border-left: 4px solid #466FC5; }}
+                #musicPreset[presetTone="4"] {{ border-left: 4px solid #B05C9C; }}
+                #musicPreset[presetTone="5"] {{ border-left: 4px solid #C58A3A; }}
+                #musicQueueDetail {{
+                    color: #777F89;
+                    font-size: 9px;
+                }}
+
+                #musicQueueDuration {{
+                    color: #9299A2;
+                    font-size: 10px;
+                    min-width: 31px;
+                }}
+
+                #musicCatalogState {{
+                    color: #89919B;
+                    font-size: 10px;
+                }}
+
+                #musicQueueItem {{
+                    background: transparent;
+                    border: 0;
+                    border-radius: 7px;
+                    text-align: left;
+                    padding: 0;
+                }}
+
+                #musicQueueItem:hover {{
+                    background: #1B2026;
+                    border: 0;
+                }}
+
+                #musicQueueItem:focus {{
+                    background: #211A1F;
+                    border: 0;
+                }}
+
+                #musicQueueItem:disabled {{
+                    background: transparent;
+                    border: 0;
+                }}
+                #musicSuggestion {{ background: #251A20; border: 1px solid #58303A; border-radius: 10px; padding: 13px; color: #E28D9C; font-size: 12px; }}
+                #musicContextBasis {{ color: #A5ABB3; background: #171D22; border: 1px solid #303740; border-radius: 9px; padding: 8px 10px; font-size: 10px; }}
+                #musicLyrics {{ border-color: #332930; }}
+                #musicLyricsText {{ background: #11161B; border-top: 1px solid #34272E; border-bottom: 1px solid #34272E; padding: 18px; color: #C9C5C8; }}
+                #musicLyricsSource {{ color: #838B95; font-size: 10px; }}
+                #musicSystemBar {{ background: #252B32; border: 0; border-radius: 3px; min-height: 6px; max-height: 6px; }}
+                #musicSystemBar::chunk {{ background: #C64257; border-radius: 3px; }}
+                #musicSystemBar[available="false"]::chunk {{ background: #343A41; }}
+                #railMusicControl {{ background: transparent; border: 0; border-radius: 18px; min-width: 36px; min-height: 36px; color: {PALETA['texto']}; font-size: 16px; }}
+                #railMusicControl:hover {{ background: #2B2025; color: {PALETA['rosa']}; }}
+                QPushButton[dashboardAction="true"] {{ background: #1A1F25; border: 1px solid #30363E; border-radius: 9px; padding: 10px 8px; text-align: left; color: {PALETA['secundario']}; font-size: 10px; }}
+                QPushButton[dashboardAction="true"]:hover {{ background: #262027; border-color: #74404C; color: {PALETA['texto']}; }}
+                QPushButton[dashboardAction="true"]:disabled {{ background: #15191E; border-color: #242A30; color: #565B62; }}
+                QPushButton[dashboardAction="true"][actionState="sending"],
+                QPushButton[dashboardAction="true"][actionState="received"],
+                QPushButton[dashboardAction="true"][actionState="executing"] {{ background: #241D22; border-color: #8B4352; color: {PALETA['rosa']}; }}
+                QPushButton[dashboardAction="true"][actionState="confirmed"] {{ background: #16231F; border-color: #356E5A; color: {PALETA['sucesso']}; }}
+                QPushButton[dashboardAction="true"][actionState="partial"] {{ background: #282219; border-color: #806233; color: #E5B965; }}
+                QPushButton[dashboardAction="true"][actionState="failed"] {{ background: #28191C; border-color: #7A303B; color: {PALETA['erro']}; }}
+                QProgressBar {{ background: #15191E; border: 1px solid #30363E; border-radius: 4px; min-height: 7px; max-height: 7px; }}
+                QProgressBar::chunk {{ background: {PALETA['violeta']}; border-radius: 3px; }}
+                #systemSparkline {{ color: {PALETA['rosa']}; font-size: 18px; letter-spacing: 1px; }}
+                QScrollBar:vertical {{ background: transparent; width: 9px; margin: 2px; }}
+                QScrollBar::handle:vertical {{ background: #49424F; min-height: 32px; border-radius: 4px; }}
+                QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
+                QComboBox QAbstractItemView {{ background: {PALETA['superficie']}; selection-background-color: {PALETA['elevada']}; border: 1px solid {PALETA['borda']}; }}
+                QCheckBox {{ color: {PALETA['secundario']}; spacing: 8px; }}
+            """)
 
     @staticmethod
     def _horario(instante: object) -> str | None:
