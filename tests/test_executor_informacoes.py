@@ -161,7 +161,7 @@ def test_briefing_repeat_registra_fala_retornada_na_memoria() -> None:
         _dependencias(eventos),
     )
 
-    assert despacho == ResultadoDespacho.concluido()
+    assert despacho == ResultadoDespacho.concluido(True)
     assert eventos[0] == (
         "mente",
         "repete o briefing",
@@ -171,7 +171,45 @@ def test_briefing_repeat_registra_fala_retornada_na_memoria() -> None:
         "conversa",
         "briefing",
     )
-    assert eventos[1] == ("resultado", "briefing_repetido", {})
+    assert eventos[1] == (
+        "resultado",
+        "briefing_repetido",
+        {"executou": True, "confirmado": True},
+    )
+
+
+@pytest.mark.parametrize("modo", ["ausente", "falso", "vazio", "erro"])
+def test_briefing_repeat_sem_conteudo_nao_inventa_sucesso(modo: str) -> None:
+    eventos: list[tuple] = []
+    falas: list[str] = []
+    ctx = {"falar_com_lipsync": lambda fala, *_args: falas.append(fala)}
+    if modo == "falso":
+        ctx["repetir_briefing"] = lambda: False
+    elif modo == "vazio":
+        ctx["repetir_briefing"] = lambda: "  "
+    elif modo == "erro":
+        def falhar() -> None:
+            raise RuntimeError("falha interna")
+
+        ctx["repetir_briefing"] = falhar
+
+    despacho = executar_intencao_informacoes(
+        "BRIEFING_REPEAT",
+        {},
+        "me passa o briefing de hoje",
+        ctx,
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(False)
+    assert falas == [
+        "Ainda não tenho um briefing pronto para repetir. Posso montar um novo quando você quiser."
+    ]
+    assert eventos == [(
+        "resultado",
+        "briefing_indisponivel",
+        {"executou": False, "confirmado": False},
+    )]
 
 
 def test_weather_formata_dados_confirmados_e_registra_consulta() -> None:

@@ -145,8 +145,12 @@ def _repetir_briefing(
 ) -> ResultadoDespacho:
     repetir = _get(ctx, "repetir_briefing")
     fala = ""
+    retorno: Any = None
     if callable(repetir):
-        retorno = repetir()
+        try:
+            retorno = repetir()
+        except Exception:
+            retorno = None
         if isinstance(retorno, str):
             fala = retorno.strip()
     if fala:
@@ -158,8 +162,25 @@ def _repetir_briefing(
             "conversa",
             "briefing",
         )
-    deps.marcar_resultado("briefing_repetido")
-    return ResultadoDespacho.concluido()
+    sucesso = bool(fala or retorno is True)
+    if sucesso:
+        deps.marcar_resultado(
+            "briefing_repetido",
+            executou=True,
+            confirmado=True,
+        )
+        return ResultadoDespacho.concluido(True)
+
+    _falar(
+        ctx,
+        "Ainda não tenho um briefing pronto para repetir. Posso montar um novo quando você quiser.",
+    )
+    deps.marcar_resultado(
+        "briefing_indisponivel",
+        executou=False,
+        confirmado=False,
+    )
+    return ResultadoDespacho.concluido(False)
 
 
 def _consultar_clima(
