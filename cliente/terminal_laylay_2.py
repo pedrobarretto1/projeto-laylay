@@ -1479,8 +1479,54 @@ class JanelaLaylay(QMainWindow):
                     font-weight: 700;
                     letter-spacing: -1px;
                 }}
-                #musicSuggestion {{ background: #251A20; border: 1px solid #58303A; border-radius: 10px; padding: 13px; color: #E28D9C; font-size: 12px; }}
-                #musicContextBasis {{ color: #A5ABB3; background: #171D22; border: 1px solid #303740; border-radius: 9px; padding: 8px 10px; font-size: 10px; }}
+                #musicContextSummary {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #9DA4AC;
+                    font-size: 11px;
+
+                    padding: 2px 1px;
+                }}
+
+
+                /* recomendação principal */
+
+                #musicSuggestion {{
+                    background: #21181D;
+
+                    border: 1px solid #4A2B34;
+                    border-radius: 9px;
+
+                    padding: 10px 11px;
+
+                    color: #E88A9A;
+
+                    font-size: 11px;
+                    font-weight: 550;
+                }}
+
+
+                /* área dos chips */
+
+                #musicContextChips {{
+                    background: transparent;
+                    border: 0;
+                }}
+
+
+                #musicContextChip {{
+                    background: #171C21;
+
+                    border: 1px solid #2A3138;
+                    border-radius: 8px;
+
+                    padding: 5px 7px;
+
+                    color: #858D96;
+
+                    font-size: 9px;
+                }}
                 #musicLyrics {{
                     border-color: #382B31;
                 }}

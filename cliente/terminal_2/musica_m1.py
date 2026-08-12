@@ -752,10 +752,71 @@ class PaginaMusicaM1(QWidget):
             "Aguardando horário e sessão musical observados."
         )
         self.contexto.conteudo.addWidget(self.contexto_estado)
-        self.contexto_base = QLabel("")
-        self.contexto_base.setObjectName("musicContextBasis")
-        self.contexto_base.setWordWrap(True)
-        self.contexto.conteudo.addWidget(self.contexto_base)
+        self.contexto = CartaoMusica(
+            "Contexto musical  ✦ Laylay",
+            detalhe="fundamentado",
+        )
+        self.contexto.conteudo.setSpacing(8)
+
+        # Resumo principal
+        self.contexto_estado = QLabel(
+            "Aguardando horário e sessão musical observados."
+        )
+        self.contexto_estado.setObjectName("musicContextSummary")
+        self.contexto_estado.setWordWrap(True)
+        self.contexto_estado.setMinimumWidth(0)
+
+        self.contexto.conteudo.addWidget(
+            self.contexto_estado
+        )
+
+        # Recomendação da Laylay
+        self.contexto_sugestao = QLabel(
+            "Nenhuma recomendação fundamentada neste momento."
+        )
+        self.contexto_sugestao.setObjectName(
+            "musicSuggestion"
+        )
+        self.contexto_sugestao.setWordWrap(True)
+        self.contexto_sugestao.setMinimumWidth(0)
+
+        self.contexto.conteudo.addWidget(
+            self.contexto_sugestao
+        )
+
+        # Chips que mostram em que a recomendação se baseou
+        self.contexto_bases = QWidget()
+        self.contexto_bases.setObjectName(
+            "musicContextChips"
+        )
+
+        self.contexto_bases_layout = QHBoxLayout(
+            self.contexto_bases
+        )
+        self.contexto_bases_layout.setContentsMargins(
+            0, 0, 0, 0
+        )
+        self.contexto_bases_layout.setSpacing(5)
+
+        self.contexto_chips: list[QLabel] = []
+
+        for _ in range(3):
+            chip = QLabel("")
+            chip.setObjectName("musicContextChip")
+            chip.hide()
+
+            self.contexto_bases_layout.addWidget(
+                chip
+            )
+            self.contexto_chips.append(chip)
+
+        self.contexto_bases_layout.addStretch()
+
+        self.contexto_bases.hide()
+
+        self.contexto.conteudo.addWidget(
+            self.contexto_bases
+        )
         self.contexto_sugestao = QLabel(
             "Nenhuma recomendação fundamentada neste momento."
         )
@@ -1201,40 +1262,121 @@ class PaginaMusicaM1(QWidget):
             "playlist_play", f"toca a playlist {nome}",
         )
 
-    def _aplicar_contexto_musical(self, musica: dict) -> None:
+    def _aplicar_contexto_musical(
+        self,
+        musica: dict,
+    ) -> None:
         contexto = musica.get("context_music")
-        contexto = contexto if isinstance(contexto, dict) else {}
-        frescor = str(contexto.get("freshness") or "unavailable")
-        resumo = str(contexto.get("summary") or "").strip()
-        sugestao = str(contexto.get("recommendation") or "").strip()
-        bases = [str(item) for item in list(contexto.get("basis") or ())]
+        contexto = (
+            contexto
+            if isinstance(contexto, dict)
+            else {}
+        )
+
+        frescor = str(
+            contexto.get("freshness")
+            or "unavailable"
+        )
+
+        resumo = str(
+            contexto.get("summary") or ""
+        ).strip()
+
+        sugestao = str(
+            contexto.get("recommendation") or ""
+        ).strip()
+
+        bases = [
+            str(item)
+            for item in list(
+                contexto.get("basis") or ()
+            )
+        ]
+
         nomes_base = {
-            "horario_local": "Horário local",
-            "playlist_ativa": "Playlist escolhida",
-            "catalogo_real": "Catálogo real",
-            "regra_de_horario": "Regra de horário",
-            "preferencia_confirmada": "Preferência confirmada",
-            "clima_observado": "Clima observado",
+            "horario_local":
+                "◷ Horário local",
+
+            "playlist_ativa":
+                "♫ Playlist escolhida",
+
+            "catalogo_real":
+                "▦ Catálogo real",
+
+            "regra_de_horario":
+                "◷ Regra de horário",
+
+            "preferencia_confirmada":
+                "♥ Preferência",
+
+            "clima_observado":
+                "☁ Clima",
         }
-        if frescor == "unavailable" or not resumo:
+
+        if (
+            frescor == "unavailable"
+            or not resumo
+        ):
             self.contexto_estado.setText(
-                "O contexto musical ainda não tem evidência suficiente."
+                "Ainda não tenho contexto "
+                "musical suficiente."
             )
+
             self.contexto_sugestao.setText(
-                "Nenhuma recomendação fundamentada neste momento."
+                "✦ Nenhuma sugestão agora — "
+                "melhor isso do que inventar."
             )
-            self.contexto_base.clear()
-            self.contexto_base.hide()
+
+            self.contexto_bases.hide()
+
+            for chip in self.contexto_chips:
+                chip.hide()
+
             return
+
+        # Resumo
+        texto_resumo = resumo
+
+        if frescor == "stale":
+            texto_resumo += "  ·  dados antigos"
+
         self.contexto_estado.setText(
-            resumo + (" · dados antigos" if frescor == "stale" else "")
+            texto_resumo
         )
-        self.contexto_sugestao.setText(
-            sugestao or "Sem sugestão agora — melhor isso do que inventar uma playlist."
+
+        # Recomendação
+        if sugestao:
+            self.contexto_sugestao.setText(
+                f"✦ {sugestao}"
+            )
+        else:
+            self.contexto_sugestao.setText(
+                "✦ Sem sugestão agora — "
+                "melhor isso do que inventar "
+                "uma playlist."
+            )
+
+        # Bases visíveis
+        bases_visiveis = [
+            nomes_base[item]
+            for item in bases
+            if item in nomes_base
+        ][:3]
+
+        for indice, chip in enumerate(
+            self.contexto_chips
+        ):
+            if indice < len(bases_visiveis):
+                chip.setText(
+                    bases_visiveis[indice]
+                )
+                chip.show()
+            else:
+                chip.hide()
+
+        self.contexto_bases.setVisible(
+            bool(bases_visiveis)
         )
-        bases_visiveis = [nomes_base[item] for item in bases if item in nomes_base]
-        self.contexto_base.setText("  •  ".join(bases_visiveis))
-        self.contexto_base.setVisible(bool(bases_visiveis))
 
     def _alternar_letra(self) -> None:
         self._letra_expandida = not self._letra_expandida
