@@ -564,19 +564,22 @@ class PaginaMusicaM1(QWidget):
         self.acoes_layout.setContentsMargins(0, 0, 0, 0)
         self.acoes_layout.setSpacing(8)
         definicoes = (
-            ("Tocar playlist", "playlist_play"),
-            ("Pausar", "media_toggle"),
-            ("Próxima faixa", "media_next"),
-            ("Volume —", "volume_set"),
-            ("Aleatório", "playlist_shuffle"),
-            ("Repetição", "media_repeat"),
-            ("Sincronizar luzes", "lights_sync"),
+            ("Tocar playlist", "playlist_play", "primary", 145),
+            ("Pausar", "media_toggle", "primary", 105),
+            ("Próxima faixa", "media_next", "primary", 125),
+            ("Volume —", "volume_set", "utility", 115),
+            ("Aleatório", "playlist_shuffle", "utility", 100),
+            ("Repetição", "media_repeat", "utility", 105),
+            ("Sincronizar luzes", "lights_sync", "future", 140),
         )
         self.acoes_sessao: dict[str, QPushButton] = {}
         self._botoes_sessao: list[QPushButton] = []
-        for texto, acao_id in definicoes:
+        for texto, acao_id, papel, largura in definicoes:
             botao = QPushButton(texto)
             botao.setObjectName("musicSessionAction")
+            botao.setProperty("actionRole", papel)
+            botao.setProperty("wideWidth", largura)
+            botao.setFixedHeight(38)
             botao.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
             botao.setEnabled(False)
             if acao_id == "media_toggle":
@@ -693,7 +696,6 @@ class PaginaMusicaM1(QWidget):
             indice = len(self.preset_botoes)
             botao = QPushButton("Playlist\n0 faixas")
             botao.setObjectName("musicPreset")
-            botao.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
             botao.setEnabled(False)
             botao.setIcon(icone_terminal("music"))
             botao.setIconSize(QSize(22, 22))
@@ -759,11 +761,51 @@ class PaginaMusicaM1(QWidget):
             self.grade.removeWidget(widget)
         for botao in self._botoes_sessao:
             self.acoes_layout.removeWidget(botao)
+        for coluna in range(10):
+            self.acoes_layout.setColumnStretch(coluna, 0)
+
         for indice, botao in enumerate(self._botoes_sessao):
             if compacto:
-                self.acoes_layout.addWidget(botao, indice // 2, indice % 2)
+                botao.setMinimumWidth(0)
+                botao.setMaximumWidth(16777215)
+                botao.setSizePolicy(
+                    QSizePolicy.Expanding,
+                    QSizePolicy.Fixed,
+                )
+
+                self.acoes_layout.addWidget(
+                    botao,
+                    indice // 2,
+                    indice % 2,
+                )
+
             else:
-                self.acoes_layout.addWidget(botao, 0, indice)
+                largura = int(botao.property("wideWidth") or 110)
+
+                botao.setMinimumWidth(largura)
+                botao.setMaximumWidth(largura)
+                botao.setSizePolicy(
+                    QSizePolicy.Fixed,
+                    QSizePolicy.Fixed,
+                )
+
+                self.acoes_layout.addWidget(
+                    botao,
+                    0,
+                    indice + 1,
+                    Qt.AlignCenter,
+                )
+
+        if compacto:
+            self.acoes_layout.setColumnStretch(0, 1)
+            self.acoes_layout.setColumnStretch(1, 1)
+        else:
+            # espaço flexível dos dois lados = grupo centralizado
+            self.acoes_layout.setColumnStretch(0, 1)
+            self.acoes_layout.setColumnStretch(
+                len(self._botoes_sessao) + 1,
+                1,
+            )
         if compacto:
             linha = 0
             for widget in widgets:

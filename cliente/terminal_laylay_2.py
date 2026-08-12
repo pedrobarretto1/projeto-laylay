@@ -1235,7 +1235,58 @@ class JanelaLaylay(QMainWindow):
                 }}
                 #musicFutureButton {{ background: #191E23; border: 1px solid #303740; border-radius: 9px; padding: 10px 12px; color: #9298A1; text-align: left; font-size: 11px; }}
                 #musicFutureButton:hover {{ background: #241D22; border-color: #75404B; color: #E7E1E4; }}
-                #musicSessionAction {{ background: #151A1F; border: 1px solid #343A42; border-radius: 21px; min-height: 42px; padding: 0 16px; color: {PALETA['secundario']}; font-size: 12px; }}
+                #musicSessionAction {{
+                    background: #151A1F;
+                    border: 1px solid #30363E;
+                    border-radius: 19px;
+                    min-height: 38px;
+                    max-height: 38px;
+                    padding: 0 14px;
+                    color: #AEB4BC;
+                    font-size: 11px;
+                    font-weight: 550;
+                }}
+
+                #musicSessionAction:hover {{
+                    background: #1D2228;
+                    border-color: #4A5059;
+                    color: #F3F0F2;
+                }}
+
+                #musicSessionAction[actionRole="primary"] {{
+                    background: #191A20;
+                    border-color: #3D343A;
+                    color: #DDD8DB;
+                }}
+
+                #musicSessionAction[actionRole="primary"]:hover {{
+                    background: #281B21;
+                    border-color: #85404D;
+                    color: #FFF5F7;
+                }}
+
+                #musicSessionAction[actionRole="utility"] {{
+                    background: #14191E;
+                    border-color: #2B3239;
+                }}
+
+                #musicSessionAction[actionRole="future"] {{
+                    background: transparent;
+                    border-color: #262C32;
+                    color: #555C64;
+                }}
+
+                #musicSessionAction:disabled {{
+                    background: #12171B;
+                    color: #555C64;
+                    border-color: #252B31;
+                }}
+
+                #musicSessionAction[actionRole="future"]:disabled {{
+                    background: transparent;
+                    color: #464D54;
+                    border-color: #22282D;
+                }}
                 #musicSessionAction:hover {{ background: #241B20; border-color: #773845; color: {PALETA['texto']}; }}
                 #musicSessionAction:disabled {{ color: #5F646B; border-color: #292F35; }}
                 #musicPreset {{ background: #1B2026; border: 1px solid #303741; border-radius: 10px; padding: 12px; text-align: left; color: #D5D0D3; min-height: 58px; font-size: 12px; }}
