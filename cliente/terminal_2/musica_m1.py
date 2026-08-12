@@ -88,6 +88,79 @@ class OndaMusical(QWidget):
             painter.drawLine(int(x), int(centro - altura), int(x), int(centro + altura))
 
 
+class MiniEqualizadorFila(QWidget):
+    """Cinco barras animadas usadas no destaque da primeira faixa da fila."""
+
+    def __init__(self, *, reduzir_movimento: bool = False) -> None:
+        super().__init__()
+
+        self.setFixedSize(18, 20)
+        self._reduzir_movimento = bool(reduzir_movimento)
+        self._fase = 0.0
+        self._ativo = False
+
+        self._timer = QTimer(self)
+        self._timer.setInterval(85)
+        self._timer.timeout.connect(self._avancar)
+
+    def definir_ativo(self, ativo: bool) -> None:
+        self._ativo = bool(ativo)
+
+        if self._ativo and not self._reduzir_movimento:
+            if not self._timer.isActive():
+                self._timer.start()
+        else:
+            self._timer.stop()
+
+        self.update()
+
+    def _avancar(self) -> None:
+        self._fase = (self._fase + 0.32) % (math.pi * 2)
+        self.update()
+
+    def paintEvent(self, _event) -> None:  # noqa: N802
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        painter.setPen(
+            QPen(
+                QColor("#FF5C73"),
+                2,
+                Qt.SolidLine,
+                Qt.RoundCap,
+            )
+        )
+
+        centro = self.height() / 2
+        alturas = []
+
+        for indice in range(5):
+            if self._reduzir_movimento:
+                altura = (4, 9, 6, 11, 7)[indice]
+            else:
+                onda = math.sin(
+                    self._fase
+                    + indice * 1.15
+                )
+
+                altura = 4 + abs(onda) * 10
+
+            alturas.append(altura)
+
+        espacamento = 3.2
+        inicio = 2.5
+
+        for indice, altura in enumerate(alturas):
+            x = inicio + indice * espacamento
+
+            painter.drawLine(
+                int(x),
+                int(centro - altura / 2),
+                int(x),
+                int(centro + altura / 2),
+            )
+
+
 class CartaoMusica(QFrame):
     def __init__(self, titulo: str, *, detalhe: str = "") -> None:
         super().__init__()
@@ -424,10 +497,24 @@ class PaginaMusicaM1(QWidget):
             lay.setContentsMargins(5, 4, 7, 4)
             lay.setSpacing(9)
 
+            marcador = QWidget()
+            marcador.setFixedWidth(20)
+
+            marcador_layout = QHBoxLayout(marcador)
+            marcador_layout.setContentsMargins(0, 0, 0, 0)
+            marcador_layout.setSpacing(0)
+
             numero = QLabel(str(indice))
             numero.setObjectName("musicQueueNumber")
-            numero.setFixedWidth(18)
             numero.setAlignment(Qt.AlignCenter)
+
+            equalizador = MiniEqualizadorFila(
+                reduzir_movimento=self._reduzir_movimento
+            )
+            equalizador.hide()
+
+            marcador_layout.addWidget(numero)
+            marcador_layout.addWidget(equalizador)
 
             capa = CapaMusicaGenerica(36)
 
@@ -449,7 +536,7 @@ class PaginaMusicaM1(QWidget):
             duracao.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             duracao.setFixedWidth(34)
 
-            lay.addWidget(numero)
+            lay.addWidget(marcador)
             lay.addWidget(capa)
             lay.addLayout(textos, 1)
             lay.addWidget(duracao)
@@ -460,6 +547,7 @@ class PaginaMusicaM1(QWidget):
             self.fila_linhas.append({
                 "widget": linha,
                 "number": numero,
+                "equalizer": equalizador,
                 "cover": capa,
                 "title": titulo,
                 "detail": detalhe,
@@ -763,15 +851,20 @@ class PaginaMusicaM1(QWidget):
             linha["item_id"] = item_id
 
             primeira = indice == 0
+
             numero = linha["number"]
+            equalizador = linha["equalizer"]
 
-            numero.setText("▂▅▃" if primeira else str(indice + 1))
+            numero.setText(str(indice + 1))
+            numero.setVisible(not primeira)
 
-            for alvo in (widget, numero):
-                if alvo.property("queueTop") != primeira:
-                    alvo.setProperty("queueTop", primeira)
-                    alvo.style().unpolish(alvo)
-                    alvo.style().polish(alvo)
+            equalizador.setVisible(primeira)
+            equalizador.definir_ativo(primeira)
+
+            if widget.property("queueTop") != primeira:
+                widget.setProperty("queueTop", primeira)
+                widget.style().unpolish(widget)
+                widget.style().polish(widget)
 
             linha["title"].setText(str(item.get("title") or "Faixa sem título"))
             linha["detail"].setText(str(item.get("channel") or "Canal não informado"))
