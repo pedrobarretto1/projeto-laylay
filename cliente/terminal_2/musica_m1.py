@@ -181,7 +181,6 @@ class PaginaMusicaM1(QWidget):
         self._observado_em = 0.0
         self._artwork_url = ""
         self._modo_compacto = False
-        self._fila_expandida = False
         self._fila_fonte = ""
         self._fila_frescor = "unavailable"
         self._fila_pendente = False
@@ -377,27 +376,52 @@ class PaginaMusicaM1(QWidget):
         self.fila.setMinimumWidth(315)
         self.fila.setMaximumWidth(390)
         self.fila.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.fila_estado = _estado_futuro("Aguardando a fila observada do YouTube.")
+
+        self.fila_estado = _estado_futuro(
+            "Aguardando a fila observada do YouTube."
+        )
         self.fila.conteudo.addWidget(self.fila_estado)
+
+        # Área rolável da fila
+        self.fila_scroll = QScrollArea()
+        self.fila_scroll.setObjectName("musicQueueScroll")
+        self.fila_scroll.setWidgetResizable(True)
+        self.fila_scroll.setFrameShape(QFrame.NoFrame)
+        self.fila_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.fila_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        # 5 músicas de 58px + espaços entre elas
+        self.fila_scroll.setFixedHeight(322)
+
+        self.fila_lista = QWidget()
+        self.fila_lista.setObjectName("musicQueueList")
+
+        self.fila_lista_layout = QVBoxLayout(self.fila_lista)
+        self.fila_lista_layout.setContentsMargins(0, 0, 0, 0)
+        self.fila_lista_layout.setSpacing(8)
+        self.fila_lista_layout.setAlignment(Qt.AlignTop)
+
+        self.fila_scroll.setWidget(self.fila_lista)
+        self.fila.conteudo.addWidget(self.fila_scroll)
+
         self.fila_linhas: list[dict[str, object]] = []
         self._garantir_linhas_fila(5)
-        self.ver_fila = QPushButton("Ver fila completa  ›")
-        self.ver_fila.setObjectName("musicFutureButton")
-        self.ver_fila.setEnabled(False)
-        self.ver_fila.clicked.connect(self._alternar_fila)
-        self.fila.conteudo.addWidget(self.ver_fila)
-        self.fila.conteudo.addStretch()
 
     def _garantir_linhas_fila(self, quantidade: int) -> None:
         while len(self.fila_linhas) < max(0, quantidade):
             indice = len(self.fila_linhas) + 1
+
             linha = QPushButton()
             linha.setObjectName("musicQueueItem")
+            linha.setFixedHeight(58)
+            linha.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
             linha.setCursor(Qt.PointingHandCursor)
             linha.setEnabled(False)
             linha.clicked.connect(
                 lambda _v=False, pos=indice - 1: self._acionar_fila(pos),
             )
+
             lay = QHBoxLayout(linha)
             lay.setContentsMargins(7, 7, 7, 7)
             lay.setSpacing(8)
@@ -420,7 +444,7 @@ class PaginaMusicaM1(QWidget):
             lay.addLayout(textos, 1)
             lay.addWidget(duracao)
             linha.hide()
-            self.fila.conteudo.addWidget(linha)
+            self.fila_lista_layout.addWidget(linha)
             self.fila_linhas.append({
                 "widget": linha, "number": numero, "cover": capa,
                 "title": titulo, "detail": detalhe, "duration": duracao,
@@ -704,10 +728,6 @@ class PaginaMusicaM1(QWidget):
         if self._volume_disponivel:
             self.volume_slider.setFocus(Qt.MouseFocusReason)
 
-    def _alternar_fila(self) -> None:
-        self._fila_expandida = not self._fila_expandida
-        self._aplicar_fila(self._ultimo_retrato_musica)
-
     def _aplicar_fila(self, musica: dict) -> None:
         self._ultimo_retrato_musica = dict(musica or {})
         fila = list(musica.get("queue") or ()) if isinstance(musica, dict) else []
@@ -715,10 +735,11 @@ class PaginaMusicaM1(QWidget):
         self._fila_frescor = observada
         self._fila_fonte = str(musica.get("queue_source") or "")
         self._garantir_linhas_fila(len(fila))
-        limite = len(fila) if self._fila_expandida else 5
+
         for indice, linha in enumerate(self.fila_linhas):
             widget = linha["widget"]
-            if indice >= len(fila) or indice >= limite:
+
+            if indice >= len(fila):
                 widget.hide()
                 continue
             item = fila[indice] if isinstance(fila[indice], dict) else {}
@@ -752,10 +773,6 @@ class PaginaMusicaM1(QWidget):
                 self.fila_estado.show()
             else:
                 self.fila_estado.hide()
-        self.ver_fila.setEnabled(len(fila) > 5)
-        self.ver_fila.setText(
-            "Mostrar menos  ‹" if self._fila_expandida else "Ver fila completa  ›"
-        )
         self._atualizar_botoes()
 
     def _acionar_fila(self, indice: int) -> None:
