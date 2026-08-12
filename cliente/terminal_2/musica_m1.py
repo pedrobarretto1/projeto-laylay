@@ -730,7 +730,7 @@ class PaginaMusicaM1(QWidget):
         self.playlists = CartaoMusica("Playlists", detalhe="catálogo real")
         self.playlists_grade = QGridLayout()
         self.playlists_grade.setSpacing(7)
-        self.preset_botoes: list[QPushButton] = []
+        self.preset_botoes: list[CartaoPlaylist] = []
         self._garantir_botoes_playlist(6)
         self.playlists.conteudo.addLayout(self.playlists_grade)
         rodape_playlists = QHBoxLayout()
@@ -744,14 +744,7 @@ class PaginaMusicaM1(QWidget):
         rodape_playlists.addStretch()
         rodape_playlists.addWidget(self.ver_playlists)
         self.playlists.conteudo.addLayout(rodape_playlists)
-
-        self.contexto = CartaoMusica(
-            "Contexto musical  ✦ Laylay", detalhe="fundamentado",
-        )
-        self.contexto_estado = _estado_futuro(
-            "Aguardando horário e sessão musical observados."
-        )
-        self.contexto.conteudo.addWidget(self.contexto_estado)
+        
         self.contexto = CartaoMusica(
             "Contexto musical  ✦ Laylay",
             detalhe="fundamentado",
@@ -765,21 +758,6 @@ class PaginaMusicaM1(QWidget):
         self.contexto_estado.setObjectName("musicContextSummary")
         self.contexto_estado.setWordWrap(True)
         self.contexto_estado.setMinimumWidth(0)
-
-        self.contexto.conteudo.addWidget(
-            self.contexto_estado
-        )
-
-        # Recomendação da Laylay
-        self.contexto_sugestao = QLabel(
-            "Nenhuma recomendação fundamentada neste momento."
-        )
-        self.contexto_sugestao.setObjectName(
-            "musicSuggestion"
-        )
-        self.contexto_sugestao.setWordWrap(True)
-        self.contexto_sugestao.setMinimumWidth(0)
-
         self.contexto.conteudo.addWidget(
             self.contexto_sugestao
         )
@@ -2017,8 +1995,20 @@ class PaginaMusicaM1(QWidget):
         self.letra_texto.hide()
         self.letra_fonte.clear()
         self.letra_expandir.hide()
-        self.contexto_base.clear()
-        self.contexto_base.hide()
+        self.contexto_estado.setText(
+            "Ainda não tenho contexto musical suficiente."
+        )
+
+        self.contexto_sugestao.setText(
+            "✦ Nenhuma sugestão agora — "
+            "melhor isso do que inventar."
+        )
+
+        for chip in self.contexto_chips:
+            chip.clear()
+            chip.hide()
+
+        self.contexto_bases.hide()
         self._atualizar_botoes()
 
     def resizeEvent(self, event) -> None:  # noqa: N802
