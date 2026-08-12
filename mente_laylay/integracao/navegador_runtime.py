@@ -136,13 +136,22 @@ class NavegadorOperacoesRuntime:
         ).get("ok"))
 
     def controlar_youtube_detalhado(
-        self, comando: str, *, tab_id: int | None = None,
+        self,
+        comando: str,
+        *,
+        tab_id: int | None = None,
+        queue_item_id: str = "",
+        queue_index: int | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "command": str(comando or "").strip(),
         }
         if isinstance(tab_id, int):
             payload["target_tab_id"] = tab_id
+        if queue_item_id:
+            payload["queue_item_id"] = str(queue_item_id).strip()
+        if isinstance(queue_index, int) and not isinstance(queue_index, bool):
+            payload["queue_index"] = queue_index
         enviar_detalhado = getattr(self.comandos, "enviar_detalhado", None)
         if callable(enviar_detalhado):
             return dict(enviar_detalhado("youtube_control", payload) or {})

@@ -73,6 +73,42 @@ ACOES_PAINEL_TERMINAL: Final[tuple[dict[str, str], ...]] = (
         "intent": "MEDIA_CONTROL",
     },
     {
+        "id": "queue_play",
+        "label": "Tocar item da fila",
+        "request": "",
+        "intent": "MEDIA_CONTROL",
+    },
+    {
+        "id": "playlist_play",
+        "label": "Tocar playlist",
+        "request": "",
+        "intent": "PLAYLIST_PLAY",
+    },
+    {
+        "id": "media_replay",
+        "label": "Recomeçar faixa",
+        "request": "reinicia essa música",
+        "intent": "MEDIA_CONTROL",
+    },
+    {
+        "id": "media_repeat",
+        "label": "Alternar repetição",
+        "request": "alterna a repetição da música",
+        "intent": "MEDIA_CONTROL",
+    },
+    {
+        "id": "playlist_shuffle",
+        "label": "Playlist aleatória",
+        "request": "",
+        "intent": "PLAYLIST_PLAY",
+    },
+    {
+        "id": "volume_set",
+        "label": "Ajustar volume",
+        "request": "",
+        "intent": "VOLUME",
+    },
+    {
         "id": "routine_cancel",
         "label": "Cancelar rotina",
         "request": "",

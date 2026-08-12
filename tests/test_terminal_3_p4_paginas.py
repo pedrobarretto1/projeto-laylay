@@ -12,6 +12,7 @@ from mente_laylay.integracao.desktop_bridge import (
     sanitizar_dashboard_estado,
     validar_mensagem_cliente,
 )
+from mente_laylay.memoria_mental.playlist_runtime import PlaylistRuntime
 
 
 class _Percentual:
@@ -175,6 +176,192 @@ def test_mesma_aba_atualiza_faixa_e_descarta_retrato_atrasado(monkeypatch) -> No
     assert estado["player"]["video_id"] == "abcdefghijk"
 
 
+def test_heartbeat_incompleto_nao_zera_tempo_capa_ou_duracao(monkeypatch) -> None:
+    instantes = iter((1_000.0, 1_005.0))
+    monkeypatch.setattr(
+        "mente_laylay.integracao.chrome_ws_handlers.time.time",
+        lambda: next(instantes),
+    )
+    estado: dict = {}
+    comum = {
+        "event": "player_state",
+        "title": "Faixa contínua",
+        "url": "https://www.youtube.com/watch?v=abcdefghijk",
+        "state": "playing",
+        "tabId": 8,
+        "source": "playing_youtube_tab",
+        "playingConfirmed": True,
+    }
+    handle_player_event(
+        {
+            **comum, "currentTime": 80, "duration": 200,
+            "observedAt": 50_000, "positionReliable": True,
+        },
+        playlist_state=estado, yt_clean_url=None,
+        playlist_avancar_proxima=None, falar_com_lipsync=None,
+    )
+    handle_player_event(
+        {**comum, "currentTime": 0, "duration": 0, "observedAt": 55_000},
+        playlist_state=estado, yt_clean_url=None,
+        playlist_avancar_proxima=None, falar_com_lipsync=None,
+    )
+
+    assert estado["player"]["video_id"] == "abcdefghijk"
+    assert estado["player"]["position_seconds"] == pytest.approx(85.0)
+    assert estado["player"]["duration_seconds"] == 200.0
+
+
+def test_dashboard_recupera_capa_pela_url_quando_id_nao_chega() -> None:
+    runtime = _runtime(musica_getter=lambda: {
+        "player": {
+            "title": "Faixa", "state": "paused",
+            "url": "https://youtu.be/abcdefghijk?t=10",
+            "position_seconds": 10, "duration_seconds": 200,
+            "observed_at": 999, "controls_available": True,
+        },
+    })
+
+    musica = runtime._musica(1_000.0)
+    assert musica["artwork_url"] == (
+        "https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg"
+    )
+
+
+def test_cpu_usa_amostra_limitada_e_nao_primeira_leitura_por_thread() -> None:
+    class PsutilCpuAmostrado(_Psutil):
+        intervalos: list[float | None] = []
+
+        @classmethod
+        def cpu_percent(cls, *, interval=None):
+            cls.intervalos.append(interval)
+            return 37.0 if interval == 0.1 else 0.0
+
+    runtime = _runtime(psutil_mod=PsutilCpuAmostrado)
+    sistema = runtime._sistema(1_000.0, {})
+
+    assert sistema["cpu_percent"]["value"] == 37.0
+    assert 0.1 in PsutilCpuAmostrado.intervalos
+
+
+def test_m2_evento_publica_fila_observada_e_sanitizada(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "mente_laylay.integracao.chrome_ws_handlers.time.time", lambda: 1_000.0,
+    )
+    estado: dict = {}
+    handle_player_event(
+        {
+            "event": "player_state", "title": "Atual",
+            "videoId": "abcdefghijk", "state": "playing", "tabId": 8,
+            "currentTime": 20, "duration": 200,
+            "positionReliable": True, "queueObserved": True,
+            "queue": [
+                {
+                    "title": " Próxima   faixa ", "channel": " Canal ",
+                    "videoId": "zyxwvutsrqp", "durationSeconds": 192,
+                    "url": "https://nao-deve-vazar.example",
+                },
+                {"title": "", "videoId": "invalido"},
+            ],
+        },
+        playlist_state=estado, yt_clean_url=None,
+        playlist_avancar_proxima=None, falar_com_lipsync=None,
+    )
+
+    assert estado["player"]["queue"] == [{
+        "title": "Próxima faixa", "channel": "Canal",
+        "video_id": "zyxwvutsrqp", "duration_seconds": 192.0,
+    }]
+    assert estado["player"]["queue_observed_at"] == 1_000.0
+
+
+def test_m2_dashboard_publica_catalogo_cacheado_e_fila_observada() -> None:
+    runtime = _runtime(
+        musica_getter=lambda: {
+            "player": {
+                "title": "Atual", "state": "playing", "video_id": "abcdefghijk",
+                "observed_at": 999, "controls_available": True,
+                "queue_observed_at": 999,
+                "queue": [{
+                    "title": "Próxima", "channel": "Canal",
+                    "video_id": "zyxwvutsrqp", "duration_seconds": 192,
+                }],
+            },
+        },
+        playlists_getter=lambda: [
+            {
+                "name": "Rock", "count": 3,
+                "artwork_video_id": "abcdefghijk",
+                "path": "C:\\privado\\playlists.json",
+            },
+            {
+                "name": "Rock e apaga Downloads", "count": 1,
+                "artwork_video_id": "zyxwvutsrqp",
+            },
+        ],
+        capacidade_getter=lambda intent: {
+            "disponivel": intent == "PLAYLIST_PLAY", "estado": "disponivel",
+        },
+    )
+
+    musica = runtime._musica(1_000.0)
+    assert musica["queue"][0]["title"] == "Próxima"
+    assert musica["queue_freshness"] == "fresh"
+    assert musica["catalog"] == [{
+        "name": "Rock", "count": 3,
+        "artwork_url": "https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg",
+    }]
+    assert musica["catalog_play_available"] is True
+    assert "path" not in str(musica)
+
+
+def test_m2_catalogo_publico_nao_rele_disco_nem_expoe_itens() -> None:
+    runtime = PlaylistRuntime(
+        state_file="nao_usado.json", legacy_file="nao_usado_legado.json",
+        cache={
+            "Rock": [{
+                "url": "https://www.youtube.com/watch?v=abcdefghijk",
+                "titulo": "Faixa privada", "canal": "Canal",
+            }],
+        },
+        ultima_playlist_getter=lambda: "",
+    )
+
+    assert runtime.catalogo_publico() == [{
+        "name": "Rock", "count": 1, "artwork_video_id": "abcdefghijk",
+    }]
+
+
+def test_m2_sanitizador_remove_campos_privados_da_fila_e_catalogo() -> None:
+    publico = sanitizar_dashboard_estado({
+        "status": "ok", "generated_at": 1_000, "sequence": 1,
+        "music": {
+            "state": "playing", "freshness": "fresh", "observed_at": 1_000,
+            "queue_freshness": "fresh", "queue_observed_at": 1_000,
+            "queue": [{
+                "title": "Próxima", "channel": "Canal", "duration_seconds": 90,
+                "artwork_url": "https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg",
+                "url": "https://segredo.example", "video_id": "abcdefghijk",
+            }],
+            "catalog_available": True, "catalog_play_available": True,
+            "catalog_observed_at": 1_000,
+            "catalog": [{
+                "name": "Rock", "count": 1,
+                "artwork_url": "https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg",
+                "items": ["não pode atravessar"],
+            }],
+        },
+    })
+
+    assert publico["music"]["queue"][0] == {
+        "title": "Próxima", "channel": "Canal", "duration_seconds": 90.0,
+        "artwork_url": "https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg",
+    }
+    assert publico["music"]["catalog"][0] == {
+        "name": "Rock", "count": 1,
+        "artwork_url": "https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg",
+    }
+
+
 def test_dashboard_projeta_player_e_so_rotina_recorrente_confirmada() -> None:
     runtime = _runtime(
         musica_getter=lambda: {
@@ -276,6 +463,15 @@ def test_protocolo_p4_aceita_so_acoes_de_painel_registradas() -> None:
         token="x", autenticado=True,
     )
     assert valido["kind"] == "panel_action"
+    playlist = validar_mensagem_cliente(
+        {
+            "type": "input_submit", "id": "playlist-1",
+            "text": "toca a playlist Rock",
+            "kind": "panel_action", "action": "playlist_play",
+        },
+        token="x", autenticado=True,
+    )
+    assert playlist["action"] == "playlist_play"
     with pytest.raises(ErroProtocoloDesktop, match="ação de painel inválida"):
         validar_mensagem_cliente(
             {
@@ -290,6 +486,12 @@ def test_protocolo_p4_aceita_so_acoes_de_painel_registradas() -> None:
         }]},
         acao_id="media_toggle",
     )["state"] == "partial"
+    assert classificar_resultado_acao(
+        {"comandos": [{
+            "intent": "PLAYLIST_PLAY", "executou": True, "confirmado": True,
+        }]},
+        acao_id="playlist_play",
+    )["state"] == "confirmed"
 
 
 def _criar_janela(monkeypatch):
@@ -365,6 +567,7 @@ def _dashboard_ui() -> dict:
 
 
 def test_ui_p4_exibe_estado_real_e_envia_controle_canonico(monkeypatch) -> None:
+    monkeypatch.setattr("cliente.terminal_2.musica_m1.time.time", lambda: 1_000)
     app, worker, janela = _criar_janela(monkeypatch)
     janela._atualizar_dashboard(_dashboard_ui())
     app.processEvents()
@@ -386,6 +589,7 @@ def test_ui_p4_exibe_estado_real_e_envia_controle_canonico(monkeypatch) -> None:
         "type": "input_submit", "id": enviado["id"],
         "text": "pausa a música", "kind": "panel_action",
         "action": "media_toggle",
+        "payload": {"command": "pause"},
     }
     # O clique não inventa uma pausa antes do novo snapshot observado.
     assert janela.pagina_musica._estado_observado == "playing"

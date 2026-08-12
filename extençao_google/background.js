@@ -66,12 +66,30 @@ function sendToTab(tabId, message) {
   });
 }
 
+function youtubeVideoId(rawUrl) {
+  try {
+    const parsed = new URL(String(rawUrl || ""));
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    const candidate = host === "youtu.be"
+      ? parts[0]
+      : parsed.searchParams.get("v") ||
+        (["shorts", "embed", "live"].includes(parts[0]) ? parts[1] : "");
+    return /^[A-Za-z0-9_-]{11}$/.test(String(candidate || ""))
+      ? String(candidate) : "";
+  } catch (_) {
+    return "";
+  }
+}
+
 // Estas funções são executadas dentro da aba pelo service worker. Elas não
 // dependem do content_script, portanto também enxergam abas que já estavam
 // abertas quando a extensão foi instalada ou recarregada.
 function inspectYouTubePlayerInPage() {
   try {
-    const video = document.querySelector("video");
+    const videos = Array.from(document.querySelectorAll("video"));
+    const video = document.querySelector("video.html5-main-video") ||
+      videos.find((item) => !item.paused && !item.ended) || videos[0] || null;
     const playing = !!video && !video.paused && !video.ended;
     const muted = !!video?.muted;
     const volume = Number(video?.volume ?? 0);
@@ -84,19 +102,69 @@ function inspectYouTubePlayerInPage() {
     let videoId = "";
     try {
       const parsed = new URL(location.href);
-      videoId = String(parsed.searchParams.get("v") || parsed.pathname || "").slice(0, 80);
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      videoId = String(
+        parsed.searchParams.get("v") ||
+        (["shorts", "embed", "live"].includes(parts[0]) ? parts[1] : "") ||
+        ""
+      ).slice(0, 80);
     } catch (_) {}
+    const queueRoot = document.querySelector(
+      "ytd-playlist-panel-renderer, ytmusic-player-queue, #playlist-items",
+    );
+    const queueRows = queueRoot ? Array.from(queueRoot.querySelectorAll(
+      "ytd-playlist-panel-video-renderer, ytmusic-player-queue-item",
+    )) : [];
+    const queueSelected = queueRows.findIndex((row) => (
+      row.hasAttribute("selected") || row.getAttribute("aria-selected") === "true" ||
+      row.classList.contains("selected")
+    ));
+    const queueStart = queueSelected >= 0 ? queueSelected + 1 : 0;
+    const queue = queueRows.slice(queueStart, queueStart + 8).map((row) => {
+      const anchor = row.querySelector("a#wc-endpoint, a[href*='/watch'], a[href*='/shorts/']");
+      const titleNode = row.querySelector("#video-title, .song-title, yt-formatted-string.title");
+      const channelItem = row.querySelector("#byline, .byline, .subtitle, #channel-name");
+      const durationNode = row.querySelector("#text, .badge-shape-wiz__text, .duration");
+      const href = String(anchor?.href || anchor?.getAttribute("href") || "");
+      let itemVideoId = "";
+      try {
+        const parsedItem = new URL(href, location.href);
+        const itemParts = parsedItem.pathname.split("/").filter(Boolean);
+        itemVideoId = String(
+          parsedItem.searchParams.get("v") ||
+          (["shorts", "embed", "live"].includes(itemParts[0]) ? itemParts[1] : "") || ""
+        );
+      } catch (_) {}
+      const durationText = String(durationNode?.textContent || "").replace(/\s+/g, " ").trim();
+      const durationParts = durationText.split(":").map((part) => Number(part));
+      const durationSeconds = durationParts.every(Number.isFinite)
+        ? durationParts.reduce((total, value) => total * 60 + value, 0) : 0;
+      return {
+        title: String(titleNode?.textContent || anchor?.textContent || "").replace(/\s+/g, " ").trim(),
+        channel: String(channelItem?.textContent || "").replace(/\s+/g, " ").trim(),
+        videoId: itemVideoId,
+        durationSeconds,
+      };
+    }).filter((item) => item.title);
     return {
       ok: !!video,
       playing,
       audible: playing && !muted && volume > 0 && readyState >= 2,
       paused: !!video?.paused,
+      muted,
+      repeatEnabled: !!video?.loop,
+      volumePercent: Number.isFinite(volume)
+        ? Math.max(0, Math.min(100, Math.round(volume * 100))) : null,
       title: rawTitle.replace(/ - YouTube$/i, "").trim(),
       channel: String(channelNode?.textContent || "").replace(/\s+/g, " ").trim(),
       url: String(location.href || ""),
       videoId,
       currentTime: Number.isFinite(video?.currentTime) ? Number(video.currentTime) : 0,
       duration: Number.isFinite(video?.duration) ? Number(video.duration) : 0,
+      observedAt: Date.now(),
+      positionReliable: !!video && Number.isFinite(video.currentTime),
+      queueObserved: !!queueRoot,
+      queue,
     };
   } catch (_) {
     return { ok: false, playing: false, audible: false };
@@ -212,19 +280,30 @@ async function discoverExistingYouTubePlayback() {
       ),
       authoritative: true,
       url: String(dados.url || probe.url || tab.url || ""),
-      videoId: String(probe.videoId || ""),
+      videoId: String(
+        probe.videoId || dados.videoId ||
+        youtubeVideoId(dados.url || probe.url || tab.url || "") || ""
+      ),
       title: String(dados.title || probe.title || tab.title || "")
         .replace(/ - YouTube$/i, "").trim(),
       channel: String(dados.canal || probe.channel || ""),
       state: probe.playing === true ? "playing" : "paused",
       paused: probe.paused === true,
+      muted: probe.muted === true || tab.mutedInfo?.muted === true,
+      repeatEnabled: probe.repeatEnabled === true,
+      volumePercent: Number.isFinite(Number(probe.volumePercent))
+        ? Math.max(0, Math.min(100, Math.round(Number(probe.volumePercent))))
+        : null,
       currentTime: Number(probe.currentTime || 0),
       duration: Number(probe.duration || 0),
+      positionReliable: probe.positionReliable === true,
+      queueObserved: probe.queueObserved === true,
+      queue: Array.isArray(probe.queue) ? probe.queue.slice(0, 8) : [],
       tabId: tab.id ?? null,
       tabActive: tab.active === true,
       audibleConfirmed: probe.audible === true || tab.audible === true,
       playingConfirmed: probe.playing === true,
-      observedAt: Date.now(),
+      observedAt: Number(probe.observedAt || Date.now()),
     });
   } finally {
     playerDiscoveryRunning = false;
@@ -1066,6 +1145,7 @@ function connectWebSocket() {
       capabilities: [
         "page_snapshot", "command_result", "element_id",
         "stale_context_guard", "canonical_player_sync_v2",
+        "queue_item_select_v1",
       ],
       message: "Extension connected",
     });

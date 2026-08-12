@@ -7,6 +7,7 @@ para continuar funcionando como parte da mesma mente.
 from __future__ import annotations
 
 import ctypes
+import re
 import time
 from typing import Any, Callable, Dict
 
@@ -87,6 +88,18 @@ def executar_media_control(
     acao = str(params.get("acao") or params.get("command") or "").strip().lower()
     platform = str(params.get("platform") or params.get("site") or "").strip().lower()
     nivel_bruto = params.get("nivel_volume")
+    queue_item_id = str(params.get("queue_item_id") or "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_-]{11}", queue_item_id):
+        queue_item_id = ""
+    queue_index = params.get("queue_index")
+    if isinstance(queue_index, bool):
+        queue_index = None
+    try:
+        queue_index = int(queue_index) if queue_index is not None else None
+    except (TypeError, ValueError):
+        queue_index = None
+    if queue_index is not None and not 0 <= queue_index <= 7:
+        queue_index = None
     musica_operacoes = _get(ctx, "_registro_musica_operacoes_runtime")
     estado_reproducao = (
         musica_operacoes.estado() if musica_operacoes is not None else {}
@@ -136,9 +149,25 @@ def executar_media_control(
                 retorno = controlar_detalhado(
                     cmd_exec,
                     tab_id=tab_id if isinstance(tab_id, int) else None,
+                    queue_item_id=(
+                        queue_item_id if cmd_exec == "queue_select" else ""
+                    ),
+                    queue_index=(
+                        queue_index if cmd_exec == "queue_select" else None
+                    ),
                 )
             except TypeError:
-                retorno = controlar_detalhado(cmd_exec)
+                if cmd_exec == "queue_select":
+                    confirmado_execucao = False
+                    detalhe_execucao = "queue_select_unsupported"
+                    return False
+                try:
+                    retorno = controlar_detalhado(
+                        cmd_exec,
+                        tab_id=tab_id if isinstance(tab_id, int) else None,
+                    )
+                except TypeError:
+                    retorno = controlar_detalhado(cmd_exec)
             dados = dict(retorno) if isinstance(retorno, dict) else {}
             ok = bool(dados.get("ok"))
             confirmado = dados.get("confirmado")
@@ -163,6 +192,11 @@ def executar_media_control(
     def _executar_cmd_midia(cmd_exec: str) -> bool:
         nonlocal confirmado_execucao
         _log_midia("ENVIO", f"cmd={cmd_exec} destino={destino_val or 'local'} playlist={playlist_ativa}")
+        if cmd_exec == "queue_select":
+            if not queue_item_id or queue_index is None:
+                confirmado_execucao = False
+                return False
+            return _controlar_chrome_com_evidencia(cmd_exec)
         if destino_val == "pc_b" and callable(_enviar_pc_b):
             _enviar_pc_b({"action": "youtube_control", "command": cmd_exec})
             confirmado_execucao = None
@@ -216,8 +250,12 @@ def executar_media_control(
         cmd = "prev"
     elif acao in {"replay", "voltar", "reiniciar"}:
         cmd = "replay"
+    elif acao in {"repeat_toggle", "repetir", "repeticao", "repetição", "loop"}:
+        cmd = "repeat_toggle"
     elif acao in {"skip_ad", "pular_anuncio", "pular_anúncio"}:
         cmd = "skip_ad"
+    elif acao in {"queue_select", "selecionar_fila"}:
+        cmd = "queue_select"
 
     if nivel_bruto not in (None, ""):
         try:
@@ -294,7 +332,11 @@ def executar_media_control(
         if cmd in {"pause", "play", "pause_play"}:
             chave_midia = "play" if cmd == "play" else ("pause" if cmd == "pause" else "pause")
         else:
-            chave_midia = "prev" if cmd == "prev" else ("replay" if cmd == "replay" else cmd)
+            chave_midia = (
+                "prev" if cmd == "prev"
+                else "replay" if cmd in {"replay", "repeat_toggle"}
+                else cmd
+            )
         if ok_execucao:
             if confirmado_execucao is True:
                 fala_midia = _fala_de_confirmacao_variada(
@@ -308,6 +350,10 @@ def executar_media_control(
                     "next": ["Mandei passar pra próxima.", "Pedi a próxima faixa.", "Comando de próxima faixa enviado."],
                     "prev": ["Mandei voltar pra anterior.", "Pedi a faixa anterior.", "Comando de faixa anterior enviado."],
                     "replay": ["Mandei recomeçar essa faixa.", "Pedi pra tocar essa desde o começo."],
+                    "repeat_toggle": [
+                        "Mandei alternar a repetição dessa faixa.",
+                        "Pedi para mudar o modo de repetição.",
+                    ],
                     "pause": ["Mandei pausar.", "Pedi uma pausa na música."],
                     "play": ["Mandei retomar.", "Pedi pra música continuar."],
                     "pause_play": ["Mandei alternar a reprodução.", "Enviei o comando de tocar ou pausar."],

@@ -81,7 +81,9 @@ def test_consulta_do_nome_responde_do_estado_sem_chamar_llm_ou_inventar() -> Non
     )
 
     assert despacho == ResultadoDespacho.concluido(True)
-    assert falas == ["Seu nome é Pedro."]
+    assert len(falas) == 1
+    assert "Pedro" in falas[0]
+    assert "não sei" not in falas[0].casefold()
     assert eventos == [(
         "resultado",
         "aprendizados_consultados",
@@ -191,7 +193,66 @@ def test_consulta_humaniza_registro_antigo_de_afinidade() -> None:
     )
 
     assert despacho == ResultadoDespacho.concluido(True)
-    assert falas == ["Do que lembro com segurança, você gosta de Nirvana."]
+    assert len(falas) == 1
+    assert "você gosta de nirvana" in falas[0].casefold()
+    assert "Do que lembro com segurança" not in falas[0]
+
+
+def test_consulta_de_varios_gostos_soa_natural_sem_perder_fatos() -> None:
+    falas: list[str] = []
+    registros = [
+        {
+            "texto": texto,
+            "natureza": "confirmado",
+            "confirmado_usuario": True,
+        }
+        for texto in (
+            "você gosta de rock",
+            "você gosta de programação",
+            "você gosta de metal",
+            "você não gosta de sertanejo",
+            "você gosta de Nirvana",
+        )
+    ]
+
+    despacho = executar_intencao_informacoes(
+        "LEARNING_QUERY", {"limit": 5}, "o que você lembra de mim?",
+        {
+            "_recuperar_aprendizados": lambda **_kwargs: registros,
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+        },
+        _dependencias([]),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(True)
+    assert len(falas) == 1
+    for fato in ("rock", "programação", "metal", "sertanejo", "Nirvana"):
+        assert fato in falas[0]
+    assert "não gosta de sertanejo" in falas[0]
+    assert falas[0].count("você gosta de") <= 1
+    assert "Do que lembro com segurança" not in falas[0]
+
+
+def test_consulta_de_local_tem_personalidade_e_varia_sem_mudar_o_fato() -> None:
+    falas: list[str] = []
+    ctx = {
+        "_recuperar_aprendizados": lambda **_kwargs: [{
+            "texto": "você mora em Boituva",
+            "natureza": "confirmado",
+            "confirmado_usuario": True,
+        }],
+        "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+    }
+    for _ in range(2):
+        executar_intencao_informacoes(
+            "LEARNING_QUERY", {"limit": 1, "query": "mora local"},
+            "onde eu moro?", ctx, _dependencias([]),
+        )
+
+    assert len(falas) == 2
+    assert all("Boituva" in fala for fala in falas)
+    assert falas[0] != falas[1]
+    assert all("Do que lembro com segurança" not in fala for fala in falas)
 
 
 def test_email_read_filtra_prioridade_e_remetente_sem_emitir_proatividade() -> None:

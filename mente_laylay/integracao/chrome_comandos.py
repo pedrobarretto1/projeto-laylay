@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import urllib.parse
 import webbrowser
 from typing import Any, Callable, Dict
@@ -239,6 +240,22 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
                 if payload.get("target_tab_id") is not None else {}
             ),
         }
+        if command == "queue_select":
+            item_id = str(payload.get("queue_item_id") or "").strip()
+            indice = payload.get("queue_index")
+            if (
+                not re.fullmatch(r"[A-Za-z0-9_-]{11}", item_id)
+                or isinstance(indice, bool)
+            ):
+                print("❌ [Chrome] item da fila inválido")
+                return False
+            try:
+                indice = int(indice)
+            except (TypeError, ValueError):
+                return False
+            if not 0 <= indice <= 7:
+                return False
+            msg.update(queue_item_id=item_id, queue_index=indice)
         if callable(executar_confirmado):
             # O play pode exigir uma segunda tentativa observável depois do
             # bloqueio de autoplay. A pausa tem um caminho curto próprio na
@@ -247,7 +264,7 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
             timeout_controle = (
                 12.0
                 if command in {"play", "pause_play"}
-                else (5.0 if command == "pause" else 3.0)
+                else (5.0 if command in {"pause", "queue_select"} else 3.0)
             )
             sucesso = bool(executar_confirmado(msg, timeout_s=timeout_controle))
         else:

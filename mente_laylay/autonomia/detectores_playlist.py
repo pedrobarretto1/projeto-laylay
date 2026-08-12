@@ -408,12 +408,37 @@ def detectar_playlist_usuario(
         pl = extrair_nome(bruto)
         return {"intent": "PLAYLIST_ADD", "params": params(nome_playlist=pl)}
 
-    quer_tocar = re.search(r"\b(toca|toque|coloca|coloque|abre|abra|ouvir|escuta|escute)\b", t)
+    quer_tocar = re.search(
+        r"\b(toca|toque|coloca|coloque|abre|abra|ouvir|escuta|escute|"
+        r"embaralha|embaralhe|mistura|misture)\b",
+        t,
+    )
     if quer_tocar:
         m = re.search(r"playlist\s+(.+)$", t)
-        pl = limpar_nome(m.group(1) if m else "")
+        nome_bruto = m.group(1) if m else ""
+        modo_aleatorio = bool(re.search(
+            r"\b(?:aleatorio|aleatório|aleatoria|aleatória|shuffle|"
+            r"embaralha(?:da|do)?|mistura(?:da|do)?)\b",
+            t,
+        ))
+        if modo_aleatorio:
+            nome_bruto = re.sub(
+                r"\s+(?:(?:em\s+)?modo\s+|de\s+forma\s+)?"
+                r"(?:aleatorio|aleatório|aleatoria|aleatória|shuffle|"
+                r"embaralha(?:da|do)?|mistura(?:da|do)?)\s*$",
+                "",
+                nome_bruto,
+                flags=re.IGNORECASE,
+            )
+        pl = limpar_nome(nome_bruto)
         if pl:
-            return {"intent": "PLAYLIST_PLAY", "params": params(nome_playlist=pl)}
+            return {
+                "intent": "PLAYLIST_PLAY",
+                "params": params(
+                    nome_playlist=pl,
+                    **({"modo": "shuffle"} if modo_aleatorio else {}),
+                ),
+            }
 
     return None
 

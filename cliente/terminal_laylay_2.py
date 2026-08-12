@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import os
+import re
 from pathlib import Path
 import sys
 import time
@@ -1036,6 +1037,9 @@ class JanelaLaylay(QMainWindow):
         self.pagina_automacao.acao_solicitada.connect(self.enviar_acao_painel)
         self.pagina_musica = PaginaMusica()
         self.pagina_musica.acao_solicitada.connect(self.enviar_acao_painel)
+        self.pagina_musica.acao_fila_solicitada.connect(
+            self.enviar_acao_painel_com_dados,
+        )
         self.pagina_memoria = PaginaMemoria()
         self.pagina_sistema = PaginaSistema()
         self.paginas.addWidget(self.pagina_automacao)
@@ -1173,6 +1177,73 @@ class JanelaLaylay(QMainWindow):
             #contextValue {{ color: {PALETA['secundario']}; font-size: 10px; font-weight: 650; }}
             #musicTitle {{ font-size: 13px; font-weight: 700; }}
             #musicControlsPlaceholder {{ color: #5F646B; font-size: 15px; padding: 5px; }}
+            #musicPage, #musicScroll, #musicScroll > QWidget > QWidget,
+            #musicPageBody {{ background: #0D1115; }}
+            #musicPageTitle {{ color: #F8F4F6; font-size: 29px; font-weight: 700; }}
+            #musicPageDescription {{ color: {PALETA['secundario']}; font-size: 15px; }}
+            #musicHeaderButton, #musicMoreButton {{ background: #15191E; border: 1px solid #2D333A; border-radius: 10px; padding: 10px 15px; color: {PALETA['secundario']}; font-size: 12px; }}
+            #musicHeaderButton:hover {{ background: #211A1F; border-color: #713541; color: {PALETA['texto']}; }}
+            #musicHero, #musicModule, #musicQueue, #musicLyrics {{ background: #14191E; border: 1px solid #293039; border-radius: 14px; }}
+            #musicHero {{ min-height: 306px; }}
+            #musicPageTitle, #musicHeroTitle, #musicModuleTitle {{ font-family: 'Segoe UI Variable', 'Segoe UI'; }}
+            #musicHeroTitle {{ color: #F8F4F6; font-size: 27px; font-weight: 700; }}
+            #musicHeroSubtitle {{ color: {PALETA['secundario']}; font-size: 15px; }}
+            #musicNowBadge {{ color: {PALETA['rosa']}; background: #29191E; border: 1px solid #54303A; border-radius: 7px; padding: 5px 9px; font-size: 10px; font-weight: 700; }}
+            #musicVolumeReadout {{ color: {PALETA['apagado']}; font-size: 10px; font-weight: 700; }}
+            #musicVolumeSlider {{ min-width: 22px; max-width: 22px; }}
+            #musicVolumeSlider::groove:vertical {{ background: #2A3037; width: 5px; border-radius: 2px; }}
+            #musicVolumeSlider::sub-page:vertical {{ background: #2A3037; border-radius: 2px; }}
+            #musicVolumeSlider::add-page:vertical {{ background: {PALETA['rosa']}; border-radius: 2px; }}
+            #musicVolumeSlider::handle:vertical {{ background: #F5F1F3; border: 1px solid #C84A5F; height: 15px; margin: 0 -5px; border-radius: 7px; }}
+            #musicVolumeSlider:disabled {{ opacity: 0.45; }}
+            #musicAudioOutput {{ color: #F2EEF0; font-size: 12px; font-weight: 650; padding: 8px; background: #1A1F25; border: 1px solid #2D343B; border-radius: 8px; }}
+            #musicWaveform {{ background: transparent; }}
+            #musicHeroProgress {{ background: #232930; border: 0; border-radius: 2px; min-height: 4px; max-height: 4px; }}
+            #musicHeroProgress::chunk {{ background: {PALETA['rosa']}; border-radius: 2px; }}
+            #musicTime {{ color: {PALETA['apagado']}; font-size: 12px; }}
+            #musicTransportControl {{ background: transparent; border: 0; border-radius: 23px; min-width: 46px; min-height: 46px; }}
+            #musicTransportControl:hover {{ background: #281C22; }}
+            #musicTransportControl[activeControl="true"] {{ background: #321C24; color: {PALETA['rosa']}; border: 1px solid #8D3C4C; }}
+            #musicPrimaryControl {{ background: #B9384D; border: 1px solid #F05B72; border-radius: 29px; min-width: 58px; min-height: 58px; }}
+            #musicPrimaryControl:hover {{ background: #D9455D; }}
+            #musicPrimaryControl:disabled, #musicTransportControl:disabled {{ background: #1B2025; border-color: #30363D; }}
+            #musicObservedState {{ color: {PALETA['apagado']}; font-size: 11px; }}
+            #musicModuleTitle {{ color: #F3F0F2; font-size: 16px; font-weight: 700; }}
+            #musicModuleHint {{ color: {PALETA['apagado']}; font-size: 10px; }}
+            #musicSideRail {{ background: transparent; min-width: 265px; max-width: 315px; }}
+            #musicSideLabel {{ color: {PALETA['secundario']}; font-size: 12px; }}
+            #musicSideValue {{ color: #F4F1F3; font-size: 12px; font-weight: 700; }}
+            #musicFutureState {{ color: #9298A1; font-size: 12px; line-height: 1.4; }}
+            #musicQueuePlaceholder {{ background: #191E24; border: 1px solid #272E35; border-radius: 9px; }}
+            #musicQueueNumber {{ color: {PALETA['apagado']}; font-size: 11px; min-width: 16px; }}
+            #musicQueueText {{ color: #E3DEE1; font-size: 12px; font-weight: 600; }}
+            #musicFutureButton {{ background: #191E23; border: 1px solid #303740; border-radius: 9px; padding: 10px 12px; color: #9298A1; text-align: left; font-size: 11px; }}
+            #musicFutureButton:hover {{ background: #241D22; border-color: #75404B; color: #E7E1E4; }}
+            #musicSessionAction {{ background: #151A1F; border: 1px solid #343A42; border-radius: 21px; min-height: 42px; padding: 0 16px; color: {PALETA['secundario']}; font-size: 12px; }}
+            #musicSessionAction:hover {{ background: #241B20; border-color: #773845; color: {PALETA['texto']}; }}
+            #musicSessionAction:disabled {{ color: #5F646B; border-color: #292F35; }}
+            #musicPreset {{ background: #1B2026; border: 1px solid #303741; border-radius: 10px; padding: 12px; text-align: left; color: #D5D0D3; min-height: 58px; font-size: 12px; }}
+            #musicPreset:hover {{ background: #272027; border-color: #78404C; color: {PALETA['texto']}; }}
+            #musicPreset[activePlaylist="true"] {{ background: #2B1C22; border-color: #A94B5D; color: {PALETA['rosa']}; }}
+            #musicPreset[presetTone="0"] {{ border-left: 4px solid #D85258; }}
+            #musicPreset[presetTone="1"] {{ border-left: 4px solid #7657C7; }}
+            #musicPreset[presetTone="2"] {{ border-left: 4px solid #2D9C6A; }}
+            #musicPreset[presetTone="3"] {{ border-left: 4px solid #466FC5; }}
+            #musicPreset[presetTone="4"] {{ border-left: 4px solid #B05C9C; }}
+            #musicPreset[presetTone="5"] {{ border-left: 4px solid #C58A3A; }}
+            #musicQueueDetail, #musicQueueDuration, #musicCatalogState {{ color: #89919B; font-size: 10px; }}
+            #musicQueueItem {{ background: #171C21; border: 1px solid #2C333B; border-radius: 9px; text-align: left; padding: 0; }}
+            #musicQueueItem:hover {{ background: #211B20; border-color: #6A3742; }}
+            #musicQueueItem:focus {{ border-color: #C84A5F; }}
+            #musicQueueItem:disabled {{ background: #151A1F; border-color: #252C33; }}
+            #musicSuggestion {{ background: #251A20; border: 1px solid #58303A; border-radius: 10px; padding: 13px; color: #E28D9C; font-size: 12px; }}
+            #musicContextBasis {{ color: #A5ABB3; background: #171D22; border: 1px solid #303740; border-radius: 9px; padding: 8px 10px; font-size: 10px; }}
+            #musicLyrics {{ border-color: #332930; }}
+            #musicLyricsText {{ background: #11161B; border-top: 1px solid #34272E; border-bottom: 1px solid #34272E; padding: 18px; color: #C9C5C8; }}
+            #musicLyricsSource {{ color: #838B95; font-size: 10px; }}
+            #musicSystemBar {{ background: #252B32; border: 0; border-radius: 3px; min-height: 6px; max-height: 6px; }}
+            #musicSystemBar::chunk {{ background: #C64257; border-radius: 3px; }}
+            #musicSystemBar[available="false"]::chunk {{ background: #343A41; }}
             #railMusicControl {{ background: transparent; border: 0; border-radius: 18px; min-width: 36px; min-height: 36px; color: {PALETA['texto']}; font-size: 16px; }}
             #railMusicControl:hover {{ background: #2B2025; color: {PALETA['rosa']}; }}
             QPushButton[dashboardAction="true"] {{ background: #1A1F25; border: 1px solid #30363E; border-radius: 9px; padding: 10px 8px; text-align: left; color: {PALETA['secundario']}; font-size: 10px; }}
@@ -1343,6 +1414,14 @@ class JanelaLaylay(QMainWindow):
     def enviar_acao_painel(self, acao_id: str, texto: str) -> None:
         self._enviar_pedido(texto, tipo="panel_action", acao_id=acao_id)
 
+    def enviar_acao_painel_com_dados(
+        self, acao_id: str, texto: str, payload: dict,
+    ) -> None:
+        self._enviar_pedido(
+            texto, tipo="panel_action", acao_id=acao_id,
+            payload_acao=dict(payload or {}),
+        )
+
     def _definir_estado_acao_ui(
         self, acao_id: str, estado: str, resumo: str = "",
     ) -> None:
@@ -1357,24 +1436,32 @@ class JanelaLaylay(QMainWindow):
         *,
         tipo: str,
         acao_id: str,
+        payload_acao: dict | None = None,
     ) -> None:
-        # Um novo pedido reposiciona a única presença efêmera sempre depois da
-        # mensagem mais recente, sem acumular indicadores no feed.
-        self._remover_indicador_pensando()
         mensagem_id = uuid.uuid4().hex
-        mensagem = self.adicionar_mensagem(
-            "user", texto, timestamp=time.time(), mensagem_id=mensagem_id,
-            status="pending",
-        )
-        if mensagem is not None:
-            self._envios[mensagem_id] = mensagem
-        self._mostrar_indicador_pensando()
+        acao_direta = tipo == "panel_action"
+        if not acao_direta:
+            # Um novo pedido reposiciona a única presença efêmera sempre depois
+            # da mensagem mais recente, sem acumular indicadores no feed.
+            self._remover_indicador_pensando()
+            mensagem = self.adicionar_mensagem(
+                "user", texto, timestamp=time.time(), mensagem_id=mensagem_id,
+                status="pending",
+            )
+            if mensagem is not None:
+                self._envios[mensagem_id] = mensagem
+            self._mostrar_indicador_pensando()
         payload = {
             "type": "input_submit", "id": mensagem_id, "text": texto,
             "kind": tipo,
         }
         if tipo in {"quick_action", "panel_action"}:
             payload["action"] = str(acao_id or "")
+            if tipo == "panel_action":
+                payload["payload"] = (
+                    dict(payload_acao) if payload_acao is not None
+                    else self._payload_acao_painel(acao_id, texto)
+                )
             self._acoes_por_envio[mensagem_id] = str(acao_id or "")
             self._definir_estado_acao_ui(
                 acao_id, "sending", "Enviando para a mente canônica",
@@ -1386,12 +1473,29 @@ class JanelaLaylay(QMainWindow):
                 "A ponte ainda não estava pronta para receber a mensagem.",
             )
             return
-        self._armar_timeout_envio(mensagem_id, fase="ack", intervalo_ms=3_500)
+        if not acao_direta:
+            self._armar_timeout_envio(mensagem_id, fase="ack", intervalo_ms=3_500)
         self.adicionar_evento(
             "Mensagem enviada à ponte",
             "Aguardando a confirmação de recebimento da mente.",
             "info",
         )
+
+    @staticmethod
+    def _payload_acao_painel(acao_id: str, texto: str) -> dict:
+        acao = str(acao_id or "")
+        if acao == "media_toggle":
+            return {"command": "pause" if str(texto).casefold().startswith("pausa") else "play"}
+        if acao in {"playlist_play", "playlist_shuffle"}:
+            nome = re.sub(
+                r"(?i)^toca\s+a\s+playlist\s+|\s+em\s+modo\s+aleat[oó]rio$",
+                "", str(texto or "").strip(),
+            ).strip()
+            return {"playlist": nome}
+        if acao == "volume_set":
+            encontrado = re.search(r"\b(\d{1,3})\b", str(texto or ""))
+            return {"level": int(encontrado.group(1)) if encontrado else -1}
+        return {}
 
     def _armar_timeout_envio(
         self, mensagem_id: str, *, fase: str, intervalo_ms: int,
@@ -1594,6 +1698,11 @@ class JanelaLaylay(QMainWindow):
                 "awaiting_confirmation", "confirmed", "partial", "failed",
             }:
                 self._acoes_por_envio.pop(mensagem_id, None)
+                if msg.get("direct") is True:
+                    self._encerrar_timeout_envio(mensagem_id)
+                    self._envios.pop(mensagem_id, None)
+                    if not self._envios:
+                        self._remover_indicador_pensando()
                 niveis = {
                     "confirmed": "success", "partial": "warning",
                     "failed": "error", "awaiting_confirmation": "info",

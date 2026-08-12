@@ -894,7 +894,98 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         else if (request.action === "youtube_control") {
             const video = document.querySelector('video');
             const cmd = String(payload.command || request.command || "").toLowerCase();
-            if (cmd === "skip_ad") {
+            if (cmd === "queue_select") {
+                const requestedId = String(
+                    payload.queue_item_id || request.queue_item_id || ""
+                ).trim();
+                const requestedIndex = Number(
+                    payload.queue_index ?? request.queue_index
+                );
+                const queueRoot = document.querySelector(
+                    "ytd-playlist-panel-renderer, ytmusic-player-queue, #playlist-items"
+                );
+                const rows = queueRoot ? Array.from(queueRoot.querySelectorAll(
+                    "ytd-playlist-panel-video-renderer, ytmusic-player-queue-item"
+                )) : [];
+                const selected = rows.findIndex((row) => (
+                    row.hasAttribute("selected") ||
+                    row.getAttribute("aria-selected") === "true" ||
+                    row.classList.contains("selected")
+                ));
+                const upcoming = rows.slice(selected >= 0 ? selected + 1 : 0);
+                const row = Number.isInteger(requestedIndex)
+                    ? upcoming[requestedIndex] : null;
+                const anchor = row?.querySelector(
+                    "a#wc-endpoint, a[href*='/watch'], a[href*='/shorts/']"
+                );
+                let observedId = "";
+                try {
+                    const parsed = new URL(
+                        String(anchor?.href || anchor?.getAttribute("href") || ""),
+                        location.href,
+                    );
+                    const parts = parsed.pathname.split("/").filter(Boolean);
+                    observedId = String(
+                        parsed.searchParams.get("v") ||
+                        (["shorts", "embed", "live"].includes(parts[0])
+                            ? parts[1] : "") || ""
+                    );
+                } catch (_) {}
+                if (
+                    !/^[A-Za-z0-9_-]{11}$/.test(requestedId) || !row ||
+                    !anchor || observedId !== requestedId
+                ) {
+                    if (sendResponse) sendResponse({
+                        status: "stale_context",
+                        message: "A fila mudou antes da seleção da faixa",
+                        evidence: {
+                            queueIndex: Number.isInteger(requestedIndex)
+                                ? requestedIndex : null,
+                            requestedId,
+                            observedId,
+                        },
+                    });
+                } else {
+                    const beforeId = (() => {
+                        try {
+                            return String(new URL(location.href).searchParams.get("v") || "");
+                        } catch (_) { return ""; }
+                    })();
+                    anchor.click();
+                    const startedAt = Date.now();
+                    const verifySelection = () => {
+                        let currentId = "";
+                        try {
+                            currentId = String(
+                                new URL(location.href).searchParams.get("v") || ""
+                            );
+                        } catch (_) {}
+                        const selectedNow = Boolean(
+                            row.isConnected && (
+                                row.hasAttribute("selected") ||
+                                row.getAttribute("aria-selected") === "true" ||
+                                row.classList.contains("selected")
+                            )
+                        );
+                        const confirmed = currentId === requestedId || selectedNow;
+                        if (confirmed || Date.now() - startedAt >= 3500) {
+                            if (sendResponse) sendResponse({
+                                status: confirmed ? "success" : "state_not_changed",
+                                message: confirmed ? "" : "O player não confirmou a faixa escolhida",
+                                evidence: {
+                                    beforeId, currentId, requestedId,
+                                    queueIndex: requestedIndex,
+                                    changed: confirmed,
+                                },
+                            });
+                            return;
+                        }
+                        setTimeout(verifySelection, 120);
+                    };
+                    setTimeout(verifySelection, 120);
+                }
+            }
+            else if (cmd === "skip_ad") {
                 // Executado somente após um pedido explícito recebido do Python.
                 // Não há observador nem clique automático em anúncios futuros.
                 _skipYouTubeAd().then((result) => {
@@ -1124,6 +1215,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     });
                 }, 350);
             }
+            else if (cmd === "repeat_toggle") {
+                const videoNow = video || document.querySelector('video');
+                if (!videoNow) {
+                    if (sendResponse) sendResponse({
+                        status: "player_unavailable",
+                        message: "Nenhum player foi encontrado para alterar a repetição",
+                        evidence: { repeatEnabled: false },
+                    });
+                } else {
+                    videoNow.loop = !videoNow.loop;
+                    if (sendResponse) sendResponse({
+                        status: "success",
+                        evidence: { repeatEnabled: !!videoNow.loop },
+                    });
+                    try { _emitLaylayPlayerState(videoNow, true); } catch (_) {}
+                }
+            }
         }
     } catch (error) {
         console.error("❌ Erro na automação:", error);
@@ -1298,26 +1406,96 @@ try {
   }
 } catch (_) {}
 
+function _laylayYoutubeQueueSnapshot() {
+  try {
+    const root = document.querySelector(
+      "ytd-playlist-panel-renderer, ytmusic-player-queue, #playlist-items",
+    );
+    if (!root) return { observed: false, items: [] };
+    const rows = Array.from(root.querySelectorAll(
+      "ytd-playlist-panel-video-renderer, ytmusic-player-queue-item",
+    ));
+    const selected = rows.findIndex((row) => (
+      row.hasAttribute("selected") || row.getAttribute("aria-selected") === "true" ||
+      row.classList.contains("selected")
+    ));
+    const start = selected >= 0 ? selected + 1 : 0;
+    const items = rows.slice(start, start + 8).map((row) => {
+      const anchor = row.querySelector("a#wc-endpoint, a[href*='/watch'], a[href*='/shorts/']");
+      const titleNode = row.querySelector("#video-title, .song-title, yt-formatted-string.title");
+      const channelNode = row.querySelector("#byline, .byline, .subtitle, #channel-name");
+      const durationNode = row.querySelector("#text, .badge-shape-wiz__text, .duration");
+      const href = String(anchor?.href || anchor?.getAttribute("href") || "");
+      let videoId = "";
+      try {
+        const parsed = new URL(href, location.href);
+        const parts = parsed.pathname.split("/").filter(Boolean);
+        videoId = String(
+          parsed.searchParams.get("v") ||
+          (["shorts", "embed", "live"].includes(parts[0]) ? parts[1] : "") || ""
+        );
+      } catch (_) {}
+      const durationText = String(durationNode?.textContent || "").replace(/\s+/g, " ").trim();
+      const durationParts = durationText.split(":").map((part) => Number(part));
+      const durationSeconds = durationParts.every(Number.isFinite)
+        ? durationParts.reduce((total, value) => total * 60 + value, 0) : 0;
+      return {
+        title: String(titleNode?.textContent || anchor?.textContent || "").replace(/\s+/g, " ").trim(),
+        channel: String(channelNode?.textContent || "").replace(/\s+/g, " ").trim(),
+        videoId,
+        durationSeconds,
+      };
+    }).filter((item) => item.title);
+    return { observed: true, items };
+  } catch (_) {
+    return { observed: false, items: [] };
+  }
+}
+
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   console.log("Comando recebido na página:", request);
 
   if (request.action === "PROBE_YT_PLAYER") {
     try {
-      const video = document.querySelector("video");
+      const videos = Array.from(document.querySelectorAll("video"));
+      const video = document.querySelector("video.html5-main-video") ||
+        videos.find((item) => !item.paused && !item.ended) || videos[0] || null;
       const playing = !!video && !video.paused && !video.ended;
       const muted = !!video?.muted;
       const volume = Number(video?.volume ?? 0);
       const readyState = Number(video?.readyState ?? 0);
       const rawTitle = String(document.title || "");
       const channelNode = document.querySelector("#upload-info #channel-name") || document.querySelector("#channel-name");
+      let videoId = "";
+      try {
+        const parsed = new URL(window.location.href);
+        const partes = parsed.pathname.split("/").filter(Boolean);
+        videoId = String(
+          parsed.searchParams.get("v") ||
+          (["shorts", "embed", "live"].includes(partes[0]) ? partes[1] : "") ||
+          ""
+        );
+      } catch (_) {}
+      const queue = _laylayYoutubeQueueSnapshot();
       sendResponse({
         ok: !!video,
         playing,
         audible: playing && !muted && volume > 0 && readyState >= 2,
         paused: !!video?.paused,
+        muted,
+        repeatEnabled: !!video?.loop,
+        volumePercent: Number.isFinite(volume)
+          ? Math.max(0, Math.min(100, Math.round(volume * 100))) : null,
         title: rawTitle.replace(/ - YouTube$/i, "").trim(),
         channel: String(channelNode?.textContent || "").replace(/\s+/g, " ").trim(),
         url: window.location.href,
+        videoId,
+        currentTime: Number.isFinite(video?.currentTime) ? Number(video.currentTime) : 0,
+        duration: Number.isFinite(video?.duration) ? Number(video.duration) : 0,
+        observedAt: Date.now(),
+        positionReliable: !!video && Number.isFinite(video.currentTime),
+        queueObserved: queue.observed,
+        queue: queue.items,
       });
     } catch (_) {
       sendResponse({ ok: false, playing: false, audible: false });
@@ -1481,7 +1659,11 @@ try {
       const title = String(document.title || "").replace(/ - YouTube$/i, "").trim();
       const channelNode = document.querySelector("#upload-info #channel-name") || document.querySelector("#channel-name");
       const channel = String(channelNode?.textContent || "").replace(/\s+/g, " ").trim();
-      const signature = `${_laylayVideoId()}:${state}:${Math.floor(position)}:${Math.floor(duration)}:${title}`;
+      const volumePercent = Number.isFinite(v.volume)
+        ? Math.max(0, Math.min(100, Math.round(v.volume * 100))) : null;
+      const muted = !!v.muted;
+      const repeatEnabled = !!v.loop;
+      const signature = `${_laylayVideoId()}:${state}:${Math.floor(position)}:${Math.floor(duration)}:${volumePercent}:${muted}:${repeatEnabled}:${title}`;
       if (!force && signature === _laylayLastPlayerSignature && now - _laylayLastPlayerStateAt < 3000) return;
       if (!force && now - _laylayLastPlayerStateAt < 900) return;
       _laylayLastPlayerStateAt = now;
@@ -1495,6 +1677,9 @@ try {
         channel,
         state,
         paused: !!v.paused,
+        muted,
+        volumePercent,
+        repeatEnabled,
         currentTime: position,
         duration,
         observedAt: now,

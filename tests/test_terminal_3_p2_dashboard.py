@@ -27,7 +27,7 @@ class _ValorPercentual:
 class _Psutil:
     @staticmethod
     def cpu_percent(*, interval=None):
-        assert interval is None
+        assert interval in {None, 0.1}
         return 18.0
 
     @staticmethod

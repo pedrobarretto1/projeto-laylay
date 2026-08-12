@@ -27,6 +27,7 @@ from mente_laylay.integracao.acoes_terminal import (
     IDS_ACOES_RAPIDAS,
     definicao_acao_terminal,
 )
+from mente_laylay.integracao.acoes_painel_runtime import ACOES_MUSICA_PAINEL
 
 
 TIPOS_CLIENTE = frozenset({
@@ -422,6 +423,164 @@ def sanitizar_dashboard_estado(
         ) or 0.0,
         duracao if duracao > 0 else 86_400.0,
     )
+    def capa_musical_publica(valor: Any) -> str:
+        url_capa = _texto_seguro(valor, 180)
+        return url_capa if re.fullmatch(
+            r"https://i\.ytimg\.com/vi/[A-Za-z0-9_-]{11}/"
+            r"(?:hqdefault|maxresdefault)\.jpg",
+            url_capa,
+        ) else ""
+
+    fila_observada = _numero_dashboard(
+        musica.get("queue_observed_at"), minimo=0, maximo=9_999_999_999,
+    ) or 0.0
+    fila_frescor = _frescor_dashboard(
+        musica.get("queue_freshness"), disponivel=fila_observada > 0,
+    )
+    fila_publica: list[dict[str, Any]] = []
+    if fila_frescor != "unavailable":
+        for item in list(musica.get("queue") or ()):
+            if not isinstance(item, Mapping):
+                continue
+            titulo_fila = _texto_publico_dashboard(
+                item.get("title"), 160, fallback="",
+            )
+            if not titulo_fila:
+                continue
+            item_id = _texto_seguro(item.get("item_id"), 24)
+            if not re.fullmatch(r"[A-Za-z0-9_-]{11}", item_id):
+                item_id = ""
+            item_publico = {
+                "title": titulo_fila,
+                "channel": _texto_publico_dashboard(
+                    item.get("channel"), 100, fallback="",
+                ),
+                "duration_seconds": _numero_dashboard(
+                    item.get("duration_seconds"), minimo=0, maximo=86_400,
+                ) or 0.0,
+                "artwork_url": capa_musical_publica(item.get("artwork_url")),
+            }
+            if item_id:
+                item_publico["item_id"] = item_id
+            fila_publica.append(item_publico)
+    catalogo_observado = _numero_dashboard(
+        musica.get("catalog_observed_at"), minimo=0, maximo=9_999_999_999,
+    ) or 0.0
+    catalogo_disponivel = bool(
+        musica.get("catalog_available") is True and catalogo_observado > 0,
+    )
+    catalogo_publico: list[dict[str, Any]] = []
+    if catalogo_disponivel:
+        for item in list(musica.get("catalog") or ()):
+            if not isinstance(item, Mapping):
+                continue
+            nome_playlist = _texto_publico_dashboard(
+                item.get("name"), 80, fallback="",
+            )
+            if (
+                not nome_playlist
+                or re.search(
+                    r"(?i)(?:[;&|<>]|\b(?:apaga|delete|deleta|remove|exclui|"
+                    r"desliga|liga|abre|fecha|envia|manda|executa|roda|"
+                    r"formata|reinicia)\b)",
+                    nome_playlist,
+                )
+            ):
+                continue
+            catalogo_publico.append({
+                "name": nome_playlist,
+                "count": _inteiro_dashboard(item.get("count"), maximo=10_000),
+                "artwork_url": capa_musical_publica(item.get("artwork_url")),
+            })
+    contexto_musical = (
+        dict(musica.get("context_music") or {})
+        if isinstance(musica.get("context_music"), Mapping) else {}
+    )
+    contexto_musical_observado = _numero_dashboard(
+        contexto_musical.get("observed_at"), minimo=0, maximo=9_999_999_999,
+    ) or 0.0
+    contexto_musical_frescor = _frescor_dashboard(
+        contexto_musical.get("freshness"),
+        disponivel=contexto_musical_observado > 0,
+    )
+    bases_musicais_validas = {
+        "horario_local", "playlist_ativa", "catalogo_real",
+        "regra_de_horario", "preferencia_confirmada", "clima_observado",
+    }
+    contexto_musical_publico = {
+        "summary": _texto_publico_dashboard(
+            contexto_musical.get("summary"), 220, fallback="",
+        ),
+        "recommendation": _texto_publico_dashboard(
+            contexto_musical.get("recommendation"), 260, fallback="",
+        ),
+        "basis": [
+            base for base in (
+                _texto_seguro(item, 32) for item in list(
+                    contexto_musical.get("basis") or (),
+                )[:8]
+            ) if base in bases_musicais_validas
+        ],
+        "freshness": contexto_musical_frescor,
+        "observed_at": contexto_musical_observado,
+    }
+    if contexto_musical_frescor == "unavailable":
+        contexto_musical_publico.update(summary="", recommendation="", basis=[])
+
+    letras = (
+        dict(musica.get("lyrics") or {})
+        if isinstance(musica.get("lyrics"), Mapping) else {}
+    )
+    status_letra = _texto_seguro(letras.get("status"), 24).casefold()
+    if status_letra not in {
+        "idle", "loading", "available", "instrumental", "not_found",
+        "error", "rate_limited",
+    }:
+        status_letra = "error"
+    fonte_letra = (
+        "lrclib" if _texto_seguro(letras.get("source"), 24).casefold()
+        == "lrclib" else ""
+    )
+    linhas_letra: list[dict[str, Any]] = []
+    total_caracteres = 0
+    if status_letra == "available":
+        for item in list(letras.get("lines") or ())[:200]:
+            if not isinstance(item, Mapping):
+                continue
+            instante = _numero_dashboard(
+                item.get("time_seconds"), minimo=0, maximo=86_400,
+            )
+            texto_linha = _texto_seguro(item.get("text"), 180)
+            if instante is None or not texto_linha:
+                continue
+            total_caracteres += len(texto_linha)
+            if total_caracteres > 18_000:
+                break
+            linhas_letra.append({
+                "time_seconds": instante,
+                "text": texto_linha,
+            })
+    texto_simples = ""
+    if status_letra == "available" and not linhas_letra:
+        texto_simples = str(letras.get("plain_text") or "").replace("\x00", "")
+        texto_simples = texto_simples.strip()[:16_000]
+    letra_observada = _numero_dashboard(
+        letras.get("observed_at"), minimo=0, maximo=9_999_999_999,
+    ) or 0.0
+    if status_letra not in {"idle", "loading"} and not fonte_letra:
+        status_letra = "error"
+    if status_letra == "available" and not (linhas_letra or texto_simples):
+        status_letra = "not_found"
+    letra_publica = {
+        "status": status_letra,
+        "source": fonte_letra,
+        "synced": bool(linhas_letra),
+        "track_name": _texto_seguro(letras.get("track_name"), 180),
+        "artist_name": _texto_seguro(letras.get("artist_name"), 120),
+        "plain_text": texto_simples,
+        "lines": linhas_letra,
+        "observed_at": letra_observada,
+    }
     musica_publica = {
         "title": _texto_publico_dashboard(
             musica.get("title"), 180, fallback="",
@@ -429,13 +588,7 @@ def sanitizar_dashboard_estado(
         "channel": _texto_publico_dashboard(
             musica.get("channel"), 120, fallback="",
         ),
-        "artwork_url": (
-            _texto_seguro(musica.get("artwork_url"), 180)
-            if re.fullmatch(
-                r"https://i\.ytimg\.com/vi/[A-Za-z0-9_-]{11}/(?:hqdefault|maxresdefault)\.jpg",
-                _texto_seguro(musica.get("artwork_url"), 180),
-            ) else ""
-        ),
+        "artwork_url": capa_musical_publica(musica.get("artwork_url")),
         "state": musica_estado,
         "position_seconds": posicao,
         "duration_seconds": duracao,
@@ -446,8 +599,72 @@ def sanitizar_dashboard_estado(
             musica.get("controls_available") is True
             and musica_frescor == "fresh"
         ),
+        "volume_percent": _numero_dashboard(
+            musica.get("volume_percent"), minimo=0, maximo=100,
+        ),
+        "player_volume_percent": _numero_dashboard(
+            musica.get("player_volume_percent"), minimo=0, maximo=100,
+        ),
+        "muted": bool(musica.get("muted") is True),
+        "replay_available": bool(
+            musica.get("replay_available") is True
+            and musica_frescor == "fresh"
+        ),
+        "repeat_enabled": bool(musica.get("repeat_enabled") is True),
+        "repeat_available": bool(
+            musica.get("repeat_available") is True
+            and musica_frescor == "fresh"
+        ),
+        "shuffle_available": bool(
+            musica.get("shuffle_available") is True
+            and musica_frescor == "fresh"
+        ),
+        "audio_output": {
+            "name": _texto_publico_dashboard(
+                (musica.get("audio_output") or {}).get("name")
+                if isinstance(musica.get("audio_output"), Mapping) else "",
+                100,
+                fallback="",
+            ),
+            "source": _texto_seguro(
+                (musica.get("audio_output") or {}).get("source")
+                if isinstance(musica.get("audio_output"), Mapping) else "",
+                40,
+            ),
+            "available": bool(
+                isinstance(musica.get("audio_output"), Mapping)
+                and musica.get("audio_output", {}).get("available") is True
+            ),
+        },
+        "lights": {
+            "configured": bool(
+                isinstance(musica.get("lights"), Mapping)
+                and musica.get("lights", {}).get("configured") is True
+            ),
+            "sync_available": bool(
+                isinstance(musica.get("lights"), Mapping)
+                and musica.get("lights", {}).get("sync_available") is True
+            ),
+        },
         "freshness": musica_frescor,
         "observed_at": musica_observada,
+        "queue": fila_publica,
+        "queue_source": (
+            _texto_seguro(musica.get("queue_source"), 24)
+            if _texto_seguro(musica.get("queue_source"), 24)
+            in {"youtube", "laylay_playlist"} else ""
+        ),
+        "queue_freshness": fila_frescor,
+        "queue_observed_at": fila_observada,
+        "catalog": catalogo_publico,
+        "catalog_available": catalogo_disponivel,
+        "catalog_play_available": bool(
+            catalogo_disponivel
+            and musica.get("catalog_play_available") is True
+        ),
+        "catalog_observed_at": catalogo_observado,
+        "context_music": contexto_musical_publico,
+        "lyrics": letra_publica,
     }
     rotinas_observadas = _numero_dashboard(
         rotinas.get("observed_at"), minimo=0, maximo=9_999_999_999,
@@ -581,6 +798,72 @@ def validar_mensagem_cliente(
             raise ErroProtocoloDesktop("ação rápida inválida")
         if tipo_entrada == "panel_action" and acao_id not in IDS_ACOES_PAINEL:
             raise ErroProtocoloDesktop("ação de painel inválida")
+        payload: dict[str, Any] = {}
+        if tipo_entrada == "panel_action":
+            bruto_payload = mensagem.get("payload", {})
+            if not isinstance(bruto_payload, Mapping):
+                raise ErroProtocoloDesktop("parâmetros da ação de painel inválidos")
+            permitidos_por_acao = {
+                "media_toggle": {"command"},
+                "playlist_play": {"playlist"},
+                "playlist_shuffle": {"playlist"},
+                "queue_play": {"item_id", "queue_index"},
+                "volume_set": {"level"},
+            }
+            permitidos = permitidos_por_acao.get(acao_id, set())
+            if set(bruto_payload) - permitidos:
+                raise ErroProtocoloDesktop("parâmetros extras na ação de painel")
+            if "command" in permitidos:
+                comando = _texto_seguro(bruto_payload.get("command"), 12).casefold()
+                if not comando:
+                    comando = (
+                        "pause" if texto.casefold().startswith("pausa") else
+                        "play" if texto.casefold().startswith(("continua", "retoma"))
+                        else ""
+                    )
+                if comando not in {"play", "pause"}:
+                    raise ErroProtocoloDesktop("controle de reprodução inválido")
+                payload["command"] = comando
+            if "playlist" in permitidos:
+                playlist = re.sub(
+                    r"\s+", " ", _texto_seguro(bruto_payload.get("playlist"), 80)
+                ).strip()
+                if not playlist:
+                    playlist = re.sub(
+                        r"(?i)^toca\s+a\s+playlist\s+|\s+em\s+modo\s+aleat[oó]rio$",
+                        "", texto,
+                    ).strip()[:80]
+                if not playlist or re.search(r"[;&|<>]", playlist):
+                    raise ErroProtocoloDesktop("playlist da ação inválida")
+                payload["playlist"] = playlist
+            if "level" in permitidos:
+                nivel = bruto_payload.get("level")
+                if nivel is None:
+                    encontrado = re.search(r"\b(\d{1,3})\b", texto)
+                    nivel = int(encontrado.group(1)) if encontrado else None
+                if isinstance(nivel, bool):
+                    raise ErroProtocoloDesktop("nível de volume inválido")
+                try:
+                    nivel = int(nivel)
+                except (TypeError, ValueError) as erro:
+                    raise ErroProtocoloDesktop("nível de volume inválido") from erro
+                if not 0 <= nivel <= 100:
+                    raise ErroProtocoloDesktop("nível de volume inválido")
+                payload["level"] = nivel
+            if "item_id" in permitidos:
+                item_id = _texto_seguro(bruto_payload.get("item_id"), 24)
+                if not re.fullmatch(r"[A-Za-z0-9_-]{11}", item_id):
+                    raise ErroProtocoloDesktop("item da fila inválido")
+                indice = bruto_payload.get("queue_index")
+                if isinstance(indice, bool):
+                    raise ErroProtocoloDesktop("posição da fila inválida")
+                try:
+                    indice = int(indice)
+                except (TypeError, ValueError) as erro:
+                    raise ErroProtocoloDesktop("posição da fila inválida") from erro
+                if not 0 <= indice <= 7:
+                    raise ErroProtocoloDesktop("posição da fila inválida")
+                payload.update(item_id=item_id, queue_index=indice)
         if tipo_entrada == "chat":
             acao_id = ""
         return {
@@ -589,6 +872,7 @@ def validar_mensagem_cliente(
             "id": _texto_seguro(mensagem.get("id"), 80),
             "kind": tipo_entrada,
             "action": acao_id,
+            "payload": payload,
         }
     if tipo == "mode_set":
         modo = str(mensagem.get("mode") or "").casefold().strip()
@@ -681,6 +965,7 @@ class DesktopBridgeRuntime:
         estado_getter: Callable[[], Mapping[str, Any]],
         dashboard_getter: Callable[[], Mapping[str, Any]] | None = None,
         resultado_acao_getter: Callable[[], Mapping[str, Any]] | None = None,
+        executar_acao_painel: Callable[[str, Mapping[str, Any]], Any] | None = None,
         modo_setter: Callable[[bool], Any] | None = None,
         configuracao_getter: Callable[[], Mapping[str, Any]] | None = None,
         configuracao_setter: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None,
@@ -701,6 +986,7 @@ class DesktopBridgeRuntime:
         self.estado_getter = estado_getter
         self.dashboard_getter = dashboard_getter
         self.resultado_acao_getter = resultado_acao_getter
+        self.executar_acao_painel = executar_acao_painel
         self.modo_setter = modo_setter
         self.configuracao_getter = configuracao_getter
         self.configuracao_setter = configuracao_setter
@@ -954,6 +1240,26 @@ class DesktopBridgeRuntime:
                     "action": str(msg.get("action") or ""),
                     "state": "sending",
                 }
+                acao_direta = bool(
+                    pendente["kind"] == "panel_action"
+                    and pendente["action"] in ACOES_MUSICA_PAINEL
+                    and callable(self.executar_acao_painel)
+                )
+                if acao_direta:
+                    self._enviar_socket(cliente, {
+                        "type": "input_ack", "id": entrada_id,
+                        "accepted": True, "message": "",
+                    })
+                    self._publicar_estado_acao(
+                        pendente, "received", "Controle recebido", direta=True,
+                    )
+                    threading.Thread(
+                        target=self._executar_acao_painel_direta,
+                        args=(pendente, dict(msg.get("payload") or {})),
+                        name=f"Laylay-Painel-{pendente['action']}",
+                        daemon=True,
+                    ).start()
+                    continue
                 with self._entradas_lock:
                     self._entradas_pendentes.append(pendente)
                 try:
@@ -1153,6 +1459,8 @@ class DesktopBridgeRuntime:
         entrada: Mapping[str, Any],
         estado: str,
         resumo: str,
+        *,
+        direta: bool = False,
     ) -> bool:
         estado = str(estado or "")
         if estado not in _ESTADOS_ACAO_RAPIDA:
@@ -1163,8 +1471,51 @@ class DesktopBridgeRuntime:
             "action": _texto_seguro(entrada.get("action"), 48),
             "state": estado,
             "summary": _texto_seguro(resumo, 180),
+            "direct": bool(direta),
             "timestamp": time.time(),
         })
+
+    def _executar_acao_painel_direta(
+        self,
+        entrada: Mapping[str, Any],
+        payload: Mapping[str, Any],
+    ) -> None:
+        """Executa um controle fechado sem criar um turno de conversa/LLM."""
+        if self._stop.is_set() or not callable(self.executar_acao_painel):
+            self._publicar_estado_acao(
+                entrada, "failed", "Executor do painel indisponível", direta=True,
+            )
+            return
+        self._publicar_estado_acao(
+            entrada, "executing", "Executando controle", direta=True,
+        )
+        try:
+            executou = bool(self.executar_acao_painel(
+                str(entrada.get("action") or ""), dict(payload),
+            ))
+        except Exception as erro:
+            self.log(
+                "⚠️ [TERMINAL 3:PAINEL] execução falhou "
+                f"| ação={entrada.get('action') or '-'} tipo={type(erro).__name__}"
+            )
+            executou = False
+        if executou:
+            resultado = classificar_resultado_acao(
+                self._resultado_acao_atual(),
+                acao_id=str(entrada.get("action") or ""),
+            )
+            estado = str(resultado.get("state") or "partial")
+            resumo = str(resultado.get("summary") or "Controle executado")
+            if estado == "failed":
+                # Alguns executores confirmam a entrega diretamente e o plano
+                # pode ser atualizado um instante depois. Não transformamos
+                # execução verdadeira em falha por uma corrida de leitura.
+                estado, resumo = "partial", "Controle executado; estado final não observado"
+        else:
+            estado, resumo = "failed", "O controle não foi executado"
+        self._publicar_estado_acao(
+            entrada, estado, resumo, direta=True,
+        )
 
     def publicar_fala_final(
         self,

@@ -367,6 +367,21 @@ def test_reproducao_sem_autorizacao_nao_executa() -> None:
     assert chamadas == []
 
 
+def test_m2_pedido_do_cartao_usa_detector_canonico_de_playlist() -> None:
+    detectado = detectar_playlist_usuario(
+        "toca a playlist anime",
+        "toca a playlist Anime",
+        params_cb=lambda **kwargs: kwargs,
+        limpar_nome_playlist=lambda nome: str(nome).strip().strip('"').casefold(),
+        extrair_nome_playlist=lambda _texto: "",
+    )
+
+    assert detectado == {
+        "intent": "PLAYLIST_PLAY",
+        "params": {"nome_playlist": "anime"},
+    }
+
+
 def test_reproducao_local_abre_playlist_e_guarda_contexto() -> None:
     eventos: list[tuple] = []
     chamadas: list[str] = []

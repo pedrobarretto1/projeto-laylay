@@ -272,6 +272,81 @@ Critérios de aceite:
 - O histórico longo não pisca, some ou perde a posição de leitura.
 - A barra personalizada só entra se igualar a estabilidade da moldura nativa.
 
+## Evolução da experiência musical — M1 a M5
+
+### M1 — Composição visual da sessão musical
+
+Status: **implementada — aguardando validação visual real no Windows**
+
+- A página Música passou a seguir a referência aprovada: cabeçalho próprio,
+  player destacado, capa grande, waveform decorativo, progresso, transporte,
+  fila, ações da sessão, playlists, contexto musical, saída de áudio, sistema,
+  modo de audição, rotinas, luzes e letra.
+- O módulo foi extraído para `cliente/terminal_2/musica_m1.py`; transporte,
+  executores e contratos da mente permaneceram inalterados.
+- Faixa, capa, canal, estado, posição, duração, sistema e rotinas usam somente
+  o dashboard observado. Anterior, pausa/continuação e próxima faixa continuam
+  entrando pela porta canônica do Terminal.
+- Fila, presets, volume visual, equalizador, dispositivos, som ambiente,
+  contexto, letra e sincronização musical de luzes permanecem desabilitados e
+  explicam a integração ausente; a M1 não preenche nenhum cartão com dados de
+  demonstração.
+- Em viewport ampla, a página usa player + fila + barra lateral. Abaixo de
+  1080 px, todos os módulos e ações se reorganizam em uma coluna, sem rolagem
+  horizontal.
+- Inspeção offscreen em 1680 × 900 identificou e corrigiu a largura excedente
+  antes da conclusão. Validação: 4 regressões próprias, 36 testes focados,
+  Ruff, compilação e `git diff --check`; suíte completa com 2472 testes e 45
+  subtestes aprovada em 2026-08-12.
+
+### Próximas fases musicais
+
+- **M2 — implementada, aguardando validação real:** catálogo cacheado das
+  playlists do usuário, contagem de faixas, reprodução pela porta canônica e
+  fila extraída somente do painel realmente observado do YouTube. Itens,
+  caminhos e URLs das playlists não atravessam a ponte. A fila carrega no
+  máximo oito próximas faixas, com título, canal, duração e thumbnail segura;
+  ausência de painel aparece como ausência, nunca como uma fila inventada.
+  Validação: 8 regressões novas, 140 testes integrados e suíte completa com
+  2485 testes e 45 subtestes aprovados em 2026-08-12.
+- **M3 — implementada, aguardando validação real:** volume mestre observado e
+  ajustado somente pela porta canônica, volume/mudo do player observados pela
+  extensão, repetição confirmada da faixa e reprodução aleatória da playlist atual com
+  resultado correlacionado. A saída padrão de áudio é exibida como leitura;
+  sua troca permanece no Windows porque não há executor confirmado. A presença
+  da lâmpada RGB também é observada, mas a sincronização musical contínua fica
+  explicitamente desabilitada até existir um coordenador capaz de confirmar
+  cada etapa. A extensão passa à versão 2.5. Validação automatizada: regressões
+  M3 próprias mais as suítes de música, dashboard, ações e linguagem natural;
+  suíte completa com 2491 testes e 45 subtestes aprovada em 2026-08-12.
+- **M4 — implementada, aguardando validação real:** contexto musical derivado
+  apenas do horário local, da playlist ativa e do catálogo existente, com a
+  evidência publicada junto da sugestão e sem reprodução automática. Letras
+  simples e sincronizadas vêm da API pública da LRCLIB em um worker sequencial,
+  identificado e fora da thread Qt; há cache somente em memória, respeito ao
+  `Retry-After`, atribuição visível, estados honestos para instrumental,
+  ausência e falha, e nenhuma passagem pela LLM. A linha ativa acompanha o
+  relógio observado do player e a letra completa pode ser expandida. Validação:
+  chamada real à LRCLIB, 8 regressões próprias, 105 testes integrados e suíte
+  completa com 2508 testes e 45 subtestes aprovados em 2026-08-12.
+- **M5 — implementada, aguardando validação real:** refinamento visual da
+  sessão musical para aproximar proporções, hierarquia e densidade da
+  referência aprovada. O player e a fila ganharam maior presença, a lateral
+  recebeu métricas com barras observadas, playlists passaram a ter identidade
+  visual própria e o contexto exibe sua base de forma legível. A letra
+  sincronizada troca de linha com uma transição de opacidade `OutCubic`, sem
+  reiniciar a animação a cada atualização do relógio e com desativação completa
+  quando a redução de movimento está habilitada. O modo completo usa um leitor
+  com rolagem própria: letras sincronizadas acompanham suavemente a linha ativa
+  e letras sem marcação de tempo mantêm rolagem manual estável. Validação: 7
+  regressões M5, 67 testes integrados, Ruff e suíte completa com 2515 testes e 45
+  subtestes aprovados em 2026-08-12. As faixas observadas na fila do YouTube
+  também passaram a ser selecionáveis: o clique envia uma ação tipada e
+  silenciosa, a extensão valida o identificador exato antes de tocar e a UI só
+  habilita itens atuais cuja identidade possa ser comprovada. A ampliação foi
+  validada por 7 regressões próprias e pela suíte completa com 2522 testes e 45
+  subtestes aprovados.
+
 ## Aplicação dos 9 pilares
 
 1. **Contexto:** o dashboard recebe somente a projeção necessária ao painel.
@@ -314,3 +389,7 @@ Critérios de aceite:
 | 2026-08-11 | P3 | Implementada | Catálogo vivo das ações, correlação por pedido, estados observáveis e atividade somente confirmada; 10 regressões próprias, 62 focadas, 77 de capacidades e suíte completa com 2365 testes + 45 subtestes aprovados. Aguardando validação real no Windows. |
 | 2026-08-12 | P4 | Implementada | Páginas reais de Automação, Música, Memória e Sistema; player observado pela extensão, seleção da aba audível independente do foco, controles canônicos não otimistas, rotinas persistidas, jogo automático e histórico local. 11 regressões próprias, 109 focadas e suíte completa com 2432 testes + 45 subtestes aprovados. Aguardando validação real no Windows e recarga da extensão. |
 | 2026-08-12 | P5 | Implementada | Acabamento fiel sem moldura arriscada: SVGs locais, conversa com avatar e balões, waveform RMS efêmero, telemetria visual, player compacto com thumbnail real e reconciliação limpa entre sessões, acessibilidade, movimento reduzido, DPI 100/125/150%, responsividade com histórico longo e correção das mini janelas órfãs. 12 regressões próprias, 104 focadas e suíte completa com 2444 testes + 45 subtestes aprovados. Aguardando validação visual real no Windows. |
+| 2026-08-12 | Música M1 | Implementada | Sessão musical reconstruída conforme a referência, com player observado real, módulos futuros honestos, barra lateral, responsividade sem rolagem horizontal e controles canônicos preservados. 4 regressões próprias, 36 focadas e suíte completa com 2472 testes + 45 subtestes aprovados. Aguardando validação visual real no Windows. |
+| 2026-08-12 | Música M2 | Implementada | Catálogo público derivado do cache canônico, fila observada da aba eleita pela extensão, sanitização estrita e reprodução de playlist enviada como linguagem natural à mente, sem executor na UI nem sucesso otimista. 8 regressões novas, 140 testes integrados e suíte completa com 2485 testes + 45 subtestes aprovados. Aguardando validação real e recarga da extensão 2.6. |
+| 2026-08-12 | Música M4 | Implementada | Contexto baseado somente em horário e playlist observados; letras simples/sincronizadas da LRCLIB fora da thread visual, cache em memória, atribuição, limites e estados honestos. 9 regressões próprias, 105 testes integrados e suíte completa com 2508 testes + 45 subtestes aprovados. Aguardando validação real no Windows. |
+| 2026-08-12 | Música M5 | Implementada | Hierarquia e proporções refinadas conforme a referência, player/fila/lateral mais legíveis, playlists diferenciadas, telemetria com barras reais e letras com transição suave somente na mudança de linha. O modo completo ganhou rolagem própria, acompanhamento da linha sincronizada e leitura manual estável quando não há tempos, sempre respeitando redução de movimento. Itens atuais e identificados da fila do YouTube agora podem ser clicados; o pedido é tipado, silencioso e confirmado pela extensão sem passar pela LLM. Suíte completa com 2522 testes + 45 subtestes aprovados. Aguardando validação visual real no Windows e recarga da extensão 2.6. |

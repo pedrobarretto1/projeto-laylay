@@ -96,6 +96,17 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
     intent = str(resultado.get("intent") or "").upper().strip()
     raw_params = resultado.get("params")
     params = dict(raw_params) if isinstance(raw_params, dict) else {}
+    execucao_silenciosa = params.pop("_execucao_silenciosa", None) is True
+    if execucao_silenciosa:
+        # Controles tipados do painel já têm feedback de recebido/executando/
+        # confirmado. Eles continuam no executor e no contrato de resultado,
+        # mas não entram na LLM nem geram uma fala artificial no chat.
+        ctx = dict(ctx)
+        ctx["falar_com_lipsync"] = None
+        ctx["enviar_mensagem"] = None
+        ctx["_registrar_mente_curta"] = None
+        falar = None
+        registrar_mente_curta = None
     if pedido_foco_explicito(texto_original):
         params["permitir_foco"] = True
     destino_val = destino(params, texto_original) if callable(destino) else "pc_a"

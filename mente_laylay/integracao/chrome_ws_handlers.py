@@ -11,6 +11,7 @@ import re
 import threading
 import time
 from typing import Any, Callable, Dict
+from urllib.parse import parse_qs, urlparse
 
 from mente_laylay.cognicao.erros_navegador import (
     resumir_erro_navegador,
@@ -28,6 +29,53 @@ def _set_event(entry: Any) -> None:
             ev.set()
         except Exception:
             pass
+
+
+def _video_id_youtube(valor: Any) -> str:
+    """Extrai a identidade pública da faixa sem depender da extensão perfeita."""
+    bruto = str(valor or "").strip()
+    if re.fullmatch(r"[A-Za-z0-9_-]{11}", bruto):
+        return bruto
+    try:
+        url = urlparse(bruto)
+        host = url.netloc.casefold().removeprefix("www.")
+        partes = [parte for parte in url.path.split("/") if parte]
+        candidato = (
+            partes[0] if host == "youtu.be" and partes else
+            (parse_qs(url.query).get("v") or [""])[0]
+        )
+        if not candidato and len(partes) >= 2 and partes[0] in {
+            "shorts", "embed", "live",
+        }:
+            candidato = partes[1]
+        return candidato if re.fullmatch(r"[A-Za-z0-9_-]{11}", candidato) else ""
+    except (TypeError, ValueError):
+        return ""
+
+
+def _fila_youtube_publica(valor: Any) -> list[dict[str, Any]]:
+    itens: list[dict[str, Any]] = []
+    if not isinstance(valor, list):
+        return itens
+    for bruto in valor[:8]:
+        if not isinstance(bruto, dict):
+            continue
+        titulo = re.sub(r"\s+", " ", str(bruto.get("title") or "")).strip()[:160]
+        if not titulo:
+            continue
+        canal = re.sub(r"\s+", " ", str(bruto.get("channel") or "")).strip()[:100]
+        video_id = _video_id_youtube(bruto.get("videoId"))
+        try:
+            duracao = max(0.0, min(86_400.0, float(bruto.get("durationSeconds") or 0.0)))
+        except (TypeError, ValueError):
+            duracao = 0.0
+        itens.append({
+            "title": titulo,
+            "channel": canal,
+            "video_id": video_id,
+            "duration_seconds": duracao,
+        })
+    return itens
 
 
 def handle_tabs_list(data: Dict[str, Any], pending_tabs_requests: Dict[str, Any]) -> None:
@@ -139,6 +187,7 @@ def handle_player_event(
         return
 
     if event == "player_state":
+        agora = time.time()
         try:
             position = max(0.0, float(data.get("currentTime") or 0.0))
         except (TypeError, ValueError):
@@ -166,15 +215,16 @@ def handle_player_event(
             observado_origem = max(0.0, float(data.get("observedAt") or 0.0))
         except (TypeError, ValueError):
             observado_origem = 0.0
+        video_id = _video_id_youtube(data.get("videoId")) or _video_id_youtube(url)
         atual = playlist_state.get("player")
+        mesmo_tab = False
+        mesmo_video = False
         if isinstance(atual, dict):
             mesmo_tab = isinstance(tab_id, int) and tab_id == atual.get("tab_id")
             mesmo_video = bool(
-                str(data.get("videoId") or "").strip()
-                and str(data.get("videoId") or "").strip()
-                == str(atual.get("video_id") or "").strip()
+                video_id and video_id == str(atual.get("video_id") or "").strip()
             )
-            idade_atual = time.time() - float(atual.get("observed_at") or 0.0)
+            idade_atual = agora - float(atual.get("observed_at") or 0.0)
             prioridade_atual = int(atual.get("_priority") or 0)
             origem_atual = float(atual.get("_source_observed_at") or 0.0)
             atrasado = bool(
@@ -191,23 +241,67 @@ def handle_player_event(
                 and prioridade < prioridade_atual
             ):
                 return
+            # Versões antigas do content script confirmavam o player, mas não
+            # enviavam relógio nem duração. Um heartbeat assim não pode zerar
+            # uma faixa já observada: projetamos a posição anterior até chegar
+            # uma amostra explicitamente confiável.
+            if (
+                (mesmo_tab or mesmo_video)
+                and atual.get("state") == "playing"
+                and estado == "playing"
+                and data.get("positionReliable") is not True
+            ):
+                posicao_anterior = max(
+                    0.0, float(atual.get("position_seconds") or 0.0),
+                )
+                duracao_anterior = max(
+                    0.0, float(atual.get("duration_seconds") or 0.0),
+                )
+                if position <= 0.0 and posicao_anterior > 0.0:
+                    position = posicao_anterior + max(0.0, idade_atual)
+                    if duracao_anterior > 0:
+                        position = min(position, duracao_anterior)
+                if total <= 0.0 and duracao_anterior > 0.0:
+                    total = duracao_anterior
         player = {
             "title": str(data.get("title") or "").replace(" - YouTube", "").strip()[:180],
             "channel": str(data.get("channel") or "").strip()[:120],
-            "video_id": str(data.get("videoId") or "").strip()[:20],
+            "video_id": video_id,
             "url": url[:500],
             "state": estado,
             "position_seconds": min(position, 86_400.0),
             "duration_seconds": min(total, 86_400.0),
-            "observed_at": time.time(),
+            "observed_at": agora,
             "controls_available": True,
             "_priority": prioridade,
             "_source_observed_at": observado_origem,
             "source": fonte,
         }
+        try:
+            volume_percent = float(data.get("volumePercent"))
+        except (TypeError, ValueError):
+            volume_percent = None
+        if volume_percent is not None and 0.0 <= volume_percent <= 100.0:
+            player["volume_percent"] = round(volume_percent)
         if isinstance(tab_id, int):
             player["tab_id"] = tab_id
             playlist_state["tab_id"] = tab_id
+        if "muted" in data:
+            player["muted"] = data.get("muted") is True
+        if "repeatEnabled" in data:
+            player["repeat_enabled"] = data.get("repeatEnabled") is True
+        if data.get("queueObserved") is True:
+            player["queue"] = _fila_youtube_publica(data.get("queue"))
+            player["queue_observed_at"] = agora
+        elif (
+            isinstance(atual, dict) and mesmo_video
+            and isinstance(atual.get("queue"), list)
+            and agora - float(atual.get("queue_observed_at") or 0.0) <= 12.0
+        ):
+            player["queue"] = list(atual["queue"])
+            player["queue_observed_at"] = float(
+                atual.get("queue_observed_at") or 0.0,
+            )
         playlist_state["player"] = player
         return
 

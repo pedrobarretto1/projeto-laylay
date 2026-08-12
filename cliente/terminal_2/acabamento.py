@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import deque
 from pathlib import Path
+import re
 
 from PySide6.QtCore import QRectF, QSize, Qt, QTimer, QUrl
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
@@ -12,6 +13,24 @@ from PySide6.QtWidgets import QSizePolicy, QWidget
 
 
 PASTA_ICONES = Path(__file__).resolve().parent / "assets" / "icons"
+
+
+def variantes_capa_youtube(url: str) -> tuple[str, ...]:
+    """Gera fallbacks seguros sem aceitar uma URL arbitrária da rede."""
+    encontrado = re.fullmatch(
+        r"https://i\.ytimg\.com/vi/([A-Za-z0-9_-]{11})/"
+        r"(?:maxresdefault|hqdefault|mqdefault|0)\.jpg",
+        str(url or "").strip(),
+    )
+    if not encontrado:
+        return ()
+    video_id = encontrado.group(1)
+    nomes = ("maxresdefault", "hqdefault", "mqdefault", "0")
+    primario = str(url).rsplit("/", 1)[-1].removesuffix(".jpg")
+    ordem = (primario, *(nome for nome in nomes if nome != primario))
+    return tuple(
+        f"https://i.ytimg.com/vi/{video_id}/{nome}.jpg" for nome in ordem
+    )
 
 
 def icone_terminal(nome: str) -> QIcon:
@@ -96,6 +115,8 @@ class CapaMusicaGenerica(QWidget):
         self._titulo = ""
         self._artwork_url = ""
         self._pixmap = QPixmap()
+        self._candidatas: tuple[str, ...] = ()
+        self._indice_candidata = -1
         self._rede = QNetworkAccessManager(self)
         self._rede.finished.connect(self._imagem_recebida)
         self.setAccessibleName("Thumbnail da música")
@@ -111,21 +132,36 @@ class CapaMusicaGenerica(QWidget):
             return
         self._artwork_url = url
         self._pixmap = QPixmap()
+        self._candidatas = variantes_capa_youtube(url)
+        self._indice_candidata = -1
         self.update()
-        if not url.startswith("https://i.ytimg.com/vi/"):
+        self._tentar_proxima_capa()
+
+    def _tentar_proxima_capa(self) -> None:
+        self._indice_candidata += 1
+        if self._indice_candidata >= len(self._candidatas):
             return
-        self._rede.get(QNetworkRequest(QUrl(url)))
+        self._rede.get(QNetworkRequest(QUrl(
+            self._candidatas[self._indice_candidata],
+        )))
 
     def _imagem_recebida(self, resposta: QNetworkReply) -> None:
         try:
-            if resposta.url().toString() != self._artwork_url:
+            esperado = (
+                self._candidatas[self._indice_candidata]
+                if 0 <= self._indice_candidata < len(self._candidatas) else ""
+            )
+            if resposta.url().toString() != esperado:
                 return
             if resposta.error() != QNetworkReply.NoError:
+                self._tentar_proxima_capa()
                 return
             pixmap = QPixmap()
             if pixmap.loadFromData(bytes(resposta.readAll())):
                 self._pixmap = pixmap
                 self.update()
+            else:
+                self._tentar_proxima_capa()
         finally:
             resposta.deleteLater()
 

@@ -444,6 +444,20 @@ def detectar_volume_ou_midia(
         return {"intent": "MEDIA_CONTROL", "params": params(acao="play")}
     if any(x in t for x in ["pausa", "pause", "pausar", "para a musica", "para música", "para musica", "play pause"]):
         return {"intent": "MEDIA_CONTROL", "params": params(acao="pause")}
+    if re.search(
+        r"\b(?:reinicia|reiniciar|recomeca|recomeça|recomecar|recomeçar|"
+        r"repete|repetir)\s+(?:(?:essa|esta|a)\s+)?(?:musica|música|faixa)\b",
+        t,
+    ):
+        return {"intent": "MEDIA_CONTROL", "params": params(acao="replay")}
+    if re.search(
+        r"\b(?:ativa|ative|desativa|desative|alterna|alterne)\s+"
+        r"(?:(?:a|o)\s+)?(?:repeticao|repetição|loop)\b|"
+        r"\b(?:repeticao|repetição|loop)\s+(?:da|dessa|nesta|na)\s+"
+        r"(?:musica|música|faixa)\b",
+        t,
+    ):
+        return {"intent": "MEDIA_CONTROL", "params": params(acao="repeat_toggle")}
     proxima_por_fala_natural = bool(re.fullmatch(
         r"(?:passa|pasa|pula|pule)(?:\s+(?:para|pra|pro))?\s+(?:a\s+)?"
         r"(?:proxima|próxima|proxma)(?:\s+(?:musica|música|faixa))?",

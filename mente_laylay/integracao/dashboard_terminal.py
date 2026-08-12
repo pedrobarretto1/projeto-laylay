@@ -15,6 +15,7 @@ import re
 import threading
 import time
 from typing import Any, Callable, Mapping, Sequence
+from urllib.parse import parse_qs, urlparse
 
 from mente_laylay.especialistas.capacidades import INTENTS_SOMENTE_LEITURA
 from mente_laylay.integracao.acoes_terminal import ACOES_RAPIDAS_TERMINAL
@@ -47,6 +48,10 @@ _PADRAO_TEMA_SENSIVEL = re.compile(
     r"pol[ií]tica|partido|voto|sal[aá]rio|d[ií]vida|conta banc[aá]ria|"
     r"cart[aã]o|endere[çc]o"
     r")\b"
+)
+_PADRAO_COMANDO_EM_NOME_PLAYLIST = re.compile(
+    r"(?i)(?:[;&|<>]|\b(?:apaga|delete|deleta|remove|exclui|desliga|liga|"
+    r"abre|fecha|envia|manda|executa|roda|formata|reinicia)\b)"
 )
 
 
@@ -117,8 +122,41 @@ def _retrato_inicial() -> dict[str, Any]:
             "duration_seconds": 0.0,
             "playlist": "",
             "controls_available": False,
+            "volume_percent": None,
+            "player_volume_percent": None,
+            "muted": False,
+            "replay_available": False,
+            "repeat_enabled": False,
+            "repeat_available": False,
+            "shuffle_available": False,
+            "audio_output": {"name": "", "source": "", "available": False},
+            "lights": {"configured": False, "sync_available": False},
             "freshness": "unavailable",
             "observed_at": 0.0,
+            "queue": [],
+            "queue_freshness": "unavailable",
+            "queue_observed_at": 0.0,
+            "catalog": [],
+            "catalog_available": False,
+            "catalog_play_available": False,
+            "catalog_observed_at": 0.0,
+            "context_music": {
+                "summary": "",
+                "recommendation": "",
+                "basis": [],
+                "freshness": "unavailable",
+                "observed_at": 0.0,
+            },
+            "lyrics": {
+                "status": "idle",
+                "source": "",
+                "synced": False,
+                "track_name": "",
+                "artist_name": "",
+                "plain_text": "",
+                "lines": [],
+                "observed_at": 0.0,
+            },
         },
         "routines": {
             "items": [],
@@ -146,6 +184,17 @@ def _publicar_texto_memoria(texto: Any, *, fallback: str) -> str:
     return limpo
 
 
+def _nome_playlist_publico(valor: Any) -> str:
+    nome = _texto(valor, 80)
+    if (
+        not nome
+        or _PADRAO_SENSIVEL.search(nome)
+        or _PADRAO_COMANDO_EM_NOME_PLAYLIST.search(nome)
+    ):
+        return ""
+    return nome
+
+
 def _instante_iso(valor: Any) -> float:
     if isinstance(valor, (int, float)) and not isinstance(valor, bool):
         return max(0.0, float(valor))
@@ -156,6 +205,27 @@ def _instante_iso(valor: Any) -> float:
         return max(0.0, datetime.fromisoformat(texto).timestamp())
     except (TypeError, ValueError, OSError):
         return 0.0
+
+
+def _video_id_youtube(valor: Any) -> str:
+    bruto = _texto(valor, 500)
+    if re.fullmatch(r"[A-Za-z0-9_-]{11}", bruto):
+        return bruto
+    try:
+        url = urlparse(bruto)
+        host = url.netloc.casefold().removeprefix("www.")
+        partes = [parte for parte in url.path.split("/") if parte]
+        candidato = (
+            partes[0] if host == "youtu.be" and partes else
+            (parse_qs(url.query).get("v") or [""])[0]
+        )
+        if not candidato and len(partes) >= 2 and partes[0] in {
+            "shorts", "embed", "live",
+        }:
+            candidato = partes[1]
+        return candidato if re.fullmatch(r"[A-Za-z0-9_-]{11}", candidato) else ""
+    except (TypeError, ValueError):
+        return ""
 
 
 class DashboardTerminalRuntime:
@@ -176,6 +246,12 @@ class DashboardTerminalRuntime:
         capacidade_getter: Callable[[str], Mapping[str, Any]] | None = None,
         temperatura_getter: Callable[[], Any] | None = None,
         musica_getter: Callable[[], Mapping[str, Any]] | None = None,
+        playlists_getter: Callable[[], Sequence[Mapping[str, Any]]] | None = None,
+        playlist_queue_getter: Callable[[], Sequence[Mapping[str, Any]]] | None = None,
+        audio_output_getter: Callable[[], Mapping[str, Any]] | None = None,
+        volume_getter: Callable[[], Any] | None = None,
+        iot_getter: Callable[[], Mapping[str, Any]] | None = None,
+        letras_getter: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None,
         projeto: str = "Laylay",
         cidade: str = "",
         intervalo_s: float = 1.5,
@@ -197,6 +273,12 @@ class DashboardTerminalRuntime:
         self.psutil = psutil_mod
         self.temperatura_getter = temperatura_getter
         self.musica_getter = musica_getter
+        self.playlists_getter = playlists_getter
+        self.playlist_queue_getter = playlist_queue_getter
+        self.audio_output_getter = audio_output_getter
+        self.volume_getter = volume_getter
+        self.iot_getter = iot_getter
+        self.letras_getter = letras_getter
         self.projeto = _texto(projeto, 80) or "Laylay"
         self.cidade = _texto(cidade, 80)
         self.intervalo_s = max(0.25, float(intervalo_s))
@@ -320,6 +402,9 @@ class DashboardTerminalRuntime:
                     "controls_available": False,
                     "freshness": "unavailable",
                     "observed_at": 0.0,
+                    "queue": [],
+                    "queue_freshness": "unavailable",
+                    "queue_observed_at": 0.0,
                 })
             elif observado <= 0 or idade_musica > 12.0:
                 musica["freshness"] = "stale" if observado else "unavailable"
@@ -373,12 +458,194 @@ class DashboardTerminalRuntime:
             and observado > 0
             and idade <= 12.0
         )
-        video_id = _texto(player.get("video_id"), 20)
+        video_id = (
+            _video_id_youtube(player.get("video_id"))
+            or _video_id_youtube(player.get("url"))
+            or _video_id_youtube(bruto.get("musica_atual_url"))
+        )
         artwork_url = (
             f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
             if re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id) else ""
         )
+        catalogo: list[dict[str, Any]] = []
+        catalogo_disponivel = False
+        if callable(self.playlists_getter):
+            try:
+                for item in list(self.playlists_getter() or ()):
+                    if not isinstance(item, Mapping):
+                        continue
+                    nome = _nome_playlist_publico(item.get("name"))
+                    if not nome:
+                        continue
+                    try:
+                        quantidade = max(0, min(10_000, int(item.get("count") or 0)))
+                    except (TypeError, ValueError):
+                        quantidade = 0
+                    capa_id = _video_id_youtube(item.get("artwork_video_id"))
+                    catalogo.append({
+                        "name": nome,
+                        "count": quantidade,
+                        "artwork_url": (
+                            f"https://i.ytimg.com/vi/{capa_id}/hqdefault.jpg"
+                            if capa_id else ""
+                        ),
+                    })
+                catalogo_disponivel = True
+            except Exception:
+                catalogo = []
+        try:
+            capacidade_playlist = (
+                dict(self.capacidade_getter("PLAYLIST_PLAY") or {})
+                if callable(self.capacidade_getter) else {}
+            )
+        except Exception:
+            capacidade_playlist = {}
+        tocar_playlist_disponivel = bool(
+            capacidade_playlist.get("disponivel") is True
+            and str(capacidade_playlist.get("estado") or "").casefold()
+            != "indisponivel"
+        )
+        def capacidade_disponivel(intent: str) -> bool:
+            if not callable(self.capacidade_getter):
+                return False
+            try:
+                capacidade = dict(self.capacidade_getter(intent) or {})
+            except Exception:
+                return False
+            return bool(
+                capacidade.get("disponivel") is True
+                and str(capacidade.get("estado") or "").casefold()
+                != "indisponivel"
+            )
+
+        saida_audio = {"name": "", "source": "", "available": False}
+        if callable(self.audio_output_getter):
+            try:
+                audio_bruto = dict(self.audio_output_getter() or {})
+                nome_saida = _texto(audio_bruto.get("name"), 100)
+                if nome_saida:
+                    saida_audio = {
+                        "name": nome_saida,
+                        "source": _texto(audio_bruto.get("source"), 40),
+                        "available": True,
+                    }
+            except Exception:
+                pass
+
+        volume_sistema = None
+        if callable(self.volume_getter):
+            try:
+                volume_sistema = _numero(
+                    self.volume_getter(), minimo=0, maximo=100,
+                )
+            except Exception:
+                pass
+
+        luz_configurada = False
+        if callable(self.iot_getter):
+            try:
+                dispositivos = list(
+                    dict(self.iot_getter() or {}).get("dispositivos") or ()
+                )
+                luz_configurada = any(
+                    isinstance(item, Mapping)
+                    and str(item.get("tipo") or "").startswith("lampada")
+                    and "ajustar_cor" in set(item.get("capacidades") or ())
+                    for item in dispositivos
+                )
+            except Exception:
+                pass
+        fila: list[dict[str, Any]] = []
+        fila_fonte = "youtube"
+        for item in list(player.get("queue") or ()):
+            if not isinstance(item, Mapping):
+                continue
+            titulo_fila = _texto(item.get("title"), 160)
+            if not titulo_fila:
+                continue
+            fila_video_id = _video_id_youtube(item.get("video_id"))
+            fila.append({
+                "title": titulo_fila,
+                "channel": _texto(item.get("channel"), 100),
+                "item_id": fila_video_id,
+                "duration_seconds": _numero(
+                    item.get("duration_seconds"), minimo=0, maximo=86_400,
+                ) or 0.0,
+                "artwork_url": (
+                    f"https://i.ytimg.com/vi/{fila_video_id}/hqdefault.jpg"
+                    if fila_video_id else ""
+                ),
+            })
+        fila_observada = _instante_iso(player.get("queue_observed_at"))
+        if not fila and callable(self.playlist_queue_getter):
+            try:
+                fila_interna = list(self.playlist_queue_getter() or ())
+            except Exception:
+                fila_interna = []
+            for item in fila_interna:
+                if not isinstance(item, Mapping):
+                    continue
+                titulo_fila = _texto(item.get("title"), 160)
+                if not titulo_fila:
+                    continue
+                fila_video_id = _video_id_youtube(item.get("artwork_video_id"))
+                fila.append({
+                    "title": titulo_fila,
+                    "channel": _texto(item.get("channel"), 100),
+                    "item_id": fila_video_id,
+                    "duration_seconds": 0.0,
+                    "artwork_url": (
+                        f"https://i.ytimg.com/vi/{fila_video_id}/hqdefault.jpg"
+                        if fila_video_id else ""
+                    ),
+                })
+            if fila:
+                fila_observada = agora
+                fila_fonte = "laylay_playlist"
+        idade_fila = agora - fila_observada if fila_observada > 0 else float("inf")
         expirado = idade > 30.0
+        nome_playlist = _texto(
+            bruto.get("playlist") or bruto.get("name")
+            or bruto.get("playlist_ativa"), 100,
+        )
+        hora = datetime.fromtimestamp(agora).hour
+        periodo = (
+            "madrugada" if hora < 6 else "manhã" if hora < 12
+            else "tarde" if hora < 18 else "noite"
+        )
+        contexto_musical = {
+            "summary": (
+                f"É {periodo} e a playlist {nome_playlist} está ativa."
+                if nome_playlist else
+                f"É {periodo}; nenhuma playlist da Laylay está ativa agora."
+            ),
+            "recommendation": "",
+            "basis": ["horario_local"] + (["playlist_ativa"] if nome_playlist else []),
+            "freshness": "fresh",
+            "observed_at": agora,
+        }
+        if nome_playlist:
+            contexto_musical["recommendation"] = (
+                f"Posso manter a sequência de {nome_playlist}; foi a playlist que você escolheu."
+            )
+
+        letras = deepcopy(_retrato_inicial()["music"]["lyrics"])
+        if callable(self.letras_getter) and not expirado and titulo:
+            try:
+                letras = dict(self.letras_getter({
+                    "title": titulo,
+                    "channel": _texto(player.get("channel"), 120),
+                    "duration_seconds": _numero(
+                        player.get("duration_seconds"), minimo=0, maximo=86_400,
+                    ) or 0.0,
+                    "video_id": video_id,
+                    "state": estado,
+                }) or letras)
+            except Exception:
+                letras = deepcopy(_retrato_inicial()["music"]["lyrics"])
+                letras["status"] = "error"
+                letras["source"] = "lrclib"
+                letras["observed_at"] = agora
         return {
             "title": "" if expirado else titulo,
             "channel": "" if expirado else _texto(player.get("channel"), 120),
@@ -390,17 +657,59 @@ class DashboardTerminalRuntime:
             "duration_seconds": 0.0 if expirado else (_numero(
                 player.get("duration_seconds"), minimo=0, maximo=86_400,
             ) or 0.0),
-            "playlist": _texto(
-                bruto.get("playlist") or bruto.get("name")
-                or bruto.get("playlist_ativa"), 100,
-            ),
+            "playlist": nome_playlist,
             "controls_available": controles,
+            "volume_percent": volume_sistema,
+            "player_volume_percent": None if expirado else _numero(
+                player.get("volume_percent"), minimo=0, maximo=100,
+            ),
+            "muted": bool(not expirado and player.get("muted") is True),
+            "replay_available": bool(
+                not expirado and controles
+                and capacidade_disponivel("MEDIA_CONTROL")
+            ),
+            "repeat_enabled": bool(
+                not expirado and player.get("repeat_enabled") is True
+            ),
+            "repeat_available": bool(
+                not expirado and controles
+                and capacidade_disponivel("MEDIA_CONTROL")
+            ),
+            "shuffle_available": bool(
+                not expirado and tocar_playlist_disponivel
+                and capacidade_disponivel("TOCAR_PLAYLIST_SHUFFLE")
+                and bool(
+                    bruto.get("playlist") or bruto.get("name")
+                    or bruto.get("playlist_ativa")
+                )
+            ),
+            "audio_output": saida_audio,
+            "lights": {
+                "configured": luz_configurada,
+                # A lâmpada e a música possuem executores independentes. Ainda
+                # não existe um coordenador que confirme sincronização contínua.
+                "sync_available": False,
+            },
             "freshness": (
                 "fresh" if observado > 0 and idade <= 12.0
                 else "stale" if observado > 0 and idade <= 30.0
                 else "unavailable"
             ),
             "observed_at": observado if idade <= 30.0 else 0.0,
+            "catalog": catalogo,
+            "catalog_available": catalogo_disponivel,
+            "catalog_play_available": tocar_playlist_disponivel,
+            "catalog_observed_at": agora if catalogo_disponivel else 0.0,
+            "queue": fila if idade_fila <= 30.0 else [],
+            "queue_source": fila_fonte if fila and idade_fila <= 30.0 else "",
+            "queue_freshness": (
+                "fresh" if fila_observada > 0 and idade_fila <= 12.0
+                else "stale" if fila_observada > 0 and idade_fila <= 30.0
+                else "unavailable"
+            ),
+            "queue_observed_at": fila_observada if idade_fila <= 30.0 else 0.0,
+            "context_music": contexto_musical,
+            "lyrics": letras,
         }
 
     def _rotinas_publicas(self, agora: float) -> dict[str, Any]:
@@ -775,15 +1084,21 @@ class DashboardTerminalRuntime:
         ):
             temperatura["freshness"] = "stale"
 
-        def limitada(chave: str, getter: Callable[[], Any]) -> Any:
+        def limitada(
+            chave: str,
+            getter: Callable[[], Any],
+            *,
+            timeout_s: float = 0.2,
+        ) -> Any:
             return self._chamar_limitado(
-                f"system_{chave}", getter, timeout_s=0.2,
+                f"system_{chave}", getter, timeout_s=timeout_s,
             )
 
         return {
             "cpu_percent": self._metrica(
                 lambda: limitada(
-                    "cpu", lambda: self.psutil.cpu_percent(interval=None),
+                    "cpu", lambda: self.psutil.cpu_percent(interval=0.1),
+                    timeout_s=0.35,
                 ), unidade="%",
                 minimo=0, maximo=100, max_age_s=5,
                 anterior=anterior.get("cpu_percent"), agora=agora,
@@ -1154,6 +1469,9 @@ class DashboardTerminalRuntime:
 
     def diagnostico(self) -> dict[str, Any]:
         with self._lock:
+            letras = dict(
+                (self._cache.get("music") or {}).get("lyrics") or {}
+            )
             return {
                 "disponivel": not self._stop.is_set(),
                 "schema_version": 1,
@@ -1168,6 +1486,14 @@ class DashboardTerminalRuntime:
                 "consulta_bloqueante_no_snapshot": False,
                 "conteudo_bruto_exposto": False,
                 "autoriza_execucao": False,
+                "letras": {
+                    "fonte": (
+                        "lrclib" if letras.get("source") == "lrclib" else ""
+                    ),
+                    "status": str(letras.get("status") or "idle"),
+                    "sincronizada": letras.get("synced") is True,
+                    "conteudo_exposto_no_diagnostico": False,
+                },
             }
 
 

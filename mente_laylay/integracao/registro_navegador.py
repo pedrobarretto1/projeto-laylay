@@ -27,6 +27,14 @@ class PortaNavegadorOperacoes(Protocol):
         self, url: str, *, tab_id: int | None = None, permitir_foco: bool = False,
     ) -> dict[str, Any]: ...
     def controlar_youtube(self, comando: str) -> bool: ...
+    def controlar_youtube_detalhado(
+        self,
+        comando: str,
+        *,
+        tab_id: int | None = None,
+        queue_item_id: str = "",
+        queue_index: int | None = None,
+    ) -> dict[str, Any]: ...
     def fechar_aba(self, alvo: str) -> bool: ...
     def fechar_aba_atual(self) -> bool: ...
     def fechar_abas(self, ids: list[int]) -> bool: ...
@@ -141,6 +149,42 @@ class RegistroNavegadorOperacoes:
 
     def controlar_youtube(self, comando: str) -> bool:
         return bool(self.servico.controlar_youtube(comando))
+
+    def controlar_youtube_detalhado(
+        self,
+        comando: str,
+        *,
+        tab_id: int | None = None,
+        queue_item_id: str = "",
+        queue_index: int | None = None,
+    ) -> dict[str, Any]:
+        detalhado = getattr(self.servico, "controlar_youtube_detalhado", None)
+        if callable(detalhado):
+            try:
+                retorno = detalhado(
+                    comando,
+                    tab_id=tab_id,
+                    queue_item_id=queue_item_id,
+                    queue_index=queue_index,
+                )
+            except TypeError:
+                if queue_item_id or queue_index is not None:
+                    return {
+                        "ok": False, "confirmado": False,
+                        "status": "queue_select_unsupported",
+                    }
+                retorno = detalhado(comando, tab_id=tab_id)
+            return dict(retorno or {})
+        if queue_item_id or queue_index is not None:
+            return {
+                "ok": False, "confirmado": False,
+                "status": "queue_select_unsupported",
+            }
+        ok = bool(self.servico.controlar_youtube(comando))
+        return {
+            "ok": ok, "confirmado": True if ok else False,
+            "status": "success" if ok else "falha_execucao",
+        }
 
     def fechar_aba(self, alvo: str) -> bool:
         return bool(self.servico.fechar_aba(alvo))

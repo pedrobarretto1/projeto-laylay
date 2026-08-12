@@ -32,6 +32,7 @@ from cliente.terminal_2.acabamento import (
     CapaMusicaGenerica,
     icone_terminal,
 )
+from cliente.terminal_2.musica_m1 import PaginaMusica
 
 
 class ChipEstado(QFrame):
@@ -717,7 +718,7 @@ def _tempo_player(segundos: object) -> str:
     return f"{horas}:{minutos:02d}:{segundo:02d}" if horas else f"{minutos}:{segundo:02d}"
 
 
-class PaginaMusica(QWidget):
+class PaginaMusicaLegada(QWidget):
     """Player observado; nenhum botão altera o estado local por antecipação."""
 
     acao_solicitada = Signal(str, str)

@@ -272,6 +272,12 @@ from mente_laylay.integracao.desktop_bridge import (
 from mente_laylay.integracao.dashboard_terminal import (
     criar_dashboard_terminal_runtime as _criar_dashboard_terminal_runtime,
 )
+from mente_laylay.integracao.letras_lrclib import (
+    criar_letras_lrclib_runtime as _criar_letras_lrclib_runtime,
+)
+from mente_laylay.integracao.acoes_painel_runtime import (
+    executar_acao_painel_tipado as _executar_acao_painel_tipado,
+)
 from mente_laylay.integracao.configuracao_aplicacao import (
     criar_configuracao_aplicacao_runtime as _criar_configuracao_aplicacao_runtime,
 )
@@ -312,6 +318,7 @@ from mente_laylay.percepcao.ouvido_whisper import (
     criar_ouvido_whisper_runtime as _criar_ouvido_whisper_runtime_mente,
     limpar_diccao_e_ruido as _limpar_diccao_e_ruido_mente,
 )
+from mente_laylay.percepcao.dispositivos_audio import selecionar_dispositivo_audio
 from mente_laylay.percepcao.alvos_web import (
     contexto_aponta_site_web as _contexto_aponta_site_web_mente,
     contexto_navegador_relevante as _contexto_navegador_relevante_mente,
@@ -3201,6 +3208,7 @@ def _solicitar_reinicio_aplicacao() -> bool:
 
 
 _configuracao_llm_ativa_dashboard = _configuracao_aplicacao_runtime.estado()
+_letras_lrclib_runtime = _criar_letras_lrclib_runtime(log=print)
 _dashboard_terminal_runtime = _criar_dashboard_terminal_runtime(
     # Configurações salvas exigem reinício; o painel deve continuar mostrando
     # o provedor/modelo realmente carregado neste processo, não o próximo.
@@ -3220,6 +3228,17 @@ _dashboard_terminal_runtime = _criar_dashboard_terminal_runtime(
         "player": dict(playlist_state.get("player") or {}),
         "playlist": str(playlist_state.get("name") or ""),
     },
+    playlists_getter=_playlist_runtime.catalogo_publico,
+    playlist_queue_getter=_playlist_runtime.fila_publica,
+    audio_output_getter=lambda: (
+        lambda escolha: {
+            "name": str(escolha[1].get("name") or ""),
+            "source": str(escolha[2] or ""),
+        }
+    )(selecionar_dispositivo_audio(sd, "saida")),
+    volume_getter=lambda: obter_volume_sistema(log=lambda _mensagem: None),
+    iot_getter=_registro_iot_runtime.retrato_para_mente,
+    letras_getter=_letras_lrclib_runtime.snapshot,
     psutil_mod=psutil,
     projeto="Laylay",
     cidade=BRIEFING_CIDADE,
@@ -3234,6 +3253,11 @@ _desktop_bridge_runtime = _criar_desktop_bridge_runtime(
     dashboard_getter=_dashboard_terminal_runtime.snapshot,
     resultado_acao_getter=lambda: dict(
         _estado_compartilhado_runtime.mental.get("plano_turno_atual") or {}
+    ),
+    executar_acao_painel=lambda acao_id, payload: _executar_acao_painel_tipado(
+        acao_id,
+        payload,
+        executar_intencao=executar_intencao,
     ),
     modo_setter=lambda ativo: _definir_modo_chat(ativo, origem="terminal_2"),
     configuracao_getter=_configuracao_aplicacao_runtime.estado,
@@ -3698,6 +3722,7 @@ _composicao_servicos_runtime = _criar_composicao_servicos_padrao(
 
 def _encerrar_laylay() -> None:
     try:
+        _letras_lrclib_runtime.parar()
         _dashboard_terminal_runtime.parar()
         _desktop_bridge_runtime.parar()
         _composicao_servicos_runtime.encerrar()

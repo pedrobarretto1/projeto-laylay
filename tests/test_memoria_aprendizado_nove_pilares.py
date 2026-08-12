@@ -294,9 +294,9 @@ def test_executor_preserva_proveniencia_na_fala() -> None:
     )
 
     assert despacho == ResultadoDespacho.concluido(True)
-    assert "Do que lembro com segurança" in falas[0]
     assert "você prefere rock" in falas[0]
     assert "padrão" in falas[0]
+    assert "palpite" in falas[0] or "ressalva" in falas[0]
     assert "{'texto'" not in falas[0]
     assert eventos == [(
         "resultado", "aprendizados_consultados",

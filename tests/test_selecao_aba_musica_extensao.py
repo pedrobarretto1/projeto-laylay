@@ -103,8 +103,28 @@ def test_content_script_confirma_reproducao_e_responde_dados_da_aba_escolhida() 
 
     assert 'request.action === "PROBE_YT_PLAYER"' in codigo
     assert "playing && !muted && volume > 0 && readyState >= 2" in codigo
+    assert "currentTime: Number.isFinite(video?.currentTime)" in codigo
+    assert "duration: Number.isFinite(video?.duration)" in codigo
+    assert "positionReliable: !!video" in codigo
+    assert "videoId," in codigo
+    assert "function _laylayYoutubeQueueSnapshot()" in codigo
+    assert "queueObserved: queue.observed" in codigo
+    assert "queue: queue.items" in codigo
     assert "request.directResponse === true" in codigo
     assert "sendResponse(resultado)" in codigo
+
+
+def test_background_publica_apenas_fila_da_aba_canonica() -> None:
+    raiz = Path(__file__).resolve().parents[1]
+    codigo = (raiz / "extençao_google" / "background.js").read_text(
+        encoding="utf-8",
+    )
+    descoberta = codigo.split(
+        "async function discoverExistingYouTubePlayback()", 1,
+    )[1].split("function schedulePlayerDiscovery", 1)[0]
+
+    assert "queueObserved: probe.queueObserved === true" in descoberta
+    assert "Array.isArray(probe.queue) ? probe.queue.slice(0, 8)" in descoberta
 
 
 def test_resposta_python_preserva_evidencia_da_aba_que_estava_tocando() -> None:

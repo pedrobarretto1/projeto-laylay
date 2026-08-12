@@ -11,6 +11,10 @@ from mente_laylay.autonomia.executor_comum import falar_ctx as _falar
 from mente_laylay.memoria_mental.memoria_confiavel import normalizar_texto
 from mente_laylay.memoria_mental.identidade_usuario import normalizar_nome_usuario
 from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_variada
+from mente_laylay.personalidade.fala_memoria import (
+    falar_lembrancas,
+    falar_nome_lembrado,
+)
 
 
 INTENCOES_INFORMACOES = frozenset({
@@ -309,7 +313,7 @@ def _consultar_aprendizados(
             deps.marcar_resultado(
                 "aprendizados_consultados", executou=True, confirmado=True,
             )
-            _falar(ctx, f"Seu nome é {nome}.")
+            _falar(ctx, falar_nome_lembrado(nome))
             return ResultadoDespacho.concluido(True)
     if not callable(recuperar):
         deps.marcar_resultado("habilidade_indisponivel", executou=False)
@@ -364,7 +368,7 @@ def _consultar_aprendizados(
             "aprendizados_consultados", executou=True, confirmado=True,
         )
         if nome:
-            _falar(ctx, f"Seu nome é {nome}.")
+            _falar(ctx, falar_nome_lembrado(nome))
         else:
             _falar(
                 ctx,
@@ -408,10 +412,16 @@ def _consultar_aprendizados(
         fala = f"{prefixo}. {recortes[0].capitalize()}."
     elif modo == "origem":
         fala = f"Minha base para isso é o que você me contou diretamente: {recortes[0]}."
-    elif len(recortes) == 1:
-        fala = f"Do que lembro com segurança, {recortes[0]}."
     else:
-        fala = "Do que lembro com segurança: " + "; ".join(recortes) + "."
+        todos_confirmados = all(
+            bool(item.get("confirmado_usuario"))
+            or str(item.get("natureza") or "").casefold() == "confirmado"
+            for item in aprendizados
+        )
+        fala = falar_lembrancas(
+            recortes,
+            todos_confirmados=todos_confirmados,
+        )
     _falar(ctx, fala)
     return ResultadoDespacho.concluido(True)
 

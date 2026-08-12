@@ -165,6 +165,78 @@ class PlaylistRuntime:
             return self.cache
         return self._sync_cache(data)
 
+    def catalogo_publico(self) -> list[dict[str, Any]]:
+        """Retrato O(1) do catálogo já carregado, sem reler disco na UI."""
+        with self._state_lock:
+            dados = deepcopy(self.cache) if isinstance(self.cache, dict) else {}
+        catalogo: list[dict[str, Any]] = []
+        for nome in sorted(dados, key=lambda item: str(item).casefold()):
+            nome_limpo = re.sub(r"\s+", " ", str(nome or "")).strip()[:80]
+            itens = dados.get(nome)
+            if not nome_limpo or not isinstance(itens, list):
+                continue
+            video_id = ""
+            for item in itens:
+                url = str(item.get("url") or "") if isinstance(item, dict) else str(item or "")
+                encontrado = re.search(
+                    r"(?:[?&]v=|youtu\.be/|/(?:shorts|embed|live)/)"
+                    r"([A-Za-z0-9_-]{11})(?:[^A-Za-z0-9_-]|$)",
+                    url,
+                )
+                if encontrado:
+                    video_id = encontrado.group(1)
+                    break
+            catalogo.append({
+                "name": nome_limpo,
+                "count": len(itens),
+                "artwork_video_id": video_id,
+            })
+        return catalogo
+
+    def fila_publica(self) -> list[dict[str, Any]]:
+        """Expõe as próximas faixas da playlist ativa, sem URLs privadas.
+
+        A extensão observa a fila do YouTube quando ela existe. Playlists
+        locais da Laylay, porém, avançam por este runtime e não precisam estar
+        materializadas no painel lateral do site. Este retrato é a fonte
+        canônica dessa segunda fila.
+        """
+        with self._state_lock:
+            nome = str(self.playlist_state.get("name") or "").strip()
+            if not nome:
+                return []
+            if (
+                self.playlist_state.get("shuffle") is True
+                and isinstance(self.playlist_state.get("shuffle_queue"), list)
+            ):
+                itens = deepcopy(self.playlist_state.get("shuffle_queue") or [])
+                indice = int(self.playlist_state.get("shuffle_index") or 0)
+            else:
+                itens_brutos = self.cache.get(nome) if isinstance(self.cache, dict) else []
+                itens = deepcopy(itens_brutos) if isinstance(itens_brutos, list) else []
+                indice = int(self.playlist_state.get("index") or 0)
+
+        fila: list[dict[str, Any]] = []
+        for item in itens[max(0, indice + 1):]:
+            info = self._item_info(item)
+            titulo = re.sub(r"\s+", " ", str(info.get("titulo") or "")).strip()[:160]
+            if not titulo:
+                continue
+            url = str(info.get("url") or "")
+            encontrado = re.search(
+                r"(?:[?&]v=|youtu\.be/|/(?:shorts|embed|live)/)"
+                r"([A-Za-z0-9_-]{11})(?:[^A-Za-z0-9_-]|$)",
+                url,
+            )
+            fila.append({
+                "title": titulo,
+                "channel": re.sub(
+                    r"\s+", " ", str(info.get("canal") or "")
+                ).strip()[:100],
+                "artwork_video_id": encontrado.group(1) if encontrado else "",
+            })
+        return fila
+
     def save(self, data: Dict[str, Any]) -> bool:
         ok = playlists_save(self.state_file, data or {})
         if ok:
