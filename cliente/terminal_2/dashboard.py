@@ -43,7 +43,7 @@ class ChipEstado(QFrame):
         self.setObjectName("statusChip")
         self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(11, 7, 11, 7)
+        layout.setContentsMargins(13, 8, 13, 8)
         layout.setSpacing(7)
         self.ponto = QLabel("●")
         self.ponto.setObjectName("statusChipDot")

@@ -760,81 +760,294 @@ class JanelaLaylay(QMainWindow):
 
         self.sidebar = QFrame(objectName="sidebar")
         side = QVBoxLayout(self.sidebar)
-        side.setContentsMargins(12, 14, 12, 14)
+        side.setContentsMargins(10, 10, 10, 12)
         side.setSpacing(5)
-        topo = QHBoxLayout()
-        self.avatar_side = AroPresenca(self.raiz, 40)
+
+        # ======================================================
+        # SIDEBAR P6 — marca compacta no mesmo eixo do topbar
+        # ======================================================
+        self.sidebar_topo = QFrame(objectName="sidebarBrandBar")
+        topo = QHBoxLayout(self.sidebar_topo)
+        topo.setContentsMargins(5, 3, 2, 7)
+        topo.setSpacing(8)
+
+        self.avatar_side = AroPresenca(
+            self.raiz,
+            34,
+        )
+
         marca_box = QVBoxLayout()
-        self.marca = QLabel("Laylay")
+        marca_box.setContentsMargins(
+            0, 0, 0, 0
+        )
+        marca_box.setSpacing(0)
+
+        self.marca = QLabel("Laylay ✦")
         self.marca.setObjectName("brand")
-        self.marca_status = QLabel("companheira local")
-        self.marca_status.setObjectName("brandCaption")
+
+        self.marca_status = QLabel(
+            "companheira local"
+        )
+        self.marca_status.setObjectName(
+            "brandCaption"
+        )
+        self.marca_status.hide()
+
         marca_box.addWidget(self.marca)
-        marca_box.addWidget(self.marca_status)
-        self.recolher = QToolButton(text="‹")
-        self.recolher.setObjectName("collapseButton")
-        self.recolher.setToolTip("Recolher barra lateral")
-        self.recolher.setAccessibleName("Recolher ou expandir navegação")
-        self.recolher.clicked.connect(self.alternar_sidebar)
+        marca_box.addWidget(
+            self.marca_status
+        )
+
+        self.nova = QPushButton()
+        self.nova.setObjectName(
+            "newChatButton"
+        )
+        self.nova.setAccessibleName(
+            "Nova conversa"
+        )
+        self.nova.setIcon(
+            icone_terminal("plus")
+        )
+        self.nova.setIconSize(
+            QSize(17, 17)
+        )
+        self.nova.setFixedSize(32, 32)
+        self.nova.setToolTip(
+            "Nova conversa"
+        )
+        self.nova.clicked.connect(
+            self.nova_conversa
+        )
+
+        self.recolher = QToolButton(
+            text="‹"
+        )
+        self.recolher.setObjectName(
+            "collapseButton"
+        )
+        self.recolher.setToolTip(
+            "Recolher barra lateral"
+        )
+        self.recolher.setAccessibleName(
+            "Recolher ou expandir navegação"
+        )
+        self.recolher.clicked.connect(
+            self.alternar_sidebar
+        )
+
         topo.addWidget(self.avatar_side)
         topo.addLayout(marca_box, 1)
+        topo.addWidget(self.nova)
         topo.addWidget(self.recolher)
-        side.addLayout(topo)
-        side.addSpacing(16)
 
-        self.nova = QPushButton("Nova conversa")
-        self.nova.setObjectName("newChatButton")
-        self.nova.setAccessibleName("Nova conversa")
-        self.nova.setIcon(icone_terminal("plus"))
-        self.nova.setIconSize(tamanho_icone())
-        self.nova.clicked.connect(self.nova_conversa)
-        side.addWidget(self.nova)
-        side.addSpacing(12)
-        self.nav_label = QLabel("NAVEGAÇÃO")
-        self.nav_label.setObjectName("sideSection")
-        side.addWidget(self.nav_label)
+        side.addWidget(self.sidebar_topo)
+        side.addSpacing(8)
+
+        self.nav_label = QLabel(
+            "NAVEGAÇÃO",
+            self.sidebar,
+        )
+        self.nav_label.setObjectName(
+            "sideSection"
+        )
+        self.nav_label.hide()
+
         for nome, icone, texto in (
             ("inicio", "home", "Início"),
             ("conversa", "chat", "Conversa"),
-            ("automacao", "automation", "Automação"),
+            (
+                "automacao",
+                "automation",
+                "Automação",
+            ),
             ("musica", "music", "Música"),
             ("memoria", "memory", "Memória"),
             ("sistema", "system", "Sistema"),
-            ("configuracoes", "settings", "Configurações"),
+            (
+                "configuracoes",
+                "settings",
+                "Configurações",
+            ),
         ):
             botao = QPushButton(texto)
-            botao.setIcon(icone_terminal(icone))
-            botao.setIconSize(tamanho_icone())
+            botao.setIcon(
+                icone_terminal(icone)
+            )
+            botao.setIconSize(
+                QSize(19, 19)
+            )
             botao.setCheckable(True)
-            botao.setProperty("nav", True)
-            botao.setProperty("glyph", icone)
-            botao.setProperty("label", texto)
-            botao.setAccessibleName(texto)
-            botao.clicked.connect(lambda _v=False, n=nome: self.selecionar_pagina(n))
+            botao.setProperty(
+                "nav",
+                True,
+            )
+            botao.setProperty(
+                "glyph",
+                icone,
+            )
+            botao.setProperty(
+                "label",
+                texto,
+            )
+            botao.setAccessibleName(
+                texto
+            )
+            botao.clicked.connect(
+                lambda _v=False, n=nome:
+                self.selecionar_pagina(n)
+            )
             self._nav[nome] = botao
             side.addWidget(botao)
-        self._nav["inicio"].setChecked(True)
-        side.addSpacing(18)
-        self.recentes_label = QLabel("RECENTES")
-        self.recentes_label.setObjectName("sideSection")
-        side.addWidget(self.recentes_label)
-        self.conversa_atual = QPushButton("Conversa atual")
-        self.conversa_atual.setObjectName("recentItem")
-        self.conversa_atual.setToolTip("Título efêmero desta sessão visual")
-        self.conversa_atual.clicked.connect(lambda: self.selecionar_pagina("conversa"))
-        side.addWidget(self.conversa_atual)
-        side.addStretch()
-        self.status_mente = QLabel("●  Reconectando")
-        self.status_mente.setObjectName("mindStatus")
-        side.addWidget(self.status_mente)
-        self.config_rodape = QPushButton("Ajustes da Laylay")
-        self.config_rodape.setObjectName("footerSettings")
-        self.config_rodape.setIcon(icone_terminal("settings"))
-        self.config_rodape.setIconSize(tamanho_icone())
-        self.config_rodape.clicked.connect(lambda: self.selecionar_pagina("configuracoes"))
-        side.addWidget(self.config_rodape)
-        geral.addWidget(self.sidebar)
 
+        self._nav["inicio"].setChecked(
+            True
+        )
+
+        self.recentes_label = QLabel(
+            "RECENTES",
+            self.sidebar,
+        )
+        self.recentes_label.setObjectName(
+            "sideSection"
+        )
+        self.recentes_label.hide()
+
+        self.conversa_atual = QPushButton(
+            "Conversa atual",
+            self.sidebar,
+        )
+        self.conversa_atual.setObjectName(
+            "recentItem"
+        )
+        self.conversa_atual.setToolTip(
+            "Título efêmero desta sessão visual"
+        )
+        self.conversa_atual.clicked.connect(
+            lambda:
+            self.selecionar_pagina(
+                "conversa"
+            )
+        )
+        self.conversa_atual.hide()
+
+        self.status_mente = QLabel(
+            "●  Reconectando",
+            self.sidebar,
+        )
+        self.status_mente.setObjectName(
+            "mindStatus"
+        )
+        self.status_mente.hide()
+
+        self.config_rodape = QPushButton(
+            "Ajustes da Laylay",
+            self.sidebar,
+        )
+        self.config_rodape.setObjectName(
+            "footerSettings"
+        )
+        self.config_rodape.setIcon(
+            icone_terminal("settings")
+        )
+        self.config_rodape.setIconSize(
+            tamanho_icone()
+        )
+        self.config_rodape.clicked.connect(
+            lambda:
+            self.selecionar_pagina(
+                "configuracoes"
+            )
+        )
+        self.config_rodape.hide()
+
+        side.addStretch()
+
+        self.profile_card = QFrame(
+            objectName="sidebarProfile"
+        )
+        profile_lay = QVBoxLayout(
+            self.profile_card
+        )
+        profile_lay.setContentsMargins(
+            9, 9, 9, 8
+        )
+        profile_lay.setSpacing(6)
+
+        profile_top = QHBoxLayout()
+        profile_top.setContentsMargins(
+            0, 0, 0, 0
+        )
+        profile_top.setSpacing(8)
+
+        self.avatar_profile = AroPresenca(
+            self.raiz,
+            34,
+        )
+
+        profile_textos = QVBoxLayout()
+        profile_textos.setContentsMargins(
+            0, 0, 0, 0
+        )
+        profile_textos.setSpacing(1)
+
+        self.profile_nome = QLabel(
+            "Laylay"
+        )
+        self.profile_nome.setObjectName(
+            "profileName"
+        )
+
+        self.profile_status = QLabel(
+            "●  Reconectando"
+        )
+        self.profile_status.setObjectName(
+            "profileStatus"
+        )
+        self.profile_status.setProperty(
+            "state",
+            "offline",
+        )
+
+        profile_textos.addWidget(
+            self.profile_nome
+        )
+        profile_textos.addWidget(
+            self.profile_status
+        )
+
+        self.profile_heart = QLabel("♥")
+        self.profile_heart.setObjectName(
+            "profileHeart"
+        )
+        self.profile_heart.setAlignment(
+            Qt.AlignCenter
+        )
+
+        profile_top.addWidget(
+            self.avatar_profile
+        )
+        profile_top.addLayout(
+            profile_textos,
+            1,
+        )
+        profile_top.addWidget(
+            self.profile_heart
+        )
+
+        self.profile_version = QLabel(
+            "Terminal 3.0"
+        )
+        self.profile_version.setObjectName(
+            "profileVersion"
+        )
+
+        profile_lay.addLayout(profile_top)
+        profile_lay.addWidget(
+            self.profile_version
+        )
+
+        side.addWidget(self.profile_card)
+        geral.addWidget(self.sidebar)
         centro = QFrame(objectName="mainSurface")
         centro_lay = QVBoxLayout(centro)
         centro_lay.setContentsMargins(0, 0, 0, 0)
@@ -884,6 +1097,7 @@ class JanelaLaylay(QMainWindow):
         hlay.addSpacing(10)
         hlay.addWidget(self.ponto)
         hlay.addWidget(self.status)
+        hlay.addStretch(1)
         centro_lay.addWidget(header)
 
         self.paginas = QStackedWidget()
@@ -1126,6 +1340,186 @@ class JanelaLaylay(QMainWindow):
                 QPushButton[segment="true"] {{ background: transparent; border: 0; border-radius: 6px; padding: 6px 12px; color: {PALETA['apagado']}; font-size: 11px; font-weight: 650; }}
                 QPushButton[segment="true"]:checked {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
                 QPushButton[segment="true"]:disabled {{ color: #5E5763; }}
+
+                /* =========================================
+                   P6 — SIDEBAR + TOPBAR REFINADOS
+                   ========================================= */
+
+                #sidebar {{
+                    background: #0F1419;
+                    border-right: 1px solid #252C33;
+                }}
+
+                #sidebarBrandBar {{
+                    background: transparent;
+                    border: 0;
+                    border-bottom: 1px solid #1E252C;
+                }}
+
+                #brand {{
+                    color: #F7F3F5;
+                    font-size: 19px;
+                    font-weight: 720;
+                }}
+
+                #brandCaption {{
+                    color: #747C85;
+                    font-size: 8px;
+                }}
+
+                #newChatButton {{
+                    background: transparent;
+                    border: 1px solid #2A3138;
+                    border-radius: 9px;
+                    padding: 0;
+                }}
+
+                #newChatButton:hover {{
+                    background: #201A1E;
+                    border-color: #663540;
+                }}
+
+                #collapseButton {{
+                    background: transparent;
+                    border: 1px solid transparent;
+                    border-radius: 9px;
+                    min-width: 30px;
+                    max-width: 30px;
+                    min-height: 30px;
+                    max-height: 30px;
+                }}
+
+                #collapseButton:hover {{
+                    background: #191E23;
+                    border-color: #2D343B;
+                }}
+
+                QPushButton[nav="true"] {{
+                    background: transparent;
+                    border: 0;
+                    border-left: 3px solid transparent;
+                    border-radius: 9px;
+                    text-align: left;
+
+                    padding: 11px 11px;
+                    min-height: 25px;
+
+                    color: #C5C2C5;
+                    font-size: 13px;
+                    font-weight: 500;
+                }}
+
+                QPushButton[nav="true"]:hover {{
+                    background: #181D22;
+                    color: #F5F1F3;
+                }}
+
+                QPushButton[nav="true"]:checked {{
+                    background: qlineargradient(
+                        x1: 0, y1: 0,
+                        x2: 1, y2: 0,
+                        stop: 0 #312027,
+                        stop: 1 #241A1F
+                    );
+
+                    border-left: 3px solid #FF5C73;
+                    color: #F8F4F6;
+                }}
+
+                #sidebarProfile {{
+                    background: #12171C;
+                    border: 1px solid #20272E;
+                    border-radius: 13px;
+                }}
+
+                #profileName {{
+                    background: transparent;
+                    border: 0;
+                    color: #E9E5E7;
+                    font-size: 11px;
+                    font-weight: 650;
+                }}
+
+                #profileStatus {{
+                    background: transparent;
+                    border: 0;
+                    color: #8A929A;
+                    font-size: 8px;
+                }}
+
+                #profileStatus[state="online"] {{
+                    color: #68C79A;
+                }}
+
+                #profileStatus[state="offline"] {{
+                    color: #9A7E4C;
+                }}
+
+                #profileVersion {{
+                    background: transparent;
+                    border: 0;
+                    color: #656D75;
+                    font-size: 8px;
+                }}
+
+                #profileHeart {{
+                    background: transparent;
+                    border: 0;
+                    color: #E44B62;
+                    font-size: 13px;
+                }}
+
+                #topbar {{
+                    background: #0B0F13;
+                    border-bottom: 1px solid #222931;
+                    min-height: 64px;
+                }}
+
+                #statusChip {{
+                    background: #10151A;
+                    border: 1px solid #293038;
+                    border-radius: 10px;
+                }}
+
+                #statusChipText {{
+                    color: #C9C5C8;
+                    font-size: 11px;
+                    font-weight: 520;
+                }}
+
+                #statusChipDot {{
+                    color: #687079;
+                    font-size: 9px;
+                }}
+
+                #modeSwitch {{
+                    background: #11161B;
+                    border: 1px solid #293038;
+                    border-radius: 10px;
+                }}
+
+                QPushButton[segment="true"] {{
+                    background: transparent;
+                    border: 0;
+                    border-radius: 7px;
+
+                    padding: 7px 12px;
+
+                    color: #777F88;
+                    font-size: 10px;
+                    font-weight: 650;
+                }}
+
+                QPushButton[segment="true"]:checked {{
+                    background: #1C2127;
+                    color: #F2EEF0;
+                }}
+
+                #statusLabel {{
+                    color: #858D96;
+                    font-size: 10px;
+                }}
+
                 #emptyState {{ background: transparent; }}
                 #emptyMark {{ color: {PALETA['violeta']}; font-size: 28px; }}
                 #emptyTitle {{ font-size: 23px; font-weight: 650; }}
@@ -3605,6 +3999,7 @@ class JanelaLaylay(QMainWindow):
         self.marca_status.setText(f"{rotulo.casefold()} · {emocao}")
         self.diag_atividade.setText(f"Atividade\n{rotulo} · emoção {emocao}")
         self.avatar_side.atualizar(atividade, emocao)
+        self.avatar_profile.atualizar(atividade, emocao)
         if atividade in {"thinking", "executing"} and self._envios:
             self._mostrar_indicador_pensando()
         assinatura_atividade = f"{atividade}:{rotulo}:{emocao}"
@@ -3656,6 +4051,17 @@ class JanelaLaylay(QMainWindow):
         self.ponto.setStyleSheet(f"color: {PALETA['sucesso'] if conectado else PALETA['erro']};")
         self.status.setText("Pronta" if conectado else "Reconectando")
         self.status_mente.setText("●  Mente conectada" if conectado else "●  Reconectando")
+        self.profile_status.setText("●  Online" if conectado else "●  Reconectando")
+        self.profile_status.setProperty(
+            "state",
+            "online" if conectado else "offline",
+        )
+        self.profile_status.style().unpolish(
+            self.profile_status
+        )
+        self.profile_status.style().polish(
+            self.profile_status
+        )
         if conectado and not self._dashboard_recebido:
             self.chip_modelo.definir(
                 f"{self._provedor_modelo} configurado"
@@ -3798,16 +4204,21 @@ class JanelaLaylay(QMainWindow):
         self._aplicar_sidebar()
 
     def _aplicar_sidebar(self) -> None:
-        self.sidebar.setFixedWidth(254 if self._sidebar_expandida else 72)
+        self.sidebar.setFixedWidth(198 if self._sidebar_expandida else 68)
         self.marca.setVisible(self._sidebar_expandida)
-        self.marca_status.setVisible(self._sidebar_expandida)
-        self.nav_label.setVisible(self._sidebar_expandida)
-        self.recentes_label.setVisible(self._sidebar_expandida)
-        self.conversa_atual.setVisible(self._sidebar_expandida)
-        self.status_mente.setVisible(self._sidebar_expandida)
-        self.recolher.setText("‹" if self._sidebar_expandida else "›")
-        self.nova.setText("Nova conversa" if self._sidebar_expandida else "")
-        self.config_rodape.setText("Ajustes da Laylay" if self._sidebar_expandida else "")
+        self.marca_status.hide()
+        self.nav_label.hide()
+        self.recentes_label.hide()
+        self.conversa_atual.hide()
+        self.status_mente.hide()
+        self.config_rodape.hide()
+        self.profile_card.setVisible(
+            self._sidebar_expandida
+        )
+        self.recolher.setText(
+            "‹" if self._sidebar_expandida else "›"
+        )
+        self.nova.setText("")
         for botao in self._nav.values():
             texto = str(botao.property("label"))
             botao.setText(texto if self._sidebar_expandida else "")
@@ -3819,15 +4230,20 @@ class JanelaLaylay(QMainWindow):
         self.sidebar.setVisible(not self.sidebar.isVisible())
 
     def _sidebar_compacta_visual(self) -> None:
-        self.sidebar.setFixedWidth(72)
+        self.sidebar.setFixedWidth(68)
         for widget in (
-            self.marca, self.marca_status, self.nav_label, self.recentes_label,
-            self.conversa_atual, self.status_mente,
+            self.marca,
+            self.marca_status,
+            self.nav_label,
+            self.recentes_label,
+            self.conversa_atual,
+            self.status_mente,
+            self.config_rodape,
+            self.profile_card,
         ):
             widget.hide()
         self.recolher.setText("›")
         self.nova.setText("")
-        self.config_rodape.setText("")
         for botao in self._nav.values():
             botao.setText("")
 
