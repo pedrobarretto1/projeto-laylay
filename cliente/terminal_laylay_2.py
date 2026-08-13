@@ -841,8 +841,8 @@ class JanelaLaylay(QMainWindow):
         centro_lay.setSpacing(0)
         header = QFrame(objectName="topbar")
         hlay = QHBoxLayout(header)
-        hlay.setContentsMargins(20, 9, 22, 9)
-        hlay.setSpacing(8)
+        hlay.setContentsMargins(22, 10, 22, 10)
+        hlay.setSpacing(9)
         self.menu_compacto = QToolButton(text="☰")
         self.menu_compacto.setToolTip("Mostrar ou ocultar navegação")
         self.menu_compacto.setAccessibleName("Mostrar ou ocultar navegação")
@@ -890,9 +890,9 @@ class JanelaLaylay(QMainWindow):
         conversa = QWidget()
         conversa_lay = QHBoxLayout(conversa)
         conversa_lay.setContentsMargins(
-            18, 14, 18, 18
+            14, 12, 14, 16
         )
-        conversa_lay.setSpacing(10)
+        conversa_lay.setSpacing(12)
         self.chat_surface = QFrame(objectName="chatSurface")
         chat_lay = QVBoxLayout(
             self.chat_surface
@@ -1111,7 +1111,8 @@ class JanelaLaylay(QMainWindow):
                 #footerSettings:hover {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
                 #collapseButton, QToolButton {{ background: transparent; border: 1px solid transparent; border-radius: 7px; min-width: 34px; min-height: 32px; color: {PALETA['secundario']}; }}
                 QToolButton:hover {{ background: {PALETA['elevada']}; border-color: {PALETA['borda']}; color: {PALETA['texto']}; }}
-                #topbar {{ background: #0C1014; border-bottom: 1px solid #242A31; min-height: 58px; }}
+                /* ACABAMENTO FINAL HOME P5 */
+                #topbar {{ background: #0C1014; border-bottom: 1px solid #242A31; min-height: 62px; }}
                 #headerTitle {{ font-weight: 650; }}
                 #statusChip {{ background: #11151A; border: 1px solid {PALETA['borda']}; border-radius: 9px; }}
                 #statusChipText {{ color: {PALETA['secundario']}; font-size: 11px; }}
@@ -1378,7 +1379,7 @@ class JanelaLaylay(QMainWindow):
                 #secondaryButton {{ background: {PALETA['elevada']}; border: 1px solid {PALETA['borda']}; border-radius: 8px; padding: 10px 15px; font-weight: 600; }}
                 #diagnosticValue {{ background: {PALETA['superficie']}; border-left: 2px solid {PALETA['ciano']}; padding: 12px 15px; font-family: 'Cascadia Code'; font-size: 12px; }}
                 #eventLog {{ font-family: 'Cascadia Code'; background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 9px; color: {PALETA['secundario']}; padding: 14px; font-size: 11px; }}
-                #chatSurface {{ background: #0E1216; border: 1px solid #222830; border-radius: 15px; }}
+                #chatSurface {{ background: #0E1216; border: 1px solid #252C33; border-radius: 17px; }}
                 #chatHeader {{ background: transparent; border-bottom: 1px solid #20262D; }}
                 #chatGreeting {{ font-size: 20px; font-weight: 700; color: #F8F5F7; }}
                 #chatGreetingSub {{ color: {PALETA['secundario']}; font-size: 13px; }}
@@ -1459,9 +1460,9 @@ class JanelaLaylay(QMainWindow):
                     border: 1px solid #30363D;
                     border-radius: 10px;
 
-                    min-height: 38px;
+                    min-height: 40px;
 
-                    padding: 6px 10px;
+                    padding: 7px 10px;
 
                     text-align: left;
 
@@ -3859,17 +3860,20 @@ class JanelaLaylay(QMainWindow):
         else:
             self.sidebar.show()
             self._aplicar_sidebar()
-        margem = 6 if estreita else 18
+        margem = 6 if estreita else 14
         pagina_conversa = self.paginas.widget(0)
         if pagina_conversa is not None and pagina_conversa.layout() is not None:
             pagina_conversa.layout().setContentsMargins(
-                margem, 6 if estreita else 10, margem, 12 if estreita else 18,
+                margem,
+                6 if estreita else 12,
+                margem,
+                12 if estreita else 16,
             )
         self.feed_lay.setContentsMargins(
-            4 if estreita else 22,
-            18 if estreita else 34,
-            4 if estreita else 22,
-            18 if estreita else 24,
+            4 if estreita else 26,
+            18 if estreita else 28,
+            4 if estreita else 26,
+            18 if estreita else 22,
         )
         self.configuracoes.definir_compacto(compacta, estreito=estreita)
         QTimer.singleShot(0, self._ajustar_larguras_mensagens)

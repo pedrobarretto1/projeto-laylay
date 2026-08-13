@@ -129,14 +129,16 @@ class PainelCentralInteligente(QFrame):
     def __init__(self) -> None:
         super().__init__()
         self.setObjectName("intelligencePanel")
-        self.setMinimumWidth(360)
-        self.setMaximumWidth(415)
+        # ACABAMENTO FINAL HOME P5
+        # Proporção mais próxima da referência.
+        self.setMinimumWidth(370)
+        self.setMaximumWidth(395)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(
-            14, 15, 14, 15
+            14, 14, 14, 14
         )
-        layout.setSpacing(8)
+        layout.setSpacing(9)
 
         cabecalho = QHBoxLayout()
         titulo = QLabel("Central Inteligente")
@@ -153,6 +155,11 @@ class PainelCentralInteligente(QFrame):
         "centralSection",
         True,
         )
+        acoes.layout_principal.setContentsMargins(
+            5, 8, 5, 8
+        )
+        acoes.layout_principal.setSpacing(7)
+
         grade = QGridLayout()
         grade.setContentsMargins(0, 0, 0, 0)
         grade.setSpacing(7)
@@ -194,6 +201,11 @@ class PainelCentralInteligente(QFrame):
         "centralSection",
         True,
         )
+        contexto.layout_principal.setContentsMargins(
+            5, 8, 5, 8
+        )
+        contexto.layout_principal.setSpacing(7)
+
         contexto_grade = QGridLayout()
         contexto_grade.setContentsMargins(0, 0, 0, 0)
         contexto_grade.setSpacing(7)
@@ -337,6 +349,9 @@ class PainelCentralInteligente(QFrame):
 
         layout.addWidget(memoria)
 
+        # Mantém a atividade ancorada como rodapé da Central.
+        layout.addStretch(1)
+
         # =========================================================
         # ATIVIDADE RECENTE
         # =========================================================
@@ -442,8 +457,6 @@ class PainelCentralInteligente(QFrame):
         layout.addWidget(
             atividade
         )
-
-        layout.addStretch()
 
 
         # horário + descrição do evento
@@ -971,11 +984,11 @@ class PainelLateralDashboard(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.setObjectName("dashboardRail")
-        self.setMinimumWidth(286)
-        self.setMaximumWidth(315)
+        self.setMinimumWidth(292)
+        self.setMaximumWidth(310)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(11)
+        layout.setSpacing(12)
 
         sistema = CartaoDashboard(
             "Sistema",
