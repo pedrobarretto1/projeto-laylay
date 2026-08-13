@@ -1071,6 +1071,14 @@ class JanelaLaylay(QMainWindow):
         self._estilizar()
         self._aplicar_sidebar()
         self._aplicar_responsividade()
+
+        # P9: prepara antes do primeiro frame visível.
+        self._preparar_animacao_inicio()
+        QTimer.singleShot(
+            90,
+            self._iniciar_animacao_inicio,
+        )
+
         worker.mensagem.connect(self.receber)
         worker.conectado.connect(self.estado_conexao)
         worker.falha.connect(self.falha_conexao)
@@ -1378,6 +1386,7 @@ class JanelaLaylay(QMainWindow):
         centro_lay.setContentsMargins(0, 0, 0, 0)
         centro_lay.setSpacing(0)
         header = QFrame(objectName="topbar")
+        self.topbar = header
         hlay = QHBoxLayout(header)
         hlay.setContentsMargins(24, 9, 24, 9)
         hlay.setSpacing(8)
@@ -1613,6 +1622,138 @@ class JanelaLaylay(QMainWindow):
         centro_lay.addWidget(self.paginas, 1)
         geral.addWidget(centro, 1)
         self.selecionar_pagina("inicio")
+
+    # =====================================================
+    # P9 — ANIMAÇÃO DE INICIALIZAÇÃO DA HOME
+    # =====================================================
+
+    def _preparar_animacao_inicio(self) -> None:
+        if self._reduzir_movimento:
+            return
+
+        self._efeitos_inicio: list[
+            tuple[QWidget, QGraphicsOpacityEffect]
+        ] = []
+
+        for widget in (
+            self.sidebar,
+            self.topbar,
+            self.chat_surface,
+            self.central_inteligente,
+            self.painel_lateral,
+        ):
+            efeito = QGraphicsOpacityEffect(
+                widget
+            )
+            efeito.setOpacity(0.0)
+            widget.setGraphicsEffect(
+                efeito
+            )
+
+            self._efeitos_inicio.append(
+                (widget, efeito)
+            )
+
+    def _iniciar_animacao_inicio(self) -> None:
+        if (
+            self._reduzir_movimento
+            or not getattr(
+                self,
+                "_efeitos_inicio",
+                None,
+            )
+        ):
+            return
+
+        mapa_efeitos = {
+            widget: efeito
+            for widget, efeito
+            in self._efeitos_inicio
+        }
+
+        sequencia = (
+            (self.sidebar, 0, 210),
+            (self.topbar, 55, 220),
+            (self.chat_surface, 115, 260),
+            (
+                self.central_inteligente,
+                190,
+                240,
+            ),
+            (
+                self.painel_lateral,
+                250,
+                260,
+            ),
+        )
+
+        for widget, atraso, duracao in sequencia:
+            efeito = mapa_efeitos.get(
+                widget
+            )
+
+            if efeito is None:
+                continue
+
+            QTimer.singleShot(
+                atraso,
+                lambda w=widget,
+                e=efeito,
+                d=duracao:
+                self._animar_bloco_inicio(
+                    w,
+                    e,
+                    d,
+                ),
+            )
+
+    def _animar_bloco_inicio(
+        self,
+        widget: QWidget,
+        efeito: QGraphicsOpacityEffect,
+        duracao: int,
+    ) -> None:
+        if self._reduzir_movimento:
+            efeito.setOpacity(1.0)
+            if widget.graphicsEffect() is efeito:
+                widget.setGraphicsEffect(None)
+            return
+
+        animacao = QPropertyAnimation(
+            efeito,
+            b"opacity",
+            widget,
+        )
+        animacao.setDuration(
+            max(120, int(duracao))
+        )
+        animacao.setStartValue(0.0)
+        animacao.setEndValue(1.0)
+        animacao.setEasingCurve(
+            QEasingCurve.OutCubic
+        )
+
+        self._animacoes.append(
+            animacao
+        )
+
+        def finalizar() -> None:
+            if animacao in self._animacoes:
+                self._animacoes.remove(
+                    animacao
+                )
+
+            if widget.graphicsEffect() is efeito:
+                widget.setGraphicsEffect(
+                    None
+                )
+
+            animacao.deleteLater()
+
+        animacao.finished.connect(
+            finalizar
+        )
+        animacao.start()
 
     def _atalhos(self) -> None:
         QShortcut(QKeySequence("Ctrl+L"), self, activated=self.composer.editor.setFocus)
