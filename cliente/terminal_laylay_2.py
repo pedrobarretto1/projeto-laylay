@@ -750,7 +750,7 @@ class PaginaConfiguracoes(QWidget):
             "Trocar foto"
         )
         self.trocar_avatar_botao.setObjectName(
-            "secondaryButton"
+            "profileAvatarButton"
         )
         self.trocar_avatar_botao.clicked.connect(
             self._selecionar_avatar
@@ -1941,6 +1941,42 @@ class JanelaLaylay(QMainWindow):
                     border: 0;
                     color: #777F88;
                     font-size: 10px;
+                }}
+
+
+                /* =========================================
+                   P8.1 — BOTÃO DE PERFIL ANIMADO
+                   ========================================= */
+
+                #profileAvatarButton {{
+                    background: #15191E;
+                    border: 1px solid #2D333A;
+                    border-radius: 10px;
+
+                    padding: 9px 14px;
+
+                    color: #B4B5BA;
+                    font-size: 11px;
+                    font-weight: 650;
+                }}
+
+                #profileAvatarButton:hover {{
+                    background: #211A1F;
+                    border-color: #713541;
+                    color: #F3F2F4;
+                }}
+
+                #profileAvatarButton:pressed {{
+                    background: #2D1C22;
+                    border-color: #A54355;
+                    color: #FF7588;
+
+                    padding-top: 10px;
+                    padding-bottom: 8px;
+                }}
+
+                #profileAvatarButton:focus {{
+                    border-color: #FF5C73;
                 }}
 
                 #emptyState {{ background: transparent; }}
