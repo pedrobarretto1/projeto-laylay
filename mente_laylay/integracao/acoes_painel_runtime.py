@@ -24,6 +24,7 @@ ACOES_MUSICA_PAINEL = frozenset({
     "playlist_shuffle",
     "queue_play",
     "volume_set",
+    "audio_output_select",
 })
 
 
@@ -115,7 +116,15 @@ def executar_acao_painel_tipado(
     payload: Mapping[str, Any] | None,
     *,
     executar_intencao: Callable[[dict[str, Any], str], Any],
-) -> bool:
+    selecionar_saida_audio: Callable[[str], Any] | None = None,
+) -> Any:
+    if str(acao_id or "").strip() == "audio_output_select":
+        referencia = str(dict(payload or {}).get("device_ref") or "").strip().casefold()
+        if not re.fullmatch(r"[a-f0-9]{16}", referencia):
+            return False
+        if not callable(selecionar_saida_audio):
+            return False
+        return selecionar_saida_audio(referencia)
     comando = comando_tipado_acao_painel(acao_id, payload)
     if comando is None:
         return False

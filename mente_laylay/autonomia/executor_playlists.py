@@ -14,6 +14,7 @@ from mente_laylay.personalidade.falas_variadas import (
     escolher as escolher_fala_variada,
     fala_de_confirmacao,
 )
+from mente_laylay.personalidade.higiene_fala import limpar_titulo_musical_para_fala
 
 
 INTENCOES_PLAYLISTS = frozenset({
@@ -225,7 +226,10 @@ def _adicionar(
     if ok:
         _definir_ultima(deps, nome)
         limpar_titulo = _get(ctx, "_yt_clean_title", lambda valor: valor)
-        titulo_limpo = limpar_titulo(titulo) or "essa música"
+        titulo_limpo = (
+            limpar_titulo_musical_para_fala(limpar_titulo(titulo))
+            or "essa música"
+        )
         deps.falar_por_status(status, escolher_fala_variada([
             f"Beleza, guardando {titulo_limpo} na playlist {nome}.",
             f"Pronto, {titulo_limpo} foi pra playlist {nome}.",
@@ -261,7 +265,9 @@ def _mover(
     )
     resultado = resultado if isinstance(resultado, dict) else {}
     if resultado.get("ok"):
-        titulo = str(resultado.get("titulo") or musica or "essa música").strip()
+        titulo = limpar_titulo_musical_para_fala(
+            str(resultado.get("titulo") or musica or "essa música").strip()
+        ) or "essa música"
         origem_real = str(resultado.get("origem") or origem).strip()
         destino_real = str(resultado.get("destino") or destino).strip()
         status = "playlist_faixa_movida"

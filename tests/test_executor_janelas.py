@@ -115,7 +115,7 @@ def test_organizar_desktop_preserva_parametros_e_confirma_layout_observado() -> 
         {"executou": True, "confirmado": True},
     )]
     assert falas == [(
-        "Pronto: vscode ficou na esquerda e opera na direita. Conferi o layout.",
+        "Pronto: VS Code ficou à esquerda e Opera, à direita.",
         "feliz",
         1,
     )]
@@ -151,7 +151,7 @@ def test_organizar_desktop_move_so_o_lado_pedido() -> None:
         {"executou": True, "confirmado": True},
     )]
     assert falas == [(
-        "Pronto, deixei steam na esquerda e conferi a posição.",
+        "Pronto, deixei Steam à esquerda.",
         "feliz", 1,
     )]
 
@@ -197,11 +197,50 @@ def test_organizacao_automatica_explica_a_prioridade_observada() -> None:
         },
     )]
     assert falas == [(
-        "Organizei por prioridade: VS Code ficou na esquerda, porque estava em foco, "
-        "e Chrome na direita, porque estava reproduzindo áudio.",
+        "Pronto: VS Code ficou à esquerda e Chrome, à direita.",
         "feliz",
         1,
     )]
+
+
+def test_organizacao_nao_narra_titulos_tecnicos_nem_motivos_internos() -> None:
+    eventos: list[tuple] = []
+    falas: list[tuple] = []
+    esquerda = (
+        "1043 patrick jane pegou o telefone dela- o mentalista edit pros "
+        "bandido edit mentalist - youtube - opera"
+    )
+    direita = "laylay.py - projeto lay - Visual Studio Code"
+
+    despacho = executar_intencao_janelas(
+        "ORGANIZAR_DESKTOP",
+        {"modo": "automatico"},
+        "pc_a",
+        {
+            "organizar_janelas_robusto": lambda *_args: {
+                "ok": True,
+                "executou": True,
+                "confirmado": True,
+                "status": "layout_confirmado",
+                "nome_esquerda": esquerda,
+                "nome_direita": direita,
+                "prioridades": [
+                    {"titulo": esquerda, "motivos": ["reproduzindo áudio"]},
+                    {"titulo": direita, "motivos": ["janela em foco"]},
+                ],
+            },
+            "falar_com_lipsync": lambda *args: falas.append(args),
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido()
+    assert falas == [(
+        "Pronto: YouTube ficou à esquerda e VS Code, à direita.",
+        "feliz",
+        1,
+    )]
+    assert "prioridade automática" in eventos[0][2]["detalhe"]
 
 
 def test_maximizar_no_pc_b_mantem_payload_e_status() -> None:

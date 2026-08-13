@@ -531,16 +531,47 @@ class DashboardTerminalRuntime:
                 != "indisponivel"
             )
 
-        saida_audio = {"name": "", "source": "", "available": False}
+        saida_audio = {
+            "name": "", "source": "", "available": False,
+            "selected_ref": "", "switch_available": False,
+            "devices": [], "observed_at": 0.0,
+        }
         if callable(self.audio_output_getter):
             try:
                 audio_bruto = dict(self.audio_output_getter() or {})
                 nome_saida = _texto(audio_bruto.get("name"), 100)
+                dispositivos_audio: list[dict[str, Any]] = []
+                for item in list(audio_bruto.get("devices") or ()):
+                    if not isinstance(item, Mapping):
+                        continue
+                    referencia = str(item.get("ref") or "").strip().casefold()
+                    nome = _texto(item.get("name"), 100)
+                    if (
+                        nome and len(referencia) == 16
+                        and all(ch in "0123456789abcdef" for ch in referencia)
+                    ):
+                        dispositivos_audio.append({
+                            "ref": referencia,
+                            "name": nome,
+                            "selected": item.get("selected") is True,
+                        })
                 if nome_saida:
                     saida_audio = {
                         "name": nome_saida,
                         "source": _texto(audio_bruto.get("source"), 40),
                         "available": True,
+                        "selected_ref": _texto(
+                            audio_bruto.get("selected_ref"), 16,
+                        ).casefold(),
+                        "switch_available": bool(
+                            audio_bruto.get("switch_available") is True
+                            and dispositivos_audio
+                        ),
+                        "devices": dispositivos_audio,
+                        "observed_at": _numero(
+                            audio_bruto.get("observed_at"),
+                            minimo=0, maximo=9_999_999_999,
+                        ) or 0.0,
                     }
             except Exception:
                 pass

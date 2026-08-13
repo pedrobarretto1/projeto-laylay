@@ -18,6 +18,7 @@ from mente_laylay.personalidade.confirmacao_llm import (
     personalizar_informacao_llm,
 )
 from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao
+from mente_laylay.personalidade.higiene_fala import limpar_fala_operacional
 
 
 STATUS_EXECUCAO_FALHOU = frozenset({
@@ -311,6 +312,9 @@ class AdaptadorResultadoOperacional:
             if modo_jogo_ativo
             else confirmacao.fala
         )
+        fala_final = limpar_fala_operacional(fala_final)
+        if not fala_final:
+            fala_final = limpar_fala_operacional(plano.fala or fallback)
         emocao_final = emocao_evento if expressao_evento else confirmacao.emocao
         nivel_final = nivel_preferido if expressao_evento else confirmacao.nivel
         falar_resultado = self.ctx.get("_falar_resultado_operacional")

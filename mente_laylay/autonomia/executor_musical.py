@@ -14,6 +14,7 @@ from mente_laylay.autonomia.executor_comum import (
 from mente_laylay.integracao.registro_musica import PortaMusicaLeitura
 from mente_laylay.integracao.registro_operacoes_musicais import PortaMusicaOperacoes
 from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_variada
+from mente_laylay.personalidade.higiene_fala import limpar_titulo_musical_para_fala
 
 
 INTENCOES_MUSICAIS = frozenset({
@@ -296,6 +297,7 @@ def _tocar_curadoria(
     faixa = dict(faixa_bruta) if isinstance(faixa_bruta, dict) else {}
     url = str(faixa.get("url") or "").strip()
     titulo = str(faixa.get("titulo") or "a primeira faixa").strip()
+    titulo_fala = limpar_titulo_musical_para_fala(titulo) or "a primeira faixa"
     if not selecao.get("ok") or not _url_video_youtube(url):
         try:
             deps.marcar_resultado(
@@ -330,14 +332,14 @@ def _tocar_curadoria(
     except TypeError:
         deps.marcar_resultado(status, executou=ok, confirmado=confirmado)
     if ok and confirmado is True:
-        fala = f"Escolhi {titulo} da minha playlist {playlist} e confirmei a reprodução."
+        fala = f"Escolhi {titulo_fala} da minha playlist {playlist} e confirmei a reprodução."
     elif ok:
         fala = (
-            f"Abri {titulo} da minha playlist {playlist}, mas o player ainda não "
+            f"Abri {titulo_fala} da minha playlist {playlist}, mas o player ainda não "
             "confirmou o áudio."
         )
     else:
-        fala = f"Tentei abrir {titulo} da minha playlist {playlist}, mas o navegador recusou."
+        fala = f"Tentei abrir {titulo_fala} da minha playlist {playlist}, mas o navegador recusou."
     if callable(deps.falar_por_status):
         deps.falar_por_status(
             status, fala, alvo=playlist, executou=ok, confirmado=confirmado,
@@ -374,12 +376,13 @@ def _copiar_curadoria(
         faixa_bruta = resultado.get("faixa")
         faixa = dict(faixa_bruta) if isinstance(faixa_bruta, dict) else {}
         titulo = str(faixa.get("titulo") or musica).strip() or musica
+        titulo_fala = limpar_titulo_musical_para_fala(titulo) or "essa música"
         if deps.musica_operacoes is not None:
             deps.musica_operacoes.definir_ultima_playlist(destino)
         fala_resultado = escolher_fala_variada([
-            f"Pronto, puxei {titulo} da minha playlist {origem} pra tua playlist {destino}.",
-            f"Beleza, {titulo} saiu da minha curadoria e foi pra {destino}.",
-            f"Já coloquei {titulo} da minha playlist {origem} em {destino}.",
+            f"Pronto, puxei {titulo_fala} da minha playlist {origem} pra tua playlist {destino}.",
+            f"Beleza, {titulo_fala} saiu da minha curadoria e foi pra {destino}.",
+            f"Já coloquei {titulo_fala} da minha playlist {origem} em {destino}.",
         ])
         deps.marcar_resultado("playlist_musica_adicionada", executou=True)
         if callable(deps.falar_por_status):

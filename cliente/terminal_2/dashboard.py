@@ -34,6 +34,9 @@ from cliente.terminal_2.acabamento import (
     icone_terminal,
 )
 from cliente.terminal_2.musica_m1 import PaginaMusica
+from cliente.terminal_2.sistema_compacto import (
+    CardSistemaCompacto,
+)
 
 
 class ChipEstado(QFrame):
@@ -991,192 +994,13 @@ class PainelLateralDashboard(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
 
-        sistema = CartaoDashboard(
-            "Sistema",
-            subtitulo="AO VIVO",
-        )
-        sistema.setProperty(
-            "railCard",
-            "system",
-        )
-        sistema.layout_principal.setContentsMargins(
-            14, 13, 14, 12
-        )
-        sistema.layout_principal.setSpacing(8)
-
-        self.metricas: dict[str, QLabel] = {}
-        self.barras_metricas: dict[str, QProgressBar] = {}
-        self.metricas_linhas: dict[str, QFrame] = {}
-
-        for chave, rotulo in (
-            ("cpu", "CPU"),
-            ("gpu", "GPU"),
-            ("ram", "RAM"),
-            ("vram", "VRAM"),
-            ("rede", "Rede"),
-            ("temperatura", "Temperatura"),
-            ("disco", "Disco"),
-        ):
-            bloco = QFrame()
-            bloco.setObjectName(
-                "railSystemMetric"
-            )
-            bloco.setProperty(
-                "metric",
-                chave,
-            )
-            bloco.setProperty(
-                "state",
-                "unavailable",
-            )
-
-            bloco_lay = QVBoxLayout(
-                bloco
-            )
-            bloco_lay.setContentsMargins(
-                9, 7, 9, 7
-            )
-            bloco_lay.setSpacing(5)
-
-            topo = QHBoxLayout()
-            topo.setContentsMargins(
-                0, 0, 0, 0
-            )
-            topo.setSpacing(6)
-
-            nome = QLabel(rotulo)
-            nome.setObjectName(
-                "railSystemMetricLabel"
-            )
-
-            valor = QLabel("—")
-            valor.setObjectName(
-                "railSystemMetricValue"
-            )
-            valor.setProperty(
-                "state",
-                "unavailable",
-            )
-            valor.setAlignment(
-                Qt.AlignRight
-                | Qt.AlignVCenter
-            )
-
-            topo.addWidget(nome)
-            topo.addStretch()
-            topo.addWidget(valor)
-
-            barra = QProgressBar()
-            barra.setObjectName(
-                "railSystemProgress"
-            )
-            barra.setRange(0, 100)
-            barra.setValue(0)
-            barra.setTextVisible(False)
-            barra.setProperty(
-                "available",
-                False,
-            )
-
-            bloco_lay.addLayout(topo)
-            bloco_lay.addWidget(barra)
-
-            self.metricas[chave] = valor
-            self.barras_metricas[chave] = barra
-            self.metricas_linhas[chave] = bloco
-
-            sistema.layout_principal.addWidget(
-                bloco
-            )
-
-        uptime = QFrame()
-        uptime.setObjectName(
-            "railSystemFooter"
-        )
-        uptime.setProperty(
-            "state",
-            "unavailable",
-        )
-
-        uptime_lay = QHBoxLayout(
-            uptime
-        )
-        uptime_lay.setContentsMargins(
-            9, 7, 9, 7
-        )
-        uptime_lay.setSpacing(8)
-
-        uptime_icone = QLabel("◷")
-        uptime_icone.setObjectName(
-            "railSystemFooterIcon"
-        )
-        uptime_icone.setAlignment(
-            Qt.AlignCenter
-        )
-        uptime_icone.setFixedSize(
-            22, 22
-        )
-
-        uptime_nome = QLabel(
-            "Tempo ligado"
-        )
-        uptime_nome.setObjectName(
-            "railSystemMetricLabel"
-        )
-
-        uptime_valor = QLabel("—")
-        uptime_valor.setObjectName(
-            "railSystemMetricValue"
-        )
-        uptime_valor.setProperty(
-            "state",
-            "unavailable",
-        )
-        uptime_valor.setAlignment(
-            Qt.AlignRight
-            | Qt.AlignVCenter
-        )
-
-        uptime_lay.addWidget(
-            uptime_icone
-        )
-        uptime_lay.addWidget(
-            uptime_nome
-        )
-        uptime_lay.addStretch()
-        uptime_lay.addWidget(
-            uptime_valor
-        )
-
-        self.metricas[
-            "uptime"
-        ] = uptime_valor
-        self.metricas_linhas[
-            "uptime"
-        ] = uptime
-
-        sistema.layout_principal.addWidget(
-            uptime
-        )
-
-        self.sistema_estado = QLabel(
-            "Aguardando telemetria real da mente."
-        )
-        self.sistema_estado.setObjectName(
-            "railSystemStatus"
-        )
-        self.sistema_estado.setProperty(
-            "state",
-            "pending",
-        )
-        self.sistema_estado.setWordWrap(
-            True
-        )
-
-        sistema.layout_principal.addWidget(
-            self.sistema_estado
-        )
-        layout.addWidget(sistema)
+        self.sistema_compacto = CardSistemaCompacto(legado="inicio")
+        self.metricas = self.sistema_compacto.metricas
+        self.barras_metricas = self.sistema_compacto.barras_metricas
+        self.metricas_linhas = self.sistema_compacto.metricas_linhas
+        # Alias mantido para integrações antigas que apenas consultavam o estado.
+        self.sistema_estado = self.sistema_compacto.subtitulo
+        layout.addWidget(self.sistema_compacto)
 
         musica = CartaoDashboard(
             "Música"
@@ -2057,206 +1881,7 @@ class PainelLateralDashboard(QWidget):
             self._atualizar_controles_musica()
 
     def aplicar_dashboard(self, dashboard: dict) -> None:
-        sistema = dashboard.get("system")
-        if not isinstance(sistema, dict):
-            sistema = {}
-        campos = {
-            "cpu": (
-                sistema.get("cpu_percent"),
-                False,
-            ),
-            "gpu": (
-                sistema.get("gpu_percent"),
-                False,
-            ),
-            "ram": (
-                sistema.get("ram_percent"),
-                False,
-            ),
-            "vram": (
-                sistema.get("vram_percent"),
-                False,
-            ),
-            "rede": (
-                sistema.get("network_percent"),
-                False,
-            ),
-            "disco": (
-                sistema.get("disk_percent"),
-                False,
-            ),
-            "temperatura": (
-                sistema.get("temperature_c"),
-                False,
-            ),
-            "uptime": (
-                sistema.get("uptime_seconds"),
-                True,
-            ),
-        }
-
-        for chave, (
-            metrica,
-            uptime,
-        ) in campos.items():
-            valor_label = self.metricas[
-                chave
-            ]
-
-            valor_label.setText(
-                _texto_metrica(
-                    metrica,
-                    uptime=uptime,
-                )
-            )
-
-            disponivel = (
-                isinstance(metrica, dict)
-                and metrica.get("value")
-                is not None
-            )
-
-            frescor = (
-                str(
-                    metrica.get(
-                        "freshness"
-                    )
-                    or "unavailable"
-                )
-                if isinstance(
-                    metrica,
-                    dict,
-                )
-                else "unavailable"
-            )
-
-            estado_linha = (
-                "stale"
-                if disponivel
-                and frescor == "stale"
-                else "fresh"
-                if disponivel
-                else "unavailable"
-            )
-
-            linha = (
-                self.metricas_linhas.get(
-                    chave
-                )
-            )
-
-            if linha is not None:
-                linha.setProperty(
-                    "state",
-                    estado_linha,
-                )
-                linha.style().unpolish(
-                    linha
-                )
-                linha.style().polish(
-                    linha
-                )
-
-            valor_label.setProperty(
-                "state",
-                estado_linha,
-            )
-            valor_label.style().unpolish(
-                valor_label
-            )
-            valor_label.style().polish(
-                valor_label
-            )
-
-            barra = (
-                self.barras_metricas.get(
-                    chave
-                )
-            )
-
-            if barra is not None:
-                try:
-                    valor_barra = (
-                        float(
-                            metrica.get(
-                                "value"
-                            )
-                        )
-                        if isinstance(
-                            metrica,
-                            dict,
-                        )
-                        else 0.0
-                    )
-                except (
-                    TypeError,
-                    ValueError,
-                ):
-                    valor_barra = 0.0
-
-                barra.setValue(
-                    max(
-                        0,
-                        min(
-                            100,
-                            round(
-                                valor_barra
-                            ),
-                        ),
-                    )
-                )
-                barra.setProperty(
-                    "available",
-                    disponivel,
-                )
-                barra.style().unpolish(
-                    barra
-                )
-                barra.style().polish(
-                    barra
-                )
-
-        disponiveis = sum(
-            valor.text() != "—"
-            for valor
-            in self.metricas.values()
-        )
-
-        if disponiveis == len(
-            self.metricas
-        ):
-            estado_sistema = "ok"
-            texto_sistema = (
-                "●  Telemetria atualizada"
-            )
-
-        elif disponiveis:
-            estado_sistema = "partial"
-            texto_sistema = (
-                "●  Telemetria parcial"
-            )
-
-        else:
-            estado_sistema = (
-                "unavailable"
-            )
-            texto_sistema = (
-                "●  Telemetria indisponível"
-            )
-
-        self.sistema_estado.setText(
-            texto_sistema
-        )
-        self.sistema_estado.setProperty(
-            "state",
-            estado_sistema,
-        )
-        self.sistema_estado.style().unpolish(
-            self.sistema_estado
-        )
-        self.sistema_estado.style().polish(
-            self.sistema_estado
-        )
+        self.sistema_compacto.aplicar_sistema(dashboard)
         self._aplicar_modo_jogo(
             dashboard.get("context")
         )
@@ -2464,64 +2089,7 @@ class PainelLateralDashboard(QWidget):
         )
 
     def invalidar_dashboard(self) -> None:
-        for chave, valor in self.metricas.items():
-            valor.setText("—")
-            valor.setProperty(
-                "state",
-                "unavailable",
-            )
-            valor.style().unpolish(
-                valor
-            )
-            valor.style().polish(
-                valor
-            )
-
-            linha = (
-                self.metricas_linhas.get(
-                    chave
-                )
-            )
-            if linha is not None:
-                linha.setProperty(
-                    "state",
-                    "unavailable",
-                )
-                linha.style().unpolish(
-                    linha
-                )
-                linha.style().polish(
-                    linha
-                )
-
-        for barra in (
-            self.barras_metricas.values()
-        ):
-            barra.setValue(0)
-            barra.setProperty(
-                "available",
-                False,
-            )
-            barra.style().unpolish(
-                barra
-            )
-            barra.style().polish(
-                barra
-            )
-
-        self.sistema_estado.setText(
-            "Aguardando telemetria real da mente."
-        )
-        self.sistema_estado.setProperty(
-            "state",
-            "pending",
-        )
-        self.sistema_estado.style().unpolish(
-            self.sistema_estado
-        )
-        self.sistema_estado.style().polish(
-            self.sistema_estado
-        )
+        self.sistema_compacto.invalidar()
         self._aplicar_modo_jogo(None)
 
         self.musica_titulo.setText(
@@ -3328,26 +2896,6 @@ class GraficoMetricaSistema(QWidget):
         painter.drawPath(caminho)
 
 
-class LinhaMetricaCompacta(QFrame):
-    def __init__(self, titulo: str, tom: str) -> None:
-        super().__init__()
-        self.setObjectName("systemRailMetric")
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 2, 0, 2)
-        layout.setSpacing(7)
-        self.nome = QLabel(titulo)
-        self.nome.setObjectName("systemRailMetricName")
-        self.valor = QLabel("—")
-        self.valor.setObjectName("systemRailMetricValue")
-        self.valor.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.grafico = GraficoMetricaSistema(tom, compacto=True)
-        self.grafico.setFixedWidth(82)
-        layout.addWidget(self.nome)
-        layout.addStretch()
-        layout.addWidget(self.valor)
-        layout.addWidget(self.grafico)
-
-
 class PaginaSistema(QWidget):
     acao_solicitada = Signal(str, str)
 
@@ -3367,6 +2915,9 @@ class PaginaSistema(QWidget):
                 "network",
                 "disk",
             )
+        }
+        self._historico_assinaturas: dict[str, tuple[object, float] | None] = {
+            chave: None for chave in self._historico
         }
 
         raiz_layout = QVBoxLayout(self)
@@ -4098,26 +3649,8 @@ class PaginaSistema(QWidget):
         # ----------------------------------------------
         # Resumo compacto do sistema no rail direito
         # ----------------------------------------------
-        self.sistema_rail_card = CartaoDashboard(
-            "Sistema",
-            subtitulo="tempo real",
-        )
-        self.sistema_rail_card.setObjectName("systemCompactCard")
-        self.sistema_rail_card.layout_principal.setContentsMargins(10, 9, 10, 9)
-        self.sistema_rail_card.layout_principal.setSpacing(3)
-        self.rail_metricas: dict[str, LinhaMetricaCompacta] = {}
-        for chave, titulo, tom in (
-            ("cpu", "CPU", "cpu"),
-            ("ram", "RAM", "ram"),
-            ("gpu", "GPU", "gpu"),
-            ("vram", "VRAM", "vram"),
-            ("disk", "Disco", "disk"),
-            ("network", "Rede", "network"),
-            ("temperature", "Temp.", "temperature"),
-        ):
-            linha = LinhaMetricaCompacta(titulo, tom)
-            self.rail_metricas[chave] = linha
-            self.sistema_rail_card.layout_principal.addWidget(linha)
+        self.sistema_rail_card = CardSistemaCompacto(legado="sistema")
+        self.rail_metricas = self.sistema_rail_card.linhas
 
         # Atalhos do rail são uma segunda projeção do mesmo contrato textual.
         self.atalhos_rail_card = CartaoDashboard(
@@ -4643,6 +4176,7 @@ class PaginaSistema(QWidget):
         self,
         dashboard: dict,
     ) -> None:
+        self.sistema_rail_card.aplicar_sistema(dashboard)
         sistema = (
             dashboard.get("system")
             if isinstance(
@@ -4685,8 +4219,6 @@ class PaginaSistema(QWidget):
                     chave
                 ].setValue(0)
                 self.graficos[chave].definir(self._historico[chave])
-                self.rail_metricas[chave].valor.setText("—")
-                self.rail_metricas[chave].grafico.definir(self._historico[chave])
                 continue
 
             numero = max(
@@ -4702,10 +4234,15 @@ class PaginaSistema(QWidget):
                 or ""
             )
 
-            if freshness == "fresh":
+            assinatura = (metrica.get("observed_at"), numero)
+            if (
+                freshness == "fresh"
+                and assinatura != self._historico_assinaturas[chave]
+            ):
                 self._historico[
                     chave
                 ].append(numero)
+                self._historico_assinaturas[chave] = assinatura
 
             sufixo = (
                 " · antigo"
@@ -4724,8 +4261,6 @@ class PaginaSistema(QWidget):
                 chave
             ].setValue(int(numero))
             self.graficos[chave].definir(self._historico[chave])
-            self.rail_metricas[chave].valor.setText(texto)
-            self.rail_metricas[chave].grafico.definir(self._historico[chave])
 
         info_sistema = (
             sistema.get("info")
@@ -4785,30 +4320,6 @@ class PaginaSistema(QWidget):
                 )
             )
         )
-        temperatura_texto = _texto_metrica(sistema.get("temperature_c"))
-        self.rail_metricas["temperature"].valor.setText(temperatura_texto)
-        metrica_temperatura = (
-            sistema.get("temperature_c")
-            if isinstance(sistema.get("temperature_c"), dict)
-            else {}
-        )
-        if metrica_temperatura.get("value") is not None:
-            try:
-                temperatura_numero = max(
-                    0.0, min(100.0, float(metrica_temperatura["value"]))
-                )
-                if metrica_temperatura.get("freshness") == "fresh":
-                    historico_temperatura = getattr(
-                        self, "_historico_temperatura", deque(maxlen=24)
-                    )
-                    historico_temperatura.append(temperatura_numero)
-                    self._historico_temperatura = historico_temperatura
-            except (TypeError, ValueError):
-                pass
-        self.rail_metricas["temperature"].grafico.definir(
-            getattr(self, "_historico_temperatura", ())
-        )
-
         # P10.1 — replica somente métricas confirmadas
         # para o card de armazenamento/memória.
         for chave in (
@@ -5130,6 +4641,7 @@ class PaginaSistema(QWidget):
             )
 
     def invalidar(self) -> None:
+        self.sistema_rail_card.invalidar()
         for linha in self.resumo_linhas.values():
             linha.definir("—")
 
@@ -5233,14 +4745,6 @@ class PaginaSistema(QWidget):
         ].definir_rodape(
             "↓ —  ·  ↑ —"
         )
-
-        for chave, linha in self.rail_metricas.items():
-            linha.valor.setText("—")
-            linha.grafico.definir(
-                getattr(self, "_historico_temperatura", ())
-                if chave == "temperature"
-                else self._historico.get(chave, ())
-            )
 
         for valores in self.modulos_valores.values():
             valores["state"].setText("Aguardando")

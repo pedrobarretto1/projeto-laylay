@@ -17,6 +17,7 @@ from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt, Signal, 
 from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import (
     QFrame,
+    QComboBox,
     QGraphicsOpacityEffect,
     QGridLayout,
     QHBoxLayout,
@@ -34,6 +35,7 @@ from PySide6.QtWidgets import (
 )
 
 from cliente.terminal_2.acabamento import CapaMusicaGenerica, icone_terminal
+from cliente.terminal_2.sistema_compacto import CardSistemaCompacto
 
 
 def _tempo(segundos: object) -> str:
@@ -392,6 +394,9 @@ class PaginaMusicaM1(QWidget):
         self._shuffle_disponivel = False
         self._volume_disponivel = False
         self._volume_arrastando = False
+        self._audio_saida_pendente = False
+        self._audio_ref_atual = ""
+        self._audio_troca_disponivel = False
         self._ultimo_retrato_musica: dict = {}
         self._letra_retrato: dict = {}
         self._letra_expandida = False
@@ -1121,6 +1126,13 @@ class PaginaMusicaM1(QWidget):
             self.audio_dispositivo
         )
 
+        self.audio_lista = QComboBox()
+        self.audio_lista.setObjectName("musicAudioDeviceList")
+        self.audio_lista.setEnabled(False)
+        self.audio_lista.setAccessibleName("Selecionar saída de áudio do Windows")
+        self.audio_lista.activated.connect(self._solicitar_saida_audio)
+        self.audio.conteudo.addWidget(self.audio_lista)
+
         # Botão inferior discreto
         self.audio_gerenciar = QPushButton(
             "Gerenciar dispositivos  ›"
@@ -1130,6 +1142,7 @@ class PaginaMusicaM1(QWidget):
         )
         self.audio_gerenciar.setEnabled(False)
         self.audio_gerenciar.setFixedHeight(28)
+        self.audio_gerenciar.clicked.connect(self.audio_lista.showPopup)
 
         self.audio.conteudo.addWidget(
             self.audio_gerenciar
@@ -1288,82 +1301,9 @@ class PaginaMusicaM1(QWidget):
         # =========================================================
         # SISTEMA
         # =========================================================
-        self.sistema = CartaoMusica(
-            "Sistema",
-            detalhe="observado",
-        )
-        self.sistema.conteudo.setSpacing(7)
-
-        self.sistema_valores: dict[str, QLabel] = {}
-        self.sistema_barras: dict[str, QProgressBar] = {}
-
-        metricas = (
-            ("cpu_percent", "CPU"),
-            ("gpu_percent", "GPU"),
-            ("ram_percent", "RAM"),
-            ("vram_percent", "VRAM"),
-            ("network_percent", "Rede"),
-            ("temperature_c", "Temperatura"),
-            ("disk_percent", "Disco"),
-        )
-
-        for chave, nome in metricas:
-            bloco = QWidget()
-            bloco.setObjectName("musicSystemMetric")
-
-            bloco_layout = QVBoxLayout(bloco)
-            bloco_layout.setContentsMargins(0, 0, 0, 0)
-            bloco_layout.setSpacing(3)
-
-            topo = QHBoxLayout()
-            topo.setContentsMargins(0, 0, 0, 0)
-
-            rotulo = QLabel(nome)
-            rotulo.setObjectName("musicSideLabel")
-
-            valor = QLabel("—")
-            valor.setObjectName("musicSideValue")
-            valor.setAlignment(
-                Qt.AlignRight | Qt.AlignVCenter
-            )
-
-            topo.addWidget(rotulo)
-            topo.addStretch()
-            topo.addWidget(valor)
-
-            barra = QProgressBar()
-            barra.setObjectName("musicSystemBar")
-            barra.setRange(0, 100)
-            barra.setValue(0)
-            barra.setTextVisible(False)
-            barra.setProperty("available", False)
-
-            bloco_layout.addLayout(topo)
-            bloco_layout.addWidget(barra)
-
-            self.sistema_valores[chave] = valor
-            self.sistema_barras[chave] = barra
-
-            self.sistema.conteudo.addWidget(bloco)
-
-        # Tempo ligado separado
-        uptime_linha = QHBoxLayout()
-
-        uptime_rotulo = QLabel("Tempo ligado")
-        uptime_rotulo.setObjectName("musicSideLabel")
-
-        uptime_valor = QLabel("—")
-        uptime_valor.setObjectName("musicSideValue")
-
-        uptime_linha.addWidget(uptime_rotulo)
-        uptime_linha.addStretch()
-        uptime_linha.addWidget(uptime_valor)
-
-        self.sistema_valores["uptime_seconds"] = uptime_valor
-
-        self.sistema.conteudo.addLayout(
-            uptime_linha
-        )
+        self.sistema = CardSistemaCompacto(legado="musica")
+        self.sistema_valores = self.sistema.sistema_valores
+        self.sistema_barras = self.sistema.sistema_barras
 
         # =========================================================
         # MODO DE AUDIÇÃO
@@ -1801,6 +1741,20 @@ class PaginaMusicaM1(QWidget):
         nivel = int(self.volume_slider.value())
         self.acao_solicitada.emit(
             "volume_set", f"deixa o volume em {nivel} por cento",
+        )
+
+    def _solicitar_saida_audio(self, indice: int) -> None:
+        referencia = str(self.audio_lista.itemData(indice) or "").strip().casefold()
+        nome = str(self.audio_lista.itemText(indice) or "saída de áudio").strip()
+        if (
+            self._audio_saida_pendente or referencia == self._audio_ref_atual
+            or len(referencia) != 16
+        ):
+            return
+        self.acao_fila_solicitada.emit(
+            "audio_output_select",
+            f"trocar a saída de áudio para {nome}",
+            {"device_ref": referencia},
         )
 
     def _focar_volume(self) -> None:
@@ -2485,26 +2439,45 @@ class PaginaMusicaM1(QWidget):
             self.audio_origem.setText(
                 "Aguardando o Windows"
             )
-            self.audio_selecionado.setText(
-                "✓" if audio_disponivel else "—"
-            )
 
-            self.audio_selecionado.setProperty(
-                "selected",
-                audio_disponivel,
-            )
+        self.audio_selecionado.setText("✓" if audio_disponivel else "—")
+        self.audio_selecionado.setProperty("selected", audio_disponivel)
+        self.audio_icone_caixa.setProperty("available", audio_disponivel)
+        for widget in (self.audio_selecionado, self.audio_icone_caixa):
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
 
-            self.audio_icone_caixa.setProperty(
-                "available",
-                audio_disponivel,
-            )
-
-            for widget in (
-                self.audio_selecionado,
-                self.audio_icone_caixa,
-            ):
-                widget.style().unpolish(widget)
-                widget.style().polish(widget)
+        dispositivos = [
+            item for item in list(audio.get("devices") or ())
+            if isinstance(item, dict)
+        ]
+        referencia_atual = str(audio.get("selected_ref") or "").strip().casefold()
+        self._audio_ref_atual = referencia_atual
+        self.audio_lista.blockSignals(True)
+        self.audio_lista.clear()
+        indice_atual = -1
+        for indice, item in enumerate(dispositivos):
+            referencia = str(item.get("ref") or "").strip().casefold()
+            nome = str(item.get("name") or "").strip()
+            if not nome or len(referencia) != 16:
+                continue
+            self.audio_lista.addItem(nome, referencia)
+            if referencia == referencia_atual or item.get("selected") is True:
+                indice_atual = self.audio_lista.count() - 1
+        if indice_atual >= 0:
+            self.audio_lista.setCurrentIndex(indice_atual)
+        self.audio_lista.blockSignals(False)
+        self._audio_troca_disponivel = bool(
+            audio.get("switch_available") is True and self.audio_lista.count() > 0
+        )
+        self._atualizar_botoes()
+        quantidade_saidas = self.audio_lista.count()
+        rotulo_saidas = (
+            "1 dispositivo disponível"
+            if quantidade_saidas == 1
+            else f"{quantidade_saidas} dispositivos disponíveis"
+        )
+        self.audio_gerenciar.setText(f"Trocar dispositivo  ·  {rotulo_saidas}  ›")
 
         if self.audio_dispositivo.property("available") != audio_disponivel:
             self.audio_dispositivo.setProperty(
@@ -2627,27 +2600,7 @@ class PaginaMusicaM1(QWidget):
         self._aplicar_lateral(dashboard)
 
     def _aplicar_lateral(self, dashboard: dict) -> None:
-        sistema = dashboard.get("system")
-        sistema = sistema if isinstance(sistema, dict) else {}
-        for chave, valor in self.sistema_valores.items():
-            valor.setText(_metrica_dashboard(
-                sistema.get(chave), uptime=chave == "uptime_seconds",
-            ))
-            barra = self.sistema_barras.get(chave)
-            if barra is not None:
-                metrica = sistema.get(chave)
-                numero = (
-                    metrica.get("value") if isinstance(metrica, dict) else None
-                )
-                try:
-                    disponivel = numero is not None
-                    barra.setValue(max(0, min(100, round(float(numero or 0)))))
-                except (TypeError, ValueError):
-                    disponivel = False
-                    barra.setValue(0)
-                barra.setProperty("available", disponivel)
-                barra.style().unpolish(barra)
-                barra.style().polish(barra)
+        self.sistema.aplicar_sistema(dashboard)
         rotinas = dashboard.get("routines")
         itens = (
             list(rotinas.get("items") or ())
@@ -2774,8 +2727,20 @@ class PaginaMusicaM1(QWidget):
         self.acoes_sessao["Tocar playlist"].setEnabled(
             habilitar_playlist and bool(self._playlist_ativa),
         )
+        audio_habilitado = bool(
+            self._conectada and self._audio_troca_disponivel
+            and self.audio_lista.count() > 0 and not self._audio_saida_pendente
+        )
+        self.audio_lista.setEnabled(audio_habilitado)
+        self.audio_gerenciar.setEnabled(audio_habilitado)
 
     def definir_estado_acao(self, acao_id: str, estado: str, resumo: str = "") -> None:
+        if acao_id == "audio_output_select":
+            self._audio_saida_pendente = estado in {"sending", "received", "executing"}
+            self._atualizar_botoes()
+            if resumo:
+                self.audio_origem.setText(resumo)
+            return
         if acao_id == "queue_play":
             self._fila_pendente = estado in {"sending", "received", "executing"}
             self._atualizar_botoes()
@@ -2821,6 +2786,12 @@ class PaginaMusicaM1(QWidget):
         self._fila_fonte = ""
         self._fila_pendente = False
         self._estado_observado = "unavailable"
+        self._audio_saida_pendente = False
+        self._audio_ref_atual = ""
+        self._audio_troca_disponivel = False
+        self.audio_lista.clear()
+        self.audio_lista.setEnabled(False)
+        self.audio_gerenciar.setEnabled(False)
         self.titulo.setText("Nenhuma faixa confirmada")
         self.canal.setText("Aguardando o player observado pela extensão")
         self._artwork_url = ""
@@ -2834,8 +2805,7 @@ class PaginaMusicaM1(QWidget):
         self._observado_em = 0.0
         self._renderizar_tempo(0.0)
         self.volume_muted.setText("")
-        for valor in self.sistema_valores.values():
-            valor.setText("—")
+        self.sistema.invalidar()
         self.rotinas_estado.setText("Aguardando a agenda observada.")
         self._letra_retrato = {}
         self._letra_expandida = False

@@ -4717,6 +4717,36 @@ QScrollArea#systemScroll > QWidget > QWidget {{
                     color: #FF647B;
                 }}
 
+                #musicAudioDeviceList {{
+                    min-height: 30px;
+                    padding: 4px 9px;
+                    background: #171C21;
+                    border: 1px solid #30363D;
+                    border-radius: 7px;
+                    color: #D9D5D7;
+                    font-size: 10px;
+                }}
+
+                #musicAudioDeviceList:hover,
+                #musicAudioDeviceList:focus {{
+                    border-color: #7A3847;
+                    background: #1B1F24;
+                }}
+
+                #musicAudioDeviceList:disabled {{
+                    color: #646B73;
+                    border-color: #292F35;
+                }}
+
+                #musicAudioDeviceList QAbstractItemView {{
+                    background: #171B20;
+                    border: 1px solid #483039;
+                    color: #DDD8DA;
+                    selection-background-color: #3A232A;
+                    selection-color: #FF7388;
+                    outline: 0;
+                }}
+
 
                 /* botão inferior */
 
@@ -5266,6 +5296,63 @@ QScrollArea#systemScroll > QWidget > QWidget {{
                 #systemLaylayRow #dashboardMetricValue {{ padding: 3px 5px; font-size: 8px; }}
                 #systemLaylayStatus {{ padding: 4px 6px; }}
                 #systemLaylayPulse {{ padding: 3px 6px; font-size: 8px; }}
+
+                /* Sistema universal — o mesmo pulso visual em todos os rails */
+                #compactSystemCard {{
+                    background: #11171C;
+                    border: 1px solid #2A333B;
+                    border-radius: 12px;
+                    min-width: 250px;
+                    max-width: 310px;
+                }}
+                #compactSystemTitle {{
+                    background: transparent;
+                    border: 0;
+                    color: #F4F0F2;
+                    font-size: 12px;
+                    font-weight: 740;
+                }}
+                #compactSystemHint {{
+                    background: transparent;
+                    border: 0;
+                    color: #73818B;
+                    font-size: 7px;
+                }}
+                #compactSystemHint[state="dados_antigos"] {{ color: #D39A4A; }}
+                #compactSystemHint[state="indisponível"] {{ color: #69737C; }}
+                #compactSystemMetric {{
+                    background: transparent;
+                    border: 0;
+                    min-height: 18px;
+                    max-height: 18px;
+                }}
+                #compactSystemMetricName {{
+                    background: transparent;
+                    border: 0;
+                    color: #B7C0C8;
+                    font-size: 8px;
+                }}
+                #compactSystemMetricValue {{
+                    background: transparent;
+                    border: 0;
+                    color: #F2EEF0;
+                    font-size: 8px;
+                    font-weight: 700;
+                }}
+                #compactSystemMetric[state="stale"] #compactSystemMetricValue {{
+                    color: #D5A45B;
+                }}
+                #compactSystemMetric[state="unavailable"] #compactSystemMetricValue {{
+                    color: #68737C;
+                }}
+                QWidget[compactSystemGraph="true"],
+                #musicSystemBar[compactSystemGraph="true"],
+                #railSystemProgress[compactSystemGraph="true"] {{
+                    background: transparent;
+                    border: 0;
+                    min-height: 18px;
+                    max-height: 18px;
+                }}
 
                 QScrollBar:vertical {{ background: transparent; width: 9px; margin: 2px; }}
                 QScrollBar::handle:vertical {{ background: #49424F; min-height: 32px; border-radius: 4px; }}

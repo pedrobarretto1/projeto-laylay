@@ -14,6 +14,7 @@ from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
 from mente_laylay.autonomia.executor_comum import falar_ctx as _falar
 from mente_laylay.autonomia.habilidade_janelas import executar_habilidade_janelas
 from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_variada
+from mente_laylay.personalidade.higiene_fala import nome_janela_para_fala
 
 
 INTENCOES_JANELAS = frozenset({
@@ -119,30 +120,19 @@ def _executar_organizar_desktop(
             kwargs_resultado["detalhe"] = f"prioridade automática: {detalhe_prioridade}"
         deps.marcar_resultado(status, **kwargs_resultado)
         if confirmado is True:
+            esquerda_fala = nome_janela_para_fala(esquerda_real) if esquerda_real else ""
+            direita_fala = nome_janela_para_fala(direita_real) if direita_real else ""
             if esquerda_real and direita_real:
-                if modo_automatico and len(prioridades) >= 2:
-                    motivo_esq = _explicar_prioridade(prioridades[0])
-                    motivo_dir = _explicar_prioridade(prioridades[1])
-                    explicacao_esq = f", porque {motivo_esq}" if motivo_esq else ""
-                    explicacao_dir = f", porque {motivo_dir}" if motivo_dir else ""
-                    _falar(
-                        ctx,
-                        f"Organizei por prioridade: {esquerda_real} ficou na esquerda{explicacao_esq}, "
-                        f"e {direita_real} na direita{explicacao_dir}.",
-                        "feliz",
-                        1,
-                    )
-                else:
-                    _falar(
-                        ctx,
-                        f"Pronto: {esquerda_real} ficou na esquerda e {direita_real} na direita. Conferi o layout.",
-                        "feliz",
-                        1,
-                    )
+                _falar(
+                    ctx,
+                    f"Pronto: {esquerda_fala} ficou à esquerda e {direita_fala}, à direita.",
+                    "feliz",
+                    1,
+                )
             elif esquerda_real:
-                _falar(ctx, f"Pronto, deixei {esquerda_real} na esquerda e conferi a posição.", "feliz", 1)
+                _falar(ctx, f"Pronto, deixei {esquerda_fala} à esquerda.", "feliz", 1)
             elif direita_real:
-                _falar(ctx, f"Pronto, deixei {direita_real} na direita e conferi a posição.", "feliz", 1)
+                _falar(ctx, f"Pronto, deixei {direita_fala} à direita.", "feliz", 1)
             else:
                 _falar(ctx, "Organizei as janelas visíveis e conferi o layout.", "feliz", 1)
         elif not executou:

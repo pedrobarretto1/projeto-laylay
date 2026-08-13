@@ -109,6 +109,12 @@ ACOES_PAINEL_TERMINAL: Final[tuple[dict[str, str], ...]] = (
         "intent": "VOLUME",
     },
     {
+        "id": "audio_output_select",
+        "label": "Trocar saída de áudio",
+        "request": "",
+        "intent": "",
+    },
+    {
         "id": "routine_cancel",
         "label": "Cancelar rotina",
         "request": "",

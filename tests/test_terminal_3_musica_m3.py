@@ -104,6 +104,10 @@ def test_dashboard_m3_publica_apenas_estado_real_e_capacidades_vivas() -> None:
         "name": "Alto-falantes Realtek",
         "source": "padrão do sistema",
         "available": True,
+        "selected_ref": "",
+        "switch_available": False,
+        "devices": [],
+        "observed_at": 0.0,
     }
     assert musica["lights"] == {
         "configured": True,
@@ -130,6 +134,8 @@ def test_bridge_m3_remove_campos_extras_e_preserva_indisponibilidade() -> None:
     assert retrato["music"]["volume_percent"] == 42
     assert retrato["music"]["audio_output"] == {
         "name": "Realtek", "source": "padrão do sistema", "available": True,
+        "selected_ref": "", "switch_available": False,
+        "devices": [], "observed_at": 0.0,
     }
     assert retrato["music"]["lights"] == {
         "configured": True, "sync_available": False,

@@ -690,6 +690,10 @@ def sanitizar_dashboard_estado(
                 isinstance(musica.get("audio_output"), Mapping)
                 and musica.get("audio_output", {}).get("available") is True
             ),
+            "selected_ref": "",
+            "switch_available": False,
+            "devices": [],
+            "observed_at": 0.0,
         },
         "lights": {
             "configured": bool(
@@ -721,6 +725,40 @@ def sanitizar_dashboard_estado(
         "context_music": contexto_musical_publico,
         "lyrics": letra_publica,
     }
+    audio_bruto = (
+        musica.get("audio_output")
+        if isinstance(musica.get("audio_output"), Mapping) else {}
+    )
+    dispositivos_publicos: list[dict[str, Any]] = []
+    for item in list(audio_bruto.get("devices") or ()):
+        if not isinstance(item, Mapping):
+            continue
+        referencia = _texto_seguro(item.get("ref"), 16).casefold()
+        nome = _texto_publico_dashboard(item.get("name"), 100, fallback="")
+        if (
+            nome and re.fullmatch(r"[a-f0-9]{16}", referencia)
+            and len(dispositivos_publicos) < 32
+        ):
+            dispositivos_publicos.append({
+                "ref": referencia,
+                "name": nome,
+                "selected": item.get("selected") is True,
+            })
+    referencia_selecionada = _texto_seguro(
+        audio_bruto.get("selected_ref"), 16,
+    ).casefold()
+    if not re.fullmatch(r"[a-f0-9]{16}", referencia_selecionada):
+        referencia_selecionada = ""
+    musica_publica["audio_output"].update({
+        "selected_ref": referencia_selecionada,
+        "switch_available": bool(
+            audio_bruto.get("switch_available") is True and dispositivos_publicos
+        ),
+        "devices": dispositivos_publicos,
+        "observed_at": _numero_dashboard(
+            audio_bruto.get("observed_at"), minimo=0, maximo=9_999_999_999,
+        ) or 0.0,
+    })
     rotinas_observadas = _numero_dashboard(
         rotinas.get("observed_at"), minimo=0, maximo=9_999_999_999,
     ) or 0.0
@@ -887,6 +925,7 @@ def validar_mensagem_cliente(
                 "playlist_shuffle": {"playlist"},
                 "queue_play": {"item_id", "queue_index"},
                 "volume_set": {"level"},
+                "audio_output_select": {"device_ref"},
             }
             permitidos = permitidos_por_acao.get(acao_id, set())
             if set(bruto_payload) - permitidos:
@@ -942,6 +981,13 @@ def validar_mensagem_cliente(
                 if not 0 <= indice <= 7:
                     raise ErroProtocoloDesktop("posição da fila inválida")
                 payload.update(item_id=item_id, queue_index=indice)
+            if "device_ref" in permitidos:
+                referencia_dispositivo = _texto_seguro(
+                    bruto_payload.get("device_ref"), 16,
+                ).casefold()
+                if not re.fullmatch(r"[a-f0-9]{16}", referencia_dispositivo):
+                    raise ErroProtocoloDesktop("saída de áudio inválida")
+                payload["device_ref"] = referencia_dispositivo
         if tipo_entrada == "chat":
             acao_id = ""
         return {
@@ -1567,17 +1613,36 @@ class DesktopBridgeRuntime:
         self._publicar_estado_acao(
             entrada, "executing", "Executando controle", direta=True,
         )
+        retorno_execucao: Any = False
         try:
-            executou = bool(self.executar_acao_painel(
+            retorno_execucao = self.executar_acao_painel(
                 str(entrada.get("action") or ""), dict(payload),
-            ))
+            )
+            executou = bool(
+                retorno_execucao.get("executou")
+                if isinstance(retorno_execucao, Mapping)
+                else retorno_execucao
+            )
         except Exception as erro:
             self.log(
                 "⚠️ [TERMINAL 3:PAINEL] execução falhou "
                 f"| ação={entrada.get('action') or '-'} tipo={type(erro).__name__}"
             )
             executou = False
-        if executou:
+        if isinstance(retorno_execucao, Mapping):
+            confirmado = retorno_execucao.get("confirmado")
+            estado = (
+                "confirmed" if confirmado is True
+                else "partial" if executou
+                else "failed"
+            )
+            resumo = _texto_seguro(
+                retorno_execucao.get("resumo"), 180,
+            ) or (
+                "Controle executado" if executou
+                else "O controle não foi executado"
+            )
+        elif executou:
             resultado = classificar_resultado_acao(
                 self._resultado_acao_atual(),
                 acao_id=str(entrada.get("action") or ""),

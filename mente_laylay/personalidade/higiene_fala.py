@@ -30,6 +30,93 @@ _PALAVRA_PENDURADA = re.compile(
     r"com|sem|para|pra|por|pelo|pela|um|uma|uns|umas)\s*[.!?…]*$",
     re.IGNORECASE,
 )
+_SUFIXO_APLICATIVO = re.compile(
+    r"\s*[-–—|]\s*(?:youtube(?:\s+music)?|opera(?:\s+gx)?|google\s+chrome|"
+    r"chrome|mozilla\s+firefox|firefox|microsoft\s+edge|edge)\s*$",
+    re.IGNORECASE,
+)
+_METADADO_MUSICAL = re.compile(
+    r"\s*[\[(][^\])]*(?:official\s+(?:video|audio)|vídeo\s+oficial|video\s+oficial|"
+    r"lyric(?:s)?(?:\s+video)?|letra|clipe|áudio\s+oficial|audio\s+oficial|"
+    r"4k|hd)[^\])]*[\])]",
+    re.IGNORECASE,
+)
+
+
+def _retirar_sufixos_de_aplicativo(texto: str) -> str:
+    atual = str(texto or "").strip()
+    anterior = None
+    while atual and atual != anterior:
+        anterior = atual
+        atual = _SUFIXO_APLICATIVO.sub("", atual).strip(" -–—|")
+    return atual
+
+
+def limpar_titulo_musical_para_fala(titulo: str) -> str:
+    """Transforma o título técnico do player em um nome curto para conversa.
+
+    A URL e o título bruto continuam intactos no estado operacional. Esta
+    função só prepara a apresentação, removendo contadores, nome do navegador
+    e metadados editoriais inequívocos. Um único ``Radio Edit`` é preservado.
+    """
+    fala = _retirar_sufixos_de_aplicativo(titulo)
+    fala = re.sub(r"^\s*\(\s*\d+\s*\)\s*", "", fala).strip()
+    contador_separado = re.match(r"^\s*(\d+)\s*[-–:]\s*(.+)$", fala)
+    if contador_separado:
+        numero = contador_separado.group(1)
+        parece_ano = len(numero) == 4 and 1900 <= int(numero) <= 2099
+        if not parece_ano:
+            fala = contador_separado.group(2).strip()
+    # Contadores de fila/captura também chegam sem parênteses ou separador.
+    # Só retiramos números longos diante de um título claramente descritivo,
+    # preservando nomes musicais legítimos como ``1979``.
+    if len(fala.split()) >= 6:
+        fala = re.sub(r"^\s*\d{3,6}\s+(?=[A-Za-zÀ-ÿ])", "", fala).strip()
+    fala = _METADADO_MUSICAL.sub(" ", fala)
+    ocorrencias_edit = list(re.finditer(r"\bedit\b", fala, re.IGNORECASE))
+    if len(ocorrencias_edit) >= 2:
+        fala = fala[: ocorrencias_edit[0].start()].rstrip(" -–—|:,")
+    fala = re.sub(r"\s*[-–—]\s*", " - ", fala)
+    fala = re.sub(r"\s+", " ", fala).strip(" -–—|:,")
+    return fala
+
+
+def nome_janela_para_fala(nome: str) -> str:
+    """Resume um título de janela sem alterar o alvo usado pelo executor."""
+    bruto = re.sub(r"\s+", " ", str(nome or "")).strip()
+    norm = bruto.casefold()
+    nomes_conhecidos = (
+        ("youtube", "YouTube"),
+        ("visual studio code", "VS Code"),
+        ("vscode", "VS Code"),
+        ("spotify", "Spotify"),
+        ("opera gx", "Opera GX"),
+        ("opera", "Opera"),
+        ("google chrome", "Chrome"),
+        ("chrome", "Chrome"),
+        ("mozilla firefox", "Firefox"),
+        ("firefox", "Firefox"),
+        ("microsoft edge", "Edge"),
+        ("discord", "Discord"),
+        ("steam", "Steam"),
+    )
+    for marcador, apresentacao in nomes_conhecidos:
+        if marcador in norm:
+            return apresentacao
+    return _retirar_sufixos_de_aplicativo(bruto) or "a janela"
+
+
+def limpar_fala_operacional(texto: str) -> str:
+    """Aplica higiene conservadora a toda fala vinda de um executor.
+
+    Não resume dados nem muda o resultado da ação. A limpeza compartilhada
+    serve como última barreira contra resíduos internos e pontuação quebrada.
+    Regras específicas de nomes ficam nas funções acima, antes da montagem.
+    """
+    fala = remover_residuos_operacionais(texto)
+    fala = re.sub(r"\s+([,.;:!?])", r"\1", fala)
+    fala = re.sub(r"([,;:])(?=\S)", r"\1 ", fala)
+    return re.sub(r"\s+", " ", fala).strip()
 
 
 def remover_fragmento_final_incompleto(texto: str) -> str:

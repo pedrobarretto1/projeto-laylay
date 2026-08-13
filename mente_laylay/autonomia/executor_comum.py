@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
+from mente_laylay.personalidade.higiene_fala import limpar_fala_operacional
 
 
 def falar_ctx(
@@ -16,7 +17,9 @@ def falar_ctx(
     """Entrega uma fala quando o contexto possui um canal de voz disponível."""
     falar = ctx.get("falar_com_lipsync")
     if callable(falar):
-        falar(texto, emocao, nivel)
+        fala = limpar_fala_operacional(texto)
+        if fala:
+            falar(fala, emocao, nivel)
 
 
 def relatar_falha_ctx(
