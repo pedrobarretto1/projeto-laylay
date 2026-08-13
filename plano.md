@@ -40,15 +40,15 @@ Status: **implementada — aguardando teste real**
 
 ## P2 — Identidade operacional coerente
 
-Status: **em execução**
+Status: **implementada — aguardando teste real**
 
 - [x] Entender `seu código`, `sua memória`, `sua voz` e `suas habilidades` como
   referências à própria Laylay.
 - [x] Levar a identidade operacional e o catálogo relevante ao prompt normal e
   ao prompt rápido.
-- [ ] Rejeitar contradições como “não estou no seu PC”, “sou só um chatbot” e
+- [x] Rejeitar contradições como “não estou no seu PC”, “sou só um chatbot” e
   “só consigo conversar” quando o catálogo vivo provar o contrário.
-- [ ] Reparar a fala de forma natural e curta, sem acrescentar execução.
+- [x] Reparar a fala de forma natural e curta, sem acrescentar execução.
 
 ## P3 — Naturalidade e variedade segura
 
@@ -112,7 +112,7 @@ real pelo Terminal.
 - Prompt principal mantido abaixo de 5.000 caracteres e alinhado à identidade
   operacional local.
 - Validação focada: 268 testes e 18 subtestes aprovados.
-- Suíte completa atual: 2.537 testes e 45 subtestes aprovados; restam 10 falhas já
+- Suíte completa atual: 2.544 testes e 45 subtestes aprovados; restam 10 falhas já
   concentradas nas alterações visuais em andamento do Terminal e da página de
   música, fora desta fase de conversa/capacidades.
 - A reação elíptica `que isso` e variantes agora explica a fala imediatamente
@@ -121,6 +121,9 @@ real pelo Terminal.
 - O contrato da fala sobre o próprio código exige reconhecimento literal antes
   do deboche e o guardião rejeita tiradas que culpem o usuário por bugs ou
   código ilegível sem evidência.
+- O tópico do próprio código agora atravessa confirmações e reações curtas como
+  `estou sim` e `uai`; respostas que apenas ecoam o usuário ou quebram a
+  personagem com explicações sobre “texto e regras” são reparadas antes da voz.
 - A resposta geral de capacidades ficou mais curta, prioriza o domínio da
   conversa atual e não o repete na enumeração complementar.
 - A confirmação da lixeira conserva o caminho concreto no resultado do comando
@@ -132,3 +135,11 @@ real pelo Terminal.
   copiáveis no Terminal, enquanto somente o TTS recebe a adaptação fonética.
 - Validação da manutenção: 164 testes focados aprovados, além de 223 testes e
   8 subtestes dos módulos vizinhos.
+- Validação adicional da continuidade do próprio código: 150 testes focados e
+  90 regressões vizinhas aprovados.
+- P2 concluída no código: o catálogo vivo entrega somente domínios sanitizados
+  ao contrato da fala; negações globais de capacidades comprovadas são
+  rejeitadas e reparadas sem gerar comandos. Limites reais continuam aceitos
+  quando não existe evidência de disponibilidade.
+- Validação da P2: 142 testes focados e vizinhos aprovados, além da suíte
+  completa com as mesmas 10 falhas visuais já isoladas.

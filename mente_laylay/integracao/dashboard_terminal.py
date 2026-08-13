@@ -11,6 +11,7 @@ from copy import deepcopy
 from datetime import datetime
 import math
 import os
+import platform
 import re
 import threading
 import time
@@ -307,6 +308,9 @@ class DashboardTerminalRuntime:
         self._temperatura_ultima_solicitacao = float("-inf")
         self._memoria_ultima_coleta = float("-inf")
         self._falhas = 0
+        # P10.5 — especificações reais do sistema.
+        # Inventário estático coletado uma vez.
+        self._system_info_cache: dict[str, Any] = {}
         self._fontes_pendentes: dict[
             str, tuple[threading.Thread, dict[str, Any]]
         ] = {}
@@ -1078,6 +1082,292 @@ class DashboardTerminalRuntime:
             return anterior
         return _metrica_indisponivel(unidade, max_age_s)
 
+
+    @staticmethod
+    def _capacidade_bytes(
+        valor: Any,
+    ) -> str:
+        try:
+            total = max(
+                0.0,
+                float(valor),
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return "—"
+
+        if total <= 0:
+            return "—"
+
+        gib = total / (1024 ** 3)
+
+        if gib >= 1024:
+            texto = (
+                f"{gib / 1024:.1f} TB"
+            )
+            return texto.replace(
+                ".0 TB",
+                " TB",
+            )
+
+        return f"{gib:.0f} GB"
+
+    def _info_sistema(
+        self,
+        gpu: Mapping[str, Any],
+        raiz: str,
+    ) -> dict[str, Any]:
+        if not self._system_info_cache:
+            sistema = str(
+                platform.system() or ""
+            ).strip()
+            arquitetura = str(
+                platform.machine() or ""
+            ).strip()
+
+            arquitetura_rotulo = (
+                "64-bit"
+                if "64" in arquitetura
+                else arquitetura or "—"
+            )
+
+            if sistema.casefold() == "windows":
+                versao_bruta = str(
+                    platform.version() or ""
+                )
+                try:
+                    build = int(
+                        versao_bruta.split(
+                            "."
+                        )[-1]
+                    )
+                except (
+                    TypeError,
+                    ValueError,
+                ):
+                    build = 0
+
+                versao = (
+                    "11"
+                    if build >= 22000
+                    else str(
+                        platform.release()
+                        or ""
+                    ).strip()
+                )
+
+                edicao = ""
+                try:
+                    edicao = str(
+                        platform.win32_edition()
+                        or ""
+                    ).strip()
+                except Exception:
+                    edicao = ""
+
+                if edicao.casefold().startswith(
+                    "professional"
+                ):
+                    edicao = "Pro"
+
+                partes_so = [
+                    f"Windows {versao}".strip(),
+                    edicao,
+                    arquitetura_rotulo,
+                ]
+                sistema_operacional = " ".join(
+                    parte
+                    for parte in partes_so
+                    if parte
+                    and parte != "—"
+                )
+            else:
+                sistema_operacional = " ".join(
+                    parte
+                    for parte in (
+                        sistema,
+                        str(
+                            platform.release()
+                            or ""
+                        ).strip(),
+                        arquitetura_rotulo,
+                    )
+                    if parte
+                    and parte != "—"
+                )
+
+            cpu_nome = str(
+                platform.processor()
+                or ""
+            ).strip()
+
+            if os.name == "nt":
+                try:
+                    import winreg
+
+                    with winreg.OpenKey(
+                        winreg.HKEY_LOCAL_MACHINE,
+                        r"HARDWARE\DESCRIPTION\System\CentralProcessor\0",
+                    ) as chave:
+                        (
+                            cpu_registro,
+                            _,
+                        ) = winreg.QueryValueEx(
+                            chave,
+                            "ProcessorNameString",
+                        )
+
+                    if str(
+                        cpu_registro
+                        or ""
+                    ).strip():
+                        cpu_nome = str(
+                            cpu_registro
+                        ).strip()
+                except Exception:
+                    pass
+
+            if not cpu_nome:
+                cpu_nome = str(
+                    os.environ.get(
+                        "PROCESSOR_IDENTIFIER",
+                        "",
+                    )
+                ).strip()
+
+            try:
+                fisicos = self.psutil.cpu_count(
+                    logical=False
+                )
+            except Exception:
+                fisicos = None
+
+            try:
+                logicos = self.psutil.cpu_count(
+                    logical=True
+                )
+            except Exception:
+                logicos = None
+
+            detalhes_cpu = []
+            if fisicos:
+                detalhes_cpu.append(
+                    f"{int(fisicos)} núcleos"
+                )
+            if logicos:
+                detalhes_cpu.append(
+                    f"{int(logicos)} threads"
+                )
+
+            try:
+                ram_total = (
+                    self.psutil
+                    .virtual_memory()
+                    .total
+                )
+            except Exception:
+                ram_total = 0
+
+            try:
+                disco_total = (
+                    self.psutil
+                    .disk_usage(raiz)
+                    .total
+                )
+            except Exception:
+                disco_total = 0
+
+            self._system_info_cache = {
+                "os": {
+                    "value": _texto(
+                        sistema_operacional,
+                        160,
+                    )
+                    or "—",
+                    "detail": "",
+                },
+                "cpu": {
+                    "value": _texto(
+                        cpu_nome,
+                        180,
+                    )
+                    or "—",
+                    "detail": " / ".join(
+                        detalhes_cpu
+                    ),
+                },
+                "gpu": {
+                    "value": "—",
+                    "detail": "",
+                },
+                "ram": {
+                    "value": self._capacidade_bytes(
+                        ram_total
+                    ),
+                    "detail": "Memória física",
+                },
+                "vram": {
+                    "value": "—",
+                    "detail": "",
+                },
+                "disk": {
+                    "value": self._capacidade_bytes(
+                        disco_total
+                    ),
+                    "detail": "Unidade do sistema",
+                },
+            }
+
+        info = deepcopy(
+            self._system_info_cache
+        )
+
+        gpu_nome = _texto(
+            gpu.get("gpu_name"),
+            180,
+        )
+        driver = _texto(
+            gpu.get("driver_version"),
+            80,
+        )
+
+        if gpu_nome:
+            info["gpu"] = {
+                "value": gpu_nome,
+                "detail": (
+                    f"Driver {driver}"
+                    if driver
+                    else ""
+                ),
+            }
+
+        try:
+            vram_mb = float(
+                gpu.get("vram_total_mb")
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
+            vram_mb = 0.0
+
+        if vram_mb > 0:
+            gib = vram_mb / 1024.0
+            valor_vram = (
+                f"{gib:.1f} GB"
+            ).replace(
+                ".0 GB",
+                " GB",
+            )
+            info["vram"] = {
+                "value": valor_vram,
+                "detail": "Memória dedicada",
+            }
+
+        return info
+
     def _sistema(self, agora: float, anterior: Mapping[str, Any]) -> dict[str, Any]:
         anterior = dict(anterior or {})
         raiz = os.path.abspath(os.sep)
@@ -1124,6 +1414,10 @@ class DashboardTerminalRuntime:
                 rede = {}
 
         return {
+            "info": self._info_sistema(
+                gpu,
+                raiz,
+            ),
             "cpu_percent": self._metrica(
                 lambda: limitada(
                     "cpu", lambda: self.psutil.cpu_percent(interval=0.1),

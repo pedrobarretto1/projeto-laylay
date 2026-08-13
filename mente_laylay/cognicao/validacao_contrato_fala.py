@@ -98,6 +98,25 @@ _DEBOCHE_ACUSATORIO_CODIGO = re.compile(
     r"c[oó]digo[^.!?]{0,60}(?:nem\s+eu|n[aã]o)\s+consigo\s+ler)\b",
     re.IGNORECASE,
 )
+_AUTORREDUCAO_TECNICA = re.compile(
+    r"\b(?:sou|eu\s+sou)\s+s[oó]\s+(?:uma?|um)\s+(?:estrutura\s+de\s+texto|"
+    r"conjunto\s+de\s+regras|chatbot|programa|sistema)|"
+    r"\bn[aã]o\s+(?:sou\s+um\s+sistema\s+vivo|tenho\s+vida|tenho\s+emo[cç][oõ]es\s+reais)\b",
+    re.IGNORECASE,
+)
+_RELATO_MEXENDO_CODIGO = re.compile(
+    r"\b(?:mexendo|alterando|editando|arrumando|corrigindo)\b.{0,50}\bc[oó]digo\b",
+    re.IGNORECASE,
+)
+_NEGACAO_IDENTIDADE_OPERACIONAL = re.compile(
+    r"\b(?:sou|eu\s+sou)\s+(?:s[oó]|apenas)\s+(?:uma?\s+)?(?:chatbot|ia|"
+    r"assistente\s+de\s+texto)|"
+    r"\bs[oó]\s+consigo\s+(?:conversar|responder|falar)|"
+    r"\bn[aã]o\s+(?:estou|rodo|funciono)\s+(?:no|dentro\s+do)\s+seu\s+"
+    r"(?:pc|computador)|"
+    r"\bn[aã]o\s+tenho\s+acesso\s+(?:ao|a)\s+seu\s+(?:pc|computador)\b",
+    re.IGNORECASE,
+)
 
 _STOPWORDS = {
     "a", "as", "ao", "aos", "aquele", "aquela", "aquilo", "com", "como",
@@ -309,6 +328,27 @@ def validar_aderencia_contrato_fala(
     if "código ilegível" in proibidas and _DEBOCHE_ACUSATORIO_CODIGO.search(resposta):
         problemas.append("deboche_acusou_usuario_de_estragar_codigo")
 
+    if estrategia == "conversa_codigo_laylay":
+        if _AUTORREDUCAO_TECNICA.search(resposta):
+            problemas.append("metacomentario_quebrou_personagem")
+        if _RELATO_MEXENDO_CODIGO.search(usuario):
+            tokens_usuario = _tokens_relevantes(usuario)
+            tokens_resposta = _tokens_relevantes(resposta)
+            reacoes_genericas = {
+                "agora", "beleza", "boa", "certo", "entendi", "entao",
+                "legal", "sabia",
+            }
+            if not (tokens_resposta - tokens_usuario - reacoes_genericas):
+                problemas.append("reacao_codigo_apenas_ecoou_relato")
+
+    capacidades_confirmadas = tuple(
+        str(item or "").strip()
+        for item in contrato.get("capacidades_confirmadas") or ()
+        if str(item or "").strip()
+    )
+    if capacidades_confirmadas and _NEGACAO_IDENTIDADE_OPERACIONAL.search(resposta):
+        problemas.append("identidade_negou_capacidades_confirmadas")
+
     if not bool(contrato.get("permite_metafora", False)):
         for parte in partes:
             if _ABSTRACAO_ISOLADA.search(parte):
@@ -333,7 +373,16 @@ def validar_aderencia_contrato_fala(
         "adiamento_nao_reconhecido",
         "adiamento_nao_foi_curto",
         "deboche_acusou_usuario_de_estragar_codigo",
+        "metacomentario_quebrou_personagem",
+        "reacao_codigo_apenas_ecoou_relato",
+        "identidade_negou_capacidades_confirmadas",
     }
+    contrato_reparo = _resumo_reparo(contrato, roteiro)
+    if "identidade_negou_capacidades_confirmadas" in problemas:
+        contrato_reparo.update(
+            reparar_identidade_operacional=True,
+            capacidades_confirmadas=list(capacidades_confirmadas[:8]),
+        )
     return {
         "avaliado": True,
         "aceita": not problemas,
@@ -341,6 +390,6 @@ def validar_aderencia_contrato_fala(
         "problemas": problemas,
         "estrategia": estrategia,
         "nucleo_atendido": not bool(nucleares.intersection(problemas)),
-        "contrato_reparo": _resumo_reparo(contrato, roteiro),
+        "contrato_reparo": contrato_reparo,
         "autoriza_execucao": False,
     }

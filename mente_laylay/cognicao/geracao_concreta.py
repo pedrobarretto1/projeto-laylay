@@ -142,6 +142,7 @@ def _atos_relevantes(atos: Iterable[Any]) -> list[str]:
         "agradecimento",
         "adiamento",
         "provocacao_curta",
+        "codigo_laylay",
     }
     saida: list[str] = []
     for item in atos:
@@ -208,6 +209,16 @@ def construir_roteiro_geracao_concreta(
         base_permitida.append("resultado operacional publicado pelo executor, quando existir")
     if _fundamentacao_confiavel(fundamentacao_factual):
         base_permitida.append("fundamentação factual confiável e válida do turno")
+    capacidades_confirmadas = tuple(
+        str(item or "").strip()
+        for item in dados_contrato.get("capacidades_confirmadas") or ()
+        if str(item or "").strip()
+    )
+    if capacidades_confirmadas:
+        base_permitida.append(
+            "catálogo vivo confirmou capacidades locais: "
+            + ", ".join(capacidades_confirmadas[:8])
+        )
 
     exigencias = [
         "usar a fala atual antes de puxar contexto antigo",
@@ -227,6 +238,18 @@ def construir_roteiro_geracao_concreta(
             "dizer o que foi observado, sem promover envio a sucesso",
             "informar a consequência prática ou a incerteza essencial",
             "adicionar personalidade apenas sem alterar o resultado",
+        )
+    elif "codigo_laylay" in especiais:
+        estrategia = "conversa_codigo_laylay"
+        ancora = bruto
+        nucleo = (
+            "continuar a conversa sobre o código da própria Laylay com interesse e "
+            "uma observação nova, preservando sua voz em primeira pessoa"
+        )
+        sequencia = (
+            "reagir ao que o usuário disse sem apenas repetir a frase",
+            "acrescentar uma observação concreta ou uma tirada curta sobre o próprio código",
+            "não interromper a conversa para explicar que Laylay é texto, regras ou um sistema sem vida",
         )
     elif len(especiais) > 1:
         estrategia = "resposta_multiacto"

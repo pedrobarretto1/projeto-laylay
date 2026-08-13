@@ -2964,6 +2964,111 @@ class PaginaMemoria(QWidget):
 
 
 
+
+class LinhaResumoSistema(QFrame):
+    # Linha visual para uma especificação estática.
+
+    def __init__(
+        self,
+        icone: str,
+        titulo: str,
+    ) -> None:
+        super().__init__()
+        self.setObjectName(
+            "systemSpecRow"
+        )
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(
+            8, 6, 8, 6
+        )
+        layout.setSpacing(8)
+
+        simbolo = QLabel(icone)
+        simbolo.setObjectName(
+            "systemSpecIcon"
+        )
+        simbolo.setFixedSize(
+            24, 24
+        )
+        simbolo.setAlignment(
+            Qt.AlignCenter
+        )
+
+        nome = QLabel(titulo)
+        nome.setObjectName(
+            "systemSpecTitle"
+        )
+
+        textos = QVBoxLayout()
+        textos.setContentsMargins(
+            0, 0, 0, 0
+        )
+        textos.setSpacing(1)
+
+        self.valor = QLabel("—")
+        self.valor.setObjectName(
+            "systemSpecValue"
+        )
+        self.valor.setWordWrap(True)
+        self.valor.setAlignment(
+            Qt.AlignRight
+            | Qt.AlignVCenter
+        )
+
+        self.detalhe = QLabel("")
+        self.detalhe.setObjectName(
+            "systemSpecDetail"
+        )
+        self.detalhe.setWordWrap(True)
+        self.detalhe.setAlignment(
+            Qt.AlignRight
+            | Qt.AlignVCenter
+        )
+        self.detalhe.hide()
+
+        textos.addWidget(
+            self.valor
+        )
+        textos.addWidget(
+            self.detalhe
+        )
+
+        layout.addWidget(
+            simbolo
+        )
+        layout.addWidget(
+            nome
+        )
+        layout.addStretch()
+        layout.addLayout(
+            textos,
+            1,
+        )
+
+    def definir(
+        self,
+        valor: str,
+        detalhe: str = "",
+    ) -> None:
+        valor = str(
+            valor or "—"
+        ).strip() or "—"
+        detalhe = str(
+            detalhe or ""
+        ).strip()
+
+        self.valor.setText(
+            valor
+        )
+        self.detalhe.setText(
+            detalhe
+        )
+        self.detalhe.setVisible(
+            bool(detalhe)
+        )
+
+
 class MiniMetricaSistema(QFrame):
     # Métrica compacta da página Sistema.
 
@@ -3161,76 +3266,40 @@ class PaginaSistema(QWidget):
         self.resumo.setObjectName(
             "systemSectionCard"
         )
-        self.resumo.setMinimumWidth(275)
-        self.resumo.setMaximumWidth(355)
+        self.resumo.setProperty(
+            "summaryCard",
+            True,
+        )
+        self.resumo.setMinimumWidth(315)
+        self.resumo.setMaximumWidth(390)
+        self.resumo.layout_principal.setSpacing(
+            0
+        )
 
-        self.resumo_valores: dict[
-            str, QLabel
+        self.resumo_linhas: dict[
+            str, LinhaResumoSistema
         ] = {}
 
-        for chave, rotulo in (
-            ("cpu", "CPU"),
-            ("gpu", "GPU"),
-            ("ram", "Memória RAM"),
-            ("vram", "Memória VRAM"),
-            ("disk", "Disco"),
-            ("network", "Rede"),
+        for chave, icone, rotulo in (
+            ("os", "⊞", "Sistema operacional"),
+            ("cpu", "◉", "CPU"),
+            ("gpu", "▱", "GPU"),
+            ("ram", "▤", "RAM"),
+            ("vram", "▧", "VRAM"),
+            ("disk", "▰", "Disco principal"),
+            ("uptime", "◷", "Uptime"),
+            ("temperature", "♨", "Temperatura média"),
         ):
-            linha, valor = _linha_valor(
-                rotulo
+            linha = LinhaResumoSistema(
+                icone,
+                rotulo,
             )
-            linha.setObjectName(
-                "systemSummaryRow"
-            )
+            self.resumo_linhas[
+                chave
+            ] = linha
             self.resumo.layout_principal.addWidget(
                 linha
             )
-            self.resumo_valores[
-                chave
-            ] = valor
-
-        separador = QFrame()
-        separador.setObjectName(
-            "systemSummarySeparator"
-        )
-        separador.setFixedHeight(1)
-
-        self.resumo.layout_principal.addWidget(
-            separador
-        )
-
-        self.temperatura = QLabel(
-            "Temperatura · —"
-        )
-        self.temperatura.setObjectName(
-            "systemSummarySensor"
-        )
-
-        self.uptime = QLabel(
-            "Tempo ligado · —"
-        )
-        self.uptime.setObjectName(
-            "systemSummarySensor"
-        )
-
-        self.estado = QLabel(
-            "Aguardando telemetria"
-        )
-        self.estado.setObjectName(
-            "systemSummaryState"
-        )
-        self.estado.setWordWrap(True)
-
-        self.resumo.layout_principal.addWidget(
-            self.temperatura
-        )
-        self.resumo.layout_principal.addWidget(
-            self.uptime
-        )
-        self.resumo.layout_principal.addWidget(
-            self.estado
-        )
-        self.resumo.layout_principal.addStretch()
 
         desempenho = CartaoDashboard(
             "Desempenho em tempo real",
@@ -3891,8 +3960,8 @@ class PaginaSistema(QWidget):
             self.resumo.setMinimumWidth(0)
             self.resumo.setMaximumWidth(16777215)
         else:
-            self.resumo.setMinimumWidth(275)
-            self.resumo.setMaximumWidth(355)
+            self.resumo.setMinimumWidth(315)
+            self.resumo.setMaximumWidth(390)
 
         if compacto:
             largura_rail_min = 0
@@ -4240,9 +4309,6 @@ class PaginaSistema(QWidget):
                         self._historico[chave]
                     )
                 )
-                self.resumo_valores[
-                    chave
-                ].setText("—")
                 continue
 
             numero = max(
@@ -4286,9 +4352,65 @@ class PaginaSistema(QWidget):
                     self._historico[chave]
                 )
             )
-            self.resumo_valores[
+
+        info_sistema = (
+            sistema.get("info")
+            if isinstance(
+                sistema.get("info"),
+                dict,
+            )
+            else {}
+        )
+
+        for chave in (
+            "os",
+            "cpu",
+            "gpu",
+            "ram",
+            "vram",
+            "disk",
+        ):
+            item = (
+                info_sistema.get(chave)
+                if isinstance(
+                    info_sistema.get(chave),
+                    dict,
+                )
+                else {}
+            )
+            self.resumo_linhas[
                 chave
-            ].setText(texto)
+            ].definir(
+                str(
+                    item.get("value")
+                    or "—"
+                ),
+                str(
+                    item.get("detail")
+                    or ""
+                ),
+            )
+
+        self.resumo_linhas[
+            "uptime"
+        ].definir(
+            _texto_metrica(
+                sistema.get(
+                    "uptime_seconds"
+                ),
+                uptime=True,
+            )
+        )
+
+        self.resumo_linhas[
+            "temperature"
+        ].definir(
+            _texto_metrica(
+                sistema.get(
+                    "temperature_c"
+                )
+            )
+        )
 
         # P10.1 — replica somente métricas confirmadas
         # para o card de armazenamento/memória.
@@ -4300,7 +4422,7 @@ class PaginaSistema(QWidget):
             self.recursos_valores[
                 chave
             ].setText(
-                self.resumo_valores[
+                self.valores[
                     chave
                 ].text()
             )
@@ -4547,57 +4669,19 @@ class PaginaSistema(QWidget):
             f"↓ {download}   ·   ↑ {upload}"
         )
 
-        self.temperatura.setText(
-            "Temperatura · "
-            + _texto_metrica(
-                sistema.get(
-                    "temperature_c"
-                )
-            )
-        )
-
-        self.uptime.setText(
-            "Tempo ligado · "
-            + _texto_metrica(
-                sistema.get(
-                    "uptime_seconds"
-                ),
-                uptime=True,
-            )
-        )
-
         if ausentes:
-            self.estado.setText(
-                "Telemetria parcial · sensores "
-                "ausentes aparecem como —."
-            )
-            self.estado.setProperty(
-                "state",
-                "partial",
-            )
             self.atualizacao.setText(
                 "Atualização parcial"
             )
         else:
-            self.estado.setText(
-                "Sistema observado normalmente."
-            )
-            self.estado.setProperty(
-                "state",
-                "ok",
-            )
             self.atualizacao.setText(
                 "Atualizado agora"
             )
 
-        self.estado.style().unpolish(
-            self.estado
-        )
-        self.estado.style().polish(
-            self.estado
-        )
-
     def invalidar(self) -> None:
+        for linha in self.resumo_linhas.values():
+            linha.definir("—")
+
         for chave in self.valores:
             self.valores[
                 chave
@@ -4606,9 +4690,6 @@ class PaginaSistema(QWidget):
                 chave
             ].setValue(0)
             self.graficos[
-                chave
-            ].setText("—")
-            self.resumo_valores[
                 chave
             ].setText("—")
 
@@ -4695,35 +4776,14 @@ class PaginaSistema(QWidget):
             self.modelo_status
         )
 
-        self.temperatura.setText(
-            "Temperatura · —"
-        )
-        self.uptime.setText(
-            "Tempo ligado · —"
-        )
-
         self.metricas[
             "network"
         ].definir_rodape(
             "↓ —   ·   ↑ —"
         )
 
-        self.estado.setText(
-            "Aguardando telemetria"
-        )
-        self.estado.setProperty(
-            "state",
-            "pending",
-        )
         self.atualizacao.setText(
             "Aguardando telemetria"
-        )
-
-        self.estado.style().unpolish(
-            self.estado
-        )
-        self.estado.style().polish(
-            self.estado
         )
 
 

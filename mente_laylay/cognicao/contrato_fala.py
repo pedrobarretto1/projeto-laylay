@@ -69,6 +69,7 @@ class ContratoSemanticoFala:
     permite_metafora: bool = False
     fala_anterior_relevante: str = ""
     respostas_recentes_evitar: tuple[str, ...] = ()
+    capacidades_confirmadas: tuple[str, ...] = ()
     cooperacao_considerada: bool = False
     roteiro_concreto: Mapping[str, Any] = field(default_factory=dict)
     autoriza_execucao: bool = False
@@ -104,6 +105,10 @@ class ContratoSemanticoFala:
             self, "respostas_recentes_evitar",
             _itens_unicos(self.respostas_recentes_evitar, limite_item=320)[-3:],
         )
+        object.__setattr__(
+            self, "capacidades_confirmadas",
+            _itens_unicos(self.capacidades_confirmadas, limite_item=48)[:16],
+        )
         object.__setattr__(self, "cooperacao_considerada", bool(self.cooperacao_considerada))
         object.__setattr__(
             self,
@@ -118,7 +123,7 @@ class ContratoSemanticoFala:
         dados = asdict(self)
         for campo in (
             "atos", "conteudos_obrigatorios", "inferencias_proibidas",
-            "estrutura", "respostas_recentes_evitar",
+            "estrutura", "respostas_recentes_evitar", "capacidades_confirmadas",
         ):
             dados[campo] = list(dados[campo])
         return dados
@@ -241,9 +246,35 @@ def construir_contrato_semantico_fala(
     ))
     provocacao_curta = classificar_provocacao_curta(bruto)
     identidade = dict(planejamento.get("identidade") or {})
+    recentes = _itens_unicos(falas_recentes, limite_item=320)[-3:]
     mexendo_codigo_laylay = bool(
         str(identidade.get("relacao_com_laylay") or "") == "codigo"
         and re.search(r"\b(?:mexendo|alterando|editando|arrumando|corrigindo)\b", base)
+    )
+    historico_codigo = _normalizar(" ".join((*recentes, anterior)))
+    continuacao_curta_codigo = bool(
+        re.fullmatch(
+            r"(?:estou|to|sim|estou sim|to sim|isso|isso mesmo|uai|ue|"
+            r"que isso|como assim)[?!.]*",
+            base,
+        )
+        and re.search(
+            r"\b(?:meu|seu) codigo\b|\bcodigo da laylay\b|"
+            r"\bmexendo\b.{0,45}\bcodigo\b",
+            historico_codigo,
+        )
+    )
+    topico_codigo_laylay = bool(mexendo_codigo_laylay or continuacao_curta_codigo)
+    evidencia_capacidades = dict(planejamento.get("evidencia_capacidades") or {})
+    capacidades_confirmadas = tuple(
+        str(item or "").strip().casefold()
+        for item in list(evidencia_capacidades.get("dominios_confirmados") or [])
+        if re.fullmatch(r"[a-z_]{2,40}", str(item or "").strip().casefold())
+    )
+    catalogo_comprova_capacidades = bool(
+        evidencia_capacidades.get("fonte") == "catalogo_vivo"
+        and evidencia_capacidades.get("possui_capacidades_locais") is True
+        and capacidades_confirmadas
     )
 
     atos = _atos_base(planejamento)
@@ -256,6 +287,7 @@ def construir_contrato_semantico_fala(
         (agradecimento, "agradecimento"),
         (adiamento, "adiamento"),
         (bool(provocacao_curta), "provocacao_curta"),
+        (topico_codigo_laylay, "codigo_laylay"),
     ):
         if ativo and nome not in atos:
             atos.append(nome)
@@ -287,9 +319,18 @@ def construir_contrato_semantico_fala(
         obrigatorios.append(
             "reagir à provocação atual como fala social, sem transformá-la em erro técnico ou assunto inventado"
         )
-    if mexendo_codigo_laylay:
+    if topico_codigo_laylay:
+        if mexendo_codigo_laylay:
+            obrigatorios.append(
+                "reconhecer que o usuário está mexendo no código da própria Laylay e reagir com uma observação nova"
+            )
+        else:
+            obrigatorios.append(
+                "continuar o assunto do código da Laylay sem devolver a frase do usuário nem iniciar uma explicação técnica sobre identidade"
+            )
+    if catalogo_comprova_capacidades:
         obrigatorios.append(
-            "reconhecer primeiro que o usuário está mexendo no código da própria Laylay"
+            "preservar as capacidades locais confirmadas sem transformar essa informação em execução"
         )
     if len(atos) > 1:
         obrigatorios.append("responder a todos os atos da mensagem em uma única fala coesa")
@@ -317,11 +358,15 @@ def construir_contrato_semantico_fala(
             "não pedir que o usuário repita uma provocação que já foi compreendida",
             "não escalar a ofensa nem responder como mensagem de sistema",
         ))
-    if mexendo_codigo_laylay:
+    if topico_codigo_laylay:
+        proibidas.extend((
+            "não insinuar que o usuário vai criar bugs ou escrever código ilegível sem evidência",
+            "não se reduzir a estrutura de texto, conjunto de regras ou chatbot e não negar a própria presença no meio da conversa",
+        ))
+    if catalogo_comprova_capacidades:
         proibidas.append(
-            "não insinuar que o usuário vai criar bugs ou escrever código ilegível sem evidência"
+            "não dizer que é só um chatbot, que está fora do computador ou que só consegue conversar quando o catálogo vivo confirmou capacidades locais"
         )
-    recentes = _itens_unicos(falas_recentes, limite_item=320)[-3:]
     if recentes:
         proibidas.append("não repetir literalmente uma resposta recente")
 
@@ -332,7 +377,7 @@ def construir_contrato_semantico_fala(
         max_frases = 2
     if agradecimento or adiamento:
         max_frases = 1
-    if mexendo_codigo_laylay:
+    if topico_codigo_laylay:
         max_frases = min(max_frases, 2)
     if bool(planejamento.get("requer_execucao")):
         max_frases = 2
@@ -352,8 +397,9 @@ def construir_contrato_semantico_fala(
         permite_pergunta=bool(planejamento.get("permite_pergunta", True)),
         permite_humor=not (vulneravel or esclarecimento),
         permite_metafora=criativo,
-        fala_anterior_relevante=anterior if esclarecimento else "",
+        fala_anterior_relevante=anterior if (esclarecimento or topico_codigo_laylay) else "",
         respostas_recentes_evitar=recentes,
+        capacidades_confirmadas=capacidades_confirmadas,
         cooperacao_considerada=bool(deliberacao),
         autoriza_execucao=False,
     )
@@ -401,6 +447,13 @@ def formatar_contrato_fala_para_prompt(
         )
         if recentes:
             linhas_compactas.append("Evite repetir: " + " || ".join(recentes) + ".")
+        capacidades = _itens_unicos(
+            dados.get("capacidades_confirmadas") or (), limite_item=48,
+        )
+        if capacidades:
+            linhas_compactas.append(
+                "Capacidades locais confirmadas: " + ", ".join(capacidades) + "."
+            )
         if roteiro:
             sequencia = _itens_unicos(roteiro.get("sequencia") or (), limite_item=160)
             linhas_compactas.append(
@@ -463,6 +516,15 @@ def formatar_contrato_fala_para_prompt(
     recentes = _itens_unicos(dados.get("respostas_recentes_evitar") or (), limite_item=320)
     if recentes:
         linhas.append("Evite repetir: " + " || ".join(recentes) + ".")
+    capacidades = _itens_unicos(
+        dados.get("capacidades_confirmadas") or (), limite_item=48,
+    )
+    if capacidades:
+        linhas.append(
+            "Capacidades locais confirmadas pelo catálogo vivo: "
+            + ", ".join(capacidades)
+            + ". Isso informa a fala e não autoriza ação."
+        )
     roteiro = normalizar_roteiro_geracao_concreta(dados.get("roteiro_concreto"))
     if roteiro:
         linhas.append(

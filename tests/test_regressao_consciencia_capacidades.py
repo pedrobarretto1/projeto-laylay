@@ -141,3 +141,26 @@ def test_seu_codigo_aponta_para_a_propria_laylay() -> None:
     assert ajustar_autorreferencia_assistente(
         "O código do Laylay está complicado."
     ) == "meu código está complicado."
+
+
+def test_catalogo_projeta_evidencia_de_identidade_sem_autorizar_acao() -> None:
+    mapa = MapaHabilidadesRuntime(
+        operacional_getter=lambda: {
+            "dominios": {
+                "arquivos": {"estado": "disponivel", "motivo": "operacional"},
+                "sistema": {"estado": "disponivel", "motivo": "operacional"},
+            },
+        },
+    )
+
+    evidencia = mapa.evidencia_conversacional(
+        "o que você faz por aqui?",
+        turno=classificar_modalidade_turno("o que você faz por aqui?"),
+    )
+
+    assert evidencia["fonte"] == "catalogo_vivo"
+    assert evidencia["possui_capacidades_locais"] is True
+    assert "arquivos" in evidencia["dominios_confirmados"]
+    assert "sistema" in evidencia["dominios_confirmados"]
+    assert evidencia["autoriza_execucao"] is False
+    assert "intent" not in str(evidencia).casefold()

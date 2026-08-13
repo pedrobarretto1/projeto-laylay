@@ -382,6 +382,14 @@ def _iniciar_planejamento_turno(
     turno['especialistas'] = especialistas
     assunto_estruturado = ns['_atualizar_assunto_estruturado_mente'](mente_antes_turno.get('assunto_estruturado_atual') if isinstance(mente_antes_turno.get('assunto_estruturado_atual'), dict) else {}, texto, turno=turno, retrato=retrato_turno, encerramento=encerramento_assunto)
     plano = ns['_planejar_turno_mente'](texto, turno=turno, mente=mente_antes_turno, periodo=ns['_contexto_horario_atual']())
+    evidencia_habilidades_getter = ns.get('_evidencia_habilidades_turno_mente')
+    if callable(evidencia_habilidades_getter):
+        try:
+            evidencia_habilidades = evidencia_habilidades_getter(texto, turno=turno)
+        except Exception:
+            evidencia_habilidades = {}
+        if isinstance(evidencia_habilidades, dict):
+            plano['evidencia_capacidades'] = dict(evidencia_habilidades)
     plano['fundamentacao_factual'] = fundamentacao_factual
     plano['atualidade_factual'] = atualidade_factual
     plano['deliberacao_habilidades'] = dict(especialistas.get('deliberacao') or {})

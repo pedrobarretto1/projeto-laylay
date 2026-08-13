@@ -3198,6 +3198,56 @@ QScrollArea#systemScroll > QWidget > QWidget {{
     padding-top: 4px;
     padding-bottom: 4px;
 }}
+
+/* =========================================
+   P10.5 — RESUMO COM ESPECIFICAÇÕES REAIS
+   ========================================= */
+
+#systemSpecRow {{
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid #252C33;
+    min-height: 42px;
+}}
+
+#systemSpecIcon {{
+    background: #171C21;
+    border: 1px solid #2A3138;
+    border-radius: 7px;
+    color: #AEB5BC;
+    font-size: 12px;
+    font-weight: 700;
+}}
+
+#systemSpecTitle {{
+    background: transparent;
+    border: 0;
+    color: #9BA2AA;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#systemSpecValue {{
+    background: transparent;
+    border: 0;
+    color: #F2EEF0;
+    font-size: 10px;
+    font-weight: 720;
+}}
+
+#systemSpecDetail {{
+    background: transparent;
+    border: 0;
+    color: #777F88;
+    font-size: 8px;
+    font-weight: 600;
+}}
+
+#systemSectionCard[summaryCard="true"] {{
+    background: #11161B;
+    border: 1px solid #282F36;
+    border-radius: 14px;
+}}
                 #pageTitle {{ font-size: 28px; font-weight: 650; }}
                 #pageDescription {{ color: {PALETA['secundario']}; font-size: 14px; max-width: 700px; }}
                 #sectionTitle {{ font-size: 17px; font-weight: 650; padding-top: 4px; }}

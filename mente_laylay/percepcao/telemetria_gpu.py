@@ -69,7 +69,17 @@ class TelemetriaGpuRuntime:
         self._cache: dict[str, Any] = {
             "gpu_percent": None,
             "vram_percent": None,
+            "gpu_name": "",
+            "driver_version": "",
+            "vram_total_mb": None,
             "source": "",
+        }
+        # P10.5 — metadados estáticos de GPU.
+        # Coletados uma vez e reaproveitados.
+        self._metadata_cache: dict[str, Any] = {
+            "gpu_name": "",
+            "driver_version": "",
+            "vram_total_mb": None,
         }
 
     def snapshot(self) -> dict[str, Any]:
@@ -158,7 +168,107 @@ class TelemetriaGpuRuntime:
                 float(item.get("vram_percent") or 0.0),
             ),
         )
-        return {**escolhido, "source": "nvidia-smi"}
+        metadata = self._coletar_nvidia_metadata(
+            executavel
+        )
+        return {
+            **escolhido,
+            **metadata,
+            "source": "nvidia-smi",
+        }
+
+    def _coletar_nvidia_metadata(
+        self,
+        executavel: str,
+    ) -> dict[str, Any]:
+        if self._metadata_cache.get("gpu_name"):
+            return deepcopy(
+                self._metadata_cache
+            )
+
+        try:
+            resultado = self.run(
+                [
+                    executavel,
+                    "--query-gpu=name,driver_version,memory.total",
+                    "--format=csv,noheader,nounits",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=1.2,
+                check=False,
+            )
+        except Exception:
+            return deepcopy(
+                self._metadata_cache
+            )
+
+        if int(
+            getattr(
+                resultado,
+                "returncode",
+                1,
+            )
+        ) != 0:
+            return deepcopy(
+                self._metadata_cache
+            )
+
+        candidatos: list[
+            dict[str, Any]
+        ] = []
+
+        for linha in str(
+            getattr(
+                resultado,
+                "stdout",
+                "",
+            )
+            or ""
+        ).splitlines():
+            partes = [
+                parte.strip()
+                for parte in linha.split(",")
+            ]
+            if len(partes) != 3:
+                continue
+
+            nome = str(
+                partes[0] or ""
+            ).strip()[:160]
+            driver = str(
+                partes[1] or ""
+            ).strip()[:80]
+            total = _numero_positivo(
+                partes[2]
+            )
+
+            if nome:
+                candidatos.append(
+                    {
+                        "gpu_name": nome,
+                        "driver_version": driver,
+                        "vram_total_mb": total,
+                    }
+                )
+
+        if candidatos:
+            escolhido = max(
+                candidatos,
+                key=lambda item: float(
+                    item.get(
+                        "vram_total_mb"
+                    )
+                    or 0.0
+                ),
+            )
+            self._metadata_cache = dict(
+                escolhido
+            )
+
+        return deepcopy(
+            self._metadata_cache
+        )
 
     def _coletar_windows(self) -> dict[str, Any]:
         inicializou_com = False

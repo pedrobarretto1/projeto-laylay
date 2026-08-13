@@ -444,6 +444,40 @@ class MapaHabilidadesRuntime:
             "motivo": "capacidade_nao_registrada",
         })
 
+    def evidencia_conversacional(
+        self,
+        texto: str,
+        *,
+        turno: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Projeta somente a evidência necessária para a identidade da fala.
+
+        A projeção não expõe intents, dependências ou nomes internos e nunca
+        autoriza execução. Ela permite ao contrato distinguir um limite real
+        de uma negação falsa de todas as capacidades locais.
+        """
+        mapa = self.snapshot()
+        dominios = dict(mapa.get("dominios") or {})
+        disponiveis = tuple(
+            nome
+            for nome in _DESCRICAO_DOMINIO
+            if nome not in {"conversa", "avatar"}
+            and str(dict(dominios.get(nome) or {}).get("estado") or "")
+            in {"disponivel", "parcial", "degradado"}
+        )
+        relevantes = tuple(
+            nome
+            for nome in self.dominios_relevantes(texto, turno=turno)
+            if nome in disponiveis
+        )
+        return {
+            "fonte": "catalogo_vivo",
+            "dominios_confirmados": list(disponiveis),
+            "dominios_relevantes": list(relevantes),
+            "possui_capacidades_locais": bool(disponiveis),
+            "autoriza_execucao": False,
+        }
+
     def dominios_relevantes(
         self,
         texto: str,

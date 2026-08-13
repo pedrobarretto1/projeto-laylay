@@ -893,6 +893,18 @@ _mapa_habilidades_runtime = _criar_mapa_habilidades_runtime(
 _texto_parece_consulta_operacional = _mapa_habilidades_runtime.parece_consulta_operacional
 
 
+def _evidencia_habilidades_turno_mente(
+    texto: str,
+    *,
+    turno: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Entrega ao contrato apenas a projeção conversacional do catálogo vivo."""
+    return _mapa_habilidades_runtime.evidencia_conversacional(
+        texto,
+        turno=turno,
+    )
+
+
 def _responder_pergunta_capacidade_local(texto: str) -> str:
     """Cruza pergunta, decisão do turno e conversa recente no catálogo vivo."""
     mente = _estado_compartilhado_runtime.mental

@@ -282,6 +282,61 @@ def _metrica_dashboard(
     }
 
 
+
+# P10.5 — allowlist de especificações públicas do computador.
+def _info_sistema_dashboard(
+    valor: Any,
+) -> dict[str, dict[str, str]]:
+    bruto = (
+        dict(valor)
+        if isinstance(
+            valor,
+            Mapping,
+        )
+        else {}
+    )
+
+    resultado: dict[
+        str,
+        dict[str, str],
+    ] = {}
+
+    for chave in (
+        "os",
+        "cpu",
+        "gpu",
+        "ram",
+        "vram",
+        "disk",
+    ):
+        item = (
+            dict(
+                bruto.get(chave)
+                or {}
+            )
+            if isinstance(
+                bruto.get(chave),
+                Mapping,
+            )
+            else {}
+        )
+
+        resultado[chave] = {
+            "value": _texto_publico_dashboard(
+                item.get("value"),
+                180,
+                fallback="—",
+            ),
+            "detail": _texto_publico_dashboard(
+                item.get("detail"),
+                120,
+                fallback="",
+            ),
+        }
+
+    return resultado
+
+
 def sanitizar_dashboard_estado(
     dashboard: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
@@ -720,6 +775,9 @@ def sanitizar_dashboard_estado(
             "observed_at": rotinas_observadas,
         },
         "system": {
+            "info": _info_sistema_dashboard(
+                sistema.get("info")
+            ),
             "cpu_percent": _metrica_dashboard(
                 sistema.get("cpu_percent"), unidade="%", minimo=0, maximo=100,
                 max_age_s=5.0,

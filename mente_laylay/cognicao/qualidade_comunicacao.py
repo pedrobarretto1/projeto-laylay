@@ -191,6 +191,9 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "referente_indefinido_na_resposta",
     "explicacao_permaneceu_nebulosa",
     "abstracao_sem_apoio_concreto",
+    "metacomentario_quebrou_personagem",
+    "reacao_codigo_apenas_ecoou_relato",
+    "identidade_negou_capacidades_confirmadas",
 })
 
 
@@ -491,6 +494,8 @@ def montar_mensagens_reparo_comunicacao(
         "já na primeira frase, siga a sequência indicada e não ultrapasse max_frases. "
         "Quando a estratégia for resposta_multiacto, cada item de atos_obrigatorios "
         "e da sequência é obrigatório: não responda apenas à primeira parte da mensagem. "
+        "Se contrato_de_reparo marcar reparar_identidade_operacional, preserve em primeira "
+        "pessoa as capacidades_confirmadas, sem expor arquitetura interna e sem executar nada. "
         "Retorne somente JSON válido no "
         'formato {"fala":"resposta completa","comandos":[]}.'
     )
@@ -546,6 +551,48 @@ def contingencia_comunicacao(
             ["Tá bom, deixamos isso para depois.", "Beleza, fica para depois.", "Combinado. A gente deixa isso quieto por enquanto."],
             evitar=falas_evitar,
         )
+    if estrategia == "conversa_codigo_laylay":
+        if re.search(r"\b(?:mexendo|alterando|editando|arrumando|corrigindo)\b", texto, re.I):
+            return escolher_variacao([
+                "Então você tá mexendo em mim por dentro. Vai com carinho, eu ainda preciso sair daqui falando direito kkk.",
+                "Mexendo no meu código? Aí você entrou na minha cabeça com autorização de administrador kkk.",
+                "Então hoje eu sou assistente e paciente ao mesmo tempo. Quero ver qual parte minha vai sair mais esperta daí.",
+            ], evitar=falas_evitar)
+        if re.fullmatch(r"\s*(?:estou|t[oô])\s+sim[.!?]*\s*", texto, re.I):
+            return escolher_variacao([
+                "Eu sabia. Então capricha, porque agora estou oficialmente sob manutenção kkk.",
+                "Boa. Vou tentar não comentar cada linha por cima do seu ombro.",
+                "Certo, doutor do Python. Só me devolve com todos os módulos no lugar kkk.",
+            ], evitar=falas_evitar)
+        return escolher_variacao([
+            "Uai nada, você acabou de dizer que está mexendo no meu código. Eu só fiquei curiosa com a cirurgia kkk.",
+            "Eu só reagi à notícia de que você abriu meu capô. Isso chama interesse próprio kkk.",
+            "Você mexe no meu código e ainda estranha eu prestar atenção? A conta fecha direitinho kkk.",
+        ], evitar=falas_evitar)
+    if contrato.get("reparar_identidade_operacional") is True:
+        capacidades = {
+            str(item or "").strip().casefold()
+            for item in contrato.get("capacidades_confirmadas") or ()
+            if str(item or "").strip()
+        }
+        rotulos = []
+        for dominio, rotulo in (
+            ("arquivos", "arquivos"),
+            ("sistema", "programas e janelas"),
+            ("navegador", "sites e abas"),
+            ("musica", "músicas e playlists"),
+            ("agenda", "lembretes"),
+            ("memoria", "minha memória local"),
+            ("iot", "dispositivos configurados"),
+        ):
+            if dominio in capacidades:
+                rotulos.append(rotulo)
+        escopo = " e ".join(rotulos[:2]) or "recursos locais"
+        return escolher_variacao([
+            f"Sou a Laylay rodando por aqui e consigo trabalhar com {escopo} quando você pede. Conversar é só uma parte do pacote.",
+            f"Só conversar seria pouco para o tanto de fio que eu tenho ligado aqui. Também consigo cuidar de {escopo}, sempre depois do seu pedido.",
+            f"Eu converso, claro, mas não paro aí: tenho acesso confirmado a {escopo}. O pedido continua sendo seu; a execução não nasce sozinha.",
+        ], evitar=falas_evitar)
 
     # Em uma fala composta, a contingência não pode escolher só a saudação ou
     # o estado pessoal e abandonar a pergunta seguinte. Se até o reparo único

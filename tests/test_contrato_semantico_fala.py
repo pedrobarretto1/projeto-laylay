@@ -187,6 +187,199 @@ def test_mexendo_no_codigo_da_laylay_exige_clareza_antes_do_deboche() -> None:
     assert "deboche_acusou_usuario_de_estragar_codigo" not in boa["problemas"]
 
 
+def test_conversa_sobre_codigo_rejeita_eco_e_quebra_de_personagem() -> None:
+    plano = _plano()
+    plano["identidade"] = {
+        "referencia_laylay": True,
+        "relacao_com_laylay": "codigo",
+    }
+    primeira = construir_contrato_semantico_fala(
+        "Estou mexendo no seu código.",
+        plano=plano,
+        funcao_comunicativa={"funcao": "informacao"},
+    )
+
+    eco = validar_aderencia_contrato_fala(
+        "Estou mexendo no seu código.",
+        "Ah, tá. Tá mexendo no meu código?",
+        contrato_fala=primeira,
+    )
+    natural = validar_aderencia_contrato_fala(
+        "Estou mexendo no seu código.",
+        "Então hoje eu sou assistente e paciente ao mesmo tempo. Quero ver qual parte minha vai sair mais esperta daí.",
+        contrato_fala=primeira,
+    )
+
+    assert primeira["roteiro_concreto"]["estrategia"] == "conversa_codigo_laylay"
+    assert "reacao_codigo_apenas_ecoou_relato" in eco["problemas"]
+    assert eco["requer_reparo"] is True
+    assert "reacao_codigo_apenas_ecoou_relato" not in natural["problemas"]
+
+
+def test_topico_do_codigo_sobrevive_a_confirmacao_e_reacao_curtas() -> None:
+    primeira_fala = "Ah, tá. Tá mexendo no meu código?"
+    contrato_confirmacao = construir_contrato_semantico_fala(
+        "estou sim",
+        plano=_plano(),
+        funcao_comunicativa={"funcao": "confirmacao"},
+        mente={"ultima_resposta": primeira_fala},
+        falas_recentes=(primeira_fala,),
+    )
+    resposta_meta = (
+        "Tá comigo, então. Mas eu sou só uma estrutura de texto com regras, "
+        "não um sistema vivo."
+    )
+    avaliacao_meta = validar_aderencia_contrato_fala(
+        "estou sim",
+        resposta_meta,
+        contrato_fala=contrato_confirmacao,
+    )
+
+    segunda_fala = resposta_meta
+    contrato_reacao = construir_contrato_semantico_fala(
+        "uai",
+        plano=_plano(),
+        funcao_comunicativa={"funcao": "reacao"},
+        mente={"ultima_resposta": segunda_fala},
+        falas_recentes=(primeira_fala, segunda_fala),
+    )
+    avaliacao_repetida = validar_aderencia_contrato_fala(
+        "uai",
+        "Uai, eu sou só um conjunto de regras, não tenho vida nem emoções reais.",
+        contrato_fala=contrato_reacao,
+    )
+
+    assert contrato_confirmacao["roteiro_concreto"]["estrategia"] == "conversa_codigo_laylay"
+    assert contrato_reacao["roteiro_concreto"]["estrategia"] == "conversa_codigo_laylay"
+    assert "metacomentario_quebrou_personagem" in avaliacao_meta["problemas"]
+    assert "metacomentario_quebrou_personagem" in avaliacao_repetida["problemas"]
+    assert avaliacao_meta["requer_reparo"] is True
+    assert avaliacao_repetida["requer_reparo"] is True
+
+
+def test_caminho_composto_repara_quebra_de_personagem_no_topico_do_codigo() -> None:
+    primeira_fala = "Tá mexendo no meu código?"
+    contrato = construir_contrato_semantico_fala(
+        "estou sim",
+        plano=_plano(),
+        funcao_comunicativa={"funcao": "confirmacao"},
+        mente={"ultima_resposta": primeira_fala},
+        falas_recentes=(primeira_fala,),
+    )
+    plano = {
+        **_plano(),
+        "texto_usuario": "estou sim",
+        "contrato_fala": contrato,
+    }
+
+    resultado = verificar_fala_turno(
+        "Eu sou só uma estrutura de texto com regras, não um sistema vivo.",
+        plano=plano,
+        ultima_resposta=primeira_fala,
+    )
+
+    assert resultado["aceita"] is False
+    assert resultado["acao"] == "reparar"
+    assert "metacomentario_quebrou_personagem" in resultado["problemas"]
+    assert "estrutura de texto" not in resultado["fala_contingencia"].casefold()
+    fala_contingencia = resultado["fala_contingencia"].casefold()
+    assert any(
+        termo in fala_contingencia
+        for termo in ("código", "manutenção", "linha", "python", "módulo")
+    )
+
+
+def test_catalogo_vivo_bloqueia_negacao_da_identidade_operacional() -> None:
+    plano = _plano()
+    plano["evidencia_capacidades"] = {
+        "fonte": "catalogo_vivo",
+        "dominios_confirmados": ["arquivos", "sistema", "memoria"],
+        "possui_capacidades_locais": True,
+        "autoriza_execucao": False,
+    }
+    contrato = construir_contrato_semantico_fala(
+        "então o que você faz por aqui?",
+        plano=plano,
+        funcao_comunicativa={"funcao": "informacao"},
+    )
+
+    contradicoes = (
+        "Sou só um chatbot.",
+        "Só consigo conversar e responder perguntas.",
+        "Não estou no seu computador.",
+        "Não tenho acesso ao seu PC.",
+    )
+    for fala in contradicoes:
+        avaliacao = validar_aderencia_contrato_fala(
+            "então o que você faz por aqui?",
+            fala,
+            contrato_fala=contrato,
+        )
+        assert "identidade_negou_capacidades_confirmadas" in avaliacao["problemas"]
+        assert avaliacao["requer_reparo"] is True
+
+    coerente = validar_aderencia_contrato_fala(
+        "então o que você faz por aqui?",
+        "Converso com você e também consigo trabalhar com arquivos e programas quando você pede.",
+        contrato_fala=contrato,
+    )
+    assert "identidade_negou_capacidades_confirmadas" not in coerente["problemas"]
+    assert contrato["capacidades_confirmadas"] == [
+        "arquivos", "sistema", "memoria",
+    ]
+    assert contrato["autoriza_execucao"] is False
+
+
+def test_sem_evidencia_do_catalogo_limite_honesto_nao_e_bloqueado() -> None:
+    contrato = construir_contrato_semantico_fala(
+        "você consegue mexer no meu computador?",
+        plano=_plano(),
+        funcao_comunicativa={"funcao": "informacao"},
+    )
+
+    avaliacao = validar_aderencia_contrato_fala(
+        "você consegue mexer no meu computador?",
+        "Não tenho acesso ao seu computador nesta instalação.",
+        contrato_fala=contrato,
+    )
+
+    assert contrato["capacidades_confirmadas"] == []
+    assert "identidade_negou_capacidades_confirmadas" not in avaliacao["problemas"]
+
+
+def test_caminho_composto_repara_negacao_sem_executar_nada() -> None:
+    plano = _plano()
+    plano["evidencia_capacidades"] = {
+        "fonte": "catalogo_vivo",
+        "dominios_confirmados": ["arquivos", "sistema"],
+        "possui_capacidades_locais": True,
+        "autoriza_execucao": False,
+    }
+    contrato = construir_contrato_semantico_fala(
+        "o que você faz por aqui?",
+        plano=plano,
+        funcao_comunicativa={"funcao": "informacao"},
+    )
+    plano_turno = {
+        **plano,
+        "texto_usuario": "o que você faz por aqui?",
+        "contrato_fala": contrato,
+    }
+
+    resultado = verificar_fala_turno(
+        "Sou só uma IA e só consigo conversar.",
+        plano=plano_turno,
+    )
+
+    assert resultado["aceita"] is False
+    assert resultado["acao"] == "reparar"
+    assert "identidade_negou_capacidades_confirmadas" in resultado["problemas"]
+    assert resultado["aderencia_contrato"]["autoriza_execucao"] is False
+    fala_segura = resultado["fala_contingencia"].casefold()
+    assert "arquivos" in fala_segura or "programas" in fala_segura
+    assert "só consigo conversar" not in fala_segura
+
+
 def test_turno_misto_preserva_os_dois_atos_na_mesma_fala() -> None:
     contrato = construir_contrato_semantico_fala(
         "Tá tudo bem sim, você prefere rock ou metal?",
@@ -676,6 +869,13 @@ def test_caminho_real_do_turno_publica_contrato_na_mente_e_no_plano() -> None:
         "_orquestrador_cooperativo_runtime": None,
         "_atualizar_assunto_estruturado_mente": lambda *_args, **_kwargs: {},
         "_planejar_turno_mente": planejar_turno,
+        "_evidencia_habilidades_turno_mente": lambda _texto, **_kwargs: {
+            "fonte": "catalogo_vivo",
+            "dominios_confirmados": ["arquivos", "sistema"],
+            "dominios_relevantes": [],
+            "possui_capacidades_locais": True,
+            "autoriza_execucao": False,
+        },
         "_contexto_horario_atual": lambda: "noite",
         "_resumo_identidade_turno_mente": lambda _identidade: "",
         "_observabilidade_mente_runtime": None,
@@ -691,6 +891,10 @@ def test_caminho_real_do_turno_publica_contrato_na_mente_e_no_plano() -> None:
     assert estado.mental["plano_turno_atual"]["contrato_fala"] == contrato
     assert contrato["fala_anterior_relevante"].startswith("Eu prefiro rock")
     assert contrato["cooperacao_considerada"] is True
+    assert contrato["capacidades_confirmadas"] == ["arquivos", "sistema"]
+    assert estado.mental["plano_turno_atual"]["evidencia_capacidades"][
+        "autoriza_execucao"
+    ] is False
     assert contrato["autoriza_execucao"] is False
 
 
