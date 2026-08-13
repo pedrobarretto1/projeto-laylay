@@ -217,14 +217,21 @@ class MensagemWidget(QFrame):
             16, 11, 16, 10
         )
         lay.setSpacing(5)
-        meta = QLabel(("VOCÊ" if papel == "user" else "LAYLAY") + (f"  ·  {horario}" if horario else ""))
-        meta.setObjectName("messageMeta")
+        self.horario = str(horario or "")
+
         self.corpo = QLabel(texto)
         self.corpo.setObjectName("messageText")
         self.corpo.setWordWrap(True)
         self.corpo.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         self.corpo.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        lay.addWidget(meta)
+
+        if papel == "user":
+            meta = QLabel(
+                "VOCÊ" + (f"  ·  {self.horario}" if self.horario else "")
+            )
+            meta.setObjectName("messageMeta")
+            lay.addWidget(meta)
+
         lay.addWidget(self.corpo)
         self.status = QLabel()
         self.status.setObjectName("messageStatus")
@@ -1678,6 +1685,25 @@ class JanelaLaylay(QMainWindow):
                     color: #ED7888;
                 }}
 
+
+
+                /* =========================================
+                   P7 — MENSAGEM DA LAYLAY ESTILO CHAT
+                   ========================================= */
+
+                #messageLaylay {{
+                    background: #1A1F25;
+                    border: 1px solid #272E35;
+                    border-radius: 15px;
+                }}
+
+                #messageTime {{
+                    background: transparent;
+                    border: 0;
+                    padding-left: 5px;
+                    color: #747B84;
+                    font-size: 10px;
+                }}
 
                 /* =========================================
                 PENSANDO
@@ -3517,8 +3543,10 @@ class JanelaLaylay(QMainWindow):
                     item.widget().deleteLater()
             self.feed_lay.addStretch()
             self._feed_em_espera = False
+        horario_mensagem = self._horario(timestamp)
+
         mensagem = MensagemWidget(
-            papel, texto, self._horario(timestamp),
+            papel, texto, horario_mensagem,
             mensagem_id=mensagem_id, status=status,
         )
         mensagem.reenviar.connect(self.reenviar_texto)
@@ -3534,9 +3562,24 @@ class JanelaLaylay(QMainWindow):
         else:
             avatar = AroPresenca(self.raiz, 38)
             avatar.atualizar("idle", "calma")
+
+            coluna_mensagem = QVBoxLayout()
+            coluna_mensagem.setContentsMargins(0, 0, 0, 0)
+            coluna_mensagem.setSpacing(3)
+            coluna_mensagem.addWidget(mensagem)
+
+            if horario_mensagem:
+                horario_label = QLabel(horario_mensagem)
+                horario_label.setObjectName("messageTime")
+                coluna_mensagem.addWidget(
+                    horario_label,
+                    0,
+                    Qt.AlignLeft,
+                )
+
             linha.addWidget(avatar, 0, Qt.AlignTop)
             linha.addSpacing(5)
-            linha.addWidget(mensagem)
+            linha.addLayout(coluna_mensagem)
             linha.addStretch(1)
         self.feed_lay.insertLayout(max(0, self.feed_lay.count() - 1), linha)
         self.feed_lay.invalidate()
