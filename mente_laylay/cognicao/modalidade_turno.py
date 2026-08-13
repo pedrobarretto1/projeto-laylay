@@ -179,6 +179,7 @@ def _classificar_modalidade_base(
             motivo=protecao["motivo"],
             natureza_acao=protecao["natureza_acao"],
             depende_contexto=protecao["modalidade"] == "recusa",
+            requer_esclarecimento=protecao["natureza_acao"] == "capacidade",
         )
         return resultado
 

@@ -92,6 +92,9 @@ class PlanoTurnoDict(TypedDict, total=False):
     dominio: str
     contexto_necessario: list[str]
     requer_execucao: bool
+    autoriza_execucao: bool
+    natureza_acao: str
+    turno_sem_autorizacao: bool
     misto: bool
     resposta_esperada: str
     fase: str

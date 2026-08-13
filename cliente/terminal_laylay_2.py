@@ -1616,6 +1616,9 @@ class JanelaLaylay(QMainWindow):
         )
         self.pagina_memoria = PaginaMemoria()
         self.pagina_sistema = PaginaSistema()
+        self.pagina_sistema.acao_solicitada.connect(
+            self.enviar_acao_rapida
+        )
         self.paginas.addWidget(self.pagina_automacao)
         self.paginas.addWidget(self.pagina_musica)
         self.paginas.addWidget(self.pagina_memoria)
@@ -2682,6 +2685,193 @@ class JanelaLaylay(QMainWindow):
                     font-size: 8px;
                 }}
 
+
+/* =========================================
+   P10.2 — SISTEMA FASE 4
+   ========================================= */
+
+#systemPhase4Row {{
+    background: transparent;
+    border: 0;
+}}
+
+#systemAudioCard,
+#systemActionsCard,
+#systemAlertsCard {{
+    background: #11161B;
+    border: 1px solid #282F36;
+    border-radius: 13px;
+}}
+
+#systemAudioCard #dashboardCardTitle,
+#systemActionsCard #dashboardCardTitle,
+#systemAlertsCard #dashboardCardTitle {{
+    color: #F0ECEE;
+    font-size: 13px;
+    font-weight: 700;
+}}
+
+#systemAudioStatus {{
+    background: #171C21;
+    border: 1px solid #2B3239;
+    border-radius: 8px;
+    padding: 7px 9px;
+    color: #858D96;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#systemAudioStatus[state="ok"] {{
+    background: #17201C;
+    border-color: #294838;
+    color: #72C99D;
+}}
+
+#systemAudioStatus[state="pending"] {{
+    background: #1B1C1C;
+    border-color: #4E432D;
+    color: #C5A05D;
+}}
+
+#systemAudioStatus[state="error"] {{
+    background: #21171B;
+    border-color: #5C3039;
+    color: #E67386;
+}}
+
+#systemAudioStatus[state="unavailable"] {{
+    background: #15191D;
+    border-color: #252B31;
+    color: #707880;
+}}
+
+#systemAudioRow {{
+    background: #151A1F;
+    border: 1px solid #232A31;
+    border-radius: 8px;
+}}
+
+#systemAudioRow #dashboardMetricLabel {{
+    background: transparent;
+    border: 0;
+    padding: 6px 8px;
+    color: #858D96;
+    font-size: 8px;
+    font-weight: 600;
+}}
+
+#systemAudioRow #dashboardMetricValue {{
+    background: transparent;
+    border: 0;
+    padding: 6px 8px;
+    color: #ECE8EA;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#systemAudioLevelHeader {{
+    background: transparent;
+    border: 0;
+}}
+
+#systemAudioLevelLabel {{
+    background: transparent;
+    border: 0;
+    color: #858D96;
+    font-size: 8px;
+    font-weight: 600;
+}}
+
+#systemAudioLevelValue {{
+    background: transparent;
+    border: 0;
+    color: #F0ECEE;
+    font-size: 9px;
+    font-weight: 700;
+}}
+
+#systemAudioLevel {{
+    background: #242A30;
+    border: 0;
+    border-radius: 2px;
+    min-height: 5px;
+    max-height: 5px;
+}}
+
+#systemAudioLevel::chunk {{
+    background: #68C79A;
+    border-radius: 2px;
+}}
+
+QPushButton[systemQuickAction="true"] {{
+    background: #151A1F;
+    border: 1px solid #292F36;
+    border-radius: 9px;
+    min-height: 34px;
+    padding: 7px 10px;
+    text-align: left;
+    color: #C7C3C6;
+    font-size: 9px;
+    font-weight: 600;
+}}
+
+QPushButton[systemQuickAction="true"]:hover {{
+    background: #241A1F;
+    border-color: #713541;
+    color: #FFF3F5;
+}}
+
+QPushButton[systemQuickAction="true"]:pressed {{
+    background: #2D1C22;
+    border-color: #A54355;
+    color: #FF7588;
+}}
+
+#systemActionsHint {{
+    background: #14191E;
+    border: 1px solid #252C33;
+    border-radius: 8px;
+    padding: 7px 9px;
+    color: #707881;
+    font-size: 8px;
+}}
+
+#systemAlertStatus {{
+    background: #171C21;
+    border: 1px solid #2B3239;
+    border-radius: 8px;
+    padding: 8px 9px;
+    color: #858D96;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#systemAlertStatus[state="ok"] {{
+    background: #17201C;
+    border-color: #294838;
+    color: #72C99D;
+}}
+
+#systemAlertStatus[state="warning"] {{
+    background: #201C16;
+    border-color: #59462A;
+    color: #D1A660;
+}}
+
+#systemAlertItem {{
+    background: #151A1F;
+    border: 1px solid #252C33;
+    border-radius: 8px;
+    padding: 7px 9px;
+    color: #A8AEB4;
+    font-size: 8px;
+}}
+
+#systemAlertItem[kind="warning"] {{
+    background: #1E1A16;
+    border-color: #4F402B;
+    color: #C9A15E;
+}}
                 #pageTitle {{ font-size: 28px; font-weight: 650; }}
                 #pageDescription {{ color: {PALETA['secundario']}; font-size: 14px; max-width: 700px; }}
                 #sectionTitle {{ font-size: 17px; font-weight: 650; padding-top: 4px; }}
@@ -5012,6 +5202,13 @@ class JanelaLaylay(QMainWindow):
             self._nivel_microfone = float(estado.get("microphone_level") or 0.0)
         except (TypeError, ValueError):
             self._nivel_microfone = 0.0
+
+        self.pagina_sistema.definir_estado_audio(
+            self._modo,
+            self._voz_disponivel,
+            self._nivel_microfone,
+        )
+
         if not self._dashboard_recebido:
             if not self._voz_disponivel:
                 self.chip_microfone.definir("Indisponível", estado="unavailable")

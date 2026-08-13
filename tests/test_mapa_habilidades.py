@@ -91,8 +91,11 @@ def test_llm_conhece_conversa_tipificada_sem_confundir_com_autorizacao() -> None
     )
 
     assert "- conversa [" in contexto
-    assert "cliente de rede não lê minha memória" in resposta
-    assert "não autoriza comandos" in resposta
+    assert "contexto da conversa separado das lembranças duráveis" in resposta
+    assert "não salva tudo" in resposta
+    assert "nem autoriza uma ação" in resposta
+    assert "cliente de rede" not in resposta
+    assert "executor" not in resposta
 
 
 def test_indisponibilidade_temporaria_expira_e_sucesso_recupera() -> None:

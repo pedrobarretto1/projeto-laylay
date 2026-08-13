@@ -23,26 +23,28 @@ de habilidades e manter sua personalidade, sem expor nomes internos do código.
 
 ## P1 — Classificação e catálogo vivo
 
-Status: **em execução**
+Status: **implementada — aguardando teste real**
 
-- [ ] Reconhecer perguntas gerais como “quais suas habilidades?”.
-- [ ] Reconhecer hipóteses naturais como “se eu falar para você criar um
+- [x] Reconhecer perguntas gerais como “quais suas habilidades?”.
+- [x] Reconhecer hipóteses naturais como “se eu falar para você criar um
   arquivo, você vai criar?”.
-- [ ] Responder perguntas gerais a partir dos domínios realmente disponíveis.
-- [ ] Criar respostas naturais específicas para criação de arquivos e controle
+- [x] Responder perguntas gerais a partir dos domínios realmente disponíveis.
+- [x] Cruzar o turno atual e a conversa recente para priorizar as capacidades
+  ligadas ao assunto, sem usar contexto como autorização.
+- [x] Criar respostas naturais específicas para criação de arquivos e controle
   local do computador.
-- [ ] Garantir que a porta prioritária consuma essas perguntas antes da LLM e
+- [x] Garantir que a porta prioritária consuma essas perguntas antes da LLM e
   não publique comandos.
-- [ ] Bloquear o fallback “não executei nem confirmei” em turnos de capacidade,
+- [x] Bloquear o fallback “não executei nem confirmei” em turnos de capacidade,
   hipótese e pergunta.
 
 ## P2 — Identidade operacional coerente
 
-Status: **planejada**
+Status: **em execução**
 
-- [ ] Entender `seu código`, `sua memória`, `sua voz` e `suas habilidades` como
+- [x] Entender `seu código`, `sua memória`, `sua voz` e `suas habilidades` como
   referências à própria Laylay.
-- [ ] Levar a identidade operacional e o catálogo relevante ao prompt normal e
+- [x] Levar a identidade operacional e o catálogo relevante ao prompt normal e
   ao prompt rápido.
 - [ ] Rejeitar contradições como “não estou no seu PC”, “sou só um chatbot” e
   “só consigo conversar” quando o catálogo vivo provar o contrário.

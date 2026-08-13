@@ -891,7 +891,26 @@ _mapa_habilidades_runtime = _criar_mapa_habilidades_runtime(
     saude_getter=_saude_mente_runtime.snapshot,
 )
 _texto_parece_consulta_operacional = _mapa_habilidades_runtime.parece_consulta_operacional
-_responder_pergunta_capacidade_local = _mapa_habilidades_runtime.responder_pergunta_capacidade
+
+
+def _responder_pergunta_capacidade_local(texto: str) -> str:
+    """Cruza pergunta, decisão do turno e conversa recente no catálogo vivo."""
+    mente = _estado_compartilhado_runtime.mental
+    memoria_conversa = _estado_compartilhado_runtime.memoria_conversa
+    turno = dict(mente.get("turno_atual") or {})
+    mensagens = list(memoria_conversa.get("messages") or [])
+    return _mapa_habilidades_runtime.responder_pergunta_capacidade(
+        texto,
+        turno=turno,
+        contexto={
+            "mensagens": mensagens,
+            "ultima_fala_usuario": str(mente.get("ultima_fala_usuario") or ""),
+            "assunto": str(
+                dict(mente.get("assunto_estruturado_atual") or {}).get("titulo") or ""
+            ),
+            "foco": str(dict(mente.get("foco_vivo") or {}).get("topico") or ""),
+        },
+    )
 _otimizacoes_desempenho_refs: dict[str, Any] = {}
 
 

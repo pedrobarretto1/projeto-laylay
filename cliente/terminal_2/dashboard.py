@@ -3045,6 +3045,8 @@ class MiniMetricaSistema(QFrame):
 
 
 class PaginaSistema(QWidget):
+    acao_solicitada = Signal(str, str)
+
     def __init__(self) -> None:
         super().__init__()
         self.setObjectName("systemPage")
@@ -3434,6 +3436,359 @@ class PaginaSistema(QWidget):
             2,
         )
 
+        # P10.2 — Fase 4: áudio, ações e alertas.
+        fase4 = QHBoxLayout()
+        fase4.setObjectName(
+            "systemPhase4Row"
+        )
+        fase4.setContentsMargins(
+            0, 0, 0, 0
+        )
+        fase4.setSpacing(12)
+
+        # ----------------------------------------------
+        # Áudio e entrada
+        # ----------------------------------------------
+        self.audio_card = CartaoDashboard(
+            "Áudio e entrada",
+            subtitulo="estado observado",
+        )
+        self.audio_card.setObjectName(
+            "systemAudioCard"
+        )
+
+        self.audio_status = QLabel(
+            "Aguardando microfone"
+        )
+        self.audio_status.setObjectName(
+            "systemAudioStatus"
+        )
+        self.audio_status.setProperty(
+            "state",
+            "pending",
+        )
+        self.audio_card.layout_principal.addWidget(
+            self.audio_status
+        )
+
+        self.audio_valores: dict[
+            str, QLabel
+        ] = {}
+
+        for chave, rotulo in (
+            ("health", "Microfone"),
+            ("mode", "Modo atual"),
+            ("capture", "Captura de voz"),
+            ("freshness", "Frescor"),
+        ):
+            linha, valor = _linha_valor(
+                rotulo
+            )
+            linha.setObjectName(
+                "systemAudioRow"
+            )
+            self.audio_card.layout_principal.addWidget(
+                linha
+            )
+            self.audio_valores[
+                chave
+            ] = valor
+
+        nivel_topo = QWidget()
+        nivel_topo.setObjectName(
+            "systemAudioLevelHeader"
+        )
+        nivel_topo_lay = QHBoxLayout(
+            nivel_topo
+        )
+        nivel_topo_lay.setContentsMargins(
+            1, 2, 1, 0
+        )
+        nivel_topo_lay.setSpacing(6)
+
+        nivel_nome = QLabel(
+            "Nível de entrada"
+        )
+        nivel_nome.setObjectName(
+            "systemAudioLevelLabel"
+        )
+
+        self.audio_nivel_valor = QLabel(
+            "—"
+        )
+        self.audio_nivel_valor.setObjectName(
+            "systemAudioLevelValue"
+        )
+
+        nivel_topo_lay.addWidget(
+            nivel_nome
+        )
+        nivel_topo_lay.addStretch()
+        nivel_topo_lay.addWidget(
+            self.audio_nivel_valor
+        )
+
+        self.audio_nivel = QProgressBar()
+        self.audio_nivel.setObjectName(
+            "systemAudioLevel"
+        )
+        self.audio_nivel.setRange(
+            0, 100
+        )
+        self.audio_nivel.setValue(0)
+        self.audio_nivel.setTextVisible(
+            False
+        )
+
+        self.audio_card.layout_principal.addWidget(
+            nivel_topo
+        )
+        self.audio_card.layout_principal.addWidget(
+            self.audio_nivel
+        )
+
+        # ----------------------------------------------
+        # Ações rápidas
+        # ----------------------------------------------
+        self.acoes_card = CartaoDashboard(
+            "Ações rápidas",
+            subtitulo="via mente canônica",
+        )
+        self.acoes_card.setObjectName(
+            "systemActionsCard"
+        )
+
+        acoes_validas = [
+            item
+            for item in ACOES_RAPIDAS_TERMINAL
+            if str(
+                item.get("request")
+                or ""
+            ).strip()
+        ]
+
+        for definicao in acoes_validas:
+            acao_id = str(
+                definicao.get("id")
+                or ""
+            )
+            pedido = str(
+                definicao.get("request")
+                or ""
+            )
+            rotulo = str(
+                definicao.get("label")
+                or acao_id
+            )
+
+            botao = QPushButton(
+                rotulo
+            )
+            botao.setProperty(
+                "systemQuickAction",
+                True,
+            )
+            botao.clicked.connect(
+                lambda _checked=False,
+                aid=acao_id,
+                req=pedido:
+                self.acao_solicitada.emit(
+                    aid,
+                    req,
+                )
+            )
+            self.acoes_card.layout_principal.addWidget(
+                botao
+            )
+
+        acoes_hint = QLabel(
+            "Esses botões enviam o mesmo pedido "
+            "textual usado pela conversa."
+        )
+        acoes_hint.setObjectName(
+            "systemActionsHint"
+        )
+        acoes_hint.setWordWrap(True)
+        self.acoes_card.layout_principal.addWidget(
+            acoes_hint
+        )
+
+        # ----------------------------------------------
+        # Alertas
+        # ----------------------------------------------
+        self.alertas_card = CartaoDashboard(
+            "Alertas",
+            subtitulo="dashboard local",
+        )
+        self.alertas_card.setObjectName(
+            "systemAlertsCard"
+        )
+
+        self.alerta_status = QLabel(
+            "Aguardando dashboard"
+        )
+        self.alerta_status.setObjectName(
+            "systemAlertStatus"
+        )
+        self.alerta_status.setProperty(
+            "state",
+            "pending",
+        )
+        self.alertas_card.layout_principal.addWidget(
+            self.alerta_status
+        )
+
+        self.alerta_itens: list[
+            QLabel
+        ] = []
+
+        for _ in range(3):
+            item = QLabel("")
+            item.setObjectName(
+                "systemAlertItem"
+            )
+            item.setWordWrap(True)
+            item.hide()
+            self.alerta_itens.append(
+                item
+            )
+            self.alertas_card.layout_principal.addWidget(
+                item
+            )
+
+        self.alertas_card.layout_principal.addStretch()
+
+        fase4.addWidget(
+            self.audio_card,
+            1,
+        )
+        fase4.addWidget(
+            self.acoes_card,
+            1,
+        )
+        fase4.addWidget(
+            self.alertas_card,
+            1,
+        )
+
+        externo.addLayout(
+            fase4,
+            2,
+        )
+
+    def definir_estado_audio(
+        self,
+        modo: str,
+        voz_disponivel: bool,
+        nivel: float,
+    ) -> None:
+        modo = str(
+            modo or "chat"
+        ).casefold()
+
+        self.audio_valores[
+            "mode"
+        ].setText(
+            "Voz"
+            if modo == "voice"
+            else "Chat"
+        )
+
+        self.audio_valores[
+            "capture"
+        ].setText(
+            "Disponível"
+            if voz_disponivel
+            else "Indisponível"
+        )
+
+        try:
+            numero = float(nivel)
+        except (
+            TypeError,
+            ValueError,
+        ):
+            numero = 0.0
+
+        # O estado pode chegar normalizado (0–1)
+        # ou já em percentual.
+        if 0.0 <= numero <= 1.0:
+            numero *= 100.0
+
+        numero = max(
+            0.0,
+            min(
+                100.0,
+                numero,
+            ),
+        )
+
+        self.audio_nivel.setValue(
+            int(numero)
+        )
+        self.audio_nivel_valor.setText(
+            f"{numero:.0f}%"
+            if voz_disponivel
+            else "—"
+        )
+
+    def _definir_alertas(
+        self,
+        alertas: list[str],
+    ) -> None:
+        alertas = [
+            str(item).strip()
+            for item in alertas
+            if str(item).strip()
+        ]
+
+        if alertas:
+            self.alerta_status.setText(
+                f"{len(alertas)} aviso"
+                if len(alertas) == 1
+                else f"{len(alertas)} avisos"
+            )
+            self.alerta_status.setProperty(
+                "state",
+                "warning",
+            )
+        else:
+            self.alerta_status.setText(
+                "Nenhum alerta observado"
+            )
+            self.alerta_status.setProperty(
+                "state",
+                "ok",
+            )
+
+        self.alerta_status.style().unpolish(
+            self.alerta_status
+        )
+        self.alerta_status.style().polish(
+            self.alerta_status
+        )
+
+        for indice, label in enumerate(
+            self.alerta_itens
+        ):
+            if indice < len(alertas):
+                label.setText(
+                    alertas[indice]
+                )
+                label.setProperty(
+                    "kind",
+                    "warning",
+                )
+                label.show()
+                label.style().unpolish(
+                    label
+                )
+                label.style().polish(
+                    label
+                )
+            else:
+                label.hide()
+
     @staticmethod
     def _sparkline(
         valores: deque[float],
@@ -3595,6 +3950,79 @@ class PaginaSistema(QWidget):
             else {}
         )
 
+        microfone = (
+            saude.get("microphone")
+            if isinstance(
+                saude.get("microphone"),
+                dict,
+            )
+            else {}
+        )
+
+        mic_estado = str(
+            microfone.get("state")
+            or "unavailable"
+        )
+        mic_rotulo = str(
+            microfone.get("label")
+            or "Indisponível"
+        )
+        mic_frescor = str(
+            microfone.get("freshness")
+            or "unavailable"
+        )
+
+        self.audio_valores[
+            "health"
+        ].setText(
+            mic_rotulo
+        )
+
+        nomes_frescor_audio = {
+            "fresh": "Atual",
+            "stale": "Antigo",
+            "unavailable": "Indisponível",
+        }
+
+        self.audio_valores[
+            "freshness"
+        ].setText(
+            nomes_frescor_audio.get(
+                mic_frescor,
+                mic_frescor or "—",
+            )
+        )
+
+        audio_visual = {
+            "online": "ok",
+            "ready": "ok",
+            "paused": "pending",
+            "degraded": "error",
+            "unavailable": "unavailable",
+        }.get(
+            mic_estado,
+            "pending",
+        )
+
+        if mic_frescor == "stale":
+            audio_visual = "pending"
+        elif mic_frescor == "unavailable":
+            audio_visual = "unavailable"
+
+        self.audio_status.setText(
+            mic_rotulo
+        )
+        self.audio_status.setProperty(
+            "state",
+            audio_visual,
+        )
+        self.audio_status.style().unpolish(
+            self.audio_status
+        )
+        self.audio_status.style().polish(
+            self.audio_status
+        )
+
         provedor = str(
             llm.get("provider_label")
             or "—"
@@ -3667,6 +4095,59 @@ class PaginaSistema(QWidget):
         )
         self.modelo_status.style().polish(
             self.modelo_status
+        )
+
+        alertas: list[str] = []
+
+        nomes_saude = {
+            "llm": "Modelo local",
+            "memory": "Memória",
+            "microphone": "Microfone",
+        }
+
+        for chave_saude, nome_saude in nomes_saude.items():
+            item_saude = (
+                saude.get(chave_saude)
+                if isinstance(
+                    saude.get(chave_saude),
+                    dict,
+                )
+                else {}
+            )
+
+            estado_item = str(
+                item_saude.get("state")
+                or "unavailable"
+            )
+            frescor_item = str(
+                item_saude.get("freshness")
+                or "unavailable"
+            )
+
+            if estado_item == "degraded":
+                alertas.append(
+                    f"{nome_saude}: estado degradado."
+                )
+            elif estado_item == "unavailable":
+                alertas.append(
+                    f"{nome_saude}: indisponível."
+                )
+            elif frescor_item == "stale":
+                alertas.append(
+                    f"{nome_saude}: dados antigos."
+                )
+            elif frescor_item == "unavailable":
+                alertas.append(
+                    f"{nome_saude}: sem telemetria atual."
+                )
+
+        if ausentes:
+            alertas.append(
+                "Sistema: telemetria parcial."
+            )
+
+        self._definir_alertas(
+            alertas[:3]
         )
 
         download = _texto_metrica(
@@ -3746,6 +4227,43 @@ class PaginaSistema(QWidget):
             self.resumo_valores[
                 chave
             ].setText("—")
+
+        self.audio_status.setText(
+            "Aguardando microfone"
+        )
+        self.audio_status.setProperty(
+            "state",
+            "pending",
+        )
+        self.audio_status.style().unpolish(
+            self.audio_status
+        )
+        self.audio_status.style().polish(
+            self.audio_status
+        )
+
+        self.audio_valores[
+            "health"
+        ].setText("—")
+        self.audio_valores[
+            "freshness"
+        ].setText("—")
+        self.audio_valores[
+            "mode"
+        ].setText("—")
+        self.audio_valores[
+            "capture"
+        ].setText("—")
+        self.audio_nivel.setValue(0)
+        self.audio_nivel_valor.setText(
+            "—"
+        )
+
+        self._definir_alertas(
+            [
+                "Dashboard ainda não disponível."
+            ]
+        )
 
         for chave in self.recursos_valores:
             self.recursos_valores[

@@ -99,6 +99,7 @@ _TERMOS_DOMINIO = {
     "agenda": ("lembrete", "agenda", "agendar", "compromisso", "horario"),
     "arquivos": (
         "arquivo", "pasta", "lixeira", "renome", "mover", "documento",
+        "codigo", "código", "projeto laylay",
         "extensao", "extensão", "formato", ".txt", ".md", "markdown",
         "encontra o arquivo", "procura nos arquivos", "codigo que controla",
         "arquivos falam", "imagem que usei",
@@ -211,6 +212,36 @@ def _texto_pergunta_capacidade(texto: str) -> bool:
         r"\b(?:voce|laylay|lay)\s+mexe\s+(?:no|na|em)\b",
         t,
     ))
+
+
+def _contexto_conversacional_texto(contexto: Mapping[str, Any] | None) -> str:
+    """Extrai apenas pistas recentes; nunca usa o histórico como autorização."""
+    dados = dict(contexto or {})
+    partes: list[str] = []
+    for chave in ("ultima_fala_usuario", "assunto", "foco"):
+        valor = str(dados.get(chave) or "").strip()
+        if valor:
+            partes.append(valor[:500])
+    mensagens = dados.get("mensagens")
+    if isinstance(mensagens, list):
+        for item in mensagens[-6:]:
+            if not isinstance(item, Mapping):
+                continue
+            if str(item.get("role") or "").casefold() != "user":
+                continue
+            valor = str(item.get("content") or "").strip()
+            if valor:
+                partes.append(valor[:500])
+    return _normalizar(" ".join(partes[-3:]))
+
+
+def _dominios_mencionados(texto: str) -> list[str]:
+    normalizado = _normalizar(texto)
+    return [
+        dominio
+        for dominio, termos in _TERMOS_DOMINIO.items()
+        if any(termo in normalizado for termo in termos)
+    ]
 
 
 class MapaHabilidadesRuntime:
@@ -478,7 +509,13 @@ class MapaHabilidadesRuntime:
             for termo in termos
         )
 
-    def responder_pergunta_capacidade(self, texto: str) -> str:
+    def responder_pergunta_capacidade(
+        self,
+        texto: str,
+        *,
+        turno: Mapping[str, Any] | None = None,
+        contexto: Mapping[str, Any] | None = None,
+    ) -> str:
         """Responde sobre capacidade real sem executar a ação mencionada."""
         t = _normalizar(texto)
         # "O que você sabe/lembra sobre X?" pede dados da memória, não pergunta
@@ -491,8 +528,13 @@ class MapaHabilidadesRuntime:
             return ""
         if not _texto_pergunta_capacidade(t):
             return ""
+        leitura_turno = dict(turno or {})
+        # Esta porta explica capacidades. Um pedido que o turno canônico
+        # autorizou pertence ao roteador/executor e nunca é consumido aqui.
+        if leitura_turno.get("autoriza_execucao") is True:
+            return ""
         mapa = self.snapshot()
-        dominios = self.dominios_relevantes(t)
+        dominios = self.dominios_relevantes(t, turno=leitura_turno)
         disponivel = any(
             str((mapa.get("dominios") or {}).get(dominio, {}).get("estado") or "")
             in {"disponivel", "parcial", "degradado"}
@@ -504,6 +546,15 @@ class MapaHabilidadesRuntime:
         if pergunta_geral:
             dominios_vivos = dict(mapa.get("dominios") or {})
             ordem = tuple(_ROTULO_CAPACIDADE_NATURAL)
+            contexto_texto = _contexto_conversacional_texto(contexto)
+            relacionados = [
+                dominio
+                for dominio in _dominios_mencionados(contexto_texto)
+                if dominio in ordem
+                and str(dominios_vivos.get(dominio, {}).get("estado") or "")
+                in {"disponivel", "parcial", "degradado"}
+            ]
+            ordem = tuple(dict.fromkeys([*relacionados, *ordem]))
             itens = [
                 _ROTULO_CAPACIDADE_NATURAL[dominio]
                 for dominio in ordem
@@ -523,8 +574,14 @@ class MapaHabilidadesRuntime:
                 if len(itens) > len(principais)
                 else ""
             )
+            abertura = (
+                "Pelo assunto que a gente estava falando, eu começaria por "
+                f"{', '.join(_ROTULO_CAPACIDADE_NATURAL[item] for item in relacionados[:2])}. "
+                if relacionados
+                else ""
+            )
             return (
-                f"Tenho bastante braço por aqui: consigo {lista}."
+                f"{abertura}Tenho bastante braço por aqui: consigo {lista}."
                 f"{complemento} Eu só mexo de verdade quando você pede; perguntar não executa nada."
             )
         if "arquivos" in dominios and re.search(
@@ -655,7 +712,8 @@ class MapaHabilidadesRuntime:
             )
         if "conversa" in dominios:
             return (
-                "Consigo conversar, explicar e raciocinar com você. Também mantenho o contexto da "
+                "Consigo conversar, explicar e raciocinar com você usando o modelo de linguagem "
+                "disponível. Também mantenho o contexto da "
                 "conversa separado das lembranças duráveis: conversar comigo não salva tudo nem "
                 "autoriza uma ação no computador."
             )
