@@ -1161,60 +1161,213 @@ class PainelLateralDashboard(QWidget):
         )
         layout.addWidget(sistema)
 
-        musica = CartaoDashboard("Música", subtitulo="P4")
+        musica = CartaoDashboard(
+            "Música"
+        )
+        musica.setProperty(
+            "railCard",
+            "music",
+        )
+        musica.setProperty(
+            "musicState",
+            "unavailable",
+        )
+        musica.layout_principal.setContentsMargins(
+            14, 13, 14, 12
+        )
+        musica.layout_principal.setSpacing(8)
+        self.musica_card = musica
+
         musica_topo = QHBoxLayout()
-        musica_topo.setSpacing(11)
-        self.musica_capa = CapaMusicaGenerica(68)
+        musica_topo.setSpacing(10)
+
+        self.musica_capa = CapaMusicaGenerica(
+            64
+        )
+
         musica_textos = QVBoxLayout()
-        musica_textos.setSpacing(4)
-        self.musica_titulo = QLabel("Nenhuma faixa confirmada")
-        self.musica_titulo.setObjectName("musicTitle")
-        self.musica_titulo.setWordWrap(True)
-        self.musica_detalhe = QLabel("O player será ligado ao estado observado da extensão.")
-        self.musica_detalhe.setObjectName("dashboardEmpty")
-        self.musica_detalhe.setWordWrap(True)
-        musica_textos.addWidget(self.musica_titulo)
-        musica_textos.addWidget(self.musica_detalhe)
+        musica_textos.setSpacing(3)
+
+        badge_linha = QHBoxLayout()
+        badge_linha.setContentsMargins(
+            0, 0, 0, 0
+        )
+
+        self.musica_estado_badge = QLabel(
+            "OFFLINE"
+        )
+        self.musica_estado_badge.setObjectName(
+            "railMusicBadge"
+        )
+        self.musica_estado_badge.setProperty(
+            "state",
+            "unavailable",
+        )
+
+        badge_linha.addWidget(
+            self.musica_estado_badge,
+            0,
+            Qt.AlignLeft,
+        )
+        badge_linha.addStretch()
+
+        self.musica_titulo = QLabel(
+            "Nenhuma faixa confirmada"
+        )
+        self.musica_titulo.setObjectName(
+            "railMusicTitle"
+        )
+        self.musica_titulo.setWordWrap(
+            True
+        )
+
+        self.musica_detalhe = QLabel(
+            "Player ainda não observado."
+        )
+        self.musica_detalhe.setObjectName(
+            "railMusicMeta"
+        )
+        self.musica_detalhe.setWordWrap(
+            True
+        )
+
+        musica_textos.addLayout(
+            badge_linha
+        )
+        musica_textos.addWidget(
+            self.musica_titulo
+        )
+        musica_textos.addWidget(
+            self.musica_detalhe
+        )
         musica_textos.addStretch()
-        musica_topo.addWidget(self.musica_capa)
-        musica_topo.addLayout(musica_textos, 1)
+
+        musica_topo.addWidget(
+            self.musica_capa
+        )
+        musica_topo.addLayout(
+            musica_textos,
+            1,
+        )
+
         self.musica_progresso = QProgressBar()
-        self.musica_progresso.setRange(0, 1000)
+        self.musica_progresso.setObjectName(
+            "railMusicProgress"
+        )
+        self.musica_progresso.setRange(
+            0, 1000
+        )
         self.musica_progresso.setValue(0)
-        self.musica_progresso.setTextVisible(False)
+        self.musica_progresso.setTextVisible(
+            False
+        )
+
         tempos = QHBoxLayout()
+        tempos.setContentsMargins(
+            1, 0, 1, 0
+        )
+
         self.musica_posicao = QLabel("0:00")
         self.musica_duracao = QLabel("0:00")
-        for tempo in (self.musica_posicao, self.musica_duracao):
-            tempo.setObjectName("dashboardMetricLabel")
-        tempos.addWidget(self.musica_posicao)
+
+        for tempo in (
+            self.musica_posicao,
+            self.musica_duracao,
+        ):
+            tempo.setObjectName(
+                "railMusicTime"
+            )
+
+        tempos.addWidget(
+            self.musica_posicao
+        )
         tempos.addStretch()
-        tempos.addWidget(self.musica_duracao)
+        tempos.addWidget(
+            self.musica_duracao
+        )
+
         controles = QHBoxLayout()
+        controles.setSpacing(8)
         controles.addStretch()
-        self.musica_botoes: dict[str, QPushButton] = {}
-        for acao_id, icone, dica in (
-            ("media_previous", "previous", "Faixa anterior"),
-            ("media_toggle", "play", "Pausar ou continuar"),
-            ("media_next", "next", "Próxima faixa"),
+
+        self.musica_botoes: dict[
+            str,
+            QPushButton,
+        ] = {}
+
+        for (
+            acao_id,
+            icone,
+            dica,
+        ) in (
+            (
+                "media_previous",
+                "previous",
+                "Faixa anterior",
+            ),
+            (
+                "media_toggle",
+                "play",
+                "Pausar ou continuar",
+            ),
+            (
+                "media_next",
+                "next",
+                "Próxima faixa",
+            ),
         ):
             botao = QPushButton()
-            botao.setObjectName("railMusicControl")
-            botao.setIcon(icone_terminal(icone))
-            botao.setIconSize(QSize(20, 20))
+            botao.setObjectName(
+                "railMusicControl"
+            )
+            botao.setProperty(
+                "primary",
+                acao_id == "media_toggle",
+            )
+            botao.setIcon(
+                icone_terminal(icone)
+            )
+            botao.setIconSize(
+                QSize(
+                    20, 20
+                )
+            )
             botao.setToolTip(dica)
-            botao.setAccessibleName(dica)
+            botao.setAccessibleName(
+                dica
+            )
             botao.setEnabled(False)
             botao.clicked.connect(
-                lambda _v=False, aid=acao_id: self._solicitar_musica(aid)
+                lambda _v=False,
+                aid=acao_id:
+                self._solicitar_musica(
+                    aid
+                )
             )
-            self.musica_botoes[acao_id] = botao
-            controles.addWidget(botao)
+
+            self.musica_botoes[
+                acao_id
+            ] = botao
+
+            controles.addWidget(
+                botao
+            )
+
         controles.addStretch()
-        musica.layout_principal.addLayout(musica_topo)
-        musica.layout_principal.addWidget(self.musica_progresso)
-        musica.layout_principal.addLayout(tempos)
-        musica.layout_principal.addLayout(controles)
+
+        musica.layout_principal.addLayout(
+            musica_topo
+        )
+        musica.layout_principal.addWidget(
+            self.musica_progresso
+        )
+        musica.layout_principal.addLayout(
+            tempos
+        )
+        musica.layout_principal.addLayout(
+            controles
+        )
+
         layout.addWidget(musica)
 
         rotinas = CartaoDashboard("Rotinas", subtitulo="P4")
@@ -1241,6 +1394,73 @@ class PainelLateralDashboard(QWidget):
         self._relogio_musica.setInterval(1000)
         self._relogio_musica.timeout.connect(self._atualizar_relogio_musica)
         self._relogio_musica.start()
+
+    def _definir_visual_musica(
+        self,
+        estado: str,
+        frescor: str = "fresh",
+    ) -> None:
+        estado = str(
+            estado or "unavailable"
+        )
+        frescor = str(
+            frescor or "unavailable"
+        )
+
+        if (
+            estado == "unavailable"
+            or frescor == "unavailable"
+        ):
+            visual = "unavailable"
+            texto = "OFFLINE"
+
+        elif frescor == "stale":
+            visual = "stale"
+            texto = "ANTIGO"
+
+        else:
+            visual = (
+                estado
+                if estado in {
+                    "playing",
+                    "paused",
+                    "ended",
+                }
+                else "unknown"
+            )
+
+            texto = {
+                "playing": "TOCANDO",
+                "paused": "PAUSADA",
+                "ended": "FINALIZADA",
+                "unknown": "PLAYER",
+            }.get(
+                visual,
+                "PLAYER",
+            )
+
+        self.musica_card.setProperty(
+            "musicState",
+            visual,
+        )
+        self.musica_estado_badge.setProperty(
+            "state",
+            visual,
+        )
+        self.musica_estado_badge.setText(
+            texto
+        )
+
+        for widget in (
+            self.musica_card,
+            self.musica_estado_badge,
+        ):
+            widget.style().unpolish(
+                widget
+            )
+            widget.style().polish(
+                widget
+            )
 
     def _solicitar_musica(self, acao_id: str) -> None:
         pedidos = {
@@ -1496,50 +1716,204 @@ class PainelLateralDashboard(QWidget):
                 "Desativado · dados antigos" if frescor == "stale"
                 else "Desativado"
             )
-        musica = dashboard.get("music")
-        if not isinstance(musica, dict) or musica.get("freshness") == "unavailable":
-            self._estado_musica = "unavailable"
+        musica = dashboard.get(
+            "music"
+        )
+
+        if (
+            not isinstance(
+                musica,
+                dict,
+            )
+            or musica.get(
+                "freshness"
+            ) == "unavailable"
+        ):
+            self._estado_musica = (
+                "unavailable"
+            )
             self._controles_musica = False
-            self.musica_titulo.setText("Nenhuma faixa confirmada")
-            self.musica_detalhe.setText("Player indisponível ou ainda não observado.")
-            self.musica_capa.definir_titulo("")
-            self.musica_capa.carregar("")
-            self.musica_progresso.setValue(0)
-            self.musica_posicao.setText("0:00")
-            self.musica_duracao.setText("0:00")
+
+            self.musica_titulo.setText(
+                "Nenhuma faixa confirmada"
+            )
+            self.musica_detalhe.setText(
+                "Player indisponível ou "
+                "ainda não observado."
+            )
+
+            self.musica_capa.definir_titulo(
+                ""
+            )
+            self.musica_capa.carregar(
+                ""
+            )
+
+            self.musica_progresso.setValue(
+                0
+            )
+            self.musica_posicao.setText(
+                "0:00"
+            )
+            self.musica_duracao.setText(
+                "0:00"
+            )
+
             self._musica_posicao_base = 0.0
             self._musica_duracao_base = 0.0
             self._musica_observada_em = 0.0
+
+            self._definir_visual_musica(
+                "unavailable",
+                "unavailable",
+            )
+
         else:
-            self._estado_musica = str(musica.get("state") or "unknown")
-            self._controles_musica = bool(musica.get("controls_available"))
-            titulo_musica = str(musica.get("title") or "Faixa sem título")
-            self.musica_titulo.setText(titulo_musica)
-            self.musica_capa.definir_titulo(titulo_musica)
-            self.musica_capa.carregar(str(musica.get("artwork_url") or ""))
+            self._estado_musica = str(
+                musica.get("state")
+                or "unknown"
+            )
+
+            self._controles_musica = bool(
+                musica.get(
+                    "controls_available"
+                )
+            )
+
+            titulo_musica = str(
+                musica.get("title")
+                or "Faixa sem título"
+            )
+
+            self.musica_titulo.setText(
+                titulo_musica
+            )
+
+            self.musica_capa.definir_titulo(
+                titulo_musica
+            )
+            self.musica_capa.carregar(
+                str(
+                    musica.get(
+                        "artwork_url"
+                    )
+                    or ""
+                )
+            )
+
             estado = {
-                "playing": "Tocando", "paused": "Pausada",
-                "ended": "Finalizada", "unknown": "Estado não confirmado",
-            }.get(str(musica.get("state") or ""), "Estado não confirmado")
-            canal = str(musica.get("channel") or "").strip()
-            antigo = " · dados antigos" if musica.get("freshness") == "stale" else ""
+                "playing": "Tocando",
+                "paused": "Pausada",
+                "ended": "Finalizada",
+                "unknown": (
+                    "Estado não confirmado"
+                ),
+            }.get(
+                self._estado_musica,
+                "Estado não confirmado",
+            )
+
+            canal = str(
+                musica.get("channel")
+                or ""
+            ).strip()
+
+            antigo = (
+                " · dados antigos"
+                if musica.get(
+                    "freshness"
+                ) == "stale"
+                else ""
+            )
+
             self.musica_detalhe.setText(
-                f"{estado}" + (f" · {canal}" if canal else "") + antigo
+                estado
+                + (
+                    f" · {canal}"
+                    if canal
+                    else ""
+                )
+                + antigo
             )
-            posicao = float(musica.get("position_seconds") or 0.0)
-            duracao = float(musica.get("duration_seconds") or 0.0)
-            self._musica_posicao_base = posicao
-            self._musica_duracao_base = duracao
-            self._musica_observada_em = float(musica.get("observed_at") or 0.0)
+
+            posicao = float(
+                musica.get(
+                    "position_seconds"
+                )
+                or 0.0
+            )
+            duracao = float(
+                musica.get(
+                    "duration_seconds"
+                )
+                or 0.0
+            )
+
+            self._musica_posicao_base = (
+                posicao
+            )
+            self._musica_duracao_base = (
+                duracao
+            )
+            self._musica_observada_em = float(
+                musica.get(
+                    "observed_at"
+                )
+                or 0.0
+            )
+
             self.musica_progresso.setValue(
-                max(0, min(1000, int((posicao / duracao) * 1000)))
-                if duracao > 0 else 0
+                max(
+                    0,
+                    min(
+                        1000,
+                        int(
+                            (
+                                posicao
+                                / duracao
+                            )
+                            * 1000
+                        ),
+                    ),
+                )
+                if duracao > 0
+                else 0
             )
-            self.musica_posicao.setText(_tempo_player(posicao))
-            self.musica_duracao.setText(_tempo_player(duracao))
-            self.musica_botoes["media_toggle"].setIcon(
-                icone_terminal("pause" if self._estado_musica == "playing" else "play")
+
+            self.musica_posicao.setText(
+                _tempo_player(
+                    posicao
+                )
             )
+            self.musica_duracao.setText(
+                _tempo_player(
+                    duracao
+                )
+            )
+
+            self.musica_botoes[
+                "media_toggle"
+            ].setIcon(
+                icone_terminal(
+                    "pause"
+                    if (
+                        self._estado_musica
+                        == "playing"
+                    )
+                    else "play"
+                )
+            )
+
+            self._definir_visual_musica(
+                self._estado_musica,
+                str(
+                    musica.get(
+                        "freshness"
+                    )
+                    or "fresh"
+                ),
+            )
+
         self._atualizar_controles_musica()
         rotinas = dashboard.get("routines")
         itens_rotina = (
@@ -1619,18 +1993,48 @@ class PainelLateralDashboard(QWidget):
         self.sistema_estado.style().polish(
             self.sistema_estado
         )
-        self.jogo_estado.setText("Estado indisponível durante a reconexão")
-        self.musica_titulo.setText("Nenhuma faixa confirmada")
-        self.musica_detalhe.setText("Aguardando estado observado do player.")
-        self.musica_capa.carregar("")
-        self._estado_musica = "unavailable"
+        self.jogo_estado.setText(
+            "Estado indisponível durante a reconexão"
+        )
+
+        self.musica_titulo.setText(
+            "Nenhuma faixa confirmada"
+        )
+        self.musica_detalhe.setText(
+            "Aguardando estado observado "
+            "do player."
+        )
+        self.musica_capa.definir_titulo(
+            ""
+        )
+        self.musica_capa.carregar(
+            ""
+        )
+
+        self._estado_musica = (
+            "unavailable"
+        )
         self._controles_musica = False
-        self.musica_progresso.setValue(0)
-        self.musica_posicao.setText("0:00")
-        self.musica_duracao.setText("0:00")
+
+        self.musica_progresso.setValue(
+            0
+        )
+        self.musica_posicao.setText(
+            "0:00"
+        )
+        self.musica_duracao.setText(
+            "0:00"
+        )
+
         self._musica_posicao_base = 0.0
         self._musica_duracao_base = 0.0
         self._musica_observada_em = 0.0
+
+        self._definir_visual_musica(
+            "unavailable",
+            "unavailable",
+        )
+
         self._atualizar_controles_musica()
         self.rotinas_estado.setText("Aguardando rotinas confirmadas pela agenda.")
 

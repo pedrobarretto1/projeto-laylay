@@ -1691,6 +1691,158 @@ class JanelaLaylay(QMainWindow):
                     color: #69717A;
                 }}
 
+
+                /* =========================================
+                   HOME — CARD MÚSICA
+                   ========================================= */
+
+                #dashboardCard[railCard="music"] {{
+                    background: #14191E;
+                    border: 1px solid #2B3239;
+                    border-radius: 14px;
+                }}
+
+                #dashboardCard[railCard="music"][musicState="playing"] {{
+                    border-color: #5A3039;
+                }}
+
+                #dashboardCard[railCard="music"][musicState="stale"] {{
+                    border-color: #54442D;
+                }}
+
+                #dashboardCard[railCard="music"][musicState="unavailable"] {{
+                    border-color: #252B31;
+                }}
+
+                #dashboardCard[railCard="music"] #dashboardCardTitle {{
+                    color: #F3EFF1;
+                    font-size: 13px;
+                    font-weight: 700;
+                }}
+
+                #railMusicBadge {{
+                    background: #20262C;
+                    border: 1px solid #323940;
+                    border-radius: 7px;
+                    padding: 3px 6px;
+                    color: #858D96;
+                    font-size: 8px;
+                    font-weight: 700;
+                }}
+
+                #railMusicBadge[state="playing"] {{
+                    background: #2A1A20;
+                    border-color: #5B303B;
+                    color: #FF6D82;
+                }}
+
+                #railMusicBadge[state="paused"] {{
+                    background: #1B2025;
+                    border-color: #333A42;
+                    color: #A9B0B7;
+                }}
+
+                #railMusicBadge[state="ended"] {{
+                    background: #1B2025;
+                    border-color: #333A42;
+                    color: #8C949C;
+                }}
+
+                #railMusicBadge[state="stale"] {{
+                    background: #272116;
+                    border-color: #5A4827;
+                    color: #D3AA61;
+                }}
+
+                #railMusicBadge[state="unavailable"] {{
+                    background: #181C20;
+                    border-color: #282E34;
+                    color: #646C74;
+                }}
+
+                #railMusicTitle {{
+                    background: transparent;
+                    border: 0;
+                    color: #F1EDEF;
+                    font-size: 11px;
+                    font-weight: 700;
+                }}
+
+                #railMusicMeta {{
+                    background: transparent;
+                    border: 0;
+                    color: #777F88;
+                    font-size: 8px;
+                }}
+
+                #railMusicProgress {{
+                    background: #242A30;
+                    border: 0;
+                    border-radius: 2px;
+                    min-height: 4px;
+                    max-height: 4px;
+                }}
+
+                #railMusicProgress::chunk {{
+                    background: #D24A60;
+                    border-radius: 2px;
+                }}
+
+                #railMusicTime {{
+                    background: transparent;
+                    border: 0;
+                    color: #6F7780;
+                    font-size: 8px;
+                }}
+
+                #dashboardCard[railCard="music"] #railMusicControl {{
+                    background: #191E23;
+                    border: 1px solid #30363D;
+                    border-radius: 17px;
+                    min-width: 34px;
+                    max-width: 34px;
+                    min-height: 34px;
+                    max-height: 34px;
+                }}
+
+                #dashboardCard[railCard="music"] #railMusicControl:hover {{
+                    background: #251C21;
+                    border-color: #69404A;
+                }}
+
+                #dashboardCard[railCard="music"] #railMusicControl:pressed {{
+                    background: #301D24;
+                    border-color: #8D4250;
+                }}
+
+                #dashboardCard[railCard="music"] #railMusicControl:disabled {{
+                    background: #171B1F;
+                    border-color: #252B31;
+                }}
+
+                #dashboardCard[railCard="music"]
+                #railMusicControl[primary="true"] {{
+                    background: #B9384D;
+                    border: 1px solid #EC5A70;
+                    border-radius: 20px;
+                    min-width: 40px;
+                    max-width: 40px;
+                    min-height: 40px;
+                    max-height: 40px;
+                }}
+
+                #dashboardCard[railCard="music"]
+                #railMusicControl[primary="true"]:hover {{
+                    background: #D3455B;
+                    border-color: #FF7488;
+                }}
+
+                #dashboardCard[railCard="music"]
+                #railMusicControl[primary="true"]:disabled {{
+                    background: #221C20;
+                    border-color: #3C3035;
+                }}
+
                 #musicTitle {{ font-size: 13px; font-weight: 700; }}
                 #musicControlsPlaceholder {{ color: #5F646B; font-size: 15px; padding: 5px; }}
                 #musicPage, #musicScroll, #musicScroll > QWidget > QWidget,
