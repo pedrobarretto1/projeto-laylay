@@ -798,7 +798,7 @@ class JanelaLaylay(QMainWindow):
             self.marca_status
         )
 
-        self.nova = QPushButton()
+        self.nova = QPushButton(self.sidebar_topo)
         self.nova.setObjectName(
             "newChatButton"
         )
@@ -815,6 +815,7 @@ class JanelaLaylay(QMainWindow):
         self.nova.setToolTip(
             "Nova conversa"
         )
+        self.nova.hide()
         self.nova.clicked.connect(
             self.nova_conversa
         )
@@ -837,7 +838,6 @@ class JanelaLaylay(QMainWindow):
 
         topo.addWidget(self.avatar_side)
         topo.addLayout(marca_box, 1)
-        topo.addWidget(self.nova)
         topo.addWidget(self.recolher)
 
         side.addWidget(self.sidebar_topo)
