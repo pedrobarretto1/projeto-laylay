@@ -23,12 +23,12 @@ try:
         Qt, Signal,
     )
     from PySide6.QtGui import (
-        QColor, QFont, QFontDatabase, QKeySequence, QPainter, QPen, QPixmap,
-        QShortcut,
+        QColor, QFont, QFontDatabase, QKeySequence, QPainter, QPainterPath,
+        QPen, QPixmap, QShortcut,
     )
     from PySide6.QtWidgets import (
-        QApplication, QBoxLayout, QButtonGroup, QCheckBox, QComboBox, QFrame,
-        QGraphicsOpacityEffect, QHBoxLayout, QLabel, QLayout, QLineEdit, QMainWindow,
+        QApplication, QBoxLayout, QButtonGroup, QCheckBox, QComboBox, QFileDialog,
+        QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QLayout, QLineEdit, QMainWindow,
         QPushButton, QScrollArea, QSizePolicy, QStackedWidget, QTextEdit,
         QToolButton, QVBoxLayout, QWidget,
     )
@@ -192,6 +192,150 @@ class AroPresenca(QWidget):
             x = (self.width() - self._pixmap.width()) // 2
             y = (self.height() - self._pixmap.height()) // 2
             painter.drawPixmap(x, y, self._pixmap)
+
+
+class AvatarUsuario(QWidget):
+    # Avatar local do usuário, independente da mente.
+
+    def __init__(
+        self,
+        caminho: str = "",
+        tamanho: int = 38,
+    ) -> None:
+        super().__init__()
+        self._tamanho = int(tamanho)
+        self._pixmap = QPixmap()
+
+        self.setFixedSize(
+            self._tamanho,
+            self._tamanho,
+        )
+
+        self.definir_imagem(caminho)
+
+    def definir_imagem(
+        self,
+        caminho: str,
+    ) -> None:
+        caminho = str(
+            caminho or ""
+        ).strip()
+
+        if (
+            caminho
+            and Path(caminho).is_file()
+        ):
+            self._pixmap = QPixmap(
+                caminho
+            )
+        else:
+            self._pixmap = QPixmap()
+
+        self.update()
+
+    def paintEvent(
+        self,
+        _event,
+    ) -> None:  # noqa: N802
+        painter = QPainter(self)
+        painter.setRenderHint(
+            QPainter.Antialiasing
+        )
+
+        area = self.rect().adjusted(
+            2, 2, -2, -2
+        )
+
+        painter.setPen(
+            QPen(
+                QColor("#7D3A48"),
+                2,
+            )
+        )
+        painter.setBrush(
+            QColor("#1C2026")
+        )
+        painter.drawEllipse(area)
+
+        if not self._pixmap.isNull():
+            imagem = self._pixmap.scaled(
+                area.width(),
+                area.height(),
+                Qt.KeepAspectRatioByExpanding,
+                Qt.SmoothTransformation,
+            )
+
+            recorte = QPainterPath()
+            recorte.addEllipse(area)
+
+            painter.save()
+            painter.setClipPath(
+                recorte
+            )
+
+            x = (
+                self.width()
+                - imagem.width()
+            ) // 2
+            y = (
+                self.height()
+                - imagem.height()
+            ) // 2
+
+            painter.drawPixmap(
+                x,
+                y,
+                imagem,
+            )
+            painter.restore()
+
+            painter.setPen(
+                QPen(
+                    QColor("#7D3A48"),
+                    2,
+                )
+            )
+            painter.setBrush(
+                Qt.NoBrush
+            )
+            painter.drawEllipse(area)
+            return
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(
+            QColor("#A9A2A7")
+        )
+
+        cx = self.width() // 2
+        cy = self.height() // 2
+
+        cabeca = max(
+            6,
+            self._tamanho // 5,
+        )
+
+        painter.drawEllipse(
+            cx - cabeca // 2,
+            cy - cabeca,
+            cabeca,
+            cabeca,
+        )
+
+        corpo_largura = max(
+            12,
+            self._tamanho // 2,
+        )
+        corpo_altura = max(
+            7,
+            self._tamanho // 4,
+        )
+
+        painter.drawEllipse(
+            cx - corpo_largura // 2,
+            cy + 1,
+            corpo_largura,
+            corpo_altura,
+        )
 
 
 class MensagemWidget(QFrame):
@@ -416,6 +560,7 @@ class Composer(QFrame):
 class PaginaConfiguracoes(QWidget):
     salvar = Signal(dict)
     reiniciar = Signal()
+    avatar_alterado = Signal(str)
 
     def __init__(self) -> None:
         super().__init__()
@@ -546,6 +691,86 @@ class PaginaConfiguracoes(QWidget):
         self.voz_estado.setWordWrap(True)
         lay.addWidget(voz_titulo)
         lay.addWidget(self.voz_estado)
+
+        lay.addSpacing(22)
+
+        perfil_titulo = QLabel("Perfil")
+        perfil_titulo.setObjectName(
+            "sectionTitle"
+        )
+        lay.addWidget(perfil_titulo)
+
+        self.perfil_card = QFrame()
+        self.perfil_card.setObjectName(
+            "settingsProfileCard"
+        )
+
+        perfil_lay = QHBoxLayout(
+            self.perfil_card
+        )
+        perfil_lay.setContentsMargins(
+            14, 12, 14, 12
+        )
+        perfil_lay.setSpacing(12)
+
+        self.avatar_usuario_preview = AvatarUsuario(
+            "",
+            58,
+        )
+
+        perfil_textos = QVBoxLayout()
+        perfil_textos.setContentsMargins(
+            0, 0, 0, 0
+        )
+        perfil_textos.setSpacing(3)
+
+        perfil_nome = QLabel(
+            "Seu avatar"
+        )
+        perfil_nome.setObjectName(
+            "settingsProfileTitle"
+        )
+
+        perfil_hint = QLabel(
+            "Usado ao lado das suas mensagens."
+        )
+        perfil_hint.setObjectName(
+            "settingsProfileHint"
+        )
+        perfil_hint.setWordWrap(True)
+
+        perfil_textos.addWidget(
+            perfil_nome
+        )
+        perfil_textos.addWidget(
+            perfil_hint
+        )
+
+        self.trocar_avatar_botao = QPushButton(
+            "Trocar foto"
+        )
+        self.trocar_avatar_botao.setObjectName(
+            "secondaryButton"
+        )
+        self.trocar_avatar_botao.clicked.connect(
+            self._selecionar_avatar
+        )
+
+        perfil_lay.addWidget(
+            self.avatar_usuario_preview
+        )
+        perfil_lay.addLayout(
+            perfil_textos,
+            1,
+        )
+        perfil_lay.addWidget(
+            self.trocar_avatar_botao
+        )
+
+        lay.addWidget(
+            self.perfil_card
+        )
+
         lay.addSpacing(22)
         interface_titulo = QLabel("Interface")
         interface_titulo.setObjectName("sectionTitle")
@@ -637,6 +862,92 @@ class PaginaConfiguracoes(QWidget):
             self.banner.setProperty("kind", "success")
             self.banner.show()
 
+    def definir_avatar_usuario(
+        self,
+        caminho: str,
+    ) -> None:
+        self.avatar_usuario_preview.definir_imagem(
+            str(caminho or "")
+        )
+
+    def _selecionar_avatar(self) -> None:
+        caminho, _filtro = QFileDialog.getOpenFileName(
+            self,
+            "Escolher foto de perfil",
+            "",
+            (
+                "Imagens (*.png *.jpg *.jpeg *.webp *.bmp);;"
+                "Todos os arquivos (*.*)"
+            ),
+        )
+
+        if not caminho:
+            return
+
+        imagem = QPixmap(caminho)
+
+        if imagem.isNull():
+            self.banner.setText(
+                "Não consegui abrir essa imagem."
+            )
+            self.banner.setProperty(
+                "kind",
+                "error",
+            )
+            self.banner.show()
+            return
+
+        destino = (
+            Path.home()
+            / ".laylay"
+            / "terminal"
+            / "avatar_usuario.png"
+        )
+
+        destino.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        if not imagem.save(
+            str(destino),
+            "PNG",
+        ):
+            self.banner.setText(
+                "Não consegui salvar a foto de perfil."
+            )
+            self.banner.setProperty(
+                "kind",
+                "error",
+            )
+            self.banner.show()
+            return
+
+        caminho_final = str(destino)
+
+        self.definir_avatar_usuario(
+            caminho_final
+        )
+
+        self.avatar_alterado.emit(
+            caminho_final
+        )
+
+        self.banner.setText(
+            "Foto de perfil atualizada."
+        )
+        self.banner.setProperty(
+            "kind",
+            "success",
+        )
+        self.banner.style().unpolish(
+            self.banner
+        )
+        self.banner.style().polish(
+            self.banner
+        )
+        self.banner.show()
+
     def definir_voz(self, disponivel: bool) -> None:
         self.voz_estado.setText(
             "O ouvido está disponível. O seletor Chat/Voz usa a mesma captura da Laylay; "
@@ -719,6 +1030,13 @@ class JanelaLaylay(QMainWindow):
         self._session_id = str(session_id or "").strip()[:8]
         self._parent_pid = max(0, int(parent_pid or 0))
         self.preferencias = QSettings("Laylay", "Terminal2")
+        self._avatar_usuario_path = str(
+            self.preferencias.value(
+                "user_avatar_path",
+                "",
+            )
+            or ""
+        )
         self._ultima_mensagem: tuple[str, str, float] = ("", "", 0.0)
         self._envios: dict[str, MensagemWidget] = {}
         self._acoes_por_envio: dict[str, str] = {}
@@ -1271,6 +1589,12 @@ class JanelaLaylay(QMainWindow):
         self.configuracoes = PaginaConfiguracoes()
         self.configuracoes.salvar.connect(self.salvar_configuracoes)
         self.configuracoes.reiniciar.connect(self.reiniciar_laylay)
+        self.configuracoes.avatar_alterado.connect(
+            self._definir_avatar_usuario
+        )
+        self.configuracoes.definir_avatar_usuario(
+            self._avatar_usuario_path
+        )
         self.configuracoes.manter_sidebar.toggled.connect(self._preferencia_sidebar)
         self.paginas.addWidget(self.configuracoes)
         self.pagina_automacao = PaginaAutomacao()
@@ -1590,6 +1914,32 @@ class JanelaLaylay(QMainWindow):
                     border: 0;
                     padding: 0 3px;
                     color: #858D96;
+                    font-size: 10px;
+                }}
+
+
+                /* =========================================
+                   P8 — PERFIL DO USUÁRIO
+                   ========================================= */
+
+                #settingsProfileCard {{
+                    background: #14191E;
+                    border: 1px solid #2A3138;
+                    border-radius: 13px;
+                }}
+
+                #settingsProfileTitle {{
+                    background: transparent;
+                    border: 0;
+                    color: #F1EDEF;
+                    font-size: 13px;
+                    font-weight: 700;
+                }}
+
+                #settingsProfileHint {{
+                    background: transparent;
+                    border: 0;
+                    color: #777F88;
                     font-size: 10px;
                 }}
 
@@ -3610,9 +3960,20 @@ class JanelaLaylay(QMainWindow):
                 Qt.AlignRight,
             )
 
+            avatar_usuario = AvatarUsuario(
+                self._avatar_usuario_path,
+                38,
+            )
+
             linha.addStretch(1)
             linha.addLayout(
                 coluna_mensagem
+            )
+            linha.addSpacing(5)
+            linha.addWidget(
+                avatar_usuario,
+                0,
+                Qt.AlignTop,
             )
 
             if self.conversa_atual.text() == "Conversa atual":
@@ -3659,12 +4020,11 @@ class JanelaLaylay(QMainWindow):
             self.scroll.viewport().width() - margens.left() - margens.right() - 4,
         )
         for mensagem in self.feed.findChildren(MensagemWidget):
-            # A fala da Laylay divide a linha com o avatar. Em telas estreitas,
-            # reserve esse espaço antes de fixar o balão para que o conjunto
-            # inteiro continue dentro do viewport, sem rolagem horizontal.
-            limite_papel = (
-                max(140, disponivel - 60)
-                if mensagem.papel == "assistant" else disponivel
+            # Agora os dois papéis dividem a linha com avatar.
+            # Reserva o mesmo espaço dos dois lados para evitar estouro.
+            limite_papel = max(
+                140,
+                disponivel - 60,
             )
             largura = min(int(mensagem.largura_preferida), limite_papel)
             if mensagem.width() != largura:
@@ -3894,6 +4254,33 @@ class JanelaLaylay(QMainWindow):
         self.alternador.definir(modo, pendente=True, voz_disponivel=self._voz_disponivel)
         self.status.setText("Trocando modo…")
         self.enviar_json.emit({"type": "mode_set", "id": uuid.uuid4().hex, "mode": modo})
+
+    def _definir_avatar_usuario(
+        self,
+        caminho: str,
+    ) -> None:
+        caminho = str(
+            caminho or ""
+        ).strip()
+
+        self._avatar_usuario_path = caminho
+
+        self.preferencias.setValue(
+            "user_avatar_path",
+            caminho,
+        )
+        self.preferencias.sync()
+
+        self.configuracoes.definir_avatar_usuario(
+            caminho
+        )
+
+        for avatar in self.feed.findChildren(
+            AvatarUsuario
+        ):
+            avatar.definir_imagem(
+                caminho
+            )
 
     def salvar_configuracoes(self, settings: dict) -> None:
         self.enviar_json.emit({
