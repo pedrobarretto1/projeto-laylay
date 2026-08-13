@@ -1072,10 +1072,11 @@ class JanelaLaylay(QMainWindow):
         self._aplicar_sidebar()
         self._aplicar_responsividade()
 
-        # P9: prepara antes do primeiro frame visível.
+        # P9.1 — ANIMAÇÃO DE INÍCIO MAIS LONGA
+        # Dá um pequeno respiro antes da cascata começar.
         self._preparar_animacao_inicio()
         QTimer.singleShot(
-            90,
+            140,
             self._iniciar_animacao_inicio,
         )
 
@@ -1672,18 +1673,20 @@ class JanelaLaylay(QMainWindow):
         }
 
         sequencia = (
-            (self.sidebar, 0, 210),
-            (self.topbar, 55, 220),
-            (self.chat_surface, 115, 260),
+            # widget, atraso, duração
+            # Total perceptível: ~1,5 s.
+            (self.sidebar, 0, 500),
+            (self.topbar, 180, 520),
+            (self.chat_surface, 360, 650),
             (
                 self.central_inteligente,
-                190,
-                240,
+                620,
+                600,
             ),
             (
                 self.painel_lateral,
-                250,
-                260,
+                820,
+                650,
             ),
         )
 
@@ -1730,7 +1733,7 @@ class JanelaLaylay(QMainWindow):
         animacao.setStartValue(0.0)
         animacao.setEndValue(1.0)
         animacao.setEasingCurve(
-            QEasingCurve.OutCubic
+            QEasingCurve.InOutCubic
         )
 
         self._animacoes.append(
