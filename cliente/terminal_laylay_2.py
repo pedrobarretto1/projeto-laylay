@@ -1331,13 +1331,13 @@ class JanelaLaylay(QMainWindow):
 
 
             /* ações utilitárias */
-
+            
             #musicSessionAction[actionRole="utility"] {{
-                background: #151A1F;
+                background: #19191E;
 
-                border-color: #30363E;
+                border-color: #3C3036;
 
-                color: #B7BDC5;
+                color: #DDD8DB;
             }}
 
             #musicSessionAction[actionRole="utility"]:hover {{
@@ -1399,14 +1399,6 @@ class JanelaLaylay(QMainWindow):
 
 
                 /* utilitário */
-
-                #musicSessionAction[actionRole="utility"] {{
-                    background: #14191E;
-
-                    border-color: #2B3239;
-
-                    color: #969DA6;
-                }}
 
                 #musicSessionAction[actionRole="utility"]:hover {{
                     background: #291B21;
