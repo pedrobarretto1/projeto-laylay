@@ -1054,8 +1054,8 @@ class JanelaLaylay(QMainWindow):
         centro_lay.setSpacing(0)
         header = QFrame(objectName="topbar")
         hlay = QHBoxLayout(header)
-        hlay.setContentsMargins(22, 10, 22, 10)
-        hlay.setSpacing(9)
+        hlay.setContentsMargins(24, 9, 24, 9)
+        hlay.setSpacing(8)
         self.menu_compacto = QToolButton(text="☰")
         self.menu_compacto.setToolTip("Mostrar ou ocultar navegação")
         self.menu_compacto.setAccessibleName("Mostrar ou ocultar navegação")
@@ -1079,7 +1079,11 @@ class JanelaLaylay(QMainWindow):
         self.voltar.hide()
         self.avancar.hide()
         self.titulo_header.hide()
-        hlay.addStretch()
+
+        # P6.2: os dois lados usam o mesmo fator.
+        # Isso mantém o conjunto do topo centralizado.
+        hlay.addStretch(1)
+
         self.chip_modelo = ChipEstado("Modelo", "Aguardando")
         self.chip_microfone = ChipEstado("Microfone", "Aguardando")
         self.chip_memoria = ChipEstado("Memória", "Aguardando")
@@ -1516,6 +1520,68 @@ class JanelaLaylay(QMainWindow):
                 }}
 
                 #statusLabel {{
+                    color: #858D96;
+                    font-size: 10px;
+                }}
+
+
+                /* =========================================
+                   P6.2 — TOPBAR FINAL
+                   ========================================= */
+
+                #topbar {{
+                    background: #0B0F13;
+                    border-bottom: 1px solid #20272E;
+                    min-height: 66px;
+                }}
+
+                #statusChip {{
+                    background: #10151A;
+                    border: 1px solid #2A3138;
+                    border-radius: 10px;
+                    min-height: 32px;
+                }}
+
+                #statusChipText {{
+                    color: #D0CCD0;
+                    font-size: 11px;
+                    font-weight: 540;
+                }}
+
+                #statusChipDot {{
+                    font-size: 9px;
+                }}
+
+                #modeSwitch {{
+                    background: #10151A;
+                    border: 1px solid #2A3138;
+                    border-radius: 10px;
+                    min-height: 32px;
+                }}
+
+                QPushButton[segment="true"] {{
+                    background: transparent;
+                    border: 0;
+                    border-radius: 7px;
+                    padding: 7px 12px;
+                    color: #777F88;
+                    font-size: 10px;
+                    font-weight: 650;
+                }}
+
+                QPushButton[segment="true"]:checked {{
+                    background: #1D2228;
+                    color: #F4F0F2;
+                }}
+
+                #connectionDot {{
+                    font-size: 8px;
+                }}
+
+                #statusLabel {{
+                    background: transparent;
+                    border: 0;
+                    padding: 0 3px;
                     color: #858D96;
                     font-size: 10px;
                 }}
