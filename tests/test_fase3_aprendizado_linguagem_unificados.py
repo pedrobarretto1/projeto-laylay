@@ -158,6 +158,34 @@ def test_evento_de_pendencia_nao_agenda_alimenta_motor_compartilhado() -> None:
     assert evento["origem"] == "feedback_contextual:clipboard"
 
 
+def test_confirmacao_da_lixeira_e_observada_sem_virar_aprendizado_pessoal() -> None:
+    memoria = _MemoriaAprendizadoFake()
+    motor = MotorAprendizadoRuntime(
+        memoria_sqlite=memoria,
+        contexto_getter=lambda: {},
+        log=lambda *_args: None,
+    )
+
+    resultado = motor.observar_evento_pendencia(
+        "aceitar",
+        {
+            "origem": "lixeira_laylay",
+            "acao": "confirmar_exclusao",
+            "referencia": r"C:\Users\pbarr\Downloads\teste capacidade.txt",
+        },
+    )
+
+    assert resultado == {
+        "tipo": "feedback_contextual",
+        "evento": "aceitacao",
+        "aceito": True,
+        "origem": "lixeira_laylay",
+        "persistido": False,
+        "motivo": "confirmacao_operacional_nao_e_preferencia",
+    }
+    assert memoria.eventos == []
+
+
 def test_preferencia_notificacao_persiste_e_publica_contexto_e_aprendizado(
     tmp_path: Path,
 ) -> None:

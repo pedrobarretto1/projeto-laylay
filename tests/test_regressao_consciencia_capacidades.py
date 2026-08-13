@@ -78,6 +78,9 @@ def test_contexto_recente_prioriza_capacidade_ligada_ao_assunto() -> None:
 
     assert resposta.startswith("Pelo assunto que a gente estava falando")
     assert "criar, procurar e organizar arquivos" in resposta.casefold()
+    assert resposta.casefold().count("criar, procurar e organizar arquivos") == 1
+    assert len(resposta) < 600
+    assert ";" not in resposta
 
 
 def test_porta_prioritaria_responde_sem_chamar_executor_ou_llm() -> None:

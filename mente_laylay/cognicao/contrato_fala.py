@@ -240,6 +240,11 @@ def construir_contrato_semantico_fala(
         base,
     ))
     provocacao_curta = classificar_provocacao_curta(bruto)
+    identidade = dict(planejamento.get("identidade") or {})
+    mexendo_codigo_laylay = bool(
+        str(identidade.get("relacao_com_laylay") or "") == "codigo"
+        and re.search(r"\b(?:mexendo|alterando|editando|arrumando|corrigindo)\b", base)
+    )
 
     atos = _atos_base(planejamento)
     for ativo, nome in (
@@ -282,6 +287,10 @@ def construir_contrato_semantico_fala(
         obrigatorios.append(
             "reagir à provocação atual como fala social, sem transformá-la em erro técnico ou assunto inventado"
         )
+    if mexendo_codigo_laylay:
+        obrigatorios.append(
+            "reconhecer primeiro que o usuário está mexendo no código da própria Laylay"
+        )
     if len(atos) > 1:
         obrigatorios.append("responder a todos os atos da mensagem em uma única fala coesa")
 
@@ -308,6 +317,10 @@ def construir_contrato_semantico_fala(
             "não pedir que o usuário repita uma provocação que já foi compreendida",
             "não escalar a ofensa nem responder como mensagem de sistema",
         ))
+    if mexendo_codigo_laylay:
+        proibidas.append(
+            "não insinuar que o usuário vai criar bugs ou escrever código ilegível sem evidência"
+        )
     recentes = _itens_unicos(falas_recentes, limite_item=320)[-3:]
     if recentes:
         proibidas.append("não repetir literalmente uma resposta recente")
@@ -319,6 +332,8 @@ def construir_contrato_semantico_fala(
         max_frases = 2
     if agradecimento or adiamento:
         max_frases = 1
+    if mexendo_codigo_laylay:
+        max_frases = min(max_frases, 2)
     if bool(planejamento.get("requer_execucao")):
         max_frases = 2
     if criativo:

@@ -105,6 +105,21 @@ def test_fala_publicada_antecipadamente_nao_duplica_no_inicio_do_audio() -> None
     assert eventos == [("audio", "Já apareceu no Terminal.")]
 
 
+def test_lote_preserva_caminho_para_exibicao_e_limpa_somente_na_fronteira_tts() -> None:
+    runtime = _runtime()
+    runtime.limpar_para_voz = lambda texto: str(texto).replace("\\", " ").replace(":", "")
+    caminho = r"C:\Users\pbarr\Downloads\teste capacidade.txt"
+
+    texto_exibicao, _emocao, _nivel = runtime.combinar_falas_batch([{
+        "texto": f"Criei {caminho}.",
+        "emocao": "calma",
+        "nivel": 1,
+    }])
+
+    assert caminho in texto_exibicao
+    assert runtime.limpar_para_voz(texto_exibicao) != texto_exibicao
+
+
 def test_falha_do_observador_visual_nao_impede_a_voz() -> None:
     logs: list[str] = []
     runtime = _runtime()

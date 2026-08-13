@@ -324,10 +324,21 @@ def executar_intencao_arquivos(
             falar("A lixeira da Laylay não está disponível agora.", "calma", 1)
             return True
         resultado = confirmar()
-        marcar_resultado(resultado.status, resultado.sucesso)
+        marcar_resultado(
+            resultado.status,
+            resultado.sucesso,
+            alvo_resolvido=str(resultado.caminho or ""),
+            params_resolvidos={"alvo": str(resultado.caminho or "")},
+            confirmado=bool(resultado.sucesso),
+        )
         if callable(falar):
             if resultado.sucesso:
-                falar(f"Confirmado. Enviei {resultado.caminho} para a lixeira; ainda dá para desfazer.", "calma", 1)
+                falar(
+                    f"Confirmado. Enviei {resultado.caminho} para a lixeira. "
+                    "Ainda dá para desfazer.",
+                    "calma",
+                    1,
+                )
             else:
                 falar("A confirmação expirou ou não havia exclusão esperando.", "calma", 1)
         return True

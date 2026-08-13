@@ -145,6 +145,16 @@ def classificar_conversa_curta_local(ctx: Dict[str, Any], texto_usuario: str) ->
     if str(turno.get("modalidade_geral") or "") == "misto" or len(segmentos) > 1:
         return {}
 
+    # Reações elípticas como "que isso" apontam para a fala imediatamente
+    # anterior mesmo sem ponto de interrogação. Deixá-las cair no CONTINUE
+    # genérico fazia a resposta reagir emocionalmente em vez de explicar o que
+    # a própria Laylay acabara de dizer.
+    ultima_resposta = str(mente_turno.get("ultima_resposta") or "").strip()
+    if ultima_resposta and re.fullmatch(
+        r"(?:que isso|que foi isso|o que foi isso|como assim isso)", t,
+    ):
+        return {"tipo": "QUESTION", "confianca": 0.96, "origem": "continuidade_imediata"}
+
     leitura_semantica = dict(turno.get("leitura_semantica") or {})
     if leitura_semantica.get("uso_conversacional"):
         atos = [item for item in list(leitura_semantica.get("atos") or []) if isinstance(item, dict)]

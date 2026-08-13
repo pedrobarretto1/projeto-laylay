@@ -550,7 +550,10 @@ class VozRuntime:
         for idx, item in enumerate(itens):
             if not isinstance(item, dict):
                 continue
-            texto = self.limpar_para_voz(str(item.get("texto") or "")).strip()
+            # O lote conserva o texto de exibição. A adaptação para TTS acontece
+            # apenas na fronteira de áudio, para não mutilar caminhos, URLs ou
+            # pontuação que o usuário precisa copiar do Terminal.
+            texto = str(item.get("texto") or "").strip()
             if not texto:
                 continue
             texto = re.sub(r"\s+", " ", texto).strip()
@@ -580,9 +583,10 @@ class VozRuntime:
         inicio_total = time.perf_counter()
         sucesso = False
         try:
-            texto_exibicao = self.limpar_para_voz(texto) or self.fallback_fala
+            texto_exibicao = str(texto or "").strip() or self.fallback_fala
+            texto_voz_base = self.limpar_para_voz(texto_exibicao) or self.fallback_fala
             try:
-                texto_voz = self.preparar_tts(texto_exibicao) or texto_exibicao
+                texto_voz = self.preparar_tts(texto_voz_base) or texto_voz_base
             except Exception as erro_oralidade:
                 self.log(f"⚠️ [VOZ] adaptação oral ignorada: {erro_oralidade}")
                 self._relatar_falha(
@@ -591,7 +595,7 @@ class VozRuntime:
                     fallback="texto_original",
                     fase="preparar_tts",
                 )
-                texto_voz = texto_exibicao
+                texto_voz = texto_voz_base
             self.log("")
             self.log(self.formatar_mensagem(texto_exibicao, emocao=emocao, nivel=nivel))
 

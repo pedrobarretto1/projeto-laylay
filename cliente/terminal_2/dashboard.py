@@ -15,6 +15,7 @@ from PySide6.QtCore import QUrl
 from PySide6.QtGui import QPixmap
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from PySide6.QtWidgets import (
+    QBoxLayout,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -3065,9 +3066,39 @@ class PaginaSistema(QWidget):
             )
         }
 
-        externo = QVBoxLayout(self)
+        raiz_layout = QVBoxLayout(self)
+        raiz_layout.setContentsMargins(
+            0, 0, 0, 0
+        )
+        raiz_layout.setSpacing(0)
+
+        self.scroll = QScrollArea()
+        self.scroll.setObjectName(
+            "systemScroll"
+        )
+        self.scroll.setWidgetResizable(
+            True
+        )
+        self.scroll.setFrameShape(
+            QFrame.NoFrame
+        )
+        raiz_layout.addWidget(
+            self.scroll
+        )
+
+        self.conteudo = QWidget()
+        self.conteudo.setObjectName(
+            "systemPageContent"
+        )
+        self.scroll.setWidget(
+            self.conteudo
+        )
+
+        externo = QVBoxLayout(
+            self.conteudo
+        )
         externo.setContentsMargins(
-            32, 24, 32, 30
+            24, 20, 24, 24
         )
         externo.setSpacing(12)
 
@@ -3117,7 +3148,10 @@ class PaginaSistema(QWidget):
         externo.addWidget(cabecalho)
 
         # Corpo: resumo + desempenho.
-        corpo = QHBoxLayout()
+        self.system_corpo = QBoxLayout(
+            QBoxLayout.LeftToRight
+        )
+        corpo = self.system_corpo
         corpo.setContentsMargins(0, 0, 0, 0)
         corpo.setSpacing(12)
 
@@ -3271,7 +3305,10 @@ class PaginaSistema(QWidget):
         # P10.3: corpo será inserido na coluna principal.
 
         # P10.1 — Fase 3: Modelo local + armazenamento.
-        linha_inferior = QHBoxLayout()
+        self.system_lower_row = QBoxLayout(
+            QBoxLayout.LeftToRight
+        )
+        linha_inferior = self.system_lower_row
         linha_inferior.setObjectName(
             "systemLowerRow"
         )
@@ -3321,6 +3358,7 @@ class PaginaSistema(QWidget):
             self.modelo_local.layout_principal.addWidget(
                 linha
             )
+            valor.setWordWrap(True)
             self.modelo_valores[
                 chave
             ] = valor
@@ -3454,6 +3492,10 @@ class PaginaSistema(QWidget):
         self.audio_card.setObjectName(
             "systemAudioCard"
         )
+        self.audio_card.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.MinimumExpanding,
+        )
 
         self.audio_status = QLabel(
             "Aguardando microfone"
@@ -3488,6 +3530,7 @@ class PaginaSistema(QWidget):
             self.audio_card.layout_principal.addWidget(
                 linha
             )
+            valor.setWordWrap(True)
             self.audio_valores[
                 chave
             ] = valor
@@ -3658,7 +3701,10 @@ class PaginaSistema(QWidget):
 
         # P10.3 — Fase 5: workbench principal
         # com uma lateral compacta à direita.
-        workbench = QHBoxLayout()
+        self.system_workbench = QBoxLayout(
+            QBoxLayout.LeftToRight
+        )
+        workbench = self.system_workbench
         workbench.setObjectName(
             "systemWorkbench"
         )
@@ -3709,10 +3755,10 @@ class PaginaSistema(QWidget):
             "systemLaylayCard"
         )
         self.laylay_card.setMinimumWidth(
-            220
+            236
         )
         self.laylay_card.setMaximumWidth(
-            270
+            296
         )
 
         self.laylay_status = QLabel(
@@ -3748,6 +3794,7 @@ class PaginaSistema(QWidget):
             self.laylay_card.layout_principal.addWidget(
                 linha
             )
+            valor.setWordWrap(True)
             self.laylay_valores[
                 chave
             ] = valor
@@ -3766,16 +3813,16 @@ class PaginaSistema(QWidget):
         )
 
         self.acoes_card.setMinimumWidth(
-            220
+            236
         )
         self.acoes_card.setMaximumWidth(
-            270
+            296
         )
         self.alertas_card.setMinimumWidth(
-            220
+            236
         )
         self.alertas_card.setMaximumWidth(
-            270
+            296
         )
 
         lateral.addWidget(
@@ -3802,6 +3849,76 @@ class PaginaSistema(QWidget):
             workbench,
             1,
         )
+
+        self._aplicar_layout_responsivo()
+
+    def _aplicar_layout_responsivo(
+        self,
+    ) -> None:
+        largura = max(
+            1,
+            self.width(),
+        )
+
+        compacto = largura < 1480
+        muito_compacto = largura < 1220
+
+        # Workbench geral:
+        # se faltar largura, a lateral vai para baixo.
+        self.system_workbench.setDirection(
+            QBoxLayout.TopToBottom
+            if compacto
+            else QBoxLayout.LeftToRight
+        )
+
+        # Resumo + desempenho:
+        # empilha em janelas menores.
+        self.system_corpo.setDirection(
+            QBoxLayout.TopToBottom
+            if muito_compacto
+            else QBoxLayout.LeftToRight
+        )
+
+        # Modelo local + armazenamento:
+        # também empilha quando apertar.
+        self.system_lower_row.setDirection(
+            QBoxLayout.TopToBottom
+            if muito_compacto
+            else QBoxLayout.LeftToRight
+        )
+
+        if muito_compacto:
+            self.resumo.setMinimumWidth(0)
+            self.resumo.setMaximumWidth(16777215)
+        else:
+            self.resumo.setMinimumWidth(275)
+            self.resumo.setMaximumWidth(355)
+
+        if compacto:
+            largura_rail_min = 0
+            largura_rail_max = 16777215
+        else:
+            largura_rail_min = 236
+            largura_rail_max = 296
+
+        for card in (
+            self.laylay_card,
+            self.acoes_card,
+            self.alertas_card,
+        ):
+            card.setMinimumWidth(
+                largura_rail_min
+            )
+            card.setMaximumWidth(
+                largura_rail_max
+            )
+
+    def resizeEvent(
+        self,
+        event,
+    ) -> None:
+        super().resizeEvent(event)
+        self._aplicar_layout_responsivo()
 
     def _atualizar_status_laylay(
         self,

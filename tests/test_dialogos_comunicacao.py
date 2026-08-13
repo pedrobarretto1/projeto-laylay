@@ -242,6 +242,43 @@ class DialogosComunicacaoTests(unittest.TestCase):
         self.assertTrue(fala)
         self.assertIn("ideia", fala.casefold())
 
+    def test_que_isso_sem_interrogacao_explica_a_brincadeira_anterior(self) -> None:
+        ctx = self._ctx_conversa_minimo()
+        ctx["mente_integrada_estado"] = {
+            "ultima_resposta": (
+                "Agora que você tá mexendo, o que vai virar um bug ou um código "
+                "que nem eu consigo ler?"
+            ),
+            "ultima_afirmacao": "mexer no código pode revelar bugs",
+            "continuidade_fala_ts": time.time(),
+            "ultima_habilidade": "conversa",
+        }
+
+        classificacao = classificar_conversa_curta_local(ctx, "que isso")
+        fala = resposta_pergunta_curta_dependente_topico(ctx, "que isso")
+
+        self.assertEqual(classificacao["tipo"], "QUESTION")
+        self.assertTrue(any(
+            termo in fala.casefold() for termo in ("brinc", "piada", "tirada")
+        ))
+        self.assertIn("código", fala.casefold())
+        self.assertTrue(any(trecho in fala.casefold() for trecho in ("não estava dizendo", "não que a culpa", "não dizendo")))
+
+    def test_variantes_de_que_isso_mantem_a_fala_anterior_como_referente(self) -> None:
+        ctx = self._ctx_conversa_minimo()
+        ctx["mente_integrada_estado"] = {
+            "ultima_resposta": "Uma resposta curta sobre o meu código.",
+            "ultima_afirmacao": "Eu estava falando sobre o meu código.",
+            "continuidade_fala_ts": time.time(),
+            "ultima_habilidade": "conversa",
+        }
+
+        for texto in ("que foi isso", "o que foi isso?", "como assim isso"):
+            classificacao = classificar_conversa_curta_local(ctx, texto)
+            fala = resposta_pergunta_curta_dependente_topico(ctx, texto)
+            self.assertEqual(classificacao["tipo"], "QUESTION")
+            self.assertIn("código", fala.casefold())
+
     def test_item_adicionado_a_timer_proativo_existente_retorna_sucesso(self) -> None:
         class TimerAtivo:
             daemon = True

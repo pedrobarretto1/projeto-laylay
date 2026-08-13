@@ -92,6 +92,12 @@ _CONECTOR_CRITERIO = re.compile(
     r"mistura|varia|oferece|permite|mant[eé]m|traz)\b",
     re.IGNORECASE,
 )
+_DEBOCHE_ACUSATORIO_CODIGO = re.compile(
+    r"\b(?:o\s+que\s+vai\s+virar\s+um\s+bug|"
+    r"voc[eê][^.!?]{0,70}(?:vai|pode)[^.!?]{0,40}\bbug|"
+    r"c[oó]digo[^.!?]{0,60}(?:nem\s+eu|n[aã]o)\s+consigo\s+ler)\b",
+    re.IGNORECASE,
+)
 
 _STOPWORDS = {
     "a", "as", "ao", "aos", "aquele", "aquela", "aquilo", "com", "como",
@@ -297,6 +303,12 @@ def validar_aderencia_contrato_fala(
         if len(re.findall(r"[\wÀ-ÿ]+", resposta)) > 16 or "?" in resposta:
             problemas.append("adiamento_nao_foi_curto")
 
+    proibidas = " ".join(
+        str(item or "") for item in contrato.get("inferencias_proibidas") or ()
+    ).casefold()
+    if "código ilegível" in proibidas and _DEBOCHE_ACUSATORIO_CODIGO.search(resposta):
+        problemas.append("deboche_acusou_usuario_de_estragar_codigo")
+
     if not bool(contrato.get("permite_metafora", False)):
         for parte in partes:
             if _ABSTRACAO_ISOLADA.search(parte):
@@ -320,6 +332,7 @@ def validar_aderencia_contrato_fala(
         "agradecimento_abriu_nova_pergunta",
         "adiamento_nao_reconhecido",
         "adiamento_nao_foi_curto",
+        "deboche_acusou_usuario_de_estragar_codigo",
     }
     return {
         "avaliado": True,

@@ -563,13 +563,23 @@ class MapaHabilidadesRuntime:
             ]
             if not itens:
                 return "Agora minhas habilidades práticas estão indisponíveis, mas ainda consigo conversar com você."
-            principais = itens[:7]
+            # Uma pergunta geral pede orientação, não a leitura do catálogo
+            # inteiro. Mantemos os domínios ligados ao papo na frente e damos
+            # uma amostra curta das demais capacidades.
+            rotulos_relacionados = {
+                _ROTULO_CAPACIDADE_NATURAL[item]
+                for item in relacionados[:2]
+            }
+            itens_complementares = [
+                item for item in itens if item not in rotulos_relacionados
+            ]
+            principais = itens_complementares[:4] if relacionados else itens[:5]
             if len(principais) == 1:
                 lista = principais[0]
             else:
                 lista = ", ".join(principais[:-1]) + " e " + principais[-1]
             complemento = (
-                " Tenho outras habilidades menores também; se você perguntar por uma, "
+                " Tenho outras habilidades menores também. Se você perguntar por uma, "
                 "eu confiro como ela está agora."
                 if len(itens) > len(principais)
                 else ""
@@ -581,8 +591,8 @@ class MapaHabilidadesRuntime:
                 else ""
             )
             return (
-                f"{abertura}Tenho bastante braço por aqui: consigo {lista}."
-                f"{complemento} Eu só mexo de verdade quando você pede; perguntar não executa nada."
+                f"{abertura}No geral, consigo {lista}."
+                f"{complemento} Eu só mexo de verdade quando você pede. Perguntar não executa nada."
             )
         if "arquivos" in dominios and re.search(
             r"\b(?:cri|faz|mont)\w*\b.*\b(?:arquivo|pasta)\b|"
@@ -591,7 +601,7 @@ class MapaHabilidadesRuntime:
         ):
             return (
                 "Consigo, sim. Se você me pedir de verdade e disser o nome, eu crio o arquivo "
-                "ou a pasta; como agora você só perguntou, não fiz nada."
+                "ou a pasta. Como agora você só perguntou, não fiz nada."
             )
         if "arquivos" in dominios and re.search(r"\b(?:apag|exclu|delet|remov)\w*\b", t):
             return "Consigo. Quando você pedir de verdade, confirmo o alvo e envio o arquivo ou a pasta para a lixeira."

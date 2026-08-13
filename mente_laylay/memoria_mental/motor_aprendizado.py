@@ -422,6 +422,23 @@ class MotorAprendizadoRuntime:
         if not interpretado:
             return None
         tipo, aceito, confianca = interpretado
+        acao = re.sub(
+            r"[_-]+", " ", _normalizar(str(dados.get("acao") or "")),
+        ).strip()
+        if origem == "lixeira_laylay" and acao == "confirmar exclusao":
+            # A resposta continua chegando ao motor compartilhado, mas um
+            # "sim"/"não" dado apenas para autorizar uma exclusão não diz
+            # nada sobre uma preferência pessoal do usuário. Persisti-lo como
+            # hipótese criaria memória acidental a partir de uma etapa de
+            # segurança obrigatória.
+            return {
+                "tipo": "feedback_contextual",
+                "evento": tipo,
+                "aceito": aceito,
+                "origem": origem,
+                "persistido": False,
+                "motivo": "confirmacao_operacional_nao_e_preferencia",
+            }
         return self.registrar_feedback_contextual(
             tipo=tipo,
             aceito=aceito,

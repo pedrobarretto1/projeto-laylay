@@ -112,6 +112,23 @@ real pelo Terminal.
 - Prompt principal mantido abaixo de 5.000 caracteres e alinhado à identidade
   operacional local.
 - Validação focada: 268 testes e 18 subtestes aprovados.
-- Suíte completa: 2.531 testes e 45 subtestes aprovados; restam 10 falhas já
+- Suíte completa atual: 2.537 testes e 45 subtestes aprovados; restam 10 falhas já
   concentradas nas alterações visuais em andamento do Terminal e da página de
   música, fora desta fase de conversa/capacidades.
+- A reação elíptica `que isso` e variantes agora explica a fala imediatamente
+  anterior mesmo sem ponto de interrogação, em vez de responder como reação
+  social solta.
+- O contrato da fala sobre o próprio código exige reconhecimento literal antes
+  do deboche e o guardião rejeita tiradas que culpem o usuário por bugs ou
+  código ilegível sem evidência.
+- A resposta geral de capacidades ficou mais curta, prioriza o domínio da
+  conversa atual e não o repete na enumeração complementar.
+- A confirmação da lixeira conserva o caminho concreto no resultado do comando
+  e usa uma fala única, clara e reversível.
+- O `sim` ou `não` usado apenas para autorizar a lixeira continua sendo
+  observado pelo motor compartilhado, mas não vira hipótese ou preferência
+  sobre o usuário.
+- Texto visual e texto oral foram separados: caminhos e URLs permanecem
+  copiáveis no Terminal, enquanto somente o TTS recebe a adaptação fonética.
+- Validação da manutenção: 164 testes focados aprovados, além de 223 testes e
+  8 subtestes dos módulos vizinhos.

@@ -713,6 +713,45 @@ def test_resultado_da_lixeira_nao_cria_pendencia_paralela() -> None:
     assert estado[CHAVE_PENDENCIA_ACAO] == canonica
 
 
+def test_confirmacao_da_lixeira_preserva_caminho_no_contrato_e_na_fala(tmp_path) -> None:
+    caminho = str(tmp_path / "teste capacidade.txt")
+    falas: list[str] = []
+    resultados: list[dict] = []
+
+    tratado = executar_intencao_arquivos(
+        "CONFIRM_DELETE_ITEM",
+        {},
+        "pc_local",
+        {"falar_com_lipsync": lambda fala, *_args: falas.append(fala)},
+        texto_original="sim",
+        marcar_resultado=lambda status, executou, **kwargs: resultados.append({
+            "status": status,
+            "executou": executou,
+            **kwargs,
+        }),
+        registrar_arquivo=lambda *_args: None,
+        item_local_existe=lambda *_args: False,
+        resolver_caminho_local=lambda valor: valor,
+        resolver_referencia_arquivo_contextual=lambda valor, _tipo: valor,
+        arquivos_mutacao=_mutacoes(
+            confirmar_exclusao_cb=lambda: lixeira_laylay.ResultadoLixeira(
+                "movido_para_lixeira", True, caminho,
+            ),
+        ),
+    )
+
+    assert tratado is True
+    assert resultados == [{
+        "status": "movido_para_lixeira",
+        "executou": True,
+        "alvo_resolvido": caminho,
+        "params_resolvidos": {"alvo": caminho},
+        "confirmado": True,
+    }]
+    assert caminho in falas[0]
+    assert ";" not in falas[0]
+    assert ". Ainda dá para desfazer." in falas[0]
+
 def test_registro_generico_nao_transforma_pendencia_em_execucao_confirmada() -> None:
     class EstadoFalso:
         def __init__(self) -> None:

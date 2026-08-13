@@ -148,6 +148,45 @@ def test_estado_pessoal_exige_reconhecimento_literal_e_sem_deboche() -> None:
     assert contrato["roteiro_concreto"]["estrategia"] == "acolhimento_literal"
 
 
+def test_mexendo_no_codigo_da_laylay_exige_clareza_antes_do_deboche() -> None:
+    plano = _plano()
+    plano["identidade"] = {
+        "referencia_laylay": True,
+        "relacao_com_laylay": "codigo",
+    }
+
+    contrato = construir_contrato_semantico_fala(
+        "Estou mexendo no seu código.",
+        plano=plano,
+        funcao_comunicativa={"funcao": "informacao"},
+    )
+
+    assert contrato["max_frases"] == 2
+    assert any(
+        "código da própria Laylay" in item
+        for item in contrato["conteudos_obrigatorios"]
+    )
+    assert any(
+        "criar bugs" in item and "código ilegível" in item
+        for item in contrato["inferencias_proibidas"]
+    )
+
+    ruim = validar_aderencia_contrato_fala(
+        "Estou mexendo no seu código.",
+        "Agora que você tá mexendo, o que vai virar um bug ou um código que nem eu consigo ler?",
+        contrato_fala=contrato,
+    )
+    boa = validar_aderencia_contrato_fala(
+        "Estou mexendo no seu código.",
+        "Então você está mexendo no meu código. Coragem, porque tem canto meu que pede lanterna.",
+        contrato_fala=contrato,
+    )
+
+    assert "deboche_acusou_usuario_de_estragar_codigo" in ruim["problemas"]
+    assert ruim["requer_reparo"] is True
+    assert "deboche_acusou_usuario_de_estragar_codigo" not in boa["problemas"]
+
+
 def test_turno_misto_preserva_os_dois_atos_na_mesma_fala() -> None:
     contrato = construir_contrato_semantico_fala(
         "Tá tudo bem sim, você prefere rock ou metal?",

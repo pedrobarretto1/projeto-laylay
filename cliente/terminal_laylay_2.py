@@ -2983,6 +2983,221 @@ QPushButton[systemQuickAction="true"]:pressed {{
 #systemMainColumn #systemAudioCard {{
     min-height: 170px;
 }}
+
+/* =========================================
+   P10.4 — SISTEMA FASE 6 / LEGIBILIDADE
+   ========================================= */
+
+#systemHeroTitle {{
+    font-size: 17px;
+    font-weight: 760;
+    color: #F3EFF1;
+}}
+
+#systemHeroDescription {{
+    font-size: 10px;
+    color: #A7ADB4;
+}}
+
+#systemUpdated {{
+    font-size: 10px;
+    color: #8A919A;
+}}
+
+#systemSectionCard #dashboardCardTitle,
+#systemModelCard #dashboardCardTitle,
+#systemStorageCard #dashboardCardTitle,
+#systemAudioCard #dashboardCardTitle,
+#systemLaylayCard #dashboardCardTitle,
+#systemActionsCard #dashboardCardTitle,
+#systemAlertsCard #dashboardCardTitle {{
+    font-size: 14px;
+    font-weight: 740;
+    color: #F3EFF1;
+}}
+
+#systemSectionCard #dashboardCardHint,
+#systemModelCard #dashboardCardHint,
+#systemStorageCard #dashboardCardHint,
+#systemAudioCard #dashboardCardHint,
+#systemLaylayCard #dashboardCardHint,
+#systemActionsCard #dashboardCardHint,
+#systemAlertsCard #dashboardCardHint {{
+    font-size: 8px;
+    font-weight: 650;
+}}
+
+#systemSummaryRow #dashboardMetricLabel {{
+    font-size: 9px;
+    font-weight: 620;
+    color: #9AA1A9;
+}}
+
+#systemSummaryRow #dashboardMetricValue {{
+    font-size: 10px;
+    font-weight: 700;
+    color: #F1EDF0;
+}}
+
+#systemSummarySensor {{
+    font-size: 10px;
+    color: #A8AFB6;
+    padding-top: 2px;
+}}
+
+#systemSummaryState {{
+    font-size: 9px;
+    line-height: 1.3;
+    padding-top: 5px;
+    color: #99BCA8;
+}}
+
+#systemMetricTitle {{
+    font-size: 9px;
+    font-weight: 700;
+    color: #ADB3BA;
+}}
+
+#systemMetricValue {{
+    font-size: 15px;
+    font-weight: 760;
+    color: #FFF8FA;
+}}
+
+#systemMetricFooter {{
+    font-size: 8px;
+    color: #8F97A0;
+}}
+
+#systemMetricSparkline {{
+    font-size: 9px;
+}}
+
+#systemModelStatus,
+#systemAudioStatus,
+#systemLaylayStatus,
+#systemAlertStatus {{
+    font-size: 10px;
+    font-weight: 700;
+}}
+
+#systemModelRow #dashboardMetricLabel,
+#systemAudioRow #dashboardMetricLabel,
+#systemLaylayRow #dashboardMetricLabel {{
+    font-size: 9px;
+    font-weight: 620;
+    color: #99A0A8;
+}}
+
+#systemModelRow #dashboardMetricValue,
+#systemAudioRow #dashboardMetricValue,
+#systemLaylayRow #dashboardMetricValue {{
+    font-size: 10px;
+    font-weight: 700;
+    color: #F1EDF0;
+}}
+
+#systemStorageMetricLabel {{
+    font-size: 9px;
+    font-weight: 650;
+    color: #A7ADB4;
+}}
+
+#systemStorageMetricValue {{
+    font-size: 10px;
+    font-weight: 740;
+    color: #FFF8FA;
+}}
+
+#systemStorageHint,
+#systemActionsHint,
+#systemLaylayPulse,
+#systemAlertItem {{
+    font-size: 9px;
+    line-height: 1.35;
+}}
+
+#systemAudioLevelLabel {{
+    font-size: 9px;
+    font-weight: 620;
+    color: #A1A8B0;
+}}
+
+#systemAudioLevelValue {{
+    font-size: 10px;
+    font-weight: 720;
+    color: #F4F0F2;
+}}
+
+QPushButton[systemQuickAction="true"] {{
+    min-height: 38px;
+    padding: 8px 11px;
+    font-size: 10px;
+    font-weight: 680;
+}}
+
+#systemRightRail #systemLaylayCard,
+#systemRightRail #systemActionsCard,
+#systemRightRail #systemAlertsCard {{
+    border-radius: 15px;
+}}
+
+#systemRightRail #systemAlertItem {{
+    padding: 8px 9px;
+}}
+
+#systemAudioCard,
+#systemModelCard,
+#systemStorageCard,
+#systemLaylayCard,
+#systemActionsCard,
+#systemAlertsCard,
+#systemSectionCard {{
+    border-radius: 14px;
+}}
+
+/* =========================================
+   P10.4.1 — SISTEMA RESPONSIVO
+   ========================================= */
+
+QScrollArea#systemScroll {{
+    background: transparent;
+    border: 0;
+}}
+
+QScrollArea#systemScroll > QWidget > QWidget {{
+    background: transparent;
+}}
+
+#systemPageContent {{
+    background: transparent;
+}}
+
+#systemHero,
+#systemSectionCard,
+#systemModelCard,
+#systemStorageCard,
+#systemAudioCard,
+#systemLaylayCard,
+#systemActionsCard,
+#systemAlertsCard {{
+    min-height: 0px;
+}}
+
+#systemAudioCard,
+#systemModelCard,
+#systemStorageCard {{
+    min-width: 0px;
+}}
+
+#systemSummarySensor,
+#systemStorageHint,
+#systemActionsHint,
+#systemLaylayPulse,
+#systemAlertItem {{
+    padding-top: 4px;
+    padding-bottom: 4px;
+}}
                 #pageTitle {{ font-size: 28px; font-weight: 650; }}
                 #pageDescription {{ color: {PALETA['secundario']}; font-size: 14px; max-width: 700px; }}
                 #sectionTitle {{ font-size: 17px; font-weight: 650; padding-top: 4px; }}

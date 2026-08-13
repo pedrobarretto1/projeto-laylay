@@ -157,7 +157,7 @@ def _pede_explicacao_da_fala_anterior(texto_normalizado: str) -> bool:
     ):
         return True
     return bool(re.fullmatch(
-        r"(?:ue|ué|uai|oxi|que isso|por que|porque|pq)"
+        r"(?:ue|ué|uai|oxi|que isso|que foi isso|o que foi isso|como assim isso|por que|porque|pq)"
         r"(?:\s+(?:nao|não))?(?:\s+(?:isso|aquilo))?",
         t,
     ))
@@ -315,6 +315,27 @@ def resposta_pergunta_curta_dependente_topico(ctx: Dict[str, Any], texto_usuario
             "Minha resposta anterior ficou vaga e não explicou nada de verdade. Desconsidera aquilo; eu preciso responder ao que você disse, não enfeitar a dúvida.",
             texto_usuario,
         )
+
+    # Repara localmente a tirada específica que motivou esta regressão. O
+    # esclarecimento precisa explicar a intenção e retirar a acusação implícita,
+    # não apenas repetir a mesma piada com outras palavras.
+    brincadeira_codigo_torta = (
+        "bug" in ultima_resposta_norm
+        and any(termo in ultima_resposta_norm for termo in ("codigo", "código"))
+        and any(
+            trecho in ultima_resposta_norm
+            for trecho in (
+                "nao consigo ler", "não consigo ler",
+                "nem eu consigo ler", "vai virar",
+            )
+        )
+    )
+    if pede_explicacao and continuidade_idade <= 300 and brincadeira_codigo_torta:
+        return _ajustar(ctx, random.choice([
+            "Foi uma brincadeira meio torta. Eu quis dizer que mexer no meu código pode revelar bugs ou trechos confusos. Não estava dizendo que você vai estragar alguma coisa.",
+            "Eu forcei a piada e ela ficou parecendo uma crítica. O ponto era só que mexer no meu código pode expor bugs e partes difíceis de ler, não que a culpa seria sua.",
+            "Aquilo foi uma tirada mal colocada. Eu estava brincando com os bugs que podem aparecer no meu código, não dizendo que você escreve código ruim.",
+        ]), texto_usuario)
 
     if pede_detalhamento and continuidade_idade <= 300 and ultima_resposta:
         assunto = assunto_da_fala or topico
