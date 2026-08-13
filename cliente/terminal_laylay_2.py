@@ -1259,7 +1259,18 @@ class JanelaLaylay(QMainWindow):
                 #musicPrimaryControl:hover {{ background: #D9455D; }}
                 #musicPrimaryControl:disabled, #musicTransportControl:disabled {{ background: #1B2025; border-color: #30363D; }}
                 #musicObservedState {{ color: {PALETA['apagado']}; font-size: 11px; }}
-                #musicModuleTitle {{ color: #F3F0F2; font-size: 16px; font-weight: 700; }}
+                #musicModuleTitle {{
+                    color: #F1EDEF;
+
+                    font-size: 14px;
+                    font-weight: 700;
+                }}
+
+                #musicModuleHint {{
+                    color: #6F7780;
+
+                    font-size: 9px;
+                }}
                 #musicModuleHint {{ color: {PALETA['apagado']}; font-size: 10px; }}
                 #musicSideRail {{ background: transparent; min-width: 265px; max-width: 315px; }}
                 #musicSideLabel {{ color: {PALETA['secundario']}; font-size: 12px; }}
@@ -1326,7 +1337,90 @@ class JanelaLaylay(QMainWindow):
                     color: #464D54;
                     border-color: #22282D;
                 }}
-                #musicSessionAction:disabled {{ color: #5F646B; border-color: #292F35; }}
+                #musicSessionAction {{
+                    background: #151A1F;
+
+                    border: 1px solid #30363E;
+                    border-radius: 18px;
+
+                    min-height: 36px;
+                    max-height: 36px;
+
+                    padding: 0 12px;
+
+                    color: #AEB4BC;
+
+                    font-size: 10px;
+                    font-weight: 550;
+                }}
+
+
+                /* principal */
+
+                #musicSessionAction[actionRole="primary"] {{
+                    background: #19191E;
+
+                    border-color: #3C3036;
+
+                    color: #DDD8DB;
+                }}
+
+                #musicSessionAction[actionRole="primary"]:hover {{
+                    background: #291B21;
+
+                    border-color: #85404D;
+
+                    color: #FFF5F7;
+                }}
+
+
+                /* utilitário */
+
+                #musicSessionAction[actionRole="utility"] {{
+                    background: #14191E;
+
+                    border-color: #2B3239;
+
+                    color: #969DA6;
+                }}
+
+                #musicSessionAction[actionRole="utility"]:hover {{
+                    background: #1C2127;
+
+                    border-color: #414850;
+
+                    color: #E7E3E5;
+                }}
+
+
+                /* futuro */
+
+                #musicSessionAction[actionRole="future"] {{
+                    background: transparent;
+
+                    border-color: #252B31;
+
+                    color: #555D65;
+                }}
+
+
+                /* desabilitados */
+
+                #musicSessionAction:disabled {{
+                    background: #12171B;
+
+                    border-color: #242A30;
+
+                    color: #555C64;
+                }}
+
+                #musicSessionAction[actionRole="future"]:disabled {{
+                    background: transparent;
+
+                    border-color: #21272D;
+
+                    color: #454C53;
+                }}
                 #musicPreset {{
                     background: #171C21;
                     border: 1px solid #292F36;

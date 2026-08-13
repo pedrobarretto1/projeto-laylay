@@ -260,8 +260,10 @@ class CartaoMusica(QFrame):
         self.setMinimumWidth(0)
         self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         self.conteudo = QVBoxLayout(self)
-        self.conteudo.setContentsMargins(15, 14, 15, 14)
-        self.conteudo.setSpacing(10)
+        self.conteudo.setContentsMargins(
+            13, 12, 13, 12
+        )
+        self.conteudo.setSpacing(8)
         topo = QHBoxLayout()
         nome = QLabel(titulo)
         nome.setObjectName("musicModuleTitle")
@@ -801,7 +803,7 @@ class PaginaMusicaM1(QWidget):
                 largura,
             )
 
-            botao.setFixedHeight(38)
+            botao.setFixedHeight(36)
 
             botao.setSizePolicy(
                 QSizePolicy.Ignored,
@@ -1724,10 +1726,34 @@ class PaginaMusicaM1(QWidget):
             self.grade.addWidget(self.fila, 1, 2)
             self.grade.addWidget(self.barra_lateral, 1, 3, 5, 1)
             self.grade.addWidget(self.acoes, 2, 0, 1, 3)
-            self.grade.addWidget(self.playlists, 3, 0)
-            self.grade.addWidget(self.contexto, 3, 1)
-            self.grade.addWidget(self.audio, 3, 2)
-            self.grade.addWidget(self.letra, 4, 0, 1, 3)
+            self.grade.addWidget(
+                self.playlists,
+                3,
+                0,
+                Qt.AlignTop,
+            )
+
+            self.grade.addWidget(
+                self.contexto,
+                3,
+                1,
+                Qt.AlignTop,
+            )
+
+            self.grade.addWidget(
+                self.audio,
+                3,
+                2,
+                Qt.AlignTop,
+            )
+            self.grade.addWidget(
+                self.letra,
+                4,
+                0,
+                1,
+                3,
+                Qt.AlignTop,
+            )
             self.grade.setColumnStretch(0, 1)
             self.grade.setColumnStretch(1, 1)
             self.grade.setColumnStretch(2, 1)
