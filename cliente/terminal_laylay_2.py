@@ -1560,6 +1560,137 @@ class JanelaLaylay(QMainWindow):
 
                     font-size: 9px;
                 }}
+
+                /* =========================================
+                   HOME — CARD SISTEMA
+                   ========================================= */
+
+                #dashboardCard[railCard="system"] {{
+                    background: #14191E;
+                    border: 1px solid #2B3239;
+                    border-radius: 14px;
+                }}
+
+                #dashboardCard[railCard="system"] #dashboardCardTitle {{
+                    color: #F3EFF1;
+                    font-size: 13px;
+                    font-weight: 700;
+                }}
+
+                #dashboardCard[railCard="system"] #dashboardCardHint {{
+                    background: #2A1A20;
+                    border: 1px solid #55303A;
+                    border-radius: 7px;
+                    padding: 3px 6px;
+                    color: #E96379;
+                    font-size: 8px;
+                    font-weight: 700;
+                }}
+
+                #railSystemMetric {{
+                    background: #171C21;
+                    border: 1px solid #292F36;
+                    border-radius: 9px;
+                }}
+
+                #railSystemMetric[state="stale"] {{
+                    background: #1C1B1B;
+                    border-color: #54442D;
+                }}
+
+                #railSystemMetric[state="unavailable"] {{
+                    background: #15191D;
+                    border-color: #23292F;
+                }}
+
+                #railSystemMetricLabel {{
+                    background: transparent;
+                    border: 0;
+                    color: #858D96;
+                    font-size: 9px;
+                    font-weight: 600;
+                }}
+
+                #railSystemMetricValue {{
+                    background: transparent;
+                    border: 0;
+                    color: #F0ECEE;
+                    font-size: 11px;
+                    font-weight: 700;
+                }}
+
+                #railSystemMetricValue[state="stale"] {{
+                    color: #D4AE6A;
+                }}
+
+                #railSystemMetricValue[state="unavailable"] {{
+                    color: #5D656D;
+                }}
+
+                #railSystemProgress {{
+                    background: #242A30;
+                    border: 0;
+                    border-radius: 2px;
+                    min-height: 4px;
+                    max-height: 4px;
+                }}
+
+                #railSystemProgress::chunk {{
+                    background: #CF485E;
+                    border-radius: 2px;
+                }}
+
+                #railSystemProgress[available="false"]::chunk {{
+                    background: #343A40;
+                }}
+
+                #railSystemFooter {{
+                    background: #171C21;
+                    border: 1px solid #292F36;
+                    border-radius: 9px;
+                }}
+
+                #railSystemFooter[state="stale"] {{
+                    border-color: #54442D;
+                }}
+
+                #railSystemFooter[state="unavailable"] {{
+                    background: #15191D;
+                    border-color: #23292F;
+                }}
+
+                #railSystemFooterIcon {{
+                    background: #241B20;
+                    border: 1px solid #49313A;
+                    border-radius: 11px;
+                    color: #D35469;
+                    font-size: 10px;
+                }}
+
+                #railSystemStatus {{
+                    background: transparent;
+                    border: 0;
+                    padding: 2px 1px;
+                    color: #737B84;
+                    font-size: 8px;
+                }}
+
+                #railSystemStatus[state="ok"] {{
+                    color: #68C79A;
+                }}
+
+                #railSystemStatus[state="partial"] {{
+                    color: #C6A05E;
+                }}
+
+                #railSystemStatus[state="unavailable"] {{
+                    color: #7A8189;
+                }}
+
+                #railSystemStatus[state="pending"] {{
+                    color: #69717A;
+                }}
+
                 #musicTitle {{ font-size: 13px; font-weight: 700; }}
                 #musicControlsPlaceholder {{ color: #5F646B; font-size: 15px; padding: 5px; }}
                 #musicPage, #musicScroll, #musicScroll > QWidget > QWidget,

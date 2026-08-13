@@ -977,28 +977,188 @@ class PainelLateralDashboard(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(11)
 
-        sistema = CartaoDashboard("Sistema", subtitulo="P2")
+        sistema = CartaoDashboard(
+            "Sistema",
+            subtitulo="AO VIVO",
+        )
+        sistema.setProperty(
+            "railCard",
+            "system",
+        )
+        sistema.layout_principal.setContentsMargins(
+            14, 13, 14, 12
+        )
+        sistema.layout_principal.setSpacing(8)
+
         self.metricas: dict[str, QLabel] = {}
         self.barras_metricas: dict[str, QProgressBar] = {}
+        self.metricas_linhas: dict[str, QFrame] = {}
+
         for chave, rotulo in (
-            ("cpu", "CPU"), ("ram", "RAM"), ("temperatura", "Temp."),
-            ("disco", "Disco"), ("uptime", "Tempo ligado"),
+            ("cpu", "CPU"),
+            ("ram", "RAM"),
+            ("temperatura", "Temperatura"),
+            ("disco", "Disco"),
         ):
-            linha, valor = _linha_valor(rotulo)
+            bloco = QFrame()
+            bloco.setObjectName(
+                "railSystemMetric"
+            )
+            bloco.setProperty(
+                "metric",
+                chave,
+            )
+            bloco.setProperty(
+                "state",
+                "unavailable",
+            )
+
+            bloco_lay = QVBoxLayout(
+                bloco
+            )
+            bloco_lay.setContentsMargins(
+                9, 7, 9, 7
+            )
+            bloco_lay.setSpacing(5)
+
+            topo = QHBoxLayout()
+            topo.setContentsMargins(
+                0, 0, 0, 0
+            )
+            topo.setSpacing(6)
+
+            nome = QLabel(rotulo)
+            nome.setObjectName(
+                "railSystemMetricLabel"
+            )
+
+            valor = QLabel("—")
+            valor.setObjectName(
+                "railSystemMetricValue"
+            )
+            valor.setProperty(
+                "state",
+                "unavailable",
+            )
+            valor.setAlignment(
+                Qt.AlignRight
+                | Qt.AlignVCenter
+            )
+
+            topo.addWidget(nome)
+            topo.addStretch()
+            topo.addWidget(valor)
+
+            barra = QProgressBar()
+            barra.setObjectName(
+                "railSystemProgress"
+            )
+            barra.setRange(0, 100)
+            barra.setValue(0)
+            barra.setTextVisible(False)
+            barra.setProperty(
+                "available",
+                False,
+            )
+
+            bloco_lay.addLayout(topo)
+            bloco_lay.addWidget(barra)
+
             self.metricas[chave] = valor
-            sistema.layout_principal.addWidget(linha)
-            if chave != "uptime":
-                barra = QProgressBar()
-                barra.setObjectName("railMetricProgress")
-                barra.setRange(0, 100)
-                barra.setValue(0)
-                barra.setTextVisible(False)
-                self.barras_metricas[chave] = barra
-                sistema.layout_principal.addWidget(barra)
-        self.sistema_estado = QLabel("Aguardando telemetria real da mente.")
-        self.sistema_estado.setObjectName("dashboardEmpty")
-        self.sistema_estado.setWordWrap(True)
-        sistema.layout_principal.addWidget(self.sistema_estado)
+            self.barras_metricas[chave] = barra
+            self.metricas_linhas[chave] = bloco
+
+            sistema.layout_principal.addWidget(
+                bloco
+            )
+
+        uptime = QFrame()
+        uptime.setObjectName(
+            "railSystemFooter"
+        )
+        uptime.setProperty(
+            "state",
+            "unavailable",
+        )
+
+        uptime_lay = QHBoxLayout(
+            uptime
+        )
+        uptime_lay.setContentsMargins(
+            9, 7, 9, 7
+        )
+        uptime_lay.setSpacing(8)
+
+        uptime_icone = QLabel("◷")
+        uptime_icone.setObjectName(
+            "railSystemFooterIcon"
+        )
+        uptime_icone.setAlignment(
+            Qt.AlignCenter
+        )
+        uptime_icone.setFixedSize(
+            22, 22
+        )
+
+        uptime_nome = QLabel(
+            "Tempo ligado"
+        )
+        uptime_nome.setObjectName(
+            "railSystemMetricLabel"
+        )
+
+        uptime_valor = QLabel("—")
+        uptime_valor.setObjectName(
+            "railSystemMetricValue"
+        )
+        uptime_valor.setProperty(
+            "state",
+            "unavailable",
+        )
+        uptime_valor.setAlignment(
+            Qt.AlignRight
+            | Qt.AlignVCenter
+        )
+
+        uptime_lay.addWidget(
+            uptime_icone
+        )
+        uptime_lay.addWidget(
+            uptime_nome
+        )
+        uptime_lay.addStretch()
+        uptime_lay.addWidget(
+            uptime_valor
+        )
+
+        self.metricas[
+            "uptime"
+        ] = uptime_valor
+        self.metricas_linhas[
+            "uptime"
+        ] = uptime
+
+        sistema.layout_principal.addWidget(
+            uptime
+        )
+
+        self.sistema_estado = QLabel(
+            "Aguardando telemetria real da mente."
+        )
+        self.sistema_estado.setObjectName(
+            "railSystemStatus"
+        )
+        self.sistema_estado.setProperty(
+            "state",
+            "pending",
+        )
+        self.sistema_estado.setWordWrap(
+            True
+        )
+
+        sistema.layout_principal.addWidget(
+            self.sistema_estado
+        )
         layout.addWidget(sistema)
 
         musica = CartaoDashboard("Música", subtitulo="P4")
@@ -1136,28 +1296,189 @@ class PainelLateralDashboard(QWidget):
         if not isinstance(sistema, dict):
             sistema = {}
         campos = {
-            "cpu": (sistema.get("cpu_percent"), False),
-            "ram": (sistema.get("ram_percent"), False),
-            "disco": (sistema.get("disk_percent"), False),
-            "temperatura": (sistema.get("temperature_c"), False),
-            "uptime": (sistema.get("uptime_seconds"), True),
+            "cpu": (
+                sistema.get("cpu_percent"),
+                False,
+            ),
+            "ram": (
+                sistema.get("ram_percent"),
+                False,
+            ),
+            "disco": (
+                sistema.get("disk_percent"),
+                False,
+            ),
+            "temperatura": (
+                sistema.get("temperature_c"),
+                False,
+            ),
+            "uptime": (
+                sistema.get("uptime_seconds"),
+                True,
+            ),
         }
-        for chave, (metrica, uptime) in campos.items():
-            self.metricas[chave].setText(_texto_metrica(metrica, uptime=uptime))
-            barra = self.barras_metricas.get(chave)
+
+        for chave, (
+            metrica,
+            uptime,
+        ) in campos.items():
+            valor_label = self.metricas[
+                chave
+            ]
+
+            valor_label.setText(
+                _texto_metrica(
+                    metrica,
+                    uptime=uptime,
+                )
+            )
+
+            disponivel = (
+                isinstance(metrica, dict)
+                and metrica.get("value")
+                is not None
+            )
+
+            frescor = (
+                str(
+                    metrica.get(
+                        "freshness"
+                    )
+                    or "unavailable"
+                )
+                if isinstance(
+                    metrica,
+                    dict,
+                )
+                else "unavailable"
+            )
+
+            estado_linha = (
+                "stale"
+                if disponivel
+                and frescor == "stale"
+                else "fresh"
+                if disponivel
+                else "unavailable"
+            )
+
+            linha = (
+                self.metricas_linhas.get(
+                    chave
+                )
+            )
+
+            if linha is not None:
+                linha.setProperty(
+                    "state",
+                    estado_linha,
+                )
+                linha.style().unpolish(
+                    linha
+                )
+                linha.style().polish(
+                    linha
+                )
+
+            valor_label.setProperty(
+                "state",
+                estado_linha,
+            )
+            valor_label.style().unpolish(
+                valor_label
+            )
+            valor_label.style().polish(
+                valor_label
+            )
+
+            barra = (
+                self.barras_metricas.get(
+                    chave
+                )
+            )
+
             if barra is not None:
                 try:
-                    valor_barra = float(metrica.get("value")) if isinstance(metrica, dict) else 0.0
-                except (TypeError, ValueError):
+                    valor_barra = (
+                        float(
+                            metrica.get(
+                                "value"
+                            )
+                        )
+                        if isinstance(
+                            metrica,
+                            dict,
+                        )
+                        else 0.0
+                    )
+                except (
+                    TypeError,
+                    ValueError,
+                ):
                     valor_barra = 0.0
-                barra.setValue(max(0, min(100, round(valor_barra))))
-        disponiveis = sum(valor.text() != "—" for valor in self.metricas.values())
+
+                barra.setValue(
+                    max(
+                        0,
+                        min(
+                            100,
+                            round(
+                                valor_barra
+                            ),
+                        ),
+                    )
+                )
+                barra.setProperty(
+                    "available",
+                    disponivel,
+                )
+                barra.style().unpolish(
+                    barra
+                )
+                barra.style().polish(
+                    barra
+                )
+
+        disponiveis = sum(
+            valor.text() != "—"
+            for valor
+            in self.metricas.values()
+        )
+
+        if disponiveis == len(
+            self.metricas
+        ):
+            estado_sistema = "ok"
+            texto_sistema = (
+                "●  Telemetria atualizada"
+            )
+
+        elif disponiveis:
+            estado_sistema = "partial"
+            texto_sistema = (
+                "●  Telemetria parcial"
+            )
+
+        else:
+            estado_sistema = (
+                "unavailable"
+            )
+            texto_sistema = (
+                "●  Telemetria indisponível"
+            )
+
         self.sistema_estado.setText(
-            "Telemetria observada pela mente. Alguns sensores não estão disponíveis."
-            if 0 < disponiveis < len(self.metricas)
-            else "Telemetria observada pela mente."
-            if disponiveis
-            else "Telemetria do sistema indisponível."
+            texto_sistema
+        )
+        self.sistema_estado.setProperty(
+            "state",
+            estado_sistema,
+        )
+        self.sistema_estado.style().unpolish(
+            self.sistema_estado
+        )
+        self.sistema_estado.style().polish(
+            self.sistema_estado
         )
         contexto = dashboard.get("context")
         frescor = (
@@ -1240,11 +1561,64 @@ class PainelLateralDashboard(QWidget):
             )
 
     def invalidar_dashboard(self) -> None:
-        for valor in self.metricas.values():
+        for chave, valor in self.metricas.items():
             valor.setText("—")
-        for barra in self.barras_metricas.values():
+            valor.setProperty(
+                "state",
+                "unavailable",
+            )
+            valor.style().unpolish(
+                valor
+            )
+            valor.style().polish(
+                valor
+            )
+
+            linha = (
+                self.metricas_linhas.get(
+                    chave
+                )
+            )
+            if linha is not None:
+                linha.setProperty(
+                    "state",
+                    "unavailable",
+                )
+                linha.style().unpolish(
+                    linha
+                )
+                linha.style().polish(
+                    linha
+                )
+
+        for barra in (
+            self.barras_metricas.values()
+        ):
             barra.setValue(0)
-        self.sistema_estado.setText("Aguardando telemetria real da mente.")
+            barra.setProperty(
+                "available",
+                False,
+            )
+            barra.style().unpolish(
+                barra
+            )
+            barra.style().polish(
+                barra
+            )
+
+        self.sistema_estado.setText(
+            "Aguardando telemetria real da mente."
+        )
+        self.sistema_estado.setProperty(
+            "state",
+            "pending",
+        )
+        self.sistema_estado.style().unpolish(
+            self.sistema_estado
+        )
+        self.sistema_estado.style().polish(
+            self.sistema_estado
+        )
         self.jogo_estado.setText("Estado indisponível durante a reconexão")
         self.musica_titulo.setText("Nenhuma faixa confirmada")
         self.musica_detalhe.setText("Aguardando estado observado do player.")
