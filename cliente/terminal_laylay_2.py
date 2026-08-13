@@ -213,8 +213,10 @@ class MensagemWidget(QFrame):
         )
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(18, 13, 18, 12)
-        lay.setSpacing(7)
+        lay.setContentsMargins(
+            16, 11, 16, 10
+        )
+        lay.setSpacing(5)
         meta = QLabel(("VOCÊ" if papel == "user" else "LAYLAY") + (f"  ·  {horario}" if horario else ""))
         meta.setObjectName("messageMeta")
         self.corpo = QLabel(texto)
@@ -339,15 +341,18 @@ class Composer(QFrame):
         super().__init__()
         self.setObjectName("composer")
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(10, 8, 10, 7)
+        lay.setContentsMargins(
+            8, 7, 8, 6
+        )
         lay.setSpacing(3)
+
         linha = QHBoxLayout()
-        linha.setSpacing(10)
+        linha.setSpacing(8)
         self.microfone = QPushButton()
         self.microfone.setObjectName("composerMic")
         self.microfone.setIcon(icone_terminal("microphone"))
         self.microfone.setIconSize(QSize(21, 21))
-        self.microfone.setFixedSize(44, 44)
+        self.microfone.setFixedSize(46, 46)
         self.microfone.setToolTip("Alternar entre conversa escrita e voz")
         self.microfone.setAccessibleName("Alternar modo de voz")
         self.microfone.clicked.connect(self.alternar_voz.emit)
@@ -356,7 +361,7 @@ class Composer(QFrame):
         self.editor.setPlaceholderText("Mensagem para a Laylay")
         self.editor.setAccessibleName("Mensagem para a Laylay")
         self.editor.setAcceptRichText(False)
-        self.editor.setFixedHeight(46)
+        self.editor.setFixedHeight(44)
         self.editor.installEventFilter(self)
         self.botao = QPushButton()
         self.botao.setObjectName("sendButton")
@@ -884,15 +889,23 @@ class JanelaLaylay(QMainWindow):
         self.paginas = QStackedWidget()
         conversa = QWidget()
         conversa_lay = QHBoxLayout(conversa)
-        conversa_lay.setContentsMargins(18, 10, 18, 18)
-        conversa_lay.setSpacing(12)
+        conversa_lay.setContentsMargins(
+            18, 14, 18, 18
+        )
+        conversa_lay.setSpacing(10)
         self.chat_surface = QFrame(objectName="chatSurface")
-        chat_lay = QVBoxLayout(self.chat_surface)
-        chat_lay.setContentsMargins(14, 12, 14, 12)
+        chat_lay = QVBoxLayout(
+            self.chat_surface
+        )
+        chat_lay.setContentsMargins(
+            16, 14, 16, 12
+        )
         chat_lay.setSpacing(0)
         self.chat_cabecalho = QFrame(objectName="chatHeader")
         chat_head_lay = QVBoxLayout(self.chat_cabecalho)
-        chat_head_lay.setContentsMargins(12, 9, 12, 10)
+        chat_head_lay.setContentsMargins(
+            16, 14, 16, 13
+        )
         chat_head_lay.setSpacing(4)
         hora = datetime.now().hour
         saudacao = "Bom dia" if hora < 12 else "Boa tarde" if hora < 18 else "Boa noite"
@@ -914,8 +927,10 @@ class JanelaLaylay(QMainWindow):
         # restrição o QScrollArea conserva a altura do viewport e deixa mensagens
         # reais fora da geometria rolável até uma invalidação posterior.
         self.feed_lay.setSizeConstraint(QLayout.SetMinAndMaxSize)
-        self.feed_lay.setContentsMargins(22, 34, 22, 24)
-        self.feed_lay.setSpacing(20)
+        self.feed_lay.setContentsMargins(
+            24, 28, 24, 22
+        )
+        self.feed_lay.setSpacing(16)
         self.vazio = QFrame(objectName="emptyState")
         self.vazio.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Minimum)
         vazio_lay = QVBoxLayout(self.vazio)
@@ -1114,26 +1129,232 @@ class JanelaLaylay(QMainWindow):
                 #emptyMark {{ color: {PALETA['violeta']}; font-size: 28px; }}
                 #emptyTitle {{ font-size: 23px; font-weight: 650; }}
                 #emptyCopy {{ color: {PALETA['secundario']}; font-size: 14px; }}
-                #messageLaylay {{ background: #1B2026; border: 1px solid #242B33; border-radius: 13px; }}
-                #messageUser {{ background: #2A1D22; border: 1px solid #3B292F; border-radius: 13px; }}
-                #messageMeta {{ color: {PALETA['apagado']}; font-size: 9px; font-weight: 700; letter-spacing: 1px; }}
-                #messageText {{ font-size: 15px; line-height: 1.45; }}
-                #messageStatus {{ color: {PALETA['apagado']}; font-size: 10px; }}
-                #messageStatus[delivery="pending"] {{ color: {PALETA['ciano']}; }}
-                #messageStatus[delivery="failed"] {{ color: {PALETA['erro']}; }}
-                #thinkingIndicator {{ background: #1B2026; border: 1px solid #343A42; border-radius: 13px; }}
-                #thinkingMeta {{ color: {PALETA['apagado']}; font-size: 9px; font-weight: 700; letter-spacing: 1px; }}
-                #thinkingDots {{ color: {PALETA['ciano']}; font-size: 20px; font-weight: 700; }}
-                #retryButton {{ background: transparent; border: 1px solid {PALETA['erro']}; color: {PALETA['erro']}; border-radius: 7px; padding: 5px 9px; font-size: 10px; }}
-                #composer {{ background: #171A1F; border: 1px solid #493039; border-radius: 15px; }}
-                #composer:focus-within {{ border-color: #665677; }}
-                #composerEdit {{ background: transparent; border: 0; selection-background-color: #5D497A; font-size: 15px; }}
-                #composerHint {{ color: #77747A; font-size: 10px; }}
-                #composerMic {{ background: #D8445B; border: 1px solid #F0647A; border-radius: 22px; }}
-                #composerMic:hover {{ background: #ED536C; }}
-                #sendButton {{ background: {PALETA['texto']}; color: {PALETA['fundo']}; border: 0; border-radius: 21px; font-size: 20px; font-weight: 700; }}
-                #sendButton:hover {{ background: #FFF7FA; }}
-                #sendButton:disabled {{ background: #49434D; color: #7D7482; }}
+                /* =========================================
+                HOME — CONVERSA
+                ========================================= */
+
+                #chatSurface {{
+                    background: #0F1317;
+
+                    border: 1px solid #272D34;
+                    border-radius: 18px;
+                }}
+
+                #chatHeader {{
+                    background: transparent;
+
+                    border: 0;
+                    border-bottom: 1px solid #22282F;
+                }}
+
+                #chatGreeting {{
+                    color: #F8F4F6;
+
+                    font-size: 20px;
+                    font-weight: 700;
+                }}
+
+                #chatGreetingSub {{
+                    color: #9DA3AA;
+
+                    font-size: 12px;
+                }}
+
+
+                /* =========================================
+                MENSAGENS
+                ========================================= */
+
+                #messageLaylay {{
+                    background: #1A1F25;
+
+                    border: 1px solid #272E35;
+                    border-radius: 16px;
+                }}
+
+                #messageUser {{
+                    background: #291C22;
+
+                    border: 1px solid #472A32;
+                    border-radius: 16px;
+                }}
+
+                #messageMeta {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #747B84;
+
+                    font-size: 8px;
+                    font-weight: 700;
+
+                    letter-spacing: 1px;
+                }}
+
+                #messageText {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #EDE9EB;
+
+                    font-size: 14px;
+                }}
+
+                #messageStatus {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #686F78;
+
+                    font-size: 9px;
+                }}
+
+                #messageStatus[delivery="pending"] {{
+                    color: #D35A6E;
+                }}
+
+                #messageStatus[delivery="failed"] {{
+                    color: #ED7888;
+                }}
+
+
+                /* =========================================
+                PENSANDO
+                ========================================= */
+
+                #thinkingIndicator {{
+                    background: #1A1F25;
+
+                    border: 1px solid #2D343B;
+                    border-radius: 15px;
+                }}
+
+                #thinkingMeta {{
+                    color: #737A83;
+
+                    font-size: 8px;
+                    font-weight: 700;
+
+                    letter-spacing: 1px;
+                }}
+
+                #thinkingDots {{
+                    color: #FF5C73;
+
+                    font-size: 18px;
+                    font-weight: 700;
+                }}
+
+
+                /* =========================================
+                WAVEFORM
+                ========================================= */
+
+                #microphoneWaveform {{
+                    background: transparent;
+
+                    border: 0;
+                }}
+
+
+                /* =========================================
+                COMPOSER
+                ========================================= */
+
+                #composer {{
+                    background: #11151A;
+
+                    border: 1px solid #432B33;
+                    border-radius: 18px;
+                }}
+
+                #composer:focus-within {{
+                    border-color: #7A3B48;
+                }}
+
+
+                /* campo central */
+
+                #composerEdit {{
+                    background: #171B20;
+
+                    border: 1px solid #272E35;
+                    border-radius: 14px;
+
+                    padding: 6px 10px;
+
+                    color: #E7E3E5;
+
+                    selection-background-color: #743746;
+
+                    font-size: 14px;
+                }}
+
+                #composerEdit:focus {{
+                    background: #181C21;
+
+                    border-color: #4E333B;
+                }}
+
+
+                /* dica inferior */
+
+                #composerHint {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #686F77;
+
+                    font-size: 9px;
+                }}
+
+
+                /* microfone */
+
+                #composerMic {{
+                    background: #D7445B;
+
+                    border: 1px solid #F06479;
+                    border-radius: 23px;
+                }}
+
+                #composerMic:hover {{
+                    background: #EB536A;
+
+                    border-color: #FF7A8D;
+                }}
+
+                #composerMic:pressed {{
+                    background: #BD384D;
+                }}
+
+
+                /* enviar */
+
+                #sendButton {{
+                    background: #21191E;
+
+                    border: 1px solid #4A3038;
+                    border-radius: 21px;
+                }}
+
+                #sendButton:hover {{
+                    background: #2B1C22;
+
+                    border-color: #85404D;
+                }}
+
+                #sendButton:pressed {{
+                    background: #351D25;
+
+                    border-color: #A94B5D;
+                }}
+
+                #sendButton:disabled {{
+                    background: #171B20;
+
+                    border-color: #292F36;
+                }}
                 #voiceSurface {{ background: #172123; border: 1px solid #2F5559; border-radius: 10px; }}
                 #voiceDot {{ color: {PALETA['ciano']}; font-size: 17px; }}
                 #voiceText {{ color: #B7DCE0; }}
@@ -1310,56 +1531,6 @@ class JanelaLaylay(QMainWindow):
                 font-weight: 550;
             }}
 
-
-            /* ações principais */
-
-            #musicSessionAction[actionRole="primary"] {{
-                background: #19191E;
-
-                border-color: #3C3036;
-
-                color: #DDD8DB;
-            }}
-
-            #musicSessionAction[actionRole="primary"]:hover {{
-                background: #291B21;
-
-                border-color: #85404D;
-
-                color: #FFF5F7;
-            }}
-
-
-            /* ações utilitárias */
-            
-            #musicSessionAction[actionRole="utility"] {{
-                background: #19191E;
-
-                border-color: #3C3036;
-
-                color: #DDD8DB;
-            }}
-
-            #musicSessionAction[actionRole="utility"]:hover {{
-                background: #291B21;
-
-                border-color: #85404D;
-
-                color: #FFF5F7;
-            }}
-
-
-            /* ação futura */
-
-            #musicSessionAction[actionRole="future"] {{
-                background: transparent;
-
-                border-color: #252B31;
-
-                color: #555D65;
-            }}
-
-
             /* indisponíveis */
 
             #musicSessionAction:disabled {{
@@ -1378,46 +1549,59 @@ class JanelaLaylay(QMainWindow):
                 color: #454C53;
             }}
 
+            #musicSessionAction[actionRole="primary"] {{
+                background: #1D181C;
 
-                /* principal */
+                border-color: #4A323A;
 
-                #musicSessionAction[actionRole="primary"] {{
-                    background: #19191E;
+                color: #F0EAED;
+            }}
 
-                    border-color: #3C3036;
+            #musicSessionAction[actionRole="primary"]:hover {{
+                background: #2D1C22;
 
-                    color: #DDD8DB;
-                }}
+                border-color: #914553;
 
-                #musicSessionAction[actionRole="primary"]:hover {{
-                    background: #291B21;
-
-                    border-color: #85404D;
-
-                    color: #FFF5F7;
-                }}
+                color: #FFF7F9;
+            }}
 
 
-                /* utilitário */
+            /* utilitários — quase iguais, mas um pouco mais discretos */
 
-                #musicSessionAction[actionRole="utility"]:hover {{
-                    background: #291B21;
+            #musicSessionAction[actionRole="utility"] {{
+                background: #19191E;
 
-                    border-color: #85404D;
+                border-color: #393239;
 
-                    color: #FFF5F7;
-                }}
+                color: #D0CBD0;
+            }}
+
+            #musicSessionAction[actionRole="utility"]:hover {{
+                background: #291B21;
+
+                border-color: #85404D;
+
+                color: #FFF5F7;
+            }}
 
 
-                /* futuro */
+            /* futuro — continua propositalmente apagado */
 
-                #musicSessionAction[actionRole="future"] {{
-                    background: transparent;
+            #musicSessionAction[actionRole="future"] {{
+                background: transparent;
 
-                    border-color: #252B31;
+                border-color: #252B31;
 
-                    color: #555D65;
-                }}
+                color: #555D65;
+            }}
+
+            #musicSessionAction[actionRole="future"]:disabled {{
+                background: transparent;
+
+                border-color: #21272D;
+
+                color: #454C53;
+            }}
 
 
                 /* desabilitados */
