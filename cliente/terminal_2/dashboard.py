@@ -130,10 +130,13 @@ class PainelCentralInteligente(QFrame):
         super().__init__()
         self.setObjectName("intelligencePanel")
         self.setMinimumWidth(360)
-        self.setMaximumWidth(405)
+        self.setMaximumWidth(415)
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 17, 16, 17)
-        layout.setSpacing(13)
+        layout.setContentsMargins(
+            14, 15, 14, 15
+        )
+        layout.setSpacing(8)
 
         cabecalho = QHBoxLayout()
         titulo = QLabel("Central Inteligente")
@@ -146,6 +149,10 @@ class PainelCentralInteligente(QFrame):
         layout.addLayout(cabecalho)
 
         acoes = CartaoDashboard("Ações rápidas")
+        acoes.setProperty(
+        "centralSection",
+        True,
+        )
         grade = QGridLayout()
         grade.setContentsMargins(0, 0, 0, 0)
         grade.setSpacing(7)
@@ -156,8 +163,11 @@ class PainelCentralInteligente(QFrame):
         self._conectada = False
         for indice, definicao in enumerate(ACOES_RAPIDAS_TERMINAL):
             acao_id = str(definicao["id"])
-            texto = str(definicao["label"])
-            texto_visual = texto.split("  ", 1)[-1]
+            texto = str(
+                definicao["label"]
+            )
+
+            texto_visual = texto
             comando = str(definicao.get("request") or "")
             botao = QPushButton(texto_visual)
             botao.setProperty("dashboardAction", True)
@@ -180,6 +190,10 @@ class PainelCentralInteligente(QFrame):
         layout.addWidget(acoes)
 
         contexto = CartaoDashboard("Contexto atual", subtitulo="sanitizado")
+        contexto.setProperty(
+        "centralSection",
+        True,
+        )
         contexto_grade = QGridLayout()
         contexto_grade.setContentsMargins(0, 0, 0, 0)
         contexto_grade.setSpacing(7)
@@ -207,16 +221,127 @@ class PainelCentralInteligente(QFrame):
         contexto.layout_principal.addLayout(contexto_grade)
         layout.addWidget(contexto)
 
-        memoria = CartaoDashboard("Memória recente")
-        self.memoria_estado = QLabel(
-            "Aguardando uma projeção segura da memória. Nenhum fato será inventado aqui."
+        memoria = CartaoDashboard(
+            "Memória recente"
         )
-        self.memoria_estado.setObjectName("dashboardEmpty")
+
+        memoria.setProperty(
+            "centralSection",
+            True,
+        )
+
+        memoria.layout_principal.setContentsMargins(
+            2, 8, 2, 10
+        )
+        memoria.layout_principal.setSpacing(6)
+
+
+        # Estado vazio / indisponível
+        self.memoria_estado = QLabel(
+            "Aguardando uma projeção segura da memória."
+        )
+        self.memoria_estado.setObjectName(
+            "dashboardEmpty"
+        )
         self.memoria_estado.setWordWrap(True)
-        memoria.layout_principal.addWidget(self.memoria_estado)
+
+        memoria.layout_principal.addWidget(
+            self.memoria_estado
+        )
+
+
+        # Até três cartões reais
+        self.memoria_linhas: list[
+            dict[str, object]
+        ] = []
+
+        for _ in range(3):
+            cartao = QFrame()
+            cartao.setObjectName(
+                "memoryRecentCard"
+            )
+            cartao.setProperty(
+                "memoryKind",
+                "generic",
+            )
+            cartao.hide()
+
+            cartao_layout = QHBoxLayout(
+                cartao
+            )
+            cartao_layout.setContentsMargins(
+                9, 8, 9, 8
+            )
+            cartao_layout.setSpacing(9)
+
+            # Ícone
+            icone = QLabel("•")
+            icone.setObjectName(
+                "memoryRecentIcon"
+            )
+            icone.setAlignment(
+                Qt.AlignCenter
+            )
+            icone.setFixedSize(
+                28, 28
+            )
+
+            # Texto
+            textos = QVBoxLayout()
+            textos.setContentsMargins(
+                0, 0, 0, 0
+            )
+            textos.setSpacing(2)
+
+            resumo = QLabel(
+                "Memória"
+            )
+            resumo.setObjectName(
+                "memoryRecentSummary"
+            )
+            resumo.setWordWrap(True)
+
+            detalhe = QLabel("")
+            detalhe.setObjectName(
+                "memoryRecentDetail"
+            )
+            detalhe.setWordWrap(True)
+
+            textos.addWidget(
+                resumo
+            )
+            textos.addWidget(
+                detalhe
+            )
+
+            cartao_layout.addWidget(
+                icone,
+                0,
+                Qt.AlignTop,
+            )
+            cartao_layout.addLayout(
+                textos,
+                1,
+            )
+
+            memoria.layout_principal.addWidget(
+                cartao
+            )
+
+            self.memoria_linhas.append({
+                "widget": cartao,
+                "icon": icone,
+                "summary": resumo,
+                "detail": detalhe,
+            })
+
         layout.addWidget(memoria)
 
         atividade = CartaoDashboard("Atividade recente")
+        atividade.setProperty(
+        "centralSection",
+        True,
+        )
         self.atividade_itens = QLabel("Tudo quieto nesta sessão.")
         self.atividade_itens.setObjectName("dashboardActivity")
         self.atividade_itens.setWordWrap(True)
@@ -351,40 +476,193 @@ class PainelCentralInteligente(QFrame):
             if frescor_contexto == "stale":
                 jogo += " · antigo"
             self.definir_contexto("jogo", jogo)
-        itens = dashboard.get("memory_recent")
-        linhas: list[str] = []
-        icones = {"reminder": "◷", "preference": "♡", "task": "✓"}
-        if isinstance(itens, list):
-            for item in itens[:3]:
-                if not isinstance(item, dict):
-                    continue
-                resumo = str(item.get("summary") or "").strip()
-                detalhe = str(item.get("detail") or "").strip()
-                if not resumo:
-                    continue
-                icone = icones.get(str(item.get("kind") or ""), "•")
-                linhas.append(f"{icone}  {resumo}" + (f"\n    {detalhe}" if detalhe else ""))
-        saude = dashboard.get("health")
-        memoria = (
-            saude.get("memory")
-            if isinstance(saude, dict) and isinstance(saude.get("memory"), dict)
-            else {}
-        )
-        estado_memoria = str(memoria.get("state") or "unavailable")
-        frescor_memoria = str(memoria.get("freshness") or "unavailable")
-        if estado_memoria == "unavailable" or frescor_memoria == "unavailable":
-            texto_memoria = "Memória indisponível; não há uma leitura confiável agora."
-        elif linhas:
-            texto_memoria = "\n\n".join(linhas)
-            if frescor_memoria == "stale":
-                texto_memoria = "Dados antigos\n\n" + texto_memoria
-        elif frescor_memoria == "stale":
-            texto_memoria = "A leitura recente da memória está desatualizada."
-        elif estado_memoria == "degraded":
-            texto_memoria = "Memória parcialmente disponível, sem cartões públicos agora."
-        else:
-            texto_memoria = "Nenhuma memória recente pública para mostrar."
-        self.memoria_estado.setText(texto_memoria)
+            itens = dashboard.get(
+                "memory_recent"
+            )
+
+            itens_validos = []
+
+            if isinstance(itens, list):
+                for item in itens[:3]:
+                    if not isinstance(
+                        item,
+                        dict,
+                    ):
+                        continue
+
+                    resumo = str(
+                        item.get("summary")
+                        or ""
+                    ).strip()
+
+                    if not resumo:
+                        continue
+
+                    itens_validos.append(
+                        item
+                    )
+
+
+            # Estado real da memória
+            saude = dashboard.get(
+                "health"
+            )
+
+            memoria_saude = (
+                saude.get("memory")
+                if (
+                    isinstance(saude, dict)
+                    and isinstance(
+                        saude.get("memory"),
+                        dict,
+                    )
+                )
+                else {}
+            )
+
+            estado_memoria = str(
+                memoria_saude.get("state")
+                or "unavailable"
+            )
+
+            frescor_memoria = str(
+                memoria_saude.get("freshness")
+                or "unavailable"
+            )
+
+            memoria_disponivel = (
+                estado_memoria
+                != "unavailable"
+                and frescor_memoria
+                != "unavailable"
+            )
+
+
+            # =========================================
+            # MEMÓRIA INDISPONÍVEL
+            # =========================================
+            if not memoria_disponivel:
+                self.memoria_estado.setText(
+                    "Memória indisponível; "
+                    "não há uma leitura confiável agora."
+                )
+
+                self.memoria_estado.show()
+
+                for linha in self.memoria_linhas:
+                    linha["widget"].hide()
+
+
+            # =========================================
+            # SEM CARTÕES PÚBLICOS
+            # =========================================
+            elif not itens_validos:
+                if frescor_memoria == "stale":
+                    texto_estado = (
+                        "A leitura recente da memória "
+                        "está desatualizada."
+                    )
+
+                elif estado_memoria == "degraded":
+                    texto_estado = (
+                        "Memória parcialmente disponível, "
+                        "sem cartões públicos agora."
+                    )
+
+                else:
+                    texto_estado = (
+                        "Nenhuma memória recente "
+                        "pública para mostrar."
+                    )
+
+                self.memoria_estado.setText(
+                    texto_estado
+                )
+                self.memoria_estado.show()
+
+                for linha in self.memoria_linhas:
+                    linha["widget"].hide()
+
+
+            # =========================================
+            # CARTÕES REAIS
+            # =========================================
+            else:
+                self.memoria_estado.hide()
+
+                icones = {
+                    "reminder": "◷",
+                    "preference": "♡",
+                    "task": "✓",
+                }
+
+                for indice, linha in enumerate(
+                    self.memoria_linhas
+                ):
+                    if indice >= len(
+                        itens_validos
+                    ):
+                        linha["widget"].hide()
+                        continue
+
+                    item = itens_validos[
+                        indice
+                    ]
+
+                    tipo = str(
+                        item.get("kind")
+                        or "generic"
+                    )
+
+                    resumo = str(
+                        item.get("summary")
+                        or "Memória"
+                    ).strip()
+
+                    detalhe = str(
+                        item.get("detail")
+                        or ""
+                    ).strip()
+
+                    if frescor_memoria == "stale":
+                        detalhe = (
+                            f"{detalhe} · dados antigos"
+                            if detalhe
+                            else "Dados antigos"
+                        )
+
+                    linha["icon"].setText(
+                        icones.get(
+                            tipo,
+                            "•",
+                        )
+                    )
+
+                    linha["summary"].setText(
+                        resumo
+                    )
+
+                    linha["detail"].setText(
+                        detalhe
+                    )
+
+                    linha["detail"].setVisible(
+                        bool(detalhe)
+                    )
+
+                    linha["widget"].setProperty(
+                        "memoryKind",
+                        tipo,
+                    )
+
+                    linha["widget"].style().unpolish(
+                        linha["widget"]
+                    )
+                    linha["widget"].style().polish(
+                        linha["widget"]
+                    )
+
+                    linha["widget"].show()
         self.aplicar_catalogo_acoes(dashboard.get("quick_actions"))
         status = str(dashboard.get("status") or "unavailable")
         self.estado.setText({
@@ -398,7 +676,13 @@ class PainelCentralInteligente(QFrame):
         self.definir_contexto("modo", "—")
         self.definir_contexto("cidade", "—")
         self.definir_contexto("jogo", "Não observado")
-        self.memoria_estado.setText("Aguardando uma projeção segura da memória.")
+        self.memoria_estado.setText(
+            "Aguardando uma projeção segura da memória."
+        )
+        self.memoria_estado.show()
+
+        for linha in self.memoria_linhas:
+            linha["widget"].hide()
 
 
 class PainelLateralDashboard(QWidget):

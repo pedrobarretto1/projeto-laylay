@@ -1383,19 +1383,183 @@ class JanelaLaylay(QMainWindow):
                 #chatGreeting {{ font-size: 20px; font-weight: 700; color: #F8F5F7; }}
                 #chatGreetingSub {{ color: {PALETA['secundario']}; font-size: 13px; }}
                 #microphoneWaveform {{ background: transparent; }}
-                #intelligencePanel {{ background: #11151A; border: 1px solid #73323E; border-radius: 16px; }}
-                #intelligenceTitle {{ font-size: 18px; font-weight: 700; }}
-                #liveBadge {{ color: {PALETA['rosa']}; background: #301D23; border: 1px solid #5A303A; border-radius: 10px; padding: 4px 8px; font-size: 10px; }}
-                #dashboardRail {{ background: transparent; }}
-                #dashboardCard, #modulePlaceholder {{ background: #15191E; border: 1px solid #2D333A; border-radius: 14px; }}
-                #dashboardCardTitle {{ font-size: 14px; font-weight: 700; }}
-                #dashboardCardHint {{ color: {PALETA['apagado']}; font-size: 9px; }}
-                #dashboardEmpty, #dashboardActivity {{ color: {PALETA['apagado']}; font-size: 11px; }}
-                #dashboardMetricLabel {{ color: {PALETA['secundario']}; font-size: 11px; }}
-                #dashboardMetricValue {{ color: {PALETA['texto']}; font-size: 11px; font-weight: 700; }}
-                #contextItem {{ background: #1A1F25; border: 1px solid #2A3037; border-radius: 8px; }}
-                #contextLabel {{ color: {PALETA['apagado']}; font-size: 9px; }}
-                #contextValue {{ color: {PALETA['secundario']}; font-size: 10px; font-weight: 650; }}
+                /* =========================================
+                CENTRAL INTELIGENTE
+                ========================================= */
+
+                #intelligencePanel {{
+                    background: #11151A;
+
+                    border: 1px solid #6F303B;
+                    border-radius: 18px;
+                }}
+
+                #intelligenceTitle {{
+                    color: #F6F2F4;
+
+                    font-size: 18px;
+                    font-weight: 700;
+                }}
+
+
+                /* indicador vivo */
+
+                #liveBadge {{
+                    background: #321D23;
+
+                    border: 1px solid #64313C;
+                    border-radius: 11px;
+
+                    padding: 4px 9px;
+
+                    color: #FF7186;
+
+                    font-size: 9px;
+                    font-weight: 600;
+                }}
+
+
+                /* seções internas da central */
+
+                #dashboardCard[centralSection="true"] {{
+                    background: transparent;
+
+                    border: 0;
+                    border-radius: 0;
+                }}
+
+                #dashboardCard[centralSection="true"]
+                #dashboardCardTitle {{
+                    color: #F0ECEE;
+
+                    font-size: 13px;
+                    font-weight: 700;
+                }}
+
+
+                /* detalhes tipo "sanitizado" */
+
+                #dashboardCardHint {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #737A83;
+
+                    font-size: 8px;
+                }}
+
+
+                /* =========================================
+                AÇÕES RÁPIDAS
+                ========================================= */
+
+                QPushButton[dashboardAction="true"] {{
+                    background: #191E24;
+
+                    border: 1px solid #30363D;
+                    border-radius: 10px;
+
+                    min-height: 38px;
+
+                    padding: 6px 10px;
+
+                    text-align: left;
+
+                    color: #C9C5C8;
+
+                    font-size: 10px;
+                    font-weight: 550;
+                }}
+
+                QPushButton[dashboardAction="true"]:hover {{
+                    background: #251B20;
+
+                    border-color: #75404B;
+
+                    color: #FFF4F6;
+                }}
+
+                QPushButton[dashboardAction="true"]:pressed {{
+                    background: #301D24;
+
+                    border-color: #954859;
+                }}
+
+                QPushButton[dashboardAction="true"]:disabled {{
+                    background: #15191E;
+
+                    border-color: #252B31;
+
+                    color: #555C64;
+                }}
+
+
+                /* =========================================
+                CONTEXTO ATUAL
+                ========================================= */
+
+                #contextItem {{
+                    background: #191E24;
+
+                    border: 1px solid #2C3239;
+                    border-radius: 9px;
+                }}
+
+                #contextItem:hover {{
+                    background: #1D2228;
+
+                    border-color: #3B343A;
+                }}
+
+                #contextLabel {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #747C85;
+
+                    font-size: 8px;
+                }}
+
+                #contextValue {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #D8D4D7;
+
+                    font-size: 9px;
+                    font-weight: 650;
+                }}
+
+
+                /* =========================================
+                MEMÓRIA / ATIVIDADE
+                ========================================= */
+
+                #dashboardEmpty {{
+                    background: #171C21;
+
+                    border: 1px solid #282F36;
+                    border-radius: 9px;
+
+                    padding: 8px 10px;
+
+                    color: #888F97;
+
+                    font-size: 9px;
+                }}
+
+                #dashboardActivity {{
+                    background: #171C21;
+
+                    border: 1px solid #282F36;
+                    border-radius: 9px;
+
+                    padding: 8px 10px;
+
+                    color: #888F97;
+
+                    font-size: 9px;
+                }}
                 #musicTitle {{ font-size: 13px; font-weight: 700; }}
                 #musicControlsPlaceholder {{ color: #5F646B; font-size: 15px; padding: 5px; }}
                 #musicPage, #musicScroll, #musicScroll > QWidget > QWidget,
@@ -2155,14 +2319,114 @@ class JanelaLaylay(QMainWindow):
 
                 color: #FF7186;
             }}
+
+            /* =========================================
+            MEMÓRIA RECENTE
+            ========================================= */
+
+            #memoryRecentCard {{
+                background: #171C21;
+
+                border: 1px solid #292F36;
+                border-radius: 9px;
+            }}
+
+
+            /* lembrete */
+
+            #memoryRecentCard[memoryKind="reminder"] {{
+                background: #20191D;
+
+                border-color: #493039;
+            }}
+
+
+            /* preferência */
+
+            #memoryRecentCard[memoryKind="preference"] {{
+                background: #1D191E;
+
+                border-color: #40303A;
+            }}
+
+
+            /* tarefa */
+
+            #memoryRecentCard[memoryKind="task"] {{
+                background: #171D1B;
+
+                border-color: #294138;
+            }}
+
+
+            /* ícone */
+
+            #memoryRecentIcon {{
+                background: #20262C;
+
+                border: 1px solid #30373E;
+                border-radius: 14px;
+
+                color: #969DA5;
+
+                font-size: 13px;
+                font-weight: 700;
+            }}
+
+            #memoryRecentCard[memoryKind="reminder"]
+            #memoryRecentIcon {{
+                background: #382027;
+
+                border-color: #67313C;
+
+                color: #FF7186;
+            }}
+
+            #memoryRecentCard[memoryKind="preference"]
+            #memoryRecentIcon {{
+                background: #342029;
+
+                border-color: #623544;
+
+                color: #EE708B;
+            }}
+
+            #memoryRecentCard[memoryKind="task"]
+            #memoryRecentIcon {{
+                background: #192A24;
+
+                border-color: #345746;
+
+                color: #68C79A;
+            }}
+
+
+            /* textos */
+
+            #memoryRecentSummary {{
+                background: transparent;
+                border: 0;
+
+                color: #DCD8DA;
+
+                font-size: 9px;
+                font-weight: 600;
+            }}
+
+            #memoryRecentDetail {{
+                background: transparent;
+                border: 0;
+
+                color: #737B84;
+
+                font-size: 8px;
+            }}
+
                 #musicSystemBar {{ background: #252B32; border: 0; border-radius: 3px; min-height: 6px; max-height: 6px; }}
                 #musicSystemBar::chunk {{ background: #C64257; border-radius: 3px; }}
                 #musicSystemBar[available="false"]::chunk {{ background: #343A41; }}
                 #railMusicControl {{ background: transparent; border: 0; border-radius: 18px; min-width: 36px; min-height: 36px; color: {PALETA['texto']}; font-size: 16px; }}
                 #railMusicControl:hover {{ background: #2B2025; color: {PALETA['rosa']}; }}
-                QPushButton[dashboardAction="true"] {{ background: #1A1F25; border: 1px solid #30363E; border-radius: 9px; padding: 10px 8px; text-align: left; color: {PALETA['secundario']}; font-size: 10px; }}
-                QPushButton[dashboardAction="true"]:hover {{ background: #262027; border-color: #74404C; color: {PALETA['texto']}; }}
-                QPushButton[dashboardAction="true"]:disabled {{ background: #15191E; border-color: #242A30; color: #565B62; }}
                 QPushButton[dashboardAction="true"][actionState="sending"],
                 QPushButton[dashboardAction="true"][actionState="received"],
                 QPushButton[dashboardAction="true"][actionState="executing"] {{ background: #241D22; border-color: #8B4352; color: {PALETA['rosa']}; }}
