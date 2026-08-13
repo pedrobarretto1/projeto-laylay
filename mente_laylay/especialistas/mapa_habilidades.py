@@ -143,8 +143,26 @@ _TERMOS_DOMINIO = {
 
 _PEDIDO_CAPACIDADES = (
     "o que voce faz", "o que voce consegue", "suas habilidades",
-    "seus comandos", "do que voce e capaz", "o que pode fazer",
+    "quais habilidades", "que habilidades", "seus comandos",
+    "do que voce e capaz", "o que pode fazer", "o que da para voce fazer",
 )
+
+_ROTULO_CAPACIDADE_NATURAL = {
+    "arquivos": "criar, procurar e organizar arquivos",
+    "sistema": "abrir programas e organizar janelas",
+    "navegador": "trabalhar com sites, abas e páginas",
+    "musica": "buscar e controlar músicas e playlists",
+    "agenda": "cuidar de lembretes e compromissos",
+    "memoria": "lembrar fatos confirmados sobre você",
+    "pessoas": "recordar pessoas e relações que você me contou",
+    "iot": "controlar os dispositivos da casa que estiverem configurados",
+    "email": "consultar emails e notificações",
+    "area_transferencia": "entender e transformar o que você copiou",
+    "caixa_entrada": "guardar ideias e notas pessoais",
+    "visao": "analisar o que aparece na tela durante um jogo",
+    "avatar": "usar meu avatar e pensar em novos visuais",
+    "conversa": "conversar, explicar e raciocinar com você",
+}
 
 _STATUS_INDISPONIVEIS = {
     "indisponivel", "nao_configurado", "sem_configuracao", "sem_suporte",
@@ -175,6 +193,24 @@ def _normalizar(texto: Any) -> str:
     base = unicodedata.normalize("NFKD", str(texto or ""))
     base = "".join(ch for ch in base if not unicodedata.combining(ch))
     return re.sub(r"\s+", " ", base.casefold()).strip()
+
+
+def _texto_pergunta_capacidade(texto: str) -> bool:
+    """Reconhece capacidade e hipótese sem conceder autorização."""
+    t = _normalizar(texto)
+    if not t:
+        return False
+    if any(frase in t for frase in _PEDIDO_CAPACIDADES):
+        return True
+    return bool(re.search(
+        r"\b(?:voce|laylay|lay)\s+(?:consegue|pode|sabe|e capaz)\b|"
+        r"^(?:e\s+|mas\s+|entao\s+)?se eu\s+"
+        r"(?:pedir|mandar|falar|disser)(?:\s+(?:para|pra)\s+voce)?\b|"
+        r"\b(?:voce|laylay|lay)\s+(?:vai|iria|faria)\s+"
+        r"(?:criar|abrir|fechar|apagar|tocar|ligar|desligar|mexer)\b|"
+        r"\b(?:voce|laylay|lay)\s+mexe\s+(?:no|na|em)\b",
+        t,
+    ))
 
 
 class MapaHabilidadesRuntime:
@@ -415,9 +451,7 @@ class MapaHabilidadesRuntime:
         normalizado = _normalizar(texto)
         if not normalizado:
             return False
-        if re.search(
-            r"\b(?:voce|laylay|lay)\s+(?:consegue|pode|sabe|e capaz)\b|"
-            r"\bse eu (?:pedir|mandar)\b|"
+        if _texto_pergunta_capacidade(normalizado) or re.search(
             r"^(?:nao|não)\s+(?:encontra|procura|busca|pesquisa|localiza)\b",
             normalizado,
         ):
@@ -455,11 +489,7 @@ class MapaHabilidadesRuntime:
             t,
         ):
             return ""
-        if not t or not re.search(
-            r"\b(?:voce|laylay|lay)\s+(?:consegue|pode|sabe|e capaz)\b|"
-            r"^se eu (?:pedir|mandar).+\b(?:voce\s+)?(?:consegue|pode)\b",
-            t,
-        ):
+        if not _texto_pergunta_capacidade(t):
             return ""
         mapa = self.snapshot()
         dominios = self.dominios_relevantes(t)
@@ -470,6 +500,42 @@ class MapaHabilidadesRuntime:
         )
         if not disponivel:
             return "Essa habilidade não está disponível nesta instalação agora."
+        pergunta_geral = any(frase in t for frase in _PEDIDO_CAPACIDADES)
+        if pergunta_geral:
+            dominios_vivos = dict(mapa.get("dominios") or {})
+            ordem = tuple(_ROTULO_CAPACIDADE_NATURAL)
+            itens = [
+                _ROTULO_CAPACIDADE_NATURAL[dominio]
+                for dominio in ordem
+                if str(dominios_vivos.get(dominio, {}).get("estado") or "")
+                in {"disponivel", "parcial", "degradado"}
+            ]
+            if not itens:
+                return "Agora minhas habilidades práticas estão indisponíveis, mas ainda consigo conversar com você."
+            principais = itens[:7]
+            if len(principais) == 1:
+                lista = principais[0]
+            else:
+                lista = ", ".join(principais[:-1]) + " e " + principais[-1]
+            complemento = (
+                " Tenho outras habilidades menores também; se você perguntar por uma, "
+                "eu confiro como ela está agora."
+                if len(itens) > len(principais)
+                else ""
+            )
+            return (
+                f"Tenho bastante braço por aqui: consigo {lista}."
+                f"{complemento} Eu só mexo de verdade quando você pede; perguntar não executa nada."
+            )
+        if "arquivos" in dominios and re.search(
+            r"\b(?:cri|faz|mont)\w*\b.*\b(?:arquivo|pasta)\b|"
+            r"\b(?:arquivo|pasta)\b.*\b(?:cri|faz|mont)\w*\b",
+            t,
+        ):
+            return (
+                "Consigo, sim. Se você me pedir de verdade e disser o nome, eu crio o arquivo "
+                "ou a pasta; como agora você só perguntou, não fiz nada."
+            )
         if "arquivos" in dominios and re.search(r"\b(?:apag|exclu|delet|remov)\w*\b", t):
             return "Consigo. Quando você pedir de verdade, confirmo o alvo e envio o arquivo ou a pasta para a lixeira."
         if "arquivos" in dominios and re.search(r"\b(?:encontr|procur|busc|localiz|pesquis)\w*\b", t):
@@ -508,6 +574,12 @@ class MapaHabilidadesRuntime:
                 "aberto para escolher o secundário. Também posso colocar um aplicativo específico "
                 "na esquerda ou na direita. Eu movo somente os lados pedidos e releio a geometria "
                 "final antes de dizer que deu certo."
+            )
+        if "sistema" in dominios:
+            return (
+                "Consigo mexer em partes do seu computador quando você pede: abrir e fechar "
+                "programas, organizar janelas e ajustar o volume, por exemplo. Eu não ajo por "
+                "conta própria e só confirmo o que o computador realmente mostrou."
             )
         if "visao" in dominios:
             return (
@@ -583,10 +655,9 @@ class MapaHabilidadesRuntime:
             )
         if "conversa" in dominios:
             return (
-                "Consigo conversar, explicar e raciocinar usando o modelo de linguagem disponível. "
-                "O histórico temporário, a preparação do contexto e o acesso ao modelo são separados: "
-                "o cliente de rede não lê minha memória por conta própria. Conversar também não "
-                "autoriza comandos; qualquer ação real continua passando pelo porteiro e pelo executor."
+                "Consigo conversar, explicar e raciocinar com você. Também mantenho o contexto da "
+                "conversa separado das lembranças duráveis: conversar comigo não salva tudo nem "
+                "autoriza uma ação no computador."
             )
         return "Consigo, desde que essa habilidade esteja configurada e você faça o pedido de execução diretamente."
 

@@ -39,16 +39,19 @@ def analisar_identidade_turno(texto: str, *, falante: str = "usuario") -> Dict[s
     vocativo = remover_vocativo_laylay(bruto) != bruto and menciona_nome and not menciona_arquivo
     relacao_self = ""
     relacoes = (
-        ("codigo", r"\b(?:codigo|projeto|programa)\s+(?:da|de)\s+laylay\b"),
-        ("memoria", r"\bmemoria\s+(?:da|de)\s+laylay\b"),
-        ("voz", r"\bvoz\s+(?:da|de)\s+laylay\b"),
-        ("habilidades", r"\bhabilidades?\s+(?:da|de)\s+laylay\b"),
-        ("personalidade", r"\b(?:personalidade|jeito)\s+(?:da|de)\s+laylay\b"),
+        ("codigo", r"\b(?:(?:codigo|projeto|programa)\s+(?:da|de)\s+laylay|(?:seu|teu)\s+(?:codigo|projeto|programa))\b"),
+        ("memoria", r"\b(?:memoria\s+(?:da|de)\s+laylay|(?:sua|tua)\s+memoria)\b"),
+        ("voz", r"\b(?:voz\s+(?:da|de)\s+laylay|(?:sua|tua)\s+voz)\b"),
+        ("habilidades", r"\b(?:habilidades?\s+(?:da|de)\s+laylay|(?:suas|tuas)\s+habilidades?)\b"),
+        ("personalidade", r"\b(?:(?:personalidade|jeito)\s+(?:da|de)\s+laylay|(?:sua|tua)\s+(?:personalidade|jeito))\b"),
     )
     relacao_self = next((nome for nome, padrao in relacoes if re.search(padrao, base)), "")
     referencia_laylay = bool(
         (menciona_nome and not menciona_arquivo)
-        or re.search(r"\b(?:voce|você|tu|te|contigo)\b", bruto.casefold())
+        or re.search(
+            r"\b(?:voce|você|tu|te|contigo|seu|sua|seus|suas|teu|tua|teus|tuas)\b",
+            bruto.casefold(),
+        )
     )
     referencia_usuario = bool(
         falante_norm == "usuario" and re.search(r"\b(?:eu|meu|minha|me|mim)\b", base)
@@ -98,11 +101,11 @@ def ajustar_autorreferencia_assistente(texto: str) -> str:
     if not fala:
         return fala
     substituicoes = (
-        (r"\b(?:o\s+)?c[oó]digo\s+da\s+Laylay\b", "meu código"),
-        (r"\b(?:a\s+)?mem[oó]ria\s+da\s+Laylay\b", "minha memória"),
-        (r"\b(?:a\s+)?voz\s+da\s+Laylay\b", "minha voz"),
-        (r"\b(?:as\s+)?habilidades\s+da\s+Laylay\b", "minhas habilidades"),
-        (r"\b(?:a\s+)?personalidade\s+da\s+Laylay\b", "minha personalidade"),
+        (r"\b(?:o\s+)?c[oó]digo\s+(?:da|do)\s+Laylay\b", "meu código"),
+        (r"\b(?:a\s+)?mem[oó]ria\s+(?:da|do)\s+Laylay\b", "minha memória"),
+        (r"\b(?:a\s+)?voz\s+(?:da|do)\s+Laylay\b", "minha voz"),
+        (r"\b(?:as\s+)?habilidades\s+(?:da|do)\s+Laylay\b", "minhas habilidades"),
+        (r"\b(?:a\s+)?personalidade\s+(?:da|do)\s+Laylay\b", "minha personalidade"),
     )
     for padrao, troca in substituicoes:
         fala = re.sub(padrao, troca, fala, flags=re.IGNORECASE)

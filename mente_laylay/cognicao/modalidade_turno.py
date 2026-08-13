@@ -39,7 +39,7 @@ def analisar_protecao_operacional(
     if re.search(
         r"\b(?:acho que (?:eu )?vou|talvez|estou pensando em|to pensando em|"
         r"seria bom|seria legal|quem sabe|tenho vontade de|estou com vontade de|"
-        r"to com vontade de|queria saber|se eu (?:pedir|quiser|mandar)|"
+        r"to com vontade de|queria saber|se eu (?:pedir|quiser|mandar|falar|disser)|"
         r"quando (?:voce|você|eu|a gente)|caso (?:eu|voce|você|a gente))\b",
         t,
     ):
@@ -52,7 +52,8 @@ def analisar_protecao_operacional(
     if (
         re.search(
             r"^(?:voce|você|tu)\s+(?:pode|poderia|consegue|conseguiria|sabe)\s+(?:me\s+)?"
-            r"(?:ver|olhar|olha|resume|resuma|resumir|mostrar|passar)\b",
+            r"(?:ver|olhar|olha|resume|resuma|resumir|mostrar|passar|criar|abrir|"
+            r"fechar|apagar|tocar|ligar|desligar|mexer|organizar|procurar)\b",
             t,
         )
         and not re.search(r"\b(?:pra|para)\s+mim\b", t)

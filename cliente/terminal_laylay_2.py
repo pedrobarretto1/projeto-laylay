@@ -2552,6 +2552,136 @@ class JanelaLaylay(QMainWindow):
     font-size: 8px;
 }}
 
+
+                /* =========================================
+                   P10.1 — SISTEMA FASE 3
+                   ========================================= */
+
+                #systemLowerRow {{
+                    background: transparent;
+                    border: 0;
+                }}
+
+                #systemModelCard,
+                #systemStorageCard {{
+                    background: #11161B;
+                    border: 1px solid #282F36;
+                    border-radius: 13px;
+                }}
+
+                #systemModelCard #dashboardCardTitle,
+                #systemStorageCard #dashboardCardTitle {{
+                    color: #F0ECEE;
+                    font-size: 13px;
+                    font-weight: 700;
+                }}
+
+                #systemModelStatus {{
+                    background: #17201C;
+                    border: 1px solid #294838;
+                    border-radius: 8px;
+                    padding: 7px 9px;
+                    color: #72C99D;
+                    font-size: 9px;
+                    font-weight: 650;
+                }}
+
+                #systemModelStatus[state="pending"] {{
+                    background: #1B1C1C;
+                    border-color: #4E432D;
+                    color: #C5A05D;
+                }}
+
+                #systemModelStatus[state="error"] {{
+                    background: #21171B;
+                    border-color: #5C3039;
+                    color: #E67386;
+                }}
+
+                #systemModelStatus[state="unavailable"] {{
+                    background: #15191D;
+                    border-color: #252B31;
+                    color: #707880;
+                }}
+
+                #systemModelRow {{
+                    background: #151A1F;
+                    border: 1px solid #232A31;
+                    border-radius: 8px;
+                }}
+
+                #systemModelRow #dashboardMetricLabel {{
+                    background: transparent;
+                    border: 0;
+                    padding: 7px 9px;
+                    color: #858D96;
+                    font-size: 9px;
+                    font-weight: 600;
+                }}
+
+                #systemModelRow #dashboardMetricValue {{
+                    background: transparent;
+                    border: 0;
+                    padding: 7px 9px;
+                    color: #ECE8EA;
+                    font-size: 9px;
+                    font-weight: 650;
+                }}
+
+                #systemStorageMetric {{
+                    background: #151A1F;
+                    border: 1px solid #232A31;
+                    border-radius: 9px;
+                }}
+
+                #systemStorageMetricLabel {{
+                    background: transparent;
+                    border: 0;
+                    color: #A5AAB0;
+                    font-size: 9px;
+                    font-weight: 650;
+                }}
+
+                #systemStorageMetricValue {{
+                    background: transparent;
+                    border: 0;
+                    color: #F1EDEF;
+                    font-size: 10px;
+                    font-weight: 700;
+                }}
+
+                #systemStorageProgress {{
+                    background: #242A30;
+                    border: 0;
+                    border-radius: 2px;
+                    min-height: 5px;
+                    max-height: 5px;
+                }}
+
+                #systemStorageProgress::chunk {{
+                    background: #D94C63;
+                    border-radius: 2px;
+                }}
+
+                #systemStorageMetric[resource="ram"]
+                #systemStorageProgress::chunk {{
+                    background: #D68A35;
+                }}
+
+                #systemStorageMetric[resource="vram"]
+                #systemStorageProgress::chunk {{
+                    background: #9A58D2;
+                }}
+
+                #systemStorageHint {{
+                    background: #14191E;
+                    border: 1px solid #252C33;
+                    border-radius: 8px;
+                    padding: 7px 9px;
+                    color: #707881;
+                    font-size: 8px;
+                }}
+
                 #pageTitle {{ font-size: 28px; font-weight: 650; }}
                 #pageDescription {{ color: {PALETA['secundario']}; font-size: 14px; max-width: 700px; }}
                 #sectionTitle {{ font-size: 17px; font-weight: 650; padding-top: 4px; }}

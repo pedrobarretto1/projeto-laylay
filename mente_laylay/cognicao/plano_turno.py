@@ -13,6 +13,9 @@ from mente_laylay.cognicao.guardiao_realidade_pessoal import (
     detectar_experiencia_pessoal_inventada,
     remover_trechos_de_realidade_inventada,
 )
+from mente_laylay.cognicao.identidade_conversacional import (
+    ajustar_autorreferencia_assistente,
+)
 from mente_laylay.cognicao.qualidade_comunicacao import (
     avaliar_qualidade_comunicacao,
     contingencia_comunicacao,
@@ -145,7 +148,23 @@ def planejar_turno(
         contexto_necessario.append("relogio_atual")
     contexto_necessario = list(dict.fromkeys(contexto_necessario))
 
-    requer_execucao = any(bool(ato.get("requer_execucao")) for ato in atos)
+    natureza_acao = str(leitura.get("natureza_acao") or "nenhuma").strip().lower()
+    modalidade_lida = str(
+        leitura.get("modalidade_geral") or leitura.get("modalidade") or "conversa"
+    ).strip().lower()
+    autorizacao_explicita_presente = "autoriza_execucao" in leitura
+    turno_sem_autorizacao = bool(
+        natureza_acao in {"capacidade", "hipotetica", "instrucao_ou_explicacao"}
+        or (
+            autorizacao_explicita_presente
+            and not bool(leitura.get("autoriza_execucao"))
+            and modalidade_lida in {"pergunta", "deliberacao"}
+        )
+    )
+    requer_execucao = bool(
+        not turno_sem_autorizacao
+        and any(bool(ato.get("requer_execucao")) for ato in atos)
+    )
     misto = requer_execucao and any(ato.get("tipo") != "comando" for ato in atos)
     if misto:
         resposta_esperada = "reconhecer a parte humana e informar o resultado real da ação em uma única fala"
@@ -178,6 +197,9 @@ def planejar_turno(
         "dominio": dominio_turno,
         "contexto_necessario": contexto_necessario,
         "requer_execucao": requer_execucao,
+        "autoriza_execucao": bool(leitura.get("autoriza_execucao")),
+        "natureza_acao": natureza_acao,
+        "turno_sem_autorizacao": turno_sem_autorizacao,
         "misto": misto,
         "texto_operacional": str(leitura.get("texto_operacional") or "").strip()[:500],
         "texto_conversacional": str(leitura.get("texto_conversacional") or "").strip()[:500],
@@ -254,6 +276,7 @@ def verificar_fala_turno(
     contrato = dict(plano or {})
     texto_usuario = str(contrato.get("texto_usuario") or "")
     ajustada = re.sub(r"\s+", " ", str(fala or "")).strip()
+    ajustada = ajustar_autorreferencia_assistente(ajustada)
 
     if eh_estado_tecnico_llm(ajustada):
         return {
@@ -415,6 +438,7 @@ def verificar_fala_turno(
     )
     if (
         contrato.get("requer_execucao")
+        and not contrato.get("turno_sem_autorizacao")
         and not comandos
         and str(origem) in {"ia_final", "resposta_ia"}
         and (

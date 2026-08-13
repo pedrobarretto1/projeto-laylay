@@ -3266,7 +3266,173 @@ class PaginaSistema(QWidget):
         corpo.addWidget(self.resumo, 3)
         corpo.addWidget(desempenho, 7)
 
-        externo.addLayout(corpo, 1)
+        externo.addLayout(corpo, 3)
+
+        # P10.1 — Fase 3: Modelo local + armazenamento.
+        linha_inferior = QHBoxLayout()
+        linha_inferior.setObjectName(
+            "systemLowerRow"
+        )
+        linha_inferior.setContentsMargins(
+            0, 0, 0, 0
+        )
+        linha_inferior.setSpacing(12)
+
+        self.modelo_local = CartaoDashboard(
+            "Modelo local",
+            subtitulo="runtime observado",
+        )
+        self.modelo_local.setObjectName(
+            "systemModelCard"
+        )
+
+        self.modelo_status = QLabel(
+            "Aguardando runtime"
+        )
+        self.modelo_status.setObjectName(
+            "systemModelStatus"
+        )
+        self.modelo_status.setProperty(
+            "state",
+            "pending",
+        )
+        self.modelo_local.layout_principal.addWidget(
+            self.modelo_status
+        )
+
+        self.modelo_valores: dict[
+            str, QLabel
+        ] = {}
+
+        for chave, rotulo in (
+            ("provider", "Provedor"),
+            ("model", "Modelo ativo"),
+            ("state", "Estado"),
+            ("freshness", "Frescor"),
+        ):
+            linha, valor = _linha_valor(
+                rotulo
+            )
+            linha.setObjectName(
+                "systemModelRow"
+            )
+            self.modelo_local.layout_principal.addWidget(
+                linha
+            )
+            self.modelo_valores[
+                chave
+            ] = valor
+
+        self.modelo_local.layout_principal.addStretch()
+
+        self.armazenamento = CartaoDashboard(
+            "Armazenamento e memória",
+            subtitulo="uso observado",
+        )
+        self.armazenamento.setObjectName(
+            "systemStorageCard"
+        )
+
+        self.recursos_valores: dict[
+            str, QLabel
+        ] = {}
+        self.recursos_barras: dict[
+            str, QProgressBar
+        ] = {}
+
+        for chave, rotulo in (
+            ("disk", "Disco"),
+            ("ram", "Memória RAM"),
+            ("vram", "Memória VRAM"),
+        ):
+            bloco = QFrame()
+            bloco.setObjectName(
+                "systemStorageMetric"
+            )
+            bloco.setProperty(
+                "resource",
+                chave,
+            )
+
+            bloco_lay = QVBoxLayout(
+                bloco
+            )
+            bloco_lay.setContentsMargins(
+                10, 8, 10, 8
+            )
+            bloco_lay.setSpacing(6)
+
+            topo_recurso = QHBoxLayout()
+            topo_recurso.setContentsMargins(
+                0, 0, 0, 0
+            )
+
+            nome = QLabel(rotulo)
+            nome.setObjectName(
+                "systemStorageMetricLabel"
+            )
+
+            valor = QLabel("—")
+            valor.setObjectName(
+                "systemStorageMetricValue"
+            )
+
+            topo_recurso.addWidget(nome)
+            topo_recurso.addStretch()
+            topo_recurso.addWidget(valor)
+
+            barra = QProgressBar()
+            barra.setObjectName(
+                "systemStorageProgress"
+            )
+            barra.setRange(0, 100)
+            barra.setValue(0)
+            barra.setTextVisible(False)
+
+            bloco_lay.addLayout(
+                topo_recurso
+            )
+            bloco_lay.addWidget(barra)
+
+            self.armazenamento.layout_principal.addWidget(
+                bloco
+            )
+
+            self.recursos_valores[
+                chave
+            ] = valor
+            self.recursos_barras[
+                chave
+            ] = barra
+
+        hint_capacidade = QLabel(
+            "Capacidades totais em GB ainda não são "
+            "expostas pelo dashboard; aqui mostramos "
+            "somente o uso confirmado."
+        )
+        hint_capacidade.setObjectName(
+            "systemStorageHint"
+        )
+        hint_capacidade.setWordWrap(True)
+
+        self.armazenamento.layout_principal.addWidget(
+            hint_capacidade
+        )
+        self.armazenamento.layout_principal.addStretch()
+
+        linha_inferior.addWidget(
+            self.modelo_local,
+            1,
+        )
+        linha_inferior.addWidget(
+            self.armazenamento,
+            1,
+        )
+
+        externo.addLayout(
+            linha_inferior,
+            2,
+        )
 
     @staticmethod
     def _sparkline(
@@ -3389,6 +3555,120 @@ class PaginaSistema(QWidget):
                 chave
             ].setText(texto)
 
+        # P10.1 — replica somente métricas confirmadas
+        # para o card de armazenamento/memória.
+        for chave in (
+            "disk",
+            "ram",
+            "vram",
+        ):
+            self.recursos_valores[
+                chave
+            ].setText(
+                self.resumo_valores[
+                    chave
+                ].text()
+            )
+            self.recursos_barras[
+                chave
+            ].setValue(
+                self.barras[
+                    chave
+                ].value()
+            )
+
+        # Estado real do modelo vindo de health.llm.
+        saude = (
+            dashboard.get("health")
+            if isinstance(
+                dashboard.get("health"),
+                dict,
+            )
+            else {}
+        )
+        llm = (
+            saude.get("llm")
+            if isinstance(
+                saude.get("llm"),
+                dict,
+            )
+            else {}
+        )
+
+        provedor = str(
+            llm.get("provider_label")
+            or "—"
+        )
+        modelo = str(
+            llm.get("model")
+            or "—"
+        ).strip() or "—"
+        estado_llm = str(
+            llm.get("state")
+            or "unavailable"
+        )
+        rotulo_llm = str(
+            llm.get("label")
+            or "Indisponível"
+        )
+        frescor_llm = str(
+            llm.get("freshness")
+            or "unavailable"
+        )
+
+        nomes_frescor = {
+            "fresh": "Atual",
+            "stale": "Antigo",
+            "unavailable": "Indisponível",
+        }
+
+        self.modelo_valores[
+            "provider"
+        ].setText(provedor)
+        self.modelo_valores[
+            "model"
+        ].setText(modelo)
+        self.modelo_valores[
+            "state"
+        ].setText(rotulo_llm)
+        self.modelo_valores[
+            "freshness"
+        ].setText(
+            nomes_frescor.get(
+                frescor_llm,
+                frescor_llm or "—",
+            )
+        )
+
+        estado_visual = {
+            "online": "ok",
+            "ready": "ok",
+            "degraded": "error",
+            "unavailable": "unavailable",
+        }.get(
+            estado_llm,
+            "pending",
+        )
+
+        if frescor_llm == "stale":
+            estado_visual = "pending"
+        elif frescor_llm == "unavailable":
+            estado_visual = "unavailable"
+
+        self.modelo_status.setText(
+            rotulo_llm
+        )
+        self.modelo_status.setProperty(
+            "state",
+            estado_visual,
+        )
+        self.modelo_status.style().unpolish(
+            self.modelo_status
+        )
+        self.modelo_status.style().polish(
+            self.modelo_status
+        )
+
         download = _texto_metrica(
             sistema.get("download_mbps")
         )
@@ -3466,6 +3746,31 @@ class PaginaSistema(QWidget):
             self.resumo_valores[
                 chave
             ].setText("—")
+
+        for chave in self.recursos_valores:
+            self.recursos_valores[
+                chave
+            ].setText("—")
+            self.recursos_barras[
+                chave
+            ].setValue(0)
+
+        for valor in self.modelo_valores.values():
+            valor.setText("—")
+
+        self.modelo_status.setText(
+            "Aguardando runtime"
+        )
+        self.modelo_status.setProperty(
+            "state",
+            "pending",
+        )
+        self.modelo_status.style().unpolish(
+            self.modelo_status
+        )
+        self.modelo_status.style().polish(
+            self.modelo_status
+        )
 
         self.temperatura.setText(
             "Temperatura · —"

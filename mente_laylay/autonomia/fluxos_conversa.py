@@ -109,6 +109,7 @@ def usar_modo_rapido_conversa(
         "playlist", "arquivo", "pasta", "download", "chrome", "opera", "vscode",
         "janela", "aba", "tela cheia", "fullscreen", "youtube", "netflix",
         "música", "musica", "memória", "memoria", "lembra", "aprendeu",
+        "código", "codigo", "habilidade", "computador", "pc", "sistema",
         "foco", "maximiza", "maximizar", "fecha", "abre", "abre o", "abre a",
         "pausa", "despausa", "retoma", "proxima", "próxima", "anterior",
     ]
