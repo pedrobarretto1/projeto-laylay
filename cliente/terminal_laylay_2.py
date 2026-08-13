@@ -1310,7 +1310,7 @@ class JanelaLaylay(QMainWindow):
 
     def _estilizar(self) -> None:
             self.setStyleSheet(f"""
-                * {{ font-family: 'Segoe UI Variable', 'Segoe UI'; color: {PALETA['texto']}; font-size: 14px; }}
+                * {{ font-family: 'Comic Sans MS', 'Comic Sans'; color: {PALETA['texto']}; font-size: 14px; }}
                 #root, #mainSurface, QScrollArea, QScrollArea > QWidget > QWidget {{ background: {PALETA['fundo']}; }}
                 #sidebar {{ background: #11151A; border-right: 1px solid #2B3037; }}
                 #brand {{ font-size: 21px; font-weight: 700; }}
