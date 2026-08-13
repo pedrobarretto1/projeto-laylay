@@ -2341,6 +2341,217 @@ class JanelaLaylay(QMainWindow):
                 #voiceSurface {{ background: #172123; border: 1px solid #2F5559; border-radius: 10px; }}
                 #voiceDot {{ color: {PALETA['ciano']}; font-size: 17px; }}
                 #voiceText {{ color: #B7DCE0; }}
+
+/* =========================================
+   P10 — NOVA ABA SISTEMA
+   ========================================= */
+
+#systemPage {{
+    background: transparent;
+}}
+
+#systemHero {{
+    background: #10151A;
+    border: 1px solid #272E35;
+    border-radius: 14px;
+}}
+
+#systemHeroTitle {{
+    background: transparent;
+    border: 0;
+    color: #F7F3F5;
+    font-size: 24px;
+    font-weight: 720;
+}}
+
+#systemHeroDescription {{
+    background: transparent;
+    border: 0;
+    color: #8D949C;
+    font-size: 11px;
+}}
+
+#systemUpdated {{
+    background: transparent;
+    border: 0;
+    color: #777F88;
+    font-size: 9px;
+    padding: 4px 2px;
+}}
+
+#systemSectionCard {{
+    background: #11161B;
+    border: 1px solid #282F36;
+    border-radius: 13px;
+}}
+
+#systemSectionCard #dashboardCardTitle {{
+    color: #F0ECEE;
+    font-size: 13px;
+    font-weight: 700;
+}}
+
+#systemSectionCard #dashboardCardHint {{
+    background: transparent;
+    border: 0;
+    color: #68717A;
+    font-size: 8px;
+}}
+
+#systemSummaryRow {{
+    background: #151A1F;
+    border: 1px solid #232A31;
+    border-radius: 8px;
+}}
+
+#systemSummaryRow #dashboardMetricLabel {{
+    background: transparent;
+    border: 0;
+    padding: 7px 9px;
+    color: #8D949C;
+    font-size: 9px;
+    font-weight: 600;
+}}
+
+#systemSummaryRow #dashboardMetricValue {{
+    background: transparent;
+    border: 0;
+    padding: 7px 9px;
+    color: #F0ECEE;
+    font-size: 10px;
+    font-weight: 700;
+}}
+
+#systemSummarySeparator {{
+    background: #252C33;
+    border: 0;
+}}
+
+#systemSummarySensor {{
+    background: transparent;
+    border: 0;
+    padding: 2px 3px;
+    color: #BBB7BB;
+    font-size: 10px;
+}}
+
+#systemSummaryState {{
+    background: #171C21;
+    border: 1px solid #292F36;
+    border-radius: 8px;
+    padding: 8px 9px;
+    color: #777F88;
+    font-size: 8px;
+}}
+
+#systemSummaryState[state="ok"] {{
+    border-color: #315242;
+    color: #79CFA4;
+}}
+
+#systemSummaryState[state="partial"] {{
+    border-color: #51452F;
+    color: #C6A05E;
+}}
+
+#systemMetricCard {{
+    background: #151A1F;
+    border: 1px solid #282F36;
+    border-radius: 10px;
+    min-width: 125px;
+}}
+
+#systemMetricCard:hover {{
+    background: #181D22;
+    border-color: #40343A;
+}}
+
+#systemMetricTitle {{
+    background: transparent;
+    border: 0;
+    color: #AAAEB4;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#systemMetricValue {{
+    background: transparent;
+    border: 0;
+    color: #F4F0F2;
+    font-size: 15px;
+    font-weight: 720;
+}}
+
+#systemMetricProgress {{
+    background: #242A30;
+    border: 0;
+    border-radius: 2px;
+    min-height: 4px;
+    max-height: 4px;
+}}
+
+#systemMetricProgress::chunk {{
+    background: #D94C63;
+    border-radius: 2px;
+}}
+
+#systemMetricCard[metricTone="gpu"] #systemMetricProgress::chunk {{
+    background: #65B978;
+}}
+
+#systemMetricCard[metricTone="ram"] #systemMetricProgress::chunk {{
+    background: #D68A35;
+}}
+
+#systemMetricCard[metricTone="vram"] #systemMetricProgress::chunk {{
+    background: #9A58D2;
+}}
+
+#systemMetricCard[metricTone="network"] #systemMetricProgress::chunk {{
+    background: #48AFC0;
+}}
+
+#systemMetricCard[metricTone="disk"] #systemMetricProgress::chunk {{
+    background: #4F8CC9;
+}}
+
+#systemMetricSparkline {{
+    background: transparent;
+    border: 0;
+    color: #D94C63;
+    font-family: 'Cascadia Code';
+    font-size: 16px;
+}}
+
+#systemMetricCard[metricTone="gpu"] #systemMetricSparkline {{
+    color: #65B978;
+}}
+
+#systemMetricCard[metricTone="ram"] #systemMetricSparkline {{
+    color: #D68A35;
+}}
+
+#systemMetricCard[metricTone="vram"] #systemMetricSparkline {{
+    color: #9A58D2;
+}}
+
+#systemMetricCard[metricTone="network"] #systemMetricSparkline {{
+    color: #48AFC0;
+}}
+
+#systemMetricCard[metricTone="disk"] #systemMetricSparkline {{
+    color: #4F8CC9;
+}}
+
+#systemMetricFooter {{
+    background: #12171C;
+    border: 1px solid #252C33;
+    border-radius: 7px;
+    padding: 5px 7px;
+    color: #7EABB3;
+    font-size: 8px;
+}}
+
                 #pageTitle {{ font-size: 28px; font-weight: 650; }}
                 #pageDescription {{ color: {PALETA['secundario']}; font-size: 14px; max-width: 700px; }}
                 #sectionTitle {{ font-size: 17px; font-weight: 650; padding-top: 4px; }}

@@ -2962,113 +2962,541 @@ class PaginaMemoria(QWidget):
             cartao.hide()
 
 
+
+class MiniMetricaSistema(QFrame):
+    # Métrica compacta da página Sistema.
+
+    def __init__(
+        self,
+        titulo: str,
+        *,
+        destaque: str = "",
+    ) -> None:
+        super().__init__()
+        self.setObjectName("systemMetricCard")
+        if destaque:
+            self.setProperty(
+                "metricTone",
+                destaque,
+            )
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(
+            12, 11, 12, 10
+        )
+        layout.setSpacing(7)
+
+        topo = QHBoxLayout()
+        topo.setContentsMargins(0, 0, 0, 0)
+        topo.setSpacing(8)
+
+        self.titulo = QLabel(titulo)
+        self.titulo.setObjectName(
+            "systemMetricTitle"
+        )
+
+        self.valor = QLabel("—")
+        self.valor.setObjectName(
+            "systemMetricValue"
+        )
+        self.valor.setAlignment(
+            Qt.AlignRight | Qt.AlignVCenter
+        )
+
+        topo.addWidget(self.titulo)
+        topo.addStretch()
+        topo.addWidget(self.valor)
+
+        self.barra = QProgressBar()
+        self.barra.setObjectName(
+            "systemMetricProgress"
+        )
+        self.barra.setRange(0, 100)
+        self.barra.setValue(0)
+        self.barra.setTextVisible(False)
+
+        self.grafico = QLabel("—")
+        self.grafico.setObjectName(
+            "systemMetricSparkline"
+        )
+        self.grafico.setMinimumHeight(24)
+        self.grafico.setAlignment(
+            Qt.AlignLeft | Qt.AlignVCenter
+        )
+
+        self.rodape = QLabel("")
+        self.rodape.setObjectName(
+            "systemMetricFooter"
+        )
+        self.rodape.hide()
+
+        layout.addLayout(topo)
+        layout.addWidget(self.barra)
+        layout.addWidget(self.grafico)
+        layout.addWidget(self.rodape)
+
+    def definir_rodape(
+        self,
+        texto: str,
+    ) -> None:
+        texto = str(texto or "").strip()
+        self.rodape.setText(texto)
+        self.rodape.setVisible(bool(texto))
+
+
 class PaginaSistema(QWidget):
     def __init__(self) -> None:
         super().__init__()
-        self._historico: dict[str, deque[float]] = {
+        self.setObjectName("systemPage")
+
+        self._historico: dict[
+            str, deque[float]
+        ] = {
             chave: deque(maxlen=24)
-            for chave in ("cpu", "gpu", "ram", "vram", "network", "disk")
+            for chave in (
+                "cpu",
+                "gpu",
+                "ram",
+                "vram",
+                "network",
+                "disk",
+            )
         }
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(54, 36, 68, 46)
-        layout.setSpacing(12)
-        for widget in _cabecalho_pagina(
-            "Sistema",
-            "Métricas locais observadas em segundo plano, sem bloquear a conversa.",
-        ):
-            layout.addWidget(widget)
-        grade = QGridLayout()
-        self.valores: dict[str, QLabel] = {}
-        self.barras: dict[str, QProgressBar] = {}
-        self.graficos: dict[str, QLabel] = {}
-        for indice, (chave, titulo) in enumerate((
-            ("cpu", "CPU"), ("gpu", "GPU"), ("ram", "Memória RAM"),
-            ("vram", "Memória VRAM"), ("network", "Rede"),
+
+        externo = QVBoxLayout(self)
+        externo.setContentsMargins(
+            32, 24, 32, 30
+        )
+        externo.setSpacing(12)
+
+        # Cabeçalho.
+        cabecalho = QFrame()
+        cabecalho.setObjectName("systemHero")
+
+        hero_lay = QHBoxLayout(cabecalho)
+        hero_lay.setContentsMargins(
+            18, 14, 18, 14
+        )
+        hero_lay.setSpacing(12)
+
+        textos = QVBoxLayout()
+        textos.setContentsMargins(0, 0, 0, 0)
+        textos.setSpacing(2)
+
+        titulo = QLabel("Sistema ✦")
+        titulo.setObjectName(
+            "systemHeroTitle"
+        )
+
+        descricao = QLabel(
+            "Desempenho, recursos e estado "
+            "local da Laylay."
+        )
+        descricao.setObjectName(
+            "systemHeroDescription"
+        )
+
+        textos.addWidget(titulo)
+        textos.addWidget(descricao)
+
+        self.atualizacao = QLabel(
+            "Aguardando telemetria"
+        )
+        self.atualizacao.setObjectName(
+            "systemUpdated"
+        )
+        self.atualizacao.setAlignment(
+            Qt.AlignRight | Qt.AlignVCenter
+        )
+
+        hero_lay.addLayout(textos, 1)
+        hero_lay.addWidget(self.atualizacao)
+
+        externo.addWidget(cabecalho)
+
+        # Corpo: resumo + desempenho.
+        corpo = QHBoxLayout()
+        corpo.setContentsMargins(0, 0, 0, 0)
+        corpo.setSpacing(12)
+
+        self.resumo = CartaoDashboard(
+            "Resumo do sistema"
+        )
+        self.resumo.setObjectName(
+            "systemSectionCard"
+        )
+        self.resumo.setMinimumWidth(275)
+        self.resumo.setMaximumWidth(355)
+
+        self.resumo_valores: dict[
+            str, QLabel
+        ] = {}
+
+        for chave, rotulo in (
+            ("cpu", "CPU"),
+            ("gpu", "GPU"),
+            ("ram", "Memória RAM"),
+            ("vram", "Memória VRAM"),
             ("disk", "Disco"),
-        )):
-            cartao = CartaoDashboard(titulo)
-            valor = QLabel("—")
-            valor.setObjectName("pageTitle")
-            barra = QProgressBar()
-            barra.setRange(0, 100)
-            barra.setValue(0)
-            barra.setTextVisible(False)
-            grafico = QLabel("—")
-            grafico.setObjectName("systemSparkline")
-            cartao.layout_principal.addWidget(valor)
-            cartao.layout_principal.addWidget(barra)
-            cartao.layout_principal.addWidget(grafico)
-            if chave == "network":
-                self.rede_taxas = QLabel("↓ —  ·  ↑ —")
-                self.rede_taxas.setObjectName("dashboardEmpty")
-                cartao.layout_principal.addWidget(self.rede_taxas)
-            self.valores[chave] = valor
-            self.barras[chave] = barra
-            self.graficos[chave] = grafico
-            grade.addWidget(cartao, indice // 3, indice % 3)
-        layout.addLayout(grade)
-        detalhes = CartaoDashboard("Outros sensores")
-        self.temperatura = QLabel("Temperatura · —")
-        self.uptime = QLabel("Tempo ligado · —")
-        self.estado = QLabel("Aguardando telemetria")
-        self.estado.setObjectName("dashboardEmpty")
-        detalhes.layout_principal.addWidget(self.temperatura)
-        detalhes.layout_principal.addWidget(self.uptime)
-        detalhes.layout_principal.addWidget(self.estado)
-        layout.addWidget(detalhes)
-        layout.addStretch()
+            ("network", "Rede"),
+        ):
+            linha, valor = _linha_valor(
+                rotulo
+            )
+            linha.setObjectName(
+                "systemSummaryRow"
+            )
+            self.resumo.layout_principal.addWidget(
+                linha
+            )
+            self.resumo_valores[
+                chave
+            ] = valor
+
+        separador = QFrame()
+        separador.setObjectName(
+            "systemSummarySeparator"
+        )
+        separador.setFixedHeight(1)
+
+        self.resumo.layout_principal.addWidget(
+            separador
+        )
+
+        self.temperatura = QLabel(
+            "Temperatura · —"
+        )
+        self.temperatura.setObjectName(
+            "systemSummarySensor"
+        )
+
+        self.uptime = QLabel(
+            "Tempo ligado · —"
+        )
+        self.uptime.setObjectName(
+            "systemSummarySensor"
+        )
+
+        self.estado = QLabel(
+            "Aguardando telemetria"
+        )
+        self.estado.setObjectName(
+            "systemSummaryState"
+        )
+        self.estado.setWordWrap(True)
+
+        self.resumo.layout_principal.addWidget(
+            self.temperatura
+        )
+        self.resumo.layout_principal.addWidget(
+            self.uptime
+        )
+        self.resumo.layout_principal.addWidget(
+            self.estado
+        )
+        self.resumo.layout_principal.addStretch()
+
+        desempenho = CartaoDashboard(
+            "Desempenho em tempo real",
+            subtitulo="24 amostras",
+        )
+        desempenho.setObjectName(
+            "systemSectionCard"
+        )
+
+        grade = QGridLayout()
+        grade.setContentsMargins(0, 2, 0, 0)
+        grade.setHorizontalSpacing(8)
+        grade.setVerticalSpacing(8)
+
+        self.metricas: dict[
+            str, MiniMetricaSistema
+        ] = {}
+
+        definicoes = (
+            ("cpu", "CPU", "cpu"),
+            ("gpu", "GPU", "gpu"),
+            ("ram", "RAM", "ram"),
+            ("vram", "VRAM", "vram"),
+            ("network", "Rede", "network"),
+            ("disk", "Disco", "disk"),
+        )
+
+        for indice, (
+            chave,
+            titulo_metrica,
+            tom,
+        ) in enumerate(definicoes):
+            card = MiniMetricaSistema(
+                titulo_metrica,
+                destaque=tom,
+            )
+            self.metricas[chave] = card
+
+            grade.addWidget(
+                card,
+                indice // 3,
+                indice % 3,
+            )
+
+        desempenho.layout_principal.addLayout(
+            grade
+        )
+
+        self.valores = {
+            chave: card.valor
+            for chave, card
+            in self.metricas.items()
+        }
+        self.barras = {
+            chave: card.barra
+            for chave, card
+            in self.metricas.items()
+        }
+        self.graficos = {
+            chave: card.grafico
+            for chave, card
+            in self.metricas.items()
+        }
+
+        self.rede_taxas = self.metricas[
+            "network"
+        ].rodape
+
+        corpo.addWidget(self.resumo, 3)
+        corpo.addWidget(desempenho, 7)
+
+        externo.addLayout(corpo, 1)
 
     @staticmethod
-    def _sparkline(valores: deque[float]) -> str:
+    def _sparkline(
+        valores: deque[float],
+    ) -> str:
         blocos = "▁▂▃▄▅▆▇█"
-        return "".join(blocos[min(7, max(0, int(v / 12.5)))] for v in valores) or "—"
 
-    def aplicar_dashboard(self, dashboard: dict) -> None:
-        sistema = dashboard.get("system") if isinstance(dashboard.get("system"), dict) else {}
-        for chave, campo in (
+        return "".join(
+            blocos[
+                min(
+                    7,
+                    max(
+                        0,
+                        int(v / 12.5),
+                    ),
+                )
+            ]
+            for v in valores
+        ) or "—"
+
+    def aplicar_dashboard(
+        self,
+        dashboard: dict,
+    ) -> None:
+        sistema = (
+            dashboard.get("system")
+            if isinstance(
+                dashboard.get("system"),
+                dict,
+            )
+            else {}
+        )
+
+        campos = (
             ("cpu", "cpu_percent"),
             ("gpu", "gpu_percent"),
             ("ram", "ram_percent"),
             ("vram", "vram_percent"),
             ("network", "network_percent"),
             ("disk", "disk_percent"),
-        ):
-            metrica = sistema.get(campo) if isinstance(sistema.get(campo), dict) else {}
+        )
+
+        ausentes = 0
+
+        for chave, campo in campos:
+            metrica = (
+                sistema.get(campo)
+                if isinstance(
+                    sistema.get(campo),
+                    dict,
+                )
+                else {}
+            )
+
             valor = metrica.get("value")
+
             if valor is None:
-                self.valores[chave].setText("—")
-                self.barras[chave].setValue(0)
+                ausentes += 1
+
+                self.valores[
+                    chave
+                ].setText("—")
+                self.barras[
+                    chave
+                ].setValue(0)
+                self.graficos[
+                    chave
+                ].setText(
+                    self._sparkline(
+                        self._historico[chave]
+                    )
+                )
+                self.resumo_valores[
+                    chave
+                ].setText("—")
                 continue
-            numero = max(0.0, min(100.0, float(valor)))
-            if metrica.get("freshness") == "fresh":
-                self._historico[chave].append(numero)
-            sufixo = " · antigo" if metrica.get("freshness") == "stale" else ""
-            self.valores[chave].setText(f"{numero:.0f}%{sufixo}")
-            self.barras[chave].setValue(int(numero))
-            self.graficos[chave].setText(self._sparkline(self._historico[chave]))
-        download = _texto_metrica(sistema.get("download_mbps"))
-        upload = _texto_metrica(sistema.get("upload_mbps"))
-        self.rede_taxas.setText(f"↓ {download}  ·  ↑ {upload}")
+
+            numero = max(
+                0.0,
+                min(
+                    100.0,
+                    float(valor),
+                ),
+            )
+
+            freshness = str(
+                metrica.get("freshness")
+                or ""
+            )
+
+            if freshness == "fresh":
+                self._historico[
+                    chave
+                ].append(numero)
+
+            sufixo = (
+                " · antigo"
+                if freshness == "stale"
+                else ""
+            )
+
+            texto = (
+                f"{numero:.0f}%{sufixo}"
+            )
+
+            self.valores[
+                chave
+            ].setText(texto)
+            self.barras[
+                chave
+            ].setValue(int(numero))
+            self.graficos[
+                chave
+            ].setText(
+                self._sparkline(
+                    self._historico[chave]
+                )
+            )
+            self.resumo_valores[
+                chave
+            ].setText(texto)
+
+        download = _texto_metrica(
+            sistema.get("download_mbps")
+        )
+        upload = _texto_metrica(
+            sistema.get("upload_mbps")
+        )
+
+        self.metricas[
+            "network"
+        ].definir_rodape(
+            f"↓ {download}   ·   ↑ {upload}"
+        )
+
         self.temperatura.setText(
-            f"Temperatura · {_texto_metrica(sistema.get('temperature_c'))}"
+            "Temperatura · "
+            + _texto_metrica(
+                sistema.get(
+                    "temperature_c"
+                )
+            )
         )
+
         self.uptime.setText(
-            f"Tempo ligado · {_texto_metrica(sistema.get('uptime_seconds'), uptime=True)}"
+            "Tempo ligado · "
+            + _texto_metrica(
+                sistema.get(
+                    "uptime_seconds"
+                ),
+                uptime=True,
+            )
         )
-        self.estado.setText(
-            "Telemetria parcial; sensores ausentes aparecem como —."
-            if any(valor.text() == "—" for valor in self.valores.values())
-            else "Telemetria local atualizada."
+
+        if ausentes:
+            self.estado.setText(
+                "Telemetria parcial · sensores "
+                "ausentes aparecem como —."
+            )
+            self.estado.setProperty(
+                "state",
+                "partial",
+            )
+            self.atualizacao.setText(
+                "Atualização parcial"
+            )
+        else:
+            self.estado.setText(
+                "Sistema observado normalmente."
+            )
+            self.estado.setProperty(
+                "state",
+                "ok",
+            )
+            self.atualizacao.setText(
+                "Atualizado agora"
+            )
+
+        self.estado.style().unpolish(
+            self.estado
+        )
+        self.estado.style().polish(
+            self.estado
         )
 
     def invalidar(self) -> None:
         for chave in self.valores:
-            self.valores[chave].setText("—")
-            self.barras[chave].setValue(0)
-        self.temperatura.setText("Temperatura · —")
-        self.uptime.setText("Tempo ligado · —")
-        self.rede_taxas.setText("↓ —  ·  ↑ —")
-        self.estado.setText("Aguardando telemetria")
+            self.valores[
+                chave
+            ].setText("—")
+            self.barras[
+                chave
+            ].setValue(0)
+            self.graficos[
+                chave
+            ].setText("—")
+            self.resumo_valores[
+                chave
+            ].setText("—")
+
+        self.temperatura.setText(
+            "Temperatura · —"
+        )
+        self.uptime.setText(
+            "Tempo ligado · —"
+        )
+
+        self.metricas[
+            "network"
+        ].definir_rodape(
+            "↓ —   ·   ↑ —"
+        )
+
+        self.estado.setText(
+            "Aguardando telemetria"
+        )
+        self.estado.setProperty(
+            "state",
+            "pending",
+        )
+        self.atualizacao.setText(
+            "Aguardando telemetria"
+        )
+
+        self.estado.style().unpolish(
+            self.estado
+        )
+        self.estado.style().polish(
+            self.estado
+        )
 
 
 class PaginaModulo(QWidget):
