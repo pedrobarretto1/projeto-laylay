@@ -3268,7 +3268,7 @@ class PaginaSistema(QWidget):
         corpo.addWidget(self.resumo, 3)
         corpo.addWidget(desempenho, 7)
 
-        externo.addLayout(corpo, 3)
+        # P10.3: corpo será inserido na coluna principal.
 
         # P10.1 — Fase 3: Modelo local + armazenamento.
         linha_inferior = QHBoxLayout()
@@ -3431,10 +3431,8 @@ class PaginaSistema(QWidget):
             1,
         )
 
-        externo.addLayout(
-            linha_inferior,
-            2,
-        )
+        # P10.3: linha inferior será inserida
+        # na coluna principal ao final.
 
         # P10.2 — Fase 4: áudio, ações e alertas.
         fase4 = QHBoxLayout()
@@ -3658,22 +3656,279 @@ class PaginaSistema(QWidget):
 
         self.alertas_card.layout_principal.addStretch()
 
-        fase4.addWidget(
+        # P10.3 — Fase 5: workbench principal
+        # com uma lateral compacta à direita.
+        workbench = QHBoxLayout()
+        workbench.setObjectName(
+            "systemWorkbench"
+        )
+        workbench.setContentsMargins(
+            0, 0, 0, 0
+        )
+        workbench.setSpacing(12)
+
+        principal = QVBoxLayout()
+        principal.setObjectName(
+            "systemMainColumn"
+        )
+        principal.setContentsMargins(
+            0, 0, 0, 0
+        )
+        principal.setSpacing(12)
+
+        principal.addLayout(
+            corpo,
+            3,
+        )
+        principal.addLayout(
+            linha_inferior,
+            2,
+        )
+        principal.addWidget(
             self.audio_card,
+            2,
+        )
+
+        lateral = QVBoxLayout()
+        lateral.setObjectName(
+            "systemRightRail"
+        )
+        lateral.setContentsMargins(
+            0, 0, 0, 0
+        )
+        lateral.setSpacing(10)
+
+        # ----------------------------------------------
+        # Card Laylay
+        # ----------------------------------------------
+        self.laylay_card = CartaoDashboard(
+            "Laylay",
+            subtitulo="estado vivo",
+        )
+        self.laylay_card.setObjectName(
+            "systemLaylayCard"
+        )
+        self.laylay_card.setMinimumWidth(
+            220
+        )
+        self.laylay_card.setMaximumWidth(
+            270
+        )
+
+        self.laylay_status = QLabel(
+            "Aguardando estado"
+        )
+        self.laylay_status.setObjectName(
+            "systemLaylayStatus"
+        )
+        self.laylay_status.setProperty(
+            "state",
+            "unavailable",
+        )
+        self.laylay_card.layout_principal.addWidget(
+            self.laylay_status
+        )
+
+        self.laylay_valores: dict[
+            str, QLabel
+        ] = {}
+
+        for chave, rotulo in (
+            ("mind", "Mente"),
+            ("memory", "Memória"),
+            ("voice", "Voz"),
+            ("mode", "Interação"),
+        ):
+            linha, valor = _linha_valor(
+                rotulo
+            )
+            linha.setObjectName(
+                "systemLaylayRow"
+            )
+            self.laylay_card.layout_principal.addWidget(
+                linha
+            )
+            self.laylay_valores[
+                chave
+            ] = valor
+
+        self.laylay_pulso = QLabel(
+            "✦ aguardando dashboard"
+        )
+        self.laylay_pulso.setObjectName(
+            "systemLaylayPulse"
+        )
+        self.laylay_pulso.setWordWrap(
+            True
+        )
+        self.laylay_card.layout_principal.addWidget(
+            self.laylay_pulso
+        )
+
+        self.acoes_card.setMinimumWidth(
+            220
+        )
+        self.acoes_card.setMaximumWidth(
+            270
+        )
+        self.alertas_card.setMinimumWidth(
+            220
+        )
+        self.alertas_card.setMaximumWidth(
+            270
+        )
+
+        lateral.addWidget(
+            self.laylay_card
+        )
+        lateral.addWidget(
+            self.acoes_card
+        )
+        lateral.addWidget(
+            self.alertas_card
+        )
+        lateral.addStretch()
+
+        workbench.addLayout(
+            principal,
             1,
         )
-        fase4.addWidget(
-            self.acoes_card,
-            1,
-        )
-        fase4.addWidget(
-            self.alertas_card,
-            1,
+        workbench.addLayout(
+            lateral,
+            0,
         )
 
         externo.addLayout(
-            fase4,
-            2,
+            workbench,
+            1,
+        )
+
+    def _atualizar_status_laylay(
+        self,
+        saude: dict,
+    ) -> None:
+        llm = (
+            saude.get("llm")
+            if isinstance(
+                saude.get("llm"),
+                dict,
+            )
+            else {}
+        )
+        memoria = (
+            saude.get("memory")
+            if isinstance(
+                saude.get("memory"),
+                dict,
+            )
+            else {}
+        )
+        microfone = (
+            saude.get("microphone")
+            if isinstance(
+                saude.get("microphone"),
+                dict,
+            )
+            else {}
+        )
+
+        self.laylay_valores[
+            "mind"
+        ].setText(
+            str(
+                llm.get("label")
+                or "—"
+            )
+        )
+        self.laylay_valores[
+            "memory"
+        ].setText(
+            str(
+                memoria.get("label")
+                or "—"
+            )
+        )
+        self.laylay_valores[
+            "voice"
+        ].setText(
+            str(
+                microfone.get("label")
+                or "—"
+            )
+        )
+
+        criticos = 0
+        parciais = 0
+
+        for item in (
+            llm,
+            memoria,
+            microfone,
+        ):
+            estado_item = str(
+                item.get("state")
+                or "unavailable"
+            )
+            frescor_item = str(
+                item.get("freshness")
+                or "unavailable"
+            )
+
+            if (
+                estado_item
+                in {
+                    "unavailable",
+                    "degraded",
+                }
+                or frescor_item
+                == "unavailable"
+            ):
+                criticos += 1
+            elif frescor_item == "stale":
+                parciais += 1
+
+        if criticos:
+            self.laylay_status.setText(
+                "Operação parcial"
+            )
+            self.laylay_status.setProperty(
+                "state",
+                "partial",
+            )
+            self.laylay_pulso.setText(
+                "✦ alguns módulos não estão "
+                "confirmados agora"
+            )
+        elif parciais:
+            self.laylay_status.setText(
+                "Operacional · dados antigos"
+            )
+            self.laylay_status.setProperty(
+                "state",
+                "partial",
+            )
+            self.laylay_pulso.setText(
+                "✦ módulos ativos, aguardando "
+                "telemetria mais recente"
+            )
+        else:
+            self.laylay_status.setText(
+                "Operacional"
+            )
+            self.laylay_status.setProperty(
+                "state",
+                "ok",
+            )
+            self.laylay_pulso.setText(
+                "✦ mente, memória e voz "
+                "observadas"
+            )
+
+        self.laylay_status.style().unpolish(
+            self.laylay_status
+        )
+        self.laylay_status.style().polish(
+            self.laylay_status
         )
 
     def definir_estado_audio(
@@ -3687,6 +3942,14 @@ class PaginaSistema(QWidget):
         ).casefold()
 
         self.audio_valores[
+            "mode"
+        ].setText(
+            "Voz"
+            if modo == "voice"
+            else "Chat"
+        )
+
+        self.laylay_valores[
             "mode"
         ].setText(
             "Voz"
@@ -3941,6 +4204,10 @@ class PaginaSistema(QWidget):
             )
             else {}
         )
+        self._atualizar_status_laylay(
+            saude
+        )
+
         llm = (
             saude.get("llm")
             if isinstance(
@@ -4227,6 +4494,27 @@ class PaginaSistema(QWidget):
             self.resumo_valores[
                 chave
             ].setText("—")
+
+        self.laylay_status.setText(
+            "Aguardando estado"
+        )
+        self.laylay_status.setProperty(
+            "state",
+            "unavailable",
+        )
+        self.laylay_pulso.setText(
+            "✦ aguardando dashboard"
+        )
+
+        for valor in self.laylay_valores.values():
+            valor.setText("—")
+
+        self.laylay_status.style().unpolish(
+            self.laylay_status
+        )
+        self.laylay_status.style().polish(
+            self.laylay_status
+        )
 
         self.audio_status.setText(
             "Aguardando microfone"

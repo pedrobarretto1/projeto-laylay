@@ -2872,6 +2872,117 @@ QPushButton[systemQuickAction="true"]:pressed {{
     border-color: #4F402B;
     color: #C9A15E;
 }}
+
+/* =========================================
+   P10.3 — SISTEMA FASE 5 / RIGHT RAIL
+   ========================================= */
+
+#systemWorkbench {{
+    background: transparent;
+    border: 0;
+}}
+
+#systemMainColumn,
+#systemRightRail {{
+    background: transparent;
+    border: 0;
+}}
+
+#systemLaylayCard {{
+    background: #12161B;
+    border: 1px solid #60313B;
+    border-radius: 14px;
+}}
+
+#systemLaylayCard #dashboardCardTitle {{
+    color: #F4F0F2;
+    font-size: 14px;
+    font-weight: 720;
+}}
+
+#systemLaylayCard #dashboardCardHint {{
+    background: #2A1A20;
+    border: 1px solid #55303A;
+    border-radius: 7px;
+    padding: 3px 6px;
+    color: #E96379;
+    font-size: 8px;
+    font-weight: 700;
+}}
+
+#systemLaylayStatus {{
+    background: #17201C;
+    border: 1px solid #315442;
+    border-radius: 9px;
+    padding: 8px 9px;
+    color: #78CFA4;
+    font-size: 9px;
+    font-weight: 700;
+}}
+
+#systemLaylayStatus[state="partial"] {{
+    background: #201C16;
+    border-color: #59462A;
+    color: #D1A660;
+}}
+
+#systemLaylayStatus[state="unavailable"] {{
+    background: #17191C;
+    border-color: #292F36;
+    color: #747C84;
+}}
+
+#systemLaylayRow {{
+    background: #171C21;
+    border: 1px solid #292F36;
+    border-radius: 8px;
+}}
+
+#systemLaylayRow #dashboardMetricLabel {{
+    background: transparent;
+    border: 0;
+    padding: 6px 8px;
+    color: #818992;
+    font-size: 8px;
+    font-weight: 600;
+}}
+
+#systemLaylayRow #dashboardMetricValue {{
+    background: transparent;
+    border: 0;
+    padding: 6px 8px;
+    color: #ECE8EA;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#systemLaylayPulse {{
+    background: #181D22;
+    border: 1px solid #2B3239;
+    border-radius: 9px;
+    padding: 7px 9px;
+    color: #9BA2A9;
+    font-size: 8px;
+}}
+
+#systemRightRail #systemActionsCard,
+#systemRightRail #systemAlertsCard {{
+    background: #12171C;
+    border-color: #292F36;
+}}
+
+#systemRightRail QPushButton[systemQuickAction="true"] {{
+    min-height: 31px;
+    padding: 6px 9px;
+}}
+
+#systemRightRail #systemAlertItem {{
+    padding: 6px 8px;
+}}
+
+#systemMainColumn #systemAudioCard {{
+    min-height: 170px;
+}}
                 #pageTitle {{ font-size: 28px; font-weight: 650; }}
                 #pageDescription {{ color: {PALETA['secundario']}; font-size: 14px; max-width: 700px; }}
                 #sectionTitle {{ font-size: 17px; font-weight: 650; padding-top: 4px; }}

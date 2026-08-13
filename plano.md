@@ -100,3 +100,18 @@ Status: **planejada**
 
 Cada fase só será concluída após regressões focadas, compilação, Ruff e teste
 real pelo Terminal.
+
+## Progresso desta execução
+
+- P1 ligada ao `turno_atual`, ao catálogo vivo e às últimas falas do usuário.
+- Perguntas e hipóteses são consumidas antes da LLM sem criar comandos.
+- Pedidos diretos continuam fora da resposta de capacidade e seguem para o
+  roteador/executor oficial.
+- `seu código`, `sua memória`, `sua voz` e `suas habilidades` agora apontam
+  para a própria Laylay.
+- Prompt principal mantido abaixo de 5.000 caracteres e alinhado à identidade
+  operacional local.
+- Validação focada: 268 testes e 18 subtestes aprovados.
+- Suíte completa: 2.531 testes e 45 subtestes aprovados; restam 10 falhas já
+  concentradas nas alterações visuais em andamento do Terminal e da página de
+  música, fora desta fase de conversa/capacidades.
