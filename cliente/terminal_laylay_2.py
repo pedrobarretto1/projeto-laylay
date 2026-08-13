@@ -1385,11 +1385,11 @@ class JanelaLaylay(QMainWindow):
                 }}
 
                 #musicSessionAction[actionRole="utility"]:hover {{
-                    background: #1C2127;
+                    background: #291B21;
 
-                    border-color: #414850;
+                    border-color: #85404D;
 
-                    color: #E7E3E5;
+                    color: #FFF5F7;
                 }}
 
 
@@ -1407,11 +1407,11 @@ class JanelaLaylay(QMainWindow):
                 /* desabilitados */
 
                 #musicSessionAction:disabled {{
-                    background: #12171B;
+                    background: #15191E;
 
-                    border-color: #242A30;
+                    border-color: #2B2B31;
 
-                    color: #555C64;
+                    color: #686E76;
                 }}
 
                 #musicSessionAction[actionRole="future"]:disabled {{
