@@ -10,9 +10,9 @@ from __future__ import annotations
 from collections import deque
 import time
 
-from PySide6.QtCore import QSize, Qt, Signal, QTimer
+from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal, QTimer
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from PySide6.QtWidgets import (
     QBoxLayout,
@@ -2965,6 +2965,45 @@ class PaginaMemoria(QWidget):
 
 
 
+class RotuloElidido(QLabel):
+    """Rótulo de uma linha que preserva o conteúdo completo no tooltip."""
+
+    def __init__(self, texto: str = "") -> None:
+        super().__init__()
+        self._texto_completo = ""
+        self.setText(texto)
+
+    @property
+    def texto_completo(self) -> str:
+        return self._texto_completo
+
+    def setText(self, texto: str) -> None:  # noqa: N802 - contrato Qt
+        self._texto_completo = str(texto or "")
+        self._atualizar_texto_visivel()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 - contrato Qt
+        super().resizeEvent(event)
+        self._atualizar_texto_visivel()
+
+    def _atualizar_texto_visivel(self) -> None:
+        largura = max(0, self.contentsRect().width())
+        if largura <= 0:
+            QLabel.setText(self, self._texto_completo)
+            return
+
+        visivel = self.fontMetrics().elidedText(
+            self._texto_completo,
+            Qt.ElideRight,
+            largura,
+        )
+        QLabel.setText(self, visivel)
+        self.setToolTip(
+            self._texto_completo
+            if visivel != self._texto_completo
+            else ""
+        )
+
+
 class LinhaResumoSistema(QFrame):
     # Linha visual para uma especificação estática.
 
@@ -2979,20 +3018,16 @@ class LinhaResumoSistema(QFrame):
         )
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(
-            10, 7, 10, 7
-        )
-        layout.setSpacing(10)
+        layout.setContentsMargins(4, 2, 4, 2)
+        layout.setSpacing(5)
 
-        self.setMinimumHeight(50)
+        self.setFixedHeight(28)
 
         simbolo = QLabel(icone)
         simbolo.setObjectName(
             "systemSpecIcon"
         )
-        simbolo.setFixedSize(
-            28, 28
-        )
+        simbolo.setFixedSize(20, 20)
         simbolo.setAlignment(
             Qt.AlignCenter
         )
@@ -3001,28 +3036,43 @@ class LinhaResumoSistema(QFrame):
         nome.setObjectName(
             "systemSpecTitle"
         )
+        nome.setFixedWidth(105)
+        nome.setToolTip(titulo)
 
         textos = QVBoxLayout()
         textos.setContentsMargins(
             0, 0, 0, 0
         )
         textos.setSpacing(1)
+        textos.setAlignment(Qt.AlignVCenter)
 
-        self.valor = QLabel("—")
+        self.valor = RotuloElidido("—")
         self.valor.setObjectName(
             "systemSpecValue"
         )
-        self.valor.setWordWrap(True)
+        self.valor.setWordWrap(False)
+        self.valor.setFixedHeight(14)
+        self.valor.setMinimumWidth(0)
+        self.valor.setSizePolicy(
+            QSizePolicy.Ignored,
+            QSizePolicy.Fixed,
+        )
         self.valor.setAlignment(
             Qt.AlignRight
             | Qt.AlignVCenter
         )
 
-        self.detalhe = QLabel("")
+        self.detalhe = RotuloElidido("")
         self.detalhe.setObjectName(
             "systemSpecDetail"
         )
-        self.detalhe.setWordWrap(True)
+        self.detalhe.setWordWrap(False)
+        self.detalhe.setFixedHeight(11)
+        self.detalhe.setMinimumWidth(0)
+        self.detalhe.setSizePolicy(
+            QSizePolicy.Ignored,
+            QSizePolicy.Fixed,
+        )
         self.detalhe.setAlignment(
             Qt.AlignRight
             | Qt.AlignVCenter
@@ -3042,7 +3092,6 @@ class LinhaResumoSistema(QFrame):
         layout.addWidget(
             nome
         )
-        layout.addStretch()
         layout.addLayout(
             textos,
             1,
@@ -3068,6 +3117,12 @@ class LinhaResumoSistema(QFrame):
         )
         self.detalhe.setVisible(
             bool(detalhe)
+        )
+        # As linhas simples continuam compactas; quando há contexto secundário,
+        # quatro pixels extras por bloco evitam comprimir as duas baselines. O
+        # conjunto ainda cabe folgado na faixa de 326 px.
+        self.setFixedHeight(
+            38 if detalhe else 28
         )
 
 
@@ -3123,14 +3178,9 @@ class MiniMetricaSistema(QFrame):
         self.barra.setValue(0)
         self.barra.setTextVisible(False)
 
-        self.grafico = QLabel("—")
-        self.grafico.setObjectName(
-            "systemMetricSparkline"
-        )
-        self.grafico.setMinimumHeight(24)
-        self.grafico.setAlignment(
-            Qt.AlignLeft | Qt.AlignVCenter
-        )
+        self.grafico = GraficoMetricaSistema(destaque or "cpu")
+        self.grafico.setObjectName("systemMetricSparkline")
+        self.grafico.setMinimumHeight(42)
 
         self.rodape = QLabel("")
         self.rodape.setObjectName(
@@ -3150,6 +3200,152 @@ class MiniMetricaSistema(QFrame):
         texto = str(texto or "").strip()
         self.rodape.setText(texto)
         self.rodape.setVisible(bool(texto))
+
+
+class GraficoMetricaSistema(QWidget):
+    """Sparkline leve: desenha exclusivamente amostras observadas do dashboard."""
+
+    CORES = {
+        "cpu": "#EA4F67",
+        "ram": "#E38E31",
+        "gpu": "#63C878",
+        "vram": "#A65BE0",
+        "disk": "#58A1E3",
+        "network": "#43BDCA",
+        "temperature": "#E49B43",
+    }
+
+    def __init__(self, tom: str = "cpu", *, compacto: bool = False) -> None:
+        super().__init__()
+        self._tom = tom if tom in self.CORES else "cpu"
+        self._valores: tuple[float, ...] = ()
+        self._compacto = bool(compacto)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setMinimumSize(36, 18 if compacto else 38)
+
+    def definir(self, valores: object) -> None:
+        limpos: list[float] = []
+        for valor in tuple(valores or ())[-24:]:
+            try:
+                limpos.append(max(0.0, min(100.0, float(valor))))
+            except (TypeError, ValueError):
+                continue
+        self._valores = tuple(limpos)
+        self.update()
+
+    # Compatibilidade com o QLabel usado antes desta fase.
+    def setText(self, _texto: str) -> None:  # noqa: N802 - contrato Qt
+        if str(_texto or "").strip() == "—":
+            self._valores = ()
+            self.update()
+
+    def text(self) -> str:
+        return "" if self._valores else "—"
+
+    @property
+    def valores(self) -> tuple[float, ...]:
+        return self._valores
+
+    def paintEvent(self, event) -> None:  # noqa: N802 - contrato Qt
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        area = QRectF(self.rect()).adjusted(2.0, 3.0, -2.0, -3.0)
+        if area.width() <= 2 or area.height() <= 2:
+            return
+
+        painter.setPen(QPen(QColor("#28313A"), 1))
+        painter.drawLine(area.bottomLeft(), area.bottomRight())
+        if not self._valores:
+            painter.setPen(QColor("#66707A"))
+            painter.drawText(area, Qt.AlignCenter, "Aguardando leituras")
+            return
+
+        cor = QColor(self.CORES[self._tom])
+        valores = self._valores
+
+        if self._tom in {"ram", "vram"}:
+            quantidade = len(valores)
+            passo_barra = area.width() / max(1, quantidade)
+            largura_barra = max(2.0, min(8.0, passo_barra * 0.58))
+            gradiente_barras = QLinearGradient(0, area.top(), 0, area.bottom())
+            cor_topo_barras = QColor(cor)
+            cor_topo_barras.setAlpha(230)
+            cor_base_barras = QColor(cor)
+            cor_base_barras.setAlpha(72)
+            gradiente_barras.setColorAt(0.0, cor_topo_barras)
+            gradiente_barras.setColorAt(1.0, cor_base_barras)
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(gradiente_barras)
+            for indice, valor in enumerate(valores):
+                altura = max(1.5, (valor / 100.0) * area.height())
+                x = (
+                    area.left()
+                    + indice * passo_barra
+                    + (passo_barra - largura_barra) / 2
+                )
+                painter.drawRoundedRect(
+                    QRectF(
+                        x,
+                        area.bottom() - altura,
+                        largura_barra,
+                        altura,
+                    ),
+                    1.2,
+                    1.2,
+                )
+            return
+
+        passo = area.width() / max(1, len(valores) - 1)
+        pontos = [
+            QPointF(
+                area.left() + indice * passo,
+                area.bottom() - (valor / 100.0) * area.height(),
+            )
+            for indice, valor in enumerate(valores)
+        ]
+        if len(pontos) == 1:
+            pontos.insert(0, QPointF(area.left(), pontos[0].y()))
+
+        caminho = QPainterPath(pontos[0])
+        for ponto in pontos[1:]:
+            caminho.lineTo(ponto)
+
+        preenchimento = QPainterPath(caminho)
+        preenchimento.lineTo(pontos[-1].x(), area.bottom())
+        preenchimento.lineTo(pontos[0].x(), area.bottom())
+        preenchimento.closeSubpath()
+        gradiente = QLinearGradient(0, area.top(), 0, area.bottom())
+        cor_topo = QColor(cor)
+        cor_topo.setAlpha(74 if not self._compacto else 48)
+        cor_base = QColor(cor)
+        cor_base.setAlpha(3)
+        gradiente.setColorAt(0.0, cor_topo)
+        gradiente.setColorAt(1.0, cor_base)
+        painter.fillPath(preenchimento, gradiente)
+        painter.setPen(QPen(cor, 1.6 if not self._compacto else 1.2))
+        painter.drawPath(caminho)
+
+
+class LinhaMetricaCompacta(QFrame):
+    def __init__(self, titulo: str, tom: str) -> None:
+        super().__init__()
+        self.setObjectName("systemRailMetric")
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 2, 0, 2)
+        layout.setSpacing(7)
+        self.nome = QLabel(titulo)
+        self.nome.setObjectName("systemRailMetricName")
+        self.valor = QLabel("—")
+        self.valor.setObjectName("systemRailMetricValue")
+        self.valor.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.grafico = GraficoMetricaSistema(tom, compacto=True)
+        self.grafico.setFixedWidth(82)
+        layout.addWidget(self.nome)
+        layout.addStretch()
+        layout.addWidget(self.valor)
+        layout.addWidget(self.grafico)
 
 
 class PaginaSistema(QWidget):
@@ -3204,9 +3400,7 @@ class PaginaSistema(QWidget):
         externo = QVBoxLayout(
             self.conteudo
         )
-        externo.setContentsMargins(
-            24, 20, 24, 24
-        )
+        externo.setContentsMargins(9, 10, 9, 14)
         externo.setSpacing(12)
 
         # Cabeçalho.
@@ -3229,8 +3423,7 @@ class PaginaSistema(QWidget):
         )
 
         descricao = QLabel(
-            "Desempenho, recursos e estado "
-            "local da Laylay."
+            "Monitore desempenho, recursos e estado da Laylay."
         )
         descricao.setObjectName(
             "systemHeroDescription"
@@ -3272,11 +3465,12 @@ class PaginaSistema(QWidget):
             "summaryCard",
             True,
         )
-        self.resumo.setMinimumWidth(338)
-        self.resumo.setMaximumWidth(420)
+        self.resumo.setMinimumWidth(290)
+        self.resumo.setMaximumWidth(338)
         self.resumo.layout_principal.setSpacing(
             0
         )
+        self.resumo.layout_principal.setContentsMargins(10, 9, 10, 9)
 
         self.resumo_linhas: dict[
             str, LinhaResumoSistema
@@ -3305,11 +3499,14 @@ class PaginaSistema(QWidget):
 
         desempenho = CartaoDashboard(
             "Desempenho em tempo real",
-            subtitulo="24 amostras",
+            subtitulo="últimas 24 leituras",
         )
         desempenho.setObjectName(
-            "systemSectionCard"
+            "systemPerformanceCard"
         )
+        self.desempenho = desempenho
+        desempenho.setMinimumWidth(440)
+        desempenho.setMaximumWidth(460)
 
         grade = QGridLayout()
         grade.setContentsMargins(0, 2, 0, 0)
@@ -3362,6 +3559,18 @@ class PaginaSistema(QWidget):
             grade
         )
 
+        desempenho_rodape = QHBoxLayout()
+        desempenho_rodape.setContentsMargins(0, 2, 0, 0)
+        desempenho_rodape.setSpacing(12)
+        intervalo = QLabel("Intervalo  •  atualização do dashboard")
+        intervalo.setObjectName("systemPerformanceLegend")
+        legenda = QLabel("• Uso observado   • Sem estimativas")
+        legenda.setObjectName("systemPerformanceLegend")
+        desempenho_rodape.addWidget(intervalo)
+        desempenho_rodape.addStretch()
+        desempenho_rodape.addWidget(legenda)
+        desempenho.layout_principal.addLayout(desempenho_rodape)
+
         self.valores = {
             chave: card.valor
             for chave, card
@@ -3383,7 +3592,7 @@ class PaginaSistema(QWidget):
         ].rodape
 
         corpo.addWidget(self.resumo, 3)
-        corpo.addWidget(desempenho, 7)
+        corpo.addWidget(desempenho, 4)
 
         # P10.3: corpo será inserido na coluna principal.
 
@@ -3407,6 +3616,8 @@ class PaginaSistema(QWidget):
         self.modelo_local.setObjectName(
             "systemModelCard"
         )
+        self.modelo_local.setMinimumWidth(300)
+        self.modelo_local.setMaximumWidth(330)
 
         self.modelo_status = QLabel(
             "Aguardando runtime"
@@ -3447,6 +3658,35 @@ class PaginaSistema(QWidget):
             ] = valor
 
         self.modelo_local.layout_principal.addStretch()
+
+        # O modelo participa da faixa principal, como na referência. Campos de
+        # runtime ainda não publicados ficam explicitamente indisponíveis.
+        for chave, rotulo in (
+            ("tokens", "Tokens / s"),
+            ("latency", "Latência média"),
+            ("context", "Contexto atual"),
+            ("queue", "Fila de requisições"),
+        ):
+            linha, valor = _linha_valor(rotulo)
+            linha.setObjectName("systemModelRow")
+            self.modelo_local.layout_principal.insertWidget(
+                self.modelo_local.layout_principal.count() - 1,
+                linha,
+            )
+            valor.setText("—")
+            self.modelo_valores[chave] = valor
+
+        corpo.addWidget(self.modelo_local, 3)
+
+        for card_primeira_faixa in (
+            self.resumo,
+            desempenho,
+            self.modelo_local,
+        ):
+            card_primeira_faixa.setMinimumHeight(316)
+            card_primeira_faixa.setMaximumHeight(326)
+
+        self.resumo.setMaximumWidth(320)
 
         self.armazenamento = CartaoDashboard(
             "Armazenamento e memória",
@@ -3544,10 +3784,6 @@ class PaginaSistema(QWidget):
         self.armazenamento.layout_principal.addStretch()
 
         linha_inferior.addWidget(
-            self.modelo_local,
-            1,
-        )
-        linha_inferior.addWidget(
             self.armazenamento,
             1,
         )
@@ -3600,6 +3836,7 @@ class PaginaSistema(QWidget):
 
         for chave, rotulo in (
             ("health", "Microfone"),
+            ("output", "Saída de áudio"),
             ("mode", "Modo atual"),
             ("capture", "Captura de voz"),
             ("freshness", "Frescor"),
@@ -3672,6 +3909,55 @@ class PaginaSistema(QWidget):
         )
 
         # ----------------------------------------------
+        # Processos e módulos observados
+        # ----------------------------------------------
+        self.modulos_card = CartaoDashboard(
+            "Processos e módulos ativos",
+            subtitulo="saúde observada",
+        )
+        self.modulos_card.setObjectName("systemModulesCard")
+        cabecalho_modulos = QHBoxLayout()
+        for texto, proporcao in (
+            ("Módulo", 4), ("Status", 3), ("CPU", 1), ("RAM", 1), ("VRAM", 1),
+        ):
+            label = QLabel(texto)
+            label.setObjectName("systemTableHeader")
+            cabecalho_modulos.addWidget(label, proporcao)
+        self.modulos_card.layout_principal.addLayout(cabecalho_modulos)
+        self.modulos_valores: dict[str, dict[str, QLabel]] = {}
+        for chave, nome in (
+            ("llm", "Modelo local"),
+            ("memory", "Memória"),
+            ("microphone", "Microfone"),
+            ("system", "Telemetria"),
+        ):
+            linha = QFrame()
+            linha.setObjectName("systemModuleRow")
+            linha_lay = QHBoxLayout(linha)
+            linha_lay.setContentsMargins(8, 5, 8, 5)
+            linha_lay.setSpacing(6)
+            titulo_modulo = QLabel(nome)
+            titulo_modulo.setObjectName("systemModuleName")
+            estado_modulo = QLabel("Aguardando")
+            estado_modulo.setObjectName("systemModuleState")
+            estado_modulo.setProperty("state", "pending")
+            cpu = QLabel("—")
+            ram = QLabel("—")
+            vram = QLabel("—")
+            for valor in (cpu, ram, vram):
+                valor.setObjectName("systemModuleMetric")
+                valor.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            linha_lay.addWidget(titulo_modulo, 4)
+            linha_lay.addWidget(estado_modulo, 3)
+            linha_lay.addWidget(cpu, 1)
+            linha_lay.addWidget(ram, 1)
+            linha_lay.addWidget(vram, 1)
+            self.modulos_card.layout_principal.addWidget(linha)
+            self.modulos_valores[chave] = {
+                "state": estado_modulo, "cpu": cpu, "ram": ram, "vram": vram,
+            }
+
+        # ----------------------------------------------
         # Ações rápidas
         # ----------------------------------------------
         self.acoes_card = CartaoDashboard(
@@ -3690,6 +3976,10 @@ class PaginaSistema(QWidget):
                 or ""
             ).strip()
         ]
+
+        acoes_linha = QHBoxLayout()
+        acoes_linha.setContentsMargins(0, 0, 0, 0)
+        acoes_linha.setSpacing(8)
 
         for definicao in acoes_validas:
             acao_id = str(
@@ -3721,9 +4011,11 @@ class PaginaSistema(QWidget):
                     req,
                 )
             )
-            self.acoes_card.layout_principal.addWidget(
+            acoes_linha.addWidget(
                 botao
             )
+
+        self.acoes_card.layout_principal.addLayout(acoes_linha)
 
         acoes_hint = QLabel(
             "Esses botões enviam o mesmo pedido "
@@ -3782,6 +4074,68 @@ class PaginaSistema(QWidget):
 
         self.alertas_card.layout_principal.addStretch()
 
+        # ----------------------------------------------
+        # Eventos recentes (somente projeções existentes)
+        # ----------------------------------------------
+        self.eventos_card = CartaoDashboard(
+            "Eventos recentes",
+            subtitulo="observados pela mente",
+        )
+        self.eventos_card.setObjectName("systemEventsCard")
+        self.eventos_vazio = QLabel("Sem eventos observados nesta sessão.")
+        self.eventos_vazio.setObjectName("systemEventsEmpty")
+        self.eventos_card.layout_principal.addWidget(self.eventos_vazio)
+        self.eventos_itens: list[QLabel] = []
+        for _ in range(3):
+            evento = QLabel("")
+            evento.setObjectName("systemEventItem")
+            evento.setWordWrap(True)
+            evento.hide()
+            self.eventos_itens.append(evento)
+            self.eventos_card.layout_principal.addWidget(evento)
+        self.eventos_card.layout_principal.addStretch()
+
+        # ----------------------------------------------
+        # Resumo compacto do sistema no rail direito
+        # ----------------------------------------------
+        self.sistema_rail_card = CartaoDashboard(
+            "Sistema",
+            subtitulo="tempo real",
+        )
+        self.sistema_rail_card.setObjectName("systemCompactCard")
+        self.sistema_rail_card.layout_principal.setContentsMargins(10, 9, 10, 9)
+        self.sistema_rail_card.layout_principal.setSpacing(3)
+        self.rail_metricas: dict[str, LinhaMetricaCompacta] = {}
+        for chave, titulo, tom in (
+            ("cpu", "CPU", "cpu"),
+            ("ram", "RAM", "ram"),
+            ("gpu", "GPU", "gpu"),
+            ("vram", "VRAM", "vram"),
+            ("disk", "Disco", "disk"),
+            ("network", "Rede", "network"),
+            ("temperature", "Temp.", "temperature"),
+        ):
+            linha = LinhaMetricaCompacta(titulo, tom)
+            self.rail_metricas[chave] = linha
+            self.sistema_rail_card.layout_principal.addWidget(linha)
+
+        # Atalhos do rail são uma segunda projeção do mesmo contrato textual.
+        self.atalhos_rail_card = CartaoDashboard(
+            "Atalhos rápidos",
+            subtitulo="via mente",
+        )
+        self.atalhos_rail_card.setObjectName("systemRailActionsCard")
+        for definicao in acoes_validas:
+            acao_id = str(definicao.get("id") or "")
+            pedido = str(definicao.get("request") or "")
+            botao = QPushButton(str(definicao.get("label") or acao_id))
+            botao.setProperty("systemQuickAction", True)
+            botao.clicked.connect(
+                lambda _checked=False, aid=acao_id, req=pedido:
+                self.acao_solicitada.emit(aid, req)
+            )
+            self.atalhos_rail_card.layout_principal.addWidget(botao)
+
         # P10.3 — Fase 5: workbench principal
         # com uma lateral compacta à direita.
         self.system_workbench = QBoxLayout(
@@ -3805,18 +4159,36 @@ class PaginaSistema(QWidget):
         )
         principal.setSpacing(12)
 
-        principal.addLayout(
-            corpo,
-            3,
-        )
-        principal.addLayout(
-            linha_inferior,
-            2,
-        )
-        principal.addWidget(
+        # Faixa 1: resumo + gráficos + modelo.
+        principal.addLayout(corpo, 4)
+
+        # Faixa 2: entrada + módulos + armazenamento.
+        linha_inferior.insertWidget(0, self.audio_card, 3)
+        linha_inferior.insertWidget(1, self.modulos_card, 5)
+        for card_segunda_faixa in (
             self.audio_card,
-            2,
-        )
+            self.modulos_card,
+            self.armazenamento,
+        ):
+            card_segunda_faixa.layout_principal.setContentsMargins(10, 8, 10, 8)
+            card_segunda_faixa.layout_principal.setSpacing(4)
+            card_segunda_faixa.setMinimumHeight(215)
+            card_segunda_faixa.setMaximumHeight(225)
+        principal.addLayout(linha_inferior, 3)
+
+        # Faixa 3: comandos canônicos e eventos realmente projetados.
+        self.system_bottom_row = QBoxLayout(QBoxLayout.LeftToRight)
+        self.system_bottom_row.setObjectName("systemBottomRow")
+        self.system_bottom_row.setContentsMargins(0, 0, 0, 0)
+        self.system_bottom_row.setSpacing(12)
+        self.system_bottom_row.addWidget(self.acoes_card, 4)
+        self.system_bottom_row.addWidget(self.eventos_card, 6)
+        for card_terceira_faixa in (self.acoes_card, self.eventos_card):
+            card_terceira_faixa.layout_principal.setContentsMargins(10, 8, 10, 8)
+            card_terceira_faixa.layout_principal.setSpacing(5)
+            card_terceira_faixa.setMinimumHeight(128)
+            card_terceira_faixa.setMaximumHeight(140)
+        principal.addLayout(self.system_bottom_row, 2)
 
         lateral = QVBoxLayout()
         lateral.setObjectName(
@@ -3837,11 +4209,13 @@ class PaginaSistema(QWidget):
         self.laylay_card.setObjectName(
             "systemLaylayCard"
         )
+        self.laylay_card.layout_principal.setContentsMargins(10, 9, 10, 9)
+        self.laylay_card.layout_principal.setSpacing(4)
         self.laylay_card.setMinimumWidth(
-            236
+            244
         )
         self.laylay_card.setMaximumWidth(
-            296
+            280
         )
 
         self.laylay_status = QLabel(
@@ -3863,6 +4237,7 @@ class PaginaSistema(QWidget):
         ] = {}
 
         for chave, rotulo in (
+            ("model", "Modelo ativo"),
             ("mind", "Mente"),
             ("memory", "Memória"),
             ("voice", "Voz"),
@@ -3895,28 +4270,15 @@ class PaginaSistema(QWidget):
             self.laylay_pulso
         )
 
-        self.acoes_card.setMinimumWidth(
-            236
-        )
-        self.acoes_card.setMaximumWidth(
-            296
-        )
-        self.alertas_card.setMinimumWidth(
-            236
-        )
-        self.alertas_card.setMaximumWidth(
-            296
-        )
-
-        lateral.addWidget(
-            self.laylay_card
-        )
-        lateral.addWidget(
-            self.acoes_card
-        )
-        lateral.addWidget(
-            self.alertas_card
-        )
+        for card in (
+            self.sistema_rail_card,
+            self.laylay_card,
+            self.atalhos_rail_card,
+            self.alertas_card,
+        ):
+            card.setMinimumWidth(264)
+            card.setMaximumWidth(280)
+            lateral.addWidget(card)
         lateral.addStretch()
 
         workbench.addLayout(
@@ -3943,7 +4305,7 @@ class PaginaSistema(QWidget):
             self.width(),
         )
 
-        compacto = largura < 1480
+        compacto = largura < 1380
         muito_compacto = largura < 1220
 
         # Workbench geral:
@@ -3969,24 +4331,30 @@ class PaginaSistema(QWidget):
             if muito_compacto
             else QBoxLayout.LeftToRight
         )
+        self.system_bottom_row.setDirection(
+            QBoxLayout.TopToBottom
+            if muito_compacto
+            else QBoxLayout.LeftToRight
+        )
 
         if muito_compacto:
             self.resumo.setMinimumWidth(0)
             self.resumo.setMaximumWidth(16777215)
         else:
-            self.resumo.setMinimumWidth(338)
-            self.resumo.setMaximumWidth(420)
+            self.resumo.setMinimumWidth(290)
+            self.resumo.setMaximumWidth(320)
 
         if compacto:
             largura_rail_min = 0
             largura_rail_max = 16777215
         else:
-            largura_rail_min = 236
-            largura_rail_max = 296
+            largura_rail_min = 264
+            largura_rail_max = 280
 
         for card in (
+            self.sistema_rail_card,
             self.laylay_card,
-            self.acoes_card,
+            self.atalhos_rail_card,
             self.alertas_card,
         ):
             card.setMinimumWidth(
@@ -4316,13 +4684,9 @@ class PaginaSistema(QWidget):
                 self.barras[
                     chave
                 ].setValue(0)
-                self.graficos[
-                    chave
-                ].setText(
-                    self._sparkline(
-                        self._historico[chave]
-                    )
-                )
+                self.graficos[chave].definir(self._historico[chave])
+                self.rail_metricas[chave].valor.setText("—")
+                self.rail_metricas[chave].grafico.definir(self._historico[chave])
                 continue
 
             numero = max(
@@ -4359,13 +4723,9 @@ class PaginaSistema(QWidget):
             self.barras[
                 chave
             ].setValue(int(numero))
-            self.graficos[
-                chave
-            ].setText(
-                self._sparkline(
-                    self._historico[chave]
-                )
-            )
+            self.graficos[chave].definir(self._historico[chave])
+            self.rail_metricas[chave].valor.setText(texto)
+            self.rail_metricas[chave].grafico.definir(self._historico[chave])
 
         info_sistema = (
             sistema.get("info")
@@ -4425,6 +4785,29 @@ class PaginaSistema(QWidget):
                 )
             )
         )
+        temperatura_texto = _texto_metrica(sistema.get("temperature_c"))
+        self.rail_metricas["temperature"].valor.setText(temperatura_texto)
+        metrica_temperatura = (
+            sistema.get("temperature_c")
+            if isinstance(sistema.get("temperature_c"), dict)
+            else {}
+        )
+        if metrica_temperatura.get("value") is not None:
+            try:
+                temperatura_numero = max(
+                    0.0, min(100.0, float(metrica_temperatura["value"]))
+                )
+                if metrica_temperatura.get("freshness") == "fresh":
+                    historico_temperatura = getattr(
+                        self, "_historico_temperatura", deque(maxlen=24)
+                    )
+                    historico_temperatura.append(temperatura_numero)
+                    self._historico_temperatura = historico_temperatura
+            except (TypeError, ValueError):
+                pass
+        self.rail_metricas["temperature"].grafico.definir(
+            getattr(self, "_historico_temperatura", ())
+        )
 
         # P10.1 — replica somente métricas confirmadas
         # para o card de armazenamento/memória.
@@ -4477,6 +4860,21 @@ class PaginaSistema(QWidget):
                 dict,
             )
             else {}
+        )
+
+        musica = dashboard.get("music") if isinstance(dashboard.get("music"), dict) else {}
+        saida_audio = (
+            musica.get("audio_output")
+            if isinstance(musica.get("audio_output"), dict)
+            else {}
+        )
+        self.laylay_valores["model"].setText(
+            str(llm.get("model") or "—").strip() or "—"
+        )
+        self.audio_valores["output"].setText(
+            str(saida_audio.get("name") or "—")
+            if saida_audio.get("available") is True
+            else "—"
         )
 
         mic_estado = str(
@@ -4617,6 +5015,45 @@ class PaginaSistema(QWidget):
             self.modelo_status
         )
 
+        # A telemetria atual não expõe desempenho interno da LLM. Manter os
+        # campos visíveis, porém honestos, evita transformar ausência em zero.
+        for chave in ("tokens", "latency", "context", "queue"):
+            self.modelo_valores[chave].setText("—")
+
+        nomes_estado = {
+            "online": "Ativo", "ready": "Pronto", "paused": "Pausado",
+            "degraded": "Degradado", "unavailable": "Indisponível",
+        }
+        for chave_modulo in ("llm", "memory", "microphone"):
+            item = saude.get(chave_modulo) if isinstance(saude.get(chave_modulo), dict) else {}
+            label = self.modulos_valores[chave_modulo]["state"]
+            estado = str(item.get("state") or "unavailable")
+            label.setText(str(item.get("label") or nomes_estado.get(estado, "—")))
+            label.setProperty("state", estado)
+            label.style().unpolish(label)
+            label.style().polish(label)
+        telemetria = self.modulos_valores["system"]["state"]
+        telemetria.setText("Parcial" if ausentes else "Ativa")
+        telemetria.setProperty("state", "degraded" if ausentes else "online")
+        telemetria.style().unpolish(telemetria)
+        telemetria.style().polish(telemetria)
+
+        # Eventos são derivados apenas da lista pública já sanitizada.
+        eventos = [
+            item for item in list(dashboard.get("memory_recent") or ())[:3]
+            if isinstance(item, dict) and str(item.get("summary") or "").strip()
+        ]
+        self.eventos_vazio.setVisible(not eventos)
+        for indice, label in enumerate(self.eventos_itens):
+            if indice < len(eventos):
+                item = eventos[indice]
+                resumo = str(item.get("summary") or "").strip()
+                detalhe = str(item.get("detail") or "").strip()
+                label.setText(f"{resumo}\n{detalhe}" if detalhe else resumo)
+                label.show()
+            else:
+                label.hide()
+
         alertas: list[str] = []
 
         nomes_saude = {
@@ -4680,7 +5117,7 @@ class PaginaSistema(QWidget):
         self.metricas[
             "network"
         ].definir_rodape(
-            f"↓ {download}   ·   ↑ {upload}"
+            f"↓ {download}  ·  ↑ {upload}"
         )
 
         if ausentes:
@@ -4745,6 +5182,7 @@ class PaginaSistema(QWidget):
         self.audio_valores[
             "health"
         ].setText("—")
+        self.audio_valores["output"].setText("—")
         self.audio_valores[
             "freshness"
         ].setText("—")
@@ -4793,8 +5231,24 @@ class PaginaSistema(QWidget):
         self.metricas[
             "network"
         ].definir_rodape(
-            "↓ —   ·   ↑ —"
+            "↓ —  ·  ↑ —"
         )
+
+        for chave, linha in self.rail_metricas.items():
+            linha.valor.setText("—")
+            linha.grafico.definir(
+                getattr(self, "_historico_temperatura", ())
+                if chave == "temperature"
+                else self._historico.get(chave, ())
+            )
+
+        for valores in self.modulos_valores.values():
+            valores["state"].setText("Aguardando")
+            valores["state"].setProperty("state", "pending")
+
+        self.eventos_vazio.show()
+        for evento in self.eventos_itens:
+            evento.hide()
 
         self.atualizacao.setText(
             "Aguardando telemetria"

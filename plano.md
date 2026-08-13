@@ -56,13 +56,13 @@ Status: **implementada — aguardando teste real**
 
 ## P3 — Naturalidade e variedade segura
 
-Status: **planejada**
+Status: **implementada — aguardando teste real**
 
-- [ ] Separar fatos canônicos de capacidade da redação final.
-- [ ] Permitir variação de tom compatível com a personalidade sem alterar
+- [x] Separar fatos canônicos de capacidade da redação final.
+- [x] Permitir variação de tom compatível com a personalidade sem alterar
   disponibilidade, limites ou autorização.
-- [ ] Remover linguagem de arquitetura interna das respostas existentes.
-- [ ] Manter um fallback local natural para timeout ou JSON inválido.
+- [x] Remover linguagem de arquitetura interna das respostas existentes.
+- [x] Manter um fallback local natural para timeout ou JSON inválido.
 
 ## P4 — Idempotência do Terminal
 
@@ -160,3 +160,12 @@ real pelo Terminal.
   falhas restantes continuam concentradas no Terminal e nas mudanças visuais
   de música, sistema, GPU e rede que já estavam em edição, sem falha nova na
   conversa, no catálogo ou na decisão do turno.
+- P3 separou o catálogo factual da voz em `fala_capacidades.py`. Respostas de
+  identidade, presença local e catálogo geral agora alternam composição,
+  abertura, ordem e fechamento com memória curta antirrepetição, preservando
+  exatamente as mesmas capacidades e o mesmo limite de autorização.
+- A seleção variável foi exercitada cinco vezes seguidas (80 testes) e a
+  bateria vizinha de catálogo, decisão, contrato, diálogo, qualidade e voz
+  aprovou 192 testes.
+- Suíte completa após a P3: 2.550 testes e 45 subtestes aprovados; permanecem
+  as mesmas 11 falhas isoladas na interface em edição.

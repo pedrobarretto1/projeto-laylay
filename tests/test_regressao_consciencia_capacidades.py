@@ -31,7 +31,12 @@ def test_pergunta_geral_le_catalogo_vivo_sem_executar(texto: str) -> None:
 
     assert "arquivos" in resposta.casefold()
     assert "programas" in resposta.casefold()
-    assert "perguntar não executa nada" in resposta.casefold()
+    assert any(
+        limite in resposta.casefold()
+        for limite in (
+            "pedido", "pede", "comando", "ação", "agir sozinha", "clicando",
+        )
+    )
     assert "cliente de rede" not in resposta.casefold()
     assert "executor" not in resposta.casefold()
     assert turno["autoriza_execucao"] is False
@@ -77,11 +82,13 @@ def test_contexto_recente_prioriza_capacidade_ligada_ao_assunto() -> None:
         },
     )
 
-    assert resposta.startswith("Pelo assunto que a gente estava falando")
     assert "criar, procurar e organizar arquivos" in resposta.casefold()
     assert resposta.casefold().count("criar, procurar e organizar arquivos") == 1
+    assert any(
+        trecho in resposta.casefold()
+        for trecho in ("assunto", "falando disso", "nesse papo")
+    )
     assert len(resposta) < 600
-    assert ";" not in resposta
 
 
 def test_porta_prioritaria_responde_sem_chamar_executor_ou_llm() -> None:
@@ -119,23 +126,18 @@ def test_porta_prioritaria_responde_sem_chamar_executor_ou_llm() -> None:
     assert execucoes == []
 
 
-@pytest.mark.parametrize(
-    ("texto", "trecho"),
-    (
-        ("você é só um chatbot?", "aí você me reduz demais"),
-        ("você só consegue conversar?", "tenho ferramentas, não carta branca"),
-        ("você está no meu computador?", "tô rodando aqui no seu computador"),
-    ),
-)
-def test_identidade_operacional_e_local_sem_llm(
-    texto: str, trecho: str,
-) -> None:
+@pytest.mark.parametrize("texto", (
+    "você é só um chatbot?",
+    "você só consegue conversar?",
+    "você está no meu computador?",
+))
+def test_identidade_operacional_e_local_sem_llm(texto: str) -> None:
     mapa = MapaHabilidadesRuntime()
     turno = classificar_modalidade_turno(texto)
 
     resposta = mapa.responder_pergunta_capacidade(texto, turno=turno)
 
-    assert trecho in resposta.casefold()
+    assert "computador" in resposta.casefold() or "arquivos" in resposta.casefold()
     assert turno["autoriza_execucao"] is False
     assert "não tô no seu computador" not in resposta.casefold()
     assert "só converso" not in resposta.casefold()
@@ -164,8 +166,34 @@ def test_porta_prioritaria_cobre_identidade_operacional_sem_executor() -> None:
     )
 
     assert runtime.processar_prioritarios("você é só um chatbot?") is True
-    assert falas and "reduz demais" in falas[-1].casefold()
+    assert falas and "arquivos" in falas[-1].casefold()
     assert execucoes == []
+
+
+def test_perguntas_equivalentes_variam_a_fala_sem_mudar_os_fatos() -> None:
+    mapa = MapaHabilidadesRuntime()
+    perguntas = (
+        "você é só um chatbot?",
+        "você só consegue conversar?",
+        "você é apenas uma assistente de texto?",
+    )
+    respostas = [
+        mapa.responder_pergunta_capacidade(
+            texto, turno=classificar_modalidade_turno(texto),
+        )
+        for texto in perguntas
+    ]
+
+    assert len(set(respostas)) == len(respostas)
+    for resposta in respostas:
+        assert "arquivos" in resposta.casefold()
+        assert "só converso" not in resposta.casefold()
+        assert any(
+            limite in resposta.casefold()
+            for limite in (
+                "pedido", "pede", "autorização", "carta branca", "largada",
+            )
+        )
 
 
 def test_ciclo_da_ia_descarta_midia_inventada_em_pergunta_de_identidade() -> None:

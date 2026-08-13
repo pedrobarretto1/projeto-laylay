@@ -3214,9 +3214,7 @@ QScrollArea#systemScroll > QWidget > QWidget {{
     background: transparent;
     border: 0;
     border-bottom: 1px solid #252D35;
-    min-height: 52px;
-    padding-top: 2px;
-    padding-bottom: 2px;
+    padding: 0;
 }}
 
 #systemSpecIcon {{
@@ -3226,9 +3224,9 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         stop:1 #14191E
     );
     border: 1px solid #2D3540;
-    border-radius: 9px;
+    border-radius: 8px;
     color: #E7EAEE;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 800;
 }}
 
@@ -5146,6 +5144,129 @@ QScrollArea#systemScroll > QWidget > QWidget {{
                 QProgressBar {{ background: #15191E; border: 1px solid #30363E; border-radius: 4px; min-height: 7px; max-height: 7px; }}
                 QProgressBar::chunk {{ background: {PALETA['violeta']}; border-radius: 3px; }}
                 #systemSparkline {{ color: {PALETA['rosa']}; font-size: 18px; letter-spacing: 1px; }}
+
+                /* Sistema P5.1 — dashboard operacional denso */
+                #systemPageContent {{ background: #0C1116; }}
+                #systemHero {{
+                    background: #10161C;
+                    border: 1px solid #252E36;
+                    border-radius: 14px;
+                }}
+                #systemHeroTitle {{ font-size: 24px; font-weight: 760; color: #F7F3F5; }}
+                #systemHeroDescription {{ font-size: 11px; color: #A2A8AF; }}
+                #systemUpdated {{ font-size: 10px; color: #949BA3; }}
+
+                #systemPerformanceCard,
+                #systemModulesCard,
+                #systemEventsCard,
+                #systemCompactCard,
+                #systemRailActionsCard {{
+                    background: #11171C;
+                    border: 1px solid #283139;
+                    border-radius: 14px;
+                }}
+                #systemPerformanceCard #dashboardCardTitle,
+                #systemModulesCard #dashboardCardTitle,
+                #systemEventsCard #dashboardCardTitle,
+                #systemCompactCard #dashboardCardTitle,
+                #systemRailActionsCard #dashboardCardTitle {{
+                    color: #F3EFF1;
+                    font-size: 14px;
+                    font-weight: 740;
+                }}
+                #systemPerformanceCard #dashboardCardHint,
+                #systemModulesCard #dashboardCardHint,
+                #systemEventsCard #dashboardCardHint,
+                #systemCompactCard #dashboardCardHint,
+                #systemRailActionsCard #dashboardCardHint {{
+                    color: #737D86;
+                    font-size: 8px;
+                }}
+                #systemPerformanceLegend {{
+                    color: #78828B;
+                    font-size: 8px;
+                    background: transparent;
+                    border: 0;
+                }}
+                #systemMetricCard {{
+                    background: #151B21;
+                    border: 1px solid #29323B;
+                    border-radius: 10px;
+                    min-width: 96px;
+                    min-height: 104px;
+                }}
+                #systemMetricProgress {{ min-height: 3px; max-height: 3px; }}
+                #systemMetricSparkline {{ background: transparent; border: 0; }}
+
+                #systemModelCard {{ min-width: 300px; max-width: 330px; }}
+                #systemModelRow {{ min-height: 27px; }}
+                #systemModelRow #dashboardMetricLabel,
+                #systemModelRow #dashboardMetricValue {{ padding: 4px 7px; font-size: 9px; }}
+
+                #systemAudioCard {{ min-width: 220px; }}
+                #systemModulesCard {{ min-width: 340px; }}
+                #systemStorageCard {{ min-width: 250px; }}
+                #systemTableHeader {{
+                    color: #737C85;
+                    font-size: 8px;
+                    font-weight: 700;
+                    background: transparent;
+                    border: 0;
+                }}
+                #systemModuleRow {{
+                    background: #151B20;
+                    border: 1px solid #252E36;
+                    border-radius: 7px;
+                }}
+                #systemModuleName {{ color: #DBD8DA; font-size: 9px; font-weight: 650; }}
+                #systemModuleState {{ color: #879099; font-size: 8px; }}
+                #systemModuleState[state="online"], #systemModuleState[state="ready"] {{ color: #65C891; }}
+                #systemModuleState[state="degraded"] {{ color: #D6A04F; }}
+                #systemModuleState[state="unavailable"] {{ color: #C96573; }}
+                #systemModuleMetric {{ color: #747D85; font-size: 8px; }}
+
+                #systemBottomRow {{ background: transparent; border: 0; }}
+                #systemActionsCard {{ min-width: 300px; }}
+                #systemEventsEmpty {{
+                    color: #737C85;
+                    font-size: 9px;
+                    padding: 16px 8px;
+                }}
+                #systemEventItem {{
+                    background: #151B20;
+                    border: 1px solid #252E36;
+                    border-radius: 8px;
+                    color: #B7BDC3;
+                    font-size: 9px;
+                    padding: 6px 9px;
+                }}
+
+                #systemCompactCard,
+                #systemLaylayCard,
+                #systemRailActionsCard,
+                #systemAlertsCard {{ min-width: 264px; max-width: 280px; }}
+                #systemRailMetric {{ background: transparent; border: 0; min-height: 23px; }}
+                #systemRailMetricName {{ color: #B7BDC3; font-size: 9px; }}
+                #systemRailMetricValue {{ color: #F3EFF1; font-size: 9px; font-weight: 700; }}
+                #systemCompactCard #systemMetricSparkline {{ min-height: 18px; max-height: 23px; }}
+                #systemRailActionsCard QPushButton[systemQuickAction="true"] {{ min-height: 31px; }}
+
+                /* Sistema P5.2 — geometria de três faixas */
+                #systemAudioRow #dashboardMetricLabel,
+                #systemAudioRow #dashboardMetricValue {{ padding: 2px 5px; font-size: 8px; }}
+                #systemAudioStatus {{ padding: 4px 6px; font-size: 9px; }}
+                #systemAudioLevelHeader {{ min-height: 13px; max-height: 16px; }}
+                #systemStorageMetric {{ min-height: 35px; max-height: 40px; }}
+                #systemStorageHint {{ padding: 3px 6px; font-size: 8px; }}
+                #systemModuleRow {{ min-height: 24px; max-height: 28px; }}
+                #systemEventsEmpty {{ padding: 7px 6px; }}
+                #systemRailMetric {{ min-height: 17px; max-height: 19px; }}
+                #systemCompactCard #systemMetricSparkline {{ min-height: 14px; max-height: 17px; }}
+                #systemLaylayRow #dashboardMetricLabel,
+                #systemLaylayRow #dashboardMetricValue {{ padding: 3px 5px; font-size: 8px; }}
+                #systemLaylayStatus {{ padding: 4px 6px; }}
+                #systemLaylayPulse {{ padding: 3px 6px; font-size: 8px; }}
+
                 QScrollBar:vertical {{ background: transparent; width: 9px; margin: 2px; }}
                 QScrollBar::handle:vertical {{ background: #49424F; min-height: 32px; border-radius: 4px; }}
                 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
