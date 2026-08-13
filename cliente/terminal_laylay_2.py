@@ -1266,11 +1266,6 @@ class JanelaLaylay(QMainWindow):
                     font-weight: 700;
                 }}
 
-                #musicModuleHint {{
-                    color: #6F7780;
-
-                    font-size: 9px;
-                }}
                 #musicModuleHint {{ color: {PALETA['apagado']}; font-size: 10px; }}
                 #musicSideRail {{ background: transparent; min-width: 265px; max-width: 315px; }}
                 #musicSideLabel {{ color: {PALETA['secundario']}; font-size: 12px; }}
@@ -1297,62 +1292,91 @@ class JanelaLaylay(QMainWindow):
                 }}
                 #musicFutureButton {{ background: #191E23; border: 1px solid #303740; border-radius: 9px; padding: 10px 12px; color: #9298A1; text-align: left; font-size: 11px; }}
                 #musicFutureButton:hover {{ background: #241D22; border-color: #75404B; color: #E7E1E4; }}
+
                 #musicSessionAction {{
-                    background: #151A1F;
-                    border: 1px solid #30363E;
-                    border-radius: 19px;
-                    min-height: 38px;
-                    max-height: 38px;
-                    padding: 0 14px;
-                    color: #AEB4BC;
-                    font-size: 11px;
-                    font-weight: 550;
-                }}
+                background: #151A1F;
 
-                #musicSessionAction[actionRole="primary"] {{
-                    background: #191A20;
-                    border-color: #3D343A;
-                    color: #DDD8DB;
-                }}
+                border: 1px solid #30363E;
+                border-radius: 18px;
 
-                #musicSessionAction[actionRole="primary"]:hover {{
-                    background: #281B21;
-                    border-color: #85404D;
-                    color: #FFF5F7;
-                }}
+                min-height: 36px;
+                max-height: 36px;
 
-                #musicSessionAction[actionRole="utility"] {{
-                    background: #14191E;
-                    border-color: #2B3239;
-                }}
+                padding: 0 12px;
 
-                #musicSessionAction[actionRole="future"] {{
-                    background: transparent;
-                    border-color: #262C32;
-                    color: #555C64;
-                }}
+                color: #AEB4BC;
 
-                #musicSessionAction[actionRole="future"]:disabled {{
-                    background: transparent;
-                    color: #464D54;
-                    border-color: #22282D;
-                }}
-                #musicSessionAction {{
-                    background: #151A1F;
+                font-size: 10px;
+                font-weight: 550;
+            }}
 
-                    border: 1px solid #30363E;
-                    border-radius: 18px;
 
-                    min-height: 36px;
-                    max-height: 36px;
+            /* ações principais */
 
-                    padding: 0 12px;
+            #musicSessionAction[actionRole="primary"] {{
+                background: #19191E;
 
-                    color: #AEB4BC;
+                border-color: #3C3036;
 
-                    font-size: 10px;
-                    font-weight: 550;
-                }}
+                color: #DDD8DB;
+            }}
+
+            #musicSessionAction[actionRole="primary"]:hover {{
+                background: #291B21;
+
+                border-color: #85404D;
+
+                color: #FFF5F7;
+            }}
+
+
+            /* ações utilitárias */
+
+            #musicSessionAction[actionRole="utility"] {{
+                background: #151A1F;
+
+                border-color: #30363E;
+
+                color: #B7BDC5;
+            }}
+
+            #musicSessionAction[actionRole="utility"]:hover {{
+                background: #291B21;
+
+                border-color: #85404D;
+
+                color: #FFF5F7;
+            }}
+
+
+            /* ação futura */
+
+            #musicSessionAction[actionRole="future"] {{
+                background: transparent;
+
+                border-color: #252B31;
+
+                color: #555D65;
+            }}
+
+
+            /* indisponíveis */
+
+            #musicSessionAction:disabled {{
+                background: #15191E;
+
+                border-color: #2B2B31;
+
+                color: #686E76;
+            }}
+
+            #musicSessionAction[actionRole="future"]:disabled {{
+                background: transparent;
+
+                border-color: #21272D;
+
+                color: #454C53;
+            }}
 
 
                 /* principal */
@@ -1579,7 +1603,7 @@ class JanelaLaylay(QMainWindow):
                     border: 1px solid #4A2B34;
                     border-radius: 9px;
 
-                    padding: 10px 11px;
+                    padding: 8px 10px;
 
                     color: #E88A9A;
 
