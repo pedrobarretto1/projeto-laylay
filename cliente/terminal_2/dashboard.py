@@ -1009,7 +1009,10 @@ class PainelLateralDashboard(QWidget):
 
         for chave, rotulo in (
             ("cpu", "CPU"),
+            ("gpu", "GPU"),
             ("ram", "RAM"),
+            ("vram", "VRAM"),
+            ("rede", "Rede"),
             ("temperatura", "Temperatura"),
             ("disco", "Disco"),
         ):
@@ -2061,8 +2064,20 @@ class PainelLateralDashboard(QWidget):
                 sistema.get("cpu_percent"),
                 False,
             ),
+            "gpu": (
+                sistema.get("gpu_percent"),
+                False,
+            ),
             "ram": (
                 sistema.get("ram_percent"),
+                False,
+            ),
+            "vram": (
+                sistema.get("vram_percent"),
+                False,
+            ),
+            "rede": (
+                sistema.get("network_percent"),
                 False,
             ),
             "disco": (
@@ -2951,7 +2966,8 @@ class PaginaSistema(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self._historico: dict[str, deque[float]] = {
-            chave: deque(maxlen=24) for chave in ("cpu", "ram", "disk")
+            chave: deque(maxlen=24)
+            for chave in ("cpu", "gpu", "ram", "vram", "network", "disk")
         }
         layout = QVBoxLayout(self)
         layout.setContentsMargins(54, 36, 68, 46)
@@ -2966,7 +2982,9 @@ class PaginaSistema(QWidget):
         self.barras: dict[str, QProgressBar] = {}
         self.graficos: dict[str, QLabel] = {}
         for indice, (chave, titulo) in enumerate((
-            ("cpu", "CPU"), ("ram", "Memória RAM"), ("disk", "Disco"),
+            ("cpu", "CPU"), ("gpu", "GPU"), ("ram", "Memória RAM"),
+            ("vram", "Memória VRAM"), ("network", "Rede"),
+            ("disk", "Disco"),
         )):
             cartao = CartaoDashboard(titulo)
             valor = QLabel("—")
@@ -2980,10 +2998,14 @@ class PaginaSistema(QWidget):
             cartao.layout_principal.addWidget(valor)
             cartao.layout_principal.addWidget(barra)
             cartao.layout_principal.addWidget(grafico)
+            if chave == "network":
+                self.rede_taxas = QLabel("↓ —  ·  ↑ —")
+                self.rede_taxas.setObjectName("dashboardEmpty")
+                cartao.layout_principal.addWidget(self.rede_taxas)
             self.valores[chave] = valor
             self.barras[chave] = barra
             self.graficos[chave] = grafico
-            grade.addWidget(cartao, 0, indice)
+            grade.addWidget(cartao, indice // 3, indice % 3)
         layout.addLayout(grade)
         detalhes = CartaoDashboard("Outros sensores")
         self.temperatura = QLabel("Temperatura · —")
@@ -3003,7 +3025,14 @@ class PaginaSistema(QWidget):
 
     def aplicar_dashboard(self, dashboard: dict) -> None:
         sistema = dashboard.get("system") if isinstance(dashboard.get("system"), dict) else {}
-        for chave, campo in (("cpu", "cpu_percent"), ("ram", "ram_percent"), ("disk", "disk_percent")):
+        for chave, campo in (
+            ("cpu", "cpu_percent"),
+            ("gpu", "gpu_percent"),
+            ("ram", "ram_percent"),
+            ("vram", "vram_percent"),
+            ("network", "network_percent"),
+            ("disk", "disk_percent"),
+        ):
             metrica = sistema.get(campo) if isinstance(sistema.get(campo), dict) else {}
             valor = metrica.get("value")
             if valor is None:
@@ -3017,6 +3046,9 @@ class PaginaSistema(QWidget):
             self.valores[chave].setText(f"{numero:.0f}%{sufixo}")
             self.barras[chave].setValue(int(numero))
             self.graficos[chave].setText(self._sparkline(self._historico[chave]))
+        download = _texto_metrica(sistema.get("download_mbps"))
+        upload = _texto_metrica(sistema.get("upload_mbps"))
+        self.rede_taxas.setText(f"↓ {download}  ·  ↑ {upload}")
         self.temperatura.setText(
             f"Temperatura · {_texto_metrica(sistema.get('temperature_c'))}"
         )
@@ -3035,6 +3067,7 @@ class PaginaSistema(QWidget):
             self.barras[chave].setValue(0)
         self.temperatura.setText("Temperatura · —")
         self.uptime.setText("Tempo ligado · —")
+        self.rede_taxas.setText("↓ —  ·  ↑ —")
         self.estado.setText("Aguardando telemetria")
 
 

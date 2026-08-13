@@ -724,9 +724,29 @@ def sanitizar_dashboard_estado(
                 sistema.get("cpu_percent"), unidade="%", minimo=0, maximo=100,
                 max_age_s=5.0,
             ),
+            "gpu_percent": _metrica_dashboard(
+                sistema.get("gpu_percent"), unidade="%", minimo=0, maximo=100,
+                max_age_s=5.0,
+            ),
             "ram_percent": _metrica_dashboard(
                 sistema.get("ram_percent"), unidade="%", minimo=0, maximo=100,
                 max_age_s=5.0,
+            ),
+            "vram_percent": _metrica_dashboard(
+                sistema.get("vram_percent"), unidade="%", minimo=0, maximo=100,
+                max_age_s=5.0,
+            ),
+            "network_percent": _metrica_dashboard(
+                sistema.get("network_percent"), unidade="%", minimo=0,
+                maximo=100, max_age_s=5.0,
+            ),
+            "download_mbps": _metrica_dashboard(
+                sistema.get("download_mbps"), unidade="Mbps", minimo=0,
+                maximo=1_000_000, max_age_s=5.0,
+            ),
+            "upload_mbps": _metrica_dashboard(
+                sistema.get("upload_mbps"), unidade="Mbps", minimo=0,
+                maximo=1_000_000, max_age_s=5.0,
             ),
             "disk_percent": _metrica_dashboard(
                 sistema.get("disk_percent"), unidade="%", minimo=0, maximo=100,

@@ -165,7 +165,12 @@ def _retrato_inicial() -> dict[str, Any]:
         },
         "system": {
             "cpu_percent": _metrica_indisponivel("%", 5.0),
+            "gpu_percent": _metrica_indisponivel("%", 5.0),
             "ram_percent": _metrica_indisponivel("%", 5.0),
+            "vram_percent": _metrica_indisponivel("%", 5.0),
+            "network_percent": _metrica_indisponivel("%", 5.0),
+            "download_mbps": _metrica_indisponivel("Mbps", 5.0),
+            "upload_mbps": _metrica_indisponivel("Mbps", 5.0),
             "disk_percent": _metrica_indisponivel("%", 20.0),
             "temperature_c": _metrica_indisponivel("°C", 120.0),
             "uptime_seconds": _metrica_indisponivel("s", 20.0),
@@ -245,6 +250,8 @@ class DashboardTerminalRuntime:
         psutil_mod: Any,
         capacidade_getter: Callable[[str], Mapping[str, Any]] | None = None,
         temperatura_getter: Callable[[], Any] | None = None,
+        gpu_getter: Callable[[], Mapping[str, Any]] | None = None,
+        network_getter: Callable[[], Mapping[str, Any]] | None = None,
         musica_getter: Callable[[], Mapping[str, Any]] | None = None,
         playlists_getter: Callable[[], Sequence[Mapping[str, Any]]] | None = None,
         playlist_queue_getter: Callable[[], Sequence[Mapping[str, Any]]] | None = None,
@@ -272,6 +279,8 @@ class DashboardTerminalRuntime:
         self.capacidade_getter = capacidade_getter
         self.psutil = psutil_mod
         self.temperatura_getter = temperatura_getter
+        self.gpu_getter = gpu_getter
+        self.network_getter = network_getter
         self.musica_getter = musica_getter
         self.playlists_getter = playlists_getter
         self.playlist_queue_getter = playlist_queue_getter
@@ -1094,6 +1103,26 @@ class DashboardTerminalRuntime:
                 f"system_{chave}", getter, timeout_s=timeout_s,
             )
 
+        gpu: Mapping[str, Any] = {}
+        if callable(self.gpu_getter):
+            try:
+                resposta_gpu = limitada(
+                    "gpu", self.gpu_getter, timeout_s=0.45,
+                )
+                gpu = resposta_gpu if isinstance(resposta_gpu, Mapping) else {}
+            except Exception:
+                gpu = {}
+
+        rede: Mapping[str, Any] = {}
+        if callable(self.network_getter):
+            try:
+                resposta_rede = limitada(
+                    "network", self.network_getter, timeout_s=0.35,
+                )
+                rede = resposta_rede if isinstance(resposta_rede, Mapping) else {}
+            except Exception:
+                rede = {}
+
         return {
             "cpu_percent": self._metrica(
                 lambda: limitada(
@@ -1103,12 +1132,37 @@ class DashboardTerminalRuntime:
                 minimo=0, maximo=100, max_age_s=5,
                 anterior=anterior.get("cpu_percent"), agora=agora,
             ),
+            "gpu_percent": self._metrica(
+                lambda: gpu.get("gpu_percent"), unidade="%",
+                minimo=0, maximo=100, max_age_s=5,
+                anterior=anterior.get("gpu_percent"), agora=agora,
+            ),
             "ram_percent": self._metrica(
                 lambda: limitada(
                     "ram", lambda: self.psutil.virtual_memory().percent,
                 ), unidade="%",
                 minimo=0, maximo=100, max_age_s=5,
                 anterior=anterior.get("ram_percent"), agora=agora,
+            ),
+            "vram_percent": self._metrica(
+                lambda: gpu.get("vram_percent"), unidade="%",
+                minimo=0, maximo=100, max_age_s=5,
+                anterior=anterior.get("vram_percent"), agora=agora,
+            ),
+            "network_percent": self._metrica(
+                lambda: rede.get("network_percent"), unidade="%",
+                minimo=0, maximo=100, max_age_s=5,
+                anterior=anterior.get("network_percent"), agora=agora,
+            ),
+            "download_mbps": self._metrica(
+                lambda: rede.get("download_mbps"), unidade="Mbps",
+                minimo=0, maximo=1_000_000, max_age_s=5,
+                anterior=anterior.get("download_mbps"), agora=agora,
+            ),
+            "upload_mbps": self._metrica(
+                lambda: rede.get("upload_mbps"), unidade="Mbps",
+                minimo=0, maximo=1_000_000, max_age_s=5,
+                anterior=anterior.get("upload_mbps"), agora=agora,
             ),
             "disk_percent": self._metrica(
                 lambda: limitada(

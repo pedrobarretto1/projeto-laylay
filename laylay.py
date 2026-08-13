@@ -275,6 +275,12 @@ from mente_laylay.integracao.dashboard_terminal import (
 from mente_laylay.integracao.letras_lrclib import (
     criar_letras_lrclib_runtime as _criar_letras_lrclib_runtime,
 )
+from mente_laylay.percepcao.telemetria_gpu import (
+    criar_telemetria_gpu_runtime as _criar_telemetria_gpu_runtime,
+)
+from mente_laylay.percepcao.telemetria_rede import (
+    criar_telemetria_rede_runtime as _criar_telemetria_rede_runtime,
+)
 from mente_laylay.integracao.acoes_painel_runtime import (
     executar_acao_painel_tipado as _executar_acao_painel_tipado,
 )
@@ -3209,6 +3215,8 @@ def _solicitar_reinicio_aplicacao() -> bool:
 
 _configuracao_llm_ativa_dashboard = _configuracao_aplicacao_runtime.estado()
 _letras_lrclib_runtime = _criar_letras_lrclib_runtime(log=print)
+_telemetria_gpu_runtime = _criar_telemetria_gpu_runtime()
+_telemetria_rede_runtime = _criar_telemetria_rede_runtime(psutil_mod=psutil)
 _dashboard_terminal_runtime = _criar_dashboard_terminal_runtime(
     # Configurações salvas exigem reinício; o painel deve continuar mostrando
     # o provedor/modelo realmente carregado neste processo, não o próximo.
@@ -3239,6 +3247,8 @@ _dashboard_terminal_runtime = _criar_dashboard_terminal_runtime(
     volume_getter=lambda: obter_volume_sistema(log=lambda _mensagem: None),
     iot_getter=_registro_iot_runtime.retrato_para_mente,
     letras_getter=_letras_lrclib_runtime.snapshot,
+    gpu_getter=_telemetria_gpu_runtime.snapshot,
+    network_getter=_telemetria_rede_runtime.snapshot,
     psutil_mod=psutil,
     projeto="Laylay",
     cidade=BRIEFING_CIDADE,

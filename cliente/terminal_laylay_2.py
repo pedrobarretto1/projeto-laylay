@@ -1072,7 +1072,7 @@ class JanelaLaylay(QMainWindow):
         self._aplicar_sidebar()
         self._aplicar_responsividade()
 
-        # P9.3 — INICIALIZAÇÃO MODULAR CINEMATOGRÁFICA
+        # P9.6 — RITMO MODULAR MAIS RÁPIDO
         # Pequeno respiro antes de começar a carregar os módulos.
         self._preparar_animacao_inicio()
         QTimer.singleShot(
@@ -1625,84 +1625,84 @@ class JanelaLaylay(QMainWindow):
         self.selecionar_pagina("inicio")
 
 
-# =====================================================
-# P9.3 — INICIALIZAÇÃO MODULAR CINEMATOGRÁFICA
-# =====================================================
+    # =====================================================
+    # P9.3 — INICIALIZAÇÃO MODULAR CINEMATOGRÁFICA
+    # =====================================================
 
-def _preparar_animacao_inicio(self) -> None:
-    if self._reduzir_movimento:
-        return
+    def _preparar_animacao_inicio(self) -> None:
+        if self._reduzir_movimento:
+            return
 
-    self._etapas_inicio = (
-        ("Navegação", self.sidebar),
-        ("Chat", self.chat_surface),
-        ("Central Inteligente", self.central_inteligente),
-        ("Painel lateral", self.painel_lateral),
-        ("Barra superior", self.topbar),
-    )
-
-    self._efeitos_inicio = []
-
-    for nome, widget in self._etapas_inicio:
-        efeito = QGraphicsOpacityEffect(widget)
-        efeito.setOpacity(0.0)
-        widget.setGraphicsEffect(efeito)
-        self._efeitos_inicio.append(
-            (nome, widget, efeito)
+        self._etapas_inicio = (
+            ("Navegação", self.sidebar),
+            ("Chat", self.chat_surface),
+            ("Central Inteligente", self.central_inteligente),
+            ("Painel lateral", self.painel_lateral),
+            ("Barra superior", self.topbar),
         )
 
-    self._animacao_inicio_grupo = None
+        self._efeitos_inicio = []
 
-def _iniciar_animacao_inicio(self) -> None:
-    if self._reduzir_movimento:
-        return
+        for nome, widget in self._etapas_inicio:
+            efeito = QGraphicsOpacityEffect(widget)
+            efeito.setOpacity(0.05)
+            widget.setGraphicsEffect(efeito)
+            self._efeitos_inicio.append(
+                (nome, widget, efeito)
+            )
 
-    efeitos = getattr(
-        self,
-        "_efeitos_inicio",
-        None,
-    )
+        self._animacao_inicio_grupo = None
 
-    if not efeitos:
-        return
+    def _iniciar_animacao_inicio(self) -> None:
+        if self._reduzir_movimento:
+            return
 
-    grupo = QSequentialAnimationGroup(self)
-    self._animacao_inicio_grupo = grupo
-
-    for _nome, widget, efeito in efeitos:
-        animacao = QPropertyAnimation(
-            efeito,
-            b"opacity",
-            grupo,
+        efeitos = getattr(
+            self,
+            "_efeitos_inicio",
+            None,
         )
-        animacao.setDuration(3000)
-        animacao.setStartValue(0.0)
-        animacao.setEndValue(1.0)
-        animacao.setEasingCurve(
-            QEasingCurve.InOutSine
+
+        if not efeitos:
+            return
+
+        grupo = QSequentialAnimationGroup(self)
+        self._animacao_inicio_grupo = grupo
+
+        for _nome, widget, efeito in efeitos:
+            animacao = QPropertyAnimation(
+                efeito,
+                b"opacity",
+                grupo,
+            )
+            animacao.setDuration(1000)
+            animacao.setStartValue(0.05)
+            animacao.setEndValue(1.0)
+            animacao.setEasingCurve(
+                QEasingCurve.InOutCubic
+            )
+            grupo.addAnimation(animacao)
+
+        def finalizar_inicio() -> None:
+            for _nome, widget, efeito in list(
+                self._efeitos_inicio
+            ):
+                efeito.setOpacity(1.0)
+
+                if widget.graphicsEffect() is efeito:
+                    widget.setGraphicsEffect(None)
+
+            self._efeitos_inicio.clear()
+
+            if self._animacao_inicio_grupo is grupo:
+                self._animacao_inicio_grupo = None
+
+            grupo.deleteLater()
+
+        grupo.finished.connect(
+            finalizar_inicio
         )
-        grupo.addAnimation(animacao)
-
-    def finalizar_inicio() -> None:
-        for _nome, widget, efeito in list(
-            self._efeitos_inicio
-        ):
-            efeito.setOpacity(1.0)
-
-            if widget.graphicsEffect() is efeito:
-                widget.setGraphicsEffect(None)
-
-        self._efeitos_inicio.clear()
-
-        if self._animacao_inicio_grupo is grupo:
-            self._animacao_inicio_grupo = None
-
-        grupo.deleteLater()
-
-    grupo.finished.connect(
-        finalizar_inicio
-    )
-    grupo.start()
+        grupo.start()
 
     def _atalhos(self) -> None:
         QShortcut(QKeySequence("Ctrl+L"), self, activated=self.composer.editor.setFocus)

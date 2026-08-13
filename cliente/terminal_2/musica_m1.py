@@ -1299,7 +1299,10 @@ class PaginaMusicaM1(QWidget):
 
         metricas = (
             ("cpu_percent", "CPU"),
+            ("gpu_percent", "GPU"),
             ("ram_percent", "RAM"),
+            ("vram_percent", "VRAM"),
+            ("network_percent", "Rede"),
             ("temperature_c", "Temperatura"),
             ("disk_percent", "Disco"),
         )

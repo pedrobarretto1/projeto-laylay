@@ -830,7 +830,11 @@ def test_ui_aplica_dashboard_real_e_invalida_telemetria_na_queda(monkeypatch) ->
     assert janela.painel_lateral.metricas["temperatura"].text() == "—"
     assert janela.painel_lateral.metricas["uptime"].text() == "1d 1h"
     assert janela.central_inteligente.contexto_valores["jogo"].text() == "Minecraft"
-    assert "Você prefere rock" in janela.central_inteligente.memoria_estado.text()
+    assert not janela.central_inteligente.memoria_estado.isVisible()
+    assert (
+        janela.central_inteligente.memoria_linhas[0]["summary"].text()
+        == "Você prefere rock"
+    )
 
     worker.conectado.emit(False)
     app.processEvents()

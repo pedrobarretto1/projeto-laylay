@@ -102,7 +102,9 @@ def test_m1_aplica_player_sistema_e_rotina_reais(monkeypatch) -> None:
     assert pagina.acoes_sessao["Pausar"].isEnabled()
     assert pagina.sistema_valores["cpu_percent"].text() == "18%"
     assert pagina.sistema_valores["temperature_c"].text() == "—"
-    assert pagina.rotinas_estado.text() == "• Dormir · 23:30"
+    assert not pagina.rotinas_estado.isVisible()
+    assert pagina.rotinas_linhas[0]["name"].text() == "Dormir"
+    assert pagina.rotinas_linhas[0]["time"].text() == "23:30"
     pagina.close()
     app.processEvents()
 
@@ -155,7 +157,8 @@ def test_m2_exibe_fila_e_catalogo_reais_e_envia_playlist_pela_mente(
 
     assert pagina.fila_linhas[0]["title"].text() == "Reflexos de Neon"
     assert pagina.fila_linhas[0]["duration"].text() == "3:12"
-    assert pagina.preset_botoes[0].text() == "Anime\n42 faixas"
+    assert pagina.preset_botoes[0].titulo.text() == "Anime"
+    assert pagina.preset_botoes[0].quantidade.text() == "42 faixas"
     assert pagina.preset_botoes[0].isEnabled()
     pagina.preset_botoes[0].click()
 
