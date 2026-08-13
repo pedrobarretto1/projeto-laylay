@@ -337,18 +337,122 @@ class PainelCentralInteligente(QFrame):
 
         layout.addWidget(memoria)
 
-        atividade = CartaoDashboard("Atividade recente")
-        atividade.setProperty(
-        "centralSection",
-        True,
+        # =========================================================
+        # ATIVIDADE RECENTE
+        # =========================================================
+        atividade = CartaoDashboard(
+            "Atividade recente"
         )
-        self.atividade_itens = QLabel("Tudo quieto nesta sessão.")
-        self.atividade_itens.setObjectName("dashboardActivity")
-        self.atividade_itens.setWordWrap(True)
-        atividade.layout_principal.addWidget(self.atividade_itens)
-        layout.addWidget(atividade)
+
+        atividade.setProperty(
+            "centralSection",
+            True,
+        )
+
+        atividade.layout_principal.setContentsMargins(
+            2, 8, 2, 6
+        )
+        atividade.layout_principal.setSpacing(5)
+
+
+        # Estado vazio
+        self.atividade_estado = QLabel(
+            "Tudo quieto nesta sessão."
+        )
+        self.atividade_estado.setObjectName(
+            "activityRecentEmpty"
+        )
+        self.atividade_estado.setWordWrap(True)
+
+        atividade.layout_principal.addWidget(
+            self.atividade_estado
+        )
+
+
+        # Mantém compatibilidade com qualquer referência antiga
+        self.atividade_itens = self.atividade_estado
+
+
+        # Até três eventos recentes
+        self.atividade_linhas: list[
+            dict[str, object]
+        ] = []
+
+        for _ in range(3):
+            linha = QFrame()
+            linha.setObjectName(
+                "activityRecentRow"
+            )
+            linha.hide()
+
+            linha_layout = QHBoxLayout(
+                linha
+            )
+            linha_layout.setContentsMargins(
+                9, 7, 9, 7
+            )
+            linha_layout.setSpacing(8)
+
+            ponto = QLabel("●")
+            ponto.setObjectName(
+                "activityRecentDot"
+            )
+            ponto.setAlignment(
+                Qt.AlignCenter
+            )
+            ponto.setFixedWidth(12)
+
+            texto = QLabel("Evento")
+            texto.setObjectName(
+                "activityRecentText"
+            )
+            texto.setWordWrap(True)
+
+            horario = QLabel("—")
+            horario.setObjectName(
+                "activityRecentTime"
+            )
+            horario.setAlignment(
+                Qt.AlignRight | Qt.AlignVCenter
+            )
+
+            linha_layout.addWidget(
+                ponto
+            )
+            linha_layout.addWidget(
+                texto,
+                1,
+            )
+            linha_layout.addWidget(
+                horario
+            )
+
+            atividade.layout_principal.addWidget(
+                linha
+            )
+
+            self.atividade_linhas.append({
+                "widget": linha,
+                "dot": ponto,
+                "text": texto,
+                "time": horario,
+            })
+
+
+        layout.addWidget(
+            atividade
+        )
+
         layout.addStretch()
-        self._eventos: deque[str] = deque(maxlen=3)
+
+
+        # horário + descrição do evento
+        self._eventos: deque[
+            tuple[str, str]
+        ] = deque(
+            maxlen=3
+        )
+
         self.definir_conectada(False)
 
     def definir_conectada(self, conectada: bool) -> None:
@@ -436,13 +540,70 @@ class PainelCentralInteligente(QFrame):
         if destino is not None:
             destino.setText(str(valor or "—"))
 
-    def registrar_evento(self, titulo: str) -> None:
-        titulo = str(titulo or "").strip()
+    def registrar_evento(
+        self,
+        titulo: str,
+    ) -> None:
+        titulo = str(
+            titulo or ""
+        ).strip()
+
         if not titulo:
             return
-        if not self._eventos or self._eventos[-1] != titulo:
-            self._eventos.append(titulo)
-        self.atividade_itens.setText("\n".join(f"• {item}" for item in self._eventos))
+
+        # Evita repetir o mesmo evento consecutivamente
+        if (
+            self._eventos
+            and self._eventos[-1][1] == titulo
+        ):
+            return
+
+        horario = time.strftime(
+            "%H:%M"
+        )
+
+        self._eventos.append(
+            (
+                horario,
+                titulo,
+            )
+        )
+
+        self._renderizar_atividade()
+
+    def _renderizar_atividade(
+        self,
+    ) -> None:
+        eventos = list(
+            reversed(self._eventos)
+        )
+
+        self.atividade_estado.setVisible(
+            not bool(eventos)
+        )
+
+        for indice, linha in enumerate(
+            self.atividade_linhas
+        ):
+            widget = linha["widget"]
+
+            if indice >= len(eventos):
+                widget.hide()
+                continue
+
+            horario, titulo = eventos[
+                indice
+            ]
+
+            linha["text"].setText(
+                titulo
+            )
+
+            linha["time"].setText(
+                horario
+            )
+
+            widget.show()
 
     def aplicar_dashboard(self, dashboard: dict) -> None:
         contexto = dashboard.get("context")

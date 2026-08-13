@@ -2422,6 +2422,80 @@ class JanelaLaylay(QMainWindow):
                 font-size: 8px;
             }}
 
+            /* =========================================
+            ATIVIDADE RECENTE
+            ========================================= */
+
+            #activityRecentEmpty {{
+                background: #171C21;
+
+                border: 1px solid #282F36;
+                border-radius: 9px;
+
+                padding: 8px 10px;
+
+                color: #747C85;
+
+                font-size: 9px;
+            }}
+
+
+            /* evento */
+
+            #activityRecentRow {{
+                background: #171C21;
+
+                border: 1px solid #282F36;
+                border-radius: 8px;
+            }}
+
+            #activityRecentRow:hover {{
+                background: #1C2127;
+
+                border-color: #3A343A;
+            }}
+
+
+            /* ponto */
+
+            #activityRecentDot {{
+                background: transparent;
+                border: 0;
+
+                color: #C64E62;
+
+                font-size: 7px;
+            }}
+
+
+            /* texto */
+
+            #activityRecentText {{
+                background: transparent;
+                border: 0;
+
+                color: #D5D1D4;
+
+                font-size: 9px;
+                font-weight: 550;
+            }}
+
+
+            /* horário */
+
+            #activityRecentTime {{
+                background: #20252B;
+
+                border: 0;
+                border-radius: 6px;
+
+                padding: 2px 5px;
+
+                color: #777F88;
+
+                font-size: 8px;
+            }}
+
                 #musicSystemBar {{ background: #252B32; border: 0; border-radius: 3px; min-height: 6px; max-height: 6px; }}
                 #musicSystemBar::chunk {{ background: #C64257; border-radius: 3px; }}
                 #musicSystemBar[available="false"]::chunk {{ background: #343A41; }}
