@@ -135,6 +135,25 @@ def test_comando_json_da_ia_e_bloqueado_em_conversa() -> None:
     assert "não autorizou" in resultado["rejeitados"][0]["motivo"]
 
 
+def test_comando_de_midia_e_bloqueado_em_pergunta_de_identidade() -> None:
+    texto = "você é só um chatbot?"
+    turno = classificar_modalidade_turno(texto)
+    plano = planejar_turno(texto, turno=turno, mente={})
+    resultado = filtrar_comandos_pelo_turno(
+        [{"intent": "MEDIA_CONTROL", "params": {"acao": "play"}}],
+        turno=turno,
+        plano=plano,
+        retrato={},
+    )
+
+    assert resultado["comandos"] == []
+    assert resultado["autoriza_execucao"] is False
+    assert resultado["rejeitados"] == [{
+        "intent": "MEDIA_CONTROL",
+        "motivo": "turno não autorizou execução",
+    }]
+
+
 def test_comando_json_continua_permitido_em_pedido_explicito() -> None:
     turno = _turno("comando", autoriza=True)
     plano = planejar_turno("abre o YouTube", turno=turno, mente={})

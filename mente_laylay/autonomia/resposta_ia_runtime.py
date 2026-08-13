@@ -492,6 +492,27 @@ class RespostaIARuntime:
                 else str(resposta.get("fala") or _get(ctx, "fallback_fala", "Tô por aqui."))
             )
             comandos = list(resposta.get("comandos") or [])
+            # A decisão capturada no começo deste turno é a autoridade. Uma
+            # resposta da LLM (ou um fallback contaminado por outro assunto)
+            # nunca pode anexar comandos a uma pergunta/conversa que não
+            # autorizou execução. A validação canônica abaixo continua sendo
+            # aplicada aos turnos operacionais autorizados.
+            if (
+                comandos
+                and isinstance(turno, dict)
+                and "autoriza_execucao" in turno
+                and not bool(turno.get("autoriza_execucao"))
+            ):
+                intents_bloqueados = [
+                    str(item.get("intent") or item.get("acao") or "").strip().upper()
+                    for item in comandos
+                    if isinstance(item, dict)
+                ]
+                self._log(
+                    "🛡️ [DONO DO TURNO] comandos descartados antes do plano | "
+                    f"motivo=turno_sem_autorizacao intents={intents_bloqueados}"
+                )
+                comandos = []
             tipo_interacao = str(resposta.get("tipo_interacao") or "")
             emocao_resposta = str(resposta.get("emocao") or "").strip().lower()
             try:

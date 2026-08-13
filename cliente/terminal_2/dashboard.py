@@ -2980,16 +2980,18 @@ class LinhaResumoSistema(QFrame):
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(
-            8, 6, 8, 6
+            10, 7, 10, 7
         )
-        layout.setSpacing(8)
+        layout.setSpacing(10)
+
+        self.setMinimumHeight(50)
 
         simbolo = QLabel(icone)
         simbolo.setObjectName(
             "systemSpecIcon"
         )
         simbolo.setFixedSize(
-            24, 24
+            28, 28
         )
         simbolo.setAlignment(
             Qt.AlignCenter
@@ -3270,8 +3272,8 @@ class PaginaSistema(QWidget):
             "summaryCard",
             True,
         )
-        self.resumo.setMinimumWidth(315)
-        self.resumo.setMaximumWidth(390)
+        self.resumo.setMinimumWidth(338)
+        self.resumo.setMaximumWidth(420)
         self.resumo.layout_principal.setSpacing(
             0
         )
@@ -3281,14 +3283,14 @@ class PaginaSistema(QWidget):
         ] = {}
 
         for chave, icone, rotulo in (
-            ("os", "⊞", "Sistema operacional"),
-            ("cpu", "◉", "CPU"),
-            ("gpu", "▱", "GPU"),
-            ("ram", "▤", "RAM"),
-            ("vram", "▧", "VRAM"),
-            ("disk", "▰", "Disco principal"),
-            ("uptime", "◷", "Uptime"),
-            ("temperature", "♨", "Temperatura média"),
+            ("os", "🪟", "Sistema operacional"),
+            ("cpu", "🧠", "CPU"),
+            ("gpu", "🖥", "GPU"),
+            ("ram", "💾", "RAM"),
+            ("vram", "🎮", "VRAM"),
+            ("disk", "🗄", "Disco principal"),
+            ("uptime", "⏱", "Uptime"),
+            ("temperature", "🌡", "Temperatura média"),
         ):
             linha = LinhaResumoSistema(
                 icone,
@@ -3336,6 +3338,18 @@ class PaginaSistema(QWidget):
                 titulo_metrica,
                 destaque=tom,
             )
+
+            card.setProperty("metricKey", chave)
+
+            try:
+
+                card.barra.setObjectName("dashboardMetricBar")
+
+                card.barra.setProperty("metricKey", chave)
+
+            except Exception:
+
+                pass
             self.metricas[chave] = card
 
             grade.addWidget(
@@ -3960,8 +3974,8 @@ class PaginaSistema(QWidget):
             self.resumo.setMinimumWidth(0)
             self.resumo.setMaximumWidth(16777215)
         else:
-            self.resumo.setMinimumWidth(315)
-            self.resumo.setMaximumWidth(390)
+            self.resumo.setMinimumWidth(338)
+            self.resumo.setMaximumWidth(420)
 
         if compacto:
             largura_rail_min = 0

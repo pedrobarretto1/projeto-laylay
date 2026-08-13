@@ -49,6 +49,10 @@ Status: **implementada — aguardando teste real**
 - [x] Rejeitar contradições como “não estou no seu PC”, “sou só um chatbot” e
   “só consigo conversar” quando o catálogo vivo provar o contrário.
 - [x] Reparar a fala de forma natural e curta, sem acrescentar execução.
+- [x] Cobrir as variações naturais `você é só um chatbot?`, `você está no meu
+  computador?` e `você só consegue conversar?` antes da LLM.
+- [x] Bloquear no ciclo principal qualquer comando anexado a um turno que não
+  autorizou execução, mesmo se o preparador ou um estado concorrente falhar.
 
 ## P3 — Naturalidade e variedade segura
 
@@ -143,3 +147,16 @@ real pelo Terminal.
   quando não existe evidência de disponibilidade.
 - Validação da P2: 142 testes focados e vizinhos aprovados, além da suíte
   completa com as mesmas 10 falhas visuais já isoladas.
+- O primeiro teste real da P2 revelou três variações que ainda escapavam para a
+  LLM e uma contaminação grave: uma pergunta sobre identidade recebeu um
+  `MEDIA_CONTROL` no plano. As três perguntas agora têm resposta local baseada
+  no catálogo e o turno congelado descarta comandos quando não há autorização.
+- As negações coloquiais `não tô no seu computador` e `só converso` também
+  passaram a ser rejeitadas pelo contrato quando capacidades locais foram
+  comprovadas.
+- Regressão focada após o teste real: 68 testes aprovados; bateria vizinha de
+  decisão, composição, comunicação e voz: 178 testes aprovados.
+- Suíte completa após o reforço: 2.549 testes e 45 subtestes aprovados. As 11
+  falhas restantes continuam concentradas no Terminal e nas mudanças visuais
+  de música, sistema, GPU e rede que já estavam em edição, sem falha nova na
+  conversa, no catálogo ou na decisão do turno.

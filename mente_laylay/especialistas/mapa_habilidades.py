@@ -14,6 +14,10 @@ from threading import RLock
 from typing import Any, Callable, Mapping
 
 from mente_laylay.especialistas.capacidades import CAPACIDADES, consultar_capacidade
+from mente_laylay.personalidade.fala_capacidades import (
+    falar_capacidades_gerais,
+    falar_identidade_operacional,
+)
 
 
 _DESCRICAO_DOMINIO = {
@@ -204,6 +208,12 @@ def _texto_pergunta_capacidade(texto: str) -> bool:
     if any(frase in t for frase in _PEDIDO_CAPACIDADES):
         return True
     return bool(re.search(
+        r"\b(?:voce|laylay|lay)\s+(?:e|eh)\s+(?:so|apenas)\s+"
+        r"(?:(?:um|uma)\s+)?(?:chatbot|ia|assistente)(?:\s+de\s+texto)?\b|"
+        r"\b(?:voce|laylay|lay)\s+(?:esta|fica|roda|funciona)\s+"
+        r"(?:no|dentro\s+do)\s+(?:meu|seu)\s+(?:pc|computador)\b|"
+        r"\b(?:voce|laylay|lay)\s+(?:so|apenas)\s+"
+        r"(?:consegue|pode|sabe)\s+(?:conversar|responder|falar)\b|"
         r"\b(?:voce|laylay|lay)\s+(?:consegue|pode|sabe|e capaz)\b|"
         r"^(?:e\s+|mas\s+|entao\s+)?se eu\s+"
         r"(?:pedir|mandar|falar|disser)(?:\s+(?:para|pra)\s+voce)?\b|"
@@ -212,6 +222,18 @@ def _texto_pergunta_capacidade(texto: str) -> bool:
         r"\b(?:voce|laylay|lay)\s+mexe\s+(?:no|na|em)\b",
         t,
     ))
+
+
+def _capacidades_praticas(mapa: Mapping[str, Any], limite: int = 3) -> list[str]:
+    dominios = dict(mapa.get("dominios") or {})
+    rotulos = [
+        rotulo
+        for dominio, rotulo in _ROTULO_CAPACIDADE_NATURAL.items()
+        if dominio != "conversa"
+        and str(dominios.get(dominio, {}).get("estado") or "")
+        in {"disponivel", "parcial", "degradado"}
+    ][:max(1, int(limite))]
+    return rotulos
 
 
 def _contexto_conversacional_texto(contexto: Mapping[str, Any] | None) -> str:
@@ -576,6 +598,32 @@ class MapaHabilidadesRuntime:
         )
         if not disponivel:
             return "Essa habilidade não está disponível nesta instalação agora."
+        capacidades_praticas = _capacidades_praticas(mapa)
+        if re.search(
+            r"\b(?:voce|laylay|lay)\s+(?:esta|fica|roda|funciona)\s+"
+            r"(?:no|dentro\s+do)\s+(?:meu|seu)\s+(?:pc|computador)\b",
+            t,
+        ):
+            if not capacidades_praticas:
+                return "Tô rodando aqui no seu computador, mas as habilidades práticas estão indisponíveis agora."
+            return falar_identidade_operacional(
+                "presenca_local", capacidades_praticas, contexto=contexto,
+            )
+        if re.search(
+            r"\b(?:voce|laylay|lay)\s+(?:e|eh)\s+(?:so|apenas)\s+"
+            r"(?:(?:um|uma)\s+)?(?:chatbot|ia|assistente)(?:\s+de\s+texto)?\b|"
+            r"\b(?:voce|laylay|lay)\s+(?:so|apenas)\s+"
+            r"(?:consegue|pode|sabe)\s+(?:conversar|responder|falar)\b",
+            t,
+        ):
+            if not capacidades_praticas:
+                return (
+                    "Conversar é a parte disponível agora; minhas habilidades práticas "
+                    "estão indisponíveis nesta instalação."
+                )
+            return falar_identidade_operacional(
+                "nao_so_chat", capacidades_praticas, contexto=contexto,
+            )
         pergunta_geral = any(frase in t for frase in _PEDIDO_CAPACIDADES)
         if pergunta_geral:
             dominios_vivos = dict(mapa.get("dominios") or {})
@@ -608,25 +656,14 @@ class MapaHabilidadesRuntime:
                 item for item in itens if item not in rotulos_relacionados
             ]
             principais = itens_complementares[:4] if relacionados else itens[:5]
-            if len(principais) == 1:
-                lista = principais[0]
-            else:
-                lista = ", ".join(principais[:-1]) + " e " + principais[-1]
-            complemento = (
-                " Tenho outras habilidades menores também. Se você perguntar por uma, "
-                "eu confiro como ela está agora."
-                if len(itens) > len(principais)
-                else ""
-            )
-            abertura = (
-                "Pelo assunto que a gente estava falando, eu começaria por "
-                f"{', '.join(_ROTULO_CAPACIDADE_NATURAL[item] for item in relacionados[:2])}. "
-                if relacionados
-                else ""
-            )
-            return (
-                f"{abertura}No geral, consigo {lista}."
-                f"{complemento} Eu só mexo de verdade quando você pede. Perguntar não executa nada."
+            return falar_capacidades_gerais(
+                principais,
+                relacionadas=[
+                    _ROTULO_CAPACIDADE_NATURAL[item]
+                    for item in relacionados[:2]
+                ],
+                tem_outras=len(itens) > len(principais),
+                contexto=contexto,
             )
         if "arquivos" in dominios and re.search(
             r"\b(?:cri|faz|mont)\w*\b.*\b(?:arquivo|pasta)\b|"

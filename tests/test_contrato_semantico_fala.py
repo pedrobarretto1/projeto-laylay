@@ -306,7 +306,9 @@ def test_catalogo_vivo_bloqueia_negacao_da_identidade_operacional() -> None:
     contradicoes = (
         "Sou só um chatbot.",
         "Só consigo conversar e responder perguntas.",
+        "Só converso, mas posso tentar ajudar.",
         "Não estou no seu computador.",
+        "Não tô no seu computador, mas tô aqui.",
         "Não tenho acesso ao seu PC.",
     )
     for fala in contradicoes:

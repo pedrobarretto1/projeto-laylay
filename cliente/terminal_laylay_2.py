@@ -3199,55 +3199,311 @@ QScrollArea#systemScroll > QWidget > QWidget {{
     padding-bottom: 4px;
 }}
 
+
 /* =========================================
-   P10.5 — RESUMO COM ESPECIFICAÇÕES REAIS
+   P10.6 — REFINO VISUAL DA ABA SISTEMA
    ========================================= */
+
+#systemSectionCard[summaryCard="true"] {{
+    background: #11161B;
+    border: 1px solid #2B3239;
+    border-radius: 16px;
+}}
 
 #systemSpecRow {{
     background: transparent;
     border: 0;
-    border-bottom: 1px solid #252C33;
-    min-height: 42px;
+    border-bottom: 1px solid #252D35;
+    min-height: 52px;
+    padding-top: 2px;
+    padding-bottom: 2px;
 }}
 
 #systemSpecIcon {{
-    background: #171C21;
-    border: 1px solid #2A3138;
-    border-radius: 7px;
-    color: #AEB5BC;
-    font-size: 12px;
-    font-weight: 700;
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 #191F25,
+        stop:1 #14191E
+    );
+    border: 1px solid #2D3540;
+    border-radius: 9px;
+    color: #E7EAEE;
+    font-size: 15px;
+    font-weight: 800;
 }}
 
 #systemSpecTitle {{
     background: transparent;
     border: 0;
-    color: #9BA2AA;
-    font-size: 9px;
-    font-weight: 650;
+    color: #C2C8CF;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
 }}
 
 #systemSpecValue {{
     background: transparent;
     border: 0;
-    color: #F2EEF0;
-    font-size: 10px;
-    font-weight: 720;
+    color: #F6F7FA;
+    font-size: 11px;
+    font-weight: 760;
+    line-height: 1.15em;
 }}
 
 #systemSpecDetail {{
     background: transparent;
     border: 0;
-    color: #777F88;
-    font-size: 8px;
-    font-weight: 600;
+    color: #8A939D;
+    font-size: 9px;
+    font-weight: 650;
+    line-height: 1.15em;
 }}
 
-#systemSectionCard[summaryCard="true"] {{
-    background: #11161B;
-    border: 1px solid #282F36;
-    border-radius: 14px;
+#dashboardCardTitle {{
+    color: #F4F0F2;
+    font-size: 13px;
+    font-weight: 780;
+    letter-spacing: 0.15px;
 }}
+
+#dashboardCardDetail,
+#dashboardCardMeta,
+#dashboardSectionMeta {{
+    color: #7C858F;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#dashboardInfoRow,
+#dashboardMetricCard,
+#dashboardListRow,
+#dashboardActionRow {{
+    border-radius: 13px;
+}}
+
+#dashboardMetricCard {{
+    min-height: 116px;
+    padding: 2px;
+}}
+
+#dashboardMetricLabel,
+#dashboardSmallLabel,
+#dashboardInfoLabel {{
+    color: #AEB4BC;
+    font-size: 9px;
+    font-weight: 700;
+}}
+
+#dashboardMetricValue,
+#dashboardSmallValue,
+#dashboardInfoValue {{
+    color: #F5F7FA;
+    font-size: 11px;
+    font-weight: 780;
+}}
+
+#dashboardMetricSpark,
+#dashboardSparkline {{
+    font-size: 13px;
+    letter-spacing: 0.2px;
+}}
+
+#dashboardHint,
+#dashboardInfoHint,
+#dashboardEmpty {{
+    color: #7E8791;
+    font-size: 9px;
+    font-weight: 620;
+}}
+
+#dashboardActionButton,
+#dashboardQuickAction,
+#dashboardMiniAction {{
+    min-height: 48px;
+    border-radius: 14px;
+    padding: 0 14px;
+}}
+
+#dashboardActionButton:hover,
+#dashboardQuickAction:hover,
+#dashboardMiniAction:hover {{
+    border-color: #F05D7A;
+    background: rgba(240, 93, 122, 0.10);
+}}
+
+#dashboardStatusBadge,
+#dashboardLiveBadge {{
+    min-height: 24px;
+    padding: 0 10px;
+    border-radius: 11px;
+    font-size: 9px;
+    font-weight: 760;
+}}
+
+#dashboardScrollArea {{
+    background: transparent;
+    border: 0;
+}}
+
+
+
+/* =========================================
+   P10.7 — REFINO DO BLOCO DE DESEMPENHO
+   ========================================= */
+
+#systemPerformanceCard {{
+    background: #11161C;
+    border: 1px solid #2A3138;
+    border-radius: 16px;
+}}
+
+#dashboardMetricCard {{
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 #1A2027,
+        stop:1 #151A20
+    );
+    border: 1px solid #313944;
+    border-radius: 12px;
+    min-height: 86px;
+    padding: 0px;
+}}
+
+#dashboardMetricCard:hover {{
+    border-color: #434D59;
+}}
+
+#dashboardMetricCard[metricKey="cpu"] {{
+    border-color: #4A343C;
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(255, 95, 120, 0.11),
+        stop:1 rgba(255, 95, 120, 0.03)
+    );
+}}
+
+#dashboardMetricCard[metricKey="ram"] {{
+    border-color: #534630;
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(255, 170, 36, 0.10),
+        stop:1 rgba(255, 170, 36, 0.03)
+    );
+}}
+
+#dashboardMetricCard[metricKey="gpu"] {{
+    border-color: #2E4A39;
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(90, 225, 130, 0.10),
+        stop:1 rgba(90, 225, 130, 0.03)
+    );
+}}
+
+#dashboardMetricCard[metricKey="vram"] {{
+    border-color: #4A3480;
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(178, 101, 255, 0.10),
+        stop:1 rgba(178, 101, 255, 0.03)
+    );
+}}
+
+#dashboardMetricCard[metricKey="disk"] {{
+    border-color: #355E8E;
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(89, 167, 255, 0.10),
+        stop:1 rgba(89, 167, 255, 0.03)
+    );
+}}
+
+#dashboardMetricCard[metricKey="network"],
+#dashboardMetricCard[metricKey="rede"] {{
+    border-color: #2E666C;
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(72, 227, 239, 0.10),
+        stop:1 rgba(72, 227, 239, 0.03)
+    );
+}}
+
+#dashboardMetricLabel {{
+    background: transparent;
+    border: 0;
+    color: #F1F4F7;
+    font-size: 11px;
+    font-weight: 760;
+    letter-spacing: 0.1px;
+}}
+
+#dashboardMetricValue {{
+    background: transparent;
+    border: 0;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 820;
+}}
+
+#dashboardMetricSpark {{
+    background: transparent;
+    border: 0;
+    color: #C8D0D7;
+    font-size: 15px;
+    line-height: 1.0em;
+}}
+
+#dashboardHint {{
+    background: transparent;
+    border: 0;
+    color: #A5AFB9;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#dashboardMetricBar {{
+    background: #27303A;
+    border: 0;
+    border-radius: 2px;
+    min-height: 4px;
+    max-height: 4px;
+}}
+
+#dashboardMetricBar::chunk {{
+    border-radius: 2px;
+}}
+
+#dashboardMetricBar[metricKey="cpu"]::chunk {{
+    background: #FF5B78;
+}}
+
+#dashboardMetricBar[metricKey="ram"]::chunk {{
+    background: #F2A22A;
+}}
+
+#dashboardMetricBar[metricKey="gpu"]::chunk {{
+    background: #67D784;
+}}
+
+#dashboardMetricBar[metricKey="vram"]::chunk {{
+    background: #B46BFF;
+}}
+
+#dashboardMetricBar[metricKey="disk"]::chunk {{
+    background: #64AEFF;
+}}
+
+#dashboardMetricBar[metricKey="network"]::chunk,
+#dashboardMetricBar[metricKey="rede"]::chunk {{
+    background: #58E6EE;
+}}
+
+#systemPerformanceSamples {{
+    color: #7B8692;
+    font-size: 9px;
+    font-weight: 700;
+}}
+
                 #pageTitle {{ font-size: 28px; font-weight: 650; }}
                 #pageDescription {{ color: {PALETA['secundario']}; font-size: 14px; max-width: 700px; }}
                 #sectionTitle {{ font-size: 17px; font-weight: 650; padding-top: 4px; }}

@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
+from mente_laylay.autonomia.resposta_ia_runtime import RespostaIARuntime
 from mente_laylay.cognicao.identidade_conversacional import (
     ajustar_autorreferencia_assistente,
     analisar_identidade_turno,
@@ -116,6 +117,111 @@ def test_porta_prioritaria_responde_sem_chamar_executor_ou_llm() -> None:
     ) is True
     assert falas and "não fiz nada" in falas[-1].casefold()
     assert execucoes == []
+
+
+@pytest.mark.parametrize(
+    ("texto", "trecho"),
+    (
+        ("você é só um chatbot?", "aí você me reduz demais"),
+        ("você só consegue conversar?", "tenho ferramentas, não carta branca"),
+        ("você está no meu computador?", "tô rodando aqui no seu computador"),
+    ),
+)
+def test_identidade_operacional_e_local_sem_llm(
+    texto: str, trecho: str,
+) -> None:
+    mapa = MapaHabilidadesRuntime()
+    turno = classificar_modalidade_turno(texto)
+
+    resposta = mapa.responder_pergunta_capacidade(texto, turno=turno)
+
+    assert trecho in resposta.casefold()
+    assert turno["autoriza_execucao"] is False
+    assert "não tô no seu computador" not in resposta.casefold()
+    assert "só converso" not in resposta.casefold()
+
+
+def test_porta_prioritaria_cobre_identidade_operacional_sem_executor() -> None:
+    mapa = MapaHabilidadesRuntime()
+    falas: list[str] = []
+    execucoes: list[dict] = []
+    estado = SimpleNamespace(mental={"turno_atual": {}})
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: {
+            "_estado_compartilhado_runtime": estado,
+            "_responder_pergunta_capacidade_local": lambda texto: (
+                mapa.responder_pergunta_capacidade(
+                    texto,
+                    turno=classificar_modalidade_turno(texto),
+                )
+            ),
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+            "executar_intencao": lambda comando, _texto: (
+                execucoes.append(comando) or True
+            ),
+        },
+        loop_getter=lambda: None,
+    )
+
+    assert runtime.processar_prioritarios("você é só um chatbot?") is True
+    assert falas and "reduz demais" in falas[-1].casefold()
+    assert execucoes == []
+
+
+def test_ciclo_da_ia_descarta_midia_inventada_em_pergunta_de_identidade() -> None:
+    texto = "você é só um chatbot?"
+    turno = classificar_modalidade_turno(texto)
+    comandos_entregues: list[list[dict]] = []
+
+    class Contexto:
+        @staticmethod
+        def montar() -> dict:
+            return {}
+
+    runtime = RespostaIARuntime(
+        contexto_getter=lambda: {
+            "marcar_inicio_turno": lambda *_args, **_kwargs: None,
+            "obter_turno_atual": lambda: dict(turno),
+            "processar_comandos_prioritarios": lambda _texto: False,
+            "contexto_inicio": lambda: {},
+            "processar_inicio_fluxo": lambda *_args: False,
+            "usar_modo_rapido": lambda _texto: True,
+            "texto_depende_de_contexto": lambda _texto: False,
+            "modo_jogo_ativo": lambda: False,
+            "enviar_mensagem": lambda *_args, **_kwargs: "{}",
+            "preparar_resposta": lambda *_args: {
+                "resposta_bruta": "{}",
+                "fala": "Essa eu não consegui fechar sem chutar.",
+                "comandos": [
+                    {"intent": "MEDIA_CONTROL", "params": {"acao": "play"}},
+                ],
+                "tipo_interacao": "conversa",
+                "leitura_semantica": {},
+            },
+            # Mesmo um adaptador defeituoso que aceitasse tudo não pode
+            # vencer a decisão congelada no início do turno.
+            "validar_comandos_planejados": lambda comandos: {
+                "comandos": list(comandos), "rejeitados": [],
+            },
+            "contexto_dispatch_runtime": Contexto(),
+            "executar_comandos_json": lambda _ctx, _texto, comandos, *_args: (
+                comandos_entregues.append(list(comandos))
+                or {
+                    "erros": [],
+                    "fala_ja_emitida": False,
+                    "fala_emitida_por_acao": False,
+                    "fala_salva_no_inicio": False,
+                }
+            ),
+            "contexto_finalizacao_runtime": Contexto(),
+            "finalizar_execucao": lambda *_args, **_kwargs: None,
+        },
+        log=lambda *_args, **_kwargs: None,
+    )
+
+    runtime.processar(texto)
+
+    assert comandos_entregues == [[]]
 
 
 def test_fallback_de_comando_nao_substitui_resposta_de_hipotese() -> None:

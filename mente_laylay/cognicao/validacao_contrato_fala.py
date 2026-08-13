@@ -111,8 +111,8 @@ _RELATO_MEXENDO_CODIGO = re.compile(
 _NEGACAO_IDENTIDADE_OPERACIONAL = re.compile(
     r"\b(?:sou|eu\s+sou)\s+(?:s[oó]|apenas)\s+(?:uma?\s+)?(?:chatbot|ia|"
     r"assistente\s+de\s+texto)|"
-    r"\bs[oó]\s+consigo\s+(?:conversar|responder|falar)|"
-    r"\bn[aã]o\s+(?:estou|rodo|funciono)\s+(?:no|dentro\s+do)\s+seu\s+"
+    r"\bs[oó]\s+(?:consigo\s+)?(?:conversar|converso|responder|respondo|falar|falo)\b|"
+    r"\bn[aã]o\s+(?:estou|t[oô]|fico|rodo|funciono)\s+(?:no|dentro\s+do)\s+seu\s+"
     r"(?:pc|computador)|"
     r"\bn[aã]o\s+tenho\s+acesso\s+(?:ao|a)\s+seu\s+(?:pc|computador)\b",
     re.IGNORECASE,
