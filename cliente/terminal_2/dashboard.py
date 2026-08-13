@@ -605,232 +605,351 @@ class PainelCentralInteligente(QFrame):
 
             widget.show()
 
-    def aplicar_dashboard(self, dashboard: dict) -> None:
-        contexto = dashboard.get("context")
-        if isinstance(contexto, dict):
-            frescor_contexto = str(
-                contexto.get("freshness") or "unavailable"
-            )
-            contexto_disponivel = frescor_contexto in {"fresh", "stale"}
-            sufixo_contexto = " · antigo" if frescor_contexto == "stale" else ""
-            self.definir_contexto(
-                "projeto",
-                str(contexto.get("project") or "Laylay") + sufixo_contexto
-                if contexto_disponivel else "Indisponível",
-            )
-            self.definir_contexto(
-                "modo",
-                str(contexto.get("mode") or "—") + sufixo_contexto
-                if contexto_disponivel else "Indisponível",
-            )
-            self.definir_contexto(
-                "cidade",
-                str(contexto.get("city") or "—") + sufixo_contexto
-                if contexto_disponivel else "Indisponível",
-            )
-            if not contexto_disponivel:
-                jogo = "Indisponível"
-            elif contexto.get("game_active") is True:
-                jogo = str(contexto.get("game_name") or "Ativo")
-            else:
-                jogo = "Desativado"
-            if frescor_contexto == "stale":
-                jogo += " · antigo"
-            self.definir_contexto("jogo", jogo)
-            itens = dashboard.get(
-                "memory_recent"
+def _aplicar_memoria_recente(
+    self,
+    dashboard: dict,
+) -> None:
+    itens = dashboard.get(
+        "memory_recent"
+    )
+
+    itens_validos = []
+
+    if isinstance(itens, list):
+        for item in itens[:3]:
+            if not isinstance(
+                item,
+                dict,
+            ):
+                continue
+
+            resumo = str(
+                item.get("summary")
+                or ""
+            ).strip()
+
+            if not resumo:
+                continue
+
+            itens_validos.append(
+                item
             )
 
-            itens_validos = []
+    # Estado real da memória
+    saude = dashboard.get(
+        "health"
+    )
 
-            if isinstance(itens, list):
-                for item in itens[:3]:
-                    if not isinstance(
-                        item,
-                        dict,
-                    ):
-                        continue
+    memoria_saude = (
+        saude.get("memory")
+        if (
+            isinstance(saude, dict)
+            and isinstance(
+                saude.get("memory"),
+                dict,
+            )
+        )
+        else {}
+    )
 
-                    resumo = str(
-                        item.get("summary")
-                        or ""
-                    ).strip()
+    estado_memoria = str(
+        memoria_saude.get("state")
+        or "unavailable"
+    )
 
-                    if not resumo:
-                        continue
+    frescor_memoria = str(
+        memoria_saude.get(
+            "freshness"
+        )
+        or "unavailable"
+    )
 
-                    itens_validos.append(
-                        item
-                    )
+    memoria_disponivel = (
+        estado_memoria
+        != "unavailable"
+        and frescor_memoria
+        != "unavailable"
+    )
 
+    # =========================================
+    # MEMÓRIA INDISPONÍVEL
+    # =========================================
 
-            # Estado real da memória
-            saude = dashboard.get(
-                "health"
+    if not memoria_disponivel:
+        self.memoria_estado.setText(
+            "Memória indisponível; "
+            "não há uma leitura "
+            "confiável agora."
+        )
+
+        self.memoria_estado.show()
+
+        for linha in (
+            self.memoria_linhas
+        ):
+            linha[
+                "widget"
+            ].hide()
+
+        return
+
+    # =========================================
+    # SEM CARTÕES
+    # =========================================
+
+    if not itens_validos:
+        if frescor_memoria == "stale":
+            texto_estado = (
+                "A leitura recente da "
+                "memória está "
+                "desatualizada."
             )
 
-            memoria_saude = (
-                saude.get("memory")
-                if (
-                    isinstance(saude, dict)
-                    and isinstance(
-                        saude.get("memory"),
-                        dict,
-                    )
+        elif estado_memoria == "degraded":
+            texto_estado = (
+                "Memória parcialmente "
+                "disponível, sem cartões "
+                "públicos agora."
+            )
+
+        else:
+            texto_estado = (
+                "Nenhuma memória recente "
+                "pública para mostrar."
+            )
+
+        self.memoria_estado.setText(
+            texto_estado
+        )
+        self.memoria_estado.show()
+
+        for linha in (
+            self.memoria_linhas
+        ):
+            linha[
+                "widget"
+            ].hide()
+
+        return
+
+    # =========================================
+    # CARTÕES REAIS
+    # =========================================
+
+    self.memoria_estado.hide()
+
+    icones = {
+        "reminder": "◷",
+        "preference": "♡",
+        "task": "✓",
+    }
+
+    for indice, linha in enumerate(
+        self.memoria_linhas
+    ):
+        if indice >= len(
+            itens_validos
+        ):
+            linha["widget"].hide()
+            continue
+
+        item = itens_validos[
+            indice
+        ]
+
+        tipo = str(
+            item.get("kind")
+            or "generic"
+        )
+
+        resumo = str(
+            item.get("summary")
+            or "Memória"
+        ).strip()
+
+        detalhe = str(
+            item.get("detail")
+            or ""
+        ).strip()
+
+        if frescor_memoria == "stale":
+            detalhe = (
+                f"{detalhe} · dados antigos"
+                if detalhe
+                else "Dados antigos"
+            )
+
+        linha["icon"].setText(
+            icones.get(
+                tipo,
+                "•",
+            )
+        )
+
+        linha["summary"].setText(
+            resumo
+        )
+
+        linha["detail"].setText(
+            detalhe
+        )
+
+        linha["detail"].setVisible(
+            bool(detalhe)
+        )
+
+        widget = linha["widget"]
+
+        widget.setProperty(
+            "memoryKind",
+            tipo,
+        )
+
+        widget.style().unpolish(
+            widget
+        )
+        widget.style().polish(
+            widget
+        )
+
+        widget.show()
+
+def aplicar_dashboard(
+    self,
+    dashboard: dict,
+) -> None:
+    contexto = dashboard.get(
+        "context"
+    )
+
+    if isinstance(contexto, dict):
+        frescor_contexto = str(
+            contexto.get("freshness")
+            or "unavailable"
+        )
+
+        contexto_disponivel = (
+            frescor_contexto
+            in {"fresh", "stale"}
+        )
+
+        sufixo_contexto = (
+            " · antigo"
+            if frescor_contexto == "stale"
+            else ""
+        )
+
+        self.definir_contexto(
+            "projeto",
+            (
+                str(
+                    contexto.get("project")
+                    or "Laylay"
                 )
-                else {}
-            )
+                + sufixo_contexto
+                if contexto_disponivel
+                else "Indisponível"
+            ),
+        )
 
-            estado_memoria = str(
-                memoria_saude.get("state")
-                or "unavailable"
-            )
-
-            frescor_memoria = str(
-                memoria_saude.get("freshness")
-                or "unavailable"
-            )
-
-            memoria_disponivel = (
-                estado_memoria
-                != "unavailable"
-                and frescor_memoria
-                != "unavailable"
-            )
-
-
-            # =========================================
-            # MEMÓRIA INDISPONÍVEL
-            # =========================================
-            if not memoria_disponivel:
-                self.memoria_estado.setText(
-                    "Memória indisponível; "
-                    "não há uma leitura confiável agora."
+        self.definir_contexto(
+            "modo",
+            (
+                str(
+                    contexto.get("mode")
+                    or "—"
                 )
+                + sufixo_contexto
+                if contexto_disponivel
+                else "Indisponível"
+            ),
+        )
 
-                self.memoria_estado.show()
-
-                for linha in self.memoria_linhas:
-                    linha["widget"].hide()
-
-
-            # =========================================
-            # SEM CARTÕES PÚBLICOS
-            # =========================================
-            elif not itens_validos:
-                if frescor_memoria == "stale":
-                    texto_estado = (
-                        "A leitura recente da memória "
-                        "está desatualizada."
-                    )
-
-                elif estado_memoria == "degraded":
-                    texto_estado = (
-                        "Memória parcialmente disponível, "
-                        "sem cartões públicos agora."
-                    )
-
-                else:
-                    texto_estado = (
-                        "Nenhuma memória recente "
-                        "pública para mostrar."
-                    )
-
-                self.memoria_estado.setText(
-                    texto_estado
+        self.definir_contexto(
+            "cidade",
+            (
+                str(
+                    contexto.get("city")
+                    or "—"
                 )
-                self.memoria_estado.show()
+                + sufixo_contexto
+                if contexto_disponivel
+                else "Indisponível"
+            ),
+        )
 
-                for linha in self.memoria_linhas:
-                    linha["widget"].hide()
+        if not contexto_disponivel:
+            jogo = "Indisponível"
+
+        elif contexto.get(
+            "game_active"
+        ) is True:
+            jogo = str(
+                contexto.get("game_name")
+                or "Ativo"
+            )
+
+        else:
+            jogo = "Desativado"
+
+        if frescor_contexto == "stale":
+            jogo += " · antigo"
+
+        self.definir_contexto(
+            "jogo",
+            jogo,
+        )
+
+    else:
+        self.definir_contexto(
+            "projeto",
+            "Indisponível",
+        )
+
+        self.definir_contexto(
+            "modo",
+            "Indisponível",
+        )
+
+        self.definir_contexto(
+            "cidade",
+            "Indisponível",
+        )
+
+        self.definir_contexto(
+            "jogo",
+            "Indisponível",
+        )
 
 
-            # =========================================
-            # CARTÕES REAIS
-            # =========================================
-            else:
-                self.memoria_estado.hide()
+    # Atualiza memória independentemente do contexto
+    self._aplicar_memoria_recente(
+        dashboard
+    )
 
-                icones = {
-                    "reminder": "◷",
-                    "preference": "♡",
-                    "task": "✓",
-                }
 
-                for indice, linha in enumerate(
-                    self.memoria_linhas
-                ):
-                    if indice >= len(
-                        itens_validos
-                    ):
-                        linha["widget"].hide()
-                        continue
+    # Atualiza catálogo das ações rápidas
+    self.aplicar_catalogo_acoes(
+        dashboard.get(
+            "quick_actions"
+        )
+    )
 
-                    item = itens_validos[
-                        indice
-                    ]
 
-                    tipo = str(
-                        item.get("kind")
-                        or "generic"
-                    )
+    # Estado geral do painel
+    status = str(
+        dashboard.get("status")
+        or "unavailable"
+    )
 
-                    resumo = str(
-                        item.get("summary")
-                        or "Memória"
-                    ).strip()
-
-                    detalhe = str(
-                        item.get("detail")
-                        or ""
-                    ).strip()
-
-                    if frescor_memoria == "stale":
-                        detalhe = (
-                            f"{detalhe} · dados antigos"
-                            if detalhe
-                            else "Dados antigos"
-                        )
-
-                    linha["icon"].setText(
-                        icones.get(
-                            tipo,
-                            "•",
-                        )
-                    )
-
-                    linha["summary"].setText(
-                        resumo
-                    )
-
-                    linha["detail"].setText(
-                        detalhe
-                    )
-
-                    linha["detail"].setVisible(
-                        bool(detalhe)
-                    )
-
-                    linha["widget"].setProperty(
-                        "memoryKind",
-                        tipo,
-                    )
-
-                    linha["widget"].style().unpolish(
-                        linha["widget"]
-                    )
-                    linha["widget"].style().polish(
-                        linha["widget"]
-                    )
-
-                    linha["widget"].show()
-        self.aplicar_catalogo_acoes(dashboard.get("quick_actions"))
-        status = str(dashboard.get("status") or "unavailable")
-        self.estado.setText({
-            "ok": "●  Vivo",
-            "partial": "●  Parcial",
-            "unavailable": "●  Sem dados",
-        }.get(status, "●  Sem dados"))
+    self.estado.setText({
+        "ok": "●  Vivo",
+        "partial": "●  Parcial",
+        "unavailable": "●  Sem dados",
+    }.get(
+        status,
+        "●  Sem dados",
+    ))
 
     def invalidar_dashboard(self) -> None:
         self.estado.setText("●  Reconectando")
