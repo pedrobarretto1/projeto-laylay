@@ -1298,12 +1298,6 @@ class JanelaLaylay(QMainWindow):
                     font-weight: 550;
                 }}
 
-                #musicSessionAction:hover {{
-                    background: #1D2228;
-                    border-color: #4A5059;
-                    color: #F3F0F2;
-                }}
-
                 #musicSessionAction[actionRole="primary"] {{
                     background: #191A20;
                     border-color: #3D343A;
@@ -1327,18 +1321,11 @@ class JanelaLaylay(QMainWindow):
                     color: #555C64;
                 }}
 
-                #musicSessionAction:disabled {{
-                    background: #12171B;
-                    color: #555C64;
-                    border-color: #252B31;
-                }}
-
                 #musicSessionAction[actionRole="future"]:disabled {{
                     background: transparent;
                     color: #464D54;
                     border-color: #22282D;
                 }}
-                #musicSessionAction:hover {{ background: #241B20; border-color: #773845; color: {PALETA['texto']}; }}
                 #musicSessionAction:disabled {{ color: #5F646B; border-color: #292F35; }}
                 #musicPreset {{
                     background: #171C21;
@@ -1558,6 +1545,322 @@ class JanelaLaylay(QMainWindow):
                     color: #747C85;
                     font-size: 9px;
                 }}
+                #musicAudioDevice {{
+                background: #171C21;
+                border: 1px solid #292F36;
+                border-radius: 9px;
+                }}
+
+                #musicAudioDevice[available="true"] {{
+                    background: #191D22;
+                    border-color: #393139;
+                }}
+
+
+                /* caixinha do ícone */
+
+                #musicAudioIconBox {{
+                    background: #20262C;
+                    border: 1px solid #30373F;
+                    border-radius: 8px;
+                }}
+
+                #musicAudioIconBox[available="true"] {{
+                    background: #2B1C22;
+                    border-color: #67313C;
+                }}
+
+                #musicAudioDeviceIcon {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #737B84;
+                    font-size: 17px;
+                    font-weight: 700;
+                }}
+
+                #musicAudioIconBox[available="true"]
+                #musicAudioDeviceIcon {{
+                    color: #FF647B;
+                }}
+
+
+                /* textos */
+
+                #musicAudioOutput {{
+                    background: transparent;
+                    border: 0;
+                    padding: 0;
+
+                    color: #E9E5E7;
+                    font-size: 11px;
+                    font-weight: 650;
+                }}
+
+                #musicAudioOutputMeta {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #777F88;
+                    font-size: 9px;
+                }}
+
+
+                /* check de selecionado */
+
+                #musicAudioSelected {{
+                    background: #1D2227;
+                    border: 1px solid #30373E;
+                    border-radius: 12px;
+
+                    color: #686F77;
+                    font-size: 11px;
+                    font-weight: 700;
+                }}
+
+                #musicAudioSelected[selected="true"] {{
+                    background: #382027;
+                    border-color: #763746;
+
+                    color: #FF647B;
+                }}
+
+
+                /* botão inferior */
+
+                #musicAudioManage {{
+                    background: transparent;
+                    border: 0;
+                    border-radius: 7px;
+
+                    padding: 4px 5px;
+
+                    color: #747C85;
+                    font-size: 9px;
+
+                    text-align: left;
+                }}
+
+                #musicAudioManage:hover {{
+                    background: #1C2025;
+                    color: #C7C2C5;
+                }}
+
+                #musicAudioManage:disabled {{
+                    background: transparent;
+                    color: #555D65;
+                }}
+                #musicSideRail {{
+                background: transparent;
+
+                min-width: 265px;
+                max-width: 315px;
+            }}
+
+
+            /* =========================================
+            SISTEMA
+            ========================================= */
+
+            #musicSystemMetric {{
+                background: transparent;
+                border: 0;
+            }}
+
+            #musicSideLabel {{
+                color: #8E969F;
+                font-size: 10px;
+            }}
+
+            #musicSideValue {{
+                color: #E8E5E7;
+                font-size: 10px;
+                font-weight: 650;
+            }}
+
+            #musicSystemBar {{
+                background: #22282E;
+
+                border: 0;
+                border-radius: 2px;
+
+                min-height: 4px;
+                max-height: 4px;
+            }}
+
+            #musicSystemBar::chunk {{
+                background: #C84C61;
+                border-radius: 2px;
+            }}
+
+            #musicSystemBar[available="false"]::chunk {{
+                background: #343A41;
+            }}
+
+
+            /* =========================================
+            MODO DE AUDIÇÃO
+            ========================================= */
+
+            #musicListeningRow {{
+                background: #171C21;
+
+                border: 1px solid #292F36;
+                border-radius: 8px;
+            }}
+
+            #musicListeningRow[available="true"] {{
+                background: #191D22;
+                border-color: #393139;
+            }}
+
+            #musicListeningIcon {{
+                background: transparent;
+                border: 0;
+
+                color: #B15A6B;
+                font-size: 14px;
+            }}
+
+            #musicListeningName {{
+                background: transparent;
+                border: 0;
+
+                color: #D9D5D8;
+                font-size: 10px;
+                font-weight: 600;
+            }}
+
+            #musicListeningValue {{
+                background: transparent;
+                border: 0;
+
+                color: #FF647B;
+                font-size: 10px;
+                font-weight: 700;
+            }}
+
+            #musicListeningFuture {{
+                background: transparent;
+                border: 0;
+
+                color: #626A73;
+                font-size: 8px;
+            }}
+
+
+            /* =========================================
+            ROTINAS
+            ========================================= */
+
+            #musicRoutineEmpty {{
+                background: transparent;
+                border: 0;
+
+                color: #757D86;
+                font-size: 10px;
+            }}
+
+            #musicRoutineRow {{
+                background: #171C21;
+
+                border: 1px solid #282F35;
+                border-radius: 8px;
+            }}
+
+            #musicRoutineDot {{
+                background: transparent;
+                border: 0;
+
+                color: #BD5366;
+                font-size: 8px;
+            }}
+
+            #musicRoutineName {{
+                background: transparent;
+                border: 0;
+
+                color: #D8D4D7;
+                font-size: 10px;
+            }}
+
+            #musicRoutineTime {{
+                background: #20262C;
+
+                border: 0;
+                border-radius: 6px;
+
+                padding: 2px 5px;
+
+                color: #969DA5;
+                font-size: 8px;
+            }}
+
+
+            /* =========================================
+            LUZES
+            ========================================= */
+
+            #musicLightsDevice {{
+                background: #171C21;
+
+                border: 1px solid #292F36;
+                border-radius: 8px;
+            }}
+
+            #musicLightsDevice[configured="true"] {{
+                background: #1C1B21;
+                border-color: #48323A;
+            }}
+
+            #musicLightsIcon {{
+                background: transparent;
+                border: 0;
+
+                color: #555D65;
+                font-size: 10px;
+            }}
+
+            #musicLightsDevice[configured="true"]
+            #musicLightsIcon {{
+                color: #FF647B;
+            }}
+
+            #musicLightsName {{
+                background: transparent;
+                border: 0;
+
+                color: #DCD8DA;
+                font-size: 10px;
+                font-weight: 600;
+            }}
+
+            #musicLightsState {{
+                background: transparent;
+                border: 0;
+
+                color: #767E87;
+                font-size: 8px;
+            }}
+
+            #musicLightsBadge {{
+                background: #20262C;
+
+                border: 1px solid #30373E;
+                border-radius: 7px;
+
+                padding: 3px 6px;
+
+                color: #696F77;
+                font-size: 8px;
+            }}
+
+            #musicLightsBadge[configured="true"] {{
+                background: #352027;
+                border-color: #69333E;
+
+                color: #FF7186;
+            }}
                 #musicSystemBar {{ background: #252B32; border: 0; border-radius: 3px; min-height: 6px; max-height: 6px; }}
                 #musicSystemBar::chunk {{ background: #C64257; border-radius: 3px; }}
                 #musicSystemBar[available="false"]::chunk {{ background: #343A41; }}

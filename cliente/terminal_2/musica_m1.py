@@ -682,69 +682,256 @@ class PaginaMusicaM1(QWidget):
         self.acoes = QWidget()
         self.acoes.setObjectName("musicSessionActions")
         self.acoes.setMinimumHeight(46)
-        self.acoes.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.acoes_layout = QGridLayout(self.acoes)
-        self.acoes_layout.setContentsMargins(0, 0, 0, 0)
-        self.acoes_layout.setSpacing(8)
-        definicoes = (
-            ("Tocar playlist", "playlist_play", "primary", 145),
-            ("Pausar", "media_toggle", "primary", 105),
-            ("Próxima faixa", "media_next", "primary", 125),
-            ("Volume —", "volume_set", "utility", 115),
-            ("Aleatório", "playlist_shuffle", "utility", 100),
-            ("Repetição", "media_repeat", "utility", 105),
-            ("Sincronizar luzes", "lights_sync", "future", 140),
+        self.acoes.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Preferred,
         )
-        self.acoes_sessao: dict[str, QPushButton] = {}
-        self._botoes_sessao: list[QPushButton] = []
-        for texto, acao_id, papel, largura in definicoes:
-            botao = QPushButton(texto)
-            botao.setObjectName("musicSessionAction")
-            botao.setProperty("actionRole", papel)
-            botao.setProperty("wideWidth", largura)
+
+        self.acoes_layout = QGridLayout(
+            self.acoes
+        )
+        self.acoes_layout.setContentsMargins(
+            0, 0, 0, 0
+        )
+        self.acoes_layout.setSpacing(8)
+
+        definicoes = (
+            (
+                "Tocar playlist",
+                "playlist_play",
+                "primary",
+                145,
+                "play",
+                "",
+            ),
+            (
+                "Pausar",
+                "media_toggle",
+                "primary",
+                105,
+                "pause",
+                "",
+            ),
+            (
+                "Próxima faixa",
+                "media_next",
+                "primary",
+                125,
+                "next",
+                "",
+            ),
+            (
+                "Volume —",
+                "volume_set",
+                "utility",
+                115,
+                "",
+                "◖",
+            ),
+            (
+                "Aleatório",
+                "playlist_shuffle",
+                "utility",
+                100,
+                "",
+                "⇄",
+            ),
+            (
+                "Repetição",
+                "media_repeat",
+                "utility",
+                105,
+                "",
+                "↻",
+            ),
+            (
+                "Sincronizar luzes",
+                "lights_sync",
+                "future",
+                140,
+                "",
+                "✦",
+            ),
+        )
+
+        self.acoes_sessao: dict[
+            str,
+            QPushButton,
+        ] = {}
+
+        self._botoes_sessao: list[
+            QPushButton
+        ] = []
+
+        for (
+            texto,
+            acao_id,
+            papel,
+            largura,
+            icone,
+            simbolo,
+        ) in definicoes:
+
+            texto_visual = (
+                f"{simbolo}  {texto}"
+                if simbolo
+                else texto
+            )
+
+            botao = QPushButton(
+                texto_visual
+            )
+
+            botao.setObjectName(
+                "musicSessionAction"
+            )
+
+            botao.setProperty(
+                "actionRole",
+                papel,
+            )
+
+            botao.setProperty(
+                "actionId",
+                acao_id,
+            )
+
+            botao.setProperty(
+                "wideWidth",
+                largura,
+            )
+
             botao.setFixedHeight(38)
-            botao.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+
+            botao.setSizePolicy(
+                QSizePolicy.Ignored,
+                QSizePolicy.Fixed,
+            )
+
+            # Ícones SVG que já existem no projeto
+            if icone:
+                botao.setIcon(
+                    icone_terminal(icone)
+                )
+                botao.setIconSize(
+                    QSize(15, 15)
+                )
+
             botao.setEnabled(False)
+
             if acao_id == "media_toggle":
-                botao.clicked.connect(lambda: self._solicitar("media_toggle"))
+                botao.clicked.connect(
+                    lambda:
+                    self._solicitar(
+                        "media_toggle"
+                    )
+                )
+
             elif acao_id == "media_next":
-                botao.clicked.connect(lambda: self._solicitar("media_next"))
+                botao.clicked.connect(
+                    lambda:
+                    self._solicitar(
+                        "media_next"
+                    )
+                )
+
             elif acao_id == "playlist_play":
                 botao.clicked.connect(
-                    lambda: self._solicitar_playlist(self._playlist_ativa),
+                    lambda:
+                    self._solicitar_playlist(
+                        self._playlist_ativa
+                    )
                 )
+
             elif acao_id == "playlist_shuffle":
-                botao.clicked.connect(self._solicitar_shuffle)
+                botao.clicked.connect(
+                    self._solicitar_shuffle
+                )
+
             elif acao_id == "media_repeat":
-                botao.clicked.connect(lambda: self._solicitar("media_repeat"))
+                botao.clicked.connect(
+                    lambda:
+                    self._solicitar(
+                        "media_repeat"
+                    )
+                )
+
             elif acao_id == "volume_set":
-                botao.clicked.connect(self._focar_volume)
+                botao.clicked.connect(
+                    self._focar_volume
+                )
+
             else:
                 botao.setToolTip(
-                    "A lâmpada está separada do player; sincronização contínua ainda não tem executor"
+                    "A lâmpada está separada do player; "
+                    "sincronização contínua ainda não "
+                    "tem executor."
                 )
-            self.acoes_sessao[texto] = botao
-            self._botoes_sessao.append(botao)
+
+            # IMPORTANTE:
+            # a chave continua sem símbolos.
+            self.acoes_sessao[
+                texto
+            ] = botao
+
+            self._botoes_sessao.append(
+                botao
+            )
 
     def _construir_modulos(self) -> None:
-        self.playlists = CartaoMusica("Playlists", detalhe="catálogo real")
+        # =========================================================
+        # PLAYLISTS
+        # =========================================================
+        self.playlists = CartaoMusica(
+            "Playlists",
+            detalhe="catálogo real",
+        )
+
         self.playlists_grade = QGridLayout()
         self.playlists_grade.setSpacing(7)
+
         self.preset_botoes: list[CartaoPlaylist] = []
         self._garantir_botoes_playlist(6)
-        self.playlists.conteudo.addLayout(self.playlists_grade)
+
+        self.playlists.conteudo.addLayout(
+            self.playlists_grade
+        )
+
         rodape_playlists = QHBoxLayout()
-        self.playlists_estado = QLabel("Aguardando o catálogo salvo.")
-        self.playlists_estado.setObjectName("musicCatalogState")
-        self.ver_playlists = QPushButton("Ver todas")
-        self.ver_playlists.setObjectName("musicFutureButton")
+
+        self.playlists_estado = QLabel(
+            "Aguardando o catálogo salvo."
+        )
+        self.playlists_estado.setObjectName(
+            "musicCatalogState"
+        )
+
+        self.ver_playlists = QPushButton(
+            "Ver todas"
+        )
+        self.ver_playlists.setObjectName(
+            "musicFutureButton"
+        )
         self.ver_playlists.setEnabled(False)
-        self.ver_playlists.clicked.connect(self._alternar_catalogo)
-        rodape_playlists.addWidget(self.playlists_estado)
+        self.ver_playlists.clicked.connect(
+            self._alternar_catalogo
+        )
+
+        rodape_playlists.addWidget(
+            self.playlists_estado
+        )
         rodape_playlists.addStretch()
-        rodape_playlists.addWidget(self.ver_playlists)
-        self.playlists.conteudo.addLayout(rodape_playlists)
-        
+        rodape_playlists.addWidget(
+            self.ver_playlists
+        )
+
+        self.playlists.conteudo.addLayout(
+            rodape_playlists
+        )
+
+        # =========================================================
+        # CONTEXTO MUSICAL
+        # =========================================================
         self.contexto = CartaoMusica(
             "Contexto musical  ✦ Laylay",
             detalhe="fundamentado",
@@ -755,9 +942,26 @@ class PaginaMusicaM1(QWidget):
         self.contexto_estado = QLabel(
             "Aguardando horário e sessão musical observados."
         )
-        self.contexto_estado.setObjectName("musicContextSummary")
+        self.contexto_estado.setObjectName(
+            "musicContextSummary"
+        )
         self.contexto_estado.setWordWrap(True)
         self.contexto_estado.setMinimumWidth(0)
+
+        self.contexto.conteudo.addWidget(
+            self.contexto_estado
+        )
+
+        # Recomendação da Laylay
+        self.contexto_sugestao = QLabel(
+            "Nenhuma recomendação fundamentada neste momento."
+        )
+        self.contexto_sugestao.setObjectName(
+            "musicSuggestion"
+        )
+        self.contexto_sugestao.setWordWrap(True)
+        self.contexto_sugestao.setMinimumWidth(0)
+
         self.contexto.conteudo.addWidget(
             self.contexto_sugestao
         )
@@ -780,13 +984,17 @@ class PaginaMusicaM1(QWidget):
 
         for _ in range(3):
             chip = QLabel("")
-            chip.setObjectName("musicContextChip")
+            chip.setObjectName(
+                "musicContextChip"
+            )
             chip.hide()
 
             self.contexto_bases_layout.addWidget(
                 chip
             )
-            self.contexto_chips.append(chip)
+            self.contexto_chips.append(
+                chip
+            )
 
         self.contexto_bases_layout.addStretch()
 
@@ -795,109 +1003,254 @@ class PaginaMusicaM1(QWidget):
         self.contexto.conteudo.addWidget(
             self.contexto_bases
         )
-        self.contexto_sugestao = QLabel(
-            "Nenhuma recomendação fundamentada neste momento."
-        )
-        self.contexto_sugestao.setObjectName("musicSuggestion")
-        self.contexto_sugestao.setWordWrap(True)
-        self.contexto.conteudo.addWidget(self.contexto_sugestao)
 
-        self.audio = CartaoMusica("Saída de áudio", detalhe="observada")
+        # =========================================================
+        # SAÍDA DE ÁUDIO
+        # =========================================================
+        self.audio = CartaoMusica(
+            "Saída de áudio",
+            detalhe="observada",
+        )
         self.audio.conteudo.setSpacing(7)
 
+        # Linha do dispositivo atualmente observado
         self.audio_dispositivo = QFrame()
-        self.audio_dispositivo.setObjectName("musicAudioDevice")
-        self.audio_dispositivo.setProperty("available", False)
+        self.audio_dispositivo.setObjectName(
+            "musicAudioDevice"
+        )
+        self.audio_dispositivo.setProperty(
+            "available",
+            False,
+        )
 
-        audio_layout = QHBoxLayout(self.audio_dispositivo)
-        audio_layout.setContentsMargins(11, 8, 8, 8)
+        audio_layout = QHBoxLayout(
+            self.audio_dispositivo
+        )
+        audio_layout.setContentsMargins(
+            8, 7, 9, 7
+        )
         audio_layout.setSpacing(9)
 
-        # Indicador visual
-        self.audio_icone = QLabel("●")
-        self.audio_icone.setObjectName("musicAudioDeviceIcon")
-        self.audio_icone.setAlignment(Qt.AlignCenter)
-        self.audio_icone.setFixedWidth(16)
+        # Ícone em uma caixinha
+        self.audio_icone_caixa = QFrame()
+        self.audio_icone_caixa.setObjectName(
+            "musicAudioIconBox"
+        )
+        self.audio_icone_caixa.setFixedSize(
+            36, 36
+        )
+
+        icone_layout = QHBoxLayout(
+            self.audio_icone_caixa
+        )
+        icone_layout.setContentsMargins(
+            0, 0, 0, 0
+        )
+
+        self.audio_icone = QLabel("♪")
+        self.audio_icone.setObjectName(
+            "musicAudioDeviceIcon"
+        )
+        self.audio_icone.setAlignment(
+            Qt.AlignCenter
+        )
+
+        icone_layout.addWidget(
+            self.audio_icone
+        )
 
         # Nome + origem
         audio_textos = QVBoxLayout()
-        audio_textos.setContentsMargins(0, 0, 0, 0)
+        audio_textos.setContentsMargins(
+            0, 0, 0, 0
+        )
         audio_textos.setSpacing(1)
 
-        self.audio_saida = QLabel("Aguardando saída de áudio")
-        self.audio_saida.setObjectName("musicAudioOutput")
+        self.audio_saida = QLabel(
+            "Aguardando saída de áudio"
+        )
+        self.audio_saida.setObjectName(
+            "musicAudioOutput"
+        )
         self.audio_saida.setWordWrap(False)
-        self.audio_saida.setTextInteractionFlags(Qt.TextSelectableByMouse)
-
-        self.audio_origem = QLabel("Aguardando o Windows")
-        self.audio_origem.setObjectName("musicAudioOutputMeta")
-        self.audio_origem.setWordWrap(False)
-        self.audio_origem.setToolTip(
-            "A saída é somente observada; a troca continua sob controle do Windows."
+        self.audio_saida.setTextInteractionFlags(
+            Qt.TextSelectableByMouse
         )
 
-        audio_textos.addWidget(self.audio_saida)
-        audio_textos.addWidget(self.audio_origem)
+        self.audio_origem = QLabel(
+            "Aguardando o Windows"
+        )
+        self.audio_origem.setObjectName(
+            "musicAudioOutputMeta"
+        )
+        self.audio_origem.setWordWrap(False)
 
-        self.audio_gerenciar = QPushButton("Gerenciar  ›")
-        self.audio_gerenciar.setObjectName("musicAudioManage")
+        audio_textos.addWidget(
+            self.audio_saida
+        )
+        audio_textos.addWidget(
+            self.audio_origem
+        )
+
+        # Indicador de dispositivo selecionado
+        self.audio_selecionado = QLabel("—")
+        self.audio_selecionado.setObjectName(
+            "musicAudioSelected"
+        )
+        self.audio_selecionado.setAlignment(
+            Qt.AlignCenter
+        )
+        self.audio_selecionado.setFixedSize(
+            24, 24
+        )
+
+        audio_layout.addWidget(
+            self.audio_icone_caixa
+        )
+        audio_layout.addLayout(
+            audio_textos,
+            1,
+        )
+        audio_layout.addWidget(
+            self.audio_selecionado
+        )
+
+        self.audio.conteudo.addWidget(
+            self.audio_dispositivo
+        )
+
+        # Botão inferior discreto
+        self.audio_gerenciar = QPushButton(
+            "Gerenciar dispositivos  ›"
+        )
+        self.audio_gerenciar.setObjectName(
+            "musicAudioManage"
+        )
         self.audio_gerenciar.setEnabled(False)
         self.audio_gerenciar.setFixedHeight(28)
-        self.audio_gerenciar.setSizePolicy(
-            QSizePolicy.Fixed,
-            QSizePolicy.Fixed,
+
+        self.audio.conteudo.addWidget(
+            self.audio_gerenciar
         )
 
-        audio_layout.addWidget(self.audio_icone)
-        audio_layout.addLayout(audio_textos, 1)
-        audio_layout.addWidget(self.audio_gerenciar)
+        # =========================================================
+        # MODO DE AUDIÇÃO
+        # =========================================================
+        self.audicao = CartaoMusica(
+            "Modo de audição",
+            detalhe="M3",
+        )
 
-        self.audio.conteudo.addWidget(self.audio_dispositivo)
-
-        self.audicao = CartaoMusica("Modo de audição", detalhe="M3")
         self.audicao_estado = _estado_futuro(
-            "Volume mestre aguardando observação. Equalizador e som ambiente ainda não têm executor."
+            "Volume mestre aguardando observação. "
+            "Equalizador e som ambiente ainda não têm executor."
         )
-        self.audicao.conteudo.addWidget(self.audicao_estado)
 
-        self.luzes = CartaoMusica("Sincronização de luzes", detalhe="M3")
+        self.audicao.conteudo.addWidget(
+            self.audicao_estado
+        )
+
+        # =========================================================
+        # SINCRONIZAÇÃO DE LUZES
+        # =========================================================
+        self.luzes = CartaoMusica(
+            "Sincronização de luzes",
+            detalhe="M3",
+        )
+
         self.luzes_estado = _estado_futuro(
-            "A lâmpada existe, mas sincronização musical ainda não. O IoT permanece desligado deste painel."
+            "A lâmpada existe, mas sincronização musical ainda não. "
+            "O IoT permanece desligado deste painel."
         )
-        self.luzes.conteudo.addWidget(self.luzes_estado)
 
-        self.letra = CartaoMusica("Letra", detalhe="LRCLIB")
-        self.letra.setObjectName("musicLyrics")
+        self.luzes.conteudo.addWidget(
+            self.luzes_estado
+        )
+
+        # =========================================================
+        # LETRA / KARAOKÊ
+        # =========================================================
+        self.letra = CartaoMusica(
+            "Letra",
+            detalhe="LRCLIB",
+        )
+        self.letra.setObjectName(
+            "musicLyrics"
+        )
+
         self.letra_estado = _estado_futuro(
             "Aguardando uma faixa observada para procurar a letra."
         )
-        self.letra.conteudo.addWidget(self.letra_estado)
+
+        self.letra.conteudo.addWidget(
+            self.letra_estado
+        )
+
         self.letra_texto = VisualizadorLetra()
+
         self._configurar_expansao_letra()
-        self._efeito_letra: QGraphicsOpacityEffect | None = None
+
+        self._efeito_letra: (
+            QGraphicsOpacityEffect | None
+        ) = None
 
         self.letra_texto.hide()
-        self.letra.conteudo.addWidget(self.letra_texto)
+
+        self.letra.conteudo.addWidget(
+            self.letra_texto
+        )
+
+        # Progresso da linha atual
         self.letra_progresso = QProgressBar()
-        self.letra_progresso.setObjectName("musicLyricsProgress")
-        self.letra_progresso.setRange(0, 1000)
+        self.letra_progresso.setObjectName(
+            "musicLyricsProgress"
+        )
+        self.letra_progresso.setRange(
+            0, 1000
+        )
         self.letra_progresso.setValue(0)
-        self.letra_progresso.setTextVisible(False)
-        self.letra_progresso.setFixedHeight(3)
+        self.letra_progresso.setTextVisible(
+            False
+        )
+        self.letra_progresso.setFixedHeight(
+            3
+        )
         self.letra_progresso.hide()
 
-        self.letra.conteudo.addWidget(self.letra_progresso)
+        self.letra.conteudo.addWidget(
+            self.letra_progresso
+        )
+
+        # Rodapé da letra
         rodape_letra = QHBoxLayout()
+
         self.letra_fonte = QLabel("")
-        self.letra_fonte.setObjectName("musicLyricsSource")
-        self.letra_expandir = QPushButton("Ver letra completa")
-        self.letra_expandir.setObjectName("musicFutureButton")
-        self.letra_expandir.clicked.connect(self._alternar_letra)
+        self.letra_fonte.setObjectName(
+            "musicLyricsSource"
+        )
+
+        self.letra_expandir = QPushButton(
+            "Ver letra completa"
+        )
+        self.letra_expandir.setObjectName(
+            "musicFutureButton"
+        )
+        self.letra_expandir.clicked.connect(
+            self._alternar_letra
+        )
         self.letra_expandir.hide()
-        rodape_letra.addWidget(self.letra_fonte)
+
+        rodape_letra.addWidget(
+            self.letra_fonte
+        )
         rodape_letra.addStretch()
-        rodape_letra.addWidget(self.letra_expandir)
-        self.letra.conteudo.addLayout(rodape_letra)
+        rodape_letra.addWidget(
+            self.letra_expandir
+        )
+
+        self.letra.conteudo.addLayout(
+            rodape_letra
+        )
 
     def _garantir_botoes_playlist(self, quantidade: int) -> None:
         while len(self.preset_botoes) < max(0, quantidade):
@@ -925,46 +1278,384 @@ class PaginaMusicaM1(QWidget):
         self.barra_lateral.setObjectName("musicSideRail")
         self.barra_lateral.setMinimumWidth(265)
         self.barra_lateral.setMaximumWidth(310)
+
         layout = QVBoxLayout(self.barra_lateral)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
 
-        self.sistema = CartaoMusica("Sistema", detalhe="observado")
+        # =========================================================
+        # SISTEMA
+        # =========================================================
+        self.sistema = CartaoMusica(
+            "Sistema",
+            detalhe="observado",
+        )
+        self.sistema.conteudo.setSpacing(7)
+
         self.sistema_valores: dict[str, QLabel] = {}
         self.sistema_barras: dict[str, QProgressBar] = {}
-        for chave, nome in (
-            ("cpu_percent", "CPU"), ("ram_percent", "RAM"),
-            ("temperature_c", "Temp."), ("disk_percent", "Disco"),
-            ("uptime_seconds", "Tempo ligado"),
-        ):
-            linha = QHBoxLayout()
+
+        metricas = (
+            ("cpu_percent", "CPU"),
+            ("ram_percent", "RAM"),
+            ("temperature_c", "Temperatura"),
+            ("disk_percent", "Disco"),
+        )
+
+        for chave, nome in metricas:
+            bloco = QWidget()
+            bloco.setObjectName("musicSystemMetric")
+
+            bloco_layout = QVBoxLayout(bloco)
+            bloco_layout.setContentsMargins(0, 0, 0, 0)
+            bloco_layout.setSpacing(3)
+
+            topo = QHBoxLayout()
+            topo.setContentsMargins(0, 0, 0, 0)
+
             rotulo = QLabel(nome)
             rotulo.setObjectName("musicSideLabel")
+
             valor = QLabel("—")
             valor.setObjectName("musicSideValue")
-            linha.addWidget(rotulo)
-            linha.addStretch()
-            linha.addWidget(valor)
+            valor.setAlignment(
+                Qt.AlignRight | Qt.AlignVCenter
+            )
+
+            topo.addWidget(rotulo)
+            topo.addStretch()
+            topo.addWidget(valor)
+
+            barra = QProgressBar()
+            barra.setObjectName("musicSystemBar")
+            barra.setRange(0, 100)
+            barra.setValue(0)
+            barra.setTextVisible(False)
+            barra.setProperty("available", False)
+
+            bloco_layout.addLayout(topo)
+            bloco_layout.addWidget(barra)
+
             self.sistema_valores[chave] = valor
-            self.sistema.conteudo.addLayout(linha)
-            if chave != "uptime_seconds":
-                barra = QProgressBar()
-                barra.setObjectName("musicSystemBar")
-                barra.setRange(0, 100)
-                barra.setValue(0)
-                barra.setTextVisible(False)
-                barra.setAccessibleName(f"Uso de {nome}")
-                self.sistema_barras[chave] = barra
-                self.sistema.conteudo.addWidget(barra)
+            self.sistema_barras[chave] = barra
 
-        self.rotinas = CartaoMusica("Rotinas", detalhe="agenda")
-        self.rotinas_estado = _estado_futuro("Nenhuma rotina recorrente observada.")
-        self.rotinas.conteudo.addWidget(self.rotinas_estado)
+            self.sistema.conteudo.addWidget(bloco)
 
-        for cartao in (self.sistema, self.audicao, self.rotinas, self.luzes):
+        # Tempo ligado separado
+        uptime_linha = QHBoxLayout()
+
+        uptime_rotulo = QLabel("Tempo ligado")
+        uptime_rotulo.setObjectName("musicSideLabel")
+
+        uptime_valor = QLabel("—")
+        uptime_valor.setObjectName("musicSideValue")
+
+        uptime_linha.addWidget(uptime_rotulo)
+        uptime_linha.addStretch()
+        uptime_linha.addWidget(uptime_valor)
+
+        self.sistema_valores["uptime_seconds"] = uptime_valor
+
+        self.sistema.conteudo.addLayout(
+            uptime_linha
+        )
+
+        # =========================================================
+        # MODO DE AUDIÇÃO
+        # =========================================================
+        self.audicao = CartaoMusica(
+            "Modo de audição",
+            detalhe="M3",
+        )
+        self.audicao.conteudo.setSpacing(5)
+
+        # Volume
+        self.audicao_volume = QFrame()
+        self.audicao_volume.setObjectName(
+            "musicListeningRow"
+        )
+
+        volume_layout = QHBoxLayout(
+            self.audicao_volume
+        )
+        volume_layout.setContentsMargins(
+            8, 7, 8, 7
+        )
+
+        volume_icone = QLabel("♪")
+        volume_icone.setObjectName(
+            "musicListeningIcon"
+        )
+        volume_icone.setFixedWidth(22)
+        volume_icone.setAlignment(Qt.AlignCenter)
+
+        volume_nome = QLabel("Volume mestre")
+        volume_nome.setObjectName(
+            "musicListeningName"
+        )
+
+        self.audicao_volume_valor = QLabel("—")
+        self.audicao_volume_valor.setObjectName(
+            "musicListeningValue"
+        )
+
+        volume_layout.addWidget(volume_icone)
+        volume_layout.addWidget(volume_nome)
+        volume_layout.addStretch()
+        volume_layout.addWidget(
+            self.audicao_volume_valor
+        )
+
+        self.audicao.conteudo.addWidget(
+            self.audicao_volume
+        )
+
+        # Equalizador
+        equalizador = QFrame()
+        equalizador.setObjectName(
+            "musicListeningRow"
+        )
+
+        eq_layout = QHBoxLayout(equalizador)
+        eq_layout.setContentsMargins(
+            8, 7, 8, 7
+        )
+
+        eq_icone = QLabel("≋")
+        eq_icone.setObjectName(
+            "musicListeningIcon"
+        )
+        eq_icone.setFixedWidth(22)
+        eq_icone.setAlignment(Qt.AlignCenter)
+
+        eq_nome = QLabel("Equalizador")
+        eq_nome.setObjectName(
+            "musicListeningName"
+        )
+
+        eq_estado = QLabel("Em breve")
+        eq_estado.setObjectName(
+            "musicListeningFuture"
+        )
+
+        eq_layout.addWidget(eq_icone)
+        eq_layout.addWidget(eq_nome)
+        eq_layout.addStretch()
+        eq_layout.addWidget(eq_estado)
+
+        self.audicao.conteudo.addWidget(
+            equalizador
+        )
+
+        # Som ambiente
+        ambiente = QFrame()
+        ambiente.setObjectName(
+            "musicListeningRow"
+        )
+
+        ambiente_layout = QHBoxLayout(ambiente)
+        ambiente_layout.setContentsMargins(
+            8, 7, 8, 7
+        )
+
+        ambiente_icone = QLabel("◌")
+        ambiente_icone.setObjectName(
+            "musicListeningIcon"
+        )
+        ambiente_icone.setFixedWidth(22)
+        ambiente_icone.setAlignment(
+            Qt.AlignCenter
+        )
+
+        ambiente_nome = QLabel("Som ambiente")
+        ambiente_nome.setObjectName(
+            "musicListeningName"
+        )
+
+        ambiente_estado = QLabel("Em breve")
+        ambiente_estado.setObjectName(
+            "musicListeningFuture"
+        )
+
+        ambiente_layout.addWidget(
+            ambiente_icone
+        )
+        ambiente_layout.addWidget(
+            ambiente_nome
+        )
+        ambiente_layout.addStretch()
+        ambiente_layout.addWidget(
+            ambiente_estado
+        )
+
+        self.audicao.conteudo.addWidget(
+            ambiente
+        )
+
+        # Mantemos por compatibilidade
+        self.audicao_estado = QLabel("")
+        self.audicao_estado.hide()
+
+        # =========================================================
+        # ROTINAS
+        # =========================================================
+        self.rotinas = CartaoMusica(
+            "Rotinas",
+            detalhe="agenda",
+        )
+        self.rotinas.conteudo.setSpacing(4)
+
+        self.rotinas_estado = QLabel(
+            "Nenhuma rotina recorrente observada."
+        )
+        self.rotinas_estado.setObjectName(
+            "musicRoutineEmpty"
+        )
+        self.rotinas_estado.setWordWrap(True)
+
+        self.rotinas.conteudo.addWidget(
+            self.rotinas_estado
+        )
+
+        self.rotinas_linhas: list[dict[str, object]] = []
+
+        for _ in range(3):
+            linha = QFrame()
+            linha.setObjectName("musicRoutineRow")
+            linha.hide()
+
+            linha_layout = QHBoxLayout(linha)
+            linha_layout.setContentsMargins(
+                8, 6, 8, 6
+            )
+            linha_layout.setSpacing(7)
+
+            marcador = QLabel("●")
+            marcador.setObjectName(
+                "musicRoutineDot"
+            )
+            marcador.setFixedWidth(12)
+
+            nome = QLabel("Rotina")
+            nome.setObjectName(
+                "musicRoutineName"
+            )
+
+            horario = QLabel("—")
+            horario.setObjectName(
+                "musicRoutineTime"
+            )
+
+            linha_layout.addWidget(marcador)
+            linha_layout.addWidget(nome, 1)
+            linha_layout.addWidget(horario)
+
+            self.rotinas.conteudo.addWidget(
+                linha
+            )
+
+            self.rotinas_linhas.append({
+                "widget": linha,
+                "name": nome,
+                "time": horario,
+            })
+
+        # =========================================================
+        # LUZES
+        # =========================================================
+        self.luzes = CartaoMusica(
+            "Sincronização de luzes",
+            detalhe="M3",
+        )
+        self.luzes.conteudo.setSpacing(6)
+
+        self.luzes_dispositivo = QFrame()
+        self.luzes_dispositivo.setObjectName(
+            "musicLightsDevice"
+        )
+        self.luzes_dispositivo.setProperty(
+            "configured",
+            False,
+        )
+
+        luz_layout = QHBoxLayout(
+            self.luzes_dispositivo
+        )
+        luz_layout.setContentsMargins(
+            8, 7, 8, 7
+        )
+        luz_layout.setSpacing(8)
+
+        self.luzes_icone = QLabel("●")
+        self.luzes_icone.setObjectName(
+            "musicLightsIcon"
+        )
+        self.luzes_icone.setFixedWidth(18)
+        self.luzes_icone.setAlignment(
+            Qt.AlignCenter
+        )
+
+        luz_textos = QVBoxLayout()
+        luz_textos.setContentsMargins(
+            0, 0, 0, 0
+        )
+        luz_textos.setSpacing(1)
+
+        self.luzes_nome = QLabel(
+            "Lâmpada RGB"
+        )
+        self.luzes_nome.setObjectName(
+            "musicLightsName"
+        )
+
+        self.luzes_estado = QLabel(
+            "Aguardando dispositivo"
+        )
+        self.luzes_estado.setObjectName(
+            "musicLightsState"
+        )
+
+        luz_textos.addWidget(
+            self.luzes_nome
+        )
+        luz_textos.addWidget(
+            self.luzes_estado
+        )
+
+        self.luzes_status = QLabel(
+            "—"
+        )
+        self.luzes_status.setObjectName(
+            "musicLightsBadge"
+        )
+
+        luz_layout.addWidget(
+            self.luzes_icone
+        )
+        luz_layout.addLayout(
+            luz_textos,
+            1,
+        )
+        luz_layout.addWidget(
+            self.luzes_status
+        )
+
+        self.luzes.conteudo.addWidget(
+            self.luzes_dispositivo
+        )
+
+        # =========================================================
+        # ADICIONA NO PAINEL
+        # =========================================================
+        for cartao in (
+            self.sistema,
+            self.audicao,
+            self.rotinas,
+            self.luzes,
+        ):
             layout.addWidget(cartao)
-        layout.addStretch()
 
+        layout.addStretch()
     def _organizar(self, compacto: bool) -> None:
         widgets = (
             self.cabecalho, self.player, self.fila, self.acoes, self.playlists,
@@ -1688,6 +2379,23 @@ class PaginaMusicaM1(QWidget):
         self._repeat_ativo = bool(musica.get("repeat_enabled") is True)
         self._shuffle_disponivel = bool(musica.get("shuffle_available") is True)
         volume_sistema = musica.get("volume_percent")
+        self.audicao_volume_valor.setText(
+            f"{volume_sistema}%"
+            if volume_sistema is not None
+            else "—"
+        )
+
+        self.audicao_volume.setProperty(
+            "available",
+            volume_sistema is not None,
+        )
+
+        self.audicao_volume.style().unpolish(
+            self.audicao_volume
+        )
+        self.audicao_volume.style().polish(
+            self.audicao_volume
+        )
         try:
             volume_sistema = max(0, min(100, round(float(volume_sistema))))
         except (TypeError, ValueError):
@@ -1700,8 +2408,9 @@ class PaginaMusicaM1(QWidget):
             else "VOLUME\n—"
         )
         self.acoes_sessao["Volume —"].setText(
-            f"Volume {volume_sistema}%" if volume_sistema is not None
-            else "Volume —"
+            f"◖  Volume {volume_sistema}%"
+            if volume_sistema is not None
+            else "◖  Volume —"
         )
         self.volume_muted.setText(
             "player mudo" if musica.get("muted") is True else ""
@@ -1716,7 +2425,9 @@ class PaginaMusicaM1(QWidget):
             self.botoes["media_repeat"],
         )
         self.acoes_sessao["Repetição"].setText(
-            "Repetição ligada" if self._repeat_ativo else "Repetição"
+            "↻  Repetição ligada"
+            if self._repeat_ativo
+            else "↻  Repetição"
         )
         audio = musica.get("audio_output")
         audio = audio if isinstance(audio, dict) else {}
@@ -1745,6 +2456,26 @@ class PaginaMusicaM1(QWidget):
             self.audio_origem.setText(
                 "Aguardando o Windows"
             )
+            self.audio_selecionado.setText(
+                "✓" if audio_disponivel else "—"
+            )
+
+            self.audio_selecionado.setProperty(
+                "selected",
+                audio_disponivel,
+            )
+
+            self.audio_icone_caixa.setProperty(
+                "available",
+                audio_disponivel,
+            )
+
+            for widget in (
+                self.audio_selecionado,
+                self.audio_icone_caixa,
+            ):
+                widget.style().unpolish(widget)
+                widget.style().polish(widget)
 
         if self.audio_dispositivo.property("available") != audio_disponivel:
             self.audio_dispositivo.setProperty(
@@ -1767,11 +2498,45 @@ class PaginaMusicaM1(QWidget):
         )
         luzes = musica.get("lights")
         luzes = luzes if isinstance(luzes, dict) else {}
-        self.luzes_estado.setText(
-            "Lâmpada RGB configurada. A sincronização contínua continua desligada até existir confirmação por etapa."
-            if luzes.get("configured") is True else
-            "Nenhuma lâmpada RGB foi confirmada para sincronização musical."
+        luzes = musica.get("lights")
+        luzes = (
+            luzes
+            if isinstance(luzes, dict)
+            else {}
         )
+
+        configurada = (
+            luzes.get("configured") is True
+        )
+
+        self.luzes_estado.setText(
+            "Configurada para a Laylay"
+            if configurada
+            else "Nenhuma lâmpada confirmada"
+        )
+
+        self.luzes_status.setText(
+            "Pronta"
+            if configurada
+            else "—"
+        )
+
+        self.luzes_dispositivo.setProperty(
+            "configured",
+            configurada,
+        )
+
+        self.luzes_status.setProperty(
+            "configured",
+            configurada,
+        )
+
+        for widget in (
+            self.luzes_dispositivo,
+            self.luzes_status,
+        ):
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
         if musica.get("freshness") == "unavailable":
             self.invalidar("Player não observado")
             self._aplicar_lateral(dashboard)
@@ -1805,8 +2570,27 @@ class PaginaMusicaM1(QWidget):
         self.botoes["media_toggle"].setIcon(icone_terminal(
             "pause" if self._estado_observado == "playing" else "play"
         ))
-        self.acoes_sessao["Pausar"].setText(
-            "Pausar" if self._estado_observado == "playing" else "Continuar"
+        botao_toggle = self.acoes_sessao[
+            "Pausar"
+        ]
+
+        tocando = (
+            self._estado_observado
+            == "playing"
+        )
+
+        botao_toggle.setText(
+            "Pausar"
+            if tocando
+            else "Continuar"
+        )
+
+        botao_toggle.setIcon(
+            icone_terminal(
+                "pause"
+                if tocando
+                else "play"
+            )
         )
         self._aplicar_letra(musica)
         self._renderizar_tempo(self._posicao_estimada())
@@ -1841,13 +2625,53 @@ class PaginaMusicaM1(QWidget):
             if isinstance(rotinas, dict) and rotinas.get("freshness") != "unavailable"
             else []
         )
-        linhas = [
-            f"• {item.get('name') or 'Rotina'} · {item.get('time') or '—'}"
-            for item in itens[:3] if isinstance(item, dict)
-        ]
-        self.rotinas_estado.setText(
-            "\n".join(linhas) if linhas else "Nenhuma rotina recorrente observada."
+        rotinas = dashboard.get("routines")
+
+        itens = (
+            list(rotinas.get("items") or ())
+            if (
+                isinstance(rotinas, dict)
+                and rotinas.get("freshness") != "unavailable"
+            )
+            else []
         )
+
+        itens_validos = [
+            item
+            for item in itens[:3]
+            if isinstance(item, dict)
+        ]
+
+        self.rotinas_estado.setVisible(
+            not bool(itens_validos)
+        )
+
+        for indice, linha in enumerate(
+            self.rotinas_linhas
+        ):
+            widget = linha["widget"]
+
+            if indice >= len(itens_validos):
+                widget.hide()
+                continue
+
+            item = itens_validos[indice]
+
+            linha["name"].setText(
+                str(
+                    item.get("name")
+                    or "Rotina"
+                )
+            )
+
+            linha["time"].setText(
+                str(
+                    item.get("time")
+                    or "—"
+                )
+            )
+
+            widget.show()
 
     def _renderizar_tempo(self, posicao: float) -> None:
         if self._duracao_base > 0:
