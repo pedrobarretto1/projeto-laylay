@@ -1370,18 +1370,253 @@ class PainelLateralDashboard(QWidget):
 
         layout.addWidget(musica)
 
-        rotinas = CartaoDashboard("Rotinas", subtitulo="P4")
-        self.rotinas_estado = QLabel("Aguardando rotinas confirmadas pela agenda.")
-        self.rotinas_estado.setObjectName("dashboardEmpty")
-        self.rotinas_estado.setWordWrap(True)
-        rotinas.layout_principal.addWidget(self.rotinas_estado)
+        rotinas = CartaoDashboard(
+            "Rotinas"
+        )
+        rotinas.setProperty(
+            "railCard",
+            "routines",
+        )
+        rotinas.setProperty(
+            "routineState",
+            "unavailable",
+        )
+        rotinas.layout_principal.setContentsMargins(
+            14, 13, 14, 12
+        )
+        rotinas.layout_principal.setSpacing(7)
+        self.rotinas_card = rotinas
+
+        rotinas_status = QHBoxLayout()
+        rotinas_status.setContentsMargins(
+            0, 0, 0, 0
+        )
+
+        self.rotinas_badge = QLabel(
+            "OFFLINE"
+        )
+        self.rotinas_badge.setObjectName(
+            "railRoutineBadge"
+        )
+        self.rotinas_badge.setProperty(
+            "state",
+            "unavailable",
+        )
+
+        rotinas_status.addWidget(
+            self.rotinas_badge,
+            0,
+            Qt.AlignLeft,
+        )
+        rotinas_status.addStretch()
+
+        rotinas.layout_principal.addLayout(
+            rotinas_status
+        )
+
+        self.rotinas_estado = QLabel(
+            "Aguardando rotinas confirmadas "
+            "pela agenda."
+        )
+        self.rotinas_estado.setObjectName(
+            "railRoutineEmpty"
+        )
+        self.rotinas_estado.setWordWrap(
+            True
+        )
+
+        rotinas.layout_principal.addWidget(
+            self.rotinas_estado
+        )
+
+        self.rotinas_linhas: list[
+            tuple[
+                QFrame,
+                QLabel,
+                QLabel,
+            ]
+        ] = []
+
+        for _ in range(3):
+            linha = QFrame()
+            linha.setObjectName(
+                "railRoutineRow"
+            )
+            linha.hide()
+
+            linha_lay = QHBoxLayout(
+                linha
+            )
+            linha_lay.setContentsMargins(
+                8, 7, 8, 7
+            )
+            linha_lay.setSpacing(8)
+
+            icone = QLabel("◷")
+            icone.setObjectName(
+                "railRoutineIcon"
+            )
+            icone.setAlignment(
+                Qt.AlignCenter
+            )
+            icone.setFixedSize(
+                24, 24
+            )
+
+            textos = QVBoxLayout()
+            textos.setContentsMargins(
+                0, 0, 0, 0
+            )
+            textos.setSpacing(2)
+
+            nome = QLabel("Rotina")
+            nome.setObjectName(
+                "railRoutineName"
+            )
+            nome.setWordWrap(True)
+
+            detalhe = QLabel("—")
+            detalhe.setObjectName(
+                "railRoutineMeta"
+            )
+            detalhe.setWordWrap(True)
+
+            textos.addWidget(nome)
+            textos.addWidget(detalhe)
+
+            linha_lay.addWidget(
+                icone,
+                0,
+                Qt.AlignTop,
+            )
+            linha_lay.addLayout(
+                textos,
+                1,
+            )
+
+            rotinas.layout_principal.addWidget(
+                linha
+            )
+
+            self.rotinas_linhas.append(
+                (
+                    linha,
+                    nome,
+                    detalhe,
+                )
+            )
+
         layout.addWidget(rotinas)
 
-        jogo = CartaoDashboard("Modo jogo", subtitulo="P4")
-        self.jogo_estado = QLabel("Estado ainda não exposto à interface")
-        self.jogo_estado.setObjectName("dashboardEmpty")
+        jogo = CartaoDashboard(
+            "Modo jogo"
+        )
+        jogo.setProperty(
+            "railCard",
+            "game",
+        )
+        jogo.setProperty(
+            "gameState",
+            "unavailable",
+        )
+        jogo.layout_principal.setContentsMargins(
+            14, 13, 14, 12
+        )
+        jogo.layout_principal.setSpacing(7)
+        self.jogo_card = jogo
+
+        jogo_painel = QFrame()
+        jogo_painel.setObjectName(
+            "railGamePanel"
+        )
+        jogo_painel.setProperty(
+            "state",
+            "unavailable",
+        )
+        self.jogo_painel = jogo_painel
+
+        jogo_lay = QHBoxLayout(
+            jogo_painel
+        )
+        jogo_lay.setContentsMargins(
+            9, 8, 9, 8
+        )
+        jogo_lay.setSpacing(9)
+
+        self.jogo_icone = QLabel("◉")
+        self.jogo_icone.setObjectName(
+            "railGameIcon"
+        )
+        self.jogo_icone.setProperty(
+            "state",
+            "unavailable",
+        )
+        self.jogo_icone.setAlignment(
+            Qt.AlignCenter
+        )
+        self.jogo_icone.setFixedSize(
+            28, 28
+        )
+
+        jogo_textos = QVBoxLayout()
+        jogo_textos.setContentsMargins(
+            0, 0, 0, 0
+        )
+        jogo_textos.setSpacing(2)
+
+        self.jogo_estado = QLabel(
+            "Estado indisponível"
+        )
+        self.jogo_estado.setObjectName(
+            "railGameTitle"
+        )
         self.jogo_estado.setWordWrap(True)
-        jogo.layout_principal.addWidget(self.jogo_estado)
+
+        self.jogo_detalhe = QLabel(
+            "Detecção automática"
+        )
+        self.jogo_detalhe.setObjectName(
+            "railGameMeta"
+        )
+        self.jogo_detalhe.setWordWrap(True)
+
+        jogo_textos.addWidget(
+            self.jogo_estado
+        )
+        jogo_textos.addWidget(
+            self.jogo_detalhe
+        )
+
+        self.jogo_badge = QLabel(
+            "OFFLINE"
+        )
+        self.jogo_badge.setObjectName(
+            "railGameBadge"
+        )
+        self.jogo_badge.setProperty(
+            "state",
+            "unavailable",
+        )
+
+        jogo_lay.addWidget(
+            self.jogo_icone,
+            0,
+            Qt.AlignTop,
+        )
+        jogo_lay.addLayout(
+            jogo_textos,
+            1,
+        )
+        jogo_lay.addWidget(
+            self.jogo_badge,
+            0,
+            Qt.AlignTop,
+        )
+
+        jogo.layout_principal.addWidget(
+            jogo_painel
+        )
+
         layout.addWidget(jogo)
         layout.addStretch()
         self._conectada = False
@@ -1394,6 +1629,299 @@ class PainelLateralDashboard(QWidget):
         self._relogio_musica.setInterval(1000)
         self._relogio_musica.timeout.connect(self._atualizar_relogio_musica)
         self._relogio_musica.start()
+
+    def _aplicar_rotinas(
+        self,
+        rotinas: object,
+    ) -> None:
+        frescor = (
+            str(
+                rotinas.get("freshness")
+                or "unavailable"
+            )
+            if isinstance(
+                rotinas,
+                dict,
+            )
+            else "unavailable"
+        )
+
+        itens = (
+            [
+                item
+                for item
+                in list(
+                    rotinas.get("items")
+                    or ()
+                )[:3]
+                if isinstance(
+                    item,
+                    dict,
+                )
+            ]
+            if (
+                isinstance(
+                    rotinas,
+                    dict,
+                )
+                and frescor
+                != "unavailable"
+            )
+            else []
+        )
+
+        if frescor == "unavailable":
+            visual = "unavailable"
+            badge = "OFFLINE"
+            vazio = (
+                "Rotinas indisponíveis."
+            )
+
+        elif frescor == "stale":
+            visual = "stale"
+            badge = "ANTIGO"
+            vazio = (
+                "Nenhuma rotina recente "
+                "confirmada."
+            )
+
+        elif itens:
+            visual = "active"
+            quantidade = len(itens)
+            badge = (
+                f"{quantidade} ATIVA"
+                if quantidade == 1
+                else f"{quantidade} ATIVAS"
+            )
+            vazio = ""
+
+        else:
+            visual = "empty"
+            badge = "VAZIO"
+            vazio = (
+                "Nenhuma rotina recorrente "
+                "confirmada."
+            )
+
+        self.rotinas_card.setProperty(
+            "routineState",
+            visual,
+        )
+        self.rotinas_badge.setProperty(
+            "state",
+            visual,
+        )
+        self.rotinas_badge.setText(
+            badge
+        )
+
+        for widget in (
+            self.rotinas_card,
+            self.rotinas_badge,
+        ):
+            widget.style().unpolish(
+                widget
+            )
+            widget.style().polish(
+                widget
+            )
+
+        if not itens:
+            self.rotinas_estado.setText(
+                vazio
+            )
+            self.rotinas_estado.show()
+
+            for (
+                linha,
+                _nome,
+                _detalhe,
+            ) in self.rotinas_linhas:
+                linha.hide()
+
+            return
+
+        self.rotinas_estado.hide()
+
+        for indice, (
+            linha,
+            nome_label,
+            detalhe_label,
+        ) in enumerate(
+            self.rotinas_linhas
+        ):
+            if indice >= len(itens):
+                linha.hide()
+                continue
+
+            item = itens[indice]
+
+            nome = str(
+                item.get("name")
+                or "Rotina"
+            ).strip()
+
+            horario = str(
+                item.get("time")
+                or "—"
+            ).strip()
+
+            dias_brutos = item.get(
+                "days"
+            )
+
+            dias = (
+                ", ".join(
+                    str(dia)
+                    for dia in dias_brutos
+                    if str(dia).strip()
+                )
+                if isinstance(
+                    dias_brutos,
+                    (list, tuple),
+                )
+                else ""
+            )
+
+            detalhe = (
+                horario
+                + (
+                    f" · {dias}"
+                    if dias
+                    else ""
+                )
+            )
+
+            if frescor == "stale":
+                detalhe += (
+                    " · dados antigos"
+                )
+
+            nome_label.setText(
+                nome
+            )
+            detalhe_label.setText(
+                detalhe
+            )
+            linha.show()
+
+    def _aplicar_modo_jogo(
+        self,
+        contexto: object,
+    ) -> None:
+        frescor = (
+            str(
+                contexto.get("freshness")
+                or "unavailable"
+            )
+            if isinstance(
+                contexto,
+                dict,
+            )
+            else "unavailable"
+        )
+
+        if frescor == "unavailable":
+            visual = "unavailable"
+            badge = "OFFLINE"
+            titulo = (
+                "Estado indisponível"
+            )
+            detalhe = (
+                "Detecção automática"
+            )
+
+        elif (
+            isinstance(
+                contexto,
+                dict,
+            )
+            and contexto.get(
+                "game_active"
+            ) is True
+        ):
+            nome = str(
+                contexto.get("game_name")
+                or "Jogo detectado"
+            )
+
+            visual = (
+                "stale"
+                if frescor == "stale"
+                else "active"
+            )
+            badge = (
+                "ANTIGO"
+                if visual == "stale"
+                else "ATIVO"
+            )
+            titulo = nome
+            detalhe = (
+                "Dados antigos"
+                if visual == "stale"
+                else "Modo jogo detectado "
+                     "automaticamente"
+            )
+
+        else:
+            visual = (
+                "stale"
+                if frescor == "stale"
+                else "inactive"
+            )
+            badge = (
+                "ANTIGO"
+                if visual == "stale"
+                else "DESATIVADO"
+            )
+            titulo = (
+                "Nenhum jogo detectado"
+            )
+            detalhe = (
+                "Dados antigos"
+                if visual == "stale"
+                else "Detecção automática"
+            )
+
+        self.jogo_card.setProperty(
+            "gameState",
+            visual,
+        )
+        self.jogo_painel.setProperty(
+            "state",
+            visual,
+        )
+        self.jogo_icone.setProperty(
+            "state",
+            visual,
+        )
+        self.jogo_badge.setProperty(
+            "state",
+            visual,
+        )
+
+        self.jogo_badge.setText(
+            badge
+        )
+        self.jogo_estado.setText(
+            titulo
+        )
+        self.jogo_detalhe.setText(
+            detalhe
+        )
+
+        for widget in (
+            self.jogo_card,
+            self.jogo_painel,
+            self.jogo_icone,
+            self.jogo_badge,
+        ):
+            widget.style().unpolish(
+                widget
+            )
+            widget.style().polish(
+                widget
+            )
 
     def _definir_visual_musica(
         self,
@@ -1700,22 +2228,9 @@ class PainelLateralDashboard(QWidget):
         self.sistema_estado.style().polish(
             self.sistema_estado
         )
-        contexto = dashboard.get("context")
-        frescor = (
-            str(contexto.get("freshness") or "unavailable")
-            if isinstance(contexto, dict) else "unavailable"
+        self._aplicar_modo_jogo(
+            dashboard.get("context")
         )
-        if frescor == "unavailable":
-            self.jogo_estado.setText("Estado do jogo indisponível")
-        elif isinstance(contexto, dict) and contexto.get("game_active") is True:
-            nome = str(contexto.get("game_name") or "Jogo detectado")
-            sufixo = " · dados antigos" if frescor == "stale" else ""
-            self.jogo_estado.setText(f"Ativo · {nome}{sufixo}")
-        else:
-            self.jogo_estado.setText(
-                "Desativado · dados antigos" if frescor == "stale"
-                else "Desativado"
-            )
         musica = dashboard.get(
             "music"
         )
@@ -1915,24 +2430,9 @@ class PainelLateralDashboard(QWidget):
             )
 
         self._atualizar_controles_musica()
-        rotinas = dashboard.get("routines")
-        itens_rotina = (
-            list(rotinas.get("items") or ())
-            if isinstance(rotinas, dict) and rotinas.get("freshness") != "unavailable"
-            else []
+        self._aplicar_rotinas(
+            dashboard.get("routines")
         )
-        if itens_rotina:
-            linhas = [
-                f"• {item.get('name') or 'Rotina'} · {item.get('time') or '—'}"
-                for item in itens_rotina[:3] if isinstance(item, dict)
-            ]
-            self.rotinas_estado.setText("\n".join(linhas))
-        else:
-            self.rotinas_estado.setText(
-                "Nenhuma rotina recorrente confirmada."
-                if isinstance(rotinas, dict) and rotinas.get("freshness") != "unavailable"
-                else "Rotinas indisponíveis."
-            )
 
     def invalidar_dashboard(self) -> None:
         for chave, valor in self.metricas.items():
@@ -1993,9 +2493,7 @@ class PainelLateralDashboard(QWidget):
         self.sistema_estado.style().polish(
             self.sistema_estado
         )
-        self.jogo_estado.setText(
-            "Estado indisponível durante a reconexão"
-        )
+        self._aplicar_modo_jogo(None)
 
         self.musica_titulo.setText(
             "Nenhuma faixa confirmada"
@@ -2036,7 +2534,7 @@ class PainelLateralDashboard(QWidget):
         )
 
         self._atualizar_controles_musica()
-        self.rotinas_estado.setText("Aguardando rotinas confirmadas pela agenda.")
+        self._aplicar_rotinas(None)
 
 
 def _cabecalho_pagina(titulo: str, descricao: str) -> tuple[QLabel, QLabel, QLabel]:

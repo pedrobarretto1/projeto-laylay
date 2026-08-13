@@ -1843,6 +1843,213 @@ class JanelaLaylay(QMainWindow):
                     border-color: #3C3035;
                 }}
 
+
+                /* =========================================
+                   HOME — ROTINAS + MODO JOGO
+                   ========================================= */
+
+                #dashboardCard[railCard="routines"],
+                #dashboardCard[railCard="game"] {{
+                    background: #14191E;
+                    border: 1px solid #2B3239;
+                    border-radius: 14px;
+                }}
+
+                #dashboardCard[railCard="routines"][routineState="active"],
+                #dashboardCard[railCard="game"][gameState="active"] {{
+                    border-color: #57303A;
+                }}
+
+                #dashboardCard[railCard="routines"][routineState="stale"],
+                #dashboardCard[railCard="game"][gameState="stale"] {{
+                    border-color: #574728;
+                }}
+
+                #dashboardCard[railCard="routines"][routineState="unavailable"],
+                #dashboardCard[railCard="game"][gameState="unavailable"] {{
+                    border-color: #252B31;
+                }}
+
+                #dashboardCard[railCard="routines"] #dashboardCardTitle,
+                #dashboardCard[railCard="game"] #dashboardCardTitle {{
+                    color: #F3EFF1;
+                    font-size: 13px;
+                    font-weight: 700;
+                }}
+
+                /* Rotinas */
+
+                #railRoutineBadge {{
+                    background: #20262C;
+                    border: 1px solid #323940;
+                    border-radius: 7px;
+                    padding: 3px 6px;
+                    color: #858D96;
+                    font-size: 8px;
+                    font-weight: 700;
+                }}
+
+                #railRoutineBadge[state="active"] {{
+                    background: #2A1A20;
+                    border-color: #5B303B;
+                    color: #FF6D82;
+                }}
+
+                #railRoutineBadge[state="empty"] {{
+                    background: #1B2025;
+                    border-color: #333A42;
+                    color: #929AA2;
+                }}
+
+                #railRoutineBadge[state="stale"] {{
+                    background: #272116;
+                    border-color: #5A4827;
+                    color: #D3AA61;
+                }}
+
+                #railRoutineBadge[state="unavailable"] {{
+                    background: #181C20;
+                    border-color: #282E34;
+                    color: #646C74;
+                }}
+
+                #railRoutineRow {{
+                    background: #171C21;
+                    border: 1px solid #292F36;
+                    border-radius: 9px;
+                }}
+
+                #railRoutineRow:hover {{
+                    background: #1C2127;
+                    border-color: #3C343A;
+                }}
+
+                #railRoutineIcon {{
+                    background: #241B20;
+                    border: 1px solid #49313A;
+                    border-radius: 12px;
+                    color: #D35469;
+                    font-size: 11px;
+                    font-weight: 700;
+                }}
+
+                #railRoutineName {{
+                    background: transparent;
+                    border: 0;
+                    color: #DDD9DB;
+                    font-size: 9px;
+                    font-weight: 650;
+                }}
+
+                #railRoutineMeta {{
+                    background: transparent;
+                    border: 0;
+                    color: #747C85;
+                    font-size: 8px;
+                }}
+
+                #railRoutineEmpty {{
+                    background: #171C21;
+                    border: 1px solid #292F36;
+                    border-radius: 9px;
+                    padding: 8px 10px;
+                    color: #777F88;
+                    font-size: 8px;
+                }}
+
+                /* Modo jogo */
+
+                #railGamePanel {{
+                    background: #171C21;
+                    border: 1px solid #292F36;
+                    border-radius: 10px;
+                }}
+
+                #railGamePanel[state="active"] {{
+                    background: #20191D;
+                    border-color: #493039;
+                }}
+
+                #railGamePanel[state="stale"] {{
+                    background: #1E1B16;
+                    border-color: #514326;
+                }}
+
+                #railGamePanel[state="unavailable"] {{
+                    background: #15191D;
+                    border-color: #252B31;
+                }}
+
+                #railGameIcon {{
+                    background: #20262C;
+                    border: 1px solid #30373E;
+                    border-radius: 14px;
+                    color: #69717A;
+                    font-size: 12px;
+                    font-weight: 700;
+                }}
+
+                #railGameIcon[state="active"] {{
+                    background: #382027;
+                    border-color: #67313C;
+                    color: #FF7186;
+                }}
+
+                #railGameIcon[state="stale"] {{
+                    background: #342B19;
+                    border-color: #66532D;
+                    color: #D5AD62;
+                }}
+
+                #railGameTitle {{
+                    background: transparent;
+                    border: 0;
+                    color: #E5E1E3;
+                    font-size: 10px;
+                    font-weight: 700;
+                }}
+
+                #railGameMeta {{
+                    background: transparent;
+                    border: 0;
+                    color: #747C85;
+                    font-size: 8px;
+                }}
+
+                #railGameBadge {{
+                    background: #1B2025;
+                    border: 1px solid #323940;
+                    border-radius: 7px;
+                    padding: 3px 6px;
+                    color: #858D96;
+                    font-size: 8px;
+                    font-weight: 700;
+                }}
+
+                #railGameBadge[state="active"] {{
+                    background: #2A1A20;
+                    border-color: #5B303B;
+                    color: #FF6D82;
+                }}
+
+                #railGameBadge[state="inactive"] {{
+                    background: #1B2025;
+                    border-color: #333A42;
+                    color: #8E969E;
+                }}
+
+                #railGameBadge[state="stale"] {{
+                    background: #272116;
+                    border-color: #5A4827;
+                    color: #D3AA61;
+                }}
+
+                #railGameBadge[state="unavailable"] {{
+                    background: #181C20;
+                    border-color: #282E34;
+                    color: #646C74;
+                }}
+
                 #musicTitle {{ font-size: 13px; font-weight: 700; }}
                 #musicControlsPlaceholder {{ color: #5F646B; font-size: 15px; padding: 5px; }}
                 #musicPage, #musicScroll, #musicScroll > QWidget > QWidget,
