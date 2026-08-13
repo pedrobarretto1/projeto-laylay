@@ -225,13 +225,8 @@ class MensagemWidget(QFrame):
         self.corpo.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         self.corpo.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
-        if papel == "user":
-            meta = QLabel(
-                "VOCÊ" + (f"  ·  {self.horario}" if self.horario else "")
-            )
-            meta.setObjectName("messageMeta")
-            lay.addWidget(meta)
-
+        # P7.1:
+        # Só o texto fica dentro do balão.
         lay.addWidget(self.corpo)
         self.status = QLabel()
         self.status.setObjectName("messageStatus")
@@ -240,11 +235,10 @@ class MensagemWidget(QFrame):
         self.retry.clicked.connect(lambda: self.reenviar.emit(self.mensagem_id, self.texto))
         self.retry.hide()
         if papel == "user":
-            lay.addWidget(self.status, 0, Qt.AlignRight)
-            lay.addWidget(self.retry, 0, Qt.AlignRight)
             self.definir_status(status)
         else:
             self.status.hide()
+            self.retry.hide()
         natural = super().sizeHint().width()
         self.largura_preferida = min(
             self.maximumWidth(), max(natural, 180 + min(680, len(self.texto) * 3)),
@@ -271,7 +265,13 @@ class MensagemWidget(QFrame):
         self.status.setProperty("delivery", status)
         self.status.style().unpolish(self.status)
         self.status.style().polish(self.status)
-        self.retry.setVisible(status == "failed")
+
+        self.status.setVisible(
+            status in {"pending", "failed"}
+        )
+        self.retry.setVisible(
+            status == "failed"
+        )
 
 
 class IndicadorPensando(QFrame):
@@ -1701,6 +1701,26 @@ class JanelaLaylay(QMainWindow):
                     background: transparent;
                     border: 0;
                     padding-left: 5px;
+                    color: #747B84;
+                    font-size: 10px;
+                }}
+
+
+                /* =========================================
+                   P7.1 — MENSAGEM DO USUÁRIO ESTILO CHAT
+                   ========================================= */
+
+                #messageUser {{
+                    background: #291C22;
+                    border: 1px solid #472A32;
+                    border-radius: 15px;
+                }}
+
+                #messageTime[owner="user"] {{
+                    background: transparent;
+                    border: 0;
+                    padding-left: 0;
+                    padding-right: 5px;
                     color: #747B84;
                     font-size: 10px;
                 }}
@@ -3552,8 +3572,49 @@ class JanelaLaylay(QMainWindow):
         mensagem.reenviar.connect(self.reenviar_texto)
         linha = QHBoxLayout()
         if papel == "user":
+            coluna_mensagem = QVBoxLayout()
+            coluna_mensagem.setContentsMargins(
+                0, 0, 0, 0
+            )
+            coluna_mensagem.setSpacing(3)
+
+            coluna_mensagem.addWidget(
+                mensagem
+            )
+
+            if horario_mensagem:
+                horario_label = QLabel(
+                    horario_mensagem
+                )
+                horario_label.setObjectName(
+                    "messageTime"
+                )
+                horario_label.setProperty(
+                    "owner",
+                    "user",
+                )
+                coluna_mensagem.addWidget(
+                    horario_label,
+                    0,
+                    Qt.AlignRight,
+                )
+
+            coluna_mensagem.addWidget(
+                mensagem.status,
+                0,
+                Qt.AlignRight,
+            )
+            coluna_mensagem.addWidget(
+                mensagem.retry,
+                0,
+                Qt.AlignRight,
+            )
+
             linha.addStretch(1)
-            linha.addWidget(mensagem)
+            linha.addLayout(
+                coluna_mensagem
+            )
+
             if self.conversa_atual.text() == "Conversa atual":
                 titulo = texto[:34] + ("…" if len(texto) > 34 else "")
                 self.conversa_atual.setText(titulo)
