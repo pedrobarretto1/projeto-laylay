@@ -9,7 +9,7 @@ STATUS_RESULTADO_JA_SATISFEITO = {
     "ja_aberto_focado", "site_ja_aberto_focado",
     "ja_estava_ligado", "ja_estava_desligado",
     "playlist_ja_existia", "playlist_musica_ja_existia",
-    "nota_ja_guardada", "lembrete_ja_agendado",
+    "nota_ja_guardada",
 }
 
 STATUS_RESULTADO_CANCELADO = {

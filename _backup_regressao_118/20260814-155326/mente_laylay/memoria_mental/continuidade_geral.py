@@ -176,33 +176,6 @@ def resolver_continuacao_aditiva(
             continue
         candidatos.append({**item, "dominio": dominio, "idade_s": max(0.0, idade)})
 
-    # Uma ação posterior do mesmo domínio não pode apagar uma operação que
-    # continua semanticamente referenciável. Ex.: PLAYLIST_ADD -> MEDIA_CONTROL
-    # -> "Essa também.". O foco vivo de música vira MEDIA_CONTROL, mas o último
-    # PLAYLIST_ADD confirmado ainda precisa fornecer o destino da playlist.
-    # REGRESSAO_118_V1_20260814 | historico_operacao_referenciavel
-    for bruto_historico in reversed(list(continuidade.get("historico") or [])):
-        item_historico = dict(bruto_historico or {})
-        intent_historico = str(item_historico.get("intent") or "").upper().strip()
-        if intent_historico not in _POLITICAS_CONTINUACAO_ADITIVA:
-            continue
-        try:
-            idade_historico = agora - float(item_historico.get("ts") or 0.0)
-        except (TypeError, ValueError):
-            continue
-        if idade_historico > ttl_s:
-            continue
-        params_historico = dict(item_historico.get("params") or {})
-        if not params_historico:
-            # Históricos antigos não tinham params; não reconstruímos por adivinhação.
-            continue
-        candidatos.append({
-            **item_historico,
-            "params": params_historico,
-            "idade_s": max(0.0, idade_historico),
-            "fonte": "historico_operacao_referenciavel",
-        })
-
     # O contrato atomico do ultimo resultado e a segunda fonte oficial. Ele
     # evita que uma projecao de dominio ausente/incompleta transforme uma
     # referencia clara em conversa livre. Somente um resultado observado e
@@ -461,16 +434,7 @@ def registrar_evento_continuidade(
             item["referencia_anterior"] = referencia_anterior
     dominios[dominio_norm] = item
     historico = list(continuidade.get("historico") or [])
-    resumo_historico_referenciavel = {
-        chave: item.get(chave)
-        for chave in ("evento", "dominio", "intent", "alvo", "status", "ts")
-    }
-    # Params só entram no histórico para operações que declararam política
-    # aditiva; os valores já passaram por _params_seguros.
-    # REGRESSAO_118_V1_20260814 | resumo_historico_referenciavel
-    if str(item.get("intent") or "").upper() in _POLITICAS_CONTINUACAO_ADITIVA:
-        resumo_historico_referenciavel["params"] = dict(item.get("params") or {})
-    historico.append(resumo_historico_referenciavel)
+    historico.append({chave: item.get(chave) for chave in ("evento", "dominio", "intent", "alvo", "status", "ts")})
     continuidade.update({
         "versao": VERSAO_CONTINUIDADE_GERAL,
         "modo": "oficial",

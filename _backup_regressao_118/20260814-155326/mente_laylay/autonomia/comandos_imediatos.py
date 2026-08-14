@@ -740,28 +740,6 @@ class ComandosImediatosRuntime:
         ):
             return True
 
-        # Consultas locais de estado são somente leitura e precisam vencer
-        # o roteador operacional genérico. Sem esta barreira, perguntas como
-        # "O Opera continua aberto?" podem ser consumidas como APP_OPEN antes
-        # de processar_consulta_sistema_local ter chance de responder.
-        # REGRESSAO_118_V1_20260814 | PRIORIDADE:SISTEMA:LEITURA
-        try:
-            tratado_sistema, rota_sistema = processar_consulta_sistema_local(
-                contexto_prioritario, texto
-            )
-        except Exception as erro:
-            print(
-                "⚠️ [PRIORIDADE:SISTEMA:LEITURA] consulta local falhou sem "
-                f"bloquear o turno: {type(erro).__name__}: {erro}"
-            )
-        else:
-            if tratado_sistema:
-                print(
-                    "⚡ [PRIORIDADE:SISTEMA:LEITURA] "
-                    f"rota={rota_sistema or 'consulta_sistema_local'}"
-                )
-                return True
-
         # Uma frase pode pedir duas habilidades cooperando no mesmo turno.
         # O ciclo canônico já sabia segmentar e executar a cadeia, mas essa
         # porta nunca era chamada pela fase prioritária; por isso o texto

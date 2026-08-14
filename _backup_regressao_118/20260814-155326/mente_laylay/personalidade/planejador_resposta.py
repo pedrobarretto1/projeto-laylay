@@ -147,11 +147,6 @@ def _ancora_resultado(resultado: ResultadoAcao, classe: str) -> str:
             return f"{objeto.capitalize()} já está ligado; não repeti o comando."
         if status == "ja_estava_desligado":
             return f"{objeto.capitalize()} já está desligado; não repeti o comando."
-        if status == "lembrete_ja_agendado":
-            return (
-                f"O lembrete de {objeto} já estava agendado; "
-                "mantive uma só cópia."
-            )
         return f"{objeto.capitalize()} já estava como você pediu; não repeti a ação."
 
     if status in {"ligado", "ja_estava_ligado"}:

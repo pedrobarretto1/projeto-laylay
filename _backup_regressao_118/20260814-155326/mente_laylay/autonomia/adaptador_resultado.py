@@ -213,11 +213,6 @@ class AdaptadorResultadoOperacional:
                 )
             elif status_norm == "playlist_ja_existia":
                 fala_base = f"A playlist {objeto} já existia; não criei outra."
-            elif status_norm == "lembrete_ja_agendado":
-                fala_base = (
-                    f"O lembrete de {objeto} já estava agendado; "
-                    "mantive uma só cópia."
-                )
             else:
                 fala_base = f"{objeto} já estava como você pediu; não repeti a ação."
         status_calmo = status_norm in STATUS_FALA_CALMA

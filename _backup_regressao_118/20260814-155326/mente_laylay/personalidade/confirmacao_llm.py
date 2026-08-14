@@ -89,7 +89,6 @@ RAIZES_POR_STATUS: dict[str, tuple[str, ...]] = {
     "playlist_musica_adicionada": ("adicione", "salv", "guarde", "foi pra"),
     "acao_agendada": ("agend", "lembrete"),
     "lembrete_agendado": ("agend", "lembrete"),
-    "lembrete_ja_agendado": ("ja", "agend", "marcad", "duplic", "mantive"),
     "agendamento_cancelado": ("cancel", "agenda"),
     "indisponivel": ("nao respondeu", "indisponivel", "offline"),
     "nao_encontrado": ("nao encontrei", "nao achei", "nao apareceu"),
