@@ -249,110 +249,316 @@ def abrir_programa(nome_solicitado: str, falar_cb: Optional[Callable[[str, str, 
     raise Exception(f"Não consegui encontrar nenhum programa instalado chamado '{alvo}'.")
 
 
-def fechar_programa(nome_solicitado: str, falar_cb: Optional[Callable[[str, str, int], None]] = None) -> bool:
-    """Fecha programa de forma segura."""
-    alvo = str(nome_solicitado).strip()
-    alvo_lower = alvo.lower().replace(".exe", "").strip()
+# P0_AUTOPRESERVACAO_EXECUTOR_20260814
+# Invariante: nenhum resolvedor, LLM ou contexto pode conceder ao executor
+# autoridade para encerrar a própria Laylay ou o processo que sustenta sua
+# sessão. A proteção fica no nível mais baixo, imediatamente antes do kill.
+_PROCESSOS_PROTEGIDOS_FECHAMENTO = frozenset({
+    "explorer",
+    "svchost",
+    "system",
+    "registry",
+    "winlogon",
+    "csrss",
+    "lsass",
+    "services",
+    "smss",
+    "wininit",
+    "dwm",
+    "taskmgr",
+    "python",
+    "pythonw",
+    "python3",
+    "py",
+    "cmd",
+    "powershell",
+    "pwsh",
+    "conhost",
+    "windowsterminal",
+    "openconsole",
+    "antigravity",
+    "laylay",
+})
+
+
+_NOMES_CANONICOS_FECHAMENTO = {
+    "steam": ("steam.exe",),
+    "discord": ("discord.exe",),
+    "spotify": ("spotify.exe",),
+    "chrome": ("chrome.exe",),
+    # launcher.exe é genérico demais para uma operação destrutiva.
+    "opera": ("opera.exe",),
+    "firefox": ("firefox.exe",),
+    "edge": ("msedge.exe",),
+    "brave": ("brave.exe",),
+    "vscode": ("code.exe",),
+    "vs code": ("code.exe",),
+    "code": ("code.exe",),
+    "minecraft": ("minecraft.exe", "javaw.exe"),
+    "obs": ("obs64.exe",),
+    "notepad": ("notepad.exe",),
+    "paint": ("mspaint.exe",),
+    "calculadora": ("calc.exe", "calculator.exe", "calculatorapp.exe"),
+    "word": ("winword.exe",),
+    "excel": ("excel.exe",),
+    "powerpoint": ("powerpnt.exe",),
+    "epic": ("epicgameslauncher.exe",),
+    "bloco de notas": ("notepad.exe",),
+    "msstore": ("winstore.app.exe",),
+    "ms-store": ("winstore.app.exe",),
+    "microsoft store": ("winstore.app.exe",),
+}
+
+
+def _normalizar_nome_processo_fechamento(nome: str) -> str:
+    """Normaliza um executável para comparação de segurança."""
+    bruto = os.path.basename(str(nome or "").strip()).casefold()
+    if bruto.endswith(".exe"):
+        bruto = bruto[:-4]
+    return bruto.strip()
+
+
+def _pids_autoprotegidos_fechamento() -> set[int]:
+    """PID da Laylay + ancestrais que mantêm a sessão viva."""
+    pids: set[int] = {int(os.getpid())}
+    try:
+        atual = psutil.Process(os.getpid())
+        for ancestral in atual.parents():
+            try:
+                pids.add(int(ancestral.pid))
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return pids
+
+
+def _processo_protegido_fechamento(
+    proc,
+    *,
+    pids_autoprotegidos: set[int] | None = None,
+) -> tuple[bool, str]:
+    """Decide fail-closed se um processo pode sequer chegar ao kill."""
+    protegidos = (
+        set(pids_autoprotegidos)
+        if pids_autoprotegidos is not None
+        else _pids_autoprotegidos_fechamento()
+    )
+
+    try:
+        pid = int(getattr(proc, "pid"))
+    except Exception:
+        return True, "pid_indeterminado"
+
+    if pid in protegidos:
+        return True, "processo_da_laylay_ou_ancestral"
+
+    try:
+        nome = str(proc.name() or "")
+    except Exception:
+        return True, "nome_indeterminado"
+
+    nome_norm = _normalizar_nome_processo_fechamento(nome)
+    if not nome_norm:
+        return True, "nome_vazio"
+    if nome_norm in _PROCESSOS_PROTEGIDOS_FECHAMENTO:
+        return True, f"processo_protegido:{nome_norm}"
+
+    return False, ""
+
+
+def _processo_corresponde_fechamento(proc, nomes_permitidos: set[str]) -> bool:
+    """Fechamento destrutivo exige executável exato, nunca aproximação."""
+    try:
+        nome = str(proc.name() or "").casefold().strip()
+    except Exception:
+        return False
+    permitidos = {str(item or "").casefold().strip() for item in nomes_permitidos}
+    return bool(nome and nome in permitidos)
+
+
+def _encerrar_processo_validado(
+    proc,
+    *,
+    alvo: str,
+    origem: str,
+    pids_autoprotegidos: set[int],
+) -> bool:
+    """Único ponto autorizado a chamar kill() neste fluxo."""
+    protegido, motivo = _processo_protegido_fechamento(
+        proc,
+        pids_autoprotegidos=pids_autoprotegidos,
+    )
+    if protegido:
+        try:
+            pid = int(getattr(proc, "pid"))
+        except Exception:
+            pid = -1
+        try:
+            nome = str(proc.name() or "?")
+        except Exception:
+            nome = "?"
+        print(
+            "🛡️ [AUTOPRESERVAÇÃO] encerramento bloqueado | "
+            f"alvo={alvo!r} processo={nome!r} pid={pid} motivo={motivo}"
+        )
+        return False
+
+    try:
+        proc.kill()
+    except Exception as erro:
+        print(
+            "⚠️ [FECHAR_PROGRAMA] falha ao encerrar processo validado | "
+            f"alvo={alvo!r} origem={origem} erro={erro}"
+        )
+        return False
+
+    try:
+        pid = int(getattr(proc, "pid"))
+    except Exception:
+        pid = -1
+    try:
+        nome = str(proc.name() or "?")
+    except Exception:
+        nome = "?"
+
+    print(
+        "✅ [FECHAR_PROGRAMA] processo exato encerrado | "
+        f"alvo={alvo!r} processo={nome!r} pid={pid} origem={origem}"
+    )
+    return True
+
+
+def fechar_programa(
+    nome_solicitado: str,
+    falar_cb: Optional[Callable[[str, str, int], None]] = None,
+) -> bool:
+    """Fecha um programa somente por identidade exata e com autopreservação."""
+    alvo = str(nome_solicitado or "").strip()
+    alvo_lower = normalizar_nome_app(alvo)
+    if not alvo_lower:
+        raise Exception("Nome de programa vazio.")
+
     print(f"🚀 [FECHAR_PROGRAMA] Solicitado: {alvo_lower}")
-    fechou_algo = False
 
-    processos_protegidos = {
-        "explorer", "svchost", "system", "winlogon", "csrss", "lsass",
-        "services", "smss", "wininit", "dwm", "taskmgr", "python",
-        "pythonw", "cmd", "powershell", "antigravity"
-    }
-
-    if alvo_lower in processos_protegidos:
-        print(f"⚠️ [SEGURANÇA] '{alvo}' é um processo de sistema protegido. Operação cancelada.")
+    if alvo_lower in _PROCESSOS_PROTEGIDOS_FECHAMENTO:
+        print(f"🛡️ [AUTOPRESERVAÇÃO] alvo protegido recusado: {alvo!r}")
         raise Exception(f"Não posso fechar o processo protegido: {alvo}")
 
-    if alvo_lower in ["google", "chrome", "google chrome"]:
+    if alvo_lower in {"google", "chrome", "google chrome"}:
         print("⚠️ [SEGURANÇA] Bloqueio de encerramento bruto do Chrome.")
-        raise Exception("Use close_tab para fechar abas, não tente matar o Chrome inteiro por segurança.")
+        raise Exception(
+            "Use close_tab para fechar abas, não tente matar o Chrome inteiro "
+            "por segurança."
+        )
 
-    nomes_canonicos: dict = {
-        "steam": ["steam.exe"],
-        "discord": ["discord.exe"],
-        "spotify": ["spotify.exe"],
-        "chrome": ["chrome.exe"],
-        "opera": ["opera.exe", "launcher.exe"],
-        "firefox": ["firefox.exe"],
-        "edge": ["msedge.exe"],
-        "brave": ["brave.exe"],
-        "vscode": ["code.exe"],
-        "vs code": ["code.exe"],
-        "code": ["code.exe"],
-        "minecraft": ["minecraft.exe", "javaw.exe"],
-        "obs": ["obs64.exe"],
-        "notepad": ["notepad.exe"],
-        "paint": ["mspaint.exe"],
-        "calculadora": ["calc.exe"],
-        "word": ["winword.exe"],
-        "excel": ["excel.exe"],
-        "powerpoint": ["powerpnt.exe"],
-        "epic": ["epicgameslauncher.exe"],
-        "bloco de notas": ["notepad.exe"],
-        "msstore": ["winstore.app.exe"],
-        "ms-store": ["winstore.app.exe"],
-        "microsoft store": ["winstore.app.exe"],
-    }
+    canonicos = _NOMES_CANONICOS_FECHAMENTO.get(alvo_lower)
+    if canonicos:
+        nomes_permitidos = {
+            str(nome or "").casefold().strip()
+            for nome in canonicos
+            if str(nome or "").strip()
+        }
+    else:
+        base = alvo_lower.casefold().strip()
+        nomes_permitidos = {base}
+        if not base.endswith(".exe"):
+            nomes_permitidos.add(base + ".exe")
 
-    alvos_exatos = nomes_canonicos.get(alvo_lower)
+    if not nomes_permitidos:
+        raise Exception(f"Não existe executável seguro mapeado para '{alvo}'.")
 
-    morto_pelo_titulo = False
+    pids_autoprotegidos = _pids_autoprotegidos_fechamento()
+    fechou_algo = False
+    pids_processados: set[int] = set()
+
+    # Título é só descoberta. O executável ainda precisa bater exatamente.
     try:
         if gw is not None:
             import win32gui
             import win32process
 
-            def _mata_janela(hwnd, _):
-                nonlocal morto_pelo_titulo, fechou_algo
-                if win32gui.IsWindowVisible(hwnd):
-                    titulo = str(win32gui.GetWindowText(hwnd)).strip()
-                    if titulo and alvo_lower in titulo.lower():
-                        _, pid = win32process.GetWindowThreadProcessId(hwnd)
-                        try:
-                            proc = psutil.Process(pid)
-                            if proc.name().lower() not in processos_protegidos:
-                                proc.kill()
-                                morto_pelo_titulo = True
-                                fechou_algo = True
-                                print(f"[PC A] Sniper de Janela matou: '{titulo}' via {proc.name()} (PID {pid})")
-                        except Exception:
-                            pass
+            def _avaliar_janela(hwnd, _):
+                nonlocal fechou_algo
+                if not win32gui.IsWindowVisible(hwnd):
+                    return
 
-            win32gui.EnumWindows(_mata_janela, None)
-    except Exception as _ew:
-        print(f"[PC A] Erro no Sniper de Janela: {_ew}")
+                titulo = str(win32gui.GetWindowText(hwnd) or "").strip()
+                if not titulo or alvo_lower not in titulo.casefold():
+                    return
 
-    if not morto_pelo_titulo and APP_OPENER_AVAILABLE and close_app is not None:
-        try:
-            close_app(alvo, match_closest=True)
-            fechou_algo = True
-            print(f"✅ AppOpener fechou: {alvo}")
-        except Exception as e_ao:
-            print(f"ℹ️ AppOpener falhou ao fechar '{alvo}' ({e_ao}). Tentando via psutil...")
+                _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                try:
+                    pid = int(pid)
+                except Exception:
+                    return
+                if pid in pids_processados:
+                    return
 
-    for p in psutil.process_iter(["name", "pid"]):
-        try:
-            nome_proc = (p.info["name"] or "").lower()
-            if alvos_exatos:
-                if nome_proc in [a.lower() for a in alvos_exatos]:
-                    p.kill()
+                try:
+                    proc = psutil.Process(pid)
+                except Exception:
+                    return
+
+                if not _processo_corresponde_fechamento(proc, nomes_permitidos):
+                    try:
+                        nome_observado = str(proc.name() or "?")
+                    except Exception:
+                        nome_observado = "?"
+                    print(
+                        "🛡️ [AUTOPRESERVAÇÃO] título parecido ignorado | "
+                        f"titulo={titulo!r} processo={nome_observado!r} pid={pid}"
+                    )
+                    return
+
+                pids_processados.add(pid)
+                if _encerrar_processo_validado(
+                    proc,
+                    alvo=alvo,
+                    origem="janela_titulo_exato",
+                    pids_autoprotegidos=pids_autoprotegidos,
+                ):
                     fechou_algo = True
-                    print(f"💀 Processo exato encerrado: {p.info['name']} (PID {p.info['pid']})")
-            else:
-                alvo_exe = alvo_lower + ".exe"
-                if nome_proc == alvo_exe or nome_proc == alvo_lower:
-                    p.kill()
-                    fechou_algo = True
-                    print(f"💀 Processo encerrado: {p.info['name']} (PID {p.info['pid']})")
+
+            win32gui.EnumWindows(_avaliar_janela, None)
+    except Exception as erro_janela:
+        print(f"[PC A] Erro ao inspecionar janelas: {erro_janela}")
+
+    # Destruição não usa AppOpener.close(match_closest=...).
+    for proc in psutil.process_iter(["name", "pid"]):
+        try:
+            pid = int(proc.info.get("pid"))
         except Exception:
-            pass
+            try:
+                pid = int(getattr(proc, "pid"))
+            except Exception:
+                continue
+
+        if pid in pids_processados:
+            continue
+
+        try:
+            nome_proc = str(proc.info.get("name") or proc.name() or "")
+        except Exception:
+            continue
+
+        if nome_proc.casefold().strip() not in nomes_permitidos:
+            continue
+
+        pids_processados.add(pid)
+        if _encerrar_processo_validado(
+            proc,
+            alvo=alvo,
+            origem="processo_exato",
+            pids_autoprotegidos=pids_autoprotegidos,
+        ):
+            fechou_algo = True
 
     if not fechou_algo:
-        print(f"⚠️ Nenhum processo encontrado ou possível de fechar para: '{alvo}'")
-        raise Exception(f"Não há nenhum programa aberto ou acessível com o nome '{nome_solicitado}'.")
+        print(f"⚠️ Nenhum processo seguro e exato encontrado para fechar: {alvo!r}")
+        raise Exception(
+            f"Não há nenhum programa aberto e seguro com o nome '{nome_solicitado}'."
+        )
 
     _falar(falar_cb, f"Pronto, {alvo} foi fechado.", "debochada", 2)
-    return fechou_algo
+    return True
