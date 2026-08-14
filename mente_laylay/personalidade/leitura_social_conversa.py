@@ -39,9 +39,14 @@ def tipo_reconhecimento_afetivo(texto_usuario: str) -> str:
 
 def parece_elogio_ou_agradecimento_curto(ctx: Dict[str, Any], texto_usuario: str) -> bool:
     bruto = _normalizar_reconhecimento(texto_usuario)
+    correcao_para_agradecimento = bool(re.search(
+        r"\b(?:quer\s+dizer|quis\s+dizer|corrigindo)\b.{0,35}\b"
+        r"(?:obrigad[oa]|valeu|vlw)\b",
+        bruto,
+    ))
     # Uma correção dirigida à Laylay pode herdar uma leitura semântica antiga
     # de agradecimento. A intenção explícita do texto atual sempre prevalece.
-    if texto_parece_correcao_conversacional(bruto):
+    if texto_parece_correcao_conversacional(bruto) and not correcao_para_agradecimento:
         return False
     # Uma avaliação dirigida a uma terceira pessoa não é elogio recebido pela
     # Laylay. Esta proteção vem antes do normalizador personalizado porque uma

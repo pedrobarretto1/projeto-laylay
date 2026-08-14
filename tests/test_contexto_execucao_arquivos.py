@@ -17,6 +17,7 @@ from mente_laylay.arquivos.transacao_arquivos import ResultadoTransacaoArquivo
 from mente_laylay.autonomia.analise_comandos import processar_comandos_em_cadeia
 from mente_laylay.arquivos.mutacoes import criar_arquivos_mutacao_runtime
 from mente_laylay.integracao.registro_mutacoes_arquivos import registrar_arquivos_mutacao
+from mente_laylay.integracao.registro_arquivos import registrar_arquivos_leitura
 from mente_laylay.arquivos import lixeira_laylay
 from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
 from mente_laylay.memoria_mental.contexto_imediato import (
@@ -38,6 +39,58 @@ from mente_laylay.autonomia import pre_fluxo_contextual
 
 def _mutacoes(**callbacks):
     return registrar_arquivos_mutacao(criar_arquivos_mutacao_runtime(**callbacks))
+
+
+def test_busca_de_nome_exato_abre_e_foca_sem_escolher_aproximado(tmp_path) -> None:
+    arquivo = tmp_path / "movido" / "teste completo"
+    arquivo.parent.mkdir()
+    arquivo.write_text("ok", encoding="utf-8")
+    abertos: list[str] = []
+    focados: list[str] = []
+    resultados: list[tuple] = []
+
+    class Leitura:
+        def pesquisar(self, _consulta, **_kwargs):
+            return {
+                "ok": True,
+                "resultados": [
+                    {"nome": "teste parecido.txt", "caminho": str(tmp_path / "outro.txt")},
+                    {"nome": "teste completo", "caminho": str(arquivo)},
+                ],
+            }
+
+        def abrir(self, caminho):
+            abertos.append(caminho)
+            return True
+
+        def diagnostico(self):
+            return {}
+
+    assert executar_intencao_arquivos(
+        "FILE_SEARCH",
+        {
+            "query": "teste completo.txt",
+            "abrir_resultado_exato": True,
+            "modo": "focus",
+        },
+        "pc_a",
+        {
+            "focar_janela_app": lambda nome: focados.append(nome) or True,
+            "_aguardar_foco_arquivo": lambda _tempo: None,
+        },
+        texto_original="Abre o teste completo.txt e deixa em foco",
+        marcar_resultado=lambda *args, **kwargs: resultados.append((args, kwargs)),
+        registrar_arquivo=lambda *_args: None,
+        item_local_existe=lambda *_args: True,
+        resolver_caminho_local=lambda valor: valor,
+        resolver_referencia_arquivo_contextual=lambda valor, _tipo: valor,
+        arquivos_leitura=registrar_arquivos_leitura(Leitura()),
+    ) is True
+
+    assert abertos == [str(arquivo)]
+    assert focados == ["teste completo"]
+    assert resultados[-1][0] == ("arquivo_aberto_focado", True)
+    assert resultados[-1][1]["confirmado"] is True
 
 
 def _pendencia_lixeira(estado: dict) -> PendenciaAcaoRuntime:

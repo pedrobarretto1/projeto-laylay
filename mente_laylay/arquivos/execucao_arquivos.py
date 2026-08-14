@@ -275,6 +275,51 @@ def executar_intencao_arquivos(
             return True
         caminhos = [str(item.get("caminho") or "") for item in resultados if item.get("caminho")]
         nomes = [str(item.get("nome") or os.path.basename(str(item.get("caminho") or ""))) for item in resultados]
+        if params.get("abrir_resultado_exato"):
+            consulta_nome = os.path.basename(consulta.replace("/", os.sep)).casefold()
+
+            def nome_equivalente(nome: str) -> bool:
+                candidato = os.path.basename(str(nome or "").replace("/", os.sep)).casefold()
+                if candidato == consulta_nome:
+                    return True
+                raiz_consulta, ext_consulta = os.path.splitext(consulta_nome)
+                raiz_candidato, ext_candidato = os.path.splitext(candidato)
+                return bool(
+                    raiz_consulta == raiz_candidato
+                    and {ext_consulta, ext_candidato} == {"", ".txt"}
+                )
+
+            exatos = [
+                (caminho, nome)
+                for caminho, nome in zip(caminhos, nomes)
+                if caminho and nome_equivalente(nome or caminho)
+            ]
+            if len(exatos) == 1:
+                caminho_exato, nome_exato = exatos[0]
+                return executar_intencao_arquivos(
+                    "FILE_OPEN_RESULT",
+                    {
+                        "caminho": caminho_exato,
+                        "alvo": nome_exato,
+                        **(
+                            {"modo": "focus", "referencia_contextual": True}
+                            if str(params.get("modo") or "").casefold() == "focus"
+                            else {}
+                        ),
+                    },
+                    destino_val,
+                    ctx,
+                    texto_original=texto_original,
+                    marcar_resultado=marcar_resultado_original,
+                    registrar_arquivo=registrar_arquivo,
+                    item_local_existe=item_local_existe,
+                    resolver_caminho_local=resolver_caminho_local,
+                    resolver_referencia_arquivo_contextual=(
+                        resolver_referencia_arquivo_contextual
+                    ),
+                    arquivos_leitura=arquivos_leitura,
+                    arquivos_mutacao=arquivos_mutacao,
+                )
         if callable(registrar_estrutura_arquivo_recente):
             registrar_estrutura_arquivo_recente({
                 "tipo": "pesquisa_semantica",

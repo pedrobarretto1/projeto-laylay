@@ -156,7 +156,10 @@ def test_confirmacao_preserva_fala_local_quando_autoria_deveria_ser_pulada(
     confirmacao = personalizar_confirmacao_llm(
         ResultadoAcao(
             intent="IOT_CONTROL",
-            status="indisponivel",
+            # Use uma falha elegível para autoria: indisponibilidade agora é
+            # deliberadamente preservada sem LLM e não exercitaria o corte
+            # específico por orçamento desta regressão.
+            status="falha_execucao",
             alvo="lampada_quarto",
             executou=False,
             confirmado=False,

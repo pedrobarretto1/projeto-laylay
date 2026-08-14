@@ -83,6 +83,10 @@ _RETOMADA_OPERACIONAL = re.compile(
     r"janela|luz|l[aâ]mpada|comando|tarefa|resumo|pesquisa)\b",
     re.IGNORECASE,
 )
+_RETOMADA_ASSUNTO_AGRADECIMENTO = re.compile(
+    r"\b(?:conversar|conversamos|falamos|assunto)\s+(?:sobre|de)\b",
+    re.IGNORECASE,
+)
 _ACEITE_ADIAMENTO = re.compile(
     r"\b(?:t[aá](?:\s+bom)?|beleza|combinado|deixamos|fica|deixa)\b",
     re.IGNORECASE,
@@ -294,6 +298,19 @@ def validar_aderencia_contrato_fala(
         primeira_sem_pergunta = primeira if "?" not in primeira else ""
         if primeira_sem_pergunta and _INFERENCIA_OCULTA_SAUDACAO.search(primeira_sem_pergunta):
             problemas.append("saudacao_inferiu_estado_oculto")
+        vocativo = re.match(
+            r"^\s*(?:oi|ol[aá])\s*,\s*([^,.!?]{1,40})[.!?]",
+            primeira,
+            flags=re.IGNORECASE,
+        )
+        if vocativo:
+            valor = _normalizar(vocativo.group(1))
+            genericos = {
+                "tudo bem", "to aqui", "estou aqui", "por aqui", "cheguei",
+                "bom te ver", "que bom",
+            }
+            if valor not in genericos:
+                problemas.append("saudacao_inventou_vocativo")
 
     if estrategia in {"opiniao_com_criterio", "resposta_multiacto"} and "opiniao" in atos:
         posicao = _encontrar_posicao(resposta, referente)
@@ -351,7 +368,10 @@ def validar_aderencia_contrato_fala(
             problemas.append("agradecimento_nao_reconhecido")
         usuario_norm = _normalizar(usuario)
         retomada = _RETOMADA_OPERACIONAL.search(resposta)
-        if retomada and retomada.group(0) not in usuario_norm:
+        if (
+            (retomada and retomada.group(0) not in usuario_norm)
+            or _RETOMADA_ASSUNTO_AGRADECIMENTO.search(resposta)
+        ):
             problemas.append("agradecimento_retomou_assunto_antigo")
         if "?" in resposta:
             problemas.append("agradecimento_abriu_nova_pergunta")
@@ -398,6 +418,7 @@ def validar_aderencia_contrato_fala(
     problemas = list(dict.fromkeys(problemas))
     nucleares = {
         "saudacao_nao_respondida_no_inicio",
+        "saudacao_inventou_vocativo",
         "ato_opiniao_nao_respondido",
         "opiniao_nao_veio_na_primeira_frase",
         "esclarecimento_sem_explicacao",

@@ -719,6 +719,28 @@ def detectar_intencao_arquivos(
                 params_abertura["referencia_contextual"] = True
             return {"intent": "FILE_OPEN_RESULT", "params": params(**params_abertura)}
 
+        # Um nome de arquivo explícito continua pertencendo ao domínio de
+        # arquivos mesmo quando o foco recente aponta para outra pasta. A
+        # pesquisa local só abre se encontrar um basename equivalente; nunca
+        # promove o primeiro resultado aproximado nem entrega ``.txt`` ao
+        # resolvedor de aplicativos.
+        moldura_arquivo = bool(re.match(
+            r"^(?:(?:o|a|um|uma)\s+)?(?:arquivo|documento)\b",
+            referencia_bruta,
+            flags=re.IGNORECASE,
+        ))
+        if nome_declarado and (
+            moldura_arquivo or bool(os.path.splitext(nome_declarado)[1])
+        ):
+            dados_busca = {
+                "query": nome_declarado,
+                "alvo": nome_declarado,
+                "abrir_resultado_exato": True,
+            }
+            if pediu_foco:
+                dados_busca["modo"] = "focus"
+            return {"intent": "FILE_SEARCH", "params": params(**dados_busca)}
+
     # Exclusão por pronome só pode herdar um artefato de arquivo tipado. Isso
     # impede que um referente recente de outro domínio (pessoa, conversa,
     # aplicativo) seja promovido a alvo destrutivo por engano.
@@ -930,6 +952,16 @@ def detectar_intencao_arquivos(
 
     delete_info = extrair_delete_pasta_arquivo(t, normalizar_texto=normalizar_texto)
     if delete_info:
+        alvo_declarado = str(delete_info.get("alvo") or "").strip()
+        if (
+            arquivo_recente_caminho
+            and str(delete_info.get("tipo") or "").casefold() == "arquivo"
+            and _nomes_arquivo_equivalentes(
+                alvo_declarado,
+                arquivo_recente_nome or os.path.basename(arquivo_recente_caminho),
+            )
+        ):
+            delete_info["alvo"] = arquivo_recente_caminho
         return {"intent": "DELETE_ITEM", "params": params(**delete_info)}
 
     arquivo_info = extrair_criacao_arquivo(t, estado_mental=estado)

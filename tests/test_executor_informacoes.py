@@ -235,7 +235,12 @@ def test_consultas_de_fatos_pessoais_usam_memoria_geral(
         params_cb=lambda **kwargs: kwargs,
     ) == {
         "intent": "LEARNING_QUERY",
-        "params": {"limit": 3, "query": query, "modo": "listar"},
+        "params": {
+            "limit": 3,
+            "query": query,
+            "modo": "listar",
+            "categoria": "fato_pessoal",
+        },
     }
 
 

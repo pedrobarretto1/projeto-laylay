@@ -35,7 +35,7 @@ INTENTS_INFORMATIVOS = frozenset({
     "WEATHER", "CLIMA", "LISTAR_AGENDAMENTOS", "LER_NOTIFICACOES",
     "NOTIFICATIONS",
     "LIST_TABS", "LIST_WINDOWS",
-    "FILE_SEARCH",
+    "FILE_SEARCH", "SEARCH",
     # A confirmação não recebe o tipo original no novo turno. Reescrevê-la
     # fazia a LLM chamar uma pasta de "arquivo"; preserve a fala factual.
     "CONFIRM_DELETE_ITEM",
@@ -252,6 +252,14 @@ def _motivo_contrato_invalido(
         return "nao_acao_ambigua"
     if classe == "falha" and not sinais_falha:
         return "falha_ocultada"
+    if classe == "falha" and re.search(
+        r"\b(?:ficou|era|seria)\s+(?:so\s+)?(?:como\s+)?uma\s+possibilidade\b|"
+        r"\bnao\s+tive\s+coragem\s+de\s+imaginar\b",
+        base,
+    ):
+        # Um comando explícito que falhou continua sendo um comando tentado.
+        # Chamá-lo de hipótese apaga a modalidade real do turno.
+        return "falha_rebaixada_a_hipotese"
     sinais_incerteza = re.search(
         r"\b(?:nao confirmou|sem confirmacao|nao consegui confirmar|"
         r"nao posso confirmar|reproducao nao confirmada|audio nao confirmado)\b",
@@ -290,6 +298,18 @@ def _motivo_contrato_invalido(
     # autoria só pode usá-la quando essa informação veio no contrato factual.
     if re.search(r"\bvazi[ao]s?\b", base) and "vazi" not in verdade_observada:
         return "estado_operacional_nao_evidenciado"
+    if re.search(
+        r"\b(?:dei|fiz|foram|houve)\s+(?:\w+\s+){0,2}(?:tentativas?|vezes?)\b",
+        base,
+    ) and not re.search(r"\b(?:tentativ|repet|vezes?)\b", verdade_observada):
+        return "estado_operacional_nao_evidenciado"
+    if re.search(r"\b(?:apetite|estilo)\b", base) and not re.search(
+        r"\b(?:apetite|estilo)\b",
+        verdade_observada,
+    ):
+        # Impede que contexto musical ou metáforas corporais sejam enxertados
+        # numa confirmação de IoT/arquivo/janela sem qualquer evidência.
+        return "contexto_alheio_ao_resultado"
     primeira_frase = re.split(r"(?<=[.!?])\s+", texto, maxsplit=1)[0]
     primeira_base = _normalizar(primeira_frase)
     if raizes and not any(raiz in primeira_base for raiz in raizes):

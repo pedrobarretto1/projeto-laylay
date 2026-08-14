@@ -12,235 +12,123 @@ from cliente.executor_roteiro_laylay import executar_roteiro
 # Cole a sequência inteira abaixo, com um comando por linha. Confirmações como
 # "sim" e "não" também usam sua própria linha e preservam o contexto anterior.
 COMANDOS = """
-# 1. Conversa e personalidade
-Oi Lay, tudo bem?
-Hoje estou meio cansado.
-Você prefere rock ou metal?
-Por quê?
-Explica isso de um jeito mais simples.
-Que isso?
-Obrigado, Lay.
-
-# 2. Consciência de capacidades
-Você é só um chatbot?
-Você está no meu computador?
-O que você consegue fazer?
+Oi, Lay.
 Você consegue criar arquivos?
-Como eu faria para criar um arquivo?
-Talvez fosse legal criar um arquivo.
-Não crie nenhum arquivo.
-
-# 3. Arquivo composto com conteúdo
-Cria um arquivo de texto chamado teste completo e dentro dele escreva teste concluído com sucesso
-Abre ele e deixa em foco
-Fecha ele
-
-# 4. Continuidade de arquivo
-Escreve uma segunda linha nele
-Onde ele fica?
-Qual é o caminho completo dele?
-Abre ele e deixa em foco
-Fecha ele
-
-# 5. Pasta e movimentação composta
-Cria uma pasta chamada carlos teste e coloca o teste completo.txt dentro dela
-Abre ele e deixa em foco
-Fecha ele
-
-# 6. Movimentação com erro e repetição
-Cria uma pasta chamada pasta falha
-Coloca o arquivo inexistente.txt dentro dela
-Tenta de novo
-
-# 7. Aplicativos, sites e referências
-Abre o Opera
-Maximiza ele
-Fecha ele
-Abre o YouTube
-Fecha ele
-Abre o teste completo.txt e deixa em foco
-Fecha ele
-
-# 8. Negação, hipótese e explicação
-Não abre o Opera.
-Talvez fosse legal abrir o Opera.
-Como eu faria para abrir o Opera?
-Eu queria que o Opera estivesse aberto agora.
-
-# 9. Comandos compostos de janelas
-Abre o Opera e depois maximiza a janela.
-Abre o Bloco de Notas e coloca ele na esquerda.
-Abre o Visual Studio Code e coloca ele na direita.
-Quais janelas estão abertas?
-
-# 10. Navegador e abas
-Pesquisa por documentação do Python.
-Abre o primeiro resultado.
-Quais abas estão abertas?
-Fecha essa aba.
-Abre o Prime Video.
-Fecha a aba do Prime Video.
-Fecha as abas paradas.
-Resume a página atual.
-
-# 11. Pesquisa local composta
-Encontra o código que controla a lâmpada e abre o primeiro resultado.
+Como eu criaria um arquivo de texto?
+Não crie nenhum arquivo agora.
+Cria um arquivo de texto chamado auditoria gaivota.txt e dentro dele escreva contexto novo confirmado.
+Leia o conteúdo dele.
+Acrescente a frase segunda linha preservada nele.
+Leia esse arquivo novamente.
 Onde esse arquivo fica?
+Abre o arquivo auditoria gaivota.txt e deixa em foco.
+Fecha esse arquivo.
+Cria uma pasta chamada ninho gaivota.
+Coloca o arquivo auditoria gaivota.txt dentro dela.
+Onde o arquivo auditoria gaivota.txt está agora?
+Abre o auditoria gaivota.txt e deixa ele na frente.
 Fecha ele.
-
-# 12. Área de transferência
-O que eu copiei?
-Transforma isso em letras maiúsculas.
-Copia o resultado.
-O que eu copiei agora?
-
-# 13. Música e continuidade
-Toca uma música de rock.
-Qual música está tocando?
-Pausa.
+Talvez eu apague o auditoria gaivota.txt depois.
+Como eu apagaria o auditoria gaivota.txt?
+Não apague esse arquivo.
+Apaga o arquivo auditoria gaivota.txt.
+Não.
+Onde o auditoria gaivota.txt fica?
+Apaga o arquivo auditoria gaivota.txt.
+Sim.
+Quero ele de volta.
+Quero ele de volta.
+Apaga novamente o arquivo auditoria gaivota.txt.
+Sim.
+Apaga a pasta ninho gaivota.
+Sim.
+Como eu abriria o Opera?
+Talvez eu abra o Opera mais tarde.
+Eu queria que o Opera estivesse aberto agora.
+Maximiza ele.
+Coloca ele na esquerda.
+Abre a Calculadora e coloca ela na direita.
+Fecha a Calculadora.
+Fecha um programa chamado Aplicativo Totalmente Imaginário.
+Por que não?
+Fecha o Opera.
+Obrigado.
+De nada, quer dizer, obrigado de novo.
+Eu queria que o Opera estivesse aberto agora.
+Abre a Wikipédia.
+Quais abas estão abertas?
+Resume a página atual.
+Abre o Prime Video.
+Fecha essa aba.
+O Opera continua aberto?
+Pesquisa por documentação oficial do Python.
+Abre o primeiro resultado.
+Volta para a aba anterior.
+Encontra o arquivo AGENTS.md e abre o primeiro resultado.
+Onde esse arquivo fica?
+Fecha esse arquivo.
+Qual música está tocando agora?
+Pausa a música.
+Qual é o estado da música agora?
 Continua.
-Próxima.
-Volta para a anterior.
-
-# 14. Playlists
-Quais são as suas playlists?
-O que tem na sua primeira playlist?
-Toca a sua primeira playlist.
-Coloca essa música na playlist rock.
+Qual música está tocando?
+Vai para a próxima faixa.
+Qual música está tocando agora?
+Volta para a faixa anterior.
+Coloca essa música na playlist auditoria sonora.
+Vai para a próxima faixa.
 Essa também.
 Tenta de novo.
-
-# 15. Agenda e lembretes
-Me lembra amanhã às 10 horas de testar a Laylay.
-Quais são meus lembretes?
-Me lembra de beber água.
-Daqui a 10 minutos.
-Me lembra de fazer alongamento.
-Não, deixa como está.
-Me lembra amanhã às 18 horas de revisar o teste.
-Troca para amanhã às 22 horas.
-Quais são meus lembretes?
-
-# 16. Memória pessoal
+O que tem na playlist auditoria sonora?
+Apaga a playlist auditoria sonora.
+Sim.
+Você consegue controlar a lâmpada?
+Talvez eu ligue a lâmpada depois.
+Liga a lâmpada do quarto.
+Como ela está?
+Deixa ela azul.
+Desliga ela.
+Como fica o tempo amanhã em Boituva?
+Qual é a temperatura máxima de hoje?
+Me passa o briefing de hoje.
+Repete o briefing.
+Olha minha tela.
+O que tem na minha tela?
+Continua daquele ponto.
 Meu nome é Pedro.
 Eu moro em Boituva.
 Eu gosto de rock e programação.
-Eu também gosto de metal.
 Eu não gosto de sertanejo.
-Eu gosto de Nirvana.
-Qual é o meu nome?
-Onde eu moro?
-Do que eu gosto?
-Do que eu não gosto?
 O que você lembra de mim?
-
-# 17. Pessoas e relações
-Eu conheço uma pessoa chamada Nanda.
+Onde eu moro?
+Qual é o meu nome?
+Do que eu gosto?
 Nanda é minha amiga.
-O que você lembra da Nanda?
-Quem é minha amiga?
-Quem é o presidente do Brasil?
-
-# 18. Caixa de entrada e cooperação
-Guarda como ideia melhorar os testes da Laylay.
-O que tem na minha caixa de entrada?
-Guarda essa ideia e me lembra dela amanhã às 11 horas.
-O que tem na minha caixa de entrada?
-Quais são meus lembretes?
-
-# 19. Clima e briefing
-Qual é o briefing de hoje?
-Repete o briefing.
-Como está o clima agora em Boituva?
-Qual será a temperatura máxima hoje?
-Como estará o tempo amanhã?
-
-# 20. IoT — estes comandos controlam dispositivos reais
-Quais dispositivos você controla?
-Liga a lâmpada do quarto.
-Como ela está?
-Deixa ela roxa.
-Desliga ela.
-Liga o ventilador.
-Como ele está?
-Desliga ele.
-
-# 21. Visão
-Olha minha tela.
-O que tem na minha tela?
-O que você consegue identificar nela?
-Resume o que está aparecendo agora.
-
-# 22. Variações naturais
-Cria um arquivo chamado teste natural.
-Abre ele e traz para frente.
-Fecha ele.
-Cria uma pasta chamada documentos teste.
-Coloca o teste natural.txt dentro dela.
-Onde ele está agora?
-Tenta abrir ele.
-Fecha ele.
-
-# 23. Proteção contra execução indevida
-Não apague o teste natural.txt.
-Como eu faria para apagar o teste natural.txt?
-Talvez eu apague o teste natural.txt depois.
-Você consegue apagar arquivos?
-Não abra o Spotify.
-Como eu abriria o Spotify?
-Talvez fosse bom abrir o Spotify.
-
-# 24. Falhas e programas inexistentes
-Abre um programa chamado Aplicativo Que Não Existe.
-Por que não?
-Tenta de novo.
-Fecha um programa chamado Aplicativo Que Não Existe.
-
-# 25. Contexto cruzado
-Abre o Opera.
-Abre o teste natural.txt e deixa em foco.
-Fecha ele.
-Maximiza o Opera.
-Fecha ele.
-
-# 26. Repetição conversacional
-Oi Lay.
-Oi Lay.
-Tudo bem com você?
-Tudo bem com você?
-Você prefere rock ou metal?
-Você prefere rock ou metal?
+O que você sabe sobre a Nanda?
+Oi, Lay.
+Tudo bem?
 Obrigado.
 De nada, quer dizer, obrigado de novo.
-
-# 27. Diagnóstico
-/diagnostico mente
-
-# 28. Cancelamento de exclusão
-Apaga o arquivo teste natural.txt.
-Não.
-
-# 29. Exclusão confirmada
-Apaga o arquivo teste natural.txt.
-Sim.
-
-# 30. Restauração
-Quero ele de volta.
-
-# 31. Limpeza dos artefatos
-Apaga a pasta documentos teste.
-Sim.
-Apaga a pasta carlos teste.
-Sim.
-Apaga a pasta pasta falha.
-Sim.
-
-# 32. Verificação final
+Você está no meu computador?
+Você é só um chatbot?
+Você só consegue conversar?
+O que você consegue fazer com arquivos e programas?
+Você consegue abrir o Spotify e organizar uma janela?
+Como eu abriria o Spotify?
+Não abra o Spotify.
 O que você lembra de mim?
-Quais são meus lembretes?
+Você lembra de mim?
+Me lembra de beber água amanhã às 10 e 37.
+O que você lembra de mim?
+Quais lembretes eu tenho?
+Cancela o lembrete de beber água.
+Guarda como ideia revisar a interface da aba Sistema.
+Quanto é dois mais dois?
+Guarda essa ideia e me lembra dela amanhã às 15 e 20.
 O que tem na minha caixa de entrada?
-Quais programas e janelas estão abertos?
-/diagnostico mente
+Quais lembretes eu tenho agora?
+Oi, Lay.
+Obrigado pela ajuda.
 """
 
 # Dá tempo para todos os serviços e interfaces terminarem de iniciar. Depois

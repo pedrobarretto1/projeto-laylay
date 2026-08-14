@@ -183,6 +183,33 @@ def _filtrar_retrato_pessoal(
     return [item for _prioridade, _indice, item in retrato]
 
 
+def _filtrar_categoria_pessoal(
+    aprendizados: list[Dict[str, Any]],
+    categoria: str,
+) -> list[Dict[str, Any]]:
+    """Impede regras operacionais de responderem a perguntas pessoais."""
+    categoria_norm = str(categoria or "").strip().casefold()
+    if not categoria_norm:
+        return aprendizados
+    filtrados: list[Dict[str, Any]] = []
+    for item in aprendizados:
+        tipo = str(item.get("tipo") or "").strip().casefold()
+        chave = str(item.get("chave") or "").strip().casefold()
+        natureza = str(item.get("natureza") or "").strip().casefold()
+        confirmado = bool(item.get("confirmado_usuario")) or natureza == "confirmado"
+        if not confirmado:
+            continue
+        if categoria_norm == "fato_pessoal" and tipo == "fato_pessoal":
+            filtrados.append(item)
+        elif (
+            categoria_norm == "preferencia"
+            and tipo == "preferencia"
+            and chave.startswith("preferencia:afinidade:")
+        ):
+            filtrados.append(item)
+    return filtrados
+
+
 def _ler_emails(
     params: Dict[str, Any],
     ctx: Dict[str, Any],
@@ -485,6 +512,7 @@ def _consultar_aprendizados(
         offset = 0
     consulta = str(params.get("query") or params.get("consulta") or "").strip()
     modo = str(params.get("modo") or "listar").strip().casefold()
+    categoria = str(params.get("categoria") or "").strip().casefold()
     polaridade = str(params.get("polaridade") or "").strip().casefold()
     if modo == "identidade":
         mente = _get(ctx, "mente_integrada_estado", {})
@@ -569,6 +597,7 @@ def _consultar_aprendizados(
 
     if modo == "retrato":
         aprendizados = _filtrar_retrato_pessoal(aprendizados)
+    aprendizados = _filtrar_categoria_pessoal(aprendizados, categoria)
     aprendizados = _deduplicar_aprendizados_para_fala(aprendizados)
     aprendizados = _filtrar_polaridade_preferencia(
         aprendizados,

@@ -236,10 +236,13 @@ def construir_contrato_semantico_fala(
         r"descricao artistica|metafora|imagine|imagina)\b",
         base,
     ))
-    agradecimento = bool(re.fullmatch(
-        r"(?:obrigad[oa]|valeu|vlw)(?:[, ]+(?:lay|laylay))?[!?. ]*",
-        base,
-    ))
+    agradecimento = bool(
+        funcao == "agradecimento"
+        or re.fullmatch(
+            r"(?:obrigad[oa]|valeu|vlw)(?:[, ]+(?:lay|laylay))?[!?. ]*",
+            base,
+        )
+    )
     adiamento = bool(re.fullmatch(
         r"(?:deixa|deixe|vamos deixar|pode deixar) (?:isso )?para depois[!?. ]*",
         base,

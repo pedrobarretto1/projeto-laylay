@@ -144,7 +144,9 @@ def extrair_intencao_abrir_app(
     encontrado = re.search(
         r"\b(?:pode\s+|da\s+pra\s+|dá\s+pra\s+|por favor\s+)?"
         r"(abre|abra|abrir|inicia|iniciar|executa|executar|roda|rodar)\s+"
-        r"(?:o|a|os|as|um|uma)?\s*(.+)$",
+        # O artigo precisa terminar em espaço. Sem isso, o ``o`` inicial de
+        # ``Opera`` era consumido como artigo e o executor recebia ``pera``.
+        r"(?:(?:o|a|os|as|um|uma)\s+)?(.+)$",
         t,
     )
     if not encontrado:
@@ -691,7 +693,12 @@ def detectar_consulta_aprendizados(
             params = params_cb if callable(params_cb) else lambda **kwargs: kwargs
             return {
                 "intent": "LEARNING_QUERY",
-                "params": params(limit=3, query=consulta, modo="listar"),
+                "params": params(
+                    limit=3,
+                    query=consulta,
+                    modo="listar",
+                    categoria="fato_pessoal",
+                ),
             }
     verificacao = re.search(
         r"\b(?:voce\s+)?(?:ainda\s+)?lembra\s+que\s+(?P<consulta>.+?)[?.!]*$",
