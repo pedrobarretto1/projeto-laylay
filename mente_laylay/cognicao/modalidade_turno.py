@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import time
+import unicodedata
 from typing import Any, Callable, Dict
 
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
@@ -555,7 +556,7 @@ def _segmentar_turno_misto(texto_normalizado: str) -> list[str]:
     return expandidas or [t]
 
 
-def classificar_modalidade_turno(
+def _classificar_modalidade_turno_composta_base(
     texto: str,
     *,
     normalizar_texto: Callable[[str], str] | None = None,
@@ -675,3 +676,240 @@ def classificar_modalidade_turno(
     if modalidade_geral == "misto":
         principal.update(confianca=max(float(principal.get("confianca") or 0.0), 0.94), motivo="turno com múltiplos atos compatíveis")
     return principal
+# P0_AUTORIZACAO_MODALIDADE_20260814
+# A classificação composta histórica continua como fonte de contexto, mas o
+# ato de fala INTEIRO ganha a palavra final sobre autorização. Assim uma
+# citação/pergunta não recupera permissão por causa da segmentação interna.
+_P0_GATILHOS_OPERACIONAIS = re.compile(
+    r"\b(?:"
+    r"abre|abrir|abra|abriria|"
+    r"fecha|fechar|feche|fecharia|"
+    r"liga|ligar|ligue|ligaria|"
+    r"desliga|desligar|desligue|desligaria|"
+    r"toca|tocar|toque|tocaria|"
+    r"coloca|colocar|coloque|colocaria|"
+    r"cria|criar|crie|criaria|"
+    r"apaga|apagar|apague|apagaria|"
+    r"remove|remover|remova|removeria|"
+    r"deleta|deletar|delete|deletaria|"
+    r"move|mover|mova|moveria|"
+    r"renomeia|renomear|renomeie|renomearia|"
+    r"maximiza|maximizar|maximize|maximizaria|"
+    r"minimiza|minimizar|minimize|minimizaria|"
+    r"pausa|pausar|pause|pausaria|"
+    r"retoma|retomar|continue|continua|continuar|"
+    r"organiza|organizar|organize|organizaria|"
+    r"pesquisa|pesquisar|pesquise|"
+    r"busca|buscar|busque|procura|procurar|procure|"
+    r"encontra|encontrar|encontre|"
+    r"escreve|escrever|escreva|escreveria|"
+    r"grava|gravar|grave|gravaria|"
+    r"executa|executar|execute|executaria|"
+    r"repete|repetir|repita|refaz|refazer|refaca|"
+    r"tenta|tentar|tente"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _normalizar_p0_ato_fala(
+    texto: str,
+    normalizar_texto: Callable[[str], str] | None = None,
+) -> str:
+    normalizar = normalizar_texto if callable(normalizar_texto) else (
+        lambda valor: str(valor or "").casefold().strip()
+    )
+    bruto = str(normalizar(texto) or "").casefold()
+    base = unicodedata.normalize("NFKD", bruto)
+    sem_acentos = "".join(ch for ch in base if not unicodedata.combining(ch))
+    return re.sub(r"\s+", " ", sem_acentos).strip()
+
+
+def _protecao_p0_ato_fala(
+    texto: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None = None,
+) -> Dict[str, Any] | None:
+    """Lê quando a frase fala SOBRE uma ação sem autorizá-la."""
+    t = _normalizar_p0_ato_fala(texto, normalizar_texto)
+    if not t:
+        return None
+
+    existente = analisar_protecao_operacional(
+        t,
+        normalizar_texto=lambda valor: _normalizar_p0_ato_fala(valor),
+    )
+    if bool(existente.get("bloqueia_execucao")):
+        return {
+            "modalidade": str(existente.get("modalidade") or "conversa"),
+            "natureza_acao": str(existente.get("natureza_acao") or "nenhuma"),
+            "motivo": str(existente.get("motivo") or "proteção operacional"),
+            "requer_esclarecimento": (
+                str(existente.get("natureza_acao") or "") == "capacidade"
+            ),
+        }
+
+    tem_gatilho = bool(_P0_GATILHOS_OPERACIONAIS.search(t))
+    if not tem_gatilho:
+        return None
+
+    # Metalinguagem/citação: o verbo é conteúdo da frase, não uma ordem.
+    if (
+        re.search(
+            r"^(?:(?:eu\s+)?(?:estou|to)\s+)?(?:so\s+|apenas\s+|somente\s+)?"
+            r"(?:estou\s+)?(?:escrevendo|digitando|citando|mencionando|"
+            r"falando\s+a\s+frase|dizendo)\b",
+            t,
+        )
+        or re.search(r"^(?:a\s+)?(?:palavra|frase|expressao|texto|termo)\b", t)
+        or re.search(r"\bnao\s+(?:e|eh)\s+(?:um\s+)?(?:pedido|comando|ordem)\b", t)
+        or re.search(
+            r"\b(?:so|apenas|somente)\s+(?:um\s+)?"
+            r"(?:exemplo|teste|texto|citacao|mencao)\b",
+            t,
+        )
+        or re.search(
+            r"^(?:quando|se)\s+eu\s+(?:digo|disser|escrevo|escrever|falo|falar)\b",
+            t,
+        )
+    ):
+        return {
+            "modalidade": "conversa",
+            "natureza_acao": "mencao_operacional",
+            "motivo": "menção/citação de comando sem autorização",
+            "requer_esclarecimento": False,
+        }
+
+    # Explicação/instrução sobre COMO fazer algo.
+    if (
+        re.search(
+            r"^(?:(?:me|pra\s+mim|para\s+mim)\s+)?"
+            r"(?:explica|explique|ensina|ensine|mostra|mostre)\s+como\b",
+            t,
+        )
+        or re.search(
+            r"^(?:eu\s+)?(?:quero|queria|gostaria)\s+(?:de\s+)?saber\s+como\b",
+            t,
+        )
+    ):
+        return {
+            "modalidade": "pergunta",
+            "natureza_acao": "instrucao_ou_explicacao",
+            "motivo": "pedido de explicação sobre ação; não é execução",
+            "requer_esclarecimento": False,
+        }
+
+    # Perguntas informativas que começam pelo infinitivo da ação. Antes da P0
+    # elas venciam a pergunta genérica e podiam ser classificadas como ordem.
+    if "?" in str(texto or "") and (
+        re.search(
+            r"^(?:abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|"
+            r"remover|deletar|mover|renomear|maximizar|minimizar|pausar|"
+            r"organizar|executar)\b.*\b(?:e|eh)\s+"
+            r"(?:(?:uma|a)\s+)?(?:boa|ma)\s+ideia\b",
+            t,
+        )
+        or re.search(
+            r"^(?:abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|"
+            r"remover|deletar|mover|renomear|maximizar|minimizar|pausar|"
+            r"organizar|executar)\b.*\b"
+            r"(?:muda|altera|afeta|causa|serve|significa|acontece|funciona|"
+            r"pode\s+causar|vai\s+causar)\b",
+            t,
+        )
+    ):
+        return {
+            "modalidade": "pergunta",
+            "natureza_acao": "informativa_sobre_acao",
+            "motivo": "pergunta informativa sobre uma ação; não é pedido",
+            "requer_esclarecimento": False,
+        }
+
+    return None
+
+
+def classificar_modalidade_turno(
+    texto: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None = None,
+    texto_tem_comando_explicito: Callable[[str], bool] | None = None,
+    confirmacao_contextual_valida: bool = False,
+) -> Dict[str, Any]:
+    """Classifica o turno com proteção P0 do ato de fala inteiro."""
+    resultado = _classificar_modalidade_turno_composta_base(
+        texto,
+        normalizar_texto=normalizar_texto,
+        texto_tem_comando_explicito=texto_tem_comando_explicito,
+        confirmacao_contextual_valida=confirmacao_contextual_valida,
+    )
+    protecao = _protecao_p0_ato_fala(texto, normalizar_texto=normalizar_texto)
+    if not protecao:
+        return resultado
+
+    normalizado = _normalizar_p0_ato_fala(texto, normalizar_texto)
+    modalidade = str(protecao.get("modalidade") or "conversa")
+    natureza = str(protecao.get("natureza_acao") or "nenhuma")
+    motivo = str(protecao.get("motivo") or "ato de fala sem autorização")
+    requer = bool(protecao.get("requer_esclarecimento"))
+    resultado.update(
+        modalidade=modalidade,
+        modalidade_geral=modalidade,
+        ato_principal=modalidade,
+        atos=[modalidade],
+        segmentos=[{
+            "indice": 0,
+            "texto": normalizado[:300],
+            "modalidade": modalidade,
+            "confianca": 0.99,
+            "motivo": motivo,
+            "autoriza_execucao": False,
+            "acao_explicita": False,
+            "requer_esclarecimento": requer,
+            "natureza_acao": natureza,
+        }],
+        texto_operacional="",
+        texto_conversacional=normalizado[:500],
+        acao_explicita=False,
+        autoriza_execucao=False,
+        requer_esclarecimento=requer,
+        natureza_acao=natureza,
+        motivo=motivo,
+        motivo_decisao=motivo,
+        confianca=max(float(resultado.get("confianca") or 0.0), 0.99),
+    )
+    return resultado
+
+
+def bloqueia_execucao_operacional_prioritaria(
+    texto: str,
+    *,
+    classificacao: Dict[str, Any] | None = None,
+    normalizar_texto: Callable[[str], str] | None = None,
+    texto_tem_comando_explicito: Callable[[str], bool] | None = None,
+    confirmacao_contextual_valida: bool = False,
+) -> bool:
+    """Barreira fail-closed para roteadores operacionais imediatos."""
+    if _protecao_p0_ato_fala(texto, normalizar_texto=normalizar_texto):
+        return True
+
+    analise = dict(classificacao or {})
+    if not analise:
+        analise = classificar_modalidade_turno(
+            texto,
+            normalizar_texto=normalizar_texto,
+            texto_tem_comando_explicito=texto_tem_comando_explicito,
+            confirmacao_contextual_valida=confirmacao_contextual_valida,
+        )
+    if bool(analise.get("autoriza_execucao")):
+        return False
+
+    natureza = str(analise.get("natureza_acao") or "").casefold()
+    if natureza in {
+        "capacidade", "instrucao_ou_explicacao", "informativa_sobre_acao",
+        "hipotetica", "cancelamento", "mencao_operacional", "decepcao",
+    }:
+        return True
+
+    normalizado = _normalizar_p0_ato_fala(texto, normalizar_texto)
+    return bool(_P0_GATILHOS_OPERACIONAIS.search(normalizado))
+

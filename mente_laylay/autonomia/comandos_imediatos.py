@@ -41,7 +41,10 @@ from mente_laylay.cognicao.esclarecimento_operacional import (
     detectar_esclarecimento_operacional,
     limpar_esclarecimento_operacional,
 )
-from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+from mente_laylay.cognicao.modalidade_turno import (
+    bloqueia_execucao_operacional_prioritaria,
+    classificar_modalidade_turno,
+)
 from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
 from mente_laylay.autonomia.analise_comandos import segmentar_comandos_em_cadeia
 
@@ -392,6 +395,62 @@ class ComandosImediatosRuntime:
         contexto_prioritario["mente_integrada_estado"] = getattr(
             estado_runtime, "mental", {},
         )
+
+        # P0_AUTORIZACAO_MODALIDADE_20260814
+        # Consultas locais canônicas de estado são somente leitura. Elas podem
+        # vencer a barreira de mutação, mas apenas pela habilidade read-only já
+        # existente. Assim "O Opera continua aberto?" não é confundido com o
+        # comando musical "continua".
+        try:
+            tratado_readonly_p0, rota_readonly_p0 = processar_consulta_sistema_local(
+                contexto_prioritario, texto
+            )
+        except Exception as erro:
+            print(
+                "⚠️ [P0:READ-ONLY] consulta local falhou sem liberar mutação | "
+                f"{type(erro).__name__}: {erro}"
+            )
+        else:
+            if tratado_readonly_p0:
+                print(
+                    "🔎 [P0:READ-ONLY] consulta segura tratada antes da barreira | "
+                    f"rota={rota_readonly_p0 or 'consulta_sistema_local'}"
+                )
+                return True
+
+        # Detectar uma intent não concede permissão para executá-la. Esta
+        # barreira faz a rota determinística usar o mesmo dono do turno da LLM.
+        mente_atual = getattr(estado_runtime, "mental", {})
+        turno_atual = (
+            dict(mente_atual.get("turno_atual") or {})
+            if isinstance(mente_atual, dict)
+            else {}
+        )
+        normalizar_turno = ns.get("_normalizar_texto_com_apelidos")
+        texto_tem_comando = ns.get("_texto_tem_comando_explicito")
+        if bloqueia_execucao_operacional_prioritaria(
+            texto,
+            classificacao=turno_atual or None,
+            normalizar_texto=(normalizar_turno if callable(normalizar_turno) else None),
+            texto_tem_comando_explicito=(
+                texto_tem_comando if callable(texto_tem_comando) else None
+            ),
+        ):
+            modalidade_p0 = str(
+                turno_atual.get("modalidade_geral")
+                or turno_atual.get("modalidade")
+                or "conversa"
+            )
+            motivo_p0 = str(
+                turno_atual.get("motivo_decisao")
+                or turno_atual.get("motivo")
+                or "sem autorização operacional"
+            )
+            print(
+                "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | "
+                f"modalidade={modalidade_p0} motivo={motivo_p0}"
+            )
+            return False
 
         # Comandos internos iniciados por barra nunca são respostas naturais
         # a uma oferta pendente. O diagnóstico precisa vencer clipboard,
