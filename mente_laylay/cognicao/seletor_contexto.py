@@ -87,6 +87,29 @@ def selecionar_contexto_turno(
         _normalizar(texto),
     ))
     novo_assunto = modalidade in {"conversa", "pergunta"} and not referencia and len(_tokens(texto)) >= 2
+
+    # P0_ISOLAMENTO_CONTEXTO_20260814
+    dominio_referencia = dominio_atual
+    if referencia and dominio_atual == "conversa":
+        continuidade = dict(mente.get("continuidade_geral") or {})
+        ativo = str(continuidade.get("dominio_ativo") or "").strip().casefold()
+        registro_ativo = dict(dict(continuidade.get("dominios") or {}).get(ativo) or {})
+        try:
+            idade_ativo = time.time() - float(registro_ativo.get("ts") or 0.0)
+            expira_ativo = float(registro_ativo.get("expira_em") or 0.0)
+        except (TypeError, ValueError):
+            idade_ativo, expira_ativo = 999999.0, 0.0
+        if (
+            ativo
+            and registro_ativo.get("ativa", True) is not False
+            and idade_ativo <= 300.0
+            and (not expira_ativo or time.time() < expira_ativo)
+        ):
+            dominio_referencia = {
+                "arquivos": "arquivo",
+                "playlist_laylay": "musica",
+            }.get(ativo, ativo)
+
     associacoes = [
         dict(item) for item in list(ctx.get("associacoes_continuidade") or [])[:3]
         if isinstance(item, dict)
@@ -106,7 +129,16 @@ def selecionar_contexto_turno(
             return
         overlap = _sobreposicao(texto, conteudo)
         recencia = 0.18 if idade_s <= 60 else 0.10 if idade_s <= 300 else 0.0
-        dominio_ok = dominio in {"conversa", dominio_atual} or dominio_atual == "conversa"
+        if referencia:
+            dominio_ok = (
+                dominio == "conversa"
+                or (dominio_referencia != "conversa" and dominio == dominio_referencia)
+            )
+        else:
+            dominio_ok = (
+                dominio in {"conversa", dominio_referencia}
+                or dominio_referencia == "conversa"
+            )
         score = base + recencia + min(0.25, overlap * 0.35)
         reforco_associativo = 0.0
         if referencia and modalidade != "comando" and associacoes:
@@ -120,9 +152,12 @@ def selecionar_contexto_turno(
             if compatibilidade >= 0.6:
                 reforco_associativo = min(0.18, 0.12 + compatibilidade * 0.06)
                 score += reforco_associativo
+        if referencia and dominio_ok and dominio != "conversa":
+            # O domínio ativo tipado é evidência positiva para a referência.
+            score += 0.12
         if referencia and origem in {"ultima_fala", "pergunta_aberta", "promessa"}:
             score += 0.22
-        if modalidade == "comando" and dominio != dominio_atual and dominio != "conversa":
+        if modalidade == "comando" and dominio != dominio_referencia and dominio != "conversa":
             score -= 0.35
         if novo_assunto and origem in {"topico_ativo", "foco_conversacional", "memoria_historica"}:
             score -= 0.45
@@ -130,7 +165,7 @@ def selecionar_contexto_turno(
             score -= 0.30
         score = max(0.0, min(1.0, score))
         limiar = 0.52 if origem in {"pergunta_aberta", "promessa", "ultima_fala"} else 0.58
-        aceito = score >= limiar
+        aceito = score >= limiar and dominio_ok
         evidencia = (
             f"base={base:.2f}; recencia={recencia:.2f}; sobreposicao={overlap:.2f}; "
             f"dominio={'ok' if dominio_ok else 'incompativel'}; "

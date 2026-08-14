@@ -415,6 +415,7 @@ _TTL_TIPO = {
 }
 
 
+# P0_ISOLAMENTO_CONTEXTO_20260814
 def resolver_referencia_pontuada(
     texto: str,
     *,
@@ -423,6 +424,7 @@ def resolver_referencia_pontuada(
     operacao: str = "",
     agora: float | None = None,
 ) -> Dict[str, Any]:
+    """P0.2A: domínio explícito restringe candidatos antes da recência."""
     instante = float(agora if agora is not None else time.time())
     recentes = {
         str(chave): dict(item)
@@ -435,7 +437,10 @@ def resolver_referencia_pontuada(
             continue
         tipo = str(item.get("tipo") or "referencia_nomeada")
         nome_item = str(item.get("nome") or "")
-        if any(_normalizar(recente.get("nome")) == _normalizar(nome_item) for recente in recentes.values()):
+        if any(
+            _normalizar(recente.get("nome")) == _normalizar(nome_item)
+            for recente in recentes.values()
+        ):
             continue
         chave = tipo if tipo not in recentes else f"{tipo}:{entidade_id}"
         recentes.setdefault(chave, {
@@ -447,20 +452,53 @@ def resolver_referencia_pontuada(
         })
 
     t = _normalizar(texto)
-    contexto_musical = bool(re.search(r"\b(?:musica|som|faixa|cancao|toca|coloca)\b", t)) or operacao == "musica_do_referente"
-    contexto_app = bool(re.search(r"\b(?:abre|fecha|janela|aplicativo|app|foco)\b", t))
-    contexto_iot = bool(re.search(r"\b(?:liga|desliga|luz|lampada|ventilador|tomada)\b", t))
-    contexto_arquivo = bool(re.search(
-        r"\b(?:arquivo|pasta|documento|apaga|remove|exclui|move|renomeia)\b", t
-    ))
+    op = _normalizar(operacao)
+    dominio = ""
+    if op.startswith("playlist") or op == "musica_do_referente":
+        dominio = "musica"
+    elif op == "iot":
+        dominio = "iot"
+    elif op == "arquivo":
+        dominio = "arquivo"
+    elif re.search(r"\b(?:musica|som|faixa|cancao|playlist)\b", t):
+        dominio = "musica"
+    elif re.search(r"\b(?:luz|lampada|ventilador|tomada|dispositivo|aparelho)\b", t):
+        dominio = "iot"
+    elif re.search(
+        r"\b(?:arquivo|pasta|documento|diretorio|markdown|extensao|formato)\b|"
+        r"\.(?:txt|md)\b", t,
+    ):
+        dominio = "arquivo"
+    elif re.search(r"\b(?:aba|guia|site|pagina)\b", t):
+        dominio = "site"
+    elif re.search(
+        r"\b(?:app|aplicativo|programa|janela|opera|chrome|steam|vscode|"
+        r"firefox|brave|calculadora)\b", t,
+    ):
+        dominio = "app"
+
+    tipos = {
+        "musica": {
+            "artista", "cantor", "cantora", "banda", "referencia_nomeada",
+            "musica", "playlist", "midia",
+        },
+        "iot": {"iot", "dispositivo"},
+        "arquivo": {"arquivo", "pasta"},
+        "app": {"app", "janela"},
+        "site": {"site", "janela"},
+    }
+    permitidos = tipos.get(dominio, set())
     ativo_id = str(estado.get("entidade_ativa_id") or "")
     candidatos = []
+
     for chave, entidade in recentes.items():
         tipo = str(entidade.get("tipo") or chave).casefold()
         idade = max(0.0, instante - float(entidade.get("ts") or 0.0))
         ttl = float(_TTL_TIPO.get(tipo, 900.0))
         if idade > ttl:
             continue
+
+        compativel = not dominio or tipo in permitidos
         score = 0.15 + (0.35 * math.exp(-3.0 * idade / max(ttl, 1.0)))
         origem = str(entidade.get("origem") or "")
         if origem == "nome_explicito":
@@ -469,22 +507,30 @@ def resolver_referencia_pontuada(
             score += 0.12
         if ativo_id and str(entidade.get("entidade_id") or "") == ativo_id:
             score += 0.25
-        nome_norm = _normalizar(entidade.get("nome"))
-        entidade_registro = dict((estado.get("entidades") or {}).get(ativo_id) or {})
-        if ativo_id and nome_norm == _normalizar(entidade_registro.get("nome")):
+
+        entidade_ativa = dict((estado.get("entidades") or {}).get(ativo_id) or {})
+        if (
+            ativo_id
+            and _normalizar(entidade.get("nome"))
+            == _normalizar(entidade_ativa.get("nome"))
+        ):
             score += 0.25
 
-        musica_tipos = {"artista", "cantor", "cantora", "banda", "referencia_nomeada", "musica", "playlist"}
-        app_tipos = {"app", "janela", "site"}
-        iot_tipos = {"iot", "dispositivo"}
-        if contexto_musical:
-            score += 0.30 if tipo in musica_tipos else -0.25
-        if contexto_app:
-            score += 0.30 if tipo in app_tipos else -0.20
-        if contexto_iot:
-            score += 0.35 if tipo in iot_tipos else -0.25
-        if contexto_arquivo:
-            score += 0.35 if tipo in {"arquivo", "pasta"} else -0.25
+        if dominio == "musica":
+            score += 0.30 if tipo in tipos["musica"] else -0.25
+        elif dominio == "iot":
+            score += 0.35 if tipo in tipos["iot"] else -0.25
+        elif dominio == "arquivo":
+            score += 0.35 if tipo in tipos["arquivo"] else -0.25
+        elif dominio == "site":
+            score += 0.30 if tipo in tipos["site"] else -0.25
+        elif dominio == "app":
+            score += 0.30 if tipo in tipos["app"] else -0.20
+        elif re.search(r"\b(?:abre|fecha|foco|maximiza)\b", t):
+            score += 0.25 if tipo in tipos["app"] else -0.15
+
+        if dominio and not compativel:
+            score = 0.0
         score = max(0.0, min(1.0, score))
         candidatos.append({
             "chave": chave,
@@ -493,15 +539,30 @@ def resolver_referencia_pontuada(
             "pontuacao": round(score, 3),
             "idade_s": round(idade, 1),
             "origem": origem,
+            "dominio_restrito": dominio,
+            "compativel_dominio": compativel,
             "entidade": dict(entidade),
         })
-    candidatos.sort(key=lambda item: float(item.get("pontuacao") or 0.0), reverse=True)
-    melhor = candidatos[0] if candidatos and float(candidatos[0].get("pontuacao") or 0.0) >= 0.45 else {}
+
+    candidatos.sort(
+        key=lambda item: float(item.get("pontuacao") or 0.0),
+        reverse=True,
+    )
+    elegiveis = [x for x in candidatos if x.get("compativel_dominio") is not False]
+    melhor = (
+        elegiveis[0]
+        if elegiveis and float(elegiveis[0].get("pontuacao") or 0.0) >= 0.45
+        else {}
+    )
     return {
         "resolvida": dict(melhor.get("entidade") or {}),
         "chave": str(melhor.get("chave") or ""),
         "pontuacao": float(melhor.get("pontuacao") or 0.0),
-        "candidatos": [{k: v for k, v in item.items() if k != "entidade"} for item in candidatos[:5]],
+        "dominio_restrito": dominio,
+        "candidatos": [
+            {k: v for k, v in item.items() if k != "entidade"}
+            for item in candidatos[:5]
+        ],
     }
 
 

@@ -38,6 +38,138 @@ def _normalizar_com_callback(valor: str, normalizar_texto: Callable[[str], str] 
     return str(valor or "").strip().lower()
 
 
+# P0_ISOLAMENTO_CONTEXTO_20260814
+_DOMINIOS_INTENT_CONTEXTO = {
+    "app": {
+        "APP_OPEN", "CLOSE_APP", "FECHAR_PROGRAMA", "MAXIMIZE_WINDOW",
+        "ORGANIZAR_DESKTOP", "LIST_WINDOWS",
+    },
+    "site": {
+        "OPEN_URL", "CLOSE_TAB", "SITE_ENTER", "SEARCH", "LIST_TABS",
+        "SWITCH_PREVIOUS_TAB", "CLOSE_IDLE_TABS", "RESUMIR_PAGINA",
+    },
+    "musica": {
+        "MUSIC_SEARCH", "MEDIA_CONTROL", "MUSIC_STATUS",
+        "PLAYLIST_CREATE", "PLAYLIST_DELETE", "PLAYLIST_ADD", "PLAYLIST_LIST",
+        "PLAYLIST_PLAY", "PLAYLIST_MOVE", "TOCAR_PLAYLIST",
+        "TOCAR_PLAYLIST_SHUFFLE", "LISTAR_PLAYLISTS",
+        "LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_PLAY", "LAYLAY_PLAYLIST_COPY",
+    },
+    "iot": {"IOT_CONTROL", "IOT_STATUS", "IOT_LIST"},
+    "arquivo": {
+        "CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "MOVE_ITEM",
+        "FILE_TRANSACTION", "FILE_SEARCH", "FILE_READ", "FILE_OPEN_RESULT",
+        "RESTORE_DELETED_ITEM", "CONFIRM_DELETE_ITEM", "CANCEL_DELETE_ITEM",
+    },
+}
+
+
+def _normalizar_dominio_referencia(dominio: str) -> str:
+    valor = str(dominio or "").strip().casefold()
+    return {
+        "arquivos": "arquivo", "arquivo": "arquivo", "pasta": "arquivo",
+        "musica": "musica", "música": "musica", "playlist": "musica",
+        "midia": "musica", "playlist_laylay": "musica",
+        "iot": "iot", "dispositivo": "iot",
+        "janela": "app", "app": "app", "site": "site", "navegador": "site",
+    }.get(valor, valor)
+
+
+def _dominio_explicito_referencia(texto: str) -> str:
+    t = str(texto or "").casefold()
+    if re.search(r"\b(?:musica|música|som|faixa|canção|cancao|playlist)\b", t):
+        return "musica"
+    if re.search(r"\b(?:luz|lampada|lâmpada|ventilador|tomada|dispositivo|aparelho)\b", t):
+        return "iot"
+    if re.search(
+        r"\b(?:arquivo|pasta|documento|diretorio|diretório|markdown|"
+        r"extensao|extensão|formato)\b|\.(?:txt|md)\b", t,
+    ):
+        return "arquivo"
+    if re.search(r"\b(?:aba|guia|site|pagina|página)\b", t):
+        return "site"
+    if re.search(
+        r"\b(?:app|aplicativo|programa|janela|opera|ópera|chrome|steam|"
+        r"vscode|firefox|brave|calculadora)\b", t,
+    ):
+        return "app"
+    return ""
+
+
+def _dominio_ativo_referencia(
+    estado: Dict[str, Any] | None,
+    *,
+    ttl_s: float = 300.0,
+) -> str:
+    mente = dict(estado or {})
+    continuidade = dict(mente.get("continuidade_geral") or {})
+    bruto = str(continuidade.get("dominio_ativo") or "").strip()
+    if not bruto:
+        return ""
+    registro = dict(dict(continuidade.get("dominios") or {}).get(bruto) or {})
+    if not registro or registro.get("ativa", True) is False:
+        return ""
+    agora = time.time()
+    try:
+        ts = float(registro.get("ts") or 0.0)
+        expira_em = float(registro.get("expira_em") or 0.0)
+    except (TypeError, ValueError):
+        return ""
+    if not ts or agora - ts > ttl_s or (expira_em and agora >= expira_em):
+        return ""
+    return _normalizar_dominio_referencia(bruto)
+
+
+def _texto_referencia_curta_operacional(texto: str) -> bool:
+    t = str(texto or "").casefold().strip()
+    pronome = bool(re.search(
+        r"\b(?:ele|ela|isso|esse|essa|este|esta|dele|dela|desse|dessa)\b", t
+    ))
+    operacao = bool(re.search(
+        r"\b(?:abre|abra|abrir|fecha|feche|fechar|encerra|encerrar|"
+        r"maximiza|maximizar|coloca|coloque|deixa|muda|ajusta|liga|"
+        r"desliga|apaga|apagar|remove|remover|exclui|excluir|deleta|"
+        r"deletar|move|mover|renomeia|renomear|toca|toque|pausa|"
+        r"continue|continua|retoma|volta)\b", t
+    ))
+    return pronome and operacao
+
+
+def _dominio_restrito_referencia(
+    texto: str,
+    estado: Dict[str, Any] | None,
+    *,
+    ttl_s: float = 300.0,
+) -> str:
+    explicito = _dominio_explicito_referencia(texto)
+    if explicito:
+        return explicito
+    if not _texto_referencia_curta_operacional(texto):
+        return ""
+    return _dominio_ativo_referencia(estado, ttl_s=ttl_s)
+
+
+def _dominio_intent_contextual(intent: str) -> str:
+    nome = str(intent or "").upper().strip()
+    for dominio, intents in _DOMINIOS_INTENT_CONTEXTO.items():
+        if nome in intents:
+            return dominio
+    return ""
+
+
+def _resultado_compativel_com_dominio(
+    resultado: Dict[str, Any] | None,
+    dominio: str,
+) -> bool:
+    if not isinstance(resultado, dict):
+        return False
+    restrito = _normalizar_dominio_referencia(dominio)
+    if not restrito:
+        return True
+    return _dominio_intent_contextual(str(resultado.get("intent") or "")) == restrito
+
+
+
 def referencia_contextual_imediata(
     *,
     mente_integrada_estado: Dict[str, Any] | None,
@@ -113,7 +245,7 @@ def referencia_contextual_imediata(
             texto_norm,
         )
         and re.search(
-            r"\b(ele|ela|isso|dispositivo|aparelho|tomada|ventilador|luz|lampada|lâmpada)\b",
+            r"\b(dispositivo|aparelho|tomada|ventilador|luz|lampada|lâmpada)\b",
             texto_norm,
         )
     ) or (
@@ -392,6 +524,24 @@ def resolver_comando_acao_geral_contextual(
     tipo_ref = str(contexto_ref.get("tipo") or "").strip().lower()
     alvo_ref = str(contexto_ref.get("alvo") or "").strip()
     ultima_playlist = str(ultima_playlist or "").strip()
+
+    if (
+        tipo_ref == "playlist"
+        and alvo_ref
+        and re.fullmatch(
+            r"(?:apaga|apagar|deleta|deletar|remove|remover|exclui|excluir)\s+"
+            r"(?:ela|ele|isso|essa|esse|esta|este)[?.!]*",
+            t,
+            flags=re.IGNORECASE,
+        )
+    ):
+        return {
+            "intent": "PLAYLIST_DELETE",
+            "params": {
+                "nome_playlist": alvo_ref,
+                "referencia_contextual": True,
+            },
+        }
 
     if tipo_ref == "pessoas" and alvo_ref and re.fullmatch(
         r"(?:e\s+)?(?:o\s+que\s+mais|tem\s+mais|mais\s+alguma\s+coisa|"
@@ -678,18 +828,35 @@ def extrair_app_explicito_em_comando_janela(
 def resolver_comando_contextual(
     texto: str,
     candidatos: Iterable[Tuple[str, Callable[[str], Dict[str, Any] | None]]],
+    *,
+    dominio_restrito: str = "",
 ) -> Dict[str, Any] | None:
+    """Filtra resultados contextuais por domínio antes de materializar ação."""
     for rota, resolver in candidatos:
         rota_txt = str(rota or "GERAL").upper()
         try:
             resultado = resolver(texto)
-        except Exception as e:
-            print(f"⚠️ [CONTEXTO-{rota_txt}] falha ao resolver: {e}")
+        except Exception as erro:
+            print(f"⚠️ [CONTEXTO-{rota_txt}] falha ao resolver: {erro}")
             continue
-        if isinstance(resultado, dict) and str(resultado.get("intent") or "").strip():
-            saida = dict(resultado)
-            saida["_rota_contextual"] = rota_txt
-            return saida
+        if not isinstance(resultado, dict) or not str(resultado.get("intent") or "").strip():
+            continue
+        if dominio_restrito and not _resultado_compativel_com_dominio(
+            resultado, dominio_restrito
+        ):
+            print(
+                "🛡️ [P0:CONTEXTO] intenção contextual descartada por domínio | "
+                f"rota={rota_txt} dominio={dominio_restrito} "
+                f"intent={resultado.get('intent')}"
+            )
+            continue
+        saida = dict(resultado)
+        saida["_rota_contextual"] = rota_txt
+        if dominio_restrito:
+            saida["_dominio_contextual"] = _normalizar_dominio_referencia(
+                dominio_restrito
+            )
+        return saida
     return None
 
 
@@ -1230,21 +1397,30 @@ class ContextoImediatoRuntime:
         ns = self._namespace()
         t = ns["_normalizar_texto_com_apelidos"](texto)
         if re.search(
-            r"\b(?:daqui|em)\s+\d{1,4}\s*(?:segundos?|seg|minutos?|min|horas?)\b",
-            t,
+            r"\b(?:daqui|em)\s+\d{1,4}\s*(?:segundos?|seg|minutos?|min|horas?)\b", t
         ) or re.search(r"\b(?:as|às)\s+\d{1,2}:\d{2}\b", t):
             return None
+
         estrutura = ns["_estrutura_arquivo_recente"](900.0)
         mente = self._estado().mental
+        dominio_restrito = _dominio_restrito_referencia(t, mente, ttl_s=300.0)
+        referencia_operacional = _texto_referencia_curta_operacional(t)
+
+        if referencia_operacional and not dominio_restrito:
+            print(
+                "🛡️ [P0:CONTEXTO] referência operacional ambígua; "
+                "nenhuma mutação contextual foi materializada."
+            )
+            return None
+
         verbo_mutacao_arquivo = bool(re.search(
-            r"\b(apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir|cria|criar|"
-            r"move|mover|renomeia|renomear|muda|mudar|troca|trocar|altera|alterar)\b",
-            t,
+            r"\b(apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir|"
+            r"cria|criar|move|mover|renomeia|renomear|muda|mudar|troca|trocar|"
+            r"altera|alterar)\b", t
         ))
         verbo_abertura = bool(re.search(r"\b(?:abre|abra|abrir|mostra|mostre)\b", t))
         verbo_fechamento = bool(re.search(
-            r"\b(?:fecha|feche|fechar|encerra|encerre|encerrar)\b",
-            t,
+            r"\b(?:fecha|feche|fechar|encerra|encerre|encerrar)\b", t
         ))
         ultima_intencao = str(
             mente.get("ultima_acao_intent") or mente.get("ultima_intencao") or ""
@@ -1260,20 +1436,50 @@ class ContextoImediatoRuntime:
                 or ultima_habilidade in {"arquivo", "arquivos"}
             )
         )
+        sinal_arquivo_explicito = bool(re.search(
+            r"\b(pasta|arquivo|documento|txt|md|markdown|extensao|extensão|formato|"
+            r"diretorio|diretório)\b|\.(?:txt|md)\b", t
+        ))
         contexto_arquivo = bool(
-            re.search(r"\b(pasta|arquivo|documento|txt|md|markdown|extensao|formato)\b", t)
-            or estrutura
-            or ultima_habilidade in {"arquivo", "arquivos"}
-            or ultima_intencao in {
-                "CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "MOVE_ITEM", "FILE_TRANSACTION",
-            }
+            sinal_arquivo_explicito
+            or dominio_restrito == "arquivo"
+            or (
+                not referencia_operacional
+                and (
+                    ultima_habilidade in {"arquivo", "arquivos"}
+                    or ultima_intencao in {
+                        "CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM",
+                        "MOVE_ITEM", "FILE_TRANSACTION",
+                    }
+                )
+            )
         )
-        if verbo_fechamento and arquivo_mais_recente:
-            # Um documento confirmado é uma referência mais recente e mais
-            # específica do que a janela de aplicativo que o abriu. O
-            # resolvedor geral conserva essa distinção e fecha só a janela do
-            # documento, em vez de reaproveitar um app antigo ou encerrar todas
-            # as janelas do editor associado.
+
+        if dominio_restrito == "musica":
+            resolvedores = [
+                ("MIDIA", self.resolver_midia),
+                ("GERAL", self.resolver_acao_geral),
+                ("SEMANTICA", self.resolver_semantico),
+            ]
+        elif dominio_restrito == "iot":
+            resolvedores = [
+                ("IOT", self.resolver_iot),
+                ("GERAL", self.resolver_acao_geral),
+                ("SEMANTICA", self.resolver_semantico),
+            ]
+        elif dominio_restrito == "arquivo":
+            resolvedores = [
+                ("ARQUIVO", self.resolver_arquivo),
+                ("GERAL", self.resolver_acao_geral),
+                ("SEMANTICA", self.resolver_semantico),
+            ]
+        elif dominio_restrito in {"app", "site"}:
+            resolvedores = [
+                ("JANELA", self.resolver_janela),
+                ("GERAL", self.resolver_acao_geral),
+                ("SEMANTICA", self.resolver_semantico),
+            ]
+        elif verbo_fechamento and arquivo_mais_recente:
             resolvedores = [
                 ("GERAL", self.resolver_acao_geral),
                 ("ARQUIVO", self.resolver_arquivo),
@@ -1302,8 +1508,6 @@ class ContextoImediatoRuntime:
             ]
         else:
             resolvedores = [
-                # O resolvedor de domínio preserva propriedades explícitas
-                # (ex.: "deixa ela rosa") antes de reutilizar a ação anterior.
                 ("IOT", self.resolver_iot),
                 ("SEMANTICA", self.resolver_semantico),
                 ("JANELA", self.resolver_janela),
@@ -1311,9 +1515,9 @@ class ContextoImediatoRuntime:
                 ("ARQUIVO", self.resolver_arquivo),
                 ("GERAL", self.resolver_acao_geral),
             ]
+
         return resolver_comando_contextual(
-            texto,
-            resolvedores,
+            texto, resolvedores, dominio_restrito=dominio_restrito
         )
 
 
