@@ -27,6 +27,42 @@ _MARCADORES_VISUAIS_SENSIVEIS = (
     "carteira", "mensagem privada", "direct messages", "whatsapp", "web.telegram",
 )
 
+_DESCRICAO_VISUAL_NAO_FACTUAL = re.compile(
+    r"\b(?:mundo\s+real|hacker\s+de\s+hollywood|dev\s+full[- ]?stack|"
+    r"que\s+fofo|vai\s+parar\s+de|tentando\s+ser|julgar\s+as\s+escolhas|"
+    r"dona\s+absoluta)\b",
+    re.IGNORECASE,
+)
+
+
+def descricao_visual_factual(descricao: str) -> bool:
+    """Aceita descrição observável e rejeita julgamento não ancorado.
+
+    A visão pode ter personalidade depois de descrever fatos, mas não pode
+    transformar uma captura em ataque ao usuário, inferência sobre o mundo
+    fora da tela ou convite para prolongar a conversa.
+    """
+    texto = re.sub(r"\s+", " ", str(descricao or "")).strip()
+    if not texto or len(texto) > 1200 or "?" in texto:
+        return False
+    return _DESCRICAO_VISUAL_NAO_FACTUAL.search(texto) is None
+
+
+def limitar_descricao_visual(descricao: str, limite: int = 300) -> str:
+    """Limita a fala sem cortar palavra ou sentença no meio."""
+    texto = re.sub(r"\s+", " ", str(descricao or "")).strip()
+    if len(texto) <= limite:
+        return texto
+    trecho = texto[: max(1, int(limite)) + 1]
+    cortes_frase = [trecho.rfind(marcador) for marcador in (". ", "! ", "; ")]
+    corte = max(cortes_frase)
+    if corte >= max(80, limite // 2):
+        return trecho[: corte + 1].strip()
+    corte_palavra = trecho.rfind(" ", 0, limite + 1)
+    if corte_palavra > 0:
+        return trecho[:corte_palavra].rstrip(" ,;:-") + "…"
+    return texto[:limite].rstrip(" ,;:-") + "…"
+
 
 @dataclass(slots=True)
 class ResultadoCapturaVisual:
@@ -103,10 +139,11 @@ def executar_captura_tela(
 ) -> bool | ResultadoCapturaVisual:
     """Executa a visão manual preservando destino, fala e processamento assíncrono."""
     pergunta = (
-        "Você é a Laylay, assistente debochada, sarcástica e dona absoluta deste PC. "
-        "Olhe para esta tela e descreva o que o usuário está fazendo ou o que está aberto. "
-        "Seja curta (máximo 3 linhas), direta, irônica e julgue as escolhas dele se for o caso. "
-        "Responda SEMPRE em português brasileiro, com seu jeitão de sempre."
+        "Descreva somente o que está visível nesta captura de tela. "
+        "Cite aplicativos, janelas e conteúdo legível sem inferir intenção, identidade, "
+        "competência ou acontecimentos fora da tela. Use português brasileiro, no máximo "
+        "três frases e sem perguntas. Uma observação leve só é permitida depois dos fatos; "
+        "não ataque nem ridicularize o usuário."
     )
     contexto_atual = obter_contexto() if callable(obter_contexto) else {}
     resultado_async = ResultadoCapturaVisual(ao_concluir=ao_concluir)
@@ -180,6 +217,20 @@ def executar_captura_tela(
                     "confirmado": False,
                 })
                 return
+            if not descricao_visual_factual(descricao):
+                descricao_falha = (
+                    "Capturei a tela, mas a análise veio opinativa demais para "
+                    "eu tratá-la como uma descrição confiável."
+                )
+                if resultado_async.pode_publicar():
+                    falar(descricao_falha, "calma", 1)
+                resultado_async.concluir({
+                    "ok": False,
+                    "status": "analise_visual_nao_factual",
+                    "descricao": descricao_falha,
+                    "confirmado": False,
+                })
+                return
             emocao, nivel = estado_emocional()
             if callable(registrar_memoria):
                 try:
@@ -195,7 +246,7 @@ def executar_captura_tela(
                     )
                 except Exception as erro_memoria:
                     log(f"[VISÃO] Falha ao registrar memória visual: {erro_memoria}")
-            descricao_final = descricao[:300]
+            descricao_final = limitar_descricao_visual(descricao, 300)
             if resultado_async.pode_publicar():
                 falar(descricao_final, emocao or "debochada", nivel or 2)
             resultado_async.concluir({

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -375,6 +376,11 @@ def test_dashboard_projeta_player_e_so_rotina_recorrente_confirmada() -> None:
         },
         agenda_getter=lambda: [
             {
+                "ativo": True, "tipo": "once", "nome": "Revisar o teste",
+                "ts_execucao": datetime(2026, 8, 15, 11, 0).timestamp(),
+                "origem": "pedido_usuario", "evidencia": "persistencia_local",
+            },
+            {
                 "ativo": True, "tipo": "weekly", "nome": "Acordar",
                 "hora": "07:00", "dias": ["seg", "qua", "sex"],
                 "origem": "pedido_usuario", "evidencia": "persistencia_local",
@@ -397,11 +403,17 @@ def test_dashboard_projeta_player_e_so_rotina_recorrente_confirmada() -> None:
     assert musica["state"] == "playing"
     assert musica["controls_available"] is True
     assert musica["playlist"] == "Descanso"
-    assert rotinas["items"] == [{
-        "name": "Acordar", "time": "07:00",
-        "days": ["seg", "qua", "sex"],
-        "active": True, "can_disable": True,
-    }]
+    assert rotinas["items"] == [
+        {
+            "name": "Revisar o teste", "time": "11:00", "days": [],
+            "active": True, "can_disable": True, "date": "2026-08-15",
+        },
+        {
+            "name": "Acordar", "time": "07:00",
+            "days": ["seg", "qua", "sex"],
+            "active": True, "can_disable": True,
+        },
+    ]
 
 
 def test_dashboard_expira_player_sem_congelar_faixa_tempo_ou_controles() -> None:
@@ -452,6 +464,27 @@ def test_sanitizador_p4_remove_payload_e_nao_habilita_player_antigo() -> None:
         "active": True, "can_disable": True,
     }]
     assert "privado" not in str(publico)
+
+
+def test_sanitizador_p4_preserva_data_publica_de_agendamento_unico() -> None:
+    publico = sanitizar_dashboard_estado({
+        "routines": {
+            "observed_at": 100, "freshness": "fresh",
+            "items": [{
+                "name": "Revisar o teste", "time": "11:00",
+                "date": "2026-08-15", "days": [],
+                "active": True, "can_disable": True,
+                "id": "nao-pode-vazar",
+            }],
+        },
+    })
+
+    assert publico["routines"]["items"] == [{
+        "name": "Revisar o teste", "time": "11:00",
+        "days": [], "active": True, "can_disable": True,
+        "date": "2026-08-15",
+    }]
+    assert "nao-pode-vazar" not in str(publico)
 
 
 def test_protocolo_p4_aceita_so_acoes_de_painel_registradas() -> None:

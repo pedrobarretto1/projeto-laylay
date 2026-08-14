@@ -81,6 +81,10 @@ def test_le_texto_somente_quando_solicitado():
     assert runtime.processar("o que tem na área de transferência?") is True
     assert "um texto curto" in falas[-1]
     assert registros[-1][1]["intencao"] == "CLIPBOARD_READ"
+    contrato = runtime._resultados_teste[-1][0][0]
+    assert contrato["intent"] == "CLIPBOARD_READ"
+    assert contrato["status"] == "clipboard_lido"
+    assert contrato["confirmado"] is True
 
 
 def test_link_e_exibido_sem_query_sensivel():
@@ -117,6 +121,7 @@ def test_correcao_nao_substitui_clipboard_automaticamente():
     assert clipboard.texto == "eu foi"
     assert "copia o resultado" in falas[-1]
     assert registros[-1][1]["intencao"] == "CLIPBOARD_TRANSFORM"
+    assert runtime._resultados_teste[-1][0][0]["status"] == "clipboard_transformado"
 
 
 def test_maiusculas_sao_transformadas_localmente_sem_resposta_antiga():
@@ -186,9 +191,11 @@ def test_confirmacao_explicita_copia_e_desfazer_restaura_original():
     assert runtime.processar("copia o resultado") is True
     assert clipboard.texto == "Eu fui."
     assert "guardei o original" in falas[-1]
+    assert runtime._resultados_teste[-1][0][0]["status"] == "clipboard_atualizado"
 
     assert runtime.processar("desfaz a alteração da área de transferência") is True
     assert clipboard.texto == "eu foi"
+    assert runtime._resultados_teste[-1][0][0]["status"] == "clipboard_restaurado"
 
 
 def test_nao_sobrescreve_conteudo_copiado_depois_da_transformacao():

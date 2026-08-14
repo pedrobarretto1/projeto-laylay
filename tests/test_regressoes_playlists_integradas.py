@@ -77,6 +77,36 @@ def test_fluxo_real_preserva_posse_e_ordinal_antes_do_recurso_generico() -> None
     }
 
 
+def test_desejo_imediato_de_abrir_opera_nao_vira_busca_musical() -> None:
+    mapa = _mapa_playlist_generica()
+    namespace = _namespace_deteccao(mapa)
+    namespace["_normalizar_texto_com_apelidos"] = (
+        lambda texto: str(texto).casefold().strip().rstrip(".")
+    )
+    namespace["_contexto_musical_ativo"] = lambda: True
+    namespace["_extrair_intencao_abrir_app"] = lambda texto: (
+        {"intent": "APP_OPEN", "params": {"nome_app": "opera"}}
+        if str(texto).casefold().strip(" .") == "abre opera"
+        else None
+    )
+    runtime = DeteccaoDeterministicaRuntime(
+        namespace_getter=lambda: namespace,
+        estado_getter=lambda: {
+            "ultima_acao_intent": "MUSIC_SEARCH",
+            "ultima_habilidade": "musica",
+        },
+        sites_diretos={},
+        apps_map={"opera": "opera"},
+    )
+
+    assert runtime.detectar(
+        "Eu queria que o Opera estivesse aberto agora.",
+    ) == {
+        "intent": "APP_OPEN",
+        "params": {"nome_app": "opera"},
+    }
+
+
 def test_porta_prioritaria_executa_primeira_curadoria_sem_cair_na_conversa() -> None:
     estado = _EstadoMusical()
     mapa = _mapa_playlist_generica()

@@ -29,7 +29,24 @@ from mente_laylay.autonomia.roteador_deterministico import (
     detectar_url_visual,
     detectar_volume_ou_midia,
 )
-from mente_laylay.cognicao.memoria_visual import MemoriaVisualRuntime
+from mente_laylay.cognicao.memoria_visual import (
+    MemoriaVisualRuntime,
+    limitar_descricao_visual,
+)
+
+
+def test_descricao_visual_longa_nao_termina_com_palavra_cortada() -> None:
+    descricao = (
+        "A tela mostra o Visual Studio Code com o arquivo principal aberto. "
+        + "Há uma área de conversa com mensagens legíveis e painéis laterais. "
+        + ("Também aparece uma janela auxiliar com informações observáveis. " * 8)
+    )
+
+    limitada = limitar_descricao_visual(descricao, 300)
+
+    assert len(limitada) <= 301
+    assert limitada.endswith((".", "!", "…"))
+    assert "inform" not in limitada[-8:].casefold()
 from mente_laylay.memoria_mental.playlist_runtime import PlaylistRuntime
 from mente_laylay.percepcao.ambiente_sistema import (
     obter_clima_localidade,
@@ -460,6 +477,32 @@ def test_visao_publica_apenas_resultado_final_e_reutiliza_contexto_duas_vezes() 
     )
     assert primeira["descricao"] == final["descricao"]
     assert segunda["descricao"] == final["descricao"]
+
+
+def test_visao_rejeita_deboche_hostil_do_terminal_log() -> None:
+    falas: list[str] = []
+    runtime = MemoriaVisualRuntime(
+        namespace_getter=lambda: {
+            "enviar_pc_b": lambda _payload: False,
+            "capturar_tela": lambda: "imagem-base64",
+            "analisar_imagem": lambda _imagem, _pergunta: (
+                "O mundo real já está alagado. Você usa o terminal no VS Code "
+                "como hacker de Hollywood — que fofo. Quer parar de tentar ser "
+                "dev full-stack?"
+            ),
+            "falar": lambda fala, *_args: falas.append(fala),
+            "estado_emocional": lambda: ("calma", 1),
+            "obter_contexto": lambda: {"exe": "code.exe"},
+        },
+        log=lambda _msg: None,
+    )
+
+    final = runtime.executar("pc_a").aguardar(2.0)
+
+    assert final["status"] == "analise_visual_nao_factual"
+    assert final["confirmado"] is False
+    assert "hacker" not in falas[-1].casefold()
+    assert runtime.consultar_ultimo()["status"] == "contexto_visual_indisponivel"
 
 
 def test_executor_visual_confirma_somente_depois_da_descricao_final() -> None:

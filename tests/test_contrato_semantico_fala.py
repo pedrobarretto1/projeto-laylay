@@ -310,6 +310,11 @@ def test_catalogo_vivo_bloqueia_negacao_da_identidade_operacional() -> None:
         "Não estou no seu computador.",
         "Não tô no seu computador, mas tô aqui.",
         "Não tenho acesso ao seu PC.",
+        "Eu não tenho acesso direto ao Spotify.",
+        "Não tenho acesso direto à plataforma.",
+        "O Spotify não está no meu sistema, então não posso abrir.",
+        "Não abro nada que não esteja no meu sistema.",
+        "Não consigo abrir o YouTube.",
     )
     for fala in contradicoes:
         avaliacao = validar_aderencia_contrato_fala(

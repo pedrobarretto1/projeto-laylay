@@ -698,6 +698,7 @@ def detectar_consulta_aprendizados(
             "params": params(limit=3, query=consulta, modo="verificar"),
         }
     estruturas = (
+        r"^(?:voce\s+)?lembra\s+de\s+mim[?.!]*$",
         r"\b(?:o\s+que|quais\s+coisas?)\b.{0,25}\b"
         r"(?:voce\s+)?sabe\b.{0,20}\bsobre\s+mim\b",
         r"\b(?:o\s+que|quais\s+coisas?|que\s+coisas?)\b.{0,45}\b"

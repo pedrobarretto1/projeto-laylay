@@ -30,6 +30,7 @@ def estado_continuidade_geral_inicial() -> Dict[str, Any]:
 
 _INTENTS_DOMINIO = {
     "APP_OPEN": "app", "CLOSE_APP": "app", "FECHAR_PROGRAMA": "app",
+    "LIST_WINDOWS": "app",
     "MAXIMIZE_WINDOW": "app",
     "ORGANIZAR_DESKTOP": "app",
     "OPEN_URL": "site", "CLOSE_TAB": "site", "CLOSE_IDLE_TABS": "site",

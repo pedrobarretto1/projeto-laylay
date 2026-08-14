@@ -767,10 +767,25 @@ class CaixaEntradaPessoalRuntime:
                 return anterior, "conversa"
         return conteudo[:4000], "pedido"
 
-    def _registrar(self, resultado: dict, texto: str, executou: bool, *, status: str) -> None:
+    def _registrar(
+        self,
+        resultado: dict,
+        texto: str,
+        executou: bool,
+        *,
+        status: str,
+        confirmado: bool | None = None,
+    ) -> None:
         if callable(self.registrar_resultado):
+            contrato = dict(resultado or {})
+            contrato["status"] = str(status or "")
+            contrato["executou"] = bool(executou)
+            contrato["confirmado"] = (
+                bool(executou) if confirmado is None else bool(confirmado)
+            )
             self.registrar_resultado(
-                resultado, texto, executou, origem="caixa_entrada_pessoal", status=status,
+                contrato, texto, executou,
+                origem="caixa_entrada_pessoal", status=status,
             )
 
     def _adicionar(self, texto: str) -> bool:
@@ -796,6 +811,35 @@ class CaixaEntradaPessoalRuntime:
         if re.search(r"\bamanha\b", _normalizar(texto)):
             item["revisar_em"] = (agora + dt.timedelta(days=1)).date().isoformat()
         dados = self._carregar()
+        duplicada = next((
+            existente for existente in reversed(dados["itens"])
+            if existente.get("status") == "ativo"
+            and str(existente.get("tipo") or "") == tipo
+            and _normalizar(existente.get("conteudo")) == _normalizar(conteudo)
+        ), None)
+        if duplicada:
+            self._ultimo_id = str(duplicada.get("id") or "")
+            self._ultimo_item_criado_id = self._ultimo_id
+            self._registrar(
+                {
+                    "intent": "INBOX_ADD",
+                    "params": {
+                        "nota_id": self._ultimo_id,
+                        "tipo_nota": tipo,
+                        "alvo": conteudo[:180],
+                    },
+                },
+                texto,
+                False,
+                status="nota_ja_guardada",
+                confirmado=True,
+            )
+            self.falar(
+                f"Essa {tipo} já estava guardada; mantive uma só cópia.",
+                "debochada",
+                1,
+            )
+            return True
         dados["itens"].append(item)
         ok = self._salvar(dados)
         resultado = {

@@ -40,6 +40,7 @@ HABILIDADE_POR_INTENT = {
     "LAYLAY_PLAYLIST_PLAY": "playlist_laylay",
     "LAYLAY_PLAYLIST_COPY": "playlist_laylay",
     "APP_OPEN": "navegacao",
+    "LIST_WINDOWS": "navegacao",
     "CLOSE_APP": "navegacao",
     "MAXIMIZE_WINDOW": "navegacao",
     "ORGANIZAR_DESKTOP": "sistema_janelas",

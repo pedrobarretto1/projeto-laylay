@@ -619,6 +619,23 @@ def detectar_intencao_arquivos(
             }
             and (moldura_arquivo or bool(os.path.splitext(nome)[1]))
         ):
+            nome_recente = str(
+                arquivo_recente_nome
+                or (os.path.basename(arquivo_recente_caminho) if arquivo_recente_caminho else "")
+            ).strip()
+            if (
+                arquivo_recente_caminho
+                and nome_recente
+                and nome.casefold() == nome_recente.casefold()
+            ):
+                return {
+                    "intent": "FILE_SEARCH",
+                    "params": params(
+                        query=nome,
+                        referencia_caminho=arquivo_recente_caminho,
+                        alvo=nome_recente,
+                    ),
+                }
             return {
                 "intent": "FILE_SEARCH",
                 "params": params(query=nome, alvo=nome),

@@ -78,6 +78,12 @@ def limpar_titulo_musical_para_fala(titulo: str) -> str:
         fala = fala[: ocorrencias_edit[0].start()].rstrip(" -–—|:,")
     fala = re.sub(r"\s*[-–—]\s*", " - ", fala)
     fala = re.sub(r"\s+", " ", fala).strip(" -–—|:,")
+    if fala.casefold() in {
+        "youtube", "youtube music", "opera", "chrome", "player",
+    }:
+        # Nome da plataforma não é título de faixa. Mantê-lo como se fosse
+        # música fazia “Qual música está tocando?” responder “YouTube”.
+        return ""
     return fala
 
 

@@ -549,10 +549,15 @@ class RoteiroTesteConversaRuntime:
             for item in comandos
         ):
             return True, "aguardando_confirmacao_usuario"
-        if any(item.get("executou") is False for item in comandos):
-            return True, "falha_confirmada"
+        # Um no-op idempotente é representado corretamente como
+        # ``executou=False`` e ``confirmado=True``: o executor não repetiu a
+        # ação porque o estado desejado já estava observado. A confirmação
+        # precisa vencer a heurística de falha, inclusive em planos compostos
+        # com uma etapa já satisfeita e outra efetivamente executada.
         if any(item.get("confirmado") is True for item in comandos):
             return True, "execucao_confirmada"
+        if any(item.get("executou") is False for item in comandos):
+            return True, "falha_confirmada"
         return True, "resultado_final_sem_observacao_externa"
 
     def _aguardar_resultado_turno(

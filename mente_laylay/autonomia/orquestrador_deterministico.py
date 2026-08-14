@@ -452,7 +452,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         ),
         lambda: detectar_janela_explicita(t, t_sem_destino, params_cb=params),
         lambda: detectar_abrir_app_ou_site(
-            bruto,
+            t_sem_destino,
             params_cb=params,
             extrair_intencao_abrir_app=_get(ctx, "extrair_intencao_abrir_app"),
         ),

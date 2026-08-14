@@ -25,6 +25,11 @@ def test_titulo_musical_preserva_nome_legitimo_com_um_edit() -> None:
     )
 
 
+def test_nome_generico_do_player_nao_e_apresentado_como_musica() -> None:
+    assert limpar_titulo_musical_para_fala("YouTube") == ""
+    assert limpar_titulo_musical_para_fala("YouTube - Opera") == ""
+
+
 def test_nomes_de_janelas_sao_apresentados_sem_cromos_tecnicos() -> None:
     assert nome_janela_para_fala("Música longa - YouTube - Opera") == "YouTube"
     assert nome_janela_para_fala("laylay.py - projeto lay - Visual Studio Code") == "VS Code"

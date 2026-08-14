@@ -782,13 +782,20 @@ def sanitizar_dashboard_estado(
                 for dia in list(item.get("days") or ())[:7]
                 if _texto_seguro(dia, 5).casefold() in pares_dias
             ]
-            rotinas_publicas.append({
+            data = _texto_seguro(item.get("date"), 10)
+            rotina_publica = {
                 "name": nome,
                 "time": horario,
                 "days": dias,
                 "active": True,
                 "can_disable": item.get("can_disable") is True,
-            })
+            }
+            if re.fullmatch(
+                r"\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])",
+                data,
+            ):
+                rotina_publica["date"] = data
+            rotinas_publicas.append(rotina_publica)
     resultado = {
         "schema_version": 1,
         "status": status,

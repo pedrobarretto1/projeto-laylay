@@ -200,6 +200,9 @@ def test_terminal_log_fecha_essa_aba_pelo_id_observado_sem_ctrl_w() -> None:
         {
             "_registro_navegador_leitura_runtime": leitura,
             "_registro_navegador_operacoes_runtime": navegador,
+            # O contexto confirma que "essa" aponta para um site, mas não
+            # pode transformar a aba atual num alvo fictício chamado "site".
+            "_contexto_aponta_site_web": lambda _texto: True,
         },
         _dependencias(eventos),
     )

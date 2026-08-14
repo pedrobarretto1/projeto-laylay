@@ -151,9 +151,13 @@ class ArbitroModalidadeInteligenteTests(unittest.TestCase):
 
     def test_lista_de_programas_vem_do_sistema_e_nao_da_llm(self) -> None:
         falas = []
+        resultados = []
         tratado, etapa = processar_consulta_sistema_local({
             "listar_programas_abertos": lambda: ["Steam", "Discord"],
             "falar_com_lipsync": lambda texto, *_: falas.append(texto),
+            "_registrar_resultado_execucao": (
+                lambda *args, **kwargs: resultados.append((args, kwargs))
+            ),
         }, "quais programas estão abertos?")
 
         self.assertTrue(tratado)
@@ -163,6 +167,14 @@ class ArbitroModalidadeInteligenteTests(unittest.TestCase):
             "Não incluí serviços ou componentes internos do sistema. "
             "As abas continuam dentro da janela do navegador, não como aplicativos separados."
         ])
+        contrato = resultados[-1][0][0]
+        assert contrato == {
+            "intent": "LIST_WINDOWS",
+            "params": {"alvo": "janelas visiveis"},
+            "status": "janelas_listadas",
+            "executou": True,
+            "confirmado": True,
+        }
 
     def test_comandos_deterministicos_comuns_continuam_autorizados(self) -> None:
         for texto in (

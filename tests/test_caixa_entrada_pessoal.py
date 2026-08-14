@@ -62,6 +62,8 @@ def test_adiciona_e_classifica_ideia_com_persistencia_atomica(tmp_path):
     assert itens[0]["status"] == "ativo"
     assert "Guardei como ideia" in falas[-1]
     assert resultados[-1][0][0]["intent"] == "INBOX_ADD"
+    assert resultados[-1][0][0]["status"] == "nota_guardada"
+    assert resultados[-1][0][0]["confirmado"] is True
     assert resultados[-1][1]["origem"] == "caixa_entrada_pessoal"
 
 
@@ -76,6 +78,20 @@ def test_guarda_como_ideia_remove_wrapper_do_conteudo(tmp_path) -> None:
     assert item["tipo"] == "ideia"
     assert item["conteudo"] == "melhorar os testes da Laylay"
     assert "guarda como ideia" not in item["conteudo"].casefold()
+
+
+def test_repetir_a_mesma_ideia_mantem_uma_copia_e_confirma_noop(tmp_path) -> None:
+    runtime, falas, resultados, _ = criar_runtime(tmp_path)
+
+    assert runtime.processar("Guarda como ideia melhorar os testes da Laylay") is True
+    assert runtime.processar("Guarda como ideia melhorar os testes da Laylay") is True
+
+    assert len(itens_salvos(tmp_path)) == 1
+    contrato = resultados[-1][0][0]
+    assert contrato["status"] == "nota_ja_guardada"
+    assert contrato["executou"] is False
+    assert contrato["confirmado"] is True
+    assert "uma só cópia" in falas[-1]
 
 
 def test_composto_essa_ideia_usa_ultimo_item_criado_e_nao_pergunta_historica(

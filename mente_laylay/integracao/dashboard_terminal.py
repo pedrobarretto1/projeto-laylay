@@ -757,13 +757,13 @@ class DashboardTerminalRuntime:
         }
 
     def _rotinas_publicas(self, agora: float) -> dict[str, Any]:
-        itens: list[dict[str, Any]] = []
+        candidatos: list[tuple[tuple[int, float], dict[str, Any]]] = []
         dias_validos = {"seg", "ter", "qua", "qui", "sex", "sab", "dom"}
         for item in self.agenda_getter() or ():
             if not isinstance(item, Mapping) or not bool(item.get("ativo", True)):
                 continue
             tipo = _texto(item.get("tipo"), 20).casefold()
-            if tipo not in {"daily", "weekly"}:
+            if tipo not in {"once", "daily", "weekly"}:
                 continue
             if _texto(item.get("origem"), 40).casefold() != "pedido_usuario":
                 continue
@@ -771,29 +771,53 @@ class DashboardTerminalRuntime:
                 continue
             nome = _publicar_texto_memoria(
                 item.get("nome") or item.get("descricao"),
-                fallback="Rotina pessoal",
+                fallback=("Agendamento pessoal" if tipo == "once" else "Rotina pessoal"),
             )
-            hora = _texto(item.get("hora"), 8)
-            if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", hora):
-                hora = "—"
-            dias_brutos = item.get("dias") if isinstance(item.get("dias"), list) else []
-            dias = [
-                _texto(dia, 3).casefold() for dia in dias_brutos
-                if _texto(dia, 3).casefold() in dias_validos
-            ]
-            if tipo == "daily" and not dias:
-                dias = ["todos"]
-            itens.append({
+            data = ""
+            if tipo == "once":
+                try:
+                    execucao_ts = float(item.get("ts_execucao") or 0.0)
+                except (TypeError, ValueError):
+                    execucao_ts = 0.0
+                if not math.isfinite(execucao_ts) or execucao_ts <= 0:
+                    continue
+                instante = datetime.fromtimestamp(execucao_ts)
+                hora = instante.strftime("%H:%M")
+                data = instante.strftime("%Y-%m-%d")
+                dias: list[str] = []
+                ordem = (0, execucao_ts)
+            else:
+                hora = _texto(item.get("hora"), 8)
+                if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", hora):
+                    hora = "—"
+                dias_brutos = (
+                    item.get("dias") if isinstance(item.get("dias"), list) else []
+                )
+                dias = [
+                    _texto(dia, 3).casefold() for dia in dias_brutos
+                    if _texto(dia, 3).casefold() in dias_validos
+                ]
+                if tipo == "daily" and not dias:
+                    dias = ["todos"]
+                minutos = (
+                    int(hora[:2]) * 60 + int(hora[3:])
+                    if re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", hora)
+                    else 1_440
+                )
+                ordem = (1, float(minutos))
+            publico = {
                 "name": nome,
                 "time": hora,
                 "days": dias[:7],
                 "active": True,
                 "can_disable": True,
-            })
-            if len(itens) >= 6:
-                break
+            }
+            if data:
+                publico["date"] = data
+            candidatos.append((ordem, publico))
+        candidatos.sort(key=lambda candidato: candidato[0])
         return {
-            "items": itens,
+            "items": [item for _ordem, item in candidatos[:6]],
             "freshness": "fresh",
             "observed_at": agora,
         }

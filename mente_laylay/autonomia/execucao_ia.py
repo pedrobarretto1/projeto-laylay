@@ -91,6 +91,7 @@ class CoordenadorExecRuntime:
         self._agendamento_lock = threading.Lock()
         self._ultima_entrada_assinatura = ""
         self._ultima_entrada_ts = 0.0
+        self._assinaturas_em_processamento: set[str] = set()
         self._geracao_entrada = 0
 
     def executar(self, cmd: str, arg: Any) -> bool:
@@ -143,26 +144,47 @@ class CoordenadorExecRuntime:
         origem: str = "desconhecida",
     ) -> threading.Thread:
         thread = threading.Thread(
-            target=self.processar_entrada,
+            target=self._processar_agendado,
             args=(texto, geracao, origem),
             daemon=True,
         )
         thread.start()
         return thread
 
+    @staticmethod
+    def _assinatura_entrada(texto: str) -> str:
+        return re.sub(r"\s+", " ", str(texto or "").casefold()).strip()
+
+    def _processar_agendado(
+        self,
+        texto: str,
+        geracao: int,
+        origem: str = "desconhecida",
+    ) -> Any:
+        assinatura = self._assinatura_entrada(texto)
+        try:
+            return self.processar_entrada(texto, geracao, origem)
+        finally:
+            with self._agendamento_lock:
+                self._assinaturas_em_processamento.discard(assinatura)
+
     def agendar(self, texto: str, origem: str = "desconhecida") -> Any:
-        assinatura = re.sub(r"\s+", " ", str(texto or "").casefold()).strip()
+        assinatura = self._assinatura_entrada(texto)
         agora = time.monotonic()
         with self._agendamento_lock:
             if (
                 assinatura
-                and assinatura == self._ultima_entrada_assinatura
-                and agora - self._ultima_entrada_ts <= 1.0
+                and assinatura in self._assinaturas_em_processamento
             ):
-                self._log(f"🧠 [ENTRADA] duplicata imediata ignorada: {texto!r}")
+                self._log(
+                    "🧠 [ENTRADA] duplicata imediata ignorada "
+                    f"(ainda em processamento): {texto!r}"
+                )
                 return None
             self._ultima_entrada_assinatura = assinatura
             self._ultima_entrada_ts = agora
+            if assinatura:
+                self._assinaturas_em_processamento.add(assinatura)
             self._geracao_entrada += 1
             geracao = self._geracao_entrada
         # O Terminal 2 possui transporte e ciclo de vida próprios. Vincular a
@@ -171,7 +193,12 @@ class CoordenadorExecRuntime:
         # ocupado. O worker dedicado preserva a mesma mente serializada pelo
         # ``RespostaIARuntime`` sem criar dependência entre os dois canais.
         if origem == "desktop":
-            return self._iniciar_thread(texto, geracao, origem)
+            try:
+                return self._iniciar_thread(texto, geracao, origem)
+            except Exception:
+                with self._agendamento_lock:
+                    self._assinaturas_em_processamento.discard(assinatura)
+                raise
         loop = self._loop_getter()
         loop_ativo = False
         if loop is not None:
@@ -182,7 +209,7 @@ class CoordenadorExecRuntime:
         if loop_ativo:
             try:
                 futuro = asyncio.run_coroutine_threadsafe(
-                    asyncio.to_thread(self.processar_entrada, texto, geracao, origem),
+                    asyncio.to_thread(self._processar_agendado, texto, geracao, origem),
                     loop,
                 )
                 futuro.add_done_callback(self._observar_agendamento_assincrono)
@@ -202,7 +229,16 @@ class CoordenadorExecRuntime:
             try:
                 return self._iniciar_thread(texto, geracao)
             except TypeError:
-                return self._iniciar_thread(texto)  # type: ignore[call-arg]
+                try:
+                    return self._iniciar_thread(texto)  # type: ignore[call-arg]
+                except Exception:
+                    with self._agendamento_lock:
+                        self._assinaturas_em_processamento.discard(assinatura)
+                    raise
+        except Exception:
+            with self._agendamento_lock:
+                self._assinaturas_em_processamento.discard(assinatura)
+            raise
 
     def _observar_agendamento_assincrono(self, futuro: Any) -> None:
         """Torna falhas do loop visíveis sem repetir uma entrada incerta."""

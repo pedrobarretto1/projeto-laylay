@@ -475,7 +475,10 @@ def executar_intencao_arquivos(
             falar("A lixeira da Laylay não está disponível agora.", "calma", 1)
             return True
         cancelar()
-        marcar_resultado("exclusao_cancelada", False)
+        # Cancelar é uma não ação deliberada: nada foi apagado, mas o estado
+        # pedido pelo usuário foi confirmado. Sem esse terceiro campo o
+        # roteiro classificava a recusa segura como falha operacional.
+        marcar_resultado("exclusao_cancelada", False, confirmado=True)
         if callable(falar):
             falar("Certo, cancelei a exclusão. Não mexi em nada.", "calma", 1)
         return True

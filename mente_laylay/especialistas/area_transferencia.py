@@ -546,7 +546,44 @@ class AreaTransferenciaRuntime:
         )
         return classificacao
 
-    def _registrar(self, operacao: str, *, sucesso: bool, tamanho: int = 0) -> None:
+    def _registrar(
+        self,
+        operacao: str,
+        *,
+        sucesso: bool,
+        tamanho: int = 0,
+        texto_usuario: str = "",
+    ) -> None:
+        intent = {
+            "read": "CLIPBOARD_READ",
+            "ler": "CLIPBOARD_READ",
+            "resumir": "CLIPBOARD_TRANSFORM",
+            "corrigir": "CLIPBOARD_TRANSFORM",
+            "traduzir": "CLIPBOARD_TRANSFORM",
+            "maiusculas": "CLIPBOARD_TRANSFORM",
+            "minusculas": "CLIPBOARD_TRANSFORM",
+            "explicar": "CLIPBOARD_TRANSFORM",
+            "pesquisar": "CLIPBOARD_SEARCH",
+            "investigar": "CLIPBOARD_INVESTIGATE",
+            "abrir_link": "CLIPBOARD_SEARCH",
+            "aprender": "CLIPBOARD_LEARN",
+            "write": "CLIPBOARD_WRITE",
+            "undo": "CLIPBOARD_UNDO",
+        }.get(operacao, "CLIPBOARD_READ")
+        status = {
+            "read": "clipboard_lido",
+            "ler": "clipboard_lido",
+            "resumir": "clipboard_transformado",
+            "corrigir": "clipboard_transformado",
+            "traduzir": "clipboard_transformado",
+            "maiusculas": "clipboard_transformado",
+            "minusculas": "clipboard_transformado",
+            "explicar": "clipboard_transformado",
+            "write": "clipboard_atualizado",
+            "undo": "clipboard_restaurado",
+        }.get(operacao, "operacao_clipboard_concluida")
+        if not sucesso:
+            status = "falha_execucao"
         if sucesso:
             with self._lock:
                 self._ultima_operacao_ts = float(self.relogio())
@@ -556,22 +593,6 @@ class AreaTransferenciaRuntime:
         )
         if callable(self.registrar_operacao):
             try:
-                intent = {
-                    "read": "CLIPBOARD_READ",
-                    "ler": "CLIPBOARD_READ",
-                    "resumir": "CLIPBOARD_TRANSFORM",
-                    "corrigir": "CLIPBOARD_TRANSFORM",
-                    "traduzir": "CLIPBOARD_TRANSFORM",
-                    "maiusculas": "CLIPBOARD_TRANSFORM",
-                    "minusculas": "CLIPBOARD_TRANSFORM",
-                    "explicar": "CLIPBOARD_TRANSFORM",
-                    "pesquisar": "CLIPBOARD_SEARCH",
-                    "investigar": "CLIPBOARD_INVESTIGATE",
-                    "abrir_link": "CLIPBOARD_SEARCH",
-                    "aprender": "CLIPBOARD_LEARN",
-                    "write": "CLIPBOARD_WRITE",
-                    "undo": "CLIPBOARD_UNDO",
-                }.get(operacao, "CLIPBOARD_READ")
                 self.registrar_operacao(
                     "pedido de área de transferência",
                     "operação temporária concluída" if sucesso else "operação temporária não concluída",
@@ -581,6 +602,35 @@ class AreaTransferenciaRuntime:
                 )
             except Exception:
                 pass
+        publicar_contrato_local = intent in {
+            "CLIPBOARD_READ", "CLIPBOARD_TRANSFORM",
+            "CLIPBOARD_WRITE", "CLIPBOARD_UNDO",
+        }
+        if (
+            publicar_contrato_local
+            and callable(self.registrar_resultado)
+            and str(texto_usuario or "").strip()
+        ):
+            try:
+                contrato = {
+                    "intent": intent,
+                    "params": {"alvo": "conteudo_temporario"},
+                    "status": status,
+                    "executou": bool(sucesso),
+                    "confirmado": bool(sucesso),
+                }
+                self.registrar_resultado(
+                    contrato,
+                    texto_usuario,
+                    bool(sucesso),
+                    origem="area_transferencia",
+                    status=status,
+                )
+            except Exception as erro:
+                self.log(
+                    "⚠️ [ÁREA DE TRANSFERÊNCIA] resultado não publicado: "
+                    f"{type(erro).__name__}"
+                )
 
     def _falar_sem_texto(self, status: str) -> None:
         if status == "indisponivel":
@@ -645,7 +695,10 @@ class AreaTransferenciaRuntime:
                 "calma",
                 1,
             )
-            self._registrar(operacao, sucesso=True, tamanho=len(conteudo))
+            self._registrar(
+                operacao, sucesso=True, tamanho=len(conteudo),
+                texto_usuario=texto_usuario,
+            )
             return True
         if not callable(self.enviar_mensagem):
             self.falar("A transformação de texto está indisponível agora.", "calma", 1)
@@ -680,7 +733,10 @@ class AreaTransferenciaRuntime:
             resultado = ""
         if not resultado:
             self.falar("Não consegui transformar o texto agora, então mantive o conteúdo original intacto.", "calma", 1)
-            self._registrar(operacao, sucesso=False, tamanho=len(conteudo))
+            self._registrar(
+                operacao, sucesso=False, tamanho=len(conteudo),
+                texto_usuario=texto_usuario,
+            )
             return True
         referencia = self._publicar_resultado_temporario(
             original=conteudo,
@@ -692,10 +748,13 @@ class AreaTransferenciaRuntime:
         if operacao in {"corrigir", "traduzir"} and referencia:
             complemento = " Se quiser substituir o que está copiado, diga: copia o resultado."
         self.falar(fala_resultado + complemento, "calma", 1)
-        self._registrar(operacao, sucesso=True, tamanho=len(conteudo))
+        self._registrar(
+            operacao, sucesso=True, tamanho=len(conteudo),
+            texto_usuario=texto_usuario,
+        )
         return True
 
-    def _copiar_resultado(self) -> bool:
+    def _copiar_resultado(self, texto_usuario: str = "") -> bool:
         with self._lock:
             pendente = dict(self._resultado_pendente)
         referencia = self._pendencia_temporaria("copiar_resultado")
@@ -735,16 +794,22 @@ class AreaTransferenciaRuntime:
             confirmado, estado = "", "falha"
         if estado != "ok" or confirmado != resultado:
             self.falar("Tentei copiar o resultado, mas não consegui confirmar a alteração.", "calma", 1)
-            self._registrar("write", sucesso=False, tamanho=len(resultado))
+            self._registrar(
+                "write", sucesso=False, tamanho=len(resultado),
+                texto_usuario=texto_usuario,
+            )
             return True
         self._publicar_desfazer_temporario(original=atual, resultado=resultado)
         with self._lock:
             self._resultado_pendente = {}
         self.falar("Copiei o resultado e guardei o original temporariamente, caso você queira desfazer.", "feliz", 1)
-        self._registrar("write", sucesso=True, tamanho=len(resultado))
+        self._registrar(
+            "write", sucesso=True, tamanho=len(resultado),
+            texto_usuario=texto_usuario,
+        )
         return True
 
-    def _desfazer(self) -> bool:
+    def _desfazer(self, texto_usuario: str = "") -> bool:
         with self._lock:
             anterior = dict(self._ultima_escrita)
         referencia = self._pendencia_temporaria("desfazer_clipboard")
@@ -775,10 +840,15 @@ class AreaTransferenciaRuntime:
                 self._ultima_escrita = {}
             self._encerrar_pendencia_temporaria("desfeita")
             self.falar("Desfiz a alteração e restaurei o texto que estava copiado antes.", "feliz", 1)
-            self._registrar("undo", sucesso=True, tamanho=len(confirmado))
+            self._registrar(
+                "undo", sucesso=True, tamanho=len(confirmado),
+                texto_usuario=texto_usuario,
+            )
         else:
             self.falar("Não consegui confirmar a restauração do conteúdo anterior.", "calma", 1)
-            self._registrar("undo", sucesso=False)
+            self._registrar(
+                "undo", sucesso=False, texto_usuario=texto_usuario,
+            )
         return True
 
     def processar(self, texto: str) -> bool:
@@ -786,14 +856,14 @@ class AreaTransferenciaRuntime:
         if not operacao:
             return False
         if operacao == "copiar_resultado":
-            return self._copiar_resultado()
+            return self._copiar_resultado(texto)
         if operacao == "desfazer":
-            return self._desfazer()
+            return self._desfazer(texto)
 
         conteudo, status = self._ler()
         if status != "ok":
             self._falar_sem_texto(status)
-            self._registrar(operacao, sucesso=False)
+            self._registrar(operacao, sucesso=False, texto_usuario=texto)
             return True
         if _parece_segredo(conteudo):
             self.falar(
@@ -801,7 +871,10 @@ class AreaTransferenciaRuntime:
                 "Não vou ler, registrar nem enviar isso para transformação.",
                 "preocupada", 2,
             )
-            self._registrar(operacao, sucesso=False, tamanho=len(conteudo))
+            self._registrar(
+                operacao, sucesso=False, tamanho=len(conteudo),
+                texto_usuario=texto,
+            )
             return True
 
         # O usuário já usou deliberadamente este conteúdo. O observador
@@ -812,7 +885,10 @@ class AreaTransferenciaRuntime:
         if operacao == "aprender":
             if not callable(self.aprender_conteudo):
                 self.falar("Minha memória duradoura não está disponível agora.", "calma", 1)
-                self._registrar(operacao, sucesso=False, tamanho=len(conteudo))
+                self._registrar(
+                    operacao, sucesso=False, tamanho=len(conteudo),
+                    texto_usuario=texto,
+                )
                 return True
             try:
                 salvo = bool(self.aprender_conteudo(conteudo[:4000], texto))
@@ -826,14 +902,20 @@ class AreaTransferenciaRuntime:
                 )
             else:
                 self.falar("Não consegui guardar esse aprendizado agora.", "calma", 1)
-            self._registrar(operacao, sucesso=salvo, tamanho=len(conteudo))
+            self._registrar(
+                operacao, sucesso=salvo, tamanho=len(conteudo),
+                texto_usuario=texto,
+            )
             return True
 
         self._observar_aprendizado_automatico(conteudo)
 
         if operacao == "ler":
             self._ler_em_voz(conteudo)
-            self._registrar("read", sucesso=True, tamanho=len(conteudo))
+            self._registrar(
+                "read", sucesso=True, tamanho=len(conteudo),
+                texto_usuario=texto,
+            )
             return True
         if operacao in {
             "resumir", "corrigir", "traduzir", "explicar", "maiusculas", "minusculas",
@@ -853,7 +935,10 @@ class AreaTransferenciaRuntime:
                     fala or "Não consegui concluir a investigação desse erro agora.",
                     "calma", 1,
                 )
-                self._registrar("investigar", sucesso=sucesso, tamanho=len(conteudo))
+                self._registrar(
+                    "investigar", sucesso=sucesso, tamanho=len(conteudo),
+                    texto_usuario=texto,
+                )
                 return True
         if operacao == "abrir_link":
             link = self._descricao_link(conteudo)
@@ -878,7 +963,10 @@ class AreaTransferenciaRuntime:
                     "⚠️ [ÁREA DE TRANSFERÊNCIA] continuidade não registrada: "
                     f"{type(erro).__name__}"
                 )
-        self._registrar(operacao, sucesso=executou, tamanho=len(conteudo))
+        self._registrar(
+            operacao, sucesso=executou, tamanho=len(conteudo),
+            texto_usuario=texto,
+        )
         if not executou:
             self.falar("Entendi o conteúdo copiado, mas não consegui abrir a ação correspondente.", "calma", 1)
         return True

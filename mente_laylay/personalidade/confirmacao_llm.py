@@ -34,7 +34,7 @@ INTENTS_INFORMATIVOS = frozenset({
     "READ_URGENT_EMAILS", "LER_EMAILS", "LER_EMAILS_URGENTES",
     "WEATHER", "CLIMA", "LISTAR_AGENDAMENTOS", "LER_NOTIFICACOES",
     "NOTIFICATIONS",
-    "LIST_TABS",
+    "LIST_TABS", "LIST_WINDOWS",
     # A confirmação não recebe o tipo original no novo turno. Reescrevê-la
     # fazia a LLM chamar uma pasta de "arquivo"; preserve a fala factual.
     "CONFIRM_DELETE_ITEM",
@@ -81,7 +81,9 @@ RAIZES_POR_STATUS: dict[str, tuple[str, ...]] = {
     "musica_enviada_sem_confirmacao": ("abri", "enviei", "player", "confirm"),
     "playlist_aberta": ("playlist", "faixa", "toc"),
     "playlist_enviada_sem_confirmacao": ("playlist", "faixa", "fila", "confirm"),
-    "playlist_deletada": ("playlist", "apague", "remov"),
+    # O substantivo ``playlist`` sozinho não prova exclusão: uma listagem
+    # antiga também o contém e já chegou a ser repetida depois de apagar.
+    "playlist_deletada": ("apague", "remov", "exclu", "deletei"),
     "playlist_musica_adicionada": ("playlist", "adicione", "salv", "guarde"),
     "acao_agendada": ("agend", "lembrete"),
     "lembrete_agendado": ("agend", "lembrete"),
@@ -205,6 +207,13 @@ def _motivo_contrato_invalido(
     ]
     if len(frases) > 2:
         return "fala_operacional_prolixa"
+    if re.search(
+        r"\bn[aã]o\s+(?:fale|chame|toque|olhe|volte|v[aá]\s+embora)\b",
+        base,
+    ):
+        # Uma confirmação pode ter humor, mas não pode anexar ordens aleatórias
+        # ao usuário. Esse padrão apareceu numa simples consulta de caminho.
+        return "instrucao_alheia_ao_resultado"
     # Resultado operacional não é espaço para poesia desconectada. Além de
     # esconder a informação útil, construções desse tipo vinham acrescentando
     # celular, pão, frio e outros cenários que o executor nunca observou.

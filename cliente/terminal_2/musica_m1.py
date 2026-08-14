@@ -48,6 +48,18 @@ def _tempo(segundos: object) -> str:
     return f"{horas}:{minutos:02d}:{segundo:02d}" if horas else f"{minutos}:{segundo:02d}"
 
 
+def _horario_item_agenda(item: dict) -> str:
+    horario = str(item.get("time") or "—").strip()
+    partes = str(item.get("date") or "").strip().split("-")
+    if (
+        len(partes) == 3
+        and len(partes[0]) == 4
+        and all(parte.isdigit() for parte in partes)
+    ):
+        return f"{partes[2]}/{partes[1]} · {horario}"
+    return horario
+
+
 class OndaMusical(QWidget):
     """Movimento decorativo ligado apenas ao estado observado de reprodução."""
 
@@ -1445,13 +1457,13 @@ class PaginaMusicaM1(QWidget):
         # ROTINAS
         # =========================================================
         self.rotinas = CartaoMusica(
-            "Rotinas",
+            "Rotinas e agenda",
             detalhe="agenda",
         )
         self.rotinas.conteudo.setSpacing(4)
 
         self.rotinas_estado = QLabel(
-            "Nenhuma rotina recorrente observada."
+            "Nenhuma rotina ou agendamento ativo."
         )
         self.rotinas_estado.setObjectName(
             "musicRoutineEmpty"
@@ -2604,13 +2616,6 @@ class PaginaMusicaM1(QWidget):
         rotinas = dashboard.get("routines")
         itens = (
             list(rotinas.get("items") or ())
-            if isinstance(rotinas, dict) and rotinas.get("freshness") != "unavailable"
-            else []
-        )
-        rotinas = dashboard.get("routines")
-
-        itens = (
-            list(rotinas.get("items") or ())
             if (
                 isinstance(rotinas, dict)
                 and rotinas.get("freshness") != "unavailable"
@@ -2647,10 +2652,7 @@ class PaginaMusicaM1(QWidget):
             )
 
             linha["time"].setText(
-                str(
-                    item.get("time")
-                    or "—"
-                )
+                _horario_item_agenda(item)
             )
 
             widget.show()

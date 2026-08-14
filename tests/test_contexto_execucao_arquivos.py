@@ -300,7 +300,7 @@ def test_pedido_composto_executa_criacao_e_escrita_no_mesmo_arquivo(tmp_path) ->
         estado_mental={},
     )
     assert roteado is not None
-    resultados: list[tuple[str, bool | None]] = []
+    resultados: list[tuple[str, bool | None, bool | None]] = []
 
     def resolver(valor: str) -> str:
         caminho = str(valor or "")
@@ -1250,7 +1250,9 @@ def test_recusa_natural_cancela_lixeira_no_fluxo_integrado(
             "pc_local",
             {"falar_com_lipsync": lambda fala, *_args: falas.append(fala)},
             texto_original=texto,
-            marcar_resultado=lambda status, executou: resultados.append((status, executou)),
+            marcar_resultado=lambda status, executou, **kwargs: resultados.append(
+                (status, executou, kwargs.get("confirmado"))
+            ),
             registrar_arquivo=lambda *_args: None,
             item_local_existe=lambda *_args: False,
             resolver_caminho_local=lambda valor: valor,
@@ -1270,7 +1272,7 @@ def test_recusa_natural_cancela_lixeira_no_fluxo_integrado(
     assert etapa == "cancelamento_exclusao"
     assert arquivo.read_text(encoding="utf-8") == "preservar"
     assert runtime_lixeira.tem_confirmacao_pendente() is False
-    assert resultados == [("exclusao_cancelada", False)]
+    assert resultados == [("exclusao_cancelada", False, True)]
     assert len(falas) == 1
     assert "cancelei" in falas[0].casefold()
     assert "não mexi" in falas[0].casefold()

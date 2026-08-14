@@ -114,6 +114,7 @@ def test_wttr_expoe_probabilidade_de_chuva_do_dia() -> None:
     )
 
     assert dados["ok"] is True
+    assert dados["descricao"] == "névoa de fumaça"
     assert dados["chance_chuva_pct"] == 65
     assert dados["previsao_chuva_disponivel"] is True
     assert dados["temperatura_max_c"] == "28"

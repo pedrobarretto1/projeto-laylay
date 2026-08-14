@@ -17,6 +17,50 @@ from mente_laylay.integracao.roteiro_teste_conversa import (
 from mente_laylay.personalidade.terminal_laylay import should_log_message
 
 
+def test_noop_confirmado_nao_e_rotulado_como_falha_do_roteiro() -> None:
+    plano = {
+        "id": 2,
+        "texto_usuario": "Essa também.",
+        "fase": "tratado_prioritario",
+        "comandos": [{
+            "intent": "PLAYLIST_ADD",
+            "status": "playlist_musica_ja_existia",
+            "executou": False,
+            "confirmado": True,
+        }],
+    }
+
+    assert RoteiroTesteConversaRuntime._resultado_turno_terminal(
+        plano,
+        comando="Essa também.",
+        plano_id_anterior=1,
+    ) == (True, "execucao_confirmada")
+
+
+def test_plano_composto_com_etapa_ja_satisfeita_conta_como_confirmado() -> None:
+    plano = {
+        "id": 4,
+        "texto_usuario": "Abre o Visual Studio Code e coloca ele na direita.",
+        "fase": "tratado_prioritario",
+        "comandos": [
+            {
+                "intent": "APP_OPEN", "status": "ja_aberto_focado",
+                "executou": False, "confirmado": True,
+            },
+            {
+                "intent": "ORGANIZAR_DESKTOP", "status": "layout_confirmado",
+                "executou": True, "confirmado": True,
+            },
+        ],
+    }
+
+    assert RoteiroTesteConversaRuntime._resultado_turno_terminal(
+        plano,
+        comando="Abre o Visual Studio Code e coloca ele na direita.",
+        plano_id_anterior=3,
+    ) == (True, "execucao_confirmada")
+
+
 def test_carrega_lista_e_opcoes_sem_executar_codigo_do_roteiro(tmp_path) -> None:
     roteiro = tmp_path / "roteiro.py"
     roteiro.write_text(

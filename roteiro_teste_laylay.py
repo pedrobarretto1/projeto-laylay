@@ -12,126 +12,234 @@ from cliente.executor_roteiro_laylay import executar_roteiro
 # Cole a sequência inteira abaixo, com um comando por linha. Confirmações como
 # "sim" e "não" também usam sua própria linha e preservam o contexto anterior.
 COMANDOS = """
-# 1. Conversa e consciência de capacidades
-Oi Lay.
+# 1. Conversa e personalidade
+Oi Lay, tudo bem?
+Hoje estou meio cansado.
+Você prefere rock ou metal?
+Por quê?
+Explica isso de um jeito mais simples.
+Que isso?
+Obrigado, Lay.
+
+# 2. Consciência de capacidades
 Você é só um chatbot?
 Você está no meu computador?
 O que você consegue fazer?
-Você consegue abrir e organizar programas?
-Você consegue criar e procurar arquivos?
-Como eu abriria o Spotify?
-Talvez fosse legal abrir o Spotify.
-Não abra o Spotify.
+Você consegue criar arquivos?
+Como eu faria para criar um arquivo?
+Talvez fosse legal criar um arquivo.
+Não crie nenhum arquivo.
 
-# 2. Falha segura, explicação e repetição
-Abre um programa chamado Aplicativo Que Não Existe.
-Por que não?
-Tenta de novo.
-Obrigado de novo.
+# 3. Arquivo composto com conteúdo
+Cria um arquivo de texto chamado teste completo e dentro dele escreva teste concluído com sucesso
+Abre ele e deixa em foco
+Fecha ele
 
-# 3. Criação composta e conteúdo
-Cria um arquivo de texto chamado roteiro correcao e dentro dele escreva primeira linha preservada.
-Escreve uma segunda linha nele.
+# 4. Continuidade de arquivo
+Escreve uma segunda linha nele
+Onde ele fica?
 Qual é o caminho completo dele?
-Onde esse arquivo fica?
-Abre ele e deixa em foco.
-Fecha ele.
+Abre ele e deixa em foco
+Fecha ele
 
-# 4. Pasta, movimentação e referência
-Cria uma pasta chamada roteiro correcao pasta e coloca o roteiro correcao.txt dentro dela.
-Onde esse arquivo fica?
-Abre ele e deixa em foco.
-Fecha ele.
+# 5. Pasta e movimentação composta
+Cria uma pasta chamada carlos teste e coloca o teste completo.txt dentro dela
+Abre ele e deixa em foco
+Fecha ele
 
-# 5. Hipótese e negação de exclusão
-Talvez eu apague o roteiro correcao.txt depois.
-Não apague o roteiro correcao.txt.
-Onde o roteiro correcao.txt fica?
+# 6. Movimentação com erro e repetição
+Cria uma pasta chamada pasta falha
+Coloca o arquivo inexistente.txt dentro dela
+Tenta de novo
 
-# 6. Cancelamento, exclusão e restauração
-Apaga o arquivo roteiro correcao.txt.
-Não.
-Onde o roteiro correcao.txt fica?
-Apaga o arquivo roteiro correcao.txt.
-Sim.
-Quero ele de volta.
-Quero ele de volta.
-Onde o roteiro correcao.txt fica?
+# 7. Aplicativos, sites e referências
+Abre o Opera
+Maximiza ele
+Fecha ele
+Abre o YouTube
+Fecha ele
+Abre o teste completo.txt e deixa em foco
+Fecha ele
 
-# 7. Janelas compostas e referência viva
+# 8. Negação, hipótese e explicação
+Não abre o Opera.
+Talvez fosse legal abrir o Opera.
+Como eu faria para abrir o Opera?
+Eu queria que o Opera estivesse aberto agora.
+
+# 9. Comandos compostos de janelas
+Abre o Opera e depois maximiza a janela.
 Abre o Bloco de Notas e coloca ele na esquerda.
-Fecha ele.
 Abre o Visual Studio Code e coloca ele na direita.
-Abre o Opera.
-Maximiza o Opera.
-Quais programas e janelas estão abertos?
+Quais janelas estão abertas?
 
-# 8. Navegador, busca e abas
-Pesquisa por documentação oficial do Python.
+# 10. Navegador e abas
+Pesquisa por documentação do Python.
 Abre o primeiro resultado.
 Quais abas estão abertas?
 Fecha essa aba.
 Abre o Prime Video.
 Fecha a aba do Prime Video.
-Quais abas estão abertas?
+Fecha as abas paradas.
+Resume a página atual.
 
-# 9. Música como consulta e controle
-Qual música está tocando?
-Pausa a música.
-Continua.
-Próxima.
-Volta para a anterior.
-Qual música está tocando?
+# 11. Pesquisa local composta
+Encontra o código que controla a lâmpada e abre o primeiro resultado.
+Onde esse arquivo fica?
+Fecha ele.
 
-# 10. Playlist e idempotência
-Cria uma playlist chamada roteiro teste.
-Coloca essa música na playlist roteiro teste.
-Essa também.
-Tenta de novo.
-O que tem na playlist roteiro teste?
-Apaga a playlist roteiro teste.
-
-# 11. Memória versus agenda
-O que você lembra de mim?
-Você lembra de mim?
-Me lembra de revisar o resultado do roteiro amanhã às 11 horas.
-Troca para amanhã às 22 horas.
-Quais são meus lembretes?
-Cancela o lembrete de revisar o resultado do roteiro.
-
-# 12. Caixa de entrada e referência da ideia
-Guarda como ideia melhorar a cobertura do roteiro automatizado.
-Quem é o presidente do Brasil?
-Guarda essa ideia e me lembra dela amanhã às 11 horas.
-O que tem na minha caixa de entrada?
-Cancela o lembrete de melhorar a cobertura do roteiro automatizado.
-
-# 13. Clima e briefing
-Me passa o briefing de hoje.
-Repete o briefing.
-Como fica o tempo amanhã?
-Qual será a temperatura máxima amanhã?
-
-# 14. Visão e continuidade
-Olha minha tela.
-O que você consegue identificar?
-Resume o que você está vendo.
-
-# 15. Clipboard
+# 12. Área de transferência
 O que eu copiei?
 Transforma isso em letras maiúsculas.
 Copia o resultado.
+O que eu copiei agora?
 
-# 16. Limpeza dos arquivos de teste
-Apaga o arquivo roteiro correcao.txt.
-Sim.
-Apaga a pasta roteiro correcao pasta.
-Sim.
+# 13. Música e continuidade
+Toca uma música de rock.
+Qual música está tocando?
+Pausa.
+Continua.
+Próxima.
+Volta para a anterior.
 
-# 17. Verificação final
+# 14. Playlists
+Quais são as suas playlists?
+O que tem na sua primeira playlist?
+Toca a sua primeira playlist.
+Coloca essa música na playlist rock.
+Essa também.
+Tenta de novo.
+
+# 15. Agenda e lembretes
+Me lembra amanhã às 10 horas de testar a Laylay.
 Quais são meus lembretes?
-Quais programas e janelas estão abertos?
+Me lembra de beber água.
+Daqui a 10 minutos.
+Me lembra de fazer alongamento.
+Não, deixa como está.
+Me lembra amanhã às 18 horas de revisar o teste.
+Troca para amanhã às 22 horas.
+Quais são meus lembretes?
+
+# 16. Memória pessoal
+Meu nome é Pedro.
+Eu moro em Boituva.
+Eu gosto de rock e programação.
+Eu também gosto de metal.
+Eu não gosto de sertanejo.
+Eu gosto de Nirvana.
+Qual é o meu nome?
+Onde eu moro?
+Do que eu gosto?
+Do que eu não gosto?
 O que você lembra de mim?
+
+# 17. Pessoas e relações
+Eu conheço uma pessoa chamada Nanda.
+Nanda é minha amiga.
+O que você lembra da Nanda?
+Quem é minha amiga?
+Quem é o presidente do Brasil?
+
+# 18. Caixa de entrada e cooperação
+Guarda como ideia melhorar os testes da Laylay.
+O que tem na minha caixa de entrada?
+Guarda essa ideia e me lembra dela amanhã às 11 horas.
+O que tem na minha caixa de entrada?
+Quais são meus lembretes?
+
+# 19. Clima e briefing
+Qual é o briefing de hoje?
+Repete o briefing.
+Como está o clima agora em Boituva?
+Qual será a temperatura máxima hoje?
+Como estará o tempo amanhã?
+
+# 20. IoT — estes comandos controlam dispositivos reais
+Quais dispositivos você controla?
+Liga a lâmpada do quarto.
+Como ela está?
+Deixa ela roxa.
+Desliga ela.
+Liga o ventilador.
+Como ele está?
+Desliga ele.
+
+# 21. Visão
+Olha minha tela.
+O que tem na minha tela?
+O que você consegue identificar nela?
+Resume o que está aparecendo agora.
+
+# 22. Variações naturais
+Cria um arquivo chamado teste natural.
+Abre ele e traz para frente.
+Fecha ele.
+Cria uma pasta chamada documentos teste.
+Coloca o teste natural.txt dentro dela.
+Onde ele está agora?
+Tenta abrir ele.
+Fecha ele.
+
+# 23. Proteção contra execução indevida
+Não apague o teste natural.txt.
+Como eu faria para apagar o teste natural.txt?
+Talvez eu apague o teste natural.txt depois.
+Você consegue apagar arquivos?
+Não abra o Spotify.
+Como eu abriria o Spotify?
+Talvez fosse bom abrir o Spotify.
+
+# 24. Falhas e programas inexistentes
+Abre um programa chamado Aplicativo Que Não Existe.
+Por que não?
+Tenta de novo.
+Fecha um programa chamado Aplicativo Que Não Existe.
+
+# 25. Contexto cruzado
+Abre o Opera.
+Abre o teste natural.txt e deixa em foco.
+Fecha ele.
+Maximiza o Opera.
+Fecha ele.
+
+# 26. Repetição conversacional
+Oi Lay.
+Oi Lay.
+Tudo bem com você?
+Tudo bem com você?
+Você prefere rock ou metal?
+Você prefere rock ou metal?
+Obrigado.
+De nada, quer dizer, obrigado de novo.
+
+# 27. Diagnóstico
+/diagnostico mente
+
+# 28. Cancelamento de exclusão
+Apaga o arquivo teste natural.txt.
+Não.
+
+# 29. Exclusão confirmada
+Apaga o arquivo teste natural.txt.
+Sim.
+
+# 30. Restauração
+Quero ele de volta.
+
+# 31. Limpeza dos artefatos
+Apaga a pasta documentos teste.
+Sim.
+Apaga a pasta carlos teste.
+Sim.
+Apaga a pasta pasta falha.
+Sim.
+
+# 32. Verificação final
+O que você lembra de mim?
+Quais são meus lembretes?
+O que tem na minha caixa de entrada?
+Quais programas e janelas estão abertos?
 /diagnostico mente
 """
 

@@ -205,8 +205,16 @@ class AdaptadorResultadoOperacional:
                 fala_base = f"{objeto} já está aberto e em foco; não repeti a abertura."
             elif status_norm == "ja_estava_ligado":
                 fala_base = f"{objeto} já está ligado; não repeti o comando."
-            else:
+            elif status_norm == "ja_estava_desligado":
                 fala_base = f"{objeto} já está desligado; não repeti o comando."
+            elif status_norm == "playlist_musica_ja_existia":
+                fala_base = (
+                    f"A faixa já estava na playlist {objeto}; mantive uma só cópia."
+                )
+            elif status_norm == "playlist_ja_existia":
+                fala_base = f"A playlist {objeto} já existia; não criei outra."
+            else:
+                fala_base = f"{objeto} já estava como você pediu; não repeti a ação."
         status_calmo = status_norm in STATUS_FALA_CALMA
         contrato = ResultadoAcao(
             intent=self.intent,

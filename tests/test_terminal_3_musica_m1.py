@@ -109,6 +109,28 @@ def test_m1_aplica_player_sistema_e_rotina_reais(monkeypatch) -> None:
     app.processEvents()
 
 
+def test_m1_exibe_agendamento_unico_ao_lado_das_rotinas(monkeypatch) -> None:
+    app, pagina = _pagina(monkeypatch)
+    retrato = _dashboard()
+    retrato["routines"]["items"] = [{
+        "name": "Revisar o resultado do roteiro",
+        "time": "11:00",
+        "date": "2026-08-15",
+        "days": [],
+        "active": True,
+        "can_disable": True,
+    }]
+
+    pagina.aplicar_dashboard(retrato)
+    app.processEvents()
+
+    assert not pagina.rotinas_estado.isVisible()
+    assert pagina.rotinas_linhas[0]["name"].text() == "Revisar o resultado do roteiro"
+    assert pagina.rotinas_linhas[0]["time"].text() == "15/08 · 11:00"
+    pagina.close()
+    app.processEvents()
+
+
 def test_m1_novo_dashboard_nao_rebobina_relogio_local(monkeypatch) -> None:
     relogio = {"agora": 1_002.0}
     monkeypatch.setattr(

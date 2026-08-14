@@ -82,7 +82,10 @@ def test_agendar_acao_relativa_preserva_intencao_para_disparo() -> None:
         "params": {"nome_app": "discord"},
     }
     assert antes + 119 <= agenda[0]["ts_execucao"] <= time.time() + 121
-    assert eventos[0] == ("resultado", "acao_agendada", {"executou": True})
+    assert eventos[0] == (
+        "resultado", "acao_agendada",
+        {"executou": True, "confirmado": True},
+    )
 
 
 def test_reagendamento_substitui_apenas_mesma_acao_e_alvo() -> None:
@@ -158,7 +161,10 @@ def test_complemento_de_horario_reaproveita_alvo_e_dia_pendentes() -> None:
 
     assert despacho == ResultadoDespacho.concluido()
     assert agenda[0]["descricao"] == "campeonato de arremesso de peso"
-    assert eventos[0] == ("resultado", "lembrete_agendado", {"executou": True})
+    assert eventos[0] == (
+        "resultado", "lembrete_agendado",
+        {"executou": True, "confirmado": True},
+    )
 
 
 def test_listagem_omite_agendamentos_inativos() -> None:
@@ -184,6 +190,14 @@ def test_listagem_omite_agendamentos_inativos() -> None:
     assert despacho == ResultadoDespacho.concluido()
     assert recebidos == [[{"nome": "ativo", "ativo": True}]]
     assert falas == ["Um compromisso."]
+    assert eventos == [(
+        "resultado", "agendamentos_listados",
+        {
+            "executou": True,
+            "confirmado": True,
+            "detalhe": "1 agendamento(s) ativo(s) lido(s)",
+        },
+    )]
 
 
 def test_cancelamento_marca_item_inativo_e_confirma_persistencia() -> None:
@@ -200,7 +214,32 @@ def test_cancelamento_marca_item_inativo_e_confirma_persistencia() -> None:
 
     assert despacho == ResultadoDespacho.concluido()
     assert agenda[0]["ativo"] is False
-    assert eventos[0] == ("resultado", "agendamento_cancelado", {"executou": True})
+    assert eventos[0] == (
+        "resultado", "agendamento_cancelado",
+        {"executou": True, "confirmado": True},
+    )
+
+
+def test_cancelamento_usa_descricao_completa_quando_nome_esta_truncado() -> None:
+    eventos: list[tuple] = []
+    agenda = [{
+        "id": "e888d76c",
+        "nome": "melhorar a cobertura do roteir",
+        "descricao": "melhorar a cobertura do roteiro automatizado",
+        "ativo": True,
+    }]
+
+    executar_intencao_agenda(
+        "CANCELAR_AGENDAMENTO",
+        {"alvo": "melhorar a cobertura do roteiro automatizado"},
+        "Cancela o lembrete de melhorar a cobertura do roteiro automatizado.",
+        {"_agendamentos_transacionar": _transacao(agenda)},
+        _dependencias(eventos),
+    )
+
+    assert agenda[0]["ativo"] is False
+    assert eventos[0][0:2] == ("resultado", "agendamento_cancelado")
+    assert eventos[0][2]["confirmado"] is True
 
 
 def test_roteador_principal_delega_lembrete_ao_executor_agenda() -> None:

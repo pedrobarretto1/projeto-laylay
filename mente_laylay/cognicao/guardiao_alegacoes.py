@@ -94,6 +94,21 @@ _INTENTS_ANOTACAO = {
 }
 
 
+def _alega_execucao_afirmativa(frase: str) -> bool:
+    """Distingue execução alegada de uma negação explícita."""
+    texto = str(frase or "")
+    for ocorrencia in _EXECUCAO_ALEGADA_SEM_RESULTADO.finditer(texto):
+        prefixo = texto[:ocorrencia.start()]
+        if re.search(
+            r"\b(?:não|nao|nunca|jamais|nem)\s+(?:te\s+)?$",
+            prefixo,
+            re.IGNORECASE,
+        ):
+            continue
+        return True
+    return False
+
+
 def _comandos_normalizados(plano: Dict[str, Any]) -> list[Dict[str, Any]]:
     resultados = []
     for item in list(plano.get("comandos") or []):
@@ -184,7 +199,7 @@ def validar_alegacoes_da_fala(
             continue
         if (
             origem_ia
-            and _EXECUCAO_ALEGADA_SEM_RESULTADO.search(frase)
+            and _alega_execucao_afirmativa(frase)
             and not confirmados
         ):
             problemas.append("execucao_alegada_sem_resultado")

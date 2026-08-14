@@ -538,9 +538,27 @@ def processar_consulta_sistema_local(
         partes.append("Não incluí serviços ou componentes internos do sistema.")
     partes.append("As abas continuam dentro da janela do navegador, não como aplicativos separados.")
     fala = " ".join(partes)
-    return emitir_conversa_curta(
+    tratado = emitir_conversa_curta(
         ctx, texto_usuario, fala, emocao="calma", nivel=1,
-    ), "consulta_programas_abertos"
+    )
+    if tratado:
+        registrar = _get(ctx, "_registrar_resultado_execucao")
+        if callable(registrar):
+            contrato = {
+                "intent": "LIST_WINDOWS",
+                "params": {"alvo": "janelas visiveis"},
+                "status": "janelas_listadas",
+                "executou": True,
+                "confirmado": True,
+            }
+            registrar(
+                contrato,
+                texto_usuario,
+                True,
+                origem="consulta_sistema_local",
+                status="janelas_listadas",
+            )
+    return tratado, "consulta_programas_abertos"
 
 
 def processar_pergunta_aberta(

@@ -14,7 +14,7 @@ _INTENTS_POR_DOMINIO = {
         "TOCAR_PLAYLIST_SHUFFLE", "STOP_PLAYLIST_CONTEXT",
     },
     "sistema": {
-        "CANCELAR_ACAO", "CLOSE_APP", "APP_OPEN", "VOLUME",
+        "CANCELAR_ACAO", "CLOSE_APP", "APP_OPEN", "VOLUME", "LIST_WINDOWS",
         "MAXIMIZE_WINDOW", "LOCK_PC", "ORGANIZAR_DESKTOP",
         "FECHAR_PROGRAMA",
     },
@@ -67,6 +67,7 @@ INTENTS_SOMENTE_LEITURA = frozenset({
     "LISTAR_AGENDAMENTOS", "EMAIL_READ", "EMAIL_SYNC", "NOTIFICATIONS",
     "IOT_STATUS", "IOT_LIST", "WEATHER", "RESUMIR_PAGINA",
     "LIST_TABS",
+    "LIST_WINDOWS",
     "GAME_VISION", "VISION_QUERY",
     "INBOX_LIST",
     "CLIPBOARD_READ", "CLIPBOARD_INVESTIGATE",
@@ -102,6 +103,10 @@ _CONFIRMACAO_POR_INTENT = {
     "CLOSE_APP": ("estado_observado", "a janela é relida localmente ou pelo cliente remoto compatível"),
     "FECHAR_PROGRAMA": ("variavel", "alias de CLOSE_APP"),
     "APP_OPEN": ("estado_observado", "a janela é relida localmente ou pelo cliente remoto compatível"),
+    "LIST_WINDOWS": (
+        "retorno_dados",
+        "os títulos das janelas visíveis são lidos do sistema no turno atual",
+    ),
     "VOLUME": ("estado_observado", "o nível é relido pela API de áudio local ou remota"),
     "MAXIMIZE_WINDOW": ("estado_observado", "a janela local ou remota é relida após a maximização"),
     "LOCK_PC": ("indisponivel", "a chamada de bloqueio não permite releitura antes do encerramento"),

@@ -294,7 +294,6 @@ def _executar_fechar_aba(
 ) -> ResultadoDespacho:
     navegador_leitura = _get(ctx, "_registro_navegador_leitura_runtime")
     navegador_operacoes = _get(ctx, "_registro_navegador_operacoes_runtime")
-    contexto_site = _get(ctx, "_contexto_aponta_site_web")
     enviar_pc_b = _get(ctx, "_enviar_pc_b")
 
     info = navegador_leitura.aba_ativa() if navegador_leitura is not None else {}
@@ -316,9 +315,6 @@ def _executar_fechar_aba(
     # comando para ``fechar_programa`` encerrava o navegador inteiro (por
     # exemplo, "fecha a aba do Prime Video" fechava o Opera). Fechar um app
     # continua sendo responsabilidade exclusiva de CLOSE_APP.
-
-    if not alvo and callable(contexto_site) and contexto_site(texto_original):
-        alvo = str(params.get("nome_app") or params.get("query") or params.get("alvo") or "site").strip()
 
     aba_resolvida: Dict[str, Any] = {}
     confirmacao_resultado: bool | None = False

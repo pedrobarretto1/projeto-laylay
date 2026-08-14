@@ -8,7 +8,8 @@ from typing import Any, Dict
 STATUS_RESULTADO_JA_SATISFEITO = {
     "ja_aberto_focado", "site_ja_aberto_focado",
     "ja_estava_ligado", "ja_estava_desligado",
-    "playlist_ja_existia",
+    "playlist_ja_existia", "playlist_musica_ja_existia",
+    "nota_ja_guardada",
 }
 
 STATUS_RESULTADO_CANCELADO = {
@@ -36,6 +37,9 @@ STATUS_RESULTADO_CONFIRMADO = {
     "playlist_criada",
     "playlist_deletada", "playlist_musica_adicionada", "acao_agendada",
     "lembrete_agendado", "agendamento_cancelado", "movido_para_lixeira",
+    "lembrete_reagendado", "agendamentos_listados",
+    "clipboard_lido", "clipboard_transformado", "clipboard_atualizado",
+    "clipboard_restaurado", "janelas_listadas",
     "nota_guardada", "notas_listadas", "discussao_guardada",
     "discussao_ja_guardada", "nota_excluida",
     # A pesquisa semântica relê dados locais e só publica caminhos que o

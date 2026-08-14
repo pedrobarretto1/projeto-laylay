@@ -11,6 +11,9 @@ from mente_laylay.autonomia.roteador_deterministico import (
     detectar_consulta_aprendizados,
     normalizar_pedido_natural,
 )
+from mente_laylay.autonomia.orquestrador_deterministico import (
+    detectar_intencao_deterministica_mente,
+)
 from mente_laylay.autonomia.porteiro_acoes import (
     texto_pede_repeticao_curta as porteiro_pede_repeticao,
 )
@@ -115,6 +118,33 @@ def test_consulta_de_memoria_nao_vira_pedido_de_lembrete() -> None:
         texto,
         params_cb=lambda **kwargs: kwargs,
     ) == {"intent": "LEARNING_QUERY", "params": {"limit": 3}}
+
+
+def test_voce_lembra_de_mim_consulta_memoria_sem_agendar() -> None:
+    texto = "Você lembra de mim?"
+    turno = classificar_modalidade_turno(texto)
+
+    assert texto_pede_lembrete_explicito(texto) is False
+    assert turno["autoriza_execucao"] is False
+    assert detectar_consulta_aprendizados(
+        texto,
+        params_cb=lambda **kwargs: kwargs,
+    ) == {"intent": "LEARNING_QUERY", "params": {"limit": 3}}
+
+    contexto = {
+        "normalizar_texto": lambda valor: str(valor).casefold(),
+        "texto_conversa_casual_sem_acao": lambda _valor: False,
+        "texto_bloqueia_playlist_agora": lambda _valor: False,
+        "texto_social_curto": lambda _valor: False,
+        "ignorar_token_solto": lambda _valor: False,
+        "fluxo_prioritario_da_ia": lambda _valor: False,
+        "limpar_destino_pc_b": lambda valor: valor,
+        "mente_integrada_estado": {},
+    }
+    assert detectar_intencao_deterministica_mente(texto, contexto) == {
+        "intent": "LEARNING_QUERY",
+        "params": {"limit": 3},
+    }
 
 
 @pytest.mark.parametrize(

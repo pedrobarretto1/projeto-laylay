@@ -508,6 +508,7 @@ class ComandosImediatosRuntime:
         # detector canônico diretamente nesta barreira para que ``sua primeira
         # playlist`` não seja rebaixada a conversa ou confundida com uma lista
         # do usuário por classificadores genéricos executados mais adiante.
+        detectar_deterministico = ns.get("detectar_intencao_deterministica")
         texto_curadoria = _texto_normalizado_local(texto)
         menciona_curadoria = bool(re.search(
             r"\b(?:sua|suas|dela|da\s+laylay)\s+"
@@ -517,7 +518,6 @@ class ComandosImediatosRuntime:
             r"(?:criou|fez|montou|separou|organizou|preparou))\b",
             texto_curadoria,
         ))
-        detectar_deterministico = ns.get("detectar_intencao_deterministica")
         try:
             curadoria = (
                 detectar_deterministico(texto)
@@ -1072,6 +1072,45 @@ class ComandosImediatosRuntime:
                     registrar(candidato_iot, texto, executou, origem="prioritario_iot_status")
                 return True
 
+        # Hipóteses e proibições com verbo operacional já foram barradas
+        # pela modalidade canônica. Respondê-las localmente evita que a LLM
+        # invente indisponibilidade e deixa explícito que nada foi executado.
+        turno_protegido = classificar_modalidade_turno(texto)
+        natureza_protegida = str(turno_protegido.get("natureza_acao") or "")
+        moldura_hipotese_local = bool(re.match(
+            r"^(?:talvez|estou\s+pensando\s+em|to\s+pensando\s+em|"
+            r"seria\s+(?:bom|legal)|quem\s+sabe|tenho\s+vontade\s+de)\b",
+            _texto_normalizado_local(texto),
+        ))
+        if (
+            not turno_protegido.get("autoriza_execucao")
+            and natureza_protegida in {"hipotetica", "cancelamento"}
+            and (
+                natureza_protegida == "cancelamento"
+                or moldura_hipotese_local
+            )
+            and re.search(
+                r"\b(?:abrir|abre|abra|fechar|fecha|feche|criar|cria|crie|"
+                r"apagar|apaga|apague|excluir|remover|tocar|toca|toque|"
+                r"ligar|liga|ligue|desligar|desliga|desligue|mover|move|"
+                r"renomear|renomeia|organizar|organiza|pesquisar|pesquisa)\b",
+                _texto_normalizado_local(texto),
+            )
+        ):
+            fala = (
+                "Ficou como uma possibilidade; não executei nem preparei essa ação."
+                if natureza_protegida == "hipotetica"
+                else "Pode deixar. Não executei essa ação."
+            )
+            print(
+                "🛡️ [PRIORIDADE:MODALIDADE] menção operacional sem "
+                "autorização; nenhum comando foi criado"
+            )
+            falar = ns.get("falar_com_lipsync")
+            if callable(falar):
+                falar(fala, "calma", 1)
+            return True
+
         consulta_iot = detectar_consulta_lista_iot(texto)
         if consulta_iot:
             print("⚡ [PRIORIDADE:IOT] listagem objetiva de dispositivos")
@@ -1091,6 +1130,53 @@ class ComandosImediatosRuntime:
                 registrar(
                     consulta_iot, texto, executou, origem="prioritario_iot_lista",
                 )
+            return True
+
+        # Web e visão usam os detectores e executores canônicos, mas precisam
+        # vencer a conversa genérica. A barreira fica depois das portas de
+        # clipboard e IoT para não consultar roteadores paralelos quando uma
+        # habilidade mais específica já consumiu o turno.
+        detectar_deterministico = ns.get("detectar_intencao_deterministica")
+        try:
+            leitura_deterministica = (
+                detectar_deterministico(texto)
+                if callable(detectar_deterministico)
+                else None
+            )
+        except Exception as erro:
+            print(
+                "⚠️ [PRIORIDADE:LEITURA] detecção falhou sem bloquear o "
+                f"turno: {type(erro).__name__}: {erro}"
+            )
+            leitura_deterministica = None
+        intent_leitura = str(
+            (leitura_deterministica or {}).get("intent")
+            if isinstance(leitura_deterministica, dict) else ""
+        ).upper().strip()
+        if intent_leitura in {"SEARCH", "VISION_QUERY"}:
+            executar = ns.get("executar_intencao")
+            if not callable(executar):
+                return False
+            try:
+                executou = bool(executar(leitura_deterministica, texto))
+            except Exception as erro:
+                print(
+                    "⚠️ [PRIORIDADE:LEITURA] execução falhou: "
+                    f"{type(erro).__name__}: {erro}"
+                )
+                return True
+            registrar = ns.get("_registrar_resultado_execucao")
+            if callable(registrar):
+                registrar(
+                    leitura_deterministica,
+                    texto,
+                    executou,
+                    origem="prioritario_leitura_deterministica",
+                )
+            print(
+                "⚡ [PRIORIDADE:LEITURA] "
+                f"intent={intent_leitura} executou={executou}"
+            )
             return True
 
         responder_capacidade = ns.get("_responder_pergunta_capacidade_local")

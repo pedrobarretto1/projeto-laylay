@@ -68,6 +68,65 @@ def test_entrada_desktop_nao_fica_presa_em_loop_ainda_nao_iniciado() -> None:
     assert recebidas == [("oi lay", "desktop")]
 
 
+def test_repeticao_concluida_de_oi_lay_inicia_um_novo_turno() -> None:
+    recebidas: list[str] = []
+
+    class RespostaFalsa:
+        def processar(self, texto, ainda_atual_cb=None, origem="desconhecida"):
+            recebidas.append(texto)
+
+    coordenador = CoordenadorExecRuntime(
+        contexto_exec_getter=lambda: None,
+        resposta_ia_getter=lambda: RespostaFalsa(),
+        loop_getter=lambda: None,
+        log=lambda *_args: None,
+    )
+
+    primeira = coordenador.agendar("Oi Lay.", origem="roteiro_teste")
+    assert isinstance(primeira, threading.Thread)
+    primeira.join(timeout=1.0)
+
+    segunda = coordenador.agendar("Oi Lay.", origem="roteiro_teste")
+    assert isinstance(segunda, threading.Thread)
+    segunda.join(timeout=1.0)
+
+    assert recebidas == ["Oi Lay.", "Oi Lay."]
+
+
+def test_repeticao_ainda_em_processamento_e_ignorada_uma_vez() -> None:
+    iniciou = threading.Event()
+    liberar = threading.Event()
+    recebidas: list[str] = []
+    logs: list[str] = []
+
+    class RespostaLenta:
+        def processar(self, texto, ainda_atual_cb=None, origem="desconhecida"):
+            recebidas.append(texto)
+            iniciou.set()
+            liberar.wait(1.0)
+
+    coordenador = CoordenadorExecRuntime(
+        contexto_exec_getter=lambda: None,
+        resposta_ia_getter=lambda: RespostaLenta(),
+        loop_getter=lambda: None,
+        log=logs.append,
+    )
+
+    primeira = coordenador.agendar("Tudo bem com você?", origem="roteiro_teste")
+    assert isinstance(primeira, threading.Thread)
+    assert iniciou.wait(1.0)
+
+    repetida = coordenador.agendar(
+        "  TUDO BEM   COM VOCÊ?  ", origem="roteiro_teste",
+    )
+    liberar.set()
+    primeira.join(timeout=1.0)
+
+    assert repetida is None
+    assert recebidas == ["Tudo bem com você?"]
+    assert any("ainda em processamento" in item for item in logs)
+
+
 def test_entrada_desktop_independe_ate_de_loop_compartilhado_ativo() -> None:
     recebidas: list[str] = []
     concluida = threading.Event()

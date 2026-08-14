@@ -144,7 +144,7 @@ def _agendar_acao(
 
     salvo = _transacionar(ctx, _adicionar)
     status = "acao_agendada" if salvo else "falha_execucao"
-    deps.marcar_resultado(status, executou=salvo)
+    deps.marcar_resultado(status, executou=salvo, confirmado=salvo)
     deps.falar_por_status(status, escolher_fala_variada([
         f"Combinado. Vou executar isso {tempo_txt}.",
         f"Ação guardada. Quando chegar {tempo_txt}, eu faço e confiro o resultado.",
@@ -342,7 +342,7 @@ def _agendar_lembrete(
         else "alvo_nao_encontrado" if persistiu and not substituiu["ok"]
         else "falha_execucao"
     )
-    deps.marcar_resultado(status, executou=salvo)
+    deps.marcar_resultado(status, executou=salvo, confirmado=salvo)
     deps.falar_por_status(status, escolher_fala_variada([
         *(
             [
@@ -383,13 +383,17 @@ def _agendar_lembrete(
     return ResultadoDespacho.concluido()
 
 
-def _listar(ctx: Dict[str, Any]) -> ResultadoDespacho:
+def _listar(ctx: Dict[str, Any], deps: DependenciasExecutorAgenda) -> ResultadoDespacho:
     carregar = _get(ctx, "_agendamentos_load")
     lista = carregar() if callable(carregar) else []
     ativos = [item for item in lista if item.get("ativo", True)]
     estilizar = _get(ctx, "_fala_agendamentos_estilosa")
     resumo = estilizar(ativos) if callable(estilizar) else "Agendamentos."
     _falar(ctx, resumo, "debochada", 1)
+    deps.marcar_resultado(
+        "agendamentos_listados", executou=True, confirmado=True,
+        detalhe=f"{len(ativos)} agendamento(s) ativo(s) lido(s)",
+    )
     return ResultadoDespacho.concluido()
 
 
@@ -406,9 +410,15 @@ def _cancelar(params: Dict[str, Any], ctx: Dict[str, Any], deps: DependenciasExe
 
     def _aplicar(lista: list) -> None:
         for item in lista:
-            nome = str(item.get("nome") or item.get("descricao") or item.get("id") or "").lower()
+            nome = str(item.get("nome") or "").lower()
+            descricao = str(item.get("descricao") or "").lower()
             item_id = str(item.get("id") or "").lower()
-            if alvo in nome or alvo == item_id:
+            # ``nome`` é deliberadamente curto para a interface. O alvo
+            # natural, porém, precisa ser comparado também com a descrição
+            # completa persistida; caso contrário um lembrete como
+            # "melhorar a cobertura do roteiro automatizado" nunca encontra
+            # o nome truncado "melhorar a cobertura do roteir".
+            if alvo in nome or alvo in descricao or alvo == item_id:
                 item["ativo"] = False
                 alteracao["cancelados"] += 1
 
@@ -416,7 +426,7 @@ def _cancelar(params: Dict[str, Any], ctx: Dict[str, Any], deps: DependenciasExe
     total = alteracao["cancelados"]
     ok = total > 0 and salvo
     status = "agendamento_cancelado" if ok else "falha_execucao"
-    deps.marcar_resultado(status, executou=ok)
+    deps.marcar_resultado(status, executou=ok, confirmado=ok)
     mensagem = escolher_fala_variada([
         f"{total} agendamento(s) cancelado(s)." if ok else "Não consegui confirmar o cancelamento desse agendamento.",
         f"Apaguei {total} agendamento(s)." if ok else "Esse agendamento não foi encontrado ou a agenda não salvou a mudança.",
@@ -437,5 +447,5 @@ def executar_intencao_agenda(
     if intent == "AGENDAR_LEMBRETE":
         return _agendar_lembrete(params, texto, ctx, deps)
     if intent == "LISTAR_AGENDAMENTOS":
-        return _listar(ctx)
+        return _listar(ctx, deps)
     return _cancelar(params, ctx, deps)

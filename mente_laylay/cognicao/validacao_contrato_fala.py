@@ -114,7 +114,17 @@ _NEGACAO_IDENTIDADE_OPERACIONAL = re.compile(
     r"\bs[oó]\s+(?:consigo\s+)?(?:conversar|converso|responder|respondo|falar|falo)\b|"
     r"\bn[aã]o\s+(?:estou|t[oô]|fico|rodo|funciono)\s+(?:no|dentro\s+do)\s+seu\s+"
     r"(?:pc|computador)|"
-    r"\bn[aã]o\s+tenho\s+acesso\s+(?:ao|a)\s+seu\s+(?:pc|computador)\b",
+    r"\bn[aã]o\s+tenho\s+acesso\s+(?:ao|a)\s+seu\s+(?:pc|computador)\b"
+    r"|\bn[aã]o\s+tenho\s+acesso\s+direto\s+(?:ao|a|à)\s+"
+    r"(?:spotify|youtube|opera|chrome|visual\s+studio\s+code|vs\s*code|"
+    r"bloco\s+de\s+notas|plataforma)\b"
+    r"|\b(?:spotify|youtube|opera|chrome|visual\s+studio\s+code|vs\s*code|"
+    r"bloco\s+de\s+notas)\s+n[aã]o\s+(?:est[aá]|fica|existe)\s+"
+    r"(?:no|em)\s+meu\s+sistema\b"
+    r"|\bn[aã]o\s+(?:posso|consigo|vou|costumo)\s+abrir\s+"
+    r"(?:o\s+|a\s+)?(?:spotify|youtube|opera|chrome|visual\s+studio\s+code|"
+    r"vs\s*code|bloco\s+de\s+notas)\b"
+    r"|\bn[aã]o\s+abro\s+nada\s+que\s+n[aã]o\s+esteja\s+no\s+meu\s+sistema\b",
     re.IGNORECASE,
 )
 

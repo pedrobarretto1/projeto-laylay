@@ -63,6 +63,26 @@ def _descricao_wmo(codigo: Any) -> str:
         return "condições variáveis"
 
 
+def _traduzir_descricao_clima(descricao: Any) -> str:
+    """Traduz descrições de contingência que o wttr devolve em inglês."""
+    texto = str(descricao or "").strip()
+    traducoes = {
+        "smoky haze": "névoa de fumaça",
+        "haze": "névoa",
+        "clear": "céu limpo",
+        "sunny": "ensolarado",
+        "partly cloudy": "parcialmente nublado",
+        "cloudy": "nublado",
+        "overcast": "encoberto",
+        "mist": "neblina",
+        "fog": "nevoeiro",
+        "light rain": "chuva leve",
+        "moderate rain": "chuva moderada",
+        "heavy rain": "chuva forte",
+    }
+    return traducoes.get(texto.casefold(), texto)
+
+
 def obter_clima_open_meteo(
     localidade: str,
     *,
@@ -624,7 +644,7 @@ def obter_clima_localidade(
             "sensacao_c": str(atual.get("FeelsLikeC") or "").strip() if deslocamento == 0 else "",
             "umidade": str(atual.get("humidity") or "").strip() if deslocamento == 0 else "",
             "vento_kmph": str(atual.get("windspeedKmph") or "").strip() if deslocamento == 0 else "",
-            "descricao": descricao,
+            "descricao": _traduzir_descricao_clima(descricao),
             "chance_chuva_pct": max(chances_chuva) if chances_chuva else None,
             "temperatura_max_c": str(dia.get("maxtempC") or "").strip(),
             "temperatura_min_c": str(dia.get("mintempC") or "").strip(),

@@ -90,6 +90,31 @@ def _texto_metrica(metrica: object, *, uptime: bool = False) -> str:
     return texto
 
 
+def _data_agenda_curta(valor: object) -> str:
+    partes = str(valor or "").strip().split("-")
+    if (
+        len(partes) == 3
+        and len(partes[0]) == 4
+        and all(parte.isdigit() for parte in partes)
+    ):
+        return f"{partes[2]}/{partes[1]}/{partes[0]}"
+    return ""
+
+
+def _detalhe_item_agenda(item: dict) -> str:
+    horario = str(item.get("time") or "—").strip()
+    data = _data_agenda_curta(item.get("date"))
+    if data:
+        return f"{data} · {horario}"
+    dias_brutos = item.get("days")
+    dias = (
+        ", ".join(str(dia) for dia in dias_brutos if str(dia).strip())
+        if isinstance(dias_brutos, (list, tuple))
+        else ""
+    )
+    return horario + (f" · {dias}" if dias else "")
+
+
 class CartaoDashboard(QFrame):
     def __init__(self, titulo: str, *, subtitulo: str = "") -> None:
         super().__init__()
@@ -1212,7 +1237,7 @@ class PainelLateralDashboard(QWidget):
         layout.addWidget(musica)
 
         rotinas = CartaoDashboard(
-            "Rotinas"
+            "Rotinas e agenda"
         )
         rotinas.setProperty(
             "railCard",
@@ -1256,7 +1281,7 @@ class PainelLateralDashboard(QWidget):
         )
 
         self.rotinas_estado = QLabel(
-            "Aguardando rotinas confirmadas "
+            "Aguardando rotinas e agendamentos confirmados "
             "pela agenda."
         )
         self.rotinas_estado.setObjectName(
@@ -1602,36 +1627,7 @@ class PainelLateralDashboard(QWidget):
                 or "Rotina"
             ).strip()
 
-            horario = str(
-                item.get("time")
-                or "—"
-            ).strip()
-
-            dias_brutos = item.get(
-                "days"
-            )
-
-            dias = (
-                ", ".join(
-                    str(dia)
-                    for dia in dias_brutos
-                    if str(dia).strip()
-                )
-                if isinstance(
-                    dias_brutos,
-                    (list, tuple),
-                )
-                else ""
-            )
-
-            detalhe = (
-                horario
-                + (
-                    f" · {dias}"
-                    if dias
-                    else ""
-                )
-            )
+            detalhe = _detalhe_item_agenda(item)
 
             if frescor == "stale":
                 detalhe += (
@@ -2368,10 +2364,10 @@ class PaginaAutomacao(QWidget):
         layout.setSpacing(12)
         for widget in _cabecalho_pagina(
             "Automação",
-            "Rotinas recorrentes confirmadas pela agenda e modo jogo detectado pela própria Laylay.",
+            "Rotinas e agendamentos confirmados pela agenda, além do modo jogo detectado pela própria Laylay.",
         ):
             layout.addWidget(widget)
-        self.cartao_rotinas = CartaoDashboard("Rotinas", subtitulo="agenda")
+        self.cartao_rotinas = CartaoDashboard("Rotinas e agenda", subtitulo="agenda")
         self.rotinas_estado = QLabel("Aguardando a agenda")
         self.rotinas_estado.setObjectName("dashboardEmpty")
         self.rotinas_estado.setWordWrap(True)
@@ -2418,22 +2414,22 @@ class PaginaAutomacao(QWidget):
             if isinstance(item, dict)
         ] if isinstance(rotinas, dict) and frescor != "unavailable" else []
         self.rotinas_estado.setText(
-            "Nenhuma rotina recorrente confirmada."
+            "Nenhuma rotina ou agendamento ativo."
             if not self._rotinas and frescor != "unavailable"
             else "Rotinas indisponíveis."
             if frescor == "unavailable"
             else "Dados antigos; alterações continuam exigindo confirmação."
             if frescor == "stale"
-            else f"{len(self._rotinas)} rotina(s) ativa(s)."
+            else f"{len(self._rotinas)} item(ns) ativo(s) na agenda."
         )
         for indice, botao in enumerate(self.rotina_botoes):
             if indice >= len(self._rotinas):
                 botao.hide()
                 continue
             item = self._rotinas[indice]
-            dias = ", ".join(item.get("days") or ()) or "dias não informados"
             botao.setText(
-                f"{item.get('name') or 'Rotina'} · {item.get('time') or '—'} · {dias}   ×"
+                f"{item.get('name') or 'Agendamento'} · "
+                f"{_detalhe_item_agenda(item)}   ×"
             )
             botao.setEnabled(
                 self._conectada and item.get("can_disable") is True

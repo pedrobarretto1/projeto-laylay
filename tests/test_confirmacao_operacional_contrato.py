@@ -331,3 +331,23 @@ def test_autoria_operacional_remove_enxerto_literal_de_contexto_antigo() -> None
     assert len(chamadas) == 2
     assert confirmacao.usada_llm is True
     assert "Beber Água" not in confirmacao.fala
+
+
+def test_listagem_antiga_nao_pode_confirmar_exclusao_de_playlist() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "PLAYLIST_DELETE",
+        "alvo": "roteiro teste",
+        "status": "playlist_deletada",
+        "executou": True,
+        "confirmado": True,
+    })
+
+    motivo = _motivo_contrato_invalido(
+        "A playlist Roteiro Teste é curtinha: 1 música.",
+        resultado=resultado,
+        classe="sucesso",
+        status_declarado="playlist_deletada",
+        alvo_declarado="roteiro teste",
+    )
+
+    assert motivo == "estado_observado_ausente"
