@@ -41,6 +41,8 @@ def _humanizar_aprendizado(item: Dict[str, Any]) -> str:
     texto = str(item.get("texto") or item.get("regra") or "").strip()
     valor = str(item.get("valor") or "").strip()
     chave = str(item.get("chave") or "").casefold()
+    if chave == "identidade:nome_usuario" and valor:
+        return f"seu nome é {valor}"
     if chave.startswith("preferencia:afinidade:") and valor:
         regra = str(item.get("regra") or texto).casefold()
         if any(sinal in regra for sinal in (
@@ -148,6 +150,37 @@ def _filtrar_polaridade_preferencia(
         if negativa == (polaridade_norm == "negativa"):
             filtrados.append(item)
     return filtrados
+
+
+def _filtrar_retrato_pessoal(
+    aprendizados: list[Dict[str, Any]],
+) -> list[Dict[str, Any]]:
+    """Expõe só o retrato pessoal confirmado, nunca regras operacionais.
+
+    O armazenamento compartilhado também contém aliases, correções de comandos
+    e padrões de uso. Isso ajuda a mente a operar, mas não responde à pergunta
+    ``o que você lembra de mim?``. A lista permitida mantém identidade, fatos
+    pessoais e afinidades explicitamente confirmadas pelo usuário.
+    """
+    retrato: list[tuple[int, int, Dict[str, Any]]] = []
+    for indice, item in enumerate(aprendizados):
+        tipo = str(item.get("tipo") or "").casefold().strip()
+        chave = str(item.get("chave") or "").casefold().strip()
+        natureza = str(item.get("natureza") or "").casefold().strip()
+        confirmado = bool(item.get("confirmado_usuario")) or natureza == "confirmado"
+        if not confirmado:
+            continue
+        if tipo == "identidade" and chave == "identidade:nome_usuario":
+            prioridade = 0
+        elif tipo == "fato_pessoal":
+            prioridade = 1
+        elif tipo == "preferencia" and chave.startswith("preferencia:afinidade:"):
+            prioridade = 2
+        else:
+            continue
+        retrato.append((prioridade, indice, dict(item)))
+    retrato.sort(key=lambda registro: (registro[0], registro[1]))
+    return [item for _prioridade, _indice, item in retrato]
 
 
 def _ler_emails(
@@ -443,7 +476,7 @@ def _consultar_aprendizados(
 ) -> ResultadoDespacho:
     recuperar = _get(ctx, "_recuperar_aprendizados")
     try:
-        limite = max(1, min(5, int(params.get("limit") or 3)))
+        limite = max(1, min(10, int(params.get("limit") or 3)))
     except (TypeError, ValueError):
         limite = 3
     try:
@@ -470,7 +503,11 @@ def _consultar_aprendizados(
         return ResultadoDespacho.concluido(False)
     try:
         try:
-            limite_busca = 20 if polaridade in {"positiva", "negativa"} else limite
+            limite_busca = (
+                50
+                if modo == "retrato"
+                else 20 if polaridade in {"positiva", "negativa"} else limite
+            )
             brutos = recuperar(
                 consulta=consulta,
                 limit=limite_busca,
@@ -530,6 +567,8 @@ def _consultar_aprendizados(
             )
         return ResultadoDespacho.concluido(True)
 
+    if modo == "retrato":
+        aprendizados = _filtrar_retrato_pessoal(aprendizados)
     aprendizados = _deduplicar_aprendizados_para_fala(aprendizados)
     aprendizados = _filtrar_polaridade_preferencia(
         aprendizados,

@@ -99,7 +99,7 @@ def normalizar_pedido_natural(texto_normalizado: str) -> tuple[str, str]:
     # hipóteses como "talvez fosse legal abrir" continuam deliberativas.
     if original != t:
         estado_aberto = re.fullmatch(
-            r"(?:o|a|os|as)?\s*(?P<alvo>.+?)\s+estivesse(?:m)?\s+"
+            r"(?:(?:o|a|os|as)\s+)?(?P<alvo>.+?)\s+estivesse(?:m)?\s+"
             r"abert[oa]s?\s+agora",
             t,
             flags=re.IGNORECASE,
@@ -738,7 +738,10 @@ def detectar_consulta_aprendizados(
     if not any(re.search(padrao, t, flags=re.IGNORECASE) for padrao in estruturas):
         return None
     params = params_cb if callable(params_cb) else lambda **kwargs: kwargs
-    return {"intent": "LEARNING_QUERY", "params": params(limit=3)}
+    return {
+        "intent": "LEARNING_QUERY",
+        "params": params(limit=10, modo="retrato"),
+    }
 
 
 def detectar_clima(

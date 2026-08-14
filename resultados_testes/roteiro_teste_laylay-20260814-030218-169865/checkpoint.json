@@ -1,0 +1,1013 @@
+{
+  "versao": 2,
+  "assinatura": "dce0660204ef84aa7726f8a0cd375e5aec6d1e9f97d5cbd221c04b39d2200cb2",
+  "criado_em": 1786687338.376985,
+  "atualizado_em": 1786687348.4102187,
+  "concluido": false,
+  "criterio_conclusao": "transporte_resposta_e_resultado_turno",
+  "voz_silenciada_durante_teste": true,
+  "itens": [
+    {
+      "indice": 0,
+      "comando": "Oi Lay, tudo bem?",
+      "status": "enviado",
+      "resposta": "",
+      "enviado_em": 1786687348.410214
+    },
+    {
+      "indice": 1,
+      "comando": "Hoje estou meio cansado.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 2,
+      "comando": "Você prefere rock ou metal?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 3,
+      "comando": "Por quê?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 4,
+      "comando": "Explica isso de um jeito mais simples.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 5,
+      "comando": "Que isso?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 6,
+      "comando": "Obrigado, Lay.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 7,
+      "comando": "Você é só um chatbot?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 8,
+      "comando": "Você está no meu computador?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 9,
+      "comando": "O que você consegue fazer?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 10,
+      "comando": "Você consegue criar arquivos?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 11,
+      "comando": "Como eu faria para criar um arquivo?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 12,
+      "comando": "Talvez fosse legal criar um arquivo.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 13,
+      "comando": "Não crie nenhum arquivo.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 14,
+      "comando": "Cria um arquivo de texto chamado teste completo e dentro dele escreva teste concluído com sucesso",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 15,
+      "comando": "Abre ele e deixa em foco",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 16,
+      "comando": "Fecha ele",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 17,
+      "comando": "Escreve uma segunda linha nele",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 18,
+      "comando": "Onde ele fica?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 19,
+      "comando": "Qual é o caminho completo dele?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 20,
+      "comando": "Abre ele e deixa em foco",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 21,
+      "comando": "Fecha ele",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 22,
+      "comando": "Cria uma pasta chamada carlos teste e coloca o teste completo.txt dentro dela",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 23,
+      "comando": "Abre ele e deixa em foco",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 24,
+      "comando": "Fecha ele",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 25,
+      "comando": "Cria uma pasta chamada pasta falha",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 26,
+      "comando": "Coloca o arquivo inexistente.txt dentro dela",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 27,
+      "comando": "Tenta de novo",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 28,
+      "comando": "Abre o Opera",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 29,
+      "comando": "Maximiza ele",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 30,
+      "comando": "Fecha ele",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 31,
+      "comando": "Abre o YouTube",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 32,
+      "comando": "Fecha ele",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 33,
+      "comando": "Abre o teste completo.txt e deixa em foco",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 34,
+      "comando": "Fecha ele",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 35,
+      "comando": "Não abre o Opera.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 36,
+      "comando": "Talvez fosse legal abrir o Opera.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 37,
+      "comando": "Como eu faria para abrir o Opera?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 38,
+      "comando": "Eu queria que o Opera estivesse aberto agora.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 39,
+      "comando": "Abre o Opera e depois maximiza a janela.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 40,
+      "comando": "Abre o Bloco de Notas e coloca ele na esquerda.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 41,
+      "comando": "Abre o Visual Studio Code e coloca ele na direita.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 42,
+      "comando": "Quais janelas estão abertas?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 43,
+      "comando": "Pesquisa por documentação do Python.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 44,
+      "comando": "Abre o primeiro resultado.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 45,
+      "comando": "Quais abas estão abertas?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 46,
+      "comando": "Fecha essa aba.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 47,
+      "comando": "Abre o Prime Video.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 48,
+      "comando": "Fecha a aba do Prime Video.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 49,
+      "comando": "Fecha as abas paradas.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 50,
+      "comando": "Resume a página atual.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 51,
+      "comando": "Encontra o código que controla a lâmpada e abre o primeiro resultado.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 52,
+      "comando": "Onde esse arquivo fica?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 53,
+      "comando": "Fecha ele.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 54,
+      "comando": "O que eu copiei?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 55,
+      "comando": "Transforma isso em letras maiúsculas.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 56,
+      "comando": "Copia o resultado.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 57,
+      "comando": "O que eu copiei agora?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 58,
+      "comando": "Toca uma música de rock.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 59,
+      "comando": "Qual música está tocando?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 60,
+      "comando": "Pausa.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 61,
+      "comando": "Continua.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 62,
+      "comando": "Próxima.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 63,
+      "comando": "Volta para a anterior.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 64,
+      "comando": "Quais são as suas playlists?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 65,
+      "comando": "O que tem na sua primeira playlist?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 66,
+      "comando": "Toca a sua primeira playlist.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 67,
+      "comando": "Coloca essa música na playlist rock.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 68,
+      "comando": "Essa também.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 69,
+      "comando": "Tenta de novo.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 70,
+      "comando": "Me lembra amanhã às 10 horas de testar a Laylay.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 71,
+      "comando": "Quais são meus lembretes?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 72,
+      "comando": "Me lembra de beber água.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 73,
+      "comando": "Daqui a 10 minutos.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 74,
+      "comando": "Me lembra de fazer alongamento.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 75,
+      "comando": "Não, deixa como está.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 76,
+      "comando": "Me lembra amanhã às 18 horas de revisar o teste.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 77,
+      "comando": "Troca para amanhã às 22 horas.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 78,
+      "comando": "Quais são meus lembretes?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 79,
+      "comando": "Meu nome é Pedro.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 80,
+      "comando": "Eu moro em Boituva.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 81,
+      "comando": "Eu gosto de rock e programação.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 82,
+      "comando": "Eu também gosto de metal.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 83,
+      "comando": "Eu não gosto de sertanejo.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 84,
+      "comando": "Eu gosto de Nirvana.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 85,
+      "comando": "Qual é o meu nome?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 86,
+      "comando": "Onde eu moro?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 87,
+      "comando": "Do que eu gosto?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 88,
+      "comando": "Do que eu não gosto?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 89,
+      "comando": "O que você lembra de mim?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 90,
+      "comando": "Eu conheço uma pessoa chamada Nanda.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 91,
+      "comando": "Nanda é minha amiga.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 92,
+      "comando": "O que você lembra da Nanda?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 93,
+      "comando": "Quem é minha amiga?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 94,
+      "comando": "Quem é o presidente do Brasil?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 95,
+      "comando": "Guarda como ideia melhorar os testes da Laylay.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 96,
+      "comando": "O que tem na minha caixa de entrada?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 97,
+      "comando": "Guarda essa ideia e me lembra dela amanhã às 11 horas.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 98,
+      "comando": "O que tem na minha caixa de entrada?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 99,
+      "comando": "Quais são meus lembretes?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 100,
+      "comando": "Qual é o briefing de hoje?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 101,
+      "comando": "Repete o briefing.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 102,
+      "comando": "Como está o clima agora em Boituva?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 103,
+      "comando": "Qual será a temperatura máxima hoje?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 104,
+      "comando": "Como estará o tempo amanhã?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 105,
+      "comando": "Quais dispositivos você controla?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 106,
+      "comando": "Liga a lâmpada do quarto.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 107,
+      "comando": "Como ela está?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 108,
+      "comando": "Deixa ela roxa.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 109,
+      "comando": "Desliga ela.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 110,
+      "comando": "Liga o ventilador.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 111,
+      "comando": "Como ele está?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 112,
+      "comando": "Desliga ele.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 113,
+      "comando": "Olha minha tela.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 114,
+      "comando": "O que tem na minha tela?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 115,
+      "comando": "O que você consegue identificar nela?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 116,
+      "comando": "Resume o que está aparecendo agora.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 117,
+      "comando": "Cria um arquivo chamado teste natural.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 118,
+      "comando": "Abre ele e traz para frente.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 119,
+      "comando": "Fecha ele.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 120,
+      "comando": "Cria uma pasta chamada documentos teste.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 121,
+      "comando": "Coloca o teste natural.txt dentro dela.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 122,
+      "comando": "Onde ele está agora?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 123,
+      "comando": "Tenta abrir ele.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 124,
+      "comando": "Fecha ele.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 125,
+      "comando": "Não apague o teste natural.txt.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 126,
+      "comando": "Como eu faria para apagar o teste natural.txt?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 127,
+      "comando": "Talvez eu apague o teste natural.txt depois.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 128,
+      "comando": "Você consegue apagar arquivos?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 129,
+      "comando": "Não abra o Spotify.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 130,
+      "comando": "Como eu abriria o Spotify?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 131,
+      "comando": "Talvez fosse bom abrir o Spotify.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 132,
+      "comando": "Abre um programa chamado Aplicativo Que Não Existe.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 133,
+      "comando": "Por que não?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 134,
+      "comando": "Tenta de novo.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 135,
+      "comando": "Fecha um programa chamado Aplicativo Que Não Existe.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 136,
+      "comando": "Abre o Opera.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 137,
+      "comando": "Abre o teste natural.txt e deixa em foco.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 138,
+      "comando": "Fecha ele.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 139,
+      "comando": "Maximiza o Opera.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 140,
+      "comando": "Fecha ele.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 141,
+      "comando": "Oi Lay.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 142,
+      "comando": "Oi Lay.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 143,
+      "comando": "Tudo bem com você?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 144,
+      "comando": "Tudo bem com você?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 145,
+      "comando": "Você prefere rock ou metal?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 146,
+      "comando": "Você prefere rock ou metal?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 147,
+      "comando": "Obrigado.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 148,
+      "comando": "De nada, quer dizer, obrigado de novo.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 149,
+      "comando": "/diagnostico mente",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 150,
+      "comando": "Apaga o arquivo teste natural.txt.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 151,
+      "comando": "Não.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 152,
+      "comando": "Apaga o arquivo teste natural.txt.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 153,
+      "comando": "Sim.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 154,
+      "comando": "Quero ele de volta.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 155,
+      "comando": "Apaga a pasta documentos teste.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 156,
+      "comando": "Sim.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 157,
+      "comando": "Apaga a pasta carlos teste.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 158,
+      "comando": "Sim.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 159,
+      "comando": "Apaga a pasta pasta falha.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 160,
+      "comando": "Sim.",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 161,
+      "comando": "O que você lembra de mim?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 162,
+      "comando": "Quais são meus lembretes?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 163,
+      "comando": "O que tem na minha caixa de entrada?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 164,
+      "comando": "Quais programas e janelas estão abertos?",
+      "status": "pendente",
+      "resposta": ""
+    },
+    {
+      "indice": 165,
+      "comando": "/diagnostico mente",
+      "status": "pendente",
+      "resposta": ""
+    }
+  ],
+  "preparacao": {
+    "status": "modo_chat_confirmado",
+    "atraso_inicial_s": 10.0,
+    "voz_silenciada": true
+  }
+}

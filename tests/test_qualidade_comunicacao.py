@@ -362,6 +362,31 @@ def test_pergunta_de_preferencia_sem_posicao_continua_bloqueada() -> None:
     assert "pergunta_direta_nao_respondida" in avaliacao["problemas_bloqueantes"]
 
 
+def test_preferencia_nao_pode_evadir_nem_trocar_de_lado_na_repeticao() -> None:
+    texto = "Você prefere rock ou metal?"
+    contrato = construir_contrato_semantico_fala(texto)
+    plano = {"texto_usuario": texto, "contrato_fala": contrato, "comandos": []}
+
+    evasiva = avaliar_qualidade_comunicacao(
+        texto,
+        "Não consigo ouvir música, então não tenho preferência.",
+        plano=plano,
+    )
+    contraditoria = avaliar_qualidade_comunicacao(
+        texto,
+        "Eu prefiro metal porque é mais pesado.",
+        plano=plano,
+        ultima_resposta="Eu prefiro rock porque ele varia mais.",
+        entrada_usuario_repetida=True,
+    )
+
+    assert "opiniao_evitada_sem_necessidade" in evasiva["problemas_bloqueantes"]
+    assert (
+        "opiniao_contradisse_posicao_recente"
+        in contraditoria["problemas_bloqueantes"]
+    )
+
+
 def test_contingencia_responde_bem_estar_e_preferencia_sem_pedir_repeticao() -> None:
     social = contingencia_comunicacao("Oi Lay, tudo bem com você?")
     preferencia = contingencia_comunicacao("Você prefere rock ou metal?")
@@ -420,6 +445,20 @@ def test_registro_de_relacao_aceita_fala_neutra_e_contingencia_preserva_fato() -
     assert "amiga" in contingencia.casefold()
     assert "?" not in contingencia
     assert "gostoso" not in contingencia.casefold()
+
+
+def test_registro_de_relacao_rejeita_perspectiva_da_assistente() -> None:
+    avaliacao = avaliar_qualidade_comunicacao(
+        "Nanda é minha amiga.",
+        "Entendi, Nanda é minha amiga.",
+    )
+
+    assert avaliacao["aceita"] is False
+    assert (
+        "relacao_pessoal_perspectiva_invertida"
+        in avaliacao["problemas_bloqueantes"]
+    )
+    assert "Nanda é sua amiga" in contingencia_comunicacao("Nanda é minha amiga.")
 
 
 def test_resposta_literalmente_repetida_pede_nova_redacao() -> None:

@@ -295,14 +295,8 @@ class ComandosImediatosRuntime:
             return False
 
         def detectar(trecho: str) -> dict[str, Any] | None:
-            try:
-                texto_local = (
-                    normalizar(trecho) if callable(normalizar) else trecho
-                )
-            except Exception:
-                texto_local = trecho
             candidato = detectar_intencao_arquivos(
-                texto_local,
+                trecho,
                 params_cb=lambda **kwargs: kwargs,
                 estado_mental=getattr(estado_runtime, "mental", {}),
                 normalizar_texto=normalizar,
@@ -954,12 +948,8 @@ class ComandosImediatosRuntime:
         # referência explícita ao último item enviado à lixeira.
         normalizar = ns.get("_normalizar_texto_com_apelidos")
         try:
-            texto_arquivo = normalizar(texto) if callable(normalizar) else texto
-        except Exception:
-            texto_arquivo = texto
-        try:
             candidato_arquivo = detectar_intencao_arquivos(
-                texto_arquivo,
+                texto,
                 params_cb=lambda **kwargs: kwargs,
                 estado_mental=getattr(estado_runtime, "mental", {}),
                 normalizar_texto=normalizar,
@@ -1006,6 +996,63 @@ class ComandosImediatosRuntime:
                 f"intent={str(candidato_arquivo.get('intent') or '').upper()}"
             )
             return True
+
+        # Referências curtas precisam consultar a entidade tipada publicada
+        # pelo último executor antes da conversa livre. Esta é a rota real de
+        # ``fecha ele`` após abrir um site, arquivo ou aplicativo. Limitamos a
+        # barreira a molduras referenciais inequívocas e aceitamos somente
+        # intents que o resolvedor canônico já autorizou.
+        texto_referencia = _texto_normalizado_local(texto).strip(" .,!?:;")
+        if re.fullmatch(
+            r"(?:(?:fecha|feche|fechar)|(?:tenta\s+)?(?:abre|abra|abrir))\s+"
+            r"(?:ele|ela|isso|esse|essa|este|esta|o\s+arquivo|a\s+aba|o\s+site)",
+            texto_referencia,
+        ):
+            resolver_contextual = ns.get("_resolver_comando_contextual_forcado")
+            try:
+                comando_contextual = (
+                    resolver_contextual(texto)
+                    if callable(resolver_contextual)
+                    else None
+                )
+            except Exception as erro:
+                print(
+                    "⚠️ [PRIORIDADE:REFERÊNCIA] resolução falhou: "
+                    f"{type(erro).__name__}: {erro}"
+                )
+                comando_contextual = None
+            intent_contextual = str(
+                (comando_contextual or {}).get("intent")
+                if isinstance(comando_contextual, dict) else ""
+            ).upper()
+            if intent_contextual in {
+                "CLOSE_TAB", "CLOSE_APP", "FILE_OPEN_RESULT", "OPEN_URL",
+                "MEDIA_CONTROL", "PLAYLIST_PLAY",
+            }:
+                executar = ns.get("executar_intencao")
+                if not callable(executar):
+                    return False
+                try:
+                    executou = bool(executar(comando_contextual, texto))
+                except Exception as erro:
+                    print(
+                        "⚠️ [PRIORIDADE:REFERÊNCIA] execução falhou: "
+                        f"{type(erro).__name__}: {erro}"
+                    )
+                    return True
+                registrar = ns.get("_registrar_resultado_execucao")
+                if callable(registrar):
+                    registrar(
+                        comando_contextual,
+                        texto,
+                        executou,
+                        origem="prioritario_referencia_tipificada",
+                    )
+                print(
+                    "⚡ [PRIORIDADE:REFERÊNCIA] "
+                    f"intent={intent_contextual} executou={executou}"
+                )
+                return True
         resolver_repeticao = ns.get("_resolver_repeticao_ultima_acao")
         if callable(resolver_repeticao) and callable(getattr(caixa_entrada, "reexecutar", None)):
             try:

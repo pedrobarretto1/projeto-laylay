@@ -64,7 +64,8 @@ _MARCADORES_POSICAO = re.compile(
 )
 _EVASAO_OPINIAO = re.compile(
     r"\b(?:n[aã]o\s+(?:tenho|encontrei|achei)\s+(?:informa[cç][aã]o|dados)|"
-    r"n[aã]o\s+posso\s+(?:opinar|dizer)|como\s+uma\s+ia)\b",
+    r"n[aã]o\s+(?:posso|consigo)\s+(?:opinar|dizer|ouvir|escutar)|"
+    r"n[aã]o\s+tenho\s+(?:uma\s+)?prefer[eê]ncia|como\s+uma\s+ia)\b",
     re.IGNORECASE,
 )
 _RELATO_SEM_PEDIDO = re.compile(
@@ -184,10 +185,12 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "entrega_prometida_ausente",
     "pergunta_direta_nao_respondida",
     "opiniao_evitada_sem_necessidade",
+    "opiniao_contradisse_posicao_recente",
     "deriva_de_dominio",
     "preferencia_pessoal_nao_reconhecida",
     "preferencia_de_terceiro_atribuida_ao_usuario",
     "relacao_pessoal_nao_reconhecida",
+    "relacao_pessoal_perspectiva_invertida",
     "relacao_pessoal_sexualizada",
     "relacao_pessoal_abriu_pergunta",
     "resposta_generica_sem_conteudo",
@@ -409,6 +412,12 @@ def avaliar_qualidade_comunicacao(
                 and tipo_relacao in resposta_semantica
             ):
                 problemas.append("relacao_pessoal_nao_reconhecida")
+            if re.search(
+                rf"\b{re.escape(nome_relacao)}\b.{{0,20}}\b(?:e|eh)\s+"
+                rf"(?:minha|meu)\s+{re.escape(tipo_relacao)}\b",
+                resposta_semantica,
+            ):
+                problemas.append("relacao_pessoal_perspectiva_invertida")
             if _SEXUALIZACAO_RELACAO.search(resposta):
                 problemas.append("relacao_pessoal_sexualizada")
             if "?" in resposta:

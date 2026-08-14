@@ -38,7 +38,10 @@ def test_consulta_natural_de_aprendizados_vira_intent_sem_lista_rigida() -> None
     assert detectar_consulta_aprendizados(
         "me conta quais coisas você guardou sobre mim",
         params_cb=lambda **kwargs: kwargs,
-    ) == {"intent": "LEARNING_QUERY", "params": {"limit": 3}}
+    ) == {
+        "intent": "LEARNING_QUERY",
+        "params": {"limit": 10, "modo": "retrato"},
+    }
     assert detectar_consulta_aprendizados(
         "como uma inteligência artificial aprende?",
         params_cb=lambda **kwargs: kwargs,

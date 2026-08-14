@@ -397,7 +397,11 @@ def construir_contrato_semantico_fala(
         permite_pergunta=bool(planejamento.get("permite_pergunta", True)),
         permite_humor=not (vulneravel or esclarecimento),
         permite_metafora=criativo,
-        fala_anterior_relevante=anterior if (esclarecimento or topico_codigo_laylay) else "",
+        fala_anterior_relevante=(
+            anterior
+            if (esclarecimento or topico_codigo_laylay or opiniao)
+            else ""
+        ),
         respostas_recentes_evitar=recentes,
         capacidades_confirmadas=capacidades_confirmadas,
         cooperacao_considerada=bool(deliberacao),

@@ -581,8 +581,8 @@ def detectar_intencao_arquivos(
 
     pergunta_caminho_arquivo = bool(re.fullmatch(
         r"(?:onde\s+(?:(?:ele|ela|esse|essa|este|esta|o\s+arquivo|esse\s+arquivo)\s+)?"
-        r"(?:fica|esta|está)|onde\s+(?:fica|esta|está)\s+"
-        r"(?:ele|ela|esse|essa|este|esta|o\s+arquivo|esse\s+arquivo)|"
+        r"(?:fica|esta|está)(?:\s+agora)?|onde\s+(?:fica|esta|está)\s+"
+        r"(?:ele|ela|esse|essa|este|esta|o\s+arquivo|esse\s+arquivo)(?:\s+agora)?|"
         r"qual\s+(?:e|é)\s+o\s+caminho(?:\s+completo)?(?:\s+(?:dele|dela|desse\s+arquivo))?|"
         r"mostra\s+o\s+caminho(?:\s+completo)?(?:\s+(?:dele|dela|desse\s+arquivo))?)",
         texto_confirmacao,
@@ -602,7 +602,7 @@ def detectar_intencao_arquivos(
     # fazendo a forma mais comum escapar para a conversa livre.
     caminho_nomeado = re.fullmatch(
         r"onde\s+(?:(?:o|a)\s+)?(?:(?:arquivo|documento)\s+)?"
-        r"(?P<nome>.+?)\s+(?:fica|esta|está)",
+        r"(?P<nome>.+?)\s+(?:fica|esta|está)(?:\s+agora)?",
         texto_confirmacao,
     )
     if caminho_nomeado:
@@ -671,6 +671,13 @@ def detectar_intencao_arquivos(
         )
         referencia_limpa = re.sub(
             r"^(?:(?:o|a|um|uma)\s+)?(?:arquivo|documento)\s+",
+            "",
+            referencia_limpa,
+            count=1,
+            flags=re.IGNORECASE,
+        ).strip()
+        referencia_limpa = re.sub(
+            r"^(?:o|a|um|uma)\s+",
             "",
             referencia_limpa,
             count=1,

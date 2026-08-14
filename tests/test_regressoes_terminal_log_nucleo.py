@@ -117,7 +117,10 @@ def test_consulta_de_memoria_nao_vira_pedido_de_lembrete() -> None:
     assert detectar_consulta_aprendizados(
         texto,
         params_cb=lambda **kwargs: kwargs,
-    ) == {"intent": "LEARNING_QUERY", "params": {"limit": 3}}
+    ) == {
+        "intent": "LEARNING_QUERY",
+        "params": {"limit": 10, "modo": "retrato"},
+    }
 
 
 def test_voce_lembra_de_mim_consulta_memoria_sem_agendar() -> None:
@@ -129,7 +132,10 @@ def test_voce_lembra_de_mim_consulta_memoria_sem_agendar() -> None:
     assert detectar_consulta_aprendizados(
         texto,
         params_cb=lambda **kwargs: kwargs,
-    ) == {"intent": "LEARNING_QUERY", "params": {"limit": 3}}
+    ) == {
+        "intent": "LEARNING_QUERY",
+        "params": {"limit": 10, "modo": "retrato"},
+    }
 
     contexto = {
         "normalizar_texto": lambda valor: str(valor).casefold(),
@@ -143,7 +149,7 @@ def test_voce_lembra_de_mim_consulta_memoria_sem_agendar() -> None:
     }
     assert detectar_intencao_deterministica_mente(texto, contexto) == {
         "intent": "LEARNING_QUERY",
-        "params": {"limit": 3},
+        "params": {"limit": 10, "modo": "retrato"},
     }
 
 

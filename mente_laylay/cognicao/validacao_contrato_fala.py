@@ -194,6 +194,25 @@ def _encontrar_posicao(resposta: str, referente: str) -> re.Match[str] | None:
     return None
 
 
+def _opcao_escolhida(resposta: str, referente: str) -> str:
+    """Lê somente uma escolha explícita entre as opções do referente."""
+    base = _normalizar(resposta)
+    opcoes = [
+        parte.strip(" ,.!?;:\"'")
+        for parte in re.split(r"\s+ou\s+", referente, flags=re.IGNORECASE)
+        if parte.strip(" ,.!?;:\"'")
+    ]
+    for opcao in opcoes:
+        opcao_norm = _normalizar(opcao)
+        if re.search(
+            rf"\b(?:prefiro|escolho|vou\s+de|fico\s+com|iria\s+de)\s+"
+            rf"{re.escape(opcao_norm)}\b",
+            base,
+        ) or re.match(rf"^{re.escape(opcao_norm)}(?:\b|\s*[,;:!.-])", base):
+            return opcao_norm
+    return ""
+
+
 def _termos_ancora(texto: str) -> set[str]:
     return {
         token
@@ -284,6 +303,17 @@ def validar_aderencia_contrato_fala(
             problemas.append("opiniao_nao_veio_na_primeira_frase")
         if posicao and not _tem_criterio_concreto(resposta, referente=referente):
             problemas.append("opiniao_sem_criterio_concreto")
+        anterior_opiniao = str(
+            contrato.get("fala_anterior_relevante") or ultima_resposta or ""
+        )
+        escolha_anterior = _opcao_escolhida(anterior_opiniao, referente)
+        escolha_atual = _opcao_escolhida(resposta, referente)
+        if (
+            escolha_anterior
+            and escolha_atual
+            and escolha_anterior != escolha_atual
+        ):
+            problemas.append("opiniao_contradisse_posicao_recente")
 
     if estrategia == "esclarecimento_literal":
         anterior = str(contrato.get("fala_anterior_relevante") or ultima_resposta or "")

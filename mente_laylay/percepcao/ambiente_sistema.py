@@ -275,6 +275,12 @@ def clima_esta_disponivel(clima: str) -> bool:
 def naturalizar_clima_resumido(clima: str) -> str:
     """Converte o formato compacto do wttr.in em uma frase pronunciável."""
     texto = re.sub(r"\s+", " ", str(clima or "")).strip()
+    descricao = re.match(r"^(?P<descricao>.*?)(?=\s+[+-]?\d)", texto)
+    if descricao:
+        original = descricao.group("descricao").strip()
+        traduzida = _traduzir_descricao_clima(original)
+        if original and traduzida != original:
+            texto = traduzida + texto[descricao.end("descricao"):]
     texto = re.sub(r"[↑↗→↘↓↙←↖]", "", texto)
     texto = re.sub(r"(?<!\w)\+(?=\d)", "", texto)
     texto = re.sub(r"(?<=\d)\s*°\s*C\b", " graus Celsius", texto, flags=re.IGNORECASE)

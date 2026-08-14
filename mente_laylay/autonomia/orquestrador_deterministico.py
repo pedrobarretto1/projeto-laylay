@@ -241,6 +241,10 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     if consulta_abas and modalidade_iot != "deliberativo":
         return consulta_abas
 
+    # O roteador de arquivos possui marcadores locais mais específicos. Ele
+    # precisa ter a primeira palavra em frases como ``pesquisa o arquivo X``;
+    # se não houver marcador local, ele cede e a pesquisa web logo abaixo
+    # continua responsável por ``pesquisa por documentação do Python``.
     consulta_arquivo = detectar_intencao_arquivos(
         texto,
         params_cb=lambda **kwargs: kwargs,
@@ -249,9 +253,27 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     )
     if (
         isinstance(consulta_arquivo, dict)
-        and str(consulta_arquivo.get("intent") or "").upper() == "FILE_SEARCH"
+        and str(consulta_arquivo.get("intent") or "").upper()
+        in {"FILE_SEARCH", "FILE_OPEN_RESULT"}
     ):
         return consulta_arquivo
+
+    # Pesquisas explícitas são consultas operacionais e precisam vencer o
+    # filtro genérico de conversa. Antes desta barreira, a forma natural
+    # ``Pesquisa por documentação do Python`` podia ser classificada como
+    # conversa e nunca chegar ao mesmo detector web usado mais abaixo.
+    consulta_web = detectar_web_e_youtube(
+        texto_normalizado_previo,
+        texto_normalizado_previo,
+        params_cb=lambda **kwargs: kwargs,
+        sites_diretos=_get(ctx, "sites_diretos"),
+    )
+    if (
+        isinstance(consulta_web, dict)
+        and str(consulta_web.get("intent") or "").upper() == "SEARCH"
+        and modalidade_iot != "deliberativo"
+    ):
+        return consulta_web
 
     consulta_aprendizados = detectar_consulta_aprendizados(
         texto_normalizado_previo,
