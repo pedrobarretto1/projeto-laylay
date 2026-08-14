@@ -207,6 +207,36 @@ def test_falha_de_exclusao_pode_ser_retentada_sem_repetir_sucesso_ou_pendencia()
     ) is None
 
 
+def test_falha_de_movimentacao_pode_ser_retentada_sem_repetir_sucesso() -> None:
+    params = {
+        "operacao": "mover",
+        "origem": "C:/Users/teste/Downloads/teste.txt",
+        "destino": "C:/Users/teste/Downloads/carlos",
+    }
+    base = {
+        "ultima_acao_intent": "FILE_TRANSACTION",
+        "ultima_acao_params": params,
+        "ultima_acao_ok": False,
+        "ultima_acao_confirmada": False,
+    }
+
+    assert resolver_repeticao_ultima_acao(
+        "tenta de novo",
+        {**base, "ultima_acao_status": "origem_nao_encontrada"},
+        _normalizar,
+    ) == {"intent": "FILE_TRANSACTION", "params": params}
+    assert resolver_repeticao_ultima_acao(
+        "tenta de novo",
+        {
+            **base,
+            "ultima_acao_status": "movido",
+            "ultima_acao_ok": True,
+            "ultima_acao_confirmada": True,
+        },
+        _normalizar,
+    ) is None
+
+
 def test_resultado_file_transaction_publica_contexto_temporario_canonico(tmp_path) -> None:
     origem = tmp_path / "teste.txt"
     destino = tmp_path / "teste.md"

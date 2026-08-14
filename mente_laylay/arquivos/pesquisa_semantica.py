@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
 import time
 import unicodedata
 from datetime import datetime, timedelta
@@ -148,10 +149,50 @@ class PesquisaSemanticaArquivosRuntime:
 
     @staticmethod
     def _abrir_padrao(caminho: str) -> bool:
+        alvo = Path(str(caminho or "")).expanduser().resolve(strict=False)
+
+        # ``os.startfile`` respeita a associação do Windows. Isso é perigoso
+        # para arquivos de código: uma associação incorreta de ``.py`` com
+        # Node.js, por exemplo, tenta executar o documento em vez de abri-lo.
+        # Todo texto pesquisável é aberto explicitamente em um editor.
+        if alvo.suffix.casefold() in EXTENSOES_TEXTO:
+            candidatos_editor: list[Path] = []
+            editor_configurado = str(os.environ.get("LAYLAY_EDITOR_CODIGO") or "").strip()
+            if editor_configurado:
+                candidatos_editor.append(Path(editor_configurado).expanduser())
+            local_app_data = str(os.environ.get("LOCALAPPDATA") or "").strip()
+            if local_app_data:
+                candidatos_editor.append(
+                    Path(local_app_data) / "Programs" / "Microsoft VS Code" / "Code.exe"
+                )
+            program_files = str(os.environ.get("ProgramFiles") or "").strip()
+            if program_files:
+                candidatos_editor.append(
+                    Path(program_files) / "Microsoft VS Code" / "Code.exe"
+                )
+
+            editor = next((item for item in candidatos_editor if item.is_file()), None)
+            comando = (
+                [str(editor), "--reuse-window", str(alvo)]
+                if editor is not None
+                else ["notepad.exe", str(alvo)]
+            )
+            kwargs: dict[str, Any] = {
+                "stdin": subprocess.DEVNULL,
+                "stdout": subprocess.DEVNULL,
+                "stderr": subprocess.DEVNULL,
+            }
+            if os.name == "nt":
+                kwargs["creationflags"] = int(
+                    getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                )
+            subprocess.Popen(comando, **kwargs)
+            return True
+
         iniciador = getattr(os, "startfile", None)
         if not callable(iniciador):
             return False
-        iniciador(caminho)
+        iniciador(str(alvo))
         return True
 
     def _permitido(self, caminho: Path) -> bool:

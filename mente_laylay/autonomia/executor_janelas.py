@@ -304,6 +304,26 @@ def _executar_fechar_app(
         ]), "debochada", 2)
         return ResultadoDespacho.concluido()
 
+    if params.get("referencia_arquivo") is True:
+        titulo = str(params.get("janela_titulo") or nome).strip()
+        fechar_janela = _get(ctx, "fechar_janela_por_titulo")
+        ok_janela = bool(fechar_janela(titulo)) if callable(fechar_janela) else False
+        status = "janela_arquivo_fechada" if ok_janela else "falha_execucao"
+        deps.marcar_resultado(
+            status,
+            executou=ok_janela,
+            confirmado=ok_janela,
+        )
+        deps.falar_por_status(
+            status,
+            f"Fechei a janela de {titulo}."
+            if ok_janela
+            else f"Tentei fechar a janela de {titulo}, mas ela continuou aberta.",
+            alvo=titulo,
+            confirmado=ok_janela,
+        )
+        return ResultadoDespacho.concluido()
+
     enviar_pc_b = _get(ctx, "_enviar_pc_b")
     navegador_operacoes = _get(ctx, "_registro_navegador_operacoes_runtime")
     fechar_programa = _get(ctx, "fechar_programa")

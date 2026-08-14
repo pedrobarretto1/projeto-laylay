@@ -6,7 +6,10 @@ import re
 import unicodedata
 from typing import Any, Callable, Dict
 
-from mente_laylay.cognicao.referencias_linguagem import valor_e_referencia_contextual
+from mente_laylay.cognicao.referencias_linguagem import (
+    separar_alvo_e_complemento_foco,
+    valor_e_referencia_contextual,
+)
 from mente_laylay.cognicao.modalidade_turno import analisar_protecao_operacional
 from mente_laylay.cognicao.normalizacao_linguagem import (
     corrigir_erros_portugues_operacionais,
@@ -131,10 +134,11 @@ def extrair_intencao_abrir_app(
     nome = re.sub(r"\s+(agora|aqui|ai|aí|por favor|pfv)$", "", nome).strip()
     nome = re.sub(r"^(o|a|os|as|um|uma)\s+", "", nome).strip()
     nome = re.sub(r"^(?:programa|app|aplicativo)\s+(?:chamado|chamada|com\s+nome|de\s+nome)\s+", "", nome).strip()
+    nome, complemento_foco = separar_alvo_e_complemento_foco(nome)
     if (
         not nome
-        or nome.casefold() in {"que", "o que", "qual", "isso", "aquilo"}
-        or valor_e_referencia_contextual(nome)
+        or nome.casefold() in {"que", "o que", "qual"}
+        or (valor_e_referencia_contextual(nome) and not complemento_foco)
     ):
         return None
 
@@ -145,8 +149,14 @@ def extrair_intencao_abrir_app(
     apps = apps_map if isinstance(apps_map, dict) else {}
     for app in sorted(apps.keys(), key=len, reverse=True):
         if nome_norm == app or nome_norm.startswith(app + " ") or app in nome_norm:
-            return {"intent": "APP_OPEN", "params": {"nome_app": app}}
-    return {"intent": "APP_OPEN", "params": {"nome_app": nome}}
+            params_app = {"nome_app": app}
+            if complemento_foco:
+                params_app["modo"] = "focus"
+            return {"intent": "APP_OPEN", "params": params_app}
+    params_app = {"nome_app": nome}
+    if complemento_foco:
+        params_app["modo"] = "focus"
+    return {"intent": "APP_OPEN", "params": params_app}
 
 
 def texto_expresso_melhor_no_deterministico(

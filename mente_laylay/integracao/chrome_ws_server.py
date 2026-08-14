@@ -3,11 +3,75 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 import inspect
 import json
 import ipaddress
 import threading
+import time
 from typing import Any, Callable
+
+
+_ESTADOS_SAUDE_PC_B = {"ready", "degraded", "unavailable"}
+_IDADE_MAXIMA_PC_B_S = 45.0
+_TAMANHO_MAXIMO_PC_B_BYTES = 65_536
+
+
+def _texto_tecnico_pc_b(valor: Any, limite: int) -> str:
+    texto = str(valor or "").strip()
+    normalizado = texto.casefold()
+    if (
+        normalizado.startswith(("sk-", "ghp_", "github_pat_", "eyj"))
+        or "bearer " in normalizado
+        or "@" in texto
+        or ":\\" in texto
+        or "/" in texto
+    ):
+        return ""
+    return "".join(
+        caractere for caractere in texto
+        if caractere.isalnum() or caractere in "._- "
+    )[:limite]
+
+
+def sanitizar_manifesto_pc_b(
+    payload: Any, *, agora: float | None = None,
+) -> dict[str, Any]:
+    """Reduz o anúncio remoto a um contrato técnico sem dados do usuário."""
+    bruto = payload if isinstance(payload, dict) else {}
+    cliente = bruto.get("client") if isinstance(bruto.get("client"), dict) else {}
+    saude = bruto.get("health") if isinstance(bruto.get("health"), dict) else {}
+    try:
+        protocolo = int(bruto.get("protocolVersion") or 0)
+    except (TypeError, ValueError):
+        protocolo = 0
+    capacidades_brutas = bruto.get("capabilities")
+    if not isinstance(capacidades_brutas, (list, tuple, set, frozenset)):
+        capacidades_brutas = []
+    capacidades = []
+    for capacidade in capacidades_brutas:
+        nome = _texto_tecnico_pc_b(capacidade, 64).casefold().replace(" ", "_")
+        if nome and nome not in capacidades:
+            capacidades.append(nome)
+        if len(capacidades) >= 64:
+            break
+    estado = _texto_tecnico_pc_b(saude.get("state"), 24).casefold()
+    if estado not in _ESTADOS_SAUDE_PC_B:
+        estado = "unavailable"
+    try:
+        uptime = max(0.0, min(float(saude.get("uptimeSeconds") or 0.0), 31_536_000.0))
+    except (TypeError, ValueError):
+        uptime = 0.0
+    return {
+        "protocol_version": max(0, min(protocolo, 99)),
+        "client_name": _texto_tecnico_pc_b(cliente.get("name"), 64),
+        "client_version": _texto_tecnico_pc_b(cliente.get("version"), 32),
+        "platform": _texto_tecnico_pc_b(cliente.get("platform"), 24).casefold(),
+        "capabilities": tuple(sorted(capacidades)),
+        "health": estado,
+        "uptime_seconds": round(uptime, 1),
+        "last_seen": float(time.time() if agora is None else agora),
+    }
 
 
 class ErroPortaWebSocketOcupada(OSError):
@@ -30,6 +94,7 @@ class WebSocketTransportRuntime:
         self._loop: asyncio.AbstractEventLoop | None = None
         self.extensions: set[Any] = set()
         self.clientes_pc_b: set[Any] = set()
+        self._manifestos_pc_b: dict[Any, dict[str, Any]] = {}
 
     def definir_loop(self, loop: asyncio.AbstractEventLoop | None) -> None:
         with self._lock:
@@ -52,12 +117,97 @@ class WebSocketTransportRuntime:
             self.extensions.discard(websocket)
 
     def adicionar_cliente_pc_b(self, websocket: Any) -> None:
+        self.registrar_cliente_pc_b(websocket, {})
+
+    def registrar_cliente_pc_b(self, websocket: Any, manifesto: Any) -> None:
+        retrato = sanitizar_manifesto_pc_b(manifesto)
         with self._lock:
             self.clientes_pc_b.add(websocket)
+            anterior = self._manifestos_pc_b.get(websocket, {})
+            retrato["connected_at"] = float(
+                anterior.get("connected_at") or retrato["last_seen"]
+            )
+            self._manifestos_pc_b[websocket] = retrato
+
+    def atualizar_cliente_pc_b(self, websocket: Any, manifesto: Any) -> None:
+        atualizacao = sanitizar_manifesto_pc_b(manifesto)
+        with self._lock:
+            if websocket not in self.clientes_pc_b:
+                return
+            anterior = dict(self._manifestos_pc_b.get(websocket) or {})
+            for chave in (
+                "protocol_version", "client_name", "client_version", "platform",
+            ):
+                if atualizacao.get(chave):
+                    anterior[chave] = atualizacao[chave]
+            if atualizacao.get("capabilities"):
+                anterior["capabilities"] = atualizacao["capabilities"]
+            if isinstance(manifesto, dict) and "health" in manifesto:
+                anterior["health"] = atualizacao["health"]
+                anterior["uptime_seconds"] = atualizacao["uptime_seconds"]
+            anterior["last_seen"] = atualizacao["last_seen"]
+            anterior.setdefault("connected_at", atualizacao["last_seen"])
+            self._manifestos_pc_b[websocket] = anterior
 
     def remover_cliente_pc_b(self, websocket: Any) -> None:
         with self._lock:
             self.clientes_pc_b.discard(websocket)
+            self._manifestos_pc_b.pop(websocket, None)
+
+    def clientes_pc_b_compativeis(self, acao: str) -> set[Any]:
+        nome = _texto_tecnico_pc_b(acao, 64).casefold().replace(" ", "_")
+        agora = time.time()
+        with self._lock:
+            return {
+                websocket
+                for websocket in self.clientes_pc_b
+                if (
+                    agora - float(
+                        self._manifestos_pc_b.get(websocket, {}).get("last_seen") or 0.0
+                    ) <= _IDADE_MAXIMA_PC_B_S
+                    and self._manifestos_pc_b.get(websocket, {}).get("health")
+                    in {"ready", "degraded"}
+                    and nome in self._manifestos_pc_b.get(websocket, {}).get(
+                        "capabilities", ()
+                    )
+                )
+            }
+
+    def retrato_clientes_pc_b(self) -> list[dict[str, Any]]:
+        agora = time.time()
+        with self._lock:
+            retratos = [dict(
+                manifesto,
+                fresh=(
+                    agora - float(manifesto.get("last_seen") or 0.0)
+                    <= _IDADE_MAXIMA_PC_B_S
+                ),
+            ) for manifesto in self._manifestos_pc_b.values()]
+        return sorted(
+            retratos,
+            key=lambda item: (item.get("client_name", ""), item.get("client_version", "")),
+        )
+
+    def diagnostico_pc_b(self) -> dict[str, Any]:
+        clientes = self.retrato_clientes_pc_b()
+        capacidades = sorted({
+            capacidade
+            for cliente in clientes if cliente.get("fresh")
+            for capacidade in cliente.get("capabilities", ())
+        })
+        saudaveis = sum(
+            1 for cliente in clientes
+            if cliente.get("fresh") and cliente.get("health") == "ready"
+        )
+        return {
+            "disponivel": bool(saudaveis),
+            "clientes_conectados": len(clientes),
+            "clientes_saudaveis": saudaveis,
+            "capacidades": capacidades,
+            "protocolo_minimo": 2,
+            "conteudo_exposto": False,
+            "autoriza_execucao": False,
+        }
 
     def contexto_conexoes(self) -> dict[str, Any]:
         return {
@@ -66,6 +216,8 @@ class WebSocketTransportRuntime:
             "adicionar_extensao": self.adicionar_extensao,
             "remover_extensao": self.remover_extensao,
             "adicionar_cliente_pc_b": self.adicionar_cliente_pc_b,
+            "registrar_cliente_pc_b": self.registrar_cliente_pc_b,
+            "atualizar_cliente_pc_b": self.atualizar_cliente_pc_b,
             "remover_cliente_pc_b": self.remover_cliente_pc_b,
         }
 
@@ -156,11 +308,19 @@ async def ws_handler_modular(websocket: Any, ctx: dict[str, Any]) -> None:
     adicionar_extensao = ctx.get("adicionar_extensao")
     remover_extensao = ctx.get("remover_extensao")
     adicionar_cliente_pc_b = ctx.get("adicionar_cliente_pc_b")
+    registrar_cliente_pc_b = ctx.get("registrar_cliente_pc_b")
+    atualizar_cliente_pc_b = ctx.get("atualizar_cliente_pc_b")
     remover_cliente_pc_b = ctx.get("remover_cliente_pc_b")
 
     is_pc_b = False
     try:
         first_msg_raw = await asyncio.wait_for(websocket.recv(), timeout=3.0)
+        if (
+            not isinstance(first_msg_raw, str)
+            or len(first_msg_raw.encode("utf-8")) > _TAMANHO_MAXIMO_PC_B_BYTES
+        ):
+            await websocket.close()
+            return
         first_msg = json.loads(first_msg_raw) if first_msg_raw else {}
     except Exception:
         first_msg = {}
@@ -169,18 +329,29 @@ async def ws_handler_modular(websocket: Any, ctx: dict[str, Any]) -> None:
     if tipo_cliente == "pc_b_client":
         token_recebido = first_msg.get("token")
         token_secreto = str(ctx.get("token_pc_b") or "")
-        if not token_secreto or token_recebido != token_secreto:
+        token_recebido = str(token_recebido or "")
+        if (
+            len(token_secreto) < 16
+            or len(token_recebido) < 16
+            or not hmac.compare_digest(token_recebido, token_secreto)
+        ):
             print(f"🚫 [PC B] Conexão REJEITADA: Token inválido! ({websocket.remote_address})")
             await websocket.close()
             return
 
         is_pc_b = True
-        if callable(adicionar_cliente_pc_b):
+        if callable(registrar_cliente_pc_b):
+            registrar_cliente_pc_b(websocket, first_msg)
+        elif callable(adicionar_cliente_pc_b):
             adicionar_cliente_pc_b(websocket)
         elif hasattr(connected_pc_b_clients, "add"):
             connected_pc_b_clients.add(websocket)
         if connected_pc_b_clients is not None:
-            print(f"[PC B] Cliente remoto conectado e AUTENTICADO! Total PC B: {len(connected_pc_b_clients)}")
+            versao = sanitizar_manifesto_pc_b(first_msg).get("client_version") or "legado"
+            print(
+                "[PC B] Cliente remoto conectado e AUTENTICADO! "
+                f"versão={versao} Total PC B: {len(connected_pc_b_clients)}"
+            )
     elif tipo_cliente == "EXTENSION_HELLO" and _conexao_local(websocket):
         if callable(close_other_extensions):
             resultado_close = close_other_extensions(websocket)
@@ -203,10 +374,18 @@ async def ws_handler_modular(websocket: Any, ctx: dict[str, Any]) -> None:
         async for message in websocket:
             if not (isinstance(message, str) and message.strip()):
                 continue
+            if is_pc_b and len(message.encode("utf-8")) > _TAMANHO_MAXIMO_PC_B_BYTES:
+                print("🚫 [PC B] Mensagem excedeu o limite de segurança.")
+                await websocket.close()
+                break
             try:
                 data = json.loads(message)
 
                 if is_pc_b:
+                    if callable(atualizar_cliente_pc_b):
+                        atualizar_cliente_pc_b(websocket, data)
+                    if isinstance(data, dict) and data.get("type") == "pc_b_heartbeat":
+                        continue
                     if callable(processar_pc_b):
                         processar_pc_b(data)
                     continue

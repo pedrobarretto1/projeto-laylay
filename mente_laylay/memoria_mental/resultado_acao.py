@@ -21,7 +21,8 @@ STATUS_RESULTADO_CONFIRMADO = {
     "aba_fechada", "aba_fechada_em_vez_de_app", "app_fechado",
     "app_fechado_em_vez_de_aba", "app_focado", "app_iniciado_focado",
     "ja_aberto_focado",
-    "janela_maximizada", "pasta_criada", "subpasta_criada", "arquivo_criado",
+    "janela_maximizada", "janela_arquivo_fechada",
+    "pasta_criada", "subpasta_criada", "arquivo_criado",
     "conteudo_atualizado",
     "item_deletado", "item_movido_para_pasta", "emails_lidos",
     "emails_sincronizados", "notificacoes_lidas", "remetente_silenciado",
@@ -41,7 +42,7 @@ STATUS_RESULTADO_CONFIRMADO = {
     # índice realmente devolveu. Esses estados possuem evidência de retorno,
     # portanto não podem ser rebaixados a "comando enviado sem confirmação".
     "arquivos_encontrados", "sem_resultados", "caminho_encontrado",
-    "arquivo_aberto", "resumo_concluido",
+    "arquivo_aberto", "arquivo_aberto_focado", "resumo_concluido",
     "layout_confirmado",
 } | STATUS_RESULTADO_JA_SATISFEITO
 

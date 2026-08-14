@@ -745,6 +745,7 @@ class DiagnosticoMenteRuntime:
         iot_getter: Callable[[], Mapping[str, Any]] | None = None,
         avatar_getter: Callable[[], Mapping[str, Any]] | None = None,
         dashboard_getter: Callable[[], Mapping[str, Any]] | None = None,
+        pc_b_getter: Callable[[], Mapping[str, Any]] | None = None,
         falar: Callable[[str, str, int], Any],
         log: Callable[[str], Any] = print,
     ) -> None:
@@ -776,6 +777,7 @@ class DiagnosticoMenteRuntime:
         self.iot_getter = iot_getter
         self.avatar_getter = avatar_getter
         self.dashboard_getter = dashboard_getter
+        self.pc_b_getter = pc_b_getter
         self.falar = falar
         self.log = log
 
@@ -798,6 +800,7 @@ class DiagnosticoMenteRuntime:
             "iot": self.iot_getter,
             "avatar": self.avatar_getter,
             "terminal_dashboard": self.dashboard_getter,
+            "pc_b_remoto": self.pc_b_getter,
         }
         for chave, getter in coletores.items():
             if not callable(getter):

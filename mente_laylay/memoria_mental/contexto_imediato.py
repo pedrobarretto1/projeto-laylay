@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import time
 import random
@@ -21,6 +22,10 @@ from mente_laylay.memoria_mental.continuidade_semantica import (
     interpretar_continuidade_semantica_llm,
     registrar_decisao_semantica,
     resolver_continuidade_semantica,
+)
+from mente_laylay.cognicao.referencias_linguagem import (
+    separar_alvo_e_complemento_foco,
+    valor_e_referencia_contextual,
 )
 
 
@@ -59,6 +64,11 @@ def referencia_contextual_imediata(
     ultimo_app = str(estado.get("ultimo_app_janela") or "").strip()
     ultimo_site = str(estado.get("ultimo_site_aba") or "").strip()
     ultimo_iot = str(estado.get("ultimo_dispositivo_iot") or "").strip()
+    estrutura_arquivo = (
+        dict(estado.get("ultima_estrutura_arquivo_params") or {})
+        if isinstance(estado.get("ultima_estrutura_arquivo_params"), dict)
+        else {}
+    )
     ultima_playlist = str(
         ultima_playlist
         or ultimo_params.get("nome_playlist")
@@ -68,8 +78,24 @@ def referencia_contextual_imediata(
 
     texto_norm = _normalizar_com_callback(texto_atual, normalizar_texto)
     dominio_pedido = ""
-    if re.search(r"\b(foco|na frente|pra frente|para frente|tela cheia|fullscreen|maximiza|maximizar)\b", texto_norm):
+    referencia_curta = bool(re.search(
+        r"\b(?:ele|ela|isso|esse|essa|este|esta)\b",
+        texto_norm,
+    ))
+    arquivo_operacional_recente = bool(
+        estrutura_arquivo
+        and ultima_intencao in {
+            "CREATE_FILE", "FILE_OPEN_RESULT", "FILE_SEARCH", "FILE_TRANSACTION",
+        }
+    )
+    # "Em foco" descreve o estado desejado, não o tipo da entidade. Depois
+    # de criar um arquivo, "abre ele e deixa em foco" continua pertencendo ao
+    # domínio de arquivos. Maximização/tela cheia ainda são de janela.
+    if re.search(r"\b(tela cheia|fullscreen|maximiza|maximizar)\b", texto_norm):
         dominio_pedido = "app"
+    elif re.search(r"\b(foco|na frente|pra frente|para frente)\b", texto_norm):
+        if not (referencia_curta and arquivo_operacional_recente):
+            dominio_pedido = "app"
     elif re.search(r"\b(aba|guia|site|pagina|página)\b", texto_norm):
         dominio_pedido = "site"
     elif re.search(r"\b(pausa|despausa|proxima|próxima|anterior|musica|música|faixa|playlist|toca|replay)\b", texto_norm):
@@ -105,6 +131,65 @@ def referencia_contextual_imediata(
         )
     )
     intent_contrato = str(contrato_acao.get("intent") or "").strip().upper()
+    abre_referencia_curta = bool(re.fullmatch(
+        r"(?:abre|abra|abrir|mostra|mostre)\s+.+",
+        texto_norm,
+    ))
+    if (
+        abre_referencia_curta
+        and referencia_curta
+        and estrutura_arquivo
+        and contrato_acao.get("executou") is True
+        and contrato_acao.get("confirmado") is True
+        and intent_contrato in {
+            "CREATE_FILE", "FILE_OPEN_RESULT", "FILE_SEARCH", "FILE_TRANSACTION",
+        }
+    ):
+        caminho_arquivo = str(estrutura_arquivo.get("caminho") or "").strip()
+        nome_arquivo = str(
+            estrutura_arquivo.get("arquivo_nome")
+            or estrutura_arquivo.get("nome_arquivo")
+            or estrutura_arquivo.get("nome")
+            or caminho_arquivo
+        ).strip()
+        if caminho_arquivo:
+            return {
+                "tipo": "arquivo",
+                "alvo": caminho_arquivo,
+                "intencao": intent_contrato,
+                "params": {
+                    "caminho": caminho_arquivo,
+                    "alvo": nome_arquivo,
+                },
+                "dominio_explicito": False,
+                "origem_continuidade": "contrato_confirmado",
+            }
+    if (
+        fecha_referencia_curta
+        and contrato_acao.get("executou") is True
+        and contrato_acao.get("confirmado") is True
+        and intent_contrato == "FILE_OPEN_RESULT"
+        and estrutura_arquivo
+    ):
+        caminho_arquivo = str(estrutura_arquivo.get("caminho") or "").strip()
+        nome_arquivo = str(
+            estrutura_arquivo.get("arquivo_nome")
+            or estrutura_arquivo.get("nome_arquivo")
+            or os.path.basename(caminho_arquivo)
+            or ""
+        ).strip()
+        if caminho_arquivo and nome_arquivo:
+            return {
+                "tipo": "arquivo",
+                "alvo": caminho_arquivo,
+                "intencao": intent_contrato,
+                "params": {
+                    "caminho": caminho_arquivo,
+                    "alvo": nome_arquivo,
+                },
+                "dominio_explicito": False,
+                "origem_continuidade": "contrato_confirmado",
+            }
     if (
         fecha_referencia_curta
         and contrato_acao.get("executou") is True
@@ -187,6 +272,24 @@ def referencia_contextual_imediata(
         alvo_app = str(ultimo_params.get("nome_app") or ultimo_params.get("app") or ultimo_app or "").strip()
         if alvo_app:
             return {"tipo": "app", "alvo": alvo_app, "intencao": ultima_intencao, "params": ultimo_params}
+    if ultima_intencao in {
+        "CREATE_FILE", "FILE_OPEN_RESULT", "FILE_SEARCH", "FILE_TRANSACTION",
+    }:
+        caminho_arquivo = str(estrutura_arquivo.get("caminho") or "").strip()
+        if caminho_arquivo:
+            return {
+                "tipo": "arquivo",
+                "alvo": caminho_arquivo,
+                "intencao": ultima_intencao,
+                "params": {
+                    "caminho": caminho_arquivo,
+                    "alvo": str(
+                        estrutura_arquivo.get("arquivo_nome")
+                        or estrutura_arquivo.get("nome_arquivo")
+                        or caminho_arquivo
+                    ).strip(),
+                },
+            }
     if ultima_intencao in {"LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_PLAY", "LAYLAY_PLAYLIST_COPY"}:
         alvo_curadoria = str(
             ultimo_params.get("nome_playlist")
@@ -449,6 +552,39 @@ def resolver_comando_acao_geral_contextual(
             print(f"🧠 [CONTEXTO-GERAL] retomando app -> '{nome_app}'")
             return {"intent": "APP_OPEN", "params": {"nome_app": nome_app, "modo": "focus"}}
 
+    if tipo_ref == "arquivo" and pedido_fechar_ref:
+        caminho = str(
+            ultimo_params.get("caminho") or alvo_ref or ultimo_params.get("alvo") or ""
+        ).strip()
+        nome = str(
+            ultimo_params.get("alvo") or os.path.basename(caminho) or caminho
+        ).strip()
+        if nome:
+            return {
+                "intent": "CLOSE_APP",
+                "params": {
+                    "nome_app": nome,
+                    "janela_titulo": nome,
+                    "referencia_arquivo": True,
+                },
+            }
+
+    if tipo_ref == "arquivo" and pedido_de_volta:
+        caminho = str(
+            ultimo_params.get("caminho") or alvo_ref or ultimo_params.get("alvo") or ""
+        ).strip()
+        nome = str(ultimo_params.get("alvo") or caminho).strip()
+        if caminho:
+            return {
+                "intent": "FILE_OPEN_RESULT",
+                "params": {
+                    "caminho": caminho,
+                    "alvo": nome,
+                    "referencia_contextual": True,
+                    "modo": "focus",
+                },
+            }
+
     if tipo_ref == "site":
         alvo = str(alvo_ref or ultimo_params.get("alvo") or ultimo_params.get("url") or "").strip()
         if alvo:
@@ -579,6 +715,34 @@ def resolver_comando_arquivo_contextual(
 
     if not estrutura:
         return None
+
+    abertura = re.fullmatch(
+        r"(?:abre|abra|abrir|mostra|mostre)\s+(?P<referencia>.+)",
+        t.rstrip(" .,!?:;"),
+        flags=re.IGNORECASE,
+    )
+    if abertura and str(estrutura.get("tipo") or "").casefold() == "arquivo":
+        referencia_bruta = str(abertura.group("referencia") or "")
+        referencia_limpa, pediu_foco = separar_alvo_e_complemento_foco(
+            referencia_bruta
+        )
+        if valor_e_referencia_contextual(referencia_limpa):
+            caminho = str(estrutura.get("caminho") or "").strip()
+            nome = str(
+                estrutura.get("arquivo_nome")
+                or estrutura.get("nome_arquivo")
+                or estrutura.get("nome")
+                or caminho
+            ).strip()
+            if caminho:
+                params_abertura = {
+                    "caminho": caminho,
+                    "alvo": nome,
+                    "referencia_contextual": True,
+                }
+                if pediu_foco:
+                    params_abertura["modo"] = "focus"
+                return {"intent": "FILE_OPEN_RESULT", "params": params_abertura}
 
     if re.fullmatch(
         r"(?:apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir)\s+"
@@ -1042,20 +1206,62 @@ class ContextoImediatoRuntime:
             return None
         estrutura = ns["_estrutura_arquivo_recente"](900.0)
         mente = self._estado().mental
-        verbo_arquivo = bool(re.search(
+        verbo_mutacao_arquivo = bool(re.search(
             r"\b(apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir|cria|criar|"
             r"move|mover|renomeia|renomear|muda|mudar|troca|trocar|altera|alterar)\b",
             t,
         ))
+        verbo_abertura = bool(re.search(r"\b(?:abre|abra|abrir|mostra|mostre)\b", t))
+        verbo_fechamento = bool(re.search(
+            r"\b(?:fecha|feche|fechar|encerra|encerre|encerrar)\b",
+            t,
+        ))
+        ultima_intencao = str(
+            mente.get("ultima_acao_intent") or mente.get("ultima_intencao") or ""
+        ).upper()
+        ultima_habilidade = str(mente.get("ultima_habilidade") or "").lower()
+        arquivo_mais_recente = bool(
+            estrutura
+            and (
+                ultima_intencao in {
+                    "CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "MOVE_ITEM",
+                    "FILE_TRANSACTION", "FILE_OPEN_RESULT", "FILE_SEARCH",
+                }
+                or ultima_habilidade in {"arquivo", "arquivos"}
+            )
+        )
         contexto_arquivo = bool(
             re.search(r"\b(pasta|arquivo|documento|txt|md|markdown|extensao|formato)\b", t)
             or estrutura
-            or str(mente.get("ultima_habilidade") or "").lower() in {"arquivo", "arquivos"}
-            or str(mente.get("ultima_intencao") or "").upper() in {
+            or ultima_habilidade in {"arquivo", "arquivos"}
+            or ultima_intencao in {
                 "CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "MOVE_ITEM", "FILE_TRANSACTION",
             }
         )
-        if verbo_arquivo and contexto_arquivo:
+        if verbo_fechamento and arquivo_mais_recente:
+            # Um documento confirmado é uma referência mais recente e mais
+            # específica do que a janela de aplicativo que o abriu. O
+            # resolvedor geral conserva essa distinção e fecha só a janela do
+            # documento, em vez de reaproveitar um app antigo ou encerrar todas
+            # as janelas do editor associado.
+            resolvedores = [
+                ("GERAL", self.resolver_acao_geral),
+                ("ARQUIVO", self.resolver_arquivo),
+                ("SEMANTICA", self.resolver_semantico),
+                ("JANELA", self.resolver_janela),
+                ("IOT", self.resolver_iot),
+                ("MIDIA", self.resolver_midia),
+            ]
+        elif verbo_abertura and arquivo_mais_recente:
+            resolvedores = [
+                ("ARQUIVO", self.resolver_arquivo),
+                ("SEMANTICA", self.resolver_semantico),
+                ("IOT", self.resolver_iot),
+                ("JANELA", self.resolver_janela),
+                ("MIDIA", self.resolver_midia),
+                ("GERAL", self.resolver_acao_geral),
+            ]
+        elif verbo_mutacao_arquivo and contexto_arquivo:
             resolvedores = [
                 ("SEMANTICA", self.resolver_semantico),
                 ("ARQUIVO", self.resolver_arquivo),

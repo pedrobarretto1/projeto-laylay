@@ -66,10 +66,22 @@ def segmentar_comandos_em_cadeia(
         encontrado = re.search(sep, bruto_operacional, flags=re.IGNORECASE)
         if encontrado:
             partes_brutas = [
-                bruto_operacional[:encontrado.start()].strip(" ,!?;:"),
-                bruto_operacional[encontrado.end():].strip(" ,!?;:"),
+                bruto_operacional[:encontrado.start()].strip(" .,!?;:"),
+                bruto_operacional[encontrado.end():].strip(" .,!?;:"),
             ]
-            if all(partes_brutas):
+            normalizar = normalizar_texto if callable(normalizar_texto) else str.lower
+            partes_operacionais = [
+                str(normalizar(parte) or "").strip(" .,!?;:")
+                for parte in partes_brutas
+            ]
+            # ``depois`` também é marcador temporal em hipóteses e adiamentos.
+            # Só existe cadeia quando os dois lados são ordens completas. Isso
+            # impede que ``Talvez eu apague X depois.`` seja consumido como
+            # uma execução e que o ponto final vire uma etapa fantasma.
+            if (
+                all(partes_brutas)
+                and all(_parece_etapa_operacional(parte) for parte in partes_operacionais)
+            ):
                 return partes_brutas[:2]
 
     # O conectivo simples também forma uma cadeia quando ambos os lados são

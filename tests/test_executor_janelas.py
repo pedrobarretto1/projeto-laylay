@@ -6,7 +6,11 @@ from mente_laylay.autonomia.executor_janelas import (
     executar_intencao_janelas,
 )
 from mente_laylay.autonomia.roteador_intencao import executar_intencao
-from mente_laylay.percepcao.janelas_sistema import maximizar_janela
+from mente_laylay.percepcao import janelas_sistema
+from mente_laylay.percepcao.janelas_sistema import (
+    fechar_janela_por_titulo,
+    maximizar_janela,
+)
 from tests.fakes_navegador import NavegadorOperacoesFake
 
 
@@ -80,6 +84,150 @@ def test_executor_janelas_nao_interfere_em_outro_dominio() -> None:
 
     assert despacho == ResultadoDespacho.nao_tratado()
     assert eventos == []
+
+
+def test_fecha_referencia_de_arquivo_sem_encerrar_aplicativo_inteiro() -> None:
+    eventos: list[tuple] = []
+    titulos: list[str] = []
+    processos: list[str] = []
+
+    despacho = executar_intencao_janelas(
+        "CLOSE_APP",
+        {
+            "nome_app": "teste.txt",
+            "janela_titulo": "teste.txt",
+            "referencia_arquivo": True,
+        },
+        "pc_a",
+        {
+            "fechar_janela_por_titulo": lambda titulo: (
+                titulos.append(titulo) or True
+            ),
+            "fechar_programa": lambda nome: processos.append(nome),
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido()
+    assert titulos == ["teste.txt"]
+    assert processos == []
+    assert ("resultado", "janela_arquivo_fechada", {
+        "executou": True,
+        "confirmado": True,
+    }) in eventos
+
+
+def test_fechamento_por_titulo_remove_so_janela_do_documento(monkeypatch) -> None:
+    class Janela:
+        def __init__(self, titulo: str, dono) -> None:
+            self.title = titulo
+            self._dono = dono
+
+        def close(self) -> None:
+            self._dono.janelas.remove(self)
+
+    class GW:
+        def __init__(self) -> None:
+            self.janelas = []
+
+        def getAllWindows(self):
+            return list(self.janelas)
+
+        def getWindowsWithTitle(self, _titulo):
+            return []
+
+    gw = GW()
+    documento = Janela("teste.txt - Bloco de Notas", gw)
+    outro = Janela("anotacoes.txt - Bloco de Notas", gw)
+    gw.janelas[:] = [documento, outro]
+    monkeypatch.setattr(janelas_sistema.time, "sleep", lambda _segundos: None)
+
+    assert fechar_janela_por_titulo(gw, "teste.txt") is True
+    assert documento not in gw.janelas
+    assert outro in gw.janelas
+
+
+def test_fechamento_de_arquivo_no_vscode_fecha_aba_sem_fechar_programa(
+    monkeypatch,
+) -> None:
+    class Janela:
+        def __init__(self, dono) -> None:
+            self.title = "controlador.py - projeto lay - Visual Studio Code"
+            self._dono = dono
+            self.isActive = False
+            self.fechamentos = 0
+
+        def activate(self) -> None:
+            self.isActive = True
+            self._dono.ativa = self
+
+        def close(self) -> None:
+            self.fechamentos += 1
+            self._dono.janelas.remove(self)
+
+    class GW:
+        def __init__(self) -> None:
+            self.janelas = []
+            self.ativa = None
+
+        def getAllWindows(self):
+            return list(self.janelas)
+
+        def getWindowsWithTitle(self, _titulo):
+            return []
+
+        def getActiveWindow(self):
+            return self.ativa
+
+    class Teclado:
+        def __init__(self, janela) -> None:
+            self.janela = janela
+            self.atalhos = []
+
+        def hotkey(self, *teclas) -> None:
+            self.atalhos.append(teclas)
+            # O VS Code continua aberto; apenas o editor atual muda.
+            self.janela.title = "projeto lay - Visual Studio Code"
+
+    gw = GW()
+    vscode = Janela(gw)
+    gw.janelas.append(vscode)
+    teclado = Teclado(vscode)
+    monkeypatch.setattr(janelas_sistema.time, "sleep", lambda _segundos: None)
+
+    assert fechar_janela_por_titulo(
+        gw, "controlador.py", pyautogui_mod=teclado,
+    ) is True
+    assert teclado.atalhos == [("ctrl", "w")]
+    assert vscode in gw.janelas
+    assert vscode.fechamentos == 0
+
+
+def test_sem_teclado_vscode_nunca_recebe_fechamento_de_janela(monkeypatch) -> None:
+    class Janela:
+        title = "controlador.py - projeto lay - Visual Studio Code"
+
+        def __init__(self) -> None:
+            self.fechamentos = 0
+
+        def close(self) -> None:
+            self.fechamentos += 1
+
+    class GW:
+        def __init__(self, janela) -> None:
+            self.janela = janela
+
+        def getAllWindows(self):
+            return [self.janela]
+
+        def getWindowsWithTitle(self, _titulo):
+            return []
+
+    vscode = Janela()
+    monkeypatch.setattr(janelas_sistema.time, "sleep", lambda _segundos: None)
+
+    assert fechar_janela_por_titulo(GW(vscode), "controlador.py") is False
+    assert vscode.fechamentos == 0
 
 
 def test_organizar_desktop_preserva_parametros_e_confirma_layout_observado() -> None:

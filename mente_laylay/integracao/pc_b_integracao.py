@@ -50,20 +50,39 @@ def criar_destino_pc_runtime(**kwargs: Any) -> DestinoPCRuntime:
 
 
 class PCBRuntime:
-    def __init__(self, *, clientes_getter: Callable[[], Any], loop_getter: Callable[[], Any], log=print) -> None:
+    def __init__(
+        self,
+        *,
+        clientes_getter: Callable[[], Any],
+        loop_getter: Callable[[], Any],
+        clientes_compativeis_getter: Callable[[str], Any] | None = None,
+        estado_clientes_getter: Callable[[], Any] | None = None,
+        log=print,
+    ) -> None:
         self.clientes_getter = clientes_getter
         self.loop_getter = loop_getter
+        self.clientes_compativeis_getter = clientes_compativeis_getter
+        self.estado_clientes_getter = estado_clientes_getter
         self.log = log
         self._lock = threading.RLock()
         self._pendentes: Dict[str, Dict[str, Any]] = {}
 
     def enviar(self, payload: Dict[str, Any], timeout_s: float = 5.0) -> bool:
         """Envia e somente retorna sucesso depois do estado final do PC B."""
-        clientes = self.clientes_getter()
+        clientes = set(self.clientes_getter() or ())
         loop = self.loop_getter()
         if not clientes or loop is None:
             self.log("[PC B] Nenhum cliente PC B conectado.")
             return False
+        acao = str(payload.get("action") or "").strip()
+        if callable(self.clientes_compativeis_getter):
+            compativeis = set(self.clientes_compativeis_getter(acao) or ())
+            clientes.intersection_update(compativeis)
+            if not clientes:
+                self.log(
+                    f"[PC B] Nenhum cliente saudável anunciou suporte para {acao or 'a ação'}."
+                )
+                return False
         request_id = str(payload.get("requestId") or uuid.uuid4().hex)
         evento = threading.Event()
         entrada: Dict[str, Any] = {"event": evento, "result": None, "criado_em": time.time()}
@@ -114,6 +133,36 @@ class PCBRuntime:
         if evento is not None:
             evento.set()
         return True
+
+    def diagnostico(self) -> dict[str, Any]:
+        clientes = []
+        if callable(self.estado_clientes_getter):
+            try:
+                clientes = list(self.estado_clientes_getter() or [])
+            except Exception:
+                clientes = []
+        capacidades = sorted({
+            str(capacidade)
+            for cliente in clientes if isinstance(cliente, dict) and cliente.get("fresh")
+            for capacidade in cliente.get("capabilities", ())
+        })
+        saudaveis = sum(
+            1 for cliente in clientes
+            if isinstance(cliente, dict)
+            and cliente.get("fresh")
+            and cliente.get("health") == "ready"
+        )
+        with self._lock:
+            pendentes = len(self._pendentes)
+        return {
+            "disponivel": bool(saudaveis),
+            "clientes_conectados": len(clientes),
+            "clientes_saudaveis": saudaveis,
+            "capacidades": capacidades,
+            "solicitacoes_pendentes": pendentes,
+            "somente_estado_sanitizado": True,
+            "autoriza_execucao": False,
+        }
 
 
 def criar_pc_b_runtime(**kwargs: Any) -> PCBRuntime:
@@ -182,7 +231,7 @@ def processar_mensagem_pc_b(data: Dict[str, Any], ctx: Dict[str, Any]) -> bool:
                     status="falha_execucao",
                     alvo=alvo,
                     executou=False,
-                    confirmado=True,
+                    confirmado=False,
                     detalhe=str(erro_msg or ""),
                 ),
                 f"O PC B não conseguiu concluir a ação em {alvo}. Motivo: {erro_msg}.",

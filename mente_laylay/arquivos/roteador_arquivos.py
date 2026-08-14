@@ -13,6 +13,8 @@ from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
 )
 from mente_laylay.cognicao.referencias_linguagem import (
     extrair_indice_referencia_ordinal,
+    separar_alvo_e_complemento_foco,
+    valor_e_referencia_contextual,
 )
 from mente_laylay.cognicao.normalizacao_linguagem import texto_pede_opiniao
 
@@ -44,6 +46,46 @@ def _arquivo_recente(estado: Mapping[str, Any]) -> tuple[str, str]:
         ).strip()
         return caminho, nome
     return "", ""
+
+
+def _pasta_recente(estado: Mapping[str, Any]) -> tuple[str, str]:
+    estrutura = (
+        dict(estado.get("ultima_estrutura_arquivo_params") or {})
+        if isinstance(estado.get("ultima_estrutura_arquivo_params"), Mapping)
+        else {}
+    )
+    if str(estrutura.get("tipo") or "").strip().casefold() == "pasta":
+        caminho = str(estrutura.get("caminho") or "").strip()
+        nome = str(
+            estrutura.get("nome")
+            or estrutura.get("pasta")
+            or (os.path.basename(caminho) if caminho else "")
+        ).strip()
+        if caminho or nome:
+            return caminho, nome
+    caminho = str(estado.get("ultima_pasta") or "").strip()
+    return caminho, os.path.basename(caminho) if caminho else ""
+
+
+def _limpar_item_movimentacao(valor: str, *, destino: bool = False) -> str:
+    texto = str(valor or "").strip(" .,!?:;\"'")
+    if destino:
+        texto = re.sub(
+            r"^(?:a|o|uma|um)?\s*(?:pasta|diretorio|diretório)\s+",
+            "",
+            texto,
+            flags=re.IGNORECASE,
+        )
+    else:
+        texto = re.sub(
+            r"^(?:o|a|um|uma)?\s*(?:arquivo|documento|item)\s+",
+            "",
+            texto,
+            flags=re.IGNORECASE,
+        )
+        if re.search(r"\.[a-z0-9]{1,10}$", texto, flags=re.IGNORECASE):
+            texto = re.sub(r"^(?:o|a|um|uma)\s+", "", texto, flags=re.IGNORECASE)
+    return texto.strip(" .,!?:;\"'")
 
 
 def _remover_aspas_pareadas(valor: str) -> str:
@@ -187,6 +229,61 @@ def extrair_criacao_arquivo(
     # quando a mente acabou de pedir o nome de um CREATE_FILE incompleto.
     if ultima_intencao == "CREATE_FILE" and faltou_alvo:
         inicio = rf"(?:{inicio}|(?:um\s+|uma\s+)?)"
+
+    # Um pedido composto como "cria um arquivo chamado notas e dentro dele
+    # escreva ..." continua sendo uma unica mutacao de arquivo.  Esta leitura
+    # precisa vir antes da regra generica de ``dentro de <pasta>``; caso
+    # contrario, o "e" entra no nome e "dele escreva ..." vira um diretorio.
+    # O conteudo e preservado como foi dito, removendo apenas aspas externas
+    # pareadas.  Nome, conteudo e referencia permanecem no contrato canonico
+    # de CREATE_FILE, sem introduzir um executor paralelo.
+    prefixo_arquivo = (
+        rf"^\s*{inicio}"
+        r"(?:(?:arquivo|documento)(?:\s+de\s+(?:texto|txt))?|de\s+(?:texto|txt))\s*"
+        r"(?:chamado|chamada|com\s+nome|de\s+nome)?\s*"
+        r"(?P<nome>.+?)\s+"
+    )
+    referencia_interna = r"(?:dentro\s+del[ae]|nel[ae]|ness[ae])"
+    verbo_escrita = (
+        r"(?:escreva|escreve|escrever|grave|grava|gravar|coloque|coloca|"
+        r"insira|insere|inserir|adicione|adiciona|adicionar)"
+    )
+    marcadores_conteudo = (
+        rf"(?:e\s+)?(?:{referencia_interna}\s+{verbo_escrita}|"
+        rf"{verbo_escrita}\s+{referencia_interna})"
+        r"|(?:com\s+(?:o\s+)?texto|com\s+conte[uú]do|contendo|que\s+diga)"
+    )
+    composto = re.match(
+        prefixo_arquivo
+        + rf"(?:{marcadores_conteudo})\s+(?P<conteudo>.+?)\s*$",
+        texto_local,
+        flags=re.IGNORECASE,
+    )
+    if not composto:
+        # Variação igualmente natural: "crie notas e escreva o texto nele".
+        composto = re.match(
+            prefixo_arquivo
+            + rf"(?:e\s+)?{verbo_escrita}\s+(?P<conteudo>.+?)\s+"
+              rf"(?:{referencia_interna})\s*$",
+            texto_local,
+            flags=re.IGNORECASE,
+        )
+    if composto:
+        nome_composto = limpar_nome_arquivo_natural(composto.group("nome") or "")
+        conteudo_composto = _remover_aspas_pareadas(composto.group("conteudo") or "")
+        if (
+            nome_composto
+            and conteudo_composto
+            and nome_composto.casefold() not in {"arquivo", "documento", "texto", "txt"}
+        ):
+            resultado_composto = {
+                "alvo": nome_composto,
+                "conteudo": conteudo_composto,
+            }
+            if re.search(r"\b(?:de\s+texto|txt)\b", texto_local, re.IGNORECASE):
+                resultado_composto["tipo_arquivo"] = "texto"
+            return resultado_composto
+
     padrao = re.compile(
         rf"^\s*{inicio}"
         r"(?:(?:arquivo|documento)(?:\s+de\s+(?:texto|txt))?|de\s+(?:texto|txt))\s*"
@@ -357,6 +454,58 @@ def detectar_intencao_arquivos(
     ]
     consulta_recente = str(pesquisa_recente.get("consulta") or "").strip()
     arquivo_recente_caminho, arquivo_recente_nome = _arquivo_recente(estado)
+    pasta_recente_caminho, _pasta_recente_nome = _pasta_recente(estado)
+
+    movimentacao = re.fullmatch(
+        r"(?:coloca|coloque|bota|ponha|poe|põe|move|mova|transfere|transfira)\s+"
+        r"(?P<origem>.+?)\s+(?:dentro|para|pra)\s+"
+        r"(?:(?:de|do|da)\s+)?(?P<destino>.+)",
+        t.rstrip(" .,!?:;"),
+        flags=re.IGNORECASE,
+    )
+    if movimentacao:
+        origem_bruta = str(movimentacao.group("origem") or "").strip()
+        destino_bruto = str(movimentacao.group("destino") or "").strip()
+        origem = _limpar_item_movimentacao(origem_bruta)
+        destino = _limpar_item_movimentacao(destino_bruto, destino=True)
+        if valor_e_referencia_contextual(origem):
+            origem = str(
+                estado.get("ultimo_caminho_arquivo")
+                or arquivo_recente_caminho
+                or ""
+            ).strip()
+        if destino.casefold() in {
+            "ele", "ela", "dele", "dela", "nele", "nela", "isso",
+            "essa", "esse", "esta", "este", "essa pasta", "a pasta",
+        }:
+            destino = pasta_recente_caminho
+        fonte_generica_sem_referencia = bool(re.fullmatch(
+            r"(?:um|uma|o|a)?\s*(?:arquivo|documento|item)",
+            origem_bruta,
+            re.IGNORECASE,
+        )) or bool(re.match(
+            r"^(?:um|uma|o|a)?\s*(?:arquivo|documento)\s+"
+            r"(?:de\s+texto\s+)?(?:chamado|chamada|com\s+nome)\b",
+            origem_bruta,
+            re.IGNORECASE,
+        ))
+        if origem and destino and not fonte_generica_sem_referencia:
+            return {
+                "intent": "FILE_TRANSACTION",
+                "params": params(
+                    operacao="mover",
+                    origem=origem,
+                    destino=destino,
+                    referencia_contextual=bool(
+                        valor_e_referencia_contextual(origem_bruta)
+                        or destino_bruto.casefold() in {
+                            "ele", "ela", "dele", "dela", "nele", "nela",
+                            "isso", "essa", "esse", "esta", "este",
+                            "essa pasta", "a pasta",
+                        }
+                    ),
+                ),
+            }
 
     pergunta_caminho_arquivo = bool(re.fullmatch(
         r"(?:onde\s+(?:(?:ele|ela|esse|essa|este|esta|o\s+arquivo|esse\s+arquivo)\s+)?"
@@ -376,18 +525,24 @@ def detectar_intencao_arquivos(
             ),
         }
 
-    if arquivo_recente_caminho and re.fullmatch(
-        r"(?:abre|abra|abrir|mostra|mostre)\s+"
-        r"(?:ele|ela|isso|esse|essa|este|esta|o\s+arquivo|esse\s+arquivo)",
+    abertura_referenciada = re.fullmatch(
+        r"(?:abre|abra|abrir|mostra|mostre)\s+(?P<referencia>.+)",
         texto_confirmacao,
-    ):
-        return {
-            "intent": "FILE_OPEN_RESULT",
-            "params": params(
-                caminho=arquivo_recente_caminho,
-                alvo=arquivo_recente_nome or os.path.basename(arquivo_recente_caminho),
-            ),
-        }
+    )
+    if arquivo_recente_caminho and abertura_referenciada:
+        referencia_bruta = str(abertura_referenciada.group("referencia") or "")
+        referencia_limpa, pediu_foco = separar_alvo_e_complemento_foco(
+            referencia_bruta
+        )
+        if valor_e_referencia_contextual(referencia_limpa):
+            params_abertura = {
+                "caminho": arquivo_recente_caminho,
+                "alvo": arquivo_recente_nome or os.path.basename(arquivo_recente_caminho),
+            }
+            if pediu_foco:
+                params_abertura["modo"] = "focus"
+                params_abertura["referencia_contextual"] = True
+            return {"intent": "FILE_OPEN_RESULT", "params": params(**params_abertura)}
 
     # Exclusão por pronome só pode herdar um artefato de arquivo tipado. Isso
     # impede que um referente recente de outro domínio (pessoa, conversa,

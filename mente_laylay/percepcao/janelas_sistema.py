@@ -621,6 +621,108 @@ def _titulo_apresentavel_como_janela(titulo: str) -> bool:
     )
 
 
+def fechar_janela_por_titulo(
+    gw_mod: Any,
+    titulo_ou_arquivo: str,
+    registrar_falha: Callable[..., Any] | None = None,
+    pyautogui_mod: Any = None,
+) -> bool:
+    """Fecha o documento identificado sem encerrar seu aplicativo hospedeiro.
+
+    Editores como VS Code mantêm vários documentos numa única janela. Neles,
+    ``Window.close()`` encerraria o processo inteiro. Quando há uma porta de
+    teclado, confirmamos o foco do documento e usamos ``Ctrl+W``; somente o
+    fallback legado de aplicativos dedicados pode fechar a janela de topo.
+    """
+
+    alvo = str(titulo_ou_arquivo or "").strip()
+    janela, termo = buscar_janela(gw_mod, alvo)
+    if janela is None:
+        print(f"⚠️ Nenhuma janela de arquivo encontrada para fechar: {termo}")
+        return False
+    try:
+        titulo_janela = _titulo_janela(janela)
+        titulo_normalizado = normalizar_alvo_ambiente(titulo_janela)
+        hospedeiro_multidocumento = any(
+            marcador in titulo_normalizado
+            for marcador in (
+                "visual studio code", "visual studio", "notepad++",
+                "pycharm", "intellij idea", "sublime text", "cursor",
+            )
+        )
+        if pyautogui_mod is not None:
+            if getattr(janela, "isMinimized", False):
+                restaurar = getattr(janela, "restore", None)
+                if callable(restaurar):
+                    restaurar()
+                    time.sleep(0.12)
+            ativar = getattr(janela, "activate", None)
+            if not callable(ativar):
+                return False
+            ativar()
+            time.sleep(0.15)
+
+            ativa = None
+            obter_ativa = getattr(gw_mod, "getActiveWindow", None)
+            if callable(obter_ativa):
+                try:
+                    ativa = obter_ativa()
+                except Exception:
+                    ativa = None
+            foco_confirmado = bool(
+                ativa is janela
+                or (
+                    ativa is not None
+                    and normalizar_alvo_ambiente(alvo)
+                    in normalizar_alvo_ambiente(_titulo_janela(ativa))
+                )
+                or getattr(janela, "isActive", False)
+            )
+            if not foco_confirmado:
+                print(
+                    "⚠️ Não enviei Ctrl+W porque o foco do documento não foi "
+                    f"confirmado: '{alvo}'"
+                )
+                return False
+            hotkey = getattr(pyautogui_mod, "hotkey", None)
+            if not callable(hotkey):
+                return False
+            hotkey("ctrl", "w")
+            for espera_s in (0.08, 0.14, 0.22, 0.32):
+                time.sleep(espera_s)
+                janela_restante, _ = buscar_janela(gw_mod, alvo)
+                if janela_restante is None:
+                    print(f"✅ Documento fechado sem encerrar o aplicativo: '{alvo}'")
+                    return True
+            print(f"⚠️ O documento recebeu Ctrl+W, mas continuou aberto: '{alvo}'")
+            return False
+
+        # Sem uma porta de teclado não existe operação segura para fechar uma
+        # aba interna de um editor. Falhar é melhor que derrubar o VS Code e o
+        # próprio processo que está executando o roteiro de testes.
+        if hospedeiro_multidocumento:
+            print(
+                "⚠️ Não fechei o aplicativo inteiro ao tentar fechar o documento: "
+                f"'{alvo}'"
+            )
+            return False
+        fechar = getattr(janela, "close", None)
+        if not callable(fechar):
+            return False
+        fechar()
+        for espera_s in (0.08, 0.14, 0.22, 0.32):
+            time.sleep(espera_s)
+            janela_restante, _ = buscar_janela(gw_mod, alvo)
+            if janela_restante is None:
+                print(f"✅ Janela de arquivo fechada: '{alvo}'")
+                return True
+        print(f"⚠️ A janela recebeu o fechamento, mas continuou aberta: '{alvo}'")
+        return False
+    except Exception as erro:
+        _relatar_falha_janela(registrar_falha, "fechar_janela_titulo", erro)
+        return False
+
+
 def observar_programas_abertos(gw_mod: Any, psutil_mod: Any) -> dict[str, List[str]]:
     """Separa janelas apresentáveis de processos relevantes sem janela.
 

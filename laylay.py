@@ -149,6 +149,7 @@ from mente_laylay.percepcao.janelas_sistema import (
     classificar_assunto as _classificar_assunto_mente,
     detectar_gatilho_proativo_sistema as _detectar_gatilho_proativo_sistema_mente,
     fala_gatilho_proativo_sistema as _fala_gatilho_proativo_sistema_mente,
+    fechar_janela_por_titulo as _fechar_janela_por_titulo_mente,
     focar_janela as _focar_janela_mente,
     janela_esta_em_foco as _janela_esta_em_foco_mente,
     janela_em_tela_cheia as _janela_em_tela_cheia_mente,
@@ -268,6 +269,12 @@ from mente_laylay.integracao.registro_conversa_llm import (
 )
 from mente_laylay.integracao.desktop_bridge import (
     criar_desktop_bridge_runtime as _criar_desktop_bridge_runtime,
+)
+from mente_laylay.integracao.roteiro_teste_conversa import (
+    RoteiroTesteConversaRuntime as _RoteiroTesteConversaRuntime,
+    carregar_configuracao_roteiro as _carregar_configuracao_roteiro,
+    instalar_espelho_terminal as _instalar_espelho_terminal_roteiro,
+    preparar_diretorio_resultado as _preparar_diretorio_resultado_roteiro,
 )
 from mente_laylay.integracao.dashboard_terminal import (
     criar_dashboard_terminal_runtime as _criar_dashboard_terminal_runtime,
@@ -1729,6 +1736,13 @@ focar_janela_app = partial(
     registrar_falha=_observabilidade_mente_runtime.relatar_falha,
 )
 
+fechar_janela_por_titulo = partial(
+    _fechar_janela_por_titulo_mente,
+    gw,
+    registrar_falha=_observabilidade_mente_runtime.relatar_falha,
+    pyautogui_mod=pyautogui,
+)
+
 _janela_app_esta_em_foco = partial(_janela_esta_em_foco_mente, gw)
 
 fechar_programa = _fechar_programa_mente
@@ -2611,6 +2625,10 @@ _agendamentos_file = os.path.join(_base_dir, AGENDAMENTOS_ARQUIVO)
 _pc_b_runtime = _criar_pc_b_runtime_mente(
     clientes_getter=lambda: _ws_transport_runtime.clientes_pc_b,
     loop_getter=_ws_transport_runtime.obter_loop,
+    clientes_compativeis_getter=(
+        _ws_transport_runtime.clientes_pc_b_compativeis
+    ),
+    estado_clientes_getter=_ws_transport_runtime.retrato_clientes_pc_b,
     log=print,
 )
 _enviar_pc_b = _pc_b_runtime.enviar
@@ -3196,7 +3214,14 @@ _interacao_chat_runtime = _criar_interacao_chat_runtime_mente(
     keyboard_mod=keyboard,
     hotkey_liga=HOTKEY_MODO_CHAT_LIGA,
     hotkey_desliga=HOTKEY_MODO_CHAT_DESLIGA,
-    stdin_getter=lambda: getattr(sys, "stdin", None),
+    # No roteiro automatizado, o próprio executor publica cada bloco
+    # ``💬 Você:``. Manter o leitor interativo concorrente desenhava um segundo
+    # prompt (`> 💬 Você:`) e ainda poderia consumir teclas acidentalmente.
+    stdin_getter=lambda: (
+        None
+        if "--roteiro" in set(sys.argv[1:])
+        else getattr(sys, "stdin", None)
+    ),
     raw_print=_RAW_PRINT,
     print_lock=_PRINT_LOCK,
     log=print,
@@ -3619,6 +3644,7 @@ _diagnostico_mente_runtime = _criar_diagnostico_mente_runtime(
     iot_getter=_registro_iot_runtime.diagnostico,
     avatar_getter=_avatar_runtime.diagnostico,
     dashboard_getter=_dashboard_terminal_runtime.diagnostico,
+    pc_b_getter=_pc_b_runtime.diagnostico,
     falar=lambda texto, emocao="calma", nivel=1: falar_com_lipsync(texto, emocao, nivel),
     log=print,
 )
@@ -3767,9 +3793,59 @@ def _encerrar_laylay() -> None:
     finally:
         _runtime_llm_portatil.encerrar()
 
+
+def _argumentos_roteiro_teste(argumentos: list[str]) -> dict[str, Any]:
+    resultado: dict[str, Any] = {
+        "caminho": "",
+        "retomar": False,
+        "resultado_raiz": os.path.join(_base_dir, "resultados_testes"),
+    }
+    indice = 0
+    while indice < len(argumentos):
+        atual = str(argumentos[indice] or "")
+        if atual == "--roteiro" and indice + 1 < len(argumentos):
+            resultado["caminho"] = argumentos[indice + 1]
+            indice += 2
+            continue
+        if atual == "--resultado-raiz" and indice + 1 < len(argumentos):
+            resultado["resultado_raiz"] = argumentos[indice + 1]
+            indice += 2
+            continue
+        if atual == "--retomar":
+            resultado["retomar"] = True
+        indice += 1
+    return resultado
+
+
 def main():
     """Ponto de entrada principal da Laylay."""
     inicio_programa_ts = time.time()
+    argumentos_roteiro = _argumentos_roteiro_teste(list(sys.argv[1:]))
+    caminho_roteiro = str(argumentos_roteiro.get("caminho") or "").strip()
+    configuracao_roteiro = None
+    diretorio_resultado_roteiro = None
+    espelhos_terminal: tuple[Any, Any] = ()
+    if caminho_roteiro:
+        try:
+            configuracao_roteiro = _carregar_configuracao_roteiro(caminho_roteiro)
+            diretorio_resultado_roteiro = _preparar_diretorio_resultado_roteiro(
+                caminho_roteiro,
+                raiz=str(argumentos_roteiro["resultado_raiz"]),
+                retomar=bool(argumentos_roteiro["retomar"]),
+            )
+            espelhos_terminal = _instalar_espelho_terminal_roteiro(
+                diretorio_resultado_roteiro,
+            )
+            print(
+                "🧪 [ROTEIRO] persistência ativada antes dos testes | "
+                f"pasta={diretorio_resultado_roteiro}"
+            )
+        except Exception as erro:
+            print(
+                "❌ [ROTEIRO] não foi possível carregar o teste | "
+                f"tipo={type(erro).__name__} detalhe={erro}"
+            )
+            return
 
     def usuario_ja_iniciou_conversa() -> bool:
         ultima_entrada = float(
@@ -3842,10 +3918,50 @@ def main():
         ):
             abertura_fallback = _abertura_chat_runtime.gerar_local("inicio")
             print(f"╭─ ◕‿◕ Laylay: {abertura_fallback}")
+    roteiro_finalizado = _threading.Event()
+    roteiro_runtime = None
+    if configuracao_roteiro is not None and diretorio_resultado_roteiro is not None:
+        roteiro_runtime = _RoteiroTesteConversaRuntime(
+            configuracao_roteiro,
+            enviar_entrada=lambda texto: _agendar_entrada_canonica(
+                texto, canal="roteiro_teste",
+            ),
+            resultado_getter=lambda: dict(
+                _estado_compartilhado_runtime.mental.get("plano_turno_atual") or {}
+            ),
+            voz_ocupada_getter=lambda: bool(
+                _conversa_estado_get("is_speaking", False)
+                or _conversa_estado_get("audio_playing", False)
+                or not _voz_runtime.fila.empty()
+            ),
+            ativar_modo_chat=lambda: _definir_modo_chat(
+                True, origem="roteiro_teste",
+            ),
+            modo_chat_ativo_getter=lambda: bool(
+                _conversa_estado_get("modo_chat", False)
+                or _conversa_estado_get("conversa_ativa", False)
+            ),
+            diretorio_resultado=diretorio_resultado_roteiro,
+            retomar=bool(argumentos_roteiro["retomar"]),
+            ao_finalizar=lambda _sucesso: roteiro_finalizado.set(),
+            log=print,
+        )
+        _orquestrador_fala_runtime.registrar_observador_texto_final(
+            roteiro_runtime.observar_resposta,
+        )
+        roteiro_runtime.iniciar()
+
     _inicializacao_runtime.manter_ativo(
         fala_pronta="",
         ao_encerrar=_encerrar_laylay,
-        deve_encerrar=_reinicio_aplicacao_solicitado.is_set,
+        deve_encerrar=lambda: bool(
+            _reinicio_aplicacao_solicitado.is_set()
+            or (
+                configuracao_roteiro is not None
+                and configuracao_roteiro.encerrar_ao_final
+                and roteiro_finalizado.is_set()
+            )
+        ),
     )
     if _reinicio_aplicacao_solicitado.is_set():
         argumentos = construir_argumentos_reinicio(
@@ -3860,5 +3976,12 @@ def main():
             os.execv(sys.executable, argumentos)
         except OSError as erro:
             print(f"⚠️ [LAYLAY] não consegui reiniciar o processo: {erro}")
+    if espelhos_terminal:
+        sys.stdout = espelhos_terminal[0].original
+        sys.stderr = espelhos_terminal[1].original
+    for espelho in espelhos_terminal:
+        fechar = getattr(espelho, "fechar", None)
+        if callable(fechar):
+            fechar()
 if __name__ == "__main__":
     main()

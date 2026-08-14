@@ -25,7 +25,10 @@ from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
 from mente_laylay.cognicao.arbitro_turno import CandidatoDecisao, arbitrar_turno
-from mente_laylay.cognicao.referencias_linguagem import valor_e_referencia_contextual
+from mente_laylay.cognicao.referencias_linguagem import (
+    separar_alvo_e_complemento_foco,
+    valor_e_referencia_contextual,
+)
 from mente_laylay.especialistas.capacidades import INTENTS_SOMENTE_LEITURA, intents_registradas
 from mente_laylay.autonomia.classificacao_habilidade import classificar_habilidade_intent
 from mente_laylay.cognicao.evidencia_operacional import (
@@ -208,6 +211,19 @@ def resolver_referencias_da_intencao(
             params["referencia_contextual"] = True
         saida["params"] = params
     elif intent in {"APP_OPEN", "CLOSE_APP", "MAXIMIZE_WINDOW"}:
+        # Defesa comum para qualquer origem da intenção (determinístico, IA,
+        # continuidade ou botão). Um complemento operacional nunca pode virar
+        # parte do nome passado ao executor. Depois da separação, pronomes
+        # continuam obrigados a resolver pelo retrato do turno.
+        for chave in ("nome_app", "app", "alvo"):
+            valor = str(params.get(chave) or "").strip()
+            if not valor:
+                continue
+            alvo_limpo, pediu_foco = separar_alvo_e_complemento_foco(valor)
+            if pediu_foco:
+                params[chave] = alvo_limpo
+                if intent == "APP_OPEN":
+                    params["modo"] = "focus"
         if not resolver_campo(("nome_app", "app", "alvo"), {"app", "janela"}):
             return None
     elif intent == "ORGANIZAR_DESKTOP":

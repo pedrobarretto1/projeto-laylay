@@ -11,6 +11,7 @@ from mente_laylay.autonomia.roteador_deterministico import (
     detectar_musica_ou_playlist_direta,
     detectar_playlist_laylay,
     detectar_playlist_usuario,
+    extrair_intencao_abrir_app,
     preparar_entrada_deterministica,
     texto_expresso_melhor_no_deterministico,
 )
@@ -83,6 +84,117 @@ def test_alvos_genericos_resolvem_por_dominio_e_bloqueiam_sem_memoria() -> None:
     assert resolver_referencias_da_intencao(
         {"intent": "DELETE_ITEM", "params": {"alvo": "esse arquivo"}}, {}
     ) is None
+
+
+def test_app_composto_separa_filtro_de_foco_e_resolve_referencia() -> None:
+    detectada = extrair_intencao_abrir_app(
+        "abre ele e deixa em foco",
+        normalizar_texto=lambda texto: str(texto).casefold(),
+        limpar_destino=lambda texto: texto,
+        apps_map={},
+        sites_diretos={},
+    )
+
+    assert detectada == {
+        "intent": "APP_OPEN",
+        "params": {"nome_app": "ele", "modo": "focus"},
+    }
+    resolvida = resolver_referencias_da_intencao(
+        detectada,
+        {
+            "referencia_resolvida": {
+                "tipo": "janela",
+                "nome": "Visual Studio Code",
+            },
+        },
+    )
+    assert resolvida == {
+        "intent": "APP_OPEN",
+        "params": {
+            "nome_app": "Visual Studio Code",
+            "nome_app_original": "ele",
+            "modo": "focus",
+            "referencia_contextual": True,
+        },
+    }
+    assert resolver_referencias_da_intencao(detectada, {}) is None
+
+
+def test_barreira_limpa_complemento_de_foco_de_qualquer_origem() -> None:
+    resolvida = resolver_referencias_da_intencao(
+        {
+            "intent": "APP_OPEN",
+            "params": {"nome_app": "Opera e deixa a janela em foco"},
+        },
+        {},
+    )
+
+    assert resolvida == {
+        "intent": "APP_OPEN",
+        "params": {"nome_app": "Opera", "modo": "focus"},
+    }
+
+    referencia = resolver_referencias_da_intencao(
+        {
+            "intent": "APP_OPEN",
+            "params": {"nome_app": "ele e deixa em foco"},
+        },
+        {
+            "referencia_resolvida": {
+                "tipo": "app",
+                "nome": "Opera",
+            },
+        },
+    )
+    assert referencia is not None
+    assert referencia["params"]["nome_app"] == "Opera"
+    assert referencia["params"]["nome_app_original"] == "ele"
+    assert referencia["params"]["referencia_contextual"] is True
+    assert referencia["params"]["modo"] == "focus"
+
+
+def test_comando_composto_nao_executa_pronome_sem_referencia() -> None:
+    assert resolver_referencias_da_intencao(
+        {
+            "intent": "APP_OPEN",
+            "params": {"nome_app": "ela e traz pra frente"},
+        },
+        {},
+    ) is None
+
+
+def test_turno_real_limpa_comando_composto_antes_da_arbitragem() -> None:
+    resultado, _rota = resolver_intencao(
+        "abre ele e deixa em foco",
+        "pre-ia",
+        {
+            "normalizar_texto": lambda texto: str(texto).casefold(),
+            "refinar_contexto_mental": lambda _texto: None,
+            "extrair_agendamento": lambda _texto: None,
+            "extrair_acao_agendada": lambda _texto: None,
+            "texto_cancela_acao_agora": lambda _texto: False,
+            "texto_depende_de_contexto": lambda _texto: True,
+            "detectar_intencao_deterministica": lambda _texto: {
+                "intent": "APP_OPEN",
+                "params": {"nome_app": "ele e deixa em foco"},
+            },
+            "resolver_comando_contextual_forcado": lambda _texto: None,
+            "resolver_repeticao_ultima_acao": lambda _texto: None,
+            "registrar_arbitragem_turno": lambda *_args: None,
+            "turno_atual": {"modalidade": "comando", "autoriza_execucao": True},
+            "retrato_turno_atual": {
+                "referencia_resolvida": {
+                    "tipo": "janela",
+                    "nome": "Visual Studio Code",
+                },
+            },
+        },
+    )
+
+    assert resultado is not None
+    assert resultado["intent"] == "APP_OPEN"
+    assert resultado["params"]["nome_app"] == "Visual Studio Code"
+    assert resultado["params"]["modo"] == "focus"
 
 
 def test_fechar_essa_aba_e_comando_explicito_da_aba_atual() -> None:

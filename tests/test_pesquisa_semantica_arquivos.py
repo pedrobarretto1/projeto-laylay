@@ -4,6 +4,7 @@ import os
 import time
 from pathlib import Path
 
+import mente_laylay.arquivos.pesquisa_semantica as pesquisa_semantica
 from mente_laylay.arquivos.execucao_arquivos import executar_intencao_arquivos
 from mente_laylay.arquivos.pesquisa_semantica import PesquisaSemanticaArquivosRuntime
 from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
@@ -27,6 +28,57 @@ from mente_laylay.personalidade.planejador_resposta import planejar_resposta_aca
 
 def _params(**kwargs):
     return kwargs
+
+
+def test_abertura_de_codigo_usa_editor_e_nunca_executa_associacao_windows(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    arquivo = tmp_path / "controlador.py"
+    arquivo.write_text('"""Controlador IoT."""', encoding="utf-8")
+    editor = tmp_path / "Code.exe"
+    editor.write_bytes(b"editor")
+    processos: list[tuple[list[str], dict]] = []
+
+    monkeypatch.setenv("LAYLAY_EDITOR_CODIGO", str(editor))
+    monkeypatch.setattr(
+        pesquisa_semantica.subprocess,
+        "Popen",
+        lambda comando, **kwargs: processos.append((list(comando), dict(kwargs))),
+    )
+    monkeypatch.setattr(
+        pesquisa_semantica.os,
+        "startfile",
+        lambda _caminho: (_ for _ in ()).throw(
+            AssertionError("arquivo de código não pode usar a associação do Windows")
+        ),
+        raising=False,
+    )
+
+    runtime = PesquisaSemanticaArquivosRuntime(
+        raizes=[tmp_path], log=lambda *_args: None,
+    )
+
+    assert runtime.abrir(str(arquivo)) is True
+    assert processos
+    assert processos[0][0] == [str(editor), "--reuse-window", str(arquivo.resolve())]
+
+
+def test_abertura_de_arquivo_nao_textual_preserva_associacao_windows(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    arquivo = tmp_path / "imagem.png"
+    arquivo.write_bytes(b"png")
+    abertos: list[str] = []
+    monkeypatch.setattr(
+        pesquisa_semantica.os, "startfile", abertos.append, raising=False,
+    )
+
+    runtime = PesquisaSemanticaArquivosRuntime(
+        raizes=[tmp_path], log=lambda *_args: None,
+    )
+
+    assert runtime.abrir(str(arquivo)) is True
+    assert abertos == [str(arquivo.resolve())]
 
 
 def test_pesquisa_encontra_por_nome_conteudo_e_significado(tmp_path: Path) -> None:

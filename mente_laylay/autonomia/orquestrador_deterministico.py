@@ -42,6 +42,8 @@ from mente_laylay.autonomia.roteador_deterministico import (
 from mente_laylay.cognicao.intencao_visual_jogo import detectar_pedido_visao_jogo
 from mente_laylay.cognicao.referencias_linguagem import (
     extrair_indice_referencia_ordinal,
+    separar_alvo_e_complemento_foco,
+    valor_e_referencia_contextual,
 )
 from mente_laylay.cognicao.modalidade_turno import analisar_protecao_operacional
 from mente_laylay.memoria_mental.continuidade_geral import (
@@ -331,6 +333,27 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         str(estrutura_arquivo.get("tipo") or "") == "pesquisa_semantica"
         and extrair_indice_referencia_ordinal(t_sem_destino) is not None
     )
+    ultima_intencao_arquivo = str(
+        mente_atual.get("ultima_acao_intent")
+        or mente_atual.get("ultima_intencao")
+        or ""
+    ).upper() if isinstance(mente_atual, Mapping) else ""
+    abertura_arquivo_contextual = False
+    abertura_candidata = re.fullmatch(
+        r"(?:abre|abra|abrir|mostra|mostre)\s+(?P<referencia>.+)",
+        t_sem_destino.rstrip(" .,!?:;"),
+        flags=re.IGNORECASE,
+    )
+    if abertura_candidata and str(estrutura_arquivo.get("tipo") or "").casefold() == "arquivo":
+        referencia_limpa, _pediu_foco = separar_alvo_e_complemento_foco(
+            abertura_candidata.group("referencia") or ""
+        )
+        abertura_arquivo_contextual = bool(
+            valor_e_referencia_contextual(referencia_limpa)
+            and ultima_intencao_arquivo in {
+                "CREATE_FILE", "FILE_OPEN_RESULT", "FILE_SEARCH", "FILE_TRANSACTION",
+            }
+        )
 
     detectores: list[Callable[[], Dict[str, Any] | None]] = [
         lambda: _candidato_iot_seguro(t),
@@ -347,7 +370,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
             params_cb=params,
             estado_mental=_get(ctx, "mente_integrada_estado", {}),
             normalizar_texto=_get(ctx, "normalizar_texto"),
-        ) if re.search(
+        ) if abertura_arquivo_contextual or re.search(
             r"\b(?:arquivo|pasta|documento|diretorio|diretório|txt|"
             r"escreve|escreva|escrever|grava|grave|gravar)\b",
             t,

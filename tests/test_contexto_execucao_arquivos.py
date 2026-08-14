@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import time
 
 import pytest
@@ -12,6 +13,8 @@ from mente_laylay.arquivos.contexto_execucao import (
     resolver_referencia_arquivo_contextual,
 )
 from mente_laylay.arquivos.execucao_arquivos import executar_intencao_arquivos
+from mente_laylay.arquivos.transacao_arquivos import ResultadoTransacaoArquivo
+from mente_laylay.autonomia.analise_comandos import processar_comandos_em_cadeia
 from mente_laylay.arquivos.mutacoes import criar_arquivos_mutacao_runtime
 from mente_laylay.integracao.registro_mutacoes_arquivos import registrar_arquivos_mutacao
 from mente_laylay.arquivos import lixeira_laylay
@@ -204,6 +207,112 @@ def test_pedido_natural_cria_arquivo_dentro_de_pasta() -> None:
     ) == {"intent": "CREATE_FOLDER", "params": {"nome": "antonio"}}
 
 
+@pytest.mark.parametrize(
+    ("frase", "nome", "conteudo"),
+    [
+        (
+            "cria um arquivo de texto chamado teste e dentro dele escreva voce \u00e8 gay",
+            "teste",
+            "voce \u00e8 gay",
+        ),
+        (
+            'crie um documento de texto chamado notas e escreva nele "linha um"',
+            "notas",
+            "linha um",
+        ),
+        (
+            "coloque um arquivo de texto com nome recado contendo ol\u00e1 mundo",
+            "recado",
+            "ol\u00e1 mundo",
+        ),
+        (
+            "cria um arquivo de texto chamado lembrete e grave comprar caf\u00e9 dentro dele",
+            "lembrete",
+            "comprar caf\u00e9",
+        ),
+    ],
+)
+def test_pedido_composto_cria_arquivo_com_conteudo_sem_confundir_referencia(
+    frase: str,
+    nome: str,
+    conteudo: str,
+) -> None:
+    assert detectar_intencao_arquivos(
+        frase,
+        params_cb=lambda **params: params,
+        estado_mental={},
+    ) == {
+        "intent": "CREATE_FILE",
+        "params": {
+            "alvo": nome,
+            "conteudo": conteudo,
+            "tipo_arquivo": "texto",
+        },
+    }
+
+
+def test_nome_com_e_sem_verbo_de_escrita_continua_inteiro() -> None:
+    assert detectar_intencao_arquivos(
+        "cria um arquivo de texto chamado teste e revis\u00e3o",
+        params_cb=lambda **params: params,
+        estado_mental={},
+    ) == {
+        "intent": "CREATE_FILE",
+        "params": {
+            "alvo": "teste e revis\u00e3o",
+            "tipo_arquivo": "texto",
+        },
+    }
+
+
+def test_pedido_composto_executa_criacao_e_escrita_no_mesmo_arquivo(tmp_path) -> None:
+    frase = "cria um arquivo de texto chamado teste e dentro dele escreva voce \u00e8 gay"
+    roteado = detectar_intencao_arquivos(
+        frase,
+        params_cb=lambda **params: params,
+        estado_mental={},
+    )
+    assert roteado is not None
+    resultados: list[tuple[str, bool | None]] = []
+
+    def resolver(valor: str) -> str:
+        caminho = str(valor or "")
+        return caminho if os.path.isabs(caminho) else str(tmp_path / caminho)
+
+    def criar(caminho: str, conteudo: str, _modo: str) -> bool:
+        with open(caminho, "w", encoding="utf-8") as arquivo:
+            arquivo.write(conteudo)
+        return True
+
+    tratado = executar_intencao_arquivos(
+        roteado["intent"],
+        roteado["params"],
+        "pc_a",
+        {
+            "falar_com_lipsync": lambda *_args: None,
+            "criar_ou_editar_arquivo": criar,
+            "_registrar_estrutura_arquivo_recente": lambda _dados: None,
+        },
+        texto_original=frase,
+        marcar_resultado=lambda status, executou, **_kwargs: resultados.append(
+            (status, executou)
+        ),
+        registrar_arquivo=lambda *_args: None,
+        item_local_existe=lambda caminho, _tipo: os.path.isfile(caminho),
+        resolver_caminho_local=resolver,
+        resolver_referencia_arquivo_contextual=lambda alvo, _tipo: alvo,
+        arquivos_mutacao=_mutacoes(
+            resolver_caminho_cb=resolver,
+            criar_arquivo_cb=criar,
+        ),
+    )
+
+    arquivo = tmp_path / "teste.txt"
+    assert tratado is True
+    assert arquivo.read_text(encoding="utf-8") == "voce \u00e8 gay"
+    assert resultados[-1] == ("arquivo_criado", True)
+
+
 def test_pronome_dela_resolve_ultima_pasta_criada() -> None:
     resultado = detectar_intencao_arquivos(
         "coloca um arquivo de texto chamado exemplo dentro dela",
@@ -262,6 +371,19 @@ def test_continuidade_de_arquivo_escreve_localiza_e_abre_o_mesmo_caminho(tmp_pat
         "params": {"caminho": str(arquivo), "alvo": "exemplo.txt"},
     }
     assert detectar_intencao_arquivos(
+        "Abre ele e deixa em foco.",
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    ) == {
+        "intent": "FILE_OPEN_RESULT",
+        "params": {
+            "caminho": str(arquivo),
+            "alvo": "exemplo.txt",
+            "modo": "focus",
+            "referencia_contextual": True,
+        },
+    }
+    assert detectar_intencao_arquivos(
         "Apaga ele.",
         params_cb=lambda **params: params,
         estado_mental=estado,
@@ -269,6 +391,314 @@ def test_continuidade_de_arquivo_escreve_localiza_e_abre_o_mesmo_caminho(tmp_pat
         "intent": "DELETE_ITEM",
         "params": {"alvo": str(arquivo), "tipo": "arquivo"},
     }
+
+
+def test_movimentacao_natural_resolve_pasta_criada_sem_entregar_ao_llm(tmp_path) -> None:
+    pasta = tmp_path / "carlos"
+    estado = {
+        "ultima_estrutura_arquivo_params": {
+            "tipo": "pasta",
+            "nome": "carlos",
+            "caminho": str(pasta),
+        },
+        "ultima_pasta": str(pasta),
+    }
+
+    assert detectar_intencao_arquivos(
+        "coloca o teste.txt dentro dele",
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    ) == {
+        "intent": "FILE_TRANSACTION",
+        "params": {
+            "operacao": "mover",
+            "origem": "teste.txt",
+            "destino": str(pasta),
+            "referencia_contextual": True,
+        },
+    }
+
+
+def test_movimentacao_natural_nao_sequestra_criacao_de_arquivo_generico() -> None:
+    estado = {
+        "ultima_estrutura_arquivo_params": {
+            "tipo": "pasta",
+            "nome": "carlos",
+            "caminho": "C:/Users/teste/Downloads/carlos",
+        },
+    }
+
+    assert detectar_intencao_arquivos(
+        "coloca um arquivo dentro dela",
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    ) != {
+        "intent": "FILE_TRANSACTION",
+        "params": {
+            "operacao": "mover",
+            "origem": "um arquivo",
+            "destino": "C:/Users/teste/Downloads/carlos",
+            "referencia_contextual": True,
+        },
+    }
+
+
+def test_transacao_natural_move_e_rele_destino(tmp_path) -> None:
+    origem = tmp_path / "teste.txt"
+    destino = tmp_path / "carlos"
+    origem.write_text("ok", encoding="utf-8")
+    destino.mkdir()
+    falas: list[str] = []
+    resultados: list[dict] = []
+    estruturas: list[dict] = []
+
+    tratado = executar_intencao_arquivos(
+        "FILE_TRANSACTION",
+        {
+            "operacao": "mover",
+            "origem": "teste.txt",
+            "destino": "carlos",
+            "referencia_contextual": True,
+        },
+        "pc_local",
+        {
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+            "_registrar_estrutura_arquivo_recente": estruturas.append,
+        },
+        texto_original="coloca o teste.txt dentro dele",
+        marcar_resultado=lambda status, executou, **kwargs: resultados.append({
+            "status": status,
+            "executou": executou,
+            **kwargs,
+        }),
+        registrar_arquivo=lambda *_args: None,
+        item_local_existe=lambda caminho, _tipo: os.path.exists(caminho),
+        resolver_caminho_local=lambda valor: str(
+            valor if os.path.isabs(str(valor)) else tmp_path / str(valor)
+        ),
+        resolver_referencia_arquivo_contextual=lambda valor, _tipo: valor,
+        arquivos_mutacao=_mutacoes(
+            resolver_caminho_cb=lambda valor: str(
+                valor if os.path.isabs(str(valor)) else tmp_path / str(valor)
+            ),
+        ),
+    )
+
+    movido = destino / "teste.txt"
+    assert tratado is True
+    assert movido.read_text(encoding="utf-8") == "ok"
+    assert not origem.exists()
+    assert resultados[-1]["status"] == "movido"
+    assert resultados[-1]["confirmado"] is True
+    assert resultados[-1]["alvo_resolvido"] == str(movido)
+    assert estruturas[-1]["tipo"] == "arquivo"
+    assert estruturas[-1]["caminho"] == str(movido)
+    assert "Coloquei teste.txt dentro de" in falas[-1]
+
+
+def test_transacao_natural_informa_arquivo_ausente_sem_cair_na_ia(tmp_path) -> None:
+    falas: list[str] = []
+    resultados: list[dict] = []
+
+    tratado = executar_intencao_arquivos(
+        "FILE_TRANSACTION",
+        {
+            "operacao": "mover",
+            "origem": "tete.txt",
+            "destino": "carlos",
+        },
+        "pc_local",
+        {"falar_com_lipsync": lambda fala, *_args: falas.append(fala)},
+        texto_original="coloca o tete.txt dentro dele",
+        marcar_resultado=lambda status, executou, **kwargs: resultados.append({
+            "status": status,
+            "executou": executou,
+            **kwargs,
+        }),
+        registrar_arquivo=lambda *_args: None,
+        item_local_existe=lambda *_args: False,
+        resolver_caminho_local=lambda valor: str(tmp_path / str(valor)),
+        resolver_referencia_arquivo_contextual=lambda valor, _tipo: valor,
+        arquivos_mutacao=_mutacoes(
+            transacionar_cb=lambda params: ResultadoTransacaoArquivo(
+                False,
+                "origem_nao_encontrada",
+                origem=str(params.get("origem") or ""),
+            ),
+        ),
+    )
+
+    assert tratado is True
+    assert resultados[-1]["status"] == "origem_nao_encontrada"
+    assert resultados[-1]["executou"] is False
+    assert resultados[-1]["confirmado"] is False
+    assert falas[-1].endswith("Não encontrei tete.txt, então não movi nada.")
+    assert "origem_nao_encontrada" not in falas[-1]
+
+
+def test_cadeia_real_cria_pasta_e_move_arquivo_na_segunda_etapa(tmp_path) -> None:
+    origem = tmp_path / "teste.txt"
+    origem.write_text("conteúdo", encoding="utf-8")
+    estado: dict = {}
+    resultados: list[str] = []
+
+    def resolver(valor: str) -> str:
+        bruto = str(valor or "")
+        return bruto if os.path.isabs(bruto) else str(tmp_path / bruto)
+
+    def transacionar(params: dict) -> ResultadoTransacaoArquivo:
+        origem_local = str(params.get("origem") or "")
+        pasta_local = str(params.get("destino") or "")
+        destino_local = os.path.join(pasta_local, os.path.basename(origem_local))
+        shutil.move(origem_local, destino_local)
+        return ResultadoTransacaoArquivo(
+            True, "movido", origem_local, destino_local,
+        )
+
+    mutacoes = _mutacoes(
+        resolver_caminho_cb=resolver,
+        criar_pasta_cb=lambda caminho: (
+            os.makedirs(resolver(caminho), exist_ok=True) or True
+        ),
+        transacionar_cb=transacionar,
+    )
+
+    def executar_trecho(trecho: str, _origem: str) -> bool:
+        comando = detectar_intencao_arquivos(
+            trecho,
+            params_cb=lambda **params: params,
+            estado_mental=estado,
+        )
+        if not comando:
+            return False
+        return executar_intencao_arquivos(
+            comando["intent"],
+            comando["params"],
+            "pc_local",
+            {
+                "falar_com_lipsync": lambda *_args: None,
+                "_registrar_estrutura_arquivo_recente": lambda dados: (
+                    estado.__setitem__("ultima_estrutura_arquivo_params", dict(dados))
+                    or estado.__setitem__("ultima_pasta", str(dados.get("caminho") or ""))
+                ),
+            },
+            texto_original=trecho,
+            marcar_resultado=lambda status, _executou, **_kwargs: resultados.append(status),
+            registrar_arquivo=lambda *_args: None,
+            item_local_existe=lambda caminho, _tipo: os.path.exists(resolver(caminho)),
+            resolver_caminho_local=resolver,
+            resolver_referencia_arquivo_contextual=lambda valor, _tipo: valor,
+            arquivos_mutacao=mutacoes,
+        )
+
+    assert processar_comandos_em_cadeia(
+        "cria uma pasta chamada carlos e coloca o teste.txt dentro dele",
+        origem="teste-real",
+        executar_trecho=executar_trecho,
+    ) is True
+    assert (tmp_path / "carlos" / "teste.txt").read_text(encoding="utf-8") == "conteúdo"
+    assert resultados == ["pasta_criada", "movido"]
+
+
+def test_abertura_de_arquivo_com_foco_aguarda_e_confirma_janela(tmp_path) -> None:
+    arquivo = tmp_path / "teste.txt"
+    arquivo.write_text("ok", encoding="utf-8")
+    falas: list[str] = []
+    resultados: list[dict] = []
+    alvos_foco: list[str] = []
+    esperas: list[float] = []
+
+    class Leitura:
+        def abrir(self, caminho: str) -> bool:
+            return caminho == str(arquivo)
+
+    def focar(alvo: str) -> bool:
+        alvos_foco.append(alvo)
+        return len(alvos_foco) >= 3
+
+    tratado = executar_intencao_arquivos(
+        "FILE_OPEN_RESULT",
+        {
+            "caminho": str(arquivo),
+            "alvo": "teste.txt",
+            "modo": "focus",
+        },
+        "pc_local",
+        {
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+            "focar_janela_app": focar,
+            "_aguardar_foco_arquivo": esperas.append,
+        },
+        texto_original="abre ele e deixa em foco",
+        marcar_resultado=lambda status, executou, **kwargs: resultados.append({
+            "status": status,
+            "executou": executou,
+            **kwargs,
+        }),
+        registrar_arquivo=lambda *_args: None,
+        item_local_existe=lambda *_args: True,
+        resolver_caminho_local=lambda valor: valor,
+        resolver_referencia_arquivo_contextual=lambda valor, _tipo: valor,
+        arquivos_leitura=Leitura(),
+    )
+
+    assert tratado is True
+    assert alvos_foco == ["teste.txt", "teste.txt", "teste.txt"]
+    assert esperas == [0.08, 0.14]
+    assert resultados == [{
+        "status": "arquivo_aberto_focado",
+        "executou": True,
+        "alvo_resolvido": str(arquivo),
+        "confirmado": True,
+    }]
+    assert "janela na frente" in falas[-1].casefold()
+
+
+def test_abertura_de_arquivo_nao_inventa_foco_quando_janela_nao_confirma(tmp_path) -> None:
+    arquivo = tmp_path / "teste.txt"
+    arquivo.write_text("ok", encoding="utf-8")
+    falas: list[str] = []
+    resultados: list[dict] = []
+
+    class Leitura:
+        def abrir(self, _caminho: str) -> bool:
+            return True
+
+    tratado = executar_intencao_arquivos(
+        "FILE_OPEN_RESULT",
+        {
+            "caminho": str(arquivo),
+            "alvo": "teste.txt",
+            "modo": "focus",
+        },
+        "pc_local",
+        {
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+            "focar_janela_app": lambda _alvo: False,
+            "_aguardar_foco_arquivo": lambda _segundos: None,
+        },
+        texto_original="abre ele e deixa em foco",
+        marcar_resultado=lambda status, executou, **kwargs: resultados.append({
+            "status": status,
+            "executou": executou,
+            **kwargs,
+        }),
+        registrar_arquivo=lambda *_args: None,
+        item_local_existe=lambda *_args: True,
+        resolver_caminho_local=lambda valor: valor,
+        resolver_referencia_arquivo_contextual=lambda valor, _tipo: valor,
+        arquivos_leitura=Leitura(),
+    )
+
+    assert tratado is True
+    assert resultados == [{
+        "status": "arquivo_aberto_sem_foco",
+        "executou": True,
+        "alvo_resolvido": str(arquivo),
+        "confirmado": False,
+    }]
+    assert "mas não consegui confirmar" in falas[-1].casefold()
+    assert "deixei a janela na frente" not in falas[-1].casefold()
 
 
 def test_pesquisa_de_arquivos_remove_caminhos_duplicados(tmp_path) -> None:

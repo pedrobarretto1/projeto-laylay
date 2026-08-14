@@ -7,6 +7,7 @@ O modulo recebe callbacks do contexto vivo para preservar a regra de mente unica
 from __future__ import annotations
 
 import os
+import time
 from typing import Any, Callable, Dict
 
 from mente_laylay.personalidade.falas_variadas import escolher as _escolher_fala_variada
@@ -20,6 +21,57 @@ from mente_laylay.autonomia.executor_comum import relatar_falha_ctx
 
 def _get(ctx: Dict[str, Any], nome: str, default=None):
     return ctx.get(nome, default)
+
+
+def _focar_janela_do_arquivo(
+    ctx: Dict[str, Any],
+    *,
+    caminho: str,
+    nome: str,
+) -> bool:
+    """Traz para frente o aplicativo que acabou de abrir o arquivo.
+
+    ``os.startfile`` (usado pela porta de arquivos) confirma apenas que o
+    Windows aceitou a abertura. O aplicativo associado pode levar alguns
+    instantes para criar sua janela. Reaproveitamos o gerenciador oficial de
+    janelas e procuramos pelo nome do arquivo, nunca pela janela que estava em
+    foco antes do pedido.
+    """
+
+    focar = _get(ctx, "focar_janela_app")
+    if not callable(focar):
+        return False
+
+    alvo = str(nome or os.path.basename(caminho) or "").strip()
+    if not alvo:
+        return False
+    aguardar = _get(ctx, "_aguardar_foco_arquivo", time.sleep)
+    if not callable(aguardar):
+        aguardar = time.sleep
+
+    # A primeira tentativa é imediata; as seguintes cobrem o tempo de criação
+    # da janela do aplicativo associado sem impor uma espera fixa ao sucesso.
+    esperas = (0.0, 0.08, 0.14, 0.22, 0.32, 0.45)
+    for espera_s in esperas:
+        if espera_s:
+            aguardar(espera_s)
+        try:
+            if bool(focar(alvo)):
+                return True
+        except Exception as erro:
+            relatar_falha_ctx(
+                ctx,
+                "executor_arquivos",
+                "falha_foco_arquivo",
+                erro=erro,
+                classe="degradacao",
+                impacto="comando",
+                fallback="arquivo_aberto_sem_foco",
+                dominio="arquivos",
+                fase="focar_arquivo_aberto",
+            )
+            return False
+    return False
 
 
 def executar_intencao_arquivos(
@@ -63,6 +115,7 @@ def executar_intencao_arquivos(
     ) -> None:
         resultado_fala["status"] = str(status or "")
         resultado_fala["executou"] = executou
+        resultado_fala["confirmado"] = confirmado
         if alvo_resolvido:
             resultado_fala["alvo"] = str(alvo_resolvido)
         if isinstance(params_resolvidos, dict):
@@ -101,7 +154,11 @@ def executar_intencao_arquivos(
                 ),
             },
             executou=resultado_fala.get("executou"),
-            confirmado=inferir_confirmacao(status, resultado_fala.get("executou")),
+            confirmado=(
+                resultado_fala.get("confirmado")
+                if resultado_fala.get("confirmado") is not None
+                else inferir_confirmacao(status, resultado_fala.get("executou"))
+            ),
             texto_usuario=texto_original,
             contexto={"destino": destino_val},
         )
@@ -130,6 +187,7 @@ def executar_intencao_arquivos(
         )
         resultado_fala["status"] = ""
         resultado_fala["executou"] = None
+        resultado_fala["confirmado"] = None
         falar_resultado = _get(ctx, "_falar_resultado_operacional")
         if callable(falar_resultado):
             falar_resultado(
@@ -260,7 +318,6 @@ def executar_intencao_arquivos(
         caminho = str(params.get("caminho") or "").strip()
         nome = str(params.get("alvo") or os.path.basename(caminho) or "arquivo").strip()
         sucesso = bool(abrir(caminho)) if callable(abrir) and caminho else False
-        marcar_resultado("arquivo_aberto" if sucesso else "falha_abertura", sucesso)
         if sucesso:
             registrar_arquivo(caminho, "arquivos")
             if callable(registrar_estrutura_arquivo_recente):
@@ -270,8 +327,38 @@ def executar_intencao_arquivos(
                     "caminho": caminho,
                     "target": destino_val,
                 })
-            falar(f"Abri {nome} para você.", "feliz", 1)
+            pediu_foco = str(params.get("modo") or "").strip().casefold() == "focus"
+            if pediu_foco:
+                foco_confirmado = _focar_janela_do_arquivo(
+                    ctx,
+                    caminho=caminho,
+                    nome=nome,
+                )
+                if foco_confirmado:
+                    marcar_resultado(
+                        "arquivo_aberto_focado",
+                        True,
+                        alvo_resolvido=caminho,
+                        confirmado=True,
+                    )
+                    falar(f"Abri {nome} e deixei a janela na frente.", "feliz", 1)
+                else:
+                    marcar_resultado(
+                        "arquivo_aberto_sem_foco",
+                        True,
+                        alvo_resolvido=caminho,
+                        confirmado=False,
+                    )
+                    falar(
+                        f"Abri {nome}, mas não consegui confirmar a janela na frente.",
+                        "calma",
+                        1,
+                    )
+            else:
+                marcar_resultado("arquivo_aberto", True)
+                falar(f"Abri {nome} para você.", "feliz", 1)
         else:
+            marcar_resultado("falha_abertura", False)
             falar(f"Encontrei {nome}, mas não consegui abri-lo agora.", "calma", 1)
         return True
 
@@ -281,14 +368,49 @@ def executar_intencao_arquivos(
             marcar_resultado("indisponivel", False)
             falar("As alterações de arquivos não estão disponíveis agora.", "calma", 1)
             return True
-        resultado = transacionar(params)
-        marcar_resultado(resultado.status if resultado.sucesso else "falha_execucao", resultado.sucesso)
+        params_transacao = dict(params or {})
+        operacao = str(params_transacao.get("operacao") or "").strip().casefold()
+        if operacao == "mover":
+            origem = resolver_referencia_arquivo_contextual(
+                str(params_transacao.get("origem") or ""), "arquivo",
+            )
+            destino = resolver_referencia_arquivo_contextual(
+                str(params_transacao.get("destino") or ""), "pasta",
+            )
+            params_transacao["origem"] = resolver_caminho_local(origem)
+            params_transacao["destino"] = resolver_caminho_local(destino)
+        resultado = transacionar(params_transacao)
+        marcar_resultado(
+            resultado.status if resultado.sucesso else str(resultado.status or "falha_execucao"),
+            resultado.sucesso,
+            alvo_resolvido=str(resultado.destino or resultado.origem or ""),
+            params_resolvidos=params_transacao,
+            confirmado=bool(resultado.sucesso),
+        )
         if resultado.sucesso:
             registrar_arquivo(resultado.destino or resultado.origem, "arquivos")
+            if callable(registrar_estrutura_arquivo_recente):
+                caminho_atual = str(resultado.destino or resultado.origem or "")
+                registrar_estrutura_arquivo_recente({
+                    "tipo": "pasta" if os.path.isdir(caminho_atual) else "arquivo",
+                    "caminho": caminho_atual,
+                    "arquivo_nome": (
+                        os.path.basename(caminho_atual)
+                        if not os.path.isdir(caminho_atual) else ""
+                    ),
+                    "nome": (
+                        os.path.basename(caminho_atual)
+                        if os.path.isdir(caminho_atual) else ""
+                    ),
+                    "target": destino_val,
+                })
         if callable(falar):
             if resultado.sucesso:
                 falas = {
-                    "movido": f"Corrigi o destino e confirmei: agora está em {resultado.destino}.",
+                    "movido": (
+                        f"Coloquei {os.path.basename(resultado.destino)} dentro de "
+                        f"{os.path.dirname(resultado.destino)} e conferi o resultado."
+                    ),
                     "renomeado": f"Corrigi o nome e confirmei: agora é {os.path.basename(resultado.destino)}.",
                     "ja_com_mesmo_nome": (
                         f"{os.path.basename(resultado.origem)} já está com esse nome e tipo. "
@@ -298,10 +420,37 @@ def executar_intencao_arquivos(
                 }
                 falar(falas.get(resultado.status, "Corrigi o arquivo e confirmei o resultado."), "calma", 1)
             else:
+                origem_nome = os.path.basename(
+                    str(resultado.origem or params_transacao.get("origem") or "arquivo")
+                )
+                destino_nome = os.path.basename(
+                    str(resultado.destino or params_transacao.get("destino") or "pasta")
+                )
+                falas_falha = {
+                    "origem_nao_encontrada": (
+                        f"Não encontrei {origem_nome}, então não movi nada."
+                    ),
+                    "destino_nao_encontrado": (
+                        f"Não encontrei a pasta {destino_nome}, então não movi nada."
+                    ),
+                    "destino_ja_existe": (
+                        f"Já existe um item chamado {origem_nome} em {destino_nome}; "
+                        "não sobrescrevi nada."
+                    ),
+                    "destino_bloqueado": (
+                        f"Não movi {origem_nome}: esse destino está protegido."
+                    ),
+                    "validacao_falhou": (
+                        f"Tentei mover {origem_nome}, mas a conferência final falhou."
+                    ),
+                }
                 falar(
-                    f"Entendi a correção, mas não alterei o arquivo porque a transação falhou: {resultado.status}.",
-                    "irritada",
-                    2,
+                    falas_falha.get(
+                        str(resultado.status or ""),
+                        f"Não consegui mover {origem_nome}; nada foi confirmado.",
+                    ),
+                    "calma",
+                    1,
                 )
         return True
 

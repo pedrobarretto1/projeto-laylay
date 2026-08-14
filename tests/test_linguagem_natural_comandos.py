@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from mente_laylay.autonomia.analise_comandos import segmentar_comandos_em_cadeia
+from mente_laylay.autonomia.analise_comandos import (
+    processar_comandos_em_cadeia,
+    segmentar_comandos_em_cadeia,
+)
 from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
 from mente_laylay.autonomia.coordenador_intencao import CicloComandosRuntime
 from mente_laylay.autonomia.coordenador_intencao import resolver_intencao
@@ -58,6 +61,29 @@ def test_cadeia_preserva_extensao_e_pontuacao_dos_argumentos() -> None:
         "Cria uma pasta chamada teste composto",
         "coloca um arquivo chamado resultado.md dentro dela.",
     ]
+
+
+def test_hipotese_com_depois_nao_vira_cadeia_nem_etapa_fantasma() -> None:
+    texto = "Talvez eu apague o teste natural.txt depois."
+    executados: list[str] = []
+
+    assert segmentar_comandos_em_cadeia(texto) == [
+        "talvez eu apague o teste natural txt depois"
+    ]
+    assert processar_comandos_em_cadeia(
+        texto,
+        executar_trecho=lambda trecho, _origem: executados.append(trecho) or True,
+    ) is False
+    assert executados == []
+
+
+def test_depois_so_separa_duas_ordens_operacionais_reais() -> None:
+    assert segmentar_comandos_em_cadeia(
+        "Abre o Opera e depois maximiza a janela."
+    ) == ["Abre o Opera", "maximiza a janela"]
+    assert segmentar_comandos_em_cadeia(
+        "Eu penso nisso depois."
+    ) == ["eu penso nisso depois"]
 
 
 def test_barreira_prioritaria_entrega_cadeia_ao_ciclo_canonico() -> None:

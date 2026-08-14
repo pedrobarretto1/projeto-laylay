@@ -36,6 +36,33 @@ _ORDINAIS_REFERENCIA = {
 }
 
 
+def separar_alvo_e_complemento_foco(valor: str) -> tuple[str, bool]:
+    """Separa o referente de um complemento que somente solicita foco.
+
+    Não escolhe domínio, não resolve o pronome e não autoriza execução. Serve
+    igualmente para arquivos, aplicativos e outras entidades que possam ser
+    abertas por uma habilidade proprietária.
+    """
+    alvo = re.sub(r"\s+", " ", str(valor or "").strip())
+    if not alvo:
+        return "", False
+    encontrado = re.match(
+        r"^(?P<alvo>.+?)\s+"
+        r"(?:e\s+)?(?:depois\s+)?(?:"
+        r"(?:deixa|deixe|coloca|coloque|bota|bote|traz|traga|mantem|mantém|mantenha)"
+        r"(?:\s+(?:ele|ela|isso|esse|essa|a\s+janela|o\s+programa|o\s+app|o\s+aplicativo))?"
+        r"\s+(?:em\s+foco|na\s+frente|pra\s+frente|para\s+frente|em\s+primeiro\s+plano)"
+        r"|(?:foca|foque)(?:\s+(?:ele|ela|isso|esse|essa))?"
+        r")\s*$",
+        alvo,
+        flags=re.IGNORECASE,
+    )
+    if not encontrado:
+        return alvo, False
+    alvo_limpo = str(encontrado.group("alvo") or "").strip(" .,!?:;\"'")
+    return alvo_limpo, bool(alvo_limpo)
+
+
 def extrair_indice_referencia_ordinal(texto: str) -> int | None:
     """Extrai uma seleção ordinal contextual em índice baseado em zero.
 

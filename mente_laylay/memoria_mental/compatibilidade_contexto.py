@@ -55,6 +55,24 @@ def resolver_repeticao_ultima_acao(
         and str(params_recentes.get("alvo") or "").strip()
     ):
         return {"intent": "DELETE_ITEM", "params": dict(params_recentes)}
+    falhas_retentaveis_transacao = {
+        "falha_execucao", "origem_nao_encontrada", "destino_nao_encontrado",
+        "destino_bloqueado", "validacao_falhou", "falhou",
+    }
+    if (
+        intent_recente == "FILE_TRANSACTION"
+        and status_recente in falhas_retentaveis_transacao
+        and estado.get("ultima_acao_ok") is not True
+        and estado.get("ultima_acao_confirmada") is not True
+        and isinstance(params_recentes, dict)
+        and str(params_recentes.get("operacao") or "").strip().casefold()
+        in {"mover", "renomear"}
+        and str(params_recentes.get("origem") or "").strip()
+        and str(params_recentes.get("destino") or "").strip()
+    ):
+        # Repetimos apenas uma transação comprovadamente falha. Uma mudança já
+        # confirmada nunca volta ao disco por causa de "tenta de novo".
+        return {"intent": "FILE_TRANSACTION", "params": dict(params_recentes)}
     oficial = selecionar_continuidade_por_classe(
         estado,
         classe="operacional",

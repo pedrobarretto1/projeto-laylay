@@ -20,6 +20,9 @@ from mente_laylay.memoria_mental.contexto_imediato import (
     resolver_comando_acao_geral_contextual,
 )
 from mente_laylay.autonomia.coordenador_intencao import resolver_intencao
+from mente_laylay.autonomia.orquestrador_deterministico import (
+    detectar_intencao_deterministica_mente,
+)
 from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto
 from mente_laylay.memoria_mental.estado_compartilhado_runtime import (
@@ -139,6 +142,209 @@ def test_referencia_imediata_prefere_a_continuidade_geral():
     assert referencia["origem_continuidade"] == "geral"
     assert referencia["tipo"] == "playlist"
     assert referencia["alvo"] == "alternativo"
+
+
+def test_arquivo_criado_vence_terminal_em_foco_ao_abrir_referencia(tmp_path) -> None:
+    caminho = str(tmp_path / "teste.txt")
+    estado = registrar_resultado_execucao(
+        estado_mental_inicial(),
+        {
+            "intent": "CREATE_FILE",
+            "params": {"alvo": caminho, "tipo_arquivo": "texto"},
+            "status": "arquivo_criado",
+            "executou": True,
+            "confirmado": True,
+        },
+        "cria um arquivo de texto chamado teste",
+    )
+    estado["ultima_estrutura_arquivo_params"] = {
+        "tipo": "arquivo",
+        "arquivo_nome": "teste.txt",
+        "caminho": caminho,
+    }
+    estado["ultima_estrutura_arquivo_ts"] = time.time()
+    estado["ultima_habilidade"] = "arquivos"
+    estado["ts"] = time.time()
+
+    referencia = referencia_contextual_imediata(
+        mente_integrada_estado=estado,
+        foco_vivo={
+            "habilidade": "janela",
+            "alvo": "Laylay — Terminal 3.0 · P5 · db93f256",
+        },
+        texto_atual="abre ele e deixa em foco",
+        normalizar_texto=normalizar_texto,
+    )
+    assert referencia["tipo"] == "arquivo"
+    assert referencia["alvo"] == caminho
+    assert referencia["origem_continuidade"] == "contrato_confirmado"
+
+    roteada = detectar_intencao_deterministica_mente(
+        "abre ele e deixa em foco",
+        {
+            "normalizar_texto": normalizar_texto,
+            "mente_integrada_estado": estado,
+            "texto_conversa_casual_sem_acao": lambda _texto: False,
+            "texto_bloqueia_playlist_agora": lambda _texto: False,
+            "texto_social_curto": lambda _texto: False,
+            "ignorar_token_solto": lambda _texto: False,
+            "fluxo_prioritario_da_ia": lambda _texto: False,
+            "texto_expresso_melhor_no_deterministico": lambda _texto: True,
+            "texto_depende_de_contexto": lambda _texto: True,
+            "limpar_destino_pc_b": lambda texto: texto,
+        },
+    )
+    assert roteada == {
+        "intent": "FILE_OPEN_RESULT",
+        "params": {
+            "caminho": caminho,
+            "alvo": "teste.txt",
+            "modo": "focus",
+            "referencia_contextual": True,
+        },
+    }
+
+
+def test_arquivo_aberto_confirmado_fecha_ele_como_janela_do_documento(tmp_path) -> None:
+    caminho = str(tmp_path / "teste.txt")
+    estado = registrar_resultado_execucao(
+        estado_mental_inicial(),
+        {
+            "intent": "FILE_OPEN_RESULT",
+            "params": {"caminho": caminho, "alvo": "teste.txt", "modo": "focus"},
+            "status": "arquivo_aberto_focado",
+            "executou": True,
+            "confirmado": True,
+        },
+        "abre ele e deixa em foco",
+    )
+    estado["ultima_estrutura_arquivo_params"] = {
+        "tipo": "arquivo",
+        "arquivo_nome": "teste.txt",
+        "caminho": caminho,
+    }
+    estado["ultima_estrutura_arquivo_ts"] = time.time()
+    estado["ultima_habilidade"] = "arquivos"
+    estado["ts"] = time.time()
+
+    referencia = referencia_contextual_imediata(
+        mente_integrada_estado=estado,
+        foco_vivo={},
+        texto_atual="fecha ele",
+        normalizar_texto=normalizar_texto,
+    )
+
+    assert referencia["tipo"] == "arquivo"
+    assert referencia["origem_continuidade"] == "contrato_confirmado"
+    assert resolver_comando_acao_geral_contextual("fecha ele", referencia) == {
+        "intent": "CLOSE_APP",
+        "params": {
+            "nome_app": "teste.txt",
+            "janela_titulo": "teste.txt",
+            "referencia_arquivo": True,
+        },
+    }
+
+
+def test_consulta_de_caminho_nao_faz_fecha_ele_encerrar_vscode(tmp_path) -> None:
+    caminho = str(tmp_path / "controlador.py")
+    estado = registrar_resultado_execucao(
+        estado_mental_inicial(),
+        {
+            "intent": "FILE_SEARCH",
+            "params": {"query": "controlador.py", "caminho": caminho},
+            "status": "caminho_encontrado",
+            "executou": True,
+            "confirmado": True,
+        },
+        "Onde esse arquivo fica?",
+    )
+    estado["ultima_estrutura_arquivo_params"] = {
+        "tipo": "arquivo",
+        "arquivo_nome": "controlador.py",
+        "caminho": caminho,
+    }
+    estado["ultima_estrutura_arquivo_ts"] = time.time()
+    estado["ultima_habilidade"] = "arquivos"
+    estado["ultimo_app_janela"] = (
+        "controlador.py - projeto lay - Visual Studio Code"
+    )
+    estado["ts"] = time.time()
+
+    referencia = referencia_contextual_imediata(
+        mente_integrada_estado=estado,
+        foco_vivo={
+            "habilidade": "janela",
+            "alvo": "controlador.py - projeto lay - Visual Studio Code",
+        },
+        texto_atual="Fecha ele.",
+        normalizar_texto=normalizar_texto,
+    )
+    comando = resolver_comando_acao_geral_contextual("fecha ele", referencia)
+
+    assert referencia["tipo"] == "arquivo"
+    assert referencia["alvo"] == "controlador.py"
+    assert referencia["params"]["caminho"] == caminho
+    assert comando == {
+        "intent": "CLOSE_APP",
+        "params": {
+            "nome_app": "controlador.py",
+            "janela_titulo": "controlador.py",
+            "referencia_arquivo": True,
+        },
+    }
+
+
+def test_sequencia_real_arquivo_aberto_fecha_ele_vence_app_antigo(tmp_path) -> None:
+    caminho = str(tmp_path / "teste.txt")
+    mental = registrar_resultado_execucao(
+        estado_mental_inicial(),
+        {
+            "intent": "FILE_OPEN_RESULT",
+            "params": {"caminho": caminho, "alvo": "teste.txt", "modo": "focus"},
+            "status": "arquivo_aberto_focado",
+            "executou": True,
+            "confirmado": True,
+        },
+        "abre ele e deixa em foco",
+    )
+    estrutura = {
+        "tipo": "arquivo",
+        "arquivo_nome": "teste.txt",
+        "caminho": caminho,
+    }
+    mental["ultima_estrutura_arquivo_params"] = dict(estrutura)
+    mental["ultima_estrutura_arquivo_ts"] = time.time()
+    mental["ultima_habilidade"] = "arquivos"
+    mental["ultimo_app_janela"] = "Laylay — Terminal 3.0"
+    mental["ts"] = time.time()
+    estado = EstadoCompartilhadoRuntime(mental=mental)
+    contexto_imediato = ContextoImediatoRuntime(
+        estado_runtime_getter=lambda: estado,
+        servicos_iniciais={
+            "_normalizar_texto_com_apelidos": normalizar_texto,
+            "_alvo_corrigido_atual": lambda: "Laylay — Terminal 3.0",
+            "_registrar_alvo_corrigido": lambda _alvo: None,
+            "falar_com_lipsync": lambda *_args: None,
+            "_contexto_musical_ativo": lambda: False,
+            "_estrutura_arquivo_recente": lambda _ttl: dict(estrutura),
+            "_foco_vivo_atual": lambda **_kwargs: {
+                "habilidade": "janela",
+                "alvo": "Laylay — Terminal 3.0",
+            },
+            "enviar_mensagem": lambda *_args, **_kwargs: None,
+        },
+    )
+
+    assert contexto_imediato.resolver("fecha ele") == {
+        "intent": "CLOSE_APP",
+        "params": {
+            "nome_app": "teste.txt",
+            "janela_titulo": "teste.txt",
+            "referencia_arquivo": True,
+        },
+        "_rota_contextual": "GERAL",
+    }
 
 
 def test_open_url_confirmado_fecha_ele_como_aba_mesmo_apos_fala_conversacional():
