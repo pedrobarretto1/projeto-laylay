@@ -21,6 +21,7 @@ _INTENTS_POR_DOMINIO = {
     "navegador": {
         "CLOSE_TAB", "CLOSE_IDLE_TABS", "OPEN_URL", "SITE_ENTER",
         "SCREEN_CAPTURE", "SEARCH", "RESUMIR_PAGINA", "LIST_TABS",
+        "SWITCH_PREVIOUS_TAB",
     },
     "visao": {"GAME_VISION", "VISION_QUERY"},
     "agenda": {
@@ -30,7 +31,7 @@ _INTENTS_POR_DOMINIO = {
     "arquivos": {
         "CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "CONFIRM_DELETE_ITEM",
         "CANCEL_DELETE_ITEM", "RESTORE_DELETED_ITEM", "FILE_TRANSACTION",
-        "FILE_SEARCH", "FILE_OPEN_RESULT",
+        "FILE_SEARCH", "FILE_READ", "FILE_OPEN_RESULT",
     },
     "email": {"EMAIL_READ", "EMAIL_SYNC", "NOTIFICATIONS"},
     "iot": {"IOT_CONTROL", "IOT_STATUS", "IOT_LIST"},
@@ -71,7 +72,7 @@ INTENTS_SOMENTE_LEITURA = frozenset({
     "GAME_VISION", "VISION_QUERY",
     "INBOX_LIST",
     "CLIPBOARD_READ", "CLIPBOARD_INVESTIGATE",
-    "FILE_SEARCH",
+    "FILE_SEARCH", "FILE_READ",
     "PEOPLE_QUERY", "PEOPLE_LIST",
     "LEARNING_QUERY",
 })
@@ -125,6 +126,10 @@ _CONFIRMACAO_POR_INTENT = {
         "retorno_dados",
         "a lista é devolvida pela extensão no turno atual, sem completar títulos por inferência",
     ),
+    "SWITCH_PREVIOUS_TAB": (
+        "estado_observado",
+        "a extensão troca a aba e a aba ativa é relida antes da confirmação",
+    ),
     "OPEN_URL": ("estado_observado", "a URL ou aba aberta é relida"),
     "SITE_ENTER": ("variavel", "a solicitação pode ser aceita sem observar o conteúdo final"),
     "SCREEN_CAPTURE": ("retorno_dados", "a captura só conclui quando a análise visual final ou uma falha correlacionada retorna"),
@@ -152,6 +157,10 @@ _CONFIRMACAO_POR_INTENT = {
     "FILE_SEARCH": (
         "retorno_dados",
         "os resultados são lidos de um índice local efêmero por nome, caminho, conteúdo, tipo e data",
+    ),
+    "FILE_READ": (
+        "retorno_dados",
+        "o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade",
     ),
     "FILE_OPEN_RESULT": (
         "variavel",

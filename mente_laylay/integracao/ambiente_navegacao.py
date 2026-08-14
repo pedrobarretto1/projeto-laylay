@@ -151,6 +151,10 @@ class AmbienteNavegacaoRuntime:
                     "pinned": aba.get("pinned") is True,
                     "discarded": aba.get("discarded") is True,
                 }
+                if isinstance(aba.get("windowId"), int) and not isinstance(
+                    aba.get("windowId"), bool
+                ):
+                    item["windowId"] = aba.get("windowId")
                 if isinstance(aba.get("lastAccessed"), (int, float)):
                     item["lastAccessed"] = aba.get("lastAccessed")
                 resultado.append(item)

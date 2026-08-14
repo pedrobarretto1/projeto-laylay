@@ -224,6 +224,8 @@ def test_mencao_iot_sem_autorizacao_e_respondida_sem_roteador_nem_llm() -> None:
     ) is True
     assert "possibilidade" in falas[-1]
     assert "deixei a luz como está" in falas[-1]
+    assert "desligo" not in falas[-1].casefold()
+    assert "pedir diretamente" in falas[-1].casefold()
     assert chamadas_roteador == []
 
 

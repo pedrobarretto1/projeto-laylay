@@ -556,9 +556,16 @@ if (cmd.action === "youtube_search") {
       chrome.tabs.query({ url: "*://*.youtube.com/*" }, (lista) => resolve(lista || []));
     });
     const requestedTabId = Number(cmd.target_tab_id ?? cmd.targetTabId);
-    const targetTab = Number.isInteger(requestedTabId)
+    let targetTab = Number.isInteger(requestedTabId)
       ? tabs.find((tab) => tab.id === requestedTabId)
-      : (tabs.find((tab) => tab.url && tab.url.includes("/watch")) || tabs[0]);
+      : null;
+    if (!Number.isInteger(requestedTabId)) {
+      // A aba visível pode ser Wikipédia, código ou qualquer outra página.
+      // Controle de mídia pertence à aba que realmente tem um player
+      // reproduzindo/pausado, não à primeira aba do YouTube retornada.
+      const melhor = await findBestYouTubeCandidate(false);
+      targetTab = melhor?.tab || null;
+    }
     if (!targetTab?.id) {
       sendCommandResult(cmd, false, {
         status: Number.isInteger(requestedTabId) ? "source_tab_missing" : "not_found",

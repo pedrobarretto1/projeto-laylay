@@ -445,6 +445,37 @@ class PesquisaSemanticaArquivosRuntime:
             self._metricas["falhas"] += 1
             return False
 
+    def ler_texto(self, caminho: str, *, limite: int = 4000) -> dict[str, Any]:
+        """Lê um arquivo textual permitido sem enviar seu conteúdo à LLM."""
+        alvo = Path(str(caminho or "")).expanduser()
+        if not self._permitido(alvo) or not alvo.is_file():
+            return {"ok": False, "status": "arquivo_indisponivel", "conteudo": ""}
+        if alvo.suffix.casefold() not in EXTENSOES_TEXTO:
+            return {"ok": False, "status": "formato_nao_textual", "conteudo": ""}
+        if PADRAO_SENSIVEL.search(alvo.name):
+            return {"ok": False, "status": "arquivo_sensivel", "conteudo": ""}
+        try:
+            tamanho = int(alvo.stat().st_size)
+            if tamanho > self.max_bytes_texto:
+                return {"ok": False, "status": "arquivo_muito_grande", "conteudo": ""}
+            limite_seguro = max(1, min(8000, int(limite or 4000)))
+            with alvo.open("r", encoding="utf-8", errors="replace") as arquivo:
+                conteudo = arquivo.read(limite_seguro + 1)
+            truncado = len(conteudo) > limite_seguro
+            if truncado:
+                conteudo = conteudo[:limite_seguro]
+            conteudo = conteudo.replace("\x00", "").strip()
+            return {
+                "ok": True,
+                "status": "conteudo_lido",
+                "nome": alvo.name,
+                "conteudo": conteudo,
+                "truncado": truncado,
+            }
+        except (OSError, UnicodeError, ValueError):
+            self._metricas["falhas"] += 1
+            return {"ok": False, "status": "falha_leitura", "conteudo": ""}
+
     def diagnostico(self) -> dict[str, Any]:
         with self._lock:
             return {

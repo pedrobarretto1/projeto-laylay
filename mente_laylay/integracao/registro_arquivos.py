@@ -75,6 +75,25 @@ class RegistroArquivosLeitura:
     def abrir(self, caminho: str) -> bool:
         return bool(self.servico.abrir(caminho))
 
+    def ler_texto(self, caminho: str, *, limite: int = 4000) -> dict[str, Any]:
+        """Lê texto local pela mesma fronteira segura usada pelo índice.
+
+        A operação é opcional para serviços legados; sua ausência é relatada
+        como indisponibilidade, sem tentar abrir ou interpretar o arquivo por
+        outro caminho.
+        """
+        ler = getattr(self.servico, "ler_texto", None)
+        if not callable(ler):
+            return {"ok": False, "status": "indisponivel", "conteudo": ""}
+        bruto = dict(ler(caminho, limite=limite) or {})
+        return {
+            "ok": bruto.get("ok") is True,
+            "status": str(bruto.get("status") or "falha_execucao")[:80],
+            "nome": str(bruto.get("nome") or "")[:240],
+            "conteudo": str(bruto.get("conteudo") or "")[:max(1, min(8000, int(limite)))],
+            "truncado": bruto.get("truncado") is True,
+        }
+
     def diagnostico(self) -> dict[str, Any]:
         bruto = dict(self.servico.diagnostico() or {})
         return {chave: bruto[chave] for chave in _CAMPOS_DIAGNOSTICO if chave in bruto}

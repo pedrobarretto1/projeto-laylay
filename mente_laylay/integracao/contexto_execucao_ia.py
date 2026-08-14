@@ -174,7 +174,7 @@ DEPENDENCIAS_EXECUCAO_INTENCAO = (
     "_central_notificacoes_executar",
     "_registrar_sugestao_indireta",
     "modo_jogo_ativo",
-    "_musica_estado_get",
+    "_musica_estado_get", "_musica_estado_set",
     "_avaliar_evento_emocional_operacional",
 )
 

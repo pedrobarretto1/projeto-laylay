@@ -753,10 +753,12 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
         ft = data.get("fromTitle", "")
         tt = data.get("toTitle", "")
         if frm and to and frm != to:
-            if aba_anterior_id and aba_anterior_id != to:
+            if aba_anterior_id and aba_anterior_id != frm:
                 aba_historico.append(aba_anterior_id)
                 updates["aba_historico"] = aba_historico
-            updates["aba_anterior_id"] = to
+            # ``from`` é a aba que perdeu o foco; ela é a anterior. Guardar
+            # ``to`` fazia o estado apontar para a própria aba atual.
+            updates["aba_anterior_id"] = frm
             print(f"🔄 [Chrome] Troca de aba manual: {ft} ({frm}) → {tt} ({to})")
         updates["handled"] = True
         return updates

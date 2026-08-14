@@ -134,8 +134,11 @@ class AgendaRuntime:
             if not isinstance(agendamento, dict):
                 continue
             nome = str(
-                agendamento.get("nome")
-                or agendamento.get("descricao")
+                # ``nome`` é um identificador curto (30 caracteres) usado
+                # internamente. Na fala, a descrição integral é a fonte
+                # humana e evita cortes como "aba Sis".
+                agendamento.get("descricao")
+                or agendamento.get("nome")
                 or agendamento.get("id")
                 or "compromisso misterioso"
             ).strip()
@@ -160,7 +163,7 @@ class AgendaRuntime:
                 inativos += 1
                 continue
             nome = str(
-                item.get("nome") or item.get("descricao") or "compromisso"
+                item.get("descricao") or item.get("nome") or "compromisso"
             ).strip()[:100]
             tipo = str(item.get("tipo") or "once").strip().lower()
             quando = str(item.get("hora") or "").strip()
@@ -479,7 +482,7 @@ _PADRAO_DATA_LEMBRETE = re.compile(
 )
 _PADRAO_RELOGIO_NUMERICO = re.compile(
     r"\b(?:pode\s+ser\s+)?(?:às|as|a)?\s*(?P<hora>\d{1,2})\s*"
-    r"(?::|h|\s)\s*(?P<minuto>\d{2})\b",
+    r"(?::|h|\s+e\s+|\s+)\s*(?P<minuto>\d{2})\b",
     flags=re.IGNORECASE,
 )
 _PADRAO_RELOGIO_HORAS = re.compile(
@@ -729,7 +732,7 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
     # então ele precisa ser lido do texto original antes da limpeza lexical.
     hora_bruta = ""
     m_hora_bruta = re.search(
-        r"\b(?:às|as|a)?\s*(\d{1,2})\s*(?::|h)\s*(\d{2})\b",
+        r"\b(?:às|as|a)?\s*(\d{1,2})\s*(?::|h|\s+e\s+)\s*(\d{2})\b",
         bruto.casefold(),
     )
     if m_hora_bruta:
@@ -937,7 +940,7 @@ def extrair_acao_agendada_local(texto: str, normalizar_texto_cb: Callable[[str],
     # A normalização geral remove ':'; por isso o relógio é extraído do texto
     # bruto e só a parte da ação é normalizada depois.
     m_hora = re.search(
-        r"\b(?:às|as|a)\s+(\d{1,2})\s*(?::|h|\s)\s*(\d{2})\s*$",
+        r"\b(?:às|as|a)\s+(\d{1,2})\s*(?::|h|\s+e\s+|\s+)\s*(\d{2})\s*$",
         bruto.casefold(),
     )
     if m_hora:

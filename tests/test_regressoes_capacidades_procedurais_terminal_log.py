@@ -159,6 +159,7 @@ def test_respostas_locais_equivalentes_variam_sem_mudar_os_fatos() -> None:
     for resposta in (primeira, segunda):
         normalizada = resposta.casefold()
         assert "spotify" in normalizada
+        assert "{nome}" not in resposta
         assert "não tenho acesso" not in normalizada
         assert any(
             limite in normalizada
@@ -199,6 +200,10 @@ def test_pergunta_repetida_sobre_abrir_apps_varia_sem_executar() -> None:
     (
         (
             "Você consegue abrir e organizar programas?",
+            ("abr", "programas", "organiz", "janelas"),
+        ),
+        (
+            "Você consegue abrir o Spotify e organizar uma janela?",
             ("abr", "programas", "organiz", "janelas"),
         ),
         (
@@ -310,3 +315,30 @@ def test_por_que_nao_nao_reaproveita_falha_operacional_antiga() -> None:
     )
 
     assert resposta == ""
+
+
+def test_por_que_nao_apos_fechar_app_ausente_explica_o_alvo_atual() -> None:
+    agora = time.time()
+    mapa = MapaHabilidadesRuntime(relogio=lambda: agora)
+    contexto = {
+        "ultima_acao_intent": "CLOSE_APP",
+        "ultima_acao_status": "nao_encontrado",
+        "ultima_acao_ok": False,
+        "ultima_acao_alvo": "Aplicativo Que Não Existe",
+        "ultima_acao_params": {"nome_app": "Aplicativo Que Não Existe"},
+        "ultima_acao_ts": agora - 1.0,
+    }
+
+    falas, execucoes = _passar_pela_porta_prioritaria(
+        "Por que não?", mapa=mapa, contexto=contexto,
+    )
+
+    assert execucoes == []
+    assert len(falas) == 1
+    resposta = falas[0].casefold()
+    assert "aplicativo que não existe" in resposta
+    assert any(trecho in resposta for trecho in (
+        "não encontrei", "não apareceu", "não confirmou",
+    ))
+    assert "fechar" in resposta
+    assert "não tenho acesso" not in resposta

@@ -108,6 +108,32 @@ def test_preferencia_pessoal_reconhecida_com_clareza_e_aceita() -> None:
     assert avaliacao["aceita"] is True
 
 
+def test_fato_pessoal_nao_pode_virar_inferencia_de_gosto() -> None:
+    avaliacao = avaliar_qualidade_comunicacao(
+        "Eu moro em Boituva.",
+        "Boituva, então. Isso já me dá uma pista melhor do seu gosto.",
+    )
+
+    assert avaliacao["aceita"] is False
+    assert "fato_pessoal_inferiu_preferencia" in avaliacao["problemas_bloqueantes"]
+    assert "você mora em Boituva" in contingencia_comunicacao(
+        "Eu moro em Boituva."
+    )
+
+
+def test_preferencia_pessoal_nao_pode_receber_estereotipo() -> None:
+    avaliacao = avaliar_qualidade_comunicacao(
+        "Eu gosto de rock e programação.",
+        "Rock e programação? Isso é um combo de fãs com inteligência e sangue quente.",
+    )
+
+    assert avaliacao["aceita"] is False
+    assert "preferencia_pessoal_estereotipada" in avaliacao["problemas_bloqueantes"]
+    contingencia = contingencia_comunicacao("Eu gosto de rock e programação.")
+    assert "você gosta de rock e programação" in contingencia
+    assert "sangue quente" not in contingencia.casefold()
+
+
 def test_preferencia_de_terceiro_nao_pode_ser_atribuida_ao_usuario() -> None:
     avaliacao = avaliar_qualidade_comunicacao(
         "minha namorada gosta de funk",
@@ -459,6 +485,29 @@ def test_registro_de_relacao_rejeita_perspectiva_da_assistente() -> None:
         in avaliacao["problemas_bloqueantes"]
     )
     assert "Nanda é sua amiga" in contingencia_comunicacao("Nanda é minha amiga.")
+
+
+def test_registro_de_relacao_rejeita_formulacao_artificial_do_roteiro() -> None:
+    avaliacao = avaliar_qualidade_comunicacao(
+        "Nanda é minha amiga.",
+        "Nanda é só uma amiga de você — não tem espaço aqui no meu código.",
+    )
+
+    assert avaliacao["aceita"] is False
+    assert (
+        "relacao_pessoal_formulacao_artificial"
+        in avaliacao["problemas_bloqueantes"]
+    )
+
+    avaliacao_playlist = avaliar_qualidade_comunicacao(
+        "Nanda é minha amiga.",
+        "Nanda é sua amiga. Seu círculo de amizades não depende de playlists.",
+    )
+    assert avaliacao_playlist["aceita"] is False
+    assert (
+        "relacao_pessoal_formulacao_artificial"
+        in avaliacao_playlist["problemas_bloqueantes"]
+    )
 
 
 def test_resposta_literalmente_repetida_pede_nova_redacao() -> None:

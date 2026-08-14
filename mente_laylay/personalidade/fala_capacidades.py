@@ -158,7 +158,7 @@ def falar_instrucao_capacidade(
             ),
             (
                 f"Você pode mandar ‘abre {nome} e deixa em foco’. Eu aciono a habilidade local "
-                "e verifico a janela; como aqui foi uma pergunta de procedimento, {nome} ficou "
+                f"e verifico a janela; como aqui foi uma pergunta de procedimento, {nome} ficou "
                 "como estava."
             ),
         ]
@@ -226,6 +226,25 @@ def falar_instrucao_capacidade(
                 f"{nome} não apareceu na busca local por programas e janelas. Então eu parei sem "
                 "inventar sucesso — consigo abrir apps, mas preciso que o alvo exista ou tenha um "
                 "nome reconhecível."
+            ),
+        ]
+    elif tipo_norm == "alvo_app_nao_estava_aberto":
+        nome = alvo_limpo or "esse aplicativo"
+        opcoes = [
+            (
+                f"Porque não encontrei uma janela aberta de {nome} para fechar. "
+                "Eu consigo fechar programas, mas não vou fingir que encerrei um "
+                "processo que o computador não mostrou."
+            ),
+            (
+                f"{nome} não apareceu entre as janelas abertas. Então parei sem "
+                "fechar outra coisa por engano; a habilidade funciona, esse alvo "
+                "específico é que não estava aberto."
+            ),
+            (
+                f"O computador não confirmou {nome} como programa aberto. Consigo "
+                "fechar aplicativos, só preciso de uma janela correspondente para "
+                "fazer isso com segurança."
             ),
         ]
     else:

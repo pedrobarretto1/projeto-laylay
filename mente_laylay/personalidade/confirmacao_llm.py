@@ -35,7 +35,7 @@ INTENTS_INFORMATIVOS = frozenset({
     "WEATHER", "CLIMA", "LISTAR_AGENDAMENTOS", "LER_NOTIFICACOES",
     "NOTIFICATIONS",
     "LIST_TABS", "LIST_WINDOWS",
-    "FILE_SEARCH", "SEARCH",
+    "FILE_SEARCH", "FILE_READ", "SEARCH",
     # A confirmação não recebe o tipo original no novo turno. Reescrevê-la
     # fazia a LLM chamar uma pasta de "arquivo"; preserve a fala factual.
     "CONFIRM_DELETE_ITEM",
@@ -273,6 +273,14 @@ def _motivo_contrato_invalido(
         base,
     ):
         return "promessa_ou_nova_oferta"
+    if _normalizar(resultado.status) == "agendamento_cancelado" and re.search(
+        r"\b(?:n[aã]o\s+esque[cç]a|a\s+gente\s+(?:est[aá]|t[aá])\s+no\s+aguardo|"
+        r"vou\s+te\s+lembrar|ainda\s+(?:precisa|tem\s+que))\b",
+        base,
+    ):
+        # Cancelar encerra a obrigação da Laylay. Uma tirada não pode anexar
+        # outro lembrete, cobrança ou promessa à confirmação já concluída.
+        return "cancelamento_reintroduziu_obrigacao"
 
     raizes = RAIZES_POR_STATUS.get(_normalizar(resultado.status), ())
     if raizes and not any(raiz in base for raiz in raizes):
@@ -294,6 +302,45 @@ def _motivo_contrato_invalido(
         json.dumps(resultado.params, ensure_ascii=False, default=str),
         json.dumps(resultado.contexto, ensure_ascii=False, default=str),
     )))
+    intent_observada = _normalizar(resultado.intent)
+    if intent_observada in {"close_app", "close_tab"} and re.search(
+        r"\b(?:abrir|abriu|abrindo)\b",
+        base,
+    ):
+        # Fechar algo inexistente não é uma falha de abertura. Essa troca de
+        # verbo apareceu no roteiro e contradiz a ação que realmente falhou.
+        return "verbo_operacional_divergente"
+    anos_fala = set(re.findall(r"\b(?:19|20)\d{2}\b", base))
+    if anos_fala and not anos_fala.issubset(
+        set(re.findall(r"\b(?:19|20)\d{2}\b", verdade_observada))
+    ):
+        # Humor pode variar; data factual não observada, não. Evita anexar um
+        # ano de filme inventado à simples confirmação de fechar uma aba.
+        return "detalhe_temporal_nao_evidenciado"
+    if (
+        intent_observada
+        in {"agendar_lembrete", "cancelar_agendamento", "listar_agendamentos"}
+        or _normalizar(resultado.status).startswith(("agendamento_", "lembrete_"))
+    ):
+        marcadores_tempo_fala = set(re.findall(
+            r"\b(?:hoje|amanha|amanhã|ontem)\b", base,
+        ))
+        marcadores_tempo_observados = set(re.findall(
+            r"\b(?:hoje|amanha|amanhã|ontem)\b", verdade_observada,
+        ))
+        if not marcadores_tempo_fala.issubset(marcadores_tempo_observados):
+            return "detalhe_temporal_nao_evidenciado"
+    if (
+        _normalizar(resultado.status) == "playlist_aberta"
+        and re.search(
+            r"\b(?:esta|está|ta|tá)\s+(?:sendo\s+)?ouvid[oa]\b|"
+            r"\bmundo\s+inteiro\b.*\bouvir\b",
+            base,
+        )
+    ):
+        # Abrir a playlist confirma a navegação/entrega ao player. Não prova
+        # que o áudio está audível para o usuário.
+        return "audio_nao_observado"
     # "A playlist está vazia" é uma alegação verificável, não uma tirada. A
     # autoria só pode usá-la quando essa informação veio no contrato factual.
     if re.search(r"\bvazi[ao]s?\b", base) and "vazi" not in verdade_observada:

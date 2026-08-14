@@ -38,6 +38,7 @@ class PortaNavegadorOperacoes(Protocol):
     def fechar_aba(self, alvo: str) -> bool: ...
     def fechar_aba_atual(self) -> bool: ...
     def fechar_abas(self, ids: list[int]) -> bool: ...
+    def focar_aba(self, tab_id: int) -> bool: ...
     def recarregar_url(self, url: str) -> bool: ...
     def fechar_aba_nativa(self, alvo: str = "") -> bool: ...
     def fechar_abas_vazias(self) -> bool: ...
@@ -195,6 +196,15 @@ class RegistroNavegadorOperacoes:
 
     def fechar_abas(self, ids: list[int]) -> bool:
         return bool(self.servico.fechar_abas(ids))
+
+    def focar_aba(self, tab_id: int) -> bool:
+        focar = getattr(self.servico, "focar_aba", None)
+        return bool(
+            isinstance(tab_id, int)
+            and not isinstance(tab_id, bool)
+            and callable(focar)
+            and focar(tab_id)
+        )
 
     def recarregar_url(self, url: str) -> bool:
         return bool(self.servico.recarregar_url(url))

@@ -120,8 +120,12 @@ def limpar_fala_operacional(texto: str) -> str:
     Regras específicas de nomes ficam nas funções acima, antes da montagem.
     """
     fala = remover_residuos_operacionais(texto)
+    # Horários também são indivisíveis nas falas dos executores. A autoria
+    # operacional podia inserir um espaço em ``10:37`` depois do agendamento.
+    fala = re.sub(r"\b([01]?\d|2[0-3]):\s+([0-5]\d)\b", r"\1:\2", fala)
     fala = re.sub(r"\s+([,.;:!?])", r"\1", fala)
-    fala = re.sub(r"([,;:])(?=\S)", r"\1 ", fala)
+    # Dois-pontos depois de algarismo pertencem ao horário já normalizado.
+    fala = re.sub(r"([,;]|(?<!\d):)(?=\S)", r"\1 ", fala)
     return re.sub(r"\s+", " ", fala).strip()
 
 

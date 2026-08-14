@@ -234,12 +234,55 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     if consulta_clima and modalidade_iot != "deliberativo":
         return consulta_clima
 
+    # Consultas e controles explícitos do player precisam vencer o filtro
+    # conversacional genérico aplicado por ``preparar_entrada_deterministica``.
+    # Sem esta precedência, frases como "vai para a próxima faixa" podiam ser
+    # entregues à LLM quando a aba visível não era a do player. A modalidade
+    # continua sendo a autoridade para mutações: hipótese, negação e pergunta
+    # instrucional não ganham execução aqui.
+    candidato_midia_previo = detectar_volume_ou_midia(
+        texto_normalizado_previo,
+        params_cb=lambda **kwargs: kwargs,
+        contexto_musical_ativo=bool(
+            _call(ctx, "contexto_musical_ativo", default=False)
+        ),
+        contexto_volume_ativo=ultimo_intent_previo == "VOLUME",
+    )
+    if isinstance(candidato_midia_previo, dict):
+        intent_midia_previo = str(
+            candidato_midia_previo.get("intent") or ""
+        ).upper().strip()
+        protecao_midia = analisar_protecao_operacional(
+            texto,
+            normalizar_texto=normalizar if callable(normalizar) else None,
+        )
+        if intent_midia_previo == "MUSIC_STATUS":
+            return candidato_midia_previo
+        if (
+            intent_midia_previo in {"MEDIA_CONTROL", "VOLUME"}
+            and modalidade_iot != "deliberativo"
+            and not protecao_midia.get("bloqueia_execucao")
+        ):
+            return candidato_midia_previo
+
     consulta_abas = detectar_consulta_abas(
         texto_normalizado_previo,
         params_cb=lambda **kwargs: kwargs,
     )
     if consulta_abas and modalidade_iot != "deliberativo":
         return consulta_abas
+
+    # Uma referência ordinal pertence à busca web confirmada mais recente.
+    # Ela precisa ser resolvida antes da busca local: caso contrário, um
+    # resultado antigo de arquivos podia sequestrar ``abre o primeiro
+    # resultado`` logo após uma pesquisa na internet.
+    continuacao_resultado_web = detectar_continuacao_resultado_web(
+        texto_normalizado_previo,
+        dict(mente_previa or {}) if isinstance(mente_previa, Mapping) else {},
+        params_cb=lambda **kwargs: kwargs,
+    )
+    if continuacao_resultado_web:
+        return continuacao_resultado_web
 
     # O roteador de arquivos possui marcadores locais mais específicos. Ele
     # precisa ter a primeira palavra em frases como ``pesquisa o arquivo X``;
@@ -281,14 +324,6 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     )
     if consulta_aprendizados:
         return consulta_aprendizados
-
-    continuacao_resultado_web = detectar_continuacao_resultado_web(
-        texto_normalizado_previo,
-        dict(mente_previa or {}) if isinstance(mente_previa, Mapping) else {},
-        params_cb=lambda **kwargs: kwargs,
-    )
-    if continuacao_resultado_web:
-        return continuacao_resultado_web
 
     referente_atual = selecionar_referente_saliente(
         dict(mente_previa or {}) if isinstance(mente_previa, Mapping) else {},

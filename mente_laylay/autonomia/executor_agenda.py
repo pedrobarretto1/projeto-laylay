@@ -314,16 +314,39 @@ def _agendar_lembrete(
         "origem": "pedido_usuario", "evidencia": "persistencia_local",
     }
     substituiu = {"ok": not bool(params.get("substituir_lembrete_anterior"))}
+    salvamento = {"duplicado": False}
 
     def _salvar_lembrete(lista: list) -> None:
+        alvo_norm = " ".join(descricao.casefold().split())
+
+        def _mesmo_instante(item: Dict[str, Any]) -> bool:
+            try:
+                return abs(
+                    float(item.get("ts_execucao") or 0.0) - float(ts_exec)
+                ) <= 60.0
+            except (TypeError, ValueError):
+                return False
+
+        duplicado = next((
+            item
+            for item in lista
+            if isinstance(item, dict)
+            and item.get("ativo", True)
+            and not item.get("intencao_no_disparo")
+            and " ".join(str(item.get("descricao") or "").casefold().split())
+            == alvo_norm
+            and _mesmo_instante(item)
+        ), None)
+        if duplicado is not None and not params.get("substituir_lembrete_anterior"):
+            salvamento["duplicado"] = True
+            return
         if params.get("substituir_lembrete_anterior"):
-            alvo_norm = descricao.casefold().strip()
             candidatos = [
                 indice
                 for indice, item in enumerate(lista)
                 if isinstance(item, dict)
                 and item.get("ativo", True)
-                and str(item.get("descricao") or "").casefold().strip()
+                and " ".join(str(item.get("descricao") or "").casefold().split())
                 == alvo_norm
                 and not item.get("intencao_no_disparo")
             ]
@@ -334,15 +357,18 @@ def _agendar_lembrete(
         lista.append(novo)
 
     persistiu = _transacionar(ctx, _salvar_lembrete)
-    salvo = bool(persistiu and substituiu["ok"])
+    duplicado = bool(persistiu and salvamento["duplicado"])
+    criado = bool(persistiu and substituiu["ok"] and not duplicado)
+    salvo = bool(criado or duplicado)
     status = (
         "lembrete_reagendado"
-        if salvo and params.get("substituir_lembrete_anterior")
-        else "lembrete_agendado" if salvo
+        if criado and params.get("substituir_lembrete_anterior")
+        else "lembrete_ja_agendado" if duplicado
+        else "lembrete_agendado" if criado
         else "alvo_nao_encontrado" if persistiu and not substituiu["ok"]
         else "falha_execucao"
     )
-    deps.marcar_resultado(status, executou=salvo, confirmado=salvo)
+    deps.marcar_resultado(status, executou=criado, confirmado=salvo)
     deps.falar_por_status(status, escolher_fala_variada([
         *(
             [
@@ -350,6 +376,11 @@ def _agendar_lembrete(
                 f"Reagendei {descricao} para {tempo_txt}.",
             ]
             if params.get("substituir_lembrete_anterior")
+            else [
+                f"Esse lembrete de {descricao} já estava marcado para {tempo_txt}; não dupliquei.",
+                f"Já tinha um lembrete igual para {tempo_txt}. Mantive só um.",
+            ]
+            if duplicado
             else [
                 f"Feito. Vou te lembrar {tempo_txt} de {descricao}.",
                 f"Pronto, lembrete de {descricao} salvo para {tempo_txt}.",
@@ -370,7 +401,9 @@ def _agendar_lembrete(
     if salvo:
         _registrar_feedback(
             ctx,
-            "correcao" if params.get("complemento_pendente") else "aceitacao",
+            "repeticao" if duplicado else (
+                "correcao" if params.get("complemento_pendente") else "aceitacao"
+            ),
             intent="AGENDAR_LEMBRETE",
         )
     else:
@@ -410,6 +443,11 @@ def _cancelar(params: Dict[str, Any], ctx: Dict[str, Any], deps: DependenciasExe
 
     def _aplicar(lista: list) -> None:
         for item in lista:
+            # Um lembrete já cancelado não pode comprovar um novo
+            # cancelamento. Itens legados sem o campo continuam sendo
+            # tratados como ativos para preservar compatibilidade.
+            if item.get("ativo") is False:
+                continue
             nome = str(item.get("nome") or "").lower()
             descricao = str(item.get("descricao") or "").lower()
             item_id = str(item.get("id") or "").lower()

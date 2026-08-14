@@ -276,6 +276,10 @@ def verificar_fala_turno(
     contrato = dict(plano or {})
     texto_usuario = str(contrato.get("texto_usuario") or "")
     ajustada = re.sub(r"\s+", " ", str(fala or "")).strip()
+    # Horas são tokens indivisíveis. Alguns modelos inserem um espaço depois
+    # dos dois-pontos (``10: 37``), o que soa quebrado no TTS e reduz a
+    # precisão visual da confirmação, embora o executor tenha guardado 10:37.
+    ajustada = re.sub(r"\b([01]?\d|2[0-3]):\s+([0-5]\d)\b", r"\1:\2", ajustada)
     ajustada = ajustar_autorreferencia_assistente(ajustada)
 
     if eh_estado_tecnico_llm(ajustada):

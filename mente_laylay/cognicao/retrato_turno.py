@@ -187,7 +187,7 @@ def _operacao_explicita(texto: str) -> tuple[str, tuple[str, ...]]:
         return "iot", ("IOT_CONTROL", "IOT_STATUS", "IOT_LIST")
     if re.search(r"\b(?:arquivo|pasta|documento)\b", t):
         return "arquivo", (
-            "FILE_SEARCH", "FILE_OPEN_RESULT", "CREATE_FOLDER", "CREATE_FILE",
+            "FILE_SEARCH", "FILE_READ", "FILE_OPEN_RESULT", "CREATE_FOLDER", "CREATE_FILE",
             "DELETE_ITEM", "MOVE_ITEM", "FILE_TRANSACTION",
         )
     if re.search(r"\b(?:codigo|código|script)\b", t) and re.search(
@@ -359,6 +359,9 @@ def dominio_intent(intent: str) -> str:
         return "arquivo"
     if nome in {"APP_OPEN", "CLOSE_APP", "MAXIMIZE_WINDOW"}:
         return "app"
-    if nome in {"OPEN_URL", "CLOSE_TAB", "SITE_ENTER", "SEARCH", "LIST_TABS"}:
+    if nome in {
+        "OPEN_URL", "CLOSE_TAB", "SITE_ENTER", "SEARCH", "LIST_TABS",
+        "SWITCH_PREVIOUS_TAB",
+    }:
         return "site"
     return ""

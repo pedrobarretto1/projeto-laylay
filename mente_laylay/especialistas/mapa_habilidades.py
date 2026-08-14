@@ -632,7 +632,7 @@ class MapaHabilidadesRuntime:
             recente = ts_anterior > 0.0 and self._relogio() - ts_anterior <= 300.0
             if (
                 recente
-                and intent_anterior == "APP_OPEN"
+                and intent_anterior in {"APP_OPEN", "CLOSE_APP"}
                 and executou_anterior is not True
                 and status_anterior in {
                     "nao_encontrado", "não_encontrado", "app_nao_encontrado",
@@ -651,7 +651,11 @@ class MapaHabilidadesRuntime:
                     or "esse aplicativo"
                 ).strip()
                 return falar_instrucao_capacidade(
-                    "alvo_app_nao_encontrado",
+                    (
+                        "alvo_app_nao_estava_aberto"
+                        if intent_anterior == "CLOSE_APP"
+                        else "alvo_app_nao_encontrado"
+                    ),
                     alvo=alvo_anterior,
                     contexto=dados_contexto,
                 )
@@ -832,7 +836,8 @@ class MapaHabilidadesRuntime:
         if ("sistema" in dominios or "navegador" in dominios) and re.search(r"\b(?:fech|encerr)\w*\b", t):
             return "Consigo. Posso fechar o programa, navegador ou aba quando você fizer o pedido direto."
         pede_abrir_programa = bool(re.search(
-            r"\b(?:abrir|abre)\b.*\b(?:apps?|aplicativos?|programas?)\b",
+            r"\b(?:abrir|abre)\b.*\b(?:apps?|aplicativos?|programas?)\b|"
+            r"\b(?:abrir|abre)\b(?:\s+(?:o|a|um|uma))?\s+[^,.!?]+",
             t,
         ))
         pede_organizar_janelas = bool(re.search(

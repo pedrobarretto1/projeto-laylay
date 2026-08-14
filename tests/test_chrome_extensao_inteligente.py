@@ -110,6 +110,22 @@ class ChromeExtensaoInteligenteTests(unittest.TestCase):
         self.assertEqual(recebido, [snapshot])
         imprimir.assert_not_called()
 
+    def test_troca_manual_guarda_a_aba_de_origem_como_anterior(self) -> None:
+        updates = handle_action(
+            {
+                "action": "manual_tab_change",
+                "from": 17,
+                "to": 23,
+                "fromTitle": "Wikipédia",
+                "toTitle": "Python",
+            },
+            {"aba_anterior_id": 11, "aba_historico": []},
+        )
+
+        self.assertTrue(updates["handled"])
+        self.assertEqual(updates["aba_anterior_id"], 17)
+        self.assertEqual(updates["aba_historico"], [11])
+
     def test_resultado_do_comando_resolve_pendencia(self) -> None:
         event = threading.Event()
         pending = {"req-1": {"event": event, "result": None}}

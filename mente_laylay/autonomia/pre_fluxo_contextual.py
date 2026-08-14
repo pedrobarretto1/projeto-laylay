@@ -497,6 +497,51 @@ def processar_consulta_sistema_local(
 ) -> Tuple[bool, str]:
     """Responde inventários locais sem pedir ao modelo que os adivinhe."""
     t = re.sub(r"\s+", " ", str(texto_usuario or "").strip().casefold())
+    consulta_unica = re.fullmatch(
+        r"(?:o|a)?\s*(?P<nome>.+?)\s+"
+        r"(?:(?:continua|ainda)\s+(?:abert[oa]|rodando)|"
+        r"(?:esta|está|ta|tá)\s+(?:abert[oa]|rodando))\??",
+        t,
+    )
+    if consulta_unica:
+        nome = str(consulta_unica.group("nome") or "").strip(" .,!?:;")
+        resolver = _get(ctx, "_resolver_alvo_ambiente")
+        if not nome or not callable(resolver):
+            return False, ""
+        try:
+            estado = dict(resolver(nome) or {})
+        except Exception:
+            estado = {}
+        aberto = bool(estado.get("programa_aberto"))
+        em_foco = bool(estado.get("programa_em_foco"))
+        apresentacao = nome.capitalize()
+        if aberto and em_foco:
+            fala = f"{apresentacao} está aberto e em foco."
+        elif aberto:
+            fala = f"{apresentacao} está aberto, mas não está em foco."
+        else:
+            fala = f"{apresentacao} não está entre os programas abertos agora."
+        tratado = emitir_conversa_curta(
+            ctx, texto_usuario, fala, emocao="calma", nivel=1,
+        )
+        if tratado:
+            registrar = _get(ctx, "_registrar_resultado_execucao")
+            if callable(registrar):
+                registrar(
+                    {
+                        "intent": "LIST_WINDOWS",
+                        "params": {"alvo": nome},
+                        "status": "estado_app_consultado",
+                        "executou": True,
+                        "confirmado": True,
+                    },
+                    texto_usuario,
+                    True,
+                    origem="consulta_sistema_local",
+                    status="estado_app_consultado",
+                )
+        return tratado, "consulta_estado_programa" if tratado else ""
+
     if not re.search(
         r"\b(?:quais|que|lista|listar|mostra|mostrar)\b.*"
         r"\b(?:programas|aplicativos|apps|janelas|processos)\b.*"

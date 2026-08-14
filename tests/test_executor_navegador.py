@@ -133,6 +133,102 @@ def test_close_idle_tabs_preserva_retorno_falso_quando_falha() -> None:
     )]
 
 
+def test_voltar_aba_anterior_escolhe_a_mais_recente_e_confirma_foco() -> None:
+    eventos: list[tuple] = []
+
+    class Leitura:
+        ativa = 9
+        abas = [
+            {"id": 7, "title": "Python", "url": "https://python.org", "windowId": 1, "lastAccessed": 20},
+            {"id": 8, "title": "Outra", "url": "https://example.com", "windowId": 1, "lastAccessed": 10},
+            {"id": 9, "title": "Google", "url": "https://google.com", "windowId": 1, "lastAccessed": 30, "active": True},
+        ]
+
+        def conectado(self):
+            return True
+
+        def aba_ativa(self, timeout_s=4.0):
+            return {"tabId": self.ativa}
+
+        def listar_abas(self, timeout_s=5.0):
+            return [dict(aba) for aba in self.abas]
+
+    leitura = Leitura()
+
+    class Operacoes:
+        def focar_aba(self, tab_id):
+            leitura.ativa = tab_id
+            return True
+
+    despacho = executar_intencao_navegador(
+        "SWITCH_PREVIOUS_TAB",
+        {},
+        "volta para a aba anterior",
+        "pc_a",
+        {
+            "_registro_navegador_leitura_runtime": leitura,
+            "_registro_navegador_operacoes_runtime": Operacoes(),
+            "falar_com_lipsync": lambda *_args: None,
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(True)
+    assert leitura.ativa == 7
+    assert eventos == [(
+        "resultado",
+        "aba_anterior_focada",
+        {
+            "executou": True,
+            "confirmado": True,
+            "alvo_resolvido": "Python — python.org",
+            "detalhe": "a extensão releu a aba como ativa",
+        },
+    )]
+
+
+def test_voltar_aba_anterior_aguarda_evento_de_foco_sem_repetir_comando(monkeypatch) -> None:
+    eventos: list[tuple] = []
+    leituras = iter((9, 9, 7))
+    focos: list[int] = []
+    monkeypatch.setattr(
+        "mente_laylay.autonomia.executor_navegador.time.sleep",
+        lambda _segundos: None,
+    )
+
+    class Leitura:
+        def conectado(self):
+            return True
+
+        def aba_ativa(self, timeout_s=4.0):
+            return {"tabId": next(leituras)}
+
+        def listar_abas(self, timeout_s=5.0):
+            return [
+                {"id": 7, "title": "Python", "url": "https://python.org", "windowId": 1, "lastAccessed": 20},
+                {"id": 9, "title": "Google", "url": "https://google.com", "windowId": 1, "lastAccessed": 30, "active": True},
+            ]
+
+    class Operacoes:
+        def focar_aba(self, tab_id):
+            focos.append(tab_id)
+            return True
+
+    despacho = executar_intencao_navegador(
+        "SWITCH_PREVIOUS_TAB", {}, "volta para a aba anterior", "pc_a",
+        {
+            "_registro_navegador_leitura_runtime": Leitura(),
+            "_registro_navegador_operacoes_runtime": Operacoes(),
+            "falar_com_lipsync": lambda *_args: None,
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(True)
+    assert focos == [7]
+    assert eventos[-1][2]["confirmado"] is True
+
+
 def test_close_tab_no_pc_b_preserva_alvo_preciso() -> None:
     eventos: list[tuple] = []
     remotos: list[dict] = []

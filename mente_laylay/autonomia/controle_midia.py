@@ -85,6 +85,7 @@ def executar_media_control(
     ajustar_volume = _get(ctx, "ajustar_volume_sistema")
     _enviar_pc_b = _get(ctx, "_enviar_pc_b")
     executar_controle_midia_nativo = _get(ctx, "_executar_controle_midia_nativo")
+    musica_estado_set = _get(ctx, "_musica_estado_set")
 
     acao = str(params.get("acao") or params.get("command") or "").strip().lower()
     platform = str(params.get("platform") or params.get("site") or "").strip().lower()
@@ -391,6 +392,19 @@ def executar_media_control(
 
     ok_execucao = _executar_cmd_midia(cmd)
     _log_midia("RESULTADO", f"cmd={cmd} ok_envio={ok_execucao}")
+    if (
+        ok_execucao
+        and confirmado_execucao is True
+        and callable(musica_estado_set)
+        and cmd in {"pause", "play"}
+    ):
+        # A extensão já confirmou o estado final. Publique a observação na
+        # mesma mente antes de liberar o próximo turno; sem isso, uma consulta
+        # imediata ainda enxergava o snapshot anterior do player.
+        musica_estado_set(
+            "musica_atual_status",
+            "pausada" if cmd == "pause" else "tocando",
+        )
     if callable(falar):
         if cmd in {"pause", "play", "pause_play"}:
             chave_midia = "play" if cmd == "play" else ("pause" if cmd == "pause" else "pause")

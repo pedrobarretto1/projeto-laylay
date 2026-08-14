@@ -397,6 +397,18 @@ def extrair_delete_pasta_arquivo(
     ):
         return {}
 
+    # Marcadores de repetição qualificam a ação, não fazem parte do nome do
+    # arquivo. Sem essa limpeza, ``apaga novamente o arquivo X`` procurava um
+    # arquivo literalmente chamado ``novamente o arquivo X``.
+    texto_local = re.sub(
+        r"\b(apaga|apague|apagar|delete|deleta|deletar|remove|remova|"
+        r"remover|exclui|exclua|excluir)\s+(?:novamente|de\s+novo|outra\s+vez)\s+",
+        r"\1 ",
+        texto_local,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+
     m_ref = re.search(
         r"\b(?:apaga|apague|apagar|delete|deleta|deletar|remove|remova|remover|exclui|exclua|excluir)\s+"
         r"(?P<ref>ela|ele|isso|essa|esse|essa\s+pasta|esse\s+arquivo)$",
@@ -597,6 +609,24 @@ def detectar_intencao_arquivos(
             ),
         }
 
+    leitura_referenciada = re.fullmatch(
+        r"(?:leia|ler|l[eê]|mostra|mostre|diz|fale)\s+"
+        r"(?:(?:o\s+)?conte[uú]do\s+(?:(?:de|do|da)\s+)?)?"
+        r"(?P<referencia>ele|ela|dele|dela|isso|esse\s+arquivo|"
+        r"este\s+arquivo|o\s+arquivo|esse|este)"
+        r"(?:\s+(?:novamente|de\s+novo|outra\s+vez))?",
+        texto_confirmacao,
+    )
+    if arquivo_recente_caminho and leitura_referenciada:
+        return {
+            "intent": "FILE_READ",
+            "params": params(
+                caminho=arquivo_recente_caminho,
+                alvo=arquivo_recente_nome or os.path.basename(arquivo_recente_caminho),
+                referencia_contextual=True,
+            ),
+        }
+
     # Consulta nomeada em ordem natural: "Onde o relatorio.txt fica?". A
     # gramática anterior só reconhecia "Onde fica o arquivo..." ou pronomes,
     # fazendo a forma mais comum escapar para a conversa livre.
@@ -771,6 +801,19 @@ def detectar_intencao_arquivos(
     )
     if escrita:
         conteudo = _remover_aspas_pareadas(escrita.group("conteudo") or "")
+        # Em "acrescente a frase X nele", artigo e substantivo apenas
+        # apresentam o conteúdo; não fazem parte do texto solicitado. Formas
+        # sem essa moldura ("acrescente X nele") permanecem literais.
+        if str(escrita.group("verbo") or "").casefold() in {
+            "adiciona", "adicione", "acrescenta", "acrescente",
+        }:
+            conteudo = re.sub(
+                r"^(?:a\s+)?(?:frase|linha|texto|trecho)\s+",
+                "",
+                conteudo,
+                count=1,
+                flags=re.IGNORECASE,
+            ).strip()
         alvo_declarado = str(escrita.group("alvo") or "").strip(" .,!?:;\"'")
         alvo = alvo_declarado
         if escrita.group("pronome"):

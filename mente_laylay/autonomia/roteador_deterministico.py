@@ -214,7 +214,8 @@ def texto_expresso_melhor_no_deterministico(
     if re.search(
         r"\b(?:qual|que)\s+(?:e|é\s+)?(?:a\s+)?(?:musica|música|faixa|som)\b"
         r".{0,24}\b(?:tocando|ouvindo)\b|"
-        r"\bo\s+que\s+(?:esta|está|ta|tá)\s+tocando\b",
+        r"\bo\s+que\s+(?:esta|está|ta|tá)\s+tocando\b|"
+        r"\bqual\s+(?:e|é)\s+o\s+estado\s+(?:da\s+)?(?:musica|música|faixa)\b",
         t,
     ):
         return True
@@ -461,7 +462,8 @@ def detectar_volume_ou_midia(
     if re.search(
         r"\b(?:qual|que)\s+(?:e|é\s+)?(?:a\s+)?(?:musica|música|faixa|som)\b"
         r".{0,24}\b(?:tocando|ouvindo)\b|"
-        r"\bo\s+que\s+(?:esta|está|ta|tá)\s+tocando\b",
+        r"\bo\s+que\s+(?:esta|está|ta|tá)\s+tocando\b|"
+        r"\bqual\s+(?:e|é)\s+o\s+estado\s+(?:da\s+)?(?:musica|música|faixa)\b",
         t,
     ):
         return {
@@ -522,7 +524,7 @@ def detectar_volume_ou_midia(
     ):
         return {"intent": "MEDIA_CONTROL", "params": params(acao="repeat_toggle")}
     proxima_por_fala_natural = bool(re.fullmatch(
-        r"(?:passa|pasa|pula|pule)(?:\s+(?:para|pra|pro))?\s+(?:a\s+)?"
+        r"(?:passa|pasa|pula|pule|vai)(?:\s+(?:para|pra|pro))?\s+(?:a\s+)?"
         r"(?:proxima|próxima|proxma)(?:\s+(?:musica|música|faixa))?",
         t,
     ))
@@ -540,6 +542,7 @@ def detectar_volume_ou_midia(
         return {"intent": "MEDIA_CONTROL", "params": params(acao="next")}
     anterior_explicita = any(x in t for x in [
         "volta a musica", "volta a música", "música anterior", "musica anterior",
+        "volta para a faixa anterior", "volta pra faixa anterior",
     ])
     anterior_contextual = bool(re.fullmatch(
         r"(?:a\s+)?anterior|volta\s+(?:para|pra)\s+(?:a\s+)?anterior",
@@ -558,7 +561,11 @@ def detectar_email_notificacao_briefing(
     contexto_email_ativo: bool = False,
 ) -> Dict[str, Any] | None:
     """Reconhece pedidos diretos de email, notificacao e briefing."""
-    t = str(texto_normalizado or "").strip()
+    # Pontuacao terminal pertence a fala, nao ao nome da acao. Os controles
+    # curtos usam ``fullmatch`` para evitar falsos positivos; sem esta limpeza,
+    # uma frase perfeitamente natural como ``vai para a proxima faixa.`` era
+    # rejeitada apenas por causa do ponto final.
+    t = str(texto_normalizado or "").strip().strip(" .,!?:;")
     if not t:
         return None
     if analisar_protecao_operacional(t).get("bloqueia_execucao"):
@@ -617,7 +624,11 @@ def detectar_consulta_aprendizados(
     params_cb: Callable[..., Dict[str, Any]],
 ) -> Dict[str, Any] | None:
     """Reconhece perguntas naturais sobre o que a Laylay aprendeu da pessoa."""
-    t = str(texto_normalizado or "").strip()
+    # Pontuação terminal pertence à fala, não ao nome do controle. Os ramos
+    # curtos usam ``fullmatch`` e precisam aceitar a forma natural com ponto.
+    bruto = str(texto_normalizado or "").strip()
+    pergunta_explicita = bruto.endswith("?")
+    t = bruto.strip(" .,!?:;")
     if not t:
         return None
     t = unicodedata.normalize("NFKD", t.casefold())
@@ -711,11 +722,15 @@ def detectar_consulta_aprendizados(
             "intent": "LEARNING_QUERY",
             "params": params(limit=3, query=consulta, modo="verificar"),
         }
-    consulta_pessoal = re.fullmatch(
-        r"(?P<consulta>(?:eu\s+)?(?:nao\s+)?(?:gosto|curto|amo|adoro|odeio|prefiro)"
-        r"(?:\s+(?:muito|bastante|demais))?\s+(?:de|do|da|dos|das)\s+.+?)\s*\?",
-        t,
-    )
+    consulta_pessoal = None
+    if pergunta_explicita:
+        consulta_pessoal = re.fullmatch(
+            r"(?P<consulta>(?:eu\s+)?(?:nao\s+)?"
+            r"(?:gosto|curto|amo|adoro|odeio|prefiro)"
+            r"(?:\s+(?:muito|bastante|demais))?\s+"
+            r"(?:de|do|da|dos|das)\s+.+?)",
+            t,
+        )
     if consulta_pessoal:
         consulta = str(consulta_pessoal.group("consulta") or "").strip()
         params = params_cb if callable(params_cb) else lambda **kwargs: kwargs
@@ -824,6 +839,17 @@ def detectar_url_visual(
         return {"intent": "SCREEN_CAPTURE", "params": params()}
 
     consulta_visual = t.strip(" .,!?:;")
+    if re.fullmatch(
+        r"(?:continua|continue|retoma|retome)\s+(?:daquele|desse|do)\s+ponto",
+        consulta_visual,
+    ):
+        return {
+            "intent": "VISION_QUERY",
+            "params": params(
+                acao="consultar_contexto_visual",
+                modo="continuar",
+            ),
+        }
     if re.fullmatch(
         r"(?:o\s+que\s+(?:voce|você)\s+consegue\s+identificar(?:\s+nela)?|"
         r"resume\s+(?:o\s+que\s+(?:voce|você)\s+(?:esta|está|ta|tá)\s+vendo|"
@@ -1191,6 +1217,12 @@ def detectar_consulta_abas(
     if not base:
         return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
+    if re.fullmatch(
+        r"(?:volta|volte|retorna|retorne|vai)\s+(?:para\s+|pra\s+)?"
+        r"(?:a\s+)?aba\s+anterior",
+        base,
+    ):
+        return {"intent": "SWITCH_PREVIOUS_TAB", "params": params()}
     if re.fullmatch(
         r"(?:quais|que|quantas)\s+abas\s+(?:estao|estão|tao|tão)\s+abertas|"
         r"(?:quais|que)\s+sao\s+as\s+abas\s+abertas|"

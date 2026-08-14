@@ -114,6 +114,29 @@ _SEXUALIZACAO_RELACAO = re.compile(
     r"safad[oa]|del[ií]cia|intimidade)\w*\b",
     re.IGNORECASE,
 )
+_INFERENCIA_DE_GOSTO_SEM_BASE = re.compile(
+    r"\b(?:seu\s+gosto|sua\s+prefer[eê]ncia|isso\s+(?:mostra|diz|indica)"
+    r"[^.!?]{0,45}(?:gosto|prefer[eê]ncia|curte))\b",
+    re.IGNORECASE,
+)
+_ESTEREOTIPO_POR_PREFERENCIA = re.compile(
+    r"\b(?:sangue\s+quente|gente\s+inteligente|f[aã]s?\s+com\s+intelig[eê]ncia|"
+    r"isso\s+(?:mostra|diz|revela)[^.!?]{0,45}(?:personalidade|intelig[eê]ncia)|"
+    r"diz\s+muito\s+sobre\s+voc[eê]|tipo\s+de\s+pessoa)\b",
+    re.IGNORECASE,
+)
+_FORMULACAO_RELACAO_ARTIFICIAL = re.compile(
+    r"\b(?:amig[oa]\s+de\s+(?:voc[eê]|tu)|meu\s+c[oó]digo|"
+    r"n[aã]o\s+tem\s+espa[cç]o\s+aqui|playlists?)\b",
+    re.IGNORECASE,
+)
+_MORFOLOGIA_CORROMPIDA = re.compile(
+    # Forma observada no roteiro real: mistura de ``peguei`` com futuro do
+    # pretérito. É uma falha de superfície inequívoca, não uma preferência de
+    # estilo, e por isso deve solicitar reparo antes da fala chegar ao usuário.
+    r"\bpegue-ia\b",
+    re.IGNORECASE,
+)
 _REFERENTE_SEM_ANCORA = re.compile(
     r"\b(?:o|a)\s+outr[oa]\s+que\b|"
     r"\b(?:esse|essa|isso)\s+(?:neg[oó]cio|coisa|tro[cç]o)\b",
@@ -188,13 +211,18 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "opiniao_contradisse_posicao_recente",
     "deriva_de_dominio",
     "preferencia_pessoal_nao_reconhecida",
+    "fato_pessoal_inferiu_preferencia",
+    "preferencia_pessoal_estereotipada",
     "preferencia_de_terceiro_atribuida_ao_usuario",
     "relacao_pessoal_nao_reconhecida",
     "relacao_pessoal_perspectiva_invertida",
     "relacao_pessoal_sexualizada",
     "relacao_pessoal_abriu_pergunta",
+    "relacao_pessoal_formulacao_artificial",
+    "morfologia_corrompida",
     "resposta_generica_sem_conteudo",
     "saudacao_nao_respondida_no_inicio",
+    "saudacao_inventou_vocativo",
     "ato_opiniao_nao_respondido",
     "esclarecimento_sem_explicacao",
     "esclarecimento_sem_ancora_anterior",
@@ -324,6 +352,9 @@ def avaliar_qualidade_comunicacao(
         "autoriza_execucao": False,
     }
 
+    if resposta and _MORFOLOGIA_CORROMPIDA.search(resposta):
+        problemas.append("morfologia_corrompida")
+
     if not resposta:
         problemas.append("fala_vazia")
     else:
@@ -389,6 +420,21 @@ def avaliar_qualidade_comunicacao(
             )
             if not reconheceu_valor and not _RECONHECIMENTO_PESSOAL.search(resposta):
                 problemas.append("preferencia_pessoal_nao_reconhecida")
+            tipos_aprendizado = {
+                str(item.get("tipo") or "").strip().casefold()
+                for item in preferencias
+            }
+            if (
+                "fato_pessoal" in tipos_aprendizado
+                and "preferencia" not in tipos_aprendizado
+                and _INFERENCIA_DE_GOSTO_SEM_BASE.search(resposta)
+            ):
+                problemas.append("fato_pessoal_inferiu_preferencia")
+            if (
+                "preferencia" in tipos_aprendizado
+                and _ESTEREOTIPO_POR_PREFERENCIA.search(resposta)
+            ):
+                problemas.append("preferencia_pessoal_estereotipada")
 
         terceiro = _PREFERENCIA_DE_TERCEIRO.search(usuario)
         if terceiro:
@@ -422,6 +468,8 @@ def avaliar_qualidade_comunicacao(
                 problemas.append("relacao_pessoal_sexualizada")
             if "?" in resposta:
                 problemas.append("relacao_pessoal_abriu_pergunta")
+            if _FORMULACAO_RELACAO_ARTIFICIAL.search(resposta):
+                problemas.append("relacao_pessoal_formulacao_artificial")
 
         # Pronomes como "o outro que..." sem um substantivo identificável são
         # uma fonte recorrente de frases que parecem espirituosas, mas não dizem nada.

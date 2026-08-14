@@ -936,6 +936,76 @@ class ComandosImediatosRuntime:
                     f"{type(erro).__name__}: {erro}"
                 )
 
+        # Continuacoes web, navegacao de abas e controles explicitos precisam
+        # vencer a porta de arquivos abaixo. Em especial, ``abre o primeiro
+        # resultado`` pode parecer uma referencia a uma busca local antiga,
+        # embora o contrato vivo mais recente seja uma SEARCH web. Reusamos o
+        # detector canonico e promovemos somente intents estreitas; nenhuma
+        # segunda gramatica ou autorizacao nasce aqui.
+        detectar_deterministico = ns.get("detectar_intencao_deterministica")
+        texto_iot_previo = str(texto or "")
+        menciona_iot_protegido = bool(re.search(
+            r"\b(?:luz|luzes|lampada|lâmpada|ventilador|tomada|dispositivo|aparelho|iot)\b",
+            texto_iot_previo,
+            flags=re.IGNORECASE,
+        )) and bloqueia_controle_iot_por_modalidade(texto_iot_previo)
+        if menciona_iot_protegido:
+            # A resposta instrucional/negada é tratada pela barreira própria
+            # logo abaixo. Nem sequer consultamos o detector operacional.
+            candidato_imediato = None
+        else:
+            try:
+                candidato_imediato = (
+                    detectar_deterministico(texto)
+                    if callable(detectar_deterministico)
+                    else None
+                )
+            except Exception as erro:
+                print(
+                    "⚠️ [PRIORIDADE:DETERMINÍSTICO] detecção isolada falhou: "
+                    f"{type(erro).__name__}: {erro}"
+                )
+                candidato_imediato = None
+        intent_imediato = str(
+            (candidato_imediato or {}).get("intent")
+            if isinstance(candidato_imediato, dict) else ""
+        ).upper().strip()
+        params_imediatos = dict(
+            (candidato_imediato or {}).get("params") or {}
+        ) if isinstance(candidato_imediato, dict) else {}
+        continuacao_web = bool(
+            intent_imediato == "SEARCH"
+            and params_imediatos.get("origem") == "continuacao_resultado_web"
+        )
+        if continuacao_web or intent_imediato in {
+            "SWITCH_PREVIOUS_TAB", "MEDIA_CONTROL", "MUSIC_STATUS",
+            "IOT_CONTROL",
+        }:
+            executar = ns.get("executar_intencao")
+            if not callable(executar):
+                return False
+            try:
+                executou = bool(executar(candidato_imediato, texto))
+            except Exception as erro:
+                print(
+                    "⚠️ [PRIORIDADE:DETERMINÍSTICO] execução falhou: "
+                    f"{type(erro).__name__}: {erro}"
+                )
+                return True
+            registrar = ns.get("_registrar_resultado_execucao")
+            if callable(registrar):
+                registrar(
+                    candidato_imediato,
+                    texto,
+                    executou,
+                    origem="prioritario_deterministico_contextual",
+                )
+            print(
+                "⚡ [PRIORIDADE:DETERMINÍSTICO] "
+                f"intent={intent_imediato} executou={executou}"
+            )
+            return True
+
         # Busca e restauração local de arquivos não devem
         # depender da classificação da LLM. O coordenador canônico continua
         # responsável pela linguagem natural geral, mas esta porta garante
@@ -968,7 +1038,10 @@ class ComandosImediatosRuntime:
             (candidato_arquivo or {}).get("params") or {}
         ) if isinstance(candidato_arquivo, dict) else {}
         operacao_arquivo_prioritaria = (
-            intent_arquivo in {"FILE_SEARCH", "FILE_OPEN_RESULT", "RESTORE_DELETED_ITEM"}
+            intent_arquivo in {
+                "FILE_SEARCH", "FILE_READ", "FILE_OPEN_RESULT",
+                "RESTORE_DELETED_ITEM",
+            }
             or (intent_arquivo == "CREATE_FILE" and bool(params_arquivo.get("editar_existente")))
         )
         if isinstance(candidato_arquivo, dict) and operacao_arquivo_prioritaria:
@@ -1005,7 +1078,10 @@ class ComandosImediatosRuntime:
         texto_referencia = _texto_normalizado_local(texto).strip(" .,!?:;")
         if re.fullmatch(
             r"(?:(?:fecha|feche|fechar)|(?:tenta\s+)?(?:abre|abra|abrir))\s+"
-            r"(?:ele|ela|isso|esse|essa|este|esta|o\s+arquivo|a\s+aba|o\s+site)",
+            r"(?:ele|ela|isso|esse|essa|este|esta|"
+            r"(?:esse|este|o)\s+arquivo|"
+            r"(?:essa|esta|a)\s+(?:aba|guia)|"
+            r"(?:esse|este|o)\s+site)",
             texto_referencia,
         ):
             resolver_contextual = ns.get("_resolver_comando_contextual_forcado")
@@ -1090,7 +1166,7 @@ class ComandosImediatosRuntime:
             elif re.search(r"\btalvez\b", texto_iot, flags=re.IGNORECASE):
                 fala = (
                     "Pode ser uma boa. Como você falou como possibilidade, deixei a "
-                    "luz como está; se quiser, eu desligo."
+                    "luz como está. Quando quiser executar, é só pedir diretamente."
                 )
             else:
                 fala = "Pode deixar. Não vou alterar a luz."

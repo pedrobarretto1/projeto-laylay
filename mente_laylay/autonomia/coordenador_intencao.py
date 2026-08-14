@@ -90,7 +90,7 @@ def _intencao_deterministica_tem_alvo_explicito(resultado: Any, texto: str) -> b
         or params.get("nome_playlist") or params.get("playlist") or ""
     ).strip().casefold()
     fala = str(texto or "").strip().casefold()
-    if intent in {"CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "CONFIRM_DELETE_ITEM", "CANCEL_DELETE_ITEM", "RESTORE_DELETED_ITEM", "MOVE_ITEM", "FILE_TRANSACTION", "FILE_OPEN_RESULT"}:
+    if intent in {"CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "CONFIRM_DELETE_ITEM", "CANCEL_DELETE_ITEM", "RESTORE_DELETED_ITEM", "MOVE_ITEM", "FILE_TRANSACTION", "FILE_READ", "FILE_OPEN_RESULT"}:
         return not valor_e_referencia_contextual(alvo)
     if intent in {"APP_OPEN", "CLOSE_APP", "MAXIMIZE_WINDOW", "OPEN_URL", "CLOSE_TAB"}:
         # "essa aba" nomeia inequivocamente a aba ativa; não precisa herdar

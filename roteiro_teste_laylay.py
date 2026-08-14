@@ -67,6 +67,7 @@ Volta para a aba anterior.
 Encontra o arquivo AGENTS.md e abre o primeiro resultado.
 Onde esse arquivo fica?
 Fecha esse arquivo.
+coloca a playlist VMZ
 Qual música está tocando agora?
 Pausa a música.
 Qual é o estado da música agora?

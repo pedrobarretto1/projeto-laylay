@@ -297,11 +297,16 @@ def registrar_resultado_execucao(
             alvo_app = esquerda or direita
             estado["ultimo_app_janela"] = alvo_app
             estado["ultimo_alvo"] = alvo_app
-    elif resultado_promovivel and intent in {"IOT_CONTROL", "IOT_STATUS"}:
+    elif intent in {"IOT_CONTROL", "IOT_STATUS"}:
         alvo_iot = str(params.get("alvo") or params.get("dispositivo") or "").strip()
         if alvo_iot:
+            # Uma falha de rede/provedor invalida o resultado, não a entidade
+            # explicitamente nomeada. Preservar somente o dispositivo permite
+            # que ``deixa ela azul`` continue a mesma lâmpada sem promover a
+            # falha inteira a sucesso ou a foco operacional confirmado.
             estado["ultimo_dispositivo_iot"] = alvo_iot
-            estado["ultimo_alvo"] = alvo_iot
+            if resultado_promovivel:
+                estado["ultimo_alvo"] = alvo_iot
         ambiente_iot = str(params.get("ambiente") or "").strip()
         if ambiente_iot:
             estado["ultimo_ambiente_iot"] = ambiente_iot

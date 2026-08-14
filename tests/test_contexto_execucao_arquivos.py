@@ -1082,6 +1082,31 @@ def test_escreve_uma_segunda_linha_acrescenta_sem_apagar_conteudo(tmp_path) -> N
     assert resultados[-1] == ("conteudo_acrescentado", True)
 
 
+def test_acrescente_a_frase_remove_apenas_a_moldura_do_conteudo(tmp_path) -> None:
+    arquivo = tmp_path / "auditoria gaivota.txt"
+    estado = {
+        "ultima_estrutura_arquivo_params": {
+            "tipo": "arquivo",
+            "arquivo_nome": arquivo.name,
+            "caminho": str(arquivo),
+        },
+    }
+
+    assert detectar_intencao_arquivos(
+        "Acrescente a frase segunda linha preservada nele.",
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    ) == {
+        "intent": "CREATE_FILE",
+        "params": {
+            "alvo": str(arquivo),
+            "conteudo": "segunda linha preservada",
+            "editar_existente": True,
+            "modo_escrita": "append",
+        },
+    }
+
+
 def test_executor_aceita_contrato_ia_e_combina_pasta_com_arquivo(tmp_path) -> None:
     pasta = tmp_path / "antonio"
     pasta.mkdir()

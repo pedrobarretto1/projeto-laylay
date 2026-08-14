@@ -86,7 +86,7 @@ def referencia_contextual_imediata(
     arquivo_operacional_recente = bool(
         estrutura_arquivo
         and ultima_intencao in {
-            "CREATE_FILE", "FILE_OPEN_RESULT", "FILE_SEARCH", "FILE_TRANSACTION",
+            "CREATE_FILE", "FILE_READ", "FILE_OPEN_RESULT", "FILE_SEARCH", "FILE_TRANSACTION",
         }
     )
     # "Em foco" descreve o estado desejado, não o tipo da entidade. Depois
@@ -107,8 +107,26 @@ def referencia_contextual_imediata(
         texto_norm,
     ):
         dominio_pedido = "arquivo"
-    elif re.search(r"\b(liga|ligar|desliga|desligar|estado|status)\b", texto_norm) and re.search(
-        r"\b(ele|ela|isso|dispositivo|aparelho|tomada|ventilador|luz|lampada|lâmpada)\b", texto_norm
+    elif (
+        re.search(
+            r"\b(liga|ligar|desliga|desligar|estado|status|acende|apaga)\b",
+            texto_norm,
+        )
+        and re.search(
+            r"\b(ele|ela|isso|dispositivo|aparelho|tomada|ventilador|luz|lampada|lâmpada)\b",
+            texto_norm,
+        )
+    ) or (
+        re.search(r"\b(deixa|coloca|muda|ajusta)\b", texto_norm)
+        and re.search(
+            r"\b(azul|verde|vermelh[oa]|amarel[oa]|branc[oa]|roxo|rosa|"
+            r"brilho|cor|luz|lampada|lâmpada)\b",
+            texto_norm,
+        )
+        and re.search(
+            r"\b(ele|ela|isso|dispositivo|aparelho|tomada|ventilador|luz|lampada|lâmpada)\b",
+            texto_norm,
+        )
     ):
         dominio_pedido = "iot"
 
@@ -127,7 +145,10 @@ def referencia_contextual_imediata(
     fecha_referencia_curta = bool(
         re.fullmatch(
             r"(?:fecha|fechar|encerra|encerrar)\s+"
-            r"(?:ele|ela|isso|esse|essa|este|esta)[?.!]*",
+            r"(?:ele|ela|isso|esse|essa|este|esta|"
+            r"(?:esse|este|o)\s+arquivo|"
+            r"(?:essa|esta|a)\s+(?:aba|guia)|"
+            r"(?:esse|este|o)\s+site)[?.!]*",
             texto_norm,
         )
     )
@@ -143,7 +164,7 @@ def referencia_contextual_imediata(
         and contrato_acao.get("executou") is True
         and contrato_acao.get("confirmado") is True
         and intent_contrato in {
-            "CREATE_FILE", "FILE_OPEN_RESULT", "FILE_SEARCH", "FILE_TRANSACTION",
+            "CREATE_FILE", "FILE_READ", "FILE_OPEN_RESULT", "FILE_SEARCH", "FILE_TRANSACTION",
         }
     ):
         caminho_arquivo = str(estrutura_arquivo.get("caminho") or "").strip()
@@ -277,7 +298,7 @@ def referencia_contextual_imediata(
         if alvo_app:
             return {"tipo": "app", "alvo": alvo_app, "intencao": ultima_intencao, "params": ultimo_params}
     if ultima_acao_promovivel and ultima_intencao in {
-        "CREATE_FILE", "FILE_OPEN_RESULT", "FILE_SEARCH", "FILE_TRANSACTION",
+        "CREATE_FILE", "FILE_READ", "FILE_OPEN_RESULT", "FILE_SEARCH", "FILE_TRANSACTION",
     }:
         caminho_arquivo = str(estrutura_arquivo.get("caminho") or "").strip()
         if caminho_arquivo:
@@ -350,7 +371,10 @@ def resolver_comando_acao_geral_contextual(
     *,
     ultima_playlist: str = "",
 ) -> Dict[str, Any] | None:
-    t = str(texto_normalizado or "").strip()
+    # O resolvedor é público e recebe tanto texto já normalizado quanto a
+    # frase original em algumas portas prioritárias. A gramática não pode
+    # depender da capitalização usada pelo chamador.
+    t = str(texto_normalizado or "").strip().casefold()
     if not t:
         return None
     contexto_ref = dict(contexto_ref or {})
@@ -1231,7 +1255,7 @@ class ContextoImediatoRuntime:
             and (
                 ultima_intencao in {
                     "CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "MOVE_ITEM",
-                    "FILE_TRANSACTION", "FILE_OPEN_RESULT", "FILE_SEARCH",
+                    "FILE_TRANSACTION", "FILE_READ", "FILE_OPEN_RESULT", "FILE_SEARCH",
                 }
                 or ultima_habilidade in {"arquivo", "arquivos"}
             )

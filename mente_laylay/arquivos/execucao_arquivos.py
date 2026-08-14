@@ -202,6 +202,64 @@ def executar_intencao_arquivos(
         else:
             falar_original(confirmacao.fala, confirmacao.emocao, confirmacao.nivel)
 
+    if intent == "FILE_READ":
+        ler_texto = getattr(arquivos_leitura, "ler_texto", None)
+        caminho = str(params.get("caminho") or "").strip()
+        nome = str(
+            params.get("alvo") or os.path.basename(caminho) or "arquivo"
+        ).strip()
+        if not caminho or not callable(ler_texto):
+            marcar_resultado("indisponivel", False, confirmado=False)
+            falar("A leitura desse arquivo não está disponível agora.", "calma", 1)
+            return True
+        try:
+            leitura = dict(ler_texto(caminho, limite=4000) or {})
+        except Exception as erro:
+            relatar_falha_ctx(
+                ctx,
+                "executor_arquivos",
+                "falha_leitura_texto",
+                erro=erro,
+                impacto="comando",
+                fallback="falha_leitura",
+                dominio="arquivos",
+                fase="ler_texto",
+            )
+            leitura = {"ok": False, "status": "falha_leitura"}
+        if leitura.get("ok") is not True:
+            status = str(leitura.get("status") or "falha_leitura")
+            marcar_resultado(status, False, confirmado=False)
+            mensagens = {
+                "arquivo_sensivel": "Não vou ler esse arquivo em voz alta porque ele parece conter credenciais.",
+                "formato_nao_textual": "Esse arquivo não é texto legível por esta rota.",
+                "arquivo_muito_grande": "Esse arquivo é grande demais para eu ler inteiro com segurança.",
+                "arquivo_indisponivel": "Esse arquivo não está mais disponível nesse caminho.",
+            }
+            falar(mensagens.get(status, "Não consegui ler esse arquivo agora."), "calma", 1)
+            return True
+        conteudo = str(leitura.get("conteudo") or "").strip()
+        truncado = leitura.get("truncado") is True
+        marcar_resultado(
+            "conteudo_lido",
+            True,
+            alvo_resolvido=caminho,
+            confirmado=True,
+        )
+        registrar_arquivo(caminho, "arquivos")
+        if callable(registrar_estrutura_arquivo_recente):
+            registrar_estrutura_arquivo_recente({
+                "tipo": "arquivo",
+                "arquivo_nome": nome,
+                "caminho": caminho,
+                "target": destino_val,
+            })
+        if not conteudo:
+            falar(f"{nome} está vazio.", "calma", 1)
+        else:
+            sufixo = " Parei no limite seguro de leitura." if truncado else ""
+            falar(f"O conteúdo de {nome} é: {conteudo}{sufixo}", "calma", 1)
+        return True
+
     if intent == "FILE_SEARCH":
         pesquisar = getattr(arquivos_leitura, "pesquisar", None)
         referencia_caminho = str(params.get("referencia_caminho") or "").strip()

@@ -367,6 +367,7 @@ def test_ambiente_preserva_id_e_estado_observado_das_abas() -> None:
                 "url": "https://docs.python.org/",
                 "active": True,
                 "audible": False,
+                "windowId": 2,
                 "lastAccessed": 123.0,
             }]
 
@@ -383,6 +384,7 @@ def test_ambiente_preserva_id_e_estado_observado_das_abas() -> None:
         "audible": False,
         "pinned": False,
         "discarded": False,
+        "windowId": 2,
         "lastAccessed": 123.0,
     }]
 

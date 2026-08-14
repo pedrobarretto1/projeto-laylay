@@ -83,12 +83,16 @@ def test_tecla_nativa_fala_do_envio_sem_fingir_confirmacao() -> None:
 
 def test_retomada_confirmada_tem_fala_propria_em_vez_de_feito_generico() -> None:
     falas: list[str] = []
+    estado: dict[str, str] = {}
 
     ok = executar_media_control(
         {"acao": "play", "platform": "music"},
         "despausa ela",
         "local",
-        _ctx_base(enviar_chrome=lambda *_args: True, falas=falas),
+        {
+            **_ctx_base(enviar_chrome=lambda *_args: True, falas=falas),
+            "_musica_estado_set": lambda chave, valor: estado.__setitem__(chave, valor),
+        },
         marcar_resultado=lambda *_args, **_kwargs: None,
         falar_por_status=lambda *_args, **_kwargs: None,
         ctx_fala=lambda: {},
@@ -98,3 +102,23 @@ def test_retomada_confirmada_tem_fala_propria_em_vez_de_feito_generico() -> None
     assert falas
     assert falas[-1] != "Feito."
     assert any(sinal in falas[-1].casefold() for sinal in ("retomei", "play", "voltou"))
+    assert estado == {"musica_atual_status": "tocando"}
+
+
+def test_pausa_confirmada_publica_estado_antes_da_consulta_seguinte() -> None:
+    estado: dict[str, str] = {}
+
+    assert executar_media_control(
+        {"acao": "pause", "platform": "music"},
+        "pausa a música",
+        "local",
+        {
+            **_ctx_base(enviar_chrome=lambda *_args: True),
+            "_musica_estado_set": lambda chave, valor: estado.__setitem__(chave, valor),
+        },
+        marcar_resultado=lambda *_args, **_kwargs: None,
+        falar_por_status=lambda *_args, **_kwargs: None,
+        ctx_fala=lambda: {},
+    ) is True
+
+    assert estado == {"musica_atual_status": "pausada"}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import urllib.parse
 import re
+import time
 import unicodedata
 from dataclasses import dataclass
 from typing import Any, Callable, Dict
@@ -22,6 +23,7 @@ INTENCOES_NAVEGADOR = frozenset({
     "CLOSE_IDLE_TABS",
     "CLOSE_TAB",
     "LIST_TABS",
+    "SWITCH_PREVIOUS_TAB",
     "SITE_ENTER",
     "SEARCH",
 })
@@ -283,6 +285,128 @@ def _executar_listar_abas(
     # poderia acrescentar abas inexistentes ou retirar títulos relevantes.
     _falar(ctx, fala, "calma", 1)
     return ResultadoDespacho.concluido()
+
+
+def _executar_aba_anterior(
+    ctx: Dict[str, Any],
+    deps: DependenciasExecutorNavegador,
+) -> ResultadoDespacho:
+    leitura = _get(ctx, "_registro_navegador_leitura_runtime")
+    operacoes = _get(ctx, "_registro_navegador_operacoes_runtime")
+    focar = getattr(operacoes, "focar_aba", None)
+    try:
+        conectado = bool(leitura is not None and leitura.conectado())
+    except Exception:
+        conectado = False
+    if not conectado or not callable(focar):
+        deps.marcar_resultado(
+            "navegador_indisponivel", executou=False, confirmado=False,
+        )
+        _falar(
+            ctx,
+            "Não consegui voltar de aba porque a extensão não está disponível agora.",
+            "calma",
+            1,
+        )
+        return ResultadoDespacho.concluido(False)
+
+    try:
+        ativa = dict(leitura.aba_ativa(timeout_s=4.0) or {})
+        abas = [
+            dict(aba) for aba in (leitura.listar_abas(timeout_s=5.0) or [])
+            if isinstance(aba, dict)
+        ]
+    except Exception as erro:
+        relatar_falha_ctx(
+            ctx,
+            "executor_navegador",
+            "falha_observar_aba_anterior",
+            erro=erro,
+            impacto="turno",
+            fallback="aba_anterior_indisponivel",
+            dominio="navegador",
+            fase="aba_anterior",
+        )
+        deps.marcar_resultado(
+            "falha_execucao", executou=False, confirmado=False,
+        )
+        _falar(ctx, "Não consegui identificar qual era a aba anterior.", "calma", 1)
+        return ResultadoDespacho.concluido(False)
+
+    ativa_id = _id_aba(ativa)
+    if ativa_id is None:
+        ativa_observada = next(
+            (aba for aba in abas if aba.get("active") is True),
+            {},
+        )
+        ativa_id = _id_aba(ativa_observada)
+    janela_ativa = next(
+        (
+            aba.get("windowId") for aba in abas
+            if _id_aba(aba) == ativa_id and isinstance(aba.get("windowId"), int)
+        ),
+        None,
+    )
+
+    candidatos: list[tuple[float, Dict[str, Any]]] = []
+    for aba in abas:
+        tab_id = _id_aba(aba)
+        if tab_id is None or tab_id == ativa_id or aba.get("active") is True:
+            continue
+        if janela_ativa is not None and aba.get("windowId") != janela_ativa:
+            continue
+        try:
+            recencia = float(aba.get("lastAccessed") or 0.0)
+        except (TypeError, ValueError):
+            recencia = 0.0
+        candidatos.append((recencia, aba))
+    if not candidatos:
+        deps.marcar_resultado(
+            "aba_anterior_indisponivel", executou=False, confirmado=True,
+        )
+        _falar(ctx, "Não encontrei outra aba observada para voltar.", "calma", 1)
+        return ResultadoDespacho.concluido(False)
+
+    candidatos.sort(key=lambda item: item[0], reverse=True)
+    anterior = candidatos[0][1]
+    anterior_id = _id_aba(anterior)
+    ok = bool(anterior_id is not None and focar(anterior_id))
+    confirmado = False
+    if ok:
+        # O comando e o evento ``active_tab_changed`` atravessam o WebSocket
+        # em mensagens diferentes. Uma leitura imediata criava falso negativo
+        # mesmo quando o Chrome já tinha aceitado o foco. Relemos por uma
+        # janela curta, sem repetir o comando.
+        for tentativa in range(6):
+            try:
+                confirmado = (
+                    _id_aba(leitura.aba_ativa(timeout_s=1.0)) == anterior_id
+                )
+            except Exception:
+                confirmado = False
+            if confirmado:
+                break
+            if tentativa < 5:
+                time.sleep(0.08)
+    rotulo = _rotulo_aba(anterior)
+    status = "aba_anterior_focada" if confirmado else "falha_execucao"
+    deps.marcar_resultado(
+        status,
+        executou=ok,
+        confirmado=confirmado,
+        alvo_resolvido=rotulo,
+        detalhe=(
+            "a extensão releu a aba como ativa"
+            if confirmado else "a extensão não confirmou a troca de aba"
+        ),
+    )
+    _falar(
+        ctx,
+        f"Voltei para {rotulo}." if confirmado else "Tentei voltar, mas a extensão não confirmou a aba anterior.",
+        "calma",
+        1,
+    )
+    return ResultadoDespacho.concluido(confirmado)
 
 
 def _executar_fechar_aba(
@@ -665,6 +789,8 @@ def executar_intencao_navegador(
         return _executar_fechar_abas_paradas(ctx, deps)
     if intent == "LIST_TABS":
         return _executar_listar_abas(ctx, deps)
+    if intent == "SWITCH_PREVIOUS_TAB":
+        return _executar_aba_anterior(ctx, deps)
     if intent == "CLOSE_TAB":
         return _executar_fechar_aba(params, texto_original, destino, ctx, deps)
     if intent == "SITE_ENTER":

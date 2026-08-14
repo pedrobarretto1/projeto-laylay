@@ -253,6 +253,7 @@ def executar_captura_tela(
                 "ok": True,
                 "status": "captura_concluida",
                 "descricao": descricao_final,
+                "descricao_completa": descricao,
                 "confirmado": True,
                 "origem": "pc_a",
             })
@@ -306,12 +307,23 @@ class MemoriaVisualRuntime:
                 "confirmado": False,
             }
         descricao = str(atual.get("descricao") or "").strip()
+        modo_norm = str(modo or "identificar").strip().casefold()
+        if modo_norm == "continuar":
+            completa = str(atual.get("descricao_completa") or descricao).strip()
+            prefixo = descricao.rstrip("…").strip()
+            restante = ""
+            if prefixo and completa.casefold().startswith(prefixo.casefold()):
+                restante = completa[len(prefixo):].lstrip(" ,;:.-")
+            if restante:
+                descricao = limitar_descricao_visual(restante, 300)
+            elif descricao:
+                descricao = f"A análise visual recente já terminou nesse ponto: {descricao}"
         return {
             "ok": bool(descricao),
             "status": "contexto_visual_consultado",
             "descricao": descricao,
             "confirmado": bool(descricao),
-            "modo": str(modo or "identificar").strip(),
+            "modo": modo_norm,
             "origem": str(atual.get("origem") or "pc_a"),
         }
 

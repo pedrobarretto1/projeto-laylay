@@ -35,6 +35,7 @@ _INTENTS_DOMINIO = {
     "ORGANIZAR_DESKTOP": "app",
     "OPEN_URL": "site", "CLOSE_TAB": "site", "CLOSE_IDLE_TABS": "site",
     "LIST_TABS": "site",
+    "SWITCH_PREVIOUS_TAB": "site",
     "SITE_ENTER": "site", "SEARCH": "site", "SCREEN_CAPTURE": "site",
     "RESUMIR_PAGINA": "site",
     "MUSIC_SEARCH": "musica", "MEDIA_CONTROL": "musica", "MUSIC_STATUS": "musica",
@@ -50,7 +51,8 @@ _INTENTS_DOMINIO = {
     "CREATE_FOLDER": "arquivos", "CREATE_FILE": "arquivos", "MOVE_ITEM": "arquivos",
     "DELETE_ITEM": "arquivos", "CONFIRM_DELETE_ITEM": "arquivos", "CANCEL_DELETE_ITEM": "arquivos",
     "RESTORE_DELETED_ITEM": "arquivos",
-    "FILE_SEARCH": "arquivos", "FILE_OPEN_RESULT": "arquivos", "FILE_TRANSACTION": "arquivos",
+    "FILE_SEARCH": "arquivos", "FILE_READ": "arquivos",
+    "FILE_OPEN_RESULT": "arquivos", "FILE_TRANSACTION": "arquivos",
     "AGENDAR_LEMBRETE": "agenda", "AGENDAR_ACAO": "agenda", "LISTAR_AGENDAMENTOS": "agenda",
     "CANCELAR_AGENDAMENTO": "agenda", "BRIEFING_REPEAT": "agenda",
     "LEARNING_QUERY": "memoria",
@@ -230,10 +232,24 @@ def resolver_continuacao_aditiva(
         if not politica:
             continue
         status = str(selecionado.get("status") or "").casefold().strip()
-        if not status or any(marcador in status for marcador in (
+        # ``Essa também`` não repete a tentativa anterior: ela pede para
+        # aplicar a mesma operação à faixa que estiver atual *agora*. Por
+        # isso, a ausência/invalidez da faixa anterior pode ser reavaliada
+        # com segurança. Uma falha genérica continua bloqueada.
+        faixa_anterior_indisponivel = (
+            intent == "PLAYLIST_ADD"
+            and status in {
+                "faixa_atual_indisponivel",
+                "fonte_musical_invalida",
+            }
+        )
+        if not status or (
+            not faixa_anterior_indisponivel
+            and any(marcador in status for marcador in (
             "falha", "erro", "indispon", "nao_encontr", "não_encontr",
             "aguardando", "pendente", "cancel", "recus",
-        )):
+            ))
+        ):
             continue
         anteriores = dict(selecionado.get("params") or {})
         exigidos = tuple(politica.get("exige_um_dos_params") or ())

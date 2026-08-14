@@ -118,6 +118,19 @@ class AdaptadoresAplicacaoRuntime:
                 alvo_objeto = str(getattr(resultado, "alvo", "") or "")
             if not intent:
                 return
+            # Uma acao operacional observada encerra qualquer pergunta casual
+            # anterior. Sem esta limpeza, um ``Sim`` enviado depois de apagar
+            # uma playlist podia responder a uma pergunta musical de varios
+            # turnos atras e reabrir um contexto que ja havia sido superado.
+            limpar_pergunta = ns.get("_limpar_pergunta_aberta")
+            if callable(limpar_pergunta):
+                try:
+                    limpar_pergunta()
+                except Exception as erro:
+                    ns["print"](
+                        "⚠️ [CONTEXTO] pergunta anterior não foi limpa: "
+                        f"{type(erro).__name__}"
+                    )
             suspender_topico = ns.get("_suspender_topico_conversacional")
             if callable(suspender_topico):
                 try:

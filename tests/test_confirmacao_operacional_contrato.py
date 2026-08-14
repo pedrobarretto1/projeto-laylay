@@ -398,6 +398,36 @@ def test_listagem_antiga_nao_pode_confirmar_adicao_em_playlist() -> None:
     assert motivo == "estado_observado_ausente"
 
 
+def test_cancelamento_nao_pode_reintroduzir_lembrete_ou_cobranca() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "CANCELAR_AGENDAMENTO",
+        "alvo": "beber água",
+        "status": "agendamento_cancelado",
+        "executou": True,
+        "confirmado": True,
+    })
+
+    motivo = _motivo_contrato_invalido(
+        (
+            "Beber água foi cancelado. Só não esqueça de beber, "
+            "a gente está no aguardo."
+        ),
+        resultado=resultado,
+        classe="sucesso",
+        status_declarado="agendamento_cancelado",
+        alvo_declarado="beber água",
+    )
+
+    assert motivo == "cancelamento_reintroduziu_obrigacao"
+    assert _motivo_contrato_invalido(
+        "Cancelei beber água. Esse compromisso saiu da agenda.",
+        resultado=resultado,
+        classe="sucesso",
+        status_declarado="agendamento_cancelado",
+        alvo_declarado="beber água",
+    ) == ""
+
+
 def test_consulta_de_caminho_preserva_dado_literal_sem_autoria_operacional() -> None:
     resultado = normalizar_resultado_acao({
         "intent": "FILE_SEARCH",

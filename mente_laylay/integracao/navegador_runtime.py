@@ -174,6 +174,11 @@ class NavegadorOperacoesRuntime:
         validos = [valor for valor in ids if isinstance(valor, int)]
         return bool(validos and self.comandos.enviar("close_tabs", {"ids": validos}))
 
+    def focar_aba(self, tab_id: int) -> bool:
+        if not isinstance(tab_id, int) or isinstance(tab_id, bool):
+            return False
+        return bool(self.comandos.enviar("focus_tab", {"tabId": tab_id}))
+
     def recarregar_url(self, url: str) -> bool:
         return bool(self.comandos.enviar(
             "reload_url", {"url": str(url or "").strip()},

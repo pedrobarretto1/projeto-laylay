@@ -100,6 +100,9 @@ class NavegadorOperacoesFake:
     def fechar_abas(self, ids: list[int]) -> bool:
         return self._registrar("close_tabs", {"ids": list(ids)})
 
+    def focar_aba(self, tab_id: int) -> bool:
+        return self._registrar("focus_tab", {"tabId": tab_id})
+
     def recarregar_url(self, url: str) -> bool:
         return self._registrar("reload_url", {"url": url})
 
