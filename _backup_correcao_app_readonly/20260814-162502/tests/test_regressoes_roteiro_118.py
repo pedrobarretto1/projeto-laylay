@@ -15,12 +15,6 @@ from mente_laylay.personalidade.planejador_resposta import (
     classificar_resultado,
     planejar_resposta_acao,
 )
-from mente_laylay.integracao.composicao_entrada_interacao import (
-    DEPENDENCIAS_COMANDOS_IMEDIATOS,
-    ComposicaoEntradaInteracaoRuntime,
-)
-
-# REGRESSAO_APP_READONLY_COMPOSICAO_20260814
 
 
 def test_consulta_app_eh_read_only():
@@ -58,71 +52,6 @@ def test_prioridade_read_only_fica_antes_da_cadeia_generica():
     assert fonte.index("PRIORIDADE:SISTEMA:LEITURA") < fonte.index(
         'ns.get("processar_comandos_em_cadeia")'
     )
-
-
-def test_resolver_alvo_ambiente_faz_parte_da_allowlist_dos_comandos_imediatos():
-    assert "_resolver_alvo_ambiente" in DEPENDENCIAS_COMANDOS_IMEDIATOS
-
-
-def test_composicao_entrega_resolver_alvo_ambiente_ao_runtime_de_comandos():
-    snapshots = []
-
-    class ComandosFake:
-        def processar_prioritarios(self, _texto):
-            return False
-
-    class ChatFake:
-        pass
-
-    class DeteccaoFake:
-        pass
-
-    class RegistroFake:
-        memoria_pessoas = object()
-        iot = object()
-
-    def comandos_factory(*, namespace_getter, **_kwargs):
-        snapshots.append(namespace_getter())
-        return ComandosFake()
-
-    def chat_factory(**_kwargs):
-        return ChatFake()
-
-    servicos_iniciais = {
-        "_resolver_alvo_ambiente": lambda nome: {
-            "programa_aberto": nome.casefold() == "opera",
-            "programa_em_foco": False,
-        },
-    }
-
-    runtime = ComposicaoEntradaInteracaoRuntime(
-        servicos=servicos_iniciais,
-        estado_mental_getter=lambda: {},
-        sites_diretos={},
-        apps_map={},
-        registros_principais=RegistroFake(),
-        deteccao_factory=lambda **_kwargs: DeteccaoFake(),
-        comandos_factory=comandos_factory,
-        chat_factory=chat_factory,
-    )
-
-    runtime.conectar(
-        servicos={
-            "_resolver_alvo_ambiente": servicos_iniciais["_resolver_alvo_ambiente"],
-            "resolver_comando_natural": lambda *_args, **_kwargs: (None, ""),
-        },
-        loop_getter=lambda: None,
-        estado_chat_getter=lambda: {},
-        memoria_sqlite=object(),
-    )
-
-    assert snapshots
-    snapshot = snapshots[-1]
-    assert callable(snapshot.get("_resolver_alvo_ambiente"))
-    assert snapshot["_resolver_alvo_ambiente"]("Opera") == {
-        "programa_aberto": True,
-        "programa_em_foco": False,
-    }
 
 
 def test_essa_tambem_sobrevive_ao_media_control_do_mesmo_dominio():

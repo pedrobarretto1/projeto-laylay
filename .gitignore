@@ -12,6 +12,7 @@ cliente/gamebar_laylay/artifacts/
 cliente/gamebar_laylay/bin/
 cliente/gamebar_laylay/obj/
 cliente/gamebar_laylay/AppPackages/
+_backup_regressao_118/
 *.egg-info/
 *.log
 *.db

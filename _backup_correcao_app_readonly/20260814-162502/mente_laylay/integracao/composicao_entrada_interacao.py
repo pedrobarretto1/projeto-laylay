@@ -45,8 +45,6 @@ DEPENDENCIAS_COMANDOS_IMEDIATOS = (
     "_resolver_comando_arquivo_contextual_forcado",
     "_resolver_comando_acao_geral_contextual_forcado",
     "_resolver_comando_contextual_forcado",
-    # Consulta read-only do estado real de apps/janelas.
-    "_resolver_alvo_ambiente",
     "_responder_contexto_janela_indisponivel", "_resolver_repeticao_ultima_acao",
     "_resolver_consulta_recurso_local", "_texto_parece_consulta_operacional",
     "_extrair_acao_agendada_local", "processar_comandos_em_cadeia",
