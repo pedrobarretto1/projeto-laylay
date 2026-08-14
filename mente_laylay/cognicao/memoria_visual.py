@@ -11,8 +11,10 @@ import json
 import os
 import re
 import threading
+import time
 import unicodedata
 import uuid
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Callable, Optional
 
@@ -24,6 +26,54 @@ _MARCADORES_VISUAIS_SENSIVEIS = (
     "checkout", "internet banking", "internetbanking", "banco", "bank", "wallet",
     "carteira", "mensagem privada", "direct messages", "whatsapp", "web.telegram",
 )
+
+
+@dataclass(slots=True)
+class ResultadoCapturaVisual:
+    """Resultado correlacionado de uma captura processada em segundo plano."""
+
+    ao_concluir: Callable[[dict[str, Any]], Any] | None = field(
+        default=None, repr=False,
+    )
+    _evento: threading.Event = field(default_factory=threading.Event, repr=False)
+    _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
+    _resultado: dict[str, Any] = field(default_factory=dict, repr=False)
+    _expirado: bool = field(default=False, repr=False)
+
+    def concluir(self, resultado: dict[str, Any]) -> bool:
+        dados = dict(resultado or {})
+        with self._lock:
+            if self._evento.is_set() or self._expirado:
+                return False
+            self._resultado = dados
+            # Publica o contexto antes de acordar quem aguarda. Assim a fala
+            # seguinte já encontra a mesma descrição que encerrou a captura.
+            if callable(self.ao_concluir):
+                try:
+                    self.ao_concluir(dict(dados))
+                except Exception:
+                    pass
+            self._evento.set()
+        return True
+
+    def pode_publicar(self) -> bool:
+        with self._lock:
+            return not self._expirado and not self._evento.is_set()
+
+    def aguardar(self, timeout_s: float = 45.0) -> dict[str, Any]:
+        limite = max(0.1, float(timeout_s or 45.0))
+        if not self._evento.wait(limite):
+            with self._lock:
+                if not self._evento.is_set():
+                    self._expirado = True
+                    self._resultado = {
+                        "ok": False,
+                        "status": "captura_visual_timeout",
+                        "descricao": "",
+                    }
+                    self._evento.set()
+        with self._lock:
+            return dict(self._resultado)
 
 
 def contexto_visual_sensivel(contexto: dict | str | None) -> bool:
@@ -47,7 +97,10 @@ def executar_captura_tela(
     obter_contexto: Callable[[], dict] | None = None,
     thread_factory: Callable[..., Any] = threading.Thread,
     log: Callable[[str], Any] = print,
-) -> bool:
+    retornar_resultado: bool = False,
+    falar_progresso: bool = True,
+    ao_concluir: Callable[[dict[str, Any]], Any] | None = None,
+) -> bool | ResultadoCapturaVisual:
     """Executa a visão manual preservando destino, fala e processamento assíncrono."""
     pergunta = (
         "Você é a Laylay, assistente debochada, sarcástica e dona absoluta deste PC. "
@@ -56,32 +109,77 @@ def executar_captura_tela(
         "Responda SEMPRE em português brasileiro, com seu jeitão de sempre."
     )
     contexto_atual = obter_contexto() if callable(obter_contexto) else {}
+    resultado_async = ResultadoCapturaVisual(ao_concluir=ao_concluir)
     if contexto_visual_sensivel(contexto_atual):
-        falar("Não capturei a tela porque detectei uma página sensível, com possíveis senhas, conversa privada ou pagamento.", "calma", 1)
+        descricao_bloqueio = "Não capturei a tela porque detectei uma página sensível, com possíveis senhas, conversa privada ou pagamento."
+        falar(descricao_bloqueio, "calma", 1)
         log("[VISÃO] Captura bloqueada por contexto sensível.")
-        return True
+        resultado_async.concluir({
+            "ok": False,
+            "status": "captura_bloqueada_contexto_sensivel",
+            "descricao": descricao_bloqueio,
+            "confirmado": True,
+        })
+        return resultado_async if retornar_resultado else True
     if str(destino or "").strip().lower() == "pc_b":
-        falar("Vou pedir ao PC B uma captura protegida; se for segura, a imagem será enviada ao serviço externo de análise.", "calma", 1)
+        if falar_progresso:
+            falar("Vou pedir ao PC B uma captura protegida; se for segura, a imagem será enviada ao serviço externo de análise.", "calma", 1)
         confirmado = bool(enviar_pc_b({
             "action": "capturar_tela",
             "pergunta": pergunta,
             "bloquearContextoSensivel": True,
         }))
         if not confirmado:
-            falar("Pedi a captura ao PC B, mas ele não confirmou que verificou e analisou a tela.", "calma", 1)
-            return True
-        falar("Abrindo o olho no PC B, um segundo...", "calma", 1)
-        return True
+            descricao_falha = "Pedi a captura ao PC B, mas ele não confirmou que verificou e analisou a tela."
+            falar(descricao_falha, "calma", 1)
+            resultado_async.concluir({
+                "ok": False,
+                "status": "captura_remota_nao_confirmada",
+                "descricao": descricao_falha,
+                "confirmado": False,
+            })
+            return resultado_async if retornar_resultado else True
+        # O transporte atual confirma apenas o envio, não devolve a descrição.
+        # Portanto a captura remota não pode ser marcada como análise concluída.
+        descricao_remota = "O PC B recebeu o pedido, mas ainda não devolveu o resultado da análise visual."
+        falar(descricao_remota, "calma", 1)
+        resultado_async.concluir({
+            "ok": False,
+            "status": "captura_remota_sem_resultado",
+            "descricao": descricao_remota,
+            "confirmado": False,
+        })
+        return resultado_async if retornar_resultado else True
 
     def ver_tela_local() -> None:
         try:
             log("[VISÃO] Capturando tela local...")
             imagem = capturar_tela()
             if not imagem:
-                falar("Não consegui capturar a tela.", "calma", 1)
+                descricao_falha = "Não consegui capturar a tela."
+                if resultado_async.pode_publicar():
+                    falar(descricao_falha, "calma", 1)
+                resultado_async.concluir({
+                    "ok": False,
+                    "status": "falha_captura_tela",
+                    "descricao": descricao_falha,
+                    "confirmado": False,
+                })
                 return
-            falar("A imagem será enviada ao serviço externo de análise visual agora.", "calma", 1)
-            descricao = analisar_imagem(imagem, pergunta)
+            if falar_progresso and resultado_async.pode_publicar():
+                falar("A imagem será enviada ao serviço externo de análise visual agora.", "calma", 1)
+            descricao = str(analisar_imagem(imagem, pergunta) or "").strip()
+            if not descricao:
+                descricao_falha = "Capturei a tela, mas o serviço visual não devolveu uma descrição."
+                if resultado_async.pode_publicar():
+                    falar(descricao_falha, "calma", 1)
+                resultado_async.concluir({
+                    "ok": False,
+                    "status": "analise_visual_sem_resultado",
+                    "descricao": descricao_falha,
+                    "confirmado": False,
+                })
+                return
             emocao, nivel = estado_emocional()
             if callable(registrar_memoria):
                 try:
@@ -97,14 +195,32 @@ def executar_captura_tela(
                     )
                 except Exception as erro_memoria:
                     log(f"[VISÃO] Falha ao registrar memória visual: {erro_memoria}")
-            falar(str(descricao or "")[:300], emocao or "debochada", nivel or 2)
+            descricao_final = descricao[:300]
+            if resultado_async.pode_publicar():
+                falar(descricao_final, emocao or "debochada", nivel or 2)
+            resultado_async.concluir({
+                "ok": True,
+                "status": "captura_concluida",
+                "descricao": descricao_final,
+                "confirmado": True,
+                "origem": "pc_a",
+            })
         except Exception as erro:
             log(f"[VISÃO] Erro: {erro}")
-            falar("Tive um problema pra olhar a tela.", "irritada", 2)
+            descricao_falha = "Tive um problema pra olhar a tela."
+            if resultado_async.pode_publicar():
+                falar(descricao_falha, "irritada", 2)
+            resultado_async.concluir({
+                "ok": False,
+                "status": "falha_analise_visual",
+                "descricao": descricao_falha,
+                "confirmado": False,
+            })
 
     thread_factory(target=ver_tela_local, daemon=True).start()
-    falar("Tô olhando pra tela agora, um segundo...", "calma", 1)
-    return True
+    if falar_progresso:
+        falar("Tô olhando pra tela agora, um segundo...", "calma", 1)
+    return resultado_async if retornar_resultado else True
 
 
 class MemoriaVisualRuntime:
@@ -113,8 +229,51 @@ class MemoriaVisualRuntime:
     def __init__(self, *, namespace_getter: Callable[[], dict], log: Callable[[str], Any] = print) -> None:
         self.namespace_getter = namespace_getter
         self.log = log
+        self._lock = threading.RLock()
+        self._ultimo_resultado: dict[str, Any] = {}
 
-    def executar(self, destino: str, *, registrar_memoria: bool = False) -> bool:
+    def _registrar_resultado(self, resultado: dict[str, Any]) -> None:
+        dados = dict(resultado or {})
+        if not dados.get("ok") or not str(dados.get("descricao") or "").strip():
+            return
+        dados["ts"] = time.time()
+        with self._lock:
+            self._ultimo_resultado = dados
+
+    def consultar_ultimo(self, *, modo: str = "identificar", ttl_s: float = 600.0) -> dict[str, Any]:
+        with self._lock:
+            atual = dict(self._ultimo_resultado)
+        try:
+            recente = bool(atual and time.time() - float(atual.get("ts") or 0.0) <= ttl_s)
+        except (TypeError, ValueError):
+            recente = False
+        if not recente:
+            return {
+                "ok": False,
+                "status": "contexto_visual_indisponivel",
+                "descricao": "",
+                "confirmado": False,
+            }
+        descricao = str(atual.get("descricao") or "").strip()
+        return {
+            "ok": bool(descricao),
+            "status": "contexto_visual_consultado",
+            "descricao": descricao,
+            "confirmado": bool(descricao),
+            "modo": str(modo or "identificar").strip(),
+            "origem": str(atual.get("origem") or "pc_a"),
+        }
+
+    def executar(
+        self,
+        destino: str,
+        *,
+        registrar_memoria: bool = False,
+        acao: str = "capturar",
+        modo: str = "identificar",
+    ) -> bool | ResultadoCapturaVisual | dict[str, Any]:
+        if str(acao or "").strip().casefold() == "consultar_contexto_visual":
+            return self.consultar_ultimo(modo=modo)
         ns = self.namespace_getter() or {}
         return executar_captura_tela(
             destino,
@@ -126,6 +285,9 @@ class MemoriaVisualRuntime:
             registrar_memoria=ns["registrar_memoria"] if registrar_memoria else None,
             obter_contexto=ns["obter_contexto"],
             log=self.log,
+            retornar_resultado=True,
+            falar_progresso=False,
+            ao_concluir=self._registrar_resultado,
         )
 
 

@@ -987,9 +987,117 @@ function realizarBuscaYouTube(url, background = false, cmd = null) {
       const list = Array.isArray(tabs) ? tabs : [];
       const out = list
         .filter((t) => t && t.id != null)
-        .map((t) => ({ id: t.id, url: t.url || "", title: t.title || "" }));
+        .map((t) => ({
+          id: t.id,
+          url: t.url || "",
+          title: t.title || "",
+          active: t.active === true,
+          audible: t.audible === true,
+          pinned: t.pinned === true,
+          discarded: t.discarded === true,
+          lastAccessed: Number.isFinite(t.lastAccessed) ? t.lastAccessed : null,
+          windowId: Number.isInteger(t.windowId) ? t.windowId : null,
+        }));
       if (websocket && websocket.readyState === WebSocket.OPEN) {
         websocket.send(JSON.stringify({ type: "TABS_LIST", requestId, tabs: out }));
+      }
+    });
+    return;
+  }
+
+  if (cmd.action === "click_first_result") {
+    const requestedQuery = String(cmd.query || "").trim().toLowerCase();
+    chrome.tabs.query({}, async (tabs) => {
+      const normalize = (value) => String(value || "")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase().replace(/\s+/g, " ").trim();
+      const searches = (Array.isArray(tabs) ? tabs : []).filter((tab) => {
+        try {
+          const parsed = new URL(String(tab?.url || ""));
+          return parsed.hostname.includes("google.") && parsed.pathname.startsWith("/search");
+        } catch (_) {
+          return false;
+        }
+      });
+      const matching = searches.filter((tab) => {
+        if (!requestedQuery) return true;
+        try {
+          const query = new URL(String(tab.url || "")).searchParams.get("q") || "";
+          return normalize(query) === normalize(requestedQuery);
+        } catch (_) {
+          return false;
+        }
+      });
+      const ordered = (matching.length ? matching : searches).slice().sort((a, b) => {
+        const activeDiff = Number(b?.active === true) - Number(a?.active === true);
+        if (activeDiff) return activeDiff;
+        return Number(b?.lastAccessed || 0) - Number(a?.lastAccessed || 0);
+      });
+      const target = ordered[0] || null;
+      if (!target?.id) {
+        sendCommandResult(cmd, false, {
+          status: "search_context_missing",
+          message: "Nenhuma página de resultados observada",
+        });
+        return;
+      }
+      try {
+        const injections = await chrome.scripting.executeScript({
+          target: { tabId: target.id },
+          func: () => {
+            const adMarker = /(Patrocinado|Anúncio|Anuncio)/i;
+            const headings = Array.from(document.querySelectorAll("div#search a h3"));
+            for (const heading of headings) {
+              const link = heading.closest ? heading.closest("a[href]") : null;
+              const href = String(link?.href || "").trim();
+              if (!href || !/^https?:\/\//i.test(href)) continue;
+              if (/googleadservices|\/aclk\?|adurl=|\/search\?/i.test(href)) continue;
+              let node = link;
+              let sponsored = false;
+              for (let depth = 0; depth < 7 && node; depth += 1) {
+                if (adMarker.test(String(node.textContent || ""))) {
+                  sponsored = true;
+                  break;
+                }
+                node = node.parentElement;
+              }
+              if (sponsored) continue;
+              return {
+                href,
+                title: String(heading.textContent || "").replace(/\s+/g, " ").trim(),
+              };
+            }
+            return null;
+          },
+        });
+        const selected = injections?.[0]?.result || null;
+        if (!selected?.href) {
+          sendCommandResult(cmd, false, {
+            status: "result_not_found",
+            message: "Nenhum resultado orgânico observável foi encontrado",
+          }, target);
+          return;
+        }
+        chrome.tabs.update(target.id, { url: selected.href, active: true }, (updated) => {
+          const error = chrome.runtime.lastError?.message || "";
+          if (!error && target.windowId != null) {
+            try { chrome.windows.update(target.windowId, { focused: true }); } catch (_) {}
+          }
+          sendCommandResult(cmd, !error, {
+            status: error ? "error" : "result_opened",
+            message: error,
+            evidence: {
+              selectedUrl: selected.href,
+              selectedTitle: selected.title || "",
+              sourceTabId: target.id,
+            },
+          }, updated || target);
+        });
+      } catch (error) {
+        sendCommandResult(cmd, false, {
+          status: "error",
+          message: String(error?.message || error || "Falha ao ler resultados"),
+        }, target);
       }
     });
     return;
@@ -1077,23 +1185,50 @@ function realizarBuscaYouTube(url, background = false, cmd = null) {
   }
 
   if (cmd.action === "close_specific_tab") {
-    const targetName = String(cmd.target || (cmd.payload && cmd.payload.target) || "").toLowerCase();
-    if (!targetName) return;
+    const targetName = String(cmd.target || (cmd.payload && cmd.payload.target) || "").trim();
+    if (!targetName) {
+      sendCommandResult(cmd, false, { status: "invalid_target", message: "Alvo vazio" });
+      return;
+    }
 
     chrome.tabs.query({}, function(tabs) {
-      let abaFechada = false;
-      for (let tab of tabs) {
-        let titulo = tab.title ? tab.title.toLowerCase() : "";
-        let url = tab.url ? tab.url.toLowerCase() : "";
-        if (titulo.includes(targetName) || url.includes(targetName)) {
-          chrome.tabs.remove(tab.id);
-          console.log("💀 Aba eliminada: " + tab.title);
-          abaFechada = true;
-        }
-      }
-      if (!abaFechada) {
+      const normalize = (value) => String(value || "")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      const wanted = normalize(targetName);
+      const compact = wanted.replace(/\s+/g, "");
+      const candidates = (Array.isArray(tabs) ? tabs : []).map((tab) => {
+        const title = normalize(tab?.title);
+        const url = normalize(tab?.url);
+        let host = "";
+        try { host = normalize(new URL(String(tab?.url || "")).hostname); } catch (_) {}
+        const compactHost = host.replace(/\s+/g, "");
+        let score = 0;
+        if (title === wanted) score = 120;
+        else if (host === wanted || host.endsWith(` ${wanted}`)) score = 115;
+        else if (compact && compactHost.includes(compact)) score = 105;
+        else if (wanted && title.includes(wanted)) score = 95;
+        else if (wanted && url.includes(wanted)) score = 85;
+        return { tab, score };
+      }).filter((item) => item.score > 0 && item.tab?.id != null)
+        .sort((a, b) => b.score - a.score || Number(b.tab.active) - Number(a.tab.active));
+      const chosen = candidates[0]?.tab || null;
+      if (!chosen?.id) {
         console.log("Nenhuma aba encontrada com o nome: " + targetName);
+        sendCommandResult(cmd, false, {
+          status: "not_found",
+          message: "Nenhuma aba observada corresponde ao alvo",
+        });
+        return;
       }
+      chrome.tabs.remove(chosen.id, () => {
+        const error = chrome.runtime.lastError?.message || "";
+        sendCommandResult(cmd, !error, {
+          status: error ? "error" : "success",
+          message: error,
+          evidence: { closedTabId: chosen.id, target: targetName },
+        }, chosen);
+      });
     });
     return;
   }
@@ -1101,7 +1236,18 @@ function realizarBuscaYouTube(url, background = false, cmd = null) {
   if (cmd.action === "close_tabs" && Array.isArray(cmd.ids)) {
     const ids = cmd.ids.filter((x) => Number.isInteger(x)).map((x) => Number(x));
     if (ids.length > 0) {
-      chrome.tabs.remove(ids);
+      chrome.tabs.remove(ids, () => {
+        const error = chrome.runtime.lastError?.message || "";
+        sendCommandResult(cmd, !error, {
+          status: error ? "error" : "success",
+          message: error,
+          evidence: { closedTabIds: ids },
+        });
+      });
+    } else {
+      sendCommandResult(cmd, false, {
+        status: "invalid_target", message: "Nenhum identificador de aba válido",
+      });
     }
     return;
   }

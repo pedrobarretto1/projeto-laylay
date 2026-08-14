@@ -46,9 +46,25 @@ class SegurancaOperacionalTests(unittest.TestCase):
             self.assertTrue(movido.sucesso)
             self.assertFalse(alvo.exists())
 
-            restaurado = lixeira.restaurar_ultimo()
+            restaurado = lixeira.restaurar_ultimo(str(alvo))
             self.assertTrue(restaurado.sucesso)
             self.assertEqual((alvo / "dado.txt").read_text(encoding="utf-8"), "seguro")
+
+    def test_lixeira_nao_restaura_item_diferente_da_referencia_confirmada(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            alvo = Path(tmp) / "correto.txt"
+            outro = Path(tmp) / "outro.txt"
+            alvo.write_text("preservar", encoding="utf-8")
+            lixeira = _lixeira(str(Path(tmp) / "lixeira"))
+            lixeira.mover(str(alvo))
+            movido = lixeira.confirmar_pendente()
+            self.assertTrue(movido.sucesso)
+
+            restaurado = lixeira.restaurar_ultimo(str(outro))
+
+            self.assertFalse(restaurado.sucesso)
+            self.assertEqual(restaurado.status, "exclusao_vinculada_nao_encontrada")
+            self.assertFalse(alvo.exists())
 
     def test_lixeira_tambem_confirma_arquivo_simples(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -20,7 +20,7 @@ class PortaArquivosMutacao(Protocol):
     def solicitar_exclusao(self, caminho: str) -> Any: ...
     def confirmar_exclusao(self) -> Any: ...
     def cancelar_exclusao(self) -> None: ...
-    def restaurar_ultimo(self) -> Any: ...
+    def restaurar_ultimo(self, caminho_esperado: str = "") -> Any: ...
     def diagnostico(self) -> dict[str, Any]: ...
 
 
@@ -92,7 +92,9 @@ class RegistroArquivosMutacao:
     def cancelar_exclusao(self) -> None:
         self.servico.cancelar_exclusao()
 
-    def restaurar_ultimo(self) -> Any:
+    def restaurar_ultimo(self, caminho_esperado: str = "") -> Any:
+        if caminho_esperado:
+            return self.servico.restaurar_ultimo(caminho_esperado)
         return self.servico.restaurar_ultimo()
 
     def diagnostico(self) -> dict[str, Any]:
@@ -104,4 +106,3 @@ def registrar_arquivos_mutacao(servico: Any) -> RegistroArquivosMutacao:
     if isinstance(servico, RegistroArquivosMutacao):
         return servico
     return RegistroArquivosMutacao.criar(servico)
-

@@ -298,7 +298,7 @@ def test_clique_manual_nao_cria_balao_nem_indicador_de_llm(monkeypatch) -> None:
     app.processEvents()
 
 
-def test_pagina_mostra_todas_as_playlists_e_toda_a_fila_ao_expandir(
+def test_pagina_mostra_todas_as_playlists_e_toda_a_fila_com_scroll(
     monkeypatch,
 ) -> None:
     pytest.importorskip("PySide6")
@@ -336,9 +336,11 @@ def test_pagina_mostra_todas_as_playlists_e_toda_a_fila_ao_expandir(
     assert sum(botao.isVisible() for botao in pagina.preset_botoes) == 30
 
     assert len(pagina.fila_linhas) == 15
-    assert sum(linha["widget"].isVisible() for linha in pagina.fila_linhas) == 5
-    pagina._alternar_fila()
-    app.processEvents()
     assert sum(linha["widget"].isVisible() for linha in pagina.fila_linhas) == 15
+    assert pagina.fila_scroll.height() == 322
+    barra = pagina.fila_scroll.verticalScrollBar()
+    assert barra.maximum() > 0
+    barra.setValue(barra.maximum())
+    assert barra.value() == barra.maximum()
     pagina.close()
     app.processEvents()

@@ -38,7 +38,7 @@ class ArquivosMutacaoRuntime:
         solicitar_exclusao_cb: Callable[..., Any] = mover_para_lixeira,
         confirmar_exclusao_cb: Callable[[], Any] = confirmar_exclusao_pendente,
         cancelar_exclusao_cb: Callable[[], Any] = cancelar_exclusao_pendente,
-        restaurar_ultimo_cb: Callable[[], Any] = restaurar_ultimo_item,
+        restaurar_ultimo_cb: Callable[[str], Any] = restaurar_ultimo_item,
         exclusao_pendente_cb: Callable[[], bool] = existe_exclusao_pendente,
     ) -> None:
         self._resolver_caminho = resolver_caminho_cb
@@ -88,7 +88,9 @@ class ArquivosMutacaoRuntime:
     def cancelar_exclusao(self) -> None:
         self._cancelar_exclusao()
 
-    def restaurar_ultimo(self) -> Any:
+    def restaurar_ultimo(self, caminho_esperado: str = "") -> Any:
+        if caminho_esperado:
+            return self._restaurar_ultimo(caminho_esperado)
         return self._restaurar_ultimo()
 
     def diagnostico(self) -> dict[str, Any]:
@@ -102,4 +104,3 @@ class ArquivosMutacaoRuntime:
 
 def criar_arquivos_mutacao_runtime(**kwargs: Any) -> ArquivosMutacaoRuntime:
     return ArquivosMutacaoRuntime(**kwargs)
-

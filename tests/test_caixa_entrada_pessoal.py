@@ -65,6 +65,110 @@ def test_adiciona_e_classifica_ideia_com_persistencia_atomica(tmp_path):
     assert resultados[-1][1]["origem"] == "caixa_entrada_pessoal"
 
 
+def test_guarda_como_ideia_remove_wrapper_do_conteudo(tmp_path) -> None:
+    runtime, *_ = criar_runtime(tmp_path)
+
+    assert runtime.processar(
+        "Guarda como ideia melhorar os testes da Laylay"
+    ) is True
+
+    item = itens_salvos(tmp_path)[0]
+    assert item["tipo"] == "ideia"
+    assert item["conteudo"] == "melhorar os testes da Laylay"
+    assert "guarda como ideia" not in item["conteudo"].casefold()
+
+
+def test_composto_essa_ideia_usa_ultimo_item_criado_e_nao_pergunta_historica(
+    tmp_path,
+) -> None:
+    mensagens = [
+        {"role": "user", "content": "Quem é o presidente do Brasil?"},
+        {"role": "assistant", "content": "Não vou responder sem uma fonte atual."},
+    ]
+    caixa, falas, *_ = criar_runtime(tmp_path, mensagens=mensagens)
+    caixa.processar("Guarda como ideia melhorar os testes da Laylay")
+    item_criado = caixa.ultimo_item_criado()
+    assert item_criado is not None
+
+    # Uma listagem pode mudar o foco operacional, mas não a referência tipada
+    # publicada para uma composição com a agenda.
+    caixa.processar("quais ideias eu anotei?")
+    comandos_agenda: list[dict] = []
+
+    class Orquestrador:
+        @staticmethod
+        def processar_caixa_para_agenda(**dados) -> dict:
+            comandos_agenda.append(dict(dados["comando_agenda"]))
+            return {"ok": True, "status": "plano_confirmado"}
+
+    estado = type("Estado", (), {"mental": {}})()
+    namespace = {
+        "_estado_compartilhado_runtime": estado,
+        "_caixa_entrada_pessoal_runtime": caixa,
+        "_orquestrador_cooperativo_runtime": Orquestrador(),
+        "resolver_comando_natural": lambda _texto, _origem: ({
+            "intent": "AGENDAR_LEMBRETE",
+            "params": {"descricao": "dela", "dia": "amanhã", "hora": "11:00"},
+        }, "agenda"),
+        "_registrar_resultado_execucao": lambda *_args, **_kwargs: None,
+        "processar_comandos_em_cadeia": lambda *_args: False,
+        "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+    }
+    imediato = ComandosImediatosRuntime(
+        namespace_getter=lambda: namespace,
+        loop_getter=lambda: None,
+    )
+
+    assert imediato.processar_prioritarios(
+        "Guarda essa ideia e me lembra dela amanhã às 11 horas"
+    ) is True
+
+    assert len(itens_salvos(tmp_path)) == 1
+    assert len(comandos_agenda) == 1
+    params = comandos_agenda[0]["params"]
+    assert params["descricao"] == "melhorar os testes da Laylay"
+    assert params["referencia_nota"] == item_criado["id"]
+    assert "presidente" not in str(comandos_agenda).casefold()
+
+
+def test_composto_essa_ideia_sem_item_criado_nao_usa_pergunta_historica(
+    tmp_path,
+) -> None:
+    mensagens = [{"role": "user", "content": "Quem é o presidente do Brasil?"}]
+    caixa, falas, *_ = criar_runtime(tmp_path, mensagens=mensagens)
+    chamadas: list[dict] = []
+
+    class Orquestrador:
+        @staticmethod
+        def processar_caixa_para_agenda(**dados) -> dict:
+            chamadas.append(dict(dados))
+            return {"ok": True}
+
+    estado = type("Estado", (), {"mental": {}})()
+    namespace = {
+        "_estado_compartilhado_runtime": estado,
+        "_caixa_entrada_pessoal_runtime": caixa,
+        "_orquestrador_cooperativo_runtime": Orquestrador(),
+        "resolver_comando_natural": lambda *_args: ({
+            "intent": "AGENDAR_LEMBRETE", "params": {"descricao": "dela"},
+        }, "agenda"),
+        "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+    }
+    imediato = ComandosImediatosRuntime(
+        namespace_getter=lambda: namespace,
+        loop_getter=lambda: None,
+    )
+
+    assert imediato.processar_prioritarios(
+        "Guarda essa ideia e me lembra dela amanhã às 11 horas"
+    ) is True
+
+    assert chamadas == []
+    assert not (tmp_path / "caixa.json").exists()
+    assert "recém-guardada" in falas[-1]
+    assert "presidente" not in falas[-1].casefold()
+
+
 def test_essa_ideia_recupera_contexto_anterior_sem_salvar_o_comando(tmp_path):
     mensagens = [
         {"role": "user", "content": "Seria legal criar um modo silencioso para estudar"},

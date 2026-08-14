@@ -1022,7 +1022,9 @@ class MemoriaPessoasRuntime:
         linhas = [
             "MEMÓRIA DE PESSOAS RELEVANTE: use apenas como relato confirmado do usuário; "
             "não complete lacunas, não confunda pessoas homônimas e não invente uma "
-            "experiência pessoal sua para reagir ao relato. Responda de forma breve e natural."
+            "experiência pessoal sua para reagir ao relato. Ao registrar uma relação, "
+            "reconheça nome e relação de forma neutra, sem sexualizar, insinuar intimidade "
+            "ou abrir uma pergunta nova. Responda de forma breve e natural."
         ]
         for pessoa in relevantes[:2]:
             linhas.append(f"- {self._descricao(pessoa)}")

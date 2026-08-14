@@ -99,6 +99,20 @@ _PREFERENCIA_DE_TERCEIRO = re.compile(
     r"(?P<valor>[^,.!?]{2,80})",
     re.IGNORECASE,
 )
+_RELACAO_PESSOAL_DECLARADA = re.compile(
+    r"(?:^|\bna\s+verdade\s*,?\s*)"
+    r"(?:a\s+|o\s+)?(?P<nome>[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ' -]{0,60}?)\s+"
+    r"(?:é|e|eh|è)\s+(?:minha|meu)\s+"
+    r"(?P<relacao>namorada|namorado|esposa|marido|amiga|amigo|irmã|irma|"
+    r"irmão|irmao|mãe|mae|pai|prima|primo|colega|chefe|tia|tio|avó|avo|"
+    r"filha|filho|sobrinha|sobrinho)\b",
+    re.IGNORECASE,
+)
+_SEXUALIZACAO_RELACAO = re.compile(
+    r"\b(?:gostos[oa]|sexual|sexy|beij|cama|corpo|peito|bunda|tes[aã]o|"
+    r"safad[oa]|del[ií]cia|intimidade)\w*\b",
+    re.IGNORECASE,
+)
 _REFERENTE_SEM_ANCORA = re.compile(
     r"\b(?:o|a)\s+outr[oa]\s+que\b|"
     r"\b(?:esse|essa|isso)\s+(?:neg[oó]cio|coisa|tro[cç]o)\b",
@@ -173,6 +187,9 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "deriva_de_dominio",
     "preferencia_pessoal_nao_reconhecida",
     "preferencia_de_terceiro_atribuida_ao_usuario",
+    "relacao_pessoal_nao_reconhecida",
+    "relacao_pessoal_sexualizada",
+    "relacao_pessoal_abriu_pergunta",
     "resposta_generica_sem_conteudo",
     "saudacao_nao_respondida_no_inicio",
     "ato_opiniao_nao_respondido",
@@ -372,6 +389,21 @@ def avaliar_qualidade_comunicacao(
             if atribuiu_ao_usuario:
                 problemas.append("preferencia_de_terceiro_atribuida_ao_usuario")
 
+        relacao_declarada = _RELACAO_PESSOAL_DECLARADA.search(usuario)
+        if relacao_declarada:
+            nome_relacao = normalizar_texto_memoria(relacao_declarada.group("nome"))
+            tipo_relacao = normalizar_texto_memoria(relacao_declarada.group("relacao"))
+            resposta_semantica = normalizar_texto_memoria(resposta)
+            if not (
+                nome_relacao in resposta_semantica
+                and tipo_relacao in resposta_semantica
+            ):
+                problemas.append("relacao_pessoal_nao_reconhecida")
+            if _SEXUALIZACAO_RELACAO.search(resposta):
+                problemas.append("relacao_pessoal_sexualizada")
+            if "?" in resposta:
+                problemas.append("relacao_pessoal_abriu_pergunta")
+
         # Pronomes como "o outro que..." sem um substantivo identificável são
         # uma fonte recorrente de frases que parecem espirituosas, mas não dizem nada.
         if _REFERENTE_SEM_ANCORA.search(resposta):
@@ -489,7 +521,9 @@ def montar_mensagens_reparo_comunicacao(
         "pedir esclarecimento, diga primeiro em linguagem direta o que a fala anterior quis "
         "dizer; não tente explicar uma metáfora com outra. Não narre o ato de responder, não "
         "fale do terminal sem ter sido perguntada e faça no máximo uma pergunta. Evite poesia "
-        "decorativa fora de pedidos criativos. A resposta deve continuar clara "
+        "decorativa fora de pedidos criativos. Ao receber uma relação pessoal, apenas "
+        "reconheça o nome e a relação: não sexualize, não faça insinuação e não abra uma "
+        "pergunta nova. A resposta deve continuar clara "
         "mesmo sem tom de voz. Se o payload trouxer contrato_de_reparo, cumpra o núcleo "
         "já na primeira frase, siga a sequência indicada e não ultrapasse max_frases. "
         "Quando a estratégia for resposta_multiacto, cada item de atos_obrigatorios "
@@ -656,6 +690,17 @@ def contingencia_comunicacao(
                 "Aí gostei. Guarda um pouco dessa animação porque o dia adora cobrar juros kkk.",
                 "Que bom. Hoje você veio com energia de gente que venceu uma pequena batalha.",
             ], evitar=falas_evitar)
+    relacao_declarada = _RELACAO_PESSOAL_DECLARADA.search(texto)
+    if relacao_declarada:
+        nome_relacao = re.sub(
+            r"\s+", " ", str(relacao_declarada.group("nome") or "")
+        ).strip()
+        tipo_relacao = str(relacao_declarada.group("relacao") or "").strip().casefold()
+        return escolher_variacao([
+            f"Entendi: {nome_relacao} é sua {tipo_relacao}.",
+            f"Certo, {nome_relacao} é sua {tipo_relacao}.",
+            f"Anotado do jeito certo: {nome_relacao} é sua {tipo_relacao}.",
+        ], evitar=falas_evitar)
     preferencias = extrair_aprendizados_pessoais_explicitos(texto)
     if preferencias:
         regra = str(preferencias[0].get("regra") or "").strip()

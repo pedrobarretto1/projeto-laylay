@@ -11,7 +11,9 @@ from mente_laylay.autonomia.executor_comum import falar_ctx as _falar
 from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_variada
 
 
-INTENCOES_SISTEMA = frozenset({"SCREEN_CAPTURE", "GAME_VISION", "NOTIFICATIONS", "LOCK_PC"})
+INTENCOES_SISTEMA = frozenset({
+    "SCREEN_CAPTURE", "VISION_QUERY", "GAME_VISION", "NOTIFICATIONS", "LOCK_PC",
+})
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,13 +27,79 @@ def _get(ctx: Dict[str, Any], nome: str, default: Any = None) -> Any:
 
 
 def _capturar_tela(
+    params: Dict[str, Any],
     destino: str,
     ctx: Dict[str, Any],
     deps: DependenciasExecutorSistema,
 ) -> ResultadoDespacho:
     executar = _get(ctx, "_executar_captura_tela_intent")
-    ok = bool(executar(destino)) if callable(executar) else False
-    deps.marcar_resultado("captura_solicitada" if ok else "falha_execucao", executou=ok)
+    if not callable(executar):
+        deps.marcar_resultado(
+            "falha_execucao", executou=False, confirmado=False,
+        )
+        return ResultadoDespacho.concluido(False)
+
+    acao = str(params.get("acao") or "capturar").strip().casefold()
+    modo = str(params.get("modo") or "identificar").strip().casefold()
+    try:
+        if acao == "consultar_contexto_visual":
+            retorno = executar(destino, acao=acao, modo=modo)
+        else:
+            retorno = executar(destino)
+    except TypeError:
+        # Compatibilidade com a porta booleana anterior somente para captura;
+        # uma consulta nunca pode disparar nova imagem por acidente.
+        retorno = executar(destino) if acao != "consultar_contexto_visual" else {}
+    except Exception:
+        retorno = {}
+
+    aguardar = getattr(retorno, "aguardar", None)
+    if callable(aguardar):
+        try:
+            retorno = aguardar(timeout_s=45.0)
+        except TypeError:
+            retorno = aguardar(45.0)
+        except Exception:
+            retorno = {
+                "ok": False,
+                "status": "falha_analise_visual",
+                "confirmado": False,
+            }
+
+    if isinstance(retorno, dict):
+        dados = dict(retorno)
+        ok = bool(dados.get("ok"))
+        status = str(
+            dados.get("status")
+            or ("captura_concluida" if ok else "falha_execucao")
+        ).strip()
+        confirmado = dados.get("confirmado")
+        if confirmado is None:
+            confirmado = ok
+        deps.marcar_resultado(
+            status,
+            executou=ok,
+            confirmado=bool(confirmado),
+            detalhe=str(dados.get("origem") or ""),
+        )
+        if acao == "consultar_contexto_visual":
+            descricao = str(dados.get("descricao") or "").strip()
+            if ok and descricao:
+                _falar(ctx, descricao)
+            else:
+                _falar(
+                    ctx,
+                    "Ainda não tenho uma análise visual recente para consultar.",
+                )
+        return ResultadoDespacho.concluido(ok)
+
+    # Porta legada: confirma apenas que a solicitação foi aceita. Ela não
+    # recebe ``confirmado=True`` porque não carrega o resultado visual final.
+    ok = bool(retorno)
+    deps.marcar_resultado(
+        "captura_solicitada" if ok else "falha_execucao",
+        executou=ok,
+    )
     return ResultadoDespacho.concluido(ok)
 
 
@@ -157,8 +225,8 @@ def executar_intencao_sistema(
     intent = str(intent or "").upper().strip()
     if intent not in INTENCOES_SISTEMA:
         return ResultadoDespacho.nao_tratado()
-    if intent == "SCREEN_CAPTURE":
-        return _capturar_tela(destino, ctx, deps)
+    if intent in {"SCREEN_CAPTURE", "VISION_QUERY"}:
+        return _capturar_tela(params, destino, ctx, deps)
     if intent == "GAME_VISION":
         return _visao_jogo(params, ctx, deps)
     if intent == "NOTIFICATIONS":

@@ -74,13 +74,40 @@ def test_referencia_pronominal_prefere_caminho_confirmado_da_estrutura(tmp_path)
     ) == str(caminho)
 
 
-def test_quero_ele_de_volta_restaura_ultima_exclusao() -> None:
+def test_quero_ele_de_volta_sem_exclusao_confirmada_nao_restaura() -> None:
     resultado = detectar_intencao_arquivos(
         "quero ele de volta",
         params_cb=lambda **kwargs: kwargs,
         estado_mental={},
     )
-    assert resultado == {"intent": "RESTORE_DELETED_ITEM", "params": {}}
+    assert resultado is None
+
+
+def test_quero_ele_de_volta_vincula_exclusao_confirmada_recente(tmp_path) -> None:
+    arquivo = tmp_path / "teste natural.txt"
+    estado = {
+        "ultima_acao_ts": time.time(),
+        "ultima_acao_alvo": str(arquivo),
+        "ultima_acao_contrato": {
+            "intent": "CONFIRM_DELETE_ITEM",
+            "status": "movido_para_lixeira",
+            "alvo": str(arquivo),
+            "executou": True,
+            "confirmado": True,
+        },
+    }
+
+    assert detectar_intencao_arquivos(
+        "quero ele de volta",
+        params_cb=lambda **kwargs: kwargs,
+        estado_mental=estado,
+    ) == {
+        "intent": "RESTORE_DELETED_ITEM",
+        "params": {
+            "alvo": str(arquivo),
+            "referencia_exclusao_confirmada": True,
+        },
+    }
 
 
 def test_referencia_explicita_nao_e_substituida_pela_memoria() -> None:
@@ -363,6 +390,15 @@ def test_continuidade_de_arquivo_escreve_localiza_e_abre_o_mesmo_caminho(tmp_pat
         estado_mental=estado,
     )["params"]["referencia_caminho"] == str(arquivo)
     assert detectar_intencao_arquivos(
+        "Qual é o caminho completo dele?",
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    )["params"] == {
+        "query": "exemplo.txt",
+        "referencia_caminho": str(arquivo),
+        "alvo": "exemplo.txt",
+    }
+    assert detectar_intencao_arquivos(
         "Abre ele.",
         params_cb=lambda **params: params,
         estado_mental=estado,
@@ -416,6 +452,79 @@ def test_movimentacao_natural_resolve_pasta_criada_sem_entregar_ao_llm(tmp_path)
             "destino": str(pasta),
             "referencia_contextual": True,
         },
+    }
+
+
+@pytest.mark.parametrize(
+    ("frase", "origem"),
+    [
+        ("coloca o teste completo txt dentro dela", "teste completo.txt"),
+        ("coloca o teste natural txt dentro dela", "teste natural.txt"),
+    ],
+)
+def test_movimentacao_normalizada_remove_artigo_e_restaura_extensao_txt(
+    tmp_path, frase: str, origem: str,
+) -> None:
+    pasta = tmp_path / "carlos teste"
+    estado = {
+        "ultima_estrutura_arquivo_params": {
+            "tipo": "pasta",
+            "nome": "carlos teste",
+            "caminho": str(pasta),
+        },
+        "ultima_pasta": str(pasta),
+    }
+
+    resultado = detectar_intencao_arquivos(
+        frase,
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    )
+
+    assert resultado == {
+        "intent": "FILE_TRANSACTION",
+        "params": {
+            "operacao": "mover",
+            "origem": origem,
+            "destino": str(pasta),
+            "referencia_contextual": True,
+        },
+    }
+
+
+def test_abertura_por_nome_explicito_usa_caminho_recente_e_basename(tmp_path) -> None:
+    arquivo = tmp_path / "teste completo.txt"
+    estado = {
+        "ultima_estrutura_arquivo_params": {
+            "tipo": "arquivo",
+            "arquivo_nome": str(arquivo),
+            "caminho": str(arquivo),
+        },
+    }
+
+    assert detectar_intencao_arquivos(
+        "Abre o arquivo teste completo txt.",
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    ) == {
+        "intent": "FILE_OPEN_RESULT",
+        "params": {"caminho": str(arquivo), "alvo": "teste completo.txt"},
+    }
+
+    sem_extensao = tmp_path / "teste natural"
+    estado["ultima_estrutura_arquivo_params"] = {
+        "tipo": "arquivo",
+        "arquivo_nome": sem_extensao.name,
+        "caminho": str(sem_extensao),
+        "tipo_arquivo": "texto",
+    }
+    assert detectar_intencao_arquivos(
+        "Abre o arquivo teste natural txt.",
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    ) == {
+        "intent": "FILE_OPEN_RESULT",
+        "params": {"caminho": str(sem_extensao), "alvo": "teste natural"},
     }
 
 
@@ -620,7 +729,7 @@ def test_abertura_de_arquivo_com_foco_aguarda_e_confirma_janela(tmp_path) -> Non
         "FILE_OPEN_RESULT",
         {
             "caminho": str(arquivo),
-            "alvo": "teste.txt",
+            "alvo": str(arquivo),
             "modo": "focus",
         },
         "pc_local",
@@ -802,6 +911,75 @@ def test_executor_atualiza_arquivo_existente_sem_criar_outro(tmp_path) -> None:
     assert tratado is True
     assert arquivo.read_text(encoding="utf-8") == "teste concluído"
     assert resultados[-1] == ("conteudo_atualizado", True)
+
+
+def test_escreve_uma_segunda_linha_acrescenta_sem_apagar_conteudo(tmp_path) -> None:
+    arquivo = tmp_path / "teste completo.txt"
+    arquivo.write_text("teste concluído com sucesso", encoding="utf-8")
+    estado = {
+        "ultima_estrutura_arquivo_params": {
+            "tipo": "arquivo",
+            "arquivo_nome": arquivo.name,
+            "caminho": str(arquivo),
+        },
+    }
+    comando = detectar_intencao_arquivos(
+        "Escreve uma segunda linha nele.",
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    )
+    assert comando == {
+        "intent": "CREATE_FILE",
+        "params": {
+            "alvo": str(arquivo),
+            "conteudo": "uma segunda linha",
+            "editar_existente": True,
+            "modo_escrita": "append",
+        },
+    }
+
+    modos: list[str] = []
+    estruturas: list[dict] = []
+    resultados: list[tuple[str, bool | None]] = []
+
+    def escrever(caminho: str, conteudo: str, modo: str) -> bool:
+        modos.append(modo)
+        with open(caminho, modo, encoding="utf-8") as stream:
+            stream.write(conteudo)
+        return True
+
+    tratado = executar_intencao_arquivos(
+        comando["intent"],
+        comando["params"],
+        "pc_local",
+        {
+            "falar_com_lipsync": lambda *_args: None,
+            "_registrar_estrutura_arquivo_recente": estruturas.append,
+        },
+        texto_original="Escreve uma segunda linha nele.",
+        marcar_resultado=lambda status, executou, **_kwargs: resultados.append(
+            (status, executou)
+        ),
+        registrar_arquivo=lambda *_args: None,
+        item_local_existe=lambda caminho, tipo: (
+            os.path.isfile(caminho) if tipo == "arquivo" else os.path.exists(caminho)
+        ),
+        resolver_caminho_local=lambda valor: str(valor),
+        resolver_referencia_arquivo_contextual=lambda alvo, _tipo: alvo,
+        arquivos_mutacao=_mutacoes(
+            resolver_caminho_cb=lambda valor: str(valor),
+            criar_arquivo_cb=escrever,
+        ),
+    )
+
+    assert tratado is True
+    assert modos == ["a"]
+    assert arquivo.read_text(encoding="utf-8") == (
+        "teste concluído com sucesso\numa segunda linha"
+    )
+    assert estruturas[-1]["arquivo_nome"] == "teste completo.txt"
+    assert estruturas[-1]["caminho"] == str(arquivo)
+    assert resultados[-1] == ("conteudo_acrescentado", True)
 
 
 def test_executor_aceita_contrato_ia_e_combina_pasta_com_arquivo(tmp_path) -> None:

@@ -63,6 +63,38 @@ def test_abertura_de_codigo_usa_editor_e_nunca_executa_associacao_windows(
     assert processos[0][0] == [str(editor), "--reuse-window", str(arquivo.resolve())]
 
 
+def test_abertura_de_texto_sem_extensao_usa_editor_e_nunca_openwith(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    arquivo = tmp_path / "teste natural"
+    arquivo.write_text("texto criado pela Laylay", encoding="utf-8")
+    editor = tmp_path / "Code.exe"
+    editor.write_bytes(b"editor")
+    processos: list[list[str]] = []
+
+    monkeypatch.setenv("LAYLAY_EDITOR_CODIGO", str(editor))
+    monkeypatch.setattr(
+        pesquisa_semantica.subprocess,
+        "Popen",
+        lambda comando, **_kwargs: processos.append(list(comando)),
+    )
+    monkeypatch.setattr(
+        pesquisa_semantica.os,
+        "startfile",
+        lambda _caminho: (_ for _ in ()).throw(
+            AssertionError("texto sem extensão não pode abrir o seletor OpenWith")
+        ),
+        raising=False,
+    )
+
+    runtime = PesquisaSemanticaArquivosRuntime(
+        raizes=[tmp_path], log=lambda *_args: None,
+    )
+
+    assert runtime.abrir(str(arquivo)) is True
+    assert processos == [[str(editor), "--reuse-window", str(arquivo.resolve())]]
+
+
 def test_abertura_de_arquivo_nao_textual_preserva_associacao_windows(
     tmp_path: Path, monkeypatch,
 ) -> None:
@@ -363,10 +395,15 @@ def test_fluxo_real_publica_resultados_e_continua_por_referencia(tmp_path: Path)
 
     estado = {"ultima_estrutura_arquivo_params": estruturas[-1]}
     caminho = detectar_intencao_arquivos("onde ele fica?", params_cb=_params, estado_mental=estado)
+    caminho_completo = detectar_intencao_arquivos(
+        "qual é o caminho completo dele?", params_cb=_params, estado_mental=estado,
+    )
     abrir = detectar_intencao_arquivos("abre o primeiro", params_cb=_params, estado_mental=estado)
 
     assert caminho and caminho["intent"] == "FILE_SEARCH"
     assert caminho["params"]["referencia_caminho"] == str(arquivo.resolve())
+    assert caminho_completo and caminho_completo["intent"] == "FILE_SEARCH"
+    assert caminho_completo["params"]["referencia_caminho"] == str(arquivo.resolve())
     assert abrir and abrir["intent"] == "FILE_OPEN_RESULT"
 
     executar_intencao_arquivos(
@@ -382,6 +419,70 @@ def test_fluxo_real_publica_resultados_e_continua_por_referencia(tmp_path: Path)
     assert abertos == [str(arquivo.resolve())]
     assert resultados_execucao[-1] == ("arquivo_aberto", True)
     assert falas[-1] == "Abri controle_lampada.py para você."
+
+
+def test_nome_de_arquivo_em_ordem_natural_rota_busca_e_exclusao() -> None:
+    consulta = detectar_intencao_arquivos(
+        "Onde o roteiro correcao.txt fica?",
+        params_cb=_params,
+        estado_mental={},
+    )
+    exclusao = detectar_intencao_arquivos(
+        "Apaga o arquivo roteiro correcao.txt.",
+        params_cb=_params,
+        estado_mental={},
+    )
+    exclusao_cortesia = detectar_intencao_arquivos(
+        "Apague o arquivo roteiro correcao.txt.",
+        params_cb=_params,
+        estado_mental={},
+    )
+
+    assert consulta == {
+        "intent": "FILE_SEARCH",
+        "params": {
+            "query": "roteiro correcao.txt",
+            "alvo": "roteiro correcao.txt",
+        },
+    }
+    esperado_exclusao = {
+        "intent": "DELETE_ITEM",
+        "params": {"alvo": "roteiro correcao.txt", "tipo": "arquivo"},
+    }
+    assert exclusao == esperado_exclusao
+    assert exclusao_cortesia == esperado_exclusao
+    assert detectar_intencao_arquivos(
+        "Onde a reunião fica?",
+        params_cb=_params,
+        estado_mental={},
+    ) is None
+
+    normalizar = lambda texto: str(texto or "").casefold().strip()
+    contexto = {
+        "normalizar_texto": normalizar,
+        "texto_conversa_casual_sem_acao": lambda _texto: False,
+        "texto_bloqueia_playlist_agora": lambda _texto: False,
+        "texto_social_curto": lambda _texto: False,
+        "ignorar_token_solto": lambda _texto: False,
+        "fluxo_prioritario_da_ia": lambda _texto: False,
+        "texto_expresso_melhor_no_deterministico": lambda texto: (
+            texto_expresso_melhor_no_deterministico(
+                texto, normalizar_texto=normalizar,
+            )
+        ),
+        "texto_depende_de_contexto": lambda _texto: False,
+        "limpar_destino_pc_b": lambda texto: texto,
+        "target_from_params": lambda *_args: "pc_a",
+        "mente_integrada_estado": {},
+        "sites_diretos": {},
+        "apps_map": {},
+    }
+    assert detectar_intencao_deterministica_mente(
+        "Apaga o arquivo roteiro correcao.txt.", contexto,
+    ) == esperado_exclusao
+    assert detectar_intencao_deterministica_mente(
+        "Onde o roteiro correcao.txt fica?", contexto,
+    ) == consulta
 
 
 def test_resultados_da_busca_local_sao_confirmados_pelo_contrato_central() -> None:

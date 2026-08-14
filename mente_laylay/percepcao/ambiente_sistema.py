@@ -70,10 +70,16 @@ def obter_clima_open_meteo(
     print_fn: Callable[..., Any] = print,
     timeout_s: float = 2.5,
     clock: Callable[[], float] = time.time,
+    day_offset: int = 0,
 ) -> dict:
     """Consulta reserva sem chave, com geocodificação e cache conservador."""
     cidade = re.sub(r"\s+", " ", str(localidade or "Boituva")).strip() or "Boituva"
-    chave = cidade.casefold()
+    try:
+        deslocamento = max(0, min(6, int(day_offset or 0)))
+    except (TypeError, ValueError):
+        deslocamento = 0
+    chave_cidade = cidade.casefold()
+    chave = f"{chave_cidade}:{deslocamento}"
     agora = float(clock())
     with _CLIMA_CACHE_LOCK:
         item_clima = _CLIMA_ATUAL_CACHE.get(chave)
@@ -81,7 +87,7 @@ def obter_clima_open_meteo(
             retorno = dict(item_clima[1])
             retorno["cache"] = True
             return retorno
-        item_coordenadas = _COORDENADAS_CACHE.get(chave)
+        item_coordenadas = _COORDENADAS_CACHE.get(chave_cidade)
         coordenadas = (
             dict(item_coordenadas[1])
             if item_coordenadas and agora - item_coordenadas[0] < 86400.0
@@ -115,7 +121,7 @@ def obter_clima_open_meteo(
                 "timezone": str(escolhido.get("timezone") or "auto").strip() or "auto",
             }
             with _CLIMA_CACHE_LOCK:
-                _COORDENADAS_CACHE[chave] = (agora, dict(coordenadas))
+                _COORDENADAS_CACHE[chave_cidade] = (agora, dict(coordenadas))
 
         resposta = requests_get(
             "https://api.open-meteo.com/v1/forecast",
@@ -127,9 +133,12 @@ def obter_clima_open_meteo(
                     "weather_code,wind_speed_10m,wind_direction_10m"
                 ),
                 "hourly": "precipitation_probability,precipitation",
-                "daily": "temperature_2m_max,temperature_2m_min",
+                "daily": (
+                    "temperature_2m_max,temperature_2m_min,temperature_2m_mean,"
+                    "weather_code,precipitation_probability_max"
+                ),
                 "timezone": coordenadas.get("timezone") or "auto",
-                "forecast_days": 1,
+                "forecast_days": max(1, deslocamento + 1),
             },
             timeout=limite,
         )
@@ -151,29 +160,70 @@ def obter_clima_open_meteo(
                 precipitacoes.append(max(0.0, float(valor)))
             except (TypeError, ValueError):
                 continue
-        temperatura = _valor_clima(atual.get("temperature_2m"))
-        if not temperatura:
+        def _diario_no_dia(chave_diaria: str) -> Any:
+            valores = list(diario.get(chave_diaria) or [])
+            return valores[deslocamento] if deslocamento < len(valores) else None
+
+        temperatura = _valor_clima(
+            atual.get("temperature_2m")
+            if deslocamento == 0 else _diario_no_dia("temperature_2m_mean")
+        )
+        if deslocamento and not (
+            _valor_clima(_diario_no_dia("temperature_2m_max"))
+            or _valor_clima(_diario_no_dia("temperature_2m_min"))
+        ):
+            return {
+                "ok": False,
+                "localidade": cidade,
+                "erro": "previsao_dia_ausente",
+                "day_offset": deslocamento,
+            }
+        if not temperatura and deslocamento == 0:
             return {"ok": False, "localidade": cidade, "erro": "dados_ausentes"}
+        chance_diaria = _diario_no_dia("precipitation_probability_max")
+        try:
+            chance_diaria = max(0, min(100, int(float(chance_diaria))))
+        except (TypeError, ValueError):
+            chance_diaria = None
         resultado = {
             "ok": True,
             "localidade": coordenadas.get("localidade") or cidade,
             "temperatura_c": temperatura,
-            "sensacao_c": _valor_clima(atual.get("apparent_temperature")),
-            "umidade": _valor_clima(atual.get("relative_humidity_2m")),
-            "vento_kmph": _valor_clima(atual.get("wind_speed_10m")),
-            "direcao_vento": _valor_clima(atual.get("wind_direction_10m")),
-            "descricao": _descricao_wmo(atual.get("weather_code")),
-            "chance_chuva_pct": max(chances_chuva) if chances_chuva else None,
+            "sensacao_c": _valor_clima(
+                atual.get("apparent_temperature") if deslocamento == 0 else None
+            ),
+            "umidade": _valor_clima(
+                atual.get("relative_humidity_2m") if deslocamento == 0 else None
+            ),
+            "vento_kmph": _valor_clima(
+                atual.get("wind_speed_10m") if deslocamento == 0 else None
+            ),
+            "direcao_vento": _valor_clima(
+                atual.get("wind_direction_10m") if deslocamento == 0 else None
+            ),
+            "descricao": _descricao_wmo(
+                atual.get("weather_code")
+                if deslocamento == 0 else _diario_no_dia("weather_code")
+            ),
+            "chance_chuva_pct": (
+                chance_diaria
+                if chance_diaria is not None
+                else max(chances_chuva) if deslocamento == 0 and chances_chuva else None
+            ),
             "temperatura_max_c": _valor_clima(
-                next(iter(diario.get("temperature_2m_max") or ()), None)
+                _diario_no_dia("temperature_2m_max")
             ),
             "temperatura_min_c": _valor_clima(
-                next(iter(diario.get("temperature_2m_min") or ()), None)
+                _diario_no_dia("temperature_2m_min")
             ),
             "precipitacao_max_mm": max(precipitacoes) if precipitacoes else None,
-            "previsao_chuva_disponivel": bool(chances_chuva or precipitacoes),
+            "previsao_chuva_disponivel": bool(
+                chance_diaria is not None
+                or (deslocamento == 0 and (chances_chuva or precipitacoes))
+            ),
             "fonte": "open_meteo",
             "cache": False,
+            "day_offset": deslocamento,
         }
         with _CLIMA_CACHE_LOCK:
             _CLIMA_ATUAL_CACHE[chave] = (agora, dict(resultado))
@@ -281,7 +331,7 @@ def montar_repeticao_briefing_local(cidade: str, clima: str) -> str:
             "meteorológico por enquanto. A pergunta importante continua: qual projeto você vai tirar do sossego primeiro?"
         ),
         (
-            f"{local} continua com {clima_fala}. O clima fez a parte dele sem drama; "
+            f"Em {local}, o tempo continua {clima_fala}. O clima fez a parte dele sem drama; "
             "agora falta você decidir onde começa a bagunça produtiva de hoje. Qual é o primeiro alvo?"
         ),
     )
@@ -518,8 +568,13 @@ def obter_clima_localidade(
     cidade_padrao: str = "Boituva",
     requests_get: Callable[..., Any],
     print_fn: Callable[..., Any] = print,
+    day_offset: int = 0,
 ) -> dict:
     cidade = str(localidade or cidade_padrao or "").strip() or "Boituva"
+    try:
+        deslocamento = max(0, min(6, int(day_offset or 0)))
+    except (TypeError, ValueError):
+        deslocamento = 0
     try:
         cidade_url = urllib.parse.quote(cidade)
         url = f"https://wttr.in/{cidade_url}?format=j1&lang=pt"
@@ -529,7 +584,10 @@ def obter_clima_localidade(
         data = res.json() if res.content else {}
         atual = ((data or {}).get("current_condition") or [{}])[0] or {}
         dias = list((data or {}).get("weather") or [])
-        horas = list((dias[0] or {}).get("hourly") or []) if dias else []
+        if deslocamento >= len(dias):
+            raise RuntimeError("previsao_dia_ausente")
+        dia = dict(dias[deslocamento] or {})
+        horas = list(dia.get("hourly") or [])
         chances_chuva = []
         for hora in horas:
             if not isinstance(hora, dict):
@@ -541,32 +599,39 @@ def obter_clima_localidade(
             except (TypeError, ValueError):
                 continue
         descricao = ""
+        fonte_descricao = atual if deslocamento == 0 else next(
+            (
+                hora for hora in horas
+                if str((hora or {}).get("time") or "") in {"1200", "12:00"}
+            ),
+            horas[len(horas) // 2] if horas else {},
+        )
         try:
-            descricao = str((((atual.get("lang_pt") or atual.get("weatherDesc")) or [{}])[0] or {}).get("value") or "").strip()
+            descricao = str((((fonte_descricao.get("lang_pt") or fonte_descricao.get("weatherDesc")) or [{}])[0] or {}).get("value") or "").strip()
         except Exception:
             descricao = ""
         if not descricao:
             try:
-                descricao = str(((atual.get("weatherDesc") or [{}])[0] or {}).get("value") or "").strip()
+                descricao = str(((fonte_descricao.get("weatherDesc") or [{}])[0] or {}).get("value") or "").strip()
             except Exception:
                 descricao = ""
         return {
             "ok": True,
             "localidade": cidade,
-            "temperatura_c": str(atual.get("temp_C") or "").strip(),
-            "sensacao_c": str(atual.get("FeelsLikeC") or "").strip(),
-            "umidade": str(atual.get("humidity") or "").strip(),
-            "vento_kmph": str(atual.get("windspeedKmph") or "").strip(),
+            "temperatura_c": str(
+                atual.get("temp_C") if deslocamento == 0 else dia.get("avgtempC") or ""
+            ).strip(),
+            "sensacao_c": str(atual.get("FeelsLikeC") or "").strip() if deslocamento == 0 else "",
+            "umidade": str(atual.get("humidity") or "").strip() if deslocamento == 0 else "",
+            "vento_kmph": str(atual.get("windspeedKmph") or "").strip() if deslocamento == 0 else "",
             "descricao": descricao,
             "chance_chuva_pct": max(chances_chuva) if chances_chuva else None,
-            "temperatura_max_c": str(
-                ((dias[0] or {}).get("maxtempC") if dias else "") or ""
-            ).strip(),
-            "temperatura_min_c": str(
-                ((dias[0] or {}).get("mintempC") if dias else "") or ""
-            ).strip(),
+            "temperatura_max_c": str(dia.get("maxtempC") or "").strip(),
+            "temperatura_min_c": str(dia.get("mintempC") or "").strip(),
             "precipitacao_max_mm": None,
             "previsao_chuva_disponivel": bool(chances_chuva),
+            "fonte": "wttr",
+            "day_offset": deslocamento,
         }
     except Exception:
         print_fn(f"⚠️ [CLIMA] wttr.in não respondeu para {cidade}; usando fonte reserva.")
@@ -575,6 +640,7 @@ def obter_clima_localidade(
             requests_get=requests_get,
             print_fn=print_fn,
             timeout_s=3.0,
+            day_offset=deslocamento,
         )
 
 

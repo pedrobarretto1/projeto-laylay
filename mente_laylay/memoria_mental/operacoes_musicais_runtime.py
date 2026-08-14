@@ -42,6 +42,19 @@ class OperacoesMusicaisRuntime:
     ) -> bool:
         return bool(self.playlists_usuario.add_and_verify(nome, url, titulo, canal))
 
+    def adicionar_faixa_resultado(
+        self, nome: str, url: str, titulo: str, canal: str = "",
+    ) -> dict[str, Any]:
+        detalhado = getattr(self.playlists_usuario, "add_and_verify_result", None)
+        if callable(detalhado):
+            return dict(detalhado(nome, url, titulo, canal) or {})
+        ok = bool(self.playlists_usuario.add_and_verify(nome, url, titulo, canal))
+        return {
+            "ok": ok,
+            "added": ok,
+            "status": "playlist_musica_adicionada" if ok else "falha_execucao",
+        }
+
     def mover_faixa(self, origem: str, destino: str, musica: str = "") -> dict[str, Any]:
         return dict(
             self.playlists_usuario.mover_item_contextual(origem, destino, musica) or {}

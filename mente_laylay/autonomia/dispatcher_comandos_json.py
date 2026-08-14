@@ -36,6 +36,18 @@ def adaptar_acao_json_para_intencao(cmd: Dict[str, Any], alvo: str = "") -> Dict
         "listar_playlist": ("PLAYLIST_LIST", "nome_playlist"),
         "playlist_list": ("PLAYLIST_LIST", "nome_playlist"),
     }
+    if acao in {"fecha", "fechar", "feche"} and alvo:
+        # Compatibilidade com saídas antigas da LLM. A intenção interna sempre
+        # é canônica; como este alias não traz tipo confiável, o executor recebe
+        # uma marca explícita e jamais encerra um ``*.exe`` auxiliar por palpite.
+        return {
+            "intent": "CLOSE_APP",
+            "params": {
+                "nome_app": alvo,
+                "target": destino,
+                "referencia_nao_tipificada": True,
+            },
+        }
     if acao in simples:
         intent, chave_alvo = simples[acao]
         params = {k: v for k, v in cmd.items() if k not in {"acao", "intent"}}

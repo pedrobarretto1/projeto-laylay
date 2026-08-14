@@ -179,9 +179,9 @@ class ComposicaoContextosIARuntime:
         grupos["navegacao"]["_registro_navegador_leitura_runtime"] = self.navegador_leitura
         grupos["navegacao"]["_registro_navegador_operacoes_runtime"] = self.navegador_operacoes
         grupos["percepcao"] = {
-            "_executar_captura_tela_intent": lambda destino: self._obter(
+            "_executar_captura_tela_intent": lambda destino, **opcoes: self._obter(
                 "_executar_captura_tela_intent"
-            )(destino, registrar_memoria=True),
+            )(destino, registrar_memoria=True, **opcoes),
             "_registro_visao_jogo_leitura_runtime": self.visao_jogo_leitura,
             "_registro_visao_jogo_analise_runtime": self.visao_jogo_analise,
         }

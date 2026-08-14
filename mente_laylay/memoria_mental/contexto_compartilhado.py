@@ -80,6 +80,32 @@ def intencao_reexecutavel(intent: str) -> bool:
     }
 
 
+def _resultado_pode_promover_referencia(
+    contrato: ResultadoAcao, status: str,
+) -> bool:
+    """Separa a última tentativa do último referente operacional válido."""
+    status_norm = str(status or "").strip().casefold()
+    marcadores_falha = (
+        "falha", "erro", "indispon", "nao_encontr", "não_encontr",
+        "sem_resultado", "cancel", "recus", "expirad", "alvo_ausente",
+        "referencia_ausente", "referência_ausente", "nao_confirmado",
+        "não_confirmado", "sem_confirmacao", "sem_confirmação", "sem_pendencia",
+        "sem_pendência",
+    )
+    if any(marcador in status_norm for marcador in marcadores_falha):
+        return False
+    pendente = (
+        status_norm.startswith("aguardando")
+        or status_norm.startswith("pendente")
+        or status_norm.endswith("_pendente")
+    )
+    if pendente:
+        return True
+    return bool(
+        contrato.executou is True
+    )
+
+
 def registrar_resultado_execucao(
     estado_atual: Dict[str, Any] | None,
     resultado: ResultadoAcao | Dict[str, Any] | None = None,
@@ -128,6 +154,11 @@ def registrar_resultado_execucao(
         else:
             status_final = "executado" if contrato.executou is True else "falhou" if contrato.executou is False else "incerto"
 
+    resultado_promovivel = _resultado_pode_promover_referencia(
+        contrato, status_final,
+    )
+    estado["ultima_acao_promovivel"] = resultado_promovivel
+
     reexecucao_referencia_segura = bool(
         intent == "CREATE_FILE"
         and params.get("conteudo_ref")
@@ -135,9 +166,18 @@ def registrar_resultado_execucao(
         and status_final not in {"referencia_expirada", "referencia_divergente"}
     )
     estado["ultima_acao_status"] = status_final
-    estado["ultima_acao_reexecutavel"] = bool(
-        intencao_reexecutavel(intent) or reexecucao_referencia_segura
+    # Repeticao e referencia sao contratos diferentes. Uma tentativa falha nao
+    # pode virar o referente de "ele/ela/isso", mas pode ser exatamente o que
+    # o usuario quer refazer com "tenta de novo". O acoplamento anterior entre
+    # os dois conceitos apagava falhas recuperaveis de IoT e playlists.
+    tentativa_observada = bool(
+        contrato.executou is not None or status_final not in {"", "incerto"}
     )
+    reexecutavel = bool(
+        (intencao_reexecutavel(intent) and tentativa_observada)
+        or reexecucao_referencia_segura
+    )
+    estado["ultima_acao_reexecutavel"] = reexecutavel
     estado["ultima_acao_intent"] = intent
     estado["ultima_acao_params"] = dict(params)
     estado["ultima_acao_origem"] = contrato.origem
@@ -232,18 +272,18 @@ def registrar_resultado_execucao(
     # A troca de dominio precisa acontecer no contrato-base, antes de qualquer
     # enriquecimento opcional. Assim uma ação web recente nunca deixa um app
     # anterior (por exemplo, Steam) vencer referências como "fecha isso".
-    if intent in {"OPEN_URL", "CLOSE_TAB", "SITE_ENTER"}:
+    if resultado_promovivel and intent in {"OPEN_URL", "CLOSE_TAB", "SITE_ENTER"}:
         alvo_site = str(params.get("alvo") or params.get("url") or params.get("site") or "").strip()
         if alvo_site:
             estado["ultimo_site_aba"] = alvo_site
             estado["ultimo_alvo"] = alvo_site
         estado["ultimo_app_janela"] = ""
-    elif intent in {"APP_OPEN", "MAXIMIZE_WINDOW", "CLOSE_APP"}:
+    elif resultado_promovivel and intent in {"APP_OPEN", "MAXIMIZE_WINDOW", "CLOSE_APP"}:
         alvo_app = str(params.get("nome_app") or params.get("app") or params.get("nome") or "").strip()
         if alvo_app:
             estado["ultimo_app_janela"] = alvo_app
             estado["ultimo_alvo"] = alvo_app
-    elif intent == "ORGANIZAR_DESKTOP":
+    elif resultado_promovivel and intent == "ORGANIZAR_DESKTOP":
         esquerda = str(params.get("left") or params.get("esquerda") or "").strip()
         direita = str(params.get("right") or params.get("direita") or "").strip()
         estado["ultimo_layout_janelas"] = {
@@ -257,7 +297,7 @@ def registrar_resultado_execucao(
             alvo_app = esquerda or direita
             estado["ultimo_app_janela"] = alvo_app
             estado["ultimo_alvo"] = alvo_app
-    elif intent in {"IOT_CONTROL", "IOT_STATUS"}:
+    elif resultado_promovivel and intent in {"IOT_CONTROL", "IOT_STATUS"}:
         alvo_iot = str(params.get("alvo") or params.get("dispositivo") or "").strip()
         if alvo_iot:
             estado["ultimo_dispositivo_iot"] = alvo_iot
@@ -275,22 +315,31 @@ def registrar_resultado_execucao(
         or ""
     ).strip()
     alvo_corrigido = str(estado.get("alvo_corrigido") or "").strip()
-    if alvo_acao and alvo_corrigido and alvo_acao.casefold() != alvo_corrigido.casefold():
+    if (
+        resultado_promovivel
+        and alvo_acao
+        and alvo_corrigido
+        and alvo_acao.casefold() != alvo_corrigido.casefold()
+    ):
         estado["alvo_corrigido"] = ""
         estado["alvo_corrigido_ts"] = 0.0
 
-    estado = registrar_evento_continuidade(
-        estado,
-        evento="acao",
-        intent=intent,
-        alvo=contrato.alvo,
-        texto=texto_curto,
-        params=params,
-        status=status_final,
-        origem=contrato.origem,
-        ttl_s=900.0,
-        reexecutavel=bool(intencao_reexecutavel(intent) or reexecucao_referencia_segura),
-    )
+    # Todo resultado observado entra na trilha oficial, inclusive falhas. Os
+    # seletores de referencia continuam rejeitando status de falha, enquanto o
+    # seletor exclusivo de repeticao pode recupera-los com seguranca.
+    if intent and (tentativa_observada or resultado_promovivel):
+        estado = registrar_evento_continuidade(
+            estado,
+            evento="acao",
+            intent=intent,
+            alvo=contrato.alvo,
+            texto=texto_curto,
+            params=params,
+            status=status_final,
+            origem=contrato.origem,
+            ttl_s=900.0,
+            reexecutavel=reexecutavel,
+        )
     estado["ts"] = time.time()
     return estado
 
@@ -317,7 +366,7 @@ def enriquecer_resultado_execucao_contextual(
             executou=executou,
             status=status,
         )
-        if contrato.executou is not True:
+        if not _resultado_pode_promover_referencia(contrato, contrato.status):
             return estado
         intent = contrato.intent
         params = dict(contrato.params)

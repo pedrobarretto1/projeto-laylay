@@ -109,6 +109,9 @@ class NavegadorOperacoesFake:
     def fechar_abas_vazias(self) -> bool:
         return self._registrar("close_empty_tabs", {})
 
+    def abrir_primeiro_resultado(self, consulta: str = "") -> bool:
+        return self._registrar("click_first_result", {"query": consulta})
+
     def clicar(self, seletor: str) -> bool:
         return self._registrar("click", {"selector": seletor})
 

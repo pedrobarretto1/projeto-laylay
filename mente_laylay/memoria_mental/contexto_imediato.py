@@ -60,6 +60,7 @@ def referencia_contextual_imediata(
     foco = dict(foco_vivo or {})
     ultima_intencao = str(estado.get("ultima_acao_intent") or estado.get("ultima_intencao") or "").strip().upper()
     ultimo_params = estado.get("ultima_acao_params") if isinstance(estado.get("ultima_acao_params"), dict) else {}
+    ultima_acao_promovivel = estado.get("ultima_acao_promovivel") is not False
     alvo_corrigido = str(alvo_corrigido or "").strip()
     ultimo_app = str(estado.get("ultimo_app_janela") or "").strip()
     ultimo_site = str(estado.get("ultimo_site_aba") or "").strip()
@@ -167,7 +168,6 @@ def referencia_contextual_imediata(
     if (
         fecha_referencia_curta
         and contrato_acao.get("executou") is True
-        and contrato_acao.get("confirmado") is True
         and intent_contrato == "FILE_OPEN_RESULT"
         and estrutura_arquivo
     ):
@@ -188,7 +188,11 @@ def referencia_contextual_imediata(
                     "alvo": nome_arquivo,
                 },
                 "dominio_explicito": False,
-                "origem_continuidade": "contrato_confirmado",
+                "origem_continuidade": (
+                    "contrato_confirmado"
+                    if contrato_acao.get("confirmado") is True
+                    else "arquivo_aberto_foco_nao_confirmado"
+                ),
             }
     if (
         fecha_referencia_curta
@@ -264,15 +268,15 @@ def referencia_contextual_imediata(
 
     # A ação prática mais recente define a referência. O foco visual pode ainda
     # apontar para o navegador depois que um site novo foi aberto.
-    if ultima_intencao in {"OPEN_URL", "CLOSE_TAB", "SITE_ENTER"}:
+    if ultima_acao_promovivel and ultima_intencao in {"OPEN_URL", "CLOSE_TAB", "SITE_ENTER"}:
         alvo_site = str(ultimo_params.get("alvo") or ultimo_params.get("url") or ultimo_site or "").strip()
         if alvo_site:
             return {"tipo": "site", "alvo": alvo_site, "intencao": ultima_intencao, "params": ultimo_params}
-    if ultima_intencao in {"APP_OPEN", "MAXIMIZE_WINDOW", "CLOSE_APP"}:
+    if ultima_acao_promovivel and ultima_intencao in {"APP_OPEN", "MAXIMIZE_WINDOW", "CLOSE_APP"}:
         alvo_app = str(ultimo_params.get("nome_app") or ultimo_params.get("app") or ultimo_app or "").strip()
         if alvo_app:
             return {"tipo": "app", "alvo": alvo_app, "intencao": ultima_intencao, "params": ultimo_params}
-    if ultima_intencao in {
+    if ultima_acao_promovivel and ultima_intencao in {
         "CREATE_FILE", "FILE_OPEN_RESULT", "FILE_SEARCH", "FILE_TRANSACTION",
     }:
         caminho_arquivo = str(estrutura_arquivo.get("caminho") or "").strip()
@@ -290,7 +294,7 @@ def referencia_contextual_imediata(
                     ).strip(),
                 },
             }
-    if ultima_intencao in {"LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_PLAY", "LAYLAY_PLAYLIST_COPY"}:
+    if ultima_acao_promovivel and ultima_intencao in {"LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_PLAY", "LAYLAY_PLAYLIST_COPY"}:
         alvo_curadoria = str(
             ultimo_params.get("nome_playlist")
             or ultimo_params.get("origem")
@@ -303,10 +307,10 @@ def referencia_contextual_imediata(
                 "intencao": ultima_intencao,
                 "params": ultimo_params,
             }
-    if ultima_intencao in {"PLAYLIST_CREATE", "PLAYLIST_PLAY", "PLAYLIST_ADD", "PLAYLIST_LIST", "TOCAR_PLAYLIST", "TOCAR_PLAYLIST_SHUFFLE"}:
+    if ultima_acao_promovivel and ultima_intencao in {"PLAYLIST_CREATE", "PLAYLIST_PLAY", "PLAYLIST_ADD", "PLAYLIST_LIST", "TOCAR_PLAYLIST", "TOCAR_PLAYLIST_SHUFFLE"}:
         if ultima_playlist:
             return {"tipo": "playlist", "alvo": ultima_playlist, "intencao": ultima_intencao, "params": ultimo_params}
-    if ultima_intencao == "MEDIA_CONTROL":
+    if ultima_acao_promovivel and ultima_intencao == "MEDIA_CONTROL":
         return {"tipo": "midia", "alvo": "musica", "intencao": ultima_intencao, "params": ultimo_params}
     if ultima_intencao == "VOLUME":
         return {"tipo": "volume", "alvo": "volume", "intencao": ultima_intencao, "params": ultimo_params}
@@ -811,7 +815,9 @@ def resolver_comando_midia_contextual(
     referencia_contextual = any(x in t_limpo for x in ["ela", "ele", "isso", "essa", "esse", "anterior", "antes"])
     menciona_midia = any(x in t_limpo for x in ["musica", "música", "som", "faixa", "trilha", "youtube", "playlist"])
     comando_curto_midia = bool(re.fullmatch(
-        r"(?:pausa|pause|continua|continue|retoma|retome)",
+        r"(?:pausa|pause|continua|continue|retoma|retome|"
+        r"(?:a\s+)?(?:proxima|próxima|proximo|próximo|anterior)|"
+        r"volta\s+(?:para|pra)\s+(?:a\s+)?anterior)",
         t_limpo,
         flags=re.IGNORECASE,
     ))

@@ -10,7 +10,7 @@ _INTENTS_POR_DOMINIO = {
         "PLAYLIST_CREATE", "PLAYLIST_ADD", "PLAYLIST_PLAY", "PLAYLIST_LIST", "PLAYLIST_DELETE",
         "PLAYLIST_MOVE",
         "LAYLAY_PLAYLIST_LIST", "LAYLAY_PLAYLIST_PLAY", "LAYLAY_PLAYLIST_COPY", "MUSIC_SEARCH",
-        "MEDIA_CONTROL", "LISTAR_PLAYLISTS", "TOCAR_PLAYLIST",
+        "MEDIA_CONTROL", "MUSIC_STATUS", "LISTAR_PLAYLISTS", "TOCAR_PLAYLIST",
         "TOCAR_PLAYLIST_SHUFFLE", "STOP_PLAYLIST_CONTEXT",
     },
     "sistema": {
@@ -20,9 +20,9 @@ _INTENTS_POR_DOMINIO = {
     },
     "navegador": {
         "CLOSE_TAB", "CLOSE_IDLE_TABS", "OPEN_URL", "SITE_ENTER",
-        "SCREEN_CAPTURE", "SEARCH", "RESUMIR_PAGINA",
+        "SCREEN_CAPTURE", "SEARCH", "RESUMIR_PAGINA", "LIST_TABS",
     },
-    "visao": {"GAME_VISION"},
+    "visao": {"GAME_VISION", "VISION_QUERY"},
     "agenda": {
         "AGENDAR_LEMBRETE", "AGENDAR_ACAO", "LISTAR_AGENDAMENTOS",
         "CANCELAR_AGENDAMENTO", "BRIEFING_REPEAT",
@@ -63,10 +63,11 @@ _CONFIRMACAO_OBRIGATORIA = {
 # O conjunto é usado pelo árbitro; ele não substitui a validação de alvo feita
 # pelo mapa de recursos e pelos executores.
 INTENTS_SOMENTE_LEITURA = frozenset({
-    "PLAYLIST_LIST", "LAYLAY_PLAYLIST_LIST", "LISTAR_PLAYLISTS",
+    "PLAYLIST_LIST", "LAYLAY_PLAYLIST_LIST", "LISTAR_PLAYLISTS", "MUSIC_STATUS",
     "LISTAR_AGENDAMENTOS", "EMAIL_READ", "EMAIL_SYNC", "NOTIFICATIONS",
     "IOT_STATUS", "IOT_LIST", "WEATHER", "RESUMIR_PAGINA",
-    "GAME_VISION",
+    "LIST_TABS",
+    "GAME_VISION", "VISION_QUERY",
     "INBOX_LIST",
     "CLIPBOARD_READ", "CLIPBOARD_INVESTIGATE",
     "FILE_SEARCH",
@@ -90,6 +91,7 @@ _CONFIRMACAO_POR_INTENT = {
     "LAYLAY_PLAYLIST_COPY": ("persistencia_local", "a cópia retorna sucesso do armazenamento"),
     "MUSIC_SEARCH": ("estado_observado", "a abertura da página musical é conferida"),
     "MEDIA_CONTROL": ("variavel", "Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia"),
+    "MUSIC_STATUS": ("retorno_dados", "o título e o estado atual são lidos do registro sanitizado do player"),
     "LISTAR_PLAYLISTS": ("retorno_dados", "a lista foi consultada"),
     "TOCAR_PLAYLIST": ("variavel", "depende da rota usada para reprodução"),
     "TOCAR_PLAYLIST_SHUFFLE": ("variavel", "depende da rota usada para reprodução"),
@@ -110,11 +112,19 @@ _CONFIRMACAO_POR_INTENT = {
     ),
     # Navegador
     "CLOSE_TAB": ("variavel", "a aba local pode ser relida; no cliente remoto o atalho confirma apenas o envio"),
-    "CLOSE_IDLE_TABS": ("indisponivel", "o executor legado não devolve as abas finais"),
+    "CLOSE_IDLE_TABS": (
+        "estado_observado",
+        "somente as abas previamente sugeridas são fechadas e cada remoção é confirmada pela extensão",
+    ),
+    "LIST_TABS": (
+        "retorno_dados",
+        "a lista é devolvida pela extensão no turno atual, sem completar títulos por inferência",
+    ),
     "OPEN_URL": ("estado_observado", "a URL ou aba aberta é relida"),
     "SITE_ENTER": ("variavel", "a solicitação pode ser aceita sem observar o conteúdo final"),
-    "SCREEN_CAPTURE": ("indisponivel", "o roteador ainda não recebe o caminho final da captura"),
+    "SCREEN_CAPTURE": ("retorno_dados", "a captura só conclui quando a análise visual final ou uma falha correlacionada retorna"),
     "GAME_VISION": ("indisponivel", "a análise visual termina de forma assíncrona"),
+    "VISION_QUERY": ("retorno_dados", "a descrição vem da análise visual recente correlacionada"),
     "SEARCH": ("variavel", "a confirmação depende da rota de pesquisa escolhida"),
     "RESUMIR_PAGINA": (
         "retorno_dados",

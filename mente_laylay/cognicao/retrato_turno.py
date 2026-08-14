@@ -10,6 +10,16 @@ from mente_laylay.memoria_mental.registro_semantico import resolver_referencia_p
 from mente_laylay.cognicao.fundamentacao_factual import classificar_atualidade_factual
 
 
+_PROCESSOS_AUXILIARES_SEM_REFERENTE = frozenset({
+    "applicationframehost.exe",
+    "openwith.exe",
+    "searchhost.exe",
+    "shellexperiencehost.exe",
+    "startmenuexperiencehost.exe",
+    "textinputhost.exe",
+})
+
+
 def _entidade(tipo: str, nome: str, *, origem: str, ts: float, dados: dict | None = None) -> dict:
     return {
         "tipo": str(tipo or "").strip(),
@@ -247,7 +257,10 @@ def construir_retrato_turno(
             )
     exe = str(percepcao.get("exe") or "").strip()
     titulo = str(percepcao.get("title") or "").strip()
-    if exe or titulo:
+    processo_auxiliar_sem_titulo = bool(
+        exe.casefold() in _PROCESSOS_AUXILIARES_SEM_REFERENTE and not titulo
+    )
+    if (exe or titulo) and not processo_auxiliar_sem_titulo:
         recentes["janela"] = _entidade(
             "janela", titulo or exe, origem="janela_ativa", ts=instante,
             dados={"exe": exe, "titulo": titulo, "assunto": percepcao.get("assunto")},
@@ -338,12 +351,14 @@ def dominio_intent(intent: str) -> str:
     nome = str(intent or "").upper().strip()
     if nome.startswith("IOT_"):
         return "iot"
-    if "PLAYLIST" in nome or nome in {"MUSIC_SEARCH", "MEDIA_CONTROL"}:
+    if "PLAYLIST" in nome or nome in {"MUSIC_SEARCH", "MEDIA_CONTROL", "MUSIC_STATUS"}:
         return "musica"
+    if nome in {"SCREEN_CAPTURE", "VISION_QUERY", "GAME_VISION"}:
+        return "visao"
     if nome in {"CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "MOVE_ITEM", "FILE_TRANSACTION"}:
         return "arquivo"
     if nome in {"APP_OPEN", "CLOSE_APP", "MAXIMIZE_WINDOW"}:
         return "app"
-    if nome in {"OPEN_URL", "CLOSE_TAB", "SITE_ENTER", "SEARCH"}:
+    if nome in {"OPEN_URL", "CLOSE_TAB", "SITE_ENTER", "SEARCH", "LIST_TABS"}:
         return "site"
     return ""

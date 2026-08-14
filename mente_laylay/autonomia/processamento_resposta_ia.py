@@ -455,7 +455,8 @@ def preparar_resposta_para_execucao(
                             "ou entregar objetos e acontecimentos compartilhados que não foram "
                             "afirmados pelo usuário. Laylay não tem corpo físico. Imaginação e humor "
                             "podem continuar, mas devem ser apresentados claramente como hipótese ou "
-                            "brincadeira atual, nunca como lembrança real. Se o usuário estiver corrigindo um erro, reconheça a "
+                            "brincadeira atual, nunca como lembrança real. Ao falar de si, use flexões "
+                            "femininas, como 'obrigada'. Se o usuário estiver corrigindo um erro, reconheça a "
                             "correção uma vez e abandone a história inventada. Não crie outra "
                             "explicação fictícia. Retorne apenas JSON válido com fala e comandos."
                         ),

@@ -118,6 +118,36 @@ def test_fala_identica_nao_entra_duas_vezes_na_fila() -> None:
     assert any("duplicata idêntica" in mensagem for mensagem in logs)
 
 
+def test_modo_silencioso_nao_inicia_worker_nem_enfileira_audio() -> None:
+    logs = []
+    runtime = _runtime(None, logs=logs)
+    workers_iniciados: list[bool] = []
+    runtime.thread_factory = lambda **_kwargs: workers_iniciados.append(True)
+
+    assert runtime.definir_modo_silencioso(
+        True, origem="roteiro_teste",
+    ) is True
+    runtime.iniciar_worker()
+
+    assert runtime.falar("Resposta textual preservada.") is True
+    assert runtime.falar(
+        "Aviso proativo sem áudio.", _proativa=True,
+    ) is False
+    assert workers_iniciados == []
+    assert runtime.worker_started is False
+    assert runtime.fila.empty()
+    assert runtime.modo_silencioso_ativo() is True
+    assert "Resposta textual preservada." in logs
+    assert "Aviso proativo sem áudio." in logs
+
+    assert runtime.definir_modo_silencioso(
+        False, origem="roteiro_teste_finalizado",
+    ) is False
+    assert runtime.modo_silencioso_ativo() is False
+    assert any("reprodução suspensa" in mensagem for mensagem in logs)
+    assert any("reprodução restaurada" in mensagem for mensagem in logs)
+
+
 def test_falha_na_adaptacao_oral_usa_texto_original_e_vai_ao_diagnostico(tmp_path) -> None:
     falhas = []
     logs = []

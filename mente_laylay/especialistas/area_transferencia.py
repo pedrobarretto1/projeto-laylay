@@ -273,6 +273,7 @@ class AreaTransferenciaRuntime:
         self._resultado_pendente: dict[str, Any] = {}
         self._ultima_escrita: dict[str, Any] = {}
         self._conteudos_observados: set[str] = set()
+        self._ultima_operacao_ts = 0.0
 
     def _pendencia_temporaria(self, acao: str) -> dict[str, Any]:
         if self.pendencia_runtime is None:
@@ -465,7 +466,21 @@ class AreaTransferenciaRuntime:
             r"\b(?:resultado|texto corrigido|texto traduzido|traducao|correcao)\b", t
         ):
             return "copiar_resultado"
-        if not self._tem_referencia(t):
+        referencia_explicita = self._tem_referencia(t)
+        referencia_curta = bool(re.search(
+            r"\b(?:isso|esse|essa|o\s+texto|esse\s+texto|essa\s+frase)\b",
+            t,
+        ))
+        with self._lock:
+            operacao_recente = (
+                self._ultima_operacao_ts > 0.0
+                and self.relogio() - self._ultima_operacao_ts <= 120.0
+            )
+        # Uma elipse como ``coloca isso em maiúsculas`` só pertence ao
+        # clipboard quando uma operação explícita acabou de estabelecer esse
+        # foco. Sem esse vínculo temporal, ``isso`` continua livre para as
+        # outras habilidades e não é sequestrado por este especialista.
+        if not referencia_explicita and not (referencia_curta and operacao_recente):
             return ""
         if re.search(r"\b(?:aprende|aprenda|guarda|guarde|lembra|lembre|memoriza|memorize)\b", t):
             return "aprender"
@@ -532,6 +547,9 @@ class AreaTransferenciaRuntime:
         return classificacao
 
     def _registrar(self, operacao: str, *, sucesso: bool, tamanho: int = 0) -> None:
+        if sucesso:
+            with self._lock:
+                self._ultima_operacao_ts = float(self.relogio())
         self.log(
             f"📋 [ÁREA DE TRANSFERÊNCIA] operação={operacao} "
             f"status={'ok' if sucesso else 'falha'} tamanho={max(0, int(tamanho))}"

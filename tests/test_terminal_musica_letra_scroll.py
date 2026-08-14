@@ -52,7 +52,7 @@ def test_letra_sem_sincronia_expande_em_leitor_com_scroll_proprio(monkeypatch) -
     }))
     app.processEvents()
 
-    assert pagina.letra_texto.maximumHeight() == 116
+    assert pagina.letra_texto.maximumHeight() == 132
     assert pagina.letra_texto.verticalScrollBarPolicy() == Qt.ScrollBarAlwaysOff
     assert pagina.letra_texto.document().documentMargin() == 0
     assert "Verso sem tempo 1" in pagina.letra_texto.text()
@@ -60,8 +60,8 @@ def test_letra_sem_sincronia_expande_em_leitor_com_scroll_proprio(monkeypatch) -
     pagina.letra_expandir.click()
     app.processEvents()
 
-    assert pagina.letra_texto.minimumHeight() == 230
-    assert pagina.letra_texto.maximumHeight() == 340
+    assert pagina.letra_texto.minimumHeight() == 250
+    assert pagina.letra_texto.maximumHeight() == 360
     assert pagina.letra_texto.verticalScrollBarPolicy() == Qt.ScrollBarAsNeeded
     assert pagina.letra_texto.verticalScrollBar().maximum() > 0
     assert "Verso sem tempo 45" in pagina.letra_texto.text()

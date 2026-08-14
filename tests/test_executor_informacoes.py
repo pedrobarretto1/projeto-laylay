@@ -233,6 +233,63 @@ def test_consulta_de_varios_gostos_soa_natural_sem_perder_fatos() -> None:
     assert "Do que lembro com segurança" not in falas[0]
 
 
+def test_consulta_deduplica_preferencia_composta_sem_misturar_polaridade() -> None:
+    falas: list[str] = []
+    registros = [
+        {
+            "texto": "você gosta de rock e programação",
+            "regra": "você gosta de rock e programação",
+            "valor": "rock e programação",
+            "chave": "preferencia:afinidade:rock-programacao",
+            "natureza": "confirmado",
+            "confirmado_usuario": True,
+        },
+        {
+            "texto": "você gosta de rock",
+            "regra": "você gosta de rock",
+            "valor": "rock",
+            "chave": "preferencia:afinidade:rock",
+            "natureza": "confirmado",
+            "confirmado_usuario": True,
+        },
+        {
+            "texto": "você não gosta de sertanejo",
+            "regra": "você não gosta de sertanejo",
+            "valor": "sertanejo",
+            "chave": "preferencia:afinidade:sertanejo",
+            "natureza": "confirmado",
+            "confirmado_usuario": True,
+        },
+        {
+            "texto": "você não gosta de sertanejo",
+            "regra": "você não gosta de sertanejo",
+            "valor": "sertanejo",
+            "chave": "preferencia:afinidade:sertanejo-legado",
+            "natureza": "confirmado",
+            "confirmado_usuario": True,
+        },
+    ]
+
+    despacho = executar_intencao_informacoes(
+        "LEARNING_QUERY", {"limit": 5, "query": "preferencia"},
+        "Do que eu gosto?",
+        {
+            "_recuperar_aprendizados": lambda **_kwargs: registros,
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+        },
+        _dependencias([]),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(True)
+    assert len(falas) == 1
+    resposta = falas[0].casefold()
+    assert resposta.count("rock") == 1
+    assert resposta.count("programação") == 1
+    assert resposta.count("sertanejo") == 1
+    assert "você gosta de rock e programação" in resposta
+    assert "mas não gosta de sertanejo" in resposta
+
+
 def test_consulta_de_local_tem_personalidade_e_varia_sem_mudar_o_fato() -> None:
     falas: list[str] = []
     ctx = {

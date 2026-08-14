@@ -218,11 +218,39 @@ def _adicionar(
         ]))
         return ResultadoDespacho.concluido(False)
 
-    ok = bool(
-        deps.musica_operacoes.adicionar_faixa(nome, url, titulo, canal)
-    ) if deps.musica_operacoes is not None else False
-    status = "playlist_musica_adicionada" if ok else "falha_execucao"
-    _marcar_com_alvo(deps, status, nome, executou=ok)
+    adicionar_detalhado = getattr(
+        deps.musica_operacoes, "adicionar_faixa_resultado", None,
+    )
+    if callable(adicionar_detalhado):
+        resultado_adicao = dict(
+            adicionar_detalhado(nome, url, titulo, canal) or {}
+        )
+    else:
+        ok_legado = bool(
+            deps.musica_operacoes.adicionar_faixa(nome, url, titulo, canal)
+        ) if deps.musica_operacoes is not None else False
+        resultado_adicao = {
+            "ok": ok_legado,
+            "added": ok_legado,
+            "duplicated": False,
+        }
+    ok = bool(resultado_adicao.get("ok"))
+    adicionada = bool(resultado_adicao.get("added"))
+    duplicada = bool(resultado_adicao.get("duplicated")) or (ok and not adicionada)
+    status = (
+        "playlist_musica_ja_existia"
+        if duplicada
+        else "playlist_musica_adicionada"
+        if ok
+        else str(resultado_adicao.get("status") or "falha_execucao")
+    )
+    if duplicada:
+        # O estado desejado está confirmado, mas nenhuma nova mutação ocorreu.
+        _marcar_com_alvo(
+            deps, status, nome, executou=False, confirmado=True,
+        )
+    else:
+        _marcar_com_alvo(deps, status, nome, executou=ok)
     if ok:
         _definir_ultima(deps, nome)
         limpar_titulo = _get(ctx, "_yt_clean_title", lambda valor: valor)
@@ -230,11 +258,25 @@ def _adicionar(
             limpar_titulo_musical_para_fala(limpar_titulo(titulo))
             or "essa música"
         )
-        deps.falar_por_status(status, escolher_fala_variada([
-            f"Beleza, guardando {titulo_limpo} na playlist {nome}.",
-            f"Pronto, {titulo_limpo} foi pra playlist {nome}.",
-            f"Salvei {titulo_limpo} em {nome}.",
-        ]), alvo=nome)
+        if duplicada:
+            fala = escolher_fala_variada([
+                f"{titulo_limpo} já estava na playlist {nome}; não dupliquei.",
+                f"Essa já estava em {nome}. Mantive uma única cópia de {titulo_limpo}.",
+                f"{titulo_limpo} já tinha sido salva em {nome}.",
+            ])
+        else:
+            fala = escolher_fala_variada([
+                f"Beleza, guardando {titulo_limpo} na playlist {nome}.",
+                f"Pronto, {titulo_limpo} foi pra playlist {nome}.",
+                f"Salvei {titulo_limpo} em {nome}.",
+            ])
+        deps.falar_por_status(
+            status,
+            fala,
+            alvo=nome,
+            executou=False if duplicada else True,
+            confirmado=True,
+        )
     else:
         deps.falar_por_status(status, escolher_fala_variada([
             "Ih, deu erro no meu caderninho aqui. Não consegui salvar essa porcaria não.",
@@ -304,10 +346,18 @@ def _listar(
     nome = _nome_playlist(params)
     pedido_geral = _get(ctx, "_pedido_lista_geral_playlist")
     if callable(pedido_geral) and pedido_geral(texto, params):
+        if deps.musica_leitura is None:
+            deps.marcar_resultado(
+                "executor_indisponivel", executou=False, confirmado=False,
+            )
+            _falar(ctx, "Não consegui acessar suas playlists agora.")
+            return ResultadoDespacho.concluido(False)
         _falar(
             ctx,
-            deps.musica_leitura.listar_usuario()
-            if deps.musica_leitura is not None else "Sem playlists.",
+            deps.musica_leitura.listar_usuario(),
+        )
+        deps.marcar_resultado(
+            "playlists_listadas", executou=True, confirmado=True,
         )
         return ResultadoDespacho.concluido()
     extrair = _get(ctx, "extrair_nome_playlist")
@@ -318,6 +368,9 @@ def _listar(
             nome = ""
     if not nome:
         if _nome_explicito_incompleto(texto, ctx):
+            deps.marcar_resultado(
+                "alvo_ausente", executou=False, confirmado=False,
+            )
             _falar(ctx, escolher_fala_variada([
                 "Qual playlist você quer ver? Esse nome veio pela metade.",
                 "Me fala o nome completo da playlist.",
@@ -326,6 +379,9 @@ def _listar(
             return ResultadoDespacho.concluido()
         nome = str(_get(ctx, "ultima_playlist", "") or "").strip()
     if not nome:
+        deps.marcar_resultado(
+            "alvo_ausente", executou=False, confirmado=False,
+        )
         _falar(ctx, escolher_fala_variada([
             "Tá, mas qual playlist? Eu não leio pensamento. Ainda.",
             "Me diz qual playlist você quer ver.",
@@ -333,19 +389,39 @@ def _listar(
         ]), "debochada", 2)
         return ResultadoDespacho.concluido()
 
-    info = deps.musica_leitura.consultar_usuario(nome) if deps.musica_leitura else {
-        "ok": False, "name": nome, "total": 0,
-    }
+    if deps.musica_leitura is None:
+        _marcar_com_alvo(
+            deps, "executor_indisponivel", nome,
+            executou=False, confirmado=False,
+        )
+        _falar(ctx, "Não consegui acessar suas playlists agora.")
+        return ResultadoDespacho.concluido(False)
+
+    info = deps.musica_leitura.consultar_usuario(nome)
     nome_real = str(info.get("name") or nome).strip()
+    total = int(info.get("total", 0) or 0)
     estilizar = _get(ctx, "_fala_playlist_conteudo_estilosa")
-    if info.get("ok") and int(info.get("total", 0) or 0) > 0 and callable(estilizar):
+    if info.get("ok") and total > 0 and callable(estilizar):
         _falar(ctx, estilizar(info, nome))
+    elif info.get("ok"):
+        _falar(ctx, escolher_fala_variada([
+            f"A playlist {nome_real} existe, mas está vazia.",
+            f"{nome_real} está salva, só ainda não tem músicas.",
+            f"Achei {nome_real}; por enquanto ela tem zero faixas.",
+        ]))
     else:
         _falar(ctx, escolher_fala_variada([
             f"Não achei a playlist {nome}. Se quiser, eu listo as que estão salvas.",
             f"{nome} não apareceu. Posso listar as que estão salvas.",
             f"Não encontrei {nome}. Quer que eu mostre as playlists salvas?",
         ]))
+    # Consultar uma playlist é uma operação de leitura. Encontrá-la vazia ou
+    # confirmar que ela não existe ainda é um resultado final observado no
+    # armazenamento; não pode deixar o plano em estado pendente para sempre.
+    _marcar_com_alvo(
+        deps, "playlists_listadas", nome_real or nome,
+        executou=True, confirmado=True,
+    )
     _definir_ultima(deps, nome_real or nome)
     return ResultadoDespacho.concluido()
 

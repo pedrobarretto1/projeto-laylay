@@ -300,6 +300,7 @@ def test_nome_explicito_incompleto_nao_usa_ultima_playlist() -> None:
 
 def test_listagem_geral_nao_tenta_resolver_playlist_especifica() -> None:
     falas: list[str] = []
+    eventos: list[tuple] = []
 
     executar_intencao_playlists(
         "PLAYLIST_LIST",
@@ -311,21 +312,27 @@ def test_listagem_geral_nao_tenta_resolver_playlist_especifica() -> None:
             "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
         },
         _dependencias(
-            [], musica_leitura=_MusicaLeituraFake(lista="rock, anime e vibes")
+            eventos, musica_leitura=_MusicaLeituraFake(lista="rock, anime e vibes")
         ),
     )
 
     assert falas == ["rock, anime e vibes"]
+    assert eventos == [(
+        "resultado",
+        "playlists_listadas",
+        {"executou": True, "confirmado": True},
+    )]
 
 
 def test_listagem_especifica_estiliza_conteudo_e_atualiza_contexto() -> None:
     falas: list[str] = []
     ultimas: list[str] = []
+    eventos: list[tuple] = []
 
     executar_intencao_playlists(
         "PLAYLIST_LIST",
         {"nome_playlist": "rock"},
-        "o que tem na rock",
+        "O que tem na playlist roteiro teste?",
         "pc_a",
         {
             "_pedido_lista_geral_playlist": lambda *_args: False,
@@ -334,7 +341,7 @@ def test_listagem_especifica_estiliza_conteudo_e_atualiza_contexto() -> None:
             "set_ultima_playlist": ultimas.append,
         },
         _dependencias(
-            [],
+            eventos,
             musica_leitura=_MusicaLeituraFake(conteudo={
                 "ok": True, "name": "Rock", "total": 3,
             }),
@@ -346,6 +353,16 @@ def test_listagem_especifica_estiliza_conteudo_e_atualiza_contexto() -> None:
 
     assert falas == ["Rock tem três músicas."]
     assert ultimas == ["Rock"]
+    assert eventos == [(
+        "resultado",
+        "playlists_listadas",
+        {
+            "executou": True,
+            "alvo_resolvido": "Rock",
+            "params_resolvidos": {"nome_playlist": "Rock"},
+            "confirmado": True,
+        },
+    )]
 
 
 def test_reproducao_sem_autorizacao_nao_executa() -> None:

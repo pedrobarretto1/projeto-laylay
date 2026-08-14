@@ -132,6 +132,9 @@ class VozRuntime:
         self._fallback_tts_disponivel = pyttsx3_mod is not None
         self._fallback_tts_sapi_windows = False
         self._observadores_inicio_fala: list[Callable[..., Any]] = []
+        self._modo_silencioso_lock = threading.RLock()
+        self._modo_silencioso = False
+        self._modo_silencioso_origem = ""
 
         self.proativa_lock = threading.Lock()
         self.proativa_buffer: list[dict] = []
@@ -140,6 +143,53 @@ class VozRuntime:
         self.proativa_inicio_sistema = time.time()
         self.proativa_janela_startup = proativa_janela_startup
         self.tts_timeout_s = max(0.05, float(tts_timeout_s))
+
+    def definir_modo_silencioso(
+        self, ativo: bool, *, origem: str = "",
+    ) -> bool:
+        """Suspende somente síntese e reprodução, preservando a resposta textual.
+
+        O modo é usado pelo roteiro automatizado antes da inicialização dos
+        serviços. Assim o worker de TTS nem chega a ser criado, mas os
+        observadores textuais, o plano, a memória e o histórico continuam
+        recebendo a resposta canônica normalmente.
+        """
+
+        novo_estado = bool(ativo)
+        origem_limpa = str(origem or "").strip()
+        with self._modo_silencioso_lock:
+            mudou = novo_estado != self._modo_silencioso
+            self._modo_silencioso = novo_estado
+            self._modo_silencioso_origem = origem_limpa if novo_estado else ""
+        if mudou:
+            self.log(
+                "🔇 [VOZ] reprodução suspensa temporariamente"
+                if novo_estado
+                else "🔊 [VOZ] reprodução restaurada"
+            )
+        return novo_estado
+
+    def modo_silencioso_ativo(self) -> bool:
+        with self._modo_silencioso_lock:
+            return bool(self._modo_silencioso)
+
+    def _exibir_fala_sem_audio(
+        self, texto: str, emocao: str, nivel: Optional[int],
+    ) -> None:
+        """Mantém a saída visual do terminal sem atravessar a fronteira TTS."""
+
+        texto_exibicao = re.sub(r"\s+", " ", str(texto or "")).strip()
+        if not texto_exibicao:
+            texto_exibicao = self.fallback_fala
+        if texto_exibicao[-1] not in ".!?…":
+            texto_exibicao += "."
+        nivel_final = int(nivel if nivel is not None else 1)
+        self.ajustar_estado_fala_cb("current_emotion", emocao)
+        self.ajustar_estado_fala_cb("emotion_level", nivel_final)
+        self.log("")
+        self.log(self.formatar_mensagem(
+            texto_exibicao, emocao=emocao, nivel=nivel_final,
+        ))
 
     def registrar_observador_inicio_fala(
         self, observador: Callable[..., Any],
@@ -446,6 +496,8 @@ class VozRuntime:
         return 30
 
     def iniciar_worker(self):
+        if self.modo_silencioso_ativo():
+            return
         with self.worker_lock:
             if self.worker_started:
                 return
@@ -1374,6 +1426,13 @@ class VozRuntime:
         _proativa: bool = False,
         _texto_publicado_antecipado: bool = False,
     ) -> bool:
+        if self.modo_silencioso_ativo():
+            # A publicação textual ocorre no orquestrador antes desta chamada.
+            # Proatividade não audível não deve ser contabilizada como fala
+            # entregue; respostas de turno, por outro lado, continuam válidas
+            # para o terminal e para o roteiro.
+            self._exibir_fala_sem_audio(texto, emocao, nivel)
+            return not _proativa
         # Algumas rotas convergem na mesma confirmação operacional. Se ambas
         # chegarem quase juntas, a fila não deve reproduzir a frase duas vezes.
         # A janela curta não interfere num pedido posterior de "repete".

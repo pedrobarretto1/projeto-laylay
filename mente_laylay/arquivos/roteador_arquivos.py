@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import time
 from typing import Any, Callable, Mapping
 
 from mente_laylay.arquivos.lixeira_laylay import existe_exclusao_pendente
@@ -38,12 +39,13 @@ def _arquivo_recente(estado: Mapping[str, Any]) -> tuple[str, str]:
     tipo = str(estrutura.get("tipo") or "").strip().casefold()
     if tipo == "arquivo":
         caminho = str(estrutura.get("caminho") or "").strip()
-        nome = str(
+        nome_publicado = str(
             estrutura.get("arquivo_nome")
             or estrutura.get("nome_arquivo")
             or estrutura.get("arquivo")
             or (os.path.basename(caminho) if caminho else "")
         ).strip()
+        nome = os.path.basename(nome_publicado) or os.path.basename(caminho)
         return caminho, nome
     return "", ""
 
@@ -76,16 +78,70 @@ def _limpar_item_movimentacao(valor: str, *, destino: bool = False) -> str:
             texto,
             flags=re.IGNORECASE,
         )
+        texto = re.sub(r"^(?:a|o|uma|um)\s+", "", texto, flags=re.IGNORECASE)
     else:
+        moldura_removida = bool(re.match(
+            r"^(?:o|a|um|uma)?\s*(?:arquivo|documento|item)\s+",
+            texto,
+            flags=re.IGNORECASE,
+        ))
         texto = re.sub(
             r"^(?:o|a|um|uma)?\s*(?:arquivo|documento|item)\s+",
             "",
             texto,
             flags=re.IGNORECASE,
         )
-        if re.search(r"\.[a-z0-9]{1,10}$", texto, flags=re.IGNORECASE):
+        texto = limpar_nome_arquivo_natural(texto)
+        if not moldura_removida and re.search(
+            r"\.[a-z0-9]{1,10}$", texto, flags=re.IGNORECASE,
+        ):
             texto = re.sub(r"^(?:o|a|um|uma)\s+", "", texto, flags=re.IGNORECASE)
     return texto.strip(" .,!?:;\"'")
+
+
+def _nomes_arquivo_equivalentes(declarado: str, conhecido: str) -> bool:
+    """Compara um nome falado com um basename concreto sem adivinhar caminhos."""
+    nome_declarado = os.path.basename(
+        limpar_nome_arquivo_natural(declarado).replace("/", os.sep)
+    ).casefold()
+    nome_conhecido = os.path.basename(str(conhecido or "").replace("/", os.sep)).casefold()
+    if not nome_declarado or not nome_conhecido:
+        return False
+    if nome_declarado == nome_conhecido:
+        return True
+    raiz_declarada, extensao_declarada = os.path.splitext(nome_declarado)
+    raiz_conhecida, extensao_conhecida = os.path.splitext(nome_conhecido)
+    return bool(
+        raiz_declarada == raiz_conhecida
+        and {extensao_declarada, extensao_conhecida} == {"", ".txt"}
+    )
+
+
+def _exclusao_confirmada_recente(
+    estado: Mapping[str, Any], *, ttl_s: float = 300.0,
+) -> str:
+    """Retorna somente o caminho ligado ao último descarte confirmado."""
+    contrato = (
+        dict(estado.get("ultima_acao_contrato") or {})
+        if isinstance(estado.get("ultima_acao_contrato"), Mapping)
+        else {}
+    )
+    intent = str(contrato.get("intent") or "").strip().upper()
+    status = str(contrato.get("status") or "").strip().casefold()
+    if (
+        intent not in {"CONFIRM_DELETE_ITEM", "DELETE_ITEM"}
+        or contrato.get("executou") is not True
+        or contrato.get("confirmado") is not True
+        or status != "movido_para_lixeira"
+    ):
+        return ""
+    try:
+        idade = time.time() - float(estado.get("ultima_acao_ts") or 0.0)
+    except (TypeError, ValueError):
+        return ""
+    if idade < 0.0 or idade > max(1.0, float(ttl_s)):
+        return ""
+    return str(contrato.get("alvo") or estado.get("ultima_acao_alvo") or "").strip()
 
 
 def _remover_aspas_pareadas(valor: str) -> str:
@@ -333,11 +389,16 @@ def extrair_delete_pasta_arquivo(
     if not texto_local:
         return {}
 
-    if not re.search(r"\b(?:apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir)\b", texto_local):
+    if not re.search(
+        r"\b(?:apaga|apague|apagar|delete|deleta|deletar|remove|remova|"
+        r"remover|exclui|exclua|excluir)\b",
+        texto_local,
+        flags=re.IGNORECASE,
+    ):
         return {}
 
     m_ref = re.search(
-        r"\b(?:apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir)\s+"
+        r"\b(?:apaga|apague|apagar|delete|deleta|deletar|remove|remova|remover|exclui|exclua|excluir)\s+"
         r"(?P<ref>ela|ele|isso|essa|esse|essa\s+pasta|esse\s+arquivo)$",
         texto_local,
         flags=re.IGNORECASE,
@@ -347,7 +408,7 @@ def extrair_delete_pasta_arquivo(
         return {"alvo": ref}
 
     m_pasta = re.search(
-        r"\b(?:apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir)\s+"
+        r"\b(?:apaga|apague|apagar|delete|deleta|deletar|remove|remova|remover|exclui|exclua|excluir)\s+"
         r"(?:a|o|uma|um)?\s*pasta\s+(?:chamada|chamado|com\s+nome|de\s+nome)?\s*"
         r"(?P<nome>.+?)(?=\s+(?:e\s+dentro|dentro\s+dela|com\s+arquivo|arquivo|que\s+tem|contendo)|$)",
         texto_local,
@@ -359,21 +420,23 @@ def extrair_delete_pasta_arquivo(
             return {"alvo": nome, "tipo": "pasta"}
 
     m_arquivo = re.search(
-        r"\b(?:apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir)\s+"
+        r"\b(?:apaga|apague|apagar|delete|deleta|deletar|remove|remova|remover|exclui|exclua|excluir)\s+"
         r"(?:o|a|um|uma)?\s*(?:arquivo(?:\s+de\s+texto)?|txt)\s+"
         r"(?:chamado|chamada|com\s+nome|de\s+nome)?\s*(?P<nome>.+)$",
         texto_local,
         flags=re.IGNORECASE,
     )
     if m_arquivo:
-        nome = limpar_nome_arquivo_natural(m_arquivo.group("nome") or "")
+        nome = limpar_nome_arquivo_natural(
+            str(m_arquivo.group("nome") or "").strip(" .,!?:;\"'")
+        )
         if nome and not os.path.splitext(nome)[1]:
             nome = f"{nome}.txt"
         if nome:
             return {"alvo": nome, "tipo": "arquivo"}
 
     m_generico = re.search(
-        r"\b(?:apaga|apagar|delete|deleta|deletar|remove|remover|exclui|excluir)\s+"
+        r"\b(?:apaga|apague|apagar|delete|deleta|deletar|remove|remova|remover|exclui|exclua|excluir)\s+"
         r"(?:o|a|os|as|um|uma)?\s*(?P<nome>[a-zA-Z0-9_\-.][a-zA-Z0-9_\-.\s]{0,40})$",
         texto_local,
         flags=re.IGNORECASE,
@@ -431,7 +494,16 @@ def detectar_intencao_arquivos(
         r"traz\s+(?:ele|ela|isso|o\s+arquivo|a\s+pasta)\s+de\s+volta)",
         texto_confirmacao,
     ):
-        return {"intent": "RESTORE_DELETED_ITEM", "params": params()}
+        alvo_exclusao = _exclusao_confirmada_recente(estado)
+        if alvo_exclusao:
+            return {
+                "intent": "RESTORE_DELETED_ITEM",
+                "params": params(
+                    alvo=alvo_exclusao,
+                    referencia_exclusao_confirmada=True,
+                ),
+            }
+        return None
 
     estrutura_recente = (
         dict(estado.get("ultima_estrutura_arquivo_params") or {})
@@ -511,8 +583,8 @@ def detectar_intencao_arquivos(
         r"(?:onde\s+(?:(?:ele|ela|esse|essa|este|esta|o\s+arquivo|esse\s+arquivo)\s+)?"
         r"(?:fica|esta|está)|onde\s+(?:fica|esta|está)\s+"
         r"(?:ele|ela|esse|essa|este|esta|o\s+arquivo|esse\s+arquivo)|"
-        r"qual\s+(?:e|é)\s+o\s+caminho(?:\s+(?:dele|dela|desse\s+arquivo))?|"
-        r"mostra\s+o\s+caminho(?:\s+(?:dele|dela|desse\s+arquivo))?)",
+        r"qual\s+(?:e|é)\s+o\s+caminho(?:\s+completo)?(?:\s+(?:dele|dela|desse\s+arquivo))?|"
+        r"mostra\s+o\s+caminho(?:\s+completo)?(?:\s+(?:dele|dela|desse\s+arquivo))?)",
         texto_confirmacao,
     ))
     if pergunta_caminho_arquivo and arquivo_recente_caminho:
@@ -524,6 +596,33 @@ def detectar_intencao_arquivos(
                 alvo=arquivo_recente_nome or os.path.basename(arquivo_recente_caminho),
             ),
         }
+
+    # Consulta nomeada em ordem natural: "Onde o relatorio.txt fica?". A
+    # gramática anterior só reconhecia "Onde fica o arquivo..." ou pronomes,
+    # fazendo a forma mais comum escapar para a conversa livre.
+    caminho_nomeado = re.fullmatch(
+        r"onde\s+(?:(?:o|a)\s+)?(?:(?:arquivo|documento)\s+)?"
+        r"(?P<nome>.+?)\s+(?:fica|esta|está)",
+        texto_confirmacao,
+    )
+    if caminho_nomeado:
+        nome_bruto = str(caminho_nomeado.group("nome") or "").strip()
+        moldura_arquivo = bool(re.match(
+            r"^onde\s+(?:(?:o|a)\s+)?(?:arquivo|documento)\b",
+            texto_confirmacao,
+        ))
+        nome = limpar_nome_arquivo_natural(nome_bruto)
+        if (
+            nome
+            and nome.casefold() not in {
+                "ele", "ela", "esse", "essa", "este", "esta", "arquivo",
+            }
+            and (moldura_arquivo or bool(os.path.splitext(nome)[1]))
+        ):
+            return {
+                "intent": "FILE_SEARCH",
+                "params": params(query=nome, alvo=nome),
+            }
 
     abertura_referenciada = re.fullmatch(
         r"(?:abre|abra|abrir|mostra|mostre)\s+(?P<referencia>.+)",
@@ -538,6 +637,57 @@ def detectar_intencao_arquivos(
             params_abertura = {
                 "caminho": arquivo_recente_caminho,
                 "alvo": arquivo_recente_nome or os.path.basename(arquivo_recente_caminho),
+            }
+            if pediu_foco:
+                params_abertura["modo"] = "focus"
+                params_abertura["referencia_contextual"] = True
+            return {"intent": "FILE_OPEN_RESULT", "params": params(**params_abertura)}
+
+    # Um nome explícito de arquivo não é nome de aplicativo. A abertura direta
+    # só nasce quando o nome pode ser ligado a um caminho concreto publicado
+    # pela própria habilidade (arquivo recente ou resultado de busca local).
+    if abertura_referenciada:
+        referencia_bruta = str(abertura_referenciada.group("referencia") or "")
+        referencia_limpa, pediu_foco = separar_alvo_e_complemento_foco(
+            referencia_bruta
+        )
+        referencia_limpa = re.sub(
+            r"^(?:(?:o|a|um|uma)\s+)?(?:arquivo|documento)\s+",
+            "",
+            referencia_limpa,
+            count=1,
+            flags=re.IGNORECASE,
+        ).strip()
+        nome_declarado = limpar_nome_arquivo_natural(referencia_limpa)
+        candidatos: list[tuple[str, str]] = []
+        if arquivo_recente_caminho:
+            candidatos.append((
+                arquivo_recente_caminho,
+                arquivo_recente_nome or os.path.basename(arquivo_recente_caminho),
+            ))
+        candidatos.extend(
+            (
+                caminho,
+                nomes_recentes[indice]
+                if indice < len(nomes_recentes)
+                else os.path.basename(caminho),
+            )
+            for indice, caminho in enumerate(resultados_recentes)
+        )
+        caminho_resolvido = ""
+        nome_resolvido = ""
+        for caminho_candidato, nome_candidato in candidatos:
+            if _nomes_arquivo_equivalentes(nome_declarado, nome_candidato):
+                caminho_resolvido = caminho_candidato
+                nome_resolvido = (
+                    os.path.basename(caminho_candidato)
+                    or os.path.basename(nome_candidato)
+                )
+                break
+        if caminho_resolvido:
+            params_abertura = {
+                "caminho": caminho_resolvido,
+                "alvo": nome_resolvido,
             }
             if pediu_foco:
                 params_abertura["modo"] = "focus"
@@ -565,7 +715,8 @@ def detectar_intencao_arquivos(
     # extensao. Pronomes so sao aceitos quando a mente publicou um caminho de
     # arquivo concreto no turno anterior.
     escrita = re.fullmatch(
-        r"(?:escreve|escreva|grava|grave)\s+(?P<conteudo>.+?)\s+"
+        r"(?P<verbo>escreve|escreva|grava|grave|adiciona|adicione|acrescenta|acrescente)\s+"
+        r"(?P<conteudo>.+?)\s+"
         r"(?:(?P<pronome>nele|nela|dentro\s+dele|dentro\s+dela|nesse\s+arquivo|"
         r"neste\s+arquivo)|dentro\s+(?:do|da)\s+(?:arquivo\s+)?(?P<alvo>.+))",
         t.rstrip(" .,!?:;"),
@@ -586,12 +737,22 @@ def detectar_intencao_arquivos(
             if nome_declarado in nomes_equivalentes:
                 alvo = arquivo_recente_caminho
         if conteudo and alvo:
+            verbo = str(escrita.group("verbo") or "").casefold()
+            modo_escrita = "append" if (
+                verbo in {"adiciona", "adicione", "acrescenta", "acrescente"}
+                or re.search(
+                    r"\b(?:segunda|outra|nova|mais\s+uma)\s+linha\b",
+                    conteudo,
+                    flags=re.IGNORECASE,
+                )
+            ) else "overwrite"
             return {
                 "intent": "CREATE_FILE",
                 "params": params(
                     alvo=alvo,
                     conteudo=conteudo,
                     editar_existente=True,
+                    **({"modo_escrita": modo_escrita} if modo_escrita == "append" else {}),
                 ),
             }
 
@@ -623,7 +784,8 @@ def detectar_intencao_arquivos(
 
     if resultados_recentes and re.fullmatch(
         r"(?:onde\s+(?:ele|ela|esse|essa|o\s+arquivo)\s+(?:fica|esta|está)|"
-        r"qual\s+(?:e|é)\s+o\s+caminho(?:\s+dele|\s+dela)?|mostra\s+o\s+caminho)",
+        r"qual\s+(?:e|é)\s+o\s+caminho(?:\s+completo)?(?:\s+dele|\s+dela)?|"
+        r"mostra\s+o\s+caminho(?:\s+completo)?)",
         texto_confirmacao,
     ):
         return {

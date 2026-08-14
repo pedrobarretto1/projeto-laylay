@@ -25,7 +25,7 @@ from mente_laylay.autonomia.detectores_playlist import (
 
 
 def texto_pede_clima_atual(texto_normalizado: str) -> bool:
-    """Fonte única para priorização e detecção de consultas meteorológicas."""
+    """Reconhece consultas meteorológicas atuais e de horizonte próximo."""
     t = str(texto_normalizado or "").strip()
     if not t:
         return False
@@ -34,7 +34,7 @@ def texto_pede_clima_atual(texto_normalizado: str) -> bool:
             "quantos graus", "temperatura", "previsao do tempo", "previsão do tempo",
         ))
         or bool(re.search(
-            r"\b(?:qual|como\s+(?:esta|está|ta|tá|e|é))\s+"
+            r"\b(?:qual|como\s+(?:esta|está|estara|estará|ta|tá|e|é))\s+"
             r"(?:o\s+)?(?:clima|tempo)\b",
             t,
         ))
@@ -45,6 +45,11 @@ def texto_pede_clima_atual(texto_normalizado: str) -> bool:
         or bool(re.search(
             r"\b(?:vai\s+chover|chove(?:r)?\s+hoje|como\s+fica\s+(?:o\s+)?tempo|"
             r"tempo\s+por\s+(?:ai|aí|aqui))\b",
+            t,
+        ))
+        or bool(re.search(
+            r"\b(?:clima|tempo)\b.{0,24}\b(?:amanha|amanhã|"
+            r"depois\s+de\s+amanha|depois\s+de\s+amanhã)\b",
             t,
         ))
     )
@@ -88,6 +93,21 @@ def normalizar_pedido_natural(texto_normalizado: str) -> tuple[str, str]:
     primeira, *resto = t.split()
     if primeira in conjugacoes:
         t = " ".join([conjugacoes[primeira], *resto]).strip()
+    # Desejo com estado imediato e alvo concreto e um pedido, mesmo quando o
+    # portugues usa "estivesse aberto" em vez do verbo imperativo. Limitamos a
+    # conversao a moldura "queria que" já removida acima e ao marcador agora;
+    # hipóteses como "talvez fosse legal abrir" continuam deliberativas.
+    if original != t:
+        estado_aberto = re.fullmatch(
+            r"(?:o|a|os|as)?\s*(?P<alvo>.+?)\s+estivesse(?:m)?\s+"
+            r"abert[oa]s?\s+agora",
+            t,
+            flags=re.IGNORECASE,
+        )
+        if estado_aberto:
+            alvo = str(estado_aberto.group("alvo") or "").strip()
+            if alvo:
+                t = f"abre {alvo}"
     return (t or original), ("pedido" if t != original else "direto")
 
 
@@ -177,7 +197,9 @@ def texto_expresso_melhor_no_deterministico(
         str(texto or ""),
         params_cb=lambda **kwargs: kwargs,
     )
-    if str((visual or {}).get("intent") or "").upper() == "SCREEN_CAPTURE":
+    if str((visual or {}).get("intent") or "").upper() in {
+        "SCREEN_CAPTURE", "VISION_QUERY",
+    }:
         return True
     informacao = detectar_email_notificacao_briefing(
         t,
@@ -186,6 +208,13 @@ def texto_expresso_melhor_no_deterministico(
     if str((informacao or {}).get("intent") or "").upper() == "BRIEFING_REPEAT":
         return True
     if texto_pede_clima_atual(t):
+        return True
+    if re.search(
+        r"\b(?:qual|que)\s+(?:e|é\s+)?(?:a\s+)?(?:musica|música|faixa|som)\b"
+        r".{0,24}\b(?:tocando|ouvindo)\b|"
+        r"\bo\s+que\s+(?:esta|está|ta|tá)\s+tocando\b",
+        t,
+    ):
         return True
     if re.search(r"\b(?:email|emails|e-mail)\b", t) and re.search(
         r"\b(?:le|lê|leia|ler|mostra|verifica|checa|resuma|sincroniza|atualiza|"
@@ -216,6 +245,13 @@ def texto_expresso_melhor_no_deterministico(
         r"\b(?:pausa|pause|despausa|retoma|proxima|próxima|anterior)\b",
         t,
     ) and re.search(r"\b(?:musica|música|video|vídeo|som|ela|ele|isso)\b", t):
+        return True
+    if re.fullmatch(
+        r"(?:a\s+)?(?:proxima|próxima|proximo|próximo)|"
+        r"volta\s+(?:para|pra)\s+(?:a\s+)?anterior",
+        t.strip(" .,!?:;"),
+    ):
+        # O detector ainda exige contexto musical real antes de executar.
         return True
     if any(v in t_layout for v in ["organiza", "organizar", "arruma", "arrumar"]) and any(
         alvo in t_layout for alvo in ["area de trabalho", "área de trabalho", "desktop", "tela", "janelas", "janela"]
@@ -418,6 +454,21 @@ def detectar_volume_ou_midia(
         return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
 
+    # Uma pergunta sobre o player é leitura. Ela precisa vencer qualquer
+    # continuidade mutante para nunca virar ``replay`` por associação.
+    if re.search(
+        r"\b(?:qual|que)\s+(?:e|é\s+)?(?:a\s+)?(?:musica|música|faixa|som)\b"
+        r".{0,24}\b(?:tocando|ouvindo)\b|"
+        r"\bo\s+que\s+(?:esta|está|ta|tá)\s+tocando\b",
+        t,
+    ):
+        return {
+            "intent": "MUSIC_STATUS",
+            "params": params(
+                acao="status", platform="music", somente_leitura=True,
+            ),
+        }
+
     menciona_volume = "volume" in t or bool(re.search(r"\bsom\b", t))
     referencia_extremo = bool(re.search(
         r"\b(?:ao|no|para|pro|pra)?\s*(?:maximo|máximo|minimo|mínimo)\b|\bno\s+talo\b",
@@ -480,10 +531,19 @@ def detectar_volume_ou_midia(
         r"\b(?:proxima|próxima)\s+(?:musica|música|faixa)\b", t,
     ))
     if "playlist" not in t and (
-        proxima_por_fala_natural or proxima_curta or proxima_nomeada
+        proxima_por_fala_natural
+        or proxima_nomeada
+        or (proxima_curta and contexto_musical_ativo)
     ):
         return {"intent": "MEDIA_CONTROL", "params": params(acao="next")}
-    if any(x in t for x in ["volta a musica", "música anterior", "musica anterior", "anterior"]):
+    anterior_explicita = any(x in t for x in [
+        "volta a musica", "volta a música", "música anterior", "musica anterior",
+    ])
+    anterior_contextual = bool(re.fullmatch(
+        r"(?:a\s+)?anterior|volta\s+(?:para|pra)\s+(?:a\s+)?anterior",
+        t.strip(" .,!?:;"),
+    ))
+    if anterior_explicita or (anterior_contextual and contexto_musical_ativo):
         return {"intent": "MEDIA_CONTROL", "params": params(acao="prev")}
 
     return None
@@ -684,10 +744,23 @@ def detectar_clima(
         if encontrado:
             local = str(encontrado.group(1) or "").strip(" .,!?:;")
             break
-    if local.casefold() in {"hoje", "agora", "aqui", "hoje aqui"}:
+    if local.casefold() in {
+        "hoje", "agora", "aqui", "hoje aqui", "amanhã", "amanha",
+        "depois de amanhã", "depois de amanha",
+    }:
         local = ""
+    dia_offset = 0
+    if re.search(r"\bdepois\s+de\s+amanh[ãa]\b", t):
+        dia_offset = 2
+    elif re.search(r"\bamanh[ãa]\b", t):
+        dia_offset = 1
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
-    return {"intent": "WEATHER", "params": params(local=local) if local else params()}
+    dados: Dict[str, Any] = {}
+    if local:
+        dados["local"] = local
+    if dia_offset:
+        dados["day_offset"] = dia_offset
+    return {"intent": "WEATHER", "params": params(**dados)}
 
 
 def detectar_url_visual(
@@ -719,6 +792,17 @@ def detectar_url_visual(
         "guarda essa tela", "salva essa tela", "faz memoria disso", "faz memória disso",
     ]):
         return {"intent": "SCREEN_CAPTURE", "params": params()}
+
+    if re.fullmatch(
+        r"(?:o\s+que\s+(?:voce|você)\s+consegue\s+identificar|"
+        r"resume\s+o\s+que\s+(?:voce|você)\s+(?:esta|está|ta|tá)\s+vendo)",
+        t.strip(" .,!?:;"),
+    ):
+        modo = "resumir" if t.startswith("resume") else "identificar"
+        return {
+            "intent": "VISION_QUERY",
+            "params": params(acao="consultar_contexto_visual", modo=modo),
+        }
 
     return None
 
@@ -849,6 +933,13 @@ def detectar_janela_explicita(
     base = str(texto_sem_destino or t).strip()
     if not t or not base:
         return None
+    if re.fullmatch(
+        r"(?:abre|abra|abrir|mostra|mostre)\s+(?:o\s+)?primeiro\s+resultado"
+        r"[ .,!?:;]*",
+        base,
+        flags=re.IGNORECASE,
+    ):
+        return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
 
     m_max_posposto = re.search(
@@ -865,13 +956,15 @@ def detectar_janela_explicita(
                 return {"intent": "MAXIMIZE_WINDOW", "params": params(nome_app=app)}
             return {"intent": "APP_OPEN", "params": params(nome_app=app, modo="focus")}
 
-    m_max = re.search(r"\b(maximiza|maximizar|tela cheia|fullscreen|coloca em foco|bota em foco|deixa em foco|traz)\s+(?:o|a)?\s*(.+)$", base)
+    m_max = re.search(r"\b(maximiza|maximize|maximizar|tela cheia|fullscreen|coloca em foco|bota em foco|deixa em foco|traz)\s+(?:o|a)?\s*(.+)$", base)
     if m_max:
         app = re.sub(r"^(o|a|os|as|um|uma)\s+", "", (m_max.group(2) or "").strip())
         app = app.replace("em foco", "").replace("pra frente", "").replace("para frente", "").strip()
         if app:
-            modo = "fullscreen" if any(p in t for p in ["tela cheia", "fullscreen"]) else "focus"
-            if modo == "fullscreen":
+            verbo_modo = str(m_max.group(1) or "").casefold()
+            if verbo_modo.startswith("maximiz") or any(
+                p in t for p in ["tela cheia", "fullscreen"]
+            ):
                 return {"intent": "MAXIMIZE_WINDOW", "params": params(nome_app=app)}
             return {"intent": "APP_OPEN", "params": params(nome_app=app, modo="focus")}
 
@@ -940,7 +1033,25 @@ def detectar_fechar_alvo(
     if not m_close:
         return None
 
-    alvo = re.sub(r"^(aba|site|janela|programa|app|aplicativo)\s+(do|da|de)?\s*", "", (m_close.group(2) or "").strip()).strip()
+    alvo_bruto = str(m_close.group(2) or "").strip()
+    alvo_tipado_app = bool(re.match(
+        r"^(?:janela|programa|app|aplicativo)\b",
+        alvo_bruto,
+        flags=re.IGNORECASE,
+    ))
+    alvo = re.sub(
+        r"^(aba|site|janela|programa|app|aplicativo)\s+(do|da|de)?\s*",
+        "",
+        alvo_bruto,
+    ).strip()
+    # ``chamado`` qualifica o nome; nunca faz parte dele. Sem esta limpeza,
+    # "fecha um programa chamado X" procurava literalmente por "chamado X".
+    alvo = re.sub(
+        r"^(?:chamado|chamada|com\s+nome|de\s+nome)\s+",
+        "",
+        alvo,
+        flags=re.IGNORECASE,
+    ).strip()
     alvo = re.sub(r"^(?:uma|um|as|os|a|o)\s+", "", alvo).strip()
     if re.fullmatch(
         r"(?:(?:programa|app|aplicativo|janela)\s+)?"
@@ -955,14 +1066,29 @@ def detectar_fechar_alvo(
         return {"intent": "CLOSE_TAB", "params": params()}
 
     alvo_norm = alvo.lower()
-    if "aba" in base or "site" in base or alvo_norm in sites or alvo_norm in {"youtube", "netflix", "google", "spotify", "whatsapp", "chatgpt"}:
+    if not alvo_tipado_app and (
+        "aba" in base
+        or "site" in base
+        or alvo_norm in sites
+        or alvo_norm in {
+            "youtube", "netflix", "google", "spotify", "whatsapp", "chatgpt",
+        }
+    ):
         return {"intent": "CLOSE_TAB", "params": params(alvo=alvo)}
 
     for app in sorted(apps.keys(), key=len, reverse=True):
         if alvo_norm == app or app in alvo_norm:
-            return {"intent": "CLOSE_APP", "params": params(nome_app=app)}
+            dados_mapeados: Dict[str, Any] = {"nome_app": app}
+            if alvo_tipado_app:
+                dados_mapeados["alvo_tipado"] = "app"
+            return {"intent": "CLOSE_APP", "params": params(**dados_mapeados)}
 
-    return {"intent": "CLOSE_APP", "params": params(nome_app=alvo)}
+    dados_app: Dict[str, Any] = {"nome_app": alvo}
+    if alvo_tipado_app:
+        # O executor usa esta evidência lexical para não reinterpretar um
+        # programa inexistente como aba do navegador nem declarar falso êxito.
+        dados_app["alvo_tipado"] = "app"
+    return {"intent": "CLOSE_APP", "params": params(**dados_app)}
 
 
 def detectar_web_e_youtube(
@@ -980,13 +1106,24 @@ def detectar_web_e_youtube(
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
     sites = sites_diretos if sites_diretos is not None else set()
 
+    # É uma continuação da busca canônica, não um endereço. O orquestrador a
+    # resolve antes deste detector quando existe SEARCH confirmado; sem essa
+    # evidência a frase deve pedir contexto, nunca abrir uma busca literal.
+    if re.fullmatch(
+        r"(?:abre|abra|abrir|mostra|mostre)\s+(?:o\s+)?primeiro\s+resultado"
+        r"[ .,!?:;]*",
+        base,
+        flags=re.IGNORECASE,
+    ):
+        return None
+
     m_google = re.search(
         r"\b(pesquisa|pesquisar|busca|buscar|procura|procurar)\s+"
         r"(?:no google\s+)?(?:(?:sobre|por)\s+)?(.+)$",
         base,
     )
     if m_google and "youtube" not in t:
-        query = (m_google.group(2) or "").strip()
+        query = (m_google.group(2) or "").strip(" .,!?:;")
         if query:
             return {"intent": "SEARCH", "params": params(query=query, engine="google")}
 
@@ -1007,6 +1144,79 @@ def detectar_web_e_youtube(
     return None
 
 
+def detectar_consulta_abas(
+    texto: str,
+    *,
+    params_cb: Callable[..., Dict[str, Any]],
+) -> Dict[str, Any] | None:
+    """Reconhece somente consultas explícitas sobre abas observáveis.
+
+    A listagem não é uma pesquisa aberta nem uma pergunta para a LLM: ela
+    depende da percepção atual da extensão. Manter um intent próprio impede
+    que títulos e URLs sejam inventados quando o navegador não responder.
+    """
+    base = str(texto or "").strip().casefold().rstrip(" .,!?:;")
+    if not base:
+        return None
+    params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
+    if re.fullmatch(
+        r"(?:quais|que|quantas)\s+abas\s+(?:estao|estão|tao|tão)\s+abertas|"
+        r"(?:quais|que)\s+sao\s+as\s+abas\s+abertas|"
+        r"(?:lista|liste|listar|mostra|mostre|mostrar)\s+(?:as\s+)?abas\s+abertas",
+        base,
+    ):
+        return {"intent": "LIST_TABS", "params": params()}
+    return None
+
+
+def detectar_continuacao_resultado_web(
+    texto: str,
+    estado_mental: Dict[str, Any] | None,
+    *,
+    params_cb: Callable[..., Dict[str, Any]],
+) -> Dict[str, Any] | None:
+    """Resolve ``abre o primeiro resultado`` só após uma busca confirmada."""
+    base = str(texto or "").strip().casefold().rstrip(" .,!?:;")
+    if not re.fullmatch(
+        r"(?:abre|abra|abrir|mostra|mostre)\s+(?:o\s+)?primeiro\s+resultado",
+        base,
+    ):
+        return None
+    estado = estado_mental if isinstance(estado_mental, dict) else {}
+    intent_anterior = str(
+        estado.get("ultima_acao_intent") or estado.get("ultima_intencao") or ""
+    ).strip().upper()
+    status = str(estado.get("ultima_acao_status") or "").strip().casefold()
+    confirmado = estado.get("ultima_acao_confirmada")
+    params_anteriores = (
+        dict(estado.get("ultima_acao_params") or {})
+        if isinstance(estado.get("ultima_acao_params"), dict)
+        else {}
+    )
+    consulta = str(
+        params_anteriores.get("query")
+        or estado.get("ultima_acao_alvo")
+        or estado.get("ultimo_alvo")
+        or ""
+    ).strip()
+    if (
+        intent_anterior != "SEARCH"
+        or confirmado is not True
+        or status not in {"busca_aberta", "pesquisa_aberta", "resultados_observados"}
+        or not consulta
+    ):
+        return None
+    params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
+    return {
+        "intent": "SEARCH",
+        "params": params(
+            query=consulta,
+            abrir_resultado=1,
+            origem="continuacao_resultado_web",
+        ),
+    }
+
+
 def detectar_musica_ou_playlist_direta(
     texto_normalizado: str,
     texto_sem_destino: str = "",
@@ -1021,6 +1231,16 @@ def detectar_musica_ou_playlist_direta(
     base = str(texto_sem_destino or t).strip()
     bruto = str(texto_bruto or "").strip()
     if not t:
+        return None
+    # "Abre o primeiro resultado" e uma continuacao web, nunca o titulo de
+    # uma musica. Sem SEARCH confirmado, deixamos a conversa pedir contexto em
+    # vez de mandar "primeiro resultado" ao YouTube.
+    if re.fullmatch(
+        r"(?:abre|abra|abrir|mostra|mostre)\s+(?:o\s+)?primeiro\s+resultado"
+        r"[ .,!?:;]*",
+        t,
+        flags=re.IGNORECASE,
+    ):
         return None
     # Nomes de gêneros também podem ser nomes de playlists. A pergunta
     # ``o que você acha de rock?`` deve chegar à conversa, não tocar nem listar

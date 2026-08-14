@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from mente_laylay.autonomia.analise_comandos import (
     processar_comandos_em_cadeia,
     segmentar_comandos_em_cadeia,
@@ -493,7 +495,18 @@ def test_barreira_prioritaria_abre_resultado_por_ordinal_curto() -> None:
 
 
 def test_barreira_prioritaria_restaura_ultimo_item_sem_cair_na_llm() -> None:
-    estado = type("Estado", (), {"mental": {}})()
+    caminho = r"C:\Users\teste\Downloads\nota.txt"
+    estado = type("Estado", (), {"mental": {
+        "ultima_acao_ts": time.time(),
+        "ultima_acao_alvo": caminho,
+        "ultima_acao_contrato": {
+            "intent": "CONFIRM_DELETE_ITEM",
+            "status": "movido_para_lixeira",
+            "alvo": caminho,
+            "executou": True,
+            "confirmado": True,
+        },
+    }})()
     execucoes: list[tuple[dict, str]] = []
     namespace = {
         "_estado_compartilhado_runtime": estado,
@@ -511,7 +524,13 @@ def test_barreira_prioritaria_restaura_ultimo_item_sem_cair_na_llm() -> None:
 
     assert runtime.processar_prioritarios("quero ele de volta") is True
     assert execucoes == [(
-        {"intent": "RESTORE_DELETED_ITEM", "params": {}},
+        {
+            "intent": "RESTORE_DELETED_ITEM",
+            "params": {
+                "alvo": caminho,
+                "referencia_exclusao_confirmada": True,
+            },
+        },
         "quero ele de volta",
     )]
 

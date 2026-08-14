@@ -92,7 +92,10 @@ def texto_pede_continuacao_musical_curta(texto: str) -> bool:
     return bool(re.fullmatch(
         r"(?:(?:tenta|manda|coloca|toca)\s+outr[ao](?:\s+(?:musica|faixa))?|"
         r"(?:continua|continue)(?:\s+(?:a|essa|ela|musica|tocando))?|"
-        r"(?:pausa|pause))",
+        r"(?:pausa|pause)|"
+        r"(?:a\s+)?(?:proxima|proximo|pula|pule)|"
+        r"(?:a\s+)?anterior|"
+        r"volta\s+(?:para|pra)\s+(?:a\s+)?anterior)",
         t,
     ))
 
@@ -586,22 +589,60 @@ class ComandosImediatosRuntime:
         ):
             primeira, segunda = composto_caixa_agenda
             falar = ns.get("falar_com_lipsync")
-            try:
-                guardou = bool(caixa_entrada.processar(primeira))
-            except Exception as erro:
-                print(
-                    "⚠️ [PRIORIDADE:COOPERAÇÃO] caixa de entrada falhou: "
-                    f"{type(erro).__name__}: {erro}"
-                )
-                guardou = False
+            primeira_norm = _texto_normalizado_local(primeira).strip(" .,!?:;")
+            referencia_generica = bool(re.fullmatch(
+                r"(?:guarda|guarde|salva|salve|anota|anote)\s+"
+                r"(?:(?:essa|esta|a|minha)\s+)?ideia",
+                primeira_norm,
+            ))
+            item_salvo = None
+
+            # Em uma composição como "guarda essa ideia e me lembra dela",
+            # a referência só é válida quando a caixa publicou um item tipado
+            # que acabou de criar. Não deixamos a própria caixa procurar uma
+            # fala histórica: isso já fez uma pergunta de conhecimento virar
+            # conteúdo de lembrete.
+            obter_item_criado = getattr(caixa_entrada, "ultimo_item_criado", None)
+            if referencia_generica and callable(obter_item_criado):
+                try:
+                    candidato = obter_item_criado()
+                except Exception:
+                    candidato = None
+                tipo_candidato = str(
+                    (candidato or {}).get("tipo") if isinstance(candidato, dict) else ""
+                ).casefold().strip()
+                if isinstance(candidato, dict) and tipo_candidato in {
+                    "ideia", "ideia_discutida",
+                }:
+                    item_salvo = dict(candidato)
+                    guardou = True
+                else:
+                    guardou = False
+            else:
+                try:
+                    guardou = bool(caixa_entrada.processar(primeira))
+                except Exception as erro:
+                    print(
+                        "⚠️ [PRIORIDADE:COOPERAÇÃO] caixa de entrada falhou: "
+                        f"{type(erro).__name__}: {erro}"
+                    )
+                    guardou = False
             if not guardou:
                 if callable(falar):
-                    falar(
-                        "Não consegui guardar a ideia, então não criei um lembrete "
-                        "solto sem o contexto dela.",
-                        "calma",
-                        1,
-                    )
+                    if referencia_generica and callable(obter_item_criado):
+                        falar(
+                            "Não tenho uma ideia recém-guardada para ligar a esse "
+                            "lembrete. Me diga qual ideia você quis dizer.",
+                            "calma",
+                            1,
+                        )
+                    else:
+                        falar(
+                            "Não consegui guardar a ideia, então não criei um lembrete "
+                            "solto sem o contexto dela.",
+                            "calma",
+                            1,
+                        )
                 return True
 
             resolver = ns.get("resolver_comando_natural")
@@ -622,9 +663,8 @@ class ComandosImediatosRuntime:
                 if isinstance(resolucao, tuple) and len(resolucao) == 2
                 else None
             )
-            item_salvo = None
             obter_item_salvo = getattr(caixa_entrada, "ultimo_item_salvo", None)
-            if callable(obter_item_salvo):
+            if item_salvo is None and callable(obter_item_salvo):
                 try:
                     item_salvo = obter_item_salvo()
                 except Exception:

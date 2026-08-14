@@ -5,27 +5,26 @@ reexporta enquanto os consumidores antigos migram para contratos tipados.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Dict
 
-from mente_laylay.memoria_mental.continuidade_geral import selecionar_continuidade_por_classe
+from mente_laylay.memoria_mental.continuidade_geral import (
+    selecionar_continuidade_reexecutavel,
+)
 
 
 def texto_pede_repeticao_curta(texto: str, normalizar_texto_cb) -> bool:
-    t = normalizar_texto_cb(str(texto or ""))
+    t = str(normalizar_texto_cb(str(texto or "")) or "").strip(" .,!?:;")
     if not t or len(t.split()) > 8:
         return False
-    gatilhos = [
-        "tenta de novo",
-        "de novo",
-        "tenta novamente",
-        "novamente",
-        "vai de novo",
-        "faz de novo",
-        "outra vez",
-        "mais uma vez",
-        "tenta outra vez",
-    ]
-    return any(g in t for g in gatilhos)
+    # Repetição é um ato completo, não uma expressão encontrada no meio de
+    # outra fala. Antes, ``obrigado de novo`` repetia a última ação prática e
+    # chegou a fechar o Opera sem que o usuário pedisse isso.
+    return bool(re.fullmatch(
+        r"(?:(?:tenta|tente|faz|fa[cç]a|vai)\s+)?(?:de\s+novo|novamente|"
+        r"outra\s+vez|mais\s+uma\s+vez)|tenta\s+outra\s+vez",
+        t,
+    ))
 
 
 def resolver_repeticao_ultima_acao(
@@ -73,7 +72,7 @@ def resolver_repeticao_ultima_acao(
         # Repetimos apenas uma transação comprovadamente falha. Uma mudança já
         # confirmada nunca volta ao disco por causa de "tenta de novo".
         return {"intent": "FILE_TRANSACTION", "params": dict(params_recentes)}
-    oficial = selecionar_continuidade_por_classe(
+    oficial = selecionar_continuidade_reexecutavel(
         estado,
         classe="operacional",
         ttl_s=900.0,

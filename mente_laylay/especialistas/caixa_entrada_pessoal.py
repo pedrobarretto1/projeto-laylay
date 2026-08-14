@@ -144,6 +144,13 @@ class CaixaEntradaPessoalRuntime:
         self.log = log
         self._lock = threading.RLock()
         self._ultimo_id = ""
+        # ``_ultimo_id`` também é usado como foco operacional de listagem,
+        # exclusão e conversão. A cooperação com a agenda, porém, precisa de
+        # uma referência mais forte: o item que esta instância realmente
+        # acabou de criar. Manter os dois focos separados impede que uma
+        # listagem ou uma fala antiga transforme uma pergunta aleatória em
+        # "essa ideia".
+        self._ultimo_item_criado_id = ""
 
     def _pendencia_operacional(self) -> dict[str, Any]:
         obter = getattr(self.pendencia_runtime, "obter", None)
@@ -733,6 +740,15 @@ class CaixaEntradaPessoalRuntime:
             r"^(?:anota|anote|guarda|guarde|salva|salve|registra|registre)\b",
             "", t, flags=re.IGNORECASE,
         ).strip(" ,:-")
+        # Formas como "guarda como ideia melhorar os testes" não devem
+        # persistir o invólucro linguístico como parte da nota. Este recorte é
+        # deliberadamente anterior ao tratamento geral de artigo+tipo para
+        # não alterar frases legadas como "anota a ideia de revisar...".
+        conteudo = re.sub(
+            r"^como\s+(?:(?:uma|a|essa|esta|minha)\s+)?"
+            r"(?:ideia|nota|tarefa|pensamento|link)\b(?:\s+de)?",
+            "", conteudo, flags=re.IGNORECASE,
+        ).strip(" .,!?:;-")
         conteudo = re.sub(
             r"^(?:(?:essa|esta|uma|a|esse|este|um|o|minha|meu)\s+)?"
             r"(?:ideia|nota|tarefa|pensamento|link)?\s*",
@@ -789,6 +805,7 @@ class CaixaEntradaPessoalRuntime:
         self._registrar(resultado, texto, ok, status="nota_guardada" if ok else "falha_execucao")
         if ok:
             self._ultimo_id = str(item["id"])
+            self._ultimo_item_criado_id = str(item["id"])
             if callable(self.observar_item):
                 try:
                     self.observar_item(dict(item))
@@ -905,6 +922,7 @@ class CaixaEntradaPessoalRuntime:
             return True
 
         self._ultimo_id = item["id"]
+        self._ultimo_item_criado_id = item["id"]
         if callable(self.observar_item):
             try:
                 self.observar_item(dict(item))
@@ -937,12 +955,25 @@ class CaixaEntradaPessoalRuntime:
         O retorno é uma cópia; consumidores podem usá-lo como referência de
         outra habilidade sem adquirir permissão para alterar o armazenamento.
         """
-        ultimo_id = str(self._ultimo_id or "").strip()
+        return self.ultimo_item_criado()
+
+    def ultimo_item_criado(self) -> dict[str, Any] | None:
+        """Retorna somente o item criado e confirmado nesta instância.
+
+        Diferentemente do foco operacional, esta referência não muda quando
+        a pessoa lista, consulta ou seleciona notas antigas. Assim, pronomes
+        de uma cadeia composta (``essa ideia``/``dela``) só podem apontar para
+        um objeto tipado que a caixa acabou de persistir, nunca para uma fala
+        histórica da conversa.
+        """
+        ultimo_id = str(self._ultimo_item_criado_id or "").strip()
         if not ultimo_id:
             return None
         item = next((
             registro for registro in reversed(self._carregar()["itens"])
             if str(registro.get("id") or "") == ultimo_id
+            and str(registro.get("status") or "") == "ativo"
+            and str(registro.get("tipo") or "").strip()
         ), None)
         return dict(item) if isinstance(item, dict) else None
 
@@ -1181,6 +1212,7 @@ class CaixaEntradaPessoalRuntime:
                 for tipo in ("nota", "ideia", "ideia_discutida", "tarefa", "link", "pensamento")
             },
             "ultimo_id": self._ultimo_id,
+            "ultimo_item_criado_id": self._ultimo_item_criado_id,
             "pendencia": bool(self._pendencia_operacional()),
             "persistencia_disponivel": bool(
                 self.caminho.exists()

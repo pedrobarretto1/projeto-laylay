@@ -70,7 +70,7 @@ def test_registro_preserva_escrita_segura_confirmacao_lixeira_e_restauracao(
     confirmado = registro.confirmar_exclusao()
     assert confirmado.sucesso is True
     assert arquivo.exists() is False
-    restaurado = registro.restaurar_ultimo()
+    restaurado = registro.restaurar_ultimo(str(arquivo))
     assert restaurado.sucesso is True
     assert arquivo.read_text(encoding="utf-8") == "segunda versão"
 

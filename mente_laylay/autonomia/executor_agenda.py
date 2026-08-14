@@ -191,7 +191,26 @@ def _agendar_lembrete(
         "", "lembrete", "isso", "disso", "dela", "dele", "essa ideia",
         "essa nota", "desse evento", "do evento",
     }
-    if descricao.casefold() in referencias_genericas and pendente:
+    reagendamento_contextual = bool(params.get("reagendamento_contextual"))
+    contexto_ultimo_lembrete = (
+        str(_get(ctx, "ultima_intencao", "") or "").upper()
+        == "AGENDAR_LEMBRETE"
+        and str(_get(ctx, "ultima_habilidade", "") or "").casefold()
+        == "agenda"
+        and bool(str(_get(ctx, "ultimo_alvo", "") or "").strip())
+    )
+    if reagendamento_contextual and contexto_ultimo_lembrete:
+        descricao = str(_get(ctx, "ultimo_alvo", "") or "").strip()
+    elif reagendamento_contextual:
+        deps.marcar_resultado(
+            "alvo_ausente", executou=False, confirmado=False,
+        )
+        _falar(
+            ctx,
+            "Qual lembrete você quer mudar? Diga o nome dele junto do novo horário.",
+        )
+        return ResultadoDespacho.concluido()
+    elif descricao.casefold() in referencias_genericas and pendente:
         descricao = str(
             metadados_pendentes.get("descricao")
             or _get(ctx, "ultimo_alvo", "")
@@ -294,16 +313,56 @@ def _agendar_lembrete(
         "ativo": True, "criado_em": dt.datetime.now().isoformat(),
         "origem": "pedido_usuario", "evidencia": "persistencia_local",
     }
-    salvo = _transacionar(ctx, lambda lista: lista.append(novo))
-    status = "lembrete_agendado" if salvo else "falha_execucao"
+    substituiu = {"ok": not bool(params.get("substituir_lembrete_anterior"))}
+
+    def _salvar_lembrete(lista: list) -> None:
+        if params.get("substituir_lembrete_anterior"):
+            alvo_norm = descricao.casefold().strip()
+            candidatos = [
+                indice
+                for indice, item in enumerate(lista)
+                if isinstance(item, dict)
+                and item.get("ativo", True)
+                and str(item.get("descricao") or "").casefold().strip()
+                == alvo_norm
+                and not item.get("intencao_no_disparo")
+            ]
+            if not candidatos:
+                return
+            lista.pop(candidatos[-1])
+            substituiu["ok"] = True
+        lista.append(novo)
+
+    persistiu = _transacionar(ctx, _salvar_lembrete)
+    salvo = bool(persistiu and substituiu["ok"])
+    status = (
+        "lembrete_reagendado"
+        if salvo and params.get("substituir_lembrete_anterior")
+        else "lembrete_agendado" if salvo
+        else "alvo_nao_encontrado" if persistiu and not substituiu["ok"]
+        else "falha_execucao"
+    )
     deps.marcar_resultado(status, executou=salvo)
     deps.falar_por_status(status, escolher_fala_variada([
-        f"Feito. Vou te lembrar {tempo_txt} de {descricao}.",
-        f"Pronto, lembrete de {descricao} salvo para {tempo_txt}.",
-        f"Anotado. Vou te lembrar de {descricao} {tempo_txt}.",
+        *(
+            [
+                f"Pronto. Mudei o lembrete de {descricao} para {tempo_txt}.",
+                f"Reagendei {descricao} para {tempo_txt}.",
+            ]
+            if params.get("substituir_lembrete_anterior")
+            else [
+                f"Feito. Vou te lembrar {tempo_txt} de {descricao}.",
+                f"Pronto, lembrete de {descricao} salvo para {tempo_txt}.",
+                f"Anotado. Vou te lembrar de {descricao} {tempo_txt}.",
+            ]
+        ),
     ] if salvo else [
-        "Entendi o lembrete, mas não consegui salvar ele na agenda.",
-        "A agenda falhou ao gravar isso, então o lembrete não ficou confirmado.",
+        (
+            f"Não encontrei um lembrete ativo de {descricao} para mudar."
+            if status == "alvo_nao_encontrado"
+            else "Entendi o lembrete, mas não consegui salvar ele na agenda."
+        ),
+        "A agenda não confirmou a alteração, então o horário anterior foi preservado.",
     ]), alvo=descricao)
     pendencia_id = str(params.get("pendencia_id") or pendencia_canonica.get("id") or "")
     if salvo and pendencia_id and pendencia_runtime is not None:

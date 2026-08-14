@@ -68,6 +68,26 @@ class RegistroOperacoesMusicais:
     def adicionar_faixa(self, nome: str, url: str, titulo: str, canal: str = "") -> bool:
         return bool(self.servico.adicionar_faixa(nome, url, titulo, canal))
 
+    def adicionar_faixa_resultado(
+        self, nome: str, url: str, titulo: str, canal: str = "",
+    ) -> dict[str, Any]:
+        detalhado = getattr(self.servico, "adicionar_faixa_resultado", None)
+        if callable(detalhado):
+            bruto = dict(detalhado(nome, url, titulo, canal) or {})
+            return {
+                "ok": bool(bruto.get("ok")),
+                "added": bool(bruto.get("added")),
+                "duplicated": bool(bruto.get("duplicated")),
+                "status": str(bruto.get("status") or "").strip(),
+            }
+        ok = self.adicionar_faixa(nome, url, titulo, canal)
+        return {
+            "ok": ok,
+            "added": ok,
+            "duplicated": False,
+            "status": "playlist_musica_adicionada" if ok else "falha_execucao",
+        }
+
     def mover_faixa(self, origem: str, destino: str, musica: str = "") -> dict[str, Any]:
         return dict(self.servico.mover_faixa(origem, destino, musica) or {})
 

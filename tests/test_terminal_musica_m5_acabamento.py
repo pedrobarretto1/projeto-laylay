@@ -73,10 +73,15 @@ def test_m5_equilibra_modulos_e_da_hierarquia_aos_dados(monkeypatch) -> None:
     assert pagina.sistema_barras["cpu_percent"].value() == 18
     assert pagina.sistema_barras["ram_percent"].value() == 42
     assert pagina.sistema_barras["temperature_c"].property("available") is False
-    assert pagina.preset_botoes[0].text().startswith("Rock\n")
-    assert pagina.preset_botoes[1].text().startswith("VMZ\n")
+    assert pagina.preset_botoes[0].titulo.text() == "Rock"
+    assert pagina.preset_botoes[0].quantidade.text() == "12 faixas"
+    assert pagina.preset_botoes[1].titulo.text() == "VMZ"
+    assert pagina.preset_botoes[1].quantidade.text() == "8 faixas"
     assert pagina.preset_botoes[0].accessibleName() == "Playlist rock, 12 faixas"
-    assert pagina.contexto_base.text() == "Horário local  •  Playlist escolhida"
+    assert pagina.contexto_chips[0].text() == "◷ Horário local"
+    assert pagina.contexto_chips[1].text() == "♫ Playlist escolhida"
+    assert pagina.contexto_chips[0].isHidden() is False
+    assert pagina.contexto_chips[1].isHidden() is False
     pagina.close()
     app.processEvents()
 
@@ -94,7 +99,7 @@ def test_m5_troca_de_linha_tem_animacao_fluida_sem_reiniciar(monkeypatch) -> Non
     app.processEvents()
     animacao = pagina._animacao_letra
     assert animacao is not None and animacao is not primeira_animacao
-    assert animacao.duration() == 420
+    assert animacao.duration() == 340
     assert animacao.easingCurve().type() == QEasingCurve.OutCubic
     assert animacao.state() == QAbstractAnimation.Running
     assert "Segunda linha" in pagina.letra_texto.text()
@@ -111,10 +116,12 @@ def test_m5_reducao_de_movimento_desliga_animacao_da_letra(monkeypatch) -> None:
     app.processEvents()
 
     assert pagina._animacao_letra is None
-    assert pagina._efeito_letra.opacity() == 1.0
+    assert pagina._efeito_letra is None
+    assert pagina.letra_texto.graphicsEffect() is None
     pagina._renderizar_letra(9)
     assert pagina._animacao_letra is None
-    assert pagina._efeito_letra.opacity() == 1.0
+    assert pagina._efeito_letra is None
+    assert pagina.letra_texto.graphicsEffect() is None
     pagina.close()
     app.processEvents()
 

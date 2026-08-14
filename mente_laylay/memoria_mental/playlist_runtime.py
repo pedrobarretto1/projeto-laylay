@@ -440,31 +440,69 @@ class PlaylistRuntime:
                 "nome": nome,
             }
 
-    def add_and_verify(self, nome_playlist: str, url: str, titulo: str, canal: str = "") -> bool:
+    def add_and_verify_result(
+        self, nome_playlist: str, url: str, titulo: str, canal: str = "",
+    ) -> dict[str, Any]:
+        """Persiste uma faixa e distingue inclusão nova de repetição idempotente."""
         name = self.resolver_nome(nome_playlist)
         if not name:
-            return False
+            return {"ok": False, "added": False, "status": "alvo_ausente"}
         link = str(url or "").strip()
         if not link:
-            return False
+            return {"ok": False, "added": False, "status": "fonte_ausente"}
         musica = yt_clean_title(str(titulo or "")) or link
         self.log(f"[DISK] Escrevendo {musica} em {self.state_file}...")
         res = self.add_url(name, link, str(titulo or ""), str(canal or ""))
         if not (isinstance(res, dict) and res.get("ok")):
-            return False
+            return {
+                "ok": False,
+                "added": False,
+                "status": "falha_persistencia",
+            }
         data = self.load()
         lst = data.get(name)
         if not isinstance(lst, list):
-            return False
+            return {
+                "ok": False,
+                "added": False,
+                "status": "falha_confirmacao",
+            }
         target = yt_clean_url(link)
+        confirmado = False
         for item in reversed(lst[-10:]):
             if isinstance(item, dict):
                 item_url = str(item.get("url") or "").strip()
             else:
                 item_url = str(item or "").strip()
             if item_url and yt_clean_url(item_url) == target:
-                return True
-        return False
+                confirmado = True
+                break
+        duplicada = bool(res.get("duplicated") or res.get("duplicated_meta"))
+        # Duplicação por metadado pode apontar para outra URL já existente;
+        # nesse caso a própria resposta do gravador é a confirmação de que a
+        # biblioteca rejeitou a cópia de forma idempotente.
+        confirmado = confirmado or bool(res.get("duplicated_meta"))
+        return {
+            "ok": confirmado,
+            "added": bool(confirmado and not duplicada),
+            "duplicated": duplicada,
+            "duplicate_other_channel": bool(res.get("duplicate_other_channel")),
+            "status": (
+                "playlist_musica_ja_existia"
+                if confirmado and duplicada
+                else "playlist_musica_adicionada"
+                if confirmado
+                else "falha_confirmacao"
+            ),
+        }
+
+    def add_and_verify(
+        self, nome_playlist: str, url: str, titulo: str, canal: str = "",
+    ) -> bool:
+        """Compatibilidade booleana para integrações anteriores."""
+        return bool(
+            self.add_and_verify_result(nome_playlist, url, titulo, canal).get("ok")
+        )
 
     def delete(self, nome: str) -> bool:
         pl = self.resolver_nome(nome)

@@ -121,7 +121,7 @@ def test_smoke_terminal_21_chat_voz_e_settings(monkeypatch) -> None:
     janela.resize(768, 700)
     app.processEvents()
     assert janela.width() == 768
-    assert janela.sidebar.width() == 72
+    assert janela.sidebar.width() == 68
     janela.resize(375, 667)
     app.processEvents()
     assert janela.width() == 375

@@ -42,7 +42,10 @@ def _focar_janela_do_arquivo(
     if not callable(focar):
         return False
 
-    alvo = str(nome or os.path.basename(caminho) or "").strip()
+    nome_publicado = str(nome or "").strip().replace("/", os.sep)
+    alvo = str(
+        os.path.basename(nome_publicado) or os.path.basename(caminho) or ""
+    ).strip()
     if not alvo:
         return False
     aguardar = _get(ctx, "_aguardar_foco_arquivo", time.sleep)
@@ -316,7 +319,12 @@ def executar_intencao_arquivos(
     if intent == "FILE_OPEN_RESULT":
         abrir = getattr(arquivos_leitura, "abrir", None)
         caminho = str(params.get("caminho") or "").strip()
-        nome = str(params.get("alvo") or os.path.basename(caminho) or "arquivo").strip()
+        nome_publicado = str(params.get("alvo") or "").strip().replace("/", os.sep)
+        nome = str(
+            os.path.basename(nome_publicado)
+            or os.path.basename(caminho)
+            or "arquivo"
+        ).strip()
         sucesso = bool(abrir(caminho)) if callable(abrir) and caminho else False
         if sucesso:
             registrar_arquivo(caminho, "arquivos")
@@ -355,7 +363,13 @@ def executar_intencao_arquivos(
                         1,
                     )
             else:
-                marcar_resultado("arquivo_aberto", True)
+                marcar_resultado(
+                    "arquivo_aberto",
+                    True,
+                    alvo_resolvido=caminho,
+                    params_resolvidos={"caminho": caminho, "alvo": nome},
+                    confirmado=True,
+                )
                 falar(f"Abri {nome} para você.", "feliz", 1)
         else:
             marcar_resultado("falha_abertura", False)
@@ -498,8 +512,28 @@ def executar_intencao_arquivos(
             marcar_resultado("indisponivel", False)
             falar("A restauração de arquivos não está disponível agora.", "calma", 1)
             return True
-        resultado = restaurar()
-        marcar_resultado(resultado.status, resultado.sucesso)
+        alvo_exclusao = str(params.get("alvo") or "").strip()
+        referencia_confirmada = params.get("referencia_exclusao_confirmada") is True
+        if not alvo_exclusao or not referencia_confirmada:
+            marcar_resultado(
+                "referencia_exclusao_ausente",
+                False,
+                confirmado=False,
+            )
+            falar(
+                "Não encontrei uma exclusão confirmada recente para restaurar.",
+                "calma",
+                1,
+            )
+            return True
+        resultado = restaurar(alvo_exclusao)
+        marcar_resultado(
+            resultado.status,
+            resultado.sucesso,
+            alvo_resolvido=str(resultado.caminho or alvo_exclusao),
+            params_resolvidos={"alvo": alvo_exclusao},
+            confirmado=bool(resultado.sucesso),
+        )
         if callable(falar):
             if resultado.sucesso:
                 falar(f"Desfeito. Restaurei {resultado.caminho}.", "calma", 1)
@@ -706,6 +740,7 @@ def executar_intencao_arquivos(
         conteudo_hash = str(params.get("conteudo_hash") or "").strip()
         sobrescrever_confirmado = params.get("sobrescrever_confirmado") is True
         editar_existente = params.get("editar_existente") is True
+        modo_escrita = str(params.get("modo_escrita") or "overwrite").strip().casefold()
         conteudo = str(params.get("conteudo") or params.get("texto") or "")
         if conteudo_ref:
             if not callable(resolver_referencia_cooperativa):
@@ -784,16 +819,51 @@ def executar_intencao_arquivos(
                 and resultado_seguro.get("confirmado") is True
                 and (not conteudo_hash or resultado_seguro.get("hash") == conteudo_hash)
             )
+        elif editar_existente and modo_escrita == "append":
+            try:
+                with open(caminho, "r", encoding="utf-8") as stream:
+                    conteudo_anterior = stream.read()
+            except (OSError, UnicodeError) as erro:
+                relatar_falha_ctx(
+                    ctx,
+                    "executor_arquivos",
+                    "falha_leitura_antes_append",
+                    erro=erro,
+                    impacto="comando",
+                    fallback="append_cancelado_sem_alteracao",
+                    dominio="arquivos",
+                    fase="pre_append",
+                )
+                conteudo_anterior = ""
+                sucesso = False
+                resultado_seguro = {"status": "falha_leitura_arquivo"}
+            else:
+                separador = "" if not conteudo_anterior or conteudo_anterior.endswith("\n") else "\n"
+                trecho_append = f"{separador}{conteudo}"
+                sucesso = bool(
+                    criar_ou_editar_arquivo(caminho, trecho_append, "a")
+                ) if callable(criar_ou_editar_arquivo) else False
+                if sucesso:
+                    try:
+                        with open(caminho, "r", encoding="utf-8") as stream:
+                            relido = stream.read()
+                        sucesso = relido == f"{conteudo_anterior}{trecho_append}"
+                    except (OSError, UnicodeError):
+                        sucesso = False
+                resultado_seguro = {
+                    "status": "conteudo_acrescentado" if sucesso else "conteudo_nao_confirmado",
+                }
         else:
             sucesso = bool(criar_ou_editar_arquivo(caminho, conteudo, "w")) if callable(criar_ou_editar_arquivo) else False
             if sucesso:
                 sucesso = item_local_existe(caminho, "arquivo")
         if sucesso:
             registrar_arquivo(caminho, "arquivo")
+            nome_arquivo = os.path.basename(caminho) or os.path.basename(arquivo_limpo)
             if callable(registrar_estrutura_arquivo_recente):
                 try:
                     registrar_estrutura_arquivo_recente({
-                        "arquivo_nome": arquivo_limpo,
+                        "arquivo_nome": nome_arquivo,
                         "caminho": caminho,
                         "pasta": pasta,
                         "tipo": "arquivo",
@@ -812,7 +882,13 @@ def executar_intencao_arquivos(
                         dominio="arquivos",
                         fase="pos_criacao",
                     )
-            status_sucesso = "conteudo_atualizado" if editar_existente else "arquivo_criado"
+            status_sucesso = (
+                "conteudo_acrescentado"
+                if editar_existente and modo_escrita == "append"
+                else "conteudo_atualizado"
+                if editar_existente
+                else "arquivo_criado"
+            )
             marcar_resultado(
                 status_sucesso,
                 True,
@@ -820,7 +896,7 @@ def executar_intencao_arquivos(
                 params_resolvidos={
                     "alvo": caminho,
                     "caminho": caminho,
-                    "nome_arquivo": arquivo_limpo,
+                    "nome_arquivo": nome_arquivo,
                     "tipo": "arquivo",
                 },
                 confirmado=True,
@@ -832,7 +908,9 @@ def executar_intencao_arquivos(
         if callable(falar):
             falar(
                 (
-                    f"Escrevi o texto em {arquivo_limpo} e conferi o arquivo."
+                    f"Acrescentei o texto em {os.path.basename(caminho) or arquivo_limpo} e conferi o arquivo."
+                    if editar_existente and modo_escrita == "append" and sucesso
+                    else f"Escrevi o texto em {os.path.basename(caminho) or arquivo_limpo} e conferi o arquivo."
                     if editar_existente and sucesso
                     else _escolher_fala_variada([
                     f"Criei {arquivo_limpo} dentro de {pasta}.",

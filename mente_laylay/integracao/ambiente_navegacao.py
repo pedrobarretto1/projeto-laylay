@@ -137,7 +137,23 @@ class AmbienteNavegacaoRuntime:
             titulo = str(aba.get("title") or "").strip()
             url = str(aba.get("url") or "").strip()
             if titulo or url:
-                resultado.append({"titulo": titulo, "url": url})
+                tab_id = aba.get("id")
+                if not isinstance(tab_id, int) or isinstance(tab_id, bool):
+                    tab_id = aba.get("tabId")
+                item = {
+                    "titulo": titulo,
+                    "title": titulo,
+                    "url": url,
+                    "id": tab_id if isinstance(tab_id, int) and not isinstance(tab_id, bool) else None,
+                    "tabId": tab_id if isinstance(tab_id, int) and not isinstance(tab_id, bool) else None,
+                    "active": aba.get("active") is True,
+                    "audible": aba.get("audible") is True,
+                    "pinned": aba.get("pinned") is True,
+                    "discarded": aba.get("discarded") is True,
+                }
+                if isinstance(aba.get("lastAccessed"), (int, float)):
+                    item["lastAccessed"] = aba.get("lastAccessed")
+                resultado.append(item)
         self.log(f"🌐 [VERIFICAR_ABAS] Abas encontradas: {len(resultado)}")
         return resultado
 

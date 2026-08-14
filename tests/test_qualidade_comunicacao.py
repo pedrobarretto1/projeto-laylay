@@ -392,3 +392,30 @@ def test_timeout_nao_chama_reparo_e_usa_contingencia_especifica() -> None:
         for trecho in ("tô bem", "tudo certo")
     )
     assert "tenta mais uma vez" not in resposta["fala"].casefold()
+
+
+def test_registro_de_relacao_rejeita_sexualizacao_e_pergunta_soltea() -> None:
+    texto = "Na verdade, Nanda é minha amiga."
+
+    avaliacao = avaliar_qualidade_comunicacao(
+        texto,
+        "Qual é o seu lado mais gostoso dela?",
+    )
+
+    assert avaliacao["aceita"] is False
+    assert "relacao_pessoal_sexualizada" in avaliacao["problemas_bloqueantes"]
+    assert "relacao_pessoal_abriu_pergunta" in avaliacao["problemas_bloqueantes"]
+
+
+def test_registro_de_relacao_aceita_fala_neutra_e_contingencia_preserva_fato() -> None:
+    texto = "Na verdade, Nanda é minha amiga."
+    fala_neutra = "Entendi: Nanda é sua amiga."
+
+    avaliacao = avaliar_qualidade_comunicacao(texto, fala_neutra)
+    contingencia = contingencia_comunicacao(texto)
+
+    assert avaliacao["aceita"] is True
+    assert "Nanda" in contingencia
+    assert "amiga" in contingencia.casefold()
+    assert "?" not in contingencia
+    assert "gostoso" not in contingencia.casefold()

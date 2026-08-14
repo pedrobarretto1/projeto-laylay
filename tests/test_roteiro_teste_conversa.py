@@ -39,6 +39,8 @@ def test_carrega_lista_e_opcoes_sem_executar_codigo_do_roteiro(tmp_path) -> None
         intervalo_comandos_s=0.25,
         parar_sem_resposta=False,
         encerrar_ao_final=True,
+        silenciar_voz_durante_teste=True,
+        aguardar_confirmacao_execucao=True,
     )
 
 
@@ -82,7 +84,355 @@ def test_espera_atraso_ativa_e_confirma_chat_antes_do_primeiro_comando(
     assert checkpoint["preparacao"] == {
         "status": "modo_chat_confirmado",
         "atraso_inicial_s": 0.03,
+        "voz_silenciada": False,
     }
+
+
+def test_roteiro_silencioso_avanca_pela_resposta_sem_consultar_audio(
+    tmp_path,
+) -> None:
+    enviados: list[str] = []
+    holder: dict[str, RoteiroTesteConversaRuntime] = {}
+
+    def enviar(texto: str) -> bool:
+        enviados.append(texto)
+        holder["runtime"].observar_resposta(f"resposta {texto}")
+        return True
+
+    def voz_nao_deveria_ser_consultada() -> bool:
+        raise AssertionError("roteiro silencioso não deve consultar a fila de voz")
+
+    runtime = RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(
+            comandos=("um", "dois"),
+            timeout_resposta_s=1.0,
+            timeout_voz_s=999.0,
+            intervalo_comandos_s=0.0,
+            silenciar_voz_durante_teste=True,
+        ),
+        enviar_entrada=enviar,
+        resultado_getter=lambda: {"fase": "executado"},
+        voz_ocupada_getter=voz_nao_deveria_ser_consultada,
+        diretorio_resultado=tmp_path,
+        log=lambda *_args: None,
+    )
+    holder["runtime"] = runtime
+
+    assert runtime.executar() is True
+    assert enviados == ["um", "dois"]
+    checkpoint = json.loads(runtime.checkpoint_path.read_text(encoding="utf-8"))
+    assert checkpoint["criterio_conclusao"] == "transporte_resposta"
+    assert checkpoint["preparacao"]["voz_silenciada"] is True
+    assert all(item["voz_silenciada"] is True for item in checkpoint["itens"])
+    assert all(item["voz_observada"] is False for item in checkpoint["itens"])
+
+
+def test_proximo_comando_espera_resultado_final_do_turno_atual(tmp_path) -> None:
+    enviados: list[tuple[str, float]] = []
+    resultado_final_em: list[float] = []
+    plano: dict = {
+        "id": 1,
+        "texto_usuario": "turno anterior",
+        "requer_execucao": False,
+        "comandos": [],
+    }
+    holder: dict[str, RoteiroTesteConversaRuntime] = {}
+
+    def enviar(texto: str) -> bool:
+        enviados.append((texto, time.monotonic()))
+        if texto == "cria o arquivo":
+            plano.clear()
+            plano.update({
+                "id": 2,
+                "texto_usuario": texto,
+                "requer_execucao": True,
+                "autoriza_execucao": True,
+                "comandos": [{
+                    "intent": "CREATE_FILE",
+                    "status": "processando",
+                    "executou": None,
+                    "confirmado": None,
+                }],
+            })
+            holder["runtime"].observar_resposta("Estou terminando o arquivo.")
+
+            def concluir() -> None:
+                time.sleep(0.08)
+                plano["comandos"] = [{
+                    "intent": "CREATE_FILE",
+                    "status": "arquivo_criado",
+                    "executou": True,
+                    "confirmado": True,
+                }]
+                resultado_final_em.append(time.monotonic())
+
+            threading.Thread(target=concluir).start()
+        else:
+            plano.clear()
+            plano.update({
+                "id": 3,
+                "texto_usuario": texto,
+                "requer_execucao": False,
+                "comandos": [],
+            })
+            holder["runtime"].observar_resposta("Conversa respondida.")
+        return True
+
+    runtime = RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(
+            comandos=("cria o arquivo", "como você está?"),
+            timeout_resposta_s=1.0,
+            silenciar_voz_durante_teste=True,
+            aguardar_confirmacao_execucao=True,
+        ),
+        enviar_entrada=enviar,
+        resultado_getter=lambda: dict(plano),
+        diretorio_resultado=tmp_path,
+        log=lambda *_args: None,
+    )
+    holder["runtime"] = runtime
+
+    assert runtime.executar() is True
+    assert [texto for texto, _ts in enviados] == [
+        "cria o arquivo", "como você está?",
+    ]
+    assert enviados[1][1] >= resultado_final_em[0]
+    checkpoint = json.loads(runtime.checkpoint_path.read_text(encoding="utf-8"))
+    assert checkpoint["criterio_conclusao"] == (
+        "transporte_resposta_e_resultado_turno"
+    )
+    assert checkpoint["itens"][0]["motivo_resultado"] == "execucao_confirmada"
+    assert checkpoint["itens"][1]["motivo_resultado"] == "resposta_sem_execucao"
+
+
+def test_pedido_de_confirmacao_libera_o_sim_seguinte(tmp_path) -> None:
+    enviados: list[str] = []
+    plano: dict = {}
+    holder: dict[str, RoteiroTesteConversaRuntime] = {}
+
+    def enviar(texto: str) -> bool:
+        enviados.append(texto)
+        if texto == "apaga o arquivo":
+            plano.clear()
+            plano.update({
+                "id": 10,
+                "texto_usuario": texto,
+                "requer_execucao": True,
+                "autoriza_execucao": True,
+                "comandos": [{
+                    "intent": "DELETE_ITEM",
+                    "status": "aguardando_confirmacao",
+                    "executou": False,
+                    "confirmado": False,
+                }],
+            })
+            holder["runtime"].observar_resposta("Confirma a exclusão?")
+        else:
+            plano.clear()
+            plano.update({
+                "id": 11,
+                "texto_usuario": texto,
+                "requer_execucao": True,
+                "autoriza_execucao": True,
+                "comandos": [{
+                    "intent": "CONFIRM_DELETE_ITEM",
+                    "status": "movido_para_lixeira",
+                    "executou": True,
+                    "confirmado": True,
+                }],
+            })
+            holder["runtime"].observar_resposta("Enviei para a lixeira.")
+        return True
+
+    runtime = RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(
+            comandos=("apaga o arquivo", "Sim"),
+            timeout_resposta_s=1.0,
+            silenciar_voz_durante_teste=True,
+            aguardar_confirmacao_execucao=True,
+        ),
+        enviar_entrada=enviar,
+        resultado_getter=lambda: dict(plano),
+        diretorio_resultado=tmp_path,
+        log=lambda *_args: None,
+    )
+    holder["runtime"] = runtime
+
+    assert runtime.executar() is True
+    assert enviados == ["apaga o arquivo", "Sim"]
+    checkpoint = json.loads(runtime.checkpoint_path.read_text(encoding="utf-8"))
+    assert checkpoint["itens"][0]["motivo_resultado"] == (
+        "aguardando_confirmacao_usuario"
+    )
+    assert checkpoint["itens"][1]["motivo_resultado"] == "execucao_confirmada"
+
+
+def test_plano_antigo_nao_libera_proximo_comando(tmp_path) -> None:
+    enviados: list[str] = []
+    plano = {
+        "id": 20,
+        "texto_usuario": "turno anterior",
+        "requer_execucao": False,
+        "comandos": [],
+    }
+    holder: dict[str, RoteiroTesteConversaRuntime] = {}
+
+    def enviar(texto: str) -> bool:
+        enviados.append(texto)
+        holder["runtime"].observar_resposta("Uma fala sem plano correspondente.")
+        return True
+
+    runtime = RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(
+            comandos=("comando atual", "não deve sair"),
+            timeout_resposta_s=0.06,
+            silenciar_voz_durante_teste=True,
+            aguardar_confirmacao_execucao=True,
+        ),
+        enviar_entrada=enviar,
+        resultado_getter=lambda: plano,
+        diretorio_resultado=tmp_path,
+        log=lambda *_args: None,
+    )
+    holder["runtime"] = runtime
+
+    assert runtime.executar() is False
+    assert enviados == ["comando atual"]
+    checkpoint = json.loads(runtime.checkpoint_path.read_text(encoding="utf-8"))
+    assert checkpoint["itens"][0]["status"] == "resultado_nao_finalizado"
+    assert checkpoint["itens"][0]["motivo_resultado"] == "plano_de_outro_turno"
+    assert checkpoint["itens"][1]["status"] == "pendente"
+
+
+def test_turno_operacional_final_sem_comando_registra_falha_e_avanca(
+    tmp_path,
+) -> None:
+    enviados: list[str] = []
+    logs: list[str] = []
+    plano: dict = {}
+    holder: dict[str, RoteiroTesteConversaRuntime] = {}
+
+    def enviar(texto: str) -> bool:
+        enviados.append(texto)
+        plano.clear()
+        if texto.startswith("Apaga"):
+            plano.update({
+                "id": 30,
+                "texto_usuario": texto,
+                "requer_execucao": True,
+                "autoriza_execucao": True,
+                "fase": "executado",
+                "comandos": [],
+                "erros": [],
+            })
+            resposta = "Entendi, mas não executei nem confirmei."
+        else:
+            plano.update({
+                "id": 31,
+                "texto_usuario": texto,
+                "requer_execucao": False,
+                "autoriza_execucao": False,
+                "fase": "fala_verificada",
+                "comandos": [],
+                "erros": [],
+            })
+            resposta = "Continuando o roteiro."
+        holder["runtime"].observar_resposta(resposta)
+        return True
+
+    runtime = RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(
+            comandos=("Apaga o arquivo roteiro correcao.txt.", "próximo teste"),
+            timeout_resposta_s=1.0,
+            silenciar_voz_durante_teste=True,
+            aguardar_confirmacao_execucao=True,
+        ),
+        enviar_entrada=enviar,
+        resultado_getter=lambda: dict(plano),
+        diretorio_resultado=tmp_path,
+        log=logs.append,
+    )
+    holder["runtime"] = runtime
+
+    assert runtime.executar() is True
+    assert enviados == [
+        "Apaga o arquivo roteiro correcao.txt.", "próximo teste",
+    ]
+    checkpoint = json.loads(runtime.checkpoint_path.read_text(encoding="utf-8"))
+    assert checkpoint["itens"][0]["motivo_resultado"] == (
+        "execucao_nao_publicada"
+    )
+    assert any("falha registrada; avançando" in linha for linha in logs)
+
+
+def test_contrato_operacional_incompleto_registra_falha_e_avanca(
+    tmp_path,
+) -> None:
+    enviados: list[str] = []
+    logs: list[str] = []
+    plano: dict = {}
+    holder: dict[str, RoteiroTesteConversaRuntime] = {}
+
+    def enviar(texto: str) -> bool:
+        enviados.append(texto)
+        plano.clear()
+        if texto.startswith("O que tem"):
+            plano.update({
+                "id": 40,
+                "texto_usuario": texto,
+                "requer_execucao": True,
+                "autoriza_execucao": True,
+                "fase": "tratado_prioritario",
+                "comandos": [{
+                    "intent": "PLAYLIST_LIST",
+                    "alvo": "roteiro teste",
+                    "status": "",
+                    "executou": True,
+                    "confirmado": None,
+                }],
+                "erros": [],
+            })
+            resposta = "A playlist Roteiro Teste tem uma música."
+        else:
+            plano.update({
+                "id": 41,
+                "texto_usuario": texto,
+                "requer_execucao": False,
+                "autoriza_execucao": False,
+                "fase": "fala_verificada",
+                "comandos": [],
+                "erros": [],
+            })
+            resposta = "Continuando o roteiro."
+        holder["runtime"].observar_resposta(resposta)
+        return True
+
+    runtime = RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(
+            comandos=(
+                "O que tem na playlist roteiro teste?",
+                "próximo teste",
+            ),
+            timeout_resposta_s=1.0,
+            silenciar_voz_durante_teste=True,
+            aguardar_confirmacao_execucao=True,
+        ),
+        enviar_entrada=enviar,
+        resultado_getter=lambda: dict(plano),
+        diretorio_resultado=tmp_path,
+        log=logs.append,
+    )
+    holder["runtime"] = runtime
+
+    assert runtime.executar() is True
+    assert enviados == [
+        "O que tem na playlist roteiro teste?", "próximo teste",
+    ]
+    checkpoint = json.loads(runtime.checkpoint_path.read_text(encoding="utf-8"))
+    assert checkpoint["itens"][0]["motivo_resultado"] == (
+        "contrato_operacional_incompleto"
+    )
+    assert any("falha registrada; avançando" in linha for linha in logs)
 
 
 def test_nao_envia_comando_quando_modo_chat_nao_e_confirmado(tmp_path) -> None:
@@ -152,7 +502,25 @@ def test_envia_um_turno_por_vez_e_persiste_resposta_antes_do_proximo(tmp_path) -
     conversa = runtime.conversa_path.read_text(encoding="utf-8")
     assert conversa.index("primeiro") < conversa.index("resposta para primeiro")
     assert conversa.index("resposta para primeiro") < conversa.index("segundo")
-    assert '"fase": "executado"' in conversa
+    assert "**Plano observado:** executado; sem comando operacional." in conversa
+    assert "```json" not in conversa
+    planos = [
+        json.loads(linha)
+        for linha in runtime.planos_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [item["plano"] for item in planos] == [
+        {"fase": "executado"}, {"fase": "executado"},
+    ]
+    for item in checkpoint["itens"]:
+        assert item["avaliacao"] == {
+            "respondeu": True,
+            "plano_observado": True,
+            "quantidade_comandos": 0,
+            "execucao": "sem_comando_observado",
+            "confirmacao": "sem_comando_observado",
+            "intencao_correta": "nao_avaliado",
+            "fala_coerente": "nao_avaliado",
+        }
 
 
 def test_exibe_pergunta_no_terminal_antes_dos_logs_do_turno(tmp_path) -> None:
@@ -505,3 +873,56 @@ def test_retomada_recusa_checkpoint_de_outro_roteiro(tmp_path) -> None:
             retomar=True,
             log=lambda *_args: None,
         )
+
+
+def test_checkpoint_separa_resposta_de_execucao_e_avaliacao_semantica(
+    tmp_path,
+) -> None:
+    holder: dict[str, RoteiroTesteConversaRuntime] = {}
+    plano = {
+        "fase": "tratado_prioritario",
+        "comandos": [{
+            "intent": "OPEN_URL",
+            "status": "falha_execucao",
+            "executou": False,
+            "confirmado": False,
+        }],
+    }
+
+    def enviar(_texto: str) -> bool:
+        holder["runtime"].observar_resposta(
+            "Não consegui confirmar a abertura.",
+        )
+        return True
+
+    runtime = RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(
+            comandos=("abre o primeiro resultado",),
+            timeout_resposta_s=1.0,
+            intervalo_comandos_s=0.0,
+        ),
+        enviar_entrada=enviar,
+        resultado_getter=lambda: plano,
+        diretorio_resultado=tmp_path,
+        log=lambda *_args: None,
+    )
+    holder["runtime"] = runtime
+
+    assert runtime.executar() is True
+
+    checkpoint = json.loads(runtime.checkpoint_path.read_text(encoding="utf-8"))
+    avaliacao = checkpoint["itens"][0]["avaliacao"]
+    assert checkpoint["criterio_conclusao"] == "transporte_resposta_e_voz"
+    assert avaliacao == {
+        "respondeu": True,
+        "plano_observado": True,
+        "quantidade_comandos": 1,
+        "execucao": "nenhuma_etapa_executada",
+        "confirmacao": "nenhuma_etapa_confirmada",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "nao_avaliado",
+    }
+    conversa = runtime.conversa_path.read_text(encoding="utf-8")
+    assert "`OPEN_URL` → `falha_execucao`" in conversa
+    bruto = json.loads(runtime.planos_path.read_text(encoding="utf-8"))
+    assert bruto["plano"] == plano

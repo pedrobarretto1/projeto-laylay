@@ -33,9 +33,11 @@ _INTENTS_DOMINIO = {
     "MAXIMIZE_WINDOW": "app",
     "ORGANIZAR_DESKTOP": "app",
     "OPEN_URL": "site", "CLOSE_TAB": "site", "CLOSE_IDLE_TABS": "site",
+    "LIST_TABS": "site",
     "SITE_ENTER": "site", "SEARCH": "site", "SCREEN_CAPTURE": "site",
     "RESUMIR_PAGINA": "site",
-    "MUSIC_SEARCH": "musica", "MEDIA_CONTROL": "musica", "PLAYLIST_PLAY": "musica",
+    "MUSIC_SEARCH": "musica", "MEDIA_CONTROL": "musica", "MUSIC_STATUS": "musica",
+    "PLAYLIST_PLAY": "musica",
     "PLAYLIST_CREATE": "musica", "PLAYLIST_ADD": "musica", "PLAYLIST_LIST": "musica", "TOCAR_PLAYLIST": "musica",
     "PLAYLIST_MOVE": "musica", "PLAYLIST_DELETE": "musica",
     "LISTAR_PLAYLISTS": "musica", "STOP_PLAYLIST_CONTEXT": "musica",
@@ -53,7 +55,7 @@ _INTENTS_DOMINIO = {
     "LEARNING_QUERY": "memoria",
     "PEOPLE_REMEMBER": "pessoas", "PEOPLE_QUERY": "pessoas",
     "PEOPLE_LIST": "pessoas", "PEOPLE_FORGET": "pessoas",
-    "GAME_VISION": "jogo", "GAME_VISION_CONTINUE": "jogo",
+    "GAME_VISION": "jogo", "GAME_VISION_CONTINUE": "jogo", "VISION_QUERY": "jogo",
     "EMAIL_READ": "email", "EMAIL_SYNC": "email", "NOTIFICATIONS": "email",
     "VOLUME": "sistema", "LOCK_PC": "sistema", "CANCELAR_ACAO": "sistema",
     "WEATHER": "clima", "SUGGEST_ACTION": "conversa",
@@ -273,6 +275,29 @@ def _texto_seguro(valor: Any, limite: int = 240) -> str:
     return re.sub(r"\s+", " ", texto)[:limite]
 
 
+def _status_impede_referencia(status: Any) -> bool:
+    valor = str(status or "").strip().casefold()
+    return any(marcador in valor for marcador in (
+        "falha", "erro", "indispon", "nao_encontr", "não_encontr",
+        "sem_resultado", "cancel", "recus", "expirad", "alvo_ausente",
+        "referencia_ausente", "referência_ausente", "nao_confirmado",
+        "não_confirmado", "sem_confirmacao", "sem_confirmação", "sem_pendencia",
+        "sem_pendência",
+    ))
+
+
+def _referencia_preservada(registro: Dict[str, Any]) -> Dict[str, Any]:
+    """Retorna o último foco válido guardado atrás de uma tentativa falha."""
+
+    atual = dict(registro or {})
+    if atual and not _status_impede_referencia(atual.get("status")):
+        atual.pop("referencia_anterior", None)
+        return atual
+    anterior = dict(atual.get("referencia_anterior") or {})
+    anterior.pop("referencia_anterior", None)
+    return anterior
+
+
 def _params_seguros(params: Dict[str, Any] | None) -> Dict[str, Any]:
     permitidos = {
         "acao", "alvo", "nome", "nome_app", "nome_playlist", "playlist", "query", "url",
@@ -383,6 +408,13 @@ def registrar_evento_continuidade(
             item["params"] = dict(registro["params"])
     if item["reexecutavel"] is None:
         item["reexecutavel"] = False if intent_mudou else bool(registro.get("reexecutavel", False))
+    # Uma falha precisa ficar visível para diagnóstico e retry, mas não deve
+    # apagar o último referente confirmado daquele domínio. Guardamos apenas
+    # um nível, evitando cadeias crescentes de snapshots.
+    if _status_impede_referencia(item.get("status")):
+        referencia_anterior = _referencia_preservada(registro)
+        if referencia_anterior:
+            item["referencia_anterior"] = referencia_anterior
     dominios[dominio_norm] = item
     historico = list(continuidade.get("historico") or [])
     historico.append({chave: item.get(chave) for chave in ("evento", "dominio", "intent", "alvo", "status", "ts")})
@@ -457,7 +489,20 @@ def selecionar_continuidade(
         idade = agora - float(registro.get("ts") or 0.0)
     except (TypeError, ValueError):
         return {}
-    if not registro or not registro.get("ativa", True) or idade > ttl_s or (expira_em and agora >= expira_em):
+    if registro and _status_impede_referencia(registro.get("status")):
+        registro = _referencia_preservada(registro)
+        try:
+            expira_em = float(registro.get("expira_em") or 0.0)
+            idade = agora - float(registro.get("ts") or 0.0)
+        except (TypeError, ValueError):
+            return {}
+    if (
+        not registro
+        or not registro.get("ativa", True)
+        or _status_impede_referencia(registro.get("status"))
+        or idade > ttl_s
+        or (expira_em and agora >= expira_em)
+    ):
         return {}
     registro["dominio"] = dominio_norm
     registro["idade_s"] = max(0.0, idade)
@@ -512,7 +557,13 @@ def selecionar_referente_saliente(
     dominio_contrato = normalizar_dominio_continuidade(
         dominio=str(contrato.get("dominio") or ""), intent=str(contrato.get("intent") or ""),
     )
-    if contrato_recente and contrato.get("intent") and (not dominio_norm or dominio_contrato == dominio_norm):
+    if (
+        contrato_recente
+        and contrato.get("intent")
+        and contrato.get("executou") is True
+        and not _status_impede_referencia(contrato.get("status"))
+        and (not dominio_norm or dominio_contrato == dominio_norm)
+    ):
         return {
             "fonte_salienca": "acao_atual",
             "dominio": dominio_contrato,
@@ -544,16 +595,76 @@ def selecionar_continuidade_por_classe(
     agora = time.time()
     for dominio, bruto in dominios.items():
         item = dict(bruto or {})
+        if item and _status_impede_referencia(item.get("status")):
+            item = _referencia_preservada(item)
         try:
             idade = agora - float(item.get("ts") or 0.0)
             expira_em = float(item.get("expira_em") or 0.0)
         except (TypeError, ValueError):
             continue
-        if not item or not item.get("ativa", True) or idade > ttl_s or (expira_em and agora >= expira_em):
+        if (
+            not item
+            or not item.get("ativa", True)
+            or _status_impede_referencia(item.get("status"))
+            or idade > ttl_s
+            or (expira_em and agora >= expira_em)
+        ):
             continue
         if classe_norm in {"conversa", "conversacional"} and dominio != "conversa":
             continue
         if classe_norm in {"operacao", "operação", "operacional"} and dominio == "conversa":
+            continue
+        item["dominio"] = dominio
+        item["idade_s"] = max(0.0, idade)
+        candidatos.append(item)
+    if not candidatos:
+        return {}
+    ativo = str(continuidade.get("dominio_ativo") or "")
+    return max(
+        candidatos,
+        key=lambda item: (item.get("dominio") == ativo, float(item.get("ts") or 0.0)),
+    )
+
+
+def selecionar_continuidade_reexecutavel(
+    estado_atual: Dict[str, Any] | None,
+    *,
+    classe: str = "operacional",
+    ttl_s: float = 900.0,
+) -> Dict[str, Any]:
+    """Seleciona somente uma tentativa explicitamente repetivel.
+
+    Diferente dos seletores de referente, este caminho aceita um status de
+    falha: esse e justamente o caso em que "tenta de novo" costuma ser util.
+    A falha continua proibida para pronomes e para o prompt de continuidade.
+    """
+
+    continuidade = dict((estado_atual or {}).get("continuidade_geral") or {})
+    dominios = dict(continuidade.get("dominios") or {})
+    classe_norm = str(classe or "operacional").strip().casefold()
+    candidatos: list[Dict[str, Any]] = []
+    agora = time.time()
+    for dominio, bruto in dominios.items():
+        item = dict(bruto or {})
+        try:
+            idade = agora - float(item.get("ts") or 0.0)
+            expira_em = float(item.get("expira_em") or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if (
+            not item
+            or not item.get("ativa", True)
+            or not bool(item.get("reexecutavel"))
+            or idade > ttl_s
+            or (expira_em and agora >= expira_em)
+        ):
+            continue
+        if classe_norm in {"conversa", "conversacional"} and dominio != "conversa":
+            continue
+        if classe_norm in {"operacao", "operação", "operacional"} and dominio == "conversa":
+            continue
+        intent = str(item.get("intent") or "").strip().upper()
+        if not intent or not isinstance(item.get("params"), dict):
             continue
         item["dominio"] = dominio
         item["idade_s"] = max(0.0, idade)

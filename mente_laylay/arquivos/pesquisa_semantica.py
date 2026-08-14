@@ -148,6 +148,24 @@ class PesquisaSemanticaArquivosRuntime:
         return tuple(saida)
 
     @staticmethod
+    def _arquivo_sem_extensao_parece_texto(alvo: Path) -> bool:
+        """Reconhece texto sem extensão sem entregar binários ao editor."""
+        if alvo.suffix or not alvo.is_file():
+            return False
+        try:
+            with alvo.open("rb") as arquivo:
+                amostra = arquivo.read(4096)
+        except OSError:
+            return False
+        if b"\x00" in amostra:
+            return False
+        try:
+            amostra.decode("utf-8")
+        except UnicodeDecodeError:
+            return False
+        return True
+
+    @staticmethod
     def _abrir_padrao(caminho: str) -> bool:
         alvo = Path(str(caminho or "")).expanduser().resolve(strict=False)
 
@@ -155,7 +173,10 @@ class PesquisaSemanticaArquivosRuntime:
         # para arquivos de código: uma associação incorreta de ``.py`` com
         # Node.js, por exemplo, tenta executar o documento em vez de abri-lo.
         # Todo texto pesquisável é aberto explicitamente em um editor.
-        if alvo.suffix.casefold() in EXTENSOES_TEXTO:
+        if (
+            alvo.suffix.casefold() in EXTENSOES_TEXTO
+            or PesquisaSemanticaArquivosRuntime._arquivo_sem_extensao_parece_texto(alvo)
+        ):
             candidatos_editor: list[Path] = []
             editor_configurado = str(os.environ.get("LAYLAY_EDITOR_CODIGO") or "").strip()
             if editor_configurado:

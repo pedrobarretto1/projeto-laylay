@@ -924,6 +924,12 @@ def _responder_pergunta_capacidade_local(texto: str) -> str:
         contexto={
             "mensagens": mensagens,
             "ultima_fala_usuario": str(mente.get("ultima_fala_usuario") or ""),
+            "ultima_acao_intent": str(mente.get("ultima_acao_intent") or ""),
+            "ultima_acao_status": str(mente.get("ultima_acao_status") or ""),
+            "ultima_acao_ok": mente.get("ultima_acao_ok"),
+            "ultima_acao_alvo": str(mente.get("ultima_acao_alvo") or ""),
+            "ultima_acao_params": dict(mente.get("ultima_acao_params") or {}),
+            "ultima_acao_ts": float(mente.get("ultima_acao_ts") or 0.0),
             "assunto": str(
                 dict(mente.get("assunto_estruturado_atual") or {}).get("titulo") or ""
             ),
@@ -3840,6 +3846,10 @@ def main():
                 "🧪 [ROTEIRO] persistência ativada antes dos testes | "
                 f"pasta={diretorio_resultado_roteiro}"
             )
+            if configuracao_roteiro.silenciar_voz_durante_teste:
+                _voz_runtime.definir_modo_silencioso(
+                    True, origem="roteiro_teste",
+                )
         except Exception as erro:
             print(
                 "❌ [ROTEIRO] não foi possível carregar o teste | "
@@ -3921,6 +3931,13 @@ def main():
     roteiro_finalizado = _threading.Event()
     roteiro_runtime = None
     if configuracao_roteiro is not None and diretorio_resultado_roteiro is not None:
+        def finalizar_roteiro(_sucesso: bool) -> None:
+            if configuracao_roteiro.silenciar_voz_durante_teste:
+                _voz_runtime.definir_modo_silencioso(
+                    False, origem="roteiro_teste_finalizado",
+                )
+            roteiro_finalizado.set()
+
         roteiro_runtime = _RoteiroTesteConversaRuntime(
             configuracao_roteiro,
             enviar_entrada=lambda texto: _agendar_entrada_canonica(
@@ -3943,7 +3960,7 @@ def main():
             ),
             diretorio_resultado=diretorio_resultado_roteiro,
             retomar=bool(argumentos_roteiro["retomar"]),
-            ao_finalizar=lambda _sucesso: roteiro_finalizado.set(),
+            ao_finalizar=finalizar_roteiro,
             log=print,
         )
         _orquestrador_fala_runtime.registrar_observador_texto_final(

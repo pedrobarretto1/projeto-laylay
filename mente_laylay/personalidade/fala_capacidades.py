@@ -92,6 +92,147 @@ def falar_identidade_operacional(
     return escolher_variacao(opcoes, evitar=evitar)
 
 
+def falar_instrucao_capacidade(
+    tipo: str,
+    *,
+    alvo: str = "",
+    contexto: Mapping[str, Any] | None = None,
+) -> str:
+    """Explica como pedir uma ação sem transformar a pergunta em comando.
+
+    Os fatos (capacidade disponível, autorização e evidência) continuam vindo
+    do mapa vivo. Aqui variamos apenas a formulação de instruções já validadas.
+    """
+    evitar = _falas_recentes(contexto)
+    tipo_norm = str(tipo or "").casefold().strip()
+    alvo_limpo = str(alvo or "").strip().strip("?.! ")
+    if tipo_norm == "criar_arquivo":
+        opcoes = [
+            (
+                "Para criar comigo, diga algo como ‘cria um arquivo chamado notas.txt’. "
+                "Você também pode incluir o conteúdo no mesmo pedido. Eu só executo depois "
+                "desse pedido direto e confirmo relendo se o arquivo existe."
+            ),
+            (
+                "É só me passar um pedido direto com o nome: ‘crie o arquivo notas.txt’. "
+                "Se quiser texto dentro dele, acrescente ‘e escreva ...’. Esta pergunta só "
+                "explica o caminho; não criou nada."
+            ),
+            (
+                "O formato mais simples é ‘cria um arquivo chamado notas.txt’ — e, se houver "
+                "conteúdo, já diga na sequência. A criação só acontece no pedido de verdade; "
+                "depois eu verifico o arquivo antes de confirmar."
+            ),
+        ]
+    elif tipo_norm == "apagar_arquivo":
+        nome = alvo_limpo or "notas.txt"
+        opcoes = [
+            (
+                f"Para apagar comigo, diga ‘apaga o arquivo {nome}’. Eu resolvo o alvo, "
+                "mostro o caminho e peço sua confirmação antes de enviá-lo à lixeira. "
+                "Perguntar como fazer não apaga nada."
+            ),
+            (
+                f"Você pode pedir diretamente ‘envia {nome} para a lixeira’. Antes de mexer "
+                "no arquivo, eu confirmo com você qual é o caminho; só então faço e verifico "
+                "o resultado."
+            ),
+            (
+                f"Diga o nome no pedido, por exemplo ‘apague {nome}’. Eu não salto a etapa "
+                "de confirmação: identifico o arquivo, peço o seu sim e uso a lixeira para "
+                "ainda dar chance de restaurar."
+            ),
+        ]
+    elif tipo_norm == "abrir_app":
+        nome = alvo_limpo or "o aplicativo"
+        opcoes = [
+            (
+                f"Para abrir {nome} comigo, diga ‘abre {nome}’. Eu procuro o programa instalado "
+                "e, se ele já estiver aberto, trago a janela para a frente. Esta pergunta não "
+                "abriu nada."
+            ),
+            (
+                f"O pedido direto é simples: ‘abra {nome}’. Aí eu tento localizar {nome}, abrir "
+                "ou focar a janela e só confirmo o que o computador mostrar. Agora eu apenas "
+                "expliquei, sem executar."
+            ),
+            (
+                f"Você pode mandar ‘abre {nome} e deixa em foco’. Eu aciono a habilidade local "
+                "e verifico a janela; como aqui foi uma pergunta de procedimento, {nome} ficou "
+                "como estava."
+            ),
+        ]
+    elif tipo_norm == "capacidade_apps":
+        opcoes = [
+            (
+                "Consigo abrir aplicativos instalados e trazer para a frente uma janela que já "
+                "esteja aberta. Aqui você só perguntou sobre a habilidade, então não acionei nada."
+            ),
+            (
+                "Sim. Quando você pede pelo nome, eu tento localizar o programa, abrir ou focar "
+                "a janela e verifico o resultado. Perguntar se eu consigo não executa o pedido."
+            ),
+            (
+                "Abro apps, sim — desde que o computador reconheça o nome ou a janela. Mas esta "
+                "foi uma consulta de capacidade; nenhum aplicativo foi aberto."
+            ),
+        ]
+    elif tipo_norm == "capacidade_apps_e_janelas":
+        opcoes = [
+            (
+                "Consigo abrir programas e organizar janelas visíveis, sim. Como você só "
+                "perguntou sobre essas habilidades, não abri nem movi nada."
+            ),
+            (
+                "Tenho as duas habilidades: abrir programas instalados e organizar janelas "
+                "na tela. Esta foi uma consulta, então o computador ficou como estava."
+            ),
+            (
+                "Sim: abro programas e também organizo janelas quando você pede diretamente. "
+                "A pergunta por si só não executou nenhuma das duas ações."
+            ),
+        ]
+    elif tipo_norm == "capacidade_criar_e_pesquisar_arquivos":
+        opcoes = [
+            (
+                "Consigo criar arquivos e pesquisar localmente os que já existem por nome, "
+                "pasta, conteúdo, tipo, significado ou data. Aqui você só perguntou; não criei "
+                "nem procurei nada."
+            ),
+            (
+                "Tenho as duas capacidades: criar arquivos quando você dá o nome e pesquisar "
+                "localmente por vários critérios. Como isto foi uma consulta, nenhum arquivo "
+                "foi alterado."
+            ),
+            (
+                "Sim. Posso criar arquivos e pesquisar localmente no seu computador, sem mandar "
+                "o conteúdo para a internet. A pergunta não virou comando escondido."
+            ),
+        ]
+    elif tipo_norm == "alvo_app_nao_encontrado":
+        nome = alvo_limpo or "esse aplicativo"
+        opcoes = [
+            (
+                f"Porque não encontrei {nome} entre os programas instalados nem nas janelas "
+                "abertas. Foi uma falha desse alvo, não falta de acesso: eu continuo conseguindo "
+                "abrir aplicativos que o computador reconheça."
+            ),
+            (
+                f"O computador não reconheceu {nome} como aplicativo instalado ou janela aberta. "
+                "Minha capacidade de abrir apps continua ativa; esse nome específico é que não "
+                "levou a um alvo válido."
+            ),
+            (
+                f"{nome} não apareceu na busca local por programas e janelas. Então eu parei sem "
+                "inventar sucesso — consigo abrir apps, mas preciso que o alvo exista ou tenha um "
+                "nome reconhecível."
+            ),
+        ]
+    else:
+        return ""
+    return escolher_variacao(opcoes, evitar=evitar)
+
+
 def falar_capacidades_gerais(
     principais: Sequence[str],
     *,
@@ -142,4 +283,3 @@ def falar_capacidades_gerais(
             ),
         ]
     return escolher_variacao(opcoes, evitar=evitar)
-

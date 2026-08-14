@@ -582,23 +582,16 @@ def texto_pede_musica_explicitamente(texto: str) -> bool:
 
 
 def texto_pede_repeticao_curta(texto: str) -> bool:
-    t = normalizar_texto(texto)
+    t = normalizar_texto(texto).strip(" .,!?:;")
     if not t:
         return False
     if len(t.split()) > 6:
         return False
-    gatilhos = [
-        "tenta de novo",
-        "de novo",
-        "tenta novamente",
-        "novamente",
-        "vai de novo",
-        "faz de novo",
-        "outra vez",
-        "mais uma vez",
-        "tenta outra vez",
-    ]
-    return any(g in t for g in gatilhos)
+    return bool(re.fullmatch(
+        r"(?:(?:tenta|tente|faz|faca|vai)\s+)?(?:de\s+novo|novamente|"
+        r"outra\s+vez|mais\s+uma\s+vez)|tenta\s+outra\s+vez",
+        t,
+    ))
 
 
 def _ultimas_mensagens_usuario(mensagens: Iterable[Any], limite: int = 4) -> list[str]:

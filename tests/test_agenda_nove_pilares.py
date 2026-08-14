@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import datetime as dt
+
 from mente_laylay.autonomia.agendamento_mental import (
     AgendaRuntime,
     extrair_agendamento_local,
@@ -113,6 +115,78 @@ def test_complemento_com_data_nao_confunde_horario_com_duracao() -> None:
         "atraso_segundos": 36_000,
         "complemento_pendente": True,
     }
+
+
+def test_reagendamento_contextual_preserva_alvo_e_substitui_horario() -> None:
+    comando = extrair_agendamento_local(
+        "Troca para amanhã às 22 horas.",
+        normalizar_texto,
+    )
+    assert comando == {
+        "intent": "AGENDAR_LEMBRETE",
+        "params": {
+            "descricao": "isso",
+            "reagendamento_contextual": True,
+            "substituir_lembrete_anterior": True,
+            "hora_alvo": "22:00",
+            "data_hora": "amanha",
+        },
+    }
+
+    agenda = [{
+        "id": "anterior",
+        "tipo": "once",
+        "ts_execucao": 1.0,
+        "descricao": "revisar o teste",
+        "ativo": True,
+        "origem": "pedido_usuario",
+    }]
+    eventos: list[tuple] = []
+    executar_intencao_agenda(
+        comando["intent"],
+        comando["params"],
+        "Troca para amanhã às 22 horas.",
+        {
+            "_agendamentos_transacionar": _transacao(agenda),
+            "ultima_intencao": "AGENDAR_LEMBRETE",
+            "ultima_habilidade": "agenda",
+            "ultimo_alvo": "revisar o teste",
+            "ultimas_entradas": [],
+        },
+        _deps(eventos),
+    )
+
+    assert len(agenda) == 1
+    assert agenda[0]["id"] != "anterior"
+    assert agenda[0]["descricao"] == "revisar o teste"
+    instante = dt.datetime.fromtimestamp(agenda[0]["ts_execucao"])
+    assert (instante.hour, instante.minute) == (22, 0)
+    assert any(
+        evento[0] == "resultado" and evento[1] == "lembrete_reagendado"
+        for evento in eventos
+    )
+
+
+def test_reagendamento_sem_ultimo_lembrete_nao_cria_item_generico() -> None:
+    agenda: list[dict] = []
+    eventos: list[tuple] = []
+
+    executar_intencao_agenda(
+        "AGENDAR_LEMBRETE",
+        {
+            "descricao": "isso",
+            "reagendamento_contextual": True,
+            "substituir_lembrete_anterior": True,
+            "hora_alvo": "22:00",
+            "data_hora": "amanha",
+        },
+        "Troca para amanhã às 22 horas.",
+        {"_agendamentos_transacionar": _transacao(agenda)},
+        _deps(eventos),
+    )
+
+    assert agenda == []
+    assert eventos[0][1] == "alvo_ausente"
 
 
 def test_pedido_incompleto_publica_pendencia_canonica_sem_fingir_execucao() -> None:

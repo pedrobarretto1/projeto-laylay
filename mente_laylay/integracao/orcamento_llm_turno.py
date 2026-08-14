@@ -33,6 +33,11 @@ LIMITES_CLASSE_S = {
     "longa": 60.0,
 }
 
+# Uma chamada de reparo/autoria com menos tempo que isso tende apenas a gerar
+# um timeout de 1–2 segundos e a degradar a telemetria. Nessas condições, a
+# resposta determinística já pronta é mais correta e mais rápida.
+FATIA_MINIMA_CHAMADA_SECUNDARIA_S = 3.0
+
 
 def _codigo(valor: Any, padrao: str = "desconhecido", limite: int = 72) -> str:
     texto = str(valor or "").strip().casefold()
@@ -281,6 +286,15 @@ class OrcamentoLLMTurnoRuntime:
                 restante = float(estado.get("prazo") or agora) - agora
                 if restante < 1.0:
                     return self._registrar_bloqueio("prazo_esgotado", tipo)
+                if (
+                    tipo in TIPOS_REPARO_LLM
+                    and restante < FATIA_MINIMA_CHAMADA_SECUNDARIA_S
+                ):
+                    if probe:
+                        self._probe_circuito_ativo = False
+                    return self._registrar_bloqueio(
+                        "fatia_secundaria_insuficiente", tipo,
+                    )
                 chamadas = list(estado.get("chamadas") or [])
                 if len(chamadas) >= self.max_chamadas_turno:
                     return self._registrar_bloqueio("limite_chamadas", tipo)

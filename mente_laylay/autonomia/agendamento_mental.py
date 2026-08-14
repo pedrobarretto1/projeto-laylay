@@ -429,11 +429,24 @@ def texto_pede_lembrete_explicito(texto: str, normalizar_texto_cb: Callable[[str
     """Distingue um pedido de lembrete de um simples relato sobre o futuro."""
     normalizar = normalizar_texto_cb or (lambda valor: str(valor or "").casefold())
     t = str(normalizar(texto) or "").strip()
-    return bool(re.search(
-        r"\b(?:me\s+lembra|lembra\s+(?:de|pra|para)|me\s+avisa|avisa\s+(?:de|pra|para)|"
-        r"agende|agendar|cria(?:r)?\s+(?:um\s+)?lembrete|marca\s+(?:um\s+)?lembrete)\b",
+    # O pedido precisa começar como uma instrução dirigida à Laylay. A busca
+    # anterior era solta e tratava ``o que você lembra de mim?`` como agenda.
+    pedido_ancorado = bool(re.search(
+        r"^(?:(?:lay|laylay)[, ]+)?(?:por\s+favor\s+)?(?:"
+        r"me\s+lembra(?:\s+(?:de|pra|para))?|"
+        r"lembra(?:-me)?\s+(?:de|pra|para)|"
+        r"me\s+avisa(?:\s+(?:de|pra|para))?|"
+        r"avisa(?:-me)?\s+(?:de|pra|para)|"
+        r"agende|agendar|cria(?:r)?\s+(?:um\s+)?lembrete|"
+        r"marca\s+(?:um\s+)?lembrete)\b",
         t,
     ))
+    pedido_polido_embutido = bool(re.search(
+        r"\b(?:pode|poderia|consegue|conseguiria)\s+me\s+"
+        r"(?:lembra(?:r)?|avisa(?:r)?)\b",
+        t,
+    ))
+    return pedido_ancorado or pedido_polido_embutido
 
 
 _NUMEROS_DURACAO = {
@@ -772,6 +785,37 @@ def extrair_agendamento_local(texto: str, normalizar_texto_cb: Callable[[str], s
             count=1,
         ).strip()
         return {"intent": "CANCELAR_AGENDAMENTO", "params": {"alvo": alvo or ""}}
+
+    # Reagendamento contextual: depois de criar um lembrete, uma correção como
+    # "troca para amanhã às 22 horas" mantém o alvo confirmado e altera apenas
+    # o horário. O executor ainda exige que esse lembrete exista e corresponda
+    # exatamente ao último alvo da agenda; sem isso, pede esclarecimento.
+    if re.match(
+        r"^(?:troca|troque|muda|mude|altera|altere|remarca|remarque)\b",
+        t,
+    ):
+        referencia_data = ""
+        m_data = _PADRAO_DATA_LEMBRETE.search(t)
+        if m_data:
+            referencia_data = str(m_data.group(1) or "").strip()
+        temporal, _trecho = _extrair_parametros_temporais_lembrete(
+            t,
+            referencia_data=referencia_data,
+            aceitar_duracao_sem_marcador=True,
+        )
+        if {"hora_alvo", "atraso_segundos"} & set(temporal):
+            params_reagendamento: dict[str, Any] = {
+                "descricao": "isso",
+                "reagendamento_contextual": True,
+                "substituir_lembrete_anterior": True,
+                **temporal,
+            }
+            if referencia_data:
+                params_reagendamento["data_hora"] = referencia_data
+            return {
+                "intent": "AGENDAR_LEMBRETE",
+                "params": params_reagendamento,
+            }
 
     if texto_pede_lembrete_explicito(t, normalizar_texto_cb=lambda valor: valor):
         atraso_segundos = None

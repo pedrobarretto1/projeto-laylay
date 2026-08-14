@@ -35,6 +35,9 @@ def _get(ctx: Dict[str, Any], nome: str, default: Any = None) -> Any:
 
 def _humanizar_aprendizado(item: Dict[str, Any]) -> str:
     """Converte o registro interno em uma lembrança dirigida à pessoa."""
+    humanizado = str(item.get("_texto_humanizado") or "").strip()
+    if humanizado:
+        return humanizado
     texto = str(item.get("texto") or item.get("regra") or "").strip()
     valor = str(item.get("valor") or "").strip()
     chave = str(item.get("chave") or "").casefold()
@@ -61,6 +64,61 @@ def _humanizar_aprendizado(item: Dict[str, Any]) -> str:
     for padrao, troca in substituicoes:
         texto = re.sub(padrao, troca, texto, flags=re.IGNORECASE)
     return texto
+
+
+_AFINIDADE_HUMANIZADA = re.compile(
+    r"^você\s+(?P<verbo>não\s+gosta\s+de|gosta\s+de|prefere|adora|ama|curte)\s+"
+    r"(?P<valor>.+)$",
+    re.IGNORECASE,
+)
+
+
+def _partes_afinidade(valor: str) -> list[str]:
+    """Separa listas naturais usadas como um único valor de preferência."""
+    partes = [
+        parte.strip(" ,.;:-")
+        for parte in re.split(r"\s*(?:[,;]|\be\b)\s*", str(valor or ""), flags=re.I)
+        if parte.strip(" ,.;:-")
+    ]
+    return partes or [str(valor or "").strip()]
+
+
+def _deduplicar_aprendizados_para_fala(
+    aprendizados: list[Dict[str, Any]],
+) -> list[Dict[str, Any]]:
+    """Expande afinidades compostas e remove duplicatas sem misturar polaridade.
+
+    Registros antigos podem conter ``rock e programação`` como um único valor
+    e, ao mesmo tempo, um registro atômico de ``rock``. A chave inclui a
+    polaridade para que ``gosta de X`` nunca apague ``não gosta de X``.
+    Outros aprendizados preservam a ordem e a proveniência originais.
+    """
+    vistos_preferencia: set[tuple[str, str]] = set()
+    vistos_outros: set[str] = set()
+    resultado: list[Dict[str, Any]] = []
+    for item in aprendizados:
+        fala = _humanizar_aprendizado(item).strip().rstrip(".!?;: ")
+        afinidade = _AFINIDADE_HUMANIZADA.fullmatch(fala)
+        if afinidade:
+            verbo = re.sub(r"\s+", " ", afinidade.group("verbo").casefold()).strip()
+            polaridade = "negativa" if verbo.startswith("não ") else "positiva"
+            for valor in _partes_afinidade(afinidade.group("valor")):
+                assinatura = normalizar_texto(valor)
+                chave = (polaridade, assinatura)
+                if not assinatura or chave in vistos_preferencia:
+                    continue
+                vistos_preferencia.add(chave)
+                atomico = dict(item)
+                atomico["valor"] = valor
+                atomico["_texto_humanizado"] = f"você {verbo} {valor}"
+                resultado.append(atomico)
+            continue
+
+        assinatura = normalizar_texto(fala)
+        if assinatura and assinatura not in vistos_outros:
+            vistos_outros.add(assinatura)
+            resultado.append(dict(item))
+    return resultado
 
 
 def _ler_emails(
@@ -198,9 +256,29 @@ def _consultar_clima(
         params.get("local") or params.get("cidade") or params.get("bairro")
         or params.get("query") or _get(ctx, "cidade_padrao_clima", "Boituva")
     ).strip()
+    try:
+        day_offset = max(0, min(6, int(params.get("day_offset") or 0)))
+    except (TypeError, ValueError):
+        day_offset = 0
     obter = _get(ctx, "obter_clima_localidade")
     try:
-        info = obter(local) if callable(obter) else {"ok": False, "localidade": local}
+        if callable(obter):
+            try:
+                info = obter(local, day_offset=day_offset)
+            except TypeError:
+                # Adaptadores antigos só são seguros para o tempo atual. Não
+                # rotulamos dados de hoje como previsão de amanhã.
+                info = (
+                    obter(local)
+                    if day_offset == 0
+                    else {
+                        "ok": False,
+                        "localidade": local,
+                        "erro": "horizonte_nao_suportado",
+                    }
+                )
+        else:
+            info = {"ok": False, "localidade": local}
     except Exception:
         info = {"ok": False, "localidade": local}
     if not isinstance(info, dict):
@@ -224,6 +302,47 @@ def _consultar_clima(
     sensacao = str(info.get("sensacao_c") or "").strip()
     descricao = str(info.get("descricao") or "").strip()
     umidade = str(info.get("umidade") or "").strip()
+    if day_offset:
+        rotulo_dia = "Amanhã" if day_offset == 1 else "Depois de amanhã"
+        maxima = str(info.get("temperatura_max_c") or "").strip()
+        minima = str(info.get("temperatura_min_c") or "").strip()
+        chance_bruta = info.get("chance_chuva_pct")
+        try:
+            chance = max(0, min(100, int(float(chance_bruta))))
+        except (TypeError, ValueError):
+            chance = None
+        partes = [f"{rotulo_dia} em {cidade_fala}"]
+        if descricao:
+            partes.append(f"o tempo fica {descricao.casefold()}")
+        if maxima and minima:
+            partes.append(f"com mínima de {minima} e máxima de {maxima} graus")
+        elif maxima:
+            partes.append(f"com máxima de {maxima} graus")
+        elif minima:
+            partes.append(f"com mínima de {minima} graus")
+        elif temperatura:
+            partes.append(f"com temperatura média perto de {temperatura} graus")
+        if chance is not None:
+            partes.append(f"e chance de chuva de até {chance}%")
+        if len(partes) == 1:
+            _falar(
+                ctx,
+                f"O provedor respondeu para {cidade_fala}, mas não trouxe dados suficientes para {rotulo_dia.casefold()}.",
+            )
+            deps.marcar_resultado(
+                "previsao_indisponivel", executou=False, confirmado=False,
+            )
+            return ResultadoDespacho.concluido(False)
+        fala_previsao = ", ".join(partes).rstrip(", ") + "."
+        _falar(ctx, fala_previsao)
+        deps.marcar_resultado(
+            "previsao_consultada",
+            executou=True,
+            confirmado=True,
+            detalhe=str(info.get("fonte") or "fonte_meteorologica"),
+        )
+        return ResultadoDespacho.concluido(True)
+
     base = f"Agora em {cidade_fala} está {temperatura} graus"
     if descricao:
         base += f", e o tempo está {descricao.casefold()}"
@@ -376,6 +495,7 @@ def _consultar_aprendizados(
             )
         return ResultadoDespacho.concluido(True)
 
+    aprendizados = _deduplicar_aprendizados_para_fala(aprendizados)
     deps.marcar_resultado("aprendizados_consultados", executou=True, confirmado=True)
     if not aprendizados:
         if modo == "verificar" and consulta:

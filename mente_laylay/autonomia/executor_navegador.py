@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import urllib.parse
+import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Any, Callable, Dict
 
@@ -19,6 +21,7 @@ INTENCOES_NAVEGADOR = frozenset({
     "OPEN_URL",
     "CLOSE_IDLE_TABS",
     "CLOSE_TAB",
+    "LIST_TABS",
     "SITE_ENTER",
     "SEARCH",
 })
@@ -96,12 +99,190 @@ def _executar_fechar_abas_paradas(
     deps: DependenciasExecutorNavegador,
 ) -> ResultadoDespacho:
     fechar = _get(ctx, "_executar_fechar_abas_paradas")
+    dono = getattr(fechar, "__self__", None) if callable(fechar) else None
+    sugeridas = getattr(dono, "abas_sugeridas", None)
+    havia_sugestoes = bool(sugeridas) if isinstance(sugeridas, list) else None
+    alvos_sugeridos = (
+        [str(item) for item in sugeridas if str(item).strip()]
+        if isinstance(sugeridas, list)
+        else []
+    )
     ok = bool(fechar()) if callable(fechar) else False
+    if havia_sugestoes is False:
+        deps.marcar_resultado(
+            "nenhuma_aba_parada",
+            executou=False,
+            confirmado=True,
+            alvo_resolvido="abas paradas sugeridas",
+            params_resolvidos={"abas_sugeridas": [], "quantidade": 0},
+            detalhe="a lista canônica de abas sugeridas estava vazia",
+        )
+        return ResultadoDespacho.concluido()
     deps.marcar_resultado(
-        "fechamento_abas_solicitado" if ok else "falha_execucao",
+        "abas_paradas_fechadas" if ok else "falha_execucao",
         executou=ok,
+        confirmado=ok,
+        alvo_resolvido="abas paradas sugeridas",
+        params_resolvidos={
+            "abas_sugeridas": alvos_sugeridos,
+            "quantidade": len(alvos_sugeridos),
+        },
+        detalhe=(
+            "o porteiro confirmou o fechamento de cada aba previamente sugerida"
+            if ok else
+            "ao menos uma aba sugerida não devolveu confirmação de fechamento"
+        ),
     )
     return ResultadoDespacho.concluido(ok)
+
+
+def _normalizar_alvo_aba(valor: Any) -> str:
+    texto = unicodedata.normalize("NFKD", str(valor or "").casefold())
+    texto = "".join(ch for ch in texto if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]+", " ", texto).strip()
+
+
+def _id_aba(aba: Dict[str, Any] | None) -> int | None:
+    aba = aba if isinstance(aba, dict) else {}
+    valor = aba.get("tabId") if isinstance(aba.get("tabId"), int) else aba.get("id")
+    return int(valor) if isinstance(valor, int) and not isinstance(valor, bool) else None
+
+
+def _selecionar_aba_observada(
+    abas: list[Dict[str, Any]],
+    alvo: str,
+) -> Dict[str, Any]:
+    alvo_norm = _normalizar_alvo_aba(alvo)
+    alvo_compacto = alvo_norm.replace(" ", "")
+    if not alvo_norm:
+        return {}
+    candidatos: list[tuple[int, int, Dict[str, Any]]] = []
+    for aba in abas:
+        if not isinstance(aba, dict) or _id_aba(aba) is None:
+            continue
+        titulo = _normalizar_alvo_aba(aba.get("title") or aba.get("titulo"))
+        url = str(aba.get("url") or "").strip()
+        try:
+            host = _normalizar_alvo_aba(urllib.parse.urlsplit(url).hostname or "")
+        except (TypeError, ValueError):
+            host = ""
+        host_compacto = host.replace(" ", "")
+        url_norm = _normalizar_alvo_aba(url)
+        score = 0
+        if titulo == alvo_norm:
+            score = 120
+        elif host == alvo_norm or host.endswith(" " + alvo_norm):
+            score = 115
+        elif alvo_compacto and alvo_compacto in host_compacto:
+            score = 105
+        elif alvo_norm in titulo:
+            score = 95
+        elif alvo_norm in url_norm:
+            score = 85
+        if score:
+            candidatos.append((score, 1 if aba.get("active") is True else 0, aba))
+    if not candidatos:
+        return {}
+    candidatos.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return dict(candidatos[0][2])
+
+
+def _rotulo_aba(aba: Dict[str, Any]) -> str:
+    titulo = re.sub(
+        r"\s+", " ", str(aba.get("title") or aba.get("titulo") or "").strip()
+    )
+    url = str(aba.get("url") or "").strip()
+    try:
+        host = str(urllib.parse.urlsplit(url).hostname or "").removeprefix("www.")
+    except (TypeError, ValueError):
+        host = ""
+    if titulo and host and host.casefold() not in titulo.casefold():
+        return f"{titulo} — {host}"
+    return titulo or host or "aba sem título"
+
+
+def _executar_listar_abas(
+    ctx: Dict[str, Any],
+    deps: DependenciasExecutorNavegador,
+) -> ResultadoDespacho:
+    navegador = _get(ctx, "_registro_navegador_leitura_runtime")
+    try:
+        conectado = bool(navegador is not None and navegador.conectado())
+    except Exception as erro:
+        relatar_falha_ctx(
+            ctx,
+            "executor_navegador",
+            "falha_consultar_conexao_abas",
+            erro=erro,
+            impacto="turno",
+            fallback="listagem_indisponivel",
+            dominio="navegador",
+            fase="listar_abas",
+        )
+        conectado = False
+    if not conectado:
+        deps.marcar_resultado(
+            "navegador_indisponivel", executou=False, confirmado=False,
+        )
+        _falar(ctx, "Não consegui consultar as abas: a extensão não está conectada.", "calma", 1)
+        return ResultadoDespacho.concluido(False)
+    try:
+        brutas = navegador.listar_abas(timeout_s=5.0) or []
+    except Exception as erro:
+        relatar_falha_ctx(
+            ctx,
+            "executor_navegador",
+            "falha_listar_abas",
+            erro=erro,
+            impacto="turno",
+            fallback="listagem_indisponivel",
+            dominio="navegador",
+            fase="listar_abas",
+        )
+        deps.marcar_resultado(
+            "falha_execucao",
+            executou=False,
+            confirmado=False,
+            detalhe="a extensão falhou antes de devolver a lista de abas",
+        )
+        _falar(
+            ctx,
+            "Não consegui ler as abas agora; a extensão não devolveu uma lista verificável.",
+            "calma",
+            1,
+        )
+        return ResultadoDespacho.concluido(False)
+    abas = [dict(aba) for aba in brutas if isinstance(aba, dict)]
+    if not abas:
+        deps.marcar_resultado(
+            "abas_listadas", executou=True, confirmado=True,
+            detalhe="a extensão devolveu uma lista vazia",
+        )
+        _falar(ctx, "A extensão não observou nenhuma aba aberta agora.", "calma", 1)
+        return ResultadoDespacho.concluido()
+    rotulos = [_rotulo_aba(aba) for aba in abas]
+    limite = 12
+    fala = "Abas abertas observadas: " + "; ".join(
+        f"{indice}. {rotulo}"
+        for indice, rotulo in enumerate(rotulos[:limite], start=1)
+    )
+    if len(rotulos) > limite:
+        fala += f"; e mais {len(rotulos) - limite}."
+    else:
+        # Não encerre a fala num host como ``primevideo.com``: a higiene
+        # final trataria ``com.`` como um conector truncado. O total factual
+        # também deixa explícito que a lista veio inteira da extensão.
+        fala += f"; total de {len(rotulos)} aba(s)."
+    deps.marcar_resultado(
+        "abas_listadas",
+        executou=True,
+        confirmado=True,
+        detalhe=f"{len(abas)} aba(s) devolvida(s) pela extensão",
+    )
+    # A lista é evidência observada. Ela não passa por autoria da LLM, que
+    # poderia acrescentar abas inexistentes ou retirar títulos relevantes.
+    _falar(ctx, fala, "calma", 1)
+    return ResultadoDespacho.concluido()
 
 
 def _executar_fechar_aba(
@@ -117,6 +298,15 @@ def _executar_fechar_aba(
     enviar_pc_b = _get(ctx, "_enviar_pc_b")
 
     info = navegador_leitura.aba_ativa() if navegador_leitura is not None else {}
+    try:
+        abas_observadas = (
+            navegador_leitura.listar_abas(timeout_s=5.0)
+            if navegador_leitura is not None
+            and callable(getattr(navegador_leitura, "listar_abas", None))
+            else []
+        )
+    except Exception:
+        abas_observadas = []
     alvo = str(params.get("alvo") or params.get("site") or params.get("nome") or "").strip()
     alvo_preciso = deps.alvo_preciso_para_aba(alvo) if alvo else ""
 
@@ -130,36 +320,97 @@ def _executar_fechar_aba(
     if not alvo and callable(contexto_site) and contexto_site(texto_original):
         alvo = str(params.get("nome_app") or params.get("query") or params.get("alvo") or "site").strip()
 
+    aba_resolvida: Dict[str, Any] = {}
+    confirmacao_resultado: bool | None = False
+    remoto_sem_evidencia = False
     ok = False
     if destino == "pc_b" and callable(enviar_pc_b):
         payload = (
             {"action": "close_specific_tab", "target": alvo_preciso or alvo}
             if alvo else {"action": "close_current_tab"}
         )
-        enviar_pc_b(payload)
-        ok = True
+        retorno_remoto = enviar_pc_b(payload)
+        ok = retorno_remoto is not False
+        remoto_sem_evidencia = ok
+        confirmacao_resultado = None if ok else False
     elif alvo and navegador_operacoes is not None:
-        enviado = bool(navegador_operacoes.fechar_aba(alvo_preciso or alvo))
-        if enviado:
-            ok = deps.esperar_aba_fechar(alvo_preciso or alvo, info)
+        aba_resolvida = _selecionar_aba_observada(
+            [dict(aba) for aba in abas_observadas if isinstance(aba, dict)],
+            alvo_preciso or alvo,
+        ) or _selecionar_aba_observada(
+            [dict(aba) for aba in abas_observadas if isinstance(aba, dict)],
+            alvo,
+        )
+        tab_id = _id_aba(aba_resolvida)
+        if tab_id is not None:
+            ok = bool(navegador_operacoes.fechar_abas([tab_id]))
         else:
-            ok = bool(navegador_operacoes.fechar_aba_nativa(alvo_preciso or alvo))
+            # A extensão antiga ainda pode resolver por título/URL e, após a
+            # atualização do protocolo, devolve confirmação real. Não usamos
+            # Ctrl+W como fallback: o foco pode ter mudado e fechar outra aba.
+            ok = bool(navegador_operacoes.fechar_aba(alvo_preciso or alvo))
+        confirmacao_resultado = ok
     elif navegador_operacoes is not None:
-        enviado = bool(navegador_operacoes.fechar_aba_atual())
-        if enviado:
-            ok = deps.esperar_aba_fechar("", info)
+        tab_id = _id_aba(info)
+        if tab_id is None:
+            aba_resolvida = next(
+                (
+                    dict(aba) for aba in abas_observadas
+                    if isinstance(aba, dict) and aba.get("active") is True
+                ),
+                {},
+            )
+            tab_id = _id_aba(aba_resolvida)
         else:
-            ok = bool(navegador_operacoes.fechar_aba_nativa(""))
+            aba_resolvida = dict(info or {})
+        ok = (
+            bool(navegador_operacoes.fechar_abas([tab_id]))
+            if tab_id is not None
+            else bool(navegador_operacoes.fechar_aba_atual())
+        )
+        confirmacao_resultado = ok
 
-    status = "aba_fechada" if ok else "falha_execucao"
-    deps.marcar_resultado(status, executou=ok)
+    status = (
+        "fechamento_aba_solicitado"
+        if remoto_sem_evidencia
+        else "aba_fechada" if ok else "falha_execucao"
+    )
+    titulo_resolvido = str(
+        aba_resolvida.get("title") or aba_resolvida.get("titulo") or ""
+    ).strip()
+    alvo_resolvido = titulo_resolvido or alvo or "essa aba"
+    params_resolvidos: Dict[str, Any] = {}
+    tab_id_resolvido = _id_aba(aba_resolvida)
+    if tab_id_resolvido is not None:
+        params_resolvidos["tab_id"] = tab_id_resolvido
+    if str(aba_resolvida.get("url") or "").strip():
+        params_resolvidos["url_aba"] = str(aba_resolvida.get("url") or "").strip()
+    if titulo_resolvido:
+        params_resolvidos["titulo_aba"] = titulo_resolvido
+    deps.marcar_resultado(
+        status,
+        executou=ok,
+        confirmado=confirmacao_resultado,
+        alvo_resolvido=alvo_resolvido,
+        params_resolvidos=params_resolvidos,
+        detalhe=(
+            "o cliente remoto recebeu a solicitação, mas não devolveu o estado final da aba"
+            if remoto_sem_evidencia else
+            "a extensão confirmou a remoção da aba observada"
+            if ok else "nenhuma remoção de aba foi confirmada"
+        ),
+    )
     deps.falar_por_status(
         status,
+        "Enviei o pedido para fechar a aba no outro computador; ele não devolveu o estado final."
+        if remoto_sem_evidencia else
         "Fechado. Já vai tarde."
         if ok else f"Tentei fechar {alvo or 'essa aba'}, mas não consegui confirmar se ela saiu de cena.",
-        alvo=alvo or "essa aba",
+        alvo=alvo_resolvido,
+        executou=ok,
+        confirmado=confirmacao_resultado,
     )
-    return ResultadoDespacho.concluido()
+    return ResultadoDespacho.concluido(ok)
 
 
 def _executar_entrar_site(
@@ -267,6 +518,38 @@ def _executar_search(
     ).strip().lower()
     enviar_pc_b = _get(ctx, "_enviar_pc_b")
     navegador_operacoes = _get(ctx, "_registro_navegador_operacoes_runtime")
+    abrir_resultado = params.get("abrir_resultado")
+    if (
+        isinstance(abrir_resultado, int)
+        and not isinstance(abrir_resultado, bool)
+        and abrir_resultado == 1
+    ):
+        abrir_primeiro = getattr(
+            navegador_operacoes, "abrir_primeiro_resultado", None,
+        ) if navegador_operacoes is not None else None
+        ok = bool(abrir_primeiro(query)) if callable(abrir_primeiro) else False
+        status = "resultado_web_aberto" if ok else "falha_execucao"
+        deps.marcar_resultado(
+            status,
+            executou=ok,
+            confirmado=ok,
+            detalhe=(
+                "a extensão selecionou e abriu o primeiro resultado orgânico observado"
+                if ok else "a extensão não confirmou um primeiro resultado observável"
+            ),
+        )
+        deps.falar_por_status(
+            status,
+            (
+                f"Abri o primeiro resultado observado da busca por {query}."
+                if ok else
+                "Não consegui confirmar um primeiro resultado nessa busca."
+            ),
+            alvo=query,
+            executou=ok,
+            confirmado=ok,
+        )
+        return ResultadoDespacho.concluido(ok)
     if engine == "youtube":
         if destino == "pc_b" and callable(enviar_pc_b):
             enviar_pc_b({
@@ -336,18 +619,35 @@ def _executar_search(
 
     url = f"https://www.google.com/search?q={urllib.parse.quote(query)}"
     if destino == "pc_b" and callable(enviar_pc_b):
-        enviar_pc_b({"action": "open_url", "url": url + "&laylay_auto=true", "auto_click": True})
-    elif navegador_operacoes is not None:
-        navegador_operacoes.abrir_url(url + "&laylay_auto=true", auto_click=True)
+        enviar_pc_b({"action": "open_url", "url": url, "auto_click": False})
+        ok = False  # o cliente remoto não devolve a aba final nesta rota
+    else:
+        ok = deps.abrir_url_com_validacao(
+            url,
+            alvo=query,
+            auto_click=False,
+        )
+    status = "busca_aberta" if ok else "falha_execucao"
     fala = escolher_fala_variada([
-        f"Abrindo a busca para {query}.",
-        f"Já procurei {query}.",
-        f"Abri a busca de {query}.",
-    ])
-    _falar(ctx, fala)
-    if callable(registrar):
+        f"Abri os resultados da busca por {query}.",
+        f"A busca por {query} está aberta.",
+        f"Mostrei os resultados de {query}.",
+    ]) if ok else f"Não consegui confirmar a busca por {query}."
+    deps.marcar_resultado(
+        status,
+        executou=ok,
+        confirmado=ok,
+        detalhe=(
+            "a página de resultados foi relida no navegador"
+            if ok else "a página de resultados não foi observada"
+        ),
+    )
+    deps.falar_por_status(
+        status, fala, alvo=query, executou=ok, confirmado=ok,
+    )
+    if ok and callable(registrar):
         registrar(texto_original, fala, "SEARCH", query, "", "pesquisa")
-    return ResultadoDespacho.concluido()
+    return ResultadoDespacho.concluido(ok)
 
 
 def executar_intencao_navegador(
@@ -367,6 +667,8 @@ def executar_intencao_navegador(
         return _executar_open_url(params, ctx, deps)
     if intent == "CLOSE_IDLE_TABS":
         return _executar_fechar_abas_paradas(ctx, deps)
+    if intent == "LIST_TABS":
+        return _executar_listar_abas(ctx, deps)
     if intent == "CLOSE_TAB":
         return _executar_fechar_aba(params, texto_original, destino, ctx, deps)
     if intent == "SITE_ENTER":

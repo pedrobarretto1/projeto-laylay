@@ -26,6 +26,17 @@ INTENCOES_JANELAS = frozenset({
 })
 
 
+_PROCESSOS_AUXILIARES_NAO_FECHAVEIS_POR_REFERENCIA = frozenset({
+    "applicationframehost.exe",
+    "explorer.exe",
+    "openwith.exe",
+    "searchhost.exe",
+    "shellexperiencehost.exe",
+    "startmenuexperiencehost.exe",
+    "textinputhost.exe",
+})
+
+
 @dataclass(frozen=True, slots=True)
 class DependenciasExecutorJanelas:
     """Operacoes do roteador usadas para registrar e verbalizar o resultado."""
@@ -192,7 +203,14 @@ def _executar_maximizar(
                 "Faltou dizer a janela.",
             ]))
             return ResultadoDespacho.concluido()
-        deps.marcar_resultado(status, executou=bool(resultado.get("ok")))
+        maximizou = bool(resultado.get("ok"))
+        # O callback de maximização só retorna True depois de reler a geometria
+        # da janela. Foco isolado fica em ``maximizacao_nao_confirmada``.
+        deps.marcar_resultado(
+            status,
+            executou=maximizou,
+            confirmado=maximizou,
+        )
         deps.falar_resultado_janela(app, status)
         return ResultadoDespacho.concluido()
 
@@ -304,6 +322,28 @@ def _executar_fechar_app(
         ]), "debochada", 2)
         return ResultadoDespacho.concluido()
 
+    nome_norm = nome.casefold().strip()
+    referencia_nao_tipificada = params.get("referencia_nao_tipificada") is True
+    if referencia_nao_tipificada and (
+        nome_norm in _PROCESSOS_AUXILIARES_NAO_FECHAVEIS_POR_REFERENCIA
+        or nome_norm.endswith(".exe")
+    ):
+        # Um processo auxiliar observado (como OpenWith.exe) não é a entidade
+        # que a pessoa acabou de abrir. Fechá-lo por pronome seria adivinhar e
+        # poderia atingir um componente genérico do Windows.
+        deps.marcar_resultado(
+            "referencia_insegura",
+            executou=False,
+            confirmado=False,
+        )
+        _falar(
+            ctx,
+            "Essa referência caiu numa janela auxiliar do Windows. Me diga o nome do arquivo ou do programa que você quer fechar.",
+            "calma",
+            1,
+        )
+        return ResultadoDespacho.concluido()
+
     if params.get("referencia_arquivo") is True:
         titulo = str(params.get("janela_titulo") or nome).strip()
         fechar_janela = _get(ctx, "fechar_janela_por_titulo")
@@ -349,6 +389,23 @@ def _executar_fechar_app(
         except TypeError:
             # Compatibilidade com adaptadores/testes antigos de um argumento.
             return bool(esperar_aba(alvo_tab))
+
+    if str(params.get("alvo_tipado") or "").casefold() == "app" and not programa_aberto:
+        # A pessoa nomeou explicitamente um programa. Ausência observada não
+        # autoriza trocar de domínio para uma aba, nem chamar o encerrador e
+        # depois confundir "já estava ausente" com fechamento confirmado.
+        deps.marcar_resultado(
+            "nao_encontrado",
+            executou=False,
+            confirmado=False,
+        )
+        deps.falar_por_status(
+            "nao_encontrado",
+            f"Não encontrei um programa aberto chamado {nome}.",
+            alvo=nome,
+            confirmado=False,
+        )
+        return ResultadoDespacho.concluido()
 
     if bool((leitura or {}).get("aba_aberta")) and not programa_aberto:
         # A leitura já encontrou a aba correta. Prefira a URL observada em vez

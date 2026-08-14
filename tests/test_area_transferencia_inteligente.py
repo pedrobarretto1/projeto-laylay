@@ -142,6 +142,28 @@ def test_maiusculas_sao_transformadas_localmente_sem_resposta_antiga():
     assert clipboard.texto == "TEXTO MISTO"
 
 
+def test_referencia_curta_usa_clipboard_somente_apos_leitura_recente():
+    agora = [100.0]
+    clipboard = ClipboardFalso("azul e verde")
+    falas = []
+    runtime = AreaTransferenciaRuntime(
+        falar=lambda fala, *_: falas.append(fala),
+        leitor=clipboard.ler,
+        escritor=clipboard.escrever,
+        pendencia_runtime=_pendencias(agora=lambda: agora[0])[0],
+        relogio=lambda: agora[0],
+        log=lambda *_: None,
+    )
+
+    assert runtime.processar("coloca isso em maiúsculas") is False
+    assert runtime.processar("o que eu copiei?") is True
+    assert runtime.processar("coloca isso em maiúsculas") is True
+    assert falas[-1].startswith("AZUL E VERDE.")
+
+    agora[0] += 121.0
+    assert runtime.processar("coloca isso em minúsculas") is False
+
+
 def test_uso_explicito_silencia_oferta_passiva_do_mesmo_conteudo():
     consumidos = []
     clipboard = ClipboardFalso("um texto grande de teste")

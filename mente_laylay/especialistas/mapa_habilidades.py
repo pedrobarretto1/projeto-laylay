@@ -17,6 +17,7 @@ from mente_laylay.especialistas.capacidades import CAPACIDADES, consultar_capaci
 from mente_laylay.personalidade.fala_capacidades import (
     falar_capacidades_gerais,
     falar_identidade_operacional,
+    falar_instrucao_capacidade,
 )
 
 
@@ -221,6 +222,47 @@ def _texto_pergunta_capacidade(texto: str) -> bool:
         r"(?:criar|abrir|fechar|apagar|tocar|ligar|desligar|mexer)\b|"
         r"\b(?:voce|laylay|lay)\s+mexe\s+(?:no|na|em)\b",
         t,
+    ))
+
+
+def _instrucao_capacidade(texto: str) -> tuple[str, str]:
+    """Identifica uma pergunta procedural sem conceder autorização."""
+    t = _normalizar(texto).strip(" ?.!\t\r\n")
+    if not t:
+        return "", ""
+    prefixo = (
+        r"^(?:como|de que (?:jeito|forma))\s+(?:eu\s+)?"
+        r"(?:(?:faria|faco|poderia fazer|deveria fazer)(?:\s+(?:para|pra))?\s+)?"
+    )
+    if re.search(prefixo + r"(?:criar|crio|criaria)\b.*\b(?:arquivo|documento)\b", t):
+        return "criar_arquivo", ""
+    apagar = re.search(
+        prefixo
+        + r"(?:apagar|apago|apagaria|excluir|excluo|deletar|remover)\b"
+        r"(?P<alvo>.*(?:\b(?:arquivo|documento|pasta)s?\b|\.[a-z0-9]{1,10}\b).*)$",
+        t,
+    )
+    if apagar:
+        alvo = re.sub(
+            r"^(?:(?:o|a)\s+|(?:um|uma)\s+(?:arquivo|documento|pasta)\s*)",
+            "",
+            apagar.group("alvo").strip(),
+        ).strip()
+        return "apagar_arquivo", alvo
+    abrir = re.search(
+        prefixo + r"(?:abrir|abro|abriria)\s+(?:o\s+|a\s+)?(?P<alvo>.+)$",
+        t,
+    )
+    if abrir:
+        alvo = re.sub(r"\s+no\s+(?:pc|computador)$", "", abrir.group("alvo")).strip()
+        return "abrir_app", alvo
+    return "", ""
+
+
+def _texto_pede_motivo_curto(texto: str) -> bool:
+    return bool(re.fullmatch(
+        r"(?:mas\s+|entao\s+|e\s+)?(?:por\s+que|porque|pq)\s+(?:nao)?[?!. ]*",
+        _normalizar(texto),
     ))
 
 
@@ -574,6 +616,45 @@ class MapaHabilidadesRuntime:
     ) -> str:
         """Responde sobre capacidade real sem executar a ação mencionada."""
         t = _normalizar(texto)
+        dados_contexto = dict(contexto or {})
+        if _texto_pede_motivo_curto(t):
+            intent_anterior = str(
+                dados_contexto.get("ultima_acao_intent") or ""
+            ).strip().upper()
+            status_anterior = _normalizar(
+                dados_contexto.get("ultima_acao_status") or ""
+            ).replace(" ", "_")
+            executou_anterior = dados_contexto.get("ultima_acao_ok")
+            try:
+                ts_anterior = float(dados_contexto.get("ultima_acao_ts") or 0.0)
+            except (TypeError, ValueError):
+                ts_anterior = 0.0
+            recente = ts_anterior > 0.0 and self._relogio() - ts_anterior <= 300.0
+            if (
+                recente
+                and intent_anterior == "APP_OPEN"
+                and executou_anterior is not True
+                and status_anterior in {
+                    "nao_encontrado", "não_encontrado", "app_nao_encontrado",
+                    "aplicativo_nao_encontrado", "alvo_nao_encontrado",
+                }
+            ):
+                params_anteriores = dados_contexto.get("ultima_acao_params")
+                params_anteriores = (
+                    dict(params_anteriores)
+                    if isinstance(params_anteriores, Mapping)
+                    else {}
+                )
+                alvo_anterior = str(
+                    dados_contexto.get("ultima_acao_alvo")
+                    or params_anteriores.get("nome_app")
+                    or "esse aplicativo"
+                ).strip()
+                return falar_instrucao_capacidade(
+                    "alvo_app_nao_encontrado",
+                    alvo=alvo_anterior,
+                    contexto=dados_contexto,
+                )
         # "O que você sabe/lembra sobre X?" pede dados da memória, não pergunta
         # se a Laylay possui a habilidade. O runtime de pessoas ou o mapa de
         # recursos deve responder com evidência real.
@@ -582,7 +663,8 @@ class MapaHabilidadesRuntime:
             t,
         ):
             return ""
-        if not _texto_pergunta_capacidade(t):
+        instrucao_tipo, instrucao_detalhe = _instrucao_capacidade(t)
+        if not _texto_pergunta_capacidade(t) and not instrucao_tipo:
             return ""
         leitura_turno = dict(turno or {})
         # Esta porta explica capacidades. Um pedido que o turno canônico
@@ -590,6 +672,25 @@ class MapaHabilidadesRuntime:
         if leitura_turno.get("autoriza_execucao") is True:
             return ""
         mapa = self.snapshot()
+        if instrucao_tipo:
+            intent_instrucao = {
+                "criar_arquivo": "CREATE_FILE",
+                "apagar_arquivo": "DELETE_ITEM",
+                "abrir_app": "APP_OPEN",
+            }.get(instrucao_tipo, "")
+            capacidade = dict(
+                (mapa.get("capacidades") or {}).get(intent_instrucao) or {}
+            )
+            if not bool(capacidade.get("disponivel")):
+                return (
+                    "Essa habilidade está indisponível nesta instalação agora. "
+                    "A pergunta não executou nenhuma ação."
+                )
+            return falar_instrucao_capacidade(
+                instrucao_tipo,
+                alvo=instrucao_detalhe,
+                contexto=dados_contexto,
+            )
         dominios = self.dominios_relevantes(t, turno=leitura_turno)
         disponivel = any(
             str((mapa.get("dominios") or {}).get(dominio, {}).get("estado") or "")
@@ -665,9 +766,44 @@ class MapaHabilidadesRuntime:
                 tem_outras=len(itens) > len(principais),
                 contexto=contexto,
             )
+        capacidades_vivas = dict(mapa.get("capacidades") or {})
+
+        def capacidade_disponivel(intent: str) -> bool:
+            return bool(
+                dict(capacidades_vivas.get(intent) or {}).get("disponivel")
+            )
+
+        pede_criar_arquivo = bool(re.search(
+            r"\b(?:cri|faz|mont)\w*\b.*\b(?:arquivo|pasta)s?\b|"
+            r"\b(?:arquivo|pasta)s?\b.*\b(?:cri|faz|mont)\w*\b",
+            t,
+        ))
+        pede_pesquisar_arquivo = bool(re.search(
+            r"\b(?:encontr|procur|busc|localiz|pesquis)\w*\b",
+            t,
+        ))
+        if "arquivos" in dominios and pede_criar_arquivo and pede_pesquisar_arquivo:
+            cria = capacidade_disponivel("CREATE_FILE")
+            pesquisa = capacidade_disponivel("FILE_SEARCH")
+            if cria and pesquisa:
+                return falar_instrucao_capacidade(
+                    "capacidade_criar_e_pesquisar_arquivos",
+                    contexto=dados_contexto,
+                )
+            if cria:
+                return (
+                    "Consigo criar arquivos, mas pesquisar localmente está indisponível nesta "
+                    "instalação agora. Como foi uma pergunta, não criei nada."
+                )
+            if pesquisa:
+                return (
+                    "Consigo pesquisar localmente, mas a criação de arquivos está indisponível "
+                    "nesta instalação agora. Como foi uma pergunta, não iniciei a busca."
+                )
+            return "Criar e pesquisar arquivos estão indisponíveis nesta instalação agora."
         if "arquivos" in dominios and re.search(
-            r"\b(?:cri|faz|mont)\w*\b.*\b(?:arquivo|pasta)\b|"
-            r"\b(?:arquivo|pasta)\b.*\b(?:cri|faz|mont)\w*\b",
+            r"\b(?:cri|faz|mont)\w*\b.*\b(?:arquivo|pasta)s?\b|"
+            r"\b(?:arquivo|pasta)s?\b.*\b(?:cri|faz|mont)\w*\b",
             t,
         ):
             return (
@@ -695,6 +831,42 @@ class MapaHabilidadesRuntime:
             )
         if ("sistema" in dominios or "navegador" in dominios) and re.search(r"\b(?:fech|encerr)\w*\b", t):
             return "Consigo. Posso fechar o programa, navegador ou aba quando você fizer o pedido direto."
+        pede_abrir_programa = bool(re.search(
+            r"\b(?:abrir|abre)\b.*\b(?:apps?|aplicativos?|programas?)\b",
+            t,
+        ))
+        pede_organizar_janelas = bool(re.search(
+            r"\b(?:organiz|posicion|divid)\w*\b",
+            t,
+        ))
+        if "sistema" in dominios and pede_abrir_programa and pede_organizar_janelas:
+            abre = capacidade_disponivel("APP_OPEN")
+            organiza = capacidade_disponivel("ORGANIZAR_DESKTOP")
+            if abre and organiza:
+                return falar_instrucao_capacidade(
+                    "capacidade_apps_e_janelas",
+                    contexto=dados_contexto,
+                )
+            if abre:
+                return (
+                    "Consigo abrir programas, mas organizar janelas está indisponível nesta "
+                    "instalação agora. A pergunta não abriu nada."
+                )
+            if organiza:
+                return (
+                    "Consigo organizar janelas, mas abrir programas está indisponível nesta "
+                    "instalação agora. A pergunta não moveu nada."
+                )
+            return "Abrir programas e organizar janelas estão indisponíveis nesta instalação agora."
+        if "sistema" in dominios and re.search(
+            r"\b(?:consegue|pode|sabe|e capaz)\b.*\b(?:abrir|abre)\b.*"
+            r"\b(?:apps?|aplicativos?|programas?)\b",
+            t,
+        ):
+            return falar_instrucao_capacidade(
+                "capacidade_apps",
+                contexto=dados_contexto,
+            )
         if "navegador" in dominios:
             return (
                 "Consigo consultar a aba ativa e as abas abertas, resumir a página atual, abrir sites, "

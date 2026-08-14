@@ -150,6 +150,31 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
         print("❌ [Chrome] ws_loop ou extensão não conectada")
         return False
 
+    if action == "close_tabs":
+        ids = [
+            valor for valor in (payload.get("ids") or [])
+            if isinstance(valor, int) and not isinstance(valor, bool)
+        ]
+        if not ids or not (ws_loop and connected_extensions):
+            return False
+        msg = {"action": "close_tabs", "ids": ids}
+        return bool(
+            callable(executar_confirmado)
+            and executar_confirmado(msg, timeout_s=4.0)
+        )
+
+    if action == "click_first_result":
+        if not (ws_loop and connected_extensions):
+            return False
+        msg = {
+            "action": "click_first_result",
+            "query": str(payload.get("query") or "").strip(),
+        }
+        return bool(
+            callable(executar_confirmado)
+            and executar_confirmado(msg, timeout_s=6.0)
+        )
+
     if action == "youtube_search" and payload.get("query"):
         atualizar_contexto(site="youtube", termo_busca=str(payload.get("query")), aba_id=None)
 

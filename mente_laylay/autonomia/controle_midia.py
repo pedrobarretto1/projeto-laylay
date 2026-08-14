@@ -18,6 +18,7 @@ from mente_laylay.personalidade.falas_variadas import (
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
 from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao
 from mente_laylay.personalidade.confirmacao_llm import personalizar_confirmacao_llm
+from mente_laylay.personalidade.higiene_fala import limpar_titulo_musical_para_fala
 
 
 VK_MEDIA_NEXT_TRACK = 0xB0
@@ -109,6 +110,68 @@ def executar_media_control(
     )
     confirmado_execucao: bool | None = None
     detalhe_execucao = ""
+
+    if acao in {"status", "now_playing", "qual_musica", "faixa_atual"}:
+        # Esta rota é deliberadamente somente leitura. Em particular, ela não
+        # chega a ``_executar_cmd_midia`` nem às teclas globais do Windows.
+        musica_leitura = _get(ctx, "_registro_musica_leitura_runtime")
+        try:
+            estado_leitura = dict(
+                musica_leitura.estado() if musica_leitura is not None else {}
+            )
+        except Exception:
+            estado_leitura = {}
+        titulo = limpar_titulo_musical_para_fala(
+            str(estado_leitura.get("musica_atual_titulo") or "").strip()
+        )
+        status_player = str(
+            estado_leitura.get("musica_atual_status") or ""
+        ).strip().casefold()
+        if not titulo:
+            try:
+                faixa = dict(
+                    musica_operacoes.faixa_atual()
+                    if musica_operacoes is not None else {}
+                )
+            except Exception:
+                faixa = {}
+            titulo = limpar_titulo_musical_para_fala(
+                str(faixa.get("title") or "").strip()
+            )
+
+        if titulo:
+            if status_player in {"pausada", "pausado", "paused", "pause"}:
+                fala_status = f"A faixa atual é {titulo}, mas ela está pausada."
+            elif status_player in {"tocando", "playing", "audivel", "audível"}:
+                fala_status = f"Está tocando {titulo}."
+            else:
+                fala_status = f"A faixa atual registrada é {titulo}."
+            try:
+                marcar_resultado(
+                    "midia_status_consultado",
+                    executou=True,
+                    confirmado=True,
+                    alvo_resolvido=titulo,
+                )
+            except TypeError:
+                marcar_resultado("midia_status_consultado", True)
+            if callable(falar):
+                falar(fala_status, "calma", 1)
+            return True
+
+        try:
+            marcar_resultado(
+                "faixa_atual_indisponivel", executou=True, confirmado=False,
+            )
+        except TypeError:
+            marcar_resultado("faixa_atual_indisponivel", False)
+        if callable(falar):
+            falar(
+                "Não consegui confirmar qual faixa está tocando agora.",
+                "calma",
+                1,
+            )
+        return False
 
     def _log_midia(etapa: str, msg: str) -> None:
         try:

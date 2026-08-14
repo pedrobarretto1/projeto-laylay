@@ -1,8 +1,8 @@
 """Execução sequencial e persistente de roteiros conversacionais da Laylay.
 
 O runtime usa a mesma entrada canônica dos terminais. Ele nunca interpreta nem
-executa habilidades por conta própria: envia um texto, aguarda a fala final
-consolidada e somente então libera o próximo texto do roteiro.
+executa habilidades por conta própria: envia um texto, aguarda a fala final e
+o resultado canônico do turno, e somente então libera o próximo texto.
 """
 
 from __future__ import annotations
@@ -27,9 +27,11 @@ class ConfiguracaoRoteiro:
     atraso_inicial_s: float = 0.0
     timeout_resposta_s: float = 120.0
     timeout_voz_s: float = 240.0
-    intervalo_comandos_s: float = 0.8
+    intervalo_comandos_s: float = 0.0
     parar_sem_resposta: bool = True
     encerrar_ao_final: bool = False
+    silenciar_voz_durante_teste: bool = False
+    aguardar_confirmacao_execucao: bool = False
 
 
 def _literal_por_nome(arvore: ast.Module, nome: str, padrao: Any) -> Any:
@@ -78,13 +80,22 @@ def carregar_configuracao_roteiro(caminho: str | os.PathLike[str]) -> Configurac
             1.0, float(_literal_por_nome(arvore, "TIMEOUT_VOZ_S", 240.0)),
         ),
         intervalo_comandos_s=max(
-            0.0, float(_literal_por_nome(arvore, "INTERVALO_ENTRE_COMANDOS_S", 0.8)),
+            0.0, float(_literal_por_nome(arvore, "INTERVALO_ENTRE_COMANDOS_S", 0.0)),
         ),
         parar_sem_resposta=bool(
             _literal_por_nome(arvore, "PARAR_SEM_RESPOSTA", True)
         ),
         encerrar_ao_final=bool(
             _literal_por_nome(arvore, "ENCERRAR_AO_FINAL", False)
+        ),
+        # Arquivos de roteiro reais são silenciosos por padrão. A dataclass
+        # mantém False para runtimes programáticos e testes que exercitam a
+        # sincronização de áudio explicitamente.
+        silenciar_voz_durante_teste=bool(
+            _literal_por_nome(arvore, "SILENCIAR_VOZ_DURANTE_TESTE", True)
+        ),
+        aguardar_confirmacao_execucao=bool(
+            _literal_por_nome(arvore, "AGUARDAR_CONFIRMACAO_EXECUCAO", True)
         ),
     )
 
@@ -200,6 +211,7 @@ class RoteiroTesteConversaRuntime:
         self.clock, self.monotonic, self.sleep = clock, monotonic, sleep
         self.checkpoint_path = self.diretorio / "checkpoint.json"
         self.conversa_path = self.diretorio / "conversa.md"
+        self.planos_path = self.diretorio / "planos.jsonl"
         self._lock = threading.RLock()
         self._resposta_event = threading.Event()
         self._indice_aguardado: int | None = None
@@ -208,13 +220,25 @@ class RoteiroTesteConversaRuntime:
         self._stop = threading.Event()
         self._estado = self._carregar_ou_criar_estado()
 
+    def _criterio_conclusao(self) -> str:
+        partes = ["transporte_resposta"]
+        if self.configuracao.aguardar_confirmacao_execucao:
+            partes.append("resultado_turno")
+        if not self.configuracao.silenciar_voz_durante_teste:
+            partes.append("voz")
+        return "_e_".join(partes)
+
     def _estado_inicial(self) -> dict[str, Any]:
         return {
-            "versao": 1,
+            "versao": 2,
             "assinatura": assinatura_roteiro(self.configuracao.comandos),
             "criado_em": self.clock(),
             "atualizado_em": self.clock(),
             "concluido": False,
+            "criterio_conclusao": self._criterio_conclusao(),
+            "voz_silenciada_durante_teste": bool(
+                self.configuracao.silenciar_voz_durante_teste
+            ),
             "itens": [
                 {
                     "indice": indice,
@@ -235,6 +259,12 @@ class RoteiroTesteConversaRuntime:
                 raise ValueError("checkpoint do roteiro está ilegível") from erro
             if str(estado.get("assinatura") or "") != esperado:
                 raise ValueError("o roteiro mudou; não é seguro retomar este checkpoint")
+            # A política de áudio pode mudar entre a execução original e a
+            # retomada sem alterar os comandos nem sua assinatura.
+            estado["criterio_conclusao"] = self._criterio_conclusao()
+            estado["voz_silenciada_durante_teste"] = bool(
+                self.configuracao.silenciar_voz_durante_teste
+            )
             return dict(estado)
         estado = self._estado_inicial()
         self._gravar_checkpoint(estado)
@@ -260,6 +290,114 @@ class RoteiroTesteConversaRuntime:
             arquivo.write(str(texto or ""))
             arquivo.flush()
             os.fsync(arquivo.fileno())
+
+    def _anexar_plano_bruto(
+        self,
+        *,
+        indice: int,
+        comando: str,
+        plano: Mapping[str, Any] | None,
+    ) -> None:
+        registro = {
+            "indice": int(indice),
+            "comando": str(comando or ""),
+            "observado_em": self.clock(),
+            "plano": dict(plano or {}),
+        }
+        with open(self.planos_path, "a", encoding="utf-8", newline="\n") as arquivo:
+            arquivo.write(json.dumps(registro, ensure_ascii=False) + "\n")
+            arquivo.flush()
+            os.fsync(arquivo.fileno())
+
+    @staticmethod
+    def _avaliacao_mecanica(
+        plano: Mapping[str, Any] | None,
+        *,
+        respondeu: bool,
+    ) -> dict[str, Any]:
+        retrato = dict(plano or {})
+        comandos = [
+            dict(item) for item in retrato.get("comandos") or []
+            if isinstance(item, Mapping)
+        ]
+        execucoes = [item.get("executou") for item in comandos]
+        confirmacoes = [item.get("confirmado") for item in comandos]
+
+        def resumir(valores: list[Any], *, positivo: str, negativo: str) -> str:
+            if not valores:
+                return "sem_comando_observado"
+            if any(valor is True for valor in valores):
+                return positivo
+            if all(valor is False for valor in valores):
+                return negativo
+            return "indeterminado"
+
+        return {
+            "respondeu": bool(respondeu),
+            "plano_observado": bool(retrato),
+            "quantidade_comandos": len(comandos),
+            "execucao": resumir(
+                execucoes,
+                positivo="alguma_etapa_executada",
+                negativo="nenhuma_etapa_executada",
+            ),
+            "confirmacao": resumir(
+                confirmacoes,
+                positivo="alguma_etapa_confirmada",
+                negativo="nenhuma_etapa_confirmada",
+            ),
+            # O roteiro não conhece a expectativa semântica de cada frase. Dar
+            # nota aqui seria repetir o antigo falso positivo de "respondido".
+            "intencao_correta": "nao_avaliado",
+            "fala_coerente": "nao_avaliado",
+        }
+
+    @staticmethod
+    def _resumo_plano_markdown(plano: Mapping[str, Any] | None) -> str:
+        retrato = dict(plano or {})
+        comandos = [
+            dict(item) for item in retrato.get("comandos") or []
+            if isinstance(item, Mapping)
+        ]
+        if not retrato:
+            return ""
+        if not comandos:
+            fase = str(retrato.get("fase") or "observado").strip()
+            return f"**Plano observado:** {fase}; sem comando operacional.\n\n"
+        itens = []
+        for item in comandos[:8]:
+            intent = str(item.get("intent") or "SEM_INTENT").strip()
+            status = str(item.get("status") or "sem_status").strip()
+            itens.append(
+                f"`{intent}` → `{status}` "
+                f"(executou={item.get('executou')!r}, "
+                f"confirmado={item.get('confirmado')!r})"
+            )
+        sufixo = f"; e mais {len(comandos) - 8}" if len(comandos) > 8 else ""
+        return "**Plano observado:** " + "; ".join(itens) + sufixo + ".\n\n"
+
+    @staticmethod
+    def _plano_compacto_checkpoint(
+        plano: Mapping[str, Any] | None,
+    ) -> dict[str, Any]:
+        retrato = dict(plano or {})
+        comandos = [
+            dict(item) for item in retrato.get("comandos") or []
+            if isinstance(item, Mapping)
+        ]
+        return {
+            "fase": str(retrato.get("fase") or ""),
+            "erros": [str(item)[:240] for item in retrato.get("erros") or []][:8],
+            "comandos": [{
+                chave: item.get(chave)
+                for chave in (
+                    "intent", "alvo", "status", "executou", "confirmado",
+                    "confirmacao_oferecida", "evidencia_confirmacao",
+                )
+                if chave in item
+            } for item in comandos[:12]],
+            "plano_bruto": "planos.jsonl",
+        }
 
     def _item(self, indice: int) -> dict[str, Any]:
         return dict(self._estado["itens"][indice])
@@ -312,7 +450,137 @@ class RoteiroTesteConversaRuntime:
         except Exception:
             return {}
 
+    @staticmethod
+    def _texto_plano(texto: Any) -> str:
+        return re.sub(r"\s+", " ", str(texto or "")).strip().casefold()
+
+    @classmethod
+    def _plano_corresponde_ao_turno(
+        cls,
+        plano: Mapping[str, Any] | None,
+        *,
+        comando: str,
+        plano_id_anterior: Any,
+    ) -> bool:
+        retrato = dict(plano or {})
+        if not retrato:
+            return False
+        if cls._texto_plano(retrato.get("texto_usuario")) != cls._texto_plano(comando):
+            return False
+        plano_id = retrato.get("id")
+        if plano_id_anterior not in (None, "") and plano_id == plano_id_anterior:
+            return False
+        return True
+
+    @classmethod
+    def _resultado_turno_terminal(
+        cls,
+        plano: Mapping[str, Any] | None,
+        *,
+        comando: str,
+        plano_id_anterior: Any,
+    ) -> tuple[bool, str]:
+        """Reconhece o contrato final do turno sem exigir falso sucesso.
+
+        Uma falha observada e um pedido de confirmação também encerram o
+        comando atual. Isso permite que o roteiro envie, respectivamente, o
+        próximo caso ou o ``Sim``/``Não`` que resolve a pendência. Estados
+        intermediários nunca liberam a fila.
+        """
+
+        if not cls._plano_corresponde_ao_turno(
+            plano,
+            comando=comando,
+            plano_id_anterior=plano_id_anterior,
+        ):
+            return False, "plano_de_outro_turno"
+        retrato = dict(plano or {})
+        comandos = [
+            dict(item) for item in retrato.get("comandos") or []
+            if isinstance(item, Mapping)
+        ]
+        if not comandos:
+            if retrato.get("erros"):
+                return True, "erro_publicado"
+            if not bool(retrato.get("requer_execucao")):
+                return True, "resposta_sem_execucao"
+            if retrato.get("autoriza_execucao") is False:
+                return True, "execucao_nao_autorizada"
+            if str(retrato.get("fase") or "").strip().casefold() in {
+                "executado", "falha_execucao", "fala_verificada",
+                "tratado_prioritario", "tratado_pre_fluxo",
+            }:
+                # O turno acabou, porém nenhuma habilidade publicou contrato.
+                # Isso é uma falha observável do teste, não uma execução ainda
+                # em andamento; registrar e avançar evita um falso travamento.
+                return True, "execucao_nao_publicada"
+            return False, "execucao_sem_resultado"
+
+        estados_intermediarios = {
+            "", "pendente", "planejado", "solicitado", "enviado",
+            "em_execucao", "executando", "processando",
+        }
+        contrato_incompleto = False
+        for item in comandos:
+            status = str(item.get("status") or "").strip().casefold()
+            if (
+                not str(item.get("intent") or "").strip()
+                or status in estados_intermediarios
+                or "executou" not in item
+                or "confirmado" not in item
+            ):
+                contrato_incompleto = True
+                break
+        if contrato_incompleto:
+            fase = str(retrato.get("fase") or "").strip().casefold()
+            if fase in {
+                "executado", "falha_execucao", "fala_verificada",
+                "tratado_prioritario", "tratado_pre_fluxo",
+            }:
+                # A fase terminal prova que o executor já devolveu o controle.
+                # Um status vazio/sem confirmação não vai amadurecer depois:
+                # é quebra do contrato operacional. O roteiro registra a falha
+                # e continua, em vez de consumir todo o timeout e congelar.
+                return True, "contrato_operacional_incompleto"
+            return False, "comando_ainda_em_execucao"
+        if any(
+            str(item.get("status") or "").strip().casefold()
+            in {"aguardando_confirmacao", "confirmacao_pendente"}
+            for item in comandos
+        ):
+            return True, "aguardando_confirmacao_usuario"
+        if any(item.get("executou") is False for item in comandos):
+            return True, "falha_confirmada"
+        if any(item.get("confirmado") is True for item in comandos):
+            return True, "execucao_confirmada"
+        return True, "resultado_final_sem_observacao_externa"
+
+    def _aguardar_resultado_turno(
+        self,
+        *,
+        comando: str,
+        plano_id_anterior: Any,
+        prazo: float,
+    ) -> tuple[bool, str, dict[str, Any]]:
+        ultimo_plano: dict[str, Any] = {}
+        ultimo_motivo = "plano_ausente"
+        while not self._stop.is_set():
+            ultimo_plano = self._plano_atual()
+            concluido, ultimo_motivo = self._resultado_turno_terminal(
+                ultimo_plano,
+                comando=comando,
+                plano_id_anterior=plano_id_anterior,
+            )
+            if concluido:
+                return True, ultimo_motivo, ultimo_plano
+            if self.monotonic() >= prazo:
+                break
+            self.sleep(min(0.05, max(0.0, prazo - self.monotonic())))
+        return False, ultimo_motivo, ultimo_plano
+
     def _voz_ocupada(self) -> bool:
+        if self.configuracao.silenciar_voz_durante_teste:
+            return False
         if not callable(self.voz_ocupada_getter):
             return False
         try:
@@ -329,6 +597,8 @@ class RoteiroTesteConversaRuntime:
         corrida e também o pequeno intervalo entre dois segmentos de voz.
         """
 
+        if self.configuracao.silenciar_voz_durante_teste:
+            return True, False
         if not callable(self.voz_ocupada_getter):
             return True, False
         prazo = self.monotonic() + self.configuracao.timeout_voz_s
@@ -415,6 +685,9 @@ class RoteiroTesteConversaRuntime:
         self._estado["preparacao"] = {
             "status": "modo_chat_confirmado",
             "atraso_inicial_s": atraso,
+            "voz_silenciada": bool(
+                self.configuracao.silenciar_voz_durante_teste
+            ),
         }
         self._gravar_checkpoint()
         self.log("🧪 [ROTEIRO] modo chat confirmado; iniciando os comandos")
@@ -596,6 +869,8 @@ class RoteiroTesteConversaRuntime:
             self.log("💬 Você:")
             self.log(f"> {comando}")
             self.log(f"🧪 [ROTEIRO:{numero:03d}] enviando: {comando}")
+            plano_anterior = self._plano_atual()
+            plano_id_anterior = plano_anterior.get("id")
             prazo = self.monotonic() + self.configuracao.timeout_resposta_s
             try:
                 retorno = self.enviar_entrada(comando)
@@ -621,11 +896,21 @@ class RoteiroTesteConversaRuntime:
                 resposta = self._resposta_atual
                 self._indice_aguardado = None
             if not respondeu or not resposta:
+                plano_sem_resposta = self._plano_atual()
+                self._anexar_plano_bruto(
+                    indice=indice,
+                    comando=comando,
+                    plano=plano_sem_resposta,
+                )
                 self._atualizar_item(
                     indice,
                     status="sem_resposta",
                     finalizado_em=self.clock(),
-                    plano=self._plano_atual(),
+                    plano=self._plano_compacto_checkpoint(plano_sem_resposta),
+                    avaliacao=self._avaliacao_mecanica(
+                        plano_sem_resposta,
+                        respondeu=False,
+                    ),
                 )
                 self._anexar_conversa(
                     "### Laylay\n\n> ⚠️ Nenhuma resposta foi observada dentro "
@@ -637,14 +922,63 @@ class RoteiroTesteConversaRuntime:
                     break
                 continue
             plano = self._plano_atual()
+            resultado_turno_concluido = True
+            motivo_resultado = "barreira_desativada"
+            if self.configuracao.aguardar_confirmacao_execucao:
+                (
+                    resultado_turno_concluido,
+                    motivo_resultado,
+                    plano,
+                ) = self._aguardar_resultado_turno(
+                    comando=comando,
+                    plano_id_anterior=plano_id_anterior,
+                    prazo=prazo,
+                )
+            if not resultado_turno_concluido:
+                self._anexar_plano_bruto(
+                    indice=indice,
+                    comando=comando,
+                    plano=plano,
+                )
+                self._atualizar_item(
+                    indice,
+                    status="resultado_nao_finalizado",
+                    resposta=resposta,
+                    finalizado_em=self.clock(),
+                    plano=self._plano_compacto_checkpoint(plano),
+                    avaliacao=self._avaliacao_mecanica(plano, respondeu=True),
+                    resultado_turno_concluido=False,
+                    motivo_resultado=motivo_resultado,
+                )
+                self._anexar_conversa(
+                    f"### Laylay\n\n{resposta}\n\n"
+                    "> ⚠️ A resposta apareceu, mas o plano deste turno não "
+                    "publicou um resultado final. O próximo comando não foi "
+                    "enviado.\n\n"
+                )
+                self.log(
+                    f"⚠️ [ROTEIRO:{numero:03d}] resultado não finalizado "
+                    f"| motivo={motivo_resultado}; sequência interrompida"
+                )
+                sucesso_total = False
+                break
             voz_concluida, voz_observada = self._aguardar_voz_concluir()
             if not voz_concluida:
+                self._anexar_plano_bruto(
+                    indice=indice,
+                    comando=comando,
+                    plano=plano,
+                )
                 self._atualizar_item(
                     indice,
                     status="voz_nao_finalizada",
                     resposta=resposta,
                     finalizado_em=self.clock(),
-                    plano=plano,
+                    plano=self._plano_compacto_checkpoint(plano),
+                    avaliacao=self._avaliacao_mecanica(
+                        plano,
+                        respondeu=True,
+                    ),
                     voz_observada=voz_observada,
                 )
                 self._anexar_conversa(
@@ -659,28 +993,47 @@ class RoteiroTesteConversaRuntime:
                 sucesso_total = False
                 break
             finalizado_em = self.clock()
+            avaliacao = self._avaliacao_mecanica(plano, respondeu=True)
+            self._anexar_plano_bruto(
+                indice=indice,
+                comando=comando,
+                plano=plano,
+            )
             self._atualizar_item(
                 indice,
                 status="respondido",
                 resposta=resposta,
                 finalizado_em=finalizado_em,
-                plano=plano,
+                plano=self._plano_compacto_checkpoint(plano),
+                avaliacao=avaliacao,
                 voz_concluida=True,
                 voz_observada=voz_observada,
+                voz_silenciada=bool(
+                    self.configuracao.silenciar_voz_durante_teste
+                ),
+                resultado_turno_concluido=resultado_turno_concluido,
+                motivo_resultado=motivo_resultado,
             )
-            bloco_plano = ""
-            if plano:
-                bloco_plano = (
-                    "<details><summary>Plano observado</summary>\n\n```json\n"
-                    + json.dumps(plano, ensure_ascii=False, indent=2)
-                    + "\n```\n</details>\n\n"
-                )
+            bloco_plano = self._resumo_plano_markdown(plano)
             self._anexar_conversa(
                 f"### Laylay\n\n{resposta}\n\n{bloco_plano}---\n\n"
             )
-            estado_voz = "voz concluída" if voz_observada else "sem voz pendente"
+            estado_voz = (
+                "voz desativada pelo roteiro"
+                if self.configuracao.silenciar_voz_durante_teste
+                else ("voz concluída" if voz_observada else "sem voz pendente")
+            )
             self.log(
-                f"✅ [ROTEIRO:{numero:03d}] resposta salva; {estado_voz}; avançando"
+                (
+                    f"⚠️ [ROTEIRO:{numero:03d}] resposta final sem contrato "
+                    "operacional; falha registrada; avançando"
+                    if motivo_resultado in {
+                        "execucao_nao_publicada",
+                        "contrato_operacional_incompleto",
+                    }
+                    else f"✅ [ROTEIRO:{numero:03d}] resposta e resultado salvos "
+                    f"| resultado={motivo_resultado}; {estado_voz}; avançando"
+                )
             )
             if self.configuracao.intervalo_comandos_s:
                 self.sleep(self.configuracao.intervalo_comandos_s)

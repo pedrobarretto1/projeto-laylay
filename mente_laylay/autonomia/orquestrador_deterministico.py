@@ -21,7 +21,9 @@ from mente_laylay.autonomia.roteador_deterministico import (
     detectar_abrir_app_ou_site,
     detectar_confirmacao_porteiro,
     detectar_clima,
+    detectar_consulta_abas,
     detectar_consulta_aprendizados,
+    detectar_continuacao_resultado_web,
     detectar_email_notificacao_briefing,
     detectar_fechar_alvo,
     detectar_janela_contextual,
@@ -232,6 +234,13 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     if consulta_clima and modalidade_iot != "deliberativo":
         return consulta_clima
 
+    consulta_abas = detectar_consulta_abas(
+        texto_normalizado_previo,
+        params_cb=lambda **kwargs: kwargs,
+    )
+    if consulta_abas and modalidade_iot != "deliberativo":
+        return consulta_abas
+
     consulta_arquivo = detectar_intencao_arquivos(
         texto,
         params_cb=lambda **kwargs: kwargs,
@@ -250,6 +259,14 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     )
     if consulta_aprendizados:
         return consulta_aprendizados
+
+    continuacao_resultado_web = detectar_continuacao_resultado_web(
+        texto_normalizado_previo,
+        dict(mente_previa or {}) if isinstance(mente_previa, Mapping) else {},
+        params_cb=lambda **kwargs: kwargs,
+    )
+    if continuacao_resultado_web:
+        return continuacao_resultado_web
 
     referente_atual = selecionar_referente_saliente(
         dict(mente_previa or {}) if isinstance(mente_previa, Mapping) else {},
@@ -478,6 +495,31 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
                 and bloqueio_iot_original
             ):
                 continue
+            if str(resultado.get("intent") or "").upper().strip() == "ORGANIZAR_DESKTOP":
+                params_layout = dict(resultado.get("params") or {})
+                chaves_layout = ("left", "right", "esquerda", "direita")
+                precisa_referente = any(
+                    bool(str(params_layout.get(chave) or "").strip())
+                    and valor_e_referencia_contextual(
+                        str(params_layout.get(chave) or "")
+                    )
+                    for chave in chaves_layout
+                )
+                if precisa_referente:
+                    referente_app = selecionar_referente_saliente(
+                        dict(mente_atual or {}) if isinstance(mente_atual, Mapping) else {},
+                        dominio="app",
+                        ttl_s=300.0,
+                    )
+                    alvo_app = str(referente_app.get("alvo") or "").strip()
+                    if alvo_app:
+                        for chave in chaves_layout:
+                            valor = str(params_layout.get(chave) or "").strip()
+                            if valor and valor_e_referencia_contextual(valor):
+                                params_layout[f"{chave}_original"] = valor
+                                params_layout[chave] = alvo_app
+                                params_layout["referencia_contextual"] = True
+                        resultado = {**resultado, "params": params_layout}
             return resultado
     return None
 

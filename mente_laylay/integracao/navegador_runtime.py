@@ -188,6 +188,12 @@ class NavegadorOperacoesRuntime:
     def fechar_abas_vazias(self) -> bool:
         return bool(self.ambiente.fechar_abas_vazias())
 
+    def abrir_primeiro_resultado(self, consulta: str = "") -> bool:
+        return bool(self.comandos.enviar(
+            "click_first_result",
+            {"query": str(consulta or "").strip()},
+        ))
+
     def clicar(self, seletor: str) -> bool:
         return bool(self.comandos.enviar(
             "click", {"selector": str(seletor or "").strip()},

@@ -121,7 +121,16 @@ def test_close_idle_tabs_preserva_retorno_falso_quando_falha() -> None:
 
     assert despacho.tratado is True
     assert despacho.retorno is False
-    assert eventos == [("resultado", "falha_execucao", {"executou": False})]
+    assert eventos == [(
+        "resultado", "falha_execucao",
+        {
+            "executou": False,
+            "confirmado": False,
+            "alvo_resolvido": "abas paradas sugeridas",
+            "params_resolvidos": {"abas_sugeridas": [], "quantidade": 0},
+            "detalhe": "ao menos uma aba sugerida não devolveu confirmação de fechamento",
+        },
+    )]
 
 
 def test_close_tab_no_pc_b_preserva_alvo_preciso() -> None:
@@ -142,7 +151,20 @@ def test_close_tab_no_pc_b_preserva_alvo_preciso() -> None:
 
     assert despacho == ResultadoDespacho.concluido()
     assert remotos == [{"action": "close_specific_tab", "target": "host:youtube"}]
-    assert eventos[0] == ("resultado", "aba_fechada", {"executou": True})
+    assert eventos[0] == (
+        "resultado",
+        "fechamento_aba_solicitado",
+        {
+            "executou": True,
+            "confirmado": None,
+            "alvo_resolvido": "youtube",
+            "params_resolvidos": {},
+            "detalhe": (
+                "o cliente remoto recebeu a solicitação, mas não devolveu "
+                "o estado final da aba"
+            ),
+        },
+    )
 
 
 def test_close_tab_nao_escala_para_fechar_programa() -> None:
@@ -175,7 +197,17 @@ def test_close_tab_nao_escala_para_fechar_programa() -> None:
     assert navegador.chamadas == [(
         "close_specific_tab", {"target": "host:prime video"},
     )]
-    assert eventos[0] == ("resultado", "aba_fechada", {"executou": True})
+    assert eventos[0] == (
+        "resultado",
+        "aba_fechada",
+        {
+            "executou": True,
+            "confirmado": True,
+            "alvo_resolvido": "prime video",
+            "params_resolvidos": {},
+            "detalhe": "a extensão confirmou a remoção da aba observada",
+        },
+    )
 
 
 def test_search_de_clima_continua_redirecionando_sem_abrir_google() -> None:
@@ -249,4 +281,5 @@ def test_roteador_principal_delega_close_idle_tabs_ao_executor_web() -> None:
     )
 
     assert retorno is True
-    assert resultados and resultados[0].status == "fechamento_abas_solicitado"
+    assert resultados and resultados[0].status == "abas_paradas_fechadas"
+    assert resultados[0].confirmado is True

@@ -308,7 +308,7 @@ def test_ui_m4_sincroniza_linha_e_permite_ver_letra_completa(monkeypatch) -> Non
     app.processEvents()
 
     assert "Primeira" in pagina.letra_texto.text()
-    assert "#FF5C76" in pagina.letra_texto.text()
+    assert "#FF647B" in pagina.letra_texto.text()
     assert pagina.letra_fonte.text() == "Letras fornecidas pela LRCLIB"
     assert "playlist Rock" in pagina.contexto_estado.text()
     pagina.letra_expandir.click()

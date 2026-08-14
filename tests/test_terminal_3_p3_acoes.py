@@ -262,12 +262,15 @@ def test_ui_nao_apaga_outro_turno_e_atividade_exige_confirmacao(monkeypatch) -> 
         "state": "partial", "summary": "Sem confirmação completa",
     })
     app.processEvents()
-    assert janela.central_inteligente.atividade_itens.text() == "Tudo quieto nesta sessão."
+    assert not janela.central_inteligente._eventos
 
     worker.mensagem.emit({
         "type": "action_state", "id": "acao", "action": "briefing",
         "state": "confirmed", "summary": "Briefing recuperado",
     })
     app.processEvents()
-    assert "Ação confirmada" in janela.central_inteligente.atividade_itens.text()
+    atividade = janela.central_inteligente.atividade_linhas[0]
+    assert atividade["text"].text() == "Ação confirmada"
+    assert atividade["widget"].isHidden() is False
+    assert janela.central_inteligente.atividade_estado.isHidden()
     janela.close()

@@ -147,15 +147,46 @@ class LixeiraLaylay:
         )
         return resultado
 
-    def restaurar_ultimo(self) -> ResultadoLixeira:
+    def restaurar_ultimo(
+        self,
+        caminho_esperado: str = "",
+        *,
+        ttl_s: float = 300.0,
+    ) -> ResultadoLixeira:
+        referencia = str(caminho_esperado or "").strip()
+        if not referencia:
+            return ResultadoLixeira("referencia_exclusao_ausente", False)
+        try:
+            origem_esperada = Path(referencia).expanduser().resolve(strict=False)
+        except (OSError, RuntimeError, ValueError):
+            return ResultadoLixeira("referencia_exclusao_invalida", False, referencia)
         with self._lock:
             registros = self._carregar()
             item = next(
-                (registro for registro in reversed(registros) if not registro.get("restaurado_em")),
+                (
+                    registro
+                    for registro in reversed(registros)
+                    if not registro.get("restaurado_em")
+                    and os.path.normcase(str(
+                        Path(str(registro.get("origem") or ""))
+                        .expanduser()
+                        .resolve(strict=False)
+                    )) == os.path.normcase(str(origem_esperada))
+                ),
                 None,
             )
             if not item:
-                return ResultadoLixeira("lixeira_vazia", False)
+                return ResultadoLixeira(
+                    "exclusao_vinculada_nao_encontrada", False, str(origem_esperada),
+                )
+            try:
+                idade = float(self._agora()) - float(item.get("apagado_em") or 0.0)
+            except (TypeError, ValueError):
+                idade = float(ttl_s) + 1.0
+            if idade < 0.0 or idade > max(1.0, float(ttl_s)):
+                return ResultadoLixeira(
+                    "exclusao_vinculada_expirada", False, str(origem_esperada),
+                )
             origem = Path(str(item.get("origem") or "")).expanduser()
             atual = Path(str(item.get("destino") or "")).expanduser()
             if not atual.exists():
@@ -192,8 +223,8 @@ def existe_exclusao_pendente() -> bool:
     return _RUNTIME.tem_confirmacao_pendente()
 
 
-def restaurar_ultimo_item() -> ResultadoLixeira:
-    return _RUNTIME.restaurar_ultimo()
+def restaurar_ultimo_item(caminho_esperado: str = "") -> ResultadoLixeira:
+    return _RUNTIME.restaurar_ultimo(caminho_esperado)
 
 
 def configurar_pendencia_exclusao(pendencia_runtime: Any) -> None:

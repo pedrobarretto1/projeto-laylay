@@ -67,8 +67,11 @@ def analisar_protecao_operacional(
     if re.search(
         r"^(?:nao|não|nunca|jamais)\s+(?:(?:pode|deve|vai)\s+)?(?:me\s+)?"
         r"(?:abre|abra|fecha|feche|liga|ligue|acende|desliga|desligue|toca|"
-        r"toque|coloca|apaga|remove|muda|ajusta|deixa|olha|olhe|veja|ver|"
-        r"captura|capture|mostra|mostre|passa|passe|resume|resuma|explique)\b",
+        r"toque|coloca|coloque|cria|crie|apaga|apague|remove|remova|deleta|"
+        r"delete|move|mova|renomeia|renomeie|escreve|escreva|grava|grave|"
+        r"muda|ajusta|deixa|olha|olhe|veja|ver|captura|capture|mostra|"
+        r"mostre|passa|passe|resume|resuma|explique|maximiza|maximize|"
+        r"organiza|organize|pesquisa|pesquise|busca|busque|encontra|encontre)\b",
         t,
     ):
         return {
@@ -84,7 +87,11 @@ def analisar_protecao_operacional(
         r".*\b(?:abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|"
         r"remover|usar|fazer|resumir|explicar|ver|olhar|mostrar|passar)\b",
         t,
-    ) or re.search(r"\b(?:queria|gostaria)\s+de\s+saber\s+como\b", t):
+    ) or re.search(r"\b(?:queria|gostaria)\s+de\s+saber\s+como\b", t) or re.search(
+        r"^como\s+(?:eu\s+)?(?:abriria|fecharia|criaria|apagaria|removeria|"
+        r"tocaria|ligaria|desligaria|maximizaria|organizaria|usaria|faria)\b",
+        t,
+    ):
         return {
             "bloqueia_execucao": True,
             "modalidade": "pergunta",
@@ -286,8 +293,12 @@ def _classificar_modalidade_base(
         )
         return resultado
     if re.fullmatch(
-        r"(?:para|pare|pausa|pause)\s+(?:a\s+)?m[uú]sica|"
-        r"(?:volta|retoma|continua)\s+(?:a\s+)?(?:tocar|m[uú]sica)",
+        r"(?:(?:para|pare|pausa|pause)\s+(?:a\s+)?m[uú]sica|"
+        r"(?:volta|retoma|continua)\s+(?:a\s+)?(?:tocar|m[uú]sica)|"
+        r"(?:pr[oó]xima)(?:\s+(?:m[uú]sica|faixa))?|"
+        r"volta\s+(?:para|pra)\s+(?:a\s+)?anterior|"
+        r"(?:m[uú]sica|faixa)\s+anterior)"
+        r"[.!?]*",
         t,
     ):
         resultado.update(
@@ -296,7 +307,13 @@ def _classificar_modalidade_base(
             acao_explicita=True, autoriza_execucao=True, natureza_acao="pedido_direto",
         )
         return resultado
-    if re.search(r"\b(?:me\s+lembra|lembra\s+(?:de|pra)|me\s+avisa|cria\s+(?:um\s+)?lembrete|agende|agendar)\b", t):
+    if re.search(
+        r"^(?:(?:lay|laylay)[, ]+)?(?:por\s+favor\s+)?(?:"
+        r"me\s+lembra(?:\s+(?:de|pra|para))?|"
+        r"lembra(?:-me)?\s+(?:de|pra|para)|me\s+avisa|"
+        r"cria\s+(?:um\s+)?lembrete|agende|agendar)\b",
+        t,
+    ):
         resultado.update(
             modalidade="comando", confianca=0.99, motivo="pedido explícito de agendamento",
             acao_explicita=True, autoriza_execucao=True, natureza_acao="pedido_direto",
@@ -353,6 +370,35 @@ def _classificar_modalidade_base(
             modalidade="comando", confianca=0.98,
             motivo="comando determinístico explícito",
             acao_explicita=True, autoriza_execucao=True, natureza_acao="pedido_direto",
+        )
+        return resultado
+
+    # Um desejo formulado como estado imediato continua sendo um pedido
+    # direto quando o usuário explicita que quer o alvo aberto ``agora``.
+    # Sem esse marcador temporal, frases como "seria legal ter..." continuam
+    # deliberativas e não concedem autorização.
+    if re.fullmatch(
+        r"(?:eu\s+)?(?:queria|gostaria)\s+que\s+(?:(?:o|a)\s+)?"
+        r".+?\s+estivesse\s+abert[oa]\s+agora[.!?]*",
+        t,
+    ):
+        resultado.update(
+            modalidade="comando", confianca=0.96,
+            motivo="estado operacional imediato pedido explicitamente",
+            acao_explicita=True, autoriza_execucao=True,
+            natureza_acao="pedido_direto",
+        )
+        return resultado
+    if re.match(
+        r"^(?:troca|troque|muda|mude|altera|altere|remarca|remarque)\b"
+        r".*\b(?:amanh[ãa]|hoje|\d{1,2}(?::\d{2}|\s+horas?))\b",
+        t,
+    ):
+        resultado.update(
+            modalidade="comando", confianca=0.96,
+            motivo="reagendamento contextual com novo horário explícito",
+            acao_explicita=True, autoriza_execucao=True,
+            depende_contexto=True, natureza_acao="pedido_direto",
         )
         return resultado
 
@@ -565,6 +611,10 @@ def classificar_modalidade_turno(
     turno_protegido = (
         (
             modalidade_principal in {"pergunta", "deliberacao", "correcao"}
+            or (
+                modalidade_principal == "recusa"
+                and str(principal.get("natureza_acao") or "") == "cancelamento"
+            )
             or str(principal.get("natureza_acao") or "") == "decepcao"
         )
         and not comando_separado

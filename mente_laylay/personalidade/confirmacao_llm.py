@@ -34,6 +34,7 @@ INTENTS_INFORMATIVOS = frozenset({
     "READ_URGENT_EMAILS", "LER_EMAILS", "LER_EMAILS_URGENTES",
     "WEATHER", "CLIMA", "LISTAR_AGENDAMENTOS", "LER_NOTIFICACOES",
     "NOTIFICATIONS",
+    "LIST_TABS",
     # A confirmação não recebe o tipo original no novo turno. Reescrevê-la
     # fazia a LLM chamar uma pasta de "arquivo"; preserve a fala factual.
     "CONFIRM_DELETE_ITEM",

@@ -144,6 +144,47 @@ def test_referencia_imediata_prefere_a_continuidade_geral():
     assert referencia["alvo"] == "alternativo"
 
 
+def test_falha_nao_substitui_referencia_ativa_confirmada() -> None:
+    estado = registrar_resultado_execucao(
+        estado_mental_inicial(),
+        {
+            "intent": "APP_OPEN",
+            "params": {"nome_app": "opera"},
+            "status": "aplicativo_aberto",
+            "executou": True,
+            "confirmado": True,
+        },
+        "abre o Opera",
+    )
+    estado = registrar_resultado_execucao(
+        estado,
+        {
+            "intent": "APP_OPEN",
+            "params": {"nome_app": "aplicativo que não existe"},
+            "status": "aplicativo_nao_encontrado",
+            "executou": False,
+            "confirmado": False,
+        },
+        "abre um aplicativo chamado aplicativo que não existe",
+    )
+
+    assert estado["ultima_acao_intent"] == "APP_OPEN"
+    assert estado["ultima_acao_promovivel"] is False
+    assert estado["ultimo_app_janela"] == "opera"
+    continuidade = selecionar_continuidade(estado, texto="fecha ele")
+    assert continuidade["dominio"] == "app"
+    assert continuidade["alvo"] == "opera"
+
+    referencia = referencia_contextual_imediata(
+        mente_integrada_estado=estado,
+        foco_vivo={},
+        texto_atual="fecha ele",
+    )
+    assert referencia["tipo"] == "app"
+    assert referencia["alvo"] == "opera"
+    assert referencia["origem_continuidade"] == "geral"
+
+
 def test_arquivo_criado_vence_terminal_em_foco_ao_abrir_referencia(tmp_path) -> None:
     caminho = str(tmp_path / "teste.txt")
     estado = registrar_resultado_execucao(

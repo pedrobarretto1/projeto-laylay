@@ -54,6 +54,14 @@ def test_nvidia_smi_publica_uso_e_vram_percentual_com_cache() -> None:
 
     def executar(comando, **_kwargs):
         chamadas.append(list(comando))
+        if "--query-gpu=name,driver_version,memory.total" in comando:
+            return SimpleNamespace(
+                returncode=0,
+                stdout=(
+                    "NVIDIA GeForce RTX 3060, 551.86, 6144\n"
+                    "NVIDIA GeForce GTX 1650, 551.86, 4096\n"
+                ),
+            )
         return SimpleNamespace(
             returncode=0,
             stdout="25, 4514, 6144\n7, 1024, 4096\n",
@@ -71,11 +79,21 @@ def test_nvidia_smi_publica_uso_e_vram_percentual_com_cache() -> None:
     assert primeiro == {
         "gpu_percent": 25.0,
         "vram_percent": 73.5,
+        "gpu_name": "NVIDIA GeForce RTX 3060",
+        "driver_version": "551.86",
+        "vram_total_mb": 6144.0,
         "source": "nvidia-smi",
     }
     assert segundo == primeiro
-    assert len(chamadas) == 1
-    assert "--query-gpu=utilization.gpu,memory.used,memory.total" in chamadas[0]
+    assert len(chamadas) == 2
+    assert any(
+        "--query-gpu=utilization.gpu,memory.used,memory.total" in comando
+        for comando in chamadas
+    )
+    assert any(
+        "--query-gpu=name,driver_version,memory.total" in comando
+        for comando in chamadas
+    )
 
 
 def test_fallback_windows_agrega_processos_da_mesma_engine_sem_inventar_vram() -> None:

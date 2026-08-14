@@ -43,6 +43,28 @@ _CORPO_OU_SENTIDOS_INVENTADOS = re.compile(
     r"\bmeus?\s+olhos\b",
     re.IGNORECASE,
 )
+_FADIGA_OU_RESPIRACAO_INVENTADA = re.compile(
+    r"\b(?:eu\s+)?(?:t[oô]|estou|fico|fiquei)\s+"
+    r"(?:cansad[ao]|exaust[ao]|sem\s+ar)\b|"
+    r"\b(?:isso|essa?\s+(?:m[uú]sica|som)|(?:o\s+)?(?:metal|rock)|"
+    r"m[uú]sica|som)\s+me\s+(?:deixa|deixou|deixaria)\s+"
+    r"(?:cansad[ao]|exaust[ao]|sem\s+ar)\b|"
+    r"\b(?:preciso|quero)\s+(?:de\s+)?(?:um\s+)?(?:tempo|espa[cç]o)\s+"
+    r"(?:para|pra)\s+respirar\b|"
+    r"\b(?:isso|essa?\s+(?:m[uú]sica|som)|(?:o\s+)?(?:metal|rock)|"
+    r"m[uú]sica|som)\s+me\s+deixa\s+mais\s+[^.!?]{1,45}"
+    r"\b(?:para|pra)\s+respirar\b|"
+    r"\b(?:me\s+)?(?:cansa|cansou|sobrecarrega|sobrecarregou)\s+"
+    r"(?:meu|o\s+meu)\s+(?:corpo|f[oô]lego)\b",
+    re.IGNORECASE,
+)
+_GENERO_AUTORREFERENTE_INCOERENTE = re.compile(
+    # No início de uma fala ou de uma nova frase, "obrigado" é a flexão da
+    # própria Laylay, não uma citação do usuário. Citações como "você disse
+    # obrigado" continuam válidas.
+    r"(?:^|[.!?…]\s+)(?:eu\s+)?obrigado(?:\s+por\b|[.!?…]|$)",
+    re.IGNORECASE,
+)
 _RELACAO_PESSOAL_INVENTADA = re.compile(
     r"\b(?:meu|minha)\s+(?:irm[aã]o|irm[aã]|pai|m[aã]e|namorad[oa]|"
     r"marido|esposa|primo|prima|tio|tia|av[oó])\b",
@@ -71,6 +93,10 @@ def detectar_experiencia_pessoal_inventada(fala: str) -> list[str]:
         problemas.append("passado_compartilhado_inventado")
     if _CORPO_OU_SENTIDOS_INVENTADOS.search(texto):
         problemas.append("corpo_ou_sentidos_inventados")
+    if _FADIGA_OU_RESPIRACAO_INVENTADA.search(texto):
+        problemas.append("fadiga_ou_respiracao_inventada")
+    if _GENERO_AUTORREFERENTE_INCOERENTE.search(texto):
+        problemas.append("genero_autorreferente_incoerente")
     if _ACAO_FISICA_FUTURA.search(texto):
         problemas.append("capacidade_fisica_futura_inventada")
     if _RELACAO_PESSOAL_INVENTADA.search(texto):
