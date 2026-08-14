@@ -20,6 +20,12 @@ import threading
 import time
 from typing import Any, Callable, Mapping, Sequence, TextIO
 
+from mente_laylay.integracao.avaliador_roteiro_teste import (
+    avaliar_turno_roteiro,
+    gravar_relatorios_roteiro,
+)
+# UPGRADE_TESTADOR_SEMANTICO_V32_20260814
+
 
 @dataclass(frozen=True)
 class ConfiguracaoRoteiro:
@@ -403,11 +409,84 @@ class RoteiroTesteConversaRuntime:
         return dict(self._estado["itens"][indice])
 
     def _atualizar_item(self, indice: int, **campos: Any) -> None:
+        # V32: ENRIQUECIMENTO_SEMANTICO_CENTRAL
         with self._lock:
             item = dict(self._estado["itens"][indice])
+
+            if isinstance(campos.get("avaliacao"), Mapping):
+                avaliacao_mecanica = dict(campos.get("avaliacao") or {})
+                plano_avaliacao = campos.get("plano")
+
+                if not isinstance(plano_avaliacao, Mapping):
+                    plano_avaliacao = item.get("plano")
+                if not isinstance(plano_avaliacao, Mapping):
+                    plano_avaliacao = {}
+
+                status_item = str(
+                    campos.get("status")
+                    or item.get("status")
+                    or ""
+                )
+                respondeu = bool(
+                    avaliacao_mecanica.get(
+                        "respondeu",
+                        status_item not in {"sem_resposta", "erro_envio"},
+                    )
+                )
+
+                try:
+                    campos["avaliacao"] = avaliar_turno_roteiro(
+                        indice=indice,
+                        comando=str(
+                            campos.get("comando")
+                            or item.get("comando")
+                            or self.configuracao.comandos[indice]
+                        ),
+                        resposta=str(
+                            campos.get(
+                                "resposta",
+                                item.get("resposta", ""),
+                            )
+                            or ""
+                        ),
+                        plano=plano_avaliacao,
+                        respondeu=respondeu,
+                        motivo_resultado=str(
+                            campos.get("motivo_resultado")
+                            or status_item
+                            or ""
+                        ),
+                        enviado_em=(
+                            campos.get("enviado_em")
+                            if campos.get("enviado_em") is not None
+                            else item.get("enviado_em")
+                        ),
+                        finalizado_em=campos.get("finalizado_em"),
+                        avaliacao_mecanica=avaliacao_mecanica,
+                    )
+                except Exception as erro:
+                    avaliacao_mecanica["avaliador_erro"] = type(erro).__name__
+                    campos["avaliacao"] = avaliacao_mecanica
+                    self.log(
+                        "⚠️ [ROTEIRO:AVALIADOR] falha ao avaliar turno "
+                        f"{indice + 1:03d} | tipo={type(erro).__name__}"
+                    )
+
             item.update(campos)
             self._estado["itens"][indice] = item
             self._gravar_checkpoint()
+
+            if isinstance(campos.get("avaliacao"), Mapping):
+                try:
+                    gravar_relatorios_roteiro(
+                        self._estado,
+                        self.diretorio,
+                    )
+                except Exception as erro:
+                    self.log(
+                        "⚠️ [ROTEIRO:RELATORIO] atualização indisponível "
+                        f"| tipo={type(erro).__name__}"
+                    )
 
     def observar_resposta(
         self,
@@ -1049,6 +1128,26 @@ class RoteiroTesteConversaRuntime:
             self._gravar_checkpoint()
         estado = "concluído" if sucesso_total else "interrompido"
         self._anexar_conversa(f"## Roteiro {estado}\n")
+        # V32: RESUMO_SEMANTICO_FINAL
+        try:
+            resumo_semantico = gravar_relatorios_roteiro(
+                self._estado,
+                self.diretorio,
+            )
+            self.log(
+                "📊 [ROTEIRO:RESUMO] "
+                f"avaliados={resumo_semantico.get('avaliados_semanticamente')} | "
+                f"passaram={resumo_semantico.get('passaram')} | "
+                f"falharam={resumo_semantico.get('falharam')} | "
+                f"alertas={resumo_semantico.get('alertas')} | "
+                f"p95={(resumo_semantico.get('latencia_s') or {}).get('p95')}s"
+            )
+        except Exception as erro:
+            self.log(
+                "⚠️ [ROTEIRO:RELATORIO] relatório final indisponível "
+                f"| tipo={type(erro).__name__}"
+            )
+
         self.log(
             f"🧪 [ROTEIRO] {estado} | conversa={self.conversa_path} "
             f"checkpoint={self.checkpoint_path}"
