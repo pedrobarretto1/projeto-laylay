@@ -178,6 +178,53 @@ def test_estrutura_recente_preserva_arquivo_sem_extensao(tmp_path) -> None:
     ) == str(arquivo)
 
 
+def test_nome_txt_resolve_arquivo_textual_recente_sem_extensao(tmp_path) -> None:
+    arquivo = tmp_path / "teste natural"
+    arquivo.write_text("conteúdo", encoding="utf-8")
+    ctx = {
+        "ultimo_arquivo_contextual": lambda: str(arquivo),
+        "ultima_pasta_contextual": lambda: str(tmp_path / "carlos teste"),
+        "estrutura_arquivo_recente": lambda: {
+            "tipo": "pasta",
+            "nome": "carlos teste",
+            "caminho": str(tmp_path / "carlos teste"),
+        },
+        "resolver_caminho": lambda valor: valor,
+    }
+
+    assert resolver_referencia_arquivo_contextual(
+        ctx,
+        "teste natural.txt",
+        "arquivo",
+    ) == str(arquivo)
+    assert resolver_referencia_arquivo_contextual(
+        ctx,
+        "outro arquivo.txt",
+        "arquivo",
+    ) == "outro arquivo.txt"
+
+
+def test_tenta_abrir_ele_reutiliza_arquivo_contextual_confirmado(tmp_path) -> None:
+    arquivo = tmp_path / "carlos teste" / "teste natural"
+    estado = {
+        "ultima_estrutura_arquivo_params": {
+            "tipo": "arquivo",
+            "arquivo_nome": arquivo.name,
+            "caminho": str(arquivo),
+            "tipo_arquivo": "texto",
+        },
+    }
+
+    assert detectar_intencao_arquivos(
+        "Tenta abrir ele.",
+        params_cb=lambda **params: params,
+        estado_mental=estado,
+    ) == {
+        "intent": "FILE_OPEN_RESULT",
+        "params": {"caminho": str(arquivo), "alvo": "teste natural"},
+    }
+
+
 def test_resolver_caminho_preserva_valor_se_callback_falhar() -> None:
     ctx = {
         "resolver_caminho": lambda _valor: (_ for _ in ()).throw(

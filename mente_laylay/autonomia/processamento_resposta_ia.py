@@ -74,6 +74,31 @@ _EMOCOES_RESPOSTA_IA = {
 }
 
 
+def _entrada_usuario_repetida_no_contexto(
+    texto_atual: str,
+    mensagens: List[Any],
+) -> bool:
+    """Confirma repetição somente pela troca recente, não pela fala da IA."""
+    atual = normalizar_texto_memoria(texto_atual)
+    if not atual:
+        return False
+    entradas = [
+        normalizar_texto_memoria(item.get("content"))
+        for item in mensagens
+        if isinstance(item, Mapping)
+        and str(item.get("role") or "").strip().casefold() == "user"
+        and str(item.get("content") or "").strip()
+    ]
+    if not entradas:
+        return False
+    # O histórico normalmente já inclui a entrada atual. Adaptadores mais
+    # antigos entregam apenas o histórico anterior; os dois formatos são
+    # aceitos sem transformar assuntos parecidos em repetição literal.
+    if entradas[-1] == atual:
+        return len(entradas) >= 2 and entradas[-2] == atual
+    return entradas[-1] == atual
+
+
 def filtrar_comandos_sem_pedido_atual(
     texto_usuario: str,
     comandos: List[dict],
@@ -589,6 +614,10 @@ def preparar_resposta_para_execucao(
     contexto_com = dict(contexto_comunicacao or {})
     plano_comunicacao = dict(contexto_com.get("plano_turno") or {})
     mensagens_comunicacao = list(contexto_com.get("mensagens") or [])
+    entrada_usuario_repetida = _entrada_usuario_repetida_no_contexto(
+        texto,
+        mensagens_comunicacao,
+    )
     ultima_resposta_comunicacao = next(
         (
             str(item.get("content") or "").strip()
@@ -612,6 +641,7 @@ def preparar_resposta_para_execucao(
             fala_limpa,
             plano=plano_comunicacao,
             ultima_resposta=ultima_resposta_comunicacao,
+            entrada_usuario_repetida=entrada_usuario_repetida,
         )
         if not comandos and not falha_tecnica_llm and not realidade_bloqueada
         else {"aceita": True, "problemas": [], "foco": {}}
@@ -661,6 +691,7 @@ def preparar_resposta_para_execucao(
                     candidata,
                     plano=plano_comunicacao,
                     ultima_resposta=ultima_resposta_comunicacao,
+                    entrada_usuario_repetida=entrada_usuario_repetida,
                 )
                 if candidata and not comandos_reparo and segunda_avaliacao.get("aceita"):
                     fala_reparada = candidata
@@ -706,6 +737,7 @@ def preparar_resposta_para_execucao(
                     autoria.fala,
                     plano=plano_comunicacao,
                     ultima_resposta=ultima_resposta_comunicacao,
+                    entrada_usuario_repetida=entrada_usuario_repetida,
                 )
                 if avaliacao_autoral.get("aceita"):
                     fala_limpa = autoria.fala

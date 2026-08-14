@@ -24,7 +24,7 @@ STATUS_RESULTADO_CONFIRMADO = {
     "ja_aberto_focado",
     "janela_maximizada", "janela_arquivo_fechada",
     "pasta_criada", "subpasta_criada", "arquivo_criado",
-    "conteudo_atualizado",
+    "conteudo_atualizado", "conteudo_acrescentado",
     "item_deletado", "item_movido_para_pasta", "emails_lidos",
     "emails_sincronizados", "notificacoes_lidas", "remetente_silenciado",
     "clima_consultado",

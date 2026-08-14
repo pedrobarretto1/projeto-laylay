@@ -43,7 +43,10 @@ def _humanizar_aprendizado(item: Dict[str, Any]) -> str:
     chave = str(item.get("chave") or "").casefold()
     if chave.startswith("preferencia:afinidade:") and valor:
         regra = str(item.get("regra") or texto).casefold()
-        if "não gosta" in regra or "nao gosta" in regra:
+        if any(sinal in regra for sinal in (
+            "não gosta", "nao gosta", "não curte", "nao curte",
+            "odeia", "detesta",
+        )):
             return f"você não gosta de {valor}"
         if "prefere" in regra:
             return f"você prefere {valor}"
@@ -67,7 +70,8 @@ def _humanizar_aprendizado(item: Dict[str, Any]) -> str:
 
 
 _AFINIDADE_HUMANIZADA = re.compile(
-    r"^você\s+(?P<verbo>não\s+gosta\s+de|gosta\s+de|prefere|adora|ama|curte)\s+"
+    r"^você\s+(?P<verbo>não\s+gosta\s+de|não\s+curte|odeia|detesta|"
+    r"gosta\s+de|prefere|adora|ama|curte)\s+"
     r"(?P<valor>.+)$",
     re.IGNORECASE,
 )
@@ -101,7 +105,11 @@ def _deduplicar_aprendizados_para_fala(
         afinidade = _AFINIDADE_HUMANIZADA.fullmatch(fala)
         if afinidade:
             verbo = re.sub(r"\s+", " ", afinidade.group("verbo").casefold()).strip()
-            polaridade = "negativa" if verbo.startswith("não ") else "positiva"
+            polaridade = (
+                "negativa"
+                if verbo.startswith("não ") or verbo in {"odeia", "detesta"}
+                else "positiva"
+            )
             for valor in _partes_afinidade(afinidade.group("valor")):
                 assinatura = normalizar_texto(valor)
                 chave = (polaridade, assinatura)
@@ -119,6 +127,27 @@ def _deduplicar_aprendizados_para_fala(
             vistos_outros.add(assinatura)
             resultado.append(dict(item))
     return resultado
+
+
+def _filtrar_polaridade_preferencia(
+    aprendizados: list[Dict[str, Any]],
+    polaridade: str,
+) -> list[Dict[str, Any]]:
+    """Aplica a polaridade pedida sem inferir gosto a partir de outro fato."""
+    polaridade_norm = normalizar_texto(polaridade)
+    if polaridade_norm not in {"positiva", "negativa"}:
+        return aprendizados
+    filtrados: list[Dict[str, Any]] = []
+    for item in aprendizados:
+        fala = _humanizar_aprendizado(item).strip().rstrip(".!?;: ")
+        afinidade = _AFINIDADE_HUMANIZADA.fullmatch(fala)
+        if not afinidade:
+            continue
+        verbo = normalizar_texto(afinidade.group("verbo"))
+        negativa = verbo.startswith("nao ") or verbo in {"odeia", "detesta"}
+        if negativa == (polaridade_norm == "negativa"):
+            filtrados.append(item)
+    return filtrados
 
 
 def _ler_emails(
@@ -423,6 +452,7 @@ def _consultar_aprendizados(
         offset = 0
     consulta = str(params.get("query") or params.get("consulta") or "").strip()
     modo = str(params.get("modo") or "listar").strip().casefold()
+    polaridade = str(params.get("polaridade") or "").strip().casefold()
     if modo == "identidade":
         mente = _get(ctx, "mente_integrada_estado", {})
         nome = normalizar_nome_usuario(
@@ -440,7 +470,12 @@ def _consultar_aprendizados(
         return ResultadoDespacho.concluido(False)
     try:
         try:
-            brutos = recuperar(consulta=consulta, limit=limite, offset=offset) or []
+            limite_busca = 20 if polaridade in {"positiva", "negativa"} else limite
+            brutos = recuperar(
+                consulta=consulta,
+                limit=limite_busca,
+                offset=offset,
+            ) or []
         except TypeError:
             # Compatibilidade temporária com adaptadores anteriores à visão
             # unificada. A origem continua marcada como legado, nunca como
@@ -496,12 +531,21 @@ def _consultar_aprendizados(
         return ResultadoDespacho.concluido(True)
 
     aprendizados = _deduplicar_aprendizados_para_fala(aprendizados)
+    aprendizados = _filtrar_polaridade_preferencia(
+        aprendizados,
+        polaridade,
+    )[:limite]
     deps.marcar_resultado("aprendizados_consultados", executou=True, confirmado=True)
     if not aprendizados:
         if modo == "verificar" and consulta:
             fala = (
                 "Não encontrei isso entre os aprendizados confiáveis que tenho sobre você. "
                 "Prefiro admitir a lacuna a completar no chute."
+            )
+        elif polaridade == "negativa":
+            fala = (
+                "Ainda não tenho nada confirmado sobre o que você não gosta. "
+                "Prefiro deixar o espaço vazio a inventar uma implicância sua."
             )
         elif offset:
             fala = "Não achei outros aprendizados confiáveis além daqueles."

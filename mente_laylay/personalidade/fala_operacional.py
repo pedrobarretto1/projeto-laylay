@@ -97,6 +97,11 @@ def _opcoes_status(status: str, alvo: str) -> list[str]:
             f"Escrevi em {alvo}. O texto já está salvo.",
             f"{alvo} recebeu o texto novo direitinho.",
         ],
+        "conteudo_acrescentado": [
+            f"Acrescentei o texto em {alvo} e conferi o arquivo.",
+            f"Adicionei a nova linha em {alvo}. O conteúdo anterior foi mantido.",
+            f"{alvo} recebeu o trecho novo sem apagar o que já estava lá.",
+        ],
         "item_deletado": [
             f"Removi {alvo}. Foi embora sem deixar discurso de despedida.",
             f"{alvo} removido. Limpeza feita.",
@@ -269,7 +274,10 @@ def estilizar_fala_operacional(
         if str(resultado.contexto.get("modo") or "").casefold() == "simulado":
             escolhida = f"No simulador, {escolhida[0].lower() + escolhida[1:]}"
         return escolhida
-    if status in {"arquivo_criado", "conteudo_atualizado", "pasta_criada", "subpasta_criada"}:
+    if status in {
+        "arquivo_criado", "conteudo_atualizado", "conteudo_acrescentado",
+        "pasta_criada", "subpasta_criada",
+    }:
         # Criações compostas podem citar pasta, arquivo e conteúdo na mesma
         # confirmação. Uma variação curta não pode apagar esses detalhes.
         artefatos_fala = set(re.findall(r"\b[\wÀ-ÿ_-]+\.[a-z0-9]{1,8}\b", fala, re.IGNORECASE))

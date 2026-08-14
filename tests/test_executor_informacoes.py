@@ -126,6 +126,96 @@ def test_consulta_natural_de_preferencias_usa_a_mesma_memoria() -> None:
 
 
 @pytest.mark.parametrize(
+    "texto",
+    ("Do que eu não gosto?", "O que eu odeio?", "Você lembra do que eu detesto?"),
+)
+def test_consulta_natural_de_aversoes_filtra_a_memoria_confirmada(
+    texto: str,
+) -> None:
+    assert detectar_consulta_aprendizados(
+        texto,
+        params_cb=lambda **kwargs: kwargs,
+    ) == {
+        "intent": "LEARNING_QUERY",
+        "params": {
+            "limit": 5,
+            "query": "preferencia",
+            "modo": "listar",
+            "polaridade": "negativa",
+        },
+    }
+
+
+def test_consulta_de_aversoes_nao_mistura_gostos_positivos() -> None:
+    falas: list[str] = []
+    consultas: list[dict] = []
+    registros = [
+        {
+            "texto": "você gosta de rock",
+            "natureza": "confirmado",
+            "confirmado_usuario": True,
+        },
+        {
+            "texto": "você não gosta de sertanejo",
+            "natureza": "confirmado",
+            "confirmado_usuario": True,
+        },
+    ]
+
+    despacho = executar_intencao_informacoes(
+        "LEARNING_QUERY",
+        {
+            "limit": 5,
+            "query": "preferencia",
+            "modo": "listar",
+            "polaridade": "negativa",
+        },
+        "Do que eu não gosto?",
+        {
+            "_recuperar_aprendizados": lambda **kwargs: (
+                consultas.append(kwargs) or registros
+            ),
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+        },
+        _dependencias([]),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(True)
+    assert consultas == [{"consulta": "preferencia", "limit": 20, "offset": 0}]
+    assert len(falas) == 1
+    assert "sertanejo" in falas[0].casefold()
+    assert "não gosta" in falas[0].casefold()
+    assert "rock" not in falas[0].casefold()
+
+
+def test_consulta_de_aversoes_admite_quando_so_ha_gosto_positivo() -> None:
+    falas: list[str] = []
+    executar_intencao_informacoes(
+        "LEARNING_QUERY",
+        {
+            "limit": 5,
+            "query": "preferencia",
+            "modo": "listar",
+            "polaridade": "negativa",
+        },
+        "Do que eu não gosto?",
+        {
+            "_recuperar_aprendizados": lambda **_kwargs: [{
+                "texto": "você gosta de rock",
+                "natureza": "confirmado",
+                "confirmado_usuario": True,
+            }],
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+        },
+        _dependencias([]),
+    )
+
+    assert len(falas) == 1
+    assert "não tenho nada confirmado" in falas[0].casefold()
+    assert "rock" not in falas[0].casefold()
+
+
+@pytest.mark.parametrize(
     ("texto", "query"),
     (
         ("onde eu moro?", "mora local"),

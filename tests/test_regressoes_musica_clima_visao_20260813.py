@@ -563,6 +563,12 @@ def test_followups_visuais_consultam_contexto_sem_nova_captura() -> None:
     assert detectar_intencao_deterministica_mente(
         "Resume o que você está vendo.", _contexto_deterministico(),
     ) == resumir
+    assert detectar_intencao_deterministica_mente(
+        "O que você consegue identificar nela?", _contexto_deterministico(),
+    ) == identificar
+    assert detectar_intencao_deterministica_mente(
+        "Resume o que está aparecendo agora.", _contexto_deterministico(),
+    ) == resumir
 
     chamadas: list[tuple] = []
     falas: list[str] = []

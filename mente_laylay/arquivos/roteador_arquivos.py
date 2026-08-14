@@ -642,7 +642,8 @@ def detectar_intencao_arquivos(
             }
 
     abertura_referenciada = re.fullmatch(
-        r"(?:abre|abra|abrir|mostra|mostre)\s+(?P<referencia>.+)",
+        r"(?:tenta\s+(?:abrir|abre)|abre|abra|abrir|mostra|mostre)\s+"
+        r"(?P<referencia>.+)",
         texto_confirmacao,
     )
     if arquivo_recente_caminho and abertura_referenciada:

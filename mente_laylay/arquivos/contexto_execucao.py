@@ -65,9 +65,6 @@ def resolver_referencia_arquivo_contextual(
     referencias = {
         "ela", "ele", "isso", "essa", "esse", "essa pasta", "esse arquivo",
     }
-    if ref_norm not in referencias:
-        return ref
-
     obter_pasta = _get(ctx, "ultima_pasta_contextual")
     obter_arquivo = _get(ctx, "ultimo_arquivo_contextual")
     obter_estrutura = _get(ctx, "estrutura_arquivo_recente")
@@ -77,6 +74,28 @@ def resolver_referencia_arquivo_contextual(
     ultimo_arquivo = (
         str(obter_arquivo() or "").strip() if callable(obter_arquivo) else ""
     )
+    if ref_norm not in referencias:
+        # A criação sem extensão continua válida. Porém, na fala cotidiana, a
+        # pessoa pode chamar o mesmo arquivo textual de ``nome.txt`` depois
+        # que uma pasta ou janela virou o foco mais recente. Reaproveitamos o
+        # caminho já observado somente quando os basenames diferem
+        # exclusivamente pela extensão .txt; nenhum caminho novo é inferido.
+        nome_declarado = os.path.basename(ref.replace("/", os.sep)).casefold()
+        nome_conhecido = os.path.basename(
+            ultimo_arquivo.replace("/", os.sep)
+        ).casefold()
+        raiz_declarada, extensao_declarada = os.path.splitext(nome_declarado)
+        raiz_conhecida, extensao_conhecida = os.path.splitext(nome_conhecido)
+        nomes_equivalentes = bool(
+            raiz_declarada
+            and raiz_declarada == raiz_conhecida
+            and {extensao_declarada, extensao_conhecida} == {"", ".txt"}
+        )
+        if nomes_equivalentes and item_local_existe(
+            ctx, ultimo_arquivo, "arquivo",
+        ):
+            return ultimo_arquivo
+        return ref
     estrutura: Any = {}
     if callable(obter_estrutura):
         try:

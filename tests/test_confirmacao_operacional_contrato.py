@@ -351,3 +351,76 @@ def test_listagem_antiga_nao_pode_confirmar_exclusao_de_playlist() -> None:
     )
 
     assert motivo == "estado_observado_ausente"
+
+
+def test_append_confirmado_nao_pode_ser_reescrito_como_criacao() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "CREATE_FILE",
+        "alvo": "teste completo.txt",
+        "status": "conteudo_acrescentado",
+        "executou": True,
+    })
+
+    assert resultado.confirmado is True
+    assert _motivo_contrato_invalido(
+        "Criei o arquivo teste completo.txt.",
+        resultado=resultado,
+        classe="sucesso",
+        status_declarado="conteudo_acrescentado",
+        alvo_declarado="teste completo.txt",
+    ) == "estado_observado_ausente"
+    assert _motivo_contrato_invalido(
+        "Acrescentei a nova linha no arquivo teste completo.txt.",
+        resultado=resultado,
+        classe="sucesso",
+        status_declarado="conteudo_acrescentado",
+        alvo_declarado="teste completo.txt",
+    ) == ""
+
+
+def test_listagem_antiga_nao_pode_confirmar_adicao_em_playlist() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "PLAYLIST_ADD",
+        "alvo": "rock",
+        "status": "playlist_musica_adicionada",
+        "executou": True,
+        "confirmado": True,
+    })
+
+    motivo = _motivo_contrato_invalido(
+        "A playlist rock tá pronta com 20 músicas — e já escolhi três.",
+        resultado=resultado,
+        classe="sucesso",
+        status_declarado="playlist_musica_adicionada",
+        alvo_declarado="rock",
+    )
+
+    assert motivo == "estado_observado_ausente"
+
+
+def test_consulta_de_caminho_preserva_dado_literal_sem_autoria_operacional() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "FILE_SEARCH",
+        "alvo": "roteiro correcao.txt",
+        "status": "caminho_encontrado",
+        "executou": True,
+        "confirmado": True,
+    })
+    chamadas: list[bool] = []
+    fala = (
+        r"O arquivo fica em C:\Users\pbarr\Downloads\carlos\roteiro correcao.txt."
+    )
+
+    confirmacao = personalizar_confirmacao_llm(
+        resultado,
+        fala,
+        classe="sucesso",
+        emocao="calma",
+        nivel=1,
+        enviar_mensagem=lambda *_args, **_kwargs: chamadas.append(True),
+        contexto={},
+    )
+
+    assert confirmacao.fala == fala
+    assert confirmacao.usada_llm is False
+    assert chamadas == []

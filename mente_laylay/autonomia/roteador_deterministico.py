@@ -658,6 +658,25 @@ def detectar_consulta_aprendizados(
             "intent": "LEARNING_QUERY",
             "params": params(limit=5, query="preferencia", modo="listar"),
         }
+    consulta_aversoes = bool(re.fullmatch(
+        r"(?:(?:do que|o que) eu (?:nao gosto|detesto|odeio)|"
+        r"quais (?:sao )?(?:as )?coisas que eu (?:nao gosto|detesto|odeio)|"
+        r"(?:voce )?(?:sabe|lembra) (?:d[oa] que eu nao gosto|"
+        r"do que eu detesto|do que eu odeio))"
+        r"[?.!]*",
+        t,
+    ))
+    if consulta_aversoes:
+        params = params_cb if callable(params_cb) else lambda **kwargs: kwargs
+        return {
+            "intent": "LEARNING_QUERY",
+            "params": params(
+                limit=5,
+                query="preferencia",
+                modo="listar",
+                polaridade="negativa",
+            ),
+        }
     consultas_fato_pessoal = (
         (r"(?:onde eu moro|qual (?:e )?(?:a )?minha cidade)[?.!]*", "mora local"),
         (
@@ -794,10 +813,12 @@ def detectar_url_visual(
     ]):
         return {"intent": "SCREEN_CAPTURE", "params": params()}
 
+    consulta_visual = t.strip(" .,!?:;")
     if re.fullmatch(
-        r"(?:o\s+que\s+(?:voce|você)\s+consegue\s+identificar|"
-        r"resume\s+o\s+que\s+(?:voce|você)\s+(?:esta|está|ta|tá)\s+vendo)",
-        t.strip(" .,!?:;"),
+        r"(?:o\s+que\s+(?:voce|você)\s+consegue\s+identificar(?:\s+nela)?|"
+        r"resume\s+(?:o\s+que\s+(?:voce|você)\s+(?:esta|está|ta|tá)\s+vendo|"
+        r"o\s+que\s+(?:esta|está|ta|tá)\s+aparecendo\s+agora))",
+        consulta_visual,
     ):
         modo = "resumir" if t.startswith("resume") else "identificar"
         return {

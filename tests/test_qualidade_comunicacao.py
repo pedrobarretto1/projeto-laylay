@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 from mente_laylay.autonomia.processamento_resposta_ia import (
+    _entrada_usuario_repetida_no_contexto,
     preparar_resposta_para_execucao,
 )
 from mente_laylay.cognicao.plano_turno import planejar_turno, verificar_fala_turno
@@ -419,3 +420,57 @@ def test_registro_de_relacao_aceita_fala_neutra_e_contingencia_preserva_fato() -
     assert "amiga" in contingencia.casefold()
     assert "?" not in contingencia
     assert "gostoso" not in contingencia.casefold()
+
+
+def test_resposta_literalmente_repetida_pede_nova_redacao() -> None:
+    fala = "Tudo bem comigo — e você, como tá?"
+
+    avaliacao = avaliar_qualidade_comunicacao(
+        "Tudo bem com você?",
+        fala,
+        ultima_resposta=fala,
+        entrada_usuario_repetida=True,
+    )
+
+    assert avaliacao["aceita"] is False
+    assert "resposta_repetida_literal" in avaliacao["problemas_bloqueantes"]
+
+
+def test_confirmacao_curta_pode_se_repetir_sem_forcar_reparo() -> None:
+    avaliacao = avaliar_qualidade_comunicacao(
+        "Você entendeu?",
+        "Sim.",
+        ultima_resposta="Sim.",
+    )
+
+    assert "resposta_repetida_literal" not in avaliacao["problemas"]
+
+
+def test_fala_anterior_igual_sem_entrada_repetida_nao_e_editada() -> None:
+    fala = "Eu gostei dessa ideia. E você, o que viu nela?"
+
+    avaliacao = avaliar_qualidade_comunicacao(
+        "Gostou da ideia?",
+        fala,
+        ultima_resposta=fala,
+    )
+
+    assert "resposta_repetida_literal" not in avaliacao["problemas"]
+
+
+def test_repeticao_exige_duas_entradas_iguais_no_historico() -> None:
+    uma_entrada = [
+        {"role": "user", "content": "Tudo bem com você?"},
+    ]
+    duas_entradas = [
+        {"role": "user", "content": "Tudo bem com você?"},
+        {"role": "assistant", "content": "Tudo bem comigo."},
+        {"role": "user", "content": "Tudo bem com você?"},
+    ]
+
+    assert _entrada_usuario_repetida_no_contexto(
+        "Tudo bem com você?", uma_entrada,
+    ) is False
+    assert _entrada_usuario_repetida_no_contexto(
+        "Tudo bem com você?", duas_entradas,
+    ) is True

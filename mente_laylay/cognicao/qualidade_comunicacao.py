@@ -211,6 +211,7 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "metacomentario_quebrou_personagem",
     "reacao_codigo_apenas_ecoou_relato",
     "identidade_negou_capacidades_confirmadas",
+    "resposta_repetida_literal",
 })
 
 
@@ -301,6 +302,7 @@ def avaliar_qualidade_comunicacao(
     *,
     plano: Mapping[str, Any] | None = None,
     ultima_resposta: str = "",
+    entrada_usuario_repetida: bool = False,
 ) -> Dict[str, Any]:
     """Retorna problemas fortes; não corrige estilo nem conteúdo por conta própria."""
     usuario = _normalizar(texto_usuario)
@@ -323,6 +325,14 @@ def avaliar_qualidade_comunicacao(
         problemas.append("fala_vazia")
     else:
         palavras = re.findall(r"[\wÀ-ÿ]+", resposta, flags=re.UNICODE)
+        if (
+            entrada_usuario_repetida
+            and resposta_anterior
+            and len(palavras) >= 4
+            and normalizar_texto_memoria(resposta)
+            == normalizar_texto_memoria(resposta_anterior)
+        ):
+            problemas.append("resposta_repetida_literal")
         if (
             _FINAL_INCOMPLETO.search(resposta)
             or _CONTRASTE_TRUNCADO.search(resposta)

@@ -35,6 +35,7 @@ INTENTS_INFORMATIVOS = frozenset({
     "WEATHER", "CLIMA", "LISTAR_AGENDAMENTOS", "LER_NOTIFICACOES",
     "NOTIFICATIONS",
     "LIST_TABS", "LIST_WINDOWS",
+    "FILE_SEARCH",
     # A confirmação não recebe o tipo original no novo turno. Reescrevê-la
     # fazia a LLM chamar uma pasta de "arquivo"; preserve a fala factual.
     "CONFIRM_DELETE_ITEM",
@@ -60,7 +61,8 @@ RAIZES_POR_STATUS: dict[str, tuple[str, ...]] = {
     "pasta_criada": ("pasta", "criei", "criad"),
     "subpasta_criada": ("pasta", "criei", "criad"),
     "arquivo_criado": ("arquivo", "criei", "criad"),
-    "conteudo_atualizado": ("arquivo", "escrevi", "atualiz", "texto"),
+    "conteudo_atualizado": ("escrevi", "atualiz", "texto"),
+    "conteudo_acrescentado": ("acrescente", "adicione", "nova linha"),
     "item_deletado": ("apague", "remov", "lixeira"),
     "movido_para_lixeira": ("lixeira", "mov", "enviei"),
     "item_movido_para_pasta": ("mov", "mudei"),
@@ -84,7 +86,7 @@ RAIZES_POR_STATUS: dict[str, tuple[str, ...]] = {
     # O substantivo ``playlist`` sozinho não prova exclusão: uma listagem
     # antiga também o contém e já chegou a ser repetida depois de apagar.
     "playlist_deletada": ("apague", "remov", "exclu", "deletei"),
-    "playlist_musica_adicionada": ("playlist", "adicione", "salv", "guarde"),
+    "playlist_musica_adicionada": ("adicione", "salv", "guarde", "foi pra"),
     "acao_agendada": ("agend", "lembrete"),
     "lembrete_agendado": ("agend", "lembrete"),
     "agendamento_cancelado": ("cancel", "agenda"),
