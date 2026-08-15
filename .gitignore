@@ -3,6 +3,7 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+llama-server.log*
 
 # Build outputs
 dist/
@@ -15,7 +16,6 @@ cliente/gamebar_laylay/obj/
 cliente/gamebar_laylay/AppPackages/
 _backup_regressao_118/
 *.egg-info/
-*.log
 *.db
 *.sqlite
 *.sqlite3
