@@ -4,33 +4,33 @@ Avaliador determinístico v3. Não usa LLM para dar nota ao texto livre.
 
 ## Placar
 
-- Transporte: **95/267** respostas.
-- Avaliados semanticamente: **23**.
-- Passaram: **13**.
-- Falharam: **10**.
-- Alertas: **0**.
-- Não avaliados semanticamente: **244**.
-- Taxa semântica: **56.52%**.
+- Transporte: **267/267** respostas.
+- Avaliados semanticamente: **53**.
+- Passaram: **25**.
+- Falharam: **27**.
+- Alertas: **1**.
+- Não avaliados semanticamente: **214**.
+- Taxa semântica: **47.17%**.
 
 ## Latência
 
-- p50: 1.816 s
-- p95: 6.107 s
+- p50: 2.158 s
+- p95: 9.382 s
 - máxima: 52.581 s
-- média: 2.756 s
-- Etapas com `confirmado=None`: **1**.
+- média: 3.23 s
+- Etapas com `confirmado=None`: **2**.
 
 ## Por domínio
 
 | Domínio | Passou | Falhou | Alerta | Não avaliado |
 |---|---:|---:|---:|---:|
-| apps | 0 | 0 | 0 | 6 |
-| arquivos | 3 | 2 | 0 | 8 |
-| browser | 1 | 0 | 0 | 1 |
-| conversa | 0 | 7 | 0 | 52 |
-| iot | 0 | 0 | 0 | 3 |
-| musica | 0 | 1 | 0 | 2 |
-| nao_classificado | 0 | 0 | 0 | 172 |
+| agenda | 2 | 0 | 0 | 0 |
+| apps | 3 | 2 | 1 | 35 |
+| arquivos | 4 | 2 | 0 | 14 |
+| browser | 5 | 3 | 0 | 9 |
+| conversa | 0 | 15 | 0 | 136 |
+| iot | 1 | 2 | 0 | 10 |
+| musica | 1 | 3 | 0 | 10 |
 | seguranca | 9 | 0 | 0 | 0 |
 
 ## Falhas e alertas
@@ -124,6 +124,204 @@ Avaliador determinístico v3. Não usa LLM para dar nota ao texto livre.
 **Erros:** plano_publicou_erros; contrato_operacional_incompleto
 
 **Alertas:** etapas_sem_confirmacao_externa:1
+
+### Turno 096 — falhou
+
+**Comando:** Fecha a Calculadora... quer dizer, maximiza ela.
+
+**Intents:** MAXIMIZE_WINDOW
+
+**Erros:** intent_incorreta:esperado=CLOSE_APP;observado=MAXIMIZE_WINDOW; fala_diz_incerteza_com_resultado_confirmado
+
+**Alertas:** latencia_alta:16.02s
+
+### Turno 097 — falhou
+
+**Comando:** Abre a Wikipédia, não, melhor o Prime Video.
+
+**Intents:** APP_OPEN
+
+**Erros:** intent_incorreta:esperado=OPEN_URL;observado=APP_OPEN
+
+**Alertas:** latencia_alta:18.59s; dependencia_externa_nao_confirmada
+
+### Turno 099 — falhou
+
+**Comando:** Liga a lâmpada... não, deixa desligada.
+
+**Intents:** nenhuma
+
+**Erros:** intent_incorreta:esperado=IOT_CONTROL;observado=SEM_INTENT
+
+### Turno 100 — falhou
+
+**Comando:** Pausa a música... esquece, continua tocando.
+
+**Intents:** PEOPLE_FORGET
+
+**Erros:** intent_incorreta:esperado=MEDIA_CONTROL;observado=PEOPLE_FORGET
+
+**Alertas:** dependencia_externa_nao_confirmada
+
+### Turno 113 — falhou
+
+**Comando:** Qual está em foco agora?
+
+**Intents:** nenhuma
+
+**Erros:** execucao_nao_publicada
+
+### Turno 116 — falhou
+
+**Comando:** Fecha a primeira.
+
+**Intents:** nenhuma
+
+**Erros:** execucao_nao_publicada
+
+### Turno 118 — falhou
+
+**Comando:** Volta para a anterior.
+
+**Intents:** nenhuma
+
+**Erros:** execucao_nao_publicada
+
+### Turno 123 — falhou
+
+**Comando:** Resume isso.
+
+**Intents:** nenhuma
+
+**Erros:** execucao_nao_publicada
+
+### Turno 126 — falhou
+
+**Comando:** Resume agora.
+
+**Intents:** nenhuma
+
+**Erros:** execucao_nao_publicada
+
+### Turno 129 — nao_avaliado
+
+**Comando:** Se a Calculadora não estiver aberta, abre; se já estiver, só me avisa.
+
+**Intents:** APP_OPEN
+
+**Alertas:** latencia_alta:17.80s
+
+### Turno 131 — nao_avaliado
+
+**Comando:** Se ela estiver aberta, maximiza; se não estiver, não faça nada.
+
+**Intents:** MAXIMIZE_WINDOW
+
+**Alertas:** latencia_alta:16.32s
+
+### Turno 133 — nao_avaliado
+
+**Comando:** Se o Prime Video já estiver aberto em uma aba, não abra outra.
+
+**Intents:** APP_OPEN
+
+**Alertas:** latencia_alta:18.05s
+
+### Turno 143 — alerta
+
+**Comando:** Maximiza a Calculadora e depois volta o foco para o Opera.
+
+**Intents:** MAXIMIZE_WINDOW
+
+**Alertas:** latencia_alta:15.58s
+
+### Turno 144 — falhou
+
+**Comando:** Abre a Wikipédia, pesquisa documentação oficial do Python e abre o primeiro resultado.
+
+**Intents:** SEARCH, FILE_OPEN_RESULT
+
+**Erros:** intent_incorreta:esperado=OPEN_URL;observado=SEARCH|FILE_OPEN_RESULT
+
+### Turno 145 — falhou
+
+**Comando:** Volta para a aba anterior e depois me diz qual aba está aberta.
+
+**Intents:** nenhuma
+
+**Erros:** intent_incorreta:esperado=SWITCH_PREVIOUS_TAB;observado=SEM_INTENT
+
+### Turno 152 — falhou
+
+**Comando:** Liga a lâmpada do quarto, deixa azul e depois me diz como ela ficou.
+
+**Intents:** IOT_STATUS
+
+**Erros:** intent_incorreta:esperado=IOT_CONTROL;observado=IOT_STATUS
+
+### Turno 155 — falhou
+
+**Comando:** maximiza
+
+**Intents:** nenhuma
+
+**Erros:** intent_incorreta:esperado=MAXIMIZE_WINDOW;observado=SEM_INTENT
+
+### Turno 168 — nao_avaliado
+
+**Comando:** Coloca a playlist VMZ.
+
+**Intents:** PLAYLIST_PLAY
+
+**Alertas:** latencia_alta:17.30s; dependencia_externa_nao_confirmada
+
+### Turno 171 — falhou
+
+**Comando:** continua
+
+**Intents:** nenhuma
+
+**Erros:** intent_incorreta:esperado=MEDIA_CONTROL;observado=SEM_INTENT
+
+### Turno 174 — falhou
+
+**Comando:** essa também
+
+**Intents:** nenhuma
+
+**Erros:** execucao_nao_publicada
+
+### Turno 191 — nao_avaliado
+
+**Comando:** Cancela.
+
+**Intents:** CANCELAR_ACAO
+
+**Alertas:** etapas_sem_confirmacao_externa:1
+
+### Turno 227 — falhou
+
+**Comando:** eu quero que você abra a calculadora, coloque ela na direita, confira se ficou aberta e só então me diga o resultado
+
+**Intents:** nenhuma
+
+**Erros:** execucao_nao_publicada
+
+### Turno 257 — falhou
+
+**Comando:** Se existir, apaga o troca ideia.txt.
+
+**Intents:** nenhuma
+
+**Erros:** execucao_nao_publicada
+
+### Turno 263 — nao_avaliado
+
+**Comando:** Se existir, apaga a playlist caos sonora.
+
+**Intents:** PLAYLIST_DELETE
+
+**Alertas:** dependencia_externa_nao_confirmada
 
 ## Matriz de turnos
 
@@ -224,175 +422,175 @@ Avaliador determinístico v3. Não usa LLM para dar nota ao texto livre.
 | 093 | nao_avaliado | arquivos | 2.67s | CREATE_FILE | Não, eu estava falando do arquivo, não de uma janela. |
 | 094 | nao_avaliado | conversa | 2.85s | sem intent | Onde fica o troca ideia.txt? |
 | 095 | nao_avaliado | arquivos | 4.90s | FILE_SEARCH | Abre o Opera... não, abre a Calculadora. |
-| 096 | nao_avaliado | - | - | sem intent | Fecha a Calculadora... quer dizer, maximiza ela. |
-| 097 | nao_avaliado | - | - | sem intent | Abre a Wikipédia, não, melhor o Prime Video. |
-| 098 | nao_avaliado | - | - | sem intent | Pesquisa Python... pera, não pesquisa nada. |
-| 099 | nao_avaliado | - | - | sem intent | Liga a lâmpada... não, deixa desligada. |
-| 100 | nao_avaliado | - | - | sem intent | Pausa a música... esquece, continua tocando. |
-| 101 | nao_avaliado | - | - | sem intent | Cria um arquivo chamado erro.txt... não, chama correcao.txt. |
-| 102 | nao_avaliado | - | - | sem intent | Escreve banana no correcao.txt... quer dizer, escreve maçã. |
-| 103 | nao_avaliado | - | - | sem intent | Apaga o correcao.txt... não apaga. |
-| 104 | nao_avaliado | - | - | sem intent | Onde fica o correcao.txt? |
-| 105 | nao_avaliado | - | - | sem intent | Abre a Calculadora. |
-| 106 | nao_avaliado | - | - | sem intent | Abre o Opera. |
-| 107 | nao_avaliado | - | - | sem intent | Fecha ele. |
-| 108 | nao_avaliado | - | - | sem intent | Qual deles você fechou? |
-| 109 | nao_avaliado | - | - | sem intent | Abre a Calculadora de novo. |
-| 110 | nao_avaliado | - | - | sem intent | Coloca ela na direita. |
-| 111 | nao_avaliado | - | - | sem intent | Coloca o outro na esquerda. |
-| 112 | nao_avaliado | - | - | sem intent | Maximiza ele. |
-| 113 | nao_avaliado | - | - | sem intent | Qual está em foco agora? |
-| 114 | nao_avaliado | - | - | sem intent | Abre a Wikipédia. |
-| 115 | nao_avaliado | - | - | sem intent | Abre o Prime Video. |
-| 116 | nao_avaliado | - | - | sem intent | Fecha a primeira. |
-| 117 | nao_avaliado | - | - | sem intent | Qual aba ficou aberta? |
-| 118 | nao_avaliado | - | - | sem intent | Volta para a anterior. |
-| 119 | nao_avaliado | - | - | sem intent | Fecha essa. |
-| 120 | nao_avaliado | - | - | sem intent | Abre a Wikipédia de novo. |
-| 121 | nao_avaliado | - | - | sem intent | Pesquisa documentação do Python. |
-| 122 | nao_avaliado | - | - | sem intent | Abre o primeiro resultado. |
-| 123 | nao_avaliado | - | - | sem intent | Resume isso. |
-| 124 | nao_avaliado | - | - | sem intent | E a anterior? |
-| 125 | nao_avaliado | - | - | sem intent | Volta. |
-| 126 | nao_avaliado | - | - | sem intent | Resume agora. |
-| 127 | nao_avaliado | - | - | sem intent | Se o Opera estiver aberto, só me diga; não mexa nele. |
-| 128 | nao_avaliado | - | - | sem intent | O Opera está aberto? |
-| 129 | nao_avaliado | - | - | sem intent | Se a Calculadora não estiver aberta, abre; se já estiver, só me avisa. |
-| 130 | nao_avaliado | - | - | sem intent | A Calculadora está aberta? |
-| 131 | nao_avaliado | - | - | sem intent | Se ela estiver aberta, maximiza; se não estiver, não faça nada. |
-| 132 | nao_avaliado | - | - | sem intent | A Calculadora continua aberta? |
-| 133 | nao_avaliado | - | - | sem intent | Se o Prime Video já estiver aberto em uma aba, não abra outra. |
-| 134 | nao_avaliado | - | - | sem intent | O Prime Video está aberto? |
-| 135 | nao_avaliado | - | - | sem intent | Se a lâmpada estiver ligada, só me diga o estado. |
-| 136 | nao_avaliado | - | - | sem intent | Como está a lâmpada do quarto? |
-| 137 | nao_avaliado | - | - | sem intent | Se ela já estiver desligada, não mande desligar de novo. |
-| 138 | nao_avaliado | - | - | sem intent | Desliga a lâmpada do quarto. |
-| 139 | nao_avaliado | - | - | sem intent | Desliga ela de novo. |
-| 140 | nao_avaliado | - | - | sem intent | Como ela ficou? |
-| 141 | nao_avaliado | - | - | sem intent | Abre a Calculadora e coloca ela na direita. |
-| 142 | nao_avaliado | - | - | sem intent | Abre o Opera e coloca ele na esquerda. |
-| 143 | nao_avaliado | - | - | sem intent | Maximiza a Calculadora e depois volta o foco para o Opera. |
-| 144 | nao_avaliado | - | - | sem intent | Abre a Wikipédia, pesquisa documentação oficial do Python e abre o primeiro resultado. |
-| 145 | nao_avaliado | - | - | sem intent | Volta para a aba anterior e depois me diz qual aba está aberta. |
-| 146 | nao_avaliado | - | - | sem intent | Coloca a playlist VMZ, pausa a música e me diz o estado dela. |
-| 147 | nao_avaliado | - | - | sem intent | Continua a música, passa para a próxima faixa e me diz qual está tocando. |
-| 148 | nao_avaliado | - | - | sem intent | Adiciona essa música na playlist caos sonora e depois me mostra o que tem nela. |
-| 149 | nao_avaliado | - | - | sem intent | Vai para a próxima faixa e adiciona essa também na caos sonora. |
-| 150 | nao_avaliado | - | - | sem intent | Mostra a playlist caos sonora e depois apaga ela. |
-| 151 | nao_avaliado | - | - | sem intent | sim |
-| 152 | nao_avaliado | - | - | sem intent | Liga a lâmpada do quarto, deixa azul e depois me diz como ela ficou. |
-| 153 | nao_avaliado | - | - | sem intent | Desliga a lâmpada e confirma o estado. |
-| 154 | nao_avaliado | - | - | sem intent | Abre o Opera. |
-| 155 | nao_avaliado | - | - | sem intent | maximiza |
-| 156 | nao_avaliado | - | - | sem intent | esquerda |
-| 157 | nao_avaliado | - | - | sem intent | agora a calculadora |
-| 158 | nao_avaliado | - | - | sem intent | direita |
-| 159 | nao_avaliado | - | - | sem intent | fecha ela |
-| 160 | nao_avaliado | - | - | sem intent | e o outro? |
-| 161 | nao_avaliado | - | - | sem intent | fecha |
-| 162 | nao_avaliado | - | - | sem intent | abre de novo |
-| 163 | nao_avaliado | - | - | sem intent | agora wikipedia |
-| 164 | nao_avaliado | - | - | sem intent | pesquisa python |
-| 165 | nao_avaliado | - | - | sem intent | primeiro |
-| 166 | nao_avaliado | - | - | sem intent | volta |
-| 167 | nao_avaliado | - | - | sem intent | fecha essa |
-| 168 | nao_avaliado | - | - | sem intent | Coloca a playlist VMZ. |
-| 169 | nao_avaliado | - | - | sem intent | pausa |
-| 170 | nao_avaliado | - | - | sem intent | estado |
-| 171 | nao_avaliado | - | - | sem intent | continua |
-| 172 | nao_avaliado | - | - | sem intent | próxima |
-| 173 | nao_avaliado | - | - | sem intent | qual? |
-| 174 | nao_avaliado | - | - | sem intent | essa também |
-| 175 | nao_avaliado | - | - | sem intent | de novo |
-| 176 | nao_avaliado | - | - | sem intent | o que tem nela? |
-| 177 | nao_avaliado | - | - | sem intent | Abre a Calculadora. |
-| 178 | nao_avaliado | - | - | sem intent | Quanto é sete vezes oito? |
-| 179 | nao_avaliado | - | - | sem intent | Fecha ela. |
-| 180 | nao_avaliado | - | - | sem intent | Eu estava falando da calculadora ou da conta? |
-| 181 | nao_avaliado | - | - | sem intent | Coloca a playlist VMZ. |
-| 182 | nao_avaliado | - | - | sem intent | Qual a capital do Japão? |
-| 183 | nao_avaliado | - | - | sem intent | Pausa. |
-| 184 | nao_avaliado | - | - | sem intent | O que você pausou? |
-| 185 | nao_avaliado | - | - | sem intent | Abre a Wikipédia. |
-| 186 | nao_avaliado | - | - | sem intent | Eu gosto de rock. |
-| 187 | nao_avaliado | - | - | sem intent | Fecha essa aba. |
-| 188 | nao_avaliado | - | - | sem intent | O que você fechou? |
-| 189 | nao_avaliado | - | - | sem intent | Me lembra de beber água amanhã às 10 e 41. |
-| 190 | nao_avaliado | - | - | sem intent | Qual é meu nome? |
-| 191 | nao_avaliado | - | - | sem intent | Cancela. |
-| 192 | nao_avaliado | - | - | sem intent | O que você cancelou? |
-| 193 | nao_avaliado | - | - | sem intent | Quais lembretes eu tenho? |
-| 194 | nao_avaliado | - | - | sem intent | Meu apelido de teste é Pinguim. |
-| 195 | nao_avaliado | - | - | sem intent | Qual é meu apelido de teste? |
-| 196 | nao_avaliado | - | - | sem intent | Eu gosto de jazz. |
-| 197 | nao_avaliado | - | - | sem intent | Do que eu gosto? |
-| 198 | nao_avaliado | - | - | sem intent | Na verdade, não considere jazz como algo que eu gosto. |
-| 199 | nao_avaliado | - | - | sem intent | Do que eu gosto agora? |
-| 200 | nao_avaliado | - | - | sem intent | Nanda é minha amiga. |
-| 201 | nao_avaliado | - | - | sem intent | O que você sabe sobre a Nanda? |
-| 202 | nao_avaliado | - | - | sem intent | Na verdade, nessa conversa eu não quero acrescentar mais nada sobre a Nanda. |
-| 203 | nao_avaliado | - | - | sem intent | O que você sabe sobre ela? |
-| 204 | nao_avaliado | - | - | sem intent | Eu moro em Boituva. |
-| 205 | nao_avaliado | - | - | sem intent | Onde eu moro? |
-| 206 | nao_avaliado | - | - | sem intent | Eu não moro em Sorocaba. |
-| 207 | nao_avaliado | - | - | sem intent | Onde eu moro agora? |
-| 208 | nao_avaliado | - | - | sem intent | Eu gosto de programação, mas isso não significa que eu goste de Java. |
-| 209 | nao_avaliado | - | - | sem intent | O que você lembra sobre meus gostos? |
-| 210 | nao_avaliado | - | - | sem intent | Abrir o Opera é uma boa ideia? |
-| 211 | nao_avaliado | - | - | sem intent | Fechar a Calculadora economiza muita memória? |
-| 212 | nao_avaliado | - | - | sem intent | Pesquisar Python no navegador é melhor do que perguntar para você? |
-| 213 | nao_avaliado | - | - | sem intent | Apagar um arquivo manda ele para a lixeira? |
-| 214 | nao_avaliado | - | - | sem intent | Ligar a lâmpada gasta muita energia? |
-| 215 | nao_avaliado | - | - | sem intent | Pausar música economiza internet? |
-| 216 | nao_avaliado | - | - | sem intent | Maximizar uma janela muda a resolução? |
-| 217 | nao_avaliado | - | - | sem intent | Se eu falar "fecha", como você sabe o que fechar? |
-| 218 | nao_avaliado | - | - | sem intent | Quando eu digo "essa também", como você entende o contexto? |
-| 219 | nao_avaliado | - | - | sem intent | O que acontece se eu disser apenas "sim"? |
-| 220 | nao_avaliado | - | - | sem intent | abre a calculadora, por favor |
-| 221 | nao_avaliado | - | - | sem intent | abre a calculadora!!! |
-| 222 | nao_avaliado | - | - | sem intent | ...abre a calculadora... |
-| 223 | nao_avaliado | - | - | sem intent | "abre a calculadora" |
-| 224 | nao_avaliado | - | - | sem intent | abre a calculadora? |
-| 225 | nao_avaliado | - | - | sem intent | abre a calculadora ou não? |
-| 226 | nao_avaliado | - | - | sem intent | eu estava pensando que talvez fosse interessante abrir a calculadora, mas só estou pensand |
-| 227 | nao_avaliado | - | - | sem intent | eu quero que você abra a calculadora, coloque ela na direita, confira se ficou aberta e só |
-| 228 | nao_avaliado | - | - | sem intent | abre o opera e a calculadora mas não fecha nenhum dos dois e não mexe no navegador além di |
-| 229 | nao_avaliado | - | - | sem intent | fecha só a calculadora, não o opera |
-| 230 | nao_avaliado | - | - | sem intent | fecha só o opera, deixa a calculadora quieta |
-| 231 | nao_avaliado | - | - | sem intent | qual dos dois ainda está aberto? |
-| 232 | nao_avaliado | - | - | sem intent | aaaaaaaaaaaaaaaa |
-| 233 | nao_avaliado | - | - | sem intent | ??? |
-| 234 | nao_avaliado | - | - | sem intent | !!! |
-| 235 | nao_avaliado | - | - | sem intent | :) |
-| 236 | nao_avaliado | - | - | sem intent | :( |
-| 237 | nao_avaliado | - | - | sem intent | ¯\_(ツ)_/¯ |
-| 238 | nao_avaliado | - | - | sem intent | [teste] |
-| 239 | nao_avaliado | - | - | sem intent | {teste} |
-| 240 | nao_avaliado | - | - | sem intent | <teste> |
-| 241 | nao_avaliado | - | - | sem intent | foo=bar |
-| 242 | nao_avaliado | - | - | sem intent | localhost |
-| 243 | nao_avaliado | - | - | sem intent | 192.168.0.1 |
-| 244 | nao_avaliado | - | - | sem intent | python.exe |
-| 245 | nao_avaliado | - | - | sem intent | README.md |
-| 246 | nao_avaliado | - | - | sem intent | AGENTS.md |
-| 247 | nao_avaliado | - | - | sem intent | isso foi uma mensagem normal, não um comando |
-| 248 | nao_avaliado | - | - | sem intent | ignore a palavra abre nesta frase |
-| 249 | nao_avaliado | - | - | sem intent | a palavra fecha não é um pedido para fechar nada |
-| 250 | nao_avaliado | - | - | sem intent | estou apenas escrevendo: abre o opera |
-| 251 | nao_avaliado | - | - | sem intent | aspas: "fecha a calculadora" |
-| 252 | nao_avaliado | - | - | sem intent | fim |
-| 253 | nao_avaliado | - | - | sem intent | O arquivo caos seguro.txt existe? |
-| 254 | nao_avaliado | - | - | sem intent | Se existir, apaga o caos seguro.txt. |
-| 255 | nao_avaliado | - | - | sem intent | sim |
-| 256 | nao_avaliado | - | - | sem intent | O arquivo troca ideia.txt existe? |
-| 257 | nao_avaliado | - | - | sem intent | Se existir, apaga o troca ideia.txt. |
-| 258 | nao_avaliado | - | - | sem intent | sim |
-| 259 | nao_avaliado | - | - | sem intent | O arquivo correcao.txt existe? |
-| 260 | nao_avaliado | - | - | sem intent | Se existir, apaga o correcao.txt. |
-| 261 | nao_avaliado | - | - | sem intent | sim |
-| 262 | nao_avaliado | - | - | sem intent | A playlist caos sonora existe? |
-| 263 | nao_avaliado | - | - | sem intent | Se existir, apaga a playlist caos sonora. |
-| 264 | nao_avaliado | - | - | sem intent | sim |
-| 265 | nao_avaliado | - | - | sem intent | Não faça mais nenhuma ação. |
-| 266 | nao_avaliado | - | - | sem intent | Oi, Lay. |
-| 267 | nao_avaliado | - | - | sem intent | Obrigado pelo teste. |
+| 096 | falhou | apps | 16.02s | MAXIMIZE_WINDOW | Fecha a Calculadora... quer dizer, maximiza ela. |
+| 097 | falhou | browser | 18.59s | APP_OPEN | Abre a Wikipédia, não, melhor o Prime Video. |
+| 098 | nao_avaliado | browser | 2.40s | SEARCH | Pesquisa Python... pera, não pesquisa nada. |
+| 099 | falhou | iot | 0.06s | sem intent | Liga a lâmpada... não, deixa desligada. |
+| 100 | falhou | musica | 0.12s | PEOPLE_FORGET | Pausa a música... esquece, continua tocando. |
+| 101 | passou | arquivos | 2.21s | CREATE_FILE | Cria um arquivo chamado erro.txt... não, chama correcao.txt. |
+| 102 | nao_avaliado | conversa | 2.19s | sem intent | Escreve banana no correcao.txt... quer dizer, escreve maçã. |
+| 103 | nao_avaliado | arquivos | 3.13s | DELETE_ITEM | Apaga o correcao.txt... não apaga. |
+| 104 | nao_avaliado | conversa | 2.39s | sem intent | Onde fica o correcao.txt? |
+| 105 | nao_avaliado | apps | 4.19s | APP_OPEN | Abre a Calculadora. |
+| 106 | nao_avaliado | apps | 5.89s | APP_OPEN | Abre o Opera. |
+| 107 | nao_avaliado | apps | 9.54s | CLOSE_APP | Fecha ele. |
+| 108 | nao_avaliado | conversa | 4.41s | sem intent | Qual deles você fechou? |
+| 109 | nao_avaliado | apps | 4.02s | APP_OPEN | Abre a Calculadora de novo. |
+| 110 | passou | apps | 1.02s | ORGANIZAR_DESKTOP | Coloca ela na direita. |
+| 111 | passou | apps | 4.20s | ORGANIZAR_DESKTOP | Coloca o outro na esquerda. |
+| 112 | passou | apps | 3.92s | MAXIMIZE_WINDOW | Maximiza ele. |
+| 113 | falhou | conversa | 3.71s | sem intent | Qual está em foco agora? |
+| 114 | passou | browser | 4.85s | OPEN_URL | Abre a Wikipédia. |
+| 115 | nao_avaliado | browser | 2.64s | OPEN_URL | Abre o Prime Video. |
+| 116 | falhou | conversa | 3.52s | sem intent | Fecha a primeira. |
+| 117 | nao_avaliado | conversa | 0.41s | sem intent | Qual aba ficou aberta? |
+| 118 | falhou | conversa | 2.90s | sem intent | Volta para a anterior. |
+| 119 | nao_avaliado | browser | 3.04s | CLOSE_TAB | Fecha essa. |
+| 120 | passou | browser | 2.64s | OPEN_URL | Abre a Wikipédia de novo. |
+| 121 | nao_avaliado | browser | 2.20s | SEARCH | Pesquisa documentação do Python. |
+| 122 | nao_avaliado | browser | 1.21s | SEARCH | Abre o primeiro resultado. |
+| 123 | falhou | conversa | 8.26s | sem intent | Resume isso. |
+| 124 | nao_avaliado | conversa | 2.85s | sem intent | E a anterior? |
+| 125 | nao_avaliado | conversa | 2.30s | sem intent | Volta. |
+| 126 | falhou | conversa | 1.31s | sem intent | Resume agora. |
+| 127 | nao_avaliado | conversa | 1.52s | sem intent | Se o Opera estiver aberto, só me diga; não mexa nele. |
+| 128 | nao_avaliado | apps | 0.08s | LIST_WINDOWS | O Opera está aberto? |
+| 129 | nao_avaliado | apps | 17.80s | APP_OPEN | Se a Calculadora não estiver aberta, abre; se já estiver, só me avisa. |
+| 130 | nao_avaliado | apps | 3.31s | LIST_WINDOWS | A Calculadora está aberta? |
+| 131 | nao_avaliado | apps | 16.32s | MAXIMIZE_WINDOW | Se ela estiver aberta, maximiza; se não estiver, não faça nada. |
+| 132 | nao_avaliado | apps | 0.10s | LIST_WINDOWS | A Calculadora continua aberta? |
+| 133 | nao_avaliado | apps | 18.05s | APP_OPEN | Se o Prime Video já estiver aberto em uma aba, não abra outra. |
+| 134 | nao_avaliado | apps | 0.10s | LIST_WINDOWS | O Prime Video está aberto? |
+| 135 | nao_avaliado | iot | 2.31s | IOT_STATUS | Se a lâmpada estiver ligada, só me diga o estado. |
+| 136 | nao_avaliado | iot | 1.72s | IOT_STATUS | Como está a lâmpada do quarto? |
+| 137 | nao_avaliado | conversa | 4.58s | sem intent | Se ela já estiver desligada, não mande desligar de novo. |
+| 138 | nao_avaliado | iot | 3.69s | IOT_CONTROL | Desliga a lâmpada do quarto. |
+| 139 | passou | iot | 2.74s | IOT_CONTROL | Desliga ela de novo. |
+| 140 | nao_avaliado | iot | 1.64s | IOT_STATUS | Como ela ficou? |
+| 141 | nao_avaliado | apps | 4.71s | APP_OPEN, ORGANIZAR_DESKTOP | Abre a Calculadora e coloca ela na direita. |
+| 142 | nao_avaliado | apps | 5.25s | APP_OPEN, ORGANIZAR_DESKTOP | Abre o Opera e coloca ele na esquerda. |
+| 143 | alerta | apps | 15.58s | MAXIMIZE_WINDOW | Maximiza a Calculadora e depois volta o foco para o Opera. |
+| 144 | falhou | browser | 2.18s | SEARCH, FILE_OPEN_RESULT | Abre a Wikipédia, pesquisa documentação oficial do Python e abre o primeiro resultado. |
+| 145 | falhou | browser | 5.34s | sem intent | Volta para a aba anterior e depois me diz qual aba está aberta. |
+| 146 | nao_avaliado | iot | 1.44s | IOT_STATUS | Coloca a playlist VMZ, pausa a música e me diz o estado dela. |
+| 147 | nao_avaliado | musica | 2.60s | MEDIA_CONTROL | Continua a música, passa para a próxima faixa e me diz qual está tocando. |
+| 148 | nao_avaliado | arquivos | 2.58s | CREATE_FILE | Adiciona essa música na playlist caos sonora e depois me mostra o que tem nela. |
+| 149 | passou | musica | 2.43s | MEDIA_CONTROL | Vai para a próxima faixa e adiciona essa também na caos sonora. |
+| 150 | nao_avaliado | musica | 0.17s | PLAYLIST_LIST | Mostra a playlist caos sonora e depois apaga ela. |
+| 151 | nao_avaliado | conversa | 2.00s | sem intent | sim |
+| 152 | falhou | iot | 1.42s | IOT_STATUS | Liga a lâmpada do quarto, deixa azul e depois me diz como ela ficou. |
+| 153 | nao_avaliado | iot | 1.53s | IOT_STATUS | Desliga a lâmpada e confirma o estado. |
+| 154 | nao_avaliado | apps | 3.59s | APP_OPEN | Abre o Opera. |
+| 155 | falhou | apps | 2.26s | sem intent | maximiza |
+| 156 | nao_avaliado | conversa | 2.46s | sem intent | esquerda |
+| 157 | nao_avaliado | conversa | 1.92s | sem intent | agora a calculadora |
+| 158 | nao_avaliado | conversa | 1.35s | sem intent | direita |
+| 159 | nao_avaliado | apps | 10.23s | CLOSE_APP | fecha ela |
+| 160 | nao_avaliado | conversa | 1.24s | sem intent | e o outro? |
+| 161 | nao_avaliado | conversa | 1.13s | sem intent | fecha |
+| 162 | nao_avaliado | apps | 3.67s | APP_OPEN | abre de novo |
+| 163 | nao_avaliado | conversa | 1.96s | sem intent | agora wikipedia |
+| 164 | nao_avaliado | browser | 3.16s | SEARCH | pesquisa python |
+| 165 | nao_avaliado | conversa | 1.88s | sem intent | primeiro |
+| 166 | nao_avaliado | conversa | 1.65s | sem intent | volta |
+| 167 | nao_avaliado | browser | 4.04s | CLOSE_TAB | fecha essa |
+| 168 | nao_avaliado | musica | 17.30s | PLAYLIST_PLAY | Coloca a playlist VMZ. |
+| 169 | nao_avaliado | conversa | 2.61s | sem intent | pausa |
+| 170 | nao_avaliado | conversa | 1.78s | sem intent | estado |
+| 171 | falhou | musica | 1.26s | sem intent | continua |
+| 172 | nao_avaliado | musica | 2.53s | MEDIA_CONTROL | próxima |
+| 173 | nao_avaliado | conversa | 1.42s | sem intent | qual? |
+| 174 | falhou | conversa | 9.44s | sem intent | essa também |
+| 175 | nao_avaliado | musica | 2.06s | MEDIA_CONTROL | de novo |
+| 176 | nao_avaliado | conversa | 2.61s | sem intent | o que tem nela? |
+| 177 | nao_avaliado | apps | 6.41s | APP_OPEN | Abre a Calculadora. |
+| 178 | nao_avaliado | conversa | 1.80s | sem intent | Quanto é sete vezes oito? |
+| 179 | nao_avaliado | apps | 4.68s | CLOSE_APP | Fecha ela. |
+| 180 | nao_avaliado | conversa | 0.16s | sem intent | Eu estava falando da calculadora ou da conta? |
+| 181 | nao_avaliado | musica | 6.91s | PLAYLIST_PLAY | Coloca a playlist VMZ. |
+| 182 | nao_avaliado | conversa | 1.15s | sem intent | Qual a capital do Japão? |
+| 183 | nao_avaliado | conversa | 2.47s | sem intent | Pausa. |
+| 184 | nao_avaliado | conversa | 1.68s | sem intent | O que você pausou? |
+| 185 | passou | browser | 2.99s | OPEN_URL | Abre a Wikipédia. |
+| 186 | nao_avaliado | conversa | 1.81s | sem intent | Eu gosto de rock. |
+| 187 | passou | browser | 2.81s | CLOSE_TAB | Fecha essa aba. |
+| 188 | nao_avaliado | conversa | 1.07s | sem intent | O que você fechou? |
+| 189 | passou | agenda | 3.69s | AGENDAR_LEMBRETE | Me lembra de beber água amanhã às 10 e 41. |
+| 190 | nao_avaliado | conversa | 0.23s | LEARNING_QUERY | Qual é meu nome? |
+| 191 | nao_avaliado | conversa | 0.17s | CANCELAR_ACAO | Cancela. |
+| 192 | nao_avaliado | conversa | 1.45s | sem intent | O que você cancelou? |
+| 193 | passou | agenda | 0.15s | LISTAR_AGENDAMENTOS | Quais lembretes eu tenho? |
+| 194 | nao_avaliado | conversa | 2.36s | sem intent | Meu apelido de teste é Pinguim. |
+| 195 | nao_avaliado | conversa | 1.16s | sem intent | Qual é meu apelido de teste? |
+| 196 | nao_avaliado | conversa | 1.00s | sem intent | Eu gosto de jazz. |
+| 197 | nao_avaliado | conversa | 0.18s | LEARNING_QUERY | Do que eu gosto? |
+| 198 | nao_avaliado | conversa | 1.09s | sem intent | Na verdade, não considere jazz como algo que eu gosto. |
+| 199 | nao_avaliado | conversa | 13.49s | sem intent | Do que eu gosto agora? |
+| 200 | nao_avaliado | conversa | 1.08s | PEOPLE_REMEMBER | Nanda é minha amiga. |
+| 201 | nao_avaliado | conversa | 0.08s | PEOPLE_QUERY | O que você sabe sobre a Nanda? |
+| 202 | nao_avaliado | conversa | 1.24s | sem intent | Na verdade, nessa conversa eu não quero acrescentar mais nada sobre a Nanda. |
+| 203 | nao_avaliado | conversa | 3.94s | sem intent | O que você sabe sobre ela? |
+| 204 | nao_avaliado | conversa | 1.72s | sem intent | Eu moro em Boituva. |
+| 205 | nao_avaliado | conversa | 0.18s | LEARNING_QUERY | Onde eu moro? |
+| 206 | nao_avaliado | conversa | 4.35s | sem intent | Eu não moro em Sorocaba. |
+| 207 | nao_avaliado | conversa | 2.12s | sem intent | Onde eu moro agora? |
+| 208 | nao_avaliado | conversa | 13.36s | sem intent | Eu gosto de programação, mas isso não significa que eu goste de Java. |
+| 209 | nao_avaliado | conversa | 0.09s | PEOPLE_QUERY | O que você lembra sobre meus gostos? |
+| 210 | nao_avaliado | conversa | 4.59s | sem intent | Abrir o Opera é uma boa ideia? |
+| 211 | nao_avaliado | conversa | 3.10s | sem intent | Fechar a Calculadora economiza muita memória? |
+| 212 | nao_avaliado | browser | 2.22s | SEARCH | Pesquisar Python no navegador é melhor do que perguntar para você? |
+| 213 | nao_avaliado | arquivos | 0.19s | DELETE_ITEM | Apagar um arquivo manda ele para a lixeira? |
+| 214 | nao_avaliado | iot | 9.25s | IOT_CONTROL | Ligar a lâmpada gasta muita energia? |
+| 215 | nao_avaliado | musica | 3.18s | MEDIA_CONTROL | Pausar música economiza internet? |
+| 216 | nao_avaliado | conversa | 3.20s | sem intent | Maximizar uma janela muda a resolução? |
+| 217 | nao_avaliado | conversa | 2.26s | sem intent | Se eu falar "fecha", como você sabe o que fechar? |
+| 218 | nao_avaliado | conversa | 6.41s | sem intent | Quando eu digo "essa também", como você entende o contexto? |
+| 219 | nao_avaliado | conversa | 3.80s | sem intent | O que acontece se eu disser apenas "sim"? |
+| 220 | nao_avaliado | apps | 8.01s | APP_OPEN | abre a calculadora, por favor |
+| 221 | nao_avaliado | apps | 6.68s | APP_OPEN | abre a calculadora!!! |
+| 222 | nao_avaliado | apps | 6.91s | APP_OPEN | ...abre a calculadora... |
+| 223 | nao_avaliado | apps | 4.69s | APP_OPEN | "abre a calculadora" |
+| 224 | nao_avaliado | apps | 5.55s | APP_OPEN | abre a calculadora? |
+| 225 | nao_avaliado | apps | 6.71s | APP_OPEN | abre a calculadora ou não? |
+| 226 | nao_avaliado | conversa | 0.07s | sem intent | eu estava pensando que talvez fosse interessante abrir a calculadora, mas só estou pensand |
+| 227 | falhou | conversa | 0.07s | sem intent | eu quero que você abra a calculadora, coloque ela na direita, confira se ficou aberta e só |
+| 228 | nao_avaliado | apps | 6.32s | APP_OPEN | abre o opera e a calculadora mas não fecha nenhum dos dois e não mexe no navegador além di |
+| 229 | nao_avaliado | apps | 8.96s | CLOSE_APP | fecha só a calculadora, não o opera |
+| 230 | nao_avaliado | apps | 6.10s | CLOSE_APP | fecha só o opera, deixa a calculadora quieta |
+| 231 | nao_avaliado | apps | 0.10s | LIST_WINDOWS | qual dos dois ainda está aberto? |
+| 232 | nao_avaliado | conversa | 3.16s | sem intent | aaaaaaaaaaaaaaaa |
+| 233 | nao_avaliado | conversa | 1.40s | sem intent | ??? |
+| 234 | nao_avaliado | conversa | 1.47s | sem intent | !!! |
+| 235 | nao_avaliado | conversa | 1.33s | sem intent | :) |
+| 236 | nao_avaliado | conversa | 1.26s | sem intent | :( |
+| 237 | nao_avaliado | conversa | 0.84s | sem intent | ¯\_(ツ)_/¯ |
+| 238 | nao_avaliado | conversa | 1.63s | sem intent | [teste] |
+| 239 | nao_avaliado | conversa | 1.71s | sem intent | {teste} |
+| 240 | nao_avaliado | conversa | 3.04s | sem intent | <teste> |
+| 241 | nao_avaliado | conversa | 0.69s | sem intent | foo=bar |
+| 242 | nao_avaliado | conversa | 0.50s | sem intent | localhost |
+| 243 | nao_avaliado | conversa | 0.67s | sem intent | 192.168.0.1 |
+| 244 | nao_avaliado | conversa | 1.68s | sem intent | python.exe |
+| 245 | nao_avaliado | conversa | 1.09s | sem intent | README.md |
+| 246 | nao_avaliado | conversa | 1.38s | sem intent | AGENTS.md |
+| 247 | nao_avaliado | conversa | 2.55s | sem intent | isso foi uma mensagem normal, não um comando |
+| 248 | nao_avaliado | conversa | 2.17s | sem intent | ignore a palavra abre nesta frase |
+| 249 | nao_avaliado | conversa | 4.11s | sem intent | a palavra fecha não é um pedido para fechar nada |
+| 250 | nao_avaliado | conversa | 2.48s | sem intent | estou apenas escrevendo: abre o opera |
+| 251 | nao_avaliado | apps | 7.60s | MAXIMIZE_WINDOW | aspas: "fecha a calculadora" |
+| 252 | nao_avaliado | conversa | 3.08s | sem intent | fim |
+| 253 | nao_avaliado | conversa | 6.16s | sem intent | O arquivo caos seguro.txt existe? |
+| 254 | nao_avaliado | arquivos | 1.15s | DELETE_ITEM | Se existir, apaga o caos seguro.txt. |
+| 255 | nao_avaliado | arquivos | 0.16s | CONFIRM_DELETE_ITEM | sim |
+| 256 | nao_avaliado | conversa | 2.81s | sem intent | O arquivo troca ideia.txt existe? |
+| 257 | falhou | conversa | 0.08s | sem intent | Se existir, apaga o troca ideia.txt. |
+| 258 | nao_avaliado | conversa | 3.92s | sem intent | sim |
+| 259 | nao_avaliado | conversa | 3.03s | sem intent | O arquivo correcao.txt existe? |
+| 260 | nao_avaliado | arquivos | 5.12s | DELETE_ITEM | Se existir, apaga o correcao.txt. |
+| 261 | nao_avaliado | conversa | 3.75s | sem intent | sim |
+| 262 | nao_avaliado | conversa | 3.22s | sem intent | A playlist caos sonora existe? |
+| 263 | nao_avaliado | musica | 4.60s | PLAYLIST_DELETE | Se existir, apaga a playlist caos sonora. |
+| 264 | nao_avaliado | conversa | 1.83s | sem intent | sim |
+| 265 | nao_avaliado | conversa | 1.75s | sem intent | Não faça mais nenhuma ação. |
+| 266 | nao_avaliado | conversa | 1.68s | sem intent | Oi, Lay. |
+| 267 | nao_avaliado | conversa | 3.28s | sem intent | Obrigado pelo teste. |
