@@ -42,6 +42,8 @@ client_secret*.json
 service-account*.json
 token*.json
 secrets*.json
+credencia_tuya
+
 
 # Credenciais e descobertas locais TinyTuya (em qualquer pasta)
 **/tinytuya.json

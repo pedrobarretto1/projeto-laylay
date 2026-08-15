@@ -1,0 +1,6 @@
+{
+  "patch_id": "P0_CADEIA_MULTIETAPAS_V1_20260815",
+  "production": "mente_laylay/autonomia/analise_comandos.py",
+  "test": "tests/test_cadeia_operacional_multietapas.py",
+  "test_existed": false
+}

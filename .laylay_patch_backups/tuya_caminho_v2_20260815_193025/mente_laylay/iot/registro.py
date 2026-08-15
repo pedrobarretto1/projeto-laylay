@@ -103,14 +103,11 @@ def criar_dispositivo_lampada(*, protocolo: str = "simulado") -> DispositivoIoT:
             "classe_tuya": "bulb",
             "dps_estado": "20",
             "variaveis": nomes_variaveis_tuya(PREFIXO_TUYA_LAMPADA),
-            # P0_TUYA_CAMINHO_RAIZ_LAYLAY_V2_20260815
-            # Fonte local canônica (fora do Git): <raiz>/credencia_tuya/.
-            "snapshot_path": "credencia_tuya/snapshot.json",
-            # Compatibilidade com instalações/pareamentos antigos.
-            # O protocolo continua escolhendo o snapshot válido mais recente.
+            "snapshot_path": "dados/voz_pessoal/snapshot.json",
+            # O wizard do TinyTuya grava estes dois arquivos na pasta atual.
+            # O protocolo escolhe o snapshot mais novo, então um pareamento
+            # recente não fica escondido atrás da cópia pessoal antiga.
             "snapshot_fallback_paths": (
-                "credencia_tuya/devices.json",
-                "dados/voz_pessoal/snapshot.json",
                 "snapshot.json",
                 "dados/voz_pessoal/devices.json",
                 "devices.json",

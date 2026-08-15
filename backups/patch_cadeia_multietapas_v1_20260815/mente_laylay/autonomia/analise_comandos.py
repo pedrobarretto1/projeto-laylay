@@ -6,14 +6,10 @@ import re
 from typing import Callable, List, Optional
 
 
-# P0_CADEIA_MULTIETAPAS_V1_20260815
-LIMITE_ETAPAS_CADEIA = 5
-
 _INICIO_ETAPA_OPERACIONAL = re.compile(
     r"^(?:"
     r"abr(?:e|a)|fech(?:a|e)|maximiz(?:a|e)|minimiz(?:a|e)|"
     r"cri(?:a|e)|coloc(?:a|que)|bot(?:a|e)|toc(?:a|que)|"
-    r"deix(?:a|e)|pass(?:a|e)|volt(?:a|e)|confirm(?:a|e)|consult(?:a|e)|"
     r"adicion(?:a|e)|salv(?:a|e)|guard(?:a|e)|anot(?:a|e)|"
     r"apag(?:a|ue)|exclu(?:i|a)|delet(?:a|e)|remov(?:e|a)|"
     r"encontr(?:a|e)|procur(?:a|e)|pesquis(?:a|e)|busc(?:a|que)|"
@@ -21,20 +17,14 @@ _INICIO_ETAPA_OPERACIONAL = re.compile(
     r"lig(?:a|ue)|deslig(?:a|ue)|paus(?:a|e)|continu(?:a|e)|"
     r"retom(?:a|e)|organiz(?:a|e)|agend(?:a|e)|cancel(?:a|e)|"
     r"(?:me\s+)?lembr(?:a|e)|resum(?:e|a)|explic(?:a|que)|"
-    r"list(?:a|e)|(?:me\s+)?(?:mostr(?:a|e)|diz|diga|fal(?:a|e))"
+    r"mostr(?:a|e)|list(?:a|e)|diz|diga|fal(?:a|e)"
     r")\b",
-    flags=re.IGNORECASE,
-)
-
-_SEPARADOR_ETAPA_OPERACIONAL = re.compile(
-    r"\be\s+depois\b|\bem\s+seguida\b|\bdepois\b|"
-    r"\bent[aã]o\b|[,;]|\be\b",
     flags=re.IGNORECASE,
 )
 
 
 def _parece_etapa_operacional(texto: str) -> bool:
-    """Aceita um corte somente quando o trecho começa como ordem operacional."""
+    """Limita o ``e`` simples a duas ordens, sem cortar conversa comum."""
     return bool(_INICIO_ETAPA_OPERACIONAL.match(str(texto or "").strip()))
 
 
@@ -52,7 +42,7 @@ def segmentar_comandos_em_cadeia(
     *,
     normalizar_texto: Optional[Callable[[str], str]] = None,
 ) -> List[str]:
-    """Separa uma cadeia curta de ordens sem transformar conjunções em ações."""
+    """Separa comandos naturais em até duas etapas encadeadas."""
     bruto = str(texto or "").strip()
     if not bruto:
         return []
@@ -64,51 +54,48 @@ def segmentar_comandos_em_cadeia(
     if not t:
         return []
 
-    # Os segmentos devolvidos continuam vindo da fala original: nomes,
-    # resultado.md, URLs, aspas e pontuação interna não podem ser destruídos
-    # pela cópia usada apenas para reconhecer o começo de cada ordem.
+    # Localizamos o conector na fala original. A cópia normalizada serve só
+    # para reconhecer verbos; devolver seus segmentos destruiria argumentos
+    # como ``resultado.md``, URLs, aspas e nomes com pontuação.
     bruto_operacional = re.sub(
         r"\b(laylay|lay|por favor|pfv)\b", " ", bruto,
         flags=re.IGNORECASE,
     )
     bruto_operacional = re.sub(r"\s+", " ", bruto_operacional).strip()
-    normalizar = normalizar_texto if callable(normalizar_texto) else str.lower
+    for sep in (r"\be depois\b", r"\bem seguida\b", r"\bdepois\b", r"\bent[aã]o\b"):
+        encontrado = re.search(sep, bruto_operacional, flags=re.IGNORECASE)
+        if encontrado:
+            partes_brutas = [
+                bruto_operacional[:encontrado.start()].strip(" .,!?;:"),
+                bruto_operacional[encontrado.end():].strip(" .,!?;:"),
+            ]
+            normalizar = normalizar_texto if callable(normalizar_texto) else str.lower
+            partes_operacionais = [
+                str(normalizar(parte) or "").strip(" .,!?;:")
+                for parte in partes_brutas
+            ]
+            # ``depois`` também é marcador temporal em hipóteses e adiamentos.
+            # Só existe cadeia quando os dois lados são ordens completas. Isso
+            # impede que ``Talvez eu apague X depois.`` seja consumido como
+            # uma execução e que o ponto final vire uma etapa fantasma.
+            if (
+                all(partes_brutas)
+                and all(_parece_etapa_operacional(parte) for parte in partes_operacionais)
+            ):
+                return partes_brutas[:2]
 
-    def normalizar_etapa(parte: str) -> str:
-        return str(normalizar(parte) or "").strip(" .,!?;:")
-
-    partes: List[str] = []
-    inicio = 0
-
-    # Um separador só vira fronteira quando o trecho acumulado à esquerda e o
-    # restante à direita começam como ordens operacionais. Isso permite
-    # "liga X, deixa azul e depois me diz..." sem cortar enumerações como
-    # "liga a luz e o ventilador" ou "coloca vermelho, azul e verde".
-    for encontrado in _SEPARADOR_ETAPA_OPERACIONAL.finditer(bruto_operacional):
-        esquerda = bruto_operacional[inicio:encontrado.start()].strip(" .,!?;:")
-        direita = bruto_operacional[encontrado.end():].strip(" .,!?;:")
-        if not esquerda or not direita:
-            continue
-        if not _parece_etapa_operacional(normalizar_etapa(esquerda)):
-            continue
-        if not _parece_etapa_operacional(normalizar_etapa(direita)):
-            continue
-
-        # Nunca executamos somente o começo de uma cadeia longa. Acima do
-        # limite, o texto volta inteiro ao fluxo normal para não haver sucesso
-        # parcial silencioso.
-        if len(partes) + 2 > LIMITE_ETAPAS_CADEIA:
-            return [t]
-
-        partes.append(esquerda)
-        inicio = encontrado.end()
-
-    if partes:
-        final = bruto_operacional[inicio:].strip(" .,!?;:")
-        if final and _parece_etapa_operacional(normalizar_etapa(final)):
-            partes.append(final)
-            if 2 <= len(partes) <= LIMITE_ETAPAS_CADEIA:
-                return partes
+    # O conectivo simples também forma uma cadeia quando ambos os lados são
+    # ordens reconhecíveis ("cria a pasta e coloca um arquivo nela"). A
+    # validação dos dois verbos impede falsos cortes em frases como
+    # "você prefere rock e metal?" ou "liga a luz e o ventilador".
+    for encontrado in re.finditer(r"\be\b", bruto_operacional, flags=re.IGNORECASE):
+        esquerda_bruta = bruto_operacional[:encontrado.start()].strip(" ,!?;:")
+        direita_bruta = bruto_operacional[encontrado.end():].strip(" ,!?;:")
+        normalizar = normalizar_texto if callable(normalizar_texto) else str.lower
+        esquerda = str(normalizar(esquerda_bruta) or "").strip()
+        direita = str(normalizar(direita_bruta) or "").strip()
+        if _parece_etapa_operacional(esquerda) and _parece_etapa_operacional(direita):
+            return [esquerda_bruta, direita_bruta]
 
     return [t]
 
@@ -157,13 +144,13 @@ def processar_comandos_em_cadeia(
     executar_trecho: Optional[Callable[[str, str], bool]] = None,
     relatar_falha: Optional[Callable[[str, int, int], object]] = None,
 ) -> bool:
-    """Executa uma cadeia curta em ordem e interrompe na primeira falha."""
+    """Executa comandos naturais encadeados, mantendo compatibilidade com o fluxo antigo."""
     partes = segmentar(texto, normalizar_texto=normalizar_texto)
-    if len(partes) < 2 or len(partes) > LIMITE_ETAPAS_CADEIA:
+    if len(partes) < 2:
         return False
 
     tag = origem or "cadeia"
-    for idx, parte in enumerate(partes, start=1):
+    for idx, parte in enumerate(partes[:2], start=1):
         executou = bool(
             callable(executar_trecho)
             and executar_trecho(parte, f"{tag}-{idx}")

@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 import threading
 from typing import Any, Callable, Dict
 
-from mente_laylay.iot.configuracao import (
-    carregar_dispositivo_snapshot,
-    carregar_variaveis,
-    resolver_caminho_laylay,
-)
+from mente_laylay.iot.configuracao import carregar_dispositivo_snapshot, carregar_variaveis
 from mente_laylay.iot.contratos import DispositivoIoT, ResultadoProtocolo
 from mente_laylay.iot.protocolos.base import ProtocoloIoT
 from mente_laylay.memoria_mental.implantacao_desempenho import flag_desempenho_ativa
@@ -69,7 +66,9 @@ class ProtocoloTuya(ProtocoloIoT):
         for caminho_snapshot in caminhos_snapshot:
             if not caminho_snapshot:
                 continue
-            path = resolver_caminho_laylay(caminho_snapshot)
+            path = Path(caminho_snapshot)
+            if not path.is_absolute():
+                path = Path.cwd() / path
             try:
                 estado = path.stat()
                 assinatura_arquivos.append(
@@ -114,7 +113,9 @@ class ProtocoloTuya(ProtocoloIoT):
                 continue
             if not snapshot:
                 continue
-            path = resolver_caminho_laylay(caminho_snapshot)
+            path = Path(caminho_snapshot)
+            if not path.is_absolute():
+                path = Path.cwd() / path
             try:
                 modificado = float(path.stat().st_mtime)
             except OSError:

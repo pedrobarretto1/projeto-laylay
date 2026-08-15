@@ -11,18 +11,6 @@ from typing import Dict, Iterable
 PREFIXO_TUYA_VENTILADOR = "IOT_TUYA_TOMADA_VENTILADOR"
 PREFIXO_TUYA_LAMPADA = "IOT_TUYA_LAMPADA_QUARTO"
 
-# P0_TUYA_CAMINHO_RAIZ_LAYLAY_V2_20260815
-# configuracao.py fica em <raiz>/mente_laylay/iot/.
-RAIZ_LAYLAY = Path(__file__).resolve().parents[2]
-
-
-def resolver_caminho_laylay(caminho: str | Path) -> Path:
-    """Resolve caminhos relativos de configuração a partir da raiz da Laylay."""
-    path = Path(str(caminho or "").strip())
-    if path.is_absolute():
-        return path
-    return RAIZ_LAYLAY / path
-
 
 def ler_variavel_ambiente(nome: str, padrao: str = "") -> str:
     """Lê o processo e, no Windows, o perfil persistido pelo ``setx``."""
@@ -69,7 +57,9 @@ def carregar_variaveis(
 
 def carregar_dispositivo_snapshot(caminho: str, *, nome: str = "", device_id: str = "") -> Dict[str, str]:
     """Lê somente os campos locais necessários de um snapshot TinyTuya."""
-    path = resolver_caminho_laylay(caminho)
+    path = Path(str(caminho or "").strip())
+    if not path.is_absolute():
+        path = Path.cwd() / path
     try:
         dados = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
