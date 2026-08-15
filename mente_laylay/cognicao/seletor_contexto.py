@@ -82,7 +82,8 @@ def selecionar_contexto_turno(
     modalidade = str(turno.get("modalidade") or "conversa").lower()
     dominio_atual = _dominio_texto(str(turno.get("texto_operacional") or texto))
     referencia = bool(re.search(
-        r"\b(?:ele|ela|isso|esse|essa|dele|dela|como assim|o que aconteceu|tipo o que|e depois|"
+        # P0_NAVEGADOR_SUBTIPO_V3_1_20260815
+        r"\b(?:ele|ela|isso|esse|essa|dele|dela|anterior|de antes|como assim|o que aconteceu|tipo o que|e depois|"
         r"tem certeza|entao voce|então você|mas voce|mas você)\b",
         _normalizar(texto),
     ))

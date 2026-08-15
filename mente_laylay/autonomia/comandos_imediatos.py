@@ -121,6 +121,30 @@ def texto_pergunta_como_apagar_item(texto: str) -> bool:
     )
 
 
+def texto_referencia_tipificada_prioritaria(texto: str) -> bool:
+    """Molduras curtas que exigem resolver o referente antes de executar.
+
+    P0_NAVEGADOR_SUBTIPO_V3_1_20260815
+    A função só reconhece formas estreitas já suportadas pelo resolvedor
+    contextual; ela não cria intents nem concede autorização.
+    """
+    t = _texto_normalizado_local(texto).strip(" .,!?:;")
+    referencia_direta = bool(re.fullmatch(
+        r"(?:(?:fecha|feche|fechar)|(?:tenta\s+)?(?:abre|abra|abrir))\s+"
+        r"(?:ele|ela|isso|esse|essa|este|esta|"
+        r"(?:esse|este|o)\s+arquivo|"
+        r"(?:essa|esta|a)\s+(?:aba|guia)|"
+        r"(?:esse|este|o)\s+site)",
+        t,
+    ))
+    voltar_anterior = bool(re.fullmatch(
+        r"(?:volta|volte|retorna|retorne|vai)\s+"
+        r"(?:(?:para|pra)\s+)?(?:a\s+)?anterior",
+        t,
+    ))
+    return referencia_direta or voltar_anterior
+
+
 def segmentar_composto_caixa_agenda(texto: str) -> tuple[str, str] | None:
     """Reconhece a cooperação explícita entre uma ideia e seu lembrete.
 
@@ -1182,15 +1206,8 @@ class ComandosImediatosRuntime:
         # ``fecha ele`` após abrir um site, arquivo ou aplicativo. Limitamos a
         # barreira a molduras referenciais inequívocas e aceitamos somente
         # intents que o resolvedor canônico já autorizou.
-        texto_referencia = _texto_normalizado_local(texto).strip(" .,!?:;")
-        if re.fullmatch(
-            r"(?:(?:fecha|feche|fechar)|(?:tenta\s+)?(?:abre|abra|abrir))\s+"
-            r"(?:ele|ela|isso|esse|essa|este|esta|"
-            r"(?:esse|este|o)\s+arquivo|"
-            r"(?:essa|esta|a)\s+(?:aba|guia)|"
-            r"(?:esse|este|o)\s+site)",
-            texto_referencia,
-        ):
+        # P0_NAVEGADOR_SUBTIPO_V3_1_20260815
+        if texto_referencia_tipificada_prioritaria(texto):
             resolver_contextual = ns.get("_resolver_comando_contextual_forcado")
             try:
                 comando_contextual = (
@@ -1210,7 +1227,7 @@ class ComandosImediatosRuntime:
             ).upper()
             if intent_contextual in {
                 "CLOSE_TAB", "CLOSE_APP", "FILE_OPEN_RESULT", "OPEN_URL",
-                "MEDIA_CONTROL", "PLAYLIST_PLAY",
+                "SWITCH_PREVIOUS_TAB", "MEDIA_CONTROL", "PLAYLIST_PLAY",
             }:
                 executar = ns.get("executar_intencao")
                 if not callable(executar):

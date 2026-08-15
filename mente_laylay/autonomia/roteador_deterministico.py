@@ -154,6 +154,14 @@ def extrair_intencao_abrir_app(
     nome = (encontrado.group(2) or "").strip()
     nome = limpar_destino(nome) if callable(limpar_destino) else nome
     nome = re.sub(r"\s+(agora|aqui|ai|aí|por favor|pfv)$", "", nome).strip()
+    # P0_NAVEGADOR_SUBTIPO_V3_1_20260815
+    # "de novo" descreve repetição da ação; não faz parte do nome do alvo.
+    nome = re.sub(
+        r"(?:^|\s)(?:de\s+novo|novamente|outra\s+vez)$",
+        "",
+        nome,
+        flags=re.IGNORECASE,
+    ).strip()
     nome = re.sub(r"^(o|a|os|as|um|uma)\s+", "", nome).strip()
     nome = re.sub(r"^(?:programa|app|aplicativo)\s+(?:chamado|chamada|com\s+nome|de\s+nome)\s+", "", nome).strip()
     nome, complemento_foco = separar_alvo_e_complemento_foco(nome)

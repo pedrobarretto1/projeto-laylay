@@ -139,6 +139,47 @@ def _texto_referencia_curta_operacional(texto: str) -> bool:
     return pronome and operacao
 
 
+def _dominio_contrato_referencia(
+    estado: Dict[str, Any] | None,
+    *,
+    ttl_s: float = 300.0,
+) -> str:
+    """Retorna o domínio da última ação confirmada, se ela ainda for recente.
+
+    P0_NAVEGADOR_SUBTIPO_V3_1_20260815
+    Em referências curtas, o contrato operacional observado é evidência mais
+    forte que a janela física atualmente percebida. Assim, depois de OPEN_URL,
+    ``fecha essa`` continua sendo site/aba mesmo que o SO enxergue Opera.exe.
+    """
+    mente = dict(estado or {})
+    contrato = (
+        dict(mente.get("ultima_acao_contrato") or {})
+        if isinstance(mente.get("ultima_acao_contrato"), dict)
+        else {}
+    )
+    if not contrato:
+        return ""
+
+    try:
+        ts = float(mente.get("ultima_acao_ts") or 0.0)
+    except (TypeError, ValueError):
+        return ""
+    if not ts or time.time() - ts > ttl_s:
+        return ""
+
+    if contrato.get("executou") is not True or contrato.get("confirmado") is not True:
+        return ""
+
+    dominio = _normalizar_dominio_referencia(
+        str(contrato.get("dominio") or "")
+    )
+    if not dominio:
+        dominio = _dominio_intent_contextual(
+            str(contrato.get("intent") or "")
+        )
+    return dominio if dominio in _DOMINIOS_INTENT_CONTEXTO else ""
+
+
 def _dominio_restrito_referencia(
     texto: str,
     estado: Dict[str, Any] | None,
@@ -150,6 +191,12 @@ def _dominio_restrito_referencia(
         return explicito
     if not _texto_referencia_curta_operacional(texto):
         return ""
+
+    # P0_NAVEGADOR_SUBTIPO_V3_1_20260815
+    # Para dêiticos curtos, a última ação confirmada vence percepção/foco.
+    dominio_contrato = _dominio_contrato_referencia(estado, ttl_s=ttl_s)
+    if dominio_contrato:
+        return dominio_contrato
     return _dominio_ativo_referencia(estado, ttl_s=ttl_s)
 
 
@@ -358,7 +405,7 @@ def referencia_contextual_imediata(
         fecha_referencia_curta
         and contrato_acao.get("executou") is True
         and contrato_acao.get("confirmado") is True
-        and intent_contrato in {"OPEN_URL", "APP_OPEN", "MAXIMIZE_WINDOW"}
+        and intent_contrato in {"OPEN_URL", "SWITCH_PREVIOUS_TAB", "APP_OPEN", "MAXIMIZE_WINDOW"}
     ):
         alvo_contrato = str(contrato_acao.get("alvo") or "").strip()
         if not alvo_contrato:
@@ -373,7 +420,11 @@ def referencia_contextual_imediata(
                     or ultimo_app or ""
                 ).strip()
         if alvo_contrato:
-            tipo_contrato = "site" if intent_contrato == "OPEN_URL" else "app"
+            tipo_contrato = (
+                "site"
+                if intent_contrato in {"OPEN_URL", "SWITCH_PREVIOUS_TAB"}
+                else "app"
+            )
             return {
                 "tipo": tipo_contrato,
                 "alvo": alvo_contrato,
@@ -428,7 +479,7 @@ def referencia_contextual_imediata(
 
     # A ação prática mais recente define a referência. O foco visual pode ainda
     # apontar para o navegador depois que um site novo foi aberto.
-    if ultima_acao_promovivel and ultima_intencao in {"OPEN_URL", "CLOSE_TAB", "SITE_ENTER"}:
+    if ultima_acao_promovivel and ultima_intencao in {"OPEN_URL", "CLOSE_TAB", "SWITCH_PREVIOUS_TAB", "SITE_ENTER"}:
         alvo_site = str(ultimo_params.get("alvo") or ultimo_params.get("url") or ultimo_site or "").strip()
         if alvo_site:
             return {"tipo": "site", "alvo": alvo_site, "intencao": ultima_intencao, "params": ultimo_params}
