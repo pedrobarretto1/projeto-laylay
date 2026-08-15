@@ -122,8 +122,12 @@ def _dominio_ativo_referencia(
 
 def _texto_referencia_curta_operacional(texto: str) -> bool:
     t = str(texto or "").casefold().strip()
+    # P0_DEITICOS_DOMINIO_20260814
+    # "anterior" é dêitico: o domínio ativo decide o referente.
     pronome = bool(re.search(
-        r"\b(?:ele|ela|isso|esse|essa|este|esta|dele|dela|desse|dessa)\b", t
+        r"\b(?:ele|ela|isso|esse|essa|este|esta|dele|dela|desse|dessa|"
+        r"anterior)\b",
+        t,
     ))
     operacao = bool(re.search(
         r"\b(?:abre|abra|abrir|fecha|feche|fechar|encerra|encerrar|"
@@ -231,7 +235,10 @@ def referencia_contextual_imediata(
             dominio_pedido = "app"
     elif re.search(r"\b(aba|guia|site|pagina|página)\b", texto_norm):
         dominio_pedido = "site"
-    elif re.search(r"\b(pausa|despausa|proxima|próxima|anterior|musica|música|faixa|playlist|toca|replay)\b", texto_norm):
+    elif re.search(
+        r"\b(pausa|despausa|proxima|próxima|musica|música|faixa|playlist|toca|replay)\b",
+        texto_norm,
+    ):
         dominio_pedido = "musica"
     elif re.search(
         r"\b(arquivo|pasta|diretorio|diretório|texto|extensao|extensão|formato|markdown)\b|"
@@ -764,6 +771,16 @@ def resolver_comando_acao_geral_contextual(
             }
 
     if tipo_ref == "site":
+        if re.fullmatch(
+            r"(?:volta|volte|retorna|retorne|vai)\s+"
+            r"(?:(?:para|pra)\s+)?(?:a\s+)?anterior[?.!]*",
+            t,
+            flags=re.IGNORECASE,
+        ):
+            return {
+                "intent": "SWITCH_PREVIOUS_TAB",
+                "params": {"referencia_contextual": True},
+            }
         alvo = str(alvo_ref or ultimo_params.get("alvo") or ultimo_params.get("url") or "").strip()
         if alvo:
             if pedido_fechar_ref:

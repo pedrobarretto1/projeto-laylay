@@ -47,6 +47,10 @@ from mente_laylay.cognicao.modalidade_turno import (
 )
 from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
 from mente_laylay.autonomia.analise_comandos import segmentar_comandos_em_cadeia
+from mente_laylay.memoria_mental.contexto_imediato import (
+    _dominio_restrito_referencia,
+    _resultado_compativel_com_dominio,
+)
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
@@ -1047,6 +1051,28 @@ class ComandosImediatosRuntime:
                     f"{type(erro).__name__}: {erro}"
                 )
                 candidato_imediato = None
+        # P0_DEITICOS_DOMINIO_20260814
+        # O determinístico detecta; o domínio atual decide se ele pode agir.
+        dominio_contextual_p0 = _dominio_restrito_referencia(
+            texto,
+            getattr(estado_runtime, "mental", {}),
+            ttl_s=300.0,
+        )
+        if (
+            isinstance(candidato_imediato, dict)
+            and dominio_contextual_p0
+            and not _resultado_compativel_com_dominio(
+                candidato_imediato,
+                dominio_contextual_p0,
+            )
+        ):
+            print(
+                "🛡️ [P0:CONTEXTO] determinístico descartado por domínio | "
+                f"dominio={dominio_contextual_p0} "
+                f"intent={candidato_imediato.get('intent')}"
+            )
+            candidato_imediato = None
+
         intent_imediato = str(
             (candidato_imediato or {}).get("intent")
             if isinstance(candidato_imediato, dict) else ""

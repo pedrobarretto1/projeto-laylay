@@ -215,3 +215,71 @@ def test_app_valido_continua_resolvendo_fecha_ele():
     r = _runtime(mental, {}).resolver("fecha ele")
     assert r["intent"] == "CLOSE_APP"
     assert r["params"]["nome_app"] == "opera"
+
+def test_deitico_anterior_usa_site_ativo():
+    estado = {
+        "ts": time.time(),
+        "ultima_acao_intent": "OPEN_URL",
+        "ultima_intencao": "OPEN_URL",
+        "ultima_habilidade": "site",
+        "ultima_acao_params": {"alvo": "prime video"},
+        "ultima_acao_promovivel": True,
+        "ultimo_site_aba": "prime video",
+        "continuidade_geral": _continuidade(
+            "site", "OPEN_URL", "prime video", {"alvo": "prime video"}
+        ),
+    }
+    assert _dominio_restrito_referencia(
+        "Volta para a anterior.", estado, ttl_s=300.0
+    ) == "site"
+
+
+def test_site_ativo_materializa_switch_previous_tab():
+    mental = {
+        "ts": time.time(),
+        "ultima_acao_intent": "OPEN_URL",
+        "ultima_intencao": "OPEN_URL",
+        "ultima_habilidade": "site",
+        "ultima_acao_params": {"alvo": "prime video"},
+        "ultima_acao_promovivel": True,
+        "ultimo_site_aba": "prime video",
+        "continuidade_geral": _continuidade(
+            "site", "OPEN_URL", "prime video", {"alvo": "prime video"}
+        ),
+    }
+    resultado = _runtime(mental, estrutura={}).resolver(
+        "Volta para a anterior."
+    )
+    assert resultado is not None
+    assert resultado["intent"] == "SWITCH_PREVIOUS_TAB"
+
+
+def test_fecha_essa_depois_de_site_vira_close_tab_nao_midia():
+    mental = {
+        "ts": time.time(),
+        "ultima_acao_intent": "OPEN_URL",
+        "ultima_intencao": "OPEN_URL",
+        "ultima_habilidade": "site",
+        "ultima_acao_params": {"alvo": "prime video"},
+        "ultima_acao_promovivel": True,
+        "ultimo_site_aba": "prime video",
+        "continuidade_geral": _continuidade(
+            "site", "OPEN_URL", "prime video", {"alvo": "prime video"}
+        ),
+    }
+    resultado = _runtime(mental, estrutura={}).resolver("Fecha essa.")
+    assert resultado is not None
+    assert resultado["intent"] == "CLOSE_TAB"
+    assert resultado["params"]["alvo"] == "prime video"
+
+
+def test_musica_anterior_explicita_continua_musica():
+    mental = {
+        "continuidade_geral": _continuidade(
+            "site", "OPEN_URL", "prime video", {"alvo": "prime video"}
+        )
+    }
+    assert _dominio_restrito_referencia(
+        "Volta para a música anterior.", mental, ttl_s=300.0
+    ) == "musica"
+
