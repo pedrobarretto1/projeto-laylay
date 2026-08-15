@@ -170,8 +170,17 @@ def _selecionar_aba_observada(
             host = ""
         host_compacto = host.replace(" ", "")
         url_norm = _normalizar_alvo_aba(url)
+
+        # P0_NAVEGADOR_ROTULO_CANONICO_ROUNDTRIP_V4_3_20260815
+        # O rótulo publicado no contexto ("Título — host") precisa reencontrar
+        # a mesma aba antes do fallback textual. Assim preservamos a identidade
+        # observada e o fechamento segue por tabId.
+        rotulo_canonico = _normalizar_alvo_aba(_rotulo_aba(aba))
+
         score = 0
-        if titulo == alvo_norm:
+        if rotulo_canonico == alvo_norm:
+            score = 130
+        elif titulo == alvo_norm:
             score = 120
         elif host == alvo_norm or host.endswith(" " + alvo_norm):
             score = 115
