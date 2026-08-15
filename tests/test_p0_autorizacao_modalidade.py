@@ -13,6 +13,8 @@ NAO_EXECUTAR = (
     "Maximizar uma janela muda a resolução?",
     "Estou apenas escrevendo: abre o Opera.",
     "A palavra fecha não é um pedido para fechar nada.",
+    "Ignore a palavra abre nesta frase.",
+    "Desconsidere a frase fecha a Calculadora.",
     "Não abra a Calculadora.",
     "Talvez eu abra a Calculadora depois.",
     "Como eu apagaria um arquivo?",
@@ -144,3 +146,26 @@ def test_metalinguagem_nao_e_segmentada_como_comando():
     assert turno["texto_operacional"] == ""
     assert turno["atos"] == ["conversa"]
     assert turno["natureza_acao"] == "mencao_operacional"
+
+def test_runtime_imediato_bloqueia_ignore_palavra_com_detector_agressivo():
+    texto = "Ignore a palavra abre nesta frase."
+    runtime, executados, _registros, _falas = _runtime_para(
+        texto,
+        detector=lambda _texto: {
+            "intent": "APP_OPEN",
+            "params": {"nome_app": "nesta frase"},
+        },
+    )
+    assert runtime.processar_prioritarios(texto) is False
+    assert executados == []
+
+
+def test_ignore_palavra_e_metalinguagem_no_turno_inteiro():
+    turno = classificar_modalidade_turno(
+        "Ignore a palavra abre nesta frase."
+    )
+    assert turno["autoriza_execucao"] is False
+    assert turno["texto_operacional"] == ""
+    assert turno["atos"] == ["conversa"]
+    assert turno["natureza_acao"] == "mencao_operacional"
+

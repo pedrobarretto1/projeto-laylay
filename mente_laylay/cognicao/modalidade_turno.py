@@ -762,6 +762,15 @@ def _protecao_p0_ato_fala(
             t,
         )
         or re.search(r"^(?:a\s+)?(?:palavra|frase|expressao|texto|termo)\b", t)
+        # P0_METALINGUAGEM_IGNORE_20260814
+        # "ignore/desconsidere a palavra X" fala SOBRE o token X; o verbo
+        # citado depois não ganha autorização operacional.
+        or re.search(
+            r"^(?:por\s+favor\s+)?"
+            r"(?:ignore|ignora|ignorar|desconsidere|desconsidera|desconsiderar)\s+"
+            r"(?:a\s+|o\s+)?(?:palavra|frase|expressao|texto|termo)\b",
+            t,
+        )
         or re.search(r"\bnao\s+(?:e|eh)\s+(?:um\s+)?(?:pedido|comando|ordem)\b", t)
         or re.search(
             r"\b(?:so|apenas|somente)\s+(?:um\s+)?"
