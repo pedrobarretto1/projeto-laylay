@@ -1735,3 +1735,5 @@ Timeout na LLM local/API: HTTPConnectionPool(host='localhost', port=11434): Read
 🧠 [PLANO:FASE] fase=executado | comandos=[] | erros=[]
 ╭─ ◕‿◕ Laylay: Foi um prazer, obrigado pelo teste! Até a próxima, caos sonora.
 📊 [ROTEIRO:RESUMO] avaliados=52 | passaram=25 | falharam=26 | alertas=1 | p95=8.232s
+🛡️ [CLIPBOARD:OBSERVADOR] conteúdo sensível ignorado localmente.
+🛡️ [CLIPBOARD:OBSERVADOR] conteúdo sensível ignorado localmente.

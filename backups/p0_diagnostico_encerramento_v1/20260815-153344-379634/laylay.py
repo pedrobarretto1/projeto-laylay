@@ -276,9 +276,6 @@ from mente_laylay.integracao.roteiro_teste_conversa import (
     instalar_espelho_terminal as _instalar_espelho_terminal_roteiro,
     preparar_diretorio_resultado as _preparar_diretorio_resultado_roteiro,
 )
-from mente_laylay.integracao.diagnostico_encerramento import (
-    criar_sentinela_encerramento as _criar_sentinela_encerramento,
-)
 from mente_laylay.integracao.dashboard_terminal import (
     criar_dashboard_terminal_runtime as _criar_dashboard_terminal_runtime,
 )
@@ -3836,7 +3833,6 @@ def main():
     configuracao_roteiro = None
     diretorio_resultado_roteiro = None
     espelhos_terminal: tuple[Any, Any] = ()
-    sentinela_encerramento = None
     if caminho_roteiro:
         try:
             configuracao_roteiro = _carregar_configuracao_roteiro(caminho_roteiro)
@@ -3847,15 +3843,6 @@ def main():
             )
             espelhos_terminal = _instalar_espelho_terminal_roteiro(
                 diretorio_resultado_roteiro,
-            )
-            # P0_DIAGNOSTICO_SENTINELA_LAYLAY_V1_20260815
-            sentinela_encerramento = _criar_sentinela_encerramento(
-                diretorio_resultado_roteiro, componente="laylay",
-            )
-            os.environ["LAYLAY_DIAGNOSTICO_DIR"] = str(diretorio_resultado_roteiro)
-            sentinela_encerramento.marcar(
-                "roteiro_persistencia_ativa",
-                encerrar_ao_final=bool(configuracao_roteiro.encerrar_ao_final),
             )
             print(
                 "🧪 [ROTEIRO] persistência ativada antes dos testes | "
@@ -3983,8 +3970,6 @@ def main():
         )
         roteiro_runtime.iniciar()
 
-    if sentinela_encerramento is not None:
-        sentinela_encerramento.marcar("manter_ativo_entrada")
     _inicializacao_runtime.manter_ativo(
         fala_pronta="",
         ao_encerrar=_encerrar_laylay,
@@ -3997,12 +3982,6 @@ def main():
             )
         ),
     )
-    if sentinela_encerramento is not None:
-        sentinela_encerramento.marcar(
-            "manter_ativo_retorno",
-            reinicio=bool(_reinicio_aplicacao_solicitado.is_set()),
-            roteiro_finalizado=bool(roteiro_finalizado.is_set()),
-        )
     if _reinicio_aplicacao_solicitado.is_set():
         argumentos = construir_argumentos_reinicio(
             sys.executable,
@@ -4023,7 +4002,5 @@ def main():
         fechar = getattr(espelho, "fechar", None)
         if callable(fechar):
             fechar()
-    if sentinela_encerramento is not None:
-        sentinela_encerramento.marcar("main_retorno")
 if __name__ == "__main__":
     main()

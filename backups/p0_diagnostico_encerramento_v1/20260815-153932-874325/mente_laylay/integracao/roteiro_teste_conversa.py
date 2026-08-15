@@ -24,9 +24,6 @@ from mente_laylay.integracao.avaliador_roteiro_teste import (
     avaliar_turno_roteiro,
     gravar_relatorios_roteiro,
 )
-from mente_laylay.integracao.diagnostico_encerramento import (
-    registrar_evento_encerramento,
-)
 # UPGRADE_TESTADOR_SEMANTICO_V32_20260814
 
 
@@ -1132,18 +1129,10 @@ class RoteiroTesteConversaRuntime:
         estado = "concluído" if sucesso_total else "interrompido"
         self._anexar_conversa(f"## Roteiro {estado}\n")
         # V32: RESUMO_SEMANTICO_FINAL
-        # P0_DIAGNOSTICO_FINALIZACAO_ROTEIRO_V1_20260815
-        registrar_evento_encerramento(
-            self.diretorio, "relatorio_final_iniciado", componente="roteiro",
-            sucesso=bool(sucesso_total),
-        )
         try:
             resumo_semantico = gravar_relatorios_roteiro(
                 self._estado,
                 self.diretorio,
-            )
-            registrar_evento_encerramento(
-                self.diretorio, "relatorio_final_concluido", componente="roteiro",
             )
             self.log(
                 "📊 [ROTEIRO:RESUMO] "
@@ -1153,37 +1142,18 @@ class RoteiroTesteConversaRuntime:
                 f"alertas={resumo_semantico.get('alertas')} | "
                 f"p95={(resumo_semantico.get('latencia_s') or {}).get('p95')}s"
             )
-            registrar_evento_encerramento(
-                self.diretorio, "resumo_impresso", componente="roteiro",
-            )
         except Exception as erro:
-            registrar_evento_encerramento(
-                self.diretorio, "relatorio_final_falhou", componente="roteiro",
-                erro_tipo=type(erro).__name__,
-            )
             self.log(
                 "⚠️ [ROTEIRO:RELATORIO] relatório final indisponível "
                 f"| tipo={type(erro).__name__}"
             )
 
-        registrar_evento_encerramento(
-            self.diretorio, "log_final_iniciado", componente="roteiro",
-        )
         self.log(
             f"🧪 [ROTEIRO] {estado} | conversa={self.conversa_path} "
             f"checkpoint={self.checkpoint_path}"
         )
-        registrar_evento_encerramento(
-            self.diretorio, "log_final_concluido", componente="roteiro",
-        )
         if callable(self.ao_finalizar):
-            registrar_evento_encerramento(
-                self.diretorio, "callback_iniciado", componente="roteiro",
-            )
             self.ao_finalizar(sucesso_total)
-            registrar_evento_encerramento(
-                self.diretorio, "callback_concluido", componente="roteiro",
-            )
         return sucesso_total
 
 

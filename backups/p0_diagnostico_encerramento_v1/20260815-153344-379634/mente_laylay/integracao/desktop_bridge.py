@@ -1242,31 +1242,9 @@ class DesktopBridgeRuntime:
             "LAYLAY_PARENT_PID": str(self.parent_pid),
             "LAYLAY_PARENT_STARTED_AT": str(self.started_at),
         })
-        # P0_DIAGNOSTICO_TERMINAL_FILHO_V1_20260815
-        diretorio_diagnostico = str(ambiente.get("LAYLAY_DIAGNOSTICO_DIR") or "").strip()
-        saida_terminal = None
-        if diretorio_diagnostico:
-            ambiente["PYTHONFAULTHANDLER"] = "1"
-            ambiente["PYTHONUNBUFFERED"] = "1"
-            try:
-                pasta_diagnostico = Path(diretorio_diagnostico).resolve()
-                pasta_diagnostico.mkdir(parents=True, exist_ok=True)
-                saida_terminal = open(
-                    pasta_diagnostico / "terminal_cliente.log", "ab", buffering=0,
-                )
-            except OSError as erro:
-                saida_terminal = None
-                self.log(
-                    "⚠️ [TERMINAL 2:DIAGNÓSTICO] log do cliente indisponível "
-                    f"| tipo={type(erro).__name__}"
-                )
         comando = [sys.executable, str(arquivo)]
         try:
-            self._processo = subprocess.Popen(
-                comando, env=ambiente, cwd=str(arquivo.parents[1]),
-                stdout=saida_terminal,
-                stderr=subprocess.STDOUT if saida_terminal is not None else None,
-            )
+            self._processo = subprocess.Popen(comando, env=ambiente, cwd=str(arquivo.parents[1]))
             self.log(
                 "🖥️ [TERMINAL 2] interface iniciada "
                 f"| sessão={self.session_id[:8]} pid={self._processo.pid} "
@@ -1276,12 +1254,6 @@ class DesktopBridgeRuntime:
         except Exception as erro:
             self.log(f"⚠️ [TERMINAL 2] interface indisponível: {type(erro).__name__}: {erro}")
             return False
-        finally:
-            if saida_terminal is not None:
-                try:
-                    saida_terminal.close()
-                except OSError:
-                    pass
 
     def _servir(self) -> None:
         servidor = self._server

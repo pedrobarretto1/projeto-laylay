@@ -20,6 +20,10 @@ _backup_regressao_118/
 *.sqlite
 *.sqlite3
 *.pid
+*.log
+
+# logs que queremos preservar dos testes da Laylay
+!resultados_testes/**/terminal.log
 
 # Environment files
 .env
