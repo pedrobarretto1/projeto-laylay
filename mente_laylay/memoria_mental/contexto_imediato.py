@@ -262,8 +262,11 @@ def referencia_contextual_imediata(
 
     texto_norm = _normalizar_com_callback(texto_atual, normalizar_texto)
     dominio_pedido = ""
+    # P0_NAVEGADOR_PONTE_V3_2_20260815
+    # "anterior/de antes" são dêiticos operacionais como "essa": o domínio
+    # vem do contrato/continuidade, não da palavra isolada.
     referencia_curta = bool(re.search(
-        r"\b(?:ele|ela|isso|esse|essa|este|esta)\b",
+        r"\b(?:ele|ela|isso|esse|essa|este|esta|anterior|de\s+antes)\b",
         texto_norm,
     ))
     arquivo_operacional_recente = bool(
@@ -315,6 +318,16 @@ def referencia_contextual_imediata(
         )
     ):
         dominio_pedido = "iot"
+
+    # P0_NAVEGADOR_PONTE_V3_2_20260815
+    # A camada de domínio já aplica contrato e TTL. Esta ponte apenas
+    # transporta a decisão canônica para referencia_contextual_imediata.
+    if not dominio_pedido and referencia_curta:
+        dominio_pedido = _dominio_restrito_referencia(
+            texto_norm,
+            estado,
+            ttl_s=ttl_s,
+        )
 
     # Uma confirmação operacional recente é mais saliente que a fala usada
     # para apresentá-la. Sem esta guarda, a resposta "iFood já está aberto"
