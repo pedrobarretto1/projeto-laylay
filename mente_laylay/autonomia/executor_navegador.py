@@ -348,27 +348,62 @@ def _executar_aba_anterior(
         None,
     )
 
-    candidatos: list[tuple[float, Dict[str, Any]]] = []
-    for aba in abas:
-        tab_id = _id_aba(aba)
-        if tab_id is None or tab_id == ativa_id or aba.get("active") is True:
-            continue
-        if janela_ativa is not None and aba.get("windowId") != janela_ativa:
-            continue
-        try:
-            recencia = float(aba.get("lastAccessed") or 0.0)
-        except (TypeError, ValueError):
-            recencia = 0.0
-        candidatos.append((recencia, aba))
-    if not candidatos:
-        deps.marcar_resultado(
-            "aba_anterior_indisponivel", executou=False, confirmado=True,
+    # P0_NAVEGADOR_ANTERIOR_CANONICO_V4_1_20260815
+    # A ordem de foco é publicada pelo WebSocket. ``lastAccessed`` continua
+    # apenas como fallback para estado legado, inicialização ou aba já fechada.
+    obter_anterior = getattr(leitura, "aba_anterior_id", None)
+    try:
+        anterior_id_canonico = (
+            obter_anterior() if callable(obter_anterior) else None
         )
-        _falar(ctx, "Não encontrei outra aba observada para voltar.", "calma", 1)
-        return ResultadoDespacho.concluido(False)
+    except Exception:
+        anterior_id_canonico = None
+    if not (
+        isinstance(anterior_id_canonico, int)
+        and not isinstance(anterior_id_canonico, bool)
+    ):
+        anterior_id_canonico = None
 
-    candidatos.sort(key=lambda item: item[0], reverse=True)
-    anterior = candidatos[0][1]
+    anterior = next(
+        (
+            aba for aba in abas
+            if _id_aba(aba) == anterior_id_canonico
+            and anterior_id_canonico != ativa_id
+            and (
+                janela_ativa is None
+                or aba.get("windowId") == janela_ativa
+            )
+        ),
+        {},
+    )
+
+    if not anterior:
+        candidatos: list[tuple[float, Dict[str, Any]]] = []
+        for aba in abas:
+            tab_id = _id_aba(aba)
+            if tab_id is None or tab_id == ativa_id or aba.get("active") is True:
+                continue
+            if janela_ativa is not None and aba.get("windowId") != janela_ativa:
+                continue
+            try:
+                recencia = float(aba.get("lastAccessed") or 0.0)
+            except (TypeError, ValueError):
+                recencia = 0.0
+            candidatos.append((recencia, aba))
+        if not candidatos:
+            deps.marcar_resultado(
+                "aba_anterior_indisponivel", executou=False, confirmado=True,
+            )
+            _falar(
+                ctx,
+                "Não encontrei outra aba observada para voltar.",
+                "calma",
+                1,
+            )
+            return ResultadoDespacho.concluido(False)
+
+        candidatos.sort(key=lambda item: item[0], reverse=True)
+        anterior = candidatos[0][1]
     anterior_id = _id_aba(anterior)
     ok = bool(anterior_id is not None and focar(anterior_id))
     confirmado = False

@@ -2032,6 +2032,8 @@ _ambiente_navegacao_runtime.conectar_navegador(
 _navegador_leitura_runtime = _criar_navegador_leitura_runtime(
     solicitacoes=_chrome_solicitacoes,
     ambiente=_ambiente_navegacao_runtime,
+    # P0_NAVEGADOR_COMPOSICAO_ANTERIOR_V4_1_20260815
+    estado=_chrome_estado,
 )
 _registro_navegador_leitura_runtime = _registrar_navegador_leitura(
     _navegador_leitura_runtime

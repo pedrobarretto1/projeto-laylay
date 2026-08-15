@@ -30,6 +30,15 @@ _PALAVRA_PENDURADA = re.compile(
     r"com|sem|para|pra|por|pelo|pela|um|uma|uns|umas)\s*[.!?…]*$",
     re.IGNORECASE,
 )
+# P0_NAVEGADOR_DOMINIO_FALA_V4_1_20260815
+# Um host válido no fim da fala não é a preposição portuguesa ``com``.
+# A regra é apenas uma exceção de fronteira: não altera URLs nem gramática.
+_DOMINIO_FINAL = re.compile(
+    r"(?<![\w@])(?:https?://)?"
+    r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"
+    r"[a-z]{2,63}(?:[/?#][^\s]*)?[.!?…]*$",
+    re.IGNORECASE,
+)
 _SUFIXO_APLICATIVO = re.compile(
     r"\s*[-–—|]\s*(?:youtube(?:\s+music)?|opera(?:\s+gx)?|google\s+chrome|"
     r"chrome|mozilla\s+firefox|firefox|microsoft\s+edge|edge)\s*$",
@@ -138,7 +147,11 @@ def remover_fragmento_final_incompleto(texto: str) -> str:
     fala fica vazia para o chamador permanecer em silêncio ou tentar novamente.
     """
     fala = re.sub(r"\s+", " ", str(texto or "")).strip()
-    if not fala or not _PALAVRA_PENDURADA.search(fala):
+    if (
+        not fala
+        or _DOMINIO_FINAL.search(fala)
+        or not _PALAVRA_PENDURADA.search(fala)
+    ):
         return fala
     anterior = list(re.finditer(r"[.!?…](?=\s+)", fala))
     if not anterior:

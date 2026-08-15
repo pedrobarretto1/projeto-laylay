@@ -22,6 +22,10 @@ class ChromeEstadoRuntime:
         self._aba_url_atual = str(url_inicial or "")
         self._aba_ativa_getter = aba_ativa_getter
         self._aba_ativa_setter = aba_ativa_setter
+        # P0_NAVEGADOR_HISTORICO_CANONICO_V4_1_20260815
+        # Identidade da aba ativa e imediatamente anterior pertencem ao mesmo
+        # estado observado; não são inferidas pelo executor.
+        self._aba_ativa_id: Any = None
         self._aba_anterior_id: Any = None
         self._aba_historico: list[Any] = []
         self._tab_last_seen: Dict[str, Dict[str, Any]] = {}
@@ -32,6 +36,7 @@ class ChromeEstadoRuntime:
             return {
                 "aba_titulo_atual": titulo,
                 "aba_url_atual": url,
+                "aba_ativa_id": self._aba_ativa_id,
                 "aba_anterior_id": self._aba_anterior_id,
                 "aba_historico": list(self._aba_historico),
                 "_tab_last_seen": {
@@ -56,6 +61,8 @@ class ChromeEstadoRuntime:
             if "aba_url_atual" in updates:
                 url = str(updates.get("aba_url_atual") or "")
             self._gravar_aba_ativa(titulo, url)
+            if "aba_ativa_id" in updates:
+                self._aba_ativa_id = updates.get("aba_ativa_id")
             if "aba_anterior_id" in updates:
                 self._aba_anterior_id = updates.get("aba_anterior_id")
             if "aba_historico" in updates:

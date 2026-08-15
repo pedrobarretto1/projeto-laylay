@@ -104,6 +104,23 @@ class RegistroNavegadorLeitura:
         abas = self.servico.listar_abas(timeout_s=timeout_s) or []
         return [dict(aba) for aba in abas if isinstance(aba, dict)]
 
+    def aba_anterior_id(self) -> int | None:
+        # P0_NAVEGADOR_REGISTRO_ANTERIOR_V4_1_20260815
+        # Capacidade opcional: não entra em _LEITURAS e não quebra serviços
+        # legados que implementam o contrato anterior.
+        obter = getattr(self.servico, "aba_anterior_id", None)
+        if not callable(obter):
+            return None
+        try:
+            valor = obter()
+        except Exception:
+            return None
+        return (
+            valor
+            if isinstance(valor, int) and not isinstance(valor, bool)
+            else None
+        )
+
     def diagnostico(self) -> dict[str, Any]:
         bruto = dict(self.servico.diagnostico() or {})
         return {

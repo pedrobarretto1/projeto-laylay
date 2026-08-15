@@ -652,6 +652,8 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
 
     aba_titulo_atual = str(ctx.get("aba_titulo_atual") or "")
     aba_url_atual = str(ctx.get("aba_url_atual") or "")
+    # P0_NAVEGADOR_EVENTO_HISTORICO_V4_1_20260815
+    aba_ativa_id = ctx.get("aba_ativa_id")
     aba_anterior_id = ctx.get("aba_anterior_id")
     aba_historico = list(ctx.get("aba_historico") or [])
     tab_last_seen = dict(ctx.get("_tab_last_seen") or {})
@@ -720,6 +722,19 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
         nova_url = str(data.get("url") or "").strip()
         novo_titulo = str(data.get("title") or "").strip()
 
+        # ``active_tab_changed`` é a fonte causal da ordem de foco. A
+        # identidade precisa ser registrada mesmo quando título/URL são iguais.
+        if action == "active_tab_changed":
+            novo_tab_id = data.get("tabId")
+            if (
+                isinstance(novo_tab_id, int)
+                and not isinstance(novo_tab_id, bool)
+                and novo_tab_id != aba_ativa_id
+            ):
+                if isinstance(aba_ativa_id, int) and not isinstance(aba_ativa_id, bool):
+                    updates["aba_anterior_id"] = aba_ativa_id
+                updates["aba_ativa_id"] = novo_tab_id
+
         mudou = False
         if nova_url and nova_url != aba_url_atual:
             aba_url_atual = nova_url
@@ -776,6 +791,8 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
             # ``from`` é a aba que perdeu o foco; ela é a anterior. Guardar
             # ``to`` fazia o estado apontar para a própria aba atual.
             updates["aba_anterior_id"] = frm
+            if isinstance(to, int) and not isinstance(to, bool):
+                updates["aba_ativa_id"] = to
             print(f"🔄 [Chrome] Troca de aba manual: {ft} ({frm}) → {tt} ({to})")
         updates["handled"] = True
         return updates

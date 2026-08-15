@@ -10,9 +10,14 @@ from typing import Any, Callable
 
 
 class NavegadorLeituraRuntime:
-    def __init__(self, *, solicitacoes: Any, ambiente: Any) -> None:
+    def __init__(
+        self, *, solicitacoes: Any, ambiente: Any, estado: Any = None,
+    ) -> None:
         self.solicitacoes = solicitacoes
         self.ambiente = ambiente
+        # P0_NAVEGADOR_PORTA_ANTERIOR_V4_1_20260815
+        # Estado é opcional para preservar composições e fakes antigos.
+        self.estado = estado
 
     def conectado(self) -> bool:
         return bool(self.solicitacoes.conectado())
@@ -22,6 +27,20 @@ class NavegadorLeituraRuntime:
 
     def listar_abas(self, timeout_s: float = 5.0) -> list[dict[str, Any]]:
         return list(self.ambiente.listar_abas(timeout_s=timeout_s) or [])
+
+    def aba_anterior_id(self) -> int | None:
+        snapshot = getattr(self.estado, "snapshot", None)
+        if not callable(snapshot):
+            return None
+        try:
+            valor = dict(snapshot() or {}).get("aba_anterior_id")
+        except Exception:
+            return None
+        return (
+            valor
+            if isinstance(valor, int) and not isinstance(valor, bool)
+            else None
+        )
 
     def diagnostico(self) -> dict[str, Any]:
         return {
