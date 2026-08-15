@@ -364,17 +364,15 @@ def _executar_aba_anterior(
     ):
         anterior_id_canonico = None
 
-    # P0_NAVEGADOR_ANTERIOR_ENTRE_JANELAS_V4_2_20260815
-    # ``aba_anterior_id`` é histórico causal de foco do navegador inteiro.
-    # Se a ação anterior focou uma aba existente em outra janela, restringir
-    # pelo ``windowId`` atual destrói justamente essa evidência e força o
-    # fallback heurístico por ``lastAccessed``. O fallback continua limitado à
-    # janela atual; apenas o histórico canônico pode atravessar janelas.
     anterior = next(
         (
             aba for aba in abas
             if _id_aba(aba) == anterior_id_canonico
             and anterior_id_canonico != ativa_id
+            and (
+                janela_ativa is None
+                or aba.get("windowId") == janela_ativa
+            )
         ),
         {},
     )

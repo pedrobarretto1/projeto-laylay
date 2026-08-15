@@ -51,48 +51,10 @@ function sendCommandResult(cmd, ok, detail = {}, tab = null) {
   });
 }
 
-// P0_NAVEGADOR_JANELA_FOCADA_V4_2_20260815
-// ``currentWindow`` no service worker não é sinônimo de janela visualmente em
-// foco. Toda leitura operacional de "aba ativa" parte da última janela focada
-// e consulta a aba com um windowId explícito.
-function lastFocusedWindow() {
+function activeTab() {
   return new Promise((resolve) => {
-    chrome.windows.getLastFocused({}, (win) => {
-      const error = chrome.runtime.lastError?.message || "";
-      resolve(error ? null : (win || null));
-    });
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => resolve(tabs?.[0] || null));
   });
-}
-
-function tabById(tabId) {
-  return new Promise((resolve) => {
-    if (!Number.isInteger(tabId)) {
-      resolve(null);
-      return;
-    }
-    chrome.tabs.get(tabId, (tab) => {
-      const error = chrome.runtime.lastError?.message || "";
-      resolve(error ? null : (tab || null));
-    });
-  });
-}
-
-function activeTabInWindow(windowId) {
-  return new Promise((resolve) => {
-    if (!Number.isInteger(windowId) || windowId === chrome.windows.WINDOW_ID_NONE) {
-      resolve(null);
-      return;
-    }
-    chrome.tabs.query({ active: true, windowId }, (tabs) => {
-      resolve(tabs?.[0] || null);
-    });
-  });
-}
-
-async function activeTab() {
-  const win = await lastFocusedWindow();
-  if (!Number.isInteger(win?.id)) return null;
-  return activeTabInWindow(win.id);
 }
 
 function sendToTab(tabId, message) {
@@ -900,23 +862,23 @@ function realizarBuscaYouTube(url, background = false, cmd = null) {
 
   if (cmd.action === "get_active_tab_url") {
     const requestId = cmd.requestId ?? null;
-    // A confirmação usa a mesma definição de aba ativa do monitor proativo:
-    // aba ativa da última janela Chrome focada, nunca ``currentWindow``.
-    const t = await activeTab();
-    const url = t?.url || "";
-    const title = t?.title || "";
-    if (websocket && websocket.readyState === WebSocket.OPEN) {
-      // P0_NAVEGADOR_ACTIVE_TAB_PAYLOAD_V4_20260815
-      websocket.send(JSON.stringify({
-        type: "ACTIVE_TAB_URL",
-        requestId,
-        url,
-        title,
-        tabId: Number.isInteger(t?.id) ? t.id : null,
-        windowId: Number.isInteger(t?.windowId) ? t.windowId : null,
-        active: t?.active === true,
-      }));
-    }
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const t = tabs && tabs[0] ? tabs[0] : null;
+      const url = t?.url || "";
+      const title = t?.title || "";
+      if (websocket && websocket.readyState === WebSocket.OPEN) {
+        // P0_NAVEGADOR_ACTIVE_TAB_PAYLOAD_V4_20260815
+        websocket.send(JSON.stringify({
+          type: "ACTIVE_TAB_URL",
+          requestId,
+          url,
+          title,
+          tabId: Number.isInteger(t?.id) ? t.id : null,
+          windowId: Number.isInteger(t?.windowId) ? t.windowId : null,
+          active: t?.active === true,
+        }));
+      }
+    });
     return;
   }
 
@@ -1431,71 +1393,37 @@ chrome.runtime.onMessage.addListener((request, sender) => {
 });
 
 // --- MONITORAMENTO PROATIVO DA ABA ATIVA ---
-function publishActiveTabInfo(t, includeSnapshot = false) {
-  if (!websocket || websocket.readyState !== WebSocket.OPEN) return false;
-  if (!t || !Number.isInteger(t.id)) return false;
-
-  const url = String(t.url || "");
-  if (!url || url.startsWith("chrome://") || url.startsWith("edge://")) return false;
-
-  sendWs({
-    action: "active_tab_changed",
-    tabId: t.id,
-    windowId: Number.isInteger(t.windowId) ? t.windowId : null,
-    active: t.active === true,
-    url,
-    title: t.title || "Sem título",
-  });
-
-  if (includeSnapshot) {
-    chrome.tabs.sendMessage(t.id, { action: "GET_PAGE_SNAPSHOT" }, (response) => {
-      if (!chrome.runtime.lastError && response?.success) {
-        sendWs({ type: "PAGE_SNAPSHOT", payload: response.data || {} });
+function sendActiveTabInfo(includeSnapshot = false) {
+  if (websocket && websocket.readyState === WebSocket.OPEN) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const t = tabs && tabs[0] ? tabs[0] : null;
+      if (t && t.url && !t.url.startsWith("chrome://") && !t.url.startsWith("edge://")) {
+        sendWs({
+          action: "active_tab_changed", 
+          tabId: t.id,
+          url: t.url, 
+          title: t.title || "Sem título" 
+        });
+        if (includeSnapshot && t.id != null) {
+          chrome.tabs.sendMessage(t.id, { action: "GET_PAGE_SNAPSHOT" }, (response) => {
+            if (!chrome.runtime.lastError && response?.success) {
+              sendWs({ type: "PAGE_SNAPSHOT", payload: response.data || {} });
+            }
+          });
+        }
       }
     });
   }
-  return true;
 }
 
-async function sendActiveTabInfo(includeSnapshot = false) {
-  const t = await activeTab();
-  return publishActiveTabInfo(t, includeSnapshot);
-}
-
-async function sendActiveTabInfoForWindow(windowId, includeSnapshot = false) {
-  const t = await activeTabInWindow(windowId);
-  return publishActiveTabInfo(t, includeSnapshot);
-}
-
-async function sendActiveTabInfoById(tabId, windowId, includeSnapshot = false) {
-  if (!Number.isInteger(tabId) || !Number.isInteger(windowId)) return false;
-
-  // ``tabs.onActivated`` também pode ser disparado por uma ativação
-  // programática numa janela que ainda não ganhou foco. Só aceitamos o evento
-  // como estado global se ele pertence à última janela focada. Quando a janela
-  // ganhar foco, ``windows.onFocusChanged`` fará a sincronização definitiva.
-  const win = await lastFocusedWindow();
-  if (!Number.isInteger(win?.id) || win.id !== windowId) return false;
-
-  const t = await tabById(tabId);
-  if (!t || t.windowId !== windowId || t.active !== true) return false;
-  return publishActiveTabInfo(t, includeSnapshot);
-}
-
-chrome.tabs.onActivated.addListener((activeInfo) => {
-  void sendActiveTabInfoById(activeInfo.tabId, activeInfo.windowId);
-  schedulePlayerDiscovery(80);
-});
-
-chrome.windows.onFocusChanged.addListener((windowId) => {
-  if (windowId === chrome.windows.WINDOW_ID_NONE) return;
-  void sendActiveTabInfoForWindow(windowId);
+chrome.tabs.onActivated.addListener(() => {
+  sendActiveTabInfo();
   schedulePlayerDiscovery(80);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (tab.active && (changeInfo.url || changeInfo.title)) {
-    void sendActiveTabInfoById(tabId, tab.windowId);
+    sendActiveTabInfo();
   }
   if (
     String(tab?.url || "").includes("youtube.com") &&

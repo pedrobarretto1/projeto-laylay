@@ -166,12 +166,7 @@ class TestP02ANavegadorV4(unittest.TestCase):
         inicio = fonte.index('if (cmd.action === "get_active_tab_url")')
         fim = fonte.index('if (cmd.action === "get_youtube_data")', inicio)
         bloco = fonte[inicio:fim]
-        # P0_NAVEGADOR_TESTE_V4_MIGRADO_V4_2_20260815
-        # A v4 exigia identidade real (tabId/windowId/active). A v4.2 mantém
-        # esse contrato, mas a origem passa a ser a leitura canônica da última
-        # janela focada, então ``currentWindow`` não pode mais ser obrigatório.
-        self.assertIn('const t = await activeTab();', bloco)
-        self.assertNotIn('currentWindow: true', bloco)
+        self.assertIn('active: true, currentWindow: true', bloco)
         self.assertIn('tabId:', bloco)
         self.assertIn('windowId:', bloco)
         self.assertIn('active:', bloco)
