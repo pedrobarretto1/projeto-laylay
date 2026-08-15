@@ -11,7 +11,6 @@ from typing import Any, Callable, Dict
 
 
 _ACOES_FIXADAS_NA_ABA = {"click", "type", "press", "scroll", "search_in_page"}
-_ACOES_CONFIRMAM_EFEITO = {"focus_tab"}
 _MARCADORES_PAGINA_SENSIVEL = (
     "login", "signin", "sign-in", "password", "senha", "checkout", "pagamento",
     "payment", "bank", "banco", "internetbanking", "carteira", "wallet",
@@ -71,14 +70,6 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
                 if str(ultimo.get("status") or "") == "stale_context":
                     print("⚠️ [Chrome] A aba mudou antes da ação; o comando foi cancelado.")
             return sucesso
-        # P0_NAVEGADOR_FOCO_CONFIRMADO_V4_20260815
-        # focus_tab já devolve COMMAND_RESULT pela extensão. Para mudança de
-        # foco, "bytes chegaram ao socket" não é evidência de efeito.
-        if acao_msg in _ACOES_CONFIRMAM_EFEITO:
-            return bool(
-                callable(executar_confirmado)
-                and executar_confirmado(msg, timeout_s=3.0)
-            )
         if callable(enviar_confirmado):
             return bool(enviar_confirmado(msg, timeout_s=1.5))
         if ws_loop and connected_extensions and callable(broadcast_command):

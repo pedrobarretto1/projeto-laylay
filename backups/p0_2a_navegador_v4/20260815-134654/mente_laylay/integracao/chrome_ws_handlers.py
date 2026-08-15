@@ -87,35 +87,18 @@ def handle_tabs_list(data: Dict[str, Any], pending_tabs_requests: Dict[str, Any]
         _set_event(entry)
 
 
-def handle_active_tab_url(
-    data: Dict[str, Any], pending_active_url_requests: Dict[str, Any],
-) -> None:
-    # P0_NAVEGADOR_IDENTIDADE_ATIVA_V4_20260815
+def handle_active_tab_url(data: Dict[str, Any], pending_active_url_requests: Dict[str, Any]) -> None:
     rid = str(data.get("requestId") or "")
-    tab_id = data.get("tabId")
-    window_id = data.get("windowId")
-    payload = {
-        "url": str(data.get("url") or ""),
-        "title": str(data.get("title") or ""),
-        "tabId": (
-            tab_id
-            if isinstance(tab_id, int) and not isinstance(tab_id, bool)
-            else None
-        ),
-        "windowId": (
-            window_id
-            if isinstance(window_id, int) and not isinstance(window_id, bool)
-            else None
-        ),
-        "active": data.get("active") is True,
-    }
+    url = str(data.get("url") or "")
+    title = str(data.get("title") or "")
     if rid and rid in pending_active_url_requests:
         entry = pending_active_url_requests.get(rid)
         if isinstance(entry, asyncio.Future):
             if not entry.done():
-                entry.set_result(dict(payload))
+                entry.set_result({"url": url, "title": title})
         elif isinstance(entry, dict):
-            entry.update(payload)
+            entry["url"] = url
+            entry["title"] = title
             _set_event(entry)
 
 

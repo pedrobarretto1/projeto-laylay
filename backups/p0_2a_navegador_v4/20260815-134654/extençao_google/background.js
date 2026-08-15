@@ -867,16 +867,7 @@ function realizarBuscaYouTube(url, background = false, cmd = null) {
       const url = t?.url || "";
       const title = t?.title || "";
       if (websocket && websocket.readyState === WebSocket.OPEN) {
-        // P0_NAVEGADOR_ACTIVE_TAB_PAYLOAD_V4_20260815
-        websocket.send(JSON.stringify({
-          type: "ACTIVE_TAB_URL",
-          requestId,
-          url,
-          title,
-          tabId: Number.isInteger(t?.id) ? t.id : null,
-          windowId: Number.isInteger(t?.windowId) ? t.windowId : null,
-          active: t?.active === true,
-        }));
+        websocket.send(JSON.stringify({ type: "ACTIVE_TAB_URL", requestId, url, title }));
       }
     });
     return;

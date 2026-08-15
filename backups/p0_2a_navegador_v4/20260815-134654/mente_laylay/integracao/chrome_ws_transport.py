@@ -176,15 +176,10 @@ class ChromeSolicitacoesRuntime:
         return int(tab_id) if isinstance(tab_id, int) else None
 
     def solicitar_aba_ativa(self, timeout_s: float = 4.0) -> Dict[str, Any]:
-        # P0_NAVEGADOR_ABA_ATIVA_REAL_V4_20260815
-        # Estado geral do navegador não pode depender do seletor de player do
-        # YouTube: a aba audível pode estar em segundo plano.
         vazio = {
-            "url": "",
-            "title": "",
-            "tabId": None,
-            "windowId": None,
-            "active": False,
+            "url": "", "title": "", "canal": "", "tabId": None,
+            "source": "", "playingConfirmed": False,
+            "audibleConfirmed": False,
         }
         if not self.conectado():
             return vazio
@@ -192,38 +187,24 @@ class ChromeSolicitacoesRuntime:
         if loop is None:
             return vazio
 
-        async def _solicitar() -> Dict[str, Any]:
+        async def _solicitar() -> Dict[str, str]:
             request_id = self._novo_request_id()
             futuro = asyncio.get_running_loop().create_future()
             with self.pendencias_lock:
                 self.pendencias_aba_ativa[request_id] = futuro
             try:
-                await self._transmitir(json.dumps({
-                    "action": "get_active_tab_url",
-                    "requestId": request_id,
-                }))
-                resposta = await asyncio.wait_for(
-                    futuro,
-                    timeout=max(0.0, float(timeout_s)),
-                )
+                await self._transmitir(json.dumps({"action": "get_youtube_data", "requestId": request_id}))
+                resposta = await asyncio.wait_for(futuro, timeout=max(0.0, float(timeout_s)))
                 if not isinstance(resposta, dict):
                     return vazio
-                tab_id = resposta.get("tabId")
-                window_id = resposta.get("windowId")
                 return {
                     "url": str(resposta.get("url") or ""),
                     "title": str(resposta.get("title") or ""),
-                    "tabId": (
-                        tab_id
-                        if isinstance(tab_id, int) and not isinstance(tab_id, bool)
-                        else None
-                    ),
-                    "windowId": (
-                        window_id
-                        if isinstance(window_id, int) and not isinstance(window_id, bool)
-                        else None
-                    ),
-                    "active": resposta.get("active") is True,
+                    "canal": str(resposta.get("canal") or ""),
+                    "tabId": resposta.get("tabId"),
+                    "source": str(resposta.get("source") or ""),
+                    "playingConfirmed": resposta.get("playingConfirmed") is True,
+                    "audibleConfirmed": resposta.get("audibleConfirmed") is True,
                 }
             except Exception as erro:
                 self._registrar_erro("consulta_aba_ativa", erro)
