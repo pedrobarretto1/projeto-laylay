@@ -1,0 +1,132 @@
+{
+  "patch_id": "TESTES_VERMELHOS_ARQUIVOS_CONTEXTO_CAPACIDADES_20260816",
+  "tipo": "fotografia_vermelha_somente_testes",
+  "baseline_head": "ebcaaa27b4e759757f8416bbc27133a6d85a1519",
+  "head_observado": "ebcaaa27b4e759757f8416bbc27133a6d85a1519",
+  "target": "tests/test_red_contratos_arquivos_contexto_capacidades.py",
+  "target_existia_antes": false,
+  "expected_sha256": "b9c5586d44cba1619fb9cfc21018c4864135873ed2ec50d3e7ea74c3266a6e62",
+  "started_at": "2026-08-16T18:28:39.336217-03:00",
+  "status": "fotografia_vermelha_confirmada",
+  "validacoes": {
+    "py_compile": {
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "git_diff_no_index_check": {
+      "returncode": 1,
+      "stdout": "",
+      "stderr": ""
+    },
+    "guardrails_verdes": {
+      "returncode": 0,
+      "stdout": ".......                                                                  [100%]\n7 passed in 0.33s\n",
+      "stderr": "",
+      "nodes": [
+        "test_guard__catalogo_local_sabe_que_arquivos_sao_capacidade_real",
+        "test_guard__escrita_eliptica_sem_arquivo_recente_nao_adivinha_alvo",
+        "test_guard__escrita_com_pronome_ja_consumia_referencia_tipificada",
+        "test_guard__delete_bem_sucedido_continua_nao_reexecutavel",
+        "test_guard__obrigado_de_novo_nao_e_repeticao_operacional",
+        "test_guard__caixa_de_entrada_continua_reconhecendo_exclusao_real_de_nota",
+        "test_guard__consulta_existencia_sem_referencia_nao_inventa_caminho"
+      ]
+    },
+    "testes_vermelhos": [
+      {
+        "node": "test_red__pergunta_capacidade_apagar_arquivos_e_tratada_antes_da_barreira_p0",
+        "expected_failed": 1,
+        "returncode": 1,
+        "failed_count": 1,
+        "assertion_failure": true,
+        "stdout": "F                                                                        [100%]\n================================== FAILURES ===================================\n_ test_red__pergunta_capacidade_apagar_arquivos_e_tratada_antes_da_barreira_p0 _\n\n    def test_red__pergunta_capacidade_apagar_arquivos_e_tratada_antes_da_barreira_p0() -> None:\n        texto = \"Você consegue apagar arquivos?\"\n        turno = classificar_modalidade_turno(texto)\n        assert turno[\"autoriza_execucao\"] is False\n    \n        falas: list[str] = []\n        execucoes: list[dict] = []\n        consultas_capacidade: list[str] = []\n        mapa = MapaHabilidadesRuntime()\n    \n        class Estado:\n            mental = {\"turno_atual\": turno}\n    \n        def responder_capacidade(fala: str) -> str:\n            consultas_capacidade.append(fala)\n            return mapa.responder_pergunta_capacidade(\n                fala,\n                turno=turno,\n                contexto=Estado.mental,\n            )\n    \n        runtime = ComandosImediatosRuntime(\n            namespace_getter=lambda: {\n                \"_estado_compartilhado_runtime\": Estado(),\n                \"_responder_pergunta_capacidade_local\": responder_capacidade,\n                \"falar_com_lipsync\": lambda fala, *_args: falas.append(fala),\n                \"executar_intencao\": lambda intencao, _texto: execucoes.append(intencao) or True,\n            },\n            loop_getter=lambda: None,\n        )\n    \n>       assert runtime.processar_prioritarios(texto) is True\nE       AssertionError: assert False is True\nE        +  where False = processar_prioritarios('Você consegue apagar arquivos?')\nE        +    where processar_prioritarios = <mente_laylay.autonomia.comandos_imediatos.ComandosImediatosRuntime object at 0x00000173362FFA10>.processar_prioritarios\n\ntests\\test_red_contratos_arquivos_contexto_capacidades.py:113: AssertionError\n---------------------------- Captured stdout call -----------------------------\n🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=pergunta motivo=pergunta sobre capacidade; não é autorização\n=========================== short test summary info ===========================\nFAILED tests/test_red_contratos_arquivos_contexto_capacidades.py::test_red__pergunta_capacidade_apagar_arquivos_e_tratada_antes_da_barreira_p0\n1 failed in 0.31s\n",
+        "stderr": ""
+      },
+      {
+        "node": "test_red__escrita_eliptica_usa_unico_arquivo_recente_tipado",
+        "expected_failed": 1,
+        "returncode": 1,
+        "failed_count": 1,
+        "assertion_failure": true,
+        "stdout": "F                                                                        [100%]\n================================== FAILURES ===================================\n_________ test_red__escrita_eliptica_usa_unico_arquivo_recente_tipado _________\n\n    def test_red__escrita_eliptica_usa_unico_arquivo_recente_tipado() -> None:\n        caminho = \"C:/tmp/caos seguro.txt\"\n        resultado = _detectar_arquivo(\n            \"Escreve primeira linha.\",\n            _estado_arquivo(caminho),\n        )\n>       assert resultado == {\n            \"intent\": \"CREATE_FILE\",\n            \"params\": {\n                \"alvo\": caminho,\n                \"conteudo\": \"primeira linha\",\n                \"editar_existente\": True,\n            },\n        }\nE       AssertionError: assert None == {'intent': 'CREATE_FILE', 'params': {'alvo': 'C:/tmp/caos seguro.txt', 'conteudo': 'primeira linha', 'editar_existente': True}}\n\ntests\\test_red_contratos_arquivos_contexto_capacidades.py:125: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_red_contratos_arquivos_contexto_capacidades.py::test_red__escrita_eliptica_usa_unico_arquivo_recente_tipado\n1 failed in 0.35s\n",
+        "stderr": ""
+      },
+      {
+        "node": "test_red__append_eliptico_usa_unico_arquivo_recente_tipado",
+        "expected_failed": 1,
+        "returncode": 1,
+        "failed_count": 1,
+        "assertion_failure": true,
+        "stdout": "F                                                                        [100%]\n================================== FAILURES ===================================\n_________ test_red__append_eliptico_usa_unico_arquivo_recente_tipado __________\n\n    def test_red__append_eliptico_usa_unico_arquivo_recente_tipado() -> None:\n        caminho = \"C:/tmp/caos seguro.txt\"\n        resultado = _detectar_arquivo(\n            \"Acrescente segunda linha.\",\n            _estado_arquivo(caminho),\n        )\n>       assert resultado == {\n            \"intent\": \"CREATE_FILE\",\n            \"params\": {\n                \"alvo\": caminho,\n                \"conteudo\": \"segunda linha\",\n                \"editar_existente\": True,\n                \"modo_escrita\": \"append\",\n            },\n        }\nE       AssertionError: assert None == {'intent': 'CREATE_FILE', 'params': {'alvo': 'C:/tmp/caos seguro.txt', 'conteudo': 'segunda linha', 'editar_existente': True, 'modo_escrita': 'append'}}\n\ntests\\test_red_contratos_arquivos_contexto_capacidades.py:141: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_red_contratos_arquivos_contexto_capacidades.py::test_red__append_eliptico_usa_unico_arquivo_recente_tipado\n1 failed in 0.34s\n",
+        "stderr": ""
+      },
+      {
+        "node": "test_red__referencia_tipificada_publicada_alimenta_escrita_da_etapa_seguinte",
+        "expected_failed": 1,
+        "returncode": 1,
+        "failed_count": 1,
+        "assertion_failure": true,
+        "stdout": "F                                                                        [100%]\n================================== FAILURES ===================================\n_ test_red__referencia_tipificada_publicada_alimenta_escrita_da_etapa_seguinte _\n\n    def test_red__referencia_tipificada_publicada_alimenta_escrita_da_etapa_seguinte() -> None:\n        caminho = \"C:/tmp/caos seguro.txt\"\n        estado = registrar_estrutura_arquivo_recente(\n            {},\n            {\n                \"tipo\": \"arquivo\",\n                \"caminho\": caminho,\n                \"arquivo_nome\": \"caos seguro.txt\",\n                \"tipo_arquivo\": \"texto\",\n                \"origem\": \"CREATE_FILE\",\n            },\n        )\n    \n        # A etapa seguinte nao repete nome nem pronome: depende exclusivamente da\n        # referencia tipada viva publicada pela etapa anterior.\n        resultado = _detectar_arquivo(\"Escreve primeira linha.\", estado)\n>       assert resultado is not None\nE       assert None is not None\n\ntests\\test_red_contratos_arquivos_contexto_capacidades.py:186: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_red_contratos_arquivos_contexto_capacidades.py::test_red__referencia_tipificada_publicada_alimenta_escrita_da_etapa_seguinte\n1 failed in 0.29s\n",
+        "stderr": ""
+      },
+      {
+        "node": "test_red__leitura_por_nome_reusa_arquivo_recente_equivalente_para_file_read",
+        "expected_failed": 1,
+        "returncode": 1,
+        "failed_count": 1,
+        "assertion_failure": true,
+        "stdout": "F                                                                        [100%]\n================================== FAILURES ===================================\n_ test_red__leitura_por_nome_reusa_arquivo_recente_equivalente_para_file_read _\n\n    def test_red__leitura_por_nome_reusa_arquivo_recente_equivalente_para_file_read() -> None:\n        caminho = \"C:/tmp/caos seguro.txt\"\n        resultado = _detectar_arquivo(\n            \"Leia o caos seguro.txt.\",\n            _estado_arquivo(caminho),\n        )\n>       assert resultado == {\n            \"intent\": \"FILE_READ\",\n            \"params\": {\n                \"caminho\": caminho,\n                \"alvo\": \"caos seguro.txt\",\n                \"referencia_contextual\": True,\n            },\n        }\nE       AssertionError: assert None == {'intent': 'FILE_READ', 'params': {'caminho': 'C:/tmp/caos seguro.txt', 'alvo': 'caos seguro.txt', 'referencia_contextual': True}}\n\ntests\\test_red_contratos_arquivos_contexto_capacidades.py:199: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_red_contratos_arquivos_contexto_capacidades.py::test_red__leitura_por_nome_reusa_arquivo_recente_equivalente_para_file_read\n1 failed in 0.31s\n",
+        "stderr": ""
+      },
+      {
+        "node": "test_red__leia_de_novo_e_reconhecido_como_repeticao",
+        "expected_failed": 1,
+        "returncode": 1,
+        "failed_count": 1,
+        "assertion_failure": true,
+        "stdout": "F                                                                        [100%]\n================================== FAILURES ===================================\n_____________ test_red__leia_de_novo_e_reconhecido_como_repeticao _____________\n\n    def test_red__leia_de_novo_e_reconhecido_como_repeticao() -> None:\n>       assert texto_pede_repeticao_curta(\"Leia de novo.\", _normalizar) is True\nE       AssertionError: assert False is True\nE        +  where False = texto_pede_repeticao_curta('Leia de novo.', _normalizar)\n\ntests\\test_red_contratos_arquivos_contexto_capacidades.py:210: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_red_contratos_arquivos_contexto_capacidades.py::test_red__leia_de_novo_e_reconhecido_como_repeticao\n1 failed in 0.30s\n",
+        "stderr": ""
+      },
+      {
+        "node": "test_red__file_read_confirmado_pode_ser_reexecutado_por_repeticao_segura",
+        "expected_failed": 1,
+        "returncode": 1,
+        "failed_count": 1,
+        "assertion_failure": true,
+        "stdout": "F                                                                        [100%]\n================================== FAILURES ===================================\n__ test_red__file_read_confirmado_pode_ser_reexecutado_por_repeticao_segura ___\n\n    def test_red__file_read_confirmado_pode_ser_reexecutado_por_repeticao_segura() -> None:\n        caminho = \"C:/tmp/caos seguro.txt\"\n        params = {\"caminho\": caminho, \"alvo\": \"caos seguro.txt\"}\n        estado = registrar_resultado_execucao(\n            {},\n            ResultadoAcao(\n                intent=\"FILE_READ\",\n                status=\"arquivo_lido\",\n                alvo=caminho,\n                params=params,\n                executou=True,\n                confirmado=True,\n            ),\n            \"Leia o caos seguro.txt.\",\n            True,\n        )\n    \n>       assert resolver_repeticao_ultima_acao(\n            \"de novo\",\n            estado,\n            _normalizar,\n        ) == {\"intent\": \"FILE_READ\", \"params\": params}\nE       AssertionError: assert None == {'intent': 'FILE_READ', 'params': {'caminho': 'C:/tmp/caos seguro.txt', 'alvo': 'caos seguro.txt'}}\nE        +  where None = resolver_repeticao_ultima_acao('de novo', {'ultima_acao_promovivel': True, 'ultima_acao_status': 'arquivo_lido', 'ultima_acao_reexecutavel': False, 'ultima_acao_intent': 'FILE_READ', ...}, _normalizar)\n\ntests\\test_red_contratos_arquivos_contexto_capacidades.py:230: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_red_contratos_arquivos_contexto_capacidades.py::test_red__file_read_confirmado_pode_ser_reexecutado_por_repeticao_segura\n1 failed in 0.29s\n",
+        "stderr": ""
+      },
+      {
+        "node": "test_red__caixa_de_entrada_nao_sequestra_nome_de_arquivo_com_ideia",
+        "expected_failed": 1,
+        "returncode": 1,
+        "failed_count": 1,
+        "assertion_failure": true,
+        "stdout": "F                                                                        [100%]\n================================== FAILURES ===================================\n_____ test_red__caixa_de_entrada_nao_sequestra_nome_de_arquivo_com_ideia ______\n\ntmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-1591/test_red__caixa_de_entrada_nao0')\n\n    def test_red__caixa_de_entrada_nao_sequestra_nome_de_arquivo_com_ideia(tmp_path) -> None:\n        caixa = _caixa_minima(tmp_path)\n>       assert caixa.detectar(\"Apaga o troca ideia.txt.\") == \"\"\nE       AssertionError: assert 'excluir' == ''\nE         \nE         + excluir\n\ntests\\test_red_contratos_arquivos_contexto_capacidades.py:255: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_red_contratos_arquivos_contexto_capacidades.py::test_red__caixa_de_entrada_nao_sequestra_nome_de_arquivo_com_ideia\n1 failed in 0.24s\n",
+        "stderr": ""
+      },
+      {
+        "node": "test_red__nomes_de_arquivo_com_vocabulario_da_caixa_nao_sao_sequestrados",
+        "expected_failed": 3,
+        "returncode": 1,
+        "failed_count": 3,
+        "assertion_failure": true,
+        "stdout": "FFF                                                                      [100%]\n================================== FAILURES ===================================\n_ test_red__nomes_de_arquivo_com_vocabulario_da_caixa_nao_sao_sequestrados[Apaga o minha tarefa.txt.] _\n\ntmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-1592/test_red__nomes_de_arquivo_com0')\nfala = 'Apaga o minha tarefa.txt.'\n\n    @pytest.mark.parametrize(\n        \"fala\",\n        [\n            \"Apaga o minha tarefa.txt.\",\n            \"Remove o pensamento.md.\",\n            \"Exclui a nota.txt.\",\n        ],\n    )\n    def test_red__nomes_de_arquivo_com_vocabulario_da_caixa_nao_sao_sequestrados(\n        tmp_path,\n        fala: str,\n    ) -> None:\n        caixa = _caixa_minima(tmp_path)\n>       assert caixa.detectar(fala) == \"\"\nE       AssertionError: assert 'excluir' == ''\nE         \nE         + excluir\n\ntests\\test_red_contratos_arquivos_contexto_capacidades.py:271: AssertionError\n_ test_red__nomes_de_arquivo_com_vocabulario_da_caixa_nao_sao_sequestrados[Remove o pensamento.md.] _\n\ntmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-1592/test_red__nomes_de_arquivo_com1')\nfala = 'Remove o pensamento.md.'\n\n    @pytest.mark.parametrize(\n        \"fala\",\n        [\n            \"Apaga o minha tarefa.txt.\",\n            \"Remove o pensamento.md.\",\n            \"Exclui a nota.txt.\",\n        ],\n    )\n    def test_red__nomes_de_arquivo_com_vocabulario_da_caixa_nao_sao_sequestrados(\n        tmp_path,\n        fala: str,\n    ) -> None:\n        caixa = _caixa_minima(tmp_path)\n>       assert caixa.detectar(fala) == \"\"\nE       AssertionError: assert 'excluir' == ''\nE         \nE         + excluir\n\ntests\\test_red_contratos_arquivos_contexto_capacidades.py:271: AssertionError\n_ test_red__nomes_de_arquivo_com_vocabulario_da_caixa_nao_sao_sequestrados[Exclui a nota.txt.] _\n\ntmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-1592/test_red__nomes_de_arquivo_com2')\nfala = 'Exclui a nota.txt.'\n\n    @pytest.mark.parametrize(\n        \"fala\",\n        [\n            \"Apaga o minha tarefa.txt.\",\n            \"Remove o pensamento.md.\",\n            \"Exclui a nota.txt.\",\n        ],\n    )\n    def test_red__nomes_de_arquivo_com_vocabulario_da_caixa_nao_sao_sequestrados(\n        tmp_path,\n        fala: str,\n    ) -> None:\n        caixa = _caixa_minima(tmp_path)\n>       assert caixa.detectar(fala) == \"\"\nE       AssertionError: assert 'excluir' == ''\nE         \nE         + excluir\n\ntests\\test_red_contratos_arquivos_contexto_capacidades.py:271: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_red_contratos_arquivos_contexto_capacidades.py::test_red__nomes_de_arquivo_com_vocabulario_da_caixa_nao_sao_sequestrados[Apaga o minha tarefa.txt.]\nFAILED tests/test_red_contratos_arquivos_contexto_capacidades.py::test_red__nomes_de_arquivo_com_vocabulario_da_caixa_nao_sao_sequestrados[Remove o pensamento.md.]\nFAILED tests/test_red_contratos_arquivos_contexto_capacidades.py::test_red__nomes_de_arquivo_com_vocabulario_da_caixa_nao_sao_sequestrados[Exclui a nota.txt.]\n3 failed in 0.28s\n",
+        "stderr": ""
+      },
+      {
+        "node": "test_red__consulta_arquivo_ainda_existe_reusa_file_search_com_referencia_caminho",
+        "expected_failed": 1,
+        "returncode": 1,
+        "failed_count": 1,
+        "assertion_failure": true,
+        "stdout": "F                                                                        [100%]\n================================== FAILURES ===================================\n_ test_red__consulta_arquivo_ainda_existe_reusa_file_search_com_referencia_caminho _\n\n    def test_red__consulta_arquivo_ainda_existe_reusa_file_search_com_referencia_caminho() -> None:\n        caminho = \"C:/tmp/caos seguro.txt\"\n        resultado = _detectar_arquivo(\n            \"O arquivo ainda existe?\",\n            _estado_arquivo(caminho),\n        )\n>       assert resultado == {\n            \"intent\": \"FILE_SEARCH\",\n            \"params\": {\n                \"query\": \"caos seguro.txt\",\n                \"referencia_caminho\": caminho,\n                \"alvo\": \"caos seguro.txt\",\n            },\n        }\nE       AssertionError: assert None == {'intent': 'FILE_SEARCH', 'params': {'query': 'caos seguro.txt', 'referencia_caminho': 'C:/tmp/caos seguro.txt', 'alvo': 'caos seguro.txt'}}\n\ntests\\test_red_contratos_arquivos_contexto_capacidades.py:285: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_red_contratos_arquivos_contexto_capacidades.py::test_red__consulta_arquivo_ainda_existe_reusa_file_search_com_referencia_caminho\n1 failed in 0.30s\n",
+        "stderr": ""
+      }
+    ]
+  },
+  "sha256_depois": "b9c5586d44cba1619fb9cfc21018c4864135873ed2ec50d3e7ea74c3266a6e62",
+  "status_target_depois": "?? tests/test_red_contratos_arquivos_contexto_capacidades.py",
+  "finished_at": "2026-08-16T18:28:47.949276-03:00"
+}

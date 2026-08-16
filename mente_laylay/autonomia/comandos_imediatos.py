@@ -478,14 +478,40 @@ class ComandosImediatosRuntime:
                 )
                 return True
 
-        # Detectar uma intent não concede permissão para executá-la. Esta
-        # barreira faz a rota determinística usar o mesmo dono do turno da LLM.
+        # P0_CAPACIDADE_READONLY_A1_20260816
+        # Perguntas sobre o que a Laylay consegue fazer continuam SEM autorizar
+        # a ação mencionada. O catálogo vivo é somente leitura e precisa poder
+        # responder antes da barreira de mutação; caso contrário, a própria
+        # proteção P0 devolve o turno à conversa e a LLM pode inventar uma
+        # incapacidade. Um turno já autorizado nunca é consumido por esta porta.
         mente_atual = getattr(estado_runtime, "mental", {})
         turno_atual = (
             dict(mente_atual.get("turno_atual") or {})
             if isinstance(mente_atual, dict)
             else {}
         )
+        responder_capacidade = ns.get("_responder_pergunta_capacidade_local")
+        fala_capacidade = ""
+        if (
+            turno_atual.get("autoriza_execucao") is not True
+            and callable(responder_capacidade)
+        ):
+            try:
+                fala_capacidade = str(responder_capacidade(texto) or "").strip()
+            except Exception as erro:
+                print(
+                    "⚠️ [P0:CAPACIDADE] consulta read-only falhou sem liberar "
+                    f"mutação | {type(erro).__name__}: {erro}"
+                )
+        if fala_capacidade:
+            print("🔎 [P0:CAPACIDADE] consulta segura tratada antes da barreira")
+            falar = ns.get("falar_com_lipsync")
+            if callable(falar):
+                falar(fala_capacidade, "calma", 1)
+            return True
+
+        # Detectar uma intent não concede permissão para executá-la. Esta
+        # barreira faz a rota determinística usar o mesmo dono do turno da LLM.
         normalizar_turno = ns.get("_normalizar_texto_com_apelidos")
         texto_tem_comando = ns.get("_texto_tem_comando_explicito")
         if bloqueia_execucao_operacional_prioritaria(
@@ -1458,14 +1484,6 @@ class ComandosImediatosRuntime:
             )
             return True
 
-        responder_capacidade = ns.get("_responder_pergunta_capacidade_local")
-        fala_capacidade = responder_capacidade(texto) if callable(responder_capacidade) else ""
-        if fala_capacidade:
-            print("⚡ [PRIORIDADE:HABILIDADE] consulta sobre capacidade real")
-            falar = ns.get("falar_com_lipsync")
-            if callable(falar):
-                falar(fala_capacidade, "calma", 1)
-            return True
         if detectar_consulta_horario(texto):
             agora_cb = ns.get("_agora_temporal_cb")
             agora = agora_cb() if callable(agora_cb) else agora_no_fuso()

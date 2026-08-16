@@ -1,0 +1,156 @@
+diff --git a/mente_laylay/autonomia/comandos_imediatos.py b/mente_laylay/autonomia/comandos_imediatos.py
+index 8b61927..3c1b220 100644
+--- a/mente_laylay/autonomia/comandos_imediatos.py
++++ b/mente_laylay/autonomia/comandos_imediatos.py
+@@ -478,14 +478,40 @@ class ComandosImediatosRuntime:
+                 )
+                 return True
+ 
+-        # Detectar uma intent não concede permissão para executá-la. Esta
+-        # barreira faz a rota determinística usar o mesmo dono do turno da LLM.
++        # P0_CAPACIDADE_READONLY_A1_20260816
++        # Perguntas sobre o que a Laylay consegue fazer continuam SEM autorizar
++        # a ação mencionada. O catálogo vivo é somente leitura e precisa poder
++        # responder antes da barreira de mutação; caso contrário, a própria
++        # proteção P0 devolve o turno à conversa e a LLM pode inventar uma
++        # incapacidade. Um turno já autorizado nunca é consumido por esta porta.
+         mente_atual = getattr(estado_runtime, "mental", {})
+         turno_atual = (
+             dict(mente_atual.get("turno_atual") or {})
+             if isinstance(mente_atual, dict)
+             else {}
+         )
++        responder_capacidade = ns.get("_responder_pergunta_capacidade_local")
++        fala_capacidade = ""
++        if (
++            turno_atual.get("autoriza_execucao") is not True
++            and callable(responder_capacidade)
++        ):
++            try:
++                fala_capacidade = str(responder_capacidade(texto) or "").strip()
++            except Exception as erro:
++                print(
++                    "⚠️ [P0:CAPACIDADE] consulta read-only falhou sem liberar "
++                    f"mutação | {type(erro).__name__}: {erro}"
++                )
++        if fala_capacidade:
++            print("🔎 [P0:CAPACIDADE] consulta segura tratada antes da barreira")
++            falar = ns.get("falar_com_lipsync")
++            if callable(falar):
++                falar(fala_capacidade, "calma", 1)
++            return True
++
++        # Detectar uma intent não concede permissão para executá-la. Esta
++        # barreira faz a rota determinística usar o mesmo dono do turno da LLM.
+         normalizar_turno = ns.get("_normalizar_texto_com_apelidos")
+         texto_tem_comando = ns.get("_texto_tem_comando_explicito")
+         if bloqueia_execucao_operacional_prioritaria(
+@@ -1458,14 +1484,6 @@ class ComandosImediatosRuntime:
+             )
+             return True
+ 
+-        responder_capacidade = ns.get("_responder_pergunta_capacidade_local")
+-        fala_capacidade = responder_capacidade(texto) if callable(responder_capacidade) else ""
+-        if fala_capacidade:
+-            print("⚡ [PRIORIDADE:HABILIDADE] consulta sobre capacidade real")
+-            falar = ns.get("falar_com_lipsync")
+-            if callable(falar):
+-                falar(fala_capacidade, "calma", 1)
+-            return True
+         if detectar_consulta_horario(texto):
+             agora_cb = ns.get("_agora_temporal_cb")
+             agora = agora_cb() if callable(agora_cb) else agora_no_fuso()
+diff --git a/tests/test_regressao_consciencia_capacidades.py b/tests/test_regressao_consciencia_capacidades.py
+index 04aef93..8342b95 100644
+--- a/tests/test_regressao_consciencia_capacidades.py
++++ b/tests/test_regressao_consciencia_capacidades.py
+@@ -126,6 +126,89 @@ def test_porta_prioritaria_responde_sem_chamar_executor_ou_llm() -> None:
+     assert execucoes == []
+ 
+ 
++@pytest.mark.parametrize(
++    "texto",
++    (
++        "Você consegue apagar arquivos?",
++        "Você consegue apagar um arquivo?",
++    ),
++)
++def test_porta_prioritaria_responde_capacidade_de_exclusao_sem_executar(
++    texto: str,
++) -> None:
++    mapa = MapaHabilidadesRuntime()
++    turno = classificar_modalidade_turno(texto)
++    falas: list[str] = []
++    execucoes: list[dict] = []
++    estado = SimpleNamespace(mental={"turno_atual": turno})
++    runtime = ComandosImediatosRuntime(
++        namespace_getter=lambda: {
++            "_estado_compartilhado_runtime": estado,
++            "_responder_pergunta_capacidade_local": (
++                lambda fala: mapa.responder_pergunta_capacidade(
++                    fala,
++                    turno=estado.mental["turno_atual"],
++                )
++            ),
++            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
++            "executar_intencao": lambda comando, _texto: (
++                execucoes.append(comando) or True
++            ),
++        },
++        loop_getter=lambda: None,
++    )
++
++    assert turno["autoriza_execucao"] is False
++    assert runtime.processar_prioritarios(texto) is True
++    assert falas
++    assert "confirmo o alvo" in falas[-1].casefold()
++    assert "lixeira" in falas[-1].casefold()
++    assert execucoes == []
++
++
++def test_ciclo_ia_para_antes_da_llm_quando_capacidade_readonly_responde() -> None:
++    texto = "Você consegue apagar arquivos?"
++    mapa = MapaHabilidadesRuntime()
++    turno = classificar_modalidade_turno(texto)
++    falas: list[str] = []
++    execucoes: list[dict] = []
++    chamadas_llm: list[str] = []
++    estado = SimpleNamespace(mental={"turno_atual": turno})
++    imediato = ComandosImediatosRuntime(
++        namespace_getter=lambda: {
++            "_estado_compartilhado_runtime": estado,
++            "_responder_pergunta_capacidade_local": (
++                lambda fala: mapa.responder_pergunta_capacidade(
++                    fala,
++                    turno=estado.mental["turno_atual"],
++                )
++            ),
++            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
++            "executar_intencao": lambda comando, _texto: (
++                execucoes.append(comando) or True
++            ),
++        },
++        loop_getter=lambda: None,
++    )
++    resposta = RespostaIARuntime(
++        contexto_getter=lambda: {
++            "marcar_inicio_turno": lambda *_args, **_kwargs: None,
++            "obter_turno_atual": lambda: dict(turno),
++            "processar_comandos_prioritarios": imediato.processar_prioritarios,
++            "enviar_mensagem": lambda *_args, **_kwargs: (
++                chamadas_llm.append(texto) or "{}"
++            ),
++        },
++        log=lambda *_args, **_kwargs: None,
++    )
++
++    resposta.processar(texto)
++
++    assert falas and "lixeira" in falas[-1].casefold()
++    assert execucoes == []
++    assert chamadas_llm == []
++
++
+ @pytest.mark.parametrize("texto", (
+     "você é só um chatbot?",
+     "você só consegue conversar?",

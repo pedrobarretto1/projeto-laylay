@@ -1,0 +1,73 @@
+{
+  "patch_id": "P0_CAPACIDADE_READONLY_A1_20260816",
+  "baseline_head": "ebcaaa27b4e759757f8416bbc27133a6d85a1519",
+  "head_observado": "ebcaaa27b4e759757f8416bbc27133a6d85a1519",
+  "targets": {
+    "mente_laylay/autonomia/comandos_imediatos.py": "8b619279996cdbd2ae1f866470d2d025fff31d70",
+    "tests/test_regressao_consciencia_capacidades.py": "04aef933215dcb8b41a3a9e185de763e07478ce6"
+  },
+  "red_test_sha256": "b9c5586d44cba1619fb9cfc21018c4864135873ed2ec50d3e7ea74c3266a6e62",
+  "started_at": "2026-08-16T18:40:06.614946-03:00",
+  "status": "ok",
+  "preflight": {
+    "red_exato": {
+      "returncode": 1,
+      "stdout": "F                                                                        [100%]\n================================== FAILURES ===================================\n_ test_red__pergunta_capacidade_apagar_arquivos_e_tratada_antes_da_barreira_p0 _\n\n    def test_red__pergunta_capacidade_apagar_arquivos_e_tratada_antes_da_barreira_p0() -> None:\n        texto = \"Você consegue apagar arquivos?\"\n        turno = classificar_modalidade_turno(texto)\n        assert turno[\"autoriza_execucao\"] is False\n    \n        falas: list[str] = []\n        execucoes: list[dict] = []\n        consultas_capacidade: list[str] = []\n        mapa = MapaHabilidadesRuntime()\n    \n        class Estado:\n            mental = {\"turno_atual\": turno}\n    \n        def responder_capacidade(fala: str) -> str:\n            consultas_capacidade.append(fala)\n            return mapa.responder_pergunta_capacidade(\n                fala,\n                turno=turno,\n                contexto=Estado.mental,\n            )\n    \n        runtime = ComandosImediatosRuntime(\n            namespace_getter=lambda: {\n                \"_estado_compartilhado_runtime\": Estado(),\n                \"_responder_pergunta_capacidade_local\": responder_capacidade,\n                \"falar_com_lipsync\": lambda fala, *_args: falas.append(fala),\n                \"executar_intencao\": lambda intencao, _texto: execucoes.append(intencao) or True,\n            },\n            loop_getter=lambda: None,\n        )\n    \n>       assert runtime.processar_prioritarios(texto) is True\nE       AssertionError: assert False is True\nE        +  where False = processar_prioritarios('Você consegue apagar arquivos?')\nE        +    where processar_prioritarios = <mente_laylay.autonomia.comandos_imediatos.ComandosImediatosRuntime object at 0x0000023F20FE3A10>.processar_prioritarios\n\ntests\\test_red_contratos_arquivos_contexto_capacidades.py:113: AssertionError\n---------------------------- Captured stdout call -----------------------------\n🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=pergunta motivo=pergunta sobre capacidade; não é autorização\n=========================== short test summary info ===========================\nFAILED tests/test_red_contratos_arquivos_contexto_capacidades.py::test_red__pergunta_capacidade_apagar_arquivos_e_tratada_antes_da_barreira_p0\n1 failed in 0.32s\n",
+      "stderr": ""
+    },
+    "red_tracked": {
+      "returncode": 1,
+      "stdout": "F                                                                        [100%]\n================================== FAILURES ===================================\n_________ test_porta_prioritaria_responde_sem_chamar_executor_ou_llm __________\n\n    def test_porta_prioritaria_responde_sem_chamar_executor_ou_llm() -> None:\n        mapa = MapaHabilidadesRuntime()\n        falas: list[str] = []\n        execucoes: list[dict] = []\n        estado = SimpleNamespace(\n            mental={\n                \"turno_atual\": classificar_modalidade_turno(\n                    \"se eu falar para você criar um arquivo, você vai criar?\"\n                ),\n            },\n        )\n        runtime = ComandosImediatosRuntime(\n            namespace_getter=lambda: {\n                \"_estado_compartilhado_runtime\": estado,\n                \"_responder_pergunta_capacidade_local\": (\n                    lambda texto: mapa.responder_pergunta_capacidade(\n                        texto,\n                        turno=estado.mental[\"turno_atual\"],\n                    )\n                ),\n                \"falar_com_lipsync\": lambda fala, *_args: falas.append(fala),\n                \"executar_intencao\": lambda comando, _texto: (\n                    execucoes.append(comando) or True\n                ),\n            },\n            loop_getter=lambda: None,\n        )\n    \n>       assert runtime.processar_prioritarios(\n            \"se eu falar para você criar um arquivo, você vai criar?\"\n        ) is True\nE       AssertionError: assert False is True\nE        +  where False = processar_prioritarios('se eu falar para você criar um arquivo, você vai criar?')\nE        +    where processar_prioritarios = <mente_laylay.autonomia.comandos_imediatos.ComandosImediatosRuntime object at 0x000001D3FCD07770>.processar_prioritarios\n\ntests\\test_regressao_consciencia_capacidades.py:122: AssertionError\n---------------------------- Captured stdout call -----------------------------\n🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=deliberacao motivo=intenção hipotética ou reflexão\n=========================== short test summary info ===========================\nFAILED tests/test_regressao_consciencia_capacidades.py::test_porta_prioritaria_responde_sem_chamar_executor_ou_llm\n1 failed in 0.22s\n",
+      "stderr": ""
+    }
+  },
+  "validacoes": {
+    "candidate_py_compile_runtime": {
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "candidate_py_compile_test": {
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "git_diff_check": {
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "pytest_focado": {
+      "returncode": 0,
+      "stdout": "........................................................................ [ 92%]\n......                                                                   [100%]\n78 passed in 0.69s\n",
+      "stderr": "",
+      "targets": [
+        "tests/test_regressao_consciencia_capacidades.py",
+        "tests/test_p0_autorizacao_modalidade.py",
+        "tests/test_autorizacao_ato_fala_v2.py",
+        "tests/test_p16_linguagem_natural_operacional.py",
+        "tests/test_revisao_intra_turno_v1.py",
+        "tests/test_red_contratos_arquivos_contexto_capacidades.py::test_red__pergunta_capacidade_apagar_arquivos_e_tratada_antes_da_barreira_p0"
+      ]
+    },
+    "red_exato_agora_verde": {
+      "returncode": 0,
+      "stdout": ".                                                                        [100%]\n1 passed in 0.22s\n",
+      "stderr": ""
+    }
+  },
+  "sha256_antes": {
+    "mente_laylay/autonomia/comandos_imediatos.py": "d04b7e6048c33597af10a1805fcde79d8923b27feb2d9d38e11b2e8e2c044089",
+    "tests/test_regressao_consciencia_capacidades.py": "b134b0f63b34d5544e30fa13922cea8cb31cf4275c8b0ed065c8359ad1096637"
+  },
+  "sha256_candidato": {
+    "mente_laylay/autonomia/comandos_imediatos.py": "4cb871d12e2b037eef8558d17ca705bdc6ebda812426fc3583a7b997f6bf2692",
+    "tests/test_regressao_consciencia_capacidades.py": "805ae7491fed689ba39d7a2b0553972b49561ea54b94fa828f0b5478c8cd4e8e"
+  },
+  "finished_at": "2026-08-16T18:40:10.133126-03:00",
+  "sha256_depois": {
+    "mente_laylay/autonomia/comandos_imediatos.py": "4cb871d12e2b037eef8558d17ca705bdc6ebda812426fc3583a7b997f6bf2692",
+    "tests/test_regressao_consciencia_capacidades.py": "805ae7491fed689ba39d7a2b0553972b49561ea54b94fa828f0b5478c8cd4e8e"
+  },
+  "diff_file": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\.laylay_patch_backups\\P0_CAPACIDADE_READONLY_A1_20260816_20260816-184006\\patch_candidate.diff"
+}

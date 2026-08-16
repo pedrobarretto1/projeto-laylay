@@ -126,6 +126,89 @@ def test_porta_prioritaria_responde_sem_chamar_executor_ou_llm() -> None:
     assert execucoes == []
 
 
+@pytest.mark.parametrize(
+    "texto",
+    (
+        "Você consegue apagar arquivos?",
+        "Você consegue apagar um arquivo?",
+    ),
+)
+def test_porta_prioritaria_responde_capacidade_de_exclusao_sem_executar(
+    texto: str,
+) -> None:
+    mapa = MapaHabilidadesRuntime()
+    turno = classificar_modalidade_turno(texto)
+    falas: list[str] = []
+    execucoes: list[dict] = []
+    estado = SimpleNamespace(mental={"turno_atual": turno})
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: {
+            "_estado_compartilhado_runtime": estado,
+            "_responder_pergunta_capacidade_local": (
+                lambda fala: mapa.responder_pergunta_capacidade(
+                    fala,
+                    turno=estado.mental["turno_atual"],
+                )
+            ),
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+            "executar_intencao": lambda comando, _texto: (
+                execucoes.append(comando) or True
+            ),
+        },
+        loop_getter=lambda: None,
+    )
+
+    assert turno["autoriza_execucao"] is False
+    assert runtime.processar_prioritarios(texto) is True
+    assert falas
+    assert "confirmo o alvo" in falas[-1].casefold()
+    assert "lixeira" in falas[-1].casefold()
+    assert execucoes == []
+
+
+def test_ciclo_ia_para_antes_da_llm_quando_capacidade_readonly_responde() -> None:
+    texto = "Você consegue apagar arquivos?"
+    mapa = MapaHabilidadesRuntime()
+    turno = classificar_modalidade_turno(texto)
+    falas: list[str] = []
+    execucoes: list[dict] = []
+    chamadas_llm: list[str] = []
+    estado = SimpleNamespace(mental={"turno_atual": turno})
+    imediato = ComandosImediatosRuntime(
+        namespace_getter=lambda: {
+            "_estado_compartilhado_runtime": estado,
+            "_responder_pergunta_capacidade_local": (
+                lambda fala: mapa.responder_pergunta_capacidade(
+                    fala,
+                    turno=estado.mental["turno_atual"],
+                )
+            ),
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+            "executar_intencao": lambda comando, _texto: (
+                execucoes.append(comando) or True
+            ),
+        },
+        loop_getter=lambda: None,
+    )
+    resposta = RespostaIARuntime(
+        contexto_getter=lambda: {
+            "marcar_inicio_turno": lambda *_args, **_kwargs: None,
+            "obter_turno_atual": lambda: dict(turno),
+            "processar_comandos_prioritarios": imediato.processar_prioritarios,
+            "enviar_mensagem": lambda *_args, **_kwargs: (
+                chamadas_llm.append(texto) or "{}"
+            ),
+        },
+        log=lambda *_args, **_kwargs: None,
+    )
+
+    resposta.processar(texto)
+
+    assert falas and "lixeira" in falas[-1].casefold()
+    assert execucoes == []
+    assert chamadas_llm == []
+
+
 @pytest.mark.parametrize("texto", (
     "você é só um chatbot?",
     "você só consegue conversar?",
