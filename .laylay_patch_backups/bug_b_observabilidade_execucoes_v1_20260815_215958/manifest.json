@@ -1,0 +1,45 @@
+{
+  "patch_id": "P0_BUG_B_OBSERVABILIDADE_EXECUCOES_V1_20260815",
+  "baseline_commit": "b5e39569e63a44a932cfd268d4471746ba3b8442",
+  "created_at": "2026-08-15T21:59:58",
+  "status": "aplicado_validado",
+  "files": {
+    "mente_laylay\\autonomia\\adaptador_resultado.py": {
+      "baseline_blob": "4d817f00ac3c453c09f893491f0cfab35e6e9323",
+      "sha256_before": "e5be0edacb13ef12bf818f89f674b880bedd847a32137f5da27fad41cb58fe17",
+      "newline": "LF",
+      "sha256_after": "8e0cd213feb457b9a6722349d95e0d2834aa1c89191d338923962a5d5ee81dac"
+    },
+    "mente_laylay\\integracao\\adaptadores_aplicacao_runtime.py": {
+      "baseline_blob": "32a794a1d3b588cdd83c874573dbe2688e119cf4",
+      "sha256_before": "e0f4d8f6efb6e733084d9a6ea51421c4a5009878c2e19a6cc90879ed39e5dbd3",
+      "newline": "LF",
+      "sha256_after": "f639b44949f93e2234f1850668f9aaa1af06d65c5a0cc909aa54ede5b7634c76"
+    },
+    "mente_laylay\\cognicao\\plano_turno.py": {
+      "baseline_blob": "c51cab1aea805a42403a40265a01aee08e2d1129",
+      "sha256_before": "1a44ff8744242735a5ee1afa746a3c4d0d2a19e83e5d08a28699abdecdbd75e6",
+      "newline": "LF",
+      "sha256_after": "e524cdb643b8412c8f64c055d5fb6e0711ceebe7558244cfa33bea43716c08f7"
+    },
+    "tests\\test_bug_b_observabilidade_execucoes.py": {
+      "created": true,
+      "sha256_after": "455cd6d89baf3b9a185b30275eac66ad8c82389217ddb6048cd0cccb5d8f2b05"
+    }
+  },
+  "backup_dir": ".laylay_patch_backups\\bug_b_observabilidade_execucoes_v1_20260815_215958",
+  "py_compile": "",
+  "git_diff_check": "",
+  "pytest_command": [
+    "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\.venv314\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "--maxfail=1",
+    "tests\\test_bug_b_observabilidade_execucoes.py",
+    "tests/test_adaptador_resultado.py",
+    "tests/test_cadeia_contexto_vivo_v2.py"
+  ],
+  "pytest_output": "....................................                                     [100%]\n36 passed in 0.50s\n",
+  "finished_at": "2026-08-15T21:59:59"
+}

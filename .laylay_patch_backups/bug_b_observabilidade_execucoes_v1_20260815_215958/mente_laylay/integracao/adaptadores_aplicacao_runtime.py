@@ -107,17 +107,6 @@ class AdaptadoresAplicacaoRuntime:
                 confirmado = resultado.get("confirmado")
                 confirmacao_oferecida = resultado.get("confirmacao_oferecida")
                 evidencia_confirmacao = resultado.get("evidencia_confirmacao")
-                id_solicitacao = str(
-                    resultado.get("id_solicitacao")
-                    or resultado.get("request_id")
-                    or ""
-                ).strip()
-                origem_resultado = str(
-                    origem or resultado.get("origem") or ""
-                ).strip()
-                detalhe_resultado = str(
-                    resultado.get("detalhe") or resultado.get("erro") or ""
-                ).strip()
                 alvo_objeto = ""
             else:
                 intent = str(getattr(resultado, "intent", "") or getattr(resultado, "acao", "")).strip()
@@ -126,15 +115,6 @@ class AdaptadoresAplicacaoRuntime:
                 confirmado = getattr(resultado, "confirmado", None)
                 confirmacao_oferecida = getattr(resultado, "confirmacao_oferecida", None)
                 evidencia_confirmacao = getattr(resultado, "evidencia_confirmacao", None)
-                id_solicitacao = str(
-                    getattr(resultado, "id_solicitacao", "") or ""
-                ).strip()
-                origem_resultado = str(
-                    origem or getattr(resultado, "origem", "") or ""
-                ).strip()
-                detalhe_resultado = str(
-                    getattr(resultado, "detalhe", "") or ""
-                ).strip()
                 alvo_objeto = str(getattr(resultado, "alvo", "") or "")
             if not intent:
                 return
@@ -171,54 +151,17 @@ class AdaptadoresAplicacaoRuntime:
             estado = ns["_estado_compartilhado_runtime"]
             plano = dict(estado.mental.get("plano_turno_atual") or {})
             comandos = list(plano.get("comandos") or [])
-            # P0_BUG_B_OBSERVABILIDADE_EXECUCOES_V1_20260815
-            # Resultado identificado: consolida somente a MESMA ocorrência.
-            # Resultado legado sem ID: mantém a deduplicação antiga por intent.
-            indice_anterior = None
-            if id_solicitacao:
-                indice_anterior = next(
-                    (
-                        indice
-                        for indice, item in enumerate(comandos)
-                        if str(item.get("id_solicitacao") or "").strip()
-                        == id_solicitacao
-                    ),
-                    None,
-                )
-                anterior = (
-                    dict(comandos[indice_anterior])
-                    if indice_anterior is not None
-                    else {}
-                )
-            else:
-                anterior = next(
-                    (
-                        item
-                        for item in comandos
-                        if not str(item.get("id_solicitacao") or "").strip()
-                        and str(item.get("intent") or "").upper()
-                        == intent.upper()
-                    ),
-                    {},
-                )
+            anterior = next(
+                (item for item in comandos if str(item.get("intent") or "").upper() == intent.upper()),
+                {},
+            )
             preservar_resultado_detalhado = bool(
                 anterior.get("status") and not status_resultado
             )
-            params_anteriores = (
-                dict(anterior.get("params") or {})
-                if isinstance(anterior.get("params"), dict)
-                else {}
-            )
-            params_registro = dict(params_anteriores)
-            params_registro.update(params)
             registro = {
-                "id_solicitacao": id_solicitacao,
                 "intent": intent.upper(),
                 "alvo": alvo or str(anterior.get("alvo") or ""),
                 "status": status_resultado or str(anterior.get("status") or ""),
-                "params": params_registro,
-                "origem": origem_resultado or str(anterior.get("origem") or ""),
-                "detalhe": detalhe_resultado or str(anterior.get("detalhe") or ""),
                 "executou": (
                     anterior.get("executou") if preservar_resultado_detalhado
                     else executou if executou is not None else anterior.get("executou")
@@ -253,23 +196,8 @@ class AdaptadoresAplicacaoRuntime:
                         "⚠️ [REDE ASSOCIATIVA] resultado isolado: "
                         f"{type(erro_rede).__name__}"
                     )
-            if id_solicitacao:
-                if indice_anterior is None:
-                    comandos.append(registro)
-                else:
-                    # Atualiza a mesma execução na posição original.
-                    comandos[indice_anterior] = registro
-            else:
-                # Compatibilidade legada: sem identidade confiável, preserva
-                # o comportamento anterior apenas entre registros também sem ID.
-                comandos = [
-                    item
-                    for item in comandos
-                    if str(item.get("id_solicitacao") or "").strip()
-                    or str(item.get("intent") or "").upper()
-                    != intent.upper()
-                ]
-                comandos.append(registro)
+            comandos = [item for item in comandos if str(item.get("intent") or "").upper() != intent.upper()]
+            comandos.append(registro)
             novo = ns["_atualizar_plano_turno_mente"](
                 plano,
                 fase=str(plano.get("fase") or "executado"),

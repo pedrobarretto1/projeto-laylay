@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict
-from uuid import uuid4
 
 from mente_laylay.memoria_mental.resultado_acao import (
     ResultadoAcao,
@@ -49,10 +48,6 @@ class AdaptadorResultadoOperacional:
     texto_original: str
     destino: str
     ctx: Dict[str, Any]
-    # P0_BUG_B_OBSERVABILIDADE_EXECUCOES_V1_20260815
-    # Cada AdaptadorResultadoOperacional nasce para uma invocação de
-    # executar_intencao. O ID identifica a ocorrência, não o tipo do intent.
-    id_solicitacao: str = field(default_factory=lambda: uuid4().hex)
 
     @property
     def intent(self) -> str:
@@ -155,7 +150,6 @@ class AdaptadorResultadoOperacional:
                 origem="executor",
                 detalhe=detalhe,
                 texto_usuario=self.texto_original,
-                id_solicitacao=self.id_solicitacao,
             )
             registrar(
                 contrato,
@@ -240,7 +234,6 @@ class AdaptadorResultadoOperacional:
             ),
             detalhe=detalhe,
             texto_usuario=self.texto_original,
-            id_solicitacao=self.id_solicitacao,
             contexto={"destino": self.destino},
         )
         avaliacao_evento: dict[str, Any] = {}

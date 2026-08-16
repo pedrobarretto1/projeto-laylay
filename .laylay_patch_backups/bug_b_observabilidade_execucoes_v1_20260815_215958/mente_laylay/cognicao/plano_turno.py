@@ -67,28 +67,6 @@ def _normalizar(texto: str) -> str:
     return re.sub(r"\s+", " ", str(texto or "")).strip().casefold()
 
 
-# P0_BUG_B_OBSERVABILIDADE_EXECUCOES_V1_20260815
-def _valor_observavel(valor: Any, profundidade: int = 0) -> Any:
-    """Converte metadados do plano para uma forma pequena e serializável."""
-    if valor is None or isinstance(valor, (str, int, float, bool)):
-        return valor
-    if profundidade >= 4:
-        return str(valor)[:300]
-    if isinstance(valor, dict):
-        return {
-            str(chave)[:80]: _valor_observavel(item, profundidade + 1)
-            for chave, item in list(valor.items())[:32]
-        }
-    if isinstance(valor, (set, frozenset)):
-        valor = sorted(valor, key=repr)
-    if isinstance(valor, (list, tuple, set, frozenset)):
-        return [
-            _valor_observavel(item, profundidade + 1)
-            for item in list(valor)[:32]
-        ]
-    return str(valor)[:300]
-
-
 def _objetivo_ato(tipo: str) -> str:
     return {
         "comando": "executar a ação pedida e responder com o resultado real",
@@ -263,25 +241,12 @@ def atualizar_plano_turno(
     comandos_resumo = []
     for comando in comandos or ():
         if isinstance(comando, dict):
-            params_brutos = (
-                comando.get("params")
-                if isinstance(comando.get("params"), dict)
-                else {}
-            )
             comandos_resumo.append({
-                "id_solicitacao": str(
-                    comando.get("id_solicitacao")
-                    or comando.get("request_id")
-                    or ""
-                ).strip(),
                 "intent": str(comando.get("intent") or comando.get("acao") or "").strip(),
-                "alvo": str(comando.get("alvo") or params_brutos.get("alvo") or "").strip(),
+                "alvo": str(comando.get("alvo") or (comando.get("params") or {}).get("alvo") or "").strip(),
                 "status": str(comando.get("status") or "").strip(),
                 "executou": comando.get("executou"),
                 "confirmado": comando.get("confirmado"),
-                "params": _valor_observavel(params_brutos),
-                "origem": str(comando.get("origem") or "").strip()[:120],
-                "detalhe": str(comando.get("detalhe") or "").strip()[:500],
                 "confirmacao_oferecida": comando.get("confirmacao_oferecida"),
                 "evidencia_confirmacao": comando.get("evidencia_confirmacao"),
             })

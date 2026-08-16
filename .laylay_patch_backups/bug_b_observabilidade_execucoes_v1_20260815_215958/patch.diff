@@ -1,0 +1,225 @@
+diff --git a/mente_laylay/autonomia/adaptador_resultado.py b/mente_laylay/autonomia/adaptador_resultado.py
+index 4d817f0..87740e0 100644
+--- a/mente_laylay/autonomia/adaptador_resultado.py
++++ b/mente_laylay/autonomia/adaptador_resultado.py
+@@ -2,8 +2,9 @@
+ 
+ from __future__ import annotations
+ 
+-from dataclasses import dataclass
++from dataclasses import dataclass, field
+ from typing import Any, Dict
++from uuid import uuid4
+ 
+ from mente_laylay.memoria_mental.resultado_acao import (
+     ResultadoAcao,
+@@ -48,6 +49,10 @@ class AdaptadorResultadoOperacional:
+     texto_original: str
+     destino: str
+     ctx: Dict[str, Any]
++    # P0_BUG_B_OBSERVABILIDADE_EXECUCOES_V1_20260815
++    # Cada AdaptadorResultadoOperacional nasce para uma invocação de
++    # executar_intencao. O ID identifica a ocorrência, não o tipo do intent.
++    id_solicitacao: str = field(default_factory=lambda: uuid4().hex)
+ 
+     @property
+     def intent(self) -> str:
+@@ -150,6 +155,7 @@ class AdaptadorResultadoOperacional:
+                 origem="executor",
+                 detalhe=detalhe,
+                 texto_usuario=self.texto_original,
++                id_solicitacao=self.id_solicitacao,
+             )
+             registrar(
+                 contrato,
+@@ -234,6 +240,7 @@ class AdaptadorResultadoOperacional:
+             ),
+             detalhe=detalhe,
+             texto_usuario=self.texto_original,
++            id_solicitacao=self.id_solicitacao,
+             contexto={"destino": self.destino},
+         )
+         avaliacao_evento: dict[str, Any] = {}
+diff --git a/mente_laylay/cognicao/plano_turno.py b/mente_laylay/cognicao/plano_turno.py
+index c51cab1..a5aa529 100644
+--- a/mente_laylay/cognicao/plano_turno.py
++++ b/mente_laylay/cognicao/plano_turno.py
+@@ -67,6 +67,28 @@ def _normalizar(texto: str) -> str:
+     return re.sub(r"\s+", " ", str(texto or "")).strip().casefold()
+ 
+ 
++# P0_BUG_B_OBSERVABILIDADE_EXECUCOES_V1_20260815
++def _valor_observavel(valor: Any, profundidade: int = 0) -> Any:
++    """Converte metadados do plano para uma forma pequena e serializável."""
++    if valor is None or isinstance(valor, (str, int, float, bool)):
++        return valor
++    if profundidade >= 4:
++        return str(valor)[:300]
++    if isinstance(valor, dict):
++        return {
++            str(chave)[:80]: _valor_observavel(item, profundidade + 1)
++            for chave, item in list(valor.items())[:32]
++        }
++    if isinstance(valor, (set, frozenset)):
++        valor = sorted(valor, key=repr)
++    if isinstance(valor, (list, tuple, set, frozenset)):
++        return [
++            _valor_observavel(item, profundidade + 1)
++            for item in list(valor)[:32]
++        ]
++    return str(valor)[:300]
++
++
+ def _objetivo_ato(tipo: str) -> str:
+     return {
+         "comando": "executar a ação pedida e responder com o resultado real",
+@@ -241,12 +263,25 @@ def atualizar_plano_turno(
+     comandos_resumo = []
+     for comando in comandos or ():
+         if isinstance(comando, dict):
++            params_brutos = (
++                comando.get("params")
++                if isinstance(comando.get("params"), dict)
++                else {}
++            )
+             comandos_resumo.append({
++                "id_solicitacao": str(
++                    comando.get("id_solicitacao")
++                    or comando.get("request_id")
++                    or ""
++                ).strip(),
+                 "intent": str(comando.get("intent") or comando.get("acao") or "").strip(),
+-                "alvo": str(comando.get("alvo") or (comando.get("params") or {}).get("alvo") or "").strip(),
++                "alvo": str(comando.get("alvo") or params_brutos.get("alvo") or "").strip(),
+                 "status": str(comando.get("status") or "").strip(),
+                 "executou": comando.get("executou"),
+                 "confirmado": comando.get("confirmado"),
++                "params": _valor_observavel(params_brutos),
++                "origem": str(comando.get("origem") or "").strip()[:120],
++                "detalhe": str(comando.get("detalhe") or "").strip()[:500],
+                 "confirmacao_oferecida": comando.get("confirmacao_oferecida"),
+                 "evidencia_confirmacao": comando.get("evidencia_confirmacao"),
+             })
+diff --git a/mente_laylay/integracao/adaptadores_aplicacao_runtime.py b/mente_laylay/integracao/adaptadores_aplicacao_runtime.py
+index 32a794a..63b4288 100644
+--- a/mente_laylay/integracao/adaptadores_aplicacao_runtime.py
++++ b/mente_laylay/integracao/adaptadores_aplicacao_runtime.py
+@@ -107,6 +107,17 @@ class AdaptadoresAplicacaoRuntime:
+                 confirmado = resultado.get("confirmado")
+                 confirmacao_oferecida = resultado.get("confirmacao_oferecida")
+                 evidencia_confirmacao = resultado.get("evidencia_confirmacao")
++                id_solicitacao = str(
++                    resultado.get("id_solicitacao")
++                    or resultado.get("request_id")
++                    or ""
++                ).strip()
++                origem_resultado = str(
++                    origem or resultado.get("origem") or ""
++                ).strip()
++                detalhe_resultado = str(
++                    resultado.get("detalhe") or resultado.get("erro") or ""
++                ).strip()
+                 alvo_objeto = ""
+             else:
+                 intent = str(getattr(resultado, "intent", "") or getattr(resultado, "acao", "")).strip()
+@@ -115,6 +126,15 @@ class AdaptadoresAplicacaoRuntime:
+                 confirmado = getattr(resultado, "confirmado", None)
+                 confirmacao_oferecida = getattr(resultado, "confirmacao_oferecida", None)
+                 evidencia_confirmacao = getattr(resultado, "evidencia_confirmacao", None)
++                id_solicitacao = str(
++                    getattr(resultado, "id_solicitacao", "") or ""
++                ).strip()
++                origem_resultado = str(
++                    origem or getattr(resultado, "origem", "") or ""
++                ).strip()
++                detalhe_resultado = str(
++                    getattr(resultado, "detalhe", "") or ""
++                ).strip()
+                 alvo_objeto = str(getattr(resultado, "alvo", "") or "")
+             if not intent:
+                 return
+@@ -151,17 +171,54 @@ class AdaptadoresAplicacaoRuntime:
+             estado = ns["_estado_compartilhado_runtime"]
+             plano = dict(estado.mental.get("plano_turno_atual") or {})
+             comandos = list(plano.get("comandos") or [])
+-            anterior = next(
+-                (item for item in comandos if str(item.get("intent") or "").upper() == intent.upper()),
+-                {},
+-            )
++            # P0_BUG_B_OBSERVABILIDADE_EXECUCOES_V1_20260815
++            # Resultado identificado: consolida somente a MESMA ocorrência.
++            # Resultado legado sem ID: mantém a deduplicação antiga por intent.
++            indice_anterior = None
++            if id_solicitacao:
++                indice_anterior = next(
++                    (
++                        indice
++                        for indice, item in enumerate(comandos)
++                        if str(item.get("id_solicitacao") or "").strip()
++                        == id_solicitacao
++                    ),
++                    None,
++                )
++                anterior = (
++                    dict(comandos[indice_anterior])
++                    if indice_anterior is not None
++                    else {}
++                )
++            else:
++                anterior = next(
++                    (
++                        item
++                        for item in comandos
++                        if not str(item.get("id_solicitacao") or "").strip()
++                        and str(item.get("intent") or "").upper()
++                        == intent.upper()
++                    ),
++                    {},
++                )
+             preservar_resultado_detalhado = bool(
+                 anterior.get("status") and not status_resultado
+             )
++            params_anteriores = (
++                dict(anterior.get("params") or {})
++                if isinstance(anterior.get("params"), dict)
++                else {}
++            )
++            params_registro = dict(params_anteriores)
++            params_registro.update(params)
+             registro = {
++                "id_solicitacao": id_solicitacao,
+                 "intent": intent.upper(),
+                 "alvo": alvo or str(anterior.get("alvo") or ""),
+                 "status": status_resultado or str(anterior.get("status") or ""),
++                "params": params_registro,
++                "origem": origem_resultado or str(anterior.get("origem") or ""),
++                "detalhe": detalhe_resultado or str(anterior.get("detalhe") or ""),
+                 "executou": (
+                     anterior.get("executou") if preservar_resultado_detalhado
+                     else executou if executou is not None else anterior.get("executou")
+@@ -196,8 +253,23 @@ class AdaptadoresAplicacaoRuntime:
+                         "⚠️ [REDE ASSOCIATIVA] resultado isolado: "
+                         f"{type(erro_rede).__name__}"
+                     )
+-            comandos = [item for item in comandos if str(item.get("intent") or "").upper() != intent.upper()]
+-            comandos.append(registro)
++            if id_solicitacao:
++                if indice_anterior is None:
++                    comandos.append(registro)
++                else:
++                    # Atualiza a mesma execução na posição original.
++                    comandos[indice_anterior] = registro
++            else:
++                # Compatibilidade legada: sem identidade confiável, preserva
++                # o comportamento anterior apenas entre registros também sem ID.
++                comandos = [
++                    item
++                    for item in comandos
++                    if str(item.get("id_solicitacao") or "").strip()
++                    or str(item.get("intent") or "").upper()
++                    != intent.upper()
++                ]
++                comandos.append(registro)
+             novo = ns["_atualizar_plano_turno_mente"](
+                 plano,
+                 fase=str(plano.get("fase") or "executado"),
