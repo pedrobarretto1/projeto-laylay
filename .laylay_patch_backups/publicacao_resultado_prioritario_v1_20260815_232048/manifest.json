@@ -1,0 +1,82 @@
+{
+  "patch_id": "P0_PUBLICACAO_RESULTADO_PRIORITARIO_V1_20260815",
+  "baseline_head": "ce83479611fe82ff6c6b7e88a54c7fb4c0179a74",
+  "created_at": "2026-08-15T23:20:49",
+  "status": "applied",
+  "files": [
+    {
+      "path": "mente_laylay/memoria_mental/resultado_acao.py",
+      "existed_before": true,
+      "sha256_before": "3c89207c825704e91476f66e126adde51a0a2e8bdf3a71b496b2b114afb06f25",
+      "sha256_after_projected": "cfe7f4292e37935d844f61a02946abff290fdb8d373e7f3c84706b324e468a59"
+    },
+    {
+      "path": "mente_laylay/autonomia/adaptador_resultado.py",
+      "existed_before": true,
+      "sha256_before": "b9900e1ff092809326e8d060c5f1bbe5dac3dff21b81b16df750b14cf2bb0acd",
+      "sha256_after_projected": "02d2cd58d753fdb8b53d6b8c9f6fcda6f1fe2422c1c0a9ad5975f2974a9db010"
+    },
+    {
+      "path": "mente_laylay/integracao/adaptadores_aplicacao_runtime.py",
+      "existed_before": true,
+      "sha256_before": "f639b44949f93e2234f1850668f9aaa1af06d65c5a0cc909aa54ede5b7634c76",
+      "sha256_after_projected": "7ec92d4544ab47cc97e5681e531d91e008e5fc5ca906e1889959e46a776a99a7"
+    },
+    {
+      "path": "tests/test_publicacao_resultado_prioritario_v1.py",
+      "existed_before": false,
+      "sha256_before": null,
+      "sha256_after_projected": "453c0c8554db64f3fc7f7336aa77ec98287e7f6e1d5ecd2b740e0bde0606f5f1"
+    }
+  ],
+  "tests": [
+    {
+      "name": "py_compile",
+      "command": [
+        "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\.venv314\\Scripts\\python.exe",
+        "-m",
+        "py_compile",
+        "mente_laylay\\memoria_mental\\resultado_acao.py",
+        "mente_laylay\\autonomia\\adaptador_resultado.py",
+        "mente_laylay\\integracao\\adaptadores_aplicacao_runtime.py",
+        "tests\\test_publicacao_resultado_prioritario_v1.py"
+      ],
+      "returncode": 0,
+      "output": ""
+    },
+    {
+      "name": "git_diff_check",
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "mente_laylay\\memoria_mental\\resultado_acao.py",
+        "mente_laylay\\autonomia\\adaptador_resultado.py",
+        "mente_laylay\\integracao\\adaptadores_aplicacao_runtime.py",
+        "tests\\test_publicacao_resultado_prioritario_v1.py"
+      ],
+      "returncode": 0,
+      "output": ""
+    },
+    {
+      "name": "pytest_targeted",
+      "command": [
+        "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\.venv314\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "tests\\test_publicacao_resultado_prioritario_v1.py",
+        "tests/test_contrato_execucao_none_v1.py",
+        "tests/test_bug_b_observabilidade_execucoes.py",
+        "tests/test_adaptador_resultado.py",
+        "tests/test_cadeia_contexto_vivo_v2.py",
+        "-q",
+        "--maxfail=1"
+      ],
+      "returncode": 0,
+      "output": "..................................................                       [100%]\n50 passed in 0.71s\n"
+    }
+  ],
+  "applied_at": "2026-08-15T23:20:49",
+  "head_after": "ce83479611fe82ff6c6b7e88a54c7fb4c0179a74"
+}

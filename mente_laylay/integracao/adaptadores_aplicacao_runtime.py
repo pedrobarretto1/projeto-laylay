@@ -12,6 +12,9 @@ from typing import Any, Callable, Mapping
 
 from mente_laylay.integracao.registro_memoria_pessoas import PortaMemoriaPessoas
 from mente_laylay.integracao.registro_iot import PortaIoT
+from mente_laylay.memoria_mental.resultado_acao import (
+    CHAVE_RESULTADO_OPERACIONAL_PUBLICADO,
+)
 
 
 class AdaptadoresAplicacaoRuntime:
@@ -78,6 +81,22 @@ class AdaptadoresAplicacaoRuntime:
         status: str = "",
     ) -> None:
         ns = self._ns()
+        # P0_PUBLICACAO_RESULTADO_PRIORITARIO_V1_20260815
+        # Vários atalhos prioritários seguem o contrato legado
+        # ``executar_intencao(...) -> registrar(dict original)``. Quando o
+        # executor moderno já publicou ResultadoAcao, o adaptador marca esse
+        # mesmo dict. Nesse caso a segunda chamada é somente fallback e deve
+        # ser descartada ANTES de alimentar base, aprendizado, mapa e plano.
+        #
+        # Um status explícito continua sendo aceito como atualização deliberada;
+        # caminhos sem publicação oficial também continuam usando o fallback.
+        if (
+            isinstance(resultado, dict)
+            and resultado.get(CHAVE_RESULTADO_OPERACIONAL_PUBLICADO)
+            and not str(status or resultado.get("status") or "").strip()
+            and str(origem or "").strip().casefold() != "executor"
+        ):
+            return
         ns["_registrar_resultado_execucao_base"](
             resultado, texto, executou, origem=origem, status=status,
         )

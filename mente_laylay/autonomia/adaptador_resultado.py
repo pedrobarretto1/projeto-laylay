@@ -7,6 +7,7 @@ from typing import Any, Dict
 from uuid import uuid4
 
 from mente_laylay.memoria_mental.resultado_acao import (
+    CHAVE_RESULTADO_OPERACIONAL_PUBLICADO,
     ResultadoAcao,
     STATUS_RESULTADO_JA_SATISFEITO,
     inferir_confirmacao,
@@ -58,6 +59,11 @@ class AdaptadorResultadoOperacional:
 
     def __post_init__(self) -> None:
         resultado = self.resultado if isinstance(self.resultado, dict) else {}
+        # O marcador é uma prova apenas da invocação corrente. Se algum
+        # resolvedor reutilizar o mesmo dict em outro turno, ele precisa voltar
+        # a ser elegível ao fallback até publicar um novo ResultadoAcao.
+        if isinstance(resultado, dict):
+            resultado.pop(CHAVE_RESULTADO_OPERACIONAL_PUBLICADO, None)
         id_existente = str(
             self.id_solicitacao
             or resultado.get("id_solicitacao")
@@ -176,6 +182,12 @@ class AdaptadorResultadoOperacional:
                 origem="executor",
                 status=status,
             )
+            # Só marque depois que o registrador oficial retornou. Assim,
+            # falhas de publicação continuam permitindo o fallback legado.
+            if isinstance(self.resultado, dict):
+                self.resultado[
+                    CHAVE_RESULTADO_OPERACIONAL_PUBLICADO
+                ] = self.id_solicitacao
         except Exception:
             pass
 

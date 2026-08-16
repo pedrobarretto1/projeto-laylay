@@ -5,6 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import Any, Dict
 
+# P0_PUBLICACAO_RESULTADO_PRIORITARIO_V1_20260815
+# Marcador transitório no dict que originou uma execução. Ele nunca integra
+# ResultadoAcao nem o plano persistido; apenas prova, para o chamador imediato,
+# que o executor já publicou o contrato oficial daquela invocação.
+CHAVE_RESULTADO_OPERACIONAL_PUBLICADO = "_laylay_resultado_operacional_publicado"
+
 STATUS_RESULTADO_JA_SATISFEITO = {
     "ja_aberto_focado", "site_ja_aberto_focado",
     "ja_estava_ligado", "ja_estava_desligado",
