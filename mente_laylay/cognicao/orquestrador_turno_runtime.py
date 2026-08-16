@@ -171,6 +171,34 @@ def _normalizar_origem_entrada(origem: object) -> str:
     return valor if valor in _ORIGENS_ENTRADA_VALIDAS else 'desconhecida'
 
 
+# P0_REVISAO_INTRA_TURNO_B1_2_1_20260816
+def alinhar_identidade_plano_revisao(
+    plano: dict,
+    *,
+    texto_original: str,
+    texto_operacional_efetivo: str = '',
+    revisao_intra_turno: dict | None = None,
+) -> dict:
+    """Separa a identidade pública do turno de sua visão operacional revisada.
+
+    O planejador deve continuar recebendo a proposta final consolidada para não
+    reintroduzir ações/alvos descartados. Depois do planejamento, porém,
+    ``texto_usuario`` volta a representar a fala que realmente originou o
+    turno. A visão operacional fica em um campo próprio e auditável.
+    """
+    resultado = dict(plano or {})
+    resultado['texto_usuario'] = str(texto_original or '').strip()[:500]
+
+    revisao = dict(revisao_intra_turno or {})
+    if bool(revisao.get('detectada')):
+        resultado['texto_operacional_efetivo'] = str(
+            texto_operacional_efetivo or ''
+        ).strip()[:500]
+        resultado['revisao_intra_turno'] = revisao
+
+    return resultado
+
+
 def iniciar_planejamento_turno(
     namespace_getter,
     texto: str,
@@ -447,6 +475,14 @@ def _iniciar_planejamento_turno(
     turno['especialistas'] = especialistas
     assunto_estruturado = ns['_atualizar_assunto_estruturado_mente'](mente_antes_turno.get('assunto_estruturado_atual') if isinstance(mente_antes_turno.get('assunto_estruturado_atual'), dict) else {}, texto, turno=turno, retrato=retrato_turno, encerramento=encerramento_assunto)
     plano = ns['_planejar_turno_mente'](texto_cognitivo, turno=turno, mente=mente_antes_turno, periodo=ns['_contexto_horario_atual']())
+    # O plano nasce semanticamente da proposta final, mas sua identidade pública
+    # pertence à fala original. Não confundir conteúdo operacional com RG do turno.
+    plano = alinhar_identidade_plano_revisao(
+        plano,
+        texto_original=texto,
+        texto_operacional_efetivo=texto_efetivo,
+        revisao_intra_turno=revisao_intra_turno,
+    )
     evidencia_habilidades_getter = ns.get('_evidencia_habilidades_turno_mente')
     if callable(evidencia_habilidades_getter):
         try:
