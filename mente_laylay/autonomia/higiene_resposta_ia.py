@@ -233,6 +233,26 @@ def _fala_antes_de_metadados(texto: str) -> str:
     prefixo = str(texto or "")[:marcador.start()].strip(" \t\r\n,;:-")
     return prefixo if len(prefixo) >= 2 else ""
 
+# P0_CONTRATO_EXECUCAO_NONE_V1_20260815
+def _normalizar_comandos_efetivos(comandos: Any) -> List[Dict[str, Any]]:
+    """Remove sentinelas de não-ação antes de elas entrarem no plano operacional."""
+    efetivos: List[Dict[str, Any]] = []
+    if not isinstance(comandos, (list, tuple)):
+        return efetivos
+    for comando in comandos:
+        if not isinstance(comando, dict):
+            continue
+        acao = comando.get("intent")
+        if acao is None:
+            acao = comando.get("acao")
+        if acao is None:
+            acao = comando.get("action")
+        if isinstance(acao, str) and acao.strip().casefold() == "none":
+            continue
+        efetivos.append(comando)
+    return efetivos
+
+
 def limpar_resposta_da_ia(
     resposta_bruta: Any,
     limpar_texto_fala_cb: Optional[Callable[[str], str]] = None,
@@ -241,7 +261,10 @@ def limpar_resposta_da_ia(
     """Separa fala e comandos, mesmo quando a saída da IA vem malformada."""
     if isinstance(resposta_bruta, tuple) and len(resposta_bruta) == 2:
         fala, comandos = resposta_bruta
-        return _normalizar_fala_cb(str(fala or ""), limpar_texto_fala_cb, fallback_fala), list(comandos or [])
+        return (
+            _normalizar_fala_cb(str(fala or ""), limpar_texto_fala_cb, fallback_fala),
+            _normalizar_comandos_efetivos(comandos),
+        )
 
     original = str(resposta_bruta or "").strip()
     fala_final = ""
@@ -259,11 +282,14 @@ def limpar_resposta_da_ia(
             comandos = dados.get("comandos", [])
             if isinstance(comandos, list):
                 comandos_finais = [c for c in comandos if isinstance(c, dict)]
-                return _normalizar_fala_cb(
-                    fala_final,
-                    limpar_texto_fala_cb,
-                    fallback_fala,
-                ), comandos_finais
+                return (
+                    _normalizar_fala_cb(
+                        fala_final,
+                        limpar_texto_fala_cb,
+                        fallback_fala,
+                    ),
+                    _normalizar_comandos_efetivos(comandos_finais),
+                )
     except Exception:
         json_invalido = bool(
             texto_pre.startswith(("{", "["))
@@ -282,6 +308,8 @@ def limpar_resposta_da_ia(
                 comandos_finais = [c for c in parsed if isinstance(c, dict)]
     except Exception:
         pass
+
+    comandos_finais = _normalizar_comandos_efetivos(comandos_finais)
 
     try:
         fala_final = _extrair_campo_textual_json_like(texto_pre, "fala") or fala_final
@@ -363,7 +391,10 @@ def limpar_resposta_da_ia(
             print(f"🧹 [IA] Estrutura conversacional recuperada: {texto_fala_pura[:60]}...")
         return _normalizar_fala_cb(texto_fala_pura, limpar_texto_fala_cb, fallback_fala), []
 
-    return _normalizar_fala_cb(fala_final, limpar_texto_fala_cb, fallback_fala), comandos_finais
+    return (
+        _normalizar_fala_cb(fala_final, limpar_texto_fala_cb, fallback_fala),
+        _normalizar_comandos_efetivos(comandos_finais),
+    )
 
 def _saida_ia_parece_malformada(texto: str) -> bool:
     s = str(texto or "").strip()

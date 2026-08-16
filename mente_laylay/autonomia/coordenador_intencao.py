@@ -8,6 +8,7 @@ import json
 from copy import deepcopy
 from threading import Event, RLock, get_ident
 from typing import Any, Callable, Dict, Tuple
+from uuid import uuid4
 
 from mente_laylay.autonomia.analise_comandos import (
     executar_comando_em_texto,
@@ -557,6 +558,19 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     return None, ""
 
 
+# P0_CONTRATO_EXECUCAO_NONE_V1_20260815
+def _preparar_intent_execucao(intent: Dict[str, Any]) -> Dict[str, Any]:
+    """Cria a identidade da ocorrência antes do despacho, sem mutar o pedido original."""
+    identificado = dict(intent or {})
+    id_existente = str(
+        identificado.get("id_solicitacao")
+        or identificado.get("request_id")
+        or ""
+    ).strip()
+    identificado["id_solicitacao"] = id_existente or uuid4().hex
+    return identificado
+
+
 def executar_fluxo_intencao(
     texto: str,
     origem: str,
@@ -592,8 +606,16 @@ def executar_fluxo_intencao(
 
     try:
         texto_execucao = str(texto_original or texto)
-        executou = bool(_call(ctx, "executar_intencao", intent, texto_execucao, default=False))
-        _call(ctx, "registrar_resultado_execucao", intent, texto_execucao, executou, origem=f"{rota}:{origem}")
+        intent_execucao = _preparar_intent_execucao(intent)
+        executou = bool(_call(ctx, "executar_intencao", intent_execucao, texto_execucao, default=False))
+        _call(
+            ctx,
+            "registrar_resultado_execucao",
+            intent_execucao,
+            texto_execucao,
+            executou,
+            origem=f"{rota}:{origem}",
+        )
         if executou:
             _call(ctx, "registrar_autoaprimoramento", intent, texto_execucao, True, contexto=f"{rota}:{origem}", origem=origem)
         return executou

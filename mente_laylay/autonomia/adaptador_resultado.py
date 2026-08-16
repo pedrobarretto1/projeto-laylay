@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict
 from uuid import uuid4
 
@@ -50,9 +50,21 @@ class AdaptadorResultadoOperacional:
     destino: str
     ctx: Dict[str, Any]
     # P0_BUG_B_OBSERVABILIDADE_EXECUCOES_V1_20260815
-    # Cada AdaptadorResultadoOperacional nasce para uma invocação de
-    # executar_intencao. O ID identifica a ocorrência, não o tipo do intent.
-    id_solicitacao: str = field(default_factory=lambda: uuid4().hex)
+    # O ID identifica a ocorrência, não o tipo do intent.
+    # P0_CONTRATO_EXECUCAO_NONE_V1_20260815
+    # Quando o coordenador já criou a identidade, todos os publicadores da
+    # mesma execução reutilizam esse ID. Chamadores legados ainda recebem UUID.
+    id_solicitacao: str = ""
+
+    def __post_init__(self) -> None:
+        resultado = self.resultado if isinstance(self.resultado, dict) else {}
+        id_existente = str(
+            self.id_solicitacao
+            or resultado.get("id_solicitacao")
+            or resultado.get("request_id")
+            or ""
+        ).strip()
+        self.id_solicitacao = id_existente or uuid4().hex
 
     @property
     def intent(self) -> str:
