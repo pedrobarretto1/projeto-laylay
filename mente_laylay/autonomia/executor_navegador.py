@@ -215,7 +215,11 @@ def _rotulo_aba(aba: Dict[str, Any]) -> str:
 def _executar_listar_abas(
     ctx: Dict[str, Any],
     deps: DependenciasExecutorNavegador,
+    *,
+    params: Dict[str, Any] | None = None,
 ) -> ResultadoDespacho:
+    # P0_CADEIA_CONTEXTO_VIVO_V2_20260815
+    params = dict(params or {})
     navegador = _get(ctx, "_registro_navegador_leitura_runtime")
     try:
         conectado = bool(navegador is not None and navegador.conectado())
@@ -237,6 +241,61 @@ def _executar_listar_abas(
         )
         _falar(ctx, "Não consegui consultar as abas: a extensão não está conectada.", "calma", 1)
         return ResultadoDespacho.concluido(False)
+
+    if params.get("somente_ativa") is True:
+        try:
+            ativa = dict(navegador.aba_ativa(timeout_s=4.0) or {})
+        except Exception as erro:
+            relatar_falha_ctx(
+                ctx,
+                "executor_navegador",
+                "falha_consultar_aba_ativa",
+                erro=erro,
+                impacto="turno",
+                fallback="aba_ativa_indisponivel",
+                dominio="navegador",
+                fase="aba_ativa",
+            )
+            ativa = {}
+        if not ativa:
+            deps.marcar_resultado(
+                "aba_ativa_indisponivel",
+                executou=False,
+                confirmado=False,
+                detalhe="a extensão não devolveu uma aba ativa observável",
+            )
+            _falar(
+                ctx,
+                "Não consegui confirmar qual aba está ativa agora.",
+                "calma",
+                1,
+            )
+            return ResultadoDespacho.concluido(False)
+
+        rotulo = _rotulo_aba(ativa)
+        params_resolvidos: Dict[str, Any] = {}
+        tab_id = _id_aba(ativa)
+        if tab_id is not None:
+            params_resolvidos["tab_id"] = tab_id
+        url = str(ativa.get("url") or "").strip()
+        if url:
+            params_resolvidos["url_aba"] = url
+        titulo = str(
+            ativa.get("title") or ativa.get("titulo") or ""
+        ).strip()
+        if titulo:
+            params_resolvidos["titulo_aba"] = titulo
+        deps.marcar_resultado(
+            "aba_ativa_consultada",
+            executou=True,
+            confirmado=True,
+            alvo_resolvido=rotulo,
+            params_resolvidos=params_resolvidos,
+            detalhe="a aba ativa foi relida diretamente pela extensão",
+        )
+        _falar(ctx, f"A aba ativa agora é {rotulo}.", "calma", 1)
+        return ResultadoDespacho.concluido()
+
     try:
         brutas = navegador.listar_abas(timeout_s=5.0) or []
     except Exception as erro:
@@ -834,7 +893,7 @@ def executar_intencao_navegador(
     if intent == "CLOSE_IDLE_TABS":
         return _executar_fechar_abas_paradas(ctx, deps)
     if intent == "LIST_TABS":
-        return _executar_listar_abas(ctx, deps)
+        return _executar_listar_abas(ctx, deps, params=params)
     if intent == "SWITCH_PREVIOUS_TAB":
         return _executar_aba_anterior(ctx, deps)
     if intent == "CLOSE_TAB":

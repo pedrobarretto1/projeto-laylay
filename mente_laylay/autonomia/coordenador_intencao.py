@@ -1126,15 +1126,37 @@ class CicloComandosRuntime:
                 "🧩 [COOPERAÇÃO:CADEIA] resolvendo etapa isolada | "
                 f"origem={origem_trecho} trecho={str(trecho or '')[:120]}"
             )
+            # P0_CADEIA_CONTEXTO_VIVO_V2_20260815
+            # Cada etapa precisa de uma moldura de decisão própria. O texto
+            # composto já foi validado pelo segmentador, mas especialistas e
+            # referências do retrato pertencem à frase inteira e podem ficar
+            # obsoletos depois que uma etapa anterior muda o estado.
             turno = dict(contexto.get("turno_atual") or {})
+            turno["especialistas"] = {}
             turno.update({
+                "texto": str(trecho or "").strip(),
                 "texto_operacional": str(trecho or "").strip(),
+                "texto_conversacional": "",
                 "modalidade": "comando",
                 "modalidade_geral": "comando",
+                "ato_principal": "comando",
+                "acao_explicita": True,
                 "autoriza_execucao": True,
                 "requer_esclarecimento": False,
             })
             contexto["turno_atual"] = turno
+
+            # O resolvedor determinístico/contextual continua consultando a
+            # mente viva. Removemos somente as restrições referenciais
+            # congeladas no início do turno composto.
+            retrato = dict(contexto.get("retrato_turno_atual") or {})
+            retrato["referencia_resolvida"] = {}
+            retrato["referencia_tipo"] = ""
+            retrato["intents_permitidos"] = []
+            retrato["operacao_explicita"] = ""
+            retrato["entidade_explicita"] = {}
+            contexto["retrato_turno_atual"] = retrato
+
             return executar_fluxo_intencao(
                 trecho,
                 origem_trecho,
@@ -1147,18 +1169,30 @@ class CicloComandosRuntime:
                 "⚠️ [COOPERAÇÃO:CADEIA] etapa não executada | "
                 f"indice={indice} concluidas={concluidas} trecho={trecho[:120]}"
             )
-            falar = ns.get("falar_com_lipsync")
+            # A fala pertence ao contexto de execução tipado, não à
+            # allowlist enxuta do resolvedor. Consultá-la daqui evita que uma
+            # falha consumida deixe o turno sem resposta.
+            try:
+                contexto_fala = self.contexto_intencao_runtime.montar()
+            except Exception:
+                contexto_fala = {}
+            falar = (
+                contexto_fala.get("falar_com_lipsync")
+                if isinstance(contexto_fala, dict)
+                else None
+            )
             if not callable(falar):
                 return
             if concluidas:
                 fala = (
-                    "A primeira parte foi concluída, mas a segunda não. "
-                    "Parei ali para não fingir que o pedido inteiro deu certo."
+                    f"Concluí {concluidas} etapa(s), mas não consegui executar "
+                    f"a etapa {indice}. Parei ali para não fingir que o pedido "
+                    "inteiro deu certo."
                 )
             else:
                 fala = (
-                    "Não consegui executar a primeira parte, então não avancei "
-                    "para a próxima sem a dependência certa."
+                    f"Não consegui executar a etapa {indice}, então não avancei "
+                    "para as próximas sem a dependência certa."
                 )
             falar(fala, "calma", 1)
 

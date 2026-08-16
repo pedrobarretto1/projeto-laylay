@@ -859,7 +859,7 @@ class ComandosImediatosRuntime:
         if callable(processar_cadeia):
             try:
                 if processar_cadeia(texto, "prioritario-cooperativo"):
-                    print("⚡ [PRIORIDADE:COOPERAÇÃO] cadeia natural executada")
+                    print("⚡ [PRIORIDADE:COOPERAÇÃO] cadeia natural tratada")  # P0_CADEIA_CONTEXTO_VIVO_V2_20260815
                     return True
             except Exception as erro:
                 print(

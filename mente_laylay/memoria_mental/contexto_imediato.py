@@ -24,6 +24,7 @@ from mente_laylay.memoria_mental.continuidade_semantica import (
     resolver_continuidade_semantica,
 )
 from mente_laylay.cognicao.referencias_linguagem import (
+    extrair_indice_referencia_ordinal,
     separar_alvo_e_complemento_foco,
     valor_e_referencia_contextual,
 )
@@ -136,7 +137,13 @@ def _texto_referencia_curta_operacional(texto: str) -> bool:
         r"deletar|move|mover|renomeia|renomear|toca|toque|pausa|"
         r"continue|continua|retoma|volta)\b", t
     ))
-    return pronome and operacao
+    # P0_CADEIA_CONTEXTO_VIVO_V2_20260815
+    # Ordinais operacionais também são dêiticos. "Abre o primeiro resultado"
+    # deve pertencer à última busca confirmada: SEARCH -> site, FILE_SEARCH ->
+    # arquivo. A extração compartilhada já rejeita usos narrativos como
+    # "meu primeiro jogo".
+    ordinal_contextual = extrair_indice_referencia_ordinal(t) is not None
+    return (pronome and operacao) or ordinal_contextual
 
 
 def _dominio_contrato_referencia(

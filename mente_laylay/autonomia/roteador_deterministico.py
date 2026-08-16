@@ -1231,6 +1231,23 @@ def detectar_consulta_abas(
         base,
     ):
         return {"intent": "SWITCH_PREVIOUS_TAB", "params": params()}
+    # P0_CADEIA_CONTEXTO_VIVO_V2_20260815
+    # Consulta singular da percepção atual. Reutilizamos LIST_TABS para não
+    # criar um novo intent só para um recorte do mesmo dado observável.
+    if re.fullmatch(
+        r"(?:(?:me\s+)?(?:diz|diga|fala|fale|mostra|mostre)\s+)?"
+        r"(?:qual|que)\s+(?:(?:e|é)\s+)?(?:a\s+)?aba\s+"
+        r"(?:que\s+)?(?:esta|está|ta|tá)\s+aberta|"
+        r"(?:(?:me\s+)?(?:diz|diga|fala|fale|mostra|mostre)\s+)?"
+        r"(?:qual|que)\s+(?:(?:e|é)\s+)?(?:a\s+)?aba\s+ativa|"
+        r"(?:qual|que)\s+aba\s+(?:esta|está|ta|tá)\s+em\s+foco",
+        base,
+    ):
+        return {
+            "intent": "LIST_TABS",
+            "params": params(somente_ativa=True),
+        }
+
     if re.fullmatch(
         r"(?:quais|que|quantas)\s+abas\s+(?:estao|estão|tao|tão)\s+abertas|"
         r"(?:quais|que)\s+sao\s+as\s+abas\s+abertas|"
