@@ -725,6 +725,87 @@ def _normalizar_p0_ato_fala(
     return re.sub(r"\s+", " ", sem_acentos).strip()
 
 
+
+# P0_AUTORIZACAO_ATO_FALA_V2_20260815
+# Um gatilho lexical prova apenas que uma acao foi mencionada. Ele NAO prova
+# que o usuario autorizou a Laylay a executa-la.
+_P0_VERBOS_PEDIDO_DIRETO = (
+    r"(?:"
+    r"abre|abra|fecha|feche|liga|ligue|desliga|desligue|"
+    r"toca|toque|coloca|coloque|bota|poe|cria|crie|"
+    r"apaga|apague|remove|remova|deleta|delete|move|mova|"
+    r"renomeia|renomeie|maximiza|maximize|minimiza|minimize|"
+    r"pausa|pause|retoma|continue|continua|organiza|organize|"
+    r"pesquisa|pesquise|busca|busque|procura|procure|"
+    r"encontra|encontre|escreve|escreva|grava|grave|"
+    r"executa|execute|repete|repita|refaz|refaca|tenta|tente"
+    r")"
+)
+
+_P0_VERBOS_INFINITIVO_OPERACIONAL = (
+    r"(?:"
+    r"abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|"
+    r"remover|deletar|mover|renomear|maximizar|minimizar|"
+    r"pausar|retomar|continuar|organizar|pesquisar|buscar|"
+    r"procurar|encontrar|escrever|gravar|executar|repetir|"
+    r"refazer|tentar"
+    r")"
+)
+
+_P0_PEDIDO_DIRETO_INICIAL = re.compile(
+    rf"^(?:por\s+favor\s+)?{_P0_VERBOS_PEDIDO_DIRETO}\b",
+    re.IGNORECASE,
+)
+_P0_PEDIDO_POLIDO_SEM_SUJEITO = re.compile(
+    rf"^(?:por\s+favor\s+)?"
+    rf"(?:pode|poderia|consegue|conseguiria)\s+(?:me\s+)?"
+    rf"(?:{_P0_VERBOS_INFINITIVO_OPERACIONAL}|{_P0_VERBOS_PEDIDO_DIRETO})\b",
+    re.IGNORECASE,
+)
+_P0_PRIMEIRA_PESSOA_NAO_AUTORIZA = re.compile(
+    rf"^(?:"
+    rf"eu\s+(?:posso|poderia|devo|deveria|consigo|conseguiria|iria|"
+    rf"tentaria|pretendo|vou)|"
+    rf"(?:posso|devo|deveria|consigo|iria|tentaria|pretendo|vou)"
+    rf")\s+{_P0_VERBOS_INFINITIVO_OPERACIONAL}\b",
+    re.IGNORECASE,
+)
+_P0_HIPOTESE_PRIMEIRA_PESSOA = re.compile(
+    rf"^(?:e\s+)?(?:se|caso)\s+eu\s+"
+    rf"(?:quisesse|quiser|tentasse|decidisse|pensasse|pretendesse|fosse)\b"
+    rf".*\b(?:{_P0_VERBOS_INFINITIVO_OPERACIONAL}|{_P0_VERBOS_PEDIDO_DIRETO})\b",
+    re.IGNORECASE,
+)
+_P0_NEGACAO_OPERACIONAL_INTERNA = re.compile(
+    rf"(?:^|[,;]\s*|\b(?:mas|e)\s+)"
+    rf"(?:nao|nunca|jamais)\s+"
+    rf"(?:(?:pode|deve|vai)\s+)?(?:me\s+)?"
+    rf"(?:{_P0_VERBOS_PEDIDO_DIRETO}|{_P0_VERBOS_INFINITIVO_OPERACIONAL})\b",
+    re.IGNORECASE,
+)
+
+
+def _p0_pergunta_operacional_tem_pedido_explicito(texto_normalizado: str) -> bool:
+    """Distingue pergunta-pedido de pergunta SOBRE uma acao."""
+    t = str(texto_normalizado or "").strip()
+    if not t:
+        return False
+    if _P0_PEDIDO_DIRETO_INICIAL.search(t):
+        return True
+    if _P0_PEDIDO_POLIDO_SEM_SUJEITO.search(t):
+        return True
+    if (
+        re.match(
+            r"^(?:voce|tu)\s+(?:pode|poderia|consegue|conseguiria)\b",
+            t, flags=re.IGNORECASE,
+        )
+        and re.search(r"\b(?:pra|para)\s+mim\b", t, flags=re.IGNORECASE)
+        and _P0_GATILHOS_OPERACIONAIS.search(t)
+    ):
+        return True
+    return False
+
+
 def _protecao_p0_ato_fala(
     texto: str,
     *,
@@ -752,6 +833,32 @@ def _protecao_p0_ato_fala(
     tem_gatilho = bool(_P0_GATILHOS_OPERACIONAIS.search(t))
     if not tem_gatilho:
         return None
+
+    # Primeira pessoa descreve possibilidade, conselho ou hipotese; isso nao
+    # autoriza a Laylay a agir por conta propria.
+    if (
+        _P0_PRIMEIRA_PESSOA_NAO_AUTORIZA.search(t)
+        or _P0_HIPOTESE_PRIMEIRA_PESSOA.search(t)
+    ):
+        return {
+            "modalidade": "pergunta" if "?" in str(texto or "") else "deliberacao",
+            "natureza_acao": "hipotetica",
+            "motivo": "possibilidade ou hipotese sobre acao; nao e pedido",
+            "requer_esclarecimento": False,
+        }
+
+    # Interrogacao + verbo operacional nao basta. So liberamos quando a
+    # propria moldura e um pedido reconhecivel.
+    if (
+        "?" in str(texto or "")
+        and not _p0_pergunta_operacional_tem_pedido_explicito(t)
+    ):
+        return {
+            "modalidade": "pergunta",
+            "natureza_acao": "informativa_sobre_acao",
+            "motivo": "pergunta sobre acao sem pedido explicito",
+            "requer_esclarecimento": False,
+        }
 
     # Metalinguagem/citação: o verbo é conteúdo da frase, não uma ordem.
     if (
@@ -792,7 +899,7 @@ def _protecao_p0_ato_fala(
     # Explicação/instrução sobre COMO fazer algo.
     if (
         re.search(
-            r"^(?:(?:me|pra\s+mim|para\s+mim)\s+)?"
+            r"^(?:(?:so|apenas|somente)\s+)?" r"(?:(?:me|pra\s+mim|para\s+mim)\s+)?"
             r"(?:explica|explique|ensina|ensine|mostra|mostre)\s+como\b",
             t,
         )
@@ -805,6 +912,17 @@ def _protecao_p0_ato_fala(
             "modalidade": "pergunta",
             "natureza_acao": "instrucao_ou_explicacao",
             "motivo": "pedido de explicação sobre ação; não é execução",
+            "requer_esclarecimento": False,
+        }
+
+    # Ate existir representacao propria para condicionais/mistos, uma clausula
+    # operacional negada torna o turno fail-closed. Evita transformar
+    # "A, mas nao B" em uma ordem positiva contaminada.
+    if _P0_NEGACAO_OPERACIONAL_INTERNA.search(t):
+        return {
+            "modalidade": "recusa",
+            "natureza_acao": "cancelamento",
+            "motivo": "negacao operacional interna; execucao nao presumida",
             "requer_esclarecimento": False,
         }
 
