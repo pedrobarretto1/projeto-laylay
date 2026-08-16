@@ -256,22 +256,7 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     _call(ctx, "refinar_contexto_mental", texto_norm)
     retrato_atual = dict(ctx.get("retrato_turno_atual") or {})
     turno_congelado = dict(ctx.get("turno_atual") or {})
-    # P0_REVISAO_INTRA_TURNO_V1_1_20260816
-    revisao_turno = (
-        dict(turno_congelado.get("revisao_intra_turno") or {})
-        if isinstance(turno_congelado.get("revisao_intra_turno"), dict)
-        else {}
-    )
-    revisao_resolvida = bool(
-        revisao_turno.get("detectada")
-        and revisao_turno.get("resolvida")
-        and not revisao_turno.get("cancelada")
-    )
-    trecho_operacional = str(
-        turno_congelado.get("texto_operacional_efetivo")
-        or turno_congelado.get("texto_operacional")
-        or ""
-    ).strip()
+    trecho_operacional = str(turno_congelado.get("texto_operacional") or "").strip()
     moldura_nao_autoriza_recorte = bool(
         re.match(r"^(?:nao|não)\b", str(texto_norm or "").strip())
         or "?" in str(texto or "")
@@ -284,10 +269,7 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     texto_deteccao = (
         _call(ctx, "normalizar_texto", trecho_operacional, default=trecho_operacional)
         if trecho_operacional
-        and (
-            revisao_resolvida
-            or str(turno_congelado.get("modalidade_geral") or "") == "misto"
-        )
+        and str(turno_congelado.get("modalidade_geral") or "") == "misto"
         and bool(turno_congelado.get("autoriza_execucao"))
         and not moldura_nao_autoriza_recorte
         else texto_norm

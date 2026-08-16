@@ -1,0 +1,68 @@
+{
+  "versao_avaliador": 3,
+  "total_turnos": 267,
+  "respondidos": 94,
+  "concluido_transporte": false,
+  "avaliados_semanticamente": 23,
+  "passaram": 13,
+  "falharam": 10,
+  "alertas": 0,
+  "nao_avaliados": 244,
+  "taxa_semantica_percentual": 56.52,
+  "comandos_observados": 21,
+  "confirmacoes_indeterminadas": 2,
+  "latencia_s": {
+    "p50": 1.807,
+    "p95": 5.855,
+    "max": 120.024,
+    "media": 3.846
+  },
+  "por_dominio": {
+    "apps": {
+      "nao_avaliado": 5
+    },
+    "arquivos": {
+      "passou": 3,
+      "falhou": 2,
+      "nao_avaliado": 7
+    },
+    "browser": {
+      "passou": 1
+    },
+    "conversa": {
+      "nao_avaliado": 55,
+      "falhou": 7
+    },
+    "iot": {
+      "nao_avaliado": 3
+    },
+    "musica": {
+      "falhou": 1,
+      "nao_avaliado": 2
+    },
+    "nao_classificado": {
+      "nao_avaliado": 172
+    },
+    "seguranca": {
+      "passou": 9
+    }
+  },
+  "turnos_com_erros": [
+    22,
+    44,
+    68,
+    69,
+    70,
+    79,
+    85,
+    89,
+    91,
+    92
+  ],
+  "turnos_com_alertas": [
+    35,
+    45,
+    46,
+    95
+  ]
+}

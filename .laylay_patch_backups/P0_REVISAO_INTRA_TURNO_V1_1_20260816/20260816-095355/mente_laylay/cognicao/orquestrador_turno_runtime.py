@@ -13,7 +13,6 @@ from mente_laylay.cognicao.intencao_visual_jogo import (
     aplicar_pedido_visual_ao_turno,
     detectar_pedido_visao_jogo,
 )
-from mente_laylay.cognicao.revisao_turno import resolver_revisao_intra_turno
 from mente_laylay.memoria_mental.referencia_fala import extrair_referencia_musical_verificada
 from mente_laylay.memoria_mental.memoria_confiavel import (
     extrair_aprendizados_pessoais_explicitos,
@@ -210,73 +209,9 @@ def _iniciar_planejamento_turno(
     mente_antes_turno = dict(ns['_estado_compartilhado_runtime'].mental)
     pendencia_turno = ns['_pendencia_ativa_turno_mente'](mente_antes_turno) or {}
     confirmacao_contextual_valida = bool(pendencia_turno.get('intencao') and (str(pendencia_turno.get('resposta_esperada') or '') == 'sim_ou_nao' or str(pendencia_turno.get('tipo') or '') in {'confirmacao', 'escolha'}))
-
-    # P0_REVISAO_INTRA_TURNO_V1_1_20260816
-    # Revisões dentro da própria fala são consolidadas antes do primeiro
-    # detector operacional. O texto original continua auditável; apenas a
-    # visão cognitiva/operacional recebe a última proposta válida.
-    revisao_intra_turno = resolver_revisao_intra_turno(texto)
-    revisao_detectada = bool(revisao_intra_turno.get('detectada'))
-    revisao_resolvida = bool(revisao_intra_turno.get('resolvida'))
-    revisao_cancelada = bool(revisao_intra_turno.get('cancelada'))
-    texto_efetivo = str(
-        revisao_intra_turno.get('texto_operacional_efetivo') or ''
-    ).strip()
-    texto_cognitivo = (
-        texto_efetivo
-        if revisao_detectada and revisao_resolvida and not revisao_cancelada and texto_efetivo
-        else texto
-    )
-
-    turno = ns['_classificar_modalidade_turno_mente'](texto_cognitivo, normalizar_texto=ns['_normalizar_texto_com_apelidos'], texto_tem_comando_explicito=ns['_texto_tem_comando_explicito'], confirmacao_contextual_valida=confirmacao_contextual_valida)
+    turno = ns['_classificar_modalidade_turno_mente'](texto, normalizar_texto=ns['_normalizar_texto_com_apelidos'], texto_tem_comando_explicito=ns['_texto_tem_comando_explicito'], confirmacao_contextual_valida=confirmacao_contextual_valida)
     turno['origem_entrada'] = _normalizar_origem_entrada(origem)
-    if revisao_detectada:
-        turno['texto_original'] = str(texto or '')[:500]
-        turno['texto'] = str(texto or '')[:500]
-        turno['revisao_intra_turno'] = dict(revisao_intra_turno)
-        turno['texto_operacional_efetivo'] = texto_efetivo
-        if not revisao_resolvida:
-            turno.update(
-                modalidade='correcao',
-                modalidade_geral='correcao',
-                ato_principal='correcao',
-                autoriza_execucao=False,
-                requer_esclarecimento=True,
-                acao_explicita=False,
-                texto_operacional='',
-                natureza_acao='revisao_ambigua',
-                motivo='revisão interna detectada sem resolução operacional segura',
-                motivo_decisao='revisão interna detectada sem resolução operacional segura',
-            )
-        elif revisao_cancelada:
-            turno.update(
-                modalidade='recusa',
-                modalidade_geral='recusa',
-                ato_principal='recusa',
-                autoriza_execucao=False,
-                requer_esclarecimento=False,
-                acao_explicita=False,
-                texto_operacional='',
-                natureza_acao='cancelamento_revisao',
-                motivo='usuário cancelou a proposta antes da execução',
-                motivo_decisao='usuário cancelou a proposta antes da execução',
-            )
-        else:
-            turno['texto_operacional'] = (
-                texto_efetivo if bool(turno.get('autoriza_execucao')) else ''
-            )
-            ns['print'](
-                '🧠 [REVISÃO:TURNO] '
-                f"tipo={revisao_intra_turno.get('tipo')} | "
-                f"efetivo={texto_efetivo!r}"
-            )
-
-    # Uma revisão atual não pode ser reinterpretada como repetição da ação
-    # anterior só porque a proposta final contém "continua", "de novo" etc.
-    repeticao_operacional = (
-        None if revisao_detectada
-        else resolver_repeticao_operacional_segura(ns, texto)
-    )
+    repeticao_operacional = resolver_repeticao_operacional_segura(ns, texto)
     turno = aplicar_repeticao_operacional_ao_turno(turno, repeticao_operacional)
     if repeticao_operacional:
         ns['print'](
@@ -291,7 +226,7 @@ def _iniciar_planejamento_turno(
             visao_jogo_runtime.observar_texto_usuario(texto)
         except Exception as erro:
             ns['print'](f"⚠️ [VISÃO:SESSÃO] contexto ignorado: {type(erro).__name__}")
-    pedido_visao_jogo = detectar_pedido_visao_jogo(texto_cognitivo, jogo_contexto)
+    pedido_visao_jogo = detectar_pedido_visao_jogo(texto, jogo_contexto)
     if pedido_visao_jogo:
         turno = aplicar_pedido_visual_ao_turno(turno, pedido_visao_jogo)
         ns['print'](
@@ -309,7 +244,7 @@ def _iniciar_planejamento_turno(
         leitura_semantica = {}
     elif modo_semantico == 'shadow' and callable(getattr(interpretador_semantico, 'observar', None)):
         try:
-            interpretador_semantico.observar(texto_cognitivo, turno_legado=dict(turno))
+            interpretador_semantico.observar(texto, turno_legado=dict(turno))
         except Exception as erro:
             ns['print'](f"⚠️ [SEMÂNTICA] falha isolada ao agendar observação: {type(erro).__name__}")
     elif modo_semantico == 'conversation' and bool(turno.get('autoriza_execucao')):
@@ -317,7 +252,7 @@ def _iniciar_planejamento_turno(
         leitura_semantica = {}
     elif interpretador_semantico is not None and callable(getattr(interpretador_semantico, 'analisar', None)):
         try:
-            leitura_semantica = dict(interpretador_semantico.analisar(texto_cognitivo, turno_legado=turno) or {})
+            leitura_semantica = dict(interpretador_semantico.analisar(texto, turno_legado=turno) or {})
         except Exception as erro:
             ns['print'](f"⚠️ [SEMÂNTICA] falha isolada no modo observador: {type(erro).__name__}")
     if leitura_semantica:
@@ -331,14 +266,14 @@ def _iniciar_planejamento_turno(
         else:
             turno['leitura_semantica_shadow'] = leitura_semantica
     identidade_turno = ns['_analisar_identidade_turno_mente'](texto, falante='pedro')
-    funcao_comunicativa = ns['_analisar_funcao_comunicativa_mente'](texto_cognitivo)
+    funcao_comunicativa = ns['_analisar_funcao_comunicativa_mente'](texto)
     encerramento_assunto = ns['_classificar_encerramento_assunto_mente'](texto, mente_antes_turno)
     correcao_duravel = ns['_extrair_correcao_duravel_mente'](texto, estado_mental=mente_antes_turno)
     correcao_interpretacao = ns['_abrir_correcao_interpretacao_mente'](mente_antes_turno, texto, eh_correcao=str(funcao_comunicativa.get('funcao') or '') == 'correcao')
     turno['identidade'] = identidade_turno
     turno['funcao_comunicativa'] = funcao_comunicativa
     turno['encerramento_assunto'] = encerramento_assunto
-    retrato_turno, entidades_recentes = ns['_construir_retrato_turno_mente'](texto_cognitivo, turno=turno, mente=mente_antes_turno, contexto_perceptivo=ns['_obter_contexto_perceptivo'](), playlist_state=ns['playlist_state'], jogo_contexto=jogo_contexto)
+    retrato_turno, entidades_recentes = ns['_construir_retrato_turno_mente'](texto, turno=turno, mente=mente_antes_turno, contexto_perceptivo=ns['_obter_contexto_perceptivo'](), playlist_state=ns['playlist_state'], jogo_contexto=jogo_contexto)
     atualidade_factual = dict(retrato_turno.get('atualidade_factual') or {})
     turno['atualidade_factual'] = atualidade_factual
     if atualidade_factual.get('depende_atualidade'):
@@ -369,7 +304,7 @@ def _iniciar_planejamento_turno(
     aprendizados_explicitos = extrair_aprendizados_pessoais_explicitos(texto)
     turno['aprendizados_explicitos'] = aprendizados_explicitos
     tema_factual = ns['_extrair_tema_fundamentacao_mente'](
-        texto_cognitivo, retrato=retrato_turno, registro_semantico=registro_semantico,
+        texto, retrato=retrato_turno, registro_semantico=registro_semantico,
     )
     # Uma declaração pessoal pode ativar memória e pesquisa ao mesmo tempo.
     # A memória guarda a preferência confirmada; a pesquisa apenas enriquece
@@ -427,7 +362,7 @@ def _iniciar_planejamento_turno(
     turno['entidades'] = dict(retrato_turno.get('entidades') or {})
     turno['referencia_resolvida'] = dict(retrato_turno.get('referencia_resolvida') or {})
     turno['operacao_explicita'] = str(retrato_turno.get('operacao_explicita') or '')
-    especialistas = ns['_construir_parecer_especialistas_mente'](texto_cognitivo, turno=turno, funcao_comunicativa=funcao_comunicativa, retrato=retrato_turno, saude=ns['_saude_mente_runtime'].snapshot())
+    especialistas = ns['_construir_parecer_especialistas_mente'](texto, turno=turno, funcao_comunicativa=funcao_comunicativa, retrato=retrato_turno, saude=ns['_saude_mente_runtime'].snapshot())
     deliberacao = dict(especialistas.get('deliberacao') or {})
     orquestrador_cooperativo = ns.get('_orquestrador_cooperativo_runtime')
     registrar_consenso = getattr(orquestrador_cooperativo, 'registrar_deliberacao_turno', None)
@@ -446,11 +381,11 @@ def _iniciar_planejamento_turno(
         especialistas['deliberacao'] = deliberacao
     turno['especialistas'] = especialistas
     assunto_estruturado = ns['_atualizar_assunto_estruturado_mente'](mente_antes_turno.get('assunto_estruturado_atual') if isinstance(mente_antes_turno.get('assunto_estruturado_atual'), dict) else {}, texto, turno=turno, retrato=retrato_turno, encerramento=encerramento_assunto)
-    plano = ns['_planejar_turno_mente'](texto_cognitivo, turno=turno, mente=mente_antes_turno, periodo=ns['_contexto_horario_atual']())
+    plano = ns['_planejar_turno_mente'](texto, turno=turno, mente=mente_antes_turno, periodo=ns['_contexto_horario_atual']())
     evidencia_habilidades_getter = ns.get('_evidencia_habilidades_turno_mente')
     if callable(evidencia_habilidades_getter):
         try:
-            evidencia_habilidades = evidencia_habilidades_getter(texto_cognitivo, turno=turno)
+            evidencia_habilidades = evidencia_habilidades_getter(texto, turno=turno)
         except Exception:
             evidencia_habilidades = {}
         if isinstance(evidencia_habilidades, dict):

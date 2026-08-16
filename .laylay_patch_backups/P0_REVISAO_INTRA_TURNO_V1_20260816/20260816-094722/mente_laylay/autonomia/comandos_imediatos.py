@@ -419,38 +419,6 @@ class ComandosImediatosRuntime:
         """Resolve habilidades pelo turno canônico antes da conversa livre."""
         ns = self.namespace_getter() or {}
         estado_runtime = ns.get("_estado_compartilhado_runtime")
-
-        # P0_REVISAO_INTRA_TURNO_V1_1_20260816
-        # Todo detector prioritário recebe a mesma proposta final que planejou
-        # o turno. A fala original permanece na memória e nos logs do turno.
-        mente_prioritaria = getattr(estado_runtime, "mental", {})
-        turno_prioritario = (
-            dict(mente_prioritaria.get("turno_atual") or {})
-            if isinstance(mente_prioritaria, dict)
-            else {}
-        )
-        revisao_prioritaria = (
-            dict(turno_prioritario.get("revisao_intra_turno") or {})
-            if isinstance(turno_prioritario.get("revisao_intra_turno"), dict)
-            else {}
-        )
-        if (
-            revisao_prioritaria.get("detectada") is True
-            and revisao_prioritaria.get("resolvida") is True
-            and revisao_prioritaria.get("cancelada") is not True
-        ):
-            texto_final = str(
-                turno_prioritario.get("texto_operacional_efetivo")
-                or revisao_prioritaria.get("texto_operacional_efetivo")
-                or ""
-            ).strip()
-            if texto_final:
-                print(
-                    "🧠 [REVISÃO:PRIORIDADE] usando proposta final -> "
-                    f"{texto_final!r}"
-                )
-                texto = texto_final
-
         contexto_prioritario = dict(ns)
         contexto_prioritario["mente_integrada_estado"] = getattr(
             estado_runtime, "mental", {},
