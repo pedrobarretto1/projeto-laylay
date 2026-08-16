@@ -173,24 +173,63 @@ def resolver_revisao_intra_turno(texto: str) -> Dict[str, Any]:
     if tinha_melhor:
         correcao=correcao_sem_melhor
 
+    # P0_REVISAO_INTRA_TURNO_B1_3_20260816
+    # Estado final com alvo herdado: "liga a lâmpada... não, deixa desligada"
+    # não troca o alvo; troca o estado desejado do mesmo dispositivo.
+    estado_iot=_norm(correcao).strip()
+    if alvo_antigo and operacao_antiga.get("canon") in {"ligar","desligar"}:
+        m_estado_iot=re.fullmatch(
+            r"(?:deixa|deixe|deixar)\s+(?:ele\s+|ela\s+|isso\s+)?"
+            r"(?P<estado>desligad[oa]s?|ligad[oa]s?)",
+            estado_iot,
+            re.I,
+        )
+        if m_estado_iot:
+            estado=str(m_estado_iot.group("estado") or "")
+            verbo_final="desliga" if estado.startswith("desligad") else "liga"
+            efetivo=f"{verbo_final} {alvo_antigo}".strip()
+            base.update(
+                resolvida=True,
+                tipo="substituicao_acao",
+                texto_operacional_efetivo=efetivo[:500],
+                motivo="correção definiu o estado final do mesmo alvo IoT",
+            )
+            return base
+
     nova_op=_operacao_inicio(correcao)
     if nova_op:
+        resto_novo=_norm(str(nova_op.get("resto") or "")).strip()
+
+        # A negação corretiva continua semanticamente ativa depois que o
+        # marcador "não" separa as duas propostas. "não pesquisa nada" não
+        # significa SEARCH("nada"): revoga a mesma operação.
+        if (
+            marker=="nao"
+            and nova_op.get("canon")==operacao_antiga.get("canon")
+            and resto_novo in {"", "nada", "mais nada"}
+        ):
+            base.update(
+                resolvida=True,
+                cancelada=True,
+                tipo="cancelamento",
+                motivo="negação revogou a mesma operação sem novo alvo operacional",
+            )
+            return base
+
         # Elipses como "continua tocando" carregam a nova operação, mas
         # omitem o alvo que já estava explícito na proposta descartada.
-        # Herdamos somente quando o complemento é um marcador de continuidade
-        # sem alvo próprio; o executor recebe então uma fala autossuficiente.
-        resto_novo=_norm(str(nova_op.get("resto") or "")).strip()
+        # Para música, emitimos uma forma que o roteador determinístico já
+        # reconhece; assim o produtor e o consumidor compartilham o contrato.
         if (
             alvo_antigo
             and nova_op.get("canon")=="retomar"
             and resto_novo in {"", "tocando", "a tocar"}
         ):
-            correcao=f"{nova_op.get('verbo')} {alvo_antigo}".strip()
+            if _norm(alvo_antigo)=="musica":
+                correcao=f"{nova_op.get('verbo')} a música".strip()
+            else:
+                correcao=f"{nova_op.get('verbo')} {alvo_antigo}".strip()
             nova_op=_operacao_inicio(correcao)
-        # "apaga X... não apaga" = cancela, não é uma segunda exclusão sem alvo.
-        if marker=="nao" and nova_op.get("canon")==operacao_antiga.get("canon") and not nova_op.get("resto"):
-            base.update(resolvida=True,cancelada=True,tipo="cancelamento",motivo="negação repetiu a operação sem novo alvo")
-            return base
         efetivo, ok=_resolver_pronome(correcao, alvo_antigo)
         if not ok:
             base.update(tipo="ambigua",motivo="correção usa referência sem alvo seguro da proposta anterior")

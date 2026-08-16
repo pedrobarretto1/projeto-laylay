@@ -67,7 +67,7 @@ def test_plano_de_revisao_musical_guarda_original_e_final_separados() -> None:
     )
 
     assert plano["texto_usuario"] == original
-    assert plano["texto_operacional_efetivo"] == "continua música"
+    assert plano["texto_operacional_efetivo"] == "continua a música"
     assert plano["revisao_intra_turno"]["tipo"] == "substituicao_acao"
 
 

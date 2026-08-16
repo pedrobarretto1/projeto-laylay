@@ -1,0 +1,50 @@
+{
+  "patch_id": "P0_REVISAO_INTRA_TURNO_B1_3_20260816",
+  "baseline_head": "a506599297da2c08cd7a679d1010d88bff80d055",
+  "targets": {
+    "mente_laylay/cognicao/revisao_turno.py": "75e2671c2b46e4a40d1aada2c8d21e28762d4373",
+    "mente_laylay/autonomia/coordenador_intencao.py": "08bbf0ee78e1039d27fbbda71898ae16d45c688a",
+    "tests/test_revisao_intra_turno_v1.py": "1c6b5c068e39786c62caa7a94b8207847c0006d6",
+    "tests/test_identidade_plano_revisao_b1_2.py": "b85e355f9c28ff71075ad0a5454256e695de96bd"
+  },
+  "focused_tests": [
+    "tests/test_revisao_intra_turno_v1.py",
+    "tests/test_identidade_plano_revisao_b1_2.py",
+    "tests/test_autorizacao_ato_fala_v2.py",
+    "tests/test_p0_autorizacao_modalidade.py",
+    "tests/test_p16_linguagem_natural_operacional.py"
+  ],
+  "started_at": "2026-08-16T17:01:22.637978-03:00",
+  "status": "ok",
+  "preflight": {
+    "head": "a506599297da2c08cd7a679d1010d88bff80d055",
+    "blobs_antes": {
+      "mente_laylay/cognicao/revisao_turno.py": "75e2671c2b46e4a40d1aada2c8d21e28762d4373",
+      "mente_laylay/autonomia/coordenador_intencao.py": "08bbf0ee78e1039d27fbbda71898ae16d45c688a",
+      "tests/test_revisao_intra_turno_v1.py": "1c6b5c068e39786c62caa7a94b8207847c0006d6",
+      "tests/test_identidade_plano_revisao_b1_2.py": "b85e355f9c28ff71075ad0a5454256e695de96bd"
+    },
+    "sha256_antes": {
+      "mente_laylay/cognicao/revisao_turno.py": "1c29a9b714966ef43edcfc281dcc08fdccd9a98c27703c9a8d7d17b60a76f930",
+      "mente_laylay/autonomia/coordenador_intencao.py": "c431417906bcf01d2176f41c258682f51002d065cd1c7b5acdaa0b104921bfef",
+      "tests/test_revisao_intra_turno_v1.py": "d866ef1e7943075718fa5b3b201b44dd47d00c3bbce137d75f3f2e8b38b3dbd6",
+      "tests/test_identidade_plano_revisao_b1_2.py": "f70611452ccba4783894858cbf4128029c1c691b306bd2c1f3637272deabcfed"
+    }
+  },
+  "backup_dir": ".laylay_patch_backups\\P0_REVISAO_INTRA_TURNO_B1_3_20260816_20260816-170122",
+  "candidate_diff": ".laylay_patch_backups\\P0_REVISAO_INTRA_TURNO_B1_3_20260816_20260816-170122\\patch_candidate.diff",
+  "validacoes": {
+    "py_compile_returncode": 0,
+    "git_diff_check_returncode": 0,
+    "pytest_returncode": 0,
+    "pytest_stdout": "...............................................................          [100%]\n63 passed in 1.16s\n",
+    "pytest_stderr": ""
+  },
+  "finished_at": "2026-08-16T17:01:24.785547-03:00",
+  "sha256_depois": {
+    "mente_laylay/cognicao/revisao_turno.py": "0ea3c4164fe6ecf7e099ccaa1b537b9c669bcc604fb7c1892db7ab7778343758",
+    "mente_laylay/autonomia/coordenador_intencao.py": "d5cb96aee097cffc7be41370ff435d0107771467c42eb16e89071f1a1bff01cb",
+    "tests/test_revisao_intra_turno_v1.py": "f42e1ff052d610f5597927b98ac9db71226c8db583040c851854f8064c8e3b09",
+    "tests/test_identidade_plano_revisao_b1_2.py": "d7ba669b0b023432c975932c8e73ae5a700b2dc7ddde76a35659e42bb63c4950"
+  }
+}

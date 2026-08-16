@@ -15,7 +15,12 @@ from mente_laylay.cognicao.revisao_turno import resolver_revisao_intra_turno
     [
         (
             "Pausa a música... esquece, continua tocando.",
-            "continua música",
+            "continua a música",
+            "substituicao_acao",
+        ),
+        (
+            "Liga a lâmpada... não, deixa desligada.",
+            "desliga lâmpada",
             "substituicao_acao",
         ),
         (
@@ -58,7 +63,82 @@ def test_continuacao_eliptica_herda_alvo_da_proposta_descartada() -> None:
         "Pausa a música... esquece, continua tocando."
     )
     assert revisao["alvo_herdado"] == "música"
-    assert revisao["texto_operacional_efetivo"] == "continua música"
+    assert revisao["texto_operacional_efetivo"] == "continua a música"
+
+
+def test_saida_musical_revisada_e_consumivel_pelo_roteador() -> None:
+    from mente_laylay.autonomia.roteador_deterministico import detectar_volume_ou_midia
+
+    revisao = resolver_revisao_intra_turno(
+        "Pausa a música... esquece, continua tocando."
+    )
+    intent = detectar_volume_ou_midia(
+        revisao["texto_operacional_efetivo"].casefold(),
+        params_cb=lambda **kwargs: kwargs,
+    )
+    assert intent == {"intent": "MEDIA_CONTROL", "params": {"acao": "play"}}
+
+
+def test_negacao_com_nada_revoga_mesma_operacao() -> None:
+    revisao = resolver_revisao_intra_turno(
+        "Pesquisa Python... pera, não pesquisa nada."
+    )
+    assert revisao["detectada"] is True
+    assert revisao["resolvida"] is True
+    assert revisao["cancelada"] is True
+    assert revisao["tipo"] == "cancelamento"
+    assert revisao["texto_operacional_efetivo"] == ""
+
+
+def test_estado_final_iot_herda_alvo_sem_contaminar_o_alvo() -> None:
+    revisao = resolver_revisao_intra_turno(
+        "Liga a lâmpada... não, deixa desligada."
+    )
+    assert revisao["detectada"] is True
+    assert revisao["resolvida"] is True
+    assert revisao["cancelada"] is False
+    assert revisao["tipo"] == "substituicao_acao"
+    assert revisao["alvo_herdado"] == "lâmpada"
+    assert revisao["texto_operacional_efetivo"] == "desliga lâmpada"
+    assert "deixa" not in revisao["texto_operacional_efetivo"].casefold()
+
+
+def test_fallback_ia_recebe_texto_operacional_revisado() -> None:
+    from mente_laylay.autonomia.coordenador_intencao import resolver_intencao
+
+    original = "Pausa a música... esquece, continua tocando."
+    revisao = resolver_revisao_intra_turno(original)
+    recebido: dict[str, str] = {}
+
+    def tentar_ia(texto: str):
+        recebido["texto"] = texto
+        return None
+
+    ctx = {
+        "normalizar_texto": lambda texto: str(texto or "").casefold().strip(),
+        "refinar_contexto_mental": lambda _texto: None,
+        "turno_atual": {
+            "modalidade": "comando",
+            "modalidade_geral": "comando",
+            "autoriza_execucao": True,
+            "revisao_intra_turno": revisao,
+            "texto_operacional_efetivo": revisao["texto_operacional_efetivo"],
+        },
+        "retrato_turno_atual": {},
+        "extrair_agendamento": lambda _texto: None,
+        "extrair_acao_agendada": lambda _texto: None,
+        "texto_cancela_acao_agora": lambda _texto: False,
+        "texto_depende_de_contexto": lambda _texto: False,
+        "detectar_intencao_deterministica": lambda _texto: None,
+        "resolver_comando_contextual_forcado": lambda _texto: None,
+        "resolver_repeticao_ultima_acao": lambda _texto: None,
+        "tentar_intencao_ai_primeiro": tentar_ia,
+        "registrar_arbitragem_turno": lambda *_args: None,
+    }
+
+    assert resolver_intencao(original, "terminal", ctx) == (None, "")
+    assert recebido["texto"] == revisao["texto_operacional_efetivo"]
+    assert recebido["texto"] != original
 
 
 def test_negacao_corretiva_cancela_mutacao_em_vez_de_repetir() -> None:

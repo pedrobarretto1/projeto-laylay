@@ -513,7 +513,16 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     if isinstance(arbitragem.get("decisao"), dict):
         return arbitragem["decisao"], str(arbitragem.get("origem") or "arbitro")
 
-    intent = _call(ctx, "tentar_intencao_ai_primeiro", texto)
+    # P0_REVISAO_INTRA_TURNO_B1_3_20260816
+    # Se a revisão intra-turno já definiu a proposta operacional final,
+    # o fallback de IA recebe essa mesma visão. A fala original continua sendo
+    # identidade/auditoria, mas não pode reintroduzir a proposta descartada.
+    texto_ia = (
+        trecho_operacional
+        if revisao_resolvida and trecho_operacional
+        else texto
+    )
+    intent = _call(ctx, "tentar_intencao_ai_primeiro", texto_ia)
     if isinstance(intent, dict):
         if _normalizar_intent(intent) == "AGENDAR_LEMBRETE":
             pendente = bool(ctx.get("lembrete_pendente"))
