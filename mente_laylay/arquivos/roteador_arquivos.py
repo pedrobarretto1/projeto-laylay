@@ -18,6 +18,9 @@ from mente_laylay.cognicao.referencias_linguagem import (
     valor_e_referencia_contextual,
 )
 from mente_laylay.cognicao.normalizacao_linguagem import texto_pede_opiniao
+from mente_laylay.memoria_mental.continuidade_contexto import (
+    estrutura_arquivo_recente,
+)
 
 
 def _get(ctx: Mapping[str, Any], key: str):
@@ -31,11 +34,7 @@ def _arquivo_recente(estado: Mapping[str, Any]) -> tuple[str, str]:
     usamos ``ultimo_alvo`` aqui porque ele pode pertencer a conversa, pessoa,
     aplicativo ou qualquer outro dominio.
     """
-    estrutura = (
-        dict(estado.get("ultima_estrutura_arquivo_params") or {})
-        if isinstance(estado.get("ultima_estrutura_arquivo_params"), Mapping)
-        else {}
-    )
+    estrutura = dict(estrutura_arquivo_recente(dict(estado or {})) or {})
     tipo = str(estrutura.get("tipo") or "").strip().casefold()
     if tipo == "arquivo":
         caminho = str(estrutura.get("caminho") or "").strip()
@@ -51,11 +50,7 @@ def _arquivo_recente(estado: Mapping[str, Any]) -> tuple[str, str]:
 
 
 def _pasta_recente(estado: Mapping[str, Any]) -> tuple[str, str]:
-    estrutura = (
-        dict(estado.get("ultima_estrutura_arquivo_params") or {})
-        if isinstance(estado.get("ultima_estrutura_arquivo_params"), Mapping)
-        else {}
-    )
+    estrutura = dict(estrutura_arquivo_recente(dict(estado or {})) or {})
     if str(estrutura.get("tipo") or "").strip().casefold() == "pasta":
         caminho = str(estrutura.get("caminho") or "").strip()
         nome = str(
@@ -517,11 +512,7 @@ def detectar_intencao_arquivos(
             }
         return None
 
-    estrutura_recente = (
-        dict(estado.get("ultima_estrutura_arquivo_params") or {})
-        if isinstance(estado.get("ultima_estrutura_arquivo_params"), dict)
-        else {}
-    )
+    estrutura_recente = dict(estrutura_arquivo_recente(estado) or {})
     pesquisa_recente = (
         estrutura_recente
         if str(estrutura_recente.get("tipo") or "") == "pesquisa_semantica"

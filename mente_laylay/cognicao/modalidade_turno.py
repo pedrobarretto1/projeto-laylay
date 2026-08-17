@@ -425,6 +425,7 @@ def _classificar_modalidade_base(
     imperativo_direto = bool(re.search(
         r"^(?:por favor\s+)?(?:abre|abra|fecha|feche|liga|ligue|desliga|desligue|"
         r"toca|toque|coloca|coloque|deixa|deixe|bota|põe|poe|cria|crie|apaga|remove|deleta|"
+        r"restaura|restaure|recupera|recupere|"
         r"maximiza|organiza|pausa|retoma|aumenta|abaixa|diminui|resume|resuma|"
         r"leia|verifique|encontra|encontre|acha|ache|localiza|localize)\b",
         t,
@@ -482,7 +483,8 @@ _VERBOS_COMANDO = re.compile(
     r"pausar|retoma|aumenta|abaixa|diminui|organiza|agende|agendar|me lembra|me avisa|"
     r"leia|ler|lê|le|pesquisa|pesquisar|busca|buscar|procura|procurar|"
     r"encontra|encontre|achar|acha|ache|localiza|localize|pula|pule|"
-    r"captura|capture|trava|bloqueia|escreve|escrever|escreva|grava|gravar|grave)\b",
+    r"captura|capture|trava|bloqueia|escreve|escrever|escreva|grava|gravar|grave|"
+    r"restaura|restaurar|restaure|recupera|recuperar|recupere)\b",
     re.IGNORECASE,
 )
 
@@ -704,6 +706,8 @@ _P0_GATILHOS_OPERACIONAIS = re.compile(
     r"encontra|encontrar|encontre|"
     r"escreve|escrever|escreva|escreveria|"
     r"grava|gravar|grave|gravaria|"
+    r"restaura|restaurar|restaure|restauraria|"
+    r"recupera|recuperar|recupere|recuperaria|"
     r"executa|executar|execute|executaria|"
     r"repete|repetir|repita|refaz|refazer|refaca|"
     r"tenta|tentar|tente"
@@ -738,6 +742,7 @@ _P0_VERBOS_PEDIDO_DIRETO = (
     r"pausa|pause|retoma|continue|continua|organiza|organize|"
     r"pesquisa|pesquise|busca|busque|procura|procure|"
     r"encontra|encontre|escreve|escreva|grava|grave|"
+    r"restaura|restaure|recupera|recupere|"
     r"executa|execute|repete|repita|refaz|refaca|tenta|tente"
     r")"
 )
@@ -747,8 +752,8 @@ _P0_VERBOS_INFINITIVO_OPERACIONAL = (
     r"abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|"
     r"remover|deletar|mover|renomear|maximizar|minimizar|"
     r"pausar|retomar|continuar|organizar|pesquisar|buscar|"
-    r"procurar|encontrar|escrever|gravar|executar|repetir|"
-    r"refazer|tentar"
+    r"procurar|encontrar|escrever|gravar|restaurar|recuperar|"
+    r"executar|repetir|refazer|tentar"
     r")"
 )
 

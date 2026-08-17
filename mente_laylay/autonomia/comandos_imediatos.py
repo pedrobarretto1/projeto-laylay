@@ -22,6 +22,7 @@ from mente_laylay.autonomia.pre_fluxo_contextual import (
     processar_sugestao_indireta,
 )
 from mente_laylay.especialistas.capacidades import (
+    INTENTS_SOMENTE_LEITURA,
     intents_registradas,
 )
 from mente_laylay.cognicao.evidencia_operacional import (
@@ -46,10 +47,17 @@ from mente_laylay.cognicao.modalidade_turno import (
     classificar_modalidade_turno,
 )
 from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
+from mente_laylay.cognicao.referencias_linguagem import (
+    extrair_indice_referencia_ordinal,
+    valor_e_referencia_contextual,
+)
 from mente_laylay.autonomia.analise_comandos import segmentar_comandos_em_cadeia
 from mente_laylay.memoria_mental.contexto_imediato import (
     _dominio_restrito_referencia,
     _resultado_compativel_com_dominio,
+)
+from mente_laylay.memoria_mental.continuidade_contexto import (
+    estrutura_arquivo_recente,
 )
 
 
@@ -57,6 +65,59 @@ def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     if isinstance(ctx, dict) and key in ctx:
         return ctx.get(key, default)
     return default
+
+
+def _candidato_arquivo_prioritario_autorizado(
+    candidato: Dict[str, Any] | None,
+    texto: str,
+    turno: Dict[str, Any] | None,
+    estado_mental: Dict[str, Any] | None,
+) -> bool:
+    """Autoriza a porta de arquivos sem transformar detecção em permissão.
+
+    Consultas read-only continuam livres. Efeitos exigem autoridade congelada
+    do turno, exceto a seleção ordinal comprovada contra uma pesquisa local
+    canônica ainda fresca.
+    """
+    if not isinstance(candidato, dict):
+        return False
+    intent = str(candidato.get("intent") or "").upper().strip()
+    params = dict(candidato.get("params") or {})
+    if intent in INTENTS_SOMENTE_LEITURA:
+        return True
+    if bool(dict(turno or {}).get("autoriza_execucao")):
+        return True
+    if intent != "FILE_OPEN_RESULT":
+        return False
+
+    estrutura = estrutura_arquivo_recente(dict(estado_mental or {}))
+    if not isinstance(estrutura, dict):
+        return False
+    if str(estrutura.get("tipo") or "").casefold().strip() != "pesquisa_semantica":
+        return False
+    resultados = [
+        str(item or "").strip()
+        for item in list(estrutura.get("resultados") or [])
+        if str(item or "").strip()
+    ]
+    if not resultados:
+        return False
+    try:
+        indice_candidato = int(params.get("indice") or 0) - 1
+    except (TypeError, ValueError):
+        return False
+    texto_ordinal = str(texto or "").strip()
+    indice_texto = extrair_indice_referencia_ordinal(texto_ordinal)
+    if indice_texto is None and valor_e_referencia_contextual(texto_ordinal):
+        indice_texto = extrair_indice_referencia_ordinal(
+            f"abre {texto_ordinal}"
+        )
+    if indice_texto is None or indice_candidato != indice_texto:
+        return False
+    if not (0 <= indice_candidato < len(resultados)):
+        return False
+    caminho = str(params.get("caminho") or "").strip()
+    return bool(caminho and caminho == resultados[indice_candidato])
 
 
 def texto_pede_resumo_pagina(texto: str) -> bool:
@@ -1233,7 +1294,27 @@ class ComandosImediatosRuntime:
             }
             or (intent_arquivo == "CREATE_FILE" and bool(params_arquivo.get("editar_existente")))
         )
-        if isinstance(candidato_arquivo, dict) and operacao_arquivo_prioritaria:
+        autoridade_arquivo_prioritario = _candidato_arquivo_prioritario_autorizado(
+            candidato_arquivo,
+            texto,
+            turno_atual,
+            getattr(estado_runtime, "mental", {}),
+        )
+        if (
+            isinstance(candidato_arquivo, dict)
+            and operacao_arquivo_prioritaria
+            and not autoridade_arquivo_prioritario
+        ):
+            print(
+                "🛡️ [PRIORIDADE:ARQUIVOS] efeito detectado sem autoridade do "
+                f"turno | intent={intent_arquivo}"
+            )
+            return False
+        if (
+            isinstance(candidato_arquivo, dict)
+            and operacao_arquivo_prioritaria
+            and autoridade_arquivo_prioritario
+        ):
             executar = ns.get("executar_intencao")
             if not callable(executar):
                 return False

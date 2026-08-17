@@ -8,6 +8,9 @@ from typing import Any, Dict
 
 from mente_laylay.memoria_mental.registro_semantico import resolver_referencia_pontuada
 from mente_laylay.cognicao.fundamentacao_factual import classificar_atualidade_factual
+from mente_laylay.memoria_mental.continuidade_contexto import (
+    estrutura_arquivo_recente,
+)
 
 
 _PROCESSOS_AUXILIARES_SEM_REFERENTE = frozenset({
@@ -214,10 +217,30 @@ def construir_retrato_turno(
     percepcao = dict(contexto_perceptivo or {})
     playlist = dict(playlist_state or {})
     jogo = dict(jogo_contexto or percepcao.get("jogo") or {})
-    recentes = {
-        str(k): dict(v) for k, v in dict(estado.get("entidades_recentes") or {}).items()
-        if isinstance(v, dict) and instante - float(v.get("ts") or 0.0) <= 900.0
-    }
+    estrutura_fresca = dict(estrutura_arquivo_recente(estado) or {})
+    recentes: Dict[str, dict] = {}
+    for chave, valor in dict(estado.get("entidades_recentes") or {}).items():
+        if not isinstance(valor, dict):
+            continue
+        try:
+            idade = instante - float(valor.get("ts") or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if idade > 900.0:
+            continue
+        if str(valor.get("origem") or "") == "estrutura_arquivo_confirmada":
+            tipo_cache = str(valor.get("tipo") or chave or "").casefold().strip()
+            dados_cache = dict(valor.get("dados") or {})
+            caminho_cache = str(dados_cache.get("caminho") or "").strip()
+            tipo_fonte = str(estrutura_fresca.get("tipo") or "").casefold().strip()
+            caminho_fonte = str(estrutura_fresca.get("caminho") or "").strip()
+            if (
+                not estrutura_fresca
+                or tipo_cache != tipo_fonte
+                or (caminho_cache and caminho_cache != caminho_fonte)
+            ):
+                continue
+        recentes[str(chave)] = dict(valor)
 
     nome_jogo = _nome_jogo(jogo)
     if nome_jogo:
@@ -228,7 +251,7 @@ def construir_retrato_turno(
             "playlist", nome_playlist, origem="reprodutor", ts=instante,
             dados={"indice": playlist.get("index"), "url": playlist.get("last_url")},
         )
-    estrutura = dict(estado.get("ultima_estrutura_arquivo_params") or {})
+    estrutura = dict(estrutura_fresca)
     caminho_estrutura = str(estrutura.get("caminho") or "").strip()
     tipo_estrutura = str(estrutura.get("tipo") or "").strip().casefold()
     if caminho_estrutura and tipo_estrutura in {"arquivo", "pasta"}:
@@ -238,11 +261,15 @@ def construir_retrato_turno(
             or estrutura.get("pasta")
             or caminho_estrutura
         ).strip()
+        try:
+            ts_estrutura = float(estado.get("ultima_estrutura_arquivo_ts") or 0.0)
+        except (TypeError, ValueError):
+            ts_estrutura = 0.0
         recentes[tipo_estrutura] = _entidade(
             tipo_estrutura,
             nome_estrutura,
             origem="estrutura_arquivo_confirmada",
-            ts=instante,
+            ts=ts_estrutura,
             dados={**estrutura, "caminho": caminho_estrutura},
         )
     focos = dict(estado.get("focos_por_dominio") or {})

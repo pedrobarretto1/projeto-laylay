@@ -267,6 +267,7 @@ def test_tenta_abrir_ele_reutiliza_arquivo_contextual_confirmado(tmp_path) -> No
             "tipo_arquivo": "texto",
         },
     }
+    estado["ultima_estrutura_arquivo_ts"] = time.time()
 
     assert detectar_intencao_arquivos(
         "Tenta abrir ele.",
@@ -471,6 +472,7 @@ def test_continuidade_de_arquivo_escreve_localiza_e_abre_o_mesmo_caminho(tmp_pat
             "caminho": str(arquivo),
         },
     }
+    estado["ultima_estrutura_arquivo_ts"] = time.time()
 
     assert detectar_intencao_arquivos(
         'Escreve "teste concluído" nele.',
@@ -539,6 +541,7 @@ def test_movimentacao_natural_resolve_pasta_criada_sem_entregar_ao_llm(tmp_path)
         },
         "ultima_pasta": str(pasta),
     }
+    estado["ultima_estrutura_arquivo_ts"] = time.time()
 
     assert detectar_intencao_arquivos(
         "coloca o teste.txt dentro dele",
@@ -574,6 +577,7 @@ def test_movimentacao_normalizada_remove_artigo_e_restaura_extensao_txt(
         },
         "ultima_pasta": str(pasta),
     }
+    estado["ultima_estrutura_arquivo_ts"] = time.time()
 
     resultado = detectar_intencao_arquivos(
         frase,
@@ -601,6 +605,7 @@ def test_abertura_por_nome_explicito_usa_caminho_recente_e_basename(tmp_path) ->
             "caminho": str(arquivo),
         },
     }
+    estado["ultima_estrutura_arquivo_ts"] = time.time()
 
     assert detectar_intencao_arquivos(
         "Abre o arquivo teste completo txt.",
@@ -618,6 +623,7 @@ def test_abertura_por_nome_explicito_usa_caminho_recente_e_basename(tmp_path) ->
         "caminho": str(sem_extensao),
         "tipo_arquivo": "texto",
     }
+    estado["ultima_estrutura_arquivo_ts"] = time.time()
     assert detectar_intencao_arquivos(
         "Abre o arquivo teste natural txt.",
         params_cb=lambda **params: params,
@@ -636,6 +642,7 @@ def test_movimentacao_natural_nao_sequestra_criacao_de_arquivo_generico() -> Non
             "caminho": "C:/Users/teste/Downloads/carlos",
         },
     }
+    estado["ultima_estrutura_arquivo_ts"] = time.time()
 
     assert detectar_intencao_arquivos(
         "coloca um arquivo dentro dela",
@@ -788,6 +795,7 @@ def test_cadeia_real_cria_pasta_e_move_arquivo_na_segunda_etapa(tmp_path) -> Non
                 "falar_com_lipsync": lambda *_args: None,
                 "_registrar_estrutura_arquivo_recente": lambda dados: (
                     estado.__setitem__("ultima_estrutura_arquivo_params", dict(dados))
+                    or estado.__setitem__("ultima_estrutura_arquivo_ts", time.time())
                     or estado.__setitem__("ultima_pasta", str(dados.get("caminho") or ""))
                 ),
             },
@@ -957,6 +965,7 @@ def test_escrita_nomeada_reaproveita_caminho_contextual_do_arquivo(tmp_path) -> 
             "caminho": str(arquivo),
         },
     }
+    estado["ultima_estrutura_arquivo_ts"] = time.time()
 
     resultado = detectar_intencao_arquivos(
         "escreve teste concluido dentro do exemplo.txt",
@@ -1023,6 +1032,7 @@ def test_escreve_uma_segunda_linha_acrescenta_sem_apagar_conteudo(tmp_path) -> N
             "caminho": str(arquivo),
         },
     }
+    estado["ultima_estrutura_arquivo_ts"] = time.time()
     comando = detectar_intencao_arquivos(
         "Escreve uma segunda linha nele.",
         params_cb=lambda **params: params,
@@ -1091,6 +1101,7 @@ def test_acrescente_a_frase_remove_apenas_a_moldura_do_conteudo(tmp_path) -> Non
             "caminho": str(arquivo),
         },
     }
+    estado["ultima_estrutura_arquivo_ts"] = time.time()
 
     assert detectar_intencao_arquivos(
         "Acrescente a frase segunda linha preservada nele.",

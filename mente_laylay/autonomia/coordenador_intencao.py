@@ -1181,6 +1181,7 @@ class CicloComandosRuntime:
             # referências do retrato pertencem à frase inteira e podem ficar
             # obsoletos depois que uma etapa anterior muda o estado.
             turno = dict(contexto.get("turno_atual") or {})
+            autoridade_pai = bool(turno.get("autoriza_execucao"))
             turno["especialistas"] = {}
             turno.update({
                 "texto": str(trecho or "").strip(),
@@ -1190,7 +1191,7 @@ class CicloComandosRuntime:
                 "modalidade_geral": "comando",
                 "ato_principal": "comando",
                 "acao_explicita": True,
-                "autoriza_execucao": True,
+                "autoriza_execucao": autoridade_pai,
                 "requer_esclarecimento": False,
             })
             contexto["turno_atual"] = turno
