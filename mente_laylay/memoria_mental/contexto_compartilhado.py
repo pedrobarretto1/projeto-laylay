@@ -80,6 +80,49 @@ def intencao_reexecutavel(intent: str) -> bool:
     }
 
 
+_RESULTADOS_JA_SATISFEITOS_REFERENCIAVEIS = {
+    ("APP_OPEN", "ja_aberto_focado"),
+}
+
+
+def resultado_ja_satisfeito_referenciavel(
+    *,
+    intent: str,
+    status: str,
+    confirmado: bool | None,
+) -> bool:
+    # Só no-ops confirmados que mantêm um alvo operacional vivo.
+    chave = (
+        str(intent or "").strip().upper(),
+        str(status or "").strip().casefold(),
+    )
+    return bool(
+        confirmado is True
+        and chave in _RESULTADOS_JA_SATISFEITOS_REFERENCIAVEIS
+    )
+
+
+def contrato_confirma_referencia_operacional(
+    *,
+    intent: str,
+    status: str,
+    executou: bool | None,
+    confirmado: bool | None,
+) -> bool:
+    # Referência confirma alvo; nunca concede autorização.
+    return bool(
+        confirmado is True
+        and (
+            executou is True
+            or resultado_ja_satisfeito_referenciavel(
+                intent=intent,
+                status=status,
+                confirmado=confirmado,
+            )
+        )
+    )
+
+
 def _resultado_pode_promover_referencia(
     contrato: ResultadoAcao, status: str,
 ) -> bool:
@@ -103,6 +146,11 @@ def _resultado_pode_promover_referencia(
         return True
     return bool(
         contrato.executou is True
+        or resultado_ja_satisfeito_referenciavel(
+            intent=contrato.intent,
+            status=status_norm,
+            confirmado=contrato.confirmado,
+        )
     )
 
 

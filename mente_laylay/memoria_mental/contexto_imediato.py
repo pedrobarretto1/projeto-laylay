@@ -15,7 +15,10 @@ from mente_laylay.memoria_mental.reparacao_conversacional import (
     registrar_correcao_alvo,
 )
 from mente_laylay.memoria_mental.musica_conversacional import sugestao_musical_nova_conversacional
-from mente_laylay.memoria_mental.contexto_compartilhado import foco_por_dominio
+from mente_laylay.memoria_mental.contexto_compartilhado import (
+    contrato_confirma_referencia_operacional,
+    foco_por_dominio,
+)
 from mente_laylay.memoria_mental.continuidade_geral import selecionar_continuidade
 from mente_laylay.memoria_mental.continuidade_semantica import (
     aprender_correcao_semantica,
@@ -175,7 +178,12 @@ def _dominio_contrato_referencia(
     if not ts or time.time() - ts > ttl_s:
         return ""
 
-    if contrato.get("executou") is not True or contrato.get("confirmado") is not True:
+    if not contrato_confirma_referencia_operacional(
+        intent=str(contrato.get("intent") or ""),
+        status=str(contrato.get("status") or ""),
+        executou=contrato.get("executou"),
+        confirmado=contrato.get("confirmado"),
+    ):
         return ""
 
     dominio = _normalizar_dominio_referencia(
@@ -424,8 +432,12 @@ def referencia_contextual_imediata(
             }
     if (
         fecha_referencia_curta
-        and contrato_acao.get("executou") is True
-        and contrato_acao.get("confirmado") is True
+        and contrato_confirma_referencia_operacional(
+            intent=intent_contrato,
+            status=str(contrato_acao.get("status") or ""),
+            executou=contrato_acao.get("executou"),
+            confirmado=contrato_acao.get("confirmado"),
+        )
         and intent_contrato in {"OPEN_URL", "SWITCH_PREVIOUS_TAB", "APP_OPEN", "MAXIMIZE_WINDOW"}
     ):
         alvo_contrato = str(contrato_acao.get("alvo") or "").strip()

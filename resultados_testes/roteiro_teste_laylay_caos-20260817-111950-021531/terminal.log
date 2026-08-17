@@ -1689,3 +1689,4 @@
 🧠 [PLANO:FASE] fase=executado | comandos=[] | erros=[]
 ╭─ ◕‿◕ Laylay: Imagina. Tô contigo.
 📊 [ROTEIRO:RESUMO] avaliados=54 | passaram=29 | falharam=23 | alertas=2 | p95=7.341s
+🧠 [CTX] idle: {'idleMs': 75651, 'url': 'https://github.com/pedrobarretto1/projeto-laylay', 'title': 'pedrobarretto1/projeto-laylay: uma IA assistente com muita personalidade e habilidades (ainda esta em desenvolvimento entao pode ser visto problemas)'}
