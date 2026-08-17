@@ -914,6 +914,7 @@ class CicloComandosRuntime:
             "tentar_intencao_ai_primeiro": self.tentar_intencao_ai_primeiro,
             "detectar_intencao_deterministica": ns.get("detectar_intencao_deterministica"),
             "limpar_nome_playlist": ns.get("_limpar_nome_playlist"),
+            "musica_estado_get": contexto_execucao.get("_musica_estado_get"),
             "extrair_agendamento": ns.get("_extrair_agendamento_local"),
             "extrair_acao_agendada": ns.get("_extrair_acao_agendada_local"),
             "executar_intencao": self.executar_intencao,
