@@ -5,6 +5,10 @@ from __future__ import annotations
 import re
 from typing import Callable, List, Optional
 
+from mente_laylay.cognicao.gramatica_operacional import (
+    texto_pede_avanco_midia_via_vai,
+)
+
 
 # P0_CADEIA_MULTIETAPAS_V1_20260815
 LIMITE_ETAPAS_CADEIA = 5
@@ -35,7 +39,11 @@ _SEPARADOR_ETAPA_OPERACIONAL = re.compile(
 
 def _parece_etapa_operacional(texto: str) -> bool:
     """Aceita um corte somente quando o trecho começa como ordem operacional."""
-    return bool(_INICIO_ETAPA_OPERACIONAL.match(str(texto or "").strip()))
+    t = str(texto or "").strip()
+    return bool(
+        _INICIO_ETAPA_OPERACIONAL.match(t)
+        or texto_pede_avanco_midia_via_vai(t)
+    )
 
 
 def limpar_resposta(texto: str) -> str:

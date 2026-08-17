@@ -35,6 +35,27 @@ def detectar_playlist_contextual_musica_atual(
         if pl:
             return {"intent": "PLAYLIST_ADD", "params": params(nome_playlist=pl)}
 
+    m_add_contextual_nomeado = re.fullmatch(
+        r"(?:adiciona|adicione)\s+"
+        r"(?:essa|esta|isso)(?:\s+(?:musica|música|faixa))?\s+"
+        r"(?:tambem|também)\s+(?:na|nessa|nesta)\s+(?P<nome>.+)",
+        t,
+        flags=re.IGNORECASE,
+    )
+    if m_add_contextual_nomeado:
+        ultima_pl = limpar_nome(str(ultima_playlist or ""))
+        mencionada = limpar_nome(m_add_contextual_nomeado.group("nome") or "")
+        chave_ultima = re.sub(r"\s+", " ", ultima_pl).strip().casefold()
+        chave_mencionada = re.sub(r"\s+", " ", mencionada).strip().casefold()
+        if ultima_pl and chave_ultima == chave_mencionada:
+            return {
+                "intent": "PLAYLIST_ADD",
+                "params": params(
+                    nome_playlist=ultima_pl,
+                    referencia_contextual=True,
+                ),
+            }
+
     if re.fullmatch(r"(essa|esta|isso|essa aqui|esta aqui)\s+(tambem|também)", t, flags=re.IGNORECASE):
         ultima_pl = str(ultima_playlist or "").strip()
         if ultima_pl:

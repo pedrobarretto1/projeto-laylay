@@ -13,6 +13,9 @@ from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
 from mente_laylay.cognicao.referencias_linguagem import (
     texto_pede_aba_anterior,
 )
+from mente_laylay.cognicao.gramatica_operacional import (
+    texto_pede_avanco_midia_via_vai,
+)
 
 
 def analisar_protecao_operacional(
@@ -304,6 +307,13 @@ def _classificar_modalidade_base(
             acao_explicita=True,
             autoriza_execucao=True,
             natureza_acao="pedido_direto",
+        )
+        return resultado
+    if texto_pede_avanco_midia_via_vai(t, permitir_cadeia=True):
+        resultado.update(
+            modalidade="comando", confianca=0.99,
+            motivo="controle explícito da mídia atual",
+            acao_explicita=True, autoriza_execucao=True, natureza_acao="pedido_direto",
         )
         return resultado
     if re.fullmatch(
