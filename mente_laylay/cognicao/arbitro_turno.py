@@ -92,7 +92,7 @@ def arbitrar_turno(
                 f"{avaliacao_operacional.get('motivo') or 'sem_autorizacao'}"
             )
         elif (
-            candidato.tipo == "comando_explicito"
+            candidato.tipo in {"comando_explicito", "comando_contextual", "repeticao"}
             and intent_candidato not in INTENTS_SOMENTE_LEITURA
             and intent_candidato != "SUGGEST_ACTION"
             and not bool(

@@ -67,6 +67,26 @@ def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     return default
 
 
+def _candidato_prioritario_autorizado(
+    candidato: Dict[str, Any] | None,
+    turno: Dict[str, Any] | None,
+) -> bool:
+    """Aplica a autoridade congelada antes de qualquer dispatch prioritário.
+
+    Detectores e resolvedores podem provar intent/alvo, mas não criam
+    permissão. Consultas somente leitura continuam independentes da autoridade
+    de mutação; qualquer outro efeito exige ``autoriza_execucao`` do turno.
+    """
+    if not isinstance(candidato, dict):
+        return False
+    intent = str(candidato.get("intent") or "").upper().strip()
+    if not intent:
+        return False
+    if intent in INTENTS_SOMENTE_LEITURA:
+        return True
+    return bool(dict(turno or {}).get("autoriza_execucao"))
+
+
 def _candidato_arquivo_prioritario_autorizado(
     candidato: Dict[str, Any] | None,
     texto: str,
@@ -1231,6 +1251,15 @@ class ComandosImediatosRuntime:
             "SWITCH_PREVIOUS_TAB", "MEDIA_CONTROL", "MUSIC_STATUS",
             "IOT_CONTROL",
         }:
+            if not _candidato_prioritario_autorizado(
+                candidato_imediato,
+                turno_atual,
+            ):
+                print(
+                    "🛡️ [PRIORIDADE:DETERMINÍSTICO] efeito detectado sem "
+                    f"autoridade do turno | intent={intent_imediato}"
+                )
+                return False
             executar = ns.get("executar_intencao")
             if not callable(executar):
                 return False
@@ -1342,9 +1371,9 @@ class ComandosImediatosRuntime:
 
         # Referências curtas precisam consultar a entidade tipada publicada
         # pelo último executor antes da conversa livre. Esta é a rota real de
-        # ``fecha ele`` após abrir um site, arquivo ou aplicativo. Limitamos a
-        # barreira a molduras referenciais inequívocas e aceitamos somente
-        # intents que o resolvedor canônico já autorizou.
+        # ``fecha ele`` após abrir um site, arquivo ou aplicativo. O resolvedor
+        # prova intent/alvo; a autoridade continua pertencendo ao turno
+        # congelado e é conferida novamente antes do dispatch.
         # P0_NAVEGADOR_SUBTIPO_V3_1_20260815
         if texto_referencia_tipificada_prioritaria(texto):
             resolver_contextual = ns.get("_resolver_comando_contextual_forcado")
@@ -1368,6 +1397,15 @@ class ComandosImediatosRuntime:
                 "CLOSE_TAB", "CLOSE_APP", "FILE_OPEN_RESULT", "OPEN_URL",
                 "SWITCH_PREVIOUS_TAB", "MEDIA_CONTROL", "PLAYLIST_PLAY",
             }:
+                if not _candidato_prioritario_autorizado(
+                    comando_contextual,
+                    turno_atual,
+                ):
+                    print(
+                        "🛡️ [PRIORIDADE:REFERÊNCIA] efeito resolvido sem "
+                        f"autoridade do turno | intent={intent_contextual}"
+                    )
+                    return False
                 executar = ns.get("executar_intencao")
                 if not callable(executar):
                     return False

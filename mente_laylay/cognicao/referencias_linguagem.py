@@ -17,6 +17,63 @@ _NOMES_GENERICOS = (
     r"musica|música|faixa|jogo|coisa|negocio|negócio"
 )
 
+_PADRAO_ABA_ANTERIOR_EXPLICITA = (
+    r"(?:volta|volte|retorna|retorne|vai)\s+"
+    r"(?:(?:para|pra)\s+)?(?:a\s+)?aba\s+anterior"
+)
+_PADRAO_ABA_ANTERIOR_ELIPSE_SITE = (
+    r"(?:volta|volte)\s+"
+    r"(?:(?:para|pra)\s+)?(?:a\s+)?anterior"
+)
+
+_PEDIDO_ABA_ANTERIOR_EXPLICITO = re.compile(
+    rf"^{_PADRAO_ABA_ANTERIOR_EXPLICITA}[.!?]*$",
+    re.IGNORECASE,
+)
+_INICIO_PEDIDO_ABA_ANTERIOR_EXPLICITO = re.compile(
+    rf"^{_PADRAO_ABA_ANTERIOR_EXPLICITA}"
+    r"(?:[.!?]*$|\s+(?:e\s+depois|depois|em\s+seguida|entao|então)\b)",
+    re.IGNORECASE,
+)
+_PEDIDO_ABA_ANTERIOR_ELIPSE_SITE = re.compile(
+    rf"^{_PADRAO_ABA_ANTERIOR_ELIPSE_SITE}[.!?]*$",
+    re.IGNORECASE,
+)
+
+
+def texto_pede_aba_anterior(
+    texto: str,
+    *,
+    permitir_cadeia: bool = False,
+    contexto_site_confirmado: bool = False,
+) -> bool:
+    """Reconhece a operação linguística de voltar à aba anterior.
+
+    A forma explícita exige ``aba anterior`` e pode ser usada por classificação,
+    P0 e detector determinístico. A elipse sem ``aba`` só é aceita quando o
+    chamador já provou que a referência viva pertence ao domínio ``site``.
+
+    A função identifica semântica; não resolve contexto e não concede
+    autorização. ``permitir_cadeia`` vale apenas para a forma explícita.
+    """
+    base = re.sub(r"\s+", " ", str(texto or "").strip())
+    if not base:
+        return False
+
+    padrao_explicito = (
+        _INICIO_PEDIDO_ABA_ANTERIOR_EXPLICITO
+        if permitir_cadeia
+        else _PEDIDO_ABA_ANTERIOR_EXPLICITO
+    )
+    if padrao_explicito.match(base):
+        return True
+
+    return bool(
+        contexto_site_confirmado
+        and _PEDIDO_ABA_ANTERIOR_ELIPSE_SITE.match(base)
+    )
+
+
 _REFERENCIA_NO_TEXTO = re.compile(
     rf"\b(?:{_PRONOMES}|tambem|também)\b|\b(?:de novo|mais (?:um|uma))\b",
     re.IGNORECASE,

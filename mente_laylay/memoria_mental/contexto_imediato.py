@@ -26,6 +26,7 @@ from mente_laylay.memoria_mental.continuidade_semantica import (
 from mente_laylay.cognicao.referencias_linguagem import (
     extrair_indice_referencia_ordinal,
     separar_alvo_e_complemento_foco,
+    texto_pede_aba_anterior,
     valor_e_referencia_contextual,
 )
 
@@ -603,6 +604,23 @@ def resolver_comando_acao_geral_contextual(
     alvo_ref = str(contexto_ref.get("alvo") or "").strip()
     ultima_playlist = str(ultima_playlist or "").strip()
 
+    # R1.1: quando a referência já foi tipada como site, a gramática canônica
+    # decide SWITCH_PREVIOUS_TAB antes da barreira genérica de reversão.
+    # Isso preserva ``volta/volte ... anterior`` do 3.2 e também permite a
+    # forma explícita ``retorna ... aba anterior`` sem tornar ``anterior``
+    # uma regra global de navegador.
+    if (
+        tipo_ref == "site"
+        and texto_pede_aba_anterior(
+            t,
+            contexto_site_confirmado=True,
+        )
+    ):
+        return {
+            "intent": "SWITCH_PREVIOUS_TAB",
+            "params": {"referencia_contextual": True},
+        }
+
     if (
         tipo_ref == "playlist"
         and alvo_ref
@@ -842,16 +860,6 @@ def resolver_comando_acao_geral_contextual(
             }
 
     if tipo_ref == "site":
-        if re.fullmatch(
-            r"(?:volta|volte|retorna|retorne|vai)\s+"
-            r"(?:(?:para|pra)\s+)?(?:a\s+)?anterior[?.!]*",
-            t,
-            flags=re.IGNORECASE,
-        ):
-            return {
-                "intent": "SWITCH_PREVIOUS_TAB",
-                "params": {"referencia_contextual": True},
-            }
         alvo = str(alvo_ref or ultimo_params.get("alvo") or ultimo_params.get("url") or "").strip()
         if alvo:
             if pedido_fechar_ref:

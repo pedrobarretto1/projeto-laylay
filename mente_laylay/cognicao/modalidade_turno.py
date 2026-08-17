@@ -10,6 +10,9 @@ from typing import Any, Callable, Dict
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
+from mente_laylay.cognicao.referencias_linguagem import (
+    texto_pede_aba_anterior,
+)
 
 
 def analisar_protecao_operacional(
@@ -291,6 +294,16 @@ def _classificar_modalidade_base(
             modalidade="comando", confianca=0.99,
             motivo="consulta explícita a estado local",
             acao_explicita=True, autoriza_execucao=True, natureza_acao="consulta",
+        )
+        return resultado
+    if texto_pede_aba_anterior(t, permitir_cadeia=True):
+        resultado.update(
+            modalidade="comando",
+            confianca=0.99,
+            motivo="navegação explícita para a aba anterior",
+            acao_explicita=True,
+            autoriza_execucao=True,
+            natureza_acao="pedido_direto",
         )
         return resultado
     if re.fullmatch(
@@ -1040,6 +1053,13 @@ def bloqueia_execucao_operacional_prioritaria(
         "capacidade", "instrucao_ou_explicacao", "informativa_sobre_acao",
         "hipotetica", "cancelamento", "mencao_operacional", "decepcao",
     }:
+        return True
+
+    # R1.1: a primeira barreira não pode deixar passar a operação canônica
+    # de aba anterior apenas porque o vocabulário lexical genérico não conhece
+    # ``volta/retorna``. Mantemos a exceção estreita na gramática compartilhada
+    # em vez de promover esses verbos globalmente a comandos.
+    if texto_pede_aba_anterior(texto, permitir_cadeia=True):
         return True
 
     normalizado = _normalizar_p0_ato_fala(texto, normalizar_texto)

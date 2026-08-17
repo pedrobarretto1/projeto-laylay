@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict
 
 from mente_laylay.cognicao.referencias_linguagem import (
     separar_alvo_e_complemento_foco,
+    texto_pede_aba_anterior,
     valor_e_referencia_contextual,
 )
 from mente_laylay.cognicao.modalidade_turno import analisar_protecao_operacional
@@ -1225,11 +1226,7 @@ def detectar_consulta_abas(
     if not base:
         return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
-    if re.fullmatch(
-        r"(?:volta|volte|retorna|retorne|vai)\s+(?:para\s+|pra\s+)?"
-        r"(?:a\s+)?aba\s+anterior",
-        base,
-    ):
+    if texto_pede_aba_anterior(base):
         return {"intent": "SWITCH_PREVIOUS_TAB", "params": params()}
     # P0_CADEIA_CONTEXTO_VIVO_V2_20260815
     # Consulta singular da percepção atual. Reutilizamos LIST_TABS para não
