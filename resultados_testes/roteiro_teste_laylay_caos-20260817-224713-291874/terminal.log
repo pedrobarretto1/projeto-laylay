@@ -1697,3 +1697,4 @@ Timeout na LLM local/API: HTTPConnectionPool(host='localhost', port=11434): Read
 🧠 [PLANO:FASE] fase=executado | comandos=[] | erros=[]
 ╭─ ◕‿◕ Laylay: De nada, obrigada por ter testado. 😊.
 📊 [ROTEIRO:RESUMO] avaliados=53 | passaram=29 | falharam=22 | alertas=2 | p95=8.382s
+🧠 [CTX] idle: {'idleMs': 99419, 'url': 'https://github.com/pedrobarretto1/projeto-laylay', 'title': 'pedrobarretto1/projeto-laylay: uma IA assistente com muita personalidade e habilidades (ainda esta em desenvolvimento entao pode ser visto problemas)'}

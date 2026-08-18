@@ -161,6 +161,41 @@ def aplicar_repeticao_operacional_ao_turno(turno: dict, repeticao: object) -> di
     )
     return resultado
 
+def reconciliar_alvo_eliptico_janela_confirmado(texto: str, *, turno: dict, retrato: dict, mente: dict) -> tuple[dict, dict]:
+    """Resolve somente o alvo contextual comprovado do `maximiza` exato.
+
+    Não cria autoridade. A ação precisa já estar autorizada e o mesmo app
+    precisa existir simultaneamente em `ultimo_app_janela` e na entidade app
+    congelada do retrato.
+    """
+    leitura = dict(turno or {})
+    snapshot = dict(retrato or {})
+    forma = str(texto or "").casefold().strip(" \t\r\n.,!?;:")
+    if forma != "maximiza":
+        return leitura, snapshot
+    if not bool(leitura.get("autoriza_execucao")):
+        return leitura, snapshot
+    if not bool(leitura.get("requer_esclarecimento")):
+        return leitura, snapshot
+    ultimo_app = str(dict(mente or {}).get("ultimo_app_janela") or "").strip()
+    entidade_app = dict(dict(snapshot.get("entidades") or {}).get("app") or {})
+    nome_app = str(entidade_app.get("nome") or "").strip()
+    if not ultimo_app or not nome_app:
+        return leitura, snapshot
+    if ultimo_app.casefold() != nome_app.casefold():
+        return leitura, snapshot
+    referencia = dict(entidade_app)
+    snapshot["referencia_tipo"] = "app"
+    snapshot["referencia_resolvida"] = referencia
+    leitura["requer_esclarecimento"] = False
+    leitura["depende_contexto"] = True
+    leitura["referencia_resolvida"] = referencia
+    leitura["alvo_contextual_resolvido"] = {
+        "tipo": "app", "nome": nome_app,
+        "origem": "elipse_operacional_maximiza_confirmada",
+    }
+    return leitura, snapshot
+
 _ORIGENS_ENTRADA_VALIDAS = {
     'terminal', 'voz', 'modo_jogo', 'barra', 'api', 'desconhecida',
 }
@@ -367,6 +402,9 @@ def _iniciar_planejamento_turno(
     turno['funcao_comunicativa'] = funcao_comunicativa
     turno['encerramento_assunto'] = encerramento_assunto
     retrato_turno, entidades_recentes = ns['_construir_retrato_turno_mente'](texto_cognitivo, turno=turno, mente=mente_antes_turno, contexto_perceptivo=ns['_obter_contexto_perceptivo'](), playlist_state=ns['playlist_state'], jogo_contexto=jogo_contexto)
+    turno, retrato_turno = reconciliar_alvo_eliptico_janela_confirmado(
+        texto_cognitivo, turno=turno, retrato=retrato_turno, mente=mente_antes_turno,
+    )
     atualidade_factual = dict(retrato_turno.get('atualidade_factual') or {})
     turno['atualidade_factual'] = atualidade_factual
     if atualidade_factual.get('depende_atualidade'):

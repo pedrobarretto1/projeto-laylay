@@ -1,3 +1,1236 @@
+# ESTADO ATUAL — 2026-08-18 01:40 — C1-B2.2 CANDIDATO AUDITADO / PATCHER DE PRODUÇÃO PRONTO
+
+## Resultado real do auditor V3
+
+O usuário corrigiu localmente o `import re` ausente no auditor V3 e executou no HEAD:
+
+```text
+eb71185c19d3727292d60be13abf0b4417f18581
+```
+
+Resultado:
+
+```text
+preflight HEAD/blobs ........................ PASS
+baseline C1-A + C1-B ....................... PASS (26/26)
+baseline suite ampla ....................... 7 failures preexistentes / 153 passed
+espelho baseline reproduz RED .............. PASS
+candidate py_compile ....................... PASS
+candidate causal + falsificações ........... PASS
+14 passed
+candidate C1-A + C1-B ...................... PASS (26/26)
+candidate suite ampla ...................... PASS DIFERENCIAL
+7 failures preexistentes idênticos
+0 regressões novas
+
+✅ CANDIDATO C1-B2.2 VERDE EM ESPELHO
+produção alterada: NÃO
+autoridade criada: NÃO
+```
+
+Artefatos reais auditados:
+- `manifest_candidate_c1b22_reconciliar_alvo.json`
+- `candidate_c1b22_reconciliar_alvo_antes_parecer.diff`
+- `log_candidate_c1b22_reconciliar_alvo.txt`
+
+SHA-256 reais:
+
+```text
+manifest = fc4432c6c8b3a41e049cea06c3d0711c42464dd984a8f02d619e95cca7f0dace
+diff raw CRLF = 29ddf1d20d26b98f4e496c21dd1d4ccda6ef0364ea067cb9ee4b8d8d84318903
+diff normalizado LF = eed8004e132a0306211e448e5efdf6540d0d3c4d7ec3c754bc1d76c0c546716b
+log = ba579f3488ff8525638574327cb7b070439f0c292639d8bf230362818a66d76e
+```
+
+O manifest confirma:
+- `status=candidate_green_mirror`;
+- `production_written=false`;
+- `executor_called=false`;
+- `working_tree_preserved=true`;
+- target before:
+  `2d9315177f905bf4b7c3036cbcaafc7a11c9c8095616c75f5fe84efbf71d8711`;
+- target after:
+  `8cb5b5573de06fa20fc79c8439fc4794d65a1b40e9fd8f47d6c1b704212d4e1d`;
+- `new_failures_vs_baseline=[]`;
+- `missing_failures_vs_baseline=[]`;
+- `same_failure_fingerprint=true`.
+
+## Auditoria estrutural integral do candidato
+
+Diff real:
+- altera somente `mente_laylay/cognicao/orquestrador_turno_runtime.py`;
+- adiciona `reconciliar_alvo_eliptico_janela_confirmado`;
+- chama a reconciliação imediatamente depois de construir o retrato congelado;
+- ocorre antes de:
+  - pareceres dos especialistas;
+  - planejamento;
+  - contrato de decisão;
+  - arbitragem/execução.
+
+### Invariante de autoridade
+
+A função exige:
+
+```text
+forma exata == "maximiza"
+turno.autoriza_execucao == True
+turno.requer_esclarecimento == True
+ultimo_app_janela existe
+retrato.entidades["app"] existe
+nomes das duas fontes coincidem
+```
+
+Ela NÃO altera `autoriza_execucao`.
+
+### Questão dos segmentos — auditada
+
+O helper limpa o `requer_esclarecimento` top-level, mas preserva o valor do
+segmento original.
+
+Isto foi revisado contra:
+- `plano_turno.py`;
+- `decisao_turno.py`;
+- `especialistas/coordenador.py`;
+- contratos tipados do turno.
+
+Conclusão:
+- segmento continua descrevendo a leitura linguística original
+  (“verbo sem alvo textual”);
+- planejador usa segmentos somente para tipo/texto/ordem dos atos;
+- autorização, referência resolvida e esclarecimento do contrato vêm do
+  top-level;
+- especialistas usam turno top-level + retrato reconciliado.
+
+Portanto não há segunda trava oculta nesse ponto.
+
+A regressão permanente do patcher congela explicitamente esse contrato.
+
+## Patcher de produção
+
+Artefato:
+
+`aplicar_c1b22_reconciliar_alvo_antes_parecer_teste3_7.py`
+
+SHA-256:
+
+`fa964623820f2bd51447451574810f9144503ce2450f048e89aa3cc76fae9f8e`
+
+### Arquivos que ele pode criar/alterar
+
+Produção:
+- `mente_laylay/cognicao/orquestrador_turno_runtime.py`
+
+Regressão permanente nova:
+- `tests/test_regressao_c1b22_turno155_parecer_alvo_resolvido.py`
+
+Nenhum outro arquivo dentro do checkout pode ser alterado pelo patcher.
+
+### Locks
+
+- HEAD exato `eb71185...`;
+- 19 blobs causais/contratuais;
+- target canonical SHA before;
+- target canonical SHA after;
+- diff auditado:
+  - raw CRLF guardado para rastreabilidade;
+  - LF normalizado usado para comparação da transformação;
+- fingerprint exato dos 7 failures preexistentes.
+
+### Preservação da working tree
+
+O patcher:
+- exige staging vazio;
+- permite alterações tracked preexistentes fora do target;
+- fotografa cada diff preexistente com SHA-256;
+- exige que todos continuem byte-a-byte iguais;
+- permite untracked existentes;
+- exige que o único novo untracked seja o teste permanente;
+- não usa `git restore/reset/checkout`;
+- não usa `git add/commit/push`.
+
+### Testes antes da escrita
+
+- C1-A + C1-B: 26/26;
+- suíte ampla:
+  - precisa reproduzir os 7 nodeids vermelhos EXATOS auditados;
+- arquivos da suíte ampla precisam estar limpos localmente.
+
+### Testes depois da escrita
+
+- `py_compile` produção + teste permanente;
+- regressão permanente C1-B2.2: 15/15;
+- C1-A + C1-B: 26/26;
+- suíte ampla:
+  - mesmos 7 failures;
+  - zero novos;
+  - zero removidos inesperadamente.
+
+### Regressão permanente adicional
+
+Além dos 14 casos do espelho, o teste permanente congela:
+
+```text
+segmento.requer_esclarecimento = True
+    (leitura linguística original)
+
+turno top-level.requer_esclarecimento = False
+    (alvo operacional já resolvido)
+
+contrato_decisao.requer_esclarecimento = False
+contrato_decisao.permite_acao = True
+```
+
+### Rollback
+
+Em qualquer falha depois da escrita:
+- bytes originais do target são restaurados diretamente;
+- teste novo é removido;
+- diffs tracked preexistentes são revalidados;
+- untracked retorna ao snapshot inicial;
+- staging continua vazio.
+
+Se qualquer validação do rollback falhar, o manifest NÃO declara falsamente
+`production_written=false`; registra estado pós-rollback como não confirmado.
+
+## Segunda revisão integral do patcher final
+
+Executada sobre os bytes finais.
+
+```text
+compile() ................................ PASS
+py_compile ............................... PASS
+--help ................................... PASS
+--self-test .............................. PASS
+globais indefinidos via symtable ........ 0
+permanent test cases ..................... 15
+parser failures ......................... PASS
+SHA raw CRLF/LF candidato ............... PASS
+SHA diff combinado previsto ............. PASS
+simulação Git com tracked preexistente .. PASS
+simulação rollback ...................... PASS
+```
+
+Observação:
+o ambiente de execução do assistente não possui resolução de rede para clonar
+o repositório GitHub. Portanto não foi alegado um run end-to-end do patcher
+contra um clone real aqui. O candidato real, porém, já foi executado no
+espelho do usuário; o patcher executará os testes end-to-end no checkout real.
+
+## Próximo passo
+
+Na raiz do projeto:
+
+```powershell
+& C:\Python314\python.exe ".\aplicar_c1b22_reconciliar_alvo_antes_parecer_teste3_7.py" --repo .
+```
+
+Sucesso esperado:
+
+```text
+✅ C1-B2.2 PATCH APLICADO E REGRESSÕES VERDES
+produção alterada: SIM — somente orquestrador_turno_runtime.py
+regressão permanente criada: SIM
+autoridade criada pelo contexto: NÃO
+tracked preexistente preservado: SIM
+staging preservado vazio: SIM
+rollback executado: NÃO
+git add/commit/push: NÃO
+estado: PENDENTE DE TESTE REAL 154→155
+```
+
+Depois enviar:
+- saída completa;
+- `diff_patch_c1b22_reconciliar_alvo.diff`;
+- `log_patch_c1b22_reconciliar_alvo.txt`;
+- `manifest_patch_c1b22_reconciliar_alvo.json`.
+
+## Estado atual
+
+```text
+C1-B1 autoridade bare maximiza ................. FECHADA
+C1-B2 detector elíptico ........................ CORRIGIDO
+C1-B2.2 RED causal ............................. CONFIRMADO
+C1-B2.2 causa raiz ............................. CONFIRMADA
+C1-B2.2 candidato espelho ...................... VERDE / AUDITADO
+C1-B2.2 patcher produção ....................... PRONTO / REANALISADO
+produção ....................................... AINDA NO BASELINE 3.7
+C1-B2.2 fechamento ............................. PENDENTE PATCH + RUNTIME 154→155
+```
+
+---
+
+# ESTADO ATUAL — 2026-08-18 01:36 — C1-B2.2 AUDITOR V3 DIFERENCIAL PRONTO
+
+## O que a V2 revelou
+
+A V2 passou o preflight e os regressivos focados:
+
+```text
+preflight HEAD/blobs ................ PASS
+baseline C1-A + C1-B ............... PASS (26/26)
+```
+
+Em seguida recusou antes de criar o espelho porque a suíte ampla do próprio
+HEAD 3.7 já está vermelha:
+
+```text
+7 failed, 153 passed
+```
+
+Logo:
+- o candidato C1-B2.2 NÃO foi aplicado pela V2;
+- a produção continua intacta;
+- esses 7 failures são baseline debt/test drift preexistente.
+
+## Classificação dos 7 failures
+
+Os failures observados pertencem a três grupos fora do target candidato:
+
+1. FILE_READ contextual em `test_regressoes_roteiro_117_turnos_20260814.py`;
+2. cinco casos parametrizados da porta prioritária de `ComandosImediatosRuntime`;
+3. um teste de mensagem/ordem do motivo de rejeição em `test_retrato_arbitro_inteligente.py`.
+
+Target candidato continua sendo somente:
+
+`mente_laylay/cognicao/orquestrador_turno_runtime.py`
+
+## Política correta da suíte ampla
+
+A V3 transforma a suíte ampla em sentinela diferencial.
+
+### Baseline
+- roda a mesma suíte no HEAD travado;
+- exige exatamente 7 nodeids vermelhos;
+- grava lista e resumo no manifest.
+
+### Candidato
+- roda a MESMA suíte no espelho;
+- extrai os nodeids vermelhos;
+- exige igualdade exata com o baseline;
+- `new_failures_vs_baseline=[]`;
+- `missing_failures_vs_baseline=[]`;
+- `same_failure_fingerprint=true`.
+
+Assim os sete vermelhos não são ignorados; eles ficam congelados como dívida
+preexistente e qualquer regressão nova faz o auditor recusar.
+
+## Auditor V3
+
+Artefato:
+`auditar_candidato_c1b22_reconciliar_alvo_antes_parecer_teste3_7_v3.py`
+
+SHA-256:
+`a25ab39cbc3c8cea9dec901e009e7a69a5077ef6f4a29d09c599ec478175f589`
+
+## Segunda revisão integral
+
+Validações finais:
+- `compile()` PASS;
+- `py_compile` PASS em cópia `/tmp`;
+- `--help` PASS em cópia `/tmp`;
+- parser testado contra a saída real do usuário: 7/7 failures detectados;
+- lock `composicao_entrada_interacao.py` permanece correto com 40 chars;
+- focused C1-A/C1-B continua 26/26 obrigatório;
+- candidate causal/falsificações inalterados;
+- suíte ampla agora compara fingerprint de nodeids, não texto de traceback nem paths temporários;
+- guard de diff endurecido da V2 preservado;
+- nenhum executor real;
+- nenhum Git mutante;
+- produção não escrita.
+
+## Próximo comando
+
+```powershell
+& C:\Python314\python.exe ".\auditar_candidato_c1b22_reconciliar_alvo_antes_parecer_teste3_7_v3.py" --repo .
+```
+
+Esperado se o candidato for saudável:
+
+```text
+baseline suite ... DÉBITO CONGELADO (7 failures; 153 passed)
+...
+candidate suite ... PASS DIFERENCIAL (7 failures preexistentes idênticos; 0 novos)
+
+✅ CANDIDATO C1-B2.2 VERDE EM ESPELHO
+```
+
+Depois enviar:
+- saída completa;
+- `candidate_c1b22_reconciliar_alvo_antes_parecer.diff`;
+- `log_candidate_c1b22_reconciliar_alvo.txt`;
+- `manifest_candidate_c1b22_reconciliar_alvo.json`.
+
+## Estado
+
+```text
+C1-B2.2 RED causal ...................... CONFIRMADO
+C1-B2.2 causa raiz ...................... CONFIRMADA
+auditor V1 ............................. BUG DE LOCK
+auditor V2 ............................. POLÍTICA DE BASELINE INCORRETA
+auditor V3 ............................. PRONTO / REANALISADO
+candidato ainda não executado pela V2 .. SIM
+produção ............................... INTACTA
+```
+
+---
+
+# ESTADO ATUAL — 2026-08-18 01:24 — C1-B2.2 AUDITOR V2 PRONTO
+
+## Falha do auditor V1
+
+A execução recusou antes do espelho:
+
+```text
+RuntimeError: blob divergente mente_laylay/integracao/composicao_entrada_interacao.py:
+observado=752727272b6ffe5e97f0ab34a1b8fa2e04004fb7
+```
+
+Diagnóstico do próprio arquivo entregue:
+
+```text
+lock V1 = 752727272b6ffe5e97f0ab34a1b8fa2e04004fb
+comprimento = 39
+lock correto = 752727272b6ffe5e97f0ab34a1b8fa2e04004fb7
+comprimento = 40
+```
+
+O manifest RED real já continha o SHA correto. Portanto:
+
+**falha = HARNESS/AUDITOR; produção = INTACTA; causa C1-B2.2 = NÃO REABERTA.**
+
+## Segunda revisão integral
+
+A revisão não parou no caractere ausente. Foram encontrados e corrigidos três defeitos do auditor V1:
+
+1. SHA truncado de `composicao_entrada_interacao.py`;
+2. guard de diff ineficaz:
+   `if diff.count('mente_laylay/')>2: pass`;
+3. V1 não executava a suíte ampliada de turno/retrato/especialistas que o handoff dizia executar.
+
+## Auditor V2
+
+Artefato:
+`auditar_candidato_c1b22_reconciliar_alvo_antes_parecer_teste3_7_v2.py`
+
+SHA-256:
+`387912b9e46c2b45502f4819548c6ab1b0cd552b2e11ccf01bf3a75cdd9dff8d`
+
+SHA-256 do diff V1→V2 revisado:
+`f5fb2c255c7f125366573ffd8e05539f516026a1a2378f211861ce6946c44635`
+
+Mudanças de harness apenas:
+- corrige SHA para `...04fb7`;
+- valida que HEAD e TODOS os blob locks têm exatamente 40 hex chars;
+- erro de lock agora mostra observado/esperado + comprimentos;
+- mantém C1-A + C1-B 26/26;
+- executa no baseline e no candidato todos os testes encontrados por:
+  - `tests/test_*turno*.py`;
+  - `tests/test_*retrato*.py`;
+  - `tests/test_*especialista*.py`;
+- guard de diff exige exatamente o target
+  `mente_laylay/cognicao/orquestrador_turno_runtime.py`;
+- exige marcadores estruturais do candidato;
+- acrescenta falsificações:
+  - site-only;
+  - autoridade falsa não pode ser promovida;
+- registra `expected_head`, `expected_blobs` e suíte baseline no manifest;
+- continua sem executor real e sem Git mutante.
+
+## Estado causal
+
+```text
+C1-B2.2 RED causal ........................ CONFIRMADO
+C1-B2.2 causa raiz ........................ CONFIRMADA
+candidato arquitetural .................... CONGELADO
+auditor V1 ................................ BUG DE HARNESS
+produção .................................. INTACTA
+auditor V2 ................................ PRONTO
+espelho candidato ......................... PENDENTE
+```
+
+## Próximo comando
+
+```powershell
+& C:\Python314\python.exe ".\auditar_candidato_c1b22_reconciliar_alvo_antes_parecer_teste3_7_v2.py" --repo .
+```
+
+Após sucesso, enviar:
+- saída completa;
+- `candidate_c1b22_reconciliar_alvo_antes_parecer.diff`;
+- `log_candidate_c1b22_reconciliar_alvo.txt`;
+- `manifest_candidate_c1b22_reconciliar_alvo.json`.
+
+---
+
+# ESTADO ATUAL — 2026-08-18 01:10 — C1-B2.2 RED CONFIRMADO / CANDIDATO DE ESPELHO PRONTO
+
+## RED causal auditado com artefatos reais
+
+HEAD: `eb71185c19d3727292d60be13abf0b4417f18581`
+
+Artefatos recebidos:
+- `log_red_c1b2_parecer_operacional.txt`
+- `manifest_red_c1b2_parecer_operacional.json`
+
+Auditoria:
+- SHA-256 real do log: `15b050e9ff54452c6dee9496abb5788a7b0f7e34f028db9e7dd3a9dd4eb0005b`;
+- hash coincide com o manifest;
+- `status=red_causal_complete`;
+- 16/16 checks causais `true`;
+- `production_written=false`;
+- `executor_called=false`;
+- working tree preservada.
+
+Prova fechada:
+
+```text
+turno.autoriza_execucao=True
+turno.requer_esclarecimento=True
+retrato.entidade app=opera
+retrato.referencia_resolvida={}
+detector posterior=MAXIMIZE_WINDOW(opera)
+parecer.requer_esclarecimento=True
+parecer.autoriza_execucao=False
+parecer.motivo=referencia_ambigua
+sem parecer -> candidato aceito
+com parecer -> candidato rejeitado
+coordenador real -> (None, "")
+controle com alvo satisfeito -> MAXIMIZE_WINDOW(opera)
+```
+
+Classificação confirmada:
+`H_C1B2_PARECER_CONGELADO_ANTES_DA_MATERIALIZACAO_VETA_ALVO_RESOLVIDO_DEPOIS`
+
+**C1-B2.2 causa raiz: CONFIRMADA.**
+
+## Desenho do candidato
+
+Não haverá bypass no árbitro nem aumento de autoridade no detector.
+
+A reconciliação ocorrerá antes da construção do parecer operacional, no turno,
+somente para a forma exata `maximiza` e somente se:
+
+```text
+autoriza_execucao=True
+requer_esclarecimento=True
+ultimo_app_janela existe
+retrato.entidades["app"] existe
+ultimo_app_janela == retrato.entidades["app"].nome
+```
+
+A reconciliação altera apenas o estado do ALVO:
+
+```text
+requer_esclarecimento -> False
+referencia_tipo -> app
+referencia_resolvida -> entidade app já congelada
+autoriza_execucao -> INALTERADA
+```
+
+Falsificações obrigatórias:
+- sem app;
+- site-only;
+- mismatch de fontes;
+- `não maximiza`;
+- `maximizar`;
+- `maximize`;
+- `maximiza ele`;
+- `abre`, `fecha`, `esquerda`, `direita`.
+
+## Auditor de candidato em espelho
+
+Artefato:
+`auditar_candidato_c1b22_reconciliar_alvo_antes_parecer_teste3_7.py`
+
+SHA-256:
+`cc3b998d80bce29e90d7a9ca48b1d7b42bf0e76f50822ab4905db717f3752fb4`
+
+Validação local do artefato:
+- `compile`/`py_compile`: PASS;
+- `--help`: PASS.
+
+O auditor:
+1. trava HEAD + 16 blobs causais;
+2. exige C1-A + C1-B 26/26 no baseline;
+3. cria espelho limpo por `git archive HEAD`;
+4. reproduz o RED no espelho antes do candidato;
+5. altera somente `mente_laylay/cognicao/orquestrador_turno_runtime.py` no espelho;
+6. roda falsificações e prova coordenador + contrato de decisão;
+7. reroda C1-A + C1-B no espelho;
+8. gera diff/log/manifest fora do checkout;
+9. compara working tree real antes/depois;
+10. não chama executor real e não executa comandos Git mutantes.
+
+Comando:
+
+```powershell
+& C:\Python314\python.exe ".\auditar_candidato_c1b22_reconciliar_alvo_antes_parecer_teste3_7.py" --repo .
+```
+
+Enviar depois:
+- saída completa;
+- `candidate_c1b22_reconciliar_alvo_antes_parecer.diff`;
+- `log_candidate_c1b22_reconciliar_alvo.txt`;
+- `manifest_candidate_c1b22_reconciliar_alvo.json`.
+
+Estado:
+
+```text
+C1-B1 autoridade bare maximiza ............... FECHADA
+C1-B2 detector elíptico ...................... CORRIGIDO
+C1-B2.2 RED causal ........................... CONFIRMADO
+C1-B2.2 causa raiz ........................... CONFIRMADA
+C1-B2.2 desenho candidato .................... CONGELADO
+C1-B2.2 espelho .............................. PENDENTE
+produção ..................................... INTACTA
+```
+
+---
+
+# ESTADO ATUAL — 2026-08-18 00:30 — C1-B2.2 RED PARECER OPERACIONAL PRONTO
+
+## Resultado auditado do tracer pós-patch
+
+Artefatos reais recebidos do usuário:
+- `log_trace_c1b2_turno155_pos_patch.txt`
+- `manifest_trace_c1b2_turno155_pos_patch.json`
+
+O tracer confirmou no HEAD:
+
+```text
+eb71185c19d3727292d60be13abf0b4417f18581
+teste 3.7
+```
+
+Resultados auditados:
+
+```text
+26/26 regressões C1-A + C1-B verdes
+autoridade de `maximiza` ............. True
+callback linguístico ................. False
+preparo.status ....................... ok
+
+APP_OPEN confirmado:
+ultimo_app_janela .................... opera
+ultima_acao_promovivel ............... True
+ultima_acao_intent ................... APP_OPEN
+ultima_acao_status ................... ja_aberto_focado
+ultima_acao_confirmada ............... True
+
+após refinar `maximiza`:
+ultimo_app_janela .................... opera
+referência tipada .................... app/opera
+detector direto ...................... MAXIMIZE_WINDOW(opera)
+DeteccaoDeterministicaRuntime ........ MAXIMIZE_WINDOW(opera)
+
+sem app ............................... None
+site-only ............................. None
+
+classificação:
+H_ESTADO_E_DETECTORES_VERDES_FALHA_FORA_DESTE_CORREDOR
+```
+
+Hash real do log:
+`1e1baf7a765de78f5ead3c9a7e19f5a84db92314e78e9217d807685fabed0179`
+
+O hash bateu com o manifest.
+
+Conclusão:
+**C1-B2 está definitivamente depois da saída de `DeteccaoDeterministicaRuntime`.**
+
+## Hipóteses pós-detector falsificadas
+
+### Processo antigo / módulo stale
+
+A ponte canônica registra:
+
+```python
+self.parent_pid = os.getpid()
+```
+
+O teste 3.6 registrou `pid=13356`.
+O teste 3.7 registrou `pid=8808`.
+
+Logo foram processos da mente distintos.
+A hipótese de simplesmente reutilizar o mesmo processo pré-patch foi descartada.
+
+### Resolver ausente no ComandosImediatosRuntime
+
+`ComposicaoEntradaInteracaoRuntime` inclui explicitamente:
+- `resolver_comando_natural`;
+- `detectar_intencao_deterministica`.
+
+E `conectar()` recusa inicializar se `resolver_comando_natural` não for callable.
+
+O teste 3.7 iniciou normalmente.
+
+Logo a ausência simples do resolvedor no snapshot também não explica o bug.
+
+### Cache prematuro antes de processar_prioritarios
+
+`RespostaIARuntime` cria/congela o turno e imediatamente tenta
+`processar_comandos_prioritarios(texto)` antes de entrar na resposta LLM.
+
+Para bare `maximiza` não existe uma avaliação canônica anterior necessária que
+explique, por si só, um `None` cacheado.
+
+Hipótese enfraquecida/descartada no corredor normal.
+
+## Nova causa candidata — C1-B2.2
+
+A investigação encontrou uma diferença temporal/contratual entre o planejador
+do turno e o detector contextual.
+
+### 1. Modalidade
+
+Bare `maximiza` está corretamente separado assim:
+
+```text
+autoriza_execucao=True
+requer_esclarecimento=True
+depende_contexto=True
+```
+
+Isto significa:
+- a AÇÃO atual está autorizada;
+- o ALVO ainda não veio na própria fala.
+
+### 2. Retrato congelado do turno
+
+`construir_retrato_turno()` só abre resolução contextual explícita para formas
+linguísticas como `ele`, `ela`, `isso`, `essa`, `esse`, etc.
+
+Mesmo com um foco operacional `app/opera` vivo em `focos_por_dominio`,
+bare `maximiza` não produz automaticamente:
+
+```text
+referencia_tipo=app
+referencia_resolvida=opera
+```
+
+Portanto o parecer nasce antes da materialização elíptica feita pelo detector.
+
+### 3. Parecer operacional
+
+`construir_parecer_operacional()` faz:
+
+```python
+requer_esclarecimento = bool(
+    turno.get("requer_esclarecimento")
+    or (ativo and confianca_geral < 0.70)
+)
+if requer_esclarecimento:
+    autoriza_execucao = False
+```
+
+Logo o bit de alvo pendente do começo do turno vira um veto operacional global.
+
+### 4. Detector posterior
+
+Depois, `detectar_janela_contextual()` usa o estado operacional vivo e produz:
+
+```python
+MAXIMIZE_WINDOW(nome_app="opera")
+```
+
+O alvo agora existe, mas o parecer operacional já está congelado com:
+
+```text
+requer_esclarecimento=True
+autoriza_execucao=False
+motivo_bloqueio=referencia_ambigua
+```
+
+### 5. Árbitro
+
+`arbitrar_turno()` consulta `avaliar_candidato_operacional()` antes da
+autorização geral. Um parecer operacional congelado com
+`requer_esclarecimento=True` veta o candidato mutante, mesmo que o detector
+já tenha materializado um app concreto.
+
+## Novo RED causal
+
+Artefato:
+
+`red_c1b2_parecer_operacional_alvo_resolvido_teste3_7.py`
+
+SHA-256:
+
+`805087e941b14ca1e7d7a2046f050668decc728caddb39cee4e7a40ad19fe220`
+
+HEAD travado:
+
+`eb71185c19d3727292d60be13abf0b4417f18581`
+
+O runner prova, sem alterar produção:
+
+1. `maximiza` autoriza a ação mas nasce com alvo pendente;
+2. o retrato real conserva a entidade `app/opera`, mas não a materializa como
+   referência linguística para bare `maximiza`;
+3. o detector contextual posterior produz `MAXIMIZE_WINDOW(opera)`;
+4. o parecer operacional real mantém `requer_esclarecimento=True`;
+5. esse parecer muda `autoriza_execucao` para False;
+6. `avaliar_candidato_operacional()` devolve `referencia_ambigua`;
+7. o árbitro sem o parecer aceita o MESMO candidato;
+8. o árbitro com o parecer rejeita o MESMO candidato;
+9. `resolver_intencao()` canônico reproduz o veto;
+10. controle causal em memória:
+    - somente após alvo app concreto existir,
+    - `requer_esclarecimento=False`,
+    - o parecer volta a autorizar,
+    - o coordenador volta a resolver `MAXIMIZE_WINDOW(opera)`;
+11. sem app vivo, detector continua retornando None.
+
+Classificação esperada se a hipótese estiver correta:
+
+```text
+H_C1B2_PARECER_CONGELADO_ANTES_DA_MATERIALIZACAO_VETA_ALVO_RESOLVIDO_DEPOIS
+```
+
+E:
+
+```text
+✅ C1-B2.2: VERMELHO CAUSAL DO PARECER OPERACIONAL CONFIRMADO
+```
+
+## Segurança / segunda revisão
+
+Segunda revisão integral realizada antes da entrega.
+
+Validações:
+- `compile()` PASS;
+- `py_compile` PASS;
+- `--help` PASS;
+- SHA do runner final congelado;
+- HEAD e 14 blobs causais travados;
+- C1-A + C1-B precisam permanecer 26/26 verdes;
+- causal files precisam estar limpos;
+- alterações/untracked fora do corredor são somente fotografados;
+- nenhum `git add`;
+- nenhum `git commit`;
+- nenhum `git push`;
+- nenhum `git reset`;
+- nenhum `git restore`;
+- nenhum `git checkout`;
+- nenhuma chamada a `executar_intencao`;
+- nenhum executor Windows;
+- saída somente em diretório irmão:
+  `laylay_trace_artifacts_c1b2_parecer_operacional/<timestamp>/`;
+- working tree comparada antes/depois;
+- log e manifest externos gerados ao final.
+
+## Próximo passo
+
+Na raiz da Laylay:
+
+```powershell
+& C:\Python314\python.exe ".\red_c1b2_parecer_operacional_alvo_resolvido_teste3_7.py" --repo .
+```
+
+Enviar:
+- saída completa;
+- `log_red_c1b2_parecer_operacional.txt`;
+- `manifest_red_c1b2_parecer_operacional.json`.
+
+Nenhum patch de produção está autorizado antes desta prova.
+
+## Estado do root
+
+```text
+C1-A APP_OPEN/no-op confirmado ................. FECHADA
+C1-B1 autoridade bare `maximiza` ............... FECHADA
+C1-B2 gate elíptico do detector ................ CORRIGIDO
+C1-B2 estado/refino/detector runtime ........... VERDES
+C1-B2.2 parecer operacional congelado .......... HIPÓTESE CAUSAL / RED PRONTO
+C1-B2 end-to-end ............................... ABERTA
+```
+
+---
+
+# ESTADO ATUAL — 2026-08-18 00:19 — C1-B2 TRACER PÓS-PATCH PRONTO
+
+## Correção de baseline após tentativa do RED full-cycle
+
+O runner anterior
+`red_c1b2_turno155_full_cycle_processar_prioritarios_teste3_6.py`
+recusou corretamente antes de qualquer experimento:
+
+```text
+HEAD travado: f53c9f4ca4165a0bbdecac332b84a89fe993e765
+HEAD observado: eb71185c19d3727292d60be13abf0b4417f18581
+produção alterada: NÃO
+```
+
+O HEAD observado foi auditado no GitHub:
+
+```text
+eb71185c19d3727292d60be13abf0b4417f18581
+commit: teste 3.7
+parent: f53c9f4ca4165a0bbdecac332b84a89fe993e765
+ahead_by: 1
+```
+
+O commit 3.7 já contém:
+- o patch C1-B2 em `roteador_deterministico.py`;
+- a regressão C1-B atualizada;
+- o resultado real do caos 3.7.
+
+Portanto:
+- NÃO atualizar o lock do RED antigo no chute;
+- NÃO rodar novamente o patcher V2;
+- o baseline atual é pós-patch.
+
+## Prova real do teste 3.7
+
+No caos 3.7:
+
+### Turno 154 humano (`indice=153`)
+`Abre o Opera.`
+
+Resultado real:
+
+```text
+intent=APP_OPEN
+alvo=opera
+status=ja_aberto_focado
+executou=False
+confirmado=True
+```
+
+### Turno 155 humano (`indice=154`)
+`maximiza`
+
+Resultado real:
+
+```text
+comandos=[]
+execucao=sem_comando_observado
+intent esperado=MAXIMIZE_WINDOW
+intent observado=SEM_INTENT
+motivo_resultado=execucao_nao_publicada
+```
+
+### Turno 159 humano (`indice=158`)
+`fecha ela`
+
+Resultado real:
+
+```text
+intent=CLOSE_APP
+alvo=opera
+status=app_fechado
+executou=True
+confirmado=True
+```
+
+Conclusão:
+- o patch C1-B2 entrou no fonte;
+- o caos pós-patch ainda falhou no 155;
+- Opera continuou referenciável quatro turnos depois;
+- não há base para dizer simplesmente que “o contexto sumiu”.
+
+## Hipótese de processo stale
+
+Foi comparado o início dos logs dos dois caos:
+
+```text
+teste 3.6: sessão=3621bb95 bridge pid=13356
+teste 3.7: sessão=c1c0e37d bridge pid=8808
+```
+
+São sessões/bridges distintos.
+
+Conclusão:
+**hipótese de a mesma instância antiga ter sido reutilizada perdeu força e não será usada como causa sem nova evidência.**
+
+## Estado arquitetural confirmado
+
+O patch pós-3.6 presente no 3.7 é:
+
+```python
+referencia_linguistica = (
+    bool(depende_contexto(t))
+    or any(v in t for v in ["ele", "ela", "isso"])
+)
+acao_janela_eliptica = t == "maximiza"
+if not (referencia_linguistica or acao_janela_eliptica):
+    return None
+```
+
+`detectar_janela_contextual()` depois consulta:
+- `ultimo_app_janela`;
+- `ultima_acao_intent`;
+- `ultima_acao_params`;
+- `ultimo_alvo`.
+
+A publicação canônica real passa por:
+
+```text
+AdaptadoresAplicacaoRuntime.registrar_resultado_execucao
+    -> EstadoContextoRuntime.registrar_resultado_execucao
+    -> contexto_compartilhado.registrar_resultado_execucao
+    -> EstadoCompartilhadoRuntime.substituir("mental", ...)
+    -> enriquecer_resultado_execucao_contextual
+```
+
+A referência tipada usa `referencia_contextual_imediata()` e consegue resolver
+continuidade de app a partir do contrato/foco/continuidade oficial.
+
+## Objetivo do novo tracer
+
+Novo artefato:
+
+`tracer_c1b2_turno155_pos_patch_teste3_7.py`
+
+SHA-256:
+
+`f59a13bf0453c8294ea09101b754405b01f3be9bc1f4d8212662edb26395fed5`
+
+HEAD travado:
+
+`eb71185c19d3727292d60be13abf0b4417f18581`
+
+O tracer NÃO aplica patch.
+
+Ele fotografa:
+
+1. autoridade atual de `maximiza`;
+2. estado logo após publicar
+   `APP_OPEN(opera) + ja_aberto_focado + confirmado=True`;
+3. `ultimo_app_janela`, `ultima_acao_*`, contrato, foco operacional e continuidade;
+4. referência tipada para `maximiza`;
+5. referência tipada para `fecha ela`;
+6. detector contextual direto;
+7. estado depois de `refinar_contexto_mental("maximiza", None)`;
+8. preparação determinística real;
+9. `DeteccaoDeterministicaRuntime` apontando para o mesmo
+   `EstadoCompartilhadoRuntime`;
+10. falsificações sem app e site-only.
+
+## Classificações possíveis do tracer
+
+O tracer não força um vermelho específico. Ele classifica a primeira fronteira
+divergente:
+
+```text
+A_PUBLICACAO_RESULTADO_NAO_PRESERVA_REFERENTE
+B_REFINO_APAGA_REFERENTE_OPERACIONAL
+C_DIVERGENCIA_REFERENCIA_TIPADA_POR_FORMA_LINGUISTICA
+D_DETECTOR_CONTEXTUAL_AINDA_FALHA_COM_ESTADO_REAL
+E_PREPARACAO_BLOQUEIA_ANTES_DO_DETECTOR
+F_TRACER_RUNTIME_INCOMPLETO_POR_DEPENDENCIA
+G_ORQUESTRADOR_DETERMINISTICO_PERDE_CANDIDATO
+H_ESTADO_E_DETECTORES_VERDES_FALHA_FORA_DESTE_CORREDOR
+```
+
+`H` é uma conclusão válida:
+significa que publicação, refino, referência e detectores estão verdes em
+processo novo, deslocando a investigação para composição/instância/ordem do
+ciclo real.
+
+## Segurança e reanálise do tracer
+
+Segunda revisão integral feita ANTES da entrega.
+
+Validações finais:
+- AST/compile: PASS;
+- `py_compile`: PASS;
+- `--help`: PASS;
+- 13 blobs causais travados;
+- exige 26 testes focados verdes:
+  - C1-B: 13;
+  - C1-A: 13;
+- exige marcador pós-patch
+  `acao_janela_eliptica = t == "maximiza"`;
+- causal files precisam estar limpos local/staged;
+- untracked e alterações fora dos alvos causais são apenas fotografados;
+- nenhum `git add/commit/push/reset/restore/checkout`;
+- nenhuma chamada a `executar_intencao`;
+- nenhuma chamada a executor de janela;
+- nenhum efeito Windows;
+- saída somente em diretório irmão do checkout:
+  `laylay_trace_artifacts_c1b2_turno155/<timestamp>/`;
+- hash do log é calculado somente depois da última linha;
+- falha após o preflight também tenta preservar log/manifest externos;
+- produção escrita: NÃO.
+
+Observação da entrega:
+- a validação `py_compile`/`--help` foi feita no ambiente de auditoria;
+- a cópia final em `/mnt/data` foi validada por `compile()` em memória para
+  evitar um problema de permissão do runtime de artefatos ao criar `__pycache__`.
+
+## Próximo passo exato
+
+Na raiz da Laylay:
+
+```powershell
+& C:\Python314\python.exe ".\tracer_c1b2_turno155_pos_patch_teste3_7.py" --repo .
+```
+
+Enviar:
+- saída completa;
+- `log_trace_c1b2_turno155_pos_patch.txt`;
+- `manifest_trace_c1b2_turno155_pos_patch.json`.
+
+NÃO executar:
+- o RED antigo travado no teste 3.6;
+- o patcher V2.
+
+## Estado do root
+
+```text
+C1-A APP_OPEN/no-op confirmado ............... FECHADA
+C1-B1 autoridade bare `maximiza` ............. FECHADA
+C1-B2 gate elíptico no detector .............. CORRIGIDO NO FONTE
+C1-B2 caos pós-patch 3.7 ..................... RED
+C1-B2 transporte/visão de estado ............. EM DIAGNÓSTICO
+C1-B2 geral .................................. ABERTA
+```
+
+Nenhuma nova mudança de produção está autorizada antes do tracer.
+
+---
+
+# ESTADO ATUAL — 2026-08-17 23:42 — C1-B2 RED FULL-CYCLE PRONTO
+
+## Por que este gate foi acrescentado
+
+O patcher V2 de produção continua preservado e reanalisado, mas a conversa atual aprovou uma prova adicional antes de qualquer nova aplicação: atravessar o root C1-B2 pela **porta pública real da fase prioritária**, em vez de parar no detector/orquestrador isolados.
+
+Este gate NÃO muda o candidato C1-B2 e NÃO substitui as provas anteriores. Ele fecha uma lacuna de observabilidade: comprovar em um único experimento que o mesmo vermelho do turno 155 percorre a fiação real até a última barreira antes da conversa livre.
+
+## Estudo de fonte concluído antes de criar o runner
+
+HEAD estudado e mantido travado:
+`f53c9f4ca4165a0bbdecac332b84a89fe993e765` (`teste 3.6`).
+
+### Entrada pública real
+
+`ComandosImediatosRuntime.processar_prioritarios(texto)` possui, como última barreira antes da conversa livre:
+
+1. `resolver_comando_natural(texto, "prioritario-linguagem-natural")`;
+2. validação de intent registrada;
+3. `executar_intencao(detectada, texto)`.
+
+Portanto `processar_prioritarios("maximiza")` é uma porta válida para a prova end-to-end da fase operacional prioritária.
+
+### Coordenador real
+
+O resolvedor atual pertence a `CicloComandosRuntime`. Ele:
+- monta contexto único do turno;
+- usa `resolver_intencao(...)`;
+- passa candidatos pelo árbitro real;
+- executa por `CicloComandosRuntime.executar_intencao(...)`.
+
+### Borda segura de execução
+
+`CicloComandosRuntime.executar_intencao(...)` chama a referência importada
+`mente_laylay.autonomia.coordenador_intencao.executar_intencao`, cuja implementação real vem de `roteador_intencao.py`.
+
+O runner troca SOMENTE essa referência em memória por um spy durante o experimento e a restaura em `finally`. Assim:
+- todo caminho cognitivo anterior continua real;
+- nenhum executor de janela/Windows é chamado;
+- é possível provar se o candidato chegou ou não à borda de efeito.
+
+### Detector real
+
+O runner usa `DeteccaoDeterministicaRuntime`, que injeta o estado mental em `detectar_intencao_deterministica_mente(...)`. A ordem real inclui:
+- preparação determinística;
+- detectores anteriores;
+- `detectar_janela_contextual(...)`;
+- `detectar_janela_explicita(...)`;
+- demais detectores.
+
+Para o root atual, a hipótese permanece específica:
+`maximiza` + Opera viva é autorizado pela modalidade, mas `texto_depende_de_contexto("maximiza")` é False e o gate inicial do detector contextual retorna None antes de consultar/materializar `ultimo_app_janela`.
+
+## Artefato novo
+
+### `red_c1b2_turno155_full_cycle_processar_prioritarios_teste3_6.py`
+
+SHA-256:
+`f30972d4ce86a40bf96f6a343db42c7301d14bc8961948cd946e6bf7fdb7bb44`
+
+Estado:
+**RED FULL-CYCLE CRIADO / VALIDAÇÃO ESTÁTICA PASS / AINDA NÃO EXECUTADO NO CHECKOUT DO USUÁRIO**
+
+Validações locais do artefato:
+- `python -m py_compile`: PASS;
+- `--help`: PASS.
+
+O runner:
+- trava HEAD `f53c9f4ca4165a0bbdecac332b84a89fe993e765`;
+- trava blobs causais de roteador/orquestrador/modalidade/contexto/referências/comandos/coordenador/regressão C1-B;
+- recusa se algum desses alvos já tiver alteração local/staged;
+- descobre e prova pytest antes do experimento;
+- roda regressões focadas C1-B1/P0/C1-A/R1.1;
+- usa `compatibilidade_contexto.texto_depende_de_contexto` real;
+- usa `DeteccaoDeterministicaRuntime` real;
+- usa `CicloComandosRuntime` real;
+- entra por `ComandosImediatosRuntime.processar_prioritarios`;
+- intercepta somente a borda final de execução em memória;
+- cobre falsificações: app válido, sem app, site-only e negação;
+- compara `git status --short` antes/depois;
+- não faz `git add`, commit ou push;
+- grava log/manifest fora do checkout.
+
+## Resultado esperado do baseline
+
+No cenário principal `maximiza` + Opera viva:
+
+```text
+modalidade `maximiza` autorizada ............ PASS
+callback real é referência linguística ...... False
+detector contextual app=opera ............... None
+orquestrador determinístico ................. None
+ciclo canônico resolver ..................... None
+porta pública processar_prioritarios ........ False
+executor spy alcançado ...................... 0 vez(es)
+working tree preservada ..................... True
+
+✅ C1-B2: VERMELHO FULL-CYCLE CAUSAL CONFIRMADO
+```
+
+Interpretação esperada:
+- C1-B1 continua verde: ação atual tem autoridade;
+- contexto operacional contém Opera;
+- o callback linguístico corretamente NÃO classifica `maximiza` como referência linguística;
+- o primeiro frontier vermelho continua sendo `detectar_janela_contextual`;
+- por isso nenhum candidato chega ao árbitro/executor da fase pública.
+
+Falsificações obrigatórias:
+- sem app: não fabrica alvo;
+- site-only: não fabrica app;
+- `Não maximiza.`: não ganha autoridade e nunca chega ao executor.
+
+## Relação com o patcher V2 de 22:40
+
+`aplicar_c1b2_turno155_runtime_real_teste3_6_v2.py` continua existente e reanalisado, SHA-256:
+`25828d45fb8d5510d31acee575cf7794ff5f12ae0be3cf73556849ffacf8c695`.
+
+Entretanto, **não executar o patcher enquanto este RED full-cycle não for rodado e auditado**.
+Não há evidência preservada nesta sessão de que o patcher V2 já tenha sido executado no checkout real.
+
+A dívida separada continua fora do escopo:
+`maximiza opera -> pera`.
+
+## Próximo passo exato
+
+Copiar o runner para a raiz da Laylay e executar:
+
+```powershell
+& C:\Python314\python.exe ".\red_c1b2_turno155_full_cycle_processar_prioritarios_teste3_6.py" --repo .
+```
+
+Se o RED fechar como esperado, enviar:
+- saída completa do terminal;
+- `laylay_red_artifacts_c1b2_full_cycle_turno155\log_red_c1b2_full_cycle_turno155.txt`;
+- `laylay_red_artifacts_c1b2_full_cycle_turno155\manifest_red_c1b2_full_cycle_turno155.json`.
+
+Só depois auditar essa prova e decidir se o patcher V2 de produção pode voltar a ser o próximo gate.
+
+---
+
 # ESTADO ATUAL — 2026-08-17 22:40 — C1-B2 PATCHER V2 REANALISADO
 
 ## Motivo da V2
