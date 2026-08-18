@@ -2406,3 +2406,559 @@ regressivos focados
 
 **C1-C continua OPEN.**
 
+---
+
+# ATUALIZAÇÃO SOBERANA — 18/08/2026 14H17 — TESTE 3.9 PÓS-CHAOS; SEGUNDA AUDITORIA PREPARADA
+
+> Esta seção supersede o próximo passo da atualização 12H13.
+>
+> O patch V4 já foi aplicado, commitado e submetido ao chaos real. C1-C ainda
+> não recebe CLOSED nesta atualização porque a segunda auditoria pós-chaos foi
+> preparada, mas ainda precisa ser executada no clone real do usuário.
+
+## 65. Novo HEAD real
+
+```text
+HEAD:
+a181b7bec50409dd7d3f976b3172389f76df7b8f
+commit: teste 3.9
+
+parent único:
+de749453599db0201f9f4cac20e2dc664d4a7b4a
+commit: teste 3.8
+```
+
+O commit é um salto direto de um parent e contém, dentro de `mente_laylay`,
+exatamente os quatro módulos aprovados pelo diff C1-C.
+
+## 66. Diff soberano preservado
+
+```text
+SHA-256 diff C1-C:
+88e0cd1e3ba52fb750fd90a332b8dad53ad3f6de51d5294b90841bb840e80e05
+
+stats:
++189 / -13
+```
+
+Blobs finais no HEAD 3.9:
+
+```text
+orquestrador_turno_runtime.py
+195b67abda420faf792509b20f1b8dd466e3b90e
+
+orquestrador_deterministico.py
+55a5ef1f4dfdf6c3b94ca40c7177ddce3fb6cf2c
+
+coordenador_intencao.py
+4e1b7be651bf0f4a5e2c11d284c76bff170abc26
+
+continuidade_contexto.py
+079bd53d7905c6a6389f0da58df972c5839eb797
+```
+
+Patcher commitado:
+
+```text
+patch_c1c_turno156_teste3_8_v4_PRODUCAO.py
+SHA-256:
+cc090fe7abb1aeaa56663cc5767a66a5f06d50cbade7a351a6798777afbd6f84
+```
+
+## 67. Gates causais preservados no 3.9
+
+```text
+comandos_imediatos.py
+27706613cb505219479664a664db038cac78c037
+
+roteador_deterministico.py
+46ab5da3aa94fdcf43d042f24e2f46f45e410ade
+
+arbitro_turno.py
+7756a15a8538291a118f8b4f3ab900157fa10927
+
+modalidade_turno.py
+80ddf3ac498cb9cf2cfdbb7d74e0e770d2d9e241
+
+revisao_turno.py
+222d92624899ed55cc74628869b376075b7e6a1c
+
+referencias_linguagem.py
+6f1b759fc190228a9f2c4e2c9620c716fe064b53
+
+retrato_turno.py
+c2a536c1351b02c9bca399d50d1d7862ed1a6b53
+
+esclarecimento_operacional.py
+369c51be3a3e5bd429837ff87517dc65d68034b7
+
+especialistas/operacional.py
+2ee4bbdeedd139f9b98e3611fc13442114c3835c
+
+compatibilidade_contexto.py
+768944f808002d8c24f697c0b2769a31d536eb3e
+```
+
+Conclusão desta parte:
+
+> O verde do chaos não veio de alteração escondida em autoridade, revisão,
+> referência global, especialista, árbitro ou porta pública.
+
+## 68. Chaos 3.9 travado
+
+Diretório:
+
+```text
+resultados_testes/roteiro_teste_laylay_caos-20260818-133137-456909
+```
+
+Blobs:
+
+```text
+terminal.log
+32a41c11fe16f4c78339b3e8edb7d1ab42776e6a
+
+checkpoint.json
+4fb8d953ac8a8e3a55a56aa5e786fa061412d74a
+
+resumo.json
+80e2bf62ae3e4f6ddabd009d0a7cef557653528b
+
+relatorio_semantico.md
+3b6a988e1713005bdc0e843429112be3b1c38c95
+
+conversa.md
+a8639aa416532ab627bc7d1c211146b87dc8a251
+```
+
+## 69. Corredor real 154–159
+
+Resultado observado:
+
+```text
+154 Abre o Opera.
+→ APP_OPEN opera
+→ ja_aberto_focado
+→ confirmado=True
+
+155 maximiza
+→ MAXIMIZE_WINDOW opera
+→ janela_maximizada
+→ executou=True
+→ confirmado=True
+
+156 esquerda
+→ ORGANIZAR_DESKTOP
+→ alvo=opera na esquerda
+→ layout_confirmado
+→ executou=True
+→ confirmado=True
+→ params:
+   left=opera
+   modo=posicionar
+   referencia_contextual=True
+   referencia_contextual_fonte=turno_atual.referencia_resolvida
+   direcao_original=esquerda
+
+157 agora a calculadora
+→ zero comando operacional
+
+158 direita
+→ zero comando operacional
+
+159 fecha ela
+→ CLOSE_APP opera
+→ app_fechado
+→ executou=True
+→ confirmado=True
+```
+
+O terminal registra como evidência do 156 a releitura da geometria e a
+comparação com o lado solicitado.
+
+## 70. O que o estudo pós-chaos provou
+
+### 70.1 C1-B2
+
+`maximiza` deixou de ser `SEM_INTENT` no caminho real e foi até executor +
+confirmação. O avaliador semântico marcou o turno 155 como `passou`.
+
+Estado candidato:
+
+```text
+C1-B2 end-to-end = pronto para CLOSED
+```
+
+### 70.2 C1-C
+
+A fala exata `esquerda` atravessou o runtime real e publicou o shape C1-C
+exato no executor. O resultado foi `layout_confirmado`, `executou=True`,
+`confirmado=True`.
+
+### 70.3 C1-D não vazou
+
+`direita` continuou sem comando operacional. `agora a calculadora` também
+continuou sem efeito. Portanto C1-D permanece root separado.
+
+### 70.4 Autoridade continua soberana
+
+No HEAD 3.9:
+
+```text
+fala original
+→ aplicar_elipse_espacial_autorizada_ao_turno(texto)
+→ construir retrato com texto_cognitivo
+→ reconciliar H(texto_cognitivo)
+→ especialistas
+→ plano
+```
+
+H exige autoridade já existente e não escreve `autoriza_execucao`.
+
+A porta pública continua usando:
+
+```text
+resolver_comando_natural(texto, "prioritario-linguagem-natural")
+→ coordenador
+→ árbitro
+→ executar_intencao
+→ registrar_resultado_execucao
+```
+
+O árbitro continua exigindo `turno.autoriza_execucao` para comando contextual
+com efeito.
+
+### 70.5 Rota não é inventada a partir do log
+
+O `terminal.log` 3.9 não imprime literalmente o rótulo
+`deterministico-contextual` no corredor. A prova da rota será feita por:
+
+1. produtor estrutural único do shape C1-C em `mente_laylay`;
+2. coordenador classificando esse shape como dependência operacional;
+3. candidato `comando_contextual` de origem `deterministico-contextual`;
+4. árbitro recebendo o `turno_atual`;
+5. porta pública publicando o executor real.
+
+Não afirmar linha de log inexistente.
+
+## 71. Falhas globais do chaos continuam separadas
+
+O chaos 3.9 possui outras falhas globais e maior latência no PC do SENAI.
+Isso não será usado nem para mascarar nem para reabrir C1-C sem causalidade.
+
+Achados laterais conhecidos:
+
+```text
+Maximiza ele. → intent/executor corretos, fala contradiz confirmação
+Fecha ela.    → apareceu plano bruto FECHA incompleto em outro corredor
+lembrete      → provável falso positivo de matcher de fala
+```
+
+Nenhum deles entra no patch/fechamento C1-C sem nova prova causal própria.
+
+## 72. Segunda auditoria pós-chaos
+
+Artefato:
+
+```text
+auditoria_final_pos_chaos_c1c_turno156_teste3_9.py
+SHA-256:
+e460c9485ff647cd45ff801628aa61918ae9345cb16118010b68f792340861e2
+```
+
+O auditor é self-contained e read-only.
+
+Ele trava:
+
+- HEAD e parent;
+- 4 blobs parent;
+- 4 blobs finais;
+- 10 blobs causais preservados;
+- 5 artefatos exatos do chaos;
+- SHA do patcher;
+- changed-set de produção exatamente 4;
+- diff soberano `88e0cd...` e stats `+189/-13`;
+- checkout/index causal limpo;
+- ordem autoridade → retrato → H → especialista;
+- H sem escrita de autoridade;
+- detector `esquerda` estrito e sem `direita`;
+- shape exato P/P1;
+- porta pública e árbitro preservados;
+- produtor único do metadata C1-C em produção;
+- corredor chaos único;
+- turnos 155/156 executados e confirmados;
+- 157/158 sem efeito;
+- 159 preservando continuidade;
+- 155/156 ausentes da lista de erros.
+
+Git usado pelo auditor:
+
+```text
+rev-parse
+rev-list
+show
+diff
+ls-tree
+```
+
+Nenhum Git mutante.
+
+Auditoria do próprio auditor:
+
+```text
+AST ...................................... PASS
+py_compile isolado ....................... PASS
+locks HEAD/parent/diff/patcher ........... PASS
+subcomandos Git somente read-only ........ PASS
+parser corredor 154-159 .................. PASS
+corredor duplicado falha fechado ......... PASS
+--help ................................... PASS
+fora de repo ............................. FAIL-CLOSED
+```
+
+## 73. Próximo comando
+
+Executar no clone do teste 3.9:
+
+```powershell
+& C:\Python314\python.exe ".\auditoria_final_pos_chaos_c1c_turno156_teste3_9.py"
+```
+
+Ou, se o arquivo estiver fora da raiz do repo:
+
+```powershell
+& C:\Python314\python.exe "CAMINHO\auditoria_final_pos_chaos_c1c_turno156_teste3_9.py" --repo "C:\Users\47796476817\Downloads\pasta organizada\projeto lay\projeto-laylay"
+```
+
+Fechamento esperado somente se todos os gates passarem:
+
+```text
+✅ C1-C CLOSED — SEGUNDA AUDITORIA PÓS-CHAOS PASSOU
+   C1-B2 end-to-end: CLOSED pela regressão real do turno 155
+   C1-C turno 156 `esquerda`: CLOSED
+   C1-D `agora a calculadora`/`direita`: OPEN, sem fechamento por tabela
+   produção alterada pelo auditor: NÃO
+```
+
+Se qualquer gate falhar, C1-C permanece OPEN e a primeira fronteira vermelha
+manda no diagnóstico. Não enfraquecer lock nem teste.
+
+---
+
+# ATUALIZAÇÃO SOBERANA — 18/08/2026 14H30 — C1-B2 E C1-C FORMALMENTE CLOSED
+
+> Esta seção supersede o estado pendente da atualização 14H17.
+>
+> Estado oficial:
+>
+> ```text
+> HEAD: a181b7bec50409dd7d3f976b3172389f76df7b8f
+> parent: de749453599db0201f9f4cac20e2dc664d4a7b4a
+> baseline commit: teste 3.9
+> diff soberano C1-C:
+> 88e0cd1e3ba52fb750fd90a332b8dad53ad3f6de51d5294b90841bb840e80e05
+>
+> C1-B2 end-to-end: CLOSED
+> C1-C `esquerda`: CLOSED
+> C1-D `agora a calculadora` / `direita`: OPEN
+> ```
+
+## 65. Segunda auditoria pós-chaos — PASS integral
+
+O usuário executou:
+
+```text
+auditoria_final_pos_chaos_c1c_turno156_teste3_9.py
+```
+
+Resultado integral:
+
+```text
+A HEAD + parent exatos ................................ PASS
+B blobs parent/finais C1-C ............................ PASS
+C gates causais preservados ........................... PASS
+D artefatos chaos travados ............................ PASS
+E patcher commitado por SHA-256 ....................... PASS
+F changed-set produção = exatamente 4 ................ PASS
+G diff soberano reproduzido ........................... PASS | +189/-13
+H checkout/index causal limpo ......................... PASS
+I contrato autoridade→alvo→proveniência ............... PASS
+J porta pública + árbitro preservados ................. PASS
+K produtor do shape C1-C único ........................ PASS
+L C1-D `direita` ausente do detector C1-C ............. PASS
+M chaos 154-159 localizado uma única vez .............. PASS
+N turno 155 `maximiza` executor+confirmação ........... PASS
+O turno 156 `esquerda` executor+geometria confirmada .. PASS
+P turno 157 `agora a calculadora` sem efeito .......... PASS
+Q turno 158 `direita` sem efeito ...................... PASS
+R turno 159 `fecha ela` continuidade preservada ....... PASS
+S relatório não marca 155/156 como erro ............... PASS
+```
+
+Banner final:
+
+```text
+✅ C1-C CLOSED — SEGUNDA AUDITORIA PÓS-CHAOS PASSOU
+   C1-B2 end-to-end: CLOSED pela regressão real do turno 155
+   C1-C turno 156 `esquerda`: CLOSED
+   C1-D `agora a calculadora`/`direita`: OPEN, sem fechamento por tabela
+   produção alterada pelo auditor: NÃO
+```
+
+## 66. Por que C1-C agora pode ser fechado sem ressalva
+
+A cadeia obrigatória foi provada integralmente:
+
+```text
+fala real
+→ turno congelado
+→ autoridade da fala atual
+→ contexto fornece somente alvo
+→ reconciliação H
+→ especialista
+→ detector determinístico
+→ proveniência contextual estreita
+→ coordenador
+→ árbitro
+→ porta pública
+→ executor real
+→ releitura da geometria
+→ publicação
+→ confirmação
+→ chaos
+→ segunda auditoria
+```
+
+Não existe mais dependência de:
+
+```text
+mirror artificial
+executor spy
+callback sintético
+gate falso
+inferência baseada apenas em shape
+```
+
+## 67. C1-B2 end-to-end também está CLOSED
+
+Turno 155:
+
+```text
+maximiza
+→ MAXIMIZE_WINDOW
+→ alvo=opera
+→ status=janela_maximizada
+→ executou=True
+→ confirmado=True
+```
+
+Portanto o root histórico do 155 finalmente possui evidência soberana de runtime real + chaos.
+
+Estado:
+
+```text
+C1-B1 ........................ CLOSED
+C1-B2 detector ............... CLOSED
+C1-B2 end-to-end ............. CLOSED
+```
+
+## 68. C1-C CLOSED
+
+Turno 156:
+
+```text
+esquerda
+→ ORGANIZAR_DESKTOP
+→ left=opera
+→ modo=posicionar
+→ referencia_contextual=True
+→ referencia_contextual_fonte=turno_atual.referencia_resolvida
+→ direcao_original=esquerda
+→ status=layout_confirmado
+→ executou=True
+→ confirmado=True
+```
+
+A confirmação real relê a geometria da janela e compara com o lado solicitado.
+
+Estado:
+
+```text
+C1-C implementação ........... CLOSED
+C1-C produção ................ CLOSED
+C1-C porta pública ........... CLOSED
+C1-C executor/publicação ..... CLOSED
+C1-C chaos ................... CLOSED
+C1-C segunda auditoria ....... CLOSED
+```
+
+## 69. Não houve fechamento por tabela de C1-D
+
+No mesmo chaos:
+
+```text
+157 agora a calculadora
+→ nenhum comando
+
+158 direita
+→ nenhum comando
+```
+
+Logo:
+
+```text
+C1-D `agora a calculadora` ... OPEN
+C1-D `direita` ............... OPEN
+```
+
+Isso é desejável.
+
+A ausência de efeito prova que o patch C1-C permaneceu estreito e não generalizou `direita`.
+
+## 70. Roots laterais continuam separados
+
+Não misturar com C1-D ou C1-C:
+
+```text
+turno 112 `Maximiza ele.`
+→ possível dívida de coerência fala/confirmabilidade
+
+turno 179 `Fecha ela.`
+→ comando cru FECHA + CLOSE_APP; root lateral de plano/IA
+
+turno 189 lembrete
+→ provável falso positivo do avaliador semântico
+
+latência/confirmabilidade global do chaos no SENAI
+→ ambiente/dependências externas; root separado
+```
+
+Nenhum desses sintomas reabre C1-B2 ou C1-C.
+
+## 71. Próximo root soberano
+
+Próximo corredor:
+
+```text
+157 agora a calculadora
+158 direita
+```
+
+Nome de trabalho:
+
+```text
+C1-D — CONTINUAÇÃO DE LAYOUT / TROCA DE ALVO + DIREÇÃO
+```
+
+Antes de qualquer patch:
+
+1. congelar comportamento atual;
+2. decidir semanticamente o contrato de `agora a calculadora`;
+3. separar mudança de alvo de execução;
+4. provar se `direita` herda apenas o alvo tipado correto;
+5. repetir falsificações de pergunta, negação, metalinguagem e pendência ativa;
+6. não reutilizar C1-C de forma ampla;
+7. não tocar em C1-B2/C1-C fechados sem nova evidência causal.
+
+**C1-B2 e C1-C não devem mais ser modificados durante C1-D sem prova explícita de regressão.**
+

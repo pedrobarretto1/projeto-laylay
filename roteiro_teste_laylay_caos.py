@@ -48,7 +48,7 @@ para
 fecha
 abre
 Opera
-Calculadora
+microsoft store
 banana
 paralelepípedo
 42
@@ -61,10 +61,10 @@ None
 # BLOCO B — ERROS DE DIGITAÇÃO / ACENTOS / CAIXA / PONTUAÇÃO
 # ---------------------------------------------------------------------------
 abre a calcuradora
-fexa a calculadora
+fexa a microsoft store
 ABRE O OPERA
 fecha o opera por favorrr
-abre    a    calculadora
+abre    a    microsoft store
 abre a wikipedia???
 pesquiza documentacao python
 pessquisa documentação oficial do python
@@ -81,9 +81,9 @@ qual o clma amanha em boituva
 # ---------------------------------------------------------------------------
 # BLOCO C — NEGAÇÃO / HIPÓTESE / PERGUNTA NÃO AUTORIZADORA
 # ---------------------------------------------------------------------------
-Como eu abriria a Calculadora?
-Não abra a Calculadora.
-Talvez eu abra a Calculadora depois.
+Como eu abriria a microsoft store?
+Não abra a microsoft store.
+Talvez eu abra a microsoft store depois.
 Eu poderia abrir o Opera agora?
 Se eu quisesse fechar o Opera, como faria?
 Não feche o Opera.
@@ -132,8 +132,8 @@ Onde fica o troca ideia.txt?
 # ---------------------------------------------------------------------------
 # BLOCO E — AUTOCORREÇÃO NA MESMA FRASE
 # ---------------------------------------------------------------------------
-Abre o Opera... não, abre a Calculadora.
-Fecha a Calculadora... quer dizer, maximiza ela.
+Abre o Opera... não, abre a microsoft store.
+Fecha a microsoft store... quer dizer, maximiza ela.
 Abre a Wikipédia, não, melhor o Prime Video.
 Pesquisa Python... pera, não pesquisa nada.
 Liga a lâmpada... não, deixa desligada.
@@ -146,11 +146,11 @@ Onde fica o correcao.txt?
 # ---------------------------------------------------------------------------
 # BLOCO F — REFERÊNCIAS / PRONOMES / AMBIGUIDADE
 # ---------------------------------------------------------------------------
-Abre a Calculadora.
+Abre a microsoft store.
 Abre o Opera.
 Fecha ele.
 Qual deles você fechou?
-Abre a Calculadora de novo.
+Abre a microsoft store de novo.
 Coloca ela na direita.
 Coloca o outro na esquerda.
 Maximiza ele.
@@ -174,10 +174,10 @@ Resume agora.
 # ---------------------------------------------------------------------------
 Se o Opera estiver aberto, só me diga; não mexa nele.
 O Opera está aberto?
-Se a Calculadora não estiver aberta, abre; se já estiver, só me avisa.
-A Calculadora está aberta?
+Se a microsoft store não estiver aberta, abre; se já estiver, só me avisa.
+A microsoft store está aberta?
 Se ela estiver aberta, maximiza; se não estiver, não faça nada.
-A Calculadora continua aberta?
+A microsoft store continua aberta?
 Se o Prime Video já estiver aberto em uma aba, não abra outra.
 O Prime Video está aberto?
 Se a lâmpada estiver ligada, só me diga o estado.
@@ -190,9 +190,9 @@ Como ela ficou?
 # ---------------------------------------------------------------------------
 # BLOCO H — MÚLTIPLAS AÇÕES NA MESMA FRASE
 # ---------------------------------------------------------------------------
-Abre a Calculadora e coloca ela na direita.
+Abre a microsoft store e coloca ela na direita.
 Abre o Opera e coloca ele na esquerda.
-Maximiza a Calculadora e depois volta o foco para o Opera.
+Maximiza a microsoft store e depois volta o foco para o Opera.
 Abre a Wikipédia, pesquisa documentação oficial do Python e abre o primeiro resultado.
 Volta para a aba anterior e depois me diz qual aba está aberta.
 Coloca a playlist VMZ, pausa a música e me diz o estado dela.
@@ -210,7 +210,7 @@ Desliga a lâmpada e confirma o estado.
 Abre o Opera.
 maximiza
 esquerda
-agora a calculadora
+agora a microsoft store
 direita
 fecha ela
 e o outro?
@@ -234,10 +234,10 @@ o que tem nela?
 # ---------------------------------------------------------------------------
 # BLOCO J — TROCA BRUSCA DE ASSUNTO / CONTEXTO VELHO NÃO PODE VAZAR
 # ---------------------------------------------------------------------------
-Abre a Calculadora.
+Abre a microsoft store.
 Quanto é sete vezes oito?
 Fecha ela.
-Eu estava falando da calculadora ou da conta?
+Eu estava falando da microsoft store ou da conta?
 Coloca a playlist VMZ.
 Qual a capital do Japão?
 Pausa.
@@ -276,7 +276,7 @@ O que você lembra sobre meus gostos?
 # BLOCO L — PERGUNTAS E FRASES QUE PARECEM COMANDO
 # ---------------------------------------------------------------------------
 Abrir o Opera é uma boa ideia?
-Fechar a Calculadora economiza muita memória?
+Fechar a microsoft store economiza muita memória?
 Pesquisar Python no navegador é melhor do que perguntar para você?
 Apagar um arquivo manda ele para a lixeira?
 Ligar a lâmpada gasta muita energia?
@@ -289,17 +289,17 @@ O que acontece se eu disser apenas "sim"?
 # ---------------------------------------------------------------------------
 # BLOCO M — PONTUAÇÃO, FORMATAÇÃO E FRASES LONGAS
 # ---------------------------------------------------------------------------
-abre a calculadora, por favor
-abre a calculadora!!!
-...abre a calculadora...
-"abre a calculadora"
-abre a calculadora?
-abre a calculadora ou não?
-eu estava pensando que talvez fosse interessante abrir a calculadora, mas só estou pensando, não quero que você faça isso agora
-eu quero que você abra a calculadora, coloque ela na direita, confira se ficou aberta e só então me diga o resultado
-abre o opera e a calculadora mas não fecha nenhum dos dois e não mexe no navegador além disso
-fecha só a calculadora, não o opera
-fecha só o opera, deixa a calculadora quieta
+abre a microsoft store, por favor
+abre a microsoft store!!!
+...abre a microsoft store...
+"abre a microsoft store"
+abre a microsoft store?
+abre a microsoft store ou não?
+eu estava pensando que talvez fosse interessante abrir a microsoft store, mas só estou pensando, não quero que você faça isso agora
+eu quero que você abra a microsoft store, coloque ela na direita, confira se ficou aberta e só então me diga o resultado
+abre o opera e a microsoft store mas não fecha nenhum dos dois e não mexe no navegador além disso
+fecha só a microsoft store, não o opera
+fecha só o opera, deixa a microsoft store quieta
 qual dos dois ainda está aberto?
 
 # ---------------------------------------------------------------------------
@@ -324,7 +324,7 @@ isso foi uma mensagem normal, não um comando
 ignore a palavra abre nesta frase
 a palavra fecha não é um pedido para fechar nada
 estou apenas escrevendo: abre o opera
-aspas: "fecha a calculadora"
+aspas: "fecha a microsoft store"
 fim
 
 # ---------------------------------------------------------------------------
@@ -355,16 +355,16 @@ EXPECTATIVAS = {
     "ué": {"sem_efeito_colateral": True},
     "banana": {"sem_efeito_colateral": True},
     "🗿": {"sem_efeito_colateral": True},
-    "Como eu abriria a Calculadora?": {"proibido": ["APP_OPEN"]},
-    "Não abra a Calculadora.": {"proibido": ["APP_OPEN"]},
-    "Talvez eu abra a Calculadora depois.": {"proibido": ["APP_OPEN"]},
+    "Como eu abriria a microsoft store?": {"proibido": ["APP_OPEN"]},
+    "Não abra a microsoft store.": {"proibido": ["APP_OPEN"]},
+    "Talvez eu abra a microsoft store depois.": {"proibido": ["APP_OPEN"]},
     "Se o Opera estiver aberto, só me diga; não mexa nele.": {
         "esperado": ["LIST_WINDOWS"],
         "proibido": ["APP_OPEN", "CLOSE_APP"],
     },
-    "Abre o Opera... não, abre a Calculadora.": {
+    "Abre o Opera... não, abre a microsoft store.": {
         "esperado": ["APP_OPEN"],
-        "alvo_final": "calculadora",
+        "alvo_final": "microsoft store",
     },
     "Pesquisa Python... pera, não pesquisa nada.": {
         "proibido": ["SEARCH"],
