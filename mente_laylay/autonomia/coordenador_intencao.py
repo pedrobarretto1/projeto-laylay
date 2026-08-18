@@ -100,6 +100,8 @@ def _intencao_deterministica_tem_alvo_explicito(resultado: Any, texto: str) -> b
             return True
         return not valor_e_referencia_contextual(alvo)
     if intent == "ORGANIZAR_DESKTOP":
+        if _eh_elipse_espacial_c1c_contextual(resultado):
+            return False
         if str(params.get("modo") or "").casefold() == "automatico":
             return True
         lados = [
@@ -147,6 +149,36 @@ def _intencao_deterministica_tem_alvo_explicito(resultado: Any, texto: str) -> b
         # habilidade; não há motivo para fazê-la esperar pela LLM local.
         return True
     return False
+
+
+def _eh_elipse_espacial_c1c_contextual(resultado: Any) -> bool:
+    """Reconhece somente o shape exato publicado pela elipse C1-C."""
+    if not isinstance(resultado, dict):
+        return False
+    if _normalizar_intent(resultado) != "ORGANIZAR_DESKTOP":
+        return False
+    params = resultado.get("params") if isinstance(resultado.get("params"), dict) else {}
+    chaves_esperadas = {
+        "left",
+        "modo",
+        "referencia_contextual",
+        "referencia_contextual_fonte",
+        "direcao_original",
+    }
+    if set(params) != chaves_esperadas:
+        return False
+    return bool(
+        str(params.get("modo") or "").casefold() == "posicionar"
+        and params.get("referencia_contextual") is True
+        and str(params.get("referencia_contextual_fonte") or "")
+        == "turno_atual.referencia_resolvida"
+        and str(params.get("direcao_original") or "").casefold() == "esquerda"
+        and str(params.get("left") or "").strip()
+    )
+
+
+def _intencao_deterministica_depende_contexto_operacional(resultado: Any) -> bool:
+    return _eh_elipse_espacial_c1c_contextual(resultado)
 
 
 def resolver_referencias_da_intencao(
@@ -438,6 +470,12 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
 
     candidatos: list[CandidatoDecisao] = []
     det_explicito = _intencao_deterministica_tem_alvo_explicito(intent_deterministica, texto_deteccao)
+    det_contexto_operacional = _intencao_deterministica_depende_contexto_operacional(
+        intent_deterministica
+    )
+    depende_contexto_deterministico = bool(
+        depende_contexto or det_contexto_operacional
+    )
     if isinstance(continuidade_aditiva, dict) and continuidade_aditiva:
         candidatos.append(CandidatoDecisao(
             tipo="comando_contextual",
@@ -446,7 +484,9 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
             confianca=0.97,
             evidencia=("continuidade oficial compatível", "operação aditiva segura"),
         ))
-    elif isinstance(intent_deterministica, dict) and (not depende_contexto or det_explicito):
+    elif isinstance(intent_deterministica, dict) and (
+        not depende_contexto_deterministico or det_explicito
+    ):
         candidatos.append(CandidatoDecisao(
             tipo="comando_explicito",
             valor=intent_deterministica,
@@ -486,14 +526,18 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
             evidencia=("referencia a ultima acao",),
         ))
 
-    if depende_contexto and not continuidade_aditiva:
+    if depende_contexto_deterministico and not continuidade_aditiva:
         if isinstance(intent_deterministica, dict) and not det_explicito:
             candidatos.append(CandidatoDecisao(
                 tipo="comando_contextual",
                 valor=intent_deterministica,
                 origem="deterministico-contextual",
                 confianca=0.62,
-                evidencia=("deteccao deterministica dependente de contexto",),
+                evidencia=(
+                    "deteccao deterministica dependente de contexto operacional"
+                    if det_contexto_operacional
+                    else "deteccao deterministica dependente de contexto",
+                ),
             ))
 
     arbitragem = arbitrar_turno(

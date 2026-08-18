@@ -65,6 +65,48 @@ def _call(ctx: Mapping[str, Any], nome: str, *args: Any, default: Any = None, **
     return default
 
 
+def _detectar_elipse_espacial_confirmada(
+    texto: str,
+    mente: Mapping[str, Any] | None,
+) -> Dict[str, Any] | None:
+    """Materializa somente a elipse que o planejamento atual já autorizou."""
+    if str(texto or "").casefold().strip() != "esquerda":
+        return None
+    estado = dict(mente or {}) if isinstance(mente, Mapping) else {}
+    turno = dict(estado.get("turno_atual") or {})
+    if str(turno.get("texto") or "").casefold().strip() != "esquerda":
+        return None
+    if not bool(turno.get("autoriza_execucao")):
+        return None
+    if bool(turno.get("requer_esclarecimento")):
+        return None
+
+    elipse = dict(turno.get("elipse_operacional") or {})
+    if (
+        str(elipse.get("tipo") or "") != "posicionamento_janela"
+        or str(elipse.get("direcao") or "") != "left"
+        or str(elipse.get("alvo_requerido") or "") != "app"
+    ):
+        return None
+
+    referencia = dict(turno.get("referencia_resolvida") or {})
+    tipo = str(referencia.get("tipo") or "").casefold()
+    nome = str(referencia.get("nome") or "").strip()
+    if tipo != "app" or not nome:
+        return None
+
+    return {
+        "intent": "ORGANIZAR_DESKTOP",
+        "params": {
+            "left": nome,
+            "modo": "posicionar",
+            "referencia_contextual": True,
+            "referencia_contextual_fonte": "turno_atual.referencia_resolvida",
+            "direcao_original": "esquerda",
+        },
+    }
+
+
 def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -> Dict[str, Any] | None:
     """Executa a cadeia deterministica em ordem, usando dependencias injetadas."""
     # Esta decisão usa obrigatoriamente a fala original. Normalizações feitas
@@ -94,6 +136,10 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         return consulta_lista_iot
 
     mente_previa = _get(ctx, "mente_integrada_estado", {})
+    elipse_espacial = _detectar_elipse_espacial_confirmada(texto, mente_previa)
+    if elipse_espacial:
+        return elipse_espacial
+
     ultimo_intent_previo = str(
         (mente_previa or {}).get("ultima_acao_intent")
         or (mente_previa or {}).get("ultima_intencao")

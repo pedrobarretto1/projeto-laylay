@@ -72,6 +72,13 @@ def classificar_pergunta_com_proposito(texto: str) -> Dict[str, str]:
         return {"pergunta": pergunta, "proposito": proposito, "resposta_esperada": esperado}
     if any(s in base for s in ("qual voce prefere", "qual você prefere", "qual prefere", "qual deles", "qual delas", "uma ou outra", "ou prefere")):
         return {"pergunta": pergunta, "proposito": "escolha", "resposta_esperada": "opcao"}
+    if re.search(
+        r"\b(?:voce|você|tu)\s+prefere\b[^?]{0,120}\b"
+        r"(?:esquerda\b[^?]{0,60}\bou\b[^?]{0,60}\bdireita|"
+        r"direita\b[^?]{0,60}\bou\b[^?]{0,60}\besquerda)\b[^?]*\?\s*$",
+        base,
+    ):
+        return {"pergunta": pergunta, "proposito": "escolha", "resposta_esperada": "opcao"}
     if any(s in base for s in ("quer que eu explique", "quer que eu detalhe", "posso explicar", "posso detalhar", "quer aprofundar", "quer ir mais fundo")):
         return {"pergunta": pergunta, "proposito": "aprofundamento", "resposta_esperada": "sim_ou_nao"}
     return {}

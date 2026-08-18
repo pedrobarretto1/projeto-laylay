@@ -161,22 +161,86 @@ def aplicar_repeticao_operacional_ao_turno(turno: dict, repeticao: object) -> di
     )
     return resultado
 
-def reconciliar_alvo_eliptico_janela_confirmado(texto: str, *, turno: dict, retrato: dict, mente: dict) -> tuple[dict, dict]:
-    """Resolve somente o alvo contextual comprovado do `maximiza` exato.
 
-    Não cria autoridade. A ação precisa já estar autorizada e o mesmo app
-    precisa existir simultaneamente em `ultimo_app_janela` e na entidade app
-    congelada do retrato.
-    """
+def _forma_elipse_espacial_exata(texto: str) -> str:
+    """Retorna somente a direção espacial curta explicitamente coberta por C1-C."""
+    bruto = str(texto or "").casefold().strip()
+    return "left" if bruto == "esquerda" else ""
+
+
+def _pendencia_veta_elipse_espacial(pendencia: object) -> bool:
+    """Uma fala curta ambígua nunca fura uma pendência ativa já falada."""
+    p = dict(pendencia or {}) if isinstance(pendencia, dict) else {}
+    if not p:
+        return False
+    status = str(p.get("status") or "").casefold()
+    foi_falada = p.get("foi_falada")
+    # No ciclo real `pendencia_turno` já veio de `pendencia_ativa`, mas esta
+    # guarda local mantém o helper fail-closed quando chamado isoladamente.
+    return bool(
+        status in {"", "ativa"}
+        and foi_falada is not False
+        and (p.get("id") or p.get("tipo") or p.get("origem"))
+    )
+
+
+def aplicar_elipse_espacial_autorizada_ao_turno(
+    texto: str,
+    *,
+    turno: dict,
+    pendencia_turno: object = None,
+) -> dict:
+    """Autoriza só a ação espacial dita agora; o alvo continua pendente."""
+    leitura = dict(turno or {})
+    direcao = _forma_elipse_espacial_exata(texto)
+    if not direcao:
+        return leitura
+    if _pendencia_veta_elipse_espacial(pendencia_turno):
+        return leitura
+    leitura.update(
+        modalidade="comando",
+        modalidade_geral="comando",
+        ato_principal="comando",
+        texto_operacional="esquerda",
+        confianca=max(0.98, float(leitura.get("confianca") or 0.0)),
+        motivo="direção espacial elíptica explicitamente pedida",
+        motivo_decisao="direção espacial elíptica explicitamente pedida",
+        acao_explicita=True,
+        autoriza_execucao=True,
+        requer_esclarecimento=True,
+        depende_contexto=True,
+        natureza_acao="pedido_direto",
+        elipse_operacional={
+            "tipo": "posicionamento_janela",
+            "direcao": direcao,
+            "alvo_requerido": "app",
+        },
+    )
+    return leitura
+
+
+def reconciliar_alvo_eliptico_janela_confirmado(texto: str, *, turno: dict, retrato: dict, mente: dict) -> tuple[dict, dict]:
+    """Resolve alvo de janela já autorizado sem transformar contexto em autoridade."""
     leitura = dict(turno or {})
     snapshot = dict(retrato or {})
-    forma = str(texto or "").casefold().strip(" \t\r\n.,!?;:")
-    if forma != "maximiza":
+    forma_max = str(texto or "").casefold().strip(" \t\r\n.,!?;:")
+    forma_espacial = _forma_elipse_espacial_exata(texto)
+    elipse = dict(leitura.get("elipse_operacional") or {})
+
+    eh_maximiza = forma_max == "maximiza"
+    eh_espacial = bool(
+        forma_espacial
+        and str(elipse.get("tipo") or "") == "posicionamento_janela"
+        and str(elipse.get("direcao") or "") == forma_espacial
+        and str(elipse.get("alvo_requerido") or "") == "app"
+    )
+    if not (eh_maximiza or eh_espacial):
         return leitura, snapshot
     if not bool(leitura.get("autoriza_execucao")):
         return leitura, snapshot
     if not bool(leitura.get("requer_esclarecimento")):
         return leitura, snapshot
+
     ultimo_app = str(dict(mente or {}).get("ultimo_app_janela") or "").strip()
     entidade_app = dict(dict(snapshot.get("entidades") or {}).get("app") or {})
     nome_app = str(entidade_app.get("nome") or "").strip()
@@ -184,6 +248,7 @@ def reconciliar_alvo_eliptico_janela_confirmado(texto: str, *, turno: dict, retr
         return leitura, snapshot
     if ultimo_app.casefold() != nome_app.casefold():
         return leitura, snapshot
+
     referencia = dict(entidade_app)
     snapshot["referencia_tipo"] = "app"
     snapshot["referencia_resolvida"] = referencia
@@ -191,8 +256,13 @@ def reconciliar_alvo_eliptico_janela_confirmado(texto: str, *, turno: dict, retr
     leitura["depende_contexto"] = True
     leitura["referencia_resolvida"] = referencia
     leitura["alvo_contextual_resolvido"] = {
-        "tipo": "app", "nome": nome_app,
-        "origem": "elipse_operacional_maximiza_confirmada",
+        "tipo": "app",
+        "nome": nome_app,
+        "origem": (
+            "elipse_operacional_maximiza_confirmada"
+            if eh_maximiza
+            else "elipse_operacional_espacial_confirmada"
+        ),
     }
     return leitura, snapshot
 
@@ -333,6 +403,15 @@ def _iniciar_planejamento_turno(
                 f"tipo={revisao_intra_turno.get('tipo')} | "
                 f"efetivo={texto_efetivo!r}"
             )
+
+    # C1-C: a direção atual pode conceder autoridade estreita por si.
+    # Qualquer pendência ativa já falada veta esta elipse ambígua; contexto só
+    # reduz autoridade e nunca fornece a permissão operacional da fala atual.
+    turno = aplicar_elipse_espacial_autorizada_ao_turno(
+        texto,
+        turno=turno,
+        pendencia_turno=pendencia_turno,
+    )
 
     # Uma revisão atual não pode ser reinterpretada como repetição da ação
     # anterior só porque a proposta final contém "continua", "de novo" etc.
