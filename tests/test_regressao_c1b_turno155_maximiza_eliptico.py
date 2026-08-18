@@ -7,11 +7,16 @@ A fala atual autoriza maximização; contexto só pode fornecer app válido.
 
 from __future__ import annotations
 
+import re
+
 from mente_laylay.autonomia.roteador_deterministico import detectar_janela_contextual
 from mente_laylay.cognicao.arbitro_turno import CandidatoDecisao, arbitrar_turno
 from mente_laylay.cognicao.modalidade_turno import (
     bloqueia_execucao_operacional_prioritaria,
     classificar_modalidade_turno,
+)
+from mente_laylay.memoria_mental.compatibilidade_contexto import (
+    texto_depende_de_contexto as texto_depende_de_contexto_runtime,
 )
 
 
@@ -34,13 +39,22 @@ def _estado_sem_app() -> dict:
     }
 
 
+def _normalizar(texto: str) -> str:
+    return re.sub(r"\s+", " ", str(texto or "").casefold()).strip(" .,!?:;")
+
+
 def _depende_contexto(texto: str) -> bool:
-    return bool(classificar_modalidade_turno(texto).get("depende_contexto"))
+    return bool(
+        texto_depende_de_contexto_runtime(
+            texto,
+            _normalizar,
+        )
+    )
 
 
 def _detectar(texto: str, estado: dict | None):
     return detectar_janela_contextual(
-        texto.casefold().strip(" .,!?:;"),
+        _normalizar(texto),
         params_cb=_params,
         estado_mental=dict(estado or {}),
         texto_depende_de_contexto=_depende_contexto,
@@ -52,6 +66,11 @@ def test_guard_c1b_maximiza_puro_ja_e_acao_explicita_contextual_com_alvo_pendent
     assert turno.get("acao_explicita") is True, turno
     assert turno.get("depende_contexto") is True, turno
     assert turno.get("requer_esclarecimento") is True, turno
+
+
+def test_guard_c1b_callback_runtime_nao_promove_maximiza_a_referencia_linguistica():
+    assert _depende_contexto("maximiza") is False
+    assert _depende_contexto("maximiza ele") is True
 
 
 def test_guard_c1b_detector_ja_materializa_maximize_window_com_app_vivo():

@@ -960,11 +960,15 @@ def detectar_janela_contextual(
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
     depende_contexto = texto_depende_de_contexto if callable(texto_depende_de_contexto) else (lambda valor: False)
 
-    referencia_janela_contextual = (
+    # C1-B2: referência linguística e elipse operacional são contratos
+    # diferentes. `maximiza` puro pode procurar um alvo de app já confirmado,
+    # sem ser promovido a referência linguística e sem fabricar autoridade.
+    referencia_linguistica = (
         bool(depende_contexto(t))
         or any(v in t for v in ["ele", "ela", "isso"])
     )
-    if not referencia_janela_contextual:
+    acao_janela_eliptica = t == "maximiza"
+    if not (referencia_linguistica or acao_janela_eliptica):
         return None
     if not any(v in t for v in ["foco", "na frente", "pra frente", "para frente", "tela cheia", "fullscreen", "maximiza", "maximizar"]):
         return None
