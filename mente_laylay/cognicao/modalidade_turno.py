@@ -476,12 +476,22 @@ def _classificar_modalidade_base(
         palavras = t.split()
         alvo_pronominal = bool(re.search(r"\b(?:ele|ela|isso|essa|esse|aquela|aquele)\b", t))
         alvo_ausente = len(palavras) <= 1
+        # C1-B: em ``maximiza`` a ação mutante está explícita no turno atual.
+        # O alvo continua pendente e só pode ser fornecido pelo contexto tipado;
+        # esta exceção não transforma outros verbos sem alvo em autorização.
+        acao_eliptica_contextual_autorizada = bool(
+            alvo_ausente
+            and t == "maximiza"
+        )
         resultado.update(
             modalidade="comando",
             confianca=0.98 if (imperativo_direto or pedido_para_mim) and not alvo_ausente else 0.82,
             motivo="pedido prático explícito" if not alvo_ausente else "verbo operacional sem alvo",
             acao_explicita=True,
-            autoriza_execucao=not alvo_ausente,
+            autoriza_execucao=(
+                not alvo_ausente
+                or acao_eliptica_contextual_autorizada
+            ),
             requer_esclarecimento=alvo_ausente,
             depende_contexto=alvo_pronominal or alvo_ausente,
             natureza_acao="pedido_direto",
