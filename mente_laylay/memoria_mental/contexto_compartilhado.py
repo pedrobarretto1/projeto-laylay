@@ -122,12 +122,78 @@ def contrato_confirma_referencia_operacional(
         )
     )
 
+def _alvo_unico_layout_c1d(params: Dict[str, Any] | None) -> str:
+    dados = dict(params or {})
+    valores = [
+        str(dados.get(chave) or "").strip()
+        for chave in ("left", "right", "esquerda", "direita")
+        if str(dados.get(chave) or "").strip()
+    ]
+    return valores[0] if len(valores) == 1 else ""
+
+
+def _shape_layout_contextual_c1d(params: Dict[str, Any] | None) -> bool:
+    dados = dict(params or {})
+    return bool(
+        str(dados.get("modo") or "").casefold() == "posicionar"
+        and dados.get("referencia_contextual") is True
+        and str(dados.get("referencia_contextual_fonte") or "") == "turno_atual.referencia_resolvida"
+        and str(dados.get("direcao_original") or "").casefold().strip() in {"direita", "right", "esquerda", "left"}
+        and _alvo_unico_layout_c1d(dados)
+    )
+
+
+def descrever_quarentena_referencia_app(
+    estado_atual: Dict[str, Any] | None,
+    *,
+    ttl_s: float = 300.0,
+) -> Dict[str, Any]:
+    estado = dict(estado_atual or {})
+    intent = str(
+        estado.get("ultima_acao_intent")
+        or dict(estado.get("ultima_acao_contrato") or {}).get("intent")
+        or ""
+    ).upper().strip()
+    if intent != "ORGANIZAR_DESKTOP":
+        return {}
+    try:
+        ts = float(estado.get("ultima_acao_ts") or 0.0)
+    except (TypeError, ValueError):
+        return {}
+    idade = time.time() - ts if ts else ttl_s + 1.0
+    if not ts or idade > ttl_s:
+        return {}
+    if estado.get("ultima_acao_promovivel") is not False or estado.get("ultima_acao_confirmada") is True:
+        return {}
+    params = dict(estado.get("ultima_acao_params") or {})
+    if not _shape_layout_contextual_c1d(params):
+        return {}
+    tentado = _alvo_unico_layout_c1d(params)
+    confirmado = str(estado.get("ultimo_app_janela") or "").strip()
+    if not tentado or not confirmado or tentado.casefold() == confirmado.casefold():
+        return {}
+    return {
+        "ativa": True,
+        "dominio": "app",
+        "alvo_tentado": tentado,
+        "referente_confirmado": confirmado,
+        "intent": intent,
+        "motivo": "tentativa_contextual_layout_sem_confirmacao",
+        "idade_s": max(0.0, idade),
+    }
+
 
 def _resultado_pode_promover_referencia(
     contrato: ResultadoAcao, status: str,
 ) -> bool:
-    """Separa a última tentativa do último referente operacional válido."""
     status_norm = str(status or "").strip().casefold()
+    if str(contrato.intent or "").upper().strip() == "ORGANIZAR_DESKTOP":
+        return contrato_confirma_referencia_operacional(
+            intent=contrato.intent,
+            status=status_norm,
+            executou=contrato.executou,
+            confirmado=contrato.confirmado,
+        )
     marcadores_falha = (
         "falha", "erro", "indispon", "nao_encontr", "não_encontr",
         "sem_resultado", "cancel", "recus", "expirad", "alvo_ausente",
@@ -137,11 +203,7 @@ def _resultado_pode_promover_referencia(
     )
     if any(marcador in status_norm for marcador in marcadores_falha):
         return False
-    pendente = (
-        status_norm.startswith("aguardando")
-        or status_norm.startswith("pendente")
-        or status_norm.endswith("_pendente")
-    )
+    pendente = status_norm.startswith("aguardando") or status_norm.startswith("pendente") or status_norm.endswith("_pendente")
     if pendente:
         return True
     return bool(
@@ -473,9 +535,11 @@ def enriquecer_resultado_execucao_contextual(
             estado["ultima_habilidade"] = "iot"
             estado["ultimo_escopo"] = "casa"
 
+        alvo_layout = _alvo_unico_layout_c1d(params) if intent == "ORGANIZAR_DESKTOP" else ""
         alvo_foco = str(
             params.get("alvo")
             or params.get("nome_app")
+            or alvo_layout
             or params.get("nome_playlist")
             or params.get("destino")
             or params.get("query")
@@ -490,6 +554,7 @@ def enriquecer_resultado_execucao_contextual(
             "APP_OPEN": "janela",
             "CLOSE_APP": "janela",
             "MAXIMIZE_WINDOW": "janela",
+            "ORGANIZAR_DESKTOP": "janela",
             "OPEN_URL": "site",
             "CLOSE_TAB": "site",
             "SITE_ENTER": "site",

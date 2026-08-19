@@ -13,6 +13,7 @@ from mente_laylay.cognicao.orquestrador_turno_runtime import (
 
 
 DEPENDENCIAS_ORQUESTRACAO_TURNO = (
+    "APPS_MAP",
     "_abrir_correcao_interpretacao_mente",
     "_analisar_funcao_comunicativa_mente",
     "_analisar_identidade_turno_mente",

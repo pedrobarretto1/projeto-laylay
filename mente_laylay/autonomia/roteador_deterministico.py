@@ -946,7 +946,7 @@ def detectar_organizacao_desktop(
     return None
 
 
-def detectar_janela_contextual(
+def _detectar_janela_contextual_base_c1d(
     texto_normalizado: str,
     *,
     params_cb: Callable[..., Dict[str, Any]],
@@ -991,6 +991,30 @@ def detectar_janela_contextual(
     if any(v in t for v in ["tela cheia", "fullscreen", "maximiza", "maximizar"]):
         return {"intent": "MAXIMIZE_WINDOW", "params": params(nome_app=ultimo_app)}
     return {"intent": "APP_OPEN", "params": params(nome_app=ultimo_app, modo="focus")}
+
+def detectar_janela_contextual(
+    texto_normalizado: str,
+    *,
+    params_cb: Callable[..., Dict[str, Any]],
+    estado_mental: Dict[str, Any] | None = None,
+    texto_depende_de_contexto: Callable[[str], bool] | None = None,
+) -> Dict[str, Any] | None:
+    texto = str(texto_normalizado or "").strip()
+    achado = re.fullmatch(
+        r"(?:maximiza|maximize|maximizar)\s+(?P<referencia>.+?)[.!?]*",
+        texto,
+        flags=re.IGNORECASE,
+    )
+    if achado:
+        referencia = str(achado.group("referencia") or "").strip()
+        if valor_e_referencia_contextual(referencia):
+            return None
+    return _detectar_janela_contextual_base_c1d(
+        texto_normalizado,
+        params_cb=params_cb,
+        estado_mental=estado_mental,
+        texto_depende_de_contexto=texto_depende_de_contexto,
+    )
 
 
 def detectar_janela_explicita(
@@ -1042,7 +1066,7 @@ def detectar_janela_explicita(
     return None
 
 
-def detectar_abrir_app_ou_site(
+def _detectar_abrir_app_ou_site_base_c1d(
     texto_bruto: str,
     *,
     params_cb: Callable[..., Dict[str, Any]],
@@ -1067,8 +1091,37 @@ def detectar_abrir_app_ou_site(
 
     return None
 
+def detectar_abrir_app_ou_site(
+    texto_bruto: str,
+    *,
+    params_cb: Callable[..., Dict[str, Any]],
+    extrair_intencao_abrir_app: Callable[[str], Dict[str, Any] | None],
+) -> Dict[str, Any] | None:
+    resultado = _detectar_abrir_app_ou_site_base_c1d(
+        texto_bruto,
+        params_cb=params_cb,
+        extrair_intencao_abrir_app=extrair_intencao_abrir_app,
+    )
+    if isinstance(resultado, dict):
+        return resultado
+    base = str(texto_bruto or "").strip()
+    achado = re.fullmatch(
+        r"(?:abre|abra|abrir)\s+"
+        r"(?P<referencia>(?:esse|essa|este|esta)\s+"
+        r"(?:app|aplicativo|programa|janela))[.!?]*",
+        base,
+        flags=re.IGNORECASE,
+    )
+    if not achado:
+        return None
+    referencia = _referencia_tipificada_app_c1d(str(achado.group("referencia") or ""))
+    if not referencia:
+        return None
+    params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
+    return {"intent": "APP_OPEN", "params": params(nome_app=referencia)}
 
-def detectar_fechar_alvo(
+
+def _detectar_fechar_alvo_base_c1d(
     texto_sem_destino: str,
     *,
     params_cb: Callable[..., Dict[str, Any]],
@@ -1160,6 +1213,45 @@ def detectar_fechar_alvo(
         # programa inexistente como aba do navegador nem declarar falso êxito.
         dados_app["alvo_tipado"] = "app"
     return {"intent": "CLOSE_APP", "params": params(**dados_app)}
+
+_REFERENCIA_TIPADA_APP_RE = re.compile(
+    r"^(?P<dem>esse|essa|este|esta)\s+"
+    r"(?P<tipo>app|aplicativo|programa|janela)$",
+    flags=re.IGNORECASE,
+)
+
+
+def _referencia_tipificada_app_c1d(valor: str) -> str:
+    texto = re.sub(r"\s+", " ", str(valor or "")).strip()
+    return texto if _REFERENCIA_TIPADA_APP_RE.fullmatch(texto) else ""
+
+
+def detectar_fechar_alvo(
+    texto_sem_destino: str,
+    *,
+    params_cb: Callable[..., Dict[str, Any]],
+    sites_diretos: Any,
+    apps_map: Any,
+) -> Dict[str, Any] | None:
+    base = str(texto_sem_destino or "").strip()
+    params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
+    achado = re.fullmatch(
+        r"(?:fecha|fechar|mata|derruba|encerra|encerrar)\s+"
+        r"(?P<referencia>(?:esse|essa|este|esta)\s+"
+        r"(?:app|aplicativo|programa|janela))[.!?]*",
+        base,
+        flags=re.IGNORECASE,
+    )
+    if achado:
+        referencia = _referencia_tipificada_app_c1d(str(achado.group("referencia") or ""))
+        if referencia:
+            return {"intent": "CLOSE_APP", "params": params(nome_app=referencia, alvo_tipado="app")}
+    return _detectar_fechar_alvo_base_c1d(
+        texto_sem_destino,
+        params_cb=params_cb,
+        sites_diretos=sites_diretos,
+        apps_map=apps_map,
+    )
 
 
 def detectar_web_e_youtube(

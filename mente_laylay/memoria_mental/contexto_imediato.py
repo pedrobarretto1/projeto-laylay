@@ -17,6 +17,7 @@ from mente_laylay.memoria_mental.reparacao_conversacional import (
 from mente_laylay.memoria_mental.musica_conversacional import sugestao_musical_nova_conversacional
 from mente_laylay.memoria_mental.contexto_compartilhado import (
     contrato_confirma_referencia_operacional,
+    descrever_quarentena_referencia_app,
     foco_por_dominio,
 )
 from mente_laylay.memoria_mental.continuidade_geral import selecionar_continuidade
@@ -149,6 +150,13 @@ def _texto_referencia_curta_operacional(texto: str) -> bool:
     ordinal_contextual = extrair_indice_referencia_ordinal(t) is not None
     return (pronome and operacao) or ordinal_contextual
 
+def referencia_app_quarentenavel_c1d(texto: str) -> bool:
+    """Mesma fronteira linguística usada pelo mirror V6 para apps dêiticos."""
+    return bool(
+        _texto_referencia_curta_operacional(texto)
+        and _dominio_explicito_referencia(texto) in {"", "app"}
+    )
+
 
 def _dominio_contrato_referencia(
     estado: Dict[str, Any] | None,
@@ -203,13 +211,16 @@ def _dominio_restrito_referencia(
     ttl_s: float = 300.0,
 ) -> str:
     explicito = _dominio_explicito_referencia(texto)
+    referencia_curta = _texto_referencia_curta_operacional(texto)
+    if (
+        referencia_app_quarentenavel_c1d(texto)
+        and descrever_quarentena_referencia_app(estado, ttl_s=ttl_s)
+    ):
+        return ""
     if explicito:
         return explicito
-    if not _texto_referencia_curta_operacional(texto):
+    if not referencia_curta:
         return ""
-
-    # P0_NAVEGADOR_SUBTIPO_V3_1_20260815
-    # Para dêiticos curtos, a última ação confirmada vence percepção/foco.
     dominio_contrato = _dominio_contrato_referencia(estado, ttl_s=ttl_s)
     if dominio_contrato:
         return dominio_contrato

@@ -69,40 +69,37 @@ def _detectar_elipse_espacial_confirmada(
     texto: str,
     mente: Mapping[str, Any] | None,
 ) -> Dict[str, Any] | None:
-    """Materializa somente a elipse que o planejamento atual já autorizou."""
-    if str(texto or "").casefold().strip() != "esquerda":
+    bruto = str(texto or "").casefold().strip()
+    mapa = {"esquerda": ("left", "esquerda"), "direita": ("right", "direita")}
+    info = mapa.get(bruto)
+    if not info:
         return None
+    chave_lado, direcao_original = info
     estado = dict(mente or {}) if isinstance(mente, Mapping) else {}
     turno = dict(estado.get("turno_atual") or {})
-    if str(turno.get("texto") or "").casefold().strip() != "esquerda":
+    if str(turno.get("texto") or "").casefold().strip() != bruto:
         return None
-    if not bool(turno.get("autoriza_execucao")):
+    if not bool(turno.get("autoriza_execucao")) or bool(turno.get("requer_esclarecimento")):
         return None
-    if bool(turno.get("requer_esclarecimento")):
-        return None
-
     elipse = dict(turno.get("elipse_operacional") or {})
     if (
         str(elipse.get("tipo") or "") != "posicionamento_janela"
-        or str(elipse.get("direcao") or "") != "left"
+        or str(elipse.get("direcao") or "") != chave_lado
         or str(elipse.get("alvo_requerido") or "") != "app"
     ):
         return None
-
     referencia = dict(turno.get("referencia_resolvida") or {})
-    tipo = str(referencia.get("tipo") or "").casefold()
     nome = str(referencia.get("nome") or "").strip()
-    if tipo != "app" or not nome:
+    if str(referencia.get("tipo") or "").casefold() != "app" or not nome:
         return None
-
     return {
         "intent": "ORGANIZAR_DESKTOP",
         "params": {
-            "left": nome,
+            chave_lado: nome,
             "modo": "posicionar",
             "referencia_contextual": True,
             "referencia_contextual_fonte": "turno_atual.referencia_resolvida",
-            "direcao_original": "esquerda",
+            "direcao_original": direcao_original,
         },
     }
 
@@ -609,11 +606,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
                     for chave in chaves_layout
                 )
                 if precisa_referente:
-                    referente_app = selecionar_referente_saliente(
-                        dict(mente_atual or {}) if isinstance(mente_atual, Mapping) else {},
-                        dominio="app",
-                        ttl_s=300.0,
-                    )
+                    referente_app = {}  # C1-D/F4: resolver somente no sink canônico
                     alvo_app = str(referente_app.get("alvo") or "").strip()
                     if alvo_app:
                         for chave in chaves_layout:

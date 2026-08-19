@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import re
 
 from mente_laylay.cognicao.contrato_fala import construir_contrato_semantico_fala
 from mente_laylay.cognicao.leitura_semantica_turno import (
@@ -17,6 +18,12 @@ from mente_laylay.cognicao.revisao_turno import resolver_revisao_intra_turno
 from mente_laylay.memoria_mental.referencia_fala import extrair_referencia_musical_verificada
 from mente_laylay.memoria_mental.memoria_confiavel import (
     extrair_aprendizados_pessoais_explicitos,
+)
+from mente_laylay.memoria_mental.contexto_compartilhado import (
+    descrever_quarentena_referencia_app,
+)
+from mente_laylay.memoria_mental.contexto_imediato import (
+    referencia_app_quarentenavel_c1d,
 )
 
 
@@ -162,10 +169,83 @@ def aplicar_repeticao_operacional_ao_turno(turno: dict, repeticao: object) -> di
     return resultado
 
 
+def _catalogo_apps_retarget_c1d(apps_map: object) -> dict[str, tuple[str, object]]:
+    catalogo: dict[str, tuple[str, object]] = {}
+    for chave, destino in dict(apps_map or {}).items():
+        alias = re.sub(r"\s+", " ", str(chave or "")).strip()
+        if not alias:
+            continue
+        destino_txt = str(destino or "").strip().casefold()
+        if destino_txt.startswith(("http://", "https://")):
+            continue
+        catalogo[alias.casefold()] = (alias, destino)
+    return catalogo
+
+
+def _contexto_janela_ativo_retarget_c1d(mente: dict) -> bool:
+    estado = dict(mente or {})
+    return bool(
+        str(estado.get("ultimo_app_janela") or "").strip()
+        and str(estado.get("ultima_acao_intent") or estado.get("ultima_intencao") or "").upper().strip()
+        in {"APP_OPEN", "MAXIMIZE_WINDOW", "ORGANIZAR_DESKTOP"}
+    )
+
+
+def _detectar_retarget_app_receipt_c1d(texto: str, *, apps_map: object) -> dict | None:
+    bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
+    if not bruto or "?" in bruto or any(ch in bruto for ch in ('"', "'", "“", "”", "‘", "’")):
+        return None
+    achado = re.fullmatch(
+        r"agora\s+(?:(?:o|a)\s+)?(?P<nome>[A-Za-zÀ-ÿ0-9_. -]{2,80})[.!]*",
+        bruto,
+        flags=re.IGNORECASE,
+    )
+    if not achado:
+        return None
+    nome = re.sub(r"\s+", " ", str(achado.group("nome") or "")).strip(" .!")
+    encontrado = _catalogo_apps_retarget_c1d(apps_map).get(nome.casefold())
+    if not encontrado:
+        return None
+    alias, _destino = encontrado
+    return {
+        "tipo": "app",
+        "nome": alias,
+        "origem": "retarget_operacional_explicito",
+        "somente_alvo": True,
+        "autoriza_execucao": False,
+    }
+
+
+def aplicar_retarget_operacional_receipt_ao_turno(
+    texto: str,
+    *,
+    turno: dict,
+    mente: dict,
+    apps_map: object,
+    pendencia_turno: object = None,
+) -> dict:
+    leitura = dict(turno or {})
+    if bool(leitura.get("autoriza_execucao")):
+        return leitura
+    if _pendencia_veta_elipse_espacial(pendencia_turno):
+        return leitura
+    if not _contexto_janela_ativo_retarget_c1d(mente):
+        return leitura
+    retarget = _detectar_retarget_app_receipt_c1d(texto, apps_map=apps_map)
+    if not retarget:
+        return leitura
+    recibo = dict(retarget)
+    recibo["retarget_turno_id"] = leitura.get("id")
+    leitura["retarget_operacional"] = recibo
+    return leitura
+
 def _forma_elipse_espacial_exata(texto: str) -> str:
-    """Retorna somente a direção espacial curta explicitamente coberta por C1-C."""
     bruto = str(texto or "").casefold().strip()
-    return "left" if bruto == "esquerda" else ""
+    if bruto == "esquerda":
+        return "left"
+    if bruto == "direita":
+        return "right"
+    return ""
 
 
 def _pendencia_veta_elipse_espacial(pendencia: object) -> bool:
@@ -190,7 +270,6 @@ def aplicar_elipse_espacial_autorizada_ao_turno(
     turno: dict,
     pendencia_turno: object = None,
 ) -> dict:
-    """Autoriza só a ação espacial dita agora; o alvo continua pendente."""
     leitura = dict(turno or {})
     direcao = _forma_elipse_espacial_exata(texto)
     if not direcao:
@@ -201,7 +280,7 @@ def aplicar_elipse_espacial_autorizada_ao_turno(
         modalidade="comando",
         modalidade_geral="comando",
         ato_principal="comando",
-        texto_operacional="esquerda",
+        texto_operacional="esquerda" if direcao == "left" else "direita",
         confianca=max(0.98, float(leitura.get("confianca") or 0.0)),
         motivo="direção espacial elíptica explicitamente pedida",
         motivo_decisao="direção espacial elíptica explicitamente pedida",
@@ -210,23 +289,23 @@ def aplicar_elipse_espacial_autorizada_ao_turno(
         requer_esclarecimento=True,
         depende_contexto=True,
         natureza_acao="pedido_direto",
-        elipse_operacional={
-            "tipo": "posicionamento_janela",
-            "direcao": direcao,
-            "alvo_requerido": "app",
-        },
+        elipse_operacional={"tipo": "posicionamento_janela", "direcao": direcao, "alvo_requerido": "app"},
     )
     return leitura
 
 
-def reconciliar_alvo_eliptico_janela_confirmado(texto: str, *, turno: dict, retrato: dict, mente: dict) -> tuple[dict, dict]:
-    """Resolve alvo de janela já autorizado sem transformar contexto em autoridade."""
+def reconciliar_alvo_eliptico_janela_confirmado(
+    texto: str,
+    *,
+    turno: dict,
+    retrato: dict,
+    mente: dict,
+) -> tuple[dict, dict]:
     leitura = dict(turno or {})
     snapshot = dict(retrato or {})
     forma_max = str(texto or "").casefold().strip(" \t\r\n.,!?;:")
     forma_espacial = _forma_elipse_espacial_exata(texto)
     elipse = dict(leitura.get("elipse_operacional") or {})
-
     eh_maximiza = forma_max == "maximiza"
     eh_espacial = bool(
         forma_espacial
@@ -236,19 +315,44 @@ def reconciliar_alvo_eliptico_janela_confirmado(texto: str, *, turno: dict, retr
     )
     if not (eh_maximiza or eh_espacial):
         return leitura, snapshot
-    if not bool(leitura.get("autoriza_execucao")):
+    if not bool(leitura.get("autoriza_execucao")) or not bool(leitura.get("requer_esclarecimento")):
         return leitura, snapshot
-    if not bool(leitura.get("requer_esclarecimento")):
+
+    if eh_espacial and forma_espacial == "right":
+        anterior = dict(dict(mente or {}).get("turno_atual") or {})
+        retarget = dict(anterior.get("retarget_operacional") or {})
+        chaves = {"tipo", "nome", "origem", "somente_alvo", "autoriza_execucao", "retarget_turno_id"}
+        if set(retarget) != chaves or bool(anterior.get("autoriza_execucao")):
+            return leitura, snapshot
+        if retarget.get("autoriza_execucao") is not False or retarget.get("somente_alvo") is not True:
+            return leitura, snapshot
+        if retarget.get("retarget_turno_id") != anterior.get("id"):
+            return leitura, snapshot
+        if str(retarget.get("tipo") or "").casefold() != "app" or str(retarget.get("origem") or "") != "retarget_operacional_explicito":
+            return leitura, snapshot
+        nome = str(retarget.get("nome") or "").strip()
+        if not nome:
+            return leitura, snapshot
+        referencia = {
+            "tipo": "app",
+            "nome": nome,
+            "origem": "retarget_operacional_explicito",
+            "ts": float(anterior.get("ts") or time.time()),
+            "dados": {"somente_alvo": True, "autoriza_execucao": False, "retarget_turno_id": anterior.get("id")},
+        }
+        snapshot["referencia_tipo"] = "app"
+        snapshot["referencia_resolvida"] = referencia
+        leitura["requer_esclarecimento"] = False
+        leitura["depende_contexto"] = True
+        leitura["referencia_resolvida"] = referencia
+        leitura["alvo_contextual_resolvido"] = {"tipo": "app", "nome": nome, "origem": "elipse_operacional_retarget_confirmado"}
         return leitura, snapshot
 
     ultimo_app = str(dict(mente or {}).get("ultimo_app_janela") or "").strip()
     entidade_app = dict(dict(snapshot.get("entidades") or {}).get("app") or {})
     nome_app = str(entidade_app.get("nome") or "").strip()
-    if not ultimo_app or not nome_app:
+    if not ultimo_app or not nome_app or ultimo_app.casefold() != nome_app.casefold():
         return leitura, snapshot
-    if ultimo_app.casefold() != nome_app.casefold():
-        return leitura, snapshot
-
     referencia = dict(entidade_app)
     snapshot["referencia_tipo"] = "app"
     snapshot["referencia_resolvida"] = referencia
@@ -258,11 +362,7 @@ def reconciliar_alvo_eliptico_janela_confirmado(texto: str, *, turno: dict, retr
     leitura["alvo_contextual_resolvido"] = {
         "tipo": "app",
         "nome": nome_app,
-        "origem": (
-            "elipse_operacional_maximiza_confirmada"
-            if eh_maximiza
-            else "elipse_operacional_espacial_confirmada"
-        ),
+        "origem": "elipse_operacional_maximiza_confirmada" if eh_maximiza else "elipse_operacional_espacial_confirmada",
     }
     return leitura, snapshot
 
@@ -404,6 +504,15 @@ def _iniciar_planejamento_turno(
                 f"efetivo={texto_efetivo!r}"
             )
 
+    # C1-D/D1: novo app isolado vira somente receipt target-only.
+    turno = aplicar_retarget_operacional_receipt_ao_turno(
+        texto_cognitivo,
+        turno=turno,
+        mente=mente_antes_turno,
+        apps_map=ns.get("APPS_MAP", {}),
+        pendencia_turno=pendencia_turno,
+    )
+
     # C1-C: a direção atual pode conceder autoridade estreita por si.
     # Qualquer pendência ativa já falada veta esta elipse ambígua; contexto só
     # reduz autoridade e nunca fornece a permissão operacional da fala atual.
@@ -481,6 +590,13 @@ def _iniciar_planejamento_turno(
     turno['funcao_comunicativa'] = funcao_comunicativa
     turno['encerramento_assunto'] = encerramento_assunto
     retrato_turno, entidades_recentes = ns['_construir_retrato_turno_mente'](texto_cognitivo, turno=turno, mente=mente_antes_turno, contexto_perceptivo=ns['_obter_contexto_perceptivo'](), playlist_state=ns['playlist_state'], jogo_contexto=jogo_contexto)
+    quarentena_app = descrever_quarentena_referencia_app(mente_antes_turno)
+    if quarentena_app and referencia_app_quarentenavel_c1d(texto_cognitivo):
+        retrato_turno = dict(retrato_turno)
+        retrato_turno['referencia_tipo'] = 'app'
+        retrato_turno['referencia_resolvida'] = {}
+        retrato_turno['referencia_quarentenada'] = dict(quarentena_app)
+
     turno, retrato_turno = reconciliar_alvo_eliptico_janela_confirmado(
         texto_cognitivo, turno=turno, retrato=retrato_turno, mente=mente_antes_turno,
     )

@@ -152,28 +152,23 @@ def _intencao_deterministica_tem_alvo_explicito(resultado: Any, texto: str) -> b
 
 
 def _eh_elipse_espacial_c1c_contextual(resultado: Any) -> bool:
-    """Reconhece somente o shape exato publicado pela elipse C1-C."""
     if not isinstance(resultado, dict):
         return False
     if _normalizar_intent(resultado) != "ORGANIZAR_DESKTOP":
         return False
     params = resultado.get("params") if isinstance(resultado.get("params"), dict) else {}
-    chaves_esperadas = {
-        "left",
-        "modo",
-        "referencia_contextual",
-        "referencia_contextual_fonte",
-        "direcao_original",
-    }
-    if set(params) != chaves_esperadas:
+    if set(params) == {"left", "modo", "referencia_contextual", "referencia_contextual_fonte", "direcao_original"}:
+        lado, direcao = "left", "esquerda"
+    elif set(params) == {"right", "modo", "referencia_contextual", "referencia_contextual_fonte", "direcao_original"}:
+        lado, direcao = "right", "direita"
+    else:
         return False
     return bool(
         str(params.get("modo") or "").casefold() == "posicionar"
         and params.get("referencia_contextual") is True
-        and str(params.get("referencia_contextual_fonte") or "")
-        == "turno_atual.referencia_resolvida"
-        and str(params.get("direcao_original") or "").casefold() == "esquerda"
-        and str(params.get("left") or "").strip()
+        and str(params.get("referencia_contextual_fonte") or "") == "turno_atual.referencia_resolvida"
+        and str(params.get("direcao_original") or "").casefold() == direcao
+        and str(params.get(lado) or "").strip()
     )
 
 
