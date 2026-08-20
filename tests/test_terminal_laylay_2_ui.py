@@ -194,10 +194,14 @@ def test_indicador_pensando_tem_ciclo_efemero_sem_duplicacao(monkeypatch) -> Non
     indicador = janela._indicador_pensando
     assert isinstance(indicador, IndicadorPensando)
     assert len(janela.feed.findChildren(IndicadorPensando)) == 1
-    pontos_antes = indicador.pontos.text()
-    QTest.qWait(360)
+    opacidades_antes = [
+        efeito.opacity() for efeito in indicador._efeitos_pontos
+    ]
+    QTest.qWait(260)
     app.processEvents()
-    assert indicador.pontos.text() != pontos_antes
+    assert [
+        efeito.opacity() for efeito in indicador._efeitos_pontos
+    ] != opacidades_antes
 
     # Estados e confirmações positivas não criam outro indicador nem o retiram
     # enquanto a resposta final ainda não chegou.
@@ -369,10 +373,13 @@ def test_animacao_de_entrada_nao_fica_presa_ao_historico(monkeypatch) -> None:
 
     mensagem = janela.adicionar_mensagem("assistant", "Uma mensagem animada normal.")
     assert mensagem is not None
-    assert mensagem.graphicsEffect() is not None
+    linha = mensagem.parentWidget()
+    assert linha is not None
+    assert linha.objectName() == "messageRow"
+    assert linha.graphicsEffect() is not None
 
-    QTest.qWait(220)
+    QTest.qWait(300)
     app.processEvents()
-    assert mensagem.graphicsEffect() is None
+    assert linha.graphicsEffect() is None
     assert not janela._animacoes
     janela.close()

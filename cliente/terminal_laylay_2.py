@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 import sys
 import time
+import unicodedata
 import uuid
 
 
@@ -18,24 +19,35 @@ if str(RAIZ_PROJETO) not in sys.path:
 from cliente.terminal_2.transporte import TransporteDesktopCliente
 
 try:
+    from shiboken6 import isValid as objeto_qt_valido
     from PySide6.QtCore import (
-        QEasingCurve, QObject, QParallelAnimationGroup, QPropertyAnimation,
-        QSequentialAnimationGroup, QSettings, QSize, QThread, QTimer, Qt, Signal,
+        QEasingCurve, QObject, QParallelAnimationGroup, QPoint,
+        QPropertyAnimation, QRect, QSequentialAnimationGroup, QSettings, QSize,
+        QThread, QTimer, Qt, Signal,
     )
     from PySide6.QtGui import (
-        QColor, QFont, QFontDatabase, QKeySequence, QPainter, QPainterPath,
+        QAction, QColor, QFont, QFontDatabase, QKeySequence, QPainter, QPainterPath,
         QPen, QPixmap, QShortcut,
     )
     from PySide6.QtWidgets import (
         QApplication, QBoxLayout, QButtonGroup, QCheckBox, QComboBox, QFileDialog,
-        QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QLayout, QLineEdit, QMainWindow,
-        QPushButton, QScrollArea, QSizePolicy, QStackedWidget, QTextEdit,
+        QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QLayout, QLineEdit,
+        QInputDialog, QMainWindow, QMenu, QMessageBox, QPushButton, QScrollArea,
+        QSizePolicy, QStackedWidget, QTextEdit,
         QToolButton, QVBoxLayout, QWidget,
     )
 except ImportError as erro:  # pragma: no cover
     raise SystemExit(
         "O Terminal Laylay 2.1 precisa de PySide6. Instale com: pip install PySide6"
     ) from erro
+
+
+def _objeto_qt_esta_vivo(objeto: object) -> bool:
+    """Confere o wrapper e o objeto C++ antes de callbacks assíncronos."""
+    try:
+        return objeto is not None and bool(objeto_qt_valido(objeto))
+    except (RuntimeError, TypeError):
+        return False
 
 from cliente.terminal_2.dashboard import (
     ChipEstado,
@@ -421,7 +433,7 @@ class MensagemWidget(QFrame):
 class IndicadorPensando(QFrame):
     """Presença visual efêmera; nunca entra no histórico nem na porta de fala."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, reduzir_movimento: bool = False) -> None:
         super().__init__()
         self.setObjectName("thinkingIndicator")
         self.setMaximumWidth(150)
@@ -431,23 +443,46 @@ class IndicadorPensando(QFrame):
         lay.setSpacing(9)
         meta = QLabel("LAYLAY")
         meta.setObjectName("thinkingMeta")
-        self.pontos = QLabel("·  ")
-        self.pontos.setObjectName("thinkingDots")
-        self.pontos.setMinimumWidth(30)
         lay.addWidget(meta)
-        lay.addWidget(self.pontos)
-        self._fase = 0
-        self._timer = QTimer(self)
-        self._timer.setInterval(320)
-        self._timer.timeout.connect(self._animar)
-        self._timer.start()
-
-    def _animar(self) -> None:
-        self._fase = (self._fase + 1) % 3
-        self.pontos.setText("·" * (self._fase + 1) + " " * (2 - self._fase))
+        pontos_box = QFrame(self)
+        pontos_lay = QHBoxLayout(pontos_box)
+        pontos_lay.setContentsMargins(0, 0, 0, 0)
+        pontos_lay.setSpacing(3)
+        self.pontos: list[QLabel] = []
+        self._efeitos_pontos: list[QGraphicsOpacityEffect] = []
+        for indice in range(3):
+            ponto = QLabel("●", pontos_box)
+            ponto.setObjectName("thinkingDots")
+            ponto.setFixedWidth(8)
+            ponto.setAlignment(Qt.AlignCenter)
+            efeito = QGraphicsOpacityEffect(ponto)
+            efeito.setOpacity(1.0 if reduzir_movimento or indice == 0 else 0.24)
+            ponto.setGraphicsEffect(efeito)
+            pontos_lay.addWidget(ponto)
+            self.pontos.append(ponto)
+            self._efeitos_pontos.append(efeito)
+        lay.addWidget(pontos_box)
+        self._grupo_pontos: QSequentialAnimationGroup | None = None
+        if not reduzir_movimento:
+            grupo = QSequentialAnimationGroup(self)
+            for fase in range(3):
+                pulso = QParallelAnimationGroup(grupo)
+                for indice, efeito in enumerate(self._efeitos_pontos):
+                    animacao = QPropertyAnimation(efeito, b"opacity", pulso)
+                    animacao.setDuration(210)
+                    animacao.setEndValue(1.0 if indice == fase else 0.24)
+                    animacao.setEasingCurve(QEasingCurve.InOutSine)
+                    pulso.addAnimation(animacao)
+                grupo.addAnimation(pulso)
+            grupo.setLoopCount(-1)
+            self._grupo_pontos = grupo
+            grupo.start()
 
     def parar(self) -> None:
-        self._timer.stop()
+        grupo = self._grupo_pontos
+        if grupo is not None:
+            grupo.stop()
+            self._grupo_pontos = None
 
 
 class AlternadorModo(QFrame):
@@ -1040,9 +1075,43 @@ class JanelaLaylay(QMainWindow):
         self._ultima_mensagem: tuple[str, str, float] = ("", "", 0.0)
         self._envios: dict[str, MensagemWidget] = {}
         self._acoes_por_envio: dict[str, str] = {}
+        self._conversa_ativa_id = ""
+        self._conversas: list[dict] = []
+        self._filtro_conversas = ""
+        self._mostrar_arquivadas = False
+        self._botoes_conversas: dict[str, QPushButton] = {}
+        self._menus_conversas: dict[str, QToolButton] = {}
+        self._envio_conversa: dict[str, str] = {}
+        self._requisicao_conversa_id = ""
         self._indicador_pensando: IndicadorPensando | None = None
         self._container_indicador: QWidget | None = None
-        self._animacoes: list[QPropertyAnimation] = []
+        self._animacoes: list[QParallelAnimationGroup] = []
+        self._animacao_entrada_pensando: QParallelAnimationGroup | None = None
+        self._animacao_saida_pensando: QParallelAnimationGroup | None = None
+        self._container_saida_pensando: QWidget | None = None
+        self._animacao_troca_conversa: QParallelAnimationGroup | None = None
+        self._efeito_troca_conversa: QGraphicsOpacityEffect | None = None
+        self._animacoes_conversas: list[QParallelAnimationGroup] = []
+        self._micro_animacoes: dict[
+            int,
+            tuple[QWidget, QGraphicsOpacityEffect, QSequentialAnimationGroup],
+        ] = {}
+        self._assinatura_microestado = ""
+        self._modo_visual_anterior = ""
+        self._animacao_scroll: QPropertyAnimation | None = None
+        self._pulso_presenca: QSequentialAnimationGroup | None = None
+        self._efeito_presenca: QGraphicsOpacityEffect | None = None
+        self._atividade_visual_atual = "idle"
+        self._interface_animavel = False
+        self._efeitos_inicio: list[
+            tuple[str, QWidget, QGraphicsOpacityEffect]
+        ] = []
+        self._animacao_inicio_grupo: QParallelAnimationGroup | None = None
+        self._pagina_visual_ativa = ""
+        self._animacao_pagina_grupo: QParallelAnimationGroup | None = None
+        self._efeito_pagina: QGraphicsOpacityEffect | None = None
+        self._pagina_em_transicao: QWidget | None = None
+        self._animacao_indicador_nav: QPropertyAnimation | None = None
         self._nav: dict[str, QPushButton] = {}
         self._conectado = False
         self._modo = "chat"
@@ -1071,6 +1140,7 @@ class JanelaLaylay(QMainWindow):
         self._estilizar()
         self._aplicar_sidebar()
         self._aplicar_responsividade()
+        self._registrar_feedback_botoes()
 
         # P9.6 — RITMO MODULAR MAIS RÁPIDO
         # Pequeno respiro antes de começar a carregar os módulos.
@@ -1132,24 +1202,34 @@ class JanelaLaylay(QMainWindow):
             self.marca_status
         )
 
-        self.nova = QPushButton(self.sidebar_topo)
+        self.nova = QPushButton("Novo chat", self.sidebar)
         self.nova.setObjectName(
             "newChatButton"
         )
+        self.nova.setProperty(
+            "nav",
+            True,
+        )
+        self.nova.setProperty(
+            "label",
+            "Novo chat",
+        )
         self.nova.setAccessibleName(
-            "Nova conversa"
+            "Criar novo chat"
         )
         self.nova.setIcon(
-            icone_terminal("plus")
+            icone_terminal("compose")
         )
         self.nova.setIconSize(
-            QSize(17, 17)
+            QSize(19, 19)
         )
-        self.nova.setFixedSize(32, 32)
+        self.nova.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Fixed,
+        )
         self.nova.setToolTip(
-            "Nova conversa"
+            "Criar um novo chat"
         )
-        self.nova.hide()
         self.nova.clicked.connect(
             self.nova_conversa
         )
@@ -1176,6 +1256,8 @@ class JanelaLaylay(QMainWindow):
 
         side.addWidget(self.sidebar_topo)
         side.addSpacing(8)
+        side.addWidget(self.nova)
+        side.addSpacing(5)
 
         self.nav_label = QLabel(
             "NAVEGAÇÃO",
@@ -1233,12 +1315,20 @@ class JanelaLaylay(QMainWindow):
             self._nav[nome] = botao
             side.addWidget(botao)
 
+        self.indicador_navegacao = QFrame(self.sidebar)
+        self.indicador_navegacao.setObjectName("navIndicator")
+        self.indicador_navegacao.setAttribute(
+            Qt.WA_TransparentForMouseEvents,
+            True,
+        )
+        self.indicador_navegacao.hide()
+
         self._nav["inicio"].setChecked(
             True
         )
 
         self.recentes_label = QLabel(
-            "RECENTES",
+            "CONVERSAS",
             self.sidebar,
         )
         self.recentes_label.setObjectName(
@@ -1263,6 +1353,52 @@ class JanelaLaylay(QMainWindow):
             )
         )
         self.conversa_atual.hide()
+
+        self.ferramentas_conversas = QFrame(self.sidebar)
+        self.ferramentas_conversas.setObjectName("conversationTools")
+        ferramentas_lay = QHBoxLayout(self.ferramentas_conversas)
+        ferramentas_lay.setContentsMargins(0, 0, 0, 2)
+        ferramentas_lay.setSpacing(4)
+        self.busca_conversas = QLineEdit(self.ferramentas_conversas)
+        self.busca_conversas.setObjectName("conversationSearch")
+        self.busca_conversas.setPlaceholderText("Buscar chats")
+        self.busca_conversas.setClearButtonEnabled(True)
+        self.busca_conversas.setAccessibleName("Buscar conversas")
+        self.busca_conversas.textChanged.connect(self._filtrar_conversas)
+        self.botao_arquivadas = QToolButton(self.ferramentas_conversas)
+        self.botao_arquivadas.setObjectName("archivedConversationsButton")
+        self.botao_arquivadas.setText("▣")
+        self.botao_arquivadas.setCheckable(True)
+        self.botao_arquivadas.setToolTip("Mostrar conversas arquivadas")
+        self.botao_arquivadas.setAccessibleName(
+            "Mostrar conversas arquivadas"
+        )
+        self.botao_arquivadas.toggled.connect(
+            self._alternar_conversas_arquivadas,
+        )
+        ferramentas_lay.addWidget(self.busca_conversas, 1)
+        ferramentas_lay.addWidget(self.botao_arquivadas)
+        self.ferramentas_conversas.hide()
+
+        self.conversas_scroll = QScrollArea(self.sidebar)
+        self.conversas_scroll.setObjectName("conversationList")
+        self.conversas_scroll.setWidgetResizable(True)
+        self.conversas_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.conversas_scroll.setFrameShape(QFrame.NoFrame)
+        self.conversas_scroll.setMinimumHeight(80)
+        self.conversas_scroll.setMaximumHeight(230)
+        self.conversas_container = QWidget()
+        self.conversas_container.setObjectName("conversationListContent")
+        self.conversas_lay = QVBoxLayout(self.conversas_container)
+        self.conversas_lay.setContentsMargins(0, 0, 0, 0)
+        self.conversas_lay.setSpacing(3)
+        self.conversas_lay.addStretch(1)
+        self.conversas_scroll.setWidget(self.conversas_container)
+        self.conversas_scroll.hide()
+
+        side.addWidget(self.recentes_label)
+        side.addWidget(self.ferramentas_conversas)
+        side.addWidget(self.conversas_scroll)
 
         self.status_mente = QLabel(
             "●  Reconectando",
@@ -1422,6 +1558,12 @@ class JanelaLaylay(QMainWindow):
         self.chip_modelo = ChipEstado("Modelo", "Aguardando")
         self.chip_microfone = ChipEstado("Microfone", "Aguardando")
         self.chip_memoria = ChipEstado("Memória", "Aguardando")
+        for chip in (
+            self.chip_modelo, self.chip_microfone, self.chip_memoria,
+        ):
+            chip.estado_alterado.connect(
+                lambda alvo=chip: self._animar_microinteracao(alvo)
+            )
         hlay.addWidget(self.chip_modelo)
         hlay.addWidget(self.chip_microfone)
         hlay.addWidget(self.chip_memoria)
@@ -1508,6 +1650,9 @@ class JanelaLaylay(QMainWindow):
         self.feed_lay.addWidget(self.vazio)
         self.feed_lay.addStretch()
         self.scroll.setWidget(self.feed)
+        self.scroll.verticalScrollBar().sliderPressed.connect(
+            self._encerrar_rolagem_suave,
+        )
         self._timer_auto_scroll = QTimer(self)
         self._timer_auto_scroll.setSingleShot(True)
         self._timer_auto_scroll.timeout.connect(self._rolar_ao_final)
@@ -1530,6 +1675,13 @@ class JanelaLaylay(QMainWindow):
         chat_lay.addWidget(self.waveform)
         self.composer = Composer()
         self.composer.enviar.connect(self.enviar_texto)
+        self.composer.enviar.connect(
+            lambda _texto: self._animar_microinteracao(
+                self.composer.botao,
+                opacidade_minima=0.35,
+                duracao_retorno=180,
+            )
+        )
         self.composer.alternar_voz.connect(
             lambda: self.solicitar_modo("voice" if self._modo == "chat" else "chat")
         )
@@ -1634,21 +1786,29 @@ class JanelaLaylay(QMainWindow):
 
     def _preparar_animacao_inicio(self) -> None:
         if self._reduzir_movimento:
+            self._interface_animavel = True
+            QTimer.singleShot(
+                0,
+                lambda: self._sincronizar_indicador_navegacao(
+                    self._pagina_visual_ativa,
+                    animar=False,
+                ),
+            )
             return
 
         self._etapas_inicio = (
             ("Navegação", self.sidebar),
+            ("Barra superior", self.topbar),
             ("Chat", self.chat_surface),
             ("Central Inteligente", self.central_inteligente),
             ("Painel lateral", self.painel_lateral),
-            ("Barra superior", self.topbar),
         )
 
         self._efeitos_inicio = []
 
         for nome, widget in self._etapas_inicio:
             efeito = QGraphicsOpacityEffect(widget)
-            efeito.setOpacity(0.05)
+            efeito.setOpacity(0.08)
             widget.setGraphicsEffect(efeito)
             self._efeitos_inicio.append(
                 (nome, widget, efeito)
@@ -1669,24 +1829,46 @@ class JanelaLaylay(QMainWindow):
         if not efeitos:
             return
 
-        grupo = QSequentialAnimationGroup(self)
+        grupo = QParallelAnimationGroup(self)
         self._animacao_inicio_grupo = grupo
 
-        for _nome, widget, efeito in efeitos:
-            animacao = QPropertyAnimation(
-                efeito,
-                b"opacity",
-                grupo,
+        posicoes_finais: list[tuple[QWidget, QPoint]] = []
+        for indice, (_nome, widget, efeito) in enumerate(efeitos):
+            posicao_final = widget.pos()
+            posicoes_finais.append((widget, posicao_final))
+            deslocamento = (
+                QPoint(-10, 0)
+                if widget is self.sidebar
+                else QPoint(0, -8)
+                if widget is self.topbar
+                else QPoint(0, 12)
             )
-            animacao.setDuration(1000)
-            animacao.setStartValue(0.05)
-            animacao.setEndValue(1.0)
-            animacao.setEasingCurve(
-                QEasingCurve.InOutCubic
-            )
-            grupo.addAnimation(animacao)
+            widget.move(posicao_final + deslocamento)
+
+            etapa = QSequentialAnimationGroup(grupo)
+            etapa.addPause(indice * 45)
+            movimentos = QParallelAnimationGroup(etapa)
+
+            opacidade = QPropertyAnimation(efeito, b"opacity", movimentos)
+            opacidade.setDuration(360)
+            opacidade.setStartValue(0.08)
+            opacidade.setEndValue(1.0)
+            opacidade.setEasingCurve(QEasingCurve.OutCubic)
+
+            posicao = QPropertyAnimation(widget, b"pos", movimentos)
+            posicao.setDuration(360)
+            posicao.setStartValue(posicao_final + deslocamento)
+            posicao.setEndValue(posicao_final)
+            posicao.setEasingCurve(QEasingCurve.OutCubic)
+
+            movimentos.addAnimation(opacidade)
+            movimentos.addAnimation(posicao)
+            etapa.addAnimation(movimentos)
+            grupo.addAnimation(etapa)
 
         def finalizar_inicio() -> None:
+            for widget, posicao_final in posicoes_finais:
+                widget.move(posicao_final)
             for _nome, widget, efeito in list(
                 self._efeitos_inicio
             ):
@@ -1696,6 +1878,12 @@ class JanelaLaylay(QMainWindow):
                     widget.setGraphicsEffect(None)
 
             self._efeitos_inicio.clear()
+            self._interface_animavel = True
+            self._atualizar_pulso_presenca(self._atividade_visual_atual)
+            self._sincronizar_indicador_navegacao(
+                self._pagina_visual_ativa,
+                animar=False,
+            )
 
             if self._animacao_inicio_grupo is grupo:
                 self._animacao_inicio_grupo = None
@@ -1706,6 +1894,269 @@ class JanelaLaylay(QMainWindow):
             finalizar_inicio
         )
         grupo.start()
+
+    def _encerrar_transicao_pagina(self) -> None:
+        grupo = self._animacao_pagina_grupo
+        if grupo is not None:
+            grupo.stop()
+            grupo.deleteLater()
+            self._animacao_pagina_grupo = None
+        efeito = self._efeito_pagina
+        if efeito is not None:
+            pagina = self._pagina_em_transicao
+            if pagina is not None and pagina.graphicsEffect() is efeito:
+                pagina.setGraphicsEffect(None)
+            self._efeito_pagina = None
+        self._pagina_em_transicao = None
+
+    def _encerrar_microinteracao_por_id(
+        self,
+        identificador: int,
+        *,
+        remover_efeito: bool = True,
+        grupo_esperado: QSequentialAnimationGroup | None = None,
+    ) -> None:
+        registro = self._micro_animacoes.get(identificador)
+        if registro is None:
+            return
+        if grupo_esperado is not None and registro[2] is not grupo_esperado:
+            return
+        self._micro_animacoes.pop(identificador, None)
+        alvo, efeito, grupo = registro
+        if _objeto_qt_esta_vivo(grupo):
+            grupo.stop()
+        if remover_efeito and _objeto_qt_esta_vivo(alvo):
+            try:
+                if alvo.graphicsEffect() is efeito:
+                    alvo.setGraphicsEffect(None)
+            except RuntimeError:
+                pass
+        if _objeto_qt_esta_vivo(grupo):
+            grupo.deleteLater()
+
+    def _encerrar_microinteracao(self, widget: QWidget) -> None:
+        self._encerrar_microinteracao_por_id(id(widget))
+
+    def _animar_microinteracao(
+        self,
+        widget: QWidget,
+        *,
+        opacidade_minima: float = 0.58,
+        duracao_retorno: int = 240,
+    ) -> None:
+        """Dá retorno visual sem deslocar widgets controlados pelo layout."""
+        if (
+            self._reduzir_movimento
+            or not self._interface_animavel
+            or widget is None
+            or not widget.isVisible()
+        ):
+            return
+        self._encerrar_microinteracao(widget)
+        efeito = QGraphicsOpacityEffect(widget)
+        efeito.setOpacity(1.0)
+        widget.setGraphicsEffect(efeito)
+        grupo = QSequentialAnimationGroup(self)
+        descida = QPropertyAnimation(efeito, b"opacity", grupo)
+        descida.setDuration(75)
+        descida.setStartValue(1.0)
+        descida.setEndValue(max(0.25, min(0.9, opacidade_minima)))
+        descida.setEasingCurve(QEasingCurve.OutCubic)
+        retorno = QPropertyAnimation(efeito, b"opacity", grupo)
+        retorno.setDuration(max(100, int(duracao_retorno)))
+        retorno.setStartValue(max(0.25, min(0.9, opacidade_minima)))
+        retorno.setEndValue(1.0)
+        retorno.setEasingCurve(QEasingCurve.OutCubic)
+        grupo.addAnimation(descida)
+        grupo.addAnimation(retorno)
+        identificador = id(widget)
+        self._micro_animacoes[identificador] = (widget, efeito, grupo)
+        widget.destroyed.connect(
+            lambda *_args, chave=identificador, animacao=grupo:
+            self._encerrar_microinteracao_por_id(
+                chave,
+                remover_efeito=False,
+                grupo_esperado=animacao,
+            )
+        )
+
+        def finalizar() -> None:
+            self._encerrar_microinteracao_por_id(
+                identificador,
+                grupo_esperado=grupo,
+            )
+
+        grupo.finished.connect(finalizar)
+        grupo.start()
+
+    def _encerrar_microinteracoes(self) -> None:
+        for identificador in list(self._micro_animacoes):
+            self._encerrar_microinteracao_por_id(identificador)
+
+    def _registrar_feedback_botao(self, botao: QWidget) -> None:
+        if bool(botao.property("a4FeedbackLigado")):
+            return
+        if not hasattr(botao, "clicked"):
+            return
+        botao.setProperty("a4FeedbackLigado", True)
+        botao.clicked.connect(
+            lambda _marcado=False, alvo=botao: self._animar_microinteracao(
+                alvo,
+                opacidade_minima=0.46,
+                duracao_retorno=150,
+            )
+        )
+
+    def _registrar_feedback_botoes(self) -> None:
+        """Liga feedback aos controles existentes sem alterar sua geometria."""
+        for botao in self.findChildren(QWidget):
+            if not isinstance(botao, (QPushButton, QToolButton)):
+                continue
+            if botao is self.composer.botao:
+                # O envio já recebe um pulso próprio na A3.
+                continue
+            self._registrar_feedback_botao(botao)
+
+    def _parar_pulso_presenca(self) -> None:
+        grupo = self._pulso_presenca
+        if grupo is not None:
+            grupo.stop()
+            grupo.deleteLater()
+            self._pulso_presenca = None
+        efeito = self._efeito_presenca
+        if efeito is not None:
+            if self.ponto.graphicsEffect() is efeito:
+                self.ponto.setGraphicsEffect(None)
+            self._efeito_presenca = None
+
+    def _atualizar_pulso_presenca(self, atividade: str) -> None:
+        self._atividade_visual_atual = str(atividade or "idle")
+        atividades_vivas = {
+            "listening", "thinking", "executing", "speaking", "reconnecting",
+        }
+        if (
+            self._reduzir_movimento
+            or not self._interface_animavel
+            or self._atividade_visual_atual not in atividades_vivas
+            or self.isMinimized()
+        ):
+            self._parar_pulso_presenca()
+            return
+        if self._pulso_presenca is not None:
+            return
+        efeito = QGraphicsOpacityEffect(self.ponto)
+        efeito.setOpacity(1.0)
+        self.ponto.setGraphicsEffect(efeito)
+        grupo = QSequentialAnimationGroup(self)
+        descer = QPropertyAnimation(efeito, b"opacity", grupo)
+        descer.setDuration(620)
+        descer.setStartValue(1.0)
+        descer.setEndValue(0.34)
+        descer.setEasingCurve(QEasingCurve.InOutSine)
+        subir = QPropertyAnimation(efeito, b"opacity", grupo)
+        subir.setDuration(620)
+        subir.setStartValue(0.34)
+        subir.setEndValue(1.0)
+        subir.setEasingCurve(QEasingCurve.InOutSine)
+        grupo.addAnimation(descer)
+        grupo.addAnimation(subir)
+        grupo.setLoopCount(-1)
+        self._efeito_presenca = efeito
+        self._pulso_presenca = grupo
+        grupo.start()
+
+    def _animar_transicao_pagina(self, pagina: QWidget, direcao: int) -> None:
+        if self._reduzir_movimento or not self._interface_animavel:
+            return
+        self._encerrar_transicao_pagina()
+        posicao_final = pagina.pos()
+        deslocamento = QPoint(18 if direcao >= 0 else -18, 0)
+        efeito = QGraphicsOpacityEffect(pagina)
+        efeito.setOpacity(0.22)
+        pagina.setGraphicsEffect(efeito)
+        pagina.move(posicao_final + deslocamento)
+
+        grupo = QParallelAnimationGroup(self)
+        opacidade = QPropertyAnimation(efeito, b"opacity", grupo)
+        opacidade.setDuration(240)
+        opacidade.setStartValue(0.22)
+        opacidade.setEndValue(1.0)
+        opacidade.setEasingCurve(QEasingCurve.OutCubic)
+        posicao = QPropertyAnimation(pagina, b"pos", grupo)
+        posicao.setDuration(260)
+        posicao.setStartValue(posicao_final + deslocamento)
+        posicao.setEndValue(posicao_final)
+        posicao.setEasingCurve(QEasingCurve.OutCubic)
+        grupo.addAnimation(opacidade)
+        grupo.addAnimation(posicao)
+        self._animacao_pagina_grupo = grupo
+        self._efeito_pagina = efeito
+        self._pagina_em_transicao = pagina
+
+        def finalizar() -> None:
+            pagina.move(posicao_final)
+            if pagina.graphicsEffect() is efeito:
+                pagina.setGraphicsEffect(None)
+            if self._animacao_pagina_grupo is grupo:
+                self._animacao_pagina_grupo = None
+            if self._efeito_pagina is efeito:
+                self._efeito_pagina = None
+            if self._pagina_em_transicao is pagina:
+                self._pagina_em_transicao = None
+            grupo.deleteLater()
+
+        grupo.finished.connect(finalizar)
+        grupo.start()
+
+    def _geometria_indicador_navegacao(self, botao: QPushButton) -> QRect:
+        ponto = botao.mapTo(self.sidebar, QPoint(0, 0))
+        altura = max(24, min(32, botao.height() - 12))
+        topo = ponto.y() + max(0, (botao.height() - altura) // 2)
+        return QRect(0, topo, 3, altura)
+
+    def _sincronizar_indicador_navegacao(
+        self,
+        nome: str,
+        *,
+        animar: bool,
+    ) -> None:
+        botao = self._nav.get(nome)
+        if botao is None or not botao.isVisible():
+            self.indicador_navegacao.hide()
+            return
+        destino = self._geometria_indicador_navegacao(botao)
+        self.indicador_navegacao.raise_()
+        if (
+            self._reduzir_movimento
+            or not animar
+            or not self.indicador_navegacao.isVisible()
+        ):
+            self.indicador_navegacao.setGeometry(destino)
+            self.indicador_navegacao.show()
+            return
+        anterior = self._animacao_indicador_nav
+        if anterior is not None:
+            anterior.stop()
+            anterior.deleteLater()
+        movimento = QPropertyAnimation(
+            self.indicador_navegacao,
+            b"geometry",
+            self,
+        )
+        movimento.setDuration(230)
+        movimento.setStartValue(self.indicador_navegacao.geometry())
+        movimento.setEndValue(destino)
+        movimento.setEasingCurve(QEasingCurve.OutCubic)
+        self._animacao_indicador_nav = movimento
+
+        def finalizar() -> None:
+            self.indicador_navegacao.setGeometry(destino)
+            if self._animacao_indicador_nav is movimento:
+                self._animacao_indicador_nav = None
+            movimento.deleteLater()
+
+        movimento.finished.connect(finalizar)
+        movimento.start()
 
     def _atalhos(self) -> None:
         QShortcut(QKeySequence("Ctrl+L"), self, activated=self.composer.editor.setFocus)
@@ -1740,14 +2191,29 @@ class JanelaLaylay(QMainWindow):
                 #brand {{ font-size: 21px; font-weight: 700; }}
                 #brandCaption {{ color: {PALETA['apagado']}; font-size: 10px; }}
                 #sideSection, #eyebrow {{ color: {PALETA['apagado']}; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; }}
-                #newChatButton {{ background: {PALETA['elevada']}; border: 1px solid {PALETA['borda']}; border-radius: 11px; text-align: left; padding: 12px 14px; min-height: 22px; font-weight: 600; }}
-                #newChatButton:hover {{ background: {PALETA['hover']}; border-color: #51475A; }}
                 QPushButton[nav="true"] {{ background: transparent; border: 0; border-radius: 9px; text-align: left; padding: 12px 14px; min-height: 22px; color: {PALETA['secundario']}; }}
                 QPushButton[nav="true"]:hover {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
-                QPushButton[nav="true"]:checked {{ background: #2A1C22; color: {PALETA['texto']}; border-left: 2px solid {PALETA['violeta']}; }}
+                QPushButton[nav="true"]:checked {{ background: #2A1C22; color: {PALETA['texto']}; }}
+                #navIndicator {{ background: {PALETA['rosa']}; border: 0; border-radius: 1px; }}
                 QPushButton:focus, QToolButton:focus, QTextEdit:focus, QComboBox:focus, QCheckBox:focus {{ border: 1px solid {PALETA['rosa']}; outline: 0; }}
                 #recentItem {{ color: {PALETA['secundario']}; padding: 9px 12px; background: transparent; border: 0; border-radius: 8px; text-align: left; }}
                 #recentItem:hover {{ color: {PALETA['texto']}; background: {PALETA['elevada']}; }}
+                #conversationList, #conversationListContent {{ background: transparent; border: 0; }}
+                #conversationTools {{ background: transparent; border: 0; }}
+                #conversationSearch {{ background: #151A20; border: 1px solid #2B323A; border-radius: 8px; padding: 6px 8px; color: {PALETA['texto']}; font-size: 10px; min-height: 20px; }}
+                #conversationSearch:focus {{ border-color: #6E3C4B; }}
+                #archivedConversationsButton {{ min-width: 30px; max-width: 30px; min-height: 30px; max-height: 30px; border: 1px solid #2B323A; background: #151A20; }}
+                #archivedConversationsButton:checked {{ color: {PALETA['rosa']}; border-color: #6E3C4B; background: #281C22; }}
+                #conversationSection {{ color: {PALETA['apagado']}; font-size: 9px; font-weight: 700; padding: 5px 7px 2px 7px; }}
+                #conversationEmpty {{ color: {PALETA['apagado']}; font-size: 10px; padding: 9px 7px; }}
+                #conversationRow {{ background: transparent; border: 0; border-radius: 8px; }}
+                #conversationRow[active="true"] {{ background: #251B20; }}
+                #conversationRow[archived="true"] {{ background: #12161B; }}
+                #conversationItem {{ color: {PALETA['secundario']}; background: transparent; border: 0; border-radius: 7px; padding: 7px 7px; text-align: left; font-size: 11px; }}
+                #conversationItem:hover {{ color: {PALETA['texto']}; background: #1B2026; }}
+                #conversationItem:checked {{ color: {PALETA['texto']}; font-weight: 650; }}
+                #conversationItem[archived="true"] {{ color: {PALETA['apagado']}; font-style: italic; }}
+                #conversationMenu {{ min-width: 24px; max-width: 24px; min-height: 24px; max-height: 24px; color: {PALETA['apagado']}; }}
                 #mindStatus {{ color: {PALETA['apagado']}; padding: 8px; font-size: 11px; }}
                 #footerSettings {{ background: transparent; border: 0; border-radius: 8px; text-align: left; padding: 10px; color: {PALETA['secundario']}; }}
                 #footerSettings:hover {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
@@ -1793,18 +2259,6 @@ class JanelaLaylay(QMainWindow):
                 #brandCaption {{
                     color: #747C85;
                     font-size: 8px;
-                }}
-
-                #newChatButton {{
-                    background: transparent;
-                    border: 1px solid #2A3138;
-                    border-radius: 9px;
-                    padding: 0;
-                }}
-
-                #newChatButton:hover {{
-                    background: #201A1E;
-                    border-color: #663540;
                 }}
 
                 #collapseButton {{
@@ -5405,9 +5859,7 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         if self._feed_em_espera:
             while self.feed_lay.count():
                 item = self.feed_lay.takeAt(0)
-                if item.widget():
-                    item.widget().hide()
-                    item.widget().deleteLater()
+                self._descartar_item_feed(item)
             self.feed_lay.addStretch()
             self._feed_em_espera = False
         horario_mensagem = self._horario(timestamp)
@@ -5417,7 +5869,15 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             mensagem_id=mensagem_id, status=status,
         )
         mensagem.reenviar.connect(self.reenviar_texto)
-        linha = QHBoxLayout()
+        linha_container = QWidget(self.feed)
+        linha_container.setObjectName("messageRow")
+        linha_container.setProperty(
+            "entryDirection",
+            "right" if papel == "user" else "left",
+        )
+        linha_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        linha = QHBoxLayout(linha_container)
+        linha.setContentsMargins(0, 0, 0, 0)
         if papel == "user":
             coluna_mensagem = QVBoxLayout()
             coluna_mensagem.setContentsMargins(
@@ -5500,12 +5960,14 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             linha.addSpacing(5)
             linha.addLayout(coluna_mensagem)
             linha.addStretch(1)
-        self.feed_lay.insertLayout(max(0, self.feed_lay.count() - 1), linha)
+        self.feed_lay.insertWidget(
+            max(0, self.feed_lay.count() - 1), linha_container,
+        )
         self.feed_lay.invalidate()
         self.feed.updateGeometry()
         QTimer.singleShot(0, self._ajustar_larguras_mensagens)
         if animar:
-            self._animar_entrada(mensagem)
+            self._animar_entrada(mensagem, linha_container)
         if deve_rolar:
             self._agendar_rolagem_final()
         return mensagem
@@ -5541,33 +6003,74 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         """Agrupa relayouts sucessivos e ancora somente uma vez no fim."""
         self._timer_auto_scroll.start(0)
 
+    def _encerrar_rolagem_suave(self) -> None:
+        animacao = self._animacao_scroll
+        if animacao is None:
+            return
+        animacao.stop()
+        animacao.deleteLater()
+        self._animacao_scroll = None
+
     def _rolar_ao_final(self) -> None:
         barra = self.scroll.verticalScrollBar()
-        barra.setValue(barra.maximum())
-
-    def _animar_entrada(self, mensagem: MensagemWidget) -> None:
-        if self._reduzir_movimento:
+        destino = barra.maximum()
+        if (
+            self._reduzir_movimento
+            or not self._interface_animavel
+            or destino <= barra.value() + 2
+        ):
+            self._encerrar_rolagem_suave()
+            barra.setValue(destino)
             return
-        efeito = QGraphicsOpacityEffect(mensagem)
-        mensagem.setGraphicsEffect(efeito)
-        animacao = QPropertyAnimation(efeito, b"opacity", mensagem)
-        animacao.setDuration(150)
-        animacao.setStartValue(0.25)
-        animacao.setEndValue(1.0)
+        self._encerrar_rolagem_suave()
+        animacao = QPropertyAnimation(barra, b"value", self)
+        animacao.setDuration(190)
+        animacao.setStartValue(barra.value())
+        animacao.setEndValue(destino)
         animacao.setEasingCurve(QEasingCurve.OutCubic)
-        self._animacoes.append(animacao)
+        self._animacao_scroll = animacao
 
         def finalizar() -> None:
-            if animacao in self._animacoes:
-                self._animacoes.remove(animacao)
-            # Efeitos gráficos persistentes obrigam o Qt a recompor dezenas de
-            # pixmaps durante a rolagem e eram a origem do piscar no histórico.
-            if mensagem.graphicsEffect() is efeito:
-                mensagem.setGraphicsEffect(None)
+            if self._animacao_scroll is animacao:
+                self._animacao_scroll = None
+                barra.setValue(barra.maximum())
             animacao.deleteLater()
 
         animacao.finished.connect(finalizar)
         animacao.start()
+
+    def _animar_entrada(
+        self,
+        mensagem: MensagemWidget,
+        container: QWidget,
+    ) -> None:
+        if self._reduzir_movimento:
+            return
+        self.feed_lay.activate()
+        efeito = QGraphicsOpacityEffect(container)
+        efeito.setOpacity(0.10)
+        container.setGraphicsEffect(efeito)
+
+        grupo = QParallelAnimationGroup(self)
+        opacidade = QPropertyAnimation(efeito, b"opacity", grupo)
+        opacidade.setDuration(230)
+        opacidade.setStartValue(0.10)
+        opacidade.setEndValue(1.0)
+        opacidade.setEasingCurve(QEasingCurve.OutCubic)
+        grupo.addAnimation(opacidade)
+        self._animacoes.append(grupo)
+
+        def finalizar() -> None:
+            if grupo in self._animacoes:
+                self._animacoes.remove(grupo)
+            # Efeitos gráficos persistentes obrigam o Qt a recompor dezenas de
+            # pixmaps durante a rolagem e eram a origem do piscar no histórico.
+            if container.graphicsEffect() is efeito:
+                container.setGraphicsEffect(None)
+            grupo.deleteLater()
+
+        grupo.finished.connect(finalizar)
+        grupo.start()
 
     def enviar_texto(self, texto: str) -> None:
         self._enviar_pedido(texto, tipo="chat", acao_id="")
@@ -5614,11 +6117,14 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             )
             if mensagem is not None:
                 self._envios[mensagem_id] = mensagem
+                self._envio_conversa[mensagem_id] = self._conversa_ativa_id
             self._mostrar_indicador_pensando()
         payload = {
             "type": "input_submit", "id": mensagem_id, "text": texto,
             "kind": tipo,
         }
+        if not acao_direta and self._conversa_ativa_id:
+            payload["conversation_id"] = self._conversa_ativa_id
         if tipo in {"quick_action", "panel_action"}:
             payload["action"] = str(acao_id or "")
             if tipo == "panel_action":
@@ -5685,6 +6191,7 @@ QScrollArea#systemScroll > QWidget > QWidget {{
     def _falhar_envio(self, mensagem_id: str, detalhe: str) -> None:
         self._encerrar_timeout_envio(mensagem_id)
         mensagem = self._envios.pop(mensagem_id, None)
+        self._envio_conversa.pop(mensagem_id, None)
         if mensagem is not None:
             mensagem.definir_status("failed", detalhe)
         acao_id = self._acoes_por_envio.pop(mensagem_id, "")
@@ -5709,8 +6216,12 @@ QScrollArea#systemScroll > QWidget > QWidget {{
     def _mostrar_indicador_pensando(self) -> None:
         if self._indicador_pensando is not None:
             return
-        indicador = IndicadorPensando()
+        self._encerrar_saida_pensando()
+        indicador = IndicadorPensando(
+            reduzir_movimento=self._reduzir_movimento,
+        )
         container = QWidget()
+        container.setObjectName("thinkingRow")
         linha = QHBoxLayout(container)
         linha.setContentsMargins(0, 0, 0, 0)
         linha.addWidget(indicador)
@@ -5720,21 +6231,99 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         self.feed_lay.insertWidget(max(0, self.feed_lay.count() - 1), container)
         self.feed_lay.invalidate()
         self.feed.updateGeometry()
+        if not self._reduzir_movimento:
+            self.feed_lay.activate()
+            efeito = QGraphicsOpacityEffect(container)
+            efeito.setOpacity(0.12)
+            container.setGraphicsEffect(efeito)
+            grupo = QParallelAnimationGroup(self)
+            opacidade = QPropertyAnimation(efeito, b"opacity", grupo)
+            opacidade.setDuration(180)
+            opacidade.setStartValue(0.12)
+            opacidade.setEndValue(1.0)
+            opacidade.setEasingCurve(QEasingCurve.OutCubic)
+            grupo.addAnimation(opacidade)
+            self._animacao_entrada_pensando = grupo
+
+            def finalizar_entrada() -> None:
+                if container.graphicsEffect() is efeito:
+                    container.setGraphicsEffect(None)
+                if self._animacao_entrada_pensando is grupo:
+                    self._animacao_entrada_pensando = None
+                grupo.deleteLater()
+
+            grupo.finished.connect(finalizar_entrada)
+            grupo.start()
         self._agendar_rolagem_final()
 
-    def _remover_indicador_pensando(self) -> None:
+    def _encerrar_saida_pensando(self) -> None:
+        grupo = self._animacao_saida_pensando
+        container = self._container_saida_pensando
+        if grupo is not None:
+            grupo.stop()
+            grupo.deleteLater()
+        self._animacao_saida_pensando = None
+        self._container_saida_pensando = None
+        if container is not None:
+            self.feed_lay.removeWidget(container)
+            container.hide()
+            container.deleteLater()
+
+    def _remover_indicador_pensando(self, *, animar: bool = False) -> None:
         indicador = self._indicador_pensando
         container = self._container_indicador
+        entrada = self._animacao_entrada_pensando
+        if entrada is not None:
+            entrada.stop()
+            entrada.deleteLater()
+            self._animacao_entrada_pensando = None
+        if container is not None and _objeto_qt_esta_vivo(container):
+            # Se a resposta chega antes do fade-in terminar, o grupo é parado,
+            # mas o efeito continuava preso ao indicador. Um segundo efeito no
+            # balão novo fazia o Qt tentar pintar o mesmo feed duas vezes.
+            try:
+                if container.graphicsEffect() is not None:
+                    container.setGraphicsEffect(None)
+            except RuntimeError:
+                pass
         self._indicador_pensando = None
         self._container_indicador = None
         if indicador is not None:
             indicador.parar()
         if container is not None:
-            self.feed_lay.removeWidget(container)
-            container.hide()
-            container.deleteLater()
-            self.feed_lay.invalidate()
-            self.feed.updateGeometry()
+            if animar and not self._reduzir_movimento and container.isVisible():
+                self._encerrar_saida_pensando()
+                altura_inicial = max(1, container.height())
+                grupo = QParallelAnimationGroup(self)
+                altura = QPropertyAnimation(container, b"maximumHeight", grupo)
+                altura.setDuration(150)
+                altura.setStartValue(altura_inicial)
+                altura.setEndValue(0)
+                altura.setEasingCurve(QEasingCurve.OutCubic)
+                grupo.addAnimation(altura)
+                self._animacao_saida_pensando = grupo
+                self._container_saida_pensando = container
+
+                def finalizar_saida() -> None:
+                    if self._animacao_saida_pensando is grupo:
+                        self._animacao_saida_pensando = None
+                    if self._container_saida_pensando is container:
+                        self._container_saida_pensando = None
+                    self.feed_lay.removeWidget(container)
+                    container.hide()
+                    container.deleteLater()
+                    self.feed_lay.invalidate()
+                    self.feed.updateGeometry()
+                    grupo.deleteLater()
+
+                grupo.finished.connect(finalizar_saida)
+                grupo.start()
+            else:
+                self.feed_lay.removeWidget(container)
+                container.hide()
+                container.deleteLater()
+                self.feed_lay.invalidate()
+                self.feed.updateGeometry()
 
     def reenviar_texto(self, mensagem_id: str, texto: str) -> None:
         anterior = self._envios.pop(mensagem_id, None)
@@ -5814,14 +6403,24 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         tipo = msg.get("type")
         if tipo == "snapshot":
             mensagens = list(msg.get("messages", []))
-            for item in mensagens:
-                self.adicionar_mensagem(
-                    item.get("role", "assistant"), item.get("content", ""),
-                    timestamp=item.get("timestamp"), rolar_ao_final=False,
-                    animar=False,
+            if isinstance(msg.get("conversations"), dict):
+                if not str(
+                    msg["conversations"].get("active_id") or ""
+                ).strip():
+                    # A lista pode conter chats antigos, mas nenhum deles foi
+                    # escolhido nesta sessão. Não reidrate o histórico legado.
+                    mensagens = []
+                self._aplicar_retrato_conversas(
+                    msg["conversations"], substituir_historico=False,
                 )
-            if mensagens:
-                self._agendar_rolagem_final()
+            elif self._conectado:
+                # Compatibilidade com uma ponte antiga. Na ponte C2 o próprio
+                # snapshot já é autoritativo; pedir de novo causava uma segunda
+                # hidratação do mesmo histórico durante a abertura.
+                self.enviar_json.emit({
+                    "type": "conversations_get", "id": uuid.uuid4().hex,
+                })
+            self._substituir_historico(mensagens)
             for evento in msg.get("events", []):
                 self.adicionar_evento(evento.get("title", "Evento"), evento.get("detail", ""), evento.get("level", "info"))
             self._atualizar_estado(msg.get("state") or {})
@@ -5835,18 +6434,37 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             mensagem_id = str(msg.get("id") or "")
             if mensagem_id not in self._envios and len(self._envios) == 1:
                 mensagem_id = next(iter(self._envios))
+            conversa_id = str(
+                msg.get("conversation_id")
+                or self._envio_conversa.get(mensagem_id)
+                or self._conversa_ativa_id
+            )
             if mensagem_id:
                 self._encerrar_timeout_envio(mensagem_id)
                 self._envios.pop(mensagem_id, None)
-            if not self._envios:
-                self._remover_indicador_pensando()
-            self.adicionar_mensagem(
-                "assistant", str(msg.get("text") or ""),
-                timestamp=msg.get("timestamp"),
-                mensagem_id=str(msg.get("id") or mensagem_id),
+                self._envio_conversa.pop(mensagem_id, None)
+            envios_ativos = any(
+                cid == self._conversa_ativa_id
+                for cid in self._envio_conversa.values()
             )
+            if not envios_ativos:
+                self._remover_indicador_pensando(animar=True)
+            if not conversa_id or conversa_id == self._conversa_ativa_id:
+                self.adicionar_mensagem(
+                    "assistant", str(msg.get("text") or ""),
+                    timestamp=msg.get("timestamp"),
+                    mensagem_id=str(msg.get("id") or mensagem_id),
+                )
             self.avatar_side.atualizar("speaking", str(msg.get("emotion") or "calma"))
-            self.adicionar_evento("Resposta entregue", "A fala final chegou à conversa.", "success")
+            self.adicionar_evento(
+                "Resposta entregue",
+                (
+                    "A fala final chegou à conversa."
+                    if not conversa_id or conversa_id == self._conversa_ativa_id
+                    else "A resposta foi guardada no chat em que o pedido começou."
+                ),
+                "success",
+            )
         elif tipo == "input_ack":
             mensagem_id = str(msg.get("id") or "")
             aceito = bool(msg.get("accepted"))
@@ -5876,6 +6494,36 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         elif tipo == "dashboard_state":
             if isinstance(msg.get("dashboard"), dict):
                 self._atualizar_dashboard(msg["dashboard"])
+        elif tipo == "conversations_state":
+            requisicao_id = str(msg.get("id") or "")
+            if requisicao_id == self._requisicao_conversa_id:
+                self._requisicao_conversa_id = ""
+            sucesso = bool(msg.get("success"))
+            retrato = msg.get("conversations")
+            if isinstance(retrato, dict):
+                self._aplicar_retrato_conversas(
+                    retrato,
+                    substituir_historico=(
+                        sucesso and str(msg.get("action") or "")
+                        in {"create", "select", "delete", "list"}
+                    ),
+                )
+            self._definir_controles_conversa(True)
+            if sucesso:
+                if str(msg.get("action") or "") in {"create", "select", "delete"}:
+                    self.selecionar_pagina("conversa")
+                    self.composer.editor.setFocus()
+                self.adicionar_evento(
+                    "Conversas sincronizadas",
+                    "A alteração foi confirmada pela memória da Laylay.",
+                    "success",
+                )
+            else:
+                self.adicionar_evento(
+                    "Conversa não alterada",
+                    str(msg.get("message") or "A mente não confirmou a alteração."),
+                    "warning",
+                )
         elif tipo == "action_state":
             mensagem_id = str(msg.get("id") or "")
             acao_id = str(
@@ -6057,10 +6705,22 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             else:
                 self.chip_microfone.definir("Pausado no chat", estado="pending")
         self.status.setText(rotulo)
+        assinatura_microestado = f"{atividade}:{rotulo}"
+        if (
+            self._assinatura_microestado
+            and assinatura_microestado != self._assinatura_microestado
+        ):
+            self._animar_microinteracao(
+                self.status,
+                opacidade_minima=0.42,
+                duracao_retorno=260,
+            )
+        self._assinatura_microestado = assinatura_microestado
         self.marca_status.setText(f"{rotulo.casefold()} · {emocao}")
         self.diag_atividade.setText(f"Atividade\n{rotulo} · emoção {emocao}")
         self.avatar_side.atualizar(atividade, emocao)
         self.avatar_profile.atualizar(atividade, emocao)
+        self._atualizar_pulso_presenca(atividade)
         if atividade in {"thinking", "executing"} and self._envios:
             self._mostrar_indicador_pensando()
         assinatura_atividade = f"{atividade}:{rotulo}:{emocao}"
@@ -6078,6 +6738,14 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             self._modo, pendente=self._modo_pendente,
             voz_disponivel=self._voz_disponivel,
         )
+        modo_visual = f"{self._modo}:{self._modo_pendente}:{self._voz_disponivel}"
+        if self._modo_visual_anterior and modo_visual != self._modo_visual_anterior:
+            self._animar_microinteracao(
+                self.alternador,
+                opacidade_minima=0.48,
+                duracao_retorno=220,
+            )
+        self._modo_visual_anterior = modo_visual
         self.composer.definir_estado(conectado=self._conectado, modo=self._modo)
         self.waveform.definir_nivel(
             self._nivel_microfone,
@@ -6104,6 +6772,9 @@ QScrollArea#systemScroll > QWidget > QWidget {{
 
     def estado_conexao(self, conectado: bool) -> None:
         self._conectado = conectado
+        if not conectado:
+            self._requisicao_conversa_id = ""
+        self._definir_controles_conversa(conectado)
         self.central_inteligente.definir_conectada(conectado)
         self.painel_lateral.definir_conectada(conectado)
         self.pagina_automacao.definir_conectada(conectado)
@@ -6182,25 +6853,90 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         if atividade_confirmada:
             self.central_inteligente.registrar_evento(titulo)
 
-    def nova_conversa(self) -> None:
+    @classmethod
+    def _descartar_item_feed(cls, item) -> None:
+        """Remove recursivamente linhas antigas, inclusive layouts sem contêiner."""
+        widget = item.widget()
+        if widget is not None:
+            widget.hide()
+            widget.setParent(None)
+            widget.deleteLater()
+            return
+        layout = item.layout()
+        if layout is None:
+            return
+        while layout.count():
+            cls._descartar_item_feed(layout.takeAt(0))
+        layout.invalidate()
+        layout.deleteLater()
+
+    def _encerrar_animacoes_mensagens(self) -> None:
+        for grupo in list(self._animacoes):
+            grupo.stop()
+            grupo.deleteLater()
+        self._animacoes.clear()
+
+    def _encerrar_transicao_conversa(self) -> None:
+        grupo = self._animacao_troca_conversa
+        if grupo is not None:
+            grupo.stop()
+            grupo.deleteLater()
+            self._animacao_troca_conversa = None
+        efeito = self._efeito_troca_conversa
+        if efeito is not None and self.feed.graphicsEffect() is efeito:
+            self.feed.setGraphicsEffect(None)
+        self._efeito_troca_conversa = None
+
+    def _animar_entrada_conversa(self) -> None:
+        if self._reduzir_movimento or not self._interface_animavel:
+            return
+        self._encerrar_transicao_conversa()
+        self.feed_lay.activate()
+        efeito = QGraphicsOpacityEffect(self.feed)
+        efeito.setOpacity(0.10)
+        self.feed.setGraphicsEffect(efeito)
+        grupo = QParallelAnimationGroup(self)
+        opacidade = QPropertyAnimation(efeito, b"opacity", grupo)
+        opacidade.setDuration(230)
+        opacidade.setStartValue(0.10)
+        opacidade.setEndValue(1.0)
+        opacidade.setEasingCurve(QEasingCurve.OutCubic)
+        grupo.addAnimation(opacidade)
+        self._animacao_troca_conversa = grupo
+        self._efeito_troca_conversa = efeito
+
+        def finalizar() -> None:
+            if self.feed.graphicsEffect() is efeito:
+                self.feed.setGraphicsEffect(None)
+            if self._animacao_troca_conversa is grupo:
+                self._animacao_troca_conversa = None
+            if self._efeito_troca_conversa is efeito:
+                self._efeito_troca_conversa = None
+            grupo.deleteLater()
+
+        grupo.finished.connect(finalizar)
+        grupo.start()
+
+    def _limpar_historico_visual(self) -> None:
+        self._encerrar_animacoes_mensagens()
+        self._encerrar_transicao_conversa()
         self._remover_indicador_pensando()
+        self._encerrar_saida_pensando()
         while self.feed_lay.count():
             item = self.feed_lay.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-            if item.layout():
-                while item.layout().count():
-                    filho = item.layout().takeAt(0)
-                    if filho.widget():
-                        filho.widget().deleteLater()
+            self._descartar_item_feed(item)
+        self._ultima_mensagem = ("", "", 0.0)
+
+    def _mostrar_conversa_vazia(self) -> None:
+        self._limpar_historico_visual()
         self.vazio = QFrame(objectName="emptyState")
         self.vazio.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Minimum)
         lay = QVBoxLayout(self.vazio)
-        titulo = QLabel("◕‿◕  Tela limpa. Memória intacta.")
+        titulo = QLabel("◕‿◕  Conversa nova, memória global intacta.")
         titulo.setObjectName("emptyTitle")
         titulo.setAlignment(Qt.AlignCenter)
         titulo.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
-        texto = QLabel("Nova sessão visual; a mente da Laylay não esqueceu nada.")
+        texto = QLabel("Este chat começa sem referências nem assunto anterior.")
         texto.setObjectName("emptyCopy")
         texto.setAlignment(Qt.AlignCenter)
         texto.setWordWrap(True)
@@ -6211,12 +6947,387 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         self.feed_lay.addWidget(self.vazio)
         self.feed_lay.addStretch()
         self._feed_em_espera = True
-        self._envios.clear()
-        self._acoes_por_envio.clear()
-        self.conversa_atual.setText("Conversa atual")
+
+    def _substituir_historico(
+        self,
+        mensagens: list[dict],
+        *,
+        animar: bool = False,
+    ) -> None:
+        self._limpar_historico_visual()
+        self._feed_em_espera = True
+        validas = [item for item in mensagens if isinstance(item, dict)]
+        if not validas:
+            self._mostrar_conversa_vazia()
+            if animar:
+                self._animar_entrada_conversa()
+            return
+        for item in validas:
+            self.adicionar_mensagem(
+                str(item.get("role") or "assistant"),
+                str(item.get("content") or ""),
+                timestamp=item.get("timestamp"),
+                rolar_ao_final=False,
+                animar=False,
+            )
+        self._agendar_rolagem_final()
+        if animar:
+            self._animar_entrada_conversa()
+
+    def _encerrar_animacoes_conversas(self) -> None:
+        for grupo in list(self._animacoes_conversas):
+            grupo.stop()
+            grupo.deleteLater()
+        self._animacoes_conversas.clear()
+
+    def _animar_nova_conversa_lateral(self, linha: QWidget) -> None:
+        if self._reduzir_movimento or not self._interface_animavel:
+            return
+        self.conversas_lay.activate()
+        altura_final = max(34, linha.sizeHint().height())
+        efeito = QGraphicsOpacityEffect(linha)
+        efeito.setOpacity(0.08)
+        linha.setGraphicsEffect(efeito)
+        linha.setMaximumHeight(0)
+        grupo = QParallelAnimationGroup(self)
+        opacidade = QPropertyAnimation(efeito, b"opacity", grupo)
+        opacidade.setDuration(210)
+        opacidade.setStartValue(0.08)
+        opacidade.setEndValue(1.0)
+        opacidade.setEasingCurve(QEasingCurve.OutCubic)
+        altura = QPropertyAnimation(linha, b"maximumHeight", grupo)
+        altura.setDuration(250)
+        altura.setStartValue(0)
+        altura.setEndValue(altura_final)
+        altura.setEasingCurve(QEasingCurve.OutCubic)
+        grupo.addAnimation(opacidade)
+        grupo.addAnimation(altura)
+        self._animacoes_conversas.append(grupo)
+
+        def finalizar() -> None:
+            linha.setMaximumHeight(16_777_215)
+            if linha.graphicsEffect() is efeito:
+                linha.setGraphicsEffect(None)
+            if grupo in self._animacoes_conversas:
+                self._animacoes_conversas.remove(grupo)
+            grupo.deleteLater()
+
+        grupo.finished.connect(finalizar)
+        grupo.start()
+
+    def _definir_controles_conversa(self, habilitados: bool) -> None:
+        ativo = bool(habilitados and self._conectado)
+        self.nova.setEnabled(ativo)
+        for conversa_id, botao in self._botoes_conversas.items():
+            conversa = next(
+                (
+                    item for item in self._conversas
+                    if str(item.get("id") or "") == conversa_id
+                ),
+                {},
+            )
+            botao.setEnabled(
+                ativo and str(conversa.get("status") or "active") == "active"
+            )
+        for botao in self._menus_conversas.values():
+            botao.setEnabled(ativo)
+
+    @staticmethod
+    def _normalizar_busca_conversa(texto: object) -> str:
+        bruto = unicodedata.normalize("NFKD", str(texto or "").casefold())
+        sem_acentos = "".join(
+            caractere for caractere in bruto
+            if not unicodedata.combining(caractere)
+        )
+        return re.sub(r"\s+", " ", sem_acentos).strip()
+
+    def _filtrar_conversas(self, texto: str) -> None:
+        self._filtro_conversas = self._normalizar_busca_conversa(texto)
+        self._renderizar_lista_conversas()
+
+    def _alternar_conversas_arquivadas(self, mostrar: bool) -> None:
+        self._mostrar_arquivadas = bool(mostrar)
+        self.botao_arquivadas.setToolTip(
+            "Ocultar conversas arquivadas"
+            if mostrar else "Mostrar conversas arquivadas"
+        )
+        self._renderizar_lista_conversas()
+
+    def _adicionar_secao_conversas(self, texto: str) -> None:
+        rotulo = QLabel(texto, self.conversas_container)
+        rotulo.setObjectName("conversationSection")
+        self.conversas_lay.addWidget(rotulo)
+
+    def _renderizar_lista_conversas(
+        self,
+        *,
+        ids_anteriores: set[str] | None = None,
+    ) -> None:
+        ids_anteriores = set(ids_anteriores or {
+            str(item.get("id") or "") for item in self._conversas
+            if isinstance(item, dict)
+        })
+        ativa = self._conversa_ativa_id
+        consulta = self._filtro_conversas
+        filtradas = [
+            conversa for conversa in self._conversas
+            if not consulta or consulta in self._normalizar_busca_conversa(
+                conversa.get("title"),
+            )
+        ]
+        ativas = [
+            conversa for conversa in filtradas
+            if str(conversa.get("status") or "active") == "active"
+        ]
+        fixadas = [conversa for conversa in ativas if conversa.get("pinned")]
+        recentes = [conversa for conversa in ativas if not conversa.get("pinned")]
+        arquivadas = [
+            conversa for conversa in filtradas
+            if str(conversa.get("status") or "") == "archived"
+            and (self._mostrar_arquivadas or bool(consulta))
+        ]
+
+        self._encerrar_animacoes_conversas()
+        for botao in (
+            *self._botoes_conversas.values(),
+            *self._menus_conversas.values(),
+        ):
+            self._encerrar_microinteracao_por_id(id(botao))
+        while self.conversas_lay.count():
+            item_layout = self.conversas_lay.takeAt(0)
+            if item_layout.widget() is not None:
+                item_layout.widget().deleteLater()
+        self._botoes_conversas.clear()
+        self._menus_conversas.clear()
+
+        grupos = (
+            ("FIXADAS", fixadas),
+            ("RECENTES", recentes),
+            ("ARQUIVADAS", arquivadas),
+        )
+        exibidas = 0
+        for secao, conversas in grupos:
+            if not conversas:
+                continue
+            self._adicionar_secao_conversas(secao)
+            for conversa in conversas:
+                conversa_id = str(conversa.get("id") or "")
+                titulo = str(conversa.get("title") or "Nova conversa")
+                arquivada = str(conversa.get("status") or "") == "archived"
+                fixada = bool(conversa.get("pinned"))
+                linha = QFrame(self.conversas_container)
+                linha.setObjectName("conversationRow")
+                linha.setProperty("active", conversa_id == ativa)
+                linha.setProperty("archived", arquivada)
+                lay = QHBoxLayout(linha)
+                lay.setContentsMargins(2, 1, 2, 1)
+                lay.setSpacing(2)
+                botao = QPushButton(
+                    f"★  {titulo}" if fixada and not arquivada else titulo,
+                    linha,
+                )
+                botao.setObjectName("conversationItem")
+                botao.setProperty("archived", arquivada)
+                botao.setCheckable(True)
+                botao.setChecked(conversa_id == ativa)
+                botao.setToolTip(
+                    f"{titulo} · arquivada" if arquivada else titulo
+                )
+                botao.setAccessibleName(
+                    f"Conversa arquivada {titulo}"
+                    if arquivada else f"Abrir conversa {titulo}"
+                )
+                botao.setEnabled(not arquivada)
+                botao.clicked.connect(
+                    lambda _v=False, cid=conversa_id:
+                    self.selecionar_conversa(cid)
+                )
+                menu = QToolButton(linha)
+                menu.setObjectName("conversationMenu")
+                menu.setText("⋯")
+                menu.setToolTip(f"Opções de {titulo}")
+                menu.setAccessibleName(f"Opções da conversa {titulo}")
+                menu.clicked.connect(
+                    lambda _v=False, cid=conversa_id, nome=titulo,
+                    dados=dict(conversa), origem=menu:
+                    self._abrir_menu_conversa(cid, nome, dados, origem)
+                )
+                self._registrar_feedback_botao(botao)
+                self._registrar_feedback_botao(menu)
+                lay.addWidget(botao, 1)
+                lay.addWidget(menu)
+                self.conversas_lay.addWidget(linha)
+                self._botoes_conversas[conversa_id] = botao
+                self._menus_conversas[conversa_id] = menu
+                exibidas += 1
+                if conversa_id not in ids_anteriores:
+                    self._animar_nova_conversa_lateral(linha)
+        if not exibidas:
+            vazio = QLabel(
+                "Nenhuma conversa encontrada"
+                if consulta else "Nenhuma conversa nesta seção",
+                self.conversas_container,
+            )
+            vazio.setObjectName("conversationEmpty")
+            self.conversas_lay.addWidget(vazio)
+        self.conversas_lay.addStretch(1)
+        visivel = self._sidebar_expandida and bool(self._conversas)
+        self.recentes_label.setVisible(visivel)
+        self.ferramentas_conversas.setVisible(visivel)
+        self.conversas_scroll.setVisible(visivel)
+        self._definir_controles_conversa(not self._requisicao_conversa_id)
+
+    def _aplicar_retrato_conversas(
+        self,
+        retrato: dict,
+        *,
+        substituir_historico: bool,
+    ) -> None:
+        if not isinstance(retrato, dict) or not retrato.get("available"):
+            return
+        ids_anteriores = {
+            str(item.get("id") or "") for item in self._conversas
+            if isinstance(item, dict)
+        }
+        ativa = str(retrato.get("active_id") or "")
+        itens = [
+            dict(item) for item in list(retrato.get("items") or [])
+            if isinstance(item, dict) and str(item.get("id") or "")
+        ]
+        self._conversa_ativa_id = ativa
+        self._conversas = itens
+        titulo_ativo = "Nenhuma conversa" if not ativa else "Nova conversa"
+        for conversa in itens:
+            if str(conversa.get("id") or "") == ativa:
+                titulo_ativo = str(conversa.get("title") or "Nova conversa")
+                break
+        self._renderizar_lista_conversas(ids_anteriores=ids_anteriores)
+        self.conversa_atual.setText(titulo_ativo)
+        if self._pagina_principal == "conversa":
+            self.titulo_header.setText(titulo_ativo)
+        if substituir_historico and isinstance(retrato.get("messages"), list):
+            self._substituir_historico(
+                list(retrato["messages"]),
+                animar=True,
+            )
+
+    def _enviar_requisicao_conversa(self, tipo: str, **dados: object) -> None:
+        if not self._conectado or self._requisicao_conversa_id:
+            return
+        requisicao_id = uuid.uuid4().hex
+        self._requisicao_conversa_id = requisicao_id
+        self._definir_controles_conversa(False)
+        self.enviar_json.emit({"type": tipo, "id": requisicao_id, **dados})
+
+    def nova_conversa(self) -> None:
+        self._enviar_requisicao_conversa(
+            "conversation_create", title="Nova conversa",
+        )
+
+    def selecionar_conversa(self, conversa_id: str) -> None:
+        identificador = str(conversa_id or "")
+        if not identificador or identificador == self._conversa_ativa_id:
+            self.selecionar_pagina("conversa")
+            return
+        self._enviar_requisicao_conversa(
+            "conversation_select", conversation_id=identificador,
+        )
+
+    def fixar_conversa(self, conversa_id: str, fixada: bool) -> None:
+        self._enviar_requisicao_conversa(
+            "conversation_pin",
+            conversation_id=str(conversa_id or ""),
+            pinned=bool(fixada),
+        )
+
+    def arquivar_conversa(self, conversa_id: str) -> None:
+        self._enviar_requisicao_conversa(
+            "conversation_archive",
+            conversation_id=str(conversa_id or ""),
+        )
+
+    def restaurar_conversa(self, conversa_id: str) -> None:
+        self._enviar_requisicao_conversa(
+            "conversation_unarchive",
+            conversation_id=str(conversa_id or ""),
+        )
+
+    def _abrir_menu_conversa(
+        self,
+        conversa_id: str,
+        titulo: str,
+        conversa: dict,
+        origem: QWidget,
+    ) -> None:
+        menu = QMenu(self)
+        arquivada = str(conversa.get("status") or "active") == "archived"
+        fixada = bool(conversa.get("pinned"))
+        if arquivada:
+            restaurar = QAction("Restaurar conversa", menu)
+            restaurar.triggered.connect(
+                lambda: self.restaurar_conversa(conversa_id)
+            )
+            menu.addAction(restaurar)
+        else:
+            fixar = QAction("Desafixar" if fixada else "Fixar", menu)
+            fixar.triggered.connect(
+                lambda: self.fixar_conversa(conversa_id, not fixada)
+            )
+            menu.addAction(fixar)
+        renomear = QAction("Renomear", menu)
+        arquivar = QAction("Arquivar", menu)
+        excluir = QAction("Excluir", menu)
+        renomear.triggered.connect(
+            lambda: self._pedir_renomeacao_conversa(conversa_id, titulo)
+        )
+        arquivar.triggered.connect(
+            lambda: self.arquivar_conversa(conversa_id)
+        )
+        excluir.triggered.connect(
+            lambda: self._pedir_exclusao_conversa(conversa_id, titulo)
+        )
+        menu.addAction(renomear)
+        if not arquivada:
+            menu.addAction(arquivar)
+        menu.addSeparator()
+        menu.addAction(excluir)
+        menu.exec(origem.mapToGlobal(origem.rect().bottomLeft()))
+
+    def _pedir_renomeacao_conversa(self, conversa_id: str, titulo: str) -> None:
+        novo, aceito = QInputDialog.getText(
+            self, "Renomear conversa", "Novo título:", text=titulo,
+        )
+        novo = re.sub(r"\s+", " ", str(novo or "")).strip()
+        if aceito and novo and novo != titulo:
+            self._enviar_requisicao_conversa(
+                "conversation_rename",
+                conversation_id=conversa_id,
+                title=novo[:120],
+            )
+
+    def _pedir_exclusao_conversa(self, conversa_id: str, titulo: str) -> None:
+        resposta = QMessageBox.question(
+            self,
+            "Excluir conversa",
+            f'Excluir "{titulo}" e todo o contexto deste chat?\n\n'
+            "Suas memórias globais e ações já executadas serão preservadas.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if resposta == QMessageBox.Yes:
+            self._enviar_requisicao_conversa(
+                "conversation_delete", conversation_id=conversa_id,
+            )
+
+    def excluir_conversa_confirmada(self, conversa_id: str) -> None:
+        """Porta testável; a interface pública continua pedindo confirmação."""
+        self._enviar_requisicao_conversa(
+            "conversation_delete", conversation_id=str(conversa_id or ""),
+        )
+
+    def abrir_conversa_ativa(self) -> None:
         self.selecionar_pagina("conversa")
         self.composer.editor.setFocus()
-        self.adicionar_evento("Nova conversa visual", "O histórico canônico e a memória foram preservados.", "info")
 
     def selecionar_pagina(self, nome: str) -> None:
         mapa = {
@@ -6230,7 +7341,11 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             "musica": 5,
             "memoria": 6,
         }
-        self.paginas.setCurrentIndex(mapa.get(nome, 0))
+        indice_anterior = self.paginas.currentIndex()
+        nome_anterior = self._pagina_visual_ativa
+        indice_destino = mapa.get(nome, 0)
+        mudou = nome != nome_anterior
+        self.paginas.setCurrentIndex(indice_destino)
         if nome in {"inicio", "conversa"}:
             self._pagina_principal = nome
         titulos = {
@@ -6250,6 +7365,23 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         if nome == "configuracoes" and self._conectado:
             self.enviar_json.emit({"type": "settings_get", "id": uuid.uuid4().hex})
         self._aplicar_responsividade()
+        self._pagina_visual_ativa = nome
+        if mudou:
+            direcao = 1 if indice_destino >= indice_anterior else -1
+            pagina = self.paginas.currentWidget()
+            if pagina is not None:
+                QTimer.singleShot(
+                    0,
+                    lambda alvo=pagina, sentido=direcao:
+                    self._animar_transicao_pagina(alvo, sentido),
+                )
+        QTimer.singleShot(
+            0,
+            lambda destino=nome: self._sincronizar_indicador_navegacao(
+                destino,
+                animar=mudou and self._interface_animavel,
+            ),
+        )
 
     def alternar_sidebar(self) -> None:
         self._sidebar_expandida = not self._sidebar_expandida
@@ -6269,7 +7401,15 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         self.marca.setVisible(self._sidebar_expandida)
         self.marca_status.hide()
         self.nav_label.hide()
-        self.recentes_label.hide()
+        self.recentes_label.setVisible(
+            self._sidebar_expandida and bool(self._conversas)
+        )
+        self.ferramentas_conversas.setVisible(
+            self._sidebar_expandida and bool(self._conversas)
+        )
+        self.conversas_scroll.setVisible(
+            self._sidebar_expandida and bool(self._conversas)
+        )
         self.conversa_atual.hide()
         self.status_mente.hide()
         self.config_rodape.hide()
@@ -6279,7 +7419,10 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         self.recolher.setText(
             "‹" if self._sidebar_expandida else "›"
         )
-        self.nova.setText("")
+        self.nova.show()
+        self.nova.setText(
+            "Novo chat" if self._sidebar_expandida else ""
+        )
         for botao in self._nav.values():
             texto = str(botao.property("label"))
             botao.setText(texto if self._sidebar_expandida else "")
@@ -6297,6 +7440,8 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             self.marca_status,
             self.nav_label,
             self.recentes_label,
+            self.ferramentas_conversas,
+            self.conversas_scroll,
             self.conversa_atual,
             self.status_mente,
             self.config_rodape,
@@ -6359,7 +7504,24 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         super().resizeEvent(event)
         self._aplicar_responsividade()
 
+    def changeEvent(self, event) -> None:  # noqa: N802
+        super().changeEvent(event)
+        if event.type() != event.Type.WindowStateChange:
+            return
+        if self.isMinimized():
+            self._parar_pulso_presenca()
+        else:
+            QTimer.singleShot(
+                0,
+                lambda: self._atualizar_pulso_presenca(
+                    self._atividade_visual_atual,
+                ),
+            )
+
     def closeEvent(self, event) -> None:  # noqa: N802
+        self._encerrar_rolagem_suave()
+        self._parar_pulso_presenca()
+        self._encerrar_microinteracoes()
         self.worker.parar()
         event.accept()
 

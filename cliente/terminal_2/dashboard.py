@@ -42,6 +42,8 @@ from cliente.terminal_2.sistema_compacto import (
 class ChipEstado(QFrame):
     """Estado compacto do topo, sem inferir disponibilidade não observada."""
 
+    estado_alterado = Signal()
+
     def __init__(self, titulo: str, valor: str = "Aguardando") -> None:
         super().__init__()
         self.setObjectName("statusChip")
@@ -56,16 +58,25 @@ class ChipEstado(QFrame):
         layout.addWidget(self.ponto)
         layout.addWidget(self.texto)
         self._titulo = str(titulo or "Estado")
+        self._assinatura_estado: tuple[str, str] | None = None
         self.definir(valor, estado="pending")
 
     def definir(self, valor: str, *, estado: str = "pending") -> None:
         estado = estado if estado in {"online", "pending", "unavailable", "error"} else "pending"
-        self.texto.setText(f"{self._titulo}: {str(valor or '—')}")
+        valor_limpo = str(valor or "—")
+        assinatura = (valor_limpo, estado)
+        mudou = self._assinatura_estado is not None and (
+            assinatura != self._assinatura_estado
+        )
+        self._assinatura_estado = assinatura
+        self.texto.setText(f"{self._titulo}: {valor_limpo}")
         self.setProperty("state", estado)
         self.ponto.setProperty("state", estado)
         for widget in (self, self.ponto):
             widget.style().unpolish(widget)
             widget.style().polish(widget)
+        if mudou:
+            self.estado_alterado.emit()
 
 
 def _texto_metrica(metrica: object, *, uptime: bool = False) -> str:

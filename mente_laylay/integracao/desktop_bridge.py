@@ -33,11 +33,15 @@ from mente_laylay.integracao.acoes_painel_runtime import ACOES_MUSICA_PAINEL
 TIPOS_CLIENTE = frozenset({
     "hello", "ready", "heartbeat", "input_submit", "mode_set",
     "settings_get", "settings_update", "restart_request",
+    "conversations_get", "conversation_create", "conversation_select",
+    "conversation_rename", "conversation_delete", "conversation_archive",
+    "conversation_unarchive", "conversation_pin",
 })
 TIPOS_BACKEND = frozenset({
     "snapshot", "input_ack", "assistant_message", "state", "error",
     "mode_state", "settings_state", "settings_result", "restart_result",
     "dashboard_state", "action_state",
+    "conversations_state",
 })
 
 _ESTADOS_ACAO_RAPIDA = frozenset({
@@ -123,6 +127,59 @@ def sanitizar_historico(
                 mensagem["timestamp"] = instante.strip()[:64]
             resultado.append(mensagem)
     return resultado
+
+
+_PADRAO_ID_CONVERSA = re.compile(
+    r"(?i)^(?:[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-"
+    r"[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$"
+)
+
+
+def _id_conversa_seguro(valor: Any, *, obrigatorio: bool = False) -> str:
+    identificador = str(valor or "").strip()
+    if not identificador and not obrigatorio:
+        return ""
+    if not _PADRAO_ID_CONVERSA.fullmatch(identificador):
+        raise ErroProtocoloDesktop("identificador de conversa inválido")
+    return identificador
+
+
+def sanitizar_conversas(
+    conversas: Sequence[Mapping[str, Any]] | None,
+    *,
+    ativa_id: str = "",
+    limite: int = 100,
+) -> dict[str, Any]:
+    """Projeta somente metadados necessários para a lista local de chats."""
+    ativa = _id_conversa_seguro(ativa_id) if ativa_id else ""
+    itens: list[dict[str, Any]] = []
+    for item in list(conversas or ())[:max(1, min(int(limite), 100))]:
+        if not isinstance(item, Mapping):
+            continue
+        try:
+            identificador = _id_conversa_seguro(item.get("id"), obrigatorio=True)
+        except ErroProtocoloDesktop:
+            continue
+        status_bruto = str(item.get("status") or "ativa").casefold().strip()
+        if status_bruto not in {"ativa", "arquivada"}:
+            continue
+        titulo = re.sub(r"\s+", " ", _texto_seguro(item.get("titulo"), 120))
+        try:
+            quantidade = max(0, min(int(item.get("mensagens") or 0), 100_000))
+        except (TypeError, ValueError):
+            quantidade = 0
+        itens.append({
+            "id": identificador,
+            "title": titulo or "Nova conversa",
+            "updated_at": _texto_seguro(item.get("atualizada_em"), 40),
+            "message_count": quantidade,
+            "status": (
+                "archived" if status_bruto == "arquivada" else "active"
+            ),
+            "pinned": bool(item.get("fixada", False)),
+            "active": identificador == ativa,
+        })
+    return {"active_id": ativa, "items": itens}
 
 
 def sanitizar_estado(estado: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -1004,7 +1061,44 @@ def validar_mensagem_cliente(
             "kind": tipo_entrada,
             "action": acao_id,
             "payload": payload,
+            "conversation_id": _id_conversa_seguro(
+                mensagem.get("conversation_id"),
+            ),
         }
+    if tipo in {
+        "conversations_get", "conversation_create", "conversation_select",
+        "conversation_rename", "conversation_delete", "conversation_archive",
+        "conversation_unarchive", "conversation_pin",
+    }:
+        conversa_id = ""
+        if tipo in {
+            "conversation_select", "conversation_rename", "conversation_delete",
+            "conversation_archive", "conversation_unarchive", "conversation_pin",
+        }:
+            conversa_id = _id_conversa_seguro(
+                mensagem.get("conversation_id"), obrigatorio=True,
+            )
+        titulo = ""
+        if tipo in {"conversation_create", "conversation_rename"}:
+            titulo = re.sub(
+                r"\s+", " ", _texto_seguro(mensagem.get("title"), 120),
+            ).strip()
+            if tipo == "conversation_rename" and not titulo:
+                raise ErroProtocoloDesktop("título de conversa vazio")
+        fixada = False
+        if tipo == "conversation_pin":
+            if not isinstance(mensagem.get("pinned"), bool):
+                raise ErroProtocoloDesktop("estado de fixação inválido")
+            fixada = bool(mensagem["pinned"])
+        resultado = {
+            "type": tipo,
+            "id": _texto_seguro(mensagem.get("id"), 80),
+            "conversation_id": conversa_id,
+            "title": titulo,
+        }
+        if tipo == "conversation_pin":
+            resultado["pinned"] = fixada
+        return resultado
     if tipo == "mode_set":
         modo = str(mensagem.get("mode") or "").casefold().strip()
         if modo not in {"chat", "voice"}:
@@ -1101,6 +1195,16 @@ class DesktopBridgeRuntime:
         configuracao_getter: Callable[[], Mapping[str, Any]] | None = None,
         configuracao_setter: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None,
         reiniciar_aplicacao: Callable[[], Any] | None = None,
+        conversas_getter: Callable[[], Sequence[Mapping[str, Any]]] | None = None,
+        conversa_ativa_getter: Callable[[], str] | None = None,
+        conversa_criar: Callable[[str], Mapping[str, Any]] | None = None,
+        conversa_selecionar: Callable[[str], Mapping[str, Any] | None] | None = None,
+        conversa_renomear: Callable[[str, str], bool] | None = None,
+        conversa_excluir: Callable[[str], bool] | None = None,
+        conversa_arquivar: Callable[[str], bool] | None = None,
+        conversa_desarquivar: Callable[[str], bool] | None = None,
+        conversa_fixar: Callable[[str, bool], bool] | None = None,
+        conversa_nomear_automaticamente: Callable[[str, str], bool] | None = None,
         host: str = "127.0.0.1",
         port: int = 0,
         max_message_bytes: int = 65_536,
@@ -1122,6 +1226,16 @@ class DesktopBridgeRuntime:
         self.configuracao_getter = configuracao_getter
         self.configuracao_setter = configuracao_setter
         self.reiniciar_aplicacao = reiniciar_aplicacao
+        self.conversas_getter = conversas_getter
+        self.conversa_ativa_getter = conversa_ativa_getter
+        self.conversa_criar = conversa_criar
+        self.conversa_selecionar = conversa_selecionar
+        self.conversa_renomear = conversa_renomear
+        self.conversa_excluir = conversa_excluir
+        self.conversa_arquivar = conversa_arquivar
+        self.conversa_desarquivar = conversa_desarquivar
+        self.conversa_fixar = conversa_fixar
+        self.conversa_nomear_automaticamente = conversa_nomear_automaticamente
         self.host = "127.0.0.1" if host == "localhost" else host
         self.port = max(0, int(port))
         self.max_message_bytes = max(1_024, int(max_message_bytes))
@@ -1325,6 +1439,51 @@ class DesktopBridgeRuntime:
                 except OSError:
                     pass
 
+    def _retrato_conversas(self, *, incluir_mensagens: bool) -> dict[str, Any]:
+        """Lê o núcleo canônico e devolve uma projeção local limitada."""
+        if not callable(self.conversas_getter) or not callable(
+            self.conversa_ativa_getter
+        ):
+            return {"available": False, "active_id": "", "items": []}
+        try:
+            ativa_id = _id_conversa_seguro(self.conversa_ativa_getter())
+            retrato = sanitizar_conversas(
+                self.conversas_getter(), ativa_id=ativa_id,
+            )
+            retrato["available"] = True
+            if incluir_mensagens:
+                retrato["messages"] = sanitizar_historico(
+                    self.historico_getter(),
+                )
+            return retrato
+        except Exception as erro:
+            self.log(
+                "⚠️ [TERMINAL 2:PONTE] conversas indisponíveis "
+                f"| tipo={type(erro).__name__}"
+            )
+            return {"available": False, "active_id": "", "items": []}
+
+    def _enviar_estado_conversas(
+        self,
+        cliente: socket.socket,
+        *,
+        requisicao_id: str,
+        acao: str,
+        sucesso: bool,
+        mensagem: str = "",
+        incluir_mensagens: bool = True,
+    ) -> bool:
+        return self._enviar_socket(cliente, {
+            "type": "conversations_state",
+            "id": _texto_seguro(requisicao_id, 80),
+            "action": _texto_seguro(acao, 40),
+            "success": bool(sucesso),
+            "message": _texto_seguro(mensagem, 240),
+            "conversations": self._retrato_conversas(
+                incluir_mensagens=incluir_mensagens,
+            ),
+        })
+
     def _atender(self, cliente: socket.socket) -> None:
         # ``socket.makefile().readline()`` pode deixar o buffer interno
         # inutilizável depois de um timeout no Windows. O protocolo já é
@@ -1365,6 +1524,10 @@ class DesktopBridgeRuntime:
                         "started_at": self.started_at,
                     },
                 }
+                if callable(self.conversas_getter):
+                    snapshot["conversations"] = self._retrato_conversas(
+                        incluir_mensagens=False,
+                    )
                 if callable(self.configuracao_getter):
                     snapshot["settings"] = sanitizar_configuracao(self.configuracao_getter())
                 if callable(self.dashboard_getter):
@@ -1392,18 +1555,93 @@ class DesktopBridgeRuntime:
                 self._enviar_socket(cliente, {"type": "state", "heartbeat": True, **sanitizar_estado(self.estado_getter())})
             elif tipo == "input_submit":
                 entrada_id = msg.get("id") or secrets.token_hex(6)
+                tipo_entrada = str(msg.get("kind") or "chat")
+                acao_entrada = str(msg.get("action") or "")
+                acao_direta = bool(
+                    tipo_entrada == "panel_action"
+                    and acao_entrada in ACOES_MUSICA_PAINEL
+                    and callable(self.executar_acao_painel)
+                )
+                conversa_ativa_id = (
+                    str(self.conversa_ativa_getter() or "").strip()
+                    if callable(self.conversa_ativa_getter) else ""
+                )
+                conversa_solicitada = str(msg.get("conversation_id") or "").strip()
+                conversa_criada_automaticamente = False
+                gerencia_conversas = bool(
+                    callable(self.conversas_getter)
+                    and callable(self.conversa_ativa_getter)
+                )
+                if (
+                    gerencia_conversas
+                    and not acao_direta
+                    and not conversa_ativa_id
+                ):
+                    try:
+                        if conversa_solicitada:
+                            if not callable(self.conversa_selecionar) or not bool(
+                                self.conversa_selecionar(conversa_solicitada)
+                            ):
+                                raise RuntimeError("conversa solicitada indisponível")
+                        else:
+                            if not callable(self.conversa_criar) or not bool(
+                                self.conversa_criar("Nova conversa")
+                            ):
+                                raise RuntimeError("criação de conversa indisponível")
+                            conversa_criada_automaticamente = True
+                        conversa_ativa_id = (
+                            str(self.conversa_ativa_getter() or "").strip()
+                            if callable(self.conversa_ativa_getter) else ""
+                        )
+                    except Exception as erro:
+                        self._enviar_socket(cliente, {
+                            "type": "input_ack", "id": entrada_id,
+                            "accepted": False,
+                            "message": (
+                                "Não consegui preparar uma conversa para "
+                                f"essa mensagem ({type(erro).__name__})."
+                            ),
+                        })
+                        continue
+                    if not conversa_ativa_id:
+                        self._enviar_socket(cliente, {
+                            "type": "input_ack", "id": entrada_id,
+                            "accepted": False,
+                            "message": "A conversa nova não ficou disponível.",
+                        })
+                        continue
+                conversa_solicitada = str(
+                    conversa_solicitada or conversa_ativa_id
+                ).strip()
+                if (
+                    conversa_ativa_id and conversa_solicitada
+                    and conversa_solicitada != conversa_ativa_id
+                ):
+                    self._enviar_socket(cliente, {
+                        "type": "input_ack", "id": entrada_id,
+                        "accepted": False,
+                        "message": (
+                            "A conversa mudou antes do envio. Envie novamente "
+                            "no chat que está aberto."
+                        ),
+                    })
+                    continue
                 pendente = {
                     "id": str(entrada_id),
                     "text": str(msg["text"]),
-                    "kind": str(msg.get("kind") or "chat"),
-                    "action": str(msg.get("action") or ""),
+                    "kind": tipo_entrada,
+                    "action": acao_entrada,
                     "state": "sending",
+                    "conversation_id": conversa_solicitada,
                 }
-                acao_direta = bool(
-                    pendente["kind"] == "panel_action"
-                    and pendente["action"] in ACOES_MUSICA_PAINEL
-                    and callable(self.executar_acao_painel)
-                )
+                if conversa_criada_automaticamente:
+                    self._enviar_estado_conversas(
+                        cliente,
+                        requisicao_id=str(entrada_id),
+                        acao="auto_create",
+                        sucesso=True,
+                        incluir_mensagens=False,
+                    )
                 if acao_direta:
                     self._enviar_socket(cliente, {
                         "type": "input_ack", "id": entrada_id,
@@ -1422,12 +1660,26 @@ class DesktopBridgeRuntime:
                 with self._entradas_lock:
                     self._entradas_pendentes.append(pendente)
                 try:
+                    titulo_alterado = False
                     retorno = self.enviar_entrada(msg["text"])
                     aceito = retorno is not False
                     if not aceito:
                         self._remover_entrada_pendente(str(entrada_id))
                     else:
                         pendente["state"] = "received"
+                        if callable(self.conversa_nomear_automaticamente):
+                            try:
+                                titulo_alterado = bool(
+                                    self.conversa_nomear_automaticamente(
+                                        conversa_solicitada, str(msg["text"]),
+                                    )
+                                )
+                            except Exception as erro:
+                                self.log(
+                                    "⚠️ [TERMINAL 2:PONTE] título automático "
+                                    "indisponível "
+                                    f"| tipo={type(erro).__name__}"
+                                )
                     self._enviar_socket(cliente, {
                         "type": "input_ack", "id": entrada_id,
                         "accepted": aceito,
@@ -1446,6 +1698,14 @@ class DesktopBridgeRuntime:
                             pendente, "received",
                             "Pedido recebido pela mente canônica",
                         )
+                    if aceito and titulo_alterado and callable(self.conversas_getter):
+                        self._enviar_estado_conversas(
+                            cliente,
+                            requisicao_id=str(entrada_id),
+                            acao="auto_title",
+                            sucesso=True,
+                            incluir_mensagens=False,
+                        )
                 except Exception as erro:
                     self._remover_entrada_pendente(str(entrada_id))
                     self._enviar_socket(cliente, {
@@ -1456,6 +1716,74 @@ class DesktopBridgeRuntime:
                             f"{type(erro).__name__}"
                         ),
                     })
+            elif tipo in {
+                "conversations_get", "conversation_create",
+                "conversation_select", "conversation_rename",
+                "conversation_delete", "conversation_archive",
+                "conversation_unarchive", "conversation_pin",
+            }:
+                requisicao_id = str(msg.get("id") or secrets.token_hex(6))
+                acao = tipo.removeprefix("conversation_")
+                if tipo == "conversations_get":
+                    acao = "list"
+                sucesso = False
+                mensagem_resultado = ""
+                try:
+                    if tipo == "conversations_get":
+                        if not callable(self.conversas_getter):
+                            raise RuntimeError("conversas indisponíveis")
+                        sucesso = True
+                    elif tipo == "conversation_create":
+                        if not callable(self.conversa_criar):
+                            raise RuntimeError("criação de conversa indisponível")
+                        sucesso = bool(self.conversa_criar(msg.get("title") or "Nova conversa"))
+                    elif tipo == "conversation_select":
+                        if not callable(self.conversa_selecionar):
+                            raise RuntimeError("seleção de conversa indisponível")
+                        sucesso = bool(self.conversa_selecionar(msg["conversation_id"]))
+                    elif tipo == "conversation_rename":
+                        if not callable(self.conversa_renomear):
+                            raise RuntimeError("renomeação de conversa indisponível")
+                        sucesso = bool(self.conversa_renomear(
+                            msg["conversation_id"], msg["title"],
+                        ))
+                    elif tipo == "conversation_delete":
+                        if not callable(self.conversa_excluir):
+                            raise RuntimeError("exclusão de conversa indisponível")
+                        sucesso = bool(self.conversa_excluir(msg["conversation_id"]))
+                    elif tipo == "conversation_archive":
+                        if not callable(self.conversa_arquivar):
+                            raise RuntimeError("arquivamento de conversa indisponível")
+                        sucesso = bool(self.conversa_arquivar(
+                            msg["conversation_id"],
+                        ))
+                    elif tipo == "conversation_unarchive":
+                        if not callable(self.conversa_desarquivar):
+                            raise RuntimeError("restauração de conversa indisponível")
+                        sucesso = bool(self.conversa_desarquivar(
+                            msg["conversation_id"],
+                        ))
+                    elif tipo == "conversation_pin":
+                        if not callable(self.conversa_fixar):
+                            raise RuntimeError("fixação de conversa indisponível")
+                        sucesso = bool(self.conversa_fixar(
+                            msg["conversation_id"], bool(msg["pinned"]),
+                        ))
+                    if not sucesso:
+                        mensagem_resultado = "A mente não confirmou essa alteração."
+                except Exception as erro:
+                    mensagem_resultado = (
+                        "Não consegui alterar a conversa "
+                        f"({type(erro).__name__})."
+                    )
+                self._enviar_estado_conversas(
+                    cliente,
+                    requisicao_id=requisicao_id,
+                    acao=acao,
+                    sucesso=sucesso,
+                    mensagem=mensagem_resultado,
+                    incluir_mensagens=True,
+                )
             elif tipo == "mode_set":
                 requisicao_id = msg.get("id") or secrets.token_hex(6)
                 desejado = msg["mode"]
@@ -1715,6 +2043,13 @@ class DesktopBridgeRuntime:
             str(pendente.get("id") or "") if pendente
             else _texto_seguro(dados.get("mensagem_id"), 96)
         )
+        conversa_id = (
+            str(pendente.get("conversation_id") or "") if pendente
+            else (
+                str(self.conversa_ativa_getter() or "").strip()
+                if callable(self.conversa_ativa_getter) else ""
+            )
+        )
         if proativa and not mensagem_id:
             mensagem_id = f"proativa:{time.time_ns()}"
         publicado = self._publicar({
@@ -1725,6 +2060,7 @@ class DesktopBridgeRuntime:
             "emotion_level": max(1, min(3, int(nivel or 1))),
             "proactive": proativa,
             "timestamp": time.time(),
+            "conversation_id": conversa_id,
         })
         if pendente:
             self._remover_entrada_pendente(str(pendente.get("id") or ""))

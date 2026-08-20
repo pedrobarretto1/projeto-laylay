@@ -290,6 +290,8 @@ class PersistenciaMemoriaRuntime:
         estado_atualizar: Callable[..., Any],
         ajustar_humor_cb: Optional[Callable[[int, str], None]] = None,
         registrar_autoaprimoramento_cb: Optional[Callable[..., None]] = None,
+        conversas_runtime: Any = None,
+        iniciar_sem_conversa: bool = False,
         log: Callable[..., Any] = print,
     ) -> None:
         self.memoria_sqlite = memoria_sqlite
@@ -298,6 +300,8 @@ class PersistenciaMemoriaRuntime:
         self.estado_atualizar = estado_atualizar
         self.ajustar_humor_cb = ajustar_humor_cb
         self.registrar_autoaprimoramento_cb = registrar_autoaprimoramento_cb
+        self.conversas_runtime = conversas_runtime
+        self.iniciar_sem_conversa = bool(iniciar_sem_conversa)
         self.log = log
 
     def _obter(self, dominio: str, chave: str, padrao: Any = None) -> Any:
@@ -308,6 +312,25 @@ class PersistenciaMemoriaRuntime:
 
     def carregar(self) -> tuple:
         data = carregar_memoria(self.memoria_sqlite, self.base_system_prompt)
+        if self.conversas_runtime is not None:
+            try:
+                conversa = self.conversas_runtime.inicializar_legado(
+                    mensagens=data.get("messages") or [],
+                    resumo=str(data.get("resumo_conversa") or ""),
+                    selecionar=not self.iniciar_sem_conversa,
+                )
+                data["messages"] = list(conversa.get("mensagens") or [])
+                data["resumo_conversa"] = str(conversa.get("resumo") or "")
+                data["historico_long_term"] = str(
+                    dict(conversa.get("contexto") or {}).get(
+                        "historico_long_term", "",
+                    ) or ""
+                )
+            except Exception as erro:
+                self.log(
+                    "⚠️ [CONVERSAS] histórico legado preservado; "
+                    f"migração indisponível ({type(erro).__name__})"
+                )
         estado_auto = data.get("autoaprimoramento_estado")
         if isinstance(estado_auto, dict):
             self._atualizar("mental", autoaprimoramento_estado=estado_auto)
@@ -366,6 +389,22 @@ class PersistenciaMemoriaRuntime:
             memoria_eventos=data.get("memoria_eventos", []),
             historico_long_term=data.get("historico_long_term", ""),
         )
+        if self.conversas_runtime is not None:
+            try:
+                self.conversas_runtime.reaplicar_ativa()
+            except Exception as erro:
+                self.log(
+                    "⚠️ [CONVERSAS] contexto ativo não foi reaplicado "
+                    f"({type(erro).__name__})"
+                )
+        if self.iniciar_sem_conversa and self.conversas_runtime is not None:
+            try:
+                self.conversas_runtime.iniciar_sem_conversa()
+            except Exception as erro:
+                self.log(
+                    "⚠️ [CONVERSAS] início neutro indisponível "
+                    f"({type(erro).__name__})"
+                )
         return (
             data.get("messages", [{"role": "system", "content": self.base_system_prompt}]),
             data.get("bordoes", []),
@@ -421,6 +460,9 @@ class PersistenciaMemoriaRuntime:
 
     def salvar(self) -> bool:
         try:
+            if self.conversas_runtime is not None:
+                if not bool(self.conversas_runtime.salvar_ativa()):
+                    raise RuntimeError("conversa ativa não foi persistida")
             salvar_memoria(self.memoria_sqlite, self.snapshot())
             return True
         except Exception as erro:

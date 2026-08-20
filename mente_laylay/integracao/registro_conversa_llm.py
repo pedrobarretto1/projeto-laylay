@@ -218,11 +218,22 @@ class ModeloLLMDiferidoRuntime:
 class EstadoConversaRuntime:
     """Fronteira mínima para o histórico temporário da conversa."""
 
-    def __init__(self, *, getter: Any, setter: Any) -> None:
+    def __init__(
+        self,
+        *,
+        getter: Any,
+        setter: Any,
+        conversation_id_getter: Any = None,
+        getter_conversa: Any = None,
+        setter_conversa: Any = None,
+    ) -> None:
         if not callable(getter) or not callable(setter):
             raise RuntimeError("estado da conversa exige leitura e escrita explícitas")
         self._getter = getter
         self._setter = setter
+        self._conversation_id_getter = conversation_id_getter
+        self._getter_conversa = getter_conversa
+        self._setter_conversa = setter_conversa
         self._lock = threading.RLock()
         self._turnos: dict[str, dict[str, Any]] = {}
 
@@ -233,8 +244,21 @@ class EstadoConversaRuntime:
             raise ValueError("turno da conversa exige identificador")
         return chave
 
-    def _mensagens_sem_lock(self) -> list[dict[str, Any]]:
-        bruto = self._getter()
+    def _conversa_ativa_sem_lock(self) -> str:
+        if not callable(self._conversation_id_getter):
+            return ""
+        return str(self._conversation_id_getter() or "").strip()
+
+    def _mensagens_sem_lock(
+        self,
+        conversa_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        identificador = str(conversa_id or "").strip()
+        bruto = (
+            self._getter_conversa(identificador)
+            if identificador and callable(self._getter_conversa)
+            else self._getter()
+        )
         return [
             dict(item) for item in bruto if isinstance(item, Mapping)
         ] if isinstance(bruto, list) else []
@@ -242,10 +266,16 @@ class EstadoConversaRuntime:
     def _substituir_sem_lock(
         self,
         mensagens: Sequence[Mapping[str, Any]],
+        conversa_id: str | None = None,
     ) -> None:
-        self._setter([
+        novas = [
             dict(item) for item in mensagens if isinstance(item, Mapping)
-        ])
+        ]
+        identificador = str(conversa_id or "").strip()
+        if identificador and callable(self._setter_conversa):
+            self._setter_conversa(novas, identificador)
+        else:
+            self._setter(novas)
 
     def _limitar_turnos(self) -> None:
         while len(self._turnos) > 128:
@@ -271,6 +301,7 @@ class EstadoConversaRuntime:
         if not texto:
             raise ValueError("turno da conversa exige texto do usuário")
         with self._lock:
+            conversa_id = self._conversa_ativa_sem_lock()
             existente = self._turnos.get(chave)
             if existente is not None:
                 if existente.get("texto_usuario") != texto:
@@ -279,15 +310,18 @@ class EstadoConversaRuntime:
                     )
                 if existente.get("status") == "abortado":
                     existente["status"] = "iniciado"
-                return self._mensagens_sem_lock()
+                return self._mensagens_sem_lock(
+                    str(existente.get("conversa_id") or "") or None,
+                )
 
-            mensagens = self._mensagens_sem_lock()
+            mensagens = self._mensagens_sem_lock(conversa_id or None)
             mensagens.append({"role": "user", "content": texto})
-            self._substituir_sem_lock(mensagens)
+            self._substituir_sem_lock(mensagens, conversa_id or None)
             self._turnos[chave] = {
                 "status": "iniciado",
                 "texto_usuario": texto,
                 "fala_assistente": "",
+                "conversa_id": conversa_id,
             }
             self._limitar_turnos()
             # O pedido ao modelo usa exatamente o lote que acabou de ser
@@ -308,9 +342,10 @@ class EstadoConversaRuntime:
             if existente.get("status") == "concluido":
                 return False
 
-            mensagens = self._mensagens_sem_lock()
+            conversa_id = str(existente.get("conversa_id") or "")
+            mensagens = self._mensagens_sem_lock(conversa_id or None)
             mensagens.append({"role": "assistant", "content": fala})
-            self._substituir_sem_lock(mensagens)
+            self._substituir_sem_lock(mensagens, conversa_id or None)
             existente["status"] = "concluido"
             existente["fala_assistente"] = fala
             return True
@@ -334,6 +369,11 @@ class EstadoConversaRuntime:
                 "turnos_iniciados": estados.count("iniciado"),
                 "turnos_concluidos": estados.count("concluido"),
                 "turnos_abortados": estados.count("abortado"),
+                "conversa_ativa_id": self._conversa_ativa_sem_lock(),
+                "turnos_fixados_em_conversa": sum(
+                    1 for item in self._turnos.values()
+                    if str(item.get("conversa_id") or "").strip()
+                ),
                 "memoria_duravel": False,
                 "autoriza_execucao": False,
             }

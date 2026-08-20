@@ -4,8 +4,9 @@ import os
 import re
 import sqlite3
 import unicodedata
+import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from mente_laylay.memoria_mental.memoria_confiavel import (
     extrair_aprendizados_pessoais_explicitos,
@@ -85,6 +86,67 @@ class MemoriaSQLite:
                 )
                 """
             )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS conversas (
+                    id TEXT PRIMARY KEY,
+                    titulo TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'ativa',
+                    resumo TEXT NOT NULL DEFAULT '',
+                    versao INTEGER NOT NULL DEFAULT 1,
+                    criada_em TEXT NOT NULL,
+                    atualizada_em TEXT NOT NULL,
+                    excluida_em TEXT NOT NULL DEFAULT ''
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS conversa_mensagens (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    conversa_id TEXT NOT NULL,
+                    ordem INTEGER NOT NULL,
+                    payload TEXT NOT NULL,
+                    criada_em TEXT NOT NULL,
+                    FOREIGN KEY(conversa_id) REFERENCES conversas(id),
+                    UNIQUE(conversa_id, ordem)
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS conversa_contextos (
+                    conversa_id TEXT PRIMARY KEY,
+                    payload TEXT NOT NULL DEFAULT '{}',
+                    atualizado_em TEXT NOT NULL,
+                    FOREIGN KEY(conversa_id) REFERENCES conversas(id)
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS conversa_configuracao (
+                    chave TEXT PRIMARY KEY,
+                    valor TEXT NOT NULL,
+                    atualizado_em TEXT NOT NULL
+                )
+                """
+            )
+            colunas_conversas = {
+                row[1] for row in cur.execute(
+                    "PRAGMA table_info(conversas)"
+                ).fetchall()
+            }
+            if "fixada" not in colunas_conversas:
+                cur.execute(
+                    "ALTER TABLE conversas ADD COLUMN fixada "
+                    "INTEGER NOT NULL DEFAULT 0"
+                )
+            if "arquivada_em" not in colunas_conversas:
+                cur.execute(
+                    "ALTER TABLE conversas ADD COLUMN arquivada_em "
+                    "TEXT NOT NULL DEFAULT ''"
+                )
             cur.execute(
                 """
                 CREATE TABLE IF NOT EXISTS aprendizados_semanticos (
@@ -210,6 +272,18 @@ class MemoriaSQLite:
             cur.execute(
                 "CREATE INDEX IF NOT EXISTS idx_iot_historico_dispositivo "
                 "ON iot_historico(dispositivo_id, id DESC)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_conversas_recentes "
+                "ON conversas(status, atualizada_em DESC)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_conversas_c3_ordem "
+                "ON conversas(status, fixada DESC, atualizada_em DESC)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_conversa_mensagens_ordem "
+                "ON conversa_mensagens(conversa_id, ordem)"
             )
             conn.commit()
         finally:
@@ -371,6 +445,418 @@ class MemoriaSQLite:
                 (payload, agora),
             )
             conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _mensagens_conversa_validas(
+        mensagens: Sequence[Mapping[str, Any]] | None,
+    ) -> list[Dict[str, Any]]:
+        validas: list[Dict[str, Any]] = []
+        for item in list(mensagens or [])[-2000:]:
+            if not isinstance(item, Mapping):
+                continue
+            papel = str(item.get("role") or "").strip().casefold()
+            if papel not in {"system", "user", "assistant", "tool"}:
+                continue
+            copia = dict(item)
+            copia["role"] = papel
+            if "content" in copia:
+                copia["content"] = str(copia.get("content") or "")[:64_000]
+            validas.append(copia)
+        return validas
+
+    @staticmethod
+    def _titulo_conversa_seguro(titulo: Any, *, fallback: str) -> str:
+        limpo = re.sub(r"\s+", " ", str(titulo or "")).strip()
+        return (limpo or fallback)[:120]
+
+    def _gravar_mensagens_conversa(
+        self,
+        cur: sqlite3.Cursor,
+        conversa_id: str,
+        mensagens: Sequence[Mapping[str, Any]] | None,
+        agora: str,
+    ) -> None:
+        cur.execute(
+            "DELETE FROM conversa_mensagens WHERE conversa_id = ?",
+            (conversa_id,),
+        )
+        validas = self._mensagens_conversa_validas(mensagens)
+        cur.executemany(
+            "INSERT INTO conversa_mensagens(conversa_id, ordem, payload, criada_em) "
+            "VALUES(?, ?, ?, ?)",
+            [
+                (
+                    conversa_id,
+                    ordem,
+                    json.dumps(item, ensure_ascii=False),
+                    agora,
+                )
+                for ordem, item in enumerate(validas)
+            ],
+        )
+
+    def criar_conversa(
+        self,
+        *,
+        titulo: str = "Nova conversa",
+        mensagens: Sequence[Mapping[str, Any]] | None = None,
+        resumo: str = "",
+        contexto: Mapping[str, Any] | None = None,
+        ativar: bool = True,
+        conversa_id: str | None = None,
+    ) -> Dict[str, Any]:
+        identificador = str(conversa_id or uuid.uuid4()).strip()
+        if not identificador:
+            raise ValueError("conversa exige identificador")
+        agora = datetime.now().isoformat(" ")
+        titulo_limpo = self._titulo_conversa_seguro(
+            titulo, fallback="Nova conversa",
+        )
+        resumo_limpo = str(resumo or "").strip()[:16_000]
+        contexto_seguro = dict(contexto or {})
+        conn = self._conectar()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO conversas(id, titulo, status, resumo, versao, "
+                "criada_em, atualizada_em, excluida_em) "
+                "VALUES(?, ?, 'ativa', ?, 1, ?, ?, '')",
+                (identificador, titulo_limpo, resumo_limpo, agora, agora),
+            )
+            self._gravar_mensagens_conversa(
+                cur, identificador, mensagens, agora,
+            )
+            cur.execute(
+                "INSERT INTO conversa_contextos(conversa_id, payload, atualizado_em) "
+                "VALUES(?, ?, ?)",
+                (
+                    identificador,
+                    json.dumps(contexto_seguro, ensure_ascii=False),
+                    agora,
+                ),
+            )
+            if ativar:
+                cur.execute(
+                    "INSERT INTO conversa_configuracao(chave, valor, atualizado_em) "
+                    "VALUES('conversa_ativa_id', ?, ?) "
+                    "ON CONFLICT(chave) DO UPDATE SET valor=excluded.valor, "
+                    "atualizado_em=excluded.atualizado_em",
+                    (identificador, agora),
+                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        return self.carregar_conversa(identificador) or {}
+
+    def listar_conversas(
+        self,
+        *,
+        incluir_arquivadas: bool = False,
+        limite: int = 100,
+    ) -> list[Dict[str, Any]]:
+        estados = ("ativa", "arquivada") if incluir_arquivadas else ("ativa",)
+        marcadores = ",".join("?" for _ in estados)
+        conn = self._conectar()
+        try:
+            rows = conn.execute(
+                "SELECT c.id, c.titulo, c.status, c.resumo, c.versao, "
+                "c.criada_em, c.atualizada_em, c.fixada, c.arquivada_em, "
+                "(SELECT COUNT(*) FROM conversa_mensagens m "
+                " WHERE m.conversa_id=c.id) AS mensagens "
+                f"FROM conversas c WHERE c.status IN ({marcadores}) "
+                "ORDER BY c.fixada DESC, c.atualizada_em DESC LIMIT ?",
+                (*estados, max(1, min(int(limite), 500))),
+            ).fetchall()
+        finally:
+            conn.close()
+        return [
+            {
+                "id": row[0], "titulo": row[1], "status": row[2],
+                "resumo": row[3], "versao": int(row[4]),
+                "criada_em": row[5], "atualizada_em": row[6],
+                "fixada": bool(row[7]), "arquivada_em": row[8],
+                "mensagens": int(row[9]),
+            }
+            for row in rows
+        ]
+
+    def conversa_ativa_id(self) -> str:
+        conn = self._conectar()
+        try:
+            row = conn.execute(
+                "SELECT cfg.valor FROM conversa_configuracao cfg "
+                "JOIN conversas c ON c.id=cfg.valor "
+                "WHERE cfg.chave='conversa_ativa_id' AND c.status='ativa'"
+            ).fetchone()
+            return str(row[0] if row else "")
+        finally:
+            conn.close()
+
+    def carregar_conversa(self, conversa_id: str) -> Dict[str, Any] | None:
+        identificador = str(conversa_id or "").strip()
+        if not identificador:
+            return None
+        conn = self._conectar()
+        try:
+            row = conn.execute(
+                "SELECT id, titulo, status, resumo, versao, criada_em, "
+                "atualizada_em, fixada, arquivada_em FROM conversas "
+                "WHERE id=? AND status!='excluida'",
+                (identificador,),
+            ).fetchone()
+            if row is None:
+                return None
+            mensagens_rows = conn.execute(
+                "SELECT payload FROM conversa_mensagens WHERE conversa_id=? "
+                "ORDER BY ordem",
+                (identificador,),
+            ).fetchall()
+            contexto_row = conn.execute(
+                "SELECT payload FROM conversa_contextos WHERE conversa_id=?",
+                (identificador,),
+            ).fetchone()
+        finally:
+            conn.close()
+        mensagens: list[Dict[str, Any]] = []
+        for item in mensagens_rows:
+            try:
+                valor = json.loads(item[0])
+            except (TypeError, json.JSONDecodeError):
+                continue
+            if isinstance(valor, dict):
+                mensagens.append(valor)
+        try:
+            contexto = json.loads(contexto_row[0]) if contexto_row else {}
+        except (TypeError, json.JSONDecodeError):
+            contexto = {}
+        return {
+            "id": row[0], "titulo": row[1], "status": row[2],
+            "resumo": row[3], "versao": int(row[4]),
+            "criada_em": row[5], "atualizada_em": row[6],
+            "fixada": bool(row[7]), "arquivada_em": row[8],
+            "mensagens": mensagens,
+            "contexto": contexto if isinstance(contexto, dict) else {},
+        }
+
+    def garantir_conversa_inicial(
+        self,
+        *,
+        mensagens_legadas: Sequence[Mapping[str, Any]] | None,
+        resumo_legado: str = "",
+        contexto_legado: Mapping[str, Any] | None = None,
+    ) -> Dict[str, Any]:
+        ativa = self.conversa_ativa_id()
+        if ativa:
+            carregada = self.carregar_conversa(ativa)
+            if carregada:
+                return carregada
+        existentes = self.listar_conversas(incluir_arquivadas=False, limite=1)
+        if existentes:
+            self.selecionar_conversa(existentes[0]["id"])
+            return self.carregar_conversa(existentes[0]["id"]) or {}
+        possui_historico = any(
+            str(item.get("role") or "").casefold() in {"user", "assistant"}
+            for item in (mensagens_legadas or [])
+            if isinstance(item, Mapping)
+        )
+        return self.criar_conversa(
+            titulo="Conversa anterior" if possui_historico else "Nova conversa",
+            mensagens=mensagens_legadas,
+            resumo=resumo_legado,
+            contexto=contexto_legado,
+            ativar=True,
+        )
+
+    def salvar_conversa(
+        self,
+        conversa_id: str,
+        *,
+        mensagens: Sequence[Mapping[str, Any]] | None,
+        resumo: str = "",
+        contexto: Mapping[str, Any] | None = None,
+        versao_esperada: int | None = None,
+    ) -> bool:
+        identificador = str(conversa_id or "").strip()
+        if not identificador:
+            return False
+        agora = datetime.now().isoformat(" ")
+        conn = self._conectar()
+        try:
+            cur = conn.cursor()
+            row = cur.execute(
+                "SELECT versao, status FROM conversas WHERE id=?",
+                (identificador,),
+            ).fetchone()
+            if row is None or row[1] == "excluida":
+                return False
+            if versao_esperada is not None and int(row[0]) != int(versao_esperada):
+                return False
+            self._gravar_mensagens_conversa(
+                cur, identificador, mensagens, agora,
+            )
+            cur.execute(
+                "INSERT INTO conversa_contextos(conversa_id, payload, atualizado_em) "
+                "VALUES(?, ?, ?) ON CONFLICT(conversa_id) DO UPDATE SET "
+                "payload=excluded.payload, atualizado_em=excluded.atualizado_em",
+                (
+                    identificador,
+                    json.dumps(dict(contexto or {}), ensure_ascii=False),
+                    agora,
+                ),
+            )
+            cur.execute(
+                "UPDATE conversas SET resumo=?, atualizada_em=?, versao=versao+1 "
+                "WHERE id=? AND status!='excluida'",
+                (str(resumo or "").strip()[:16_000], agora, identificador),
+            )
+            conn.commit()
+            return cur.rowcount > 0
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+    def selecionar_conversa(self, conversa_id: str) -> bool:
+        identificador = str(conversa_id or "").strip()
+        agora = datetime.now().isoformat(" ")
+        conn = self._conectar()
+        try:
+            cur = conn.cursor()
+            existe = cur.execute(
+                "SELECT 1 FROM conversas WHERE id=? AND status='ativa'",
+                (identificador,),
+            ).fetchone()
+            if not existe:
+                return False
+            cur.execute(
+                "INSERT INTO conversa_configuracao(chave, valor, atualizado_em) "
+                "VALUES('conversa_ativa_id', ?, ?) "
+                "ON CONFLICT(chave) DO UPDATE SET valor=excluded.valor, "
+                "atualizado_em=excluded.atualizado_em",
+                (identificador, agora),
+            )
+            conn.commit()
+            return True
+        finally:
+            conn.close()
+
+    def renomear_conversa(self, conversa_id: str, titulo: str) -> bool:
+        identificador = str(conversa_id or "").strip()
+        titulo_limpo = self._titulo_conversa_seguro(
+            titulo, fallback="Nova conversa",
+        )
+        conn = self._conectar()
+        try:
+            cur = conn.execute(
+                "UPDATE conversas SET titulo=?, atualizada_em=? "
+                "WHERE id=? AND status!='excluida'",
+                (titulo_limpo, datetime.now().isoformat(" "), identificador),
+            )
+            conn.commit()
+            return cur.rowcount > 0
+        finally:
+            conn.close()
+
+    def fixar_conversa(self, conversa_id: str, fixada: bool) -> bool:
+        identificador = str(conversa_id or "").strip()
+        if not identificador:
+            return False
+        conn = self._conectar()
+        try:
+            cur = conn.execute(
+                "UPDATE conversas SET fixada=?, atualizada_em=? "
+                "WHERE id=? AND status!='excluida'",
+                (
+                    1 if bool(fixada) else 0,
+                    datetime.now().isoformat(" "),
+                    identificador,
+                ),
+            )
+            conn.commit()
+            return cur.rowcount > 0
+        finally:
+            conn.close()
+
+    def arquivar_conversa(self, conversa_id: str) -> bool:
+        identificador = str(conversa_id or "").strip()
+        if not identificador:
+            return False
+        agora = datetime.now().isoformat(" ")
+        conn = self._conectar()
+        try:
+            cur = conn.execute(
+                "UPDATE conversas SET status='arquivada', arquivada_em=?, "
+                "atualizada_em=?, versao=versao+1 "
+                "WHERE id=? AND status='ativa'",
+                (agora, agora, identificador),
+            )
+            if cur.rowcount:
+                conn.execute(
+                    "DELETE FROM conversa_configuracao "
+                    "WHERE chave='conversa_ativa_id' AND valor=?",
+                    (identificador,),
+                )
+            conn.commit()
+            return cur.rowcount > 0
+        finally:
+            conn.close()
+
+    def desarquivar_conversa(self, conversa_id: str) -> bool:
+        identificador = str(conversa_id or "").strip()
+        if not identificador:
+            return False
+        conn = self._conectar()
+        try:
+            cur = conn.execute(
+                "UPDATE conversas SET status='ativa', arquivada_em='', "
+                "atualizada_em=?, versao=versao+1 "
+                "WHERE id=? AND status='arquivada'",
+                (datetime.now().isoformat(" "), identificador),
+            )
+            conn.commit()
+            return cur.rowcount > 0
+        finally:
+            conn.close()
+
+    def excluir_conversa(self, conversa_id: str) -> bool:
+        """Tombstone impede uma resposta tardia de recriar o chat apagado."""
+        identificador = str(conversa_id or "").strip()
+        agora = datetime.now().isoformat(" ")
+        conn = self._conectar()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE conversas SET status='excluida', resumo='', "
+                "excluida_em=?, atualizada_em=?, versao=versao+1 "
+                "WHERE id=? AND status!='excluida'",
+                (agora, agora, identificador),
+            )
+            alterou = cur.rowcount > 0
+            if alterou:
+                cur.execute(
+                    "DELETE FROM conversa_mensagens WHERE conversa_id=?",
+                    (identificador,),
+                )
+                cur.execute(
+                    "DELETE FROM conversa_contextos WHERE conversa_id=?",
+                    (identificador,),
+                )
+                cur.execute(
+                    "DELETE FROM conversa_configuracao "
+                    "WHERE chave='conversa_ativa_id' AND valor=?",
+                    (identificador,),
+                )
+            conn.commit()
+            return alterou
         except Exception:
             conn.rollback()
             raise

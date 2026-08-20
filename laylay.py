@@ -358,6 +358,9 @@ from mente_laylay.memoria_mental.persistencia_memoria import (
     criar_persistencia_memoria_runtime as _criar_persistencia_memoria_runtime_mente,
     init_memoria_contexto_diaria as _init_memoria_contexto_diaria_mente,
 )
+from mente_laylay.memoria_mental.conversas_runtime import (
+    criar_gerenciador_conversas_runtime as _criar_gerenciador_conversas_runtime_mente,
+)
 from mente_laylay.memoria_mental.aprendizado_runtime import (
     criar_aprendizado_runtime as _criar_aprendizado_runtime_mente,
 )
@@ -1917,6 +1920,12 @@ from mente_laylay.cognicao.plano_turno import (
 )
 
 # ====================== FUNÇÕES DE MEMÓRIA ======================
+_gerenciador_conversas_runtime = _criar_gerenciador_conversas_runtime_mente(
+    memoria_sqlite=MEMORIA_SQLITE,
+    estado_compartilhado=_estado_compartilhado_runtime,
+    base_system_prompt=BASE_SYSTEM_PROMPT,
+    log=print,
+)
 _persistencia_memoria_runtime = _criar_persistencia_memoria_runtime_mente(
     memoria_sqlite=MEMORIA_SQLITE,
     base_system_prompt=BASE_SYSTEM_PROMPT,
@@ -1924,6 +1933,8 @@ _persistencia_memoria_runtime = _criar_persistencia_memoria_runtime_mente(
     estado_atualizar=_estado_compartilhado_runtime.atualizar_campos,
     ajustar_humor_cb=lambda delta, motivo: ajustar_humor(delta, motivo),
     registrar_autoaprimoramento_cb=_registrar_autoaprimoramento,
+    conversas_runtime=_gerenciador_conversas_runtime,
+    iniciar_sem_conversa=True,
     log=print,
 )
 carregar_memoria = _persistencia_memoria_runtime.carregar
@@ -3164,11 +3175,20 @@ get_status_humor_prompt = _estado_contexto_runtime.status_humor_prompt
 parsear_resposta_json = partial(_parsear_resposta_json_mente, fallback_fala=FALLBACK_FALA_NEUTRA)
 
 
-_agendar_entrada_canonica = partial(
+_agendar_entrada_canonica_base = partial(
     _agendar_entrada_canonica_mente,
     modo_jogo_ativo=lambda: bool(_modo_jogo_runtime.ativo),
     agendar=_coordenador_exec_runtime.agendar,
 )
+
+
+def _agendar_entrada_canonica(texto, canal="terminal"):
+    """Toda primeira entrada nasce dentro de um chat novo e isolado."""
+    if not _gerenciador_conversas_runtime.id_ativo():
+        conversa_id = _gerenciador_conversas_runtime.garantir_para_entrada()
+        if not conversa_id:
+            return False
+    return _agendar_entrada_canonica_base(texto, canal=canal)
 
 
 _processar_entrada_barra = partial(_agendar_entrada_canonica, canal="barra")
@@ -3247,6 +3267,9 @@ _definir_messages_resposta_ia = _interacao_chat_runtime.definir_messages
 _estado_conversa_runtime = _criar_estado_conversa_runtime(
     getter=lambda: _memoria_conversa_get("messages", []),
     setter=_definir_messages_resposta_ia,
+    conversation_id_getter=_gerenciador_conversas_runtime.id_ativo,
+    getter_conversa=_gerenciador_conversas_runtime.mensagens,
+    setter_conversa=_gerenciador_conversas_runtime.substituir_mensagens,
 )
 
 
@@ -3337,6 +3360,18 @@ _desktop_bridge_runtime = _criar_desktop_bridge_runtime(
     configuracao_getter=_configuracao_aplicacao_runtime.estado,
     configuracao_setter=_configuracao_aplicacao_runtime.atualizar,
     reiniciar_aplicacao=_solicitar_reinicio_aplicacao,
+    conversas_getter=_gerenciador_conversas_runtime.listar_para_terminal,
+    conversa_ativa_getter=_gerenciador_conversas_runtime.id_ativo,
+    conversa_criar=_gerenciador_conversas_runtime.criar,
+    conversa_selecionar=_gerenciador_conversas_runtime.selecionar,
+    conversa_renomear=_gerenciador_conversas_runtime.renomear,
+    conversa_excluir=_gerenciador_conversas_runtime.excluir,
+    conversa_arquivar=_gerenciador_conversas_runtime.arquivar,
+    conversa_desarquivar=_gerenciador_conversas_runtime.desarquivar,
+    conversa_fixar=_gerenciador_conversas_runtime.fixar,
+    conversa_nomear_automaticamente=(
+        _gerenciador_conversas_runtime.nomear_automaticamente
+    ),
     port=int(os.environ.get("LAYLAY_TERMINAL_2_PORTA", "0") or 0),
     log=print,
 )
@@ -3544,6 +3579,7 @@ def _diagnostico_conversa_llm_tipadas() -> dict:
     prompt = _contexto_prompt_runtime.diagnostico()
     modelo = _registro_modelo_llm_runtime.diagnostico()
     estado = _estado_conversa_runtime.diagnostico()
+    conversas = _gerenciador_conversas_runtime.diagnostico()
     return {
         "prompt_disponivel": bool(prompt.get("disponivel")),
         "modelo_disponivel": bool(modelo.get("disponivel")),
@@ -3558,6 +3594,9 @@ def _diagnostico_conversa_llm_tipadas() -> dict:
         "falhas_consecutivas": int(modelo.get("falhas_consecutivas") or 0),
         "estado": str(modelo.get("estado") or "saudavel"),
         "ultima_falha_codigo": str(modelo.get("ultima_falha_codigo") or ""),
+        "conversa_ativa_id": str(conversas.get("conversa_ativa_id") or ""),
+        "conversas_persistidas": int(conversas.get("conversas") or 0),
+        "isolamento_contexto": bool(conversas.get("isolamento_contexto")),
         "memoria_exposta": False,
         "credencial_exposta": False,
         "autoriza_execucao": False,
