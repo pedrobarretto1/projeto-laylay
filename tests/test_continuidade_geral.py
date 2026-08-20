@@ -385,6 +385,7 @@ def test_sequencia_real_arquivo_aberto_fecha_ele_vence_app_antigo(tmp_path) -> N
             "referencia_arquivo": True,
         },
         "_rota_contextual": "GERAL",
+        "_dominio_contextual": "arquivo",
     }
 
 

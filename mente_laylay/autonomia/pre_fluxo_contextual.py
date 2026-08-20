@@ -795,6 +795,34 @@ def processar_reparacao_conversacional(ctx: Dict[str, Any], texto_usuario: str) 
             falar(fala, "calma", 1)
         return True, "reparacao_conversacional"
 
+    decisao_turno = _decisao_turno(ctx)
+    modalidade_atual = str(
+        decisao_turno.get("modalidade_geral")
+        or decisao_turno.get("modalidade")
+        or ""
+    ).lower().strip()
+    intent_reparada = str(
+        ((reparacao.get("intencao") or {}).get("intent") or "")
+        if isinstance(reparacao.get("intencao"), dict)
+        else ""
+    ).upper().strip()
+    operacao_corrigida = str(
+        reparacao.get("operacao_corrigida") or ""
+    ).upper().strip()
+    intents_exigem_sinal_atual = {
+        "APP_OPEN", "OPEN_URL", "MAXIMIZE_WINDOW",
+        "CLOSE_APP", "CLOSE_TAB",
+    }
+    if (
+        not bool(decisao_turno.get("autoriza_execucao"))
+        and intent_reparada in intents_exigem_sinal_atual
+        and (
+            modalidade_atual == "pergunta"
+            or not operacao_corrigida
+        )
+    ):
+        return False, ""
+
     # A correção operacional não fala antes de agir: o executor já produz a
     # confirmação canônica. Assim evitamos duas falas para uma única ação e a
     # resposta final reflete o resultado real, não só a intenção corrigida.

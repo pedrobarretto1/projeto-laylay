@@ -960,8 +960,26 @@ def resolver_comando_contextual(
             continue
         if not isinstance(resultado, dict) or not str(resultado.get("intent") or "").strip():
             continue
-        if dominio_restrito and not _resultado_compativel_com_dominio(
-            resultado, dominio_restrito
+        restrito_norm = _normalizar_dominio_referencia(dominio_restrito)
+        params_resultado = (
+            dict(resultado.get("params") or {})
+            if isinstance(resultado.get("params"), dict)
+            else {}
+        )
+        excecao_janela_arquivo_geral = bool(
+            rota_txt == "GERAL"
+            and restrito_norm == "arquivo"
+            and str(resultado.get("intent") or "").upper().strip() == "CLOSE_APP"
+            and params_resultado.get("referencia_arquivo") is True
+            and str(params_resultado.get("nome_app") or "").strip()
+            and str(params_resultado.get("janela_titulo") or "").strip()
+        )
+        if (
+            dominio_restrito
+            and not excecao_janela_arquivo_geral
+            and not _resultado_compativel_com_dominio(
+                resultado, dominio_restrito
+            )
         ):
             print(
                 "🛡️ [P0:CONTEXTO] intenção contextual descartada por domínio | "

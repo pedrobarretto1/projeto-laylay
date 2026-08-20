@@ -463,12 +463,21 @@ def _executar_fechar_app(
         deps.marcar_resultado("app_fechado_pc_b", executou=True)
         deps.falar_por_status("app_fechado_pc_b", f"Fechando {nome} no PC B.", alvo=nome)
     elif callable(fechar_programa):
+        fechou = False
         try:
-            fechar_programa(nome if nome_norm == "microsoft store" else mapped)
+            fechou = bool(
+                fechar_programa(
+                    nome if nome_norm == "microsoft store" else mapped
+                )
+            )
         except Exception:
-            pass
+            fechou = False
         esperar_programa = deps.esperar_programa_fechar
-        ok = bool(esperar_programa(nome)) if callable(esperar_programa) else False
+        ok = bool(
+            fechou
+            and callable(esperar_programa)
+            and esperar_programa(nome)
+        )
         status = "app_fechado" if ok else "falha_execucao"
         deps.marcar_resultado(status, executou=ok)
         deps.falar_por_status(
