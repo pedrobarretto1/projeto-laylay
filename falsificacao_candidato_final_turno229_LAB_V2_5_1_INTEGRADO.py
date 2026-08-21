@@ -46,7 +46,7 @@ import sys
 from pathlib import Path
 from typing import Any, Mapping
 
-HEAD="a4741bc57bc55a50ef2861dbaef09ab36397ff63"
+HEAD="53852cba7393e2addec8b52dad9ef33f68358165"
 ARTEFATOS={
     "falsificacao_candidato_final_veto_monotonico_turno229_LAB_V2_5.py":
         "3bfcabaab1e761be707199fd6df73ee961695a9c6ab98937119a4ca5178520ef",
@@ -192,9 +192,9 @@ def main()->int:
         )
         from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
         from mente_laylay.arquivos.nome_natural import EXTENSOES_TEXTUAIS_RENOMEAVEIS
-        from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno,_protecao_p0_ato_fala
+        from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno,_protecao_p0_ato_fala,bloqueia_execucao_operacional_prioritaria
         from mente_laylay.cognicao.revisao_turno import resolver_revisao_intra_turno
-        from mente_laylay.autonomia.porteiro_acoes import normalizar_texto,texto_tem_comando_explicito,bloqueia_execucao_operacional_prioritaria
+        from mente_laylay.autonomia.porteiro_acoes import normalizar_texto,texto_tem_comando_explicito
         from mente_laylay.autonomia.fluxos_conversa import _pendencia_combina_com_texto
     except Exception as e:
         print(f"\n🟠 EXIT 1 — IMPORT/WIRING: {type(e).__name__}: {e}"); return 1
@@ -424,7 +424,7 @@ def main()->int:
         title("FASE 3 — A DIRECIONAL + B FILENAME: REVOGAÇÃO CONTINUA ALCANÇÁVEL")
         tcancel=build("nao apaga o arquivo nao.txt")
         cancel_calls=[]; blocos=[]
-        c=A.base_ctx(tcancel,pendencia=A.pendencia_delete())
+        c=A.base_ctx(tcancel,pendencia=A.pend_delete())
         c["_executar_intencao_curta_contextual"]=lambda r,t,**k: cancel_calls.append(intent(r)) or True
         tratado_cancel=A.prefluxo_dir(
             c,"nao apaga o arquivo nao.txt",
@@ -436,7 +436,7 @@ def main()->int:
         if not cancel_ok and not reds: reds.append("revogação com filename literal morreu")
 
         tsim=base.aplicar_veto_canonico({"texto_original":"sim","texto":"sim","modalidade":"recusa","modalidade_geral":"recusa","autoriza_execucao":False,"acao_explicita":False,"segmentos":[]},texto="sim",modalidade="recusa",natureza="integrado_adversarial",motivo="sticky integrado",requer_esclarecimento=False,origem_veto="lab_integrado")
-        confirm_calls=[]; c2=A.base_ctx(tsim,pendencia=A.pendencia_delete()); c2["_executar_intencao_curta_contextual"]=lambda r,t,**k:confirm_calls.append(intent(r)) or True
+        confirm_calls=[]; c2=A.base_ctx(tsim,pendencia=A.pend_delete()); c2["_executar_intencao_curta_contextual"]=lambda r,t,**k:confirm_calls.append(intent(r)) or True
         tratado_confirm=A.prefluxo_dir(c2,"sim",fluxo=fluxo_mod,pre=pre_mod,inicio=processar_inicio_fluxo_resposta_ia,base=base,combina=_pendencia_combina_com_texto,bloqueios=[])
         confirm_block=bool(not tratado_confirm and confirm_calls==[])
         print(f"sticky + CONFIRM antigo -> calls zero ................... {'PASS' if confirm_block else 'FAIL'}")
@@ -444,7 +444,7 @@ def main()->int:
 
         title("FASE 4 — A NÃO ENGLOBA B: PENDÊNCIA ANTIGA NÃO CONSOME CREATE_FILE NOVO")
         tfile=build("cria arquivo nao.txt")
-        pcalls=[]; cp=A.base_ctx(tfile,pendencia=A.pendencia_delete()); cp["_executar_intencao_curta_contextual"]=lambda r,t,**k:pcalls.append(intent(r)) or True
+        pcalls=[]; cp=A.base_ctx(tfile,pendencia=A.pend_delete()); cp["_executar_intencao_curta_contextual"]=lambda r,t,**k:pcalls.append(intent(r)) or True
         tratado_pre=A.prefluxo_dir(cp,"cria arquivo nao.txt",fluxo=fluxo_mod,pre=pre_mod,inicio=processar_inicio_fluxo_resposta_ia,base=base,combina=_pendencia_combina_com_texto,bloqueios=[])
         _,okf,rotaf,detsf,rawf,execsf=rodar_coordenador("cria arquivo nao.txt",tfile) if not tratado_pre else (tfile,False,"",[],[],[])
         novo_cmd_ok=bool(not tratado_pre and pcalls==[] and okf and len(execsf)==1 and execsf[0]["params"].get("alvo")=="nao.txt")
