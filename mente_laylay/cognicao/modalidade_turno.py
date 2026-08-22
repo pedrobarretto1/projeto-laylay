@@ -20,6 +20,14 @@ from mente_laylay.arquivos.nome_natural import (
     marcador_negacao_em_filename_literal,
 )
 
+from mente_laylay.cognicao.normalizacao_linguagem import (
+    normalizar_texto_basico as _normalizar_texto_estrutural,
+)
+from mente_laylay.cognicao.gramatica_musical import (
+    analisar_gramatica_musical,
+    texto_tem_relevancia_musical,
+)
+
 
 def analisar_protecao_operacional(
     texto: str,
@@ -550,48 +558,666 @@ def texto_tem_pergunta_reciproca_apos_resposta(texto: str) -> bool:
     return len(prefixo.split()) >= 2
 
 
-def _segmentar_turno_misto(texto_normalizado: str) -> list[str]:
-    """Separa atos claros sem fragmentar complementos do mesmo comando."""
-    t = re.sub(r"\s+", " ", str(texto_normalizado or "")).strip()
+_CLASSES_MUSICA_OWNED = frozenset({
+    "pedido_direto",
+    "consulta_estado",
+    "referencia_ambigua",
+})
+
+def _normalizar_operacional_ato(
+    texto: str,
+    normalizar_texto: Callable[[str], str] | None,
+) -> str:
+    normalizar = normalizar_texto if callable(normalizar_texto) else (
+        lambda valor: str(valor or "").casefold().strip()
+    )
+    return re.sub(r"\s+", " ", str(normalizar(texto) or "")).strip()
+
+def _detector_lexical_ancorado(
+    texto: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None,
+    texto_tem_comando_explicito: Callable[[str], bool] | None,
+) -> bool:
+    """
+    R9b: o detector amplo só complementa a gramática quando o verbo
+    operacional está ancorado no começo do ATO atual.
+    """
+    if not callable(texto_tem_comando_explicito):
+        return False
+
+    t = _normalizar_operacional_ato(texto, normalizar_texto)
+    t = re.sub(r"^(?:agora|entao)\s+", "", t).strip()
+    if not t:
+        return False
+
+    try:
+        if not bool(texto_tem_comando_explicito(t)):
+            return False
+    except Exception:
+        return False
+
+    return bool(_VERBOS_COMANDO.match(t))
+
+def _compor_atomo_base(
+    texto: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None,
+    texto_tem_comando_explicito: Callable[[str], bool] | None,
+    confirmacao_contextual_valida: bool,
+) -> Dict[str, Any]:
+    """
+    R9a: produz contrato atômico SEM reentrar na composição.
+    """
+    def detector_local(valor: str) -> bool:
+        return _detector_lexical_ancorado(
+            valor,
+            normalizar_texto=normalizar_texto,
+            texto_tem_comando_explicito=texto_tem_comando_explicito,
+        )
+
+    base = dict(
+        _classificar_modalidade_base(
+            texto,
+            normalizar_texto=normalizar_texto,
+            texto_tem_comando_explicito=detector_local,
+            confirmacao_contextual_valida=confirmacao_contextual_valida,
+        )
+        or {}
+    )
+
+    modal = str(base.get("modalidade") or "conversa")
+    normalizado = str(
+        base.get("normalizado")
+        or _normalizar_operacional_ato(texto, normalizar_texto)
+        or ""
+    ).strip()
+
+    segmento = {
+        "indice": 0,
+        "texto": normalizado[:300],
+        "modalidade": modal,
+        "confianca": float(base.get("confianca") or 0.0),
+        "motivo": str(base.get("motivo") or ""),
+        "autoriza_execucao": bool(base.get("autoriza_execucao")),
+        "acao_explicita": bool(base.get("acao_explicita")),
+        "requer_esclarecimento": bool(
+            base.get("requer_esclarecimento")
+        ),
+        "depende_contexto": bool(base.get("depende_contexto")),
+        "natureza_acao": str(base.get("natureza_acao") or "nenhuma"),
+    }
+
+    base.update(
+        modalidade=modal,
+        modalidade_geral=modal,
+        ato_principal=modal,
+        atos=[modal],
+        segmentos=[segmento],
+        texto_operacional=normalizado[:500] if modal == "comando" else "",
+        texto_conversacional="" if modal == "comando" else normalizado[:500],
+        origem_modalidade="atomico_base",
+    )
+    return base
+
+def _aplicar_p0_atomico(
+    texto: str,
+    resultado: Dict[str, Any],
+    *,
+    normalizar_texto: Callable[[str], str] | None,
+    texto_tem_comando_explicito: Callable[[str], bool] | None,
+) -> Dict[str, Any]:
+    """
+    Mantém a proteção soberana, mas no nível do ato.
+    """
+    resultado = dict(resultado or {})
+    protecao = _protecao_p0_ato_fala(
+        texto,
+        normalizar_texto=normalizar_texto,
+    )
+    if protecao:
+        normalizado = _normalizar_p0_ato_fala(texto, normalizar_texto)
+        modalidade = str(protecao.get("modalidade") or "conversa")
+        natureza = str(protecao.get("natureza_acao") or "nenhuma")
+        motivo = str(
+            protecao.get("motivo")
+            or "ato de fala sem autorização"
+        )
+        requer = bool(protecao.get("requer_esclarecimento"))
+
+        resultado.update(
+            modalidade=modalidade,
+            modalidade_geral=modalidade,
+            ato_principal=modalidade,
+            atos=[modalidade],
+            segmentos=[{
+                "indice": 0,
+                "texto": normalizado[:300],
+                "modalidade": modalidade,
+                "confianca": 0.99,
+                "motivo": motivo,
+                "autoriza_execucao": False,
+                "acao_explicita": False,
+                "requer_esclarecimento": requer,
+                "depende_contexto": modalidade == "recusa",
+                "natureza_acao": natureza,
+            }],
+            texto_operacional="",
+            texto_conversacional=normalizado[:500],
+            acao_explicita=False,
+            autoriza_execucao=False,
+            requer_esclarecimento=requer,
+            depende_contexto=(
+                bool(resultado.get("depende_contexto"))
+                or modalidade == "recusa"
+            ),
+            natureza_acao=natureza,
+            motivo=motivo,
+            motivo_decisao=motivo,
+            confianca=max(
+                float(resultado.get("confianca") or 0.0), 0.99
+            ),
+        )
+
+        if natureza.casefold() in _NATUREZAS_VETO_MONOTONICO:
+            return aplicar_veto_canonico(
+                resultado,
+                texto=texto,
+                modalidade=modalidade,
+                natureza=natureza,
+                motivo=motivo,
+                requer_esclarecimento=requer,
+                origem_veto="p0_ato_fala_atomico",
+            )
+        return resultado
+
+    detector_ancorado = _detector_lexical_ancorado(
+        texto,
+        normalizar_texto=normalizar_texto,
+        texto_tem_comando_explicito=texto_tem_comando_explicito,
+    )
+    if (
+        resultado.get("autoriza_execucao") is not True
+        and str(resultado.get("modalidade") or "").casefold() == "recusa"
+        and detector_ancorado
+    ):
+        return aplicar_veto_canonico(
+            resultado,
+            texto=texto,
+            modalidade="recusa",
+            natureza=str(
+                resultado.get("natureza_acao") or "cancelamento"
+            ),
+            motivo=str(
+                resultado.get("motivo") or "recusa operacional"
+            ),
+            requer_esclarecimento=bool(
+                resultado.get("requer_esclarecimento")
+            ),
+            origem_veto="recusa_operacional_historica_atomica",
+        )
+
+    if resultado.get("autoriza_execucao") is True:
+        negacao = analisar_negacao_interna_conservadora(texto)
+        if negacao.get("bloqueia"):
+            return aplicar_veto_canonico(
+                resultado,
+                texto=texto,
+                modalidade="recusa",
+                natureza="ambiguidade_polaridade_interna",
+                motivo=(
+                    "negação interna sem decomposição operacional segura; "
+                    "execução não presumida"
+                ),
+                requer_esclarecimento=True,
+                origem_veto="negacao_interna_stt_atomica",
+            )
+
+    return resultado
+
+def _classificar_atomo_geral(
+    texto: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None,
+    texto_tem_comando_explicito: Callable[[str], bool] | None,
+    confirmacao_contextual_valida: bool,
+) -> Dict[str, Any]:
+    base = _compor_atomo_base(
+        texto,
+        normalizar_texto=normalizar_texto,
+        texto_tem_comando_explicito=texto_tem_comando_explicito,
+        confirmacao_contextual_valida=confirmacao_contextual_valida,
+    )
+    return _aplicar_p0_atomico(
+        texto,
+        base,
+        normalizar_texto=normalizar_texto,
+        texto_tem_comando_explicito=texto_tem_comando_explicito,
+    )
+
+def _contrato_musical_direto(
+    texto_estrutural: str,
+    cand: Any,
+) -> Dict[str, Any]:
+    classe = str(getattr(cand, "classe", "") or "")
+    operacao = str(getattr(cand, "operacao", "") or "")
+    regra = str(getattr(cand, "regra", "") or "")
+    motivo = str(getattr(cand, "motivo", "") or regra)
+
+    if classe == "pedido_direto":
+        modalidade = "comando"
+        auth = bool(getattr(cand, "evidencia_diretiva", False))
+        acao = auth
+        natureza = "pedido_direto"
+    elif classe == "consulta_estado":
+        modalidade = "pergunta"
+        auth = False
+        acao = False
+        natureza = "consulta_estado"
+    elif classe == "referencia_ambigua":
+        modalidade = "conversa"
+        auth = False
+        acao = False
+        natureza = "nenhuma"
+    else:
+        raise ValueError(
+            f"classe musical não-owned no contrato direto: {classe!r}"
+        )
+
+    depende = bool(getattr(cand, "depende_contexto", False))
+    return {
+        "texto": texto_estrutural[:500],
+        "normalizado": str(
+            getattr(cand, "normalizado", "")
+            or texto_estrutural
+        )[:500],
+        "modalidade": modalidade,
+        "modalidade_geral": modalidade,
+        "ato_principal": modalidade,
+        "atos": [modalidade],
+        "confianca": 0.99,
+        "motivo": f"gramatica_musical:{regra}:{motivo}",
+        "motivo_decisao": f"gramatica_musical:{regra}:{motivo}",
+        "acao_explicita": acao,
+        "autoriza_execucao": auth,
+        "requer_esclarecimento": False,
+        "depende_contexto": depende,
+        "natureza_acao": natureza,
+        "operacao_candidata": operacao,
+        "somente_leitura": bool(
+            getattr(cand, "somente_leitura", False)
+        ),
+        "segmentos": [{
+            "indice": 0,
+            "texto": texto_estrutural[:300],
+            "modalidade": modalidade,
+            "confianca": 0.99,
+            "motivo": f"gramatica_musical:{regra}",
+            "autoriza_execucao": auth,
+            "acao_explicita": acao,
+            "requer_esclarecimento": False,
+            "depende_contexto": depende,
+            "natureza_acao": natureza,
+        }],
+        "texto_operacional": (
+            texto_estrutural[:500] if modalidade == "comando" else ""
+        ),
+        "texto_conversacional": (
+            "" if modalidade == "comando" else texto_estrutural[:500]
+        ),
+        "origem_modalidade": "gramatica_musical_estrutural",
+    }
+
+def _fallback_musical_protegido(
+    texto_estrutural: str,
+    cand: Any,
+    *,
+    normalizar_texto: Callable[[str], str] | None,
+) -> Dict[str, Any]:
+    regra = str(getattr(cand, "regra", "") or "")
+    t = str(texto_estrutural or "").strip().casefold()
+
+    if regra == "negacao_inicial" or t.startswith(
+        ("nao ", "não ", "nunca ", "jamais ", "nem ")
+    ):
+        modalidade = "recusa"
+    elif regra == "pergunta" or t.endswith("?"):
+        modalidade = "pergunta"
+    else:
+        modalidade = "conversa"
+
+    natureza = "protegida"
+    motivo = str(
+        getattr(cand, "motivo", "")
+        or "proteção musical fail-closed"
+    )
+    normalizado = _normalizar_operacional_ato(
+        texto_estrutural, normalizar_texto
+    )
+    depende = modalidade == "recusa"
+
+    return {
+        "texto": texto_estrutural[:500],
+        "normalizado": normalizado[:500],
+        "modalidade": modalidade,
+        "modalidade_geral": modalidade,
+        "ato_principal": modalidade,
+        "atos": [modalidade],
+        "segmentos": [{
+            "indice": 0,
+            "texto": texto_estrutural[:300],
+            "modalidade": modalidade,
+            "confianca": 0.99,
+            "motivo": motivo,
+            "autoriza_execucao": False,
+            "acao_explicita": False,
+            "requer_esclarecimento": False,
+            "depende_contexto": depende,
+            "natureza_acao": natureza,
+            "veto_execucao_operacional": True,
+        }],
+        "texto_operacional": "",
+        "texto_conversacional": texto_estrutural[:500],
+        "acao_explicita": False,
+        "autoriza_execucao": False,
+        "requer_esclarecimento": False,
+        "depende_contexto": depende,
+        "natureza_acao": natureza,
+        "motivo": motivo,
+        "motivo_decisao": motivo,
+        "origem_modalidade": "gramatica_musical_guard",
+        "veto_execucao_operacional": True,
+        "origem_veto_execucao_operacional": "gramatica_musical_guard",
+    }
+
+def _classificar_ato_estrutural(
+    texto_estrutural: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None,
+    texto_tem_comando_explicito: Callable[[str], bool] | None,
+    confirmacao_contextual_valida: bool,
+) -> Dict[str, Any]:
+    """
+    B/B2/C: ownership na representação estrutural.
+    Relevância nunca vira autoridade.
+    """
+    cand = analisar_gramatica_musical(texto_estrutural)
+    classe = str(getattr(cand, "classe", "") or "")
+
+    if classe in _CLASSES_MUSICA_OWNED:
+        return _contrato_musical_direto(
+            texto_estrutural, cand
+        )
+
+    if classe == "protegida":
+        protecao_real = dict(
+            analisar_protecao_operacional(
+                texto_estrutural,
+                normalizar_texto=normalizar_texto,
+            )
+            or {}
+        )
+        protecao_p0 = dict(
+            _protecao_p0_ato_fala(
+                texto_estrutural,
+                normalizar_texto=normalizar_texto,
+            )
+            or {}
+        )
+        if (
+            bool(protecao_real.get("bloqueia_execucao"))
+            or bool(protecao_p0)
+        ):
+            return _classificar_atomo_geral(
+                texto_estrutural,
+                normalizar_texto=normalizar_texto,
+                texto_tem_comando_explicito=texto_tem_comando_explicito,
+                confirmacao_contextual_valida=(
+                    confirmacao_contextual_valida
+                ),
+            )
+
+        if texto_tem_relevancia_musical(texto_estrutural):
+            return _fallback_musical_protegido(
+                texto_estrutural,
+                cand,
+                normalizar_texto=normalizar_texto,
+            )
+
+        # B2: guard especializado não sequestra outro domínio.
+        return _classificar_atomo_geral(
+            texto_estrutural,
+            normalizar_texto=normalizar_texto,
+            texto_tem_comando_explicito=texto_tem_comando_explicito,
+            confirmacao_contextual_valida=confirmacao_contextual_valida,
+        )
+
+    # classe=nenhuma, com ou sem relevância, delega ao owner geral.
+    return _classificar_atomo_geral(
+        texto_estrutural,
+        normalizar_texto=normalizar_texto,
+        texto_tem_comando_explicito=texto_tem_comando_explicito,
+        confirmacao_contextual_valida=confirmacao_contextual_valida,
+    )
+
+def _limpar_ato_semantico(texto: str) -> str:
+    """
+    A3: remove apenas resíduos de boundary; preserva .?!
+    que ainda pertencem ao ato.
+    """
+    return re.sub(r"\s+", " ", str(texto or "")).strip(" ,;")
+
+def _evidencia_ato_operacional(
+    texto: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None,
+) -> tuple[bool, str]:
+    """
+    A2: evidência de fronteira pela cláusula inteira, nunca por verbo interno.
+    """
+    t = _limpar_ato_semantico(texto)
+    if not t:
+        return False, "vazio"
+
+    cand = analisar_gramatica_musical(t)
+    if (
+        str(getattr(cand, "classe", "") or "") == "pedido_direto"
+        and bool(getattr(cand, "evidencia_diretiva", False))
+    ):
+        return True, "GRAMATICA_MUSICAL"
+
+    base = dict(
+        _classificar_modalidade_base(
+            t,
+            normalizar_texto=normalizar_texto,
+            texto_tem_comando_explicito=lambda _texto: False,
+            confirmacao_contextual_valida=False,
+        )
+        or {}
+    )
+    if (
+        str(base.get("modalidade") or "") == "comando"
+        and bool(base.get("acao_explicita"))
+    ):
+        return True, "BASE_ANCORADA"
+
+    return False, "BASE:" + str(
+        base.get("modalidade") or "conversa"
+    )
+
+def _separar_primeira_fronteira_forte(
+    bloco: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None,
+):
+    for m in re.finditer(
+        r"(?P<sep>[,;.!])\s*(?P<conj>(?:mas|e|entao)\s+)?",
+        bloco,
+        flags=re.IGNORECASE,
+    ):
+        direita = _limpar_ato_semantico(bloco[m.end():])
+        if not direita:
+            continue
+
+        inicia, origem = _evidencia_ato_operacional(
+            direita,
+            normalizar_texto=normalizar_texto,
+        )
+        if not inicia:
+            continue
+
+        esquerda = _limpar_ato_semantico(
+            bloco[:m.start()]
+        )
+        if esquerda:
+            return m, esquerda, direita, origem
+
+    return None
+
+def _segmento_estrutural(
+    texto_estrutural: str,
+    resultado: Dict[str, Any],
+    indice: int,
+) -> Dict[str, Any]:
+    return {
+        "indice": indice,
+        "texto": texto_estrutural[:300],
+        "texto_estrutural": texto_estrutural[:300],
+        "modalidade": str(
+            resultado.get("ato_principal")
+            or resultado.get("modalidade")
+            or "conversa"
+        ),
+        "confianca": float(resultado.get("confianca") or 0.0),
+        "motivo": str(
+            resultado.get("motivo_decisao")
+            or resultado.get("motivo")
+            or ""
+        ),
+        "autoriza_execucao": bool(
+            autoriza_execucao_efetiva(resultado)
+        ),
+        "acao_explicita": bool(resultado.get("acao_explicita")),
+        "requer_esclarecimento": bool(
+            resultado.get("requer_esclarecimento")
+        ),
+        "depende_contexto": bool(resultado.get("depende_contexto")),
+        "natureza_acao": str(
+            resultado.get("natureza_acao") or "nenhuma"
+        ),
+        "veto_execucao_operacional": bool(
+            resultado.get("veto_execucao_operacional")
+        ),
+    }
+
+def _fontes_autoridade_turno(turno: Dict[str, Any]) -> list[str]:
+    leitura = dict(turno or {})
+    fontes = []
+    for s in list(leitura.get("segmentos") or []):
+        if not isinstance(s, dict):
+            continue
+        modalidade = str(s.get("modalidade") or "")
+        auth = bool(s.get("autoriza_execucao"))
+        if modalidade == "comando" and auth:
+            fontes.append("comando")
+        elif (
+            modalidade == "confirmacao"
+            and auth
+            and str(
+                leitura.get("ato_principal")
+                or leitura.get("modalidade")
+                or ""
+            ) == "confirmacao"
+            and str(
+                leitura.get("natureza_acao") or ""
+            ) == "confirmacao_contextual"
+            and bool(leitura.get("depende_contexto"))
+            and bool(leitura.get("confirmacao_contextual_valida"))
+        ):
+            fontes.append("confirmacao_contextual")
+    return fontes
+
+def _segmentar_turno_misto(
+    texto_estrutural: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None = None,
+) -> list[str]:
+    """
+    A2+A3: boundary estrutural + pontuação semântica preservada.
+    """
+    t = re.sub(r"\s+", " ", str(texto_estrutural or "")).strip()
     if not t:
         return []
-    partes = [p.strip(" ,;") for p in re.split(r"[,;]+", t) if p.strip(" ,;")]
-    if len(partes) == 1:
-        # Duas frases também podem conter dois atos: "estou bem. Você gosta
-        # de Slipknot?". O legado só separava vírgula e escondia a pergunta.
-        frases = [
-            p.strip(" .!,;")
-            for p in re.split(
-                r"[.!]\s+(?=(?:voc[eê]|tu|qual|quais|quem|o\s+que|como|quando|onde|por\s+que)\b)",
-                t,
-                flags=re.IGNORECASE,
+
+    segmentos = [t]
+
+    for _ in range(8):
+        mudou = False
+        novos = []
+
+        for bloco in segmentos:
+            corte = _separar_primeira_fronteira_forte(
+                bloco,
+                normalizar_texto=normalizar_texto,
             )
-            if p.strip(" .!,;")
-        ]
-        if len(frases) > 1:
-            partes = frases
-    if len(partes) == 1:
-        reciproca = _PERGUNTA_RECIPROCA_FINAL.search(t)
-        if reciproca and texto_tem_pergunta_reciproca_apos_resposta(t):
-            prefixo = t[:reciproca.start()].strip(" ,;")
-            pergunta = t[reciproca.start():].strip(" ,;")
-            partes = [prefixo, pergunta]
-        m = _VERBOS_COMANDO.search(t)
-        if len(partes) == 1 and m and m.start() > 0:
-            prefixo = t[:m.start()].strip(" ,;")
-            comando = t[m.start():].strip(" ,;")
-            # Molduras educadas pertencem ao comando, não são conversa.
-            if prefixo and not re.fullmatch(
-                r"(?:voce|você)?\s*(?:pode|poderia|consegue|conseguiria|por favor|faz favor)|"
-                r"(?:volta|retoma|continua)\s+a",
-                prefixo,
+            if corte is None:
+                limpo = _limpar_ato_semantico(bloco)
+                if limpo:
+                    novos.append(limpo)
+                continue
+
+            _m, esquerda, direita, _origem = corte
+            novos.extend([esquerda, direita])
+            mudou = True
+
+        segmentos = [s for s in novos if s]
+        if not mudou:
+            break
+
+    finais = []
+    for bloco in segmentos:
+        atual = bloco
+
+        while True:
+            corte = None
+            for m in re.finditer(
+                r"\s+(?P<conj>e|mas|entao)\s+",
+                atual,
+                flags=re.IGNORECASE,
             ):
-                partes = [prefixo, comando]
-    expandidas: list[str] = []
-    for parte in partes:
-        pedacos = re.split(r"\s+(?:e|mas|entao|então)\s+(?=" + _VERBOS_COMANDO.pattern[2:] + r")", parte)
-        expandidas.extend(p.strip() for p in pedacos if p.strip())
-    return expandidas or [t]
+                esquerda = _limpar_ato_semantico(
+                    atual[:m.start()]
+                )
+                direita = _limpar_ato_semantico(
+                    atual[m.end():]
+                )
+                if not esquerda or not direita:
+                    continue
+
+                esq_ok, _ = _evidencia_ato_operacional(
+                    esquerda,
+                    normalizar_texto=normalizar_texto,
+                )
+                dir_ok, _ = _evidencia_ato_operacional(
+                    direita,
+                    normalizar_texto=normalizar_texto,
+                )
+                if esq_ok and dir_ok:
+                    corte = (esquerda, direita)
+                    break
+
+            if corte is None:
+                limpo = _limpar_ato_semantico(atual)
+                if limpo:
+                    finais.append(limpo)
+                break
+
+            esquerda, direita = corte
+            finais.append(esquerda)
+            atual = direita
+
+    return [s for s in finais if s]
+
 
 
 def _classificar_modalidade_turno_composta_base(
@@ -601,119 +1227,181 @@ def _classificar_modalidade_turno_composta_base(
     texto_tem_comando_explicito: Callable[[str], bool] | None = None,
     confirmacao_contextual_valida: bool = False,
 ) -> Dict[str, Any]:
-    """Classifica o turno e preserva atos secundários em falas compostas."""
+    """
+    C REV2: fronteira e ownership antes da normalização operacional.
+    """
     bruto = str(texto or "").strip()
-    normalizar = normalizar_texto if callable(normalizar_texto) else (lambda valor: str(valor or "").casefold().strip())
-    normalizado = re.sub(r"\s+", " ", str(normalizar(bruto) or "")).strip()
-    principal = _classificar_modalidade_base(
-        bruto,
-        normalizar_texto=normalizar,
-        texto_tem_comando_explicito=texto_tem_comando_explicito,
-        confirmacao_contextual_valida=confirmacao_contextual_valida,
-    )
-    pergunta_negativa = bool(re.search(
-        r"^(?:nao|não)\s+\w+.*\b(?:qu[eê]|qual|porque|por que)\b",
-        normalizado,
-    )) or bool(
-        str(principal.get("modalidade") or "") == "pergunta"
-        and "?" in bruto
-        and re.search(r"^(?:nao|não)\s+", bruto.casefold())
-    )
-    deliberativo = str(principal.get("modalidade") or "") == "deliberacao"
-    modalidade_principal = str(principal.get("modalidade") or "")
-    pergunta_composta_social = texto_tem_pergunta_reciproca_apos_resposta(
-        normalizado
-    ) or bool(
-        modalidade_principal == "pergunta"
-        and re.search(
-            r"\b(?:estou|to|t[oô]|t[aá]|tudo)\b[^,;]{0,80}\b(?:bem|de boa|tranquil[oa]|suave)\b"
-            r"[^,;]*[,;]\s*(?:lay(?:lay)?\s*[,;]?\s*)?"
-            r"(?:voc[eê]|tu)\b[^?]{0,160}\?\s*$",
-            normalizado,
-            flags=re.IGNORECASE,
-        )
-    ) or bool(
-        modalidade_principal == "pergunta"
-        and re.search(
-            r"\b(?:estou|to|t[oô]|t[aá]|tudo)\b.{0,80}\b(?:bem|de boa|"
-            r"tranquil[oa]|suave)\b[^.!;,]{0,40}[.!;,]\s*(?:voc[eê]|tu)\b[^?]{0,160}\?\s*$",
-            normalizado,
-            flags=re.IGNORECASE,
-        )
-    )
-    comando_separado = bool(re.search(
-        r"[,;]\s*(?:abre|abra|fecha|feche|liga|ligue|desliga|desligue|toca|toque|"
-        r"coloca|coloque|bota|põe|poe|cria|crie|apaga|remove|deleta|maximiza|"
-        r"organiza|pausa|retoma|aumenta|abaixa|diminui|resume|resuma|leia|verifique)\b",
-        normalizado,
-    ))
-    turno_protegido = (
-        (
-            modalidade_principal in {"pergunta", "deliberacao", "correcao"}
-            or (
-                modalidade_principal == "recusa"
-                and str(principal.get("natureza_acao") or "") == "cancelamento"
-            )
-            or str(principal.get("natureza_acao") or "") == "decepcao"
-        )
-        and not comando_separado
-        and not pergunta_composta_social
-    )
-    segmentos_texto = [normalizado] if pergunta_negativa or deliberativo or turno_protegido else _segmentar_turno_misto(normalizado)
-    segmentos: list[Dict[str, Any]] = []
-    for indice, trecho in enumerate(segmentos_texto):
-        analise = _classificar_modalidade_base(
-            trecho,
-            normalizar_texto=lambda valor: str(valor or "").strip(),
-            texto_tem_comando_explicito=texto_tem_comando_explicito,
-            confirmacao_contextual_valida=confirmacao_contextual_valida,
-        )
-        modalidade = str(analise.get("modalidade") or "conversa")
-        segmentos.append({
-            "indice": indice,
-            "texto": trecho[:300],
-            "modalidade": modalidade,
-            "confianca": float(analise.get("confianca") or 0.0),
-            "motivo": str(analise.get("motivo") or ""),
-            "autoriza_execucao": bool(analise.get("autoriza_execucao")),
-            "acao_explicita": bool(analise.get("acao_explicita")),
-            "requer_esclarecimento": bool(analise.get("requer_esclarecimento")),
-            "natureza_acao": str(analise.get("natureza_acao") or "nenhuma"),
-        })
+    estrutural = re.sub(
+        r"\s+",
+        " ",
+        str(_normalizar_texto_estrutural(bruto) or ""),
+    ).strip()
 
-    modalidades = {s["modalidade"] for s in segmentos if s["modalidade"] != "vazio"}
-    tem_comando = not pergunta_negativa and not deliberativo and "comando" in modalidades
-    prioridade = ("correcao", "comando", "pergunta", "confirmacao", "recusa", "deliberacao", "reacao", "conversa")
-    ato_principal = next((m for m in prioridade if m in modalidades), str(principal.get("modalidade") or "conversa"))
-    if tem_comando:
-        ato_principal = "comando"
-    modalidade_geral = "misto" if len(modalidades) > 1 and len(segmentos) > 1 else ato_principal
-    texto_operacional = " ".join(s["texto"] for s in segmentos if s["modalidade"] == "comando").strip()
-    texto_conversacional = " ".join(s["texto"] for s in segmentos if s["modalidade"] not in {"comando", "vazio"}).strip()
-    autoriza_execucao = any(bool(s.get("autoriza_execucao")) for s in segmentos if s.get("modalidade") == "comando")
-    if ato_principal == "confirmacao":
-        autoriza_execucao = bool(confirmacao_contextual_valida)
-    requer_esclarecimento = any(bool(s.get("requer_esclarecimento")) for s in segmentos)
-    acao_explicita = any(bool(s.get("acao_explicita")) for s in segmentos)
-    principal.update({
-        "modalidade": ato_principal,
-        "modalidade_geral": modalidade_geral,
-        "ato_principal": ato_principal,
-        "atos": [s["modalidade"] for s in segmentos],
+    segmentos_texto = _segmentar_turno_misto(
+        estrutural,
+        normalizar_texto=normalizar_texto,
+    )
+
+    segmentos = []
+    resultados = []
+    for indice, trecho in enumerate(segmentos_texto):
+        res = _classificar_ato_estrutural(
+            trecho,
+            normalizar_texto=normalizar_texto,
+            texto_tem_comando_explicito=texto_tem_comando_explicito,
+            confirmacao_contextual_valida=(
+                confirmacao_contextual_valida
+            ),
+        )
+        resultados.append(res)
+        segmentos.append(
+            _segmento_estrutural(trecho, res, indice)
+        )
+
+    normalizado_operacional = _normalizar_operacional_ato(
+        bruto, normalizar_texto
+    )
+
+    if not segmentos:
+        return {
+            "id": time.time_ns(),
+            "texto": bruto[:500],
+            "normalizado": normalizado_operacional[:500],
+            "modalidade": "vazio",
+            "modalidade_geral": "vazio",
+            "ato_principal": "vazio",
+            "atos": [],
+            "segmentos": [],
+            "texto_operacional": "",
+            "texto_conversacional": "",
+            "acao_explicita": False,
+            "autoriza_execucao": False,
+            "requer_esclarecimento": False,
+            "depende_contexto": False,
+            "natureza_acao": "nenhuma",
+            "confirmacao_contextual_valida": bool(
+                confirmacao_contextual_valida
+            ),
+            "confianca": 1.0,
+            "motivo": "entrada vazia",
+            "motivo_decisao": "entrada vazia",
+            "ts": time.time(),
+        }
+
+    modalidades = {
+        str(s.get("modalidade") or "")
+        for s in segmentos
+        if str(s.get("modalidade") or "") != "vazio"
+    }
+    comandos = [
+        s for s in segmentos
+        if str(s.get("modalidade") or "") == "comando"
+    ]
+
+    prioridade = (
+        "correcao", "comando", "pergunta", "confirmacao",
+        "recusa", "deliberacao", "reacao", "conversa",
+    )
+    ato = next(
+        (m for m in prioridade if m in modalidades),
+        str(segmentos[0].get("modalidade") or "conversa"),
+    )
+    if comandos:
+        ato = "comando"
+
+    geral = (
+        "misto"
+        if len(segmentos) > 1 and len(modalidades) > 1
+        else ato
+    )
+
+    auth = any(
+        bool(s.get("autoriza_execucao")) for s in comandos
+    )
+    if ato == "confirmacao":
+        auth = bool(confirmacao_contextual_valida)
+
+    # H3: o veto sticky existe por ato/segmento. Ele sobe ao contrato do
+    # turno apenas quando NÃO existe outra fonte independente de autoridade.
+    # Como segmentos vetados usam autoriza_execucao_efetiva, um auth=True
+    # agregado necessariamente veio de outro segmento não vetado.
+    veto_execucao_operacional = (
+        any(
+            bool(s.get("veto_execucao_operacional"))
+            for s in segmentos
+        )
+        and not auth
+    )
+
+    principal_seg = comandos[0] if comandos else segmentos[0]
+    principal_res = None
+    for seg, res in zip(segmentos, resultados):
+        if seg is principal_seg:
+            principal_res = res
+            break
+    if principal_res is None:
+        principal_res = resultados[0]
+
+    return {
+        "id": time.time_ns(),
+        "texto": bruto[:500],
+        "normalizado": normalizado_operacional[:500],
+        "normalizado_estrutural": estrutural[:500],
+        "modalidade": ato,
+        "modalidade_geral": geral,
+        "ato_principal": ato,
+        "atos": [str(s.get("modalidade") or "") for s in segmentos],
         "segmentos": segmentos,
-        "texto_operacional": texto_operacional[:500],
-        "texto_conversacional": texto_conversacional[:500],
-        "acao_explicita": acao_explicita,
-        "autoriza_execucao": autoriza_execucao,
-        "requer_esclarecimento": requer_esclarecimento,
-        "depende_contexto": bool(principal.get("depende_contexto")) or ato_principal in {"confirmacao", "recusa"},
-        "confirmacao_contextual_valida": bool(confirmacao_contextual_valida),
-        "natureza_acao": str(principal.get("natureza_acao") or "nenhuma"),
-        "motivo_decisao": str(principal.get("motivo") or ""),
-    })
-    if modalidade_geral == "misto":
-        principal.update(confianca=max(float(principal.get("confianca") or 0.0), 0.94), motivo="turno com múltiplos atos compatíveis")
-    return principal
+        "texto_operacional": " ".join(
+            str(s.get("texto") or "")
+            for s in comandos
+        ).strip()[:500],
+        "texto_conversacional": " ".join(
+            str(s.get("texto") or "")
+            for s in segmentos
+            if str(s.get("modalidade") or "") != "comando"
+        ).strip()[:500],
+        "acao_explicita": any(
+            bool(s.get("acao_explicita")) for s in segmentos
+        ),
+        "autoriza_execucao": auth,
+        "veto_execucao_operacional": bool(
+            veto_execucao_operacional
+        ),
+        "requer_esclarecimento": any(
+            bool(s.get("requer_esclarecimento"))
+            for s in segmentos
+        ),
+        "depende_contexto": (
+            any(bool(s.get("depende_contexto")) for s in segmentos)
+            or ato in {"confirmacao", "recusa"}
+        ),
+        "natureza_acao": str(
+            principal_seg.get("natureza_acao") or "nenhuma"
+        ),
+        "confirmacao_contextual_valida": bool(
+            confirmacao_contextual_valida
+        ),
+        "confianca": max(
+            float(r.get("confianca") or 0.0) for r in resultados
+        ),
+        "motivo": (
+            "turno com múltiplos atos compatíveis"
+            if geral == "misto"
+            else str(
+                principal_res.get("motivo_decisao")
+                or principal_res.get("motivo")
+                or ""
+            )
+        ),
+        "motivo_decisao": str(
+            principal_res.get("motivo_decisao")
+            or principal_res.get("motivo")
+            or ""
+        ),
+        "ts": time.time(),
+    }
+
 # P0_AUTORIZACAO_MODALIDADE_20260814
 # A classificação composta histórica continua como fonte de contexto, mas o
 # ato de fala INTEIRO ganha a palavra final sobre autorização. Assim uma
@@ -1111,93 +1799,16 @@ def classificar_modalidade_turno(
     texto_tem_comando_explicito: Callable[[str], bool] | None = None,
     confirmacao_contextual_valida: bool = False,
 ) -> Dict[str, Any]:
-    """Classifica o turno com proteção P0 do ato de fala inteiro."""
-    resultado = _classificar_modalidade_turno_composta_base(
+    """
+    API pública preservada. P0 já foi aplicado por ato.
+    """
+    return _classificar_modalidade_turno_composta_base(
         texto,
         normalizar_texto=normalizar_texto,
         texto_tem_comando_explicito=texto_tem_comando_explicito,
         confirmacao_contextual_valida=confirmacao_contextual_valida,
     )
-    protecao = _protecao_p0_ato_fala(texto, normalizar_texto=normalizar_texto)
-    if protecao:
-        normalizado = _normalizar_p0_ato_fala(texto, normalizar_texto)
-        modalidade = str(protecao.get("modalidade") or "conversa")
-        natureza = str(protecao.get("natureza_acao") or "nenhuma")
-        motivo = str(protecao.get("motivo") or "ato de fala sem autorização")
-        requer = bool(protecao.get("requer_esclarecimento"))
-        resultado.update(
-            modalidade=modalidade,
-            modalidade_geral=modalidade,
-            ato_principal=modalidade,
-            atos=[modalidade],
-            segmentos=[{
-                "indice": 0,
-                "texto": normalizado[:300],
-                "modalidade": modalidade,
-                "confianca": 0.99,
-                "motivo": motivo,
-                "autoriza_execucao": False,
-                "acao_explicita": False,
-                "requer_esclarecimento": requer,
-                "natureza_acao": natureza,
-            }],
-            texto_operacional="",
-            texto_conversacional=normalizado[:500],
-            acao_explicita=False,
-            autoriza_execucao=False,
-            requer_esclarecimento=requer,
-            natureza_acao=natureza,
-            motivo=motivo,
-            motivo_decisao=motivo,
-            confianca=max(float(resultado.get("confianca") or 0.0), 0.99),
-        )
-        if natureza.casefold() in _NATUREZAS_VETO_MONOTONICO:
-            return aplicar_veto_canonico(
-                resultado,
-                texto=texto,
-                modalidade=modalidade,
-                natureza=natureza,
-                motivo=motivo,
-                requer_esclarecimento=requer,
-                origem_veto="p0_ato_fala",
-            )
-        return resultado
 
-    comando_explicito = bool(
-        callable(texto_tem_comando_explicito)
-        and texto_tem_comando_explicito(texto)
-    )
-    if (
-        resultado.get("autoriza_execucao") is not True
-        and str(resultado.get("modalidade") or "").casefold() == "recusa"
-        and comando_explicito
-    ):
-        return aplicar_veto_canonico(
-            resultado,
-            texto=texto,
-            modalidade="recusa",
-            natureza=str(resultado.get("natureza_acao") or "cancelamento"),
-            motivo=str(resultado.get("motivo") or "recusa operacional"),
-            requer_esclarecimento=bool(resultado.get("requer_esclarecimento")),
-            origem_veto="recusa_operacional_historica",
-        )
-
-    if resultado.get("autoriza_execucao") is True:
-        negacao = analisar_negacao_interna_conservadora(texto)
-        if negacao.get("bloqueia"):
-            return aplicar_veto_canonico(
-                resultado,
-                texto=texto,
-                modalidade="recusa",
-                natureza="ambiguidade_polaridade_interna",
-                motivo=(
-                    "negação interna sem decomposição operacional segura; "
-                    "execução não presumida"
-                ),
-                requer_esclarecimento=True,
-                origem_veto="negacao_interna_stt",
-            )
-    return resultado
 
 
 def bloqueia_execucao_operacional_prioritaria(
@@ -1208,14 +1819,10 @@ def bloqueia_execucao_operacional_prioritaria(
     texto_tem_comando_explicito: Callable[[str], bool] | None = None,
     confirmacao_contextual_valida: bool = False,
 ) -> bool:
-    """Barreira fail-closed para roteadores operacionais imediatos."""
-    if turno_tem_veto_execucao(classificacao):
-        return True
-    if analisar_negacao_interna_conservadora(texto).get("bloqueia"):
-        return True
-    if _protecao_p0_ato_fala(texto, normalizar_texto=normalizar_texto):
-        return True
-
+    """
+    Barreira continua fail-closed, mas não reaplica P0 global sobre um
+    contrato composto que já provou autoridade por ato.
+    """
     analise = dict(classificacao or {})
     if not analise:
         analise = classificar_modalidade_turno(
@@ -1224,22 +1831,42 @@ def bloqueia_execucao_operacional_prioritaria(
             texto_tem_comando_explicito=texto_tem_comando_explicito,
             confirmacao_contextual_valida=confirmacao_contextual_valida,
         )
-    if autoriza_execucao_efetiva(analise):
+
+    if turno_tem_veto_execucao(analise):
+        return True
+
+    if (
+        autoriza_execucao_efetiva(analise)
+        and _fontes_autoridade_turno(analise)
+    ):
         return False
+
+    # Sem fonte legítima, preservamos o comportamento conservador histórico.
+    if analisar_negacao_interna_conservadora(texto).get("bloqueia"):
+        return True
+    if _protecao_p0_ato_fala(
+        texto,
+        normalizar_texto=normalizar_texto,
+    ):
+        return True
 
     natureza = str(analise.get("natureza_acao") or "").casefold()
     if natureza in {
-        "capacidade", "instrucao_ou_explicacao", "informativa_sobre_acao",
-        "hipotetica", "cancelamento", "mencao_operacional", "decepcao",
+        "capacidade",
+        "instrucao_ou_explicacao",
+        "informativa_sobre_acao",
+        "hipotetica",
+        "cancelamento",
+        "mencao_operacional",
+        "decepcao",
+        "protegida",
     }:
         return True
 
-    # R1.1: a primeira barreira não pode deixar passar a operação canônica
-    # de aba anterior apenas porque o vocabulário lexical genérico não conhece
-    # ``volta/retorna``. Mantemos a exceção estreita na gramática compartilhada
-    # em vez de promover esses verbos globalmente a comandos.
     if texto_pede_aba_anterior(texto, permitir_cadeia=True):
         return True
 
-    normalizado = _normalizar_p0_ato_fala(texto, normalizar_texto)
+    normalizado = _normalizar_p0_ato_fala(
+        texto, normalizar_texto
+    )
     return bool(_P0_GATILHOS_OPERACIONAIS.search(normalizado))

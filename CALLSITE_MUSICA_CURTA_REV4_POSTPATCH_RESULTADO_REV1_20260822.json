@@ -1,0 +1,4148 @@
+{
+  "prova": "CALL-SITE MÚSICA CURTA REV4 REV3 PÓS-PATCH",
+  "runner_sha256": "4434f6cfda31e9208c8fda9796e83acc8860179d28f0698e4a5d3ed75b3c8205",
+  "executor_fisico": "ZERO",
+  "caos_executado": false,
+  "locks": {
+    "head": "bdeaee9fbb8f26976fc2c00c612fd45402a6bf3f",
+    "modalidade_sha256": "ac71f49ee9cfb67e6f2aa09a9b3f7b5196300d34fab3add3a91d142d6f382124",
+    "gramatica_sha256": "0f07d8954dafd3ba2d0b12202057eba35ca71e620a5f9051057766e077ed2994",
+    "callsite_blob": "ad60a3e6d4f471128452e33f058718465d8f80a0"
+  },
+  "estrutura": {
+    "p0_antes_gate": true,
+    "gate_antes_helper": true,
+    "helper_antes_executor": true,
+    "helper_local_na_fatia": true,
+    "gate_source_sha": "78789862c5c9cb2812cf040a422345ed990ee0091b1bd29811a1ed0ff4c9689f"
+  },
+  "matriz": {
+    "formas": 52,
+    "allow_global": 40,
+    "allow_local": 25,
+    "g1_bloqueio_local": 15,
+    "g2_autorizado": 25,
+    "g3_bloqueio_p0": 12
+  },
+  "linhas": [
+    {
+      "texto": "a anterior",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769749321600,
+        "texto": "a anterior",
+        "normalizado": "a anterior",
+        "normalizado_estrutural": "a anterior",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "a anterior",
+            "texto_estrutural": "a anterior",
+            "modalidade": "conversa",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:referencia_nominal_ambigua:referente possível, mas a fala isolada não prova um pedido",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": true,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "a anterior",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": true,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:referencia_nominal_ambigua:referente possível, mas a fala isolada não prova um pedido",
+        "motivo_decisao": "gramatica_musical:referencia_nominal_ambigua:referente possível, mas a fala isolada não prova um pedido",
+        "ts": 1787433769.7493327
+      }
+    },
+    {
+      "texto": "a proxima",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769758945100,
+        "texto": "a proxima",
+        "normalizado": "a proxima",
+        "normalizado_estrutural": "a proxima",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "a proxima",
+            "texto_estrutural": "a proxima",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "a proxima",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.758954
+      }
+    },
+    {
+      "texto": "a proximo",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769759122500,
+        "texto": "a proximo",
+        "normalizado": "a proximo",
+        "normalizado_estrutural": "a proximo",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "a proximo",
+            "texto_estrutural": "a proximo",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "a proximo",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7591279
+      }
+    },
+    {
+      "texto": "a pula",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769759241300,
+        "texto": "a pula",
+        "normalizado": "a pula",
+        "normalizado_estrutural": "a pula",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "a pula",
+            "texto_estrutural": "a pula",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "a pula",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7592459
+      }
+    },
+    {
+      "texto": "a pule",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769759350000,
+        "texto": "a pule",
+        "normalizado": "a pule",
+        "normalizado_estrutural": "a pule",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "a pule",
+            "texto_estrutural": "a pule",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "a pule",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.759354
+      }
+    },
+    {
+      "texto": "anterior",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769759413500,
+        "texto": "anterior",
+        "normalizado": "anterior",
+        "normalizado_estrutural": "anterior",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "anterior",
+            "texto_estrutural": "anterior",
+            "modalidade": "conversa",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:referencia_nominal_ambigua:referente possível, mas a fala isolada não prova um pedido",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": true,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "anterior",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": true,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:referencia_nominal_ambigua:referente possível, mas a fala isolada não prova um pedido",
+        "motivo_decisao": "gramatica_musical:referencia_nominal_ambigua:referente possível, mas a fala isolada não prova um pedido",
+        "ts": 1787433769.7594173
+      }
+    },
+    {
+      "texto": "coloca outra",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769759537800,
+        "texto": "coloca outra",
+        "normalizado": "coloca outra",
+        "normalizado_estrutural": "coloca outra",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "coloca outra",
+            "texto_estrutural": "coloca outra",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "coloca outra",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "motivo_decisao": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "ts": 1787433769.7595425
+      }
+    },
+    {
+      "texto": "coloca outra faixa",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769759603600,
+        "texto": "coloca outra faixa",
+        "normalizado": "coloca outra faixa",
+        "normalizado_estrutural": "coloca outra faixa",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "coloca outra faixa",
+            "texto_estrutural": "coloca outra faixa",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "coloca outra faixa",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "motivo_decisao": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "ts": 1787433769.7596073
+      }
+    },
+    {
+      "texto": "coloca outra musica",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769759654100,
+        "texto": "coloca outra musica",
+        "normalizado": "coloca outra musica",
+        "normalizado_estrutural": "coloca outra musica",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "coloca outra musica",
+            "texto_estrutural": "coloca outra musica",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "coloca outra musica",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "motivo_decisao": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "ts": 1787433769.7596574
+      }
+    },
+    {
+      "texto": "coloca outro",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769759697800,
+        "texto": "coloca outro",
+        "normalizado": "coloca outro",
+        "normalizado_estrutural": "coloca outro",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "coloca outro",
+            "texto_estrutural": "coloca outro",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "coloca outro",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "motivo_decisao": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "ts": 1787433769.7597013
+      }
+    },
+    {
+      "texto": "coloca outro faixa",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769759744400,
+        "texto": "coloca outro faixa",
+        "normalizado": "coloca outro faixa",
+        "normalizado_estrutural": "coloca outro faixa",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "coloca outro faixa",
+            "texto_estrutural": "coloca outro faixa",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "coloca outro faixa",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "motivo_decisao": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "ts": 1787433769.7597475
+      }
+    },
+    {
+      "texto": "coloca outro musica",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769759790500,
+        "texto": "coloca outro musica",
+        "normalizado": "coloca outro musica",
+        "normalizado_estrutural": "coloca outro musica",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "coloca outro musica",
+            "texto_estrutural": "coloca outro musica",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "coloca outro musica",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "motivo_decisao": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "ts": 1787433769.759794
+      }
+    },
+    {
+      "texto": "continua",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769759833400,
+        "texto": "continua",
+        "normalizado": "continua",
+        "normalizado_estrutural": "continua",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "continua",
+            "texto_estrutural": "continua",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:continua_curta_fullmatch:ato diretivo curto; domínio/referente ainda não resolvido",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": true,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "continua",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": true,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:continua_curta_fullmatch:ato diretivo curto; domínio/referente ainda não resolvido",
+        "motivo_decisao": "gramatica_musical:continua_curta_fullmatch:ato diretivo curto; domínio/referente ainda não resolvido",
+        "ts": 1787433769.7598367
+      }
+    },
+    {
+      "texto": "continua a",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": true,
+      "allow_global": false,
+      "allow_local": false,
+      "grupo": "G3_BLOQUEIO_P0",
+      "turno": {
+        "id": 1787433769761261100,
+        "texto": "continua a",
+        "normalizado": "continua a",
+        "normalizado_estrutural": "continua a",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "continua a",
+            "texto_estrutural": "continua a",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "continua a",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.761268
+      }
+    },
+    {
+      "texto": "continua ela",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769761368000,
+        "texto": "continua ela",
+        "normalizado": "continua ela",
+        "normalizado_estrutural": "continua ela",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "continua ela",
+            "texto_estrutural": "continua ela",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:retoma_pronominal_fullmatch:verbo de retomada concede operação; pronome mantém referente pendente",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": true,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "continua ela",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": true,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:retoma_pronominal_fullmatch:verbo de retomada concede operação; pronome mantém referente pendente",
+        "motivo_decisao": "gramatica_musical:retoma_pronominal_fullmatch:verbo de retomada concede operação; pronome mantém referente pendente",
+        "ts": 1787433769.7613723
+      }
+    },
+    {
+      "texto": "continua essa",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": true,
+      "allow_global": false,
+      "allow_local": false,
+      "grupo": "G3_BLOQUEIO_P0",
+      "turno": {
+        "id": 1787433769761502600,
+        "texto": "continua essa",
+        "normalizado": "continua essa",
+        "normalizado_estrutural": "continua essa",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "continua essa",
+            "texto_estrutural": "continua essa",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "continua essa",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.761507
+      }
+    },
+    {
+      "texto": "continua musica",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769761574100,
+        "texto": "continua musica",
+        "normalizado": "continua musica",
+        "normalizado_estrutural": "continua musica",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "continua musica",
+            "texto_estrutural": "continua musica",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:retoma_explicita_fullmatch:retomada com domínio musical explícito",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "continua musica",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:retoma_explicita_fullmatch:retomada com domínio musical explícito",
+        "motivo_decisao": "gramatica_musical:retoma_explicita_fullmatch:retomada com domínio musical explícito",
+        "ts": 1787433769.761578
+      }
+    },
+    {
+      "texto": "continua tocando",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": true,
+      "allow_global": false,
+      "allow_local": false,
+      "grupo": "G3_BLOQUEIO_P0",
+      "turno": {
+        "id": 1787433769761708000,
+        "texto": "continua tocando",
+        "normalizado": "continua tocando",
+        "normalizado_estrutural": "continua tocando",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "continua tocando",
+            "texto_estrutural": "continua tocando",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "continua tocando",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.761712
+      }
+    },
+    {
+      "texto": "continue",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769761779100,
+        "texto": "continue",
+        "normalizado": "continue",
+        "normalizado_estrutural": "continue",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "continue",
+            "texto_estrutural": "continue",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:continua_curta_fullmatch:ato diretivo curto; domínio/referente ainda não resolvido",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": true,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "continue",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": true,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:continua_curta_fullmatch:ato diretivo curto; domínio/referente ainda não resolvido",
+        "motivo_decisao": "gramatica_musical:continua_curta_fullmatch:ato diretivo curto; domínio/referente ainda não resolvido",
+        "ts": 1787433769.761783
+      }
+    },
+    {
+      "texto": "continue a",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": true,
+      "allow_global": false,
+      "allow_local": false,
+      "grupo": "G3_BLOQUEIO_P0",
+      "turno": {
+        "id": 1787433769761892900,
+        "texto": "continue a",
+        "normalizado": "continue a",
+        "normalizado_estrutural": "continue a",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "continue a",
+            "texto_estrutural": "continue a",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "continue a",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7618966
+      }
+    },
+    {
+      "texto": "continue ela",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769761953300,
+        "texto": "continue ela",
+        "normalizado": "continue ela",
+        "normalizado_estrutural": "continue ela",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "continue ela",
+            "texto_estrutural": "continue ela",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:retoma_pronominal_fullmatch:verbo de retomada concede operação; pronome mantém referente pendente",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": true,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "continue ela",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": true,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:retoma_pronominal_fullmatch:verbo de retomada concede operação; pronome mantém referente pendente",
+        "motivo_decisao": "gramatica_musical:retoma_pronominal_fullmatch:verbo de retomada concede operação; pronome mantém referente pendente",
+        "ts": 1787433769.7619572
+      }
+    },
+    {
+      "texto": "continue essa",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": true,
+      "allow_global": false,
+      "allow_local": false,
+      "grupo": "G3_BLOQUEIO_P0",
+      "turno": {
+        "id": 1787433769762057600,
+        "texto": "continue essa",
+        "normalizado": "continue essa",
+        "normalizado_estrutural": "continue essa",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "continue essa",
+            "texto_estrutural": "continue essa",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "continue essa",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7620614
+      }
+    },
+    {
+      "texto": "continue musica",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769762121900,
+        "texto": "continue musica",
+        "normalizado": "continue musica",
+        "normalizado_estrutural": "continue musica",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "continue musica",
+            "texto_estrutural": "continue musica",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:retoma_explicita_fullmatch:retomada com domínio musical explícito",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "continue musica",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:retoma_explicita_fullmatch:retomada com domínio musical explícito",
+        "motivo_decisao": "gramatica_musical:retoma_explicita_fullmatch:retomada com domínio musical explícito",
+        "ts": 1787433769.7621253
+      }
+    },
+    {
+      "texto": "continue tocando",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": true,
+      "allow_global": false,
+      "allow_local": false,
+      "grupo": "G3_BLOQUEIO_P0",
+      "turno": {
+        "id": 1787433769762224100,
+        "texto": "continue tocando",
+        "normalizado": "continue tocando",
+        "normalizado_estrutural": "continue tocando",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "continue tocando",
+            "texto_estrutural": "continue tocando",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "continue tocando",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7622278
+      }
+    },
+    {
+      "texto": "manda outra",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769762338100,
+        "texto": "manda outra",
+        "normalizado": "manda outra",
+        "normalizado_estrutural": "manda outra",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "manda outra",
+            "texto_estrutural": "manda outra",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "manda outra",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.762342
+      }
+    },
+    {
+      "texto": "manda outra faixa",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769762444600,
+        "texto": "manda outra faixa",
+        "normalizado": "manda outra faixa",
+        "normalizado_estrutural": "manda outra faixa",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "manda outra faixa",
+            "texto_estrutural": "manda outra faixa",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "manda outra faixa",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.762448
+      }
+    },
+    {
+      "texto": "manda outra musica",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769762549700,
+        "texto": "manda outra musica",
+        "normalizado": "manda outra musica",
+        "normalizado_estrutural": "manda outra musica",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "manda outra musica",
+            "texto_estrutural": "manda outra musica",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "manda outra musica",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7625537
+      }
+    },
+    {
+      "texto": "manda outro",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769762661900,
+        "texto": "manda outro",
+        "normalizado": "manda outro",
+        "normalizado_estrutural": "manda outro",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "manda outro",
+            "texto_estrutural": "manda outro",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "manda outro",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7626674
+      }
+    },
+    {
+      "texto": "manda outro faixa",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769762839500,
+        "texto": "manda outro faixa",
+        "normalizado": "manda outro faixa",
+        "normalizado_estrutural": "manda outro faixa",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "manda outro faixa",
+            "texto_estrutural": "manda outro faixa",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "manda outro faixa",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7628434
+      }
+    },
+    {
+      "texto": "manda outro musica",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769762953600,
+        "texto": "manda outro musica",
+        "normalizado": "manda outro musica",
+        "normalizado_estrutural": "manda outro musica",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "manda outro musica",
+            "texto_estrutural": "manda outro musica",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "manda outro musica",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7629569
+      }
+    },
+    {
+      "texto": "pausa",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769763010800,
+        "texto": "pausa",
+        "normalizado": "pausa",
+        "normalizado_estrutural": "pausa",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "pausa",
+            "texto_estrutural": "pausa",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:pausa_curta_fullmatch:imperativo curto; contexto só poderá fornecer o alvo",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": true,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "pausa",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": true,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:pausa_curta_fullmatch:imperativo curto; contexto só poderá fornecer o alvo",
+        "motivo_decisao": "gramatica_musical:pausa_curta_fullmatch:imperativo curto; contexto só poderá fornecer o alvo",
+        "ts": 1787433769.763014
+      }
+    },
+    {
+      "texto": "pause",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769763043200,
+        "texto": "pause",
+        "normalizado": "pause",
+        "normalizado_estrutural": "pause",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "pause",
+            "texto_estrutural": "pause",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:pausa_curta_fullmatch:imperativo curto; contexto só poderá fornecer o alvo",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": true,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "pause",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": true,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:pausa_curta_fullmatch:imperativo curto; contexto só poderá fornecer o alvo",
+        "motivo_decisao": "gramatica_musical:pausa_curta_fullmatch:imperativo curto; contexto só poderá fornecer o alvo",
+        "ts": 1787433769.7630465
+      }
+    },
+    {
+      "texto": "proxima",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769763074700,
+        "texto": "proxima",
+        "normalizado": "proxima",
+        "normalizado_estrutural": "proxima",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "proxima",
+            "texto_estrutural": "proxima",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:proxima_curta_fullmatch:avanço curto; contexto decide o domínio compatível",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": true,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "proxima",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": true,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:proxima_curta_fullmatch:avanço curto; contexto decide o domínio compatível",
+        "motivo_decisao": "gramatica_musical:proxima_curta_fullmatch:avanço curto; contexto decide o domínio compatível",
+        "ts": 1787433769.7630777
+      }
+    },
+    {
+      "texto": "proximo",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769763145700,
+        "texto": "proximo",
+        "normalizado": "proximo",
+        "normalizado_estrutural": "proximo",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "proximo",
+            "texto_estrutural": "proximo",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "proximo",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7631495
+      }
+    },
+    {
+      "texto": "pula",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769763224800,
+        "texto": "pula",
+        "normalizado": "pula",
+        "normalizado_estrutural": "pula",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "pula",
+            "texto_estrutural": "pula",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "pula",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7632284
+      }
+    },
+    {
+      "texto": "pule",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": false,
+      "grupo": "G1_BLOQUEIO_LOCAL",
+      "turno": {
+        "id": 1787433769763299800,
+        "texto": "pule",
+        "normalizado": "pule",
+        "normalizado_estrutural": "pule",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "pule",
+            "texto_estrutural": "pule",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "pule",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7633033
+      }
+    },
+    {
+      "texto": "tenta outra",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": true,
+      "allow_global": false,
+      "allow_local": false,
+      "grupo": "G3_BLOQUEIO_P0",
+      "turno": {
+        "id": 1787433769763394100,
+        "texto": "tenta outra",
+        "normalizado": "tenta outra",
+        "normalizado_estrutural": "tenta outra",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "tenta outra",
+            "texto_estrutural": "tenta outra",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "tenta outra",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7633975
+      }
+    },
+    {
+      "texto": "tenta outra faixa",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": true,
+      "allow_global": false,
+      "allow_local": false,
+      "grupo": "G3_BLOQUEIO_P0",
+      "turno": {
+        "id": 1787433769763507400,
+        "texto": "tenta outra faixa",
+        "normalizado": "tenta outra faixa",
+        "normalizado_estrutural": "tenta outra faixa",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "tenta outra faixa",
+            "texto_estrutural": "tenta outra faixa",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "tenta outra faixa",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7635107
+      }
+    },
+    {
+      "texto": "tenta outra musica",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": true,
+      "allow_global": false,
+      "allow_local": false,
+      "grupo": "G3_BLOQUEIO_P0",
+      "turno": {
+        "id": 1787433769763841700,
+        "texto": "tenta outra musica",
+        "normalizado": "tenta outra musica",
+        "normalizado_estrutural": "tenta outra musica",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "tenta outra musica",
+            "texto_estrutural": "tenta outra musica",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "tenta outra musica",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.76385
+      }
+    },
+    {
+      "texto": "tenta outro",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": true,
+      "allow_global": false,
+      "allow_local": false,
+      "grupo": "G3_BLOQUEIO_P0",
+      "turno": {
+        "id": 1787433769763981900,
+        "texto": "tenta outro",
+        "normalizado": "tenta outro",
+        "normalizado_estrutural": "tenta outro",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "tenta outro",
+            "texto_estrutural": "tenta outro",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "tenta outro",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7639863
+      }
+    },
+    {
+      "texto": "tenta outro faixa",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": true,
+      "allow_global": false,
+      "allow_local": false,
+      "grupo": "G3_BLOQUEIO_P0",
+      "turno": {
+        "id": 1787433769764112900,
+        "texto": "tenta outro faixa",
+        "normalizado": "tenta outro faixa",
+        "normalizado_estrutural": "tenta outro faixa",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "tenta outro faixa",
+            "texto_estrutural": "tenta outro faixa",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "tenta outro faixa",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7641172
+      }
+    },
+    {
+      "texto": "tenta outro musica",
+      "modalidade": "conversa",
+      "natureza_acao": "nenhuma",
+      "auth": false,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": true,
+      "allow_global": false,
+      "allow_local": false,
+      "grupo": "G3_BLOQUEIO_P0",
+      "turno": {
+        "id": 1787433769764248700,
+        "texto": "tenta outro musica",
+        "normalizado": "tenta outro musica",
+        "normalizado_estrutural": "tenta outro musica",
+        "modalidade": "conversa",
+        "modalidade_geral": "conversa",
+        "ato_principal": "conversa",
+        "atos": [
+          "conversa"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "tenta outro musica",
+            "texto_estrutural": "tenta outro musica",
+            "modalidade": "conversa",
+            "confianca": 0.6,
+            "motivo": "fala sem marcador operacional dominante",
+            "autoriza_execucao": false,
+            "acao_explicita": false,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "nenhuma",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "",
+        "texto_conversacional": "tenta outro musica",
+        "acao_explicita": false,
+        "autoriza_execucao": false,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "nenhuma",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.6,
+        "motivo": "fala sem marcador operacional dominante",
+        "motivo_decisao": "fala sem marcador operacional dominante",
+        "ts": 1787433769.7642531
+      }
+    },
+    {
+      "texto": "toca outra",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769764326100,
+        "texto": "toca outra",
+        "normalizado": "toca outra",
+        "normalizado_estrutural": "toca outra",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "toca outra",
+            "texto_estrutural": "toca outra",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "toca outra",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "motivo_decisao": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "ts": 1787433769.7643402
+      }
+    },
+    {
+      "texto": "toca outra faixa",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769764422800,
+        "texto": "toca outra faixa",
+        "normalizado": "toca outra faixa",
+        "normalizado_estrutural": "toca outra faixa",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "toca outra faixa",
+            "texto_estrutural": "toca outra faixa",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "toca outra faixa",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "motivo_decisao": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "ts": 1787433769.7644286
+      }
+    },
+    {
+      "texto": "toca outra musica",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769764499800,
+        "texto": "toca outra musica",
+        "normalizado": "toca outra musica",
+        "normalizado_estrutural": "toca outra musica",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "toca outra musica",
+            "texto_estrutural": "toca outra musica",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "toca outra musica",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "motivo_decisao": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "ts": 1787433769.764506
+      }
+    },
+    {
+      "texto": "toca outro",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769764633700,
+        "texto": "toca outro",
+        "normalizado": "toca outro",
+        "normalizado_estrutural": "toca outro",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "toca outro",
+            "texto_estrutural": "toca outro",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "toca outro",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "motivo_decisao": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "ts": 1787433769.7646394
+      }
+    },
+    {
+      "texto": "toca outro faixa",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769764702300,
+        "texto": "toca outro faixa",
+        "normalizado": "toca outro faixa",
+        "normalizado_estrutural": "toca outro faixa",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "toca outro faixa",
+            "texto_estrutural": "toca outro faixa",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "toca outro faixa",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "motivo_decisao": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "ts": 1787433769.7647078
+      }
+    },
+    {
+      "texto": "toca outro musica",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769764805100,
+        "texto": "toca outro musica",
+        "normalizado": "toca outro musica",
+        "normalizado_estrutural": "toca outro musica",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "toca outro musica",
+            "texto_estrutural": "toca outro musica",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": false,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "toca outro musica",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": false,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "motivo_decisao": "gramatica_musical:tocar_generico_ancorado:verbo diretivo inicia a fala e possui complemento",
+        "ts": 1787433769.7648125
+      }
+    },
+    {
+      "texto": "volta para a anterior",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769765294300,
+        "texto": "volta para a anterior",
+        "normalizado": "volta para a anterior",
+        "normalizado_estrutural": "volta para a anterior",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "volta para a anterior",
+            "texto_estrutural": "volta para a anterior",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:anterior_explicita_fullmatch:verbo diretivo de retorno; referente explícito ou elíptico",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": true,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "volta para a anterior",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": true,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:anterior_explicita_fullmatch:verbo diretivo de retorno; referente explícito ou elíptico",
+        "motivo_decisao": "gramatica_musical:anterior_explicita_fullmatch:verbo diretivo de retorno; referente explícito ou elíptico",
+        "ts": 1787433769.7652998
+      }
+    },
+    {
+      "texto": "volta para anterior",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769765358300,
+        "texto": "volta para anterior",
+        "normalizado": "volta para anterior",
+        "normalizado_estrutural": "volta para anterior",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "volta para anterior",
+            "texto_estrutural": "volta para anterior",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:anterior_explicita_fullmatch:verbo diretivo de retorno; referente explícito ou elíptico",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": true,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "volta para anterior",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": true,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:anterior_explicita_fullmatch:verbo diretivo de retorno; referente explícito ou elíptico",
+        "motivo_decisao": "gramatica_musical:anterior_explicita_fullmatch:verbo diretivo de retorno; referente explícito ou elíptico",
+        "ts": 1787433769.7653623
+      }
+    },
+    {
+      "texto": "volta pra a anterior",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769765404700,
+        "texto": "volta pra a anterior",
+        "normalizado": "volta pra a anterior",
+        "normalizado_estrutural": "volta pra a anterior",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "volta pra a anterior",
+            "texto_estrutural": "volta pra a anterior",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:anterior_explicita_fullmatch:verbo diretivo de retorno; referente explícito ou elíptico",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": true,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "volta pra a anterior",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": true,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:anterior_explicita_fullmatch:verbo diretivo de retorno; referente explícito ou elíptico",
+        "motivo_decisao": "gramatica_musical:anterior_explicita_fullmatch:verbo diretivo de retorno; referente explícito ou elíptico",
+        "ts": 1787433769.765408
+      }
+    },
+    {
+      "texto": "volta pra anterior",
+      "modalidade": "comando",
+      "natureza_acao": "pedido_direto",
+      "auth": true,
+      "veto": false,
+      "gate": true,
+      "barreira_bloqueia": false,
+      "allow_global": true,
+      "allow_local": true,
+      "grupo": "G2_AUTORIZADO",
+      "turno": {
+        "id": 1787433769765537300,
+        "texto": "volta pra anterior",
+        "normalizado": "volta pra anterior",
+        "normalizado_estrutural": "volta pra anterior",
+        "modalidade": "comando",
+        "modalidade_geral": "comando",
+        "ato_principal": "comando",
+        "atos": [
+          "comando"
+        ],
+        "segmentos": [
+          {
+            "indice": 0,
+            "texto": "volta pra anterior",
+            "texto_estrutural": "volta pra anterior",
+            "modalidade": "comando",
+            "confianca": 0.99,
+            "motivo": "gramatica_musical:anterior_explicita_fullmatch:verbo diretivo de retorno; referente explícito ou elíptico",
+            "autoriza_execucao": true,
+            "acao_explicita": true,
+            "requer_esclarecimento": false,
+            "depende_contexto": true,
+            "natureza_acao": "pedido_direto",
+            "veto_execucao_operacional": false
+          }
+        ],
+        "texto_operacional": "volta pra anterior",
+        "texto_conversacional": "",
+        "acao_explicita": true,
+        "autoriza_execucao": true,
+        "veto_execucao_operacional": false,
+        "requer_esclarecimento": false,
+        "depende_contexto": true,
+        "natureza_acao": "pedido_direto",
+        "confirmacao_contextual_valida": false,
+        "confianca": 0.99,
+        "motivo": "gramatica_musical:anterior_explicita_fullmatch:verbo diretivo de retorno; referente explícito ou elíptico",
+        "motivo_decisao": "gramatica_musical:anterior_explicita_fullmatch:verbo diretivo de retorno; referente explícito ou elíptico",
+        "ts": 1787433769.7655437
+      }
+    }
+  ],
+  "callsite": {
+    "resumo": {
+      "execucoes_g1_proibidas": 0,
+      "execucoes_g2_esperadas": 50,
+      "resolvedores_g3_proibidos": 0,
+      "casos_executados": 104
+    },
+    "detalhes": [
+      {
+        "texto": "a anterior",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "a anterior",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "a proxima",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "a proxima",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "a proximo",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "a proximo",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "a pula",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "a pula",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "a pule",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "a pule",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "anterior",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "anterior",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "coloca outra",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "coloca outra",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "coloca outra faixa",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "coloca outra faixa",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "coloca outra musica",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "coloca outra musica",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "coloca outro",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "coloca outro",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "coloca outro faixa",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "coloca outro faixa",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "coloca outro musica",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "coloca outro musica",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "continua",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "continua",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "continua a",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "continua a",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "continua ela",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "continua ela",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "continua essa",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "continua essa",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "continua musica",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "continua musica",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "continua tocando",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "continua tocando",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "continue",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "continue",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "continue a",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "continue a",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "continue ela",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "continue ela",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "continue essa",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "continue essa",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "continue musica",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "continue musica",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "continue tocando",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "continue tocando",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "manda outra",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "manda outra",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "manda outra faixa",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "manda outra faixa",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "manda outra musica",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "manda outra musica",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "manda outro",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "manda outro",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "manda outro faixa",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "manda outro faixa",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "manda outro musica",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "manda outro musica",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "pausa",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "pausa",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "pause",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "pause",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "proxima",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "proxima",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "proximo",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "proximo",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "pula",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "pula",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "pule",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "pule",
+        "grupo": "G1_BLOQUEIO_LOCAL",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem autoridade do turno | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "tenta outra",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "tenta outra",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "tenta outra faixa",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "tenta outra faixa",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "tenta outra musica",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "tenta outra musica",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "tenta outro",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "tenta outro",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "tenta outro faixa",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "tenta outro faixa",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "tenta outro musica",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "tenta outro musica",
+        "grupo": "G3_BLOQUEIO_P0",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": false,
+        "resolvedor_chamadas": 0,
+        "executor_chamadas": 0,
+        "registros": 0,
+        "log": [
+          "🛡️ [P0:AUTORIZAÇÃO] rota operacional imediata bloqueada | modalidade=conversa motivo=fala sem marcador operacional dominante"
+        ]
+      },
+      {
+        "texto": "toca outra",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "toca outra",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "toca outra faixa",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "toca outra faixa",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "toca outra musica",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "toca outra musica",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "toca outro",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "toca outro",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "toca outro faixa",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "toca outro faixa",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "toca outro musica",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "toca outro musica",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "volta para a anterior",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "volta para a anterior",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "volta para anterior",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "volta para anterior",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "volta pra a anterior",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "volta pra a anterior",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      },
+      {
+        "texto": "volta pra anterior",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MEDIA_CONTROL",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MEDIA_CONTROL"
+        ]
+      },
+      {
+        "texto": "volta pra anterior",
+        "grupo": "G2_AUTORIZADO",
+        "intent_canario": "MUSIC_SEARCH",
+        "ok": true,
+        "retorno": true,
+        "resolvedor_chamadas": 1,
+        "executor_chamadas": 1,
+        "registros": 1,
+        "log": [
+          "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | intent=MUSIC_SEARCH"
+        ]
+      }
+    ]
+  },
+  "status": "PASS"
+}

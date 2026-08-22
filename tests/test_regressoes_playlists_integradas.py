@@ -10,6 +10,10 @@ from mente_laylay.autonomia.comandos_imediatos import (
 from mente_laylay.autonomia.orquestrador_deterministico import (
     DeteccaoDeterministicaRuntime,
 )
+from mente_laylay.cognicao.modalidade_turno import (
+    bloqueia_execucao_operacional_prioritaria,
+    classificar_modalidade_turno,
+)
 from mente_laylay.memoria_mental.contexto_imediato import ContextoImediatoRuntime
 from mente_laylay.memoria_mental.mapa_recursos import MapaRecursosRuntime
 from mente_laylay.memoria_mental.playlist_laylay_runtime import PlaylistLaylayRuntime
@@ -205,6 +209,7 @@ def test_continuacoes_musicais_passam_pelo_resolvedor_e_executor_reais() -> None
         "ultima_acao_alvo": "Tycho - Awake",
         "ultima_habilidade": "musica",
         "ts": time.time(),
+        "turno_atual": classificar_modalidade_turno("Toca outra."),
     }
     contexto = ContextoImediatoRuntime(
         estado_runtime_getter=lambda: estado,
@@ -230,7 +235,7 @@ def test_continuacoes_musicais_passam_pelo_resolvedor_e_executor_reais() -> None
         loop_getter=lambda: None,
     )
 
-    assert imediato.processar_prioritarios("Tenta outra.") is True
+    assert imediato.processar_prioritarios("Toca outra.") is True
     assert execucoes[-1][0]["intent"] == "MUSIC_SEARCH"
     assert execucoes[-1][0]["params"]["origem"] == "continuacao_busca"
 
@@ -240,6 +245,7 @@ def test_continuacoes_musicais_passam_pelo_resolvedor_e_executor_reais() -> None
         "ultima_acao_status": "falha_execucao",
         "ultima_habilidade": "musica",
         "ts": time.time(),
+        "turno_atual": classificar_modalidade_turno("Continua"),
     }
     assert imediato.processar_prioritarios("Continua") is True
     assert execucoes[-1] == ({
@@ -247,6 +253,83 @@ def test_continuacoes_musicais_passam_pelo_resolvedor_e_executor_reais() -> None
         "params": {"acao": "play", "platform": "music"},
     }, "Continua")
     assert registros[-1][3] == "prioritario_continuidade_musical"
+
+
+def test_continuacao_musical_ambigua_nao_contorna_autoridade_do_turno() -> None:
+    estado = _EstadoMusical()
+    contexto = ContextoImediatoRuntime(
+        estado_runtime_getter=lambda: estado,
+        servicos_iniciais={
+            "_normalizar_texto_com_apelidos": lambda texto: str(texto).casefold().strip(),
+            "_contexto_musical_ativo": lambda: True,
+        },
+    )
+    execucoes: list[tuple[dict, str]] = []
+    candidatos: list[tuple[str, dict | None]] = []
+
+    def resolver_midia(texto: str) -> dict | None:
+        candidato = contexto.resolver_midia(texto)
+        candidatos.append((texto, candidato))
+        return candidato
+
+    imediato = ComandosImediatosRuntime(
+        namespace_getter=lambda: {
+            "_estado_compartilhado_runtime": estado,
+            "processar_comandos_em_cadeia": lambda *_args: False,
+            "_resolver_comando_midia_contextual_forcado": resolver_midia,
+            "executar_intencao": (
+                lambda intent, texto: execucoes.append((intent, texto)) or True
+            ),
+        },
+        loop_getter=lambda: None,
+    )
+    formas_ambiguas = (
+        "a anterior",
+        "a proxima",
+        "a proximo",
+        "a pula",
+        "a pule",
+        "anterior",
+        "manda outra",
+        "manda outra faixa",
+        "manda outra musica",
+        "manda outro",
+        "manda outro faixa",
+        "manda outro musica",
+        "proximo",
+        "pula",
+        "pule",
+    )
+
+    for texto in formas_ambiguas:
+        turno = classificar_modalidade_turno(texto)
+        assert turno["autoriza_execucao"] is False, texto
+        assert texto_pede_continuacao_musical_curta(texto) is True, texto
+        assert bloqueia_execucao_operacional_prioritaria(
+            texto,
+            classificacao=turno,
+        ) is False, texto
+        estado.mental = {
+            "ultima_acao_intent": "MUSIC_SEARCH",
+            "ultima_acao_params": {"query": "musica para trabalhar"},
+            "ultima_acao_alvo": "Tycho - Awake",
+            "ultima_habilidade": "musica",
+            "ts": time.time(),
+            "turno_atual": turno,
+        }
+
+        assert imediato.processar_prioritarios(texto) is False, texto
+        assert execucoes == [], texto
+        assert candidatos[-1][0] == texto
+        if texto == "a anterior":
+            assert candidatos[-1][1] == {
+                "intent": "MEDIA_CONTROL",
+                "params": {
+                    "acao": "prev",
+                    "platform": "music",
+                    "referencia_contextual": True,
+                },
+            }
 
 
 def test_agradecimento_nao_reabre_continuacao_musical() -> None:

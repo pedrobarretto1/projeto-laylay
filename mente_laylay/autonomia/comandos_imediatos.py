@@ -1040,6 +1040,15 @@ class ComandosImediatosRuntime:
                 if isinstance(continuacao_musical, dict) else ""
             ).upper().strip()
             if intent_musical in {"MUSIC_SEARCH", "MEDIA_CONTROL"}:
+                if not _candidato_prioritario_autorizado(
+                    continuacao_musical,
+                    turno_atual,
+                ):
+                    print(
+                        "🛡️ [PRIORIDADE:MÚSICA] continuidade resolvida sem "
+                        f"autoridade do turno | intent={intent_musical}"
+                    )
+                    return False
                 executar = ns.get("executar_intencao")
                 if not callable(executar):
                     return False
