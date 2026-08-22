@@ -5,10 +5,19 @@ from __future__ import annotations
 from typing import Any, Dict, Tuple
 
 from mente_laylay.autonomia.base_pre_fluxo import _get
+from mente_laylay.cognicao.modalidade_turno import turno_tem_veto_execucao
+
+
+def _turno_atual(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    mente = _get(ctx, "mente_integrada_estado", {})
+    turno = mente.get("turno_atual") if isinstance(mente, dict) else {}
+    return dict(turno or {}) if isinstance(turno, dict) else {}
 
 def processar_confirmacao_musical_pendente(
     ctx: Dict[str, Any], texto_usuario: str,
 ) -> Tuple[bool, str]:
+    if turno_tem_veto_execucao(_turno_atual(ctx)):
+        return False, ""
     processar_confirmacao_sugestao_musical = _get(ctx, "_processar_confirmacao_sugestao_musical")
     t = str(texto_usuario or "").strip()
 
@@ -50,4 +59,3 @@ def processar_opiniao_musica_atual(ctx: Dict[str, Any], texto_usuario: str) -> T
     except Exception as erro:
         print(f"⚠️ [MÚSICA:OPINIÃO] falha no fluxo conversacional: {erro}")
         return False, ""
-

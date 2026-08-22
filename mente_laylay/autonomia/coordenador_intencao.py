@@ -35,12 +35,19 @@ from mente_laylay.autonomia.classificacao_habilidade import classificar_habilida
 from mente_laylay.cognicao.evidencia_operacional import (
     bloqueia_controle_iot_por_modalidade,
 )
+from mente_laylay.cognicao.modalidade_turno import (
+    autoriza_execucao_efetiva,
+    turno_tem_veto_execucao,
+)
 from mente_laylay.memoria_mental.continuidade_geral import (
     normalizar_dominio_continuidade,
     resolver_continuacao_aditiva,
 )
 from mente_laylay.memoria_mental.pendencia_acao import dominio_pendencia
-from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
+from mente_laylay.arquivos.roteador_arquivos import (
+    detectar_intencao_arquivos,
+    reconciliar_literalidade_filename,
+)
 
 INTENTS_EXECUTAVEIS = set(intents_registradas())
 
@@ -279,10 +286,12 @@ def resolver_referencias_da_intencao(
 
 
 def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dict[str, Any] | None, str]:
+    turno_congelado = dict(ctx.get("turno_atual") or {})
+    if turno_tem_veto_execucao(turno_congelado):
+        return None, "veto_operacional_turno"
     texto_norm = _call(ctx, "normalizar_texto", texto, default=str(texto or ""))
     _call(ctx, "refinar_contexto_mental", texto_norm)
     retrato_atual = dict(ctx.get("retrato_turno_atual") or {})
-    turno_congelado = dict(ctx.get("turno_atual") or {})
     # P0_REVISAO_INTRA_TURNO_V1_1_20260816
     revisao_turno = (
         dict(turno_congelado.get("revisao_intra_turno") or {})
@@ -661,7 +670,9 @@ def executar_fluxo_intencao(
     if menciona_iot and bloqueia_controle_iot_por_modalidade(original):
         return False
     resolvedor = resolver_cb if callable(resolver_cb) else resolver_intencao
-    intent, rota = resolvedor(texto, origem, ctx)
+    contexto_resolucao = dict(ctx)
+    contexto_resolucao["_texto_original_turno"] = original
+    intent, rota = resolvedor(texto, origem, contexto_resolucao)
     if not isinstance(intent, dict):
         return False
 
@@ -1031,6 +1042,8 @@ class CicloComandosRuntime:
         contexto: Dict[str, Any] | None = None,
     ) -> Tuple[Dict[str, Any] | None, str]:
         contexto_resolucao = contexto or self._montar_contexto_resolucao()
+        if turno_tem_veto_execucao(contexto_resolucao.get("turno_atual")):
+            return None, "veto_operacional_turno"
         chave = self._chave_decisao_turno(texto, contexto_resolucao)
         with self._lock_linguagem_natural:
             if chave is not None:
@@ -1047,6 +1060,45 @@ class CicloComandosRuntime:
 
             resolucao = resolver_intencao(texto, origem, contexto_resolucao)
             resultado, rota = resolucao
+            turno_resolucao = dict(contexto_resolucao.get("turno_atual") or {})
+            texto_original = str(
+                contexto_resolucao.get("_texto_original_turno") or texto
+            )
+            intent_resultado = _normalizar_intent(resultado)
+            if (
+                isinstance(resultado, dict)
+                and autoriza_execucao_efetiva(turno_resolucao)
+                and intent_resultado in {
+                    "CREATE_FILE", "CREATE_FOLDER", "FILE_SEARCH",
+                    "DELETE_ITEM", "FILE_TRANSACTION",
+                }
+            ):
+                normalizar = contexto_resolucao.get("normalizar_texto")
+                if callable(normalizar):
+                    try:
+                        resultado_raw = detectar_intencao_arquivos(
+                            texto_original,
+                            params_cb=lambda **kwargs: kwargs,
+                            estado_mental=dict(
+                                contexto_resolucao.get("mente_integrada_estado") or {}
+                            ),
+                            normalizar_texto=normalizar,
+                        )
+                    except Exception:
+                        resultado_raw = None
+                    resultado_reconciliado, campos = reconciliar_literalidade_filename(
+                        resultado,
+                        resultado_raw,
+                        texto_operacional=texto,
+                        texto_original=texto_original,
+                        normalizar_texto=normalizar,
+                    )
+                    if isinstance(resultado_reconciliado, dict):
+                        resultado = resultado_reconciliado
+                        resolucao = (resultado, rota)
+                    if campos:
+                        rota = "arquivo-literalidade-rev5"
+                        resolucao = (resultado, rota)
             intent = _normalizar_intent(resultado)
             metricas = self._metricas_linguagem_natural
             metricas["tentativas"] = int(metricas.get("tentativas") or 0) + 1

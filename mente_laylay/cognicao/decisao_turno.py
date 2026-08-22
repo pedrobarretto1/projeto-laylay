@@ -5,6 +5,10 @@ from __future__ import annotations
 from typing import Any, Dict, Iterable
 
 from mente_laylay.cognicao.contratos_turno import ContratoDecisaoTurno
+from mente_laylay.cognicao.modalidade_turno import (
+    autoriza_execucao_efetiva,
+    turno_tem_veto_execucao,
+)
 
 
 def criar_contrato_decisao(
@@ -20,7 +24,7 @@ def criar_contrato_decisao(
         or planejamento.get("modalidade")
         or "conversa"
     ).strip().lower()
-    autoriza_execucao = bool(leitura.get("autoriza_execucao"))
+    autoriza_execucao = autoriza_execucao_efetiva(leitura)
     requer_execucao = bool(planejamento.get("requer_execucao"))
     misto = bool(planejamento.get("misto")) or modalidade == "misto"
     permite_acao = bool(autoriza_execucao and requer_execucao)
@@ -94,10 +98,11 @@ def filtrar_comandos_pelo_turno(
     snapshot = dict(retrato or {})
     contrato = dict(planejamento.get("decisao_turno") or {})
     autoriza = bool(
-        leitura.get("autoriza_execucao")
+        autoriza_execucao_efetiva(leitura)
         and planejamento.get("requer_execucao")
         and contrato.get("permite_acao", True)
     )
+    veto_execucao = turno_tem_veto_execucao(leitura)
     permitidos = {str(item).strip().upper() for item in snapshot.get("intents_permitidos") or ()}
     aceitos: list[Dict[str, Any]] = []
     rejeitados: list[Dict[str, Any]] = []
@@ -118,4 +123,5 @@ def filtrar_comandos_pelo_turno(
         "rejeitados": rejeitados,
         "autoriza_execucao": autoriza,
         "proprietario": str(contrato.get("proprietario") or "conversa"),
+        "veto_execucao_operacional": veto_execucao,
     }

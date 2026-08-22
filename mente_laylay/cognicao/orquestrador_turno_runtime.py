@@ -15,6 +15,11 @@ from mente_laylay.cognicao.intencao_visual_jogo import (
     detectar_pedido_visao_jogo,
 )
 from mente_laylay.cognicao.revisao_turno import resolver_revisao_intra_turno
+from mente_laylay.cognicao.modalidade_turno import (
+    aplicar_veto_canonico,
+    autoriza_execucao_efetiva,
+    turno_tem_veto_execucao,
+)
 from mente_laylay.memoria_mental.referencia_fala import extrair_referencia_musical_verificada
 from mente_laylay.memoria_mental.memoria_confiavel import (
     extrair_aprendizados_pessoais_explicitos,
@@ -469,34 +474,35 @@ def _iniciar_planejamento_turno(
         turno['revisao_intra_turno'] = dict(revisao_intra_turno)
         turno['texto_operacional_efetivo'] = texto_efetivo
         if not revisao_resolvida:
-            turno.update(
+            motivo_revisao = str(
+                revisao_intra_turno.get('motivo')
+                or 'revisão interna detectada sem resolução operacional segura'
+            )
+            turno = aplicar_veto_canonico(
+                turno,
+                texto=texto,
                 modalidade='correcao',
-                modalidade_geral='correcao',
-                ato_principal='correcao',
-                autoriza_execucao=False,
+                natureza='revisao_ambigua',
+                motivo=motivo_revisao,
                 requer_esclarecimento=True,
-                acao_explicita=False,
-                texto_operacional='',
-                natureza_acao='revisao_ambigua',
-                motivo='revisão interna detectada sem resolução operacional segura',
-                motivo_decisao='revisão interna detectada sem resolução operacional segura',
+                origem_veto='revisao_ambigua',
             )
         elif revisao_cancelada:
-            turno.update(
+            turno = aplicar_veto_canonico(
+                turno,
+                texto=texto,
                 modalidade='recusa',
-                modalidade_geral='recusa',
-                ato_principal='recusa',
-                autoriza_execucao=False,
+                natureza='cancelamento_revisao',
+                motivo=str(
+                    revisao_intra_turno.get('motivo')
+                    or 'usuário cancelou a proposta antes da execução'
+                ),
                 requer_esclarecimento=False,
-                acao_explicita=False,
-                texto_operacional='',
-                natureza_acao='cancelamento_revisao',
-                motivo='usuário cancelou a proposta antes da execução',
-                motivo_decisao='usuário cancelou a proposta antes da execução',
+                origem_veto='revisao_cancelada',
             )
         else:
             turno['texto_operacional'] = (
-                texto_efetivo if bool(turno.get('autoriza_execucao')) else ''
+                texto_efetivo if autoriza_execucao_efetiva(turno) else ''
             )
             ns['print'](
                 '🧠 [REVISÃO:TURNO] '
@@ -505,22 +511,24 @@ def _iniciar_planejamento_turno(
             )
 
     # C1-D/D1: novo app isolado vira somente receipt target-only.
-    turno = aplicar_retarget_operacional_receipt_ao_turno(
-        texto_cognitivo,
-        turno=turno,
-        mente=mente_antes_turno,
-        apps_map=ns.get("APPS_MAP", {}),
-        pendencia_turno=pendencia_turno,
-    )
+    if not turno_tem_veto_execucao(turno):
+        turno = aplicar_retarget_operacional_receipt_ao_turno(
+            texto_cognitivo,
+            turno=turno,
+            mente=mente_antes_turno,
+            apps_map=ns.get("APPS_MAP", {}),
+            pendencia_turno=pendencia_turno,
+        )
 
     # C1-C: a direção atual pode conceder autoridade estreita por si.
     # Qualquer pendência ativa já falada veta esta elipse ambígua; contexto só
     # reduz autoridade e nunca fornece a permissão operacional da fala atual.
-    turno = aplicar_elipse_espacial_autorizada_ao_turno(
-        texto,
-        turno=turno,
-        pendencia_turno=pendencia_turno,
-    )
+    if not turno_tem_veto_execucao(turno):
+        turno = aplicar_elipse_espacial_autorizada_ao_turno(
+            texto,
+            turno=turno,
+            pendencia_turno=pendencia_turno,
+        )
 
     # Uma revisão atual não pode ser reinterpretada como repetição da ação
     # anterior só porque a proposta final contém "continua", "de novo" etc.
@@ -528,7 +536,8 @@ def _iniciar_planejamento_turno(
         None if revisao_detectada
         else resolver_repeticao_operacional_segura(ns, texto)
     )
-    turno = aplicar_repeticao_operacional_ao_turno(turno, repeticao_operacional)
+    if not turno_tem_veto_execucao(turno):
+        turno = aplicar_repeticao_operacional_ao_turno(turno, repeticao_operacional)
     if repeticao_operacional:
         ns['print'](
             f"🔁 [TURNO] repetição operacional autorizada | "
@@ -543,7 +552,7 @@ def _iniciar_planejamento_turno(
         except Exception as erro:
             ns['print'](f"⚠️ [VISÃO:SESSÃO] contexto ignorado: {type(erro).__name__}")
     pedido_visao_jogo = detectar_pedido_visao_jogo(texto_cognitivo, jogo_contexto)
-    if pedido_visao_jogo:
+    if pedido_visao_jogo and not turno_tem_veto_execucao(turno):
         turno = aplicar_pedido_visual_ao_turno(turno, pedido_visao_jogo)
         ns['print'](
             f"🎮 [VISÃO:PEDIDO] tipo={pedido_visao_jogo['params'].get('tipo')} "
@@ -572,7 +581,7 @@ def _iniciar_planejamento_turno(
         except Exception as erro:
             ns['print'](f"⚠️ [SEMÂNTICA] falha isolada no modo observador: {type(erro).__name__}")
     if leitura_semantica:
-        if modo_semantico == 'conversation':
+        if modo_semantico == 'conversation' and not turno_tem_veto_execucao(turno):
             turno = aplicar_leitura_conversacional(turno, leitura_semantica)
             if str(turno.get('origem_modalidade') or '') == 'semantica_conversacional':
                 ns['print'](
@@ -597,9 +606,10 @@ def _iniciar_planejamento_turno(
         retrato_turno['referencia_resolvida'] = {}
         retrato_turno['referencia_quarentenada'] = dict(quarentena_app)
 
-    turno, retrato_turno = reconciliar_alvo_eliptico_janela_confirmado(
-        texto_cognitivo, turno=turno, retrato=retrato_turno, mente=mente_antes_turno,
-    )
+    if not turno_tem_veto_execucao(turno):
+        turno, retrato_turno = reconciliar_alvo_eliptico_janela_confirmado(
+            texto_cognitivo, turno=turno, retrato=retrato_turno, mente=mente_antes_turno,
+        )
     atualidade_factual = dict(retrato_turno.get('atualidade_factual') or {})
     turno['atualidade_factual'] = atualidade_factual
     if atualidade_factual.get('depende_atualidade'):

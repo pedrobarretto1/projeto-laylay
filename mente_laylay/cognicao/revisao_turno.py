@@ -167,6 +167,34 @@ def resolver_revisao_intra_turno(texto: str) -> Dict[str, Any]:
         base.update(resolvida=True,cancelada=True,tipo="cancelamento",motivo="negação corretiva descartou a proposta anterior")
         return base
 
+    # O marcador ``não`` só introduz uma proposta positiva substituta quando
+    # existe um boundary discursivo literal logo depois dele: ``não, melhor``.
+    # Sem essa prova, ``fecha Store, não o Opera`` e ``não feche o Opera``
+    # conservam a polaridade negativa e falham fechados.
+    operacao_negada = _operacao_inicio(correcao) if marker == "nao" else {}
+    cancela_mesma_operacao = bool(
+        operacao_negada
+        and operacao_negada.get("canon") == operacao_antiga.get("canon")
+        and _norm(str(operacao_negada.get("resto") or "")).strip()
+        in {"", "nada", "mais nada"}
+    )
+    if (
+        marker == "nao"
+        and not cancela_mesma_operacao
+        and not re.match(r"^\s*[,;:\-]\s*\S", bruto[achado.end():])
+    ):
+        base.update(
+            resolvida=False,
+            cancelada=False,
+            tipo="ambigua",
+            texto_operacional_efetivo="",
+            motivo=(
+                "negação após proposta operacional sem separador discursivo "
+                "posterior não prova correção positiva"
+            ),
+        )
+        return base
+
     # "não, melhor X" / "melhor X"
     correcao_sem_melhor=re.sub(r"^melhor\b[\s,:-]*", "", correcao, flags=re.I).strip()
     tinha_melhor=correcao_sem_melhor != correcao

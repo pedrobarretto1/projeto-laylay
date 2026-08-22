@@ -7,7 +7,11 @@ from typing import Any, Callable, Dict, Iterable, Tuple
 
 from mente_laylay.arquivos.lixeira_laylay import existe_exclusao_pendente
 from mente_laylay.cognicao.conversa_sobre_capacidades import texto_discute_capacidade_futura
-from mente_laylay.cognicao.modalidade_turno import texto_tem_pergunta_reciproca_apos_resposta
+from mente_laylay.cognicao.modalidade_turno import (
+    autoriza_execucao_efetiva,
+    texto_tem_pergunta_reciproca_apos_resposta,
+    turno_tem_veto_execucao,
+)
 from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto
 from mente_laylay.memoria_mental.sessao_conversa import texto_encerra_conversa
 from mente_laylay.memoria_mental.continuidade_conversa import (
@@ -381,6 +385,8 @@ def processar_pergunta_curta_contextual(
     ctx: Dict[str, Any],
     texto_usuario: str,
 ) -> Tuple[bool, str]:
+    if turno_tem_veto_execucao(_decisao_turno(ctx)):
+        return False, ""
     resolver_pergunta_curta_contextual_intencao = _get(ctx, "_resolver_pergunta_curta_contextual_intencao")
     executar_intencao_curta_contextual = _get(ctx, "_executar_intencao_curta_contextual")
     executar_intencao = _get(ctx, "executar_intencao")
@@ -415,6 +421,7 @@ def processar_resposta_pendencia_prioritaria(
         return False, ""
     mente = _get(ctx, "mente_integrada_estado", {})
     pendencia = mente.get("pendencia_atual") if isinstance(mente, dict) else {}
+    veto_execucao = turno_tem_veto_execucao(_decisao_turno(ctx))
     resposta = re.sub(
         r"\s+", " ", str(texto_usuario or "").strip().casefold(),
     ).strip(" .,!?:;")
@@ -426,16 +433,16 @@ def processar_resposta_pendencia_prioritaria(
             and str(pendencia.get("origem") or "") == "lixeira_laylay"
         )
     )
-    confirmar = resposta in {
+    confirmar = not veto_execucao and resposta in {
         "sim", "pode", "pode apagar", "confirma", "confirmo",
         "manda pra lixeira", "manda para a lixeira",
     }
     cancelar = resposta in {
         "nao", "não", "cancela", "cancelar", "deixa", "deixa quieto",
     } or classificar_confirmacao_local(texto_usuario) is False
-    confirmar_oferta = confirmar or resposta in {
+    confirmar_oferta = not veto_execucao and (confirmar or resposta in {
         "quero", "quero sim", "claro", "bora", "manda", "pode ser",
-    }
+    })
     oferta_musical = mente.get("oferta_pendente") if isinstance(mente, dict) else {}
     if (
         confirmar_oferta
@@ -475,6 +482,8 @@ def processar_continuacao_visao_jogo(
 ) -> Tuple[bool, str]:
     """Entrega um complemento à análise visual que realmente o solicitou."""
     decisao = _decisao_turno(ctx)
+    if turno_tem_veto_execucao(decisao):
+        return False, ""
     modalidade = str(
         decisao.get("modalidade_geral") or decisao.get("modalidade") or ""
     ).casefold()
@@ -671,6 +680,11 @@ def processar_bloqueio_playlist_temporario(
 
 
 def processar_feedback_pendente(ctx: Dict[str, Any], texto_usuario: str) -> Tuple[bool, str]:
+    if (
+        turno_tem_veto_execucao(_decisao_turno(ctx))
+        and classificar_confirmacao_local(texto_usuario) is not False
+    ):
+        return False, ""
     texto_norm = re.sub(r"\s+", " ", str(texto_usuario or "").strip().casefold())
     contraproposta = bool(re.search(
         r"\b(?:melhor|prefiro|preferia|em vez|ao inves|ao invés|apenas|somente|só|so)\b",
@@ -796,6 +810,8 @@ def processar_reparacao_conversacional(ctx: Dict[str, Any], texto_usuario: str) 
         return True, "reparacao_conversacional"
 
     decisao_turno = _decisao_turno(ctx)
+    if turno_tem_veto_execucao(decisao_turno):
+        return False, ""
     modalidade_atual = str(
         decisao_turno.get("modalidade_geral")
         or decisao_turno.get("modalidade")
@@ -1003,7 +1019,11 @@ def processar_comando_deterministico_precoce(
     t = str(texto_usuario or "").strip()
     mente = _get(ctx, "mente_integrada_estado", {})
     turno = mente.get("turno_atual") if isinstance(mente, dict) else {}
-    if isinstance(turno, dict) and "autoriza_execucao" in turno and not bool(turno.get("autoriza_execucao")):
+    if (
+        isinstance(turno, dict)
+        and ("autoriza_execucao" in turno or turno_tem_veto_execucao(turno))
+        and not autoriza_execucao_efetiva(turno)
+    ):
         return False, ""
     operacional = str((turno or {}).get("texto_operacional") or "").strip()
     deteccao = operacional if str((turno or {}).get("ato_principal") or "") == "comando" and operacional else t
@@ -1028,6 +1048,8 @@ def executar_resultado_contextual(
     log_rota: str,
 ) -> bool:
     if not isinstance(resultado, dict) or not str(resultado.get("intent") or "").strip():
+        return False
+    if turno_tem_veto_execucao(_decisao_turno(ctx)):
         return False
 
     executar_intencao = _get(ctx, "executar_intencao")

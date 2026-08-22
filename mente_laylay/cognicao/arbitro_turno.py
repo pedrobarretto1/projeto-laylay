@@ -6,7 +6,11 @@ from dataclasses import dataclass, field
 import re
 from typing import Any, Dict, Iterable
 
-from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+from mente_laylay.cognicao.modalidade_turno import (
+    autoriza_execucao_efetiva,
+    classificar_modalidade_turno,
+    turno_tem_veto_execucao,
+)
 from mente_laylay.cognicao.retrato_turno import dominio_intent
 from mente_laylay.especialistas.operacional import avaliar_candidato_operacional
 from mente_laylay.especialistas.capacidades import INTENTS_SOMENTE_LEITURA
@@ -91,12 +95,14 @@ def arbitrar_turno(
                 "especialista operacional nao autorizou execucao neste turno: "
                 f"{avaliacao_operacional.get('motivo') or 'sem_autorizacao'}"
             )
+        elif turno_tem_veto_execucao(leitura):
+            motivo = "veto operacional soberano do turno"
         elif (
             candidato.tipo in {"comando_explicito", "comando_contextual", "repeticao"}
             and intent_candidato not in INTENTS_SOMENTE_LEITURA
             and intent_candidato != "SUGGEST_ACTION"
-            and not bool(
-                leitura.get("autoriza_execucao")
+            and not (
+                autoriza_execucao_efetiva(leitura)
                 if "autoriza_execucao" in leitura
                 else modalidade in {"comando", "misto"}
             )

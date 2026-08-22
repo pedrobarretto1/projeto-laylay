@@ -23,6 +23,7 @@ from mente_laylay.cognicao.qualidade_comunicacao import (
 from mente_laylay.cognicao.decisao_turno import criar_contrato_decisao
 from mente_laylay.cognicao.contratos_turno import PlanoTurnoDict
 from mente_laylay.cognicao.estado_tecnico_llm import eh_estado_tecnico_llm
+from mente_laylay.cognicao.modalidade_turno import turno_tem_veto_execucao
 from mente_laylay.autonomia.roteador_deterministico import texto_pede_clima_atual
 from mente_laylay.percepcao.ritmo_circadiano import (
     detectar_consulta_horario,
@@ -127,6 +128,7 @@ def planejar_turno(
 ) -> PlanoTurnoDict:
     """Transforma a leitura do turno em um compromisso explícito da mente."""
     leitura = dict(turno or {})
+    veto_execucao = turno_tem_veto_execucao(leitura)
     estado = dict(mente or {})
     funcao_comunicativa = dict(leitura.get("funcao_comunicativa") or {})
     identidade = dict(leitura.get("identidade") or {})
@@ -141,7 +143,7 @@ def planejar_turno(
             "tipo": tipo,
             "texto": str(segmento.get("texto") or "").strip()[:300],
             "objetivo": _objetivo_ato(tipo),
-            "requer_execucao": tipo == "comando",
+            "requer_execucao": tipo == "comando" and not veto_execucao,
         })
     if not atos:
         tipo = str(leitura.get("ato_principal") or leitura.get("modalidade") or "conversa")
@@ -150,7 +152,7 @@ def planejar_turno(
             "tipo": tipo,
             "texto": str(texto or "").strip()[:300],
             "objetivo": _objetivo_ato(tipo),
-            "requer_execucao": tipo == "comando",
+            "requer_execucao": tipo == "comando" and not veto_execucao,
         })
 
     contexto_necessario = ["fala_atual"]
@@ -176,7 +178,8 @@ def planejar_turno(
     ).strip().lower()
     autorizacao_explicita_presente = "autoriza_execucao" in leitura
     turno_sem_autorizacao = bool(
-        natureza_acao in {"capacidade", "hipotetica", "instrucao_ou_explicacao"}
+        veto_execucao
+        or natureza_acao in {"capacidade", "hipotetica", "instrucao_ou_explicacao"}
         or (
             autorizacao_explicita_presente
             and not bool(leitura.get("autoriza_execucao"))
@@ -219,7 +222,7 @@ def planejar_turno(
         "dominio": dominio_turno,
         "contexto_necessario": contexto_necessario,
         "requer_execucao": requer_execucao,
-        "autoriza_execucao": bool(leitura.get("autoriza_execucao")),
+        "autoriza_execucao": bool(leitura.get("autoriza_execucao")) and not veto_execucao,
         "natureza_acao": natureza_acao,
         "turno_sem_autorizacao": turno_sem_autorizacao,
         "misto": misto,
@@ -245,6 +248,7 @@ def planejar_turno(
         "fase": "planejado",
         "comandos": [],
         "problemas": [],
+        "veto_execucao_operacional": veto_execucao,
         "ts": time.time(),
     }
     plano["decisao_turno"] = criar_contrato_decisao(leitura, plano)

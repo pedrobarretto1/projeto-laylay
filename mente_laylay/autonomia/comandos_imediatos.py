@@ -43,8 +43,10 @@ from mente_laylay.cognicao.esclarecimento_operacional import (
     limpar_esclarecimento_operacional,
 )
 from mente_laylay.cognicao.modalidade_turno import (
+    autoriza_execucao_efetiva,
     bloqueia_execucao_operacional_prioritaria,
     classificar_modalidade_turno,
+    turno_tem_veto_execucao,
 )
 from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
 from mente_laylay.cognicao.referencias_linguagem import (
@@ -79,12 +81,14 @@ def _candidato_prioritario_autorizado(
     """
     if not isinstance(candidato, dict):
         return False
+    if turno_tem_veto_execucao(turno):
+        return False
     intent = str(candidato.get("intent") or "").upper().strip()
     if not intent:
         return False
     if intent in INTENTS_SOMENTE_LEITURA:
         return True
-    return bool(dict(turno or {}).get("autoriza_execucao"))
+    return autoriza_execucao_efetiva(turno)
 
 
 def _candidato_arquivo_prioritario_autorizado(
@@ -101,11 +105,13 @@ def _candidato_arquivo_prioritario_autorizado(
     """
     if not isinstance(candidato, dict):
         return False
+    if turno_tem_veto_execucao(turno):
+        return False
     intent = str(candidato.get("intent") or "").upper().strip()
     params = dict(candidato.get("params") or {})
     if intent in INTENTS_SOMENTE_LEITURA:
         return True
-    if bool(dict(turno or {}).get("autoriza_execucao")):
+    if autoriza_execucao_efetiva(turno):
         return True
     if intent != "FILE_OPEN_RESULT":
         return False
@@ -542,22 +548,23 @@ class ComandosImediatosRuntime:
         # vencer a barreira de mutação, mas apenas pela habilidade read-only já
         # existente. Assim "O Opera continua aberto?" não é confundido com o
         # comando musical "continua".
-        try:
-            tratado_readonly_p0, rota_readonly_p0 = processar_consulta_sistema_local(
-                contexto_prioritario, texto
-            )
-        except Exception as erro:
-            print(
-                "⚠️ [P0:READ-ONLY] consulta local falhou sem liberar mutação | "
-                f"{type(erro).__name__}: {erro}"
-            )
-        else:
-            if tratado_readonly_p0:
-                print(
-                    "🔎 [P0:READ-ONLY] consulta segura tratada antes da barreira | "
-                    f"rota={rota_readonly_p0 or 'consulta_sistema_local'}"
+        if not turno_tem_veto_execucao(turno_prioritario):
+            try:
+                tratado_readonly_p0, rota_readonly_p0 = processar_consulta_sistema_local(
+                    contexto_prioritario, texto
                 )
-                return True
+            except Exception as erro:
+                print(
+                    "⚠️ [P0:READ-ONLY] consulta local falhou sem liberar mutação | "
+                    f"{type(erro).__name__}: {erro}"
+                )
+            else:
+                if tratado_readonly_p0:
+                    print(
+                        "🔎 [P0:READ-ONLY] consulta segura tratada antes da barreira | "
+                        f"rota={rota_readonly_p0 or 'consulta_sistema_local'}"
+                    )
+                    return True
 
         # P0_CAPACIDADE_READONLY_A1_20260816
         # Perguntas sobre o que a Laylay consegue fazer continuam SEM autorizar
@@ -574,7 +581,12 @@ class ComandosImediatosRuntime:
         responder_capacidade = ns.get("_responder_pergunta_capacidade_local")
         fala_capacidade = ""
         if (
-            turno_atual.get("autoriza_execucao") is not True
+            not autoriza_execucao_efetiva(turno_atual)
+            and (
+                not turno_tem_veto_execucao(turno_atual)
+                or str(turno_atual.get("natureza_acao") or "").casefold()
+                in {"capacidade", "instrucao_ou_explicacao", "hipotetica"}
+            )
             and callable(responder_capacidade)
         ):
             try:

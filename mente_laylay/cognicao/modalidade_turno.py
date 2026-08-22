@@ -16,6 +16,9 @@ from mente_laylay.cognicao.referencias_linguagem import (
 from mente_laylay.cognicao.gramatica_operacional import (
     texto_pede_avanco_midia_via_vai,
 )
+from mente_laylay.arquivos.nome_natural import (
+    marcador_negacao_em_filename_literal,
+)
 
 
 def analisar_protecao_operacional(
@@ -844,6 +847,114 @@ def _p0_pergunta_operacional_tem_pedido_explicito(texto_normalizado: str) -> boo
     return False
 
 
+_NEGACAO_INTERNA_CONSERVADORA = re.compile(
+    r"(?<![\wÀ-ÿ])(?P<neg>nao|não|nunca|jamais)(?![\wÀ-ÿ])",
+    re.IGNORECASE,
+)
+
+_NATUREZAS_VETO_MONOTONICO = frozenset({
+    "cancelamento",
+    "capacidade",
+    "hipotetica",
+    "mencao_operacional",
+    "instrucao_ou_explicacao",
+    "decepcao",
+})
+
+
+def turno_tem_veto_execucao(turno: Dict[str, Any] | None) -> bool:
+    """Consulta o receipt soberano que nenhuma camada posterior pode revogar."""
+    return bool(dict(turno or {}).get("veto_execucao_operacional"))
+
+
+def autoriza_execucao_efetiva(turno: Dict[str, Any] | None) -> bool:
+    """Autoridade efetiva exige autorização positiva e ausência de veto sticky."""
+    leitura = dict(turno or {})
+    return bool(leitura.get("autoriza_execucao") and not turno_tem_veto_execucao(leitura))
+
+
+def analisar_negacao_interna_conservadora(texto: str) -> Dict[str, Any]:
+    """Falha fechada para negação interna, salvo filename literal comprovado."""
+    bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
+    marcadores: list[Dict[str, Any]] = []
+    for encontrado in _NEGACAO_INTERNA_CONSERVADORA.finditer(bruto):
+        inicio, fim = encontrado.span("neg")
+        prefixo = bruto[:inicio].strip()
+        atomo, valor = marcador_negacao_em_filename_literal(bruto, inicio, fim)
+        marcadores.append({
+            "marcador": encontrado.group("neg"),
+            "inicio": inicio,
+            "fim": fim,
+            "prefixo": prefixo,
+            "cauda": bruto[fim:].strip(),
+            "interno": bool(prefixo),
+            "atomo_arquivo": bool(atomo),
+            "atomo_valor": valor,
+        })
+    bloqueantes = [
+        item for item in marcadores
+        if item["interno"] and not item["atomo_arquivo"]
+    ]
+    return {
+        "texto": bruto,
+        "marcadores": marcadores,
+        "bloqueia": bool(bloqueantes),
+        "primeiro": dict(bloqueantes[0]) if bloqueantes else {},
+        "atomos_liberados": [
+            dict(item) for item in marcadores if item["atomo_arquivo"]
+        ],
+    }
+
+
+def aplicar_veto_canonico(
+    turno: Dict[str, Any] | None,
+    *,
+    texto: str,
+    modalidade: str,
+    natureza: str,
+    motivo: str,
+    requer_esclarecimento: bool,
+    origem_veto: str,
+) -> Dict[str, Any]:
+    """Reescreve todo o contrato e elimina qualquer autorização stale."""
+    novo = dict(turno or {})
+    modal = str(modalidade or "recusa").strip().casefold() or "recusa"
+    normalizado = re.sub(r"\s+", " ", str(texto or "")).strip()
+    confianca = max(0.99, float(novo.get("confianca") or 0.0))
+    segmento = {
+        "indice": 0,
+        "texto": normalizado[:300],
+        "modalidade": modal,
+        "confianca": confianca,
+        "motivo": str(motivo or "veto operacional soberano"),
+        "autoriza_execucao": False,
+        "acao_explicita": False,
+        "requer_esclarecimento": bool(requer_esclarecimento),
+        "natureza_acao": str(natureza or "nenhuma"),
+        "veto_execucao_operacional": True,
+    }
+    novo.update(
+        modalidade=modal,
+        modalidade_geral=modal,
+        ato_principal=modal,
+        atos=[modal],
+        segmentos=[segmento],
+        texto_operacional="",
+        texto_conversacional=normalizado[:500],
+        acao_explicita=False,
+        autoriza_execucao=False,
+        requer_esclarecimento=bool(requer_esclarecimento),
+        natureza_acao=str(natureza or "nenhuma"),
+        motivo=str(motivo or "veto operacional soberano"),
+        motivo_decisao=str(motivo or "veto operacional soberano"),
+        veto_execucao_operacional=True,
+        origem_veto_execucao_operacional=str(origem_veto or "protecao_operacional"),
+        motivo_veto_execucao_operacional=str(motivo or "veto operacional soberano"),
+        confianca=confianca,
+    )
+    return novo
+
+
 def _protecao_p0_ato_fala(
     texto: str,
     *,
@@ -1008,40 +1119,84 @@ def classificar_modalidade_turno(
         confirmacao_contextual_valida=confirmacao_contextual_valida,
     )
     protecao = _protecao_p0_ato_fala(texto, normalizar_texto=normalizar_texto)
-    if not protecao:
+    if protecao:
+        normalizado = _normalizar_p0_ato_fala(texto, normalizar_texto)
+        modalidade = str(protecao.get("modalidade") or "conversa")
+        natureza = str(protecao.get("natureza_acao") or "nenhuma")
+        motivo = str(protecao.get("motivo") or "ato de fala sem autorização")
+        requer = bool(protecao.get("requer_esclarecimento"))
+        resultado.update(
+            modalidade=modalidade,
+            modalidade_geral=modalidade,
+            ato_principal=modalidade,
+            atos=[modalidade],
+            segmentos=[{
+                "indice": 0,
+                "texto": normalizado[:300],
+                "modalidade": modalidade,
+                "confianca": 0.99,
+                "motivo": motivo,
+                "autoriza_execucao": False,
+                "acao_explicita": False,
+                "requer_esclarecimento": requer,
+                "natureza_acao": natureza,
+            }],
+            texto_operacional="",
+            texto_conversacional=normalizado[:500],
+            acao_explicita=False,
+            autoriza_execucao=False,
+            requer_esclarecimento=requer,
+            natureza_acao=natureza,
+            motivo=motivo,
+            motivo_decisao=motivo,
+            confianca=max(float(resultado.get("confianca") or 0.0), 0.99),
+        )
+        if natureza.casefold() in _NATUREZAS_VETO_MONOTONICO:
+            return aplicar_veto_canonico(
+                resultado,
+                texto=texto,
+                modalidade=modalidade,
+                natureza=natureza,
+                motivo=motivo,
+                requer_esclarecimento=requer,
+                origem_veto="p0_ato_fala",
+            )
         return resultado
 
-    normalizado = _normalizar_p0_ato_fala(texto, normalizar_texto)
-    modalidade = str(protecao.get("modalidade") or "conversa")
-    natureza = str(protecao.get("natureza_acao") or "nenhuma")
-    motivo = str(protecao.get("motivo") or "ato de fala sem autorização")
-    requer = bool(protecao.get("requer_esclarecimento"))
-    resultado.update(
-        modalidade=modalidade,
-        modalidade_geral=modalidade,
-        ato_principal=modalidade,
-        atos=[modalidade],
-        segmentos=[{
-            "indice": 0,
-            "texto": normalizado[:300],
-            "modalidade": modalidade,
-            "confianca": 0.99,
-            "motivo": motivo,
-            "autoriza_execucao": False,
-            "acao_explicita": False,
-            "requer_esclarecimento": requer,
-            "natureza_acao": natureza,
-        }],
-        texto_operacional="",
-        texto_conversacional=normalizado[:500],
-        acao_explicita=False,
-        autoriza_execucao=False,
-        requer_esclarecimento=requer,
-        natureza_acao=natureza,
-        motivo=motivo,
-        motivo_decisao=motivo,
-        confianca=max(float(resultado.get("confianca") or 0.0), 0.99),
+    comando_explicito = bool(
+        callable(texto_tem_comando_explicito)
+        and texto_tem_comando_explicito(texto)
     )
+    if (
+        resultado.get("autoriza_execucao") is not True
+        and str(resultado.get("modalidade") or "").casefold() == "recusa"
+        and comando_explicito
+    ):
+        return aplicar_veto_canonico(
+            resultado,
+            texto=texto,
+            modalidade="recusa",
+            natureza=str(resultado.get("natureza_acao") or "cancelamento"),
+            motivo=str(resultado.get("motivo") or "recusa operacional"),
+            requer_esclarecimento=bool(resultado.get("requer_esclarecimento")),
+            origem_veto="recusa_operacional_historica",
+        )
+
+    if resultado.get("autoriza_execucao") is True:
+        negacao = analisar_negacao_interna_conservadora(texto)
+        if negacao.get("bloqueia"):
+            return aplicar_veto_canonico(
+                resultado,
+                texto=texto,
+                modalidade="recusa",
+                natureza="ambiguidade_polaridade_interna",
+                motivo=(
+                    "negação interna sem decomposição operacional segura; "
+                    "execução não presumida"
+                ),
+                requer_esclarecimento=True,
+                origem_veto="negacao_interna_stt",
+            )
     return resultado
 
 
@@ -1054,6 +1209,10 @@ def bloqueia_execucao_operacional_prioritaria(
     confirmacao_contextual_valida: bool = False,
 ) -> bool:
     """Barreira fail-closed para roteadores operacionais imediatos."""
+    if turno_tem_veto_execucao(classificacao):
+        return True
+    if analisar_negacao_interna_conservadora(texto).get("bloqueia"):
+        return True
     if _protecao_p0_ato_fala(texto, normalizar_texto=normalizar_texto):
         return True
 
@@ -1065,7 +1224,7 @@ def bloqueia_execucao_operacional_prioritaria(
             texto_tem_comando_explicito=texto_tem_comando_explicito,
             confirmacao_contextual_valida=confirmacao_contextual_valida,
         )
-    if bool(analise.get("autoriza_execucao")):
+    if autoriza_execucao_efetiva(analise):
         return False
 
     natureza = str(analise.get("natureza_acao") or "").casefold()
@@ -1084,4 +1243,3 @@ def bloqueia_execucao_operacional_prioritaria(
 
     normalizado = _normalizar_p0_ato_fala(texto, normalizar_texto)
     return bool(_P0_GATILHOS_OPERACIONAIS.search(normalizado))
-

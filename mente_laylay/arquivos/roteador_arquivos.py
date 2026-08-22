@@ -5,10 +5,16 @@ from __future__ import annotations
 import os
 import re
 import time
+import copy
 from typing import Any, Callable, Mapping
 
 from mente_laylay.arquivos.lixeira_laylay import existe_exclusao_pendente
-from mente_laylay.arquivos.nome_natural import limpar_nome_arquivo_natural
+from mente_laylay.arquivos.nome_natural import (
+    EXTENSOES_TEXTUAIS_RENOMEAVEIS,
+    aspas_globalmente_coerentes,
+    desembrulhar_filename_literal,
+    limpar_nome_arquivo_natural,
+)
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
@@ -144,6 +150,80 @@ def _remover_aspas_pareadas(valor: str) -> str:
     if len(texto) >= 2 and texto[0] == texto[-1] and texto[0] in {'"', "'"}:
         return texto[1:-1].strip()
     return texto
+
+
+_CAMPOS_LITERALIDADE_FILENAME = {
+    "CREATE_FILE": ("alvo",),
+    "CREATE_FOLDER": ("arquivo_nome",),
+    "FILE_SEARCH": ("query", "alvo"),
+    "DELETE_ITEM": ("alvo",),
+    "FILE_TRANSACTION": ("origem",),
+}
+
+
+def _extensao_filename_literal_suportada(valor: str, texto_original: str) -> bool:
+    limpo = str(valor or "").strip().strip('"\'')
+    if not limpo:
+        return False
+    basename = os.path.basename(limpo.replace("\\", "/"))
+    extensao = os.path.splitext(basename)[1].casefold()
+    if extensao not in EXTENSOES_TEXTUAIS_RENOMEAVEIS:
+        return False
+    return bool(re.search(
+        rf"(?<![\w.]){re.escape(basename)}(?![\w.])",
+        str(texto_original or ""),
+        re.IGNORECASE,
+    ))
+
+
+def reconciliar_literalidade_filename(
+    resultado_operacional: dict | None,
+    resultado_original: dict | None,
+    *,
+    texto_operacional: str,
+    texto_original: str,
+    normalizar_texto: Callable[[str], str],
+) -> tuple[dict | None, list[str]]:
+    """Recupera do RAW só a grafia de filename comprovada, nunca autoridade."""
+    if not isinstance(resultado_operacional, dict) or not isinstance(resultado_original, dict):
+        return copy.deepcopy(resultado_operacional), []
+    if not aspas_globalmente_coerentes(texto_original):
+        return copy.deepcopy(resultado_operacional), []
+    intent_op = str(resultado_operacional.get("intent") or "").upper().strip()
+    intent_raw = str(resultado_original.get("intent") or "").upper().strip()
+    if not intent_op or intent_op != intent_raw or intent_op not in _CAMPOS_LITERALIDADE_FILENAME:
+        return copy.deepcopy(resultado_operacional), []
+    try:
+        if str(normalizar_texto(texto_operacional) or "").strip() != str(
+            normalizar_texto(texto_original) or ""
+        ).strip():
+            return copy.deepcopy(resultado_operacional), []
+    except Exception:
+        return copy.deepcopy(resultado_operacional), []
+
+    params_op = dict(resultado_operacional.get("params") or {})
+    params_raw = dict(resultado_original.get("params") or {})
+    saida = copy.deepcopy(resultado_operacional)
+    params_saida = dict(params_op)
+    alterados: list[str] = []
+    for campo in _CAMPOS_LITERALIDADE_FILENAME[intent_op]:
+        valor_op = str(params_op.get(campo) or "").strip()
+        valor_raw = desembrulhar_filename_literal(params_raw.get(campo))
+        if not valor_op or not valor_raw or valor_op == valor_raw:
+            continue
+        if not _extensao_filename_literal_suportada(valor_raw, texto_original):
+            continue
+        try:
+            normal_op = str(normalizar_texto(valor_op) or "").strip()
+            normal_raw = str(normalizar_texto(valor_raw) or "").strip()
+        except Exception:
+            continue
+        if not normal_op or normal_op != normal_raw:
+            continue
+        params_saida[campo] = valor_raw
+        alterados.append(campo)
+    saida["params"] = params_saida
+    return saida, alterados
 
 
 def extrair_criacao_pasta_arquivo(frase: str) -> dict:
