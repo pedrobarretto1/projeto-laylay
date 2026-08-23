@@ -385,6 +385,14 @@
             "data": "2026-08-05",
             "titulo_norm": "nomade iii jean tassy zarastruta prod patriciosid",
             "canal_norm": "jean tassy jean tassy"
+        },
+        {
+            "url": "https://www.youtube.com/watch?v=iIvpNPpZYto",
+            "titulo": "NÔMADE VII - Zarastruta , ‪@JeanTassy.‬ & ‪@dontgt‬ [ Prod. @patriciosid ]",
+            "canal": "",
+            "data": "2026-08-22",
+            "titulo_norm": "nomade vii zarastruta jeantassy dontgt prod patriciosid",
+            "canal_norm": ""
         }
     ],
     "kamaitachi": [
@@ -792,6 +800,38 @@
             "canal": "",
             "data": "2026-08-20",
             "titulo_norm": "anny se eu te pedir ft lucas a r t",
+            "canal_norm": ""
+        },
+        {
+            "url": "https://www.youtube.com/watch?v=ZLzDMCS6pPY",
+            "titulo": "Anny - VÍCIO DE AMOR ft. @Chrono0",
+            "canal": "",
+            "data": "2026-08-22",
+            "titulo_norm": "anny vicio de amor ft chrono0",
+            "canal_norm": ""
+        },
+        {
+            "url": "https://www.youtube.com/watch?v=LNoulHM7Lms",
+            "titulo": "Shaman - Amor de Primavera (Chainsaw Man) feat. Anny",
+            "canal": "",
+            "data": "2026-08-22",
+            "titulo_norm": "shaman amor de primavera chainsaw man feat anny",
+            "canal_norm": ""
+        },
+        {
+            "url": "https://www.youtube.com/watch?v=_1jM2DRA1T0",
+            "titulo": "Taka - Maré - Feat. Anny",
+            "canal": "",
+            "data": "2026-08-22",
+            "titulo_norm": "taka mare feat anny",
+            "canal_norm": ""
+        },
+        {
+            "url": "https://www.youtube.com/watch?v=Go1pQGGdYzY",
+            "titulo": "nikmouu - Ainda te amo...Ft.VMZ",
+            "canal": "",
+            "data": "2026-08-22",
+            "titulo_norm": "nikmouu ainda te amo ft vmz",
             "canal_norm": ""
         }
     ]

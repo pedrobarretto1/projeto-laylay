@@ -529,7 +529,13 @@ def extrair_delete_pasta_arquivo(
         flags=re.IGNORECASE,
     )
     if m_generico:
-        nome = limpar_nome_arquivo_natural(m_generico.group("nome") or "")
+        # O ponto final da frase não pertence ao basename. Os ramos
+        # explicitamente tipados de arquivo/pasta já removem essa moldura
+        # antes de normalizar o nome; o ramo genérico precisa manter o mesmo
+        # contrato sem alterar ``limpar_nome_arquivo_natural`` globalmente.
+        nome = limpar_nome_arquivo_natural(
+            str(m_generico.group("nome") or "").strip(" .,!?:;\"'")
+        )
         normalizar = normalizar_texto if callable(normalizar_texto) else (lambda valor: str(valor or "").strip().lower())
         nome_norm = normalizar(nome)
         if nome and nome_norm not in {
@@ -547,6 +553,87 @@ def extrair_delete_pasta_arquivo(
             return {"alvo": nome}
 
     return {}
+
+
+def exclusao_tem_alvo_filesystem_tipado(
+    frase: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None = None,
+) -> bool:
+    """Prova jurisdição forte de filesystem sem conceder autorização.
+
+    ``extrair_delete_pasta_arquivo`` também aceita alvos genéricos. Isso é
+    correto depois que o domínio já foi escolhido, mas é evidência fraca para
+    decidir prioridade: ``apaga essa ideia`` não pode virar filesystem só
+    porque existe um candidato DELETE_ITEM.
+
+    Esta função promove somente evidências do turno atual:
+    - arquivo/documento/pasta/diretório como cabeça explícita do objeto;
+    - filename com extensão literal;
+    - caminho explícito.
+
+    Ela não executa, não cria intent e não transforma contexto em permissão.
+    """
+    texto_local = re.sub(r"\s+", " ", str(frase or "").strip())
+    if not texto_local:
+        return False
+
+    extraido = extrair_delete_pasta_arquivo(
+        texto_local,
+        normalizar_texto=normalizar_texto,
+    )
+    tipo = str(extraido.get("tipo") or "").casefold().strip()
+    if tipo in {"arquivo", "pasta"}:
+        return True
+
+    verbo = (
+        r"(?:apaga|apague|apagar|delete|deleta|deletar|remove|remova|"
+        r"remover|exclui|exclua|excluir)"
+    )
+    objeto_match = re.search(
+        rf"\b{verbo}\b\s+(?P<objeto>.+?)\s*$",
+        texto_local,
+        flags=re.IGNORECASE,
+    )
+    if not objeto_match:
+        return False
+
+    objeto = str(objeto_match.group("objeto") or "").strip()
+    objeto = re.sub(
+        r"^(?:o|a|os|as|um|uma)\s+",
+        "",
+        objeto,
+        count=1,
+        flags=re.IGNORECASE,
+    ).strip()
+
+    # Caminho explícito é evidência de domínio mesmo que o parser genérico
+    # ainda não conheça toda a forma daquele caminho.
+    if (
+        re.match(r"^[A-Za-z]:[\\/]", objeto)
+        or objeto.startswith(
+            ("\\\\", "/", "~/", "~\\", "./", ".\\", "../", "..\\")
+        )
+    ):
+        return True
+
+    # Preferimos o alvo extraído porque o parser canônico já removeu artigos e
+    # molduras inequívocas. Pontuação de frase será corrigida separadamente na
+    # ROOT B; aqui só precisamos reconhecer que a extensão existe.
+    alvo = str(extraido.get("alvo") or "").strip()
+    if not alvo:
+        return False
+    alvo = alvo.strip(" \t\r\n,;:!?\"'“”")
+
+    candidatos = [alvo]
+    if alvo.endswith("."):
+        candidatos.append(alvo[:-1].rstrip())
+
+    for candidato in candidatos:
+        extensao = os.path.splitext(candidato)[1]
+        if re.fullmatch(r"\.[A-Za-z0-9][A-Za-z0-9_-]{0,15}", extensao):
+            return True
+    return False
 
 
 def detectar_intencao_arquivos(

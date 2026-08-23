@@ -48,7 +48,10 @@ from mente_laylay.cognicao.modalidade_turno import (
     classificar_modalidade_turno,
     turno_tem_veto_execucao,
 )
-from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
+from mente_laylay.arquivos.roteador_arquivos import (
+    detectar_intencao_arquivos,
+    exclusao_tem_alvo_filesystem_tipado,
+)
 from mente_laylay.cognicao.referencias_linguagem import (
     extrair_indice_referencia_ordinal,
     valor_e_referencia_contextual,
@@ -1194,7 +1197,31 @@ class ComandosImediatosRuntime:
                     "⚠️ [ÁREA DE TRANSFERÊNCIA] falha isolada: "
                     f"{type(erro).__name__}: {erro}"
                 )
-        if callable(getattr(caixa_entrada, "processar", None)):
+        # PRIORIDADE_DOMINIO_CAIXA_ARQUIVOS_V1_20260822
+        # Palavra temática isolada não prova jurisdição. ``ideia`` pode ser o
+        # nome de uma nota, mas também pode estar dentro de ``troca ideia.txt``
+        # ou ser o nome de uma pasta. Evidência tipada forte do turno atual
+        # faz a Caixa apenas ceder; intent, autorização, confirmação e execução
+        # continuam no fluxo canônico de arquivos.
+        caixa_pode_reivindicar = True
+        try:
+            if exclusao_tem_alvo_filesystem_tipado(texto):
+                caixa_pode_reivindicar = False
+                print(
+                    "🧭 [PRIORIDADE:DOMÍNIO] Caixa cede para filesystem "
+                    "tipado no turno atual"
+                )
+        except Exception as erro:
+            # Falha na prova não cria autoridade nem executa filesystem.
+            print(
+                "⚠️ [PRIORIDADE:DOMÍNIO] prova de filesystem falhou sem "
+                f"executar ação: {type(erro).__name__}: {erro}"
+            )
+
+        if (
+            caixa_pode_reivindicar
+            and callable(getattr(caixa_entrada, "processar", None))
+        ):
             try:
                 if caixa_entrada.processar(texto):
                     print("⚡ [PRIORIDADE:CAIXA DE ENTRADA] pedido pessoal tratado")
