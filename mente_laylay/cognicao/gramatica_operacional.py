@@ -55,3 +55,25 @@ def texto_pede_avanco_midia_via_vai(
         base,
         flags=re.IGNORECASE,
     ))
+
+def texto_pede_restauracao_contextual(texto: str) -> bool:
+    """Reconhece pedido direto de restauração expresso na fala atual.
+
+    Esta função reconhece somente a forma linguística. Ela não consulta
+    contexto, não escolhe alvo e não concede execução por conta própria.
+    """
+    base = re.sub(r"\s+", " ", str(texto or "").strip())
+    base = base.strip(" .,!?:;")
+    if not base:
+        return False
+
+    return bool(re.fullmatch(
+        r"(?:desfaz(?:er)?(?:\s+isso)?|"
+        r"restaura(?:r)?(?:\s+o)?\s+(?:ultimo|último)?\s*(?:arquivo|item|pasta)?|"
+        r"recupera(?:r)?(?:\s+o)?\s+(?:ultimo|último)?\s*(?:arquivo|item|pasta)?|"
+        r"(?:eu\s+)?quero\s+(?:ele|ela|isso|o\s+arquivo|a\s+pasta)\s+de\s+volta|"
+        r"traz\s+(?:ele|ela|isso|o\s+arquivo|a\s+pasta)\s+de\s+volta)",
+        base,
+        flags=re.IGNORECASE,
+    ))
+

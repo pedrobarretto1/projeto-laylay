@@ -15,6 +15,7 @@ from mente_laylay.cognicao.referencias_linguagem import (
 )
 from mente_laylay.cognicao.gramatica_operacional import (
     texto_pede_avanco_midia_via_vai,
+    texto_pede_restauracao_contextual,
 )
 from mente_laylay.arquivos.nome_natural import (
     marcador_negacao_em_filename_literal,
@@ -205,6 +206,22 @@ def _classificar_modalidade_base(
             natureza_acao=protecao["natureza_acao"],
             depende_contexto=protecao["modalidade"] == "recusa",
             requer_esclarecimento=protecao["natureza_acao"] == "capacidade",
+        )
+        return resultado
+
+    # ROOT_AUTORIDADE_RESTAURACAO_V1_20260823
+    # A fala atual fornece autoridade. O alvo continua dependendo de contexto
+    # operacional válido no domínio proprietário; este classificador não
+    # inventa alvo, não consulta lixeira e não contorna a P0.
+    if texto_pede_restauracao_contextual(t):
+        resultado.update(
+            modalidade="comando",
+            confianca=0.99,
+            motivo="pedido explícito de restauração contextual",
+            acao_explicita=True,
+            autoriza_execucao=True,
+            depende_contexto=True,
+            natureza_acao="pedido_direto",
         )
         return resultado
 

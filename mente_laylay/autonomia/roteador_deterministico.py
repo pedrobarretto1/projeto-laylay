@@ -12,6 +12,9 @@ from mente_laylay.cognicao.referencias_linguagem import (
     valor_e_referencia_contextual,
 )
 from mente_laylay.cognicao.modalidade_turno import analisar_protecao_operacional
+from mente_laylay.cognicao.gramatica_operacional import (
+    texto_pede_restauracao_contextual,
+)
 from mente_laylay.cognicao.normalizacao_linguagem import (
     corrigir_erros_portugues_operacionais,
     texto_pede_opiniao,
@@ -1036,6 +1039,13 @@ def detectar_janela_explicita(
     ):
         return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
+
+    # ROOT_JANELA_RESTAURACAO_V2_20260823
+    # Esta rota exige um alvo explícito de janela/app. Uma fala cuja forma
+    # inteira já é uma restauração pertence ao domínio proprietário que
+    # comprova o recibo de exclusão; janela não fabrica nome_app a partir dela.
+    if texto_pede_restauracao_contextual(base):
+        return None
 
     m_max_posposto = re.search(
         r"\b(?:coloca|coloque|bota|deixa|poe|põe)\s+(?:o|a|os|as)?\s*(?P<app>.+?)\s+(?:em|no|na)\s+(?P<modo>tela cheia|fullscreen|full screen|foco|primeiro plano)$",
