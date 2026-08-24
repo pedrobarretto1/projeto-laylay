@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from concurrent.futures import Future
 from types import SimpleNamespace
 
 import pytest
 
 from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
-from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
+from mente_laylay.autonomia.comandos_imediatos import (
+    ComandosImediatosRuntime,
+    texto_pede_resumo_pagina,
+)
 from mente_laylay.autonomia.orquestrador_deterministico import (
     detectar_intencao_deterministica_mente,
 )
@@ -161,6 +165,123 @@ def test_resumo_sem_executor_e_registrado_como_indisponivel() -> None:
     assert registros[0][2] is False
     assert registros[0][3]["status"] == "executor_indisponivel"
     assert falas and "não consigo ler" in falas[0].casefold()
+
+
+@pytest.mark.parametrize("texto", ("Resume isso.", "Resume agora."))
+def test_red_resumo_eliptico_usa_pagina_atual_tipificada(
+    monkeypatch: pytest.MonkeyPatch,
+    texto: str,
+) -> None:
+    estado = SimpleNamespace(mental={
+        "conteudo_atual": {
+            "tipo": "pagina",
+            "titulo": "Documentação oficial do Python",
+            "url": "https://docs.python.org/3/",
+            "status": "visivel",
+            "fonte": "extensao_chrome",
+            "ts": time.time(),
+        },
+    })
+    registros: list[tuple] = []
+    loop = object()
+
+    async def resumir() -> bool:
+        return True
+
+    def agendar(corrotina, loop_recebido):
+        assert loop_recebido is loop
+        futuro: Future[bool] = Future()
+        futuro.set_result(asyncio.run(corrotina))
+        return futuro
+
+    monkeypatch.setattr(
+        "mente_laylay.autonomia.comandos_imediatos.asyncio.run_coroutine_threadsafe",
+        agendar,
+    )
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: {
+            "_estado_compartilhado_runtime": estado,
+            "resumir_pagina_ou_video": resumir,
+            "_registrar_resultado_execucao": (
+                lambda resultado, fala, executou, **kwargs: registros.append(
+                    (resultado, fala, executou, kwargs)
+                )
+            ),
+        },
+        loop_getter=lambda: loop,
+    )
+
+    assert runtime.processar_prioritarios(texto) is True
+    assert registros == [(
+        {"intent": "RESUMIR_PAGINA", "params": {}},
+        texto,
+        True,
+        {
+            "origem": "prioritario_resumo_pagina",
+            "status": "resumo_concluido",
+        },
+    )]
+
+
+@pytest.mark.parametrize(
+    "estado_mental",
+    (
+        {},
+        {"conteudo_atual": "pagina sem contrato tipado"},
+        {
+            "conteudo_atual": {
+                "tipo": "arquivo",
+                "titulo": "anotacoes.txt",
+                "status": "recente",
+                "fonte": "memoria_arquivos",
+                "ts": time.time(),
+            },
+        },
+        {
+            "conteudo_atual": {
+                "tipo": "pagina",
+                "titulo": "Página antiga",
+                "url": "https://example.test/antiga",
+                "status": "visivel",
+                "fonte": "extensao_chrome",
+                "ts": time.time() - 301.0,
+            },
+        },
+    ),
+)
+def test_guard_resumo_eliptico_exige_pagina_tipificada_recente(
+    estado_mental: dict,
+) -> None:
+    assert texto_pede_resumo_pagina(
+        "Resume isso.",
+        estado_mental=estado_mental,
+    ) is False
+
+
+@pytest.mark.parametrize(
+    "texto",
+    (
+        "Não resume isso.",
+        "Você consegue resumir isso?",
+        "Como eu resumo isso?",
+    ),
+)
+def test_guard_pagina_atual_nao_libera_fala_sem_autorizacao(texto: str) -> None:
+    estado = {
+        "conteudo_atual": {
+            "tipo": "pagina",
+            "titulo": "Documentação oficial do Python",
+            "url": "https://docs.python.org/3/",
+            "status": "visivel",
+            "fonte": "extensao_chrome",
+            "ts": time.time(),
+        },
+    }
+
+    assert texto_pede_resumo_pagina(
+        texto,
+        estado_mental=estado,
+    ) is False
 
 
 def test_roteador_nao_confirma_resumo_sem_executor_assincrono() -> None:

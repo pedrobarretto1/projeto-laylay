@@ -7,6 +7,7 @@ import unicodedata
 from typing import Any, Callable, Dict
 
 from mente_laylay.cognicao.referencias_linguagem import (
+    extrair_indice_fechamento_ordinal_aba,
     separar_alvo_e_complemento_foco,
     texto_pede_aba_anterior,
     valor_e_referencia_contextual,
@@ -456,6 +457,22 @@ def preparar_entrada_deterministica(
     }
 
 
+def _texto_pede_faixa_anterior_contextual(texto: str) -> bool:
+    """Distingue referência temporal curta de um título musical real."""
+    t = str(texto or "").strip().strip(" .,!?:;")
+    return bool(re.fullmatch(
+        r"(?:"
+        r"(?:coloca|coloque|toca|toque|bota|bote|poe|põe)"
+        r"(?:\s+(?:na|a|pra|para\s+a))?\s+"
+        r"(?:musica|música|faixa|cancao|canção)\s+de\s+antes"
+        r"|"
+        r"(?:volta|volte|retorna|retorne)\s+(?:para|pra)\s+"
+        r"(?:a\s+)?(?:(?:musica|música|faixa|cancao|canção)\s+)?de\s+antes"
+        r")",
+        t,
+    ))
+
+
 def detectar_volume_ou_midia(
     texto_normalizado: str,
     *,
@@ -560,7 +577,10 @@ def detectar_volume_ou_midia(
         r"(?:a\s+)?anterior|volta\s+(?:para|pra)\s+(?:a\s+)?anterior",
         t.strip(" .,!?:;"),
     ))
-    if anterior_explicita or (anterior_contextual and contexto_musical_ativo):
+    anterior_de_antes = _texto_pede_faixa_anterior_contextual(t)
+    if anterior_explicita or (
+        contexto_musical_ativo and (anterior_contextual or anterior_de_antes)
+    ):
         return {"intent": "MEDIA_CONTROL", "params": params(acao="prev")}
 
     return None
@@ -1155,6 +1175,12 @@ def _detectar_fechar_alvo_base_c1d(
     ):
         return {"intent": "CLOSE_IDLE_TABS", "params": params()}
 
+    # Um ordinal elíptico é uma referência, nunca o nome de um processo. O
+    # orquestrador só o materializa quando a continuidade comprova a sequência
+    # recente de abas abertas; sem essa prova, falhamos fechado.
+    if extrair_indice_fechamento_ordinal_aba(base) is not None:
+        return None
+
     # Artigos longos vêm primeiro e a fronteira impede ``a`` de consumir o
     # começo de ``as``. Antes, "fecha as abas" produzia o alvo ``s abas``.
     m_close = re.search(
@@ -1340,7 +1366,7 @@ def detectar_consulta_abas(
     if re.fullmatch(
         r"(?:(?:me\s+)?(?:diz|diga|fala|fale|mostra|mostre)\s+)?"
         r"(?:qual|que)\s+(?:(?:e|é)\s+)?(?:a\s+)?aba\s+"
-        r"(?:que\s+)?(?:esta|está|ta|tá)\s+aberta|"
+        r"(?:(?:que\s+)?(?:esta|está|ta|tá)|ficou)\s+aberta|"
         r"(?:(?:me\s+)?(?:diz|diga|fala|fale|mostra|mostre)\s+)?"
         r"(?:qual|que)\s+(?:(?:e|é)\s+)?(?:a\s+)?aba\s+ativa|"
         r"(?:qual|que)\s+aba\s+(?:esta|está|ta|tá)\s+em\s+foco",
@@ -1423,6 +1449,12 @@ def detectar_musica_ou_playlist_direta(
     base = str(texto_sem_destino or t).strip()
     bruto = str(texto_bruto or "").strip()
     if not t:
+        return None
+    # Uma referência temporal sem contexto musical não é um título inventado.
+    # Com contexto, o detector de mídia já a transforma em ``prev``; sem ele,
+    # deixamos a conversa pedir contexto. Títulos como "Antes do Amanhecer"
+    # não correspondem a esta forma exata e continuam sendo pesquisáveis.
+    if _texto_pede_faixa_anterior_contextual(t):
         return None
     # "Abre o primeiro resultado" e uma continuacao web, nunca o titulo de
     # uma musica. Sem SEARCH confirmado, deixamos a conversa pedir contexto em

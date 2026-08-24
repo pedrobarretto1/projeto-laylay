@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import pytest
+
 from mente_laylay.integracao.avaliador_roteiro_teste import (
     avaliar_turno_roteiro,
     gravar_relatorios_roteiro,
@@ -65,6 +67,246 @@ def test_pergunta_de_capacidade_nao_pode_executar_efeito():
         respondeu=True,
     )
     assert av["resultado_semantico"] == "falhou"
+
+
+def test_turno_22_continua_sem_contexto_nao_inventa_controle_de_midia():
+    av = avaliar_turno_roteiro(
+        indice=21,
+        comando="continua",
+        resposta="Continua? Em qual conversa?",
+        plano={"fase": "fala_verificada", "comandos": [], "erros": []},
+        respondeu=True,
+        motivo_resultado="execucao_nao_publicada",
+    )
+    comando_indevido = avaliar_turno_roteiro(
+        indice=21,
+        comando="continua",
+        resposta="Mandei retomar.",
+        plano=plano({
+            "intent": "MEDIA_CONTROL",
+            "status": "midia_play",
+            "executou": True,
+            "confirmado": True,
+        }),
+        respondeu=True,
+        motivo_resultado="execucao_confirmada",
+    )
+
+    assert av["resultado_semantico"] == "passou"
+    assert av["expectativa"] == "continua_ambigua_sem_contexto"
+    assert av["intents_observadas"] == []
+    assert av["erros_semanticos"] == []
+    assert comando_indevido["resultado_semantico"] == "falhou"
+    assert "comando_inesperado_em_fala_nao_autorizadora" in (
+        comando_indevido["erros_semanticos"]
+    )
+
+
+def test_mesmo_continua_em_contexto_musical_ainda_exige_media_control():
+    sem_execucao = avaliar_turno_roteiro(
+        indice=170,
+        comando="continua",
+        resposta="Continua?",
+        plano={"fase": "fala_verificada", "comandos": [], "erros": []},
+        respondeu=True,
+        motivo_resultado="execucao_nao_publicada",
+    )
+    executado = avaliar_turno_roteiro(
+        indice=170,
+        comando="continua",
+        resposta="Mandei retomar.",
+        plano=plano({
+            "intent": "MEDIA_CONTROL",
+            "status": "midia_play",
+            "executou": True,
+            "confirmado": True,
+        }),
+        respondeu=True,
+        motivo_resultado="execucao_confirmada",
+    )
+    envio_nativo_honesto = avaliar_turno_roteiro(
+        indice=170,
+        comando="continua",
+        resposta="Pedi pra música continuar.",
+        plano=plano({
+            "intent": "MEDIA_CONTROL",
+            "status": "midia_play",
+            "executou": True,
+            "confirmado": None,
+            "confirmacao_oferecida": "variavel",
+            "evidencia_confirmacao": (
+                "teclas globais confirmam envio, não o estado final da mídia"
+            ),
+        }),
+        respondeu=True,
+        motivo_resultado="resultado_final_sem_observacao_externa",
+    )
+
+    assert sem_execucao["resultado_semantico"] == "falhou"
+    assert any(
+        erro.startswith("intent_incorreta:")
+        for erro in sem_execucao["erros_semanticos"]
+    )
+    assert executado["resultado_semantico"] == "passou"
+    assert envio_nativo_honesto["resultado_semantico"] == "passou"
+    assert envio_nativo_honesto["confirmacoes_indeterminadas"] == 1
+    assert envio_nativo_honesto["alertas_semanticos"] == []
+
+
+def test_turno_171_nao_aceita_none_sem_prova_de_envio_variavel():
+    sem_evidencia = avaliar_turno_roteiro(
+        indice=170,
+        comando="continua",
+        resposta="Pedi pra música continuar.",
+        plano=plano({
+            "intent": "MEDIA_CONTROL",
+            "status": "midia_play",
+            "executou": True,
+            "confirmado": None,
+        }),
+        respondeu=True,
+        motivo_resultado="resultado_final_sem_observacao_externa",
+    )
+
+    assert sem_evidencia["resultado_semantico"] == "alerta"
+    assert "etapas_sem_confirmacao_externa:1" in (
+        sem_evidencia["alertas_semanticos"]
+    )
+
+
+def test_turno_149_exige_midia_e_playlist_sem_permitir_create_file():
+    av = avaliar_turno_roteiro(
+        indice=148,
+        comando=(
+            "Vai para a próxima faixa e adiciona essa também na caos sonora."
+        ),
+        resposta="O arquivo recebeu o trecho novo.",
+        plano=plano(
+            {
+                "intent": "MEDIA_CONTROL",
+                "status": "midia_next",
+                "executou": True,
+                "confirmado": None,
+                "confirmacao_oferecida": "variavel",
+                "evidencia_confirmacao": "tecla global confirma o envio",
+            },
+            {
+                "intent": "CREATE_FILE",
+                "status": "conteudo_acrescentado",
+                "executou": True,
+                "confirmado": True,
+            },
+        ),
+        respondeu=True,
+        motivo_resultado="execucao_confirmada",
+    )
+
+    assert av["resultado_semantico"] == "falhou"
+    assert "intent_ausente:PLAYLIST_ADD" in av["erros_semanticos"]
+    assert "intent_proibida:CREATE_FILE" in av["erros_semanticos"]
+
+
+def test_turno_149_aceita_envio_nativo_honesto_e_playlist_confirmada():
+    av = avaliar_turno_roteiro(
+        indice=148,
+        comando=(
+            "Vai para a próxima faixa e adiciona essa também na caos sonora."
+        ),
+        resposta="Avancei e adicionei a faixa à caos sonora.",
+        plano=plano(
+            {
+                "intent": "MEDIA_CONTROL",
+                "status": "midia_next",
+                "executou": True,
+                "confirmado": None,
+                "confirmacao_oferecida": "variavel",
+                "evidencia_confirmacao": "tecla global confirma o envio",
+            },
+            {
+                "intent": "PLAYLIST_ADD",
+                "status": "playlist_musica_adicionada",
+                "executou": True,
+                "confirmado": True,
+            },
+        ),
+        respondeu=True,
+        motivo_resultado="resultado_final_sem_observacao_externa",
+    )
+
+    assert av["resultado_semantico"] == "passou"
+    assert av["confirmacoes_indeterminadas"] == 1
+    assert av["alertas_semanticos"] == []
+
+
+@pytest.mark.parametrize(
+    ("indice", "comando"),
+    ((122, "Resume isso."), (125, "Resume agora.")),
+)
+def test_turnos_de_resumo_contextual_exigem_resultado_do_navegador(
+    indice,
+    comando,
+):
+    sem_execucao = avaliar_turno_roteiro(
+        indice=indice,
+        comando=comando,
+        resposta="A ideia chegou, só não veio inteira.",
+        plano={"fase": "fala_verificada", "comandos": [], "erros": []},
+        respondeu=True,
+        motivo_resultado="execucao_nao_publicada",
+    )
+    concluido = avaliar_turno_roteiro(
+        indice=indice,
+        comando=comando,
+        resposta="A página explica a documentação oficial do Python.",
+        plano=plano({
+            "intent": "RESUMIR_PAGINA",
+            "status": "resumo_concluido",
+            "executou": True,
+            "confirmado": True,
+        }),
+        respondeu=True,
+        motivo_resultado="execucao_confirmada",
+    )
+
+    assert sem_execucao["resultado_semantico"] == "falhou"
+    assert any(
+        erro.startswith("intent_incorreta:")
+        for erro in sem_execucao["erros_semanticos"]
+    )
+    assert concluido["resultado_semantico"] == "passou"
+    assert concluido["intents_observadas"] == ["RESUMIR_PAGINA"]
+
+
+def test_leitura_nominal_do_turno_68_exige_file_read():
+    sem_execucao = avaliar_turno_roteiro(
+        indice=67,
+        comando="Leia o caos seguro.txt.",
+        resposta="Entendi a ação que você pediu, mas não executei nem confirmei o resultado.",
+        plano={"fase": "fala_verificada", "comandos": [], "erros": []},
+        respondeu=True,
+        motivo_resultado="execucao_nao_publicada",
+    )
+    executado = avaliar_turno_roteiro(
+        indice=67,
+        comando="Leia o caos seguro.txt.",
+        resposta="primeira linha",
+        plano=plano({
+            "intent": "FILE_READ",
+            "status": "arquivo_lido",
+            "executou": True,
+            "confirmado": True,
+        }),
+        respondeu=True,
+        motivo_resultado="execucao_confirmada",
+    )
+
+    assert sem_execucao["resultado_semantico"] == "falhou"
+    assert any(
+        erro.startswith("intent_incorreta:")
+        for erro in sem_execucao["erros_semanticos"]
+    )
+    assert executado["resultado_semantico"] == "passou"
+    assert executado["intents_observadas"] == ["FILE_READ"]
 
 
 def test_confirmado_none_e_latencia_alta_viram_alerta():

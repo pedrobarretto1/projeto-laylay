@@ -487,7 +487,9 @@ def test_sequencia_real_open_url_ifood_fecha_ele_chega_ao_close_tab():
     assert resultado is not None
     assert resultado["intent"] == "CLOSE_TAB"
     assert resultado["params"]["alvo"] == "ifood"
-    assert rota == "contexto-semantica"
+    # A resolução canônica agora nasce no contexto geral tipado. A rota mudou,
+    # mas o contrato importante continua sendo CLOSE_TAB sobre o site exato.
+    assert rota == "contexto-geral"
 
 
 def test_fecha_ele_preserva_distincao_entre_app_e_aba():

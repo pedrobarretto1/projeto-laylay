@@ -576,18 +576,37 @@ class MenteUnicaTests(unittest.TestCase):
         self.assertEqual(rota, "deterministico-explicito")
 
     def test_apaga_ela_prioriza_arquivo_recente_sobre_iot(self) -> None:
+        mental = registrar_resultado_execucao(
+            estado_mental_inicial(),
+            ResultadoAcao(
+                intent="CREATE_FOLDER",
+                status="criado",
+                alvo="teste",
+                params={"nome": "teste", "tipo": "pasta"},
+                executou=True,
+                confirmado=True,
+                origem="executor",
+            ),
+            "cria a pasta teste",
+            True,
+            origem="executor",
+            status="criado",
+        )
+
         class EstadoFake:
-            mental = {"ultima_habilidade": "arquivos", "ultima_intencao": "CREATE_FOLDER"}
+            pass
 
             def substituir(self, dominio, estado):
                 self.mental = estado
 
+        estado = EstadoFake()
+        estado.mental = mental
         runtime = ContextoImediatoRuntime(
             namespace_getter=lambda: {
                 "_normalizar_texto_com_apelidos": lambda texto: texto.lower(),
                 "_estrutura_arquivo_recente": lambda *_: {"nome": "teste"},
             },
-            estado_runtime_getter=lambda: EstadoFake(),
+            estado_runtime_getter=lambda: estado,
         )
         runtime.resolver_arquivo = lambda *_: {
             "intent": "DELETE_ITEM",
@@ -1914,8 +1933,8 @@ class MenteUnicaTests(unittest.TestCase):
         self.assertEqual(turno["modalidade_geral"], "misto")
         self.assertEqual(turno["ato_principal"], "comando")
         self.assertEqual(turno["atos"], ["conversa", "comando"])
-        self.assertEqual(turno["texto_conversacional"], "to cansado")
-        self.assertEqual(turno["texto_operacional"], "coloca uma musica calma")
+        self.assertEqual(turno["texto_conversacional"], "tô cansado")
+        self.assertEqual(turno["texto_operacional"], "coloca uma música calma")
 
     def test_resposta_de_acao_reconhece_contexto_humano_do_turno_misto(self) -> None:
         plano = planejar_resposta_acao(ResultadoAcao(
@@ -2392,7 +2411,10 @@ class MenteUnicaTests(unittest.TestCase):
             ),
         ])
         self.assertIsNone(resultado["decisao"])
-        self.assertIn("nao autoriza", resultado["rejeitados"][0]["motivo"])
+        self.assertIn(
+            "veto operacional soberano",
+            resultado["rejeitados"][0]["motivo"],
+        )
 
     def test_ciclo_de_vida_expira_contexto_efemero_sem_apagar_aprendizado(self) -> None:
         from mente_laylay.memoria_mental.ciclo_vida_contexto import aplicar_ciclo_vida_contexto

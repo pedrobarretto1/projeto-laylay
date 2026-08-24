@@ -807,6 +807,30 @@ def detectar_intencao_arquivos(
             ),
         }
 
+    # Existência é uma consulta sobre o mesmo objeto tipado, não uma nova
+    # busca por nome. O caminho publicado permite ao executor confirmar no
+    # disco exatamente aquele arquivo, sem inferir outro alvo por proximidade.
+    pergunta_existencia_arquivo = bool(re.fullmatch(
+        r"(?:(?:o|esse|este)\s+arquivo|ele|isso)\s+"
+        r"(?:ainda\s+)?(?:existe|esta\s+ai|está\s+aí)",
+        texto_confirmacao,
+    ))
+    if pergunta_existencia_arquivo and arquivo_recente_caminho:
+        return {
+            "intent": "FILE_SEARCH",
+            "params": params(
+                query=(
+                    arquivo_recente_nome
+                    or os.path.basename(arquivo_recente_caminho)
+                ),
+                referencia_caminho=arquivo_recente_caminho,
+                alvo=(
+                    arquivo_recente_nome
+                    or os.path.basename(arquivo_recente_caminho)
+                ),
+            ),
+        }
+
     leitura_referenciada = re.fullmatch(
         r"(?:leia|ler|l[eê]|mostra|mostre|diz|fale)\s+"
         r"(?:(?:o\s+)?conte[uú]do\s+(?:(?:de|do|da)\s+)?)?"
@@ -824,6 +848,34 @@ def detectar_intencao_arquivos(
                 referencia_contextual=True,
             ),
         }
+
+    # Leitura por nome só reutiliza o caminho concreto já publicado quando o
+    # basename falado é equivalente. Assim, "Leia o caos seguro.txt" resolve
+    # o arquivo recém-criado/restaurado sem permitir que outro nome sequestre
+    # o mesmo caminho por mera proximidade contextual.
+    leitura_nomeada = re.fullmatch(
+        r"(?:leia|ler|l[eê])\s+"
+        r"(?:(?:o\s+)?conte[uú]do\s+(?:(?:de|do|da)\s+)?)?"
+        r"(?:(?:o|a)\s+)?(?:(?:arquivo|documento)\s+)?(?P<nome>.+)",
+        texto_confirmacao,
+    )
+    if arquivo_recente_caminho and leitura_nomeada:
+        nome_declarado = limpar_nome_arquivo_natural(
+            str(leitura_nomeada.group("nome") or "")
+        )
+        nome_recente = str(
+            arquivo_recente_nome
+            or os.path.basename(arquivo_recente_caminho)
+        ).strip()
+        if _nomes_arquivo_equivalentes(nome_declarado, nome_recente):
+            return {
+                "intent": "FILE_READ",
+                "params": params(
+                    caminho=arquivo_recente_caminho,
+                    alvo=os.path.basename(arquivo_recente_caminho) or nome_recente,
+                    referencia_contextual=True,
+                ),
+            }
 
     # Consulta nomeada em ordem natural: "Onde o relatorio.txt fica?". A
     # gramática anterior só reconhecia "Onde fica o arquivo..." ou pronomes,
@@ -1041,6 +1093,69 @@ def detectar_intencao_arquivos(
                     conteudo=conteudo,
                     editar_existente=True,
                     **({"modo_escrita": modo_escrita} if modo_escrita == "append" else {}),
+                ),
+            }
+
+    # Depois que a mente publicou um único arquivo concreto, a etapa seguinte
+    # pode omitir o alvo: "Acrescente segunda linha.". A elipse não consulta
+    # ``ultimo_alvo`` nem promove pastas; depende exclusivamente da estrutura
+    # tipada consumida por ``_arquivo_recente``.
+    escrita_eliptica = re.fullmatch(
+        r"(?P<verbo>escreve|escreva|grava|grave|adiciona|adicione|"
+        r"acrescenta|acrescente)\s+(?P<conteudo>.+)",
+        t.rstrip(" .,!?:;"),
+        flags=re.IGNORECASE,
+    )
+    if arquivo_recente_caminho and escrita_eliptica:
+        conteudo_bruto = str(escrita_eliptica.group("conteudo") or "")
+        verbo = str(escrita_eliptica.group("verbo") or "").casefold()
+        tem_moldura_alvo = bool(re.search(
+            r"\b(?:nele|nela|nesse\s+arquivo|neste\s+arquivo|"
+            r"dentro\s+(?:dele|dela|(?:do|da)\s+(?:arquivo|documento))|"
+            r"(?:no|na|ao)\s+(?:arquivo|documento))\b",
+            conteudo_bruto,
+            flags=re.IGNORECASE,
+        ))
+        tem_destino_musical = bool(
+            verbo in {"adiciona", "adicione", "acrescenta", "acrescente"}
+            and (
+                re.search(
+                    r"\b(?:na|nessa|nesta|a|à)\s+playlist\b",
+                    conteudo_bruto,
+                    flags=re.IGNORECASE,
+                )
+                or re.fullmatch(
+                    r"(?:essa|esta|isso)(?:\s+(?:musica|música|faixa))?\s+"
+                    r"(?:tambem|também)\s+(?:na|nessa|nesta)\s+.+",
+                    conteudo_bruto.strip(" .,!?:;"),
+                    flags=re.IGNORECASE,
+                )
+            )
+        )
+        conteudo = _remover_aspas_pareadas(conteudo_bruto)
+        if verbo in {"adiciona", "adicione", "acrescenta", "acrescente"}:
+            conteudo = re.sub(
+                r"^(?:a\s+)?(?:frase|linha|texto|trecho)\s+",
+                "",
+                conteudo,
+                count=1,
+                flags=re.IGNORECASE,
+            ).strip()
+        if conteudo and not tem_moldura_alvo and not tem_destino_musical:
+            modo_escrita = "append" if verbo in {
+                "adiciona", "adicione", "acrescenta", "acrescente",
+            } else "overwrite"
+            return {
+                "intent": "CREATE_FILE",
+                "params": params(
+                    alvo=arquivo_recente_caminho,
+                    conteudo=conteudo,
+                    editar_existente=True,
+                    **(
+                        {"modo_escrita": modo_escrita}
+                        if modo_escrita == "append"
+                        else {}
+                    ),
                 ),
             }
 

@@ -298,7 +298,15 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
             timeout_controle = (
                 12.0
                 if command in {"play", "pause_play"}
-                else (5.0 if command in {"pause", "queue_select"} else 3.0)
+                else (
+                    5.0
+                    if command in {"pause", "queue_select"}
+                    else (
+                        12.0
+                        if command == "prev"
+                        else (6.0 if command == "next" else 3.0)
+                    )
+                )
             )
             sucesso = bool(executar_confirmado(msg, timeout_s=timeout_controle))
         else:

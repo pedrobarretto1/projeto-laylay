@@ -470,7 +470,7 @@ def test_close_app_local_preserva_mapeamento_e_confirmacao() -> None:
         {
             "APPS_MAP": {"discord": "Discord.exe"},
             "_resolver_alvo_ambiente": lambda _nome: {"programa_aberto": True},
-            "fechar_programa": fechados.append,
+            "fechar_programa": lambda nome: fechados.append(nome) or True,
         },
         _dependencias(eventos),
     )
@@ -587,7 +587,7 @@ def test_roteador_principal_delega_close_app_e_confirma_releitura() -> None:
             "_resolver_alvo_ambiente": lambda _nome: {
                 "programa_aberto": estado["aberto"],
             },
-            "fechar_programa": lambda _nome: estado.update(aberto=False),
+            "fechar_programa": lambda _nome: estado.update(aberto=False) or True,
             "_registrar_resultado_execucao": lambda contrato, *_args, **_kwargs: resultados.append(
                 contrato
             ),

@@ -201,6 +201,21 @@ def test_guard__pasta_recente_nao_pode_ser_promovida_a_arquivo_por_elipse(
     assert _detectar("Acrescente segunda linha.", estado) is None
 
 
+def test_guard__alvo_nomeado_diferente_nao_vira_conteudo_eliptico(
+    tmp_path,
+) -> None:
+    caminho = str(tmp_path / "caos seguro.txt")
+    resultado = _detectar(
+        "Acrescente segunda linha no arquivo outro.txt.",
+        _estado_arquivo(caminho),
+    )
+    assert not (
+        isinstance(resultado, dict)
+        and resultado.get("intent") == "CREATE_FILE"
+        and str((resultado.get("params") or {}).get("alvo") or "") == caminho
+    )
+
+
 def test_guard__consulta_de_caminho_ja_reusa_arquivo_tipado(
     tmp_path,
 ) -> None:
@@ -331,6 +346,31 @@ def test_red__runtime_append_nao_chega_a_mutacao_com_turno_nao_autorizado(
     assert executados
     assert executados[-1]["intent"] == "CREATE_FILE"
     assert turno["autoriza_execucao"] is True
+
+
+def test_red__turno_69_append_eliptico_chega_a_execucao_autorizada(
+    tmp_path,
+) -> None:
+    caminho = str(tmp_path / "caos seguro.txt")
+    texto = "Acrescente segunda linha."
+    runtime, turno, executados, _registros = _runtime_arquivo(
+        texto,
+        _estado_arquivo(caminho),
+    )
+
+    assert runtime.processar_prioritarios(texto) is True
+    assert turno["autoriza_execucao"] is True
+    assert executados == [
+        {
+            "intent": "CREATE_FILE",
+            "params": {
+                "alvo": caminho,
+                "conteudo": "segunda linha",
+                "editar_existente": True,
+                "modo_escrita": "append",
+            },
+        }
+    ]
 
 
 # ---------------------------------------------------------------------------

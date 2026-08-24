@@ -85,6 +85,7 @@ def executar_media_control(
     ajustar_volume = _get(ctx, "ajustar_volume_sistema")
     _enviar_pc_b = _get(ctx, "_enviar_pc_b")
     executar_controle_midia_nativo = _get(ctx, "_executar_controle_midia_nativo")
+    musica_estado_get = _get(ctx, "_musica_estado_get")
     musica_estado_set = _get(ctx, "_musica_estado_set")
 
     acao = str(params.get("acao") or params.get("command") or "").strip().lower()
@@ -390,8 +391,35 @@ def executar_media_control(
         marcar_resultado("midia_prev_playlist" if ok else "falha_execucao", ok)
         return bool(ok)
 
+    url_antes_troca = ""
+    if cmd in {"next", "prev"}:
+        if callable(musica_estado_get):
+            try:
+                url_antes_troca = str(
+                    musica_estado_get("musica_atual_url", "") or ""
+                ).strip()
+            except Exception:
+                url_antes_troca = ""
+        if not url_antes_troca and musica_operacoes is not None:
+            try:
+                faixa_antes = dict(musica_operacoes.faixa_atual() or {})
+                url_antes_troca = str(faixa_antes.get("url") or "").strip()
+            except Exception:
+                url_antes_troca = ""
+
     ok_execucao = _executar_cmd_midia(cmd)
     _log_midia("RESULTADO", f"cmd={cmd} ok_envio={ok_execucao}")
+    if (
+        ok_execucao
+        and callable(musica_estado_set)
+        and cmd in {"next", "prev"}
+    ):
+        # A confirmação do controle prova que o player aceitou ``next`` ou
+        # ``prev``; ela não prova que a identidade da nova faixa já chegou.
+        # Guardamos a origem para que uma etapa dependente só aceite uma URL
+        # diferente, mesmo quando o evento do player corre em paralelo.
+        musica_estado_set("musica_troca_origem_url", url_antes_troca)
+        musica_estado_set("musica_atual_status", "troca_nao_confirmada")
     if (
         ok_execucao
         and confirmado_execucao is True

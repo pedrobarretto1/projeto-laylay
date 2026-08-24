@@ -214,6 +214,15 @@ class CaixaEntradaPessoalRuntime:
                 return "confirmar"
             if decisao is False:
                 return "cancelar"
+        # Um basename explícito mantém o domínio de arquivos mesmo quando o
+        # nome contém vocabulário da caixa ("nota.txt", "minha tarefa.txt",
+        # "troca ideia.txt"). A palavra interna não é referência a uma nota
+        # pessoal; o sufixo prova que ela pertence ao nome literal do arquivo.
+        if (
+            re.search(r"\b(?:apaga|apague|exclui|exclua|remove|remova)\b", t)
+            and re.search(r"(?<!\w)[^\s/\\]+(?:\s+[^\s/\\]+)*\.[a-z0-9]{1,16}\b", t)
+        ):
+            return ""
         if re.search(r"\b(?:transforma|transforme|converte|converta)\b", t) and re.search(
             r"\b(?:nota|ideia|tarefa|isso|ela)\b", t
         ) and "lembrete" in t:

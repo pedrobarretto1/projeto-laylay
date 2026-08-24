@@ -11,7 +11,7 @@ import re
 import unicodedata
 from typing import Any, Mapping, Sequence
 
-VERSAO_AVALIADOR = 3
+VERSAO_AVALIADOR = 9
 LIMITE_ALERTA_LATENCIA_S = 15.0
 
 DOMINIOS_EXTERNOS = frozenset({"browser", "musica", "iot", "visao", "clima"})
@@ -81,6 +81,71 @@ EXPECTATIVAS_CRITICAS = {
     },
 }
 
+# Alguns textos do roteiro dependem da posição para ter um contrato inequívoco:
+# ``continua`` muda com o contexto musical, os resumos curtos dependem da página
+# já aberta e a próxima faixa composta preserva duas etapas. O índice é
+# zero-based, como no checkpoint do roteiro.
+EXPECTATIVAS_CRITICAS_POR_TURNO = {
+    (21, "continua"): {
+        "sem_comando": True,
+        "dominio": "seguranca",
+        "nome": "continua_ambigua_sem_contexto",
+    },
+    (116, "qual aba ficou aberta?"): {
+        "intents_any": ("LIST_TABS",),
+        "statuses_any": ("aba_ativa_consultada",),
+        "confirmado": True,
+        "fala_any": ("prime video",),
+        "dominio": "browser",
+        "nome": "aba_sobrevivente_apos_fechamento_ordinal",
+    },
+    (122, "resume isso."): {
+        "intents_any": ("RESUMIR_PAGINA",),
+        "statuses_any": ("resumo_concluido",),
+        "confirmado": True,
+        "dominio": "browser",
+        "nome": "resumo_contextual_da_pagina_aberta",
+    },
+    (125, "resume agora."): {
+        "intents_any": ("RESUMIR_PAGINA",),
+        "statuses_any": ("resumo_concluido",),
+        "confirmado": True,
+        "dominio": "browser",
+        "nome": "resumo_da_pagina_atual_apos_navegacao",
+    },
+    (
+        148,
+        "vai para a proxima faixa e adiciona essa tambem na caos sonora.",
+    ): {
+        "intents_all": ("MEDIA_CONTROL", "PLAYLIST_ADD"),
+        "intents_forbidden": ("CREATE_FILE",),
+        "aceita_confirmacao_indeterminada": True,
+        "intents_confirmacao_indeterminada": ("MEDIA_CONTROL",),
+        "statuses_confirmacao_indeterminada": ("midia_next",),
+        "dominio": "musica",
+        "nome": "proxima_faixa_e_adicao_playlist",
+    },
+    (170, "continua"): {
+        "intents_any": ("MEDIA_CONTROL",),
+        "statuses_any": ("midia_play",),
+        "aceita_confirmacao_indeterminada": True,
+        "dominio": "musica",
+        "nome": "continua_em_contexto_musical",
+    },
+    (
+        226,
+        "eu quero que voce abra a microsoft store, coloque ela na direita, "
+        "confira se ficou aberta e so entao me diga o resultado",
+    ): {
+        "intents_all": ("APP_OPEN", "ORGANIZAR_DESKTOP", "LIST_WINDOWS"),
+        "statuses_all": ("layout_confirmado", "estado_app_consultado"),
+        "confirmado": True,
+        "fala_any": ("abert",),
+        "dominio": "apps",
+        "nome": "abrir_posicionar_e_confirmar_microsoft_store",
+    },
+}
+
 
 def _sem_acentos(texto: Any) -> str:
     bruto = str(texto or "").casefold()
@@ -102,8 +167,15 @@ def _comandos(plano: Mapping[str, Any] | None) -> list[dict[str, Any]]:
     ]
 
 
-def _expectativa_automatica(comando: str) -> dict[str, Any]:
+def _expectativa_automatica(
+    comando: str,
+    *,
+    indice: int | None = None,
+) -> dict[str, Any]:
     t = _norm(comando)
+    expectativa_turno = EXPECTATIVAS_CRITICAS_POR_TURNO.get((indice, t))
+    if expectativa_turno:
+        return dict(expectativa_turno)
     if t in EXPECTATIVAS_CRITICAS:
         return dict(EXPECTATIVAS_CRITICAS[t])
 
@@ -120,7 +192,12 @@ def _expectativa_automatica(comando: str) -> dict[str, Any]:
 
     regras = [
         (r"\bcria (?:um )?arquivo\b", ("CREATE_FILE",), "arquivos"),
-        (r"^(?:leia|le)\b.*\b(?:conteudo|arquivo|dele|desse)\b", ("FILE_READ",), "arquivos"),
+        (
+            r"^(?:leia|le)\b(?:.*\b(?:conteudo|arquivo|dele|desse)\b|"
+            r".*\.[a-z0-9][a-z0-9_-]{0,15}[.!?]*$)",
+            ("FILE_READ",),
+            "arquivos",
+        ),
         (r"^acrescente\b", ("CREATE_FILE",), "arquivos"),
         (r"^onde\b.*\barquivo\b", ("FILE_SEARCH",), "arquivos"),
         (r"^abre\b.*\barquivo\b|^abre o auditoria\b", ("FILE_OPEN_RESULT",), "arquivos"),
@@ -139,7 +216,7 @@ def _expectativa_automatica(comando: str) -> dict[str, Any]:
         (r"^pesquisa por\b", ("SEARCH",), "browser"),
         (r"^volta para a aba anterior\b", ("SWITCH_PREVIOUS_TAB",), "browser"),
         (r"^encontra o arquivo\b", ("FILE_SEARCH",), "arquivos"),
-        (r"^pausa a musica\b|^continua[.!?]*$", ("MEDIA_CONTROL",), "musica"),
+        (r"^pausa a musica\b", ("MEDIA_CONTROL",), "musica"),
         (r"^vai para a proxima faixa\b|^volta para a faixa anterior\b", ("MEDIA_CONTROL",), "musica"),
         (r"^coloca essa musica na playlist\b", ("PLAYLIST_ADD",), "musica"),
         (r"^apaga a playlist\b", ("PLAYLIST_DELETE",), "musica"),
@@ -211,7 +288,7 @@ def avaliar_turno_roteiro(
     comandos = _comandos(retrato)
     intents = [str(x.get("intent") or "").upper() for x in comandos]
     statuses = [str(x.get("status") or "") for x in comandos]
-    expectativa = _expectativa_automatica(comando)
+    expectativa = _expectativa_automatica(comando, indice=indice)
     erros, alertas, checagens = [], [], []
 
     if not respondeu or not str(resposta or "").strip():
@@ -220,7 +297,18 @@ def avaliar_turno_roteiro(
         alertas.append("plano_ausente")
     if retrato.get("erros"):
         erros.append("plano_publicou_erros")
-    if motivo_resultado in {"execucao_nao_publicada", "contrato_operacional_incompleto"}:
+    sem_execucao_esperada = bool(
+        expectativa.get("sem_comando")
+        and not comandos
+    )
+    if (
+        motivo_resultado
+        in {"execucao_nao_publicada", "contrato_operacional_incompleto"}
+        and not (
+            motivo_resultado == "execucao_nao_publicada"
+            and sem_execucao_esperada
+        )
+    ):
         erros.append(motivo_resultado)
 
     semantica_avaliada = bool(expectativa)
@@ -236,6 +324,14 @@ def avaliar_turno_roteiro(
             erros.append("intent_incorreta:esperado=" + "|".join(sorted(esperadas))
                           + ";observado=" + "|".join(intents or ["SEM_INTENT"]))
 
+    obrigatorias = {
+        str(x).upper() for x in expectativa.get("intents_all") or ()
+    }
+    if obrigatorias:
+        checagens.append("intents_obrigatorias")
+        for ausente in sorted(obrigatorias.difference(intents)):
+            erros.append(f"intent_ausente:{ausente}")
+
     proibidas = {str(x).upper() for x in expectativa.get("intents_forbidden") or ()}
     violacoes = [x for x in intents if x in proibidas]
     if violacoes:
@@ -247,6 +343,15 @@ def avaliar_turno_roteiro(
         if not status_esperados.intersection(str(x).casefold() for x in statuses):
             erros.append("status_incorreto:esperado=" + "|".join(sorted(status_esperados))
                           + ";observado=" + "|".join(statuses or ["SEM_STATUS"]))
+
+    status_obrigatorios = {
+        str(x).casefold() for x in expectativa.get("statuses_all") or ()
+    }
+    if status_obrigatorios:
+        checagens.append("statuses_obrigatorios")
+        observados = {str(x).casefold() for x in statuses}
+        for ausente in sorted(status_obrigatorios.difference(observados)):
+            erros.append(f"status_ausente:{ausente}")
 
     if "confirmado" in expectativa and comandos:
         checagens.append("confirmacao_esperada")
@@ -276,8 +381,41 @@ def avaliar_turno_roteiro(
         erros.append("efeito_colateral_em_fala_nao_autorizadora:" + "|".join(mutacoes))
 
     dominio = _dominio(comandos, expectativa)
-    confirm_none = sum(1 for x in comandos if x.get("confirmado") is None)
-    if confirm_none:
+    comandos_indeterminados = [
+        x for x in comandos if x.get("confirmado") is None
+    ]
+    confirm_none = len(comandos_indeterminados)
+    intents_indeterminadas = {
+        str(x).upper()
+        for x in expectativa.get("intents_confirmacao_indeterminada")
+        or esperadas
+    }
+    statuses_indeterminados = {
+        str(x).casefold()
+        for x in expectativa.get("statuses_confirmacao_indeterminada")
+        or status_esperados
+    }
+    indeterminacao_aceita = bool(
+        expectativa.get("aceita_confirmacao_indeterminada")
+        and comandos_indeterminados
+        and intents_indeterminadas
+        and statuses_indeterminados
+        and all(
+            item.get("executou") is True
+            and str(item.get("intent") or "").upper()
+            in intents_indeterminadas
+            and str(item.get("status") or "").casefold()
+            in statuses_indeterminados
+            and str(
+                item.get("confirmacao_oferecida") or ""
+            ).casefold() == "variavel"
+            and bool(str(item.get("evidencia_confirmacao") or "").strip())
+            for item in comandos_indeterminados
+        )
+    )
+    if indeterminacao_aceita:
+        checagens.append("envio_sem_observacao_externa_esperado")
+    elif confirm_none:
         alertas.append(f"etapas_sem_confirmacao_externa:{confirm_none}")
 
     duracao = None

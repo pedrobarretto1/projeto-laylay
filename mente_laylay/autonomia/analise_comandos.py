@@ -16,8 +16,8 @@ LIMITE_ETAPAS_CADEIA = 5
 _INICIO_ETAPA_OPERACIONAL = re.compile(
     r"^(?:"
     r"abr(?:e|a)|fech(?:a|e)|maximiz(?:a|e)|minimiz(?:a|e)|"
-    r"cri(?:a|e)|coloc(?:a|que)|bot(?:a|e)|toc(?:a|que)|"
-    r"deix(?:a|e)|pass(?:a|e)|volt(?:a|e)|confirm(?:a|e)|consult(?:a|e)|"
+    r"cri(?:a|e)|colo(?:ca|que)|bot(?:a|e)|toc(?:a|que)|"
+    r"deix(?:a|e)|pass(?:a|e)|volt(?:a|e)|confirm(?:a|e)|confir(?:a|e)|consult(?:a|e)|"
     r"adicion(?:a|e)|salv(?:a|e)|guard(?:a|e)|anot(?:a|e)|"
     r"apag(?:a|ue)|exclu(?:i|a)|delet(?:a|e)|remov(?:e|a)|"
     r"encontr(?:a|e)|procur(?:a|e)|pesquis(?:a|e)|busc(?:a|que)|"
@@ -79,6 +79,13 @@ def segmentar_comandos_em_cadeia(
         r"\b(laylay|lay|por favor|pfv)\b", " ", bruto,
         flags=re.IGNORECASE,
     )
+    bruto_operacional = re.sub(
+        r"^(?:eu\s+)?(?:quero|gostaria)\s+que\s+(?:voce|você)\s+",
+        "",
+        bruto_operacional,
+        count=1,
+        flags=re.IGNORECASE,
+    )
     bruto_operacional = re.sub(r"\s+", " ", bruto_operacional).strip()
     normalizar = normalizar_texto if callable(normalizar_texto) else str.lower
 
@@ -97,6 +104,19 @@ def segmentar_comandos_em_cadeia(
         direita = bruto_operacional[encontrado.end():].strip(" .,!?;:")
         if not esquerda or not direita:
             continue
+        # ``só então me diga o resultado`` conclui a verificação anterior;
+        # não representa um quarto efeito operacional independente. Mantemos
+        # a cláusula junto da consulta que precisa produzir esse resultado.
+        if (
+            re.fullmatch(r"ent[aã]o", encontrado.group(0), flags=re.IGNORECASE)
+            and re.search(r"\bs[oó]\s*$", esquerda, flags=re.IGNORECASE)
+            and re.match(
+                r"(?:me\s+)?(?:diz|diga|fala|fale)\s+(?:o\s+)?resultado\b",
+                direita,
+                flags=re.IGNORECASE,
+            )
+        ):
+            continue
         if not _parece_etapa_operacional(normalizar_etapa(esquerda)):
             continue
         if not _parece_etapa_operacional(normalizar_etapa(direita)):
@@ -112,7 +132,12 @@ def segmentar_comandos_em_cadeia(
         inicio = encontrado.end()
 
     if partes:
-        final = bruto_operacional[inicio:].strip(" .,!?;:")
+        final = bruto_operacional[inicio:].strip(" ,!?;:")
+        # Em uma etapa comum, o ponto final é apenas pontuação da ordem. Quando
+        # há um nome com extensão, porém, a fala original precisa permanecer
+        # intacta para não confundir ``resultado.md`` com texto sem extensão.
+        if not re.search(r"\.[a-z0-9][a-z0-9_-]{0,15}\b", final, re.IGNORECASE):
+            final = final.rstrip(".")
         if final and _parece_etapa_operacional(normalizar_etapa(final)):
             partes.append(final)
             if 2 <= len(partes) <= LIMITE_ETAPAS_CADEIA:

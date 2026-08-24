@@ -49,6 +49,7 @@ from mente_laylay.cognicao.referencias_linguagem import (
 )
 from mente_laylay.cognicao.modalidade_turno import analisar_protecao_operacional
 from mente_laylay.memoria_mental.continuidade_geral import (
+    resolver_fechamento_ordinal_aberturas_recentes,
     resolver_continuacao_aditiva,
     selecionar_referente_saliente,
 )
@@ -142,6 +143,19 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         or (mente_previa or {}).get("ultima_intencao")
         or ""
     ).upper() if isinstance(mente_previa, Mapping) else ""
+    # O player pode estar fora de uma playlist própria. Nesse cenário, o
+    # callback legado de contexto musical retorna falso mesmo após um controle
+    # real de mídia. O recibo operacional recente é a prova tipada de que
+    # referências como "a música de antes" continuam pertencendo ao player.
+    contexto_musical_por_recibo = ultimo_intent_previo in {
+        "MEDIA_CONTROL",
+        "MUSIC_SEARCH",
+        "MUSIC_STATUS",
+        "PLAYLIST_PLAY",
+        "TOCAR_PLAYLIST",
+        "TOCAR_PLAYLIST_SHUFFLE",
+        "LAYLAY_PLAYLIST_PLAY",
+    }
     texto_previo = str(texto or "").casefold()
     if ultimo_intent_previo == "VOLUME" and re.search(
         r"\b(?:aumenta|sobe|coloca|deixa|abaixa|diminui)?\b.*\b(?:maximo|máximo|minimo|mínimo)\b|\bno\s+talo\b",
@@ -288,7 +302,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         params_cb=lambda **kwargs: kwargs,
         contexto_musical_ativo=bool(
             _call(ctx, "contexto_musical_ativo", default=False)
-        ),
+        ) or contexto_musical_por_recibo,
         contexto_volume_ativo=ultimo_intent_previo == "VOLUME",
     )
     if isinstance(candidato_midia_previo, dict):
@@ -326,6 +340,16 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     )
     if continuacao_resultado_web:
         return continuacao_resultado_web
+
+    # ``Fecha a primeira`` seleciona a primeira das aberturas consecutivas
+    # confirmadas no diálogo, não a primeira aba arbitrária na ordem visual do
+    # navegador. Sem histórico causal suficiente, nenhuma ação é inventada.
+    fechamento_ordinal = resolver_fechamento_ordinal_aberturas_recentes(
+        dict(mente_previa or {}) if isinstance(mente_previa, Mapping) else {},
+        texto=texto_normalizado_previo,
+    )
+    if fechamento_ordinal:
+        return fechamento_ordinal
 
     # O roteador de arquivos possui marcadores locais mais específicos. Ele
     # precisa ter a primeira palavra em frases como ``pesquisa o arquivo X``;
@@ -526,7 +550,10 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         lambda: detectar_volume_ou_midia(
             t,
             params_cb=params,
-            contexto_musical_ativo=bool(_call(ctx, "contexto_musical_ativo", default=False)),
+            contexto_musical_ativo=(
+                bool(_call(ctx, "contexto_musical_ativo", default=False))
+                or contexto_musical_por_recibo
+            ),
             contexto_volume_ativo=ultimo_intent == "VOLUME",
         ),
         lambda: detectar_playlist_laylay(

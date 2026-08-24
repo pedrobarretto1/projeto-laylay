@@ -20,9 +20,13 @@ from mente_laylay.autonomia.roteador_intencao import (
     executar_intencao as executar_intencao_canonica,
 )
 from mente_laylay.cognicao.retrato_turno import construir_retrato_turno
+from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.memoria_mental.contexto_compartilhado import (
     estado_mental_inicial,
     registrar_resultado_execucao,
+)
+from mente_laylay.memoria_mental.continuidade_contexto import (
+    registrar_estrutura_arquivo_recente,
 )
 from mente_laylay.memoria_mental.contexto_imediato import (
     referencia_contextual_imediata,
@@ -272,16 +276,18 @@ def test_turno_120_fecha_arquivo_tipado_mesmo_sem_confirmar_foco() -> None:
 
 
 def test_retrato_nao_promove_openwith_sem_titulo_a_referente() -> None:
+    estado = registrar_estrutura_arquivo_recente(
+        {},
+        {
+            "tipo": "arquivo",
+            "caminho": r"C:\Users\pbarr\Downloads\teste natural.txt",
+            "arquivo_nome": "teste natural.txt",
+        },
+    )
     retrato, _estado = construir_retrato_turno(
         "Fecha ele.",
         turno={"modalidade": "comando"},
-        mente={
-            "ultima_estrutura_arquivo_params": {
-                "tipo": "arquivo",
-                "caminho": r"C:\Users\pbarr\Downloads\teste natural.txt",
-                "arquivo_nome": "teste natural.txt",
-            },
-        },
+        mente=estado,
         contexto_perceptivo={"exe": "OpenWith.exe", "title": ""},
         agora=time.time(),
     )
@@ -315,12 +321,7 @@ def test_composicao_abre_app_e_posiciona_referencia_viva_com_evidencia(
         @staticmethod
         def montar():
             return {
-                "turno_atual": {
-                    "id": f"turno-{app}",
-                    "modalidade": "comando",
-                    "modalidade_geral": "comando",
-                    "autoriza_execucao": True,
-                },
+                "turno_atual": classificar_modalidade_turno(frase),
                 # Um retrato antigo não pode vencer o resultado real da etapa 1.
                 "retrato_turno_atual": {
                     "referencia_resolvida": {
@@ -328,6 +329,7 @@ def test_composicao_abre_app_e_posiciona_referencia_viva_com_evidencia(
                         "nome": "YouTube - Opera",
                     },
                 },
+                "mente_integrada_estado": estado,
                 "continuidade_geral": {},
             }
 

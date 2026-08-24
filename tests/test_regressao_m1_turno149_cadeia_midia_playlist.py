@@ -12,11 +12,20 @@ Escopo:
 """
 
 from mente_laylay.autonomia.analise_comandos import segmentar_comandos_em_cadeia
+from mente_laylay.autonomia.coordenador_intencao import CicloComandosRuntime
 from mente_laylay.autonomia.detectores_playlist import (
     detectar_playlist_contextual_musica_atual,
 )
 from mente_laylay.autonomia.roteador_deterministico import detectar_volume_ou_midia
+from mente_laylay.autonomia.roteador_intencao import executar_intencao
+from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
 from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+from mente_laylay.memoria_mental.continuidade_contexto import (
+    registrar_estrutura_arquivo_recente,
+)
+from mente_laylay.memoria_mental.operacoes_musicais_runtime import (
+    OperacoesMusicaisRuntime,
+)
 
 
 FALA_M1 = "Vai para a próxima faixa e adiciona essa também na caos sonora."
@@ -61,7 +70,7 @@ def test_m1_red_04_adiciona_essa_tambem_reusa_playlist_recente_nomeada():
         "adiciona essa também na caos sonora",
         params_cb=_params,
         limpar_nome_playlist=_limpar_nome,
-        ultima_playlist="caos sonora",
+        ultima_playlist="",
     )
     assert isinstance(resultado, dict), resultado
     assert resultado["intent"] == "PLAYLIST_ADD", resultado
@@ -92,6 +101,27 @@ def test_m1_red_05_fala_real_produz_duas_intencoes_na_ordem():
     assert primeira["params"]["acao"] == "next", primeira
     assert segunda and segunda["intent"] == "PLAYLIST_ADD", segunda
     assert segunda["params"]["nome_playlist"] == "caos sonora", segunda
+
+
+def test_m1_red_06_destino_musical_nao_pode_escrever_no_arquivo_recente():
+    caminho = "C:/tmp/correcao.txt"
+    estado = registrar_estrutura_arquivo_recente(
+        {},
+        {
+            "tipo": "arquivo",
+            "caminho": caminho,
+            "arquivo_nome": "correcao.txt",
+            "tipo_arquivo": "texto",
+        },
+    )
+
+    resultado = detectar_intencao_arquivos(
+        "adiciona essa também na caos sonora",
+        params_cb=_params,
+        estado_mental=estado,
+    )
+
+    assert resultado is None, resultado
 
 
 # ---------------------------------------------------------------------------
@@ -144,14 +174,17 @@ def test_m1_guard_06_atalho_essa_tambem_existente_permanece_valido():
     assert resultado["params"].get("referencia_contextual") is True, resultado
 
 
-def test_m1_guard_07_nome_diferente_nao_reusa_playlist_recente():
+def test_m1_guard_07_destino_nomeado_na_fala_vence_playlist_recente():
     resultado = detectar_playlist_contextual_musica_atual(
         "adiciona essa também na rock",
         params_cb=_params,
         limpar_nome_playlist=_limpar_nome,
         ultima_playlist="caos sonora",
     )
-    assert resultado is None, resultado
+    assert isinstance(resultado, dict), resultado
+    assert resultado["intent"] == "PLAYLIST_ADD", resultado
+    assert resultado["params"]["nome_playlist"] == "rock", resultado
+    assert resultado["params"].get("referencia_contextual") is True, resultado
 
 
 def test_m1_guard_08_forma_explicita_com_palavra_playlist_permanece_valida():
@@ -174,3 +207,197 @@ def test_m1_guard_09_vai_para_proxima_reuniao_nao_autoriza():
 def test_m1_guard_10_faixa_nao_musical_com_complemento_nao_autoriza():
     turno = classificar_modalidade_turno("Vai para a próxima faixa da estrada.")
     assert turno["autoriza_execucao"] is False, turno
+
+
+def test_m1_red_07_cadeia_real_publica_add_mesmo_sem_ultima_playlist_global():
+    executadas: list[dict] = []
+
+    class Contexto:
+        @staticmethod
+        def montar():
+            return {
+                "turno_atual": {
+                    "id": "turno-149",
+                    "modalidade": "comando",
+                    "modalidade_geral": "comando",
+                    "autoriza_execucao": True,
+                },
+                "retrato_turno_atual": {},
+                "continuidade_geral": {},
+            }
+
+    def detectar(trecho: str):
+        t = str(trecho or "").casefold().strip(" .,!?:;")
+        midia = detectar_volume_ou_midia(
+            t,
+            params_cb=_params,
+            contexto_musical_ativo=True,
+        )
+        if midia:
+            return midia
+        return detectar_playlist_contextual_musica_atual(
+            t,
+            params_cb=_params,
+            limpar_nome_playlist=_limpar_nome,
+            ultima_playlist="",
+        )
+
+    runtime = CicloComandosRuntime(
+        namespace_getter=lambda: {
+            "_normalizar_texto_com_apelidos": str.casefold,
+            "_texto_depende_de_contexto": lambda _texto: False,
+            "_texto_parece_consulta_operacional": lambda _texto: True,
+            "detectar_intencao_deterministica": detectar,
+            "_resolver_comando_contextual_forcado": lambda _texto: None,
+            "_resolver_repeticao_ultima_acao": lambda _texto: None,
+            "_registrar_resultado_execucao": lambda *_args, **_kwargs: None,
+            "_registrar_autoaprimoramento": lambda *_args, **_kwargs: None,
+        },
+        contexto_intencao_runtime=Contexto(),
+        log=lambda *_args: None,
+    )
+    runtime.executar_intencao = lambda comando, _texto: (
+        executadas.append(dict(comando)) or True
+    )
+
+    assert runtime.processar_cadeia(FALA_M1, "turno-149") is True
+    assert [item["intent"] for item in executadas] == [
+        "MEDIA_CONTROL",
+        "PLAYLIST_ADD",
+    ]
+    assert executadas[1]["params"] == {
+        "nome_playlist": "caos sonora",
+        "referencia_contextual": True,
+    }
+
+
+def test_m1_red_08_cadeia_real_adiciona_a_faixa_nova_e_nunca_a_anterior():
+    faixa_anterior = {
+        "url": "https://www.youtube.com/watch?v=AAAAAAAAAAA",
+        "title": "Faixa anterior",
+        "canal": "Canal A",
+    }
+    faixa_nova = {
+        "url": "https://www.youtube.com/watch?v=BBBBBBBBBBB",
+        "title": "Faixa nova",
+        "canal": "Canal B",
+    }
+
+    estado = {
+        "musica_atual_ts": 9999999999.0,
+        "musica_atual_status": "tocando",
+        "musica_atual_url": faixa_anterior["url"],
+        "musica_atual_titulo": faixa_anterior["title"],
+    }
+    aba_atual = {
+        "valor": {**faixa_anterior, "tabId": 149, "playingConfirmed": True},
+    }
+
+    class PlaylistsUsuario:
+        def __init__(self):
+            self.adicoes: list[tuple[str, str, str, str]] = []
+
+        def add_and_verify(self, nome, url, titulo, canal):
+            self.adicoes.append((nome, url, titulo, canal))
+            return True
+
+    playlists = PlaylistsUsuario()
+    musica = OperacoesMusicaisRuntime(
+        playlists_usuario=playlists,
+        playlists_laylay=object(),
+        musica_estado_getter=lambda chave, padrao=None: estado.get(chave, padrao),
+        musica_estado_setter=lambda chave, valor: estado.__setitem__(chave, valor),
+        solicitar_aba_ativa=lambda: dict(aba_atual["valor"]),
+        playlist_state={},
+        log=lambda *_args: None,
+    )
+
+    class NavegadorLeitura:
+        @staticmethod
+        def aba_ativa():
+            return dict(aba_atual["valor"])
+
+    class NavegadorOperacoes:
+        def __init__(self):
+            self.comandos: list[str] = []
+
+        def controlar_youtube_detalhado(self, comando, **_kwargs):
+            self.comandos.append(str(comando))
+            if comando == "next":
+                aba_atual["valor"] = {
+                    **faixa_nova,
+                    "tabId": 149,
+                    "playingConfirmed": True,
+                }
+                return {"ok": True, "confirmado": True, "status": "success"}
+            return {"ok": False, "confirmado": False, "status": "falha_execucao"}
+
+    navegador = NavegadorOperacoes()
+
+    def detectar(trecho: str):
+        texto = str(trecho or "").casefold().strip(" .,!?:;")
+        midia = detectar_volume_ou_midia(
+            texto,
+            params_cb=_params,
+            contexto_musical_ativo=True,
+        )
+        if midia:
+            return midia
+        return detectar_playlist_contextual_musica_atual(
+            texto,
+            params_cb=_params,
+            limpar_nome_playlist=_limpar_nome,
+            ultima_playlist="",
+        )
+
+    contexto = {
+        "turno_atual": {
+            "id": "turno-149-real",
+            "modalidade": "comando",
+            "modalidade_geral": "comando",
+            "autoriza_execucao": True,
+        },
+        "retrato_turno_atual": {},
+        "continuidade_geral": {},
+        "_target_from_params": lambda *_args: "pc_a",
+        "_registro_navegador_leitura_runtime": NavegadorLeitura(),
+        "_registro_navegador_operacoes_runtime": navegador,
+        "_registro_musica_operacoes_runtime": musica,
+        "_musica_estado_get": lambda chave, padrao=None: estado.get(chave, padrao),
+        "_musica_estado_set": lambda chave, valor: estado.__setitem__(chave, valor),
+        "falar_com_lipsync": lambda *_args: None,
+        "_yt_clean_title": lambda titulo: titulo,
+    }
+
+    class Contexto:
+        @staticmethod
+        def montar():
+            return contexto
+
+    runtime = CicloComandosRuntime(
+        namespace_getter=lambda: {
+            "_normalizar_texto_com_apelidos": str.casefold,
+            "_texto_depende_de_contexto": lambda _texto: False,
+            "_texto_parece_consulta_operacional": lambda _texto: True,
+            "detectar_intencao_deterministica": detectar,
+            "_resolver_comando_contextual_forcado": lambda _texto: None,
+            "_resolver_repeticao_ultima_acao": lambda _texto: None,
+            "_registrar_resultado_execucao": lambda *_args, **_kwargs: None,
+            "_registrar_autoaprimoramento": lambda *_args, **_kwargs: None,
+        },
+        contexto_intencao_runtime=Contexto(),
+        log=lambda *_args: None,
+    )
+    runtime.executar_intencao = lambda comando, texto: executar_intencao(
+        comando, texto, contexto,
+    )
+
+    assert runtime.processar_cadeia(FALA_M1, "turno-149-real") is True
+    assert navegador.comandos == ["next"]
+    assert playlists.adicoes == [(
+        "caos sonora",
+        faixa_nova["url"],
+        faixa_nova["title"],
+        faixa_nova["canal"],
+    )]
+    assert estado["ultima_playlist"] == "caos sonora"

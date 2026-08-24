@@ -182,7 +182,7 @@ def test_comentario_sobre_jogo_nao_herda_comando_de_musica() -> None:
     )
 
     assert resultado["decisao"] is None
-    assert "sem verbo operacional" in resultado["rejeitados"][0]["motivo"]
+    assert "não autorizou ação com efeito" in resultado["rejeitados"][0]["motivo"]
 
 
 def test_modelo_recebe_retrato_congelado_em_vez_de_inventar_referencia() -> None:

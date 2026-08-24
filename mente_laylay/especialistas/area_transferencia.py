@@ -462,9 +462,23 @@ class AreaTransferenciaRuntime:
             r"\b(?:area de transferencia|clipboard|texto copiado|alteracao)\b", t
         ):
             return "desfazer"
-        if re.search(r"\b(?:copia|copie|substitui|substitua|coloca|coloque)\b", t) and re.search(
-            r"\b(?:resultado|texto corrigido|texto traduzido|traducao|correcao)\b", t
-        ):
+        artefato = (
+            r"(?:resultado|texto corrigido|texto traduzido|traducao|correcao)"
+        )
+        copia_artefato = re.search(
+            rf"\b(?:copia|copie)\s+(?:(?:esse|este|o|a)\s+)?{artefato}\b",
+            t,
+        )
+        substitui_por_artefato = re.search(
+            rf"\b(?:substitui|substitua)\b.*\b{artefato}\b",
+            t,
+        )
+        coloca_artefato_no_clipboard = re.search(
+            rf"\b(?:coloca|coloque)\s+(?:(?:esse|este|o|a)\s+)?{artefato}\s+"
+            r"(?:na\s+area\s+de\s+transferencia|no\s+clipboard)\b",
+            t,
+        )
+        if copia_artefato or substitui_por_artefato or coloca_artefato_no_clipboard:
             return "copiar_resultado"
         referencia_explicita = self._tem_referencia(t)
         referencia_curta = bool(re.search(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -10,6 +11,10 @@ from mente_laylay.arquivos.execucao_arquivos import executar_intencao_arquivos
 from mente_laylay.arquivos.mutacoes import criar_arquivos_mutacao_runtime
 from mente_laylay.integracao.registro_mutacoes_arquivos import registrar_arquivos_mutacao
 from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
+from mente_laylay.cognicao.intencao_visual_jogo import (
+    aplicar_pedido_visual_ao_turno,
+)
+from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.autonomia.executor_sistema import (
     DependenciasExecutorSistema,
     executar_intencao_sistema,
@@ -345,11 +350,21 @@ def test_composicao_item_jogo_reusa_detector_executor_e_fecha_assincrono() -> No
     )
     runtime_ref[0] = runtime
 
+    texto_visual = "essa bota é boa?"
+    pedido_visual = detectar(texto_visual)
+    turno_visual = aplicar_pedido_visual_ao_turno(
+        classificar_modalidade_turno(texto_visual),
+        pedido_visual,
+    )
+    estado_visual = SimpleNamespace(mental={"turno_atual": turno_visual})
     imediato = ComandosImediatosRuntime(
-        namespace_getter=lambda: {"_orquestrador_cooperativo_runtime": runtime},
+        namespace_getter=lambda: {
+            "_orquestrador_cooperativo_runtime": runtime,
+            "_estado_compartilhado_runtime": estado_visual,
+        },
         loop_getter=lambda: None,
     )
-    assert imediato.processar_prioritarios("essa bota é boa?") is True
+    assert imediato.processar_prioritarios(texto_visual) is True
     assert len(comandos) == 1
     assert comandos[0]["intent"] == "GAME_VISION"
     assert analise_tipado.chamadas[0][0] == "executar"

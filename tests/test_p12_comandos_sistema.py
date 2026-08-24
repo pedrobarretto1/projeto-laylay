@@ -146,6 +146,11 @@ def test_fechar_programa_mata_processo_exato_e_confirma(monkeypatch: pytest.Monk
 
     class _Processo:
         info = {"name": "opera.exe", "pid": 321}
+        pid = 321
+
+        @staticmethod
+        def name() -> str:
+            return "opera.exe"
 
         def kill(self) -> None:
             mortos.append(self.info["pid"])

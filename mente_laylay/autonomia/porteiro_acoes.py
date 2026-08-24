@@ -249,6 +249,15 @@ def texto_tem_comando_explicito(texto: str) -> bool:
     ):
         return True
 
+    # Edição elíptica ainda é um pedido explícito pelo ato de fala. O alvo não
+    # nasce aqui: o roteador só a executa quando existe arquivo recente tipado.
+    if re.match(
+        r"^(?:escreve|escreva|grava|grave|adiciona|adicione|"
+        r"acrescenta|acrescente)\b\s+\S+",
+        t_operacional,
+    ):
+        return True
+
     if re.search(r"^(?:coloca|coloque|bota|ponha|põe|poe|move|mova|posiciona|posicione|deixa|joga)\b", t_operacional) and re.search(
         r"\b(?:(?:na|a|à|para a)\s+(?:esquerda|direita)|"
         r"(?:no|pro|para o|do)\s+lado\s+(?:esquerdo|direito))\b",
@@ -298,6 +307,8 @@ def texto_tem_comando_explicito(texto: str) -> bool:
         "fecha", "fechar", "feche", "coloca", "coloque",
         "bota", "poe", "põe", "toca", "toque", "cria", "criar", "crie",
         "escreve", "escrever", "escreva", "grava", "gravar", "grave",
+        "adiciona", "adicionar", "adicione", "acrescenta", "acrescentar",
+        "acrescente",
         "apaga", "apagar", "deleta", "deletar", "remove", "remover", "exclui", "excluir",
         "maximiza", "maximizar", "organiza", "organizar", "silencia", "silenciar",
         "sincroniza", "sincronizar", "aumenta", "aumentar", "abaixa", "baixar",

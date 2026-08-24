@@ -32,6 +32,9 @@ from mente_laylay.cognicao.contrato_fala import construir_contrato_semantico_fal
 from mente_laylay.cognicao.qualidade_comunicacao import avaliar_qualidade_comunicacao
 from mente_laylay.cognicao.plano_turno import verificar_fala_turno
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+from mente_laylay.memoria_mental.continuidade_contexto import (
+    registrar_estrutura_arquivo_recente,
+)
 from mente_laylay.personalidade.confirmacao_llm import _motivo_contrato_invalido
 from mente_laylay.personalidade.higiene_fala import limpar_fala_operacional
 from mente_laylay.integracao.adaptadores_aplicacao_runtime import (
@@ -229,13 +232,11 @@ def test_cancelar_nao_reconfirma_lembrete_que_ja_estava_inativo() -> None:
 def test_leia_conteudo_dele_e_novamente_usa_leitura_local_segura(tmp_path) -> None:
     arquivo = tmp_path / "auditoria gaivota.txt"
     arquivo.write_text("primeira linha\nsegunda linha", encoding="utf-8")
-    estado = {
-        "ultima_estrutura_arquivo_params": {
+    estado = registrar_estrutura_arquivo_recente({}, {
             "tipo": "arquivo",
             "arquivo_nome": arquivo.name,
             "caminho": str(arquivo),
-        },
-    }
+    })
     esperado = {
         "intent": "FILE_READ",
         "params": {
@@ -497,6 +498,15 @@ def test_porta_prioritaria_entrega_continuacoes_ao_executor_antes_de_arquivo_e_l
     execucoes: list[tuple[dict, str]] = []
     registros: list[tuple] = []
     estado = SimpleNamespace(mental={
+        "turno_atual": {
+            "modalidade": "comando",
+            "modalidade_geral": "comando",
+            "autoriza_execucao": True,
+            "segmentos": [{
+                "modalidade": "comando",
+                "autoriza_execucao": True,
+            }],
+        },
         "ultima_estrutura_arquivo_params": {
             "arquivo_nome": "auditoria gaivota.txt",
             "caminho": r"C:\\tmp\\auditoria gaivota.txt",

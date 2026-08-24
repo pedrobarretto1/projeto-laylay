@@ -6044,7 +6044,14 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         mensagem: MensagemWidget,
         container: QWidget,
     ) -> None:
-        if self._reduzir_movimento:
+        if (
+            self._reduzir_movimento
+            or self.feed.graphicsEffect() is not None
+        ):
+            # QGraphicsEffect em um ancestral e em seu filho força duas
+            # composições do mesmo backing store. Durante a transição de
+            # conversa, o feed inteiro já está animado; o balão entra junto
+            # com ele sem precisar de um segundo efeito concorrente.
             return
         self.feed_lay.activate()
         efeito = QGraphicsOpacityEffect(container)
@@ -6231,7 +6238,12 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         self.feed_lay.insertWidget(max(0, self.feed_lay.count() - 1), container)
         self.feed_lay.invalidate()
         self.feed.updateGeometry()
-        if not self._reduzir_movimento:
+        if (
+            not self._reduzir_movimento
+            and self.feed.graphicsEffect() is None
+        ):
+            # A troca de conversa pode estar animando o feed inteiro. Não
+            # empilhamos um segundo QGraphicsEffect no indicador filho.
             self.feed_lay.activate()
             efeito = QGraphicsOpacityEffect(container)
             efeito.setOpacity(0.12)
@@ -7519,9 +7531,51 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             )
 
     def closeEvent(self, event) -> None:  # noqa: N802
+        self._timer_auto_scroll.stop()
         self._encerrar_rolagem_suave()
         self._parar_pulso_presenca()
         self._encerrar_microinteracoes()
+        self._encerrar_animacoes_mensagens()
+        self._encerrar_animacoes_conversas()
+        self._encerrar_transicao_conversa()
+        self._encerrar_transicao_pagina()
+        self._remover_indicador_pensando(animar=False)
+        self._encerrar_saida_pensando()
+
+        grupo_inicio = self._animacao_inicio_grupo
+        if grupo_inicio is not None:
+            grupo_inicio.stop()
+            grupo_inicio.deleteLater()
+            self._animacao_inicio_grupo = None
+        for _nome, widget, efeito in list(self._efeitos_inicio):
+            if _objeto_qt_esta_vivo(widget):
+                try:
+                    if widget.graphicsEffect() is efeito:
+                        widget.setGraphicsEffect(None)
+                except RuntimeError:
+                    pass
+        self._efeitos_inicio.clear()
+
+        movimento_nav = self._animacao_indicador_nav
+        if movimento_nav is not None:
+            movimento_nav.stop()
+            movimento_nav.deleteLater()
+            self._animacao_indicador_nav = None
+
+        for timeout in list(self._timeouts_envio.values()):
+            timeout.stop()
+            timeout.deleteLater()
+        self._timeouts_envio.clear()
+        self._fases_envio.clear()
+
+        # Defesa final de ciclo de vida: nenhum efeito de um filho fechado
+        # deve sobreviver e tentar pintar no QApplication compartilhado.
+        for widget in self.feed.findChildren(QWidget):
+            try:
+                if widget.graphicsEffect() is not None:
+                    widget.setGraphicsEffect(None)
+            except RuntimeError:
+                pass
         self.worker.parar()
         event.accept()
 

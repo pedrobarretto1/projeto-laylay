@@ -19,6 +19,10 @@ from mente_laylay.integracao.registro_conversa_llm import (
     ResultadoModelo,
 )
 from mente_laylay.memoria_mental.contexto_compartilhado import estado_mental_inicial
+from mente_laylay.memoria_mental.continuidade_contexto import (
+    registrar_estrutura_arquivo_recente,
+)
+from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.memoria_mental.continuidade_geral import (
     registrar_evento_continuidade,
 )
@@ -460,14 +464,12 @@ def test_barreira_prioritaria_entrega_busca_de_codigo_ao_executor_local() -> Non
 def test_barreira_prioritaria_abre_resultado_por_ordinal_curto() -> None:
     caminho = r"C:\projeto\controlador.py"
     estado = type("Estado", (), {
-        "mental": {
-            "ultima_estrutura_arquivo_params": {
+        "mental": registrar_estrutura_arquivo_recente({}, {
                 "tipo": "pesquisa_semantica",
                 "consulta": "código que controla a lâmpada",
                 "resultados": [caminho],
                 "nomes": ["controlador.py"],
-            },
-        },
+        }),
     })()
     execucoes: list[tuple[dict, str]] = []
     namespace = {
@@ -497,6 +499,7 @@ def test_barreira_prioritaria_abre_resultado_por_ordinal_curto() -> None:
 def test_barreira_prioritaria_restaura_ultimo_item_sem_cair_na_llm() -> None:
     caminho = r"C:\Users\teste\Downloads\nota.txt"
     estado = type("Estado", (), {"mental": {
+        "turno_atual": classificar_modalidade_turno("quero ele de volta"),
         "ultima_acao_ts": time.time(),
         "ultima_acao_alvo": caminho,
         "ultima_acao_contrato": {

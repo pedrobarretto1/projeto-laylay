@@ -23,6 +23,9 @@ from mente_laylay.autonomia.porteiro_acoes import (
 )
 from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.memoria_mental.resultado_acao import normalizar_resultado_acao
+from mente_laylay.memoria_mental.continuidade_contexto import (
+    registrar_estrutura_arquivo_recente,
+)
 from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao
 
 
@@ -222,14 +225,12 @@ def test_acha_com_moldura_de_opiniao_nao_vira_pesquisa_de_arquivo() -> None:
 
 
 def test_selecao_natural_abre_resultado_recente_em_vez_de_app() -> None:
-    estado = {
-        "ultima_estrutura_arquivo_params": {
+    estado = registrar_estrutura_arquivo_recente({}, {
             "tipo": "pesquisa_semantica",
             "consulta": "código que controla a lâmpada",
             "resultados": [r"C:\projeto\controlador.py", r"C:\projeto\tuya.py"],
             "nomes": ["controlador.py", "tuya.py"],
-        },
-    }
+    })
     for frase, esperado in (
         ("pode abrir o primeiro", "controlador.py"),
         ("abra o segundo resultado", "tuya.py"),
@@ -393,7 +394,7 @@ def test_fluxo_real_publica_resultados_e_continua_por_referencia(tmp_path: Path)
     assert estruturas[-1]["resultados"] == [str(arquivo.resolve())]
     assert aprendizados and "lâmpada" in aprendizados[-1][0]
 
-    estado = {"ultima_estrutura_arquivo_params": estruturas[-1]}
+    estado = registrar_estrutura_arquivo_recente({}, estruturas[-1])
     caminho = detectar_intencao_arquivos("onde ele fica?", params_cb=_params, estado_mental=estado)
     caminho_completo = detectar_intencao_arquivos(
         "qual é o caminho completo dele?", params_cb=_params, estado_mental=estado,

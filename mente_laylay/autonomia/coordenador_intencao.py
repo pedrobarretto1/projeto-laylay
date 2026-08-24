@@ -22,6 +22,9 @@ from mente_laylay.autonomia.agendamento_mental import (
     extrair_complemento_temporal_lembrete,
     texto_pede_lembrete_explicito,
 )
+from mente_laylay.autonomia.pre_fluxo_contextual import (
+    processar_consulta_sistema_local,
+)
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
@@ -42,6 +45,9 @@ from mente_laylay.cognicao.modalidade_turno import (
 from mente_laylay.memoria_mental.continuidade_geral import (
     normalizar_dominio_continuidade,
     resolver_continuacao_aditiva,
+)
+from mente_laylay.memoria_mental.contexto_imediato import (
+    referencia_contextual_imediata,
 )
 from mente_laylay.memoria_mental.pendencia_acao import dominio_pendencia
 from mente_laylay.arquivos.roteador_arquivos import (
@@ -970,6 +976,20 @@ class CicloComandosRuntime:
             "executar_intencao": self.executar_intencao,
             "registrar_resultado_execucao": ns.get("_registrar_resultado_execucao"),
             "registrar_autoaprimoramento": ns.get("_registrar_autoaprimoramento"),
+            "_registrar_resultado_execucao": contexto_execucao.get(
+                "_registrar_resultado_execucao"
+            ),
+            "_resolver_alvo_ambiente": contexto_execucao.get(
+                "_resolver_alvo_ambiente"
+            ),
+            "falar_com_lipsync": contexto_execucao.get("falar_com_lipsync"),
+            "_emitir_resposta_curta": contexto_execucao.get(
+                "_emitir_resposta_curta"
+            ),
+            "mente_integrada_estado": dict(
+                contexto_execucao.get("mente_integrada_estado") or {}
+            ),
+            "ultimo_app_janela": contexto_execucao.get("ultimo_app_janela", ""),
             "turno_atual": dict(contexto_execucao.get("turno_atual") or {}),
             "retrato_turno_atual": dict(contexto_execucao.get("retrato_turno_atual") or {}),
             "continuidade_geral": dict(
@@ -1297,7 +1317,53 @@ class CicloComandosRuntime:
             retrato["intents_permitidos"] = []
             retrato["operacao_explicita"] = ""
             retrato["entidade_explicita"] = {}
+
+            # A etapa anterior pode ter acabado de criar um referente
+            # operacional confirmado (por exemplo, APP_OPEN). O retrato da
+            # frase composta foi congelado antes desse efeito e, por isso,
+            # não pode resolver com segurança o pronome da etapa seguinte.
+            # Reconstruímos somente a referência pelo seletor oficial, que
+            # exige recibo recente/compatível e nunca concede autoridade.
+            depende_contexto_trecho = bool(
+                callable(ns.get("_texto_depende_de_contexto"))
+                and ns["_texto_depende_de_contexto"](trecho)
+            )
+            if depende_contexto_trecho:
+                referencia_viva = referencia_contextual_imediata(
+                    mente_integrada_estado=contexto.get("mente_integrada_estado"),
+                    foco_vivo={},
+                    texto_atual=trecho,
+                    normalizar_texto=normalizar,
+                )
+                tipo_referencia = str(
+                    referencia_viva.get("tipo") or ""
+                ).strip().casefold()
+                nome_referencia = str(
+                    referencia_viva.get("alvo") or ""
+                ).strip()
+                if tipo_referencia and nome_referencia:
+                    retrato["referencia_tipo"] = tipo_referencia
+                    retrato["referencia_resolvida"] = {
+                        "tipo": tipo_referencia,
+                        "nome": nome_referencia,
+                        "origem": "continuidade_operacional_viva_cadeia",
+                        "ts": float(
+                            dict(contexto.get("mente_integrada_estado") or {}).get("ts")
+                            or time.time()
+                        ),
+                        "dados": dict(referencia_viva.get("params") or {}),
+                    }
             contexto["retrato_turno_atual"] = retrato
+
+            # Consultas somente leitura também podem ser a última etapa de uma
+            # cadeia. Elas precisam observar o estado já alterado pelas etapas
+            # anteriores antes de cair no resolvedor de mutações.
+            tratado_readonly, _ = processar_consulta_sistema_local(
+                contexto,
+                trecho,
+            )
+            if tratado_readonly:
+                return True
 
             return executar_fluxo_intencao(
                 trecho,

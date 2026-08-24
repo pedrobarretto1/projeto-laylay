@@ -451,8 +451,13 @@ def test_lancamento_do_cliente_e_idempotente_e_carrega_identidade_da_sessao(
         def wait(timeout=None):
             return 0
 
-    def popen(comando, *, env, cwd):
-        lancamentos.append((list(comando), {"env": dict(env), "cwd": cwd}))
+    def popen(comando, *, env, cwd, stdout=None, stderr=None):
+        lancamentos.append((list(comando), {
+            "env": dict(env),
+            "cwd": cwd,
+            "stdout": stdout,
+            "stderr": stderr,
+        }))
         return Processo()
 
     monkeypatch.setattr(

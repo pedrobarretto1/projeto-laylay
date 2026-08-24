@@ -1163,34 +1163,33 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 const beforeTitle = document.title;
                 const beforeVideoId = new URL(beforeUrl).searchParams.get("v") || "";
                 const prevBtn = document.querySelector('.ytp-prev-button');
-                if (prevBtn) {
-                    prevBtn.click();
-                    setTimeout(() => {
-                        try {
-                            const videoNow = document.querySelector('video');
-                            if (videoNow && videoNow.currentTime < 3) prevBtn.click();
-                        } catch (_) {}
-                    }, 180);
-                }
+                if (prevBtn) prevBtn.click();
                 else _dispatchKey("P", "KeyP", 80, { shiftKey: true });
-                setTimeout(() => {
-                    const afterUrl = window.location.href;
-                    const afterTitle = document.title;
-                    const afterVideoId = new URL(afterUrl).searchParams.get("v") || "";
+                const startedAt = Date.now();
+                const verifyPrev = () => {
+                    const currentUrl = window.location.href;
+                    const currentTitle = document.title;
+                    const currentVideoId = new URL(currentUrl).searchParams.get("v") || "";
+                    const sameVideo = currentVideoId === beforeVideoId;
                     const changed = Boolean(
-                        (afterVideoId && afterVideoId !== beforeVideoId)
-                        || afterUrl !== beforeUrl
-                        || afterTitle !== beforeTitle
+                        (currentVideoId && !sameVideo)
+                        || currentUrl !== beforeUrl
+                        || currentTitle !== beforeTitle
                     );
-                    if (sendResponse) sendResponse({
-                        status: changed ? "success" : "state_not_changed",
-                        message: changed ? "" : "A faixa anterior não foi observada",
-                        evidence: {
-                            beforeUrl, afterUrl, beforeVideoId, afterVideoId,
-                            beforeTitle, afterTitle, changed,
-                        },
-                    });
-                }, 800);
+                    if (changed || Date.now() - startedAt >= 2800) {
+                        if (sendResponse) sendResponse({
+                            status: changed ? "success" : "state_not_changed",
+                            message: changed ? "" : "A faixa anterior não foi observada",
+                            evidence: {
+                                beforeUrl, currentUrl, beforeVideoId, currentVideoId,
+                                beforeTitle, currentTitle, changed,
+                            },
+                        });
+                        return;
+                    }
+                    setTimeout(verifyPrev, 120);
+                };
+                setTimeout(verifyPrev, 120);
             }
             else if (cmd === "replay") {
                 if (video) video.currentTime = 0;

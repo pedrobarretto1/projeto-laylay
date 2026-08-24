@@ -198,6 +198,18 @@ def detectar_comentario_resultado_operacional(
             "executou": mente.get("ultima_acao_ok"),
             "confirmado": mente.get("ultima_acao_confirmada"),
         }
+    # Uma pergunta sobre a aba que sobreviveu exige percepção atual do
+    # navegador. ``ficou`` também aparece em comentários subjetivos, mas aqui
+    # o substantivo observável e a forma interrogativa provam que não se trata
+    # de uma reação ao alvo recém-fechado. Deixar essa consulta cair no
+    # comentário genérico reciclaria justamente a aba removida.
+    if re.fullmatch(
+        r"(?:(?:me\s+)?(?:diz|diga|fala|fale|mostra|mostre)\s+)?"
+        r"(?:qual|que)\s+(?:(?:e|é)\s+)?(?:a\s+)?aba\s+"
+        r"(?:(?:que\s+)?(?:esta|está|ta|tá)|ficou)\s+aberta[.!?]*",
+        t,
+    ):
+        return None
     sinais = (
         "parece", "ficou", "saiu", "funcionou", "não funcionou", "nao funcionou",
         "deu certo", "não deu", "nao deu", "estranho", "errado", "melhor", "pior",

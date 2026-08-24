@@ -87,6 +87,7 @@ memoria/
 contexto.txt
 contexto-*.txt
 teste.md
+**/playlists.json
 
 # Áudios pessoais, datasets e modelos locais
 *.wav

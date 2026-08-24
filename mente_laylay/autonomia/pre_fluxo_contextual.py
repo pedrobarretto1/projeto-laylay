@@ -512,8 +512,27 @@ def processar_consulta_sistema_local(
         r"(?:esta|está|ta|tá)\s+(?:abert[oa]|rodando))\??",
         t,
     )
-    if consulta_unica:
-        nome = str(consulta_unica.group("nome") or "").strip(" .,!?:;")
+    consulta_contextual = re.fullmatch(
+        r"(?:confere|confira|confirme|checa|cheque)\s+se\s+"
+        r"(?:(?:ele|ela|o\s+app|a\s+janela)\s+)?"
+        r"(?:(?:ficou|continua)\s+abert[oa]|"
+        r"(?:ainda\s+)?(?:esta|está|ta|tá)\s+abert[oa])"
+        r"(?:\s+e\s+s[oó]\s+ent[aã]o\s+"
+        r"(?:me\s+)?(?:diz|diga|fala|fale)\s+(?:o\s+)?resultado)?[.!?]*",
+        t,
+    )
+    if consulta_unica or consulta_contextual:
+        nome = ""
+        if consulta_unica:
+            nome = str(consulta_unica.group("nome") or "").strip(" .,!?:;")
+        else:
+            mente = _get(ctx, "mente_integrada_estado", {})
+            mente = mente if isinstance(mente, dict) else {}
+            nome = str(
+                mente.get("ultimo_app_janela")
+                or _get(ctx, "ultimo_app_janela", "")
+                or ""
+            ).strip()
         resolver = _get(ctx, "_resolver_alvo_ambiente")
         if not nome or not callable(resolver):
             return False, ""

@@ -995,6 +995,12 @@ class EstadoContextoRuntime:
             "ultima_intencao": str(mente.get("ultima_intencao") or "").strip(),
             "ultimo_escopo": str(mente.get("ultimo_escopo") or "").strip(),
             "ultima_habilidade": str(mente.get("ultima_habilidade") or "").strip(),
+            # Etapas cooperativas remontam este retrato depois de cada efeito.
+            # A consulta final precisa receber o app realmente confirmado pela
+            # etapa anterior, sem reconstruí-lo a partir da frase composta.
+            "ultimo_app_janela": str(
+                mente.get("ultimo_app_janela") or ""
+            ).strip(),
             # A autoria operacional usa somente a fala imediatamente anterior
             # para variar ritmo e abertura. Não é memória durável nem altera o
             # contrato factual do comando atual.

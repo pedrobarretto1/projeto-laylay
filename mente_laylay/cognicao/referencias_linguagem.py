@@ -154,6 +154,36 @@ def extrair_indice_referencia_ordinal(texto: str) -> int | None:
         numero = int(valor)
         return numero - 1 if numero >= 1 else None
     return _ORDINAIS_REFERENCIA.get(valor)
+
+
+def extrair_indice_fechamento_ordinal_aba(texto: str) -> int | None:
+    """Extrai ordinal apenas do fechamento elíptico de uma aba.
+
+    ``Fecha a primeira`` depende de uma sequência causal de abas abertas. A
+    função reconhece somente essa moldura; ``primeira janela`` e ``primeiro
+    resultado`` continuam pertencendo a outros contratos.
+    """
+    bruto = str(texto or "").strip()
+    base = unicodedata.normalize("NFKD", bruto.casefold())
+    base = "".join(ch for ch in base if not unicodedata.combining(ch))
+    base = re.sub(r"\s+", " ", base).strip()
+    encontrado = re.fullmatch(
+        r"(?:fecha|feche|fechar|encerra|encerre|encerrar)\s+"
+        r"(?:(?:a|o)\s+)?"
+        r"(?P<ordinal>primeir[oa]|segund[oa]|terceir[oa]|quart[oa]|"
+        r"quint[oa]|sext[oa]|setim[oa]|oitav[oa]|non[oa]|decim[oa]|"
+        r"\d{1,2}(?:\s*[oa])?)"
+        r"(?:\s+(?:aba|guia))?[ .,!?:;]*",
+        base,
+    )
+    if not encontrado:
+        return None
+    valor = encontrado.group("ordinal")
+    numero_texto = re.fullmatch(r"(?P<numero>\d{1,2})(?:\s*[oa])?", valor)
+    if numero_texto:
+        numero = int(numero_texto.group("numero"))
+        return numero - 1 if numero >= 1 else None
+    return _ORDINAIS_REFERENCIA.get(valor)
 _REPARO_DO_TURNO_ANTERIOR = re.compile(
     r"^\s*(?:n[aã]o\s+(?:entendi|compreendi|acompanhei)|"
     r"n[aã]o\s+ficou\s+claro|como\s+assim|por\s+qu[eê]|"

@@ -13,6 +13,7 @@ from mente_laylay.percepcao.saidas_audio_windows import GerenciadorSaidasAudioWi
 class _AudioUtilitiesFake:
     atual = "{0.0.0.00000000}.{AAA}"
     trocas: list[str] = []
+    consultas: list[tuple[int | None, int | None]] = []
     dispositivos = [
         SimpleNamespace(
             id="{0.0.0.00000000}.{AAA}",
@@ -34,7 +35,8 @@ class _AudioUtilitiesFake:
         return item
 
     @classmethod
-    def GetAllDevices(cls):
+    def GetAllDevices(cls, *, data_flow=None, device_state=None):
+        cls.consultas.append((data_flow, device_state))
         return list(cls.dispositivos)
 
     @classmethod
@@ -47,11 +49,20 @@ class _AudioUtilitiesFake:
 def _gerenciador() -> GerenciadorSaidasAudioWindows:
     _AudioUtilitiesFake.atual = "{0.0.0.00000000}.{AAA}"
     _AudioUtilitiesFake.trocas = []
+    _AudioUtilitiesFake.consultas = []
     return GerenciadorSaidasAudioWindows(
         audio_utilities=_AudioUtilitiesFake,
         cache_s=0,
         log=lambda _texto: None,
     )
+
+
+def test_runtime_restringe_inventario_na_origem_a_saidas_ativas() -> None:
+    runtime = _gerenciador()
+
+    runtime.snapshot()
+
+    assert _AudioUtilitiesFake.consultas == [(0, 1)]
 
 
 def test_runtime_lista_apenas_saidas_e_confirma_troca_sem_expor_endpoint() -> None:

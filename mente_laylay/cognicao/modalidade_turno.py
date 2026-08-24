@@ -18,11 +18,12 @@ from mente_laylay.cognicao.gramatica_operacional import (
     texto_pede_restauracao_contextual,
 )
 from mente_laylay.arquivos.nome_natural import (
+    aspas_globalmente_coerentes,
     marcador_negacao_em_filename_literal,
 )
 
 from mente_laylay.cognicao.normalizacao_linguagem import (
-    normalizar_texto_basico as _normalizar_texto_estrutural,
+    corrigir_erros_portugues_operacionais,
 )
 from mente_laylay.cognicao.gramatica_musical import (
     analisar_gramatica_musical,
@@ -72,7 +73,8 @@ def analisar_protecao_operacional(
         re.search(
             r"^(?:voce|você|tu)\s+(?:pode|poderia|consegue|conseguiria|sabe)\s+(?:me\s+)?"
             r"(?:ver|olhar|olha|resume|resuma|resumir|mostrar|passar|criar|abrir|"
-            r"fechar|apagar|tocar|ligar|desligar|mexer|organizar|procurar)\b",
+            r"fechar|apagar|tocar|ligar|desligar|mexer|organizar|procurar|"
+            r"adicionar|acrescentar)\b",
             t,
         )
         and not re.search(r"\b(?:pra|para)\s+mim\b", t)
@@ -88,6 +90,7 @@ def analisar_protecao_operacional(
         r"(?:abre|abra|fecha|feche|liga|ligue|acende|desliga|desligue|toca|"
         r"toque|coloca|coloque|cria|crie|apaga|apague|remove|remova|deleta|"
         r"delete|move|mova|renomeia|renomeie|escreve|escreva|grava|grave|"
+        r"adiciona|adicione|acrescenta|acrescente|"
         r"muda|ajusta|deixa|olha|olhe|veja|ver|captura|capture|mostra|"
         r"mostre|passa|passe|resume|resuma|explique|maximiza|maximize|"
         r"organiza|organize|pesquisa|pesquise|busca|busque|encontra|encontre)\b",
@@ -104,11 +107,13 @@ def analisar_protecao_operacional(
         r"onde|quando|por\s+que|porque|qual\s+(?:a\s+)?forma\s+de|"
         r"o\s+que\s+(?:eu\s+)?(?:faria|fa[cç]o)|o\s+que\s+acontece\s+se)\b"
         r".*\b(?:abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|"
-        r"remover|usar|fazer|resumir|explicar|ver|olhar|mostrar|passar)\b",
+        r"remover|usar|fazer|resumir|explicar|ver|olhar|mostrar|passar|"
+        r"adicionar|acrescentar)\b",
         t,
     ) or re.search(r"\b(?:queria|gostaria)\s+de\s+saber\s+como\b", t) or re.search(
         r"^como\s+(?:eu\s+)?(?:abriria|fecharia|criaria|apagaria|removeria|"
-        r"tocaria|ligaria|desligaria|maximizaria|organizaria|usaria|faria)\b",
+        r"tocaria|ligaria|desligaria|maximizaria|organizaria|usaria|faria|"
+        r"adicionaria|acrescentaria)\b",
         t,
     ):
         return {
@@ -266,6 +271,39 @@ def _classificar_modalidade_base(
         t,
     ):
         resultado.update(modalidade="reacao", confianca=0.92, motivo="reação curta à fala anterior")
+        return resultado
+    # Repetição curta no imperativo é uma ordem contextual completa. A camada
+    # de continuidade ainda decide se o recibo anterior é reexecutável; esta
+    # classificação fornece apenas a autoridade da fala atual. Expressões como
+    # "obrigado de novo" não casam e continuam conversacionais.
+    if re.fullmatch(
+        r"(?:tenta|tente|repete|repita|faz|fa[cç]a)\s+"
+        r"(?:de\s+novo|novamente|outra\s+vez)",
+        t,
+    ):
+        resultado.update(
+            modalidade="comando",
+            confianca=0.99,
+            motivo="pedido explícito de repetição contextual",
+            acao_explicita=True,
+            autoriza_execucao=True,
+            depende_contexto=True,
+            natureza_acao="pedido_direto",
+        )
+        return resultado
+    if re.fullmatch(
+        r"(?:essa|esse|esta|este|isso)\s+(?:tambem|também)",
+        t,
+    ):
+        resultado.update(
+            modalidade="comando",
+            confianca=0.97,
+            motivo="continuação aditiva contextual explícita",
+            acao_explicita=True,
+            autoriza_execucao=True,
+            depende_contexto=True,
+            natureza_acao="pedido_direto",
+        )
         return resultado
     # O usuário pode mencionar o nome da playlist sem repetir a palavra
     # "playlist": "quais músicas eu tenho em Kamaitachi" ainda é uma
@@ -478,7 +516,9 @@ def _classificar_modalidade_base(
         r"toca|toque|coloca|coloque|deixa|deixe|bota|põe|poe|cria|crie|apaga|remove|deleta|"
         r"restaura|restaure|recupera|recupere|"
         r"maximiza|organiza|pausa|retoma|aumenta|abaixa|diminui|resume|resuma|"
-        r"leia|verifique|encontra|encontre|acha|ache|localiza|localize)\b",
+        r"leia|verifique|encontra|encontre|acha|ache|localiza|localize|"
+        r"escreve|escreva|grava|grave|adiciona|adicione|"
+        r"acrescenta|acrescente)\b",
         t,
     ))
     comando_detectado = False
@@ -545,6 +585,7 @@ _VERBOS_COMANDO = re.compile(
     r"leia|ler|lê|le|pesquisa|pesquisar|busca|buscar|procura|procurar|"
     r"encontra|encontre|achar|acha|ache|localiza|localize|pula|pule|"
     r"captura|capture|trava|bloqueia|escreve|escrever|escreva|grava|gravar|grave|"
+    r"adiciona|adicionar|adicione|acrescenta|acrescentar|acrescente|"
     r"restaura|restaurar|restaure|recupera|recuperar|recupere)\b",
     re.IGNORECASE,
 )
@@ -1062,6 +1103,27 @@ def _evidencia_ato_operacional(
         base.get("modalidade") or "conversa"
     )
 
+
+def _evidencia_pergunta_independente(
+    texto: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None,
+) -> bool:
+    """Reconhece uma pergunta como novo ato sem lhe conceder autoridade."""
+    t = _limpar_ato_semantico(texto)
+    if not t or "?" not in t:
+        return False
+    base = dict(
+        _classificar_modalidade_base(
+            t,
+            normalizar_texto=normalizar_texto,
+            texto_tem_comando_explicito=lambda _texto: False,
+            confirmacao_contextual_valida=False,
+        )
+        or {}
+    )
+    return str(base.get("modalidade") or "") == "pergunta"
+
 def _separar_primeira_fronteira_forte(
     bloco: str,
     *,
@@ -1080,6 +1142,11 @@ def _separar_primeira_fronteira_forte(
             direita,
             normalizar_texto=normalizar_texto,
         )
+        if not inicia and _evidencia_pergunta_independente(
+            direita,
+            normalizar_texto=normalizar_texto,
+        ):
+            inicia, origem = True, "PERGUNTA_INDEPENDENTE"
         if not inicia:
             continue
 
@@ -1219,7 +1286,11 @@ def _segmentar_turno_misto(
                     direita,
                     normalizar_texto=normalizar_texto,
                 )
-                if esq_ok and dir_ok:
+                direita_pergunta = _evidencia_pergunta_independente(
+                    direita,
+                    normalizar_texto=normalizar_texto,
+                )
+                if (esq_ok and dir_ok) or direita_pergunta:
                     corte = (esquerda, direita)
                     break
 
@@ -1248,11 +1319,36 @@ def _classificar_modalidade_turno_composta_base(
     C REV2: fronteira e ownership antes da normalização operacional.
     """
     bruto = str(texto or "").strip()
-    estrutural = re.sub(
-        r"\s+",
-        " ",
-        str(_normalizar_texto_estrutural(bruto) or ""),
-    ).strip()
+    # A coerência das aspas é uma propriedade do turno inteiro. Verificá-la
+    # somente depois da segmentação permite que um primeiro literal válido e
+    # uma aspa órfã em outro ato pareçam seguros quando observados isoladamente.
+    # Em entrada operacional malformada, falhamos fechados antes de qualquer
+    # decomposição ou fonte positiva de autoridade.
+    normalizado_p0 = _normalizar_p0_ato_fala(bruto, normalizar_texto)
+    if (
+        bruto
+        and not aspas_globalmente_coerentes(bruto)
+        and bool(_P0_GATILHOS_OPERACIONAIS.search(normalizado_p0))
+    ):
+        return aplicar_veto_canonico(
+            {},
+            texto=bruto,
+            modalidade="recusa",
+            natureza="entrada_operacional_malformada",
+            motivo=(
+                "aspas incoerentes em entrada operacional; execução não "
+                "presumida"
+            ),
+            requer_esclarecimento=True,
+            origem_veto="aspas_globais_operacionais",
+        )
+    # O retrato estrutural precisa conservar a grafia do usuário; remover
+    # acentos aqui corrompe o texto que será entregue à conversa e aos
+    # especialistas. Corrigimos somente deslizes operacionais auditáveis.
+    estrutural, _correcoes_estruturais = corrigir_erros_portugues_operacionais(
+        bruto.casefold()
+    )
+    estrutural = re.sub(r"\s+", " ", str(estrutural or "")).strip()
 
     segmentos_texto = _segmentar_turno_misto(
         estrutural,
@@ -1447,6 +1543,8 @@ _P0_GATILHOS_OPERACIONAIS = re.compile(
     r"encontra|encontrar|encontre|"
     r"escreve|escrever|escreva|escreveria|"
     r"grava|gravar|grave|gravaria|"
+    r"adiciona|adicionar|adicione|adicionaria|"
+    r"acrescenta|acrescentar|acrescente|acrescentaria|"
     r"restaura|restaurar|restaure|restauraria|"
     r"recupera|recuperar|recupere|recuperaria|"
     r"executa|executar|execute|executaria|"
@@ -1483,6 +1581,7 @@ _P0_VERBOS_PEDIDO_DIRETO = (
     r"pausa|pause|retoma|continue|continua|organiza|organize|"
     r"pesquisa|pesquise|busca|busque|procura|procure|"
     r"encontra|encontre|escreve|escreva|grava|grave|"
+    r"adiciona|adicione|acrescenta|acrescente|"
     r"restaura|restaure|recupera|recupere|"
     r"executa|execute|repete|repita|refaz|refaca|tenta|tente"
     r")"
@@ -1493,7 +1592,8 @@ _P0_VERBOS_INFINITIVO_OPERACIONAL = (
     r"abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|"
     r"remover|deletar|mover|renomear|maximizar|minimizar|"
     r"pausar|retomar|continuar|organizar|pesquisar|buscar|"
-    r"procurar|encontrar|escrever|gravar|restaurar|recuperar|"
+    r"procurar|encontrar|escrever|gravar|adicionar|acrescentar|"
+    r"restaurar|recuperar|"
     r"executar|repetir|refazer|tentar"
     r")"
 )

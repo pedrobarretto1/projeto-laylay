@@ -8,6 +8,7 @@ from mente_laylay.autonomia.executor_navegador import (
     _executar_listar_abas,
 )
 from mente_laylay.autonomia.roteador_deterministico import detectar_consulta_abas
+from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.memoria_mental.contexto_imediato import (
     _dominio_restrito_referencia,
 )
@@ -105,26 +106,13 @@ def test_cadeia_isola_especialista_e_retrato_da_frase_composta() -> None:
     class Contexto:
         @staticmethod
         def montar():
+            texto_turno = (
+                "Volta para a aba anterior e depois "
+                "me diz qual aba está aberta."
+            )
             return {
                 "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
-                "turno_atual": {
-                    "id": "turno-145",
-                    "texto": (
-                        "Volta para a aba anterior e depois "
-                        "me diz qual aba está aberta."
-                    ),
-                    "modalidade": "conversa",
-                    "modalidade_geral": "conversa",
-                    "autoriza_execucao": False,
-                    "especialistas": {
-                        "operacional": {
-                            "ativo": False,
-                            "autoriza_execucao": False,
-                            "requer_esclarecimento": False,
-                            "confianca": 1.0,
-                        }
-                    },
-                },
+                "turno_atual": classificar_modalidade_turno(texto_turno),
                 "retrato_turno_atual": {
                     "id": "retrato-congelado",
                     "referencia_tipo": "arquivo",

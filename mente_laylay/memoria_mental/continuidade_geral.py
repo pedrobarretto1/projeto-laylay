@@ -12,6 +12,10 @@ import time
 import unicodedata
 from typing import Any, Dict
 
+from mente_laylay.cognicao.referencias_linguagem import (
+    extrair_indice_fechamento_ordinal_aba,
+)
+
 
 VERSAO_CONTINUIDADE_GERAL = 1
 
@@ -632,6 +636,74 @@ def selecionar_referente_saliente(
     if oficial:
         return {"fonte_salienca": "continuidade_dominio", **oficial}
     return {}
+
+
+def resolver_fechamento_ordinal_aberturas_recentes(
+    estado_atual: Dict[str, Any] | None,
+    *,
+    texto: str,
+    ttl_s: float = 180.0,
+) -> Dict[str, Any]:
+    """Resolve ``fecha a primeira`` pela ordem causal das aberturas.
+
+    A ordem visual das abas pode mudar e incluir páginas antigas. Por isso o
+    ordinal consulta apenas o sufixo consecutivo de resultados ``OPEN_URL``
+    da continuidade oficial. Alvos repetidos são deduplicados, pois duas
+    publicações do mesmo resultado ainda representam a mesma aba lógica.
+    """
+    indice = extrair_indice_fechamento_ordinal_aba(texto)
+    if indice is None:
+        return {}
+
+    continuidade = dict((estado_atual or {}).get("continuidade_geral") or {})
+    historico = list(continuidade.get("historico") or [])
+    agora = time.time()
+    sufixo_invertido: list[Dict[str, Any]] = []
+    for bruto in reversed(historico):
+        item = dict(bruto or {})
+        if str(item.get("intent") or "").upper().strip() != "OPEN_URL":
+            break
+        try:
+            idade = agora - float(item.get("ts") or 0.0)
+        except (TypeError, ValueError):
+            break
+        alvo = str(item.get("alvo") or "").strip()
+        if (
+            not alvo
+            or idade < -5.0
+            or idade > max(1.0, float(ttl_s or 180.0))
+            # OPEN_URL publica este status somente depois da validação do
+            # navegador. Ausência de marcador de falha não é confirmação.
+            or str(item.get("status") or "").casefold().strip() != "url_aberta"
+        ):
+            break
+        sufixo_invertido.append(item)
+
+    candidatos: list[Dict[str, Any]] = []
+    alvos_vistos: set[str] = set()
+    for item in reversed(sufixo_invertido):
+        alvo = str(item.get("alvo") or "").strip()
+        chave = _normalizar_fala_continuidade(alvo)
+        if not chave or chave in alvos_vistos:
+            continue
+        alvos_vistos.add(chave)
+        candidatos.append(item)
+
+    # Um ordinal elíptico exige um conjunto real. Com uma única abertura, o
+    # referente continua ambíguo e deve pedir contexto em vez de agir.
+    if len(candidatos) < 2 or not 0 <= indice < len(candidatos):
+        return {}
+    alvo = str(candidatos[indice].get("alvo") or "").strip()
+    if not alvo:
+        return {}
+    return {
+        "intent": "CLOSE_TAB",
+        "params": {
+            "alvo": alvo,
+            "referencia_contextual": True,
+            "indice_ordinal": indice + 1,
+        },
+    }
 
 
 def selecionar_continuidade_por_classe(

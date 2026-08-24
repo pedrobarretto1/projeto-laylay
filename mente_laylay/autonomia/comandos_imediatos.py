@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import time
 import unicodedata
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from typing import Any, Callable, Dict
@@ -63,6 +64,9 @@ from mente_laylay.memoria_mental.contexto_imediato import (
 )
 from mente_laylay.memoria_mental.continuidade_contexto import (
     estrutura_arquivo_recente,
+)
+from mente_laylay.memoria_mental.contexto_compartilhado import (
+    intencao_reexecutavel,
 )
 
 
@@ -149,13 +153,57 @@ def _candidato_arquivo_prioritario_autorizado(
     return bool(caminho and caminho == resultados[indice_candidato])
 
 
-def texto_pede_resumo_pagina(texto: str) -> bool:
+def _pagina_atual_tipificada_para_resumo(
+    estado_mental: Dict[str, Any] | None,
+    *,
+    ttl_s: float = 300.0,
+) -> bool:
+    """Confirma uma página visível publicada recentemente pela extensão."""
+    if not isinstance(estado_mental, dict):
+        return False
+    conteudo_bruto = estado_mental.get("conteudo_atual")
+    if not isinstance(conteudo_bruto, dict):
+        return False
+    conteudo = dict(conteudo_bruto)
+    if (
+        str(conteudo.get("tipo") or "").casefold() != "pagina"
+        or str(conteudo.get("status") or "").casefold() != "visivel"
+        or str(conteudo.get("fonte") or "").casefold() != "extensao_chrome"
+        or not (
+            str(conteudo.get("titulo") or "").strip()
+            or str(conteudo.get("url") or "").strip()
+        )
+    ):
+        return False
+    try:
+        idade_s = time.time() - float(conteudo.get("ts") or 0.0)
+    except (TypeError, ValueError):
+        return False
+    return -5.0 <= idade_s <= max(1.0, float(ttl_s or 300.0))
+
+
+def texto_pede_resumo_pagina(
+    texto: str,
+    *,
+    estado_mental: Dict[str, Any] | None = None,
+) -> bool:
     """Reconhece um pedido real de resumo, nunca mera menção ou hipótese."""
     t = str(texto or "").strip().lower()
     t = "".join(ch for ch in unicodedata.normalize("NFD", t) if unicodedata.category(ch) != "Mn")
     alvos = ("pagina", "site", "video", "aba")
     pedidos = ("resume", "resuma", "resumir", "explica", "explique", "o que essa", "o que esta")
-    if not (any(alvo in t for alvo in alvos) and any(pedido in t for pedido in pedidos)):
+    pedido_explicito = bool(
+        any(alvo in t for alvo in alvos)
+        and any(pedido in t for pedido in pedidos)
+    )
+    pedido_eliptico = bool(re.fullmatch(
+        r"(?:me\s+)?(?:resume|resuma)\s+(?:isso|isto|essa|esta|agora)",
+        t.strip(" .,!?:;"),
+    ))
+    if not pedido_explicito and not (
+        pedido_eliptico
+        and _pagina_atual_tipificada_para_resumo(estado_mental)
+    ):
         return False
     turno = classificar_modalidade_turno(texto)
     return bool(
@@ -288,7 +336,12 @@ class ComandosImediatosRuntime:
         resultado. A forma assíncrona fica reservada ao caso raro em que esta
         função já é chamada pelo loop do navegador, evitando deadlock.
         """
-        if not texto_pede_resumo_pagina(texto):
+        estado_runtime = ns.get("_estado_compartilhado_runtime")
+        estado_mental = getattr(estado_runtime, "mental", {})
+        if not texto_pede_resumo_pagina(
+            texto,
+            estado_mental=(estado_mental if isinstance(estado_mental, dict) else {}),
+        ):
             return False
         print("⚡ [PRIORIDADE:RESUMO] leitura da página atual")
         intencao_resumo = {"intent": "RESUMIR_PAGINA", "params": {}}
@@ -546,6 +599,63 @@ class ComandosImediatosRuntime:
             estado_runtime, "mental", {},
         )
 
+        # Uma repetição curta não carrega novamente o verbo da operação e,
+        # por isso, pode ser classificada como conversa. A autorização vem do
+        # recibo canônico reexecutável, não da frase isolada. Resolvemos esse
+        # caso antes da barreira P0, preservando vetos explícitos e sem criar
+        # uma lista paralela de intents ou alvos.
+        if not turno_tem_veto_execucao(turno_prioritario):
+            resolver_repeticao = ns.get("_resolver_repeticao_ultima_acao")
+            try:
+                repeticao_canonica = (
+                    resolver_repeticao(texto)
+                    if callable(resolver_repeticao)
+                    else None
+                )
+            except Exception as erro:
+                print(
+                    "⚠️ [PRIORIDADE:REPETIÇÃO] falha isolada: "
+                    f"{type(erro).__name__}: {erro}"
+                )
+                repeticao_canonica = None
+            intent_repeticao = str(
+                (repeticao_canonica or {}).get("intent") or ""
+            ).upper().strip()
+            params_repeticao = (
+                repeticao_canonica.get("params")
+                if isinstance(repeticao_canonica, dict)
+                else None
+            )
+            recibo_reexecutavel_valido = bool(
+                isinstance(repeticao_canonica, dict)
+                and isinstance(params_repeticao, dict)
+                and intencao_reexecutavel(intent_repeticao)
+            )
+            if recibo_reexecutavel_valido:
+                executar = ns.get("executar_intencao")
+                if callable(executar):
+                    try:
+                        executou = bool(executar(repeticao_canonica, texto))
+                    except Exception as erro:
+                        print(
+                            "⚠️ [PRIORIDADE:REPETIÇÃO] execução falhou: "
+                            f"{type(erro).__name__}: {erro}"
+                        )
+                        return True
+                    registrar = ns.get("_registrar_resultado_execucao")
+                    if callable(registrar):
+                        registrar(
+                            repeticao_canonica,
+                            texto,
+                            executou,
+                            origem="prioritario_repeticao_canonica",
+                        )
+                    print(
+                        "⚡ [PRIORIDADE:REPETIÇÃO] "
+                        f"intent={repeticao_canonica.get('intent')}"
+                    )
+                    return True
+
         # P0_AUTORIZACAO_MODALIDADE_20260814
         # Consultas locais canônicas de estado são somente leitura. Elas podem
         # vencer a barreira de mutação, mas apenas pela habilidade read-only já
@@ -604,6 +714,107 @@ class ComandosImediatosRuntime:
             falar = ns.get("falar_com_lipsync")
             if callable(falar):
                 falar(fala_capacidade, "calma", 1)
+            return True
+
+        # Recusas e perguntas de instrução não pedem nenhum efeito físico.
+        # Precisam ser consumidas antes da barreira de mutação: a P0 deve
+        # impedir a ação negada, não impedir a confirmação local de que ela
+        # foi respeitada. Estas rotas são estreitas e não chamam executores.
+        if texto_recusa_musica_agora(texto):
+            bloquear = ns.get("_bloquear_playlist_temporariamente")
+            if callable(bloquear):
+                try:
+                    bloquear(600.0)
+                except Exception:
+                    pass
+            falar = ns.get("falar_com_lipsync")
+            if callable(falar):
+                falar("Pode deixar, não vou tocar nada agora.", "calma", 1)
+            print("🛡️ [P0:MÚSICA] recusa respeitada; nenhum comando criado")
+            return True
+
+        if texto_pergunta_como_apagar_item(texto):
+            falar = ns.get("falar_com_lipsync")
+            if callable(falar):
+                falar(
+                    "Você pode apagar pelo Explorador de Arquivos. Se pedir para mim, "
+                    "eu confirmo o item antes e o envio para a lixeira, onde ainda dá "
+                    "para restaurar.",
+                    "calma",
+                    1,
+                )
+            print("🛡️ [P0:ARQUIVOS] explicação segura sem executar exclusão")
+            return True
+
+        texto_iot_p0 = str(texto or "")
+        menciona_iot_p0 = bool(re.search(
+            r"\b(?:luz|luzes|lampada|lâmpada|ventilador|tomada|"
+            r"dispositivo|aparelho|iot)\b",
+            texto_iot_p0,
+            flags=re.IGNORECASE,
+        ))
+        if menciona_iot_p0 and bloqueia_controle_iot_por_modalidade(texto_iot_p0):
+            pergunta_como = bool(re.search(
+                r"^(?:como\s+(?:eu\s+)?(?:faria|faço|faco|posso|poderia)|"
+                r"o\s+que\s+(?:eu\s+)?(?:faria|faço|faco))\b",
+                texto_iot_p0.strip(),
+                flags=re.IGNORECASE,
+            ))
+            if pergunta_como:
+                fala_segura = (
+                    "É só me pedir diretamente para desligar a luz. "
+                    "Como você perguntou apenas como fazer, não alterei nada agora."
+                )
+            elif re.search(r"\btalvez\b", texto_iot_p0, flags=re.IGNORECASE):
+                fala_segura = (
+                    "Pode ser uma boa. Como você falou como possibilidade, deixei a "
+                    "luz como está. Quando quiser executar, é só pedir diretamente."
+                )
+            else:
+                fala_segura = "Pode deixar. Não vou alterar a luz."
+            falar = ns.get("falar_com_lipsync")
+            if callable(falar):
+                falar(fala_segura, "calma", 1)
+            print("🛡️ [P0:IOT] menção respondida; nenhum comando foi criado")
+            return True
+
+        # Hipóteses e proibições também são atos sem efeito. A resposta local
+        # confirma o veto, mas não consulta roteador, executor nem LLM.
+        turno_protegido_p0 = classificar_modalidade_turno(texto)
+        natureza_protegida_p0 = str(
+            turno_protegido_p0.get("natureza_acao") or ""
+        )
+        moldura_hipotese_p0 = bool(re.match(
+            r"^(?:talvez|estou\s+pensando\s+em|to\s+pensando\s+em|"
+            r"seria\s+(?:bom|legal)|quem\s+sabe|tenho\s+vontade\s+de)\b",
+            _texto_normalizado_local(texto),
+        ))
+        if (
+            not turno_protegido_p0.get("autoriza_execucao")
+            and natureza_protegida_p0 in {"hipotetica", "cancelamento"}
+            and (
+                natureza_protegida_p0 == "cancelamento"
+                or moldura_hipotese_p0
+            )
+            and re.search(
+                r"\b(?:abrir|abre|abra|fechar|fecha|feche|criar|cria|crie|"
+                r"apagar|apaga|apague|excluir|remover|tocar|toca|toque|"
+                r"ligar|liga|ligue|desligar|desliga|desligue|mover|move|"
+                r"renomear|renomeia|organizar|organiza|pesquisar|pesquisa)\b",
+                _texto_normalizado_local(texto),
+            )
+        ):
+            fala_segura = (
+                "Ficou como uma possibilidade; não executei nem preparei essa ação."
+                if natureza_protegida_p0 == "hipotetica"
+                else "Pode deixar. Não executei essa ação."
+            )
+            falar = ns.get("falar_com_lipsync")
+            if callable(falar):
+                falar(fala_segura, "calma", 1)
+            print(
+                "🛡️ [P0:MODALIDADE] menção respondida; nenhum comando foi criado"
+            )
             return True
 
         # Detectar uma intent não concede permissão para executá-la. Esta
@@ -680,50 +891,6 @@ class ComandosImediatosRuntime:
                         f"intent={continuidade_aditiva.get('intent')}"
                     )
                     return True
-
-        # Repetições explícitas usam a mesma fonte canônica que planejou o
-        # turno. A lista de operações reexecutáveis permanece centralizada em
-        # ``contexto_compartilhado.intencao_reexecutavel``; esta barreira não
-        # mantém vocabulário, destinos ou estados paralelos. Assim pedidos
-        # como ``tenta de novo`` refazem um PLAYLIST_ADD que falhou sem cair na
-        # conversa livre e sem adivinhar outra playlist.
-        resolver_repeticao = ns.get("_resolver_repeticao_ultima_acao")
-        try:
-            repeticao_canonica = (
-                resolver_repeticao(texto)
-                if callable(resolver_repeticao)
-                else None
-            )
-        except Exception as erro:
-            print(
-                "⚠️ [PRIORIDADE:REPETIÇÃO] falha isolada: "
-                f"{type(erro).__name__}: {erro}"
-            )
-            repeticao_canonica = None
-        if isinstance(repeticao_canonica, dict):
-            executar = ns.get("executar_intencao")
-            if callable(executar):
-                try:
-                    executou = bool(executar(repeticao_canonica, texto))
-                except Exception as erro:
-                    print(
-                        "⚠️ [PRIORIDADE:REPETIÇÃO] execução falhou: "
-                        f"{type(erro).__name__}: {erro}"
-                    )
-                    return True
-                registrar = ns.get("_registrar_resultado_execucao")
-                if callable(registrar):
-                    registrar(
-                        repeticao_canonica,
-                        texto,
-                        executou,
-                        origem="prioritario_repeticao_canonica",
-                    )
-                print(
-                    "⚡ [PRIORIDADE:REPETIÇÃO] "
-                    f"intent={repeticao_canonica.get('intent')}"
-                )
-                return True
 
         # Uma entrada de barra é um comando interno ou uma tentativa dele;
         # nunca representa "sim" para uma pergunta aberta. Isso evita que um
@@ -1077,32 +1244,6 @@ class ComandosImediatosRuntime:
                 )
                 return True
 
-        if texto_recusa_musica_agora(texto):
-            bloquear = ns.get("_bloquear_playlist_temporariamente")
-            if callable(bloquear):
-                try:
-                    bloquear(600.0)
-                except Exception:
-                    pass
-            falar = ns.get("falar_com_lipsync")
-            if callable(falar):
-                falar("Pode deixar, não vou tocar nada agora.", "calma", 1)
-            print("🛡️ [PRIORIDADE:MÚSICA] recusa atual respeitada; nenhum comando criado")
-            return True
-
-        if texto_pergunta_como_apagar_item(texto):
-            falar = ns.get("falar_com_lipsync")
-            if callable(falar):
-                falar(
-                    "Você pode apagar pelo Explorador de Arquivos. Se pedir para mim, "
-                    "eu confirmo o item antes e o envio para a lixeira, onde ainda dá "
-                    "para restaurar.",
-                    "calma",
-                    1,
-                )
-            print("🛡️ [PRIORIDADE:ARQUIVOS] explicação segura sem executar exclusão")
-            return True
-
         orquestrador_cooperativo = ns.get("_orquestrador_cooperativo_runtime")
         if callable(getattr(orquestrador_cooperativo, "processar", None)):
             try:
@@ -1296,7 +1437,7 @@ class ComandosImediatosRuntime:
             and params_imediatos.get("origem") == "continuacao_resultado_web"
         )
         if continuacao_web or intent_imediato in {
-            "SWITCH_PREVIOUS_TAB", "MEDIA_CONTROL", "MUSIC_STATUS",
+            "LIST_TABS", "SWITCH_PREVIOUS_TAB", "MEDIA_CONTROL", "MUSIC_STATUS",
             "IOT_CONTROL",
         }:
             if not _candidato_prioritario_autorizado(
@@ -1492,38 +1633,6 @@ class ComandosImediatosRuntime:
                 print("⚡ [PRIORIDADE:CAIXA DE ENTRADA] consulta repetida pela continuidade oficial")
                 return True
         texto_iot = str(texto or "")
-        menciona_iot = bool(re.search(
-            r"\b(?:luz|luzes|lampada|lâmpada|ventilador|tomada|dispositivo|aparelho|iot)\b",
-            texto_iot,
-            flags=re.IGNORECASE,
-        ))
-        if menciona_iot and bloqueia_controle_iot_por_modalidade(texto_iot):
-            # É instrução, dúvida ou recusa sobre uma ação, não uma ação. Uma
-            # resposta local curta evita LLM e impede que os roteadores sejam
-            # chamados novamente no pós-processamento.
-            pergunta_como = bool(re.search(
-                r"^(?:como\s+(?:eu\s+)?(?:faria|faço|faco|posso|poderia)|"
-                r"o\s+que\s+(?:eu\s+)?(?:faria|faço|faco))\b",
-                texto_iot.strip(),
-                flags=re.IGNORECASE,
-            ))
-            if pergunta_como:
-                fala = (
-                    "É só me pedir diretamente para desligar a luz. "
-                    "Como você perguntou apenas como fazer, não alterei nada agora."
-                )
-            elif re.search(r"\btalvez\b", texto_iot, flags=re.IGNORECASE):
-                fala = (
-                    "Pode ser uma boa. Como você falou como possibilidade, deixei a "
-                    "luz como está. Quando quiser executar, é só pedir diretamente."
-                )
-            else:
-                fala = "Pode deixar. Não vou alterar a luz."
-            print("🛡️ [PRIORIDADE:IOT] menção sem autorização; nenhum comando foi criado")
-            falar = ns.get("falar_com_lipsync")
-            if callable(falar):
-                falar(fala, "calma", 1)
-            return True
         # Consultas de estado são somente leitura. Elas precisam chegar ao
         # runtime IoT antes que "como ele está?" seja confundido com conversa.
         detectar_iot = getattr(self.iot, "detectar", None)
@@ -1543,45 +1652,6 @@ class ComandosImediatosRuntime:
                 if callable(registrar):
                     registrar(candidato_iot, texto, executou, origem="prioritario_iot_status")
                 return True
-
-        # Hipóteses e proibições com verbo operacional já foram barradas
-        # pela modalidade canônica. Respondê-las localmente evita que a LLM
-        # invente indisponibilidade e deixa explícito que nada foi executado.
-        turno_protegido = classificar_modalidade_turno(texto)
-        natureza_protegida = str(turno_protegido.get("natureza_acao") or "")
-        moldura_hipotese_local = bool(re.match(
-            r"^(?:talvez|estou\s+pensando\s+em|to\s+pensando\s+em|"
-            r"seria\s+(?:bom|legal)|quem\s+sabe|tenho\s+vontade\s+de)\b",
-            _texto_normalizado_local(texto),
-        ))
-        if (
-            not turno_protegido.get("autoriza_execucao")
-            and natureza_protegida in {"hipotetica", "cancelamento"}
-            and (
-                natureza_protegida == "cancelamento"
-                or moldura_hipotese_local
-            )
-            and re.search(
-                r"\b(?:abrir|abre|abra|fechar|fecha|feche|criar|cria|crie|"
-                r"apagar|apaga|apague|excluir|remover|tocar|toca|toque|"
-                r"ligar|liga|ligue|desligar|desliga|desligue|mover|move|"
-                r"renomear|renomeia|organizar|organiza|pesquisar|pesquisa)\b",
-                _texto_normalizado_local(texto),
-            )
-        ):
-            fala = (
-                "Ficou como uma possibilidade; não executei nem preparei essa ação."
-                if natureza_protegida == "hipotetica"
-                else "Pode deixar. Não executei essa ação."
-            )
-            print(
-                "🛡️ [PRIORIDADE:MODALIDADE] menção operacional sem "
-                "autorização; nenhum comando foi criado"
-            )
-            falar = ns.get("falar_com_lipsync")
-            if callable(falar):
-                falar(fala, "calma", 1)
-            return True
 
         consulta_iot = detectar_consulta_lista_iot(texto)
         if consulta_iot:

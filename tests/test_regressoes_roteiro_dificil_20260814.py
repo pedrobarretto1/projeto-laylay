@@ -21,6 +21,7 @@ from mente_laylay.autonomia.orquestrador_deterministico import (
 )
 from mente_laylay.autonomia.roteador_deterministico import normalizar_pedido_natural
 from mente_laylay.cognicao.contrato_fala import construir_contrato_semantico_fala
+from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.cognicao.validacao_contrato_fala import (
     validar_aderencia_contrato_fala,
 )
@@ -28,6 +29,9 @@ from mente_laylay.personalidade.leitura_social_conversa import (
     parece_elogio_ou_agradecimento_curto,
 )
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+from mente_laylay.memoria_mental.continuidade_contexto import (
+    registrar_estrutura_arquivo_recente,
+)
 from mente_laylay.personalidade.confirmacao_llm import (
     _motivo_contrato_invalido,
     personalizar_confirmacao_llm,
@@ -81,13 +85,11 @@ def test_pesquisa_web_explicita_vence_filtro_generico_de_conversa() -> None:
 
 
 def _estado_arquivo(caminho: str) -> SimpleNamespace:
-    return SimpleNamespace(mental={
-        "ultima_estrutura_arquivo_params": {
+    return SimpleNamespace(mental=registrar_estrutura_arquivo_recente({}, {
             "tipo": "arquivo",
             "arquivo_nome": "teste natural",
             "caminho": caminho,
-        },
-    })
+    }))
 
 
 @pytest.mark.parametrize(
@@ -124,13 +126,15 @@ def test_porta_prioritaria_preserva_ponto_txt_e_abre_arquivo_recente(
     tmp_path,
 ) -> None:
     caminho = str(tmp_path / "teste completo")
-    estado = SimpleNamespace(mental={
-        "ultima_estrutura_arquivo_params": {
+    estado_mental = registrar_estrutura_arquivo_recente({}, {
             "tipo": "arquivo",
             "arquivo_nome": "teste completo",
             "caminho": caminho,
-        },
     })
+    estado_mental["turno_atual"] = classificar_modalidade_turno(
+        "Abre o teste completo.txt e deixa em foco"
+    )
+    estado = SimpleNamespace(mental=estado_mental)
     execucoes: list[dict] = []
     runtime = ComandosImediatosRuntime(
         namespace_getter=lambda: {
@@ -165,12 +169,10 @@ def test_arquivo_nomeado_vira_busca_exata_quando_contexto_aponta_para_pasta() ->
     comando = detectar_intencao_arquivos(
         "Abre o teste completo.txt e deixa em foco",
         params_cb=lambda **kwargs: kwargs,
-        estado_mental={
-            "ultima_estrutura_arquivo_params": {
+        estado_mental=registrar_estrutura_arquivo_recente({}, {
                 "tipo": "pasta",
                 "caminho": r"C:\Downloads\pasta falha",
-            },
-        },
+        }),
         normalizar_texto=lambda valor: str(valor).casefold(),
     )
 
@@ -190,13 +192,11 @@ def test_delete_nomeado_reusa_caminho_movido_com_txt_opcional() -> None:
     comando = detectar_intencao_arquivos(
         "Apaga o arquivo teste natural.txt.",
         params_cb=lambda **kwargs: kwargs,
-        estado_mental={
-            "ultima_estrutura_arquivo_params": {
+        estado_mental=registrar_estrutura_arquivo_recente({}, {
                 "tipo": "arquivo",
                 "arquivo_nome": "teste natural",
                 "caminho": caminho,
-            },
-        },
+        }),
         normalizar_texto=lambda valor: str(valor).casefold(),
     )
 
@@ -207,7 +207,9 @@ def test_delete_nomeado_reusa_caminho_movido_com_txt_opcional() -> None:
 
 
 def test_fecha_ele_usa_referencia_tipificada_antes_da_conversa() -> None:
-    estado = SimpleNamespace(mental={})
+    estado = SimpleNamespace(mental={
+        "turno_atual": classificar_modalidade_turno("Fecha ele."),
+    })
     execucoes: list[dict] = []
     registros: list[tuple] = []
     comando = {"intent": "CLOSE_TAB", "params": {"alvo": "youtube"}}

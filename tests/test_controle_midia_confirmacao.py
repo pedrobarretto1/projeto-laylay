@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from mente_laylay.autonomia.controle_midia import executar_media_control
+from mente_laylay.memoria_mental.operacoes_musicais_runtime import (
+    OperacoesMusicaisRuntime,
+)
 from tests.fakes_navegador import NavegadorLeituraFake, NavegadorOperacoesFake
 
 
@@ -122,3 +125,121 @@ def test_pausa_confirmada_publica_estado_antes_da_consulta_seguinte() -> None:
     ) is True
 
     assert estado == {"musica_atual_status": "pausada"}
+
+
+def test_next_nativo_invalida_faixa_antiga_antes_de_adicao_contextual() -> None:
+    estado = {
+        "musica_atual_ts": 9999999999.0,
+        "musica_atual_status": "tocando",
+        "musica_atual_url": "https://www.youtube.com/watch?v=faixa_antiga",
+        "musica_atual_titulo": "Faixa antiga",
+    }
+
+    assert executar_media_control(
+        {"acao": "next", "platform": "music"},
+        "vai para a próxima faixa",
+        "local",
+        {
+            **_ctx_base(
+                enviar_chrome=None,
+                aba_youtube=False,
+                nativo=lambda _comando: True,
+            ),
+            "_musica_estado_get": lambda chave, padrao=None: estado.get(
+                chave, padrao,
+            ),
+            "_musica_estado_set": lambda chave, valor: estado.__setitem__(
+                chave, valor,
+            ),
+        },
+        marcar_resultado=lambda *_args, **_kwargs: None,
+        falar_por_status=lambda *_args, **_kwargs: None,
+        ctx_fala=lambda: {},
+    ) is True
+    assert estado["musica_atual_status"] == "troca_nao_confirmada"
+    assert estado["musica_troca_origem_url"] == (
+        "https://www.youtube.com/watch?v=faixa_antiga"
+    )
+
+    runtime = OperacoesMusicaisRuntime(
+        playlists_usuario=object(),
+        playlists_laylay=object(),
+        musica_estado_getter=lambda chave, padrao=None: estado.get(chave, padrao),
+        musica_estado_setter=lambda *_args: None,
+        solicitar_aba_ativa=lambda: {},
+        playlist_state={},
+        log=lambda *_args: None,
+    )
+    assert runtime.faixa_atual() == {}
+
+
+def test_next_confirmado_nao_reutiliza_url_antiga_enquanto_troca_nao_chega() -> None:
+    url_antiga = "https://www.youtube.com/watch?v=AAAAAAAAAAA"
+    estado = {
+        "musica_atual_ts": 9999999999.0,
+        "musica_atual_status": "tocando",
+        "musica_atual_url": url_antiga,
+        "musica_atual_titulo": "Faixa antiga",
+    }
+
+    assert executar_media_control(
+        {"acao": "next", "platform": "music"},
+        "vai para a próxima faixa",
+        "local",
+        {
+            **_ctx_base(enviar_chrome=lambda *_args: True),
+            "_musica_estado_get": lambda chave, padrao=None: estado.get(
+                chave, padrao,
+            ),
+            "_musica_estado_set": lambda chave, valor: estado.__setitem__(
+                chave, valor,
+            ),
+        },
+        marcar_resultado=lambda *_args, **_kwargs: None,
+        falar_por_status=lambda *_args, **_kwargs: None,
+        ctx_fala=lambda: {},
+    ) is True
+
+    runtime = OperacoesMusicaisRuntime(
+        playlists_usuario=object(),
+        playlists_laylay=object(),
+        musica_estado_getter=lambda chave, padrao=None: estado.get(chave, padrao),
+        musica_estado_setter=lambda *_args: None,
+        solicitar_aba_ativa=lambda: {
+            "url": url_antiga,
+            "title": "Faixa antiga",
+            "playingConfirmed": True,
+        },
+        playlist_state={},
+        log=lambda *_args: None,
+    )
+    assert runtime.faixa_atual() == {}
+
+
+def test_troca_pendente_aceita_somente_identidade_nova_observada() -> None:
+    estado = {
+        "musica_atual_ts": 9999999999.0,
+        "musica_atual_status": "troca_nao_confirmada",
+        "musica_atual_url": "https://www.youtube.com/watch?v=AAAAAAAAAAA",
+        "musica_atual_titulo": "Faixa antiga",
+        "musica_troca_origem_url": (
+            "https://www.youtube.com/watch?v=AAAAAAAAAAA&list=PL149"
+        ),
+    }
+    url_nova = "https://www.youtube.com/watch?v=BBBBBBBBBBB&list=PL149"
+    runtime = OperacoesMusicaisRuntime(
+        playlists_usuario=object(),
+        playlists_laylay=object(),
+        musica_estado_getter=lambda chave, padrao=None: estado.get(chave, padrao),
+        musica_estado_setter=lambda *_args: None,
+        solicitar_aba_ativa=lambda: {
+            "url": url_nova,
+            "title": "Faixa nova",
+            "canal": "Canal B",
+            "playingConfirmed": True,
+        },
+        playlist_state={},
+        log=lambda *_args: None,
+    )
+
+    assert runtime.faixa_atual()["url"] == url_nova

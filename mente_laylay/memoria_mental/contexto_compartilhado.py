@@ -80,6 +80,7 @@ def intencao_reexecutavel(intent: str) -> bool:
         "IOT_LIST",
         "INBOX_LIST",
         "ORGANIZAR_DESKTOP",
+        "FILE_READ",
     }
 
 

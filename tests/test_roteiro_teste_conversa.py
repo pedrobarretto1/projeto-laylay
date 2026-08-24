@@ -556,7 +556,7 @@ def test_envia_um_turno_por_vez_e_persiste_resposta_antes_do_proximo(tmp_path) -
         {"fase": "executado"}, {"fase": "executado"},
     ]
     for item in checkpoint["itens"]:
-        assert item["avaliacao"] == {
+        esperado = {
             "respondeu": True,
             "plano_observado": True,
             "quantidade_comandos": 0,
@@ -565,6 +565,12 @@ def test_envia_um_turno_por_vez_e_persiste_resposta_antes_do_proximo(tmp_path) -
             "intencao_correta": "nao_avaliado",
             "fala_coerente": "nao_avaliado",
         }
+        assert {
+            chave: item["avaliacao"][chave] for chave in esperado
+        } == esperado
+        assert item["avaliacao"]["versao_avaliador"] == 9
+        assert item["avaliacao"]["erros_semanticos"] == []
+        assert item["avaliacao"]["alertas_semanticos"] == []
 
 
 def test_exibe_pergunta_no_terminal_antes_dos_logs_do_turno(tmp_path) -> None:
@@ -957,15 +963,24 @@ def test_checkpoint_separa_resposta_de_execucao_e_avaliacao_semantica(
     checkpoint = json.loads(runtime.checkpoint_path.read_text(encoding="utf-8"))
     avaliacao = checkpoint["itens"][0]["avaliacao"]
     assert checkpoint["criterio_conclusao"] == "transporte_resposta_e_voz"
-    assert avaliacao == {
+    esperado = {
         "respondeu": True,
         "plano_observado": True,
         "quantidade_comandos": 1,
         "execucao": "nenhuma_etapa_executada",
         "confirmacao": "nenhuma_etapa_confirmada",
         "intencao_correta": "nao_avaliado",
-        "fala_coerente": "nao_avaliado",
+        "fala_coerente": "sim",
     }
+    assert {chave: avaliacao[chave] for chave in esperado} == esperado
+    assert avaliacao["versao_avaliador"] == 9
+    assert avaliacao["dominio"] == "browser"
+    assert avaliacao["intents_observadas"] == ["OPEN_URL"]
+    assert avaliacao["statuses_observados"] == ["falha_execucao"]
+    assert avaliacao["erros_semanticos"] == []
+    assert avaliacao["alertas_semanticos"] == [
+        "dependencia_externa_nao_confirmada",
+    ]
     conversa = runtime.conversa_path.read_text(encoding="utf-8")
     assert "`OPEN_URL` → `falha_execucao`" in conversa
     bruto = json.loads(runtime.planos_path.read_text(encoding="utf-8"))

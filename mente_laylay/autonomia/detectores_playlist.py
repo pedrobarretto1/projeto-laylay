@@ -47,11 +47,20 @@ def detectar_playlist_contextual_musica_atual(
         mencionada = limpar_nome(m_add_contextual_nomeado.group("nome") or "")
         chave_ultima = re.sub(r"\s+", " ", ultima_pl).strip().casefold()
         chave_mencionada = re.sub(r"\s+", " ", mencionada).strip().casefold()
-        if ultima_pl and chave_ultima == chave_mencionada:
+        # O objeto musical é contextual (``essa``), mas o destino está escrito
+        # na fala atual. Exigir que ``ultima_playlist`` já tivesse sido
+        # atualizada fazia uma tentativa anterior falha esconder justamente o
+        # nome explícito da segunda etapa da cadeia. A porta do executor ainda
+        # exige uma faixa observável antes de persistir qualquer item.
+        if mencionada:
             return {
                 "intent": "PLAYLIST_ADD",
                 "params": params(
-                    nome_playlist=ultima_pl,
+                    nome_playlist=(
+                        ultima_pl
+                        if ultima_pl and chave_ultima == chave_mencionada
+                        else mencionada
+                    ),
                     referencia_contextual=True,
                 ),
             }
@@ -462,4 +471,3 @@ def detectar_playlist_usuario(
             }
 
     return None
-

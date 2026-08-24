@@ -519,10 +519,10 @@ def test_red__turno_nao_autorizado_e_referencia_stale_jamais_viram_mutacao() -> 
 
     assert estrutura_arquivo_recente(estado) is None
 
-    # Na baseline estudada, o roteador cru ainda encontra o arquivo stale.
+    # A correção final elimina o candidato já no roteador: a barreira de
+    # autoridade abaixo permanece como segunda defesa, não como única defesa.
     candidato = _detectar_arquivo(texto, estado)
-    assert candidato is not None
-    assert candidato["intent"] == "CREATE_FILE"
+    assert candidato is None
 
     runtime, _estado, executados, _registros, _falas = _runtime_prioritario(
         texto,

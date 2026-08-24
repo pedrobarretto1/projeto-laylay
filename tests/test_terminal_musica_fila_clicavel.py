@@ -215,4 +215,4 @@ def test_navegador_e_extensao_transportam_selecao_sem_url_livre() -> None:
     assert 'cmd === "queue_select"' in script
     assert 'status: "stale_context"' in script
     assert "observedId !== requestedId" in script
-    assert manifesto["version"] == "2.6"
+    assert manifesto["version"] == "2.7"

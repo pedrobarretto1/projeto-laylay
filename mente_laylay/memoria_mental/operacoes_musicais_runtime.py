@@ -9,6 +9,24 @@ from __future__ import annotations
 
 import time
 from typing import Any, Callable, Mapping
+from urllib.parse import parse_qs, urlparse
+
+
+def _identidade_youtube(url: str) -> str:
+    valor = str(url or "").strip()
+    if not valor:
+        return ""
+    try:
+        parsed = urlparse(valor)
+        video_id = str((parse_qs(parsed.query).get("v") or [""])[0]).strip()
+        if video_id:
+            return f"youtube:{video_id}"
+        partes = [parte for parte in parsed.path.split("/") if parte]
+        if partes and partes[0].casefold() in {"shorts", "embed", "live"}:
+            return f"youtube:{partes[-1]}"
+    except Exception:
+        pass
+    return valor.casefold().split("#", 1)[0]
 
 
 class OperacoesMusicaisRuntime:
@@ -84,6 +102,32 @@ class OperacoesMusicaisRuntime:
     def faixa_atual(self) -> dict[str, Any]:
         """Prefere a reprodução observada; memória recente é só fallback."""
         aba_observada: dict[str, Any] = {}
+        instante = 0.0
+        status_memoria = ""
+        url_memoria = ""
+        titulo_memoria = ""
+        origem_troca_url = ""
+        try:
+            instante = float(
+                self.musica_estado_getter("musica_atual_ts", 0.0) or 0.0
+            )
+            status_memoria = str(
+                self.musica_estado_getter("musica_atual_status", "") or ""
+            ).strip().casefold()
+            url_memoria = str(
+                self.musica_estado_getter("musica_atual_url", "") or ""
+            ).strip()
+            titulo_memoria = str(
+                self.musica_estado_getter("musica_atual_titulo", "") or ""
+            ).strip()
+            origem_troca_url = str(
+                self.musica_estado_getter("musica_troca_origem_url", "") or ""
+            ).strip()
+        except Exception as erro:
+            self.log(
+                "⚠️ [PLAYLIST:CONTEXTO] estado da música atual indisponível: "
+                f"{type(erro).__name__}: {erro}"
+            )
         try:
             aba_observada = dict(self.solicitar_aba_ativa() or {})
         except Exception as erro:
@@ -96,7 +140,22 @@ class OperacoesMusicaisRuntime:
             aba_observada.get("audibleConfirmed") is True
             or aba_observada.get("playingConfirmed") is True
         )
-        if "youtube.com" in url_observada.casefold() and reproducao_confirmada:
+        troca_pendente = status_memoria == "troca_nao_confirmada"
+        identidade_origem = _identidade_youtube(origem_troca_url)
+
+        def identidade_mudou(url_candidata: str) -> bool:
+            identidade_candidata = _identidade_youtube(url_candidata)
+            return bool(
+                identidade_origem
+                and identidade_candidata
+                and identidade_candidata != identidade_origem
+            )
+
+        if (
+            "youtube.com" in url_observada.casefold()
+            and reproducao_confirmada
+            and (not troca_pendente or identidade_mudou(url_observada))
+        ):
             return {
                 **aba_observada,
                 "origem": str(
@@ -104,25 +163,21 @@ class OperacoesMusicaisRuntime:
                 ),
             }
         try:
-            instante = float(self.musica_estado_getter("musica_atual_ts", 0.0) or 0.0)
-            status = str(
-                self.musica_estado_getter("musica_atual_status", "") or ""
-            ).strip().casefold()
-            url = str(
-                self.musica_estado_getter("musica_atual_url", "") or ""
-            ).strip()
-            titulo = str(
-                self.musica_estado_getter("musica_atual_titulo", "") or ""
-            ).strip()
             if (
                 instante
                 and time.time() - instante <= 7200.0
-                and status not in {"finalizada", "encerrada", "parada"}
-                and "youtube.com" in url.casefold()
+                and status_memoria not in {
+                    "finalizada", "encerrada", "parada",
+                }
+                and (
+                    not troca_pendente
+                    or identidade_mudou(url_memoria)
+                )
+                and "youtube.com" in url_memoria.casefold()
             ):
                 return {
-                    "url": url,
-                    "title": titulo,
+                    "url": url_memoria,
+                    "title": titulo_memoria,
                     "canal": "",
                     "origem": "player_atual",
                 }
@@ -133,7 +188,10 @@ class OperacoesMusicaisRuntime:
             )
         # Compatibilidade com uma extensão antiga ou uma aba pausada: ela só
         # entra quando não há faixa recente confirmada na mente.
-        if "youtube.com" in url_observada.casefold():
+        if (
+            "youtube.com" in url_observada.casefold()
+            and not troca_pendente
+        ):
             return aba_observada
         return {}
 

@@ -10,6 +10,9 @@ from mente_laylay.autonomia.adaptador_resultado import AdaptadorResultadoOperaci
 from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
 from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+from mente_laylay.memoria_mental.continuidade_contexto import (
+    registrar_estrutura_arquivo_recente,
+)
 from mente_laylay.personalidade.confirmacao_llm import _motivo_contrato_invalido
 
 
@@ -121,13 +124,11 @@ def test_mencao_operacional_sem_autorizacao_recebe_ack_local(
 
 def test_consulta_nomeada_usa_caminho_exato_do_arquivo_recente(tmp_path) -> None:
     arquivo = tmp_path / "carlos" / "roteiro correcao.txt"
-    estado = {
-        "ultima_estrutura_arquivo_params": {
+    estado = registrar_estrutura_arquivo_recente({}, {
             "tipo": "arquivo",
             "arquivo_nome": arquivo.name,
             "caminho": str(arquivo),
-        },
-    }
+    })
 
     assert detectar_intencao_arquivos(
         "Onde o roteiro correcao.txt fica?",

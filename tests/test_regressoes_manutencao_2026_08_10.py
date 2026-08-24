@@ -10,6 +10,9 @@ from mente_laylay.autonomia.orquestrador_deterministico import (
 from mente_laylay.memoria_mental.contexto_imediato import (
     resolver_comando_midia_contextual,
 )
+from mente_laylay.memoria_mental.continuidade_contexto import (
+    registrar_estrutura_arquivo_recente,
+)
 from mente_laylay.percepcao.janelas_sistema import maximizar_janela
 from tests.fakes_navegador import NavegadorOperacoesFake
 
@@ -42,13 +45,11 @@ def _contexto_deterministico(mente: dict) -> dict:
 
 def test_escrita_contextual_atravessa_a_porta_deterministica() -> None:
     caminho = r"C:\Users\pedro\Downloads\teste manutenção.txt"
-    mente = {
-        "ultima_estrutura_arquivo_params": {
+    mente = registrar_estrutura_arquivo_recente({}, {
             "tipo": "arquivo",
             "arquivo_nome": "teste manutenção.txt",
             "caminho": caminho,
-        },
-    }
+    })
 
     for fala, conteudo in (
         ('Escreve "teste concluído" nele.', "teste concluído"),
@@ -100,12 +101,15 @@ def test_busca_de_codigo_abre_primeiro_resultado_no_mesmo_turno() -> None:
     def executar(intencao: dict, _texto: str) -> bool:
         execucoes.append(intencao)
         if intencao["intent"] == "FILE_SEARCH":
-            estado.mental["ultima_estrutura_arquivo_params"] = {
+            estado.mental = registrar_estrutura_arquivo_recente(
+                estado.mental,
+                {
                 "tipo": "pesquisa_semantica",
                 "consulta": "código que controla a lâmpada",
                 "resultados": [caminho],
                 "nomes": ["controlador.py"],
-            }
+                },
+            )
         return True
 
     runtime = ComandosImediatosRuntime(

@@ -71,8 +71,14 @@ def test_playlist_add_explicito_e_consumido_antes_da_llm() -> None:
     class Estado:
         mental = {
             "turno_atual": {
+                "modalidade": "comando",
+                "modalidade_geral": "comando",
                 "autoriza_execucao": True,
                 "operacao_explicita": "playlist_adicionar",
+                "segmentos": [{
+                    "modalidade": "comando",
+                    "autoriza_execucao": True,
+                }],
             },
             "retrato_turno_atual": {
                 "operacao_explicita": "playlist_adicionar",
@@ -210,6 +216,10 @@ def test_musica_contextual_no_jogo_e_executada_sem_depender_da_llm() -> None:
                 "modalidade": "comando",
                 "modalidade_geral": "comando",
                 "autoriza_execucao": True,
+                "segmentos": [{
+                    "modalidade": "comando",
+                    "autoriza_execucao": True,
+                }],
             },
             "retrato_turno_atual": {"modo_jogo_ativo": True},
         }
@@ -287,6 +297,10 @@ def test_rota_prioritaria_e_geral_para_comandos_deterministicos() -> None:
                     "modalidade": "comando",
                     "modalidade_geral": "comando",
                     "autoriza_execucao": True,
+                    "segmentos": [{
+                        "modalidade": "comando",
+                        "autoriza_execucao": True,
+                    }],
                 },
             }
 
@@ -334,6 +348,10 @@ def test_rota_prioritaria_materializa_pronome_de_arquivo_antes_de_executar() -> 
                 "modalidade": "comando",
                 "modalidade_geral": "comando",
                 "autoriza_execucao": True,
+                "segmentos": [{
+                    "modalidade": "comando",
+                    "autoriza_execucao": True,
+                }],
             },
             "retrato_turno_atual": {},
         }
@@ -385,6 +403,35 @@ def test_rota_geral_nao_executa_sem_autorizacao_do_turno() -> None:
     assert runtime.processar_prioritarios(
         "se eu pedir para fechar o Chrome, você consegue?"
     ) is False
+    assert chamadas == []
+
+
+def test_guard_booleano_de_autorizacao_sem_segmento_nao_libera_musica() -> None:
+    chamadas = []
+
+    class Estado:
+        mental = {
+            "turno_atual": {
+                "modalidade": "comando",
+                "modalidade_geral": "comando",
+                "autoriza_execucao": True,
+                "segmentos": [],
+            },
+        }
+
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: {
+            "_estado_compartilhado_runtime": Estado(),
+            "resolver_comando_natural": lambda *_args: ({
+                "intent": "MUSIC_SEARCH",
+                "params": {"query": "minecraft"},
+            }, "deterministico-explicito"),
+            "executar_intencao": lambda *args: chamadas.append(args) or True,
+        },
+        loop_getter=lambda: None,
+    )
+
+    assert runtime.processar_prioritarios("toca música para jogar") is False
     assert chamadas == []
 
 

@@ -63,7 +63,7 @@ def _resultado(
 _RELEVANCIA_MUSICAL = re.compile(
     r"\b(?:"
     r"musica|musicas|faixa|faixas|playlist|playlists|som|midia|"
-    r"toca|toque|tocar|coloca|coloque|colocar|bota|"
+    r"toca|toque|tocar|coloca|coloque|colocar|"
     r"pausa|pause|pausar|retoma|retome|retomar|"
     r"continua|continue|continuar|"
     r"proxima|anterior|repete|repita|repetir|despausa|pula|pule"
@@ -74,7 +74,13 @@ _RELEVANCIA_MUSICAL = re.compile(
 
 def texto_tem_relevancia_musical(texto: str) -> bool:
     """Relevância serve para escopo de guard; nunca equivale a jurisdição."""
-    return bool(_RELEVANCIA_MUSICAL.search(normalizar_gramatica_musical(texto)))
+    normalizado = normalizar_gramatica_musical(texto)
+    if _RELEVANCIA_MUSICAL.search(normalizado):
+        return True
+    # ``bota`` só é verbo musical quando ocupa a moldura diretiva. No meio de
+    # uma pergunta como ``essa bota é boa?`` é um substantivo do domínio do
+    # jogo e não pode entregar ownership à gramática musical.
+    return bool(re.match(r"^(?:por\s+favor\s+)?bota\b", normalizado))
 
 
 # Molduras que explicitamente NÃO são ordens atuais.
@@ -146,7 +152,9 @@ _ANTERIOR_EXPLICITA = re.compile(
     r"^(?:por favor\s+)?(?:"
     r"(?:volta|retorna|retome)\s+(?:(?:para|pra)\s+)?(?:a\s+)?"
     r"(?:musica|faixa)\s+anterior|"
-    r"(?:volta|retorna)\s+(?:(?:para|pra)\s+)?(?:a\s+)?anterior"
+    r"(?:volta|retorna)\s+(?:(?:para|pra)\s+)?(?:a\s+)?anterior|"
+    r"(?:volta|volte|retorna|retorne)\s+(?:para|pra)\s+"
+    r"(?:a\s+)?(?:(?:musica|faixa)\s+)?de\s+antes"
     r")[?!.]*$",
     re.IGNORECASE,
 )
@@ -383,20 +391,14 @@ def analisar_gramatica_musical(texto: str) -> AnaliseGramaticalMusical:
             motivo="avanço musical explícito",
         )
     if _ANTERIOR_EXPLICITA.fullmatch(t):
+        dominio_anterior_explicito = bool(
+            re.search(r"\b(?:musica|faixa)\b", t)
+        )
         return _resultado(
             texto=t, classe="pedido_direto", operacao="anterior",
             evidencia_diretiva=True,
-            depende_contexto=bool(
-                re.fullmatch(
-                    r"(?:por favor\s+)?(?:volta|retorna)\s+"
-                    r"(?:(?:para|pra)\s+)?(?:a\s+)?anterior[?!.]*",
-                    t,
-                    flags=re.IGNORECASE,
-                )
-            ),
-            dominio_explicito=bool(
-                re.search(r"\b(?:musica|faixa)\b", t)
-            ),
+            depende_contexto=not dominio_anterior_explicito,
+            dominio_explicito=dominio_anterior_explicito,
             regra="anterior_explicita_fullmatch",
             motivo="verbo diretivo de retorno; referente explícito ou elíptico",
         )

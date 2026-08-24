@@ -35,6 +35,11 @@ from mente_laylay.iot.registro import (
 )
 from mente_laylay.iot.runtime import RuntimeIoT
 from mente_laylay.memoria_mental.contexto_imediato import ContextoImediatoRuntime
+from mente_laylay.memoria_mental.contexto_compartilhado import (
+    estado_mental_inicial,
+    registrar_resultado_execucao,
+)
+from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
 
 
 class MemoriaIoTFalsa:
@@ -100,9 +105,13 @@ def test_registro_da_lampada_tem_controles_completos():
     assert registro.resolver("luz") == lampada
     assert lampada.configuracao["classe_tuya"] == "bulb"
     assert lampada.configuracao["dps_estado"] == "20"
-    assert lampada.configuracao["snapshot_path"] == "dados/voz_pessoal/snapshot.json"
+    assert lampada.configuracao["snapshot_path"] == "credencia_tuya/snapshot.json"
     assert lampada.configuracao["snapshot_fallback_paths"] == (
-        "snapshot.json", "dados/voz_pessoal/devices.json", "devices.json",
+        "credencia_tuya/devices.json",
+        "dados/voz_pessoal/snapshot.json",
+        "snapshot.json",
+        "dados/voz_pessoal/devices.json",
+        "devices.json",
     )
     assert {"ligar", "desligar", "ajustar_brilho", "ajustar_cor", "ajustar_branco"} <= lampada.capacidades
 
@@ -710,15 +719,35 @@ def test_cadeia_completa_separa_arquivo_iot_e_musica() -> None:
 
 
 def test_contexto_iot_com_cor_vence_reutilizacao_semantica_de_energia():
+    mental = registrar_resultado_execucao(
+        estado_mental_inicial(),
+        ResultadoAcao(
+            intent="IOT_CONTROL",
+            status="ligado",
+            alvo="lampada_quarto",
+            params={"acao": "ligar", "alvo": "lampada_quarto"},
+            executou=True,
+            confirmado=True,
+            origem="executor",
+        ),
+        "liga a lâmpada",
+        True,
+        origem="executor",
+        status="ligado",
+    )
+
     class Estado:
-        mental = {"ultima_acao_intent": "IOT_CONTROL"}
+        pass
+
+    estado = Estado()
+    estado.mental = mental
 
     contexto = ContextoImediatoRuntime(
         namespace_getter=lambda: {
             "_normalizar_texto_com_apelidos": lambda texto: texto.lower(),
             "_estrutura_arquivo_recente": lambda *_: {},
         },
-        estado_runtime_getter=lambda: Estado(),
+        estado_runtime_getter=lambda: estado,
     )
     contexto.resolver_iot = lambda *_: {
         "intent": "IOT_CONTROL",

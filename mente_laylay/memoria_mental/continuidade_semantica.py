@@ -72,6 +72,11 @@ def _relacao_semantica(tokens: list[str]) -> str:
 
 
 def _acao_semantica(tokens: list[str]) -> str:
+    lados = {"esquerda", "esquerdo", "direita", "direito"}
+    if set(tokens).intersection(lados) and _tem_radical(
+        tokens, "coloc", "coloqu", "posicion",
+    ):
+        return "POSICIONAR"
     if _tem_radical(tokens, "cri", "refaz", "restaur", "recuper"):
         return "CRIAR"
     if _tem_radical(tokens, "apag", "delet", "remov", "exclu"):
@@ -88,7 +93,7 @@ def _acao_semantica(tokens: list[str]) -> str:
         return "PAUSAR"
     if _tem_radical(tokens, "despaus", "retom", "continu"):
         return "RETOMAR"
-    if _tem_radical(tokens, "toc", "coloc"):
+    if _tem_radical(tokens, "toc", "coloc", "coloqu"):
         return "EXECUTAR"
     if _tem_radical(tokens, "repet"):
         return "EXECUTAR"
@@ -121,6 +126,8 @@ def _acao_da_intencao(intent: str, params: Dict[str, Any] | None = None) -> str:
         return "RENOMEAR" if operacao == "renomear" else "MOVER" if operacao == "mover" else ""
     if intent in {"APP_OPEN", "OPEN_URL"}:
         return "ABRIR"
+    if intent == "ORGANIZAR_DESKTOP":
+        return "POSICIONAR"
     if intent in {"CLOSE_APP", "CLOSE_TAB"}:
         return "FECHAR"
     if intent == "IOT_CONTROL":
@@ -553,6 +560,27 @@ def resolver_continuidade_semantica(
                     confianca=min(0.98, confianca_dominio + 0.12),
                     motivo="estrutura recente permite reconstruir o item",
                 )
+
+    if dominio == "app" and acao == "POSICIONAR":
+        esquerda = bool(set(tokens).intersection({"esquerda", "esquerdo"}))
+        direita = bool(set(tokens).intersection({"direita", "direito"}))
+        alvo = _alvo_contextual(estado, dominio, ultimo_params)
+        if alvo and esquerda != direita:
+            lado = "left" if esquerda else "right"
+            return DecisaoContinuidade(
+                operacao="POSICIONAR_REFERENCIA",
+                dominio="app",
+                acao="POSICIONAR",
+                intent="ORGANIZAR_DESKTOP",
+                alvo=alvo,
+                params={
+                    lado: alvo,
+                    "modo": "posicionar",
+                    "referencia_contextual": True,
+                },
+                confianca=min(0.97, confianca_dominio + 0.1),
+                motivo="acao espacial atual aplicada ao referente vivo do app",
+            )
 
     if dominio in {"app", "site", "iot", "musica"}:
         alvo = _alvo_contextual(estado, dominio, ultimo_params)

@@ -7,6 +7,154 @@ const pendingPlayerEvents = new Map();
 let playerDiscoveryRunning = false;
 let playerDiscoveryQueued = false;
 let playerDiscoveryTimer = null;
+const MEDIA_HISTORY_STORAGE_KEY = "laylayConfirmedMediaNavigationV1";
+const MEDIA_HISTORY_TTL_MS = 30 * 60 * 1000;
+const MEDIA_HISTORY_MAX_ITEMS = 12;
+
+function youtubeVideoId(rawUrl) {
+  try {
+    const parsed = new URL(String(rawUrl || ""));
+    if (!parsed.hostname.toLowerCase().endsWith("youtube.com")) return "";
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    return String(
+      parsed.searchParams.get("v") ||
+      (["shorts", "embed", "live"].includes(parts[0]) ? parts[1] : "") ||
+      ""
+    ).trim();
+  } catch (_) {
+    return "";
+  }
+}
+
+function sameYouTubeMedia(firstUrl, secondUrl) {
+  const firstId = youtubeVideoId(firstUrl);
+  const secondId = youtubeVideoId(secondUrl);
+  if (firstId && secondId) return firstId === secondId;
+  return String(firstUrl || "") === String(secondUrl || "");
+}
+
+async function loadConfirmedMediaHistory() {
+  try {
+    const stored = await chrome.storage.session.get(MEDIA_HISTORY_STORAGE_KEY);
+    const history = stored?.[MEDIA_HISTORY_STORAGE_KEY];
+    return history && typeof history === "object" ? history : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+async function saveConfirmedMediaHistory(history) {
+  try {
+    await chrome.storage.session.set({
+      [MEDIA_HISTORY_STORAGE_KEY]: history && typeof history === "object"
+        ? history : {},
+    });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function rememberConfirmedMediaNavigation(tabId, evidence = {}) {
+  if (!Number.isInteger(tabId)) return false;
+  const previousUrl = String(evidence.beforeUrl || "").trim();
+  const currentUrl = String(
+    evidence.afterUrl || evidence.currentUrl || ""
+  ).trim();
+  if (
+    !youtubeVideoId(previousUrl)
+    || !youtubeVideoId(currentUrl)
+    || sameYouTubeMedia(previousUrl, currentUrl)
+  ) return false;
+
+  const history = await loadConfirmedMediaHistory();
+  const key = String(tabId);
+  const now = Date.now();
+  const stack = Array.isArray(history[key]) ? history[key].filter((item) => (
+    item && now - Number(item.createdAt || 0) <= MEDIA_HISTORY_TTL_MS
+  )) : [];
+  const latest = stack[stack.length - 1];
+  if (!latest || !(
+    sameYouTubeMedia(latest.previousUrl, previousUrl)
+    && sameYouTubeMedia(latest.currentUrl, currentUrl)
+  )) {
+    stack.push({ previousUrl, currentUrl, createdAt: now });
+  }
+  history[key] = stack.slice(-MEDIA_HISTORY_MAX_ITEMS);
+  return saveConfirmedMediaHistory(history);
+}
+
+async function matchingConfirmedMediaNavigation(tab) {
+  if (!Number.isInteger(tab?.id)) return null;
+  const history = await loadConfirmedMediaHistory();
+  const key = String(tab.id);
+  const now = Date.now();
+  const stack = Array.isArray(history[key]) ? history[key].filter((item) => (
+    item && now - Number(item.createdAt || 0) <= MEDIA_HISTORY_TTL_MS
+  )) : [];
+  history[key] = stack;
+  await saveConfirmedMediaHistory(history);
+  const receipt = stack[stack.length - 1] || null;
+  return receipt && sameYouTubeMedia(tab.url, receipt.currentUrl)
+    ? { receipt, history, key, stack }
+    : null;
+}
+
+function updateTabUrl(tabId, url) {
+  return new Promise((resolve) => {
+    chrome.tabs.update(tabId, { url }, (tab) => {
+      const error = chrome.runtime.lastError?.message || "";
+      resolve(error ? { tab: null, error } : { tab: tab || null, error: "" });
+    });
+  });
+}
+
+async function observeTabMedia(tabId, expectedUrl, timeoutMs = 5000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const tab = await tabById(tabId);
+    if (tab && sameYouTubeMedia(tab.url, expectedUrl)) return tab;
+    await new Promise((resolve) => setTimeout(resolve, 120));
+  }
+  return null;
+}
+
+async function restoreConfirmedPreviousMedia(tab) {
+  const matched = await matchingConfirmedMediaNavigation(tab);
+  if (!matched) return null;
+  const { receipt, history, key, stack } = matched;
+  const update = await updateTabUrl(tab.id, receipt.previousUrl);
+  if (update.error) {
+    return {
+      status: "history_restore_failed",
+      message: update.error,
+      evidence: { previousUrl: receipt.previousUrl, currentUrl: tab.url || "" },
+    };
+  }
+  const observed = (
+    update.tab && sameYouTubeMedia(update.tab.url, receipt.previousUrl)
+  ) ? update.tab : await observeTabMedia(tab.id, receipt.previousUrl);
+  if (!observed) {
+    return {
+      status: "history_restore_failed",
+      message: "A URL musical anterior não foi observada após a restauração",
+      evidence: { previousUrl: receipt.previousUrl, currentUrl: tab.url || "" },
+    };
+  }
+  stack.pop();
+  history[key] = stack;
+  await saveConfirmedMediaHistory(history);
+  return {
+    status: "success",
+    message: "",
+    evidence: {
+      previousUrl: receipt.previousUrl,
+      currentUrl: observed.url || receipt.previousUrl,
+      restoredBy: "confirmed_media_history",
+      changed: true,
+    },
+  };
+}
 
 function safeJsonParse(text) {
   try { return JSON.parse(text); } catch (_) { return null; }
@@ -614,6 +762,17 @@ if (cmd.action === "youtube_search") {
       });
       return;
     }
+    if (comando === "prev") {
+      const restored = await restoreConfirmedPreviousMedia(targetTab);
+      if (restored?.status === "success") {
+        sendCommandResult(cmd, true, restored, targetTab);
+        console.log(
+          `📺 Controle do YouTube [prev] restaurou histórico confirmado na aba ${targetTab.id}:`,
+          restored,
+        );
+        return;
+      }
+    }
     const response = await executeContentCommand({
       ...cmd,
       action: "youtube_control",
@@ -621,6 +780,9 @@ if (cmd.action === "youtube_search") {
       payload: { ...(cmd.payload || {}), command: comando },
     }, targetTab);
     const ok = response?.status === "success" || response?.status === "partial";
+    if (comando === "next" && ok) {
+      await rememberConfirmedMediaNavigation(targetTab.id, response?.evidence || {});
+    }
     sendCommandResult(cmd, ok, response || {}, targetTab);
     console.log(`${ok ? "📺" : "⚠️"} Controle do YouTube [${comando}] na aba ${targetTab.id}:`, response);
     return;

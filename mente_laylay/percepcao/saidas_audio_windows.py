@@ -9,6 +9,12 @@ import time
 from typing import Any, Callable
 
 
+# Valores oficiais da API MMDevice usados pelo Pycaw:
+# eRender seleciona saídas e DEVICE_STATE_ACTIVE exclui registros ausentes.
+_DATA_FLOW_RENDER = 0
+_DEVICE_STATE_ACTIVE = 0x00000001
+
+
 def _referencia_dispositivo(endpoint_id: str) -> str:
     """Cria uma referência pública sem expor o identificador do hardware."""
     return hashlib.sha256(str(endpoint_id).encode("utf-8")).hexdigest()[:16]
@@ -58,7 +64,10 @@ class GerenciadorSaidasAudioWindows:
             padrao_id = str(getattr(padrao, "id", "") or "")
             dispositivos: list[dict[str, Any]] = []
             ids: dict[str, tuple[str, str]] = {}
-            for item in list(porta.GetAllDevices() or ()):
+            for item in list(porta.GetAllDevices(
+                data_flow=_DATA_FLOW_RENDER,
+                device_state=_DEVICE_STATE_ACTIVE,
+            ) or ()):
                 endpoint_id = str(getattr(item, "id", "") or "").strip()
                 # MMDevice usa 0 para renderização e 1 para captura.
                 if not endpoint_id.casefold().startswith("{0.0.0."):

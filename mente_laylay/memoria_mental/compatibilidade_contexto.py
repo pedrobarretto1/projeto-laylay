@@ -21,8 +21,9 @@ def texto_pede_repeticao_curta(texto: str, normalizar_texto_cb) -> bool:
     # outra fala. Antes, ``obrigado de novo`` repetia a última ação prática e
     # chegou a fechar o Opera sem que o usuário pedisse isso.
     return bool(re.fullmatch(
-        r"(?:(?:tenta|tente|faz|fa[cç]a|vai)\s+)?(?:de\s+novo|novamente|"
-        r"outra\s+vez|mais\s+uma\s+vez)|tenta\s+outra\s+vez",
+        r"(?:(?:tenta|tente|faz|fa[cç]a|vai|leia|l[eê]|ler)\s+)?"
+        r"(?:de\s+novo|novamente|outra\s+vez|mais\s+uma\s+vez)|"
+        r"tenta\s+outra\s+vez",
         t,
     ))
 
