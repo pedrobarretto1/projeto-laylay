@@ -27,6 +27,9 @@ from mente_laylay.cognicao.normalizacao_linguagem import texto_pede_opiniao
 from mente_laylay.memoria_mental.continuidade_contexto import (
     estrutura_arquivo_recente,
 )
+from mente_laylay.memoria_mental.efeitos_reversiveis import (
+    selecionar_efeito_reversivel,
+)
 
 
 def _get(ctx: Mapping[str, Any], key: str):
@@ -121,29 +124,66 @@ def _nomes_arquivo_equivalentes(declarado: str, conhecido: str) -> bool:
 def _exclusao_confirmada_recente(
     estado: Mapping[str, Any], *, ttl_s: float = 300.0,
 ) -> str:
-    """Retorna somente o caminho ligado ao último descarte confirmado."""
+    """Retorna o caminho do último descarte confirmado ainda reversível."""
+
+    recibo = selecionar_efeito_reversivel(
+        estado,
+        reversao_intent="RESTORE_DELETED_ITEM",
+        ttl_s=ttl_s,
+    )
+    if recibo:
+        return str(recibo.get("alvo") or "").strip()
+
+    # Compatibilidade com estados anteriores ao contrato de efeitos
+    # reversíveis. Continua fail-closed: somente o contrato atômico
+    # integralmente confirmado da última ação pode servir como fallback.
     contrato = (
         dict(estado.get("ultima_acao_contrato") or {})
-        if isinstance(estado.get("ultima_acao_contrato"), Mapping)
+        if isinstance(
+            estado.get("ultima_acao_contrato"),
+            Mapping,
+        )
         else {}
     )
-    intent = str(contrato.get("intent") or "").strip().upper()
-    status = str(contrato.get("status") or "").strip().casefold()
+
+    intent = str(
+        contrato.get("intent") or ""
+    ).strip().upper()
+
+    status = str(
+        contrato.get("status") or ""
+    ).strip().casefold()
+
     if (
-        intent not in {"CONFIRM_DELETE_ITEM", "DELETE_ITEM"}
+        intent not in {
+            "CONFIRM_DELETE_ITEM",
+            "DELETE_ITEM",
+        }
         or contrato.get("executou") is not True
         or contrato.get("confirmado") is not True
         or status != "movido_para_lixeira"
     ):
         return ""
+
     try:
-        idade = time.time() - float(estado.get("ultima_acao_ts") or 0.0)
+        idade = (
+            time.time()
+            - float(estado.get("ultima_acao_ts") or 0.0)
+        )
     except (TypeError, ValueError):
         return ""
-    if idade < 0.0 or idade > max(1.0, float(ttl_s)):
-        return ""
-    return str(contrato.get("alvo") or estado.get("ultima_acao_alvo") or "").strip()
 
+    if (
+        idade < 0.0
+        or idade > max(1.0, float(ttl_s))
+    ):
+        return ""
+
+    return str(
+        contrato.get("alvo")
+        or estado.get("ultima_acao_alvo")
+        or ""
+    ).strip()
 
 def _remover_aspas_pareadas(valor: str) -> str:
     texto = str(valor or "").strip()

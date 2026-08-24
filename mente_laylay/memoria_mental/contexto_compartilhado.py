@@ -12,6 +12,9 @@ from mente_laylay.memoria_mental.continuidade_geral import (
     normalizar_dominio_continuidade,
     registrar_evento_continuidade,
 )
+from mente_laylay.memoria_mental.efeitos_reversiveis import (
+    registrar_resultado_efeito_reversivel,
+)
 
 from mente_laylay.memoria_mental.consciencia_temporal import (
     atualizar_consciencia_temporal,
@@ -343,6 +346,21 @@ def registrar_resultado_execucao(
             else contrato.evidencia_confirmacao
         ),
     }
+
+    # ROOT_E_RECIBO_REVERSIVEL_V1_20260823
+    # A última ação continua sendo a verdade cronológica. Em paralelo,
+    # somente um efeito real e confirmado alimenta o contrato de reversão.
+    estado = registrar_resultado_efeito_reversivel(
+        estado,
+        intent=intent,
+        status=status_final,
+        alvo=str(estado.get("ultima_acao_alvo") or ""),
+        executou=contrato.executou,
+        confirmado=contrato.confirmado,
+        id_solicitacao=contrato.id_solicitacao,
+        origem=contrato.origem,
+        evidencia_confirmacao=contrato.evidencia_confirmacao,
+    )
 
     # Exclusão e caixa de entrada usam ``pendencia_acao_canonica``. Esta
     # camada registra somente o resultado e limpa estados legados que possam

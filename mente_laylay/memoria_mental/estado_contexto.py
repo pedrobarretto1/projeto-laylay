@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from mente_laylay.memoria_mental.continuidade_geral import estado_continuidade_geral_inicial
+from mente_laylay.memoria_mental.efeitos_reversiveis import estado_efeitos_reversiveis_inicial
 from mente_laylay.memoria_mental.consciencia_temporal import estado_temporal_inicial
 from mente_laylay.memoria_mental.registro_semantico import estado_registro_semantico_inicial
 
@@ -95,6 +96,7 @@ def criar_estado_mental_inicial() -> Dict[str, Any]:
         "oferta_pendente": {},
         "pendencia_atual": {},
         "continuidade_geral": estado_continuidade_geral_inicial(),
+        "efeitos_reversiveis": estado_efeitos_reversiveis_inicial(),
         "ultima_pendencia_encerrada": {},
         "preferencias_musicais": {"artistas": {}, "faixas": {}, "estilos": {}},
         "alvo_corrigido": "",
