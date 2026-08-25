@@ -34,7 +34,8 @@ _RECONHECIMENTO_ESTADO = re.compile(
     re.IGNORECASE,
 )
 _ESTADO_USUARIO = re.compile(
-    r"\b(?:estou|t[oô]|t[aá]|ando)\s+(?:tudo\s+|um\s+pouco\s+|meio\s+)?"
+    r"\b(?:estou|t[oô]|t[aá]|ando)\s+"
+    r"(?:tudo\s+|um\s+pouco\s+|meio\s+|muito\s+)?"
     r"(?P<estado>bem|mal|cansad[oa]|triste|preocupad[oa]|ansios[oa]|"
     r"feliz|animad[oa]|tranquil[oa])\b",
     re.IGNORECASE,

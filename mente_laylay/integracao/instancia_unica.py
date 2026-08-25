@@ -15,6 +15,16 @@ from typing import Any, Callable
 
 
 ERRO_MUTEX_JA_EXISTE = 183
+CODIGO_ROTEIRO_NAO_EXECUTADO = 73
+
+
+def codigo_saida_instancia_ocupada(argumentos: list[str] | tuple[str, ...]) -> int:
+    """Distingue abertura normal ignorada de roteiro que não chegou a rodar."""
+    return (
+        CODIGO_ROTEIRO_NAO_EXECUTADO
+        if "--roteiro" in {str(item or "") for item in argumentos}
+        else 0
+    )
 
 
 def nome_mutex_instancia(identificador: str | os.PathLike[str]) -> str:

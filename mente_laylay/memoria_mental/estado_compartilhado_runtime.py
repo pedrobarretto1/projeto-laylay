@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import copy
+import os
 import threading
+import traceback
 from typing import Any, Callable, Dict, Mapping
 
 from mente_laylay.memoria_mental.estado_continuidades import atualizar_continuidades
@@ -160,6 +162,20 @@ class EstadoCompartilhadoRuntime:
             novo = self._preparar_dominio(estado)
             nome = self._nome_atributo(dominio)
             if nome == "mental":
+                if os.environ.get("LAYLAY_DIAGNOSTICO_PLANO") == "1":
+                    atual_plano = dict(self.mental.get("plano_turno_atual") or {})
+                    novo_plano = dict(novo.get("plano_turno_atual") or {})
+                    if atual_plano.get("id") and not novo_plano.get("id"):
+                        pilha = " > ".join(
+                            f"{item.name}:{item.lineno}"
+                            for item in traceback.extract_stack(limit=8)[:-1]
+                        )
+                        print(
+                            "🔬 [PLANO:IDENTIDADE_PERDIDA] "
+                            f"atual={atual_plano.get('id')} "
+                            f"novo_fase={novo_plano.get('fase') or '-'} "
+                            f"pilha={pilha}"
+                        )
                 novo = self._normalizar_mental(novo)
             setattr(self, nome, novo)
             return novo

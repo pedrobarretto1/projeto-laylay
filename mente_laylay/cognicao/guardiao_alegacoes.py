@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict
 
+from mente_laylay.emocoes.contrato_causal import evento_tem_causa_rastreavel
 from mente_laylay.memoria_mental.resultado_acao import normalizar_resultado_acao
 
 
@@ -86,6 +87,18 @@ _PERSONALIDADE_SEGURA = re.compile(
     r"\b(?:acho|me\s+parece|soa|eu\s+gostaria)\b",
     re.IGNORECASE,
 )
+_EMOCAO_FORTE_DA_LAYLAY = re.compile(
+    r"\b(?:talvez\s+)?(?:eu\s+)?(?:estou|esteja|t[oô]|fiquei|me\s+sinto)\s+"
+    r"(?:muito\s+)?(?:irritada|brava|nervosa|com\s+raiva|triste|decepcionada)\b",
+    re.IGNORECASE,
+)
+_HIPOTESE_EMOCIONAL_NEGADA = re.compile(
+    r"\b(?:talvez|hip[oó]tese)\b[^.!?]{0,100}"
+    r"\b(?:irritad[ao]|brav[ao]|nervos[ao]|com\s+raiva|triste|decepcionad[ao])\b|"
+    r"\b(?:isso|isto|essa\s+ideia)\s+n[aã]o\s+[ée]\s+(?:um\s+)?fato\b|"
+    r"\bn[aã]o\s+[ée]\s+(?:um\s+)?fato\b",
+    re.IGNORECASE,
+)
 _INTENTS_AGENDAMENTO = {
     "AGENDAR_LEMBRETE", "AGENDAR_ACAO", "CREATE_REMINDER", "SCHEDULE_ACTION",
 }
@@ -101,6 +114,20 @@ def _alega_execucao_afirmativa(frase: str) -> bool:
         prefixo = texto[:ocorrencia.start()]
         if re.search(
             r"\b(?:não|nao|nunca|jamais|nem)\s+(?:te\s+)?$",
+            prefixo,
+            re.IGNORECASE,
+        ):
+            continue
+        return True
+    return False
+
+
+def _alega_emocao_forte_da_laylay(frase: str) -> bool:
+    texto = str(frase or "")
+    for ocorrencia in _EMOCAO_FORTE_DA_LAYLAY.finditer(texto):
+        prefixo = texto[:ocorrencia.start()]
+        if re.search(
+            r"\b(?:n[aã]o|nunca|jamais|nem)\s+$",
             prefixo,
             re.IGNORECASE,
         ):
@@ -156,7 +183,27 @@ def validar_alegacoes_da_fala(
     oferta_dependente_removida = False
     conclusao_total_rejeitada = False
     agendamento_rejeitado = False
+    emocao_sem_causa_rejeitada = False
+    texto_usuario = str(contrato.get("texto_usuario") or "")
+    evento_causal_valido = evento_tem_causa_rastreavel(
+        contrato.get("evento_emocional_causal")
+        if isinstance(contrato.get("evento_emocional_causal"), dict)
+        else None
+    )
+    hipotese_emocional_negada = bool(
+        _HIPOTESE_EMOCIONAL_NEGADA.search(texto_usuario)
+    )
     for frase in frases:
+        if (
+            origem_ia
+            and hipotese_emocional_negada
+            and not evento_causal_valido
+            and _alega_emocao_forte_da_laylay(frase)
+        ):
+            problemas.append("emocao_sem_causa_causal")
+            removidas.append(frase)
+            emocao_sem_causa_rejeitada = True
+            continue
         if plano_parcial and _CONCLUSAO_TOTAL_ALEGADA.search(frase):
             problemas.append("conclusao_total_com_plano_parcial")
             removidas.append(frase)
@@ -216,7 +263,12 @@ def validar_alegacoes_da_fala(
             continue
         mantidas.append(frase)
     ajustada = " ".join(mantidas).strip()
-    if agendamento_rejeitado:
+    if emocao_sem_causa_rejeitada:
+        ajustada = (
+            "Você tem razão: isso não é um fato. Não vou tratar essa emoção "
+            "como real sem uma causa observável."
+        )
+    elif agendamento_rejeitado:
         ajustada = (
             "Guardei a ideia, mas não criei nem confirmei o lembrete."
             if tem_anotacao

@@ -158,7 +158,8 @@ _MARCADORES_EXPLICACAO_LITERAL = re.compile(
     re.IGNORECASE,
 )
 _ESTADO_PESSOAL = re.compile(
-    r"\b(?:eu\s+)?(?:estou|to|tô)\s+(?:um\s+pouco\s+|meio\s+)?"
+    r"\b(?:eu\s+)?(?:estou|to|tô)\s+"
+    r"(?:tudo\s+|um\s+pouco\s+|meio\s+|muito\s+)?"
     r"(?P<estado>cansad[oa]|triste|mal|preocupad[oa]|ansios[oa]|feliz|animad[oa])\b",
     re.IGNORECASE,
 )
@@ -752,10 +753,22 @@ def contingencia_comunicacao(
                 "Parece que a preocupação resolveu monopolizar seu dia. Eu tô acompanhando.",
             ], evitar=falas_evitar)
         if estado.startswith("feliz") or estado.startswith("animad"):
+            conquista = re.search(
+                r"\b(?:terminei|conclu[ií]|finalizei)\s+([^,.!?;]{2,100})",
+                texto,
+                re.IGNORECASE,
+            )
+            if conquista:
+                alvo = str(conquista.group(1) or "").strip()
+                return escolher_variacao([
+                    f"Que bom saber que você está feliz por terminar {alvo}. Parabéns pela conquista.",
+                    f"Aí sim: você terminou {alvo} e está feliz. Isso merece comemoração.",
+                    f"Parabéns por terminar {alvo}. Fico feliz de ver essa conquista dando certo.",
+                ], evitar=falas_evitar)
             return escolher_variacao([
-                "Boa, dá pra sentir que você tá num dia melhor.",
-                "Aí gostei. Guarda um pouco dessa animação porque o dia adora cobrar juros kkk.",
-                "Que bom. Hoje você veio com energia de gente que venceu uma pequena batalha.",
+                "Que bom saber que você está feliz.",
+                "Aí sim, você está feliz — essa notícia merece espaço.",
+                "Fico feliz de saber que você está animado com isso.",
             ], evitar=falas_evitar)
     relacao_declarada = _RELACAO_PESSOAL_DECLARADA.search(texto)
     if relacao_declarada:

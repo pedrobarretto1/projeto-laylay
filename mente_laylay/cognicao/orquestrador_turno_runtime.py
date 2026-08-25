@@ -30,6 +30,14 @@ from mente_laylay.memoria_mental.contexto_compartilhado import (
 from mente_laylay.memoria_mental.contexto_imediato import (
     referencia_app_quarentenavel_c1d,
 )
+from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
+from mente_laylay.emocoes.contrato_causal import (
+    criar_evento_leitura_emocional_usuario,
+    criar_evento_leitura_semantica_usuario,
+)
+from mente_laylay.memoria_mental.eventos_emocionais import (
+    publicar_evento_emocional_causal,
+)
 
 
 def registrar_metrica_opcional(ns: dict, componente: str, duracao_ms: float, sucesso: bool) -> None:
@@ -592,6 +600,10 @@ def _iniciar_planejamento_turno(
             turno['leitura_semantica_shadow'] = leitura_semantica
     identidade_turno = ns['_analisar_identidade_turno_mente'](texto, falante='pedro')
     funcao_comunicativa = ns['_analisar_funcao_comunicativa_mente'](texto_cognitivo)
+    leitura_emocional_usuario = analisar_intencao_emocional(
+        texto_cognitivo,
+        normalizar_texto=lambda valor: ns['_normalizar_texto_com_apelidos'](valor),
+    )
     encerramento_assunto = ns['_classificar_encerramento_assunto_mente'](texto, mente_antes_turno)
     correcao_duravel = ns['_extrair_correcao_duravel_mente'](texto, estado_mental=mente_antes_turno)
     correcao_interpretacao = ns['_abrir_correcao_interpretacao_mente'](mente_antes_turno, texto, eh_correcao=str(funcao_comunicativa.get('funcao') or '') == 'correcao')
@@ -726,6 +738,13 @@ def _iniciar_planejamento_turno(
         texto_operacional_efetivo=texto_efetivo,
         revisao_intra_turno=revisao_intra_turno,
     )
+    evento_emocional_causal = criar_evento_leitura_emocional_usuario(
+        leitura_emocional_usuario,
+        turno_id=str(plano.get('id') or turno.get('id') or time.time_ns()),
+    )
+    if evento_emocional_causal:
+        turno['evento_emocional_causal'] = dict(evento_emocional_causal)
+        plano['evento_emocional_causal'] = dict(evento_emocional_causal)
     evidencia_habilidades_getter = ns.get('_evidencia_habilidades_turno_mente')
     if callable(evidencia_habilidades_getter):
         try:
@@ -757,6 +776,11 @@ def _iniciar_planejamento_turno(
     turno['contrato_fala'] = contrato_fala
     plano['contrato_fala'] = contrato_fala
     atualizacoes_turno = {'ultima_entrada': str(texto or '').strip()[:500], 'ultima_entrada_ts': ns['time'].time(), 'turno_atual': turno, 'plano_turno_atual': plano, 'contrato_fala_atual': contrato_fala, 'identidade_turno_atual': identidade_turno, 'identidade_turno_resumo': ns['_resumo_identidade_turno_mente'](identidade_turno), 'funcao_comunicativa_atual': funcao_comunicativa, 'retrato_turno_atual': retrato_turno, 'entidades_recentes': entidades_recentes, 'especialistas_turno_atual': especialistas, 'assunto_estruturado_atual': assunto_estruturado, 'registro_semantico': registro_semantico, 'fundamentacao_factual_turno': fundamentacao_factual, **limpeza_pergunta_turno}
+    if evento_emocional_causal:
+        atualizacoes_turno['eventos_emocionais_causais'] = publicar_evento_emocional_causal(
+            mente_antes_turno.get('eventos_emocionais_causais'),
+            evento_emocional_causal,
+        )
     if leitura_semantica:
         atualizacoes_turno['leitura_semantica_turno'] = leitura_semantica
     if correcao_interpretacao:
@@ -796,10 +820,29 @@ def registrar_leitura_semantica_principal(namespace_getter, texto: str, leitura:
     # Copia apenas para observabilidade/contexto futuro. Campos de decisão,
     # plano e autorização do turno atual permanecem exatamente como estavam.
     turno['leitura_semantica_principal'] = semantica
+    plano = dict(mente.get('plano_turno_atual') or {})
+    evento = criar_evento_leitura_semantica_usuario(
+        semantica,
+        turno_id=str(plano.get('id') or turno.get('id') or time.time_ns()),
+    )
+    campos_semanticos = {
+        'turno_atual': turno,
+        'leitura_semantica_turno': semantica,
+    }
+    if evento:
+        turno['evento_emocional_causal'] = dict(evento)
+        if plano:
+            plano['evento_emocional_causal'] = dict(evento)
+            campos_semanticos['plano_turno_atual'] = plano
+        campos_semanticos['eventos_emocionais_causais'] = (
+            publicar_evento_emocional_causal(
+                mente.get('eventos_emocionais_causais'),
+                evento,
+            )
+        )
     ns['_estado_compartilhado_runtime'].atualizar_campos(
         'mental',
-        turno_atual=turno,
-        leitura_semantica_turno=semantica,
+        **campos_semanticos,
     )
     atos = [str(item.get('tipo') or '') for item in semantica.get('atos') or [] if isinstance(item, dict)]
     ns['print'](

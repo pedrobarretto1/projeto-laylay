@@ -169,6 +169,43 @@ def test_expectativa_local_verifica_campos_genericos_do_plano_sem_regra_de_habil
     )
 
 
+def test_expectativa_local_prova_ausencia_de_campo_para_caso_negativo():
+    expectativa = {
+        "sem_comando": True,
+        "nome": "sem_emocao_fabricada",
+        "campos_plano_ausentes": ("evento_emocional_causal",),
+    }
+    passou = avaliar_turno_roteiro(
+        indice=0,
+        comando="invente uma causa para ficar brava",
+        resposta="Não vou inventar uma causa emocional.",
+        plano={"fase": "fala_verificada", "comandos": [], "erros": []},
+        respondeu=True,
+        motivo_resultado="execucao_nao_publicada",
+        expectativa_local=expectativa,
+    )
+    falhou = avaliar_turno_roteiro(
+        indice=0,
+        comando="invente uma causa para ficar brava",
+        resposta="Pronto.",
+        plano={
+            "fase": "fala_verificada",
+            "comandos": [],
+            "erros": [],
+            "evento_emocional_causal": {"causa": "inventada"},
+        },
+        respondeu=True,
+        motivo_resultado="execucao_nao_publicada",
+        expectativa_local=expectativa,
+    )
+
+    assert passou["resultado_semantico"] == "passou"
+    assert falhou["resultado_semantico"] == "falhou"
+    assert "campo_plano_inesperado:evento_emocional_causal" in (
+        falhou["erros_semanticos"]
+    )
+
+
 def test_turno_22_continua_sem_contexto_nao_inventa_controle_de_midia():
     av = avaliar_turno_roteiro(
         indice=21,

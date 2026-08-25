@@ -89,6 +89,11 @@ _DESCRICAO_DOMINIO = {
         "possuir um avatar visual com emoções e animações; conversar sobre skins e designs. "
         "Alterações nos arquivos só são reais depois que o código executor as confirmar"
     ),
+    "personalidade": (
+        "perceber sinais emocionais e reagir somente a causas rastreáveis; distinguir "
+        "fato observado, inferência, leitura social e preferência aprendida. Emoção "
+        "não concede autorização nem muda um resultado real"
+    ),
     "conversa": "conversar, explicar, raciocinar, consultar clima e sugerir ações",
 }
 
@@ -144,6 +149,11 @@ _TERMOS_DOMINIO = {
         "o que copiei em um arquivo",
     ),
     "avatar": ("avatar", "skin", "skins", "png", "emocao visual", "animação do avatar"),
+    "personalidade": (
+        "emocao", "emocoes", "emocional", "sentimento", "sentimentos",
+        "personalidade", "brava", "irritada", "triste", "alegre",
+        "expressar", "expressao emocional",
+    ),
     "conversa": ("clima", "tempo", "convers", "explica", "duvida", "acha"),
 }
 
@@ -167,6 +177,7 @@ _ROTULO_CAPACIDADE_NATURAL = {
     "caixa_entrada": "guardar ideias e notas pessoais",
     "visao": "analisar o que aparece na tela durante um jogo",
     "avatar": "usar meu avatar e pensar em novos visuais",
+    "personalidade": "reagir emocionalmente a causas reais e respeitar limites",
     "conversa": "conversar, explicar e raciocinar com você",
 }
 
@@ -192,7 +203,9 @@ _MODULO_SAUDE_POR_DOMINIO = {
     "agenda": "agenda",
 }
 
-_DOMINIOS_CONVERSACIONAIS_DISPONIVEIS = frozenset({"avatar", "conversa"})
+_DOMINIOS_CONVERSACIONAIS_DISPONIVEIS = frozenset({
+    "avatar", "personalidade", "conversa",
+})
 
 
 def _normalizar(texto: Any) -> str:
@@ -525,7 +538,7 @@ class MapaHabilidadesRuntime:
         disponiveis = tuple(
             nome
             for nome in _DESCRICAO_DOMINIO
-            if nome not in {"conversa", "avatar"}
+            if nome not in {"conversa", "avatar", "personalidade"}
             and str(dict(dominios.get(nome) or {}).get("estado") or "")
             in {"disponivel", "parcial", "degradado"}
         )
@@ -815,7 +828,10 @@ class MapaHabilidadesRuntime:
                 "ou a pasta. Como agora você só perguntou, não fiz nada."
             )
         if "arquivos" in dominios and re.search(r"\b(?:apag|exclu|delet|remov)\w*\b", t):
-            return "Consigo. Quando você pedir de verdade, confirmo o alvo e envio o arquivo ou a pasta para a lixeira."
+            return (
+                "Consigo apagar arquivos, mas não por conta própria. Só quando você fizer "
+                "o pedido direto eu confirmo o alvo e envio o arquivo ou a pasta para a lixeira."
+            )
         if "arquivos" in dominios and re.search(r"\b(?:encontr|procur|busc|localiz|pesquis)\w*\b", t):
             return (
                 "Consigo pesquisar localmente por nome, pasta, conteúdo, tipo, significado e data. "
@@ -967,6 +983,13 @@ class MapaHabilidadesRuntime:
             return (
                 "Tenho um avatar visual com emoções e animações. Posso ajudar a imaginar skins e designs; "
                 "uma mudança nos PNGs ou no código só conta como feita depois que o executor confirmar."
+            )
+        if "personalidade" in dominios:
+            return (
+                "Consigo perceber sinais emocionais e expressar uma reação quando há causa e "
+                "evidência rastreáveis. Distingo fato observado, inferência, leitura social e "
+                "preferência aprendida; se a causa não for válida, contenho a reação. Uma emoção "
+                "não autoriza ações nem muda o resultado que uma habilidade realmente confirmou."
             )
         if "conversa" in dominios:
             return (

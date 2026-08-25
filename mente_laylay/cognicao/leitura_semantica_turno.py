@@ -7,7 +7,9 @@ operacional sob responsabilidade dos porteiros determinísticos.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Dict
+import unicodedata
 
 
 TIPOS_ATO = {
@@ -56,6 +58,46 @@ RELACOES_CONTEXTO = {
     "ambiguo",
 }
 
+ESTADOS_EMOCIONAIS_USUARIO = {
+    "alegria", "alivio", "ansiedade", "cansaco", "culpa", "esgotamento",
+    "irritacao", "medo", "orgulho", "tedio", "tristeza",
+}
+NATUREZAS_LEITURA_EMOCIONAL = {"leitura_social", "inferencia"}
+
+_ALIASES_ESTADO_EMOCIONAL = {
+    "alegre": "alegria",
+    "contente": "alegria",
+    "felicidade": "alegria",
+    "feliz": "alegria",
+    "aliviada": "alivio",
+    "aliviado": "alivio",
+    "ansiosa": "ansiedade",
+    "ansioso": "ansiedade",
+    "cansada": "cansaco",
+    "cansado": "cansaco",
+    "culpada": "culpa",
+    "culpado": "culpa",
+    "esgotada": "esgotamento",
+    "esgotado": "esgotamento",
+    "irritada": "irritacao",
+    "irritado": "irritacao",
+    "orgulhosa": "orgulho",
+    "orgulhoso": "orgulho",
+    "tediosa": "tedio",
+    "tedioso": "tedio",
+    "triste": "tristeza",
+}
+
+_ALIASES_NATUREZA_EMOCIONAL = {
+    "direta": "leitura_social",
+    "direto": "leitura_social",
+    "explicita": "leitura_social",
+    "explicito": "leitura_social",
+    "expressa": "leitura_social",
+    "expresso": "leitura_social",
+    "literal": "leitura_social",
+}
+
 
 def _texto_curto(valor: Any, limite: int) -> str:
     return " ".join(str(valor or "").strip().split())[:limite]
@@ -78,6 +120,61 @@ def _lista_textos(valores: Any, *, limite_itens: int = 8, limite_texto: int = 12
         if texto and texto not in resultado:
             resultado.append(texto)
     return resultado
+
+
+def _sem_acentos(valor: Any) -> str:
+    texto = unicodedata.normalize("NFKD", str(valor or "").casefold())
+    texto = "".join(ch for ch in texto if not unicodedata.combining(ch))
+    return re.sub(r"\s+", " ", texto).strip()
+
+
+def _normalizar_leitura_emocional(valor: Any, *, texto: str) -> Dict[str, Any]:
+    dados = dict(valor or {}) if isinstance(valor, dict) else {}
+    estado = _sem_acentos(_texto_curto(dados.get("estado_usuario"), 40))
+    estado = _ALIASES_ESTADO_EMOCIONAL.get(estado, estado)
+    if estado not in ESTADOS_EMOCIONAIS_USUARIO:
+        estado = "nenhum"
+    causa = _texto_curto(dados.get("causa_expressa"), 300)
+    evidencia = _texto_curto(dados.get("trecho_evidencia"), 240)
+    natureza = _sem_acentos(_texto_curto(
+        dados.get("natureza_evidencia") or "inferencia",
+        40,
+    ))
+    natureza = _ALIASES_NATUREZA_EMOCIONAL.get(natureza, natureza)
+    if natureza not in NATUREZAS_LEITURA_EMOCIONAL:
+        natureza = "inferencia"
+    confianca = _confianca(dados.get("confianca"), 0.0)
+    hipotetica = bool(dados.get("hipotetica"))
+    try:
+        intensidade = max(0, min(3, int(dados.get("intensidade") or 0)))
+    except (TypeError, ValueError):
+        intensidade = 0
+    evidencia_na_fala = bool(
+        evidencia
+        and _sem_acentos(evidencia) in _sem_acentos(texto)
+    )
+    valida = bool(
+        estado != "nenhum"
+        and intensidade > 0
+        and causa
+        and evidencia_na_fala
+        and not hipotetica
+        and confianca >= 0.72
+    )
+    return {
+        "estado_usuario": estado,
+        "intensidade": intensidade if valida else 0,
+        "causa_expressa": causa,
+        "trecho_evidencia": evidencia,
+        "evidencia_na_fala": evidencia_na_fala,
+        "natureza_evidencia": natureza,
+        "hipotetica": hipotetica,
+        "alvo": _texto_curto(dados.get("alvo") or "estado_geral", 160),
+        "confianca": confianca,
+        "valida": valida,
+        "autoriza_execucao": False,
+        "persistencia_pessoal": False,
+    }
 
 
 def _normalizar_ato(item: Any) -> Dict[str, Any] | None:
@@ -137,6 +234,10 @@ def normalizar_leitura_semantica(
     if tipo_relacao not in RELACOES_CONTEXTO:
         tipo_relacao = "independente"
     operacional = _normalizar_operacional(dados.get("operacional"))
+    leitura_emocional = _normalizar_leitura_emocional(
+        dados.get("leitura_emocional"),
+        texto=texto,
+    )
     return {
         "versao": 1,
         "texto": _texto_curto(texto, 500),
@@ -152,11 +253,15 @@ def normalizar_leitura_semantica(
             "referencia_pendencia": bool(relacao.get("referencia_pendencia")),
         },
         "operacional": operacional,
+        "leitura_emocional": leitura_emocional,
         "ambiguidades": _lista_textos(dados.get("ambiguidades"), limite_itens=6, limite_texto=160),
         "evidencias": _lista_textos(dados.get("evidencias"), limite_itens=8, limite_texto=160),
         "confianca": _confianca(dados.get("confianca"), 0.0),
         "origem": _texto_curto(origem, 40) or "desconhecida",
-        "valida": bool(atos),
+        # A leitura emocional é um contrato observacional independente da
+        # classificação dos atos. Ela pode ser válida sozinha, mas nunca
+        # concede autoridade operacional.
+        "valida": bool(atos) or bool(leitura_emocional.get("valida")),
         "somente_observacao": True,
     }
 

@@ -11,6 +11,9 @@ from mente_laylay.integracao.diagnostico_encerramento import (
     SentinelaEncerramento,
     registrar_evento_encerramento,
 )
+from mente_laylay.integracao.instancia_unica import (
+    codigo_saida_instancia_ocupada,
+)
 
 
 def test_evento_encerramento_e_jsonl_persistente() -> None:
@@ -55,6 +58,13 @@ def test_executor_registra_codigo_windows_em_hex() -> None:
         assert dado["codigo"] == 0xC0000005
         assert dado["codigo_hex"] == "0xC0000005"
         assert dado["duracao_s"] == 2.5
+
+
+def test_instancia_ocupada_nao_pode_fingir_que_roteiro_passou() -> None:
+    assert codigo_saida_instancia_ocupada([]) == 0
+    assert codigo_saida_instancia_ocupada([
+        "--roteiro", "roteiro_teste_personalidade_viva_p15.py",
+    ]) != 0
 
 
 def test_fontes_contem_instrumentacao_sem_mudar_lifecycle() -> None:

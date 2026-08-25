@@ -19,11 +19,11 @@ _PREFIXO_CAMPO_FALA = re.compile(
 _CHAVES_CONTRATO_IA = {
     "fala", "comandos", "comando", "acao", "action", "alvo", "intent",
     "params", "aprendizado", "aprendizados", "tipo_interacao",
-    "leitura_turno", "humor",
+    "leitura_turno", "leitura_emocional", "humor",
 }
 
 _PADRAO_CAMPO_CONTRATO = re.compile(
-    r'(?i)(?:\[\s*)?["\']?(?:fala|tipo_interacao|leitura_turno|comandos|'
+    r'(?i)(?:\[\s*)?["\']?(?:fala|tipo_interacao|leitura_turno|leitura_emocional|comandos|'
     r'aprendizados?|humor|acao|action|alvo|intent|params)["\']?(?:\s*\])?\s*:'
 )
 
@@ -223,8 +223,8 @@ def _extrair_campo_textual_json_like(texto: str, campo: str) -> str:
 def _fala_antes_de_metadados(texto: str) -> str:
     """Recupera a fala livre que veio antes de um contrato interno vazado."""
     marcador = re.search(
-        r'(?:\[\s*(?:fala|tipo_interacao|leitura_turno|comandos|aprendizados?|humor)\s*\]\s*:|'
-        r'(?<!\w)(?:tipo_interacao|leitura_turno|comandos|aprendizados?|humor)\s*:)',
+        r'(?:\[\s*(?:fala|tipo_interacao|leitura_turno|leitura_emocional|comandos|aprendizados?|humor)\s*\]\s*:|'
+        r'(?<!\w)(?:tipo_interacao|leitura_turno|leitura_emocional|comandos|aprendizados?|humor)\s*:)',
         str(texto or ""),
         flags=re.IGNORECASE,
     )
@@ -293,7 +293,7 @@ def limpar_resposta_da_ia(
     except Exception:
         json_invalido = bool(
             texto_pre.startswith(("{", "["))
-            or re.search(r'(?i)(?:\[\s*)?["\']?(?:fala|tipo_interacao|leitura_turno|comandos|aprendizados?|humor)["\']?(?:\s*\])?\s*:', texto_pre)
+            or re.search(r'(?i)(?:\[\s*)?["\']?(?:fala|tipo_interacao|leitura_turno|leitura_emocional|comandos|aprendizados?|humor)["\']?(?:\s*\])?\s*:', texto_pre)
         )
 
     try:
@@ -581,4 +581,3 @@ def _recuperar_fala_no_mesmo_turno(
         return fala if _fala_entregavel(fala, fallback_fala) else ""
     except Exception:
         return ""
-

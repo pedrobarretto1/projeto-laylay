@@ -20,7 +20,10 @@ import threading as _threading
 import builtins as _builtins
 from typing import Any, Mapping
 
-from mente_laylay.integracao.instancia_unica import adquirir_instancia_unica
+from mente_laylay.integracao.instancia_unica import (
+    adquirir_instancia_unica,
+    codigo_saida_instancia_ocupada,
+)
 
 
 _instancia_unica_runtime = adquirir_instancia_unica(
@@ -28,7 +31,7 @@ _instancia_unica_runtime = adquirir_instancia_unica(
 )
 if not _instancia_unica_runtime.adquirida:
     print("⚠️ [INICIALIZAÇÃO] A Laylay já está aberta. Não iniciei uma segunda instância.")
-    raise SystemExit(0)
+    raise SystemExit(codigo_saida_instancia_ocupada(list(sys.argv[1:])))
 atexit.register(_instancia_unica_runtime.liberar)
 
 
@@ -1027,6 +1030,7 @@ _avaliador_eventos_emocionais_runtime = (
 _avaliar_evento_emocional_operacional = partial(
     _avaliar_evento_emocional_operacional_mente,
     avaliador=_avaliador_eventos_emocionais_runtime,
+    publicar_evento=_estado_contexto_runtime.publicar_evento_emocional_causal,
     definir_emocao=lambda emocao, nivel, causa: _definir_emocao_conversacional(
         emocao, nivel, causa,
     ),

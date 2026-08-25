@@ -1,0 +1,21 @@
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:57838 | sessão=ff7ff841 pid=19840
+🖥️ [TERMINAL 2] interface iniciada | sessão=ff7ff841 pid=21356 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=ff7ff841
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0101 início_de_fala=0.0172
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=roteiro_teste
+💬 Você:
+> Estou um pouco triste hoje.
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+🧠 [IA] Gerando resposta para: 'Estou um pouco triste hoje.'
+⚠️ [COMUNICAÇÃO] autoria final indisponível | motivo=fala_invalida
+🧠 [PLANO:FASE] fase=resposta_planejada | comandos=[] | erros=[]
+🧠 [PLANO:FASE] fase=executado | comandos=[] | erros=[]
+[95m╭─ ≧◡≦ Laylay: Isso parece estar pesado hoje. Não vou jogar positividade vazia em cima.[0m
+⚠️ [ROTEIRO:001] resultado não finalizado | motivo=plano_de_outro_turno; sequência interrompida
+📊 [ROTEIRO:RESUMO] avaliados=1 | passaram=0 | falharam=1 | alertas=0 | p95=120.013s
+🧪 [ROTEIRO] interrompido | conversa=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\resultados_testes\roteiro_teste_personalidade_viva_p15-20260825-065237-870225\conversa.md checkpoint=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\resultados_testes\roteiro_teste_personalidade_viva_p15-20260825-065237-870225\checkpoint.json

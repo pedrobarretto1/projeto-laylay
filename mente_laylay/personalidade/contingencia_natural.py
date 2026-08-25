@@ -6,6 +6,8 @@ import hashlib
 import re
 from typing import Any, Mapping
 
+from mente_laylay.emocoes.contrato_causal import evento_tem_causa_rastreavel
+from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
 from mente_laylay.personalidade.variacao_fala import escolher_variacao
 
 
@@ -109,6 +111,77 @@ def _resposta_social_curta(texto: str) -> str:
     return ""
 
 
+def _resposta_leitura_emocional_causal(
+    texto: str,
+    contexto: Mapping[str, Any] | None,
+) -> str:
+    """Usa somente a leitura social válida publicada para o turno atual."""
+    if not isinstance(contexto, Mapping):
+        return ""
+    plano = contexto.get("plano_turno_atual")
+    if not isinstance(plano, Mapping):
+        plano = contexto
+    evento = plano.get("evento_emocional_causal")
+    if not isinstance(evento, Mapping) or not evento_tem_causa_rastreavel(evento):
+        return ""
+    if (
+        str(evento.get("origem") or "").casefold()
+        not in {"contingencia_lexical_usuario", "leitura_semantica_principal"}
+        or str(evento.get("natureza_evidencia") or "").casefold()
+        != "leitura_social"
+    ):
+        return ""
+    texto_turno = re.sub(
+        r"\s+", " ", str(plano.get("texto_usuario") or "")
+    ).strip().casefold()
+    if texto_turno and texto_turno != re.sub(r"\s+", " ", texto).strip().casefold():
+        return ""
+    leitura = analisar_intencao_emocional(texto)
+    emocao = str(leitura.get("emocao") or "").casefold()
+    respostas = {
+        "tristeza": (
+            "Eu ouvi que você está triste. Não vou maquiar isso; fico aqui com você.",
+            "Entendo que hoje bateu tristeza. Pode falar no seu ritmo, sem cerimônia.",
+            "Você está triste, e eu não vou empilhar positividade vazia em cima disso.",
+        ),
+        "alegria": (
+            "Aí sim — você terminou o projeto e está feliz. Parabéns por essa conquista.",
+            "Que notícia boa: projeto terminado e você feliz. Isso merece comemoração.",
+            "Parabéns por terminar o projeto. Dá para sentir o quanto você ficou feliz com isso.",
+        ),
+        "ansiedade": (
+            "Eu ouvi que você está ansioso. Posso ficar com você nessa conversa sem apressar nada.",
+            "Entendo que a ansiedade apertou. Fala comigo no seu ritmo.",
+        ),
+        "medo": (
+            "Eu ouvi que você está com medo. Não vou diminuir o que você está sentindo.",
+            "Entendo essa insegurança. Pode me contar o que aconteceu, sem pressa.",
+        ),
+        "culpa": (
+            "Eu ouvi que você está se sentindo culpado. Vamos olhar para o que aconteceu sem te esmagar por isso.",
+            "Entendo que a culpa está pesando. Pode me contar a parte concreta, no seu ritmo.",
+        ),
+        "cansaco": (
+            "Eu ouvi que você está cansado. Não vou transformar isso em palestra.",
+            "Entendo que o cansaço bateu. Posso só te acompanhar por aqui.",
+        ),
+        "esgotamento": (
+            "Eu ouvi que você chegou no limite. Não vou jogar uma solução automática em cima disso.",
+            "Entendo que você está esgotado. Pode falar sem precisar organizar tudo primeiro.",
+        ),
+        "irritacao": (
+            "Eu ouvi que você está irritado. Me conta a causa concreta e eu acompanho sem aumentar o fogo.",
+            "Entendo essa irritação. Pode dizer o que aconteceu sem enfeitar.",
+        ),
+        "tedio": (
+            "Eu ouvi que o tédio bateu. Posso pensar em algo com você sem fingir urgência.",
+            "Entendo: está tudo meio parado. A gente pode puxar uma ideia daqui.",
+        ),
+    }
+    opcoes = respostas.get(emocao)
+    return escolher_variacao(opcoes) if opcoes else ""
+
+
 def _preferencia_local(texto: str) -> str:
     """Responde a uma escolha explícita mesmo quando o modelo expirou."""
     match = re.search(
@@ -185,6 +258,10 @@ def fala_contingencia_natural(
             "Beleza, fica para outro momento.",
             "Fechado. Isso sai da mesa por enquanto.",
         ])
+
+    resposta_emocional = _resposta_leitura_emocional_causal(bruto, contexto)
+    if resposta_emocional:
+        return resposta_emocional
 
     social = _resposta_social_curta(bruto)
     if social:

@@ -338,10 +338,30 @@ def extrair_emocao_da_ia(resposta_bruta: Any) -> Tuple[str, int]:
     return emocao, max(1, min(3, nivel))
 
 
+def _extrair_campo_json_independente(bruto: str, campo: str) -> Any:
+    """Recupera um valor JSON completo sem exigir o fechamento do documento."""
+    padrao = re.compile(
+        rf'["\']{re.escape(campo)}["\']\s*:\s*',
+        flags=re.IGNORECASE,
+    )
+    encontrado = padrao.search(str(bruto or ""))
+    if not encontrado:
+        return None
+    try:
+        valor, _fim = json.JSONDecoder().raw_decode(
+            str(bruto or ""),
+            idx=encontrado.end(),
+        )
+    except Exception:
+        return None
+    return valor
+
+
 def extrair_leitura_semantica_da_ia(resposta_bruta: Any, texto_usuario: str) -> Dict[str, Any]:
     """Extrai a compreensão produzida junto da fala, sem interpretar comandos."""
     if isinstance(resposta_bruta, dict):
         dados = resposta_bruta
+        bruto = ""
     else:
         bruto = str(resposta_bruta or "").strip()
         bruto = re.sub(r"^```(?:json)?\s*", "", bruto, flags=re.IGNORECASE)
@@ -349,10 +369,20 @@ def extrair_leitura_semantica_da_ia(resposta_bruta: Any, texto_usuario: str) -> 
         try:
             dados = json.loads(bruto)
         except Exception:
-            return {}
+            dados = {}
     if not isinstance(dados, dict):
         return {}
     valor = dados.get("leitura_turno")
+    leitura_emocional = dados.get("leitura_emocional")
+    if bruto:
+        if not isinstance(valor, (list, dict)):
+            valor = _extrair_campo_json_independente(
+                bruto, "leitura_turno",
+            )
+        if not isinstance(leitura_emocional, dict):
+            leitura_emocional = _extrair_campo_json_independente(
+                bruto, "leitura_emocional",
+            )
     if isinstance(valor, list):
         tipos = [str(item or "").strip().lower() for item in valor if str(item or "").strip()]
         if not tipos:
@@ -379,7 +409,17 @@ def extrair_leitura_semantica_da_ia(resposta_bruta: Any, texto_usuario: str) -> 
             "confianca": 0.82,
         }
     if not isinstance(valor, dict):
-        return {}
+        if not isinstance(leitura_emocional, dict):
+            return {}
+        valor = {
+            "atos": [],
+            "modalidade_geral": "conversa",
+            "operacional": {"pedido_real": False},
+            "confianca": leitura_emocional.get("confianca"),
+        }
+    valor = dict(valor)
+    if isinstance(leitura_emocional, dict):
+        valor["leitura_emocional"] = dict(leitura_emocional)
     return normalizar_leitura_semantica(
         valor,
         texto=texto_usuario,
@@ -410,7 +450,45 @@ def preparar_resposta_para_execucao(
     registrar_log = log or print
     texto = str(texto_usuario or "").strip()
     bot_raw = resposta_bruta
+    leitura_semantica_original = extrair_leitura_semantica_da_ia(
+        bot_raw,
+        texto,
+    )
     falha_tecnica_llm = _fala_representa_falha_tecnica_llm(bot_raw)
+    if leitura_semantica_original:
+        emocional_original = dict(
+            leitura_semantica_original.get("leitura_emocional") or {}
+        )
+        registrar_log(
+            "🧠 [SEMÂNTICA:PRINCIPAL] contrato extraído da resposta original | "
+            f"atos={len(leitura_semantica_original.get('atos') or [])} "
+            f"emocional_valida={bool(emocional_original.get('valida'))}"
+        )
+    elif not falha_tecnica_llm:
+        estrutura = "nao_json"
+        chaves: list[str] = []
+        try:
+            bruto_diagnostico = str(bot_raw or "").strip()
+            bruto_diagnostico = re.sub(
+                r"^```(?:json)?\s*", "", bruto_diagnostico,
+                flags=re.IGNORECASE,
+            )
+            bruto_diagnostico = re.sub(
+                r"\s*```$", "", bruto_diagnostico,
+                flags=re.IGNORECASE,
+            ).strip()
+            dados_diagnostico = json.loads(bruto_diagnostico)
+            if isinstance(dados_diagnostico, dict):
+                estrutura = "json_objeto"
+                chaves = sorted(str(chave)[:40] for chave in dados_diagnostico)[:12]
+            else:
+                estrutura = type(dados_diagnostico).__name__
+        except Exception:
+            pass
+        registrar_log(
+            "🧠 [SEMÂNTICA:PRINCIPAL] contrato ausente na resposta original | "
+            f"estrutura={estrutura} chaves={chaves}"
+        )
     comunicacao_autocorrigida = False
 
     def registrar_falha_contingencia(codigo: str) -> None:
@@ -781,7 +859,10 @@ def preparar_resposta_para_execucao(
                 )
     tipo_interacao = extrair_tipo_interacao_da_ia(bot_raw)
     emocao_resposta, nivel_emocao_resposta = extrair_emocao_da_ia(bot_raw)
-    leitura_semantica = extrair_leitura_semantica_da_ia(bot_raw, texto)
+    leitura_semantica = (
+        extrair_leitura_semantica_da_ia(bot_raw, texto)
+        or leitura_semantica_original
+    )
     suprimir_fala = False
     if realidade_bloqueada:
         fala_limpa = contingencia_comunicacao(

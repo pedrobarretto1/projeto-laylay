@@ -29,6 +29,7 @@ Retorne somente JSON válido neste formato:
   "entidades":[],
   "relacao_contextual":{"tipo":"independente|responde_fala_anterior|continua_assunto|muda_assunto|corrige_interpretacao|confirma_pendencia|recusa_pendencia|ambiguo","responde_fala_anterior":false,"inicia_assunto_novo":false,"referencia_pendencia":false},
   "operacional":{"pedido_real":false,"hipotetico":false,"negado":false,"requer_esclarecimento":false,"intent_candidato":"","acao":"","alvo":"","parametros":{},"confianca":0.0},
+  "leitura_emocional":{"estado_usuario":"nenhum","intensidade":0,"causa_expressa":"","trecho_evidencia":"","natureza_evidencia":"inferencia","hipotetica":false,"alvo":"estado_geral","confianca":0.0},
   "ambiguidades":[],"evidencias":[],"confianca":0.0
 }
 Tipos de ato permitidos: saudacao, pergunta, pergunta_opiniao, pergunta_capacidade,
@@ -38,6 +39,9 @@ Analise todos os atos, inclusive quando uma resposta social é seguida por outra
 Diferencie falar sobre uma ação, perguntar capacidade e pedir que ela seja executada.
 Uma confirmação só se refere à pendência quando o contexto realmente mostrar uma pergunta ativa e falada.
 Não transforme gosto, comentário, hipótese, exemplo ou menção de música em pedido para tocar.
+Interprete emoção pela frase inteira, inclusive linguagem indireta. O trecho_evidencia
+deve ser copiado literalmente da fala. Se a emoção for apenas hipótese, metáfora
+ambígua ou não houver evidência suficiente, use estado_usuario "nenhum" e intensidade 0.
 Não invente fatos, entidades, alvos ou intenções. Em dúvida, registre a ambiguidade.
 O campo operacional nunca representa autorização; ele apenas descreve o pedido percebido."""
 

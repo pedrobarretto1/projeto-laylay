@@ -10,7 +10,10 @@ from mente_laylay.integracao.preparador_requisicao_llm import (
     PreparadorRequisicaoLLMRuntime,
 )
 from mente_laylay.integracao.registro_conversa_llm import PedidoModelo
-from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT
+from mente_laylay.personalidade.prompt_voz_unica import (
+    BASE_SYSTEM_PROMPT,
+    BASE_SYSTEM_PROMPT_RAPIDO,
+)
 from mente_laylay.personalidade.proporcao_resposta import limite_tokens_resposta
 
 
@@ -34,7 +37,7 @@ def test_conversa_rapida_troca_prompt_completo_por_contrato_canonico_compacto() 
     )
     sistema = payload["messages"][0]["content"]
 
-    assert payload["max_tokens"] == 128
+    assert payload["max_tokens"] == 256
     assert _chars(payload) < 3000
     assert "Você é Laylay" in sistema
     assert "não autorizam ação" in sistema
@@ -197,7 +200,7 @@ def test_contexto_musical_consulta_playlists_sem_abrir_memoria_legada() -> None:
 
 
 def test_limites_de_saida_preservam_explicacao_e_matematica() -> None:
-    assert limite_tokens_resposta("oi lay", modo_rapido=True) == 128
+    assert limite_tokens_resposta("oi lay", modo_rapido=True) == 256
     assert limite_tokens_resposta("qual você prefere?") == 224
     assert limite_tokens_resposta("explique como isso funciona") == 512
     assert limite_tokens_resposta("resolva 3(2x-5)-4(x+1)=10") == 800
@@ -209,13 +212,28 @@ def test_compactacao_preventiva_e_proporcional_nao_reduz_saida_matematica() -> N
             {"role": "system", "content": BASE_SYSTEM_PROMPT + "x" * 3000},
             {"role": "user", "content": "oi"},
         ],
-        "max_tokens": 128,
+        "max_tokens": 256,
     }
     assert payload_precisa_compactar_llm_local(payload_curto) is True
     compacto = compactar_payload_llm_local(payload_curto)
     assert _chars(compacto) <= 5000
-    assert compacto["max_tokens"] == 128
+    assert compacto["max_tokens"] == 256
 
     payload_matematica = dict(payload_curto, max_tokens=800)
     compacto_matematica = compactar_payload_llm_local(payload_matematica)
     assert compacto_matematica["max_tokens"] == 800
+
+
+def test_prompt_rapido_especifica_vocabulario_e_inferencia_emocional() -> None:
+    prompt = BASE_SYSTEM_PROMPT_RAPIDO.casefold()
+
+    for estado in ("alegria", "alivio", "ansiedade", "tristeza"):
+        assert estado in prompt
+    assert "leitura_social" in prompt
+    assert "inferencia" in prompt
+    assert "frase inteira" in prompt
+    assert "respirar após longa pendência" in prompt
+    assert "intensidade inteira" in prompt
+    assert "inferência" in prompt or "inferencia" in prompt
+    assert "intensidade máxima 2" in prompt
+    assert "0.72" in prompt

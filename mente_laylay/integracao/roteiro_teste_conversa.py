@@ -323,6 +323,7 @@ class RoteiroTesteConversaRuntime:
         self._resposta_event = threading.Event()
         self._indice_aguardado: int | None = None
         self._resposta_atual = ""
+        self._plano_na_publicacao_resposta: dict[str, Any] = {}
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._estado = self._carregar_ou_criar_estado()
@@ -537,11 +538,14 @@ class RoteiroTesteConversaRuntime:
         # V32: ENRIQUECIMENTO_SEMANTICO_CENTRAL
         with self._lock:
             item = dict(self._estado["itens"][indice])
+            plano_avaliacao_efemero = campos.pop("_plano_avaliacao", None)
 
             if isinstance(campos.get("avaliacao"), Mapping):
                 avaliacao_mecanica = dict(campos.get("avaliacao") or {})
-                plano_avaliacao = campos.get("plano")
+                plano_avaliacao = plano_avaliacao_efemero
 
+                if not isinstance(plano_avaliacao, Mapping):
+                    plano_avaliacao = campos.get("plano")
                 if not isinstance(plano_avaliacao, Mapping):
                     plano_avaliacao = item.get("plano")
                 if not isinstance(plano_avaliacao, Mapping):
@@ -633,10 +637,15 @@ class RoteiroTesteConversaRuntime:
         fala = str(texto or "").strip()
         if not fala:
             return False
+        # A fala é publicada depois da verificação final do turno. Capturar o
+        # plano no mesmo instante evita perder esse contrato caso outra tarefa
+        # de cauda limpe ou substitua o estado antes de o roteiro acordar.
+        plano_publicado = self._plano_atual()
         with self._lock:
             if self._indice_aguardado is None:
                 return True
             self._resposta_atual = fala
+            self._plano_na_publicacao_resposta = plano_publicado
             self._resposta_event.set()
         return True
 
@@ -785,11 +794,11 @@ class RoteiroTesteConversaRuntime:
         comando: str,
         plano_id_anterior: Any,
         prazo: float,
+        plano_inicial: Mapping[str, Any] | None = None,
     ) -> tuple[bool, str, dict[str, Any]]:
-        ultimo_plano: dict[str, Any] = {}
+        ultimo_plano = dict(plano_inicial or {})
         ultimo_motivo = "plano_ausente"
         while not self._stop.is_set():
-            ultimo_plano = self._plano_atual()
             concluido, ultimo_motivo = self._resultado_turno_terminal(
                 ultimo_plano,
                 comando=comando,
@@ -797,6 +806,7 @@ class RoteiroTesteConversaRuntime:
             )
             if concluido:
                 return True, ultimo_motivo, ultimo_plano
+            ultimo_plano = self._plano_atual()
             if self.monotonic() >= prazo:
                 break
             self.sleep(min(0.05, max(0.0, prazo - self.monotonic())))
@@ -1074,6 +1084,7 @@ class RoteiroTesteConversaRuntime:
             with self._lock:
                 self._indice_aguardado = indice
                 self._resposta_atual = ""
+                self._plano_na_publicacao_resposta = {}
             enviado_em = self.clock()
             self._atualizar_item(
                 indice,
@@ -1102,7 +1113,6 @@ class RoteiroTesteConversaRuntime:
                 retorno = self.enviar_entrada(comando)
                 if retorno is False:
                     raise RuntimeError("a entrada canônica recusou o comando")
-                self._aguardar_processamento(retorno, prazo, self.monotonic)
             except Exception as erro:
                 self._atualizar_item(
                     indice,
@@ -1120,6 +1130,7 @@ class RoteiroTesteConversaRuntime:
             respondeu = self._resposta_event.wait(restante)
             with self._lock:
                 resposta = self._resposta_atual
+                plano_publicado = dict(self._plano_na_publicacao_resposta)
                 self._indice_aguardado = None
             if not respondeu or not resposta:
                 plano_sem_resposta = self._plano_atual()
@@ -1133,6 +1144,7 @@ class RoteiroTesteConversaRuntime:
                     status="sem_resposta",
                     finalizado_em=self.clock(),
                     plano=self._plano_compacto_checkpoint(plano_sem_resposta),
+                    _plano_avaliacao=plano_sem_resposta,
                     avaliacao=self._avaliacao_mecanica(
                         plano_sem_resposta,
                         respondeu=False,
@@ -1147,7 +1159,7 @@ class RoteiroTesteConversaRuntime:
                 if self.configuracao.parar_sem_resposta:
                     break
                 continue
-            plano = self._plano_atual()
+            plano = plano_publicado or self._plano_atual()
             resultado_turno_concluido = True
             motivo_resultado = "barreira_desativada"
             if self.configuracao.aguardar_confirmacao_execucao:
@@ -1159,6 +1171,7 @@ class RoteiroTesteConversaRuntime:
                     comando=comando,
                     plano_id_anterior=plano_id_anterior,
                     prazo=prazo,
+                    plano_inicial=plano_publicado,
                 )
             if not resultado_turno_concluido:
                 self._anexar_plano_bruto(
@@ -1172,6 +1185,7 @@ class RoteiroTesteConversaRuntime:
                     resposta=resposta,
                     finalizado_em=self.clock(),
                     plano=self._plano_compacto_checkpoint(plano),
+                    _plano_avaliacao=plano,
                     avaliacao=self._avaliacao_mecanica(plano, respondeu=True),
                     resultado_turno_concluido=False,
                     motivo_resultado=motivo_resultado,
@@ -1201,6 +1215,7 @@ class RoteiroTesteConversaRuntime:
                     resposta=resposta,
                     finalizado_em=self.clock(),
                     plano=self._plano_compacto_checkpoint(plano),
+                    _plano_avaliacao=plano,
                     avaliacao=self._avaliacao_mecanica(
                         plano,
                         respondeu=True,
@@ -1231,6 +1246,7 @@ class RoteiroTesteConversaRuntime:
                 resposta=resposta,
                 finalizado_em=finalizado_em,
                 plano=self._plano_compacto_checkpoint(plano),
+                _plano_avaliacao=plano,
                 avaliacao=avaliacao,
                 voz_concluida=True,
                 voz_observada=voz_observada,

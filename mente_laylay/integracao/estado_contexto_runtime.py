@@ -63,6 +63,13 @@ from mente_laylay.emocoes.motor_humor import (
     montar_status_humor_prompt,
 )
 from mente_laylay.emocoes.leitura_usuario import registrar_leitura_emocional
+from mente_laylay.emocoes.contrato_causal import (
+    criar_evento_leitura_emocional_usuario,
+    evento_tem_causa_rastreavel,
+)
+from mente_laylay.memoria_mental.eventos_emocionais import (
+    publicar_evento_emocional_causal as publicar_evento_emocional_no_quadro,
+)
 from mente_laylay.memoria_mental.consciencia_temporal import atualizar_consciencia_temporal
 from mente_laylay.memoria_mental.ciclo_vida_contexto import aplicar_ciclo_vida_contexto
 from mente_laylay.memoria_mental.sessao_conversa import renovar_contexto_sessao
@@ -208,6 +215,28 @@ class EstadoContextoRuntime:
         self._estado().atualizar_campos("mental", conteudo_atual=dict(retrato or {}))
         return retrato
 
+    def publicar_evento_emocional_causal(
+        self,
+        evento: Dict[str, Any],
+    ) -> bool:
+        retrato = dict(evento or {})
+        aceito = evento_tem_causa_rastreavel(retrato)
+        estado = self._estado()
+        quadro = publicar_evento_emocional_no_quadro(
+            estado.mental.get("eventos_emocionais_causais"),
+            retrato,
+        )
+        campos: Dict[str, Any] = {
+            "eventos_emocionais_causais": quadro,
+        }
+        if aceito:
+            plano = dict(estado.mental.get("plano_turno_atual") or {})
+            if plano:
+                plano["evento_emocional_causal"] = retrato
+                campos["plano_turno_atual"] = plano
+        estado.atualizar_campos("mental", **campos)
+        return aceito
+
     def registrar_leitura_emocional_usuario(self, leitura: Dict[str, Any]) -> None:
         try:
             estado = self._estado()
@@ -215,6 +244,15 @@ class EstadoContextoRuntime:
                 "mental",
                 registrar_leitura_emocional(estado.mental, leitura),
             )
+            dados = dict(leitura or {})
+            plano = dict(estado.mental.get("plano_turno_atual") or {})
+            turno_id = str(plano.get("id") or int(float(dados.get("ts") or time.time())))
+            evento = criar_evento_leitura_emocional_usuario(
+                dados,
+                turno_id=turno_id,
+            )
+            if evento:
+                self.publicar_evento_emocional_causal(evento)
         except Exception:
             return
 

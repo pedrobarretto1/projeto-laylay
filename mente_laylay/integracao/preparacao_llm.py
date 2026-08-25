@@ -135,7 +135,7 @@ def preparar_payload_llm(
         # Qwen local a 10-13 tokens/s, permitir 320 tokens fazia uma saudação
         # ultrapassar o timeout do modo jogo. Explicações e matemática nunca
         # entram neste modo e preservam seus limites completos.
-        limite_tokens = min(limite_tokens, 128 if otimizacao_prompt_ativa else 160)
+        limite_tokens = min(limite_tokens, 256)
     elif endpoint_local:
         limite_tokens = min(limite_tokens, 640)
 

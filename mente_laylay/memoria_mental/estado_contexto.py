@@ -8,6 +8,9 @@ from mente_laylay.memoria_mental.continuidade_geral import estado_continuidade_g
 from mente_laylay.memoria_mental.efeitos_reversiveis import estado_efeitos_reversiveis_inicial
 from mente_laylay.memoria_mental.consciencia_temporal import estado_temporal_inicial
 from mente_laylay.memoria_mental.registro_semantico import estado_registro_semantico_inicial
+from mente_laylay.memoria_mental.eventos_emocionais import (
+    estado_eventos_emocionais_inicial,
+)
 
 
 def criar_estado_mental_inicial() -> Dict[str, Any]:
@@ -76,6 +79,7 @@ def criar_estado_mental_inicial() -> Dict[str, Any]:
         "emocao_usuario_necessidade_acao": False,
         "emocao_usuario_texto": "",
         "emocao_usuario_ts": 0.0,
+        "eventos_emocionais_causais": estado_eventos_emocionais_inicial(),
         "continuidade_fala_ts": 0.0,
         "ultima_acao_status": "",
         "ultima_acao_reexecutavel": False,

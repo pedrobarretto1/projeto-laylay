@@ -215,6 +215,54 @@ def test_expectativa_local_do_roteiro_substitui_regra_global_so_na_execucao(
     assert avaliacao["origem_expectativa"] == "roteiro_dedicado"
 
 
+def test_avaliador_recebe_plano_integral_sem_persisti_lo_no_checkpoint(
+    tmp_path,
+) -> None:
+    comando = "Estou feliz porque terminei um projeto."
+    runtime = RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(
+            comandos=(comando,),
+            expectativas_semanticas={
+                1: {
+                    "campos_plano": {
+                        "evento_emocional_causal.validade.valido": True,
+                    },
+                    "nome": "contrato_integral_efemero",
+                    "dominio": "infraestrutura_teste",
+                },
+            },
+        ),
+        enviar_entrada=lambda _texto: True,
+        resultado_getter=lambda: {},
+        diretorio_resultado=tmp_path,
+        log=lambda *_args: None,
+    )
+    plano_integral = {
+        "fase": "fala_verificada",
+        "erros": [],
+        "comandos": [],
+        "evento_emocional_causal": {
+            "validade": {"valido": True},
+        },
+    }
+
+    runtime._atualizar_item(  # noqa: SLF001 - prova a fronteira do avaliador
+        0,
+        status="respondido",
+        comando=comando,
+        resposta="Que notícia boa.",
+        plano=runtime._plano_compacto_checkpoint(plano_integral),  # noqa: SLF001
+        _plano_avaliacao=plano_integral,
+        avaliacao={"respondeu": True},
+    )
+
+    checkpoint = json.loads(runtime.checkpoint_path.read_text(encoding="utf-8"))
+    item = checkpoint["itens"][0]
+    assert item["avaliacao"]["resultado_semantico"] == "passou"
+    assert "evento_emocional_causal" not in item["plano"]
+    assert "_plano_avaliacao" not in item
+
+
 def test_espera_atraso_ativa_e_confirma_chat_antes_do_primeiro_comando(
     tmp_path,
 ) -> None:
@@ -695,9 +743,93 @@ def test_envia_um_turno_por_vez_e_persiste_resposta_antes_do_proximo(tmp_path) -
         assert {
             chave: item["avaliacao"][chave] for chave in esperado
         } == esperado
-        assert item["avaliacao"]["versao_avaliador"] == 13
+        assert item["avaliacao"]["versao_avaliador"] == 15
         assert item["avaliacao"]["erros_semanticos"] == []
         assert item["avaliacao"]["alertas_semanticos"] == []
+
+
+def test_captura_plano_terminal_quando_worker_tem_tarefas_de_cauda(tmp_path) -> None:
+    plano: dict = {}
+    holder: dict[str, RoteiroTesteConversaRuntime] = {}
+
+    def enviar(texto: str):
+        def processar() -> None:
+            plano.update({
+                "id": 501,
+                "texto_usuario": texto,
+                "requer_execucao": False,
+                "fase": "fala_verificada",
+                "comandos": [],
+                "erros": [],
+            })
+            holder["runtime"].observar_resposta("Resposta já publicada.")
+            time.sleep(0.03)
+            plano.clear()
+            time.sleep(0.12)
+
+        thread = threading.Thread(target=processar)
+        thread.start()
+        return thread
+
+    runtime = RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(
+            comandos=("turno com cauda lenta",),
+            timeout_resposta_s=0.08,
+            silenciar_voz_durante_teste=True,
+            aguardar_confirmacao_execucao=True,
+        ),
+        enviar_entrada=enviar,
+        resultado_getter=lambda: dict(plano),
+        diretorio_resultado=tmp_path,
+        log=lambda *_args: None,
+    )
+    holder["runtime"] = runtime
+
+    assert runtime.executar() is True
+    checkpoint = json.loads(runtime.checkpoint_path.read_text(encoding="utf-8"))
+    assert checkpoint["itens"][0]["status"] == "respondido"
+    assert checkpoint["itens"][0]["motivo_resultado"] == "resposta_sem_execucao"
+
+
+def test_captura_plano_no_mesmo_instante_em_que_resposta_e_publicada(tmp_path) -> None:
+    plano: dict = {}
+    holder: dict[str, RoteiroTesteConversaRuntime] = {}
+
+    def enviar(texto: str):
+        def processar() -> None:
+            plano.update({
+                "id": 502,
+                "texto_usuario": texto,
+                "requer_execucao": False,
+                "fase": "fala_verificada",
+                "comandos": [],
+                "erros": [],
+            })
+            holder["runtime"].observar_resposta("Resposta já publicada.")
+            plano.clear()
+
+        thread = threading.Thread(target=processar)
+        thread.start()
+        return thread
+
+    runtime = RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(
+            comandos=("turno com plano transitório",),
+            timeout_resposta_s=0.08,
+            silenciar_voz_durante_teste=True,
+            aguardar_confirmacao_execucao=True,
+        ),
+        enviar_entrada=enviar,
+        resultado_getter=lambda: dict(plano),
+        diretorio_resultado=tmp_path,
+        log=lambda *_args: None,
+    )
+    holder["runtime"] = runtime
+
+    assert runtime.executar() is True
+    checkpoint = json.loads(runtime.checkpoint_path.read_text(encoding="utf-8"))
+    assert checkpoint["itens"][0]["status"] == "respondido"
+    assert checkpoint["itens"][0]["motivo_resultado"] == "resposta_sem_execucao"
 
 
 def test_exibe_pergunta_no_terminal_antes_dos_logs_do_turno(tmp_path) -> None:
@@ -1205,7 +1337,7 @@ def test_checkpoint_separa_resposta_de_execucao_e_avaliacao_semantica(
         "fala_coerente": "sim",
     }
     assert {chave: avaliacao[chave] for chave in esperado} == esperado
-    assert avaliacao["versao_avaliador"] == 13
+    assert avaliacao["versao_avaliador"] == 15
     assert avaliacao["dominio"] == "browser"
     assert avaliacao["intents_observadas"] == ["OPEN_URL"]
     assert avaliacao["statuses_observados"] == ["falha_execucao"]

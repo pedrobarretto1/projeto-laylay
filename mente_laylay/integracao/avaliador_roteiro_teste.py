@@ -11,7 +11,7 @@ import re
 import unicodedata
 from typing import Any, Mapping, Sequence
 
-VERSAO_AVALIADOR = 13
+VERSAO_AVALIADOR = 15
 LIMITE_ALERTA_LATENCIA_S = 15.0
 
 DOMINIOS_EXTERNOS = frozenset({"browser", "musica", "iot", "visao", "clima"})
@@ -225,6 +225,29 @@ def _comandos(plano: Mapping[str, Any] | None) -> list[dict[str, Any]]:
     ]
 
 
+_CAMPO_AUSENTE = object()
+
+
+def _campo_por_caminho(
+    retrato: Mapping[str, Any],
+    caminho: str,
+) -> Any:
+    atual: Any = retrato
+    for parte in str(caminho or "").split("."):
+        if not parte or not isinstance(atual, Mapping) or parte not in atual:
+            return _CAMPO_AUSENTE
+        atual = atual[parte]
+    return atual
+
+
+def _campo_presente(valor: Any) -> bool:
+    return bool(
+        valor is not _CAMPO_AUSENTE
+        and valor is not None
+        and (not isinstance(valor, str) or bool(valor.strip()))
+    )
+
+
 def _expectativa_automatica(
     comando: str,
     *,
@@ -435,6 +458,38 @@ def avaliar_turno_roteiro(
         t_resp = _norm(resposta)
         if not any(x in t_resp for x in fala_any):
             erros.append("fala_nao_contem_evidencia_esperada")
+
+    campos_plano = expectativa.get("campos_plano") or {}
+    campos_presentes = tuple(
+        str(x) for x in expectativa.get("campos_plano_presentes") or ()
+    )
+    campos_ausentes = tuple(
+        str(x) for x in expectativa.get("campos_plano_ausentes") or ()
+    )
+    if campos_plano or campos_presentes or campos_ausentes:
+        checagens.append("campos_plano")
+    if isinstance(campos_plano, Mapping):
+        for caminho, esperado in campos_plano.items():
+            caminho_textual = str(caminho or "").strip()
+            observado = _campo_por_caminho(retrato, caminho_textual)
+            if observado is _CAMPO_AUSENTE or observado != esperado:
+                observado_texto = (
+                    "AUSENTE"
+                    if observado is _CAMPO_AUSENTE
+                    else repr(observado)[:160]
+                )
+                erros.append(
+                    f"campo_plano_incorreto:{caminho_textual}:"
+                    f"esperado={esperado!r};observado={observado_texto}"
+                )
+    else:
+        erros.append("campos_plano_invalido")
+    for caminho in campos_presentes:
+        if not _campo_presente(_campo_por_caminho(retrato, caminho)):
+            erros.append(f"campo_plano_ausente:{caminho}")
+    for caminho in campos_ausentes:
+        if _campo_presente(_campo_por_caminho(retrato, caminho)):
+            erros.append(f"campo_plano_inesperado:{caminho}")
 
     contradicoes = _contradicoes_fala(resposta, comandos)
     if contradicoes:

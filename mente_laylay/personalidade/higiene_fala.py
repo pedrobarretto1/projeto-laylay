@@ -13,8 +13,8 @@ _DIRETIVA_OPERACIONAL = re.compile(
 )
 _MARCADOR_MODELO = re.compile(r"(?<![\w])LYL(?![\w])", re.IGNORECASE)
 _MARCADOR_ESQUEMA = re.compile(
-    r"(?:\[\s*(?:fala|tipo_interacao|leitura_turno|comandos|aprendizados?|humor)\s*\]\s*:|"
-    r"(?<!\w)(?:tipo_interacao|leitura_turno|comandos|aprendizados?|humor)\s*:)",
+    r"(?:\[\s*(?:fala|tipo_interacao|leitura_turno|leitura_emocional|comandos|aprendizados?|humor)\s*\]\s*:|"
+    r"(?<!\w)(?:tipo_interacao|leitura_turno|leitura_emocional|comandos|aprendizados?|humor)\s*:)",
     re.IGNORECASE,
 )
 _TRECHO_CJK = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]")

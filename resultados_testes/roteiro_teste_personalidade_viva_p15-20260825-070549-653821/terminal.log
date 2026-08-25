@@ -1,0 +1,33 @@
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:55856 | sessão=5b872782 pid=25580
+🖥️ [TERMINAL 2] interface iniciada | sessão=5b872782 pid=18640 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=5b872782
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0166 início_de_fala=0.0282
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=roteiro_teste
+💬 Você:
+> Estou um pouco triste hoje.
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+🧠 [IA] Gerando resposta para: 'Estou um pouco triste hoje.'
+🧠 [PLANO:FASE] fase=resposta_planejada | comandos=[] | erros=[]
+🧠 [PLANO:FASE] fase=executado | comandos=[] | erros=[]
+[96m╭─ ◕‿◕ Laylay: Entendo, está um pouco triste hoje. Isso vale a pena ser ouvido, mesmo que não tenha nome para tudo isso.[0m
+💬 Você:
+> Estou muito feliz porque terminei um projeto.
+🧠 [IA] Gerando resposta para: 'Estou muito feliz porque terminei um projeto.'
+🧠 [PLANO:FASE] fase=resposta_planejada | comandos=[] | erros=[]
+🧠 [PLANO:FASE] fase=executado | comandos=[] | erros=[]
+[95m╭─ ≧◡≦⋆ Laylay: Ah, finalmente! Que bom que terminou — isso realmente faz diferença.[0m
+💬 Você:
+> Finalmente tirei um peso enorme das costas: entreguei o projeto depois de semanas preso nisso.
+🧠 [IA] Gerando resposta para: 'Finalmente tirei um peso enorme das costas: entreguei o projeto depois de semanas preso nisso.'
+🧠 [PLANO:FASE] fase=resposta_planejada | comandos=[] | erros=[]
+🧠 [PLANO:FASE] fase=executado | comandos=[] | erros=[]
+[96m╭─ ◕‿◕ Laylay: Só isso já é uma vitória. Parabéns por não deixar o peso te esmagar.[0m
+⚠️ [ROTEIRO:003] resultado não finalizado | motivo=plano_de_outro_turno; sequência interrompida
+📊 [ROTEIRO:RESUMO] avaliados=3 | passaram=1 | falharam=2 | alertas=0 | p95=27.471s
+🧪 [ROTEIRO] interrompido | conversa=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\resultados_testes\roteiro_teste_personalidade_viva_p15-20260825-070549-653821\conversa.md checkpoint=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\resultados_testes\roteiro_teste_personalidade_viva_p15-20260825-070549-653821\checkpoint.json
+⚠️ [MENTE:FALHA] servico_laylay-gmail:servico_orfao | classe=degradacao | impacto=servico | tipo=timeouterror

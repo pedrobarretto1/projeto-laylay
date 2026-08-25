@@ -6,16 +6,21 @@ import os
 import time
 from typing import Any, Callable
 
+from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
+
 
 def avaliar_evento_emocional_operacional(
     resultado: Any,
     *,
     avaliador: Any,
     definir_emocao: Callable[[str, int, str], Any],
+    publicar_evento: Callable[[dict[str, Any]], Any] | None = None,
     log: Callable[[str], Any] = print,
 ) -> dict[str, Any]:
     avaliacao = dict(avaliador.avaliar(resultado) or {})
-    if avaliacao.get("permite_expressao"):
+    if callable(publicar_evento):
+        publicar_evento(dict(avaliacao))
+    if evento_pode_alterar_estado(avaliacao):
         definir_emocao(
             str(avaliacao.get("emocao") or "calma"),
             int(avaliacao.get("nivel") or 1),

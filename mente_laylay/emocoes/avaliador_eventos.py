@@ -17,6 +17,7 @@ from mente_laylay.cognicao.normalizacao_linguagem import (
     normalizar_texto_basico as _normalizar,
 )
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+from mente_laylay.emocoes.contrato_causal import criar_evento_emocional_causal
 from mente_laylay.personalidade.variacao_fala import escolher_variacao
 
 
@@ -265,7 +266,7 @@ class AvaliadorEventosEmocionaisRuntime:
             elif classe == "incerto":
                 motivo_expressao = "resultado_incerto"
 
-            avaliacao = AvaliacaoEventoEmocional(
+            avaliacao_base = AvaliacaoEventoEmocional(
                 emocao=emocao,
                 nivel=nivel,
                 causa=causa,
@@ -278,6 +279,36 @@ class AvaliadorEventosEmocionaisRuntime:
                 arco=arco,
                 ts=agora,
             ).como_dict()
+            evidencia_ref = str(resultado.id_solicitacao or "").strip() or (
+                f"resultado:{intent or 'SEM_INTENT'}:{status or classe}:"
+                f"{len(self._historico) + 1}"
+            )
+            avaliacao = criar_evento_emocional_causal(
+                origem="resultado_operacional",
+                causa=causa,
+                evidencia_ref=evidencia_ref,
+                natureza_evidencia="fato_observado",
+                responsabilidade=responsabilidade or "ambigua",
+                confianca=confianca,
+                relevancia=(
+                    0.95 if classe in {"falha", "redundancia_visivel"} else 0.65
+                ),
+                novidade=max(0.0, 1.0 / max(1, repeticoes)),
+                intensidade=nivel,
+                sensibilidade="sensivel" if sensivel else "normal",
+                alvo=resultado.alvo or intent,
+                validade_s=self.janela_s,
+                permite_expressao=permite,
+                emocao=emocao,
+                nivel=nivel,
+                motivo_expressao=motivo_expressao,
+                arco=arco,
+                ts=agora,
+            )
+            avaliacao.update({
+                "repeticoes": avaliacao_base["repeticoes"],
+                "provocacao_usuario": avaliacao_base["provocacao_usuario"],
+            })
             self._historico.append({
                 "assinatura": assinatura,
                 "classe": classe,

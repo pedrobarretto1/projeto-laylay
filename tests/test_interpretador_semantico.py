@@ -43,6 +43,56 @@ class LeituraSemanticaContratoTests(unittest.TestCase):
     def test_descarta_payload_malformado(self):
         self.assertEqual(normalizar_leitura_semantica([], texto="oi"), {})
 
+    def test_normaliza_leitura_emocional_semantica_de_linguagem_indireta(self):
+        texto = "Finalmente tirei esse peso das costas; entreguei o projeto."
+        leitura = normalizar_leitura_semantica(
+            {
+                "atos": [{"tipo": "relato", "conteudo": texto}],
+                "modalidade_geral": "conversa",
+                "operacional": {"pedido_real": False},
+                "leitura_emocional": {
+                    "estado_usuario": "alivio",
+                    "intensidade": 3,
+                    "causa_expressa": "entrega do projeto após esforço prolongado",
+                    "trecho_evidencia": "tirei esse peso das costas",
+                    "natureza_evidencia": "inferencia",
+                    "hipotetica": False,
+                    "confianca": 0.94,
+                },
+                "confianca": 0.94,
+            },
+            texto=texto,
+            origem="llm_principal",
+        )
+
+        emocional = leitura["leitura_emocional"]
+        self.assertTrue(emocional["valida"])
+        self.assertEqual(emocional["estado_usuario"], "alivio")
+        self.assertEqual(emocional["intensidade"], 3)
+        self.assertEqual(emocional["natureza_evidencia"], "inferencia")
+        self.assertFalse(emocional["autoriza_execucao"])
+
+    def test_rejeita_leitura_emocional_com_evidencia_ausente_da_fala(self):
+        leitura = normalizar_leitura_semantica(
+            {
+                "atos": [{"tipo": "relato", "conteudo": "O projeto acabou."}],
+                "leitura_emocional": {
+                    "estado_usuario": "alegria",
+                    "intensidade": 3,
+                    "causa_expressa": "aprovação recebida",
+                    "trecho_evidencia": "estou radiante",
+                    "natureza_evidencia": "leitura_social",
+                    "hipotetica": False,
+                    "confianca": 0.98,
+                },
+            },
+            texto="O projeto acabou.",
+            origem="llm_principal",
+        )
+
+        self.assertFalse(leitura["leitura_emocional"]["valida"])
+        self.assertFalse(leitura["leitura_emocional"]["autoriza_execucao"])
+
     def test_comparacao_apenas_registra_divergencia(self):
         leitura = normalizar_leitura_semantica(
             {
@@ -180,6 +230,118 @@ class LeituraSemanticaContratoTests(unittest.TestCase):
         )
         self.assertFalse(leitura["operacional"]["autoriza_execucao"])
 
+    def test_extrai_emocao_da_mesma_resposta_principal_sem_chamada_extra(self):
+        texto = "Finalmente tirei esse peso das costas; entreguei o projeto."
+        bruto = json.dumps({
+            "fala": "Aí sim, projeto entregue. Esse alívio merece espaço.",
+            "tipo_interacao": "conversa",
+            "leitura_turno": ["relato"],
+            "leitura_emocional": {
+                "estado_usuario": "alivio",
+                "intensidade": 3,
+                "causa_expressa": "entrega do projeto",
+                "trecho_evidencia": "tirei esse peso das costas",
+                "natureza_evidencia": "inferencia",
+                "hipotetica": False,
+                "confianca": 0.94,
+            },
+            "comandos": [],
+            "aprendizados": [],
+        }, ensure_ascii=False)
+
+        leitura = extrair_leitura_semantica_da_ia(bruto, texto)
+
+        self.assertTrue(leitura["leitura_emocional"]["valida"])
+        self.assertEqual(
+            leitura["leitura_emocional"]["estado_usuario"],
+            "alivio",
+        )
+
+    def test_leitura_emocional_principal_nao_depende_da_lista_de_atos(self):
+        texto = "Finalmente tirei esse peso das costas; entreguei o projeto."
+        bruto = json.dumps({
+            "fala": "Projeto entregue. Esse alívio merece espaço.",
+            "tipo_interacao": "conversa",
+            "leitura_emocional": {
+                "estado_usuario": "alivio",
+                "intensidade": 3,
+                "causa_expressa": "entrega do projeto",
+                "trecho_evidencia": "tirei esse peso das costas",
+                "natureza_evidencia": "inferencia",
+                "hipotetica": False,
+                "confianca": 0.94,
+            },
+            "comandos": [],
+            "aprendizados": [],
+        }, ensure_ascii=False)
+
+        leitura = extrair_leitura_semantica_da_ia(bruto, texto)
+
+        self.assertTrue(leitura["valida"])
+        self.assertEqual(leitura["atos"], [])
+        self.assertTrue(leitura["leitura_emocional"]["valida"])
+        self.assertEqual(
+            leitura["leitura_emocional"]["estado_usuario"],
+            "alivio",
+        )
+
+    def test_normaliza_rotulos_semanticos_do_modelo_sem_buscar_palavra_chave(self):
+        texto = "Eu concluí o trabalho depois de meses e estou radiante."
+        leitura = normalizar_leitura_semantica(
+            {
+                "atos": [],
+                "leitura_emocional": {
+                    "estado_usuario": "feliz",
+                    "intensidade": 3,
+                    "causa_expressa": "conclusão do trabalho",
+                    "trecho_evidencia": "concluí o trabalho depois de meses",
+                    "natureza_evidencia": "literal",
+                    "hipotetica": False,
+                    "confianca": 0.93,
+                },
+                "confianca": 0.93,
+            },
+            texto=texto,
+            origem="llm_principal",
+        )
+
+        emocional = leitura["leitura_emocional"]
+        self.assertTrue(leitura["valida"])
+        self.assertEqual(emocional["estado_usuario"], "alegria")
+        self.assertEqual(emocional["natureza_evidencia"], "leitura_social")
+        self.assertTrue(emocional["evidencia_na_fala"])
+
+    def test_preserva_subcontrato_emocional_com_json_cortado_depois_dele(self):
+        texto = (
+            "Finalmente tirei um peso enorme das costas: "
+            "entreguei o projeto depois de semanas preso nisso."
+        )
+        bruto = (
+            '{"fala":"Agora dá para respirar.",'
+            '"tipo_interacao":"conversa",'
+            '"leitura_turno":["relato"],'
+            '"leitura_emocional":{'
+            '"estado_usuario":"alivio","intensidade":2,'
+            '"causa_expressa":"entrega do projeto após semanas",'
+            '"trecho_evidencia":"tirei um peso enorme das costas",'
+            '"natureza_evidencia":"inferencia","hipotetica":false,'
+            '"alvo":"estado_geral","confianca":0.91},'
+            '"comandos":['
+        )
+
+        leitura = extrair_leitura_semantica_da_ia(bruto, texto)
+
+        self.assertTrue(leitura["valida"])
+        self.assertEqual(
+            leitura["leitura_emocional"]["estado_usuario"],
+            "alivio",
+        )
+        self.assertEqual(
+            leitura["leitura_emocional"]["natureza_evidencia"],
+            "inferencia",
+        )
+        self.assertTrue(leitura["leitura_emocional"]["evidencia_na_fala"])
+
     def test_modo_principal_ignora_atalho_social_em_turno_misto(self):
         falas = []
         contexto = {
@@ -235,6 +397,73 @@ class LeituraSemanticaContratoTests(unittest.TestCase):
         self.assertTrue(registrada)
         self.assertTrue(estado.mental["turno_atual"]["autoriza_execucao"])
         self.assertFalse(registrada["operacional"]["autoriza_execucao"])
+
+    def test_registro_principal_publica_evento_causal_da_leitura_semantica(self):
+        class Estado:
+            def __init__(self):
+                self.mental = {
+                    "turno_atual": {
+                        "id": 81,
+                        "modalidade": "conversa",
+                        "autoriza_execucao": False,
+                    },
+                    "plano_turno_atual": {
+                        "id": 81,
+                        "texto_usuario": (
+                            "Finalmente tirei esse peso das costas; "
+                            "entreguei o projeto."
+                        ),
+                        "comandos": [],
+                    },
+                }
+
+            def atualizar_campos(self, _grupo, **campos):
+                self.mental.update(campos)
+
+        texto = (
+            "Finalmente tirei esse peso das costas; entreguei o projeto."
+        )
+        leitura = normalizar_leitura_semantica(
+            {
+                "atos": [{"tipo": "relato", "conteudo": texto}],
+                "modalidade_geral": "conversa",
+                "leitura_emocional": {
+                    "estado_usuario": "alivio",
+                    "intensidade": 3,
+                    "causa_expressa": "entrega do projeto",
+                    "trecho_evidencia": "tirei esse peso das costas",
+                    "natureza_evidencia": "inferencia",
+                    "hipotetica": False,
+                    "confianca": 0.94,
+                },
+                "confianca": 0.94,
+            },
+            texto=texto,
+            origem="llm_principal",
+        )
+        estado = Estado()
+
+        registrar_leitura_semantica_principal(
+            lambda: {
+                "_estado_compartilhado_runtime": estado,
+                "print": lambda *_args: None,
+            },
+            texto,
+            leitura,
+        )
+
+        evento = estado.mental["plano_turno_atual"][
+            "evento_emocional_causal"
+        ]
+        self.assertEqual(evento["origem"], "leitura_semantica_principal")
+        self.assertEqual(evento["natureza_evidencia"], "inferencia")
+        self.assertEqual(evento["intensidade"], 3)
+        self.assertTrue(evento["validade"]["valido"])
+        self.assertFalse(evento["autoriza_execucao"])
+        self.assertEqual(
+            estado.mental["eventos_emocionais_causais"]["atual"],
+            evento,
+        )
 
     def test_prompt_misto_recebe_instrucao_prioritaria_no_inicio(self):
         runtime = criar_contexto_prompt_runtime(

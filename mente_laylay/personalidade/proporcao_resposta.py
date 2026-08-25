@@ -180,5 +180,9 @@ def limite_tokens_resposta(
     if depende_contexto and perfil in {"curta", "objetiva"}:
         limite = max(limite, limites["explicativa"])
     if modo_rapido:
-        return min(limite, 128)
+        # O contrato estrutural do modo rápido inclui fala, leitura do turno,
+        # leitura emocional, comandos e aprendizados. Com 128 tokens o JSON
+        # era cortado antes de fechar a leitura emocional, embora a fala ainda
+        # parecesse válida para o usuário.
+        return 256
     return limite
