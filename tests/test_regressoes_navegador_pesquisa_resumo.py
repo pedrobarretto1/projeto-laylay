@@ -17,6 +17,9 @@ from mente_laylay.autonomia.orquestrador_deterministico import (
 )
 from mente_laylay.autonomia.roteador_deterministico import detectar_fechar_alvo
 from mente_laylay.autonomia.roteador_intencao import executar_intencao
+from mente_laylay.memoria_mental.contexto_compartilhado import (
+    registrar_resultado_execucao,
+)
 
 
 def _params(**kwargs):
@@ -221,6 +224,157 @@ def test_red_resumo_eliptico_usa_pagina_atual_tipificada(
             "status": "resumo_concluido",
         },
     )]
+
+
+def _estado_apos_resultado_web_confirmado() -> dict:
+    return registrar_resultado_execucao(
+        {},
+        {
+            "intent": "SEARCH",
+            "params": {
+                "query": "documentacao do python",
+                "abrir_resultado": 1,
+            },
+            "alvo": "documentacao do python",
+            "status": "resultado_web_aberto",
+            "executou": True,
+            "confirmado": True,
+            "origem": "executor",
+        },
+        "Abre o primeiro resultado.",
+        True,
+        origem="executor",
+        status="resultado_web_aberto",
+    )
+
+
+@pytest.mark.parametrize("texto", ("Resume isso.", "Resume agora."))
+def test_red_turnos_123_126_usam_recibo_real_da_pagina_aberta(
+    monkeypatch: pytest.MonkeyPatch,
+    texto: str,
+) -> None:
+    """O caos não recebe PAGE_DATA espontâneo; o resumo captura sob demanda."""
+    estado = SimpleNamespace(mental=_estado_apos_resultado_web_confirmado())
+    assert "conteudo_atual" not in estado.mental
+    registros: list[tuple] = []
+    loop = object()
+
+    async def resumir() -> bool:
+        return True
+
+    def agendar(corrotina, loop_recebido):
+        assert loop_recebido is loop
+        futuro: Future[bool] = Future()
+        futuro.set_result(asyncio.run(corrotina))
+        return futuro
+
+    monkeypatch.setattr(
+        "mente_laylay.autonomia.comandos_imediatos.asyncio.run_coroutine_threadsafe",
+        agendar,
+    )
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: {
+            "_estado_compartilhado_runtime": estado,
+            "resumir_pagina_ou_video": resumir,
+            "_registrar_resultado_execucao": (
+                lambda resultado, fala, executou, **kwargs: registros.append(
+                    (resultado, fala, executou, kwargs)
+                )
+            ),
+        },
+        loop_getter=lambda: loop,
+    )
+
+    assert runtime.processar_prioritarios(texto) is True
+    assert registros == [(
+        {"intent": "RESUMIR_PAGINA", "params": {}},
+        texto,
+        True,
+        {
+            "origem": "prioritario_resumo_pagina",
+            "status": "resumo_concluido",
+        },
+    )]
+
+
+@pytest.mark.parametrize(
+    "contrato",
+    (
+        {
+            "intent": "SEARCH",
+            "status": "falha_execucao",
+            "executou": False,
+            "confirmado": False,
+        },
+        {
+            "intent": "SEARCH",
+            "status": "resultado_web_aberto",
+            "executou": True,
+            "confirmado": None,
+        },
+        {
+            "intent": "APP_OPEN",
+            "status": "app_aberto",
+            "executou": True,
+            "confirmado": True,
+        },
+    ),
+)
+def test_guard_recibo_inseguro_nao_autoriza_resumo_eliptico(
+    contrato: dict,
+) -> None:
+    estado = {
+        "ultima_acao_contrato": contrato,
+        "ultima_acao_ts": time.time(),
+    }
+    assert texto_pede_resumo_pagina(
+        "Resume isso.",
+        estado_mental=estado,
+    ) is False
+
+
+def test_guard_recibo_de_navegacao_expirado_nao_autoriza_resumo() -> None:
+    estado = _estado_apos_resultado_web_confirmado()
+    estado["ultima_acao_ts"] = time.time() - 301.0
+
+    assert texto_pede_resumo_pagina(
+        "Resume agora.",
+        estado_mental=estado,
+    ) is False
+
+
+def test_red_turno_126_sobrevive_ao_recibo_do_resumo_123_concluido() -> None:
+    estado = _estado_apos_resultado_web_confirmado()
+    estado = registrar_resultado_execucao(
+        estado,
+        {"intent": "RESUMIR_PAGINA", "params": {}},
+        "Resume isso.",
+        True,
+        origem="prioritario_resumo_pagina",
+        status="resumo_concluido",
+    )
+
+    assert estado["ultima_acao_contrato"]["intent"] == "RESUMIR_PAGINA"
+    assert texto_pede_resumo_pagina(
+        "Resume agora.",
+        estado_mental=estado,
+    ) is True
+
+
+def test_guard_resumo_anterior_falho_nao_autoriza_nova_leitura() -> None:
+    estado = registrar_resultado_execucao(
+        {},
+        {"intent": "RESUMIR_PAGINA", "params": {}},
+        "Resume isso.",
+        False,
+        origem="prioritario_resumo_pagina",
+        status="falha_execucao",
+    )
+
+    assert texto_pede_resumo_pagina(
+        "Resume agora.",
+        estado_mental=estado,
+    ) is False
 
 
 @pytest.mark.parametrize(

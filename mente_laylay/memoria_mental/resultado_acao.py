@@ -13,6 +13,7 @@ CHAVE_RESULTADO_OPERACIONAL_PUBLICADO = "_laylay_resultado_operacional_publicado
 
 STATUS_RESULTADO_JA_SATISFEITO = {
     "ja_aberto_focado", "site_ja_aberto_focado",
+    "app_ja_aberto_observado",
     "ja_estava_ligado", "ja_estava_desligado",
     "playlist_ja_existia", "playlist_musica_ja_existia",
     "nota_ja_guardada", "lembrete_ja_agendado",
@@ -34,6 +35,7 @@ STATUS_RESULTADO_CONFIRMADO = {
     "item_deletado", "item_movido_para_pasta", "emails_lidos",
     "emails_sincronizados", "notificacoes_lidas", "remetente_silenciado",
     "clima_consultado",
+    "aba_sobrevivente_consultada",
     "briefing_repetido", "dispositivos_listados",
     "playlists_listadas",
     "app_aberto", "url_aberta", "site_aberto",

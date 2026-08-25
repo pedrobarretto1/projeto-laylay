@@ -17,6 +17,16 @@ from mente_laylay.memoria_mental.implantacao_desempenho import flag_desempenho_a
 
 ClienteFactory = Callable[..., Any]
 
+_ERROS_TUYA_TRANSITORIOS = frozenset({
+    "900",  # resposta JSON corrompida/incompleta
+    "901",  # falha de conexão
+    "902",  # timeout
+    "904",  # payload inesperado
+    "905",  # dispositivo momentaneamente inalcançável
+    "908",  # o próprio TinyTuya solicita repetir com o tipo detectado
+    "914",  # negociação de sessão 3.4/3.5 falhou
+})
+
 
 class ProtocoloTuya(ProtocoloIoT):
     nome = "tuya"
@@ -33,6 +43,9 @@ class ProtocoloTuya(ProtocoloIoT):
         self.tentativas = max(1, int(tentativas))
         self._config_cache_lock = threading.RLock()
         self._config_cache: dict[str, tuple[tuple[Any, ...], Dict[str, Any]]] = {}
+        self._client_cache_lock = threading.RLock()
+        self._client_cache: dict[str, tuple[tuple[Any, ...], Any]] = {}
+        self._device_locks: dict[str, threading.RLock] = {}
 
     @staticmethod
     def _criar_cliente_padrao(**dados: Any) -> Any:
@@ -159,21 +172,79 @@ class ProtocoloTuya(ProtocoloIoT):
                 self._config_cache[chave_cache] = (assinatura, dict(dados_finais))
         return dados_finais, ""
 
+    @staticmethod
+    def _fechar_cliente(cliente: Any) -> None:
+        fechar = getattr(cliente, "close", None)
+        if callable(fechar):
+            try:
+                fechar()
+            except Exception:
+                pass
+
+    @staticmethod
+    def _assinatura_cliente(dados: Dict[str, Any]) -> tuple[Any, ...]:
+        return tuple(
+            dados.get(chave)
+            for chave in (
+                "device_id", "local_key", "ip", "version", "dps",
+                "timeout", "tentativas", "classe_tuya",
+            )
+        )
+
+    @staticmethod
+    def _chave_dispositivo(dispositivo: DispositivoIoT) -> str:
+        return str(dispositivo.nome or "").strip().casefold()
+
+    def _trava_dispositivo(self, dispositivo: DispositivoIoT) -> threading.RLock:
+        chave = self._chave_dispositivo(dispositivo)
+        with self._client_cache_lock:
+            trava = self._device_locks.get(chave)
+            if trava is None:
+                trava = threading.RLock()
+                self._device_locks[chave] = trava
+            return trava
+
+    def _descartar_cliente(
+        self,
+        dispositivo: DispositivoIoT,
+        cliente: Any,
+    ) -> None:
+        """Remove somente a sessão que realmente falhou neste dispositivo."""
+        chave = self._chave_dispositivo(dispositivo)
+        with self._client_cache_lock:
+            anterior = self._client_cache.get(chave)
+            if anterior is None or anterior[1] is not cliente:
+                return
+            self._client_cache.pop(chave, None)
+            self._fechar_cliente(cliente)
+
     def _cliente(self, dispositivo: DispositivoIoT) -> tuple[Any | None, Dict[str, Any], str]:
         dados, erro = self._configuracao(dispositivo)
         if erro:
             return None, {}, erro
-        try:
-            cliente = self._cliente_factory(**dados)
-            if hasattr(cliente, "set_socketPersistent"):
-                cliente.set_socketPersistent(False)
-            if hasattr(cliente, "set_socketTimeout"):
-                cliente.set_socketTimeout(self.timeout)
-            if hasattr(cliente, "set_socketRetryLimit"):
-                cliente.set_socketRetryLimit(self.tentativas)
-            return cliente, dados, ""
-        except Exception:
-            return None, {}, "não consegui preparar a conexão Tuya"
+        cache_ativo = flag_desempenho_ativa("LAYLAY_CACHE_TUYA_ATIVO")
+        chave = self._chave_dispositivo(dispositivo)
+        assinatura = self._assinatura_cliente(dados)
+        with self._client_cache_lock:
+            anterior = self._client_cache.get(chave)
+            if cache_ativo and anterior is not None and anterior[0] == assinatura:
+                return anterior[1], dados, ""
+            if anterior is not None:
+                self._client_cache.pop(chave, None)
+                self._fechar_cliente(anterior[1])
+            try:
+                cliente = self._cliente_factory(**dados)
+                if hasattr(cliente, "set_socketPersistent"):
+                    cliente.set_socketPersistent(cache_ativo)
+                if hasattr(cliente, "set_socketTimeout"):
+                    cliente.set_socketTimeout(self.timeout)
+                if hasattr(cliente, "set_socketRetryLimit"):
+                    cliente.set_socketRetryLimit(self.tentativas)
+                if cache_ativo:
+                    self._client_cache[chave] = (assinatura, cliente)
+                return cliente, dados, ""
+            except Exception:
+                return None, {}, "não consegui preparar a conexão Tuya"
 
     @staticmethod
     def _erro_resposta(resposta: Any) -> str:
@@ -186,48 +257,76 @@ class ProtocoloTuya(ProtocoloIoT):
             return "dispositivo Tuya retornou erro de protocolo"
         return ""
 
-    def consultar_estado(self, dispositivo: DispositivoIoT) -> ResultadoProtocolo:
+    @staticmethod
+    def _resposta_transitoria(resposta: Any) -> bool:
+        if not isinstance(resposta, dict):
+            return True
+        codigo = resposta.get("Err")
+        return str(codigo).strip() in _ERROS_TUYA_TRANSITORIOS
+
+    def _consultar_estado_bruto(
+        self,
+        dispositivo: DispositivoIoT,
+    ) -> tuple[Any, Dict[str, Any], str, Any | None]:
         cliente, dados, erro = self._cliente(dispositivo)
         if cliente is None:
-            return ResultadoProtocolo(False, None, False, erro)
+            return None, {}, erro, None
         try:
             resposta = cliente.status()
         except Exception:
-            return ResultadoProtocolo(False, None, False, "dispositivo Tuya indisponível")
+            return None, dados, "dispositivo Tuya indisponível", cliente
+        return resposta, dados, self._erro_resposta(resposta), cliente
 
-        erro_resposta = self._erro_resposta(resposta)
-        if erro_resposta:
-            return ResultadoProtocolo(False, None, False, erro_resposta)
-        dps = resposta.get("dps") or {}
-        estado = dps.get(dados["dps"])
-        if estado is None and dados["dps"].isdigit():
-            estado = dps.get(int(dados["dps"]))
-        if not isinstance(estado, bool):
-            return ResultadoProtocolo(
-                True,
-                None,
-                True,
-                "estado não identificado no DPS configurado",
-                {"dps": dados["dps"]},
-            )
-        return ResultadoProtocolo(True, estado, True, detalhes={"dps": dados["dps"]})
+    def consultar_estado(self, dispositivo: DispositivoIoT) -> ResultadoProtocolo:
+        with self._trava_dispositivo(dispositivo):
+            resposta, dados, erro, cliente = self._consultar_estado_bruto(dispositivo)
+            if (
+                erro
+                and cliente is not None
+                and flag_desempenho_ativa("LAYLAY_CACHE_TUYA_ATIVO")
+                and self._resposta_transitoria(resposta)
+            ):
+                # Um socket persistente pode ser encerrado pelo dispositivo
+                # durante a ociosidade. TinyTuya retenta exceções de rede, mas
+                # alguns erros de transporte/negociação chegam como dicionário.
+                # Renovar uma única vez evita exigir uma segunda fala do usuário.
+                self._descartar_cliente(dispositivo, cliente)
+                resposta, dados, erro, _cliente_novo = self._consultar_estado_bruto(
+                    dispositivo
+                )
+            if erro:
+                return ResultadoProtocolo(False, None, False, erro)
+            dps = resposta.get("dps") or {}
+            estado = dps.get(dados["dps"])
+            if estado is None and dados["dps"].isdigit():
+                estado = dps.get(int(dados["dps"]))
+            if not isinstance(estado, bool):
+                return ResultadoProtocolo(
+                    True,
+                    None,
+                    True,
+                    "estado não identificado no DPS configurado",
+                    {"dps": dados["dps"]},
+                )
+            return ResultadoProtocolo(True, estado, True, detalhes={"dps": dados["dps"]})
 
     def definir_estado(self, dispositivo: DispositivoIoT, ligado: bool) -> ResultadoProtocolo:
-        cliente, dados, erro = self._cliente(dispositivo)
-        if cliente is None:
-            return ResultadoProtocolo(False, None, False, erro)
-        try:
-            if dados.get("classe_tuya") == "bulb":
-                resposta = cliente.turn_on() if ligado else cliente.turn_off()
-            else:
-                resposta = cliente.set_status(bool(ligado), switch=int(dados["dps"]))
-        except Exception:
-            return ResultadoProtocolo(False, None, False, "dispositivo Tuya indisponível")
+        with self._trava_dispositivo(dispositivo):
+            cliente, dados, erro = self._cliente(dispositivo)
+            if cliente is None:
+                return ResultadoProtocolo(False, None, False, erro)
+            try:
+                if dados.get("classe_tuya") == "bulb":
+                    resposta = cliente.turn_on() if ligado else cliente.turn_off()
+                else:
+                    resposta = cliente.set_status(bool(ligado), switch=int(dados["dps"]))
+            except Exception:
+                return ResultadoProtocolo(False, None, False, "dispositivo Tuya indisponível")
 
-        erro_resposta = self._erro_resposta(resposta)
-        if erro_resposta:
-            return ResultadoProtocolo(False, None, False, erro_resposta)
-        return ResultadoProtocolo(True, bool(ligado), True, detalhes={"dps": dados["dps"]})
+            erro_resposta = self._erro_resposta(resposta)
+            if erro_resposta:
+                return ResultadoProtocolo(False, None, False, erro_resposta)
+            return ResultadoProtocolo(True, bool(ligado), True, detalhes={"dps": dados["dps"]})
 
     def definir_parametros(
         self,
@@ -235,52 +334,53 @@ class ProtocoloTuya(ProtocoloIoT):
         acao: str,
         parametros: Dict[str, Any],
     ) -> ResultadoProtocolo:
-        cliente, dados, erro = self._cliente(dispositivo)
-        if cliente is None:
-            return ResultadoProtocolo(False, None, False, erro)
-        if dados.get("classe_tuya") != "bulb":
-            return ResultadoProtocolo(False, None, True, "dispositivo não aceita cor ou brilho")
+        with self._trava_dispositivo(dispositivo):
+            cliente, dados, erro = self._cliente(dispositivo)
+            if cliente is None:
+                return ResultadoProtocolo(False, None, False, erro)
+            if dados.get("classe_tuya") != "bulb":
+                return ResultadoProtocolo(False, None, True, "dispositivo não aceita cor ou brilho")
 
-        try:
-            resposta_ligar = cliente.turn_on()
-            erro_ligar = self._erro_resposta(resposta_ligar)
-            if erro_ligar:
-                return ResultadoProtocolo(False, None, False, erro_ligar)
-            if acao == "ajustar_brilho":
-                valor = int(parametros.get("valor"))
-                if not 1 <= valor <= 100:
-                    raise ValueError
-                resposta = cliente.set_brightness_percentage(valor)
-                detalhes = {"brilho": valor}
-            elif acao == "ajustar_cor":
-                rgb = tuple(int(item) for item in parametros.get("rgb", ()))
-                if len(rgb) != 3 or any(item < 0 or item > 255 for item in rgb):
-                    raise ValueError
-                resposta = cliente.set_colour(*rgb)
-                detalhes = {
-                    "rgb": rgb,
-                    "cor": str(parametros.get("cor") or "").strip(),
-                    "brilho": max(1, round(max(rgb) * 100 / 255)),
-                }
-            elif acao == "ajustar_branco":
-                brilho = int(parametros.get("brilho", 70))
-                temperatura = int(parametros.get("temperatura", 50))
-                if not 1 <= brilho <= 100 or not 0 <= temperatura <= 100:
-                    raise ValueError
-                resposta = cliente.set_white_percentage(brightness=brilho, colourtemp=temperatura)
-                detalhes = {
-                    "brilho": brilho,
-                    "temperatura": temperatura,
-                    "cor": str(parametros.get("cor") or "branco").strip(),
-                }
-            else:
-                return ResultadoProtocolo(False, None, True, "parâmetro não suportado")
-        except (TypeError, ValueError):
-            return ResultadoProtocolo(False, None, True, "parâmetros inválidos")
-        except Exception:
-            return ResultadoProtocolo(False, None, False, "dispositivo Tuya indisponível")
+            try:
+                resposta_ligar = cliente.turn_on()
+                erro_ligar = self._erro_resposta(resposta_ligar)
+                if erro_ligar:
+                    return ResultadoProtocolo(False, None, False, erro_ligar)
+                if acao == "ajustar_brilho":
+                    valor = int(parametros.get("valor"))
+                    if not 1 <= valor <= 100:
+                        raise ValueError
+                    resposta = cliente.set_brightness_percentage(valor)
+                    detalhes = {"brilho": valor}
+                elif acao == "ajustar_cor":
+                    rgb = tuple(int(item) for item in parametros.get("rgb", ()))
+                    if len(rgb) != 3 or any(item < 0 or item > 255 for item in rgb):
+                        raise ValueError
+                    resposta = cliente.set_colour(*rgb)
+                    detalhes = {
+                        "rgb": rgb,
+                        "cor": str(parametros.get("cor") or "").strip(),
+                        "brilho": max(1, round(max(rgb) * 100 / 255)),
+                    }
+                elif acao == "ajustar_branco":
+                    brilho = int(parametros.get("brilho", 70))
+                    temperatura = int(parametros.get("temperatura", 50))
+                    if not 1 <= brilho <= 100 or not 0 <= temperatura <= 100:
+                        raise ValueError
+                    resposta = cliente.set_white_percentage(brightness=brilho, colourtemp=temperatura)
+                    detalhes = {
+                        "brilho": brilho,
+                        "temperatura": temperatura,
+                        "cor": str(parametros.get("cor") or "branco").strip(),
+                    }
+                else:
+                    return ResultadoProtocolo(False, None, True, "parâmetro não suportado")
+            except (TypeError, ValueError):
+                return ResultadoProtocolo(False, None, True, "parâmetros inválidos")
+            except Exception:
+                return ResultadoProtocolo(False, None, False, "dispositivo Tuya indisponível")
 
-        erro_resposta = self._erro_resposta(resposta)
-        if erro_resposta:
-            return ResultadoProtocolo(False, None, False, erro_resposta)
-        return ResultadoProtocolo(True, True, True, detalhes=detalhes)
+            erro_resposta = self._erro_resposta(resposta)
+            if erro_resposta:
+                return ResultadoProtocolo(False, None, False, erro_resposta)
+            return ResultadoProtocolo(True, True, True, detalhes=detalhes)

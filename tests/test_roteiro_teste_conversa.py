@@ -61,6 +61,30 @@ def test_plano_composto_com_etapa_ja_satisfeita_conta_como_confirmado() -> None:
     ) == (True, "execucao_confirmada")
 
 
+def test_contrato_final_sem_acao_nao_vira_execucao_nao_publicada() -> None:
+    plano = {
+        "id": 22,
+        "texto_usuario": "continua",
+        "fase": "fala_verificada",
+        "requer_execucao": True,
+        "autoriza_execucao": True,
+        "comandos": [],
+        "decisao_turno": {
+            "proprietario": "conversa",
+            "permite_acao": False,
+            "requer_esclarecimento": True,
+            "intencao": "",
+            "status": "sem_acao",
+        },
+    }
+
+    assert RoteiroTesteConversaRuntime._resultado_turno_terminal(
+        plano,
+        comando="continua",
+        plano_id_anterior=21,
+    ) == (True, "execucao_nao_autorizada")
+
+
 def test_carrega_lista_e_opcoes_sem_executar_codigo_do_roteiro(tmp_path) -> None:
     roteiro = tmp_path / "roteiro.py"
     roteiro.write_text(
@@ -86,6 +110,109 @@ def test_carrega_lista_e_opcoes_sem_executar_codigo_do_roteiro(tmp_path) -> None
         silenciar_voz_durante_teste=True,
         aguardar_confirmacao_execucao=True,
     )
+
+
+def test_carrega_expectativas_semanticas_locais_sem_executar_roteiro(
+    tmp_path,
+) -> None:
+    roteiro = tmp_path / "roteiro_personalidade.py"
+    roteiro.write_text(
+        "COMANDOS = ['isso me deixou triste']\n"
+        "EXPECTATIVAS_SEMANTICAS = {\n"
+        "    1: {\n"
+        "        'sem_comando': True,\n"
+        "        'nome': 'evento_emocional_causal',\n"
+        "        'dominio': 'personalidade',\n"
+        "    },\n"
+        "}\n"
+        "raise RuntimeError('não deve executar')\n",
+        encoding="utf-8",
+    )
+
+    configuracao = carregar_configuracao_roteiro(roteiro)
+
+    assert configuracao.expectativas_semanticas == {
+        1: {
+            "sem_comando": True,
+            "nome": "evento_emocional_causal",
+            "dominio": "personalidade",
+        },
+    }
+
+
+def test_constante_legada_expectativas_do_caos_nao_e_ativada(tmp_path) -> None:
+    roteiro = tmp_path / "roteiro_legado.py"
+    roteiro.write_text(
+        "COMANDOS = ['continua']\n"
+        "EXPECTATIVAS = {'continua': {'sem_comando': True}}\n",
+        encoding="utf-8",
+    )
+
+    configuracao = carregar_configuracao_roteiro(roteiro)
+
+    assert configuracao.expectativas_semanticas == {}
+
+
+@pytest.mark.parametrize(
+    "expectativas",
+    (
+        [],
+        {0: {"sem_comando": True}},
+        {True: {"sem_comando": True}},
+        {1: "não é um contrato"},
+    ),
+)
+def test_rejeita_expectativas_semanticas_malformadas(expectativas) -> None:
+    with pytest.raises(ValueError, match="EXPECTATIVAS_SEMANTICAS|expectativa"):
+        ConfiguracaoRoteiro(
+            comandos=("oi",),
+            expectativas_semanticas=expectativas,
+        )
+
+
+def test_expectativa_local_do_roteiro_substitui_regra_global_so_na_execucao(
+    tmp_path,
+) -> None:
+    comando = "continua"
+    runtime = RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(
+            comandos=(comando,),
+            expectativas_semanticas={
+                1: {
+                    "intents_any": ("MEDIA_CONTROL",),
+                    "nome": "continuidade_musical_dedicada",
+                    "dominio": "musica",
+                },
+            },
+        ),
+        enviar_entrada=lambda _texto: True,
+        resultado_getter=lambda: {},
+        diretorio_resultado=tmp_path,
+        log=lambda *_args: None,
+    )
+    runtime._atualizar_item(  # noqa: SLF001 - prova a fronteira do avaliador
+        0,
+        status="respondido",
+        comando=comando,
+        resposta="Pedi para a música continuar.",
+        plano={
+            "fase": "tratado_prioritario",
+            "erros": [],
+            "comandos": [{
+                "intent": "MEDIA_CONTROL",
+                "status": "midia_play",
+                "executou": True,
+                "confirmado": True,
+            }],
+        },
+        avaliacao={"respondeu": True},
+    )
+
+    checkpoint = json.loads(runtime.checkpoint_path.read_text(encoding="utf-8"))
+    avaliacao = checkpoint["itens"][0]["avaliacao"]
+    assert avaliacao["resultado_semantico"] == "passou"
+    assert avaliacao["expectativa"] == "continuidade_musical_dedicada"
+    assert avaliacao["origem_expectativa"] == "roteiro_dedicado"
 
 
 def test_espera_atraso_ativa_e_confirma_chat_antes_do_primeiro_comando(
@@ -568,7 +695,7 @@ def test_envia_um_turno_por_vez_e_persiste_resposta_antes_do_proximo(tmp_path) -
         assert {
             chave: item["avaliacao"][chave] for chave in esperado
         } == esperado
-        assert item["avaliacao"]["versao_avaliador"] == 9
+        assert item["avaliacao"]["versao_avaliador"] == 13
         assert item["avaliacao"]["erros_semanticos"] == []
         assert item["avaliacao"]["alertas_semanticos"] == []
 
@@ -847,6 +974,73 @@ def test_retomada_reconstroi_referencia_com_consultas_seguras(tmp_path) -> None:
     }
 
 
+def test_retomada_reenvia_composto_autocontido_com_referencia_interna(
+    tmp_path,
+) -> None:
+    comando = (
+        "Coloca a playlist VMZ, pausa a música e me diz o estado dela."
+    )
+    inicial = RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(comandos=(comando,)),
+        enviar_entrada=lambda _texto: True,
+        resultado_getter=lambda: {},
+        diretorio_resultado=tmp_path,
+        log=lambda *_args: None,
+    )
+    inicial._atualizar_item(0, status="enviado")  # noqa: SLF001
+    enviados: list[str] = []
+    holder: dict[str, RoteiroTesteConversaRuntime] = {}
+
+    def enviar(texto: str) -> bool:
+        enviados.append(texto)
+        holder["runtime"].observar_resposta("playlist pausada")
+        return True
+
+    retomado = RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(
+            comandos=(comando,),
+            timeout_resposta_s=1.0,
+            intervalo_comandos_s=0.0,
+        ),
+        enviar_entrada=enviar,
+        resultado_getter=lambda: {},
+        diretorio_resultado=tmp_path,
+        retomar=True,
+        log=lambda *_args: None,
+    )
+    holder["runtime"] = retomado
+
+    assert retomado.executar() is True
+    assert enviados == [comando]
+
+
+@pytest.mark.parametrize(
+    ("comando", "depende"),
+    (
+        ("Abre o Opera e coloca ele na esquerda.", False),
+        (
+            "Coloca a playlist VMZ, pausa a música e me diz o estado dela.",
+            False,
+        ),
+        ("Fecha ela.", True),
+        ("Coloca ela na playlist VMZ.", True),
+        (
+            "Adiciona essa música na playlist caos sonora e depois me mostra "
+            "o que tem nela.",
+            True,
+        ),
+    ),
+)
+def test_retomada_distingue_referencia_interna_de_contexto_anterior(
+    comando,
+    depende,
+) -> None:
+    assert (
+        RoteiroTesteConversaRuntime._comando_depende_de_contexto(comando)
+        is depende
+    )
+
+
 def test_retomada_nao_refaz_exclusao_para_reconstruir_sim(tmp_path) -> None:
     comandos = ("Apaga o arquivo teste.txt", "Sim")
     inicial = RoteiroTesteConversaRuntime(
@@ -925,6 +1119,44 @@ def test_retomada_recusa_checkpoint_de_outro_roteiro(tmp_path) -> None:
         )
 
 
+def test_retomada_recusa_criterio_semantico_alterado_com_mesmos_comandos(
+    tmp_path,
+) -> None:
+    comando = "continua"
+    RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(
+            comandos=(comando,),
+            expectativas_semanticas={
+                1: {"sem_comando": True, "nome": "sem_contexto"},
+                comando: {"sem_comando": True},
+            },
+        ),
+        enviar_entrada=lambda _texto: True,
+        resultado_getter=lambda: {},
+        diretorio_resultado=tmp_path,
+        log=lambda *_args: None,
+    )
+
+    with pytest.raises(ValueError, match="roteiro mudou"):
+        RoteiroTesteConversaRuntime(
+            ConfiguracaoRoteiro(
+                comandos=(comando,),
+                expectativas_semanticas={
+                    1: {
+                        "intents_any": ("MEDIA_CONTROL",),
+                        "nome": "com_contexto_musical",
+                    },
+                    comando: {"sem_comando": True},
+                },
+            ),
+            enviar_entrada=lambda _texto: True,
+            resultado_getter=lambda: {},
+            diretorio_resultado=tmp_path,
+            retomar=True,
+            log=lambda *_args: None,
+        )
+
+
 def test_checkpoint_separa_resposta_de_execucao_e_avaliacao_semantica(
     tmp_path,
 ) -> None:
@@ -973,7 +1205,7 @@ def test_checkpoint_separa_resposta_de_execucao_e_avaliacao_semantica(
         "fala_coerente": "sim",
     }
     assert {chave: avaliacao[chave] for chave in esperado} == esperado
-    assert avaliacao["versao_avaliador"] == 9
+    assert avaliacao["versao_avaliador"] == 13
     assert avaliacao["dominio"] == "browser"
     assert avaliacao["intents_observadas"] == ["OPEN_URL"]
     assert avaliacao["statuses_observados"] == ["falha_execucao"]

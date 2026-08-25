@@ -8,7 +8,7 @@ o resultado canônico do turno, e somente então libera o próximo texto.
 from __future__ import annotations
 
 import ast
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 import hashlib
 import json
@@ -30,6 +30,55 @@ from mente_laylay.integracao.diagnostico_encerramento import (
 # UPGRADE_TESTADOR_SEMANTICO_V32_20260814
 
 
+_REFERENCIA_CONTEXTUAL = re.compile(
+    r"\b(?:ele|ela|isso|aquilo|esse|essa|este|esta|"
+    r"nele|nela|dele|dela)\b"
+)
+_ANCORA_EXPLICITA_NO_COMANDO = re.compile(
+    r"\b(?:arquivo|arquivos|pasta|pastas|documento|documentos|"
+    r"resultado|resultados|c[oó]digo|c[oó]digos|playlist|playlists|"
+    r"m[uú]sica|m[uú]sicas|faixa|faixas|l[aâ]mpada|l[aâ]mpadas|"
+    r"tomada|tomadas|aba|abas|janela|janelas|aplicativo|aplicativos|"
+    r"app|apps|programa|programas|site|sites|navegador|navegadores|"
+    r"opera|microsoft\s+store|prime\s+video|youtube|chrome|wikip[eé]dia)\b"
+)
+
+
+def _normalizar_expectativas_semanticas(
+    valor: Any,
+) -> dict[int | str, dict[str, Any]]:
+    if valor is None:
+        return {}
+    if not isinstance(valor, Mapping):
+        raise ValueError("EXPECTATIVAS_SEMANTICAS precisa ser um dicionário")
+    resultado: dict[int | str, dict[str, Any]] = {}
+    for chave, expectativa in valor.items():
+        if isinstance(chave, bool):
+            raise ValueError(
+                "cada chave de EXPECTATIVAS_SEMANTICAS deve ser um turno "
+                "positivo ou um comando textual"
+            )
+        if isinstance(chave, int):
+            if chave < 1:
+                raise ValueError(
+                    "turnos de EXPECTATIVAS_SEMANTICAS começam em 1"
+                )
+            chave_normalizada: int | str = chave
+        elif isinstance(chave, str) and chave.strip():
+            chave_normalizada = chave.strip()
+        else:
+            raise ValueError(
+                "cada chave de EXPECTATIVAS_SEMANTICAS deve ser um turno "
+                "positivo ou um comando textual"
+            )
+        if not isinstance(expectativa, Mapping):
+            raise ValueError(
+                "cada expectativa semântica precisa ser um dicionário"
+            )
+        resultado[chave_normalizada] = dict(expectativa)
+    return resultado
+
+
 @dataclass(frozen=True)
 class ConfiguracaoRoteiro:
     comandos: tuple[str, ...]
@@ -41,6 +90,16 @@ class ConfiguracaoRoteiro:
     encerrar_ao_final: bool = False
     silenciar_voz_durante_teste: bool = False
     aguardar_confirmacao_execucao: bool = False
+    expectativas_semanticas: Mapping[int | str, Mapping[str, Any]] = field(
+        default_factory=dict,
+    )
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "expectativas_semanticas",
+            _normalizar_expectativas_semanticas(self.expectativas_semanticas),
+        )
 
 
 def _literal_por_nome(arvore: ast.Module, nome: str, padrao: Any) -> Any:
@@ -106,11 +165,50 @@ def carregar_configuracao_roteiro(caminho: str | os.PathLike[str]) -> Configurac
         aguardar_confirmacao_execucao=bool(
             _literal_por_nome(arvore, "AGUARDAR_CONFIRMACAO_EXECUCAO", True)
         ),
+        expectativas_semanticas=_literal_por_nome(
+            arvore,
+            "EXPECTATIVAS_SEMANTICAS",
+            {},
+        ),
     )
 
 
-def assinatura_roteiro(comandos: Sequence[str]) -> str:
-    conteudo = json.dumps(list(comandos), ensure_ascii=False, separators=(",", ":"))
+def assinatura_roteiro(
+    comandos: Sequence[str],
+    expectativas_semanticas: Mapping[int | str, Mapping[str, Any]] | None = None,
+) -> str:
+    expectativas = _normalizar_expectativas_semanticas(
+        expectativas_semanticas,
+    )
+    carga: Any = list(comandos)
+    if expectativas:
+        expectativas_assinatura = [
+            {
+                "seletor": (
+                    f"turno:{chave}"
+                    if isinstance(chave, int)
+                    else f"comando:{chave}"
+                ),
+                "expectativa": expectativa,
+            }
+            for chave, expectativa in sorted(
+                expectativas.items(),
+                key=lambda item: (
+                    0 if isinstance(item[0], int) else 1,
+                    str(item[0]).casefold(),
+                ),
+            )
+        ]
+        carga = {
+            "comandos": list(comandos),
+            "expectativas_semanticas": expectativas_assinatura,
+        }
+    conteudo = json.dumps(
+        carga,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
     return hashlib.sha256(conteudo.encode("utf-8")).hexdigest()
 
 
@@ -240,7 +338,10 @@ class RoteiroTesteConversaRuntime:
     def _estado_inicial(self) -> dict[str, Any]:
         return {
             "versao": 2,
-            "assinatura": assinatura_roteiro(self.configuracao.comandos),
+            "assinatura": assinatura_roteiro(
+                self.configuracao.comandos,
+                self.configuracao.expectativas_semanticas,
+            ),
             "criado_em": self.clock(),
             "atualizado_em": self.clock(),
             "concluido": False,
@@ -260,7 +361,10 @@ class RoteiroTesteConversaRuntime:
         }
 
     def _carregar_ou_criar_estado(self) -> dict[str, Any]:
-        esperado = assinatura_roteiro(self.configuracao.comandos)
+        esperado = assinatura_roteiro(
+            self.configuracao.comandos,
+            self.configuracao.expectativas_semanticas,
+        )
         if self.retomar and self.checkpoint_path.is_file():
             try:
                 estado = json.loads(self.checkpoint_path.read_text(encoding="utf-8"))
@@ -411,6 +515,24 @@ class RoteiroTesteConversaRuntime:
     def _item(self, indice: int) -> dict[str, Any]:
         return dict(self._estado["itens"][indice])
 
+    def _expectativa_semantica_local(
+        self,
+        indice: int,
+        comando: str,
+    ) -> dict[str, Any] | None:
+        expectativas = self.configuracao.expectativas_semanticas
+        por_turno = expectativas.get(indice + 1)
+        if isinstance(por_turno, Mapping):
+            return dict(por_turno)
+        texto = re.sub(r"\s+", " ", str(comando or "")).strip().casefold()
+        for chave, expectativa in expectativas.items():
+            if not isinstance(chave, str):
+                continue
+            chave_textual = re.sub(r"\s+", " ", chave).strip().casefold()
+            if chave_textual == texto and isinstance(expectativa, Mapping):
+                return dict(expectativa)
+        return None
+
     def _atualizar_item(self, indice: int, **campos: Any) -> None:
         # V32: ENRIQUECIMENTO_SEMANTICO_CENTRAL
         with self._lock:
@@ -466,6 +588,14 @@ class RoteiroTesteConversaRuntime:
                         ),
                         finalizado_em=campos.get("finalizado_em"),
                         avaliacao_mecanica=avaliacao_mecanica,
+                        expectativa_local=self._expectativa_semantica_local(
+                            indice,
+                            str(
+                                campos.get("comando")
+                                or item.get("comando")
+                                or self.configuracao.comandos[indice]
+                            ),
+                        ),
                     )
                 except Exception as erro:
                     avaliacao_mecanica["avaliador_erro"] = type(erro).__name__
@@ -586,6 +716,13 @@ class RoteiroTesteConversaRuntime:
                 return True, "erro_publicado"
             if not bool(retrato.get("requer_execucao")):
                 return True, "resposta_sem_execucao"
+            decisao = (
+                dict(retrato.get("decisao_turno") or {})
+                if isinstance(retrato.get("decisao_turno"), Mapping)
+                else {}
+            )
+            if decisao and decisao.get("permite_acao") is False:
+                return True, "execucao_nao_autorizada"
             if retrato.get("autoriza_execucao") is False:
                 return True, "execucao_nao_autorizada"
             if str(retrato.get("fase") or "").strip().casefold() in {
@@ -783,12 +920,14 @@ class RoteiroTesteConversaRuntime:
     @staticmethod
     def _comando_depende_de_contexto(texto: str) -> bool:
         normalizado = str(texto or "").strip().casefold()
-        return bool(
-            re.search(
-                r"\b(?:ele|ela|isso|aquilo|esse|essa|este|esta|"
-                r"nele|nela|dele|dela)\b",
-                normalizado,
+        referencia_externa = any(
+            not _ANCORA_EXPLICITA_NO_COMANDO.search(
+                normalizado[:referencia.start()]
             )
+            for referencia in _REFERENCIA_CONTEXTUAL.finditer(normalizado)
+        )
+        return bool(
+            referencia_externa
             or re.fullmatch(
                 r"(?:tenta|tente|faz|faça|repete|repita)\s+(?:de\s+novo|outra\s+vez)[.!?]*",
                 normalizado,

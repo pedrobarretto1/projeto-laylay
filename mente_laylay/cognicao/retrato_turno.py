@@ -168,7 +168,8 @@ def _operacao_explicita(texto: str) -> tuple[str, tuple[str, ...]]:
         ):
             return "playlist_mover", ("PLAYLIST_MOVE",)
         verbo_adicao = re.search(
-            r"\b(?:coloca|coloque|bota|salva|salve|guarda|guarde|adiciona|adicione|add)\b",
+            r"\b(?:coloca|coloque|bota|salva|salve|guarda|guarde|adiciona|adicione|"
+            r"acrescenta|acrescente|add)\b",
             t,
         )
         destino_adicao = re.search(

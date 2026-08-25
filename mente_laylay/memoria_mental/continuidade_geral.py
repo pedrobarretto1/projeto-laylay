@@ -27,6 +27,7 @@ def estado_continuidade_geral_inicial() -> Dict[str, Any]:
         "fonte_autoritativa": True,
         "dominio_ativo": "",
         "dominios": {},
+        "operacoes_referenciaveis": {},
         "historico": [],
         "ts": 0.0,
     }
@@ -162,6 +163,35 @@ def resolver_continuacao_aditiva(
     dominios = dict(continuidade.get("dominios") or {})
     agora = time.time()
     candidatos: list[Dict[str, Any]] = []
+
+    # Operações com política aditiva têm um recibo próprio e limitado a uma
+    # entrada por intent. O histórico misto continua útil para auditoria, mas
+    # não pode fazer uma referência semanticamente viva expirar só porque
+    # outros comandos produziram mais de 24 eventos dentro do mesmo TTL.
+    referenciaveis = dict(
+        continuidade.get("operacoes_referenciaveis") or {}
+    )
+    for intent_ref, bruto_ref in referenciaveis.items():
+        item_ref = dict(bruto_ref or {})
+        intent_ref_norm = str(
+            item_ref.get("intent") or intent_ref or ""
+        ).upper().strip()
+        if intent_ref_norm not in _POLITICAS_CONTINUACAO_ADITIVA:
+            continue
+        try:
+            idade_ref = agora - float(item_ref.get("ts") or 0.0)
+            expira_ref = float(item_ref.get("expira_em") or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if idade_ref > ttl_s or (expira_ref and agora >= expira_ref):
+            continue
+        candidatos.append({
+            **item_ref,
+            "intent": intent_ref_norm,
+            "idade_s": max(0.0, idade_ref),
+            "fonte": "operacao_referenciavel",
+        })
+
     for dominio, bruto in dominios.items():
         item = dict(bruto or {})
         intent = str(item.get("intent") or "").upper().strip()
@@ -464,6 +494,23 @@ def registrar_evento_continuidade(
         if referencia_anterior:
             item["referencia_anterior"] = referencia_anterior
     dominios[dominio_norm] = item
+    operacoes_referenciaveis = dict(
+        continuidade.get("operacoes_referenciaveis") or {}
+    )
+    intent_item = str(item.get("intent") or "").upper().strip()
+    if (
+        str(item.get("evento") or "") == "acao"
+        and intent_item in _POLITICAS_CONTINUACAO_ADITIVA
+    ):
+        operacoes_referenciaveis[intent_item] = {
+            "intent": intent_item,
+            "alvo": item.get("alvo"),
+            "params": dict(item.get("params") or {}),
+            "status": item.get("status"),
+            "ativa": bool(item.get("ativa", True)),
+            "ts": item.get("ts"),
+            "expira_em": item.get("expira_em"),
+        }
     historico = list(continuidade.get("historico") or [])
     resumo_historico_referenciavel = {
         chave: item.get(chave)
@@ -481,6 +528,7 @@ def registrar_evento_continuidade(
         "fonte_autoritativa": True,
         "dominio_ativo": dominio_norm if ativa else str(continuidade.get("dominio_ativo") or ""),
         "dominios": dominios,
+        "operacoes_referenciaveis": operacoes_referenciaveis,
         "historico": historico[-24:],
         "ts": agora,
     })
@@ -696,14 +744,74 @@ def resolver_fechamento_ordinal_aberturas_recentes(
     alvo = str(candidatos[indice].get("alvo") or "").strip()
     if not alvo:
         return {}
+    sobreviventes = [
+        str(item.get("alvo") or "").strip()
+        for posicao, item in enumerate(candidatos)
+        if posicao != indice and str(item.get("alvo") or "").strip()
+    ]
+    aba_sobrevivente = sobreviventes[0] if len(sobreviventes) == 1 else ""
+    params = {
+        "alvo": alvo,
+        "referencia_contextual": True,
+        "indice_ordinal": indice + 1,
+    }
+    if aba_sobrevivente:
+        params["aba_sobrevivente_contextual"] = aba_sobrevivente
     return {
         "intent": "CLOSE_TAB",
-        "params": {
-            "alvo": alvo,
-            "referencia_contextual": True,
-            "indice_ordinal": indice + 1,
-        },
+        "params": params,
     }
+
+
+def selecionar_aba_sobrevivente_fechamento_ordinal(
+    estado_atual: Dict[str, Any] | None,
+    *,
+    texto: str,
+    ttl_s: float = 180.0,
+) -> str:
+    """Recupera a única sobrevivente de um fechamento ordinal confirmado."""
+    base = re.sub(r"\s+", " ", str(texto or "").strip().casefold()).rstrip(
+        " .,!?:;"
+    )
+    if not re.fullmatch(
+        r"(?:(?:me\s+)?(?:diz|diga|fala|fale|mostra|mostre)\s+)?"
+        r"(?:qual|que)\s+(?:(?:e|é)\s+)?(?:a\s+)?aba\s+ficou\s+aberta",
+        base,
+    ):
+        return ""
+
+    estado = dict(estado_atual or {})
+    contrato = dict(estado.get("ultima_acao_contrato") or {})
+    if (
+        str(contrato.get("intent") or estado.get("ultima_acao_intent") or "")
+        .upper()
+        .strip()
+        != "CLOSE_TAB"
+        or str(contrato.get("status") or estado.get("ultima_acao_status") or "")
+        .casefold()
+        .strip()
+        != "aba_fechada"
+        or (contrato.get("executou") if contrato else estado.get("ultima_acao_ok"))
+        is not True
+        or (
+            contrato.get("confirmado")
+            if contrato
+            else estado.get("ultima_acao_confirmada")
+        )
+        is not True
+    ):
+        return ""
+    try:
+        idade = time.time() - float(estado.get("ultima_acao_ts") or 0.0)
+    except (TypeError, ValueError):
+        return ""
+    if idade < -5.0 or idade > max(1.0, float(ttl_s or 180.0)):
+        return ""
+
+    params = dict(estado.get("ultima_acao_params") or {})
+    if not params.get("referencia_contextual") or not params.get("indice_ordinal"):
+        return ""
+    return str(params.get("aba_sobrevivente_contextual") or "").strip()
 
 
 def selecionar_continuidade_por_classe(

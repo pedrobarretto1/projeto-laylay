@@ -133,6 +133,7 @@ def test_red_contexto_oficial_publica_ultimo_app_vivo_para_etapa_seguinte() -> N
     contexto = runtime.estado_contexto_intencao()
 
     assert contexto["ultimo_app_janela"] == "microsoft store"
+    assert contexto["mente_integrada_estado"] == mente
 
 
 class _ContextoCadeia:

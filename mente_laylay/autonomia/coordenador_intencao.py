@@ -17,6 +17,7 @@ from mente_laylay.autonomia.analise_comandos import (
 from mente_laylay.autonomia.roteador_intencao import executar_intencao
 from mente_laylay.autonomia.roteador_deterministico import (
     detectar_playlist_contextual_musica_atual,
+    detectar_volume_ou_midia,
 )
 from mente_laylay.autonomia.agendamento_mental import (
     extrair_complemento_temporal_lembrete,
@@ -47,6 +48,9 @@ from mente_laylay.memoria_mental.continuidade_geral import (
     resolver_continuacao_aditiva,
 )
 from mente_laylay.memoria_mental.contexto_imediato import (
+    _dominio_explicito_referencia,
+    _normalizar_dominio_referencia,
+    _resultado_compativel_com_dominio,
     referencia_contextual_imediata,
 )
 from mente_laylay.memoria_mental.pendencia_acao import dominio_pendencia
@@ -135,9 +139,25 @@ def _intencao_deterministica_tem_alvo_explicito(resultado: Any, texto: str) -> b
             valor_e_referencia_contextual(valor)
             for valor in (origem, destino, musica)
         )
-    if intent in {"PLAYLIST_CREATE", "PLAYLIST_ADD", "PLAYLIST_PLAY", "PLAYLIST_LIST", "PLAYLIST_DELETE"}:
-        # Em PLAYLIST_ADD, "essa música" resolve a fonte pelo player atual,
-        # mas o destino dito depois de "playlist" já é um alvo explícito.
+    if intent == "PLAYLIST_ADD":
+        # A fonte pode ser contextual (``essa``), mas o destino continua sendo
+        # literal quando aparece por inteiro depois da preposição na fala
+        # atual. O executor ainda precisa observar a faixa no player antes de
+        # persistir qualquer item; aqui provamos somente o alvo da mutação.
+        if valor_e_referencia_contextual(alvo):
+            return False
+        fala_compacta = re.sub(r"\s+", " ", fala).strip()
+        alvo_compacto = re.sub(r"\s+", " ", alvo).strip()
+        destino_nomeado = bool(
+            alvo_compacto
+            and re.search(
+                rf"\b(?:na|nessa|nesta)\s+{re.escape(alvo_compacto)}"
+                r"(?:\s*[.,;:!?]|\s*$)",
+                fala_compacta,
+            )
+        )
+        return "playlist" in fala or destino_nomeado
+    if intent in {"PLAYLIST_CREATE", "PLAYLIST_PLAY", "PLAYLIST_LIST", "PLAYLIST_DELETE"}:
         return not valor_e_referencia_contextual(alvo) and "playlist" in fala
     if intent in {"LAYLAY_PLAYLIST_PLAY", "LAYLAY_PLAYLIST_COPY"}:
         # O detector da curadoria resolve o ordinal para ``#N`` ou para um
@@ -433,6 +453,40 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
         _call(ctx, "detectar_intencao_deterministica", texto_detector_deterministico),
         retrato_atual,
     )
+    referencia_retrato = dict(
+        retrato_atual.get("referencia_resolvida") or {}
+    )
+    dominio_retrato = _normalizar_dominio_referencia(str(
+        referencia_retrato.get("tipo")
+        or retrato_atual.get("referencia_tipo")
+        or ""
+    ))
+    dominio_explicito_atual = _dominio_explicito_referencia(
+        texto_detector_deterministico
+    )
+    # Um detector pode encontrar um candidato válido em outro domínio usando
+    # memória global antiga. Numa etapa elíptica da cadeia, porém, o retrato
+    # local já tipou o referente pelo texto explícito das etapas anteriores.
+    # Rejeitamos somente a colisão sem domínio novo na fala atual e damos ao
+    # owner tipado a chance de interpretar a leitura; nenhuma mutação ou alvo
+    # é inventado aqui.
+    if (
+        depende_contexto
+        and dominio_retrato
+        and not dominio_explicito_atual
+        and isinstance(intent_deterministica, dict)
+        and not _resultado_compativel_com_dominio(
+            intent_deterministica,
+            dominio_retrato,
+        )
+    ):
+        intent_deterministica = None
+        if dominio_retrato == "musica":
+            intent_deterministica = detectar_volume_ou_midia(
+                texto_detector_deterministico,
+                params_cb=lambda **kwargs: kwargs,
+                contexto_musical_ativo=True,
+            )
     # Salvaguarda de leitura do próprio projeto. O detector composto pode
     # estar degradado ou ausente em uma instalação parcial; uma busca explícita
     # de arquivo/código continua sendo segura e não deve cair na conversa livre.
@@ -474,6 +528,10 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
                 ultima_playlist=_call(
                     ctx, "musica_estado_get", "ultima_playlist", default="",
                 ),
+                contexto_musical_ativo=bool(
+                    dominio_retrato == "musica"
+                    or _call(ctx, "contexto_musical_ativo", default=False)
+                ),
             ),
             retrato_atual,
         )
@@ -507,10 +565,45 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
 
     # Continuidade contextual unificada vem antes da repeticao generica para
     # pronomes e respostas curtas. Ex.: "fecha ela", "coloca ele em foco".
+    intent_contextual_bruto = _call(
+        ctx, "resolver_comando_contextual_forcado", texto_norm,
+    )
+    if (
+        not isinstance(intent_contextual_bruto, dict)
+        and depende_contexto
+        and dominio_retrato
+    ):
+        # O agregador contextual conservador pode recusar uma elipse curta
+        # quando a restrição de domínio ainda não foi promovida na mente viva.
+        # Nesta altura, porém, a própria etapa da cadeia já possui referência
+        # tipada e resolvida. Consulte o owner geral oficial, sem inventar alvo
+        # e sem abrir essa porta para frases que não tenham domínio tipado.
+        intent_contextual_bruto = _call(
+            ctx,
+            "resolver_comando_acao_geral_contextual_forcado",
+            texto_norm,
+        )
+        if isinstance(intent_contextual_bruto, dict):
+            intent_contextual_bruto = dict(intent_contextual_bruto)
+            intent_contextual_bruto.setdefault("_rota_contextual", "GERAL")
     intent_contextual = resolver_referencias_da_intencao(
-        _call(ctx, "resolver_comando_contextual_forcado", texto_norm),
+        intent_contextual_bruto,
         retrato_atual,
     )
+    if (
+        depende_contexto
+        and dominio_retrato
+        and not dominio_explicito_atual
+        and isinstance(intent_contextual, dict)
+        and not _resultado_compativel_com_dominio(
+            intent_contextual,
+            dominio_retrato,
+        )
+    ):
+        # A restrição de domínio vale para todos os especialistas. Proteger só
+        # o detector determinístico ainda deixava a porta contextual de IoT
+        # competir — e vencer — contra a música tipada pela própria cadeia.
+        intent_contextual = None
     if isinstance(intent_contextual, dict):
         rota = str(intent_contextual.get("_rota_contextual") or "contexto").lower()
         intent_limpo = dict(intent_contextual)
@@ -1272,6 +1365,7 @@ class CicloComandosRuntime:
     def processar_cadeia(self, texto: str, origem: str = "") -> bool:
         ns = self._ns()
         normalizar = ns.get("_normalizar_texto_com_apelidos")
+        dominio_explicito_cadeia = ""
 
         def executar_trecho_isolado(trecho: str, origem_trecho: str) -> bool:
             """Resolve cada etapa contra seu texto, preservando o estado vivo.
@@ -1282,6 +1376,12 @@ class CicloComandosRuntime:
             ``abre o primeiro resultado``). O contexto continua sendo o mesmo,
             mas a moldura operacional passa a representar somente a etapa.
             """
+            nonlocal dominio_explicito_cadeia
+            dominio_herdado_cadeia = dominio_explicito_cadeia
+            dominio_trecho = _dominio_explicito_referencia(trecho)
+            if dominio_trecho:
+                dominio_explicito_cadeia = dominio_trecho
+
             contexto = self._montar_contexto_resolucao()
             self.log(
                 "🧩 [COOPERAÇÃO:CADEIA] resolvendo etapa isolada | "
@@ -1318,6 +1418,18 @@ class CicloComandosRuntime:
             retrato["operacao_explicita"] = ""
             retrato["entidade_explicita"] = {}
 
+            # O domínio explicitamente declarado por uma etapa anterior é
+            # evidência linguística suficiente para tipar a continuação, mesmo
+            # quando a ação não produziu um alvo promovível. Ex.: uma playlist
+            # inexistente seguida de ``pausa a música`` ainda faz ``estado
+            # dela`` pertencer à música. Isso não cria faixa, playlist ou
+            # autorização; apenas impede um contexto antigo de outro domínio
+            # de vencer a arbitragem da etapa elíptica.
+            if dominio_herdado_cadeia and not dominio_trecho:
+                retrato["referencia_tipo"] = _normalizar_dominio_referencia(
+                    dominio_herdado_cadeia
+                )
+
             # A etapa anterior pode ter acabado de criar um referente
             # operacional confirmado (por exemplo, APP_OPEN). O retrato da
             # frase composta foi congelado antes desse efeito e, por isso,
@@ -1334,6 +1446,7 @@ class CicloComandosRuntime:
                     foco_vivo={},
                     texto_atual=trecho,
                     normalizar_texto=normalizar,
+                    dominio_preferido=dominio_explicito_cadeia,
                 )
                 tipo_referencia = str(
                     referencia_viva.get("tipo") or ""
@@ -1369,6 +1482,7 @@ class CicloComandosRuntime:
                 trecho,
                 origem_trecho,
                 contexto,
+                texto_original=texto,
                 resolver_cb=self._resolver_decisao_canonica,
             )
 

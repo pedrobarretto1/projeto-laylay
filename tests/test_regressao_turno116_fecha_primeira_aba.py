@@ -84,6 +84,7 @@ def test_red_turno116_fecha_primeira_abertura_confirmada() -> None:
             "alvo": "wikipedia",
             "referencia_contextual": True,
             "indice_ordinal": 1,
+            "aba_sobrevivente_contextual": "prime video",
         },
     }
 
@@ -167,6 +168,7 @@ def test_red_turno116_wiring_do_detector_runtime_preserva_historico() -> None:
             "alvo": "wikipedia",
             "referencia_contextual": True,
             "indice_ordinal": 1,
+            "aba_sobrevivente_contextual": "prime video",
         },
     }
 

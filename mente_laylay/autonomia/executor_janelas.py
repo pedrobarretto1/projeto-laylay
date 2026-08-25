@@ -246,6 +246,40 @@ def _executar_abrir_app(
         ]), "debochada", 2)
         return ResultadoDespacho.concluido()
 
+    if params.get("somente_se_fechado") is True:
+        resolver_alvo = _get(ctx, "_resolver_alvo_ambiente")
+        if destino not in {"", "pc_a"} or not callable(resolver_alvo):
+            deps.marcar_resultado(
+                "condicao_nao_observavel",
+                executou=False,
+                confirmado=False,
+            )
+            deps.falar_por_status(
+                "condicao_nao_observavel",
+                f"Não consegui observar se {nome} já está aberto; por segurança, não repeti a abertura.",
+                alvo=nome,
+                confirmado=False,
+            )
+            return ResultadoDespacho.concluido(False)
+        try:
+            estado_observado = dict(resolver_alvo(nome) or {})
+        except Exception:
+            estado_observado = {}
+        if estado_observado.get("programa_aberto") is True:
+            deps.marcar_resultado(
+                "app_ja_aberto_observado",
+                executou=False,
+                confirmado=True,
+            )
+            deps.falar_por_status(
+                "app_ja_aberto_observado",
+                f"{nome.capitalize()} já está aberto; só te avisei e não mexi nele.",
+                alvo=nome,
+                executou=False,
+                confirmado=True,
+            )
+            return ResultadoDespacho.concluido()
+
     enviar_pc_b = _get(ctx, "_enviar_pc_b")
     apps_map = _get(ctx, "APPS_MAP", {}) or {}
     if destino == "ambos" and callable(enviar_pc_b):
@@ -294,7 +328,10 @@ def _executar_abrir_app(
                 "Faltou o nome do aplicativo.",
             ]), "debochada", 2)
             return ResultadoDespacho.concluido()
-        deps.marcar_resultado(status, executou=bool(resultado.get("ok")))
+        campos_resultado = {"executou": bool(resultado.get("ok"))}
+        if "confirmado" in resultado:
+            campos_resultado["confirmado"] = resultado.get("confirmado")
+        deps.marcar_resultado(status, **campos_resultado)
         deps.falar_resultado_janela(nome, status)
         return ResultadoDespacho.concluido()
 

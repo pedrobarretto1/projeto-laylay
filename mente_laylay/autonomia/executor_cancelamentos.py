@@ -48,31 +48,67 @@ def _bloquear_playlist(ctx: Dict[str, Any], duracao: float | None = None) -> Non
         bloquear(duracao)
 
 
-def _limpar_continuidades(ctx: Dict[str, Any]) -> None:
+def _pendencia_canonica(ctx: Dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Lê a fonte oficial e informa se a ausência pôde ser observada."""
+    runtime = _get(ctx, "_pendencia_acao_runtime")
+    if runtime is None or not callable(getattr(runtime, "obter", None)):
+        return {}, False
+    try:
+        return dict(runtime.obter() or {}), True
+    except Exception:
+        return {}, False
+
+
+def _tem_pendencia_legada(ctx: Dict[str, Any]) -> bool:
+    """Reconhece ofertas antigas ainda não migradas para a fonte canônica."""
+    for chave in (
+        "playlist_sugestao_pendente",
+        "_playlist_sugestao_pendente",
+        "rotina_sugestao_pendente",
+        "_rotina_sugestao_pendente",
+        "comando_sugerido",
+        "comando_sugerido_payload",
+        "comando_pendente",
+        "comando_pendente_payload",
+    ):
+        if _get(ctx, chave) not in (None, "", False, {}, []):
+            return True
+
+    estado = str(_get(ctx, "comando_sugerido_estado", "") or "").upper().strip()
+    return bool(estado and estado not in {"NONE", "CANCELADO", "CANCELLED", "CONCLUIDO"})
+
+
+def _limpar_continuidades(ctx: Dict[str, Any]) -> bool:
     """Limpa a fonte compartilhada e mantém o retrato local coerente."""
     atualizar = _get(ctx, "update_continuidades")
     definir = _get(ctx, "set_continuidade")
+    fonte_atualizada = False
 
     if callable(atualizar):
         try:
             atualizar(**_CONTINUIDADES_CANCELADAS)
+            fonte_atualizada = True
         except Exception:
-            pass
+            fonte_atualizada = False
     elif callable(definir):
+        fonte_atualizada = True
         for chave, valor in _CONTINUIDADES_CANCELADAS.items():
             try:
                 definir(chave, valor)
             except Exception:
-                continue
+                fonte_atualizada = False
 
     # Compatibilidade com contextos antigos e com testes que usam um retrato
     # mutável sem fornecer acesso à memória compartilhada.
+    retrato_atualizado = False
     try:
         ctx.update(_CONTINUIDADES_CANCELADAS)
         ctx["_playlist_sugestao_pendente"] = None
         ctx["_rotina_sugestao_pendente"] = None
+        retrato_atualizado = True
     except Exception:
-        pass
+        retrato_atualizado = False
+    return fonte_atualizada if callable(atualizar) or callable(definir) else retrato_atualizado
 
 
 def executar_intencao_cancelamentos(
@@ -94,12 +130,48 @@ def executar_intencao_cancelamentos(
         ])
         return ResultadoDespacho.concluido()
 
+    pendencia, fonte_canonica_observada = _pendencia_canonica(ctx)
+    pendencia_legada = _tem_pendencia_legada(ctx)
+    if not pendencia and not pendencia_legada:
+        if fonte_canonica_observada:
+            _falar(ctx, [
+                "Não havia nenhuma ação pendente para cancelar.",
+                "Não encontrei nenhuma ação pendente; não cancelei nada.",
+                "Não havia nenhuma ação pendente; mantive tudo como estava.",
+            ])
+            deps.marcar_resultado("sem_pendencia", executou=False, confirmado=True)
+        else:
+            _falar(ctx, [
+                "Não consegui conferir se havia uma ação pendente; não vou dizer que cancelei.",
+                "A fonte de pendências não respondeu, então não alterei nada.",
+            ])
+            deps.marcar_resultado("sem_confirmacao", executou=False, confirmado=False)
+        return ResultadoDespacho.concluido()
+
     _bloquear_playlist(ctx, 0.0)
-    _limpar_continuidades(ctx)
-    _falar(ctx, [
-        "Beleza, cancelei isso.",
-        "Certo, deixei pra lá.",
-        "Tá, descartei a ação anterior.",
-    ])
-    deps.marcar_resultado("cancelado")
+    legado_limpo = _limpar_continuidades(ctx)
+    canonica_concluida = True
+    if pendencia:
+        runtime = _get(ctx, "_pendencia_acao_runtime")
+        try:
+            canonica_concluida = bool(
+                runtime.concluir(str(pendencia.get("id") or ""), "cancelada")
+            )
+        except Exception:
+            canonica_concluida = False
+
+    confirmado = canonica_concluida and (legado_limpo or not pendencia_legada)
+    if confirmado:
+        _falar(ctx, [
+            "Beleza, cancelei isso.",
+            "Certo, deixei pra lá.",
+            "Tá, descartei a ação anterior.",
+        ])
+        deps.marcar_resultado("cancelado", executou=True, confirmado=True)
+    else:
+        _falar(ctx, [
+            "Não consegui confirmar o cancelamento; não vou fingir que deu certo.",
+            "A ação pendente não confirmou o cancelamento.",
+        ])
+        deps.marcar_resultado("falha_execucao", executou=False, confirmado=False)
     return ResultadoDespacho.concluido()

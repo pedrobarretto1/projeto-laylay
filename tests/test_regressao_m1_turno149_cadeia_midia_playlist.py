@@ -12,7 +12,10 @@ Escopo:
 """
 
 from mente_laylay.autonomia.analise_comandos import segmentar_comandos_em_cadeia
-from mente_laylay.autonomia.coordenador_intencao import CicloComandosRuntime
+from mente_laylay.autonomia.coordenador_intencao import (
+    CicloComandosRuntime,
+    _intencao_deterministica_tem_alvo_explicito,
+)
 from mente_laylay.autonomia.detectores_playlist import (
     detectar_playlist_contextual_musica_atual,
 )
@@ -269,6 +272,242 @@ def test_m1_red_07_cadeia_real_publica_add_mesmo_sem_ultima_playlist_global():
         "nome_playlist": "caos sonora",
         "referencia_contextual": True,
     }
+
+
+def test_m1_red_09_cadeia_real_nao_descarta_destino_nomeado_por_fonte_contextual():
+    """Replica a fronteira real que o caos expôs no turno 149.
+
+    ``essa`` torna a fonte da música contextual, mas ``caos sonora`` continua
+    sendo um destino escrito no turno atual. O coordenador deve publicar
+    ``PLAYLIST_ADD`` e deixar o executor decidir, pela observação do player, se
+    existe uma faixa que possa ser persistida.
+    """
+
+    executadas: list[dict] = []
+
+    class Contexto:
+        @staticmethod
+        def montar():
+            return {
+                "turno_atual": {
+                    "id": "turno-149-contextual",
+                    "modalidade": "comando",
+                    "modalidade_geral": "comando",
+                    "autoriza_execucao": True,
+                },
+                "retrato_turno_atual": {},
+                "continuidade_geral": {},
+            }
+
+    def detectar(trecho: str):
+        t = str(trecho or "").casefold().strip(" .,!?:;")
+        midia = detectar_volume_ou_midia(
+            t,
+            params_cb=_params,
+            contexto_musical_ativo=True,
+        )
+        if midia:
+            return midia
+        return detectar_playlist_contextual_musica_atual(
+            t,
+            params_cb=_params,
+            limpar_nome_playlist=_limpar_nome,
+            ultima_playlist="",
+        )
+
+    runtime = CicloComandosRuntime(
+        namespace_getter=lambda: {
+            "_normalizar_texto_com_apelidos": str.casefold,
+            "_texto_depende_de_contexto": lambda texto: (
+                "essa" in str(texto or "").casefold()
+            ),
+            "_texto_parece_consulta_operacional": lambda _texto: True,
+            "detectar_intencao_deterministica": detectar,
+            "_resolver_comando_contextual_forcado": lambda _texto: None,
+            "_resolver_repeticao_ultima_acao": lambda _texto: None,
+            "_registrar_resultado_execucao": lambda *_args, **_kwargs: None,
+            "_registrar_autoaprimoramento": lambda *_args, **_kwargs: None,
+        },
+        contexto_intencao_runtime=Contexto(),
+        log=lambda *_args: None,
+    )
+    runtime.executar_intencao = lambda comando, _texto: (
+        executadas.append(dict(comando)) or True
+    )
+
+    assert runtime.processar_cadeia(FALA_M1, "turno-149-contextual") is True
+    assert [item["intent"] for item in executadas] == [
+        "MEDIA_CONTROL",
+        "PLAYLIST_ADD",
+    ]
+    assert executadas[1]["params"] == {
+        "nome_playlist": "caos sonora",
+        "referencia_contextual": True,
+    }
+
+
+def test_m1_guard_11_destino_inferido_nao_vira_explicito_so_por_estar_no_estado():
+    candidato = {
+        "intent": "PLAYLIST_ADD",
+        "params": {
+            "nome_playlist": "caos sonora",
+            "referencia_contextual": True,
+        },
+    }
+
+    assert _intencao_deterministica_tem_alvo_explicito(
+        candidato,
+        "essa também",
+    ) is False
+
+
+def test_m1_guard_12_nome_parcial_nao_prova_destino_explicito():
+    candidato = {
+        "intent": "PLAYLIST_ADD",
+        "params": {
+            "nome_playlist": "rock",
+            "referencia_contextual": True,
+        },
+    }
+
+    assert _intencao_deterministica_tem_alvo_explicito(
+        candidato,
+        "adiciona essa também na rock alternativo",
+    ) is False
+
+
+def test_m1_red_10_variantes_naturais_do_usuario_segmentam_as_duas_etapas():
+    casos = {
+        "Pula para a próxima faixa e adiciona essa na playlist caos sonora.": [
+            "Pula para a próxima faixa",
+            "adiciona essa na playlist caos sonora",
+        ],
+        "Avança uma música e salva essa também na caos sonora.": [
+            "Avança uma música",
+            "salva essa também na caos sonora",
+        ],
+        "Troca para a próxima e acrescenta ela na caos sonora.": [
+            "Troca para a próxima",
+            "acrescenta ela na caos sonora",
+        ],
+    }
+
+    for fala, esperado in casos.items():
+        assert segmentar_comandos_em_cadeia(fala) == esperado
+
+
+def test_m1_red_10b_variantes_naturais_concedem_autoridade_operacional():
+    casos = (
+        "Pula para a próxima faixa e adiciona essa na playlist caos sonora.",
+        "Avança uma música e salva essa também na caos sonora.",
+        "Troca para a próxima e acrescenta ela na caos sonora.",
+    )
+
+    for fala in casos:
+        turno = classificar_modalidade_turno(fala)
+        assert turno["modalidade"] == "comando", turno
+        assert turno["autoriza_execucao"] is True, turno
+        assert turno["acao_explicita"] is True, turno
+
+
+def test_m1_red_11_variantes_naturais_publicam_as_duas_intencoes_na_ordem():
+    casos = (
+        "Pula para a próxima faixa e adiciona essa na playlist caos sonora.",
+        "Avança uma música e salva essa também na caos sonora.",
+        "Troca para a próxima e acrescenta ela na caos sonora.",
+    )
+
+    for indice, fala in enumerate(casos, start=1):
+        executadas: list[dict] = []
+
+        class Contexto:
+            @staticmethod
+            def montar():
+                return {
+                    "turno_atual": {
+                        "id": f"turno-149-natural-{indice}",
+                        "modalidade": "comando",
+                        "modalidade_geral": "comando",
+                        "autoriza_execucao": True,
+                    },
+                    "retrato_turno_atual": {},
+                    "continuidade_geral": {},
+                }
+
+        def detectar(trecho: str):
+            t = str(trecho or "").casefold().strip(" .,!?:;")
+            midia = detectar_volume_ou_midia(
+                t,
+                params_cb=_params,
+                contexto_musical_ativo=True,
+            )
+            if midia:
+                return midia
+            return detectar_playlist_contextual_musica_atual(
+                t,
+                params_cb=_params,
+                limpar_nome_playlist=_limpar_nome,
+                ultima_playlist="caos sonora",
+                contexto_musical_ativo=True,
+            )
+
+        runtime = CicloComandosRuntime(
+            namespace_getter=lambda: {
+                "_normalizar_texto_com_apelidos": str.casefold,
+                "_texto_depende_de_contexto": lambda texto: any(
+                    pronome in str(texto or "").casefold().split()
+                    for pronome in ("essa", "ela")
+                ),
+                "_texto_parece_consulta_operacional": lambda _texto: True,
+                "detectar_intencao_deterministica": detectar,
+                "_resolver_comando_contextual_forcado": lambda _texto: None,
+                "_resolver_repeticao_ultima_acao": lambda _texto: None,
+                "_registrar_resultado_execucao": lambda *_args, **_kwargs: None,
+                "_registrar_autoaprimoramento": lambda *_args, **_kwargs: None,
+            },
+            contexto_intencao_runtime=Contexto(),
+            log=lambda *_args: None,
+        )
+        runtime.executar_intencao = lambda comando, _texto: (
+            executadas.append(dict(comando)) or True
+        )
+
+        assert runtime.processar_cadeia(
+            fala,
+            f"turno-149-natural-{indice}",
+        ) is True
+        assert [item["intent"] for item in executadas] == [
+            "MEDIA_CONTROL",
+            "PLAYLIST_ADD",
+        ]
+        assert executadas[1]["params"]["nome_playlist"] == "caos sonora"
+        if indice > 1:
+            assert executadas[1]["params"]["referencia_contextual"] is True
+
+
+def test_m1_guard_13_variantes_naturais_nao_promovem_narrativa_a_comando():
+    texto = "Ela pula para a próxima página e adiciona uma observação ao texto."
+    assert segmentar_comandos_em_cadeia(texto) == [texto.casefold().rstrip(".")]
+
+
+def test_m1_guard_14_proxima_aba_nao_vira_controle_de_musica():
+    resultado = detectar_volume_ou_midia(
+        "troca para a próxima aba",
+        params_cb=_params,
+        contexto_musical_ativo=True,
+    )
+    assert resultado is None
+
+
+def test_m1_guard_15_lista_comum_nao_vira_playlist_por_pronome():
+    resultado = detectar_playlist_contextual_musica_atual(
+        "acrescenta ela na lista de tarefas",
+        params_cb=_params,
+        limpar_nome_playlist=_limpar_nome,
+        ultima_playlist="caos sonora",
+        contexto_musical_ativo=True,
+    )
+    assert resultado is None
 
 
 def test_m1_red_08_cadeia_real_adiciona_a_faixa_nova_e_nunca_a_anterior():

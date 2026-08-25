@@ -14,6 +14,7 @@ from mente_laylay.integracao.registro_memoria_pessoas import PortaMemoriaPessoas
 from mente_laylay.integracao.registro_iot import PortaIoT
 from mente_laylay.memoria_mental.resultado_acao import (
     CHAVE_RESULTADO_OPERACIONAL_PUBLICADO,
+    normalizar_resultado_acao,
 )
 
 
@@ -97,6 +98,69 @@ class AdaptadoresAplicacaoRuntime:
             and str(origem or "").strip().casefold() != "executor"
         ):
             return
+        # A base mental já normaliza o retorno legado, mas o plano do turno
+        # era montado abaixo diretamente do dict bruto. Isso criava dois
+        # recibos para o mesmo fato: ``resumo_concluido`` ficava confirmado
+        # na memória e indeterminado no plano observado pelo caos. Normalize
+        # uma vez também para os consumidores do adaptador; a inferência
+        # continua restrita à tabela oficial de estados confirmáveis.
+        contrato_plano = normalizar_resultado_acao(
+            resultado,
+            texto=texto,
+            executou=executou,
+            origem=origem,
+            status=status,
+        )
+        # A identidade pertence ao turno que disparou a ação. Capture-a antes
+        # de notificar base, aprendizado e limpadores de contexto: esses
+        # consumidores também atualizam a mente compartilhada e não podem
+        # trocar o RG do recibo pela proposta operacional já reduzida.
+        estado = ns["_estado_compartilhado_runtime"]
+        plano = dict(estado.mental.get("plano_turno_atual") or {})
+        texto_turno = " ".join(str(texto or "").split()).casefold()
+        texto_plano = " ".join(
+            str(plano.get("texto_usuario") or "").split()
+        ).casefold()
+        texto_operacional_plano = " ".join(
+            str(plano.get("texto_operacional_efetivo") or "").split()
+        ).casefold()
+        entrada_atual = str(
+            estado.mental.get("ultima_entrada") or ""
+        ).strip()
+        texto_entrada_atual = " ".join(
+            entrada_atual.split()
+        ).casefold()
+        subetapa_do_plano_atual = bool(
+            texto_plano
+            and texto_turno
+            and (
+                texto_turno == texto_plano
+                or texto_turno in texto_plano
+                or texto_turno == texto_operacional_plano
+            )
+        )
+        subetapa_da_entrada_atual = bool(
+            texto_entrada_atual
+            and texto_turno
+            and (
+                texto_turno == texto_entrada_atual
+                or texto_turno in texto_entrada_atual
+            )
+        )
+        texto_identidade = (
+            str(plano.get("texto_usuario") or "").strip()
+            if subetapa_do_plano_atual
+            else entrada_atual
+            if subetapa_da_entrada_atual
+            else str(texto or "").strip()
+        )
+        texto_identidade_normalizado = (
+            texto_plano
+            if subetapa_do_plano_atual
+            else texto_entrada_atual
+            if subetapa_da_entrada_atual
+            else texto_turno
+        )
         ns["_registrar_resultado_execucao_base"](
             resultado, texto, executou, origem=origem, status=status,
         )
@@ -119,42 +183,16 @@ class AdaptadoresAplicacaoRuntime:
                     f"⚠️ [HABILIDADES] resultado não refletido no mapa: {type(erro).__name__}"
                 )
         try:
-            if isinstance(resultado, dict):
-                intent = str(resultado.get("intent") or resultado.get("acao") or "").strip()
-                params = resultado.get("params") if isinstance(resultado.get("params"), dict) else {}
-                status_resultado = str(status or resultado.get("status") or "").strip()
-                confirmado = resultado.get("confirmado")
-                confirmacao_oferecida = resultado.get("confirmacao_oferecida")
-                evidencia_confirmacao = resultado.get("evidencia_confirmacao")
-                id_solicitacao = str(
-                    resultado.get("id_solicitacao")
-                    or resultado.get("request_id")
-                    or ""
-                ).strip()
-                origem_resultado = str(
-                    origem or resultado.get("origem") or ""
-                ).strip()
-                detalhe_resultado = str(
-                    resultado.get("detalhe") or resultado.get("erro") or ""
-                ).strip()
-                alvo_objeto = ""
-            else:
-                intent = str(getattr(resultado, "intent", "") or getattr(resultado, "acao", "")).strip()
-                params = dict(getattr(resultado, "params", {}) or {})
-                status_resultado = str(status or getattr(resultado, "status", "") or "").strip()
-                confirmado = getattr(resultado, "confirmado", None)
-                confirmacao_oferecida = getattr(resultado, "confirmacao_oferecida", None)
-                evidencia_confirmacao = getattr(resultado, "evidencia_confirmacao", None)
-                id_solicitacao = str(
-                    getattr(resultado, "id_solicitacao", "") or ""
-                ).strip()
-                origem_resultado = str(
-                    origem or getattr(resultado, "origem", "") or ""
-                ).strip()
-                detalhe_resultado = str(
-                    getattr(resultado, "detalhe", "") or ""
-                ).strip()
-                alvo_objeto = str(getattr(resultado, "alvo", "") or "")
+            intent = contrato_plano.intent
+            params = dict(contrato_plano.params)
+            status_resultado = contrato_plano.status
+            confirmado = contrato_plano.confirmado
+            confirmacao_oferecida = contrato_plano.confirmacao_oferecida
+            evidencia_confirmacao = contrato_plano.evidencia_confirmacao
+            id_solicitacao = contrato_plano.id_solicitacao
+            origem_resultado = contrato_plano.origem
+            detalhe_resultado = contrato_plano.detalhe
+            alvo_objeto = contrato_plano.alvo
             if not intent:
                 return
             # Uma acao operacional observada encerra qualquer pergunta casual
@@ -187,8 +225,39 @@ class AdaptadoresAplicacaoRuntime:
                 or params.get("query")
                 or ""
             ).strip()
-            estado = ns["_estado_compartilhado_runtime"]
-            plano = dict(estado.mental.get("plano_turno_atual") or {})
+            plano_sem_identidade = bool(
+                not plano.get("id")
+                and not texto_plano
+                and not list(plano.get("comandos") or [])
+            )
+            plano_obsoleto_com_entrada_comprovada = bool(
+                not subetapa_do_plano_atual
+                and subetapa_da_entrada_atual
+                and texto_plano != texto_identidade_normalizado
+            )
+            if texto_identidade_normalizado and (
+                plano_sem_identidade
+                or plano_obsoleto_com_entrada_comprovada
+            ):
+                # Atalhos prioritários podem executar antes da composição
+                # cognitiva criar o plano do novo turno. Anexar o recibo a
+                # ``{}`` (ou ao turno anterior) produz uma ação real sem
+                # autoria observável e faz a barreira do roteiro esperar até
+                # o timeout. O próprio texto recebido pelo executor é a
+                # identidade mínima e auditável desse turno; um plano antigo
+                # nunca pode absorver a nova ocorrência.
+                plano = {
+                    "id": time.time_ns(),
+                    "origem_entrada": str(origem or "prioritario"),
+                    "texto_usuario": texto_identidade[:500],
+                    "modalidade": "comando",
+                    "ato_principal": "comando",
+                    "requer_execucao": True,
+                    "autoriza_execucao": True,
+                    "fase": "executado",
+                    "comandos": [],
+                    "erros": [],
+                }
             comandos = list(plano.get("comandos") or [])
             # P0_BUG_B_OBSERVABILIDADE_EXECUCOES_V1_20260815
             # Resultado identificado: consolida somente a MESMA ocorrência.

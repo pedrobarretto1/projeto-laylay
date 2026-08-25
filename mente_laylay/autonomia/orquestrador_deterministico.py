@@ -51,6 +51,7 @@ from mente_laylay.cognicao.modalidade_turno import analisar_protecao_operacional
 from mente_laylay.memoria_mental.continuidade_geral import (
     resolver_fechamento_ordinal_aberturas_recentes,
     resolver_continuacao_aditiva,
+    selecionar_aba_sobrevivente_fechamento_ordinal,
     selecionar_referente_saliente,
 )
 
@@ -156,6 +157,18 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         "TOCAR_PLAYLIST_SHUFFLE",
         "LAYLAY_PLAYLIST_PLAY",
     }
+    retrato_previo = dict(_get(ctx, "retrato_turno_atual", {}) or {})
+    referencia_retrato = dict(
+        retrato_previo.get("referencia_resolvida") or {}
+    )
+    tipo_referencia_retrato = str(
+        referencia_retrato.get("tipo")
+        or retrato_previo.get("referencia_tipo")
+        or ""
+    ).casefold().strip()
+    contexto_musical_por_retrato = tipo_referencia_retrato in {
+        "musica", "música", "midia", "playlist", "playlist_laylay",
+    }
     texto_previo = str(texto or "").casefold()
     if ultimo_intent_previo == "VOLUME" and re.search(
         r"\b(?:aumenta|sobe|coloca|deixa|abaixa|diminui)?\b.*\b(?:maximo|máximo|minimo|mínimo)\b|\bno\s+talo\b",
@@ -193,7 +206,15 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     # forma de pergunta e, por isso, o filtro casual abaixo pode encerrar a
     # detecção antes da cadeia de especialistas. Controle físico continua
     # dependendo das guardas de modalidade logo abaixo.
-    candidato_iot_leitura = _candidato_iot_seguro(texto_operacional_iot)
+    iot_explicito_na_fala = bool(re.search(
+        r"\b(?:luz|lampada|lâmpada|tomada|ventilador|dispositivo|aparelho)\b",
+        texto_normalizado_previo,
+    ))
+    candidato_iot_leitura = (
+        _candidato_iot_seguro(texto_operacional_iot)
+        if not contexto_musical_por_retrato or iot_explicito_na_fala
+        else None
+    )
     if (
         isinstance(candidato_iot_leitura, dict)
         and str(candidato_iot_leitura.get("intent") or "").upper().strip()
@@ -302,7 +323,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         params_cb=lambda **kwargs: kwargs,
         contexto_musical_ativo=bool(
             _call(ctx, "contexto_musical_ativo", default=False)
-        ) or contexto_musical_por_recibo,
+        ) or contexto_musical_por_recibo or contexto_musical_por_retrato,
         contexto_volume_ativo=ultimo_intent_previo == "VOLUME",
     )
     if isinstance(candidato_midia_previo, dict):
@@ -327,6 +348,19 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         params_cb=lambda **kwargs: kwargs,
     )
     if consulta_abas and modalidade_iot != "deliberativo":
+        sobrevivente = selecionar_aba_sobrevivente_fechamento_ordinal(
+            dict(mente_previa or {}) if isinstance(mente_previa, Mapping) else {},
+            texto=texto_normalizado_previo,
+        )
+        if sobrevivente:
+            consulta_abas = {
+                "intent": "LIST_TABS",
+                "params": {
+                    "somente_sobrevivente": True,
+                    "alvo_contextual": sobrevivente,
+                    "origem_contextual": "fechamento_ordinal",
+                },
+            }
         return consulta_abas
 
     # Uma referência ordinal pertence à busca web confirmada mais recente.
@@ -535,6 +569,11 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
             params_cb=params,
             limpar_nome_playlist=_get(ctx, "limpar_nome_playlist"),
             ultima_playlist=_call(ctx, "musica_estado_get", "ultima_playlist", default=""),
+            contexto_musical_ativo=(
+                bool(_call(ctx, "contexto_musical_ativo", default=False))
+                or contexto_musical_por_recibo
+                or contexto_musical_por_retrato
+            ),
         ),
         lambda: detectar_confirmacao_porteiro(
             t_sem_destino,
@@ -553,6 +592,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
             contexto_musical_ativo=(
                 bool(_call(ctx, "contexto_musical_ativo", default=False))
                 or contexto_musical_por_recibo
+                or contexto_musical_por_retrato
             ),
             contexto_volume_ativo=ultimo_intent == "VOLUME",
         ),

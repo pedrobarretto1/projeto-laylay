@@ -71,6 +71,14 @@ class ClienteBulbFalso:
     def __init__(self) -> None:
         self.ligado = False
         self.chamadas = []
+        self.persistencias = []
+        self.fechamentos = 0
+
+    def set_socketPersistent(self, persistente):
+        self.persistencias.append(bool(persistente))
+
+    def close(self):
+        self.fechamentos += 1
 
     def status(self):
         return {"dps": {"20": self.ligado}}
@@ -289,6 +297,191 @@ def test_protocolo_tuya_usa_operacoes_de_bulb_sem_rede():
     assert ("turn_on",) in cliente.chamadas
     assert ("cor", 0, 0, 255) in cliente.chamadas
     assert ("branco", 70, 10) in cliente.chamadas
+
+
+def test_tuya_reutiliza_cliente_persistente_entre_operacoes_da_sessao(monkeypatch):
+    lampada = criar_dispositivo_lampada(protocolo="tuya")
+    referencias = lampada.configuracao["variaveis"]
+    ambiente = {
+        referencias["device_id"]: "id-de-teste",
+        referencias["local_key"]: "chave-de-teste",
+        referencias["ip"]: "192.0.2.10",
+        referencias["version"]: "3.5",
+    }
+    cliente = ClienteBulbFalso()
+    configuracoes = []
+
+    def factory(**dados):
+        configuracoes.append(dados)
+        return cliente
+
+    monkeypatch.setenv("LAYLAY_OTIMIZACOES_DESEMPENHO", "1")
+    monkeypatch.setenv("LAYLAY_CACHE_TUYA_ATIVO", "1")
+    protocolo = ProtocoloTuya(cliente_factory=factory)
+    with patch.dict("os.environ", ambiente, clear=False):
+        inicial = protocolo.consultar_estado(lampada)
+        ligado = protocolo.definir_estado(lampada, True)
+        final = protocolo.consultar_estado(lampada)
+
+    assert inicial.ok and ligado.ok and final.ok
+    assert len(configuracoes) == 1
+    assert cliente.persistencias == [True]
+
+
+def test_tuya_flag_revertida_preserva_cliente_descartavel(monkeypatch):
+    lampada = criar_dispositivo_lampada(protocolo="tuya")
+    referencias = lampada.configuracao["variaveis"]
+    ambiente = {
+        referencias["device_id"]: "id-de-teste",
+        referencias["local_key"]: "chave-de-teste",
+        referencias["ip"]: "192.0.2.10",
+        referencias["version"]: "3.5",
+    }
+    clientes = []
+
+    def factory(**_dados):
+        cliente = ClienteBulbFalso()
+        clientes.append(cliente)
+        return cliente
+
+    monkeypatch.setenv("LAYLAY_OTIMIZACOES_DESEMPENHO", "0")
+    protocolo = ProtocoloTuya(cliente_factory=factory)
+    with patch.dict("os.environ", ambiente, clear=False):
+        protocolo.consultar_estado(lampada)
+        protocolo.consultar_estado(lampada)
+
+    assert len(clientes) == 2
+    assert [cliente.persistencias for cliente in clientes] == [[False], [False]]
+
+
+def test_tuya_reversao_em_runtime_fecha_cliente_persistente(monkeypatch):
+    lampada = criar_dispositivo_lampada(protocolo="tuya")
+    referencias = lampada.configuracao["variaveis"]
+    ambiente = {
+        referencias["device_id"]: "id-de-teste",
+        referencias["local_key"]: "chave-de-teste",
+        referencias["ip"]: "192.0.2.10",
+        referencias["version"]: "3.5",
+    }
+    clientes = []
+
+    def factory(**_dados):
+        cliente = ClienteBulbFalso()
+        clientes.append(cliente)
+        return cliente
+
+    monkeypatch.setenv("LAYLAY_OTIMIZACOES_DESEMPENHO", "1")
+    protocolo = ProtocoloTuya(cliente_factory=factory)
+    with patch.dict("os.environ", ambiente, clear=False):
+        protocolo.consultar_estado(lampada)
+        monkeypatch.setenv("LAYLAY_OTIMIZACOES_DESEMPENHO", "0")
+        protocolo.consultar_estado(lampada)
+
+    assert len(clientes) == 2
+    assert clientes[0].persistencias == [True]
+    assert clientes[0].fechamentos == 1
+    assert clientes[1].persistencias == [False]
+
+
+def test_tuya_troca_de_configuracao_fecha_cliente_anterior(monkeypatch):
+    lampada = criar_dispositivo_lampada(protocolo="tuya")
+    referencias = lampada.configuracao["variaveis"]
+    ambiente = {
+        referencias["device_id"]: "id-de-teste",
+        referencias["local_key"]: "chave-de-teste",
+        referencias["ip"]: "192.0.2.10",
+        referencias["version"]: "3.5",
+    }
+    clientes = []
+
+    def factory(**_dados):
+        cliente = ClienteBulbFalso()
+        clientes.append(cliente)
+        return cliente
+
+    monkeypatch.setenv("LAYLAY_OTIMIZACOES_DESEMPENHO", "1")
+    protocolo = ProtocoloTuya(cliente_factory=factory)
+    with patch.dict("os.environ", ambiente, clear=False):
+        protocolo.consultar_estado(lampada)
+        monkeypatch.setenv(referencias["ip"], "192.0.2.11")
+        protocolo.consultar_estado(lampada)
+
+    assert len(clientes) == 2
+    assert clientes[0].fechamentos == 1
+    assert clientes[1].persistencias == [True]
+
+
+def test_tuya_renova_cliente_persistente_apos_erro_transitorio(monkeypatch):
+    lampada = criar_dispositivo_lampada(protocolo="tuya")
+    referencias = lampada.configuracao["variaveis"]
+    ambiente = {
+        referencias["device_id"]: "id-de-teste",
+        referencias["local_key"]: "chave-de-teste",
+        referencias["ip"]: "192.0.2.10",
+        referencias["version"]: "3.5",
+    }
+    clientes = []
+
+    class ClienteStatusFalso(ClienteBulbFalso):
+        def __init__(self, resposta):
+            super().__init__()
+            self.resposta = resposta
+
+        def status(self):
+            return self.resposta
+
+    respostas = [
+        {"Error": "Timeout Waiting for Device", "Err": "902"},
+        {"dps": {"20": False}},
+    ]
+
+    def factory(**_dados):
+        cliente = ClienteStatusFalso(respostas[len(clientes)])
+        clientes.append(cliente)
+        return cliente
+
+    monkeypatch.setenv("LAYLAY_OTIMIZACOES_DESEMPENHO", "1")
+    monkeypatch.setenv("LAYLAY_CACHE_TUYA_ATIVO", "1")
+    protocolo = ProtocoloTuya(cliente_factory=factory)
+    with patch.dict("os.environ", ambiente, clear=False):
+        resultado = protocolo.consultar_estado(lampada)
+
+    assert resultado.ok is True
+    assert resultado.estado is False
+    assert len(clientes) == 2
+    assert clientes[0].fechamentos == 1
+    assert clientes[1].persistencias == [True]
+
+
+def test_tuya_nao_renova_cliente_por_erro_definitivo(monkeypatch):
+    lampada = criar_dispositivo_lampada(protocolo="tuya")
+    referencias = lampada.configuracao["variaveis"]
+    ambiente = {
+        referencias["device_id"]: "id-de-teste",
+        referencias["local_key"]: "chave-de-teste",
+        referencias["ip"]: "192.0.2.10",
+        referencias["version"]: "3.5",
+    }
+    clientes = []
+
+    class ClienteStatusFalso(ClienteBulbFalso):
+        def status(self):
+            return {"Error": "Specified Value Out of Range", "Err": "903"}
+
+    def factory(**_dados):
+        cliente = ClienteStatusFalso()
+        clientes.append(cliente)
+        return cliente
+
+    monkeypatch.setenv("LAYLAY_OTIMIZACOES_DESEMPENHO", "1")
+    monkeypatch.setenv("LAYLAY_CACHE_TUYA_ATIVO", "1")
+    protocolo = ProtocoloTuya(cliente_factory=factory)
+    with patch.dict("os.environ", ambiente, clear=False):
+        resultado = protocolo.consultar_estado(lampada)
+
+    assert resultado.ok is False
+    assert len(clientes) == 1
+    assert clientes[0].fechamentos == 0
 
 
 def test_comando_explicito_prossegue_quando_apenas_consulta_previa_oscila():

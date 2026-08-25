@@ -158,28 +158,61 @@ def _pagina_atual_tipificada_para_resumo(
     *,
     ttl_s: float = 300.0,
 ) -> bool:
-    """Confirma uma página visível publicada recentemente pela extensão."""
+    """Confirma uma página visível ou seu recibo causal recente.
+
+    A extensão responde ao conteúdo completo somente quando o resumidor o
+    solicita. Por isso, exigir ``PAGE_DATA`` espontâneo antes de permitir a
+    solicitação criava um impasse: a captura que provaria a página jamais era
+    iniciada. Um recibo confirmado de navegação só libera essa leitura; o
+    executor ainda precisa capturar conteúdo real para publicar sucesso.
+    """
     if not isinstance(estado_mental, dict):
         return False
     conteudo_bruto = estado_mental.get("conteudo_atual")
-    if not isinstance(conteudo_bruto, dict):
-        return False
-    conteudo = dict(conteudo_bruto)
-    if (
-        str(conteudo.get("tipo") or "").casefold() != "pagina"
-        or str(conteudo.get("status") or "").casefold() != "visivel"
-        or str(conteudo.get("fonte") or "").casefold() != "extensao_chrome"
-        or not (
-            str(conteudo.get("titulo") or "").strip()
-            or str(conteudo.get("url") or "").strip()
+    if isinstance(conteudo_bruto, dict):
+        conteudo = dict(conteudo_bruto)
+        conteudo_tipificado = bool(
+            str(conteudo.get("tipo") or "").casefold() == "pagina"
+            and str(conteudo.get("status") or "").casefold() == "visivel"
+            and str(conteudo.get("fonte") or "").casefold() == "extensao_chrome"
+            and (
+                str(conteudo.get("titulo") or "").strip()
+                or str(conteudo.get("url") or "").strip()
+            )
         )
+        if conteudo_tipificado:
+            try:
+                idade_s = time.time() - float(conteudo.get("ts") or 0.0)
+            except (TypeError, ValueError):
+                idade_s = float("inf")
+            if -5.0 <= idade_s <= max(1.0, float(ttl_s or 300.0)):
+                return True
+
+    contrato = dict(estado_mental.get("ultima_acao_contrato") or {})
+    intent = str(contrato.get("intent") or "").upper().strip()
+    status = str(contrato.get("status") or "").casefold().strip()
+    status_visivel_por_intent = {
+        "OPEN_URL": {"url_aberta", "site_aberto"},
+        "SEARCH": {"busca_aberta", "resultado_web_aberto"},
+        "SWITCH_PREVIOUS_TAB": {"aba_anterior_focada"},
+        # Um resumo concluído prova que o conteúdo da aba foi capturado no
+        # próprio turno. Ele pode liberar uma nova captura, mas nunca fornece
+        # o conteúdo por si só; o executor relê a página atual novamente.
+        "RESUMIR_PAGINA": {"resumo_concluido"},
+    }
+    if (
+        status not in status_visivel_por_intent.get(intent, set())
+        or contrato.get("executou") is not True
+        or contrato.get("confirmado") is not True
     ):
         return False
     try:
-        idade_s = time.time() - float(conteudo.get("ts") or 0.0)
+        idade_recibo_s = time.time() - float(
+            estado_mental.get("ultima_acao_ts") or 0.0
+        )
     except (TypeError, ValueError):
         return False
-    return -5.0 <= idade_s <= max(1.0, float(ttl_s or 300.0))
+    return -5.0 <= idade_recibo_s <= max(1.0, float(ttl_s or 300.0))
 
 
 def texto_pede_resumo_pagina(

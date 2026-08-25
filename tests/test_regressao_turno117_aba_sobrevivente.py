@@ -12,6 +12,13 @@ from mente_laylay.autonomia.orquestrador_deterministico import (
 from mente_laylay.autonomia.roteador_deterministico import detectar_consulta_abas
 from mente_laylay.autonomia.roteador_intencao import executar_intencao
 from mente_laylay.integracao.avaliador_roteiro_teste import avaliar_turno_roteiro
+from mente_laylay.memoria_mental.contexto_compartilhado import (
+    estado_mental_inicial,
+    registrar_resultado_execucao,
+)
+from mente_laylay.memoria_mental.continuidade_geral import (
+    resolver_fechamento_ordinal_aberturas_recentes,
+)
 from mente_laylay.memoria_mental.continuidade_conversa import (
     detectar_comentario_resultado_operacional,
 )
@@ -138,6 +145,120 @@ def test_red_turno117_executor_rele_prime_video_em_vez_do_recibo_fechado() -> No
     assert resultados[0].params["tab_id"] == 22
 
 
+def _estado_apos_fechamento_ordinal_confirmado() -> dict:
+    estado = estado_mental_inicial()
+    for alvo, fala in (
+        ("wikipedia", "Abre a Wikipédia."),
+        ("prime video", "Abre o Prime Video."),
+    ):
+        estado = registrar_resultado_execucao(
+            estado,
+            ResultadoAcao(
+                intent="OPEN_URL",
+                status="url_aberta",
+                alvo=alvo,
+                params={"alvo": alvo},
+                executou=True,
+                confirmado=True,
+                origem="executor",
+            ),
+            fala,
+        )
+    fechamento = resolver_fechamento_ordinal_aberturas_recentes(
+        estado,
+        texto="Fecha a primeira.",
+    )
+    assert fechamento["params"]["aba_sobrevivente_contextual"] == "prime video"
+    return registrar_resultado_execucao(
+        estado,
+        ResultadoAcao(
+            intent="CLOSE_TAB",
+            status="aba_fechada",
+            alvo="Wikipédia",
+            params=dict(fechamento["params"]),
+            executou=True,
+            confirmado=True,
+            origem="executor",
+        ),
+        "Fecha a primeira.",
+    )
+
+
+def test_red_turno117_detector_preserva_sobrevivente_do_conjunto_causal() -> None:
+    estado = _estado_apos_fechamento_ordinal_confirmado()
+
+    comando = detectar_intencao_deterministica_mente(
+        "Qual aba ficou aberta?",
+        {
+            "normalizar_texto": lambda texto: str(texto).casefold(),
+            "mente_integrada_estado": estado,
+        },
+    )
+
+    assert comando == {
+        "intent": "LIST_TABS",
+        "params": {
+            "somente_sobrevivente": True,
+            "alvo_contextual": "prime video",
+            "origem_contextual": "fechamento_ordinal",
+        },
+    }
+
+
+def test_red_turno117_ativa_global_nao_sombreia_sobrevivente_contextual() -> None:
+    falas: list[str] = []
+    resultados: list[ResultadoAcao] = []
+    leitura = NavegadorLeituraFake(
+        aba={
+            "id": 77,
+            "title": "ChatGPT",
+            "url": "https://chatgpt.com/",
+            "active": True,
+        },
+        abas=[
+            {
+                "id": 77,
+                "title": "ChatGPT",
+                "url": "https://chatgpt.com/",
+                "active": True,
+            },
+            {
+                "id": 22,
+                "title": "Prime Video",
+                "url": "https://www.primevideo.com/",
+                "active": False,
+            },
+        ],
+    )
+
+    assert executar_intencao(
+        {
+            "intent": "LIST_TABS",
+            "params": {
+                "somente_sobrevivente": True,
+                "alvo_contextual": "prime video",
+                "origem_contextual": "fechamento_ordinal",
+            },
+        },
+        "Qual aba ficou aberta?",
+        {
+            "_target_from_params": lambda *_args: "pc_a",
+            "_registro_navegador_leitura_runtime": leitura,
+            "_registrar_resultado_execucao": (
+                lambda resultado, *_args, **_kwargs: resultados.append(resultado)
+            ),
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+        },
+    ) is True
+
+    assert falas == [
+        "A aba que ficou aberta desse conjunto é Prime Video — primevideo.com."
+    ]
+    assert resultados and resultados[0].status == "aba_sobrevivente_consultada"
+    assert resultados[0].alvo == "Prime Video — primevideo.com"
+    assert resultados[0].confirmado is True
+
+
 def test_guard_turno117_comentario_real_com_ficou_continua_reconhecido() -> None:
     estado = {
         "ultima_acao_intent": "IOT_CONTROL",
@@ -157,7 +278,7 @@ def test_guard_turno117_comentario_real_com_ficou_continua_reconhecido() -> None
 def test_red_turno117_caos_reprova_resposta_da_aba_fechada_e_aprova_prime() -> None:
     comando_observado = {
         "intent": "LIST_TABS",
-        "status": "aba_ativa_consultada",
+        "status": "aba_sobrevivente_consultada",
         "alvo": "Prime Video — primevideo.com",
         "executou": True,
         "confirmado": True,

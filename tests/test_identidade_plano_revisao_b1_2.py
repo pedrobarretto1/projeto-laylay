@@ -127,3 +127,15 @@ def test_alinhamento_ocorre_depois_do_planejamento_e_antes_dos_consumidores() ->
     assert indice_planejamento < indice_alinhamento < indice_evidencia
     assert "texto_original=texto" in fonte
     assert "texto_operacional_efetivo=texto_efetivo" in fonte
+
+
+def test_entrada_original_fica_publicada_antes_do_executor_prioritario() -> None:
+    fonte = inspect.getsource(_iniciar_planejamento_turno)
+
+    indice_atualizacoes = fonte.index("atualizacoes_turno = {")
+    indice_publicacao = fonte.index(
+        "ns['_estado_compartilhado_runtime'].atualizar_campos('mental', **atualizacoes_turno)"
+    )
+    bloco_publicado = fonte[indice_atualizacoes:indice_publicacao]
+
+    assert "'ultima_entrada': str(texto or '').strip()[:500]" in bloco_publicado

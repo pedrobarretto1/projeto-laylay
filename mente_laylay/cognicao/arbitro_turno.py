@@ -158,6 +158,7 @@ def arbitrar_turno(
         "rejeitados": rejeitados,
         "retrato_id": snapshot.get("id"),
         "referencia_resolvida": dict(snapshot.get("referencia_resolvida") or {}),
+        "depende_contexto": bool(leitura.get("depende_contexto")),
     }
     resultado["contrato_decisao"] = consolidar_arbitragem(
         criar_contrato_decisao(leitura),

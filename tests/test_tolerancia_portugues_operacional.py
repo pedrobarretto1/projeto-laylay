@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from mente_laylay.autonomia.roteador_deterministico import (
     corrigir_verbo_operacional_digitado,
+    detectar_fechar_alvo,
     detectar_playlist_contextual_musica_atual,
     detectar_organizacao_desktop,
     detectar_web_e_youtube,
+    extrair_intencao_abrir_app,
 )
 from mente_laylay.cognicao.linguagem_aprendida import LinguagemAprendidaRuntime
 from mente_laylay.cognicao.normalizacao_linguagem import (
@@ -55,6 +57,43 @@ def test_fluxo_real_do_detector_recebe_comando_corrigido() -> None:
     ) == {
         "intent": "ORGANIZAR_DESKTOP",
         "params": {"modo": "automatico"},
+    }
+
+
+def test_turno_35_corrige_calcuradora_so_como_app_canonico_explicito() -> None:
+    runtime = _runtime()
+    texto = runtime.normalizar_com_apelidos("abre a calcuradora")
+
+    assert texto == "abre a calculadora"
+    assert extrair_intencao_abrir_app(
+        texto,
+        normalizar_texto=lambda valor: str(valor).casefold(),
+        limpar_destino=lambda valor: str(valor).strip(),
+        apps_map={"calculadora": "calc"},
+        sites_diretos={},
+    ) == {
+        "intent": "APP_OPEN",
+        "params": {"nome_app": "calculadora"},
+    }
+    assert runtime.normalizar_com_apelidos(
+        "abre o app chamado calcuradora"
+    ) == "abre o app chamado calcuradora"
+
+
+def test_red_turno_36_corrige_fexa_sem_entregar_o_comando_a_ia() -> None:
+    corrigido = corrigir_verbo_operacional_digitado(
+        "fexa a microsoft store"
+    )
+
+    assert corrigido == "fecha a microsoft store"
+    assert detectar_fechar_alvo(
+        corrigido,
+        params_cb=lambda **kwargs: kwargs,
+        sites_diretos=set(),
+        apps_map={"microsoft store": "ms-windows-store:"},
+    ) == {
+        "intent": "CLOSE_APP",
+        "params": {"nome_app": "microsoft store"},
     }
 
 

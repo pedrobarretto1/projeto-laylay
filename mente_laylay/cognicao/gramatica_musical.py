@@ -246,6 +246,47 @@ _PEDIDO_POLIDO_PARA_MIM = re.compile(
     re.IGNORECASE,
 )
 
+
+def _cadeia_musical_explicita(texto: str) -> bool:
+    """Reconhece vários atos musicais diretivos na mesma fala.
+
+    A função só concede ownership quando o primeiro ato já pertence
+    explicitamente à música e existe uma segunda operação musical separada.
+    Comentários que apenas mencionam música continuam fora desta regra.
+    """
+    t = str(texto or "").strip()
+    if not re.match(
+        r"^(?:por favor\s+)?(?:"
+        r"pausa|pause|retoma|retome|continua|continue|despausa|"
+        r"passa|passe|pula|pule|vai|toca|toque|coloca|coloque|bota"
+        r")\b",
+        t,
+        flags=re.IGNORECASE,
+    ):
+        return False
+    if not re.search(r"(?:[,;]|\be\b)", t, flags=re.IGNORECASE):
+        return False
+    if not re.search(
+        r"\b(?:musica|faixa|playlist|som)\b",
+        t,
+        flags=re.IGNORECASE,
+    ):
+        return False
+
+    operacoes = re.findall(
+        r"\b(?:pausa|pause|retoma|retome|continua|continue|despausa|"
+        r"passa|passe|pula|pule|vai|toca|toque|coloca|coloque|bota)\b",
+        t,
+        flags=re.IGNORECASE,
+    )
+    consulta_final = bool(re.search(
+        r"\b(?:me\s+)?(?:diz|diga|fala|fale|mostra|mostre)\b"
+        r".{0,40}\b(?:estado|tocando|faixa|musica)\b",
+        t,
+        flags=re.IGNORECASE,
+    ))
+    return len(operacoes) >= 2 or (bool(operacoes) and consulta_final)
+
 def analisar_gramatica_musical(texto: str) -> AnaliseGramaticalMusical:
     t = normalizar_gramatica_musical(texto)
     if not t:
@@ -328,6 +369,17 @@ def analisar_gramatica_musical(texto: str) -> AnaliseGramaticalMusical:
         return _resultado(
             texto=t, classe="protegida", regra="hipotese_relato_sujeito",
             motivo="moldura narrativa/hipotética não concede ato diretivo",
+        )
+
+    if _cadeia_musical_explicita(t):
+        return _resultado(
+            texto=t,
+            classe="pedido_direto",
+            operacao="cadeia_musical",
+            evidencia_diretiva=True,
+            dominio_explicito=True,
+            regra="cadeia_musical_explicita",
+            motivo="dois ou mais atos musicais diretivos na mesma fala",
         )
 
     # 3) REV3 — controles pronominais.

@@ -31,6 +31,7 @@ from mente_laylay.cognicao.referencias_linguagem import (
     extrair_indice_referencia_ordinal,
     separar_alvo_e_complemento_foco,
     texto_pede_aba_anterior,
+    texto_tem_referencia_contextual,
     valor_e_referencia_contextual,
 )
 
@@ -130,11 +131,10 @@ def _texto_referencia_curta_operacional(texto: str) -> bool:
     t = str(texto or "").casefold().strip()
     # P0_DEITICOS_DOMINIO_20260814
     # "anterior" é dêitico: o domínio ativo decide o referente.
-    pronome = bool(re.search(
-        r"\b(?:ele|ela|isso|esse|essa|este|esta|dele|dela|desse|dessa|"
-        r"anterior)\b",
-        t,
-    ))
+    referencia = bool(
+        texto_tem_referencia_contextual(t)
+        or re.search(r"\b(?:anterior|de\s+antes)\b", t)
+    )
     operacao = bool(re.search(
         r"\b(?:abre|abra|abrir|fecha|feche|fechar|encerra|encerrar|"
         r"maximiza|maximizar|coloca|coloque|deixa|muda|ajusta|liga|"
@@ -142,13 +142,25 @@ def _texto_referencia_curta_operacional(texto: str) -> bool:
         r"deletar|move|mover|renomeia|renomear|toca|toque|pausa|"
         r"continue|continua|retoma|volta)\b", t
     ))
+    consulta = bool(
+        re.search(
+            r"\b(?:mostra|mostre|mostrar|lista|liste|listar|fala|fale|"
+            r"diz|diga)\b",
+            t,
+        )
+        or re.search(
+            r"\b(?:o\s+que|qual|quais)\b.*\b(?:tem|ha|há|existe|"
+            r"contem|contém)\b",
+            t,
+        )
+    )
     # P0_CADEIA_CONTEXTO_VIVO_V2_20260815
     # Ordinais operacionais também são dêiticos. "Abre o primeiro resultado"
     # deve pertencer à última busca confirmada: SEARCH -> site, FILE_SEARCH ->
     # arquivo. A extração compartilhada já rejeita usos narrativos como
     # "meu primeiro jogo".
     ordinal_contextual = extrair_indice_referencia_ordinal(t) is not None
-    return (pronome and operacao) or ordinal_contextual
+    return (referencia and (operacao or consulta)) or ordinal_contextual
 
 def referencia_app_quarentenavel_c1d(texto: str) -> bool:
     """Mesma fronteira linguística usada pelo mirror V6 para apps dêiticos."""
@@ -256,6 +268,7 @@ def referencia_contextual_imediata(
     alvo_corrigido: str = "",
     ultima_playlist: str = "",
     normalizar_texto: Callable[[str], str] | None = None,
+    dominio_preferido: str = "",
     ttl_s: float = 300.0,
 ) -> Dict[str, Any]:
     estado = dict(mente_integrada_estado or {})
@@ -345,6 +358,9 @@ def referencia_contextual_imediata(
         )
     ):
         dominio_pedido = "iot"
+
+    if not dominio_pedido and str(dominio_preferido or "").strip():
+        dominio_pedido = _normalizar_dominio_referencia(dominio_preferido)
 
     # P0_NAVEGADOR_PONTE_V3_2_20260815
     # A camada de domínio já aplica contrato e TTL. Esta ponte apenas
@@ -515,6 +531,11 @@ def referencia_contextual_imediata(
                 "params": ultimo_params,
                 "dominio_explicito": True,
             }
+        # Um domínio já tipado é uma barreira, não apenas uma preferência de
+        # ordenação. Se não existe referente promovível nele, a resposta
+        # correta é ausência de referência; cair nos fallbacks globais abaixo
+        # permitiria que IoT, app ou arquivo antigos sequestrassem a elipse.
+        return {}
 
     if alvo_corrigido:
         if ultimo_site and _normalizar_com_callback(alvo_corrigido, normalizar_texto) == _normalizar_com_callback(ultimo_site, normalizar_texto):
@@ -741,9 +762,17 @@ def resolver_comando_acao_geral_contextual(
     # continuidade. Em qualquer outro dominio, nao herdamos uma playlist
     # antiga e deixamos a frase seguir para esclarecimento ou conversa.
     consulta_faixas_referenciada = bool(
-        re.search(r"\b(?:quais|lista|liste|mostra|mostre|fala|diz)\b", t)
-        and re.search(r"\b(?:musicas|músicas|faixas|sons)\b", t)
-        and re.search(r"\b(?:nela|nessa|nesta|dela|aqui)\b", t)
+        (
+            re.search(r"\b(?:quais|lista|liste|mostra|mostre|fala|diz)\b", t)
+            and re.search(r"\b(?:musicas|músicas|faixas|sons)\b", t)
+            and re.search(r"\b(?:nela|nessa|nesta|dela|aqui)\b", t)
+        )
+        or re.fullmatch(
+            r"(?:(?:me\s+)?(?:mostra|mostre|fala|fale|diz|diga)\s+)?"
+            r"(?:o\s+)?que\s+(?:tem|ha|há)\s+"
+            r"(?:nela|nessa|nesta|dela|aqui)[?.!]*",
+            t,
+        )
     )
     if consulta_faixas_referenciada:
         if tipo_ref not in {"playlist", "playlist_laylay"}:
@@ -1430,7 +1459,12 @@ class ContextoImediatoRuntime:
             ttl_s=300.0,
         )
 
-    def referencia(self, ttl_s: float = 300.0, texto_atual: str = "") -> Dict[str, Any]:
+    def referencia(
+        self,
+        ttl_s: float = 300.0,
+        texto_atual: str = "",
+        dominio_preferido: str = "",
+    ) -> Dict[str, Any]:
         ns = self._namespace()
         estado = self._estado()
         return referencia_contextual_imediata(
@@ -1440,17 +1474,27 @@ class ContextoImediatoRuntime:
             alvo_corrigido=ns["_alvo_corrigido_atual"](),
             ultima_playlist=estado.musica_get("ultima_playlist"),
             normalizar_texto=ns["_normalizar_texto_com_apelidos"],
+            dominio_preferido=dominio_preferido,
             ttl_s=ttl_s,
         )
 
-    def resolver_acao_geral(self, texto: str) -> Dict[str, Any] | None:
+    def resolver_acao_geral(
+        self,
+        texto: str,
+        *,
+        dominio_preferido: str = "",
+    ) -> Dict[str, Any] | None:
         ns = self._namespace()
         t = ns["_normalizar_texto_com_apelidos"](texto)
         if not t:
             return None
         return resolver_comando_acao_geral_contextual(
             t,
-            self.referencia(300.0, texto_atual=t),
+            self.referencia(
+                300.0,
+                texto_atual=t,
+                dominio_preferido=dominio_preferido,
+            ),
             ultima_playlist=self._estado().musica_get("ultima_playlist"),
         )
 
@@ -1542,6 +1586,10 @@ class ContextoImediatoRuntime:
         mente = self._estado().mental
         dominio_restrito = _dominio_restrito_referencia(t, mente, ttl_s=300.0)
         referencia_operacional = _texto_referencia_curta_operacional(t)
+        resolver_geral = lambda trecho: self.resolver_acao_geral(
+            trecho,
+            dominio_preferido=dominio_restrito,
+        )
 
         if referencia_operacional and not dominio_restrito:
             print(
@@ -1595,30 +1643,30 @@ class ContextoImediatoRuntime:
         if dominio_restrito == "musica":
             resolvedores = [
                 ("MIDIA", self.resolver_midia),
-                ("GERAL", self.resolver_acao_geral),
+                ("GERAL", resolver_geral),
                 ("SEMANTICA", self.resolver_semantico),
             ]
         elif dominio_restrito == "iot":
             resolvedores = [
                 ("IOT", self.resolver_iot),
-                ("GERAL", self.resolver_acao_geral),
+                ("GERAL", resolver_geral),
                 ("SEMANTICA", self.resolver_semantico),
             ]
         elif dominio_restrito == "arquivo":
             resolvedores = [
                 ("ARQUIVO", self.resolver_arquivo),
-                ("GERAL", self.resolver_acao_geral),
+                ("GERAL", resolver_geral),
                 ("SEMANTICA", self.resolver_semantico),
             ]
         elif dominio_restrito in {"app", "site"}:
             resolvedores = [
                 ("JANELA", self.resolver_janela),
-                ("GERAL", self.resolver_acao_geral),
+                ("GERAL", resolver_geral),
                 ("SEMANTICA", self.resolver_semantico),
             ]
         elif verbo_fechamento and arquivo_mais_recente:
             resolvedores = [
-                ("GERAL", self.resolver_acao_geral),
+                ("GERAL", resolver_geral),
                 ("ARQUIVO", self.resolver_arquivo),
                 ("SEMANTICA", self.resolver_semantico),
                 ("JANELA", self.resolver_janela),
@@ -1632,7 +1680,7 @@ class ContextoImediatoRuntime:
                 ("IOT", self.resolver_iot),
                 ("JANELA", self.resolver_janela),
                 ("MIDIA", self.resolver_midia),
-                ("GERAL", self.resolver_acao_geral),
+                ("GERAL", resolver_geral),
             ]
         elif verbo_mutacao_arquivo and contexto_arquivo:
             resolvedores = [
@@ -1641,7 +1689,7 @@ class ContextoImediatoRuntime:
                 ("IOT", self.resolver_iot),
                 ("JANELA", self.resolver_janela),
                 ("MIDIA", self.resolver_midia),
-                ("GERAL", self.resolver_acao_geral),
+                ("GERAL", resolver_geral),
             ]
         else:
             resolvedores = [
@@ -1650,7 +1698,7 @@ class ContextoImediatoRuntime:
                 ("JANELA", self.resolver_janela),
                 ("MIDIA", self.resolver_midia),
                 ("ARQUIVO", self.resolver_arquivo),
-                ("GERAL", self.resolver_acao_geral),
+                ("GERAL", resolver_geral),
             ]
 
         return resolver_comando_contextual(

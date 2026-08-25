@@ -141,6 +141,36 @@ def extrair_intencao_abrir_app(
     t = re.sub(r"\s+", " ", t).strip()
     if not t or "playlist" in t:
         return None
+    condicional = re.fullmatch(
+        r"se\s+(?:(?:o|a)\s+)?(?P<nome>.+?)\s+(?:nao|não)\s+"
+        r"estiver\s+abert[oa],?\s+(?:abre|abra)"
+        r"(?:\s+(?:ele|ela|o\s+app|a\s+janela))?\s*"
+        # O normalizador operacional remove pontuação. A segunda condição é
+        # a fronteira semântica estável; ponto-e-vírgula/vírgula são apenas
+        # separadores opcionais da forma original.
+        r"(?:[;,]\s*)?"
+        r"se\s+(?:ja|já)\s+estiver,?\s+"
+        r"(?:(?:so|só)\s+)?me\s+avisa[.!?]*",
+        t,
+        flags=re.IGNORECASE,
+    )
+    if condicional:
+        nome_condicional = str(condicional.group("nome") or "").strip()
+        base = extrair_intencao_abrir_app(
+            f"abre {nome_condicional}",
+            normalizar_texto=normalizar_texto,
+            limpar_destino=limpar_destino,
+            apps_map=apps_map,
+            sites_diretos=sites_diretos,
+        )
+        if isinstance(base, dict) and base.get("intent") == "APP_OPEN":
+            params_condicionais = dict(base.get("params") or {})
+            params_condicionais.update({
+                "somente_se_fechado": True,
+                "avisar_se_aberto": True,
+            })
+            return {"intent": "APP_OPEN", "params": params_condicionais}
+        return None
     if any(x in t for x in ["instagram.com/direct", "instagram.com", "www.instagram.com", "instagram direct", "direct/t/"]):
         return {"intent": "OPEN_URL", "params": {"alvo": "instagram"}}
     if re.search(r"https?://\S+", bruto) and "instagram" in t:
@@ -486,6 +516,34 @@ def detectar_volume_ou_midia(
         return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
 
+    consulta_contextual_player = bool(
+        contexto_musical_ativo
+        and not re.search(
+            r"\b(?:musica|música|faixa|som|playlist|player)\b",
+            t,
+            flags=re.IGNORECASE,
+        )
+        and re.fullmatch(
+            r"(?:(?:me\s+)?(?:diz|diga|fala|fale|mostra|mostre)\s+)?(?:"
+            r"(?:o\s+)?estado\s+(?:dela|dele|disso)|"
+            r"qual\s+(?:musica\s+|faixa\s+)?(?:esta|está|ta|tá)?\s*tocando|"
+            r"estado|qual"
+            r")[?.!]*",
+            t,
+            flags=re.IGNORECASE,
+        )
+    )
+    if consulta_contextual_player:
+        return {
+            "intent": "MUSIC_STATUS",
+            "params": params(
+                acao="status",
+                platform="music",
+                somente_leitura=True,
+                referencia_contextual=True,
+            ),
+        }
+
     # Uma pergunta sobre o player é leitura. Ela precisa vencer qualquer
     # continuidade mutante para nunca virar ``replay`` por associação.
     if re.search(
@@ -557,6 +615,19 @@ def detectar_volume_ou_midia(
         r"(?:proxima|próxima|proxma)(?:\s+(?:musica|música|faixa))?",
         t,
     ))
+    proxima_por_avanco_explicito = bool(re.fullmatch(
+        r"(?:avanca|avança|avance)\s+(?:uma|a)\s+"
+        r"(?:musica|música|faixa)",
+        t,
+    ))
+    proxima_por_troca_contextual = bool(
+        contexto_musical_ativo
+        and re.fullmatch(
+            r"(?:troca|troque|muda|mude)\s+(?:para|pra)\s+"
+            r"(?:a\s+)?(?:proxima|próxima)",
+            t,
+        )
+    )
     proxima_curta = bool(re.fullmatch(
         r"(?:a\s+)?(?:proxima|próxima|proximo|próximo|pula|pule)", t,
     ))
@@ -565,6 +636,8 @@ def detectar_volume_ou_midia(
     ))
     if "playlist" not in t and (
         proxima_por_fala_natural
+        or proxima_por_avanco_explicito
+        or proxima_por_troca_contextual
         or proxima_nomeada
         or (proxima_curta and contexto_musical_ativo)
     ):
@@ -1115,9 +1188,13 @@ def _detectar_abrir_app_ou_site_base_c1d(
     if intent_abrir.get("intent") == "OPEN_URL":
         return {"intent": "OPEN_URL", "params": params(**intent_abrir.get("params", {}))}
 
-    nome_app = str(intent_abrir.get("params", {}).get("nome_app") or "").strip()
+    params_abrir = dict(intent_abrir.get("params") or {})
+    nome_app = str(params_abrir.get("nome_app") or "").strip()
     if nome_app:
-        return {"intent": "APP_OPEN", "params": params(nome_app=nome_app)}
+        # O extrator é o owner da política de abertura. Reduzi-la ao nome do
+        # app apagava flags observáveis como ``somente_se_fechado`` e fazia o
+        # executor focar/reabrir um aplicativo que deveria apenas ser checado.
+        return {"intent": "APP_OPEN", "params": params(**params_abrir)}
 
     return None
 

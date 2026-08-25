@@ -57,6 +57,21 @@ def consolidar_arbitragem(
     resultado = dict(arbitragem or {})
     decisao = resultado.get("decisao") if isinstance(resultado.get("decisao"), dict) else {}
     intent = str(decisao.get("intent") or decisao.get("acao") or "").strip().upper()
+    referencia = (
+        dict(resultado.get("referencia_resolvida") or {})
+        if isinstance(resultado.get("referencia_resolvida"), dict)
+        else {}
+    )
+    tem_referente = bool(str(
+        referencia.get("nome")
+        or referencia.get("alvo")
+        or referencia.get("id")
+        or ""
+    ).strip())
+    contexto_sem_referente = bool(
+        resultado.get("depende_contexto")
+        and not tem_referente
+    )
     if intent:
         novo.update(
             proprietario="operacional",
@@ -65,6 +80,21 @@ def consolidar_arbitragem(
             origem_decisao=str(resultado.get("origem") or "arbitro"),
             confianca=round(float(resultado.get("confianca") or novo.get("confianca") or 0.0), 3),
             status="decidida",
+        )
+    elif contexto_sem_referente:
+        # A fala pode autorizar uma operação elíptica ("continua", "maximiza"),
+        # mas essa autoridade não cria o referente de que a operação depende.
+        # Sem vencedor nem entidade resolvida, o único fechamento coerente é
+        # pedir contexto; comandos autocontidos continuam aguardando a IA.
+        novo.update(
+            proprietario="conversa",
+            permite_acao=False,
+            requer_esclarecimento=True,
+            intencao="",
+            origem_decisao=str(
+                resultado.get("origem") or "arbitro_contexto_sem_referente"
+            ),
+            status="sem_acao",
         )
     elif novo.get("permite_acao") and not list(resultado.get("rejeitados") or []):
         # Um detector que não encontrou candidato não revoga um pedido

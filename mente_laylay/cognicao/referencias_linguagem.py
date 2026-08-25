@@ -9,7 +9,7 @@ import unicodedata
 _PRONOMES = (
     r"ele|ela|eles|elas|isso|isto|aquilo|esse|essa|esses|essas|este|esta|"
     r"estes|estas|aquele|aquela|aqueles|aquelas|desse|dessa|desses|dessas|"
-    r"dele|dela|deles|delas|aqui|ali"
+    r"dele|dela|deles|delas|nele|nela|neles|nelas|aqui|ali"
 )
 _NOMES_GENERICOS = (
     r"app|aplicativo|programa|janela|aba|site|pagina|página|arquivo|pasta|"

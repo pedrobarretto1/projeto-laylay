@@ -140,6 +140,24 @@ class OperacoesMusicaisRuntime:
             aba_observada.get("audibleConfirmed") is True
             or aba_observada.get("playingConfirmed") is True
         )
+        player_observado = (
+            dict(self.playlist_state.get("player") or {})
+            if isinstance(self.playlist_state.get("player"), dict)
+            else {}
+        )
+        url_player = str(player_observado.get("url") or "").strip()
+        try:
+            idade_player = time.time() - float(
+                player_observado.get("observed_at") or 0.0
+            )
+        except (TypeError, ValueError):
+            idade_player = float("inf")
+        player_recente = bool(
+            0.0 <= idade_player <= 12.0
+            and "youtube.com" in url_player.casefold()
+            and str(player_observado.get("state") or "").casefold()
+            not in {"ended", "finalizada", "encerrada", "parada"}
+        )
         troca_pendente = status_memoria == "troca_nao_confirmada"
         identidade_origem = _identidade_youtube(origem_troca_url)
 
@@ -150,6 +168,29 @@ class OperacoesMusicaisRuntime:
                 and identidade_candidata
                 and identidade_candidata != identidade_origem
             )
+
+        # O player observado é independente da aba ativa. Durante uma cadeia,
+        # o navegador pode estar exibindo Wikipédia enquanto o YouTube toca em
+        # outra aba; consultar só ``aba_ativa`` perde justamente a faixa que o
+        # Chrome publicou. A observação precisa ser recente e, após next/prev,
+        # ter identidade diferente da origem para não confirmar a faixa velha.
+        if (
+            player_recente
+            and (not troca_pendente or identidade_mudou(url_player))
+        ):
+            return {
+                "url": url_player,
+                "title": str(player_observado.get("title") or "").strip(),
+                "canal": str(
+                    player_observado.get("channel")
+                    or player_observado.get("canal")
+                    or ""
+                ).strip(),
+                "origem": str(
+                    player_observado.get("source")
+                    or "player_navegador_observado"
+                ).strip(),
+            }
 
         if (
             "youtube.com" in url_observada.casefold()

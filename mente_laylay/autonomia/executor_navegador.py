@@ -242,6 +242,81 @@ def _executar_listar_abas(
         _falar(ctx, "Não consegui consultar as abas: a extensão não está conectada.", "calma", 1)
         return ResultadoDespacho.concluido(False)
 
+    if params.get("somente_sobrevivente") is True:
+        alvo_contextual = str(params.get("alvo_contextual") or "").strip()
+        try:
+            abas = [
+                dict(aba)
+                for aba in (navegador.listar_abas(timeout_s=5.0) or [])
+                if isinstance(aba, dict)
+            ]
+        except Exception as erro:
+            relatar_falha_ctx(
+                ctx,
+                "executor_navegador",
+                "falha_consultar_aba_sobrevivente",
+                erro=erro,
+                impacto="turno",
+                fallback="aba_sobrevivente_indisponivel",
+                dominio="navegador",
+                fase="aba_sobrevivente",
+            )
+            abas = []
+        sobrevivente = (
+            _selecionar_aba_observada(abas, alvo_contextual)
+            if alvo_contextual
+            else {}
+        )
+        if not sobrevivente:
+            deps.marcar_resultado(
+                "aba_sobrevivente_indisponivel",
+                executou=False,
+                confirmado=False,
+                detalhe=(
+                    "a extensão não confirmou a sobrevivente do conjunto "
+                    "de abas manipulado"
+                ),
+            )
+            _falar(
+                ctx,
+                "Não consegui confirmar qual aba daquele conjunto continuou aberta.",
+                "calma",
+                1,
+            )
+            return ResultadoDespacho.concluido(False)
+
+        rotulo = _rotulo_aba(sobrevivente)
+        params_resolvidos: Dict[str, Any] = {
+            "alvo_contextual": alvo_contextual,
+            "origem_contextual": "fechamento_ordinal",
+        }
+        tab_id = _id_aba(sobrevivente)
+        if tab_id is not None:
+            params_resolvidos["tab_id"] = tab_id
+        url = str(sobrevivente.get("url") or "").strip()
+        if url:
+            params_resolvidos["url_aba"] = url
+        titulo = str(
+            sobrevivente.get("title") or sobrevivente.get("titulo") or ""
+        ).strip()
+        if titulo:
+            params_resolvidos["titulo_aba"] = titulo
+        deps.marcar_resultado(
+            "aba_sobrevivente_consultada",
+            executou=True,
+            confirmado=True,
+            alvo_resolvido=rotulo,
+            params_resolvidos=params_resolvidos,
+            detalhe="a sobrevivente contextual foi relida na lista atual da extensão",
+        )
+        _falar(
+            ctx,
+            f"A aba que ficou aberta desse conjunto é {rotulo}.",
+            "calma",
+            1,
+        )
+        return ResultadoDespacho.concluido()
+
     if params.get("somente_ativa") is True:
         try:
             ativa = dict(navegador.aba_ativa(timeout_s=4.0) or {})

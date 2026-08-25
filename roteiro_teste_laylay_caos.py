@@ -12,6 +12,9 @@ Execução:
 
 from __future__ import annotations
 
+import json
+import os
+from pathlib import Path
 import sys
 
 from cliente.executor_roteiro_laylay import executar_roteiro
@@ -390,10 +393,142 @@ PARAR_SEM_RESPOSTA = True
 ENCERRAR_AO_FINAL = False
 
 
+# O bloco musical precisa de uma fila real para testar avanço e persistência.
+# Ela pertence ao roteiro, não ao catálogo do usuário: o launcher salva os
+# bytes originais e os restaura integralmente quando o subprocesso termina.
+PLAYLIST_FIXTURE_NAME = "VMZ"
+PLAYLIST_FIXTURE_TRACKS = [
+    {
+        "url": "https://www.youtube.com/watch?v=C7d7capE-n4",
+        "titulo": "Anny - SE EU TE PEDIR ft. Lucas A.R.T",
+        "canal": "",
+    },
+    {
+        "url": "https://www.youtube.com/watch?v=ZLzDMCS6pPY",
+        "titulo": "Anny - VÍCIO DE AMOR ft. Chrono",
+        "canal": "",
+    },
+    {
+        "url": "https://www.youtube.com/watch?v=LNoulHM7Lms",
+        "titulo": "Shaman - Amor de Primavera feat. Anny",
+        "canal": "",
+    },
+]
+_BACKUP_EXISTE = b"LAYLAY_CAOS_PLAYLIST_EXISTE\n"
+_BACKUP_AUSENTE = b"LAYLAY_CAOS_PLAYLIST_AUSENTE\n"
+
+
+def _gravar_bytes_atomicos(caminho: Path, conteudo: bytes) -> None:
+    caminho = Path(caminho)
+    temporario = caminho.with_name(
+        f".{caminho.name}.caos-{os.getpid()}.tmp"
+    )
+    try:
+        temporario.write_bytes(conteudo)
+        os.replace(temporario, caminho)
+    finally:
+        temporario.unlink(missing_ok=True)
+
+
+def _caminho_backup_fixture(caminho: Path) -> Path:
+    caminho = Path(caminho)
+    return caminho.with_name(f".{caminho.name}.caos-backup")
+
+
+def _restaurar_backup_persistente(caminho: Path) -> bool:
+    """Recupera uma fixture abandonada por encerramento abrupto."""
+    caminho = Path(caminho)
+    backup = _caminho_backup_fixture(caminho)
+    if not backup.is_file():
+        return False
+    bruto = backup.read_bytes()
+    if bruto.startswith(_BACKUP_EXISTE):
+        _gravar_bytes_atomicos(caminho, bruto[len(_BACKUP_EXISTE):])
+    elif bruto == _BACKUP_AUSENTE:
+        caminho.unlink(missing_ok=True)
+    else:
+        raise ValueError(
+            "backup persistente da fixture musical é inválido; "
+            "catálogo não foi alterado"
+        )
+    backup.unlink(missing_ok=True)
+    return True
+
+
+def _preparar_fixture_playlist(caminho: Path) -> bytes | None:
+    """Instala a fila do caos e devolve um recibo reversível exato."""
+    caminho = Path(caminho)
+    _restaurar_backup_persistente(caminho)
+    original = caminho.read_bytes() if caminho.is_file() else None
+    if original is None:
+        catalogo = {}
+    else:
+        try:
+            catalogo = json.loads(original.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as erro:
+            raise ValueError(
+                "playlists.json inválido; fixture do caos não foi aplicada"
+            ) from erro
+        if not isinstance(catalogo, dict):
+            raise ValueError(
+                "playlists.json precisa conter um objeto; fixture não aplicada"
+            )
+    catalogo = dict(catalogo)
+    catalogo[PLAYLIST_FIXTURE_NAME] = [
+        dict(item) for item in PLAYLIST_FIXTURE_TRACKS
+    ]
+    serializado = json.dumps(
+        catalogo,
+        ensure_ascii=False,
+        indent=4,
+    ).encode("utf-8") + b"\n"
+    backup = _caminho_backup_fixture(caminho)
+    recibo_persistente = (
+        _BACKUP_EXISTE + original
+        if original is not None else _BACKUP_AUSENTE
+    )
+    _gravar_bytes_atomicos(backup, recibo_persistente)
+    try:
+        _gravar_bytes_atomicos(caminho, serializado)
+    except BaseException:
+        _restaurar_backup_persistente(caminho)
+        raise
+    return original
+
+
+def _restaurar_fixture_playlist(
+    caminho: Path,
+    recibo: bytes | None,
+) -> None:
+    """Restaura o catálogo byte a byte, inclusive quando o caos é interrompido."""
+    caminho = Path(caminho)
+    if _restaurar_backup_persistente(caminho):
+        return
+    if recibo is None:
+        caminho.unlink(missing_ok=True)
+        return
+    _gravar_bytes_atomicos(caminho, recibo)
+
+
 if __name__ == "__main__":
-    raise SystemExit(
-        executar_roteiro(
+    arquivo_playlists = Path(__file__).resolve().with_name("playlists.json")
+    try:
+        recibo_playlists = _preparar_fixture_playlist(arquivo_playlists)
+    except ValueError as erro:
+        print(f"❌ [ROTEIRO:FIXTURE MUSICAL] {erro}")
+        raise SystemExit(2) from erro
+    print(
+        "🧪 [ROTEIRO:FIXTURE MUSICAL] fila temporária preparada "
+        f"| playlist={PLAYLIST_FIXTURE_NAME}"
+    )
+    try:
+        codigo_saida = executar_roteiro(
             __file__,
             retomar="--retomar" in sys.argv[1:],
         )
-    )
+    finally:
+        _restaurar_fixture_playlist(arquivo_playlists, recibo_playlists)
+        print(
+            "🧹 [ROTEIRO:FIXTURE MUSICAL] catálogo original restaurado"
+        )
+    raise SystemExit(codigo_saida)

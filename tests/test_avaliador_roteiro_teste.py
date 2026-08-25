@@ -69,6 +69,106 @@ def test_pergunta_de_capacidade_nao_pode_executar_efeito():
     assert av["resultado_semantico"] == "falhou"
 
 
+def test_expectativa_local_tem_prioridade_sem_contaminar_avaliador_global():
+    comando = "continua"
+    local = avaliar_turno_roteiro(
+        indice=21,
+        comando=comando,
+        resposta="Pedi para a música continuar.",
+        plano=plano({
+            "intent": "MEDIA_CONTROL",
+            "status": "midia_play",
+            "executou": True,
+            "confirmado": True,
+        }),
+        respondeu=True,
+        expectativa_local={
+            "intents_any": ("MEDIA_CONTROL",),
+            "nome": "continuidade_musical_dedicada",
+            "dominio": "musica",
+        },
+    )
+    global_legado = avaliar_turno_roteiro(
+        indice=21,
+        comando=comando,
+        resposta="Continua o quê?",
+        plano={"fase": "fala_verificada", "comandos": [], "erros": []},
+        respondeu=True,
+        motivo_resultado="execucao_nao_publicada",
+    )
+
+    assert local["resultado_semantico"] == "passou"
+    assert local["expectativa"] == "continuidade_musical_dedicada"
+    assert local["origem_expectativa"] == "roteiro_dedicado"
+    assert global_legado["resultado_semantico"] == "passou"
+    assert global_legado["expectativa"] == "continua_ambigua_sem_contexto"
+    assert global_legado["origem_expectativa"] == "avaliador_global"
+
+
+def test_expectativa_local_verifica_campos_genericos_do_plano_sem_regra_de_habilidade():
+    expectativa = {
+        "sem_comando": True,
+        "nome": "contrato_causal_publicado",
+        "dominio": "personalidade",
+        "campos_plano": {
+            "evento_emocional_causal.origem": "conversa",
+            "evento_emocional_causal.validade.valido": True,
+            "evento_emocional_causal.autoriza_execucao": False,
+        },
+        "campos_plano_presentes": (
+            "evento_emocional_causal.causa",
+            "evento_emocional_causal.evidencia_ref",
+        ),
+    }
+    base = {
+        "fase": "fala_verificada",
+        "comandos": [],
+        "erros": [],
+        "evento_emocional_causal": {
+            "origem": "conversa",
+            "causa": "estado emocional explicitamente relatado",
+            "evidencia_ref": "turno:42",
+            "validade": {"valido": True},
+            "autoriza_execucao": False,
+        },
+    }
+    passou = avaliar_turno_roteiro(
+        indice=0,
+        comando="estou triste hoje",
+        resposta="Eu fico com você nisso.",
+        plano=base,
+        respondeu=True,
+        motivo_resultado="execucao_nao_publicada",
+        expectativa_local=expectativa,
+    )
+    corrompido = dict(base)
+    corrompido["evento_emocional_causal"] = {
+        **base["evento_emocional_causal"],
+        "autoriza_execucao": True,
+        "evidencia_ref": "",
+    }
+    falhou = avaliar_turno_roteiro(
+        indice=0,
+        comando="estou triste hoje",
+        resposta="Eu fico com você nisso.",
+        plano=corrompido,
+        respondeu=True,
+        motivo_resultado="execucao_nao_publicada",
+        expectativa_local=expectativa,
+    )
+
+    assert passou["resultado_semantico"] == "passou"
+    assert "campos_plano" in passou["checagens_semanticas"]
+    assert falhou["resultado_semantico"] == "falhou"
+    assert any(
+        erro.startswith("campo_plano_incorreto:evento_emocional_causal.autoriza_execucao")
+        for erro in falhou["erros_semanticos"]
+    )
+    assert "campo_plano_ausente:evento_emocional_causal.evidencia_ref" in (
+        falhou["erros_semanticos"]
+    )
+
+
 def test_turno_22_continua_sem_contexto_nao_inventa_controle_de_midia():
     av = avaliar_turno_roteiro(
         indice=21,
@@ -174,6 +274,109 @@ def test_turno_171_nao_aceita_none_sem_prova_de_envio_variavel():
     )
 
 
+@pytest.mark.parametrize(
+    ("indice", "comando", "status"),
+    (
+        (44, "pausa a musca", "midia_pause"),
+        (45, "contina a musica", "midia_play"),
+        (171, "próxima", "midia_next_playlist"),
+    ),
+)
+def test_red_envio_musical_variavel_com_evidencia_nao_e_aviso(
+    indice,
+    comando,
+    status,
+):
+    avaliacao = avaliar_turno_roteiro(
+        indice=indice,
+        comando=comando,
+        resposta="Comando de mídia enviado.",
+        plano=plano({
+            "intent": "MEDIA_CONTROL",
+            "status": status,
+            "executou": True,
+            "confirmado": None,
+            "confirmacao_oferecida": "variavel",
+            "evidencia_confirmacao": (
+                "teclas globais confirmam envio, não o estado final da mídia"
+            ),
+        }),
+        respondeu=True,
+        motivo_resultado="resultado_final_sem_observacao_externa",
+    )
+
+    assert avaliacao["resultado_semantico"] == "nao_avaliado"
+    assert avaliacao["confirmacoes_indeterminadas"] == 1
+    assert avaliacao["alertas_semanticos"] == []
+
+
+def test_turno_147_cadeia_musical_preserva_confirmacao_honesta_sem_aviso():
+    avaliacao = avaliar_turno_roteiro(
+        indice=146,
+        comando=(
+            "Continua a música, passa para a próxima faixa e me diz qual "
+            "está tocando."
+        ),
+        resposta="Está tocando uma nova faixa.",
+        plano=plano(
+            {
+                "intent": "MEDIA_CONTROL",
+                "status": "midia_play",
+                "executou": True,
+                "confirmado": True,
+                "confirmacao_oferecida": "variavel",
+                "evidencia_confirmacao": "o player confirmou a reprodução",
+            },
+            {
+                "intent": "MEDIA_CONTROL",
+                "status": "midia_next_playlist",
+                "executou": True,
+                "confirmado": None,
+                "confirmacao_oferecida": "variavel",
+                "evidencia_confirmacao": (
+                    "teclas globais confirmam envio, não o estado final da mídia"
+                ),
+            },
+            {
+                "intent": "MUSIC_STATUS",
+                "status": "midia_status_consultado",
+                "executou": True,
+                "confirmado": True,
+            },
+        ),
+        respondeu=True,
+        motivo_resultado="execucao_confirmada",
+    )
+
+    assert avaliacao["resultado_semantico"] == "nao_avaliado"
+    assert avaliacao["confirmacoes_indeterminadas"] == 1
+    assert avaliacao["alertas_semanticos"] == []
+
+
+def test_red_turno_100_aceita_envio_nativo_honesto_da_autocorrecao():
+    avaliacao = avaliar_turno_roteiro(
+        indice=99,
+        comando="Pausa a música... esquece, continua tocando.",
+        resposta="Pedi pra música continuar.",
+        plano=plano({
+            "intent": "MEDIA_CONTROL",
+            "status": "midia_play",
+            "executou": True,
+            "confirmado": None,
+            "confirmacao_oferecida": "variavel",
+            "evidencia_confirmacao": (
+                "teclas globais confirmam envio, não o estado final da mídia"
+            ),
+        }),
+        respondeu=True,
+        motivo_resultado="resultado_final_sem_observacao_externa",
+    )
+
+    assert avaliacao["resultado_semantico"] == "passou"
+    assert avaliacao["confirmacoes_indeterminadas"] == 1
+    assert avaliacao["alertas_semanticos"] == []
+
+
 def test_turno_149_exige_midia_e_playlist_sem_permitir_create_file():
     av = avaliar_turno_roteiro(
         indice=148,
@@ -206,6 +409,130 @@ def test_turno_149_exige_midia_e_playlist_sem_permitir_create_file():
     assert "intent_proibida:CREATE_FILE" in av["erros_semanticos"]
 
 
+def test_turno_148_exige_adicao_e_leitura_da_playlist_na_mesma_cadeia():
+    comando = (
+        "Adiciona essa música na playlist caos sonora e depois me mostra "
+        "o que tem nela."
+    )
+    incompleto = avaliar_turno_roteiro(
+        indice=147,
+        comando=comando,
+        resposta="Adicionei a faixa à caos sonora.",
+        plano=plano({
+            "intent": "PLAYLIST_ADD",
+            "status": "playlist_musica_adicionada",
+            "executou": True,
+            "confirmado": True,
+        }),
+        respondeu=True,
+        motivo_resultado="execucao_confirmada",
+    )
+    completo = avaliar_turno_roteiro(
+        indice=147,
+        comando=comando,
+        resposta="Adicionei a faixa; a caos sonora agora contém essa música.",
+        plano=plano(
+            {
+                "intent": "PLAYLIST_ADD",
+                "status": "playlist_musica_adicionada",
+                "executou": True,
+                "confirmado": True,
+            },
+            {
+                "intent": "PLAYLIST_LIST",
+                "status": "playlists_listadas",
+                "executou": True,
+                "confirmado": True,
+            },
+        ),
+        respondeu=True,
+        motivo_resultado="execucao_confirmada",
+    )
+
+    assert incompleto["resultado_semantico"] == "falhou"
+    assert "intent_ausente:PLAYLIST_LIST" in incompleto["erros_semanticos"]
+    assert completo["resultado_semantico"] == "passou"
+
+
+def test_turno_129_condicional_store_exige_resultado_observado() -> None:
+    comando = (
+        "Se a microsoft store não estiver aberta, abre; "
+        "se já estiver, só me avisa."
+    )
+    alvo_corrompido = avaliar_turno_roteiro(
+        indice=128,
+        comando=comando,
+        resposta="Não encontrei se já estiver só me avisa.",
+        plano=plano({
+            "intent": "APP_OPEN",
+            "status": "nao_encontrado",
+            "executou": False,
+            "confirmado": False,
+        }),
+        respondeu=True,
+        motivo_resultado="execucao_nao_confirmada",
+    )
+    observado = avaliar_turno_roteiro(
+        indice=128,
+        comando=comando,
+        resposta="A Microsoft Store já está aberta.",
+        plano=plano({
+            "intent": "APP_OPEN",
+            "status": "app_ja_aberto_observado",
+            "executou": False,
+            "confirmado": True,
+        }),
+        respondeu=True,
+        motivo_resultado="execucao_confirmada",
+    )
+
+    assert alvo_corrompido["resultado_semantico"] == "falhou"
+    assert any(
+        erro.startswith("status_incorreto:")
+        for erro in alvo_corrompido["erros_semanticos"]
+    )
+    assert observado["resultado_semantico"] == "passou"
+
+
+@pytest.mark.parametrize(
+    ("indice", "comando"),
+    (
+        (95, "Fecha a microsoft store... quer dizer, maximiza ela."),
+        (111, "Maximiza ele."),
+    ),
+)
+def test_maximizacao_da_store_exige_estado_final_confirmado(indice, comando):
+    falhou = avaliar_turno_roteiro(
+        indice=indice,
+        comando=comando,
+        resposta="Tentei maximizar, mas não consegui confirmar.",
+        plano=plano({
+            "intent": "MAXIMIZE_WINDOW",
+            "status": "maximizacao_nao_confirmada",
+            "executou": False,
+            "confirmado": False,
+        }),
+        respondeu=True,
+        motivo_resultado="execucao_nao_confirmada",
+    )
+    passou = avaliar_turno_roteiro(
+        indice=indice,
+        comando=comando,
+        resposta="Pronto, maximizei a Microsoft Store.",
+        plano=plano({
+            "intent": "MAXIMIZE_WINDOW",
+            "status": "janela_maximizada",
+            "executou": True,
+            "confirmado": True,
+        }),
+        respondeu=True,
+        motivo_resultado="execucao_confirmada",
+    )
+
+    assert falhou["resultado_semantico"] == "falhou"
+    assert passou["resultado_semantico"] == "passou"
+
+
 def test_turno_149_aceita_envio_nativo_honesto_e_playlist_confirmada():
     av = avaliar_turno_roteiro(
         indice=148,
@@ -236,6 +563,38 @@ def test_turno_149_aceita_envio_nativo_honesto_e_playlist_confirmada():
     assert av["resultado_semantico"] == "passou"
     assert av["confirmacoes_indeterminadas"] == 1
     assert av["alertas_semanticos"] == []
+
+
+def test_red_turno_149_aceita_avanco_da_playlist_interna_e_adicao_confirmada():
+    avaliacao = avaliar_turno_roteiro(
+        indice=148,
+        comando=(
+            "Vai para a próxima faixa e adiciona essa também na caos sonora."
+        ),
+        resposta="Avancei e adicionei a faixa à caos sonora.",
+        plano=plano(
+            {
+                "intent": "MEDIA_CONTROL",
+                "status": "midia_next_playlist",
+                "executou": True,
+                "confirmado": None,
+                "confirmacao_oferecida": "variavel",
+                "evidencia_confirmacao": "a fila local confirmou o avanço",
+            },
+            {
+                "intent": "PLAYLIST_ADD",
+                "status": "playlist_musica_adicionada",
+                "executou": True,
+                "confirmado": True,
+            },
+        ),
+        respondeu=True,
+        motivo_resultado="resultado_final_sem_observacao_externa",
+    )
+
+    assert avaliacao["resultado_semantico"] == "passou"
+    assert avaliacao["confirmacoes_indeterminadas"] == 1
+    assert avaliacao["alertas_semanticos"] == []
 
 
 @pytest.mark.parametrize(

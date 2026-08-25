@@ -156,11 +156,14 @@ def _tentar_foco_com_reativacao(
     ctx: Dict[str, Any],
     focar_app: Any,
     abrir_programa: Any,
+    *,
+    alvo_janela: Any = None,
 ) -> bool:
-    if _tentar_foco(nome, mapped, ctx, focar_app):
+    alvo_foco = mapped if alvo_janela is None else alvo_janela
+    if _tentar_foco(nome, alvo_foco, ctx, focar_app):
         return True
     if _reativar_app_sem_janela_principal(nome, mapped, ctx, abrir_programa):
-        if _tentar_foco(nome, mapped, ctx, focar_app):
+        if _tentar_foco(nome, alvo_foco, ctx, focar_app):
             return True
         estado_pos = _aguardar_estado(nome, ctx, tentativas=4, pausa=0.2)
         return bool(estado_pos.get("programa_em_foco"))
@@ -193,6 +196,10 @@ def executar_habilidade_janelas(intent: str, params: Dict[str, Any], ctx: Dict[s
     sem_janela = _eh_app_sem_janela(nome, ctx) or (
         isinstance(mapped, str) and mapped.strip().endswith(":")
     )
+    # Protocolos são endereços de abertura, não identidades de janela. A
+    # Microsoft Store abre por URI, mas foco/maximização procuram seu nome
+    # humano no título e no processo observado.
+    alvo_janela = nome if sem_janela else mapped
     _log("entrada", f"intent={intent} nome={nome} mapped={mapped} maximizar={quer_maximizar} sem_janela={sem_janela}")
 
     url_site = _resolver_url_site(nome, mapped, ctx)
@@ -231,7 +238,7 @@ def executar_habilidade_janelas(intent: str, params: Dict[str, Any], ctx: Dict[s
             maximizou = False
             if callable(ativar_full):
                 try:
-                    maximizou = bool(ativar_full(mapped))
+                    maximizou = bool(ativar_full(alvo_janela))
                 except Exception:
                     maximizou = False
             estado_pos = _aguardar_estado(nome, ctx, tentativas=4, pausa=0.2)
@@ -239,10 +246,11 @@ def executar_habilidade_janelas(intent: str, params: Dict[str, Any], ctx: Dict[s
             if not maximizou:
                 em_foco = _tentar_foco_com_reativacao(
                     nome, mapped, ctx, focar_app, abrir_programa,
+                    alvo_janela=alvo_janela,
                 ) or em_foco
                 if em_foco and callable(ativar_full):
                     try:
-                        maximizou = bool(ativar_full(mapped))
+                        maximizou = bool(ativar_full(alvo_janela))
                     except Exception:
                         pass
             status = "janela_maximizada" if maximizou else "maximizacao_nao_confirmada"
@@ -260,7 +268,14 @@ def executar_habilidade_janelas(intent: str, params: Dict[str, Any], ctx: Dict[s
             return {"ok": True, "status": "ja_aberto_focado", "nome_app": nome, "handled": True}
 
         _log("acao", f"{nome} já aberto -> tentar foco")
-        foco_ok = _tentar_foco_com_reativacao(nome, mapped, ctx, focar_app, abrir_programa)
+        foco_ok = _tentar_foco_com_reativacao(
+            nome,
+            mapped,
+            ctx,
+            focar_app,
+            abrir_programa,
+            alvo_janela=alvo_janela,
+        )
         _log("resultado", f"{nome} -> {'app_focado' if foco_ok else 'app_aberto_sem_foco'}")
         return {
             "ok": foco_ok,
@@ -281,10 +296,65 @@ def executar_habilidade_janelas(intent: str, params: Dict[str, Any], ctx: Dict[s
     _log("acao", f"{nome} abrir retornou={abriu} erro={erro or '-'}")
 
     if sem_janela:
-        _log("resultado", f"{nome} -> {'protocolo_aberto' if abriu else 'falha_execucao'}")
+        # A aceitação de uma URI pelo Shell comprova apenas o despacho, não a
+        # abertura do aplicativo. A Microsoft Store expõe uma janela/processo
+        # observável pouco depois; portanto, reler o alvo é obrigatório antes
+        # de publicar sucesso. Isso também mantém um guard honesto para outros
+        # protocolos: se a janela não surgir, a abertura fica não confirmada.
+        estado_protocolo = (
+            _aguardar_estado(nome, ctx, tentativas=12, pausa=0.35)
+            if abriu
+            else _ler_estado_alvo(nome, ctx)
+        )
+        protocolo_observado = bool(estado_protocolo.get("programa_aberto"))
+        protocolo_em_foco = bool(estado_protocolo.get("programa_em_foco"))
+        if protocolo_observado:
+            if preservar_jogo:
+                status_protocolo = "app_aberto_segundo_plano"
+            elif quer_maximizar:
+                maximizou = False
+                if callable(ativar_full):
+                    try:
+                        maximizou = bool(ativar_full(nome))
+                    except Exception:
+                        maximizou = False
+                status_protocolo = (
+                    "janela_maximizada"
+                    if maximizou
+                    else "maximizacao_nao_confirmada"
+                )
+                _log("resultado", f"{nome} -> {status_protocolo}")
+                return {
+                    "ok": maximizou,
+                    "confirmado": maximizou,
+                    "status": status_protocolo,
+                    "nome_app": nome,
+                    "foco_confirmado": protocolo_em_foco,
+                    "handled": True,
+                }
+            else:
+                status_protocolo = (
+                    "app_iniciado_focado" if protocolo_em_foco else "app_aberto"
+                )
+            _log("resultado", f"{nome} -> {status_protocolo} (janela observada)")
+            return {
+                "ok": True,
+                "confirmado": True,
+                "status": status_protocolo,
+                "nome_app": nome,
+                "estado_posterior": {
+                    "programa_aberto": True,
+                    "programa_em_foco": protocolo_em_foco,
+                },
+                "handled": True,
+            }
+
+        status_protocolo = "abertura_solicitada" if abriu else "falha_execucao"
+        _log("resultado", f"{nome} -> {status_protocolo} (janela não observada)")
         return {
             "ok": abriu,
-            "status": "protocolo_aberto" if abriu else "falha_execucao",
+            "confirmado": False,
+            "status": status_protocolo,
             "nome_app": nome,
             "erro": erro,
             "handled": True,

@@ -11,7 +11,7 @@ import re
 import unicodedata
 from typing import Any, Mapping, Sequence
 
-VERSAO_AVALIADOR = 9
+VERSAO_AVALIADOR = 13
 LIMITE_ALERTA_LATENCIA_S = 15.0
 
 DOMINIOS_EXTERNOS = frozenset({"browser", "musica", "iot", "visao", "clima"})
@@ -91,9 +91,38 @@ EXPECTATIVAS_CRITICAS_POR_TURNO = {
         "dominio": "seguranca",
         "nome": "continua_ambigua_sem_contexto",
     },
+    (
+        99,
+        "pausa a musica... esquece, continua tocando.",
+    ): {
+        "intents_any": ("MEDIA_CONTROL",),
+        "statuses_any": ("midia_play",),
+        "aceita_confirmacao_indeterminada": True,
+        "intents_confirmacao_indeterminada": ("MEDIA_CONTROL",),
+        "statuses_confirmacao_indeterminada": ("midia_play",),
+        "dominio": "musica",
+        "nome": "autocorrecao_midia_envio_honesto",
+    },
+    (
+        95,
+        "fecha a microsoft store... quer dizer, maximiza ela.",
+    ): {
+        "intents_any": ("MAXIMIZE_WINDOW",),
+        "statuses_any": ("janela_maximizada",),
+        "confirmado": True,
+        "dominio": "apps",
+        "nome": "autocorrecao_maximiza_microsoft_store",
+    },
+    (111, "maximiza ele."): {
+        "intents_any": ("MAXIMIZE_WINDOW",),
+        "statuses_any": ("janela_maximizada",),
+        "confirmado": True,
+        "dominio": "apps",
+        "nome": "maximiza_store_contextual_confirmada",
+    },
     (116, "qual aba ficou aberta?"): {
         "intents_any": ("LIST_TABS",),
-        "statuses_any": ("aba_ativa_consultada",),
+        "statuses_any": ("aba_sobrevivente_consultada",),
         "confirmado": True,
         "fala_any": ("prime video",),
         "dominio": "browser",
@@ -114,6 +143,33 @@ EXPECTATIVAS_CRITICAS_POR_TURNO = {
         "nome": "resumo_da_pagina_atual_apos_navegacao",
     },
     (
+        128,
+        "se a microsoft store nao estiver aberta, abre; se ja estiver, "
+        "so me avisa.",
+    ): {
+        "intents_any": ("APP_OPEN",),
+        "statuses_any": (
+            "app_ja_aberto_observado", "app_iniciado_focado",
+        ),
+        "confirmado": True,
+        "fala_any": ("abert",),
+        "dominio": "apps",
+        "nome": "abertura_condicional_store_observavel",
+    },
+    (
+        147,
+        "adiciona essa musica na playlist caos sonora e depois me mostra "
+        "o que tem nela.",
+    ): {
+        "intents_all": ("PLAYLIST_ADD", "PLAYLIST_LIST"),
+        "statuses_all": (
+            "playlist_musica_adicionada", "playlists_listadas",
+        ),
+        "confirmado": True,
+        "dominio": "musica",
+        "nome": "adicionar_e_listar_playlist_na_mesma_cadeia",
+    },
+    (
         148,
         "vai para a proxima faixa e adiciona essa tambem na caos sonora.",
     ): {
@@ -121,7 +177,9 @@ EXPECTATIVAS_CRITICAS_POR_TURNO = {
         "intents_forbidden": ("CREATE_FILE",),
         "aceita_confirmacao_indeterminada": True,
         "intents_confirmacao_indeterminada": ("MEDIA_CONTROL",),
-        "statuses_confirmacao_indeterminada": ("midia_next",),
+        "statuses_confirmacao_indeterminada": (
+            "midia_next", "midia_next_playlist",
+        ),
         "dominio": "musica",
         "nome": "proxima_faixa_e_adicao_playlist",
     },
@@ -282,13 +340,25 @@ def avaliar_turno_roteiro(
     enviado_em: float | None = None,
     finalizado_em: float | None = None,
     avaliacao_mecanica: Mapping[str, Any] | None = None,
+    expectativa_local: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     base = dict(avaliacao_mecanica or {})
     retrato = dict(plano or {})
     comandos = _comandos(retrato)
     intents = [str(x.get("intent") or "").upper() for x in comandos]
     statuses = [str(x.get("status") or "") for x in comandos]
-    expectativa = _expectativa_automatica(comando, indice=indice)
+    origem_expectativa = (
+        "roteiro_dedicado"
+        if expectativa_local is not None
+        else "avaliador_global"
+    )
+    expectativa = (
+        dict(expectativa_local)
+        if expectativa_local is not None
+        else _expectativa_automatica(comando, indice=indice)
+    )
+    if not expectativa:
+        origem_expectativa = "nenhuma"
     erros, alertas, checagens = [], [], []
 
     if not respondeu or not str(resposta or "").strip():
@@ -395,7 +465,19 @@ def avaliar_turno_roteiro(
         for x in expectativa.get("statuses_confirmacao_indeterminada")
         or status_esperados
     }
-    indeterminacao_aceita = bool(
+    indeterminacao_midia_com_evidencia = bool(
+        comandos_indeterminados
+        and all(
+            item.get("executou") is True
+            and str(item.get("intent") or "").upper() == "MEDIA_CONTROL"
+            and str(
+                item.get("confirmacao_oferecida") or ""
+            ).casefold() == "variavel"
+            and bool(str(item.get("evidencia_confirmacao") or "").strip())
+            for item in comandos_indeterminados
+        )
+    )
+    indeterminacao_aceita_por_expectativa = bool(
         expectativa.get("aceita_confirmacao_indeterminada")
         and comandos_indeterminados
         and intents_indeterminadas
@@ -412,6 +494,10 @@ def avaliar_turno_roteiro(
             and bool(str(item.get("evidencia_confirmacao") or "").strip())
             for item in comandos_indeterminados
         )
+    )
+    indeterminacao_aceita = (
+        indeterminacao_midia_com_evidencia
+        or indeterminacao_aceita_por_expectativa
     )
     if indeterminacao_aceita:
         checagens.append("envio_sem_observacao_externa_esperado")
@@ -450,6 +536,7 @@ def avaliar_turno_roteiro(
         "resultado_semantico": resultado,
         "semantica_avaliada": semantica_avaliada,
         "expectativa": str(expectativa.get("nome") or ""),
+        "origem_expectativa": origem_expectativa,
         "dominio": dominio,
         "intents_observadas": intents,
         "statuses_observados": statuses,

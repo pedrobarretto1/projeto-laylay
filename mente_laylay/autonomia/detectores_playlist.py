@@ -11,6 +11,7 @@ def detectar_playlist_contextual_musica_atual(
     params_cb: Callable[..., Dict[str, Any]],
     limpar_nome_playlist: Callable[[str], str],
     ultima_playlist: Any = "",
+    contexto_musical_ativo: bool = False,
 ) -> Dict[str, Any] | None:
     """Reconhece salvar a musica atual em playlist e continuacoes como 'essa tambem'."""
     t = str(texto_sem_destino or "").strip()
@@ -20,7 +21,8 @@ def detectar_playlist_contextual_musica_atual(
     limpar_nome = limpar_nome_playlist if callable(limpar_nome_playlist) else (lambda valor: str(valor or "").strip())
 
     m_add_musica_playlist = re.search(
-        r"\b(?:coloca|coloque|salva|salve|guarda|guarde|adiciona|adicione|add)\b"
+        r"\b(?:coloca|coloque|salva|salve|guarda|guarde|adiciona|adicione|"
+        r"acrescenta|acrescente|add)\b"
         r".{0,60}?\b(?:essa|esta|a)?\s*(?:musica|música|faixa|canção|cancao)?\b"
         # A preposição isolada ``a`` não pertence a esta etapa: em
         # ``coloca a playlist rock`` ela é o artigo do objeto que deve tocar.
@@ -36,9 +38,10 @@ def detectar_playlist_contextual_musica_atual(
             return {"intent": "PLAYLIST_ADD", "params": params(nome_playlist=pl)}
 
     m_add_contextual_nomeado = re.fullmatch(
-        r"(?:adiciona|adicione)\s+"
-        r"(?:essa|esta|isso)(?:\s+(?:musica|música|faixa))?\s+"
-        r"(?:tambem|também)\s+(?:na|nessa|nesta)\s+(?P<nome>.+)",
+        r"(?P<verbo>adiciona|adicione|salva|salve|acrescenta|acrescente)\s+"
+        r"(?:essa|esta|isso|ela)(?:\s+(?:musica|música|faixa))?"
+        r"(?:\s+(?:tambem|também))?\s+(?:na|nessa|nesta)\s+"
+        r"(?P<playlist>playlist\s+)?(?P<nome>.+)",
         t,
         flags=re.IGNORECASE,
     )
@@ -47,12 +50,28 @@ def detectar_playlist_contextual_musica_atual(
         mencionada = limpar_nome(m_add_contextual_nomeado.group("nome") or "")
         chave_ultima = re.sub(r"\s+", " ", ultima_pl).strip().casefold()
         chave_mencionada = re.sub(r"\s+", " ", mencionada).strip().casefold()
+        verbo = str(m_add_contextual_nomeado.group("verbo") or "").casefold()
+        playlist_literal = bool(m_add_contextual_nomeado.group("playlist"))
+        # ``salva/acrescenta ela na X`` é uma elipse mais ambígua que a forma
+        # histórica com ``adiciona``. Sem a palavra ``playlist``, ela só ganha
+        # o domínio musical quando o player está ativo e X coincide por inteiro
+        # com a playlist recente. Isso barra destinos comuns como ``lista de
+        # tarefas`` sem enfraquecer a fala natural observada no turno 149.
+        forma_natural_segura = bool(
+            verbo in {"adiciona", "adicione"}
+            or playlist_literal
+            or (
+                contexto_musical_ativo
+                and chave_ultima
+                and chave_ultima == chave_mencionada
+            )
+        )
         # O objeto musical é contextual (``essa``), mas o destino está escrito
         # na fala atual. Exigir que ``ultima_playlist`` já tivesse sido
         # atualizada fazia uma tentativa anterior falha esconder justamente o
         # nome explícito da segunda etapa da cadeia. A porta do executor ainda
         # exige uma faixa observável antes de persistir qualquer item.
-        if mencionada:
+        if mencionada and forma_natural_segura:
             return {
                 "intent": "PLAYLIST_ADD",
                 "params": params(

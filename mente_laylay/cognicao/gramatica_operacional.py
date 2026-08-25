@@ -9,15 +9,28 @@ from __future__ import annotations
 import re
 
 
-_PADRAO_AVANCO_MIDIA_VIA_VAI = (
-    r"vai\s+(?:(?:para|pra)\s+)?(?:a\s+)?"
+_PADRAO_AVANCO_MIDIA_EXPLICITO = (
+    r"(?:"
+    r"(?:vai|passa|passe|pula|pule)\s+"
+    r"(?:(?:para|pra)\s+)?(?:a\s+)?"
     r"(?:proxima|próxima)\s+(?:musica|música|faixa)"
+    r"|"
+    r"(?:avanca|avança|avance)\s+(?:uma|a)\s+"
+    r"(?:musica|música|faixa)"
+    r")"
+)
+
+_PADRAO_AVANCO_MIDIA_CONTEXTUAL = (
+    r"(?:troca|troque|muda|mude)\s+(?:para|pra)\s+"
+    r"(?:a\s+)?(?:proxima|próxima)"
 )
 
 _PADRAO_CONTINUACAO_PLAYLIST_ATUAL = (
-    r"(?:adiciona|adicione)\s+(?:essa|esta|isso)"
-    r"(?:\s+(?:musica|música|faixa))?\s+(?:tambem|também)\s+"
-    r"(?:na|nessa|nesta)\s+.+"
+    r"(?:adiciona|adicione|salva|salve|acrescenta|acrescente)\s+"
+    r"(?:essa|esta|isso|ela)"
+    r"(?:\s+(?:musica|música|faixa))?"
+    r"(?:\s+(?:tambem|também))?\s+"
+    r"(?:na|nessa|nesta)\s+(?:playlist\s+)?.+"
 )
 
 _SEPARADOR_CADEIA_M1 = (
@@ -37,7 +50,7 @@ def texto_pede_avanco_midia_via_vai(
         return False
 
     if re.fullmatch(
-        _PADRAO_AVANCO_MIDIA_VIA_VAI,
+        _PADRAO_AVANCO_MIDIA_EXPLICITO,
         base,
         flags=re.IGNORECASE,
     ):
@@ -47,7 +60,11 @@ def texto_pede_avanco_midia_via_vai(
         return False
 
     return bool(re.fullmatch(
-        _PADRAO_AVANCO_MIDIA_VIA_VAI
+        r"(?:"
+        + _PADRAO_AVANCO_MIDIA_EXPLICITO
+        + r"|"
+        + _PADRAO_AVANCO_MIDIA_CONTEXTUAL
+        + r")"
         + r"\s+"
         + _SEPARADOR_CADEIA_M1
         + r"\s+"
@@ -76,4 +93,3 @@ def texto_pede_restauracao_contextual(texto: str) -> bool:
         base,
         flags=re.IGNORECASE,
     ))
-

@@ -90,9 +90,11 @@ _CORRECOES_TERMOS_OPERACIONAIS = {
     "lenbrete": "lembrete",
     "temperatira": "temperatura",
     # Exceções fechadas e auditáveis para o teste de uso diário. ``Opera`` é
-    # um app canônico da instalação e ``janela`` é parte da moldura, não um
-    # nome livre fornecido pelo usuário.
+    # um app canônico da instalação, ``calculadora`` é o utilitário canônico
+    # do Windows e ``janela`` é parte da moldura, não um nome livre fornecido
+    # pelo usuário. A proteção de entidades nomeadas abaixo continua valendo.
     "operra": "opera",
+    "calcuradora": "calculadora",
     "janlea": "janela",
 }
 
@@ -107,6 +109,7 @@ _TERMOS_OPERACIONAIS_CANONICOS = (
 )
 
 _ERROS_VERBAIS_EXPLICITOS = {
+    "fexa": "fecha",
     "colcoa": "coloca",
     "coloac": "coloca",
     "orgniza": "organiza",

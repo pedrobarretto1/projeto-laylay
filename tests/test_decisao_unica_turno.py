@@ -7,6 +7,7 @@ import mente_laylay.autonomia.coordenador_intencao as coordenador_intencao
 from mente_laylay.autonomia.coordenador_intencao import CicloComandosRuntime
 from mente_laylay.autonomia.coordenador_intencao import resolver_intencao
 from mente_laylay.autonomia.dispatcher_comandos_json import executar_comandos_json
+from mente_laylay.cognicao.arbitro_turno import arbitrar_turno
 from mente_laylay.cognicao.decisao_turno import (
     consolidar_arbitragem,
     filtrar_comandos_pelo_turno,
@@ -176,6 +177,51 @@ def test_detector_sem_candidato_nao_revoga_pedido_explicito() -> None:
     )
 
     assert contrato["permite_acao"] is True
+    assert contrato["status"] == "aguardando_intencao"
+
+
+def test_pedido_contextual_sem_vencedor_nem_referente_falha_fechado() -> None:
+    turno = classificar_modalidade_turno("continua")
+    plano = planejar_turno("continua", turno=turno, mente={})
+    arbitragem = arbitrar_turno(
+        "continua",
+        [],
+        turno=turno,
+        retrato={"referencia_resolvida": {}},
+    )
+
+    contrato = consolidar_arbitragem(
+        plano["decisao_turno"],
+        arbitragem,
+    )
+
+    assert arbitragem["depende_contexto"] is True
+    assert contrato["permite_acao"] is False
+    assert contrato["proprietario"] == "conversa"
+    assert contrato["requer_esclarecimento"] is True
+    assert contrato["status"] == "sem_acao"
+
+
+def test_pedido_contextual_com_referente_pode_aguardar_especialista() -> None:
+    turno = classificar_modalidade_turno("continua")
+    plano = planejar_turno("continua", turno=turno, mente={})
+
+    contrato = consolidar_arbitragem(
+        plano["decisao_turno"],
+        {
+            "decisao": None,
+            "rejeitados": [],
+            "depende_contexto": True,
+            "referencia_resolvida": {
+                "tipo": "musica",
+                "nome": "faixa atual",
+                "origem": "reprodutor_atual",
+            },
+        },
+    )
+
+    assert contrato["permite_acao"] is True
+    assert contrato["requer_esclarecimento"] is False
     assert contrato["status"] == "aguardando_intencao"
 
 

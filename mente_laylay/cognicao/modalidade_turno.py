@@ -125,6 +125,34 @@ def analisar_protecao_operacional(
     return neutra
 
 
+def _eh_politica_condicional_abertura_observavel(
+    texto: str,
+    normalizar_texto: Callable[[str], str] | None = None,
+) -> bool:
+    """Reconhece a política atômica abrir-se-fechado/avisar-se-aberto.
+
+    A condição negativa descreve o estado observado, não uma revogação da
+    ordem. A moldura é deliberadamente estrita: exige as duas consequências,
+    rejeita perguntas e não interpreta condicionais genéricos como autoridade.
+    """
+    bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
+    if not bruto or "?" in bruto:
+        return False
+    normalizar = normalizar_texto if callable(normalizar_texto) else (
+        lambda valor: str(valor or "").casefold().strip()
+    )
+    t = re.sub(r"\s+", " ", str(normalizar(bruto) or "")).strip()
+    return bool(re.fullmatch(
+        r"se\s+(?:(?:o|a)\s+)?(?P<alvo>.+?)\s+(?:nao|não)\s+"
+        r"estiver\s+abert[oa]\s*,?\s*(?:abre|abra)"
+        r"(?:\s+(?:ele|ela|o\s+app|a\s+janela))?\s*"
+        r"(?:[;,]\s*)?se\s+(?:ja|já)\s+estiver\s*,?\s*"
+        r"(?:(?:so|só)\s+)?me\s+avisa[.!]*",
+        t,
+        flags=re.IGNORECASE,
+    ))
+
+
 def _classificar_modalidade_base(
     texto: str,
     *,
@@ -148,6 +176,20 @@ def _classificar_modalidade_base(
     }
     if not t:
         resultado.update(modalidade="vazio", confianca=1.0, motivo="entrada vazia")
+        return resultado
+
+    if _eh_politica_condicional_abertura_observavel(
+        bruto,
+        normalizar_texto=normalizar_texto,
+    ):
+        resultado.update(
+            modalidade="comando",
+            confianca=0.99,
+            motivo="política condicional explícita de abertura e observação",
+            acao_explicita=True,
+            autoriza_execucao=True,
+            natureza_acao="pedido_condicional",
+        )
         return resultado
 
     # Adiamentos curtos encerram ou pausam a ação anterior. Embora comecem
@@ -729,6 +771,19 @@ def _aplicar_p0_atomico(
     Mantém a proteção soberana, mas no nível do ato.
     """
     resultado = dict(resultado or {})
+    # Esta é a única condição negativa hoje representada como contrato
+    # operacional próprio. ``não estiver aberta`` descreve a observação que
+    # habilita ``abre``; não revoga a ordem. A gramática estrita já rejeitou
+    # perguntas, hipóteses pessoais e qualquer consequência diferente.
+    if (
+        resultado.get("autoriza_execucao") is True
+        and str(resultado.get("modalidade") or "").casefold() == "comando"
+        and _eh_politica_condicional_abertura_observavel(
+            texto,
+            normalizar_texto=normalizar_texto,
+        )
+    ):
+        return resultado
     protecao = _protecao_p0_ato_fala(
         texto,
         normalizar_texto=normalizar_texto,
@@ -1232,6 +1287,15 @@ def _segmentar_turno_misto(
     t = re.sub(r"\s+", " ", str(texto_estrutural or "")).strip()
     if not t:
         return []
+
+    # As duas cláusulas formam uma única política: a segunda não é um novo
+    # comando independente, e a primeira contém o alvo da execução. Separá-las
+    # faria o detector receber apenas ``abre; se já estiver...``.
+    if _eh_politica_condicional_abertura_observavel(
+        t,
+        normalizar_texto=normalizar_texto,
+    ):
+        return [t]
 
     segmentos = [t]
 

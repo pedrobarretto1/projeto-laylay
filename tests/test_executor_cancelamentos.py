@@ -27,6 +27,67 @@ def test_executor_cancelamentos_ignora_outro_dominio() -> None:
     assert eventos == []
 
 
+def test_cancelar_sem_pendencia_nao_alega_cancelamento_nem_muta_contexto() -> None:
+    class PendenciaVazia:
+        def obter(self):
+            return None
+
+    bloqueios: list[float] = []
+    atualizacoes: list[dict] = []
+    falas: list[str] = []
+    eventos: list[tuple] = []
+
+    despacho = executar_intencao_cancelamentos(
+        "CANCELAR_ACAO",
+        {
+            "_pendencia_acao_runtime": PendenciaVazia(),
+            "_bloquear_playlist_temporariamente": bloqueios.append,
+            "update_continuidades": lambda **campos: atualizacoes.append(campos),
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido()
+    assert bloqueios == []
+    assert atualizacoes == []
+    assert eventos == [
+        ("resultado", "sem_pendencia", {"executou": False, "confirmado": True})
+    ]
+    assert falas and "nenhuma ação pendente" in falas[0].casefold()
+
+
+def test_cancelar_conclui_a_pendencia_canonica_antes_de_confirmar() -> None:
+    class PendenciaAtiva:
+        def __init__(self) -> None:
+            self.conclusoes: list[tuple[str, str]] = []
+
+        def obter(self):
+            return {"id": "pend-1", "acao": "abrir navegador", "status": "ativa"}
+
+        def concluir(self, pendencia_id: str, status: str) -> bool:
+            self.conclusoes.append((pendencia_id, status))
+            return True
+
+    runtime = PendenciaAtiva()
+    eventos: list[tuple] = []
+
+    despacho = executar_intencao_cancelamentos(
+        "CANCELAR_ACAO",
+        {
+            "_pendencia_acao_runtime": runtime,
+            "falar_com_lipsync": lambda *_args: None,
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido()
+    assert runtime.conclusoes == [("pend-1", "cancelada")]
+    assert eventos == [
+        ("resultado", "cancelado", {"executou": True, "confirmado": True})
+    ]
+
+
 def test_stop_playlist_bloqueia_com_duracao_padrao_sem_limpar_pendencias() -> None:
     bloqueios: list[tuple] = []
     atualizacoes: list[dict] = []
@@ -88,7 +149,9 @@ def test_cancelar_limpa_memoria_compartilhada_em_uma_atualizacao() -> None:
     assert all(ctx[chave] == valor for chave, valor in atualizacoes[0].items())
     assert ctx["_playlist_sugestao_pendente"] is None
     assert ctx["_rotina_sugestao_pendente"] is None
-    assert eventos == [("resultado", "cancelado", {})]
+    assert eventos == [
+        ("resultado", "cancelado", {"executou": True, "confirmado": True})
+    ]
 
 
 def test_cancelar_compativel_com_setter_unitario_da_memoria() -> None:
@@ -96,7 +159,10 @@ def test_cancelar_compativel_com_setter_unitario_da_memoria() -> None:
 
     executar_intencao_cancelamentos(
         "CANCELAR_ACAO",
-        {"set_continuidade": lambda chave, valor: definicoes.append((chave, valor))},
+        {
+            "comando_sugerido": "abrir navegador",
+            "set_continuidade": lambda chave, valor: definicoes.append((chave, valor)),
+        },
         _dependencias([]),
     )
 
@@ -133,6 +199,7 @@ def test_roteador_delega_cancelamento_e_atualiza_fonte_unica() -> None:
         "deixa pra lá",
         {
             "_target_from_params": lambda *_args: "pc_a",
+            "comando_sugerido": "abrir navegador",
             "update_continuidades": lambda **campos: atualizacoes.append(campos),
             "_registrar_resultado_execucao": lambda contrato, *_args, **_kwargs: (
                 resultados.append(contrato)
@@ -144,3 +211,5 @@ def test_roteador_delega_cancelamento_e_atualiza_fonte_unica() -> None:
     assert retorno is True
     assert atualizacoes and atualizacoes[0]["comando_sugerido_estado"] == "NONE"
     assert resultados and resultados[0].status == "cancelado"
+    assert resultados[0].executou is True
+    assert resultados[0].confirmado is True

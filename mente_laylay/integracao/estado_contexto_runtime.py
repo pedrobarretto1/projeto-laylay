@@ -980,6 +980,7 @@ class EstadoContextoRuntime:
             estado.substituir("mental", atual)
 
         return {
+            "mente_integrada_estado": dict(mente),
             "ultima_playlist": musica_get("ultima_playlist"),
             "current_emotion": conversa_get("current_emotion", "calma"),
             "emotion_level": conversa_get("emotion_level", 1),

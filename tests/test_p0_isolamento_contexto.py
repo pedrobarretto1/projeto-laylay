@@ -86,6 +86,36 @@ def test_playlist_contextual_materializa_playlist_delete():
     assert r["params"]["nome_playlist"] == "caos sonora"
 
 
+def test_playlist_contextual_entende_consulta_natural_do_conteudo():
+    r = resolver_comando_acao_geral_contextual(
+        "me mostra o que tem nela",
+        {
+            "tipo": "playlist", "alvo": "caos sonora",
+            "intencao": "PLAYLIST_ADD",
+            "params": {"nome_playlist": "caos sonora"},
+        },
+        ultima_playlist="caos sonora",
+    )
+
+    assert r == {
+        "intent": "PLAYLIST_LIST",
+        "params": {
+            "nome_playlist": "caos sonora",
+            "referencia_contextual": True,
+        },
+    }
+
+
+def test_consulta_natural_sem_playlist_tipificada_falha_fechado():
+    assert resolver_comando_acao_geral_contextual(
+        "me mostra o que tem nela",
+        {
+            "tipo": "arquivo", "alvo": r"C:\temp\notas.txt",
+            "intencao": "FILE_READ", "params": {},
+        },
+    ) is None
+
+
 def test_dominio_musica_rejeita_delete_item():
     assert not _resultado_compativel_com_dominio(
         {"intent": "DELETE_ITEM", "params": {"alvo": "correcao.txt"}}, "musica"
@@ -282,4 +312,3 @@ def test_musica_anterior_explicita_continua_musica():
     assert _dominio_restrito_referencia(
         "Volta para a música anterior.", mental, ttl_s=300.0
     ) == "musica"
-
