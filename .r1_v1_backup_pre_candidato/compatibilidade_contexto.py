@@ -10,37 +10,22 @@ from typing import Any, Dict
 
 from mente_laylay.memoria_mental.continuidade_geral import (
     selecionar_continuidade_reexecutavel,
-    selecionar_operacao_reexecutavel_compativel,
 )
-from mente_laylay.memoria_mental.politica_reexecucao import (
-    intents_compativeis_repeticao,
-)
-
-
-_PADRAO_REPETICAO_CURTA = re.compile(
-    r"(?:(?P<verbo>tenta|tente|faz|fa[cç]a|vai|leia|l[eê]|ler)\s+)?"
-    r"(?:de\s+novo|novamente|outra\s+vez|mais\s+uma\s+vez)|"
-    r"tenta\s+outra\s+vez"
-)
-
-
-def classificar_repeticao_curta(texto: str, normalizar_texto_cb) -> Dict[str, str]:
-    """Preserva a restrição lexical antes de selecionar a operação."""
-    t = str(normalizar_texto_cb(str(texto or "")) or "").strip(" .,!?:;")
-    if not t or len(t.split()) > 8:
-        return {}
-    achado = _PADRAO_REPETICAO_CURTA.fullmatch(t)
-    if not achado:
-        return {}
-
-    verbo = str(achado.groupdict().get("verbo") or "").strip().casefold()
-    if verbo in {"leia", "le", "lê", "ler"}:
-        return {"tipo": "tipada", "acao_semantica": "LER", "verbo": verbo}
-    return {"tipo": "generica", "acao_semantica": "", "verbo": verbo}
 
 
 def texto_pede_repeticao_curta(texto: str, normalizar_texto_cb) -> bool:
-    return bool(classificar_repeticao_curta(texto, normalizar_texto_cb))
+    t = str(normalizar_texto_cb(str(texto or "")) or "").strip(" .,!?:;")
+    if not t or len(t.split()) > 8:
+        return False
+    # Repetição é um ato completo, não uma expressão encontrada no meio de
+    # outra fala. Antes, ``obrigado de novo`` repetia a última ação prática e
+    # chegou a fechar o Opera sem que o usuário pedisse isso.
+    return bool(re.fullmatch(
+        r"(?:(?:tenta|tente|faz|fa[cç]a|vai|leia|l[eê]|ler)\s+)?"
+        r"(?:de\s+novo|novamente|outra\s+vez|mais\s+uma\s+vez)|"
+        r"tenta\s+outra\s+vez",
+        t,
+    ))
 
 
 def resolver_repeticao_ultima_acao(
@@ -48,45 +33,15 @@ def resolver_repeticao_ultima_acao(
     estado_atual: Dict[str, Any] | None,
     normalizar_texto_cb,
 ):
-    repeticao = classificar_repeticao_curta(texto, normalizar_texto_cb)
-    if not repeticao:
+    if not texto_pede_repeticao_curta(texto, normalizar_texto_cb):
         return None
     estado = dict(estado_atual or {})
-
-    # ROOT R1: repetição tipada nunca cai no fluxo genérico.
-    if repeticao.get("tipo") == "tipada":
-        permitidos = intents_compativeis_repeticao(
-            repeticao.get("acao_semantica", "")
-        )
-        if not permitidos:
-            return None
-        oficial_tipado = selecionar_operacao_reexecutavel_compativel(
-            estado,
-            intents_permitidos=permitidos,
-            ttl_s=900.0,
-        )
-        if oficial_tipado:
-            intent_tipado = str(oficial_tipado.get("intent") or "").strip().upper()
-            params_tipados = oficial_tipado.get("params")
-            if intent_tipado and isinstance(params_tipados, dict):
-                return {"intent": intent_tipado, "params": dict(params_tipados)}
-
-        # Compatibilidade V1: só a última ação atômica ainda disponível.
-        intent_legado = str(estado.get("ultima_acao_intent") or "").strip().upper()
-        params_legados = estado.get("ultima_acao_params")
-        if (
-            intent_legado in permitidos
-            and bool(estado.get("ultima_acao_reexecutavel"))
-            and isinstance(params_legados, dict)
-        ):
-            return {"intent": intent_legado, "params": dict(params_legados)}
-        return None
-
-    # Somente repetição genérica entra nos atalhos de mutação falha.
+    # Exclusao bem-sucedida ou aguardando confirmacao nunca e repetida. Uma
+    # tentativa que falhou antes de tocar no disco pode ser refeita porque o
+    # executor ainda exigira a confirmacao canonica se encontrar o item.
     intent_recente = str(estado.get("ultima_acao_intent") or "").strip().upper()
     status_recente = str(estado.get("ultima_acao_status") or "").strip().casefold()
     params_recentes = estado.get("ultima_acao_params")
-
     falhas_retentaveis_exclusao = {
         "falha_execucao", "nao_encontrado", "alvo_ambiguo",
         "referencia_nao_resolvida", "falhou",
@@ -100,7 +55,6 @@ def resolver_repeticao_ultima_acao(
         and str(params_recentes.get("alvo") or "").strip()
     ):
         return {"intent": "DELETE_ITEM", "params": dict(params_recentes)}
-
     falhas_retentaveis_transacao = {
         "falha_execucao", "origem_nao_encontrada", "destino_nao_encontrado",
         "destino_bloqueado", "validacao_falhou", "falhou",
@@ -116,8 +70,9 @@ def resolver_repeticao_ultima_acao(
         and str(params_recentes.get("origem") or "").strip()
         and str(params_recentes.get("destino") or "").strip()
     ):
+        # Repetimos apenas uma transação comprovadamente falha. Uma mudança já
+        # confirmada nunca volta ao disco por causa de "tenta de novo".
         return {"intent": "FILE_TRANSACTION", "params": dict(params_recentes)}
-
     oficial = selecionar_continuidade_reexecutavel(
         estado,
         classe="operacional",
@@ -129,6 +84,8 @@ def resolver_repeticao_ultima_acao(
         intent = str(oficial.get("intent") or "").strip().upper()
         params = oficial.get("params")
     else:
+        # Memórias de sessão anteriores à promoção oficial ainda podem ser
+        # lidas uma vez; novos turnos sempre gravam o contrato canônico.
         if not bool(estado.get("ultima_acao_reexecutavel")):
             return None
         intent = str(estado.get("ultima_acao_intent") or "").strip().upper()

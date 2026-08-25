@@ -15,9 +15,6 @@ from mente_laylay.memoria_mental.continuidade_geral import (
 from mente_laylay.memoria_mental.efeitos_reversiveis import (
     registrar_resultado_efeito_reversivel,
 )
-from mente_laylay.memoria_mental.politica_reexecucao import (
-    intencao_reexecutavel_padrao,
-)
 
 from mente_laylay.memoria_mental.consciencia_temporal import (
     atualizar_consciencia_temporal,
@@ -59,7 +56,32 @@ from mente_laylay.memoria_mental.continuidade_contexto import (
 
 
 def intencao_reexecutavel(intent: str) -> bool:
-    return intencao_reexecutavel_padrao(intent)
+    return str(intent or "").upper().strip() in {
+        "APP_OPEN",
+        "CLOSE_APP",
+        "OPEN_URL",
+        "CLOSE_TAB",
+        "PLAYLIST_PLAY",
+        "PLAYLIST_ADD",
+        "MUSIC_SEARCH",
+        "VOLUME",
+        "MEDIA_CONTROL",
+        "WEATHER",
+        "EMAIL_READ",
+        "EMAIL_SYNC",
+        "NOTIFICATIONS",
+        "BRIEFING_REPEAT",
+        "SITE_ENTER",
+        "LAYLAY_PLAYLIST_LIST",
+        "LAYLAY_PLAYLIST_PLAY",
+        "PLAYLIST_LIST",
+        "IOT_CONTROL",
+        "IOT_STATUS",
+        "IOT_LIST",
+        "INBOX_LIST",
+        "ORGANIZAR_DESKTOP",
+        "FILE_READ",
+    }
 
 
 _RESULTADOS_JA_SATISFEITOS_REFERENCIAVEIS = {
@@ -449,7 +471,6 @@ def registrar_resultado_execucao(
             params=params,
             status=status_final,
             origem=contrato.origem,
-            id_solicitacao=contrato.id_solicitacao,
             ttl_s=900.0,
             reexecutavel=reexecutavel,
         )
