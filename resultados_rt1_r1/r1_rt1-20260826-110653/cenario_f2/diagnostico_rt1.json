@@ -1,0 +1,31 @@
+{
+  "cenario": {
+    "codigo": "F2",
+    "descricao": "DELETE_ITEM falho -> tenta de novo -> repetir DELETE_ITEM",
+    "comandos": [
+      "Apaga o arquivo rt1_inexistente.txt.",
+      "tenta de novo"
+    ],
+    "gmail_fake": false
+  },
+  "resultado": {
+    "codigo": "F2",
+    "descricao": "DELETE_ITEM falho -> tenta de novo -> repetir DELETE_ITEM",
+    "estado": "INFRA",
+    "fronteira": "processo_runtime",
+    "detalhes": [
+      "laylay.py encerrou com código 1"
+    ],
+    "returncode": 1,
+    "resultado_runtime": "",
+    "terminal_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-110653\\cenario_f2\\subprocess_terminal.log",
+    "physical_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-110653\\cenario_f2\\physical.jsonl"
+  },
+  "planos": {},
+  "physical_events": [
+    {
+      "ts": 1787753216.3078418,
+      "tipo": "sitecustomize_ready"
+    }
+  ]
+}

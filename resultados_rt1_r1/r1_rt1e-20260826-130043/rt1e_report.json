@@ -1,0 +1,47 @@
+{
+  "veredito": "R1_RT1E_RED",
+  "conclusao": "RT1-E rastreou o escape após a repetição tipada sem aplicar patch.",
+  "primeira_fronteira_red_ou_infra": "retorno_iot:contexto_imediato.py:resolver_semantico",
+  "resultados": [
+    {
+      "codigo": "E",
+      "descricao": "ESCAPE PROBE: IOT_CONTROL -> Leia de novo",
+      "estado": "RED",
+      "fronteira": "retorno_iot:contexto_imediato.py:resolver_semantico",
+      "detalhes": [
+        "repetição tipada LER falhou fechado corretamente; a primeira função observada a devolver IOT_CONTROL depois disso foi contexto_imediato.py:resolver_semantico",
+        "retorno inicial incompatível={'intent': 'IOT_CONTROL', 'params': {'acao': 'ligar', 'alvo': 'lampada_quarto'}, '_semantica': {'operacao': 'REPETIR', 'dominio': 'iot', 'acao': 'LIGAR', 'confianca': 0.96, 'motivo': 'acao resolvida pela continuidade do dominio'}}"
+      ],
+      "returncode": 0,
+      "resultado_runtime": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1e-20260826-130043\\cenario_e\\runtime_results\\roteiro_r1_rt1_e-20260826-130051-378486",
+      "terminal_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1e-20260826-130043\\cenario_e\\subprocess_terminal.log",
+      "physical_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1e-20260826-130043\\cenario_e\\physical.jsonl"
+    }
+  ],
+  "proveniencia": {
+    "teste": "R1-RT1-E-ESCAPE-PROBE",
+    "criado_em": 1787760043.6719542,
+    "projeto": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay",
+    "python_driver": "C:\\Python314\\python.exe",
+    "python_runtime": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\.venv314\\Scripts\\python.exe",
+    "python_userbase_preservado": "C:\\Users\\pbarr\\AppData\\Roaming\\Python",
+    "git_head": "2c6513995244530a95b8cd6466910896ed6dd144",
+    "git_branch": "main",
+    "git_status_short": [
+      "M cliente/terminal_2/musica_m1.py",
+      " M cliente/terminal_laylay_2.py",
+      " M tests/test_terminal_playlist_detalhe.py",
+      "?? cliente/terminal_2/volume_mestre_windows.py",
+      "?? r1_rt1_runtime_real.py",
+      "?? resultados_rt1_r1/",
+      "?? resultados_testes/r1_rt1_runtime_real-20260825-220959-428719/",
+      "?? resultados_testes/r1_rt1_runtime_real-20260825-221600-635224/",
+      "?? rt1_e_escape_probe.py",
+      "?? rt1_f_receipt_probe.py",
+      "?? rt1_r1_runtime_real.py",
+      "?? rt1_r1_runtime_real_v2.py",
+      "?? tests/test_terminal_musica_volume_tempo_real.py"
+    ],
+    "nota": "Nenhum pull/reset/checkout foi executado pelo RT1."
+  }
+}

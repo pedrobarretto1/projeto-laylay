@@ -1,0 +1,147 @@
+{
+  "versao": 2,
+  "assinatura": "0e1f02d46b0e25aa21fc8de20699a0760b50b3725f44e19f43e00f8226353ef5",
+  "criado_em": 1787758202.102918,
+  "atualizado_em": 1787758205.7714446,
+  "concluido": false,
+  "criterio_conclusao": "transporte_resposta_e_resultado_turno",
+  "voz_silenciada_durante_teste": true,
+  "itens": [
+    {
+      "indice": 0,
+      "comando": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+      "status": "respondido",
+      "resposta": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-122954\\cenario_f\\home\\Downloads\\rt1_f.txt já está criado e no lugar.",
+      "enviado_em": 1787758202.1389298,
+      "finalizado_em": 1787758205.0435104,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "CREATE_FILE",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-122954\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "status": "arquivo_criado",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "estado_observado",
+            "evidencia_confirmacao": "a existência local do arquivo é relida"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "expectativa_por_padrao",
+        "origem_expectativa": "avaliador_global",
+        "dominio": "arquivos",
+        "intents_observadas": [
+          "CREATE_FILE"
+        ],
+        "statuses_observados": [
+          "arquivo_criado"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 2.905
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 1,
+      "comando": "Leia o arquivo rt1_f.txt.",
+      "status": "respondido",
+      "resposta": "Concluí o pedido em C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-122954\\cenario_f\\home\\Downloads\\rt1_f.txt e confirmei o resultado. O conteúdo de rt1_f.txt é: ALFA_RT1_F",
+      "enviado_em": 1787758205.1122122,
+      "finalizado_em": 1787758205.7062907,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "FILE_READ",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-122954\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "status": "conteudo_lido",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "retorno_dados",
+            "evidencia_confirmacao": "o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "expectativa_por_padrao",
+        "origem_expectativa": "avaliador_global",
+        "dominio": "arquivos",
+        "intents_observadas": [
+          "FILE_READ"
+        ],
+        "statuses_observados": [
+          "conteudo_lido"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 0.594
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 2,
+      "comando": "Liga a lâmpada.",
+      "status": "enviado",
+      "resposta": "",
+      "enviado_em": 1787758205.7714221
+    },
+    {
+      "indice": 3,
+      "comando": "Leia de novo.",
+      "status": "pendente",
+      "resposta": ""
+    }
+  ],
+  "preparacao": {
+    "status": "modo_chat_confirmado",
+    "atraso_inicial_s": 0.0,
+    "voz_silenciada": true
+  }
+}

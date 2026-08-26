@@ -1,0 +1,143 @@
+{
+  "veredito": "R1_RT1_RED",
+  "conclusao": "Há RED semântico/arquitetural no RT1. A primeira fronteira indicada deve comandar a próxima investigação.",
+  "primeira_fronteira_red_ou_infra": "planejamento/repeticao_operacional",
+  "pass": [
+    "F1"
+  ],
+  "red": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F2"
+  ],
+  "infra": [],
+  "resultados": [
+    {
+      "codigo": "A",
+      "descricao": "FILE_READ(A) -> IoT -> Leia de novo -> FILE_READ(A)",
+      "estado": "RED",
+      "fronteira": "planejamento/repeticao_operacional",
+      "detalhes": [
+        "repeticao_operacional={}; esperado intent=FILE_READ"
+      ],
+      "returncode": 0,
+      "resultado_runtime": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_a\\runtime_results\\roteiro_r1_rt1_a-20260826-113151-373325",
+      "terminal_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_a\\subprocess_terminal.log",
+      "physical_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_a\\physical.jsonl"
+    },
+    {
+      "codigo": "B",
+      "descricao": "FILE_READ(A) -> CREATE_FILE(B) -> Leia de novo -> FILE_READ(A)",
+      "estado": "RED",
+      "fronteira": "planejamento/repeticao_operacional",
+      "detalhes": [
+        "repeticao_operacional={}; esperado intent=FILE_READ"
+      ],
+      "returncode": 0,
+      "resultado_runtime": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_b\\runtime_results\\roteiro_r1_rt1_b-20260826-113158-660591",
+      "terminal_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_b\\subprocess_terminal.log",
+      "physical_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_b\\physical.jsonl"
+    },
+    {
+      "codigo": "C",
+      "descricao": "EMAIL_READ(urgentes=True) -> IoT -> Leia de novo -> EMAIL_READ(urgentes=True)",
+      "estado": "RED",
+      "fronteira": "planejamento/repeticao_operacional",
+      "detalhes": [
+        "repeticao_operacional={}; esperado intent=EMAIL_READ"
+      ],
+      "returncode": 0,
+      "resultado_runtime": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_c\\runtime_results\\roteiro_r1_rt1_c-20260826-113206-108882",
+      "terminal_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_c\\subprocess_terminal.log",
+      "physical_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_c\\physical.jsonl"
+    },
+    {
+      "codigo": "D",
+      "descricao": "EMAIL_READ -> IoT -> de novo -> IOT_CONTROL",
+      "estado": "RED",
+      "fronteira": "planejamento/repeticao_operacional",
+      "detalhes": [
+        "repeticao_operacional={}; esperado intent=IOT_CONTROL"
+      ],
+      "returncode": 0,
+      "resultado_runtime": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_d\\runtime_results\\roteiro_r1_rt1_d-20260826-113211-334568",
+      "terminal_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_d\\subprocess_terminal.log",
+      "physical_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_d\\physical.jsonl"
+    },
+    {
+      "codigo": "E",
+      "descricao": "IoT -> Leia de novo -> fail closed",
+      "estado": "RED",
+      "fronteira": "ciclo/roteamento",
+      "detalhes": [
+        "'Leia de novo' materializou intents incompatíveis: ['IOT_CONTROL']"
+      ],
+      "returncode": 0,
+      "resultado_runtime": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_e\\runtime_results\\roteiro_r1_rt1_e-20260826-113218-834131",
+      "terminal_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_e\\subprocess_terminal.log",
+      "physical_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_e\\physical.jsonl"
+    },
+    {
+      "codigo": "F1",
+      "descricao": "DELETE_ITEM falho -> Leia de novo -> não repetir DELETE_ITEM",
+      "estado": "PASS",
+      "fronteira": "",
+      "detalhes": [],
+      "returncode": 0,
+      "resultado_runtime": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_f1\\runtime_results\\roteiro_r1_rt1_f1-20260826-113226-372973",
+      "terminal_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_f1\\subprocess_terminal.log",
+      "physical_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_f1\\physical.jsonl"
+    },
+    {
+      "codigo": "F2",
+      "descricao": "DELETE_ITEM falho -> tenta de novo -> repetir DELETE_ITEM",
+      "estado": "RED",
+      "fronteira": "planejamento/repeticao_operacional",
+      "detalhes": [
+        "repeticao_operacional={}; esperado intent=DELETE_ITEM"
+      ],
+      "returncode": 0,
+      "resultado_runtime": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_f2\\runtime_results\\roteiro_r1_rt1_f2-20260826-113233-809114",
+      "terminal_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_f2\\subprocess_terminal.log",
+      "physical_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-113144\\cenario_f2\\physical.jsonl"
+    }
+  ],
+  "proveniencia": {
+    "teste": "R1-RT1",
+    "criado_em": 1787754704.3647778,
+    "projeto": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay",
+    "python_driver": "C:\\Python314\\python.exe",
+    "python_runtime": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\.venv314\\Scripts\\python.exe",
+    "python_userbase_preservado": "C:\\Users\\pbarr\\AppData\\Roaming\\Python",
+    "git_head": "1bca0dc7ada3c1108201aca4d4852aba859d3a8f",
+    "git_branch": "main",
+    "git_status_short": [
+      "M cliente/terminal_2/acabamento.py",
+      " M cliente/terminal_2/musica_m1.py",
+      " M cliente/terminal_laylay_2.py",
+      " M laylay.py",
+      " M mente_laylay/integracao/dashboard_terminal.py",
+      " M mente_laylay/integracao/desktop_bridge.py",
+      " M mente_laylay/integracao/registro_operacoes_musicais.py",
+      " M mente_laylay/memoria_mental/operacoes_musicais_runtime.py",
+      " M mente_laylay/memoria_mental/playlist_mental.py",
+      " M mente_laylay/memoria_mental/playlist_runtime.py",
+      "?? \"Novo(a) Documento de Texto.txt\"",
+      "?? \"Novo(a) Documento de Texto.zip\"",
+      "?? cliente/terminal_2/playlist_detalhe.py",
+      "?? r1_rt1_runtime_real.py",
+      "?? resultados_rt1_r1/",
+      "?? resultados_testes/r1_rt1_runtime_real-20260825-220959-428719/",
+      "?? resultados_testes/r1_rt1_runtime_real-20260825-221600-635224/",
+      "?? rt1_r1_runtime_real.py",
+      "?? rt1_r1_runtime_real_v2.py",
+      "?? tests/test_playlist_detalhe_contrato.py",
+      "?? tests/test_terminal_playlist_detalhe.py"
+    ],
+    "nota": "Nenhum pull/reset/checkout foi executado pelo RT1."
+  },
+  "proximo_passo_se_green": ""
+}

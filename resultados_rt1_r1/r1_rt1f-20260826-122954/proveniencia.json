@@ -1,0 +1,25 @@
+{
+  "teste": "R1-RT1-F-RECEIPT-PROBE",
+  "criado_em": 1787758194.2410314,
+  "projeto": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay",
+  "python_driver": "C:\\Python314\\python.exe",
+  "python_runtime": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\.venv314\\Scripts\\python.exe",
+  "python_userbase_preservado": "C:\\Users\\pbarr\\AppData\\Roaming\\Python",
+  "git_head": "a57c0b4b1cdc8137ce725140a2444038a9b47132",
+  "git_branch": "main",
+  "git_status_short": [
+    "M cliente/terminal_2/playlist_detalhe.py",
+    " M \"exten\\303\\247ao_google/background.js\"",
+    " M \"exten\\303\\247ao_google/content_script.js\"",
+    " M tests/test_terminal_playlist_detalhe.py",
+    "?? r1_rt1_runtime_real.py",
+    "?? resultados_rt1_r1/",
+    "?? resultados_testes/r1_rt1_runtime_real-20260825-220959-428719/",
+    "?? resultados_testes/r1_rt1_runtime_real-20260825-221600-635224/",
+    "?? rt1_f_receipt_probe.py",
+    "?? rt1_r1_runtime_real.py",
+    "?? rt1_r1_runtime_real_v2.py",
+    "?? tests/test_extensao_canal_youtube.py"
+  ],
+  "nota": "Nenhum pull/reset/checkout foi executado pelo RT1."
+}

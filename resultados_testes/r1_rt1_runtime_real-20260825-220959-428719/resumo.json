@@ -1,0 +1,30 @@
+{
+  "versao_avaliador": 15,
+  "total_turnos": 5,
+  "respondidos": 5,
+  "concluido_transporte": true,
+  "avaliados_semanticamente": 5,
+  "passaram": 5,
+  "falharam": 0,
+  "alertas": 0,
+  "nao_avaliados": 0,
+  "taxa_semantica_percentual": 100.0,
+  "comandos_observados": 5,
+  "confirmacoes_indeterminadas": 0,
+  "latencia_s": {
+    "p50": 2.754,
+    "p95": 4.663,
+    "max": 5.139,
+    "media": 2.166
+  },
+  "por_dominio": {
+    "apps": {
+      "passou": 1
+    },
+    "arquivos": {
+      "passou": 4
+    }
+  },
+  "turnos_com_erros": [],
+  "turnos_com_alertas": []
+}

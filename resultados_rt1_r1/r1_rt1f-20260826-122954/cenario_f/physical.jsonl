@@ -1,0 +1,4 @@
+{"ts": 1787758195.656356, "tipo": "sitecustomize_ready"}
+{"ts": 1787758206.3370807, "tipo": "iot_consultar_estado", "dispositivo": "lampada_quarto", "sucesso": null, "estado": false, "confirmado": null}
+{"ts": 1787758206.3414497, "tipo": "iot_definir_estado", "dispositivo": "lampada_quarto", "ligado": true, "sucesso": null, "estado": true, "confirmado": null}
+{"ts": 1787758206.3465383, "tipo": "iot_consultar_estado", "dispositivo": "lampada_quarto", "sucesso": null, "estado": true, "confirmado": null}

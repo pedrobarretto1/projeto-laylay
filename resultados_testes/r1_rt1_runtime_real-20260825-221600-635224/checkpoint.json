@@ -1,0 +1,319 @@
+{
+  "versao": 2,
+  "assinatura": "946ea3a3cddaeaf32764881c9f818dbdda6d558b92335628d8c46a60753572a7",
+  "criado_em": 1787706960.8627193,
+  "atualizado_em": 1787706974.1129308,
+  "concluido": true,
+  "criterio_conclusao": "transporte_resposta_e_resultado_turno",
+  "voz_silenciada_durante_teste": true,
+  "itens": [
+    {
+      "indice": 0,
+      "comando": "Abre a calculadora.",
+      "status": "respondido",
+      "resposta": "Iniciei calculadora e trouxe a nova janela pra frente.",
+      "enviado_em": 1787706963.8931723,
+      "finalizado_em": 1787706968.9778297,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "APP_OPEN",
+            "alvo": "calculadora",
+            "status": "app_iniciado_focado",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "estado_observado",
+            "evidencia_confirmacao": "a janela é relida localmente ou pelo cliente remoto compatível"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "rt1_predecessor_incompativel_reexecutavel",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "apps",
+        "intents_observadas": [
+          "APP_OPEN"
+        ],
+        "statuses_observados": [
+          "app_iniciado_focado"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada",
+          "confirmacao_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 5.085
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 1,
+      "comando": "Cria um arquivo chamado laylay_r1_rt1_a_7f9c2d.txt e escreve MARCADOR R1 RT1 ALFA 7F9C2D.",
+      "status": "respondido",
+      "resposta": "Arquivo C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt pronto. Pequeno, porém oficialmente existente.",
+      "enviado_em": 1787706968.9915116,
+      "finalizado_em": 1787706971.1540172,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "CREATE_FILE",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt",
+            "status": "arquivo_criado",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "estado_observado",
+            "evidencia_confirmacao": "a existência local do arquivo é relida"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "rt1_cria_fixture_a",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "arquivos",
+        "intents_observadas": [
+          "CREATE_FILE"
+        ],
+        "statuses_observados": [
+          "arquivo_criado"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada",
+          "confirmacao_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 2.163
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 2,
+      "comando": "Leia o laylay_r1_rt1_a_7f9c2d.txt.",
+      "status": "respondido",
+      "resposta": "Concluí o pedido em C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt e confirmei o resultado. O conteúdo de laylay_r1_rt1_a_7f9c2d.txt é: marcador r1 rt1 alfa 7f9c2d",
+      "enviado_em": 1787706971.1659336,
+      "finalizado_em": 1787706971.2819655,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "FILE_READ",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt",
+            "status": "conteudo_lido",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "retorno_dados",
+            "evidencia_confirmacao": "o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "rt1_leitura_a_confirmada",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "arquivos",
+        "intents_observadas": [
+          "FILE_READ"
+        ],
+        "statuses_observados": [
+          "conteudo_lido"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada",
+          "confirmacao_esperada",
+          "fala_minima"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 0.116
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 3,
+      "comando": "Cria um arquivo chamado laylay_r1_rt1_b_4d2e8a.txt e escreve MARCADOR R1 RT1 BETA 4D2E8A.",
+      "status": "respondido",
+      "resposta": "Criei C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_b_4d2e8a.txt e confirmei que ficou pronto. Arquivo laylay_r1_rt1_b_4d2e8a.txt criado.",
+      "enviado_em": 1787706971.2918026,
+      "finalizado_em": 1787706974.0401154,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "CREATE_FILE",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_b_4d2e8a.txt",
+            "status": "arquivo_criado",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "estado_observado",
+            "evidencia_confirmacao": "a existência local do arquivo é relida"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "rt1_b_sombreia_foco_de_arquivos",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "arquivos",
+        "intents_observadas": [
+          "CREATE_FILE"
+        ],
+        "statuses_observados": [
+          "arquivo_criado"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada",
+          "confirmacao_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 2.748
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 4,
+      "comando": "Leia de novo.",
+      "status": "respondido",
+      "resposta": "Concluí o pedido em C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt e confirmei o resultado. O conteúdo de laylay_r1_rt1_a_7f9c2d.txt é: marcador r1 rt1 alfa 7f9c2d",
+      "enviado_em": 1787706974.0502148,
+      "finalizado_em": 1787706974.1019464,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "FILE_READ",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt",
+            "status": "conteudo_lido",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "retorno_dados",
+            "evidencia_confirmacao": "o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "r1_rt1_repeticao_tipificada_preserva_file_read_a",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "arquivos",
+        "intents_observadas": [
+          "FILE_READ"
+        ],
+        "statuses_observados": [
+          "conteudo_lido"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada",
+          "confirmacao_esperada",
+          "fala_minima"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 0.052
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    }
+  ],
+  "preparacao": {
+    "status": "modo_chat_confirmado",
+    "atraso_inicial_s": 3.0,
+    "voz_silenciada": true
+  },
+  "finalizado_em": 1787706974.112928
+}

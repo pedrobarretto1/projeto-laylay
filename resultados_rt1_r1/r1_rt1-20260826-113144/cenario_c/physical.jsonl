@@ -1,0 +1,11 @@
+{"ts": 1787754724.5262594, "tipo": "sitecustomize_ready"}
+{"ts": 1787754724.636867, "tipo": "imap_fake_instalado"}
+{"ts": 1787754726.5054817, "tipo": "imap_connect", "host": "imap.gmail.com", "port": 993}
+{"ts": 1787754726.5102458, "tipo": "imap_login", "usuario": "rt1@example.test", "senha_exposta": false}
+{"ts": 1787754726.517413, "tipo": "imap_select", "mailbox": "INBOX", "readonly": true}
+{"ts": 1787754726.5225532, "tipo": "imap_search", "args": ["None", "UNSEEN"]}
+{"ts": 1787754726.5272262, "tipo": "imap_fetch", "args": ["b'101'", "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT REPLY-TO AUTHENTICATION-RESULTS RETURN-PATH)])"]}
+{"ts": 1787754726.5307064, "tipo": "imap_logout"}
+{"ts": 1787754726.8118756, "tipo": "iot_consultar_estado", "dispositivo": "lampada_quarto", "sucesso": null, "estado": false, "confirmado": null}
+{"ts": 1787754726.8141923, "tipo": "iot_definir_estado", "dispositivo": "lampada_quarto", "ligado": true, "sucesso": null, "estado": true, "confirmado": null}
+{"ts": 1787754726.8180325, "tipo": "iot_consultar_estado", "dispositivo": "lampada_quarto", "sucesso": null, "estado": true, "confirmado": null}

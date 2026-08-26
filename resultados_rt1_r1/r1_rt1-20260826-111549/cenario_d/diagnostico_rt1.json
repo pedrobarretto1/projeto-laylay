@@ -1,0 +1,36 @@
+{
+  "cenario": {
+    "codigo": "D",
+    "descricao": "EMAIL_READ -> IoT -> de novo -> IOT_CONTROL",
+    "comandos": [
+      "Leia meus emails.",
+      "Liga a lâmpada.",
+      "de novo"
+    ],
+    "gmail_fake": true
+  },
+  "resultado": {
+    "codigo": "D",
+    "descricao": "EMAIL_READ -> IoT -> de novo -> IOT_CONTROL",
+    "estado": "INFRA",
+    "fronteira": "processo_runtime",
+    "detalhes": [
+      "laylay.py encerrou com código 1"
+    ],
+    "returncode": 1,
+    "resultado_runtime": "",
+    "terminal_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-111549\\cenario_d\\subprocess_terminal.log",
+    "physical_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-111549\\cenario_d\\physical.jsonl"
+  },
+  "planos": {},
+  "physical_events": [
+    {
+      "ts": 1787753751.826012,
+      "tipo": "sitecustomize_ready"
+    },
+    {
+      "ts": 1787753751.9250293,
+      "tipo": "imap_fake_instalado"
+    }
+  ]
+}

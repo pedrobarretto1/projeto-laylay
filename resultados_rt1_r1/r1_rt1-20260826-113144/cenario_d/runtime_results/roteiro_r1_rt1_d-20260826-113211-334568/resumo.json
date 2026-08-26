@@ -1,0 +1,31 @@
+{
+  "versao_avaliador": 15,
+  "total_turnos": 3,
+  "respondidos": 3,
+  "concluido_transporte": true,
+  "avaliados_semanticamente": 1,
+  "passaram": 1,
+  "falharam": 0,
+  "alertas": 0,
+  "nao_avaliados": 2,
+  "taxa_semantica_percentual": 100.0,
+  "comandos_observados": 3,
+  "confirmacoes_indeterminadas": 0,
+  "latencia_s": {
+    "p50": 2.148,
+    "p95": 2.2,
+    "max": 2.206,
+    "media": 1.555
+  },
+  "por_dominio": {
+    "conversa": {
+      "nao_avaliado": 1
+    },
+    "iot": {
+      "passou": 1,
+      "nao_avaliado": 1
+    }
+  },
+  "turnos_com_erros": [],
+  "turnos_com_alertas": []
+}

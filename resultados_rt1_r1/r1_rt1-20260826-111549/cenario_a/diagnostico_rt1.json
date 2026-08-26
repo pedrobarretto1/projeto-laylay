@@ -1,0 +1,33 @@
+{
+  "cenario": {
+    "codigo": "A",
+    "descricao": "FILE_READ(A) -> IoT -> Leia de novo -> FILE_READ(A)",
+    "comandos": [
+      "Cria um arquivo de texto chamado rt1_a.txt e dentro dele escreva ALFA_RT1_A.",
+      "Leia o arquivo rt1_a.txt.",
+      "Liga a lâmpada.",
+      "Leia de novo."
+    ],
+    "gmail_fake": false
+  },
+  "resultado": {
+    "codigo": "A",
+    "descricao": "FILE_READ(A) -> IoT -> Leia de novo -> FILE_READ(A)",
+    "estado": "INFRA",
+    "fronteira": "processo_runtime",
+    "detalhes": [
+      "laylay.py encerrou com código 1"
+    ],
+    "returncode": 1,
+    "resultado_runtime": "",
+    "terminal_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-111549\\cenario_a\\subprocess_terminal.log",
+    "physical_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1-20260826-111549\\cenario_a\\physical.jsonl"
+  },
+  "planos": {},
+  "physical_events": [
+    {
+      "ts": 1787753751.0292337,
+      "tipo": "sitecustomize_ready"
+    }
+  ]
+}

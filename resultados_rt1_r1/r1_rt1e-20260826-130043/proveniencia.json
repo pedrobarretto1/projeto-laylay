@@ -1,0 +1,26 @@
+{
+  "teste": "R1-RT1-E-ESCAPE-PROBE",
+  "criado_em": 1787760043.6719542,
+  "projeto": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay",
+  "python_driver": "C:\\Python314\\python.exe",
+  "python_runtime": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\.venv314\\Scripts\\python.exe",
+  "python_userbase_preservado": "C:\\Users\\pbarr\\AppData\\Roaming\\Python",
+  "git_head": "2c6513995244530a95b8cd6466910896ed6dd144",
+  "git_branch": "main",
+  "git_status_short": [
+    "M cliente/terminal_2/musica_m1.py",
+    " M cliente/terminal_laylay_2.py",
+    " M tests/test_terminal_playlist_detalhe.py",
+    "?? cliente/terminal_2/volume_mestre_windows.py",
+    "?? r1_rt1_runtime_real.py",
+    "?? resultados_rt1_r1/",
+    "?? resultados_testes/r1_rt1_runtime_real-20260825-220959-428719/",
+    "?? resultados_testes/r1_rt1_runtime_real-20260825-221600-635224/",
+    "?? rt1_e_escape_probe.py",
+    "?? rt1_f_receipt_probe.py",
+    "?? rt1_r1_runtime_real.py",
+    "?? rt1_r1_runtime_real_v2.py",
+    "?? tests/test_terminal_musica_volume_tempo_real.py"
+  ],
+  "nota": "Nenhum pull/reset/checkout foi executado pelo RT1."
+}

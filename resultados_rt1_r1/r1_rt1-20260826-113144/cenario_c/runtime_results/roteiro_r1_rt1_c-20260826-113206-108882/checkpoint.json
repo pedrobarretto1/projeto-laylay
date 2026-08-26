@@ -1,0 +1,190 @@
+{
+  "versao": 2,
+  "assinatura": "2905b2f5d501b00bfbf3aaa4621d4e30c3e4a67bcd65457ed39d0ebc507f4c7b",
+  "criado_em": 1787754726.312581,
+  "atualizado_em": 1787754729.194412,
+  "concluido": true,
+  "criterio_conclusao": "transporte_resposta_e_resultado_turno",
+  "voz_silenciada_durante_teste": true,
+  "itens": [
+    {
+      "indice": 0,
+      "comando": "Leia meus emails urgentes.",
+      "status": "respondido",
+      "resposta": "Tem 1 email importante esperando tua atenção. Resumo: Banco RT1: Urgente RT1.",
+      "enviado_em": 1787754726.3521047,
+      "finalizado_em": 1787754726.6344965,
+      "plano": {
+        "fase": "tratado_prioritario",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "EMAIL_READ",
+            "alvo": "",
+            "status": "emails_lidos",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "retorno_dados",
+            "evidencia_confirmacao": "as mensagens são recuperadas do serviço"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "nao_avaliado",
+        "semantica_avaliada": false,
+        "expectativa": "",
+        "origem_expectativa": "nenhuma",
+        "dominio": "conversa",
+        "intents_observadas": [
+          "EMAIL_READ"
+        ],
+        "statuses_observados": [
+          "emails_lidos"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 0.282
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 1,
+      "comando": "Liga a lâmpada.",
+      "status": "respondido",
+      "resposta": "Liguei a lâmpada do quarto. Ficou pronto por aí.",
+      "enviado_em": 1787754726.69749,
+      "finalizado_em": 1787754728.911237,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "IOT_CONTROL",
+            "alvo": "lampada_quarto",
+            "status": "ligado",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "estado_observado",
+            "evidencia_confirmacao": "o dispositivo é relido após o comando"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "expectativa_por_padrao",
+        "origem_expectativa": "avaliador_global",
+        "dominio": "iot",
+        "intents_observadas": [
+          "IOT_CONTROL"
+        ],
+        "statuses_observados": [
+          "ligado"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 2.214
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 2,
+      "comando": "Leia de novo.",
+      "status": "respondido",
+      "resposta": "Tem 1 email importante esperando tua atenção. Resumo: Banco RT1: Urgente RT1.",
+      "enviado_em": 1787754728.9763207,
+      "finalizado_em": 1787754729.1325107,
+      "plano": {
+        "fase": "tratado_prioritario",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "EMAIL_READ",
+            "alvo": "",
+            "status": "emails_lidos",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "retorno_dados",
+            "evidencia_confirmacao": "as mensagens são recuperadas do serviço"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "nao_avaliado",
+        "semantica_avaliada": false,
+        "expectativa": "",
+        "origem_expectativa": "nenhuma",
+        "dominio": "conversa",
+        "intents_observadas": [
+          "EMAIL_READ"
+        ],
+        "statuses_observados": [
+          "emails_lidos"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 0.156
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    }
+  ],
+  "preparacao": {
+    "status": "modo_chat_confirmado",
+    "atraso_inicial_s": 0.0,
+    "voz_silenciada": true
+  },
+  "finalizado_em": 1787754729.1944091
+}
