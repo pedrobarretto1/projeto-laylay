@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import uuid
 
-from PySide6.QtCore import Qt, Signal, QTimer
+from PySide6.QtCore import QSize, Qt, Signal, QTimer
 from PySide6.QtWidgets import (
     QAbstractItemView, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
     QHeaderView, QLabel, QInputDialog, QLineEdit, QMenu, QMessageBox,
-    QProgressBar, QPushButton, QSizePolicy, QTableWidget, QTableWidgetItem,
-    QToolButton, QVBoxLayout, QWidget,
+    QProgressBar, QPushButton, QSizePolicy, QTableWidget,
+    QStackedLayout, QToolButton, QVBoxLayout, QWidget,
 )
 
 from cliente.terminal_2.acabamento import CapaMusicaGenerica, icone_terminal
@@ -24,6 +24,209 @@ def _tempo(segundos: object) -> str:
     return f"{horas}:{minutos:02d}:{segundo:02d}" if horas else f"{minutos}:{segundo:02d}"
 
 
+class RotuloElidido(QLabel):
+    """Mantém o valor integral no tooltip e elide somente a apresentação."""
+
+    def __init__(self, texto: str = "") -> None:
+        super().__init__()
+        self._texto_completo = ""
+        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self.definir_texto(texto)
+
+    @property
+    def texto_completo(self) -> str:
+        return self._texto_completo
+
+    def definir_texto(self, texto: str) -> None:
+        self._texto_completo = str(texto or "")
+        self.setToolTip(self._texto_completo)
+        self._atualizar()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._atualizar()
+
+    def _atualizar(self) -> None:
+        QLabel.setText(self, self.fontMetrics().elidedText(
+            self._texto_completo, Qt.ElideRight,
+            max(0, self.contentsRect().width()),
+        ))
+
+
+class FaixaPlaylistRow(QFrame):
+    """Linha silenciosa em repouso, operável no hover, foco ou seleção."""
+
+    tocar_solicitado = Signal(dict)
+    acao_solicitada = Signal(str, dict)
+    selecionada = Signal(int)
+
+    def __init__(self, indice: int, item: dict) -> None:
+        super().__init__()
+        self.indice = indice
+        self.item = item
+        self._sob_mouse = False
+        self._selecionada = False
+        self._compacta = False
+        self.setObjectName("playlistTrackRow")
+        self.setProperty("interactive", False)
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setAccessibleName(
+            f"Faixa {indice + 1}: {item.get('title') or 'sem título'}"
+        )
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(6, 3, 6, 3)
+        layout.setSpacing(9)
+
+        self.controle_slot = QWidget()
+        self.controle_slot.setFixedSize(28, 28)
+        controle = QStackedLayout(self.controle_slot)
+        controle.setContentsMargins(0, 0, 0, 0)
+        self.numero = QLabel(str(indice + 1))
+        self.numero.setObjectName("playlistTrackNumber")
+        self.numero.setAlignment(Qt.AlignCenter)
+        self.play = QToolButton()
+        self.play.setObjectName("playlistTrackPlay")
+        self.play.setIcon(icone_terminal("play"))
+        self.play.setIconSize(QSize(13, 13))
+        self.play.setFixedSize(28, 28)
+        self.play.setAccessibleName(
+            f"Tocar {item.get('title') or 'esta faixa'}"
+        )
+        self.play.setToolTip(
+            f"Tocar {item.get('title') or 'esta faixa'}"
+        )
+        self.play.clicked.connect(lambda: self.tocar_solicitado.emit(self.item))
+        controle.addWidget(self.numero)
+        controle.addWidget(self.play)
+        self._controle = controle
+        layout.addWidget(self.controle_slot)
+
+        self.capa = CapaMusicaGenerica(30)
+        self.capa.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self.capa.definir_titulo(str(item.get("title") or ""))
+        self.capa.carregar(str(item.get("artwork_url") or ""))
+        layout.addWidget(self.capa)
+
+        identidade = QVBoxLayout()
+        identidade.setContentsMargins(0, 0, 0, 0)
+        identidade.setSpacing(0)
+        self.titulo = RotuloElidido(str(item.get("title") or "Faixa sem título"))
+        self.titulo.setObjectName("playlistTrackTitle")
+        self.titulo.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self.meta = RotuloElidido("Vídeo do YouTube")
+        self.meta.setObjectName("playlistTrackMeta")
+        self.meta.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        identidade.addWidget(self.titulo)
+        identidade.addWidget(self.meta)
+        layout.addLayout(identidade, 1)
+
+        self.canal = RotuloElidido(str(item.get("channel") or "—"))
+        self.canal.setObjectName("playlistTrackChannel")
+        self.canal.setMinimumWidth(100)
+        self.canal.setMaximumWidth(220)
+        self.canal.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        layout.addWidget(self.canal, 0)
+
+        self.adicionada = QLabel(str(item.get("added_at") or "—"))
+        self.adicionada.setObjectName("playlistTrackAdded")
+        self.adicionada.setFixedWidth(88)
+        self.adicionada.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        layout.addWidget(self.adicionada)
+
+        self.duracao = QLabel(_tempo(item.get("duration_seconds")))
+        self.duracao.setObjectName("playlistTrackDuration")
+        self.duracao.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.duracao.setFixedWidth(45)
+        self.duracao.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        layout.addWidget(self.duracao)
+
+        self.menu_slot = QWidget()
+        self.menu_slot.setFixedSize(28, 28)
+        menu_layout = QHBoxLayout(self.menu_slot)
+        menu_layout.setContentsMargins(0, 0, 0, 0)
+        self.menu = QToolButton()
+        self.menu.setObjectName("playlistTrackMenu")
+        self.menu.setText("•••")
+        self.menu.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self.menu.setFixedSize(28, 28)
+        self.menu.setAccessibleName(
+            f"Opções para {item.get('title') or 'faixa'}"
+        )
+        self.menu.setToolTip(
+            f"Ações para {item.get('title') or 'esta faixa'}"
+        )
+        self.menu.setPopupMode(QToolButton.InstantPopup)
+        opcoes = QMenu(self.menu)
+        self.menu.setMenu(opcoes)
+        for texto, operacao in (
+            ("Tocar agora", "play_track"),
+            ("Copiar para outra playlist", "copy_track"),
+            ("Mover para outra playlist", "move_track"),
+            ("Remover", "remove_track"),
+        ):
+            acao = opcoes.addAction(texto)
+            acao.triggered.connect(
+                lambda _v=False, op=operacao:
+                self.acao_solicitada.emit(op, self.item)
+            )
+        opcoes.aboutToShow.connect(lambda: self.selecionada.emit(self.indice))
+        menu_layout.addWidget(self.menu)
+        layout.addWidget(self.menu_slot)
+        self._atualizar_interacao()
+
+    def definir_compacta(self, compacta: bool) -> None:
+        self._compacta = bool(compacta)
+        self.canal.setVisible(not compacta)
+        self.adicionada.setVisible(not compacta)
+        canal = str(self.item.get("channel") or "").strip()
+        self.meta.definir_texto(
+            f"Vídeo do YouTube  •  {canal}" if compacta and canal
+            else "Vídeo do YouTube"
+        )
+
+    def definir_selecionada(self, selecionada: bool) -> None:
+        self._selecionada = bool(selecionada)
+        self._atualizar_interacao()
+
+    def enterEvent(self, event) -> None:  # noqa: N802
+        self._sob_mouse = True
+        self._atualizar_interacao()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:  # noqa: N802
+        self._sob_mouse = False
+        self._atualizar_interacao()
+        super().leaveEvent(event)
+
+    def focusInEvent(self, event) -> None:  # noqa: N802
+        self.selecionada.emit(self.indice)
+        super().focusInEvent(event)
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802
+        if event.button() == Qt.LeftButton:
+            self.setFocus(Qt.MouseFocusReason)
+            self.selecionada.emit(self.indice)
+        super().mousePressEvent(event)
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
+            self.tocar_solicitado.emit(self.item)
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def _atualizar_interacao(self) -> None:
+        interativa = self._sob_mouse or self._selecionada or self.hasFocus()
+        self.setProperty("interactive", interativa)
+        self._controle.setCurrentWidget(self.play if interativa else self.numero)
+        self.menu.setVisible(interativa)
+        self.style().unpolish(self)
+        self.style().polish(self)
+
+
 class PlaylistDetalhe(QWidget):
     voltar_solicitado = Signal()
     requisicao_solicitada = Signal(dict)
@@ -36,13 +239,16 @@ class PlaylistDetalhe(QWidget):
         self._offset = 0
         self._itens: list[dict] = []
         self._catalogo: list[str] = []
+        self._linhas_widgets: list[FaixaPlaylistRow] = []
+        self._linha_selecionada = -1
         self._player_observado = False
         self._compacto = False
+        self._altura_baixa = False
         self._operacao_pendente = ""
         self._detalhe_requisicao_id = ""
         self.raiz = QVBoxLayout(self)
-        self.raiz.setContentsMargins(28, 22, 28, 28)
-        self.raiz.setSpacing(14)
+        self.raiz.setContentsMargins(16, 14, 16, 16)
+        self.raiz.setSpacing(9)
 
         topo = QHBoxLayout()
         self.voltar = QToolButton()
@@ -52,17 +258,18 @@ class PlaylistDetalhe(QWidget):
         self.voltar.setAccessibleName("Voltar à lista de playlists")
         self.voltar.setToolTip("Voltar à lista de playlists")
         self.voltar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.voltar.setFixedHeight(30)
         self.voltar.clicked.connect(self.voltar_solicitado)
         topo.addWidget(self.voltar)
         topo.addStretch()
         self.raiz.addLayout(topo)
 
-        hero = QFrame()
-        hero.setObjectName("playlistHero")
-        self.hero_layout = QHBoxLayout(hero)
-        self.hero_layout.setContentsMargins(18, 18, 18, 18)
-        self.hero_layout.setSpacing(18)
-        self.capa = CapaMusicaGenerica(144)
+        self.hero = QFrame()
+        self.hero.setObjectName("playlistHero")
+        self.hero_layout = QHBoxLayout(self.hero)
+        self.hero_layout.setContentsMargins(12, 12, 12, 12)
+        self.hero_layout.setSpacing(12)
+        self.capa = CapaMusicaGenerica(104)
         self.capa.setAccessibleName("Capa da playlist")
         self.hero_layout.addWidget(self.capa)
         identidade = QVBoxLayout()
@@ -79,11 +286,11 @@ class PlaylistDetalhe(QWidget):
         identidade.addWidget(self.meta)
         identidade.addStretch()
         self.hero_layout.addLayout(identidade, 1)
-        self.raiz.addWidget(hero)
+        self.raiz.addWidget(self.hero)
 
         self.acoes_layout = QGridLayout()
-        self.acoes_layout.setHorizontalSpacing(8)
-        self.acoes_layout.setVerticalSpacing(8)
+        self.acoes_layout.setHorizontalSpacing(6)
+        self.acoes_layout.setVerticalSpacing(6)
         self.play = QPushButton("Tocar")
         self.play.setObjectName("playlistPrimaryAction")
         self.play.setIcon(icone_terminal("play"))
@@ -106,6 +313,9 @@ class PlaylistDetalhe(QWidget):
         for coluna, (botao, nome_acessivel, dica) in enumerate(nomes_acoes):
             botao.setAccessibleName(nome_acessivel)
             botao.setToolTip(dica)
+            botao.setMinimumWidth(0)
+            botao.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+            botao.setFixedHeight(32)
             self.acoes_layout.addWidget(botao, 0, coluna)
         self.acoes_layout.setColumnStretch(5, 1)
         self.raiz.addLayout(self.acoes_layout)
@@ -118,6 +328,7 @@ class PlaylistDetalhe(QWidget):
         self.busca = QLineEdit()
         self.busca.setObjectName("playlistSearch")
         self.busca.setPlaceholderText("Pesquisar nesta playlist")
+        self.busca.setFixedHeight(34)
         self._timer_busca = QTimer(self)
         self._timer_busca.setSingleShot(True)
         self._timer_busca.setInterval(220)
@@ -127,21 +338,22 @@ class PlaylistDetalhe(QWidget):
 
         self.estado = QLabel("Selecione uma playlist para ver as faixas.")
         self.estado.setObjectName("playlistDetailState")
+        self.estado.setMinimumWidth(0)
+        self.estado.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         self.raiz.addWidget(self.estado)
         self.tabela = QTableWidget(0, 6)
         self.tabela.setObjectName("playlistTracks")
-        self.tabela.setHorizontalHeaderLabels(("#", "Faixa", "Canal", "Adicionada", "Tempo", ""))
+        self.tabela.horizontalHeader().hide()
         self.tabela.verticalHeader().hide()
-        self.tabela.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.tabela.setSelectionMode(QAbstractItemView.NoSelection)
         self.tabela.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.tabela.setShowGrid(False)
+        self.tabela.setFrameShape(QFrame.NoFrame)
+        self.tabela.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         cabecalho = self.tabela.horizontalHeader()
-        cabecalho.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        cabecalho.setSectionResizeMode(1, QHeaderView.Stretch)
-        cabecalho.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        cabecalho.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        cabecalho.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        cabecalho.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        cabecalho.setSectionResizeMode(0, QHeaderView.Stretch)
+        for coluna in range(1, 6):
+            self.tabela.setColumnHidden(coluna, True)
         self.raiz.addWidget(self.tabela, 1)
         self.mais = QPushButton("Carregar mais")
         self.mais.clicked.connect(lambda: self.solicitar_detalhe(reiniciar=False))
@@ -155,6 +367,8 @@ class PlaylistDetalhe(QWidget):
         self.player_layout.setHorizontalSpacing(8)
         self.player_layout.setVerticalSpacing(6)
         self.player_titulo = QLabel("Reprodução observada")
+        self.player_titulo.setMinimumWidth(0)
+        self.player_titulo.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         self.player_progresso = QProgressBar()
         self.player_progresso.setObjectName("playlistObservedProgress")
         self.player_progresso.setRange(0, 1000)
@@ -170,6 +384,7 @@ class PlaylistDetalhe(QWidget):
         for botao, nome_acessivel, dica in controles_player:
             botao.setAccessibleName(nome_acessivel)
             botao.setToolTip(dica)
+            botao.setFixedSize(30, 30)
         self.player_layout.addWidget(self.player_titulo, 0, 0)
         self.player_layout.addWidget(self.player_progresso, 0, 1)
         self.player_layout.setColumnStretch(1, 1)
@@ -180,34 +395,49 @@ class PlaylistDetalhe(QWidget):
         self.raiz.addWidget(self.player)
         self.setStyleSheet("""
             #playlistDetail { background: #0D1115; color: #F7F1F4; }
-            #playlistHero { background: #171B21; border: 1px solid #2C3038; border-radius: 12px; }
+            #playlistHero { background: #15191E; border: 1px solid #292E35; border-radius: 9px; }
             #playlistEyebrow { color: #FF667E; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
-            #playlistTitle { color: #FFF9FB; font-size: 28px; font-weight: 750; }
+            #playlistTitle { color: #FFF9FB; font-size: 22px; font-weight: 700; }
             #playlistMeta, #playlistDetailState { color: #AFA8AE; font-size: 12px; }
             #playlistBack, #playlistDetail QPushButton, #playlistDetail QToolButton {
                 color: #F6F0F3; background: #1B2027; border: 1px solid #343943;
-                border-radius: 7px; padding: 7px 10px;
+                border-radius: 6px; padding: 4px 8px;
             }
             #playlistBack:hover, #playlistDetail QPushButton:hover, #playlistDetail QToolButton:hover {
                 background: #252B33; border-color: #5A4650;
             }
             #playlistBack:focus, #playlistDetail QPushButton:focus, #playlistDetail QToolButton:focus {
-                border: 2px solid #FF7187; padding: 6px 9px;
+                border: 1px solid #FF7187;
             }
-            #playlistPrimaryAction { background: #FF536D; color: #160B0E; border-color: #FF7187; font-weight: 700; }
+            #playlistPrimaryAction { background: #24242A; color: #FFF6F8; border-color: #71404C; font-weight: 700; }
+            #playlistPrimaryAction:hover { background: #29292F; border-color: #A64C5E; }
             #playlistSearch { background: #151A20; color: #F7F1F4; border: 1px solid #313640;
-                border-radius: 8px; padding: 9px 11px; selection-background-color: #8B3041; }
+                border-radius: 7px; padding: 5px 9px; selection-background-color: #8B3041; }
             #playlistSearch:focus { border-color: #FF6078; }
-            #playlistTracks { background: #101419; alternate-background-color: #14191F; color: #EEE8EB;
-                border: 1px solid #282D35; border-radius: 9px; gridline-color: transparent; }
-            #playlistTracks::item { padding: 7px; border-bottom: 1px solid #242930; }
-            #playlistTracks::item:selected { background: #38222A; color: #FFFFFF; }
-            #playlistTracks QHeaderView::section { background: #151A20; color: #9D969C;
-                border: 0; border-bottom: 1px solid #30353D; padding: 7px; font-weight: 650; }
-            #playlistObservedPlayer { background: #151A20; border: 1px solid #3A3036; border-radius: 9px; }
+            #playlistTracks { background: transparent; color: #EEE8EB; border: 0;
+                border-radius: 7px; gridline-color: transparent; outline: 0; }
+            #playlistTracks::item { padding: 0; border: 0; background: transparent; }
+            #playlistTrackRow { background: transparent; border: 0; border-radius: 6px; }
+            #playlistTrackRow[interactive="true"] { background: #20242A; }
+            #playlistTrackNumber { color: #AFA8AE; font-size: 12px; }
+            #playlistTrackTitle { color: #FFF9FB; font-size: 12px; font-weight: 650; }
+            #playlistTrackMeta, #playlistTrackChannel, #playlistTrackAdded,
+            #playlistTrackDuration { color: #AFA8AE; font-size: 10px; }
+            #playlistTrackPlay, #playlistTrackMenu {
+                background: transparent; border: 1px solid transparent;
+                border-radius: 5px; padding: 0; margin: 0;
+            }
+            #playlistTrackPlay:hover, #playlistTrackMenu:hover,
+            #playlistTrackPlay:focus, #playlistTrackMenu:focus {
+                background: #2B3037; border-color: #71404C;
+            }
+            #playlistTrackMenu::menu-indicator { image: none; width: 0; height: 0; }
+            #playlistObservedPlayer { background: #151A20; border: 1px solid #343038; border-radius: 7px; }
             #playlistObservedProgress { background: #292E35; border: 0; border-radius: 2px; max-height: 4px; }
             #playlistObservedProgress::chunk { background: #FF536D; border-radius: 2px; }
         """)
+        # Começa comprimível antes do primeiro show; o resize real refina o modo.
+        self.definir_compacto(True)
 
     def abrir(self, nome: str) -> None:
         self._nome = str(nome or "").strip()
@@ -374,42 +604,27 @@ class PlaylistDetalhe(QWidget):
         self.estado.setText("Playlist vazia.")
         self.estado.setVisible(not self._itens)
         self.tabela.setRowCount(len(self._itens))
+        self._linhas_widgets.clear()
+        self._linha_selecionada = -1
         for linha, item in enumerate(self._itens):
-            valores = {
-                0: str(linha + 1),
-                2: str(item.get("channel") or "—"),
-                3: str(item.get("added_at") or "—"),
-                4: _tempo(item.get("duration_seconds")),
-            }
-            for coluna, valor in valores.items():
-                self.tabela.setItem(linha, coluna, QTableWidgetItem(valor))
-            faixa_widget = QWidget()
-            faixa_lay = QHBoxLayout(faixa_widget)
-            faixa_lay.setContentsMargins(2, 2, 4, 2)
-            faixa_lay.setSpacing(8)
-            miniatura = CapaMusicaGenerica(32)
-            miniatura.definir_titulo(str(item.get("title") or ""))
-            miniatura.carregar(str(item.get("artwork_url") or ""))
-            faixa_lay.addWidget(miniatura)
-            titulo_faixa = QLabel(str(item.get("title") or "Faixa sem título"))
-            titulo_faixa.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
-            titulo_faixa.setToolTip(titulo_faixa.text())
-            faixa_lay.addWidget(titulo_faixa, 1)
-            self.tabela.setCellWidget(linha, 1, faixa_widget)
-            self.tabela.setRowHeight(linha, 42)
-            menu = QToolButton()
-            menu.setIcon(icone_terminal("more-horizontal"))
-            menu.setAccessibleName(f"Opções para {item.get('title') or 'faixa'}")
-            menu.setToolTip(f"Ações para {item.get('title') or 'esta faixa'}")
-            menu.setPopupMode(QToolButton.InstantPopup)
-            opcoes = QMenu(menu)
-            menu.setMenu(opcoes)
-            for texto, op in (("Tocar agora", "play_track"), ("Copiar para outra playlist", "copy_track"),
-                              ("Mover para outra playlist", "move_track"), ("Remover", "remove_track")):
-                acao = opcoes.addAction(texto)
-                acao.triggered.connect(lambda _v=False, o=op, i=item: self._confirmar_e_requisitar(o, i))
-            self.tabela.setCellWidget(linha, 5, menu)
+            faixa = FaixaPlaylistRow(linha, item)
+            faixa.definir_compacta(self._compacto)
+            faixa.tocar_solicitado.connect(
+                lambda faixa_item: self._confirmar_e_requisitar(
+                    "play_track", faixa_item,
+                ),
+            )
+            faixa.acao_solicitada.connect(self._confirmar_e_requisitar)
+            faixa.selecionada.connect(self._selecionar_linha)
+            self._linhas_widgets.append(faixa)
+            self.tabela.setCellWidget(linha, 0, faixa)
+            self.tabela.setRowHeight(linha, 38)
         self.mais.setVisible(bool(resultado.get("has_more")))
+
+    def _selecionar_linha(self, indice: int) -> None:
+        self._linha_selecionada = indice
+        for linha, widget in enumerate(self._linhas_widgets):
+            widget.definir_selecionada(linha == indice)
 
     def aplicar_player_observado(self, musica: dict) -> None:
         estado = str(musica.get("state") or "")
@@ -432,11 +647,26 @@ class PlaylistDetalhe(QWidget):
 
     def definir_compacto(self, compacto: bool) -> None:
         self._compacto = bool(compacto)
-        self.raiz.setContentsMargins(
-            14 if compacto else 28, 16 if compacto else 22,
-            14 if compacto else 28, 18 if compacto else 28,
+        self._altura_baixa = bool(0 < self.height() < 560)
+        enxuto = self._compacto or self._altura_baixa
+        margem_x = 9 if enxuto else 16
+        margem_y = 7 if self._altura_baixa else (10 if self._compacto else 14)
+        self.raiz.setContentsMargins(margem_x, margem_y, margem_x, margem_y)
+        self.raiz.setSpacing(5 if self._altura_baixa else (7 if compacto else 9))
+        tamanho_capa = 68 if self._altura_baixa else (80 if compacto else 104)
+        self.capa.setFixedSize(tamanho_capa, tamanho_capa)
+        margem_hero = 5 if self._altura_baixa else (7 if compacto else 11)
+        self.hero_layout.setContentsMargins(
+            margem_hero, margem_hero, margem_hero, margem_hero,
         )
-        self.capa.setFixedSize(96 if compacto else 144, 96 if compacto else 144)
+        self.hero_layout.setSpacing(8 if enxuto else 12)
+        self.hero.setFixedHeight(
+            80 if self._altura_baixa else (96 if compacto else 128)
+        )
+        self.rotulo.setVisible(not self._altura_baixa)
+        fonte_titulo = self.titulo.font()
+        fonte_titulo.setPixelSize(20 if enxuto else 22)
+        self.titulo.setFont(fonte_titulo)
         for botao in self._botoes_acoes:
             self.acoes_layout.removeWidget(botao)
         if compacto:
@@ -456,7 +686,7 @@ class PlaylistDetalhe(QWidget):
             self.player_toggle, self.player_proxima,
         ):
             self.player_layout.removeWidget(widget)
-        if compacto:
+        if compacto and not self._altura_baixa:
             self.player_layout.addWidget(self.player_titulo, 0, 0, 1, 5)
             self.player_layout.addWidget(self.player_progresso, 1, 0, 1, 2)
             self.player_layout.addWidget(self.player_anterior, 1, 2)
@@ -472,5 +702,19 @@ class PlaylistDetalhe(QWidget):
             self.player_layout.addWidget(self.player_proxima, 0, 4)
             self.player_layout.setColumnStretch(0, 0)
             self.player_layout.setColumnStretch(1, 1)
-        self.tabela.setColumnHidden(2, compacto)
-        self.tabela.setColumnHidden(3, compacto)
+        self.player.setMaximumHeight(
+            50 if self._altura_baixa else (78 if compacto else 52)
+        )
+        for faixa in self._linhas_widgets:
+            faixa.definir_compacta(compacto)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        compacto = event.size().width() < 700
+        altura_baixa = 0 < event.size().height() < 560
+        if compacto != self._compacto or altura_baixa != self._altura_baixa:
+            self.definir_compacto(compacto)
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        self.definir_compacto(self.width() < 700)

@@ -178,9 +178,11 @@ class CapaMusicaGenerica(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         retangulo = QRectF(0.5, 0.5, self.width() - 1.0, self.height() - 1.0)
+        lado = max(1.0, min(retangulo.width(), retangulo.height()))
+        raio = max(2.0, min(9.0, lado * 0.14))
         if not self._pixmap.isNull():
             caminho = QPainterPath()
-            caminho.addRoundedRect(retangulo, 9, 9)
+            caminho.addRoundedRect(retangulo, raio, raio)
             painter.setClipPath(caminho)
             imagem = self._pixmap.scaled(
                 self.size(), Qt.KeepAspectRatioByExpanding,
@@ -192,13 +194,28 @@ class CapaMusicaGenerica(QWidget):
             painter.setClipping(False)
             painter.setPen(QPen(QColor("#55313B"), 1))
             painter.setBrush(Qt.NoBrush)
-            painter.drawRoundedRect(retangulo, 9, 9)
+            painter.drawRoundedRect(retangulo, raio, raio)
             return
         painter.setPen(QPen(QColor("#55313B"), 1))
         painter.setBrush(QColor("#251A20"))
-        painter.drawRoundedRect(retangulo, 9, 9)
-        painter.setPen(QPen(QColor("#FF5C73"), 2.2, Qt.SolidLine, Qt.RoundCap))
-        centro = self.width() / 2
-        painter.drawEllipse(QRectF(centro - 17, centro - 17, 34, 34))
-        painter.drawEllipse(QRectF(centro - 4, centro - 4, 8, 8))
-        painter.drawLine(int(centro + 15), int(centro - 15), int(centro + 24), int(centro - 23))
+        painter.drawRoundedRect(retangulo, raio, raio)
+        espessura = max(1.1, min(2.2, lado * 0.052))
+        painter.setPen(QPen(QColor("#FF5C73"), espessura, Qt.SolidLine, Qt.RoundCap))
+        centro_x = self.width() / 2.0
+        centro_y = self.height() / 2.0
+        raio_disco = lado * 0.27
+        raio_centro = max(1.5, lado * 0.065)
+        painter.drawEllipse(QRectF(
+            centro_x - raio_disco, centro_y - raio_disco,
+            raio_disco * 2.0, raio_disco * 2.0,
+        ))
+        painter.drawEllipse(QRectF(
+            centro_x - raio_centro, centro_y - raio_centro,
+            raio_centro * 2.0, raio_centro * 2.0,
+        ))
+        haste_inicio = raio_disco * 0.82
+        haste_fim = min(lado * 0.43, raio_disco * 1.42)
+        painter.drawLine(
+            int(centro_x + haste_inicio), int(centro_y - haste_inicio),
+            int(centro_x + haste_fim), int(centro_y - haste_fim),
+        )

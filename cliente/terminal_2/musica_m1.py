@@ -176,6 +176,40 @@ class MiniEqualizadorFila(QWidget):
                 int(centro + altura / 2),
             )
 
+
+class RotuloElididoPlaylist(QLabel):
+    """Rótulo que preserva o nome completo, mas nunca invade o controle Play."""
+
+    def __init__(self, texto: str = "") -> None:
+        super().__init__()
+        self._texto_completo = ""
+        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self.definir_texto(texto)
+
+    @property
+    def texto_completo(self) -> str:
+        return self._texto_completo
+
+    def definir_texto(self, texto: str) -> None:
+        self._texto_completo = str(texto or "")
+        self.setToolTip(self._texto_completo)
+        self._atualizar_elipse()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._atualizar_elipse()
+
+    def _atualizar_elipse(self) -> None:
+        largura = max(0, self.contentsRect().width())
+        QLabel.setText(
+            self,
+            self.fontMetrics().elidedText(
+                self._texto_completo, Qt.ElideRight, largura,
+            ),
+        )
+
+
 class CartaoPlaylist(QFrame):
     """Cartão com navegação e reprodução independentes."""
 
@@ -190,27 +224,30 @@ class CartaoPlaylist(QFrame):
         self.setObjectName("musicPreset")
         self.setProperty("presetTone", tom)
 
-        self.setFixedHeight(52)
+        self.setFixedHeight(44)
+        self.setMinimumWidth(0)
         self.setSizePolicy(
             QSizePolicy.Expanding,
             QSizePolicy.Fixed,
         )
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 5, 0)
-        layout.setSpacing(3)
+        layout.setContentsMargins(2, 2, 5, 2)
+        layout.setSpacing(4)
 
         self.corpo = QPushButton()
         self.corpo.setObjectName("musicPresetBody")
         self.corpo.setCursor(Qt.PointingHandCursor)
+        self.corpo.setMinimumSize(0, 0)
+        self.corpo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         corpo_layout = QHBoxLayout(self.corpo)
-        corpo_layout.setContentsMargins(7, 6, 5, 6)
-        corpo_layout.setSpacing(9)
+        corpo_layout.setContentsMargins(5, 3, 3, 3)
+        corpo_layout.setSpacing(7)
 
         # Quadradinho colorido
         self.icone_caixa = QFrame()
         self.icone_caixa.setObjectName("musicPresetIconBox")
         self.icone_caixa.setProperty("presetTone", tom)
-        self.icone_caixa.setFixedSize(36, 36)
+        self.icone_caixa.setFixedSize(30, 30)
         self.icone_caixa.setAttribute(
             Qt.WA_TransparentForMouseEvents,
             True,
@@ -228,7 +265,7 @@ class CartaoPlaylist(QFrame):
         )
 
         icone_layout.addWidget(self.icone)
-        self.capa = CapaMusicaGenerica(36)
+        self.capa = CapaMusicaGenerica(30)
         icone_layout.addWidget(self.capa)
         self.icone.hide()
 
@@ -237,7 +274,7 @@ class CartaoPlaylist(QFrame):
         textos.setContentsMargins(0, 0, 0, 0)
         textos.setSpacing(1)
 
-        self.titulo = QLabel("Playlist")
+        self.titulo = RotuloElididoPlaylist("Playlist")
         self.titulo.setObjectName("musicPresetTitle")
         self.titulo.setAttribute(
             Qt.WA_TransparentForMouseEvents,
@@ -246,6 +283,8 @@ class CartaoPlaylist(QFrame):
 
         self.quantidade = QLabel("0 faixas")
         self.quantidade.setObjectName("musicPresetCount")
+        self.quantidade.setMinimumWidth(0)
+        self.quantidade.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         self.quantidade.setAttribute(
             Qt.WA_TransparentForMouseEvents,
             True,
@@ -262,15 +301,20 @@ class CartaoPlaylist(QFrame):
         self.play.setIcon(icone_terminal("play"))
         self.play.setToolTip("Tocar playlist sem abrir")
         self.play.setCursor(Qt.PointingHandCursor)
+        self.play.setFixedSize(30, 30)
+        self.play.setIconSize(QSize(13, 13))
         layout.addWidget(self.play)
         self.corpo.clicked.connect(self.abrir_solicitado)
         self.play.clicked.connect(self.tocar_solicitado)
         self.setStyleSheet("""
-            #musicPresetBody { background: transparent; border: 0; text-align: left; }
-            #musicPresetBody:hover { background: #242029; border-radius: 7px; }
-            #musicPresetPlay { background: #2A2027; border: 1px solid #4B3540;
-                border-radius: 7px; padding: 7px; }
-            #musicPresetPlay:hover, #musicPresetPlay:focus { background: #FF536D; border-color: #FF7187; }
+            #musicPreset { background: #15191E; border: 1px solid #2B3037; border-radius: 7px; }
+            #musicPreset[activePlaylist="true"] { border-color: #71404C; }
+            #musicPresetBody { background: transparent; border: 0; text-align: left; padding: 0; }
+            #musicPresetBody:hover { background: #20242A; border-radius: 5px; }
+            #musicPresetPlay { background: transparent; border: 1px solid transparent;
+                border-radius: 6px; padding: 0; }
+            #musicPresetPlay:hover { background: #25292F; border-color: #71404C; }
+            #musicPresetPlay:focus { background: #25292F; border: 1px solid #FF7187; }
         """)
 
     def click(self) -> None:
@@ -285,7 +329,7 @@ class CartaoPlaylist(QFrame):
         ativo: bool = False,
         artwork_url: str = "",
     ) -> None:
-        self.titulo.setText(nome)
+        self.titulo.definir_texto(nome)
         self.corpo.setAccessibleName(f"Abrir playlist {nome}")
         self.play.setAccessibleName(f"Tocar playlist {nome}")
         self.capa.definir_titulo(nome)
@@ -967,6 +1011,7 @@ class PaginaMusicaM1(QWidget):
 
         self.playlists_grade = QGridLayout()
         self.playlists_grade.setSpacing(7)
+        self._colunas_grade_playlist = 0
 
         self.preset_botoes: list[CartaoPlaylist] = []
         self._garantir_botoes_playlist(6)
@@ -1354,13 +1399,21 @@ class PaginaMusicaM1(QWidget):
                 lambda pos=indice: self._abrir_playlist(pos),
             )
 
-            self.playlists_grade.addWidget(
-                botao,
-                indice // 2,
-                indice % 2,
-            )
-
             self.preset_botoes.append(botao)
+        self._organizar_grade_playlists()
+
+    def _organizar_grade_playlists(self) -> None:
+        if not hasattr(self, "playlists"):
+            return
+        colunas = 2 if self.playlists.width() >= 320 else 1
+        if colunas == self._colunas_grade_playlist:
+            return
+        self._colunas_grade_playlist = colunas
+        for indice, botao in enumerate(self.preset_botoes):
+            self.playlists_grade.removeWidget(botao)
+            self.playlists_grade.addWidget(
+                botao, indice // colunas, indice % colunas,
+            )
 
     def _construir_barra_lateral(self) -> None:
         self.barra_lateral = QWidget()
@@ -2931,6 +2984,8 @@ class PaginaMusicaM1(QWidget):
         if compacto != self._modo_compacto:
             self._organizar(compacto)
             self.detalhe_playlist.definir_compacto(compacto)
+        self._organizar_grade_playlists()
+        QTimer.singleShot(0, self._organizar_grade_playlists)
 
 
 PaginaMusica = PaginaMusicaM1

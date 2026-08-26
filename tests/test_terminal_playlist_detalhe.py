@@ -4,9 +4,13 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication, QLabel
+from PySide6.QtCore import QEvent
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QApplication
 
-from cliente.terminal_2.musica_m1 import PaginaMusicaM1
+from cliente.terminal_2.acabamento import CapaMusicaGenerica
+from cliente.terminal_2.musica_m1 import CartaoPlaylist, PaginaMusicaM1
+from cliente.terminal_2.playlist_detalhe import FaixaPlaylistRow
 from mente_laylay.integracao.desktop_bridge import (
     sanitizar_resultado_playlist,
     validar_mensagem_cliente,
@@ -77,9 +81,140 @@ def test_titulo_da_faixa_tem_um_unico_renderizador() -> None:
     })
 
     assert detalhe.tabela.item(0, 1) is None
-    faixa = detalhe.tabela.cellWidget(0, 1)
-    assert faixa is not None
-    assert [item.text() for item in faixa.findChildren(QLabel)] == ["Título único"]
+    faixa = detalhe.tabela.cellWidget(0, 0)
+    assert isinstance(faixa, FaixaPlaylistRow)
+    assert faixa.titulo.texto_completo == "Título único"
+
+
+def test_cartao_compacto_preserva_capa_textos_e_play_sem_sobreposicao() -> None:
+    app = _app()
+    cartao = CartaoPlaylist(0)
+    cartao.resize(164, 44)
+    cartao.definir(
+        "Uma playlist com um nome muito comprido",
+        26,
+        artwork_url="",
+    )
+    cartao.show()
+    app.processEvents()
+
+    assert cartao.height() == 44
+    assert cartao.capa.size().width() == 30
+    assert cartao.play.size().width() == 30
+    assert cartao.corpo.height() >= 38
+    assert cartao.titulo.texto_completo.startswith("Uma playlist")
+    assert cartao.titulo.text().endswith("…")
+    assert cartao.corpo.geometry().right() < cartao.play.geometry().left()
+
+
+def test_grade_de_playlists_usa_duas_colunas_quando_cabem_e_uma_quando_nao() -> None:
+    _app()
+    pagina = PaginaMusicaM1()
+    pagina.playlists.resize(340, 240)
+    pagina._organizar_grade_playlists()
+    segunda = pagina.playlists_grade.indexOf(pagina.preset_botoes[1])
+    assert pagina.playlists_grade.getItemPosition(segunda)[1] == 1
+
+    pagina.playlists.resize(280, 240)
+    pagina._organizar_grade_playlists()
+    segunda = pagina.playlists_grade.indexOf(pagina.preset_botoes[1])
+    assert pagina.playlists_grade.getItemPosition(segunda)[1] == 0
+
+
+def test_linha_revela_play_e_menu_sem_mudar_geometria_e_toca_video_exato() -> None:
+    app = _app()
+    pagina = PaginaMusicaM1()
+    detalhe = pagina.detalhe_playlist
+    pedidos: list[dict] = []
+    detalhe.requisicao_solicitada.connect(pedidos.append)
+    detalhe.abrir("Anime")
+    detalhe.aplicar_resultado("detail", {
+        "ok": True, "status": "ok", "name": "Anime", "revision": "r1",
+        "total": 1, "offset": 0, "limit": 50, "has_more": False,
+        "items": [{
+            "video_id": "AAAAAAAAAAA", "title": "Título único",
+            "channel": "Canal", "added_at": "2026-08-26",
+            "duration_seconds": 180, "artwork_url": "",
+        }],
+    })
+    linha = detalhe.tabela.cellWidget(0, 0)
+    assert isinstance(linha, FaixaPlaylistRow)
+    controle_antes = linha.controle_slot.geometry()
+    menu_antes = linha.menu_slot.geometry()
+    assert linha._controle.currentWidget() is linha.numero
+    assert linha.menu.isHidden()
+
+    QApplication.sendEvent(linha, QEvent(QEvent.Enter))
+    app.processEvents()
+    assert linha._controle.currentWidget() is linha.play
+    assert not linha.menu.isHidden()
+    assert linha.controle_slot.geometry() == controle_antes
+    assert linha.menu_slot.geometry() == menu_antes
+
+    pedidos.clear()
+    linha.play.click()
+    assert pedidos[-1]["operation"] == "play_track"
+    assert pedidos[-1]["video_id"] == "AAAAAAAAAAA"
+
+
+def test_detalhe_responde_a_altura_baixa_sem_esmagar_busca_ou_lista() -> None:
+    app = _app()
+    detalhe = PaginaMusicaM1().detalhe_playlist
+    detalhe.resize(1419, 461)
+    detalhe.aplicar_player_observado({
+        "freshness": "fresh", "state": "playing",
+        "controls_available": True, "title": "Faixa observada",
+        "position_seconds": 10, "duration_seconds": 180,
+    })
+    detalhe.show()
+    app.processEvents()
+
+    assert detalhe._altura_baixa is True
+    assert detalhe.capa.width() == 68
+    assert detalhe.hero.height() == 80
+    assert detalhe.busca.height() == 34
+    assert detalhe.tabela.height() >= 100
+    assert detalhe.player.height() <= 50
+
+
+def test_linha_estreita_prioriza_identidade_e_oculta_metadados_secundarios() -> None:
+    app = _app()
+    detalhe = PaginaMusicaM1().detalhe_playlist
+    detalhe.resize(375, 760)
+    detalhe.aplicar_resultado("detail", {
+        "ok": True, "status": "ok", "name": "Anime", "revision": "r1",
+        "total": 1, "offset": 0, "limit": 50, "has_more": False,
+        "items": [{
+            "video_id": "AAAAAAAAAAA",
+            "title": "Um título longo que deve manter prioridade visual",
+            "channel": "Canal longo", "added_at": "2026-08-26",
+            "duration_seconds": 180, "artwork_url": "",
+        }],
+    })
+    detalhe.show()
+    app.processEvents()
+    linha = detalhe.tabela.cellWidget(0, 0)
+
+    assert isinstance(linha, FaixaPlaylistRow)
+    assert detalhe._compacto is True
+    assert linha.canal.isHidden()
+    assert linha.adicionada.isHidden()
+    assert not linha.titulo.isHidden()
+    assert not linha.capa.isHidden()
+    assert detalhe.tabela.horizontalScrollBar().maximum() == 0
+
+
+def test_fallback_da_capa_renderiza_dentro_de_tamanhos_pequenos() -> None:
+    app = _app()
+    for largura, altura in ((20, 20), (30, 30), (44, 28)):
+        capa = CapaMusicaGenerica(30)
+        capa.setFixedSize(largura, altura)
+        pixmap = QPixmap(largura, altura)
+        pixmap.fill()
+        capa.render(pixmap)
+        app.processEvents()
+        assert pixmap.size().width() == largura
+        assert pixmap.size().height() == altura
 
 
 def test_layout_estreito_reorganiza_acoes_player_e_mantem_acessibilidade() -> None:
