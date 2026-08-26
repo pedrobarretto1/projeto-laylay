@@ -36,12 +36,14 @@ TIPOS_CLIENTE = frozenset({
     "conversations_get", "conversation_create", "conversation_select",
     "conversation_rename", "conversation_delete", "conversation_archive",
     "conversation_unarchive", "conversation_pin",
+    "playlist_request",
 })
 TIPOS_BACKEND = frozenset({
     "snapshot", "input_ack", "assistant_message", "state", "error",
     "mode_state", "settings_state", "settings_result", "restart_result",
     "dashboard_state", "action_state",
     "conversations_state",
+    "playlist_result",
 })
 
 _ESTADOS_ACAO_RAPIDA = frozenset({
@@ -55,6 +57,74 @@ _ESTADOS_DISPONIBILIDADE_ACAO = frozenset({
 
 class ErroProtocoloDesktop(ValueError):
     pass
+
+
+def sanitizar_resultado_playlist(
+    operacao: str, valor: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Defesa da ponte: nem URLs de origem nem caminhos podem voltar à UI."""
+    bruto = dict(valor or {})
+    base: dict[str, Any] = {
+        "ok": bool(bruto.get("ok")),
+        "status": _texto_seguro(bruto.get("status"), 48),
+    }
+    capa = _texto_seguro(bruto.get("artwork_url"), 180)
+    if not (
+        re.fullmatch(
+            r"https://i\.ytimg\.com/vi/[A-Za-z0-9_-]{11}/(?:mqdefault|hqdefault|maxresdefault)\.jpg",
+            capa,
+        )
+        or re.fullmatch(r"laylay-playlist-artwork://[a-f0-9]{24}\.png", capa)
+    ):
+        capa = ""
+    if str(operacao or "") != "detail":
+        for chave in ("copied", "added", "duplicated"):
+            if chave in bruto:
+                base[chave] = bool(bruto.get(chave))
+        base["revision"] = _texto_seguro(bruto.get("revision"), 64)
+        base["artwork_url"] = capa
+        return base
+    try:
+        total = max(0, min(100_000, int(bruto.get("total") or 0)))
+        offset = max(0, int(bruto.get("offset") or 0))
+        limite = max(1, min(100, int(bruto.get("limit") or 50)))
+    except (TypeError, ValueError):
+        total, offset, limite = 0, 0, 50
+    itens: list[dict[str, Any]] = []
+    for item in list(bruto.get("items") or ())[:100]:
+        if not isinstance(item, Mapping):
+            continue
+        video_id = _texto_seguro(item.get("video_id"), 11)
+        if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id):
+            continue
+        duracao = item.get("duration_seconds")
+        if not isinstance(duracao, (int, float)) or isinstance(duracao, bool) or not 0 < duracao <= 86_400:
+            duracao = None
+        capa_item = _texto_seguro(item.get("artwork_url"), 180)
+        if not re.fullmatch(
+            r"https://i\.ytimg\.com/vi/[A-Za-z0-9_-]{11}/mqdefault\.jpg", capa_item,
+        ):
+            capa_item = ""
+        itens.append({
+            "video_id": video_id,
+            "title": _texto_publico_dashboard(item.get("title"), 180, fallback="Faixa sem título"),
+            "channel": _texto_publico_dashboard(item.get("channel"), 120, fallback=""),
+            "added_at": _texto_seguro(item.get("added_at"), 10),
+            "duration_seconds": duracao,
+            "artwork_url": capa_item,
+        })
+    duracao_total = bruto.get("duration_seconds")
+    if not isinstance(duracao_total, (int, float)) or isinstance(duracao_total, bool) or not 0 < duracao_total <= 8_640_000:
+        duracao_total = None
+    return {
+        **base,
+        "name": _texto_publico_dashboard(bruto.get("name"), 80, fallback="Playlist"),
+        "total": total, "offset": offset, "limit": limite,
+        "has_more": bool(bruto.get("has_more")),
+        "revision": _texto_seguro(bruto.get("revision"), 64),
+        "artwork_url": capa, "duration_seconds": duracao_total,
+        "items": itens,
+    }
 
 
 def _texto_seguro(valor: Any, limite: int = 8_000) -> str:
@@ -537,10 +607,15 @@ def sanitizar_dashboard_estado(
     )
     def capa_musical_publica(valor: Any) -> str:
         url_capa = _texto_seguro(valor, 180)
-        return url_capa if re.fullmatch(
-            r"https://i\.ytimg\.com/vi/[A-Za-z0-9_-]{11}/"
-            r"(?:hqdefault|maxresdefault)\.jpg",
-            url_capa,
+        return url_capa if (
+            re.fullmatch(
+                r"https://i\.ytimg\.com/vi/[A-Za-z0-9_-]{11}/"
+                r"(?:mqdefault|hqdefault|maxresdefault)\.jpg",
+                url_capa,
+            )
+            or re.fullmatch(
+                r"laylay-playlist-artwork://[a-f0-9]{24}\.png", url_capa,
+            )
         ) else ""
 
     fila_observada = _numero_dashboard(
@@ -966,6 +1041,57 @@ def validar_mensagem_cliente(
             raise ErroProtocoloDesktop("token de sessão inválido")
     elif tipo == "hello":
         raise ErroProtocoloDesktop("sessão já autenticada")
+    if tipo == "playlist_request":
+        operacao = _texto_seguro(mensagem.get("operation"), 32).casefold()
+        permitidas = {
+            "detail", "play_track", "add_url", "copy_track", "move_track",
+            "remove_track", "set_artwork", "restore_artwork",
+        }
+        if operacao not in permitidas:
+            raise ErroProtocoloDesktop("operação de playlist inválida")
+        nome = re.sub(r"\s+", " ", _texto_seguro(mensagem.get("playlist"), 80)).strip()
+        if not nome or re.search(r"[;&|<>]", nome):
+            raise ErroProtocoloDesktop("playlist inválida")
+        resultado = {
+            "type": tipo, "id": _texto_seguro(mensagem.get("id"), 80),
+            "operation": operacao, "playlist": nome,
+        }
+        if operacao == "detail":
+            resultado["query"] = re.sub(r"\s+", " ", _texto_seguro(mensagem.get("query"), 120))
+            try:
+                resultado["offset"] = max(0, int(mensagem.get("offset") or 0))
+                resultado["limit"] = max(1, min(100, int(mensagem.get("limit") or 50)))
+            except (TypeError, ValueError) as erro:
+                raise ErroProtocoloDesktop("paginação inválida") from erro
+        if operacao in {"play_track", "copy_track", "move_track", "remove_track"}:
+            video_id = _texto_seguro(mensagem.get("video_id"), 11)
+            revisao = _texto_seguro(mensagem.get("revision"), 64)
+            if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id) or not revisao:
+                raise ErroProtocoloDesktop("identidade da faixa inválida")
+            resultado.update(video_id=video_id, revision=revisao)
+        if operacao in {"copy_track", "move_track"}:
+            destino = re.sub(r"\s+", " ", _texto_seguro(mensagem.get("destination"), 80)).strip()
+            if not destino or re.search(r"[;&|<>]", destino):
+                raise ErroProtocoloDesktop("playlist de destino inválida")
+            resultado["destination"] = destino
+        if operacao == "add_url":
+            url = _texto_seguro(mensagem.get("url"), 500)
+            if not re.fullmatch(
+                r"https://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)[A-Za-z0-9_-]{11}(?:[&#?].*)?",
+                url,
+            ):
+                raise ErroProtocoloDesktop("URL do YouTube inválida")
+            resultado["url"] = url
+        if operacao in {"set_artwork", "restore_artwork"}:
+            resultado["revision"] = _texto_seguro(mensagem.get("revision"), 64)
+            if not resultado["revision"]:
+                raise ErroProtocoloDesktop("revisão ausente")
+        if operacao == "set_artwork":
+            caminho = _texto_seguro(mensagem.get("path"), 1_000)
+            if not caminho:
+                raise ErroProtocoloDesktop("capa ausente")
+            resultado["path"] = caminho
+        return resultado
     if tipo == "input_submit":
         texto = _texto_seguro(mensagem.get("text"), 8_000)
         if not texto:
@@ -1191,6 +1317,7 @@ class DesktopBridgeRuntime:
         dashboard_getter: Callable[[], Mapping[str, Any]] | None = None,
         resultado_acao_getter: Callable[[], Mapping[str, Any]] | None = None,
         executar_acao_painel: Callable[[str, Mapping[str, Any]], Any] | None = None,
+        playlist_operacoes: Any | None = None,
         modo_setter: Callable[[bool], Any] | None = None,
         configuracao_getter: Callable[[], Mapping[str, Any]] | None = None,
         configuracao_setter: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None,
@@ -1222,6 +1349,7 @@ class DesktopBridgeRuntime:
         self.dashboard_getter = dashboard_getter
         self.resultado_acao_getter = resultado_acao_getter
         self.executar_acao_painel = executar_acao_painel
+        self.playlist_operacoes = playlist_operacoes
         self.modo_setter = modo_setter
         self.configuracao_getter = configuracao_getter
         self.configuracao_setter = configuracao_setter
@@ -1784,6 +1912,51 @@ class DesktopBridgeRuntime:
                     mensagem=mensagem_resultado,
                     incluir_mensagens=True,
                 )
+            elif tipo == "playlist_request":
+                requisicao_id = str(msg.get("id") or secrets.token_hex(6))
+                operacao = str(msg.get("operation") or "")
+                retorno: dict[str, Any]
+                try:
+                    if self.playlist_operacoes is None:
+                        raise RuntimeError("operações de playlist indisponíveis")
+                    nome = str(msg.get("playlist") or "")
+                    chamadas = {
+                        "detail": lambda: self.playlist_operacoes.detalhar_playlist(
+                            nome, consulta=msg.get("query", ""),
+                            deslocamento=msg.get("offset", 0), limite=msg.get("limit", 50),
+                        ),
+                        "play_track": lambda: self.playlist_operacoes.tocar_faixa_exata(
+                            nome, msg["video_id"], msg["revision"],
+                        ),
+                        "add_url": lambda: self.playlist_operacoes.adicionar_url_playlist(nome, msg["url"]),
+                        "copy_track": lambda: self.playlist_operacoes.copiar_faixa_exata(
+                            nome, msg["destination"], msg["video_id"], msg["revision"],
+                        ),
+                        "move_track": lambda: self.playlist_operacoes.mover_faixa_exata(
+                            nome, msg["destination"], msg["video_id"], msg["revision"],
+                        ),
+                        "remove_track": lambda: self.playlist_operacoes.remover_faixa_exata(
+                            nome, msg["video_id"], msg["revision"],
+                        ),
+                        "set_artwork": lambda: self.playlist_operacoes.definir_capa_playlist(
+                            nome, msg["path"], msg["revision"],
+                        ),
+                        "restore_artwork": lambda: self.playlist_operacoes.restaurar_capa_playlist(
+                            nome, msg["revision"],
+                        ),
+                    }
+                    retorno = dict(chamadas[operacao]() or {})
+                except Exception as erro:
+                    self.log(
+                        "⚠️ [TERMINAL 2:PLAYLIST] operação falhou "
+                        f"| operação={operacao} tipo={type(erro).__name__}"
+                    )
+                    retorno = {"ok": False, "status": "operation_failed"}
+                self._enviar_socket(cliente, {
+                    "type": "playlist_result", "id": requisicao_id,
+                    "operation": operacao, "playlist": str(msg.get("playlist") or ""),
+                    "result": sanitizar_resultado_playlist(operacao, retorno),
+                })
             elif tipo == "mode_set":
                 requisicao_id = msg.get("id") or secrets.token_hex(6)
                 desejado = msg["mode"]

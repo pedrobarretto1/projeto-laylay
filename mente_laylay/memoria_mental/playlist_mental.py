@@ -313,6 +313,13 @@ def playlists_load(state_file: str, legacy_file: str) -> Dict[str, Any]:
                             "titulo_norm": titulo_norm,
                             "canal_norm": canal_norm,
                         }
+                        duracao = it.get("duracao_segundos")
+                        if (
+                            isinstance(duracao, (int, float))
+                            and not isinstance(duracao, bool)
+                            and 0 < int(duracao) <= 86_400
+                        ):
+                            new_item["duracao_segundos"] = int(duracao)
                         if (new_item.get("url") != str(it.get("url") or "").strip()) or ("canal" not in it) or ("data" not in it) or ("titulo_norm" not in it) or ("canal_norm" not in it):
                             changed = True
                         new_list.append(new_item)
@@ -356,12 +363,20 @@ def playlist_item_at(nome: str, idx: int, data: Dict[str, Any]) -> Optional[dict
         return None
     item = lst[idx]
     if isinstance(item, dict):
-        return {
+        resultado = {
             "url": str(item.get("url") or "").strip(),
             "titulo": str(item.get("titulo") or "").strip(),
             "canal": str(item.get("canal") or "").strip(),
             "data": str(item.get("data") or "").strip(),
         }
+        duracao = item.get("duracao_segundos")
+        if (
+            isinstance(duracao, (int, float))
+            and not isinstance(duracao, bool)
+            and 0 < int(duracao) <= 86_400
+        ):
+            resultado["duracao_segundos"] = int(duracao)
+        return resultado
     if isinstance(item, str):
         return {"url": item.strip(), "titulo": "", "canal": "", "data": ""}
     return None

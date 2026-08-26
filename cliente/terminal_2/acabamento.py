@@ -134,8 +134,17 @@ class CapaMusicaGenerica(QWidget):
         self._pixmap = QPixmap()
         self._candidatas = variantes_capa_youtube(url)
         self._indice_candidata = -1
+        personalizado = re.fullmatch(
+            r"laylay-playlist-artwork://([a-f0-9]{24}\.png)", url,
+        )
+        if personalizado:
+            caminho = Path.home() / ".laylay" / "playlist_artwork" / personalizado.group(1)
+            pixmap = QPixmap(str(caminho))
+            if not pixmap.isNull():
+                self._pixmap = pixmap
         self.update()
-        self._tentar_proxima_capa()
+        if self._pixmap.isNull():
+            self._tentar_proxima_capa()
 
     def _tentar_proxima_capa(self) -> None:
         self._indice_candidata += 1

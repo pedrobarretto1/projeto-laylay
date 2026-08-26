@@ -32,9 +32,11 @@ from PySide6.QtWidgets import (
     QToolButton,
     QVBoxLayout,
     QWidget,
+    QStackedWidget,
 )
 
 from cliente.terminal_2.acabamento import CapaMusicaGenerica, icone_terminal
+from cliente.terminal_2.playlist_detalhe import PlaylistDetalhe
 from cliente.terminal_2.sistema_compacto import CardSistemaCompacto
 
 
@@ -174,8 +176,11 @@ class MiniEqualizadorFila(QWidget):
                 int(centro + altura / 2),
             )
 
-class CartaoPlaylist(QPushButton):
-    """Preset compacto de playlist para a sessão musical."""
+class CartaoPlaylist(QFrame):
+    """Cartão com navegação e reprodução independentes."""
+
+    abrir_solicitado = Signal()
+    tocar_solicitado = Signal()
 
     def __init__(self, indice: int) -> None:
         super().__init__()
@@ -190,11 +195,16 @@ class CartaoPlaylist(QPushButton):
             QSizePolicy.Expanding,
             QSizePolicy.Fixed,
         )
-        self.setCursor(Qt.PointingHandCursor)
-
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(7, 6, 10, 6)
-        layout.setSpacing(9)
+        layout.setContentsMargins(0, 0, 5, 0)
+        layout.setSpacing(3)
+
+        self.corpo = QPushButton()
+        self.corpo.setObjectName("musicPresetBody")
+        self.corpo.setCursor(Qt.PointingHandCursor)
+        corpo_layout = QHBoxLayout(self.corpo)
+        corpo_layout.setContentsMargins(7, 6, 5, 6)
+        corpo_layout.setSpacing(9)
 
         # Quadradinho colorido
         self.icone_caixa = QFrame()
@@ -218,6 +228,9 @@ class CartaoPlaylist(QPushButton):
         )
 
         icone_layout.addWidget(self.icone)
+        self.capa = CapaMusicaGenerica(36)
+        icone_layout.addWidget(self.capa)
+        self.icone.hide()
 
         # Nome + quantidade
         textos = QVBoxLayout()
@@ -241,8 +254,28 @@ class CartaoPlaylist(QPushButton):
         textos.addWidget(self.titulo)
         textos.addWidget(self.quantidade)
 
-        layout.addWidget(self.icone_caixa)
-        layout.addLayout(textos, 1)
+        corpo_layout.addWidget(self.icone_caixa)
+        corpo_layout.addLayout(textos, 1)
+        layout.addWidget(self.corpo, 1)
+        self.play = QToolButton()
+        self.play.setObjectName("musicPresetPlay")
+        self.play.setIcon(icone_terminal("play"))
+        self.play.setToolTip("Tocar playlist sem abrir")
+        self.play.setCursor(Qt.PointingHandCursor)
+        layout.addWidget(self.play)
+        self.corpo.clicked.connect(self.abrir_solicitado)
+        self.play.clicked.connect(self.tocar_solicitado)
+        self.setStyleSheet("""
+            #musicPresetBody { background: transparent; border: 0; text-align: left; }
+            #musicPresetBody:hover { background: #242029; border-radius: 7px; }
+            #musicPresetPlay { background: #2A2027; border: 1px solid #4B3540;
+                border-radius: 7px; padding: 7px; }
+            #musicPresetPlay:hover, #musicPresetPlay:focus { background: #FF536D; border-color: #FF7187; }
+        """)
+
+    def click(self) -> None:
+        """Compatibilidade de automação: click programático continua sendo Play."""
+        self.play.click()
 
     def definir(
         self,
@@ -250,8 +283,13 @@ class CartaoPlaylist(QPushButton):
         quantidade: int,
         *,
         ativo: bool = False,
+        artwork_url: str = "",
     ) -> None:
         self.titulo.setText(nome)
+        self.corpo.setAccessibleName(f"Abrir playlist {nome}")
+        self.play.setAccessibleName(f"Tocar playlist {nome}")
+        self.capa.definir_titulo(nome)
+        self.capa.carregar(artwork_url)
 
         self.quantidade.setText(
             f"{quantidade} faixa"
@@ -381,6 +419,7 @@ class PaginaMusicaM1(QWidget):
 
     acao_solicitada = Signal(str, str)
     acao_fila_solicitada = Signal(str, str, dict)
+    acao_playlist_solicitada = Signal(dict)
 
     def __init__(self) -> None:
         super().__init__()
@@ -422,6 +461,8 @@ class PaginaMusicaM1(QWidget):
 
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(0, 0, 0, 0)
+        self.pilhas = QStackedWidget()
+        self.pilhas.setObjectName("musicInnerStack")
         self.rolagem = QScrollArea()
         self.rolagem.setObjectName("musicScroll")
         self.rolagem.setWidgetResizable(True)
@@ -435,7 +476,25 @@ class PaginaMusicaM1(QWidget):
         self.grade.setHorizontalSpacing(14)
         self.grade.setVerticalSpacing(14)
         self.rolagem.setWidget(self.corpo)
-        raiz.addWidget(self.rolagem)
+        self.pilhas.addWidget(self.rolagem)
+        self.detalhe_playlist = PlaylistDetalhe()
+        self.detalhe_playlist.voltar_solicitado.connect(
+            lambda: self.pilhas.setCurrentWidget(self.rolagem),
+        )
+        self.detalhe_playlist.requisicao_solicitada.connect(
+            self._encaminhar_requisicao_playlist,
+        )
+        self.detalhe_playlist.player_anterior.clicked.connect(
+            lambda: self._solicitar("media_previous"),
+        )
+        self.detalhe_playlist.player_toggle.clicked.connect(
+            lambda: self._solicitar("media_toggle"),
+        )
+        self.detalhe_playlist.player_proxima.clicked.connect(
+            lambda: self._solicitar("media_next"),
+        )
+        self.pilhas.addWidget(self.detalhe_playlist)
+        raiz.addWidget(self.pilhas)
 
         self._construir_cabecalho()
         self._construir_player()
@@ -1287,9 +1346,12 @@ class PaginaMusicaM1(QWidget):
             botao.setEnabled(False)
             botao.hide()
 
-            botao.clicked.connect(
+            botao.tocar_solicitado.connect(
                 lambda _v=False, pos=indice:
                 self._acionar_playlist(pos),
+            )
+            botao.abrir_solicitado.connect(
+                lambda pos=indice: self._abrir_playlist(pos),
             )
 
             self.playlists_grade.addWidget(
@@ -1869,6 +1931,9 @@ class PaginaMusicaM1(QWidget):
             musica.get("catalog_play_available") is True,
         )
         self._playlist_ativa = str(musica.get("playlist") or "").strip()
+        self.detalhe_playlist.definir_catalogo([
+            str(item.get("name") or "").strip() for item in self._catalogo
+        ])
         self._renderizar_catalogo()
 
     def _renderizar_catalogo(self) -> None:
@@ -1890,10 +1955,11 @@ class PaginaMusicaM1(QWidget):
                 nome_visual,
                 quantidade,
                 ativo=ativo,
+                artwork_url=str(item.get("artwork_url") or ""),
             )
 
             botao.setToolTip(
-                f'Tocar a playlist "{nome}" pela mente da Laylay'
+                f'Abrir a playlist "{nome}"; use Play para tocar diretamente'
             )
 
             botao.setAccessibleName(
@@ -1917,6 +1983,28 @@ class PaginaMusicaM1(QWidget):
     def _acionar_playlist(self, indice: int) -> None:
         if 0 <= indice < len(self._catalogo):
             self._solicitar_playlist(str(self._catalogo[indice].get("name") or ""))
+
+    def _abrir_playlist(self, indice: int) -> None:
+        if not 0 <= indice < len(self._catalogo):
+            return
+        nome = str(self._catalogo[indice].get("name") or "").strip()
+        if not nome:
+            return
+        self.detalhe_playlist.abrir(nome)
+        self.pilhas.setCurrentWidget(self.detalhe_playlist)
+
+    def _encaminhar_requisicao_playlist(self, payload: dict) -> None:
+        operacao = str(payload.get("operation") or "")
+        nome = str(payload.get("playlist") or "")
+        if operacao == "play_playlist":
+            self._solicitar_playlist(nome)
+        elif operacao == "shuffle_playlist":
+            self.acao_fila_solicitada.emit(
+                "playlist_shuffle", f"toca a playlist {nome} em modo aleatório",
+                {"playlist": nome},
+            )
+        else:
+            self.acao_playlist_solicitada.emit(dict(payload))
 
     def _solicitar_playlist(self, nome: str) -> None:
         nome = " ".join(str(nome or "").replace('"', "").split())[:80]
@@ -2365,6 +2453,7 @@ class PaginaMusicaM1(QWidget):
     def aplicar_dashboard(self, dashboard: dict) -> None:
         musica = dashboard.get("music")
         musica = musica if isinstance(musica, dict) else {}
+        self.detalhe_playlist.aplicar_player_observado(musica)
         self._aplicar_catalogo(musica)
         self._aplicar_fila(musica)
         self._aplicar_contexto_musical(musica)
@@ -2841,6 +2930,7 @@ class PaginaMusicaM1(QWidget):
         compacto = self.width() < 1080
         if compacto != self._modo_compacto:
             self._organizar(compacto)
+            self.detalhe_playlist.definir_compacto(compacto)
 
 
 PaginaMusica = PaginaMusicaM1

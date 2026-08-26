@@ -495,12 +495,18 @@ class DashboardTerminalRuntime:
                     except (TypeError, ValueError):
                         quantidade = 0
                     capa_id = _video_id_youtube(item.get("artwork_video_id"))
+                    capa_personalizada = _texto(item.get("artwork_url"), 180)
+                    if not re.fullmatch(
+                        r"laylay-playlist-artwork://[a-f0-9]{24}\.png",
+                        capa_personalizada,
+                    ):
+                        capa_personalizada = ""
                     catalogo.append({
                         "name": nome,
                         "count": quantidade,
                         "artwork_url": (
-                            f"https://i.ytimg.com/vi/{capa_id}/hqdefault.jpg"
-                            if capa_id else ""
+                            capa_personalizada or
+                            (f"https://i.ytimg.com/vi/{capa_id}/hqdefault.jpg" if capa_id else "")
                         ),
                     })
                 catalogo_disponivel = True

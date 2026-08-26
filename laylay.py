@@ -3360,6 +3360,7 @@ _desktop_bridge_runtime = _criar_desktop_bridge_runtime(
         executar_intencao=executar_intencao,
         selecionar_saida_audio=_saidas_audio_runtime.selecionar,
     ),
+    playlist_operacoes=_registro_musica_operacoes_runtime,
     modo_setter=lambda ativo: _definir_modo_chat(ativo, origem="terminal_2"),
     configuracao_getter=_configuracao_aplicacao_runtime.estado,
     configuracao_setter=_configuracao_aplicacao_runtime.atualizar,

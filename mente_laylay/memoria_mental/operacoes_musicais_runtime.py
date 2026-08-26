@@ -8,8 +8,10 @@ porteiro da mente única.
 from __future__ import annotations
 
 import time
+import json
 from typing import Any, Callable, Mapping
 from urllib.parse import parse_qs, urlparse
+from urllib.request import Request, urlopen
 
 
 def _identidade_youtube(url: str) -> str:
@@ -22,6 +24,8 @@ def _identidade_youtube(url: str) -> str:
         if video_id:
             return f"youtube:{video_id}"
         partes = [parte for parte in parsed.path.split("/") if parte]
+        if parsed.netloc.casefold() in {"youtu.be", "www.youtu.be"} and partes:
+            return f"youtube:{partes[0]}"
         if partes and partes[0].casefold() in {"shorts", "embed", "live"}:
             return f"youtube:{partes[-1]}"
     except Exception:
@@ -40,6 +44,7 @@ class OperacoesMusicaisRuntime:
         solicitar_aba_ativa: Callable[..., Mapping[str, Any]],
         playlist_state: dict[str, Any],
         log: Callable[..., Any] = print,
+        youtube_metadata_resolver: Callable[[str], Mapping[str, Any]] | None = None,
     ) -> None:
         self.playlists_usuario = playlists_usuario
         self.playlists_laylay = playlists_laylay
@@ -48,6 +53,60 @@ class OperacoesMusicaisRuntime:
         self.solicitar_aba_ativa = solicitar_aba_ativa
         self.playlist_state = playlist_state
         self.log = log
+        self.youtube_metadata_resolver = (
+            youtube_metadata_resolver or self._resolver_metadados_youtube
+        )
+
+    @staticmethod
+    def _resolver_metadados_youtube(url: str) -> dict[str, Any]:
+        identidade = _identidade_youtube(url)
+        video_id = identidade.removeprefix("youtube:") if identidade.startswith("youtube:") else ""
+        if len(video_id) != 11:
+            return {}
+        pagina = f"https://www.youtube.com/watch?v={video_id}"
+        try:
+            with urlopen(Request(
+                pagina,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Laylay/1",
+                    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.7",
+                },
+            ), timeout=6) as resposta:
+                html = resposta.read(2_000_000).decode("utf-8", errors="replace")
+            marcador = '"videoDetails":'
+            inicio = html.find(marcador)
+            if inicio >= 0:
+                detalhes, _fim = json.JSONDecoder().raw_decode(
+                    html[inicio + len(marcador):].lstrip(),
+                )
+                detalhes = detalhes if isinstance(detalhes, dict) else {}
+                duracao = int(detalhes.get("lengthSeconds") or 0)
+                if (
+                    str(detalhes.get("videoId") or "") == video_id
+                    and str(detalhes.get("title") or "").strip()
+                ):
+                    return {
+                        "video_id": video_id,
+                        "title": str(detalhes.get("title") or "").strip(),
+                        "channel": str(detalhes.get("author") or "").strip(),
+                        "duration_seconds": duracao if 0 < duracao <= 86_400 else None,
+                    }
+        except Exception:
+            pass
+        endpoint = (
+            "https://www.youtube.com/oembed?format=json&url="
+            + pagina
+        )
+        try:
+            with urlopen(Request(endpoint, headers={"User-Agent": "Laylay/1"}), timeout=6) as resposta:
+                bruto = json.loads(resposta.read(128_000).decode("utf-8"))
+            return {
+                "video_id": video_id,
+                "title": str(bruto.get("title") or "").strip(),
+                "channel": str(bruto.get("author_name") or "").strip(),
+            }
+        except Exception:
+            return {}
 
     def apagar_playlist(self, nome: str) -> bool:
         return bool(self.playlists_usuario.delete(nome))
@@ -77,6 +136,38 @@ class OperacoesMusicaisRuntime:
         return dict(
             self.playlists_usuario.mover_item_contextual(origem, destino, musica) or {}
         )
+
+    def detalhar_playlist(self, nome: str, **paginacao: Any) -> dict[str, Any]:
+        return dict(self.playlists_usuario.detalhar(nome, **paginacao) or {})
+
+    def tocar_faixa_exata(self, nome: str, video_id: str, revisao: str) -> dict[str, Any]:
+        return dict(self.playlists_usuario.tocar_faixa_exata(nome, video_id, revisao) or {})
+
+    def adicionar_url_playlist(self, nome: str, url: str) -> dict[str, Any]:
+        try:
+            metadados = dict(self.youtube_metadata_resolver(str(url or "")) or {})
+        except Exception:
+            metadados = {}
+        return dict(self.playlists_usuario.adicionar_url_resolvida(nome, url, metadados) or {})
+
+    def copiar_faixa_exata(
+        self, origem: str, destino: str, video_id: str, revisao: str,
+    ) -> dict[str, Any]:
+        return dict(self.playlists_usuario.copiar_faixa_exata(origem, destino, video_id, revisao) or {})
+
+    def mover_faixa_exata(
+        self, origem: str, destino: str, video_id: str, revisao: str,
+    ) -> dict[str, Any]:
+        return dict(self.playlists_usuario.mover_faixa_exata(origem, destino, video_id, revisao) or {})
+
+    def remover_faixa_exata(self, nome: str, video_id: str, revisao: str) -> dict[str, Any]:
+        return dict(self.playlists_usuario.remover_faixa_exata(nome, video_id, revisao) or {})
+
+    def definir_capa_playlist(self, nome: str, caminho: str, revisao: str) -> dict[str, Any]:
+        return dict(self.playlists_usuario.definir_capa(nome, caminho, revisao) or {})
+
+    def restaurar_capa_playlist(self, nome: str, revisao: str) -> dict[str, Any]:
+        return dict(self.playlists_usuario.restaurar_capa(nome, revisao) or {})
 
     def tocar_playlist(self, nome: str) -> bool:
         return bool(self.playlists_usuario.play(nome))

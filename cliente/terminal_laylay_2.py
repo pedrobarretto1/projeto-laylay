@@ -1766,6 +1766,9 @@ class JanelaLaylay(QMainWindow):
         self.pagina_musica.acao_fila_solicitada.connect(
             self.enviar_acao_painel_com_dados,
         )
+        self.pagina_musica.acao_playlist_solicitada.connect(
+            self.enviar_requisicao_playlist,
+        )
         self.pagina_memoria = PaginaMemoria()
         self.pagina_sistema = PaginaSistema()
         self.pagina_sistema.acao_solicitada.connect(
@@ -6096,6 +6099,14 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             payload_acao=dict(payload or {}),
         )
 
+    def enviar_requisicao_playlist(self, payload: dict) -> None:
+        mensagem = {"type": "playlist_request", "id": uuid.uuid4().hex, **dict(payload or {})}
+        if not self.worker.enfileirar(mensagem):
+            self.pagina_musica.detalhe_playlist.aplicar_resultado(
+                str(payload.get("operation") or ""),
+                {"ok": False, "status": "bridge_unavailable"},
+            )
+
     def _definir_estado_acao_ui(
         self, acao_id: str, estado: str, resumo: str = "",
     ) -> None:
@@ -6506,6 +6517,14 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         elif tipo == "dashboard_state":
             if isinstance(msg.get("dashboard"), dict):
                 self._atualizar_dashboard(msg["dashboard"])
+        elif tipo == "playlist_result":
+            resultado = msg.get("result")
+            self.pagina_musica.detalhe_playlist.aplicar_resultado(
+                str(msg.get("operation") or ""),
+                dict(resultado) if isinstance(resultado, dict) else {"ok": False},
+                playlist=str(msg.get("playlist") or ""),
+                request_id=str(msg.get("id") or ""),
+            )
         elif tipo == "conversations_state":
             requisicao_id = str(msg.get("id") or "")
             if requisicao_id == self._requisicao_conversa_id:
