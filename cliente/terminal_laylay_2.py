@@ -63,6 +63,9 @@ from cliente.terminal_2.acabamento import (
     icone_terminal,
     tamanho_icone,
 )
+from cliente.terminal_2.volume_mestre_windows import (
+    DefinidorVolumeMestreWindows,
+)
 
 
 PALETA = {
@@ -1761,7 +1764,9 @@ class JanelaLaylay(QMainWindow):
         self.paginas.addWidget(self.configuracoes)
         self.pagina_automacao = PaginaAutomacao()
         self.pagina_automacao.acao_solicitada.connect(self.enviar_acao_painel)
-        self.pagina_musica = PaginaMusica()
+        self.pagina_musica = PaginaMusica(
+            definidor_volume_local=DefinidorVolumeMestreWindows(),
+        )
         self.pagina_musica.acao_solicitada.connect(self.enviar_acao_painel)
         self.pagina_musica.acao_fila_solicitada.connect(
             self.enviar_acao_painel_com_dados,

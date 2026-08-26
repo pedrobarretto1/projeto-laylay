@@ -8,6 +8,7 @@ módulos exibem honestamente que ainda aguardam seus contratos de integração.
 from __future__ import annotations
 
 from bisect import bisect_right
+from collections.abc import Callable
 import html
 import math
 import os
@@ -216,8 +217,8 @@ class CartaoPlaylist(QFrame):
     abrir_solicitado = Signal()
     tocar_solicitado = Signal()
 
-    def __init__(self, indice: int) -> None:
-        super().__init__()
+    def __init__(self, indice: int, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
 
         tom = str(indice % 6)
 
@@ -465,7 +466,11 @@ class PaginaMusicaM1(QWidget):
     acao_fila_solicitada = Signal(str, str, dict)
     acao_playlist_solicitada = Signal(dict)
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        definidor_volume_local: Callable[[int], bool] | None = None,
+    ) -> None:
         super().__init__()
         self.setObjectName("musicPage")
         self._conectada = False
@@ -489,6 +494,9 @@ class PaginaMusicaM1(QWidget):
         self._shuffle_disponivel = False
         self._volume_disponivel = False
         self._volume_arrastando = False
+        self._definidor_volume_local = definidor_volume_local
+        self._volume_local_pendente: int | None = None
+        self._volume_local_falhou = False
         self._audio_saida_pendente = False
         self._audio_ref_atual = ""
         self._audio_troca_disponivel = False
@@ -552,6 +560,13 @@ class PaginaMusicaM1(QWidget):
         self._relogio.setInterval(1000)
         self._relogio.timeout.connect(self._atualizar_relogio)
         self._relogio.start()
+
+        self._timer_volume_local = QTimer(self)
+        self._timer_volume_local.setSingleShot(True)
+        self._timer_volume_local.setInterval(45)
+        self._timer_volume_local.timeout.connect(
+            self._aplicar_volume_local_pendente,
+        )
 
     def _construir_cabecalho(self) -> None:
         self.cabecalho = QWidget()
@@ -675,11 +690,10 @@ class PaginaMusicaM1(QWidget):
         self.volume_slider.setEnabled(False)
         self.volume_slider.setAccessibleName("Volume mestre do sistema")
         self.volume_slider.setToolTip(
-            "Volume mestre observado; a mudança só é confirmada pela mente da Laylay"
+            "Volume mestre aplicado localmente em tempo real e confirmado pela observação"
         )
-        self.volume_slider.sliderPressed.connect(
-            lambda: setattr(self, "_volume_arrastando", True),
-        )
+        self.volume_slider.sliderPressed.connect(self._iniciar_volume)
+        self.volume_slider.valueChanged.connect(self._volume_alterado)
         self.volume_slider.sliderReleased.connect(self._solicitar_volume)
         volume_lateral.addWidget(self.volume_slider, 1, Qt.AlignHCenter)
         self.volume_muted = QLabel("")
@@ -1387,7 +1401,7 @@ class PaginaMusicaM1(QWidget):
         while len(self.preset_botoes) < max(0, quantidade):
             indice = len(self.preset_botoes)
 
-            botao = CartaoPlaylist(indice)
+            botao = CartaoPlaylist(indice, self.playlists)
             botao.setEnabled(False)
             botao.hide()
 
@@ -1407,10 +1421,20 @@ class PaginaMusicaM1(QWidget):
             return
         colunas = 2 if self.playlists.width() >= 320 else 1
         if colunas == self._colunas_grade_playlist:
+            self._adicionar_botoes_playlist_faltantes(colunas)
             return
         self._colunas_grade_playlist = colunas
         for indice, botao in enumerate(self.preset_botoes):
             self.playlists_grade.removeWidget(botao)
+            self.playlists_grade.addWidget(
+                botao, indice // colunas, indice % colunas,
+            )
+
+    def _adicionar_botoes_playlist_faltantes(self, colunas: int) -> None:
+        """Anexa cards recém-criados sem refazer a grade que já está estável."""
+        for indice, botao in enumerate(self.preset_botoes):
+            if self.playlists_grade.indexOf(botao) >= 0:
+                continue
             self.playlists_grade.addWidget(
                 botao, indice // colunas, indice % colunas,
             )
@@ -1861,14 +1885,74 @@ class PaginaMusicaM1(QWidget):
                 f"toca a playlist {nome} em modo aleatório",
             )
 
-    def _solicitar_volume(self) -> None:
-        self._volume_arrastando = False
-        if not self._volume_disponivel:
+    def _iniciar_volume(self) -> None:
+        self._volume_arrastando = True
+        self._volume_local_pendente = int(self.volume_slider.value())
+        self._volume_local_falhou = False
+        iniciar = getattr(self._definidor_volume_local, "iniciar_gesto", None)
+        if callable(iniciar):
+            try:
+                iniciar()
+            except Exception:
+                self._volume_local_falhou = True
+        self._mostrar_volume(self.volume_slider.value())
+
+    def _volume_alterado(self, nivel: int) -> None:
+        if not self._volume_arrastando:
             return
+        self._mostrar_volume(nivel)
+        self._volume_local_pendente = int(nivel)
+        if (
+            self._definidor_volume_local is not None
+            and not self._volume_local_falhou
+            and not self._timer_volume_local.isActive()
+        ):
+            self._timer_volume_local.start()
+
+    def _mostrar_volume(self, nivel: int) -> None:
+        percentual = max(0, min(100, int(nivel)))
+        self.volume.setText(f"VOLUME\n{percentual}%")
+        self.acoes_sessao["Volume —"].setText(f"◖  Volume {percentual}%")
+        self.audicao_volume_valor.setText(f"{percentual}%")
+
+    def _aplicar_volume_local_pendente(self) -> bool:
+        if (
+            self._definidor_volume_local is None
+            or self._volume_local_falhou
+            or self._volume_local_pendente is None
+        ):
+            return False
+        nivel = self._volume_local_pendente
+        self._volume_local_pendente = None
+        try:
+            confirmado = bool(self._definidor_volume_local(nivel))
+        except Exception:
+            confirmado = False
+        if not confirmado:
+            self._volume_local_falhou = True
+        return confirmado
+
+    def _solicitar_volume(self) -> None:
+        self._timer_volume_local.stop()
         nivel = int(self.volume_slider.value())
-        self.acao_solicitada.emit(
-            "volume_set", f"deixa o volume em {nivel} por cento",
-        )
+        if self._volume_arrastando:
+            self._mostrar_volume(nivel)
+        confirmado = False
+        if self._volume_disponivel and not self._volume_local_falhou:
+            self._volume_local_pendente = nivel
+            confirmado = self._aplicar_volume_local_pendente()
+        finalizar = getattr(self._definidor_volume_local, "finalizar_gesto", None)
+        if callable(finalizar):
+            try:
+                finalizar()
+            except Exception:
+                confirmado = False
+        self._volume_arrastando = False
+        self._volume_local_pendente = None
+        if self._volume_disponivel and not confirmado:
+            self.acao_solicitada.emit(
+                "volume_set", f"deixa o volume em {nivel} por cento",
+            )
 
     def _solicitar_saida_audio(self, indice: int) -> None:
         referencia = str(self.audio_lista.itemData(indice) or "").strip().casefold()
@@ -2516,12 +2600,6 @@ class PaginaMusicaM1(QWidget):
         self._repeat_ativo = bool(musica.get("repeat_enabled") is True)
         self._shuffle_disponivel = bool(musica.get("shuffle_available") is True)
         volume_sistema = musica.get("volume_percent")
-        self.audicao_volume_valor.setText(
-            f"{volume_sistema}%"
-            if volume_sistema is not None
-            else "—"
-        )
-
         self.audicao_volume.setProperty(
             "available",
             volume_sistema is not None,
@@ -2540,15 +2618,13 @@ class PaginaMusicaM1(QWidget):
         self._volume_disponivel = volume_sistema is not None
         if volume_sistema is not None and not self._volume_arrastando:
             self.volume_slider.setValue(volume_sistema)
-        self.volume.setText(
-            f"VOLUME\n{volume_sistema}%" if volume_sistema is not None
-            else "VOLUME\n—"
-        )
-        self.acoes_sessao["Volume —"].setText(
-            f"◖  Volume {volume_sistema}%"
-            if volume_sistema is not None
-            else "◖  Volume —"
-        )
+        if not self._volume_arrastando:
+            if volume_sistema is not None:
+                self._mostrar_volume(volume_sistema)
+            else:
+                self.volume.setText("VOLUME\n—")
+                self.acoes_sessao["Volume —"].setText("◖  Volume —")
+                self.audicao_volume_valor.setText("—")
         self.volume_muted.setText(
             "player mudo" if musica.get("muted") is True else ""
         )

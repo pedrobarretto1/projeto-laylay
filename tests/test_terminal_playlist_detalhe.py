@@ -32,6 +32,15 @@ def _dashboard() -> dict:
     }}
 
 
+def _dashboard_com_playlists(quantidade: int = 8) -> dict:
+    retrato = _dashboard()
+    retrato["music"]["catalog"] = [
+        {"name": f"Playlist {indice}", "count": indice + 1, "artwork_url": ""}
+        for indice in range(quantidade)
+    ]
+    return retrato
+
+
 def test_corpo_abre_detalhe_sem_tocar_e_play_toca_sem_abrir() -> None:
     _app()
     pagina = PaginaMusicaM1()
@@ -119,6 +128,97 @@ def test_grade_de_playlists_usa_duas_colunas_quando_cabem_e_uma_quando_nao() -> 
     pagina._organizar_grade_playlists()
     segunda = pagina.playlists_grade.indexOf(pagina.preset_botoes[1])
     assert pagina.playlists_grade.getItemPosition(segunda)[1] == 0
+
+
+def test_expandir_catalogo_mantem_todos_os_cards_dentro_da_grade() -> None:
+    app = _app()
+    pagina = PaginaMusicaM1()
+    pagina.definir_conectada(True)
+    pagina.aplicar_dashboard(_dashboard_com_playlists())
+    pagina.show()
+    app.processEvents()
+
+    assert sum(botao.isVisible() for botao in pagina.preset_botoes) == 6
+    assert all(
+        pagina.playlists_grade.indexOf(botao) >= 0
+        and botao.parentWidget() is pagina.playlists
+        and not botao.isWindow()
+        for botao in pagina.preset_botoes
+    )
+
+    pagina.ver_playlists.click()
+    app.processEvents()
+
+    assert sum(botao.isVisible() for botao in pagina.preset_botoes) == 8
+    assert not any(
+        botao in app.topLevelWidgets() for botao in pagina.preset_botoes
+    )
+    assert all(
+        pagina.playlists_grade.indexOf(botao) >= 0
+        and botao.parentWidget() is pagina.playlists
+        and not botao.isWindow()
+        for botao in pagina.preset_botoes
+    )
+
+    pagina.ver_playlists.click()
+    app.processEvents()
+
+    assert sum(botao.isVisible() for botao in pagina.preset_botoes) == 6
+    assert all(botao.isHidden() for botao in pagina.preset_botoes[6:])
+    assert all(
+        pagina.playlists_grade.indexOf(botao) >= 0
+        and botao.parentWidget() is pagina.playlists
+        for botao in pagina.preset_botoes[6:]
+    )
+    pagina.close()
+    app.processEvents()
+
+
+def test_grade_reorganiza_catalogo_expandido_sem_perder_cards_ou_duplicar_acoes() -> None:
+    app = _app()
+    pagina = PaginaMusicaM1()
+    pagina.definir_conectada(True)
+    pagina.aplicar_dashboard(_dashboard_com_playlists())
+    pagina._catalogo_expandido = True
+    pagina._renderizar_catalogo()
+
+    pagina.playlists.resize(340, 300)
+    pagina._organizar_grade_playlists()
+    assert all(
+        pagina.playlists_grade.getItemPosition(
+            pagina.playlists_grade.indexOf(botao)
+        )[1] == indice % 2
+        for indice, botao in enumerate(pagina.preset_botoes)
+    )
+
+    pagina.playlists.resize(280, 500)
+    pagina._organizar_grade_playlists()
+    assert all(
+        pagina.playlists_grade.getItemPosition(
+            pagina.playlists_grade.indexOf(botao)
+        )[1] == 0
+        for botao in pagina.preset_botoes
+    )
+    assert pagina.playlists_grade.count() == len(pagina.preset_botoes)
+
+    detalhes: list[dict] = []
+    acoes: list[tuple[str, str]] = []
+    pagina.acao_playlist_solicitada.connect(detalhes.append)
+    pagina.acao_solicitada.connect(
+        lambda acao, texto: acoes.append((acao, texto))
+    )
+    pagina.preset_botoes[7].corpo.click()
+    assert len(detalhes) == 1
+    assert detalhes[0]["playlist"] == "Playlist 7"
+    assert acoes == []
+
+    pagina.pilhas.setCurrentWidget(pagina.rolagem)
+    pagina.preset_botoes[7].play.click()
+    assert len(acoes) == 1
+    assert acoes[0][0] == "playlist_play"
+    assert "Playlist 7" in acoes[0][1]
+    assert len(detalhes) == 1
+    app.processEvents()
 
 
 def test_linha_revela_play_e_menu_sem_mudar_geometria_e_toca_video_exato() -> None:
