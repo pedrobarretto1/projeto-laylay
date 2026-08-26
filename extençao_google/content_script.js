@@ -1405,6 +1405,24 @@ try {
   }
 } catch (_) {}
 
+function _laylayYoutubeChannelText(node) {
+  const normalize = (value) => String(value || "").replace(/\s+/g, " ").trim();
+  if (!node) return "";
+  const specific = [
+    node.matches?.("#text, a, yt-formatted-string") ? node : null,
+    node.querySelector?.("#text"),
+    node.querySelector?.(
+      "a[href*='/@'], a[href*='/channel/'], a[href*='/c/'], a[href*='/user/']",
+    ),
+    node.querySelector?.("yt-formatted-string"),
+  ];
+  for (const candidate of specific) {
+    const text = normalize(candidate?.textContent);
+    if (text) return text;
+  }
+  return normalize(node.textContent);
+}
+
 function _laylayYoutubeQueueSnapshot() {
   try {
     const root = document.querySelector(
@@ -1440,7 +1458,7 @@ function _laylayYoutubeQueueSnapshot() {
         ? durationParts.reduce((total, value) => total * 60 + value, 0) : 0;
       return {
         title: String(titleNode?.textContent || anchor?.textContent || "").replace(/\s+/g, " ").trim(),
-        channel: String(channelNode?.textContent || "").replace(/\s+/g, " ").trim(),
+        channel: _laylayYoutubeChannelText(channelNode),
         videoId,
         durationSeconds,
       };
@@ -1486,7 +1504,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         volumePercent: Number.isFinite(volume)
           ? Math.max(0, Math.min(100, Math.round(volume * 100))) : null,
         title: rawTitle.replace(/ - YouTube$/i, "").trim(),
-        channel: String(channelNode?.textContent || "").replace(/\s+/g, " ").trim(),
+        channel: _laylayYoutubeChannelText(channelNode),
         url: window.location.href,
         videoId,
         currentTime: Number.isFinite(video?.currentTime) ? Number(video.currentTime) : 0,
@@ -1569,7 +1587,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         const rawTitle = String(document.title || "");
         const title = rawTitle.replace(/ - YouTube$/i, "").trim();
         const ch = document.querySelector("#upload-info #channel-name") || document.querySelector("#channel-name");
-        const canal = String(ch?.textContent || "").replace(/\s+/g, " ").trim();
+        const canal = _laylayYoutubeChannelText(ch);
         const resultado = {
             type: "YOUTUBE_DATA", 
             requestId: request.requestId ?? null, 
@@ -1657,7 +1675,7 @@ try {
       const duration = Number.isFinite(v.duration) ? Number(v.duration) : 0;
       const title = String(document.title || "").replace(/ - YouTube$/i, "").trim();
       const channelNode = document.querySelector("#upload-info #channel-name") || document.querySelector("#channel-name");
-      const channel = String(channelNode?.textContent || "").replace(/\s+/g, " ").trim();
+      const channel = _laylayYoutubeChannelText(channelNode);
       const volumePercent = Number.isFinite(v.volume)
         ? Math.max(0, Math.min(100, Math.round(v.volume * 100))) : null;
       const muted = !!v.muted;

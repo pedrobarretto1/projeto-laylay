@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QApplication
 
 from cliente.terminal_2.acabamento import CapaMusicaGenerica
 from cliente.terminal_2.musica_m1 import CartaoPlaylist, PaginaMusicaM1
-from cliente.terminal_2.playlist_detalhe import FaixaPlaylistRow
+from cliente.terminal_2.playlist_detalhe import FaixaPlaylistRow, PlaylistDetalhe
 from mente_laylay.integracao.desktop_bridge import (
     sanitizar_resultado_playlist,
     validar_mensagem_cliente,
@@ -165,7 +165,7 @@ def test_linha_revela_play_e_menu_sem_mudar_geometria_e_toca_video_exato() -> No
 
 def test_detalhe_responde_a_altura_baixa_sem_esmagar_busca_ou_lista() -> None:
     app = _app()
-    detalhe = PaginaMusicaM1().detalhe_playlist
+    detalhe = PlaylistDetalhe()
     detalhe.resize(1419, 461)
     detalhe.aplicar_player_observado({
         "freshness": "fresh", "state": "playing",
@@ -179,8 +179,123 @@ def test_detalhe_responde_a_altura_baixa_sem_esmagar_busca_ou_lista() -> None:
     assert detalhe.capa.width() == 68
     assert detalhe.hero.height() == 80
     assert detalhe.busca.height() == 34
-    assert detalhe.tabela.height() >= 100
-    assert detalhe.player.height() <= 50
+    assert detalhe.tabela.height() >= 76
+    assert 66 <= detalhe.player.height() <= 74
+
+
+def test_player_observado_separa_identidade_transporte_progresso_e_estado() -> None:
+    app = _app()
+    detalhe = PlaylistDetalhe()
+    detalhe.resize(1200, 700)
+    detalhe.definir_compacto(False)
+    detalhe.aplicar_player_observado({
+        "freshness": "fresh", "state": "playing",
+        "controls_available": True,
+        "title": "Uma faixa observada com nome integral",
+        "channel": "Canal confirmado",
+        "artwork_url": "laylay-playlist-artwork://aaaaaaaaaaaaaaaaaaaaaaaa.png",
+        "position_seconds": 65, "duration_seconds": 180,
+    })
+    detalhe.show()
+    app.processEvents()
+
+    assert detalhe._modo_player == "amplo"
+    assert detalhe.player.height() == 72
+    assert detalhe.player_titulo.texto_completo == (
+        "Uma faixa observada com nome integral"
+    )
+    assert detalhe.player_canal.texto_completo == "Canal confirmado"
+    assert detalhe.player_capa._artwork_url.startswith(
+        "laylay-playlist-artwork://",
+    )
+    assert detalhe.player_tempo_atual.text() == "1:05"
+    assert detalhe.player_tempo_total.text() == "3:00"
+    assert detalhe.player_progresso.value() == 361
+    assert detalhe.player_estado.text() == "TOCANDO"
+    for controle in (
+        detalhe.player_anterior, detalhe.player_toggle,
+        detalhe.player_proxima,
+    ):
+        assert controle.isEnabled()
+        assert controle.accessibleName()
+        assert controle.toolTip()
+    assert detalhe.player_toggle.iconSize() == QSize(15, 15)
+    assert not detalhe.player_toggle.icon().isNull()
+
+    identidade = detalhe.player_layout.indexOf(detalhe.player_identidade)
+    centro = detalhe.player_layout.indexOf(detalhe.player_centro)
+    estado = detalhe.player_layout.indexOf(detalhe.player_estado)
+    assert detalhe.player_layout.getItemPosition(identidade)[1] == 0
+    assert detalhe.player_layout.getItemPosition(centro)[1] == 1
+    assert detalhe.player_layout.getItemPosition(estado)[1] == 2
+
+
+def test_player_observado_respeita_indisponibilidade_e_estado_pausado() -> None:
+    app = _app()
+    detalhe = PlaylistDetalhe()
+    detalhe.resize(900, 700)
+    detalhe.aplicar_player_observado({
+        "freshness": "fresh", "state": "paused",
+        "controls_available": False, "title": "Pausada",
+        "channel": "Canal", "position_seconds": 0,
+        "duration_seconds": 0, "artwork_url": "",
+    })
+    detalhe.show()
+    app.processEvents()
+
+    assert detalhe.player_estado.text() == "PAUSADA"
+    assert detalhe.player_tempo_atual.text() == "0:00"
+    assert detalhe.player_tempo_total.text() == "—"
+    assert all(not botao.isEnabled() for botao in (
+        detalhe.player_anterior, detalhe.player_toggle,
+        detalhe.player_proxima,
+    ))
+
+    detalhe.aplicar_player_observado({
+        "freshness": "unavailable", "state": "paused",
+        "controls_available": True,
+    })
+    assert detalhe._player_observado is False
+    assert detalhe.player.isHidden()
+
+
+def test_player_observado_reorganiza_zonas_pela_largura_real() -> None:
+    app = _app()
+    detalhe = PlaylistDetalhe()
+    detalhe.aplicar_player_observado({
+        "freshness": "fresh", "state": "playing",
+        "controls_available": True, "title": "Faixa responsiva",
+        "channel": "Canal responsivo", "position_seconds": 10,
+        "duration_seconds": 100, "artwork_url": "",
+    })
+    detalhe.resize(700, 760)
+    detalhe.definir_compacto(False)
+    detalhe.show()
+    app.processEvents()
+
+    assert detalhe._modo_player == "intermediario"
+    assert detalhe.player.height() == 70
+    assert detalhe.player_estado.isHidden()
+    assert detalhe.player_canal.isHidden()
+    assert not detalhe.player_capa.isHidden()
+
+    detalhe.definir_compacto(True)
+    app.processEvents()
+    detalhe.resize(375, 760)
+    app.processEvents()
+    detalhe._organizar_player_responsivo(detalhe.width())
+    assert detalhe._modo_player == "estreito", (
+        detalhe.width(), detalhe.minimumSizeHint().width(),
+    )
+    assert detalhe.player.height() == 94
+    assert detalhe.player_estado.isHidden()
+    assert detalhe.player_canal.isHidden()
+    assert detalhe.player_capa.isHidden()
+    identidade = detalhe.player_layout.indexOf(detalhe.player_identidade)
+    centro = detalhe.player_layout.indexOf(detalhe.player_centro)
+    assert detalhe.player_layout.getItemPosition(identidade)[0] == 0
+    assert detalhe.player_layout.getItemPosition(centro)[0] == 1
+    assert detalhe.player.width() <= detalhe.width()
 
 
 def test_linha_estreita_prioriza_identidade_e_oculta_metadados_secundarios() -> None:
@@ -205,9 +320,43 @@ def test_linha_estreita_prioriza_identidade_e_oculta_metadados_secundarios() -> 
     assert detalhe._compacto is True
     assert linha.canal.isHidden()
     assert linha.adicionada.isHidden()
+    assert "Canal longo" in linha.meta.texto_completo
     assert not linha.titulo.isHidden()
     assert not linha.capa.isHidden()
     assert detalhe.tabela.horizontalScrollBar().maximum() == 0
+
+
+def test_metadados_da_faixa_cedem_por_largura_real_sem_sobreposicao() -> None:
+    app = _app()
+    canal_completo = "Canal oficial com nome suficientemente longo"
+    linha = FaixaPlaylistRow(0, {
+        "video_id": "AAAAAAAAAAA", "title": "Faixa",
+        "channel": canal_completo, "added_at": "2026-08-26",
+        "duration_seconds": 180, "artwork_url": "",
+    })
+    linha.resize(760, 38)
+    linha.show()
+    app.processEvents()
+
+    assert not linha.canal.isHidden()
+    assert not linha.adicionada.isHidden()
+    assert linha.canal.geometry().right() < linha.adicionada.geometry().left()
+    assert linha.adicionada.geometry().right() < linha.duracao.geometry().left()
+    assert linha.canal.toolTip() == canal_completo
+
+    linha.resize(650, 38)
+    app.processEvents()
+    assert not linha.canal.isHidden()
+    assert linha.adicionada.isHidden()
+    assert linha.meta.texto_completo == "Vídeo do YouTube"
+
+    linha.resize(500, 38)
+    app.processEvents()
+    assert linha.canal.isHidden()
+    assert linha.adicionada.isHidden()
+    assert canal_completo in linha.meta.texto_completo
+    assert not linha.titulo.isHidden()
+    assert not linha.capa.isHidden()
 
 
 def test_fallback_da_capa_renderiza_dentro_de_tamanhos_pequenos() -> None:

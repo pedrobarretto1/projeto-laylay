@@ -273,6 +273,23 @@ function youtubeVideoId(rawUrl) {
 // abertas quando a extensão foi instalada ou recarregada.
 function inspectYouTubePlayerInPage() {
   try {
+    const channelText = (node) => {
+      const normalize = (value) => String(value || "").replace(/\s+/g, " ").trim();
+      if (!node) return "";
+      const specific = [
+        node.matches?.("#text, a, yt-formatted-string") ? node : null,
+        node.querySelector?.("#text"),
+        node.querySelector?.(
+          "a[href*='/@'], a[href*='/channel/'], a[href*='/c/'], a[href*='/user/']",
+        ),
+        node.querySelector?.("yt-formatted-string"),
+      ];
+      for (const candidate of specific) {
+        const text = normalize(candidate?.textContent);
+        if (text) return text;
+      }
+      return normalize(node.textContent);
+    };
     const videos = Array.from(document.querySelectorAll("video"));
     const video = document.querySelector("video.html5-main-video") ||
       videos.find((item) => !item.paused && !item.ended) || videos[0] || null;
@@ -327,7 +344,7 @@ function inspectYouTubePlayerInPage() {
         ? durationParts.reduce((total, value) => total * 60 + value, 0) : 0;
       return {
         title: String(titleNode?.textContent || anchor?.textContent || "").replace(/\s+/g, " ").trim(),
-        channel: String(channelItem?.textContent || "").replace(/\s+/g, " ").trim(),
+        channel: channelText(channelItem),
         videoId: itemVideoId,
         durationSeconds,
       };
@@ -342,7 +359,7 @@ function inspectYouTubePlayerInPage() {
       volumePercent: Number.isFinite(volume)
         ? Math.max(0, Math.min(100, Math.round(volume * 100))) : null,
       title: rawTitle.replace(/ - YouTube$/i, "").trim(),
-      channel: String(channelNode?.textContent || "").replace(/\s+/g, " ").trim(),
+      channel: channelText(channelNode),
       url: String(location.href || ""),
       videoId,
       currentTime: Number.isFinite(video?.currentTime) ? Number(video.currentTime) : 0,
@@ -359,6 +376,23 @@ function inspectYouTubePlayerInPage() {
 
 function inspectYouTubeDataInPage() {
   try {
+    const channelText = (node) => {
+      const normalize = (value) => String(value || "").replace(/\s+/g, " ").trim();
+      if (!node) return "";
+      const specific = [
+        node.matches?.("#text, a, yt-formatted-string") ? node : null,
+        node.querySelector?.("#text"),
+        node.querySelector?.(
+          "a[href*='/@'], a[href*='/channel/'], a[href*='/c/'], a[href*='/user/']",
+        ),
+        node.querySelector?.("yt-formatted-string"),
+      ];
+      for (const candidate of specific) {
+        const text = normalize(candidate?.textContent);
+        if (text) return text;
+      }
+      return normalize(node.textContent);
+    };
     const rawTitle = String(document.title || "");
     const channelNode =
       document.querySelector("#upload-info #channel-name") ||
@@ -367,7 +401,7 @@ function inspectYouTubeDataInPage() {
     return {
       url: String(location.href || ""),
       title: rawTitle.replace(/ - YouTube$/i, "").trim(),
-      canal: String(channelNode?.textContent || "").replace(/\s+/g, " ").trim(),
+      canal: channelText(channelNode),
     };
   } catch (_) {
     return null;
