@@ -1,0 +1,49 @@
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:51689 | sessão=5570091d pid=9868
+🖥️ [TERMINAL 2] interface iniciada | sessão=5570091d pid=4900 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=5570091d
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0640 início_de_fala=0.1088
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=roteiro_teste
+💬 Você:
+> Abre a calculadora.
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+🪟 [JANELA:ENTRADA] intent=APP_OPEN nome=calculadora mapped=calc maximizar=False sem_janela=False
+🪟 [JANELA:ESTADO] calculadora -> aberto=False foco=False aba=False preferido=desconhecido
+🪟 [JANELA:ACAO] calculadora fechado -> tentar abrir
+🪟 [JANELA:ACAO] calculadora abrir retornou=True erro=-
+🪟 [JANELA:ESTADO] calculadora -> aberto=False foco=False aba=False preferido=desconhecido
+🪟 [JANELA:ESTADO] calculadora -> aberto=True foco=True aba=False preferido=app
+🪟 [JANELA:ACAO] calculadora abriu -> tentar foco
+🪟 [JANELA:ESTADO] calculadora -> aberto=True foco=True aba=False preferido=app
+🪟 [JANELA:RESULTADO] calculadora -> app_iniciado_focado
+⚠️ [FALA:AUTORIA] fallback local | motivo=contrato_nao_preservado:metafora_operacional_nao_ancorada status=app_iniciado_focado
+[95m╭─ ≧◡≦⋆ Laylay: Abri calculadora; ele acabou de chegar e já está em foco.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': 'a047a4e7d2654cf3842a9f11d07617dd', 'intent': 'APP_OPEN', 'alvo': 'calculadora', 'status': 'app_iniciado_focado', 'executou': True, 'confirmado': True, 'params': {'nome_app': 'calculadora'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'estado_observado', 'evidencia_confirmacao': 'a janela é relida localmente ou pelo cliente remoto compatível'}] | erros=[]
+💬 Você:
+> Cria um arquivo chamado laylay_r1_rt1_a_7f9c2d.txt e escreve MARCADOR R1 RT1 ALFA 7F9C2D.
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-1]] {'intent': 'CREATE_FILE', 'params': {'alvo': 'laylay_r1_rt1_a_7f9c2d.txt', 'tipo_arquivo': 'texto'}}
+[96m╭─ ◕‿◕ Laylay: Criei C:\Users\pbarr\Downloads\laylay_r1_rt1_a_7f9c2d.txt e confirmei que ficou pronto. Arquivo laylay_r1_rt1_a_7f9c2d.txt criado.[0m
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-2]] {'intent': 'CREATE_FILE', 'params': {'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt', 'conteudo': 'marcador r1 rt1 alfa 7f9c2d', 'editar_existente': True}}
+💬 Você:
+> Leia o laylay_r1_rt1_a_7f9c2d.txt.
+[96m╭─ ◕‿◕ Laylay: C:\Users\pbarr\Downloads\laylay_r1_rt1_a_7f9c2d.txt recebeu o texto novo direitinho.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '82bdf267f070479a9f305a5bba3f539b', 'intent': 'CREATE_FILE', 'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt', 'status': 'arquivo_criado', 'executou': True, 'confirmado': True, 'params': {'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt', 'tipo_arquivo': 'texto', 'caminho': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt', 'nome_arquivo': 'laylay_r1_rt1_a_7f9c2d.txt', 'tipo': 'arquivo'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'estado_observado', 'evidencia_confirmacao': 'a existência local do arquivo é relida'}, {'id_solicitacao': '11dbda9f5a024d33b91a8c67d0bf0885', 'intent': 'CREATE_FILE', 'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt', 'status': 'conteudo_atualizado', 'executou': True, 'confirmado': True, 'params': {'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt', 'conteudo': 'marcador r1 rt1 alfa 7f9c2d', 'editar_existente': True, 'caminho': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt', 'nome_arquivo': 'laylay_r1_rt1_a_7f9c2d.txt', 'tipo': 'arquivo'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'estado_observado', 'evidencia_confirmacao': 'a existência local do arquivo é relida'}] | erros=[]
+[96m╭─ ◕‿◕ Laylay: Concluí o pedido em C:\Users\pbarr\Downloads\laylay_r1_rt1_a_7f9c2d.txt e confirmei o resultado. O conteúdo de laylay_r1_rt1_a_7f9c2d.txt é: marcador r1 rt1 alfa 7f9c2d.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '9e8e77b2b5914c4c8070bb8eccaed5ea', 'intent': 'FILE_READ', 'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt', 'status': 'conteudo_lido', 'executou': True, 'confirmado': True, 'params': {'caminho': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt', 'alvo': 'laylay_r1_rt1_a_7f9c2d.txt', 'referencia_contextual': True}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'retorno_dados', 'evidencia_confirmacao': 'o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade'}] | erros=[]
+💬 Você:
+> Cria um arquivo chamado laylay_r1_rt1_b_4d2e8a.txt e escreve MARCADOR R1 RT1 BETA 4D2E8A.
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-1]] {'intent': 'CREATE_FILE', 'params': {'alvo': 'laylay_r1_rt1_b_4d2e8a.txt', 'tipo_arquivo': 'texto'}}
+[96m╭─ ◕‿◕ Laylay: Criei C:\Users\pbarr\Downloads\laylay_r1_rt1_b_4d2e8a.txt. Saiu do pensamento e virou arquivo.[0m
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-2]] {'intent': 'CREATE_FILE', 'params': {'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_b_4d2e8a.txt', 'conteudo': 'marcador r1 rt1 beta 4d2e8a', 'editar_existente': True}}
+💬 Você:
+> Leia de novo.
+[96m╭─ ◕‿◕ Laylay: Atualizei o conteúdo de C:\Users\pbarr\Downloads\laylay_r1_rt1_b_4d2e8a.txt e conferi o arquivo.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '679e3b38d67647949dbaa6cd81b5b020', 'intent': 'CREATE_FILE', 'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_b_4d2e8a.txt', 'status': 'arquivo_criado', 'executou': True, 'confirmado': True, 'params': {'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_b_4d2e8a.txt', 'tipo_arquivo': 'texto', 'caminho': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_b_4d2e8a.txt', 'nome_arquivo': 'laylay_r1_rt1_b_4d2e8a.txt', 'tipo': 'arquivo'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'estado_observado', 'evidencia_confirmacao': 'a existência local do arquivo é relida'}, {'id_solicitacao': '45564ca03a974a8c9e5adda8ec69f95d', 'intent': 'CREATE_FILE', 'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_b_4d2e8a.txt', 'status': 'conteudo_atualizado', 'executou': True, 'confirmado': True, 'params': {'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_b_4d2e8a.txt', 'conteudo': 'marcador r1 rt1 beta 4d2e8a', 'editar_existente': True, 'caminho': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_b_4d2e8a.txt', 'nome_arquivo': 'laylay_r1_rt1_b_4d2e8a.txt', 'tipo': 'arquivo'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'estado_observado', 'evidencia_confirmacao': 'a existência local do arquivo é relida'}] | erros=[]
+[96m╭─ ◕‿◕ Laylay: Concluí o pedido em C:\Users\pbarr\Downloads\laylay_r1_rt1_a_7f9c2d.txt e confirmei o resultado. O conteúdo de laylay_r1_rt1_a_7f9c2d.txt é: marcador r1 rt1 alfa 7f9c2d.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '972c2572bd274cbcb9e455a8ffa9a016', 'intent': 'FILE_READ', 'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt', 'status': 'conteudo_lido', 'executou': True, 'confirmado': True, 'params': {'caminho': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt1_a_7f9c2d.txt', 'alvo': 'laylay_r1_rt1_a_7f9c2d.txt'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'retorno_dados', 'evidencia_confirmacao': 'o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade'}] | erros=[]
+📊 [ROTEIRO:RESUMO] avaliados=5 | passaram=3 | falharam=2 | alertas=0 | p95=5.01s
+⚠️ [MENTE:FALHA] servico_laylay-gmail:servico_orfao | classe=degradacao | impacto=servico | tipo=timeouterror

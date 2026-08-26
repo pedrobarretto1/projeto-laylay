@@ -1,0 +1,34 @@
+{
+  "versao_avaliador": 15,
+  "total_turnos": 6,
+  "respondidos": 0,
+  "concluido_transporte": false,
+  "avaliados_semanticamente": 1,
+  "passaram": 0,
+  "falharam": 1,
+  "alertas": 0,
+  "nao_avaliados": 5,
+  "taxa_semantica_percentual": 0.0,
+  "comandos_observados": 0,
+  "confirmacoes_indeterminadas": 0,
+  "latencia_s": {
+    "p50": 120.013,
+    "p95": 120.013,
+    "max": 120.013,
+    "media": 120.013
+  },
+  "por_dominio": {
+    "nao_classificado": {
+      "nao_avaliado": 5
+    },
+    "personalidade": {
+      "falhou": 1
+    }
+  },
+  "turnos_com_erros": [
+    1
+  ],
+  "turnos_com_alertas": [
+    1
+  ]
+}

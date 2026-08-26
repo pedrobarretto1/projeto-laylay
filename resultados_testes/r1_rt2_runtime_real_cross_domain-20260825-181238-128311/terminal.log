@@ -1,0 +1,51 @@
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:59012 | sessão=f8233e62 pid=15784
+🖥️ [TERMINAL 2] interface iniciada | sessão=f8233e62 pid=30612 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=f8233e62
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0262 início_de_fala=0.0446
+🎙️ [OUVIDO] Whisper será carregado somente na primeira fala.
+🎙️ [OUVIDO] Entrada: Microfone de mesa (4- Microsoft (índice 1, 16000 Hz, padrão do sistema).
+🎙️ [OUVIDO] Voz detectada (nível=0.0914, limiar=0.0446).
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=roteiro_teste
+💬 Você:
+> Cria um arquivo chamado laylay_r1_rt2_cross_91c4e7.txt e escreve MARCADOR R1 RT2 CROSS 91C4E7.
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-1]] {'intent': 'CREATE_FILE', 'params': {'alvo': 'laylay_r1_rt2_cross_91c4e7.txt', 'tipo_arquivo': 'texto'}}
+[96m╭─ ◕‿◕ Laylay: C:\Users\pbarr\Downloads\laylay_r1_rt2_cross_91c4e7.txt já está criado e no lugar.[0m
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-2]] {'intent': 'CREATE_FILE', 'params': {'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt', 'conteudo': 'marcador r1 rt2 cross 91c4e7', 'editar_existente': True}}
+💬 Você:
+> Leia o laylay_r1_rt2_cross_91c4e7.txt.
+[96m╭─ ◕‿◕ Laylay: Atualizei o conteúdo de C:\Users\pbarr\Downloads\laylay_r1_rt2_cross_91c4e7.txt e conferi o arquivo.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '855b7c40b517435cbfff311eae1bbaf1', 'intent': 'CREATE_FILE', 'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt', 'status': 'arquivo_criado', 'executou': True, 'confirmado': True, 'params': {'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt', 'tipo_arquivo': 'texto', 'caminho': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt', 'nome_arquivo': 'laylay_r1_rt2_cross_91c4e7.txt', 'tipo': 'arquivo'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'estado_observado', 'evidencia_confirmacao': 'a existência local do arquivo é relida'}, {'id_solicitacao': '724fce3302b7470ca8a6ee2ef1265807', 'intent': 'CREATE_FILE', 'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt', 'status': 'conteudo_atualizado', 'executou': True, 'confirmado': True, 'params': {'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt', 'conteudo': 'marcador r1 rt2 cross 91c4e7', 'editar_existente': True, 'caminho': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt', 'nome_arquivo': 'laylay_r1_rt2_cross_91c4e7.txt', 'tipo': 'arquivo'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'estado_observado', 'evidencia_confirmacao': 'a existência local do arquivo é relida'}] | erros=[]
+[96m╭─ ◕‿◕ Laylay: Concluí o pedido em C:\Users\pbarr\Downloads\laylay_r1_rt2_cross_91c4e7.txt e confirmei o resultado. O conteúdo de laylay_r1_rt2_cross_91c4e7.txt é: marcador r1 rt2 cross 91c4e7.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '652e70caff5443728cf26ab35e9e899a', 'intent': 'FILE_READ', 'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt', 'status': 'conteudo_lido', 'executou': True, 'confirmado': True, 'params': {'caminho': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt', 'alvo': 'laylay_r1_rt2_cross_91c4e7.txt', 'referencia_contextual': True}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'retorno_dados', 'evidencia_confirmacao': 'o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade'}] | erros=[]
+💬 Você:
+> Abre a calculadora.
+🪟 [JANELA:ENTRADA] intent=APP_OPEN nome=calculadora mapped=calc maximizar=False sem_janela=False
+🪟 [JANELA:ESTADO] calculadora -> aberto=False foco=False aba=False preferido=desconhecido
+🪟 [JANELA:ACAO] calculadora fechado -> tentar abrir
+🪟 [JANELA:ACAO] calculadora abrir retornou=True erro=-
+🪟 [JANELA:ESTADO] calculadora -> aberto=False foco=False aba=False preferido=desconhecido
+🪟 [JANELA:ESTADO] calculadora -> aberto=True foco=False aba=False preferido=app
+🪟 [JANELA:ACAO] calculadora abriu -> tentar foco
+🪟 [JANELA:ESTADO] calculadora -> aberto=True foco=True aba=False preferido=app
+🪟 [JANELA:RESULTADO] calculadora -> app_iniciado_focado
+[95m╭─ ≧◡≦⋆ Laylay: Calculadora aberta e no foco. Tudo certo, não precisou pedir de novo — nem que eu tivesse de fingir que a tela pulou pra cima![0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': 'bb27d5a562034aacaaeb2e77c51a1a18', 'intent': 'APP_OPEN', 'alvo': 'calculadora', 'status': 'app_iniciado_focado', 'executou': True, 'confirmado': True, 'params': {'nome_app': 'calculadora'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'estado_observado', 'evidencia_confirmacao': 'a janela é relida localmente ou pelo cliente remoto compatível'}] | erros=[]
+💬 Você:
+> De novo.
+🪟 [JANELA:ENTRADA] intent=APP_OPEN nome=calculadora mapped=calc maximizar=False sem_janela=False
+🪟 [JANELA:ESTADO] calculadora -> aberto=True foco=True aba=False preferido=app
+🪟 [JANELA:RESULTADO] calculadora -> ja_aberto_focado
+⚠️ [FALA:AUTORIA] fallback local | motivo=contrato_nao_preservado:contexto_antigo_reaproveitado status=ja_aberto_focado
+[95m╭─ ≧◡≦ Laylay: calculadora já está aberto e em foco; não repeti a abertura.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '98fade3e26f34040a900b7e81ebd7cbf', 'intent': 'APP_OPEN', 'alvo': 'calculadora', 'status': 'ja_aberto_focado', 'executou': False, 'confirmado': True, 'params': {'nome_app': 'calculadora'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'estado_observado', 'evidencia_confirmacao': 'a janela é relida localmente ou pelo cliente remoto compatível'}] | erros=[]
+💬 Você:
+> Leia de novo.
+[96m╭─ ◕‿◕ Laylay: Concluí o pedido em C:\Users\pbarr\Downloads\laylay_r1_rt2_cross_91c4e7.txt e confirmei o resultado. O conteúdo de laylay_r1_rt2_cross_91c4e7.txt é: marcador r1 rt2 cross 91c4e7.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '77ff6a1de51e470a934ba3e8360660d5', 'intent': 'FILE_READ', 'alvo': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt', 'status': 'conteudo_lido', 'executou': True, 'confirmado': True, 'params': {'caminho': 'C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt', 'alvo': 'laylay_r1_rt2_cross_91c4e7.txt'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'retorno_dados', 'evidencia_confirmacao': 'o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade'}] | erros=[]
+📊 [ROTEIRO:RESUMO] avaliados=5 | passaram=4 | falharam=1 | alertas=0 | p95=6.951s

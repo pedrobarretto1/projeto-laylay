@@ -1,0 +1,479 @@
+"""Normalizacao textual compartilhada da mente da Laylay."""
+
+from __future__ import annotations
+
+import re
+import unicodedata
+from typing import Any
+
+
+CORRECOES_FONETICAS = (
+    (r"\bpaly\s*list\b", "playlist"),
+    (r"\bplay\s*list\b", "playlist"),
+    (r"\bpalylist\b", "playlist"),
+    (r"\bplalyst\b", "playlist"),
+    (r"\bplalist\b", "playlist"),
+    (r"\bcamaitachi\b", "kamaitachi"),
+    (r"\bkamaitaxi\b", "kamaitachi"),
+    (r"\bkamaytachi\b", "kamaitachi"),
+    (r"\byoutub\b", "youtube"),
+    (r"\butube\b", "youtube"),
+    (r"\bspotifi\b", "spotify"),
+    (r"\binstgrm\b", "instagram"),
+    (r"\binstagran\b", "instagram"),
+)
+
+
+# A tolerância operacional trabalha apenas sobre a moldura do pedido. Nomes de
+# pessoas, músicas, arquivos, apps e playlists ficam fora deste vocabulário.
+_VERBOS_OPERACIONAIS = (
+    "abre", "abrir", "fecha", "fechar", "maximiza", "maximizar",
+    "coloca", "colocar", "toca", "tocar", "pausa", "pausar",
+    "continua", "continuar", "retoma", "retomar",
+    "liga", "ligar", "desliga", "desligar",
+    "cria", "criar", "apaga", "apagar", "remove", "remover",
+    "deleta", "deletar", "exclui", "excluir",
+    "pesquisa", "pesquisar", "busca", "buscar", "procura", "procurar",
+    "encontra", "encontrar", "organiza", "organizar",
+    "move", "mover", "renomeia", "renomear",
+    "salva", "salvar", "guarda", "guardar", "adiciona", "adicionar",
+    "lista", "listar", "mostra", "mostrar", "resume", "resumir",
+    "explica", "explicar", "traduz", "traduzir", "cancela", "cancelar",
+)
+
+_MOLDURA_ANTES_DO_VERBO = {
+    "ei", "lay", "laylay", "por", "favor", "pfv", "voce", "você",
+    "pode", "poderia", "consegue", "conseguiria", "sera", "será", "que",
+    "eu", "quero", "queria", "gostaria", "preciso", "de", "da", "pra",
+    "para", "seria", "possivel", "possível", "tem", "como", "faz", "o",
+}
+
+_INTRODUCOES_DE_ENTIDADE = {
+    "chamado", "chamada", "chamado", "nome", "intitulado", "intitulada",
+}
+
+_PADRAO_DOMINIO_OPERACIONAL = re.compile(
+    r"\b(?:"
+    r"musica|musicas|playlist|playlists|som|faixa|faixas|midia|volume|"
+    r"luz|lampada|ventilador|tomada|dispositivo|aparelho|"
+    r"arquivo|arquivos|pasta|pastas|diretorio|desktop|area de trabalho|"
+    r"app|aplicativo|programa|janela|aba|navegador|site|pagina|"
+    r"agenda|lembrete|compromisso|email|emails|mensagem|notificacao|"
+    r"erro|codigo|texto|link|url|clima|tempo"
+    r")\b",
+    flags=re.IGNORECASE,
+)
+
+_CORRECOES_EXATAS_GERAIS = {
+    "tduo": "tudo",
+    "tdo": "tudo",
+    "vc": "voce",
+}
+
+_CORRECOES_TERMOS_OPERACIONAIS = {
+    "playlit": "playlist",
+    "playlits": "playlists",
+    "playlsit": "playlist",
+    "plaulist": "playlist",
+    "muscia": "musica",
+    "muisca": "musica",
+    "lampda": "lampada",
+    "lanpada": "lampada",
+    "dispostivo": "dispositivo",
+    "dispositvo": "dispositivo",
+    "arquvio": "arquivo",
+    "arqivo": "arquivo",
+    "emial": "email",
+    "compromiso": "compromisso",
+    "compromisos": "compromissos",
+    "lembrente": "lembrete",
+    "lenbrete": "lembrete",
+    "temperatira": "temperatura",
+    # Exceções fechadas e auditáveis para o teste de uso diário. ``Opera`` é
+    # um app canônico da instalação, ``calculadora`` é o utilitário canônico
+    # do Windows e ``janela`` é parte da moldura, não um nome livre fornecido
+    # pelo usuário. A proteção de entidades nomeadas abaixo continua valendo.
+    "operra": "opera",
+    "calcuradora": "calculadora",
+    "janlea": "janela",
+}
+
+# Vocabulário pequeno e deliberadamente sem nomes próprios. A aproximação só
+# é aplicada quando um verbo ou marcador de consulta já provou que o token faz
+# parte da moldura operacional. Argumentos livres continuam opacos.
+_TERMOS_OPERACIONAIS_CANONICOS = (
+    "playlist", "playlists", "musica", "musicas", "lampada", "lampadas",
+    "dispositivo", "dispositivos", "arquivo", "arquivos", "codigo", "codigos",
+    "email", "emails", "compromisso", "compromissos", "lembrete", "lembretes",
+    "temperatura", "janela",
+)
+
+_ERROS_VERBAIS_EXPLICITOS = {
+    "fexa": "fecha",
+    "colcoa": "coloca",
+    "coloac": "coloca",
+    "orgniza": "organiza",
+    "oragniza": "organiza",
+    "pesqisa": "pesquisa",
+    "pequisa": "pesquisa",
+    "procuar": "procura",
+    "encotra": "encontra",
+    "adciona": "adiciona",
+    "adicoina": "adiciona",
+    "canecela": "cancela",
+    "renomea": "renomeia",
+    "deslgia": "desliga",
+    "deslgiar": "desligar",
+    "deslga": "desliga",
+    "liag": "liga",
+    "lgia": "liga",
+    "apga": "apaga",
+}
+
+_ERROS_VERBAIS_QUE_EXIGEM_DOMINIO = {
+    "liag", "lgia", "pequisa",
+}
+
+
+def _distancia_damerau_levenshtein(a: str, b: str) -> int:
+    """Distância pequena com suporte a duas letras vizinhas invertidas."""
+    a = str(a or "")
+    b = str(b or "")
+    if a == b:
+        return 0
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    matriz = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
+    for i in range(len(a) + 1):
+        matriz[i][0] = i
+    for j in range(len(b) + 1):
+        matriz[0][j] = j
+    for i in range(1, len(a) + 1):
+        for j in range(1, len(b) + 1):
+            custo = 0 if a[i - 1] == b[j - 1] else 1
+            matriz[i][j] = min(
+                matriz[i - 1][j] + 1,
+                matriz[i][j - 1] + 1,
+                matriz[i - 1][j - 1] + custo,
+            )
+            if (
+                i > 1 and j > 1
+                and a[i - 1] == b[j - 2]
+                and a[i - 2] == b[j - 1]
+            ):
+                matriz[i][j] = min(matriz[i][j], matriz[i - 2][j - 2] + 1)
+    return matriz[-1][-1]
+
+
+def _verbo_operacional_proximo(token: str) -> str:
+    token = str(token or "").strip()
+    if len(token) < 6 or not token.isalpha():
+        return ""
+    limite = 1 if len(token) <= 5 else 2
+    candidatos = sorted(
+        (
+            (_distancia_damerau_levenshtein(token, verbo), verbo)
+            for verbo in _VERBOS_OPERACIONAIS
+            if abs(len(token) - len(verbo)) <= limite
+        ),
+        key=lambda item: (item[0], len(item[1]), item[1]),
+    )
+    if not candidatos or candidatos[0][0] > limite:
+        return ""
+    # Empate entre verbos diferentes é ambiguidade, não autorização.
+    if len(candidatos) > 1 and candidatos[1][0] == candidatos[0][0]:
+        return ""
+    return candidatos[0][1]
+
+
+def _termo_operacional_proximo(token: str) -> str:
+    """Corrige um único deslize inequívoco em substantivo operacional."""
+    token = str(token or "").strip()
+    if (
+        len(token) < 5
+        or not token.isalpha()
+        or not token.isascii()
+        or token in _TERMOS_OPERACIONAIS_CANONICOS
+    ):
+        return ""
+    candidatos = sorted(
+        (
+            (_distancia_damerau_levenshtein(token, termo), termo)
+            for termo in _TERMOS_OPERACIONAIS_CANONICOS
+            if abs(len(token) - len(termo)) <= 1
+        ),
+        key=lambda item: (item[0], len(item[1]), item[1]),
+    )
+    if not candidatos or candidatos[0][0] > 1:
+        return ""
+    if len(candidatos) > 1 and candidatos[1][0] == candidatos[0][0]:
+        return ""
+    return candidatos[0][1]
+
+
+def corrigir_erros_portugues_operacionais(
+    texto: str,
+) -> tuple[str, list[dict[str, Any]]]:
+    """Corrige deslizes claros sem aproximar os argumentos do comando.
+
+    A função não interpreta nem autoriza ações. Ela só devolve uma versão para
+    classificação e metadados auditáveis sobre cada substituição. Aproximação
+    ortográfica é aplicada somente ao verbo; termos de domínio exigem moldura
+    gramatical explícita e nomes introduzidos por arquivo/pasta/app são opacos.
+    """
+    normalizado = re.sub(r"\s+", " ", str(texto or "")).strip()
+    if not normalizado:
+        return "", []
+    eventos: list[dict[str, Any]] = []
+
+    for errado, correto in _CORRECOES_EXATAS_GERAIS.items():
+        padrao = rf"\b{re.escape(errado)}\b"
+        if re.search(padrao, normalizado, flags=re.IGNORECASE):
+            normalizado = re.sub(padrao, correto, normalizado, flags=re.IGNORECASE)
+            eventos.append({"de": errado, "para": correto, "tipo": "exata"})
+
+    # Recupera um erro conversacional muito estreito somente quando ``vom``
+    # ocupa sozinho o predicativo final de uma avaliação (``X é vom``). Não é
+    # uma troca global: nomes, títulos e argumentos como ``arquivo vom`` ou
+    # ``chamado vom`` continuam opacos.
+    if re.fullmatch(r".+\s+(?:e|eh)\s+vom", normalizado, flags=re.IGNORECASE):
+        corrigido = re.sub(
+            r"\bvom$", "bom", normalizado,
+            count=1, flags=re.IGNORECASE,
+        )
+        if corrigido != normalizado:
+            normalizado = corrigido
+            eventos.append({
+                "de": "vom", "para": "bom", "tipo": "conversa_contextual",
+            })
+
+    # ``coloca essa música a playlist X`` é uma forma oral comum de
+    # ``... na/à playlist X``. A correção é estreita: exige verbo de adição,
+    # referência musical e a palavra playlist. Assim, o nome do destino fica
+    # opaco e uma frase casual não ganha autorização operacional por engano.
+    if (
+        re.search(
+            r"\b(?:coloca|coloque|salva|salve|guarda|guarde|adiciona|adicione|add)\b",
+            normalizado,
+            flags=re.IGNORECASE,
+        )
+        and re.search(
+            r"\b(?:musica|música|faixa|canção|cancao)\b",
+            normalizado,
+            flags=re.IGNORECASE,
+        )
+        and re.search(r"\ba\s+playlist\b", normalizado, flags=re.IGNORECASE)
+    ):
+        corrigido = re.sub(
+            r"\ba\s+(playlist\b)",
+            r"na \1",
+            normalizado,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+        if corrigido != normalizado:
+            normalizado = corrigido
+            eventos.append({
+                "de": "a playlist",
+                "para": "na playlist",
+                "tipo": "preposicao_operacional",
+            })
+
+    # Erro leve muito comum em controle de mídia. A correção só existe dentro
+    # da construção completa de avanço, então nomes de faixa ou arquivo
+    # chamados "proxma" continuam opacos em qualquer outro contexto.
+    if re.search(
+        r"\b(?:passa|pasa|pula|pule)(?:\s+(?:para|pra|pro))?\s+(?:a\s+)?"
+        r"proxma(?:\s+(?:musica|música|faixa))?\b",
+        normalizado,
+        flags=re.IGNORECASE,
+    ):
+        corrigido = re.sub(
+            r"\bproxma\b", "proxima", normalizado,
+            count=1, flags=re.IGNORECASE,
+        )
+        if corrigido != normalizado:
+            normalizado = corrigido
+            eventos.append({
+                "de": "proxma", "para": "proxima", "tipo": "termo_operacional",
+            })
+
+    tokens_exatos = normalizado.split()
+    determinantes = {
+        "a", "o", "as", "os", "um", "uma", "uns", "umas", "meu", "minha",
+        "meus", "minhas", "seu", "sua", "seus", "suas", "essa", "esse",
+        "essas", "esses", "na", "no", "da", "do",
+    }
+    marcadores_consulta = {"qual", "quais", "quantas", "quantos", "lista", "mostra"}
+    nomes_de_estrutura = {
+        "arquivo", "arquivos", "pasta", "pastas", "playlist", "playlists",
+        "app", "aplicativo", "programa", "musica", "faixa",
+    }
+    for indice, token in enumerate(tokens_exatos):
+        anteriores = tokens_exatos[:indice]
+        moldura_forte = bool(
+            any(item in marcadores_consulta for item in anteriores)
+            or any(
+                item in _VERBOS_OPERACIONAIS
+                or item in _ERROS_VERBAIS_EXPLICITOS
+                for item in anteriores
+            )
+        )
+        correcao_termo = _CORRECOES_TERMOS_OPERACIONAIS.get(token)
+        tipo_correcao = "termo_operacional"
+        if not correcao_termo and moldura_forte:
+            correcao_termo = _termo_operacional_proximo(token)
+            tipo_correcao = "termo_operacional_aproximado"
+        if not correcao_termo:
+            continue
+        if any(item in _INTRODUCOES_DE_ENTIDADE for item in anteriores):
+            continue
+        if indice and tokens_exatos[indice - 1] in nomes_de_estrutura:
+            continue
+        moldura_operacional = bool(
+            (indice and tokens_exatos[indice - 1] in determinantes)
+            or any(item in marcadores_consulta for item in anteriores)
+            or any(
+                item in _VERBOS_OPERACIONAIS
+                or item in _ERROS_VERBAIS_EXPLICITOS
+                for item in anteriores
+            )
+        )
+        if not moldura_operacional:
+            continue
+        tokens_exatos[indice] = correcao_termo
+        eventos.append({
+            "de": token,
+            "para": correcao_termo,
+            "tipo": tipo_correcao,
+        })
+    normalizado = " ".join(tokens_exatos)
+
+    # Repara apenas o primeiro token quando a saída assíncrona duplicou seu
+    # começo: ``fecfecha`` -> ``fecha``. Não examina argumentos posteriores.
+    partes = normalizado.split(" ", 1)
+    primeiro = partes[0] if partes else ""
+    for verbo in _VERBOS_OPERACIONAIS:
+        if primeiro.endswith(verbo) and primeiro != verbo:
+            prefixo = primeiro[:-len(verbo)]
+            if prefixo and verbo.startswith(prefixo):
+                partes[0] = verbo
+                normalizado = " ".join(partes)
+                eventos.append({"de": primeiro, "para": verbo, "tipo": "prefixo_duplicado"})
+                break
+
+    tokens = normalizado.split()
+    if not tokens:
+        return normalizado, eventos
+    tem_dominio_explicito = bool(_PADRAO_DOMINIO_OPERACIONAL.search(normalizado))
+
+    # Se já existe um verbo operacional claro na moldura, os demais tokens são
+    # tratados como argumentos e permanecem literalmente como o usuário falou.
+    for indice, token in enumerate(tokens[:8]):
+        if token in _INTRODUCOES_DE_ENTIDADE:
+            break
+        if token in _VERBOS_OPERACIONAIS:
+            return normalizado, eventos
+        if indice and any(anterior not in _MOLDURA_ANTES_DO_VERBO for anterior in tokens[:indice]):
+            break
+        candidato_explicito = _ERROS_VERBAIS_EXPLICITOS.get(token)
+        pesquisa_com_moldura_explicita = bool(
+            token == "pequisa"
+            and indice + 1 < len(tokens)
+            and (
+                tokens[indice + 1] in {"sobre", "por"}
+                or tokens[indice + 1:indice + 3] == ["no", "google"]
+            )
+        )
+        if (
+            candidato_explicito
+            and token in _ERROS_VERBAIS_QUE_EXIGEM_DOMINIO
+            and not tem_dominio_explicito
+            and not pesquisa_com_moldura_explicita
+        ):
+            candidato_explicito = ""
+        candidato_aproximado = (
+            _verbo_operacional_proximo(token)
+            if tem_dominio_explicito
+            else ""
+        )
+        candidato = candidato_explicito or candidato_aproximado
+        if not candidato:
+            continue
+        tokens[indice] = candidato
+        eventos.append({
+            "de": token,
+            "para": candidato,
+            "tipo": "verbo_operacional",
+        })
+        return " ".join(tokens), eventos
+    return normalizado, eventos
+
+
+def remover_acentos(texto: str) -> str:
+    try:
+        normalizado = unicodedata.normalize("NFKD", str(texto or ""))
+        return "".join(c for c in normalizado if not unicodedata.combining(c))
+    except Exception:
+        return str(texto or "")
+
+
+def aplicar_correcao_fonetica(texto: str) -> str:
+    t = str(texto or "").lower().strip()
+    if not t:
+        return ""
+    t = re.sub(r"\s+", " ", t)
+    for padrao, troca in CORRECOES_FONETICAS:
+        t = re.sub(padrao, troca, t, flags=re.IGNORECASE)
+    return t
+
+
+def normalizar_texto(texto: str) -> str:
+    t = remover_acentos(str(texto or "").lower())
+    t = aplicar_correcao_fonetica(t)
+    t = re.sub(r"[^a-z0-9]+", " ", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def normalizar_texto_curto(texto: str) -> str:
+    """Normaliza caixa, acentos e espaços sem remover pontuação contextual."""
+    bruto = str(texto or "").lower()
+    sem_acento = unicodedata.normalize("NFKD", bruto)
+    sem_acento = "".join(ch for ch in sem_acento if not unicodedata.combining(ch))
+    return re.sub(r"\s+", " ", sem_acento).strip()
+
+
+def normalizar_texto_basico(texto: str) -> str:
+    """Normaliza caixa Unicode, acentos e espaços, preservando pontuação.
+
+    É o contrato básico compartilhado. Domínios que removem ou preservam
+    conjuntos específicos de símbolos devem manter normalizadores próprios.
+    """
+    bruto = str(texto or "").casefold()
+    sem_acento = unicodedata.normalize("NFKD", bruto)
+    sem_acento = "".join(ch for ch in sem_acento if not unicodedata.combining(ch))
+    return re.sub(r"\s+", " ", sem_acento).strip()
+
+
+def texto_pede_opiniao(texto: str) -> bool:
+    """Reconhece molduras de opinião sem autorizar uma ação operacional.
+
+    ``acha`` é ambíguo em português: pode significar tanto ``encontre`` quanto
+    ``qual é a sua opinião``. A camada compartilhada resolve apenas as formas
+    inequivocamente conversacionais. Pedidos como ``acha o arquivo`` continuam
+    disponíveis para o roteador de arquivos.
+    """
+    t = normalizar_texto_basico(texto)
+    if not t:
+        return False
+    return bool(re.search(
+        r"(?:^|\b)(?:o\s+que|oque)\s+(?:voce\s+)?acha\b|"
+        r"^(?:e\s+)?(?:voce\s+)?acha\s+(?:que\b|(?:de|do|da|dos|das|sobre)\b|"
+        r"(?:legal|bom|boa|ruim|interessante)\b)|"
+        r"\bqual\s+(?:e\s+)?(?:a\s+)?sua\s+opiniao\b|"
+        r"\b(?:me\s+(?:da|diz)|quero)\s+(?:a\s+)?sua\s+opiniao\b|"
+        r"\bo\s+que\s+(?:voce\s+)?pensa\s+(?:de|do|da|dos|das|sobre)\b",
+        t,
+    ))

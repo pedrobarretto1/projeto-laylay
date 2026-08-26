@@ -1,0 +1,2 @@
+"""Componentes emocionais da Laylay."""
+

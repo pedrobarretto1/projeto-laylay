@@ -1,0 +1,307 @@
+{
+  "versao": 2,
+  "assinatura": "9c235a4eb18990c08ffe3580fc1ef774b3ce010e37555064afcd2883f0eca3a1",
+  "criado_em": 1787691416.2113624,
+  "atualizado_em": 1787691435.7318592,
+  "concluido": true,
+  "criterio_conclusao": "transporte_resposta_e_resultado_turno",
+  "voz_silenciada_durante_teste": true,
+  "itens": [
+    {
+      "indice": 0,
+      "comando": "Abre a calculadora.",
+      "status": "respondido",
+      "resposta": "Iniciei calculadora e trouxe a nova janela pra frente.",
+      "enviado_em": 1787691426.2452147,
+      "finalizado_em": 1787691431.5867164,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "APP_OPEN",
+            "alvo": "calculadora",
+            "status": "app_iniciado_focado",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "estado_observado",
+            "evidencia_confirmacao": "a janela é relida localmente ou pelo cliente remoto compatível"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "r1_rt1_ancora_incompativel_reexecutavel",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "apps",
+        "intents_observadas": [
+          "APP_OPEN"
+        ],
+        "statuses_observados": [
+          "app_iniciado_focado"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 5.342
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada"
+    },
+    {
+      "indice": 1,
+      "comando": "Cria um arquivo chamado r1 rt1 leitura.txt e escreve alpha.",
+      "status": "respondido",
+      "resposta": "Criei C:\\Users\\pbarr\\Downloads\\r1 rt1 leitura.txt e confirmei que ficou pronto. Arquivo r1 rt1 leitura.txt criado.",
+      "enviado_em": 1787691431.6007702,
+      "finalizado_em": 1787691433.1387167,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "CREATE_FILE",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\r1 rt1 leitura.txt",
+            "status": "arquivo_criado",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "estado_observado",
+            "evidencia_confirmacao": "a existência local do arquivo é relida"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "r1_rt1_cria_arquivo_a",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "arquivos",
+        "intents_observadas": [
+          "CREATE_FILE"
+        ],
+        "statuses_observados": [
+          "arquivo_criado"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 1.538
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada"
+    },
+    {
+      "indice": 2,
+      "comando": "Leia o r1 rt1 leitura.txt.",
+      "status": "respondido",
+      "resposta": "Atualizei o conteúdo de C:\\Users\\pbarr\\Downloads\\r1 rt1 leitura.txt e conferi o arquivo.",
+      "enviado_em": 1787691433.1696804,
+      "finalizado_em": 1787691433.350881,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "FILE_READ",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\r1 rt1 leitura.txt",
+            "status": "conteudo_lido",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "retorno_dados",
+            "evidencia_confirmacao": "o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "r1_rt1_leitura_a_confirmada",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "arquivos",
+        "intents_observadas": [
+          "FILE_READ"
+        ],
+        "statuses_observados": [
+          "conteudo_lido"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 0.181
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada"
+    },
+    {
+      "indice": 3,
+      "comando": "Cria um arquivo chamado r1 rt1 sombra.txt e escreve beta.",
+      "status": "respondido",
+      "resposta": "C:\\Users\\pbarr\\Downloads\\r1 rt1 sombra.txt já está criado e no lugar.",
+      "enviado_em": 1787691433.3656886,
+      "finalizado_em": 1787691435.5806718,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "CREATE_FILE",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\r1 rt1 sombra.txt",
+            "status": "arquivo_criado",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "estado_observado",
+            "evidencia_confirmacao": "a existência local do arquivo é relida"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "r1_rt1_sombreamento_mesmo_dominio",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "arquivos",
+        "intents_observadas": [
+          "CREATE_FILE"
+        ],
+        "statuses_observados": [
+          "arquivo_criado"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 2.215
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada"
+    },
+    {
+      "indice": 4,
+      "comando": "Leia de novo.",
+      "status": "respondido",
+      "resposta": "Escrevi em C:\\Users\\pbarr\\Downloads\\r1 rt1 sombra.txt. O texto já está salvo.",
+      "enviado_em": 1787691435.603039,
+      "finalizado_em": 1787691435.7204933,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "FILE_READ",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\r1 rt1 leitura.txt",
+            "status": "conteudo_lido",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "retorno_dados",
+            "evidencia_confirmacao": "o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "r1_rt1_leia_de_novo_preserva_leitura_compativel",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "arquivos",
+        "intents_observadas": [
+          "FILE_READ"
+        ],
+        "statuses_observados": [
+          "conteudo_lido"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 0.117
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada"
+    }
+  ],
+  "preparacao": {
+    "status": "modo_chat_confirmado",
+    "atraso_inicial_s": 10.0,
+    "voz_silenciada": true
+  },
+  "finalizado_em": 1787691435.7318563
+}

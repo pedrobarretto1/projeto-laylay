@@ -1,0 +1,69 @@
+<Page
+    x:Class="LaylayGameBar.LaylayWidget"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="Transparent">
+    <Grid x:Name="Root" Background="Transparent" IsHitTestVisible="False">
+        <Border x:Name="CommandBar"
+                Visibility="Collapsed"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top"
+                Margin="10"
+                Padding="10,8"
+                MaxWidth="390"
+                CornerRadius="12"
+                Background="#E8171923"
+                BorderBrush="#FF8B5CF6"
+                BorderThickness="2"
+                Canvas.ZIndex="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="◕‿◕" Foreground="#FFC4B5FD" FontSize="16" Margin="0,0,9,0" />
+                    <TextBlock x:Name="CommandText" Grid.Column="1" Text="" Foreground="White"
+                               FontSize="14" TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center" />
+                </Grid>
+                <TextBlock Grid.Row="1" Text="Enter envia  ·  Esc cancela"
+                           Foreground="#FFA6A9B6" FontSize="9" Margin="0,3,0,0" />
+            </Grid>
+        </Border>
+
+        <Grid x:Name="AvatarContainer"
+              Width="250" Height="250"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Bottom"
+              Margin="6"
+              RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform x:Name="AvatarScale" ScaleX="1" ScaleY="1" />
+                    <TranslateTransform x:Name="AvatarMove" Y="0" />
+                </TransformGroup>
+            </Grid.RenderTransform>
+            <Ellipse x:Name="ActivityAura"
+                     Margin="8"
+                     StrokeThickness="2"
+                     Stroke="#0060A5FA"
+                     IsHitTestVisible="False" />
+            <Image x:Name="AvatarImage" Stretch="Uniform" />
+            <Ellipse x:Name="ActivityDot"
+                     Width="15" Height="15"
+                     HorizontalAlignment="Right" VerticalAlignment="Top"
+                     Margin="0,14,14,0"
+                     Fill="#0060A5FA"
+                     IsHitTestVisible="False" />
+            <Border x:Name="ConnectionBadge" HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Margin="0,18,18,0" Padding="8,4" CornerRadius="10" Background="#B3171923">
+                <TextBlock x:Name="ConnectionText" Text="conectando…" Foreground="#FFE9D5FF" FontSize="11" />
+            </Border>
+        </Grid>
+    </Grid>
+</Page>

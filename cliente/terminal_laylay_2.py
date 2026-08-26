@@ -1,0 +1,7696 @@
+"""Terminal Laylay 2.1 — cliente PySide6 da mente canônica."""
+
+from __future__ import annotations
+
+from datetime import datetime
+import os
+import re
+from pathlib import Path
+import sys
+import time
+import unicodedata
+import uuid
+
+
+RAIZ_PROJETO = Path(__file__).resolve().parents[1]
+if str(RAIZ_PROJETO) not in sys.path:
+    sys.path.insert(0, str(RAIZ_PROJETO))
+
+from cliente.terminal_2.transporte import TransporteDesktopCliente
+
+try:
+    from shiboken6 import isValid as objeto_qt_valido
+    from PySide6.QtCore import (
+        QEasingCurve, QObject, QParallelAnimationGroup, QPoint,
+        QPropertyAnimation, QRect, QSequentialAnimationGroup, QSettings, QSize,
+        QThread, QTimer, Qt, Signal,
+    )
+    from PySide6.QtGui import (
+        QAction, QColor, QFont, QFontDatabase, QKeySequence, QPainter, QPainterPath,
+        QPen, QPixmap, QShortcut,
+    )
+    from PySide6.QtWidgets import (
+        QApplication, QBoxLayout, QButtonGroup, QCheckBox, QComboBox, QFileDialog,
+        QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QLayout, QLineEdit,
+        QInputDialog, QMainWindow, QMenu, QMessageBox, QPushButton, QScrollArea,
+        QSizePolicy, QStackedWidget, QTextEdit,
+        QToolButton, QVBoxLayout, QWidget,
+    )
+except ImportError as erro:  # pragma: no cover
+    raise SystemExit(
+        "O Terminal Laylay 2.1 precisa de PySide6. Instale com: pip install PySide6"
+    ) from erro
+
+
+def _objeto_qt_esta_vivo(objeto: object) -> bool:
+    """Confere o wrapper e o objeto C++ antes de callbacks assíncronos."""
+    try:
+        return objeto is not None and bool(objeto_qt_valido(objeto))
+    except (RuntimeError, TypeError):
+        return False
+
+from cliente.terminal_2.dashboard import (
+    ChipEstado,
+    PaginaAutomacao,
+    PaginaMemoria,
+    PaginaMusica,
+    PaginaSistema,
+    PainelCentralInteligente,
+    PainelLateralDashboard,
+)
+from cliente.terminal_2.acabamento import (
+    FormaOndaMicrofone,
+    icone_terminal,
+    tamanho_icone,
+)
+
+
+PALETA = {
+    "fundo": "#0D1014",
+    "sidebar": "#111419",
+    "superficie": "#15191E",
+    "elevada": "#1C2026",
+    "hover": "#242A31",
+    "borda": "#2C3239",
+    "texto": "#F3F2F4",
+    "secundario": "#B4B5BA",
+    "apagado": "#777C84",
+    "violeta": "#FF5C73",
+    "ciano": "#FF7588",
+    "rosa": "#FF5C73",
+    "sucesso": "#68C79A",
+    "erro": "#ED7888",
+}
+
+# Mantém a leitura confortável em janelas desktop sem transformar cada fala em
+# uma faixa de ponta a ponta. Em viewports menores, o QScrollArea e os stretches
+# das linhas continuam comprimindo os balões naturalmente.
+LARGURA_MAXIMA_MENSAGEM_LAYLAY = 560
+LARGURA_MAXIMA_MENSAGEM_USUARIO = 520
+
+
+def carregar_fontes_interface() -> str:
+    """Registra fontes do Windows também no plugin Qt offscreen."""
+    fontes = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+    carregadas: list[str] = []
+    for nome in (
+        "SegUIVar.ttf", "segoeui.ttf", "segoeuib.ttf", "seguisym.ttf",
+        "arial.ttf", "CascadiaCode.ttf",
+    ):
+        caminho = fontes / nome
+        if not caminho.is_file():
+            continue
+        identificador = QFontDatabase.addApplicationFont(str(caminho))
+        if identificador >= 0:
+            carregadas.extend(QFontDatabase.applicationFontFamilies(identificador))
+    return next(
+        (nome for nome in carregadas if "Segoe UI Variable" in nome),
+        next((nome for nome in carregadas if nome == "Segoe UI"), "Arial"),
+    )
+
+
+class PonteWorker(QObject):
+    mensagem = Signal(dict)
+    conectado = Signal(bool)
+    falha = Signal(str)
+    terminou = Signal()
+
+    def __init__(
+        self, host: str, port: int, token: str, *, session_id: str = "",
+    ) -> None:
+        super().__init__()
+        self.transporte = TransporteDesktopCliente(
+            host, port, token,
+            ao_mensagem=self.mensagem.emit,
+            ao_conexao=self.conectado.emit,
+            ao_falha=self.falha.emit,
+            session_id=session_id,
+        )
+
+    def parar(self) -> None:
+        self.transporte.parar()
+
+    def enfileirar(self, mensagem: dict) -> bool:
+        return self.transporte.enfileirar(mensagem)
+
+    def executar(self) -> None:
+        self.transporte.executar()
+        self.terminou.emit()
+
+
+class AroPresenca(QWidget):
+    """Avatar compacto: presença forte sem virar painel decorativo."""
+
+    def __init__(self, raiz: Path, tamanho: int = 42) -> None:
+        super().__init__()
+        self.raiz = raiz
+        self._tamanho = tamanho
+        self._fase = 0.0
+        self._cor = QColor(PALETA["violeta"])
+        self._pixmap = QPixmap()
+        self._ativo = False
+        self.setFixedSize(tamanho, tamanho)
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self._animar)
+        self.atualizar("idle", "calma")
+
+    def _avatar_path(self, emocao: str) -> Path:
+        mapa = {
+            "calma": ("calma", "laylay_calma_512_transparente_real_corrigida.png"),
+            "feliz": ("feliz", "laylay_feliz_boca_fechada_512_RGBA.png"),
+            "animada": ("animada", "laylay_animada_512_transparente_real.png"),
+            "irritada": ("brava", "laylay_brava_512_transparente_real.png"),
+            "brava": ("brava", "laylay_brava_512_transparente_real.png"),
+            "triste": ("triste", "laylay_triste_512_transparente_real.png"),
+            "surpresa": ("surpresa", "laylay_surpresa_512_transparente_real.png"),
+            "envergonhada": ("envergonhada", "laylay_envergonhada_512_transparente.png"),
+        }
+        pasta, nome = mapa.get(emocao, mapa["calma"])
+        return self.raiz / "avatar" / pasta / nome
+
+    def atualizar(self, atividade: str, emocao: str) -> None:
+        cores = {
+            "feliz": PALETA["rosa"], "animada": PALETA["rosa"],
+            "irritada": PALETA["erro"], "brava": PALETA["erro"],
+            "curiosa": PALETA["ciano"], "triste": "#8290D6",
+        }
+        self._cor = QColor(cores.get(emocao, PALETA["violeta"]))
+        self._ativo = atividade in {"thinking", "executing", "speaking", "listening"}
+        pix = QPixmap(str(self._avatar_path(emocao)))
+        self._pixmap = pix.scaled(
+            self._tamanho - 8, self._tamanho - 8,
+            Qt.KeepAspectRatio, Qt.SmoothTransformation,
+        ) if not pix.isNull() else QPixmap()
+        if self._ativo and not self.timer.isActive():
+            self.timer.start(65)
+        elif not self._ativo:
+            self.timer.stop()
+            self._fase = 0.0
+        self.update()
+
+    def _animar(self) -> None:
+        self._fase = (self._fase + 0.06) % 1.0
+        self.update()
+
+    def paintEvent(self, _event) -> None:  # noqa: N802
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        cor = QColor(self._cor)
+        cor.setAlpha(205 if not self._ativo else int(135 + 90 * abs(0.5 - self._fase) * 2))
+        painter.setPen(QPen(cor, 2))
+        painter.setBrush(QColor(PALETA["elevada"]))
+        painter.drawEllipse(2, 2, self.width() - 4, self.height() - 4)
+        if not self._pixmap.isNull():
+            x = (self.width() - self._pixmap.width()) // 2
+            y = (self.height() - self._pixmap.height()) // 2
+            painter.drawPixmap(x, y, self._pixmap)
+
+
+class AvatarUsuario(QWidget):
+    # Avatar local do usuário, independente da mente.
+
+    def __init__(
+        self,
+        caminho: str = "",
+        tamanho: int = 38,
+    ) -> None:
+        super().__init__()
+        self._tamanho = int(tamanho)
+        self._pixmap = QPixmap()
+
+        self.setFixedSize(
+            self._tamanho,
+            self._tamanho,
+        )
+
+        self.definir_imagem(caminho)
+
+    def definir_imagem(
+        self,
+        caminho: str,
+    ) -> None:
+        caminho = str(
+            caminho or ""
+        ).strip()
+
+        if (
+            caminho
+            and Path(caminho).is_file()
+        ):
+            self._pixmap = QPixmap(
+                caminho
+            )
+        else:
+            self._pixmap = QPixmap()
+
+        self.update()
+
+    def paintEvent(
+        self,
+        _event,
+    ) -> None:  # noqa: N802
+        painter = QPainter(self)
+        painter.setRenderHint(
+            QPainter.Antialiasing
+        )
+
+        area = self.rect().adjusted(
+            2, 2, -2, -2
+        )
+
+        painter.setPen(
+            QPen(
+                QColor("#7D3A48"),
+                2,
+            )
+        )
+        painter.setBrush(
+            QColor("#1C2026")
+        )
+        painter.drawEllipse(area)
+
+        if not self._pixmap.isNull():
+            imagem = self._pixmap.scaled(
+                area.width(),
+                area.height(),
+                Qt.KeepAspectRatioByExpanding,
+                Qt.SmoothTransformation,
+            )
+
+            recorte = QPainterPath()
+            recorte.addEllipse(area)
+
+            painter.save()
+            painter.setClipPath(
+                recorte
+            )
+
+            x = (
+                self.width()
+                - imagem.width()
+            ) // 2
+            y = (
+                self.height()
+                - imagem.height()
+            ) // 2
+
+            painter.drawPixmap(
+                x,
+                y,
+                imagem,
+            )
+            painter.restore()
+
+            painter.setPen(
+                QPen(
+                    QColor("#7D3A48"),
+                    2,
+                )
+            )
+            painter.setBrush(
+                Qt.NoBrush
+            )
+            painter.drawEllipse(area)
+            return
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(
+            QColor("#A9A2A7")
+        )
+
+        cx = self.width() // 2
+        cy = self.height() // 2
+
+        cabeca = max(
+            6,
+            self._tamanho // 5,
+        )
+
+        painter.drawEllipse(
+            cx - cabeca // 2,
+            cy - cabeca,
+            cabeca,
+            cabeca,
+        )
+
+        corpo_largura = max(
+            12,
+            self._tamanho // 2,
+        )
+        corpo_altura = max(
+            7,
+            self._tamanho // 4,
+        )
+
+        painter.drawEllipse(
+            cx - corpo_largura // 2,
+            cy + 1,
+            corpo_largura,
+            corpo_altura,
+        )
+
+
+class MensagemWidget(QFrame):
+    reenviar = Signal(str, str)
+
+    def __init__(
+        self, papel: str, texto: str, horario: str | None = None,
+        *, mensagem_id: str = "", status: str = "accepted",
+    ) -> None:
+        super().__init__()
+        self.papel = papel
+        self.mensagem_id = mensagem_id
+        self.texto = texto
+        self.setObjectName("messageUser" if papel == "user" else "messageLaylay")
+        self.setMaximumWidth(
+            LARGURA_MAXIMA_MENSAGEM_LAYLAY
+            if papel == "assistant"
+            else LARGURA_MAXIMA_MENSAGEM_USUARIO
+        )
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(
+            16, 11, 16, 10
+        )
+        lay.setSpacing(5)
+        self.horario = str(horario or "")
+
+        self.corpo = QLabel(texto)
+        self.corpo.setObjectName("messageText")
+        self.corpo.setWordWrap(True)
+        self.corpo.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        self.corpo.setTextInteractionFlags(Qt.TextSelectableByMouse)
+
+        # P7.1:
+        # Só o texto fica dentro do balão.
+        lay.addWidget(self.corpo)
+        self.status = QLabel()
+        self.status.setObjectName("messageStatus")
+        self.retry = QPushButton("Tentar novamente")
+        self.retry.setObjectName("retryButton")
+        self.retry.clicked.connect(lambda: self.reenviar.emit(self.mensagem_id, self.texto))
+        self.retry.hide()
+        if papel == "user":
+            self.definir_status(status)
+        else:
+            self.status.hide()
+            self.retry.hide()
+        natural = super().sizeHint().width()
+        self.largura_preferida = min(
+            self.maximumWidth(), max(natural, 180 + min(680, len(self.texto) * 3)),
+        )
+
+    def atualizar_texto(self, texto: str) -> None:
+        texto = str(texto or "").strip()
+        if not texto or texto == self.texto:
+            return
+        self.texto = texto
+        self.corpo.setText(texto)
+        self.largura_preferida = min(
+            self.maximumWidth(), max(180, 180 + min(680, len(texto) * 3)),
+        )
+        self.updateGeometry()
+
+    def definir_status(self, status: str, detalhe: str = "") -> None:
+        mapa = {
+            "pending": "Pendente · esperando a mente",
+            "accepted": "Recebida pela mente",
+            "failed": detalhe or "Não chegou à mente",
+        }
+        self.status.setText(mapa.get(status, mapa["accepted"]))
+        self.status.setProperty("delivery", status)
+        self.status.style().unpolish(self.status)
+        self.status.style().polish(self.status)
+
+        self.status.setVisible(
+            status in {"pending", "failed"}
+        )
+        self.retry.setVisible(
+            status == "failed"
+        )
+
+
+class IndicadorPensando(QFrame):
+    """Presença visual efêmera; nunca entra no histórico nem na porta de fala."""
+
+    def __init__(self, *, reduzir_movimento: bool = False) -> None:
+        super().__init__()
+        self.setObjectName("thinkingIndicator")
+        self.setMaximumWidth(150)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(16, 10, 16, 10)
+        lay.setSpacing(9)
+        meta = QLabel("LAYLAY")
+        meta.setObjectName("thinkingMeta")
+        lay.addWidget(meta)
+        pontos_box = QFrame(self)
+        pontos_lay = QHBoxLayout(pontos_box)
+        pontos_lay.setContentsMargins(0, 0, 0, 0)
+        pontos_lay.setSpacing(3)
+        self.pontos: list[QLabel] = []
+        self._efeitos_pontos: list[QGraphicsOpacityEffect] = []
+        for indice in range(3):
+            ponto = QLabel("●", pontos_box)
+            ponto.setObjectName("thinkingDots")
+            ponto.setFixedWidth(8)
+            ponto.setAlignment(Qt.AlignCenter)
+            efeito = QGraphicsOpacityEffect(ponto)
+            efeito.setOpacity(1.0 if reduzir_movimento or indice == 0 else 0.24)
+            ponto.setGraphicsEffect(efeito)
+            pontos_lay.addWidget(ponto)
+            self.pontos.append(ponto)
+            self._efeitos_pontos.append(efeito)
+        lay.addWidget(pontos_box)
+        self._grupo_pontos: QSequentialAnimationGroup | None = None
+        if not reduzir_movimento:
+            grupo = QSequentialAnimationGroup(self)
+            for fase in range(3):
+                pulso = QParallelAnimationGroup(grupo)
+                for indice, efeito in enumerate(self._efeitos_pontos):
+                    animacao = QPropertyAnimation(efeito, b"opacity", pulso)
+                    animacao.setDuration(210)
+                    animacao.setEndValue(1.0 if indice == fase else 0.24)
+                    animacao.setEasingCurve(QEasingCurve.InOutSine)
+                    pulso.addAnimation(animacao)
+                grupo.addAnimation(pulso)
+            grupo.setLoopCount(-1)
+            self._grupo_pontos = grupo
+            grupo.start()
+
+    def parar(self) -> None:
+        grupo = self._grupo_pontos
+        if grupo is not None:
+            grupo.stop()
+            self._grupo_pontos = None
+
+
+class AlternadorModo(QFrame):
+    modo_solicitado = Signal(str)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setObjectName("modeSwitch")
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(3, 3, 3, 3)
+        lay.setSpacing(2)
+        self.grupo = QButtonGroup(self)
+        self.grupo.setExclusive(True)
+        self.botoes: dict[str, QPushButton] = {}
+        for modo, texto in (("chat", "Chat"), ("voice", "Voz")):
+            botao = QPushButton(texto)
+            botao.setCheckable(True)
+            botao.setAccessibleName(f"Ativar modo {texto.casefold()}")
+            botao.setProperty("segment", True)
+            botao.clicked.connect(lambda _v=False, m=modo: self.modo_solicitado.emit(m))
+            self.grupo.addButton(botao)
+            self.botoes[modo] = botao
+            lay.addWidget(botao)
+        self.definir("chat")
+
+    def definir(self, modo: str, *, pendente: bool = False, voz_disponivel: bool = True) -> None:
+        modo = modo if modo in self.botoes else "chat"
+        self.botoes[modo].setChecked(True)
+        self.botoes["chat"].setEnabled(not pendente)
+        self.botoes["voice"].setEnabled(not pendente and voz_disponivel)
+        self.botoes["voice"].setToolTip(
+            "Usar o ouvido da Laylay" if voz_disponivel
+            else "O ouvido não está disponível agora"
+        )
+
+
+class Composer(QFrame):
+    enviar = Signal(str)
+    alternar_voz = Signal()
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setObjectName("composer")
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(
+            8, 7, 8, 6
+        )
+        lay.setSpacing(3)
+
+        linha = QHBoxLayout()
+        linha.setSpacing(8)
+        self.microfone = QPushButton()
+        self.microfone.setObjectName("composerMic")
+        self.microfone.setIcon(icone_terminal("microphone"))
+        self.microfone.setIconSize(QSize(21, 21))
+        self.microfone.setFixedSize(46, 46)
+        self.microfone.setToolTip("Alternar entre conversa escrita e voz")
+        self.microfone.setAccessibleName("Alternar modo de voz")
+        self.microfone.clicked.connect(self.alternar_voz.emit)
+        self.editor = QTextEdit()
+        self.editor.setObjectName("composerEdit")
+        self.editor.setPlaceholderText("Mensagem para a Laylay")
+        self.editor.setAccessibleName("Mensagem para a Laylay")
+        self.editor.setAcceptRichText(False)
+        self.editor.setFixedHeight(44)
+        self.editor.installEventFilter(self)
+        self.botao = QPushButton()
+        self.botao.setObjectName("sendButton")
+        self.botao.setIcon(icone_terminal("send"))
+        self.botao.setIconSize(QSize(18, 18))
+        self.botao.setFixedSize(42, 42)
+        self.botao.setToolTip("Enviar mensagem")
+        self.botao.setAccessibleName("Enviar mensagem")
+        self.botao.clicked.connect(self._emitir)
+        linha.addWidget(self.microfone)
+        linha.addWidget(self.editor, 1)
+        linha.addWidget(self.botao, 0, Qt.AlignVCenter)
+        lay.addLayout(linha)
+        self.ajuda = QLabel("Enter para enviar  ·  Shift + Enter para nova linha")
+        self.ajuda.setObjectName("composerHint")
+        lay.addWidget(self.ajuda, 0, Qt.AlignHCenter)
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        if obj is self.editor and event.type() == event.Type.KeyPress:
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter) and not (event.modifiers() & Qt.ShiftModifier):
+                self._emitir()
+                return True
+        return super().eventFilter(obj, event)
+
+    def _emitir(self) -> None:
+        texto = self.editor.toPlainText().strip()
+        if texto and self.editor.isEnabled():
+            self.editor.clear()
+            self.enviar.emit(texto)
+
+    def definir_estado(self, *, conectado: bool, modo: str) -> None:
+        chat = modo == "chat"
+        self.editor.setEnabled(conectado and chat)
+        self.botao.setEnabled(conectado and chat)
+        self.microfone.setEnabled(conectado)
+        if not conectado:
+            texto = "Reconectando — a conversa continua na mente"
+        elif chat:
+            texto = "Mensagem para a Laylay"
+        else:
+            texto = "Modo voz ativo — fale com a Laylay pelo ouvido existente"
+        self.editor.setPlaceholderText(texto)
+
+
+class PaginaConfiguracoes(QWidget):
+    salvar = Signal(dict)
+    reiniciar = Signal()
+    avatar_alterado = Signal(str)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._estado: dict = {}
+        self._modelos_por_provedor: dict[str, str] = {}
+        self._provedor_atual = ""
+        self._preenchendo = False
+        externo = QVBoxLayout(self)
+        externo.setContentsMargins(0, 0, 0, 0)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        conteudo = QWidget()
+        self.conteudo_lay = QVBoxLayout(conteudo)
+        lay = self.conteudo_lay
+        lay.setContentsMargins(54, 42, 68, 52)
+        lay.setSpacing(12)
+        kicker = QLabel("CONFIGURAÇÕES")
+        kicker.setObjectName("eyebrow")
+        titulo = QLabel("O motor por trás da conversa")
+        titulo.setObjectName("pageTitle")
+        titulo.setWordWrap(True)
+        intro = QLabel(
+            "Escolha onde a Laylay pensa. A configuração é salva com segurança e "
+            "passa a valer quando você reiniciar o aplicativo."
+        )
+        intro.setObjectName("pageDescription")
+        intro.setWordWrap(True)
+        lay.addWidget(kicker)
+        lay.addWidget(titulo)
+        lay.addWidget(intro)
+        lay.addSpacing(20)
+
+        sec_modelo = QLabel("Modelo de linguagem")
+        sec_modelo.setObjectName("sectionTitle")
+        lay.addWidget(sec_modelo)
+        self.provider_group = QButtonGroup(self)
+        self.provider_group.setExclusive(True)
+        self.linha_provider = QHBoxLayout()
+        self.linha_provider.setSpacing(8)
+        self.providers: dict[str, QPushButton] = {}
+        for chave, nome, detalhe in (
+            ("ollama", "Local", "Ollama"),
+            ("portatil", "Portátil", "llama.cpp"),
+            ("openrouter", "OpenRouter", "API protegida"),
+        ):
+            botao = QPushButton(f"{nome}\n{detalhe}")
+            botao.setCheckable(True)
+            botao.setProperty("provider", True)
+            botao.clicked.connect(self._provedor_alterado)
+            self.provider_group.addButton(botao)
+            self.providers[chave] = botao
+            self.linha_provider.addWidget(botao, 1)
+        lay.addLayout(self.linha_provider)
+
+        label_modelo = QLabel("Modelo")
+        label_modelo.setObjectName("fieldLabel")
+        self.modelo = QLineEdit()
+        self.modelo.setObjectName("settingsField")
+        self.modelo.setPlaceholderText("Nome local ou ID do modelo")
+        label_url = QLabel("Endpoint")
+        label_url.setObjectName("fieldLabel")
+        self.url = QLineEdit()
+        self.url.setObjectName("settingsField")
+        self.url.setReadOnly(True)
+        lay.addSpacing(10)
+        lay.addWidget(label_modelo)
+        lay.addWidget(self.modelo)
+        lay.addWidget(label_url)
+        lay.addWidget(self.url)
+
+        self.bloco_chave = QFrame()
+        chave_lay = QVBoxLayout(self.bloco_chave)
+        chave_lay.setContentsMargins(0, 8, 0, 0)
+        chave_lay.setSpacing(8)
+        self.linha_estado_chave = QHBoxLayout()
+        chave_titulo = QLabel("Credencial OpenRouter")
+        chave_titulo.setObjectName("fieldLabel")
+        self.chave_estado = QLabel("Não configurada")
+        self.chave_estado.setObjectName("keyState")
+        self.linha_estado_chave.addWidget(chave_titulo)
+        self.linha_estado_chave.addStretch()
+        self.linha_estado_chave.addWidget(self.chave_estado)
+        self.acao_chave = QComboBox()
+        self.acao_chave.setObjectName("settingsField")
+        self.acao_chave.addItem("Manter credencial atual", "preserve")
+        self.acao_chave.addItem("Substituir credencial", "replace")
+        self.acao_chave.addItem("Remover credencial", "remove")
+        self.acao_chave.currentIndexChanged.connect(self._acao_chave_alterada)
+        self.chave = QLineEdit()
+        self.chave.setObjectName("settingsField")
+        self.chave.setEchoMode(QLineEdit.Password)
+        self.chave.setPlaceholderText("Cole uma nova chave; ela nunca será exibida novamente")
+        chave_lay.addLayout(self.linha_estado_chave)
+        chave_lay.addWidget(self.acao_chave)
+        chave_lay.addWidget(self.chave)
+        lay.addWidget(self.bloco_chave)
+
+        self.banner = QLabel("")
+        self.banner.setObjectName("settingsBanner")
+        self.banner.setWordWrap(True)
+        self.banner.hide()
+        self.salvar_botao = QPushButton("Salvar configuração")
+        self.salvar_botao.setObjectName("primaryButton")
+        self.salvar_botao.clicked.connect(self._salvar)
+        self.reiniciar_botao = QPushButton("↻  Reiniciar Laylay")
+        self.reiniciar_botao.setObjectName("secondaryButton")
+        self.reiniciar_botao.setToolTip(
+            "Reinicia a Laylay com segurança e aplica as configurações salvas."
+        )
+        self.reiniciar_botao.setEnabled(False)
+        self.reiniciar_botao.clicked.connect(self._reiniciar)
+        acoes = QHBoxLayout()
+        acoes.setSpacing(8)
+        acoes.addWidget(self.salvar_botao)
+        acoes.addWidget(self.reiniciar_botao)
+        acoes.addStretch()
+        lay.addSpacing(8)
+        lay.addWidget(self.banner)
+        lay.addLayout(acoes)
+
+        lay.addSpacing(28)
+        voz_titulo = QLabel("Voz")
+        voz_titulo.setObjectName("sectionTitle")
+        self.voz_estado = QLabel("Consultando o ouvido da Laylay…")
+        self.voz_estado.setObjectName("settingsNote")
+        self.voz_estado.setWordWrap(True)
+        lay.addWidget(voz_titulo)
+        lay.addWidget(self.voz_estado)
+
+        lay.addSpacing(22)
+
+        perfil_titulo = QLabel("Perfil")
+        perfil_titulo.setObjectName(
+            "sectionTitle"
+        )
+        lay.addWidget(perfil_titulo)
+
+        self.perfil_card = QFrame()
+        self.perfil_card.setObjectName(
+            "settingsProfileCard"
+        )
+
+        perfil_lay = QHBoxLayout(
+            self.perfil_card
+        )
+        perfil_lay.setContentsMargins(
+            14, 12, 14, 12
+        )
+        perfil_lay.setSpacing(12)
+
+        self.avatar_usuario_preview = AvatarUsuario(
+            "",
+            58,
+        )
+
+        perfil_textos = QVBoxLayout()
+        perfil_textos.setContentsMargins(
+            0, 0, 0, 0
+        )
+        perfil_textos.setSpacing(3)
+
+        perfil_nome = QLabel(
+            "Seu avatar"
+        )
+        perfil_nome.setObjectName(
+            "settingsProfileTitle"
+        )
+
+        perfil_hint = QLabel(
+            "Usado ao lado das suas mensagens."
+        )
+        perfil_hint.setObjectName(
+            "settingsProfileHint"
+        )
+        perfil_hint.setWordWrap(True)
+
+        perfil_textos.addWidget(
+            perfil_nome
+        )
+        perfil_textos.addWidget(
+            perfil_hint
+        )
+
+        self.trocar_avatar_botao = QPushButton(
+            "Trocar foto"
+        )
+        self.trocar_avatar_botao.setObjectName(
+            "profileAvatarButton"
+        )
+        self.trocar_avatar_botao.clicked.connect(
+            self._selecionar_avatar
+        )
+
+        perfil_lay.addWidget(
+            self.avatar_usuario_preview
+        )
+        perfil_lay.addLayout(
+            perfil_textos,
+            1,
+        )
+        perfil_lay.addWidget(
+            self.trocar_avatar_botao
+        )
+
+        lay.addWidget(
+            self.perfil_card
+        )
+
+        lay.addSpacing(22)
+        interface_titulo = QLabel("Interface")
+        interface_titulo.setObjectName("sectionTitle")
+        self.manter_sidebar = QCheckBox("Manter a barra lateral expandida")
+        self.manter_sidebar.setChecked(True)
+        self.mostrar_mascote = QCheckBox("Mostrar mascote da Laylay")
+        self.mostrar_mascote.setChecked(False)
+        self.mostrar_mascote.setToolTip(
+            "Abre o mascote junto da Laylay após reiniciar o aplicativo."
+        )
+        lay.addWidget(interface_titulo)
+        lay.addWidget(self.manter_sidebar)
+        lay.addWidget(self.mostrar_mascote)
+        lay.addStretch()
+        scroll.setWidget(conteudo)
+        externo.addWidget(scroll)
+        self._acao_chave_alterada()
+
+    def definir_compacto(self, compacto: bool, *, estreito: bool = False) -> None:
+        self.conteudo_lay.setContentsMargins(
+            18 if compacto else 54,
+            24 if compacto else 42,
+            18 if compacto else 68,
+            30 if compacto else 52,
+        )
+        self.providers["openrouter"].setText(
+            "OpenRouter\nAPI" if compacto else "OpenRouter\nAPI protegida"
+        )
+        self.linha_provider.setDirection(
+            QBoxLayout.TopToBottom if estreito else QBoxLayout.LeftToRight
+        )
+        self.linha_estado_chave.setDirection(
+            QBoxLayout.TopToBottom if estreito else QBoxLayout.LeftToRight
+        )
+
+    def _provedor_selecionado(self) -> str:
+        for chave, botao in self.providers.items():
+            if botao.isChecked():
+                return chave
+        return "ollama"
+
+    def _provedor_alterado(self) -> None:
+        provedor = self._provedor_selecionado()
+        if not self._preenchendo:
+            if self._provedor_atual:
+                self._modelos_por_provedor[self._provedor_atual] = self.modelo.text().strip()
+            if provedor != self._provedor_atual:
+                self.modelo.setText(self._modelos_por_provedor.get(provedor, ""))
+        self._provedor_atual = provedor
+        self.url.setText({
+            "ollama": "http://localhost:11434/v1",
+            "portatil": "Gerenciada pelo runtime portátil",
+            "openrouter": "https://openrouter.ai/api/v1",
+        }[provedor])
+        self.bloco_chave.setVisible(provedor == "openrouter")
+
+    def _acao_chave_alterada(self) -> None:
+        substituir = self.acao_chave.currentData() == "replace"
+        self.chave.setVisible(substituir)
+        if not substituir:
+            self.chave.clear()
+
+    def preencher(self, estado: dict) -> None:
+        self._estado = dict(estado or {})
+        modelos = self._estado.get("models_by_provider")
+        self._modelos_por_provedor = (
+            {str(k): str(v or "") for k, v in modelos.items()}
+            if isinstance(modelos, dict) else {}
+        )
+        provedor = str(self._estado.get("provider") or "ollama")
+        self._modelos_por_provedor[provedor] = str(self._estado.get("model") or "")
+        self._preenchendo = True
+        self.providers.get(provedor, self.providers["ollama"]).setChecked(True)
+        self._provedor_atual = provedor
+        self.modelo.setText(self._modelos_por_provedor.get(provedor, ""))
+        self.chave_estado.setText(
+            "Chave configurada" if self._estado.get("api_key_configured")
+            else "Não configurada"
+        )
+        self.acao_chave.setCurrentIndex(0)
+        self._provedor_alterado()
+        self._preenchendo = False
+        self._acao_chave_alterada()
+        self.mostrar_mascote.setChecked(bool(self._estado.get("mascot_enabled", False)))
+        if self._estado.get("restart_required"):
+            self.banner.setText(
+                "Alterações salvas. Use ‘Reiniciar Laylay’ para aplicar agora."
+            )
+            self.banner.setProperty("kind", "success")
+            self.banner.show()
+
+    def definir_avatar_usuario(
+        self,
+        caminho: str,
+    ) -> None:
+        self.avatar_usuario_preview.definir_imagem(
+            str(caminho or "")
+        )
+
+    def _selecionar_avatar(self) -> None:
+        caminho, _filtro = QFileDialog.getOpenFileName(
+            self,
+            "Escolher foto de perfil",
+            "",
+            (
+                "Imagens (*.png *.jpg *.jpeg *.webp *.bmp);;"
+                "Todos os arquivos (*.*)"
+            ),
+        )
+
+        if not caminho:
+            return
+
+        imagem = QPixmap(caminho)
+
+        if imagem.isNull():
+            self.banner.setText(
+                "Não consegui abrir essa imagem."
+            )
+            self.banner.setProperty(
+                "kind",
+                "error",
+            )
+            self.banner.show()
+            return
+
+        destino = (
+            Path.home()
+            / ".laylay"
+            / "terminal"
+            / "avatar_usuario.png"
+        )
+
+        destino.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        if not imagem.save(
+            str(destino),
+            "PNG",
+        ):
+            self.banner.setText(
+                "Não consegui salvar a foto de perfil."
+            )
+            self.banner.setProperty(
+                "kind",
+                "error",
+            )
+            self.banner.show()
+            return
+
+        caminho_final = str(destino)
+
+        self.definir_avatar_usuario(
+            caminho_final
+        )
+
+        self.avatar_alterado.emit(
+            caminho_final
+        )
+
+        self.banner.setText(
+            "Foto de perfil atualizada."
+        )
+        self.banner.setProperty(
+            "kind",
+            "success",
+        )
+        self.banner.style().unpolish(
+            self.banner
+        )
+        self.banner.style().polish(
+            self.banner
+        )
+        self.banner.show()
+
+    def definir_voz(self, disponivel: bool) -> None:
+        self.voz_estado.setText(
+            "O ouvido está disponível. O seletor Chat/Voz usa a mesma captura da Laylay; "
+            "esta janela não abre um segundo microfone."
+            if disponivel else
+            "O ouvido está indisponível agora. O modo Chat continua funcionando normalmente."
+        )
+
+    def _salvar(self) -> None:
+        acao = str(self.acao_chave.currentData() or "preserve")
+        payload = {
+            "provider": self._provedor_selecionado(),
+            "model": self.modelo.text().strip(),
+            "api_key_action": acao,
+            "api_key": self.chave.text() if acao == "replace" else "",
+            "mascot_enabled": self.mostrar_mascote.isChecked(),
+        }
+        self.salvar_botao.setEnabled(False)
+        self.banner.setText("Salvando sem expor sua credencial…")
+        self.banner.setProperty("kind", "info")
+        self.banner.show()
+        self.salvar.emit(payload)
+
+    def _reiniciar(self) -> None:
+        if not self.reiniciar_botao.isEnabled():
+            return
+        self.reiniciar_botao.setEnabled(False)
+        self.salvar_botao.setEnabled(False)
+        self.banner.setText("Encerrando os serviços com cuidado para reiniciar…")
+        self.banner.setProperty("kind", "info")
+        self.banner.style().unpolish(self.banner)
+        self.banner.style().polish(self.banner)
+        self.banner.show()
+        self.reiniciar.emit()
+
+    def definir_conectada(self, conectada: bool) -> None:
+        self.reiniciar_botao.setEnabled(bool(conectada))
+
+    def resultado_reinicio(self, msg: dict) -> None:
+        aceito = bool(msg.get("accepted"))
+        self.banner.setText(str(msg.get("message") or (
+            "Reiniciando…" if aceito else "Não consegui reiniciar."
+        )))
+        self.banner.setProperty("kind", "success" if aceito else "error")
+        self.banner.style().unpolish(self.banner)
+        self.banner.style().polish(self.banner)
+        self.banner.show()
+        if not aceito:
+            self.salvar_botao.setEnabled(True)
+            self.reiniciar_botao.setEnabled(True)
+
+    def resultado(self, msg: dict) -> None:
+        self.salvar_botao.setEnabled(True)
+        self.chave.clear()
+        self.acao_chave.setCurrentIndex(0)
+        salvo = bool(msg.get("saved"))
+        self.banner.setText(str(msg.get("message") or ("Configuração salva." if salvo else "Não consegui salvar.")))
+        self.banner.setProperty("kind", "success" if salvo else "error")
+        self.banner.style().unpolish(self.banner)
+        self.banner.style().polish(self.banner)
+        self.banner.show()
+        if isinstance(msg.get("settings"), dict):
+            self.preencher(msg["settings"])
+
+
+class JanelaLaylay(QMainWindow):
+    enviar_json = Signal(dict)
+
+    def __init__(
+        self,
+        worker: PonteWorker,
+        raiz: Path,
+        *,
+        session_id: str = "",
+        parent_pid: int = 0,
+    ) -> None:
+        super().__init__()
+        self.worker = worker
+        self.raiz = raiz
+        self._session_id = str(session_id or "").strip()[:8]
+        self._parent_pid = max(0, int(parent_pid or 0))
+        self.preferencias = QSettings("Laylay", "Terminal2")
+        self._avatar_usuario_path = str(
+            self.preferencias.value(
+                "user_avatar_path",
+                "",
+            )
+            or ""
+        )
+        self._ultima_mensagem: tuple[str, str, float] = ("", "", 0.0)
+        self._envios: dict[str, MensagemWidget] = {}
+        self._acoes_por_envio: dict[str, str] = {}
+        self._conversa_ativa_id = ""
+        self._conversas: list[dict] = []
+        self._filtro_conversas = ""
+        self._mostrar_arquivadas = False
+        self._botoes_conversas: dict[str, QPushButton] = {}
+        self._menus_conversas: dict[str, QToolButton] = {}
+        self._envio_conversa: dict[str, str] = {}
+        self._requisicao_conversa_id = ""
+        self._indicador_pensando: IndicadorPensando | None = None
+        self._container_indicador: QWidget | None = None
+        self._animacoes: list[QParallelAnimationGroup] = []
+        self._animacao_entrada_pensando: QParallelAnimationGroup | None = None
+        self._animacao_saida_pensando: QParallelAnimationGroup | None = None
+        self._container_saida_pensando: QWidget | None = None
+        self._animacao_troca_conversa: QParallelAnimationGroup | None = None
+        self._efeito_troca_conversa: QGraphicsOpacityEffect | None = None
+        self._animacoes_conversas: list[QParallelAnimationGroup] = []
+        self._micro_animacoes: dict[
+            int,
+            tuple[QWidget, QGraphicsOpacityEffect, QSequentialAnimationGroup],
+        ] = {}
+        self._assinatura_microestado = ""
+        self._modo_visual_anterior = ""
+        self._animacao_scroll: QPropertyAnimation | None = None
+        self._pulso_presenca: QSequentialAnimationGroup | None = None
+        self._efeito_presenca: QGraphicsOpacityEffect | None = None
+        self._atividade_visual_atual = "idle"
+        self._interface_animavel = False
+        self._efeitos_inicio: list[
+            tuple[str, QWidget, QGraphicsOpacityEffect]
+        ] = []
+        self._animacao_inicio_grupo: QParallelAnimationGroup | None = None
+        self._pagina_visual_ativa = ""
+        self._animacao_pagina_grupo: QParallelAnimationGroup | None = None
+        self._efeito_pagina: QGraphicsOpacityEffect | None = None
+        self._pagina_em_transicao: QWidget | None = None
+        self._animacao_indicador_nav: QPropertyAnimation | None = None
+        self._nav: dict[str, QPushButton] = {}
+        self._conectado = False
+        self._modo = "chat"
+        self._voz_disponivel = False
+        self._modo_pendente = False
+        self._reinicio_requisicao_id = ""
+        self._timeouts_envio: dict[str, QTimer] = {}
+        self._fases_envio: dict[str, str] = {}
+        self._feed_em_espera = True
+        self._ultima_atividade_evento = ""
+        self._limiar_auto_scroll = 96
+        self._pagina_principal = "inicio"
+        self._provedor_modelo = ""
+        self._dashboard_recebido = False
+        self._nivel_microfone = 0.0
+        self._reduzir_movimento = os.environ.get(
+            "LAYLAY_REDUZIR_MOVIMENTO", "0",
+        ).casefold() in {"1", "true", "sim", "yes", "on"}
+        self._sidebar_expandida = bool(self.preferencias.value("sidebar_expandida", True, type=bool))
+        titulo_sessao = f" · {self._session_id}" if self._session_id else ""
+        self.setWindowTitle(f"Laylay — Terminal 3.0 · P5{titulo_sessao}")
+        self.setMinimumSize(375, 620)
+        self.resize(1680, 940)
+        self._montar()
+        self._atalhos()
+        self._estilizar()
+        self._aplicar_sidebar()
+        self._aplicar_responsividade()
+        self._registrar_feedback_botoes()
+
+        # P9.6 — RITMO MODULAR MAIS RÁPIDO
+        # Pequeno respiro antes de começar a carregar os módulos.
+        self._preparar_animacao_inicio()
+        QTimer.singleShot(
+            180,
+            self._iniciar_animacao_inicio,
+        )
+
+        worker.mensagem.connect(self.receber)
+        worker.conectado.connect(self.estado_conexao)
+        worker.falha.connect(self.falha_conexao)
+        self.enviar_json.connect(worker.enfileirar, Qt.DirectConnection)
+
+    def _montar(self) -> None:
+        raiz = QWidget(objectName="root")
+        self.setCentralWidget(raiz)
+        geral = QHBoxLayout(raiz)
+        geral.setContentsMargins(0, 0, 0, 0)
+        geral.setSpacing(0)
+
+        self.sidebar = QFrame(objectName="sidebar")
+        side = QVBoxLayout(self.sidebar)
+        side.setContentsMargins(10, 10, 10, 12)
+        side.setSpacing(5)
+
+        # ======================================================
+        # SIDEBAR P6 — marca compacta no mesmo eixo do topbar
+        # ======================================================
+        self.sidebar_topo = QFrame(objectName="sidebarBrandBar")
+        topo = QHBoxLayout(self.sidebar_topo)
+        topo.setContentsMargins(5, 3, 2, 7)
+        topo.setSpacing(8)
+
+        self.avatar_side = AroPresenca(
+            self.raiz,
+            34,
+        )
+
+        marca_box = QVBoxLayout()
+        marca_box.setContentsMargins(
+            0, 0, 0, 0
+        )
+        marca_box.setSpacing(0)
+
+        self.marca = QLabel("Laylay ✦")
+        self.marca.setObjectName("brand")
+
+        self.marca_status = QLabel(
+            "companheira local"
+        )
+        self.marca_status.setObjectName(
+            "brandCaption"
+        )
+        self.marca_status.hide()
+
+        marca_box.addWidget(self.marca)
+        marca_box.addWidget(
+            self.marca_status
+        )
+
+        self.nova = QPushButton("Novo chat", self.sidebar)
+        self.nova.setObjectName(
+            "newChatButton"
+        )
+        self.nova.setProperty(
+            "nav",
+            True,
+        )
+        self.nova.setProperty(
+            "label",
+            "Novo chat",
+        )
+        self.nova.setAccessibleName(
+            "Criar novo chat"
+        )
+        self.nova.setIcon(
+            icone_terminal("compose")
+        )
+        self.nova.setIconSize(
+            QSize(19, 19)
+        )
+        self.nova.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Fixed,
+        )
+        self.nova.setToolTip(
+            "Criar um novo chat"
+        )
+        self.nova.clicked.connect(
+            self.nova_conversa
+        )
+
+        self.recolher = QToolButton(
+            text="‹"
+        )
+        self.recolher.setObjectName(
+            "collapseButton"
+        )
+        self.recolher.setToolTip(
+            "Recolher barra lateral"
+        )
+        self.recolher.setAccessibleName(
+            "Recolher ou expandir navegação"
+        )
+        self.recolher.clicked.connect(
+            self.alternar_sidebar
+        )
+
+        topo.addWidget(self.avatar_side)
+        topo.addLayout(marca_box, 1)
+        topo.addWidget(self.recolher)
+
+        side.addWidget(self.sidebar_topo)
+        side.addSpacing(8)
+        side.addWidget(self.nova)
+        side.addSpacing(5)
+
+        self.nav_label = QLabel(
+            "NAVEGAÇÃO",
+            self.sidebar,
+        )
+        self.nav_label.setObjectName(
+            "sideSection"
+        )
+        self.nav_label.hide()
+
+        for nome, icone, texto in (
+            ("inicio", "home", "Início"),
+            ("conversa", "chat", "Conversa"),
+            (
+                "automacao",
+                "automation",
+                "Automação",
+            ),
+            ("musica", "music", "Música"),
+            ("memoria", "memory", "Memória"),
+            ("sistema", "system", "Sistema"),
+            (
+                "configuracoes",
+                "settings",
+                "Configurações",
+            ),
+        ):
+            botao = QPushButton(texto)
+            botao.setIcon(
+                icone_terminal(icone)
+            )
+            botao.setIconSize(
+                QSize(19, 19)
+            )
+            botao.setCheckable(True)
+            botao.setProperty(
+                "nav",
+                True,
+            )
+            botao.setProperty(
+                "glyph",
+                icone,
+            )
+            botao.setProperty(
+                "label",
+                texto,
+            )
+            botao.setAccessibleName(
+                texto
+            )
+            botao.clicked.connect(
+                lambda _v=False, n=nome:
+                self.selecionar_pagina(n)
+            )
+            self._nav[nome] = botao
+            side.addWidget(botao)
+
+        self.indicador_navegacao = QFrame(self.sidebar)
+        self.indicador_navegacao.setObjectName("navIndicator")
+        self.indicador_navegacao.setAttribute(
+            Qt.WA_TransparentForMouseEvents,
+            True,
+        )
+        self.indicador_navegacao.hide()
+
+        self._nav["inicio"].setChecked(
+            True
+        )
+
+        self.recentes_label = QLabel(
+            "CONVERSAS",
+            self.sidebar,
+        )
+        self.recentes_label.setObjectName(
+            "sideSection"
+        )
+        self.recentes_label.hide()
+
+        self.conversa_atual = QPushButton(
+            "Conversa atual",
+            self.sidebar,
+        )
+        self.conversa_atual.setObjectName(
+            "recentItem"
+        )
+        self.conversa_atual.setToolTip(
+            "Título efêmero desta sessão visual"
+        )
+        self.conversa_atual.clicked.connect(
+            lambda:
+            self.selecionar_pagina(
+                "conversa"
+            )
+        )
+        self.conversa_atual.hide()
+
+        self.ferramentas_conversas = QFrame(self.sidebar)
+        self.ferramentas_conversas.setObjectName("conversationTools")
+        ferramentas_lay = QHBoxLayout(self.ferramentas_conversas)
+        ferramentas_lay.setContentsMargins(0, 0, 0, 2)
+        ferramentas_lay.setSpacing(4)
+        self.busca_conversas = QLineEdit(self.ferramentas_conversas)
+        self.busca_conversas.setObjectName("conversationSearch")
+        self.busca_conversas.setPlaceholderText("Buscar chats")
+        self.busca_conversas.setClearButtonEnabled(True)
+        self.busca_conversas.setAccessibleName("Buscar conversas")
+        self.busca_conversas.textChanged.connect(self._filtrar_conversas)
+        self.botao_arquivadas = QToolButton(self.ferramentas_conversas)
+        self.botao_arquivadas.setObjectName("archivedConversationsButton")
+        self.botao_arquivadas.setText("▣")
+        self.botao_arquivadas.setCheckable(True)
+        self.botao_arquivadas.setToolTip("Mostrar conversas arquivadas")
+        self.botao_arquivadas.setAccessibleName(
+            "Mostrar conversas arquivadas"
+        )
+        self.botao_arquivadas.toggled.connect(
+            self._alternar_conversas_arquivadas,
+        )
+        ferramentas_lay.addWidget(self.busca_conversas, 1)
+        ferramentas_lay.addWidget(self.botao_arquivadas)
+        self.ferramentas_conversas.hide()
+
+        self.conversas_scroll = QScrollArea(self.sidebar)
+        self.conversas_scroll.setObjectName("conversationList")
+        self.conversas_scroll.setWidgetResizable(True)
+        self.conversas_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.conversas_scroll.setFrameShape(QFrame.NoFrame)
+        self.conversas_scroll.setMinimumHeight(80)
+        self.conversas_scroll.setMaximumHeight(230)
+        self.conversas_container = QWidget()
+        self.conversas_container.setObjectName("conversationListContent")
+        self.conversas_lay = QVBoxLayout(self.conversas_container)
+        self.conversas_lay.setContentsMargins(0, 0, 0, 0)
+        self.conversas_lay.setSpacing(3)
+        self.conversas_lay.addStretch(1)
+        self.conversas_scroll.setWidget(self.conversas_container)
+        self.conversas_scroll.hide()
+
+        side.addWidget(self.recentes_label)
+        side.addWidget(self.ferramentas_conversas)
+        side.addWidget(self.conversas_scroll)
+
+        self.status_mente = QLabel(
+            "●  Reconectando",
+            self.sidebar,
+        )
+        self.status_mente.setObjectName(
+            "mindStatus"
+        )
+        self.status_mente.hide()
+
+        self.config_rodape = QPushButton(
+            "Ajustes da Laylay",
+            self.sidebar,
+        )
+        self.config_rodape.setObjectName(
+            "footerSettings"
+        )
+        self.config_rodape.setIcon(
+            icone_terminal("settings")
+        )
+        self.config_rodape.setIconSize(
+            tamanho_icone()
+        )
+        self.config_rodape.clicked.connect(
+            lambda:
+            self.selecionar_pagina(
+                "configuracoes"
+            )
+        )
+        self.config_rodape.hide()
+
+        side.addStretch()
+
+        self.profile_card = QFrame(
+            objectName="sidebarProfile"
+        )
+        profile_lay = QVBoxLayout(
+            self.profile_card
+        )
+        profile_lay.setContentsMargins(
+            9, 9, 9, 8
+        )
+        profile_lay.setSpacing(6)
+
+        profile_top = QHBoxLayout()
+        profile_top.setContentsMargins(
+            0, 0, 0, 0
+        )
+        profile_top.setSpacing(8)
+
+        self.avatar_profile = AroPresenca(
+            self.raiz,
+            34,
+        )
+
+        profile_textos = QVBoxLayout()
+        profile_textos.setContentsMargins(
+            0, 0, 0, 0
+        )
+        profile_textos.setSpacing(1)
+
+        self.profile_nome = QLabel(
+            "Laylay"
+        )
+        self.profile_nome.setObjectName(
+            "profileName"
+        )
+
+        self.profile_status = QLabel(
+            "●  Reconectando"
+        )
+        self.profile_status.setObjectName(
+            "profileStatus"
+        )
+        self.profile_status.setProperty(
+            "state",
+            "offline",
+        )
+
+        profile_textos.addWidget(
+            self.profile_nome
+        )
+        profile_textos.addWidget(
+            self.profile_status
+        )
+
+        self.profile_heart = QLabel("♥")
+        self.profile_heart.setObjectName(
+            "profileHeart"
+        )
+        self.profile_heart.setAlignment(
+            Qt.AlignCenter
+        )
+
+        profile_top.addWidget(
+            self.avatar_profile
+        )
+        profile_top.addLayout(
+            profile_textos,
+            1,
+        )
+        profile_top.addWidget(
+            self.profile_heart
+        )
+
+        self.profile_version = QLabel(
+            "Terminal 3.0"
+        )
+        self.profile_version.setObjectName(
+            "profileVersion"
+        )
+
+        profile_lay.addLayout(profile_top)
+        profile_lay.addWidget(
+            self.profile_version
+        )
+
+        side.addWidget(self.profile_card)
+        geral.addWidget(self.sidebar)
+        centro = QFrame(objectName="mainSurface")
+        centro_lay = QVBoxLayout(centro)
+        centro_lay.setContentsMargins(0, 0, 0, 0)
+        centro_lay.setSpacing(0)
+        header = QFrame(objectName="topbar")
+        self.topbar = header
+        hlay = QHBoxLayout(header)
+        hlay.setContentsMargins(24, 9, 24, 9)
+        hlay.setSpacing(8)
+        self.menu_compacto = QToolButton(text="☰")
+        self.menu_compacto.setToolTip("Mostrar ou ocultar navegação")
+        self.menu_compacto.setAccessibleName("Mostrar ou ocultar navegação")
+        self.menu_compacto.clicked.connect(self._alternar_sidebar_compacta)
+        self.menu_compacto.hide()
+        # Estes controles permanecem como atributos por compatibilidade, mas
+        # pertencem explicitamente ao cabeçalho. Sem pai e fora do layout, o
+        # Qt os promovia a janelas independentes quando a responsividade
+        # chamava setVisible(), criando os "mini terminais" no Alt+Tab.
+        self.voltar = QToolButton(header)
+        self.voltar.setText("←")
+        self.voltar.setEnabled(False)
+        self.voltar.setToolTip("Sem conversa anterior nesta versão")
+        self.avancar = QToolButton(header)
+        self.avancar.setText("→")
+        self.avancar.setEnabled(False)
+        self.avancar.setToolTip("Sem conversa seguinte nesta versão")
+        self.titulo_header = QLabel("Início", header)
+        self.titulo_header.setObjectName("headerTitle")
+        hlay.addWidget(self.menu_compacto)
+        self.voltar.hide()
+        self.avancar.hide()
+        self.titulo_header.hide()
+
+        # P6.2: os dois lados usam o mesmo fator.
+        # Isso mantém o conjunto do topo centralizado.
+        hlay.addStretch(1)
+
+        self.chip_modelo = ChipEstado("Modelo", "Aguardando")
+        self.chip_microfone = ChipEstado("Microfone", "Aguardando")
+        self.chip_memoria = ChipEstado("Memória", "Aguardando")
+        for chip in (
+            self.chip_modelo, self.chip_microfone, self.chip_memoria,
+        ):
+            chip.estado_alterado.connect(
+                lambda alvo=chip: self._animar_microinteracao(alvo)
+            )
+        hlay.addWidget(self.chip_modelo)
+        hlay.addWidget(self.chip_microfone)
+        hlay.addWidget(self.chip_memoria)
+        hlay.addSpacing(4)
+        self.alternador = AlternadorModo()
+        self.alternador.modo_solicitado.connect(self.solicitar_modo)
+        hlay.addWidget(self.alternador)
+        self.ponto = QLabel("●")
+        self.ponto.setObjectName("connectionDot")
+        self.status = QLabel("Reconectando")
+        self.status.setObjectName("statusLabel")
+        hlay.addSpacing(10)
+        hlay.addWidget(self.ponto)
+        hlay.addWidget(self.status)
+        hlay.addStretch(1)
+        centro_lay.addWidget(header)
+
+        self.paginas = QStackedWidget()
+        conversa = QWidget()
+        conversa_lay = QHBoxLayout(conversa)
+        conversa_lay.setContentsMargins(
+            14, 12, 14, 16
+        )
+        conversa_lay.setSpacing(12)
+        self.chat_surface = QFrame(objectName="chatSurface")
+        chat_lay = QVBoxLayout(
+            self.chat_surface
+        )
+        chat_lay.setContentsMargins(
+            16, 14, 16, 12
+        )
+        chat_lay.setSpacing(0)
+        self.chat_cabecalho = QFrame(objectName="chatHeader")
+        chat_head_lay = QVBoxLayout(self.chat_cabecalho)
+        chat_head_lay.setContentsMargins(
+            16, 14, 16, 13
+        )
+        chat_head_lay.setSpacing(4)
+        hora = datetime.now().hour
+        saudacao = "Bom dia" if hora < 12 else "Boa tarde" if hora < 18 else "Boa noite"
+        self.chat_saudacao = QLabel(f"{saudacao}!  ✦")
+        self.chat_saudacao.setObjectName("chatGreeting")
+        self.chat_subtitulo = QLabel("Como posso te ajudar hoje?")
+        self.chat_subtitulo.setObjectName("chatGreetingSub")
+        chat_head_lay.addWidget(self.chat_saudacao)
+        chat_head_lay.addWidget(self.chat_subtitulo)
+        chat_lay.addWidget(self.chat_cabecalho)
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.NoFrame)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.feed = QWidget()
+        self.feed.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.feed_lay = QVBoxLayout(self.feed)
+        # O contrato de tamanho precisa acompanhar inserções dinâmicas. Sem esta
+        # restrição o QScrollArea conserva a altura do viewport e deixa mensagens
+        # reais fora da geometria rolável até uma invalidação posterior.
+        self.feed_lay.setSizeConstraint(QLayout.SetMinAndMaxSize)
+        self.feed_lay.setContentsMargins(
+            24, 28, 24, 22
+        )
+        self.feed_lay.setSpacing(16)
+        self.vazio = QFrame(objectName="emptyState")
+        self.vazio.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Minimum)
+        vazio_lay = QVBoxLayout(self.vazio)
+        vazio_lay.setContentsMargins(32, 50, 32, 50)
+        vazio_lay.setSpacing(10)
+        vazio_t = QLabel("◕‿◕")
+        vazio_t.setObjectName("emptyMark")
+        vazio_t.setAlignment(Qt.AlignCenter)
+        vazio_h = QLabel("Pode chegar. A mente está do outro lado.")
+        vazio_h.setObjectName("emptyTitle")
+        vazio_h.setAlignment(Qt.AlignCenter)
+        vazio_h.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        vazio_p = QLabel("Converse, peça alguma coisa ou traga aquela bagunça que você chama de ideia.")
+        vazio_p.setObjectName("emptyCopy")
+        vazio_p.setAlignment(Qt.AlignCenter)
+        vazio_p.setWordWrap(True)
+        vazio_p.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        vazio_lay.addWidget(vazio_t)
+        vazio_lay.addWidget(vazio_h)
+        vazio_lay.addWidget(vazio_p)
+        self.feed_lay.addStretch()
+        self.feed_lay.addWidget(self.vazio)
+        self.feed_lay.addStretch()
+        self.scroll.setWidget(self.feed)
+        self.scroll.verticalScrollBar().sliderPressed.connect(
+            self._encerrar_rolagem_suave,
+        )
+        self._timer_auto_scroll = QTimer(self)
+        self._timer_auto_scroll.setSingleShot(True)
+        self._timer_auto_scroll.timeout.connect(self._rolar_ao_final)
+        chat_lay.addWidget(self.scroll, 1)
+        self.voice_surface = QFrame(objectName="voiceSurface")
+        voice_lay = QHBoxLayout(self.voice_surface)
+        voice_lay.setContentsMargins(18, 12, 18, 12)
+        self.voice_dot = QLabel("◉")
+        self.voice_dot.setObjectName("voiceDot")
+        self.voice_text = QLabel("Ouvindo pelo microfone da Laylay")
+        self.voice_text.setObjectName("voiceText")
+        voice_lay.addWidget(self.voice_dot)
+        voice_lay.addWidget(self.voice_text)
+        voice_lay.addStretch()
+        self.voice_surface.hide()
+        chat_lay.addWidget(self.voice_surface)
+        self.waveform = FormaOndaMicrofone(
+            reduzir_movimento=self._reduzir_movimento,
+        )
+        chat_lay.addWidget(self.waveform)
+        self.composer = Composer()
+        self.composer.enviar.connect(self.enviar_texto)
+        self.composer.enviar.connect(
+            lambda _texto: self._animar_microinteracao(
+                self.composer.botao,
+                opacidade_minima=0.35,
+                duracao_retorno=180,
+            )
+        )
+        self.composer.alternar_voz.connect(
+            lambda: self.solicitar_modo("voice" if self._modo == "chat" else "chat")
+        )
+        chat_lay.addWidget(self.composer)
+        conversa_lay.addWidget(self.chat_surface, 1)
+        self.central_inteligente = PainelCentralInteligente()
+        self.central_inteligente.acao_solicitada.connect(
+            self.enviar_acao_rapida,
+        )
+        self.painel_lateral = PainelLateralDashboard()
+        self.painel_lateral.acao_solicitada.connect(self.enviar_acao_painel)
+        conversa_lay.addWidget(self.central_inteligente)
+        conversa_lay.addWidget(self.painel_lateral)
+        self.paginas.addWidget(conversa)
+
+        atividade = QWidget()
+        atividade_lay = QVBoxLayout(atividade)
+        atividade_lay.setContentsMargins(54, 42, 68, 50)
+        atividade_lay.setSpacing(10)
+        ak = QLabel("ATIVIDADE")
+        ak.setObjectName("eyebrow")
+        at = QLabel("O que acabou de acontecer")
+        at.setObjectName("pageTitle")
+        ad = QLabel("Eventos úteis desta sessão, sem despejar o ruído interno da mente.")
+        ad.setObjectName("pageDescription")
+        self.eventos = QTextEdit(readOnly=True)
+        self.eventos.setObjectName("eventLog")
+        self.eventos.setPlaceholderText("Tudo quieto por enquanto.")
+        atividade_lay.addWidget(ak)
+        atividade_lay.addWidget(at)
+        atividade_lay.addWidget(ad)
+        atividade_lay.addSpacing(12)
+        atividade_lay.addWidget(self.eventos, 1)
+        self.paginas.addWidget(atividade)
+
+        diagnostico = QWidget()
+        diag_lay = QVBoxLayout(diagnostico)
+        diag_lay.setContentsMargins(54, 42, 68, 50)
+        diag_lay.setSpacing(12)
+        dk = QLabel("DIAGNÓSTICO")
+        dk.setObjectName("eyebrow")
+        dt = QLabel("Uma janela limpa para a mente")
+        dt.setObjectName("pageTitle")
+        dd = QLabel("Aqui só aparecem estados sanitizados. O diagnóstico completo continua sendo produzido pela Laylay.")
+        dd.setObjectName("pageDescription")
+        dd.setWordWrap(True)
+        self.diag_conexao = QLabel("Ponte\nReconectando")
+        self.diag_conexao.setObjectName("diagnosticValue")
+        self.diag_atividade = QLabel("Atividade\n—")
+        self.diag_atividade.setObjectName("diagnosticValue")
+        self.diag_modo = QLabel("Interação\nChat")
+        self.diag_modo.setObjectName("diagnosticValue")
+        pedir = QPushButton("Pedir diagnóstico completo")
+        pedir.setObjectName("secondaryButton")
+        pedir.clicked.connect(lambda: self.enviar_texto("/diagnostico mente"))
+        diag_lay.addWidget(dk)
+        diag_lay.addWidget(dt)
+        diag_lay.addWidget(dd)
+        diag_lay.addSpacing(18)
+        for valor in (self.diag_conexao, self.diag_atividade, self.diag_modo):
+            diag_lay.addWidget(valor)
+        diag_lay.addSpacing(8)
+        diag_lay.addWidget(pedir, 0, Qt.AlignLeft)
+        diag_lay.addStretch()
+        self.paginas.addWidget(diagnostico)
+
+        self.configuracoes = PaginaConfiguracoes()
+        self.configuracoes.salvar.connect(self.salvar_configuracoes)
+        self.configuracoes.reiniciar.connect(self.reiniciar_laylay)
+        self.configuracoes.avatar_alterado.connect(
+            self._definir_avatar_usuario
+        )
+        self.configuracoes.definir_avatar_usuario(
+            self._avatar_usuario_path
+        )
+        self.configuracoes.manter_sidebar.toggled.connect(self._preferencia_sidebar)
+        self.paginas.addWidget(self.configuracoes)
+        self.pagina_automacao = PaginaAutomacao()
+        self.pagina_automacao.acao_solicitada.connect(self.enviar_acao_painel)
+        self.pagina_musica = PaginaMusica()
+        self.pagina_musica.acao_solicitada.connect(self.enviar_acao_painel)
+        self.pagina_musica.acao_fila_solicitada.connect(
+            self.enviar_acao_painel_com_dados,
+        )
+        self.pagina_memoria = PaginaMemoria()
+        self.pagina_sistema = PaginaSistema()
+        self.pagina_sistema.acao_solicitada.connect(
+            self.enviar_acao_rapida
+        )
+        self.paginas.addWidget(self.pagina_automacao)
+        self.paginas.addWidget(self.pagina_musica)
+        self.paginas.addWidget(self.pagina_memoria)
+        self.paginas.addWidget(self.pagina_sistema)
+        centro_lay.addWidget(self.paginas, 1)
+        geral.addWidget(centro, 1)
+        self.selecionar_pagina("inicio")
+
+
+    # =====================================================
+    # P9.3 — INICIALIZAÇÃO MODULAR CINEMATOGRÁFICA
+    # =====================================================
+
+    def _preparar_animacao_inicio(self) -> None:
+        if self._reduzir_movimento:
+            self._interface_animavel = True
+            QTimer.singleShot(
+                0,
+                lambda: self._sincronizar_indicador_navegacao(
+                    self._pagina_visual_ativa,
+                    animar=False,
+                ),
+            )
+            return
+
+        self._etapas_inicio = (
+            ("Navegação", self.sidebar),
+            ("Barra superior", self.topbar),
+            ("Chat", self.chat_surface),
+            ("Central Inteligente", self.central_inteligente),
+            ("Painel lateral", self.painel_lateral),
+        )
+
+        self._efeitos_inicio = []
+
+        for nome, widget in self._etapas_inicio:
+            efeito = QGraphicsOpacityEffect(widget)
+            efeito.setOpacity(0.08)
+            widget.setGraphicsEffect(efeito)
+            self._efeitos_inicio.append(
+                (nome, widget, efeito)
+            )
+
+        self._animacao_inicio_grupo = None
+
+    def _iniciar_animacao_inicio(self) -> None:
+        if self._reduzir_movimento:
+            return
+
+        efeitos = getattr(
+            self,
+            "_efeitos_inicio",
+            None,
+        )
+
+        if not efeitos:
+            return
+
+        grupo = QParallelAnimationGroup(self)
+        self._animacao_inicio_grupo = grupo
+
+        posicoes_finais: list[tuple[QWidget, QPoint]] = []
+        for indice, (_nome, widget, efeito) in enumerate(efeitos):
+            posicao_final = widget.pos()
+            posicoes_finais.append((widget, posicao_final))
+            deslocamento = (
+                QPoint(-10, 0)
+                if widget is self.sidebar
+                else QPoint(0, -8)
+                if widget is self.topbar
+                else QPoint(0, 12)
+            )
+            widget.move(posicao_final + deslocamento)
+
+            etapa = QSequentialAnimationGroup(grupo)
+            etapa.addPause(indice * 45)
+            movimentos = QParallelAnimationGroup(etapa)
+
+            opacidade = QPropertyAnimation(efeito, b"opacity", movimentos)
+            opacidade.setDuration(360)
+            opacidade.setStartValue(0.08)
+            opacidade.setEndValue(1.0)
+            opacidade.setEasingCurve(QEasingCurve.OutCubic)
+
+            posicao = QPropertyAnimation(widget, b"pos", movimentos)
+            posicao.setDuration(360)
+            posicao.setStartValue(posicao_final + deslocamento)
+            posicao.setEndValue(posicao_final)
+            posicao.setEasingCurve(QEasingCurve.OutCubic)
+
+            movimentos.addAnimation(opacidade)
+            movimentos.addAnimation(posicao)
+            etapa.addAnimation(movimentos)
+            grupo.addAnimation(etapa)
+
+        def finalizar_inicio() -> None:
+            for widget, posicao_final in posicoes_finais:
+                widget.move(posicao_final)
+            for _nome, widget, efeito in list(
+                self._efeitos_inicio
+            ):
+                efeito.setOpacity(1.0)
+
+                if widget.graphicsEffect() is efeito:
+                    widget.setGraphicsEffect(None)
+
+            self._efeitos_inicio.clear()
+            self._interface_animavel = True
+            self._atualizar_pulso_presenca(self._atividade_visual_atual)
+            self._sincronizar_indicador_navegacao(
+                self._pagina_visual_ativa,
+                animar=False,
+            )
+
+            if self._animacao_inicio_grupo is grupo:
+                self._animacao_inicio_grupo = None
+
+            grupo.deleteLater()
+
+        grupo.finished.connect(
+            finalizar_inicio
+        )
+        grupo.start()
+
+    def _encerrar_transicao_pagina(self) -> None:
+        grupo = self._animacao_pagina_grupo
+        if grupo is not None:
+            grupo.stop()
+            grupo.deleteLater()
+            self._animacao_pagina_grupo = None
+        efeito = self._efeito_pagina
+        if efeito is not None:
+            pagina = self._pagina_em_transicao
+            if pagina is not None and pagina.graphicsEffect() is efeito:
+                pagina.setGraphicsEffect(None)
+            self._efeito_pagina = None
+        self._pagina_em_transicao = None
+
+    def _encerrar_microinteracao_por_id(
+        self,
+        identificador: int,
+        *,
+        remover_efeito: bool = True,
+        grupo_esperado: QSequentialAnimationGroup | None = None,
+    ) -> None:
+        registro = self._micro_animacoes.get(identificador)
+        if registro is None:
+            return
+        if grupo_esperado is not None and registro[2] is not grupo_esperado:
+            return
+        self._micro_animacoes.pop(identificador, None)
+        alvo, efeito, grupo = registro
+        if _objeto_qt_esta_vivo(grupo):
+            grupo.stop()
+        if remover_efeito and _objeto_qt_esta_vivo(alvo):
+            try:
+                if alvo.graphicsEffect() is efeito:
+                    alvo.setGraphicsEffect(None)
+            except RuntimeError:
+                pass
+        if _objeto_qt_esta_vivo(grupo):
+            grupo.deleteLater()
+
+    def _encerrar_microinteracao(self, widget: QWidget) -> None:
+        self._encerrar_microinteracao_por_id(id(widget))
+
+    def _animar_microinteracao(
+        self,
+        widget: QWidget,
+        *,
+        opacidade_minima: float = 0.58,
+        duracao_retorno: int = 240,
+    ) -> None:
+        """Dá retorno visual sem deslocar widgets controlados pelo layout."""
+        if (
+            self._reduzir_movimento
+            or not self._interface_animavel
+            or widget is None
+            or not widget.isVisible()
+        ):
+            return
+        self._encerrar_microinteracao(widget)
+        efeito = QGraphicsOpacityEffect(widget)
+        efeito.setOpacity(1.0)
+        widget.setGraphicsEffect(efeito)
+        grupo = QSequentialAnimationGroup(self)
+        descida = QPropertyAnimation(efeito, b"opacity", grupo)
+        descida.setDuration(75)
+        descida.setStartValue(1.0)
+        descida.setEndValue(max(0.25, min(0.9, opacidade_minima)))
+        descida.setEasingCurve(QEasingCurve.OutCubic)
+        retorno = QPropertyAnimation(efeito, b"opacity", grupo)
+        retorno.setDuration(max(100, int(duracao_retorno)))
+        retorno.setStartValue(max(0.25, min(0.9, opacidade_minima)))
+        retorno.setEndValue(1.0)
+        retorno.setEasingCurve(QEasingCurve.OutCubic)
+        grupo.addAnimation(descida)
+        grupo.addAnimation(retorno)
+        identificador = id(widget)
+        self._micro_animacoes[identificador] = (widget, efeito, grupo)
+        widget.destroyed.connect(
+            lambda *_args, chave=identificador, animacao=grupo:
+            self._encerrar_microinteracao_por_id(
+                chave,
+                remover_efeito=False,
+                grupo_esperado=animacao,
+            )
+        )
+
+        def finalizar() -> None:
+            self._encerrar_microinteracao_por_id(
+                identificador,
+                grupo_esperado=grupo,
+            )
+
+        grupo.finished.connect(finalizar)
+        grupo.start()
+
+    def _encerrar_microinteracoes(self) -> None:
+        for identificador in list(self._micro_animacoes):
+            self._encerrar_microinteracao_por_id(identificador)
+
+    def _registrar_feedback_botao(self, botao: QWidget) -> None:
+        if bool(botao.property("a4FeedbackLigado")):
+            return
+        if not hasattr(botao, "clicked"):
+            return
+        botao.setProperty("a4FeedbackLigado", True)
+        botao.clicked.connect(
+            lambda _marcado=False, alvo=botao: self._animar_microinteracao(
+                alvo,
+                opacidade_minima=0.46,
+                duracao_retorno=150,
+            )
+        )
+
+    def _registrar_feedback_botoes(self) -> None:
+        """Liga feedback aos controles existentes sem alterar sua geometria."""
+        for botao in self.findChildren(QWidget):
+            if not isinstance(botao, (QPushButton, QToolButton)):
+                continue
+            if botao is self.composer.botao:
+                # O envio já recebe um pulso próprio na A3.
+                continue
+            self._registrar_feedback_botao(botao)
+
+    def _parar_pulso_presenca(self) -> None:
+        grupo = self._pulso_presenca
+        if grupo is not None:
+            grupo.stop()
+            grupo.deleteLater()
+            self._pulso_presenca = None
+        efeito = self._efeito_presenca
+        if efeito is not None:
+            if self.ponto.graphicsEffect() is efeito:
+                self.ponto.setGraphicsEffect(None)
+            self._efeito_presenca = None
+
+    def _atualizar_pulso_presenca(self, atividade: str) -> None:
+        self._atividade_visual_atual = str(atividade or "idle")
+        atividades_vivas = {
+            "listening", "thinking", "executing", "speaking", "reconnecting",
+        }
+        if (
+            self._reduzir_movimento
+            or not self._interface_animavel
+            or self._atividade_visual_atual not in atividades_vivas
+            or self.isMinimized()
+        ):
+            self._parar_pulso_presenca()
+            return
+        if self._pulso_presenca is not None:
+            return
+        efeito = QGraphicsOpacityEffect(self.ponto)
+        efeito.setOpacity(1.0)
+        self.ponto.setGraphicsEffect(efeito)
+        grupo = QSequentialAnimationGroup(self)
+        descer = QPropertyAnimation(efeito, b"opacity", grupo)
+        descer.setDuration(620)
+        descer.setStartValue(1.0)
+        descer.setEndValue(0.34)
+        descer.setEasingCurve(QEasingCurve.InOutSine)
+        subir = QPropertyAnimation(efeito, b"opacity", grupo)
+        subir.setDuration(620)
+        subir.setStartValue(0.34)
+        subir.setEndValue(1.0)
+        subir.setEasingCurve(QEasingCurve.InOutSine)
+        grupo.addAnimation(descer)
+        grupo.addAnimation(subir)
+        grupo.setLoopCount(-1)
+        self._efeito_presenca = efeito
+        self._pulso_presenca = grupo
+        grupo.start()
+
+    def _animar_transicao_pagina(self, pagina: QWidget, direcao: int) -> None:
+        if self._reduzir_movimento or not self._interface_animavel:
+            return
+        self._encerrar_transicao_pagina()
+        posicao_final = pagina.pos()
+        deslocamento = QPoint(18 if direcao >= 0 else -18, 0)
+        efeito = QGraphicsOpacityEffect(pagina)
+        efeito.setOpacity(0.22)
+        pagina.setGraphicsEffect(efeito)
+        pagina.move(posicao_final + deslocamento)
+
+        grupo = QParallelAnimationGroup(self)
+        opacidade = QPropertyAnimation(efeito, b"opacity", grupo)
+        opacidade.setDuration(240)
+        opacidade.setStartValue(0.22)
+        opacidade.setEndValue(1.0)
+        opacidade.setEasingCurve(QEasingCurve.OutCubic)
+        posicao = QPropertyAnimation(pagina, b"pos", grupo)
+        posicao.setDuration(260)
+        posicao.setStartValue(posicao_final + deslocamento)
+        posicao.setEndValue(posicao_final)
+        posicao.setEasingCurve(QEasingCurve.OutCubic)
+        grupo.addAnimation(opacidade)
+        grupo.addAnimation(posicao)
+        self._animacao_pagina_grupo = grupo
+        self._efeito_pagina = efeito
+        self._pagina_em_transicao = pagina
+
+        def finalizar() -> None:
+            pagina.move(posicao_final)
+            if pagina.graphicsEffect() is efeito:
+                pagina.setGraphicsEffect(None)
+            if self._animacao_pagina_grupo is grupo:
+                self._animacao_pagina_grupo = None
+            if self._efeito_pagina is efeito:
+                self._efeito_pagina = None
+            if self._pagina_em_transicao is pagina:
+                self._pagina_em_transicao = None
+            grupo.deleteLater()
+
+        grupo.finished.connect(finalizar)
+        grupo.start()
+
+    def _geometria_indicador_navegacao(self, botao: QPushButton) -> QRect:
+        ponto = botao.mapTo(self.sidebar, QPoint(0, 0))
+        altura = max(24, min(32, botao.height() - 12))
+        topo = ponto.y() + max(0, (botao.height() - altura) // 2)
+        return QRect(0, topo, 3, altura)
+
+    def _sincronizar_indicador_navegacao(
+        self,
+        nome: str,
+        *,
+        animar: bool,
+    ) -> None:
+        botao = self._nav.get(nome)
+        if botao is None or not botao.isVisible():
+            self.indicador_navegacao.hide()
+            return
+        destino = self._geometria_indicador_navegacao(botao)
+        self.indicador_navegacao.raise_()
+        if (
+            self._reduzir_movimento
+            or not animar
+            or not self.indicador_navegacao.isVisible()
+        ):
+            self.indicador_navegacao.setGeometry(destino)
+            self.indicador_navegacao.show()
+            return
+        anterior = self._animacao_indicador_nav
+        if anterior is not None:
+            anterior.stop()
+            anterior.deleteLater()
+        movimento = QPropertyAnimation(
+            self.indicador_navegacao,
+            b"geometry",
+            self,
+        )
+        movimento.setDuration(230)
+        movimento.setStartValue(self.indicador_navegacao.geometry())
+        movimento.setEndValue(destino)
+        movimento.setEasingCurve(QEasingCurve.OutCubic)
+        self._animacao_indicador_nav = movimento
+
+        def finalizar() -> None:
+            self.indicador_navegacao.setGeometry(destino)
+            if self._animacao_indicador_nav is movimento:
+                self._animacao_indicador_nav = None
+            movimento.deleteLater()
+
+        movimento.finished.connect(finalizar)
+        movimento.start()
+
+    def _atalhos(self) -> None:
+        QShortcut(QKeySequence("Ctrl+L"), self, activated=self.composer.editor.setFocus)
+        QShortcut(QKeySequence("Ctrl+,"), self, activated=lambda: self.selecionar_pagina("configuracoes"))
+        QShortcut(QKeySequence("Ctrl+B"), self, activated=self.alternar_sidebar)
+        for indice, pagina in enumerate((
+            "inicio", "conversa", "automacao", "musica", "memoria", "sistema",
+            "configuracoes",
+        ), start=1):
+            QShortcut(
+                QKeySequence(f"Ctrl+{indice}"), self,
+                activated=lambda nome=pagina: self.selecionar_pagina(nome),
+            )
+        ordem_foco = [
+            self.nova,
+            *self._nav.values(),
+            self.config_rodape,
+            self.alternador.botoes["chat"],
+            self.alternador.botoes["voice"],
+            self.composer.microfone,
+            self.composer.editor,
+            self.composer.botao,
+        ]
+        for atual, proximo in zip(ordem_foco, ordem_foco[1:]):
+            QWidget.setTabOrder(atual, proximo)
+
+    def _estilizar(self) -> None:
+            self.setStyleSheet(f"""
+                * {{ font-family: 'Comic Sans MS', 'Comic Sans'; color: {PALETA['texto']}; font-size: 14px; }}
+                #root, #mainSurface, QScrollArea, QScrollArea > QWidget > QWidget {{ background: {PALETA['fundo']}; }}
+                #sidebar {{ background: #11151A; border-right: 1px solid #2B3037; }}
+                #brand {{ font-size: 21px; font-weight: 700; }}
+                #brandCaption {{ color: {PALETA['apagado']}; font-size: 10px; }}
+                #sideSection, #eyebrow {{ color: {PALETA['apagado']}; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; }}
+                QPushButton[nav="true"] {{ background: transparent; border: 0; border-radius: 9px; text-align: left; padding: 12px 14px; min-height: 22px; color: {PALETA['secundario']}; }}
+                QPushButton[nav="true"]:hover {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
+                QPushButton[nav="true"]:checked {{ background: #2A1C22; color: {PALETA['texto']}; }}
+                #navIndicator {{ background: {PALETA['rosa']}; border: 0; border-radius: 1px; }}
+                QPushButton:focus, QToolButton:focus, QTextEdit:focus, QComboBox:focus, QCheckBox:focus {{ border: 1px solid {PALETA['rosa']}; outline: 0; }}
+                #recentItem {{ color: {PALETA['secundario']}; padding: 9px 12px; background: transparent; border: 0; border-radius: 8px; text-align: left; }}
+                #recentItem:hover {{ color: {PALETA['texto']}; background: {PALETA['elevada']}; }}
+                #conversationList, #conversationListContent {{ background: transparent; border: 0; }}
+                #conversationTools {{ background: transparent; border: 0; }}
+                #conversationSearch {{ background: #151A20; border: 1px solid #2B323A; border-radius: 8px; padding: 6px 8px; color: {PALETA['texto']}; font-size: 10px; min-height: 20px; }}
+                #conversationSearch:focus {{ border-color: #6E3C4B; }}
+                #archivedConversationsButton {{ min-width: 30px; max-width: 30px; min-height: 30px; max-height: 30px; border: 1px solid #2B323A; background: #151A20; }}
+                #archivedConversationsButton:checked {{ color: {PALETA['rosa']}; border-color: #6E3C4B; background: #281C22; }}
+                #conversationSection {{ color: {PALETA['apagado']}; font-size: 9px; font-weight: 700; padding: 5px 7px 2px 7px; }}
+                #conversationEmpty {{ color: {PALETA['apagado']}; font-size: 10px; padding: 9px 7px; }}
+                #conversationRow {{ background: transparent; border: 0; border-radius: 8px; }}
+                #conversationRow[active="true"] {{ background: #251B20; }}
+                #conversationRow[archived="true"] {{ background: #12161B; }}
+                #conversationItem {{ color: {PALETA['secundario']}; background: transparent; border: 0; border-radius: 7px; padding: 7px 7px; text-align: left; font-size: 11px; }}
+                #conversationItem:hover {{ color: {PALETA['texto']}; background: #1B2026; }}
+                #conversationItem:checked {{ color: {PALETA['texto']}; font-weight: 650; }}
+                #conversationItem[archived="true"] {{ color: {PALETA['apagado']}; font-style: italic; }}
+                #conversationMenu {{ min-width: 24px; max-width: 24px; min-height: 24px; max-height: 24px; color: {PALETA['apagado']}; }}
+                #mindStatus {{ color: {PALETA['apagado']}; padding: 8px; font-size: 11px; }}
+                #footerSettings {{ background: transparent; border: 0; border-radius: 8px; text-align: left; padding: 10px; color: {PALETA['secundario']}; }}
+                #footerSettings:hover {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
+                #collapseButton, QToolButton {{ background: transparent; border: 1px solid transparent; border-radius: 7px; min-width: 34px; min-height: 32px; color: {PALETA['secundario']}; }}
+                QToolButton:hover {{ background: {PALETA['elevada']}; border-color: {PALETA['borda']}; color: {PALETA['texto']}; }}
+                /* ACABAMENTO FINAL HOME P5 */
+                #topbar {{ background: #0C1014; border-bottom: 1px solid #242A31; min-height: 62px; }}
+                #headerTitle {{ font-weight: 650; }}
+                #statusChip {{ background: #11151A; border: 1px solid {PALETA['borda']}; border-radius: 9px; }}
+                #statusChipText {{ color: {PALETA['secundario']}; font-size: 11px; }}
+                #statusChipDot {{ color: {PALETA['apagado']}; font-size: 9px; }}
+                #statusChipDot[state="online"] {{ color: {PALETA['sucesso']}; }}
+                #statusChipDot[state="error"] {{ color: {PALETA['erro']}; }}
+                #statusChipDot[state="unavailable"] {{ color: #9A7E4C; }}
+                #connectionDot {{ color: {PALETA['erro']}; font-size: 9px; }}
+                #statusLabel {{ color: {PALETA['apagado']}; font-size: 11px; }}
+                #modeSwitch {{ background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 9px; }}
+                QPushButton[segment="true"] {{ background: transparent; border: 0; border-radius: 6px; padding: 6px 12px; color: {PALETA['apagado']}; font-size: 11px; font-weight: 650; }}
+                QPushButton[segment="true"]:checked {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
+                QPushButton[segment="true"]:disabled {{ color: #5E5763; }}
+
+                /* =========================================
+                   P6 — SIDEBAR + TOPBAR REFINADOS
+                   ========================================= */
+
+                #sidebar {{
+                    background: #0F1419;
+                    border-right: 1px solid #252C33;
+                }}
+
+                #sidebarBrandBar {{
+                    background: transparent;
+                    border: 0;
+                    border-bottom: 1px solid #1E252C;
+                }}
+
+                #brand {{
+                    color: #F7F3F5;
+                    font-size: 19px;
+                    font-weight: 720;
+                }}
+
+                #brandCaption {{
+                    color: #747C85;
+                    font-size: 8px;
+                }}
+
+                #collapseButton {{
+                    background: transparent;
+                    border: 1px solid transparent;
+                    border-radius: 9px;
+                    min-width: 30px;
+                    max-width: 30px;
+                    min-height: 30px;
+                    max-height: 30px;
+                }}
+
+                #collapseButton:hover {{
+                    background: #191E23;
+                    border-color: #2D343B;
+                }}
+
+                QPushButton[nav="true"] {{
+                    background: transparent;
+                    border: 0;
+                    border-left: 3px solid transparent;
+                    border-radius: 9px;
+                    text-align: left;
+
+                    padding: 11px 11px;
+                    min-height: 25px;
+
+                    color: #C5C2C5;
+                    font-size: 13px;
+                    font-weight: 500;
+                }}
+
+                QPushButton[nav="true"]:hover {{
+                    background: #181D22;
+                    color: #F5F1F3;
+                }}
+
+                QPushButton[nav="true"]:checked {{
+                    background: qlineargradient(
+                        x1: 0, y1: 0,
+                        x2: 1, y2: 0,
+                        stop: 0 #312027,
+                        stop: 1 #241A1F
+                    );
+
+                    border-left: 3px solid #FF5C73;
+                    color: #F8F4F6;
+                }}
+
+                #sidebarProfile {{
+                    background: #12171C;
+                    border: 1px solid #20272E;
+                    border-radius: 13px;
+                }}
+
+                #profileName {{
+                    background: transparent;
+                    border: 0;
+                    color: #E9E5E7;
+                    font-size: 11px;
+                    font-weight: 650;
+                }}
+
+                #profileStatus {{
+                    background: transparent;
+                    border: 0;
+                    color: #8A929A;
+                    font-size: 8px;
+                }}
+
+                #profileStatus[state="online"] {{
+                    color: #68C79A;
+                }}
+
+                #profileStatus[state="offline"] {{
+                    color: #9A7E4C;
+                }}
+
+                #profileVersion {{
+                    background: transparent;
+                    border: 0;
+                    color: #656D75;
+                    font-size: 8px;
+                }}
+
+                #profileHeart {{
+                    background: transparent;
+                    border: 0;
+                    color: #E44B62;
+                    font-size: 13px;
+                }}
+
+                #topbar {{
+                    background: #0B0F13;
+                    border-bottom: 1px solid #222931;
+                    min-height: 64px;
+                }}
+
+                #statusChip {{
+                    background: #10151A;
+                    border: 1px solid #293038;
+                    border-radius: 10px;
+                }}
+
+                #statusChipText {{
+                    color: #C9C5C8;
+                    font-size: 11px;
+                    font-weight: 520;
+                }}
+
+                #statusChipDot {{
+                    color: #687079;
+                    font-size: 9px;
+                }}
+
+                #modeSwitch {{
+                    background: #11161B;
+                    border: 1px solid #293038;
+                    border-radius: 10px;
+                }}
+
+                QPushButton[segment="true"] {{
+                    background: transparent;
+                    border: 0;
+                    border-radius: 7px;
+
+                    padding: 7px 12px;
+
+                    color: #777F88;
+                    font-size: 10px;
+                    font-weight: 650;
+                }}
+
+                QPushButton[segment="true"]:checked {{
+                    background: #1C2127;
+                    color: #F2EEF0;
+                }}
+
+                #statusLabel {{
+                    color: #858D96;
+                    font-size: 10px;
+                }}
+
+
+                /* =========================================
+                   P6.2 — TOPBAR FINAL
+                   ========================================= */
+
+                #topbar {{
+                    background: #0B0F13;
+                    border-bottom: 1px solid #20272E;
+                    min-height: 66px;
+                }}
+
+                #statusChip {{
+                    background: #10151A;
+                    border: 1px solid #2A3138;
+                    border-radius: 10px;
+                    min-height: 32px;
+                }}
+
+                #statusChipText {{
+                    color: #D0CCD0;
+                    font-size: 11px;
+                    font-weight: 540;
+                }}
+
+                #statusChipDot {{
+                    font-size: 9px;
+                }}
+
+                #modeSwitch {{
+                    background: #10151A;
+                    border: 1px solid #2A3138;
+                    border-radius: 10px;
+                    min-height: 32px;
+                }}
+
+                QPushButton[segment="true"] {{
+                    background: transparent;
+                    border: 0;
+                    border-radius: 7px;
+                    padding: 7px 12px;
+                    color: #777F88;
+                    font-size: 10px;
+                    font-weight: 650;
+                }}
+
+                QPushButton[segment="true"]:checked {{
+                    background: #1D2228;
+                    color: #F4F0F2;
+                }}
+
+                #connectionDot {{
+                    font-size: 8px;
+                }}
+
+                #statusLabel {{
+                    background: transparent;
+                    border: 0;
+                    padding: 0 3px;
+                    color: #858D96;
+                    font-size: 10px;
+                }}
+
+
+                /* =========================================
+                   P8 — PERFIL DO USUÁRIO
+                   ========================================= */
+
+                #settingsProfileCard {{
+                    background: #14191E;
+                    border: 1px solid #2A3138;
+                    border-radius: 13px;
+                }}
+
+                #settingsProfileTitle {{
+                    background: transparent;
+                    border: 0;
+                    color: #F1EDEF;
+                    font-size: 13px;
+                    font-weight: 700;
+                }}
+
+                #settingsProfileHint {{
+                    background: transparent;
+                    border: 0;
+                    color: #777F88;
+                    font-size: 10px;
+                }}
+
+
+                /* =========================================
+                   P8.1 — BOTÃO DE PERFIL ANIMADO
+                   ========================================= */
+
+                #profileAvatarButton {{
+                    background: #15191E;
+                    border: 1px solid #2D333A;
+                    border-radius: 10px;
+
+                    padding: 9px 14px;
+
+                    color: #B4B5BA;
+                    font-size: 11px;
+                    font-weight: 650;
+                }}
+
+                #profileAvatarButton:hover {{
+                    background: #211A1F;
+                    border-color: #713541;
+                    color: #F3F2F4;
+                }}
+
+                #profileAvatarButton:pressed {{
+                    background: #2D1C22;
+                    border-color: #A54355;
+                    color: #FF7588;
+
+                    padding-top: 10px;
+                    padding-bottom: 8px;
+                }}
+
+                #profileAvatarButton:focus {{
+                    border-color: #FF5C73;
+                }}
+
+                #emptyState {{ background: transparent; }}
+                #emptyMark {{ color: {PALETA['violeta']}; font-size: 28px; }}
+                #emptyTitle {{ font-size: 23px; font-weight: 650; }}
+                #emptyCopy {{ color: {PALETA['secundario']}; font-size: 14px; }}
+                /* =========================================
+                HOME — CONVERSA
+                ========================================= */
+
+                #chatSurface {{
+                    background: #0F1317;
+
+                    border: 1px solid #272D34;
+                    border-radius: 18px;
+                }}
+
+                #chatHeader {{
+                    background: transparent;
+
+                    border: 0;
+                    border-bottom: 1px solid #22282F;
+                }}
+
+                #chatGreeting {{
+                    color: #F8F4F6;
+
+                    font-size: 20px;
+                    font-weight: 700;
+                }}
+
+                #chatGreetingSub {{
+                    color: #9DA3AA;
+
+                    font-size: 12px;
+                }}
+
+
+                /* =========================================
+                MENSAGENS
+                ========================================= */
+
+                #messageLaylay {{
+                    background: #1A1F25;
+
+                    border: 1px solid #272E35;
+                    border-radius: 16px;
+                }}
+
+                #messageUser {{
+                    background: #291C22;
+
+                    border: 1px solid #472A32;
+                    border-radius: 16px;
+                }}
+
+                #messageMeta {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #747B84;
+
+                    font-size: 8px;
+                    font-weight: 700;
+
+                    letter-spacing: 1px;
+                }}
+
+                #messageText {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #EDE9EB;
+
+                    font-size: 14px;
+                }}
+
+                #messageStatus {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #686F78;
+
+                    font-size: 9px;
+                }}
+
+                #messageStatus[delivery="pending"] {{
+                    color: #D35A6E;
+                }}
+
+                #messageStatus[delivery="failed"] {{
+                    color: #ED7888;
+                }}
+
+
+
+                /* =========================================
+                   P7 — MENSAGEM DA LAYLAY ESTILO CHAT
+                   ========================================= */
+
+                #messageLaylay {{
+                    background: #1A1F25;
+                    border: 1px solid #272E35;
+                    border-radius: 15px;
+                }}
+
+                #messageTime {{
+                    background: transparent;
+                    border: 0;
+                    padding-left: 5px;
+                    color: #747B84;
+                    font-size: 10px;
+                }}
+
+
+                /* =========================================
+                   P7.1 — MENSAGEM DO USUÁRIO ESTILO CHAT
+                   ========================================= */
+
+                #messageUser {{
+                    background: #291C22;
+                    border: 1px solid #472A32;
+                    border-radius: 15px;
+                }}
+
+                #messageTime[owner="user"] {{
+                    background: transparent;
+                    border: 0;
+                    padding-left: 0;
+                    padding-right: 5px;
+                    color: #747B84;
+                    font-size: 10px;
+                }}
+
+                /* =========================================
+                PENSANDO
+                ========================================= */
+
+                #thinkingIndicator {{
+                    background: #1A1F25;
+
+                    border: 1px solid #2D343B;
+                    border-radius: 15px;
+                }}
+
+                #thinkingMeta {{
+                    color: #737A83;
+
+                    font-size: 8px;
+                    font-weight: 700;
+
+                    letter-spacing: 1px;
+                }}
+
+                #thinkingDots {{
+                    color: #FF5C73;
+
+                    font-size: 18px;
+                    font-weight: 700;
+                }}
+
+
+                /* =========================================
+                WAVEFORM
+                ========================================= */
+
+                #microphoneWaveform {{
+                    background: transparent;
+
+                    border: 0;
+                }}
+
+
+                /* =========================================
+                COMPOSER
+                ========================================= */
+
+                #composer {{
+                    background: #11151A;
+
+                    border: 1px solid #432B33;
+                    border-radius: 18px;
+                }}
+
+                #composer:focus-within {{
+                    border-color: #7A3B48;
+                }}
+
+
+                /* campo central */
+
+                #composerEdit {{
+                    background: #171B20;
+
+                    border: 1px solid #272E35;
+                    border-radius: 14px;
+
+                    padding: 6px 10px;
+
+                    color: #E7E3E5;
+
+                    selection-background-color: #743746;
+
+                    font-size: 14px;
+                }}
+
+                #composerEdit:focus {{
+                    background: #181C21;
+
+                    border-color: #4E333B;
+                }}
+
+
+                /* dica inferior */
+
+                #composerHint {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #686F77;
+
+                    font-size: 9px;
+                }}
+
+
+                /* microfone */
+
+                #composerMic {{
+                    background: #D7445B;
+
+                    border: 1px solid #F06479;
+                    border-radius: 23px;
+                }}
+
+                #composerMic:hover {{
+                    background: #EB536A;
+
+                    border-color: #FF7A8D;
+                }}
+
+                #composerMic:pressed {{
+                    background: #BD384D;
+                }}
+
+
+                /* enviar */
+
+                #sendButton {{
+                    background: #21191E;
+
+                    border: 1px solid #4A3038;
+                    border-radius: 21px;
+                }}
+
+                #sendButton:hover {{
+                    background: #2B1C22;
+
+                    border-color: #85404D;
+                }}
+
+                #sendButton:pressed {{
+                    background: #351D25;
+
+                    border-color: #A94B5D;
+                }}
+
+                #sendButton:disabled {{
+                    background: #171B20;
+
+                    border-color: #292F36;
+                }}
+                #voiceSurface {{ background: #172123; border: 1px solid #2F5559; border-radius: 10px; }}
+                #voiceDot {{ color: {PALETA['ciano']}; font-size: 17px; }}
+                #voiceText {{ color: #B7DCE0; }}
+
+/* =========================================
+   P10 — NOVA ABA SISTEMA
+   ========================================= */
+
+#systemPage {{
+    background: transparent;
+}}
+
+#systemHero {{
+    background: #10151A;
+    border: 1px solid #272E35;
+    border-radius: 14px;
+}}
+
+#systemHeroTitle {{
+    background: transparent;
+    border: 0;
+    color: #F7F3F5;
+    font-size: 24px;
+    font-weight: 720;
+}}
+
+#systemHeroDescription {{
+    background: transparent;
+    border: 0;
+    color: #8D949C;
+    font-size: 11px;
+}}
+
+#systemUpdated {{
+    background: transparent;
+    border: 0;
+    color: #777F88;
+    font-size: 9px;
+    padding: 4px 2px;
+}}
+
+#systemSectionCard {{
+    background: #11161B;
+    border: 1px solid #282F36;
+    border-radius: 13px;
+}}
+
+#systemSectionCard #dashboardCardTitle {{
+    color: #F0ECEE;
+    font-size: 13px;
+    font-weight: 700;
+}}
+
+#systemSectionCard #dashboardCardHint {{
+    background: transparent;
+    border: 0;
+    color: #68717A;
+    font-size: 8px;
+}}
+
+#systemSummaryRow {{
+    background: #151A1F;
+    border: 1px solid #232A31;
+    border-radius: 8px;
+}}
+
+#systemSummaryRow #dashboardMetricLabel {{
+    background: transparent;
+    border: 0;
+    padding: 7px 9px;
+    color: #8D949C;
+    font-size: 9px;
+    font-weight: 600;
+}}
+
+#systemSummaryRow #dashboardMetricValue {{
+    background: transparent;
+    border: 0;
+    padding: 7px 9px;
+    color: #F0ECEE;
+    font-size: 10px;
+    font-weight: 700;
+}}
+
+#systemSummarySeparator {{
+    background: #252C33;
+    border: 0;
+}}
+
+#systemSummarySensor {{
+    background: transparent;
+    border: 0;
+    padding: 2px 3px;
+    color: #BBB7BB;
+    font-size: 10px;
+}}
+
+#systemSummaryState {{
+    background: #171C21;
+    border: 1px solid #292F36;
+    border-radius: 8px;
+    padding: 8px 9px;
+    color: #777F88;
+    font-size: 8px;
+}}
+
+#systemSummaryState[state="ok"] {{
+    border-color: #315242;
+    color: #79CFA4;
+}}
+
+#systemSummaryState[state="partial"] {{
+    border-color: #51452F;
+    color: #C6A05E;
+}}
+
+#systemMetricCard {{
+    background: #151A1F;
+    border: 1px solid #282F36;
+    border-radius: 10px;
+    min-width: 125px;
+}}
+
+#systemMetricCard:hover {{
+    background: #181D22;
+    border-color: #40343A;
+}}
+
+#systemMetricTitle {{
+    background: transparent;
+    border: 0;
+    color: #AAAEB4;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#systemMetricValue {{
+    background: transparent;
+    border: 0;
+    color: #F4F0F2;
+    font-size: 15px;
+    font-weight: 720;
+}}
+
+#systemMetricProgress {{
+    background: #242A30;
+    border: 0;
+    border-radius: 2px;
+    min-height: 4px;
+    max-height: 4px;
+}}
+
+#systemMetricProgress::chunk {{
+    background: #D94C63;
+    border-radius: 2px;
+}}
+
+#systemMetricCard[metricTone="gpu"] #systemMetricProgress::chunk {{
+    background: #65B978;
+}}
+
+#systemMetricCard[metricTone="ram"] #systemMetricProgress::chunk {{
+    background: #D68A35;
+}}
+
+#systemMetricCard[metricTone="vram"] #systemMetricProgress::chunk {{
+    background: #9A58D2;
+}}
+
+#systemMetricCard[metricTone="network"] #systemMetricProgress::chunk {{
+    background: #48AFC0;
+}}
+
+#systemMetricCard[metricTone="disk"] #systemMetricProgress::chunk {{
+    background: #4F8CC9;
+}}
+
+#systemMetricSparkline {{
+    background: transparent;
+    border: 0;
+    color: #D94C63;
+    font-family: 'Cascadia Code';
+    font-size: 16px;
+}}
+
+#systemMetricCard[metricTone="gpu"] #systemMetricSparkline {{
+    color: #65B978;
+}}
+
+#systemMetricCard[metricTone="ram"] #systemMetricSparkline {{
+    color: #D68A35;
+}}
+
+#systemMetricCard[metricTone="vram"] #systemMetricSparkline {{
+    color: #9A58D2;
+}}
+
+#systemMetricCard[metricTone="network"] #systemMetricSparkline {{
+    color: #48AFC0;
+}}
+
+#systemMetricCard[metricTone="disk"] #systemMetricSparkline {{
+    color: #4F8CC9;
+}}
+
+#systemMetricFooter {{
+    background: #12171C;
+    border: 1px solid #252C33;
+    border-radius: 7px;
+    padding: 5px 7px;
+    color: #7EABB3;
+    font-size: 8px;
+}}
+
+
+                /* =========================================
+                   P10.1 — SISTEMA FASE 3
+                   ========================================= */
+
+                #systemLowerRow {{
+                    background: transparent;
+                    border: 0;
+                }}
+
+                #systemModelCard,
+                #systemStorageCard {{
+                    background: #11161B;
+                    border: 1px solid #282F36;
+                    border-radius: 13px;
+                }}
+
+                #systemModelCard #dashboardCardTitle,
+                #systemStorageCard #dashboardCardTitle {{
+                    color: #F0ECEE;
+                    font-size: 13px;
+                    font-weight: 700;
+                }}
+
+                #systemModelStatus {{
+                    background: #17201C;
+                    border: 1px solid #294838;
+                    border-radius: 8px;
+                    padding: 7px 9px;
+                    color: #72C99D;
+                    font-size: 9px;
+                    font-weight: 650;
+                }}
+
+                #systemModelStatus[state="pending"] {{
+                    background: #1B1C1C;
+                    border-color: #4E432D;
+                    color: #C5A05D;
+                }}
+
+                #systemModelStatus[state="error"] {{
+                    background: #21171B;
+                    border-color: #5C3039;
+                    color: #E67386;
+                }}
+
+                #systemModelStatus[state="unavailable"] {{
+                    background: #15191D;
+                    border-color: #252B31;
+                    color: #707880;
+                }}
+
+                #systemModelRow {{
+                    background: #151A1F;
+                    border: 1px solid #232A31;
+                    border-radius: 8px;
+                }}
+
+                #systemModelRow #dashboardMetricLabel {{
+                    background: transparent;
+                    border: 0;
+                    padding: 7px 9px;
+                    color: #858D96;
+                    font-size: 9px;
+                    font-weight: 600;
+                }}
+
+                #systemModelRow #dashboardMetricValue {{
+                    background: transparent;
+                    border: 0;
+                    padding: 7px 9px;
+                    color: #ECE8EA;
+                    font-size: 9px;
+                    font-weight: 650;
+                }}
+
+                #systemStorageMetric {{
+                    background: #151A1F;
+                    border: 1px solid #232A31;
+                    border-radius: 9px;
+                }}
+
+                #systemStorageMetricLabel {{
+                    background: transparent;
+                    border: 0;
+                    color: #A5AAB0;
+                    font-size: 9px;
+                    font-weight: 650;
+                }}
+
+                #systemStorageMetricValue {{
+                    background: transparent;
+                    border: 0;
+                    color: #F1EDEF;
+                    font-size: 10px;
+                    font-weight: 700;
+                }}
+
+                #systemStorageProgress {{
+                    background: #242A30;
+                    border: 0;
+                    border-radius: 2px;
+                    min-height: 5px;
+                    max-height: 5px;
+                }}
+
+                #systemStorageProgress::chunk {{
+                    background: #D94C63;
+                    border-radius: 2px;
+                }}
+
+                #systemStorageMetric[resource="ram"]
+                #systemStorageProgress::chunk {{
+                    background: #D68A35;
+                }}
+
+                #systemStorageMetric[resource="vram"]
+                #systemStorageProgress::chunk {{
+                    background: #9A58D2;
+                }}
+
+                #systemStorageHint {{
+                    background: #14191E;
+                    border: 1px solid #252C33;
+                    border-radius: 8px;
+                    padding: 7px 9px;
+                    color: #707881;
+                    font-size: 8px;
+                }}
+
+
+/* =========================================
+   P10.2 — SISTEMA FASE 4
+   ========================================= */
+
+#systemPhase4Row {{
+    background: transparent;
+    border: 0;
+}}
+
+#systemAudioCard,
+#systemActionsCard,
+#systemAlertsCard {{
+    background: #11161B;
+    border: 1px solid #282F36;
+    border-radius: 13px;
+}}
+
+#systemAudioCard #dashboardCardTitle,
+#systemActionsCard #dashboardCardTitle,
+#systemAlertsCard #dashboardCardTitle {{
+    color: #F0ECEE;
+    font-size: 13px;
+    font-weight: 700;
+}}
+
+#systemAudioStatus {{
+    background: #171C21;
+    border: 1px solid #2B3239;
+    border-radius: 8px;
+    padding: 7px 9px;
+    color: #858D96;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#systemAudioStatus[state="ok"] {{
+    background: #17201C;
+    border-color: #294838;
+    color: #72C99D;
+}}
+
+#systemAudioStatus[state="pending"] {{
+    background: #1B1C1C;
+    border-color: #4E432D;
+    color: #C5A05D;
+}}
+
+#systemAudioStatus[state="error"] {{
+    background: #21171B;
+    border-color: #5C3039;
+    color: #E67386;
+}}
+
+#systemAudioStatus[state="unavailable"] {{
+    background: #15191D;
+    border-color: #252B31;
+    color: #707880;
+}}
+
+#systemAudioRow {{
+    background: #151A1F;
+    border: 1px solid #232A31;
+    border-radius: 8px;
+}}
+
+#systemAudioRow #dashboardMetricLabel {{
+    background: transparent;
+    border: 0;
+    padding: 6px 8px;
+    color: #858D96;
+    font-size: 8px;
+    font-weight: 600;
+}}
+
+#systemAudioRow #dashboardMetricValue {{
+    background: transparent;
+    border: 0;
+    padding: 6px 8px;
+    color: #ECE8EA;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#systemAudioLevelHeader {{
+    background: transparent;
+    border: 0;
+}}
+
+#systemAudioLevelLabel {{
+    background: transparent;
+    border: 0;
+    color: #858D96;
+    font-size: 8px;
+    font-weight: 600;
+}}
+
+#systemAudioLevelValue {{
+    background: transparent;
+    border: 0;
+    color: #F0ECEE;
+    font-size: 9px;
+    font-weight: 700;
+}}
+
+#systemAudioLevel {{
+    background: #242A30;
+    border: 0;
+    border-radius: 2px;
+    min-height: 5px;
+    max-height: 5px;
+}}
+
+#systemAudioLevel::chunk {{
+    background: #68C79A;
+    border-radius: 2px;
+}}
+
+QPushButton[systemQuickAction="true"] {{
+    background: #151A1F;
+    border: 1px solid #292F36;
+    border-radius: 9px;
+    min-height: 34px;
+    padding: 7px 10px;
+    text-align: left;
+    color: #C7C3C6;
+    font-size: 9px;
+    font-weight: 600;
+}}
+
+QPushButton[systemQuickAction="true"]:hover {{
+    background: #241A1F;
+    border-color: #713541;
+    color: #FFF3F5;
+}}
+
+QPushButton[systemQuickAction="true"]:pressed {{
+    background: #2D1C22;
+    border-color: #A54355;
+    color: #FF7588;
+}}
+
+#systemActionsHint {{
+    background: #14191E;
+    border: 1px solid #252C33;
+    border-radius: 8px;
+    padding: 7px 9px;
+    color: #707881;
+    font-size: 8px;
+}}
+
+#systemAlertStatus {{
+    background: #171C21;
+    border: 1px solid #2B3239;
+    border-radius: 8px;
+    padding: 8px 9px;
+    color: #858D96;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#systemAlertStatus[state="ok"] {{
+    background: #17201C;
+    border-color: #294838;
+    color: #72C99D;
+}}
+
+#systemAlertStatus[state="warning"] {{
+    background: #201C16;
+    border-color: #59462A;
+    color: #D1A660;
+}}
+
+#systemAlertItem {{
+    background: #151A1F;
+    border: 1px solid #252C33;
+    border-radius: 8px;
+    padding: 7px 9px;
+    color: #A8AEB4;
+    font-size: 8px;
+}}
+
+#systemAlertItem[kind="warning"] {{
+    background: #1E1A16;
+    border-color: #4F402B;
+    color: #C9A15E;
+}}
+
+/* =========================================
+   P10.3 — SISTEMA FASE 5 / RIGHT RAIL
+   ========================================= */
+
+#systemWorkbench {{
+    background: transparent;
+    border: 0;
+}}
+
+#systemMainColumn,
+#systemRightRail {{
+    background: transparent;
+    border: 0;
+}}
+
+#systemLaylayCard {{
+    background: #12161B;
+    border: 1px solid #60313B;
+    border-radius: 14px;
+}}
+
+#systemLaylayCard #dashboardCardTitle {{
+    color: #F4F0F2;
+    font-size: 14px;
+    font-weight: 720;
+}}
+
+#systemLaylayCard #dashboardCardHint {{
+    background: #2A1A20;
+    border: 1px solid #55303A;
+    border-radius: 7px;
+    padding: 3px 6px;
+    color: #E96379;
+    font-size: 8px;
+    font-weight: 700;
+}}
+
+#systemLaylayStatus {{
+    background: #17201C;
+    border: 1px solid #315442;
+    border-radius: 9px;
+    padding: 8px 9px;
+    color: #78CFA4;
+    font-size: 9px;
+    font-weight: 700;
+}}
+
+#systemLaylayStatus[state="partial"] {{
+    background: #201C16;
+    border-color: #59462A;
+    color: #D1A660;
+}}
+
+#systemLaylayStatus[state="unavailable"] {{
+    background: #17191C;
+    border-color: #292F36;
+    color: #747C84;
+}}
+
+#systemLaylayRow {{
+    background: #171C21;
+    border: 1px solid #292F36;
+    border-radius: 8px;
+}}
+
+#systemLaylayRow #dashboardMetricLabel {{
+    background: transparent;
+    border: 0;
+    padding: 6px 8px;
+    color: #818992;
+    font-size: 8px;
+    font-weight: 600;
+}}
+
+#systemLaylayRow #dashboardMetricValue {{
+    background: transparent;
+    border: 0;
+    padding: 6px 8px;
+    color: #ECE8EA;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#systemLaylayPulse {{
+    background: #181D22;
+    border: 1px solid #2B3239;
+    border-radius: 9px;
+    padding: 7px 9px;
+    color: #9BA2A9;
+    font-size: 8px;
+}}
+
+#systemRightRail #systemActionsCard,
+#systemRightRail #systemAlertsCard {{
+    background: #12171C;
+    border-color: #292F36;
+}}
+
+#systemRightRail QPushButton[systemQuickAction="true"] {{
+    min-height: 31px;
+    padding: 6px 9px;
+}}
+
+#systemRightRail #systemAlertItem {{
+    padding: 6px 8px;
+}}
+
+#systemMainColumn #systemAudioCard {{
+    min-height: 170px;
+}}
+
+/* =========================================
+   P10.4 — SISTEMA FASE 6 / LEGIBILIDADE
+   ========================================= */
+
+#systemHeroTitle {{
+    font-size: 17px;
+    font-weight: 760;
+    color: #F3EFF1;
+}}
+
+#systemHeroDescription {{
+    font-size: 10px;
+    color: #A7ADB4;
+}}
+
+#systemUpdated {{
+    font-size: 10px;
+    color: #8A919A;
+}}
+
+#systemSectionCard #dashboardCardTitle,
+#systemModelCard #dashboardCardTitle,
+#systemStorageCard #dashboardCardTitle,
+#systemAudioCard #dashboardCardTitle,
+#systemLaylayCard #dashboardCardTitle,
+#systemActionsCard #dashboardCardTitle,
+#systemAlertsCard #dashboardCardTitle {{
+    font-size: 14px;
+    font-weight: 740;
+    color: #F3EFF1;
+}}
+
+#systemSectionCard #dashboardCardHint,
+#systemModelCard #dashboardCardHint,
+#systemStorageCard #dashboardCardHint,
+#systemAudioCard #dashboardCardHint,
+#systemLaylayCard #dashboardCardHint,
+#systemActionsCard #dashboardCardHint,
+#systemAlertsCard #dashboardCardHint {{
+    font-size: 8px;
+    font-weight: 650;
+}}
+
+#systemSummaryRow #dashboardMetricLabel {{
+    font-size: 9px;
+    font-weight: 620;
+    color: #9AA1A9;
+}}
+
+#systemSummaryRow #dashboardMetricValue {{
+    font-size: 10px;
+    font-weight: 700;
+    color: #F1EDF0;
+}}
+
+#systemSummarySensor {{
+    font-size: 10px;
+    color: #A8AFB6;
+    padding-top: 2px;
+}}
+
+#systemSummaryState {{
+    font-size: 9px;
+    line-height: 1.3;
+    padding-top: 5px;
+    color: #99BCA8;
+}}
+
+#systemMetricTitle {{
+    font-size: 9px;
+    font-weight: 700;
+    color: #ADB3BA;
+}}
+
+#systemMetricValue {{
+    font-size: 15px;
+    font-weight: 760;
+    color: #FFF8FA;
+}}
+
+#systemMetricFooter {{
+    font-size: 8px;
+    color: #8F97A0;
+}}
+
+#systemMetricSparkline {{
+    font-size: 9px;
+}}
+
+#systemModelStatus,
+#systemAudioStatus,
+#systemLaylayStatus,
+#systemAlertStatus {{
+    font-size: 10px;
+    font-weight: 700;
+}}
+
+#systemModelRow #dashboardMetricLabel,
+#systemAudioRow #dashboardMetricLabel,
+#systemLaylayRow #dashboardMetricLabel {{
+    font-size: 9px;
+    font-weight: 620;
+    color: #99A0A8;
+}}
+
+#systemModelRow #dashboardMetricValue,
+#systemAudioRow #dashboardMetricValue,
+#systemLaylayRow #dashboardMetricValue {{
+    font-size: 10px;
+    font-weight: 700;
+    color: #F1EDF0;
+}}
+
+#systemStorageMetricLabel {{
+    font-size: 9px;
+    font-weight: 650;
+    color: #A7ADB4;
+}}
+
+#systemStorageMetricValue {{
+    font-size: 10px;
+    font-weight: 740;
+    color: #FFF8FA;
+}}
+
+#systemStorageHint,
+#systemActionsHint,
+#systemLaylayPulse,
+#systemAlertItem {{
+    font-size: 9px;
+    line-height: 1.35;
+}}
+
+#systemAudioLevelLabel {{
+    font-size: 9px;
+    font-weight: 620;
+    color: #A1A8B0;
+}}
+
+#systemAudioLevelValue {{
+    font-size: 10px;
+    font-weight: 720;
+    color: #F4F0F2;
+}}
+
+QPushButton[systemQuickAction="true"] {{
+    min-height: 38px;
+    padding: 8px 11px;
+    font-size: 10px;
+    font-weight: 680;
+}}
+
+#systemRightRail #systemLaylayCard,
+#systemRightRail #systemActionsCard,
+#systemRightRail #systemAlertsCard {{
+    border-radius: 15px;
+}}
+
+#systemRightRail #systemAlertItem {{
+    padding: 8px 9px;
+}}
+
+#systemAudioCard,
+#systemModelCard,
+#systemStorageCard,
+#systemLaylayCard,
+#systemActionsCard,
+#systemAlertsCard,
+#systemSectionCard {{
+    border-radius: 14px;
+}}
+
+/* =========================================
+   P10.4.1 — SISTEMA RESPONSIVO
+   ========================================= */
+
+QScrollArea#systemScroll {{
+    background: transparent;
+    border: 0;
+}}
+
+QScrollArea#systemScroll > QWidget > QWidget {{
+    background: transparent;
+}}
+
+#systemPageContent {{
+    background: transparent;
+}}
+
+#systemHero,
+#systemSectionCard,
+#systemModelCard,
+#systemStorageCard,
+#systemAudioCard,
+#systemLaylayCard,
+#systemActionsCard,
+#systemAlertsCard {{
+    min-height: 0px;
+}}
+
+#systemAudioCard,
+#systemModelCard,
+#systemStorageCard {{
+    min-width: 0px;
+}}
+
+#systemSummarySensor,
+#systemStorageHint,
+#systemActionsHint,
+#systemLaylayPulse,
+#systemAlertItem {{
+    padding-top: 4px;
+    padding-bottom: 4px;
+}}
+
+
+/* =========================================
+   P10.6 — REFINO VISUAL DA ABA SISTEMA
+   ========================================= */
+
+#systemSectionCard[summaryCard="true"] {{
+    background: #11161B;
+    border: 1px solid #2B3239;
+    border-radius: 16px;
+}}
+
+#systemSpecRow {{
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid #252D35;
+    padding: 0;
+}}
+
+#systemSpecIcon {{
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 #191F25,
+        stop:1 #14191E
+    );
+    border: 1px solid #2D3540;
+    border-radius: 8px;
+    color: #E7EAEE;
+    font-size: 13px;
+    font-weight: 800;
+}}
+
+#systemSpecTitle {{
+    background: transparent;
+    border: 0;
+    color: #C2C8CF;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}}
+
+#systemSpecValue {{
+    background: transparent;
+    border: 0;
+    color: #F6F7FA;
+    font-size: 11px;
+    font-weight: 760;
+    line-height: 1.15em;
+}}
+
+#systemSpecDetail {{
+    background: transparent;
+    border: 0;
+    color: #8A939D;
+    font-size: 9px;
+    font-weight: 650;
+    line-height: 1.15em;
+}}
+
+#dashboardCardTitle {{
+    color: #F4F0F2;
+    font-size: 13px;
+    font-weight: 780;
+    letter-spacing: 0.15px;
+}}
+
+#dashboardCardDetail,
+#dashboardCardMeta,
+#dashboardSectionMeta {{
+    color: #7C858F;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#dashboardInfoRow,
+#dashboardMetricCard,
+#dashboardListRow,
+#dashboardActionRow {{
+    border-radius: 13px;
+}}
+
+#dashboardMetricCard {{
+    min-height: 116px;
+    padding: 2px;
+}}
+
+#dashboardMetricLabel,
+#dashboardSmallLabel,
+#dashboardInfoLabel {{
+    color: #AEB4BC;
+    font-size: 9px;
+    font-weight: 700;
+}}
+
+#dashboardMetricValue,
+#dashboardSmallValue,
+#dashboardInfoValue {{
+    color: #F5F7FA;
+    font-size: 11px;
+    font-weight: 780;
+}}
+
+#dashboardMetricSpark,
+#dashboardSparkline {{
+    font-size: 13px;
+    letter-spacing: 0.2px;
+}}
+
+#dashboardHint,
+#dashboardInfoHint,
+#dashboardEmpty {{
+    color: #7E8791;
+    font-size: 9px;
+    font-weight: 620;
+}}
+
+#dashboardActionButton,
+#dashboardQuickAction,
+#dashboardMiniAction {{
+    min-height: 48px;
+    border-radius: 14px;
+    padding: 0 14px;
+}}
+
+#dashboardActionButton:hover,
+#dashboardQuickAction:hover,
+#dashboardMiniAction:hover {{
+    border-color: #F05D7A;
+    background: rgba(240, 93, 122, 0.10);
+}}
+
+#dashboardStatusBadge,
+#dashboardLiveBadge {{
+    min-height: 24px;
+    padding: 0 10px;
+    border-radius: 11px;
+    font-size: 9px;
+    font-weight: 760;
+}}
+
+#dashboardScrollArea {{
+    background: transparent;
+    border: 0;
+}}
+
+
+
+/* =========================================
+   P10.7 — REFINO DO BLOCO DE DESEMPENHO
+   ========================================= */
+
+#systemPerformanceCard {{
+    background: #11161C;
+    border: 1px solid #2A3138;
+    border-radius: 16px;
+}}
+
+#dashboardMetricCard {{
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 #1A2027,
+        stop:1 #151A20
+    );
+    border: 1px solid #313944;
+    border-radius: 12px;
+    min-height: 86px;
+    padding: 0px;
+}}
+
+#dashboardMetricCard:hover {{
+    border-color: #434D59;
+}}
+
+#dashboardMetricCard[metricKey="cpu"] {{
+    border-color: #4A343C;
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(255, 95, 120, 0.11),
+        stop:1 rgba(255, 95, 120, 0.03)
+    );
+}}
+
+#dashboardMetricCard[metricKey="ram"] {{
+    border-color: #534630;
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(255, 170, 36, 0.10),
+        stop:1 rgba(255, 170, 36, 0.03)
+    );
+}}
+
+#dashboardMetricCard[metricKey="gpu"] {{
+    border-color: #2E4A39;
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(90, 225, 130, 0.10),
+        stop:1 rgba(90, 225, 130, 0.03)
+    );
+}}
+
+#dashboardMetricCard[metricKey="vram"] {{
+    border-color: #4A3480;
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(178, 101, 255, 0.10),
+        stop:1 rgba(178, 101, 255, 0.03)
+    );
+}}
+
+#dashboardMetricCard[metricKey="disk"] {{
+    border-color: #355E8E;
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(89, 167, 255, 0.10),
+        stop:1 rgba(89, 167, 255, 0.03)
+    );
+}}
+
+#dashboardMetricCard[metricKey="network"],
+#dashboardMetricCard[metricKey="rede"] {{
+    border-color: #2E666C;
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(72, 227, 239, 0.10),
+        stop:1 rgba(72, 227, 239, 0.03)
+    );
+}}
+
+#dashboardMetricLabel {{
+    background: transparent;
+    border: 0;
+    color: #F1F4F7;
+    font-size: 11px;
+    font-weight: 760;
+    letter-spacing: 0.1px;
+}}
+
+#dashboardMetricValue {{
+    background: transparent;
+    border: 0;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 820;
+}}
+
+#dashboardMetricSpark {{
+    background: transparent;
+    border: 0;
+    color: #C8D0D7;
+    font-size: 15px;
+    line-height: 1.0em;
+}}
+
+#dashboardHint {{
+    background: transparent;
+    border: 0;
+    color: #A5AFB9;
+    font-size: 9px;
+    font-weight: 650;
+}}
+
+#dashboardMetricBar {{
+    background: #27303A;
+    border: 0;
+    border-radius: 2px;
+    min-height: 4px;
+    max-height: 4px;
+}}
+
+#dashboardMetricBar::chunk {{
+    border-radius: 2px;
+}}
+
+#dashboardMetricBar[metricKey="cpu"]::chunk {{
+    background: #FF5B78;
+}}
+
+#dashboardMetricBar[metricKey="ram"]::chunk {{
+    background: #F2A22A;
+}}
+
+#dashboardMetricBar[metricKey="gpu"]::chunk {{
+    background: #67D784;
+}}
+
+#dashboardMetricBar[metricKey="vram"]::chunk {{
+    background: #B46BFF;
+}}
+
+#dashboardMetricBar[metricKey="disk"]::chunk {{
+    background: #64AEFF;
+}}
+
+#dashboardMetricBar[metricKey="network"]::chunk,
+#dashboardMetricBar[metricKey="rede"]::chunk {{
+    background: #58E6EE;
+}}
+
+#systemPerformanceSamples {{
+    color: #7B8692;
+    font-size: 9px;
+    font-weight: 700;
+}}
+
+                #pageTitle {{ font-size: 28px; font-weight: 650; }}
+                #pageDescription {{ color: {PALETA['secundario']}; font-size: 14px; max-width: 700px; }}
+                #sectionTitle {{ font-size: 17px; font-weight: 650; padding-top: 4px; }}
+                #fieldLabel {{ color: {PALETA['secundario']}; font-size: 11px; font-weight: 650; }}
+                QPushButton[provider="true"] {{ background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 10px; padding: 13px 15px; text-align: left; color: {PALETA['secundario']}; }}
+                QPushButton[provider="true"]:hover {{ background: {PALETA['elevada']}; }}
+                QPushButton[provider="true"]:checked {{ background: #292332; border-color: {PALETA['violeta']}; color: {PALETA['texto']}; }}
+                #settingsField {{ background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 8px; padding: 10px 12px; selection-background-color: #5D497A; }}
+                #settingsField:focus {{ border-color: {PALETA['violeta']}; }}
+                #settingsField:read-only {{ color: {PALETA['apagado']}; background: #19171C; }}
+                #keyState {{ color: {PALETA['ciano']}; font-size: 11px; }}
+                #settingsBanner {{ background: #22202A; border-left: 3px solid {PALETA['ciano']}; padding: 11px 13px; color: {PALETA['secundario']}; }}
+                #settingsBanner[kind="success"] {{ border-left-color: {PALETA['sucesso']}; }}
+                #settingsBanner[kind="error"] {{ border-left-color: {PALETA['erro']}; }}
+                #settingsNote {{ color: {PALETA['secundario']}; background: {PALETA['superficie']}; padding: 13px; border-radius: 8px; }}
+                #primaryButton {{ background: {PALETA['violeta']}; color: #161219; border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 700; }}
+                #primaryButton:hover {{ background: #B99AF0; }}
+                #secondaryButton {{ background: {PALETA['elevada']}; border: 1px solid {PALETA['borda']}; border-radius: 8px; padding: 10px 15px; font-weight: 600; }}
+                #diagnosticValue {{ background: {PALETA['superficie']}; border-left: 2px solid {PALETA['ciano']}; padding: 12px 15px; font-family: 'Cascadia Code'; font-size: 12px; }}
+                #eventLog {{ font-family: 'Cascadia Code'; background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 9px; color: {PALETA['secundario']}; padding: 14px; font-size: 11px; }}
+                #chatSurface {{ background: #0E1216; border: 1px solid #252C33; border-radius: 17px; }}
+                #chatHeader {{ background: transparent; border-bottom: 1px solid #20262D; }}
+                #chatGreeting {{ font-size: 20px; font-weight: 700; color: #F8F5F7; }}
+                #chatGreetingSub {{ color: {PALETA['secundario']}; font-size: 13px; }}
+                #microphoneWaveform {{ background: transparent; }}
+                /* =========================================
+                CENTRAL INTELIGENTE
+                ========================================= */
+
+                #intelligencePanel {{
+                    background: #11151A;
+
+                    border: 1px solid #6F303B;
+                    border-radius: 18px;
+                }}
+
+                #intelligenceTitle {{
+                    color: #F6F2F4;
+
+                    font-size: 18px;
+                    font-weight: 700;
+                }}
+
+
+                /* indicador vivo */
+
+                #liveBadge {{
+                    background: #321D23;
+
+                    border: 1px solid #64313C;
+                    border-radius: 11px;
+
+                    padding: 4px 9px;
+
+                    color: #FF7186;
+
+                    font-size: 9px;
+                    font-weight: 600;
+                }}
+
+
+                /* seções internas da central */
+
+                #dashboardCard[centralSection="true"] {{
+                    background: transparent;
+
+                    border: 0;
+                    border-radius: 0;
+                }}
+
+                #dashboardCard[centralSection="true"]
+                #dashboardCardTitle {{
+                    color: #F0ECEE;
+
+                    font-size: 13px;
+                    font-weight: 700;
+                }}
+
+
+                /* detalhes tipo "sanitizado" */
+
+                #dashboardCardHint {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #737A83;
+
+                    font-size: 8px;
+                }}
+
+
+                /* =========================================
+                AÇÕES RÁPIDAS
+                ========================================= */
+
+                QPushButton[dashboardAction="true"] {{
+                    background: #191E24;
+
+                    border: 1px solid #30363D;
+                    border-radius: 10px;
+
+                    min-height: 40px;
+
+                    padding: 7px 10px;
+
+                    text-align: left;
+
+                    color: #C9C5C8;
+
+                    font-size: 10px;
+                    font-weight: 550;
+                }}
+
+                QPushButton[dashboardAction="true"]:hover {{
+                    background: #251B20;
+
+                    border-color: #75404B;
+
+                    color: #FFF4F6;
+                }}
+
+                QPushButton[dashboardAction="true"]:pressed {{
+                    background: #301D24;
+
+                    border-color: #954859;
+                }}
+
+                QPushButton[dashboardAction="true"]:disabled {{
+                    background: #15191E;
+
+                    border-color: #252B31;
+
+                    color: #555C64;
+                }}
+
+
+                /* =========================================
+                CONTEXTO ATUAL
+                ========================================= */
+
+                #contextItem {{
+                    background: #191E24;
+
+                    border: 1px solid #2C3239;
+                    border-radius: 9px;
+                }}
+
+                #contextItem:hover {{
+                    background: #1D2228;
+
+                    border-color: #3B343A;
+                }}
+
+                #contextLabel {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #747C85;
+
+                    font-size: 8px;
+                }}
+
+                #contextValue {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #D8D4D7;
+
+                    font-size: 9px;
+                    font-weight: 650;
+                }}
+
+
+                /* =========================================
+                MEMÓRIA / ATIVIDADE
+                ========================================= */
+
+                #dashboardEmpty {{
+                    background: #171C21;
+
+                    border: 1px solid #282F36;
+                    border-radius: 9px;
+
+                    padding: 8px 10px;
+
+                    color: #888F97;
+
+                    font-size: 9px;
+                }}
+
+                #dashboardActivity {{
+                    background: #171C21;
+
+                    border: 1px solid #282F36;
+                    border-radius: 9px;
+
+                    padding: 8px 10px;
+
+                    color: #888F97;
+
+                    font-size: 9px;
+                }}
+
+                /* =========================================
+                   HOME — CARD SISTEMA
+                   ========================================= */
+
+                #dashboardCard[railCard="system"] {{
+                    background: #14191E;
+                    border: 1px solid #2B3239;
+                    border-radius: 14px;
+                }}
+
+                #dashboardCard[railCard="system"] #dashboardCardTitle {{
+                    color: #F3EFF1;
+                    font-size: 13px;
+                    font-weight: 700;
+                }}
+
+                #dashboardCard[railCard="system"] #dashboardCardHint {{
+                    background: #2A1A20;
+                    border: 1px solid #55303A;
+                    border-radius: 7px;
+                    padding: 3px 6px;
+                    color: #E96379;
+                    font-size: 8px;
+                    font-weight: 700;
+                }}
+
+                #railSystemMetric {{
+                    background: #171C21;
+                    border: 1px solid #292F36;
+                    border-radius: 9px;
+                }}
+
+                #railSystemMetric[state="stale"] {{
+                    background: #1C1B1B;
+                    border-color: #54442D;
+                }}
+
+                #railSystemMetric[state="unavailable"] {{
+                    background: #15191D;
+                    border-color: #23292F;
+                }}
+
+                #railSystemMetricLabel {{
+                    background: transparent;
+                    border: 0;
+                    color: #858D96;
+                    font-size: 9px;
+                    font-weight: 600;
+                }}
+
+                #railSystemMetricValue {{
+                    background: transparent;
+                    border: 0;
+                    color: #F0ECEE;
+                    font-size: 11px;
+                    font-weight: 700;
+                }}
+
+                #railSystemMetricValue[state="stale"] {{
+                    color: #D4AE6A;
+                }}
+
+                #railSystemMetricValue[state="unavailable"] {{
+                    color: #5D656D;
+                }}
+
+                #railSystemProgress {{
+                    background: #242A30;
+                    border: 0;
+                    border-radius: 2px;
+                    min-height: 4px;
+                    max-height: 4px;
+                }}
+
+                #railSystemProgress::chunk {{
+                    background: #CF485E;
+                    border-radius: 2px;
+                }}
+
+                #railSystemProgress[available="false"]::chunk {{
+                    background: #343A40;
+                }}
+
+                #railSystemFooter {{
+                    background: #171C21;
+                    border: 1px solid #292F36;
+                    border-radius: 9px;
+                }}
+
+                #railSystemFooter[state="stale"] {{
+                    border-color: #54442D;
+                }}
+
+                #railSystemFooter[state="unavailable"] {{
+                    background: #15191D;
+                    border-color: #23292F;
+                }}
+
+                #railSystemFooterIcon {{
+                    background: #241B20;
+                    border: 1px solid #49313A;
+                    border-radius: 11px;
+                    color: #D35469;
+                    font-size: 10px;
+                }}
+
+                #railSystemStatus {{
+                    background: transparent;
+                    border: 0;
+                    padding: 2px 1px;
+                    color: #737B84;
+                    font-size: 8px;
+                }}
+
+                #railSystemStatus[state="ok"] {{
+                    color: #68C79A;
+                }}
+
+                #railSystemStatus[state="partial"] {{
+                    color: #C6A05E;
+                }}
+
+                #railSystemStatus[state="unavailable"] {{
+                    color: #7A8189;
+                }}
+
+                #railSystemStatus[state="pending"] {{
+                    color: #69717A;
+                }}
+
+
+                /* =========================================
+                   HOME — CARD MÚSICA
+                   ========================================= */
+
+                #dashboardCard[railCard="music"] {{
+                    background: #14191E;
+                    border: 1px solid #2B3239;
+                    border-radius: 14px;
+                }}
+
+                #dashboardCard[railCard="music"][musicState="playing"] {{
+                    border-color: #5A3039;
+                }}
+
+                #dashboardCard[railCard="music"][musicState="stale"] {{
+                    border-color: #54442D;
+                }}
+
+                #dashboardCard[railCard="music"][musicState="unavailable"] {{
+                    border-color: #252B31;
+                }}
+
+                #dashboardCard[railCard="music"] #dashboardCardTitle {{
+                    color: #F3EFF1;
+                    font-size: 13px;
+                    font-weight: 700;
+                }}
+
+                #railMusicBadge {{
+                    background: #20262C;
+                    border: 1px solid #323940;
+                    border-radius: 7px;
+                    padding: 3px 6px;
+                    color: #858D96;
+                    font-size: 8px;
+                    font-weight: 700;
+                }}
+
+                #railMusicBadge[state="playing"] {{
+                    background: #2A1A20;
+                    border-color: #5B303B;
+                    color: #FF6D82;
+                }}
+
+                #railMusicBadge[state="paused"] {{
+                    background: #1B2025;
+                    border-color: #333A42;
+                    color: #A9B0B7;
+                }}
+
+                #railMusicBadge[state="ended"] {{
+                    background: #1B2025;
+                    border-color: #333A42;
+                    color: #8C949C;
+                }}
+
+                #railMusicBadge[state="stale"] {{
+                    background: #272116;
+                    border-color: #5A4827;
+                    color: #D3AA61;
+                }}
+
+                #railMusicBadge[state="unavailable"] {{
+                    background: #181C20;
+                    border-color: #282E34;
+                    color: #646C74;
+                }}
+
+                #railMusicTitle {{
+                    background: transparent;
+                    border: 0;
+                    color: #F1EDEF;
+                    font-size: 11px;
+                    font-weight: 700;
+                }}
+
+                #railMusicMeta {{
+                    background: transparent;
+                    border: 0;
+                    color: #777F88;
+                    font-size: 8px;
+                }}
+
+                #railMusicProgress {{
+                    background: #242A30;
+                    border: 0;
+                    border-radius: 2px;
+                    min-height: 4px;
+                    max-height: 4px;
+                }}
+
+                #railMusicProgress::chunk {{
+                    background: #D24A60;
+                    border-radius: 2px;
+                }}
+
+                #railMusicTime {{
+                    background: transparent;
+                    border: 0;
+                    color: #6F7780;
+                    font-size: 8px;
+                }}
+
+                #dashboardCard[railCard="music"] #railMusicControl {{
+                    background: #191E23;
+                    border: 1px solid #30363D;
+                    border-radius: 17px;
+                    min-width: 34px;
+                    max-width: 34px;
+                    min-height: 34px;
+                    max-height: 34px;
+                }}
+
+                #dashboardCard[railCard="music"] #railMusicControl:hover {{
+                    background: #251C21;
+                    border-color: #69404A;
+                }}
+
+                #dashboardCard[railCard="music"] #railMusicControl:pressed {{
+                    background: #301D24;
+                    border-color: #8D4250;
+                }}
+
+                #dashboardCard[railCard="music"] #railMusicControl:disabled {{
+                    background: #171B1F;
+                    border-color: #252B31;
+                }}
+
+                #dashboardCard[railCard="music"]
+                #railMusicControl[primary="true"] {{
+                    background: #B9384D;
+                    border: 1px solid #EC5A70;
+                    border-radius: 20px;
+                    min-width: 40px;
+                    max-width: 40px;
+                    min-height: 40px;
+                    max-height: 40px;
+                }}
+
+                #dashboardCard[railCard="music"]
+                #railMusicControl[primary="true"]:hover {{
+                    background: #D3455B;
+                    border-color: #FF7488;
+                }}
+
+                #dashboardCard[railCard="music"]
+                #railMusicControl[primary="true"]:disabled {{
+                    background: #221C20;
+                    border-color: #3C3035;
+                }}
+
+
+                /* =========================================
+                   HOME — ROTINAS + MODO JOGO
+                   ========================================= */
+
+                #dashboardCard[railCard="routines"],
+                #dashboardCard[railCard="game"] {{
+                    background: #14191E;
+                    border: 1px solid #2B3239;
+                    border-radius: 14px;
+                }}
+
+                #dashboardCard[railCard="routines"][routineState="active"],
+                #dashboardCard[railCard="game"][gameState="active"] {{
+                    border-color: #57303A;
+                }}
+
+                #dashboardCard[railCard="routines"][routineState="stale"],
+                #dashboardCard[railCard="game"][gameState="stale"] {{
+                    border-color: #574728;
+                }}
+
+                #dashboardCard[railCard="routines"][routineState="unavailable"],
+                #dashboardCard[railCard="game"][gameState="unavailable"] {{
+                    border-color: #252B31;
+                }}
+
+                #dashboardCard[railCard="routines"] #dashboardCardTitle,
+                #dashboardCard[railCard="game"] #dashboardCardTitle {{
+                    color: #F3EFF1;
+                    font-size: 13px;
+                    font-weight: 700;
+                }}
+
+                /* Rotinas */
+
+                #railRoutineBadge {{
+                    background: #20262C;
+                    border: 1px solid #323940;
+                    border-radius: 7px;
+                    padding: 3px 6px;
+                    color: #858D96;
+                    font-size: 8px;
+                    font-weight: 700;
+                }}
+
+                #railRoutineBadge[state="active"] {{
+                    background: #2A1A20;
+                    border-color: #5B303B;
+                    color: #FF6D82;
+                }}
+
+                #railRoutineBadge[state="empty"] {{
+                    background: #1B2025;
+                    border-color: #333A42;
+                    color: #929AA2;
+                }}
+
+                #railRoutineBadge[state="stale"] {{
+                    background: #272116;
+                    border-color: #5A4827;
+                    color: #D3AA61;
+                }}
+
+                #railRoutineBadge[state="unavailable"] {{
+                    background: #181C20;
+                    border-color: #282E34;
+                    color: #646C74;
+                }}
+
+                #railRoutineRow {{
+                    background: #171C21;
+                    border: 1px solid #292F36;
+                    border-radius: 9px;
+                }}
+
+                #railRoutineRow:hover {{
+                    background: #1C2127;
+                    border-color: #3C343A;
+                }}
+
+                #railRoutineIcon {{
+                    background: #241B20;
+                    border: 1px solid #49313A;
+                    border-radius: 12px;
+                    color: #D35469;
+                    font-size: 11px;
+                    font-weight: 700;
+                }}
+
+                #railRoutineName {{
+                    background: transparent;
+                    border: 0;
+                    color: #DDD9DB;
+                    font-size: 9px;
+                    font-weight: 650;
+                }}
+
+                #railRoutineMeta {{
+                    background: transparent;
+                    border: 0;
+                    color: #747C85;
+                    font-size: 8px;
+                }}
+
+                #railRoutineEmpty {{
+                    background: #171C21;
+                    border: 1px solid #292F36;
+                    border-radius: 9px;
+                    padding: 8px 10px;
+                    color: #777F88;
+                    font-size: 8px;
+                }}
+
+                /* Modo jogo */
+
+                #railGamePanel {{
+                    background: #171C21;
+                    border: 1px solid #292F36;
+                    border-radius: 10px;
+                }}
+
+                #railGamePanel[state="active"] {{
+                    background: #20191D;
+                    border-color: #493039;
+                }}
+
+                #railGamePanel[state="stale"] {{
+                    background: #1E1B16;
+                    border-color: #514326;
+                }}
+
+                #railGamePanel[state="unavailable"] {{
+                    background: #15191D;
+                    border-color: #252B31;
+                }}
+
+                #railGameIcon {{
+                    background: #20262C;
+                    border: 1px solid #30373E;
+                    border-radius: 14px;
+                    color: #69717A;
+                    font-size: 12px;
+                    font-weight: 700;
+                }}
+
+                #railGameIcon[state="active"] {{
+                    background: #382027;
+                    border-color: #67313C;
+                    color: #FF7186;
+                }}
+
+                #railGameIcon[state="stale"] {{
+                    background: #342B19;
+                    border-color: #66532D;
+                    color: #D5AD62;
+                }}
+
+                #railGameTitle {{
+                    background: transparent;
+                    border: 0;
+                    color: #E5E1E3;
+                    font-size: 10px;
+                    font-weight: 700;
+                }}
+
+                #railGameMeta {{
+                    background: transparent;
+                    border: 0;
+                    color: #747C85;
+                    font-size: 8px;
+                }}
+
+                #railGameBadge {{
+                    background: #1B2025;
+                    border: 1px solid #323940;
+                    border-radius: 7px;
+                    padding: 3px 6px;
+                    color: #858D96;
+                    font-size: 8px;
+                    font-weight: 700;
+                }}
+
+                #railGameBadge[state="active"] {{
+                    background: #2A1A20;
+                    border-color: #5B303B;
+                    color: #FF6D82;
+                }}
+
+                #railGameBadge[state="inactive"] {{
+                    background: #1B2025;
+                    border-color: #333A42;
+                    color: #8E969E;
+                }}
+
+                #railGameBadge[state="stale"] {{
+                    background: #272116;
+                    border-color: #5A4827;
+                    color: #D3AA61;
+                }}
+
+                #railGameBadge[state="unavailable"] {{
+                    background: #181C20;
+                    border-color: #282E34;
+                    color: #646C74;
+                }}
+
+                #musicTitle {{ font-size: 13px; font-weight: 700; }}
+                #musicControlsPlaceholder {{ color: #5F646B; font-size: 15px; padding: 5px; }}
+                #musicPage, #musicScroll, #musicScroll > QWidget > QWidget,
+                #musicPageBody {{ background: #0D1115; }}
+                #musicPageTitle {{ color: #F8F4F6; font-size: 29px; font-weight: 700; }}
+                #musicPageDescription {{ color: {PALETA['secundario']}; font-size: 15px; }}
+                #musicHeaderButton, #musicMoreButton {{ background: #15191E; border: 1px solid #2D333A; border-radius: 10px; padding: 10px 15px; color: {PALETA['secundario']}; font-size: 12px; }}
+                #musicHeaderButton:hover {{ background: #211A1F; border-color: #713541; color: {PALETA['texto']}; }}
+                #musicHero, #musicModule, #musicQueue, #musicLyrics {{ background: #14191E; border: 1px solid #293039; border-radius: 14px; }}
+                #musicHero {{ min-height: 306px; }}
+                #musicPageTitle, #musicHeroTitle, #musicModuleTitle {{ font-family: 'Segoe UI Variable', 'Segoe UI'; }}
+                #musicHeroTitle {{ color: #F8F4F6; font-size: 27px; font-weight: 700; }}
+                #musicHeroSubtitle {{ color: {PALETA['secundario']}; font-size: 15px; }}
+                #musicNowBadge {{ color: {PALETA['rosa']}; background: #29191E; border: 1px solid #54303A; border-radius: 7px; padding: 5px 9px; font-size: 10px; font-weight: 700; }}
+                #musicVolumeReadout {{ color: {PALETA['apagado']}; font-size: 10px; font-weight: 700; }}
+                #musicVolumeSlider {{ min-width: 22px; max-width: 22px; }}
+                #musicVolumeSlider::groove:vertical {{ background: #2A3037; width: 5px; border-radius: 2px; }}
+                #musicVolumeSlider::sub-page:vertical {{ background: #2A3037; border-radius: 2px; }}
+                #musicVolumeSlider::add-page:vertical {{ background: {PALETA['rosa']}; border-radius: 2px; }}
+                #musicVolumeSlider::handle:vertical {{ background: #F5F1F3; border: 1px solid #C84A5F; height: 15px; margin: 0 -5px; border-radius: 7px; }}
+                #musicVolumeSlider:disabled {{ opacity: 0.45; }}
+                #musicAudioDevice {{
+                    background: #171C21;
+                    border: 1px solid #2A3138;
+                    border-radius: 10px;
+                }}
+
+                #musicAudioDevice[available="true"] {{
+                    background: #181C21;
+                    border-color: #3A3238;
+                }}
+
+                #musicAudioDeviceIcon {{
+                    color: #565E67;
+                    font-size: 10px;
+                }}
+
+                #musicAudioDevice[available="true"] #musicAudioDeviceIcon {{
+                    color: {PALETA['rosa']};
+                }}
+
+                #musicAudioOutput {{
+                    color: #F2EEF0;
+                    background: transparent;
+                    border: 0;
+                    padding: 0;
+                    font-size: 12px;
+                    font-weight: 650;
+                }}
+
+                #musicAudioOutputMeta {{
+                    color: #7E8690;
+                    font-size: 9px;
+                }}
+
+                #musicAudioManage {{
+                    background: transparent;
+                    border: 0;
+                    border-radius: 7px;
+                    padding: 5px 8px;
+                    color: #737B84;
+                    font-size: 10px;
+                }}
+
+                #musicAudioManage:hover {{
+                    background: #221C20;
+                    color: #D9D4D7;
+                }}
+
+                #musicAudioManage:disabled {{
+                    background: transparent;
+                    color: #525960;
+                }}
+                #musicWaveform {{ background: transparent; }}
+                #musicHeroProgress {{ background: #232930; border: 0; border-radius: 2px; min-height: 4px; max-height: 4px; }}
+                #musicHeroProgress::chunk {{ background: {PALETA['rosa']}; border-radius: 2px; }}
+                #musicTime {{ color: {PALETA['apagado']}; font-size: 12px; }}
+                #musicTransportControl {{ background: transparent; border: 0; border-radius: 23px; min-width: 46px; min-height: 46px; }}
+                #musicTransportControl:hover {{ background: #281C22; }}
+                #musicTransportControl[activeControl="true"] {{ background: #321C24; color: {PALETA['rosa']}; border: 1px solid #8D3C4C; }}
+                #musicPrimaryControl {{ background: #B9384D; border: 1px solid #F05B72; border-radius: 29px; min-width: 58px; min-height: 58px; }}
+                #musicPrimaryControl:hover {{ background: #D9455D; }}
+                #musicPrimaryControl:disabled, #musicTransportControl:disabled {{ background: #1B2025; border-color: #30363D; }}
+                #musicObservedState {{ color: {PALETA['apagado']}; font-size: 11px; }}
+                #musicModuleTitle {{
+                    color: #F1EDEF;
+
+                    font-size: 14px;
+                    font-weight: 700;
+                }}
+
+                #musicModuleHint {{ color: {PALETA['apagado']}; font-size: 10px; }}
+                #musicSideRail {{ background: transparent; min-width: 265px; max-width: 315px; }}
+                #musicSideLabel {{ color: {PALETA['secundario']}; font-size: 12px; }}
+                #musicSideValue {{ color: #F4F1F3; font-size: 12px; font-weight: 700; }}
+                #musicFutureState {{ color: #9298A1; font-size: 12px; line-height: 1.4; }}
+                #musicQueuePlaceholder {{ background: #191E24; border: 1px solid #272E35; border-radius: 9px; }}
+                #musicQueueScroll,
+                #musicQueueScroll > QWidget > QWidget,
+                #musicQueueList {{
+                    background: transparent;
+                    border: 0;
+                }}
+
+                #musicQueueNumber {{
+                    color: #777F89;
+                    font-size: 10px;
+                    min-width: 18px;
+                }}
+
+                #musicQueueText {{
+                    color: #E9E6E8;
+                    font-size: 11px;
+                    font-weight: 600;
+                }}
+                #musicFutureButton {{ background: #191E23; border: 1px solid #303740; border-radius: 9px; padding: 10px 12px; color: #9298A1; text-align: left; font-size: 11px; }}
+                #musicFutureButton:hover {{ background: #241D22; border-color: #75404B; color: #E7E1E4; }}
+
+                #musicSessionAction {{
+                background: #151A1F;
+
+                border: 1px solid #30363E;
+                border-radius: 18px;
+
+                min-height: 36px;
+                max-height: 36px;
+
+                padding: 0 12px;
+
+                color: #AEB4BC;
+
+                font-size: 10px;
+                font-weight: 550;
+            }}
+
+            /* indisponíveis */
+
+            #musicSessionAction:disabled {{
+                background: #15191E;
+
+                border-color: #2B2B31;
+
+                color: #686E76;
+            }}
+
+            #musicSessionAction[actionRole="future"]:disabled {{
+                background: transparent;
+
+                border-color: #21272D;
+
+                color: #454C53;
+            }}
+
+            #musicSessionAction[actionRole="primary"] {{
+                background: #1D181C;
+
+                border-color: #4A323A;
+
+                color: #F0EAED;
+            }}
+
+            #musicSessionAction[actionRole="primary"]:hover {{
+                background: #2D1C22;
+
+                border-color: #914553;
+
+                color: #FFF7F9;
+            }}
+
+
+            /* utilitários — quase iguais, mas um pouco mais discretos */
+
+            #musicSessionAction[actionRole="utility"] {{
+                background: #19191E;
+
+                border-color: #393239;
+
+                color: #D0CBD0;
+            }}
+
+            #musicSessionAction[actionRole="utility"]:hover {{
+                background: #291B21;
+
+                border-color: #85404D;
+
+                color: #FFF5F7;
+            }}
+
+
+            /* futuro — continua propositalmente apagado */
+
+            #musicSessionAction[actionRole="future"] {{
+                background: transparent;
+
+                border-color: #252B31;
+
+                color: #555D65;
+            }}
+
+            #musicSessionAction[actionRole="future"]:disabled {{
+                background: transparent;
+
+                border-color: #21272D;
+
+                color: #454C53;
+            }}
+
+
+                /* desabilitados */
+
+                #musicSessionAction:disabled {{
+                    background: #15191E;
+
+                    border-color: #2B2B31;
+
+                    color: #686E76;
+                }}
+
+                #musicSessionAction[actionRole="future"]:disabled {{
+                    background: transparent;
+
+                    border-color: #21272D;
+
+                    color: #454C53;
+                }}
+                #musicPreset {{
+                    background: #171C21;
+                    border: 1px solid #292F36;
+                    border-radius: 9px;
+                    padding: 0;
+                    text-align: left;
+                }}
+
+                #musicPreset:hover {{
+                    background: #1D2228;
+                    border-color: #4A353C;
+                }}
+
+                #musicPreset[activePlaylist="true"] {{
+                    background: #24191E;
+                    border-color: #8B3C4B;
+                }}
+
+                #musicPresetTitle {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #E8E4E6;
+                    font-size: 11px;
+                    font-weight: 650;
+                }}
+
+                #musicPresetTitle[activePlaylist="true"] {{
+                    color: #FF647B;
+                }}
+
+                #musicPresetCount {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #7F8790;
+                    font-size: 9px;
+                }}
+
+                #musicPresetIcon {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #F5F1F3;
+                    font-size: 16px;
+                    font-weight: 700;
+                }}
+
+
+                /* caixas coloridas */
+
+                #musicPresetIconBox[presetTone="0"] {{
+                    background: #472326;
+                    border: 1px solid #713239;
+                    border-radius: 7px;
+                }}
+
+                #musicPresetIconBox[presetTone="1"] {{
+                    background: #302651;
+                    border: 1px solid #55428A;
+                    border-radius: 7px;
+                }}
+
+                #musicPresetIconBox[presetTone="2"] {{
+                    background: #183C2E;
+                    border: 1px solid #28634A;
+                    border-radius: 7px;
+                }}
+
+                #musicPresetIconBox[presetTone="3"] {{
+                    background: #1C2E4B;
+                    border: 1px solid #325387;
+                    border-radius: 7px;
+                }}
+
+                #musicPresetIconBox[presetTone="4"] {{
+                    background: #40243A;
+                    border: 1px solid #6C3B61;
+                    border-radius: 7px;
+                }}
+
+                #musicPresetIconBox[presetTone="5"] {{
+                    background: #46351D;
+                    border: 1px solid #74562A;
+                    border-radius: 7px;
+                }}
+                #musicQueueDetail {{
+                    color: #777F89;
+                    font-size: 9px;
+                }}
+
+                #musicQueueDuration {{
+                    color: #9299A2;
+                    font-size: 10px;
+                    min-width: 31px;
+                }}
+
+                #musicCatalogState {{
+                    color: #89919B;
+                    font-size: 10px;
+                }}
+
+                #musicQueueItem {{
+                    background: transparent;
+                    border: 0;
+                    border-radius: 7px;
+                    text-align: left;
+                    padding: 0;
+                }}
+
+                #musicQueueItem:hover {{
+                    background: #1B2026;
+                    border: 0;
+                }}
+
+                #musicQueueItem:focus {{
+                    background: #211A1F;
+                    border: 0;
+                }}
+
+                #musicQueueItem:disabled {{
+                    background: transparent;
+                    border: 0;
+                }}
+                #musicQueueItem[queueTop="true"] {{
+                    background: #21181D;
+                    border: 0;
+                }}
+
+                #musicQueueItem[queueTop="true"]:hover {{
+                    background: #281B21;
+                }}
+
+                #musicQueueNumber[queueTop="true"] {{
+                    color: {PALETA['rosa']};
+                    font-size: 12px;
+                    font-weight: 700;
+                    letter-spacing: -1px;
+                }}
+                #musicContextSummary {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #9DA4AC;
+                    font-size: 11px;
+
+                    padding: 2px 1px;
+                }}
+
+
+                /* recomendação principal */
+
+                #musicSuggestion {{
+                    background: #21181D;
+
+                    border: 1px solid #4A2B34;
+                    border-radius: 9px;
+
+                    padding: 8px 10px;
+
+                    color: #E88A9A;
+
+                    font-size: 11px;
+                    font-weight: 550;
+                }}
+
+
+                /* área dos chips */
+
+                #musicContextChips {{
+                    background: transparent;
+                    border: 0;
+                }}
+
+
+                #musicContextChip {{
+                    background: #171C21;
+
+                    border: 1px solid #2A3138;
+                    border-radius: 8px;
+
+                    padding: 5px 7px;
+
+                    color: #858D96;
+
+                    font-size: 9px;
+                }}
+                #musicLyrics {{
+                    border-color: #382B31;
+                }}
+
+                #musicLyricsText {{
+                    background: #101519;
+                    border: 1px solid #272E35;
+                    border-radius: 11px;
+                    padding: 21px 26px;
+                    color: #C9C5C8;
+                    selection-background-color: #66313D;
+                }}
+
+                #musicLyricsProgress {{
+                    background: #22282E;
+                    border: 0;
+                    border-radius: 1px;
+                    min-height: 3px;
+                    max-height: 3px;
+                }}
+
+                #musicLyricsProgress::chunk {{
+                    background: #FF5C76;
+                    border: 0;
+                    border-radius: 1px;
+                }}
+
+                #musicLyricsSource {{
+                    color: #747C85;
+                    font-size: 9px;
+                }}
+                #musicAudioDevice {{
+                background: #171C21;
+                border: 1px solid #292F36;
+                border-radius: 9px;
+                }}
+
+                #musicAudioDevice[available="true"] {{
+                    background: #191D22;
+                    border-color: #393139;
+                }}
+
+
+                /* caixinha do ícone */
+
+                #musicAudioIconBox {{
+                    background: #20262C;
+                    border: 1px solid #30373F;
+                    border-radius: 8px;
+                }}
+
+                #musicAudioIconBox[available="true"] {{
+                    background: #2B1C22;
+                    border-color: #67313C;
+                }}
+
+                #musicAudioDeviceIcon {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #737B84;
+                    font-size: 17px;
+                    font-weight: 700;
+                }}
+
+                #musicAudioIconBox[available="true"]
+                #musicAudioDeviceIcon {{
+                    color: #FF647B;
+                }}
+
+
+                /* textos */
+
+                #musicAudioOutput {{
+                    background: transparent;
+                    border: 0;
+                    padding: 0;
+
+                    color: #E9E5E7;
+                    font-size: 11px;
+                    font-weight: 650;
+                }}
+
+                #musicAudioOutputMeta {{
+                    background: transparent;
+                    border: 0;
+
+                    color: #777F88;
+                    font-size: 9px;
+                }}
+
+
+                /* check de selecionado */
+
+                #musicAudioSelected {{
+                    background: #1D2227;
+                    border: 1px solid #30373E;
+                    border-radius: 12px;
+
+                    color: #686F77;
+                    font-size: 11px;
+                    font-weight: 700;
+                }}
+
+                #musicAudioSelected[selected="true"] {{
+                    background: #382027;
+                    border-color: #763746;
+
+                    color: #FF647B;
+                }}
+
+                #musicAudioDeviceList {{
+                    min-height: 30px;
+                    padding: 4px 9px;
+                    background: #171C21;
+                    border: 1px solid #30363D;
+                    border-radius: 7px;
+                    color: #D9D5D7;
+                    font-size: 10px;
+                }}
+
+                #musicAudioDeviceList:hover,
+                #musicAudioDeviceList:focus {{
+                    border-color: #7A3847;
+                    background: #1B1F24;
+                }}
+
+                #musicAudioDeviceList:disabled {{
+                    color: #646B73;
+                    border-color: #292F35;
+                }}
+
+                #musicAudioDeviceList QAbstractItemView {{
+                    background: #171B20;
+                    border: 1px solid #483039;
+                    color: #DDD8DA;
+                    selection-background-color: #3A232A;
+                    selection-color: #FF7388;
+                    outline: 0;
+                }}
+
+
+                /* botão inferior */
+
+                #musicAudioManage {{
+                    background: transparent;
+                    border: 0;
+                    border-radius: 7px;
+
+                    padding: 4px 5px;
+
+                    color: #747C85;
+                    font-size: 9px;
+
+                    text-align: left;
+                }}
+
+                #musicAudioManage:hover {{
+                    background: #1C2025;
+                    color: #C7C2C5;
+                }}
+
+                #musicAudioManage:disabled {{
+                    background: transparent;
+                    color: #555D65;
+                }}
+                #musicSideRail {{
+                background: transparent;
+
+                min-width: 265px;
+                max-width: 315px;
+            }}
+
+
+            /* =========================================
+            SISTEMA
+            ========================================= */
+
+            #musicSystemMetric {{
+                background: transparent;
+                border: 0;
+            }}
+
+            #musicSideLabel {{
+                color: #8E969F;
+                font-size: 10px;
+            }}
+
+            #musicSideValue {{
+                color: #E8E5E7;
+                font-size: 10px;
+                font-weight: 650;
+            }}
+
+            #musicSystemBar {{
+                background: #22282E;
+
+                border: 0;
+                border-radius: 2px;
+
+                min-height: 4px;
+                max-height: 4px;
+            }}
+
+            #musicSystemBar::chunk {{
+                background: #C84C61;
+                border-radius: 2px;
+            }}
+
+            #musicSystemBar[available="false"]::chunk {{
+                background: #343A41;
+            }}
+
+
+            /* =========================================
+            MODO DE AUDIÇÃO
+            ========================================= */
+
+            #musicListeningRow {{
+                background: #171C21;
+
+                border: 1px solid #292F36;
+                border-radius: 8px;
+            }}
+
+            #musicListeningRow[available="true"] {{
+                background: #191D22;
+                border-color: #393139;
+            }}
+
+            #musicListeningIcon {{
+                background: transparent;
+                border: 0;
+
+                color: #B15A6B;
+                font-size: 14px;
+            }}
+
+            #musicListeningName {{
+                background: transparent;
+                border: 0;
+
+                color: #D9D5D8;
+                font-size: 10px;
+                font-weight: 600;
+            }}
+
+            #musicListeningValue {{
+                background: transparent;
+                border: 0;
+
+                color: #FF647B;
+                font-size: 10px;
+                font-weight: 700;
+            }}
+
+            #musicListeningFuture {{
+                background: transparent;
+                border: 0;
+
+                color: #626A73;
+                font-size: 8px;
+            }}
+
+
+            /* =========================================
+            ROTINAS
+            ========================================= */
+
+            #musicRoutineEmpty {{
+                background: transparent;
+                border: 0;
+
+                color: #757D86;
+                font-size: 10px;
+            }}
+
+            #musicRoutineRow {{
+                background: #171C21;
+
+                border: 1px solid #282F35;
+                border-radius: 8px;
+            }}
+
+            #musicRoutineDot {{
+                background: transparent;
+                border: 0;
+
+                color: #BD5366;
+                font-size: 8px;
+            }}
+
+            #musicRoutineName {{
+                background: transparent;
+                border: 0;
+
+                color: #D8D4D7;
+                font-size: 10px;
+            }}
+
+            #musicRoutineTime {{
+                background: #20262C;
+
+                border: 0;
+                border-radius: 6px;
+
+                padding: 2px 5px;
+
+                color: #969DA5;
+                font-size: 8px;
+            }}
+
+
+            /* =========================================
+            LUZES
+            ========================================= */
+
+            #musicLightsDevice {{
+                background: #171C21;
+
+                border: 1px solid #292F36;
+                border-radius: 8px;
+            }}
+
+            #musicLightsDevice[configured="true"] {{
+                background: #1C1B21;
+                border-color: #48323A;
+            }}
+
+            #musicLightsIcon {{
+                background: transparent;
+                border: 0;
+
+                color: #555D65;
+                font-size: 10px;
+            }}
+
+            #musicLightsDevice[configured="true"]
+            #musicLightsIcon {{
+                color: #FF647B;
+            }}
+
+            #musicLightsName {{
+                background: transparent;
+                border: 0;
+
+                color: #DCD8DA;
+                font-size: 10px;
+                font-weight: 600;
+            }}
+
+            #musicLightsState {{
+                background: transparent;
+                border: 0;
+
+                color: #767E87;
+                font-size: 8px;
+            }}
+
+            #musicLightsBadge {{
+                background: #20262C;
+
+                border: 1px solid #30373E;
+                border-radius: 7px;
+
+                padding: 3px 6px;
+
+                color: #696F77;
+                font-size: 8px;
+            }}
+
+            #musicLightsBadge[configured="true"] {{
+                background: #352027;
+                border-color: #69333E;
+
+                color: #FF7186;
+            }}
+
+            /* =========================================
+            MEMÓRIA RECENTE
+            ========================================= */
+
+            #memoryRecentCard {{
+                background: #171C21;
+
+                border: 1px solid #292F36;
+                border-radius: 9px;
+            }}
+
+
+            /* lembrete */
+
+            #memoryRecentCard[memoryKind="reminder"] {{
+                background: #20191D;
+
+                border-color: #493039;
+            }}
+
+
+            /* preferência */
+
+            #memoryRecentCard[memoryKind="preference"] {{
+                background: #1D191E;
+
+                border-color: #40303A;
+            }}
+
+
+            /* tarefa */
+
+            #memoryRecentCard[memoryKind="task"] {{
+                background: #171D1B;
+
+                border-color: #294138;
+            }}
+
+
+            /* ícone */
+
+            #memoryRecentIcon {{
+                background: #20262C;
+
+                border: 1px solid #30373E;
+                border-radius: 14px;
+
+                color: #969DA5;
+
+                font-size: 13px;
+                font-weight: 700;
+            }}
+
+            #memoryRecentCard[memoryKind="reminder"]
+            #memoryRecentIcon {{
+                background: #382027;
+
+                border-color: #67313C;
+
+                color: #FF7186;
+            }}
+
+            #memoryRecentCard[memoryKind="preference"]
+            #memoryRecentIcon {{
+                background: #342029;
+
+                border-color: #623544;
+
+                color: #EE708B;
+            }}
+
+            #memoryRecentCard[memoryKind="task"]
+            #memoryRecentIcon {{
+                background: #192A24;
+
+                border-color: #345746;
+
+                color: #68C79A;
+            }}
+
+
+            /* textos */
+
+            #memoryRecentSummary {{
+                background: transparent;
+                border: 0;
+
+                color: #DCD8DA;
+
+                font-size: 9px;
+                font-weight: 600;
+            }}
+
+            #memoryRecentDetail {{
+                background: transparent;
+                border: 0;
+
+                color: #737B84;
+
+                font-size: 8px;
+            }}
+
+            /* =========================================
+            ATIVIDADE RECENTE
+            ========================================= */
+
+            #activityRecentEmpty {{
+                background: #171C21;
+
+                border: 1px solid #282F36;
+                border-radius: 9px;
+
+                padding: 8px 10px;
+
+                color: #747C85;
+
+                font-size: 9px;
+            }}
+
+
+            /* evento */
+
+            #activityRecentRow {{
+                background: #171C21;
+
+                border: 1px solid #282F36;
+                border-radius: 8px;
+            }}
+
+            #activityRecentRow:hover {{
+                background: #1C2127;
+
+                border-color: #3A343A;
+            }}
+
+
+            /* ponto */
+
+            #activityRecentDot {{
+                background: transparent;
+                border: 0;
+
+                color: #C64E62;
+
+                font-size: 7px;
+            }}
+
+
+            /* texto */
+
+            #activityRecentText {{
+                background: transparent;
+                border: 0;
+
+                color: #D5D1D4;
+
+                font-size: 9px;
+                font-weight: 550;
+            }}
+
+
+            /* horário */
+
+            #activityRecentTime {{
+                background: #20252B;
+
+                border: 0;
+                border-radius: 6px;
+
+                padding: 2px 5px;
+
+                color: #777F88;
+
+                font-size: 8px;
+            }}
+
+                #musicSystemBar {{ background: #252B32; border: 0; border-radius: 3px; min-height: 6px; max-height: 6px; }}
+                #musicSystemBar::chunk {{ background: #C64257; border-radius: 3px; }}
+                #musicSystemBar[available="false"]::chunk {{ background: #343A41; }}
+                #railMusicControl {{ background: transparent; border: 0; border-radius: 18px; min-width: 36px; min-height: 36px; color: {PALETA['texto']}; font-size: 16px; }}
+                #railMusicControl:hover {{ background: #2B2025; color: {PALETA['rosa']}; }}
+                QPushButton[dashboardAction="true"][actionState="sending"],
+                QPushButton[dashboardAction="true"][actionState="received"],
+                QPushButton[dashboardAction="true"][actionState="executing"] {{ background: #241D22; border-color: #8B4352; color: {PALETA['rosa']}; }}
+                QPushButton[dashboardAction="true"][actionState="confirmed"] {{ background: #16231F; border-color: #356E5A; color: {PALETA['sucesso']}; }}
+                QPushButton[dashboardAction="true"][actionState="partial"] {{ background: #282219; border-color: #806233; color: #E5B965; }}
+                QPushButton[dashboardAction="true"][actionState="failed"] {{ background: #28191C; border-color: #7A303B; color: {PALETA['erro']}; }}
+                QProgressBar {{ background: #15191E; border: 1px solid #30363E; border-radius: 4px; min-height: 7px; max-height: 7px; }}
+                QProgressBar::chunk {{ background: {PALETA['violeta']}; border-radius: 3px; }}
+                #systemSparkline {{ color: {PALETA['rosa']}; font-size: 18px; letter-spacing: 1px; }}
+
+                /* Sistema P5.1 — dashboard operacional denso */
+                #systemPageContent {{ background: #0C1116; }}
+                #systemHero {{
+                    background: #10161C;
+                    border: 1px solid #252E36;
+                    border-radius: 14px;
+                }}
+                #systemHeroTitle {{ font-size: 24px; font-weight: 760; color: #F7F3F5; }}
+                #systemHeroDescription {{ font-size: 11px; color: #A2A8AF; }}
+                #systemUpdated {{ font-size: 10px; color: #949BA3; }}
+
+                #systemPerformanceCard,
+                #systemModulesCard,
+                #systemEventsCard,
+                #systemCompactCard,
+                #systemRailActionsCard {{
+                    background: #11171C;
+                    border: 1px solid #283139;
+                    border-radius: 14px;
+                }}
+                #systemPerformanceCard #dashboardCardTitle,
+                #systemModulesCard #dashboardCardTitle,
+                #systemEventsCard #dashboardCardTitle,
+                #systemCompactCard #dashboardCardTitle,
+                #systemRailActionsCard #dashboardCardTitle {{
+                    color: #F3EFF1;
+                    font-size: 14px;
+                    font-weight: 740;
+                }}
+                #systemPerformanceCard #dashboardCardHint,
+                #systemModulesCard #dashboardCardHint,
+                #systemEventsCard #dashboardCardHint,
+                #systemCompactCard #dashboardCardHint,
+                #systemRailActionsCard #dashboardCardHint {{
+                    color: #737D86;
+                    font-size: 8px;
+                }}
+                #systemPerformanceLegend {{
+                    color: #78828B;
+                    font-size: 8px;
+                    background: transparent;
+                    border: 0;
+                }}
+                #systemMetricCard {{
+                    background: #151B21;
+                    border: 1px solid #29323B;
+                    border-radius: 10px;
+                    min-width: 96px;
+                    min-height: 104px;
+                }}
+                #systemMetricProgress {{ min-height: 3px; max-height: 3px; }}
+                #systemMetricSparkline {{ background: transparent; border: 0; }}
+
+                #systemModelCard {{ min-width: 300px; max-width: 330px; }}
+                #systemModelRow {{ min-height: 27px; }}
+                #systemModelRow #dashboardMetricLabel,
+                #systemModelRow #dashboardMetricValue {{ padding: 4px 7px; font-size: 9px; }}
+
+                #systemAudioCard {{ min-width: 220px; }}
+                #systemModulesCard {{ min-width: 340px; }}
+                #systemStorageCard {{ min-width: 250px; }}
+                #systemTableHeader {{
+                    color: #737C85;
+                    font-size: 8px;
+                    font-weight: 700;
+                    background: transparent;
+                    border: 0;
+                }}
+                #systemModuleRow {{
+                    background: #151B20;
+                    border: 1px solid #252E36;
+                    border-radius: 7px;
+                }}
+                #systemModuleName {{ color: #DBD8DA; font-size: 9px; font-weight: 650; }}
+                #systemModuleState {{ color: #879099; font-size: 8px; }}
+                #systemModuleState[state="online"], #systemModuleState[state="ready"] {{ color: #65C891; }}
+                #systemModuleState[state="degraded"] {{ color: #D6A04F; }}
+                #systemModuleState[state="unavailable"] {{ color: #C96573; }}
+                #systemModuleMetric {{ color: #747D85; font-size: 8px; }}
+
+                #systemBottomRow {{ background: transparent; border: 0; }}
+                #systemActionsCard {{ min-width: 300px; }}
+                #systemEventsEmpty {{
+                    color: #737C85;
+                    font-size: 9px;
+                    padding: 16px 8px;
+                }}
+                #systemEventItem {{
+                    background: #151B20;
+                    border: 1px solid #252E36;
+                    border-radius: 8px;
+                    color: #B7BDC3;
+                    font-size: 9px;
+                    padding: 6px 9px;
+                }}
+
+                #systemCompactCard,
+                #systemLaylayCard,
+                #systemRailActionsCard,
+                #systemAlertsCard {{ min-width: 264px; max-width: 280px; }}
+                #systemRailMetric {{ background: transparent; border: 0; min-height: 23px; }}
+                #systemRailMetricName {{ color: #B7BDC3; font-size: 9px; }}
+                #systemRailMetricValue {{ color: #F3EFF1; font-size: 9px; font-weight: 700; }}
+                #systemCompactCard #systemMetricSparkline {{ min-height: 18px; max-height: 23px; }}
+                #systemRailActionsCard QPushButton[systemQuickAction="true"] {{ min-height: 31px; }}
+
+                /* Sistema P5.2 — geometria de três faixas */
+                #systemAudioRow #dashboardMetricLabel,
+                #systemAudioRow #dashboardMetricValue {{ padding: 2px 5px; font-size: 8px; }}
+                #systemAudioStatus {{ padding: 4px 6px; font-size: 9px; }}
+                #systemAudioLevelHeader {{ min-height: 13px; max-height: 16px; }}
+                #systemStorageMetric {{ min-height: 35px; max-height: 40px; }}
+                #systemStorageHint {{ padding: 3px 6px; font-size: 8px; }}
+                #systemModuleRow {{ min-height: 24px; max-height: 28px; }}
+                #systemEventsEmpty {{ padding: 7px 6px; }}
+                #systemRailMetric {{ min-height: 17px; max-height: 19px; }}
+                #systemCompactCard #systemMetricSparkline {{ min-height: 14px; max-height: 17px; }}
+                #systemLaylayRow #dashboardMetricLabel,
+                #systemLaylayRow #dashboardMetricValue {{ padding: 3px 5px; font-size: 8px; }}
+                #systemLaylayStatus {{ padding: 4px 6px; }}
+                #systemLaylayPulse {{ padding: 3px 6px; font-size: 8px; }}
+
+                /* Sistema universal — o mesmo pulso visual em todos os rails */
+                #compactSystemCard {{
+                    background: #11171C;
+                    border: 1px solid #2A333B;
+                    border-radius: 12px;
+                    min-width: 250px;
+                    max-width: 310px;
+                }}
+                #compactSystemTitle {{
+                    background: transparent;
+                    border: 0;
+                    color: #F4F0F2;
+                    font-size: 12px;
+                    font-weight: 740;
+                }}
+                #compactSystemHint {{
+                    background: transparent;
+                    border: 0;
+                    color: #73818B;
+                    font-size: 7px;
+                }}
+                #compactSystemHint[state="dados_antigos"] {{ color: #D39A4A; }}
+                #compactSystemHint[state="indisponível"] {{ color: #69737C; }}
+                #compactSystemMetric {{
+                    background: transparent;
+                    border: 0;
+                    min-height: 18px;
+                    max-height: 18px;
+                }}
+                #compactSystemMetricName {{
+                    background: transparent;
+                    border: 0;
+                    color: #B7C0C8;
+                    font-size: 8px;
+                }}
+                #compactSystemMetricValue {{
+                    background: transparent;
+                    border: 0;
+                    color: #F2EEF0;
+                    font-size: 8px;
+                    font-weight: 700;
+                }}
+                #compactSystemMetric[state="stale"] #compactSystemMetricValue {{
+                    color: #D5A45B;
+                }}
+                #compactSystemMetric[state="unavailable"] #compactSystemMetricValue {{
+                    color: #68737C;
+                }}
+                QWidget[compactSystemGraph="true"],
+                #musicSystemBar[compactSystemGraph="true"],
+                #railSystemProgress[compactSystemGraph="true"] {{
+                    background: transparent;
+                    border: 0;
+                    min-height: 18px;
+                    max-height: 18px;
+                }}
+
+                QScrollBar:vertical {{ background: transparent; width: 9px; margin: 2px; }}
+                QScrollBar::handle:vertical {{ background: #49424F; min-height: 32px; border-radius: 4px; }}
+                QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
+                QComboBox QAbstractItemView {{ background: {PALETA['superficie']}; selection-background-color: {PALETA['elevada']}; border: 1px solid {PALETA['borda']}; }}
+                QCheckBox {{ color: {PALETA['secundario']}; spacing: 8px; }}
+            """)
+
+    @staticmethod
+    def _horario(instante: object) -> str | None:
+        if instante in (None, ""):
+            return None
+        try:
+            if isinstance(instante, (int, float)) or str(instante).replace(".", "", 1).isdigit():
+                return datetime.fromtimestamp(float(instante)).strftime("%H:%M")
+            return datetime.fromisoformat(str(instante).replace("Z", "+00:00")).astimezone().strftime("%H:%M")
+        except (ValueError, TypeError, OSError):
+            return None
+
+    def adicionar_mensagem(
+        self, papel: str, texto: str, *, timestamp: object = None,
+        mensagem_id: str = "", status: str = "accepted",
+        rolar_ao_final: bool | None = None, animar: bool = True,
+    ) -> MensagemWidget | None:
+        texto = str(texto or "").strip()
+        if not texto:
+            return None
+        if mensagem_id:
+            for existente in self.feed.findChildren(MensagemWidget):
+                if (
+                    existente.papel == papel
+                    and existente.mensagem_id == mensagem_id
+                ):
+                    existente.atualizar_texto(texto)
+                    self._ultima_mensagem = (papel, texto, time.monotonic())
+                    QTimer.singleShot(0, self._ajustar_larguras_mensagens)
+                    if rolar_ao_final is not False and self._esta_perto_do_final():
+                        self._agendar_rolagem_final()
+                    return existente
+        agora = time.monotonic()
+        anterior_papel, anterior_texto, anterior_ts = self._ultima_mensagem
+        if not mensagem_id and papel == anterior_papel and texto == anterior_texto and agora - anterior_ts < 1.5:
+            return None
+        self._ultima_mensagem = (papel, texto, agora)
+        deve_rolar = (
+            papel == "user" or self._esta_perto_do_final()
+            if rolar_ao_final is None
+            else bool(rolar_ao_final)
+        )
+        if self._feed_em_espera:
+            while self.feed_lay.count():
+                item = self.feed_lay.takeAt(0)
+                self._descartar_item_feed(item)
+            self.feed_lay.addStretch()
+            self._feed_em_espera = False
+        horario_mensagem = self._horario(timestamp)
+
+        mensagem = MensagemWidget(
+            papel, texto, horario_mensagem,
+            mensagem_id=mensagem_id, status=status,
+        )
+        mensagem.reenviar.connect(self.reenviar_texto)
+        linha_container = QWidget(self.feed)
+        linha_container.setObjectName("messageRow")
+        linha_container.setProperty(
+            "entryDirection",
+            "right" if papel == "user" else "left",
+        )
+        linha_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        linha = QHBoxLayout(linha_container)
+        linha.setContentsMargins(0, 0, 0, 0)
+        if papel == "user":
+            coluna_mensagem = QVBoxLayout()
+            coluna_mensagem.setContentsMargins(
+                0, 0, 0, 0
+            )
+            coluna_mensagem.setSpacing(3)
+
+            coluna_mensagem.addWidget(
+                mensagem
+            )
+
+            if horario_mensagem:
+                horario_label = QLabel(
+                    horario_mensagem
+                )
+                horario_label.setObjectName(
+                    "messageTime"
+                )
+                horario_label.setProperty(
+                    "owner",
+                    "user",
+                )
+                coluna_mensagem.addWidget(
+                    horario_label,
+                    0,
+                    Qt.AlignRight,
+                )
+
+            coluna_mensagem.addWidget(
+                mensagem.status,
+                0,
+                Qt.AlignRight,
+            )
+            coluna_mensagem.addWidget(
+                mensagem.retry,
+                0,
+                Qt.AlignRight,
+            )
+
+            avatar_usuario = AvatarUsuario(
+                self._avatar_usuario_path,
+                38,
+            )
+
+            linha.addStretch(1)
+            linha.addLayout(
+                coluna_mensagem
+            )
+            linha.addSpacing(5)
+            linha.addWidget(
+                avatar_usuario,
+                0,
+                Qt.AlignTop,
+            )
+
+            if self.conversa_atual.text() == "Conversa atual":
+                titulo = texto[:34] + ("…" if len(texto) > 34 else "")
+                self.conversa_atual.setText(titulo)
+                if self._pagina_principal == "conversa":
+                    self.titulo_header.setText(titulo)
+        else:
+            avatar = AroPresenca(self.raiz, 38)
+            avatar.atualizar("idle", "calma")
+
+            coluna_mensagem = QVBoxLayout()
+            coluna_mensagem.setContentsMargins(0, 0, 0, 0)
+            coluna_mensagem.setSpacing(3)
+            coluna_mensagem.addWidget(mensagem)
+
+            if horario_mensagem:
+                horario_label = QLabel(horario_mensagem)
+                horario_label.setObjectName("messageTime")
+                coluna_mensagem.addWidget(
+                    horario_label,
+                    0,
+                    Qt.AlignLeft,
+                )
+
+            linha.addWidget(avatar, 0, Qt.AlignTop)
+            linha.addSpacing(5)
+            linha.addLayout(coluna_mensagem)
+            linha.addStretch(1)
+        self.feed_lay.insertWidget(
+            max(0, self.feed_lay.count() - 1), linha_container,
+        )
+        self.feed_lay.invalidate()
+        self.feed.updateGeometry()
+        QTimer.singleShot(0, self._ajustar_larguras_mensagens)
+        if animar:
+            self._animar_entrada(mensagem, linha_container)
+        if deve_rolar:
+            self._agendar_rolagem_final()
+        return mensagem
+
+    def _ajustar_larguras_mensagens(self) -> None:
+        margens = self.feed_lay.contentsMargins()
+        disponivel = max(
+            180,
+            self.scroll.viewport().width() - margens.left() - margens.right() - 4,
+        )
+        for mensagem in self.feed.findChildren(MensagemWidget):
+            # Agora os dois papéis dividem a linha com avatar.
+            # Reserva o mesmo espaço dos dois lados para evitar estouro.
+            limite_papel = max(
+                140,
+                disponivel - 60,
+            )
+            largura = min(int(mensagem.largura_preferida), limite_papel)
+            if mensagem.width() != largura:
+                mensagem.setFixedWidth(largura)
+                mensagem.updateGeometry()
+            altura_minima = mensagem.minimumSizeHint().height()
+            if mensagem.minimumHeight() != altura_minima:
+                mensagem.setMinimumHeight(altura_minima)
+        self.feed_lay.invalidate()
+        self.feed.updateGeometry()
+
+    def _esta_perto_do_final(self) -> bool:
+        barra = self.scroll.verticalScrollBar()
+        return barra.maximum() - barra.value() <= self._limiar_auto_scroll
+
+    def _agendar_rolagem_final(self) -> None:
+        """Agrupa relayouts sucessivos e ancora somente uma vez no fim."""
+        self._timer_auto_scroll.start(0)
+
+    def _encerrar_rolagem_suave(self) -> None:
+        animacao = self._animacao_scroll
+        if animacao is None:
+            return
+        animacao.stop()
+        animacao.deleteLater()
+        self._animacao_scroll = None
+
+    def _rolar_ao_final(self) -> None:
+        barra = self.scroll.verticalScrollBar()
+        destino = barra.maximum()
+        if (
+            self._reduzir_movimento
+            or not self._interface_animavel
+            or destino <= barra.value() + 2
+        ):
+            self._encerrar_rolagem_suave()
+            barra.setValue(destino)
+            return
+        self._encerrar_rolagem_suave()
+        animacao = QPropertyAnimation(barra, b"value", self)
+        animacao.setDuration(190)
+        animacao.setStartValue(barra.value())
+        animacao.setEndValue(destino)
+        animacao.setEasingCurve(QEasingCurve.OutCubic)
+        self._animacao_scroll = animacao
+
+        def finalizar() -> None:
+            if self._animacao_scroll is animacao:
+                self._animacao_scroll = None
+                barra.setValue(barra.maximum())
+            animacao.deleteLater()
+
+        animacao.finished.connect(finalizar)
+        animacao.start()
+
+    def _animar_entrada(
+        self,
+        mensagem: MensagemWidget,
+        container: QWidget,
+    ) -> None:
+        if (
+            self._reduzir_movimento
+            or self.feed.graphicsEffect() is not None
+        ):
+            # QGraphicsEffect em um ancestral e em seu filho força duas
+            # composições do mesmo backing store. Durante a transição de
+            # conversa, o feed inteiro já está animado; o balão entra junto
+            # com ele sem precisar de um segundo efeito concorrente.
+            return
+        self.feed_lay.activate()
+        efeito = QGraphicsOpacityEffect(container)
+        efeito.setOpacity(0.10)
+        container.setGraphicsEffect(efeito)
+
+        grupo = QParallelAnimationGroup(self)
+        opacidade = QPropertyAnimation(efeito, b"opacity", grupo)
+        opacidade.setDuration(230)
+        opacidade.setStartValue(0.10)
+        opacidade.setEndValue(1.0)
+        opacidade.setEasingCurve(QEasingCurve.OutCubic)
+        grupo.addAnimation(opacidade)
+        self._animacoes.append(grupo)
+
+        def finalizar() -> None:
+            if grupo in self._animacoes:
+                self._animacoes.remove(grupo)
+            # Efeitos gráficos persistentes obrigam o Qt a recompor dezenas de
+            # pixmaps durante a rolagem e eram a origem do piscar no histórico.
+            if container.graphicsEffect() is efeito:
+                container.setGraphicsEffect(None)
+            grupo.deleteLater()
+
+        grupo.finished.connect(finalizar)
+        grupo.start()
+
+    def enviar_texto(self, texto: str) -> None:
+        self._enviar_pedido(texto, tipo="chat", acao_id="")
+
+    def enviar_acao_rapida(self, acao_id: str, texto: str) -> None:
+        self._enviar_pedido(texto, tipo="quick_action", acao_id=acao_id)
+
+    def enviar_acao_painel(self, acao_id: str, texto: str) -> None:
+        self._enviar_pedido(texto, tipo="panel_action", acao_id=acao_id)
+
+    def enviar_acao_painel_com_dados(
+        self, acao_id: str, texto: str, payload: dict,
+    ) -> None:
+        self._enviar_pedido(
+            texto, tipo="panel_action", acao_id=acao_id,
+            payload_acao=dict(payload or {}),
+        )
+
+    def _definir_estado_acao_ui(
+        self, acao_id: str, estado: str, resumo: str = "",
+    ) -> None:
+        self.central_inteligente.definir_estado_acao(acao_id, estado, resumo)
+        self.painel_lateral.definir_estado_acao(acao_id, estado, resumo)
+        self.pagina_musica.definir_estado_acao(acao_id, estado, resumo)
+        self.pagina_automacao.definir_estado_acao(acao_id, estado, resumo)
+
+    def _enviar_pedido(
+        self,
+        texto: str,
+        *,
+        tipo: str,
+        acao_id: str,
+        payload_acao: dict | None = None,
+    ) -> None:
+        mensagem_id = uuid.uuid4().hex
+        acao_direta = tipo == "panel_action"
+        if not acao_direta:
+            # Um novo pedido reposiciona a única presença efêmera sempre depois
+            # da mensagem mais recente, sem acumular indicadores no feed.
+            self._remover_indicador_pensando()
+            mensagem = self.adicionar_mensagem(
+                "user", texto, timestamp=time.time(), mensagem_id=mensagem_id,
+                status="pending",
+            )
+            if mensagem is not None:
+                self._envios[mensagem_id] = mensagem
+                self._envio_conversa[mensagem_id] = self._conversa_ativa_id
+            self._mostrar_indicador_pensando()
+        payload = {
+            "type": "input_submit", "id": mensagem_id, "text": texto,
+            "kind": tipo,
+        }
+        if not acao_direta and self._conversa_ativa_id:
+            payload["conversation_id"] = self._conversa_ativa_id
+        if tipo in {"quick_action", "panel_action"}:
+            payload["action"] = str(acao_id or "")
+            if tipo == "panel_action":
+                payload["payload"] = (
+                    dict(payload_acao) if payload_acao is not None
+                    else self._payload_acao_painel(acao_id, texto)
+                )
+            self._acoes_por_envio[mensagem_id] = str(acao_id or "")
+            self._definir_estado_acao_ui(
+                acao_id, "sending", "Enviando para a mente canônica",
+            )
+        enviado = bool(self.worker.enfileirar(payload))
+        if not enviado:
+            self._falhar_envio(
+                mensagem_id,
+                "A ponte ainda não estava pronta para receber a mensagem.",
+            )
+            return
+        if not acao_direta:
+            self._armar_timeout_envio(mensagem_id, fase="ack", intervalo_ms=3_500)
+        self.adicionar_evento(
+            "Mensagem enviada à ponte",
+            "Aguardando a confirmação de recebimento da mente.",
+            "info",
+        )
+
+    @staticmethod
+    def _payload_acao_painel(acao_id: str, texto: str) -> dict:
+        acao = str(acao_id or "")
+        if acao == "media_toggle":
+            return {"command": "pause" if str(texto).casefold().startswith("pausa") else "play"}
+        if acao in {"playlist_play", "playlist_shuffle"}:
+            nome = re.sub(
+                r"(?i)^toca\s+a\s+playlist\s+|\s+em\s+modo\s+aleat[oó]rio$",
+                "", str(texto or "").strip(),
+            ).strip()
+            return {"playlist": nome}
+        if acao == "volume_set":
+            encontrado = re.search(r"\b(\d{1,3})\b", str(texto or ""))
+            return {"level": int(encontrado.group(1)) if encontrado else -1}
+        return {}
+
+    def _armar_timeout_envio(
+        self, mensagem_id: str, *, fase: str, intervalo_ms: int,
+    ) -> None:
+        self._encerrar_timeout_envio(mensagem_id)
+        timeout = QTimer(self)
+        timeout.setSingleShot(True)
+        timeout.setInterval(max(100, int(intervalo_ms)))
+        timeout.timeout.connect(
+            lambda mid=mensagem_id: self._expirar_envio(mid)
+        )
+        self._timeouts_envio[mensagem_id] = timeout
+        self._fases_envio[mensagem_id] = str(fase)
+        timeout.start()
+
+    def _encerrar_timeout_envio(self, mensagem_id: str) -> None:
+        timeout = self._timeouts_envio.pop(str(mensagem_id or ""), None)
+        if timeout is not None:
+            timeout.stop()
+            timeout.deleteLater()
+        self._fases_envio.pop(str(mensagem_id or ""), None)
+
+    def _falhar_envio(self, mensagem_id: str, detalhe: str) -> None:
+        self._encerrar_timeout_envio(mensagem_id)
+        mensagem = self._envios.pop(mensagem_id, None)
+        self._envio_conversa.pop(mensagem_id, None)
+        if mensagem is not None:
+            mensagem.definir_status("failed", detalhe)
+        acao_id = self._acoes_por_envio.pop(mensagem_id, "")
+        if acao_id:
+            self._definir_estado_acao_ui(acao_id, "failed", detalhe)
+        self._remover_indicador_pensando()
+        self.adicionar_evento("Mensagem não entregue", detalhe, "error")
+
+    def _expirar_envio(self, mensagem_id: str) -> None:
+        if mensagem_id not in self._envios:
+            return
+        fase = self._fases_envio.get(mensagem_id)
+        self._falhar_envio(
+            mensagem_id,
+            (
+                "A ponte não confirmou o recebimento. Tente novamente."
+                if fase == "ack"
+                else "A resposta demorou além do limite. Você pode tentar novamente."
+            ),
+        )
+
+    def _mostrar_indicador_pensando(self) -> None:
+        if self._indicador_pensando is not None:
+            return
+        self._encerrar_saida_pensando()
+        indicador = IndicadorPensando(
+            reduzir_movimento=self._reduzir_movimento,
+        )
+        container = QWidget()
+        container.setObjectName("thinkingRow")
+        linha = QHBoxLayout(container)
+        linha.setContentsMargins(0, 0, 0, 0)
+        linha.addWidget(indicador)
+        linha.addStretch(1)
+        self._indicador_pensando = indicador
+        self._container_indicador = container
+        self.feed_lay.insertWidget(max(0, self.feed_lay.count() - 1), container)
+        self.feed_lay.invalidate()
+        self.feed.updateGeometry()
+        if (
+            not self._reduzir_movimento
+            and self.feed.graphicsEffect() is None
+        ):
+            # A troca de conversa pode estar animando o feed inteiro. Não
+            # empilhamos um segundo QGraphicsEffect no indicador filho.
+            self.feed_lay.activate()
+            efeito = QGraphicsOpacityEffect(container)
+            efeito.setOpacity(0.12)
+            container.setGraphicsEffect(efeito)
+            grupo = QParallelAnimationGroup(self)
+            opacidade = QPropertyAnimation(efeito, b"opacity", grupo)
+            opacidade.setDuration(180)
+            opacidade.setStartValue(0.12)
+            opacidade.setEndValue(1.0)
+            opacidade.setEasingCurve(QEasingCurve.OutCubic)
+            grupo.addAnimation(opacidade)
+            self._animacao_entrada_pensando = grupo
+
+            def finalizar_entrada() -> None:
+                if container.graphicsEffect() is efeito:
+                    container.setGraphicsEffect(None)
+                if self._animacao_entrada_pensando is grupo:
+                    self._animacao_entrada_pensando = None
+                grupo.deleteLater()
+
+            grupo.finished.connect(finalizar_entrada)
+            grupo.start()
+        self._agendar_rolagem_final()
+
+    def _encerrar_saida_pensando(self) -> None:
+        grupo = self._animacao_saida_pensando
+        container = self._container_saida_pensando
+        if grupo is not None:
+            grupo.stop()
+            grupo.deleteLater()
+        self._animacao_saida_pensando = None
+        self._container_saida_pensando = None
+        if container is not None:
+            self.feed_lay.removeWidget(container)
+            container.hide()
+            container.deleteLater()
+
+    def _remover_indicador_pensando(self, *, animar: bool = False) -> None:
+        indicador = self._indicador_pensando
+        container = self._container_indicador
+        entrada = self._animacao_entrada_pensando
+        if entrada is not None:
+            entrada.stop()
+            entrada.deleteLater()
+            self._animacao_entrada_pensando = None
+        if container is not None and _objeto_qt_esta_vivo(container):
+            # Se a resposta chega antes do fade-in terminar, o grupo é parado,
+            # mas o efeito continuava preso ao indicador. Um segundo efeito no
+            # balão novo fazia o Qt tentar pintar o mesmo feed duas vezes.
+            try:
+                if container.graphicsEffect() is not None:
+                    container.setGraphicsEffect(None)
+            except RuntimeError:
+                pass
+        self._indicador_pensando = None
+        self._container_indicador = None
+        if indicador is not None:
+            indicador.parar()
+        if container is not None:
+            if animar and not self._reduzir_movimento and container.isVisible():
+                self._encerrar_saida_pensando()
+                altura_inicial = max(1, container.height())
+                grupo = QParallelAnimationGroup(self)
+                altura = QPropertyAnimation(container, b"maximumHeight", grupo)
+                altura.setDuration(150)
+                altura.setStartValue(altura_inicial)
+                altura.setEndValue(0)
+                altura.setEasingCurve(QEasingCurve.OutCubic)
+                grupo.addAnimation(altura)
+                self._animacao_saida_pensando = grupo
+                self._container_saida_pensando = container
+
+                def finalizar_saida() -> None:
+                    if self._animacao_saida_pensando is grupo:
+                        self._animacao_saida_pensando = None
+                    if self._container_saida_pensando is container:
+                        self._container_saida_pensando = None
+                    self.feed_lay.removeWidget(container)
+                    container.hide()
+                    container.deleteLater()
+                    self.feed_lay.invalidate()
+                    self.feed.updateGeometry()
+                    grupo.deleteLater()
+
+                grupo.finished.connect(finalizar_saida)
+                grupo.start()
+            else:
+                self.feed_lay.removeWidget(container)
+                container.hide()
+                container.deleteLater()
+                self.feed_lay.invalidate()
+                self.feed.updateGeometry()
+
+    def reenviar_texto(self, mensagem_id: str, texto: str) -> None:
+        anterior = self._envios.pop(mensagem_id, None)
+        if anterior is not None:
+            anterior.retry.hide()
+            anterior.status.setText("Substituída por uma nova tentativa")
+        self.enviar_texto(texto)
+
+    def solicitar_modo(self, modo: str) -> None:
+        if self._modo_pendente or modo == self._modo:
+            self.alternador.definir(self._modo, voz_disponivel=self._voz_disponivel)
+            return
+        self._modo_pendente = True
+        self.alternador.definir(modo, pendente=True, voz_disponivel=self._voz_disponivel)
+        self.status.setText("Trocando modo…")
+        self.enviar_json.emit({"type": "mode_set", "id": uuid.uuid4().hex, "mode": modo})
+
+    def _definir_avatar_usuario(
+        self,
+        caminho: str,
+    ) -> None:
+        caminho = str(
+            caminho or ""
+        ).strip()
+
+        self._avatar_usuario_path = caminho
+
+        self.preferencias.setValue(
+            "user_avatar_path",
+            caminho,
+        )
+        self.preferencias.sync()
+
+        self.configuracoes.definir_avatar_usuario(
+            caminho
+        )
+
+        for avatar in self.feed.findChildren(
+            AvatarUsuario
+        ):
+            avatar.definir_imagem(
+                caminho
+            )
+
+    def salvar_configuracoes(self, settings: dict) -> None:
+        self.enviar_json.emit({
+            "type": "settings_update", "id": uuid.uuid4().hex,
+            "settings": settings,
+        })
+
+    def _atualizar_status_configuracao(self, settings: dict) -> None:
+        provedor = str(settings.get("provider") or "").strip().casefold()
+        modelo = str(settings.get("model") or "").strip()
+        nomes = {
+            "ollama": "Local",
+            "portatil": "Portátil",
+            "openrouter": "OpenRouter",
+        }
+        origem = nomes.get(provedor, provedor or "Aguardando")
+        self._provedor_modelo = origem
+        valor = f"{origem} configurado" if modelo else origem
+        if not self._dashboard_recebido:
+            self.chip_modelo.definir(
+                valor,
+                estado="pending" if self._conectado else "error",
+            )
+            self.central_inteligente.definir_contexto("modo", origem)
+
+    def reiniciar_laylay(self) -> None:
+        requisicao_id = uuid.uuid4().hex
+        self._reinicio_requisicao_id = requisicao_id
+        self.enviar_json.emit({
+            "type": "restart_request", "id": requisicao_id,
+        })
+
+    def receber(self, msg: dict) -> None:
+        tipo = msg.get("type")
+        if tipo == "snapshot":
+            mensagens = list(msg.get("messages", []))
+            if isinstance(msg.get("conversations"), dict):
+                if not str(
+                    msg["conversations"].get("active_id") or ""
+                ).strip():
+                    # A lista pode conter chats antigos, mas nenhum deles foi
+                    # escolhido nesta sessão. Não reidrate o histórico legado.
+                    mensagens = []
+                self._aplicar_retrato_conversas(
+                    msg["conversations"], substituir_historico=False,
+                )
+            elif self._conectado:
+                # Compatibilidade com uma ponte antiga. Na ponte C2 o próprio
+                # snapshot já é autoritativo; pedir de novo causava uma segunda
+                # hidratação do mesmo histórico durante a abertura.
+                self.enviar_json.emit({
+                    "type": "conversations_get", "id": uuid.uuid4().hex,
+                })
+            self._substituir_historico(mensagens)
+            for evento in msg.get("events", []):
+                self.adicionar_evento(evento.get("title", "Evento"), evento.get("detail", ""), evento.get("level", "info"))
+            self._atualizar_estado(msg.get("state") or {})
+            if isinstance(msg.get("dashboard"), dict):
+                self._atualizar_dashboard(msg["dashboard"])
+            if isinstance(msg.get("settings"), dict):
+                self.configuracoes.preencher(msg["settings"])
+                self._atualizar_status_configuracao(msg["settings"])
+            self.enviar_json.emit({"type": "ready", "id": uuid.uuid4().hex})
+        elif tipo == "assistant_message":
+            mensagem_id = str(msg.get("id") or "")
+            if mensagem_id not in self._envios and len(self._envios) == 1:
+                mensagem_id = next(iter(self._envios))
+            conversa_id = str(
+                msg.get("conversation_id")
+                or self._envio_conversa.get(mensagem_id)
+                or self._conversa_ativa_id
+            )
+            if mensagem_id:
+                self._encerrar_timeout_envio(mensagem_id)
+                self._envios.pop(mensagem_id, None)
+                self._envio_conversa.pop(mensagem_id, None)
+            envios_ativos = any(
+                cid == self._conversa_ativa_id
+                for cid in self._envio_conversa.values()
+            )
+            if not envios_ativos:
+                self._remover_indicador_pensando(animar=True)
+            if not conversa_id or conversa_id == self._conversa_ativa_id:
+                self.adicionar_mensagem(
+                    "assistant", str(msg.get("text") or ""),
+                    timestamp=msg.get("timestamp"),
+                    mensagem_id=str(msg.get("id") or mensagem_id),
+                )
+            self.avatar_side.atualizar("speaking", str(msg.get("emotion") or "calma"))
+            self.adicionar_evento(
+                "Resposta entregue",
+                (
+                    "A fala final chegou à conversa."
+                    if not conversa_id or conversa_id == self._conversa_ativa_id
+                    else "A resposta foi guardada no chat em que o pedido começou."
+                ),
+                "success",
+            )
+        elif tipo == "input_ack":
+            mensagem_id = str(msg.get("id") or "")
+            aceito = bool(msg.get("accepted"))
+            if not aceito:
+                self._remover_indicador_pensando()
+            mensagem = self._envios.get(mensagem_id)
+            if mensagem is not None:
+                if aceito:
+                    mensagem.definir_status("accepted")
+                    self._armar_timeout_envio(
+                        mensagem_id, fase="resposta", intervalo_ms=75_000,
+                    )
+                    self.adicionar_evento(
+                        "Pedido recebido",
+                        "A mente confirmou a entrada e está processando.",
+                        "success",
+                    )
+                else:
+                    self._falhar_envio(
+                        mensagem_id, str(msg.get("message") or "Pedido recusado."),
+                    )
+        elif tipo == "state":
+            self._atualizar_estado(msg)
+            if isinstance(msg.get("event"), dict):
+                ev = msg["event"]
+                self.adicionar_evento(ev.get("title", "Evento"), ev.get("detail", ""), ev.get("level", "info"))
+        elif tipo == "dashboard_state":
+            if isinstance(msg.get("dashboard"), dict):
+                self._atualizar_dashboard(msg["dashboard"])
+        elif tipo == "conversations_state":
+            requisicao_id = str(msg.get("id") or "")
+            if requisicao_id == self._requisicao_conversa_id:
+                self._requisicao_conversa_id = ""
+            sucesso = bool(msg.get("success"))
+            retrato = msg.get("conversations")
+            if isinstance(retrato, dict):
+                self._aplicar_retrato_conversas(
+                    retrato,
+                    substituir_historico=(
+                        sucesso and str(msg.get("action") or "")
+                        in {"create", "select", "delete", "list"}
+                    ),
+                )
+            self._definir_controles_conversa(True)
+            if sucesso:
+                if str(msg.get("action") or "") in {"create", "select", "delete"}:
+                    self.selecionar_pagina("conversa")
+                    self.composer.editor.setFocus()
+                self.adicionar_evento(
+                    "Conversas sincronizadas",
+                    "A alteração foi confirmada pela memória da Laylay.",
+                    "success",
+                )
+            else:
+                self.adicionar_evento(
+                    "Conversa não alterada",
+                    str(msg.get("message") or "A mente não confirmou a alteração."),
+                    "warning",
+                )
+        elif tipo == "action_state":
+            mensagem_id = str(msg.get("id") or "")
+            acao_id = str(
+                msg.get("action") or self._acoes_por_envio.get(mensagem_id) or ""
+            )
+            estado_acao = str(msg.get("state") or "")
+            resumo = str(msg.get("summary") or "")
+            if acao_id:
+                self._definir_estado_acao_ui(acao_id, estado_acao, resumo)
+            if estado_acao in {
+                "awaiting_confirmation", "confirmed", "partial", "failed",
+            }:
+                self._acoes_por_envio.pop(mensagem_id, None)
+                if msg.get("direct") is True:
+                    self._encerrar_timeout_envio(mensagem_id)
+                    self._envios.pop(mensagem_id, None)
+                    if not self._envios:
+                        self._remover_indicador_pensando()
+                niveis = {
+                    "confirmed": "success", "partial": "warning",
+                    "failed": "error", "awaiting_confirmation": "info",
+                }
+                titulos = {
+                    "confirmed": "Ação confirmada",
+                    "partial": "Ação parcialmente concluída",
+                    "failed": "Ação não confirmada",
+                    "awaiting_confirmation": "Confirmação necessária",
+                }
+                self.adicionar_evento(
+                    titulos[estado_acao], resumo, niveis[estado_acao],
+                    atividade_confirmada=estado_acao == "confirmed",
+                )
+        elif tipo == "mode_state":
+            self._modo_pendente = False
+            self._modo = str(msg.get("mode") or self._modo)
+            self._voz_disponivel = bool(msg.get("voice_available", self._voz_disponivel))
+            self._aplicar_modo()
+            if not bool(msg.get("success")):
+                self.adicionar_evento("Modo mantido", str(msg.get("message") or "A troca não foi confirmada."), "warning")
+        elif tipo == "settings_state":
+            if isinstance(msg.get("settings"), dict):
+                self.configuracoes.preencher(msg["settings"])
+                self._atualizar_status_configuracao(msg["settings"])
+        elif tipo == "settings_result":
+            self.configuracoes.resultado(msg)
+            if isinstance(msg.get("settings"), dict):
+                self._atualizar_status_configuracao(msg["settings"])
+            self.adicionar_evento(
+                "Configuração salva" if msg.get("saved") else "Configuração recusada",
+                str(msg.get("message") or ""), "success" if msg.get("saved") else "error",
+            )
+        elif tipo == "restart_result":
+            self._reinicio_requisicao_id = ""
+            self.configuracoes.resultado_reinicio(msg)
+            self.adicionar_evento(
+                "Reinício solicitado" if msg.get("accepted") else "Reinício recusado",
+                str(msg.get("message") or ""),
+                "success" if msg.get("accepted") else "error",
+            )
+        elif tipo == "error":
+            self._remover_indicador_pensando()
+            if self._modo_pendente:
+                self._modo_pendente = False
+                self._aplicar_modo()
+            mensagem_id = str(msg.get("id") or "")
+            if mensagem_id and mensagem_id == self._reinicio_requisicao_id:
+                self._reinicio_requisicao_id = ""
+                self.configuracoes.resultado_reinicio({
+                    "accepted": False,
+                    "message": str(msg.get("message") or "Não consegui enviar o reinício."),
+                })
+            mensagem = self._envios.get(mensagem_id)
+            if mensagem is not None:
+                self._falhar_envio(
+                    mensagem_id, str(msg.get("message") or "Erro desconhecido"),
+                )
+            self.adicionar_evento("A ponte recusou uma ação", str(msg.get("message") or "Erro desconhecido"), "error")
+
+    def _atualizar_dashboard(self, dashboard: dict) -> None:
+        if dashboard.get("schema_version") != 1:
+            return
+        self._dashboard_recebido = True
+        saude = dashboard.get("health")
+        if not isinstance(saude, dict):
+            saude = {}
+        llm = saude.get("llm") if isinstance(saude.get("llm"), dict) else {}
+        estado_llm = str(llm.get("state") or "unavailable")
+        provedor = str(llm.get("provider_label") or self._provedor_modelo or "Modelo")
+        rotulo_llm = str(llm.get("label") or "Indisponível")
+        frescor_llm = str(llm.get("freshness") or "unavailable")
+        if frescor_llm == "stale":
+            rotulo_llm += " · antigo"
+        cor_llm = {
+            "online": "online",
+            "ready": "pending",
+            "degraded": "error",
+            "unavailable": "unavailable",
+        }.get(estado_llm, "pending")
+        if frescor_llm == "stale":
+            cor_llm = "pending"
+        elif frescor_llm == "unavailable":
+            cor_llm = "unavailable"
+        self.chip_modelo.definir(f"{provedor} · {rotulo_llm}", estado=cor_llm)
+        modelo = str(llm.get("model") or "").strip()
+        self.chip_modelo.setToolTip(
+            f"Modelo observado: {modelo}" if modelo else "Modelo não informado pelo runtime"
+        )
+
+        memoria = (
+            saude.get("memory") if isinstance(saude.get("memory"), dict) else {}
+        )
+        estado_memoria = str(memoria.get("state") or "unavailable")
+        rotulo_memoria = str(memoria.get("label") or "Indisponível")
+        frescor_memoria = str(memoria.get("freshness") or "unavailable")
+        if frescor_memoria == "stale":
+            rotulo_memoria += " · antiga"
+        cor_memoria = {
+            "online": "online",
+            "degraded": "error",
+            "unavailable": "unavailable",
+        }.get(estado_memoria, "pending")
+        if frescor_memoria == "stale":
+            cor_memoria = "pending"
+        elif frescor_memoria == "unavailable":
+            cor_memoria = "unavailable"
+        self.chip_memoria.definir(rotulo_memoria, estado=cor_memoria)
+
+        microfone = (
+            saude.get("microphone")
+            if isinstance(saude.get("microphone"), dict) else {}
+        )
+        estado_microfone = str(microfone.get("state") or "unavailable")
+        rotulo_microfone = str(microfone.get("label") or "Indisponível")
+        frescor_microfone = str(
+            microfone.get("freshness") or "unavailable"
+        )
+        if frescor_microfone == "stale":
+            rotulo_microfone += " · antigo"
+        cor_microfone = {
+            "online": "online",
+            "paused": "pending",
+            "degraded": "error",
+            "unavailable": "unavailable",
+        }.get(estado_microfone, "pending")
+        if frescor_microfone == "stale":
+            cor_microfone = "pending"
+        elif frescor_microfone == "unavailable":
+            cor_microfone = "unavailable"
+        self.chip_microfone.definir(rotulo_microfone, estado=cor_microfone)
+        self.central_inteligente.aplicar_dashboard(dashboard)
+        self.painel_lateral.aplicar_dashboard(dashboard)
+        self.pagina_automacao.aplicar_dashboard(dashboard)
+        self.pagina_musica.aplicar_dashboard(dashboard)
+        self.pagina_memoria.aplicar_dashboard(dashboard)
+        self.pagina_sistema.aplicar_dashboard(dashboard)
+
+    def _atualizar_estado(self, estado: dict) -> None:
+        atividade = str(estado.get("activity") or "idle")
+        rotulo = str(estado.get("activity_label") or "Pronta")
+        emocao = str(estado.get("emotion") or "calma")
+        self._modo = str(estado.get("interaction_mode") or self._modo)
+        self._voz_disponivel = bool(estado.get("voice_available", False))
+        try:
+            self._nivel_microfone = float(estado.get("microphone_level") or 0.0)
+        except (TypeError, ValueError):
+            self._nivel_microfone = 0.0
+
+        self.pagina_sistema.definir_estado_audio(
+            self._modo,
+            self._voz_disponivel,
+            self._nivel_microfone,
+        )
+
+        if not self._dashboard_recebido:
+            if not self._voz_disponivel:
+                self.chip_microfone.definir("Indisponível", estado="unavailable")
+            elif self._modo == "voice":
+                self.chip_microfone.definir("Ativo", estado="online")
+            else:
+                self.chip_microfone.definir("Pausado no chat", estado="pending")
+        self.status.setText(rotulo)
+        assinatura_microestado = f"{atividade}:{rotulo}"
+        if (
+            self._assinatura_microestado
+            and assinatura_microestado != self._assinatura_microestado
+        ):
+            self._animar_microinteracao(
+                self.status,
+                opacidade_minima=0.42,
+                duracao_retorno=260,
+            )
+        self._assinatura_microestado = assinatura_microestado
+        self.marca_status.setText(f"{rotulo.casefold()} · {emocao}")
+        self.diag_atividade.setText(f"Atividade\n{rotulo} · emoção {emocao}")
+        self.avatar_side.atualizar(atividade, emocao)
+        self.avatar_profile.atualizar(atividade, emocao)
+        self._atualizar_pulso_presenca(atividade)
+        if atividade in {"thinking", "executing"} and self._envios:
+            self._mostrar_indicador_pensando()
+        assinatura_atividade = f"{atividade}:{rotulo}:{emocao}"
+        if (
+            atividade in {"thinking", "executing", "speaking", "listening", "reconnecting"}
+            and assinatura_atividade != self._ultima_atividade_evento
+        ):
+            self._ultima_atividade_evento = assinatura_atividade
+            self.adicionar_evento(rotulo, f"Estado da mente · emoção {emocao}.", "info")
+        self.configuracoes.definir_voz(self._voz_disponivel)
+        self._aplicar_modo()
+
+    def _aplicar_modo(self) -> None:
+        self.alternador.definir(
+            self._modo, pendente=self._modo_pendente,
+            voz_disponivel=self._voz_disponivel,
+        )
+        modo_visual = f"{self._modo}:{self._modo_pendente}:{self._voz_disponivel}"
+        if self._modo_visual_anterior and modo_visual != self._modo_visual_anterior:
+            self._animar_microinteracao(
+                self.alternador,
+                opacidade_minima=0.48,
+                duracao_retorno=220,
+            )
+        self._modo_visual_anterior = modo_visual
+        self.composer.definir_estado(conectado=self._conectado, modo=self._modo)
+        self.waveform.definir_nivel(
+            self._nivel_microfone,
+            ativo=self._conectado and self._voz_disponivel and self._modo == "voice",
+        )
+        self.voice_surface.setVisible(self._modo == "voice")
+        self.voice_text.setText(
+            "Ouvindo pelo microfone da Laylay" if self._voz_disponivel
+            else "Ouvido indisponível — volte ao Chat para continuar"
+        )
+        if not self._conectado:
+            self.chip_microfone.definir("Sem ponte", estado="unavailable")
+        elif not self._dashboard_recebido:
+            if not self._voz_disponivel:
+                self.chip_microfone.definir("Indisponível", estado="unavailable")
+            elif self._modo == "voice":
+                self.chip_microfone.definir("Ativo", estado="online")
+            else:
+                self.chip_microfone.definir("Pausado no chat", estado="pending")
+        self.diag_modo.setText(
+            f"Interação\n{'Voz' if self._modo == 'voice' else 'Chat'} · "
+            f"ouvido {'disponível' if self._voz_disponivel else 'indisponível'}"
+        )
+
+    def estado_conexao(self, conectado: bool) -> None:
+        self._conectado = conectado
+        if not conectado:
+            self._requisicao_conversa_id = ""
+        self._definir_controles_conversa(conectado)
+        self.central_inteligente.definir_conectada(conectado)
+        self.painel_lateral.definir_conectada(conectado)
+        self.pagina_automacao.definir_conectada(conectado)
+        self.pagina_musica.definir_conectada(conectado)
+        self.configuracoes.definir_conectada(conectado)
+        self.ponto.setStyleSheet(f"color: {PALETA['sucesso'] if conectado else PALETA['erro']};")
+        self.status.setText("Pronta" if conectado else "Reconectando")
+        self.status_mente.setText("●  Mente conectada" if conectado else "●  Reconectando")
+        self.profile_status.setText("●  Online" if conectado else "●  Reconectando")
+        self.profile_status.setProperty(
+            "state",
+            "online" if conectado else "offline",
+        )
+        self.profile_status.style().unpolish(
+            self.profile_status
+        )
+        self.profile_status.style().polish(
+            self.profile_status
+        )
+        if conectado and not self._dashboard_recebido:
+            self.chip_modelo.definir(
+                f"{self._provedor_modelo} configurado"
+                if self._provedor_modelo else "Aguardando estado",
+                estado="pending",
+            )
+        else:
+            if not conectado:
+                self._dashboard_recebido = False
+                self.chip_modelo.definir("Sem ponte", estado="error")
+                self.chip_memoria.definir("Reconectando", estado="unavailable")
+                self.central_inteligente.invalidar_dashboard()
+                self.painel_lateral.invalidar_dashboard()
+                self.pagina_automacao.invalidar()
+                self.pagina_musica.invalidar("Reconectando ao player")
+                self.pagina_memoria.invalidar()
+                self.pagina_sistema.invalidar()
+        if conectado and not self._dashboard_recebido:
+            self.chip_memoria.definir("Aguardando", estado="pending")
+        identidade = (
+            f" · sessão {self._session_id} · PID {self._parent_pid}"
+            if self._session_id else ""
+        )
+        self.diag_conexao.setText(
+            ("Ponte\nConectada e autenticada" if conectado else "Ponte\nReconectando")
+            + identidade
+        )
+        self._aplicar_modo()
+        if conectado:
+            self.adicionar_evento("Mente conectada", "A interface e o núcleo estão sincronizados.", "success")
+            self.enviar_json.emit({"type": "settings_get", "id": uuid.uuid4().hex})
+        else:
+            self._remover_indicador_pensando()
+            self.adicionar_evento("Reconectando", "A interface perdeu a ponte temporariamente.", "warning")
+            for mensagem_id in tuple(self._envios):
+                self._falhar_envio(
+                    mensagem_id,
+                    "A conexão caiu antes de confirmar o recebimento.",
+                )
+
+    def falha_conexao(self, detalhe: str) -> None:
+        self.adicionar_evento("Conexão interrompida", detalhe, "warning")
+
+    def adicionar_evento(
+        self,
+        titulo: str,
+        detalhe: str = "",
+        nivel: str = "info",
+        *,
+        atividade_confirmada: bool = False,
+    ) -> None:
+        cores = {"error": PALETA["erro"], "warning": PALETA["rosa"], "success": PALETA["sucesso"], "info": PALETA["ciano"]}
+        self.eventos.append(
+            f'<span style="color:{cores.get(nivel, PALETA["ciano"])}">{time.strftime("%H:%M")}  {titulo}</span>'
+            f'<br><span style="color:{PALETA["secundario"]}">{detalhe}</span><br>'
+        )
+        if atividade_confirmada:
+            self.central_inteligente.registrar_evento(titulo)
+
+    @classmethod
+    def _descartar_item_feed(cls, item) -> None:
+        """Remove recursivamente linhas antigas, inclusive layouts sem contêiner."""
+        widget = item.widget()
+        if widget is not None:
+            widget.hide()
+            widget.setParent(None)
+            widget.deleteLater()
+            return
+        layout = item.layout()
+        if layout is None:
+            return
+        while layout.count():
+            cls._descartar_item_feed(layout.takeAt(0))
+        layout.invalidate()
+        layout.deleteLater()
+
+    def _encerrar_animacoes_mensagens(self) -> None:
+        for grupo in list(self._animacoes):
+            grupo.stop()
+            grupo.deleteLater()
+        self._animacoes.clear()
+
+    def _encerrar_transicao_conversa(self) -> None:
+        grupo = self._animacao_troca_conversa
+        if grupo is not None:
+            grupo.stop()
+            grupo.deleteLater()
+            self._animacao_troca_conversa = None
+        efeito = self._efeito_troca_conversa
+        if efeito is not None and self.feed.graphicsEffect() is efeito:
+            self.feed.setGraphicsEffect(None)
+        self._efeito_troca_conversa = None
+
+    def _animar_entrada_conversa(self) -> None:
+        if self._reduzir_movimento or not self._interface_animavel:
+            return
+        self._encerrar_transicao_conversa()
+        self.feed_lay.activate()
+        efeito = QGraphicsOpacityEffect(self.feed)
+        efeito.setOpacity(0.10)
+        self.feed.setGraphicsEffect(efeito)
+        grupo = QParallelAnimationGroup(self)
+        opacidade = QPropertyAnimation(efeito, b"opacity", grupo)
+        opacidade.setDuration(230)
+        opacidade.setStartValue(0.10)
+        opacidade.setEndValue(1.0)
+        opacidade.setEasingCurve(QEasingCurve.OutCubic)
+        grupo.addAnimation(opacidade)
+        self._animacao_troca_conversa = grupo
+        self._efeito_troca_conversa = efeito
+
+        def finalizar() -> None:
+            if self.feed.graphicsEffect() is efeito:
+                self.feed.setGraphicsEffect(None)
+            if self._animacao_troca_conversa is grupo:
+                self._animacao_troca_conversa = None
+            if self._efeito_troca_conversa is efeito:
+                self._efeito_troca_conversa = None
+            grupo.deleteLater()
+
+        grupo.finished.connect(finalizar)
+        grupo.start()
+
+    def _limpar_historico_visual(self) -> None:
+        self._encerrar_animacoes_mensagens()
+        self._encerrar_transicao_conversa()
+        self._remover_indicador_pensando()
+        self._encerrar_saida_pensando()
+        while self.feed_lay.count():
+            item = self.feed_lay.takeAt(0)
+            self._descartar_item_feed(item)
+        self._ultima_mensagem = ("", "", 0.0)
+
+    def _mostrar_conversa_vazia(self) -> None:
+        self._limpar_historico_visual()
+        self.vazio = QFrame(objectName="emptyState")
+        self.vazio.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Minimum)
+        lay = QVBoxLayout(self.vazio)
+        titulo = QLabel("◕‿◕  Conversa nova, memória global intacta.")
+        titulo.setObjectName("emptyTitle")
+        titulo.setAlignment(Qt.AlignCenter)
+        titulo.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        texto = QLabel("Este chat começa sem referências nem assunto anterior.")
+        texto.setObjectName("emptyCopy")
+        texto.setAlignment(Qt.AlignCenter)
+        texto.setWordWrap(True)
+        texto.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        lay.addWidget(titulo)
+        lay.addWidget(texto)
+        self.feed_lay.addStretch()
+        self.feed_lay.addWidget(self.vazio)
+        self.feed_lay.addStretch()
+        self._feed_em_espera = True
+
+    def _substituir_historico(
+        self,
+        mensagens: list[dict],
+        *,
+        animar: bool = False,
+    ) -> None:
+        self._limpar_historico_visual()
+        self._feed_em_espera = True
+        validas = [item for item in mensagens if isinstance(item, dict)]
+        if not validas:
+            self._mostrar_conversa_vazia()
+            if animar:
+                self._animar_entrada_conversa()
+            return
+        for item in validas:
+            self.adicionar_mensagem(
+                str(item.get("role") or "assistant"),
+                str(item.get("content") or ""),
+                timestamp=item.get("timestamp"),
+                rolar_ao_final=False,
+                animar=False,
+            )
+        self._agendar_rolagem_final()
+        if animar:
+            self._animar_entrada_conversa()
+
+    def _encerrar_animacoes_conversas(self) -> None:
+        for grupo in list(self._animacoes_conversas):
+            grupo.stop()
+            grupo.deleteLater()
+        self._animacoes_conversas.clear()
+
+    def _animar_nova_conversa_lateral(self, linha: QWidget) -> None:
+        if self._reduzir_movimento or not self._interface_animavel:
+            return
+        self.conversas_lay.activate()
+        altura_final = max(34, linha.sizeHint().height())
+        efeito = QGraphicsOpacityEffect(linha)
+        efeito.setOpacity(0.08)
+        linha.setGraphicsEffect(efeito)
+        linha.setMaximumHeight(0)
+        grupo = QParallelAnimationGroup(self)
+        opacidade = QPropertyAnimation(efeito, b"opacity", grupo)
+        opacidade.setDuration(210)
+        opacidade.setStartValue(0.08)
+        opacidade.setEndValue(1.0)
+        opacidade.setEasingCurve(QEasingCurve.OutCubic)
+        altura = QPropertyAnimation(linha, b"maximumHeight", grupo)
+        altura.setDuration(250)
+        altura.setStartValue(0)
+        altura.setEndValue(altura_final)
+        altura.setEasingCurve(QEasingCurve.OutCubic)
+        grupo.addAnimation(opacidade)
+        grupo.addAnimation(altura)
+        self._animacoes_conversas.append(grupo)
+
+        def finalizar() -> None:
+            linha.setMaximumHeight(16_777_215)
+            if linha.graphicsEffect() is efeito:
+                linha.setGraphicsEffect(None)
+            if grupo in self._animacoes_conversas:
+                self._animacoes_conversas.remove(grupo)
+            grupo.deleteLater()
+
+        grupo.finished.connect(finalizar)
+        grupo.start()
+
+    def _definir_controles_conversa(self, habilitados: bool) -> None:
+        ativo = bool(habilitados and self._conectado)
+        self.nova.setEnabled(ativo)
+        for conversa_id, botao in self._botoes_conversas.items():
+            conversa = next(
+                (
+                    item for item in self._conversas
+                    if str(item.get("id") or "") == conversa_id
+                ),
+                {},
+            )
+            botao.setEnabled(
+                ativo and str(conversa.get("status") or "active") == "active"
+            )
+        for botao in self._menus_conversas.values():
+            botao.setEnabled(ativo)
+
+    @staticmethod
+    def _normalizar_busca_conversa(texto: object) -> str:
+        bruto = unicodedata.normalize("NFKD", str(texto or "").casefold())
+        sem_acentos = "".join(
+            caractere for caractere in bruto
+            if not unicodedata.combining(caractere)
+        )
+        return re.sub(r"\s+", " ", sem_acentos).strip()
+
+    def _filtrar_conversas(self, texto: str) -> None:
+        self._filtro_conversas = self._normalizar_busca_conversa(texto)
+        self._renderizar_lista_conversas()
+
+    def _alternar_conversas_arquivadas(self, mostrar: bool) -> None:
+        self._mostrar_arquivadas = bool(mostrar)
+        self.botao_arquivadas.setToolTip(
+            "Ocultar conversas arquivadas"
+            if mostrar else "Mostrar conversas arquivadas"
+        )
+        self._renderizar_lista_conversas()
+
+    def _adicionar_secao_conversas(self, texto: str) -> None:
+        rotulo = QLabel(texto, self.conversas_container)
+        rotulo.setObjectName("conversationSection")
+        self.conversas_lay.addWidget(rotulo)
+
+    def _renderizar_lista_conversas(
+        self,
+        *,
+        ids_anteriores: set[str] | None = None,
+    ) -> None:
+        ids_anteriores = set(ids_anteriores or {
+            str(item.get("id") or "") for item in self._conversas
+            if isinstance(item, dict)
+        })
+        ativa = self._conversa_ativa_id
+        consulta = self._filtro_conversas
+        filtradas = [
+            conversa for conversa in self._conversas
+            if not consulta or consulta in self._normalizar_busca_conversa(
+                conversa.get("title"),
+            )
+        ]
+        ativas = [
+            conversa for conversa in filtradas
+            if str(conversa.get("status") or "active") == "active"
+        ]
+        fixadas = [conversa for conversa in ativas if conversa.get("pinned")]
+        recentes = [conversa for conversa in ativas if not conversa.get("pinned")]
+        arquivadas = [
+            conversa for conversa in filtradas
+            if str(conversa.get("status") or "") == "archived"
+            and (self._mostrar_arquivadas or bool(consulta))
+        ]
+
+        self._encerrar_animacoes_conversas()
+        for botao in (
+            *self._botoes_conversas.values(),
+            *self._menus_conversas.values(),
+        ):
+            self._encerrar_microinteracao_por_id(id(botao))
+        while self.conversas_lay.count():
+            item_layout = self.conversas_lay.takeAt(0)
+            if item_layout.widget() is not None:
+                item_layout.widget().deleteLater()
+        self._botoes_conversas.clear()
+        self._menus_conversas.clear()
+
+        grupos = (
+            ("FIXADAS", fixadas),
+            ("RECENTES", recentes),
+            ("ARQUIVADAS", arquivadas),
+        )
+        exibidas = 0
+        for secao, conversas in grupos:
+            if not conversas:
+                continue
+            self._adicionar_secao_conversas(secao)
+            for conversa in conversas:
+                conversa_id = str(conversa.get("id") or "")
+                titulo = str(conversa.get("title") or "Nova conversa")
+                arquivada = str(conversa.get("status") or "") == "archived"
+                fixada = bool(conversa.get("pinned"))
+                linha = QFrame(self.conversas_container)
+                linha.setObjectName("conversationRow")
+                linha.setProperty("active", conversa_id == ativa)
+                linha.setProperty("archived", arquivada)
+                lay = QHBoxLayout(linha)
+                lay.setContentsMargins(2, 1, 2, 1)
+                lay.setSpacing(2)
+                botao = QPushButton(
+                    f"★  {titulo}" if fixada and not arquivada else titulo,
+                    linha,
+                )
+                botao.setObjectName("conversationItem")
+                botao.setProperty("archived", arquivada)
+                botao.setCheckable(True)
+                botao.setChecked(conversa_id == ativa)
+                botao.setToolTip(
+                    f"{titulo} · arquivada" if arquivada else titulo
+                )
+                botao.setAccessibleName(
+                    f"Conversa arquivada {titulo}"
+                    if arquivada else f"Abrir conversa {titulo}"
+                )
+                botao.setEnabled(not arquivada)
+                botao.clicked.connect(
+                    lambda _v=False, cid=conversa_id:
+                    self.selecionar_conversa(cid)
+                )
+                menu = QToolButton(linha)
+                menu.setObjectName("conversationMenu")
+                menu.setText("⋯")
+                menu.setToolTip(f"Opções de {titulo}")
+                menu.setAccessibleName(f"Opções da conversa {titulo}")
+                menu.clicked.connect(
+                    lambda _v=False, cid=conversa_id, nome=titulo,
+                    dados=dict(conversa), origem=menu:
+                    self._abrir_menu_conversa(cid, nome, dados, origem)
+                )
+                self._registrar_feedback_botao(botao)
+                self._registrar_feedback_botao(menu)
+                lay.addWidget(botao, 1)
+                lay.addWidget(menu)
+                self.conversas_lay.addWidget(linha)
+                self._botoes_conversas[conversa_id] = botao
+                self._menus_conversas[conversa_id] = menu
+                exibidas += 1
+                if conversa_id not in ids_anteriores:
+                    self._animar_nova_conversa_lateral(linha)
+        if not exibidas:
+            vazio = QLabel(
+                "Nenhuma conversa encontrada"
+                if consulta else "Nenhuma conversa nesta seção",
+                self.conversas_container,
+            )
+            vazio.setObjectName("conversationEmpty")
+            self.conversas_lay.addWidget(vazio)
+        self.conversas_lay.addStretch(1)
+        visivel = self._sidebar_expandida and bool(self._conversas)
+        self.recentes_label.setVisible(visivel)
+        self.ferramentas_conversas.setVisible(visivel)
+        self.conversas_scroll.setVisible(visivel)
+        self._definir_controles_conversa(not self._requisicao_conversa_id)
+
+    def _aplicar_retrato_conversas(
+        self,
+        retrato: dict,
+        *,
+        substituir_historico: bool,
+    ) -> None:
+        if not isinstance(retrato, dict) or not retrato.get("available"):
+            return
+        ids_anteriores = {
+            str(item.get("id") or "") for item in self._conversas
+            if isinstance(item, dict)
+        }
+        ativa = str(retrato.get("active_id") or "")
+        itens = [
+            dict(item) for item in list(retrato.get("items") or [])
+            if isinstance(item, dict) and str(item.get("id") or "")
+        ]
+        self._conversa_ativa_id = ativa
+        self._conversas = itens
+        titulo_ativo = "Nenhuma conversa" if not ativa else "Nova conversa"
+        for conversa in itens:
+            if str(conversa.get("id") or "") == ativa:
+                titulo_ativo = str(conversa.get("title") or "Nova conversa")
+                break
+        self._renderizar_lista_conversas(ids_anteriores=ids_anteriores)
+        self.conversa_atual.setText(titulo_ativo)
+        if self._pagina_principal == "conversa":
+            self.titulo_header.setText(titulo_ativo)
+        if substituir_historico and isinstance(retrato.get("messages"), list):
+            self._substituir_historico(
+                list(retrato["messages"]),
+                animar=True,
+            )
+
+    def _enviar_requisicao_conversa(self, tipo: str, **dados: object) -> None:
+        if not self._conectado or self._requisicao_conversa_id:
+            return
+        requisicao_id = uuid.uuid4().hex
+        self._requisicao_conversa_id = requisicao_id
+        self._definir_controles_conversa(False)
+        self.enviar_json.emit({"type": tipo, "id": requisicao_id, **dados})
+
+    def nova_conversa(self) -> None:
+        self._enviar_requisicao_conversa(
+            "conversation_create", title="Nova conversa",
+        )
+
+    def selecionar_conversa(self, conversa_id: str) -> None:
+        identificador = str(conversa_id or "")
+        if not identificador or identificador == self._conversa_ativa_id:
+            self.selecionar_pagina("conversa")
+            return
+        self._enviar_requisicao_conversa(
+            "conversation_select", conversation_id=identificador,
+        )
+
+    def fixar_conversa(self, conversa_id: str, fixada: bool) -> None:
+        self._enviar_requisicao_conversa(
+            "conversation_pin",
+            conversation_id=str(conversa_id or ""),
+            pinned=bool(fixada),
+        )
+
+    def arquivar_conversa(self, conversa_id: str) -> None:
+        self._enviar_requisicao_conversa(
+            "conversation_archive",
+            conversation_id=str(conversa_id or ""),
+        )
+
+    def restaurar_conversa(self, conversa_id: str) -> None:
+        self._enviar_requisicao_conversa(
+            "conversation_unarchive",
+            conversation_id=str(conversa_id or ""),
+        )
+
+    def _abrir_menu_conversa(
+        self,
+        conversa_id: str,
+        titulo: str,
+        conversa: dict,
+        origem: QWidget,
+    ) -> None:
+        menu = QMenu(self)
+        arquivada = str(conversa.get("status") or "active") == "archived"
+        fixada = bool(conversa.get("pinned"))
+        if arquivada:
+            restaurar = QAction("Restaurar conversa", menu)
+            restaurar.triggered.connect(
+                lambda: self.restaurar_conversa(conversa_id)
+            )
+            menu.addAction(restaurar)
+        else:
+            fixar = QAction("Desafixar" if fixada else "Fixar", menu)
+            fixar.triggered.connect(
+                lambda: self.fixar_conversa(conversa_id, not fixada)
+            )
+            menu.addAction(fixar)
+        renomear = QAction("Renomear", menu)
+        arquivar = QAction("Arquivar", menu)
+        excluir = QAction("Excluir", menu)
+        renomear.triggered.connect(
+            lambda: self._pedir_renomeacao_conversa(conversa_id, titulo)
+        )
+        arquivar.triggered.connect(
+            lambda: self.arquivar_conversa(conversa_id)
+        )
+        excluir.triggered.connect(
+            lambda: self._pedir_exclusao_conversa(conversa_id, titulo)
+        )
+        menu.addAction(renomear)
+        if not arquivada:
+            menu.addAction(arquivar)
+        menu.addSeparator()
+        menu.addAction(excluir)
+        menu.exec(origem.mapToGlobal(origem.rect().bottomLeft()))
+
+    def _pedir_renomeacao_conversa(self, conversa_id: str, titulo: str) -> None:
+        novo, aceito = QInputDialog.getText(
+            self, "Renomear conversa", "Novo título:", text=titulo,
+        )
+        novo = re.sub(r"\s+", " ", str(novo or "")).strip()
+        if aceito and novo and novo != titulo:
+            self._enviar_requisicao_conversa(
+                "conversation_rename",
+                conversation_id=conversa_id,
+                title=novo[:120],
+            )
+
+    def _pedir_exclusao_conversa(self, conversa_id: str, titulo: str) -> None:
+        resposta = QMessageBox.question(
+            self,
+            "Excluir conversa",
+            f'Excluir "{titulo}" e todo o contexto deste chat?\n\n'
+            "Suas memórias globais e ações já executadas serão preservadas.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if resposta == QMessageBox.Yes:
+            self._enviar_requisicao_conversa(
+                "conversation_delete", conversation_id=conversa_id,
+            )
+
+    def excluir_conversa_confirmada(self, conversa_id: str) -> None:
+        """Porta testável; a interface pública continua pedindo confirmação."""
+        self._enviar_requisicao_conversa(
+            "conversation_delete", conversation_id=str(conversa_id or ""),
+        )
+
+    def abrir_conversa_ativa(self) -> None:
+        self.selecionar_pagina("conversa")
+        self.composer.editor.setFocus()
+
+    def selecionar_pagina(self, nome: str) -> None:
+        mapa = {
+            "inicio": 0,
+            "conversa": 0,
+            "atividade": 1,
+            "diagnostico": 2,
+            "sistema": 7,
+            "configuracoes": 3,
+            "automacao": 4,
+            "musica": 5,
+            "memoria": 6,
+        }
+        indice_anterior = self.paginas.currentIndex()
+        nome_anterior = self._pagina_visual_ativa
+        indice_destino = mapa.get(nome, 0)
+        mudou = nome != nome_anterior
+        self.paginas.setCurrentIndex(indice_destino)
+        if nome in {"inicio", "conversa"}:
+            self._pagina_principal = nome
+        titulos = {
+            "inicio": "Início",
+            "conversa": self.conversa_atual.text(),
+            "atividade": "Atividade",
+            "diagnostico": "Diagnóstico",
+            "sistema": "Sistema",
+            "configuracoes": "Configurações",
+            "automacao": "Automação",
+            "musica": "Música",
+            "memoria": "Memória",
+        }
+        self.titulo_header.setText(titulos.get(nome, "Laylay"))
+        for chave, botao in self._nav.items():
+            botao.setChecked(chave == nome)
+        if nome == "configuracoes" and self._conectado:
+            self.enviar_json.emit({"type": "settings_get", "id": uuid.uuid4().hex})
+        self._aplicar_responsividade()
+        self._pagina_visual_ativa = nome
+        if mudou:
+            direcao = 1 if indice_destino >= indice_anterior else -1
+            pagina = self.paginas.currentWidget()
+            if pagina is not None:
+                QTimer.singleShot(
+                    0,
+                    lambda alvo=pagina, sentido=direcao:
+                    self._animar_transicao_pagina(alvo, sentido),
+                )
+        QTimer.singleShot(
+            0,
+            lambda destino=nome: self._sincronizar_indicador_navegacao(
+                destino,
+                animar=mudou and self._interface_animavel,
+            ),
+        )
+
+    def alternar_sidebar(self) -> None:
+        self._sidebar_expandida = not self._sidebar_expandida
+        self.preferencias.setValue("sidebar_expandida", self._sidebar_expandida)
+        self.configuracoes.manter_sidebar.blockSignals(True)
+        self.configuracoes.manter_sidebar.setChecked(self._sidebar_expandida)
+        self.configuracoes.manter_sidebar.blockSignals(False)
+        self._aplicar_sidebar()
+
+    def _preferencia_sidebar(self, expandida: bool) -> None:
+        self._sidebar_expandida = bool(expandida)
+        self.preferencias.setValue("sidebar_expandida", self._sidebar_expandida)
+        self._aplicar_sidebar()
+
+    def _aplicar_sidebar(self) -> None:
+        self.sidebar.setFixedWidth(198 if self._sidebar_expandida else 68)
+        self.marca.setVisible(self._sidebar_expandida)
+        self.marca_status.hide()
+        self.nav_label.hide()
+        self.recentes_label.setVisible(
+            self._sidebar_expandida and bool(self._conversas)
+        )
+        self.ferramentas_conversas.setVisible(
+            self._sidebar_expandida and bool(self._conversas)
+        )
+        self.conversas_scroll.setVisible(
+            self._sidebar_expandida and bool(self._conversas)
+        )
+        self.conversa_atual.hide()
+        self.status_mente.hide()
+        self.config_rodape.hide()
+        self.profile_card.setVisible(
+            self._sidebar_expandida
+        )
+        self.recolher.setText(
+            "‹" if self._sidebar_expandida else "›"
+        )
+        self.nova.show()
+        self.nova.setText(
+            "Novo chat" if self._sidebar_expandida else ""
+        )
+        for botao in self._nav.values():
+            texto = str(botao.property("label"))
+            botao.setText(texto if self._sidebar_expandida else "")
+        self.configuracoes.manter_sidebar.blockSignals(True)
+        self.configuracoes.manter_sidebar.setChecked(self._sidebar_expandida)
+        self.configuracoes.manter_sidebar.blockSignals(False)
+
+    def _alternar_sidebar_compacta(self) -> None:
+        self.sidebar.setVisible(not self.sidebar.isVisible())
+
+    def _sidebar_compacta_visual(self) -> None:
+        self.sidebar.setFixedWidth(68)
+        for widget in (
+            self.marca,
+            self.marca_status,
+            self.nav_label,
+            self.recentes_label,
+            self.ferramentas_conversas,
+            self.conversas_scroll,
+            self.conversa_atual,
+            self.status_mente,
+            self.config_rodape,
+            self.profile_card,
+        ):
+            widget.hide()
+        self.recolher.setText("›")
+        self.nova.setText("")
+        for botao in self._nav.values():
+            botao.setText("")
+
+    def _aplicar_responsividade(self) -> None:
+        largura = self.width()
+        estreita = largura < 760
+        compacta = largura < 920
+        inicio_ativo = (
+            self.paginas.currentIndex() == 0
+            and self._pagina_principal == "inicio"
+        )
+        self.central_inteligente.setVisible(inicio_ativo and largura >= 1450)
+        self.painel_lateral.setVisible(inicio_ativo and largura >= 1650)
+        self.chip_memoria.setVisible(largura >= 1420)
+        self.chip_modelo.setVisible(largura >= 1160)
+        self.chip_microfone.setVisible(largura >= 980)
+        self.menu_compacto.setVisible(estreita)
+        # A P5 não usa navegação histórica no topo. Mantê-los sempre
+        # ocultos também impede que um resize os reexiba fora da composição.
+        self.voltar.hide()
+        self.avancar.hide()
+        self.titulo_header.hide()
+        self.status.setVisible(not compacta)
+        if estreita:
+            self._sidebar_compacta_visual()
+            self.sidebar.hide()
+        elif compacta:
+            self._sidebar_compacta_visual()
+            self.sidebar.show()
+        else:
+            self.sidebar.show()
+            self._aplicar_sidebar()
+        margem = 6 if estreita else 14
+        pagina_conversa = self.paginas.widget(0)
+        if pagina_conversa is not None and pagina_conversa.layout() is not None:
+            pagina_conversa.layout().setContentsMargins(
+                margem,
+                6 if estreita else 12,
+                margem,
+                12 if estreita else 16,
+            )
+        self.feed_lay.setContentsMargins(
+            4 if estreita else 26,
+            18 if estreita else 28,
+            4 if estreita else 26,
+            18 if estreita else 22,
+        )
+        self.configuracoes.definir_compacto(compacta, estreito=estreita)
+        QTimer.singleShot(0, self._ajustar_larguras_mensagens)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._aplicar_responsividade()
+
+    def changeEvent(self, event) -> None:  # noqa: N802
+        super().changeEvent(event)
+        if event.type() != event.Type.WindowStateChange:
+            return
+        if self.isMinimized():
+            self._parar_pulso_presenca()
+        else:
+            QTimer.singleShot(
+                0,
+                lambda: self._atualizar_pulso_presenca(
+                    self._atividade_visual_atual,
+                ),
+            )
+
+    def closeEvent(self, event) -> None:  # noqa: N802
+        self._timer_auto_scroll.stop()
+        self._encerrar_rolagem_suave()
+        self._parar_pulso_presenca()
+        self._encerrar_microinteracoes()
+        self._encerrar_animacoes_mensagens()
+        self._encerrar_animacoes_conversas()
+        self._encerrar_transicao_conversa()
+        self._encerrar_transicao_pagina()
+        self._remover_indicador_pensando(animar=False)
+        self._encerrar_saida_pensando()
+
+        grupo_inicio = self._animacao_inicio_grupo
+        if grupo_inicio is not None:
+            grupo_inicio.stop()
+            grupo_inicio.deleteLater()
+            self._animacao_inicio_grupo = None
+        for _nome, widget, efeito in list(self._efeitos_inicio):
+            if _objeto_qt_esta_vivo(widget):
+                try:
+                    if widget.graphicsEffect() is efeito:
+                        widget.setGraphicsEffect(None)
+                except RuntimeError:
+                    pass
+        self._efeitos_inicio.clear()
+
+        movimento_nav = self._animacao_indicador_nav
+        if movimento_nav is not None:
+            movimento_nav.stop()
+            movimento_nav.deleteLater()
+            self._animacao_indicador_nav = None
+
+        for timeout in list(self._timeouts_envio.values()):
+            timeout.stop()
+            timeout.deleteLater()
+        self._timeouts_envio.clear()
+        self._fases_envio.clear()
+
+        # Defesa final de ciclo de vida: nenhum efeito de um filho fechado
+        # deve sobreviver e tentar pintar no QApplication compartilhado.
+        for widget in self.feed.findChildren(QWidget):
+            try:
+                if widget.graphicsEffect() is not None:
+                    widget.setGraphicsEffect(None)
+            except RuntimeError:
+                pass
+        self.worker.parar()
+        event.accept()
+
+
+def configuracao_ponte() -> tuple[str, int, str]:
+    host = os.environ.get("LAYLAY_DESKTOP_HOST", "127.0.0.1")
+    try:
+        port = int(os.environ.get("LAYLAY_DESKTOP_PORT", "0"))
+    except ValueError:
+        port = 0
+    token = os.environ.get("LAYLAY_DESKTOP_TOKEN", "")
+    if host not in {"127.0.0.1", "localhost", "::1"} or not port or not token:
+        raise RuntimeError("O Terminal 2.1 deve ser iniciado pela Laylay para receber uma sessão segura.")
+    return host, port, token
+
+
+def processo_esta_ativo(pid: int) -> bool:
+    """Verifica o pai sem alterar seu estado.
+
+    No Windows, ``os.kill(pid, 0)`` não é um probe POSIX seguro: a chamada
+    passa pelo mecanismo de encerramento de processos e pode matar justamente
+    o núcleo que abriu o Terminal. Consultamos apenas o código de saída com o
+    menor direito de acesso necessário. Uma recusa de acesso ainda significa
+    que existe um processo naquele PID.
+    """
+    try:
+        pid = int(pid or 0)
+    except (TypeError, ValueError):
+        return False
+    if pid <= 0:
+        return True
+
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+
+        process_query_limited_information = 0x1000
+        error_access_denied = 5
+        still_active = 259
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        open_process = kernel32.OpenProcess
+        open_process.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        open_process.restype = wintypes.HANDLE
+        get_exit_code = kernel32.GetExitCodeProcess
+        get_exit_code.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD))
+        get_exit_code.restype = wintypes.BOOL
+        close_handle = kernel32.CloseHandle
+        close_handle.argtypes = (wintypes.HANDLE,)
+        close_handle.restype = wintypes.BOOL
+
+        ctypes.set_last_error(0)
+        handle = open_process(process_query_limited_information, False, pid)
+        if not handle:
+            return ctypes.get_last_error() == error_access_denied
+        try:
+            codigo_saida = wintypes.DWORD()
+            if not get_exit_code(handle, ctypes.byref(codigo_saida)):
+                # Uma falha transitória de leitura não autoriza fechar a UI.
+                return True
+            return codigo_saida.value == still_active
+        finally:
+            close_handle(handle)
+
+    try:
+        os.kill(pid, 0)
+        return True
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+
+
+def main() -> int:
+    host, port, token = configuracao_ponte()
+    session_id = os.environ.get("LAYLAY_DESKTOP_SESSION", "").strip()
+    try:
+        parent_pid = int(os.environ.get("LAYLAY_PARENT_PID", "0") or 0)
+    except ValueError:
+        parent_pid = 0
+    raiz = Path(os.environ.get("LAYLAY_PROJECT_ROOT") or Path(__file__).resolve().parents[1]).resolve()
+    app = QApplication(sys.argv)
+    app.setApplicationName("Laylay Terminal 2.1")
+    app.setOrganizationName("Laylay")
+    familia = carregar_fontes_interface()
+    app.setFont(QFont(familia, 10))
+    worker = PonteWorker(host, port, token, session_id=session_id)
+    thread = QThread()
+    worker.moveToThread(thread)
+    thread.started.connect(worker.executar)
+    worker.terminou.connect(thread.quit)
+    janela = JanelaLaylay(
+        worker, raiz, session_id=session_id, parent_pid=parent_pid,
+    )
+    janela.show()
+    monitor_pai = QTimer(app)
+    monitor_pai.setInterval(1_500)
+
+    def encerrar_se_orfao() -> None:
+        if parent_pid and not processo_esta_ativo(parent_pid):
+            print(
+                "⚠️ [TERMINAL 2:CLIENTE] processo pai encerrou; "
+                f"fechando sessão={session_id[:8]}"
+            )
+            janela.close()
+            app.quit()
+
+    monitor_pai.timeout.connect(encerrar_se_orfao)
+    monitor_pai.start()
+    thread.start()
+    codigo = app.exec()
+    worker.parar()
+    thread.quit()
+    thread.wait(1500)
+    return codigo
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,316 @@
+{
+  "versao": 2,
+  "assinatura": "f21de1b4166121f9367432766e8bdf4034cd030fac8f739795136d6073c9fc34",
+  "criado_em": 1787692358.735594,
+  "atualizado_em": 1787692380.0150657,
+  "concluido": true,
+  "criterio_conclusao": "transporte_resposta_e_resultado_turno",
+  "voz_silenciada_durante_teste": true,
+  "itens": [
+    {
+      "indice": 0,
+      "comando": "Cria um arquivo chamado laylay_r1_rt2_cross_91c4e7.txt e escreve MARCADOR R1 RT2 CROSS 91C4E7.",
+      "status": "respondido",
+      "resposta": "C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt já está criado e no lugar.",
+      "enviado_em": 1787692361.7733283,
+      "finalizado_em": 1787692369.0789576,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "CREATE_FILE",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt",
+            "status": "arquivo_criado",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "estado_observado",
+            "evidencia_confirmacao": "a existência local do arquivo é relida"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "rt2_cria_fixture_a",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "arquivos",
+        "intents_observadas": [
+          "CREATE_FILE"
+        ],
+        "statuses_observados": [
+          "arquivo_criado"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada",
+          "confirmacao_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 7.306
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada"
+    },
+    {
+      "indice": 1,
+      "comando": "Leia o laylay_r1_rt2_cross_91c4e7.txt.",
+      "status": "respondido",
+      "resposta": "Atualizei o conteúdo de C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt e conferi o arquivo.",
+      "enviado_em": 1787692369.1184175,
+      "finalizado_em": 1787692369.3920786,
+      "plano": {
+        "fase": "tratado_prioritario",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "FILE_READ",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt",
+            "status": "conteudo_lido",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "retorno_dados",
+            "evidencia_confirmacao": "o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "nao",
+        "versao_avaliador": 15,
+        "resultado_semantico": "falhou",
+        "semantica_avaliada": true,
+        "expectativa": "rt2_leitura_a_confirmada",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "arquivos",
+        "intents_observadas": [
+          "FILE_READ"
+        ],
+        "statuses_observados": [
+          "conteudo_lido"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [
+          "fala_nao_contem_evidencia_esperada"
+        ],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada",
+          "confirmacao_esperada",
+          "fala_minima"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 0.274
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada"
+    },
+    {
+      "indice": 2,
+      "comando": "Abre a calculadora.",
+      "status": "respondido",
+      "resposta": "Calculadora aberta e no foco. Tudo certo, não precisou pedir de novo — nem que eu tivesse de fingir que a tela pulou pra cima!",
+      "enviado_em": 1787692369.4467776,
+      "finalizado_em": 1787692374.285635,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "APP_OPEN",
+            "alvo": "calculadora",
+            "status": "app_iniciado_focado",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "estado_observado",
+            "evidencia_confirmacao": "a janela é relida localmente ou pelo cliente remoto compatível"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "rt2_app_vira_operacao_incompativel_mais_recente",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "apps",
+        "intents_observadas": [
+          "APP_OPEN"
+        ],
+        "statuses_observados": [
+          "app_iniciado_focado"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada",
+          "confirmacao_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 4.839
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada"
+    },
+    {
+      "indice": 3,
+      "comando": "De novo.",
+      "status": "respondido",
+      "resposta": "calculadora já está aberto e em foco; não repeti a abertura.",
+      "enviado_em": 1787692374.3103528,
+      "finalizado_em": 1787692379.8425014,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "APP_OPEN",
+            "alvo": "calculadora",
+            "status": "ja_aberto_focado",
+            "executou": false,
+            "confirmado": true,
+            "confirmacao_oferecida": "estado_observado",
+            "evidencia_confirmacao": "a janela é relida localmente ou pelo cliente remoto compatível"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "nenhuma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "rt2_guard_repeticao_generica_continua_no_app",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "apps",
+        "intents_observadas": [
+          "APP_OPEN"
+        ],
+        "statuses_observados": [
+          "ja_aberto_focado"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada",
+          "confirmacao_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 5.532
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada"
+    },
+    {
+      "indice": 4,
+      "comando": "Leia de novo.",
+      "status": "respondido",
+      "resposta": "Concluí o pedido em C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt e confirmei o resultado. O conteúdo de laylay_r1_rt2_cross_91c4e7.txt é: marcador r1 rt2 cross 91c4e7",
+      "enviado_em": 1787692379.8795204,
+      "finalizado_em": 1787692379.9871433,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "FILE_READ",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\laylay_r1_rt2_cross_91c4e7.txt",
+            "status": "conteudo_lido",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "retorno_dados",
+            "evidencia_confirmacao": "o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "r1_rt2_repeticao_tipificada_vence_cross_domain",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "arquivos",
+        "intents_observadas": [
+          "FILE_READ"
+        ],
+        "statuses_observados": [
+          "conteudo_lido"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada",
+          "confirmacao_esperada",
+          "fala_minima"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 0.108
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada"
+    }
+  ],
+  "preparacao": {
+    "status": "modo_chat_confirmado",
+    "atraso_inicial_s": 3.0,
+    "voz_silenciada": true
+  },
+  "finalizado_em": 1787692380.0150635
+}

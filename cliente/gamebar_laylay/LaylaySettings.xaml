@@ -1,0 +1,10 @@
+<Page
+    x:Class="LaylayGameBar.LaylaySettings"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Background="#FF171923">
+        <ScrollViewer>
+            <StackPanel x:Name="SettingsPanel" Padding="24" />
+        </ScrollViewer>
+    </Grid>
+</Page>
