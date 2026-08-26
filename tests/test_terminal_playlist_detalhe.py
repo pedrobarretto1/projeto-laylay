@@ -4,7 +4,7 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QEvent
+from PySide6.QtCore import QEvent, QSize
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QApplication
 
@@ -150,6 +150,12 @@ def test_linha_revela_play_e_menu_sem_mudar_geometria_e_toca_video_exato() -> No
     assert not linha.menu.isHidden()
     assert linha.controle_slot.geometry() == controle_antes
     assert linha.menu_slot.geometry() == menu_antes
+    for controle in (linha.play, linha.menu):
+        assert controle.width() <= 24
+        assert controle.height() <= 24
+    assert linha.play.iconSize() == QSize(12, 12)
+    assert not linha.play.icon().pixmap(linha.play.iconSize()).isNull()
+    assert linha.menu.text() == "•••"
 
     pedidos.clear()
     linha.play.click()

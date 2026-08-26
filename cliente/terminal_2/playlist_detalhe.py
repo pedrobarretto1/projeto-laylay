@@ -81,7 +81,7 @@ class FaixaPlaylistRow(QFrame):
         layout.setSpacing(9)
 
         self.controle_slot = QWidget()
-        self.controle_slot.setFixedSize(28, 28)
+        self.controle_slot.setFixedSize(24, 24)
         controle = QStackedLayout(self.controle_slot)
         controle.setContentsMargins(0, 0, 0, 0)
         self.numero = QLabel(str(indice + 1))
@@ -90,8 +90,8 @@ class FaixaPlaylistRow(QFrame):
         self.play = QToolButton()
         self.play.setObjectName("playlistTrackPlay")
         self.play.setIcon(icone_terminal("play"))
-        self.play.setIconSize(QSize(13, 13))
-        self.play.setFixedSize(28, 28)
+        self.play.setIconSize(QSize(12, 12))
+        self.play.setFixedSize(24, 24)
         self.play.setAccessibleName(
             f"Tocar {item.get('title') or 'esta faixa'}"
         )
@@ -144,14 +144,14 @@ class FaixaPlaylistRow(QFrame):
         layout.addWidget(self.duracao)
 
         self.menu_slot = QWidget()
-        self.menu_slot.setFixedSize(28, 28)
+        self.menu_slot.setFixedSize(24, 24)
         menu_layout = QHBoxLayout(self.menu_slot)
         menu_layout.setContentsMargins(0, 0, 0, 0)
         self.menu = QToolButton()
         self.menu.setObjectName("playlistTrackMenu")
         self.menu.setText("•••")
         self.menu.setToolButtonStyle(Qt.ToolButtonTextOnly)
-        self.menu.setFixedSize(28, 28)
+        self.menu.setFixedSize(24, 24)
         self.menu.setAccessibleName(
             f"Opções para {item.get('title') or 'faixa'}"
         )
@@ -423,15 +423,24 @@ class PlaylistDetalhe(QWidget):
             #playlistTrackTitle { color: #FFF9FB; font-size: 12px; font-weight: 650; }
             #playlistTrackMeta, #playlistTrackChannel, #playlistTrackAdded,
             #playlistTrackDuration { color: #AFA8AE; font-size: 10px; }
-            #playlistTrackPlay, #playlistTrackMenu {
+            #playlistDetail #playlistTrackPlay, #playlistDetail #playlistTrackMenu {
                 background: transparent; border: 1px solid transparent;
-                border-radius: 5px; padding: 0; margin: 0;
+                border-radius: 4px; padding: 0; margin: 0;
+                min-width: 22px; max-width: 22px;
+                min-height: 22px; max-height: 22px;
             }
-            #playlistTrackPlay:hover, #playlistTrackMenu:hover,
-            #playlistTrackPlay:focus, #playlistTrackMenu:focus {
-                background: #2B3037; border-color: #71404C;
+            #playlistDetail #playlistTrackMenu { font-size: 7px; }
+            #playlistDetail #playlistTrackPlay:hover,
+            #playlistDetail #playlistTrackMenu:hover {
+                background: #2B3037; border-color: #3D434C;
             }
-            #playlistTrackMenu::menu-indicator { image: none; width: 0; height: 0; }
+            #playlistDetail #playlistTrackPlay:focus,
+            #playlistDetail #playlistTrackMenu:focus {
+                background: #2B3037; border-color: #A64C5E;
+            }
+            #playlistDetail #playlistTrackMenu::menu-indicator {
+                image: none; width: 0; height: 0;
+            }
             #playlistObservedPlayer { background: #151A20; border: 1px solid #343038; border-radius: 7px; }
             #playlistObservedProgress { background: #292E35; border: 0; border-radius: 2px; max-height: 4px; }
             #playlistObservedProgress::chunk { background: #FF536D; border-radius: 2px; }
