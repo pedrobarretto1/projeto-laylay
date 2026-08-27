@@ -339,25 +339,25 @@ def analisar_e_sugerir_rotina(
     ultima_sugestao: float,
     sugestao_pendente: Optional[Dict[str, Any]],
     contexto_aponta_descanso: Callable[[], bool],
-    agendar_fala_proativa: Callable[[str, str, str, int], Any],
     rotinas_aprendidas_min_dias: int,
     bloqueio_rejeicao_vezes: int,
-) -> Tuple[float, Optional[Dict[str, Any]]]:
+) -> Optional[Dict[str, Any]]:
+    """Seleciona um padrao de rotina sem possuir voz nem criar pendencia."""
     agora = time.time()
     if agora - float(ultima_sugestao or 0.0) < 600:
-        return ultima_sugestao, sugestao_pendente
+        return None
     if contexto_aponta_descanso():
-        return ultima_sugestao, sugestao_pendente
+        return None
     if sugestao_pendente is not None:
-        return ultima_sugestao, sugestao_pendente
+        return None
 
     dias_com_dados = len(set(k.split(" ")[0] for k in dados_diarios.keys())) if dados_diarios else 0
     if dias_com_dados < rotinas_aprendidas_min_dias:
-        return ultima_sugestao, sugestao_pendente
+        return None
 
     hora_atual = datetime.now().strftime("%H:00")
     if hora_atual not in dados_diarios:
-        return ultima_sugestao, sugestao_pendente
+        return None
 
     dados = dados_diarios[hora_atual]
     janelas_comuns: Dict[str, int] = {}
@@ -377,15 +377,13 @@ def analisar_e_sugerir_rotina(
             continue
 
         nome_amigavel = nome_janela.split(" - ")[0].strip().title()
-        nova_pendente = {"app": nome_janela, "hora": hora_atual, "ts": agora}
-        agendada = agendar_fala_proativa(
-            "rotina",
-            f"Voce costuma usar {nome_amigavel} agora. Quer que eu abra isso com aquele jeitinho de quem ja sabe o que voce vai fazer?",
-            "calma",
-            1,
-        )
-        if agendada is False:
-            return ultima_sugestao, sugestao_pendente
-        return agora, nova_pendente
+        return {
+            "app": nome_janela,
+            "nome_amigavel": nome_amigavel,
+            "hora": hora_atual,
+            "ts": agora,
+            "ocorrencias": ocorrencias,
+            "total_registros": total_registros,
+        }
 
-    return ultima_sugestao, sugestao_pendente
+    return None

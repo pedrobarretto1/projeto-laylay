@@ -21,6 +21,18 @@ PERFIS_COMPANHIA = frozenset({"silencioso", "adaptativo", "presente"})
 JANELA_FEEDBACK_PRESENCA_S = 600.0
 
 
+def decisao_presenca_aceita_para_entrega(decisao: Mapping[str, Any] | None) -> bool:
+    """Interpreta o recibo do Diretor sem confundir fila com efeito físico."""
+    dados = dict(decisao or {})
+    proposta = dados.get("proposta_comunicativa")
+    return bool(
+        str(dados.get("status") or "").casefold() == "proposta_cognitiva"
+        and isinstance(proposta, Mapping)
+        and proposta.get("agendada") is True
+        and proposta.get("autoriza_execucao") is False
+    )
+
+
 def _codigo(valor: Any, limite: int = 96) -> str:
     texto = unicodedata.normalize("NFKD", str(valor or "").casefold())
     texto = "".join(ch for ch in texto if not unicodedata.combining(ch))
@@ -40,10 +52,12 @@ def estado_presenca_inicial() -> dict[str, Any]:
         "aprendizado": {"categorias": {}},
         "historico": [],
         "ultima_emissao": {},
+        "ultima_proposta_cognitiva": {},
         "atividade": {},
         "contadores": {
             "recebidas": 0,
             "emitidas": 0,
+            "propostas_cognitivas": 0,
             "bloqueadas_contexto": 0,
             "bloqueadas_orcamento": 0,
             "bloqueadas_qualidade": 0,
@@ -88,7 +102,8 @@ class DiretorPresencaRuntime:
         estado_set: Callable[[dict[str, Any]], Any] = lambda _estado: None,
         contexto_getter: Callable[[], Mapping[str, Any]] = lambda: {},
         registrar_oportunidade: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None,
-        emitir_fala: Callable[[str, str, int], Any] | None = None,
+        processar_evento_cognitivo: Callable[[Mapping[str, Any]], Mapping[str, Any]],
+        processar_proposta_comunicativa: Callable[..., Mapping[str, Any]],
         registrar_feedback: Callable[..., Any] | None = None,
         registrar_falha: Callable[..., Any] | None = None,
         recomendacao_musical: Callable[[str], str] | None = None,
@@ -103,7 +118,12 @@ class DiretorPresencaRuntime:
         self.estado_set = estado_set
         self.contexto_getter = contexto_getter
         self.registrar_oportunidade = registrar_oportunidade
-        self.emitir_fala = emitir_fala
+        if not callable(processar_evento_cognitivo):
+            raise ValueError("processar_evento_cognitivo deve ser callable")
+        if not callable(processar_proposta_comunicativa):
+            raise ValueError("processar_proposta_comunicativa deve ser callable")
+        self.processar_evento_cognitivo = processar_evento_cognitivo
+        self.processar_proposta_comunicativa = processar_proposta_comunicativa
         self.registrar_feedback = registrar_feedback
         self.registrar_falha = registrar_falha
         self.recomendacao_musical = recomendacao_musical
@@ -213,8 +233,22 @@ class DiretorPresencaRuntime:
         estado["contadores"] = contadores
 
     def _bloqueio_contextual(self, dados: Mapping[str, Any], contexto: Mapping[str, Any], agora: float) -> str:
+        if contexto.get("usuario_falando"):
+            return "usuario_falando"
         if contexto.get("is_speaking") or contexto.get("turno_ativo"):
             return "fala_ou_turno_em_andamento"
+        try:
+            timestamp_evento = float(
+                dados.get("timestamp") or dados.get("ts") or 0.0
+            )
+        except (TypeError, ValueError):
+            timestamp_evento = 0.0
+        try:
+            validade_s = max(0.0, float(dados.get("validade_s") or 120.0))
+        except (TypeError, ValueError):
+            validade_s = 120.0
+        if timestamp_evento > 0.0 and agora >= timestamp_evento + validade_s:
+            return "evento_expirado"
         ultima_entrada = float(contexto.get("ultima_entrada_ts") or 0.0)
         if ultima_entrada and agora - ultima_entrada < 30.0:
             return "usuario_acabou_de_falar"
@@ -236,7 +270,14 @@ class DiretorPresencaRuntime:
             confianca = float(dados.get("confianca") or 0.0)
         except (TypeError, ValueError):
             confianca = 0.0
-        if not fala or len(fala) > 360:
+        modo_cognitivo = callable(self.processar_evento_cognitivo)
+        possui_evidencia = bool(
+            self._evidencias(dados)
+            or str(dados.get("motivo") or dados.get("conteudo") or "").strip()
+        )
+        if modo_cognitivo and not possui_evidencia:
+            return "evento_sem_evidencia"
+        if not modo_cognitivo and (not fala or len(fala) > 360):
             return "fala_ausente_ou_longa"
         if confianca < self.CONFIANCA_MINIMA.get(categoria, 0.80):
             return "confianca_insuficiente"
@@ -246,6 +287,257 @@ class DiretorPresencaRuntime:
         if categoria == "musica" and bool(dados.get("executar_automaticamente")):
             return "musica_nao_pode_autotocar"
         return ""
+
+    def _evento_cognitivo(
+        self,
+        dados: Mapping[str, Any],
+        *,
+        dominio: str,
+        categoria: str,
+        chave: str,
+        agora: float,
+    ) -> dict[str, Any]:
+        evidencias = self._evidencias(dados)
+        descricao = str(
+            dados.get("motivo")
+            or dados.get("conteudo")
+            or " | ".join(evidencias)
+            or f"evento de presença {categoria} observado em {dominio}"
+        ).strip()[:500]
+        return {
+            "natureza": "evento",
+            "origem": str(dados.get("origem") or "diretor_presenca"),
+            "tipo": f"presenca_{categoria}",
+            "conteudo": descricao,
+            "evidencia": {
+                "descricao": descricao,
+                "itens": evidencias,
+                "dominio": dominio,
+                "categoria": categoria,
+            },
+            "confianca": float(dados.get("confianca") or 0.0),
+            "timestamp": agora,
+            "trace_id": f"presenca:{dominio}:{categoria}:{chave}",
+            "autoridade_usuario": False,
+            "permissao_execucao": False,
+        }
+
+    def _registrar_resultado_entrega(
+        self,
+        *,
+        id_entrega: str,
+        entregue: bool,
+        motivo: str,
+        fala: str,
+        registro_proposta: Mapping[str, Any],
+        ao_concluir_fonte: Callable[[bool, str], Any] | None,
+    ) -> None:
+        """Converte apenas entrega confirmada em emissão observável e feedbackável."""
+        momento = float(self.clock())
+        resultado = {
+            "entregue": bool(entregue),
+            "motivo": str(motivo or ""),
+            "ts": momento,
+        }
+        with self._lock:
+            estado = self._estado()
+            ultima_proposta = dict(estado.get("ultima_proposta_cognitiva") or {})
+            if ultima_proposta.get("id_entrega") == id_entrega:
+                ultima_proposta["resultado_entrega"] = resultado
+                estado["ultima_proposta_cognitiva"] = ultima_proposta
+
+            if entregue:
+                emissao = {
+                    "id_entrega": id_entrega,
+                    "ts": momento,
+                    "proposta_ts": float(registro_proposta.get("ts") or 0.0),
+                    "dominio": str(registro_proposta.get("dominio") or ""),
+                    "categoria": str(registro_proposta.get("categoria") or ""),
+                    "chave": str(registro_proposta.get("chave") or ""),
+                    "origem": str(registro_proposta.get("origem") or ""),
+                    "fala": str(fala or "").strip(),
+                }
+                estado["historico"] = [
+                    *list(estado.get("historico") or []),
+                    emissao,
+                ][-40:]
+                estado["ultima_emissao"] = {
+                    **emissao,
+                    "feedback_registrado": False,
+                }
+                self._incrementar(estado, "emitidas")
+            self.estado_set(estado)
+
+        if callable(ao_concluir_fonte):
+            try:
+                ao_concluir_fonte(bool(entregue), str(motivo or ""))
+            except Exception as erro:
+                self._falha("callback_entrega_fonte", erro)
+
+    def _processar_proposta_cognitiva(
+        self,
+        estado: dict[str, Any],
+        dados: Mapping[str, Any],
+        *,
+        dominio: str,
+        categoria: str,
+        chave: str,
+        agora: float,
+        decisao_iniciativa: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        evento = self._evento_cognitivo(
+            dados,
+            dominio=dominio,
+            categoria=categoria,
+            chave=chave,
+            agora=agora,
+        )
+        try:
+            turno = dict(self.processar_evento_cognitivo(evento) or {})
+        except Exception as erro:
+            self._falha("evento_cognitivo", erro)
+            decisao = {
+                "status": "nao_processada",
+                "motivo": "falha_cognicao_evento",
+                "categoria": categoria,
+                "ts": agora,
+            }
+            estado["ultima_decisao"] = decisao
+            self.estado_set(estado)
+            return decisao
+
+        contrato_fala = dict(turno.get("contrato_fala") or {})
+        contrato_valido = bool(
+            turno.get("natureza_entrada") == "evento"
+            and turno.get("autoriza_execucao") is False
+            and contrato_fala.get("funcao") == "reacao_evento"
+            and contrato_fala.get("autoriza_execucao") is False
+        )
+        if not contrato_valido:
+            decisao = {
+                "status": "nao_processada",
+                "motivo": "contrato_cognitivo_invalido",
+                "categoria": categoria,
+                "ts": agora,
+            }
+            estado["ultima_decisao"] = decisao
+            self.estado_set(estado)
+            return decisao
+
+        registro = {
+            "ts": agora,
+            "dominio": dominio,
+            "categoria": categoria,
+            "chave": chave,
+            "origem": str(dados.get("origem") or "diretor_presenca").casefold(),
+            "evento": evento,
+            "contrato_fala": contrato_fala,
+        }
+        id_entrega = f"{evento.get('trace_id') or 'presenca'}:{agora:.6f}"
+        registro["id_entrega"] = id_entrega
+        ao_concluir_fonte = (
+            dados.get("ao_concluir")
+            if callable(dados.get("ao_concluir"))
+            else None
+        )
+        ao_materializar_fonte = (
+            dados.get("ao_materializar_fala")
+            if callable(dados.get("ao_materializar_fala"))
+            else None
+        )
+        ciclo_entrega: dict[str, Any] = {
+            "fala": "",
+            "concluido": False,
+            "em_composicao": True,
+            "pendente": None,
+        }
+
+        def ao_materializar_fala(fala: str) -> None:
+            ciclo_entrega["fala"] = str(fala or "").strip()
+            if callable(ao_materializar_fonte):
+                ao_materializar_fonte(ciclo_entrega["fala"])
+
+        def ao_concluir(entregue: bool, motivo: str) -> None:
+            with self._lock:
+                if ciclo_entrega["concluido"]:
+                    return
+                ciclo_entrega["concluido"] = True
+                if ciclo_entrega["em_composicao"]:
+                    ciclo_entrega["pendente"] = (bool(entregue), str(motivo or ""))
+                    return
+            self._registrar_resultado_entrega(
+                id_entrega=id_entrega,
+                entregue=bool(entregue),
+                motivo=str(motivo or ""),
+                fala=str(ciclo_entrega["fala"]),
+                registro_proposta=registro,
+                ao_concluir_fonte=ao_concluir_fonte,
+            )
+
+        proposta_comunicativa: dict[str, Any] = {}
+        if callable(self.processar_proposta_comunicativa):
+            emocao = str(
+                dados.get("emocao")
+                or ("animada" if categoria in {"motivacao", "celebracao"} else "calma")
+            )
+            try:
+                proposta_comunicativa = dict(
+                    self.processar_proposta_comunicativa(
+                        turno,
+                        evento=evento,
+                        dominio=dominio,
+                        categoria=categoria,
+                        emocao=emocao,
+                        nivel=int(dados.get("nivel") or 1),
+                        origem=str(dados.get("origem") or ""),
+                        decisao_iniciativa=dict(decisao_iniciativa),
+                        ao_concluir=ao_concluir,
+                        ao_materializar_fala=ao_materializar_fala,
+                    )
+                    or {}
+                )
+            except Exception as erro:
+                self._falha("proposta_comunicativa", erro)
+                proposta_comunicativa = {
+                    "status": "falha_geracao",
+                    "agendada": False,
+                    "emissao_fisica": False,
+                    "autoriza_execucao": False,
+                }
+            registro["proposta_comunicativa"] = proposta_comunicativa
+        estado["ultima_proposta_cognitiva"] = registro
+        self._incrementar(estado, "propostas_cognitivas")
+        decisao = {
+            "status": "proposta_cognitiva",
+            "categoria": categoria,
+            "dominio": dominio,
+            "contrato_fala": contrato_fala,
+            "emissao_fisica": False,
+            "ts": agora,
+        }
+        if proposta_comunicativa:
+            decisao["proposta_comunicativa"] = proposta_comunicativa
+        estado["ultima_decisao"] = decisao
+        self.estado_set(estado)
+        with self._lock:
+            ciclo_entrega["em_composicao"] = False
+            conclusao_pendente = ciclo_entrega["pendente"]
+            ciclo_entrega["pendente"] = None
+        if conclusao_pendente is not None:
+            entregue, motivo = conclusao_pendente
+            self._registrar_resultado_entrega(
+                id_entrega=id_entrega,
+                entregue=entregue,
+                motivo=motivo,
+                fala=str(ciclo_entrega["fala"]),
+                registro_proposta=registro,
+                ao_concluir_fonte=ao_concluir_fonte,
+            )
+        self.log(
+            f"🧠 [PRESENÇA:SOMBRA] dominio={dominio} categoria={categoria} "
+            "status=proposta_cognitiva emissao=False"
+        )
+        return decisao
 
     def _bloqueio_orcamento(self, estado: Mapping[str, Any], dados: Mapping[str, Any], agora: float) -> str:
         historico = list(estado.get("historico") or [])
@@ -309,7 +601,13 @@ class DiretorPresencaRuntime:
 
             categoria = _codigo(dados.get("categoria"), 24) or "companhia"
             dominio = _codigo(dados.get("dominio"), 24) or "cotidiano"
-            chave = _codigo(dados.get("chave") or dados.get("fala"), 96)
+            chave = _codigo(
+                dados.get("chave")
+                or dados.get("motivo")
+                or " | ".join(self._evidencias(dados))
+                or dados.get("fala"),
+                96,
+            )
             contexto = self._contexto()
             self._escolher_perfil(estado, contexto, categoria)
             motivo = self._bloqueio_contextual(dados, contexto, agora)
@@ -357,6 +655,9 @@ class DiretorPresencaRuntime:
                 "momento_seguro": bool(dados.get("momento_seguro")),
                 "validade_s": float(dados.get("validade_s") or 120.0),
                 "tags": [dominio, categoria, *self._evidencias(dados)],
+                "acao_proposta": dados.get("acao_proposta"),
+                "executavel": bool(dados.get("executavel")),
+                "reversivel": bool(dados.get("reversivel")),
             }
             decisao_iniciativa: Mapping[str, Any] = {}
             if callable(self.registrar_oportunidade):
@@ -365,52 +666,36 @@ class DiretorPresencaRuntime:
                 except Exception as exc:
                     self.log(f"⚠️ [PRESENÇA] coordenador indisponível: {type(exc).__name__}: {exc}")
             if not decisao_permite_emissao(decisao_iniciativa):
-                decisao = {"status": "bloqueada", "motivo": "governanca", "categoria": categoria, "ts": agora}
+                decisao = {
+                    "status": "bloqueada",
+                    "motivo": "governanca",
+                    "categoria": categoria,
+                    "decisao_iniciativa": dict(decisao_iniciativa),
+                    "ts": agora,
+                }
                 estado["ultima_decisao"] = decisao
                 self.estado_set(estado)
                 return decisao
 
-            emocao = str(dados.get("emocao") or ("animada" if categoria in {"motivacao", "celebracao"} else "calma"))
-            emitida = False
-            if callable(self.emitir_fala):
-                try:
-                    dados_emissao = {"dominio": dominio, "categoria": categoria}
-                    if callable(dados.get("ao_concluir")):
-                        dados_emissao["ao_concluir"] = dados.get("ao_concluir")
-                    if str(dados.get("origem") or "").casefold() == "observador_area_transferencia":
-                        dados_emissao["origem"] = "observador_area_transferencia"
-                    emitida = bool(self.emitir_fala(
-                        str(dados.get("fala") or "").strip(),
-                        emocao,
-                        int(dados.get("nivel") or 1),
-                        **dados_emissao,
-                    ))
-                except TypeError:
-                    emitida = bool(self.emitir_fala(
-                        str(dados.get("fala") or "").strip(),
-                        emocao,
-                        int(dados.get("nivel") or 1),
-                    ))
-            if not emitida:
-                decisao = {"status": "nao_emitida", "motivo": "fila_de_fala_recusou", "categoria": categoria, "ts": agora}
-                estado["ultima_decisao"] = decisao
-                self.estado_set(estado)
-                return decisao
+            if callable(self.processar_evento_cognitivo):
+                return self._processar_proposta_cognitiva(
+                    estado,
+                    dados,
+                    dominio=dominio,
+                    categoria=categoria,
+                    chave=chave,
+                    agora=agora,
+                    decisao_iniciativa=decisao_iniciativa,
+                )
 
-            registro = {
-                "ts": agora,
-                "dominio": dominio,
+            decisao = {
+                "status": "nao_processada",
+                "motivo": "cognicao_evento_indisponivel",
                 "categoria": categoria,
-                "chave": chave,
-                "origem": str(dados.get("origem") or "diretor_presenca").casefold(),
+                "ts": agora,
             }
-            estado["historico"] = [*list(estado.get("historico") or []), registro][-40:]
-            estado["ultima_emissao"] = {**registro, "feedback_registrado": False}
-            self._incrementar(estado, "emitidas")
-            decisao = {"status": "emitida", "categoria": categoria, "dominio": dominio, "ts": agora}
             estado["ultima_decisao"] = decisao
             self.estado_set(estado)
-            self.log(f"✨ [PRESENÇA] dominio={dominio} categoria={categoria} status=emitida")
             return decisao
 
     def observar_resposta(self, texto: str) -> dict[str, Any]:
@@ -544,14 +829,17 @@ class DiretorPresencaRuntime:
 
     def executar(self) -> None:
         self._running = True
-        while self._running and not self.stop_event.is_set():
-            try:
-                self.executar_ciclo()
-            except Exception as exc:
-                self.log(f"⚠️ [PRESENÇA] ciclo ignorado: {type(exc).__name__}: {exc}")
-                self._falha("ciclo", exc)
-            if self.stop_event.wait(self.intervalo_ciclo_s):
-                break
+        try:
+            while self._running and not self.stop_event.is_set():
+                try:
+                    self.executar_ciclo()
+                except Exception as exc:
+                    self.log(f"⚠️ [PRESENÇA] ciclo ignorado: {type(exc).__name__}: {exc}")
+                    self._falha("ciclo", exc)
+                if self.stop_event.wait(self.intervalo_ciclo_s):
+                    break
+        finally:
+            self._running = False
 
     def encerrar(self) -> None:
         self._running = False

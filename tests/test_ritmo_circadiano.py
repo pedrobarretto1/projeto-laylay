@@ -17,6 +17,20 @@ from mente_laylay.percepcao.ritmo_circadiano import (
 )
 
 
+def _considerar_presenca_aceita(eventos):
+    def considerar(evento):
+        eventos.append(dict(evento))
+        return {
+            "status": "proposta_cognitiva",
+            "proposta_comunicativa": {
+                "agendada": True,
+                "autoriza_execucao": False,
+            },
+        }
+
+    return considerar
+
+
 class RitmoCircadianoTests(unittest.TestCase):
     def test_consulta_horario_usa_relogio_e_periodo_reais(self) -> None:
         self.assertTrue(detectar_consulta_horario("que horas são?"))
@@ -49,16 +63,12 @@ class RitmoCircadianoTests(unittest.TestCase):
         continuidades = {"comando_sugerido_estado": "NONE"}
         agendadas = []
 
-        def agendar(*args, **kwargs):
-            agendadas.append((args, kwargs))
-            return True
-
         runtime = RitmoCircadianoRuntime(
             estado_get=lambda: estado,
             estado_set=lambda novo: estado.update(novo),
             continuidades_get=lambda chave, padrao=None: continuidades.get(chave, padrao),
             continuidades_update=lambda **campos: continuidades.update(campos),
-            agendar_fala=agendar,
+            considerar_presenca=_considerar_presenca_aceita(agendadas),
             interacao_iniciada=lambda: True,
             conversa_ativa=lambda: False,
             agora_cb=lambda: datetime(2026, 7, 16, 19, 10),
@@ -67,9 +77,9 @@ class RitmoCircadianoTests(unittest.TestCase):
         resultado = runtime.executar_ciclo()
         self.assertEqual(resultado["status"], "sugestao_agendada")
         self.assertEqual(continuidades["comando_sugerido_estado"], "NONE")
-        self.assertIn("escureceu", agendadas[0][0][1].casefold())
+        self.assertEqual(agendadas[0]["acao_proposta"]["intent"], "TIME_LIGHT_ON")
 
-        agendadas[0][1]["ao_concluir"](True, "entregue")
+        agendadas[0]["ao_concluir"](True, "entregue")
         self.assertEqual(continuidades["comando_sugerido"], "TIME_LIGHT_ON")
         self.assertEqual(continuidades["comando_sugerido_estado"], "PENDING_CONFIRM")
         self.assertEqual(estado["sugestoes_emitidas"]["luz_anoitecer"], "2026-07-16")
@@ -79,25 +89,20 @@ class RitmoCircadianoTests(unittest.TestCase):
         continuidades = {"comando_sugerido_estado": "NONE"}
         agendadas = []
 
-        def agendar(*args, **kwargs):
-            agendadas.append((args, kwargs))
-            return True
-
         runtime = RitmoCircadianoRuntime(
             estado_get=lambda: estado,
             estado_set=lambda novo: estado.update(novo),
             continuidades_get=lambda chave, padrao=None: continuidades.get(chave, padrao),
             continuidades_update=lambda **campos: continuidades.update(campos),
-            agendar_fala=agendar,
+            considerar_presenca=_considerar_presenca_aceita(agendadas),
             interacao_iniciada=lambda: True,
             conversa_ativa=lambda: False,
             agora_cb=lambda: datetime(2026, 7, 17, 0, 30),
         )
         runtime.executar_ciclo()
-        fala = agendadas[0][0][1].casefold()
-        self.assertIn("volume", fala)
-        self.assertIn("luz", fala)
-        agendadas[0][1]["ao_concluir"](True, "entregue")
+        self.assertEqual(agendadas[0]["acao_proposta"]["intent"], "TIME_WIND_DOWN")
+        self.assertEqual(agendadas[0]["acao_proposta"]["params"]["volume"], 25)
+        agendadas[0]["ao_concluir"](True, "entregue")
         self.assertEqual(estado["sugestoes_emitidas"]["modo_noite"], "2026-07-16")
 
         continuidades["comando_sugerido_estado"] = "NONE"

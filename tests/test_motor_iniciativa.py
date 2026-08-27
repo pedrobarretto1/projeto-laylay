@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from mente_laylay.autonomia.diretor_presenca import DiretorPresencaRuntime
 from mente_laylay.autonomia.motor_iniciativa import MotorIniciativaRuntime
 from mente_laylay.autonomia.governanca_iniciativa import (
     decisao_permite_emissao,
@@ -21,6 +22,20 @@ from mente_laylay.memoria_mental.persistencia_memoria import (
 )
 from mente_laylay.percepcao.monitor_janelas import MonitorJanelasRuntime
 from mente_laylay.percepcao.ritmo_circadiano import RitmoCircadianoRuntime
+
+
+def _considerar_presenca_aceita(eventos):
+    def considerar(evento):
+        eventos.append(dict(evento))
+        return {
+            "status": "proposta_cognitiva",
+            "proposta_comunicativa": {
+                "agendada": True,
+                "autoriza_execucao": False,
+            },
+        }
+
+    return considerar
 
 
 def _motor(
@@ -764,16 +779,14 @@ def test_ritmo_circadiano_publica_oportunidade_sem_mudar_confirmacao() -> None:
     estado = {}
     continuidades = {"comando_sugerido_estado": "NONE"}
     oportunidades = []
-    falas = []
     runtime = RitmoCircadianoRuntime(
         estado_get=lambda: estado,
         estado_set=lambda novo: estado.update(novo),
         continuidades_get=lambda chave, padrao=None: continuidades.get(chave, padrao),
         continuidades_update=lambda **campos: continuidades.update(campos),
-        agendar_fala=lambda *args, **kwargs: falas.append((args, kwargs)) or True,
+        considerar_presenca=_considerar_presenca_aceita(oportunidades),
         interacao_iniciada=lambda: True,
         conversa_ativa=lambda: False,
-        registrar_oportunidade=oportunidades.append,
         agora_cb=lambda: datetime(2026, 7, 16, 19, 10),
     )
 
@@ -787,22 +800,23 @@ def test_ritmo_circadiano_publica_oportunidade_sem_mudar_confirmacao() -> None:
 
 def test_ritmo_circadiano_respeita_dominio_bloqueado_pela_governanca() -> None:
     estado = {}
-    falas = []
     runtime = RitmoCircadianoRuntime(
         estado_get=lambda: estado,
         estado_set=lambda novo: estado.update(novo),
         continuidades_get=lambda _chave, padrao=None: padrao,
         continuidades_update=lambda **_campos: None,
-        agendar_fala=lambda *args, **kwargs: falas.append((args, kwargs)) or True,
+        considerar_presenca=lambda _evento: {
+            "status": "bloqueada",
+            "motivo": "governanca",
+            "decisao_iniciativa": {"decisao": "bloqueado_permissao"},
+        },
         interacao_iniciada=lambda: True,
         conversa_ativa=lambda: False,
-        registrar_oportunidade=lambda _dados: {"decisao": "bloqueado_permissao"},
         agora_cb=lambda: datetime(2026, 7, 16, 19, 10),
     )
 
     resultado = runtime.executar_ciclo()
     assert resultado["status"] == "bloqueado_permissao"
-    assert falas == []
 
 
 def test_ritmo_executa_luz_sem_emitir_sugestao_apos_autorizacao_explicita() -> None:
@@ -814,23 +828,35 @@ def test_ritmo_executa_luz_sem_emitir_sugestao_apos_autorizacao_explicita() -> N
     )
     motor.configurar_dominio("iluminação", "acao_reversivel", confirmacao_explicita=True)
     estado_ritmo = {}
-    falas = []
+    instante = datetime(2026, 7, 16, 19, 10).timestamp()
+    diretor = DiretorPresencaRuntime(
+        contexto_getter=lambda: {
+            "modo_jogo_ativo": False,
+            "turno_ativo": False,
+            "is_speaking": False,
+            "usuario_falando": False,
+            "ultima_entrada_ts": 0.0,
+        },
+        registrar_oportunidade=motor.registrar,
+        processar_evento_cognitivo=lambda evento: dict(evento),
+        processar_proposta_comunicativa=lambda _turno, **_contexto: {},
+        clock=lambda: instante,
+        log=lambda _texto: None,
+    )
     runtime = RitmoCircadianoRuntime(
         estado_get=lambda: estado_ritmo,
         estado_set=lambda novo: estado_ritmo.update(novo),
         continuidades_get=lambda _chave, padrao=None: padrao,
         continuidades_update=lambda **_campos: None,
-        agendar_fala=lambda *args, **kwargs: falas.append((args, kwargs)) or True,
+        considerar_presenca=diretor.considerar,
         interacao_iniciada=lambda: True,
         conversa_ativa=lambda: False,
-        registrar_oportunidade=motor.registrar,
         agora_cb=lambda: datetime(2026, 7, 16, 19, 10),
     )
 
     resultado = runtime.executar_ciclo()
 
     assert resultado["status"] == "executado_autonomamente"
-    assert falas == []
     assert estado_ritmo["sugestoes_emitidas"]["luz_anoitecer"] == "2026-07-16"
     assert executadas == [{
         "intent": "IOT_CONTROL",
@@ -843,7 +869,6 @@ def test_ritmo_executa_luz_sem_emitir_sugestao_apos_autorizacao_explicita() -> N
 
 def test_monitor_de_janelas_publica_oportunidade_de_rotina() -> None:
     oportunidades = []
-    falas = []
     runtime = MonitorJanelasRuntime(
         capturar_janela=lambda: {},
         atualizar_contexto=lambda _retrato: None,
@@ -857,14 +882,13 @@ def test_monitor_de_janelas_publica_oportunidade_de_rotina() -> None:
         janela_em_tela_cheia=lambda _janela: False,
         detectar_gatilho=lambda *_args: ("", None),
         fala_gatilho=lambda _gatilho: "",
-        falar=lambda *args: falas.append(args),
-        registrar_oportunidade=oportunidades.append,
+        considerar_presenca=_considerar_presenca_aceita(oportunidades),
         clock=lambda: 2000.0,
     )
 
     assert runtime.sugerir_assunto("Programação", agora=2000.0) is True
     assert oportunidades[0]["acao_proposta"]["intent"] == "SYS_MODE_CODE"
-    assert falas
+    assert oportunidades[0]["autoridade_usuario"] is False
 
 
 def test_allowlist_rebaixa_acao_nao_auditada_para_sugestao() -> None:

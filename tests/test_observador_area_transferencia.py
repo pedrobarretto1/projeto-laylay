@@ -13,6 +13,16 @@ from mente_laylay.percepcao.observador_area_transferencia import (
 from mente_laylay.memoria_mental.pendencia_acao import PendenciaAcaoRuntime
 
 
+def _recibo_presenca_agendada():
+    return {
+        "status": "proposta_cognitiva",
+        "proposta_comunicativa": {
+            "agendada": True,
+            "autoriza_execucao": False,
+        },
+    }
+
+
 class ClipboardFalso:
     def __init__(self, texto: str = "") -> None:
         self.texto = texto
@@ -96,7 +106,7 @@ def test_primeiro_conteudo_vira_baseline_e_nao_interrompe() -> None:
     eventos = []
     runtime = ObservadorAreaTransferenciaRuntime(
         snapshot_getter=area.snapshot_passivo,
-        considerar_presenca=lambda evento: eventos.append(evento) or {"status": "emitida"},
+        considerar_presenca=lambda evento: eventos.append(evento) or _recibo_presenca_agendada(),
         estabilidade_s=1,
         log=lambda *_args: None,
     )
@@ -113,7 +123,7 @@ def test_baseline_preparada_antes_da_thread_detecta_primeira_copia_nova() -> Non
     eventos = []
     runtime = ObservadorAreaTransferenciaRuntime(
         snapshot_getter=area.snapshot_passivo,
-        considerar_presenca=lambda evento: eventos.append(evento) or {"status": "emitida"},
+        considerar_presenca=lambda evento: eventos.append(evento) or _recibo_presenca_agendada(),
         estabilidade_s=1,
         clock=lambda: agora[0],
         log=lambda *_args: None,
@@ -138,7 +148,7 @@ def test_novo_ctrl_c_do_mesmo_texto_e_detectado_pela_sequencia_windows() -> None
     eventos = []
     runtime = ObservadorAreaTransferenciaRuntime(
         snapshot_getter=lambda: {**snapshot, "sequencia_evento": sequencia[0]},
-        considerar_presenca=lambda evento: eventos.append(evento) or {"status": "emitida"},
+        considerar_presenca=lambda evento: eventos.append(evento) or _recibo_presenca_agendada(),
         estabilidade_s=1,
         clock=lambda: agora[0],
         log=lambda *_args: None,
@@ -164,7 +174,7 @@ def test_mesmo_conteudo_nao_oferece_de_novo_depois_que_fala_comecou() -> None:
     entregues = []
     runtime = ObservadorAreaTransferenciaRuntime(
         snapshot_getter=lambda: {**snapshot, "sequencia_evento": sequencia[0]},
-        considerar_presenca=lambda evento: eventos.append(evento) or {"status": "emitida"},
+        considerar_presenca=lambda evento: eventos.append(evento) or _recibo_presenca_agendada(),
         oferta_entregue=lambda oferta: entregues.append(dict(oferta)),
         estabilidade_s=1,
         clock=lambda: agora[0],
@@ -192,7 +202,7 @@ def test_oferta_bloqueada_e_retentada_quando_contexto_fica_livre() -> None:
     area = _area(clipboard)
     decisoes = [
         {"status": "bloqueada", "motivo": "usuario_acabou_de_falar"},
-        {"status": "emitida"},
+        _recibo_presenca_agendada(),
     ]
     runtime = ObservadorAreaTransferenciaRuntime(
         snapshot_getter=area.snapshot_passivo,
@@ -221,7 +231,7 @@ def test_erro_novo_estavel_vira_oportunidade_sem_texto_bruto() -> None:
     eventos = []
     runtime = ObservadorAreaTransferenciaRuntime(
         snapshot_getter=area.snapshot_passivo,
-        considerar_presenca=lambda evento: eventos.append(evento) or {"status": "emitida"},
+        considerar_presenca=lambda evento: eventos.append(evento) or _recibo_presenca_agendada(),
         contexto_getter=lambda: {"titulo_janela": "Visual Studio Code"},
         estabilidade_s=2,
         clock=lambda: agora[0],
@@ -255,9 +265,8 @@ def test_recusa_recente_silencia_nova_oferta_da_mesma_acao() -> None:
     eventos = []
     runtime = ObservadorAreaTransferenciaRuntime(
         snapshot_getter=area.snapshot_passivo,
-        considerar_presenca=lambda evento: eventos.append(evento) or {
-            "status": "emitida"
-        },
+        considerar_presenca=lambda evento: eventos.append(evento)
+        or _recibo_presenca_agendada(),
         contexto_getter=lambda: {
             "clipboard_ofertas_silenciadas": {
                 "investigar_erro": time.time() + 600.0,
@@ -296,7 +305,7 @@ def test_pendencia_sobrevive_quando_usuario_interrompe_fala_ja_iniciada() -> Non
     entregues = []
     runtime = ObservadorAreaTransferenciaRuntime(
         snapshot_getter=area.snapshot_passivo,
-        considerar_presenca=lambda evento: eventos.append(evento) or {"status": "emitida"},
+        considerar_presenca=lambda evento: eventos.append(evento) or _recibo_presenca_agendada(),
         oferta_entregue=lambda oferta: entregues.append(dict(oferta)),
         estabilidade_s=1,
         clock=lambda: agora[0],
@@ -348,7 +357,7 @@ def test_conteudo_consumido_por_comando_explicito_nao_gera_oferta() -> None:
     eventos = []
     runtime = ObservadorAreaTransferenciaRuntime(
         snapshot_getter=area.snapshot_passivo,
-        considerar_presenca=lambda evento: eventos.append(evento) or {"status": "emitida"},
+        considerar_presenca=lambda evento: eventos.append(evento) or _recibo_presenca_agendada(),
         estabilidade_s=1,
         clock=lambda: agora[0],
         log=lambda *_args: None,

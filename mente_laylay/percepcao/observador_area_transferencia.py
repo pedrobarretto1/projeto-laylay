@@ -17,6 +17,9 @@ from typing import Any, Callable, Mapping
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
+from mente_laylay.autonomia.diretor_presenca import (
+    decisao_presenca_aceita_para_entrega,
+)
 
 
 MODOS_OBSERVADOR = frozenset({"desligado", "sombra", "sugestao"})
@@ -384,6 +387,9 @@ class ObservadorAreaTransferenciaRuntime:
             }
             fala_iniciada = {"valor": False}
 
+            def _ao_materializar_fala(fala: str) -> None:
+                oferta["fala"] = str(fala or "").strip()
+
             def _ao_iniciar() -> None:
                 # A pergunta passa a existir na mente antes de ficar audível.
                 # Assim, uma resposta curta e imediata já encontra a pendência.
@@ -407,6 +413,7 @@ class ObservadorAreaTransferenciaRuntime:
 
             evento["ao_iniciar"] = _ao_iniciar
             evento["ao_concluir"] = _ao_concluir
+            evento["ao_materializar_fala"] = _ao_materializar_fala
         try:
             decisao = dict(self.considerar_presenca(evento) or {})
         except Exception as erro:
@@ -416,7 +423,7 @@ class ObservadorAreaTransferenciaRuntime:
         self._diagnostico["publicadas"] += 1
         self._diagnostico["ultima_decisao"] = str(decisao.get("status") or "publicada")
         status_decisao = str(decisao.get("status") or "")
-        if status_decisao != "emitida":
+        if not decisao_presenca_aceita_para_entrega(decisao):
             self._reagendar(
                 pendente,
                 motivo=str(decisao.get("motivo") or status_decisao or "nao_emitida"),

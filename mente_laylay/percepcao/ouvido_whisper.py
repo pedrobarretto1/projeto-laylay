@@ -160,6 +160,7 @@ class OuvidoWhisperRuntime:
         self._ultimo_comando_ts = 0.0
         self._ultima_metricas_transcricao: dict[str, Any] = {}
         self._nivel_microfone = 0.0
+        self._usuario_falando = False
         self.modelo = None
         self.dispositivo: int | None = None
         self.taxa_captura = 16000
@@ -182,6 +183,10 @@ class OuvidoWhisperRuntime:
             return max(0.0, min(1.0, float(self._nivel_microfone)))
         except (TypeError, ValueError):
             return 0.0
+
+    def usuario_falando(self) -> bool:
+        """Informa somente o estado efêmero do VAD, sem expor áudio."""
+        return bool(self._usuario_falando)
 
     def _dependencias(self) -> tuple[Any, Any]:
         sd = self.sd
@@ -692,6 +697,7 @@ class OuvidoWhisperRuntime:
                     agora = self.monotonic()
                     if not bool(self.escuta_permitida()):
                         self._nivel_microfone = 0.0
+                        self._usuario_falando = False
                         gravando.clear()
                         preroll.clear()
                         blocos_voz = 0
@@ -712,6 +718,7 @@ class OuvidoWhisperRuntime:
                     falando = bool(self.esta_falando())
                     if falando:
                         self._nivel_microfone = 0.0
+                        self._usuario_falando = False
                         self._ultima_fala_laylay_ts = agora
                         gravando.clear()
                         preroll.clear()
@@ -755,6 +762,7 @@ class OuvidoWhisperRuntime:
                         blocos_voz = blocos_voz + 1 if rms >= limiar else 0
                         if blocos_voz >= 2:
                             gravando = list(preroll)
+                            self._usuario_falando = True
                             silencio = 0.0
                             pico_sem_fala = 0.0
                             if not entrada_anunciada and not bool(self.modo_chat_ativo()):
@@ -786,6 +794,7 @@ class OuvidoWhisperRuntime:
                     terminou = silencio >= silencio_final_s and duracao >= 0.6
                     if terminou or duracao >= duracao_maxima_s:
                         audio = np.concatenate(gravando)
+                        self._usuario_falando = False
                         gravando.clear()
                         preroll.clear()
                         blocos_voz = 0
@@ -797,6 +806,8 @@ class OuvidoWhisperRuntime:
                 return
             self.log(f"⚠️ [OUVIDO] Captura do microfone encerrada: {erro}")
             raise RuntimeError("captura do microfone foi interrompida") from erro
+        finally:
+            self._usuario_falando = False
 
 
 def criar_ouvido_whisper_runtime(**kwargs: Any) -> OuvidoWhisperRuntime:

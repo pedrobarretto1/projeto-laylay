@@ -2563,7 +2563,7 @@ class MenteUnicaTests(unittest.TestCase):
     def test_monitor_de_janelas_respeita_fala_inicial(self) -> None:
         from mente_laylay.percepcao.monitor_janelas import MonitorJanelasRuntime
 
-        falas = []
+        eventos = []
         contextos = []
         runtime = MonitorJanelasRuntime(
             capturar_janela=lambda: {
@@ -2581,7 +2581,7 @@ class MenteUnicaTests(unittest.TestCase):
             janela_em_tela_cheia=lambda _janela: False,
             detectar_gatilho=lambda *_args: ("SYS_MODE_CODE", {}),
             fala_gatilho=lambda _gatilho: "Ativo Modo Code?",
-            falar=lambda *args: falas.append(args),
+            considerar_presenca=lambda evento: eventos.append(dict(evento)) or {},
             interacao_iniciada=lambda: False,
             clock=lambda: 100.0,
         )
@@ -2589,7 +2589,7 @@ class MenteUnicaTests(unittest.TestCase):
         resultado = runtime.executar_ciclo()
         self.assertEqual(resultado["status"], "aguardando_primeira_interacao")
         self.assertEqual(len(contextos), 1)
-        self.assertEqual(falas, [])
+        self.assertEqual(eventos, [])
 
 
 if __name__ == "__main__":

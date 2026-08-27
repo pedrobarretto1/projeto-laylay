@@ -68,8 +68,13 @@ class ComposicaoTurnoRuntime:
     def _snapshot(self) -> dict[str, Any]:
         return dict(self._servicos)
 
-    def iniciar(self, texto: str, *, origem: str = "desconhecida") -> dict:
-        return iniciar_planejamento_turno(self._snapshot, texto, origem=origem)
+    def iniciar(
+        self,
+        entrada: str | Mapping[str, Any],
+        *,
+        origem: str = "desconhecida",
+    ) -> dict:
+        return iniciar_planejamento_turno(self._snapshot, entrada, origem=origem)
 
     def atualizar(
         self, fase: str, *, comandos=(), erros=(), fala: str = "",

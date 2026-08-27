@@ -578,6 +578,9 @@ def construir_diagnostico_mente(
             ),
             "recebidas": int(contadores_presenca.get("recebidas") or 0),
             "emitidas": int(contadores_presenca.get("emitidas") or 0),
+            "propostas_cognitivas": int(
+                contadores_presenca.get("propostas_cognitivas") or 0
+            ),
             "bloqueadas_contexto": int(contadores_presenca.get("bloqueadas_contexto") or 0),
             "bloqueadas_orcamento": int(contadores_presenca.get("bloqueadas_orcamento") or 0),
             "bloqueadas_qualidade": int(contadores_presenca.get("bloqueadas_qualidade") or 0),

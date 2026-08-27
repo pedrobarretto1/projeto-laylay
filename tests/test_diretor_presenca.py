@@ -4,6 +4,47 @@ from mente_laylay.autonomia.diretor_presenca import DiretorPresencaRuntime
 from mente_laylay.percepcao.visao_jogo.presenca_visual import extrair_presenca_visual
 
 
+def _turno_evento(evento):
+    contrato = {
+        "funcao": "reacao_evento",
+        "natureza_entrada": "evento",
+        "entrada_cognitiva": dict(evento),
+        "autoriza_execucao": False,
+        "roteiro_concreto": {
+            "estrategia": "reacao_evento",
+            "autoriza_execucao": False,
+        },
+    }
+    return {
+        "natureza_entrada": "evento",
+        "entrada_cognitiva": dict(evento),
+        "autoridade_usuario": False,
+        "permissao_execucao": False,
+        "autoriza_execucao": False,
+        "contrato_fala": contrato,
+    }
+
+
+def _materializador_entregue(falas, contextos=None):
+    def processar(_turno, **contexto):
+        fala = "Comentário gerado depois da cognição."
+        contexto["ao_materializar_fala"](fala)
+        falas.append((fala, contexto["emocao"], contexto["nivel"]))
+        if contextos is not None:
+            contextos.append(dict(contexto))
+        contexto["ao_concluir"](True, "entregue")
+        return {
+            "status": "agendada",
+            "fala": fala,
+            "agendada": True,
+            "emissao_fisica": False,
+            "autoriza_execucao": False,
+            "comandos_descartados": 0,
+        }
+
+    return processar
+
+
 def _runtime(*, contexto=None):
     estado = {}
     falas = []
@@ -23,7 +64,8 @@ def _runtime(*, contexto=None):
         estado_set=lambda novo: estado.clear() or estado.update(novo),
         contexto_getter=lambda: contexto_base,
         registrar_oportunidade=lambda dados: oportunidades.append(dict(dados)) or {"decisao": "sugerir"},
-        emitir_fala=lambda texto, emocao, nivel: falas.append((texto, emocao, nivel)) or True,
+        processar_evento_cognitivo=_turno_evento,
+        processar_proposta_comunicativa=_materializador_entregue(falas),
         registrar_feedback=lambda *args, **kwargs: feedbacks.append((args, kwargs)),
         clock=lambda: agora[0],
         log=lambda _texto: None,
@@ -41,22 +83,22 @@ def test_dica_de_jogo_exige_evidencia_e_momento_seguro() -> None:
 
     resultado = runtime.considerar(evento)
 
-    assert resultado["status"] == "emitida"
+    assert resultado["status"] == "proposta_cognitiva"
     assert falas and oportunidades
     assert estado["contadores"]["emitidas"] == 1
 
 
 def test_diretor_identifica_fala_como_presenca_de_jogo() -> None:
     recebidos = []
+    falas = []
     runtime = DiretorPresencaRuntime(
         contexto_getter=lambda: {
             "modo_jogo_ativo": True, "turno_ativo": False,
             "is_speaking": False, "ultima_entrada_ts": 0.0,
         },
         registrar_oportunidade=lambda _dados: {"decisao": "sugerir"},
-        emitir_fala=lambda texto, emocao, nivel, **dados: (
-            recebidos.append((texto, emocao, nivel, dados)) or True
-        ),
+        processar_evento_cognitivo=_turno_evento,
+        processar_proposta_comunicativa=_materializador_entregue(falas, recebidos),
         clock=lambda: 1000.0,
         log=lambda _texto: None,
     )
@@ -68,20 +110,23 @@ def test_diretor_identifica_fala_como_presenca_de_jogo() -> None:
         "chave": "area-nova",
     })
 
-    assert resultado["status"] == "emitida"
-    assert recebidos[0][3] == {"dominio": "jogo", "categoria": "companhia"}
+    assert resultado["status"] == "proposta_cognitiva"
+    assert recebidos[0]["dominio"] == "jogo"
+    assert recebidos[0]["categoria"] == "companhia"
 
 
 def test_diretor_encaminha_callback_de_entrega_da_oferta() -> None:
     recebidos = []
-    callback = lambda *_args: None
+    falas = []
+    callback = lambda *args: recebidos.append(args)
     runtime = DiretorPresencaRuntime(
         contexto_getter=lambda: {
             "modo_jogo_ativo": False, "turno_ativo": False,
             "is_speaking": False, "ultima_entrada_ts": 0.0,
         },
         registrar_oportunidade=lambda _dados: {"decisao": "sugerir"},
-        emitir_fala=lambda _texto, _emocao, _nivel, **dados: recebidos.append(dados) or True,
+        processar_evento_cognitivo=_turno_evento,
+        processar_proposta_comunicativa=_materializador_entregue(falas),
         clock=lambda: 1000.0,
         log=lambda _texto: None,
     )
@@ -93,19 +138,21 @@ def test_diretor_encaminha_callback_de_entrega_da_oferta() -> None:
         "ao_concluir": callback,
     })
 
-    assert resultado["status"] == "emitida"
-    assert recebidos[0]["ao_concluir"] is callback
+    assert resultado["status"] == "proposta_cognitiva"
+    assert recebidos == [(True, "entregue")]
 
 
 def test_diretor_identifica_origem_da_assistencia_clipboard() -> None:
     recebidos = []
+    falas = []
     runtime = DiretorPresencaRuntime(
         contexto_getter=lambda: {
             "modo_jogo_ativo": False, "turno_ativo": False,
             "is_speaking": False, "ultima_entrada_ts": 0.0,
         },
         registrar_oportunidade=lambda _dados: {"decisao": "sugerir"},
-        emitir_fala=lambda _texto, _emocao, _nivel, **dados: recebidos.append(dados) or True,
+        processar_evento_cognitivo=_turno_evento,
+        processar_proposta_comunicativa=_materializador_entregue(falas, recebidos),
         clock=lambda: 1000.0,
         log=lambda _texto: None,
     )
@@ -117,7 +164,7 @@ def test_diretor_identifica_origem_da_assistencia_clipboard() -> None:
         "evidencias": ["erro copiado", "janela atual"], "chave": "clipboard-origem",
     })
 
-    assert resultado["status"] == "emitida"
+    assert resultado["status"] == "proposta_cognitiva"
     assert recebidos[0]["origem"] == "observador_area_transferencia"
 
 
@@ -137,7 +184,8 @@ def test_erro_copiado_nao_disputa_orcamento_com_dica_anterior() -> None:
             "is_speaking": False, "ultima_entrada_ts": 0.0,
         },
         registrar_oportunidade=lambda _dados: {"decisao": "sugerir"},
-        emitir_fala=lambda texto, *_args, **_kwargs: falas.append(texto) or True,
+        processar_evento_cognitivo=_turno_evento,
+        processar_proposta_comunicativa=_materializador_entregue(falas),
         clock=lambda: 1000.0,
         log=lambda _texto: None,
     )
@@ -150,7 +198,7 @@ def test_erro_copiado_nao_disputa_orcamento_com_dica_anterior() -> None:
         "evidencias": ["erro copiado", "janela atual"], "chave": "clipboard-novo",
     })
 
-    assert resultado["status"] == "emitida"
+    assert resultado["status"] == "proposta_cognitiva"
     assert falas
 
 
@@ -185,6 +233,7 @@ def test_recomendacao_musical_nunca_autotoca() -> None:
     resultado = runtime.considerar({
         "dominio": "jogo", "categoria": "musica", "fala": "Rock combina aqui.",
         "confianca": 0.9, "momento_seguro": True, "executar_automaticamente": True,
+        "evidencias": ["combate intenso observado"],
     })
 
     assert resultado["motivo"] == "musica_nao_pode_autotocar"
@@ -232,6 +281,8 @@ def test_falha_auxiliar_do_diretor_e_encaminhada_sem_quebrar_o_ciclo() -> None:
     runtime = DiretorPresencaRuntime(
         estado_get=lambda: (_ for _ in ()).throw(RuntimeError("estado indisponível")),
         contexto_getter=lambda: {},
+        processar_evento_cognitivo=_turno_evento,
+        processar_proposta_comunicativa=_materializador_entregue([]),
         registrar_falha=lambda *args, **kwargs: falhas.append((args, kwargs)),
         clock=lambda: 1000.0,
         log=lambda *_: None,
@@ -319,11 +370,11 @@ def test_curiosidade_de_jogo_pode_voltar_sem_cooldown_de_cotidiano() -> None:
         "confianca": 0.86, "momento_seguro": True,
         "evidencias": ["estrutura visível"], "chave": "estrutura-1",
     }
-    assert runtime.considerar(primeiro)["status"] == "emitida"
+    assert runtime.considerar(primeiro)["status"] == "proposta_cognitiva"
 
     agora[0] += 350
     segundo = dict(primeiro, fala="Esse bicho eu ainda não tinha visto por aqui.", chave="criatura-2")
-    assert runtime.considerar(segundo)["status"] == "emitida"
+    assert runtime.considerar(segundo)["status"] == "proposta_cognitiva"
     assert len(falas) == 2
 
 

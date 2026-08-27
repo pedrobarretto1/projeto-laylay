@@ -207,6 +207,9 @@ from mente_laylay.autonomia.governanca_iniciativa import (
 from mente_laylay.autonomia.diretor_presenca import (
     criar_diretor_presenca_runtime as _criar_diretor_presenca_runtime_mente,
 )
+from mente_laylay.autonomia.resposta_evento_runtime import (
+    criar_resposta_evento_runtime as _criar_resposta_evento_runtime_mente,
+)
 from mente_laylay.memoria_mental.consciencia_temporal import (
     registrar_evento_visual_temporal as _registrar_evento_visual_temporal_mente,
 )
@@ -1714,19 +1717,12 @@ _monitor_janelas_runtime = _criar_monitor_janelas_runtime_mente(
     janela_em_tela_cheia=lambda janela: _janela_em_tela_cheia_mente(pyautogui, janela),
     detectar_gatilho=_detectar_gatilho_proativo_sistema_mente,
     fala_gatilho=_fala_gatilho_proativo_sistema_mente,
-    # Observações do monitor pertencem à mesma mente. Se surgirem enquanto uma
-    # resposta está sendo construída, entram nela em vez de disputar o áudio.
-    falar=lambda texto, emocao="calma", nivel=1: _agendar_fala_proativa(
-        "contexto_janela",
-        texto,
-        emocao,
-        nivel,
-        mesclar_turno=True,
+    considerar_presenca=lambda evento: _diretor_presenca_runtime.considerar(
+        evento,
     ),
     preparar_sugestao=lambda comando, payload, fala: _preparar_sugestao_aprendida(
         comando, payload, fala
     ),
-    registrar_oportunidade=_registrar_oportunidade_iniciativa,
     atualizar_modo_jogo=_modo_jogo_runtime.observar,
     interacao_iniciada=lambda: float(
         _estado_compartilhado_runtime.mental.get("ultima_entrada_ts") or 0.0
@@ -2006,14 +2002,10 @@ _aprendizado_runtime = _criar_aprendizado_runtime_mente(
         "registrar_observacao_aprendizado": lambda janela, assunto, hora: (
             _motor_aprendizado_runtime.registrar_observacao_rotina(janela, assunto, hora)
         ),
-        # No modo chat, a fala do usuário tem prioridade absoluta. Sugestões de
-        # rotina podem esperar em vez de atravessar um desabafo ou comando.
-        "agendar_fala_proativa": lambda *args, **kwargs: (
-            False
-            if _conversa_estado_get("modo_chat", False)
-            or _conversa_estado_get("conversa_ativa", False)
-            or float(_estado_compartilhado_runtime.mental.get("ultima_entrada_ts") or 0.0) <= 0.0
-            else _agendar_fala_proativa(*args, **kwargs)
+        # Rotina e musica apenas publicam eventos. O Diretor central decide se
+        # ha proposta comunicativa e o porteiro continua dono da voz.
+        "considerar_presenca": lambda evento: _diretor_presenca_runtime.considerar(
+            evento,
         ),
     },
     estado_getter=lambda: dict(
@@ -2086,18 +2078,14 @@ _diretor_presenca_runtime = _criar_diretor_presenca_runtime_mente(
     ),
     contexto_getter=_contexto_motor_iniciativa,
     registrar_oportunidade=_registrar_oportunidade_iniciativa,
-    emitir_fala=lambda texto, emocao="calma", nivel=1, **dados: _agendar_fala_proativa(
-        "assistencia_clipboard"
-        if dados.get("origem") == "observador_area_transferencia"
-        else "presenca_jogo" if dados.get("dominio") == "jogo" else "diretor_presenca",
-        texto,
-        emocao,
-        nivel,
-        mesclar_turno=False,
-        ao_concluir=dados.get("ao_concluir"),
-        preservar_ate_entrega=bool(
-            dados.get("origem") == "observador_area_transferencia"
-        ),
+    processar_evento_cognitivo=lambda evento: (
+        _composicao_turno_runtime.iniciar(
+            evento,
+            origem="presenca",
+        )
+    ),
+    processar_proposta_comunicativa=lambda turno, **contexto: (
+        _resposta_evento_runtime.processar(turno, **contexto)
     ),
     registrar_feedback=_registrar_feedback_proatividade,
     registrar_falha=_observabilidade_mente_runtime.relatar_falha,
@@ -2125,7 +2113,7 @@ _ritmo_circadiano_runtime = _criar_ritmo_circadiano_runtime_mente(
     estado_set=lambda estado: _percepcao_set("ritmo_circadiano", dict(estado or {})),
     continuidades_get=_continuidades_get,
     continuidades_update=_continuidades_update,
-    agendar_fala=_agendar_fala_proativa,
+    considerar_presenca=_diretor_presenca_runtime.considerar,
     interacao_iniciada=lambda: float(
         _estado_compartilhado_runtime.mental.get("ultima_entrada_ts") or 0.0
     ) > 0.0,
@@ -2134,7 +2122,6 @@ _ritmo_circadiano_runtime = _criar_ritmo_circadiano_runtime_mente(
         or _conversa_estado_get("conversa_ativa", False)
     ),
     preparar_sugestao=_preparar_sugestao_aprendida,
-    registrar_oportunidade=_registrar_oportunidade_iniciativa,
     fuso=os.environ.get("LAYLAY_FUSO_HORARIO", "America/Sao_Paulo"),
     log=print,
 )
@@ -2527,7 +2514,6 @@ _ponte_clipboard_aplicacao_runtime = _criar_ponte_clipboard_aplicacao_runtime(
     area_transferencia=_area_transferencia_runtime,
     caixa_entrada_getter=lambda: _caixa_entrada_pessoal_runtime,
     falar=falar_com_lipsync,
-    agendar_fala=_agendar_fala_proativa,
     log=print,
 )
 _registrar_oferta_area_transferencia_entregue = (
@@ -2536,14 +2522,9 @@ _registrar_oferta_area_transferencia_entregue = (
 _processar_oferta_area_transferencia_pendente = (
     _ponte_clipboard_aplicacao_runtime.processar_oferta_pendente
 )
-_encaminhar_oferta_area_transferencia = (
-    _ponte_clipboard_aplicacao_runtime.encaminhar_oferta
-)
-
-
 _observador_area_transferencia_runtime = _criar_observador_area_transferencia_runtime(
     snapshot_getter=_area_transferencia_runtime.snapshot_passivo,
-    considerar_presenca=_encaminhar_oferta_area_transferencia,
+    considerar_presenca=_diretor_presenca_runtime.considerar,
     contexto_getter=lambda: {
         **_contexto_motor_iniciativa(),
         "clipboard_ofertas_silenciadas": dict(
@@ -3239,6 +3220,9 @@ _ouvido_whisper_runtime = _criar_ouvido_whisper_runtime_mente(
     deve_continuar=lambda: not _servicos_background_runtime.deve_parar(),
     log=print,
 )
+_ponte_iniciativa_aplicacao_runtime.conectar_usuario_falando(
+    _ouvido_whisper_runtime.usuario_falando
+)
 
 _interacao_chat_runtime = _criar_interacao_chat_runtime_mente(
     estado_runtime_getter=lambda: _estado_compartilhado_runtime,
@@ -3578,6 +3562,15 @@ _contexto_prompt_runtime = _composicao_contextos_ia_runtime.prompt
 _contexto_exec_runtime = _composicao_contextos_ia_runtime.execucao
 _contexto_dispatcher_runtime = _composicao_contextos_ia_runtime.dispatcher
 _contexto_finalizacao_runtime = _composicao_contextos_ia_runtime.finalizacao
+
+_resposta_evento_runtime = _criar_resposta_evento_runtime_mente(
+    preparacao_prompt=_contexto_prompt_runtime,
+    modelo_llm=_registro_modelo_llm_runtime,
+    agendar_fala_proativa=_agendar_fala_proativa,
+    limpar_texto_fala=_limpar_texto_fala_ia,
+    registrar_falha=_observabilidade_mente_runtime.relatar_falha,
+    log=print,
+)
 
 
 def _diagnostico_conversa_llm_tipadas() -> dict:

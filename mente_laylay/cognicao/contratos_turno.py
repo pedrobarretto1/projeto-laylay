@@ -15,6 +15,7 @@ ModalidadeTurno = Literal[
     "comando", "confirmacao", "conversa", "correcao", "deliberacao",
     "misto", "pergunta", "reacao", "recusa", "vazio",
 ]
+NaturezaEntrada = Literal["utterance", "evento"]
 ProprietarioTurno = Literal["conversa", "coordenador", "operacional"]
 StatusDecisao = Literal[
     "planejada", "decidida", "aguardando_intencao", "sem_acao",
@@ -64,6 +65,19 @@ class ContratoFalaDict(TypedDict, total=False):
     origem: str
 
 
+class EventoCognitivoDict(TypedDict, total=False):
+    natureza: Literal["evento"]
+    origem: str
+    tipo: str
+    conteudo: str
+    evidencia: Dict[str, Any]
+    confianca: float
+    timestamp: float
+    trace_id: str
+    autoridade_usuario: bool
+    permissao_execucao: bool
+
+
 class LeituraTurnoDict(TypedDict, total=False):
     id: int
     origem_entrada: str
@@ -80,6 +94,8 @@ class LeituraTurnoDict(TypedDict, total=False):
     aprendizados_explicitos: list[Dict[str, Any]]
     especialistas: Dict[str, Any]
     contrato_fala: ContratoFalaDict
+    natureza_entrada: NaturezaEntrada
+    entrada_cognitiva: EventoCognitivoDict
 
 
 class PlanoTurnoDict(TypedDict, total=False):
@@ -103,6 +119,9 @@ class PlanoTurnoDict(TypedDict, total=False):
     decisao_turno: Dict[str, Any]
     deliberacao_habilidades: Dict[str, Any]
     contrato_fala: ContratoFalaDict
+    natureza_entrada: NaturezaEntrada
+    entrada_cognitiva: EventoCognitivoDict
+    texto_evidencia: str
 
 
 class RespostaPreparadaTurnoDict(TypedDict, total=False):
@@ -130,6 +149,52 @@ def _confianca_segura(valor: Any) -> float:
         return round(float(valor or 0.0), 3)
     except (TypeError, ValueError):
         return 0.0
+
+
+def normalizar_evento_cognitivo(
+    valor: Any,
+    *,
+    origem: str = "presenca",
+) -> EventoCognitivoDict:
+    """Reconhece evento estruturado e remove qualquer autoridade declarada.
+
+    Um ``Mapping`` não vira utterance só porque seus valores são texto. Apenas
+    entradas explicitamente marcadas como evento atravessam este contrato.
+    """
+    if not isinstance(valor, Mapping):
+        return {}
+    dados = dict(valor)
+    if str(dados.get("natureza") or "").strip().casefold() != "evento":
+        return {}
+    dados["natureza"] = "evento"
+    dados["origem"] = str(dados.get("origem") or origem or "presenca").strip()
+    dados["tipo"] = str(dados.get("tipo") or "evento_observado").strip()
+    dados["autoridade_usuario"] = False
+    dados["permissao_execucao"] = False
+    return dados  # type: ignore[return-value]
+
+
+def texto_evento_cognitivo(evento: Mapping[str, Any] | None) -> str:
+    """Extrai evidência textual sem serializar chaves de autoridade."""
+    dados = dict(evento or {})
+    partes: list[str] = []
+
+    def adicionar(valor: Any) -> None:
+        if isinstance(valor, Mapping):
+            for chave in ("descricao", "conteudo", "texto", "texto_detectado"):
+                adicionar(valor.get(chave))
+            return
+        if isinstance(valor, (list, tuple)):
+            for item in valor:
+                adicionar(item)
+            return
+        texto = str(valor or "").strip()
+        if texto and texto not in partes:
+            partes.append(texto)
+
+    for chave in ("descricao", "conteudo", "texto", "evidencia"):
+        adicionar(dados.get(chave))
+    return " | ".join(partes)[:1500]
 
 
 @dataclass(frozen=True, slots=True)

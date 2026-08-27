@@ -153,8 +153,11 @@ def criar_estado_mental_inicial() -> Dict[str, Any]:
             "versao": 1,
             "historico": [],
             "ultima_emissao": {},
+            "ultima_proposta_cognitiva": {},
             "atividade": {},
-            "contadores": {},
+            "contadores": {
+                "propostas_cognitivas": 0,
+            },
         },
         "iniciativa_autonoma": {
             "versao": 1,

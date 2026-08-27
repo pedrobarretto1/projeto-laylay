@@ -25,7 +25,6 @@ class PonteClipboardAplicacaoRuntime:
         area_transferencia: Any,
         caixa_entrada_getter: Callable[[], Any | None],
         falar: Callable[[str, str, int], Any],
-        agendar_fala: Callable[..., Any],
         clock: Callable[[], float] = time.time,
         log: Callable[[str], Any] = print,
     ) -> None:
@@ -42,7 +41,6 @@ class PonteClipboardAplicacaoRuntime:
         self._area_transferencia = area_transferencia
         self._caixa_entrada_getter = caixa_entrada_getter
         self._falar = falar
-        self._agendar_fala = agendar_fala
         self._clock = clock
         self._log = log
 
@@ -197,27 +195,6 @@ class PonteClipboardAplicacaoRuntime:
                 "calma", 1,
             )
         return True
-
-    def encaminhar_oferta(self, evento: dict[str, Any]) -> dict[str, Any]:
-        dados = dict(evento or {})
-        agendada = bool(self._agendar_fala(
-            "assistencia_clipboard",
-            str(dados.get("fala") or ""),
-            str(dados.get("emocao") or "calma"),
-            int(dados.get("nivel") or 1),
-            ao_iniciar=dados.get("ao_iniciar"),
-            ao_concluir=dados.get("ao_concluir"),
-            preservar_ate_entrega=True,
-            mesclar_turno=False,
-        ))
-        return {
-            "status": "emitida" if agendada else "nao_emitida",
-            "motivo": "fila_assistencia_clipboard" if agendada else "fila_recusou",
-            "categoria": str(dados.get("categoria") or "curiosidade"),
-            "dominio": str(dados.get("dominio") or "rotina"),
-            "ts": self._clock(),
-        }
-
 
 def criar_ponte_clipboard_aplicacao_runtime(
     **kwargs: Any,

@@ -4,8 +4,16 @@ from __future__ import annotations
 
 import time
 import re
+from typing import Any, Mapping
 
-from mente_laylay.cognicao.contrato_fala import construir_contrato_semantico_fala
+from mente_laylay.cognicao.contrato_fala import (
+    construir_contrato_semantico_evento,
+    construir_contrato_semantico_fala,
+)
+from mente_laylay.cognicao.contratos_turno import (
+    normalizar_evento_cognitivo,
+    texto_evento_cognitivo,
+)
 from mente_laylay.cognicao.leitura_semantica_turno import (
     aplicar_leitura_conversacional,
     comparar_com_legado,
@@ -532,7 +540,7 @@ def reconciliar_alvo_eliptico_janela_confirmado(
     return leitura, snapshot
 
 _ORIGENS_ENTRADA_VALIDAS = {
-    'terminal', 'voz', 'modo_jogo', 'barra', 'api', 'desconhecida',
+    'terminal', 'voz', 'modo_jogo', 'barra', 'api', 'presenca', 'desconhecida',
 }
 
 
@@ -569,9 +577,167 @@ def alinhar_identidade_plano_revisao(
     return resultado
 
 
+def _iniciar_planejamento_evento(
+    namespace_getter,
+    evento: Mapping[str, Any],
+    *,
+    origem: str = 'presenca',
+) -> dict:
+    """Planeja evidência ambiental sem criar uma utterance artificial."""
+    ns = namespace_getter()
+    mente_antes_turno = dict(ns['_estado_compartilhado_runtime'].mental)
+    entrada_cognitiva = dict(evento)
+    texto_cognitivo = texto_evento_cognitivo(entrada_cognitiva)
+    if not texto_cognitivo:
+        texto_cognitivo = str(
+            entrada_cognitiva.get('tipo') or 'evento observado'
+        ).strip()
+
+    turno = ns['_classificar_modalidade_turno_mente'](
+        texto_cognitivo,
+        normalizar_texto=ns['_normalizar_texto_com_apelidos'],
+        texto_tem_comando_explicito=ns['_texto_tem_comando_explicito'],
+        confirmacao_contextual_valida=False,
+    )
+    turno = aplicar_veto_canonico(
+        turno,
+        texto=texto_cognitivo,
+        modalidade='conversa',
+        natureza='evento_observado',
+        motivo='evento observado não é utterance nem permissão do usuário',
+        requer_esclarecimento=False,
+        origem_veto='evento_sem_autoridade_usuario',
+    )
+    identidade_turno = {
+        'falante': None,
+        'interlocutor': None,
+        'fonte_evidencia': str(entrada_cognitiva.get('origem') or 'percepcao'),
+        'usuario_eu': False,
+        'pedro_eu': False,
+        'laylay_eu': False,
+        'referencia_usuario': False,
+        'referencia_pedro': False,
+        'referencia_laylay': False,
+    }
+    funcao_comunicativa = {
+        'funcao': 'evento_observado',
+        'objetivo': 'interpretar o acontecimento e considerar uma reação comunicativa',
+        'postura_esperada': 'natural',
+        'permite_pergunta': False,
+    }
+    turno.update({
+        'natureza_entrada': 'evento',
+        'origem_entrada': _normalizar_origem_entrada(origem),
+        'entrada_cognitiva': entrada_cognitiva,
+        'texto_evidencia': texto_cognitivo,
+        'identidade': identidade_turno,
+        'funcao_comunicativa': funcao_comunicativa,
+        'aprendizados_explicitos': [],
+        'autoridade_usuario': False,
+        'permissao_execucao': False,
+        'autoriza_execucao': False,
+        'texto_operacional': '',
+    })
+
+    jogo_contexto = obter_contexto_jogo_seguro(ns)
+    jogo_contexto = anexar_estado_visual_recente_seguro(ns, jogo_contexto)
+    retrato_turno, entidades_recentes = ns['_construir_retrato_turno_mente'](
+        texto_cognitivo,
+        turno=turno,
+        mente=mente_antes_turno,
+        contexto_perceptivo=ns['_obter_contexto_perceptivo'](),
+        playlist_state=ns['playlist_state'],
+        jogo_contexto=jogo_contexto,
+    )
+    turno['retrato_id'] = retrato_turno.get('id')
+    turno['entidades'] = dict(retrato_turno.get('entidades') or {})
+    turno['referencia_resolvida'] = dict(
+        retrato_turno.get('referencia_resolvida') or {}
+    )
+    turno['operacao_explicita'] = ''
+    especialistas = ns['_construir_parecer_especialistas_mente'](
+        texto_cognitivo,
+        turno=turno,
+        funcao_comunicativa=funcao_comunicativa,
+        retrato=retrato_turno,
+        saude=ns['_saude_mente_runtime'].snapshot(),
+    )
+    turno['especialistas'] = especialistas
+    plano = ns['_planejar_turno_mente'](
+        texto_cognitivo,
+        turno=turno,
+        mente=mente_antes_turno,
+        periodo=ns['_contexto_horario_atual'](),
+    )
+    contexto_necessario = [
+        'evento_atual' if item == 'fala_atual' else item
+        for item in list(plano.get('contexto_necessario') or [])
+    ]
+    plano.update({
+        'natureza_entrada': 'evento',
+        'origem_entrada': turno['origem_entrada'],
+        'entrada_cognitiva': entrada_cognitiva,
+        'texto_evidencia': texto_cognitivo,
+        'texto_usuario': '',
+        'contexto_necessario': list(dict.fromkeys(contexto_necessario)),
+        'requer_execucao': False,
+        'autoriza_execucao': False,
+        'turno_sem_autorizacao': True,
+        'texto_operacional': '',
+        'resposta_esperada': (
+            'interpretar o evento e formular apenas uma proposta comunicativa segura'
+        ),
+    })
+
+    mensagens_recentes = list(
+        getattr(ns['_estado_compartilhado_runtime'], 'memoria_conversa', {}).get(
+            'messages', []
+        )
+        or []
+    )
+    falas_recentes = [
+        str(item.get('content') or '').strip()
+        for item in mensagens_recentes
+        if isinstance(item, dict)
+        and str(item.get('role') or '').casefold() == 'assistant'
+    ][-3:]
+    contrato_fala = construir_contrato_semantico_evento(
+        entrada_cognitiva,
+        turno=turno,
+        plano=plano,
+        mente=mente_antes_turno,
+        falas_recentes=falas_recentes,
+    )
+    turno['contrato_fala'] = contrato_fala
+    plano['contrato_fala'] = contrato_fala
+
+    ns['_estado_compartilhado_runtime'].atualizar_campos(
+        'mental',
+        evento_cognitivo_atual=entrada_cognitiva,
+        turno_atual=turno,
+        plano_turno_atual=plano,
+        contrato_fala_atual=contrato_fala,
+        identidade_turno_atual=identidade_turno,
+        identidade_turno_resumo=(
+            'Entrada cognitiva de evento observado; não existe falante discursivo '
+            'nem autoridade do usuário.'
+        ),
+        funcao_comunicativa_atual=funcao_comunicativa,
+        retrato_turno_atual=retrato_turno,
+        entidades_recentes=entidades_recentes,
+        especialistas_turno_atual=especialistas,
+    )
+    ns['print'](
+        '🧠 [PLANO:EVENTO] '
+        f"tipo={entrada_cognitiva.get('tipo') or '-'} | "
+        'execucao=False | proposta_comunicativa=True'
+    )
+    return turno
+
+
 def iniciar_planejamento_turno(
     namespace_getter,
-    texto: str,
+    texto: str | Mapping[str, Any],
     *,
     origem: str = 'desconhecida',
 ) -> dict:
@@ -580,11 +746,23 @@ def iniciar_planejamento_turno(
     ns = namespace_getter()
     observabilidade = ns.get('_observabilidade_mente_runtime')
     try:
-        resultado = _iniciar_planejamento_turno(
-            namespace_getter,
-            texto,
-            origem=origem,
-        )
+        evento = normalizar_evento_cognitivo(texto, origem=origem)
+        if evento:
+            resultado = _iniciar_planejamento_evento(
+                namespace_getter,
+                evento,
+                origem=origem,
+            )
+        elif isinstance(texto, Mapping):
+            raise ValueError(
+                "entrada estruturada precisa declarar natureza='evento'"
+            )
+        else:
+            resultado = _iniciar_planejamento_turno(
+                namespace_getter,
+                str(texto or ''),
+                origem=origem,
+            )
         sucesso = True
         return resultado
     except Exception as erro:
