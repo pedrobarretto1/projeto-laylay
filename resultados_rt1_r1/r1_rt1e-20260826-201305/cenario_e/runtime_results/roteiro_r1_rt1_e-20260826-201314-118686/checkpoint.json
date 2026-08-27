@@ -1,0 +1,119 @@
+{
+  "versao": 2,
+  "assinatura": "11bed4b578a77952e70e75e976b4fb7c1159b2b20118c513d2e0efd292ae37c8",
+  "criado_em": 1787785994.4606,
+  "atualizado_em": 1787786000.207797,
+  "concluido": true,
+  "criterio_conclusao": "transporte_resposta_e_resultado_turno",
+  "voz_silenciada_durante_teste": true,
+  "itens": [
+    {
+      "indice": 0,
+      "comando": "Liga a lâmpada.",
+      "status": "respondido",
+      "resposta": "Liguei a lâmpada do quarto, e ele respondeu direitinho.",
+      "enviado_em": 1787785994.5141954,
+      "finalizado_em": 1787785997.3834212,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "IOT_CONTROL",
+            "alvo": "lampada_quarto",
+            "status": "ligado",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "estado_observado",
+            "evidencia_confirmacao": "o dispositivo é relido após o comando"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "expectativa_por_padrao",
+        "origem_expectativa": "avaliador_global",
+        "dominio": "iot",
+        "intents_observadas": [
+          "IOT_CONTROL"
+        ],
+        "statuses_observados": [
+          "ligado"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 2.869
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 1,
+      "comando": "Leia de novo.",
+      "status": "respondido",
+      "resposta": "A ideia chegou, só não veio inteira. Continua daí.",
+      "enviado_em": 1787785997.4554117,
+      "finalizado_em": 1787786000.1296847,
+      "plano": {
+        "fase": "fala_verificada",
+        "erros": [],
+        "comandos": [],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 0,
+        "execucao": "sem_comando_observado",
+        "confirmacao": "sem_comando_observado",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "nao_avaliado",
+        "versao_avaliador": 15,
+        "resultado_semantico": "nao_avaliado",
+        "semantica_avaliada": false,
+        "expectativa": "",
+        "origem_expectativa": "nenhuma",
+        "dominio": "conversa",
+        "intents_observadas": [],
+        "statuses_observados": [],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 2.674
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "resposta_sem_execucao",
+      "processamento_concluido": true
+    }
+  ],
+  "preparacao": {
+    "status": "modo_chat_confirmado",
+    "atraso_inicial_s": 0.0,
+    "voz_silenciada": true
+  },
+  "finalizado_em": 1787786000.207787
+}

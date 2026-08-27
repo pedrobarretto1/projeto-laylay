@@ -1,0 +1,19 @@
+{
+  "teste": "R1-RT1-E-ESCAPE-PROBE",
+  "criado_em": 1787785985.9053624,
+  "projeto": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay",
+  "python_driver": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\.venv314\\Scripts\\python.exe",
+  "python_runtime": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\.venv314\\Scripts\\python.exe",
+  "python_userbase_preservado": "C:\\Users\\pbarr\\AppData\\Roaming\\Python",
+  "git_head": "dc72f429088949211b86bf0160de518bfd1bbccc",
+  "git_branch": "main",
+  "git_status_short": [
+    "M mente_laylay/cognicao/orquestrador_turno_runtime.py",
+    "?? .r1_v2_backup_pre_candidato_dc72f429/",
+    "?? aplicar_candidato_r1_v2.py",
+    "?? falsificacao_monotonicidade_autoridade_pos_classificacao_teste4_27.py",
+    "?? falsificacao_r1_v2_fail_closed_tipado_lab.py",
+    "?? tests/test_r1_v2_fail_closed_repeticao_tipificada.py"
+  ],
+  "nota": "Nenhum pull/reset/checkout foi executado pelo RT1."
+}

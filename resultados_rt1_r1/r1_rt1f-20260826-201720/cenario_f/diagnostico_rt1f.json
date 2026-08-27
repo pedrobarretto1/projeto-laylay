@@ -1,0 +1,5011 @@
+{
+  "cenario": {
+    "codigo": "F",
+    "descricao": "PROBE: FILE_READ(A) -> IoT -> Leia de novo",
+    "comandos": [
+      "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+      "Leia o arquivo rt1_f.txt.",
+      "Liga a lâmpada.",
+      "Leia de novo."
+    ],
+    "gmail_fake": false
+  },
+  "resultado": {
+    "codigo": "F",
+    "descricao": "PROBE: FILE_READ(A) -> IoT -> Leia de novo",
+    "estado": "PASS",
+    "fronteira": "",
+    "detalhes": [
+      "receipt FILE_READ sobreviveu à leitura, ao IoT e foi selecionado corretamente por 'Leia de novo'; a divergência anterior está depois desta fronteira."
+    ],
+    "returncode": 0,
+    "resultado_runtime": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\runtime_results\\roteiro_r1_rt1_f-20260826-201727-837707",
+    "terminal_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\subprocess_terminal.log",
+    "physical_log": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\physical.jsonl"
+  },
+  "planos": {
+    "0": {
+      "id": 1787786248467440700,
+      "origem_entrada": "desconhecida",
+      "texto_usuario": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+      "modalidade": "comando",
+      "ato_principal": "comando",
+      "atos": [
+        {
+          "ordem": 0,
+          "tipo": "comando",
+          "texto": "cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva alfa_rt1_f.",
+          "objetivo": "executar a ação pedida e responder com o resultado real",
+          "requer_execucao": true
+        }
+      ],
+      "dominio": "arquivo",
+      "contexto_necessario": [
+        "fala_atual",
+        "foco_recente",
+        "ultima_acao"
+      ],
+      "requer_execucao": true,
+      "autoriza_execucao": true,
+      "natureza_acao": "pedido_direto",
+      "turno_sem_autorizacao": false,
+      "misto": false,
+      "texto_operacional": "cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva alfa_rt1_f.",
+      "texto_conversacional": "",
+      "resposta_esperada": "responder ao conteudo atual",
+      "funcao_comunicativa": "informacao",
+      "emocao_implicita": "neutra",
+      "postura_esperada": "natural",
+      "permite_pergunta": true,
+      "identidade": {
+        "falante": "usuario",
+        "interlocutor": "laylay",
+        "laylay_eu": false,
+        "usuario_eu": true,
+        "pedro_eu": true,
+        "referencia_laylay": false,
+        "referencia_usuario": false,
+        "referencia_pedro": false,
+        "vocativo_laylay": false,
+        "texto_sem_vocativo": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+        "objeto_laylay_py": false,
+        "relacao_com_laylay": "",
+        "pronome_ambiguo": false,
+        "ts": 1787786248.484006
+      },
+      "retrato_id": 1787786248467440700,
+      "entidades": {
+        "janela": {
+          "tipo": "janela",
+          "nome": "ChatGPT",
+          "origem": "janela_ativa",
+          "ts": 1787786248.507541,
+          "dados": {
+            "exe": "ChatGPT.exe",
+            "titulo": "ChatGPT",
+            "assunto": ""
+          }
+        }
+      },
+      "referencia_resolvida": {},
+      "operacao_explicita": "arquivo",
+      "especialistas": {
+        "social": {
+          "ativo": false,
+          "texto": "",
+          "funcao": "informacao",
+          "emocao": "neutra",
+          "postura": "natural",
+          "permite_pergunta": true,
+          "precisa_reconhecimento": false,
+          "pode_executar": false,
+          "politica_resposta": "responder_diretamente",
+          "resultado_operacional_consultado": false
+        },
+        "operacional": {
+          "ativo": true,
+          "texto": "cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva alfa_rt1_f.",
+          "autoriza_execucao": true,
+          "operacao": "arquivo",
+          "intents_permitidos": [
+            "FILE_SEARCH",
+            "FILE_READ",
+            "FILE_OPEN_RESULT",
+            "CREATE_FOLDER",
+            "CREATE_FILE",
+            "DELETE_ITEM",
+            "MOVE_ITEM",
+            "FILE_TRANSACTION"
+          ],
+          "referencia": {},
+          "confianca": 0.9,
+          "confiancas": {
+            "acao": 0.98,
+            "alvo": 0.9,
+            "referencia": 1.0
+          },
+          "requer_esclarecimento": false,
+          "confirmacao_explicita": false,
+          "motivo_bloqueio": "",
+          "pode_falar_sem_resultado": false,
+          "saude_componentes": {
+            "memoria_pessoas": {
+              "status": "saudavel",
+              "detalhes": "memória local estruturada conectada a contexto, aprendizado, continuidade, segurança, diagnóstico e mapa de habilidades",
+              "ausentes": [],
+              "ts": 1787786247.783276
+            },
+            "observador_area_transferencia": {
+              "status": "saudavel",
+              "detalhes": "percepção local sanitizada conectada ao modo companhia; modo=sugestao",
+              "ausentes": [],
+              "ts": 1787786247.7915812
+            },
+            "agenda": {
+              "status": "saudavel",
+              "detalhes": "persistência e daemon da agenda observáveis",
+              "ausentes": [],
+              "ts": 1787786247.8663118
+            },
+            "orquestracao_cooperativa": {
+              "status": "saudavel",
+              "detalhes": "modo=ativo; fluxos governados=clipboard_para_arquivo,clipboard_pesquisa_llm,caixa_para_agenda,organizacao_desktop_inteligente,analise_item_jogo,curadoria_musical",
+              "ausentes": [],
+              "ts": 1787786247.8318884
+            },
+            "execucao_intencao": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533301
+            },
+            "ciclo_comandos": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533518
+            },
+            "estado_compartilhado": {
+              "status": "saudavel",
+              "detalhes": "dominios conectados",
+              "ausentes": [],
+              "ts": 1787786247.853253
+            },
+            "chrome_contexto": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8532915
+            },
+            "voz": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533669
+            },
+            "memoria": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533797
+            },
+            "gmail": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533964
+            },
+            "navegador": {
+              "status": "degradado",
+              "detalhes": "disponibilidade operacional limitada",
+              "ausentes": [
+                "chrome_ws_conectado"
+              ],
+              "ts": 1787786247.8536007
+            },
+            "llm": {
+              "status": "saudavel",
+              "detalhes": "contrato tipado conectado",
+              "ausentes": [],
+              "ts": 1787786247.8535414
+            },
+            "navegador_tipado": {
+              "status": "degradado",
+              "detalhes": "espelho da saúde operacional do navegador",
+              "ausentes": [
+                "chrome_ws_conectado"
+              ],
+              "ts": 1787786247.8536093
+            },
+            "iot": {
+              "status": "saudavel",
+              "detalhes": "configuração, provedor e dispositivos observados",
+              "ausentes": [],
+              "ts": 1787786247.8537023
+            },
+            "area_transferencia": {
+              "status": "saudavel",
+              "detalhes": "pré-condições observadas",
+              "ausentes": [],
+              "ts": 1787786247.853729
+            },
+            "caixa_entrada": {
+              "status": "saudavel",
+              "detalhes": "pré-condições observadas",
+              "ausentes": [],
+              "ts": 1787786247.8541021
+            },
+            "central_notificacoes": {
+              "status": "saudavel",
+              "detalhes": "pré-condições observadas",
+              "ausentes": [],
+              "ts": 1787786247.8542483
+            },
+            "avatar": {
+              "status": "indisponivel",
+              "detalhes": "preferência desativada",
+              "ausentes": [
+                "preferencia_avatar_ativa"
+              ],
+              "ts": 1787786247.8662646
+            }
+          },
+          "comandos_planejados": [
+            "CREATE_FILE"
+          ],
+          "resultados": [
+            {
+              "id_solicitacao": "bbe939bbbab4489689aadb5964608420",
+              "intent": "CREATE_FILE",
+              "acao": "CREATE_FILE",
+              "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "status": "arquivo_criado",
+              "executou": true,
+              "confirmado": true,
+              "ok": true,
+              "estado_final": "confirmado",
+              "origem": "executor",
+              "detalhe": "",
+              "params": {
+                "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+                "conteudo": "ALFA_RT1_F",
+                "tipo_arquivo": "texto",
+                "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+                "nome_arquivo": "rt1_f.txt",
+                "tipo": "arquivo"
+              },
+              "contexto": {},
+              "confirmacao_oferecida": "estado_observado",
+              "evidencia_confirmacao": "a existência local do arquivo é relida",
+              "estado_confirmacao": "confirmado"
+            }
+          ],
+          "resultado_disponivel": true,
+          "resultado_confirmado": true,
+          "pode_afirmar_conclusao": true,
+          "sem_confirmacao": []
+        },
+        "coordenacao": {
+          "modo": "operacional",
+          "ordem": [
+            "executar_parte_operacional",
+            "informar_resultado_real"
+          ],
+          "consultas": [],
+          "memoria_compartilhada": true,
+          "voz_unica": true,
+          "executor_unico": true,
+          "consulta_concluida": true,
+          "arquitetura": "consenso_distribuido",
+          "sem_vencedor_isolado": true
+        },
+        "pareceres_habilidades": [
+          {
+            "habilidade": "conversa",
+            "ativo": false,
+            "proposta": "",
+            "confianca": 0.0,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "funcao_comunicativa:informacao",
+              "postura:natural"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "interromper_resposta"
+          },
+          {
+            "habilidade": "operacao",
+            "ativo": true,
+            "proposta": "executar somente a ação consensual autorizada e devolver o resultado real",
+            "confianca": 0.9,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.9,
+            "evidencias": [
+              "operacao:arquivo",
+              "autorizada:True"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": true,
+            "politica_falha": "continuar_com_resultado_real"
+          },
+          {
+            "habilidade": "contexto_geral",
+            "ativo": true,
+            "proposta": "resolver referências e manter o assunto correto para as demais habilidades",
+            "confianca": 0.0,
+            "relevancia": 0.92,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "referencia:-",
+              "candidatos:1"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": true,
+            "autoriza_execucao": false,
+            "politica_falha": "continuar_sem_substituir_resposta"
+          },
+          {
+            "habilidade": "memoria_aprendizado",
+            "ativo": false,
+            "proposta": "registrar silenciosamente somente o que o usuário declarou de forma explícita",
+            "confianca": 0.0,
+            "relevancia": 0.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "declaracoes_explicitas:0",
+              "origem:usuario"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": true,
+            "autoriza_execucao": false,
+            "politica_falha": "continuar_sem_substituir_resposta"
+          },
+          {
+            "habilidade": "pesquisa_factual",
+            "ativo": false,
+            "proposta": "enriquecer a conversa com fatos verificáveis quando houver evidência suficiente",
+            "confianca": 0.0,
+            "relevancia": 0.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "tema:-"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": true,
+            "autoriza_execucao": false,
+            "politica_falha": "continuar_sem_substituir_resposta"
+          },
+          {
+            "habilidade": "personalidade",
+            "ativo": true,
+            "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "confianca": 0.96,
+            "relevancia": 0.96,
+            "saude": 1.0,
+            "ativacao": 0.922,
+            "evidencias": [
+              "uma_mente",
+              "uma_voz"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "usar_fala_segura_sem_apagar_o_contexto"
+          }
+        ],
+        "deliberacao": {
+          "arquitetura": "consenso_distribuido",
+          "objetivo": "responder ao conteudo atual",
+          "estado": "consenso_formado",
+          "participantes": [
+            "personalidade",
+            "operacao"
+          ],
+          "silenciosas": [],
+          "executoras_autorizadas": [
+            "operacao"
+          ],
+          "pareceres": [
+            {
+              "habilidade": "personalidade",
+              "ativo": true,
+              "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+              "confianca": 0.96,
+              "relevancia": 0.96,
+              "saude": 1.0,
+              "ativacao": 0.922,
+              "evidencias": [
+                "uma_mente",
+                "uma_voz"
+              ],
+              "dependencias": [],
+              "conflitos": [],
+              "silenciosa": false,
+              "autoriza_execucao": false,
+              "politica_falha": "usar_fala_segura_sem_apagar_o_contexto",
+              "contribuicao_parcial": false,
+              "dependencias_ausentes": []
+            },
+            {
+              "habilidade": "operacao",
+              "ativo": true,
+              "proposta": "executar somente a ação consensual autorizada e devolver o resultado real",
+              "confianca": 0.9,
+              "relevancia": 1.0,
+              "saude": 1.0,
+              "ativacao": 0.9,
+              "evidencias": [
+                "operacao:arquivo",
+                "autorizada:True"
+              ],
+              "dependencias": [],
+              "conflitos": [],
+              "silenciosa": false,
+              "autoriza_execucao": true,
+              "politica_falha": "continuar_com_resultado_real",
+              "contribuicao_parcial": false,
+              "dependencias_ausentes": []
+            }
+          ],
+          "rejeitados": [
+            {
+              "habilidade": "contexto_geral",
+              "motivo": "ativacao_insuficiente",
+              "ativacao": 0.0
+            }
+          ],
+          "evidencias_compartilhadas": [
+            "uma_mente",
+            "uma_voz",
+            "operacao:arquivo",
+            "autorizada:True"
+          ],
+          "conclusao_conjunta": [
+            "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "executar somente a ação consensual autorizada e devolver o resultado real"
+          ],
+          "rodadas": [
+            {
+              "fase": "hipoteses",
+              "participantes": [
+                "operacao",
+                "contexto_geral",
+                "personalidade"
+              ]
+            },
+            {
+              "fase": "compatibilidade",
+              "aceitos": [
+                "personalidade",
+                "operacao"
+              ],
+              "rejeitados": 1
+            },
+            {
+              "fase": "consenso",
+              "contribuicoes": 2
+            }
+          ],
+          "regras": {
+            "sem_vencedor_isolado": true,
+            "voz_final_unica": true,
+            "falha_auxiliar_nao_substitui_resposta": true,
+            "execucao_somente_por_porteiro_canonico": true,
+            "memoria_e_aprendizado_silenciosos": true
+          },
+          "quadro_canonico": {
+            "evento_id": "fd60ed5fcfc06d98",
+            "participantes": [
+              "personalidade",
+              "operacao"
+            ],
+            "publicado": true,
+            "autoriza_execucao": false
+          }
+        }
+      },
+      "atualidade_factual": {
+        "depende_atualidade": false,
+        "classe": "nao_consulta",
+        "validade_sugerida_s": 0.0,
+        "confianca": 0.0,
+        "motivos": [
+          "fala_nao_consultiva"
+        ]
+      },
+      "modo_coordenacao": "operacional",
+      "confianca": 0.98,
+      "periodo": "noite",
+      "fase": "planejado",
+      "comandos": [
+        {
+          "id_solicitacao": "bbe939bbbab4489689aadb5964608420",
+          "intent": "CREATE_FILE",
+          "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "status": "arquivo_criado",
+          "executou": true,
+          "confirmado": true,
+          "params": {
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "conteudo": "ALFA_RT1_F",
+            "tipo_arquivo": "texto",
+            "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "nome_arquivo": "rt1_f.txt",
+            "tipo": "arquivo"
+          },
+          "origem": "executor",
+          "detalhe": "",
+          "confirmacao_oferecida": "estado_observado",
+          "evidencia_confirmacao": "a existência local do arquivo é relida"
+        }
+      ],
+      "problemas": [],
+      "veto_execucao_operacional": false,
+      "ts": 1787786248.5424266,
+      "decisao_turno": {
+        "turno_id": 1787786248467440700,
+        "modalidade": "comando",
+        "proprietario": "operacional",
+        "permite_acao": true,
+        "permite_resposta": true,
+        "requer_esclarecimento": false,
+        "intencao": "CREATE_FILE",
+        "origem_decisao": "deterministico-explicito",
+        "confianca": 0.98,
+        "status": "decidida"
+      },
+      "evidencia_capacidades": {
+        "fonte": "catalogo_vivo",
+        "dominios_confirmados": [
+          "musica",
+          "sistema",
+          "navegador",
+          "agenda",
+          "arquivos",
+          "email",
+          "iot",
+          "area_transferencia",
+          "caixa_entrada",
+          "pessoas",
+          "memoria",
+          "cooperacao"
+        ],
+        "dominios_relevantes": [
+          "arquivos"
+        ],
+        "possui_capacidades_locais": true,
+        "autoriza_execucao": false
+      },
+      "fundamentacao_factual": {},
+      "deliberacao_habilidades": {
+        "arquitetura": "consenso_distribuido",
+        "objetivo": "responder ao conteudo atual",
+        "estado": "consenso_formado",
+        "participantes": [
+          "personalidade",
+          "operacao"
+        ],
+        "silenciosas": [],
+        "executoras_autorizadas": [
+          "operacao"
+        ],
+        "pareceres": [
+          {
+            "habilidade": "personalidade",
+            "ativo": true,
+            "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "confianca": 0.96,
+            "relevancia": 0.96,
+            "saude": 1.0,
+            "ativacao": 0.922,
+            "evidencias": [
+              "uma_mente",
+              "uma_voz"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "usar_fala_segura_sem_apagar_o_contexto",
+            "contribuicao_parcial": false,
+            "dependencias_ausentes": []
+          },
+          {
+            "habilidade": "operacao",
+            "ativo": true,
+            "proposta": "executar somente a ação consensual autorizada e devolver o resultado real",
+            "confianca": 0.9,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.9,
+            "evidencias": [
+              "operacao:arquivo",
+              "autorizada:True"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": true,
+            "politica_falha": "continuar_com_resultado_real",
+            "contribuicao_parcial": false,
+            "dependencias_ausentes": []
+          }
+        ],
+        "rejeitados": [
+          {
+            "habilidade": "contexto_geral",
+            "motivo": "ativacao_insuficiente",
+            "ativacao": 0.0
+          }
+        ],
+        "evidencias_compartilhadas": [
+          "uma_mente",
+          "uma_voz",
+          "operacao:arquivo",
+          "autorizada:True"
+        ],
+        "conclusao_conjunta": [
+          "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+          "executar somente a ação consensual autorizada e devolver o resultado real"
+        ],
+        "rodadas": [
+          {
+            "fase": "hipoteses",
+            "participantes": [
+              "operacao",
+              "contexto_geral",
+              "personalidade"
+            ]
+          },
+          {
+            "fase": "compatibilidade",
+            "aceitos": [
+              "personalidade",
+              "operacao"
+            ],
+            "rejeitados": 1
+          },
+          {
+            "fase": "consenso",
+            "contribuicoes": 2
+          }
+        ],
+        "regras": {
+          "sem_vencedor_isolado": true,
+          "voz_final_unica": true,
+          "falha_auxiliar_nao_substitui_resposta": true,
+          "execucao_somente_por_porteiro_canonico": true,
+          "memoria_e_aprendizado_silenciosos": true
+        },
+        "quadro_canonico": {
+          "evento_id": "fd60ed5fcfc06d98",
+          "participantes": [
+            "personalidade",
+            "operacao"
+          ],
+          "publicado": true,
+          "autoriza_execucao": false
+        }
+      },
+      "contrato_fala": {
+        "versao": 1,
+        "turno_id": 1787786248467440700,
+        "funcao": "informacao",
+        "atos": [
+          "comando"
+        ],
+        "referente": "",
+        "conteudos_obrigatorios": [
+          "responder ao conteudo atual",
+          "preservar as capacidades locais confirmadas sem transformar essa informação em execução"
+        ],
+        "inferencias_proibidas": [
+          "não inventar emoção, intenção, gesto, cena ou situação do usuário",
+          "não transformar personalidade em fato nem em confirmação operacional",
+          "não dizer que é só um chatbot, que está fora do computador ou que só consegue conversar quando o catálogo vivo confirmou capacidades locais"
+        ],
+        "estrutura": [
+          "reconhecer literalmente a fala atual",
+          "responder ao conteúdo pedido",
+          "acrescentar personalidade somente se couber"
+        ],
+        "max_frases": 2,
+        "permite_pergunta": true,
+        "permite_humor": true,
+        "permite_metafora": false,
+        "fala_anterior_relevante": "",
+        "respostas_recentes_evitar": [],
+        "capacidades_confirmadas": [
+          "musica",
+          "sistema",
+          "navegador",
+          "agenda",
+          "arquivos",
+          "email",
+          "iot",
+          "area_transferencia",
+          "caixa_entrada",
+          "pessoas",
+          "memoria",
+          "cooperacao"
+        ],
+        "cooperacao_considerada": true,
+        "roteiro_concreto": {
+          "versao": 1,
+          "estrategia": "resultado_observado",
+          "ancora_literal": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+          "nucleo_resposta": "relatar primeiro o resultado realmente observado da ação e preservar a incerteza quando não houver confirmação",
+          "sequencia": [
+            "dizer o que foi observado, sem promover envio a sucesso",
+            "informar a consequência prática ou a incerteza essencial",
+            "adicionar personalidade apenas sem alterar o resultado"
+          ],
+          "exigencias_concretude": [
+            "usar a fala atual antes de puxar contexto antigo",
+            "nomear o referente quando ele estiver resolvido",
+            "ligar toda abstração, na mesma frase, a uma característica descritiva ou observável",
+            "marcar como opinião ou incerteza o que não estiver sustentado por uma fonte permitida"
+          ],
+          "abstracoes_a_concretizar": [
+            "energia",
+            "vibe",
+            "sensação",
+            "sentir-se vivo",
+            "alma",
+            "universo",
+            "ritmo",
+            "essência"
+          ],
+          "base_permitida": [
+            "fala atual do usuário",
+            "resultado operacional publicado pelo executor, quando existir",
+            "catálogo vivo confirmou capacidades locais: musica, sistema, navegador, agenda, arquivos, email, iot, area_transferencia"
+          ],
+          "primeira_frase_responde_nucleo": true,
+          "autoriza_execucao": false,
+          "origem": "mente_unica"
+        },
+        "autoriza_execucao": false,
+        "origem": "mente_unica"
+      },
+      "erros": [],
+      "fala_planejada": "",
+      "atualizado_ts": 1787786249.0823145
+    },
+    "1": {
+      "id": 1787786251361916100,
+      "origem_entrada": "desconhecida",
+      "texto_usuario": "Leia o arquivo rt1_f.txt.",
+      "modalidade": "comando",
+      "ato_principal": "comando",
+      "atos": [
+        {
+          "ordem": 0,
+          "tipo": "comando",
+          "texto": "leia o arquivo rt1_f.txt.",
+          "objetivo": "executar a ação pedida e responder com o resultado real",
+          "requer_execucao": true
+        }
+      ],
+      "dominio": "arquivo",
+      "contexto_necessario": [
+        "fala_atual"
+      ],
+      "requer_execucao": true,
+      "autoriza_execucao": true,
+      "natureza_acao": "pedido_direto",
+      "turno_sem_autorizacao": false,
+      "misto": false,
+      "texto_operacional": "leia o arquivo rt1_f.txt.",
+      "texto_conversacional": "",
+      "resposta_esperada": "responder ao conteudo atual",
+      "funcao_comunicativa": "informacao",
+      "emocao_implicita": "neutra",
+      "postura_esperada": "natural",
+      "permite_pergunta": true,
+      "identidade": {
+        "falante": "usuario",
+        "interlocutor": "laylay",
+        "laylay_eu": false,
+        "usuario_eu": true,
+        "pedro_eu": true,
+        "referencia_laylay": false,
+        "referencia_usuario": false,
+        "referencia_pedro": false,
+        "vocativo_laylay": false,
+        "texto_sem_vocativo": "Leia o arquivo rt1_f.txt.",
+        "objeto_laylay_py": false,
+        "relacao_com_laylay": "",
+        "pronome_ambiguo": false,
+        "ts": 1787786251.3675077
+      },
+      "retrato_id": 1787786251361916100,
+      "entidades": {
+        "janela": {
+          "tipo": "janela",
+          "nome": "ChatGPT",
+          "origem": "janela_ativa",
+          "ts": 1787786251.3878956,
+          "dados": {
+            "exe": "ChatGPT.exe",
+            "titulo": "ChatGPT",
+            "assunto": ""
+          }
+        },
+        "arquivo": {
+          "tipo": "arquivo",
+          "nome": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "origem": "foco_mental",
+          "ts": 1787786249.07434,
+          "dados": {
+            "tipo": "arquivo",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "topico": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\ce",
+            "habilidade": "arquivos",
+            "intencao": "CREATE_FILE",
+            "texto": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+            "resposta": "arquivo_criado",
+            "escopo": "",
+            "ts": 1787786249.07434
+          }
+        }
+      },
+      "referencia_resolvida": {},
+      "operacao_explicita": "arquivo",
+      "especialistas": {
+        "social": {
+          "ativo": false,
+          "texto": "",
+          "funcao": "informacao",
+          "emocao": "neutra",
+          "postura": "natural",
+          "permite_pergunta": true,
+          "precisa_reconhecimento": false,
+          "pode_executar": false,
+          "politica_resposta": "responder_diretamente",
+          "resultado_operacional_consultado": false
+        },
+        "operacional": {
+          "ativo": true,
+          "texto": "leia o arquivo rt1_f.txt.",
+          "autoriza_execucao": true,
+          "operacao": "arquivo",
+          "intents_permitidos": [
+            "FILE_SEARCH",
+            "FILE_READ",
+            "FILE_OPEN_RESULT",
+            "CREATE_FOLDER",
+            "CREATE_FILE",
+            "DELETE_ITEM",
+            "MOVE_ITEM",
+            "FILE_TRANSACTION"
+          ],
+          "referencia": {},
+          "confianca": 0.9,
+          "confiancas": {
+            "acao": 0.98,
+            "alvo": 0.9,
+            "referencia": 1.0
+          },
+          "requer_esclarecimento": false,
+          "confirmacao_explicita": false,
+          "motivo_bloqueio": "",
+          "pode_falar_sem_resultado": false,
+          "saude_componentes": {
+            "memoria_pessoas": {
+              "status": "saudavel",
+              "detalhes": "memória local estruturada conectada a contexto, aprendizado, continuidade, segurança, diagnóstico e mapa de habilidades",
+              "ausentes": [],
+              "ts": 1787786247.783276
+            },
+            "observador_area_transferencia": {
+              "status": "saudavel",
+              "detalhes": "percepção local sanitizada conectada ao modo companhia; modo=sugestao",
+              "ausentes": [],
+              "ts": 1787786247.7915812
+            },
+            "agenda": {
+              "status": "saudavel",
+              "detalhes": "persistência e daemon da agenda observáveis",
+              "ausentes": [],
+              "ts": 1787786247.8663118
+            },
+            "orquestracao_cooperativa": {
+              "status": "saudavel",
+              "detalhes": "modo=ativo; fluxos governados=clipboard_para_arquivo,clipboard_pesquisa_llm,caixa_para_agenda,organizacao_desktop_inteligente,analise_item_jogo,curadoria_musical",
+              "ausentes": [],
+              "ts": 1787786247.8318884
+            },
+            "execucao_intencao": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786249.0079422
+            },
+            "ciclo_comandos": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533518
+            },
+            "estado_compartilhado": {
+              "status": "saudavel",
+              "detalhes": "dominios conectados",
+              "ausentes": [],
+              "ts": 1787786247.853253
+            },
+            "chrome_contexto": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8532915
+            },
+            "voz": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533669
+            },
+            "memoria": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533797
+            },
+            "gmail": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533964
+            },
+            "navegador": {
+              "status": "degradado",
+              "detalhes": "disponibilidade operacional limitada",
+              "ausentes": [
+                "chrome_ws_conectado"
+              ],
+              "ts": 1787786247.8536007
+            },
+            "llm": {
+              "status": "saudavel",
+              "detalhes": "contrato tipado conectado",
+              "ausentes": [],
+              "ts": 1787786247.8535414
+            },
+            "navegador_tipado": {
+              "status": "degradado",
+              "detalhes": "espelho da saúde operacional do navegador",
+              "ausentes": [
+                "chrome_ws_conectado"
+              ],
+              "ts": 1787786247.8536093
+            },
+            "iot": {
+              "status": "saudavel",
+              "detalhes": "configuração, provedor e dispositivos observados",
+              "ausentes": [],
+              "ts": 1787786247.8537023
+            },
+            "area_transferencia": {
+              "status": "saudavel",
+              "detalhes": "pré-condições observadas",
+              "ausentes": [],
+              "ts": 1787786247.853729
+            },
+            "caixa_entrada": {
+              "status": "saudavel",
+              "detalhes": "pré-condições observadas",
+              "ausentes": [],
+              "ts": 1787786247.8541021
+            },
+            "central_notificacoes": {
+              "status": "saudavel",
+              "detalhes": "pré-condições observadas",
+              "ausentes": [],
+              "ts": 1787786247.8542483
+            },
+            "avatar": {
+              "status": "indisponivel",
+              "detalhes": "preferência desativada",
+              "ausentes": [
+                "preferencia_avatar_ativa"
+              ],
+              "ts": 1787786247.8662646
+            }
+          },
+          "comandos_planejados": [
+            "FILE_READ"
+          ],
+          "resultados": [
+            {
+              "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+              "intent": "FILE_READ",
+              "acao": "FILE_READ",
+              "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "status": "conteudo_lido",
+              "executou": true,
+              "confirmado": true,
+              "ok": true,
+              "estado_final": "confirmado",
+              "origem": "executor",
+              "detalhe": "",
+              "params": {
+                "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+                "alvo": "rt1_f.txt",
+                "referencia_contextual": true
+              },
+              "contexto": {},
+              "confirmacao_oferecida": "retorno_dados",
+              "evidencia_confirmacao": "o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade",
+              "estado_confirmacao": "confirmado"
+            }
+          ],
+          "resultado_disponivel": true,
+          "resultado_confirmado": true,
+          "pode_afirmar_conclusao": true,
+          "sem_confirmacao": []
+        },
+        "coordenacao": {
+          "modo": "operacional",
+          "ordem": [
+            "executar_parte_operacional",
+            "informar_resultado_real"
+          ],
+          "consultas": [],
+          "memoria_compartilhada": true,
+          "voz_unica": true,
+          "executor_unico": true,
+          "consulta_concluida": true,
+          "arquitetura": "consenso_distribuido",
+          "sem_vencedor_isolado": true
+        },
+        "pareceres_habilidades": [
+          {
+            "habilidade": "conversa",
+            "ativo": false,
+            "proposta": "",
+            "confianca": 0.0,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "funcao_comunicativa:informacao",
+              "postura:natural"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "interromper_resposta"
+          },
+          {
+            "habilidade": "operacao",
+            "ativo": true,
+            "proposta": "executar somente a ação consensual autorizada e devolver o resultado real",
+            "confianca": 0.9,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.9,
+            "evidencias": [
+              "operacao:arquivo",
+              "autorizada:True"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": true,
+            "politica_falha": "continuar_com_resultado_real"
+          },
+          {
+            "habilidade": "contexto_geral",
+            "ativo": false,
+            "proposta": "resolver referências e manter o assunto correto para as demais habilidades",
+            "confianca": 0.0,
+            "relevancia": 0.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "referencia:-",
+              "candidatos:0"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": true,
+            "autoriza_execucao": false,
+            "politica_falha": "continuar_sem_substituir_resposta"
+          },
+          {
+            "habilidade": "memoria_aprendizado",
+            "ativo": false,
+            "proposta": "registrar silenciosamente somente o que o usuário declarou de forma explícita",
+            "confianca": 0.0,
+            "relevancia": 0.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "declaracoes_explicitas:0",
+              "origem:usuario"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": true,
+            "autoriza_execucao": false,
+            "politica_falha": "continuar_sem_substituir_resposta"
+          },
+          {
+            "habilidade": "pesquisa_factual",
+            "ativo": false,
+            "proposta": "enriquecer a conversa com fatos verificáveis quando houver evidência suficiente",
+            "confianca": 0.0,
+            "relevancia": 0.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "tema:-"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": true,
+            "autoriza_execucao": false,
+            "politica_falha": "continuar_sem_substituir_resposta"
+          },
+          {
+            "habilidade": "personalidade",
+            "ativo": true,
+            "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "confianca": 0.96,
+            "relevancia": 0.96,
+            "saude": 1.0,
+            "ativacao": 0.922,
+            "evidencias": [
+              "uma_mente",
+              "uma_voz"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "usar_fala_segura_sem_apagar_o_contexto"
+          }
+        ],
+        "deliberacao": {
+          "arquitetura": "consenso_distribuido",
+          "objetivo": "responder ao conteudo atual",
+          "estado": "consenso_formado",
+          "participantes": [
+            "personalidade",
+            "operacao"
+          ],
+          "silenciosas": [],
+          "executoras_autorizadas": [
+            "operacao"
+          ],
+          "pareceres": [
+            {
+              "habilidade": "personalidade",
+              "ativo": true,
+              "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+              "confianca": 0.96,
+              "relevancia": 0.96,
+              "saude": 1.0,
+              "ativacao": 0.922,
+              "evidencias": [
+                "uma_mente",
+                "uma_voz"
+              ],
+              "dependencias": [],
+              "conflitos": [],
+              "silenciosa": false,
+              "autoriza_execucao": false,
+              "politica_falha": "usar_fala_segura_sem_apagar_o_contexto",
+              "contribuicao_parcial": false,
+              "dependencias_ausentes": []
+            },
+            {
+              "habilidade": "operacao",
+              "ativo": true,
+              "proposta": "executar somente a ação consensual autorizada e devolver o resultado real",
+              "confianca": 0.9,
+              "relevancia": 1.0,
+              "saude": 1.0,
+              "ativacao": 0.9,
+              "evidencias": [
+                "operacao:arquivo",
+                "autorizada:True"
+              ],
+              "dependencias": [],
+              "conflitos": [],
+              "silenciosa": false,
+              "autoriza_execucao": true,
+              "politica_falha": "continuar_com_resultado_real",
+              "contribuicao_parcial": false,
+              "dependencias_ausentes": []
+            }
+          ],
+          "rejeitados": [],
+          "evidencias_compartilhadas": [
+            "uma_mente",
+            "uma_voz",
+            "operacao:arquivo",
+            "autorizada:True"
+          ],
+          "conclusao_conjunta": [
+            "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "executar somente a ação consensual autorizada e devolver o resultado real"
+          ],
+          "rodadas": [
+            {
+              "fase": "hipoteses",
+              "participantes": [
+                "operacao",
+                "personalidade"
+              ]
+            },
+            {
+              "fase": "compatibilidade",
+              "aceitos": [
+                "personalidade",
+                "operacao"
+              ],
+              "rejeitados": 0
+            },
+            {
+              "fase": "consenso",
+              "contribuicoes": 2
+            }
+          ],
+          "regras": {
+            "sem_vencedor_isolado": true,
+            "voz_final_unica": true,
+            "falha_auxiliar_nao_substitui_resposta": true,
+            "execucao_somente_por_porteiro_canonico": true,
+            "memoria_e_aprendizado_silenciosos": true
+          },
+          "quadro_canonico": {
+            "evento_id": "fd60ed5fcfc06d98",
+            "participantes": [
+              "personalidade",
+              "operacao"
+            ],
+            "publicado": true,
+            "autoriza_execucao": false
+          }
+        }
+      },
+      "atualidade_factual": {
+        "depende_atualidade": false,
+        "classe": "nao_consulta",
+        "validade_sugerida_s": 0.0,
+        "confianca": 0.0,
+        "motivos": [
+          "fala_nao_consultiva"
+        ]
+      },
+      "modo_coordenacao": "operacional",
+      "confianca": 0.98,
+      "periodo": "noite",
+      "fase": "planejado",
+      "comandos": [
+        {
+          "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+          "intent": "FILE_READ",
+          "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "status": "conteudo_lido",
+          "executou": true,
+          "confirmado": true,
+          "params": {
+            "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "alvo": "rt1_f.txt",
+            "referencia_contextual": true
+          },
+          "origem": "executor",
+          "detalhe": "",
+          "confirmacao_oferecida": "retorno_dados",
+          "evidencia_confirmacao": "o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade"
+        }
+      ],
+      "problemas": [],
+      "veto_execucao_operacional": false,
+      "ts": 1787786251.417395,
+      "decisao_turno": {
+        "turno_id": 1787786251361916100,
+        "modalidade": "comando",
+        "proprietario": "operacional",
+        "permite_acao": true,
+        "permite_resposta": true,
+        "requer_esclarecimento": false,
+        "intencao": "",
+        "origem_decisao": "classificador_turno",
+        "confianca": 0.98,
+        "status": "planejada"
+      },
+      "evidencia_capacidades": {
+        "fonte": "catalogo_vivo",
+        "dominios_confirmados": [
+          "musica",
+          "sistema",
+          "navegador",
+          "agenda",
+          "arquivos",
+          "email",
+          "iot",
+          "area_transferencia",
+          "caixa_entrada",
+          "pessoas",
+          "memoria",
+          "cooperacao"
+        ],
+        "dominios_relevantes": [
+          "arquivos"
+        ],
+        "possui_capacidades_locais": true,
+        "autoriza_execucao": false
+      },
+      "fundamentacao_factual": {},
+      "deliberacao_habilidades": {
+        "arquitetura": "consenso_distribuido",
+        "objetivo": "responder ao conteudo atual",
+        "estado": "consenso_formado",
+        "participantes": [
+          "personalidade",
+          "operacao"
+        ],
+        "silenciosas": [],
+        "executoras_autorizadas": [
+          "operacao"
+        ],
+        "pareceres": [
+          {
+            "habilidade": "personalidade",
+            "ativo": true,
+            "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "confianca": 0.96,
+            "relevancia": 0.96,
+            "saude": 1.0,
+            "ativacao": 0.922,
+            "evidencias": [
+              "uma_mente",
+              "uma_voz"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "usar_fala_segura_sem_apagar_o_contexto",
+            "contribuicao_parcial": false,
+            "dependencias_ausentes": []
+          },
+          {
+            "habilidade": "operacao",
+            "ativo": true,
+            "proposta": "executar somente a ação consensual autorizada e devolver o resultado real",
+            "confianca": 0.9,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.9,
+            "evidencias": [
+              "operacao:arquivo",
+              "autorizada:True"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": true,
+            "politica_falha": "continuar_com_resultado_real",
+            "contribuicao_parcial": false,
+            "dependencias_ausentes": []
+          }
+        ],
+        "rejeitados": [],
+        "evidencias_compartilhadas": [
+          "uma_mente",
+          "uma_voz",
+          "operacao:arquivo",
+          "autorizada:True"
+        ],
+        "conclusao_conjunta": [
+          "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+          "executar somente a ação consensual autorizada e devolver o resultado real"
+        ],
+        "rodadas": [
+          {
+            "fase": "hipoteses",
+            "participantes": [
+              "operacao",
+              "personalidade"
+            ]
+          },
+          {
+            "fase": "compatibilidade",
+            "aceitos": [
+              "personalidade",
+              "operacao"
+            ],
+            "rejeitados": 0
+          },
+          {
+            "fase": "consenso",
+            "contribuicoes": 2
+          }
+        ],
+        "regras": {
+          "sem_vencedor_isolado": true,
+          "voz_final_unica": true,
+          "falha_auxiliar_nao_substitui_resposta": true,
+          "execucao_somente_por_porteiro_canonico": true,
+          "memoria_e_aprendizado_silenciosos": true
+        },
+        "quadro_canonico": {
+          "evento_id": "fd60ed5fcfc06d98",
+          "participantes": [
+            "personalidade",
+            "operacao"
+          ],
+          "publicado": true,
+          "autoriza_execucao": false
+        }
+      },
+      "contrato_fala": {
+        "versao": 1,
+        "turno_id": 1787786251361916100,
+        "funcao": "informacao",
+        "atos": [
+          "comando"
+        ],
+        "referente": "",
+        "conteudos_obrigatorios": [
+          "responder ao conteudo atual",
+          "preservar as capacidades locais confirmadas sem transformar essa informação em execução"
+        ],
+        "inferencias_proibidas": [
+          "não inventar emoção, intenção, gesto, cena ou situação do usuário",
+          "não transformar personalidade em fato nem em confirmação operacional",
+          "não dizer que é só um chatbot, que está fora do computador ou que só consegue conversar quando o catálogo vivo confirmou capacidades locais"
+        ],
+        "estrutura": [
+          "reconhecer literalmente a fala atual",
+          "responder ao conteúdo pedido",
+          "acrescentar personalidade somente se couber"
+        ],
+        "max_frases": 2,
+        "permite_pergunta": true,
+        "permite_humor": true,
+        "permite_metafora": false,
+        "fala_anterior_relevante": "",
+        "respostas_recentes_evitar": [],
+        "capacidades_confirmadas": [
+          "musica",
+          "sistema",
+          "navegador",
+          "agenda",
+          "arquivos",
+          "email",
+          "iot",
+          "area_transferencia",
+          "caixa_entrada",
+          "pessoas",
+          "memoria",
+          "cooperacao"
+        ],
+        "cooperacao_considerada": true,
+        "roteiro_concreto": {
+          "versao": 1,
+          "estrategia": "resultado_observado",
+          "ancora_literal": "Leia o arquivo rt1_f.txt.",
+          "nucleo_resposta": "relatar primeiro o resultado realmente observado da ação e preservar a incerteza quando não houver confirmação",
+          "sequencia": [
+            "dizer o que foi observado, sem promover envio a sucesso",
+            "informar a consequência prática ou a incerteza essencial",
+            "adicionar personalidade apenas sem alterar o resultado"
+          ],
+          "exigencias_concretude": [
+            "usar a fala atual antes de puxar contexto antigo",
+            "nomear o referente quando ele estiver resolvido",
+            "ligar toda abstração, na mesma frase, a uma característica descritiva ou observável",
+            "marcar como opinião ou incerteza o que não estiver sustentado por uma fonte permitida"
+          ],
+          "abstracoes_a_concretizar": [
+            "energia",
+            "vibe",
+            "sensação",
+            "sentir-se vivo",
+            "alma",
+            "universo",
+            "ritmo",
+            "essência"
+          ],
+          "base_permitida": [
+            "fala atual do usuário",
+            "resultado operacional publicado pelo executor, quando existir",
+            "catálogo vivo confirmou capacidades locais: musica, sistema, navegador, agenda, arquivos, email, iot, area_transferencia"
+          ],
+          "primeira_frase_responde_nucleo": true,
+          "autoriza_execucao": false,
+          "origem": "mente_unica"
+        },
+        "autoriza_execucao": false,
+        "origem": "mente_unica"
+      },
+      "erros": [],
+      "fala_planejada": "",
+      "atualizado_ts": 1787786251.7705133
+    },
+    "2": {
+      "id": 1787786251951054800,
+      "origem_entrada": "desconhecida",
+      "texto_usuario": "Liga a lâmpada.",
+      "modalidade": "comando",
+      "ato_principal": "comando",
+      "atos": [
+        {
+          "ordem": 0,
+          "tipo": "comando",
+          "texto": "liga a lâmpada.",
+          "objetivo": "executar a ação pedida e responder com o resultado real",
+          "requer_execucao": true
+        }
+      ],
+      "dominio": "iot",
+      "contexto_necessario": [
+        "fala_atual"
+      ],
+      "requer_execucao": true,
+      "autoriza_execucao": true,
+      "natureza_acao": "pedido_direto",
+      "turno_sem_autorizacao": false,
+      "misto": false,
+      "texto_operacional": "liga a lâmpada.",
+      "texto_conversacional": "",
+      "resposta_esperada": "responder ao conteudo atual",
+      "funcao_comunicativa": "informacao",
+      "emocao_implicita": "neutra",
+      "postura_esperada": "natural",
+      "permite_pergunta": true,
+      "identidade": {
+        "falante": "usuario",
+        "interlocutor": "laylay",
+        "laylay_eu": false,
+        "usuario_eu": true,
+        "pedro_eu": true,
+        "referencia_laylay": false,
+        "referencia_usuario": false,
+        "referencia_pedro": false,
+        "vocativo_laylay": false,
+        "texto_sem_vocativo": "Liga a lâmpada.",
+        "objeto_laylay_py": false,
+        "relacao_com_laylay": "",
+        "pronome_ambiguo": false,
+        "ts": 1787786251.9567277
+      },
+      "retrato_id": 1787786251951054800,
+      "entidades": {
+        "janela": {
+          "tipo": "janela",
+          "nome": "ChatGPT",
+          "origem": "janela_ativa",
+          "ts": 1787786251.9751065,
+          "dados": {
+            "exe": "ChatGPT.exe",
+            "titulo": "ChatGPT",
+            "assunto": ""
+          }
+        },
+        "arquivo": {
+          "tipo": "arquivo",
+          "nome": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "origem": "foco_mental",
+          "ts": 1787786251.7910213,
+          "dados": {
+            "tipo": "arquivo",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "topico": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\ce",
+            "habilidade": "arquivos",
+            "intencao": "ARQUIVOS",
+            "texto": "",
+            "resposta": "",
+            "escopo": "",
+            "ts": 1787786251.7910213
+          }
+        }
+      },
+      "referencia_resolvida": {},
+      "operacao_explicita": "iot",
+      "especialistas": {
+        "social": {
+          "ativo": false,
+          "texto": "",
+          "funcao": "informacao",
+          "emocao": "neutra",
+          "postura": "natural",
+          "permite_pergunta": true,
+          "precisa_reconhecimento": false,
+          "pode_executar": false,
+          "politica_resposta": "responder_diretamente",
+          "resultado_operacional_consultado": false
+        },
+        "operacional": {
+          "ativo": true,
+          "texto": "liga a lâmpada.",
+          "autoriza_execucao": true,
+          "operacao": "iot",
+          "intents_permitidos": [
+            "IOT_CONTROL",
+            "IOT_STATUS",
+            "IOT_LIST"
+          ],
+          "referencia": {},
+          "confianca": 0.9,
+          "confiancas": {
+            "acao": 0.98,
+            "alvo": 0.9,
+            "referencia": 1.0
+          },
+          "requer_esclarecimento": false,
+          "confirmacao_explicita": false,
+          "motivo_bloqueio": "",
+          "pode_falar_sem_resultado": false,
+          "saude_componentes": {
+            "memoria_pessoas": {
+              "status": "saudavel",
+              "detalhes": "memória local estruturada conectada a contexto, aprendizado, continuidade, segurança, diagnóstico e mapa de habilidades",
+              "ausentes": [],
+              "ts": 1787786247.783276
+            },
+            "observador_area_transferencia": {
+              "status": "saudavel",
+              "detalhes": "percepção local sanitizada conectada ao modo companhia; modo=sugestao",
+              "ausentes": [],
+              "ts": 1787786247.7915812
+            },
+            "agenda": {
+              "status": "saudavel",
+              "detalhes": "persistência e daemon da agenda observáveis",
+              "ausentes": [],
+              "ts": 1787786247.8663118
+            },
+            "orquestracao_cooperativa": {
+              "status": "saudavel",
+              "detalhes": "modo=ativo; fluxos governados=clipboard_para_arquivo,clipboard_pesquisa_llm,caixa_para_agenda,organizacao_desktop_inteligente,analise_item_jogo,curadoria_musical",
+              "ausentes": [],
+              "ts": 1787786247.8318884
+            },
+            "execucao_intencao": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786251.709199
+            },
+            "ciclo_comandos": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533518
+            },
+            "estado_compartilhado": {
+              "status": "saudavel",
+              "detalhes": "dominios conectados",
+              "ausentes": [],
+              "ts": 1787786247.853253
+            },
+            "chrome_contexto": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8532915
+            },
+            "voz": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533669
+            },
+            "memoria": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533797
+            },
+            "gmail": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533964
+            },
+            "navegador": {
+              "status": "degradado",
+              "detalhes": "disponibilidade operacional limitada",
+              "ausentes": [
+                "chrome_ws_conectado"
+              ],
+              "ts": 1787786247.8536007
+            },
+            "llm": {
+              "status": "saudavel",
+              "detalhes": "contrato tipado conectado",
+              "ausentes": [],
+              "ts": 1787786247.8535414
+            },
+            "navegador_tipado": {
+              "status": "degradado",
+              "detalhes": "espelho da saúde operacional do navegador",
+              "ausentes": [
+                "chrome_ws_conectado"
+              ],
+              "ts": 1787786247.8536093
+            },
+            "iot": {
+              "status": "saudavel",
+              "detalhes": "configuração, provedor e dispositivos observados",
+              "ausentes": [],
+              "ts": 1787786247.8537023
+            },
+            "area_transferencia": {
+              "status": "saudavel",
+              "detalhes": "pré-condições observadas",
+              "ausentes": [],
+              "ts": 1787786247.853729
+            },
+            "caixa_entrada": {
+              "status": "saudavel",
+              "detalhes": "pré-condições observadas",
+              "ausentes": [],
+              "ts": 1787786247.8541021
+            },
+            "central_notificacoes": {
+              "status": "saudavel",
+              "detalhes": "pré-condições observadas",
+              "ausentes": [],
+              "ts": 1787786247.8542483
+            },
+            "avatar": {
+              "status": "indisponivel",
+              "detalhes": "preferência desativada",
+              "ausentes": [
+                "preferencia_avatar_ativa"
+              ],
+              "ts": 1787786247.8662646
+            }
+          },
+          "comandos_planejados": [
+            "IOT_CONTROL"
+          ],
+          "resultados": [
+            {
+              "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+              "intent": "IOT_CONTROL",
+              "acao": "IOT_CONTROL",
+              "alvo": "lampada_quarto",
+              "status": "ligado",
+              "executou": true,
+              "confirmado": true,
+              "ok": true,
+              "estado_final": "confirmado",
+              "origem": "executor",
+              "detalhe": "",
+              "params": {
+                "acao": "ligar",
+                "alvo": "lampada_quarto"
+              },
+              "contexto": {},
+              "confirmacao_oferecida": "estado_observado",
+              "evidencia_confirmacao": "o dispositivo é relido após o comando",
+              "estado_confirmacao": "confirmado"
+            }
+          ],
+          "resultado_disponivel": true,
+          "resultado_confirmado": true,
+          "pode_afirmar_conclusao": true,
+          "sem_confirmacao": []
+        },
+        "coordenacao": {
+          "modo": "operacional",
+          "ordem": [
+            "executar_parte_operacional",
+            "informar_resultado_real"
+          ],
+          "consultas": [],
+          "memoria_compartilhada": true,
+          "voz_unica": true,
+          "executor_unico": true,
+          "consulta_concluida": true,
+          "arquitetura": "consenso_distribuido",
+          "sem_vencedor_isolado": true
+        },
+        "pareceres_habilidades": [
+          {
+            "habilidade": "conversa",
+            "ativo": false,
+            "proposta": "",
+            "confianca": 0.0,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "funcao_comunicativa:informacao",
+              "postura:natural"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "interromper_resposta"
+          },
+          {
+            "habilidade": "operacao",
+            "ativo": true,
+            "proposta": "executar somente a ação consensual autorizada e devolver o resultado real",
+            "confianca": 0.9,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.9,
+            "evidencias": [
+              "operacao:iot",
+              "autorizada:True"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": true,
+            "politica_falha": "continuar_com_resultado_real"
+          },
+          {
+            "habilidade": "contexto_geral",
+            "ativo": false,
+            "proposta": "resolver referências e manter o assunto correto para as demais habilidades",
+            "confianca": 0.0,
+            "relevancia": 0.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "referencia:-",
+              "candidatos:0"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": true,
+            "autoriza_execucao": false,
+            "politica_falha": "continuar_sem_substituir_resposta"
+          },
+          {
+            "habilidade": "memoria_aprendizado",
+            "ativo": false,
+            "proposta": "registrar silenciosamente somente o que o usuário declarou de forma explícita",
+            "confianca": 0.0,
+            "relevancia": 0.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "declaracoes_explicitas:0",
+              "origem:usuario"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": true,
+            "autoriza_execucao": false,
+            "politica_falha": "continuar_sem_substituir_resposta"
+          },
+          {
+            "habilidade": "pesquisa_factual",
+            "ativo": false,
+            "proposta": "enriquecer a conversa com fatos verificáveis quando houver evidência suficiente",
+            "confianca": 0.0,
+            "relevancia": 0.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "tema:-"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": true,
+            "autoriza_execucao": false,
+            "politica_falha": "continuar_sem_substituir_resposta"
+          },
+          {
+            "habilidade": "personalidade",
+            "ativo": true,
+            "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "confianca": 0.96,
+            "relevancia": 0.96,
+            "saude": 1.0,
+            "ativacao": 0.922,
+            "evidencias": [
+              "uma_mente",
+              "uma_voz"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "usar_fala_segura_sem_apagar_o_contexto"
+          }
+        ],
+        "deliberacao": {
+          "arquitetura": "consenso_distribuido",
+          "objetivo": "responder ao conteudo atual",
+          "estado": "consenso_formado",
+          "participantes": [
+            "personalidade",
+            "operacao"
+          ],
+          "silenciosas": [],
+          "executoras_autorizadas": [
+            "operacao"
+          ],
+          "pareceres": [
+            {
+              "habilidade": "personalidade",
+              "ativo": true,
+              "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+              "confianca": 0.96,
+              "relevancia": 0.96,
+              "saude": 1.0,
+              "ativacao": 0.922,
+              "evidencias": [
+                "uma_mente",
+                "uma_voz"
+              ],
+              "dependencias": [],
+              "conflitos": [],
+              "silenciosa": false,
+              "autoriza_execucao": false,
+              "politica_falha": "usar_fala_segura_sem_apagar_o_contexto",
+              "contribuicao_parcial": false,
+              "dependencias_ausentes": []
+            },
+            {
+              "habilidade": "operacao",
+              "ativo": true,
+              "proposta": "executar somente a ação consensual autorizada e devolver o resultado real",
+              "confianca": 0.9,
+              "relevancia": 1.0,
+              "saude": 1.0,
+              "ativacao": 0.9,
+              "evidencias": [
+                "operacao:iot",
+                "autorizada:True"
+              ],
+              "dependencias": [],
+              "conflitos": [],
+              "silenciosa": false,
+              "autoriza_execucao": true,
+              "politica_falha": "continuar_com_resultado_real",
+              "contribuicao_parcial": false,
+              "dependencias_ausentes": []
+            }
+          ],
+          "rejeitados": [],
+          "evidencias_compartilhadas": [
+            "uma_mente",
+            "uma_voz",
+            "operacao:iot",
+            "autorizada:True"
+          ],
+          "conclusao_conjunta": [
+            "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "executar somente a ação consensual autorizada e devolver o resultado real"
+          ],
+          "rodadas": [
+            {
+              "fase": "hipoteses",
+              "participantes": [
+                "operacao",
+                "personalidade"
+              ]
+            },
+            {
+              "fase": "compatibilidade",
+              "aceitos": [
+                "personalidade",
+                "operacao"
+              ],
+              "rejeitados": 0
+            },
+            {
+              "fase": "consenso",
+              "contribuicoes": 2
+            }
+          ],
+          "regras": {
+            "sem_vencedor_isolado": true,
+            "voz_final_unica": true,
+            "falha_auxiliar_nao_substitui_resposta": true,
+            "execucao_somente_por_porteiro_canonico": true,
+            "memoria_e_aprendizado_silenciosos": true
+          },
+          "quadro_canonico": {
+            "evento_id": "fd60ed5fcfc06d98",
+            "participantes": [
+              "personalidade",
+              "operacao"
+            ],
+            "publicado": true,
+            "autoriza_execucao": false
+          }
+        }
+      },
+      "atualidade_factual": {
+        "depende_atualidade": false,
+        "classe": "nao_consulta",
+        "validade_sugerida_s": 0.0,
+        "confianca": 0.0,
+        "motivos": [
+          "fala_nao_consultiva"
+        ]
+      },
+      "modo_coordenacao": "operacional",
+      "confianca": 0.98,
+      "periodo": "noite",
+      "fase": "planejado",
+      "comandos": [
+        {
+          "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+          "intent": "IOT_CONTROL",
+          "alvo": "lampada_quarto",
+          "status": "ligado",
+          "executou": true,
+          "confirmado": true,
+          "params": {
+            "acao": "ligar",
+            "alvo": "lampada_quarto"
+          },
+          "origem": "executor",
+          "detalhe": "",
+          "confirmacao_oferecida": "estado_observado",
+          "evidencia_confirmacao": "o dispositivo é relido após o comando"
+        }
+      ],
+      "problemas": [],
+      "veto_execucao_operacional": false,
+      "ts": 1787786252.0037055,
+      "decisao_turno": {
+        "turno_id": 1787786251951054800,
+        "modalidade": "comando",
+        "proprietario": "operacional",
+        "permite_acao": true,
+        "permite_resposta": true,
+        "requer_esclarecimento": false,
+        "intencao": "",
+        "origem_decisao": "classificador_turno",
+        "confianca": 0.98,
+        "status": "planejada"
+      },
+      "evidencia_capacidades": {
+        "fonte": "catalogo_vivo",
+        "dominios_confirmados": [
+          "musica",
+          "sistema",
+          "navegador",
+          "agenda",
+          "arquivos",
+          "email",
+          "iot",
+          "area_transferencia",
+          "caixa_entrada",
+          "pessoas",
+          "memoria",
+          "cooperacao"
+        ],
+        "dominios_relevantes": [
+          "iot"
+        ],
+        "possui_capacidades_locais": true,
+        "autoriza_execucao": false
+      },
+      "fundamentacao_factual": {},
+      "deliberacao_habilidades": {
+        "arquitetura": "consenso_distribuido",
+        "objetivo": "responder ao conteudo atual",
+        "estado": "consenso_formado",
+        "participantes": [
+          "personalidade",
+          "operacao"
+        ],
+        "silenciosas": [],
+        "executoras_autorizadas": [
+          "operacao"
+        ],
+        "pareceres": [
+          {
+            "habilidade": "personalidade",
+            "ativo": true,
+            "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "confianca": 0.96,
+            "relevancia": 0.96,
+            "saude": 1.0,
+            "ativacao": 0.922,
+            "evidencias": [
+              "uma_mente",
+              "uma_voz"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "usar_fala_segura_sem_apagar_o_contexto",
+            "contribuicao_parcial": false,
+            "dependencias_ausentes": []
+          },
+          {
+            "habilidade": "operacao",
+            "ativo": true,
+            "proposta": "executar somente a ação consensual autorizada e devolver o resultado real",
+            "confianca": 0.9,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.9,
+            "evidencias": [
+              "operacao:iot",
+              "autorizada:True"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": true,
+            "politica_falha": "continuar_com_resultado_real",
+            "contribuicao_parcial": false,
+            "dependencias_ausentes": []
+          }
+        ],
+        "rejeitados": [],
+        "evidencias_compartilhadas": [
+          "uma_mente",
+          "uma_voz",
+          "operacao:iot",
+          "autorizada:True"
+        ],
+        "conclusao_conjunta": [
+          "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+          "executar somente a ação consensual autorizada e devolver o resultado real"
+        ],
+        "rodadas": [
+          {
+            "fase": "hipoteses",
+            "participantes": [
+              "operacao",
+              "personalidade"
+            ]
+          },
+          {
+            "fase": "compatibilidade",
+            "aceitos": [
+              "personalidade",
+              "operacao"
+            ],
+            "rejeitados": 0
+          },
+          {
+            "fase": "consenso",
+            "contribuicoes": 2
+          }
+        ],
+        "regras": {
+          "sem_vencedor_isolado": true,
+          "voz_final_unica": true,
+          "falha_auxiliar_nao_substitui_resposta": true,
+          "execucao_somente_por_porteiro_canonico": true,
+          "memoria_e_aprendizado_silenciosos": true
+        },
+        "quadro_canonico": {
+          "evento_id": "fd60ed5fcfc06d98",
+          "participantes": [
+            "personalidade",
+            "operacao"
+          ],
+          "publicado": true,
+          "autoriza_execucao": false
+        }
+      },
+      "contrato_fala": {
+        "versao": 1,
+        "turno_id": 1787786251951054800,
+        "funcao": "informacao",
+        "atos": [
+          "comando"
+        ],
+        "referente": "",
+        "conteudos_obrigatorios": [
+          "responder ao conteudo atual",
+          "preservar as capacidades locais confirmadas sem transformar essa informação em execução"
+        ],
+        "inferencias_proibidas": [
+          "não inventar emoção, intenção, gesto, cena ou situação do usuário",
+          "não transformar personalidade em fato nem em confirmação operacional",
+          "não dizer que é só um chatbot, que está fora do computador ou que só consegue conversar quando o catálogo vivo confirmou capacidades locais"
+        ],
+        "estrutura": [
+          "reconhecer literalmente a fala atual",
+          "responder ao conteúdo pedido",
+          "acrescentar personalidade somente se couber"
+        ],
+        "max_frases": 2,
+        "permite_pergunta": true,
+        "permite_humor": true,
+        "permite_metafora": false,
+        "fala_anterior_relevante": "",
+        "respostas_recentes_evitar": [],
+        "capacidades_confirmadas": [
+          "musica",
+          "sistema",
+          "navegador",
+          "agenda",
+          "arquivos",
+          "email",
+          "iot",
+          "area_transferencia",
+          "caixa_entrada",
+          "pessoas",
+          "memoria",
+          "cooperacao"
+        ],
+        "cooperacao_considerada": true,
+        "roteiro_concreto": {
+          "versao": 1,
+          "estrategia": "resultado_observado",
+          "ancora_literal": "Liga a lâmpada.",
+          "nucleo_resposta": "relatar primeiro o resultado realmente observado da ação e preservar a incerteza quando não houver confirmação",
+          "sequencia": [
+            "dizer o que foi observado, sem promover envio a sucesso",
+            "informar a consequência prática ou a incerteza essencial",
+            "adicionar personalidade apenas sem alterar o resultado"
+          ],
+          "exigencias_concretude": [
+            "usar a fala atual antes de puxar contexto antigo",
+            "nomear o referente quando ele estiver resolvido",
+            "ligar toda abstração, na mesma frase, a uma característica descritiva ou observável",
+            "marcar como opinião ou incerteza o que não estiver sustentado por uma fonte permitida"
+          ],
+          "abstracoes_a_concretizar": [
+            "energia",
+            "vibe",
+            "sensação",
+            "sentir-se vivo",
+            "alma",
+            "universo",
+            "ritmo",
+            "essência"
+          ],
+          "base_permitida": [
+            "fala atual do usuário",
+            "resultado operacional publicado pelo executor, quando existir",
+            "catálogo vivo confirmou capacidades locais: musica, sistema, navegador, agenda, arquivos, email, iot, area_transferencia"
+          ],
+          "primeira_frase_responde_nucleo": true,
+          "autoriza_execucao": false,
+          "origem": "mente_unica"
+        },
+        "autoriza_execucao": false,
+        "origem": "mente_unica"
+      },
+      "erros": [],
+      "fala_planejada": "",
+      "atualizado_ts": 1787786252.4409509,
+      "evento_emocional_causal": {
+        "origem": "resultado_operacional",
+        "causa": "resultado ligado observado",
+        "evidencia_ref": "0de96f8814b14f7bb6a93727142947ca",
+        "natureza_evidencia": "fato_observado",
+        "responsabilidade": "ambigua",
+        "confianca": 0.0,
+        "relevancia": 0.65,
+        "novidade": 1.0,
+        "intensidade": 1,
+        "sensibilidade": "normal",
+        "alvo": "a lâmpada do quarto",
+        "validade": {
+          "valido": true,
+          "inicio_ts": 1787786252.4418292,
+          "expira_ts": 1787786552.4418292,
+          "motivo": "causa_rastreavel"
+        },
+        "permite_expressao": false,
+        "emocao": "calma",
+        "nivel": 1,
+        "motivo_expressao": "sucesso_rotineiro_sem_reacao_causal",
+        "arco": "neutro",
+        "ts": 1787786252.4418292,
+        "autoriza_execucao": false,
+        "persistencia_pessoal": false,
+        "versao": 1,
+        "repeticoes": 1,
+        "provocacao_usuario": 0
+      }
+    },
+    "3": {
+      "id": 1787786254670496300,
+      "origem_entrada": "desconhecida",
+      "texto_usuario": "Leia de novo.",
+      "modalidade": "comando",
+      "ato_principal": "comando",
+      "atos": [
+        {
+          "ordem": 0,
+          "tipo": "comando",
+          "texto": "leia de novo.",
+          "objetivo": "executar a ação pedida e responder com o resultado real",
+          "requer_execucao": true
+        }
+      ],
+      "dominio": "conversa",
+      "contexto_necessario": [
+        "fala_atual",
+        "foco_recente",
+        "ultima_acao"
+      ],
+      "requer_execucao": true,
+      "autoriza_execucao": true,
+      "natureza_acao": "repeticao_operacional",
+      "turno_sem_autorizacao": false,
+      "misto": false,
+      "texto_operacional": "Leia de novo.",
+      "texto_conversacional": "",
+      "resposta_esperada": "responder ao conteudo atual",
+      "funcao_comunicativa": "informacao",
+      "emocao_implicita": "neutra",
+      "postura_esperada": "natural",
+      "permite_pergunta": true,
+      "identidade": {
+        "falante": "usuario",
+        "interlocutor": "laylay",
+        "laylay_eu": false,
+        "usuario_eu": true,
+        "pedro_eu": true,
+        "referencia_laylay": false,
+        "referencia_usuario": false,
+        "referencia_pedro": false,
+        "vocativo_laylay": false,
+        "texto_sem_vocativo": "Leia de novo.",
+        "objeto_laylay_py": false,
+        "relacao_com_laylay": "",
+        "pronome_ambiguo": false,
+        "ts": 1787786254.6770167
+      },
+      "retrato_id": 1787786254670496300,
+      "entidades": {
+        "janela": {
+          "tipo": "janela",
+          "nome": "aplicar_candidato_r1_v2.py - projeto lay - Visual Studio Code",
+          "origem": "janela_ativa",
+          "ts": 1787786254.6982107,
+          "dados": {
+            "exe": "Code.exe",
+            "titulo": "aplicar_candidato_r1_v2.py - projeto lay - Visual Studio Code",
+            "assunto": "Programação"
+          }
+        },
+        "arquivo": {
+          "tipo": "arquivo",
+          "nome": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "origem": "foco_mental",
+          "ts": 1787786251.7910213,
+          "dados": {
+            "tipo": "arquivo",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "topico": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\ce",
+            "habilidade": "arquivos",
+            "intencao": "ARQUIVOS",
+            "texto": "",
+            "resposta": "",
+            "escopo": "",
+            "ts": 1787786251.7910213
+          }
+        },
+        "iot": {
+          "tipo": "iot",
+          "nome": "lampada_quarto",
+          "origem": "foco_mental",
+          "ts": 1787786252.4332771,
+          "dados": {
+            "tipo": "iot",
+            "alvo": "lampada_quarto",
+            "topico": "lampada_quarto",
+            "habilidade": "iot",
+            "intencao": "IOT_CONTROL",
+            "texto": "Liga a lâmpada.",
+            "resposta": "ligado",
+            "escopo": "",
+            "ts": 1787786252.4332771
+          }
+        }
+      },
+      "referencia_resolvida": {},
+      "operacao_explicita": "",
+      "especialistas": {
+        "social": {
+          "ativo": false,
+          "texto": "",
+          "funcao": "informacao",
+          "emocao": "neutra",
+          "postura": "natural",
+          "permite_pergunta": true,
+          "precisa_reconhecimento": false,
+          "pode_executar": false,
+          "politica_resposta": "responder_diretamente",
+          "resultado_operacional_consultado": false
+        },
+        "operacional": {
+          "ativo": true,
+          "texto": "Leia de novo.",
+          "autoriza_execucao": true,
+          "operacao": "",
+          "intents_permitidos": [],
+          "referencia": {},
+          "confianca": 0.9,
+          "confiancas": {
+            "acao": 0.98,
+            "alvo": 0.9,
+            "referencia": 1.0
+          },
+          "requer_esclarecimento": false,
+          "confirmacao_explicita": false,
+          "motivo_bloqueio": "",
+          "pode_falar_sem_resultado": false,
+          "saude_componentes": {
+            "memoria_pessoas": {
+              "status": "saudavel",
+              "detalhes": "memória local estruturada conectada a contexto, aprendizado, continuidade, segurança, diagnóstico e mapa de habilidades",
+              "ausentes": [],
+              "ts": 1787786247.783276
+            },
+            "observador_area_transferencia": {
+              "status": "saudavel",
+              "detalhes": "percepção local sanitizada conectada ao modo companhia; modo=sugestao",
+              "ausentes": [],
+              "ts": 1787786247.7915812
+            },
+            "agenda": {
+              "status": "saudavel",
+              "detalhes": "persistência e daemon da agenda observáveis",
+              "ausentes": [],
+              "ts": 1787786247.8663118
+            },
+            "orquestracao_cooperativa": {
+              "status": "saudavel",
+              "detalhes": "modo=ativo; fluxos governados=clipboard_para_arquivo,clipboard_pesquisa_llm,caixa_para_agenda,organizacao_desktop_inteligente,analise_item_jogo,curadoria_musical",
+              "ausentes": [],
+              "ts": 1787786247.8318884
+            },
+            "execucao_intencao": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786252.3573556
+            },
+            "ciclo_comandos": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533518
+            },
+            "estado_compartilhado": {
+              "status": "saudavel",
+              "detalhes": "dominios conectados",
+              "ausentes": [],
+              "ts": 1787786247.853253
+            },
+            "chrome_contexto": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8532915
+            },
+            "voz": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533669
+            },
+            "memoria": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533797
+            },
+            "gmail": {
+              "status": "saudavel",
+              "detalhes": "contrato completo",
+              "ausentes": [],
+              "ts": 1787786247.8533964
+            },
+            "navegador": {
+              "status": "degradado",
+              "detalhes": "disponibilidade operacional limitada",
+              "ausentes": [
+                "chrome_ws_conectado"
+              ],
+              "ts": 1787786247.8536007
+            },
+            "llm": {
+              "status": "saudavel",
+              "detalhes": "contrato tipado conectado",
+              "ausentes": [],
+              "ts": 1787786247.8535414
+            },
+            "navegador_tipado": {
+              "status": "degradado",
+              "detalhes": "espelho da saúde operacional do navegador",
+              "ausentes": [
+                "chrome_ws_conectado"
+              ],
+              "ts": 1787786247.8536093
+            },
+            "iot": {
+              "status": "saudavel",
+              "detalhes": "configuração, provedor e dispositivos observados",
+              "ausentes": [],
+              "ts": 1787786247.8537023
+            },
+            "area_transferencia": {
+              "status": "saudavel",
+              "detalhes": "pré-condições observadas",
+              "ausentes": [],
+              "ts": 1787786247.853729
+            },
+            "caixa_entrada": {
+              "status": "saudavel",
+              "detalhes": "pré-condições observadas",
+              "ausentes": [],
+              "ts": 1787786247.8541021
+            },
+            "central_notificacoes": {
+              "status": "saudavel",
+              "detalhes": "pré-condições observadas",
+              "ausentes": [],
+              "ts": 1787786247.8542483
+            },
+            "avatar": {
+              "status": "indisponivel",
+              "detalhes": "preferência desativada",
+              "ausentes": [
+                "preferencia_avatar_ativa"
+              ],
+              "ts": 1787786247.8662646
+            }
+          },
+          "comandos_planejados": [
+            "FILE_READ"
+          ],
+          "resultados": [
+            {
+              "id_solicitacao": "9a54a81d414d4093a862d21e6e83c2e6",
+              "intent": "FILE_READ",
+              "acao": "FILE_READ",
+              "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "status": "conteudo_lido",
+              "executou": true,
+              "confirmado": true,
+              "ok": true,
+              "estado_final": "confirmado",
+              "origem": "executor",
+              "detalhe": "",
+              "params": {
+                "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+                "alvo": "rt1_f.txt"
+              },
+              "contexto": {},
+              "confirmacao_oferecida": "retorno_dados",
+              "evidencia_confirmacao": "o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade",
+              "estado_confirmacao": "confirmado"
+            }
+          ],
+          "resultado_disponivel": true,
+          "resultado_confirmado": true,
+          "pode_afirmar_conclusao": true,
+          "sem_confirmacao": []
+        },
+        "coordenacao": {
+          "modo": "operacional",
+          "ordem": [
+            "executar_parte_operacional",
+            "informar_resultado_real"
+          ],
+          "consultas": [],
+          "memoria_compartilhada": true,
+          "voz_unica": true,
+          "executor_unico": true,
+          "consulta_concluida": true,
+          "arquitetura": "consenso_distribuido",
+          "sem_vencedor_isolado": true
+        },
+        "pareceres_habilidades": [
+          {
+            "habilidade": "conversa",
+            "ativo": false,
+            "proposta": "",
+            "confianca": 0.0,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "funcao_comunicativa:informacao",
+              "postura:natural"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "interromper_resposta"
+          },
+          {
+            "habilidade": "operacao",
+            "ativo": true,
+            "proposta": "executar somente a ação consensual autorizada e devolver o resultado real",
+            "confianca": 0.9,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.9,
+            "evidencias": [
+              "operacao:-",
+              "autorizada:True"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": true,
+            "politica_falha": "continuar_com_resultado_real"
+          },
+          {
+            "habilidade": "contexto_geral",
+            "ativo": false,
+            "proposta": "resolver referências e manter o assunto correto para as demais habilidades",
+            "confianca": 0.0,
+            "relevancia": 0.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "referencia:-",
+              "candidatos:0"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": true,
+            "autoriza_execucao": false,
+            "politica_falha": "continuar_sem_substituir_resposta"
+          },
+          {
+            "habilidade": "memoria_aprendizado",
+            "ativo": false,
+            "proposta": "registrar silenciosamente somente o que o usuário declarou de forma explícita",
+            "confianca": 0.0,
+            "relevancia": 0.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "declaracoes_explicitas:0",
+              "origem:usuario"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": true,
+            "autoriza_execucao": false,
+            "politica_falha": "continuar_sem_substituir_resposta"
+          },
+          {
+            "habilidade": "pesquisa_factual",
+            "ativo": false,
+            "proposta": "enriquecer a conversa com fatos verificáveis quando houver evidência suficiente",
+            "confianca": 0.0,
+            "relevancia": 0.0,
+            "saude": 1.0,
+            "ativacao": 0.0,
+            "evidencias": [
+              "tema:-"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": true,
+            "autoriza_execucao": false,
+            "politica_falha": "continuar_sem_substituir_resposta"
+          },
+          {
+            "habilidade": "personalidade",
+            "ativo": true,
+            "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "confianca": 0.96,
+            "relevancia": 0.96,
+            "saude": 1.0,
+            "ativacao": 0.922,
+            "evidencias": [
+              "uma_mente",
+              "uma_voz"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "usar_fala_segura_sem_apagar_o_contexto"
+          }
+        ],
+        "deliberacao": {
+          "arquitetura": "consenso_distribuido",
+          "objetivo": "responder ao conteudo atual",
+          "estado": "consenso_formado",
+          "participantes": [
+            "personalidade",
+            "operacao"
+          ],
+          "silenciosas": [],
+          "executoras_autorizadas": [
+            "operacao"
+          ],
+          "pareceres": [
+            {
+              "habilidade": "personalidade",
+              "ativo": true,
+              "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+              "confianca": 0.96,
+              "relevancia": 0.96,
+              "saude": 1.0,
+              "ativacao": 0.922,
+              "evidencias": [
+                "uma_mente",
+                "uma_voz"
+              ],
+              "dependencias": [],
+              "conflitos": [],
+              "silenciosa": false,
+              "autoriza_execucao": false,
+              "politica_falha": "usar_fala_segura_sem_apagar_o_contexto",
+              "contribuicao_parcial": false,
+              "dependencias_ausentes": []
+            },
+            {
+              "habilidade": "operacao",
+              "ativo": true,
+              "proposta": "executar somente a ação consensual autorizada e devolver o resultado real",
+              "confianca": 0.9,
+              "relevancia": 1.0,
+              "saude": 1.0,
+              "ativacao": 0.9,
+              "evidencias": [
+                "operacao:-",
+                "autorizada:True"
+              ],
+              "dependencias": [],
+              "conflitos": [],
+              "silenciosa": false,
+              "autoriza_execucao": true,
+              "politica_falha": "continuar_com_resultado_real",
+              "contribuicao_parcial": false,
+              "dependencias_ausentes": []
+            }
+          ],
+          "rejeitados": [],
+          "evidencias_compartilhadas": [
+            "uma_mente",
+            "uma_voz",
+            "operacao:-",
+            "autorizada:True"
+          ],
+          "conclusao_conjunta": [
+            "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "executar somente a ação consensual autorizada e devolver o resultado real"
+          ],
+          "rodadas": [
+            {
+              "fase": "hipoteses",
+              "participantes": [
+                "operacao",
+                "personalidade"
+              ]
+            },
+            {
+              "fase": "compatibilidade",
+              "aceitos": [
+                "personalidade",
+                "operacao"
+              ],
+              "rejeitados": 0
+            },
+            {
+              "fase": "consenso",
+              "contribuicoes": 2
+            }
+          ],
+          "regras": {
+            "sem_vencedor_isolado": true,
+            "voz_final_unica": true,
+            "falha_auxiliar_nao_substitui_resposta": true,
+            "execucao_somente_por_porteiro_canonico": true,
+            "memoria_e_aprendizado_silenciosos": true
+          },
+          "quadro_canonico": {
+            "evento_id": "fd60ed5fcfc06d98",
+            "participantes": [
+              "personalidade",
+              "operacao"
+            ],
+            "publicado": true,
+            "autoriza_execucao": false
+          }
+        }
+      },
+      "atualidade_factual": {
+        "depende_atualidade": false,
+        "classe": "nao_consulta",
+        "validade_sugerida_s": 0.0,
+        "confianca": 0.0,
+        "motivos": [
+          "fala_nao_consultiva"
+        ]
+      },
+      "modo_coordenacao": "operacional",
+      "confianca": 0.98,
+      "periodo": "noite",
+      "fase": "planejado",
+      "comandos": [
+        {
+          "id_solicitacao": "9a54a81d414d4093a862d21e6e83c2e6",
+          "intent": "FILE_READ",
+          "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "status": "conteudo_lido",
+          "executou": true,
+          "confirmado": true,
+          "params": {
+            "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "alvo": "rt1_f.txt"
+          },
+          "origem": "executor",
+          "detalhe": "",
+          "confirmacao_oferecida": "retorno_dados",
+          "evidencia_confirmacao": "o conteúdo textual é lido localmente após validar caminho, formato, tamanho e sensibilidade"
+        }
+      ],
+      "problemas": [],
+      "veto_execucao_operacional": false,
+      "ts": 1787786254.7317762,
+      "decisao_turno": {
+        "turno_id": 1787786254670496300,
+        "modalidade": "comando",
+        "proprietario": "operacional",
+        "permite_acao": true,
+        "permite_resposta": true,
+        "requer_esclarecimento": false,
+        "intencao": "",
+        "origem_decisao": "classificador_turno",
+        "confianca": 0.98,
+        "status": "planejada"
+      },
+      "evidencia_capacidades": {
+        "fonte": "catalogo_vivo",
+        "dominios_confirmados": [
+          "musica",
+          "sistema",
+          "navegador",
+          "agenda",
+          "arquivos",
+          "email",
+          "iot",
+          "area_transferencia",
+          "caixa_entrada",
+          "pessoas",
+          "memoria",
+          "cooperacao"
+        ],
+        "dominios_relevantes": [],
+        "possui_capacidades_locais": true,
+        "autoriza_execucao": false
+      },
+      "fundamentacao_factual": {},
+      "deliberacao_habilidades": {
+        "arquitetura": "consenso_distribuido",
+        "objetivo": "responder ao conteudo atual",
+        "estado": "consenso_formado",
+        "participantes": [
+          "personalidade",
+          "operacao"
+        ],
+        "silenciosas": [],
+        "executoras_autorizadas": [
+          "operacao"
+        ],
+        "pareceres": [
+          {
+            "habilidade": "personalidade",
+            "ativo": true,
+            "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "confianca": 0.96,
+            "relevancia": 0.96,
+            "saude": 1.0,
+            "ativacao": 0.922,
+            "evidencias": [
+              "uma_mente",
+              "uma_voz"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "usar_fala_segura_sem_apagar_o_contexto",
+            "contribuicao_parcial": false,
+            "dependencias_ausentes": []
+          },
+          {
+            "habilidade": "operacao",
+            "ativo": true,
+            "proposta": "executar somente a ação consensual autorizada e devolver o resultado real",
+            "confianca": 0.9,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.9,
+            "evidencias": [
+              "operacao:-",
+              "autorizada:True"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": true,
+            "politica_falha": "continuar_com_resultado_real",
+            "contribuicao_parcial": false,
+            "dependencias_ausentes": []
+          }
+        ],
+        "rejeitados": [],
+        "evidencias_compartilhadas": [
+          "uma_mente",
+          "uma_voz",
+          "operacao:-",
+          "autorizada:True"
+        ],
+        "conclusao_conjunta": [
+          "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+          "executar somente a ação consensual autorizada e devolver o resultado real"
+        ],
+        "rodadas": [
+          {
+            "fase": "hipoteses",
+            "participantes": [
+              "operacao",
+              "personalidade"
+            ]
+          },
+          {
+            "fase": "compatibilidade",
+            "aceitos": [
+              "personalidade",
+              "operacao"
+            ],
+            "rejeitados": 0
+          },
+          {
+            "fase": "consenso",
+            "contribuicoes": 2
+          }
+        ],
+        "regras": {
+          "sem_vencedor_isolado": true,
+          "voz_final_unica": true,
+          "falha_auxiliar_nao_substitui_resposta": true,
+          "execucao_somente_por_porteiro_canonico": true,
+          "memoria_e_aprendizado_silenciosos": true
+        },
+        "quadro_canonico": {
+          "evento_id": "fd60ed5fcfc06d98",
+          "participantes": [
+            "personalidade",
+            "operacao"
+          ],
+          "publicado": true,
+          "autoriza_execucao": false
+        }
+      },
+      "contrato_fala": {
+        "versao": 1,
+        "turno_id": 1787786254670496300,
+        "funcao": "informacao",
+        "atos": [
+          "comando"
+        ],
+        "referente": "",
+        "conteudos_obrigatorios": [
+          "responder ao conteudo atual",
+          "preservar as capacidades locais confirmadas sem transformar essa informação em execução"
+        ],
+        "inferencias_proibidas": [
+          "não inventar emoção, intenção, gesto, cena ou situação do usuário",
+          "não transformar personalidade em fato nem em confirmação operacional",
+          "não dizer que é só um chatbot, que está fora do computador ou que só consegue conversar quando o catálogo vivo confirmou capacidades locais"
+        ],
+        "estrutura": [
+          "reconhecer literalmente a fala atual",
+          "responder ao conteúdo pedido",
+          "acrescentar personalidade somente se couber"
+        ],
+        "max_frases": 2,
+        "permite_pergunta": true,
+        "permite_humor": true,
+        "permite_metafora": false,
+        "fala_anterior_relevante": "",
+        "respostas_recentes_evitar": [],
+        "capacidades_confirmadas": [
+          "musica",
+          "sistema",
+          "navegador",
+          "agenda",
+          "arquivos",
+          "email",
+          "iot",
+          "area_transferencia",
+          "caixa_entrada",
+          "pessoas",
+          "memoria",
+          "cooperacao"
+        ],
+        "cooperacao_considerada": true,
+        "roteiro_concreto": {
+          "versao": 1,
+          "estrategia": "resultado_observado",
+          "ancora_literal": "Leia de novo.",
+          "nucleo_resposta": "relatar primeiro o resultado realmente observado da ação e preservar a incerteza quando não houver confirmação",
+          "sequencia": [
+            "dizer o que foi observado, sem promover envio a sucesso",
+            "informar a consequência prática ou a incerteza essencial",
+            "adicionar personalidade apenas sem alterar o resultado"
+          ],
+          "exigencias_concretude": [
+            "usar a fala atual antes de puxar contexto antigo",
+            "nomear o referente quando ele estiver resolvido",
+            "ligar toda abstração, na mesma frase, a uma característica descritiva ou observável",
+            "marcar como opinião ou incerteza o que não estiver sustentado por uma fonte permitida"
+          ],
+          "abstracoes_a_concretizar": [
+            "energia",
+            "vibe",
+            "sensação",
+            "sentir-se vivo",
+            "alma",
+            "universo",
+            "ritmo",
+            "essência"
+          ],
+          "base_permitida": [
+            "fala atual do usuário",
+            "resultado operacional publicado pelo executor, quando existir",
+            "catálogo vivo confirmou capacidades locais: musica, sistema, navegador, agenda, arquivos, email, iot, area_transferencia"
+          ],
+          "primeira_frase_responde_nucleo": true,
+          "autoriza_execucao": false,
+          "origem": "mente_unica"
+        },
+        "autoriza_execucao": false,
+        "origem": "mente_unica"
+      },
+      "erros": [],
+      "fala_planejada": "",
+      "atualizado_ts": 1787786254.8283381
+    }
+  },
+  "physical_events": [
+    {
+      "ts": 1787786242.1114166,
+      "tipo": "sitecustomize_ready"
+    },
+    {
+      "ts": 1787786252.3911903,
+      "tipo": "iot_consultar_estado",
+      "dispositivo": "lampada_quarto",
+      "sucesso": null,
+      "estado": false,
+      "confirmado": null
+    },
+    {
+      "ts": 1787786252.3974302,
+      "tipo": "iot_definir_estado",
+      "dispositivo": "lampada_quarto",
+      "ligado": true,
+      "sucesso": null,
+      "estado": true,
+      "confirmado": null
+    },
+    {
+      "ts": 1787786252.4013252,
+      "tipo": "iot_consultar_estado",
+      "dispositivo": "lampada_quarto",
+      "sucesso": null,
+      "estado": true,
+      "confirmado": null
+    }
+  ],
+  "receipt_trace": [
+    {
+      "ts": 1787786242.1218057,
+      "tipo": "receipt_probe_ready"
+    },
+    {
+      "ts": 1787786248.470983,
+      "tipo": "resolver_repeticao_call",
+      "texto": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+      "estado_antes": {
+        "dominio_ativo": "",
+        "receipts": {},
+        "ultima_acao_intent": "",
+        "ultima_acao_status": "",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786248.4754384,
+      "tipo": "resolver_repeticao_return",
+      "texto": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+      "classificacao": {},
+      "permitidos": [],
+      "oficial_tipado": {},
+      "retorno": null
+    },
+    {
+      "ts": 1787786248.5774057,
+      "tipo": "resolver_repeticao_call",
+      "texto": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+      "estado_antes": {
+        "dominio_ativo": "",
+        "receipts": {},
+        "ultima_acao_intent": "",
+        "ultima_acao_status": "",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786248.581227,
+      "tipo": "resolver_repeticao_return",
+      "texto": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+      "classificacao": {},
+      "permitidos": [],
+      "oficial_tipado": {},
+      "retorno": null
+    },
+    {
+      "ts": 1787786248.895965,
+      "tipo": "resolver_repeticao_call",
+      "texto": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+      "estado_antes": {
+        "dominio_ativo": "",
+        "receipts": {},
+        "ultima_acao_intent": "",
+        "ultima_acao_status": "",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786248.8966858,
+      "tipo": "resolver_repeticao_return",
+      "texto": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+      "classificacao": {},
+      "permitidos": [],
+      "oficial_tipado": {},
+      "retorno": null
+    },
+    {
+      "ts": 1787786248.9513843,
+      "tipo": "continuidade_registrar_call",
+      "evento": "foco",
+      "intent": "",
+      "reexecutavel": null,
+      "estado_antes": {
+        "dominio_ativo": "",
+        "receipts": {},
+        "ultima_acao_intent": "",
+        "ultima_acao_status": "",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786248.9518743,
+      "tipo": "continuidade_registrar_return",
+      "evento": "foco",
+      "intent": "",
+      "item": {
+        "evento": "foco",
+        "dominio": "arquivos",
+        "intent": "",
+        "habilidade": "",
+        "tipo": "arquivo",
+        "alvo": "",
+        "topico": "",
+        "texto": "cria um arquivo de texto chamado rt1 f txt e dentro dele escreva alfa rt1 f",
+        "resposta": "",
+        "params": {},
+        "status": "",
+        "origem": "operacional",
+        "id_solicitacao": "",
+        "ativa": true,
+        "reexecutavel": false,
+        "ts": 1787786248.9515002,
+        "expira_em": 1787787148.9515002
+      },
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "",
+        "ultima_acao_status": "",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786248.9991772,
+      "tipo": "resolver_repeticao_call",
+      "texto": "cria um arquivo de texto chamado rt1 f txt e dentro dele escreva alfa rt1 f",
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "",
+        "ultima_acao_status": "",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786248.9999118,
+      "tipo": "resolver_repeticao_return",
+      "texto": "cria um arquivo de texto chamado rt1 f txt e dentro dele escreva alfa rt1 f",
+      "classificacao": {},
+      "permitidos": [],
+      "oficial_tipado": {},
+      "retorno": null
+    },
+    {
+      "ts": 1787786249.0219862,
+      "tipo": "continuidade_registrar_call",
+      "evento": "foco",
+      "intent": "CREATE_FILE",
+      "reexecutavel": null,
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "",
+        "ultima_acao_status": "",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786249.0224993,
+      "tipo": "continuidade_registrar_return",
+      "evento": "foco",
+      "intent": "CREATE_FILE",
+      "item": {
+        "evento": "foco",
+        "dominio": "arquivos",
+        "intent": "CREATE_FILE",
+        "habilidade": "arquivos",
+        "tipo": "arquivo",
+        "alvo": "rt1_f.txt",
+        "topico": "rt1_f.txt",
+        "texto": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+        "resposta": "",
+        "params": {},
+        "status": "",
+        "origem": "operacional",
+        "id_solicitacao": "",
+        "ativa": true,
+        "reexecutavel": false,
+        "ts": 1787786249.02211,
+        "expira_em": 1787787149.02211
+      },
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "",
+        "ultima_acao_status": "",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786249.062911,
+      "tipo": "continuidade_registrar_call",
+      "evento": "foco",
+      "intent": "ARQUIVOS",
+      "reexecutavel": null,
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "",
+        "ultima_acao_status": "",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786249.063631,
+      "tipo": "continuidade_registrar_return",
+      "evento": "foco",
+      "intent": "ARQUIVOS",
+      "item": {
+        "evento": "foco",
+        "dominio": "arquivos",
+        "intent": "ARQUIVOS",
+        "habilidade": "arquivo",
+        "tipo": "arquivo",
+        "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+        "topico": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\ce",
+        "texto": "",
+        "resposta": "",
+        "params": {},
+        "status": "",
+        "origem": "operacional",
+        "id_solicitacao": "",
+        "ativa": true,
+        "reexecutavel": false,
+        "ts": 1787786249.0630915,
+        "expira_em": 1787787149.0630915
+      },
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "",
+        "ultima_acao_status": "",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786249.0653343,
+      "tipo": "continuidade_registrar_call",
+      "evento": "acao",
+      "intent": "CREATE_FILE",
+      "reexecutavel": false,
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "CREATE_FILE",
+        "ultima_acao_status": "arquivo_criado",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786249.0659661,
+      "tipo": "continuidade_registrar_return",
+      "evento": "acao",
+      "intent": "CREATE_FILE",
+      "item": {
+        "evento": "acao",
+        "dominio": "arquivos",
+        "intent": "CREATE_FILE",
+        "habilidade": "",
+        "tipo": "",
+        "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+        "topico": "",
+        "texto": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+        "resposta": "",
+        "params": {
+          "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "tipo_arquivo": "texto",
+          "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "nome_arquivo": "rt1_f.txt",
+          "tipo": "arquivo"
+        },
+        "status": "arquivo_criado",
+        "origem": "executor",
+        "id_solicitacao": "bbe939bbbab4489689aadb5964608420",
+        "ativa": true,
+        "reexecutavel": false,
+        "ts": 1787786249.0654814,
+        "expira_em": 1787787149.0654814
+      },
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "CREATE_FILE",
+        "ultima_acao_status": "arquivo_criado",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786249.0663512,
+      "tipo": "resultado_execucao_return",
+      "intent": "CREATE_FILE",
+      "texto": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+      "executou": true,
+      "status_final": "arquivo_criado",
+      "reexecutavel": false,
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "CREATE_FILE",
+        "ultima_acao_status": "arquivo_criado",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786249.0746658,
+      "tipo": "continuidade_registrar_call",
+      "evento": "foco",
+      "intent": "CREATE_FILE",
+      "reexecutavel": null,
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "CREATE_FILE",
+        "ultima_acao_status": "arquivo_criado",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786249.0751803,
+      "tipo": "continuidade_registrar_return",
+      "evento": "foco",
+      "intent": "CREATE_FILE",
+      "item": {
+        "evento": "foco",
+        "dominio": "arquivos",
+        "intent": "CREATE_FILE",
+        "habilidade": "arquivos",
+        "tipo": "arquivo",
+        "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+        "topico": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\ce",
+        "texto": "Cria um arquivo de texto chamado rt1_f.txt e dentro dele escreva ALFA_RT1_F.",
+        "resposta": "arquivo_criado",
+        "params": {
+          "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "tipo_arquivo": "texto",
+          "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "nome_arquivo": "rt1_f.txt",
+          "tipo": "arquivo"
+        },
+        "status": "arquivo_criado",
+        "origem": "operacional",
+        "id_solicitacao": "",
+        "ativa": true,
+        "reexecutavel": false,
+        "ts": 1787786249.0748065,
+        "expira_em": 1787787149.0748065
+      },
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "CREATE_FILE",
+        "ultima_acao_status": "arquivo_criado",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786251.362357,
+      "tipo": "resolver_repeticao_call",
+      "texto": "Leia o arquivo rt1_f.txt.",
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "CREATE_FILE",
+        "ultima_acao_status": "arquivo_criado",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786251.3627465,
+      "tipo": "resolver_repeticao_return",
+      "texto": "Leia o arquivo rt1_f.txt.",
+      "classificacao": {},
+      "permitidos": [],
+      "oficial_tipado": {},
+      "retorno": null
+    },
+    {
+      "ts": 1787786251.4515867,
+      "tipo": "resolver_repeticao_call",
+      "texto": "Leia o arquivo rt1_f.txt.",
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "CREATE_FILE",
+        "ultima_acao_status": "arquivo_criado",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786251.4538972,
+      "tipo": "resolver_repeticao_return",
+      "texto": "Leia o arquivo rt1_f.txt.",
+      "classificacao": {},
+      "permitidos": [],
+      "oficial_tipado": {},
+      "retorno": null
+    },
+    {
+      "ts": 1787786251.7344434,
+      "tipo": "continuidade_registrar_call",
+      "evento": "foco",
+      "intent": "FILE_READ",
+      "reexecutavel": null,
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "CREATE_FILE",
+        "ultima_acao_status": "arquivo_criado",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786251.7349124,
+      "tipo": "continuidade_registrar_return",
+      "evento": "foco",
+      "intent": "FILE_READ",
+      "item": {
+        "evento": "foco",
+        "dominio": "arquivos",
+        "intent": "FILE_READ",
+        "habilidade": "arquivos",
+        "tipo": "arquivo",
+        "alvo": "rt1_f.txt",
+        "topico": "rt1_f.txt",
+        "texto": "Leia o arquivo rt1_f.txt.",
+        "resposta": "",
+        "params": {},
+        "status": "",
+        "origem": "operacional",
+        "id_solicitacao": "",
+        "ativa": true,
+        "reexecutavel": false,
+        "ts": 1787786251.7345614,
+        "expira_em": 1787787151.7345614
+      },
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "CREATE_FILE",
+        "ultima_acao_status": "arquivo_criado",
+        "ultima_acao_reexecutavel": false
+      }
+    },
+    {
+      "ts": 1787786251.7491467,
+      "tipo": "continuidade_registrar_call",
+      "evento": "acao",
+      "intent": "FILE_READ",
+      "reexecutavel": true,
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {},
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786251.7497504,
+      "tipo": "continuidade_registrar_return",
+      "evento": "acao",
+      "intent": "FILE_READ",
+      "item": {
+        "evento": "acao",
+        "dominio": "arquivos",
+        "intent": "FILE_READ",
+        "habilidade": "arquivos",
+        "tipo": "arquivo",
+        "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+        "topico": "rt1_f.txt",
+        "texto": "Leia o arquivo rt1_f.txt.",
+        "resposta": "",
+        "params": {
+          "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "alvo": "rt1_f.txt"
+        },
+        "status": "conteudo_lido",
+        "origem": "executor",
+        "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+        "ativa": true,
+        "reexecutavel": true,
+        "ts": 1787786251.7493145,
+        "expira_em": 1787787151.7493145
+      },
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786251.7501752,
+      "tipo": "resultado_execucao_return",
+      "intent": "FILE_READ",
+      "texto": "Leia o arquivo rt1_f.txt.",
+      "executou": true,
+      "status_final": "conteudo_lido",
+      "reexecutavel": true,
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786251.7628918,
+      "tipo": "continuidade_registrar_call",
+      "evento": "foco",
+      "intent": "FILE_READ",
+      "reexecutavel": null,
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786251.7638915,
+      "tipo": "continuidade_registrar_return",
+      "evento": "foco",
+      "intent": "FILE_READ",
+      "item": {
+        "evento": "foco",
+        "dominio": "arquivos",
+        "intent": "FILE_READ",
+        "habilidade": "arquivos",
+        "tipo": "arquivo",
+        "alvo": "rt1_f.txt",
+        "topico": "rt1_f.txt",
+        "texto": "Leia o arquivo rt1_f.txt.",
+        "resposta": "conteudo_lido",
+        "params": {
+          "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "alvo": "rt1_f.txt"
+        },
+        "status": "conteudo_lido",
+        "origem": "operacional",
+        "id_solicitacao": "",
+        "ativa": true,
+        "reexecutavel": true,
+        "ts": 1787786251.7630813,
+        "expira_em": 1787787151.7630813
+      },
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786251.7913349,
+      "tipo": "continuidade_registrar_call",
+      "evento": "foco",
+      "intent": "ARQUIVOS",
+      "reexecutavel": null,
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786251.7919486,
+      "tipo": "continuidade_registrar_return",
+      "evento": "foco",
+      "intent": "ARQUIVOS",
+      "item": {
+        "evento": "foco",
+        "dominio": "arquivos",
+        "intent": "ARQUIVOS",
+        "habilidade": "arquivos",
+        "tipo": "arquivo",
+        "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+        "topico": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\ce",
+        "texto": "",
+        "resposta": "",
+        "params": {},
+        "status": "",
+        "origem": "operacional",
+        "id_solicitacao": "",
+        "ativa": true,
+        "reexecutavel": false,
+        "ts": 1787786251.791505,
+        "expira_em": 1787787151.791505
+      },
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786251.9515429,
+      "tipo": "resolver_repeticao_call",
+      "texto": "Liga a lâmpada.",
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786251.952042,
+      "tipo": "resolver_repeticao_return",
+      "texto": "Liga a lâmpada.",
+      "classificacao": {},
+      "permitidos": [],
+      "oficial_tipado": {},
+      "retorno": null
+    },
+    {
+      "ts": 1787786252.0373678,
+      "tipo": "resolver_repeticao_call",
+      "texto": "Liga a lâmpada.",
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786252.0388458,
+      "tipo": "resolver_repeticao_return",
+      "texto": "Liga a lâmpada.",
+      "classificacao": {},
+      "permitidos": [],
+      "oficial_tipado": {},
+      "retorno": null
+    },
+    {
+      "ts": 1787786252.38211,
+      "tipo": "continuidade_registrar_call",
+      "evento": "foco",
+      "intent": "IOT_CONTROL",
+      "reexecutavel": null,
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786252.382838,
+      "tipo": "continuidade_registrar_return",
+      "evento": "foco",
+      "intent": "IOT_CONTROL",
+      "item": {
+        "evento": "foco",
+        "dominio": "iot",
+        "intent": "IOT_CONTROL",
+        "habilidade": "iot",
+        "tipo": "iot",
+        "alvo": "lampada_quarto",
+        "topico": "lampada_quarto",
+        "texto": "Liga a lâmpada.",
+        "resposta": "",
+        "params": {},
+        "status": "",
+        "origem": "operacional",
+        "id_solicitacao": "",
+        "ativa": true,
+        "reexecutavel": false,
+        "ts": 1787786252.3823063,
+        "expira_em": 1787787152.3823063
+      },
+      "estado_depois": {
+        "dominio_ativo": "iot",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786252.424484,
+      "tipo": "continuidade_registrar_call",
+      "evento": "acao",
+      "intent": "IOT_CONTROL",
+      "reexecutavel": true,
+      "estado_antes": {
+        "dominio_ativo": "iot",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          }
+        },
+        "ultima_acao_intent": "IOT_CONTROL",
+        "ultima_acao_status": "ligado",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786252.424989,
+      "tipo": "continuidade_registrar_return",
+      "evento": "acao",
+      "intent": "IOT_CONTROL",
+      "item": {
+        "evento": "acao",
+        "dominio": "iot",
+        "intent": "IOT_CONTROL",
+        "habilidade": "iot",
+        "tipo": "iot",
+        "alvo": "lampada_quarto",
+        "topico": "lampada_quarto",
+        "texto": "Liga a lâmpada.",
+        "resposta": "",
+        "params": {
+          "acao": "ligar",
+          "alvo": "lampada_quarto"
+        },
+        "status": "ligado",
+        "origem": "executor",
+        "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+        "ativa": true,
+        "reexecutavel": true,
+        "ts": 1787786252.4246116,
+        "expira_em": 1787787152.4246116
+      },
+      "estado_depois": {
+        "dominio_ativo": "iot",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "IOT_CONTROL",
+        "ultima_acao_status": "ligado",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786252.4253464,
+      "tipo": "resultado_execucao_return",
+      "intent": "IOT_CONTROL",
+      "texto": "Liga a lâmpada.",
+      "executou": true,
+      "status_final": "ligado",
+      "reexecutavel": true,
+      "estado_depois": {
+        "dominio_ativo": "iot",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "IOT_CONTROL",
+        "ultima_acao_status": "ligado",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786252.433728,
+      "tipo": "continuidade_registrar_call",
+      "evento": "foco",
+      "intent": "IOT_CONTROL",
+      "reexecutavel": null,
+      "estado_antes": {
+        "dominio_ativo": "iot",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "IOT_CONTROL",
+        "ultima_acao_status": "ligado",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786252.4343033,
+      "tipo": "continuidade_registrar_return",
+      "evento": "foco",
+      "intent": "IOT_CONTROL",
+      "item": {
+        "evento": "foco",
+        "dominio": "iot",
+        "intent": "IOT_CONTROL",
+        "habilidade": "iot",
+        "tipo": "iot",
+        "alvo": "lampada_quarto",
+        "topico": "lampada_quarto",
+        "texto": "Liga a lâmpada.",
+        "resposta": "ligado",
+        "params": {
+          "acao": "ligar",
+          "alvo": "lampada_quarto"
+        },
+        "status": "ligado",
+        "origem": "operacional",
+        "id_solicitacao": "",
+        "ativa": true,
+        "reexecutavel": true,
+        "ts": 1787786252.433893,
+        "expira_em": 1787787152.433893
+      },
+      "estado_depois": {
+        "dominio_ativo": "iot",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "IOT_CONTROL",
+        "ultima_acao_status": "ligado",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786254.6709323,
+      "tipo": "resolver_repeticao_call",
+      "texto": "Leia de novo.",
+      "estado_antes": {
+        "dominio_ativo": "iot",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "IOT_CONTROL",
+        "ultima_acao_status": "ligado",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786254.6713755,
+      "tipo": "seletor_compativel_call",
+      "permitidos": [
+        "FILE_READ",
+        "EMAIL_READ"
+      ],
+      "estado_antes": {
+        "dominio_ativo": "iot",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "IOT_CONTROL",
+        "ultima_acao_status": "ligado",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786254.6717048,
+      "tipo": "seletor_compativel_return",
+      "permitidos": [
+        "FILE_READ",
+        "EMAIL_READ"
+      ],
+      "candidatos": [
+        {
+          "intent": "FILE_READ",
+          "dominio": "arquivos",
+          "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "params": {
+            "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "alvo": "rt1_f.txt"
+          },
+          "status": "conteudo_lido",
+          "origem": "executor",
+          "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+          "ativa": true,
+          "reexecutavel": true,
+          "ts": 1787786251.7493145,
+          "expira_em": 1787787151.7493145,
+          "idade_s": 2.9221644401550293,
+          "fonte": "operacao_reexecutavel"
+        }
+      ],
+      "retorno": {
+        "intent": "FILE_READ",
+        "dominio": "arquivos",
+        "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+        "params": {
+          "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "alvo": "rt1_f.txt"
+        },
+        "status": "conteudo_lido",
+        "origem": "executor",
+        "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+        "ativa": true,
+        "reexecutavel": true,
+        "ts": 1787786251.7493145,
+        "expira_em": 1787787151.7493145,
+        "idade_s": 2.9221644401550293,
+        "fonte": "operacao_reexecutavel"
+      }
+    },
+    {
+      "ts": 1787786254.6720133,
+      "tipo": "resolver_repeticao_return",
+      "texto": "Leia de novo.",
+      "classificacao": {
+        "tipo": "tipada",
+        "acao_semantica": "LER",
+        "verbo": "leia"
+      },
+      "permitidos": [
+        "FILE_READ",
+        "EMAIL_READ"
+      ],
+      "oficial_tipado": {
+        "intent": "FILE_READ",
+        "dominio": "arquivos",
+        "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+        "params": {
+          "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "alvo": "rt1_f.txt"
+        },
+        "status": "conteudo_lido",
+        "origem": "executor",
+        "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+        "ativa": true,
+        "reexecutavel": true,
+        "ts": 1787786251.7493145,
+        "expira_em": 1787787151.7493145,
+        "idade_s": 2.9221644401550293,
+        "fonte": "operacao_reexecutavel"
+      },
+      "retorno": {
+        "intent": "FILE_READ",
+        "params": {
+          "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "alvo": "rt1_f.txt"
+        }
+      }
+    },
+    {
+      "ts": 1787786254.777452,
+      "tipo": "resolver_repeticao_call",
+      "texto": "Leia de novo.",
+      "estado_antes": {
+        "dominio_ativo": "iot",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "IOT_CONTROL",
+        "ultima_acao_status": "ligado",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786254.7806606,
+      "tipo": "seletor_compativel_call",
+      "permitidos": [
+        "FILE_READ",
+        "EMAIL_READ"
+      ],
+      "estado_antes": {
+        "dominio_ativo": "iot",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "IOT_CONTROL",
+        "ultima_acao_status": "ligado",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786254.7810626,
+      "tipo": "seletor_compativel_return",
+      "permitidos": [
+        "FILE_READ",
+        "EMAIL_READ"
+      ],
+      "candidatos": [
+        {
+          "intent": "FILE_READ",
+          "dominio": "arquivos",
+          "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "params": {
+            "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "alvo": "rt1_f.txt"
+          },
+          "status": "conteudo_lido",
+          "origem": "executor",
+          "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+          "ativa": true,
+          "reexecutavel": true,
+          "ts": 1787786251.7493145,
+          "expira_em": 1787787151.7493145,
+          "idade_s": 3.0314793586730957,
+          "fonte": "operacao_reexecutavel"
+        }
+      ],
+      "retorno": {
+        "intent": "FILE_READ",
+        "dominio": "arquivos",
+        "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+        "params": {
+          "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "alvo": "rt1_f.txt"
+        },
+        "status": "conteudo_lido",
+        "origem": "executor",
+        "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+        "ativa": true,
+        "reexecutavel": true,
+        "ts": 1787786251.7493145,
+        "expira_em": 1787787151.7493145,
+        "idade_s": 3.0314793586730957,
+        "fonte": "operacao_reexecutavel"
+      }
+    },
+    {
+      "ts": 1787786254.7814775,
+      "tipo": "resolver_repeticao_return",
+      "texto": "Leia de novo.",
+      "classificacao": {
+        "tipo": "tipada",
+        "acao_semantica": "LER",
+        "verbo": "leia"
+      },
+      "permitidos": [
+        "FILE_READ",
+        "EMAIL_READ"
+      ],
+      "oficial_tipado": {
+        "intent": "FILE_READ",
+        "dominio": "arquivos",
+        "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+        "params": {
+          "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "alvo": "rt1_f.txt"
+        },
+        "status": "conteudo_lido",
+        "origem": "executor",
+        "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+        "ativa": true,
+        "reexecutavel": true,
+        "ts": 1787786251.7493145,
+        "expira_em": 1787787151.7493145,
+        "idade_s": 3.0314793586730957,
+        "fonte": "operacao_reexecutavel"
+      },
+      "retorno": {
+        "intent": "FILE_READ",
+        "params": {
+          "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "alvo": "rt1_f.txt"
+        }
+      }
+    },
+    {
+      "ts": 1787786254.7918038,
+      "tipo": "continuidade_registrar_call",
+      "evento": "foco",
+      "intent": "FILE_READ",
+      "reexecutavel": null,
+      "estado_antes": {
+        "dominio_ativo": "iot",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "IOT_CONTROL",
+        "ultima_acao_status": "ligado",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786254.7924979,
+      "tipo": "continuidade_registrar_return",
+      "evento": "foco",
+      "intent": "FILE_READ",
+      "item": {
+        "evento": "foco",
+        "dominio": "arquivos",
+        "intent": "FILE_READ",
+        "habilidade": "arquivos",
+        "tipo": "arquivo",
+        "alvo": "rt1_f.txt",
+        "topico": "rt1_f.txt",
+        "texto": "Leia de novo.",
+        "resposta": "",
+        "params": {},
+        "status": "",
+        "origem": "operacional",
+        "id_solicitacao": "",
+        "ativa": true,
+        "reexecutavel": false,
+        "ts": 1787786254.7919483,
+        "expira_em": 1787787154.7919483
+      },
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "IOT_CONTROL",
+        "ultima_acao_status": "ligado",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786254.7990804,
+      "tipo": "continuidade_registrar_call",
+      "evento": "acao",
+      "intent": "FILE_READ",
+      "reexecutavel": true,
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "2f4fded49f0d47cfa551c294332d4bac",
+            "reexecutavel": true,
+            "ts": 1787786251.7493145
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786254.8000693,
+      "tipo": "continuidade_registrar_return",
+      "evento": "acao",
+      "intent": "FILE_READ",
+      "item": {
+        "evento": "acao",
+        "dominio": "arquivos",
+        "intent": "FILE_READ",
+        "habilidade": "arquivos",
+        "tipo": "arquivo",
+        "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+        "topico": "rt1_f.txt",
+        "texto": "Leia de novo.",
+        "resposta": "",
+        "params": {
+          "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "alvo": "rt1_f.txt"
+        },
+        "status": "conteudo_lido",
+        "origem": "executor",
+        "id_solicitacao": "9a54a81d414d4093a862d21e6e83c2e6",
+        "ativa": true,
+        "reexecutavel": true,
+        "ts": 1787786254.7992308,
+        "expira_em": 1787787154.7992308
+      },
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "9a54a81d414d4093a862d21e6e83c2e6",
+            "reexecutavel": true,
+            "ts": 1787786254.7992308
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786254.8007343,
+      "tipo": "resultado_execucao_return",
+      "intent": "FILE_READ",
+      "texto": "Leia de novo.",
+      "executou": true,
+      "status_final": "conteudo_lido",
+      "reexecutavel": true,
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "9a54a81d414d4093a862d21e6e83c2e6",
+            "reexecutavel": true,
+            "ts": 1787786254.7992308
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786254.8197124,
+      "tipo": "continuidade_registrar_call",
+      "evento": "foco",
+      "intent": "FILE_READ",
+      "reexecutavel": null,
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "9a54a81d414d4093a862d21e6e83c2e6",
+            "reexecutavel": true,
+            "ts": 1787786254.7992308
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786254.8206651,
+      "tipo": "continuidade_registrar_return",
+      "evento": "foco",
+      "intent": "FILE_READ",
+      "item": {
+        "evento": "foco",
+        "dominio": "arquivos",
+        "intent": "FILE_READ",
+        "habilidade": "arquivos",
+        "tipo": "arquivo",
+        "alvo": "rt1_f.txt",
+        "topico": "rt1_f.txt",
+        "texto": "Leia de novo.",
+        "resposta": "conteudo_lido",
+        "params": {
+          "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+          "alvo": "rt1_f.txt"
+        },
+        "status": "conteudo_lido",
+        "origem": "operacional",
+        "id_solicitacao": "",
+        "ativa": true,
+        "reexecutavel": true,
+        "ts": 1787786254.8198876,
+        "expira_em": 1787787154.8198876
+      },
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "9a54a81d414d4093a862d21e6e83c2e6",
+            "reexecutavel": true,
+            "ts": 1787786254.7992308
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786254.854032,
+      "tipo": "continuidade_registrar_call",
+      "evento": "foco",
+      "intent": "ARQUIVOS",
+      "reexecutavel": null,
+      "estado_antes": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "9a54a81d414d4093a862d21e6e83c2e6",
+            "reexecutavel": true,
+            "ts": 1787786254.7992308
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    },
+    {
+      "ts": 1787786254.8546915,
+      "tipo": "continuidade_registrar_return",
+      "evento": "foco",
+      "intent": "ARQUIVOS",
+      "item": {
+        "evento": "foco",
+        "dominio": "arquivos",
+        "intent": "ARQUIVOS",
+        "habilidade": "arquivos",
+        "tipo": "arquivo",
+        "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+        "topico": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\ce",
+        "texto": "",
+        "resposta": "",
+        "params": {},
+        "status": "",
+        "origem": "operacional",
+        "id_solicitacao": "",
+        "ativa": true,
+        "reexecutavel": false,
+        "ts": 1787786254.854242,
+        "expira_em": 1787787154.854242
+      },
+      "estado_depois": {
+        "dominio_ativo": "arquivos",
+        "receipts": {
+          "FILE_READ": {
+            "intent": "FILE_READ",
+            "dominio": "arquivos",
+            "alvo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+            "params": {
+              "caminho": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\resultados_rt1_r1\\r1_rt1f-20260826-201720\\cenario_f\\home\\Downloads\\rt1_f.txt",
+              "alvo": "rt1_f.txt"
+            },
+            "status": "conteudo_lido",
+            "origem": "executor",
+            "id_solicitacao": "9a54a81d414d4093a862d21e6e83c2e6",
+            "reexecutavel": true,
+            "ts": 1787786254.7992308
+          },
+          "IOT_CONTROL": {
+            "intent": "IOT_CONTROL",
+            "dominio": "iot",
+            "alvo": "lampada_quarto",
+            "params": {
+              "acao": "ligar",
+              "alvo": "lampada_quarto"
+            },
+            "status": "ligado",
+            "origem": "executor",
+            "id_solicitacao": "0de96f8814b14f7bb6a93727142947ca",
+            "reexecutavel": true,
+            "ts": 1787786252.4246116
+          }
+        },
+        "ultima_acao_intent": "FILE_READ",
+        "ultima_acao_status": "conteudo_lido",
+        "ultima_acao_reexecutavel": true
+      }
+    }
+  ]
+}
