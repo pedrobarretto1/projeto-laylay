@@ -30,6 +30,14 @@ from mente_laylay.memoria_mental.contexto_compartilhado import (
 from mente_laylay.memoria_mental.contexto_imediato import (
     referencia_app_quarentenavel_c1d,
 )
+from mente_laylay.memoria_mental.compatibilidade_contexto import (
+    classificar_repeticao_curta,
+)
+from mente_laylay.memoria_mental.politica_reexecucao import (
+    intents_compativeis_repeticao,
+)
+
+# ROOT_R1_V2_FAIL_CLOSED_TIPADO_20260826
 from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
 from mente_laylay.emocoes.contrato_causal import (
     criar_evento_leitura_emocional_usuario,
@@ -86,14 +94,49 @@ def registrar_falha_opcional(
         return
 
 
-def resolver_repeticao_operacional_segura(ns: dict, texto: str) -> dict | None:
-    """Consulta a continuidade; em falha, deixa um diagnóstico acionável."""
+def consultar_repeticao_operacional_classificada_segura(
+    ns: dict,
+    texto: str,
+) -> dict:
+    """Preserva classificação, resultado e saúde da consulta separadamente.
+
+    ``None`` não volta a carregar dois significados arquiteturais. O turno pode
+    distinguir "não houve operação compatível" de "o resolvedor não respondeu"
+    sem criar uma segunda gramática de repetição.
+    """
+    classificacao: dict = {}
+    normalizar = ns.get('_normalizar_texto_com_apelidos')
+    estado_classificacao = 'indisponivel'
+
+    if callable(normalizar):
+        try:
+            classificacao = dict(
+                classificar_repeticao_curta(texto, normalizar) or {}
+            )
+            estado_classificacao = 'ok'
+        except Exception as erro:
+            estado_classificacao = 'erro'
+            registrar_falha_opcional(
+                ns,
+                'continuidade_turno',
+                'falha_classificar_repeticao',
+                erro,
+                classe='defeito',
+                impacto='turno',
+                fallback='classificacao_repeticao_indisponivel',
+            )
+
     resolver = ns.get('_resolver_repeticao_ultima_acao')
     if not callable(resolver):
-        return None
+        return {
+            'estado': 'resolver_indisponivel',
+            'estado_classificacao': estado_classificacao,
+            'classificacao': classificacao,
+            'repeticao': None,
+        }
+
     try:
-        repeticao = resolver(texto)
-        return repeticao if isinstance(repeticao, dict) else None
+        repeticao_bruta = resolver(texto)
     except Exception as erro:
         registrar_falha_opcional(
             ns,
@@ -104,7 +147,30 @@ def resolver_repeticao_operacional_segura(ns: dict, texto: str) -> dict | None:
             impacto='turno',
             fallback='conversa_sem_repeticao',
         )
-        return None
+        return {
+            'estado': 'resolver_erro',
+            'estado_classificacao': estado_classificacao,
+            'classificacao': classificacao,
+            'repeticao': None,
+        }
+
+    return {
+        'estado': 'ok',
+        'estado_classificacao': estado_classificacao,
+        'classificacao': classificacao,
+        'repeticao': (
+            dict(repeticao_bruta)
+            if isinstance(repeticao_bruta, dict)
+            else None
+        ),
+    }
+
+
+def resolver_repeticao_operacional_segura(ns: dict, texto: str) -> dict | None:
+    """Compatibilidade pública: devolve só a operação recuperada."""
+    consulta = consultar_repeticao_operacional_classificada_segura(ns, texto)
+    repeticao = consulta.get('repeticao')
+    return dict(repeticao) if isinstance(repeticao, dict) else None
 
 
 def obter_contexto_jogo_seguro(ns: dict) -> dict:
@@ -180,6 +246,92 @@ def aplicar_repeticao_operacional_ao_turno(turno: dict, repeticao: object) -> di
         repeticao_operacional={"intent": intent, "params": dict(params)},
     )
     return resultado
+
+
+def aplicar_contrato_repeticao_classificada_ao_turno(
+    turno: dict,
+    *,
+    texto: str,
+    consulta: object,
+) -> dict:
+    """Congela a restrição lexical antes que contexto posterior a amplie.
+
+    Repetições genéricas mantêm o comportamento legado. Uma repetição tipada
+    só autoriza intents declaradas pela política semântica canônica. Quando a
+    fala foi tipada mas nenhum resultado autorizável existe, o turno ganha um
+    veto operacional sticky: contexto continua útil para conversa, nunca para
+    trocar LER por outro domínio.
+    """
+    resultado = dict(turno or {})
+    if turno_tem_veto_execucao(resultado):
+        return resultado
+
+    dados = dict(consulta or {}) if isinstance(consulta, dict) else {}
+    classificacao = dict(dados.get('classificacao') or {})
+    repeticao = (
+        dict(dados.get('repeticao') or {})
+        if isinstance(dados.get('repeticao'), dict)
+        else None
+    )
+
+    if str(classificacao.get('tipo') or '') != 'tipada':
+        return aplicar_repeticao_operacional_ao_turno(resultado, repeticao)
+
+    acao_semantica = str(
+        classificacao.get('acao_semantica') or ''
+    ).strip().upper()
+    permitidos = intents_compativeis_repeticao(acao_semantica)
+    intent = str(
+        (repeticao or {}).get('intent') or ''
+    ).strip().upper()
+    params = (repeticao or {}).get('params')
+
+    if (
+        bool(permitidos)
+        and intent in permitidos
+        and isinstance(params, dict)
+    ):
+        return aplicar_repeticao_operacional_ao_turno(
+            resultado,
+            {'intent': intent, 'params': dict(params)},
+        )
+
+    estado_consulta = str(dados.get('estado') or '').strip().casefold()
+    if estado_consulta == 'resolver_erro':
+        motivo = (
+            'repetição tipada reconhecida, mas o resolvedor falhou antes de '
+            'produzir operação semanticamente compatível'
+        )
+    elif estado_consulta == 'resolver_indisponivel':
+        motivo = (
+            'repetição tipada reconhecida, mas o resolvedor de continuidade '
+            'está indisponível'
+        )
+    elif not permitidos:
+        motivo = (
+            'repetição tipada reconhecida sem política semântica de intents '
+            'compatíveis'
+        )
+    elif repeticao:
+        motivo = (
+            'repetição tipada produziu operação incompatível com a restrição '
+            f'{acao_semantica or "tipada"}'
+        )
+    else:
+        motivo = (
+            'repetição tipada sem operação reexecutável semanticamente '
+            'compatível'
+        )
+
+    return aplicar_veto_canonico(
+        resultado,
+        texto=texto,
+        modalidade='comando',
+        natureza='repeticao_tipificada_sem_operacao_compativel',
+        motivo=motivo,
+        requer_esclarecimento=False,
+        origem_veto='repeticao_tipificada_fail_closed',
+    )
 
 
 def _catalogo_apps_retarget_c1d(apps_map: object) -> dict[str, tuple[str, object]]:
@@ -540,16 +692,38 @@ def _iniciar_planejamento_turno(
 
     # Uma revisão atual não pode ser reinterpretada como repetição da ação
     # anterior só porque a proposta final contém "continua", "de novo" etc.
-    repeticao_operacional = (
-        None if revisao_detectada
-        else resolver_repeticao_operacional_segura(ns, texto)
+    consulta_repeticao = (
+        {
+            'estado': 'suprimida_revisao',
+            'estado_classificacao': 'suprimida_revisao',
+            'classificacao': {},
+            'repeticao': None,
+        }
+        if revisao_detectada
+        else consultar_repeticao_operacional_classificada_segura(ns, texto)
     )
+    repeticao_operacional = consulta_repeticao.get('repeticao')
     if not turno_tem_veto_execucao(turno):
-        turno = aplicar_repeticao_operacional_ao_turno(turno, repeticao_operacional)
-    if repeticao_operacional:
+        turno = aplicar_contrato_repeticao_classificada_ao_turno(
+            turno,
+            texto=texto,
+            consulta=consulta_repeticao,
+        )
+    if repeticao_operacional and not turno_tem_veto_execucao(turno):
         ns['print'](
             f"🔁 [TURNO] repetição operacional autorizada | "
             f"intent={str(repeticao_operacional.get('intent') or '-')}"
+        )
+    elif (
+        str(dict(consulta_repeticao.get('classificacao') or {}).get('tipo') or '')
+        == 'tipada'
+        and turno_tem_veto_execucao(turno)
+        and str(turno.get('origem_veto_execucao_operacional') or '')
+        == 'repeticao_tipificada_fail_closed'
+    ):
+        ns['print'](
+            "🛡️ [TURNO] repetição tipada sem operação compatível | "
+            f"estado={consulta_repeticao.get('estado') or '-'}"
         )
     jogo_contexto = obter_contexto_jogo_seguro(ns)
     visao_jogo_runtime = ns.get('_registro_visao_jogo_leitura_runtime')
