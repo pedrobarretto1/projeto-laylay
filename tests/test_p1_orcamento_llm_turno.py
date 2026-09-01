@@ -13,6 +13,8 @@ from mente_laylay.integracao.registro_conversa_llm import (
     PedidoModelo,
     RequisicaoTransporteLLM,
 )
+from mente_laylay.memoria_mental.resultado_acao import normalizar_resultado_acao
+from mente_laylay.personalidade.confirmacao_llm import personalizar_confirmacao_llm
 
 
 class Relogio:
@@ -57,6 +59,17 @@ def test_turno_bloqueia_principal_duplicada_e_segundo_tipo_de_reparo() -> None:
     segundo_reparo = runtime.autorizar_chamada(tipo_chamada="continuacao")
     assert segundo_reparo.permitida is False
     assert segundo_reparo.motivo == "reparo_duplicado"
+
+
+def test_autoria_operacional_pode_receber_um_reparo_do_proprio_contrato() -> None:
+    runtime = OrcamentoLLMTurnoRuntime(max_chamadas_turno=2)
+    runtime.iniciar_turno("turno-operacional")
+
+    autoria = runtime.autorizar_chamada(tipo_chamada="autoria_operacional")
+    reparo = runtime.autorizar_chamada(tipo_chamada="reparo_json")
+
+    assert autoria.permitida is True
+    assert reparo.permitida is True
 
 
 def test_interpretacao_e_principal_compartilham_o_mesmo_limite() -> None:
@@ -145,6 +158,62 @@ def test_cliente_nao_inicia_terceiro_transporte_no_mesmo_turno(monkeypatch) -> N
     assert terceira.sucesso is False
     assert terceira.rota == "orcamento_bloqueado"
     assert len(chamadas) == 2
+
+
+def test_composicao_real_permite_autoria_operacional_e_seu_reparo(monkeypatch) -> None:
+    respostas = iter((
+        "Abri o Opera de novo.",
+        "O Opera já estava aberto e em foco; não repeti a abertura.",
+    ))
+    transportes = []
+    monkeypatch.setattr(
+        cliente_modulo,
+        "executar_chat_llm",
+        lambda *_args, **_kwargs: transportes.append(True) or next(respostas),
+    )
+    orcamento = OrcamentoLLMTurnoRuntime(max_chamadas_turno=2)
+    cliente = ClienteLLMRuntime(
+        endpoint_local_getter=lambda: True,
+        post_chat=lambda *_args, **_kwargs: None,
+        orcamento_turno=orcamento,
+        log=lambda *_args: None,
+    )
+    orcamento.iniciar_turno("turno-operacional")
+
+    def enviar(mensagens, **opcoes):
+        requisicao = RequisicaoTransporteLLM(
+            payload={"messages": mensagens},
+            timeout=opcoes.get("timeout"),
+            prioridade_interativa=bool(opcoes.get("_prioridade_interativa")),
+            permitir_durante_interacao=bool(
+                opcoes.get("_permitir_durante_interacao")
+            ),
+            tipo_chamada=str(opcoes.get("_tipo_chamada") or "principal"),
+            classe_timeout=str(opcoes.get("_classe_timeout") or "normal"),
+        )
+        return cliente.executar(requisicao).texto
+
+    resultado = normalizar_resultado_acao({
+        "intent": "APP_OPEN",
+        "params": {"nome_app": "Opera"},
+        "alvo": "Opera",
+        "status": "ja_aberto_focado",
+        "executou": False,
+        "confirmado": True,
+    })
+    confirmacao = personalizar_confirmacao_llm(
+        resultado,
+        "O Opera já estava aberto e em foco; não repeti a abertura.",
+        classe="sem_acao",
+        emocao="calma",
+        nivel=1,
+        enviar_mensagem=enviar,
+        contexto={},
+    )
+
+    assert len(transportes) == 2
+    assert confirmacao.usada_llm is True
+    assert "não repeti" in confirmacao.fala.casefold()
 
 
 def test_cliente_descarta_resposta_que_ficou_obsoleta_durante_http(monkeypatch) -> None:

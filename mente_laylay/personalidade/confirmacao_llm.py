@@ -139,6 +139,36 @@ def _extrair_json(resposta: Any) -> dict[str, Any]:
             return {}
 
 
+def _extrair_dados_autoria(
+    resposta: Any,
+    *,
+    resultado: ResultadoAcao,
+    fallback: ConfirmacaoPersonalizada,
+) -> dict[str, Any]:
+    """Aceita JSON legado ou fala pura sem devolver autoridade ao modelo."""
+    dados = _extrair_json(resposta)
+    if dados:
+        return dados
+    texto = re.sub(r"\s+", " ", str(resposta or "")).strip()
+    if not texto or eh_estado_tecnico_llm(texto):
+        return {}
+    texto = re.sub(r"^```(?:text|txt)?\s*|\s*```$", "", texto, flags=re.IGNORECASE).strip()
+    # Estrutura quebrada não pode ser pronunciada como conversa. Fala pura é
+    # segura porque status e alvo vêm do receipt, não de campos reescritos.
+    if texto.startswith(("{", "[")) or re.search(
+        r'(?i)["\']?(?:fala|status|alvo|emocao|nível|nivel)["\']?\s*:',
+        texto,
+    ):
+        return {}
+    return {
+        "fala": texto,
+        "status": resultado.status,
+        "alvo": resultado.alvo,
+        "emocao": fallback.emocao,
+        "nivel": fallback.nivel,
+    }
+
+
 def _ativada() -> bool:
     valor = _normalizar(os.environ.get("LAYLAY_CONFIRMACOES_LLM", "1"))
     return valor not in {"0", "false", "nao", "off", "desativado"}
@@ -639,9 +669,7 @@ def personalizar_confirmacao_llm(
         "A tirada pode brincar somente com a repetição observada do pedido; não invente celular, "
         "gestos, aparência ou ambiente do usuário. Não use palavrão nem linguagem ofensiva. "
         f"{regra_reacao}"
-        "Responda apenas JSON válido com fala, emocao, nivel, status e alvo. "
-        "Nos campos status e alvo, prefira copiar exatamente os valores recebidos no contrato. "
-        "Emoções: calma, alegre, debochada, envergonhada, surpresa, triste, irritada, brava, acalmando-se."
+        "Responda somente com a fala final, sem JSON, rótulos ou explicações sobre o contrato."
     )
     try:
         resposta = enviar_mensagem(
@@ -698,7 +726,11 @@ def personalizar_confirmacao_llm(
                 return fala_sem_pergunta, ""
         return fala_candidata, motivo
 
-    dados = _extrair_json(resposta)
+    dados = _extrair_dados_autoria(
+        resposta,
+        resultado=resultado,
+        fallback=fallback,
+    )
     if not dados and eh_estado_tecnico_llm(resposta):
         return _com_motivo_fallback(fallback, "resposta_tecnica_ou_json_invalido")
     fala, motivo_contrato = validar_dados(dados) if dados else ("", "json_invalido")
@@ -717,7 +749,7 @@ def personalizar_confirmacao_llm(
                             "Sua proposta anterior foi rejeitada por "
                             f"{motivo_contrato}. Escreva outra fala realmente nova, "
                             "corrigindo exatamente esse ponto e preservando todos os "
-                            "fatos do contrato. Retorne somente o JSON solicitado."
+                            "fatos do contrato. Retorne somente a fala final."
                         ),
                     },
                 ],
@@ -733,7 +765,11 @@ def personalizar_confirmacao_llm(
                 ),
                 _classe_timeout="rapida",
             )
-            dados_corrigidos = _extrair_json(resposta_corrigida)
+            dados_corrigidos = _extrair_dados_autoria(
+                resposta_corrigida,
+                resultado=resultado,
+                fallback=fallback,
+            )
             fala_corrigida, motivo_corrigido = (
                 validar_dados(dados_corrigidos)
                 if dados_corrigidos else ("", "json_invalido")
@@ -771,7 +807,7 @@ def personalizar_confirmacao_llm(
                         "content": (
                             "A proposta anterior ainda repetiu uma abertura recente: "
                             f"{fala!r}. Gere outra opção realmente diferente, mantendo o "
-                            "mesmo contrato e o mesmo formato JSON."
+                            "mesmo contrato e somente a fala final."
                         ),
                     },
                 ],
@@ -784,8 +820,15 @@ def personalizar_confirmacao_llm(
                 _tipo_chamada="reparo_comunicacao",
                 _classe_timeout="rapida",
             )
-            dados_variados = _extrair_json(resposta_variada)
-            fala_variada, motivo_variado = validar_dados(dados_variados)
+            dados_variados = _extrair_dados_autoria(
+                resposta_variada,
+                resultado=resultado,
+                fallback=fallback,
+            )
+            fala_variada, motivo_variado = (
+                validar_dados(dados_variados)
+                if dados_variados else ("", "resposta_invalida")
+            )
             fala_variada = _variar_abertura_repetida(
                 fala_variada, historico_variacao,
             )

@@ -25,8 +25,8 @@ TIPOS_REPARO_LLM = frozenset({
     "reparo_factual",
     "continuacao",
     "reparo_comunicacao",
-    "autoria_operacional",
 })
+TIPOS_CHAMADA_SECUNDARIA_LLM = TIPOS_REPARO_LLM | {"autoria_operacional"}
 LIMITES_CLASSE_S = {
     "rapida": 8.0,
     "normal": 20.0,
@@ -287,7 +287,7 @@ class OrcamentoLLMTurnoRuntime:
                 if restante < 1.0:
                     return self._registrar_bloqueio("prazo_esgotado", tipo)
                 if (
-                    tipo in TIPOS_REPARO_LLM
+                    tipo in TIPOS_CHAMADA_SECUNDARIA_LLM
                     and restante < FATIA_MINIMA_CHAMADA_SECUNDARIA_S
                 ):
                     if probe:

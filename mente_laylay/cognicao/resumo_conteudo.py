@@ -292,6 +292,24 @@ async def resumir_pagina_ou_video(
     try:
         log("[RESUMO:FASE] solicitando_conteudo")
         response = await solicitar_conteudo()
+        erro_inicial = (
+            str(response.get("error") or "")
+            if isinstance(response, dict)
+            else ""
+        )
+        erro_inicial_norm = _normalizar_ruido_pagina(erro_inicial)
+        if (
+            isinstance(response, dict)
+            and not response.get("success")
+            and "pagina ainda nao possui conteudo" in erro_inicial_norm
+        ):
+            # A navegação já foi confirmada, mas o content script pode chegar
+            # antes de ``document.body`` existir. Esse estado é transitório:
+            # uma única nova leitura, após estabilização curta, preserva o
+            # receipt real sem converter indisponibilidade persistente em êxito.
+            log("[RESUMO:FASE] página ainda sem DOM; repetindo captura")
+            await aguardar(0.35)
+            response = await solicitar_conteudo()
         if not isinstance(response, dict) or not response.get("success"):
             erro = response.get("error", "desconhecido") if isinstance(response, dict) else "resposta inválida"
             falar(f"Não consegui pegar o conteúdo da página. Erro: {erro}", "irritada", 2)

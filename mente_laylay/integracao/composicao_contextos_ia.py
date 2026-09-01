@@ -232,6 +232,9 @@ class ComposicaoContextosIARuntime:
             "aba_url_atual": url,
             "turno_atual": dict(mente.get("turno_atual") or {}),
             "contrato_fala_atual": dict(mente.get("contrato_fala_atual") or {}),
+            "fundamentacao_factual_turno": dict(
+                mente.get("fundamentacao_factual_turno") or {}
+            ),
             "nome_usuario": str(mente.get("nome_usuario") or "").strip(),
         }
 

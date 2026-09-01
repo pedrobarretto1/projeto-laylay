@@ -1,0 +1,30 @@
+{
+  "versao_avaliador": 16,
+  "total_turnos": 1,
+  "respondidos": 1,
+  "concluido_transporte": true,
+  "avaliados_semanticamente": 1,
+  "passaram": 1,
+  "falharam": 0,
+  "alertas": 0,
+  "nao_avaliados": 0,
+  "taxa_semantica_percentual": 100.0,
+  "comandos_observados": 0,
+  "confirmacoes_indeterminadas": 0,
+  "fallbacks_conversacionais": 0,
+  "falas_repetidas": 0,
+  "maior_repeticao_da_mesma_fala": 1,
+  "latencia_s": {
+    "p50": 8.605,
+    "p95": 8.605,
+    "max": 8.605,
+    "media": 8.605
+  },
+  "por_dominio": {
+    "conversa": {
+      "passou": 1
+    }
+  },
+  "turnos_com_erros": [],
+  "turnos_com_alertas": []
+}

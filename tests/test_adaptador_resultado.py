@@ -374,6 +374,29 @@ def test_estado_ja_satisfeito_vira_nao_acao_consciente_autoral(monkeypatch) -> N
     assert (emocao, nivel) == ("debochada", 1)
 
 
+def test_app_ja_aberto_observado_preserva_estado_explicito_no_fallback() -> None:
+    entregas: list[tuple] = []
+    adaptador = _adaptador({
+        "falar_com_lipsync": lambda *_args: None,
+        "enviar_mensagem": lambda *_args, **_kwargs: "json inválido",
+        "_falar_resultado_operacional": lambda *args: entregas.append(args),
+    }, nome_app="microsoft store")
+
+    adaptador.falar_por_status(
+        "app_ja_aberto_observado",
+        "Microsoft Store já está aberto; só te avisei e não mexi nele.",
+        alvo="microsoft store",
+        executou=False,
+        confirmado=True,
+    )
+
+    contrato, fala, _emocao, _nivel = entregas[0]
+    assert contrato.executou is False
+    assert contrato.confirmado is True
+    assert "aberto" in fala.casefold()
+    assert "não repeti" in fala.casefold()
+
+
 def test_estado_ja_satisfeito_aceita_classe_semantica_no_status_da_llm() -> None:
     entregas: list[tuple] = []
     adaptador = _adaptador({

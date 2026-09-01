@@ -1,0 +1,63 @@
+{
+  "versao": 2,
+  "assinatura": "92b6825d1133800c415b6575703033379a2137150a038cfc1a1bcfdafd8f63d7",
+  "criado_em": 1788301956.7095587,
+  "atualizado_em": 1788301965.733634,
+  "concluido": true,
+  "criterio_conclusao": "transporte_resposta_e_resultado_turno",
+  "voz_silenciada_durante_teste": true,
+  "itens": [
+    {
+      "indice": 0,
+      "comando": "pode me recomendar um filme de romance?",
+      "status": "respondido",
+      "resposta": "Eu iria de Uma Linda Mulher. Esse aparece na lista que encontrei para filme de romance.",
+      "enviado_em": 1788301959.7382464,
+      "finalizado_em": 1788301965.721681,
+      "plano": {
+        "fase": "fala_verificada",
+        "erros": [],
+        "comandos": [],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 0,
+        "execucao": "sem_comando_observado",
+        "confirmacao": "sem_comando_observado",
+        "intencao_correta": "sim",
+        "fala_coerente": "nao_avaliado",
+        "versao_avaliador": 16,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "",
+        "origem_expectativa": "roteiro_dedicado",
+        "dominio": "conversa",
+        "intents_observadas": [],
+        "statuses_observados": [],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "sem_comando_operacional",
+          "fala_minima"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 5.983
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "resposta_sem_execucao",
+      "processamento_concluido": true
+    }
+  ],
+  "preparacao": {
+    "status": "modo_chat_confirmado",
+    "atraso_inicial_s": 3.0,
+    "voz_silenciada": true
+  },
+  "finalizado_em": 1788301965.7336326
+}

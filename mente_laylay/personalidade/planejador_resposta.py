@@ -143,6 +143,8 @@ def _ancora_resultado(resultado: ResultadoAcao, classe: str) -> str:
     if classe == "sem_acao":
         if status in {"ja_aberto_focado", "site_ja_aberto_focado"}:
             return f"{objeto.capitalize()} já está aberto e em foco; não repeti a abertura."
+        if status == "app_ja_aberto_observado":
+            return f"{objeto.capitalize()} já está aberto; não repeti a abertura."
         if status == "ja_estava_ligado":
             return f"{objeto.capitalize()} já está ligado; não repeti o comando."
         if status == "ja_estava_desligado":

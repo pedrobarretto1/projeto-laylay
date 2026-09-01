@@ -8,6 +8,7 @@ import threading
 import time
 import unicodedata
 import urllib.parse
+import html as html_lib
 from collections.abc import Callable
 from datetime import datetime, timezone
 from urllib.parse import urlparse
@@ -312,6 +313,127 @@ def pesquisar_contexto_tema(
     )
 
 
+def pesquisar_recomendacoes_tema(
+    tema: str,
+    ttl_s: float = 1800.0,
+    *,
+    cache: dict | None = None,
+    requests_get=None,
+    clock: Callable[[], float] = time.time,
+) -> dict:
+    """Obtém candidatos reais para recomendações de filmes por gênero.
+
+    A LLM escolhe e comenta, mas os títulos permitidos vêm de uma fonte
+    externa observada no turno. Outros tipos de obra continuam no pesquisador
+    factual genérico até possuírem uma fonte especializada equivalente.
+    """
+    bruto = re.sub(r"\s+", " ", str(tema or "")).strip()
+    achado = re.fullmatch(
+        r"filme\s+de\s+(?P<genero>[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ -]{1,48})",
+        bruto,
+        flags=re.IGNORECASE,
+    )
+    if not achado:
+        return {
+            "ok": False,
+            "tema": bruto,
+            "motivo": "tipo_recomendacao_sem_fonte_especializada",
+        }
+
+    genero = re.sub(r"\s+", " ", achado.group("genero")).strip(" -")
+    chave = "recomendacao:" + _normalizar_texto_curto_basico(bruto)
+    cache_ref = cache if isinstance(cache, dict) else {}
+    agora = float(clock())
+    item_cache = dict(cache_ref.get(chave) or {})
+    if item_cache and agora - float(item_cache.get("ts") or 0.0) < float(
+        item_cache.get("ttl_s") or ttl_s
+    ):
+        encontrado = dict(item_cache.get("data") or {})
+        encontrado["evidencia_cache"] = True
+        return encontrado
+
+    get = requests_get or requests.get
+    slug = "Filmes_de_" + genero.replace(" ", "_")
+    url = "https://pt.wikipedia.org/wiki/" + urllib.parse.quote(
+        slug,
+        safe="_:()-",
+    )
+    headers = {
+        "User-Agent": "LaylayAssistant/2.5 (pesquisa contextual pessoal; contato local)",
+        "Accept": "text/html",
+    }
+    try:
+        try:
+            resposta = get(url, headers=headers, timeout=4)
+        except TypeError:
+            resposta = get(url, timeout=4)
+        resposta.raise_for_status()
+        corpo = str(getattr(resposta, "text", "") or "")
+    except Exception:
+        return {
+            "ok": False,
+            "tema": bruto,
+            "consulta": slug.replace("_", " "),
+            "motivo": "fonte_recomendacao_indisponivel",
+        }
+
+    candidatos: list[str] = []
+    for lista in re.findall(r"<ol\b[^>]*>(.*?)</ol>", corpo, flags=re.I | re.S):
+        encontrados_lista: list[str] = []
+        for href, rotulo in re.findall(
+            r"<i\b[^>]*>\s*<a\b[^>]+href=\"([^\"]+)\"[^>]*>(.*?)</a>",
+            lista,
+            flags=re.I | re.S,
+        ):
+            if "/wiki/" not in href or ":" in href.split("/wiki/", 1)[-1]:
+                continue
+            titulo = html_lib.unescape(
+                re.sub(r"<[^>]+>", "", rotulo),
+            ).strip()
+            if 2 <= len(titulo) <= 100 and titulo not in encontrados_lista:
+                encontrados_lista.append(titulo)
+        if len(encontrados_lista) >= 3:
+            candidatos = encontrados_lista[:8]
+            break
+
+    if not candidatos:
+        return {
+            "ok": False,
+            "tema": bruto,
+            "consulta": slug.replace("_", " "),
+            "motivo": "fonte_sem_candidatos_verificaveis",
+        }
+
+    validade = max(0.0, float(ttl_s))
+    resultado = {
+        "ok": True,
+        "tema": bruto,
+        "consulta": slug.replace("_", " "),
+        "titulo": f"Candidatos de {bruto}",
+        "resumo": (
+            f"Títulos listados pela Wikipédia para {bruto}: "
+            + "; ".join(candidatos)
+            + "."
+        ),
+        "candidatos": candidatos,
+        "fonte": "wikipedia_pt",
+        "confianca": 0.92,
+        "evidencia_obtida_em": agora,
+        "evidencia_obtida_em_iso": datetime.fromtimestamp(
+            agora, timezone.utc,
+        ).isoformat(),
+        "evidencia_validade_s": validade,
+        "evidencia_expira_em": agora + validade,
+        "evidencia_expira_em_iso": datetime.fromtimestamp(
+            agora + validade, timezone.utc,
+        ).isoformat(),
+        "evidencia_idade_s": 0.0,
+        "evidencia_cache": False,
+    }
+    cache_ref[chave] = {"ts": agora, "ttl_s": validade, "data": resultado}
+    return dict(resultado)
+
+
 def buscar_imagem_url(assunto: str, *, requests_get=None) -> str | None:
     termo = str(assunto or "").strip()
     if not termo:
@@ -474,6 +596,19 @@ class PesquisaContextualRuntime:
             "motivo": "pesquisa_em_background",
             "pesquisa_pendente": True,
         }
+
+    def pesquisar_recomendacoes_tema(
+        self,
+        tema: str,
+        ttl_s: float = 1800.0,
+    ) -> dict:
+        return pesquisar_recomendacoes_tema(
+            tema,
+            ttl_s=ttl_s,
+            cache=self.cache_tema,
+            requests_get=self.requests_get,
+            clock=self.clock,
+        )
 
     def _pesquisar_contexto_tema_direto(self, tema: str, ttl_s: float) -> dict:
         return pesquisar_contexto_tema(

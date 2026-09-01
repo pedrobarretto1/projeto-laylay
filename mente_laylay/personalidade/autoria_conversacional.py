@@ -45,6 +45,20 @@ def _extrair_json(valor: Any) -> dict[str, Any]:
     return dados if isinstance(dados, dict) else {}
 
 
+def _extrair_fala_autoral(valor: Any) -> tuple[str, Any]:
+    """Aceita a fala direta atual e mantém compatibilidade com o JSON antigo."""
+    texto = str(valor or "").strip()
+    if not texto or eh_estado_tecnico_llm(texto):
+        return "", None
+    sem_cerca = re.sub(r"^```(?:json)?\s*|\s*```$", "", texto, flags=re.I).strip()
+    if sem_cerca.startswith("{") or sem_cerca.endswith("}"):
+        dados = _extrair_json(sem_cerca)
+        if not dados:
+            return "", None
+        return str(dados.get("fala") or "").strip(), dados.get("comandos")
+    return sem_cerca, None
+
+
 def _falas_assistente(
     mensagens: Iterable[Mapping[str, Any]] | None,
     *,
@@ -96,8 +110,8 @@ def criar_fala_autoral(
         "Não seja poética sem necessidade. Preserve fatos, foco, relações e negações; não "
         "invente memória, corpo, ambiente ou experiência pessoal. Não execute, prometa ou "
         "sugira comandos. Não reutilize frases, aberturas ou tiradas da lista recente. Uma "
-        "ou duas frases bastam e no máximo uma pergunta é permitida. Retorne somente JSON "
-        'válido no formato {"fala":"...","comandos":[]}.'
+        "ou duas frases bastam e no máximo uma pergunta é permitida. Retorne somente a fala "
+        "final, sem JSON, rótulos ou comentários de bastidor."
     )
     try:
         bruto = enviar_mensagem(
@@ -121,9 +135,8 @@ def criar_fala_autoral(
             f"erro_chamada_{type(erro).__name__.casefold()}",
         )
 
-    dados = _extrair_json(bruto)
-    fala = re.sub(r"\s+", " ", str(dados.get("fala") or "")).strip()
-    comandos = dados.get("comandos")
+    fala_extraida, comandos = _extrair_fala_autoral(bruto)
+    fala = re.sub(r"\s+", " ", fala_extraida).strip()
     if not fala or not 2 <= len(fala.split()) <= 80:
         return FalaAutoral(fallback, False, "fala_invalida")
     if comandos not in (None, [], ()):

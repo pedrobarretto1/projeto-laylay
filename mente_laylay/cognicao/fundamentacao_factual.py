@@ -274,6 +274,18 @@ def extrair_tema_fundamentacao(
         bruto, flags=re.IGNORECASE,
     ):
         return ""
+
+    recomendacao = re.search(
+        r"\b(?:recomenda|recomende|recomendar|indica|indique|sugere|sugira)\b"
+        r"[^?!.]{0,100}\b(?P<categoria>filme|s[eé]rie|livro|jogo)\b"
+        r"(?:\s+(?:de|do\s+g[eê]nero)\s+(?P<genero>[a-zA-ZÀ-ÿ -]{2,40}))?",
+        bruto,
+        flags=re.IGNORECASE,
+    )
+    if recomendacao:
+        categoria = recomendacao.group("categoria").casefold()
+        genero = str(recomendacao.group("genero") or "").strip(" ,.!?;:\"'")
+        return f"{categoria} de {genero}"[:160] if genero else categoria[:160]
     snapshot = dict(retrato or {})
     referencia = dict(snapshot.get("referencia_resolvida") or {})
     tipo = str(referencia.get("tipo") or "").casefold()
@@ -324,8 +336,20 @@ def extrair_tema_fundamentacao(
     registro = dict(registro_semantico or {})
     entidades = dict(registro.get("entidades") or {})
     ativa = dict(entidades.get(str(registro.get("entidade_ativa_id") or "")) or {})
+    nome_ativo = str(ativa.get("nome") or "").strip()
+    if nome_ativo.casefold() in {"filme", "serie", "série", "livro", "jogo"}:
+        preferencia = re.search(
+            r"\b(?:quero|prefiro|pode\s+ser)\b[^.!?]{0,50}\bde\s+"
+            r"(?P<genero>[a-zA-ZÀ-ÿ -]{2,40})[.!?]*$",
+            bruto,
+            flags=re.IGNORECASE,
+        )
+        if preferencia:
+            genero = str(preferencia.group("genero") or "").strip(" ,.!?;:\"'")
+            if genero:
+                return f"{nome_ativo} de {genero}"[:160]
     if re.search(r"\b(?:ele|ela|dele|dela|desse|dessa|isso|esse|essa)\b", bruto, flags=re.IGNORECASE):
-        return str(ativa.get("nome") or "")[:160]
+        return nome_ativo[:160]
     return ""
 
 
@@ -344,6 +368,11 @@ def montar_fundamentacao(
     except (TypeError, ValueError):
         confianca = 0.0
     confiavel = bool(dados.get("ok") and resumo and confianca >= 0.60)
+    candidatos = [
+        re.sub(r"\s+", " ", str(item or "")).strip()[:100]
+        for item in list(dados.get("candidatos") or [])[:12]
+        if re.sub(r"\s+", " ", str(item or "")).strip()
+    ]
     classificacao_atualidade = dict(atualidade or {})
     try:
         obtida_em = float(dados.get("evidencia_obtida_em") or instante)
@@ -371,6 +400,7 @@ def montar_fundamentacao(
         "tema": str(tema or "").strip()[:160],
         "titulo": str(dados.get("titulo") or tema or "").strip()[:160],
         "resumo": resumo[:1200] if confiavel else "",
+        "candidatos": candidatos if confiavel else [],
         "fonte": str(dados.get("fonte") or "").strip()[:120] if confiavel else "",
         "confianca": round(confianca, 3) if confiavel else 0.0,
         "confiavel": confiavel,
@@ -439,12 +469,26 @@ def _plataformas_citadas(texto: str) -> set[str]:
     return plataformas
 
 
-def _titulos_citados(texto: str) -> list[str]:
-    return [
+def extrair_titulos_citados(texto: str) -> list[str]:
+    """Extrai obras destacadas por aspas ou ênfase Markdown da fala."""
+    bruto = str(texto or "")
+    encontrados = [
         str(a or b).strip()
-        for a, b in re.findall(r'["“]([^"”]{2,100})["”]|\'([^\']{2,100})\'', str(texto or ""))
+        for a, b in re.findall(
+            r'["“]([^"”]{2,100})["”]|\'([^\']{2,100})\'', bruto,
+        )
         if str(a or b).strip()
     ]
+    encontrados.extend(
+        str(item or "").strip()
+        for item in re.findall(r'(?<!\*)\*{1,2}([^*\n]{2,100})\*{1,2}(?!\*)', bruto)
+        if str(item or "").strip()
+    )
+    return list(dict.fromkeys(encontrados))
+
+
+def _titulos_citados(texto: str) -> list[str]:
+    return extrair_titulos_citados(texto)
 
 
 def _frase_especifica_sem_base(frase: str, tema: str = "") -> bool:
@@ -536,6 +580,54 @@ def _fallback_sem_inventar(tema: str, texto_usuario: str) -> str:
     )
 
 
+def reparar_recomendacao_com_evidencia(
+    fundamentacao: Dict[str, Any] | None,
+    fala_candidata: str = "",
+) -> str:
+    """Materializa uma recomendação mínima somente de candidatos observados.
+
+    Quando o modelo escolheu um item válido, a escolha é preservada. O renderer
+    apenas remove alegações que a lista pesquisada não comprovou.
+    """
+    base = dict(fundamentacao or {})
+    candidatos = [
+        re.sub(r"\s+", " ", str(item or "")).strip()
+        for item in list(base.get("candidatos") or [])
+        if re.sub(r"\s+", " ", str(item or "")).strip()
+    ]
+    if not candidatos:
+        return ""
+    fala_normalizada = _normalizar(fala_candidata)
+    candidato_escolhido = next((
+        candidato
+        for candidato in candidatos
+        if _normalizar(candidato) in fala_normalizada
+    ), candidatos[0])
+    tema = str(base.get("tema") or "esse tema").strip()
+    return (
+        f"Eu iria de {candidato_escolhido}. Esse aparece na lista que encontrei "
+        f"para {tema}."
+    )
+
+
+_NEGACAO_CAPACIDADE_COM_PESQUISA = re.compile(
+    r"\b(?:n[aã]o\s+(?:posso|consigo)\s+(?:te\s+)?"
+    r"(?:recomendar|sugerir|indicar)|"
+    r"n[aã]o\s+tenho\s+acesso\s+(?:a|à)\s+(?:uma\s+)?"
+    r"(?:base\s+de\s+dados|dados|informa[cç][oõ]es|cat[aá]logo))\b",
+    re.IGNORECASE,
+)
+
+_DESCRICAO_OBRA_FORA_DA_LISTA = re.compile(
+    r"\b(?:basead[oa]s?\s+em|hist[oó]ria\s+real|sinopse|enredo|trama|"
+    r"protagonist[as]?|personage(?:m|ns)|se\s+passa|dirigid[oa]\s+por|"
+    r"estrelad[oa]\s+por|conta\s+(?:a\s+)?hist[oó]ria|acompanha\s+|"
+    r"jogador(?:a)?\s+de|se\s+apaixona|final|cl[aá]ssic[oa]s?|roteiro|"
+    r"mistura|ritmo|clima|cenas?|explora|mostra|traz|porque|pois|tem)\b",
+    re.IGNORECASE,
+)
+
+
 def validar_fala_com_fundamentacao(
     fala: str,
     *,
@@ -545,6 +637,19 @@ def validar_fala_com_fundamentacao(
 ) -> Dict[str, Any]:
     original = re.sub(r"\s+", " ", str(fala or "")).strip()
     base = avaliar_validade_fundamentacao(fundamentacao, agora=agora)
+    reparo_recomendacao = reparar_recomendacao_com_evidencia(base, original)
+    if (
+        reparo_recomendacao
+        and base.get("confiavel")
+        and base.get("evidencia_dentro_validade", True) is not False
+        and _NEGACAO_CAPACIDADE_COM_PESQUISA.search(original)
+    ):
+        return {
+            "fala": reparo_recomendacao,
+            "problemas": ["negacao_capacidade_contradiz_pesquisa"],
+            "acao": "recomendacao_reparada_por_evidencia",
+            "trechos_rejeitados": [original],
+        }
     tema = str(base.get("titulo") or base.get("tema") or "esse tema").strip()
     evidencia = " ".join((
         str(base.get("resumo") or ""),
@@ -558,6 +663,16 @@ def validar_fala_com_fundamentacao(
     problemas: list[str] = []
     frases = [parte.strip() for parte in re.split(r"(?<=[.!?])\s+", original) if parte.strip()]
     rejeitadas: list[str] = []
+    evidencia_lista_candidatos = bool(
+        base.get("confiavel")
+        and base.get("candidatos")
+        and str(base.get("titulo") or "").casefold().startswith("candidatos de ")
+    )
+    candidatos_normalizados = {
+        _normalizar(item)
+        for item in list(base.get("candidatos") or [])
+        if _normalizar(item)
+    }
 
     for frase in frases:
         titulos = _titulos_citados(frase)
@@ -586,10 +701,31 @@ def validar_fala_com_fundamentacao(
             and _frase_especifica_sem_base(frase, tema)
             and not reacao_social_preferencia
         )
+        frase_normalizada = _normalizar(frase)
+        frase_nomeia_candidato = any(
+            candidato in frase_normalizada
+            for candidato in candidatos_normalizados
+        )
+        declaracao_adicional_nao_comprovada = bool(
+            not frase_nomeia_candidato
+            and "?" not in frase
+            and len(frase_normalizada.split()) >= 4
+        )
+        descricao_encontrada = _DESCRICAO_OBRA_FORA_DA_LISTA.search(frase)
+        descricao_obra_sem_evidencia = bool(
+            evidencia_lista_candidatos
+            and (
+                declaracao_adicional_nao_comprovada
+                or (
+                    descricao_encontrada
+                    and _normalizar(descricao_encontrada.group(0)) not in evidencia_norm
+                )
+            )
+        )
         if (
             titulo_sem_evidencia or ano_sem_evidencia or categoria_sem_evidencia
             or medida_sem_evidencia or plataforma_sem_evidencia
-            or familiaridade_inventada or sem_base
+            or familiaridade_inventada or sem_base or descricao_obra_sem_evidencia
         ):
             rejeitadas.append(frase)
             if titulo_sem_evidencia:
@@ -606,9 +742,24 @@ def validar_fala_com_fundamentacao(
                 problemas.append("familiaridade_inventada")
             if sem_base:
                 problemas.append("alegacao_especifica_sem_fonte")
+            if descricao_obra_sem_evidencia:
+                problemas.append("descricao_obra_sem_evidencia")
 
     if not rejeitadas:
         return {"fala": original, "problemas": [], "acao": "aceita"}
+
+    if reparo_recomendacao and {
+        "obra_sem_evidencia", "descricao_obra_sem_evidencia",
+    }.intersection(problemas):
+        # A pesquisa já materializou opções verificáveis. Se a LLM sair dessa
+        # lista, não preservamos descrições anexadas ao título inventado: a
+        # fala inteira volta para um candidato observado na mesma evidência.
+        return {
+            "fala": reparo_recomendacao,
+            "problemas": list(dict.fromkeys(problemas)),
+            "acao": "recomendacao_reparada_por_evidencia",
+            "trechos_rejeitados": rejeitadas,
+        }
 
     restantes = [frase for frase in frases if frase not in rejeitadas]
     fala_segura = " ".join(restantes).strip()

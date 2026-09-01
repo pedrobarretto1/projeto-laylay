@@ -84,22 +84,50 @@ def _selecionar_historico_com_orcamento(
     limite_chars: int,
     limite_mensagens: int,
 ) -> list[dict[str, Any]]:
-    """Mantém os atos recentes completos, em vez de cortar mensagens ao meio."""
+    """Mantém os atos recentes completos, em vez de cortar mensagens ao meio.
+
+    A instrução ``system`` imediatamente anterior à fala atual pertence ao
+    mesmo ato: carrega contrato, evidência e receipts efêmeros. Ela não é
+    histórico opcional e pode ultrapassar o orçamento junto com a fala atual.
+    """
     dialogo = [
         dict(item) for item in mensagens
         if isinstance(item, dict)
-        and str(item.get("role") or "").casefold() in {"user", "assistant"}
+        and str(item.get("role") or "").casefold() in {"system", "user", "assistant"}
         and str(item.get("content") or "").strip()
     ]
+    indice_usuario_atual = next((
+        indice
+        for indice in range(len(dialogo) - 1, -1, -1)
+        if str(dialogo[indice].get("role") or "").casefold() == "user"
+    ), -1)
+    indice_instrucao_turno = (
+        indice_usuario_atual - 1
+        if indice_usuario_atual > 0
+        and str(dialogo[indice_usuario_atual - 1].get("role") or "").casefold()
+        == "system"
+        else -1
+    )
     selecionadas_reverso: list[dict[str, Any]] = []
     usados = 0
-    for item in reversed(dialogo):
+    for indice in range(len(dialogo) - 1, -1, -1):
+        item = dialogo[indice]
+        papel = str(item.get("role") or "").casefold()
+        # Contextos system antigos não são diálogo e não reaparecem como
+        # memória. Somente o contrato do turno atual cruza esta fronteira.
+        if papel == "system" and indice != indice_instrucao_turno:
+            continue
         if len(selecionadas_reverso) >= max(1, int(limite_mensagens)):
             break
         custo = len(str(item.get("content") or ""))
-        # A fala atual nunca é descartada, ainda que seja excepcionalmente
-        # grande. Tarefas especializadas não passam por este orçamento.
-        if selecionadas_reverso and usados + custo > limite_chars:
+        item_atomico_turno = indice in {indice_usuario_atual, indice_instrucao_turno}
+        # A fala atual e sua instrução efêmera nunca são descartadas, ainda que
+        # o par seja excepcionalmente grande. O orçamento limita só histórico.
+        if (
+            not item_atomico_turno
+            and selecionadas_reverso
+            and usados + custo > limite_chars
+        ):
             break
         selecionadas_reverso.append(item)
         usados += custo

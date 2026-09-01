@@ -134,6 +134,7 @@ def normalizar_roteiro_geracao_concreta(
 
 def _atos_relevantes(atos: Iterable[Any]) -> list[str]:
     relevantes = {
+        "pergunta",
         "saudacao",
         "estado_pessoal",
         "bem_estar",
@@ -149,6 +150,13 @@ def _atos_relevantes(atos: Iterable[Any]) -> list[str]:
         ato = _texto_curto(item, 48).casefold()
         if ato in relevantes and ato not in saida:
             saida.append(ato)
+    # Opinião, esclarecimento e bem-estar já são especializações da pergunta,
+    # não um segundo ato. A pergunta genérica só permanece quando carrega
+    # conteúdo próprio, como em "oi, pode recomendar um filme?".
+    if "pergunta" in saida and any(
+        especial in saida for especial in {"opiniao", "esclarecimento", "bem_estar"}
+    ):
+        saida.remove("pergunta")
     return saida
 
 
@@ -157,6 +165,8 @@ def _sequencia_multiacto(atos: Iterable[str]) -> tuple[str, ...]:
     sequencia: list[str] = []
     if "saudacao" in presentes:
         sequencia.append("responder brevemente à saudação")
+    if "pergunta" in presentes:
+        sequencia.append("responder diretamente à pergunta temática atual")
     if "estado_pessoal" in presentes:
         sequencia.append("reconhecer literalmente o estado informado pelo usuário")
     if "bem_estar" in presentes:
@@ -199,6 +209,14 @@ def construir_roteiro_geracao_concreta(
     referente = _texto_curto(dados_contrato.get("referente"), 180)
     anterior = _texto_curto(dados_contrato.get("fala_anterior_relevante"), 500)
     requer_execucao = bool(planejamento.get("requer_execucao"))
+    recomendacao = bool(
+        str(planejamento.get("dominio") or "").casefold() == "recomendacao"
+        or re.search(
+            r"\b(?:recomenda|recomende|recomendar|indica|indique|sugere|sugira)\b",
+            bruto,
+            flags=re.IGNORECASE,
+        )
+    )
 
     base_permitida = ["fala atual do usuário"]
     if referente:
@@ -250,6 +268,34 @@ def construir_roteiro_geracao_concreta(
             "reagir ao que o usuário disse sem apenas repetir a frase",
             "acrescentar uma observação concreta ou uma tirada curta sobre o próprio código",
             "não interromper a conversa para explicar que Laylay é texto, regras ou um sistema sem vida",
+        )
+    elif recomendacao and len(especiais) > 1:
+        estrategia = "resposta_multiacto"
+        ancora = bruto
+        nucleo = (
+            "responder a todos os atos e entregar uma recomendação concreta escolhida "
+            "somente da evidência factual do turno"
+        )
+        sequencia = _sequencia_multiacto(especiais) + (
+            "entregar uma opção concreta presente na evidência factual",
+        )
+        exigencias.append(
+            "não substituir a recomendação por outra pergunta nem inventar título"
+        )
+    elif recomendacao:
+        estrategia = "recomendacao_fundamentada"
+        ancora = referente or bruto
+        nucleo = (
+            "escolher uma opção concreta somente da evidência factual do turno "
+            "e recomendá-la diretamente"
+        )
+        sequencia = (
+            "escolher uma opção concreta presente na evidência factual",
+            "dizer o título e uma razão curta sustentada pela mesma evidência",
+            "perguntar preferência adicional somente depois de recomendar, se necessário",
+        )
+        exigencias.append(
+            "não devolver a escolha ao usuário antes de oferecer um título real"
         )
     elif len(especiais) > 1:
         estrategia = "resposta_multiacto"

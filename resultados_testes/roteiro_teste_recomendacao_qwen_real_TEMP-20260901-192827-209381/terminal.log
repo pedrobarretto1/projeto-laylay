@@ -1,0 +1,49 @@
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:57383 | sessão=beca7738 pid=23604
+🖥️ [TERMINAL 2] interface iniciada | sessão=beca7738 pid=5520 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=beca7738
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0103 início_de_fala=0.0176
+🎙️ [OUVIDO] Whisper será carregado somente na primeira fala.
+🎙️ [OUVIDO] Entrada: Microfone de mesa (4- Microsoft (índice 1, 16000 Hz, padrão do sistema).
+🎙️ [OUVIDO] Voz detectada (nível=0.0234, limiar=0.0177).
+🎙️ [OUVIDO] Carregando Whisper turbo...
+🎙️ [OUVIDO] Voz detectada (nível=0.0208, limiar=0.0149).
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0147 limiar=0.0120
+🎙️ [OUVIDO] Voz detectada (nível=0.0238, limiar=0.0120).
+🎙️ [OUVIDO] Voz detectada (nível=0.0121, limiar=0.0120).
+🎙️ [OUVIDO] Áudio antigo descartado para manter comandos atuais.
+🎙️ [OUVIDO] Voz detectada (nível=0.0331, limiar=0.0120).
+🎙️ [OUVIDO] Áudio antigo descartado para manter comandos atuais.
+🗣️ [VOCÊ DISSE] Ó, ó, ó, ó, ó, ó.
+🎙️ [OUVIDO:LEITURA] original='Ó, ó, ó, ó, ó, ó.' | corrigido='ó, ó, ó, ó, ó, ó.' | confiança=0.33 | correções=[] | nova_tentativa=False
+🎙️ [OUVIDO] Fala ignorada por não começar com Lay ou Laylay.
+🎙️ [OUVIDO] Voz detectada (nível=0.1530, limiar=0.0120).
+🗣️ [VOCÊ DISSE] Sous-titrage ST' 501
+🎙️ [OUVIDO:LEITURA] original="Sous-titrage ST' 501" | corrigido="sous-titrage st' 501" | confiança=0.39 | correções=[] | nova_tentativa=True
+🎙️ [OUVIDO] Fala ignorada por não começar com Lay ou Laylay.
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0003 limiar=0.0120
+🎙️ [OUVIDO] Voz detectada (nível=0.1083, limiar=0.0120).
+🎙️ [OUVIDO] Voz detectada (nível=0.0166, limiar=0.0120).
+🗣️ [VOCÊ DISSE] Eu sou chambly, eu sou!
+🎙️ [OUVIDO:LEITURA] original='Eu sou chambly, eu sou!' | corrigido='eu sou chambly, eu sou!' | confiança=0.30 | correções=[] | nova_tentativa=False
+🎙️ [OUVIDO] Fala ignorada por não começar com Lay ou Laylay.
+⚠️ [FALA INICIAL] entrega de briefing não foi confirmada em 45s
+⚠️ [BRIEFING] Fala não foi entregue; estado diário não será salvo.
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=roteiro_teste
+💬 Você:
+> pode me recomendar um filme de romance?
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+🧠 [IA] Gerando resposta para: 'pode me recomendar um filme de romance?'
+🗣️ [VOCÊ DISSE] Então, ele vai se divulgar um pouquinho.
+🎙️ [OUVIDO:LEITURA] original='Então, ele vai se divulgar um pouquinho.' | corrigido='então, ele vai se divulgar um pouquinho.' | confiança=0.51 | correções=[] | nova_tentativa=False
+🎙️ [OUVIDO] Fala ignorada por não começar com Lay ou Laylay.
+✨ [IA] Fala limpa: 'Claro! Se quiser algo leve e com um toque de realidade, recomendo *O Poder do Hábito*, mas tem um erro: não é filme de romance. Se procurar algo mais próximo do gênero, *A Última Flor* é um bom exemplo — tem um clima simples, mas com um coração que trava. O que você quer mais: intimidade? Ou apenas um filme que pareça verdadeiro e não invente histórias?' | Tipo: legado | Comandos: 0
+🧠 [PLANO:FASE] fase=resposta_planejada | comandos=[] | erros=[]
+🧠 [PLANO:FASE] fase=executado | comandos=[] | erros=[]
+╭─ ◕‿◕ Laylay: Eu iria de Uma Linda Mulher. Esse aparece na lista que encontrei para filme de romance.
+📊 [ROTEIRO:RESUMO] avaliados=1 | passaram=1 | falharam=0 | alertas=0 | p95=8.674s
+⚠️ [MENTE:FALHA] servico_laylay-gmail:servico_orfao | classe=degradacao | impacto=servico | tipo=timeouterror

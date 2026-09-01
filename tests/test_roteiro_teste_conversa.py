@@ -743,7 +743,7 @@ def test_envia_um_turno_por_vez_e_persiste_resposta_antes_do_proximo(tmp_path) -
         assert {
             chave: item["avaliacao"][chave] for chave in esperado
         } == esperado
-        assert item["avaliacao"]["versao_avaliador"] == 15
+        assert item["avaliacao"]["versao_avaliador"] == 16
         assert item["avaliacao"]["erros_semanticos"] == []
         assert item["avaliacao"]["alertas_semanticos"] == []
 
@@ -774,7 +774,10 @@ def test_captura_plano_terminal_quando_worker_tem_tarefas_de_cauda(tmp_path) -> 
     runtime = RoteiroTesteConversaRuntime(
         ConfiguracaoRoteiro(
             comandos=("turno com cauda lenta",),
-            timeout_resposta_s=0.08,
+            # O worker leva 150 ms. O prazo precisa permitir que a barreira
+            # canônica termine; o contrato deste teste é preservar o snapshot
+            # transitório depois da cauda, não liberar um worker ainda vivo.
+            timeout_resposta_s=0.30,
             silenciar_voz_durante_teste=True,
             aguardar_confirmacao_execucao=True,
         ),
@@ -830,6 +833,83 @@ def test_captura_plano_no_mesmo_instante_em_que_resposta_e_publicada(tmp_path) -
     checkpoint = json.loads(runtime.checkpoint_path.read_text(encoding="utf-8"))
     assert checkpoint["itens"][0]["status"] == "respondido"
     assert checkpoint["itens"][0]["motivo_resultado"] == "resposta_sem_execucao"
+
+
+def test_cadeia_composta_persiste_fala_e_receipts_apos_worker_concluir(
+    tmp_path,
+) -> None:
+    """A primeira fala de uma subetapa não encerra o turno composto."""
+    plano: dict = {}
+    holder: dict[str, RoteiroTesteConversaRuntime] = {}
+
+    def enviar(texto: str):
+        def processar() -> None:
+            plano.update({
+                "id": 503,
+                "texto_usuario": texto,
+                "requer_execucao": True,
+                "fase": "tratado_prioritario",
+                "comandos": [{
+                    "intent": "PLAYLIST_ADD",
+                    "status": "playlist_musica_adicionada",
+                    "executou": True,
+                    "confirmado": True,
+                }],
+                "erros": [],
+            })
+            holder["runtime"].observar_resposta("Faixa adicionada.")
+            time.sleep(0.02)
+            plano["comandos"].append({
+                "intent": "PLAYLIST_LIST",
+                "status": "playlists_listadas",
+                "executou": True,
+                "confirmado": True,
+            })
+            holder["runtime"].observar_resposta(
+                "Faixa adicionada. A playlist tem uma música.",
+            )
+
+        thread = threading.Thread(target=processar)
+        thread.start()
+        return thread
+
+    runtime = RoteiroTesteConversaRuntime(
+        ConfiguracaoRoteiro(
+            comandos=(
+                "Adiciona essa música na playlist teste e depois me mostra ela.",
+            ),
+            timeout_resposta_s=1.0,
+            silenciar_voz_durante_teste=True,
+            aguardar_confirmacao_execucao=True,
+            expectativas_semanticas={
+                1: {
+                    "intents_all": ("PLAYLIST_ADD", "PLAYLIST_LIST"),
+                    "statuses_all": (
+                        "playlist_musica_adicionada",
+                        "playlists_listadas",
+                    ),
+                    "confirmado": True,
+                    "dominio": "musica",
+                    "nome": "cadeia_composta_completa",
+                },
+            },
+        ),
+        enviar_entrada=enviar,
+        resultado_getter=lambda: dict(plano),
+        diretorio_resultado=tmp_path,
+        log=lambda *_args: None,
+    )
+    holder["runtime"] = runtime
+
+    assert runtime.executar() is True
+    checkpoint = json.loads(runtime.checkpoint_path.read_text(encoding="utf-8"))
+    item = checkpoint["itens"][0]
+    assert item["resposta"] == "Faixa adicionada. A playlist tem uma música."
+    assert [comando["intent"] for comando in item["plano"]["comandos"]] == [
+        "PLAYLIST_ADD",
+        "PLAYLIST_LIST",
+    ]
+    assert item["avaliacao"]["resultado_semantico"] == "passou"
 
 
 def test_exibe_pergunta_no_terminal_antes_dos_logs_do_turno(tmp_path) -> None:
@@ -1337,7 +1417,7 @@ def test_checkpoint_separa_resposta_de_execucao_e_avaliacao_semantica(
         "fala_coerente": "sim",
     }
     assert {chave: avaliacao[chave] for chave in esperado} == esperado
-    assert avaliacao["versao_avaliador"] == 15
+    assert avaliacao["versao_avaliador"] == 16
     assert avaliacao["dominio"] == "browser"
     assert avaliacao["intents_observadas"] == ["OPEN_URL"]
     assert avaliacao["statuses_observados"] == ["falha_execucao"]

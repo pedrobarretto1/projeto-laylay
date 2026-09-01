@@ -728,6 +728,34 @@ class RoteiroTesteConversaRuntime:
         return True
 
     @classmethod
+    def _selecionar_plano_mais_completo_do_turno(
+        cls,
+        plano_publicado: Mapping[str, Any] | None,
+        plano_atual: Mapping[str, Any] | None,
+        *,
+        comando: str,
+        plano_id_anterior: Any,
+    ) -> dict[str, Any]:
+        """Preserva o snapshot válido, preferindo receipts finais mais ricos."""
+        candidatos = []
+        for ordem, candidato in enumerate((plano_publicado, plano_atual)):
+            retrato = dict(candidato or {})
+            if not cls._plano_corresponde_ao_turno(
+                retrato,
+                comando=comando,
+                plano_id_anterior=plano_id_anterior,
+            ):
+                continue
+            comandos = [
+                item for item in retrato.get("comandos") or []
+                if isinstance(item, Mapping)
+            ]
+            candidatos.append((len(comandos), ordem, retrato))
+        if not candidatos:
+            return dict(plano_publicado or plano_atual or {})
+        return max(candidatos, key=lambda item: (item[0], item[1]))[2]
+
+    @classmethod
     def _resultado_turno_terminal(
         cls,
         plano: Mapping[str, Any] | None,
@@ -1165,8 +1193,9 @@ class RoteiroTesteConversaRuntime:
             with self._lock:
                 resposta = self._resposta_atual
                 plano_publicado = dict(self._plano_na_publicacao_resposta)
-                self._indice_aguardado = None
             if not respondeu or not resposta:
+                with self._lock:
+                    self._indice_aguardado = None
                 plano_sem_resposta = self._plano_atual()
                 self._anexar_plano_bruto(
                     indice=indice,
@@ -1193,58 +1222,41 @@ class RoteiroTesteConversaRuntime:
                 if self.configuracao.parar_sem_resposta:
                     break
                 continue
-            plano = plano_publicado or self._plano_atual()
-            resultado_turno_concluido = True
-            motivo_resultado = "barreira_desativada"
-            if self.configuracao.aguardar_confirmacao_execucao:
-                (
-                    resultado_turno_concluido,
-                    motivo_resultado,
-                    plano,
-                ) = self._aguardar_resultado_turno(
-                    comando=comando,
-                    plano_id_anterior=plano_id_anterior,
-                    prazo=prazo,
-                    plano_inicial=plano_publicado,
-                )
-            if not resultado_turno_concluido:
-                self._anexar_plano_bruto(
-                    indice=indice,
-                    comando=comando,
-                    plano=plano,
-                )
-                self._atualizar_item(
-                    indice,
-                    status="resultado_nao_finalizado",
-                    resposta=resposta,
-                    finalizado_em=self.clock(),
-                    plano=self._plano_compacto_checkpoint(plano),
-                    _plano_avaliacao=plano,
-                    avaliacao=self._avaliacao_mecanica(plano, respondeu=True),
-                    resultado_turno_concluido=False,
-                    motivo_resultado=motivo_resultado,
-                )
-                self._anexar_conversa(
-                    f"### Laylay\n\n{resposta}\n\n"
-                    "> ⚠️ A resposta apareceu, mas o plano deste turno não "
-                    "publicou um resultado final. O próximo comando não foi "
-                    "enviado.\n\n"
-                )
-                self.log(
-                    f"⚠️ [ROTEIRO:{numero:03d}] resultado não finalizado "
-                    f"| motivo={motivo_resultado}; sequência interrompida"
-                )
-                sucesso_total = False
-                break
 
             # RT1-H1 — BARREIRA DO WORKER CANONICO
             # N+1 nao ganha autoridade de captura enquanto o worker N vive.
+            # A mesma barreira também separa uma fala intermediária da fala
+            # final de uma cadeia composta: enquanto o worker vive, novas
+            # subetapas ainda podem publicar receipts e uma conclusão melhor.
             processamento_concluido = self._aguardar_processamento(
                 retorno,
                 prazo,
                 self.monotonic,
                 self.sleep,
             )
+            with self._lock:
+                resposta = self._resposta_atual or resposta
+                plano_publicado = (
+                    dict(self._plano_na_publicacao_resposta)
+                    or plano_publicado
+                )
+                self._indice_aguardado = None
+            plano = self._selecionar_plano_mais_completo_do_turno(
+                plano_publicado,
+                self._plano_atual(),
+                comando=comando,
+                plano_id_anterior=plano_id_anterior,
+            )
+            resultado_turno_concluido = True
+            motivo_resultado = "barreira_desativada"
+            if self.configuracao.aguardar_confirmacao_execucao:
+                resultado_turno_concluido, motivo_resultado = (
+                    self._resultado_turno_terminal(
+                        plano,
+                        comando=comando,
+                        plano_id_anterior=plano_id_anterior,
+                    )
+                )
             if not processamento_concluido:
                 self._anexar_plano_bruto(
                     indice=indice,
@@ -1275,6 +1287,47 @@ class RoteiroTesteConversaRuntime:
                 self.log(
                     f"⚠️ [ROTEIRO:{numero:03d}] worker canonico nao "
                     "finalizado; sequencia interrompida com seguranca"
+                )
+                sucesso_total = False
+                break
+
+            if self.configuracao.aguardar_confirmacao_execucao:
+                (
+                    resultado_turno_concluido,
+                    motivo_resultado,
+                    plano,
+                ) = self._aguardar_resultado_turno(
+                    comando=comando,
+                    plano_id_anterior=plano_id_anterior,
+                    prazo=prazo,
+                    plano_inicial=plano,
+                )
+            if not resultado_turno_concluido:
+                self._anexar_plano_bruto(
+                    indice=indice,
+                    comando=comando,
+                    plano=plano,
+                )
+                self._atualizar_item(
+                    indice,
+                    status="resultado_nao_finalizado",
+                    resposta=resposta,
+                    finalizado_em=self.clock(),
+                    plano=self._plano_compacto_checkpoint(plano),
+                    _plano_avaliacao=plano,
+                    avaliacao=self._avaliacao_mecanica(plano, respondeu=True),
+                    resultado_turno_concluido=False,
+                    motivo_resultado=motivo_resultado,
+                )
+                self._anexar_conversa(
+                    f"### Laylay\n\n{resposta}\n\n"
+                    "> ⚠️ A resposta apareceu, mas o plano deste turno não "
+                    "publicou um resultado final. O próximo comando não foi "
+                    "enviado.\n\n"
+                )
+                self.log(
+                    f"⚠️ [ROTEIRO:{numero:03d}] resultado não finalizado "
+                    f"| motivo={motivo_resultado}; sequência interrompida"
                 )
                 sucesso_total = False
                 break

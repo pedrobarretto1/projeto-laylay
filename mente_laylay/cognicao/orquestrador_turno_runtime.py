@@ -22,6 +22,7 @@ from mente_laylay.cognicao.intencao_visual_jogo import (
     aplicar_pedido_visual_ao_turno,
     detectar_pedido_visao_jogo,
 )
+from mente_laylay.cognicao.fundamentacao_factual import extrair_titulos_citados
 from mente_laylay.cognicao.revisao_turno import resolver_revisao_intra_turno
 from mente_laylay.cognicao.modalidade_turno import (
     aplicar_veto_canonico,
@@ -1020,14 +1021,46 @@ def _iniciar_planejamento_turno(
         inicio_pesquisa = time.perf_counter()
         pesquisa_runtime = ns['_pesquisa_contextual_runtime']
         modalidade_pesquisa = str(turno.get('modalidade_geral') or turno.get('modalidade') or '').casefold()
+        pendencia_factual = dict(mente_antes_turno.get('pendencia_atual') or {})
+        continuacao_recomendacao = bool(
+            pendencia_factual.get('status') == 'ativa'
+            and (
+                str(pendencia_factual.get('dominio') or '').casefold()
+                == 'recomendacao'
+                or str(pendencia_factual.get('tipo') or '').casefold()
+                == 'preferencia_recomendacao'
+            )
+        )
+        pedido_recomendacao = bool(re.search(
+            r'\b(?:recomenda|recomende|recomendar|indica|indique|sugere|sugira)\b',
+            str(texto_cognitivo or ''),
+            flags=re.IGNORECASE,
+        ))
         exige_resposta_factual_agora = bool(
             atualidade_factual.get('depende_atualidade')
             or modalidade_pesquisa in {'pergunta', 'misto'}
             or funcao_atual == 'correcao'
+            or pedido_recomendacao
+            or continuacao_recomendacao
         )
         try:
             if exige_resposta_factual_agora:
-                pesquisa_factual = pesquisa_runtime.pesquisar_contexto_tema(tema_factual)
+                pesquisar_recomendacoes = getattr(
+                    pesquisa_runtime,
+                    'pesquisar_recomendacoes_tema',
+                    None,
+                )
+                if (
+                    (pedido_recomendacao or continuacao_recomendacao)
+                    and callable(pesquisar_recomendacoes)
+                ):
+                    pesquisa_factual = pesquisar_recomendacoes(tema_factual)
+                    if not pesquisa_factual.get('ok'):
+                        pesquisa_factual = pesquisa_runtime.pesquisar_contexto_tema(
+                            tema_factual,
+                        )
+                else:
+                    pesquisa_factual = pesquisa_runtime.pesquisar_contexto_tema(tema_factual)
             else:
                 pesquisa_factual = pesquisa_runtime.obter_contexto_cache(tema_factual)
                 if not pesquisa_factual:
@@ -1239,14 +1272,59 @@ def atualizar_planejamento_turno(namespace_getter, fase: str, *, comandos=(), er
 def verificar_fala_do_turno(namespace_getter, fala: str, *, origem: str='conversa') -> dict:
     ns = namespace_getter()
     mente = ns['_estado_compartilhado_runtime'].mental
+    plano_verificado = dict(mente.get('plano_turno_atual') or {})
     argumentos = {
-        'plano': dict(mente.get('plano_turno_atual') or {}),
+        'plano': plano_verificado,
         'periodo': ns['_contexto_horario_atual'](),
         'ultima_resposta': str(mente.get('ultima_resposta') or ''),
         'origem': origem,
     }
     verificacao = ns['_verificar_fala_turno_mente'](fala, **argumentos)
-    plano = dict(mente.get('plano_turno_atual') or {})
+    problemas_iniciais = set(verificacao.get('problemas') or [])
+    titulos_candidatos = extrair_titulos_citados(fala)
+    pesquisa_runtime = ns.get('_pesquisa_contextual_runtime')
+    montar_fundamentacao = ns.get('_montar_fundamentacao_mente')
+    if (
+        'obra_sem_evidencia' in problemas_iniciais
+        and titulos_candidatos
+        and not list(plano_verificado.get('comandos') or [])
+        and callable(getattr(pesquisa_runtime, 'pesquisar_contexto_tema', None))
+        and callable(montar_fundamentacao)
+    ):
+        titulo_candidato = titulos_candidatos[0]
+        try:
+            pesquisa_candidata = pesquisa_runtime.pesquisar_contexto_tema(
+                titulo_candidato,
+            )
+            fundamentacao_candidata = montar_fundamentacao(
+                titulo_candidato,
+                pesquisa_candidata,
+            )
+        except Exception as erro:
+            fundamentacao_candidata = {}
+            ns['print'](
+                '⚠️ [FUNDAMENTAÇÃO] falha ao verificar título candidato | '
+                f'tipo={type(erro).__name__}'
+            )
+        if fundamentacao_candidata.get('confiavel'):
+            plano_candidato = dict(plano_verificado)
+            plano_candidato['fundamentacao_factual'] = fundamentacao_candidata
+            argumentos['plano'] = plano_candidato
+            verificacao_candidata = ns['_verificar_fala_turno_mente'](
+                fala,
+                **argumentos,
+            )
+            if 'obra_sem_evidencia' not in set(
+                verificacao_candidata.get('problemas') or []
+            ):
+                verificacao = verificacao_candidata
+                plano_verificado = plano_candidato
+                ns['print'](
+                    '🔎 [FUNDAMENTAÇÃO] título candidato confirmado antes da fala | '
+                    f'titulo={titulo_candidato!r} '
+                    f'fonte={fundamentacao_candidata.get("fonte") or "-"}'
+                )
+    plano = dict(plano_verificado)
     plano['fase'] = 'fala_verificada'
     plano['ultima_verificacao'] = dict(verificacao)
     avaliacoes = list(mente.get('avaliacoes_turno') or [])

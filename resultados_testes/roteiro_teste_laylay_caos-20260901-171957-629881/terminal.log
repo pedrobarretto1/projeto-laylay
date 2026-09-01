@@ -1632,3 +1632,7 @@ Timeout na LLM local/API: HTTPConnectionPool(host='localhost', port=11434): Read
 ╭─ ◕‿◕ Laylay: De nada. Eu reclamo, mas entrego kkk.
 📊 [ROTEIRO:RESUMO] avaliados=46 | passaram=39 | falharam=7 | alertas=0 | p95=5.284s
 ⚠️ [Gmail] Erro IMAP (credenciais?): command: UID => socket error: EOF
+📋 [CLIPBOARD:OBSERVADOR] conteúdo relevante detectado; aguardando um momento livre | motivo=governanca
+📋 [CLIPBOARD:OBSERVADOR] conteúdo relevante detectado; aguardando um momento livre | motivo=governanca
+📋 [CLIPBOARD:OBSERVADOR] conteúdo relevante detectado; aguardando um momento livre | motivo=governanca
+📋 [CLIPBOARD:OBSERVADOR] conteúdo relevante detectado; aguardando um momento livre | motivo=governanca

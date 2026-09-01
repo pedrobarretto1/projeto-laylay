@@ -721,6 +721,25 @@ def test_confirmado_none_e_latencia_alta_viram_alerta():
     assert len(av["alertas_semanticos"]) >= 2
 
 
+def test_fallback_conversacional_e_avaliado_mesmo_sem_expectativa_operacional():
+    av = avaliar_turno_roteiro(
+        indice=238,
+        comando="{teste}",
+        resposta=(
+            "Esse assunto sobre música parece interessante, mas eu ainda não "
+            "tenho informação verificada o bastante para acrescentar detalhes "
+            "sem inventar."
+        ),
+        plano={"fase": "fala_verificada", "comandos": [], "erros": []},
+        respondeu=True,
+    )
+
+    assert av["semantica_avaliada"] is True
+    assert av["resultado_semantico"] == "falhou"
+    assert "fallback_conversacional_generico" in av["erros_semanticos"]
+    assert "fallback_conversacional" in av["checagens_semanticas"]
+
+
 def test_resumo_e_relatorios_sao_gerados(tmp_path):
     estado = {
         "concluido": True,
@@ -746,3 +765,30 @@ def test_resumo_e_relatorios_sao_gerados(tmp_path):
     gravar_relatorios_roteiro(estado, tmp_path)
     assert (tmp_path / "resumo.json").is_file()
     assert (tmp_path / "relatorio_semantico.md").is_file()
+
+
+def test_resumo_contabiliza_fallbacks_e_repeticao_de_fala():
+    fallback = (
+        "Esse assunto sobre música parece interessante, mas eu ainda não tenho "
+        "informação verificada o bastante para acrescentar detalhes sem inventar."
+    )
+    estado = {
+        "itens": [
+            {
+                "indice": indice,
+                "resposta": fallback,
+                "avaliacao": {
+                    "resultado_semantico": "falhou",
+                    "dominio": "conversa",
+                    "erros_semanticos": ["fallback_conversacional_generico"],
+                    "alertas_semanticos": [],
+                },
+            }
+            for indice in range(3)
+        ],
+    }
+
+    resumo = resumir_estado_roteiro(estado)
+
+    assert resumo["fallbacks_conversacionais"] == 3
+    assert resumo["falas_repetidas"] == 3

@@ -1,0 +1,30 @@
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:50653 | sessão=e175b7e7 pid=14564
+🖥️ [TERMINAL 2] interface iniciada | sessão=e175b7e7 pid=13404 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=e175b7e7
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0184 início_de_fala=0.0312
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0434 limiar=0.0237
+🎙️ [OUVIDO] Whisper será carregado somente na primeira fala.
+🎙️ [OUVIDO] Entrada: Microfone de mesa (4- Microsoft (índice 1, 16000 Hz, padrão do sistema).
+🎙️ [OUVIDO] Voz detectada (nível=0.0404, limiar=0.0237).
+🎙️ [OUVIDO] Carregando Whisper turbo...
+🎙️ [OUVIDO] Voz detectada (nível=0.0188, limiar=0.0151).
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0092 limiar=0.0151
+🎙️ [OUVIDO] Voz detectada (nível=0.0223, limiar=0.0166).
+🗣️ [VOCÊ DISSE] E aí
+🎙️ [OUVIDO] Transcrição descartada por baixa confiança (0.28).
+⚠️ [FALA INICIAL] entrega de briefing não foi confirmada em 45s
+⚠️ [BRIEFING] Fala não foi entregue; estado diário não será salvo.
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=roteiro_teste
+💬 Você:
+> pode me recomendar um filme de romance?
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+🧠 [IA] Gerando resposta para: 'pode me recomendar um filme de romance?'
+🧠 [PLANO:FASE] fase=resposta_planejada | comandos=[] | erros=[]
+🧠 [PLANO:FASE] fase=executado | comandos=[] | erros=[]
+╭─ ◕‿◕ Laylay: Eu iria de Uma Linda Mulher. Esse aparece na lista que encontrei para filme de romance.
+📊 [ROTEIRO:RESUMO] avaliados=1 | passaram=1 | falharam=0 | alertas=0 | p95=6.238s

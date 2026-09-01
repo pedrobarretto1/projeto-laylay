@@ -1,0 +1,43 @@
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:61048 | sessão=9b5baad7 pid=28680
+🖥️ [TERMINAL 2] interface iniciada | sessão=9b5baad7 pid=5756 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=9b5baad7
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0026 início_de_fala=0.0120
+🎙️ [OUVIDO] Whisper será carregado somente na primeira fala.
+🎙️ [OUVIDO] Entrada: Microfone de mesa (4- Microsoft (índice 1, 16000 Hz, padrão do sistema).
+🎙️ [OUVIDO] Voz detectada (nível=0.0240, limiar=0.0120).
+🎙️ [OUVIDO] Carregando Whisper turbo...
+🎙️ [OUVIDO] Voz detectada (nível=0.0202, limiar=0.0120).
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0015 limiar=0.0120
+🎙️ [OUVIDO] Voz detectada (nível=0.0347, limiar=0.0120).
+🎙️ [OUVIDO] Voz detectada (nível=0.0362, limiar=0.0120).
+🗣️ [VOCÊ DISSE] Obrigado.
+🎙️ [OUVIDO:LEITURA] original='Obrigado.' | corrigido='obrigado.' | confiança=0.39 | correções=[] | nova_tentativa=True
+🎙️ [OUVIDO] Fala ignorada por não começar com Lay ou Laylay.
+🗣️ [VOCÊ DISSE] Obrigado.
+🎙️ [OUVIDO:LEITURA] original='Obrigado.' | corrigido='obrigado.' | confiança=0.40 | correções=[] | nova_tentativa=True
+🎙️ [OUVIDO] Fala ignorada por não começar com Lay ou Laylay.
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0188 limiar=0.0120
+🎙️ [OUVIDO] Voz detectada (nível=0.0134, limiar=0.0120).
+🗣️ [VOCÊ DISSE] E aí
+🎙️ [OUVIDO:LEITURA] original='E aí' | corrigido='e aí' | confiança=0.32 | correções=[] | nova_tentativa=True
+🎙️ [OUVIDO] Fala ignorada por não começar com Lay ou Laylay.
+⚠️ [FALA INICIAL] entrega de briefing não foi confirmada em 45s
+⚠️ [BRIEFING] Fala não foi entregue; estado diário não será salvo.
+🗣️ [VOCÊ DISSE] Opa, opa, opa, opa, opa, opa,
+🎙️ [OUVIDO:LEITURA] original='Opa, opa, opa, opa, opa, opa,' | corrigido='opa, opa, opa, opa, opa, opa,' | confiança=0.43 | correções=[] | nova_tentativa=False
+🎙️ [OUVIDO] Fala ignorada por não começar com Lay ou Laylay.
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=roteiro_teste
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+💬 Você:
+> pode me recomendar um filme de romance?
+🧠 [IA] Gerando resposta para: 'pode me recomendar um filme de romance?'
+🧠 [PLANO:FASE] fase=resposta_planejada | comandos=[] | erros=[]
+🧠 [PLANO:FASE] fase=executado | comandos=[] | erros=[]
+⚠️ [PESQUISA TEMA] nenhum contexto confiável para 'Filme que Eu Não Vi'
+╭─ ◕‿◕ Laylay: Eu iria de Uma Linda Mulher. Esse aparece na lista que encontrei para filme de romance.
+📊 [ROTEIRO:RESUMO] avaliados=1 | passaram=1 | falharam=0 | alertas=0 | p95=8.799s

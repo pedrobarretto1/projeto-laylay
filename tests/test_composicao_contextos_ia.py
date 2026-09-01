@@ -116,7 +116,10 @@ def _montar():
         servicos=servicos,
         messages_getter=lambda: estado["messages"],
         conversa_getter=lambda nome, padrao=None: estado.get(nome, padrao),
-        mente_getter=lambda: {"turno_atual": estado["turno_atual"]},
+        mente_getter=lambda: {
+            "turno_atual": estado["turno_atual"],
+            "fundamentacao_factual_turno": estado.get("fundamentacao_factual_turno", {}),
+        },
         aba_getter=lambda: estado["aba"],
         musica_leitura=_MusicaLeituraFake(),
         musica_operacoes=_MusicaOperacoesFake(musica),
@@ -195,6 +198,23 @@ def test_estados_dos_contextos_continuam_vivos() -> None:
     assert prompt["aba_titulo_atual"] == "Nova aba"
     assert dispatcher["current_emotion"] == "animada"
     assert finalizacao["_falhas_consecutivas"] == {"llm": 1}
+
+
+def test_composicao_entrega_fundamentacao_factual_ao_prompt_real() -> None:
+    _, capturado, estado, _, _ = _montar()
+    estado["fundamentacao_factual_turno"] = {
+        "tema": "filme de romance",
+        "candidatos": ["Uma Linda Mulher", "Titanic"],
+        "confiavel": True,
+    }
+
+    prompt = capturado["prompt"]["estado_getter"]()
+
+    assert prompt["fundamentacao_factual_turno"] == {
+        "tema": "filme de romance",
+        "candidatos": ["Uma Linda Mulher", "Titanic"],
+        "confiavel": True,
+    }
 
 
 def test_contexto_execucao_mantem_setter_musical_e_captura_visual_segura() -> None:

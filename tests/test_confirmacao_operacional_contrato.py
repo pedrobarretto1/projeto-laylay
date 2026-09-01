@@ -290,6 +290,33 @@ def test_autoria_operacional_se_corrige_antes_de_usar_fala_local() -> None:
     assert "não repeti" in confirmacao.fala.casefold()
 
 
+def test_autoria_operacional_aceita_fala_pura_sem_redeclarar_receipt_em_json() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "APP_OPEN",
+        "params": {"nome_app": "calculadora"},
+        "alvo": "calculadora",
+        "status": "app_iniciado_focado",
+        "executou": True,
+        "confirmado": True,
+    })
+
+    confirmacao = personalizar_confirmacao_llm(
+        resultado,
+        "Iniciei calculadora e trouxe a nova janela pra frente.",
+        classe="sucesso",
+        emocao="calma",
+        nivel=1,
+        enviar_mensagem=lambda *_args, **_kwargs: (
+            "Iniciei a calculadora e trouxe a janela pra frente."
+        ),
+        contexto={},
+    )
+
+    assert confirmacao.usada_llm is True
+    assert confirmacao.motivo_fallback == ""
+    assert "calculadora" in confirmacao.fala.casefold()
+
+
 def test_autoria_operacional_remove_enxerto_literal_de_contexto_antigo() -> None:
     resultado = normalizar_resultado_acao({
         "intent": "AGENDAR_LEMBRETE",

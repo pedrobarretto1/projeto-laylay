@@ -1,0 +1,23 @@
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:51683 | sessão=bd8d143f pid=13972
+🖥️ [TERMINAL 2] interface iniciada | sessão=bd8d143f pid=9856 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=bd8d143f
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0172 início_de_fala=0.0293
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0191 limiar=0.0158
+╭─ ◕‿◕ Laylay: Acordei de olho no tempo. Ei, meu querido, em Boituva hoje é chuva fraca, 17º, umidade alta - 86 por cento - e vento de 17 quilômetros por hora. O ar tá pesado, tá quase que cheirando a umidade que não quer sair. E olha, só de pensar no que vai acontecer nas próximas horas, já tô com a mente no modo de alerta. Qual projeto vai perder a paz primeiro hoje?
+⚠️ [FALA INICIAL] briefing não entregue: fila_recusou
+⚠️ [BRIEFING] Fala não foi entregue; estado diário não será salvo.
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=roteiro_teste
+💬 Você:
+> pode me recomendar um filme de romance?
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+🧠 [IA] Gerando resposta para: 'pode me recomendar um filme de romance?'
+🧠 [PLANO:FASE] fase=resposta_planejada | comandos=[] | erros=[]
+🧠 [PLANO:FASE] fase=executado | comandos=[] | erros=[]
+╭─ ◕‿◕ Laylay: Eu iria de Jerry Maguire. Esse aparece na lista que encontrei para filme de romance.
+📊 [ROTEIRO:RESUMO] avaliados=1 | passaram=1 | falharam=0 | alertas=0 | p95=3.913s
+⚠️ [MENTE:FALHA] servico_laylay-gmail:servico_orfao | classe=degradacao | impacto=servico | tipo=timeouterror
