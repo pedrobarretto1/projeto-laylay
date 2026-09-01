@@ -159,20 +159,32 @@ class PlaylistRuntime:
         self.playlist_state.pop("last_ended_ts", None)
 
     def _sync_cache(self, data: Dict[str, Any] | None) -> Dict[str, Any]:
-        data = data if isinstance(data, dict) else {}
+        # O cache representa apenas estado já confirmado.
+        #
+        # A fonte precisa ser copiada ANTES de limpar o destino porque
+        # ``data`` pode ser o próprio ``self.cache``. Sem essa barreira,
+        # ``save(self.cache)`` executa clear() na fonte e destrói o estado que
+        # pretendia sincronizar.
+        fonte = deepcopy(data) if isinstance(data, dict) else {}
         try:
             self.cache.clear()
-            self.cache.update(data)
+            self.cache.update(fonte)
         except Exception:
             pass
         return self.cache
 
     def load(self) -> Dict[str, Any]:
+        # Leitura nunca entrega a referência mutável do estado oficial.
+        #
+        # Quem precisa preparar CREATE/ADD/DELETE trabalha em um snapshot
+        # candidato. Só ``save()`` confirmado pode materializar esse candidato
+        # novamente em ``self.cache``.
         data = playlists_load(self.state_file, self.legacy_file)
         if not data and isinstance(self.cache, dict) and self.cache:
             self.log("⚠️ [PLAYLISTS] leitura vazia; mantendo o último cache válido")
-            return self.cache
-        return self._sync_cache(data)
+            return deepcopy(self.cache)
+        self._sync_cache(data)
+        return deepcopy(self.cache)
 
     def catalogo_publico(self) -> list[dict[str, Any]]:
         """Retrato O(1) do catálogo já carregado, sem reler disco na UI."""
@@ -429,6 +441,100 @@ class PlaylistRuntime:
                 return {"ok": False, "status": "save_failed"}
             return {"ok": True, "status": "copied", "copied": True}
 
+    def distribuir_faixa_exata(
+        self,
+        origem: str,
+        destinos: list[str],
+        video_id: str,
+        revisao: str,
+        *,
+        remover_origem: bool = False,
+    ) -> dict[str, Any]:
+        """Copia para vários destinos com uma única persistência atômica."""
+        with self._state_lock:
+            dados = deepcopy(self.load())
+            origem_nm, itens, indice = self._localizar_exata(
+                dados, origem, video_id, revisao,
+            )
+            if indice == -2:
+                return {"ok": False, "status": "revision_conflict"}
+            if origem_nm is None or itens is None or indice is None:
+                return {"ok": False, "status": "track_not_found"}
+            if not isinstance(destinos, list) or not 1 <= len(destinos) <= 1_000:
+                return {"ok": False, "status": "destinations_invalid"}
+
+            destinos_resolvidos: list[str] = []
+            vistos: set[str] = set()
+            for bruto in destinos:
+                limpo = limpar_nome_playlist(str(bruto or ""))
+                resolvido = (
+                    resolver_nome_playlist_contextual(limpo, dados, "")
+                    if limpo else ""
+                )
+                destino_nm = resolvido or limpo
+                chave = destino_nm.casefold()
+                if (
+                    not destino_nm or chave == origem_nm.casefold()
+                    or chave in vistos
+                ):
+                    continue
+                destino_itens = dados.get(destino_nm)
+                if not isinstance(destino_itens, list):
+                    return {"ok": False, "status": "destination_invalid"}
+                vistos.add(chave)
+                destinos_resolvidos.append(destino_nm)
+            if not destinos_resolvidos:
+                return {"ok": False, "status": "destinations_invalid"}
+
+            item = deepcopy(itens[indice])
+            copiados = 0
+            ja_presentes = 0
+            for destino_nm in destinos_resolvidos:
+                destino_itens = dados[destino_nm]
+                if any(
+                    self._video_id_item(atual) == video_id
+                    for atual in destino_itens
+                ):
+                    ja_presentes += 1
+                    continue
+                destino_itens.append(deepcopy(item))
+                copiados += 1
+
+            if remover_origem:
+                del itens[indice]
+            elif copiados == 0:
+                return {
+                    "ok": True,
+                    "status": "already_present_all",
+                    "destination_count": len(destinos_resolvidos),
+                    "copied_count": 0,
+                    "already_present_count": ja_presentes,
+                }
+            if not self.save(dados):
+                return {"ok": False, "status": "save_failed"}
+            return {
+                "ok": True,
+                "status": "moved_many" if remover_origem else "copied_many",
+                "destination_count": len(destinos_resolvidos),
+                "copied_count": copiados,
+                "already_present_count": ja_presentes,
+                "source_removed": bool(remover_origem),
+            }
+
+    def copiar_faixa_multiplas(
+        self, origem: str, destinos: list[str], video_id: str, revisao: str,
+    ) -> dict[str, Any]:
+        return self.distribuir_faixa_exata(
+            origem, destinos, video_id, revisao,
+        )
+
+    def mover_faixa_multiplas(
+        self, origem: str, destinos: list[str], video_id: str, revisao: str,
+    ) -> dict[str, Any]:
+        return self.distribuir_faixa_exata(
+            origem, destinos, video_id, revisao, remover_origem=True,
+        )
+
     def mover_faixa_exata(
         self, origem: str, destino: str, video_id: str, revisao: str,
     ) -> dict[str, Any]:
@@ -623,6 +729,62 @@ class PlaylistRuntime:
                 "artwork_video_id": encontrado.group(1) if encontrado else "",
             })
         return fila
+
+    def selecionar_faixa_fila(
+        self, video_id: str, deslocamento: int,
+    ) -> dict[str, Any]:
+        """Salta para uma próxima faixa confirmando o retrato que foi clicado."""
+        identidade = str(video_id or "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]{11}", identidade):
+            return {"ok": False, "status": "queue_item_invalid"}
+        if isinstance(deslocamento, bool):
+            return {"ok": False, "status": "queue_position_invalid"}
+        try:
+            deslocamento = int(deslocamento)
+        except (TypeError, ValueError):
+            return {"ok": False, "status": "queue_position_invalid"}
+        if not 0 <= deslocamento <= 999:
+            return {"ok": False, "status": "queue_position_invalid"}
+
+        with self._state_lock:
+            nome = str(self.playlist_state.get("name") or "").strip()
+            if not nome:
+                return {"ok": False, "status": "playlist_inactive"}
+            aleatoria = bool(
+                self.playlist_state.get("shuffle") is True
+                and isinstance(self.playlist_state.get("shuffle_queue"), list)
+            )
+            if aleatoria:
+                itens = self.playlist_state.get("shuffle_queue") or []
+                chave_indice = "shuffle_index"
+            else:
+                itens = self.cache.get(nome) if isinstance(self.cache, dict) else []
+                chave_indice = "index"
+            if not isinstance(itens, list):
+                return {"ok": False, "status": "playlist_invalid"}
+            indice_atual = max(0, int(self.playlist_state.get(chave_indice) or 0))
+            indice_alvo = indice_atual + 1 + deslocamento
+            if not 0 <= indice_alvo < len(itens):
+                return {"ok": False, "status": "queue_stale"}
+            if self._video_id_item(itens[indice_alvo]) != identidade:
+                return {"ok": False, "status": "queue_stale"}
+
+            self.playlist_state[chave_indice] = indice_alvo
+            self.playlist_state["user_intervened"] = False
+            if not self._abrir_youtube_item(
+                itens[indice_alvo], prefixo_log="Abrindo faixa escolhida na fila",
+            ):
+                self.playlist_state[chave_indice] = indice_atual
+                self.playlist_state["last_advance_status"] = "falha_execucao"
+                return {"ok": False, "status": "play_failed"}
+            self.playlist_state["last_advance_status"] = "ok"
+            self._set_ultima_playlist(nome)
+            return {
+                "ok": True,
+                "status": "queue_track_started",
+                "video_id": identidade,
+                "confirmed": self.playlist_state.get("last_play_confirmed") is True,
+            }
 
     def save(self, data: Dict[str, Any]) -> bool:
         ok = playlists_save(self.state_file, data or {})

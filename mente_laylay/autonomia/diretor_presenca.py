@@ -233,6 +233,8 @@ class DiretorPresencaRuntime:
         estado["contadores"] = contadores
 
     def _bloqueio_contextual(self, dados: Mapping[str, Any], contexto: Mapping[str, Any], agora: float) -> str:
+        if contexto.get("interacao_usuario_ativa"):
+            return "interacao_usuario_ativa"
         if contexto.get("usuario_falando"):
             return "usuario_falando"
         if contexto.get("is_speaking") or contexto.get("turno_ativo"):

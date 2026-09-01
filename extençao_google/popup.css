@@ -1,0 +1,54 @@
+:root {
+  color-scheme: dark;
+  font-family: "Segoe UI", sans-serif;
+  background: #0d1116;
+  color: #f6f1f4;
+}
+
+body {
+  width: 310px;
+  margin: 0;
+  background: radial-gradient(circle at 85% 0, #301823 0, #11161c 42%, #0d1116 100%);
+}
+
+main { padding: 18px; }
+.marca { display: flex; align-items: center; gap: 8px; color: #ff6683; }
+.marca span { font-size: 18px; }
+.marca strong { color: #f8f2f5; font-size: 14px; }
+h1 { margin: 18px 0 7px; font-size: 20px; }
+p { margin: 0 0 14px; color: #9ba3aa; font-size: 12px; line-height: 1.45; }
+
+#status {
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid #2d3740;
+  border-radius: 9px;
+  background: #151b21;
+  color: #aeb6bc;
+  font-size: 11px;
+  line-height: 1.4;
+}
+#status[data-kind="ok"] { border-color: #285f48; color: #68d39c; }
+#status[data-kind="error"] { border-color: #713847; color: #ff8297; }
+#status[data-kind="pending"] { border-color: #735d34; color: #e5bd6c; }
+
+button {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #ef6680;
+  border-radius: 9px;
+  background: #db4f6b;
+  color: #fff8fa;
+  font-weight: 700;
+  cursor: pointer;
+}
+button:hover { background: #ed5b76; }
+button:disabled { cursor: wait; opacity: .58; }
+button.secundario {
+  margin-top: 8px;
+  border-color: #323c45;
+  background: #171d23;
+  color: #aeb6bd;
+}
+button.secundario:hover { border-color: #64404d; color: #ed8296; }
+small { display: block; margin-top: 11px; color: #68727a; font-size: 10px; text-align: center; }

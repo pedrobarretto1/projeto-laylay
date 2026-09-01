@@ -1,0 +1,69 @@
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:56108 | sessão=1ea26507 pid=8664
+🖥️ [TERMINAL 2] interface iniciada | sessão=1ea26507 pid=708 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=1ea26507
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0053 início_de_fala=0.0120
+🎙️ [OUVIDO] Whisper será carregado somente na primeira fala.
+🎙️ [OUVIDO] Entrada: Microfone de mesa (4- Microsoft (índice 1, 16000 Hz, padrão do sistema).
+🎙️ [OUVIDO] Voz detectada (nível=0.0131, limiar=0.0120).
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=roteiro_teste
+💬 Você:
+> Coloca a playlist red151 setup runtime.
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+⚠️ [FALA:AUTORIA] fallback local | motivo=contrato_nao_preservado:json_invalido status=playlist_enviada_sem_confirmacao
+[96m╭─ ◕‿◕ Laylay: Enviei o comando para red151 setup runtime, mas não consegui confirmar a resposta.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': 'aeac12e45ae942f49bed75c342c8ce32', 'intent': 'PLAYLIST_PLAY', 'alvo': 'red151 setup runtime', 'status': 'playlist_enviada_sem_confirmacao', 'executou': True, 'confirmado': None, 'params': {'nome_playlist': 'red151 setup runtime'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'a aba pode ser observada; o cliente remoto informa entrega, mas nem sempre confirma áudio'}] | erros=[]
+💬 Você:
+> Coloca a playlist VMZ, pausa a música e me diz o estado dela.
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-1]] {'intent': 'PLAYLIST_PLAY', 'params': {'nome_playlist': 'vmz'}}
+[96m╭─ ◕‿◕ Laylay: Não achei a playlist vmz. Posso guardar essa música nela?[0m
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-2]] {'intent': 'MEDIA_CONTROL', 'params': {'acao': 'pause'}}
+Timeout na LLM local/API: HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=8)
+⚠️ [MENTE:FALHA] llm_http:timeout_resposta | classe=degradacao | impacto=turno | tipo=readtimeout
+[95m╭─ ≧◡≦⋆ Laylay: Dei pausa. A trilha segura a respiração um pouquinho.[0m
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-3]] {'intent': 'MUSIC_STATUS', 'params': {'acao': 'status', 'platform': 'music', 'somente_leitura': True, 'referencia_contextual': True}}
+[96m╭─ ◕‿◕ Laylay: A faixa atual é Gostava Tanto De Você, mas ela está pausada.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': 'c871532376ec4dc4bd662373f21636c8', 'intent': 'PLAYLIST_PLAY', 'alvo': 'vmz', 'status': 'playlist_nao_encontrada', 'executou': False, 'confirmado': False, 'params': {'nome_playlist': 'vmz'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'a aba pode ser observada; o cliente remoto informa entrega, mas nem sempre confirma áudio'}, {'id_solicitacao': '9da6d984853f4fe2b0acdbd3dbc6e998', 'intent': 'MEDIA_CONTROL', 'alvo': '', 'status': 'midia_pause', 'executou': True, 'confirmado': True, 'params': {'acao': 'pause'}, 'origem': 'executor', 'detalhe': 'success', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia'}, {'id_solicitacao': '3c96742c792b426894f0a8103a1a2390', 'intent': 'MUSIC_STATUS', 'alvo': 'Gostava Tanto De Você', 'status': 'midia_status_consultado', 'executou': True, 'confirmado': True, 'params': {'acao': 'status', 'platform': 'music', 'somente_leitura': True, 'referencia_contextual': True}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'retorno_dados', 'evidencia_confirmacao': 'o título e o estado atual são lidos do registro sanitizado do player'}] | erros=[]
+✅ [ROTEIRO:002] resposta e resultado salvos | resultado=falha_confirmada; voz desativada pelo roteiro; avançando
+💬 Você:
+> Continua a música, passa para a próxima faixa e me diz qual está tocando.
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-1]] {'intent': 'MEDIA_CONTROL', 'params': {'acao': 'play'}}
+[95m╭─ ≧◡≦⋆ Laylay: Dei play. A música voltou a ocupar o ambiente.[0m
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-2]] {'intent': 'MEDIA_CONTROL', 'params': {'acao': 'next'}}
+[95m╭─ ≧◡≦⋆ Laylay: Trocando a música agora.[0m
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-3]] {'intent': 'MUSIC_STATUS', 'params': {'acao': 'status', 'platform': 'music', 'somente_leitura': True, 'referencia_contextual': True}}
+[96m╭─ ◕‿◕ Laylay: Está tocando Tim Maia - Que Beleza.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': 'bfea06504df84468baea0d41cf3a710d', 'intent': 'MEDIA_CONTROL', 'alvo': '', 'status': 'midia_play', 'executou': True, 'confirmado': True, 'params': {'acao': 'play'}, 'origem': 'executor', 'detalhe': 'success', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia'}, {'id_solicitacao': '4c9be860ff0d4f21bb16eb4c17a70e6b', 'intent': 'MEDIA_CONTROL', 'alvo': '', 'status': 'midia_next_playlist', 'executou': True, 'confirmado': None, 'params': {'acao': 'next'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia'}, {'id_solicitacao': 'd2fec4636b174697be63bdb3bfbe50bb', 'intent': 'MUSIC_STATUS', 'alvo': 'Tim Maia - Que Beleza', 'status': 'midia_status_consultado', 'executou': True, 'confirmado': True, 'params': {'acao': 'status', 'platform': 'music', 'somente_leitura': True, 'referencia_contextual': True}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'retorno_dados', 'evidencia_confirmacao': 'o título e o estado atual são lidos do registro sanitizado do player'}] | erros=[]
+💬 Você:
+> Adiciona essa música na playlist caos sonora e depois me mostra o que tem nela.
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-1]] {'intent': 'PLAYLIST_ADD', 'params': {'nome_playlist': 'caos sonora'}}
+⚠️ [FALA:AUTORIA] fallback local | motivo=contrato_nao_preservado:json_invalido status=playlist_musica_adicionada
+[95m╭─ ≧◡≦⋆ Laylay: Concluí o pedido em caos sonora e confirmei o resultado. Salvei Tim Maia - Que Beleza em caos sonora.[0m
+⚡ [ROTEADOR CONTEXTO-GERAL [prioritario-cooperativo-2]] {'intent': 'PLAYLIST_LIST', 'params': {'nome_playlist': 'caos sonora', 'referencia_contextual': True}, '_dominio_contextual': 'musica'}
+[96m╭─ ◕‿◕ Laylay: A playlist Caos Sonora é curtinha: 1 música. A principal é Tim Maia – Que Beleza (Official Audio).[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '56f1f29a9ae64c0390896e2ce9fe533d', 'intent': 'PLAYLIST_ADD', 'alvo': 'caos sonora', 'status': 'playlist_musica_adicionada', 'executou': True, 'confirmado': True, 'params': {'nome_playlist': 'caos sonora'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'persistencia_local', 'evidencia_confirmacao': 'a faixa reaparece no armazenamento da playlist'}, {'id_solicitacao': '33cea8ad588c43edb6d744ed8785ca98', 'intent': 'PLAYLIST_LIST', 'alvo': 'caos sonora', 'status': 'playlists_listadas', 'executou': True, 'confirmado': True, 'params': {'nome_playlist': 'caos sonora', 'referencia_contextual': True}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'retorno_dados', 'evidencia_confirmacao': 'a lista foi lida do armazenamento'}] | erros=[]
+💬 Você:
+> Vai para a próxima faixa e adiciona essa também na caos sonora.
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-1]] {'intent': 'MEDIA_CONTROL', 'params': {'acao': 'next'}}
+[95m╭─ ≧◡≦⋆ Laylay: Pulando pra seguinte.[0m
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-2]] {'intent': 'PLAYLIST_ADD', 'params': {'nome_playlist': 'caos sonora', 'referencia_contextual': True}}
+⚠️ [FALA:AUTORIA] fallback local | motivo=contrato_nao_preservado:json_invalido status=playlist_musica_adicionada
+[95m╭─ ≧◡≦⋆ Laylay: Pronto, Seu Jorge - Burguesinha foi pra playlist caos sonora.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': 'a12a9ca74cfe4f7f90277ae556cd8cc6', 'intent': 'MEDIA_CONTROL', 'alvo': '', 'status': 'midia_next_playlist', 'executou': True, 'confirmado': None, 'params': {'acao': 'next'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia'}, {'id_solicitacao': 'bdaa47a853b840e694dcd03cd5d20bf9', 'intent': 'PLAYLIST_ADD', 'alvo': 'caos sonora', 'status': 'playlist_musica_adicionada', 'executou': True, 'confirmado': True, 'params': {'nome_playlist': 'caos sonora', 'referencia_contextual': True}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'persistencia_local', 'evidencia_confirmacao': 'a faixa reaparece no armazenamento da playlist'}] | erros=[]
+💬 Você:
+> Mostra a playlist caos sonora e depois apaga ela.
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-1]] {'intent': 'PLAYLIST_LIST', 'params': {'nome_playlist': 'caos sonora'}}
+[96m╭─ ◕‿◕ Laylay: A playlist Caos Sonora é curtinha: 2 músicas. As principais são Tim Maia – Que Beleza (Official Audio); Seu Jorge - Burguesinha.[0m
+⚡ [ROTEADOR CONTEXTO-GERAL [prioritario-cooperativo-2]] {'intent': 'PLAYLIST_DELETE', 'params': {'nome_playlist': 'caos sonora', 'referencia_contextual': True}, '_dominio_contextual': 'musica'}
+⚠️ [FALA:AUTORIA] fallback local | motivo=contrato_nao_preservado:json_invalido status=playlist_deletada
+[95m╭─ ≧◡≦⋆ Laylay: Apaguei a playlist caos sonora. Ela saiu do palco.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '763fba38e20f46279b79f773ce8662cd', 'intent': 'PLAYLIST_LIST', 'alvo': 'caos sonora', 'status': 'playlists_listadas', 'executou': True, 'confirmado': True, 'params': {'nome_playlist': 'caos sonora'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'retorno_dados', 'evidencia_confirmacao': 'a lista foi lida do armazenamento'}, {'id_solicitacao': 'f7cafa22c27042e5941671e31745ef2e', 'intent': 'PLAYLIST_DELETE', 'alvo': 'caos sonora', 'status': 'playlist_deletada', 'executou': True, 'confirmado': True, 'params': {'nome_playlist': 'caos sonora', 'referencia_contextual': True}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'persistencia_local', 'evidencia_confirmacao': 'a ausência é conferida no armazenamento'}] | erros=[]
+💬 Você:
+> sim
+[95m╭─ ≧◡≦⋆ Laylay: Salvei Seu Jorge - Burguesinha na playlist vmz.[0m
+🧠 [PLANO:FASE] fase=tratado_pre_fluxo | comandos=[] | erros=[]
+📊 [ROTEIRO:RESUMO] avaliados=1 | passaram=1 | falharam=0 | alertas=0 | p95=7.567s

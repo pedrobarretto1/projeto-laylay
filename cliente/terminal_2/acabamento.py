@@ -43,6 +43,24 @@ def tamanho_icone() -> QSize:
     return QSize(19, 19)
 
 
+def definir_propriedades_visuais(widget: QWidget, **propriedades: object) -> bool:
+    """Recalcula QSS somente quando uma propriedade dinâmica realmente muda."""
+    alteradas = {
+        nome: valor
+        for nome, valor in propriedades.items()
+        if widget.property(nome) != valor
+    }
+    if not alteradas:
+        return False
+    for nome, valor in alteradas.items():
+        widget.setProperty(nome, valor)
+    estilo = widget.style()
+    estilo.unpolish(widget)
+    estilo.polish(widget)
+    widget.update()
+    return True
+
+
 class FormaOndaMicrofone(QWidget):
     """Waveform efêmero alimentado pelo RMS observado no ouvido canônico."""
 
@@ -61,7 +79,6 @@ class FormaOndaMicrofone(QWidget):
         self._timer = QTimer(self)
         self._timer.setInterval(45)
         self._timer.timeout.connect(self._avancar)
-        self._timer.start()
         self.setAccessibleName("Nível do microfone")
         self.setToolTip("Nível observado pelo microfone da Laylay; não grava áudio na interface")
 
@@ -72,13 +89,31 @@ class FormaOndaMicrofone(QWidget):
             valor = 0.0
         self._alvo = max(0.0, min(1.0, valor)) if ativo else 0.0
         self._ativo = bool(ativo)
+        if self._reduzir_movimento:
+            self._nivel = self._alvo
+            self._amostras.clear()
+            self._amostras.extend([self._nivel] * 31)
+        self._sincronizar_timer()
+        self.update()
+
+    def _sincronizar_timer(self) -> None:
+        animando = self._alvo > 0.001 or self._nivel > 0.003
+        deve_animar = self.isVisible() and animando and not self._reduzir_movimento
+        if deve_animar and not self._timer.isActive():
+            self._timer.start()
+        elif not deve_animar and self._timer.isActive():
+            self._timer.stop()
 
     def _avancar(self) -> None:
+        if not self.isVisible():
+            self._timer.stop()
+            return
         if self._reduzir_movimento:
             self._nivel = self._alvo
             self._amostras.clear()
             self._amostras.extend([self._nivel] * 31)
             self.update()
+            self._timer.stop()
             return
         self._nivel += (self._alvo - self._nivel) * 0.34
         if abs(self._nivel) < 0.003 and self._alvo == 0:
@@ -86,6 +121,16 @@ class FormaOndaMicrofone(QWidget):
         self._fase = (self._fase + 1) % 31
         self._amostras.append(self._nivel)
         self.update()
+        if self._nivel == 0.0 and self._alvo == 0.0:
+            self._timer.stop()
+
+    def showEvent(self, event) -> None:  # noqa: N802 - contrato Qt
+        super().showEvent(event)
+        self._sincronizar_timer()
+
+    def hideEvent(self, event) -> None:  # noqa: N802 - contrato Qt
+        self._timer.stop()
+        super().hideEvent(event)
 
     def paintEvent(self, _event) -> None:  # noqa: N802
         painter = QPainter(self)

@@ -160,6 +160,20 @@ class OperacoesMusicaisRuntime:
     ) -> dict[str, Any]:
         return dict(self.playlists_usuario.mover_faixa_exata(origem, destino, video_id, revisao) or {})
 
+    def copiar_faixa_multiplas(
+        self, origem: str, destinos: list[str], video_id: str, revisao: str,
+    ) -> dict[str, Any]:
+        return dict(self.playlists_usuario.copiar_faixa_multiplas(
+            origem, destinos, video_id, revisao,
+        ) or {})
+
+    def mover_faixa_multiplas(
+        self, origem: str, destinos: list[str], video_id: str, revisao: str,
+    ) -> dict[str, Any]:
+        return dict(self.playlists_usuario.mover_faixa_multiplas(
+            origem, destinos, video_id, revisao,
+        ) or {})
+
     def remover_faixa_exata(self, nome: str, video_id: str, revisao: str) -> dict[str, Any]:
         return dict(self.playlists_usuario.remover_faixa_exata(nome, video_id, revisao) or {})
 
@@ -180,6 +194,15 @@ class OperacoesMusicaisRuntime:
 
     def avancar_proxima(self) -> bool:
         return bool(self.playlists_usuario.avancar_proxima())
+
+    def selecionar_faixa_fila(
+        self, video_id: str, deslocamento: int,
+    ) -> dict[str, Any]:
+        return dict(
+            self.playlists_usuario.selecionar_faixa_fila(
+                video_id, deslocamento,
+            ) or {}
+        )
 
     def voltar_anterior(self) -> bool:
         return bool(self.playlists_usuario.voltar_anterior())

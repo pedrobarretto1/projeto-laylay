@@ -1,0 +1,38 @@
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:51656 | sessão=1a84b0ad pid=1892
+🖥️ [TERMINAL 2] interface iniciada | sessão=1a84b0ad pid=28336 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=1a84b0ad
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0184 início_de_fala=0.0312
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=roteiro_teste
+💬 Você:
+> qual música tá tocando
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+[96m╭─ ◕‿◕ Laylay: A faixa atual registrada é Me at the zoo.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': 'ce9730b0920a44f9a896ca2dc22c73e7', 'intent': 'MUSIC_STATUS', 'alvo': 'Me at the zoo', 'status': 'midia_status_consultado', 'executou': True, 'confirmado': True, 'params': {'acao': 'status', 'platform': 'music', 'somente_leitura': True}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'retorno_dados', 'evidencia_confirmacao': 'o título e o estado atual são lidos do registro sanitizado do player'}] | erros=[]
+💬 Você:
+> Coloca a playlist R51, pausa a música e me diz o estado dela.
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-1]] {'intent': 'PLAYLIST_PLAY', 'params': {'nome_playlist': 'r51'}}
+[96m╭─ ◕‿◕ Laylay: r51 ainda não existe. Quer que eu salve essa música lá?[0m
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-2]] {'intent': 'MEDIA_CONTROL', 'params': {'acao': 'pause'}}
+[95m╭─ ≧◡≦⋆ Laylay: Dei pausa. A trilha segura a respiração um pouquinho.[0m
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-3]] {'intent': 'MUSIC_STATUS', 'params': {'acao': 'status', 'platform': 'music', 'somente_leitura': True, 'referencia_contextual': True}}
+[96m╭─ ◕‿◕ Laylay: A faixa atual é 5 Encontros Perturbadores em Locais Abandonados, mas ela está pausada.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '299a2f017b4440cc9919322503e25460', 'intent': 'PLAYLIST_PLAY', 'alvo': 'r51', 'status': 'playlist_nao_encontrada', 'executou': False, 'confirmado': False, 'params': {'nome_playlist': 'r51'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'a aba pode ser observada; o cliente remoto informa entrega, mas nem sempre confirma áudio'}, {'id_solicitacao': '44d293e9ed1243dabc574043757b5e68', 'intent': 'MEDIA_CONTROL', 'alvo': '', 'status': 'midia_pause', 'executou': True, 'confirmado': True, 'params': {'acao': 'pause'}, 'origem': 'executor', 'detalhe': 'success', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia'}, {'id_solicitacao': 'd3956da3b7a843a9bb4b41bbc4aa7c17', 'intent': 'MUSIC_STATUS', 'alvo': '5 Encontros Perturbadores em Locais Abandonados', 'status': 'midia_status_consultado', 'executou': True, 'confirmado': True, 'params': {'acao': 'status', 'platform': 'music', 'somente_leitura': True, 'referencia_contextual': True}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'retorno_dados', 'evidencia_confirmacao': 'o título e o estado atual são lidos do registro sanitizado do player'}] | erros=[]
+✅ [ROTEIRO:002] resposta e resultado salvos | resultado=falha_confirmada; voz desativada pelo roteiro; avançando
+💬 Você:
+> continua a música
+[95m╭─ ≧◡≦⋆ Laylay: Dei play. A música voltou a ocupar o ambiente.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': 'fa19e48ce922429e85fd33017cca2175', 'intent': 'MEDIA_CONTROL', 'alvo': '', 'status': 'midia_play', 'executou': True, 'confirmado': True, 'params': {'acao': 'play'}, 'origem': 'executor', 'detalhe': 'success', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia'}] | erros=[]
+💬 Você:
+> pausa a música
+[95m╭─ ≧◡≦⋆ Laylay: Pausei. A música fica quieta até você chamar.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '2ace7b6719ac423fbcf72cb9d34e6cd6', 'intent': 'MEDIA_CONTROL', 'alvo': '', 'status': 'midia_pause', 'executou': True, 'confirmado': True, 'params': {'acao': 'pause'}, 'origem': 'executor', 'detalhe': 'success', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia'}] | erros=[]
+💬 Você:
+> sim
+[95m╭─ ≧◡≦⋆ Laylay: Pronto, 5 Encontros Perturbadores em Locais Abandonados foi pra playlist r51.[0m
+🧠 [PLANO:FASE] fase=tratado_pre_fluxo | comandos=[{'id_solicitacao': '', 'intent': 'PLAYLIST_ADD', 'alvo': 'r51', 'status': 'playlist_musica_adicionada', 'executou': True, 'confirmado': True, 'params': {'nome_playlist': 'r51'}, 'origem': 'feedback_playlist', 'detalhe': 'confirmacao_feedback_playlist', 'confirmacao_oferecida': 'persistencia_local', 'evidencia_confirmacao': 'a faixa reaparece no armazenamento da playlist'}] | erros=[]
+📊 [ROTEIRO:RESUMO] avaliados=1 | passaram=1 | falharam=0 | alertas=0 | p95=3.401s

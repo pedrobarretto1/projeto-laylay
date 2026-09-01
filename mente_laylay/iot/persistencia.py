@@ -71,6 +71,13 @@ class PersistenciaIoT:
             "disponivel": not indisponivel,
             "confirmado": bool(resultado.confirmado),
         }
+        brilho = dict(resultado.detalhes or {}).get("brilho")
+        if (
+            isinstance(brilho, (int, float))
+            and not isinstance(brilho, bool)
+            and 1 <= int(brilho) <= 100
+        ):
+            estado["brilho"] = int(brilho)
         ultimo_contato = None if indisponivel else datetime.now().isoformat(" ")
         self.memoria.atualizar_estado_iot(
             resultado.dispositivo,

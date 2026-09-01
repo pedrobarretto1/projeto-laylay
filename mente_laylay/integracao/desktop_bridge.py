@@ -27,7 +27,8 @@ from mente_laylay.integracao.acoes_terminal import (
     IDS_ACOES_RAPIDAS,
     definicao_acao_terminal,
 )
-from mente_laylay.integracao.acoes_painel_runtime import ACOES_MUSICA_PAINEL
+from mente_laylay.integracao.acoes_painel_runtime import ACOES_DIRETAS_PAINEL
+from mente_laylay.iot.contratos import ACOES_IOT
 
 
 TIPOS_CLIENTE = frozenset({
@@ -41,7 +42,7 @@ TIPOS_CLIENTE = frozenset({
 TIPOS_BACKEND = frozenset({
     "snapshot", "input_ack", "assistant_message", "state", "error",
     "mode_state", "settings_state", "settings_result", "restart_result",
-    "dashboard_state", "action_state",
+    "dashboard_state", "action_state", "music_meter",
     "conversations_state",
     "playlist_result",
 })
@@ -81,6 +82,16 @@ def sanitizar_resultado_playlist(
         for chave in ("copied", "added", "duplicated"):
             if chave in bruto:
                 base[chave] = bool(bruto.get(chave))
+        for chave in (
+            "destination_count", "copied_count", "already_present_count",
+        ):
+            if chave in bruto:
+                try:
+                    base[chave] = max(0, min(1_000, int(bruto.get(chave) or 0)))
+                except (TypeError, ValueError):
+                    base[chave] = 0
+        if "source_removed" in bruto:
+            base["source_removed"] = bruto.get("source_removed") is True
         base["revision"] = _texto_seguro(bruto.get("revision"), 64)
         base["artwork_url"] = capa
         return base
@@ -484,6 +495,9 @@ def sanitizar_dashboard_estado(
     rotinas = dict(bruto.get("routines") or {}) if isinstance(
         bruto.get("routines"), Mapping,
     ) else {}
+    iot = dict(bruto.get("iot") or {}) if isinstance(
+        bruto.get("iot"), Mapping,
+    ) else {}
     status = str(bruto.get("status") or "unavailable").casefold().strip()
     if status not in {"ok", "partial", "unavailable"}:
         status = "unavailable"
@@ -596,6 +610,12 @@ def sanitizar_dashboard_estado(
     )
     if musica_frescor == "unavailable":
         musica_estado = "unavailable"
+    musica_video_id = _texto_seguro(musica.get("video_id"), 11)
+    if (
+        musica_frescor == "unavailable"
+        or not re.fullmatch(r"[A-Za-z0-9_-]{11}", musica_video_id)
+    ):
+        musica_video_id = ""
     duracao = _numero_dashboard(
         musica.get("duration_seconds"), minimo=0, maximo=86_400,
     ) or 0.0
@@ -775,6 +795,7 @@ def sanitizar_dashboard_estado(
         "channel": _texto_publico_dashboard(
             musica.get("channel"), 120, fallback="",
         ),
+        "video_id": musica_video_id,
         "artwork_url": capa_musical_publica(musica.get("artwork_url")),
         "state": musica_estado,
         "position_seconds": posicao,
@@ -928,6 +949,82 @@ def sanitizar_dashboard_estado(
             ):
                 rotina_publica["date"] = data
             rotinas_publicas.append(rotina_publica)
+    iot_observado = _numero_dashboard(
+        iot.get("observed_at"), minimo=0, maximo=9_999_999_999,
+    ) or 0.0
+    iot_frescor = _frescor_dashboard(
+        iot.get("freshness"), disponivel=iot_observado > 0,
+    )
+    iot_modo = _texto_seguro(iot.get("mode"), 16).casefold()
+    if iot_modo not in {"simulado", "tuya"}:
+        iot_modo = "unknown"
+    iot_provedor = iot.get("provider_available") is True
+    dispositivos_iot: list[dict[str, Any]] = []
+    if iot_frescor != "unavailable":
+        for item in list(iot.get("devices") or ())[:64]:
+            if not isinstance(item, Mapping):
+                continue
+            nome = _texto_seguro(item.get("name"), 64).casefold()
+            tipo = _texto_seguro(item.get("type"), 40).casefold()
+            nome_amigavel = _texto_publico_dashboard(
+                item.get("display_name"), 100, fallback="",
+            )
+            ambiente = _texto_publico_dashboard(
+                item.get("room"), 60, fallback="",
+            )
+            if (
+                not re.fullmatch(r"[a-z0-9_]{1,64}", nome)
+                or not re.fullmatch(r"[a-z0-9_]{1,40}", tipo)
+                or not nome_amigavel
+                or not ambiente
+            ):
+                continue
+            capacidades = sorted({
+                _texto_seguro(capacidade, 40).casefold()
+                for capacidade in list(item.get("capabilities") or ())
+                if _texto_seguro(capacidade, 40).casefold() in ACOES_IOT
+            })
+            estado = _texto_seguro(item.get("state"), 16).casefold()
+            if estado not in {"on", "off", "offline", "unknown"}:
+                estado = "unknown"
+            estado_observado = _numero_dashboard(
+                item.get("state_observed_at"),
+                minimo=0, maximo=9_999_999_999,
+            ) or 0.0
+            estado_confirmado = bool(
+                item.get("state_confirmed") is True
+                and estado in {"on", "off"}
+                and estado_observado > 0
+            )
+            brilho_observado = _numero_dashboard(
+                item.get("brightness_percent"), minimo=1, maximo=100,
+            )
+            if not (
+                tipo.startswith("lampada")
+                and "ajustar_brilho" in capacidades
+                and estado_observado > 0
+            ):
+                brilho_observado = None
+            dispositivos_iot.append({
+                "name": nome,
+                "display_name": nome_amigavel,
+                "type": tipo,
+                "room": ambiente,
+                "capabilities": capacidades,
+                "state": estado if estado_confirmado or estado == "offline" else "unknown",
+                "state_confirmed": estado_confirmado,
+                "state_observed_at": estado_observado,
+                "brightness_percent": (
+                    int(brilho_observado) if brilho_observado is not None else None
+                ),
+            })
+    iot_controles = bool(
+        iot.get("controls_available") is True
+        and iot_frescor == "fresh"
+        and iot_provedor
+        and iot_modo in {"simulado", "tuya"}
+        and dispositivos_iot
+    )
     resultado = {
         "schema_version": 1,
         "status": status,
@@ -950,6 +1047,18 @@ def sanitizar_dashboard_estado(
             "items": rotinas_publicas,
             "freshness": rotinas_frescor,
             "observed_at": rotinas_observadas,
+        },
+        "iot": {
+            "configured": bool(
+                iot.get("configured") is True and dispositivos_iot
+            ),
+            "read_only": not iot_controles,
+            "controls_available": iot_controles,
+            "mode": iot_modo,
+            "provider_available": iot_provedor,
+            "devices": dispositivos_iot,
+            "freshness": iot_frescor,
+            "observed_at": iot_observado,
         },
         "system": {
             "info": _info_sistema_dashboard(
@@ -1045,6 +1154,7 @@ def validar_mensagem_cliente(
         operacao = _texto_seguro(mensagem.get("operation"), 32).casefold()
         permitidas = {
             "detail", "play_track", "add_url", "copy_track", "move_track",
+            "copy_track_many", "move_track_many",
             "remove_track", "set_artwork", "restore_artwork",
         }
         if operacao not in permitidas:
@@ -1063,7 +1173,10 @@ def validar_mensagem_cliente(
                 resultado["limit"] = max(1, min(100, int(mensagem.get("limit") or 50)))
             except (TypeError, ValueError) as erro:
                 raise ErroProtocoloDesktop("paginação inválida") from erro
-        if operacao in {"play_track", "copy_track", "move_track", "remove_track"}:
+        if operacao in {
+            "play_track", "copy_track", "move_track", "copy_track_many",
+            "move_track_many", "remove_track",
+        }:
             video_id = _texto_seguro(mensagem.get("video_id"), 11)
             revisao = _texto_seguro(mensagem.get("revision"), 64)
             if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id) or not revisao:
@@ -1074,6 +1187,25 @@ def validar_mensagem_cliente(
             if not destino or re.search(r"[;&|<>]", destino):
                 raise ErroProtocoloDesktop("playlist de destino inválida")
             resultado["destination"] = destino
+        if operacao in {"copy_track_many", "move_track_many"}:
+            destinos_brutos = mensagem.get("destinations")
+            if not isinstance(destinos_brutos, list) or not 1 <= len(destinos_brutos) <= 1_000:
+                raise ErroProtocoloDesktop("playlists de destino inválidas")
+            destinos: list[str] = []
+            vistos: set[str] = set()
+            for bruto in destinos_brutos:
+                destino = re.sub(
+                    r"\s+", " ", _texto_seguro(bruto, 80),
+                ).strip()
+                chave = destino.casefold()
+                if not destino or re.search(r"[;&|<>]", destino):
+                    raise ErroProtocoloDesktop("playlist de destino inválida")
+                if chave not in vistos:
+                    vistos.add(chave)
+                    destinos.append(destino)
+            if not destinos:
+                raise ErroProtocoloDesktop("playlists de destino inválidas")
+            resultado["destinations"] = destinos
         if operacao == "add_url":
             url = _texto_seguro(mensagem.get("url"), 500)
             if not re.fullmatch(
@@ -1113,9 +1245,13 @@ def validar_mensagem_cliente(
                 "media_toggle": {"command"},
                 "playlist_play": {"playlist"},
                 "playlist_shuffle": {"playlist"},
-                "queue_play": {"item_id", "queue_index"},
+                "queue_play": {"item_id", "queue_index", "queue_source"},
                 "volume_set": {"level"},
                 "audio_output_select": {"device_ref"},
+                "iot_status": {"device"},
+                "iot_power": {"device", "state"},
+                "iot_brightness": {"device", "value"},
+                "routine_cancel": {"name"},
             }
             permitidos = permitidos_por_acao.get(acao_id, set())
             if set(bruto_payload) - permitidos:
@@ -1161,6 +1297,11 @@ def validar_mensagem_cliente(
                 item_id = _texto_seguro(bruto_payload.get("item_id"), 24)
                 if not re.fullmatch(r"[A-Za-z0-9_-]{11}", item_id):
                     raise ErroProtocoloDesktop("item da fila inválido")
+                origem_fila = _texto_seguro(
+                    bruto_payload.get("queue_source"), 24,
+                ).casefold() or "youtube"
+                if origem_fila not in {"youtube", "laylay_playlist"}:
+                    raise ErroProtocoloDesktop("origem da fila inválida")
                 indice = bruto_payload.get("queue_index")
                 if isinstance(indice, bool):
                     raise ErroProtocoloDesktop("posição da fila inválida")
@@ -1168,9 +1309,12 @@ def validar_mensagem_cliente(
                     indice = int(indice)
                 except (TypeError, ValueError) as erro:
                     raise ErroProtocoloDesktop("posição da fila inválida") from erro
-                if not 0 <= indice <= 7:
+                limite = 999 if origem_fila == "laylay_playlist" else 7
+                if not 0 <= indice <= limite:
                     raise ErroProtocoloDesktop("posição da fila inválida")
                 payload.update(item_id=item_id, queue_index=indice)
+                if "queue_source" in bruto_payload:
+                    payload["queue_source"] = origem_fila
             if "device_ref" in permitidos:
                 referencia_dispositivo = _texto_seguro(
                     bruto_payload.get("device_ref"), 16,
@@ -1178,6 +1322,38 @@ def validar_mensagem_cliente(
                 if not re.fullmatch(r"[a-f0-9]{16}", referencia_dispositivo):
                     raise ErroProtocoloDesktop("saída de áudio inválida")
                 payload["device_ref"] = referencia_dispositivo
+            if "device" in permitidos:
+                dispositivo = _texto_seguro(
+                    bruto_payload.get("device"), 64,
+                ).casefold()
+                if not re.fullmatch(r"[a-z0-9_]+", dispositivo):
+                    raise ErroProtocoloDesktop("dispositivo IoT inválido")
+                payload["device"] = dispositivo
+            if "state" in permitidos:
+                estado_iot = _texto_seguro(
+                    bruto_payload.get("state"), 8,
+                ).casefold()
+                if estado_iot not in {"on", "off"}:
+                    raise ErroProtocoloDesktop("estado IoT inválido")
+                payload["state"] = estado_iot
+            if "value" in permitidos:
+                valor_iot = bruto_payload.get("value")
+                if isinstance(valor_iot, bool):
+                    raise ErroProtocoloDesktop("valor IoT inválido")
+                try:
+                    valor_iot = int(valor_iot)
+                except (TypeError, ValueError) as erro:
+                    raise ErroProtocoloDesktop("valor IoT inválido") from erro
+                if not 1 <= valor_iot <= 100:
+                    raise ErroProtocoloDesktop("valor IoT inválido")
+                payload["value"] = valor_iot
+            if "name" in permitidos:
+                nome_rotina = re.sub(
+                    r"\s+", " ", _texto_seguro(bruto_payload.get("name"), 80),
+                ).strip()
+                if not nome_rotina or re.search(r"[;&|<>]", nome_rotina):
+                    raise ErroProtocoloDesktop("rotina inválida")
+                payload["name"] = nome_rotina
         if tipo_entrada == "chat":
             acao_id = ""
         return {
@@ -1334,7 +1510,7 @@ class DesktopBridgeRuntime:
         conversa_nomear_automaticamente: Callable[[str, str], bool] | None = None,
         host: str = "127.0.0.1",
         port: int = 0,
-        max_message_bytes: int = 65_536,
+        max_message_bytes: int = 262_144,
         rate_limit: int = 24,
         rate_window_s: float = 5.0,
         dashboard_interval_s: float = 1.0,
@@ -1687,7 +1863,7 @@ class DesktopBridgeRuntime:
                 acao_entrada = str(msg.get("action") or "")
                 acao_direta = bool(
                     tipo_entrada == "panel_action"
-                    and acao_entrada in ACOES_MUSICA_PAINEL
+                    and acao_entrada in ACOES_DIRETAS_PAINEL
                     and callable(self.executar_acao_painel)
                 )
                 conversa_ativa_id = (
@@ -1934,6 +2110,12 @@ class DesktopBridgeRuntime:
                         ),
                         "move_track": lambda: self.playlist_operacoes.mover_faixa_exata(
                             nome, msg["destination"], msg["video_id"], msg["revision"],
+                        ),
+                        "copy_track_many": lambda: self.playlist_operacoes.copiar_faixa_multiplas(
+                            nome, msg["destinations"], msg["video_id"], msg["revision"],
+                        ),
+                        "move_track_many": lambda: self.playlist_operacoes.mover_faixa_multiplas(
+                            nome, msg["destinations"], msg["video_id"], msg["revision"],
                         ),
                         "remove_track": lambda: self.playlist_operacoes.remover_faixa_exata(
                             nome, msg["video_id"], msg["revision"],
@@ -2250,6 +2432,42 @@ class DesktopBridgeRuntime:
         evento = {"title": _texto_seguro(titulo, 120), "detail": _texto_seguro(detalhe, 500), "level": nivel if nivel in {"info", "success", "warning", "error"} else "info", "timestamp": time.time()}
         self._eventos.append(evento)
         self._publicar({"type": "state", "event": evento, **sanitizar_estado(self.estado_getter())})
+
+    def publicar_medidor_musica(self, medidor: Mapping[str, Any]) -> bool:
+        """Publica somente três bandas já autorizadas, sem refazer dashboard."""
+        tab_id = medidor.get("tab_id")
+        video_id = str(medidor.get("video_id") or "").strip()
+        bruto = medidor.get("levels")
+        if (
+            not isinstance(tab_id, int)
+            or isinstance(tab_id, bool)
+            or not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id)
+            or not isinstance(bruto, list)
+            or len(bruto) != 3
+        ):
+            return False
+        try:
+            levels = [
+                round(max(0.0, min(1.0, float(valor))), 4)
+                for valor in bruto
+                if not isinstance(valor, bool)
+            ]
+            energy = round(
+                max(0.0, min(1.0, float(medidor.get("energy") or 0.0))), 4,
+            )
+            observado = max(0.0, float(medidor.get("observed_at") or 0.0))
+        except (TypeError, ValueError):
+            return False
+        if len(levels) != 3:
+            return False
+        return self._publicar({
+            "type": "music_meter",
+            "tab_id": tab_id,
+            "video_id": video_id,
+            "levels": levels,
+            "energy": energy,
+            "observed_at": observado,
+        })
 
     def _publicar_estados(self) -> None:
         ultimo_envio = 0.0

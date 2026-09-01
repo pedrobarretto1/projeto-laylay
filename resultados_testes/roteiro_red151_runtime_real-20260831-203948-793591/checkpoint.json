@@ -1,0 +1,363 @@
+{
+  "versao": 2,
+  "assinatura": "a23950b6d9b516d8269762391ebb7f1befaa2799ac972a3d06d35c16e8198b99",
+  "criado_em": 1788219589.547355,
+  "atualizado_em": 1788219624.2221138,
+  "concluido": true,
+  "criterio_conclusao": "transporte_resposta_e_resultado_turno",
+  "voz_silenciada_durante_teste": true,
+  "itens": [
+    {
+      "indice": 0,
+      "comando": "Coloca a playlist BASE151.",
+      "status": "respondido",
+      "resposta": "Abri base151 e enviei a primeira faixa.",
+      "enviado_em": 1788219595.5823169,
+      "finalizado_em": 1788219607.4522698,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "PLAYLIST_PLAY",
+            "alvo": "base151",
+            "status": "playlist_aberta",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "variavel",
+            "evidencia_confirmacao": "a aba pode ser observada; o cliente remoto informa entrega, mas nem sempre confirma áudio"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "nao_avaliado",
+        "semantica_avaliada": false,
+        "expectativa": "",
+        "origem_expectativa": "nenhuma",
+        "dominio": "musica",
+        "intents_observadas": [
+          "PLAYLIST_PLAY"
+        ],
+        "statuses_observados": [
+          "playlist_aberta"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 11.87
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 1,
+      "comando": "Qual música está tocando?",
+      "status": "respondido",
+      "resposta": "A faixa atual registrada é Anny - SE EU TE PEDIR ft. Lucas A.R.T.",
+      "enviado_em": 1788219607.8651252,
+      "finalizado_em": 1788219607.9748569,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "MUSIC_STATUS",
+            "alvo": "Anny - SE EU TE PEDIR ft. Lucas A.R.T",
+            "status": "midia_status_consultado",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "retorno_dados",
+            "evidencia_confirmacao": "o título e o estado atual são lidos do registro sanitizado do player"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "nao_avaliado",
+        "semantica_avaliada": false,
+        "expectativa": "",
+        "origem_expectativa": "nenhuma",
+        "dominio": "musica",
+        "intents_observadas": [
+          "MUSIC_STATUS"
+        ],
+        "statuses_observados": [
+          "midia_status_consultado"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 0.11
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 2,
+      "comando": "Coloca a playlist VMZ.",
+      "status": "respondido",
+      "resposta": "Não achei a playlist vmz. Posso guardar essa música nela?",
+      "enviado_em": 1788219608.387644,
+      "finalizado_em": 1788219608.5459247,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "PLAYLIST_PLAY",
+            "alvo": "vmz",
+            "status": "playlist_nao_encontrada",
+            "executou": false,
+            "confirmado": false,
+            "confirmacao_oferecida": "variavel",
+            "evidencia_confirmacao": "a aba pode ser observada; o cliente remoto informa entrega, mas nem sempre confirma áudio"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "nenhuma_etapa_executada",
+        "confirmacao": "nenhuma_etapa_confirmada",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "nao_avaliado",
+        "semantica_avaliada": false,
+        "expectativa": "",
+        "origem_expectativa": "nenhuma",
+        "dominio": "musica",
+        "intents_observadas": [
+          "PLAYLIST_PLAY"
+        ],
+        "statuses_observados": [
+          "playlist_nao_encontrada"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [
+          "dependencia_externa_nao_confirmada"
+        ],
+        "checagens_semanticas": [],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 0.158
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "falha_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 3,
+      "comando": "Pausa a música.",
+      "status": "respondido",
+      "resposta": "Música pausada. Silêncio estratégico ativado.",
+      "enviado_em": 1788219608.9650228,
+      "finalizado_em": 1788219614.521363,
+      "plano": {
+        "fase": "tratado_prioritario",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "MEDIA_CONTROL",
+            "alvo": "",
+            "status": "midia_pause",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "variavel",
+            "evidencia_confirmacao": "Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "expectativa_por_padrao",
+        "origem_expectativa": "avaliador_global",
+        "dominio": "musica",
+        "intents_observadas": [
+          "MEDIA_CONTROL"
+        ],
+        "statuses_observados": [
+          "midia_pause"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada"
+        ],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 5.556
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 4,
+      "comando": "Continua a música.",
+      "status": "respondido",
+      "resposta": "Dei play. A música voltou a ocupar o ambiente.",
+      "enviado_em": 1788219614.9364424,
+      "finalizado_em": 1788219623.1494696,
+      "plano": {
+        "fase": "tratado_prioritario",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "MEDIA_CONTROL",
+            "alvo": "",
+            "status": "midia_play",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "variavel",
+            "evidencia_confirmacao": "Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "nao_avaliado",
+        "semantica_avaliada": false,
+        "expectativa": "",
+        "origem_expectativa": "nenhuma",
+        "dominio": "musica",
+        "intents_observadas": [
+          "MEDIA_CONTROL"
+        ],
+        "statuses_observados": [
+          "midia_play"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 8.213
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 5,
+      "comando": "sim",
+      "status": "respondido",
+      "resposta": "Salvei Anny - SE EU TE PEDIR ft. Lucas A.R.T na playlist vmz.",
+      "enviado_em": 1788219623.5660403,
+      "finalizado_em": 1788219623.810147,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "PLAYLIST_ADD",
+            "alvo": "vmz",
+            "status": "playlist_musica_adicionada",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "persistencia_local",
+            "evidencia_confirmacao": "a faixa reaparece no armazenamento da playlist"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "nao_avaliado",
+        "semantica_avaliada": false,
+        "expectativa": "",
+        "origem_expectativa": "nenhuma",
+        "dominio": "musica",
+        "intents_observadas": [
+          "PLAYLIST_ADD"
+        ],
+        "statuses_observados": [
+          "playlist_musica_adicionada"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 0.244
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    }
+  ],
+  "preparacao": {
+    "status": "modo_chat_confirmado",
+    "atraso_inicial_s": 6.0,
+    "voz_silenciada": true
+  },
+  "finalizado_em": 1788219624.22211
+}

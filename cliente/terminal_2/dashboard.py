@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections import deque
 import time
 
-from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal, QTimer
+from PySide6.QtCore import QLineF, QPointF, QRectF, QSize, Qt, Signal, QTimer
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QScrollArea,
+    QSlider,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -31,6 +32,7 @@ from PySide6.QtWidgets import (
 from mente_laylay.integracao.acoes_terminal import ACOES_RAPIDAS_TERMINAL
 from cliente.terminal_2.acabamento import (
     CapaMusicaGenerica,
+    definir_propriedades_visuais,
     icone_terminal,
 )
 from cliente.terminal_2.musica_m1 import PaginaMusica
@@ -69,12 +71,12 @@ class ChipEstado(QFrame):
             assinatura != self._assinatura_estado
         )
         self._assinatura_estado = assinatura
-        self.texto.setText(f"{self._titulo}: {valor_limpo}")
-        self.setProperty("state", estado)
-        self.ponto.setProperty("state", estado)
-        for widget in (self, self.ponto):
-            widget.style().unpolish(widget)
-            widget.style().polish(widget)
+        texto = f"{self._titulo}: {valor_limpo}"
+        if self.texto.text() != texto:
+            self.texto.setText(texto)
+            self.updateGeometry()
+        definir_propriedades_visuais(self, state=estado)
+        definir_propriedades_visuais(self.ponto, state=estado)
         if mudou:
             self.estado_alterado.emit()
 
@@ -565,7 +567,10 @@ class PainelCentralInteligente(QFrame):
             "awaiting_confirmation": "?", "confirmed": "✓",
             "partial": "!", "failed": "×",
         }
-        botao.setProperty("actionState", estado or "idle")
+        definir_propriedades_visuais(
+            botao,
+            actionState=estado or "idle",
+        )
         texto_botao = (
             f"{self._rotulos_acoes.get(acao_id, botao.text())}  "
             f"{marcadores.get(estado, '')}"
@@ -585,8 +590,6 @@ class PainelCentralInteligente(QFrame):
                 self._conectada
                 and disponibilidade in {"available", "degraded"}
             )
-        botao.style().unpolish(botao)
-        botao.style().polish(botao)
 
     def definir_contexto(self, chave: str, valor: str) -> None:
         destino = self.contexto_valores.get(str(chave or ""))
@@ -853,16 +856,9 @@ class PainelCentralInteligente(QFrame):
 
             widget = linha["widget"]
 
-            widget.setProperty(
-                "memoryKind",
-                tipo,
-            )
-
-            widget.style().unpolish(
-                widget
-            )
-            widget.style().polish(
-                widget
+            definir_propriedades_visuais(
+                widget,
+                memoryKind=tipo,
             )
 
             widget.show()
@@ -1505,7 +1501,6 @@ class PainelLateralDashboard(QWidget):
         self._relogio_musica = QTimer(self)
         self._relogio_musica.setInterval(1000)
         self._relogio_musica.timeout.connect(self._atualizar_relogio_musica)
-        self._relogio_musica.start()
 
     def _aplicar_rotinas(
         self,
@@ -1580,28 +1575,17 @@ class PainelLateralDashboard(QWidget):
                 "confirmada."
             )
 
-        self.rotinas_card.setProperty(
-            "routineState",
-            visual,
+        definir_propriedades_visuais(
+            self.rotinas_card,
+            routineState=visual,
         )
-        self.rotinas_badge.setProperty(
-            "state",
-            visual,
+        definir_propriedades_visuais(
+            self.rotinas_badge,
+            state=visual,
         )
         self.rotinas_badge.setText(
             badge
         )
-
-        for widget in (
-            self.rotinas_card,
-            self.rotinas_badge,
-        ):
-            widget.style().unpolish(
-                widget
-            )
-            widget.style().polish(
-                widget
-            )
 
         if not itens:
             self.rotinas_estado.setText(
@@ -1731,22 +1715,10 @@ class PainelLateralDashboard(QWidget):
                 else "Detecção automática"
             )
 
-        self.jogo_card.setProperty(
-            "gameState",
-            visual,
-        )
-        self.jogo_painel.setProperty(
-            "state",
-            visual,
-        )
-        self.jogo_icone.setProperty(
-            "state",
-            visual,
-        )
-        self.jogo_badge.setProperty(
-            "state",
-            visual,
-        )
+        definir_propriedades_visuais(self.jogo_card, gameState=visual)
+        definir_propriedades_visuais(self.jogo_painel, state=visual)
+        definir_propriedades_visuais(self.jogo_icone, state=visual)
+        definir_propriedades_visuais(self.jogo_badge, state=visual)
 
         self.jogo_badge.setText(
             badge
@@ -1757,19 +1729,6 @@ class PainelLateralDashboard(QWidget):
         self.jogo_detalhe.setText(
             detalhe
         )
-
-        for widget in (
-            self.jogo_card,
-            self.jogo_painel,
-            self.jogo_icone,
-            self.jogo_badge,
-        ):
-            widget.style().unpolish(
-                widget
-            )
-            widget.style().polish(
-                widget
-            )
 
     def _definir_visual_musica(
         self,
@@ -1815,28 +1774,17 @@ class PainelLateralDashboard(QWidget):
                 "PLAYER",
             )
 
-        self.musica_card.setProperty(
-            "musicState",
-            visual,
+        definir_propriedades_visuais(
+            self.musica_card,
+            musicState=visual,
         )
-        self.musica_estado_badge.setProperty(
-            "state",
-            visual,
+        definir_propriedades_visuais(
+            self.musica_estado_badge,
+            state=visual,
         )
         self.musica_estado_badge.setText(
             texto
         )
-
-        for widget in (
-            self.musica_card,
-            self.musica_estado_badge,
-        ):
-            widget.style().unpolish(
-                widget
-            )
-            widget.style().polish(
-                widget
-            )
 
     def _solicitar_musica(self, acao_id: str) -> None:
         pedidos = {
@@ -2140,6 +2088,16 @@ class PainelLateralDashboard(QWidget):
         self._atualizar_controles_musica()
         self._aplicar_rotinas(None)
 
+    def showEvent(self, event) -> None:  # noqa: N802 - contrato Qt
+        super().showEvent(event)
+        self._atualizar_relogio_musica()
+        if not self._relogio_musica.isActive():
+            self._relogio_musica.start()
+
+    def hideEvent(self, event) -> None:  # noqa: N802 - contrato Qt
+        self._relogio_musica.stop()
+        super().hideEvent(event)
+
 
 def _cabecalho_pagina(titulo: str, descricao: str) -> tuple[QLabel, QLabel, QLabel]:
     etapa = QLabel("TERMINAL 3.0 · P4")
@@ -2361,63 +2319,622 @@ class PaginaMusicaLegada(QWidget):
         self._atualizar_botoes()
 
 
-class PaginaAutomacao(QWidget):
-    """Rotinas persistidas e modo jogo observado, sem toggles otimistas."""
-
-    acao_solicitada = Signal(str, str)
+class ArteCasaAutomacao(QWidget):
+    """Ilustração vetorial local para o hero, sem asset ou rede externa."""
 
     def __init__(self) -> None:
         super().__init__()
+        self.setObjectName("automationHeroArt")
+        self.setMinimumSize(230, 112)
+        self.setMaximumSize(290, 132)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+
+    def paintEvent(self, _event) -> None:  # noqa: N802 - contrato Qt
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        largura = float(self.width())
+        altura = float(self.height())
+
+        # Onda discreta da referência, desenhada em código para permanecer nativa.
+        for faixa, cor in ((0, "#6B2740"), (1, "#234B59")):
+            painter.setPen(QPen(QColor(cor), 1.0))
+            pontos: list[QPointF] = []
+            for indice in range(25):
+                x = indice * largura / 24.0
+                fase = (indice + faixa * 4) / 3.2
+                y = altura * (0.72 + faixa * 0.07) + (fase % 3 - 1.0) * 4.0
+                pontos.append(QPointF(x, y))
+            for atual, proximo in zip(pontos, pontos[1:]):
+                painter.drawLine(atual, proximo)
+
+        caixa = QRectF(largura - 126.0, 8.0, 111.0, altura - 16.0)
+        painter.setPen(QPen(QColor("#4D9CAF"), 1.2))
+        painter.setBrush(QColor(21, 53, 63, 135))
+        painter.drawRoundedRect(caixa, 15, 15)
+        caixa_interna = caixa.adjusted(7, 7, -7, -7)
+        painter.setPen(QPen(QColor("#D9486B"), 1.1))
+        painter.setBrush(QColor(86, 29, 49, 150))
+        painter.drawRoundedRect(caixa_interna, 12, 12)
+
+        casa_x = caixa.center().x()
+        base_y = caixa.bottom() - 19
+        caminho = QPainterPath()
+        caminho.moveTo(casa_x - 36, base_y - 39)
+        caminho.lineTo(casa_x, base_y - 70)
+        caminho.lineTo(casa_x + 36, base_y - 39)
+        caminho.lineTo(casa_x + 29, base_y - 39)
+        caminho.lineTo(casa_x + 29, base_y)
+        caminho.lineTo(casa_x - 29, base_y)
+        caminho.lineTo(casa_x - 29, base_y - 39)
+        caminho.closeSubpath()
+        painter.setPen(QPen(QColor("#F15179"), 2.0))
+        painter.setBrush(QColor(204, 49, 91, 175))
+        painter.drawPath(caminho)
+        painter.setBrush(QColor("#371825"))
+        painter.drawRoundedRect(QRectF(casa_x - 8, base_y - 29, 16, 29), 5, 5)
+        painter.setBrush(QColor("#65C8D4"))
+        painter.drawRect(QRectF(casa_x + 12, base_y - 38, 10, 12))
+
+
+class IconeDispositivoIoT(QWidget):
+    """Ícone vetorial consistente mesmo quando o sistema não possui emoji."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setObjectName("automationDeviceIcon")
+        self.setFixedSize(58, 58)
+        self._tipo = "lampada_rgb"
+        self._ligado = False
+
+    def definir(self, tipo: str, ligado: bool) -> None:
+        self._tipo = str(tipo or "")
+        self._ligado = bool(ligado)
+        self.update()
+
+    def paintEvent(self, _event) -> None:  # noqa: N802 - contrato Qt
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        retangulo = QRectF(1, 1, self.width() - 2, self.height() - 2)
+        painter.setPen(QPen(QColor("#7C3850"), 1.2))
+        painter.setBrush(QColor("#281B23"))
+        painter.drawRoundedRect(retangulo, 14, 14)
+        cor = QColor("#FF6687" if self._ligado else "#A45368")
+        painter.setPen(QPen(cor, 2.0, Qt.SolidLine, Qt.RoundCap))
+        painter.setBrush(QColor(cor.red(), cor.green(), cor.blue(), 72))
+        centro = QPointF(self.width() / 2, self.height() / 2)
+        if self._tipo.startswith("lampada"):
+            painter.drawEllipse(QRectF(centro.x() - 10, 13, 20, 23))
+            painter.drawLine(QLineF(centro.x() - 7, 38, centro.x() + 7, 38))
+            painter.drawLine(QLineF(centro.x() - 5, 42, centro.x() + 5, 42))
+            painter.drawLine(QLineF(centro.x(), 8, centro.x(), 4))
+            painter.drawLine(QLineF(12, 23, 17, 23))
+            painter.drawLine(QLineF(self.width() - 17, 23, self.width() - 12, 23))
+        else:
+            painter.setBrush(QColor(cor.red(), cor.green(), cor.blue(), 105))
+            for angulo in (0, 90, 180, 270):
+                painter.save()
+                painter.translate(centro)
+                painter.rotate(angulo)
+                pa = QPainterPath()
+                pa.moveTo(2, -3)
+                pa.cubicTo(10, -14, 18, -11, 15, -2)
+                pa.cubicTo(12, 5, 6, 6, 2, 3)
+                pa.closeSubpath()
+                painter.drawPath(pa)
+                painter.restore()
+            painter.setBrush(cor)
+            painter.drawEllipse(QRectF(centro.x() - 4, centro.y() - 4, 8, 8))
+
+
+class CartaoDispositivoIoT(QFrame):
+    """Card funcional cujo estado só muda a partir de um novo retrato observado."""
+
+    acao_solicitada = Signal(str, str, dict)
+
+    _TIPOS = {
+        "lampada_rgb": "Lâmpada RGB",
+        "tomada": "Tomada inteligente",
+    }
+    _CAPACIDADES = {
+        "ligar": "Liga/desliga",
+        "desligar": "Liga/desliga",
+        "alternar": "Alternar",
+        "status": "Status",
+        "ajustar_brilho": "Brilho",
+        "ajustar_cor": "Cor",
+        "ajustar_branco": "Luz branca",
+    }
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setObjectName("automationDeviceCard")
+        self._dispositivo: dict = {}
+        self._conectada = False
+        self._controles_disponiveis = False
+        self._suporta_energia = False
+        self._suporta_status = False
+        self._suporta_brilho = False
+        self._acao_pendente = False
+        self.estado_chave = "unknown"
+        self.brilho_confirmado: int | None = None
+        self.setMinimumHeight(264)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 15, 16, 14)
+        layout.setSpacing(9)
+        cabecalho = QHBoxLayout()
+        cabecalho.setSpacing(12)
+        self.icone = IconeDispositivoIoT()
+        textos = QVBoxLayout()
+        textos.setSpacing(2)
+        self.nome = QLabel("—")
+        self.nome.setObjectName("automationDeviceName")
+        self.tipo = QLabel("Dispositivo IoT")
+        self.tipo.setObjectName("automationDeviceType")
+        textos.addWidget(self.nome)
+        textos.addWidget(self.tipo)
+        self.ambiente = QLabel("—")
+        self.ambiente.setObjectName("automationRoomBadge")
+        cabecalho.addWidget(self.icone)
+        cabecalho.addLayout(textos)
+        cabecalho.addStretch()
+        cabecalho.addWidget(self.ambiente)
+
+        estado_linha = QHBoxLayout()
+        estado_linha.setSpacing(8)
+        self.estado = QLabel("NÃO OBSERVADO")
+        self.estado.setObjectName("automationDeviceState")
+        self.observacao = QLabel("Aguardando uma leitura confirmada")
+        self.observacao.setObjectName("automationDeviceObservation")
+        self.observacao.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        estado_linha.addWidget(self.estado)
+        estado_linha.addStretch()
+        estado_linha.addWidget(self.observacao)
+
+        self.controle_brilho = QFrame()
+        self.controle_brilho.setObjectName("automationBrightnessControl")
+        brilho_layout = QVBoxLayout(self.controle_brilho)
+        brilho_layout.setContentsMargins(0, 2, 0, 2)
+        brilho_layout.setSpacing(4)
+        brilho_cabecalho = QHBoxLayout()
+        brilho_cabecalho.setContentsMargins(0, 0, 0, 0)
+        brilho_titulo = QLabel("Brilho")
+        brilho_titulo.setObjectName("automationControlLabel")
+        self.valor_brilho = QLabel("—")
+        self.valor_brilho.setObjectName("automationControlValue")
+        brilho_cabecalho.addWidget(brilho_titulo)
+        brilho_cabecalho.addStretch()
+        brilho_cabecalho.addWidget(self.valor_brilho)
+        self.slider_brilho = QSlider(Qt.Horizontal)
+        self.slider_brilho.setObjectName("automationBrightnessSlider")
+        self.slider_brilho.setRange(1, 100)
+        self.slider_brilho.setSingleStep(5)
+        self.slider_brilho.setPageStep(10)
+        self.slider_brilho.sliderMoved.connect(
+            lambda valor: self.valor_brilho.setText(f"{valor}%")
+        )
+        self.slider_brilho.sliderReleased.connect(self._solicitar_brilho)
+        brilho_layout.addLayout(brilho_cabecalho)
+        brilho_layout.addWidget(self.slider_brilho)
+        self.controle_brilho.hide()
+
+        self.acoes_titulo = QLabel("Ações")
+        self.acoes_titulo.setObjectName("automationControlLabel")
+        self.capacidades = QLabel("Catálogo indisponível")
+        self.capacidades.setObjectName("automationCapabilities")
+        self.capacidades.setWordWrap(True)
+
+        controles = QHBoxLayout()
+        controles.setSpacing(8)
+        self.botao_energia = QPushButton("Ligar")
+        self.botao_energia.setObjectName("automationPowerButton")
+        self.botao_energia.clicked.connect(self._solicitar_energia)
+        self.botao_atualizar = QPushButton("↻  Atualizar estado")
+        self.botao_atualizar.setObjectName("automationRefreshButton")
+        self.botao_atualizar.clicked.connect(self._solicitar_status)
+        controles.addWidget(self.botao_energia)
+        controles.addWidget(self.botao_atualizar)
+        controles.addStretch()
+
+        layout.addLayout(cabecalho)
+        layout.addLayout(estado_linha)
+        layout.addWidget(self.controle_brilho)
+        layout.addWidget(self.acoes_titulo)
+        layout.addWidget(self.capacidades)
+        layout.addStretch()
+        layout.addLayout(controles)
+        self.hide()
+
+    def aplicar(
+        self, dispositivo: dict, *, conectada: bool, controles: bool,
+    ) -> None:
+        self._dispositivo = dict(dispositivo)
+        self._conectada = bool(conectada)
+        self._controles_disponiveis = bool(controles)
+        self.nome.setText(str(dispositivo.get("display_name") or "Dispositivo IoT"))
+        self.ambiente.setText(str(dispositivo.get("room") or "—").upper())
+        tipo = str(dispositivo.get("type") or "")
+        self.tipo.setText(self._TIPOS.get(tipo, tipo.replace("_", " ").title()))
+        capacidades: list[str] = []
+        for capacidade in list(dispositivo.get("capabilities") or ()):
+            if capacidade == "ajustar_brilho":
+                continue
+            rotulo = self._CAPACIDADES.get(str(capacidade or ""))
+            if rotulo and rotulo not in capacidades:
+                capacidades.append(rotulo)
+        self.capacidades.setText(" · ".join(capacidades) or "Sem capacidades públicas")
+        estado = str(dispositivo.get("state") or "unknown")
+        confirmado = dispositivo.get("state_confirmed") is True
+        if estado not in {"on", "off", "offline"} or (
+            estado in {"on", "off"} and not confirmado
+        ):
+            estado = "unknown"
+        self.estado_chave = estado
+        rotulos = {
+            "on": "LIGADA",
+            "off": "DESLIGADA",
+            "offline": "INDISPONÍVEL",
+            "unknown": "NÃO OBSERVADO",
+        }
+        self.estado.setText(rotulos[estado])
+        self.icone.definir(tipo, estado == "on")
+        definir_propriedades_visuais(self, deviceState=estado)
+        definir_propriedades_visuais(self.estado, deviceState=estado)
+        observado = float(dispositivo.get("state_observed_at") or 0.0)
+        if observado > 0:
+            idade = max(0, int(time.time() - observado))
+            if idade < 60:
+                detalhe = "Confirmado agora"
+            elif idade < 3_600:
+                detalhe = f"Confirmado há {idade // 60} min"
+            else:
+                detalhe = time.strftime("Última leitura · %H:%M", time.localtime(observado))
+        else:
+            detalhe = "Aguardando uma leitura confirmada"
+        self.observacao.setText(detalhe)
+        self.botao_energia.setText("Desligar" if estado == "on" else "Ligar")
+        capacidades_publicas = set(dispositivo.get("capabilities") or ())
+        self._suporta_energia = {"ligar", "desligar"}.issubset(
+            capacidades_publicas
+        )
+        self._suporta_status = "status" in capacidades_publicas
+        self._suporta_brilho = (
+            tipo.startswith("lampada") and "ajustar_brilho" in capacidades_publicas
+        )
+        brilho = dispositivo.get("brightness_percent")
+        self.brilho_confirmado = (
+            int(brilho)
+            if isinstance(brilho, (int, float))
+            and not isinstance(brilho, bool)
+            and 1 <= int(brilho) <= 100
+            else None
+        )
+        if self._suporta_brilho:
+            valor_visual = self.brilho_confirmado or 50
+            self.slider_brilho.blockSignals(True)
+            self.slider_brilho.setValue(valor_visual)
+            self.slider_brilho.blockSignals(False)
+            self.valor_brilho.setText(
+                f"{self.brilho_confirmado}%"
+                if self.brilho_confirmado is not None else "Não observado"
+            )
+            self.controle_brilho.show()
+        else:
+            self.controle_brilho.hide()
+        self._atualizar_controles()
+        self.show()
+
+    def _atualizar_controles(self) -> None:
+        operacional = (
+            not self._acao_pendente
+            and self._conectada
+            and self._controles_disponiveis
+        )
+        self.botao_energia.setEnabled(operacional and self._suporta_energia)
+        self.botao_atualizar.setEnabled(operacional and self._suporta_status)
+        self.slider_brilho.setEnabled(operacional and self._suporta_brilho)
+
+    def _solicitar_energia(self) -> None:
+        nome = str(self._dispositivo.get("name") or "")
+        amigavel = str(self._dispositivo.get("display_name") or nome)
+        if not nome or not self.botao_energia.isEnabled():
+            return
+        desejado = "off" if self.estado_chave == "on" else "on"
+        verbo = "desligar" if desejado == "off" else "ligar"
+        self.acao_solicitada.emit(
+            "iot_power", f"{verbo} {amigavel}",
+            {"device": nome, "state": desejado},
+        )
+
+    def _solicitar_status(self) -> None:
+        nome = str(self._dispositivo.get("name") or "")
+        amigavel = str(self._dispositivo.get("display_name") or nome)
+        if nome and self.botao_atualizar.isEnabled():
+            self.acao_solicitada.emit(
+                "iot_status", f"atualizar o estado de {amigavel}",
+                {"device": nome},
+            )
+
+    def _solicitar_brilho(self) -> None:
+        nome = str(self._dispositivo.get("name") or "")
+        amigavel = str(self._dispositivo.get("display_name") or nome)
+        valor = int(self.slider_brilho.value())
+        permitido = (
+            nome and self.slider_brilho.isEnabled() and self._suporta_brilho
+        )
+        # O slider representa apenas uma proposta durante a interação. Depois
+        # do envio ele volta ao último valor observado até o executor confirmar.
+        confirmado = self.brilho_confirmado or 50
+        self.slider_brilho.blockSignals(True)
+        self.slider_brilho.setValue(confirmado)
+        self.slider_brilho.blockSignals(False)
+        self.valor_brilho.setText(
+            f"{self.brilho_confirmado}%"
+            if self.brilho_confirmado is not None else "Não observado"
+        )
+        if permitido:
+            self.acao_solicitada.emit(
+                "iot_brightness",
+                f"ajustar o brilho de {amigavel} para {valor} por cento",
+                {"device": nome, "value": valor},
+            )
+
+    def definir_estado_acao(self, estado: str, resumo: str = "") -> None:
+        pendente = estado in {"sending", "received", "executing"}
+        self._acao_pendente = pendente
+        definir_propriedades_visuais(self, actionPending=pendente)
+        self._atualizar_controles()
+        if resumo:
+            self.observacao.setText(resumo)
+
+
+class PaginaAutomacao(QWidget):
+    """Central visual para IoT, agenda e contextos confirmados."""
+
+    acao_solicitada = Signal(str, str)
+    acao_dados_solicitada = Signal(str, str, dict)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setObjectName("automationPage")
         self._conectada = False
         self._rotinas: list[dict] = []
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(54, 36, 68, 46)
-        layout.setSpacing(12)
-        for widget in _cabecalho_pagina(
-            "Automação",
-            "Rotinas e agendamentos confirmados pela agenda, além do modo jogo detectado pela própria Laylay.",
-        ):
-            layout.addWidget(widget)
+        self._iot_controles = False
+        self._iot_pendente_nome = ""
+        raiz = QVBoxLayout(self)
+        raiz.setContentsMargins(0, 0, 0, 0)
+        self.rolagem = QScrollArea()
+        self.rolagem.setObjectName("automationScroll")
+        self.rolagem.setWidgetResizable(True)
+        self.rolagem.setFrameShape(QFrame.NoFrame)
+        self.rolagem.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        conteudo = QWidget()
+        conteudo.setObjectName("automationPageContent")
+        layout = QVBoxLayout(conteudo)
+        layout.setContentsMargins(28, 24, 28, 32)
+        layout.setSpacing(14)
+
+        hero = QFrame()
+        hero.setObjectName("automationHero")
+        hero_layout = QHBoxLayout(hero)
+        hero_layout.setContentsMargins(22, 18, 22, 18)
+        hero_layout.setSpacing(16)
+        hero_textos = QVBoxLayout()
+        hero_textos.setSpacing(3)
+        hero_selo = QLabel("CENTRAL INTELIGENTE · CASA CONECTADA")
+        hero_selo.setObjectName("automationHeroEyebrow")
+        hero_titulo = QLabel("Automação  ✦")
+        hero_titulo.setObjectName("automationHeroTitle")
+        hero_descricao = QLabel(
+            "Dispositivos, rotinas e contextos vivos — observados pela Laylay."
+        )
+        hero_descricao.setObjectName("automationHeroDescription")
+        hero_textos.addWidget(hero_selo)
+        hero_textos.addWidget(hero_titulo)
+        hero_textos.addWidget(hero_descricao)
+        hero_layout.addLayout(hero_textos, 1)
+        self.hero_arte = ArteCasaAutomacao()
+        hero_layout.addWidget(self.hero_arte, 0, Qt.AlignRight | Qt.AlignVCenter)
+
+        self.iot_modo = QLabel("Estado aguardando")
+        self.iot_modo.setObjectName("automationLiveBadge")
+        self.iot_modo.setAlignment(Qt.AlignCenter)
+        self.iot_atualizacao = QLabel("Sem retrato confirmado")
+        self.iot_atualizacao.setObjectName("automationUpdated")
+        self.iot_atualizacao.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        layout.addWidget(hero)
+
+        self.corpo = QBoxLayout(QBoxLayout.LeftToRight)
+        self.corpo.setContentsMargins(0, 0, 0, 0)
+        self.corpo.setSpacing(14)
+        principal = QWidget()
+        principal.setObjectName("automationMainColumn")
+        principal_layout = QVBoxLayout(principal)
+        principal_layout.setContentsMargins(0, 0, 0, 0)
+        principal_layout.setSpacing(14)
+        self.cartao_iot = CartaoDashboard(
+            "Casa agora", subtitulo="estado confirmado",
+        )
+        self.cartao_iot.setObjectName("automationDevicesCard")
+        self.iot_estado = QLabel("Aguardando catálogo seguro de dispositivos")
+        self.iot_estado.setObjectName("automationSectionLead")
+        self.iot_estado.setWordWrap(True)
+        casa_estado = QHBoxLayout()
+        casa_estado.setContentsMargins(0, 0, 0, 0)
+        casa_estado.setSpacing(10)
+        casa_estado.addWidget(self.iot_estado, 1)
+        casa_estado.addWidget(self.iot_modo)
+        self.cartao_iot.layout_principal.addLayout(casa_estado)
+        self.iot_grade = QGridLayout()
+        self.iot_grade.setContentsMargins(0, 0, 0, 0)
+        self.iot_grade.setHorizontalSpacing(10)
+        self.iot_grade.setVerticalSpacing(10)
+        self.iot_dispositivos = [CartaoDispositivoIoT() for _ in range(12)]
+        for indice, cartao in enumerate(self.iot_dispositivos):
+            self.iot_grade.addWidget(cartao, indice // 2, indice % 2)
+            cartao.acao_solicitada.connect(self._encaminhar_iot)
+        self.cartao_iot.layout_principal.addLayout(self.iot_grade)
         self.cartao_rotinas = CartaoDashboard("Rotinas e agenda", subtitulo="agenda")
+        self.cartao_rotinas.setObjectName("automationRoutinesCard")
         self.rotinas_estado = QLabel("Aguardando a agenda")
-        self.rotinas_estado.setObjectName("dashboardEmpty")
+        self.rotinas_estado.setObjectName("automationRoutineEmpty")
         self.rotinas_estado.setWordWrap(True)
         self.cartao_rotinas.layout_principal.addWidget(self.rotinas_estado)
         self.rotina_botoes: list[QPushButton] = []
         for indice in range(6):
             botao = QPushButton()
-            botao.setProperty("dashboardAction", True)
+            botao.setObjectName("automationRoutineRow")
             botao.hide()
             botao.clicked.connect(
                 lambda _v=False, i=indice: self._cancelar_rotina(i)
             )
             self.rotina_botoes.append(botao)
             self.cartao_rotinas.layout_principal.addWidget(botao)
-        jogo = CartaoDashboard("Modo jogo", subtitulo="automático")
+        principal_layout.addWidget(self.cartao_iot)
+        principal_layout.addWidget(self.cartao_rotinas)
+        principal_layout.addStretch()
+
+        self.rail = QWidget()
+        self.rail.setObjectName("automationRail")
+        rail_layout = QVBoxLayout(self.rail)
+        rail_layout.setContentsMargins(0, 0, 0, 0)
+        rail_layout.setSpacing(14)
+        resumo = CartaoDashboard("Visão geral", subtitulo="agora")
+        resumo.setObjectName("automationSummaryCard")
+        self.resumo_valores: dict[str, QLabel] = {}
+        for chave, rotulo in (
+            ("devices", "⌂  Dispositivos"),
+            ("observed", "✓  Confirmados"),
+            ("routines", "ϟ  Rotinas ativas"),
+        ):
+            linha = QFrame()
+            linha.setObjectName("automationSummaryMetric")
+            linha_layout = QHBoxLayout(linha)
+            linha_layout.setContentsMargins(10, 8, 10, 8)
+            nome = QLabel(rotulo)
+            nome.setObjectName("automationSummaryLabel")
+            valor = QLabel("—")
+            valor.setObjectName("automationSummaryValue")
+            linha_layout.addWidget(nome)
+            linha_layout.addStretch()
+            linha_layout.addWidget(valor)
+            self.resumo_valores[chave] = valor
+            resumo.layout_principal.addWidget(linha)
+        resumo.layout_principal.addWidget(self.iot_atualizacao)
+
+        jogo = CartaoDashboard("Contexto de jogo", subtitulo="automático")
+        jogo.setObjectName("automationContextCard")
         self.jogo_estado = QLabel("Não observado")
-        self.jogo_estado.setObjectName("dashboardMetricValue")
+        self.jogo_estado.setObjectName("automationContextState")
         self.jogo_detalhe = QLabel(
             "A detecção é automática; não existe um interruptor manual confiável nesta versão."
         )
-        self.jogo_detalhe.setObjectName("dashboardEmpty")
+        self.jogo_detalhe.setObjectName("automationContextHint")
         self.jogo_detalhe.setWordWrap(True)
         jogo.layout_principal.addWidget(self.jogo_estado)
         jogo.layout_principal.addWidget(self.jogo_detalhe)
-        layout.addSpacing(8)
-        layout.addWidget(self.cartao_rotinas)
-        layout.addWidget(jogo)
-        layout.addStretch()
+
+        seguranca = CartaoDashboard("Execução soberana", subtitulo="segurança")
+        seguranca.setObjectName("automationSafetyCard")
+        fluxo = QLabel("PAINEL  →  MENTE  →  EXECUTOR  →  CONFIRMAÇÃO")
+        fluxo.setObjectName("automationSafetyFlow")
+        detalhe_seguranca = QLabel(
+            "A interface solicita. O executor confirma no dispositivo antes de alterar o estado visual."
+        )
+        detalhe_seguranca.setObjectName("automationSafetyHint")
+        detalhe_seguranca.setWordWrap(True)
+        seguranca.layout_principal.addWidget(fluxo)
+        seguranca.layout_principal.addWidget(detalhe_seguranca)
+
+        rail_layout.addWidget(resumo)
+        rail_layout.addWidget(jogo)
+        rail_layout.addWidget(seguranca)
+        rail_layout.addStretch()
+        self.corpo.addWidget(principal, 1)
+        self.corpo.addWidget(self.rail)
+        layout.addLayout(self.corpo)
+        self.rolagem.setWidget(conteudo)
+        raiz.addWidget(self.rolagem)
+
+    def _encaminhar_iot(self, acao: str, texto: str, payload: dict) -> None:
+        self._iot_pendente_nome = str(payload.get("device") or "")
+        self.acao_dados_solicitada.emit(acao, texto, dict(payload))
 
     def _cancelar_rotina(self, indice: int) -> None:
         if not (0 <= indice < len(self._rotinas)):
             return
         nome = str(self._rotinas[indice].get("name") or "").strip()
         if nome:
-            self.acao_solicitada.emit(
-                "routine_cancel", f"cancela o agendamento {nome}",
+            self.acao_dados_solicitada.emit(
+                "routine_cancel", f"cancela o agendamento {nome}", {"name": nome},
             )
 
     def aplicar_dashboard(self, dashboard: dict) -> None:
+        iot = dashboard.get("iot")
+        iot_frescor = (
+            str(iot.get("freshness") or "unavailable")
+            if isinstance(iot, dict) else "unavailable"
+        )
+        dispositivos = [
+            dict(item) for item in list(iot.get("devices") or ())[:12]
+            if isinstance(item, dict)
+        ] if isinstance(iot, dict) and iot_frescor != "unavailable" else []
+        self._iot_controles = bool(
+            isinstance(iot, dict) and iot.get("controls_available") is True
+            and iot_frescor == "fresh"
+        )
+        modo = str(iot.get("mode") or "unknown") if isinstance(iot, dict) else "unknown"
+        modo_rotulo = {"simulado": "Simulador", "tuya": "Tuya"}.get(
+            modo, "Provedor não observado",
+        )
+        confirmados = sum(
+            item.get("state_confirmed") is True for item in dispositivos
+        )
+        if dispositivos and confirmados == len(dispositivos) and iot_frescor == "fresh":
+            selo_estado = "confirmed"
+            selo_texto = "Estado confirmado  ✓"
+        elif confirmados:
+            selo_estado = "partial"
+            selo_texto = "Estado parcial"
+        else:
+            selo_estado = "unavailable"
+            selo_texto = "Estado aguardando"
+        self.iot_modo.setText(selo_texto)
+        self.iot_modo.setToolTip(f"Provedor IoT: {modo_rotulo}")
+        definir_propriedades_visuais(
+            self.iot_modo,
+            iotMode=modo,
+            state=selo_estado,
+        )
+        self.iot_atualizacao.setText(
+            "Catálogo atualizado agora" if iot_frescor == "fresh"
+            else "Dados antigos" if iot_frescor == "stale"
+            else "Sem retrato confirmado"
+        )
+        if iot_frescor == "unavailable":
+            self.iot_estado.setText("Catálogo IoT indisponível")
+        elif not dispositivos:
+            self.iot_estado.setText("Nenhum dispositivo no catálogo seguro")
+        else:
+            quantidade = len(dispositivos)
+            substantivo = "dispositivo" if quantidade == 1 else "dispositivos"
+            prefixo = (
+                "Dados antigos · " if iot_frescor == "stale" else ""
+            )
+            if confirmados:
+                detalhe_iot = f"{confirmados} com estado confirmado"
+            else:
+                detalhe_iot = "estado físico ainda não consultado"
+            self.iot_estado.setText(
+                f"{prefixo}{quantidade} {substantivo} no catálogo seguro · {detalhe_iot}"
+            )
+        for indice, cartao in enumerate(self.iot_dispositivos):
+            if indice < len(dispositivos):
+                cartao.aplicar(
+                    dispositivos[indice], conectada=self._conectada,
+                    controles=self._iot_controles,
+                )
+            else:
+                cartao.hide()
         rotinas = dashboard.get("routines")
         frescor = str(rotinas.get("freshness") or "unavailable") if isinstance(rotinas, dict) else "unavailable"
         self._rotinas = [
@@ -2425,7 +2942,7 @@ class PaginaAutomacao(QWidget):
             if isinstance(item, dict)
         ] if isinstance(rotinas, dict) and frescor != "unavailable" else []
         self.rotinas_estado.setText(
-            "Nenhuma rotina ou agendamento ativo."
+            "＋  Nenhuma rotina ativa\n    Crie automações e horários para sua casa."
             if not self._rotinas and frescor != "unavailable"
             else "Rotinas indisponíveis."
             if frescor == "unavailable"
@@ -2446,6 +2963,11 @@ class PaginaAutomacao(QWidget):
                 self._conectada and item.get("can_disable") is True
             )
             botao.show()
+        self.resumo_valores["devices"].setText(str(len(dispositivos)))
+        self.resumo_valores["observed"].setText(str(sum(
+            item.get("state_confirmed") is True for item in dispositivos
+        )))
+        self.resumo_valores["routines"].setText(str(len(self._rotinas)))
         contexto = dashboard.get("context")
         if not isinstance(contexto, dict) or contexto.get("freshness") == "unavailable":
             self.jogo_estado.setText("Indisponível")
@@ -2458,6 +2980,12 @@ class PaginaAutomacao(QWidget):
 
     def definir_conectada(self, conectada: bool) -> None:
         self._conectada = bool(conectada)
+        for cartao in self.iot_dispositivos:
+            if not cartao.isHidden():
+                cartao.aplicar(
+                    cartao._dispositivo, conectada=self._conectada,
+                    controles=self._iot_controles,
+                )
         for indice, botao in enumerate(self.rotina_botoes):
             if indice < len(self._rotinas):
                 botao.setEnabled(
@@ -2465,6 +2993,14 @@ class PaginaAutomacao(QWidget):
                 )
 
     def definir_estado_acao(self, acao_id: str, estado: str, resumo: str = "") -> None:
+        if acao_id in {"iot_power", "iot_status", "iot_brightness"}:
+            for cartao in self.iot_dispositivos:
+                if str(cartao._dispositivo.get("name") or "") == self._iot_pendente_nome:
+                    cartao.definir_estado_acao(estado, resumo)
+                    break
+            if estado in {"confirmed", "partial", "failed", "awaiting_confirmation"}:
+                self._iot_pendente_nome = ""
+            return
         if acao_id != "routine_cancel":
             return
         pendente = estado in {"sending", "received", "executing"}
@@ -2476,10 +3012,25 @@ class PaginaAutomacao(QWidget):
 
     def invalidar(self) -> None:
         self._rotinas = []
+        self.iot_estado.setText("Aguardando catálogo seguro de dispositivos")
         self.rotinas_estado.setText("Aguardando a agenda")
         self.jogo_estado.setText("Indisponível")
+        for cartao in self.iot_dispositivos:
+            cartao.hide()
         for botao in self.rotina_botoes:
             botao.hide()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 - contrato Qt
+        super().resizeEvent(event)
+        compacto = self.width() < 1180
+        self.corpo.setDirection(
+            QBoxLayout.TopToBottom if compacto else QBoxLayout.LeftToRight
+        )
+        self.rail.setMinimumWidth(0 if compacto else 278)
+        self.rail.setMaximumWidth(16_777_215 if compacto else 310)
+        colunas = 1 if self.width() < 820 else 2
+        for indice, cartao in enumerate(self.iot_dispositivos):
+            self.iot_grade.addWidget(cartao, indice // colunas, indice % colunas)
 
 
 class PaginaMemoria(QWidget):
@@ -3999,10 +4550,7 @@ class PaginaSistema(QWidget):
             self.laylay_status.setText(
                 "Operação parcial"
             )
-            self.laylay_status.setProperty(
-                "state",
-                "partial",
-            )
+            estado_visual = "partial"
             self.laylay_pulso.setText(
                 "✦ alguns módulos não estão "
                 "confirmados agora"
@@ -4011,10 +4559,7 @@ class PaginaSistema(QWidget):
             self.laylay_status.setText(
                 "Operacional · dados antigos"
             )
-            self.laylay_status.setProperty(
-                "state",
-                "partial",
-            )
+            estado_visual = "partial"
             self.laylay_pulso.setText(
                 "✦ módulos ativos, aguardando "
                 "telemetria mais recente"
@@ -4023,20 +4568,15 @@ class PaginaSistema(QWidget):
             self.laylay_status.setText(
                 "Operacional"
             )
-            self.laylay_status.setProperty(
-                "state",
-                "ok",
-            )
+            estado_visual = "ok"
             self.laylay_pulso.setText(
                 "✦ mente, memória e voz "
                 "observadas"
             )
 
-        self.laylay_status.style().unpolish(
-            self.laylay_status
-        )
-        self.laylay_status.style().polish(
-            self.laylay_status
+        definir_propriedades_visuais(
+            self.laylay_status,
+            state=estado_visual,
         )
 
     def definir_estado_audio(
@@ -4119,24 +4659,16 @@ class PaginaSistema(QWidget):
                 if len(alertas) == 1
                 else f"{len(alertas)} avisos"
             )
-            self.alerta_status.setProperty(
-                "state",
-                "warning",
-            )
+            estado_alerta = "warning"
         else:
             self.alerta_status.setText(
                 "Nenhum alerta observado"
             )
-            self.alerta_status.setProperty(
-                "state",
-                "ok",
-            )
+            estado_alerta = "ok"
 
-        self.alerta_status.style().unpolish(
-            self.alerta_status
-        )
-        self.alerta_status.style().polish(
-            self.alerta_status
+        definir_propriedades_visuais(
+            self.alerta_status,
+            state=estado_alerta,
         )
 
         for indice, label in enumerate(
@@ -4146,17 +4678,8 @@ class PaginaSistema(QWidget):
                 label.setText(
                     alertas[indice]
                 )
-                label.setProperty(
-                    "kind",
-                    "warning",
-                )
+                definir_propriedades_visuais(label, kind="warning")
                 label.show()
-                label.style().unpolish(
-                    label
-                )
-                label.style().polish(
-                    label
-                )
             else:
                 label.hide()
 
@@ -4448,15 +4971,9 @@ class PaginaSistema(QWidget):
         self.audio_status.setText(
             mic_rotulo
         )
-        self.audio_status.setProperty(
-            "state",
-            audio_visual,
-        )
-        self.audio_status.style().unpolish(
-            self.audio_status
-        )
-        self.audio_status.style().polish(
-            self.audio_status
+        definir_propriedades_visuais(
+            self.audio_status,
+            state=audio_visual,
         )
 
         provedor = str(
@@ -4522,15 +5039,9 @@ class PaginaSistema(QWidget):
         self.modelo_status.setText(
             rotulo_llm
         )
-        self.modelo_status.setProperty(
-            "state",
-            estado_visual,
-        )
-        self.modelo_status.style().unpolish(
-            self.modelo_status
-        )
-        self.modelo_status.style().polish(
-            self.modelo_status
+        definir_propriedades_visuais(
+            self.modelo_status,
+            state=estado_visual,
         )
 
         # A telemetria atual não expõe desempenho interno da LLM. Manter os
@@ -4547,14 +5058,13 @@ class PaginaSistema(QWidget):
             label = self.modulos_valores[chave_modulo]["state"]
             estado = str(item.get("state") or "unavailable")
             label.setText(str(item.get("label") or nomes_estado.get(estado, "—")))
-            label.setProperty("state", estado)
-            label.style().unpolish(label)
-            label.style().polish(label)
+            definir_propriedades_visuais(label, state=estado)
         telemetria = self.modulos_valores["system"]["state"]
         telemetria.setText("Parcial" if ausentes else "Ativa")
-        telemetria.setProperty("state", "degraded" if ausentes else "online")
-        telemetria.style().unpolish(telemetria)
-        telemetria.style().polish(telemetria)
+        definir_propriedades_visuais(
+            telemetria,
+            state="degraded" if ausentes else "online",
+        )
 
         # Eventos são derivados apenas da lista pública já sanitizada.
         eventos = [

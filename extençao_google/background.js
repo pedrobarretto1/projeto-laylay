@@ -7,6 +7,9 @@ const pendingPlayerEvents = new Map();
 let playerDiscoveryRunning = false;
 let playerDiscoveryQueued = false;
 let playerDiscoveryTimer = null;
+let canonicalMusicTabId = null;
+let canonicalMusicVideoId = "";
+let canonicalMusicPlaying = false;
 const MEDIA_HISTORY_STORAGE_KEY = "laylayConfirmedMediaNavigationV1";
 const MEDIA_HISTORY_TTL_MS = 30 * 60 * 1000;
 const MEDIA_HISTORY_MAX_ITEMS = 12;
@@ -167,6 +170,25 @@ function sendWs(message) {
     return true;
   } catch (_) {
     return false;
+  }
+}
+
+function updateCanonicalMusicOwner(tabId, videoId, playing) {
+  const nextTabId = Number.isInteger(tabId) ? tabId : null;
+  const nextVideoId = String(videoId || "").trim();
+  const changed = (
+    nextTabId !== canonicalMusicTabId || nextVideoId !== canonicalMusicVideoId
+  );
+  canonicalMusicTabId = nextTabId;
+  canonicalMusicVideoId = nextVideoId;
+  canonicalMusicPlaying = playing === true;
+  if (changed && canonicalMusicTabId != null && canonicalMusicVideoId) {
+    chrome.runtime.sendMessage({
+      target: "offscreen",
+      type: "UPDATE_MUSIC_METER_OWNER",
+      tabId: canonicalMusicTabId,
+      videoId: canonicalMusicVideoId,
+    }).catch(() => {});
   }
 }
 
@@ -479,6 +501,7 @@ async function discoverExistingYouTubePlayback() {
       probe.ok === true || probe.playing === true || probe.paused === true
     );
     if (!tab || !playerObserved) {
+      updateCanonicalMusicOwner(null, "", false);
       return sendWs({
         type: "PLAYER_EVENT",
         event: "player_unavailable",
@@ -489,6 +512,11 @@ async function discoverExistingYouTubePlayback() {
     }
     const dataResult = await readYouTubeTabData(tab);
     const dados = dataResult.response || {};
+    const selectedVideoId = String(
+      probe.videoId || dados.videoId ||
+      youtubeVideoId(dados.url || probe.url || tab.url || "") || ""
+    );
+    updateCanonicalMusicOwner(tab.id, selectedVideoId, probe.playing === true);
     return sendWs({
       type: "PLAYER_EVENT",
       event: "player_state",
@@ -500,10 +528,7 @@ async function discoverExistingYouTubePlayback() {
       ),
       authoritative: true,
       url: String(dados.url || probe.url || tab.url || ""),
-      videoId: String(
-        probe.videoId || dados.videoId ||
-        youtubeVideoId(dados.url || probe.url || tab.url || "") || ""
-      ),
+      videoId: selectedVideoId,
       title: String(dados.title || probe.title || tab.title || "")
         .replace(/ - YouTube$/i, "").trim(),
       channel: String(dados.canal || probe.channel || ""),
@@ -1592,7 +1617,47 @@ setInterval(() => {
   }
 }, 5000);
 
-chrome.runtime.onMessage.addListener((request, sender) => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request?.target === "offscreen") return;
+  if (request?.type === "GET_CANONICAL_MUSIC_TAB") {
+    findBestYouTubeCandidate(false).then((escolhido) => {
+      const tab = escolhido?.tab || null;
+      const probe = escolhido?.response || {};
+      const valido = Boolean(
+        tab && (probe.playing === true || probe.audible === true || tab.audible === true)
+      );
+      sendResponse({
+        tabId: valido ? tab.id : null,
+        videoId: valido ? String(
+          probe.videoId || youtubeVideoId(probe.url || tab.url || "") || ""
+        ) : "",
+        title: valido ? String(probe.title || tab.title || "").replace(/ - YouTube$/i, "") : "",
+      });
+    }).catch(() => sendResponse({ tabId: null, videoId: "", title: "" }));
+    return true;
+  }
+  if (request?.type === "MUSIC_METER_SAMPLE") {
+    if (canonicalMusicTabId == null) schedulePlayerDiscovery(0);
+    if (!canonicalMusicPlaying || request.tabId !== canonicalMusicTabId) return;
+    if (String(request.videoId || "") !== canonicalMusicVideoId) return;
+    const levels = Array.isArray(request.levels)
+      ? request.levels.slice(0, 3).map((value) => Math.max(0, Math.min(1, Number(value) || 0)))
+      : [];
+    if (levels.length !== 3) return;
+    sendWs({
+      type: "MUSIC_METER",
+      tabId: canonicalMusicTabId,
+      videoId: canonicalMusicVideoId,
+      levels,
+      energy: Math.max(0, Math.min(1, Number(request.energy) || 0)),
+      observedAt: Number(request.observedAt || Date.now()),
+    });
+    return;
+  }
+  if (request?.type === "MUSIC_METER_STOPPED") {
+    chrome.storage.session.set({ laylayMusicMeter: { active: false } }).catch(() => {});
+    return;
+  }
   if (request && typeof request === "object" && request.action === "close_me") {
     const tabId = sender?.tab?.id ?? null;
     if (tabId != null) {

@@ -305,6 +305,7 @@ def test_m2_dashboard_publica_catalogo_cacheado_e_fila_observada() -> None:
     )
 
     musica = runtime._musica(1_000.0)
+    assert musica["video_id"] == "abcdefghijk"
     assert musica["queue"][0]["title"] == "Próxima"
     assert musica["queue_freshness"] == "fresh"
     assert musica["catalog"] == [{
@@ -570,6 +571,20 @@ def _dashboard_ui() -> dict:
             "game_active": True, "game_name": "Minecraft",
             "freshness": "fresh", "observed_at": 1_000,
         },
+        "iot": {
+            "configured": True, "read_only": False,
+            "controls_available": True, "mode": "simulado",
+            "provider_available": True, "freshness": "fresh",
+            "observed_at": 1_000,
+            "devices": [{
+                "name": "lampada_quarto",
+                "display_name": "Lâmpada do quarto",
+                "type": "lampada_rgb", "room": "quarto",
+                "capabilities": ["ligar", "desligar", "status"],
+                "state": "off", "state_confirmed": True,
+                "state_observed_at": 995,
+            }],
+        },
         "music": {
             "title": "Peaceful Mind", "channel": "Lo-Fi Chill",
             "state": "playing", "position_seconds": 84,
@@ -662,4 +677,29 @@ def test_ui_p4_rotina_permanece_ativa_ate_snapshot_confirmar(monkeypatch) -> Non
     assert enviado["action"] == "routine_cancel"
     assert enviado["text"] == "cancela o agendamento Dormir"
     assert janela.pagina_automacao._rotinas[0]["active"] is True
+    janela.close()
+
+
+def test_ui_automacao_envia_iot_tipado_sem_estado_otimista(monkeypatch) -> None:
+    app, worker, janela = _criar_janela(monkeypatch)
+    janela._atualizar_dashboard(_dashboard_ui())
+    card = janela.pagina_automacao.iot_dispositivos[0]
+    assert card.estado_chave == "off"
+    assert card.botao_energia.isEnabled()
+
+    card.botao_energia.click()
+    app.processEvents()
+
+    enviado = next(
+        item for item in reversed(worker.enviadas)
+        if item.get("type") == "input_submit"
+    )
+    assert enviado == {
+        "type": "input_submit", "id": enviado["id"],
+        "text": "ligar Lâmpada do quarto", "kind": "panel_action",
+        "action": "iot_power",
+        "payload": {"device": "lampada_quarto", "state": "on"},
+    }
+    assert card.estado_chave == "off"
+    assert card.estado.text() == "DESLIGADA"
     janela.close()

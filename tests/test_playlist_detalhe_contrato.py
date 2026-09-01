@@ -75,6 +75,61 @@ def test_toca_faixa_exata_e_revisao_antiga_bloqueia_mutacao(tmp_path: Path) -> N
     assert bloqueado == {"ok": False, "status": "revision_conflict"}
 
 
+def test_selecionar_faixa_da_fila_interna_valida_posicao_e_identidade(
+    tmp_path: Path,
+) -> None:
+    tocadas: list[str] = []
+    runtime = _runtime(
+        tmp_path,
+        {"Rock": [
+            _item("AAAAAAAAAAA", "Atual"),
+            _item("BBBBBBBBBBB", "Próxima"),
+            _item("CCCCCCCCCCC", "Escolhida"),
+        ]},
+        youtube_play=lambda url, **_kw: tocadas.append(url) or {
+            "ok": True, "confirmado": True,
+        },
+    )
+    runtime.load()
+    runtime.playlist_state.update(name="Rock", index=0)
+
+    stale = runtime.selecionar_faixa_fila("CCCCCCCCCCC", 0)
+    resultado = runtime.selecionar_faixa_fila("CCCCCCCCCCC", 1)
+
+    assert stale == {"ok": False, "status": "queue_stale"}
+    assert resultado["ok"] is True
+    assert resultado["confirmed"] is True
+    assert runtime.playlist_state["index"] == 2
+    assert tocadas == ["https://www.youtube.com/watch?v=CCCCCCCCCCC"]
+
+
+def test_selecionar_faixa_da_fila_preserva_ordem_aleatoria(tmp_path: Path) -> None:
+    tocadas: list[str] = []
+    itens = [
+        _item("AAAAAAAAAAA", "Atual"),
+        _item("BBBBBBBBBBB", "Próxima"),
+        _item("CCCCCCCCCCC", "Escolhida"),
+    ]
+    runtime = _runtime(
+        tmp_path, {"Rock": itens},
+        youtube_play=lambda url, **_kw: tocadas.append(url) or {
+            "ok": True, "confirmado": True,
+        },
+    )
+    runtime.load()
+    runtime.playlist_state.update(
+        name="Rock", index=0, shuffle=True,
+        shuffle_queue=itens, shuffle_index=0,
+    )
+
+    resultado = runtime.selecionar_faixa_fila("CCCCCCCCCCC", 1)
+
+    assert resultado["ok"] is True
+    assert runtime.playlist_state["shuffle_index"] == 2
+    assert runtime.playlist_state["shuffle"] is True
+    assert tocadas == ["https://www.youtube.com/watch?v=CCCCCCCCCCC"]
+
+
 def test_copiar_e_idempotente_e_mover_preserva_origem_se_persistencia_falha(
     tmp_path: Path,
 ) -> None:

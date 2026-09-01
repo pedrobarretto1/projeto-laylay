@@ -1131,6 +1131,116 @@ class VozRuntime:
             str(item.get("tipo") or "").strip().casefold() == "presenca_jogo"
             for item in itens if isinstance(item, dict)
         )
+
+        # P1-H: admissão em T0 não concede licença de entrega em T2.
+        # Revalidamos cada item sem reaplicar deduplicação/cooldown.
+        if callable(self.avaliar_proatividade_cb):
+            liberados = []
+            adiados = []
+            descartados = []
+            atrasos_adiamento = []
+
+            for item in itens:
+                if not isinstance(item, dict):
+                    liberados.append(item)
+                    continue
+
+                kwargs_revalidacao = {
+                    "tipo": str(item.get("tipo") or "").strip().casefold(),
+                    "texto": str(item.get("texto") or "").strip(),
+                    "turno_ativo": bool(turno_ativo),
+                    "mesclar_turno": bool(item.get("mesclar_turno")),
+                    "inicio_forcado": False,
+                    "ultima_fala_normal_ts": float(
+                        self._ultima_fala_normal_ts or 0.0
+                    ),
+                }
+
+                try:
+                    try:
+                        decisao_entrega = self.avaliar_proatividade_cb(
+                            **kwargs_revalidacao,
+                            revalidacao_entrega=True,
+                        ) or {}
+                    except TypeError:
+                        # Compatibilidade com adaptadores antigos.
+                        decisao_entrega = self.avaliar_proatividade_cb(
+                            **kwargs_revalidacao
+                        ) or {}
+                except Exception as erro:
+                    self._relatar_falha(
+                        "falha_revalidacao_proativa",
+                        erro,
+                        impacto="servico",
+                        fallback="fala_proativa_adiada",
+                        fase="revalidar_fala_proativa",
+                    )
+                    adiados.append(item)
+                    atrasos_adiamento.append(2.0)
+                    continue
+
+                acao_entrega = str(
+                    decisao_entrega.get("acao") or ""
+                ).strip().casefold()
+
+                if acao_entrega == "descartar":
+                    descartados.append(item)
+                    continue
+
+                if acao_entrega == "adiar":
+                    adiados.append(item)
+                    try:
+                        atraso = float(
+                            decisao_entrega.get("adiar_s") or 2.0
+                        )
+                    except (TypeError, ValueError):
+                        atraso = 2.0
+                    atrasos_adiamento.append(max(0.5, atraso))
+                    continue
+
+                liberados.append(item)
+
+            if descartados:
+                self._concluir_itens_proativos(
+                    descartados,
+                    False,
+                    "revalidacao_descartou",
+                    self.log,
+                )
+
+            if adiados:
+                atraso_revalidacao = (
+                    min(atrasos_adiamento)
+                    if atrasos_adiamento
+                    else 2.0
+                )
+                self._reagendar_itens_proativos(
+                    adiados,
+                    motivo="revalidacao_entrega",
+                    atraso_s=atraso_revalidacao,
+                )
+
+            itens = liberados
+            if not itens:
+                return
+
+            inicio_forcado = any(
+                bool(item.get("forcar_inicio"))
+                for item in itens
+                if isinstance(item, dict)
+            )
+            entrega_persistente = any(
+                bool(item.get("preservar_ate_entrega"))
+                for item in itens
+                if isinstance(item, dict)
+            )
+            presenca_jogo_validada = any(
+                str(item.get("tipo") or "").strip().casefold()
+                == "presenca_jogo"
+                for item in itens
+                if isinstance(item, dict)
+            )
+
         # Um briefing que perdeu a corrida para a primeira entrada do usuario
         # deixa de ser uma abertura, mas continua sendo uma entrega pendente.
         # Ele nunca pode falar enquanto a resposta desse turno ainda esta sendo

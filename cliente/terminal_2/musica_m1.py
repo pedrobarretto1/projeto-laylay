@@ -36,7 +36,11 @@ from PySide6.QtWidgets import (
     QStackedWidget,
 )
 
-from cliente.terminal_2.acabamento import CapaMusicaGenerica, icone_terminal
+from cliente.terminal_2.acabamento import (
+    CapaMusicaGenerica,
+    definir_propriedades_visuais,
+    icone_terminal,
+)
 from cliente.terminal_2.playlist_detalhe import PlaylistDetalhe
 from cliente.terminal_2.sistema_compacto import CardSistemaCompacto
 
@@ -78,17 +82,34 @@ class OndaMusical(QWidget):
         self._timer = QTimer(self)
         self._timer.setInterval(90)
         self._timer.timeout.connect(self._avancar)
-        self._timer.start()
         self.setAccessibleName("Visual decorativo da reprodução musical")
 
     def definir_tocando(self, tocando: bool) -> None:
         self._tocando = bool(tocando)
+        self._sincronizar_timer()
         self.update()
+
+    def _sincronizar_timer(self) -> None:
+        deve_animar = (
+            self.isVisible() and self._tocando and not self._reduzir_movimento
+        )
+        if deve_animar and not self._timer.isActive():
+            self._timer.start()
+        elif not deve_animar and self._timer.isActive():
+            self._timer.stop()
 
     def _avancar(self) -> None:
         if self._tocando and not self._reduzir_movimento:
             self._fase = (self._fase + 0.22) % (math.pi * 2)
             self.update()
+
+    def showEvent(self, event) -> None:  # noqa: N802 - contrato Qt
+        super().showEvent(event)
+        self._sincronizar_timer()
+
+    def hideEvent(self, event) -> None:  # noqa: N802 - contrato Qt
+        self._timer.stop()
+        super().hideEvent(event)
 
     def paintEvent(self, _event) -> None:  # noqa: N802
         painter = QPainter(self)
@@ -342,12 +363,8 @@ class CartaoPlaylist(QFrame):
             else f"{quantidade} faixas"
         )
 
-        self.setProperty("activePlaylist", ativo)
-        self.titulo.setProperty("activePlaylist", ativo)
-
-        for widget in (self, self.titulo):
-            widget.style().unpolish(widget)
-            widget.style().polish(widget)
+        definir_propriedades_visuais(self, activePlaylist=ativo)
+        definir_propriedades_visuais(self.titulo, activePlaylist=ativo)
 
 
 class CartaoMusica(QFrame):
@@ -432,6 +449,15 @@ class VisualizadorLetra(QTextBrowser):
         super().clear()
 
 
+class SeletorAudioSemRoda(QComboBox):
+    """Impede que o scroll da página altere a saída de áudio por acidente."""
+
+    def wheelEvent(self, event) -> None:  # noqa: N802
+        # Ignorar permite que o QScrollArea ancestral receba a roda, enquanto
+        # o QComboBox fechado conserva o dispositivo escolhido.
+        event.ignore()
+
+
 def _estado_futuro(texto: str) -> QLabel:
     rotulo = QLabel(texto)
     rotulo.setObjectName("musicFutureState")
@@ -500,6 +526,7 @@ class PaginaMusicaM1(QWidget):
         self._audio_saida_pendente = False
         self._audio_ref_atual = ""
         self._audio_troca_disponivel = False
+        self._assinatura_saidas_audio: tuple[object, ...] | None = None
         self._ultimo_retrato_musica: dict = {}
         self._letra_retrato: dict = {}
         self._letra_expandida = False
@@ -529,7 +556,9 @@ class PaginaMusicaM1(QWidget):
         self.grade.setVerticalSpacing(14)
         self.rolagem.setWidget(self.corpo)
         self.pilhas.addWidget(self.rolagem)
-        self.detalhe_playlist = PlaylistDetalhe()
+        self.detalhe_playlist = PlaylistDetalhe(
+            reduzir_movimento=self._reduzir_movimento,
+        )
         self.detalhe_playlist.voltar_solicitado.connect(
             lambda: self.pilhas.setCurrentWidget(self.rolagem),
         )
@@ -559,7 +588,6 @@ class PaginaMusicaM1(QWidget):
         self._relogio = QTimer(self)
         self._relogio.setInterval(1000)
         self._relogio.timeout.connect(self._atualizar_relogio)
-        self._relogio.start()
 
         self._timer_volume_local = QTimer(self)
         self._timer_volume_local.setSingleShot(True)
@@ -1256,7 +1284,7 @@ class PaginaMusicaM1(QWidget):
             self.audio_dispositivo
         )
 
-        self.audio_lista = QComboBox()
+        self.audio_lista = SeletorAudioSemRoda()
         self.audio_lista.setObjectName("musicAudioDeviceList")
         self.audio_lista.setEnabled(False)
         self.audio_lista.setAccessibleName("Selecionar saída de áudio do Windows")
@@ -1990,19 +2018,19 @@ class PaginaMusicaM1(QWidget):
             item_id = str(item.get("item_id") or "").strip()
             linha["item_id"] = item_id
 
-            primeira = indice == 0
-
             numero = linha["number"]
             equalizador = linha["equalizer"]
 
             numero.setText(str(indice + 1))
-            numero.setVisible(not primeira)
+            numero.show()
 
-            equalizador.setVisible(primeira)
-            equalizador.definir_ativo(primeira)
+            # Esta seção contém somente as próximas faixas. O primeiro item
+            # não é a faixa atual e, portanto, nunca recebe estado de tocando.
+            equalizador.hide()
+            equalizador.definir_ativo(False)
 
-            if widget.property("queueTop") != primeira:
-                widget.setProperty("queueTop", primeira)
+            if widget.property("queueTop") is not False:
+                widget.setProperty("queueTop", False)
                 widget.style().unpolish(widget)
                 widget.style().polish(widget)
 
@@ -2042,7 +2070,7 @@ class PaginaMusicaM1(QWidget):
         item_id = str(linha.get("item_id") or "").strip()
         titulo = str(linha["title"].text() or "faixa").strip()
         if (
-            self._fila_fonte != "youtube"
+            self._fila_fonte not in {"youtube", "laylay_playlist"}
             or self._fila_frescor != "fresh"
             or not item_id
         ):
@@ -2050,7 +2078,11 @@ class PaginaMusicaM1(QWidget):
         self.acao_fila_solicitada.emit(
             "queue_play",
             f"toca {titulo} da fila",
-            {"item_id": item_id, "queue_index": indice},
+            {
+                "item_id": item_id,
+                "queue_index": indice,
+                "queue_source": self._fila_fonte,
+            },
         )
 
     def _alternar_catalogo(self) -> None:
@@ -2068,9 +2100,7 @@ class PaginaMusicaM1(QWidget):
             musica.get("catalog_play_available") is True,
         )
         self._playlist_ativa = str(musica.get("playlist") or "").strip()
-        self.detalhe_playlist.definir_catalogo([
-            str(item.get("name") or "").strip() for item in self._catalogo
-        ])
+        self.detalhe_playlist.definir_catalogo(self._catalogo)
         self._renderizar_catalogo()
 
     def _renderizar_catalogo(self) -> None:
@@ -2587,6 +2617,14 @@ class PaginaMusicaM1(QWidget):
         self._animacao_rolagem_letra = animacao
         animacao.start()
 
+    def aplicar_medidor_musica(self, medidor: dict) -> bool:
+        if (
+            not self.isVisible()
+            or self.pilhas.currentWidget() is not self.detalhe_playlist
+        ):
+            return False
+        return self.detalhe_playlist.aplicar_medidor_musica(medidor)
+
     def aplicar_dashboard(self, dashboard: dict) -> None:
         musica = dashboard.get("music")
         musica = musica if isinstance(musica, dict) else {}
@@ -2600,16 +2638,9 @@ class PaginaMusicaM1(QWidget):
         self._repeat_ativo = bool(musica.get("repeat_enabled") is True)
         self._shuffle_disponivel = bool(musica.get("shuffle_available") is True)
         volume_sistema = musica.get("volume_percent")
-        self.audicao_volume.setProperty(
-            "available",
-            volume_sistema is not None,
-        )
-
-        self.audicao_volume.style().unpolish(
-            self.audicao_volume
-        )
-        self.audicao_volume.style().polish(
-            self.audicao_volume
+        definir_propriedades_visuais(
+            self.audicao_volume,
+            available=volume_sistema is not None,
         )
         try:
             volume_sistema = max(0, min(100, round(float(volume_sistema))))
@@ -2628,14 +2659,9 @@ class PaginaMusicaM1(QWidget):
         self.volume_muted.setText(
             "player mudo" if musica.get("muted") is True else ""
         )
-        self.botoes["media_repeat"].setProperty(
-            "activeControl", self._repeat_ativo,
-        )
-        self.botoes["media_repeat"].style().unpolish(
+        definir_propriedades_visuais(
             self.botoes["media_repeat"],
-        )
-        self.botoes["media_repeat"].style().polish(
-            self.botoes["media_repeat"],
+            activeControl=self._repeat_ativo,
         )
         self.acoes_sessao["Repetição"].setText(
             "↻  Repetição ligada"
@@ -2671,11 +2697,14 @@ class PaginaMusicaM1(QWidget):
             )
 
         self.audio_selecionado.setText("✓" if audio_disponivel else "—")
-        self.audio_selecionado.setProperty("selected", audio_disponivel)
-        self.audio_icone_caixa.setProperty("available", audio_disponivel)
-        for widget in (self.audio_selecionado, self.audio_icone_caixa):
-            widget.style().unpolish(widget)
-            widget.style().polish(widget)
+        definir_propriedades_visuais(
+            self.audio_selecionado,
+            selected=audio_disponivel,
+        )
+        definir_propriedades_visuais(
+            self.audio_icone_caixa,
+            available=audio_disponivel,
+        )
 
         dispositivos = [
             item for item in list(audio.get("devices") or ())
@@ -2683,20 +2712,31 @@ class PaginaMusicaM1(QWidget):
         ]
         referencia_atual = str(audio.get("selected_ref") or "").strip().casefold()
         self._audio_ref_atual = referencia_atual
-        self.audio_lista.blockSignals(True)
-        self.audio_lista.clear()
-        indice_atual = -1
-        for indice, item in enumerate(dispositivos):
+        dispositivos_validos: list[tuple[str, str, bool]] = []
+        for item in dispositivos:
             referencia = str(item.get("ref") or "").strip().casefold()
             nome = str(item.get("name") or "").strip()
             if not nome or len(referencia) != 16:
                 continue
-            self.audio_lista.addItem(nome, referencia)
-            if referencia == referencia_atual or item.get("selected") is True:
-                indice_atual = self.audio_lista.count() - 1
-        if indice_atual >= 0:
-            self.audio_lista.setCurrentIndex(indice_atual)
-        self.audio_lista.blockSignals(False)
+            dispositivos_validos.append(
+                (referencia, nome, item.get("selected") is True)
+            )
+        assinatura_saidas: tuple[object, ...] = (
+            referencia_atual,
+            tuple(dispositivos_validos),
+        )
+        if assinatura_saidas != self._assinatura_saidas_audio:
+            self.audio_lista.blockSignals(True)
+            self.audio_lista.clear()
+            indice_atual = -1
+            for referencia, nome, selecionado in dispositivos_validos:
+                self.audio_lista.addItem(nome, referencia)
+                if referencia == referencia_atual or selecionado:
+                    indice_atual = self.audio_lista.count() - 1
+            if indice_atual >= 0:
+                self.audio_lista.setCurrentIndex(indice_atual)
+            self.audio_lista.blockSignals(False)
+            self._assinatura_saidas_audio = assinatura_saidas
         self._audio_troca_disponivel = bool(
             audio.get("switch_available") is True and self.audio_lista.count() > 0
         )
@@ -2709,17 +2749,10 @@ class PaginaMusicaM1(QWidget):
         )
         self.audio_gerenciar.setText(f"Trocar dispositivo  ·  {rotulo_saidas}  ›")
 
-        if self.audio_dispositivo.property("available") != audio_disponivel:
-            self.audio_dispositivo.setProperty(
-                "available",
-                audio_disponivel,
-            )
-            self.audio_dispositivo.style().unpolish(
-                self.audio_dispositivo
-            )
-            self.audio_dispositivo.style().polish(
-                self.audio_dispositivo
-            )
+        definir_propriedades_visuais(
+            self.audio_dispositivo,
+            available=audio_disponivel,
+        )
         self.audicao_estado.setText(
             (
                 f"Volume mestre observado em {volume_sistema}%. "
@@ -2753,22 +2786,14 @@ class PaginaMusicaM1(QWidget):
             else "—"
         )
 
-        self.luzes_dispositivo.setProperty(
-            "configured",
-            configurada,
-        )
-
-        self.luzes_status.setProperty(
-            "configured",
-            configurada,
-        )
-
-        for widget in (
+        definir_propriedades_visuais(
             self.luzes_dispositivo,
+            configured=configurada,
+        )
+        definir_propriedades_visuais(
             self.luzes_status,
-        ):
-            widget.style().unpolish(widget)
-            widget.style().polish(widget)
+            configured=configurada,
+        )
         if musica.get("freshness") == "unavailable":
             self.invalidar("Player não observado")
             self._aplicar_lateral(dashboard)
@@ -2936,7 +2961,7 @@ class PaginaMusicaM1(QWidget):
             botao.setEnabled(habilitar_playlist and indice < len(self._catalogo))
         fila_habilitada = bool(
             self._conectada and self._controles_disponiveis
-            and self._fila_fonte == "youtube"
+            and self._fila_fonte in {"youtube", "laylay_playlist"}
             and self._fila_frescor == "fresh"
             and not self._fila_pendente
         )
@@ -3009,6 +3034,7 @@ class PaginaMusicaM1(QWidget):
         self._audio_saida_pendente = False
         self._audio_ref_atual = ""
         self._audio_troca_disponivel = False
+        self._assinatura_saidas_audio = None
         self.audio_lista.clear()
         self.audio_lista.setEnabled(False)
         self.audio_gerenciar.setEnabled(False)
@@ -3053,6 +3079,16 @@ class PaginaMusicaM1(QWidget):
 
         self.contexto_bases.hide()
         self._atualizar_botoes()
+
+    def showEvent(self, event) -> None:  # noqa: N802 - contrato Qt
+        super().showEvent(event)
+        self._atualizar_relogio()
+        if not self._relogio.isActive():
+            self._relogio.start()
+
+    def hideEvent(self, event) -> None:  # noqa: N802 - contrato Qt
+        self._relogio.stop()
+        super().hideEvent(event)
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)

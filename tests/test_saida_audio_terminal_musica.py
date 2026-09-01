@@ -181,3 +181,31 @@ def test_bloco_musica_lista_dispositivos_e_emite_token_ao_selecionar(monkeypatch
     )]
     pagina.close()
     app.processEvents()
+
+
+def test_scroll_sobre_seletor_nao_troca_saida_de_audio(monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+    from cliente.terminal_2.musica_m1 import PaginaMusicaM1
+
+    class EventoRoda:
+        ignorado = False
+
+        def ignore(self) -> None:
+            self.ignorado = True
+
+    app = QApplication.instance() or QApplication([])
+    pagina = PaginaMusicaM1()
+    pagina.audio_lista.addItem("Alto-falantes", "1111111111111111")
+    pagina.audio_lista.addItem("Fones", "2222222222222222")
+    pagina.audio_lista.setCurrentIndex(0)
+    evento = EventoRoda()
+
+    pagina.audio_lista.wheelEvent(evento)
+
+    assert evento.ignorado is True
+    assert pagina.audio_lista.currentIndex() == 0
+    assert pagina.audio_lista.currentText() == "Alto-falantes"
+    pagina.close()
+    app.processEvents()

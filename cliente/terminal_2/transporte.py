@@ -158,7 +158,7 @@ class TransporteDesktopCliente:
                         if not bloco:
                             raise ConnectionError("a ponte encerrou a conexão")
                         buffer += bloco
-                        if len(buffer) > 65_536:
+                        if len(buffer) > 262_144:
                             raise ConnectionError("mensagem grande demais")
                         while b"\n" in buffer:
                             linha, buffer = buffer.split(b"\n", 1)

@@ -65,7 +65,7 @@ def test_entrada_a1_e_curta_em_cascata_e_libera_os_componentes(monkeypatch) -> N
     janela.close()
 
 
-def test_troca_de_aba_desliza_pagina_e_indicador_sem_deixar_efeito(
+def test_troca_de_aba_anima_so_indicador_sem_rasterizar_pagina(
     monkeypatch,
 ) -> None:
     app, janela = _janela(monkeypatch)
@@ -75,9 +75,9 @@ def test_troca_de_aba_desliza_pagina_e_indicador_sem_deixar_efeito(
     janela.selecionar_pagina("musica")
     app.processEvents()
 
-    assert janela._animacao_pagina_grupo is not None
+    assert janela._animacao_pagina_grupo is None
     assert janela._animacao_indicador_nav is not None
-    assert janela.paginas.currentWidget().graphicsEffect() is not None
+    assert janela.paginas.currentWidget().graphicsEffect() is None
 
     _processar_por(app, 0.35)
 

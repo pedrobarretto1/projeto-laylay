@@ -340,6 +340,9 @@ from mente_laylay.percepcao.ouvido_whisper import (
     criar_ouvido_whisper_runtime as _criar_ouvido_whisper_runtime_mente,
     limpar_diccao_e_ruido as _limpar_diccao_e_ruido_mente,
 )
+from mente_laylay.integracao.prioridade_interacao_usuario import (
+    criar_prioridade_interacao_usuario_runtime as _criar_prioridade_interacao_usuario_runtime,
+)
 from mente_laylay.percepcao.saidas_audio_windows import GerenciadorSaidasAudioWindows
 from mente_laylay.percepcao.alvos_web import (
     contexto_aponta_site_web as _contexto_aponta_site_web_mente,
@@ -682,8 +685,8 @@ print = _print_filtrado
 _builtins.print = _print_filtrado
 
 print("\n╔══════════════════════════════════════╗")
-print("║  ◕‿◕ Laylay inicializando — modo essencial ║")
-print("╚══════════════════════════════════════╝")
+print("  ║  ◕‿◕ Laylay inicializando          ║")
+print("  ╚══════════════════════════════════════╝")
 print(
     "🧠 [BUILD:MENTE] continuidade=pendencia-canonica-v1 "
     f"arquivo={os.path.abspath(__file__)}"
@@ -1564,6 +1567,14 @@ armazenar_contexto_pagina = _contexto_paginas.armazenar
 get_dicionario_contexto = _contexto_paginas.texto_contexto
 
 
+_ponte_medidor_musical = {"publicar": None}
+
+
+def _publicar_medidor_musical_terminal(medidor):
+    publicar = _ponte_medidor_musical.get("publicar")
+    return bool(publicar(medidor)) if callable(publicar) else False
+
+
 _composicao_chrome_ws_runtime = _criar_composicao_chrome_ws_laylay_runtime(
     servicos_iniciais={},
     monitor_saude=_saude_mente_runtime,
@@ -1577,6 +1588,7 @@ _composicao_chrome_ws_runtime = _criar_composicao_chrome_ws_laylay_runtime(
     ws_transport=_ws_transport_runtime,
     fechar_extensoes_anteriores=_ws_close_other_extensions,
     stop_event=_servicos_background_runtime.evento_parada,
+    music_meter_publisher=_publicar_medidor_musical_terminal,
 )
 _chrome_ws_contexto_runtime = _composicao_chrome_ws_runtime.contexto
 _chrome_ws_eventos_runtime = _composicao_chrome_ws_runtime.eventos
@@ -1641,11 +1653,16 @@ modo_jogo_ativo = lambda: bool(_modo_jogo_runtime.ativo)
 
 # A visão é conectada mais tarde, depois de captura, pesquisa e fala.
 _registro_visao_jogo_leitura_runtime = None
+# Owner efêmero e process-local da prioridade da interação do usuário.
+# A mesma instância atravessa percepção, entrada e presença.
+_prioridade_interacao_usuario_runtime = _criar_prioridade_interacao_usuario_runtime()
+
 _ponte_iniciativa_aplicacao_runtime = _criar_ponte_iniciativa_aplicacao_runtime(
     estado_mental_getter=lambda: _estado_compartilhado_runtime.mental,
     percepcao_getter=_percepcao_get,
     conversa_getter=_conversa_estado_get,
     modo_jogo=_modo_jogo_runtime,
+    prioridade_interacao_getter=_prioridade_interacao_usuario_runtime.ativa,
     visao_leitura_getter=lambda: _registro_visao_jogo_leitura_runtime,
     identificar_jogo=identificar_jogo,
     salvar_memoria=lambda: salvar_memoria(),
@@ -1798,6 +1815,9 @@ _registrar_fala_proativa_emitida = (
 
 _porteiro_proatividade_runtime = _criar_porteiro_proatividade_runtime_mente(
     contexto_getter=lambda: {
+        "interacao_usuario_ativa": bool(
+            _prioridade_interacao_usuario_runtime.ativa()
+        ),
         "modo_chat": bool(_conversa_estado_get("modo_chat", False)),
         "conversa_ativa": bool(_conversa_estado_get("conversa_ativa", False)),
         "funcao_comunicativa": str(
@@ -2334,6 +2354,7 @@ _feedback_pendente_runtime = _criar_feedback_pendente_runtime_mente(
         "registrar_feedback_aprendizado": (
             _adaptadores_aplicacao_runtime.registrar_feedback_contextual
         ),
+        "registrar_resultado_execucao": _registrar_resultado_execucao,
         "resolver_comando_natural": resolver_comando_natural,
         "executar_intencao": executar_intencao,
         "registrar_resultado_execucao": _registrar_resultado_execucao,
@@ -3144,6 +3165,7 @@ _coordenador_exec_runtime = _criar_coordenador_exec_runtime_mente(
     contexto_exec_getter=lambda: _contexto_exec_runtime,
     resposta_ia_getter=lambda: _resposta_ia_runtime,
     loop_getter=_ws_transport_runtime.obter_loop,
+    prioridade_interacao=_prioridade_interacao_usuario_runtime,
     log=print,
 )
 _executar_comando_conteudo = _coordenador_exec_runtime.executar
@@ -3201,6 +3223,7 @@ _reconhecedor_voz_pessoal = _ReconhecedorVozPessoal(
 
 _ouvido_whisper_runtime = _criar_ouvido_whisper_runtime_mente(
     processar_texto=_processar_entrada_voz,
+    prioridade_interacao=_prioridade_interacao_usuario_runtime,
     esta_falando=lambda: bool(_conversa_estado_get("is_speaking", False)),
     modo_chat_ativo=lambda: bool(_conversa_estado_get("modo_chat", False)),
     escuta_permitida=lambda: not bool(
@@ -3363,6 +3386,9 @@ _desktop_bridge_runtime = _criar_desktop_bridge_runtime(
     ),
     port=int(os.environ.get("LAYLAY_TERMINAL_2_PORTA", "0") or 0),
     log=print,
+)
+_ponte_medidor_musical["publicar"] = (
+    _desktop_bridge_runtime.publicar_medidor_musica
 )
 _otimizacoes_desempenho_refs["desktop_bridge"] = _desktop_bridge_runtime
 _publicacao_visual_antecipada_ativa = _flag_desempenho_ativa(

@@ -61,9 +61,15 @@ def _runtime(**trocas) -> DashboardTerminalRuntime:
         "audio_output_getter": lambda: {
             "name": "Alto-falantes Realtek", "source": "padrão do sistema",
         },
-        "iot_getter": lambda: {"dispositivos": [{
-            "tipo": "lampada_rgb", "capacidades": ["ajustar_cor"],
-        }]},
+        "iot_getter": lambda: {
+            "modo": "simulado", "provedor_disponivel": True,
+            "dispositivos": [{
+                "nome": "lampada_quarto",
+                "nome_amigavel": "Lâmpada do quarto",
+                "tipo": "lampada_rgb", "ambiente": "quarto",
+                "capacidades": ["ajustar_cor"],
+            }],
+        },
         "psutil_mod": _Psutil,
         "clock": lambda: 1_000.0,
         "log": lambda _texto: None,

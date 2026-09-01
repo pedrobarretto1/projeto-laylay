@@ -1,0 +1,46 @@
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:62828 | sessão=66ace664 pid=29272
+🖥️ [TERMINAL 2] interface iniciada | sessão=66ace664 pid=30364 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=66ace664
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0060 início_de_fala=0.0120
+🎙️ [OUVIDO] Whisper será carregado somente na primeira fala.
+🎙️ [OUVIDO] Entrada: Microfone de mesa (4- Microsoft (índice 1, 16000 Hz, padrão do sistema).
+🎙️ [OUVIDO] Voz detectada (nível=0.0431, limiar=0.0120).
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=roteiro_teste
+💬 Você:
+> Coloca a playlist red151 origem.
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+⚠️ [FALA:AUTORIA] fallback local | motivo=contrato_nao_preservado:json_invalido status=playlist_enviada_sem_confirmacao
+[96m╭─ ◕‿◕ Laylay: Enviei o comando para red151 origem, mas não consegui confirmar o resultado. Tô colocando pra tocar.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '75e4ef5f9e8d4cd1877be9b10cc0906f', 'intent': 'PLAYLIST_PLAY', 'alvo': 'red151 origem', 'status': 'playlist_enviada_sem_confirmacao', 'executou': True, 'confirmado': None, 'params': {'nome_playlist': 'red151 origem'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'a aba pode ser observada; o cliente remoto informa entrega, mas nem sempre confirma áudio'}] | erros=[]
+💬 Você:
+> Coloca a playlist VMZ.
+[96m╭─ ◕‿◕ Laylay: Não achei a playlist vmz. Posso guardar essa música nela?[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '65de7b5341f043ddb56200dfcc695c2f', 'intent': 'PLAYLIST_PLAY', 'alvo': 'vmz', 'status': 'playlist_nao_encontrada', 'executou': False, 'confirmado': False, 'params': {'nome_playlist': 'vmz'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'a aba pode ser observada; o cliente remoto informa entrega, mas nem sempre confirma áudio'}] | erros=[]
+✅ [ROTEIRO:002] resposta e resultado salvos | resultado=falha_confirmada; voz desativada pelo roteiro; avançando
+💬 Você:
+> pausa
+[95m╭─ ≧◡≦⋆ Laylay: Dei pausa. A trilha segura a respiração um pouquinho.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': 'aeb3b1126c694eac84db98e764f95a9a', 'intent': 'MEDIA_CONTROL', 'alvo': '', 'status': 'midia_pause', 'executou': True, 'confirmado': True, 'params': {'acao': 'pause', 'platform': 'music'}, 'origem': 'executor', 'detalhe': 'success', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia'}] | erros=[]
+💬 Você:
+> estado
+[96m╭─ ◕‿◕ Laylay: A faixa atual é Anny - SE EU TE PEDIR ft. Lucas A.R.T, mas ela está pausada.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': 'f8d422a3796348949fc921b90cb2a74e', 'intent': 'MUSIC_STATUS', 'alvo': 'Anny - SE EU TE PEDIR ft. Lucas A.R.T', 'status': 'midia_status_consultado', 'executou': True, 'confirmado': True, 'params': {'acao': 'status', 'platform': 'music', 'somente_leitura': True, 'referencia_contextual': True}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'retorno_dados', 'evidencia_confirmacao': 'o título e o estado atual são lidos do registro sanitizado do player'}] | erros=[]
+💬 Você:
+> continua
+[95m╭─ ≧◡≦⋆ Laylay: Retomei a música. O silêncio já tinha trabalhado o bastante.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '9f23916c95164332b3d661e9a6b2db02', 'intent': 'MEDIA_CONTROL', 'alvo': '', 'status': 'midia_play', 'executou': True, 'confirmado': True, 'params': {'acao': 'play', 'platform': 'music'}, 'origem': 'executor', 'detalhe': 'success', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia'}] | erros=[]
+💬 Você:
+> qual música está tocando?
+[96m╭─ ◕‿◕ Laylay: Está tocando Anny - SE EU TE PEDIR ft. Lucas A.R.T.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '31db94101dac4047af4e021797fa0c9c', 'intent': 'MUSIC_STATUS', 'alvo': 'Anny - SE EU TE PEDIR ft. Lucas A.R.T', 'status': 'midia_status_consultado', 'executou': True, 'confirmado': True, 'params': {'acao': 'status', 'platform': 'music', 'somente_leitura': True}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'retorno_dados', 'evidencia_confirmacao': 'o título e o estado atual são lidos do registro sanitizado do player'}] | erros=[]
+💬 Você:
+> sim
+[95m╭─ ≧◡≦⋆ Laylay: Pronto, Anny - SE EU TE PEDIR ft. Lucas A.R.T foi pra playlist vmz.[0m
+🧠 [PLANO:FASE] fase=tratado_pre_fluxo | comandos=[{'id_solicitacao': '', 'intent': 'PLAYLIST_ADD', 'alvo': 'vmz', 'status': 'playlist_musica_adicionada', 'executou': True, 'confirmado': True, 'params': {'nome_playlist': 'vmz'}, 'origem': 'feedback_playlist', 'detalhe': 'confirmacao_feedback_playlist', 'confirmacao_oferecida': 'persistencia_local', 'evidencia_confirmacao': 'a faixa reaparece no armazenamento da playlist'}] | erros=[]
+📊 [ROTEIRO:RESUMO] avaliados=0 | passaram=0 | falharam=0 | alertas=0 | p95=4.972s
+⚠️ [MENTE:FALHA] servico_laylay-gmail:servico_orfao | classe=degradacao | impacto=servico | tipo=timeouterror

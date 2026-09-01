@@ -4,10 +4,20 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minha Extensão</title>
+    <title>Laylay — Batida</title>
+    <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-
+    <main>
+        <div class="marca"><span>♫</span><strong>Laylay</strong></div>
+        <h1>Sincronizar batida</h1>
+        <p>Use na aba do YouTube que está tocando. Jogos e outros programas não serão capturados.</p>
+        <div id="status" data-kind="idle">Pronta para sincronizar esta aba.</div>
+        <button id="sincronizar" type="button">Sincronizar esta aba</button>
+        <button id="parar" class="secundario" type="button">Parar sincronização</button>
+        <small>A captura fica restrita ao áudio desta aba.</small>
+    </main>
+    <script src="popup.js"></script>
 </body>
 </html>                         
 

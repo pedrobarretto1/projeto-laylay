@@ -6,11 +6,16 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QEvent, QSize
 from PySide6.QtGui import QPixmap
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 from cliente.terminal_2.acabamento import CapaMusicaGenerica
 from cliente.terminal_2.musica_m1 import CartaoPlaylist, PaginaMusicaM1
-from cliente.terminal_2.playlist_detalhe import FaixaPlaylistRow, PlaylistDetalhe
+from cliente.terminal_2.playlist_detalhe import (
+    FaixaPlaylistRow,
+    IndicadorFaixaTocando,
+    PlaylistDetalhe,
+)
 from mente_laylay.integracao.desktop_bridge import (
     sanitizar_resultado_playlist,
     validar_mensagem_cliente,
@@ -39,6 +44,32 @@ def _dashboard_com_playlists(quantidade: int = 8) -> dict:
         for indice in range(quantidade)
     ]
     return retrato
+
+
+def test_equalizador_da_faixa_tocando_tem_cadencia_de_20_fps() -> None:
+    _app()
+    indicador = IndicadorFaixaTocando(semente=2026)
+
+    assert indicador._timer.interval() == 50
+
+    quadros = []
+    for _ in range(64):
+        quadros.append(indicador._alturas_atuais())
+        indicador._avancar()
+
+    assert quadros[:16] != quadros[16:32]
+    assert quadros[:16] != quadros[48:64]
+    assert len(set(quadros)) >= 40
+    assert all(
+        5.0 <= altura <= 15.0
+        for quadro in quadros
+        for altura in quadro
+    )
+    assert max(
+        abs(atual - anterior)
+        for quadro_anterior, quadro_atual in zip(quadros, quadros[1:])
+        for anterior, atual in zip(quadro_anterior, quadro_atual)
+    ) <= 3.5
 
 
 def test_corpo_abre_detalhe_sem_tocar_e_play_toca_sem_abrir() -> None:
@@ -262,6 +293,109 @@ def test_linha_revela_play_e_menu_sem_mudar_geometria_e_toca_video_exato() -> No
     assert pedidos[-1]["operation"] == "play_track"
     assert pedidos[-1]["video_id"] == "AAAAAAAAAAA"
 
+    detalhe._selecionar_linha(0)
+    QApplication.sendEvent(linha, QEvent(QEvent.Leave))
+    app.processEvents()
+    assert linha._selecionada is True
+    assert linha.property("interactive") is False
+    assert linha._controle.currentWidget() is linha.numero
+    assert linha.menu.isHidden()
+
+
+def test_faixa_tocando_recebe_equalizador_e_titulo_verde_na_lista() -> None:
+    app = _app()
+    detalhe = PlaylistDetalhe()
+    detalhe.abrir("Anime")
+    detalhe.aplicar_resultado("detail", {
+        "ok": True, "status": "ok", "name": "Anime", "revision": "r1",
+        "total": 2, "offset": 0, "limit": 50, "has_more": False,
+        "items": [
+            {
+                "video_id": "AAAAAAAAAAA", "title": "Faixa tocando",
+                "channel": "Canal A", "added_at": "2026-08-26",
+                "duration_seconds": 180, "artwork_url": "",
+            },
+            {
+                "video_id": "BBBBBBBBBBB", "title": "Faixa em repouso",
+                "channel": "Canal B", "added_at": "2026-08-26",
+                "duration_seconds": 200, "artwork_url": "",
+            },
+        ],
+    })
+    detalhe.aplicar_player_observado({
+        "freshness": "fresh", "state": "playing", "video_id": "AAAAAAAAAAA",
+        "controls_available": True, "title": "Faixa tocando",
+        "position_seconds": 10, "duration_seconds": 180,
+    })
+    detalhe.show()
+    app.processEvents()
+
+    tocando, repouso = detalhe._linhas_widgets
+    assert tocando._tocando is True
+    assert tocando._controle.currentWidget() is tocando.indicador_tocando
+    assert tocando.indicador_tocando._timer.isActive()
+    assert tocando.titulo.property("playing") is True
+    assert "tocando" in tocando.accessibleName()
+    assert repouso._tocando is False
+    assert repouso._controle.currentWidget() is repouso.numero
+
+    detalhe.aplicar_player_observado({
+        "freshness": "fresh", "state": "paused", "video_id": "AAAAAAAAAAA",
+        "controls_available": True, "title": "Faixa tocando",
+        "position_seconds": 11, "duration_seconds": 180,
+    })
+    app.processEvents()
+
+    assert tocando._tocando is False
+    assert tocando._controle.currentWidget() is tocando.numero
+    assert not tocando.indicador_tocando._timer.isActive()
+    assert tocando.titulo.property("playing") is False
+
+
+def test_faixa_tocando_e_aplicada_quando_detalhe_chega_depois_do_player() -> None:
+    _app()
+    detalhe = PlaylistDetalhe()
+    detalhe.aplicar_player_observado({
+        "freshness": "fresh", "state": "playing", "video_id": "AAAAAAAAAAA",
+        "controls_available": True, "title": "Faixa tocando",
+        "position_seconds": 10, "duration_seconds": 180,
+    })
+    detalhe.aplicar_resultado("detail", {
+        "ok": True, "status": "ok", "name": "Anime", "revision": "r1",
+        "total": 1, "offset": 0, "limit": 50, "has_more": False,
+        "items": [{
+            "video_id": "AAAAAAAAAAA", "title": "Faixa tocando",
+            "channel": "Canal", "added_at": "2026-08-26",
+            "duration_seconds": 180, "artwork_url": "",
+        }],
+    })
+
+    linha = detalhe._linhas_widgets[0]
+    assert linha._tocando is True
+    assert linha._controle.currentWidget() is linha.indicador_tocando
+
+
+def test_faixa_atual_com_prefixo_do_player_nao_some_da_playlist() -> None:
+    _app()
+    detalhe = PlaylistDetalhe()
+    detalhe.aplicar_resultado("detail", {
+        "ok": True, "status": "ok", "name": "kamaitachi", "revision": "r1",
+        "total": 2, "offset": 0, "limit": 50, "has_more": False,
+        "items": [
+            {"video_id": "AAAAAAAAAAA", "title": "Lana"},
+            {"video_id": "BBBBBBBBBBB", "title": "O Limbo do Menino Sem Olhos"},
+        ],
+    })
+    detalhe.aplicar_player_observado({
+        "freshness": "fresh", "state": "playing",
+        "title": "(1224) Lana", "controls_available": True,
+    })
+
+    atual, proxima = detalhe._linhas_widgets
+    assert atual._tocando is True
+    assert atual._controle.currentWidget() is atual.indicador_tocando
+    assert proxima._tocando is False
+
 
 def test_detalhe_responde_a_altura_baixa_sem_esmagar_busca_ou_lista() -> None:
     app = _app()
@@ -276,11 +410,49 @@ def test_detalhe_responde_a_altura_baixa_sem_esmagar_busca_ou_lista() -> None:
     app.processEvents()
 
     assert detalhe._altura_baixa is True
-    assert detalhe.capa.width() == 68
+    assert detalhe.capa.width() == 64
     assert detalhe.hero.height() == 80
     assert detalhe.busca.height() == 34
     assert detalhe.tabela.height() >= 76
     assert 66 <= detalhe.player.height() <= 74
+
+
+def test_refinamento_visual_centraliza_conteudo_e_adapta_densidade() -> None:
+    app = _app()
+    detalhe = PlaylistDetalhe()
+    detalhe.resize(1500, 820)
+    detalhe.aplicar_resultado("detail", {
+        "ok": True, "status": "ok", "name": "Brisa da madrugada",
+        "revision": "r1", "total": 1, "offset": 0, "limit": 50,
+        "has_more": False, "items": [{
+            "video_id": "AAAAAAAAAAA", "title": "Noites Mágicas",
+            "channel": "N8-G", "added_at": "2026-08-27",
+            "duration_seconds": 289, "artwork_url": "",
+        }],
+    })
+    detalhe.show()
+    app.processEvents()
+
+    assert detalhe.conteudo.width() == 1260
+    assert detalhe.conteudo.geometry().center().x() == detalhe.rect().center().x()
+    assert detalhe.capa.width() == 132
+    assert detalhe.titulo.font().pixelSize() == 28
+    assert detalhe.cabecalho_faixas.isVisible()
+    assert detalhe.tabela.rowHeight(0) == 52
+    assert detalhe._linhas_widgets[0].capa.width() == 40
+
+    detalhe.resize(375, 520)
+    app.processEvents()
+
+    assert detalhe.size() == QSize(375, 520)
+    assert detalhe._compacto is True
+    assert detalhe._altura_baixa is True
+    assert detalhe.conteudo.width() <= detalhe.width()
+    assert detalhe.capa.width() == 64
+    assert detalhe.titulo.font().pixelSize() == 20
+    assert detalhe.cabecalho_faixas.isHidden()
+    assert detalhe.tabela.rowHeight(0) == 44
+    assert detalhe._linhas_widgets[0].capa.width() == 32
 
 
 def test_player_observado_separa_identidade_transporte_progresso_e_estado() -> None:
@@ -300,7 +472,7 @@ def test_player_observado_separa_identidade_transporte_progresso_e_estado() -> N
     app.processEvents()
 
     assert detalhe._modo_player == "amplo"
-    assert detalhe.player.height() == 72
+    assert detalhe.player.height() == 78
     assert detalhe.player_titulo.texto_completo == (
         "Uma faixa observada com nome integral"
     )
@@ -434,7 +606,7 @@ def test_metadados_da_faixa_cedem_por_largura_real_sem_sobreposicao() -> None:
         "channel": canal_completo, "added_at": "2026-08-26",
         "duration_seconds": 180, "artwork_url": "",
     })
-    linha.resize(760, 38)
+    linha.resize(760, 52)
     linha.show()
     app.processEvents()
 
@@ -444,13 +616,13 @@ def test_metadados_da_faixa_cedem_por_largura_real_sem_sobreposicao() -> None:
     assert linha.adicionada.geometry().right() < linha.duracao.geometry().left()
     assert linha.canal.toolTip() == canal_completo
 
-    linha.resize(650, 38)
+    linha.resize(650, 52)
     app.processEvents()
     assert not linha.canal.isHidden()
     assert linha.adicionada.isHidden()
     assert linha.meta.texto_completo == "Vídeo do YouTube"
 
-    linha.resize(500, 38)
+    linha.resize(500, 44)
     app.processEvents()
     assert linha.canal.isHidden()
     assert linha.adicionada.isHidden()
@@ -480,16 +652,152 @@ def test_layout_estreito_reorganiza_acoes_player_e_mantem_acessibilidade() -> No
     detalhe.resize(375, 760)
     detalhe.definir_compacto(True)
 
-    assert detalhe.acoes_layout.rowCount() >= 2
+    assert detalhe.acoes_layout.rowCount() == 1
+    assert [acao.text() for acao in detalhe.menu_acoes.actions()] == [
+        "Adicionar URL", "Trocar capa", "Restaurar capa",
+    ]
+    assert detalhe.adicionar.isHidden()
+    assert detalhe.capa_trocar.isHidden()
+    assert detalhe.capa_restaurar.isHidden()
     assert detalhe.player_layout.rowCount() >= 2
     assert detalhe.capa.width() <= 104
     for controle in (
         detalhe.play, detalhe.shuffle, detalhe.adicionar, detalhe.capa_trocar,
-        detalhe.capa_restaurar, detalhe.player_anterior, detalhe.player_toggle,
-        detalhe.player_proxima,
+        detalhe.capa_restaurar, detalhe.mais_acoes, detalhe.player_anterior,
+        detalhe.player_toggle, detalhe.player_proxima,
     ):
         assert controle.accessibleName()
         assert controle.toolTip()
+
+
+def test_movimento_reduzido_aplica_estados_finais_sem_animacoes() -> None:
+    app = _app()
+    detalhe = PlaylistDetalhe(reduzir_movimento=True)
+    detalhe.resize(1200, 760)
+    detalhe.show()
+    detalhe.abrir("Anime")
+    detalhe.aplicar_resultado("detail", {
+        "ok": True, "status": "ok", "name": "Anime", "revision": "r1",
+        "total": 1, "offset": 0, "limit": 50, "has_more": False,
+        "items": [{
+            "video_id": "AAAAAAAAAAA", "title": "Faixa sem movimento",
+            "channel": "Canal", "added_at": "2026-08-27",
+            "duration_seconds": 180, "artwork_url": "",
+        }],
+    })
+    app.processEvents()
+
+    linha = detalhe._linhas_widgets[0]
+    assert detalhe._animacao_entrada is None
+    assert detalhe.hero.graphicsEffect() is None
+    assert linha.graphicsEffect() is None
+
+    detalhe.aplicar_player_observado({
+        "freshness": "fresh", "state": "playing", "video_id": "AAAAAAAAAAA",
+        "controls_available": True, "title": "Faixa sem movimento",
+        "channel": "Canal", "position_seconds": 10, "duration_seconds": 180,
+    })
+    app.processEvents()
+
+    assert detalhe._animacao_identidade_player is None
+    assert detalhe.player_identidade.graphicsEffect() is None
+    assert detalhe.player_titulo.texto_completo == "Faixa sem movimento"
+    assert linha._animacao_pulso is None
+    assert linha._intensidade_pulso == 0.0
+    assert not linha.indicador_tocando._timer.isActive()
+
+
+def test_pagina_propaga_preferencia_de_movimento_reduzido(monkeypatch) -> None:
+    _app()
+    monkeypatch.setenv("LAYLAY_REDUZIR_MOVIMENTO", "1")
+    pagina = PaginaMusicaM1()
+
+    assert pagina._reduzir_movimento is True
+    assert pagina.detalhe_playlist._reduzir_movimento is True
+
+
+def test_entrada_roda_uma_vez_e_descarta_efeitos_ao_terminar() -> None:
+    app = _app()
+    detalhe = PlaylistDetalhe()
+    detalhe.resize(1200, 760)
+    detalhe.show()
+    detalhe.abrir("Anime")
+    resultado = {
+        "ok": True, "status": "ok", "name": "Anime", "revision": "r1",
+        "total": 3, "offset": 0, "limit": 50, "has_more": False,
+        "items": [
+            {
+                "video_id": f"AAAAAAAAAA{indice}", "title": f"Faixa {indice}",
+                "channel": "Canal", "added_at": "2026-08-27",
+                "duration_seconds": 180, "artwork_url": "",
+            }
+            for indice in range(3)
+        ],
+    }
+    detalhe.aplicar_resultado("detail", resultado)
+    app.processEvents()
+
+    assert detalhe._animacao_entrada is not None
+    assert detalhe.hero.graphicsEffect() is not None
+    QTest.qWait(460)
+    app.processEvents()
+    assert detalhe._animacao_entrada is None
+    assert detalhe.hero.graphicsEffect() is None
+    assert all(linha.graphicsEffect() is None for linha in detalhe._linhas_widgets)
+
+    detalhe.aplicar_resultado("detail", resultado)
+    app.processEvents()
+    assert detalhe._animacao_entrada is None
+    assert detalhe.hero.graphicsEffect() is None
+
+
+def test_dashboard_repetido_nao_reinicia_crossfade_nem_pulso() -> None:
+    app = _app()
+    detalhe = PlaylistDetalhe()
+    detalhe.resize(1200, 760)
+    detalhe.aplicar_resultado("detail", {
+        "ok": True, "status": "ok", "name": "Anime", "revision": "r1",
+        "total": 2, "offset": 0, "limit": 50, "has_more": False,
+        "items": [
+            {"video_id": "AAAAAAAAAAA", "title": "Faixa A", "channel": "Canal"},
+            {"video_id": "BBBBBBBBBBB", "title": "Faixa B", "channel": "Canal"},
+        ],
+    })
+    detalhe.show()
+    app.processEvents()
+    faixa_a, faixa_b = detalhe._linhas_widgets
+    retrato = {
+        "freshness": "fresh", "state": "playing", "video_id": "AAAAAAAAAAA",
+        "controls_available": True, "title": "Faixa A", "channel": "Canal",
+        "position_seconds": 10, "duration_seconds": 180,
+    }
+    detalhe.aplicar_player_observado(retrato)
+    app.processEvents()
+    crossfade = detalhe._animacao_identidade_player
+    pulso = faixa_a._animacao_pulso
+    assert crossfade is not None
+    assert pulso is not None
+
+    detalhe.aplicar_player_observado({**retrato, "position_seconds": 25})
+    app.processEvents()
+    assert detalhe._animacao_identidade_player is crossfade
+    assert faixa_a._animacao_pulso is pulso
+
+    QTest.qWait(500)
+    app.processEvents()
+    assert detalhe._animacao_identidade_player is None
+    assert detalhe.player_identidade.graphicsEffect() is None
+    assert faixa_a._animacao_pulso is None
+
+    detalhe.aplicar_player_observado({
+        **retrato, "video_id": "BBBBBBBBBBB", "title": "Faixa B",
+        "position_seconds": 0,
+    })
+    app.processEvents()
+    assert detalhe._animacao_identidade_player is not None
+    assert faixa_a._tocando is False
+    assert faixa_b._tocando is True
+    assert faixa_b._animacao_pulso is not None
 
 
 def test_resultado_atrasado_ou_de_outra_playlist_nao_substitui_tela_atual() -> None:

@@ -607,6 +607,47 @@ def test_runtime_entende_energia_brilho_cor_e_branco():
     assert roteado["params"]["origem"] == "cor_iot_sem_emissao"
 
 
+def test_runtime_iot_painel_atualiza_retrato_sem_fala_nem_emocao_otimista():
+    falas = []
+    emocoes = []
+    runtime = RuntimeIoT(
+        memoria_sqlite=MemoriaIoTFalsa(),
+        falar=lambda *args: falas.append(args),
+        estado_mental_getter=lambda: {},
+        definir_emocao=lambda *args: emocoes.append(args),
+        emitir_fala=True,
+        modo="simulado",
+        log=lambda *_: None,
+    )
+
+    resultado = runtime.executar({
+        "intent": "IOT_CONTROL",
+        "params": {
+            "acao": "ligar", "alvo": "lampada_quarto",
+            "origem": "terminal_panel", "_execucao_silenciosa": True,
+        },
+    })
+    brilho = runtime.executar({
+        "intent": "IOT_CONTROL",
+        "params": {
+            "acao": "ajustar_brilho", "alvo": "lampada_quarto", "valor": 65,
+            "origem": "terminal_panel", "_execucao_silenciosa": True,
+        },
+    })
+
+    dispositivo = next(
+        item for item in runtime.retrato_para_mente()["dispositivos"]
+        if item["nome"] == "lampada_quarto"
+    )
+    assert resultado["ok"] is True
+    assert brilho["ok"] is True
+    assert dispositivo["estado_observado"]["ligado"] is True
+    assert dispositivo["estado_observado"]["confirmado"] is True
+    assert dispositivo["estado_observado"]["brilho"] == 65
+    assert falas == []
+    assert emocoes == []
+
+
 def test_consulta_lista_iot_pura_identifica_ambiente_sem_runtime() -> None:
     assert detectar_consulta_lista_iot("quais dispositivos tem no quarto?") == {
         "intent": "IOT_LIST", "params": {"ambiente": "quarto"},

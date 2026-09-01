@@ -1,0 +1,34 @@
+{
+  "versao_avaliador": 15,
+  "total_turnos": 7,
+  "respondidos": 7,
+  "concluido_transporte": true,
+  "avaliados_semanticamente": 1,
+  "passaram": 1,
+  "falharam": 0,
+  "alertas": 0,
+  "nao_avaliados": 6,
+  "taxa_semantica_percentual": 100.0,
+  "comandos_observados": 6,
+  "confirmacoes_indeterminadas": 2,
+  "latencia_s": {
+    "p50": 3.655,
+    "p95": 7.567,
+    "max": 8.2,
+    "media": 4.199
+  },
+  "por_dominio": {
+    "conversa": {
+      "nao_avaliado": 1
+    },
+    "musica": {
+      "nao_avaliado": 5,
+      "passou": 1
+    }
+  },
+  "turnos_com_erros": [],
+  "turnos_com_alertas": [
+    1,
+    2
+  ]
+}

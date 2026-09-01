@@ -7,6 +7,7 @@ Este modulo concentra limpeza de diccao e transcricao de voz, mantendo o
 from __future__ import annotations
 
 from collections import deque
+from dataclasses import dataclass
 from difflib import SequenceMatcher
 import os
 import queue
@@ -24,6 +25,13 @@ from mente_laylay.percepcao.dispositivos_audio import selecionar_dispositivo_aud
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
+
+
+@dataclass(slots=True)
+class _AudioPendente:
+    audio: Any
+    claim_interacao: str = ""
+
 
 def limpar_diccao_e_ruido(texto_falado: str) -> str:
     """Filtro anti-ruido + corretor de diccao para reduzir alucinacoes do Whisper."""
@@ -127,6 +135,7 @@ class OuvidoWhisperRuntime:
         atividade_visual: Callable[[str], Any] | None = None,
         monotonic: Callable[[], float] = time.monotonic,
         entrega_assincrona: bool = True,
+        prioridade_interacao: Any | None = None,
     ) -> None:
         self.processar_texto = processar_texto
         self.esta_falando = esta_falando
@@ -149,6 +158,7 @@ class OuvidoWhisperRuntime:
         self.atividade_visual = atividade_visual
         self.monotonic = monotonic
         self.entrega_assincrona = bool(entrega_assincrona)
+        self._prioridade_interacao = prioridade_interacao
         self._lock_transcricao = threading.Lock()
         self._fila_audio: queue.Queue[Any] = queue.Queue(maxsize=2)
         self._worker_audio: threading.Thread | None = None
@@ -187,6 +197,41 @@ class OuvidoWhisperRuntime:
     def usuario_falando(self) -> bool:
         """Informa somente o estado efêmero do VAD, sem expor áudio."""
         return bool(self._usuario_falando)
+
+    def _adquirir_prioridade_voz(self) -> str:
+        runtime = self._prioridade_interacao
+        if runtime is None:
+            return ""
+
+        adquirir = getattr(runtime, "adquirir", None)
+        if not callable(adquirir):
+            raise RuntimeError(
+                "prioridade_interacao não publica adquirir()"
+            )
+
+        return str(adquirir("voz") or "").strip()
+
+    def _liberar_prioridade_claim(self, claim: str) -> bool:
+        token = str(claim or "").strip()
+        if not token:
+            return False
+
+        runtime = self._prioridade_interacao
+        if runtime is None:
+            return False
+
+        liberar = getattr(runtime, "liberar", None)
+        if not callable(liberar):
+            return False
+
+        try:
+            return bool(liberar(token))
+        except Exception as erro:
+            self.log(
+                "⚠️ [OUVIDO] falha ao liberar prioridade "
+                f"da interação: {type(erro).__name__}: {erro}"
+            )
+            return False
 
     def _dependencias(self) -> tuple[Any, Any]:
         sd = self.sd
@@ -464,12 +509,17 @@ class OuvidoWhisperRuntime:
             return False
         return ouvido in referencia or SequenceMatcher(None, ouvido, referencia).ratio() >= 0.78
 
-    def _entregar(self, audio: Any) -> None:
+    def _entregar(
+        self,
+        audio: Any,
+        claim_interacao: str = "",
+    ) -> None:
         if callable(self.atividade_visual):
             self.atividade_visual("listening")
         try:
             self._entregar_impl(audio)
         finally:
+            self._liberar_prioridade_claim(claim_interacao)
             if callable(self.atividade_visual):
                 self.atividade_visual("idle")
 
@@ -610,10 +660,20 @@ class OuvidoWhisperRuntime:
                 if callable(self.atividade_visual):
                     self.atividade_visual("idle")
 
-    def _agendar_entrega(self, audio: Any) -> None:
+    def _agendar_entrega(
+        self,
+        audio: Any,
+        claim_interacao: str = "",
+    ) -> None:
         if not self.entrega_assincrona:
-            self._entregar(audio)
+            self._entregar(audio, claim_interacao=claim_interacao)
             return
+
+        item = _AudioPendente(
+            audio=audio,
+            claim_interacao=str(claim_interacao or "").strip(),
+        )
+
         with self._worker_lock:
             if self._worker_audio is None or not self._worker_audio.is_alive():
                 self._worker_audio = threading.Thread(
@@ -622,23 +682,41 @@ class OuvidoWhisperRuntime:
                     name="Laylay-Whisper-Transcricao",
                 )
                 self._worker_audio.start()
+
         if self._fila_audio.full():
             try:
-                self._fila_audio.get_nowait()
+                antigo = self._fila_audio.get_nowait()
+                if isinstance(antigo, _AudioPendente):
+                    self._liberar_prioridade_claim(
+                        antigo.claim_interacao
+                    )
                 self._fila_audio.task_done()
                 self.log("🎙️ [OUVIDO] Áudio antigo descartado para manter comandos atuais.")
             except queue.Empty:
                 pass
-        self._fila_audio.put_nowait(audio)
+
+        self._fila_audio.put_nowait(item)
 
     def _consumir_fila_audio(self) -> None:
         while self.deve_continuar():
             try:
-                audio = self._fila_audio.get(timeout=0.25)
+                item = self._fila_audio.get(timeout=0.25)
             except queue.Empty:
                 continue
+
+            if isinstance(item, _AudioPendente):
+                audio = item.audio
+                claim_interacao = item.claim_interacao
+            else:
+                # Compatibilidade com filas/testes anteriores ao HC2.
+                audio = item
+                claim_interacao = ""
+
             try:
-                self._entregar(audio)
+                self._entregar(
+                    audio,
+                    claim_interacao=claim_interacao,
+                )
             finally:
                 self._fila_audio.task_done()
 
@@ -680,6 +758,7 @@ class OuvidoWhisperRuntime:
         pausado_por_contexto = False
         calibracao_anunciada = False
         entrada_anunciada = False
+        claim_interacao_voz = ""
 
         nome = self._nome_dispositivo(info)
         origem = str(getattr(self, "_origem_dispositivo", "padrão do sistema"))
@@ -698,6 +777,9 @@ class OuvidoWhisperRuntime:
                     if not bool(self.escuta_permitida()):
                         self._nivel_microfone = 0.0
                         self._usuario_falando = False
+                        if claim_interacao_voz:
+                            self._liberar_prioridade_claim(claim_interacao_voz)
+                            claim_interacao_voz = ""
                         gravando.clear()
                         preroll.clear()
                         blocos_voz = 0
@@ -719,6 +801,9 @@ class OuvidoWhisperRuntime:
                     if falando:
                         self._nivel_microfone = 0.0
                         self._usuario_falando = False
+                        if claim_interacao_voz:
+                            self._liberar_prioridade_claim(claim_interacao_voz)
+                            claim_interacao_voz = ""
                         self._ultima_fala_laylay_ts = agora
                         gravando.clear()
                         preroll.clear()
@@ -761,6 +846,10 @@ class OuvidoWhisperRuntime:
                         preroll.append(chunk)
                         blocos_voz = blocos_voz + 1 if rms >= limiar else 0
                         if blocos_voz >= 2:
+                            if not claim_interacao_voz:
+                                claim_interacao_voz = (
+                                    self._adquirir_prioridade_voz()
+                                )
                             gravando = list(preroll)
                             self._usuario_falando = True
                             silencio = 0.0
@@ -795,11 +884,19 @@ class OuvidoWhisperRuntime:
                     if terminou or duracao >= duracao_maxima_s:
                         audio = np.concatenate(gravando)
                         self._usuario_falando = False
+
                         gravando.clear()
                         preroll.clear()
                         blocos_voz = 0
                         silencio = 0.0
-                        self._agendar_entrega(audio)
+
+                        claim_entrega = claim_interacao_voz
+                        self._agendar_entrega(
+                            audio,
+                            claim_interacao=claim_entrega,
+                        )
+                        # O worker STT passa a ser responsável pelo token.
+                        claim_interacao_voz = ""
         except Exception as erro:
             self._nivel_microfone = 0.0
             if bool(self.modo_chat_ativo()):
@@ -808,6 +905,9 @@ class OuvidoWhisperRuntime:
             raise RuntimeError("captura do microfone foi interrompida") from erro
         finally:
             self._usuario_falando = False
+            if claim_interacao_voz:
+                self._liberar_prioridade_claim(claim_interacao_voz)
+                claim_interacao_voz = ""
 
 
 def criar_ouvido_whisper_runtime(**kwargs: Any) -> OuvidoWhisperRuntime:

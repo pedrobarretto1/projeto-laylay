@@ -199,28 +199,54 @@ class PorteiroProatividadeRuntime:
         mesclar_turno: bool = False,
         inicio_forcado: bool = False,
         ultima_fala_normal_ts: float = 0.0,
+        revalidacao_entrega: bool = False,
     ) -> Dict[str, Any]:
         agora = self._agora()
         tipo_norm = str(tipo or "").strip().lower() or "observacao"
         contexto = self._contexto()
-        if inicio_forcado:
+        pontos = int(_BASE_UTILIDADE.get(tipo_norm, 34))
+        motivos = [f"utilidade base {pontos}"]
+        prioritario = tipo_norm in _TIPOS_PRIORITARIOS
+        presenca_jogo = tipo_norm == "presenca_jogo"
+
+        interacao_usuario_ativa = bool(
+            contexto.get("interacao_usuario_ativa")
+        )
+        usuario_falando = bool(contexto.get("usuario_falando"))
+        if (interacao_usuario_ativa or usuario_falando) and not prioritario:
+            motivo_prioridade = (
+                "interação do usuário possui prioridade"
+                if interacao_usuario_ativa
+                else "usuário está falando"
+            )
+            decisao = {
+                "acao": "adiar",
+                "pontuacao": max(0, pontos - 60),
+                "motivos": [*motivos, motivo_prioridade],
+                "adiar_s": 2.0,
+                "validade_s": self.validade_s,
+            }
+            self._registrar_decisao(tipo_norm, decisao)
+            return decisao
+
+        # Forçar abertura vale na admissão; na entrega, a prioridade viva
+        # do usuário já foi consultada acima.
+        if inicio_forcado and not revalidacao_entrega:
             return {
                 "acao": "emitir", "pontuacao": 100,
                 "motivos": ["fala inicial explicitamente forçada"],
                 "adiar_s": 0.0, "validade_s": self.validade_s,
             }
 
-        pontos = int(_BASE_UTILIDADE.get(tipo_norm, 34))
-        motivos = [f"utilidade base {pontos}"]
-        prioritario = tipo_norm in _TIPOS_PRIORITARIOS
-        presenca_jogo = tipo_norm == "presenca_jogo"
         assinatura = _assinatura(tipo_norm, texto)
-        with self._lock:
-            self._historico = {
-                chave: ts for chave, ts in self._historico.items()
-                if agora - float(ts or 0.0) <= self.janela_repeticao_s
-            }
-            repetida = assinatura in self._historico
+        repetida = False
+        if not revalidacao_entrega:
+            with self._lock:
+                self._historico = {
+                    chave: ts for chave, ts in self._historico.items()
+                    if agora - float(ts or 0.0) <= self.janela_repeticao_s
+                }
+                repetida = assinatura in self._historico
         if repetida and not prioritario:
             decisao = {
                 "acao": "descartar", "pontuacao": max(0, pontos - 55),
@@ -230,7 +256,7 @@ class PorteiroProatividadeRuntime:
             self._registrar_decisao(tipo_norm, decisao)
             return decisao
 
-        if not prioritario:
+        if not prioritario and not revalidacao_entrega:
             with self._lock:
                 registro = dict(self._perfil().get(tipo_norm) or {})
             ultima_emissao = float(registro.get("ultima_emissao_ts") or 0.0)
@@ -313,7 +339,7 @@ class PorteiroProatividadeRuntime:
             acao = "descartar"
             adiar_s = 0.0
 
-        if acao in {"emitir", "mesclar"}:
+        if not revalidacao_entrega and acao in {"emitir", "mesclar"}:
             with self._lock:
                 self._historico[assinatura] = agora
                 if not prioritario:

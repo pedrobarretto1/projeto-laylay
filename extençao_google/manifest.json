@@ -1,13 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Laylay Chrome Extension",
-  "version": "2.7",
+  "version": "2.8",
   "description": "Extensão para automação do Chrome e comunicação com Laylay em qualquer site.",
   "permissions": [
     "tabs",
     "scripting",
     "activeTab",
     "storage",
+    "tabCapture",
+    "offscreen",
     "webNavigation",
     "windows"
   ],

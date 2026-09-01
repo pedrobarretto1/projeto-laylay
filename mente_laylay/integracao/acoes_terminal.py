@@ -120,6 +120,24 @@ ACOES_PAINEL_TERMINAL: Final[tuple[dict[str, str], ...]] = (
         "request": "",
         "intent": "CANCELAR_AGENDAMENTO",
     },
+    {
+        "id": "iot_status",
+        "label": "Atualizar dispositivo IoT",
+        "request": "",
+        "intent": "IOT_STATUS",
+    },
+    {
+        "id": "iot_power",
+        "label": "Ligar ou desligar dispositivo IoT",
+        "request": "",
+        "intent": "IOT_CONTROL",
+    },
+    {
+        "id": "iot_brightness",
+        "label": "Ajustar brilho da lâmpada IoT",
+        "request": "",
+        "intent": "IOT_CONTROL",
+    },
 )
 
 ACOES_RAPIDAS_POR_ID: Final[dict[str, dict[str, str]]] = {

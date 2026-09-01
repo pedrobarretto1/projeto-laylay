@@ -1,0 +1,407 @@
+{
+  "versao": 2,
+  "assinatura": "311e8e7a459f16539422b16a38388d9745d127c04f6389bfe48f6b11ad245ad6",
+  "criado_em": 1788196054.2809377,
+  "atualizado_em": 1788196086.8638265,
+  "concluido": true,
+  "criterio_conclusao": "transporte_resposta_e_resultado_turno",
+  "voz_silenciada_durante_teste": true,
+  "itens": [
+    {
+      "indice": 0,
+      "comando": "Coloca a playlist red151 setup runtime.",
+      "status": "respondido",
+      "resposta": "Deixei red151 setup runtime aberto e em foco. Tô colocando pra tocar.",
+      "enviado_em": 1788196057.3138013,
+      "finalizado_em": 1788196068.0301785,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "PLAYLIST_PLAY",
+            "alvo": "red151 setup runtime",
+            "status": "playlist_aberta",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "variavel",
+            "evidencia_confirmacao": "a aba pode ser observada; o cliente remoto informa entrega, mas nem sempre confirma áudio"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "nao_avaliado",
+        "semantica_avaliada": false,
+        "expectativa": "",
+        "origem_expectativa": "nenhuma",
+        "dominio": "musica",
+        "intents_observadas": [
+          "PLAYLIST_PLAY"
+        ],
+        "statuses_observados": [
+          "playlist_aberta"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 10.716
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 1,
+      "comando": "Coloca a playlist VMZ, pausa a música e me diz o estado dela.",
+      "status": "respondido",
+      "resposta": "Não achei a playlist vmz. Posso guardar essa música nela?",
+      "enviado_em": 1788196068.297842,
+      "finalizado_em": 1788196071.3796961,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "PLAYLIST_PLAY",
+            "alvo": "vmz",
+            "status": "playlist_nao_encontrada",
+            "executou": false,
+            "confirmado": false,
+            "confirmacao_oferecida": "variavel",
+            "evidencia_confirmacao": "a aba pode ser observada; o cliente remoto informa entrega, mas nem sempre confirma áudio"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "nenhuma_etapa_executada",
+        "confirmacao": "nenhuma_etapa_confirmada",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "nao_avaliado",
+        "semantica_avaliada": false,
+        "expectativa": "",
+        "origem_expectativa": "nenhuma",
+        "dominio": "musica",
+        "intents_observadas": [
+          "PLAYLIST_PLAY"
+        ],
+        "statuses_observados": [
+          "playlist_nao_encontrada"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [
+          "dependencia_externa_nao_confirmada"
+        ],
+        "checagens_semanticas": [],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 3.082
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "falha_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 2,
+      "comando": "Continua a música, passa para a próxima faixa e me diz qual está tocando.",
+      "status": "respondido",
+      "resposta": "Retomei a música. O silêncio já tinha trabalhado o bastante.",
+      "enviado_em": 1788196071.6513097,
+      "finalizado_em": 1788196077.460629,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "MEDIA_CONTROL",
+            "alvo": "",
+            "status": "midia_play",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "variavel",
+            "evidencia_confirmacao": "Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "nao_avaliado",
+        "semantica_avaliada": false,
+        "expectativa": "",
+        "origem_expectativa": "nenhuma",
+        "dominio": "musica",
+        "intents_observadas": [
+          "MEDIA_CONTROL"
+        ],
+        "statuses_observados": [
+          "midia_play"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 5.809
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 3,
+      "comando": "Adiciona essa música na playlist caos sonora e depois me mostra o que tem nela.",
+      "status": "respondido",
+      "resposta": "Pronto, Tim Maia - Que Beleza foi pra playlist caos sonora.",
+      "enviado_em": 1788196077.7230284,
+      "finalizado_em": 1788196079.6775665,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "PLAYLIST_ADD",
+            "alvo": "caos sonora",
+            "status": "playlist_musica_adicionada",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "persistencia_local",
+            "evidencia_confirmacao": "a faixa reaparece no armazenamento da playlist"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "nao_avaliado",
+        "semantica_avaliada": false,
+        "expectativa": "",
+        "origem_expectativa": "nenhuma",
+        "dominio": "musica",
+        "intents_observadas": [
+          "PLAYLIST_ADD"
+        ],
+        "statuses_observados": [
+          "playlist_musica_adicionada"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 1.955
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 4,
+      "comando": "Vai para a próxima faixa e adiciona essa também na caos sonora.",
+      "status": "respondido",
+      "resposta": "Pulando pra seguinte.",
+      "enviado_em": 1788196079.9398293,
+      "finalizado_em": 1788196084.3032777,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "MEDIA_CONTROL",
+            "alvo": "",
+            "status": "midia_next_playlist",
+            "executou": true,
+            "confirmado": null,
+            "confirmacao_oferecida": "variavel",
+            "evidencia_confirmacao": "Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "indeterminado",
+        "intencao_correta": "sim",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "passou",
+        "semantica_avaliada": true,
+        "expectativa": "expectativa_por_padrao",
+        "origem_expectativa": "avaliador_global",
+        "dominio": "musica",
+        "intents_observadas": [
+          "MEDIA_CONTROL"
+        ],
+        "statuses_observados": [
+          "midia_next_playlist"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [
+          "intent_esperada",
+          "envio_sem_observacao_externa_esperado"
+        ],
+        "confirmacoes_indeterminadas": 1,
+        "duracao_s": 4.363
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "resultado_final_sem_observacao_externa",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 5,
+      "comando": "Mostra a playlist caos sonora e depois apaga ela.",
+      "status": "respondido",
+      "resposta": "A playlist Caos Sonora é curtinha: 2 músicas. As principais são Tim Maia – Que Beleza (Official Audio); Seu Jorge - Burguesinha.",
+      "enviado_em": 1788196084.5656245,
+      "finalizado_em": 1788196086.13162,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [
+          {
+            "intent": "PLAYLIST_LIST",
+            "alvo": "caos sonora",
+            "status": "playlists_listadas",
+            "executou": true,
+            "confirmado": true,
+            "confirmacao_oferecida": "retorno_dados",
+            "evidencia_confirmacao": "a lista foi lida do armazenamento"
+          }
+        ],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 1,
+        "execucao": "alguma_etapa_executada",
+        "confirmacao": "alguma_etapa_confirmada",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "sim",
+        "versao_avaliador": 15,
+        "resultado_semantico": "nao_avaliado",
+        "semantica_avaliada": false,
+        "expectativa": "",
+        "origem_expectativa": "nenhuma",
+        "dominio": "musica",
+        "intents_observadas": [
+          "PLAYLIST_LIST"
+        ],
+        "statuses_observados": [
+          "playlists_listadas"
+        ],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 1.566
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "execucao_confirmada",
+      "processamento_concluido": true
+    },
+    {
+      "indice": 6,
+      "comando": "sim",
+      "status": "respondido",
+      "resposta": "Eu me adiantei na fala, mas essa ação não foi executada nem confirmada.",
+      "enviado_em": 1788196086.3954432,
+      "finalizado_em": 1788196086.598297,
+      "plano": {
+        "fase": "planejado",
+        "erros": [],
+        "comandos": [],
+        "plano_bruto": "planos.jsonl"
+      },
+      "avaliacao": {
+        "respondeu": true,
+        "plano_observado": true,
+        "quantidade_comandos": 0,
+        "execucao": "sem_comando_observado",
+        "confirmacao": "sem_comando_observado",
+        "intencao_correta": "nao_avaliado",
+        "fala_coerente": "nao_avaliado",
+        "versao_avaliador": 15,
+        "resultado_semantico": "nao_avaliado",
+        "semantica_avaliada": false,
+        "expectativa": "",
+        "origem_expectativa": "nenhuma",
+        "dominio": "conversa",
+        "intents_observadas": [],
+        "statuses_observados": [],
+        "criterio_fala": "contrato_operacional_deterministico",
+        "erros_semanticos": [],
+        "alertas_semanticos": [],
+        "checagens_semanticas": [],
+        "confirmacoes_indeterminadas": 0,
+        "duracao_s": 0.203
+      },
+      "voz_concluida": true,
+      "voz_observada": false,
+      "voz_silenciada": true,
+      "resultado_turno_concluido": true,
+      "motivo_resultado": "resposta_sem_execucao",
+      "processamento_concluido": true
+    }
+  ],
+  "preparacao": {
+    "status": "modo_chat_confirmado",
+    "atraso_inicial_s": 3.0,
+    "voz_silenciada": true
+  },
+  "finalizado_em": 1788196086.8638227
+}

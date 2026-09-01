@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import re
 import time
 from typing import Any, Callable, Dict
@@ -58,6 +59,39 @@ class RuntimeIoT:
         )
         self.persistencia.sincronizar(dispositivos)
         self.registro = self.persistencia.carregar_registro()
+        self._estados_dashboard: dict[str, dict[str, Any]] = {}
+        try:
+            persistidos = self.persistencia.memoria.listar_dispositivos_iot(
+                somente_ativos=True,
+            )
+        except Exception:
+            persistidos = []
+        for item in persistidos:
+            if not isinstance(item, dict):
+                continue
+            nome_estado = str(item.get("nome") or "").strip()
+            ultimo = item.get("ultimo_estado")
+            if not nome_estado or not isinstance(ultimo, dict) or not ultimo:
+                continue
+            observado_em = 0.0
+            try:
+                observado_em = datetime.fromisoformat(
+                    str(item.get("ultimo_contato") or "").strip()
+                ).timestamp()
+            except (TypeError, ValueError):
+                pass
+            self._estados_dashboard[nome_estado] = {
+                "status": str(ultimo.get("status") or "")[:40],
+                "ligado": ultimo.get("ligado") if isinstance(
+                    ultimo.get("ligado"), bool,
+                ) else None,
+                "disponivel": ultimo.get("disponivel") is True,
+                "confirmado": ultimo.get("confirmado") is True,
+                "observed_at": observado_em,
+                "brilho": ultimo.get("brilho") if isinstance(
+                    ultimo.get("brilho"), int,
+                ) and 1 <= ultimo["brilho"] <= 100 else None,
+            }
         self.simulador = ProtocoloSimulado()
         protocolos = []
         for item in self.registro.listar():
@@ -95,19 +129,27 @@ class RuntimeIoT:
         params = consulta.get("params") if isinstance(consulta, dict) else {}
         ambiente = str((params or {}).get("ambiente") or "").strip()
         dispositivos = self.registro.listar(ambiente)
+        catalogo = []
+        for item in dispositivos:
+            publico = {
+                "nome": item.nome,
+                "nome_amigavel": item.nome_amigavel,
+                "tipo": item.tipo,
+                "ambiente": item.ambiente,
+                "capacidades": sorted(item.capacidades),
+            }
+            estado_observado = self._estados_dashboard.get(item.nome)
+            if isinstance(estado_observado, dict):
+                publico["estado_observado"] = dict(estado_observado)
+            catalogo.append(publico)
         return {
-            "dispositivos": [
-                {
-                    "nome": item.nome,
-                    "nome_amigavel": item.nome_amigavel,
-                    "tipo": item.tipo,
-                    "ambiente": item.ambiente,
-                    "capacidades": sorted(item.capacidades),
-                }
-                for item in dispositivos
-            ],
+            "dispositivos": catalogo,
             "total_dispositivos": len(dispositivos),
             "parametros_consulta": {"ambiente": ambiente},
+            "modo": self.modo,
+            "provedor_disponivel": bool(
+                list(getattr(self.controlador, "protocolos", ()) or ())
+            ),
         }
 
     def diagnostico(self) -> dict[str, Any]:
@@ -684,6 +726,7 @@ class RuntimeIoT:
     def executar(self, resultado: Dict[str, Any], texto_original: str = "") -> Dict[str, Any]:
         intent = str(resultado.get("intent") or "").upper().strip()
         params = resultado.get("params") if isinstance(resultado.get("params"), dict) else {}
+        execucao_silenciosa = params.get("_execucao_silenciosa") is True
 
         if intent == "IOT_LIST":
             ambiente = str(params.get("ambiente") or "").strip()
@@ -702,7 +745,7 @@ class RuntimeIoT:
                 executou=True, confirmado=True, texto_usuario=texto_original,
             )
             plano = planejar_resposta_acao(contrato, fala, emocao_preferida="calma")
-            if self.emitir_fala:
+            if self.emitir_fala and not execucao_silenciosa:
                 self.falar(plano.fala, plano.emocao, plano.nivel)
             return {
                 "handled": True, "ok": bool(dispositivos), "status": status, "alvo": ambiente,
@@ -726,6 +769,29 @@ class RuntimeIoT:
             confirmado=confirmado,
             parametros=params,
         )
+        if resposta.dispositivo:
+            brilho_resultado = resposta.detalhes.get("brilho")
+            anterior_dashboard = self._estados_dashboard.get(
+                resposta.dispositivo, {}
+            )
+            self._estados_dashboard[resposta.dispositivo] = {
+                "status": str(resposta.status or "")[:40],
+                "ligado": resposta.estado_atual if isinstance(
+                    resposta.estado_atual, bool,
+                ) else None,
+                "disponivel": resposta.status not in {
+                    "indisponivel", "protocolo_indisponivel", "nao_encontrado",
+                },
+                "confirmado": bool(resposta.confirmado),
+                "observed_at": time.time(),
+                "brilho": (
+                    int(brilho_resultado)
+                    if isinstance(brilho_resultado, (int, float))
+                    and not isinstance(brilho_resultado, bool)
+                    and 1 <= int(brilho_resultado) <= 100
+                    else anterior_dashboard.get("brilho")
+                ),
+            }
         estado_mental = self.estado_mental_getter()
         if isinstance(estado_mental, dict) and resposta.dispositivo:
             estado_mental["ultimo_dispositivo_iot"] = resposta.dispositivo
@@ -800,9 +866,9 @@ class RuntimeIoT:
         fala = plano_fala.fala
         emocao_resultado = plano_fala.emocao
         nivel_resultado = plano_fala.nivel
-        if callable(self.definir_emocao):
+        if callable(self.definir_emocao) and not execucao_silenciosa:
             self.definir_emocao(emocao_resultado, nivel_resultado, f"resultado IoT: {resposta.status}")
-        if self.emitir_fala:
+        if self.emitir_fala and not execucao_silenciosa:
             self.falar(fala, emocao_resultado, nivel_resultado)
         self.log(
             f"🏠 [IOT:RESULTADO] modo={self.modo} dispositivo={nome} acao={acao} "

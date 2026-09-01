@@ -112,6 +112,7 @@ class FeedbackPendenteRuntime:
             "_gmail_falar_resumo_estiloso": _get(ctx, "gmail_falar_resumo_estiloso"),
             "_registrar_feedback_proatividade": _get(ctx, "registrar_feedback_proatividade"),
             "_registrar_feedback_aprendizado": _get(ctx, "registrar_feedback_aprendizado"),
+            "_registrar_resultado_execucao": _get(ctx, "registrar_resultado_execucao"),
         }
 
         resultado = bool(handle_feedback(contexto, texto)) if callable(handle_feedback) else False

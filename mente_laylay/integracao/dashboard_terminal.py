@@ -20,6 +20,7 @@ from urllib.parse import parse_qs, urlparse
 
 from mente_laylay.especialistas.capacidades import INTENTS_SOMENTE_LEITURA
 from mente_laylay.integracao.acoes_terminal import ACOES_RAPIDAS_TERMINAL
+from mente_laylay.iot.contratos import ACOES_IOT
 
 
 _PROVEDORES = {
@@ -117,6 +118,7 @@ def _retrato_inicial() -> dict[str, Any]:
         "music": {
             "title": "",
             "channel": "",
+            "video_id": "",
             "artwork_url": "",
             "state": "unavailable",
             "position_seconds": 0.0,
@@ -161,6 +163,16 @@ def _retrato_inicial() -> dict[str, Any]:
         },
         "routines": {
             "items": [],
+            "freshness": "unavailable",
+            "observed_at": 0.0,
+        },
+        "iot": {
+            "configured": False,
+            "read_only": True,
+            "controls_available": False,
+            "mode": "unknown",
+            "provider_available": False,
+            "devices": [],
             "freshness": "unavailable",
             "observed_at": 0.0,
         },
@@ -427,6 +439,13 @@ class DashboardTerminalRuntime:
             observado = float(rotinas.get("observed_at") or 0.0)
             if observado <= 0 or agora - observado > 60.0:
                 rotinas["freshness"] = "stale" if observado else "unavailable"
+        iot = retrato.get("iot")
+        if isinstance(iot, dict) and iot.get("freshness") != "unavailable":
+            observado = float(iot.get("observed_at") or 0.0)
+            if observado <= 0 or agora - observado > 60.0:
+                iot["freshness"] = "stale" if observado else "unavailable"
+                iot["controls_available"] = False
+                iot["read_only"] = True
         if any(
             isinstance(item, dict) and item.get("freshness") == "stale"
             for item in (
@@ -435,11 +454,98 @@ class DashboardTerminalRuntime:
                 *sistema.values(),
                 musica,
                 rotinas,
+                iot,
             )
         ):
             retrato["status"] = "partial"
 
-    def _musica(self, agora: float) -> dict[str, Any]:
+    def _iot(self, agora: float) -> dict[str, Any]:
+        """Projeta somente o catálogo IoT; estado e execução ficam fora do P0."""
+        if not callable(self.iot_getter):
+            return deepcopy(_retrato_inicial()["iot"])
+        bruto = dict(self.iot_getter() or {})
+        modo = _texto(bruto.get("modo"), 16).casefold()
+        if modo not in {"simulado", "tuya"}:
+            modo = "unknown"
+        provedor_disponivel = bruto.get("provedor_disponivel") is True
+        dispositivos: list[dict[str, Any]] = []
+        for item in list(bruto.get("dispositivos") or ())[:64]:
+            if not isinstance(item, Mapping):
+                continue
+            nome = _texto(item.get("nome"), 64).casefold()
+            tipo = _texto(item.get("tipo"), 40).casefold()
+            nome_amigavel = _texto(item.get("nome_amigavel"), 100)
+            ambiente = _texto(item.get("ambiente"), 60)
+            if (
+                not re.fullmatch(r"[a-z0-9_]{1,64}", nome)
+                or not re.fullmatch(r"[a-z0-9_]{1,40}", tipo)
+                or not nome_amigavel
+                or not ambiente
+            ):
+                continue
+            capacidades = sorted({
+                _texto(capacidade, 40).casefold()
+                for capacidade in list(item.get("capacidades") or ())
+                if _texto(capacidade, 40).casefold() in ACOES_IOT
+            })
+            estado_bruto = item.get("estado_observado")
+            estado_bruto = dict(estado_bruto) if isinstance(
+                estado_bruto, Mapping,
+            ) else {}
+            estado_confirmado = estado_bruto.get("confirmado") is True
+            estado_disponivel = estado_bruto.get("disponivel") is True
+            ligado = estado_bruto.get("ligado")
+            estado = (
+                "offline" if estado_bruto and not estado_disponivel
+                else "on" if estado_confirmado and ligado is True
+                else "off" if estado_confirmado and ligado is False
+                else "unknown"
+            )
+            estado_observado = _numero(
+                estado_bruto.get("observed_at"),
+                minimo=0, maximo=9_999_999_999,
+            ) or 0.0
+            brilho_observado = _numero(
+                estado_bruto.get("brilho"), minimo=1, maximo=100,
+            )
+            if not (
+                tipo.startswith("lampada")
+                and "ajustar_brilho" in capacidades
+                and estado_observado > 0
+            ):
+                brilho_observado = None
+            dispositivos.append({
+                "name": nome,
+                "display_name": nome_amigavel,
+                "type": tipo,
+                "room": ambiente,
+                "capabilities": capacidades,
+                "state": estado,
+                "state_confirmed": bool(
+                    estado_confirmado and estado in {"on", "off"}
+                ),
+                "state_observed_at": estado_observado,
+                "brightness_percent": (
+                    int(brilho_observado) if brilho_observado is not None else None
+                ),
+            })
+        controles = bool(
+            dispositivos and provedor_disponivel and modo in {"simulado", "tuya"}
+        )
+        return {
+            "configured": bool(dispositivos),
+            "read_only": not controles,
+            "controls_available": controles,
+            "mode": modo,
+            "provider_available": provedor_disponivel,
+            "devices": dispositivos,
+            "freshness": "fresh",
+            "observed_at": agora,
+        }
+
+    def _musica(
+        self, agora: float, iot: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if not callable(self.musica_getter):
             return deepcopy(_retrato_inicial()["music"])
         bruto = dict(self.musica_getter() or {})
@@ -591,20 +697,18 @@ class DashboardTerminalRuntime:
             except Exception:
                 pass
 
-        luz_configurada = False
-        if callable(self.iot_getter):
+        retrato_iot = dict(iot or {})
+        if not retrato_iot and callable(self.iot_getter):
             try:
-                dispositivos = list(
-                    dict(self.iot_getter() or {}).get("dispositivos") or ()
-                )
-                luz_configurada = any(
-                    isinstance(item, Mapping)
-                    and str(item.get("tipo") or "").startswith("lampada")
-                    and "ajustar_cor" in set(item.get("capacidades") or ())
-                    for item in dispositivos
-                )
+                retrato_iot = self._iot(agora)
             except Exception:
-                pass
+                retrato_iot = {}
+        luz_configurada = any(
+            isinstance(item, Mapping)
+            and str(item.get("type") or "").startswith("lampada")
+            and "ajustar_cor" in set(item.get("capabilities") or ())
+            for item in list(retrato_iot.get("devices") or ())
+        )
         fila: list[dict[str, Any]] = []
         fila_fonte = "youtube"
         for item in list(player.get("queue") or ()):
@@ -699,6 +803,7 @@ class DashboardTerminalRuntime:
         return {
             "title": "" if expirado else titulo,
             "channel": "" if expirado else _texto(player.get("channel"), 120),
+            "video_id": "" if expirado else video_id,
             "artwork_url": "" if expirado else artwork_url,
             "state": "unavailable" if expirado else estado,
             "position_seconds": 0.0 if expirado else (_numero(
@@ -1614,8 +1719,19 @@ class DashboardTerminalRuntime:
             falhas_secoes += 1
             acoes_rapidas = list(anterior.get("quick_actions") or [])
         try:
+            iot = self._chamar_limitado(
+                "iot", lambda: self._iot(agora), timeout_s=0.25,
+            )
+        except Exception:
+            falhas_secoes += 1
+            iot = dict(anterior.get("iot") or _retrato_inicial()["iot"])
+            iot["freshness"] = (
+                "stale" if iot.get("observed_at") else "unavailable"
+            )
+            iot["controls_available"] = False
+        try:
             musica = self._chamar_limitado(
-                "music", lambda: self._musica(agora), timeout_s=0.25,
+                "music", lambda: self._musica(agora, iot), timeout_s=0.25,
             )
         except Exception:
             falhas_secoes += 1
@@ -1714,6 +1830,7 @@ class DashboardTerminalRuntime:
                 "quick_actions": list(acoes_rapidas or []),
                 "music": musica,
                 "routines": rotinas,
+                "iot": iot,
                 "system": sistema,
             }
             if memoria_inicial is not None:

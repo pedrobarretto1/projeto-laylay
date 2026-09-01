@@ -1,0 +1,38 @@
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:65472 | sessão=6310ee8d pid=18216
+🖥️ [TERMINAL 2] interface iniciada | sessão=6310ee8d pid=23688 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=6310ee8d
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0195 início_de_fala=0.0331
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=roteiro_teste
+💬 Você:
+> qual música tá tocando
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+[96m╭─ ◕‿◕ Laylay: A faixa atual registrada é Me at the zoo.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '0b041e2eef834922b289b52ec2c8102e', 'intent': 'MUSIC_STATUS', 'alvo': 'Me at the zoo', 'status': 'midia_status_consultado', 'executou': True, 'confirmado': True, 'params': {'acao': 'status', 'platform': 'music', 'somente_leitura': True}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'retorno_dados', 'evidencia_confirmacao': 'o título e o estado atual são lidos do registro sanitizado do player'}] | erros=[]
+💬 Você:
+> Coloca a playlist R51, pausa a música e me diz o estado dela.
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-1]] {'intent': 'PLAYLIST_PLAY', 'params': {'nome_playlist': 'r51'}}
+[96m╭─ ◕‿◕ Laylay: Você ainda não criou a playlist r51. Quer que eu salve essa música nela?[0m
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-2]] {'intent': 'MEDIA_CONTROL', 'params': {'acao': 'pause'}}
+[95m╭─ ≧◡≦⋆ Laylay: Dei pausa. A trilha segura a respiração um pouquinho.[0m
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [prioritario-cooperativo-3]] {'intent': 'MUSIC_STATUS', 'params': {'acao': 'status', 'platform': 'music', 'somente_leitura': True, 'referencia_contextual': True}}
+[96m╭─ ◕‿◕ Laylay: A faixa atual é Me at the zoo, mas ela está pausada.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '7c2b1118c741402f8fb100179b198bcd', 'intent': 'PLAYLIST_PLAY', 'alvo': 'r51', 'status': 'playlist_nao_encontrada', 'executou': False, 'confirmado': False, 'params': {'nome_playlist': 'r51'}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'a aba pode ser observada; o cliente remoto informa entrega, mas nem sempre confirma áudio'}, {'id_solicitacao': 'bc6369bc3564496ea5a97b19addbd174', 'intent': 'MEDIA_CONTROL', 'alvo': '', 'status': 'midia_pause', 'executou': True, 'confirmado': True, 'params': {'acao': 'pause'}, 'origem': 'executor', 'detalhe': 'success', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia'}, {'id_solicitacao': '3a54b15676df4b1e95477eef794586ca', 'intent': 'MUSIC_STATUS', 'alvo': 'Me at the zoo', 'status': 'midia_status_consultado', 'executou': True, 'confirmado': True, 'params': {'acao': 'status', 'platform': 'music', 'somente_leitura': True, 'referencia_contextual': True}, 'origem': 'executor', 'detalhe': '', 'confirmacao_oferecida': 'retorno_dados', 'evidencia_confirmacao': 'o título e o estado atual são lidos do registro sanitizado do player'}] | erros=[]
+✅ [ROTEIRO:002] resposta e resultado salvos | resultado=falha_confirmada; voz desativada pelo roteiro; avançando
+💬 Você:
+> continua a música
+[95m╭─ ≧◡≦⋆ Laylay: Dei play. A música voltou a ocupar o ambiente.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '091e04d7281044a5948b81e494b67ade', 'intent': 'MEDIA_CONTROL', 'alvo': '', 'status': 'midia_play', 'executou': True, 'confirmado': True, 'params': {'acao': 'play'}, 'origem': 'executor', 'detalhe': 'success', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia'}] | erros=[]
+💬 Você:
+> pausa a música
+[95m╭─ ≧◡≦⋆ Laylay: Pausei. A música fica quieta até você chamar.[0m
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '8590cbc5330043a7b5497b19ba6c3790', 'intent': 'MEDIA_CONTROL', 'alvo': '', 'status': 'midia_pause', 'executou': True, 'confirmado': True, 'params': {'acao': 'pause'}, 'origem': 'executor', 'detalhe': 'success', 'confirmacao_oferecida': 'variavel', 'evidencia_confirmacao': 'Chrome pode observar o player; teclas globais locais ou remotas confirmam envio, não o estado final da mídia'}] | erros=[]
+💬 Você:
+> sim
+[95m╭─ ≧◡≦⋆ Laylay: Pronto, Me at the zoo foi pra playlist r51.[0m
+🧠 [PLANO:FASE] fase=tratado_pre_fluxo | comandos=[{'id_solicitacao': '', 'intent': 'PLAYLIST_ADD', 'alvo': 'r51', 'status': 'playlist_musica_adicionada', 'executou': True, 'confirmado': True, 'params': {'nome_playlist': 'r51'}, 'origem': 'feedback_playlist', 'detalhe': 'confirmacao_feedback_playlist', 'confirmacao_oferecida': 'persistencia_local', 'evidencia_confirmacao': 'a faixa reaparece no armazenamento da playlist'}] | erros=[]
+📊 [ROTEIRO:RESUMO] avaliados=1 | passaram=1 | falharam=0 | alertas=0 | p95=3.701s
