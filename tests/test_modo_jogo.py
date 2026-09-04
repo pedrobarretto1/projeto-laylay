@@ -171,6 +171,49 @@ def test_soulframe_independente_e_reconhecido_fora_de_loja_famosa() -> None:
     )
 
 
+def test_franquia_forza_horizon_e_reconhecida_fora_de_loja_conhecida() -> None:
+    assert processo_parece_jogo(
+        "forzahorizon6.exe",
+        "Forza Horizon 6",
+        r"D:\BibliotecaCustomizada\Forza Horizon 6\forzahorizon6.exe",
+        memoria_mb=5085,
+        linha_comando="forzahorizon6.exe",
+    )
+    assert processo_parece_jogo(
+        "ForzaHorizon5.exe",
+        "Forza Horizon 5",
+        r"E:\JogosPortateis\Forza Horizon 5\ForzaHorizon5.exe",
+        memoria_mb=4200,
+        linha_comando="ForzaHorizon5.exe",
+    )
+
+
+def test_forza_horizon_confirmado_ativa_modo_jogo_apos_estabilidade() -> None:
+    agora = [100.0]
+    bloqueios = []
+    runtime = ModoJogoRuntime(
+        definir_bloqueio_llm=bloqueios.append,
+        descarregar_modelo=lambda: True,
+        clock=lambda: agora[0],
+        entrada_estavel_s=4.0,
+        log=lambda _texto: None,
+    )
+    retrato = {
+        "exe": "forzahorizon6.exe",
+        "title": "Forza Horizon 6",
+        "process_path": (
+            r"D:\BibliotecaCustomizada\Forza Horizon 6\forzahorizon6.exe"
+        ),
+        "process_memory_mb": 5085,
+        "process_cmdline": "forzahorizon6.exe",
+    }
+
+    assert runtime.observar(retrato, fullscreen=True)["ativo"] is False
+    agora[0] = 104.0
+    assert runtime.observar(retrato, fullscreen=True)["ativo"] is True
+    assert bloqueios == [True]
+
+
 def test_jogo_independente_pode_ser_inferido_por_multiplos_sinais_fortes() -> None:
     assert processo_parece_jogo(
         "Nebula.x64.exe",

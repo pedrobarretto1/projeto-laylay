@@ -6,6 +6,10 @@ from unittest.mock import patch
 
 from mente_laylay.autonomia.habilidade_janelas import executar_habilidade_janelas
 from mente_laylay.autonomia.modo_chat import ModoChatRuntime
+from mente_laylay.autonomia.porteiro_acoes import (
+    autorizar_acao_pratica,
+    texto_pede_musica_explicitamente,
+)
 from mente_laylay.autonomia.roteador_deterministico import (
     detectar_clima,
     detectar_musica_ou_playlist_direta,
@@ -914,6 +918,54 @@ def test_playlist_conhecida_vence_busca_generica_com_palavra_musica() -> None:
         "intent": "PLAYLIST_PLAY",
         "params": {"nome_playlist": "música brasileira"},
     }
+
+
+def test_pedido_musical_modal_com_infinitivo_chega_ao_fluxo_composto() -> None:
+    contexto = {
+        "normalizar_texto": normalizar_texto,
+        "texto_conversa_casual_sem_acao": lambda _texto: False,
+        "texto_bloqueia_playlist_agora": lambda _texto: False,
+        "texto_social_curto": lambda _texto: False,
+        "ignorar_token_solto": lambda _texto: False,
+        "fluxo_prioritario_da_ia": lambda _texto: False,
+        "texto_expresso_melhor_no_deterministico": lambda _texto: False,
+        "texto_depende_de_contexto": lambda _texto: False,
+        "limpar_destino_pc_b": lambda texto: texto,
+        "target_from_params": lambda _params, _texto: "pc_a",
+        "detectar_intencao_iot": lambda *_args: None,
+        "detectar_sugestao_indireta": lambda *_args: None,
+        "modo_jogo_contexto": lambda: {},
+        "visao_jogo_tem_analise_recente": lambda: False,
+        "detectar_playlist_nome_direto": lambda _texto: "",
+        "normalizar_query_musical": lambda texto: texto.strip(),
+        "sites_diretos": {},
+        "apps_map": {},
+    }
+
+    casos = {
+        "pode colocar glimpse of us": "glimpse of us",
+        "pode tocar glimpse of us": "glimpse of us",
+        "poderia colocar um rock leve": "rock leve",
+    }
+    for texto, query in casos.items():
+        assert detectar_intencao_deterministica_mente(texto, contexto) == {
+            "intent": "MUSIC_SEARCH",
+            "params": {"query": query},
+        }
+
+
+def test_porteiro_musical_aceita_modal_com_infinitivo_sem_aceitar_negacao() -> None:
+    for texto in (
+        "pode colocar glimpse of us",
+        "pode tocar glimpse of us",
+        "poderia colocar um rock leve",
+    ):
+        assert texto_pede_musica_explicitamente(texto) is True
+        assert autorizar_acao_pratica("MUSIC_SEARCH", texto, {})["permitido"] is True
+
+    negado = "não pode colocar glimpse of us"
+    assert texto_pede_musica_explicitamente(negado) is False
+    assert autorizar_acao_pratica("MUSIC_SEARCH", negado, {})["permitido"] is False
 
 
 def test_opiniao_sobre_genero_homonimo_nao_toca_nem_lista_playlist() -> None:

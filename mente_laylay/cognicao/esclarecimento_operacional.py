@@ -30,6 +30,9 @@ from mente_laylay.memoria_mental.pendencia import (
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
+from mente_laylay.memoria_mental.memoria_confiavel import (
+    categoria_referencia_preferencia_pessoal,
+)
 
 
 ORIGEM_ESCLARECIMENTO_OPERACIONAL = "esclarecimento_operacional"
@@ -143,6 +146,70 @@ def detectar_esclarecimento_operacional(texto: str) -> Dict[str, Any] | None:
                     "ttl_s": 180.0,
                 }
     return None
+
+
+def detectar_esclarecimento_referencia_pessoal(
+    texto: str,
+    *,
+    resolver_referencia_pessoal: Callable[..., Mapping[str, Any] | None] | None,
+) -> Dict[str, Any] | None:
+    """Pede o alvo quando um favorito possessivo ainda não foi aprendido.
+
+    A vontade de ouvir está clara, mas ``minha música favorita`` só é um
+    alvo quando existe um registro durável confirmado. Sem esse receipt, o
+    pedido vira esclarecimento e nunca volta à LLM como título literal.
+    """
+    normalizado = _normalizar(texto)
+    if not normalizado or "?" in str(texto or ""):
+        return None
+    achado = re.fullmatch(
+        r"(?:vamos )?(?:coloque|coloca|toca|toque|ouvir|escuta|escute|abre|abra) "
+        r"(?P<referencia>(?:(?:a|o) )?(?:minha|meu) "
+        r"(?:musica|faixa|cancao) (?:favorita|favorito|preferida|preferido)|"
+        r"(?:a |o )?(?:musica|faixa|cancao) que eu mais (?:gosto|curto|amo))",
+        normalizado,
+    )
+    if not achado:
+        return None
+    referencia = str(achado.group("referencia") or "").strip()
+    categoria = categoria_referencia_preferencia_pessoal(
+        referencia,
+        categoria="música",
+    )
+    if not categoria:
+        return None
+    resolvida: Mapping[str, Any] | None = None
+    if callable(resolver_referencia_pessoal):
+        try:
+            candidata = resolver_referencia_pessoal(
+                referencia,
+                categoria=categoria,
+            )
+            if isinstance(candidata, Mapping):
+                resolvida = candidata
+        except Exception:
+            resolvida = None
+    if (
+        resolvida
+        and bool(resolvida.get("confirmado_usuario"))
+        and str(resolvida.get("valor") or "").strip()
+    ):
+        return None
+    return {
+        "intent": "MUSIC_SEARCH",
+        "dominio": "musica",
+        "campo": "query",
+        "resposta_esperada": "nome da música ou artista",
+        "fala": (
+            "Eu ainda não tenho uma música favorita sua confirmada. "
+            "Qual faixa você quer ouvir?"
+        ),
+        "params_base": {
+            "referencia_pessoal_nao_resolvida": referencia,
+        },
+        "origem": ORIGEM_ESCLARECIMENTO_OPERACIONAL,
+        "ttl_s": 180.0,
+    }
 
 
 def registrar_esclarecimento_operacional(

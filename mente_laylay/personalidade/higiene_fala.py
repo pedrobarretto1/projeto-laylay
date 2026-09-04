@@ -81,6 +81,17 @@ def limpar_titulo_musical_para_fala(titulo: str) -> str:
     # preservando nomes musicais legítimos como ``1979``.
     if len(fala.split()) >= 6:
         fala = re.sub(r"^\s*\d{3,6}\s+(?=[A-Za-zÀ-ÿ])", "", fala).strip()
+    if "|" in fala:
+        primeiro, cauda = fala.split("|", 1)
+        # O título real permanece intacto no receipt. Para fala, uma primeira
+        # parte já no formato ``artista - faixa`` é identidade suficiente; a
+        # cauda costuma descrever personagens, feats, canal ou edição.
+        if " - " in primeiro or re.search(
+            r"\b(?:ft\.?|feat\.?|official|lyrics?|clipe|video|vídeo)\b|@",
+            cauda,
+            flags=re.IGNORECASE,
+        ):
+            fala = primeiro.strip()
     fala = _METADADO_MUSICAL.sub(" ", fala)
     ocorrencias_edit = list(re.finditer(r"\bedit\b", fala, re.IGNORECASE))
     if len(ocorrencias_edit) >= 2:

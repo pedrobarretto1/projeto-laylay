@@ -90,3 +90,36 @@ def test_red_p1hc4b_revalidacao_detecta_owner_que_surgiu_depois() -> None:
         "adiar",
         "descartar",
     }
+
+
+def test_revalidacao_de_email_adiado_emite_quando_contexto_fica_livre() -> None:
+    contexto = {
+        "modo_chat": True,
+        "conversa_ativa": True,
+        "ultima_entrada_ts": 990.0,
+        "interacao_usuario_ativa": True,
+    }
+    porteiro = PorteiroProatividadeRuntime(
+        contexto_getter=lambda: dict(contexto),
+        agora=lambda: 1000.0,
+    )
+
+    admissao = porteiro.avaliar(
+        tipo="emails",
+        texto="Chegaram dois e-mails novos.",
+    )
+    assert admissao["acao"] == "adiar"
+
+    contexto.update({
+        "modo_chat": False,
+        "conversa_ativa": False,
+        "ultima_entrada_ts": 0.0,
+        "interacao_usuario_ativa": False,
+    })
+    revalidada = porteiro.avaliar(
+        tipo="emails",
+        texto="Chegaram dois e-mails novos.",
+        revalidacao_entrega=True,
+    )
+
+    assert revalidada["acao"] == "emitir"

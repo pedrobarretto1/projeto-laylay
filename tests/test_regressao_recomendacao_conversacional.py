@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import time
 
+import pytest
+
 from mente_laylay.autonomia.contexto_resposta_ia import ContextoPromptRuntime
 from mente_laylay.cognicao.contrato_fala import construir_contrato_semantico_fala
 from mente_laylay.cognicao.fundamentacao_factual import (
     extrair_tema_fundamentacao,
+    extrair_tema_recomendacao_contextual,
     montar_fundamentacao,
     validar_fala_com_fundamentacao,
 )
@@ -510,16 +513,63 @@ def test_pesquisa_de_recomendacao_extrai_candidatos_reais_da_fonte() -> None:
     assert "Diário de uma Paixão" in resultado["resumo"]
 
 
-def test_composicao_pesquisa_recomendacao_antes_de_responder_followup() -> None:
-    estado_mental = criar_estado_mental_inicial()
-    estado_mental.update({
-        "pendencia_atual": {
+@pytest.mark.parametrize(
+    ("categoria", "fala", "tema_esperado"),
+    [
+        ("filme", "prefiro um de suspense", "filme de suspense"),
+        ("filme", "de romance", "filme de romance"),
+        ("livro", "pode ser de fantasia", "livro de fantasia"),
+        ("música", "quero uma de romance", ""),
+    ],
+)
+def test_preferencia_eliptica_reusa_apenas_referente_de_recomendacao(
+    categoria: str,
+    fala: str,
+    tema_esperado: str,
+) -> None:
+    registro = {
+        "entidade_ativa_id": f"tema:{categoria}",
+        "entidades": {
+            f"tema:{categoria}": {"tipo": "tema", "nome": categoria},
+        },
+    }
+
+    assert extrair_tema_recomendacao_contextual(fala, registro) == tema_esperado
+
+
+def test_preferencia_eliptica_sem_referente_nao_inventa_categoria() -> None:
+    assert extrair_tema_recomendacao_contextual(
+        "quero um de romance",
+        {},
+    ) == ""
+
+
+@pytest.mark.parametrize(
+    "pendencia",
+    [
+        {
             "status": "ativa",
             "origem": "pergunta_aberta",
             "tipo": "preferencia_recomendacao",
             "dominio": "recomendacao",
             "resposta_esperada": "preferencia",
         },
+        {
+            "status": "ativa",
+            "origem": "pergunta_aberta",
+            "tipo": "resposta_curta",
+            "dominio": "conversa",
+            "resposta_esperada": "detalhe",
+        },
+    ],
+    ids=("pendencia_recomendacao", "fallback_generico"),
+)
+def test_composicao_pesquisa_recomendacao_antes_de_responder_followup(
+    pendencia: dict,
+) -> None:
+    estado_mental = criar_estado_mental_inicial()
+    estado_mental.update({
+        "pendencia_atual": pendencia,
         "registro_semantico": {
             "entidade_ativa_id": "tema:filme",
             "entidades": {
@@ -540,6 +590,9 @@ def test_composicao_pesquisa_recomendacao_antes_de_responder_followup() -> None:
                 "ok": True,
                 "titulo": "candidatos de filme de romance",
                 "resumo": "Uma Linda Mulher; Titanic; Diário de uma Paixão.",
+                "candidatos": [
+                    "Uma Linda Mulher", "Titanic", "Diário de uma Paixão",
+                ],
                 "fonte": "wikipedia_pt",
                 "confianca": 0.9,
             }
@@ -629,7 +682,13 @@ def test_composicao_pesquisa_recomendacao_antes_de_responder_followup() -> None:
     )
 
     assert chamadas == [("recomendar", "filme de romance")]
-    assert estado.mental["fundamentacao_factual_turno"]["confiavel"] is True
+    fundamentacao = estado.mental["fundamentacao_factual_turno"]
+    plano = estado.mental["plano_turno_atual"]
+    assert fundamentacao["confiavel"] is True
+    assert fundamentacao["tema"] == "filme de romance"
+    assert fundamentacao["candidatos"][0] == "Uma Linda Mulher"
+    assert plano["dominio"] == "recomendacao"
+    assert plano["fundamentacao_factual"] == fundamentacao
 
 
 def test_guardiao_pesquisa_e_confirma_titulo_candidato_antes_da_fala() -> None:

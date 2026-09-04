@@ -31,6 +31,7 @@ DEPENDENCIAS_DETECCAO = (
     "_extrair_intencao_abrir_app", "_detectar_playlist_nome_direto",
     "_detectar_playlist_laylay_nome_direto",
     "_normalizar_query_musical",
+    "_resolver_referencia_pessoal",
     "_detectar_sugestao_indireta", "_abas_sugeridas_fechar",
     "_modo_jogo_runtime", "_registro_visao_jogo_leitura_runtime",
     "_resolver_consulta_recurso_local",
@@ -38,6 +39,7 @@ DEPENDENCIAS_DETECCAO = (
 
 DEPENDENCIAS_COMANDOS_IMEDIATOS = (
     "_normalizar_texto_com_apelidos", "_texto_social_curto",
+    "_resolver_referencia_pessoal",
     "_texto_conversa_casual_sem_acao", "_refinar_contexto_mental",
     "_texto_tem_comando_explicito", "_texto_conversa_contextual_sem_comando",
     "_resolver_comando_janela_contextual_forcado",

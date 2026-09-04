@@ -630,6 +630,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
             params_cb=params,
             detectar_playlist_nome_direto=_get(ctx, "detectar_playlist_nome_direto"),
             normalizar_query_musical=_get(ctx, "normalizar_query_musical"),
+            resolver_referencia_pessoal=_get(ctx, "resolver_referencia_pessoal"),
         ),
         lambda: detectar_fechar_alvo(
             t_sem_destino,
@@ -735,6 +736,7 @@ class DeteccaoDeterministicaRuntime:
             "extrair_nome_playlist", "_extrair_intencao_abrir_app",
             "_detectar_playlist_nome_direto", "_normalizar_query_musical",
             "_detectar_playlist_laylay_nome_direto",
+            "_resolver_referencia_pessoal",
             "_detectar_sugestao_indireta",
             "_resolver_consulta_recurso_local",
         )

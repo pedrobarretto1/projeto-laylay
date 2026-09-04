@@ -162,6 +162,9 @@ class RespostaEventoRuntime:
                 com_tools=False,
                 max_tokens=180,
                 modo_rapido=True,
+                permitir_conversa_modo_jogo=(
+                    str(dominio or "").strip().casefold() == "jogo"
+                ),
                 prioridade_interativa=False,
                 permitir_durante_interacao=False,
                 tipo_chamada="presenca_evento",

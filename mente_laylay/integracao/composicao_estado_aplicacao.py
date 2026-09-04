@@ -39,6 +39,7 @@ DEPENDENCIAS_ADAPTADORES_APLICACAO = (
     "_registrar_mente_curta_base", "_motor_aprendizado_runtime",
     "_rede_associativa_runtime", "print",
     "_registrar_resultado_execucao_base", "_estado_compartilhado_runtime",
+    "_especialista_neural_comandos_runtime",
     "_atualizar_plano_turno_mente", "_concluir_correcao_interpretacao_mente",
     "_resumo_mente_integrada_para_prompt_base", "_continuidades_get",
     "_aprendizado_runtime", "ROTINA_BLOQUEIO_REJEICAO_MIN",

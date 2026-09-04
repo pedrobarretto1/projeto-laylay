@@ -1,0 +1,24 @@
+{"text":"dá uma diminuída nisso","intent":"VOLUME","is_command":true,"negated":false,"action":"down","family":"frozen_volume_indireto_b","source":"MANUAL_PARAPHRASE","domain":"audio"}
+{"text":"reduz um pouco a intensidade do áudio por favor","intent":"VOLUME","is_command":true,"negated":false,"action":"down","family":"frozen_volume_indireto_b","source":"MANUAL_PARAPHRASE","domain":"audio"}
+{"text":"não deixa o som mais alto","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"frozen_volume_negado_b","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"o som estava baixo durante o filme","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"frozen_volume_relato_b","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"coloca o navegador para rodar","intent":"APP_OPEN","is_command":true,"negated":false,"action":"open","family":"frozen_app_abrir_b","source":"MANUAL_PARAPHRASE","domain":"app"}
+{"text":"não quero que abra programa nenhum","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"frozen_app_recusa_b","source":"HARD_NEGATIVE","domain":"app"}
+{"text":"encerra o chrome inteiro","intent":"CLOSE_APP","is_command":true,"negated":false,"action":"close","family":"frozen_app_fechar_b","source":"MANUAL_PARAPHRASE","domain":"app"}
+{"text":"tira essa página daqui","intent":"CLOSE_TAB","is_command":true,"negated":false,"action":"close","family":"frozen_aba_fechar_b","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"eu não pedi para fechar a aba","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"frozen_aba_correcao_b","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"busca na web bons filmes românticos","intent":"SEARCH","is_command":true,"negated":false,"action":"search","family":"frozen_busca_web_b","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"não quero pesquisar nada","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"frozen_busca_recusa_b","source":"HARD_NEGATIVE","domain":"browser"}
+{"text":"vai para o site do github","intent":"OPEN_URL","is_command":true,"negated":false,"action":"open","family":"frozen_url_abrir_b","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"acha uma canção de amor","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"frozen_musica_busca_b","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"segue tocando de onde parou","intent":"MEDIA_CONTROL","is_command":true,"negated":false,"action":"play","family":"frozen_midia_play_b","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"não pare a reprodução","intent":"MEDIA_CONTROL","is_command":true,"negated":true,"action":"pause","family":"frozen_midia_negada_b","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"deixa a lâmpada acesa","intent":"IOT_CONTROL","is_command":true,"negated":false,"action":"on","family":"frozen_iot_ligar_b","source":"MANUAL_PARAPHRASE","domain":"iot"}
+{"text":"evita desligar a lâmpada agora","intent":"IOT_CONTROL","is_command":true,"negated":true,"action":"off","family":"frozen_iot_negado_b","source":"HARD_NEGATIVE","domain":"iot"}
+{"text":"localiza o documento do projeto","intent":"FILE_SEARCH","is_command":true,"negated":false,"action":"search","family":"frozen_arquivo_busca_b","source":"MANUAL_PARAPHRASE","domain":"files"}
+{"text":"conta o que tem nesse arquivo","intent":"FILE_READ","is_command":true,"negated":false,"action":"read","family":"frozen_arquivo_ler_b","source":"MANUAL_PARAPHRASE","domain":"files"}
+{"text":"eu li o documento do projeto","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"frozen_arquivo_relato_b","source":"HARD_NEGATIVE","domain":"files"}
+{"text":"qual é a previsão para hoje","intent":"WEATHER","is_command":true,"negated":false,"action":"query","family":"frozen_clima_b","source":"MANUAL_PARAPHRASE","domain":"weather"}
+{"text":"quais abas estão abertas","intent":"LIST_TABS","is_command":true,"negated":false,"action":"list","family":"frozen_abas_listar_b","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"pode me recomendar um filme","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"frozen_conversa_recomendacao_b","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"quando eu disse abrir era só um exemplo","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"frozen_conversa_metalinguagem_b","source":"HARD_NEGATIVE","domain":"conversation"}

@@ -1,0 +1,53 @@
+{"text":"não diminua o som agora","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_down_negacao_direta_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"por favor, não reduza o volume","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_down_negacao_polida_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"mantém como está e não abaixa o áudio","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_down_preservar_nivel_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"evita deixar o som mais baixo","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_down_evitar_mudanca_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"prefiro que você não diminua o volume","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_down_preferencia_negada_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"não quero que você tire volume","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_down_desejo_negado_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"de jeito nenhum abaixe o som","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_down_negacao_enfatica_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"não reduza o áudio enquanto eu estiver ouvindo","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_down_negacao_temporal_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"mesmo se parecer alto, não diminui","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_down_negacao_condicional_e","source":"COUNTERFACTUAL","domain":"audio"}
+{"text":"menos volume agora não","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_down_negacao_eliptica_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"eu falei para não abaixar o som","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_down_correcao_negada_e","source":"MANUAL_PARAPHRASE","domain":"audio"}
+{"text":"não efetue a redução do volume","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_down_negacao_formal_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"nem mexe no som pra baixo","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_down_negacao_coloquial_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"não aumente o som agora","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_negacao_direta_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"por favor, não eleve o volume","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_negacao_polida_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"mantém como está e não sobe o áudio","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_preservar_nivel_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"evita elevar a intensidade sonora","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_evitar_mudanca_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"prefiro que você não aumente o volume","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_preferencia_negada_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"não quero que você coloque mais volume","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_desejo_negado_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"de jeito nenhum aumente o som","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_negacao_enfatica_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"não eleve o áudio enquanto eu estiver ouvindo","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_negacao_temporal_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"mesmo se parecer baixo, não aumenta","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_negacao_condicional_e","source":"COUNTERFACTUAL","domain":"audio"}
+{"text":"mais volume agora não","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_negacao_eliptica_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"eu falei para não aumentar o som","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_correcao_negada_e","source":"MANUAL_PARAPHRASE","domain":"audio"}
+{"text":"não efetue a elevação do volume","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_negacao_formal_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"nem mexe no som pra cima","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_negacao_coloquial_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"deixa o áudio nesse nível, sem aumentar","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_sem_mudanca_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"esse som parece baixo","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_comentario_nivel_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"o áudio parece alto para mim","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_comentario_nivel_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"eu gosto de ouvir música baixa","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_preferencia_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"prefiro jogos com o som alto","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_preferencia_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"meu irmão diminuiu o volume ontem","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_relato_passado_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"ela aumentou o som na festa","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_relato_passado_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"o volume baixou sozinho","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_mudanca_sozinha_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"o áudio subiu sem eu tocar","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_mudanca_sozinha_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"será que esse som está baixo?","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_pergunta_estado_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"você acha que o áudio está alto?","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_pergunta_estado_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"se o volume estivesse menor seria estranho","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_hipotese_e","source":"COUNTERFACTUAL","domain":"audio"}
+{"text":"se o áudio ficasse alto eu perceberia","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_hipotese_e","source":"COUNTERFACTUAL","domain":"audio"}
+{"text":"ele disse aumenta o volume","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_citacao_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"ela escreveu abaixa o som","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_citacao_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"o fone esquerdo está mais baixo que o direito","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_comparacao_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"a televisão parece mais alta que o celular","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_comparacao_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"sempre deixo o som baixo de manhã","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_habito_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"costumo usar o volume alto nos filmes","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_habito_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"mais tarde eu vou diminuir o áudio","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_plano_futuro_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"amanhã pretendo aumentar o volume","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_plano_futuro_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"lembro que o som estava bem baixo","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_memoria_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"naquela época o áudio ficava muito alto","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_memoria_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"a gravação tem volume baixo","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_descricao_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"esse vídeo foi mixado com o som alto","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_descricao_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"talvez o som baixo combine com essa cena","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_opiniao_hipotetica_e","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"um volume alto faria sentido nesse lugar","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_opiniao_hipotetica_e","source":"HARD_NEGATIVE","domain":"audio"}

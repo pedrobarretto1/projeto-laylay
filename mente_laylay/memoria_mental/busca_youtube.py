@@ -105,6 +105,44 @@ def pontuar_resultado_youtube(
         if tok in c:
             score += 4
 
+    # Variações são válidas quando foram pedidas, mas não devem vencer a faixa
+    # original apenas por repetirem todas as palavras do título. Esse era o
+    # caso de um piano cover aparecer antes do canal do artista.
+    if "piano cover" in q:
+        score += 100 if "piano cover" in t else -50
+    elif "cover" in q:
+        score += 70 if "cover" in t else -40
+    elif "piano cover" in t:
+        score -= 110
+    elif "cover" in t:
+        score -= 80
+    for termo, penalidade in (
+        ("instrumental", 70),
+        ("karaoke", 85),
+        ("tribute", 75),
+        ("remix", 35),
+        ("sped up", 30),
+        ("slowed", 30),
+        ("8d", 30),
+    ):
+        if termo in q:
+            score += 55 if termo in t else -25
+        elif termo in t:
+            score -= penalidade
+
+    marcador_oficial = any(
+        termo in t
+        for termo in ("official video", "official audio", "video oficial", "audio oficial")
+    )
+    if marcador_oficial:
+        score += 20
+    prefixo_titulo = str(titulo or "").split(" - ", 1)[0].strip()
+    prefixo_normalizado = normalizar_query_musical(
+        prefixo_titulo, normalizar_texto_cb,
+    )
+    if c and prefixo_normalizado and prefixo_normalizado == c:
+        score += 25
+
     termos_combo = [
         "album", "álbum", "full album", "playlist", "mix", "compilation", "coletanea",
         "coletânea", "varias musicas", "várias músicas", "varias músicas", "top ",
@@ -114,7 +152,7 @@ def pontuar_resultado_youtube(
     if any(x in t for x in termos_combo):
         score -= 90
 
-    if any(x in t for x in ["ao vivo", "live", "lyrics", "lyric", "8d", "sped up", "slowed", "remix"]):
+    if any(x in t for x in ["ao vivo", "live", "lyrics", "lyric"]):
         score -= 4
     if any(x in q for x in ["ao vivo", "live"]) and any(x in t for x in ["ao vivo", "live"]):
         score += 12

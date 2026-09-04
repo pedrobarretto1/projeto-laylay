@@ -1,0 +1,90 @@
+{"text":"abaixa o volume","intent":"VOLUME","is_command":true,"negated":false,"action":"down","family":"volume_direto_a","source":"NORMAL_COMMAND","domain":"audio"}
+{"text":"diminui o som um pouco","intent":"VOLUME","is_command":true,"negated":false,"action":"down","family":"volume_direto_a","source":"MANUAL_PARAPHRASE","domain":"audio"}
+{"text":"deixa o áudio mais baixo","intent":"VOLUME","is_command":true,"negated":false,"action":"down","family":"volume_indireto_a","source":"MANUAL_PARAPHRASE","domain":"audio"}
+{"text":"isso está alto demais, dá uma baixada","intent":"VOLUME","is_command":true,"negated":false,"action":"down","family":"volume_indireto_a","source":"MANUAL_PARAPHRASE","domain":"audio"}
+{"text":"aumenta o volume","intent":"VOLUME","is_command":true,"negated":false,"action":"up","family":"volume_subir_a","source":"NORMAL_COMMAND","domain":"audio"}
+{"text":"coloca o som mais alto","intent":"VOLUME","is_command":true,"negated":false,"action":"up","family":"volume_subir_a","source":"MANUAL_PARAPHRASE","domain":"audio"}
+{"text":"não abaixa o volume","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_negado_a","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"não precisa mexer no som","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"volume_negado_none_a","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"o volume está alto hoje","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_comentario_a","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"ontem eu abaixei bastante o som","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_relato_a","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"abre o chrome","intent":"APP_OPEN","is_command":true,"negated":false,"action":"open","family":"app_abrir_a","source":"NORMAL_COMMAND","domain":"app"}
+{"text":"inicia o navegador para mim","intent":"APP_OPEN","is_command":true,"negated":false,"action":"open","family":"app_abrir_a","source":"MANUAL_PARAPHRASE","domain":"app"}
+{"text":"pode colocar o bloco de notas na tela","intent":"APP_OPEN","is_command":true,"negated":false,"action":"open","family":"app_abrir_indireto_a","source":"MANUAL_PARAPHRASE","domain":"app"}
+{"text":"não abre o chrome","intent":"APP_OPEN","is_command":true,"negated":true,"action":"open","family":"app_abrir_negado_a","source":"HARD_NEGATIVE","domain":"app"}
+{"text":"eu gosto de usar o chrome","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"app_comentario_a","source":"HARD_NEGATIVE","domain":"app"}
+{"text":"o navegador abriu ontem","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"app_relato_a","source":"HARD_NEGATIVE","domain":"app"}
+{"text":"fecha o chrome","intent":"CLOSE_APP","is_command":true,"negated":false,"action":"close","family":"app_fechar_a","source":"NORMAL_COMMAND","domain":"app"}
+{"text":"encerra o programa do navegador","intent":"CLOSE_APP","is_command":true,"negated":false,"action":"close","family":"app_fechar_a","source":"MANUAL_PARAPHRASE","domain":"app"}
+{"text":"não fecha o programa","intent":"CLOSE_APP","is_command":true,"negated":true,"action":"close","family":"app_fechar_negado_a","source":"HARD_NEGATIVE","domain":"app"}
+{"text":"fecha esta aba","intent":"CLOSE_TAB","is_command":true,"negated":false,"action":"close","family":"aba_fechar_a","source":"NORMAL_COMMAND","domain":"browser"}
+{"text":"pode encerrar a página atual","intent":"CLOSE_TAB","is_command":true,"negated":false,"action":"close","family":"aba_fechar_a","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"não feche essa aba","intent":"CLOSE_TAB","is_command":true,"negated":true,"action":"close","family":"aba_fechar_negado_a","source":"HARD_NEGATIVE","domain":"browser"}
+{"text":"pesquisa filmes de romance","intent":"SEARCH","is_command":true,"negated":false,"action":"search","family":"busca_web_a","source":"NORMAL_COMMAND","domain":"browser"}
+{"text":"procura na internet uma receita de bolo","intent":"SEARCH","is_command":true,"negated":false,"action":"search","family":"busca_web_a","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"vê para mim quanto está o dólar","intent":"SEARCH","is_command":true,"negated":false,"action":"search","family":"busca_web_indireta_a","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"não pesquisa isso agora","intent":"SEARCH","is_command":true,"negated":true,"action":"search","family":"busca_web_negada_a","source":"HARD_NEGATIVE","domain":"browser"}
+{"text":"eu pesquisei filmes ontem","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"busca_relato_a","source":"HARD_NEGATIVE","domain":"browser"}
+{"text":"abre o site da wikipedia","intent":"OPEN_URL","is_command":true,"negated":false,"action":"open","family":"url_abrir_a","source":"NORMAL_COMMAND","domain":"browser"}
+{"text":"entra no youtube","intent":"OPEN_URL","is_command":true,"negated":false,"action":"open","family":"url_abrir_a","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"não entra nesse site","intent":"OPEN_URL","is_command":true,"negated":true,"action":"open","family":"url_abrir_negada_a","source":"HARD_NEGATIVE","domain":"browser"}
+{"text":"procura a música perfect","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_buscar_a","source":"NORMAL_COMMAND","domain":"music"}
+{"text":"encontra uma música romântica","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_buscar_a","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"não procura música agora","intent":"MUSIC_SEARCH","is_command":true,"negated":true,"action":"search","family":"musica_buscar_negada_a","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"essa música é romântica","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_comentario_a","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"pausa a música","intent":"MEDIA_CONTROL","is_command":true,"negated":false,"action":"pause","family":"midia_pausa_a","source":"NORMAL_COMMAND","domain":"music"}
+{"text":"para o que está tocando","intent":"MEDIA_CONTROL","is_command":true,"negated":false,"action":"pause","family":"midia_pausa_a","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"continua a reprodução","intent":"MEDIA_CONTROL","is_command":true,"negated":false,"action":"play","family":"midia_play_a","source":"NORMAL_COMMAND","domain":"music"}
+{"text":"pula para a próxima faixa","intent":"MEDIA_CONTROL","is_command":true,"negated":false,"action":"next","family":"midia_proxima_a","source":"NORMAL_COMMAND","domain":"music"}
+{"text":"não pausa a música","intent":"MEDIA_CONTROL","is_command":true,"negated":true,"action":"pause","family":"midia_negada_a","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"liga a luz do quarto","intent":"IOT_CONTROL","is_command":true,"negated":false,"action":"on","family":"iot_ligar_a","source":"NORMAL_COMMAND","domain":"iot"}
+{"text":"acende a lâmpada","intent":"IOT_CONTROL","is_command":true,"negated":false,"action":"on","family":"iot_ligar_a","source":"MANUAL_PARAPHRASE","domain":"iot"}
+{"text":"desliga o ventilador","intent":"IOT_CONTROL","is_command":true,"negated":false,"action":"off","family":"iot_desligar_a","source":"NORMAL_COMMAND","domain":"iot"}
+{"text":"apaga a luz do quarto","intent":"IOT_CONTROL","is_command":true,"negated":false,"action":"off","family":"iot_desligar_a","source":"MANUAL_PARAPHRASE","domain":"iot"}
+{"text":"não liga a lâmpada","intent":"IOT_CONTROL","is_command":true,"negated":true,"action":"on","family":"iot_negado_a","source":"HARD_NEGATIVE","domain":"iot"}
+{"text":"a luz do quarto está bonita","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"iot_comentario_a","source":"HARD_NEGATIVE","domain":"iot"}
+{"text":"procura o arquivo orçamento","intent":"FILE_SEARCH","is_command":true,"negated":false,"action":"search","family":"arquivo_buscar_a","source":"NORMAL_COMMAND","domain":"files"}
+{"text":"encontra minha planilha de gastos","intent":"FILE_SEARCH","is_command":true,"negated":false,"action":"search","family":"arquivo_buscar_a","source":"MANUAL_PARAPHRASE","domain":"files"}
+{"text":"não procura esse documento","intent":"FILE_SEARCH","is_command":true,"negated":true,"action":"search","family":"arquivo_buscar_negado_a","source":"HARD_NEGATIVE","domain":"files"}
+{"text":"meu arquivo de orçamento ficou bom","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"arquivo_comentario_a","source":"HARD_NEGATIVE","domain":"files"}
+{"text":"lê o arquivo selecionado","intent":"FILE_READ","is_command":true,"negated":false,"action":"read","family":"arquivo_ler_a","source":"NORMAL_COMMAND","domain":"files"}
+{"text":"me diz o conteúdo desse documento","intent":"FILE_READ","is_command":true,"negated":false,"action":"read","family":"arquivo_ler_a","source":"MANUAL_PARAPHRASE","domain":"files"}
+{"text":"não leia esse arquivo","intent":"FILE_READ","is_command":true,"negated":true,"action":"read","family":"arquivo_ler_negado_a","source":"HARD_NEGATIVE","domain":"files"}
+{"text":"como está o tempo hoje","intent":"WEATHER","is_command":true,"negated":false,"action":"query","family":"clima_consulta_a","source":"NORMAL_COMMAND","domain":"weather"}
+{"text":"vai chover mais tarde","intent":"WEATHER","is_command":true,"negated":false,"action":"query","family":"clima_consulta_a","source":"MANUAL_PARAPHRASE","domain":"weather"}
+{"text":"ontem choveu muito aqui","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"clima_relato_a","source":"HARD_NEGATIVE","domain":"weather"}
+{"text":"lista minhas abas","intent":"LIST_TABS","is_command":true,"negated":false,"action":"list","family":"abas_listar_a","source":"NORMAL_COMMAND","domain":"browser"}
+{"text":"mostra as páginas abertas","intent":"LIST_TABS","is_command":true,"negated":false,"action":"list","family":"abas_listar_a","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"não precisa mostrar as abas","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"abas_negado_none_a","source":"HARD_NEGATIVE","domain":"browser"}
+{"text":"oi lay, tudo bem","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"conversa_saudacao_a","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"quero um filme de romance","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"conversa_preferencia_a","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"como assim música","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"conversa_correcao_a","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"eu estava pensando em abrir um aplicativo","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"conversa_hipotese_a","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"se eu fechar o chrome perco as abas","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"conversa_condicional_a","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"por que você abaixou o volume","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"conversa_pergunta_passado_a","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"não quero que você faça nada agora","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"recusa_geral_c","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"não precisa executar comando nenhum","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"recusa_geral_c","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"eu não pedi para abrir programa","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"recusa_app_c","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"não quero que feche coisa alguma","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"recusa_app_c","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"eu falei de fechar a aba, mas não foi um pedido","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"metalinguagem_aba_c","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"não estou pedindo para pesquisar","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"recusa_busca_c","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"não precisa procurar nada para mim","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"recusa_busca_c","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"só comentei sobre procurar uma música","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"metalinguagem_musica_c","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"eu não quero controlar a música","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"recusa_midia_c","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"não mexe em nenhum dispositivo","intent":"IOT_CONTROL","is_command":true,"negated":true,"action":"none","family":"iot_negado_geral_c","source":"HARD_NEGATIVE","domain":"iot"}
+{"text":"não quero que acenda nem apague luz nenhuma","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"recusa_iot_c","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"eu não pedi para localizar arquivo","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"recusa_arquivo_c","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"não precisa ler documento algum","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"recusa_arquivo_c","source":"HARD_NEGATIVE","domain":"conversation"}
+{"text":"busca na web notícias de tecnologia","intent":"SEARCH","is_command":true,"negated":false,"action":"search","family":"busca_web_c","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"faz uma busca online sobre astronomia","intent":"SEARCH","is_command":true,"negated":false,"action":"search","family":"busca_web_c","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"acha uma canção calma para tocar","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_busca_c","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"encontra uma faixa de rock","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_busca_c","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"qual é a previsão do tempo","intent":"WEATHER","is_command":true,"negated":false,"action":"query","family":"clima_previsao_c","source":"MANUAL_PARAPHRASE","domain":"weather"}
+{"text":"me fala a previsão para amanhã","intent":"WEATHER","is_command":true,"negated":false,"action":"query","family":"clima_previsao_c","source":"MANUAL_PARAPHRASE","domain":"weather"}
+{"text":"não deixa o volume mais baixo","intent":"VOLUME","is_command":true,"negated":true,"action":"down","family":"volume_negado_c","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"não deixa o áudio mais alto","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_negado_c","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"o som ficou baixo durante a reunião","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_relato_d","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"o áudio estava alto no jogo","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_relato_d","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"eu tinha deixado o volume mais baixo","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"volume_relato_d","source":"HARD_NEGATIVE","domain":"audio"}
+{"text":"não apaga a luz","intent":"IOT_CONTROL","is_command":true,"negated":true,"action":"off","family":"iot_negado_d","source":"HARD_NEGATIVE","domain":"iot"}
+{"text":"não desligue a lâmpada","intent":"IOT_CONTROL","is_command":true,"negated":true,"action":"off","family":"iot_negado_d","source":"HARD_NEGATIVE","domain":"iot"}

@@ -238,6 +238,15 @@ from mente_laylay.cognicao.interpretador_semantico_runtime import (
 from mente_laylay.cognicao.composicao_turno import (
     criar_composicao_turno_runtime as _criar_composicao_turno_runtime,
 )
+from mente_laylay.neural import (
+    BufferExperienciasNeurais as _BufferExperienciasNeurais,
+    EspecialistaNeuralComandosRuntime as _EspecialistaNeuralComandosRuntime,
+    ModeloNeuralPreguicoso as _ModeloNeuralPreguicoso,
+    resolver_caminho_modelo_neural as _resolver_caminho_modelo_neural,
+)
+from mente_laylay.especialistas.capacidades import (
+    intents_registradas as _intents_registradas,
+)
 from mente_laylay.cognicao.decisao_turno import (
     filtrar_comandos_pelo_turno as _filtrar_comandos_pelo_turno_mente,
 )
@@ -1063,6 +1072,37 @@ _configuracao_aplicacao_runtime = _criar_configuracao_aplicacao_runtime(
     raiz=_base_dir,
 )
 PASTA_MEMORIA = os.path.join(_base_dir, "memoria")
+
+
+def _publicar_previsao_neural_comandos(previsao: dict) -> None:
+    _estado_compartilhado_runtime.atualizar_campos(
+        "mental", previsao_neural_comandos=dict(previsao or {}),
+    )
+
+
+_modo_neural_comandos = os.getenv("LAYLAY_NEURAL_MODE", "shadow")
+_especialista_neural_comandos_runtime = _EspecialistaNeuralComandosRuntime(
+    modelo=_ModeloNeuralPreguicoso(
+        _resolver_caminho_modelo_neural(
+            raiz=_base_dir,
+            pasta_memoria=PASTA_MEMORIA,
+            configurado=os.getenv("LAYLAY_NEURAL_MODEL_PATH", ""),
+            modo=_modo_neural_comandos,
+            candidato_shadow=os.path.join(
+                PASTA_MEMORIA,
+                "neural",
+                "modelo_semantico_shadow.joblib",
+            ),
+        )
+    ),
+    buffer=_BufferExperienciasNeurais(
+        os.path.join(PASTA_MEMORIA, "neural", "experiencias.jsonl")
+    ),
+    publicar=_publicar_previsao_neural_comandos,
+    modo=_modo_neural_comandos,
+    intents_permitidas=_intents_registradas(),
+    log=print,
+)
 _definir_atividade_visual = partial(
     _definir_atividade_visual_mente,
     atualizar_estado=lambda **campos: _estado_compartilhado_runtime.atualizar_campos(
@@ -1219,7 +1259,7 @@ _playlist_runtime = _criar_playlist_runtime_mente(
 )
 
 
-_ponte_curadoria_cooperativa = {"publicar": None}
+_ponte_curadoria_cooperativa: dict[str, Any] = {"publicar": None}
 _publicar_curadoria_musical_cooperativa = partial(
     _publicar_curadoria_musical_cooperativa_mente,
     publicar_getter=lambda: _ponte_curadoria_cooperativa.get("publicar"),
@@ -1567,7 +1607,7 @@ armazenar_contexto_pagina = _contexto_paginas.armazenar
 get_dicionario_contexto = _contexto_paginas.texto_contexto
 
 
-_ponte_medidor_musical = {"publicar": None}
+_ponte_medidor_musical: dict[str, Any] = {"publicar": None}
 
 
 def _publicar_medidor_musical_terminal(medidor):
@@ -2006,6 +2046,20 @@ _detectar_repetir_briefing = _detectar_repetir_briefing_ambiente
 detectar_comando_saude = _detectar_comando_saude_ambiente
 
 
+def _atualizar_estado_aprendizado(**campos: Any) -> None:
+    _estado_compartilhado_runtime.atualizar(
+        "mental",
+        lambda estado: {
+            **dict(estado),
+            "aprendizado_rotina_musica": {
+                **dict(estado.get("aprendizado_rotina_musica") or {}),
+                **campos,
+            },
+        },
+    )
+    return None
+
+
 _aprendizado_runtime = _criar_aprendizado_runtime_mente(
     pasta_memoria=PASTA_MEMORIA,
     arquivo_rotina=ROTINA_ARQUIVO_APRENDIDO,
@@ -2031,16 +2085,7 @@ _aprendizado_runtime = _criar_aprendizado_runtime_mente(
     estado_getter=lambda: dict(
         _estado_compartilhado_runtime.mental.get("aprendizado_rotina_musica") or {}
     ),
-    estado_setter=lambda **campos: _estado_compartilhado_runtime.atualizar(
-        "mental",
-        lambda estado: {
-            **dict(estado),
-            "aprendizado_rotina_musica": {
-                **dict(estado.get("aprendizado_rotina_musica") or {}),
-                **campos,
-            },
-        },
-    ),
+    estado_setter=_atualizar_estado_aprendizado,
     log=print,
 )
 _verificar_musica_autonoma = _busca_musical_runtime.verificar_autonoma
@@ -2425,7 +2470,7 @@ _investigador_erro_clipboard_runtime = InvestigadorErroRuntime(
     limpar_resposta=_limpar_texto_fala_ia,
     log=print,
 )
-_cooperacao_refs = {"orquestrador": None, "quadro": None}
+_cooperacao_refs: dict[str, Any] = {"orquestrador": None, "quadro": None}
 
 
 def _investigar_erro_clipboard_cooperativo(conteudo):
@@ -2756,6 +2801,7 @@ _linguagem_aprendida_runtime = _criar_linguagem_aprendida_runtime_mente(
     log=print,
 )
 _normalizar_texto_com_apelidos = _linguagem_aprendida_runtime.normalizar_com_apelidos
+_resolver_referencia_pessoal = _linguagem_aprendida_runtime.resolver_referencia_pessoal
 _ajustar_tom_por_emocao = partial(
     _ajustar_tom_por_emocao_mente,
     normalizar_cb=_normalizar_texto_com_apelidos,
@@ -3008,7 +3054,9 @@ _visao_jogo_servico = _composicao_visao_jogo_runtime.conectar_visao(
         _estado_compartilhado_runtime.mental.get("ultima_entrada_ts") or 0.0
     ) > 0.0,
     stop_event=_servicos_background_runtime.evento_parada,
-    progresso_cooperativo=_registrar_progresso_visao_cooperativa,
+    progresso_cooperativo=lambda evento: _registrar_progresso_visao_cooperativa(
+        dict(evento or {})
+    ),
 )
 _registro_visao_jogo_leitura_runtime = _registrar_visao_jogo_leitura(
     _criar_visao_jogo_leitura_runtime(visao=_visao_jogo_servico)
@@ -3172,7 +3220,7 @@ _executar_comando_conteudo = _coordenador_exec_runtime.executar
 
 
 abrir_programa = _abrir_programa_mente
-filtrar_apenas_fala = partial(_filtrar_apenas_fala_mente, historico=None, fallback_fala=FALLBACK_FALA_NEUTRA)
+filtrar_apenas_fala = partial(_filtrar_apenas_fala_mente, fallback_fala=FALLBACK_FALA_NEUTRA)
 
 limpar_diccao_e_ruido = _limpar_diccao_e_ruido_mente
 
@@ -3600,7 +3648,7 @@ _resposta_evento_runtime = _criar_resposta_evento_runtime_mente(
 
 
 def _diagnostico_conversa_llm_tipadas() -> dict:
-    prompt = _contexto_prompt_runtime.diagnostico()
+    prompt = _contexto_prompt_runtime.diagnostico() if _contexto_prompt_runtime else {}
     modelo = _registro_modelo_llm_runtime.diagnostico()
     estado = _estado_conversa_runtime.diagnostico()
     conversas = _gerenciador_conversas_runtime.diagnostico()
@@ -3898,7 +3946,7 @@ def main():
     caminho_roteiro = str(argumentos_roteiro.get("caminho") or "").strip()
     configuracao_roteiro = None
     diretorio_resultado_roteiro = None
-    espelhos_terminal: tuple[Any, Any] = ()
+    espelhos_terminal: tuple[Any, ...] = ()
     sentinela_encerramento = None
     if caminho_roteiro:
         try:
@@ -3943,6 +3991,12 @@ def main():
             ultima_entrada >= inicio_programa_ts
             or _conversa_estado_get("modo_chat", False)
             or _conversa_estado_get("conversa_ativa", False)
+        )
+
+    if _especialista_neural_comandos_runtime.modo != "off":
+        _servicos_background_runtime.iniciar(
+            "Laylay-Preaquecimento-Neural-Comandos",
+            _especialista_neural_comandos_runtime.preaquecer,
         )
 
     if _flag_desempenho_ativa("LAYLAY_PREAQUECER_LLM"):

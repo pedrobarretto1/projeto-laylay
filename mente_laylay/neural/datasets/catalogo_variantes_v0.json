@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "purpose": "dataset_coverage_only",
+  "operational_influence_enabled": false,
+  "target_dev_examples_per_variant": {
+    "minimum": 150,
+    "maximum": 200
+  },
+  "quality_targets": {
+    "minimum_linguistic_families_dev_per_variant": 12,
+    "minimum_negated_dev_per_variant": 15,
+    "minimum_hard_negatives_dev_per_domain": 30
+  },
+  "variants": [
+    {"intent": "APP_OPEN", "action": "open", "domain": "app", "risk": "LOW_RISK", "operational_influence_enabled": false},
+    {"intent": "CLOSE_APP", "action": "close", "domain": "app", "risk": "REVERSIBLE", "operational_influence_enabled": false},
+    {"intent": "CLOSE_TAB", "action": "close", "domain": "browser", "risk": "REVERSIBLE", "operational_influence_enabled": false},
+    {"intent": "FILE_READ", "action": "read", "domain": "files", "risk": "LOW_RISK", "operational_influence_enabled": false},
+    {"intent": "FILE_SEARCH", "action": "search", "domain": "files", "risk": "LOW_RISK", "operational_influence_enabled": false},
+    {"intent": "IOT_CONTROL", "action": "off", "domain": "iot", "risk": "REVERSIBLE", "operational_influence_enabled": false},
+    {"intent": "IOT_CONTROL", "action": "on", "domain": "iot", "risk": "REVERSIBLE", "operational_influence_enabled": false},
+    {"intent": "LIST_TABS", "action": "list", "domain": "browser", "risk": "LOW_RISK", "operational_influence_enabled": false},
+    {"intent": "LIST_WINDOWS", "action": "list", "domain": "app", "risk": "LOW_RISK", "operational_influence_enabled": false},
+    {"intent": "MEDIA_CONTROL", "action": "next", "domain": "music", "risk": "LOW_RISK", "operational_influence_enabled": false},
+    {"intent": "MEDIA_CONTROL", "action": "pause", "domain": "music", "risk": "LOW_RISK", "operational_influence_enabled": false},
+    {"intent": "MEDIA_CONTROL", "action": "play", "domain": "music", "risk": "LOW_RISK", "operational_influence_enabled": false},
+    {"intent": "MUSIC_SEARCH", "action": "search", "domain": "music", "risk": "LOW_RISK", "operational_influence_enabled": false},
+    {"intent": "OPEN_URL", "action": "open", "domain": "browser", "risk": "LOW_RISK", "operational_influence_enabled": false},
+    {"intent": "SEARCH", "action": "search", "domain": "browser", "risk": "LOW_RISK", "operational_influence_enabled": false},
+    {"intent": "VOLUME", "action": "down", "domain": "audio", "risk": "LOW_RISK", "operational_influence_enabled": false},
+    {"intent": "VOLUME", "action": "up", "domain": "audio", "risk": "LOW_RISK", "operational_influence_enabled": false},
+    {"intent": "WEATHER", "action": "query", "domain": "weather", "risk": "LOW_RISK", "operational_influence_enabled": false}
+  ]
+}

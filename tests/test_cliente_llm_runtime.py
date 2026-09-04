@@ -196,3 +196,63 @@ def test_assunto_contextual_no_jogo_ignora_atalho_e_chega_a_mente_principal() ->
         "não lay, eu ainda estou no menu"
     )
     assert finalizacoes == [True]
+
+
+def test_prompt_compacto_grande_preserva_formato_mas_recebe_orcamento_contextual() -> None:
+    """O tamanho real do payload, e não o rótulo rápido, governa o prazo HTTP."""
+
+    class Modelo:
+        def __init__(self):
+            self.pedidos = []
+
+        def executar(self, pedido):
+            self.pedidos.append(pedido)
+            return ResultadoModelo('{"fala":"Uma opção concreta.","comandos":[]}', True)
+
+        @staticmethod
+        def diagnostico():
+            return {"disponivel": True}
+
+    class Contexto:
+        @staticmethod
+        def montar():
+            return {}
+
+    modelo = Modelo()
+    historico = [{"role": "system", "content": "evidência " * 850}]
+    estado = EstadoConversaRuntime(
+        getter=lambda: list(historico),
+        setter=lambda novas: historico.__setitem__(slice(None), list(novas)),
+    )
+    contexto = {
+        "processar_inicio_fluxo": lambda *_args: False,
+        "usar_modo_rapido": lambda _texto: True,
+        "texto_depende_de_contexto": lambda _texto: False,
+        "modo_jogo_ativo": lambda: False,
+        "estado_conversa": estado,
+        "modelo_llm": RegistroModeloLLM.criar(modelo),
+        "preparar_resposta": lambda *_args: {
+            "resposta_bruta": "{}",
+            "fala": "Uma opção concreta.",
+            "comandos": [],
+            "tipo_interacao": "conversa",
+            "leitura_semantica": {},
+        },
+        "contexto_dispatch_runtime": Contexto(),
+        "executar_comandos_json": lambda *_args: {
+            "erros": [],
+            "fala_ja_emitida": False,
+            "fala_emitida_por_acao": False,
+            "fala_salva_no_inicio": False,
+        },
+        "contexto_finalizacao_runtime": Contexto(),
+        "finalizar_execucao": lambda *_args: {},
+    }
+
+    RespostaIARuntime(contexto_getter=lambda: contexto, log=lambda *_args: None).processar(
+        "pode me recomendar um filme?"
+    )
+
+    assert len(modelo.pedidos) == 1
+    assert modelo.pedidos[0].modo_rapido is True
+    assert modelo.pedidos[0].classe_timeout == "contextual"

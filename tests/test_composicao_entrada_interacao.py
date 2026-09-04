@@ -1,9 +1,22 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from functools import partial
 
 import pytest
 
+from memoria_sqlite import MemoriaSQLite
+from mente_laylay.autonomia.porteiro_acoes import (
+    texto_bloqueia_playlist_agora,
+    texto_conversa_casual_sem_acao,
+    texto_social_curto,
+)
+from mente_laylay.autonomia.processamento_resposta_ia import salvar_aprendizados_da_ia
+from mente_laylay.autonomia.roteador_deterministico import (
+    texto_expresso_melhor_no_deterministico,
+)
+from mente_laylay.cognicao.linguagem_aprendida import LinguagemAprendidaRuntime
+from mente_laylay.memoria_mental.busca_youtube import normalizar_query_musical
 from mente_laylay.integracao.composicao_entrada_interacao import (
     ComposicaoEntradaInteracaoRuntime,
 )
@@ -41,8 +54,13 @@ def test_deteccao_recebe_registro_filtrado_congelado_e_estado_vivo() -> None:
     capturado = {}
     estado = {"turno": 1}
     original = lambda texto: texto  # noqa: E731
+    resolver_referencia = lambda referencia, categoria="": {  # noqa: E731
+        "valor": "Lua de Neon da Anny",
+        "categoria": categoria,
+    }
     servicos = {
         "_normalizar_texto_com_apelidos": original,
+        "_resolver_referencia_pessoal": resolver_referencia,
         "SEGREDO_FORA_DO_CONTRATO": "não reter",
     }
     detector = object()
@@ -64,11 +82,65 @@ def test_deteccao_recebe_registro_filtrado_congelado_e_estado_vivo() -> None:
 
     assert runtime.deteccao is detector
     assert snapshot["_normalizar_texto_com_apelidos"] is original
+    assert snapshot["_resolver_referencia_pessoal"] is resolver_referencia
     assert "SEGREDO_FORA_DO_CONTRATO" not in snapshot
     assert "novo_servico" not in snapshot
     assert capturado["estado_getter"]() is estado
     estado["turno"] = 2
     assert capturado["estado_getter"]()["turno"] == 2
+
+
+def test_composicao_real_resolve_musica_favorita_aprendida(tmp_path) -> None:
+    memoria = MemoriaSQLite(str(tmp_path / "memoria.sqlite"))
+    salvar_aprendizados_da_ia(
+        '{"fala":"Entendi.","comandos":[]}',
+        memoria,
+        "minha música favorita é Lua de Neon da Anny",
+    )
+    normalizar = lambda texto: str(texto or "").casefold().strip()  # noqa: E731
+    linguagem = LinguagemAprendidaRuntime(
+        memoria_sqlite=memoria,
+        normalizar_texto=normalizar,
+        texto_social_curto=lambda _texto: False,
+        falar=lambda *_args: None,
+    )
+    estado = {"turno_atual": {"autoriza_execucao": True}}
+    servicos = _com_memoria({
+        "_normalizar_texto_com_apelidos": linguagem.normalizar_com_apelidos,
+        "_resolver_referencia_pessoal": linguagem.resolver_referencia_pessoal,
+        "_texto_conversa_casual_sem_acao": texto_conversa_casual_sem_acao,
+        "_texto_bloqueia_playlist_agora": texto_bloqueia_playlist_agora,
+        "_texto_social_curto": texto_social_curto,
+        "_ignorar_token_solto": lambda _texto: False,
+        "_fluxo_prioritario_da_ia": lambda _texto: False,
+        "_texto_expresso_melhor_no_deterministico": partial(
+            texto_expresso_melhor_no_deterministico,
+            normalizar_texto=normalizar,
+        ),
+        "_texto_depende_de_contexto": lambda _texto: False,
+        "_limpar_destino_pc_b": lambda texto: texto,
+        "_target_from_params": lambda _params, _texto: "pc_a",
+        "_limpar_nome_playlist": lambda texto: str(texto).strip(),
+        "_musica_estado_get": lambda *_args: "",
+        "_contexto_musical_ativo": lambda: False,
+        "_detectar_playlist_nome_direto": lambda _texto: "",
+        "_normalizar_query_musical": partial(
+            normalizar_query_musical,
+            normalizar_texto_cb=normalizar,
+        ),
+    })
+    composicao = ComposicaoEntradaInteracaoRuntime(
+        servicos=servicos,
+        estado_mental_getter=lambda: estado,
+        sites_diretos={},
+        apps_map={},
+    )
+
+    resultado = composicao.deteccao.detectar("coloca minha música favorita")
+
+    assert resultado["intent"] == "MUSIC_SEARCH"
+    assert resultado["params"]["query"] == "Lua de Neon da Anny"
+    assert resultado["params"]["referencia_pessoal_fonte"] == "memoria_duravel_confirmada"
 
 
 def test_interacao_conecta_tarde_filtra_servicos_e_preserva_estado_chat() -> None:

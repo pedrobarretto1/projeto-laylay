@@ -12,8 +12,39 @@ from mente_laylay.integracao.registro_conversa_llm import PedidoModelo
 from mente_laylay.personalidade.proporcao_resposta import limite_tokens_resposta
 
 
+LIMITE_TOKENS_ESTIMADOS_PRAZO_RAPIDO = 1200
+
+
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     return ctx.get(key, default) if isinstance(ctx, dict) else default
+
+
+def _classe_timeout_resposta(
+    mensagens: list[dict[str, Any]],
+    *,
+    modo_rapido: bool,
+    limite_saida_tokens: int,
+) -> str:
+    """Separa compactação do prompt do prazo concedido ao transporte.
+
+    Um prompt pode usar o contrato compacto e ainda carregar evidência ou
+    histórico suficientes para exceder oito segundos num modelo local frio.
+    O custo aproximado governa somente o timeout; formato e conteúdo continuam
+    sob responsabilidade do preparador canônico.
+    """
+    if not modo_rapido:
+        return "normal"
+    caracteres = sum(
+        len(str(item.get("content") or ""))
+        for item in mensagens
+        if isinstance(item, dict)
+    )
+    tokens_estimados = (caracteres + 3) // 4 + max(0, int(limite_saida_tokens))
+    return (
+        "contextual"
+        if tokens_estimados > LIMITE_TOKENS_ESTIMADOS_PRAZO_RAPIDO
+        else "rapida"
+    )
 
 
 def _registrar_metrica(
@@ -395,12 +426,17 @@ class RespostaIARuntime:
                 modo_rapido=modo_rapido,
                 depende_contexto=depende_contexto,
             )
+            classe_timeout = _classe_timeout_resposta(
+                mensagens_modelo,
+                modo_rapido=modo_rapido,
+                limite_saida_tokens=limite_tokens,
+            )
             rota_llm = "llm_rapida" if modo_rapido else "llm_normal"
             configurar_orcamento_llm = _get(ctx, "configurar_orcamento_llm_turno")
             if callable(configurar_orcamento_llm):
                 try:
                     configurar_orcamento_llm(
-                        classe="rapida" if modo_rapido else "normal",
+                        classe=classe_timeout,
                     )
                 except Exception:
                     pass
@@ -423,7 +459,7 @@ class RespostaIARuntime:
                         ),
                         prioridade_interativa=True,
                         tipo_chamada="principal",
-                        classe_timeout="rapida" if modo_rapido else "normal",
+                        classe_timeout=classe_timeout,
                     )
                     resultado_modelo = modelo_llm.executar(pedido_modelo)
                     bot_raw = resultado_modelo.texto
@@ -443,7 +479,7 @@ class RespostaIARuntime:
                         ),
                         _prioridade_interativa=True,
                         _tipo_chamada="principal",
-                        _classe_timeout="rapida" if modo_rapido else "normal",
+                        _classe_timeout=classe_timeout,
                     )
                     sucesso_llm = True
             finally:

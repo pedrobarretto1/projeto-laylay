@@ -121,6 +121,8 @@ def _dominio_turno(
         return "iot"
     if re.search(r"\b(?:abre|fecha|maximiza|janela|programa|app)\b", t):
         return "sistema"
+    if bool(dict(turno or {}).get("continuidade_recomendacao")):
+        return "recomendacao"
     pendencia = mente.get("pendencia_atual") if isinstance(mente, dict) else {}
     if isinstance(pendencia, dict) and pendencia.get("status") == "ativa":
         leitura = dict(turno or {})

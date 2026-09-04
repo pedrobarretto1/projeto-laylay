@@ -27,6 +27,9 @@ from mente_laylay.autonomia.detectores_playlist import (
     detectar_playlist_laylay,
     detectar_playlist_usuario,
 )
+from mente_laylay.memoria_mental.memoria_confiavel import (
+    categoria_referencia_preferencia_pessoal,
+)
 
 
 def texto_pede_clima_atual(texto_normalizado: str) -> bool:
@@ -1520,6 +1523,7 @@ def detectar_musica_ou_playlist_direta(
     params_cb: Callable[..., Dict[str, Any]],
     detectar_playlist_nome_direto: Callable[[str], str],
     normalizar_query_musical: Callable[[str], str],
+    resolver_referencia_pessoal: Callable[..., Dict[str, Any] | None] | None = None,
 ) -> Dict[str, Any] | None:
     """Resolve comandos diretos de tocar música ou playlist pelo nome."""
     t = str(texto_normalizado or "").strip()
@@ -1556,6 +1560,47 @@ def detectar_musica_ou_playlist_direta(
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
     detectar_playlist = detectar_playlist_nome_direto if callable(detectar_playlist_nome_direto) else (lambda valor: "")
     normalizar_musica = normalizar_query_musical if callable(normalizar_query_musical) else (lambda valor: str(valor or "").strip())
+    verbo_musical = (
+        r"(?:coloque|coloca|colocar|toca|toque|tocar|ouvir|"
+        r"escuta|escute|escutar|abre|abra|abrir)"
+    )
+
+    def resultado_busca(query: str) -> Dict[str, Any] | None:
+        consulta = re.sub(r"\s+", " ", str(query or "")).strip()
+        if not consulta:
+            return None
+        categoria_referida = categoria_referencia_preferencia_pessoal(
+            consulta,
+            categoria="música",
+        )
+        if not categoria_referida:
+            return {"intent": "MUSIC_SEARCH", "params": params(query=consulta)}
+        if not callable(resolver_referencia_pessoal):
+            return None
+        try:
+            referencia = resolver_referencia_pessoal(
+                consulta,
+                categoria=categoria_referida,
+            )
+        except Exception:
+            return None
+        if not isinstance(referencia, dict):
+            return None
+        alvo = re.sub(r"\s+", " ", str(referencia.get("valor") or "")).strip()
+        if not alvo or not bool(referencia.get("confirmado_usuario")):
+            return None
+        return {
+            "intent": "MUSIC_SEARCH",
+            "params": params(
+                query=alvo,
+                referencia_pessoal=consulta,
+                referencia_pessoal_categoria=categoria_referida,
+                referencia_pessoal_fonte="memoria_duravel_confirmada",
+                referencia_pessoal_chave=str(
+                    referencia.get("chave_semantica") or ""
+                ).strip(),
+            ),
+        }
 
     convite_musical = re.match(
         r"^\s*(?:vamos\s+)?(?:ouvir|escutar)\s+(?:uma|um|algo)?\s*(.+)$",
@@ -1564,11 +1609,10 @@ def detectar_musica_ou_playlist_direta(
     if convite_musical and "playlist" not in t:
         q = str(convite_musical.group(1) or "").strip()
         q = re.sub(r"^(?:musica|música|som|faixa)\s+", "", q).strip()
-        q = normalizar_musica(q)
         if q:
-            return {"intent": "MUSIC_SEARCH", "params": params(query=q)}
+            return resultado_busca(q)
 
-    if re.match(r"^\s*(coloque|coloca|toca|toque|ouvir|escuta|escute|abre|abra)\b", t):
+    if re.match(rf"^\s*{verbo_musical}\b", t):
         # Nomes já salvos vencem a interpretação genérica da palavra
         # "música": "coloca música brasileira" pode ser uma playlist.
         pl_direta = detectar_playlist(bruto)
@@ -1578,16 +1622,16 @@ def detectar_musica_ou_playlist_direta(
             return {"intent": "PLAYLIST_PLAY", "params": params(nome_playlist=pl_direta)}
 
         if any(x in t for x in ["música", "musica", "youtube", "no youtube", "no yt", "no you tube"]):
-            q = re.sub(r"^\s*(coloque|coloca|toca|toque|ouvir|escuta|escute|abre|abra)\b\s*", "", t).strip()
+            q = re.sub(rf"^\s*{verbo_musical}\b\s*", "", t).strip()
             q = re.sub(r"^(a|o|as|os|uma|um|essa|esse|essa música|essa musica|essa canção|essa cancao)\s+", "", q).strip()
             if q:
-                return {"intent": "MUSIC_SEARCH", "params": params(query=q)}
+                return resultado_busca(q)
 
         if not any(x in t for x in ["playlist", "música", "musica", "youtube", "yt"]):
-            q = re.sub(r"^\s*(coloque|coloca|toca|toque|ouvir|escuta|escute|abre|abra)\b\s*", "", t).strip()
+            q = re.sub(rf"^\s*{verbo_musical}\b\s*", "", t).strip()
             q = re.sub(r"^(a|o|as|os|uma|um|essa|esse)\s+", "", q).strip()
             if q:
-                return {"intent": "MUSIC_SEARCH", "params": params(query=q)}
+                return resultado_busca(q)
 
     pl_direta = detectar_playlist(bruto)
     if pl_direta and not any(x in t for x in ["música", "musica", "youtube", "yt"]):
@@ -1595,14 +1639,14 @@ def detectar_musica_ou_playlist_direta(
             return {"intent": "PLAYLIST_LIST", "params": params(nome_playlist=pl_direta)}
         return {"intent": "PLAYLIST_PLAY", "params": params(nome_playlist=pl_direta)}
 
-    if re.match(r"^\s*(coloque|coloca|toca|toque|ouvir|escuta|escute)\b", t) and "playlist" not in t:
-        q = re.sub(r"^\s*(coloque|coloca|toca|toque|ouvir|escuta|escute)\b", " ", base).strip()
+    if re.match(rf"^\s*{verbo_musical}\b", t) and "playlist" not in t:
+        q = re.sub(rf"^\s*{verbo_musical}\b", " ", base).strip()
         q = re.sub(r"^(a|o|uma|um)\s+", "", q).strip()
         q = q.replace("música", " ").replace("musica", " ").replace("no youtube", " ").replace("na youtube", " ")
         q = re.sub(r"\s+", " ", q).strip()
         q = normalizar_musica(q)
         if q and q not in {"playlist"}:
-            return {"intent": "MUSIC_SEARCH", "params": params(query=q)}
+            return resultado_busca(q)
 
     return None
 

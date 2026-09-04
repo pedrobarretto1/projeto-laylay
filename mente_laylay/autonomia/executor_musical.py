@@ -164,6 +164,9 @@ def _pesquisar(
     titulo_resolvido = str(
         selecao.get("title") or selecao.get("titulo") or query
     ).strip()
+    titulo_apresentado = (
+        limpar_titulo_musical_para_fala(titulo_resolvido) or titulo_resolvido
+    )
     canal_resolvido = str(
         selecao.get("channel") or selecao.get("canal") or ""
     ).strip()
@@ -195,6 +198,7 @@ def _pesquisar(
         return ResultadoDespacho.concluido(False)
 
     params["alvo_executado"] = titulo_resolvido
+    params["alvo_apresentado"] = titulo_apresentado
     params["alvo_executado_url"] = link
     if canal_resolvido:
         params["alvo_executado_canal"] = canal_resolvido
@@ -223,23 +227,23 @@ def _pesquisar(
         detalhe=detalhe_execucao,
     )
     fala_resultado = escolher_fala_variada([
-            f"{titulo_resolvido} está tocando agora.",
-            f"Pronto, confirmei {titulo_resolvido} em reprodução.",
-            f"Achei {titulo_resolvido} e o player confirmou o som.",
+            f"{titulo_apresentado} está tocando agora.",
+            f"Pronto, confirmei {titulo_apresentado} em reprodução.",
+            f"Achei {titulo_apresentado} e o player confirmou o som.",
         ] if ok and confirmado_execucao is True else [
-            f"Abri {titulo_resolvido}, mas o player não confirmou a reprodução. "
+            f"Abri {titulo_apresentado}, mas o player não confirmou a reprodução. "
             "Não vou fingir que o áudio já começou.",
-            f"Abri {titulo_resolvido}, só não vou fingir que ouvi o player começar.",
+            f"Abri {titulo_apresentado}, só não vou fingir que ouvi o player começar.",
         ] if ok else [
-            f"Tentei tocar {titulo_resolvido}, mas o navegador não confirmou a reprodução.",
-            f"Achei {titulo_resolvido}, porém o player não respondeu; não repeti o comando.",
-            f"A seleção foi {titulo_resolvido}, mas a reprodução falhou de forma explícita.",
+            f"Tentei tocar {titulo_apresentado}, mas o navegador não confirmou a reprodução.",
+            f"Achei {titulo_apresentado}, porém o player não respondeu; não repeti o comando.",
+            f"A seleção foi {titulo_apresentado}, mas a reprodução falhou de forma explícita.",
         ])
     if callable(deps.falar_por_status):
         deps.falar_por_status(
             status,
             fala_resultado,
-            alvo=titulo_resolvido,
+            alvo=titulo_apresentado,
             executou=ok,
             confirmado=confirmado_execucao if ok else False,
             detalhe=detalhe_execucao,

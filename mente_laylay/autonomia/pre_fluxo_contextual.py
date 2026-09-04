@@ -30,6 +30,7 @@ from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
 )
 from mente_laylay.cognicao.esclarecimento_operacional import (
     detectar_esclarecimento_operacional,
+    detectar_esclarecimento_referencia_pessoal,
     registrar_esclarecimento_operacional,
 )
 from mente_laylay.autonomia.base_pre_fluxo import _get
@@ -748,6 +749,11 @@ def processar_esclarecimento_operacional(
     mesmo comando de forma natural.
     """
     contrato = detectar_esclarecimento_operacional(texto_usuario)
+    if not isinstance(contrato, dict):
+        contrato = detectar_esclarecimento_referencia_pessoal(
+            texto_usuario,
+            resolver_referencia_pessoal=_get(ctx, "_resolver_referencia_pessoal"),
+        )
     if not isinstance(contrato, dict):
         return False, ""
 

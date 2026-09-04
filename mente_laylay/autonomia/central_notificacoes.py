@@ -59,7 +59,7 @@ class CentralNotificacoesRuntime:
         arquivo_estado: str,
         *,
         falar_cb: Callable[[str, str, int], Any] | None = None,
-        agendar_fala_cb: Callable[[str, str, str, int], Any] | None = None,
+        agendar_fala_cb: Callable[..., Any] | None = None,
         agenda_getter: Callable[[], list] | None = None,
         modo_jogo_getter: Callable[[], bool] | None = None,
         conversa_ativa_getter: Callable[[], bool] | None = None,
@@ -284,6 +284,59 @@ class CentralNotificacoesRuntime:
         origem = f" de {remetente}" if remetente else ""
         return f"Chegou um aviso importante{origem}: {titulo}."
 
+    def _texto_lote(self, eventos: list[Mapping[str, Any]]) -> str:
+        if len(eventos) == 1:
+            return self._texto_evento(eventos[0])
+        ordenados = sorted(
+            eventos,
+            key=lambda evento: {
+                "critica": 3, "alta": 2, "normal": 1, "baixa": 0,
+            }.get(str(evento.get("prioridade") or "normal"), 1),
+            reverse=True,
+        )
+        destaques = "; ".join(
+            f"{evento.get('remetente') + ': ' if evento.get('remetente') else ''}"
+            f"{evento.get('titulo') or 'aviso'}"
+            for evento in ordenados[:3]
+        )
+        apenas_emails = all(evento.get("origem") == "email" for evento in eventos)
+        substantivo = "e-mails novos" if apenas_emails else "avisos novos"
+        seguranca = sum(evento.get("categoria") == "seguranca" for evento in eventos)
+        abertura = f"Chegaram {len(eventos)} {substantivo}."
+        if seguranca:
+            abertura = (
+                f"Atenção: chegaram {len(eventos)} {substantivo}, "
+                f"com {seguranca} aviso{'s' if seguranca != 1 else ''} de segurança."
+            )
+        return f"{abertura} Destaques: {destaques}."
+
+    def _concluir_anuncio(
+        self,
+        chaves: tuple[str, ...],
+        entregue: bool,
+        motivo: str,
+    ) -> None:
+        """Materializa o receipt da voz sem confundir fila com entrega."""
+        if not entregue:
+            self.log(
+                "🧠 [NOTIFICAÇÕES] anúncio continua pendente | "
+                f"itens={len(chaves)} motivo={motivo or 'nao_entregue'}"
+            )
+            return
+        conjunto = set(chaves)
+        alterou = False
+        with self._lock:
+            for evento in self._estado.get("eventos", []):
+                if (
+                    isinstance(evento, dict)
+                    and evento.get("id") in conjunto
+                    and not evento.get("anunciado")
+                ):
+                    evento["anunciado"] = True
+                    alterou = True
+            if alterou:
+                self._salvar()
+
     def ingerir(self, eventos: Iterable[Mapping[str, Any]]) -> set[str]:
         """Guarda uma leva e devolve os IDs externos aceitos pela central."""
         aceitos: set[str] = set()
@@ -321,25 +374,58 @@ class CentralNotificacoesRuntime:
             return aceitos
 
         candidatos = [e for e in novos if self._modo_evento(e) != "silenciar"]
-        criticos = [e for e in candidatos if self._modo_evento(e) == "interromper"]
-        escolhidos = criticos[:1] if criticos else ([] if self._contexto_ocupado() else candidatos[:1])
+        escolhidos = candidatos
         if escolhidos and callable(self.agendar_fala_cb):
-            evento = escolhidos[0]
-            texto = self._texto_evento(evento)
+            texto = self._texto_lote(escolhidos)
+            chaves = tuple(str(evento["id"]) for evento in escolhidos)
+            tem_seguranca = any(
+                evento["categoria"] == "seguranca" for evento in escolhidos
+            )
+            apenas_emails = all(
+                evento["origem"] == "email" for evento in escolhidos
+            )
+            tipo_fala = (
+                "seguranca" if tem_seguranca
+                else "emails" if apenas_emails
+                else "notificacoes"
+            )
+            prioridade_critica = any(
+                evento["prioridade"] == "critica" for evento in escolhidos
+            )
+
+            def concluir(entregue: bool, motivo: str) -> None:
+                self._concluir_anuncio(chaves, entregue, motivo)
+
             try:
-                agendou = bool(self.agendar_fala_cb(
-                    "seguranca" if evento["categoria"] == "seguranca" else "notificacoes",
-                    texto,
-                    "irritada" if evento["categoria"] == "seguranca" else "calma",
-                    2 if evento["prioridade"] == "critica" else 1,
-                ))
+                try:
+                    agendou = bool(self.agendar_fala_cb(
+                        tipo_fala,
+                        texto,
+                        "irritada" if tem_seguranca else "calma",
+                        2 if prioridade_critica else 1,
+                        ao_concluir=concluir,
+                        preservar_ate_entrega=True,
+                    ))
+                except TypeError:
+                    # Adaptadores antigos não expõem receipt. Conservamos a
+                    # compatibilidade, mas somente esse caminho legado trata
+                    # a aceitação da fila como conclusão.
+                    agendou = bool(self.agendar_fala_cb(
+                        tipo_fala,
+                        texto,
+                        "irritada" if tem_seguranca else "calma",
+                        2 if prioridade_critica else 1,
+                    ))
+                    if agendou:
+                        concluir(True, "fila_legada_sem_callback")
             except Exception as erro:
                 self.log(f"⚠️ [NOTIFICAÇÕES] fala não entrou na fila: {type(erro).__name__}")
                 agendou = False
-            if agendou:
-                with self._lock:
-                    evento["anunciado"] = True
-                    self._salvar()
+            if not agendou:
+                self.log(
+                    "🧠 [NOTIFICAÇÕES] anúncio preservado como pendente | "
+                    f"itens={len(chaves)}"
+                )
         return aceitos
 
     def ingerir_emails(self, emails: Iterable[Mapping[str, Any]]) -> set[str]:
@@ -513,6 +599,7 @@ class CentralNotificacoesRuntime:
                 "ativa": bool(self._estado.get("ativa", True)),
                 "eventos": len(eventos),
                 "importantes": sum(e.get("prioridade") in {"alta", "critica"} for e in eventos if isinstance(e, dict)),
+                "pendentes": sum(not e.get("anunciado") for e in eventos if isinstance(e, dict)),
                 "preferencias": dict(self._estado.get("preferencias") or {}),
                 "persistencia_disponivel": bool(
                     os.path.exists(self.arquivo_estado)

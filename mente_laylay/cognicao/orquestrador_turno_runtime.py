@@ -22,7 +22,10 @@ from mente_laylay.cognicao.intencao_visual_jogo import (
     aplicar_pedido_visual_ao_turno,
     detectar_pedido_visao_jogo,
 )
-from mente_laylay.cognicao.fundamentacao_factual import extrair_titulos_citados
+from mente_laylay.cognicao.fundamentacao_factual import (
+    extrair_tema_recomendacao_contextual,
+    extrair_titulos_citados,
+)
 from mente_laylay.cognicao.revisao_turno import resolver_revisao_intra_turno
 from mente_laylay.cognicao.modalidade_turno import (
     aplicar_veto_canonico,
@@ -55,6 +58,51 @@ from mente_laylay.emocoes.contrato_causal import (
 from mente_laylay.memoria_mental.eventos_emocionais import (
     publicar_evento_emocional_causal,
 )
+
+
+def observar_especialista_neural_turno(
+    ns: Mapping[str, Any],
+    texto: str,
+    turno: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Anexa telemetria neural sem conceder autoridade ou alterar o legado."""
+    resultado = dict(turno or {})
+    especialista = ns.get("_especialista_neural_comandos_runtime")
+    if especialista is None:
+        return resultado
+    try:
+        previsao = especialista.observar(texto, turno_legado=dict(resultado))
+    except Exception as erro:
+        logger = ns.get("print")
+        if callable(logger):
+            logger(f"⚠️ [NEURAL:COMANDOS] sombra isolada: {type(erro).__name__}")
+        return resultado
+    if previsao:
+        resultado["previsao_neural"] = dict(previsao)
+    return resultado
+
+
+def finalizar_especialista_neural_turno(
+    ns: Mapping[str, Any],
+    texto: str,
+    turno: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Fecha a telemetria contra o turno final sem reclassificar a entrada."""
+    resultado = dict(turno or {})
+    especialista = ns.get("_especialista_neural_comandos_runtime")
+    finalizar = getattr(especialista, "finalizar_observacao_turno", None)
+    if not callable(finalizar):
+        return resultado
+    try:
+        previsao = finalizar(texto, dict(resultado))
+    except Exception as erro:
+        logger = ns.get("print")
+        if callable(logger):
+            logger(f"⚠️ [NEURAL:SHADOW] fechamento isolado: {type(erro).__name__}")
+        return resultado
+    if previsao:
+        resultado["previsao_neural"] = dict(previsao)
+    return resultado
 
 
 def registrar_metrica_opcional(ns: dict, componente: str, duracao_ms: float, sucesso: bool) -> None:
@@ -806,6 +854,7 @@ def _iniciar_planejamento_turno(
     )
 
     turno = ns['_classificar_modalidade_turno_mente'](texto_cognitivo, normalizar_texto=ns['_normalizar_texto_com_apelidos'], texto_tem_comando_explicito=ns['_texto_tem_comando_explicito'], confirmacao_contextual_valida=confirmacao_contextual_valida)
+    turno = observar_especialista_neural_turno(ns, texto_cognitivo, turno)
     turno['origem_entrada'] = _normalizar_origem_entrada(origem)
     if revisao_detectada:
         turno['texto_original'] = str(texto or '')[:500]
@@ -1013,6 +1062,14 @@ def _iniciar_planejamento_turno(
     if not tema_factual and aprendizados_explicitos:
         tema_factual = str(aprendizados_explicitos[0].get('valor') or '').strip()[:160]
     turno['tema_factual'] = tema_factual
+    recomendacao_contextual = bool(
+        tema_factual
+        and extrair_tema_recomendacao_contextual(
+            texto_cognitivo,
+            registro_semantico,
+        ) == tema_factual
+    )
+    turno['continuidade_recomendacao'] = recomendacao_contextual
     if tema_factual and (not dict(retrato_turno.get('referencia_resolvida') or {}).get('nome')):
         registro_semantico = ns['_atualizar_registro_turno_mente'](registro_semantico, texto, retrato={'entidade_explicita': {'tipo': 'tema', 'nome': tema_factual, 'origem': 'tema_pesquisavel'}}, funcao=funcao_atual, encerramento=encerramento_assunto)
         mente_antes_turno['registro_semantico'] = registro_semantico
@@ -1023,12 +1080,15 @@ def _iniciar_planejamento_turno(
         modalidade_pesquisa = str(turno.get('modalidade_geral') or turno.get('modalidade') or '').casefold()
         pendencia_factual = dict(mente_antes_turno.get('pendencia_atual') or {})
         continuacao_recomendacao = bool(
-            pendencia_factual.get('status') == 'ativa'
-            and (
-                str(pendencia_factual.get('dominio') or '').casefold()
-                == 'recomendacao'
-                or str(pendencia_factual.get('tipo') or '').casefold()
-                == 'preferencia_recomendacao'
+            recomendacao_contextual
+            or (
+                pendencia_factual.get('status') == 'ativa'
+                and (
+                    str(pendencia_factual.get('dominio') or '').casefold()
+                    == 'recomendacao'
+                    or str(pendencia_factual.get('tipo') or '').casefold()
+                    == 'preferencia_recomendacao'
+                )
             )
         )
         pedido_recomendacao = bool(re.search(
@@ -1160,6 +1220,7 @@ def _iniciar_planejamento_turno(
     )
     turno['contrato_fala'] = contrato_fala
     plano['contrato_fala'] = contrato_fala
+    turno = finalizar_especialista_neural_turno(ns, texto_cognitivo, turno)
     atualizacoes_turno = {'ultima_entrada': str(texto or '').strip()[:500], 'ultima_entrada_ts': ns['time'].time(), 'turno_atual': turno, 'plano_turno_atual': plano, 'contrato_fala_atual': contrato_fala, 'identidade_turno_atual': identidade_turno, 'identidade_turno_resumo': ns['_resumo_identidade_turno_mente'](identidade_turno), 'funcao_comunicativa_atual': funcao_comunicativa, 'retrato_turno_atual': retrato_turno, 'entidades_recentes': entidades_recentes, 'especialistas_turno_atual': especialistas, 'assunto_estruturado_atual': assunto_estruturado, 'registro_semantico': registro_semantico, 'fundamentacao_factual_turno': fundamentacao_factual, **limpeza_pergunta_turno}
     if evento_emocional_causal:
         atualizacoes_turno['eventos_emocionais_causais'] = publicar_evento_emocional_causal(

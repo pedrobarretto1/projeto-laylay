@@ -30,6 +30,7 @@ TIPOS_CHAMADA_SECUNDARIA_LLM = TIPOS_REPARO_LLM | {"autoria_operacional"}
 LIMITES_CLASSE_S = {
     "rapida": 8.0,
     "normal": 20.0,
+    "contextual": 30.0,
     "longa": 60.0,
 }
 

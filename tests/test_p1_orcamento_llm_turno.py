@@ -96,6 +96,14 @@ def test_classes_de_timeout_respeitam_prazo_total_do_turno() -> None:
     assert runtime.autorizar_chamada(classe_timeout="normal").timeout_s == 17.0
     runtime.finalizar_turno("normal")
 
+    runtime.iniciar_turno("contextual", classe="contextual")
+    relogio.avancar(3)
+    assert (
+        runtime.autorizar_chamada(classe_timeout="contextual").timeout_s
+        == 27.0
+    )
+    runtime.finalizar_turno("contextual")
+
     runtime.iniciar_turno("longo", classe="normal")
     assert runtime.configurar_turno(classe="longa") is True
     assert runtime.autorizar_chamada(classe_timeout="longa").timeout_s == 60.0

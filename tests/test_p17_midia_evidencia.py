@@ -72,11 +72,12 @@ def test_pedido_de_trabalho_percorre_refinamento_selecao_execucao_e_fala() -> No
     assert params["consulta_pedida"] == "musica boa para trabalhar programando"
     assert params["consulta_resolvida"] == "Tycho - Awake official audio"
     assert params["alvo_executado"] == "Tycho - Awake (Official Audio)"
+    assert params["alvo_apresentado"] == "Tycho - Awake"
     assert eventos == [(
         "musica_reproduzindo",
         {"executou": True, "confirmado": True, "detalhe": "playing_confirmed"},
     )]
-    assert falas[0][2]["alvo"] == "Tycho - Awake (Official Audio)"
+    assert falas[0][2]["alvo"] == "Tycho - Awake"
 
 
 def test_pesquisa_sem_video_concreto_nao_abre_pagina_de_resultados() -> None:

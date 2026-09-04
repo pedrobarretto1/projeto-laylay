@@ -309,6 +309,28 @@ class PorteiroProatividadeRuntime:
             pontos -= 40
             motivos.append("momento de foco")
 
+        if revalidacao_entrega:
+            # A admissão já decidiu que este sinal merecia a fila. Em T2 o
+            # porteiro só revalida ownership e barreiras vivas; não transforma
+            # a mesma entrega em uma nova sugestão de baixa pontuação.
+            barreira_viva = bool(
+                turno_ativo
+                or ((modo_chat or conversa_ativa) and not presenca_jogo)
+                or idade_entrada < 30.0
+                or idade_fala < 30.0
+                or funcao in _FUNCOES_SENSIVEIS
+                or ((modo_jogo and not presenca_jogo) or reuniao_ativa or modo_foco)
+            ) and not prioritario
+            decisao = {
+                "acao": "adiar" if barreira_viva else "emitir",
+                "pontuacao": max(0, min(100, pontos)),
+                "motivos": motivos,
+                "adiar_s": 10.0 if barreira_viva else 0.0,
+                "validade_s": self.validade_s,
+            }
+            self._registrar_decisao(tipo_norm, decisao)
+            return decisao
+
         urgente = tipo_norm in {"alarme", "lembrete", "seguranca", "erro_critico"}
         if turno_ativo:
             if urgente and mesclar_turno and pontos >= 35:

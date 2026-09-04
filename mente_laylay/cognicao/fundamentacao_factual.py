@@ -334,23 +334,48 @@ def extrair_tema_fundamentacao(
                 return tema[:160]
 
     registro = dict(registro_semantico or {})
+    tema_recomendacao = extrair_tema_recomendacao_contextual(bruto, registro)
+    if tema_recomendacao:
+        return tema_recomendacao
     entidades = dict(registro.get("entidades") or {})
     ativa = dict(entidades.get(str(registro.get("entidade_ativa_id") or "")) or {})
     nome_ativo = str(ativa.get("nome") or "").strip()
-    if nome_ativo.casefold() in {"filme", "serie", "série", "livro", "jogo"}:
-        preferencia = re.search(
-            r"\b(?:quero|prefiro|pode\s+ser)\b[^.!?]{0,50}\bde\s+"
-            r"(?P<genero>[a-zA-ZÀ-ÿ -]{2,40})[.!?]*$",
-            bruto,
-            flags=re.IGNORECASE,
-        )
-        if preferencia:
-            genero = str(preferencia.group("genero") or "").strip(" ,.!?;:\"'")
-            if genero:
-                return f"{nome_ativo} de {genero}"[:160]
     if re.search(r"\b(?:ele|ela|dele|dela|desse|dessa|isso|esse|essa)\b", bruto, flags=re.IGNORECASE):
         return nome_ativo[:160]
     return ""
+
+
+def extrair_tema_recomendacao_contextual(
+    texto: str,
+    registro_semantico: Dict[str, Any] | None,
+) -> str:
+    """Materializa categoria + preferência sem depender da fala da assistente.
+
+    A fala intermediária pode ser uma pergunta autoral ou uma contingência
+    genérica. O referente semântico confirmado continua sendo o dono do tema;
+    a pendência textual não precisa adivinhar novamente o domínio.
+    """
+    registro = dict(registro_semantico or {})
+    entidades = dict(registro.get("entidades") or {})
+    ativa = dict(entidades.get(str(registro.get("entidade_ativa_id") or "")) or {})
+    categoria = str(ativa.get("nome") or "").strip()
+    if categoria.casefold() not in {"filme", "serie", "série", "livro", "jogo"}:
+        return ""
+    fala = re.sub(r"\s+", " ", str(texto or "")).strip()
+    preferencia = re.search(
+        r"\b(?:quero|prefiro|pode\s+ser)\b[^.!?]{0,50}\bde\s+"
+        r"(?P<genero>[a-zA-ZÀ-ÿ -]{2,40})[.!?]*$",
+        fala,
+        flags=re.IGNORECASE,
+    ) or re.fullmatch(
+        r"de\s+(?P<genero>[a-zA-ZÀ-ÿ -]{2,40})[.!?]*",
+        fala,
+        flags=re.IGNORECASE,
+    )
+    if not preferencia:
+        return ""
+    genero = str(preferencia.group("genero") or "").strip(" ,.!?;:\"'")
+    return f"{categoria} de {genero}"[:160] if genero else ""
 
 
 def montar_fundamentacao(

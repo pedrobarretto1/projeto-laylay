@@ -1829,6 +1829,115 @@ class MenteUnicaTests(unittest.TestCase):
         self.assertEqual(resultado["intent"], "MUSIC_SEARCH")
         self.assertEqual(resultado["params"]["query"], "romantica")
 
+    def test_comando_musical_resolve_favorita_na_memoria_confirmada(self) -> None:
+        from mente_laylay.autonomia.roteador_deterministico import (
+            detectar_musica_ou_playlist_direta,
+        )
+
+        resultado = detectar_musica_ou_playlist_direta(
+            "coloca minha musica favorita",
+            texto_sem_destino="coloca minha musica favorita",
+            texto_bruto="coloca minha música favorita",
+            params_cb=lambda **kwargs: kwargs,
+            detectar_playlist_nome_direto=lambda _texto: "",
+            normalizar_query_musical=lambda texto: texto,
+            resolver_referencia_pessoal=lambda referencia, categoria: {
+                "valor": "Lua de Neon da Anny",
+                "categoria": categoria,
+                "chave_semantica": "preferencia:musica",
+                "confirmado_usuario": True,
+            },
+        )
+
+        self.assertEqual(resultado["intent"], "MUSIC_SEARCH")
+        self.assertEqual(resultado["params"]["query"], "Lua de Neon da Anny")
+        self.assertEqual(
+            resultado["params"]["referencia_pessoal"],
+            "minha musica favorita",
+        )
+        self.assertEqual(
+            resultado["params"]["referencia_pessoal_fonte"],
+            "memoria_duravel_confirmada",
+        )
+
+    def test_comando_musical_nao_pesquisa_referencia_favorita_sem_memoria(self) -> None:
+        from mente_laylay.autonomia.roteador_deterministico import (
+            detectar_musica_ou_playlist_direta,
+        )
+
+        resultado = detectar_musica_ou_playlist_direta(
+            "coloca minha musica favorita",
+            texto_sem_destino="coloca minha musica favorita",
+            texto_bruto="coloca minha música favorita",
+            params_cb=lambda **kwargs: kwargs,
+            detectar_playlist_nome_direto=lambda _texto: "",
+            normalizar_query_musical=lambda texto: texto,
+            resolver_referencia_pessoal=lambda _referencia, _categoria: None,
+        )
+
+        self.assertIsNone(resultado)
+
+    def test_convite_musical_tambem_resolve_favorita_confirmada(self) -> None:
+        from mente_laylay.autonomia.roteador_deterministico import (
+            detectar_musica_ou_playlist_direta,
+        )
+
+        resultado = detectar_musica_ou_playlist_direta(
+            "vamos ouvir minha musica favorita",
+            texto_sem_destino="vamos ouvir minha musica favorita",
+            texto_bruto="vamos ouvir minha música favorita",
+            params_cb=lambda **kwargs: kwargs,
+            detectar_playlist_nome_direto=lambda _texto: "",
+            normalizar_query_musical=lambda texto: str(texto).replace("musica", "").strip(),
+            resolver_referencia_pessoal=lambda _referencia, categoria="": {
+                "valor": "Lua de Neon da Anny",
+                "categoria": categoria,
+                "confirmado_usuario": True,
+            },
+        )
+
+        self.assertEqual(resultado["params"]["query"], "Lua de Neon da Anny")
+
+    def test_titulo_literal_minha_favorita_continua_pesquisavel(self) -> None:
+        from mente_laylay.autonomia.roteador_deterministico import (
+            detectar_musica_ou_playlist_direta,
+        )
+
+        resultado = detectar_musica_ou_playlist_direta(
+            "coloca Minha Favorita",
+            texto_sem_destino="coloca Minha Favorita",
+            texto_bruto="coloca Minha Favorita",
+            params_cb=lambda **kwargs: kwargs,
+            detectar_playlist_nome_direto=lambda _texto: "",
+            normalizar_query_musical=lambda texto: texto,
+        )
+
+        self.assertEqual(resultado["intent"], "MUSIC_SEARCH")
+        self.assertEqual(resultado["params"]["query"], "Minha Favorita")
+
+    def test_preferencia_musical_lembrada_nao_autoriza_execucao_sozinha(self) -> None:
+        from mente_laylay.autonomia.roteador_deterministico import (
+            detectar_musica_ou_playlist_direta,
+        )
+
+        def detectar(texto: str):
+            return detectar_musica_ou_playlist_direta(
+                texto.casefold(),
+                texto_sem_destino=texto.casefold(),
+                texto_bruto=texto,
+                params_cb=lambda **kwargs: kwargs,
+                detectar_playlist_nome_direto=lambda _texto: "",
+                normalizar_query_musical=lambda valor: valor,
+                resolver_referencia_pessoal=lambda _referencia, categoria="": {
+                    "valor": "Lua de Neon da Anny",
+                    "categoria": categoria,
+                    "confirmado_usuario": True,
+                },
+            )
+
+        self.assertIsNone(detectar("minha música favorita"))
+        self.assertIsNone(detectar("não coloca minha música favorita"))
+
     def test_resposta_funcional_nao_vira_topico(self) -> None:
         from mente_laylay.memoria_mental.continuidade_conversa import (
             extrair_topico_conversa,

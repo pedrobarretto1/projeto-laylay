@@ -13,10 +13,19 @@ from mente_laylay.autonomia.coordenador_oportunidades import (
 from mente_laylay.autonomia.diretor_presenca import DiretorPresencaRuntime
 from mente_laylay.autonomia.motor_iniciativa import MotorIniciativaRuntime
 from mente_laylay.autonomia.resposta_evento_runtime import RespostaEventoRuntime
-from mente_laylay.integracao.registro_conversa_llm import PacotePrompt, ResultadoModelo
+from mente_laylay.integracao.registro_conversa_llm import (
+    PacotePrompt,
+    RequisicaoTransporteLLM,
+    ResultadoModelo,
+)
 from mente_laylay.integracao.ponte_iniciativa_aplicacao import (
     PonteIniciativaAplicacaoRuntime,
 )
+from mente_laylay.integracao.cliente_llm_runtime import (
+    ClienteLLMRuntime,
+    ServicoModeloLLMRuntime,
+)
+from mente_laylay.integracao.llm_http import LLMHttpRuntime
 from mente_laylay.percepcao.ouvido_whisper import OuvidoWhisperRuntime
 
 
@@ -38,6 +47,23 @@ class _ModeloEvento:
             texto='{"fala":"Essa foi por pouco, hein?","comandos":[]}',
             sucesso=True,
             rota="teste_p2",
+        )
+
+
+class _PreparadorTransporteJogo:
+    def preparar(self, pedido: Any) -> RequisicaoTransporteLLM:
+        return RequisicaoTransporteLLM(
+            payload={
+                "model": "qwen3:4b-instruct",
+                "messages": list(pedido.mensagens),
+                "max_tokens": pedido.max_tokens,
+            },
+            timeout=pedido.timeout,
+            permitir_conversa_modo_jogo=pedido.permitir_conversa_modo_jogo,
+            prioridade_interativa=pedido.prioridade_interativa,
+            permitir_durante_interacao=pedido.permitir_durante_interacao,
+            tipo_chamada=pedido.tipo_chamada,
+            classe_timeout=pedido.classe_timeout,
         )
 
 
@@ -190,6 +216,65 @@ def test_red_p2_sugestao_explicita_de_jogo_abre_somente_proposta_sem_execucao() 
         1,
     )
     assert callable(opcoes["ao_concluir"])
+
+
+def test_presenca_jogo_aprovada_deve_usar_rota_de_conversa_do_jogo_antes_da_fala() -> None:
+    chamadas_http_local: list[tuple[Any, ...]] = []
+    chamadas_remotas: list[dict[str, Any]] = []
+    agendamentos: list[tuple[Any, ...]] = []
+    http = LLMHttpRuntime(
+        base_url="http://127.0.0.1:11434/api/chat",
+        local_timeout=45,
+        remote_timeout=30,
+        requests_post=lambda *args, **_kwargs: chamadas_http_local.append(args),
+        print_fn=lambda _texto: None,
+    )
+    http.definir_modo_jogo(True)
+    cliente = ClienteLLMRuntime(
+        endpoint_local_getter=http.endpoint_eh_local,
+        post_chat=http.post,
+        modo_jogo_ativo=lambda: http.modo_jogo_ativo,
+        conversa_jogo_remota=lambda payload: (
+            chamadas_remotas.append(dict(payload))
+            or '{"fala":"Será que esse inimigo verde solta o bônus?","comandos":[]}'
+        ),
+        interacao_ativa=lambda: False,
+        log=lambda _texto: None,
+    )
+    resposta = RespostaEventoRuntime(
+        preparacao_prompt=_PromptEvento(),
+        modelo_llm=ServicoModeloLLMRuntime(
+            preparador=_PreparadorTransporteJogo(),
+            cliente=cliente,
+        ),
+        agendar_fala_proativa=lambda *args, **kwargs: (
+            agendamentos.append((*args, kwargs)) or True
+        ),
+        limpar_texto_fala=lambda texto: texto,
+        log=lambda _texto: None,
+    )
+    evento = {
+        "natureza": "evento",
+        "origem": "visao_inventario_jogo",
+        "tipo": "presenca_curiosidade",
+        "conteudo": "inimigo verde com Chance de Powerup visível",
+        "autoridade_usuario": False,
+        "permissao_execucao": False,
+    }
+
+    resultado = resposta.processar(
+        _turno_evento(evento),
+        dominio="jogo",
+        categoria="curiosidade",
+        evento=evento,
+        decisao_iniciativa={"decisao": "sugerir"},
+    )
+
+    assert resultado["status"] == "agendada"
+    assert chamadas_remotas
+    assert chamadas_http_local == []
+    assert len(agendamentos) == 1
+    assert agendamentos[0][0] == "presenca_jogo"
 
 
 def test_red_p2_evento_vencido_morre_antes_da_cognicao_e_do_llm() -> None:
