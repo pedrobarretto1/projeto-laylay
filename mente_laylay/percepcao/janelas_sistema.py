@@ -23,6 +23,7 @@ from mente_laylay.percepcao.planejamento_janelas import (
     priorizar_janelas_visiveis,
     registrar_atividade_janela_ativa,
     snapshot_atividade_janelas,
+    variantes_alvo_aplicativo,
 )
 
 
@@ -723,7 +724,7 @@ def fechar_janela_por_titulo(
         return False
 
 
-def observar_programas_abertos(gw_mod: Any, psutil_mod: Any) -> dict[str, List[str]]:
+def observar_programas_abertos(gw_mod: Any, psutil_mod: Any) -> dict[str, Any]:
     """Separa janelas apresentáveis de processos relevantes sem janela.
 
     Processo em execução não é sinônimo de aplicativo visível. O retrato
@@ -732,6 +733,8 @@ def observar_programas_abertos(gw_mod: Any, psutil_mod: Any) -> dict[str, List[s
     """
     janelas_visiveis: set[str] = set()
     filtrados: set[str] = set()
+    janelas_observadas = True
+    processos_observados = True
     try:
         for janela in gw_mod.getAllWindows():
             titulo = _titulo_janela(janela)
@@ -741,6 +744,7 @@ def observar_programas_abertos(gw_mod: Any, psutil_mod: Any) -> dict[str, List[s
                 continue
             janelas_visiveis.add(titulo)
     except Exception as e:
+        janelas_observadas = False
         print(f"⚠️ [VERIFICAR_PROGRAMAS] Erro com pygetwindow: {e}")
 
     processos_relevantes: set[str] = set()
@@ -756,15 +760,21 @@ def observar_programas_abertos(gw_mod: Any, psutil_mod: Any) -> dict[str, List[s
                         if app not in titulos_normalizados:
                             processos_relevantes.add(apresentacao)
                         break
-            except (psutil_mod.NoSuchProcess, psutil_mod.AccessDenied):
+            except psutil_mod.NoSuchProcess:
+                continue
+            except psutil_mod.AccessDenied:
+                processos_observados = False
                 continue
     except Exception as e:
+        processos_observados = False
         print(f"⚠️ [VERIFICAR_PROGRAMAS] Erro com psutil: {e}")
 
     retrato = {
         "janelas_visiveis": sorted(janelas_visiveis),
         "processos_segundo_plano": sorted(processos_relevantes),
         "componentes_filtrados": sorted(filtrados),
+        "janelas_observadas": janelas_observadas,
+        "processos_observados": processos_observados,
     }
     print(
         "📋 [VERIFICAR_PROGRAMAS] "
@@ -777,7 +787,10 @@ def observar_programas_abertos(gw_mod: Any, psutil_mod: Any) -> dict[str, List[s
 
 def listar_programas_abertos(gw_mod: Any, psutil_mod: Any) -> List[str]:
     """Compatibilidade: devolve somente janelas reais e apresentáveis."""
-    return observar_programas_abertos(gw_mod, psutil_mod)["janelas_visiveis"]
+    retrato = observar_programas_abertos(gw_mod, psutil_mod)
+    if not retrato["janelas_observadas"]:
+        raise RuntimeError("observacao_janelas_indisponivel")
+    return retrato["janelas_visiveis"]
 
 
 def resolver_alvo_ambiente(
@@ -813,19 +826,25 @@ def resolver_alvo_ambiente(
     if not alvo_norm:
         return {"programa_aberto": False, "programa_em_foco": False, "aba_aberta": False, "preferido": "desconhecido", "url": "", "titulo": ""}
 
+    # Um título menor não comprova o restante de um alvo composto.
+    # Qualificadores legítimos vêm da mesma regra usada pelo catálogo.
+    variantes_programa = variantes_alvo_aplicativo(alvo)
+
     def _processo_auxiliar(nome_bruto: str) -> bool:
         candidato = str(nome_bruto or "").strip().lower().replace(".exe", "")
         candidato = unicodedata.normalize("NFKD", candidato)
         candidato = "".join(c for c in candidato if not unicodedata.combining(c))
         candidato = re.sub(r"[^\w\s\.-]", " ", candidato)
         candidato = re.sub(r"\s+", " ", candidato).strip()
-        if not candidato or candidato == alvo_norm:
+        if not candidato or candidato in variantes_programa:
             return False
         marcadores = (
             "service", "servico", "webhelper", "helper", "updater", "update",
             "crashhandler", "crashpad", "reporter", "background", "broker",
         )
-        return alvo_norm in candidato and any(marcador in candidato for marcador in marcadores)
+        return any(variante in candidato for variante in variantes_programa) and any(
+            marcador in candidato for marcador in marcadores
+        )
 
     programa_aberto = False
     for item in programas or []:
@@ -833,7 +852,10 @@ def resolver_alvo_ambiente(
         if _processo_auxiliar(item_bruto):
             continue
         nome_prog = normalizar_alvo_ambiente(item_bruto)
-        if nome_prog and (alvo_norm == nome_prog or alvo_norm in nome_prog or nome_prog in alvo_norm):
+        if nome_prog and any(
+            re.search(r"(?<!\w)" + re.escape(variante) + r"(?!\w)", nome_prog)
+            for variante in variantes_programa
+        ):
             programa_aberto = True
             break
 

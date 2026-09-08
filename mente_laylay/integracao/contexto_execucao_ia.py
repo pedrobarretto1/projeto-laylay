@@ -159,6 +159,7 @@ DEPENDENCIAS_EXECUCAO_INTENCAO = (
     "_fala_playlist_conteudo_estilosa", "_pedido_lista_geral_playlist",
     "extrair_nome_playlist", "_resolver_query_musical_por_estilo",
     "_contexto_aponta_site_web", "_eh_alvo_site_web", "_resolver_alvo_ambiente",
+    "_validar_alvo_app_consulta",
     "_normalizar_texto_com_apelidos", "_montar_url_site_ou_busca",
     "_executar_fechar_abas_paradas", "_executar_captura_tela_intent",
     "_bloquear_playlist_temporariamente", "_autonomia_permite_execucao_musical",

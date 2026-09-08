@@ -140,6 +140,50 @@ def test_inventario_read_only_tambem_passa_antes_da_barreira():
     assert falas
 
 
+def test_veto_de_mutacao_nao_bloqueia_inventario_read_only_natural():
+    texto = "Eu queria saber quais janelas estão abertas."
+    falas = []
+    registros = []
+
+    class Estado:
+        mental = {
+            "turno_atual": {
+                "modalidade": "deliberacao",
+                "autoriza_execucao": False,
+                "veto_execucao_operacional": True,
+            }
+        }
+
+    ns = {
+        "_estado_compartilhado_runtime": Estado(),
+        "observar_programas_abertos": lambda: {
+            "janelas_visiveis": ["Opera"],
+            "processos_segundo_plano": [],
+        },
+        "_emitir_resposta_curta": (
+            lambda _texto, fala, **_kwargs: falas.append(fala)
+        ),
+        "_registrar_resultado_execucao": (
+            lambda resultado, *_args, **_kwargs: registros.append(dict(resultado))
+        ),
+        "detectar_intencao_deterministica": lambda _texto: {
+            "intent": "APP_OPEN",
+            "params": {"programa": "opera"},
+        },
+        "executar_intencao": lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("veto de mutação não pode redirecionar a leitura")
+        ),
+    }
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: ns,
+        loop_getter=lambda: None,
+    )
+
+    assert runtime.processar_prioritarios(texto) is True
+    assert falas and "Opera" in falas[-1]
+    assert registros[-1]["intent"] == "LIST_WINDOWS"
+
+
 def test_metalinguagem_nao_e_segmentada_como_comando():
     turno = classificar_modalidade_turno("Estou apenas escrevendo: abre o Opera.")
     assert turno["autoriza_execucao"] is False
@@ -168,4 +212,3 @@ def test_ignore_palavra_e_metalinguagem_no_turno_inteiro():
     assert turno["texto_operacional"] == ""
     assert turno["atos"] == ["conversa"]
     assert turno["natureza_acao"] == "mencao_operacional"
-

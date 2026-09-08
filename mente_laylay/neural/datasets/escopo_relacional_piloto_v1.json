@@ -1,0 +1,467 @@
+{
+  "versao": 1,
+  "tipo": "piloto_anotacao_escopo_manual",
+  "treino_permitido": false,
+  "autoriza_execucao": false,
+  "casos": [
+    {
+      "id": "musica_correcao",
+      "texto_entrada": "toque aurora, não brisa",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "toque aurora, não brisa",
+          "acoes": [
+            {
+              "intent": "MUSIC_SEARCH",
+              "action": "search",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 6,
+                  "fim": 12,
+                  "texto": "aurora"
+                }
+              ],
+              "alvos_excluidos": [
+                {
+                  "inicio": 18,
+                  "fim": 23,
+                  "texto": "brisa"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "musica_recusa",
+      "texto_entrada": "não toque aurora",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "não toque aurora",
+          "acoes": [
+            {
+              "intent": "MUSIC_SEARCH",
+              "action": "search",
+              "ato": "recusa",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 10,
+                  "fim": 16,
+                  "texto": "aurora"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "musica_alternativa",
+      "texto_entrada": "toque qualquer outra, menos aurora",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "toque qualquer outra, menos aurora",
+          "acoes": [
+            {
+              "intent": "MUSIC_SEARCH",
+              "action": "search",
+              "ato": "pedido",
+              "resolucao_alvo": "alternativa",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 28,
+                  "fim": 34,
+                  "texto": "aurora"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "apps_correcao",
+      "texto_entrada": "abra o opera, não o firefox",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "abra o opera, não o firefox",
+          "acoes": [
+            {
+              "intent": "APP_OPEN",
+              "action": "open",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 7,
+                  "fim": 12,
+                  "texto": "opera"
+                }
+              ],
+              "alvos_excluidos": [
+                {
+                  "inicio": 20,
+                  "fim": 27,
+                  "texto": "firefox"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "apps_recusa",
+      "texto_entrada": "não abra o opera",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "não abra o opera",
+          "acoes": [
+            {
+              "intent": "APP_OPEN",
+              "action": "open",
+              "ato": "recusa",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 11,
+                  "fim": 16,
+                  "texto": "opera"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "apps_alternativa",
+      "texto_entrada": "abra outro aplicativo, menos o opera",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "abra outro aplicativo, menos o opera",
+          "acoes": [
+            {
+              "intent": "APP_OPEN",
+              "action": "open",
+              "ato": "pedido",
+              "resolucao_alvo": "alternativa",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 31,
+                  "fim": 36,
+                  "texto": "opera"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "arquivos_correcao",
+      "texto_entrada": "leia resumo.txt, não contas.txt",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "leia resumo.txt, não contas.txt",
+          "acoes": [
+            {
+              "intent": "FILE_READ",
+              "action": "read",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 5,
+                  "fim": 15,
+                  "texto": "resumo.txt"
+                }
+              ],
+              "alvos_excluidos": [
+                {
+                  "inicio": 21,
+                  "fim": 31,
+                  "texto": "contas.txt"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "arquivos_recusa",
+      "texto_entrada": "não leia resumo.txt",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "não leia resumo.txt",
+          "acoes": [
+            {
+              "intent": "FILE_READ",
+              "action": "read",
+              "ato": "recusa",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 9,
+                  "fim": 19,
+                  "texto": "resumo.txt"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "arquivos_alternativa",
+      "texto_entrada": "leia outro arquivo, menos resumo.txt",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "leia outro arquivo, menos resumo.txt",
+          "acoes": [
+            {
+              "intent": "FILE_READ",
+              "action": "read",
+              "ato": "pedido",
+              "resolucao_alvo": "alternativa",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 26,
+                  "fim": 36,
+                  "texto": "resumo.txt"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nome_literal",
+      "texto_entrada": "toque a faixa chamada não volte",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "toque a faixa chamada não volte",
+          "acoes": [
+            {
+              "intent": "MUSIC_SEARCH",
+              "action": "search",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 22,
+                  "fim": 31,
+                  "texto": "não volte"
+                }
+              ],
+              "alvos_excluidos": [],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "estado_preservado",
+      "texto_entrada": "mantenha esta aba aberta",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "mantenha esta aba aberta",
+          "acoes": [
+            {
+              "intent": "CLOSE_TAB",
+              "action": "close",
+              "ato": "preservacao",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 9,
+                  "fim": 17,
+                  "texto": "esta aba"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "contexto_ausente",
+      "texto_entrada": "abra essa",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "abra essa",
+          "acoes": [
+            {
+              "intent": "APP_OPEN",
+              "action": "open",
+              "ato": "pedido",
+              "resolucao_alvo": "contextual",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [],
+              "alvos_mencionados": [
+                {
+                  "inicio": 5,
+                  "fim": 9,
+                  "texto": "essa"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "alvo_ausente",
+      "texto_entrada": "abra",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "abra",
+          "acoes": [
+            {
+              "intent": "APP_OPEN",
+              "action": "open",
+              "ato": "pedido",
+              "resolucao_alvo": "ausente",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "relato",
+      "texto_entrada": "ontem ela disse para não abrir o opera",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "ontem ela disse para não abrir o opera",
+          "acoes": [
+            {
+              "intent": "APP_OPEN",
+              "action": "open",
+              "ato": "relato",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [],
+              "alvos_mencionados": [
+                {
+                  "inicio": 33,
+                  "fim": 38,
+                  "texto": "opera"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ambiguidade",
+      "texto_entrada": "abra o banco",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "abra o banco",
+          "acoes": [
+            {
+              "intent": "APP_OPEN",
+              "action": "open",
+              "ato": "indeterminado",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [],
+              "alvos_mencionados": [
+                {
+                  "inicio": 7,
+                  "fim": 12,
+                  "texto": "banco"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "acoes_distintas",
+      "texto_entrada": "abra o opera e não feche o firefox",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "abra o opera e não feche o firefox",
+          "acoes": [
+            {
+              "intent": "APP_OPEN",
+              "action": "open",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 7,
+                  "fim": 12,
+                  "texto": "opera"
+                }
+              ],
+              "alvos_excluidos": [],
+              "alvos_mencionados": []
+            },
+            {
+              "intent": "CLOSE_APP",
+              "action": "close",
+              "ato": "recusa",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 27,
+                  "fim": 34,
+                  "texto": "firefox"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

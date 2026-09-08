@@ -98,6 +98,9 @@ class PreparadorRequisicaoLLMRuntime:
             resumo_mente_integrada=self.resumo_mente_integrada,
             registrar_orcamento_prompt=self.registrar_orcamento_prompt,
             otimizacao_prompt_ativa=self.otimizacao_prompt_ativa,
+            preservar_ultima_mensagem_sistema=(
+                pedido.tipo_chamada == "presenca_evento"
+            ),
             log=self.log,
         )
         return RequisicaoTransporteLLM(

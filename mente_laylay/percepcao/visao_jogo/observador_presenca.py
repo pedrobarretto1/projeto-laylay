@@ -49,7 +49,11 @@ class ObservadorPresencaJogoRuntime:
         self._inicio_sessao = 0.0
 
     def verificar_uma_vez(self) -> bool:
-        if not self.habilitado or not self.interacao_iniciada() or self.visao_ocupada() or not self.permitido():
+        # O próprio modo jogo já exige processo elegível, tela cheia e
+        # estabilidade antes de publicar ``ativo=True``. Exigir também uma
+        # fala anterior de Pedro transformava conversa em permissão para
+        # perceber e deixava toda sessão recém-iniciada artificialmente muda.
+        if not self.habilitado or self.visao_ocupada() or not self.permitido():
             return False
         contexto = dict(self.contexto_jogo() or {})
         if not contexto.get("ativo"):

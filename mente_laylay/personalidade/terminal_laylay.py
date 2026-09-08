@@ -286,15 +286,28 @@ def criar_print_filtrado(
     should_log: Callable[[str], bool],
     raw_print: Callable[..., Any],
     print_lock: Any,
+    observador_oculto: Callable[..., Any] | None = None,
 ) -> Callable[..., Any]:
-    """Cria o print global filtrado sem espalhar a política de terminal."""
+    """Cria o print filtrado e permite observar o detalhe que ele ocultou."""
 
     def print_filtrado(*args: Any, **kwargs: Any) -> None:
         if not args:
             return
-        if should_log(" ".join(str(arg) for arg in args)):
+        texto = str(kwargs.get("sep", " ")).join(str(arg) for arg in args)
+        if should_log(texto):
             with print_lock:
                 raw_print(*args, **kwargs)
+        elif callable(observador_oculto) and (
+            kwargs.get("file") is None
+            or kwargs.get("file") is sys.stdout
+            or kwargs.get("file") is sys.stderr
+        ):
+            try:
+                origem = "stderr" if kwargs.get("file") is sys.stderr else "stdout"
+                observador_oculto(texto, origem=origem)
+            except Exception:
+                # A observabilidade não pode alterar o comportamento do print.
+                pass
 
     return print_filtrado
 

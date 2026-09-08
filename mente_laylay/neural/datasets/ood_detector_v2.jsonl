@@ -1,0 +1,300 @@
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_send", "partition": "training", "source": "OOD_CURATED", "text": "envia um email para a Ana"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_send", "partition": "training", "source": "OOD_CURATED", "text": "por favor, envia um email para a Ana"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_send", "partition": "training", "source": "OOD_CURATED", "text": "manda o relatório por email para o financeiro"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_send", "partition": "training", "source": "OOD_CURATED", "text": "manda o relatório por email para o financeiro, por gentileza"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_send", "partition": "training", "source": "OOD_CURATED", "text": "responde o email do João"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_send", "partition": "training", "source": "OOD_CURATED", "text": "se puder, responde o email do João"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_send", "partition": "training", "source": "OOD_CURATED", "text": "encaminha essa mensagem para a equipe"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_send", "partition": "training", "source": "OOD_CURATED", "text": "quando puder, encaminha essa mensagem para a equipe"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_send", "partition": "training", "source": "OOD_CURATED", "text": "escreve um email avisando que vou atrasar"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_send", "partition": "training", "source": "OOD_CURATED", "text": "escreve um email avisando que vou atrasar agora, por favor"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_archive", "partition": "training", "source": "OOD_CURATED", "text": "arquiva o email da imobiliária"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_archive", "partition": "training", "source": "OOD_CURATED", "text": "por favor, arquiva o email da imobiliária"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_archive", "partition": "training", "source": "OOD_CURATED", "text": "marca essa mensagem como não lida"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_archive", "partition": "training", "source": "OOD_CURATED", "text": "marca essa mensagem como não lida, por gentileza"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_archive", "partition": "training", "source": "OOD_CURATED", "text": "move o email do banco para spam"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_archive", "partition": "training", "source": "OOD_CURATED", "text": "se puder, move o email do banco para spam"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_archive", "partition": "training", "source": "OOD_CURATED", "text": "apaga os emails promocionais"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_archive", "partition": "training", "source": "OOD_CURATED", "text": "quando puder, apaga os emails promocionais"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_archive", "partition": "training", "source": "OOD_CURATED", "text": "coloca uma estrela no email da viagem"}
+{"domain": "email", "expected_ood": true, "family": "ood_detector_v2_email_archive", "partition": "training", "source": "OOD_CURATED", "text": "coloca uma estrela no email da viagem agora, por favor"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_create", "partition": "training", "source": "OOD_CURATED", "text": "cria uma reunião amanhã às nove"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_create", "partition": "training", "source": "OOD_CURATED", "text": "por favor, cria uma reunião amanhã às nove"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_create", "partition": "training", "source": "OOD_CURATED", "text": "agenda dentista para sexta-feira"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_create", "partition": "training", "source": "OOD_CURATED", "text": "agenda dentista para sexta-feira, por gentileza"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_create", "partition": "training", "source": "OOD_CURATED", "text": "marca uma conversa com a equipe à tarde"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_create", "partition": "training", "source": "OOD_CURATED", "text": "se puder, marca uma conversa com a equipe à tarde"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_create", "partition": "training", "source": "OOD_CURATED", "text": "adiciona meu aniversário no calendário"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_create", "partition": "training", "source": "OOD_CURATED", "text": "quando puder, adiciona meu aniversário no calendário"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_create", "partition": "training", "source": "OOD_CURATED", "text": "reserva meia hora para estudar Python"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_create", "partition": "training", "source": "OOD_CURATED", "text": "reserva meia hora para estudar Python agora, por favor"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_cancel", "partition": "training", "source": "OOD_CURATED", "text": "cancela a reunião de amanhã"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_cancel", "partition": "training", "source": "OOD_CURATED", "text": "por favor, cancela a reunião de amanhã"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_cancel", "partition": "training", "source": "OOD_CURATED", "text": "remove o dentista do calendário"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_cancel", "partition": "training", "source": "OOD_CURATED", "text": "remove o dentista do calendário, por gentileza"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_cancel", "partition": "training", "source": "OOD_CURATED", "text": "adia o compromisso para segunda-feira"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_cancel", "partition": "training", "source": "OOD_CURATED", "text": "se puder, adia o compromisso para segunda-feira"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_cancel", "partition": "training", "source": "OOD_CURATED", "text": "exclui o evento do almoço"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_cancel", "partition": "training", "source": "OOD_CURATED", "text": "quando puder, exclui o evento do almoço"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_cancel", "partition": "training", "source": "OOD_CURATED", "text": "desmarca a conversa com a equipe"}
+{"domain": "calendar", "expected_ood": true, "family": "ood_detector_v2_calendar_cancel", "partition": "training", "source": "OOD_CURATED", "text": "desmarca a conversa com a equipe agora, por favor"}
+{"domain": "reminder", "expected_ood": true, "family": "ood_detector_v2_reminder_create", "partition": "training", "source": "OOD_CURATED", "text": "me lembra de pagar a conta amanhã"}
+{"domain": "reminder", "expected_ood": true, "family": "ood_detector_v2_reminder_create", "partition": "training", "source": "OOD_CURATED", "text": "por favor, me lembra de pagar a conta amanhã"}
+{"domain": "reminder", "expected_ood": true, "family": "ood_detector_v2_reminder_create", "partition": "training", "source": "OOD_CURATED", "text": "cria um lembrete para beber água"}
+{"domain": "reminder", "expected_ood": true, "family": "ood_detector_v2_reminder_create", "partition": "training", "source": "OOD_CURATED", "text": "cria um lembrete para beber água, por gentileza"}
+{"domain": "reminder", "expected_ood": true, "family": "ood_detector_v2_reminder_create", "partition": "training", "source": "OOD_CURATED", "text": "avisa quando for hora do remédio"}
+{"domain": "reminder", "expected_ood": true, "family": "ood_detector_v2_reminder_create", "partition": "training", "source": "OOD_CURATED", "text": "se puder, avisa quando for hora do remédio"}
+{"domain": "reminder", "expected_ood": true, "family": "ood_detector_v2_reminder_create", "partition": "training", "source": "OOD_CURATED", "text": "lembra de ligar para minha mãe à noite"}
+{"domain": "reminder", "expected_ood": true, "family": "ood_detector_v2_reminder_create", "partition": "training", "source": "OOD_CURATED", "text": "quando puder, lembra de ligar para minha mãe à noite"}
+{"domain": "reminder", "expected_ood": true, "family": "ood_detector_v2_reminder_create", "partition": "training", "source": "OOD_CURATED", "text": "anota um lembrete para renovar o domínio"}
+{"domain": "reminder", "expected_ood": true, "family": "ood_detector_v2_reminder_create", "partition": "training", "source": "OOD_CURATED", "text": "anota um lembrete para renovar o domínio agora, por favor"}
+{"domain": "timer", "expected_ood": true, "family": "ood_detector_v2_timer_start", "partition": "training", "source": "OOD_CURATED", "text": "inicia um cronômetro de vinte minutos"}
+{"domain": "timer", "expected_ood": true, "family": "ood_detector_v2_timer_start", "partition": "training", "source": "OOD_CURATED", "text": "por favor, inicia um cronômetro de vinte minutos"}
+{"domain": "timer", "expected_ood": true, "family": "ood_detector_v2_timer_start", "partition": "training", "source": "OOD_CURATED", "text": "coloca um timer de cinco minutos"}
+{"domain": "timer", "expected_ood": true, "family": "ood_detector_v2_timer_start", "partition": "training", "source": "OOD_CURATED", "text": "coloca um timer de cinco minutos, por gentileza"}
+{"domain": "timer", "expected_ood": true, "family": "ood_detector_v2_timer_start", "partition": "training", "source": "OOD_CURATED", "text": "conta dez minutos a partir de agora"}
+{"domain": "timer", "expected_ood": true, "family": "ood_detector_v2_timer_start", "partition": "training", "source": "OOD_CURATED", "text": "se puder, conta dez minutos a partir de agora"}
+{"domain": "timer", "expected_ood": true, "family": "ood_detector_v2_timer_start", "partition": "training", "source": "OOD_CURATED", "text": "começa uma contagem de meia hora"}
+{"domain": "timer", "expected_ood": true, "family": "ood_detector_v2_timer_start", "partition": "training", "source": "OOD_CURATED", "text": "quando puder, começa uma contagem de meia hora"}
+{"domain": "timer", "expected_ood": true, "family": "ood_detector_v2_timer_start", "partition": "training", "source": "OOD_CURATED", "text": "dispara um temporizador de quarenta segundos"}
+{"domain": "timer", "expected_ood": true, "family": "ood_detector_v2_timer_start", "partition": "training", "source": "OOD_CURATED", "text": "dispara um temporizador de quarenta segundos agora, por favor"}
+{"domain": "alarm", "expected_ood": true, "family": "ood_detector_v2_alarm_set", "partition": "training", "source": "OOD_CURATED", "text": "coloca um alarme para sete horas"}
+{"domain": "alarm", "expected_ood": true, "family": "ood_detector_v2_alarm_set", "partition": "training", "source": "OOD_CURATED", "text": "por favor, coloca um alarme para sete horas"}
+{"domain": "alarm", "expected_ood": true, "family": "ood_detector_v2_alarm_set", "partition": "training", "source": "OOD_CURATED", "text": "me acorda amanhã às seis"}
+{"domain": "alarm", "expected_ood": true, "family": "ood_detector_v2_alarm_set", "partition": "training", "source": "OOD_CURATED", "text": "me acorda amanhã às seis, por gentileza"}
+{"domain": "alarm", "expected_ood": true, "family": "ood_detector_v2_alarm_set", "partition": "training", "source": "OOD_CURATED", "text": "ativa um alarme para o meio-dia"}
+{"domain": "alarm", "expected_ood": true, "family": "ood_detector_v2_alarm_set", "partition": "training", "source": "OOD_CURATED", "text": "se puder, ativa um alarme para o meio-dia"}
+{"domain": "alarm", "expected_ood": true, "family": "ood_detector_v2_alarm_set", "partition": "training", "source": "OOD_CURATED", "text": "muda meu despertador para oito e meia"}
+{"domain": "alarm", "expected_ood": true, "family": "ood_detector_v2_alarm_set", "partition": "training", "source": "OOD_CURATED", "text": "quando puder, muda meu despertador para oito e meia"}
+{"domain": "alarm", "expected_ood": true, "family": "ood_detector_v2_alarm_set", "partition": "training", "source": "OOD_CURATED", "text": "cancela o alarme de domingo"}
+{"domain": "alarm", "expected_ood": true, "family": "ood_detector_v2_alarm_set", "partition": "training", "source": "OOD_CURATED", "text": "cancela o alarme de domingo agora, por favor"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_create", "partition": "training", "source": "OOD_CURATED", "text": "cria uma nota com a lista do mercado"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_create", "partition": "training", "source": "OOD_CURATED", "text": "por favor, cria uma nota com a lista do mercado"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_create", "partition": "training", "source": "OOD_CURATED", "text": "anota que o servidor vence em outubro"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_create", "partition": "training", "source": "OOD_CURATED", "text": "anota que o servidor vence em outubro, por gentileza"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_create", "partition": "training", "source": "OOD_CURATED", "text": "salva uma nota chamada ideias do projeto"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_create", "partition": "training", "source": "OOD_CURATED", "text": "se puder, salva uma nota chamada ideias do projeto"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_create", "partition": "training", "source": "OOD_CURATED", "text": "registra esse endereço nas minhas notas"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_create", "partition": "training", "source": "OOD_CURATED", "text": "quando puder, registra esse endereço nas minhas notas"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_create", "partition": "training", "source": "OOD_CURATED", "text": "escreve uma nota com os pontos da reunião"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_create", "partition": "training", "source": "OOD_CURATED", "text": "escreve uma nota com os pontos da reunião agora, por favor"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_delete", "partition": "training", "source": "OOD_CURATED", "text": "apaga a nota da lista antiga"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_delete", "partition": "training", "source": "OOD_CURATED", "text": "por favor, apaga a nota da lista antiga"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_delete", "partition": "training", "source": "OOD_CURATED", "text": "remove minhas anotações de teste"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_delete", "partition": "training", "source": "OOD_CURATED", "text": "remove minhas anotações de teste, por gentileza"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_delete", "partition": "training", "source": "OOD_CURATED", "text": "exclui a nota sobre a viagem"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_delete", "partition": "training", "source": "OOD_CURATED", "text": "se puder, exclui a nota sobre a viagem"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_delete", "partition": "training", "source": "OOD_CURATED", "text": "limpa o conteúdo da nota temporária"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_delete", "partition": "training", "source": "OOD_CURATED", "text": "quando puder, limpa o conteúdo da nota temporária"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_delete", "partition": "training", "source": "OOD_CURATED", "text": "renomeia a nota ideias para backlog"}
+{"domain": "notes", "expected_ood": true, "family": "ood_detector_v2_note_delete", "partition": "training", "source": "OOD_CURATED", "text": "renomeia a nota ideias para backlog agora, por favor"}
+{"domain": "messaging", "expected_ood": true, "family": "ood_detector_v2_message_send", "partition": "training", "source": "OOD_CURATED", "text": "manda uma mensagem para o Pedro"}
+{"domain": "messaging", "expected_ood": true, "family": "ood_detector_v2_message_send", "partition": "training", "source": "OOD_CURATED", "text": "por favor, manda uma mensagem para o Pedro"}
+{"domain": "messaging", "expected_ood": true, "family": "ood_detector_v2_message_send", "partition": "training", "source": "OOD_CURATED", "text": "responde a Júlia dizendo que já cheguei"}
+{"domain": "messaging", "expected_ood": true, "family": "ood_detector_v2_message_send", "partition": "training", "source": "OOD_CURATED", "text": "responde a Júlia dizendo que já cheguei, por gentileza"}
+{"domain": "messaging", "expected_ood": true, "family": "ood_detector_v2_message_send", "partition": "training", "source": "OOD_CURATED", "text": "envia um oi no grupo da família"}
+{"domain": "messaging", "expected_ood": true, "family": "ood_detector_v2_message_send", "partition": "training", "source": "OOD_CURATED", "text": "se puder, envia um oi no grupo da família"}
+{"domain": "messaging", "expected_ood": true, "family": "ood_detector_v2_message_send", "partition": "training", "source": "OOD_CURATED", "text": "avisa o Carlos que a reunião mudou"}
+{"domain": "messaging", "expected_ood": true, "family": "ood_detector_v2_message_send", "partition": "training", "source": "OOD_CURATED", "text": "quando puder, avisa o Carlos que a reunião mudou"}
+{"domain": "messaging", "expected_ood": true, "family": "ood_detector_v2_message_send", "partition": "training", "source": "OOD_CURATED", "text": "compartilha esse texto com a equipe"}
+{"domain": "messaging", "expected_ood": true, "family": "ood_detector_v2_message_send", "partition": "training", "source": "OOD_CURATED", "text": "compartilha esse texto com a equipe agora, por favor"}
+{"domain": "phone", "expected_ood": true, "family": "ood_detector_v2_phone_call", "partition": "calibration", "source": "OOD_CURATED", "text": "liga para a Ana"}
+{"domain": "phone", "expected_ood": true, "family": "ood_detector_v2_phone_call", "partition": "calibration", "source": "OOD_CURATED", "text": "por favor, liga para a Ana"}
+{"domain": "phone", "expected_ood": true, "family": "ood_detector_v2_phone_call", "partition": "calibration", "source": "OOD_CURATED", "text": "faz uma chamada para o consultório"}
+{"domain": "phone", "expected_ood": true, "family": "ood_detector_v2_phone_call", "partition": "calibration", "source": "OOD_CURATED", "text": "faz uma chamada para o consultório, por gentileza"}
+{"domain": "phone", "expected_ood": true, "family": "ood_detector_v2_phone_call", "partition": "calibration", "source": "OOD_CURATED", "text": "telefona para minha mãe"}
+{"domain": "phone", "expected_ood": true, "family": "ood_detector_v2_phone_call", "partition": "calibration", "source": "OOD_CURATED", "text": "se puder, telefona para minha mãe"}
+{"domain": "phone", "expected_ood": true, "family": "ood_detector_v2_phone_call", "partition": "calibration", "source": "OOD_CURATED", "text": "retorna a ligação do escritório"}
+{"domain": "phone", "expected_ood": true, "family": "ood_detector_v2_phone_call", "partition": "calibration", "source": "OOD_CURATED", "text": "quando puder, retorna a ligação do escritório"}
+{"domain": "phone", "expected_ood": true, "family": "ood_detector_v2_phone_call", "partition": "calibration", "source": "OOD_CURATED", "text": "inicia uma chamada de vídeo com a equipe"}
+{"domain": "phone", "expected_ood": true, "family": "ood_detector_v2_phone_call", "partition": "calibration", "source": "OOD_CURATED", "text": "inicia uma chamada de vídeo com a equipe agora, por favor"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_wifi_control", "partition": "calibration", "source": "OOD_CURATED", "text": "desliga o wi-fi"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_wifi_control", "partition": "calibration", "source": "OOD_CURATED", "text": "por favor, desliga o wi-fi"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_wifi_control", "partition": "calibration", "source": "OOD_CURATED", "text": "conecta na rede da sala"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_wifi_control", "partition": "calibration", "source": "OOD_CURATED", "text": "conecta na rede da sala, por gentileza"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_wifi_control", "partition": "calibration", "source": "OOD_CURATED", "text": "esquece a rede do vizinho"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_wifi_control", "partition": "calibration", "source": "OOD_CURATED", "text": "se puder, esquece a rede do vizinho"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_wifi_control", "partition": "calibration", "source": "OOD_CURATED", "text": "liga o wi-fi do computador"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_wifi_control", "partition": "calibration", "source": "OOD_CURATED", "text": "quando puder, liga o wi-fi do computador"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_wifi_control", "partition": "calibration", "source": "OOD_CURATED", "text": "troca para a rede de cinco gigahertz"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_wifi_control", "partition": "calibration", "source": "OOD_CURATED", "text": "troca para a rede de cinco gigahertz agora, por favor"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_bluetooth_control", "partition": "calibration", "source": "OOD_CURATED", "text": "ativa o bluetooth"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_bluetooth_control", "partition": "calibration", "source": "OOD_CURATED", "text": "por favor, ativa o bluetooth"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_bluetooth_control", "partition": "calibration", "source": "OOD_CURATED", "text": "pareia meus fones de ouvido"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_bluetooth_control", "partition": "calibration", "source": "OOD_CURATED", "text": "pareia meus fones de ouvido, por gentileza"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_bluetooth_control", "partition": "calibration", "source": "OOD_CURATED", "text": "desconecta a caixa de som bluetooth"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_bluetooth_control", "partition": "calibration", "source": "OOD_CURATED", "text": "se puder, desconecta a caixa de som bluetooth"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_bluetooth_control", "partition": "calibration", "source": "OOD_CURATED", "text": "remove esse controle dos dispositivos pareados"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_bluetooth_control", "partition": "calibration", "source": "OOD_CURATED", "text": "quando puder, remove esse controle dos dispositivos pareados"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_bluetooth_control", "partition": "calibration", "source": "OOD_CURATED", "text": "procura dispositivos bluetooth próximos"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_bluetooth_control", "partition": "calibration", "source": "OOD_CURATED", "text": "procura dispositivos bluetooth próximos agora, por favor"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_brightness_control", "partition": "calibration", "source": "OOD_CURATED", "text": "aumenta o brilho da tela"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_brightness_control", "partition": "calibration", "source": "OOD_CURATED", "text": "por favor, aumenta o brilho da tela"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_brightness_control", "partition": "calibration", "source": "OOD_CURATED", "text": "reduz a luminosidade do monitor"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_brightness_control", "partition": "calibration", "source": "OOD_CURATED", "text": "reduz a luminosidade do monitor, por gentileza"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_brightness_control", "partition": "calibration", "source": "OOD_CURATED", "text": "coloca o brilho em cinquenta por cento"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_brightness_control", "partition": "calibration", "source": "OOD_CURATED", "text": "se puder, coloca o brilho em cinquenta por cento"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_brightness_control", "partition": "calibration", "source": "OOD_CURATED", "text": "ativa o brilho automático"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_brightness_control", "partition": "calibration", "source": "OOD_CURATED", "text": "quando puder, ativa o brilho automático"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_brightness_control", "partition": "calibration", "source": "OOD_CURATED", "text": "deixa a tela menos clara"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_brightness_control", "partition": "calibration", "source": "OOD_CURATED", "text": "deixa a tela menos clara agora, por favor"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screenshot_capture", "partition": "calibration", "source": "OOD_CURATED", "text": "tira uma captura de tela"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screenshot_capture", "partition": "calibration", "source": "OOD_CURATED", "text": "por favor, tira uma captura de tela"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screenshot_capture", "partition": "calibration", "source": "OOD_CURATED", "text": "faz um print da janela atual"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screenshot_capture", "partition": "calibration", "source": "OOD_CURATED", "text": "faz um print da janela atual, por gentileza"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screenshot_capture", "partition": "calibration", "source": "OOD_CURATED", "text": "captura somente esta área da tela"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screenshot_capture", "partition": "calibration", "source": "OOD_CURATED", "text": "se puder, captura somente esta área da tela"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screenshot_capture", "partition": "calibration", "source": "OOD_CURATED", "text": "salva uma imagem do que está aparecendo"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screenshot_capture", "partition": "calibration", "source": "OOD_CURATED", "text": "quando puder, salva uma imagem do que está aparecendo"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screenshot_capture", "partition": "calibration", "source": "OOD_CURATED", "text": "fotografa a tela inteira"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screenshot_capture", "partition": "calibration", "source": "OOD_CURATED", "text": "fotografa a tela inteira agora, por favor"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_session_control", "partition": "calibration", "source": "OOD_CURATED", "text": "bloqueia o computador"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_session_control", "partition": "calibration", "source": "OOD_CURATED", "text": "por favor, bloqueia o computador"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_session_control", "partition": "calibration", "source": "OOD_CURATED", "text": "reinicia o Windows"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_session_control", "partition": "calibration", "source": "OOD_CURATED", "text": "reinicia o Windows, por gentileza"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_session_control", "partition": "calibration", "source": "OOD_CURATED", "text": "desliga o computador"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_session_control", "partition": "calibration", "source": "OOD_CURATED", "text": "se puder, desliga o computador"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_session_control", "partition": "calibration", "source": "OOD_CURATED", "text": "encerra minha sessão"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_session_control", "partition": "calibration", "source": "OOD_CURATED", "text": "quando puder, encerra minha sessão"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_session_control", "partition": "calibration", "source": "OOD_CURATED", "text": "coloca o notebook para dormir"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_session_control", "partition": "calibration", "source": "OOD_CURATED", "text": "coloca o notebook para dormir agora, por favor"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_delete", "partition": "calibration", "source": "OOD_CURATED", "text": "apaga o arquivo temporário"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_delete", "partition": "calibration", "source": "OOD_CURATED", "text": "por favor, apaga o arquivo temporário"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_delete", "partition": "calibration", "source": "OOD_CURATED", "text": "remove a planilha antiga"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_delete", "partition": "calibration", "source": "OOD_CURATED", "text": "remove a planilha antiga, por gentileza"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_delete", "partition": "calibration", "source": "OOD_CURATED", "text": "exclui a pasta de testes"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_delete", "partition": "calibration", "source": "OOD_CURATED", "text": "se puder, exclui a pasta de testes"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_delete", "partition": "calibration", "source": "OOD_CURATED", "text": "manda esse documento para a lixeira"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_delete", "partition": "calibration", "source": "OOD_CURATED", "text": "quando puder, manda esse documento para a lixeira"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_delete", "partition": "calibration", "source": "OOD_CURATED", "text": "limpa os arquivos de cache"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_delete", "partition": "calibration", "source": "OOD_CURATED", "text": "limpa os arquivos de cache agora, por favor"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_move", "partition": "calibration", "source": "OOD_CURATED", "text": "move o relatório para a pasta projetos"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_move", "partition": "calibration", "source": "OOD_CURATED", "text": "por favor, move o relatório para a pasta projetos"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_move", "partition": "calibration", "source": "OOD_CURATED", "text": "copia a planilha para o pendrive"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_move", "partition": "calibration", "source": "OOD_CURATED", "text": "copia a planilha para o pendrive, por gentileza"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_move", "partition": "calibration", "source": "OOD_CURATED", "text": "transfere as fotos para a pasta viagens"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_move", "partition": "calibration", "source": "OOD_CURATED", "text": "se puder, transfere as fotos para a pasta viagens"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_move", "partition": "calibration", "source": "OOD_CURATED", "text": "leva esse documento para a área de trabalho"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_move", "partition": "calibration", "source": "OOD_CURATED", "text": "quando puder, leva esse documento para a área de trabalho"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_move", "partition": "calibration", "source": "OOD_CURATED", "text": "duplica o arquivo de configuração"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_move", "partition": "calibration", "source": "OOD_CURATED", "text": "duplica o arquivo de configuração agora, por favor"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_rename", "partition": "calibration", "source": "OOD_CURATED", "text": "renomeia o relatório para versão final"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_rename", "partition": "calibration", "source": "OOD_CURATED", "text": "por favor, renomeia o relatório para versão final"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_rename", "partition": "calibration", "source": "OOD_CURATED", "text": "muda o nome da pasta para arquivos antigos"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_rename", "partition": "calibration", "source": "OOD_CURATED", "text": "muda o nome da pasta para arquivos antigos, por gentileza"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_rename", "partition": "calibration", "source": "OOD_CURATED", "text": "chama essa planilha de orçamento dois"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_rename", "partition": "calibration", "source": "OOD_CURATED", "text": "se puder, chama essa planilha de orçamento dois"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_rename", "partition": "calibration", "source": "OOD_CURATED", "text": "troca o nome do documento para contrato revisado"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_rename", "partition": "calibration", "source": "OOD_CURATED", "text": "quando puder, troca o nome do documento para contrato revisado"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_rename", "partition": "calibration", "source": "OOD_CURATED", "text": "altera o nome do arquivo de configuração"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_file_rename", "partition": "calibration", "source": "OOD_CURATED", "text": "altera o nome do arquivo de configuração agora, por favor"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_browser_bookmark", "partition": "calibration", "source": "OOD_CURATED", "text": "adiciona esta página aos favoritos"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_browser_bookmark", "partition": "calibration", "source": "OOD_CURATED", "text": "por favor, adiciona esta página aos favoritos"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_browser_bookmark", "partition": "calibration", "source": "OOD_CURATED", "text": "remove o site dos favoritos"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_browser_bookmark", "partition": "calibration", "source": "OOD_CURATED", "text": "remove o site dos favoritos, por gentileza"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_browser_bookmark", "partition": "calibration", "source": "OOD_CURATED", "text": "salva este endereço nos marcadores"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_browser_bookmark", "partition": "calibration", "source": "OOD_CURATED", "text": "se puder, salva este endereço nos marcadores"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_browser_bookmark", "partition": "calibration", "source": "OOD_CURATED", "text": "cria uma pasta de favoritos chamada trabalho"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_browser_bookmark", "partition": "calibration", "source": "OOD_CURATED", "text": "quando puder, cria uma pasta de favoritos chamada trabalho"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_browser_bookmark", "partition": "calibration", "source": "OOD_CURATED", "text": "exporta meus favoritos do navegador"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_browser_bookmark", "partition": "calibration", "source": "OOD_CURATED", "text": "exporta meus favoritos do navegador agora, por favor"}
+{"domain": "contacts", "expected_ood": true, "family": "ood_detector_v2_contact_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "adiciona a Marina aos meus contatos"}
+{"domain": "contacts", "expected_ood": true, "family": "ood_detector_v2_contact_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "por favor, adiciona a Marina aos meus contatos"}
+{"domain": "contacts", "expected_ood": true, "family": "ood_detector_v2_contact_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "remove o telefone antigo do Carlos"}
+{"domain": "contacts", "expected_ood": true, "family": "ood_detector_v2_contact_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "remove o telefone antigo do Carlos, por gentileza"}
+{"domain": "contacts", "expected_ood": true, "family": "ood_detector_v2_contact_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "muda o número da Ana para este aqui"}
+{"domain": "contacts", "expected_ood": true, "family": "ood_detector_v2_contact_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "se puder, muda o número da Ana para este aqui"}
+{"domain": "contacts", "expected_ood": true, "family": "ood_detector_v2_contact_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "cria um contato chamado assistência técnica"}
+{"domain": "contacts", "expected_ood": true, "family": "ood_detector_v2_contact_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "quando puder, cria um contato chamado assistência técnica"}
+{"domain": "contacts", "expected_ood": true, "family": "ood_detector_v2_contact_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "junta os contatos duplicados do João"}
+{"domain": "contacts", "expected_ood": true, "family": "ood_detector_v2_contact_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "junta os contatos duplicados do João agora, por favor"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_vpn_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "conecta na VPN do trabalho"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_vpn_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "por favor, conecta na VPN do trabalho"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_vpn_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "desliga a VPN agora"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_vpn_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "desliga a VPN agora, por gentileza"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_vpn_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "troca para o servidor VPN de São Paulo"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_vpn_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "se puder, troca para o servidor VPN de São Paulo"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_vpn_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "adiciona esta configuração de VPN"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_vpn_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "quando puder, adiciona esta configuração de VPN"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_vpn_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "remove a VPN antiga da empresa"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_vpn_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "remove a VPN antiga da empresa agora, por favor"}
+{"domain": "printer", "expected_ood": true, "family": "ood_detector_v2_printer_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "imprime duas cópias deste documento"}
+{"domain": "printer", "expected_ood": true, "family": "ood_detector_v2_printer_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "por favor, imprime duas cópias deste documento"}
+{"domain": "printer", "expected_ood": true, "family": "ood_detector_v2_printer_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "cancela a impressão atual"}
+{"domain": "printer", "expected_ood": true, "family": "ood_detector_v2_printer_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "cancela a impressão atual, por gentileza"}
+{"domain": "printer", "expected_ood": true, "family": "ood_detector_v2_printer_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "define a impressora da sala como padrão"}
+{"domain": "printer", "expected_ood": true, "family": "ood_detector_v2_printer_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "se puder, define a impressora da sala como padrão"}
+{"domain": "printer", "expected_ood": true, "family": "ood_detector_v2_printer_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "digitaliza esta página em PDF"}
+{"domain": "printer", "expected_ood": true, "family": "ood_detector_v2_printer_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "quando puder, digitaliza esta página em PDF"}
+{"domain": "printer", "expected_ood": true, "family": "ood_detector_v2_printer_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "mostra a fila da impressora"}
+{"domain": "printer", "expected_ood": true, "family": "ood_detector_v2_printer_control", "partition": "evaluation", "source": "OOD_CURATED", "text": "mostra a fila da impressora agora, por favor"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_airplane_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "ativa o modo avião"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_airplane_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "por favor, ativa o modo avião"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_airplane_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "desliga o modo avião"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_airplane_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "desliga o modo avião, por gentileza"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_airplane_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "coloca o notebook em modo avião"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_airplane_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "se puder, coloca o notebook em modo avião"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_airplane_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "mantém o modo avião até amanhã"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_airplane_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "quando puder, mantém o modo avião até amanhã"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_airplane_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "tira o computador do modo avião"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_airplane_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "tira o computador do modo avião agora, por favor"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_power_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "ativa a economia de bateria"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_power_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "por favor, ativa a economia de bateria"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_power_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "muda para o modo de alto desempenho"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_power_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "muda para o modo de alto desempenho, por gentileza"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_power_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "desliga o modo de economia de energia"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_power_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "se puder, desliga o modo de economia de energia"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_power_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "limita a carga da bateria a oitenta por cento"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_power_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "quando puder, limita a carga da bateria a oitenta por cento"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_power_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "mostra quais aplicativos gastam mais bateria"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_power_mode", "partition": "evaluation", "source": "OOD_CURATED", "text": "mostra quais aplicativos gastam mais bateria agora, por favor"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screen_record", "partition": "evaluation", "source": "OOD_CURATED", "text": "começa a gravar a tela"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screen_record", "partition": "evaluation", "source": "OOD_CURATED", "text": "por favor, começa a gravar a tela"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screen_record", "partition": "evaluation", "source": "OOD_CURATED", "text": "para a gravação da tela"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screen_record", "partition": "evaluation", "source": "OOD_CURATED", "text": "para a gravação da tela, por gentileza"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screen_record", "partition": "evaluation", "source": "OOD_CURATED", "text": "grava esta janela com o áudio"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screen_record", "partition": "evaluation", "source": "OOD_CURATED", "text": "se puder, grava esta janela com o áudio"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screen_record", "partition": "evaluation", "source": "OOD_CURATED", "text": "salva a gravação na pasta vídeos"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screen_record", "partition": "evaluation", "source": "OOD_CURATED", "text": "quando puder, salva a gravação na pasta vídeos"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screen_record", "partition": "evaluation", "source": "OOD_CURATED", "text": "captura um vídeo dos próximos trinta segundos"}
+{"domain": "system", "expected_ood": true, "family": "ood_detector_v2_screen_record", "partition": "evaluation", "source": "OOD_CURATED", "text": "captura um vídeo dos próximos trinta segundos agora, por favor"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_archive_compress", "partition": "evaluation", "source": "OOD_CURATED", "text": "compacta esta pasta em zip"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_archive_compress", "partition": "evaluation", "source": "OOD_CURATED", "text": "por favor, compacta esta pasta em zip"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_archive_compress", "partition": "evaluation", "source": "OOD_CURATED", "text": "extrai o arquivo compactado aqui"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_archive_compress", "partition": "evaluation", "source": "OOD_CURATED", "text": "extrai o arquivo compactado aqui, por gentileza"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_archive_compress", "partition": "evaluation", "source": "OOD_CURATED", "text": "cria um arquivo rar com estes documentos"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_archive_compress", "partition": "evaluation", "source": "OOD_CURATED", "text": "se puder, cria um arquivo rar com estes documentos"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_archive_compress", "partition": "evaluation", "source": "OOD_CURATED", "text": "descompacta as fotos na área de trabalho"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_archive_compress", "partition": "evaluation", "source": "OOD_CURATED", "text": "quando puder, descompacta as fotos na área de trabalho"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_archive_compress", "partition": "evaluation", "source": "OOD_CURATED", "text": "protege o arquivo zip com uma senha"}
+{"domain": "files", "expected_ood": true, "family": "ood_detector_v2_archive_compress", "partition": "evaluation", "source": "OOD_CURATED", "text": "protege o arquivo zip com uma senha agora, por favor"}
+{"domain": "cloud", "expected_ood": true, "family": "ood_detector_v2_cloud_upload", "partition": "evaluation", "source": "OOD_CURATED", "text": "envia este relatório para a nuvem"}
+{"domain": "cloud", "expected_ood": true, "family": "ood_detector_v2_cloud_upload", "partition": "evaluation", "source": "OOD_CURATED", "text": "por favor, envia este relatório para a nuvem"}
+{"domain": "cloud", "expected_ood": true, "family": "ood_detector_v2_cloud_upload", "partition": "evaluation", "source": "OOD_CURATED", "text": "baixa a pasta compartilhada do drive"}
+{"domain": "cloud", "expected_ood": true, "family": "ood_detector_v2_cloud_upload", "partition": "evaluation", "source": "OOD_CURATED", "text": "baixa a pasta compartilhada do drive, por gentileza"}
+{"domain": "cloud", "expected_ood": true, "family": "ood_detector_v2_cloud_upload", "partition": "evaluation", "source": "OOD_CURATED", "text": "sincroniza minhas fotos com a nuvem"}
+{"domain": "cloud", "expected_ood": true, "family": "ood_detector_v2_cloud_upload", "partition": "evaluation", "source": "OOD_CURATED", "text": "se puder, sincroniza minhas fotos com a nuvem"}
+{"domain": "cloud", "expected_ood": true, "family": "ood_detector_v2_cloud_upload", "partition": "evaluation", "source": "OOD_CURATED", "text": "compartilha o arquivo pelo armazenamento online"}
+{"domain": "cloud", "expected_ood": true, "family": "ood_detector_v2_cloud_upload", "partition": "evaluation", "source": "OOD_CURATED", "text": "quando puder, compartilha o arquivo pelo armazenamento online"}
+{"domain": "cloud", "expected_ood": true, "family": "ood_detector_v2_cloud_upload", "partition": "evaluation", "source": "OOD_CURATED", "text": "remove a cópia deste documento da nuvem"}
+{"domain": "cloud", "expected_ood": true, "family": "ood_detector_v2_cloud_upload", "partition": "evaluation", "source": "OOD_CURATED", "text": "remove a cópia deste documento da nuvem agora, por favor"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_download_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "cancela o download atual"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_download_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "por favor, cancela o download atual"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_download_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "pausa todos os downloads"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_download_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "pausa todos os downloads, por gentileza"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_download_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "continua baixando o arquivo grande"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_download_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "se puder, continua baixando o arquivo grande"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_download_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "abre a pasta dos downloads concluídos"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_download_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "quando puder, abre a pasta dos downloads concluídos"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_download_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "limpa o histórico de downloads"}
+{"domain": "browser", "expected_ood": true, "family": "ood_detector_v2_download_manage", "partition": "evaluation", "source": "OOD_CURATED", "text": "limpa o histórico de downloads agora, por favor"}
+{"domain": "maps", "expected_ood": true, "family": "ood_detector_v2_navigation_route", "partition": "evaluation", "source": "OOD_CURATED", "text": "traça uma rota até o aeroporto"}
+{"domain": "maps", "expected_ood": true, "family": "ood_detector_v2_navigation_route", "partition": "evaluation", "source": "OOD_CURATED", "text": "por favor, traça uma rota até o aeroporto"}
+{"domain": "maps", "expected_ood": true, "family": "ood_detector_v2_navigation_route", "partition": "evaluation", "source": "OOD_CURATED", "text": "mostra o caminho para o posto mais próximo"}
+{"domain": "maps", "expected_ood": true, "family": "ood_detector_v2_navigation_route", "partition": "evaluation", "source": "OOD_CURATED", "text": "mostra o caminho para o posto mais próximo, por gentileza"}
+{"domain": "maps", "expected_ood": true, "family": "ood_detector_v2_navigation_route", "partition": "evaluation", "source": "OOD_CURATED", "text": "evita pedágios no trajeto para casa"}
+{"domain": "maps", "expected_ood": true, "family": "ood_detector_v2_navigation_route", "partition": "evaluation", "source": "OOD_CURATED", "text": "se puder, evita pedágios no trajeto para casa"}
+{"domain": "maps", "expected_ood": true, "family": "ood_detector_v2_navigation_route", "partition": "evaluation", "source": "OOD_CURATED", "text": "inicia a navegação até o escritório"}
+{"domain": "maps", "expected_ood": true, "family": "ood_detector_v2_navigation_route", "partition": "evaluation", "source": "OOD_CURATED", "text": "quando puder, inicia a navegação até o escritório"}
+{"domain": "maps", "expected_ood": true, "family": "ood_detector_v2_navigation_route", "partition": "evaluation", "source": "OOD_CURATED", "text": "adiciona uma parada na farmácia"}
+{"domain": "maps", "expected_ood": true, "family": "ood_detector_v2_navigation_route", "partition": "evaluation", "source": "OOD_CURATED", "text": "adiciona uma parada na farmácia agora, por favor"}

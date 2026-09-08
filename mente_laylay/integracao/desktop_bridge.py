@@ -27,7 +27,9 @@ from mente_laylay.integracao.acoes_terminal import (
     IDS_ACOES_RAPIDAS,
     definicao_acao_terminal,
 )
-from mente_laylay.integracao.acoes_painel_runtime import ACOES_MUSICA_PAINEL
+from mente_laylay.integracao.acoes_painel_runtime import ACOES_DIRETAS_PAINEL
+from mente_laylay.iot.contratos import ACOES_IOT
+from mente_laylay.integracao.dev_console_runtime import sanitizar_texto_dev
 
 
 TIPOS_CLIENTE = frozenset({
@@ -36,12 +38,15 @@ TIPOS_CLIENTE = frozenset({
     "conversations_get", "conversation_create", "conversation_select",
     "conversation_rename", "conversation_delete", "conversation_archive",
     "conversation_unarchive", "conversation_pin",
+    "playlist_request", "dev_query", "dev_control",
 })
 TIPOS_BACKEND = frozenset({
     "snapshot", "input_ack", "assistant_message", "state", "error",
     "mode_state", "settings_state", "settings_result", "restart_result",
-    "dashboard_state", "action_state",
+    "dashboard_state", "action_state", "music_meter",
     "conversations_state",
+    "playlist_result",
+    "dev_events", "dev_query_result", "dev_control_result",
 })
 
 _ESTADOS_ACAO_RAPIDA = frozenset({
@@ -57,9 +62,240 @@ class ErroProtocoloDesktop(ValueError):
     pass
 
 
+def sanitizar_resultado_playlist(
+    operacao: str, valor: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Defesa da ponte: nem URLs de origem nem caminhos podem voltar à UI."""
+    bruto = dict(valor or {})
+    base: dict[str, Any] = {
+        "ok": bool(bruto.get("ok")),
+        "status": _texto_seguro(bruto.get("status"), 48),
+    }
+    capa = _texto_seguro(bruto.get("artwork_url"), 180)
+    if not (
+        re.fullmatch(
+            r"https://i\.ytimg\.com/vi/[A-Za-z0-9_-]{11}/(?:mqdefault|hqdefault|maxresdefault)\.jpg",
+            capa,
+        )
+        or re.fullmatch(r"laylay-playlist-artwork://[a-f0-9]{24}\.png", capa)
+    ):
+        capa = ""
+    if str(operacao or "") != "detail":
+        for chave in ("copied", "added", "duplicated"):
+            if chave in bruto:
+                base[chave] = bool(bruto.get(chave))
+        for chave in (
+            "destination_count", "copied_count", "already_present_count",
+        ):
+            if chave in bruto:
+                try:
+                    base[chave] = max(0, min(1_000, int(bruto.get(chave) or 0)))
+                except (TypeError, ValueError):
+                    base[chave] = 0
+        if "source_removed" in bruto:
+            base["source_removed"] = bruto.get("source_removed") is True
+        base["revision"] = _texto_seguro(bruto.get("revision"), 64)
+        base["artwork_url"] = capa
+        return base
+    try:
+        total = max(0, min(100_000, int(bruto.get("total") or 0)))
+        offset = max(0, int(bruto.get("offset") or 0))
+        limite = max(1, min(100, int(bruto.get("limit") or 50)))
+    except (TypeError, ValueError):
+        total, offset, limite = 0, 0, 50
+    itens: list[dict[str, Any]] = []
+    for item in list(bruto.get("items") or ())[:100]:
+        if not isinstance(item, Mapping):
+            continue
+        video_id = _texto_seguro(item.get("video_id"), 11)
+        if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id):
+            continue
+        duracao = item.get("duration_seconds")
+        if not isinstance(duracao, (int, float)) or isinstance(duracao, bool) or not 0 < duracao <= 86_400:
+            duracao = None
+        capa_item = _texto_seguro(item.get("artwork_url"), 180)
+        if not re.fullmatch(
+            r"https://i\.ytimg\.com/vi/[A-Za-z0-9_-]{11}/mqdefault\.jpg", capa_item,
+        ):
+            capa_item = ""
+        itens.append({
+            "video_id": video_id,
+            "title": _texto_publico_dashboard(item.get("title"), 180, fallback="Faixa sem título"),
+            "channel": _texto_publico_dashboard(item.get("channel"), 120, fallback=""),
+            "added_at": _texto_seguro(item.get("added_at"), 10),
+            "duration_seconds": duracao,
+            "artwork_url": capa_item,
+        })
+    duracao_total = bruto.get("duration_seconds")
+    if not isinstance(duracao_total, (int, float)) or isinstance(duracao_total, bool) or not 0 < duracao_total <= 8_640_000:
+        duracao_total = None
+    return {
+        **base,
+        "name": _texto_publico_dashboard(bruto.get("name"), 80, fallback="Playlist"),
+        "total": total, "offset": offset, "limit": limite,
+        "has_more": bool(bruto.get("has_more")),
+        "revision": _texto_seguro(bruto.get("revision"), 64),
+        "artwork_url": capa, "duration_seconds": duracao_total,
+        "items": itens,
+    }
+
+
 def _texto_seguro(valor: Any, limite: int = 8_000) -> str:
     texto = str(valor or "").replace("\x00", "").strip()
     return texto[:limite]
+
+
+def sanitizar_evento_dev(evento: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Allowlist de uma linha técnica; texto atravessa nova defesa de segredo."""
+    bruto = dict(evento) if isinstance(evento, Mapping) else {}
+    try:
+        sequencia = max(0, min(int(bruto.get("sequence") or 0), 2_147_483_647))
+    except (TypeError, ValueError):
+        sequencia = 0
+    try:
+        timestamp = max(0.0, min(float(bruto.get("timestamp") or 0.0), 9_999_999_999.0))
+    except (TypeError, ValueError):
+        timestamp = 0.0
+    nivel = str(bruto.get("level") or "info").casefold()
+    if nivel not in {"info", "success", "warning", "error"}:
+        nivel = "info"
+    categoria = re.sub(
+        r"[^A-Z0-9_/-]+", "", str(bruto.get("category") or "SYSTEM").upper(),
+    )[:32] or "SYSTEM"
+    origem = str(bruto.get("source") or "runtime").casefold()
+    if origem not in {"stdout", "stderr", "runtime"}:
+        origem = "runtime"
+    profundidade = str(bruto.get("depth") or "normal").casefold()
+    if profundidade not in {"normal", "debug", "trace"}:
+        profundidade = "normal"
+    publico: dict[str, Any] = {
+        "id": _texto_seguro(bruto.get("id"), 80),
+        "sequence": sequencia,
+        "timestamp": timestamp,
+        "level": nivel,
+        "category": categoria,
+        "event": re.sub(
+            r"[^a-z0-9_.:-]+", "_", str(bruto.get("event") or "terminal_line").casefold(),
+        )[:64],
+        "trace_id": re.sub(
+            r"[^A-Za-z0-9_.:-]+", "", str(bruto.get("trace_id") or ""),
+        )[:72],
+        "message": sanitizar_texto_dev(bruto.get("message"), 1_200),
+        "source": origem,
+        "depth": profundidade,
+    }
+    try:
+        duracao = float(bruto.get("duration_ms"))
+    except (TypeError, ValueError):
+        duracao = -1.0
+    if duracao >= 0:
+        publico["duration_ms"] = round(min(duracao, 600_000.0), 2)
+    return publico
+
+
+def sanitizar_retrato_dev(retrato: Mapping[str, Any] | None) -> dict[str, Any]:
+    bruto = dict(retrato) if isinstance(retrato, Mapping) else {}
+    eventos = [
+        sanitizar_evento_dev(item)
+        for item in list(bruto.get("events") or ())[-160:]
+        if isinstance(item, Mapping)
+    ]
+    try:
+        sequencia = max(0, int(bruto.get("sequence") or 0))
+    except (TypeError, ValueError):
+        sequencia = eventos[-1]["sequence"] if eventos else 0
+    try:
+        limite = max(0, min(10_000, int(bruto.get("event_limit") or 0)))
+    except (TypeError, ValueError):
+        limite = 0
+    try:
+        descartados = max(0, int(bruto.get("events_dropped") or 0))
+    except (TypeError, ValueError):
+        descartados = 0
+    return {
+        "schema_version": 1,
+        "sequence": sequencia,
+        "event_limit": limite,
+        "events_dropped": descartados,
+        "events": eventos,
+    }
+
+
+def sanitizar_resultado_consulta_dev(
+    resultado: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    bruto = dict(resultado) if isinstance(resultado, Mapping) else {}
+    return {
+        "ok": bruto.get("ok") is True,
+        "kind": re.sub(
+            r"[^a-z0-9_-]+", "", str(bruto.get("kind") or "maintenance").casefold(),
+        )[:32] or "maintenance",
+        "command": sanitizar_texto_dev(bruto.get("command"), 160),
+        "lines": [
+            sanitizar_texto_dev(linha, 500)
+            for linha in list(bruto.get("lines") or ())[:120]
+            if isinstance(linha, (str, int, float, bool))
+        ],
+    }
+
+
+def sanitizar_resultado_controle_dev(
+    resultado: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Receipt CONTROL técnico; nunca transporta ambiente, cwd ou conteúdo."""
+    bruto = dict(resultado) if isinstance(resultado, Mapping) else {}
+    receipt_bruto = bruto.get("receipt")
+    receipt = dict(receipt_bruto) if isinstance(receipt_bruto, Mapping) else {}
+    comando_recebido = receipt.get("comando_efetivo")
+    comando_bruto = (
+        list(comando_recebido)[:24]
+        if isinstance(comando_recebido, (list, tuple))
+        else []
+    )
+    comando_efetivo = []
+    for indice, argumento in enumerate(comando_bruto):
+        item = _texto_seguro(argumento, 180)
+        if indice == 0:
+            item = Path(item).name
+        comando_efetivo.append(item)
+    returncode = receipt.get("returncode")
+    if not isinstance(returncode, int) or isinstance(returncode, bool):
+        returncode = None
+    try:
+        duracao_ms = max(0.0, min(3_600_000.0, float(receipt.get("duracao_ms") or 0.0)))
+    except (TypeError, ValueError):
+        duracao_ms = 0.0
+    receipt_publico = {
+        "execucao_id": re.sub(
+            r"[^a-z0-9_-]+", "", str(receipt.get("execucao_id") or "").casefold(),
+        )[:64],
+        "suite_id": re.sub(
+            r"[^a-z0-9_-]+", "", str(receipt.get("suite_id") or "").casefold(),
+        )[:48],
+        "status": re.sub(
+            r"[^a-z0-9_-]+", "", str(receipt.get("status") or "").casefold(),
+        )[:32],
+        "ativo": receipt.get("ativo") is True,
+        "returncode": returncode,
+        "duracao_ms": round(duracao_ms, 2),
+        "comando_efetivo": comando_efetivo,
+        "autorizacao_explicita": receipt.get("autorizacao_explicita") is True,
+        "autoriza_execucao": False,
+    }
+    return {
+        "ok": bruto.get("ok") is True,
+        "kind": "tests",
+        "command": sanitizar_texto_dev(bruto.get("command"), 160),
+        "status": re.sub(
+            r"[^a-z0-9_-]+", "", str(bruto.get("status") or "erro").casefold(),
+        )[:32] or "erro",
+        "lines": [
+            sanitizar_texto_dev(item, 500)
+            for item in list(bruto.get("lines") or ())[:120]
+            if isinstance(item, (str, int, float, bool))
+        ],
+        "receipt": receipt_publico,
+    }
 
 
 _PADRAO_TEXTO_PRIVADO_DASHBOARD = re.compile(
@@ -414,6 +650,9 @@ def sanitizar_dashboard_estado(
     rotinas = dict(bruto.get("routines") or {}) if isinstance(
         bruto.get("routines"), Mapping,
     ) else {}
+    iot = dict(bruto.get("iot") or {}) if isinstance(
+        bruto.get("iot"), Mapping,
+    ) else {}
     status = str(bruto.get("status") or "unavailable").casefold().strip()
     if status not in {"ok", "partial", "unavailable"}:
         status = "unavailable"
@@ -526,6 +765,12 @@ def sanitizar_dashboard_estado(
     )
     if musica_frescor == "unavailable":
         musica_estado = "unavailable"
+    musica_video_id = _texto_seguro(musica.get("video_id"), 11)
+    if (
+        musica_frescor == "unavailable"
+        or not re.fullmatch(r"[A-Za-z0-9_-]{11}", musica_video_id)
+    ):
+        musica_video_id = ""
     duracao = _numero_dashboard(
         musica.get("duration_seconds"), minimo=0, maximo=86_400,
     ) or 0.0
@@ -537,10 +782,15 @@ def sanitizar_dashboard_estado(
     )
     def capa_musical_publica(valor: Any) -> str:
         url_capa = _texto_seguro(valor, 180)
-        return url_capa if re.fullmatch(
-            r"https://i\.ytimg\.com/vi/[A-Za-z0-9_-]{11}/"
-            r"(?:hqdefault|maxresdefault)\.jpg",
-            url_capa,
+        return url_capa if (
+            re.fullmatch(
+                r"https://i\.ytimg\.com/vi/[A-Za-z0-9_-]{11}/"
+                r"(?:mqdefault|hqdefault|maxresdefault)\.jpg",
+                url_capa,
+            )
+            or re.fullmatch(
+                r"laylay-playlist-artwork://[a-f0-9]{24}\.png", url_capa,
+            )
         ) else ""
 
     fila_observada = _numero_dashboard(
@@ -700,6 +950,7 @@ def sanitizar_dashboard_estado(
         "channel": _texto_publico_dashboard(
             musica.get("channel"), 120, fallback="",
         ),
+        "video_id": musica_video_id,
         "artwork_url": capa_musical_publica(musica.get("artwork_url")),
         "state": musica_estado,
         "position_seconds": posicao,
@@ -853,6 +1104,82 @@ def sanitizar_dashboard_estado(
             ):
                 rotina_publica["date"] = data
             rotinas_publicas.append(rotina_publica)
+    iot_observado = _numero_dashboard(
+        iot.get("observed_at"), minimo=0, maximo=9_999_999_999,
+    ) or 0.0
+    iot_frescor = _frescor_dashboard(
+        iot.get("freshness"), disponivel=iot_observado > 0,
+    )
+    iot_modo = _texto_seguro(iot.get("mode"), 16).casefold()
+    if iot_modo not in {"simulado", "tuya"}:
+        iot_modo = "unknown"
+    iot_provedor = iot.get("provider_available") is True
+    dispositivos_iot: list[dict[str, Any]] = []
+    if iot_frescor != "unavailable":
+        for item in list(iot.get("devices") or ())[:64]:
+            if not isinstance(item, Mapping):
+                continue
+            nome = _texto_seguro(item.get("name"), 64).casefold()
+            tipo = _texto_seguro(item.get("type"), 40).casefold()
+            nome_amigavel = _texto_publico_dashboard(
+                item.get("display_name"), 100, fallback="",
+            )
+            ambiente = _texto_publico_dashboard(
+                item.get("room"), 60, fallback="",
+            )
+            if (
+                not re.fullmatch(r"[a-z0-9_]{1,64}", nome)
+                or not re.fullmatch(r"[a-z0-9_]{1,40}", tipo)
+                or not nome_amigavel
+                or not ambiente
+            ):
+                continue
+            capacidades = sorted({
+                _texto_seguro(capacidade, 40).casefold()
+                for capacidade in list(item.get("capabilities") or ())
+                if _texto_seguro(capacidade, 40).casefold() in ACOES_IOT
+            })
+            estado = _texto_seguro(item.get("state"), 16).casefold()
+            if estado not in {"on", "off", "offline", "unknown"}:
+                estado = "unknown"
+            estado_observado = _numero_dashboard(
+                item.get("state_observed_at"),
+                minimo=0, maximo=9_999_999_999,
+            ) or 0.0
+            estado_confirmado = bool(
+                item.get("state_confirmed") is True
+                and estado in {"on", "off"}
+                and estado_observado > 0
+            )
+            brilho_observado = _numero_dashboard(
+                item.get("brightness_percent"), minimo=1, maximo=100,
+            )
+            if not (
+                tipo.startswith("lampada")
+                and "ajustar_brilho" in capacidades
+                and estado_observado > 0
+            ):
+                brilho_observado = None
+            dispositivos_iot.append({
+                "name": nome,
+                "display_name": nome_amigavel,
+                "type": tipo,
+                "room": ambiente,
+                "capabilities": capacidades,
+                "state": estado if estado_confirmado or estado == "offline" else "unknown",
+                "state_confirmed": estado_confirmado,
+                "state_observed_at": estado_observado,
+                "brightness_percent": (
+                    int(brilho_observado) if brilho_observado is not None else None
+                ),
+            })
+    iot_controles = bool(
+        iot.get("controls_available") is True
+        and iot_frescor == "fresh"
+        and iot_provedor
+        and iot_modo in {"simulado", "tuya"}
+        and dispositivos_iot
+    )
     resultado = {
         "schema_version": 1,
         "status": status,
@@ -875,6 +1202,18 @@ def sanitizar_dashboard_estado(
             "items": rotinas_publicas,
             "freshness": rotinas_frescor,
             "observed_at": rotinas_observadas,
+        },
+        "iot": {
+            "configured": bool(
+                iot.get("configured") is True and dispositivos_iot
+            ),
+            "read_only": not iot_controles,
+            "controls_available": iot_controles,
+            "mode": iot_modo,
+            "provider_available": iot_provedor,
+            "devices": dispositivos_iot,
+            "freshness": iot_frescor,
+            "observed_at": iot_observado,
         },
         "system": {
             "info": _info_sistema_dashboard(
@@ -966,6 +1305,121 @@ def validar_mensagem_cliente(
             raise ErroProtocoloDesktop("token de sessão inválido")
     elif tipo == "hello":
         raise ErroProtocoloDesktop("sessão já autenticada")
+    if tipo == "dev_query":
+        comando = re.sub(
+            r"\s+", " ", _texto_seguro(mensagem.get("command"), 160),
+        ).strip().casefold()
+        permitido = bool(re.fullmatch(
+            r"(?:"
+            r"status(?: (?:all|chrome|tuya|llm|memory|agents))?|"
+            r"perf(?: (?:llm|memory|actions))?|"
+            r"errors(?: [a-z0-9_.-]{1,64}:[a-z0-9_.:-]{1,80})?|"
+            r"trace (?:last|errors|turn [0-9]{1,9}|[a-z0-9_.:-]{1,72})|"
+            r"inspect (?:context|pending|action last|receipt last|memory used|"
+            r"event dev-[0-9]{8})"
+            r")",
+            comando,
+        ))
+        if not permitido:
+            raise ErroProtocoloDesktop("consulta DEV inválida ou não autorizada")
+        return {
+            "type": tipo,
+            "id": _texto_seguro(mensagem.get("id"), 80),
+            "command": comando,
+        }
+    if tipo == "dev_control":
+        comando = re.sub(
+            r"\s+", " ", _texto_seguro(mensagem.get("command"), 160),
+        ).strip().casefold()
+        if not re.fullmatch(
+            r"tests (?:list|status|cancel|run [a-z0-9][a-z0-9_-]{0,47})",
+            comando,
+        ):
+            raise ErroProtocoloDesktop("comando CONTROL inválido")
+        exige_autorizacao = comando == "tests cancel" or comando.startswith("tests run ")
+        autorizado = mensagem.get("authorized") is True
+        if exige_autorizacao and not autorizado:
+            raise ErroProtocoloDesktop("autorização CONTROL ausente")
+        return {
+            "type": tipo,
+            "id": _texto_seguro(mensagem.get("id"), 80),
+            "command": comando,
+            "authorized": autorizado,
+        }
+    if tipo == "playlist_request":
+        operacao = _texto_seguro(mensagem.get("operation"), 32).casefold()
+        permitidas = {
+            "detail", "play_track", "add_url", "copy_track", "move_track",
+            "copy_track_many", "move_track_many",
+            "remove_track", "set_artwork", "restore_artwork",
+        }
+        if operacao not in permitidas:
+            raise ErroProtocoloDesktop("operação de playlist inválida")
+        nome = re.sub(r"\s+", " ", _texto_seguro(mensagem.get("playlist"), 80)).strip()
+        if not nome or re.search(r"[;&|<>]", nome):
+            raise ErroProtocoloDesktop("playlist inválida")
+        resultado = {
+            "type": tipo, "id": _texto_seguro(mensagem.get("id"), 80),
+            "operation": operacao, "playlist": nome,
+        }
+        if operacao == "detail":
+            resultado["query"] = re.sub(r"\s+", " ", _texto_seguro(mensagem.get("query"), 120))
+            try:
+                resultado["offset"] = max(0, int(mensagem.get("offset") or 0))
+                resultado["limit"] = max(1, min(100, int(mensagem.get("limit") or 50)))
+            except (TypeError, ValueError) as erro:
+                raise ErroProtocoloDesktop("paginação inválida") from erro
+        if operacao in {
+            "play_track", "copy_track", "move_track", "copy_track_many",
+            "move_track_many", "remove_track",
+        }:
+            video_id = _texto_seguro(mensagem.get("video_id"), 11)
+            revisao = _texto_seguro(mensagem.get("revision"), 64)
+            if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id) or not revisao:
+                raise ErroProtocoloDesktop("identidade da faixa inválida")
+            resultado.update(video_id=video_id, revision=revisao)
+        if operacao in {"copy_track", "move_track"}:
+            destino = re.sub(r"\s+", " ", _texto_seguro(mensagem.get("destination"), 80)).strip()
+            if not destino or re.search(r"[;&|<>]", destino):
+                raise ErroProtocoloDesktop("playlist de destino inválida")
+            resultado["destination"] = destino
+        if operacao in {"copy_track_many", "move_track_many"}:
+            destinos_brutos = mensagem.get("destinations")
+            if not isinstance(destinos_brutos, list) or not 1 <= len(destinos_brutos) <= 1_000:
+                raise ErroProtocoloDesktop("playlists de destino inválidas")
+            destinos: list[str] = []
+            vistos: set[str] = set()
+            for bruto in destinos_brutos:
+                destino = re.sub(
+                    r"\s+", " ", _texto_seguro(bruto, 80),
+                ).strip()
+                chave = destino.casefold()
+                if not destino or re.search(r"[;&|<>]", destino):
+                    raise ErroProtocoloDesktop("playlist de destino inválida")
+                if chave not in vistos:
+                    vistos.add(chave)
+                    destinos.append(destino)
+            if not destinos:
+                raise ErroProtocoloDesktop("playlists de destino inválidas")
+            resultado["destinations"] = destinos
+        if operacao == "add_url":
+            url = _texto_seguro(mensagem.get("url"), 500)
+            if not re.fullmatch(
+                r"https://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)[A-Za-z0-9_-]{11}(?:[&#?].*)?",
+                url,
+            ):
+                raise ErroProtocoloDesktop("URL do YouTube inválida")
+            resultado["url"] = url
+        if operacao in {"set_artwork", "restore_artwork"}:
+            resultado["revision"] = _texto_seguro(mensagem.get("revision"), 64)
+            if not resultado["revision"]:
+                raise ErroProtocoloDesktop("revisão ausente")
+        if operacao == "set_artwork":
+            caminho = _texto_seguro(mensagem.get("path"), 1_000)
+            if not caminho:
+                raise ErroProtocoloDesktop("capa ausente")
+            resultado["path"] = caminho
+        return resultado
     if tipo == "input_submit":
         texto = _texto_seguro(mensagem.get("text"), 8_000)
         if not texto:
@@ -987,9 +1441,13 @@ def validar_mensagem_cliente(
                 "media_toggle": {"command"},
                 "playlist_play": {"playlist"},
                 "playlist_shuffle": {"playlist"},
-                "queue_play": {"item_id", "queue_index"},
+                "queue_play": {"item_id", "queue_index", "queue_source"},
                 "volume_set": {"level"},
                 "audio_output_select": {"device_ref"},
+                "iot_status": {"device"},
+                "iot_power": {"device", "state"},
+                "iot_brightness": {"device", "value"},
+                "routine_cancel": {"name"},
             }
             permitidos = permitidos_por_acao.get(acao_id, set())
             if set(bruto_payload) - permitidos:
@@ -1035,6 +1493,11 @@ def validar_mensagem_cliente(
                 item_id = _texto_seguro(bruto_payload.get("item_id"), 24)
                 if not re.fullmatch(r"[A-Za-z0-9_-]{11}", item_id):
                     raise ErroProtocoloDesktop("item da fila inválido")
+                origem_fila = _texto_seguro(
+                    bruto_payload.get("queue_source"), 24,
+                ).casefold() or "youtube"
+                if origem_fila not in {"youtube", "laylay_playlist"}:
+                    raise ErroProtocoloDesktop("origem da fila inválida")
                 indice = bruto_payload.get("queue_index")
                 if isinstance(indice, bool):
                     raise ErroProtocoloDesktop("posição da fila inválida")
@@ -1042,9 +1505,12 @@ def validar_mensagem_cliente(
                     indice = int(indice)
                 except (TypeError, ValueError) as erro:
                     raise ErroProtocoloDesktop("posição da fila inválida") from erro
-                if not 0 <= indice <= 7:
+                limite = 999 if origem_fila == "laylay_playlist" else 7
+                if not 0 <= indice <= limite:
                     raise ErroProtocoloDesktop("posição da fila inválida")
                 payload.update(item_id=item_id, queue_index=indice)
+                if "queue_source" in bruto_payload:
+                    payload["queue_source"] = origem_fila
             if "device_ref" in permitidos:
                 referencia_dispositivo = _texto_seguro(
                     bruto_payload.get("device_ref"), 16,
@@ -1052,6 +1518,38 @@ def validar_mensagem_cliente(
                 if not re.fullmatch(r"[a-f0-9]{16}", referencia_dispositivo):
                     raise ErroProtocoloDesktop("saída de áudio inválida")
                 payload["device_ref"] = referencia_dispositivo
+            if "device" in permitidos:
+                dispositivo = _texto_seguro(
+                    bruto_payload.get("device"), 64,
+                ).casefold()
+                if not re.fullmatch(r"[a-z0-9_]+", dispositivo):
+                    raise ErroProtocoloDesktop("dispositivo IoT inválido")
+                payload["device"] = dispositivo
+            if "state" in permitidos:
+                estado_iot = _texto_seguro(
+                    bruto_payload.get("state"), 8,
+                ).casefold()
+                if estado_iot not in {"on", "off"}:
+                    raise ErroProtocoloDesktop("estado IoT inválido")
+                payload["state"] = estado_iot
+            if "value" in permitidos:
+                valor_iot = bruto_payload.get("value")
+                if isinstance(valor_iot, bool):
+                    raise ErroProtocoloDesktop("valor IoT inválido")
+                try:
+                    valor_iot = int(valor_iot)
+                except (TypeError, ValueError) as erro:
+                    raise ErroProtocoloDesktop("valor IoT inválido") from erro
+                if not 1 <= valor_iot <= 100:
+                    raise ErroProtocoloDesktop("valor IoT inválido")
+                payload["value"] = valor_iot
+            if "name" in permitidos:
+                nome_rotina = re.sub(
+                    r"\s+", " ", _texto_seguro(bruto_payload.get("name"), 80),
+                ).strip()
+                if not nome_rotina or re.search(r"[;&|<>]", nome_rotina):
+                    raise ErroProtocoloDesktop("rotina inválida")
+                payload["name"] = nome_rotina
         if tipo_entrada == "chat":
             acao_id = ""
         return {
@@ -1191,6 +1689,7 @@ class DesktopBridgeRuntime:
         dashboard_getter: Callable[[], Mapping[str, Any]] | None = None,
         resultado_acao_getter: Callable[[], Mapping[str, Any]] | None = None,
         executar_acao_painel: Callable[[str, Mapping[str, Any]], Any] | None = None,
+        playlist_operacoes: Any | None = None,
         modo_setter: Callable[[bool], Any] | None = None,
         configuracao_getter: Callable[[], Mapping[str, Any]] | None = None,
         configuracao_setter: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None,
@@ -1205,13 +1704,17 @@ class DesktopBridgeRuntime:
         conversa_desarquivar: Callable[[str], bool] | None = None,
         conversa_fixar: Callable[[str, bool], bool] | None = None,
         conversa_nomear_automaticamente: Callable[[str, str], bool] | None = None,
+        dev_console_getter: Callable[[], Mapping[str, Any]] | None = None,
+        dev_console_consultar: Callable[[str], Mapping[str, Any]] | None = None,
+        dev_control_executar: Callable[[str, bool], Mapping[str, Any]] | None = None,
         host: str = "127.0.0.1",
         port: int = 0,
-        max_message_bytes: int = 65_536,
+        max_message_bytes: int = 262_144,
         rate_limit: int = 24,
         rate_window_s: float = 5.0,
         dashboard_interval_s: float = 1.0,
         dashboard_getter_timeout_s: float = 0.2,
+        dev_console_interval_s: float = 0.12,
         log: Callable[[str], Any] = print,
     ) -> None:
         if host not in {"127.0.0.1", "localhost", "::1"}:
@@ -1222,6 +1725,7 @@ class DesktopBridgeRuntime:
         self.dashboard_getter = dashboard_getter
         self.resultado_acao_getter = resultado_acao_getter
         self.executar_acao_painel = executar_acao_painel
+        self.playlist_operacoes = playlist_operacoes
         self.modo_setter = modo_setter
         self.configuracao_getter = configuracao_getter
         self.configuracao_setter = configuracao_setter
@@ -1236,6 +1740,9 @@ class DesktopBridgeRuntime:
         self.conversa_desarquivar = conversa_desarquivar
         self.conversa_fixar = conversa_fixar
         self.conversa_nomear_automaticamente = conversa_nomear_automaticamente
+        self.dev_console_getter = dev_console_getter
+        self.dev_console_consultar = dev_console_consultar
+        self.dev_control_executar = dev_control_executar
         self.host = "127.0.0.1" if host == "localhost" else host
         self.port = max(0, int(port))
         self.max_message_bytes = max(1_024, int(max_message_bytes))
@@ -1245,6 +1752,7 @@ class DesktopBridgeRuntime:
         self.dashboard_getter_timeout_s = max(
             0.02, float(dashboard_getter_timeout_s),
         )
+        self.dev_console_interval_s = max(0.05, float(dev_console_interval_s))
         self.log = log
         self.token = secrets.token_urlsafe(32)
         self.session_id = secrets.token_hex(8)
@@ -1265,6 +1773,7 @@ class DesktopBridgeRuntime:
         self._thread: threading.Thread | None = None
         self._poll_thread: threading.Thread | None = None
         self._dashboard_thread: threading.Thread | None = None
+        self._dev_console_thread: threading.Thread | None = None
         self._dashboard_source_lock = threading.RLock()
         self._dashboard_source_pending: tuple[
             threading.Thread, dict[str, Any]
@@ -1272,9 +1781,13 @@ class DesktopBridgeRuntime:
         self._processo: subprocess.Popen[Any] | None = None
         self._ultimo_estado = ""
         self._ultimo_dashboard = ""
+        self._ultima_sequencia_dev = 0
+        self._eventos_lock = threading.RLock()
         self._eventos: deque[dict[str, Any]] = deque(maxlen=120)
+        self._eventos_descartados = 0
         self._entradas_lock = threading.RLock()
         self._entradas_pendentes: deque[dict[str, str]] = deque(maxlen=64)
+        self._entradas_descartadas = 0
 
     @property
     def endereco(self) -> tuple[str, int]:
@@ -1322,11 +1835,25 @@ class DesktopBridgeRuntime:
                 name="Laylay-Desktop-Dashboard",
                 daemon=True,
             )
+        if (
+            callable(self.dev_console_getter)
+            and (
+                not self._dev_console_thread
+                or not self._dev_console_thread.is_alive()
+            )
+        ):
+            self._dev_console_thread = threading.Thread(
+                target=self._publicar_dev_console,
+                name="Laylay-Desktop-Dev-Console",
+                daemon=True,
+            )
         self._thread.start()
         if not self._poll_thread.is_alive():
             self._poll_thread.start()
         if self._dashboard_thread and not self._dashboard_thread.is_alive():
             self._dashboard_thread.start()
+        if self._dev_console_thread and not self._dev_console_thread.is_alive():
+            self._dev_console_thread.start()
         self.log(
             f"🖥️ [TERMINAL 2] ponte ativa em {self.host}:{self.port} "
             f"| sessão={self.session_id[:8]} pid={self.parent_pid}"
@@ -1513,11 +2040,14 @@ class DesktopBridgeRuntime:
             tipo = msg["type"]
             if tipo == "hello":
                 dashboard_snapshot: dict[str, Any] | None = None
+                dev_console_snapshot: dict[str, Any] | None = None
+                with self._eventos_lock:
+                    eventos_recentes = list(self._eventos)[-30:]
                 snapshot = {
                     "type": "snapshot",
                     "messages": sanitizar_historico(self.historico_getter()),
                     "state": sanitizar_estado(self.estado_getter()),
-                    "events": list(self._eventos)[-30:],
+                    "events": eventos_recentes,
                     "session": {
                         "id": self.session_id,
                         "parent_pid": self.parent_pid,
@@ -1533,11 +2063,18 @@ class DesktopBridgeRuntime:
                 if callable(self.dashboard_getter):
                     dashboard_snapshot = self._obter_dashboard_seguro()
                     snapshot["dashboard"] = dashboard_snapshot
+                if callable(self.dev_console_getter):
+                    dev_console_snapshot = self._obter_dev_console_seguro()
+                    snapshot["dev_console"] = dev_console_snapshot
                 if not self._enviar_socket(cliente, snapshot):
                     raise ConnectionError("não foi possível confirmar o snapshot")
                 if dashboard_snapshot is not None:
                     self._ultimo_dashboard = self._assinatura_dashboard(
                         dashboard_snapshot,
+                    )
+                if dev_console_snapshot is not None:
+                    self._ultima_sequencia_dev = int(
+                        dev_console_snapshot.get("sequence") or 0
                     )
                 with self._client_lock:
                     if self._client_pending is not cliente:
@@ -1553,13 +2090,72 @@ class DesktopBridgeRuntime:
                 self._enviar_socket(cliente, {"type": "state", **sanitizar_estado(self.estado_getter())})
             elif tipo == "heartbeat":
                 self._enviar_socket(cliente, {"type": "state", "heartbeat": True, **sanitizar_estado(self.estado_getter())})
+            elif tipo == "dev_query":
+                requisicao_id = str(msg.get("id") or secrets.token_hex(6))
+                if not callable(self.dev_console_consultar):
+                    resultado_dev = {
+                        "ok": False,
+                        "kind": "maintenance",
+                        "command": msg.get("command") or "",
+                        "lines": ["Consultas DEV indisponíveis neste runtime."],
+                    }
+                else:
+                    try:
+                        resultado_dev = self.dev_console_consultar(
+                            str(msg.get("command") or "")
+                        )
+                    except Exception:
+                        resultado_dev = {
+                            "ok": False,
+                            "kind": "error",
+                            "command": msg.get("command") or "",
+                            "lines": ["A consulta DEV falhou sem executar efeitos."],
+                        }
+                self._enviar_socket(cliente, {
+                    "type": "dev_query_result",
+                    "id": requisicao_id,
+                    "result": sanitizar_resultado_consulta_dev(resultado_dev),
+                    "timestamp": time.time(),
+                })
+            elif tipo == "dev_control":
+                requisicao_id = str(msg.get("id") or secrets.token_hex(6))
+                if not callable(self.dev_control_executar):
+                    resultado_control = {
+                        "ok": False,
+                        "kind": "tests",
+                        "command": msg.get("command") or "",
+                        "status": "indisponivel",
+                        "lines": ["Executor CONTROL indisponível neste runtime."],
+                    }
+                else:
+                    try:
+                        resultado_control = self.dev_control_executar(
+                            str(msg.get("command") or ""),
+                            bool(msg.get("authorized") is True),
+                        )
+                    except Exception:
+                        resultado_control = {
+                            "ok": False,
+                            "kind": "tests",
+                            "command": msg.get("command") or "",
+                            "status": "erro",
+                            "lines": [
+                                "O executor CONTROL falhou sem iniciar outro processo."
+                            ],
+                        }
+                self._enviar_socket(cliente, {
+                    "type": "dev_control_result",
+                    "id": requisicao_id,
+                    "result": sanitizar_resultado_controle_dev(resultado_control),
+                    "timestamp": time.time(),
+                })
             elif tipo == "input_submit":
                 entrada_id = msg.get("id") or secrets.token_hex(6)
                 tipo_entrada = str(msg.get("kind") or "chat")
                 acao_entrada = str(msg.get("action") or "")
                 acao_direta = bool(
                     tipo_entrada == "panel_action"
-                    and acao_entrada in ACOES_MUSICA_PAINEL
+                    and acao_entrada in ACOES_DIRETAS_PAINEL
                     and callable(self.executar_acao_painel)
                 )
                 conversa_ativa_id = (
@@ -1658,6 +2254,8 @@ class DesktopBridgeRuntime:
                     ).start()
                     continue
                 with self._entradas_lock:
+                    if len(self._entradas_pendentes) == self._entradas_pendentes.maxlen:
+                        self._entradas_descartadas += 1
                     self._entradas_pendentes.append(pendente)
                 try:
                     titulo_alterado = False
@@ -1784,6 +2382,57 @@ class DesktopBridgeRuntime:
                     mensagem=mensagem_resultado,
                     incluir_mensagens=True,
                 )
+            elif tipo == "playlist_request":
+                requisicao_id = str(msg.get("id") or secrets.token_hex(6))
+                operacao = str(msg.get("operation") or "")
+                retorno: dict[str, Any]
+                try:
+                    if self.playlist_operacoes is None:
+                        raise RuntimeError("operações de playlist indisponíveis")
+                    nome = str(msg.get("playlist") or "")
+                    chamadas = {
+                        "detail": lambda: self.playlist_operacoes.detalhar_playlist(
+                            nome, consulta=msg.get("query", ""),
+                            deslocamento=msg.get("offset", 0), limite=msg.get("limit", 50),
+                        ),
+                        "play_track": lambda: self.playlist_operacoes.tocar_faixa_exata(
+                            nome, msg["video_id"], msg["revision"],
+                        ),
+                        "add_url": lambda: self.playlist_operacoes.adicionar_url_playlist(nome, msg["url"]),
+                        "copy_track": lambda: self.playlist_operacoes.copiar_faixa_exata(
+                            nome, msg["destination"], msg["video_id"], msg["revision"],
+                        ),
+                        "move_track": lambda: self.playlist_operacoes.mover_faixa_exata(
+                            nome, msg["destination"], msg["video_id"], msg["revision"],
+                        ),
+                        "copy_track_many": lambda: self.playlist_operacoes.copiar_faixa_multiplas(
+                            nome, msg["destinations"], msg["video_id"], msg["revision"],
+                        ),
+                        "move_track_many": lambda: self.playlist_operacoes.mover_faixa_multiplas(
+                            nome, msg["destinations"], msg["video_id"], msg["revision"],
+                        ),
+                        "remove_track": lambda: self.playlist_operacoes.remover_faixa_exata(
+                            nome, msg["video_id"], msg["revision"],
+                        ),
+                        "set_artwork": lambda: self.playlist_operacoes.definir_capa_playlist(
+                            nome, msg["path"], msg["revision"],
+                        ),
+                        "restore_artwork": lambda: self.playlist_operacoes.restaurar_capa_playlist(
+                            nome, msg["revision"],
+                        ),
+                    }
+                    retorno = dict(chamadas[operacao]() or {})
+                except Exception as erro:
+                    self.log(
+                        "⚠️ [TERMINAL 2:PLAYLIST] operação falhou "
+                        f"| operação={operacao} tipo={type(erro).__name__}"
+                    )
+                    retorno = {"ok": False, "status": "operation_failed"}
+                self._enviar_socket(cliente, {
+                    "type": "playlist_result", "id": requisicao_id,
+                    "operation": operacao, "playlist": str(msg.get("playlist") or ""),
+                    "result": sanitizar_resultado_playlist(operacao, retorno),
+                })
             elif tipo == "mode_set":
                 requisicao_id = msg.get("id") or secrets.token_hex(6)
                 desejado = msg["mode"]
@@ -2075,8 +2724,47 @@ class DesktopBridgeRuntime:
 
     def publicar_evento(self, titulo: str, detalhe: str = "", *, nivel: str = "info") -> None:
         evento = {"title": _texto_seguro(titulo, 120), "detail": _texto_seguro(detalhe, 500), "level": nivel if nivel in {"info", "success", "warning", "error"} else "info", "timestamp": time.time()}
-        self._eventos.append(evento)
+        with self._eventos_lock:
+            if len(self._eventos) == self._eventos.maxlen:
+                self._eventos_descartados += 1
+            self._eventos.append(evento)
         self._publicar({"type": "state", "event": evento, **sanitizar_estado(self.estado_getter())})
+
+    def publicar_medidor_musica(self, medidor: Mapping[str, Any]) -> bool:
+        """Publica somente três bandas já autorizadas, sem refazer dashboard."""
+        tab_id = medidor.get("tab_id")
+        video_id = str(medidor.get("video_id") or "").strip()
+        bruto = medidor.get("levels")
+        if (
+            not isinstance(tab_id, int)
+            or isinstance(tab_id, bool)
+            or not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id)
+            or not isinstance(bruto, list)
+            or len(bruto) != 3
+        ):
+            return False
+        try:
+            levels = [
+                round(max(0.0, min(1.0, float(valor))), 4)
+                for valor in bruto
+                if not isinstance(valor, bool)
+            ]
+            energy = round(
+                max(0.0, min(1.0, float(medidor.get("energy") or 0.0))), 4,
+            )
+            observado = max(0.0, float(medidor.get("observed_at") or 0.0))
+        except (TypeError, ValueError):
+            return False
+        if len(levels) != 3:
+            return False
+        return self._publicar({
+            "type": "music_meter",
+            "tab_id": tab_id,
+            "video_id": video_id,
+            "levels": levels,
+            "energy": energy,
+            "observed_at": observado,
+        })
 
     def _publicar_estados(self) -> None:
         ultimo_envio = 0.0
@@ -2174,6 +2862,38 @@ class DesktopBridgeRuntime:
             separators=(",", ":"),
         )
 
+    def _obter_dev_console_seguro(self) -> dict[str, Any]:
+        if not callable(self.dev_console_getter):
+            return sanitizar_retrato_dev({})
+        try:
+            return sanitizar_retrato_dev(self.dev_console_getter())
+        except Exception:
+            return sanitizar_retrato_dev({})
+
+    def _publicar_dev_console(self) -> None:
+        """Entrega lotes sem bloquear a thread que produziu o log original."""
+        while not self._stop.wait(self.dev_console_interval_s):
+            with self._client_lock:
+                conectado = self._client is not None
+            if not conectado:
+                continue
+            retrato = self._obter_dev_console_seguro()
+            eventos = [
+                item for item in retrato.get("events", [])
+                if int(item.get("sequence") or 0) > self._ultima_sequencia_dev
+            ]
+            if not eventos:
+                continue
+            if self._publicar({
+                "type": "dev_events",
+                "events": eventos,
+                "sequence": int(retrato.get("sequence") or 0),
+                "timestamp": time.time(),
+            }):
+                self._ultima_sequencia_dev = max(
+                    int(item.get("sequence") or 0) for item in eventos
+                )
+
     def _publicar_dashboard(self) -> None:
         ultimo_envio = time.monotonic()
         while not self._stop.wait(self.dashboard_interval_s):
@@ -2259,7 +2979,12 @@ class DesktopBridgeRuntime:
             except subprocess.TimeoutExpired:
                 processo.kill()
         limite = time.monotonic() + max(0.0, float(timeout_s))
-        for thread in (self._thread, self._poll_thread, self._dashboard_thread):
+        for thread in (
+            self._thread,
+            self._poll_thread,
+            self._dashboard_thread,
+            self._dev_console_thread,
+        ):
             if thread and thread.is_alive() and thread is not threading.current_thread():
                 thread.join(timeout=max(0.0, limite - time.monotonic()))
 
@@ -2268,6 +2993,14 @@ class DesktopBridgeRuntime:
             conectado = self._client is not None
             handshake = self._client_pending is not None
         thread_viva = bool(self._thread and self._thread.is_alive())
+        with self._entradas_lock:
+            entradas_pendentes = len(self._entradas_pendentes)
+            entradas_limite = int(self._entradas_pendentes.maxlen or 0)
+            entradas_descartadas = self._entradas_descartadas
+        with self._eventos_lock:
+            eventos_retidos = len(self._eventos)
+            eventos_limite = int(self._eventos.maxlen or 0)
+            eventos_descartados = self._eventos_descartados
         return {
             "disponivel": self._server is not None and thread_viva
             and not self._stop.is_set(),
@@ -2289,6 +3022,17 @@ class DesktopBridgeRuntime:
                 self._dashboard_source_pending
                 and self._dashboard_source_pending[0].is_alive()
             ),
+            "dev_console_disponivel": callable(self.dev_console_getter),
+            "dev_control_disponivel": callable(self.dev_control_executar),
+            "dev_console_thread_viva": bool(
+                self._dev_console_thread and self._dev_console_thread.is_alive()
+            ),
+            "eventos_retidos": eventos_retidos,
+            "eventos_limite": eventos_limite,
+            "eventos_descartados": eventos_descartados,
+            "entradas_pendentes": entradas_pendentes,
+            "entradas_limite": entradas_limite,
+            "entradas_descartadas": entradas_descartadas,
         }
 
 

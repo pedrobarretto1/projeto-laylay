@@ -83,6 +83,23 @@ def _texto_metrica(
     return texto
 
 
+JANELA_HISTORICO_SISTEMA = 24
+
+
+def posicoes_historico_sistema(quantidade: int, *, barras: bool = False) -> tuple[float, ...]:
+    """Coordenadas relativas de uma janela fixa, com o presente à direita.
+
+    Posições sem medição permanecem vazias; não são amostras de valor zero.
+    """
+    quantidade = max(0, min(JANELA_HISTORICO_SISTEMA, quantidade))
+    divisor = JANELA_HISTORICO_SISTEMA if barras else JANELA_HISTORICO_SISTEMA - 1
+    deslocamento = 0.5 if barras else 0.0
+    return tuple(
+        (indice + deslocamento) / divisor
+        for indice in range(JANELA_HISTORICO_SISTEMA - quantidade, JANELA_HISTORICO_SISTEMA)
+    )
+
+
 class GraficoSistemaCompacto(QWidget):
     """Sparkline leve que também preserva a API mínima das barras antigas."""
 
@@ -159,7 +176,7 @@ class GraficoSistemaCompacto(QWidget):
 
         cor = QColor(self.CORES[self._tom])
         if self._tom in {"ram", "vram"}:
-            passo = area.width() / max(1, len(self._valores))
+            passo = area.width() / JANELA_HISTORICO_SISTEMA
             largura = max(1.4, min(3.0, passo * 0.64))
             gradiente = QLinearGradient(0, area.top(), 0, area.bottom())
             topo, base = QColor(cor), QColor(cor)
@@ -169,22 +186,25 @@ class GraficoSistemaCompacto(QWidget):
             gradiente.setColorAt(1.0, base)
             painter.setPen(Qt.NoPen)
             painter.setBrush(gradiente)
-            for indice, valor in enumerate(self._valores):
+            posicoes = posicoes_historico_sistema(len(self._valores), barras=True)
+            for posicao, valor in zip(posicoes, self._valores):
                 altura = max(1.0, valor / 100.0 * area.height())
-                x = area.left() + indice * passo + (passo - largura) / 2
+                x = area.left() + posicao * area.width() - largura / 2
                 painter.drawRect(QRectF(x, area.bottom() - altura, largura, altura))
             return
 
-        passo = area.width() / max(1, len(self._valores) - 1)
         pontos = [
             QPointF(
-                area.left() + indice * passo,
+                area.left() + posicao * area.width(),
                 area.bottom() - valor / 100.0 * area.height(),
             )
-            for indice, valor in enumerate(self._valores)
+            for posicao, valor in zip(posicoes_historico_sistema(len(self._valores)), self._valores)
         ]
         if len(pontos) == 1:
-            pontos.insert(0, QPointF(area.left(), pontos[0].y()))
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(cor)
+            painter.drawEllipse(pontos[0], 1.5, 1.5)
+            return
         caminho = QPainterPath(pontos[0])
         for ponto in pontos[1:]:
             caminho.lineTo(ponto)

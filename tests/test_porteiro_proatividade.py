@@ -199,6 +199,36 @@ def test_flush_entrega_presenca_de_jogo_ja_validada_com_chat_aberto() -> None:
     assert runtime.proativa_buffer == []
 
 
+def test_briefing_persistente_bloqueado_nao_faz_presenca_jogo_passar_fome() -> None:
+    falas = []
+
+    def avaliar(*, tipo, **_dados):
+        if tipo == "briefing":
+            return {"acao": "adiar", "adiar_s": 10.0, "validade_s": 21600.0}
+        return {"acao": "emitir", "adiar_s": 0.0, "validade_s": 180.0}
+
+    runtime = _voz(avaliador=avaliar, permitida=lambda: False)
+    runtime.falar = lambda *args, **kwargs: falas.append((args, kwargs)) or True
+    agora = time.time()
+    runtime.proativa_buffer = [
+        {
+            "tipo": "briefing", "texto": "Resumo da manhã.",
+            "preservar_ate_entrega": True, "forcar_inicio": False,
+            "nao_antes_ts": 0.0, "expira_ts": agora + 21600.0,
+        },
+        {
+            "tipo": "presenca_jogo", "texto": "Essa paisagem ficou bonita, hein.",
+            "preservar_ate_entrega": False, "forcar_inicio": False,
+            "nao_antes_ts": 0.0, "expira_ts": agora + 180.0,
+        },
+    ]
+
+    runtime.flush_fala_proativa()
+
+    assert falas and falas[0][0][0] == "Essa paisagem ficou bonita, hein."
+    assert [item["tipo"] for item in runtime.proativa_buffer] == ["briefing"]
+
+
 def test_item_expirado_nao_fica_preso_na_fila() -> None:
     conclusoes = []
     runtime = _voz(

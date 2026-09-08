@@ -8,6 +8,7 @@ from mente_laylay.autonomia.pre_fluxo_contextual import (
 )
 from mente_laylay.cognicao.esclarecimento_operacional import (
     detectar_esclarecimento_operacional,
+    detectar_esclarecimento_referencia_pessoal,
     registrar_esclarecimento_operacional,
     resolver_esclarecimento_operacional,
 )
@@ -87,6 +88,53 @@ def test_pre_fluxo_pergunta_o_dado_faltante_e_grava_pendencia_na_mente_unica() -
     )
     assert falas == ["Qual programa você quer abrir?"]
     assert estado.mental["pendencia_atual"]["intencao"] == "APP_OPEN"
+
+
+def test_referencia_favorita_sem_memoria_vira_esclarecimento_antes_da_llm() -> None:
+    contrato = detectar_esclarecimento_referencia_pessoal(
+        "coloca minha música favorita",
+        resolver_referencia_pessoal=lambda *_args, **_kwargs: None,
+    )
+
+    assert contrato is not None
+    assert contrato["intent"] == "MUSIC_SEARCH"
+    assert contrato["campo"] == "query"
+    assert "ainda não tenho" in contrato["fala"].casefold()
+
+
+def test_referencia_favorita_confirmada_segue_para_o_roteador_normal() -> None:
+    contrato = detectar_esclarecimento_referencia_pessoal(
+        "vamos ouvir minha música favorita",
+        resolver_referencia_pessoal=lambda *_args, **_kwargs: {
+            "valor": "Lua de Neon da Anny",
+            "confirmado_usuario": True,
+        },
+    )
+
+    assert contrato is None
+
+
+def test_prioridade_intercepta_favorita_ausente_sem_entregar_a_llm() -> None:
+    estado = _Estado()
+    falas: list[str] = []
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: {
+            "_estado_compartilhado_runtime": estado,
+            "_resolver_referencia_pessoal": lambda *_args, **_kwargs: None,
+            "_emitir_resposta_curta": lambda _entrada, fala, **_kwargs: falas.append(fala) or True,
+            "resolver_comando_natural": lambda *_args: (_ for _ in ()).throw(
+                AssertionError("referência ausente não deve chegar ao resolvedor/LLM")
+            ),
+        },
+        loop_getter=lambda: None,
+    )
+
+    assert runtime.processar_prioritarios("coloca minha música favorita") is True
+    assert falas == [
+        "Eu ainda não tenho uma música favorita sua confirmada. "
+        "Qual faixa você quer ouvir?"
+    ]
+    assert estado.mental["pendencia_atual"]["intencao"] == "MUSIC_SEARCH"
 
 
 def test_resposta_da_pendencia_e_executavel_sem_pedir_ajuda_da_llm() -> None:

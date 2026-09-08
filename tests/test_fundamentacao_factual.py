@@ -87,6 +87,29 @@ def test_atualidade_nao_confunde_fatos_estaveis_pessoais_ou_matematica() -> None
     assert classificar_atualidade_factual("como você está agora?")["classe"] == "contexto_pessoal"
 
 
+def test_estado_observavel_atual_exige_evidencia_recente() -> None:
+    for texto in (
+        "A porta está aberta?",
+        "A inscrição continua aberta?",
+        "Meu chamado ainda está aberto?",
+        "O arquivo relatório está aberto?",
+        "A aba da documentação está aberta?",
+        "O menu do jogo está aberto?",
+    ):
+        atualidade = classificar_atualidade_factual(texto)
+        assert atualidade["depende_atualidade"] is True
+        assert atualidade["classe"] == "estado_observavel"
+
+
+def test_estado_observavel_nao_confunde_declaracao_ou_metalinguagem() -> None:
+    for texto in (
+        "O assunto continua aberto.",
+        "Estou aberto a sugestões.",
+        'A frase "o Opera está aberto?" é apenas um exemplo.',
+    ):
+        assert classificar_atualidade_factual(texto)["depende_atualidade"] is False
+
+
 def test_fundamentacao_carrega_classificacao_de_atualidade_para_o_prompt() -> None:
     atualidade = classificar_atualidade_factual("qual é a versão atual do Python?")
     base = montar_fundamentacao(

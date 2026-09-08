@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import time
+from datetime import datetime
 from typing import Any, Callable, Dict
 
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
@@ -217,12 +218,59 @@ class AprendizadoRuntime:
             limite_rejeicao,
         )
 
-    def musica_registrar_historico(self, musica: str) -> None:
+    def musica_registrar_historico(self, musica: str) -> Dict[str, Any] | None:
+        musica_limpa = str(musica or "").replace("- YouTube", "").strip()
+        if len(musica_limpa) < 3:
+            return None
+        estado = self._estado()
+        dados = dict(estado.get("musica_dados_diarios") or {})
+        hora_atual = datetime.now().strftime("%H:00")
+        bloco_atual = dict(dados.get(hora_atual) or {})
+        historico_atual = list(bloco_atual.get("musicas") or [])
+        ultima = str(historico_atual[-1] if historico_atual else "").strip()
         registrar_historico_musica(
-            self._estado().get("musica_dados_diarios", {}),
-            musica,
-            salvar_cb=self.salvar_musica_dados,
+            dados,
+            musica_limpa,
         )
+        self._set(musica_dados_diarios=dados)
+        self.salvar_musica_dados()
+
+        # O websocket pode repetir metadados do mesmo video. A repeticao ainda
+        # conta para o aprendizado, mas nao abre outra oportunidade cognitiva.
+        if ultima.casefold() == musica_limpa.casefold():
+            return None
+        considerar_presenca = self._ctx().get("considerar_presenca")
+        if not callable(considerar_presenca):
+            return None
+        evento = {
+            "natureza": "evento",
+            "origem": "aprendizado_musical",
+            "dominio": "musica",
+            "categoria": "musica",
+            "confianca": 0.90,
+            "fundamentada": True,
+            "momento_seguro": True,
+            "motivo": f"A reproducao musical mudou para {musica_limpa}.",
+            "evidencias": [
+                musica_limpa,
+                "reproducao_confirmada_pelo_navegador",
+            ],
+            "chave": f"musica:reproducao:{musica_limpa}",
+            "timestamp": time.time(),
+            "validade_s": 120.0,
+            "acao_proposta": None,
+            "utilidade": 38,
+            "executavel": False,
+            "reversivel": False,
+            "executar_automaticamente": False,
+            "autoridade_usuario": False,
+            "permissao_execucao": False,
+        }
+        try:
+            return dict(considerar_presenca(evento) or {})
+        except Exception as erro:
+            self._log(f"[APRENDIZADO MUSICAL] evento ignorado: {erro}")
+            return None
 
     def carregar_tudo(self) -> None:
         self.carregar_rotinas_aprendidas()
@@ -235,25 +283,81 @@ class AprendizadoRuntime:
         *,
         dias_para_aprender: int,
         limite_rejeicao: int,
-    ) -> None:
+    ) -> Dict[str, Any] | None:
         ctx = self._ctx()
         estado = self._estado()
         continuidades_get = ctx.get("continuidades_get")
         continuidades_set = ctx.get("continuidades_set")
         pendente = continuidades_get("rotina_sugestao_pendente") if callable(continuidades_get) else None
-        ultima, pendente_novo = analisar_e_sugerir_rotina(
+        candidato = analisar_e_sugerir_rotina(
             estado.get("rotina_dados_diarios", {}),
             estado.get("rotina_feedback_pesos", {}),
             float(estado.get("rotina_ultima_sugestao") or 0.0),
             pendente,
             ctx.get("contexto_aponta_descanso", lambda: False),
-            ctx.get("agendar_fala_proativa", lambda *args, **kwargs: None),
             dias_para_aprender,
             limite_rejeicao,
         )
-        self._set(rotina_ultima_sugestao=ultima)
-        if callable(continuidades_set):
-            continuidades_set("rotina_sugestao_pendente", pendente_novo)
+        if not candidato:
+            return None
+        considerar_presenca = ctx.get("considerar_presenca")
+        if not callable(considerar_presenca):
+            self._log("[APRENDIZADO ROTINA] diretor de presenca indisponivel")
+            return None
+
+        app = str(candidato.get("app") or "").strip()
+        hora = str(candidato.get("hora") or "").strip()
+        agora = float(candidato.get("ts") or time.time())
+        total = max(1, int(candidato.get("total_registros") or 1))
+        ocorrencias = max(0, int(candidato.get("ocorrencias") or 0))
+
+        def concluir(entregue: bool, _motivo: str) -> None:
+            if not entregue:
+                return
+            self._set(rotina_ultima_sugestao=agora)
+            if callable(continuidades_set):
+                continuidades_set(
+                    "rotina_sugestao_pendente",
+                    {"app": app, "hora": hora, "ts": agora},
+                )
+
+        evento = {
+            "natureza": "evento",
+            "origem": "aprendizado_rotina",
+            "dominio": "rotina",
+            "categoria": "dica",
+            "confianca": round(min(1.0, ocorrencias / total), 3),
+            "fundamentada": True,
+            "momento_seguro": True,
+            "motivo": (
+                f"O uso de {candidato.get('nome_amigavel') or app} se repetiu "
+                f"no horario {hora}; ha uma oportunidade de oferecer o app."
+            ),
+            "evidencias": [
+                f"janela_recorrente:{app}",
+                f"frequencia_horaria:{ocorrencias}/{total}",
+            ],
+            "chave": f"rotina:app:{hora}:{app}",
+            "timestamp": agora,
+            "validade_s": 300.0,
+            "acao_proposta": {
+                "intent": "OPEN_APP",
+                "params": {"app": app},
+            },
+            # Rotina observada pode sugerir um alvo, nunca executa-lo sem a
+            # confirmacao que so passa a existir depois da entrega da oferta.
+            "utilidade": 52,
+            "executavel": False,
+            "reversivel": True,
+            "autoridade_usuario": False,
+            "permissao_execucao": False,
+            "ao_concluir": concluir,
+        }
+        try:
+            return dict(considerar_presenca(evento) or {})
+        except Exception as erro:
+            self._log(f"[APRENDIZADO ROTINA] evento ignorado: {erro}")
+            return None
 
     def monitor_tick(
         self,

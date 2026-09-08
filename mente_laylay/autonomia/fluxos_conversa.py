@@ -264,6 +264,10 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
     extrair_nome_playlist = _get(contexto, "extrair_nome_playlist")
     yt_clean_title = _get(contexto, "_yt_clean_title")
     falar_com_lipsync = _get(contexto, "falar_com_lipsync")
+    registrar_resultado_execucao = _get(
+        contexto,
+        "_registrar_resultado_execucao",
+    )
     registrar_feedback_rotina = _get(contexto, "_rotina_registrar_feedback")
     gmail_buscar = _get(contexto, "_gmail_buscar_nao_lidos")
     gmail_resumo = _get(contexto, "_gmail_falar_resumo_estiloso")
@@ -336,18 +340,115 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
                 print(f"[FEEDBACK PLAYLIST] Resposta: {status} para '{pl}'")
                 if confirmado:
                     ok = False
+                    receipt_status = ""
+                    receipt_executou = False
+                    receipt_confirmado = False
+                    receipt_ok = False
                     info = musica_operacoes.faixa_atual() if musica_operacoes is not None else {}
                     url = str((info or {}).get("url") or "")
                     title = str((info or {}).get("title") or "")
                     canal = str((info or {}).get("canal") or "")
                     if not url or "youtube.com" not in url:
+                        receipt_status = (
+                            "faixa_atual_indisponivel"
+                            if not url
+                            else "fonte_musical_invalida"
+                        )
+                        receipt_executou = False
+                        receipt_confirmado = False
+                        receipt_ok = False
                         if callable(falar_com_lipsync):
                             falar_com_lipsync(_escolher_fala_variada(["Não achei a música aberta pra salvar agora.", "Não vi música aberta pra guardar.", "Faltou uma aba de música aberta."]), "calma", 1)
                     else:
-                        ok = bool(
-                            musica_operacoes.adicionar_faixa(pl, url, title, canal)
-                        ) if musica_operacoes is not None else False
+                        criar_playlist = getattr(
+                            musica_operacoes,
+                            "criar_playlist",
+                            None,
+                        )
+                        criacao = {}
+                        if callable(criar_playlist):
+                            try:
+                                criacao = dict(criar_playlist(pl) or {})
+                            except Exception:
+                                criacao = {}
+
+                        if criacao.get("ok"):
+                            adicionar_detalhado = getattr(
+                                musica_operacoes,
+                                "adicionar_faixa_resultado",
+                                None,
+                            )
+
+                            if callable(adicionar_detalhado):
+                                try:
+                                    resultado_adicao = dict(
+                                        adicionar_detalhado(
+                                            pl,
+                                            url,
+                                            title,
+                                            canal,
+                                        ) or {}
+                                    )
+                                except Exception:
+                                    resultado_adicao = {}
+
+                                ok = bool(resultado_adicao.get("ok"))
+                                adicionada = bool(
+                                    resultado_adicao.get("added")
+                                )
+                                duplicada = bool(
+                                    resultado_adicao.get("duplicated")
+                                ) or bool(ok and not adicionada)
+
+                                receipt_status = (
+                                    "playlist_musica_ja_existia"
+                                    if duplicada
+                                    else "playlist_musica_adicionada"
+                                    if ok
+                                    else str(
+                                        resultado_adicao.get("status")
+                                        or "falha_execucao"
+                                    )
+                                )
+                                receipt_executou = bool(
+                                    ok and not duplicada
+                                )
+                                receipt_confirmado = (
+                                    True if ok else False
+                                )
+                                receipt_ok = bool(ok)
+
+                            else:
+                                ok = bool(
+                                    musica_operacoes.adicionar_faixa(
+                                        pl,
+                                        url,
+                                        title,
+                                        canal,
+                                    )
+                                ) if musica_operacoes is not None else False
+
+                                receipt_status = (
+                                    "playlist_musica_adicionada"
+                                    if ok
+                                    else "falha_execucao"
+                                )
+                                receipt_executou = bool(ok)
+                                receipt_confirmado = (
+                                    True if ok else False
+                                )
+                                receipt_ok = bool(ok)
+
+                        else:
+                            receipt_status = str(
+                                criacao.get("status")
+                                or "falha_execucao"
+                            )
+                            receipt_executou = False
+                            receipt_confirmado = False
+                            receipt_ok = False
                     if ok:
+
                         musica_operacoes.definir_ultima_playlist(pl)
                         titulo = yt_clean_title(title) if callable(yt_clean_title) else title
                         titulo = titulo or "essa música"
@@ -357,9 +458,59 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
                                 f"Pronto, {titulo} foi pra playlist {pl}.",
                                 f"Salvei {titulo} na playlist {pl}.",
                             ]), "debochada", 2)
-                        else:
-                            if callable(falar_com_lipsync):
-                                falar_com_lipsync(_escolher_fala_variada(["Não consegui salvar essa música agora.", "O salvamento falhou por enquanto.", "Não deu pra guardar a música agora."]), "calma", 1)
+                    else:
+                        if callable(falar_com_lipsync):
+                            falar_com_lipsync(_escolher_fala_variada([
+                                "Não consegui salvar essa música agora.",
+                                "O salvamento falhou por enquanto.",
+                                "Não deu pra guardar a música agora.",
+                            ]), "calma", 1)
+
+                    # RED151_C3_RECEIPT_FEEDBACK_PLAYLIST
+                    # O feedback simples também executa efeito operacional.
+                    # Portanto ele publica exatamente o mesmo contrato oficial
+                    # consumido pelo restante da mente.
+                    if (
+                        receipt_status
+                        and callable(registrar_resultado_execucao)
+                    ):
+                        receipt = {
+                            "intent": "PLAYLIST_ADD",
+                            "acao": "PLAYLIST_ADD",
+                            "status": receipt_status,
+                            "alvo": pl,
+                            "params": {
+                                "nome_playlist": pl,
+                                "url": url,
+                                "titulo": title,
+                                "canal": canal,
+                                "playlist_criada": bool(
+                                    criacao.get("criada")
+                                ),
+                                "status_criacao": str(
+                                    criacao.get("status") or ""
+                                ),
+                            },
+                            "ok": receipt_ok,
+                            "executou": receipt_executou,
+                            "confirmado": receipt_confirmado,
+                            "origem": "feedback_playlist",
+                            "detalhe": "confirmacao_feedback_playlist",
+                        }
+                        try:
+                            registrar_resultado_execucao(
+                                receipt,
+                                texto,
+                                receipt_executou,
+                                origem="feedback_playlist",
+                                status=receipt_status,
+                            )
+                        except Exception as erro:
+                            print(
+                                "⚠️ [FEEDBACK PLAYLIST] "
+                                "falha ao publicar receipt canônico: "
+                                f"{type(erro).__name__}: {erro}"
+                            )
                 else:
                     if callable(falar_com_lipsync):
                         falar_com_lipsync(_escolher_fala_variada([

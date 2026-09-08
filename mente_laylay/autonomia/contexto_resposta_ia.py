@@ -44,6 +44,36 @@ def _texto_pede_contexto_da_aba(texto: str) -> bool:
     ))
 
 
+def _formatar_fundamentacao_rapida(
+    fundamentacao: Dict[str, Any] | None,
+) -> str:
+    """Expõe só a evidência factual necessária ao turno rápido atual."""
+    base = dict(fundamentacao or {})
+    if not (
+        base.get("confiavel")
+        and base.get("evidencia_dentro_validade", True) is not False
+        and str(base.get("resumo") or "").strip()
+    ):
+        return ""
+    tema = re.sub(r"\s+", " ", str(base.get("tema") or "esse tema")).strip()[:160]
+    fonte = re.sub(r"\s+", " ", str(base.get("fonte") or "fonte externa")).strip()[:80]
+    resumo = re.sub(r"\s+", " ", str(base.get("resumo") or "")).strip()[:1200]
+    instrucao = (
+        "REGRA PRINCIPAL DESTA RESPOSTA: a pesquisa contextual da Laylay já foi "
+        "executada e retornou estes candidatos. Você consegue e deve responder "
+        "com esse resultado. Escolha somente entre os títulos presentes nesta "
+        "evidência e comece recomendando um deles exatamente como está escrito; "
+        "só depois acrescente algo sustentado por ela. Não alegue "
+        "falta de acesso a dados, não troque filme por livro e não invente outro título."
+        if str(base.get("titulo") or "").casefold().startswith("candidatos de ")
+        else "Use somente fatos presentes nesta evidência; não complete lacunas."
+    )
+    return (
+        "--- EVIDÊNCIA FACTUAL EFÊMERA DO TURNO ---\n"
+        f"Tema: {tema}. Fonte: {fonte}. Evidência: {resumo}\n{instrucao}"
+    )
+
+
 def preparar_contexto_resposta_ia(
     ctx: Dict[str, Any],
     texto: str,
@@ -70,6 +100,9 @@ def preparar_contexto_resposta_ia(
         _get(ctx, "contexto_retrato_expressivo", "") or ""
     ).strip()
     contexto_contrato_fala = str(_get(ctx, "contexto_contrato_fala", "") or "").strip()
+    contexto_fundamentacao_prioritaria = str(
+        _get(ctx, "contexto_fundamentacao_prioritaria", "") or ""
+    ).strip()
 
     contaminantes = ["adicionar_a_playlist", "editar_playlist", "tocar_playlist", "organizar_desktop", "maximize_window", "persona"]
 
@@ -131,6 +164,10 @@ def preparar_contexto_resposta_ia(
         contexto_extra += "\n" + contexto_postura + "\n"
     if contexto_retrato_expressivo:
         contexto_extra += "\n" + contexto_retrato_expressivo + "\n"
+    if contexto_fundamentacao_prioritaria:
+        # Receipt factual por último: nenhuma decoração do prompt pode
+        # deslocar a fonte de verdade do turno.
+        contexto_extra += "\n" + contexto_fundamentacao_prioritaria + "\n"
 
     liberdade_conversacional = (
         "\n\n--- AUTORIA DA CONVERSA ---\n"
@@ -213,6 +250,16 @@ class ContextoPromptRuntime:
             estado = {}
         estado = estado if isinstance(estado, dict) else {}
         t = str(texto or "").strip()
+        fundamentacao_prioritaria = _formatar_fundamentacao_rapida(
+            estado.get("fundamentacao_factual_turno"),
+        )
+        lista_factual_materializada = bool(
+            fundamentacao_prioritaria
+            and str(
+                dict(estado.get("fundamentacao_factual_turno") or {}).get("titulo")
+                or ""
+            ).casefold().startswith("candidatos de ")
+        )
         turno_atual = dict(estado.get("turno_atual") or {}) if isinstance(estado.get("turno_atual"), dict) else {}
         modalidade_turno = str(
             turno_atual.get("modalidade_geral") or turno_atual.get("modalidade") or ""
@@ -231,43 +278,52 @@ class ContextoPromptRuntime:
                 "por ato, na mesma ordem. Não execute nada que o porteiro não autorizou.\n\n"
                 + prompt_base_turno
             )
-        retrato = self.resumo_mente_integrada(t)
+        retrato = "" if lista_factual_materializada else self.resumo_mente_integrada(t)
         contexto_habilidades = ""
-        if callable(self.mapa_habilidades_prompt):
+        if not lista_factual_materializada and callable(self.mapa_habilidades_prompt):
             try:
                 contexto_habilidades = str(
                     self.mapa_habilidades_prompt(t, turno=turno_atual) or ""
                 ).strip()
             except Exception:
                 contexto_habilidades = ""
-        contexto_identidade = contexto_identidade_usuario(
-            estado.get("nome_usuario", "")
+        contexto_identidade = (
+            ""
+            if lista_factual_materializada
+            else contexto_identidade_usuario(estado.get("nome_usuario", ""))
         )
-        postura = selecionar_postura_amizade(
-            t,
-            estado_mental=estado,
-            operacional=bool(
-                dict(
-                    dict(estado.get("especialistas_turno_atual") or {}).get("operacional")
-                    or {}
-                ).get("ativo")
-            ),
-        )
-        contexto_postura = formatar_postura_para_prompt(postura)
-        retrato_expressivo = construir_retrato_expressivo(
-            t,
-            estado_mental=estado,
-            operacional=postura.nome == "operacional_amigavel",
-        )
-        contexto_retrato_expressivo = formatar_retrato_expressivo_para_prompt(
-            retrato_expressivo,
-        )
-        contexto_contrato_fala = formatar_contrato_fala_para_prompt(
-            estado.get("contrato_fala_atual"),
-            # O contrato compacto preserva atos, referente, obrigações,
-            # proibições e limites. A versão longa duplicava o roteiro e as
-            # respostas recentes em todo turno normal.
-            compacto=self.otimizacao_prompt_ativa,
+        contexto_postura = ""
+        contexto_retrato_expressivo = ""
+        if not lista_factual_materializada:
+            postura = selecionar_postura_amizade(
+                t,
+                estado_mental=estado,
+                operacional=bool(
+                    dict(
+                        dict(estado.get("especialistas_turno_atual") or {}).get("operacional")
+                        or {}
+                    ).get("ativo")
+                ),
+            )
+            contexto_postura = formatar_postura_para_prompt(postura)
+            retrato_expressivo = construir_retrato_expressivo(
+                t,
+                estado_mental=estado,
+                operacional=postura.nome == "operacional_amigavel",
+            )
+            contexto_retrato_expressivo = formatar_retrato_expressivo_para_prompt(
+                retrato_expressivo,
+            )
+        contexto_contrato_fala = (
+            ""
+            if lista_factual_materializada
+            else formatar_contrato_fala_para_prompt(
+                estado.get("contrato_fala_atual"),
+                # O contrato compacto preserva atos, referente, obrigações,
+                # proibições e limites. A versão longa duplicava o roteiro e as
+                # respostas recentes em todo turno normal.
+                compacto=self.otimizacao_prompt_ativa,
+            )
         )
         if self.otimizacao_prompt_ativa and contexto_contrato_fala:
             contexto_contrato_fala = contexto_contrato_fala.replace(
@@ -286,7 +342,7 @@ class ContextoPromptRuntime:
                 1,
             )
         contexto_recursos = ""
-        if callable(self.mapa_recursos_prompt):
+        if not lista_factual_materializada and callable(self.mapa_recursos_prompt):
             try:
                 contexto_recursos = str(self.mapa_recursos_prompt(t) or "").strip()
             except Exception:
@@ -307,7 +363,9 @@ class ContextoPromptRuntime:
         contexto = {
             "memoria_sqlite": self.memoria_sqlite if usar_memoria_legada else None,
             "retrato_mente_integrada": retrato,
-            "_resumo_mente_integrada_para_prompt": self.resumo_mente_integrada,
+            "_resumo_mente_integrada_para_prompt": (
+                None if lista_factual_materializada else self.resumo_mente_integrada
+            ),
             "aba_titulo_atual": estado.get("aba_titulo_atual", "") if usar_contexto_aba else "",
             "aba_url_atual": estado.get("aba_url_atual", "") if usar_contexto_aba else "",
             "_formatar_playlists_para_prompt": (
@@ -320,6 +378,7 @@ class ContextoPromptRuntime:
             "contexto_contrato_fala": contexto_contrato_fala,
             "contexto_postura": contexto_postura,
             "contexto_retrato_expressivo": contexto_retrato_expressivo,
+            "contexto_fundamentacao_prioritaria": fundamentacao_prioritaria,
         }
         try:
             resultado = preparar_contexto_resposta_ia(
@@ -394,8 +453,27 @@ class ContextoPromptRuntime:
                     operacional=operacional,
                 )
             )
+            fundamentacao = _formatar_fundamentacao_rapida(
+                estado.get("fundamentacao_factual_turno"),
+            )
+            lista_factual_materializada = bool(
+                fundamentacao
+                and str(
+                    dict(estado.get("fundamentacao_factual_turno") or {}).get("titulo")
+                    or ""
+                ).casefold().startswith("candidatos de ")
+            )
+            trechos_prompt = (
+                (fundamentacao,)
+                if lista_factual_materializada
+                else (contrato, retrato, fundamentacao)
+            )
             instrucao = "\n\n".join(
-                trecho for trecho in (contrato, retrato) if str(trecho or "").strip()
+                # Quando a pesquisa já materializou candidatos, esse bloco é o
+                # contrato completo da resposta factual. Catálogo global e
+                # retrato expressivo só competiriam com o receipt num modelo 4B.
+                trecho for trecho in trechos_prompt
+                if str(trecho or "").strip()
             )
             if instrucao and callable(self.registrar_tamanho_prompt):
                 self.registrar_tamanho_prompt(

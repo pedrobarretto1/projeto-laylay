@@ -316,6 +316,42 @@ def test_fallback_de_autoria_expoe_motivo_sem_quebrar_o_comando(monkeypatch) -> 
     assert any("resposta_tecnica_ou_json_invalido" in item for item in logs)
 
 
+def test_fallback_musical_nao_repete_titulo_que_ja_confirma_reproducao() -> None:
+    falas: list[tuple] = []
+    titulo = "Shiny - Vazio Constante"
+    adaptador = AdaptadorResultadoOperacional(
+        {"intent": "MUSIC_SEARCH"},
+        {
+            "query": (
+                "Shiny - Vazio Constante | Bojack, Rick & Clancy | "
+                "Ft. @AniRap & @AnnyTHN"
+            ),
+        },
+        "coloca vazio constante shiny_sz",
+        "pc_a",
+        {
+            "falar_com_lipsync": lambda *args: falas.append(args),
+            "enviar_mensagem": lambda *_args, **_kwargs: "LAYLAY_LLM_INDISPONIVEL",
+            "print": lambda *_args: None,
+        },
+    )
+
+    adaptador.falar_por_status(
+        "musica_reproduzindo",
+        f"{titulo} está tocando agora.",
+        alvo=titulo,
+        executou=True,
+        confirmado=True,
+        detalhe="playing_confirmed",
+    )
+
+    fala = falas[0][0]
+    assert fala == "Shiny - Vazio Constante está tocando agora."
+    assert fala.count(titulo) == 1
+    assert "Bojack" not in fala
+    assert "@AniRap" not in fala
+
+
 def test_falha_operacional_cotidiana_recebe_uma_fala_autoral_da_llm(monkeypatch) -> None:
     chamadas_llm: list[bool] = []
     falas: list[tuple] = []
@@ -372,6 +408,29 @@ def test_estado_ja_satisfeito_vira_nao_acao_consciente_autoral(monkeypatch) -> N
     assert contrato.confirmado is True
     assert "não vou abrir de novo" in fala.casefold()
     assert (emocao, nivel) == ("debochada", 1)
+
+
+def test_app_ja_aberto_observado_preserva_estado_explicito_no_fallback() -> None:
+    entregas: list[tuple] = []
+    adaptador = _adaptador({
+        "falar_com_lipsync": lambda *_args: None,
+        "enviar_mensagem": lambda *_args, **_kwargs: "json inválido",
+        "_falar_resultado_operacional": lambda *args: entregas.append(args),
+    }, nome_app="microsoft store")
+
+    adaptador.falar_por_status(
+        "app_ja_aberto_observado",
+        "Microsoft Store já está aberto; só te avisei e não mexi nele.",
+        alvo="microsoft store",
+        executou=False,
+        confirmado=True,
+    )
+
+    contrato, fala, _emocao, _nivel = entregas[0]
+    assert contrato.executou is False
+    assert contrato.confirmado is True
+    assert "aberto" in fala.casefold()
+    assert "não repeti" in fala.casefold()
 
 
 def test_estado_ja_satisfeito_aceita_classe_semantica_no_status_da_llm() -> None:

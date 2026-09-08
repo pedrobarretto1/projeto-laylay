@@ -101,12 +101,15 @@ def executar_media_control(
         queue_index = int(queue_index) if queue_index is not None else None
     except (TypeError, ValueError):
         queue_index = None
-    if queue_index is not None and not 0 <= queue_index <= 7:
+    if queue_index is not None and not 0 <= queue_index <= 999:
         queue_index = None
     musica_operacoes = _get(ctx, "_registro_musica_operacoes_runtime")
     estado_reproducao = (
         musica_operacoes.estado() if musica_operacoes is not None else {}
     )
+    alvo_musical = platform in {
+        "music", "musica", "música", "youtube", "youtube_music",
+    }
     playlist_ativa = bool(
         str((estado_reproducao or {}).get("playlist_ativa") or "").strip()
     )
@@ -188,11 +191,24 @@ def executar_media_control(
             _log_midia("ABA", f"falha ao consultar aba: {e}")
             return {}
 
+    def _aba_compativel_youtube(info_aba: dict) -> bool:
+        if not isinstance(info_aba, dict):
+            return False
+        url = str(info_aba.get("url") or "").casefold()
+        titulo = str(info_aba.get("title") or "").casefold()
+        return bool(
+            "youtube.com" in url
+            or "youtu.be" in url
+            or "youtube" in titulo
+        )
+
     def _preferir_chrome_para_midia() -> bool:
         info_aba = _aba_atual_midia()
         url = str(info_aba.get("url") or "").lower() if isinstance(info_aba, dict) else ""
-        titulo = str(info_aba.get("title") or "").lower() if isinstance(info_aba, dict) else ""
-        preferir = bool(navegador_operacoes is not None and ("youtube." in url or "youtu.be" in url or "youtube" in titulo))
+        preferir = bool(
+            navegador_operacoes is not None
+            and _aba_compativel_youtube(info_aba)
+        )
         _log_midia("ROTA", f"acao={acao} platform={platform or '-'} playlist={playlist_ativa} url='{url[:80]}' preferir_chrome={preferir}")
         return preferir
 
@@ -203,9 +219,15 @@ def executar_media_control(
             detalhe_execucao = "navegador_indisponivel"
             return False
         tab_id = (estado_reproducao or {}).get("tab_id")
-        if not isinstance(tab_id, int):
+        if not isinstance(tab_id, int) or isinstance(tab_id, bool):
             aba = _aba_atual_midia()
-            tab_id = aba.get("tabId") if isinstance(aba, dict) else None
+            tab_id = (
+                aba.get("tabId")
+                if _aba_compativel_youtube(aba)
+                else None
+            )
+            if not isinstance(tab_id, int) or isinstance(tab_id, bool):
+                tab_id = None
         controlar_detalhado = getattr(
             navegador_operacoes, "controlar_youtube_detalhado", None,
         )
@@ -255,13 +277,43 @@ def executar_media_control(
         return ok
 
     def _executar_cmd_midia(cmd_exec: str) -> bool:
-        nonlocal confirmado_execucao
+        nonlocal confirmado_execucao, detalhe_execucao
         _log_midia("ENVIO", f"cmd={cmd_exec} destino={destino_val or 'local'} playlist={playlist_ativa}")
         if cmd_exec == "queue_select":
-            if not queue_item_id or queue_index is None:
+            if (
+                not queue_item_id or queue_index is None
+                or not 0 <= queue_index <= 7
+            ):
                 confirmado_execucao = False
                 return False
             return _controlar_chrome_com_evidencia(cmd_exec)
+        if cmd_exec == "playlist_queue_select":
+            if (
+                not queue_item_id or queue_index is None
+                or musica_operacoes is None
+            ):
+                confirmado_execucao = False
+                detalhe_execucao = "fila_playlist_indisponivel"
+                return False
+            selecionar = getattr(
+                musica_operacoes, "selecionar_faixa_fila", None,
+            )
+            if not callable(selecionar):
+                confirmado_execucao = False
+                detalhe_execucao = "queue_select_unavailable"
+                return False
+            try:
+                resultado = dict(selecionar(queue_item_id, queue_index) or {})
+            except Exception as erro:
+                confirmado_execucao = False
+                detalhe_execucao = f"falha_selecao_fila:{type(erro).__name__}"
+                return False
+            ok = bool(resultado.get("ok"))
+            confirmado_execucao = (
+                resultado.get("confirmed") is True if ok else False
+            )
+            detalhe_execucao = str(resultado.get("status") or "").strip()
+            return ok
         if destino_val == "pc_b" and callable(_enviar_pc_b):
             _enviar_pc_b({"action": "youtube_control", "command": cmd_exec})
             confirmado_execucao = None
@@ -270,6 +322,9 @@ def executar_media_control(
             ok_local = False
             if cmd_exec == "skip_ad" and navegador_operacoes is not None:
                 ok_local = _controlar_chrome_com_evidencia(cmd_exec)
+            elif alvo_musical and navegador_operacoes is not None:
+                ok_local = _controlar_chrome_com_evidencia(cmd_exec)
+                confirmado_execucao = None
             elif _preferir_chrome_para_midia() and navegador_operacoes is not None:
                 ok_local = _controlar_chrome_com_evidencia(cmd_exec)
                 # O destino remoto continua sem confirmação conjunta; não
@@ -286,6 +341,12 @@ def executar_media_control(
                 _enviar_pc_b({"action": "youtube_control", "command": cmd_exec})
             return ok_local
         if cmd_exec == "skip_ad" and navegador_operacoes is not None:
+            return _controlar_chrome_com_evidencia(cmd_exec)
+        if alvo_musical and navegador_operacoes is not None:
+            # Um comando do painel musical pertence ao player musical
+            # canônico, não à sessão de mídia que recebeu foco por último no
+            # Windows. Se a extensão recusar o alvo, a falha é terminal: uma
+            # tecla global poderia tocar Prime Video, Netflix ou outro player.
             return _controlar_chrome_com_evidencia(cmd_exec)
         if playlist_ativa and navegador_operacoes is not None:
             return _controlar_chrome_com_evidencia(cmd_exec)
@@ -321,6 +382,8 @@ def executar_media_control(
         cmd = "skip_ad"
     elif acao in {"queue_select", "selecionar_fila"}:
         cmd = "queue_select"
+    elif acao in {"playlist_queue_select", "selecionar_fila_playlist"}:
+        cmd = "playlist_queue_select"
 
     if nivel_bruto not in (None, ""):
         try:

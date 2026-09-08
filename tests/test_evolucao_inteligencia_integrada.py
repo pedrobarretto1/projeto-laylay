@@ -99,7 +99,11 @@ def test_assunto_pode_ser_encerrado_sem_apagar_historico() -> None:
 
 def test_correcao_liga_intent_errada_a_execucao_correta() -> None:
     pendente = abrir_correcao_interpretacao(
-        {"ultima_acao_intent": "MEDIA_CONTROL", "ultima_acao_alvo": "musica"},
+        {
+            "ultima_acao_intent": "MEDIA_CONTROL",
+            "ultima_acao_alvo": "musica",
+            "ultima_entrada": "pausa essa música",
+        },
         "não Lay, pedi para colocar na playlist",
         eh_correcao=True,
         agora=100.0,
@@ -108,11 +112,36 @@ def test_correcao_liga_intent_errada_a_execucao_correta() -> None:
         pendente,
         intent_correta="PLAYLIST_ADD",
         alvo_correto="anime",
+        texto_execucao="não Lay, pedi para colocar na playlist",
         agora=101.0,
     )
     assert concluida["intent_errada"] == "MEDIA_CONTROL"
+    assert concluida["texto_original"] == "pausa essa música"
     assert concluida["intent_correta"] == "PLAYLIST_ADD"
     assert concluida["status"] == "confirmada_por_execucao"
+
+
+def test_correcao_nao_e_confirmada_por_execucao_de_turno_posterior() -> None:
+    pendente = abrir_correcao_interpretacao(
+        {
+            "ultima_acao_intent": "LEARNING_QUERY",
+            "ultima_entrada": "Do que eu gosto?",
+        },
+        "Na verdade, não considere jazz como algo que eu gosto.",
+        eh_correcao=True,
+        agora=100.0,
+    )
+
+    resultado = concluir_correcao_interpretacao(
+        pendente,
+        intent_correta="PEOPLE_REMEMBER",
+        alvo_correto="Nanda",
+        texto_execucao="Nanda é minha amiga.",
+        agora=110.0,
+    )
+
+    assert resultado["status"] == "descartada_execucao_nao_correlacionada"
+    assert "intent_correta" not in resultado
 
 
 def test_trilha_de_turno_e_limitada_e_explica_fase() -> None:

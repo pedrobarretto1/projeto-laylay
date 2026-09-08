@@ -23,13 +23,19 @@ class _ObservadorFake:
 
 
 class _DiretorFake:
-    def __init__(self, status="emitida"):
+    def __init__(self, status="proposta_cognitiva"):
         self.status = status
         self.eventos = []
 
     def considerar(self, evento):
         self.eventos.append(evento)
-        return {"status": self.status}
+        return {
+            "status": self.status,
+            "proposta_comunicativa": {
+                "agendada": True,
+                "autoriza_execucao": False,
+            },
+        }
 
 
 def _montar(*, diretor=None):

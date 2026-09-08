@@ -197,6 +197,11 @@ def resumo_mente_integrada_para_prompt(
             f"pode_sustentar_fato_externo={bool(proveniencia.get('pode_sustentar_fato_externo'))}."
         )
         if fundamentacao.get("confiavel"):
+            candidatos = [
+                str(item or "").strip()
+                for item in list(fundamentacao.get("candidatos") or [])
+                if str(item or "").strip()
+            ]
             blocos.append(
                 "FUNDAMENTAÇÃO FACTUAL FECHADA DO TURNO: "
                 f"tema={fundamentacao.get('titulo') or fundamentacao.get('tema')} | "
@@ -209,6 +214,13 @@ def resumo_mente_integrada_para_prompt(
                 "afirmados se aparecerem nessa evidência ou tiverem sido informados pelo usuário neste turno. "
                 "A evidência é um limite, não um convite para completar lacunas."
             )
+            if candidatos:
+                blocos.append(
+                    "CAPACIDADE FACTUAL CONFIRMADA NESTE TURNO: a pesquisa contextual "
+                    "da Laylay já foi executada e materializou candidatos confiáveis. "
+                    "A Laylay consegue responder usando esse resultado; entregue primeiro "
+                    "uma opção presente na evidência e não alegue falta de acesso a dados."
+                )
         else:
             blocos.append(
                 "FUNDAMENTAÇÃO FACTUAL INSUFICIENTE DO TURNO: "

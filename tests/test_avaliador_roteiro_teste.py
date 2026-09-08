@@ -40,6 +40,75 @@ def test_opera_read_only_passa_e_app_open_e_proibido():
     assert any("intent_proibida" in x for x in ruim["erros_semanticos"])
 
 
+def test_expectativa_local_valida_alvo_exato_do_receipt():
+    expectativa = {
+        "intents_any": ("LIST_WINDOWS",),
+        "alvos_any": ("editor krita",),
+        "nome": "consulta_estado_alvo_exato",
+        "dominio": "apps",
+    }
+    correto = avaliar_turno_roteiro(
+        indice=1,
+        comando="O editor Krita ainda está aberto?",
+        resposta="Editor Krita não está aberto.",
+        plano=plano({
+            "intent": "LIST_WINDOWS", "alvo": "editor krita",
+            "params": {"alvo": "editor krita"},
+            "status": "estado_app_consultado", "executou": True,
+            "confirmado": True,
+        }),
+        respondeu=True,
+        expectativa_local=expectativa,
+    )
+    incorreto = avaliar_turno_roteiro(
+        indice=1,
+        comando="O editor Krita ainda está aberto?",
+        resposta="Editor Krita ainda não está aberto.",
+        plano=plano({
+            "intent": "LIST_WINDOWS", "alvo": "editor krita ainda",
+            "params": {"alvo": "editor krita ainda"},
+            "status": "estado_app_consultado", "executou": True,
+            "confirmado": True,
+        }),
+        respondeu=True,
+        expectativa_local=expectativa,
+    )
+
+    assert correto["resultado_semantico"] == "passou"
+    assert incorreto["resultado_semantico"] == "falhou"
+    assert any(
+        erro.startswith("alvo_incorreto:")
+        for erro in incorreto["erros_semanticos"]
+    )
+
+
+def test_expectativa_local_rejeita_marcador_temporal_vazando_no_alvo():
+    avaliado = avaliar_turno_roteiro(
+        indice=1,
+        comando="O Krita ainda está aberto?",
+        resposta="Krita ainda não está aberto.",
+        plano=plano({
+            "intent": "LIST_WINDOWS", "alvo": "krita ainda",
+            "params": {"alvo": "krita ainda"},
+            "status": "estado_app_consultado", "executou": True,
+            "confirmado": True,
+        }),
+        respondeu=True,
+        expectativa_local={
+            "intents_any": ("LIST_WINDOWS",),
+            "alvos_forbidden_tokens": ("ainda", "continua"),
+            "nome": "consulta_sem_marcador_no_alvo",
+            "dominio": "apps",
+        },
+    )
+
+    assert avaliado["resultado_semantico"] == "falhou"
+    assert any(
+        erro.startswith("alvo_contem_token_proibido:")
+        for erro in avaliado["erros_semanticos"]
+    )
+
+
 def test_fala_confirmada_nao_pode_dizer_que_nao_confirmou():
     av = avaliar_turno_roteiro(
         indice=113,
@@ -721,6 +790,56 @@ def test_confirmado_none_e_latencia_alta_viram_alerta():
     assert len(av["alertas_semanticos"]) >= 2
 
 
+def test_fallback_conversacional_e_avaliado_mesmo_sem_expectativa_operacional():
+    av = avaliar_turno_roteiro(
+        indice=238,
+        comando="{teste}",
+        resposta=(
+            "Esse assunto sobre música parece interessante, mas eu ainda não "
+            "tenho informação verificada o bastante para acrescentar detalhes "
+            "sem inventar."
+        ),
+        plano={"fase": "fala_verificada", "comandos": [], "erros": []},
+        respondeu=True,
+    )
+
+    assert av["semantica_avaliada"] is True
+    assert av["resultado_semantico"] == "falhou"
+    assert "fallback_conversacional_generico" in av["erros_semanticos"]
+    assert "fallback_conversacional" in av["checagens_semanticas"]
+
+
+def test_expectativa_local_rejeita_conteudo_proibido_na_fala():
+    expectativa = {
+        "sem_comando": True,
+        "fala_forbidden_any": ("Opera", "não faço consultas"),
+        "dominio": "seguranca",
+    }
+    violacao = avaliar_turno_roteiro(
+        indice=68,
+        comando="A palavra aberto aparece aqui, mas não consulte nada.",
+        resposta='A palavra "aberto" é só um estado. O Opera está lá.',
+        plano={"fase": "fala_verificada", "comandos": [], "erros": []},
+        respondeu=True,
+        expectativa_local=expectativa,
+    )
+    ancorada = avaliar_turno_roteiro(
+        indice=68,
+        comando="A palavra aberto aparece aqui, mas não consulte nada.",
+        resposta='Entendi: você está falando da palavra "aberto"; não fiz uma consulta.',
+        plano={"fase": "fala_verificada", "comandos": [], "erros": []},
+        respondeu=True,
+        expectativa_local=expectativa,
+    )
+
+    assert violacao["resultado_semantico"] == "falhou"
+    assert any(
+        erro.startswith("fala_contem_conteudo_proibido:")
+        for erro in violacao["erros_semanticos"]
+    )
+    assert ancorada["resultado_semantico"] == "passou"
+
+
 def test_resumo_e_relatorios_sao_gerados(tmp_path):
     estado = {
         "concluido": True,
@@ -746,3 +865,30 @@ def test_resumo_e_relatorios_sao_gerados(tmp_path):
     gravar_relatorios_roteiro(estado, tmp_path)
     assert (tmp_path / "resumo.json").is_file()
     assert (tmp_path / "relatorio_semantico.md").is_file()
+
+
+def test_resumo_contabiliza_fallbacks_e_repeticao_de_fala():
+    fallback = (
+        "Esse assunto sobre música parece interessante, mas eu ainda não tenho "
+        "informação verificada o bastante para acrescentar detalhes sem inventar."
+    )
+    estado = {
+        "itens": [
+            {
+                "indice": indice,
+                "resposta": fallback,
+                "avaliacao": {
+                    "resultado_semantico": "falhou",
+                    "dominio": "conversa",
+                    "erros_semanticos": ["fallback_conversacional_generico"],
+                    "alertas_semanticos": [],
+                },
+            }
+            for indice in range(3)
+        ],
+    }
+
+    resumo = resumir_estado_roteiro(estado)
+
+    assert resumo["fallbacks_conversacionais"] == 3
+    assert resumo["falas_repetidas"] == 3

@@ -11,10 +11,21 @@ import re
 import unicodedata
 from typing import Any, Mapping, Sequence
 
-VERSAO_AVALIADOR = 15
+VERSAO_AVALIADOR = 17
 LIMITE_ALERTA_LATENCIA_S = 15.0
 
 DOMINIOS_EXTERNOS = frozenset({"browser", "musica", "iot", "visao", "clima"})
+
+PADROES_FALLBACK_CONVERSACIONAL = (
+    re.compile(
+        r"\besse assunto sobre .{1,100} parece interessante, mas eu ainda "
+        r"nao tenho informacao verificada\b",
+    ),
+    re.compile(
+        r"\bainda nao tenho dados suficientes para responder com confianca "
+        r"sem inventar informacoes\b",
+    ),
+)
 
 INTENTS_MUTACAO = frozenset({
     "CREATE_FILE", "CREATE_FOLDER", "DELETE_ITEM", "CONFIRM_DELETE_ITEM",
@@ -352,6 +363,11 @@ def _contradicoes_fala(resposta: str, comandos: Sequence[Mapping[str, Any]]) -> 
     return problemas
 
 
+def _fala_e_fallback_conversacional(resposta: str) -> bool:
+    texto = _norm(resposta)
+    return any(padrao.search(texto) for padrao in PADROES_FALLBACK_CONVERSACIONAL)
+
+
 def avaliar_turno_roteiro(
     *,
     indice: int,
@@ -370,6 +386,16 @@ def avaliar_turno_roteiro(
     comandos = _comandos(retrato)
     intents = [str(x.get("intent") or "").upper() for x in comandos]
     statuses = [str(x.get("status") or "") for x in comandos]
+    alvos = []
+    for item in comandos:
+        params = item.get("params")
+        candidatos_alvo = [item.get("alvo")]
+        if isinstance(params, Mapping):
+            candidatos_alvo.append(params.get("alvo"))
+        for candidato in candidatos_alvo:
+            alvo = _norm(str(candidato or ""))
+            if alvo and alvo not in alvos:
+                alvos.append(alvo)
     origem_expectativa = (
         "roteiro_dedicado"
         if expectativa_local is not None
@@ -405,6 +431,13 @@ def avaliar_turno_roteiro(
         erros.append(motivo_resultado)
 
     semantica_avaliada = bool(expectativa)
+    if _fala_e_fallback_conversacional(resposta):
+        # Fallback repetitivo é um resultado semântico observável por si só;
+        # não pode desaparecer na categoria "não avaliado" só porque o turno
+        # não possuía expectativa operacional.
+        semantica_avaliada = True
+        erros.append("fallback_conversacional_generico")
+        checagens.append("fallback_conversacional")
     if expectativa.get("sem_comando"):
         checagens.append("sem_comando_operacional")
         if comandos:
@@ -446,6 +479,35 @@ def avaliar_turno_roteiro(
         for ausente in sorted(status_obrigatorios.difference(observados)):
             erros.append(f"status_ausente:{ausente}")
 
+    alvos_esperados = {
+        _norm(str(x)) for x in expectativa.get("alvos_any") or () if str(x).strip()
+    }
+    if alvos_esperados:
+        checagens.append("alvo_esperado")
+        if not alvos_esperados.intersection(alvos):
+            erros.append(
+                "alvo_incorreto:esperado="
+                + "|".join(sorted(alvos_esperados))
+                + ";observado="
+                + "|".join(alvos or ["SEM_ALVO"])
+            )
+
+    tokens_alvo_proibidos = {
+        _norm(str(x))
+        for x in expectativa.get("alvos_forbidden_tokens") or ()
+        if str(x).strip()
+    }
+    for alvo in alvos:
+        tokens_alvo = set(alvo.split())
+        violacoes_alvo = sorted(tokens_alvo_proibidos.intersection(tokens_alvo))
+        if violacoes_alvo:
+            checagens.append("alvo_sem_token_proibido")
+            erros.append(
+                "alvo_contem_token_proibido:"
+                + "|".join(violacoes_alvo)
+                + f";alvo={alvo}"
+            )
+
     if "confirmado" in expectativa and comandos:
         checagens.append("confirmacao_esperada")
         esperado = expectativa.get("confirmado")
@@ -458,6 +520,18 @@ def avaliar_turno_roteiro(
         t_resp = _norm(resposta)
         if not any(x in t_resp for x in fala_any):
             erros.append("fala_nao_contem_evidencia_esperada")
+
+    fala_proibida = tuple(
+        _norm(x) for x in expectativa.get("fala_forbidden_any") or () if str(x).strip()
+    )
+    if fala_proibida:
+        checagens.append("fala_sem_conteudo_proibido")
+        t_resp = _norm(resposta)
+        violacoes_fala = sorted({item for item in fala_proibida if item in t_resp})
+        if violacoes_fala:
+            erros.append(
+                "fala_contem_conteudo_proibido:" + "|".join(violacoes_fala)
+            )
 
     campos_plano = expectativa.get("campos_plano") or {}
     campos_presentes = tuple(
@@ -595,6 +669,7 @@ def avaliar_turno_roteiro(
         "dominio": dominio,
         "intents_observadas": intents,
         "statuses_observados": statuses,
+        "alvos_observados": alvos,
         "intencao_correta": intencao_correta,
         "fala_coerente": fala_coerente,
         "criterio_fala": "contrato_operacional_deterministico",
@@ -628,7 +703,13 @@ def resumir_estado_roteiro(estado: Mapping[str, Any]) -> dict[str, Any]:
     duracoes = []
     confirm_none = 0
     comandos_total = 0
+    fallbacks_conversacionais = 0
     erros_turnos, alertas_turnos = [], []
+    frequencia_falas = Counter(
+        _norm(item.get("resposta"))
+        for item in itens
+        if _norm(item.get("resposta"))
+    )
 
     for item in itens:
         av = dict(item.get("avaliacao") or {})
@@ -642,6 +723,8 @@ def resumir_estado_roteiro(estado: Mapping[str, Any]) -> dict[str, Any]:
         comandos_total += int(av.get("quantidade_comandos") or 0)
         if av.get("erros_semanticos"):
             erros_turnos.append(int(item.get("indice") or 0) + 1)
+            if "fallback_conversacional_generico" in av.get("erros_semanticos"):
+                fallbacks_conversacionais += 1
         if av.get("alertas_semanticos"):
             alertas_turnos.append(int(item.get("indice") or 0) + 1)
 
@@ -660,6 +743,14 @@ def resumir_estado_roteiro(estado: Mapping[str, Any]) -> dict[str, Any]:
         "taxa_semantica_percentual": round(taxa, 2) if taxa is not None else None,
         "comandos_observados": comandos_total,
         "confirmacoes_indeterminadas": confirm_none,
+        "fallbacks_conversacionais": fallbacks_conversacionais,
+        "falas_repetidas": sum(
+            quantidade for quantidade in frequencia_falas.values()
+            if quantidade > 1
+        ),
+        "maior_repeticao_da_mesma_fala": max(
+            frequencia_falas.values(), default=0,
+        ),
         "latencia_s": {
             "p50": round(_percentil(duracoes, .50), 3) if duracoes else None,
             "p95": round(_percentil(duracoes, .95), 3) if duracoes else None,
@@ -685,6 +776,8 @@ def renderizar_relatorio_markdown(estado: Mapping[str, Any]) -> str:
         f"- Falharam: **{resumo['falharam']}**.",
         f"- Alertas: **{resumo['alertas']}**.",
         f"- Não avaliados semanticamente: **{resumo['nao_avaliados']}**.",
+        f"- Fallbacks conversacionais genéricos: **{resumo['fallbacks_conversacionais']}**.",
+        f"- Falas envolvidas em repetição: **{resumo['falas_repetidas']}**.",
         f"- Taxa semântica: **{resumo['taxa_semantica_percentual']}%**."
         if resumo["taxa_semantica_percentual"] is not None else "- Taxa semântica: sem amostra.", "",
         "## Latência", "",

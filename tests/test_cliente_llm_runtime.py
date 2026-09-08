@@ -96,6 +96,65 @@ def test_conversa_no_jogo_prefere_rota_remota_e_nao_acorda_modelo_local() -> Non
     assert chamadas_locais == []
 
 
+def test_presenca_no_jogo_pode_gerar_texto_remoto_antes_do_porteiro_de_voz() -> None:
+    chamadas_locais = []
+    chamadas_remotas = []
+    runtime = ClienteLLMRuntime(
+        endpoint_local_getter=lambda: True,
+        interacao_ativa=lambda: True,
+        modo_jogo_ativo=lambda: True,
+        conversa_jogo_remota=lambda payload: (
+            chamadas_remotas.append(payload)
+            or '{"fala":"Essa curva quase pediu arrego.","comandos":[]}'
+        ),
+        post_chat=lambda *_args, **_kwargs: chamadas_locais.append(True),
+        log=lambda *_args: None,
+    )
+
+    resposta = runtime.executar(
+        RequisicaoTransporteLLM(
+            payload={"messages": [{"role": "system", "content": "evento do jogo"}]},
+            permitir_conversa_modo_jogo=True,
+            prioridade_interativa=False,
+            permitir_durante_interacao=False,
+            tipo_chamada="presenca_evento",
+        )
+    )
+
+    assert resposta.sucesso is True
+    assert resposta.rota == "jogo_remoto"
+    assert len(chamadas_remotas) == 1
+    assert chamadas_locais == []
+
+
+def test_falha_remota_da_presenca_nao_acorda_modelo_local_durante_interacao() -> None:
+    chamadas_locais = []
+    chamadas_remotas = []
+    runtime = ClienteLLMRuntime(
+        endpoint_local_getter=lambda: True,
+        interacao_ativa=lambda: True,
+        modo_jogo_ativo=lambda: True,
+        conversa_jogo_remota=lambda payload: chamadas_remotas.append(payload) or "",
+        post_chat=lambda *_args, **_kwargs: chamadas_locais.append(True),
+        log=lambda *_args: None,
+    )
+
+    resposta = runtime.executar(
+        RequisicaoTransporteLLM(
+            payload={"messages": [{"role": "system", "content": "evento do jogo"}]},
+            permitir_conversa_modo_jogo=True,
+            prioridade_interativa=False,
+            permitir_durante_interacao=False,
+            tipo_chamada="presenca_evento",
+        )
+    )
+
+    assert resposta.sucesso is False
+    assert resposta.rota == "adiada"
+    assert len(chamadas_remotas) == 1
+    assert chamadas_locais == []
+
+
 def test_saudacao_no_jogo_usa_resposta_social_local_antes_da_llm() -> None:
     falas = []
     fases = []
@@ -196,3 +255,63 @@ def test_assunto_contextual_no_jogo_ignora_atalho_e_chega_a_mente_principal() ->
         "não lay, eu ainda estou no menu"
     )
     assert finalizacoes == [True]
+
+
+def test_prompt_compacto_grande_preserva_formato_mas_recebe_orcamento_contextual() -> None:
+    """O tamanho real do payload, e não o rótulo rápido, governa o prazo HTTP."""
+
+    class Modelo:
+        def __init__(self):
+            self.pedidos = []
+
+        def executar(self, pedido):
+            self.pedidos.append(pedido)
+            return ResultadoModelo('{"fala":"Uma opção concreta.","comandos":[]}', True)
+
+        @staticmethod
+        def diagnostico():
+            return {"disponivel": True}
+
+    class Contexto:
+        @staticmethod
+        def montar():
+            return {}
+
+    modelo = Modelo()
+    historico = [{"role": "system", "content": "evidência " * 850}]
+    estado = EstadoConversaRuntime(
+        getter=lambda: list(historico),
+        setter=lambda novas: historico.__setitem__(slice(None), list(novas)),
+    )
+    contexto = {
+        "processar_inicio_fluxo": lambda *_args: False,
+        "usar_modo_rapido": lambda _texto: True,
+        "texto_depende_de_contexto": lambda _texto: False,
+        "modo_jogo_ativo": lambda: False,
+        "estado_conversa": estado,
+        "modelo_llm": RegistroModeloLLM.criar(modelo),
+        "preparar_resposta": lambda *_args: {
+            "resposta_bruta": "{}",
+            "fala": "Uma opção concreta.",
+            "comandos": [],
+            "tipo_interacao": "conversa",
+            "leitura_semantica": {},
+        },
+        "contexto_dispatch_runtime": Contexto(),
+        "executar_comandos_json": lambda *_args: {
+            "erros": [],
+            "fala_ja_emitida": False,
+            "fala_emitida_por_acao": False,
+            "fala_salva_no_inicio": False,
+        },
+        "contexto_finalizacao_runtime": Contexto(),
+        "finalizar_execucao": lambda *_args: {},
+    }
+
+    RespostaIARuntime(contexto_getter=lambda: contexto, log=lambda *_args: None).processar(
+        "pode me recomendar um filme?"
+    )
+
+    assert len(modelo.pedidos) == 1
+    assert modelo.pedidos[0].modo_rapido is True
+    assert modelo.pedidos[0].classe_timeout == "contextual"

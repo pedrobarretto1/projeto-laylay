@@ -12,10 +12,21 @@ class PortaMusicaOperacoes(Protocol):
     def apagar_playlist(self, nome: str) -> bool: ...
     def adicionar_faixa(self, nome: str, url: str, titulo: str, canal: str = "") -> bool: ...
     def mover_faixa(self, origem: str, destino: str, musica: str = "") -> dict[str, Any]: ...
+    def detalhar_playlist(self, nome: str, **paginacao: Any) -> dict[str, Any]: ...
+    def tocar_faixa_exata(self, nome: str, video_id: str, revisao: str) -> dict[str, Any]: ...
+    def adicionar_url_playlist(self, nome: str, url: str) -> dict[str, Any]: ...
+    def copiar_faixa_exata(self, origem: str, destino: str, video_id: str, revisao: str) -> dict[str, Any]: ...
+    def mover_faixa_exata(self, origem: str, destino: str, video_id: str, revisao: str) -> dict[str, Any]: ...
+    def copiar_faixa_multiplas(self, origem: str, destinos: list[str], video_id: str, revisao: str) -> dict[str, Any]: ...
+    def mover_faixa_multiplas(self, origem: str, destinos: list[str], video_id: str, revisao: str) -> dict[str, Any]: ...
+    def remover_faixa_exata(self, nome: str, video_id: str, revisao: str) -> dict[str, Any]: ...
+    def definir_capa_playlist(self, nome: str, caminho: str, revisao: str) -> dict[str, Any]: ...
+    def restaurar_capa_playlist(self, nome: str, revisao: str) -> dict[str, Any]: ...
     def tocar_playlist(self, nome: str) -> bool: ...
     def preparar_shuffle(self, nome: str) -> dict[str, Any]: ...
     def primeira_url(self, nome: str) -> str: ...
     def avancar_proxima(self) -> bool: ...
+    def selecionar_faixa_fila(self, video_id: str, deslocamento: int) -> dict[str, Any]: ...
     def voltar_anterior(self) -> bool: ...
     def definir_ultima_playlist(self, nome: str) -> None: ...
     def definir_ultima_url(self, url: str) -> None: ...
@@ -91,6 +102,44 @@ class RegistroOperacoesMusicais:
     def mover_faixa(self, origem: str, destino: str, musica: str = "") -> dict[str, Any]:
         return dict(self.servico.mover_faixa(origem, destino, musica) or {})
 
+    def detalhar_playlist(self, nome: str, **paginacao: Any) -> dict[str, Any]:
+        return dict(self.servico.detalhar_playlist(nome, **paginacao) or {})
+
+    def tocar_faixa_exata(self, nome: str, video_id: str, revisao: str) -> dict[str, Any]:
+        return dict(self.servico.tocar_faixa_exata(nome, video_id, revisao) or {})
+
+    def adicionar_url_playlist(self, nome: str, url: str) -> dict[str, Any]:
+        return dict(self.servico.adicionar_url_playlist(nome, url) or {})
+
+    def copiar_faixa_exata(self, origem: str, destino: str, video_id: str, revisao: str) -> dict[str, Any]:
+        return dict(self.servico.copiar_faixa_exata(origem, destino, video_id, revisao) or {})
+
+    def mover_faixa_exata(self, origem: str, destino: str, video_id: str, revisao: str) -> dict[str, Any]:
+        return dict(self.servico.mover_faixa_exata(origem, destino, video_id, revisao) or {})
+
+    def copiar_faixa_multiplas(
+        self, origem: str, destinos: list[str], video_id: str, revisao: str,
+    ) -> dict[str, Any]:
+        return dict(self.servico.copiar_faixa_multiplas(
+            origem, destinos, video_id, revisao,
+        ) or {})
+
+    def mover_faixa_multiplas(
+        self, origem: str, destinos: list[str], video_id: str, revisao: str,
+    ) -> dict[str, Any]:
+        return dict(self.servico.mover_faixa_multiplas(
+            origem, destinos, video_id, revisao,
+        ) or {})
+
+    def remover_faixa_exata(self, nome: str, video_id: str, revisao: str) -> dict[str, Any]:
+        return dict(self.servico.remover_faixa_exata(nome, video_id, revisao) or {})
+
+    def definir_capa_playlist(self, nome: str, caminho: str, revisao: str) -> dict[str, Any]:
+        return dict(self.servico.definir_capa_playlist(nome, caminho, revisao) or {})
+
+    def restaurar_capa_playlist(self, nome: str, revisao: str) -> dict[str, Any]:
+        return dict(self.servico.restaurar_capa_playlist(nome, revisao) or {})
+
     def tocar_playlist(self, nome: str) -> bool:
         return bool(self.servico.tocar_playlist(nome))
 
@@ -102,6 +151,20 @@ class RegistroOperacoesMusicais:
 
     def avancar_proxima(self) -> bool:
         return bool(self.servico.avancar_proxima())
+
+    def selecionar_faixa_fila(
+        self, video_id: str, deslocamento: int,
+    ) -> dict[str, Any]:
+        selecionar = getattr(self.servico, "selecionar_faixa_fila", None)
+        if not callable(selecionar):
+            return {"ok": False, "status": "queue_select_unavailable"}
+        retorno = dict(selecionar(video_id, deslocamento) or {})
+        return {
+            "ok": bool(retorno.get("ok")),
+            "status": str(retorno.get("status") or "").strip(),
+            "video_id": str(retorno.get("video_id") or "").strip(),
+            "confirmed": retorno.get("confirmed") is True,
+        }
 
     def voltar_anterior(self) -> bool:
         return bool(self.servico.voltar_anterior())

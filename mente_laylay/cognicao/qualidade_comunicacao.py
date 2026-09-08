@@ -243,6 +243,21 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "metacomentario_quebrou_personagem",
     "reacao_codigo_apenas_ecoou_relato",
     "identidade_negou_capacidades_confirmadas",
+    "metalinguagem_tratada_como_conteudo",
+    "metalinguagem_contradisse_classificacao",
+    "metalinguagem_citou_conteudo_ausente",
+    "metalinguagem_introduziu_entidade_ausente",
+    "metalinguagem_negou_capacidade",
+    "metalinguagem_inventou_leitura_alternativa",
+    "metalinguagem_nao_entregou_formulacao_direta",
+    "estado_observavel_sem_incerteza",
+    "estado_observavel_negou_habilidade",
+    "estado_observavel_herdou_entidade_antiga",
+    "negacao_operacional_sem_reconhecimento",
+    "negacao_operacional_alegou_estado",
+    "negacao_operacional_extrapolou",
+    "declaracao_introduziu_entidade_ausente",
+    "declaracao_extrapolou_estado_informado",
     "resposta_repetida_literal",
 })
 
@@ -652,6 +667,47 @@ def contingencia_comunicacao(
         return escolher_variacao(
             ["Tá bom, deixamos isso para depois.", "Beleza, fica para depois.", "Combinado. A gente deixa isso quieto por enquanto."],
             evitar=falas_evitar,
+        )
+    if estrategia == "estado_observavel_sem_evidencia":
+        return "Não tenho uma leitura atual desse estado para te responder com segurança."
+    if estrategia == "negacao_operacional_sem_efeito":
+        if re.search(r"\bn[aã]o\s+(?:te\s+)?perguntei\b", texto, re.I):
+            return "Tem razão, você não perguntou isso."
+        return "Entendi, não vou fazer essa consulta."
+    if estrategia == "reconhecimento_estado_declarado":
+        declaracao = texto.rstrip(" .!?")
+        if declaracao:
+            return f"Entendi. {declaracao}."
+        return "Entendi o que você me informou."
+    if estrategia == "resposta_metalinguistica":
+        formulacao = re.search(
+            r"^como\s+eu\s+perguntaria\s+se\s+(.+?)[?!.]*$",
+            texto,
+            re.IGNORECASE,
+        )
+        if formulacao:
+            conteudo = str(formulacao.group(1) or "").strip(" .!?\"'")
+            if conteudo:
+                pergunta = conteudo[:1].upper() + conteudo[1:]
+                return f'Você pode perguntar assim: "{pergunta}?"'
+        if re.search(r"\bisso\s+[ée]\s+(?:uma?\s+)?consulta\b", texto, re.I):
+            return (
+                "Sim: a frase citada tem forma de consulta, mas aqui ela é o "
+                "assunto da conversa. Eu não executei essa consulta."
+            )
+        if re.search(
+            r"\b(?:apenas|s[oó])\s+um\s+exemplo\b|"
+            r"\bn[aã]o\s+(?:consulte|verifique)\b",
+            texto,
+            re.I,
+        ):
+            return (
+                "Entendi: a frase foi mencionada como exemplo. Eu não a tratei "
+                "como uma consulta atual."
+            )
+        return (
+            "Estou tratando a frase citada como assunto da conversa, não como "
+            "uma consulta atual."
         )
     if estrategia == "conversa_codigo_laylay":
         if re.search(r"\b(?:mexendo|alterando|editando|arrumando|corrigindo)\b", texto, re.I):

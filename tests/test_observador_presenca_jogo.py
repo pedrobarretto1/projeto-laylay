@@ -49,3 +49,25 @@ def test_curiosidade_captura_quadro_novo_e_decide_sem_exigir_resposta() -> None:
     assert pedidos[0]["_origem_presenca"] == "curiosidade_visual"
     assert "não cobre resposta" not in pedidos[0]["pergunta"].casefold()
     assert "decida por conta própria" in pedidos[0]["pergunta"]
+
+
+def test_jogo_confirmado_pode_despertar_curiosidade_sem_fala_anterior() -> None:
+    pedidos = []
+    observador = ObservadorPresencaJogoRuntime(
+        contexto_jogo=lambda: {"ativo": True, "titulo": "Forza Horizon 6"},
+        capturar=lambda _contexto: "aW1hZ2VtLWZvcnph",
+        executar_visao=lambda pedido: pedidos.append(dict(pedido)) or True,
+        jogo_chave_atual=lambda _contexto: "forza-horizon-6",
+        interacao_iniciada=lambda: False,
+        permitido=lambda: True,
+        clock=lambda: 1000.0,
+        log=lambda _texto: None,
+    )
+
+    with patch(
+        "mente_laylay.percepcao.visao_jogo.observador_presenca.assinatura_perceptual",
+        return_value="a" * 36,
+    ):
+        assert observador.verificar_uma_vez() is True
+    assert len(pedidos) == 1
+    assert pedidos[0]["_origem_presenca"] == "curiosidade_visual"

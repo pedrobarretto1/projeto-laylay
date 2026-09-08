@@ -7,7 +7,11 @@ import time
 from typing import Any, Dict, Iterable
 
 from mente_laylay.especialistas.coordenador import registrar_resultado_operacional
-from mente_laylay.cognicao.fundamentacao_factual import validar_fala_com_fundamentacao
+from mente_laylay.cognicao.fundamentacao_factual import (
+    extrair_titulos_citados,
+    reparar_recomendacao_com_evidencia,
+    validar_fala_com_fundamentacao,
+)
 from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
 from mente_laylay.cognicao.guardiao_realidade_pessoal import (
     detectar_experiencia_pessoal_inventada,
@@ -24,6 +28,7 @@ from mente_laylay.cognicao.decisao_turno import criar_contrato_decisao
 from mente_laylay.cognicao.contratos_turno import PlanoTurnoDict
 from mente_laylay.cognicao.estado_tecnico_llm import eh_estado_tecnico_llm
 from mente_laylay.cognicao.modalidade_turno import turno_tem_veto_execucao
+from mente_laylay.cognicao.contrato_fala import atualizar_contrato_fala_com_resultados
 from mente_laylay.autonomia.roteador_deterministico import texto_pede_clima_atual
 from mente_laylay.percepcao.ritmo_circadiano import (
     detectar_consulta_horario,
@@ -103,7 +108,11 @@ def _objetivo_ato(tipo: str) -> str:
     }.get(str(tipo or "").strip().lower(), "responder à fala atual")
 
 
-def _dominio_turno(texto: str, mente: Dict[str, Any]) -> str:
+def _dominio_turno(
+    texto: str,
+    mente: Dict[str, Any],
+    turno: Dict[str, Any] | None = None,
+) -> str:
     t = _normalizar(texto)
     if _MARCADORES_MUSICA.search(t):
         return "musica"
@@ -113,9 +122,25 @@ def _dominio_turno(texto: str, mente: Dict[str, Any]) -> str:
         return "iot"
     if re.search(r"\b(?:abre|fecha|maximiza|janela|programa|app)\b", t):
         return "sistema"
+    if bool(dict(turno or {}).get("continuidade_recomendacao")):
+        return "recomendacao"
     pendencia = mente.get("pendencia_atual") if isinstance(mente, dict) else {}
     if isinstance(pendencia, dict) and pendencia.get("status") == "ativa":
-        return str(pendencia.get("dominio") or "conversa")
+        leitura = dict(turno or {})
+        modalidade = str(
+            leitura.get("ato_principal")
+            or leitura.get("modalidade_geral")
+            or leitura.get("modalidade")
+            or ""
+        ).strip().casefold()
+        resposta_esperada = _normalizar(pendencia.get("resposta_esperada") or "")
+        # Pendência só possui autoridade contextual quando a fala atual tem a
+        # forma de resposta que ela realmente aguardava. Um assunto antigo não
+        # pode capturar uma nova preferência apenas por ainda estar ativo.
+        if modalidade in {"confirmacao", "recusa"}:
+            return str(pendencia.get("dominio") or "conversa")
+        if resposta_esperada and resposta_esperada != "sim_ou_nao" and len(t.split()) <= 12:
+            return str(pendencia.get("dominio") or "conversa")
     return "conversa"
 
 
@@ -205,12 +230,21 @@ def planejar_turno(
     if funcao_comunicativa.get("objetivo"):
         resposta_esperada = str(funcao_comunicativa.get("objetivo"))
 
-    dominio_turno = _dominio_turno(t, estado)
+    dominio_turno = _dominio_turno(t, estado, leitura)
     referencia_turno = dict(leitura.get("referencia_resolvida") or {})
     if str(referencia_turno.get("tipo") or "").casefold() in {
-        "artista", "banda", "cantor", "cantora", "musica", "referencia_nomeada",
+        "artista", "banda", "cantor", "cantora", "musica",
     }:
         dominio_turno = "musica"
+    dominio_referencia = {
+        "filme": "filme",
+        "serie": "serie",
+        "série": "serie",
+        "livro": "livro",
+        "jogo": "jogo",
+    }.get(str(referencia_turno.get("tipo") or "").casefold())
+    if dominio_referencia:
+        dominio_turno = dominio_referencia
 
     plano = {
         "id": int(leitura.get("id") or time.time_ns()),
@@ -300,6 +334,11 @@ def atualizar_plano_turno(
         dict(novo.get("especialistas") or {}),
         comandos_resumo,
     )
+    if isinstance(novo.get("contrato_fala"), dict):
+        novo["contrato_fala"] = atualizar_contrato_fala_com_resultados(
+            novo.get("contrato_fala"),
+            novo,
+        )
     return novo
 
 
@@ -376,31 +415,65 @@ def verificar_fala_turno(
         }
 
     fundamentacao = contrato.get("fundamentacao_factual")
-    titulo_citado_na_fala = bool(re.search(
-        r'["“][^"”]{2,100}["”]|\'[^\']{2,100}\'',
-        ajustada,
-    ))
+    titulo_citado_na_fala = bool(extrair_titulos_citados(ajustada))
     if (
         not (isinstance(fundamentacao, dict) and fundamentacao.get("tema"))
         and (contrato.get("dominio") == "musica" or titulo_citado_na_fala)
     ):
         referencia = dict(contrato.get("referencia_resolvida") or {})
+        tema_fallback = str(referencia.get("nome") or "").strip()
+        if not tema_fallback:
+            trecho_preferencia = re.search(
+                r"\b(?:de|do\s+g[eê]nero)\s+([a-zA-ZÀ-ÿ -]{2,40})[.!?]*$",
+                str(texto_usuario or ""),
+                flags=re.IGNORECASE,
+            )
+            tema_fallback = (
+                str(trecho_preferencia.group(1) or "").strip()
+                if trecho_preferencia
+                else "esse tema"
+            )
         fundamentacao = {
-            "tema": str(referencia.get("nome") or "música").strip(),
-            "titulo": str(referencia.get("nome") or "música").strip(),
+            "tema": tema_fallback,
+            "titulo": tema_fallback,
             "resumo": "",
             "confiavel": False,
         }
     if isinstance(fundamentacao, dict) and fundamentacao.get("tema"):
+        contrato_fala = dict(contrato.get("contrato_fala") or {})
+        roteiro_fala = dict(contrato_fala.get("roteiro_concreto") or {})
         validacao_factual = validar_fala_com_fundamentacao(
             ajustada,
             fundamentacao=fundamentacao,
             texto_usuario=texto_usuario,
+            contexto_metalinguistico=(
+                str(roteiro_fala.get("estrategia") or "")
+                == "resposta_metalinguistica"
+            ),
         )
         problemas_fatuais = list(validacao_factual.get("problemas") or [])
         if problemas_fatuais:
             problemas.extend(problemas_fatuais)
             ajustada = str(validacao_factual.get("fala") or ajustada).strip()
+        candidatos_fatuais = [
+            str(item or "").strip()
+            for item in list(fundamentacao.get("candidatos") or [])
+            if str(item or "").strip()
+        ]
+        if (
+            str(contrato.get("dominio") or "").casefold() == "recomendacao"
+            and candidatos_fatuais
+            and not any(
+                _normalizar(candidato) in _normalizar(ajustada)
+                for candidato in candidatos_fatuais
+            )
+        ):
+            reparo_recomendacao = reparar_recomendacao_com_evidencia(
+                fundamentacao,
+            )
+            if reparo_recomendacao:
+                problemas.append("recomendacao_sem_opcao_concreta")
+                ajustada = reparo_recomendacao
 
     validacao_alegacoes = validar_alegacoes_da_fala(
         ajustada,

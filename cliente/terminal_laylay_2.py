@@ -63,6 +63,10 @@ from cliente.terminal_2.acabamento import (
     icone_terminal,
     tamanho_icone,
 )
+from cliente.terminal_2.volume_mestre_windows import (
+    DefinidorVolumeMestreWindows,
+)
+from cliente.terminal_2.desenvolvedor import PaginaDesenvolvedor
 
 
 PALETA = {
@@ -1048,6 +1052,22 @@ class PaginaConfiguracoes(QWidget):
             self.preencher(msg["settings"])
 
 
+class PaginaAdiada(QFrame):
+    """Superfície leve exibida antes da materialização de uma aba pesada."""
+
+    def __init__(self, titulo: str) -> None:
+        super().__init__()
+        self.setObjectName("lazyPage")
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(32, 32, 32, 32)
+        layout.addStretch()
+        estado = QLabel(f"Preparando {titulo}…")
+        estado.setObjectName("dashboardEmpty")
+        estado.setAlignment(Qt.AlignCenter)
+        layout.addWidget(estado)
+        layout.addStretch()
+
+
 class JanelaLaylay(QMainWindow):
     enviar_json = Signal(dict)
 
@@ -1112,6 +1132,20 @@ class JanelaLaylay(QMainWindow):
         self._efeito_pagina: QGraphicsOpacityEffect | None = None
         self._pagina_em_transicao: QWidget | None = None
         self._animacao_indicador_nav: QPropertyAnimation | None = None
+        self._assinatura_responsividade: tuple[object, ...] | None = None
+        self._ultima_largura_responsiva = -1
+        self._dashboard_mais_recente: dict = {}
+        self._estado_mais_recente: dict = {}
+        self._paginas_carregadas: dict[str, QWidget] = {}
+        self._paginas_adiadas: dict[str, PaginaAdiada] = {}
+        self._carregamentos_pendentes: set[str] = set()
+        self._estados_acoes_ui: dict[str, tuple[str, str]] = {}
+        self._medidor_musica_mais_recente: dict = {}
+        self._resultados_playlist_pendentes: list[
+            tuple[str, dict, str, str]
+        ] = []
+        self._eventos_desenvolvedor: list[dict] = []
+        self._ids_eventos_desenvolvedor: set[str] = set()
         self._nav: dict[str, QPushButton] = {}
         self._conectado = False
         self._modo = "chat"
@@ -1279,6 +1313,7 @@ class JanelaLaylay(QMainWindow):
             ("musica", "music", "Música"),
             ("memoria", "memory", "Memória"),
             ("sistema", "system", "Sistema"),
+            ("desenvolvedor", "developer", "Dev Console"),
             (
                 "configuracoes",
                 "settings",
@@ -1709,6 +1744,10 @@ class JanelaLaylay(QMainWindow):
         ad.setObjectName("pageDescription")
         self.eventos = QTextEdit(readOnly=True)
         self.eventos.setObjectName("eventLog")
+        # O painel de atividade é observacional. Um histórico ilimitado faz o
+        # QTextDocument relayoutar uma quantidade crescente de HTML a cada
+        # evento e degrada a interface depois de sessões longas.
+        self.eventos.document().setMaximumBlockCount(240)
         self.eventos.setPlaceholderText("Tudo quieto por enquanto.")
         atividade_lay.addWidget(ak)
         atividade_lay.addWidget(at)
@@ -1759,25 +1798,149 @@ class JanelaLaylay(QMainWindow):
         )
         self.configuracoes.manter_sidebar.toggled.connect(self._preferencia_sidebar)
         self.paginas.addWidget(self.configuracoes)
-        self.pagina_automacao = PaginaAutomacao()
-        self.pagina_automacao.acao_solicitada.connect(self.enviar_acao_painel)
-        self.pagina_musica = PaginaMusica()
-        self.pagina_musica.acao_solicitada.connect(self.enviar_acao_painel)
-        self.pagina_musica.acao_fila_solicitada.connect(
-            self.enviar_acao_painel_com_dados,
-        )
-        self.pagina_memoria = PaginaMemoria()
-        self.pagina_sistema = PaginaSistema()
-        self.pagina_sistema.acao_solicitada.connect(
-            self.enviar_acao_rapida
-        )
-        self.paginas.addWidget(self.pagina_automacao)
-        self.paginas.addWidget(self.pagina_musica)
-        self.paginas.addWidget(self.pagina_memoria)
-        self.paginas.addWidget(self.pagina_sistema)
+        for nome, titulo in (
+            ("automacao", "Automação"),
+            ("musica", "Música"),
+            ("memoria", "Memória"),
+            ("sistema", "Sistema"),
+            ("desenvolvedor", "Dev Console"),
+        ):
+            pagina_adiada = PaginaAdiada(titulo)
+            self._paginas_adiadas[nome] = pagina_adiada
+            self.paginas.addWidget(pagina_adiada)
         centro_lay.addWidget(self.paginas, 1)
         geral.addWidget(centro, 1)
         self.selecionar_pagina("inicio")
+
+    @property
+    def pagina_automacao(self) -> PaginaAutomacao:
+        return self._garantir_pagina_carregada("automacao")
+
+    @property
+    def pagina_musica(self) -> PaginaMusica:
+        return self._garantir_pagina_carregada("musica")
+
+    @property
+    def pagina_memoria(self) -> PaginaMemoria:
+        return self._garantir_pagina_carregada("memoria")
+
+    @property
+    def pagina_sistema(self) -> PaginaSistema:
+        return self._garantir_pagina_carregada("sistema")
+
+    @property
+    def pagina_desenvolvedor(self) -> PaginaDesenvolvedor:
+        return self._garantir_pagina_carregada("desenvolvedor")
+
+    def _criar_pagina_adiada(self, nome: str) -> QWidget:
+        if nome == "automacao":
+            pagina = PaginaAutomacao()
+            pagina.acao_solicitada.connect(self.enviar_acao_painel)
+            pagina.acao_dados_solicitada.connect(
+                self.enviar_acao_painel_com_dados
+            )
+            return pagina
+        if nome == "musica":
+            pagina = PaginaMusica(
+                definidor_volume_local=DefinidorVolumeMestreWindows(),
+            )
+            pagina.acao_solicitada.connect(self.enviar_acao_painel)
+            pagina.acao_fila_solicitada.connect(
+                self.enviar_acao_painel_com_dados,
+            )
+            pagina.acao_playlist_solicitada.connect(
+                self.enviar_requisicao_playlist,
+            )
+            return pagina
+        if nome == "memoria":
+            return PaginaMemoria()
+        if nome == "sistema":
+            pagina = PaginaSistema()
+            pagina.acao_solicitada.connect(self.enviar_acao_rapida)
+            return pagina
+        if nome == "desenvolvedor":
+            pagina = PaginaDesenvolvedor()
+            pagina.consulta_solicitada.connect(
+                self.enviar_consulta_desenvolvedor
+            )
+            pagina.controle_solicitado.connect(
+                self.enviar_controle_desenvolvedor
+            )
+            pagina.definir_conectada(self._conectado)
+            for evento in self._eventos_desenvolvedor:
+                pagina.registrar_evento(**evento)
+            return pagina
+        raise KeyError(f"Página adiada desconhecida: {nome}")
+
+    def _garantir_pagina_carregada(self, nome: str) -> QWidget:
+        pagina_existente = self._paginas_carregadas.get(nome)
+        if pagina_existente is not None:
+            return pagina_existente
+        marcador = self._paginas_adiadas.get(nome)
+        if marcador is None:
+            raise KeyError(f"Página sem marcador de carregamento: {nome}")
+
+        pagina = self._criar_pagina_adiada(nome)
+        indice = self.paginas.indexOf(marcador)
+        era_atual = self.paginas.currentWidget() is marcador
+        self._paginas_carregadas[nome] = pagina
+        self._paginas_adiadas.pop(nome, None)
+        self._carregamentos_pendentes.discard(nome)
+        self.paginas.insertWidget(indice, pagina)
+        self.paginas.removeWidget(marcador)
+        marcador.deleteLater()
+        if era_atual:
+            self.paginas.setCurrentWidget(pagina)
+
+        definir_conectada = getattr(pagina, "definir_conectada", None)
+        if callable(definir_conectada):
+            definir_conectada(self._conectado)
+        if self._dashboard_mais_recente:
+            aplicar_dashboard = getattr(pagina, "aplicar_dashboard", None)
+            if callable(aplicar_dashboard):
+                aplicar_dashboard(self._dashboard_mais_recente)
+        if nome == "sistema" and self._estado_mais_recente:
+            pagina.definir_estado_audio(
+                self._modo,
+                self._voz_disponivel,
+                self._nivel_microfone,
+            )
+        definir_estado_acao = getattr(pagina, "definir_estado_acao", None)
+        if callable(definir_estado_acao):
+            for acao_id, (estado, resumo) in self._estados_acoes_ui.items():
+                definir_estado_acao(acao_id, estado, resumo)
+        if nome == "musica":
+            if self._medidor_musica_mais_recente:
+                pagina.aplicar_medidor_musica(self._medidor_musica_mais_recente)
+            for operacao, resultado, playlist, request_id in (
+                self._resultados_playlist_pendentes
+            ):
+                pagina.detalhe_playlist.aplicar_resultado(
+                    operacao,
+                    resultado,
+                    playlist=playlist,
+                    request_id=request_id,
+                )
+            self._resultados_playlist_pendentes.clear()
+        self._registrar_feedback_botoes()
+        return pagina
+
+    def _agendar_pagina_ativa(self, nome: str) -> None:
+        if nome in self._paginas_carregadas or nome in self._carregamentos_pendentes:
+            return
+        if nome not in self._paginas_adiadas:
+            return
+        self._carregamentos_pendentes.add(nome)
+
+        def materializar() -> None:
+            self._carregamentos_pendentes.discard(nome)
+            if nome != self._pagina_visual_ativa:
+                return
+            self._garantir_pagina_carregada(nome)
+
+        # Um pequeno intervalo garante que o clique e o indicador lateral sejam
+        # compostos antes da construção, especialmente nos 25–42 ms da Música.
+        QTimer.singleShot(16, materializar)
 
 
     # =====================================================
@@ -1950,6 +2113,7 @@ class JanelaLaylay(QMainWindow):
             or not self._interface_animavel
             or widget is None
             or not widget.isVisible()
+            or not widget.isEnabled()
         ):
             return
         self._encerrar_microinteracao(widget)
@@ -2002,8 +2166,8 @@ class JanelaLaylay(QMainWindow):
         botao.clicked.connect(
             lambda _marcado=False, alvo=botao: self._animar_microinteracao(
                 alvo,
-                opacidade_minima=0.46,
-                duracao_retorno=150,
+                opacidade_minima=0.78,
+                duracao_retorno=110,
             )
         )
 
@@ -2066,47 +2230,16 @@ class JanelaLaylay(QMainWindow):
         grupo.start()
 
     def _animar_transicao_pagina(self, pagina: QWidget, direcao: int) -> None:
-        if self._reduzir_movimento or not self._interface_animavel:
-            return
+        """Finaliza a troca sem rasterizar a superfície inteira da página.
+
+        O indicador lateral já oferece continuidade espacial. Aplicar
+        QGraphicsOpacityEffect e animar ``pos`` em widgets grandes controlados
+        por layout força composição de uma textura do dashboard inteiro e é
+        justamente percebido como uma pequena congelada em GPUs mais modestas.
+        """
+        del direcao
         self._encerrar_transicao_pagina()
-        posicao_final = pagina.pos()
-        deslocamento = QPoint(18 if direcao >= 0 else -18, 0)
-        efeito = QGraphicsOpacityEffect(pagina)
-        efeito.setOpacity(0.22)
-        pagina.setGraphicsEffect(efeito)
-        pagina.move(posicao_final + deslocamento)
-
-        grupo = QParallelAnimationGroup(self)
-        opacidade = QPropertyAnimation(efeito, b"opacity", grupo)
-        opacidade.setDuration(240)
-        opacidade.setStartValue(0.22)
-        opacidade.setEndValue(1.0)
-        opacidade.setEasingCurve(QEasingCurve.OutCubic)
-        posicao = QPropertyAnimation(pagina, b"pos", grupo)
-        posicao.setDuration(260)
-        posicao.setStartValue(posicao_final + deslocamento)
-        posicao.setEndValue(posicao_final)
-        posicao.setEasingCurve(QEasingCurve.OutCubic)
-        grupo.addAnimation(opacidade)
-        grupo.addAnimation(posicao)
-        self._animacao_pagina_grupo = grupo
-        self._efeito_pagina = efeito
-        self._pagina_em_transicao = pagina
-
-        def finalizar() -> None:
-            pagina.move(posicao_final)
-            if pagina.graphicsEffect() is efeito:
-                pagina.setGraphicsEffect(None)
-            if self._animacao_pagina_grupo is grupo:
-                self._animacao_pagina_grupo = None
-            if self._efeito_pagina is efeito:
-                self._efeito_pagina = None
-            if self._pagina_em_transicao is pagina:
-                self._pagina_em_transicao = None
-            grupo.deleteLater()
-
-        grupo.finished.connect(finalizar)
-        grupo.start()
+        pagina.update()
 
     def _geometria_indicador_navegacao(self, botao: QPushButton) -> QRect:
         ponto = botao.mapTo(self.sidebar, QPoint(0, 0))
@@ -5808,6 +5941,309 @@ QScrollArea#systemScroll > QWidget > QWidget {{
                     max-height: 18px;
                 }}
 
+                /* Automação — casa conectada com a linguagem visual da Laylay */
+                #automationPageContent {{ background: #0C1116; }}
+                #automationScroll,
+                #automationScroll > QWidget > QWidget,
+                #automationMainColumn,
+                #automationRail {{ background: transparent; border: 0; }}
+                #automationHero {{
+                    background: qlineargradient(
+                        x1: 0, y1: 0, x2: 1, y2: 0,
+                        stop: 0 #18151B, stop: 0.58 #13171D, stop: 1 #111820
+                    );
+                    border: 1px solid #352D36;
+                    border-radius: 16px;
+                    min-height: 130px;
+                }}
+                #automationHeroArt {{ background: transparent; border: 0; }}
+                #automationHeroEyebrow {{
+                    background: transparent;
+                    color: #D95C75;
+                    font-size: 8px;
+                    font-weight: 800;
+                    letter-spacing: 1.6px;
+                }}
+                #automationHeroTitle {{
+                    background: transparent;
+                    color: #FCF7F9;
+                    font-size: 26px;
+                    font-weight: 780;
+                }}
+                #automationHeroDescription {{
+                    background: transparent;
+                    color: #A9A5AA;
+                    font-size: 10px;
+                }}
+                #automationLiveBadge {{
+                    background: #171E22;
+                    border: 1px solid #2A373A;
+                    border-radius: 9px;
+                    padding: 6px 10px;
+                    color: #9AA4AA;
+                    font-size: 8px;
+                    font-weight: 700;
+                }}
+                #automationLiveBadge[state="confirmed"] {{
+                    background: #17231F;
+                    border-color: #356A58;
+                    color: #69D09B;
+                }}
+                #automationLiveBadge[state="partial"] {{
+                    background: #282219;
+                    border-color: #715A34;
+                    color: #DDB464;
+                }}
+                #automationUpdated {{
+                    background: transparent;
+                    color: #7E858D;
+                    font-size: 8px;
+                }}
+
+                #automationDevicesCard,
+                #automationRoutinesCard,
+                #automationSummaryCard,
+                #automationContextCard,
+                #automationSafetyCard {{
+                    background: #11171C;
+                    border: 1px solid #283139;
+                    border-radius: 14px;
+                }}
+                #automationDevicesCard #dashboardCardTitle,
+                #automationRoutinesCard #dashboardCardTitle,
+                #automationSummaryCard #dashboardCardTitle,
+                #automationContextCard #dashboardCardTitle,
+                #automationSafetyCard #dashboardCardTitle {{
+                    color: #F5F0F3;
+                    font-size: 14px;
+                    font-weight: 760;
+                }}
+                #automationDevicesCard #dashboardCardHint,
+                #automationRoutinesCard #dashboardCardHint,
+                #automationSummaryCard #dashboardCardHint,
+                #automationContextCard #dashboardCardHint,
+                #automationSafetyCard #dashboardCardHint {{
+                    color: #7B838B;
+                    font-size: 8px;
+                    font-weight: 700;
+                    letter-spacing: 0.8px;
+                }}
+                #automationSectionLead {{
+                    background: transparent;
+                    border: 0;
+                    color: #90979E;
+                    font-size: 9px;
+                    padding: 0 1px 4px 1px;
+                }}
+
+                #automationDeviceCard {{
+                    background: qlineargradient(
+                        x1: 0, y1: 0, x2: 1, y2: 1,
+                        stop: 0 #171D23, stop: 1 #13191E
+                    );
+                    border: 1px solid #2A343D;
+                    border-radius: 13px;
+                    min-height: 264px;
+                }}
+                #automationDeviceCard:hover {{ border-color: #4B3A43; }}
+                #automationDeviceCard[deviceState="on"] {{
+                    background: qlineargradient(
+                        x1: 0, y1: 0, x2: 1, y2: 1,
+                        stop: 0 #211920, stop: 0.55 #171B20, stop: 1 #141B1F
+                    );
+                    border-color: #4B3440;
+                }}
+                #automationDeviceCard[deviceState="offline"] {{
+                    background: #15171A;
+                    border-color: #3A3439;
+                }}
+                #automationDeviceCard[actionPending="true"] {{ border-color: #825063; }}
+                #automationDeviceIcon {{
+                    background: transparent;
+                    border: 0;
+                }}
+                #automationDeviceCard[deviceState="on"] #automationDeviceIcon {{
+                    background: transparent;
+                    border: 0;
+                }}
+                #automationDeviceName {{
+                    background: transparent;
+                    color: #F3EFF1;
+                    font-size: 12px;
+                    font-weight: 750;
+                }}
+                #automationDeviceType {{
+                    background: transparent;
+                    color: #777F87;
+                    font-size: 8px;
+                }}
+                #automationRoomBadge {{
+                    background: #1C2228;
+                    border: 1px solid #303942;
+                    border-radius: 8px;
+                    padding: 4px 7px;
+                    color: #8E98A1;
+                    font-size: 7px;
+                    font-weight: 750;
+                    letter-spacing: 0.7px;
+                }}
+                #automationDeviceState {{
+                    background: #1C2227;
+                    border: 1px solid #2B353C;
+                    border-radius: 7px;
+                    padding: 3px 7px;
+                    color: #838C94;
+                    font-size: 8px;
+                    font-weight: 800;
+                    letter-spacing: 0.8px;
+                }}
+                #automationDeviceState[deviceState="on"] {{ color: #67D19D; }}
+                #automationDeviceState[deviceState="off"] {{ color: #C2A1AA; }}
+                #automationDeviceState[deviceState="offline"] {{ color: #CA6B78; }}
+                #automationDeviceObservation {{
+                    background: transparent;
+                    color: #747D85;
+                    font-size: 8px;
+                }}
+                #automationCapabilities {{
+                    background: transparent;
+                    border: 0;
+                    padding: 0;
+                    color: #89929A;
+                    font-size: 8px;
+                }}
+                #automationControlLabel {{
+                    background: transparent;
+                    border: 0;
+                    color: #D7D1D5;
+                    font-size: 9px;
+                    font-weight: 650;
+                }}
+                #automationControlValue {{
+                    background: transparent;
+                    border: 0;
+                    color: #A9A1A7;
+                    font-size: 9px;
+                }}
+                #automationBrightnessControl {{ background: transparent; border: 0; }}
+                #automationBrightnessSlider {{ min-height: 18px; max-height: 18px; }}
+                #automationBrightnessSlider::groove:horizontal {{
+                    background: #31343A;
+                    border: 0;
+                    border-radius: 3px;
+                    height: 5px;
+                }}
+                #automationBrightnessSlider::sub-page:horizontal {{
+                    background: #EC4E76;
+                    border-radius: 3px;
+                }}
+                #automationBrightnessSlider::add-page:horizontal {{
+                    background: #30343A;
+                    border-radius: 3px;
+                }}
+                #automationBrightnessSlider::handle:horizontal {{
+                    background: #FFD3DE;
+                    border: 3px solid #F15B81;
+                    border-radius: 8px;
+                    width: 10px;
+                    margin: -5px 0;
+                }}
+                #automationBrightnessSlider:disabled::sub-page:horizontal {{ background: #67404B; }}
+                #automationBrightnessSlider:disabled::handle:horizontal {{
+                    background: #777D83;
+                    border-color: #43484D;
+                }}
+                #automationPowerButton {{
+                    background: #D94B66;
+                    border: 1px solid #E15C75;
+                    border-radius: 9px;
+                    min-height: 28px;
+                    padding: 0 15px;
+                    color: #FFF8FA;
+                    font-size: 9px;
+                    font-weight: 760;
+                    min-width: 78px;
+                }}
+                #automationPowerButton:hover {{ background: #EB5872; }}
+                #automationPowerButton:disabled {{
+                    background: #24272C;
+                    border-color: #30353B;
+                    color: #666E76;
+                }}
+                #automationRefreshButton {{
+                    background: #191F25;
+                    border: 1px solid #313A43;
+                    border-radius: 9px;
+                    min-height: 28px;
+                    padding: 0 12px;
+                    color: #B3BAC0;
+                    font-size: 9px;
+                    font-weight: 650;
+                    min-width: 128px;
+                }}
+                #automationRefreshButton:hover {{
+                    background: #20272E;
+                    border-color: #5B4550;
+                    color: #EF7990;
+                }}
+                #automationRefreshButton:disabled {{ color: #626A72; border-color: #2A3036; }}
+
+                #automationRoutineRow {{
+                    background: #151B20;
+                    border: 1px solid #29323A;
+                    border-radius: 9px;
+                    min-height: 34px;
+                    padding: 0 11px;
+                    text-align: left;
+                    color: #C7C3C6;
+                    font-size: 9px;
+                }}
+                #automationRoutineEmpty {{
+                    background: #10161B;
+                    border: 1px dashed #3A454E;
+                    border-radius: 11px;
+                    padding: 14px 15px;
+                    color: #A9B0B6;
+                    font-size: 9px;
+                }}
+                #automationRoutineRow:hover {{
+                    background: #211B20;
+                    border-color: #66404E;
+                    color: #EF8297;
+                }}
+                #automationSummaryMetric {{
+                    background: #151B20;
+                    border: 1px solid #252E36;
+                    border-radius: 9px;
+                }}
+                #automationSummaryLabel {{ color: #929AA2; font-size: 9px; }}
+                #automationSummaryValue {{ color: #F1EDF0; font-size: 14px; font-weight: 780; }}
+                #automationContextState {{
+                    background: #181E24;
+                    border: 1px solid #2C363E;
+                    border-radius: 9px;
+                    padding: 8px 10px;
+                    color: #D9D5D7;
+                    font-size: 10px;
+                    font-weight: 700;
+                }}
+                #automationContextHint,
+                #automationSafetyHint {{
+                    background: transparent;
+                    color: #7E878F;
+                    font-size: 8px;
+                }}
+                #automationSafetyFlow {{
+                    background: #211920;
+                    border: 1px solid #523644;
+                    border-radius: 9px;
+                    padding: 8px 9px;
+                    color: #DF6E85;
+                    font-size: 7px;
+                    font-weight: 800;
+                    letter-spacing: 0.5px;
+                }}
+
                 QScrollBar:vertical {{ background: transparent; width: 9px; margin: 2px; }}
                 QScrollBar::handle:vertical {{ background: #49424F; min-height: 32px; border-radius: 4px; }}
                 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
@@ -6096,13 +6532,29 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             payload_acao=dict(payload or {}),
         )
 
+    def enviar_requisicao_playlist(self, payload: dict) -> None:
+        mensagem = {"type": "playlist_request", "id": uuid.uuid4().hex, **dict(payload or {})}
+        if not self.worker.enfileirar(mensagem):
+            pagina = self._paginas_carregadas.get("musica")
+            if pagina is not None:
+                pagina.detalhe_playlist.aplicar_resultado(
+                    str(payload.get("operation") or ""),
+                    {"ok": False, "status": "bridge_unavailable"},
+                )
+
     def _definir_estado_acao_ui(
         self, acao_id: str, estado: str, resumo: str = "",
     ) -> None:
+        self._estados_acoes_ui[str(acao_id or "")] = (
+            str(estado or ""),
+            str(resumo or ""),
+        )
         self.central_inteligente.definir_estado_acao(acao_id, estado, resumo)
         self.painel_lateral.definir_estado_acao(acao_id, estado, resumo)
-        self.pagina_musica.definir_estado_acao(acao_id, estado, resumo)
-        self.pagina_automacao.definir_estado_acao(acao_id, estado, resumo)
+        for nome in ("musica", "automacao"):
+            pagina = self._paginas_carregadas.get(nome)
+            if pagina is not None:
+                pagina.definir_estado_acao(acao_id, estado, resumo)
 
     def _enviar_pedido(
         self,
@@ -6411,6 +6863,73 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             "type": "restart_request", "id": requisicao_id,
         })
 
+    def enviar_consulta_desenvolvedor(self, comando: str) -> None:
+        pagina = self._paginas_carregadas.get("desenvolvedor")
+        if pagina is None:
+            return
+        requisicao_id = uuid.uuid4().hex
+        pagina.registrar_consulta_enviada(requisicao_id, comando)
+        self.enviar_json.emit({
+            "type": "dev_query",
+            "id": requisicao_id,
+            "command": str(comando or ""),
+        })
+
+    def enviar_controle_desenvolvedor(self, comando: str) -> None:
+        pagina = self._paginas_carregadas.get("desenvolvedor")
+        if pagina is None:
+            return
+        comando_limpo = str(comando or "").strip().casefold()
+        requisicao_id = uuid.uuid4().hex
+        pagina.registrar_controle_enviado(requisicao_id, comando_limpo)
+        self.enviar_json.emit({
+            "type": "dev_control",
+            "id": requisicao_id,
+            "command": comando_limpo,
+            "authorized": (
+                comando_limpo == "tests cancel"
+                or comando_limpo.startswith("tests run ")
+            ),
+        })
+
+    def _receber_eventos_desenvolvedor(self, eventos: object) -> None:
+        if not isinstance(eventos, (list, tuple)):
+            return
+        pagina = self._paginas_carregadas.get("desenvolvedor")
+        for bruto in eventos:
+            if not isinstance(bruto, dict):
+                continue
+            evento_id = str(bruto.get("id") or "")
+            if evento_id and evento_id in self._ids_eventos_desenvolvedor:
+                continue
+            if evento_id:
+                self._ids_eventos_desenvolvedor.add(evento_id)
+            try:
+                ocorrido_em = datetime.fromtimestamp(float(bruto.get("timestamp") or 0))
+            except (OSError, OverflowError, TypeError, ValueError):
+                ocorrido_em = datetime.now()
+            evento = {
+                "titulo": str(bruto.get("message") or "Evento DEV"),
+                "detalhe": "",
+                "nivel": str(bruto.get("level") or "info"),
+                "categoria": str(bruto.get("category") or "SYSTEM"),
+                "ocorrido_em": ocorrido_em,
+                "profundidade": str(bruto.get("depth") or "normal"),
+                "trace_id": str(bruto.get("trace_id") or ""),
+                "origem": str(bruto.get("source") or "runtime"),
+                "duracao_ms": bruto.get("duration_ms"),
+            }
+            self._eventos_desenvolvedor.append(evento)
+            if pagina is not None:
+                pagina.registrar_evento(**evento)
+        del self._eventos_desenvolvedor[:-500]
+        if len(self._ids_eventos_desenvolvedor) > 1_000:
+            self._ids_eventos_desenvolvedor = {
+                str(item.get("id") or "")
+                for item in list(eventos)[-500:]
+                if isinstance(item, dict) and item.get("id")
+            }
+
     def receber(self, msg: dict) -> None:
         tipo = msg.get("type")
         if tipo == "snapshot":
@@ -6435,6 +6954,11 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             self._substituir_historico(mensagens)
             for evento in msg.get("events", []):
                 self.adicionar_evento(evento.get("title", "Evento"), evento.get("detail", ""), evento.get("level", "info"))
+            dev_console = msg.get("dev_console")
+            if isinstance(dev_console, dict):
+                self._receber_eventos_desenvolvedor(
+                    dev_console.get("events") or []
+                )
             self._atualizar_estado(msg.get("state") or {})
             if isinstance(msg.get("dashboard"), dict):
                 self._atualizar_dashboard(msg["dashboard"])
@@ -6476,6 +7000,7 @@ QScrollArea#systemScroll > QWidget > QWidget {{
                     else "A resposta foi guardada no chat em que o pedido começou."
                 ),
                 "success",
+                categoria="IA",
             )
         elif tipo == "input_ack":
             mensagem_id = str(msg.get("id") or "")
@@ -6505,7 +7030,46 @@ QScrollArea#systemScroll > QWidget > QWidget {{
                 self.adicionar_evento(ev.get("title", "Evento"), ev.get("detail", ""), ev.get("level", "info"))
         elif tipo == "dashboard_state":
             if isinstance(msg.get("dashboard"), dict):
-                self._atualizar_dashboard(msg["dashboard"])
+                self._atualizar_dashboard(
+                    msg["dashboard"], somente_visivel=True,
+                )
+        elif tipo == "dev_events":
+            self._receber_eventos_desenvolvedor(msg.get("events") or [])
+        elif tipo == "dev_query_result":
+            pagina_desenvolvedor = self._paginas_carregadas.get("desenvolvedor")
+            if pagina_desenvolvedor is not None:
+                pagina_desenvolvedor.aplicar_resultado_consulta(msg)
+        elif tipo == "dev_control_result":
+            pagina_desenvolvedor = self._paginas_carregadas.get("desenvolvedor")
+            if pagina_desenvolvedor is not None:
+                pagina_desenvolvedor.aplicar_resultado_controle(msg)
+        elif tipo == "music_meter":
+            self._medidor_musica_mais_recente = dict(msg)
+            pagina = self._paginas_carregadas.get("musica")
+            if pagina is not None:
+                pagina.aplicar_medidor_musica(msg)
+        elif tipo == "playlist_result":
+            resultado = msg.get("result")
+            retrato_resultado = (
+                dict(resultado) if isinstance(resultado, dict) else {"ok": False}
+            )
+            dados_resultado = (
+                str(msg.get("operation") or ""),
+                retrato_resultado,
+                str(msg.get("playlist") or ""),
+                str(msg.get("id") or ""),
+            )
+            pagina = self._paginas_carregadas.get("musica")
+            if pagina is not None:
+                pagina.detalhe_playlist.aplicar_resultado(
+                    dados_resultado[0],
+                    dados_resultado[1],
+                    playlist=dados_resultado[2],
+                    request_id=dados_resultado[3],
+                )
+            else:
+                self._resultados_playlist_pendentes.append(dados_resultado)
+                del self._resultados_playlist_pendentes[:-8]
         elif tipo == "conversations_state":
             requisicao_id = str(msg.get("id") or "")
             if requisicao_id == self._requisicao_conversa_id:
@@ -6567,6 +7131,7 @@ QScrollArea#systemScroll > QWidget > QWidget {{
                 self.adicionar_evento(
                     titulos[estado_acao], resumo, niveis[estado_acao],
                     atividade_confirmada=estado_acao == "confirmed",
+                    categoria="AUTONOMY",
                 )
         elif tipo == "mode_state":
             self._modo_pendente = False
@@ -6614,9 +7179,15 @@ QScrollArea#systemScroll > QWidget > QWidget {{
                 )
             self.adicionar_evento("A ponte recusou uma ação", str(msg.get("message") or "Erro desconhecido"), "error")
 
-    def _atualizar_dashboard(self, dashboard: dict) -> None:
+    def _atualizar_dashboard(
+        self,
+        dashboard: dict,
+        *,
+        somente_visivel: bool = False,
+    ) -> None:
         if dashboard.get("schema_version") != 1:
             return
+        self._dashboard_mais_recente = dict(dashboard)
         self._dashboard_recebido = True
         saude = dashboard.get("health")
         if not isinstance(saude, dict):
@@ -6685,14 +7256,44 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         elif frescor_microfone == "unavailable":
             cor_microfone = "unavailable"
         self.chip_microfone.definir(rotulo_microfone, estado=cor_microfone)
-        self.central_inteligente.aplicar_dashboard(dashboard)
-        self.painel_lateral.aplicar_dashboard(dashboard)
-        self.pagina_automacao.aplicar_dashboard(dashboard)
-        self.pagina_musica.aplicar_dashboard(dashboard)
-        self.pagina_memoria.aplicar_dashboard(dashboard)
-        self.pagina_sistema.aplicar_dashboard(dashboard)
+        if somente_visivel:
+            self._aplicar_dashboard_pagina(
+                self._pagina_visual_ativa,
+                dashboard,
+            )
+            return
+        for nome in (
+            "inicio", "automacao", "musica", "memoria", "sistema",
+            "desenvolvedor",
+        ):
+            self._aplicar_dashboard_pagina(nome, dashboard)
+
+    def _aplicar_dashboard_pagina(
+        self,
+        nome: str,
+        dashboard: dict,
+    ) -> None:
+        if nome == "inicio":
+            self.central_inteligente.aplicar_dashboard(dashboard)
+            self.painel_lateral.aplicar_dashboard(dashboard)
+            return
+        pagina = self._paginas_carregadas.get(nome)
+        if pagina is not None:
+            pagina.aplicar_dashboard(dashboard)
+        elif nome == self._pagina_visual_ativa:
+            self._agendar_pagina_ativa(nome)
+
+    def _aplicar_dashboard_pagina_se_ativa(self, nome: str) -> None:
+        if nome != self._pagina_visual_ativa:
+            return
+        if self._dashboard_mais_recente:
+            self._aplicar_dashboard_pagina(
+                nome,
+                self._dashboard_mais_recente,
+            )
 
     def _atualizar_estado(self, estado: dict) -> None:
+        self._estado_mais_recente = dict(estado or {})
         atividade = str(estado.get("activity") or "idle")
         rotulo = str(estado.get("activity_label") or "Pronta")
         emocao = str(estado.get("emotion") or "calma")
@@ -6703,11 +7304,13 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         except (TypeError, ValueError):
             self._nivel_microfone = 0.0
 
-        self.pagina_sistema.definir_estado_audio(
-            self._modo,
-            self._voz_disponivel,
-            self._nivel_microfone,
-        )
+        pagina_sistema = self._paginas_carregadas.get("sistema")
+        if pagina_sistema is not None:
+            pagina_sistema.definir_estado_audio(
+                self._modo,
+                self._voz_disponivel,
+                self._nivel_microfone,
+            )
 
         if not self._dashboard_recebido:
             if not self._voz_disponivel:
@@ -6741,7 +7344,19 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             and assinatura_atividade != self._ultima_atividade_evento
         ):
             self._ultima_atividade_evento = assinatura_atividade
-            self.adicionar_evento(rotulo, f"Estado da mente · emoção {emocao}.", "info")
+            categorias_atividade = {
+                "thinking": "IA",
+                "speaking": "IA",
+                "executing": "AUTONOMY",
+                "listening": "EVENTS",
+                "reconnecting": "SYSTEM",
+            }
+            self.adicionar_evento(
+                rotulo,
+                f"Estado da mente · emoção {emocao}.",
+                "info",
+                categoria=categorias_atividade.get(atividade, "SYSTEM"),
+            )
         self.configuracoes.definir_voz(self._voz_disponivel)
         self._aplicar_modo()
 
@@ -6789,8 +7404,10 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         self._definir_controles_conversa(conectado)
         self.central_inteligente.definir_conectada(conectado)
         self.painel_lateral.definir_conectada(conectado)
-        self.pagina_automacao.definir_conectada(conectado)
-        self.pagina_musica.definir_conectada(conectado)
+        for nome in ("automacao", "musica", "desenvolvedor"):
+            pagina = self._paginas_carregadas.get(nome)
+            if pagina is not None:
+                pagina.definir_conectada(conectado)
         self.configuracoes.definir_conectada(conectado)
         self.ponto.setStyleSheet(f"color: {PALETA['sucesso'] if conectado else PALETA['erro']};")
         self.status.setText("Pronta" if conectado else "Reconectando")
@@ -6815,14 +7432,17 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         else:
             if not conectado:
                 self._dashboard_recebido = False
+                self._dashboard_mais_recente = {}
+                self._medidor_musica_mais_recente = {}
                 self.chip_modelo.definir("Sem ponte", estado="error")
                 self.chip_memoria.definir("Reconectando", estado="unavailable")
                 self.central_inteligente.invalidar_dashboard()
                 self.painel_lateral.invalidar_dashboard()
-                self.pagina_automacao.invalidar()
-                self.pagina_musica.invalidar("Reconectando ao player")
-                self.pagina_memoria.invalidar()
-                self.pagina_sistema.invalidar()
+                for nome, pagina in self._paginas_carregadas.items():
+                    if nome == "musica":
+                        pagina.invalidar("Reconectando ao player")
+                    else:
+                        pagina.invalidar()
         if conectado and not self._dashboard_recebido:
             self.chip_memoria.definir("Aguardando", estado="pending")
         identidade = (
@@ -6856,7 +7476,20 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         nivel: str = "info",
         *,
         atividade_confirmada: bool = False,
+        categoria: str = "",
     ) -> None:
+        evento_desenvolvedor = {
+            "titulo": str(titulo or ""),
+            "detalhe": str(detalhe or ""),
+            "nivel": str(nivel or "info"),
+            "categoria": str(categoria or ""),
+            "ocorrido_em": datetime.now(),
+        }
+        self._eventos_desenvolvedor.append(evento_desenvolvedor)
+        del self._eventos_desenvolvedor[:-500]
+        pagina_desenvolvedor = self._paginas_carregadas.get("desenvolvedor")
+        if pagina_desenvolvedor is not None:
+            pagina_desenvolvedor.registrar_evento(**evento_desenvolvedor)
         cores = {"error": PALETA["erro"], "warning": PALETA["rosa"], "success": PALETA["sucesso"], "info": PALETA["ciano"]}
         self.eventos.append(
             f'<span style="color:{cores.get(nivel, PALETA["ciano"])}">{time.strftime("%H:%M")}  {titulo}</span>'
@@ -7348,6 +7981,7 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             "atividade": 1,
             "diagnostico": 2,
             "sistema": 7,
+            "desenvolvedor": 8,
             "configuracoes": 3,
             "automacao": 4,
             "musica": 5,
@@ -7366,6 +8000,7 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             "atividade": "Atividade",
             "diagnostico": "Diagnóstico",
             "sistema": "Sistema",
+            "desenvolvedor": "Dev Console",
             "configuracoes": "Configurações",
             "automacao": "Automação",
             "musica": "Música",
@@ -7378,7 +8013,14 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             self.enviar_json.emit({"type": "settings_get", "id": uuid.uuid4().hex})
         self._aplicar_responsividade()
         self._pagina_visual_ativa = nome
+        self._agendar_pagina_ativa(nome)
         if mudou:
+            if self._dashboard_mais_recente:
+                QTimer.singleShot(
+                    0,
+                    lambda destino=nome:
+                    self._aplicar_dashboard_pagina_se_ativa(destino),
+                )
             direcao = 1 if indice_destino >= indice_anterior else -1
             pagina = self.paginas.currentWidget()
             if pagina is not None:
@@ -7473,6 +8115,25 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             self.paginas.currentIndex() == 0
             and self._pagina_principal == "inicio"
         )
+        assinatura = (
+            estreita,
+            compacta,
+            largura >= 980,
+            largura >= 1160,
+            largura >= 1420,
+            largura >= 1450,
+            largura >= 1650,
+            inicio_ativo,
+            self._sidebar_expandida,
+            bool(self._conversas),
+        )
+        largura_mudou = largura != self._ultima_largura_responsiva
+        self._ultima_largura_responsiva = largura
+        if assinatura == self._assinatura_responsividade:
+            if largura_mudou:
+                QTimer.singleShot(0, self._ajustar_larguras_mensagens)
+            return
+        self._assinatura_responsividade = assinatura
         self.central_inteligente.setVisible(inicio_ativo and largura >= 1450)
         self.painel_lateral.setVisible(inicio_ativo and largura >= 1650)
         self.chip_memoria.setVisible(largura >= 1420)

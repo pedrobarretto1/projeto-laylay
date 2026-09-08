@@ -82,6 +82,7 @@ class CoordenadorExecRuntime:
         contexto_exec_getter: Callable[[], Any],
         resposta_ia_getter: Callable[[], Any],
         loop_getter: Callable[[], Any],
+        prioridade_interacao: Any | None = None,
         log: Callable[..., Any] = print,
     ) -> None:
         self._contexto_exec_getter = contexto_exec_getter
@@ -93,6 +94,8 @@ class CoordenadorExecRuntime:
         self._ultima_entrada_ts = 0.0
         self._assinaturas_em_processamento: set[str] = set()
         self._geracao_entrada = 0
+        self._prioridade_interacao = prioridade_interacao
+        self._claims_interacao_por_geracao: dict[int, str] = {}
 
     def executar(self, cmd: str, arg: Any) -> bool:
         runtime = self._contexto_exec_getter()
@@ -155,6 +158,52 @@ class CoordenadorExecRuntime:
     def _assinatura_entrada(texto: str) -> str:
         return re.sub(r"\s+", " ", str(texto or "").casefold()).strip()
 
+    def _adquirir_prioridade_entrada(self) -> str:
+        runtime = self._prioridade_interacao
+        if runtime is None:
+            return ""
+
+        adquirir = getattr(runtime, "adquirir", None)
+        if not callable(adquirir):
+            raise RuntimeError(
+                "prioridade_interacao não publica adquirir()"
+            )
+
+        return str(adquirir("entrada_canonica") or "").strip()
+
+    def _liberar_prioridade_claim(self, claim: str) -> bool:
+        token = str(claim or "").strip()
+        if not token:
+            return False
+
+        runtime = self._prioridade_interacao
+        if runtime is None:
+            return False
+
+        liberar = getattr(runtime, "liberar", None)
+        if not callable(liberar):
+            return False
+
+        try:
+            return bool(liberar(token))
+        except Exception as erro:
+            self._log(
+                "⚠️ [ENTRADA] falha ao liberar prioridade "
+                f"da interação: {type(erro).__name__}: {erro}"
+            )
+            return False
+
+    def _cancelar_prioridade_agendamento(
+        self,
+        geracao: int,
+        assinatura: str,
+    ) -> None:
+        claim = ""
+        with self._agendamento_lock:
+            self._assinaturas_em_processamento.discard(assinatura)
+            claim = self._claims_interacao_por_geracao.pop(int(geracao), "")
+        self._liberar_prioridade_claim(claim)
+
     def _processar_agendado(
         self,
         texto: str,
@@ -165,8 +214,13 @@ class CoordenadorExecRuntime:
         try:
             return self.processar_entrada(texto, geracao, origem)
         finally:
+            claim_interacao = ""
             with self._agendamento_lock:
                 self._assinaturas_em_processamento.discard(assinatura)
+                claim_interacao = self._claims_interacao_por_geracao.pop(
+                    int(geracao), "",
+                )
+            self._liberar_prioridade_claim(claim_interacao)
 
     def agendar(self, texto: str, origem: str = "desconhecida") -> Any:
         assinatura = self._assinatura_entrada(texto)
@@ -181,12 +235,19 @@ class CoordenadorExecRuntime:
                     f"(ainda em processamento): {texto!r}"
                 )
                 return None
+            claim_interacao = (
+                self._adquirir_prioridade_entrada()
+                if assinatura
+                else ""
+            )
             self._ultima_entrada_assinatura = assinatura
             self._ultima_entrada_ts = agora
             if assinatura:
                 self._assinaturas_em_processamento.add(assinatura)
             self._geracao_entrada += 1
             geracao = self._geracao_entrada
+            if claim_interacao:
+                self._claims_interacao_por_geracao[geracao] = claim_interacao
         # O Terminal 2 possui transporte e ciclo de vida próprios. Vincular a
         # sua entrada ao loop da extensão Chrome fazia uma mensagem ficar
         # órfã quando esse loop ainda estava subindo, era reiniciado ou estava
@@ -196,8 +257,7 @@ class CoordenadorExecRuntime:
             try:
                 return self._iniciar_thread(texto, geracao, origem)
             except Exception:
-                with self._agendamento_lock:
-                    self._assinaturas_em_processamento.discard(assinatura)
+                self._cancelar_prioridade_agendamento(geracao, assinatura)
                 raise
         loop = self._loop_getter()
         loop_ativo = False
@@ -212,7 +272,13 @@ class CoordenadorExecRuntime:
                     asyncio.to_thread(self._processar_agendado, texto, geracao, origem),
                     loop,
                 )
-                futuro.add_done_callback(self._observar_agendamento_assincrono)
+                futuro.add_done_callback(
+                    lambda concluido, geracao=geracao, assinatura=assinatura: (
+                        self._observar_agendamento_assincrono(
+                            concluido, geracao=geracao, assinatura=assinatura,
+                        )
+                    )
+                )
                 return futuro
             except Exception as exc:
                 self._log(f"Erro ao jogar IA pro background: {exc}")
@@ -232,21 +298,31 @@ class CoordenadorExecRuntime:
                 try:
                     return self._iniciar_thread(texto)  # type: ignore[call-arg]
                 except Exception:
-                    with self._agendamento_lock:
-                        self._assinaturas_em_processamento.discard(assinatura)
+                    self._cancelar_prioridade_agendamento(geracao, assinatura)
                     raise
         except Exception:
-            with self._agendamento_lock:
-                self._assinaturas_em_processamento.discard(assinatura)
+            self._cancelar_prioridade_agendamento(geracao, assinatura)
             raise
 
-    def _observar_agendamento_assincrono(self, futuro: Any) -> None:
+    def _observar_agendamento_assincrono(
+        self,
+        futuro: Any,
+        *,
+        geracao: int | None = None,
+        assinatura: str = "",
+    ) -> None:
         """Torna falhas do loop visíveis sem repetir uma entrada incerta."""
         try:
             futuro.result()
         except asyncio.CancelledError:
+            if geracao is not None:
+                self._cancelar_prioridade_agendamento(geracao, assinatura)
             self._log("⚠️ [ENTRADA] processamento assíncrono cancelado")
         except Exception as erro:
+            # Se _processar_agendado chegou a iniciar, seu finally já removeu
+            # o claim. O segundo cleanup é deliberadamente idempotente.
+            if geracao is not None:
+                self._cancelar_prioridade_agendamento(geracao, assinatura)
             self._log(
                 "⚠️ [ENTRADA] worker assíncrono encerrou com erro: "
                 f"{type(erro).__name__}: {erro}"

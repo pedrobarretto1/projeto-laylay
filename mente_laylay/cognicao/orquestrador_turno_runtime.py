@@ -4,8 +4,16 @@ from __future__ import annotations
 
 import time
 import re
+from typing import Any, Mapping
 
-from mente_laylay.cognicao.contrato_fala import construir_contrato_semantico_fala
+from mente_laylay.cognicao.contrato_fala import (
+    construir_contrato_semantico_evento,
+    construir_contrato_semantico_fala,
+)
+from mente_laylay.cognicao.contratos_turno import (
+    normalizar_evento_cognitivo,
+    texto_evento_cognitivo,
+)
 from mente_laylay.cognicao.leitura_semantica_turno import (
     aplicar_leitura_conversacional,
     comparar_com_legado,
@@ -13,6 +21,10 @@ from mente_laylay.cognicao.leitura_semantica_turno import (
 from mente_laylay.cognicao.intencao_visual_jogo import (
     aplicar_pedido_visual_ao_turno,
     detectar_pedido_visao_jogo,
+)
+from mente_laylay.cognicao.fundamentacao_factual import (
+    extrair_tema_recomendacao_contextual,
+    extrair_titulos_citados,
 )
 from mente_laylay.cognicao.revisao_turno import resolver_revisao_intra_turno
 from mente_laylay.cognicao.modalidade_turno import (
@@ -30,6 +42,14 @@ from mente_laylay.memoria_mental.contexto_compartilhado import (
 from mente_laylay.memoria_mental.contexto_imediato import (
     referencia_app_quarentenavel_c1d,
 )
+from mente_laylay.memoria_mental.compatibilidade_contexto import (
+    classificar_repeticao_curta,
+)
+from mente_laylay.memoria_mental.politica_reexecucao import (
+    intents_compativeis_repeticao,
+)
+
+# ROOT_R1_V2_FAIL_CLOSED_TIPADO_20260826
 from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
 from mente_laylay.emocoes.contrato_causal import (
     criar_evento_leitura_emocional_usuario,
@@ -38,6 +58,51 @@ from mente_laylay.emocoes.contrato_causal import (
 from mente_laylay.memoria_mental.eventos_emocionais import (
     publicar_evento_emocional_causal,
 )
+
+
+def observar_especialista_neural_turno(
+    ns: Mapping[str, Any],
+    texto: str,
+    turno: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Anexa telemetria neural sem conceder autoridade ou alterar o legado."""
+    resultado = dict(turno or {})
+    especialista = ns.get("_especialista_neural_comandos_runtime")
+    if especialista is None:
+        return resultado
+    try:
+        previsao = especialista.observar(texto, turno_legado=dict(resultado))
+    except Exception as erro:
+        logger = ns.get("print")
+        if callable(logger):
+            logger(f"⚠️ [NEURAL:COMANDOS] sombra isolada: {type(erro).__name__}")
+        return resultado
+    if previsao:
+        resultado["previsao_neural"] = dict(previsao)
+    return resultado
+
+
+def finalizar_especialista_neural_turno(
+    ns: Mapping[str, Any],
+    texto: str,
+    turno: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Fecha a telemetria contra o turno final sem reclassificar a entrada."""
+    resultado = dict(turno or {})
+    especialista = ns.get("_especialista_neural_comandos_runtime")
+    finalizar = getattr(especialista, "finalizar_observacao_turno", None)
+    if not callable(finalizar):
+        return resultado
+    try:
+        previsao = finalizar(texto, dict(resultado))
+    except Exception as erro:
+        logger = ns.get("print")
+        if callable(logger):
+            logger(f"⚠️ [NEURAL:SHADOW] fechamento isolado: {type(erro).__name__}")
+        return resultado
+    if previsao:
+        resultado["previsao_neural"] = dict(previsao)
+    return resultado
 
 
 def registrar_metrica_opcional(ns: dict, componente: str, duracao_ms: float, sucesso: bool) -> None:
@@ -86,14 +151,49 @@ def registrar_falha_opcional(
         return
 
 
-def resolver_repeticao_operacional_segura(ns: dict, texto: str) -> dict | None:
-    """Consulta a continuidade; em falha, deixa um diagnóstico acionável."""
+def consultar_repeticao_operacional_classificada_segura(
+    ns: dict,
+    texto: str,
+) -> dict:
+    """Preserva classificação, resultado e saúde da consulta separadamente.
+
+    ``None`` não volta a carregar dois significados arquiteturais. O turno pode
+    distinguir "não houve operação compatível" de "o resolvedor não respondeu"
+    sem criar uma segunda gramática de repetição.
+    """
+    classificacao: dict = {}
+    normalizar = ns.get('_normalizar_texto_com_apelidos')
+    estado_classificacao = 'indisponivel'
+
+    if callable(normalizar):
+        try:
+            classificacao = dict(
+                classificar_repeticao_curta(texto, normalizar) or {}
+            )
+            estado_classificacao = 'ok'
+        except Exception as erro:
+            estado_classificacao = 'erro'
+            registrar_falha_opcional(
+                ns,
+                'continuidade_turno',
+                'falha_classificar_repeticao',
+                erro,
+                classe='defeito',
+                impacto='turno',
+                fallback='classificacao_repeticao_indisponivel',
+            )
+
     resolver = ns.get('_resolver_repeticao_ultima_acao')
     if not callable(resolver):
-        return None
+        return {
+            'estado': 'resolver_indisponivel',
+            'estado_classificacao': estado_classificacao,
+            'classificacao': classificacao,
+            'repeticao': None,
+        }
+
     try:
-        repeticao = resolver(texto)
-        return repeticao if isinstance(repeticao, dict) else None
+        repeticao_bruta = resolver(texto)
     except Exception as erro:
         registrar_falha_opcional(
             ns,
@@ -104,7 +204,30 @@ def resolver_repeticao_operacional_segura(ns: dict, texto: str) -> dict | None:
             impacto='turno',
             fallback='conversa_sem_repeticao',
         )
-        return None
+        return {
+            'estado': 'resolver_erro',
+            'estado_classificacao': estado_classificacao,
+            'classificacao': classificacao,
+            'repeticao': None,
+        }
+
+    return {
+        'estado': 'ok',
+        'estado_classificacao': estado_classificacao,
+        'classificacao': classificacao,
+        'repeticao': (
+            dict(repeticao_bruta)
+            if isinstance(repeticao_bruta, dict)
+            else None
+        ),
+    }
+
+
+def resolver_repeticao_operacional_segura(ns: dict, texto: str) -> dict | None:
+    """Compatibilidade pública: devolve só a operação recuperada."""
+    consulta = consultar_repeticao_operacional_classificada_segura(ns, texto)
+    repeticao = consulta.get('repeticao')
+    return dict(repeticao) if isinstance(repeticao, dict) else None
 
 
 def obter_contexto_jogo_seguro(ns: dict) -> dict:
@@ -180,6 +303,92 @@ def aplicar_repeticao_operacional_ao_turno(turno: dict, repeticao: object) -> di
         repeticao_operacional={"intent": intent, "params": dict(params)},
     )
     return resultado
+
+
+def aplicar_contrato_repeticao_classificada_ao_turno(
+    turno: dict,
+    *,
+    texto: str,
+    consulta: object,
+) -> dict:
+    """Congela a restrição lexical antes que contexto posterior a amplie.
+
+    Repetições genéricas mantêm o comportamento legado. Uma repetição tipada
+    só autoriza intents declaradas pela política semântica canônica. Quando a
+    fala foi tipada mas nenhum resultado autorizável existe, o turno ganha um
+    veto operacional sticky: contexto continua útil para conversa, nunca para
+    trocar LER por outro domínio.
+    """
+    resultado = dict(turno or {})
+    if turno_tem_veto_execucao(resultado):
+        return resultado
+
+    dados = dict(consulta or {}) if isinstance(consulta, dict) else {}
+    classificacao = dict(dados.get('classificacao') or {})
+    repeticao = (
+        dict(dados.get('repeticao') or {})
+        if isinstance(dados.get('repeticao'), dict)
+        else None
+    )
+
+    if str(classificacao.get('tipo') or '') != 'tipada':
+        return aplicar_repeticao_operacional_ao_turno(resultado, repeticao)
+
+    acao_semantica = str(
+        classificacao.get('acao_semantica') or ''
+    ).strip().upper()
+    permitidos = intents_compativeis_repeticao(acao_semantica)
+    intent = str(
+        (repeticao or {}).get('intent') or ''
+    ).strip().upper()
+    params = (repeticao or {}).get('params')
+
+    if (
+        bool(permitidos)
+        and intent in permitidos
+        and isinstance(params, dict)
+    ):
+        return aplicar_repeticao_operacional_ao_turno(
+            resultado,
+            {'intent': intent, 'params': dict(params)},
+        )
+
+    estado_consulta = str(dados.get('estado') or '').strip().casefold()
+    if estado_consulta == 'resolver_erro':
+        motivo = (
+            'repetição tipada reconhecida, mas o resolvedor falhou antes de '
+            'produzir operação semanticamente compatível'
+        )
+    elif estado_consulta == 'resolver_indisponivel':
+        motivo = (
+            'repetição tipada reconhecida, mas o resolvedor de continuidade '
+            'está indisponível'
+        )
+    elif not permitidos:
+        motivo = (
+            'repetição tipada reconhecida sem política semântica de intents '
+            'compatíveis'
+        )
+    elif repeticao:
+        motivo = (
+            'repetição tipada produziu operação incompatível com a restrição '
+            f'{acao_semantica or "tipada"}'
+        )
+    else:
+        motivo = (
+            'repetição tipada sem operação reexecutável semanticamente '
+            'compatível'
+        )
+
+    return aplicar_veto_canonico(
+        resultado,
+        texto=texto,
+        modalidade='comando',
+        natureza='repeticao_tipificada_sem_operacao_compativel',
+        motivo=motivo,
+        requer_esclarecimento=False,
+        origem_veto='repeticao_tipificada_fail_closed',
+    )
 
 
 def _catalogo_apps_retarget_c1d(apps_map: object) -> dict[str, tuple[str, object]]:
@@ -380,7 +589,7 @@ def reconciliar_alvo_eliptico_janela_confirmado(
     return leitura, snapshot
 
 _ORIGENS_ENTRADA_VALIDAS = {
-    'terminal', 'voz', 'modo_jogo', 'barra', 'api', 'desconhecida',
+    'terminal', 'voz', 'modo_jogo', 'barra', 'api', 'presenca', 'desconhecida',
 }
 
 
@@ -417,9 +626,167 @@ def alinhar_identidade_plano_revisao(
     return resultado
 
 
+def _iniciar_planejamento_evento(
+    namespace_getter,
+    evento: Mapping[str, Any],
+    *,
+    origem: str = 'presenca',
+) -> dict:
+    """Planeja evidência ambiental sem criar uma utterance artificial."""
+    ns = namespace_getter()
+    mente_antes_turno = dict(ns['_estado_compartilhado_runtime'].mental)
+    entrada_cognitiva = dict(evento)
+    texto_cognitivo = texto_evento_cognitivo(entrada_cognitiva)
+    if not texto_cognitivo:
+        texto_cognitivo = str(
+            entrada_cognitiva.get('tipo') or 'evento observado'
+        ).strip()
+
+    turno = ns['_classificar_modalidade_turno_mente'](
+        texto_cognitivo,
+        normalizar_texto=ns['_normalizar_texto_com_apelidos'],
+        texto_tem_comando_explicito=ns['_texto_tem_comando_explicito'],
+        confirmacao_contextual_valida=False,
+    )
+    turno = aplicar_veto_canonico(
+        turno,
+        texto=texto_cognitivo,
+        modalidade='conversa',
+        natureza='evento_observado',
+        motivo='evento observado não é utterance nem permissão do usuário',
+        requer_esclarecimento=False,
+        origem_veto='evento_sem_autoridade_usuario',
+    )
+    identidade_turno = {
+        'falante': None,
+        'interlocutor': None,
+        'fonte_evidencia': str(entrada_cognitiva.get('origem') or 'percepcao'),
+        'usuario_eu': False,
+        'pedro_eu': False,
+        'laylay_eu': False,
+        'referencia_usuario': False,
+        'referencia_pedro': False,
+        'referencia_laylay': False,
+    }
+    funcao_comunicativa = {
+        'funcao': 'evento_observado',
+        'objetivo': 'interpretar o acontecimento e considerar uma reação comunicativa',
+        'postura_esperada': 'natural',
+        'permite_pergunta': False,
+    }
+    turno.update({
+        'natureza_entrada': 'evento',
+        'origem_entrada': _normalizar_origem_entrada(origem),
+        'entrada_cognitiva': entrada_cognitiva,
+        'texto_evidencia': texto_cognitivo,
+        'identidade': identidade_turno,
+        'funcao_comunicativa': funcao_comunicativa,
+        'aprendizados_explicitos': [],
+        'autoridade_usuario': False,
+        'permissao_execucao': False,
+        'autoriza_execucao': False,
+        'texto_operacional': '',
+    })
+
+    jogo_contexto = obter_contexto_jogo_seguro(ns)
+    jogo_contexto = anexar_estado_visual_recente_seguro(ns, jogo_contexto)
+    retrato_turno, entidades_recentes = ns['_construir_retrato_turno_mente'](
+        texto_cognitivo,
+        turno=turno,
+        mente=mente_antes_turno,
+        contexto_perceptivo=ns['_obter_contexto_perceptivo'](),
+        playlist_state=ns['playlist_state'],
+        jogo_contexto=jogo_contexto,
+    )
+    turno['retrato_id'] = retrato_turno.get('id')
+    turno['entidades'] = dict(retrato_turno.get('entidades') or {})
+    turno['referencia_resolvida'] = dict(
+        retrato_turno.get('referencia_resolvida') or {}
+    )
+    turno['operacao_explicita'] = ''
+    especialistas = ns['_construir_parecer_especialistas_mente'](
+        texto_cognitivo,
+        turno=turno,
+        funcao_comunicativa=funcao_comunicativa,
+        retrato=retrato_turno,
+        saude=ns['_saude_mente_runtime'].snapshot(),
+    )
+    turno['especialistas'] = especialistas
+    plano = ns['_planejar_turno_mente'](
+        texto_cognitivo,
+        turno=turno,
+        mente=mente_antes_turno,
+        periodo=ns['_contexto_horario_atual'](),
+    )
+    contexto_necessario = [
+        'evento_atual' if item == 'fala_atual' else item
+        for item in list(plano.get('contexto_necessario') or [])
+    ]
+    plano.update({
+        'natureza_entrada': 'evento',
+        'origem_entrada': turno['origem_entrada'],
+        'entrada_cognitiva': entrada_cognitiva,
+        'texto_evidencia': texto_cognitivo,
+        'texto_usuario': '',
+        'contexto_necessario': list(dict.fromkeys(contexto_necessario)),
+        'requer_execucao': False,
+        'autoriza_execucao': False,
+        'turno_sem_autorizacao': True,
+        'texto_operacional': '',
+        'resposta_esperada': (
+            'interpretar o evento e formular apenas uma proposta comunicativa segura'
+        ),
+    })
+
+    mensagens_recentes = list(
+        getattr(ns['_estado_compartilhado_runtime'], 'memoria_conversa', {}).get(
+            'messages', []
+        )
+        or []
+    )
+    falas_recentes = [
+        str(item.get('content') or '').strip()
+        for item in mensagens_recentes
+        if isinstance(item, dict)
+        and str(item.get('role') or '').casefold() == 'assistant'
+    ][-3:]
+    contrato_fala = construir_contrato_semantico_evento(
+        entrada_cognitiva,
+        turno=turno,
+        plano=plano,
+        mente=mente_antes_turno,
+        falas_recentes=falas_recentes,
+    )
+    turno['contrato_fala'] = contrato_fala
+    plano['contrato_fala'] = contrato_fala
+
+    ns['_estado_compartilhado_runtime'].atualizar_campos(
+        'mental',
+        evento_cognitivo_atual=entrada_cognitiva,
+        turno_atual=turno,
+        plano_turno_atual=plano,
+        contrato_fala_atual=contrato_fala,
+        identidade_turno_atual=identidade_turno,
+        identidade_turno_resumo=(
+            'Entrada cognitiva de evento observado; não existe falante discursivo '
+            'nem autoridade do usuário.'
+        ),
+        funcao_comunicativa_atual=funcao_comunicativa,
+        retrato_turno_atual=retrato_turno,
+        entidades_recentes=entidades_recentes,
+        especialistas_turno_atual=especialistas,
+    )
+    ns['print'](
+        '🧠 [PLANO:EVENTO] '
+        f"tipo={entrada_cognitiva.get('tipo') or '-'} | "
+        'execucao=False | proposta_comunicativa=True'
+    )
+    return turno
+
+
 def iniciar_planejamento_turno(
     namespace_getter,
-    texto: str,
+    texto: str | Mapping[str, Any],
     *,
     origem: str = 'desconhecida',
 ) -> dict:
@@ -428,11 +795,23 @@ def iniciar_planejamento_turno(
     ns = namespace_getter()
     observabilidade = ns.get('_observabilidade_mente_runtime')
     try:
-        resultado = _iniciar_planejamento_turno(
-            namespace_getter,
-            texto,
-            origem=origem,
-        )
+        evento = normalizar_evento_cognitivo(texto, origem=origem)
+        if evento:
+            resultado = _iniciar_planejamento_evento(
+                namespace_getter,
+                evento,
+                origem=origem,
+            )
+        elif isinstance(texto, Mapping):
+            raise ValueError(
+                "entrada estruturada precisa declarar natureza='evento'"
+            )
+        else:
+            resultado = _iniciar_planejamento_turno(
+                namespace_getter,
+                str(texto or ''),
+                origem=origem,
+            )
         sucesso = True
         return resultado
     except Exception as erro:
@@ -475,6 +854,7 @@ def _iniciar_planejamento_turno(
     )
 
     turno = ns['_classificar_modalidade_turno_mente'](texto_cognitivo, normalizar_texto=ns['_normalizar_texto_com_apelidos'], texto_tem_comando_explicito=ns['_texto_tem_comando_explicito'], confirmacao_contextual_valida=confirmacao_contextual_valida)
+    turno = observar_especialista_neural_turno(ns, texto_cognitivo, turno)
     turno['origem_entrada'] = _normalizar_origem_entrada(origem)
     if revisao_detectada:
         turno['texto_original'] = str(texto or '')[:500]
@@ -540,16 +920,38 @@ def _iniciar_planejamento_turno(
 
     # Uma revisão atual não pode ser reinterpretada como repetição da ação
     # anterior só porque a proposta final contém "continua", "de novo" etc.
-    repeticao_operacional = (
-        None if revisao_detectada
-        else resolver_repeticao_operacional_segura(ns, texto)
+    consulta_repeticao = (
+        {
+            'estado': 'suprimida_revisao',
+            'estado_classificacao': 'suprimida_revisao',
+            'classificacao': {},
+            'repeticao': None,
+        }
+        if revisao_detectada
+        else consultar_repeticao_operacional_classificada_segura(ns, texto)
     )
+    repeticao_operacional = consulta_repeticao.get('repeticao')
     if not turno_tem_veto_execucao(turno):
-        turno = aplicar_repeticao_operacional_ao_turno(turno, repeticao_operacional)
-    if repeticao_operacional:
+        turno = aplicar_contrato_repeticao_classificada_ao_turno(
+            turno,
+            texto=texto,
+            consulta=consulta_repeticao,
+        )
+    if repeticao_operacional and not turno_tem_veto_execucao(turno):
         ns['print'](
             f"🔁 [TURNO] repetição operacional autorizada | "
             f"intent={str(repeticao_operacional.get('intent') or '-')}"
+        )
+    elif (
+        str(dict(consulta_repeticao.get('classificacao') or {}).get('tipo') or '')
+        == 'tipada'
+        and turno_tem_veto_execucao(turno)
+        and str(turno.get('origem_veto_execucao_operacional') or '')
+        == 'repeticao_tipificada_fail_closed'
+    ):
+        ns['print'](
+            "🛡️ [TURNO] repetição tipada sem operação compatível | "
+            f"estado={consulta_repeticao.get('estado') or '-'}"
         )
     jogo_contexto = obter_contexto_jogo_seguro(ns)
     visao_jogo_runtime = ns.get('_registro_visao_jogo_leitura_runtime')
@@ -660,6 +1062,14 @@ def _iniciar_planejamento_turno(
     if not tema_factual and aprendizados_explicitos:
         tema_factual = str(aprendizados_explicitos[0].get('valor') or '').strip()[:160]
     turno['tema_factual'] = tema_factual
+    recomendacao_contextual = bool(
+        tema_factual
+        and extrair_tema_recomendacao_contextual(
+            texto_cognitivo,
+            registro_semantico,
+        ) == tema_factual
+    )
+    turno['continuidade_recomendacao'] = recomendacao_contextual
     if tema_factual and (not dict(retrato_turno.get('referencia_resolvida') or {}).get('nome')):
         registro_semantico = ns['_atualizar_registro_turno_mente'](registro_semantico, texto, retrato={'entidade_explicita': {'tipo': 'tema', 'nome': tema_factual, 'origem': 'tema_pesquisavel'}}, funcao=funcao_atual, encerramento=encerramento_assunto)
         mente_antes_turno['registro_semantico'] = registro_semantico
@@ -668,14 +1078,49 @@ def _iniciar_planejamento_turno(
         inicio_pesquisa = time.perf_counter()
         pesquisa_runtime = ns['_pesquisa_contextual_runtime']
         modalidade_pesquisa = str(turno.get('modalidade_geral') or turno.get('modalidade') or '').casefold()
+        pendencia_factual = dict(mente_antes_turno.get('pendencia_atual') or {})
+        continuacao_recomendacao = bool(
+            recomendacao_contextual
+            or (
+                pendencia_factual.get('status') == 'ativa'
+                and (
+                    str(pendencia_factual.get('dominio') or '').casefold()
+                    == 'recomendacao'
+                    or str(pendencia_factual.get('tipo') or '').casefold()
+                    == 'preferencia_recomendacao'
+                )
+            )
+        )
+        pedido_recomendacao = bool(re.search(
+            r'\b(?:recomenda|recomende|recomendar|indica|indique|sugere|sugira)\b',
+            str(texto_cognitivo or ''),
+            flags=re.IGNORECASE,
+        ))
         exige_resposta_factual_agora = bool(
             atualidade_factual.get('depende_atualidade')
             or modalidade_pesquisa in {'pergunta', 'misto'}
             or funcao_atual == 'correcao'
+            or pedido_recomendacao
+            or continuacao_recomendacao
         )
         try:
             if exige_resposta_factual_agora:
-                pesquisa_factual = pesquisa_runtime.pesquisar_contexto_tema(tema_factual)
+                pesquisar_recomendacoes = getattr(
+                    pesquisa_runtime,
+                    'pesquisar_recomendacoes_tema',
+                    None,
+                )
+                if (
+                    (pedido_recomendacao or continuacao_recomendacao)
+                    and callable(pesquisar_recomendacoes)
+                ):
+                    pesquisa_factual = pesquisar_recomendacoes(tema_factual)
+                    if not pesquisa_factual.get('ok'):
+                        pesquisa_factual = pesquisa_runtime.pesquisar_contexto_tema(
+                            tema_factual,
+                        )
+                else:
+                    pesquisa_factual = pesquisa_runtime.pesquisar_contexto_tema(tema_factual)
             else:
                 pesquisa_factual = pesquisa_runtime.obter_contexto_cache(tema_factual)
                 if not pesquisa_factual:
@@ -775,6 +1220,7 @@ def _iniciar_planejamento_turno(
     )
     turno['contrato_fala'] = contrato_fala
     plano['contrato_fala'] = contrato_fala
+    turno = finalizar_especialista_neural_turno(ns, texto_cognitivo, turno)
     atualizacoes_turno = {'ultima_entrada': str(texto or '').strip()[:500], 'ultima_entrada_ts': ns['time'].time(), 'turno_atual': turno, 'plano_turno_atual': plano, 'contrato_fala_atual': contrato_fala, 'identidade_turno_atual': identidade_turno, 'identidade_turno_resumo': ns['_resumo_identidade_turno_mente'](identidade_turno), 'funcao_comunicativa_atual': funcao_comunicativa, 'retrato_turno_atual': retrato_turno, 'entidades_recentes': entidades_recentes, 'especialistas_turno_atual': especialistas, 'assunto_estruturado_atual': assunto_estruturado, 'registro_semantico': registro_semantico, 'fundamentacao_factual_turno': fundamentacao_factual, **limpeza_pergunta_turno}
     if evento_emocional_causal:
         atualizacoes_turno['eventos_emocionais_causais'] = publicar_evento_emocional_causal(
@@ -884,17 +1330,135 @@ def atualizar_planejamento_turno(namespace_getter, fase: str, *, comandos=(), er
     ns['print'](f"🧠 [PLANO:FASE] fase={novo.get('fase')} | comandos={novo.get('comandos') or []} | erros={novo.get('erros') or []}")
     return novo
 
+
+def concluir_planejamento_evento(
+    namespace_getter,
+    turno: Mapping[str, Any],
+    *,
+    resultado: str,
+) -> dict:
+    """Encerra somente o plano ambiental que originou a proposta concluída.
+
+    O compare-and-set pelo id impede que uma conclusão tardia de presença
+    encerre um turno mais novo do usuário ou outro evento concorrente.
+    """
+    ns = namespace_getter()
+    turno_evento = dict(turno or {})
+    plano_id = turno_evento.get('id')
+    if (
+        plano_id in (None, '')
+        or str(turno_evento.get('natureza_entrada') or '') != 'evento'
+    ):
+        return {}
+
+    resultado_evento = str(resultado or 'sem_status').strip()[:80] or 'sem_status'
+    conclusao: dict[str, Any] = {}
+
+    def concluir_se_ainda_for_o_mesmo(mental: dict[str, Any]) -> dict[str, Any]:
+        novo_estado = dict(mental or {})
+        plano_atual = dict(novo_estado.get('plano_turno_atual') or {})
+        if (
+            plano_atual.get('id') != plano_id
+            or str(plano_atual.get('natureza_entrada') or '') != 'evento'
+        ):
+            return novo_estado
+
+        plano_concluido = ns['_atualizar_plano_turno_mente'](
+            plano_atual,
+            fase='evento_concluido',
+            comandos=plano_atual.get('comandos') or (),
+            erros=plano_atual.get('erros') or (),
+            fala=str(plano_atual.get('fala_planejada') or ''),
+        )
+        plano_concluido['resultado_evento'] = resultado_evento
+        novo_estado['plano_turno_atual'] = plano_concluido
+
+        turno_atual = dict(novo_estado.get('turno_atual') or {})
+        if (
+            turno_atual.get('id') == plano_id
+            and str(turno_atual.get('natureza_entrada') or '') == 'evento'
+        ):
+            turno_atual['fase'] = 'evento_concluido'
+            turno_atual['resultado_evento'] = resultado_evento
+            novo_estado['turno_atual'] = turno_atual
+
+        novo_estado['trilha_decisoes_turno'] = ns['_registrar_etapa_turno_mente'](
+            novo_estado.get('trilha_decisoes_turno') or [],
+            plano_concluido,
+            fase='evento_concluido',
+        )
+        conclusao.update(plano_concluido)
+        return novo_estado
+
+    ns['_estado_compartilhado_runtime'].atualizar(
+        'mental',
+        concluir_se_ainda_for_o_mesmo,
+    )
+    if conclusao:
+        ns['print'](
+            '🧠 [PLANO:EVENTO] '
+            f"fase=evento_concluido | resultado={resultado_evento} | "
+            f"plano_id={plano_id}"
+        )
+    return conclusao
+
+
 def verificar_fala_do_turno(namespace_getter, fala: str, *, origem: str='conversa') -> dict:
     ns = namespace_getter()
     mente = ns['_estado_compartilhado_runtime'].mental
+    plano_verificado = dict(mente.get('plano_turno_atual') or {})
     argumentos = {
-        'plano': dict(mente.get('plano_turno_atual') or {}),
+        'plano': plano_verificado,
         'periodo': ns['_contexto_horario_atual'](),
         'ultima_resposta': str(mente.get('ultima_resposta') or ''),
         'origem': origem,
     }
     verificacao = ns['_verificar_fala_turno_mente'](fala, **argumentos)
-    plano = dict(mente.get('plano_turno_atual') or {})
+    problemas_iniciais = set(verificacao.get('problemas') or [])
+    titulos_candidatos = extrair_titulos_citados(fala)
+    pesquisa_runtime = ns.get('_pesquisa_contextual_runtime')
+    montar_fundamentacao = ns.get('_montar_fundamentacao_mente')
+    if (
+        'obra_sem_evidencia' in problemas_iniciais
+        and titulos_candidatos
+        and not list(plano_verificado.get('comandos') or [])
+        and callable(getattr(pesquisa_runtime, 'pesquisar_contexto_tema', None))
+        and callable(montar_fundamentacao)
+    ):
+        titulo_candidato = titulos_candidatos[0]
+        try:
+            pesquisa_candidata = pesquisa_runtime.pesquisar_contexto_tema(
+                titulo_candidato,
+            )
+            fundamentacao_candidata = montar_fundamentacao(
+                titulo_candidato,
+                pesquisa_candidata,
+            )
+        except Exception as erro:
+            fundamentacao_candidata = {}
+            ns['print'](
+                '⚠️ [FUNDAMENTAÇÃO] falha ao verificar título candidato | '
+                f'tipo={type(erro).__name__}'
+            )
+        if fundamentacao_candidata.get('confiavel'):
+            plano_candidato = dict(plano_verificado)
+            plano_candidato['fundamentacao_factual'] = fundamentacao_candidata
+            argumentos['plano'] = plano_candidato
+            verificacao_candidata = ns['_verificar_fala_turno_mente'](
+                fala,
+                **argumentos,
+            )
+            if 'obra_sem_evidencia' not in set(
+                verificacao_candidata.get('problemas') or []
+            ):
+                verificacao = verificacao_candidata
+                plano_verificado = plano_candidato
+                ns['print'](
+                    '🔎 [FUNDAMENTAÇÃO] título candidato confirmado antes da fala | '
+                    f'titulo={titulo_candidato!r} '
+                    f'fonte={fundamentacao_candidata.get("fonte") or "-"}'
+                )
+    plano = dict(plano_verificado)
     plano['fase'] = 'fala_verificada'
     plano['ultima_verificacao'] = dict(verificacao)
     avaliacoes = list(mente.get('avaliacoes_turno') or [])

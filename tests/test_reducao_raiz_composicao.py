@@ -76,7 +76,6 @@ def test_ponte_clipboard_publica_pergunta_na_memoria_compartilhada() -> None:
         area_transferencia=SimpleNamespace(snapshot_passivo=lambda: {}),
         caixa_entrada_getter=lambda: None,
         falar=lambda *_args: None,
-        agendar_fala=lambda *_args, **_kwargs: True,
         clock=lambda: 42.0,
         log=lambda _texto: None,
     )
@@ -110,7 +109,6 @@ def test_recusa_clipboard_silencia_a_mesma_acao_temporariamente() -> None:
         area_transferencia=SimpleNamespace(snapshot_passivo=lambda: {}),
         caixa_entrada_getter=lambda: None,
         falar=lambda fala, *_args: falas.append(fala),
-        agendar_fala=lambda *_args, **_kwargs: True,
         clock=lambda: 100.0,
         log=lambda _texto: None,
     )

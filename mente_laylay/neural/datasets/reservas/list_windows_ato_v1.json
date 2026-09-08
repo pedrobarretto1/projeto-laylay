@@ -1,0 +1,39 @@
+{
+  "versao": 1,
+  "finalidade": "avaliacao_posterior_a_selecao_do_candidato",
+  "origem": "frases_sinteticas_revisadas_manualmente",
+  "treino_permitido": false,
+  "autoriza_execucao": false,
+  "observacoes": [
+    "Reserva criada antes da comparação com complemento; não usada para escolher representação ou limiar.",
+    "Não é amostra independente de usuários: cobre mecanismos conhecidos com redação e entidades novas.",
+    "Depois de consultar os resultados, qualquer ajuste exige outra reserva para confirmação.",
+    "Os rótulos dizem respeito a consultas ativas de janelas, não a permissões de mutação."
+  ],
+  "exemplos": [
+    {"id":"r01","text":"Lay, checa pra mim: o FreeCAD continua funcionando aí?","ato_consulta":true,"dominio_app":true},
+    {"id":"r02","text":"Me tira uma dúvida olhando as janelas: deixei o KeePass aberto?","ato_consulta":true,"dominio_app":true},
+    {"id":"r03","text":"Antes de seguir, confirma o estado do FileZilla pra mim.","ato_consulta":true,"dominio_app":true},
+    {"id":"r04","text":"Quero consultar agora se o Calibre permanece aberto, pode conferir?","ato_consulta":true,"dominio_app":true},
+    {"id":"r05","text":"Me mostra os programas que ficaram abertos depois disso.","ato_consulta":true,"dominio_app":true},
+    {"id":"r06","text":"Preciso da relação de janelas visíveis neste PC.","ato_consulta":true,"dominio_app":true},
+    {"id":"r07","text":"Confirma pra mim quais aplicativos ainda estão em execução.","ato_consulta":true,"dominio_app":true},
+    {"id":"r08","text":"Dá pra consultar se há alguma janela do FreeCAD por aqui?","ato_consulta":true,"dominio_app":true},
+    {"id":"r09","text":"Eu tinha deixado o KeePass aberto, só estou comentando.","ato_consulta":false,"dominio_app":true},
+    {"id":"r10","text":"O FileZilla permanece aberto desde ontem; não precisa conferir.","ato_consulta":false,"dominio_app":true},
+    {"id":"r11","text":"Se o Calibre ficasse aberto a noite inteira, gastaria muita bateria?","ato_consulta":false,"dominio_app":true},
+    {"id":"r12","text":"Supondo que eu abrisse o FreeCAD, sobraria memória para jogar?","ato_consulta":false,"dominio_app":true},
+    {"id":"r13","text":"Reescreve esta pergunta de um jeito educado: o KeePass está aberto?","ato_consulta":false,"dominio_app":true},
+    {"id":"r14","text":"No diálogo fictício, alguém pergunta se o FileZilla está rodando.","ato_consulta":false,"dominio_app":true},
+    {"id":"r15","text":"Não estou pedindo uma consulta ao Calibre; só citei o programa.","ato_consulta":false,"dominio_app":true},
+    {"id":"r16","text":"Esquece o pedido de listar janelas, não consulte agora.","ato_consulta":false,"dominio_app":true},
+    {"id":"r17","text":"A comporta do reservatório permanece aberta?","ato_consulta":true,"dominio_app":false},
+    {"id":"r18","text":"Confere se a solicitação de reembolso segue em aberto.","ato_consulta":true,"dominio_app":false},
+    {"id":"r19","text":"Quais vagas de estágio ainda estão abertas?","ato_consulta":true,"dominio_app":false},
+    {"id":"r20","text":"Me informa se o balcão de atendimento está aberto agora.","ato_consulta":true,"dominio_app":false},
+    {"id":"r21","text":"Imagine que a comporta permanecesse aberta; isso seria perigoso?","ato_consulta":false,"dominio_app":false},
+    {"id":"r22","text":"A solicitação de reembolso segue aberta, estou apenas relatando.","ato_consulta":false,"dominio_app":false},
+    {"id":"r23","text":"Como reformular a pergunta sobre as vagas estarem abertas?","ato_consulta":false,"dominio_app":false},
+    {"id":"r24","text":"Não precisa checar o horário do balcão de atendimento.","ato_consulta":false,"dominio_app":false}
+  ]
+}

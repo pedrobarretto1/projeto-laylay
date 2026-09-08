@@ -7,6 +7,8 @@ llama-server.log*
 
 # Build outputs
 dist/
+tests/
+resultados_testes/
 build/
 _backup_*/
 build_portatil/
@@ -21,6 +23,7 @@ _backup_regressao_118/
 *.sqlite3
 *.pid
 *.log
+
 
 # logs que queremos preservar dos testes da Laylay
 !resultados_testes/**/terminal.log

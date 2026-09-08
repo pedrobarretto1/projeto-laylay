@@ -18,6 +18,18 @@ HTML_RESULTADO_ATUAL = (
     '"simpleText":"3:36"}'
 )
 
+HTML_ORIGINAL_E_COVER = (
+    '"videoId":"5HgExMvlERg",'
+    '"title":{"runs":[{"text":"Glimpse of Us (Piano Cover)"}]},'
+    '"longBylineText":{"runs":[{"text":"Pianella Piano"}]},'
+    '"lengthText":{"simpleText":"3:51"}'
+    '---resultado-seguinte---'
+    '"videoId":"FvOpPeKSf_4",'
+    '"title":{"runs":[{"text":"Joji - Glimpse of Us (Official Video)"}]},'
+    '"longBylineText":{"runs":[{"text":"Joji"}]},'
+    '"lengthText":{"simpleText":"3:54"}'
+)
+
 
 def test_mix_longo_so_e_aceito_quando_foi_pedido() -> None:
     query = "C418 Minecraft relaxing music mix 1 hour"
@@ -50,3 +62,26 @@ def test_extrator_aceita_metadados_extras_do_html_atual_do_youtube() -> None:
         "duration": "3:36",
     }]
     assert resultados[0]["score"] >= 15
+
+
+def test_faixa_original_vence_cover_de_piano_mesmo_quando_cover_aparece_primeiro() -> None:
+    resultados = extrair_resultados_youtube_busca(
+        HTML_ORIGINAL_E_COVER,
+        "glimpse of us",
+        tipo_resultado="faixa",
+    )
+
+    assert resultados[0]["channel"] == "Joji"
+    assert resultados[0]["title"] == "Joji - Glimpse of Us (Official Video)"
+    assert all(item["channel"] != "Pianella Piano" for item in resultados)
+
+
+def test_cover_explicito_continua_sendo_respeitado() -> None:
+    resultados = extrair_resultados_youtube_busca(
+        HTML_ORIGINAL_E_COVER,
+        "glimpse of us piano cover",
+        tipo_resultado="faixa",
+    )
+
+    assert resultados[0]["channel"] == "Pianella Piano"
+    assert "Piano Cover" in resultados[0]["title"]

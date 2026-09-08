@@ -651,9 +651,14 @@ class EstadoContextoRuntime:
 
     def texto_responde_pergunta_aberta(self, texto_usuario: str) -> bool:
         ns = self._namespace()
+        pergunta = self.pergunta_aberta_atual()
+        if str((pergunta or {}).get("proposito") or "") == "preferencia_recomendacao":
+            # A preferência precisa chegar à LLM junto da pergunta anterior;
+            # uma resposta local genérica apagaria justamente o conteúdo útil.
+            return False
         return texto_responde_pergunta_aberta(
             texto_usuario,
-            pergunta_aberta=self.pergunta_aberta_atual(),
+            pergunta_aberta=pergunta,
             normalizar_texto_curto=ns["_normalizar_texto_curto"],
             texto_parece_resposta_curta_a_pergunta=ns[
                 "_texto_parece_resposta_curta_a_pergunta_mente"

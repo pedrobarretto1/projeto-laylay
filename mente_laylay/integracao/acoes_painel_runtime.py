@@ -26,6 +26,12 @@ ACOES_MUSICA_PAINEL = frozenset({
     "volume_set",
     "audio_output_select",
 })
+ACOES_IOT_PAINEL = frozenset({"iot_status", "iot_power", "iot_brightness"})
+ACOES_DIRETAS_PAINEL = frozenset({
+    *ACOES_MUSICA_PAINEL,
+    *ACOES_IOT_PAINEL,
+    "routine_cancel",
+})
 
 
 def _nome_playlist(valor: Any) -> str:
@@ -33,6 +39,11 @@ def _nome_playlist(valor: Any) -> str:
     if not nome or re.search(r"[;&|<>]", nome):
         return ""
     return nome
+
+
+def _identificador_fechado(valor: Any, *, limite: int = 64) -> str:
+    identificador = str(valor or "").strip().casefold()[:limite]
+    return identificador if re.fullmatch(r"[a-z0-9_]+", identificador) else ""
 
 
 def comando_tipado_acao_painel(
@@ -47,14 +58,14 @@ def comando_tipado_acao_painel(
 
     if acao in _ACOES_MIDIA:
         comando = _ACOES_MIDIA[acao]
-        params = {"acao": comando}
+        params = {"acao": comando, "platform": "music"}
         texto = f"controle manual de mídia: {comando}"
         intent = "MEDIA_CONTROL"
     elif acao == "media_toggle":
         comando = str(dados.get("command") or "").strip().casefold()
         if comando not in {"play", "pause"}:
             return None
-        params = {"acao": comando}
+        params = {"acao": comando, "platform": "music"}
         texto = f"controle manual de mídia: {comando}"
         intent = "MEDIA_CONTROL"
     elif acao in {"playlist_play", "playlist_shuffle"}:
@@ -81,6 +92,11 @@ def comando_tipado_acao_painel(
         intent = "VOLUME"
     elif acao == "queue_play":
         item_id = str(dados.get("item_id") or "").strip()
+        origem_fila = str(
+            dados.get("queue_source") or "youtube"
+        ).strip().casefold()
+        if origem_fila not in {"youtube", "laylay_playlist"}:
+            return None
         indice = dados.get("queue_index")
         if not re.fullmatch(r"[A-Za-z0-9_-]{11}", item_id):
             return None
@@ -90,16 +106,65 @@ def comando_tipado_acao_painel(
             indice = int(indice)
         except (TypeError, ValueError):
             return None
-        if not 0 <= indice <= 7:
+        limite = 999 if origem_fila == "laylay_playlist" else 7
+        if not 0 <= indice <= limite:
             return None
         params = {
-            "acao": "queue_select",
+            "acao": (
+                "playlist_queue_select"
+                if origem_fila == "laylay_playlist" else "queue_select"
+            ),
             "queue_item_id": item_id,
             "queue_index": indice,
-            "platform": "youtube",
+            "platform": (
+                "laylay" if origem_fila == "laylay_playlist" else "youtube"
+            ),
         }
         texto = f"controle manual da fila: item {indice + 1}"
         intent = "MEDIA_CONTROL"
+    elif acao == "iot_status":
+        dispositivo = _identificador_fechado(dados.get("device"))
+        if not dispositivo:
+            return None
+        params = {"alvo": dispositivo}
+        texto = f"consulta manual IoT: {dispositivo}"
+        intent = "IOT_STATUS"
+    elif acao == "iot_power":
+        dispositivo = _identificador_fechado(dados.get("device"))
+        estado = str(dados.get("state") or "").strip().casefold()
+        if not dispositivo or estado not in {"on", "off"}:
+            return None
+        comando = "ligar" if estado == "on" else "desligar"
+        params = {"acao": comando, "alvo": dispositivo}
+        texto = f"controle manual IoT: {comando} {dispositivo}"
+        intent = "IOT_CONTROL"
+    elif acao == "iot_brightness":
+        dispositivo = _identificador_fechado(dados.get("device"))
+        valor = dados.get("value")
+        if isinstance(valor, bool):
+            return None
+        try:
+            brilho = int(valor)
+        except (TypeError, ValueError):
+            return None
+        if not dispositivo or not 1 <= brilho <= 100:
+            return None
+        params = {
+            "acao": "ajustar_brilho",
+            "alvo": dispositivo,
+            "valor": brilho,
+        }
+        texto = (
+            f"controle manual IoT: brilho {dispositivo} em {brilho} por cento"
+        )
+        intent = "IOT_CONTROL"
+    elif acao == "routine_cancel":
+        nome = _nome_playlist(dados.get("name"))
+        if not nome:
+            return None
+        params = {"alvo": nome}
+        texto = f"cancelamento manual de rotina: {nome}"
+        intent = "CANCELAR_AGENDAMENTO"
     else:
         return None
 

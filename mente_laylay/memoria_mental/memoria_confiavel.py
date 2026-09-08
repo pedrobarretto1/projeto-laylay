@@ -29,6 +29,119 @@ _SINAIS_EXPLICITOS = re.compile(
     re.IGNORECASE,
 )
 
+_CATEGORIAS_FAVORITAS = {
+    "musica": "música",
+    "faixa": "música",
+    "cancao": "música",
+    "filme": "filme",
+    "livro": "livro",
+    "jogo": "jogo",
+    "serie": "série",
+    "obra": "obra",
+    "personagem": "personagem",
+}
+_CATEGORIAS_FEMININAS = {"música", "série", "obra"}
+
+
+def _categoria_favorita_canonica(valor: Any) -> str:
+    return _CATEGORIAS_FAVORITAS.get(normalizar_texto(valor), "")
+
+
+def categoria_referencia_preferencia_pessoal(
+    texto: Any,
+    *,
+    categoria: str = "",
+) -> str:
+    """Reconhece uma referência possessiva, nunca um título literal.
+
+    ``minha música favorita`` é referência pessoal; ``Música Favorita``
+    pode ser o nome real de uma faixa e, sem o possessivo, permanece literal.
+    """
+    normalizado = normalizar_texto(texto)
+    if not normalizado:
+        return ""
+    achado = re.fullmatch(
+        r"(?:(?:a|o) )?(?:minha|meu) "
+        r"(?P<categoria>musica|faixa|cancao|filme|livro|jogo|serie|obra|personagem) "
+        r"(?:favorita|favorito|preferida|preferido)",
+        normalizado,
+    )
+    if not achado:
+        achado = re.fullmatch(
+            r"(?:(?:a|o) )?(?P<categoria>musica|faixa|cancao|filme|livro|jogo|serie|obra|personagem) "
+            r"que eu mais (?:gosto|curto|amo)",
+            normalizado,
+        )
+    if not achado:
+        return ""
+    encontrada = _categoria_favorita_canonica(achado.group("categoria"))
+    esperada = _categoria_favorita_canonica(categoria) if categoria else ""
+    if esperada and encontrada != esperada:
+        return ""
+    return encontrada
+
+
+def resolver_preferencia_pessoal_confirmada(
+    memoria_sqlite: Any,
+    referencia: Any,
+    *,
+    categoria: str = "",
+) -> Dict[str, Any] | None:
+    """Resolve um favorito somente a partir da memória durável confirmada."""
+    categoria_referida = categoria_referencia_preferencia_pessoal(
+        referencia,
+        categoria=categoria,
+    )
+    if not categoria_referida:
+        return None
+    try:
+        itens = memoria_sqlite.listar_aprendizados_semanticos(limit=300)
+    except Exception:
+        return None
+
+    candidatos: List[Dict[str, Any]] = []
+    valores: set[str] = set()
+    for item_original in itens or []:
+        if not isinstance(item_original, dict):
+            continue
+        item = dict(item_original)
+        if (
+            normalizar_texto(item.get("tipo")) != "preferencia"
+            or normalizar_texto(item.get("status")) != "ativo"
+            or not bool(item.get("confirmado_usuario"))
+        ):
+            continue
+        gatilho = normalizar_texto(item.get("gatilho"))
+        achado = re.search(
+            r"\b(musica|faixa|cancao|filme|livro|jogo|serie|obra|personagem)\b"
+            r"(?:\s+\w+){0,2}\s+\b(?:favorita|favorito|preferida|preferido)s?\b",
+            gatilho,
+        )
+        categoria_item = (
+            _categoria_favorita_canonica(achado.group(1)) if achado else ""
+        )
+        if categoria_item != categoria_referida:
+            continue
+        valor = re.sub(r"\s+", " ", str(item.get("valor") or "")).strip()
+        if not valor:
+            continue
+        candidatos.append(item)
+        valores.add(normalizar_texto(valor))
+
+    # Mais de um valor ativo para o mesmo favorito é ambíguo. A memória não
+    # escolhe silenciosamente qual deles autoriza o alvo operacional.
+    if len(valores) != 1 or not candidatos:
+        return None
+    escolhido = candidatos[0]
+    return {
+        "valor": re.sub(r"\s+", " ", str(escolhido.get("valor") or "")).strip(),
+        "categoria": categoria_referida,
+        "gatilho": str(escolhido.get("gatilho") or "").strip(),
+        "chave_semantica": str(escolhido.get("chave_semantica") or "").strip(),
+        "origem": str(escolhido.get("origem") or "").strip(),
+        "confirmado_usuario": True,
+    }
+
 
 def extrair_aprendizados_pessoais_explicitos(texto_usuario: str) -> List[Dict[str, Any]]:
     """Extrai preferências e fatos estáveis inequívocos da própria pessoa.
@@ -86,6 +199,31 @@ def extrair_aprendizados_pessoais_explicitos(texto_usuario: str) -> List[Dict[st
             "regra": regra,
             "confianca": 0.98,
         })
+
+    favorito_singular = re.search(
+        r"(?:^|[,;]\s*|\be\s+)(?:(?:a|o)\s+)?(?:minha|meu)\s+"
+        r"(?P<categoria>m[uú]sica|faixa|can[cç][aã]o|filme|livro|jogo|s[eé]rie|obra|personagem)\s+"
+        r"(?:favorita|favorito|preferida|preferido)\s+(?:e|é|eh|è)\s+"
+        r"(?P<valor>.+?)"
+        r"(?=\s*,?\s+(?:mas|e\s+(?:eu\s+)?(?:moro|trabalho|estudo|prefiro))\b|[.!?;]|$)",
+        bruto,
+        flags=re.IGNORECASE,
+    )
+    if favorito_singular:
+        categoria = _categoria_favorita_canonica(favorito_singular.group("categoria"))
+        valor = re.sub(
+            r"\s+", " ", str(favorito_singular.group("valor") or "")
+        ).strip(" ,.;:-")
+        if categoria and valor and len(valor) <= 100 and len(valor.split()) <= 14:
+            adjetivo = "favorita" if categoria in _CATEGORIAS_FEMININAS else "favorito"
+            pronome = "sua" if categoria in _CATEGORIAS_FEMININAS else "seu"
+            resultados.append({
+                "tipo": "preferencia",
+                "gatilho": f"{categoria} {adjetivo}",
+                "valor": valor,
+                "regra": f"{pronome} {categoria} {adjetivo} é {valor}",
+                "confianca": 0.99,
+            })
 
     padroes = (
         # "GTA 5 ..., um dos meus jogos favoritos"

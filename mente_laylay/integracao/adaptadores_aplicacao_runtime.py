@@ -161,6 +161,26 @@ class AdaptadoresAplicacaoRuntime:
             if subetapa_da_entrada_atual
             else texto_turno
         )
+        especialista_neural = ns.get("_especialista_neural_comandos_runtime")
+        if especialista_neural is not None:
+            try:
+                especialista_neural.observar_resultado(
+                    {
+                        "intent": contrato_plano.intent,
+                        "params": dict(contrato_plano.params),
+                        "status": contrato_plano.status,
+                        "confirmado": contrato_plano.confirmado,
+                    },
+                    texto_identidade or texto,
+                    contrato_plano.executou,
+                    origem=contrato_plano.origem or origem,
+                    status=contrato_plano.status,
+                )
+            except Exception as erro:
+                ns["print"](
+                    "⚠️ [NEURAL:COMANDOS] receipt isolado: "
+                    f"{type(erro).__name__}"
+                )
         ns["_registrar_resultado_execucao_base"](
             resultado, texto, executou, origem=origem, status=status,
         )
@@ -373,15 +393,32 @@ class AdaptadoresAplicacaoRuntime:
                 else {},
                 intent_correta=intent,
                 alvo_correto=alvo,
-                texto_execucao=texto,
+                texto_execucao=texto_identidade or texto,
             )
             if correcao.get("status") == "confirmada_por_execucao":
+                # A intenção correta vem do ciclo de correção; slots e ação
+                # vêm do receipt que efetivamente concluiu o pedido.
+                correcao["params_corretos"] = dict(params)
+                especialista_neural = ns.get("_especialista_neural_comandos_runtime")
+                if especialista_neural is not None:
+                    try:
+                        especialista_neural.observar_correcao(correcao)
+                    except Exception as erro_neural:
+                        ns["print"](
+                            "⚠️ [NEURAL:COMANDOS] correção isolada: "
+                            f"{type(erro_neural).__name__}"
+                        )
                 historico = list(mente_atual.get("historico_correcoes_interpretacao") or [])[-29:]
                 historico.append(correcao)
                 estado.atualizar_campos(
                     "mental",
                     correcao_interpretacao_pendente={},
                     historico_correcoes_interpretacao=historico,
+                )
+            elif correcao.get("status") == "descartada_execucao_nao_correlacionada":
+                estado.atualizar_campos(
+                    "mental",
+                    correcao_interpretacao_pendente={},
                 )
         except Exception as erro:
             ns["print"](f"⚠️ [PLANO] não consegui anexar resultado real: {erro}")

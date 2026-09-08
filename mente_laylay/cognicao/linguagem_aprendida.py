@@ -10,6 +10,9 @@ from typing import Any
 from mente_laylay.cognicao.normalizacao_linguagem import (
     corrigir_erros_portugues_operacionais,
 )
+from mente_laylay.memoria_mental.memoria_confiavel import (
+    resolver_preferencia_pessoal_confirmada,
+)
 
 
 APELIDOS_STOPWORDS = {
@@ -139,6 +142,18 @@ class LinguagemAprendidaRuntime:
             "aproximacao_altera_argumentos": False,
             "autoriza_execucao": False,
         }
+
+    def resolver_referencia_pessoal(
+        self,
+        referencia: str,
+        categoria: str = "",
+    ) -> dict[str, Any] | None:
+        """Consulta o alvo lembrado sem transformar memória em permissão."""
+        return resolver_preferencia_pessoal_confirmada(
+            self.memoria_sqlite,
+            referencia,
+            categoria=categoria,
+        )
 
     def extrair_apelido_ensinavel(self, texto: str):
         bruto = str(texto or "").strip()

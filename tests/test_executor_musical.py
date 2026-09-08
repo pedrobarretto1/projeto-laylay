@@ -6,6 +6,7 @@ from mente_laylay.autonomia.executor_musical import (
     executar_intencao_musical,
 )
 from mente_laylay.autonomia.roteador_intencao import executar_intencao
+from mente_laylay.autonomia.porteiro_acoes import autorizar_acao_pratica
 from tests.fakes_navegador import NavegadorOperacoesFake
 
 
@@ -97,6 +98,87 @@ def test_music_search_com_link_direto_nao_repassa_query_ao_navegador() -> None:
             "detalhe": "confirmacao_legada",
         },
     )]
+
+
+def test_music_search_modal_infinitivo_atravessa_porteiro_e_executor() -> None:
+    eventos: list[tuple] = []
+    aberturas: list[tuple] = []
+    url = "https://www.youtube.com/watch?v=glimpse01"
+
+    despacho = executar_intencao_musical(
+        "MUSIC_SEARCH",
+        {"query": "glimpse of us"},
+        "pode colocar glimpse of us",
+        {
+            "_autonomia_permite_execucao_musical": (
+                lambda intent, texto, confirmado=False: autorizar_acao_pratica(
+                    intent,
+                    texto,
+                    {},
+                    confirmado=confirmado,
+                )["permitido"]
+            ),
+            "_buscar_primeiro_video_youtube": lambda _query: url,
+        },
+        _dependencias(
+            eventos,
+            abrir=lambda alvo, **kwargs: aberturas.append((alvo, kwargs)) or True,
+        ),
+    )
+
+    assert despacho == ResultadoDespacho.concluido()
+    assert aberturas == [(url, {"query": ""})]
+    assert eventos == [(
+        "resultado", "musica_reproduzindo", {
+            "executou": True,
+            "confirmado": True,
+            "detalhe": "confirmacao_legada",
+        },
+    )]
+
+
+def test_fala_musical_limpa_metadados_sem_apagar_identidade_do_receipt() -> None:
+    eventos: list[tuple] = []
+    falas: list[tuple] = []
+    titulo_bruto = (
+        "Shiny - Vazio Constante | Bojack, Rick & Clancy | "
+        "Ft. @AniRap & @AnnyTHN"
+    )
+    params = {"query": "vazio constante shiny sz"}
+
+    despacho = executar_intencao_musical(
+        "MUSIC_SEARCH",
+        params,
+        "coloca vazio constante shiny_sz",
+        {
+            "_autonomia_permite_execucao_musical": lambda *_a, **_k: True,
+            "_resolver_primeiro_video_youtube": lambda *_a, **_k: {
+                "url": "https://www.youtube.com/watch?v=JTq0Ut6XJzs",
+                "title": titulo_bruto,
+                "channel": "Shiny_sz",
+            },
+        },
+        DependenciasExecutorMusical(
+            marcar_resultado=lambda status, **kwargs: eventos.append(
+                (status, kwargs)
+            ),
+            abrir_url_musical=lambda *_a, **_k: {
+                "ok": True,
+                "confirmado": True,
+                "status": "playing_confirmed",
+            },
+            falar_por_status=lambda status, fala, **kwargs: falas.append(
+                (status, fala, kwargs)
+            ),
+        ),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(True)
+    assert params["alvo_executado"] == titulo_bruto
+    assert params["alvo_apresentado"] == "Shiny - Vazio Constante"
+    assert falas[0][2]["alvo"] == "Shiny - Vazio Constante"
+    assert "Bojack" not in falas[0][1]
+    assert "@AniRap" not in falas[0][1]
 
 
 def test_music_search_video_aberto_nao_e_reportado_como_falha() -> None:

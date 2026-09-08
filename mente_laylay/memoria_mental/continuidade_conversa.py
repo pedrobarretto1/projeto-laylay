@@ -215,7 +215,13 @@ def detectar_comentario_resultado_operacional(
         "deu certo", "não deu", "nao deu", "estranho", "errado", "melhor", "pior",
         "puxou", "isso aí", "isso ai", "resultado",
     )
-    if not any(sinal in t for sinal in sinais):
+    # Os sinais descrevem palavras ou locuções completas. Busca por substring
+    # fazia ``parece`` casar dentro de ``aparece`` e convertia uma observação
+    # metalinguística em reação ao último efeito operacional.
+    if not any(
+        re.search(rf"(?<!\w){re.escape(sinal)}(?!\w)", t)
+        for sinal in sinais
+    ):
         return None
 
     params = dict(mente.get("ultima_acao_params") or {})

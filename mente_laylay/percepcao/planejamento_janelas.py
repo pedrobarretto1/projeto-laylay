@@ -130,6 +130,25 @@ def normalizar_alvo_ambiente(nome: str) -> str:
     bruto = re.sub(r"\s+", " ", bruto).strip()
     return MAPA_NOMES_JANELA.get(bruto, bruto)
 
+
+_QUALIFICADOR_APP_RE = re.compile(
+    r"^(?:janela\s+(?:do|da|de)|app|aplicativo|programa|editor|cliente|navegador)\s+",
+)
+
+
+def variantes_alvo_aplicativo(nome: str) -> tuple[str, ...]:
+    """Preserva o alvo e retira somente um qualificador de app já reconhecido.
+
+    Não remove nomes de conteúdo, não resolve referentes nem concede autoridade.
+    Catálogo e resolução de observações compartilham esta mesma interpretação.
+    """
+    normalizado = normalizar_alvo_ambiente(nome)
+    if not normalizado:
+        return ()
+    base = _QUALIFICADOR_APP_RE.sub("", normalizado).strip()
+    base = normalizar_alvo_ambiente(base)
+    return tuple(dict.fromkeys((normalizado, base)))
+
 def _titulo_janela(janela: Any) -> str:
     try:
         return str(getattr(janela, "title", "") or "").strip()
@@ -349,4 +368,3 @@ def planejar_organizacao_janelas(
         "_janela_esquerda": ranking[0].get("janela") if ranking else None,
         "_janela_direita": ranking[1].get("janela") if len(ranking) > 1 else None,
     }
-

@@ -126,6 +126,39 @@ def test_porta_prioritaria_responde_sem_chamar_executor_ou_llm() -> None:
     assert execucoes == []
 
 
+def test_exemplo_citado_sobre_consulta_nao_vira_pergunta_de_capacidade() -> None:
+    texto = 'Se eu disser "o Opera está aberto?", isso é uma consulta.'
+    mapa = MapaHabilidadesRuntime()
+    turno = classificar_modalidade_turno(texto)
+
+    assert mapa.responder_pergunta_capacidade(texto, turno=turno) == ""
+
+
+def test_porta_de_capacidade_nao_consome_exemplo_citado() -> None:
+    texto = 'Se eu disser "o Opera está aberto?", isso é uma consulta.'
+    mapa = MapaHabilidadesRuntime()
+    falas: list[str] = []
+    estado = SimpleNamespace(
+        mental={"turno_atual": classificar_modalidade_turno(texto)},
+    )
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: {
+            "_estado_compartilhado_runtime": estado,
+            "_responder_pergunta_capacidade_local": (
+                lambda fala: mapa.responder_pergunta_capacidade(
+                    fala,
+                    turno=estado.mental["turno_atual"],
+                )
+            ),
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+        },
+        loop_getter=lambda: None,
+    )
+
+    assert runtime.processar_prioritarios(texto) is False
+    assert falas == []
+
+
 @pytest.mark.parametrize(
     "texto",
     (

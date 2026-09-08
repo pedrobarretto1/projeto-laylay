@@ -1,0 +1,276 @@
+{
+  "versao": 1,
+  "fonte": "mente_laylay/neural/datasets/candidatos/list_windows_onda_v2.jsonl",
+  "fonte_sha256": "85a0006d39b1e75a6f24a9089be7a8973c7c8ca214698bcc909f5cbb9ac66fb7",
+  "origem": "REVISAO_MANUAL",
+  "treino_permitido": false,
+  "autoriza_execucao": false,
+  "escopo": "Triagem textual dos 705 registros: 19 pendências contextuais selecionadas; os outros 686 não estão aprovados para treino. Revisão assistida por IA, não validada por anotador humano independente.",
+  "decisoes": [
+    {
+      "indice": 74,
+      "texto_sha256": "b540ed925f8c08a56158c5ced6129db52e23b1ceb719fa9ea1e3d125d0c48144",
+      "motivo": "Nome admite aplicativo, conteúdo/interface ou objeto físico. Falta referente contextual para fixar domínio de aplicativo; pedido de consulta está explícito.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 80,
+      "texto_sha256": "364e2ca9ca817a1602636cca72d206f0cac33561c87d4e70a8072e021c357f1f",
+      "motivo": "Nome admite aplicativo, conteúdo/interface ou objeto físico. Falta referente contextual para fixar domínio de aplicativo; pedido de consulta está explícito.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 82,
+      "texto_sha256": "f281fc4eeeab6059328274cac5a6332f90eb38a4078fe7213bab2bb621356607",
+      "motivo": "Nome admite aplicativo, conteúdo/interface ou objeto físico. Falta referente contextual para fixar domínio de aplicativo; pedido de consulta está explícito.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 85,
+      "texto_sha256": "6c278bca92eb5b637a43bb2e969ee1dd711200e9f3ca30917c2ee2c3d1864a31",
+      "motivo": "Nome admite aplicativo, conteúdo/interface ou objeto físico. Falta referente contextual para fixar domínio de aplicativo; pedido de consulta está explícito.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 93,
+      "texto_sha256": "fca76ae33cbf8bfec2e35be79be4a4f30bea18a3eafee3a7f4103e375c3e95eb",
+      "motivo": "Nome admite aplicativo, conteúdo/interface ou objeto físico. Falta referente contextual para fixar domínio de aplicativo; pedido de consulta está explícito.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 97,
+      "texto_sha256": "0c77ca8b338e63f55fcd98511db57ce8429ff344ae3f0eaa380eb6cad51f989f",
+      "motivo": "Nome admite aplicativo, conteúdo/interface ou objeto físico. Falta referente contextual para fixar domínio de aplicativo; pedido de consulta está explícito.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 103,
+      "texto_sha256": "e17c6b87408b35f3d35c6816d9c9ef48273892ae02729cfeb5089d3054c59b8a",
+      "motivo": "Nome admite aplicativo, conteúdo/interface ou objeto físico. Falta referente contextual para fixar domínio de aplicativo; pedido de consulta está explícito.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 105,
+      "texto_sha256": "14cc842970366fcb4a694a46e4506738bffaa3602372364cfd623568f69f3231",
+      "motivo": "Nome admite aplicativo, conteúdo/interface ou objeto físico. Falta referente contextual para fixar domínio de aplicativo; pedido de consulta está explícito.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 109,
+      "texto_sha256": "64c5d4f2e08c052a26b8eef1f5fb4867cbe0f216de98a1cad158934972c69904",
+      "motivo": "Nome admite aplicativo, conteúdo/interface ou objeto físico. Falta referente contextual para fixar domínio de aplicativo; pedido de consulta está explícito.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 116,
+      "texto_sha256": "da07c030b4f91e8591c5e34439bf197f982a4f249a1829c9b946192384922dc4",
+      "motivo": "Nome admite aplicativo, conteúdo/interface ou objeto físico. Falta referente contextual para fixar domínio de aplicativo; pedido de consulta está explícito.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 177,
+      "texto_sha256": "d1310832594f6e817a1ff711d18cd3eff1d5244464b1be89eab603cfbbdf7121",
+      "motivo": "Pode perguntar sobre capacidade ou pedir identificação agora. Falta contexto pragmático para fixar ato_consulta; domínio de aplicativos está explícito.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "extension_factors.ato_consulta"
+      ],
+      "fatores_textuais": {
+        "dominio_app": true
+      }
+    },
+    {
+      "indice": 178,
+      "texto_sha256": "22b9db9048e89d61e3591e7fb9dbfe5299e22659988d5181b9fa167c6d6ca599",
+      "motivo": "Pode perguntar sobre capacidade ou pedir identificação agora. Falta contexto pragmático para fixar ato_consulta; domínio de aplicativos está explícito.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "extension_factors.ato_consulta"
+      ],
+      "fatores_textuais": {
+        "dominio_app": true
+      }
+    },
+    {
+      "indice": 179,
+      "texto_sha256": "91b43ec2855202f57902c45742a82d32ae905dce769d8b16a7aa85c1b4973c4b",
+      "motivo": "Pode perguntar sobre capacidade ou pedir identificação agora. Falta contexto pragmático para fixar ato_consulta; domínio de aplicativos está explícito.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "extension_factors.ato_consulta"
+      ],
+      "fatores_textuais": {
+        "dominio_app": true
+      }
+    },
+    {
+      "indice": 370,
+      "texto_sha256": "500858bdff22e51b796411b21ed05e7c4ad493e6a097c6e8184eb00fc68d8d15",
+      "motivo": "Referente não fornecido. A frase pede consulta, mas não comprova domínio de aplicativo ou alvo.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 371,
+      "texto_sha256": "c20f71a79ee32b35af03615d43bfb34a4f29e28548563bb2516b9499b5bf8a5e",
+      "motivo": "Referente não fornecido. A frase pede consulta, mas não comprova domínio de aplicativo ou alvo.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 372,
+      "texto_sha256": "3878a5a3282bf60381adb9dcffe5600487b9d8bb75ee1aca70fde180bf06aed2",
+      "motivo": "Referente não fornecido. A frase pede consulta, mas não comprova domínio de aplicativo ou alvo.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 373,
+      "texto_sha256": "ac979ec5bf15d9116e9f9cd11458bfcce78b3df12c9dfdd9a3544be72720a130",
+      "motivo": "Referente não fornecido. A frase pede consulta, mas não comprova domínio de aplicativo ou alvo.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 374,
+      "texto_sha256": "443839ae79d36f2f7897ab2cc2d94bfcf083d6cc8d4f08ee6f01d59fbb6af679",
+      "motivo": "Referente não fornecido. A frase pede consulta, mas não comprova domínio de aplicativo ou alvo.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 375,
+      "texto_sha256": "dd4156fae85c143dd11c71366bb55581ab843fbda691418f83ca2980dffbb4fd",
+      "motivo": "Referente não fornecido. A frase pede consulta, mas não comprova domínio de aplicativo ou alvo.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    }
+  ],
+  "revisao_anterior": "list_windows_contexto_v1.json",
+  "autoria": "Astra: anotação explícita após leitura, sem classificador automático; REVISAO_MANUAL descreve o formato legado, não aprovação humana."
+}

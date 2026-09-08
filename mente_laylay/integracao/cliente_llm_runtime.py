@@ -88,12 +88,20 @@ class ClienteLLMRuntime:
             len(str(item.get("content") or ""))
             for item in mensagens if isinstance(item, dict)
         )
-        if (
+        em_jogo = bool(self.modo_jogo_ativo())
+        rota_remota_jogo = bool(
+            endpoint_local
+            and em_jogo
+            and requisicao.permitir_conversa_modo_jogo
+            and callable(self.conversa_jogo_remota)
+        )
+        interacao_bloqueia_modelo_local = bool(
             endpoint_local
             and not requisicao.prioridade_interativa
             and not requisicao.permitir_durante_interacao
             and bool(self.interacao_ativa())
-        ):
+        )
+        if interacao_bloqueia_modelo_local and not rota_remota_jogo:
             self.log("🧠 [IA] tarefa secundária adiada enquanto a conversa está ativa.")
             texto = conteudo_fallback_llm_local(data)
             return ResultadoModelo(texto=texto, sucesso=False, rota="adiada")
@@ -116,13 +124,7 @@ class ClienteLLMRuntime:
                     rota="orcamento_bloqueado",
                 )
 
-        em_jogo = bool(self.modo_jogo_ativo())
-        if (
-            endpoint_local
-            and em_jogo
-            and requisicao.permitir_conversa_modo_jogo
-            and callable(self.conversa_jogo_remota)
-        ):
+        if rota_remota_jogo:
             inicio_remoto = time.perf_counter()
             resposta_remota = str(self.conversa_jogo_remota(data) or "").strip()
             if resposta_remota:
@@ -153,6 +155,20 @@ class ClienteLLMRuntime:
                         FALHA_LLM_OCUPADA, False, "resposta_obsoleta",
                     )
                 return ResultadoModelo(resposta_remota, True, "jogo_remoto")
+            if interacao_bloqueia_modelo_local:
+                if self.orcamento_turno is not None:
+                    self.orcamento_turno.concluir_chamada(
+                        decisao_orcamento, sucesso=False,
+                    )
+                self.log(
+                    "🧠 [IA] rota remota do jogo indisponível; "
+                    "tarefa secundária adiada sem acordar o modelo local."
+                )
+                return ResultadoModelo(
+                    texto=conteudo_fallback_llm_local(data),
+                    sucesso=False,
+                    rota="adiada",
+                )
 
         if requisicao.permitir_conversa_modo_jogo:
             data["_laylay_conversa_modo_jogo"] = True

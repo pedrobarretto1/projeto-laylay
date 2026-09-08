@@ -115,7 +115,7 @@ class AmbienteNavegacaoRuntime:
         ns = self._ns()
         return ns["_listar_programas_abertos_mente"](ns["gw"], ns["psutil"])
 
-    def observar_programas(self) -> dict[str, list[str]]:
+    def observar_programas(self) -> dict[str, Any]:
         ns = self._ns()
         observar = ns.get("_observar_programas_abertos_mente")
         if not callable(observar):
@@ -170,10 +170,8 @@ class AmbienteNavegacaoRuntime:
                 "programa_aberto": False, "programa_em_foco": False,
                 "aba_aberta": False, "preferido": "desconhecido", "url": "", "titulo": "",
             }
-        try:
-            programas = self.listar_programas()
-        except Exception:
-            programas = []
+        # Falha não pode virar lista vazia e, depois, prova de ausência.
+        programas = self.listar_programas()
         try:
             abas = self.listar_abas()
         except Exception:

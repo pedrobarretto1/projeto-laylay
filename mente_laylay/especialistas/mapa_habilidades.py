@@ -13,6 +13,7 @@ import unicodedata
 from threading import RLock
 from typing import Any, Callable, Mapping
 
+from mente_laylay.cognicao.normalizacao_linguagem import texto_e_metalinguistico
 from mente_laylay.especialistas.capacidades import CAPACIDADES, consultar_capacidade
 from mente_laylay.personalidade.fala_capacidades import (
     falar_capacidades_gerais,
@@ -630,6 +631,11 @@ class MapaHabilidadesRuntime:
         """Responde sobre capacidade real sem executar a ação mencionada."""
         t = _normalizar(texto)
         dados_contexto = dict(contexto or {})
+        # O conteúdo de uma citação pode mencionar qualquer habilidade sem
+        # transformar a citação em pergunta sobre o catálogo. A moldura da
+        # fala é dona dessa decisão; o mapa não reinterpreta o trecho citado.
+        if texto_e_metalinguistico(texto):
+            return ""
         if _texto_pede_motivo_curto(t):
             intent_anterior = str(
                 dados_contexto.get("ultima_acao_intent") or ""

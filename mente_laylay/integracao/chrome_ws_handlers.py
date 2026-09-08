@@ -302,7 +302,14 @@ def handle_player_event(
             player["volume_percent"] = round(volume_percent)
         if isinstance(tab_id, int):
             player["tab_id"] = tab_id
-            playlist_state["tab_id"] = tab_id
+            tab_fila = playlist_state.get("tab_id")
+            fila_tem_ownership = bool(
+                str(playlist_state.get("name") or "").strip()
+                and isinstance(tab_fila, int)
+                and not isinstance(tab_fila, bool)
+            )
+            if not fila_tem_ownership or tab_id == tab_fila:
+                playlist_state["tab_id"] = tab_id
         if "muted" in data:
             player["muted"] = data.get("muted") is True
         if "repeatEnabled" in data:
@@ -336,9 +343,43 @@ def handle_player_event(
     if not playlist_state.get("name"):
         return
 
+    # A aba da fila é definida na entrega confirmada da faixa. Um evento de
+    # outra aba é apenas percepção concorrente: não pode trocar ownership,
+    # entrar no ledger de fins nem mover o cursor da playlist.
+    tab_proprietaria = playlist_state.get("tab_id")
+    if (
+        isinstance(tab_proprietaria, int)
+        and not isinstance(tab_proprietaria, bool)
+        and isinstance(tab_id, int)
+        and not isinstance(tab_id, bool)
+        and tab_id != tab_proprietaria
+    ):
+        print(
+            "🎧 [AUTO-NEXT] fim de outra aba ignorado "
+            f"| esperada={tab_proprietaria} observada={tab_id}"
+        )
+        return
+
+    clean_url = yt_clean_url(url) if callable(yt_clean_url) else str(url or "")
+    url_esperada = str(playlist_state.get("last_url") or "")
+    clean_url_esperada = (
+        yt_clean_url(url_esperada)
+        if url_esperada and callable(yt_clean_url)
+        else url_esperada
+    )
+    if (
+        not playlist_state.get("user_intervened")
+        and clean_url_esperada
+        and clean_url_esperada != clean_url
+    ):
+        print(
+            "🎧 [AUTO-NEXT] fim fora da reprodução da fila ignorado "
+            f"| esperada={clean_url_esperada} observada={clean_url or '-'}"
+        )
+        return
+
     now = time.time()
     event_id = str(data.get("eventId") or "").strip()
-    clean_url = yt_clean_url(url) if callable(yt_clean_url) else str(url or "")
     dedup_key = event_id or f"ended:{tab_id}:{clean_url}:{duration}"
     vistos = playlist_state.setdefault("ended_event_ids", [])
     if not isinstance(vistos, list):
@@ -369,15 +410,61 @@ def handle_player_event(
             _falar_fim_playlist()
         return
 
-    if str(playlist_state.get("last_url") or "") and str(playlist_state.get("last_url") or "") != clean_url:
-        return
-
     print("[AUTO-NEXT] Música anterior finalizada. Carregando próxima...")
     ok_next = bool(playlist_avancar_proxima()) if callable(playlist_avancar_proxima) else False
     if not ok_next and playlist_state.get("last_advance_status") == "fim":
         _falar_fim_playlist()
     elif not ok_next:
         print("⚠️ [AUTO-NEXT] não consegui abrir a próxima faixa; a playlist continua ativa")
+
+
+def handle_music_meter(
+    data: Dict[str, Any],
+    *,
+    playlist_state: Dict[str, Any],
+) -> Dict[str, Any] | None:
+    """Aceita energia apenas do player observado que possui a reprodução."""
+    player = playlist_state.get("player")
+    if not isinstance(player, dict) or player.get("state") != "playing":
+        return None
+    tab_id = data.get("tabId")
+    if (
+        not isinstance(tab_id, int)
+        or isinstance(tab_id, bool)
+        or tab_id != player.get("tab_id")
+    ):
+        return None
+    video_id = _video_id_youtube(data.get("videoId"))
+    video_owner = _video_id_youtube(player.get("video_id"))
+    if not video_id or not video_owner or video_id != video_owner:
+        return None
+    bruto = data.get("levels")
+    if not isinstance(bruto, list) or len(bruto) != 3:
+        return None
+    levels: list[float] = []
+    for valor in bruto:
+        if isinstance(valor, bool):
+            return None
+        try:
+            levels.append(round(max(0.0, min(1.0, float(valor))), 4))
+        except (TypeError, ValueError):
+            return None
+    try:
+        energy = round(
+            max(0.0, min(1.0, float(data.get("energy") or 0.0))), 4,
+        )
+    except (TypeError, ValueError):
+        return None
+    medidor = {
+        "tab_id": tab_id,
+        "video_id": video_id,
+        "levels": levels,
+        "energy": energy,
+        # O relógio local representa o recebimento. O timestamp da extensão
+        # não pode prolongar frescor nem adquirir autoridade sobre o player.
+        "observed_at": time.time(),
+    }
+    return medidor
 
 
 def montar_linha_user_context(data: Dict[str, Any]) -> tuple[str, str, Any, str, str]:
@@ -557,6 +644,7 @@ def dispatch_event(data: Dict[str, Any], handlers: Dict[str, Callable[[Dict[str,
         "ACTIVE_TAB_URL": "active_tab_url",
         "YOUTUBE_DATA": "youtube_data",
         "PLAYER_EVENT": "player_event",
+        "MUSIC_METER": "music_meter",
         "USER_CONTEXT": "user_context",
         "PAGE_CONTENT": "page_content",
         "COMMAND_RESULT": "command_result",
@@ -586,6 +674,7 @@ class ChromeWsEventosRuntime:
         aplicar_user_updates: Callable[[Dict[str, Any]], Any],
         action_context_getter: Callable[[], Dict[str, Any]],
         aplicar_action_updates: Callable[[Dict[str, Any]], Any],
+        music_meter_publisher: Callable[[Dict[str, Any]], Any] | None = None,
     ) -> None:
         self.solicitacoes = solicitacoes
         self.playlist_state = playlist_state
@@ -596,6 +685,7 @@ class ChromeWsEventosRuntime:
         self.aplicar_user_updates = aplicar_user_updates
         self.action_context_getter = action_context_getter
         self.aplicar_action_updates = aplicar_action_updates
+        self.music_meter_publisher = music_meter_publisher
 
     def _user_context(self, data: Dict[str, Any]) -> None:
         updates = handle_user_context(data, self.user_context_getter() or {})
@@ -613,6 +703,14 @@ class ChromeWsEventosRuntime:
         with self.solicitacoes.pendencias_lock:
             handle_command_result(data, self.solicitacoes.pendencias_comandos)
         return self._action(data)
+
+    def _music_meter(self, data: Dict[str, Any]) -> bool:
+        medidor = handle_music_meter(data, playlist_state=self.playlist_state)
+        if medidor is None:
+            return False
+        if callable(self.music_meter_publisher):
+            self.music_meter_publisher(dict(medidor))
+        return True
 
     def dispatch(self, data: Dict[str, Any]) -> Any:
         def protegido(func: Callable[[Dict[str, Any]], Any]) -> Callable[[Dict[str, Any]], Any]:
@@ -633,6 +731,7 @@ class ChromeWsEventosRuntime:
                 playlist_avancar_proxima=self.playlist_avancar_proxima,
                 falar_com_lipsync=self.falar_com_lipsync,
             ),
+            "music_meter": self._music_meter,
             "user_context": self._user_context,
             "page_content": protegido(lambda item: handle_page_content(item, self.solicitacoes.pendencias_conteudo_pagina)),
             "command_result": self._command_result,

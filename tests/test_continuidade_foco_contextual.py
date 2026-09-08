@@ -54,6 +54,20 @@ def test_pedido_explicito_nao_vira_comentario_sobre_resultado():
     ) is None
 
 
+def test_substring_de_sinal_nao_sequestra_fala_metalinguistica():
+    estado = {
+        "ultima_acao_intent": "LIST_WINDOWS",
+        "ultima_acao_alvo": "janelas visíveis",
+        "ultima_acao_params": {"alvo": "janelas visíveis"},
+        "ultima_acao_ts": time.time(),
+    }
+
+    assert detectar_comentario_resultado_operacional(
+        "A palavra aberto aparece aqui, mas não consulte nada.",
+        estado,
+    ) is None
+
+
 def test_pre_fluxo_responde_comentario_e_suspende_assunto_antigo():
     falas = []
     suspensoes = []

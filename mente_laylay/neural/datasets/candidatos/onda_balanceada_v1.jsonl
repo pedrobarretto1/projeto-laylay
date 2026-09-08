@@ -1,0 +1,74 @@
+{"text":"inicia a calculadora","intent":"APP_OPEN","is_command":true,"negated":false,"action":"open","family":"app_iniciar_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"app"}
+{"text":"não coloque aplicativo nenhum na tela","intent":"APP_OPEN","is_command":true,"negated":true,"action":"open","family":"app_abrir_negado_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"app"}
+{"text":"finaliza a calculadora","intent":"CLOSE_APP","is_command":true,"negated":false,"action":"close","family":"app_fechar_direto_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"app"}
+{"text":"pode encerrar o discord","intent":"CLOSE_APP","is_command":true,"negated":false,"action":"close","family":"app_fechar_polido_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"app"}
+{"text":"não encerre o navegador","intent":"CLOSE_APP","is_command":true,"negated":true,"action":"close","family":"app_fechar_negado_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"app"}
+{"text":"encerra só a guia atual","intent":"CLOSE_TAB","is_command":true,"negated":false,"action":"close","family":"aba_fechar_especifica_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"pode remover a guia selecionada","intent":"CLOSE_TAB","is_command":true,"negated":false,"action":"close","family":"aba_fechar_polida_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"não encerre a página atual","intent":"CLOSE_TAB","is_command":true,"negated":true,"action":"close","family":"aba_fechar_negado_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"abre e lê o relatório para mim","intent":"FILE_READ","is_command":true,"negated":false,"action":"read","family":"arquivo_ler_composto_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"files"}
+{"text":"me explica o texto do arquivo atual","intent":"FILE_READ","is_command":true,"negated":false,"action":"read","family":"arquivo_ler_indireto_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"files"}
+{"text":"não leia o documento selecionado","intent":"FILE_READ","is_command":true,"negated":true,"action":"read","family":"arquivo_ler_negado_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"files"}
+{"text":"ache na pasta o currículo","intent":"FILE_SEARCH","is_command":true,"negated":false,"action":"search","family":"arquivo_buscar_objeto_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"files"}
+{"text":"onde está o arquivo de notas","intent":"FILE_SEARCH","is_command":true,"negated":false,"action":"search","family":"arquivo_buscar_pergunta_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"files"}
+{"text":"não busque nenhum arquivo agora","intent":"FILE_SEARCH","is_command":true,"negated":true,"action":"search","family":"arquivo_buscar_negado_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"files"}
+{"text":"desative a tomada do ventilador","intent":"IOT_CONTROL","is_command":true,"negated":false,"action":"off","family":"iot_desligar_formal_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"iot"}
+{"text":"pode deixar a iluminação apagada","intent":"IOT_CONTROL","is_command":true,"negated":false,"action":"off","family":"iot_desligar_estado_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"iot"}
+{"text":"ative a tomada do ventilador","intent":"IOT_CONTROL","is_command":true,"negated":false,"action":"on","family":"iot_ligar_formal_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"iot"}
+{"text":"quero a iluminação ligada no quarto","intent":"IOT_CONTROL","is_command":true,"negated":false,"action":"on","family":"iot_ligar_desejo_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"iot"}
+{"text":"não acenda a luz agora","intent":"IOT_CONTROL","is_command":true,"negated":true,"action":"on","family":"iot_ligar_negado_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"iot"}
+{"text":"exibe a relação das guias do navegador","intent":"LIST_TABS","is_command":true,"negated":false,"action":"list","family":"abas_listar_formal_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"quero ver todas as guias","intent":"LIST_TABS","is_command":true,"negated":false,"action":"list","family":"abas_listar_desejo_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"não liste as abas agora","intent":"LIST_TABS","is_command":true,"negated":true,"action":"list","family":"abas_listar_negado_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"não mostre as páginas abertas","intent":"LIST_TABS","is_command":true,"negated":true,"action":"list","family":"abas_listar_negado_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"avance uma música","intent":"MEDIA_CONTROL","is_command":true,"negated":false,"action":"next","family":"midia_proxima_direta_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"troca para a faixa seguinte","intent":"MEDIA_CONTROL","is_command":true,"negated":false,"action":"next","family":"midia_proxima_indireta_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"quero ouvir a próxima","intent":"MEDIA_CONTROL","is_command":true,"negated":false,"action":"next","family":"midia_proxima_desejo_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"não pule esta música","intent":"MEDIA_CONTROL","is_command":true,"negated":true,"action":"next","family":"midia_proxima_negada_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"não avance para a próxima faixa","intent":"MEDIA_CONTROL","is_command":true,"negated":true,"action":"next","family":"midia_proxima_negada_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"interrompe a reprodução por enquanto","intent":"MEDIA_CONTROL","is_command":true,"negated":false,"action":"pause","family":"midia_pausa_temporal_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"dá uma pausa no áudio","intent":"MEDIA_CONTROL","is_command":true,"negated":false,"action":"pause","family":"midia_pausa_coloquial_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"não interrompa o que está tocando","intent":"MEDIA_CONTROL","is_command":true,"negated":true,"action":"pause","family":"midia_pausa_negada_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"começa a tocar","intent":"MEDIA_CONTROL","is_command":true,"negated":false,"action":"play","family":"midia_play_direto_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"retoma o áudio","intent":"MEDIA_CONTROL","is_command":true,"negated":false,"action":"play","family":"midia_play_retomada_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"volta a reproduzir a música","intent":"MEDIA_CONTROL","is_command":true,"negated":false,"action":"play","family":"midia_play_indireto_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"não dê play agora","intent":"MEDIA_CONTROL","is_command":true,"negated":true,"action":"play","family":"midia_play_negado_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"não retome a reprodução","intent":"MEDIA_CONTROL","is_command":true,"negated":true,"action":"play","family":"midia_play_negado_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"não busque nenhuma canção agora","intent":"MUSIC_SEARCH","is_command":true,"negated":true,"action":"search","family":"musica_buscar_negada_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"acesse a página do python","intent":"OPEN_URL","is_command":true,"negated":false,"action":"open","family":"url_abrir_destino_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"navegue até o portal da universidade","intent":"OPEN_URL","is_command":true,"negated":false,"action":"open","family":"url_navegar_destino_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"não abra esse endereço","intent":"OPEN_URL","is_command":true,"negated":true,"action":"open","family":"url_abrir_negada_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"não faça busca nenhuma agora","intent":"SEARCH","is_command":true,"negated":true,"action":"search","family":"busca_web_negada_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"browser"}
+{"text":"eleva um pouco o áudio","intent":"VOLUME","is_command":true,"negated":false,"action":"up","family":"volume_up_formal_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"audio"}
+{"text":"quero o som mais forte","intent":"VOLUME","is_command":true,"negated":false,"action":"up","family":"volume_up_desejo_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"audio"}
+{"text":"não aumente o volume agora","intent":"VOLUME","is_command":true,"negated":true,"action":"up","family":"volume_up_negado_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"audio"}
+{"text":"não consulte o clima agora","intent":"WEATHER","is_command":true,"negated":true,"action":"query","family":"clima_negado_direto_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"weather"}
+{"text":"não veja se vai chover","intent":"WEATHER","is_command":true,"negated":true,"action":"query","family":"clima_negado_chuva_balanceado_v1","source":"MANUAL_PARAPHRASE","domain":"weather"}
+{"text":"a calculadora abriu sozinha","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"app_evento_automatico_balanceado_v1","source":"HARD_NEGATIVE","domain":"app"}
+{"text":"uso o discord todos os dias","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"app_habito_balanceado_v1","source":"HARD_NEGATIVE","domain":"app"}
+{"text":"talvez eu instale outro navegador","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"app_hipotese_balanceado_v1","source":"HARD_NEGATIVE","domain":"app"}
+{"text":"ele pediu para abrir o editor","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"app_discurso_reportado_balanceado_v1","source":"HARD_NEGATIVE","domain":"app"}
+{"text":"essa aba tem informações úteis","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"browser_comentario_balanceado_v1","source":"HARD_NEGATIVE","domain":"browser"}
+{"text":"ontem fechei uma página sem querer","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"browser_relato_passado_balanceado_v1","source":"HARD_NEGATIVE","domain":"browser"}
+{"text":"o site do github mudou de aparência","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"browser_site_comentario_balanceado_v1","source":"HARD_NEGATIVE","domain":"browser"}
+{"text":"ela escreveu abre o link no tutorial","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"browser_discurso_reportado_balanceado_v1","source":"HARD_NEGATIVE","domain":"browser"}
+{"text":"meu relatório ficou salvo na pasta","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"arquivo_estado_balanceado_v1","source":"HARD_NEGATIVE","domain":"files"}
+{"text":"ontem procurei o currículo","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"arquivo_busca_passada_balanceado_v1","source":"HARD_NEGATIVE","domain":"files"}
+{"text":"terminei a leitura das notas ontem","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"arquivo_leitura_passada_balanceado_v1","source":"HARD_NEGATIVE","domain":"files"}
+{"text":"o documento tem três páginas","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"arquivo_descricao_balanceado_v1","source":"HARD_NEGATIVE","domain":"files"}
+{"text":"ele disse procura a planilha","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"arquivo_discurso_reportado_balanceado_v1","source":"HARD_NEGATIVE","domain":"files"}
+{"text":"a lâmpada acendeu sozinha","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"iot_evento_automatico_balanceado_v1","source":"HARD_NEGATIVE","domain":"iot"}
+{"text":"costumo deixar o ventilador desligado","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"iot_habito_balanceado_v1","source":"HARD_NEGATIVE","domain":"iot"}
+{"text":"a luz parece forte hoje","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"iot_comentario_estado_balanceado_v1","source":"HARD_NEGATIVE","domain":"iot"}
+{"text":"amanhã vou ligar a tomada","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"iot_plano_futuro_balanceado_v1","source":"HARD_NEGATIVE","domain":"iot"}
+{"text":"ela falou apaga a luz","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"iot_discurso_reportado_balanceado_v1","source":"HARD_NEGATIVE","domain":"iot"}
+{"text":"essa faixa termina em dois minutos","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_descricao_balanceado_v1","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"ontem pausei a música","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_acao_passada_balanceado_v1","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"gosto de pular introduções longas","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_preferencia_balanceado_v1","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"a reprodução continuou sozinha","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_evento_automatico_balanceado_v1","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"ele escreveu toca a próxima","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_discurso_reportado_balanceado_v1","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"a tempestade molhou a rua","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"clima_relato_balanceado_v1","source":"HARD_NEGATIVE","domain":"weather"}
+{"text":"gosto de dias ensolarados","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"clima_preferencia_balanceado_v1","source":"HARD_NEGATIVE","domain":"weather"}
+{"text":"o aplicativo mostrou vinte graus","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"clima_resultado_passado_balanceado_v1","source":"HARD_NEGATIVE","domain":"weather"}
+{"text":"amanhã talvez faça frio","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"clima_hipotese_balanceado_v1","source":"HARD_NEGATIVE","domain":"weather"}
+{"text":"ela perguntou qual era a previsão","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"clima_discurso_reportado_balanceado_v1","source":"HARD_NEGATIVE","domain":"weather"}

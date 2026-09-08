@@ -13,9 +13,21 @@ def _mensagens_minimas(payload: Mapping[str, Any]) -> list[dict[str, str]]:
     originais = [item for item in list(payload.get("messages") or []) if isinstance(item, dict)]
     sistemas = [item for item in originais if str(item.get("role") or "").casefold() == "system"]
     conversa = [item for item in originais if str(item.get("role") or "").casefold() != "system"]
+    possui_evento_cognitivo = any(
+        "EVENTO COGNITIVO ESTRUTURADO" in str(item.get("content") or "")
+        for item in sistemas
+    )
     resultado: list[dict[str, str]] = []
     if sistemas:
-        resultado.append({"role": "system", "content": str(sistemas[0].get("content") or "")[:6000]})
+        partes_sistema = [str(sistemas[0].get("content") or "").strip()[:6000]]
+        partes_sistema.extend(
+            str(item.get("content") or "").strip()[:3000]
+            for item in sistemas[1:][-2:]
+            if str(item.get("content") or "").strip()
+        )
+        conteudo_sistema = "\n\n".join(parte for parte in partes_sistema if parte)
+        if conteudo_sistema:
+            resultado.append({"role": "system", "content": conteudo_sistema})
     for item in conversa[-6:]:
         papel = str(item.get("role") or "user").casefold()
         if papel not in {"user", "assistant"}:
@@ -23,6 +35,19 @@ def _mensagens_minimas(payload: Mapping[str, Any]) -> list[dict[str, str]]:
         conteudo = re.sub(r"\s+", " ", str(item.get("content") or "")).strip()[:1400]
         if conteudo:
             resultado.append({"role": papel, "content": conteudo})
+    if possui_evento_cognitivo:
+        # A API da Groq exige uma consulta conversacional mesmo quando a origem
+        # canônica é um evento de sistema. Esta ponte existe apenas no payload
+        # efêmero do provedor: não entra no histórico e não concede autoridade.
+        resultado.append({
+            "role": "user",
+            "content": (
+                "SOLICITAÇÃO TÉCNICA INTERNA DO ORQUESTRADOR: gere a resposta "
+                "ao EVENTO COGNITIVO ESTRUTURADO acima. Isto não é fala, pedido, "
+                "confirmação ou autorização de Pedro; não execute ações. "
+                "Responda somente no formato solicitado pelo sistema."
+            ),
+        })
     return resultado
 
 

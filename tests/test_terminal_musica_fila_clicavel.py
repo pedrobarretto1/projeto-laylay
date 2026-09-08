@@ -25,7 +25,8 @@ def test_fila_publica_preserva_so_identificador_youtube_valido() -> None:
     publico = sanitizar_dashboard_estado({
         "generated_at": 1_000,
         "music": {
-            "title": "Atual", "state": "playing", "freshness": "fresh",
+            "title": "Atual", "video_id": ITEM_ID,
+            "state": "playing", "freshness": "fresh",
             "observed_at": 1_000, "queue_freshness": "fresh",
             "queue_observed_at": 1_000, "queue_source": "youtube",
             "queue": [
@@ -36,6 +37,7 @@ def test_fila_publica_preserva_so_identificador_youtube_valido() -> None:
     })
 
     assert publico["music"]["queue"][0]["item_id"] == ITEM_ID
+    assert publico["music"]["video_id"] == ITEM_ID
     assert "item_id" not in publico["music"]["queue"][1]
     assert "segredo" not in json.dumps(publico)
 
@@ -51,6 +53,19 @@ def test_controle_tipado_da_fila_e_fechado_e_nao_usa_llm() -> None:
             "_execucao_silenciosa": True, "origem": "terminal_panel",
         },
     }, "controle manual da fila: item 3")
+    assert comando_tipado_acao_painel(
+        "queue_play", {
+            "item_id": ITEM_ID, "queue_index": 12,
+            "queue_source": "laylay_playlist",
+        },
+    ) == ({
+        "intent": "MEDIA_CONTROL",
+        "params": {
+            "acao": "playlist_queue_select", "queue_item_id": ITEM_ID,
+            "queue_index": 12, "platform": "laylay",
+            "_execucao_silenciosa": True, "origem": "terminal_panel",
+        },
+    }, "controle manual da fila: item 13")
     assert comando_tipado_acao_painel(
         "queue_play", {"item_id": "invalido", "queue_index": 0},
     ) is None
@@ -68,6 +83,20 @@ def test_ponte_rejeita_item_ou_posicao_adulterados() -> None:
         token="x", autenticado=True,
     )
     assert valido["payload"] == {"item_id": ITEM_ID, "queue_index": 0}
+    interno = validar_mensagem_cliente(
+        {
+            **base,
+            "payload": {
+                "item_id": ITEM_ID, "queue_index": 12,
+                "queue_source": "laylay_playlist",
+            },
+        },
+        token="x", autenticado=True,
+    )
+    assert interno["payload"] == {
+        "item_id": ITEM_ID, "queue_index": 12,
+        "queue_source": "laylay_playlist",
+    }
 
     for payload in (
         {"item_id": "invalido", "queue_index": 0},
@@ -114,17 +143,24 @@ def test_clique_na_faixa_emite_acao_direta_com_identidade_observada(
     botao = pagina.fila_linhas[0]["widget"]
     assert botao.isEnabled()
     assert "Próxima observada" in botao.accessibleName()
+    assert pagina.fila_linhas[0]["number"].isVisible()
+    assert pagina.fila_linhas[0]["number"].text() == "1"
+    assert pagina.fila_linhas[0]["equalizer"].isHidden()
+    assert botao.property("queueTop") is False
     botao.click()
 
     assert pedidos == [(
         "queue_play", "toca Próxima observada da fila",
-        {"item_id": ITEM_ID, "queue_index": 0},
+        {
+            "item_id": ITEM_ID, "queue_index": 0,
+            "queue_source": "youtube",
+        },
     )]
     pagina.close()
     app.processEvents()
 
 
-def test_fila_interna_ou_sem_identidade_nao_ganha_execucao_visual(
+def test_fila_interna_valida_e_clicavel_e_item_sem_identidade_continua_bloqueado(
     monkeypatch,
 ) -> None:
     pytest.importorskip("PySide6")
@@ -134,17 +170,33 @@ def test_fila_interna_ou_sem_identidade_nao_ganha_execucao_visual(
 
     app = QApplication.instance() or QApplication([])
     pagina = PaginaMusicaM1()
+    pedidos: list[tuple[str, str, dict]] = []
+    pagina.acao_fila_solicitada.connect(
+        lambda acao, texto, dados: pedidos.append((acao, texto, dict(dados))),
+    )
     pagina.definir_conectada(True)
     pagina.aplicar_dashboard({
         "music": {
             "state": "playing", "freshness": "fresh", "observed_at": 1_000,
             "controls_available": True, "queue_freshness": "fresh",
             "queue_observed_at": 1_000, "queue_source": "laylay_playlist",
-            "queue": [{"title": "Apenas estimada", "item_id": ITEM_ID}],
+            "queue": [
+                {"title": "Próxima interna", "item_id": ITEM_ID},
+                {"title": "Sem identidade"},
+            ],
         }, "system": {}, "routines": {},
     })
 
-    assert not pagina.fila_linhas[0]["widget"].isEnabled()
+    assert pagina.fila_linhas[0]["widget"].isEnabled()
+    assert not pagina.fila_linhas[1]["widget"].isEnabled()
+    pagina.fila_linhas[0]["widget"].click()
+    assert pedidos == [(
+        "queue_play", "toca Próxima interna da fila",
+        {
+            "item_id": ITEM_ID, "queue_index": 0,
+            "queue_source": "laylay_playlist",
+        },
+    )]
     pagina.close()
     app.processEvents()
 
@@ -182,6 +234,41 @@ def test_executor_seleciona_item_exato_e_preserva_confirmacao() -> None:
     assert resultados[-1][1]["confirmado"] is True
 
 
+def test_executor_seleciona_item_da_fila_interna_sem_usar_dom_do_youtube() -> None:
+    chamadas: list[tuple[str, int]] = []
+    resultados: list[tuple] = []
+
+    class MusicaOperacoes:
+        @staticmethod
+        def estado():
+            return {"playlist_ativa": "Rock"}
+
+        @staticmethod
+        def selecionar_faixa_fila(video_id, indice):
+            chamadas.append((video_id, indice))
+            return {
+                "ok": True, "status": "queue_track_started",
+                "video_id": video_id, "confirmed": True,
+            }
+
+    ok = executar_media_control(
+        {
+            "acao": "playlist_queue_select", "queue_item_id": ITEM_ID,
+            "queue_index": 4, "platform": "laylay",
+        },
+        "controle manual da fila: item 5", "local",
+        {"_registro_musica_operacoes_runtime": MusicaOperacoes()},
+        marcar_resultado=lambda *args, **kwargs: resultados.append((args, kwargs)),
+        falar_por_status=lambda *_args, **_kwargs: None,
+        ctx_fala=dict,
+    )
+
+    assert ok is True
+    assert chamadas == [(ITEM_ID, 4)]
+    assert resultados[-1][0][:2] == ("midia_playlist_queue_select", True)
+    assert resultados[-1][1]["confirmado"] is True
+
+
 def test_navegador_e_extensao_transportam_selecao_sem_url_livre() -> None:
     class Comandos:
         def __init__(self) -> None:
@@ -215,4 +302,4 @@ def test_navegador_e_extensao_transportam_selecao_sem_url_livre() -> None:
     assert 'cmd === "queue_select"' in script
     assert 'status: "stale_context"' in script
     assert "observedId !== requestedId" in script
-    assert manifesto["version"] == "2.7"
+    assert manifesto["version"] == "2.8"

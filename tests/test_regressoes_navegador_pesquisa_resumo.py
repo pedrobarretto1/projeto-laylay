@@ -297,6 +297,56 @@ def test_red_turnos_123_126_usam_recibo_real_da_pagina_aberta(
     )]
 
 
+def test_resumo_repete_captura_quando_pagina_ainda_nao_tem_dom() -> None:
+    respostas = [
+        {
+            "success": False,
+            "error": "A página ainda não possui conteúdo",
+        },
+        {
+            "success": True,
+            "data": {
+                "url": "https://docs.python.org/3/",
+                "title": "Documentação Python",
+                "content": (
+                    "Python é uma linguagem de programação de alto nível. "
+                    "A documentação descreve a linguagem e sua biblioteca. "
+                    "Ela também reúne tutoriais e referências para usuários."
+                ),
+            },
+        },
+    ]
+    falas: list[str] = []
+    esperas: list[float] = []
+
+    async def solicitar() -> dict:
+        return respostas.pop(0)
+
+    async def aguardar(tempo: float) -> None:
+        esperas.append(tempo)
+
+    from mente_laylay.cognicao.resumo_conteudo import resumir_pagina_ou_video
+
+    resultado = asyncio.run(resumir_pagina_ou_video(
+        websocket_disponivel=lambda: True,
+        solicitar_conteudo=solicitar,
+        falar=lambda fala, *_args: falas.append(fala),
+        enviar_mensagem=lambda *_args, **_kwargs: (
+            "Python é uma linguagem de alto nível com documentação oficial."
+        ),
+        limpar_resposta=lambda texto: texto,
+        remover_prefixo_exec=lambda texto: texto,
+        transcript_api=object(),
+        aguardar=aguardar,
+        log=lambda *_args: None,
+    ))
+
+    assert resultado is True
+    assert esperas == [0.35]
+    assert not respostas
+    assert falas and "Python" in falas[-1]
+
+
 @pytest.mark.parametrize(
     "contrato",
     (

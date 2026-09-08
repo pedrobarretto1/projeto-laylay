@@ -6,6 +6,7 @@ from typing import Any, Mapping
 
 from mente_laylay.cognicao.orquestrador_turno_runtime import (
     atualizar_planejamento_turno,
+    concluir_planejamento_evento,
     iniciar_planejamento_turno,
     registrar_leitura_semantica_principal,
     verificar_fala_do_turno,
@@ -26,6 +27,7 @@ DEPENDENCIAS_ORQUESTRACAO_TURNO = (
     "_construir_retrato_turno_mente",
     "_contexto_horario_atual",
     "_estado_compartilhado_runtime",
+    "_especialista_neural_comandos_runtime",
     "_evidencia_habilidades_turno_mente",
     "_extrair_correcao_duravel_mente",
     "_extrair_tema_fundamentacao_mente",
@@ -68,14 +70,31 @@ class ComposicaoTurnoRuntime:
     def _snapshot(self) -> dict[str, Any]:
         return dict(self._servicos)
 
-    def iniciar(self, texto: str, *, origem: str = "desconhecida") -> dict:
-        return iniciar_planejamento_turno(self._snapshot, texto, origem=origem)
+    def iniciar(
+        self,
+        entrada: str | Mapping[str, Any],
+        *,
+        origem: str = "desconhecida",
+    ) -> dict:
+        return iniciar_planejamento_turno(self._snapshot, entrada, origem=origem)
 
     def atualizar(
         self, fase: str, *, comandos=(), erros=(), fala: str = "",
     ) -> dict:
         return atualizar_planejamento_turno(
             self._snapshot, fase, comandos=comandos, erros=erros, fala=fala,
+        )
+
+    def concluir_evento(
+        self,
+        turno: Mapping[str, Any],
+        *,
+        resultado: str,
+    ) -> dict:
+        return concluir_planejamento_evento(
+            self._snapshot,
+            turno,
+            resultado=resultado,
         )
 
     def verificar_fala(self, fala: str, *, origem: str = "conversa") -> dict:

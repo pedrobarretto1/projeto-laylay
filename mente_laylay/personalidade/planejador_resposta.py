@@ -69,8 +69,16 @@ def classificar_grau_compromisso(texto: str) -> str:
 
 def _fala_compativel(fala: str, classe: str) -> bool:
     base = str(fala or "").casefold()
-    sinais_falha = ("não consegui", "nao consegui", "falhou", "não respondeu", "nao respondeu", "não achei", "nao achei", "não executei", "nao executei")
-    sinais_sucesso = ("consegui", "pronto", "feito", "abri", "fechei", "liguei", "desliguei", "criei", "apaguei", "confirmei")
+    sinais_falha = (
+        "não consegui", "nao consegui", "falhou", "não respondeu",
+        "nao respondeu", "não achei", "nao achei", "não executei",
+        "nao executei", "não está tocando", "nao esta tocando",
+    )
+    sinais_sucesso = (
+        "consegui", "pronto", "feito", "abri", "fechei", "liguei",
+        "desliguei", "criei", "apaguei", "confirmei", "está tocando",
+        "esta tocando",
+    )
     sinais_certeza_execucao = (*sinais_sucesso, "pausada", "pausei", "pulando", "troquei", "coloquei", "executei")
     if classe == "falha" and any(s in base for s in sinais_sucesso) and not any(s in base for s in sinais_falha):
         return False
@@ -143,6 +151,8 @@ def _ancora_resultado(resultado: ResultadoAcao, classe: str) -> str:
     if classe == "sem_acao":
         if status in {"ja_aberto_focado", "site_ja_aberto_focado"}:
             return f"{objeto.capitalize()} já está aberto e em foco; não repeti a abertura."
+        if status == "app_ja_aberto_observado":
+            return f"{objeto.capitalize()} já está aberto; não repeti a abertura."
         if status == "ja_estava_ligado":
             return f"{objeto.capitalize()} já está ligado; não repeti o comando."
         if status == "ja_estava_desligado":
@@ -186,7 +196,7 @@ def _garantir_resultado_explicito(fala: str, resultado: ResultadoAcao, classe: s
             "agendei", "cancelei", "está ligado", "esta ligado", "está desligado", "esta desligado",
             "já estava", "ja estava", "já está", "ja esta", "já ficou", "pronto",
             "aberto", "em foco", "trouxe", "puxei pra frente", "encontrei",
-            "procurei", "listei",
+            "procurei", "listei", "está tocando", "esta tocando",
         ),
         "falha": (
             "não consegui", "nao consegui", "não foi", "nao foi", "falhou", "não respondeu",

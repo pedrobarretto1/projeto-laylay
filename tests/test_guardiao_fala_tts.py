@@ -2,8 +2,18 @@ from __future__ import annotations
 
 import threading
 
+import pytest
+
 from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
-from mente_laylay.cognicao.plano_turno import verificar_fala_turno
+from mente_laylay.cognicao.contrato_fala import construir_contrato_semantico_fala
+from mente_laylay.cognicao.fundamentacao_factual import classificar_atualidade_factual
+from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+from mente_laylay.cognicao.plano_turno import planejar_turno, verificar_fala_turno
+from mente_laylay.cognicao.qualidade_comunicacao import contingencia_comunicacao
+from mente_laylay.cognicao.plano_turno import atualizar_plano_turno
+from mente_laylay.cognicao.validacao_contrato_fala import (
+    validar_aderencia_contrato_fala,
+)
 from mente_laylay.personalidade.oralidade import preparar_texto_para_tts
 from mente_laylay.personalidade.proporcao_resposta import (
     ajustar_proporcao_resposta,
@@ -108,6 +118,491 @@ def test_estado_confirmado_por_executor_e_preservado() -> None:
 
     assert resultado["problemas"] == []
     assert resultado["fala"] == fala
+
+
+@pytest.mark.parametrize(
+    ("texto_usuario", "fala"),
+    (
+        ("A porta está aberta?", "Não, a porta não está aberta."),
+        ("A inscrição continua aberta?", "Sim, está aberta até o fim do dia."),
+        ("Meu chamado ainda está aberto?", "Sim, seu chamado está ativo."),
+        ("O arquivo relatório está aberto?", "O arquivo relatório está aberto."),
+        ("A aba da documentação está aberta?", "A aba está aberta."),
+        ("O menu do jogo está aberto?", "O menu do jogo está aberto."),
+    ),
+)
+def test_estado_atual_sem_leitura_nao_pode_receber_sim_ou_nao_inventado(
+    texto_usuario: str,
+    fala: str,
+) -> None:
+    resultado = validar_alegacoes_da_fala(
+        fala,
+        plano={"texto_usuario": texto_usuario, "comandos": []},
+        origem="resposta_ia",
+    )
+
+    assert "estado_atual_sem_evidencia" in resultado["problemas"]
+    assert "não tenho uma leitura atual" in resultado["fala"].casefold()
+
+
+def test_estado_atual_confirmado_por_habilidade_e_preservado() -> None:
+    fala = "O Opera não está entre os programas abertos agora."
+    resultado = validar_alegacoes_da_fala(
+        fala,
+        plano={
+            "texto_usuario": "O Opera está aberto?",
+            "comandos": [{
+                "intent": "LIST_WINDOWS",
+                "status": "estado_app_consultado",
+                "executou": True,
+                "confirmado": True,
+                "confirmacao_oferecida": "retorno_dados",
+            }],
+        },
+        origem="resposta_ia",
+    )
+
+    assert resultado["problemas"] == []
+    assert resultado["fala"] == fala
+
+
+def test_verificador_final_substitui_certeza_sem_leitura_atual() -> None:
+    resultado = verificar_fala_turno(
+        "Sim, a inscrição continua aberta até o fim do dia.",
+        plano={
+            "texto_usuario": "A inscrição continua aberta?",
+            "dominio": "conversa",
+            "comandos": [],
+        },
+        origem="resposta_ia",
+    )
+
+    assert "estado_atual_sem_evidencia" in resultado["problemas"]
+    assert "não tenho uma leitura atual" in resultado["fala"].casefold()
+
+
+def test_contrato_de_estado_nao_observado_admite_incerteza_sem_negar_habilidade() -> None:
+    texto = "A aba da documentação está aberta?"
+    atualidade = classificar_atualidade_factual(texto)
+    contrato = construir_contrato_semantico_fala(
+        texto,
+        plano={
+            "resposta_esperada": "responder ao conteúdo atual",
+            "permite_pergunta": True,
+            "atualidade_factual": atualidade,
+            "fundamentacao_factual": {},
+        },
+        mente={},
+    )
+
+    assert contrato["roteiro_concreto"]["estrategia"] == (
+        "estado_observavel_sem_evidencia"
+    )
+
+    negacao_de_habilidade = validar_aderencia_contrato_fala(
+        texto,
+        "Não tenho acesso às suas abas.",
+        contrato_fala=contrato,
+    )
+    incerteza_do_turno = validar_aderencia_contrato_fala(
+        texto,
+        "Ainda não consultei suas abas neste turno.",
+        contrato_fala=contrato,
+    )
+    incerteza_que_depois_nega_habilidade = validar_aderencia_contrato_fala(
+        texto,
+        (
+            "Não tenho uma leitura atual desse estado. "
+            "Não tenho acesso direto às suas abas."
+        ),
+        contrato_fala=contrato,
+    )
+    incerteza_que_depois_diz_nao_conseguir_ver = validar_aderencia_contrato_fala(
+        texto,
+        (
+            "Não tenho uma leitura atual desse estado. "
+            "Eu não consigo ver o que está acontecendo nas suas abas."
+        ),
+        contrato_fala=contrato,
+    )
+
+    assert "estado_observavel_sem_incerteza" in negacao_de_habilidade["problemas"]
+    assert negacao_de_habilidade["aceita"] is False
+    assert incerteza_do_turno["aceita"] is True
+    assert "estado_observavel_negou_habilidade" in (
+        incerteza_que_depois_nega_habilidade["problemas"]
+    )
+    assert incerteza_que_depois_nega_habilidade["aceita"] is False
+    assert "estado_observavel_negou_habilidade" in (
+        incerteza_que_depois_diz_nao_conseguir_ver["problemas"]
+    )
+    assert incerteza_que_depois_diz_nao_conseguir_ver["aceita"] is False
+
+    fala_segura = contingencia_comunicacao(
+        texto,
+        contrato_reparo=contrato["roteiro_concreto"],
+    )
+    assert "leitura atual" in fala_segura.casefold()
+    assert "não tenho acesso" not in fala_segura.casefold()
+
+
+def test_estado_nao_observado_nao_herda_entidade_de_resposta_anterior() -> None:
+    texto = "A inscrição continua aberta?"
+    atualidade = classificar_atualidade_factual(texto)
+    falas_recentes = [
+        "O Opera não está entre os programas abertos agora.",
+        "O Opera talvez esteja aberto.",
+    ]
+    contrato = construir_contrato_semantico_fala(
+        texto,
+        plano={
+            "resposta_esperada": "responder ao conteúdo atual",
+            "permite_pergunta": True,
+            "atualidade_factual": atualidade,
+            "fundamentacao_factual": {},
+        },
+        mente={},
+        falas_recentes=falas_recentes,
+    )
+
+    assert contrato["roteiro_concreto"]["estrategia"] == (
+        "estado_observavel_sem_evidencia"
+    )
+    assert contrato["respostas_recentes_evitar"] == falas_recentes
+
+    resultado = validar_aderencia_contrato_fala(
+        texto,
+        (
+            "Ainda não tenho uma leitura atual desse estado para responder com "
+            "segurança. Fico com a ideia de que o Opera talvez esteja aberto."
+        ),
+        contrato_fala=contrato,
+    )
+
+    assert "estado_observavel_herdou_entidade_antiga" in resultado["problemas"]
+    assert resultado["aceita"] is False
+
+
+def test_estado_nao_observado_pode_repetir_entidade_presente_na_fala_atual() -> None:
+    texto = "O Opera está aberto?"
+    contrato = construir_contrato_semantico_fala(
+        texto,
+        plano={
+            "resposta_esperada": "responder ao conteúdo atual",
+            "permite_pergunta": True,
+            "atualidade_factual": classificar_atualidade_factual(texto),
+            "fundamentacao_factual": {},
+        },
+        mente={},
+        falas_recentes=("O Opera talvez esteja aberto.",),
+    )
+
+    resultado = validar_aderencia_contrato_fala(
+        texto,
+        "Ainda não consultei o Opera neste turno.",
+        contrato_fala=contrato,
+    )
+
+    assert "estado_observavel_herdou_entidade_antiga" not in resultado["problemas"]
+    assert resultado["aceita"] is True
+
+
+def test_negacao_de_consulta_reconhece_nao_solicitacao_sem_inventar_estado() -> None:
+    casos = (
+        (
+            "Nem precisa verificar se a Calculadora está aberta.",
+            "recusa",
+            "A Calculadora é um conceito, então não tem como estar aberta.",
+            "Entendi, não vou verificar a Calculadora.",
+        ),
+        (
+            "Eu não perguntei se o Discord está aberto.",
+            "correcao",
+            "O Discord não está aberto, então não havia o que perguntar.",
+            "Tem razão, você não perguntou isso.",
+        ),
+    )
+    for texto, modalidade, fala_invalida, fala_valida in casos:
+        contrato = construir_contrato_semantico_fala(
+            texto,
+            plano={
+                "modalidade": modalidade,
+                "ato_principal": modalidade,
+                "atos": [{"tipo": modalidade}],
+                "resposta_esperada": "reconhecer a fala atual",
+                "permite_pergunta": False,
+                "atualidade_factual": classificar_atualidade_factual(texto),
+                "fundamentacao_factual": {},
+            },
+            mente={},
+        )
+
+        assert contrato["roteiro_concreto"]["estrategia"] == (
+            "negacao_operacional_sem_efeito"
+        )
+        invalida = validar_aderencia_contrato_fala(
+            texto,
+            fala_invalida,
+            contrato_fala=contrato,
+        )
+        valida = validar_aderencia_contrato_fala(
+            texto,
+            fala_valida,
+            contrato_fala=contrato,
+        )
+        assert "negacao_operacional_alegou_estado" in invalida["problemas"]
+        assert invalida["aceita"] is False
+        assert valida["aceita"] is True
+
+
+def test_composicao_canonica_leva_negacoes_ao_contrato_sem_efeito() -> None:
+    casos = (
+        "Nem precisa verificar se a Calculadora está aberta.",
+        "Eu não perguntei se o Discord está aberto.",
+        "Não feche o Opera só porque ele está aberto.",
+        "Não liste os programas abertos.",
+    )
+    for texto in casos:
+        turno = classificar_modalidade_turno(texto)
+        plano = planejar_turno(texto, turno=turno, mente={})
+        contrato = construir_contrato_semantico_fala(
+            texto,
+            turno=turno,
+            plano=plano,
+            mente={},
+        )
+
+        assert plano["autoriza_execucao"] is False
+        assert plano["requer_execucao"] is False
+        assert contrato["roteiro_concreto"]["estrategia"] == (
+            "negacao_operacional_sem_efeito"
+        )
+
+
+def test_contrato_de_estado_com_receipt_confirmado_preserva_resultado_observado() -> None:
+    texto = "O Opera está aberto?"
+    contrato = construir_contrato_semantico_fala(
+        texto,
+        plano={
+            "resposta_esperada": "responder ao conteúdo atual",
+            "permite_pergunta": True,
+            "atualidade_factual": classificar_atualidade_factual(texto),
+            "fundamentacao_factual": {},
+            "comandos": [{
+                "intent": "LIST_WINDOWS",
+                "status": "estado_app_consultado",
+                "confirmado": True,
+                "executou": True,
+                "alvo": "opera",
+            }],
+        },
+        mente={},
+    )
+
+    assert contrato["roteiro_concreto"]["estrategia"] != (
+        "estado_observavel_sem_evidencia"
+    )
+    assert not any(
+        "falta uma observação atual" in item
+        for item in contrato["conteudos_obrigatorios"]
+    )
+
+
+def test_contrato_de_estado_com_receipt_nao_confirmado_mantem_incerteza() -> None:
+    texto = "O Opera está aberto?"
+    contrato = construir_contrato_semantico_fala(
+        texto,
+        plano={
+            "resposta_esperada": "responder ao conteúdo atual",
+            "permite_pergunta": True,
+            "atualidade_factual": classificar_atualidade_factual(texto),
+            "fundamentacao_factual": {},
+            "comandos": [{
+                "intent": "LIST_WINDOWS",
+                "status": "falha_execucao",
+                "confirmado": False,
+                "executou": False,
+                "alvo": "opera",
+            }],
+        },
+        mente={},
+    )
+
+    assert contrato["roteiro_concreto"]["estrategia"] == (
+        "estado_observavel_sem_evidencia"
+    )
+
+
+def test_receipt_confirmado_atualiza_contrato_criado_antes_da_observacao() -> None:
+    texto = "O Opera está aberto?"
+    plano = {
+        "texto_usuario": texto,
+        "resposta_esperada": "responder ao conteúdo atual",
+        "permite_pergunta": True,
+        "atualidade_factual": classificar_atualidade_factual(texto),
+        "fundamentacao_factual": {},
+        "comandos": [],
+    }
+    plano["contrato_fala"] = construir_contrato_semantico_fala(
+        texto,
+        plano=plano,
+        mente={},
+    )
+    assert plano["contrato_fala"]["roteiro_concreto"]["estrategia"] == (
+        "estado_observavel_sem_evidencia"
+    )
+
+    atualizado = atualizar_plano_turno(
+        plano,
+        fase="executado",
+        comandos=[{
+            "intent": "LIST_WINDOWS",
+            "status": "estado_app_consultado",
+            "confirmado": True,
+            "executou": True,
+            "alvo": "opera",
+        }],
+    )
+
+    assert atualizado["contrato_fala"]["roteiro_concreto"]["estrategia"] == (
+        "resultado_observado"
+    )
+    assert not any(
+        "falta uma observação atual" in item
+        for item in atualizado["contrato_fala"]["conteudos_obrigatorios"]
+    )
+
+
+def test_receipt_confirmado_substitui_qualquer_estrategia_pre_observacao() -> None:
+    texto = "Confirma se ela continua aberta."
+    plano = {
+        "texto_usuario": texto,
+        "modalidade": "conversa",
+        "resposta_esperada": "responder ao conteudo atual",
+        "permite_pergunta": True,
+        "requer_execucao": False,
+        "fundamentacao_factual": {},
+        "comandos": [],
+    }
+    plano["contrato_fala"] = construir_contrato_semantico_fala(
+        texto,
+        plano=plano,
+        mente={},
+    )
+    assert plano["contrato_fala"]["roteiro_concreto"]["estrategia"] == (
+        "reconhecimento_estado_declarado"
+    )
+
+    atualizado = atualizar_plano_turno(
+        plano,
+        fase="executado",
+        comandos=[{
+            "intent": "LIST_WINDOWS",
+            "status": "estado_app_consultado",
+            "confirmado": True,
+            "executou": True,
+            "alvo": "calculadora",
+        }],
+    )
+
+    assert atualizado["contrato_fala"]["roteiro_concreto"]["estrategia"] == (
+        "resultado_observado"
+    )
+
+
+def test_declaracao_sem_pergunta_nao_e_rebaixada_a_estado_nao_observado() -> None:
+    fala = "Entendi, o assunto continua aberto."
+    resultado = validar_alegacoes_da_fala(
+        fala,
+        plano={"texto_usuario": "O assunto continua aberto.", "comandos": []},
+        origem="resposta_ia",
+    )
+
+    assert "estado_atual_sem_evidencia" not in resultado["problemas"]
+    assert resultado["fala"] == fala
+
+
+def test_declaracao_de_estado_local_nao_puxa_entidade_ausente() -> None:
+    texto = "O Opera está aberto."
+    plano = {
+        "modalidade": "conversa",
+        "ato_principal": "conversa",
+        "atos": [{"tipo": "conversa"}],
+        "resposta_esperada": "responder ao conteudo atual",
+        "permite_pergunta": True,
+        "atualidade_factual": classificar_atualidade_factual(texto),
+        "fundamentacao_factual": {},
+    }
+    contrato = construir_contrato_semantico_fala(
+        texto,
+        plano=plano,
+        mente={},
+    )
+
+    contaminada = validar_aderencia_contrato_fala(
+        texto,
+        "Tá, e o Spotify também. O Opera tá aberto, como você disse.",
+        contrato_fala=contrato,
+    )
+    ancorada = validar_aderencia_contrato_fala(
+        texto,
+        "Entendi. O Opera está aberto, como você disse.",
+        contrato_fala=contrato,
+    )
+    limitacao_nao_solicitada = validar_aderencia_contrato_fala(
+        texto,
+        (
+            "O Opera está aberto, mas não temos acesso direto ao que ele mostra. "
+            "Se quiser, posso ajudar."
+        ),
+        contrato_fala=contrato,
+    )
+    historico_inventado = validar_aderencia_contrato_fala(
+        texto,
+        "Entendi. O Opera está lá, como sempre.",
+        contrato_fala=contrato,
+    )
+
+    assert contrato["roteiro_concreto"]["estrategia"] == (
+        "reconhecimento_estado_declarado"
+    )
+    assert "declaracao_introduziu_entidade_ausente" in contaminada["problemas"]
+    assert contaminada["aceita"] is False
+    assert "declaracao_extrapolou_estado_informado" in (
+        limitacao_nao_solicitada["problemas"]
+    )
+    assert limitacao_nao_solicitada["aceita"] is False
+    assert "declaracao_extrapolou_estado_informado" in (
+        historico_inventado["problemas"]
+    )
+    assert historico_inventado["aceita"] is False
+    assert ancorada["aceita"] is True
+
+
+def test_negacao_operacional_nao_acrescenta_inferencia_sobre_usuario() -> None:
+    texto = "Eu não perguntei se o Discord está aberto."
+    contrato = construir_contrato_semantico_fala(
+        texto,
+        plano={
+            "modalidade": "correcao",
+            "ato_principal": "correcao",
+            "atos": [{"tipo": "correcao"}],
+            "resposta_esperada": "reconhecer a fala atual",
+            "permite_pergunta": False,
+            "atualidade_factual": classificar_atualidade_factual(texto),
+            "fundamentacao_factual": {},
+        },
+        mente={},
+    )
+
+    resultado = validar_aderencia_contrato_fala(
+        texto,
+        "Entendi, não vou verificar. Você já sabe o que quer.",
+        contrato_fala=contrato,
+    )
+
+    assert "negacao_operacional_extrapolou" in resultado["problemas"]
+    assert resultado["aceita"] is False
 
 
 def test_estado_subjetivo_da_personalidade_continua_permitido() -> None:

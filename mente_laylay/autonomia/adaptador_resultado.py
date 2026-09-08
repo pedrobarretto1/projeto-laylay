@@ -233,6 +233,8 @@ class AdaptadorResultadoOperacional:
             objeto = str(alvo or "isso").strip()
             if status_norm in {"ja_aberto_focado", "site_ja_aberto_focado"}:
                 fala_base = f"{objeto} já está aberto e em foco; não repeti a abertura."
+            elif status_norm == "app_ja_aberto_observado":
+                fala_base = f"{objeto} já está aberto; não repeti a abertura."
             elif status_norm == "ja_estava_ligado":
                 fala_base = f"{objeto} já está ligado; não repeti o comando."
             elif status_norm == "ja_estava_desligado":

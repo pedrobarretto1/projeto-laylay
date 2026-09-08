@@ -33,6 +33,7 @@ MARCADORES_TITULO_JOGO = {
     "minecraft", "valorant", "fortnite", "rocket league", "counter-strike",
     "grand theft auto", "gta v", "red dead redemption", "elden ring",
     "league of legends", "overwatch", "terraria", "stardew valley",
+    "forza horizon",
 }
 
 PASTAS_INSTALACAO_JOGO = (

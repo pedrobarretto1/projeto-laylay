@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from typing import Any, Mapping
+from mente_laylay.cognicao.incerteza_observacao import expressa_incerteza_observacao
 
 
 _POSICAO = re.compile(
@@ -63,6 +64,76 @@ _FALLBACK_GENERICO = re.compile(
     r"continua\s*[-—,]?\s*eu\s+t[oô]\s+acompanhando)\b",
     re.IGNORECASE,
 )
+_MARCADORES_RESPOSTA_METALINGUISTICA = re.compile(
+    r"\b(?:frase|palavra|express[aã]o|formula[cç][aã]o|exemplo|cita[cç][aã]o|voc[eê]\s+citou|"
+    r"voc[eê]\s+(?:pode|poderia)\s+(?:perguntar|dizer|escrever)|"
+    r"(?:perguntar|dizer|escrever)\s+(?:exatamente\s+)?assim|"
+    r"essa\s+pergunta\s+(?:j[aá]\s+)?funciona)\b",
+    re.IGNORECASE,
+)
+_NEGACAO_CAPACIDADE_ESTADO_OBSERVAVEL = re.compile(
+    r"\b(?:n[aã]o\s+(?:tenho|possuo)\s+acesso(?:\s+direto)?|"
+    r"n[aã]o\s+consigo\s+(?:ver|consultar|verificar|observar|acompanhar))\b",
+    re.IGNORECASE,
+)
+_RECONHECIMENTO_NEGACAO_OPERACIONAL = re.compile(
+    r"\b(?:entendi|certo|beleza|pode\s+deixar|tem\s+raz[aã]o|"
+    r"voc[eê]\s+n[aã]o\s+(?:pediu|perguntou|solicitou)|"
+    r"n[aã]o\s+vou\s+(?:verificar|conferir|consultar|listar|fechar|abrir|executar))\b",
+    re.IGNORECASE,
+)
+_ALEGACAO_ESTADO_EM_NEGACAO_OPERACIONAL = re.compile(
+    r"\b(?:n[aã]o\s+)?(?:est[aá]|continua|ficou|permanece)\s+"
+    r"(?:abert[oa]s?|fechad[oa]s?|rodando|em\s+execu[cç][aã]o)\b|"
+    r"\bn[aã]o\s+tem\s+como\s+estar\s+(?:abert[oa]|fechad[oa])\b",
+    re.IGNORECASE,
+)
+_CLASSIFICACAO_METALINGUISTICA_EXPLICITA = re.compile(
+    r"\bisso\s+[ée]\s+(?:uma?\s+)?(?P<tipo>consulta|pergunta|frase|comando)\b",
+    re.IGNORECASE,
+)
+_NEGACAO_CLASSIFICACAO_METALINGUISTICA = re.compile(
+    r"\bn[aã]o\s+(?:[ée]|se\s+trata\s+de)\s+(?:uma?\s+)?"
+    r"(?P<tipo>consulta|pergunta|frase|comando)\b(?!\s+atual)",
+    re.IGNORECASE,
+)
+_PEDIDO_NAO_CONSULTAR = re.compile(
+    r"\bn[aã]o\s+(?:consulte|verifique|pesquise)\b",
+    re.IGNORECASE,
+)
+_NEGACAO_GERAL_DE_CONSULTA = re.compile(
+    r"\bn[aã]o\s+(?:fa[cç]o|realizo|consigo\s+(?:fazer|realizar))\s+"
+    r"(?:consultas?|verifica[cç][oõ]es|pesquisas?)\b",
+    re.IGNORECASE,
+)
+_LEITURA_ALTERNATIVA_METALINGUISTICA = re.compile(
+    r"\b(?:tamb[eé]m\s+)?pode\s+ser\s+(?:interpretad[ao]|entendid[ao])\s+como\b|"
+    r"\bpode\s+(?:tamb[eé]m\s+)?significar\b|\bcomo\s+se\s+(?:estiv[eé]ssemos|fosse)\b",
+    re.IGNORECASE,
+)
+_PEDIDO_LEITURA_ALTERNATIVA = re.compile(
+    r"\b(?:outr[oa]\s+(?:sentido|significado|interpreta[cç][aã]o)|"
+    r"mais\s+de\s+um\s+(?:sentido|significado)|amb[ií]gu[ao]|"
+    r"pode\s+(?:ser\s+interpretad[ao]|significar))\b",
+    re.IGNORECASE,
+)
+_PEDIDO_FORMULACAO_DIRETA = re.compile(
+    r"\b(?:como\s+eu\s+perguntaria|como\s+(?:posso|devo)\s+perguntar|"
+    r"qual\s+(?:[ée]\s+)?a\s+forma\s+de\s+perguntar)\b",
+    re.IGNORECASE,
+)
+_ENTREGA_FORMULACAO_DIRETA = re.compile(
+    r"\b(?:voc[eê]\s+(?:pode|poderia)\s+perguntar|"
+    r"pergunte\s+(?:exatamente\s+)?assim|a\s+forma\s+direta\s+[ée])\b",
+    re.IGNORECASE,
+)
+_EXTRAPOLACAO_DECLARACAO_ESTADO = re.compile(
+    r"\bn[aã]o\s+(?:tenho|temos|consigo|conseguimos)\s+acesso\b|"
+    r"\bse\s+quiser\b|\bposso\s+ajudar\b|\bcomo\s+sempre\b|"
+    r"\bj[aá]\s+sabia\b",
+    re.IGNORECASE,
+)
+_TRECHO_CITADO = re.compile(r'["“«](?P<conteudo>.+?)["”»]')
 _ABSTRACAO_ISOLADA = re.compile(
     r"\b(?:[ée]|eh|parece|vira|traz|d[aá])\s+(?:uma?\s+)?"
     r"(?:energia|vibe|sensa[cç][aã]o|alma|universo|ritmo|ess[eê]ncia)"
@@ -148,6 +219,10 @@ _MARCADORES_POSICAO = {
     "acho", "curto", "escolheria", "gosto", "interessa", "iria", "parece",
     "prefiro",
 }
+_CAPITALIZADAS_GENERICAS = {
+    "agora", "ah", "ainda", "assim", "beleza", "bom", "certo", "entendi",
+    "entao", "fico", "laylay", "nao", "nesse", "neste", "olha", "sim", "talvez",
+}
 
 
 def _normalizar(valor: Any) -> str:
@@ -173,6 +248,20 @@ def _tokens_relevantes(texto: str, *, referente: str = "") -> set[str]:
         for token in re.findall(r"[a-z0-9]+", _normalizar(texto))
         if len(token) >= 3 and token not in ignorar
     }
+
+
+def _termos_nomeados(texto: str) -> set[str]:
+    """Extrai âncoras nomeadas sem tentar fazer reconhecimento de entidades."""
+    termos: set[str] = set()
+    padrao = re.compile(
+        r"\b[A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ]"
+        r"[A-Za-zÁÀÂÃÉÊÍÓÔÕÚÜÇáàâãéêíóôõúüç0-9+.-]{2,}\b"
+    )
+    for achado in padrao.finditer(str(texto or "")):
+        termo = _normalizar(achado.group(0))
+        if termo and termo not in _CAPITALIZADAS_GENERICAS:
+            termos.add(termo)
+    return termos
 
 
 def _tem_criterio_concreto(resposta: str, *, referente: str = "") -> bool:
@@ -252,6 +341,7 @@ def _resumo_reparo(
             str(item)[:64] for item in list(contrato.get("atos") or [])[:8]
         ],
         "referente": str(contrato.get("referente") or "")[:180],
+        "texto_usuario_corrigido": str(contrato.get("texto_usuario_corrigido") or "")[:500],
         "nucleo_primeira_frase": str(roteiro.get("nucleo_resposta") or "")[:320],
         "sequencia": [str(item)[:220] for item in list(roteiro.get("sequencia") or [])[:6]],
         "max_frases": max(1, min(8, int(contrato.get("max_frases") or 3))),
@@ -292,6 +382,83 @@ def validar_aderencia_contrato_fala(
 
     if resposta and _FALLBACK_GENERICO.search(resposta):
         problemas.append("resposta_generica_sem_conteudo")
+
+    if (
+        estrategia == "resposta_metalinguistica"
+        and not _MARCADORES_RESPOSTA_METALINGUISTICA.search(resposta)
+    ):
+        problemas.append("metalinguagem_tratada_como_conteudo")
+
+    if estrategia == "resposta_metalinguistica":
+        classificacao = _CLASSIFICACAO_METALINGUISTICA_EXPLICITA.search(usuario)
+        contradicao = _NEGACAO_CLASSIFICACAO_METALINGUISTICA.search(resposta)
+        if (
+            classificacao
+            and contradicao
+            and classificacao.group("tipo").casefold()
+            == contradicao.group("tipo").casefold()
+        ):
+            problemas.append("metalinguagem_contradisse_classificacao")
+
+        if (
+            _LEITURA_ALTERNATIVA_METALINGUISTICA.search(resposta)
+            and not _PEDIDO_LEITURA_ALTERNATIVA.search(usuario)
+        ):
+            problemas.append("metalinguagem_inventou_leitura_alternativa")
+        if (
+            _PEDIDO_FORMULACAO_DIRETA.search(usuario)
+            and not _ENTREGA_FORMULACAO_DIRETA.search(resposta)
+        ):
+            problemas.append("metalinguagem_nao_entregou_formulacao_direta")
+
+        if _PEDIDO_NAO_CONSULTAR.search(usuario):
+            tokens_usuario = _tokens_relevantes(usuario)
+            for citacao in _TRECHO_CITADO.finditer(resposta):
+                tokens_citados = _tokens_relevantes(citacao.group("conteudo"))
+                if tokens_citados and not tokens_citados.issubset(tokens_usuario):
+                    problemas.append("metalinguagem_citou_conteudo_ausente")
+                    break
+            if _termos_nomeados(resposta) - tokens_usuario:
+                problemas.append("metalinguagem_introduziu_entidade_ausente")
+            if _NEGACAO_GERAL_DE_CONSULTA.search(resposta):
+                problemas.append("metalinguagem_negou_capacidade")
+
+    if estrategia == "estado_observavel_sem_evidencia":
+        if not expressa_incerteza_observacao(resposta):
+            problemas.append("estado_observavel_sem_incerteza")
+        if _NEGACAO_CAPACIDADE_ESTADO_OBSERVAVEL.search(resposta):
+            problemas.append("estado_observavel_negou_habilidade")
+        recentes = contrato.get("respostas_recentes_evitar") or ()
+        nomes_recentes = {
+            termo
+            for fala_recente in recentes
+            for termo in _termos_nomeados(str(fala_recente or ""))
+        }
+        tokens_usuario = _tokens_relevantes(usuario)
+        tokens_resposta = _tokens_relevantes(resposta)
+        # Só contexto explicitamente vinculado à correção pelo contrato; não
+        # transformar o histórico inteiro de respostas em fonte de entidades.
+        tokens_correcao = (
+            _tokens_relevantes(str(contrato.get("texto_usuario_corrigido") or ""))
+            if contrato.get("funcao") == "correcao" else set()
+        )
+        if (nomes_recentes & tokens_resposta) - tokens_usuario - tokens_correcao:
+            problemas.append("estado_observavel_herdou_entidade_antiga")
+
+    if estrategia == "negacao_operacional_sem_efeito":
+        if not _RECONHECIMENTO_NEGACAO_OPERACIONAL.search(resposta):
+            problemas.append("negacao_operacional_sem_reconhecimento")
+        if _ALEGACAO_ESTADO_EM_NEGACAO_OPERACIONAL.search(resposta):
+            problemas.append("negacao_operacional_alegou_estado")
+        if len(partes) > 1:
+            problemas.append("negacao_operacional_extrapolou")
+
+    if estrategia == "reconhecimento_estado_declarado":
+        termos_usuario = _tokens_relevantes(usuario)
+        if _termos_nomeados(resposta) - termos_usuario:
+            problemas.append("declaracao_introduziu_entidade_ausente")
+        if _EXTRAPOLACAO_DECLARACAO_ESTADO.search(resposta):
+            problemas.append("declaracao_extrapolou_estado_informado")
 
     if estrategia == "saudacao_simples":
         if not _SAUDACAO.search(primeira):
@@ -438,6 +605,21 @@ def validar_aderencia_contrato_fala(
         "metacomentario_quebrou_personagem",
         "reacao_codigo_apenas_ecoou_relato",
         "identidade_negou_capacidades_confirmadas",
+        "metalinguagem_tratada_como_conteudo",
+        "metalinguagem_contradisse_classificacao",
+        "metalinguagem_citou_conteudo_ausente",
+        "metalinguagem_introduziu_entidade_ausente",
+        "metalinguagem_negou_capacidade",
+        "metalinguagem_inventou_leitura_alternativa",
+        "metalinguagem_nao_entregou_formulacao_direta",
+        "estado_observavel_sem_incerteza",
+        "estado_observavel_negou_habilidade",
+        "estado_observavel_herdou_entidade_antiga",
+        "negacao_operacional_sem_reconhecimento",
+        "negacao_operacional_alegou_estado",
+        "negacao_operacional_extrapolou",
+        "declaracao_introduziu_entidade_ausente",
+        "declaracao_extrapolou_estado_informado",
     }
     contrato_reparo = _resumo_reparo(contrato, roteiro)
     if "identidade_negou_capacidades_confirmadas" in problemas:

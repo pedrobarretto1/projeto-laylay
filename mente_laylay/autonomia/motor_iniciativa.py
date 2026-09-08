@@ -436,6 +436,24 @@ class MotorIniciativaRuntime:
             permissao = str(registro or "bloqueado")
         return permissao if permissao in PERMISSOES_INICIATIVA else "bloqueado"
 
+    @classmethod
+    def _permissao_oportunidade(
+        cls,
+        estado: Mapping[str, Any],
+        dominio: str,
+        dados: Mapping[str, Any],
+    ) -> tuple[str, bool]:
+        """Separa presença comunicativa de autorização para produzir efeitos."""
+        permissao = cls._permissao_dominio(estado, dominio)
+        permissoes = dict(estado.get("permissoes") or {})
+        somente_observacao = bool(
+            not dados.get("executavel")
+            and not dados.get("acao_proposta")
+        )
+        if somente_observacao and dominio not in permissoes:
+            return "sugestao", True
+        return permissao, False
+
     def _pontuar(
         self,
         dados: Mapping[str, Any],
@@ -849,7 +867,11 @@ class MotorIniciativaRuntime:
             risco = _codigo(dados.get("risco"), 16)
             risco = risco if risco in RISCOS else "medio"
             dominio = _codigo(dados.get("dominio"), 40)
-            permissao = self._permissao_dominio(estado, dominio)
+            permissao, permissao_observacional = self._permissao_oportunidade(
+                estado, dominio, dados,
+            )
+            if permissao_observacional:
+                motivos.append("observacao_sem_efeito")
             acao_proposta = dados.get("acao_proposta")
             intent_capacidade = self._intent_capacidade(acao_proposta)
             disponivel, motivo_capacidade = self._capacidade_disponivel(intent_capacidade)

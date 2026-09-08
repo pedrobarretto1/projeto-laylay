@@ -14,7 +14,9 @@ import unicodedata
 from datetime import datetime, timedelta
 from typing import Any, Callable
 
-from mente_laylay.autonomia.governanca_iniciativa import decisao_permite_emissao
+from mente_laylay.autonomia.diretor_presenca import (
+    decisao_presenca_aceita_para_entrega,
+)
 from mente_laylay.memoria_mental.estado_continuidades import sugestao_pendente_ativa
 
 try:
@@ -172,11 +174,10 @@ class RitmoCircadianoRuntime:
         estado_set: Callable[[dict[str, Any]], Any],
         continuidades_get: Callable[[str, Any], Any],
         continuidades_update: Callable[..., Any],
-        agendar_fala: Callable[..., Any],
+        considerar_presenca: Callable[[dict[str, Any]], Any],
         interacao_iniciada: Callable[[], bool],
         conversa_ativa: Callable[[], bool],
         preparar_sugestao: Callable[[str, dict[str, Any], str], tuple[str, dict[str, Any], str]] | None = None,
-        registrar_oportunidade: Callable[[dict[str, Any]], Any] | None = None,
         agora_cb: Callable[[], datetime] | None = None,
         fuso: str = "America/Sao_Paulo",
         log: Callable[[str], Any] = print,
@@ -185,11 +186,10 @@ class RitmoCircadianoRuntime:
         self.estado_set = estado_set
         self.continuidades_get = continuidades_get
         self.continuidades_update = continuidades_update
-        self.agendar_fala = agendar_fala
+        self.considerar_presenca = considerar_presenca
         self.interacao_iniciada = interacao_iniciada
         self.conversa_ativa = conversa_ativa
         self.preparar_sugestao = preparar_sugestao
-        self.registrar_oportunidade = registrar_oportunidade
         self.agora_cb = agora_cb or (lambda: agora_no_fuso(fuso))
         self.fuso = fuso
         self.log = log
@@ -258,51 +258,6 @@ class RitmoCircadianoRuntime:
             candidato = self._candidato(contexto)
             if not candidato:
                 return {"status": "sem_sugestao", "contexto": contexto}
-            decisao_iniciativa = {}
-            if callable(self.registrar_oportunidade):
-                try:
-                    dominio_oportunidade = "conforto"
-                    if candidato["comando"] == "TIME_LIGHT_ON":
-                        dominio_oportunidade = "iot"
-                    elif candidato["comando"] == "EXECUTE_INTENT":
-                        interna = (
-                            candidato["payload"].get("intent")
-                            if isinstance(candidato["payload"].get("intent"), dict)
-                            else {}
-                        )
-                        if str(interna.get("intent") or "").upper() == "IOT_CONTROL":
-                            dominio_oportunidade = "iot"
-                    decisao_iniciativa = dict(self.registrar_oportunidade({
-                        "chave": f"ritmo:{candidato['chave']}:{candidato['marcador']}",
-                        "tipo": "ritmo_temporal",
-                        "origem": "ritmo_circadiano",
-                        "dominio": dominio_oportunidade,
-                        "acao_proposta": {
-                            "intent": candidato["comando"],
-                            "params": dict(candidato["payload"]),
-                        },
-                        "utilidade": 62 if candidato["chave"] == "modo_noite" else 56,
-                        "confianca": 0.96,
-                        "risco": "baixo",
-                        "executavel": True,
-                        "reversivel": True,
-                        "validade_s": 900.0,
-                    }) or {})
-                except Exception as erro:
-                    self.log(f"⚠️ [INICIATIVA] oportunidade circadiana ignorada: {erro}")
-            if not decisao_permite_emissao(decisao_iniciativa):
-                decisao = str(decisao_iniciativa.get("decisao") or "")
-                status = {
-                    "executado": "executado_autonomamente",
-                    "execucao_falhou": "execucao_autonoma_falhou",
-                }.get(decisao, "bloqueado_permissao")
-                if status == "executado_autonomamente":
-                    atual = dict(self.estado_get() or {})
-                    emitidas = dict(atual.get("sugestoes_emitidas") or {})
-                    emitidas[candidato["chave"]] = candidato["marcador"]
-                    atual["sugestoes_emitidas"] = emitidas
-                    self.estado_set(atual)
-                return {"status": status, "contexto": contexto}
             self._em_agendamento = True
 
         def concluir(entregue: bool, motivo: str) -> None:
@@ -325,17 +280,70 @@ class RitmoCircadianoRuntime:
                 comando_pendente_payload=dict(candidato["payload"]),
             )
 
-        aceito = self.agendar_fala(
-            "ritmo_temporal",
-            candidato["fala"],
-            candidato["emocao"],
-            1,
-            ao_concluir=concluir,
-        )
-        if aceito is False:
+        dominio = "conforto"
+        if candidato["comando"] == "TIME_LIGHT_ON":
+            dominio = "iot"
+        elif candidato["comando"] == "EXECUTE_INTENT":
+            interna = (
+                candidato["payload"].get("intent")
+                if isinstance(candidato["payload"].get("intent"), dict)
+                else {}
+            )
+            if str(interna.get("intent") or "").upper() == "IOT_CONTROL":
+                dominio = "iot"
+        instante = contexto.get("agora")
+        timestamp = instante.timestamp() if isinstance(instante, datetime) else time.time()
+        evento = {
+            "natureza": "evento",
+            "origem": "ritmo_circadiano",
+            "dominio": dominio,
+            "categoria": "dica",
+            "confianca": 0.96,
+            "fundamentada": True,
+            "momento_seguro": True,
+            "motivo": (
+                f"O ritmo temporal entrou na fase {contexto.get('fase')}; "
+                "há uma oportunidade de oferecer conforto reversível."
+            ),
+            "evidencias": [
+                f"fase_temporal:{contexto.get('fase')}",
+                f"recomendacao:{candidato['chave']}",
+            ],
+            "chave": f"ritmo:{candidato['chave']}:{candidato['marcador']}",
+            "timestamp": timestamp,
+            "validade_s": 900.0,
+            "acao_proposta": {
+                "intent": candidato["comando"],
+                "params": dict(candidato["payload"]),
+            },
+            "utilidade": 62 if candidato["chave"] == "modo_noite" else 56,
+            "executavel": True,
+            "reversivel": True,
+            "autoridade_usuario": False,
+            "permissao_execucao": False,
+            "ao_concluir": concluir,
+        }
+        try:
+            resultado = dict(self.considerar_presenca(evento) or {})
+        except Exception as erro:
+            self.log(f"⚠️ [PRESENÇA] evento circadiano ignorado: {erro}")
+            resultado = {}
+        if not decisao_presenca_aceita_para_entrega(resultado):
             with self._lock:
                 self._em_agendamento = False
-            return {"status": "fala_adiada", "contexto": contexto}
+            decisao_iniciativa = dict(resultado.get("decisao_iniciativa") or {})
+            decisao = str(decisao_iniciativa.get("decisao") or "")
+            status = {
+                "executado": "executado_autonomamente",
+                "execucao_falhou": "execucao_autonoma_falhou",
+            }.get(decisao, "bloqueado_permissao")
+            if status == "executado_autonomamente":
+                atual = dict(self.estado_get() or {})
+                emitidas = dict(atual.get("sugestoes_emitidas") or {})
+                emitidas[candidato["chave"]] = candidato["marcador"]
+                atual["sugestoes_emitidas"] = emitidas
+                self.estado_set(atual)
+            return {"status": status, "contexto": contexto}
         return {"status": "sugestao_agendada", "contexto": contexto}
 
     def executar(

@@ -31,6 +31,25 @@ def classificar_pergunta_com_proposito(texto: str) -> Dict[str, str]:
             "resposta_esperada": "sim_ou_nao",
         }
 
+    # Perguntas que refinam uma recomendação deixam uma preferência temática
+    # aberta para o próximo turno. Elas não são confirmação operacional nem
+    # oferta musical e, portanto, devem continuar no cérebro conversacional.
+    if not (
+        re.search(r"\bm[uú]sica\b", base)
+        and re.search(r"\bfilme\b", base)
+    ) and re.search(
+        r"\b(?:voc[eê]\s+)?(?:quer|prefere)\b[^?]{0,100}\b"
+        r"(?:filme|s[eé]rie|livro|jogo)\b|"
+        r"\b(?:qual|que)\s+(?:tipo|g[eê]nero)\s+(?:de\s+)?"
+        r"(?:filme|s[eé]rie|livro|jogo)\b",
+        base,
+    ):
+        return {
+            "pergunta": pergunta,
+            "proposito": "preferencia_recomendacao",
+            "resposta_esperada": "preferencia",
+        }
+
     # Perguntas devolvidas por educação depois de responder ao próprio
     # bem-estar demonstram interesse, mas não abrem uma obrigação contextual.
     # Pedro pode respondê-las; se mudar de assunto ou der um comando, o novo
@@ -337,12 +356,17 @@ def registrar_pergunta_aberta(
     estado["pergunta_aberta_proposito"] = proposito
     estado["pergunta_aberta_resposta_esperada"] = resposta_esperada
     estado["pergunta_aberta_ts"] = time.time()
+    dominio_pendencia = (
+        "recomendacao"
+        if proposito == "preferencia_recomendacao"
+        else "conversa"
+    )
     return registrar_pendencia(
         estado,
         criar_pendencia(
             origem="pergunta_aberta",
             tipo=proposito or "pergunta",
-            dominio="conversa",
+            dominio=dominio_pendencia,
             conteudo=estado["pergunta_aberta_texto"],
             resposta_esperada=resposta_esperada,
             ttl_s=300.0,

@@ -567,12 +567,18 @@ def criar_porteiro_acoes_runtime(**kwargs: Any) -> PorteiroAcoesRuntime:
 def texto_pede_playlist_explicitamente(texto: str) -> bool:
     t = normalizar_texto(texto)
     verbos = [
-        "toca", "toque", "coloca", "coloque", "abre", "abra", "abrir",
-        "ouvir", "escuta", "escute", "pode playlist", "volta playlist",
+        "toca", "toque", "tocar", "coloca", "coloque", "colocar",
+        "abre", "abra", "abrir", "ouvir", "escuta", "escute", "escutar",
+        "pode playlist", "volta playlist",
     ]
     if "playlist" in t:
         return any(v in t for v in verbos)
-    return bool(re.match(r"^\s*(toca|toque|coloca|coloque|abre|abra|ouvir|escuta|escute)\b\s+.+", t))
+    return bool(re.match(
+        r"^\s*(?:(?:pode|poderia|consegue|conseguiria)\s+)?"
+        r"(?:toca|toque|tocar|coloca|coloque|colocar|abre|abra|abrir|"
+        r"ouvir|escuta|escute|escutar)\b\s+.+",
+        t,
+    ))
 
 
 def texto_pede_musica_explicitamente(texto: str) -> bool:
@@ -580,8 +586,9 @@ def texto_pede_musica_explicitamente(texto: str) -> bool:
     if not t:
         return False
     verbos = [
-        "toca", "toque", "coloca", "coloque", "bota", "botar", "poe",
-        "abre", "abra", "ouvir", "escuta", "escute", "da play",
+        "toca", "toque", "tocar", "coloca", "coloque", "colocar",
+        "bota", "botar", "poe", "abre", "abra", "abrir", "ouvir",
+        "escuta", "escute", "escutar", "da play",
         "procura", "pesquisa", "busca",
     ]
     termos = ["musica", "som", "playlist", "youtube", "faixa", "cancao"]
@@ -589,7 +596,12 @@ def texto_pede_musica_explicitamente(texto: str) -> bool:
         return True
     if texto_pede_playlist_explicitamente(t):
         return True
-    return bool(re.match(r"^\s*(toca|toque|coloca|coloque|bota|poe|escuta|escute)\b\s+.+", t))
+    return bool(re.match(
+        r"^\s*(?:(?:pode|poderia|consegue|conseguiria)\s+)?"
+        r"(?:toca|toque|tocar|coloca|coloque|colocar|bota|botar|poe|"
+        r"escuta|escute|escutar)\b\s+.+",
+        t,
+    ))
 
 
 def texto_pede_repeticao_curta(texto: str) -> bool:

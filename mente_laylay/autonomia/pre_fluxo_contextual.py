@@ -30,6 +30,7 @@ from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
 )
 from mente_laylay.cognicao.esclarecimento_operacional import (
     detectar_esclarecimento_operacional,
+    detectar_esclarecimento_referencia_pessoal,
     registrar_esclarecimento_operacional,
 )
 from mente_laylay.autonomia.base_pre_fluxo import _get
@@ -210,14 +211,17 @@ def emitir_conversa_curta(
 
     emitir_resposta_curta = _get(ctx, "_emitir_resposta_curta")
     if callable(emitir_resposta_curta):
-        emitir_resposta_curta(
+        resultado_emissao = emitir_resposta_curta(
             texto_usuario,
             fala,
             emocao=emocao or "calma",
             nivel=nivel or 1,
             habilidade="conversa",
         )
-        return True
+        # ``False`` é uma rejeição explícita do guardião/voz. Consumir o turno
+        # mesmo assim criava ``tratado=True`` sem fala observável. ``None``
+        # continua aceito para adaptadores legados que apenas publicam o texto.
+        return resultado_emissao is not False
 
     mensagens_append = _get(ctx, "mensagens_append")
     falar_com_lipsync = _get(ctx, "falar_com_lipsync")
@@ -501,38 +505,159 @@ def processar_continuacao_visao_jogo(
     return tratado, "continuacao_visao_jogo" if tratado else ""
 
 
+_PREFIXO_CONSULTA_APP_RE = re.compile(
+    r"^(?:"
+    r"ser[aá]\s+que|por\s+acaso|"
+    r"voc[eê]\s+pode\s+me\s+(?:dizer|falar)\s+se|"
+    r"me\s+(?:diz|diga|fala|fale)\s+se|"
+    r"s[oó]\s+quero\s+saber\s+se|"
+    r"(?:confere|confira|confirma|confirme|checa|cheque)(?:\s+para\s+mim)?\s+se|"
+    r"d[aá]\s+uma\s+olhada\s+se"
+    r")\s+",
+)
+
+_PREDICADO_ESTADO_APP_RE = re.compile(
+    r"^(?P<nome>.+?)\s+"
+    r"(?P<predicado>"
+    r"(?:ainda\s+)?(?:esta|est[aá]|ta|t[aá])\s+"
+    r"(?:abert[oa]|rodando|em\s+execu[cç][aã]o)|"
+    r"(?:continua|permanece|segue)\s+"
+    r"(?:abert[oa]|rodando|em\s+execu[cç][aã]o)"
+    r")$",
+)
+
+
+def _consulta_app_deve_falhar_fechada(texto: str) -> bool:
+    """Separa pergunta atual de citação, negação e metalinguagem."""
+    t = str(texto or "").strip().casefold()
+    if not t:
+        return True
+    if any(marcador in t for marcador in ('"', "'", "“", "”", "«", "»")):
+        return True
+    if re.search(r"\b(?:n[aã]o|nem)\b", t):
+        return True
+    return bool(
+        re.match(
+            r"^(?:como\s+eu\s+perguntaria|se\s+eu\s+disser|"
+            r"a\s+frase\b|a\s+palavra\b|"
+            r"voc[eê]\s+consegue\s+verificar\b)",
+            t,
+        )
+    )
+
+
+def _ultimo_app_consulta(ctx: Dict[str, Any]) -> str:
+    mente = _get(ctx, "mente_integrada_estado", {})
+    mente = mente if isinstance(mente, dict) else {}
+    return str(
+        mente.get("ultimo_app_janela")
+        or _get(ctx, "ultimo_app_janela", "")
+        or ""
+    ).strip()
+
+
+def _extrair_alvo_consulta_app(
+    ctx: Dict[str, Any],
+    texto_usuario: str,
+) -> str:
+    """Extrai somente a referência; marcadores de ato nunca viram alvo."""
+    bruto = re.sub(r"\s+", " ", str(texto_usuario or "").strip().casefold())
+    if _consulta_app_deve_falhar_fechada(bruto):
+        return ""
+
+    contextual = re.fullmatch(
+        r"(?:confere|confira|confirma|confirme|checa|cheque)\s+se\s+"
+        r"(?:(?:ele|ela|o\s+app|a\s+janela)\s+)?"
+        r"(?:(?:ficou|continua)\s+abert[oa]|"
+        r"(?:ainda\s+)?(?:esta|est[aá]|ta|t[aá])\s+abert[oa])"
+        r"(?:\s+e\s+s[oó]\s+ent[aã]o\s+"
+        r"(?:me\s+)?(?:diz|diga|fala|fale)\s+(?:o\s+)?resultado)?[.!?]*",
+        bruto,
+    )
+    if contextual:
+        return _ultimo_app_consulta(ctx)
+
+    tem_interrogacao = bool(re.search(r"\?+\s*$", bruto))
+    corpo = bruto.strip(" .,!?:;")
+    prefixo = _PREFIXO_CONSULTA_APP_RE.match(corpo)
+    prefixo_explicito = prefixo is not None
+    if prefixo:
+        corpo = corpo[prefixo.end():].strip()
+
+    consulta = _PREDICADO_ESTADO_APP_RE.fullmatch(corpo)
+    if not consulta:
+        return ""
+    predicado = str(consulta.group("predicado") or "").strip()
+    if (
+        not tem_interrogacao
+        and not prefixo_explicito
+        and not re.match(r"^(?:continua|permanece|segue)\b", predicado)
+    ):
+        return ""
+
+    nome = str(consulta.group("nome") or "").strip(" .,!?:;")
+    nome = re.sub(r"^(?:(?:o|a)\s+)", "", nome).strip()
+    if nome in {"ele", "ela", "o app", "a janela"}:
+        return _ultimo_app_consulta(ctx)
+    return nome
+
+
+def _texto_pede_inventario_apps(texto: str) -> bool:
+    t = re.sub(r"\s+", " ", str(texto or "").strip().casefold())
+    if _consulta_app_deve_falhar_fechada(t):
+        return False
+    entidade = r"(?:programas|aplicativos|apps|janelas|processos)"
+    entidade_singular = r"(?:programa|aplicativo|app|janela|processo)"
+    estado = (
+        r"(?:abert[oa]s?|rodando|em\s+execu[cç][aã]o|"
+        r"com\s+janela\s+vis[ií]vel)"
+    )
+    if re.search(
+        rf"\b(?:quais|que|quantos|quantas|lista|listar|mostra|mostrar)\b"
+        rf".*\b{entidade}\b.*\b{estado}\b",
+        t,
+    ):
+        return True
+    if re.fullmatch(
+        rf"tem\s+(?:algum|alguma|alguns|algumas)\s+{entidade_singular}"
+        rf"\s+{estado}[.!?]*",
+        t,
+    ):
+        return True
+    return bool(
+        re.fullmatch(
+            r"(?:o\s+)?que\s+(?:esta|est[aá]|ta|t[aá])\s+"
+            r"aberto\s+no\s+computador[.!?]*",
+            t,
+        )
+    )
+
+
+def _concluir_falha_observacao(
+    ctx: Dict[str, Any], texto: str, alvo: str,
+) -> Tuple[bool, str]:
+    """Uma consulta falha tem conclusão, mas não confirma estado nem referente."""
+    registrar = _get(ctx, "_registrar_resultado_execucao")
+    if callable(registrar):
+        registrar(
+            {"intent": "LIST_WINDOWS", "params": {"alvo": alvo},
+             "status": "falha_observacao", "executou": False, "confirmado": False},
+            texto, False, origem="consulta_sistema_local", status="falha_observacao",
+        )
+    tratado = emitir_conversa_curta(
+        ctx, texto, "Não consegui concluir a leitura dos programas agora.",
+        emocao="calma", nivel=1,
+    )
+    return tratado, "falha_observacao"
+
+
 def processar_consulta_sistema_local(
     ctx: Dict[str, Any], texto_usuario: str,
 ) -> Tuple[bool, str]:
     """Responde inventários locais sem pedir ao modelo que os adivinhe."""
     t = re.sub(r"\s+", " ", str(texto_usuario or "").strip().casefold())
-    consulta_unica = re.fullmatch(
-        r"(?:o|a)?\s*(?P<nome>.+?)\s+"
-        r"(?:(?:continua|ainda)\s+(?:abert[oa]|rodando)|"
-        r"(?:esta|está|ta|tá)\s+(?:abert[oa]|rodando))\??",
-        t,
-    )
-    consulta_contextual = re.fullmatch(
-        r"(?:confere|confira|confirme|checa|cheque)\s+se\s+"
-        r"(?:(?:ele|ela|o\s+app|a\s+janela)\s+)?"
-        r"(?:(?:ficou|continua)\s+abert[oa]|"
-        r"(?:ainda\s+)?(?:esta|está|ta|tá)\s+abert[oa])"
-        r"(?:\s+e\s+s[oó]\s+ent[aã]o\s+"
-        r"(?:me\s+)?(?:diz|diga|fala|fale)\s+(?:o\s+)?resultado)?[.!?]*",
-        t,
-    )
-    if consulta_unica or consulta_contextual:
-        nome = ""
-        if consulta_unica:
-            nome = str(consulta_unica.group("nome") or "").strip(" .,!?:;")
-        else:
-            mente = _get(ctx, "mente_integrada_estado", {})
-            mente = mente if isinstance(mente, dict) else {}
-            nome = str(
-                mente.get("ultimo_app_janela")
-                or _get(ctx, "ultimo_app_janela", "")
-                or ""
-            ).strip()
+    nome = _extrair_alvo_consulta_app(ctx, texto_usuario)
+    if nome:
         resolver = _get(ctx, "_resolver_alvo_ambiente")
         if not nome or not callable(resolver):
             return False, ""
@@ -540,6 +665,18 @@ def processar_consulta_sistema_local(
             estado = dict(resolver(nome) or {})
         except Exception:
             estado = {}
+        validar_alvo = _get(ctx, "_validar_alvo_app_consulta")
+        if callable(validar_alvo):
+            try:
+                alvo_valido = bool(validar_alvo(nome, estado=estado))
+            except (TypeError, ValueError):
+                alvo_valido = bool(validar_alvo(nome))
+            except Exception:
+                alvo_valido = False
+            if not alvo_valido:
+                return False, ""
+        if type(estado.get("programa_aberto")) is not bool:
+            return _concluir_falha_observacao(ctx, texto_usuario, nome)
         aberto = bool(estado.get("programa_aberto"))
         em_foco = bool(estado.get("programa_em_foco"))
         apresentacao = nome.capitalize()
@@ -549,33 +686,30 @@ def processar_consulta_sistema_local(
             fala = f"{apresentacao} está aberto, mas não está em foco."
         else:
             fala = f"{apresentacao} não está entre os programas abertos agora."
+        # A leitura do sistema já aconteceu. Publique seu receipt antes de a
+        # fala atravessar o guardião, para que a voz possa distinguir estado
+        # observado de uma certeza inventada pela camada conversacional.
+        registrar = _get(ctx, "_registrar_resultado_execucao")
+        if callable(registrar):
+            registrar(
+                {
+                    "intent": "LIST_WINDOWS",
+                    "params": {"alvo": nome},
+                    "status": "estado_app_consultado",
+                    "executou": True,
+                    "confirmado": True,
+                },
+                texto_usuario,
+                True,
+                origem="consulta_sistema_local",
+                status="estado_app_consultado",
+            )
         tratado = emitir_conversa_curta(
             ctx, texto_usuario, fala, emocao="calma", nivel=1,
         )
-        if tratado:
-            registrar = _get(ctx, "_registrar_resultado_execucao")
-            if callable(registrar):
-                registrar(
-                    {
-                        "intent": "LIST_WINDOWS",
-                        "params": {"alvo": nome},
-                        "status": "estado_app_consultado",
-                        "executou": True,
-                        "confirmado": True,
-                    },
-                    texto_usuario,
-                    True,
-                    origem="consulta_sistema_local",
-                    status="estado_app_consultado",
-                )
         return tratado, "consulta_estado_programa" if tratado else ""
 
-    if not re.search(
-        r"\b(?:quais|que|lista|listar|mostra|mostrar)\b.*"
-        r"\b(?:programas|aplicativos|apps|janelas|processos)\b.*"
-        r"\b(?:abert[oa]s?|rodando|execucao|execução)\b",
-        t,
-    ):
+    if not _texto_pede_inventario_apps(t):
         return False, ""
     observar = _get(ctx, "observar_programas_abertos")
     listar = _get(ctx, "listar_programas_abertos")
@@ -587,7 +721,13 @@ def processar_consulta_sistema_local(
             "processos_segundo_plano": [],
         }
     except Exception:
-        retrato = {"janelas_visiveis": [], "processos_segundo_plano": []}
+        retrato = {}
+    if (
+        not isinstance(retrato.get("janelas_visiveis"), (list, tuple))
+        or retrato.get("janelas_observadas") is False
+        or retrato.get("processos_observados") is False
+    ):
+        return _concluir_falha_observacao(ctx, texto_usuario, "janelas visiveis")
     janelas = [
         str(item).strip() for item in list(retrato.get("janelas_visiveis") or [])
         if str(item).strip()
@@ -611,26 +751,25 @@ def processar_consulta_sistema_local(
         partes.append("Não incluí serviços ou componentes internos do sistema.")
     partes.append("As abas continuam dentro da janela do navegador, não como aplicativos separados.")
     fala = " ".join(partes)
+    registrar = _get(ctx, "_registrar_resultado_execucao")
+    if callable(registrar):
+        contrato = {
+            "intent": "LIST_WINDOWS",
+            "params": {"alvo": "janelas visiveis"},
+            "status": "janelas_listadas",
+            "executou": True,
+            "confirmado": True,
+        }
+        registrar(
+            contrato,
+            texto_usuario,
+            True,
+            origem="consulta_sistema_local",
+            status="janelas_listadas",
+        )
     tratado = emitir_conversa_curta(
         ctx, texto_usuario, fala, emocao="calma", nivel=1,
     )
-    if tratado:
-        registrar = _get(ctx, "_registrar_resultado_execucao")
-        if callable(registrar):
-            contrato = {
-                "intent": "LIST_WINDOWS",
-                "params": {"alvo": "janelas visiveis"},
-                "status": "janelas_listadas",
-                "executou": True,
-                "confirmado": True,
-            }
-            registrar(
-                contrato,
-                texto_usuario,
-                True,
-                origem="consulta_sistema_local",
-                status="janelas_listadas",
-            )
     return tratado, "consulta_programas_abertos"
 
 
@@ -748,6 +887,11 @@ def processar_esclarecimento_operacional(
     mesmo comando de forma natural.
     """
     contrato = detectar_esclarecimento_operacional(texto_usuario)
+    if not isinstance(contrato, dict):
+        contrato = detectar_esclarecimento_referencia_pessoal(
+            texto_usuario,
+            resolver_referencia_pessoal=_get(ctx, "_resolver_referencia_pessoal"),
+        )
     if not isinstance(contrato, dict):
         return False, ""
 

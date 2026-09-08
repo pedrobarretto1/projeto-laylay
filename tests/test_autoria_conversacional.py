@@ -1,3 +1,5 @@
+import pytest
+
 from mente_laylay.personalidade.autoria_conversacional import criar_fala_autoral
 from mente_laylay.autonomia.processamento_resposta_ia import (
     preparar_resposta_para_execucao,
@@ -38,6 +40,22 @@ def test_autoria_conversacional_entrega_fala_criada_pela_llm() -> None:
     assert resultado.fala == "Você chegou distribuindo caos de graça hoje, né?"
 
 
+def test_autoria_conversacional_aceita_fala_pura_sem_envelope_json() -> None:
+    def modelo(*_args, **_kwargs):
+        return "Você quer romance leve ou daqueles que deixam um estrago bonito?"
+
+    resultado = criar_fala_autoral(
+        "quero um filme de romance",
+        "Você prefere um romance leve ou dramático?",
+        enviar_mensagem=modelo,
+    )
+
+    assert resultado.usada_llm is True
+    assert resultado.fala == (
+        "Você quer romance leve ou daqueles que deixam um estrago bonito?"
+    )
+
+
 def test_autoria_conversacional_nunca_aceita_comando() -> None:
     def modelo(*_args, **_kwargs):
         return '{"fala":"Tá bom.","comandos":[{"acao":"open_app","alvo":"opera"}]}'
@@ -51,6 +69,32 @@ def test_autoria_conversacional_nunca_aceita_comando() -> None:
     assert resultado.usada_llm is False
     assert resultado.fala == "Fala segura."
     assert resultado.motivo_fallback == "comando_na_fala_conversacional"
+
+
+@pytest.mark.parametrize("estado", [
+    "__LAYLAY_LLM_OCUPADA__", "__LAYLAY_LLM_TIMEOUT__",
+    "__LAYLAY_LLM_INDISPONIVEL__", "LAYLAY LLM OCUPADA.",
+])
+def test_autoria_distingue_estado_tecnico_de_fala_do_modelo(estado) -> None:
+    resultado = criar_fala_autoral(
+        "Estou perguntando sobre o documento, não sobre o aplicativo.",
+        "Ainda não confirmei qual documento está aberto.",
+        enviar_mensagem=lambda *_args, **_kwargs: estado,
+    )
+
+    assert resultado.usada_llm is False
+    assert resultado.fala == "Ainda não confirmei qual documento está aberto."
+    assert resultado.motivo_fallback == "estado_tecnico_llm"
+
+
+@pytest.mark.parametrize("bruto", ["", "{}", '{"fala":""}', "Sim"])
+def test_autoria_mantem_fala_invalida_para_conteudo_sem_fala_util(bruto) -> None:
+    resultado = criar_fala_autoral(
+        "Qual documento está aberto?", "Ainda não confirmei o documento.",
+        enviar_mensagem=lambda *_args, **_kwargs: bruto,
+    )
+    assert resultado.usada_llm is False
+    assert resultado.motivo_fallback == "fala_invalida"
 
 
 def test_autoria_conversacional_nao_repete_fala_recente() -> None:
@@ -96,3 +140,25 @@ def test_fluxo_real_prefere_autoria_da_laylay_ao_bordao_local() -> None:
         "Você acordou escolhendo o caos hoje, né? Melhora essa provocação."
     )
     assert "do nada" not in resultado["fala"].casefold()
+
+
+def test_fluxo_real_nao_registra_modelo_sem_callback_quando_reparo_ja_falhou() -> None:
+    logs: list[str] = []
+
+    def modelo(*_args, **_kwargs):
+        return "__LAYLAY_LLM_INDISPONIVEL__"
+
+    resultado = preparar_resposta_para_execucao(
+        "boiola",
+        '{"fala":"Entendi.","comandos":[]}',
+        enviar_mensagem_cb=modelo,
+        limpar_texto_fala_cb=lambda fala: fala,
+        fallback_fala="fallback",
+        memoria_sqlite=None,
+        contexto_comunicacao={"mensagens": []},
+        log=logs.append,
+    )
+
+    assert resultado["fala"]
+    assert not any("modelo_sem_callback" in item for item in logs)
+    assert any("reparo_modelo_indisponivel" in item for item in logs)

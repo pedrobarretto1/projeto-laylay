@@ -11,6 +11,7 @@ from mente_laylay.autonomia.processamento_resposta_ia import salvar_aprendizados
 from mente_laylay.memoria_mental.memoria_confiavel import (
     extrair_aprendizados_pessoais_explicitos,
     preparar_aprendizados_confirmados,
+    resolver_preferencia_pessoal_confirmada,
     usuario_sustenta_aprendizado,
 )
 
@@ -46,6 +47,73 @@ class MemoriaConfiavelTests(unittest.TestCase):
         self.assertEqual(salvos[0]["status"], "ativo")
         self.assertTrue(salvos[0]["confirmado_usuario"])
         self.assertIn("eu gosto de Rubel", salvos[0]["evidencia"])
+
+    def test_favorito_singular_declarado_diretamente_e_salvo_e_recuperavel(self) -> None:
+        texto = "minha musica favorita è lua de neon da anny"
+
+        extraidos = extrair_aprendizados_pessoais_explicitos(texto)
+
+        self.assertEqual(len(extraidos), 1)
+        self.assertEqual(extraidos[0]["tipo"], "preferencia")
+        self.assertEqual(extraidos[0]["gatilho"], "música favorita")
+        self.assertEqual(extraidos[0]["valor"], "lua de neon da anny")
+
+        salvar_aprendizados_da_ia(
+            json.dumps({"fala": "Entendi.", "comandos": []}),
+            self.memoria,
+            texto,
+        )
+        referencia = resolver_preferencia_pessoal_confirmada(
+            self.memoria,
+            "minha música favorita",
+            categoria="música",
+        )
+
+        self.assertIsNotNone(referencia)
+        self.assertEqual(referencia["valor"], "lua de neon da anny")
+        self.assertEqual(referencia["categoria"], "música")
+        self.assertTrue(referencia["confirmado_usuario"])
+
+    def test_preferencia_pessoal_nao_e_recuperada_sem_confirmacao_do_usuario(self) -> None:
+        self.memoria.salvar_aprendizado_semantico(
+            tipo="preferencia",
+            gatilho="música favorita",
+            valor="titulo inferido pela IA",
+            regra="sua música favorita é titulo inferido pela IA",
+            origem="ia",
+            evidencia="",
+            status="ativo",
+            confirmado_usuario=False,
+        )
+
+        self.assertIsNone(
+            resolver_preferencia_pessoal_confirmada(
+                self.memoria,
+                "minha música favorita",
+                categoria="música",
+            )
+        )
+
+    def test_nova_musica_favorita_substitui_a_anterior(self) -> None:
+        for texto in (
+            "minha música favorita é Lua de Neon da Anny",
+            "minha música favorita é Glimpse of Us do Joji",
+        ):
+            salvar_aprendizados_da_ia(
+                json.dumps({"fala": "Entendi.", "comandos": []}),
+                self.memoria,
+                texto,
+            )
+
+        ativos = [
+            item
+            for item in self.memoria.listar_aprendizados_semanticos()
+            if item.get("tipo") == "preferencia"
+            and item.get("status") == "ativo"
+            and item.get("chave_semantica") == "preferencia:musica"
+        ]
+        self.assertEqual(len(ativos), 1)
+        self.assertEqual(ativos[0]["valor"], "Glimpse of Us do Joji")
 
     def test_fatos_pessoais_estaveis_explicitos_entram_na_memoria_geral(self) -> None:
         extraidos = extrair_aprendizados_pessoais_explicitos(

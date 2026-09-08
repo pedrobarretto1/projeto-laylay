@@ -396,7 +396,10 @@ class ObservabilidadeMenteRuntime:
                 sucesso=sucesso,
                 orcamento=orcamento,
             )
-            atual["ts"] = float(self.clock())
+            agora = float(self.clock())
+            atual["ts"] = agora
+            if sucesso:
+                atual["ts_ultimo_sucesso"] = agora
             metricas[nome] = atual
 
             metricas_rotas = dict(self._obter("diagnostico_metricas_rotas", {}) or {})
@@ -539,6 +542,8 @@ class ObservabilidadeMenteRuntime:
         fase: str = "",
         turno_id: Any = None,
     ) -> Dict[str, Any]:
+        classe_explicita = _codigo(classe, "", 24) in CLASSES_FALHA_TECNICA
+        impacto_explicito = _codigo(impacto, "", 24) in IMPACTOS_FALHA_TECNICA
         tipo = ""
         if isinstance(erro, BaseException):
             tipo = type(erro).__name__
@@ -552,12 +557,20 @@ class ObservabilidadeMenteRuntime:
             impacto=impacto,
             fallback=fallback,
         )
+        agora = float(self.clock())
         evento = {
             "componente": _codigo(componente, "desconhecido", 64),
             "codigo": _codigo(codigo, "falha", 80),
+            "error_code": _codigo(codigo, "falha", 80),
             "tipo": _codigo(tipo, "", 48) if tipo else "",
             **classificacao,
-            "ts": float(self.clock()),
+            "classe_origem": "explicita" if classe_explicita else "heuristica",
+            "impacto_origem": "explicita" if impacto_explicito else "heuristica",
+            "fallback_origem": "explicito" if str(fallback or "").strip() else "ausente",
+            "ts": agora,
+            "ts_primeira": agora,
+            "ts_ultima": agora,
+            "ocorrencias": 1,
         }
         if dominio:
             evento["dominio"] = _codigo(dominio, "desconhecido", 48)
@@ -565,6 +578,10 @@ class ObservabilidadeMenteRuntime:
             evento["fase"] = _codigo(fase, "desconhecida", 48)
         if turno_id is not None and str(turno_id).strip():
             evento["turno_id"] = _codigo(turno_id, "desconhecido", 48)
+        evento["ocorrencias_recentes"] = [{
+            "ts": evento["ts"],
+            **({"turno_id": evento["turno_id"]} if evento.get("turno_id") else {}),
+        }]
         with self._lock:
             eventos = list(self._obter("diagnostico_falhas", []) or [])
             eventos.append(evento)
@@ -632,6 +649,44 @@ class ObservabilidadeMenteRuntime:
             if anterior and agora - float(anterior.get("ts") or 0.0) < self.janela_repeticao_s:
                 anterior["suprimidas"] = int(anterior.get("suprimidas") or 0) + 1
                 self._falhas_auxiliares[chave] = anterior
+                eventos = list(self._obter("diagnostico_falhas", []) or [])
+                for indice in range(len(eventos) - 1, -1, -1):
+                    evento_anterior = dict(eventos[indice] or {})
+                    if (
+                        str(evento_anterior.get("componente") or "") != componente_limpo
+                        or str(evento_anterior.get("codigo") or "") != codigo_limpo
+                        or str(evento_anterior.get("tipo") or "") != tipo
+                        or str(evento_anterior.get("dominio") or "") != dominio_limpo
+                        or str(evento_anterior.get("fase") or "") != fase_limpa
+                    ):
+                        continue
+                    ocorrencia = {"ts": agora}
+                    if turno_limpo:
+                        ocorrencia["turno_id"] = turno_limpo
+                        evento_anterior["turno_id"] = turno_limpo
+                    recentes = [
+                        dict(item) for item in list(
+                            evento_anterior.get("ocorrencias_recentes") or []
+                        )
+                        if isinstance(item, dict)
+                    ]
+                    recentes.append(ocorrencia)
+                    evento_anterior.update(
+                        error_code=codigo_limpo,
+                        ocorrencias=int(evento_anterior.get("ocorrencias") or 1) + 1,
+                        ts_primeira=float(
+                            evento_anterior.get("ts_primeira")
+                            or evento_anterior.get("ts")
+                            or agora
+                        ),
+                        ts_ultima=agora,
+                        ocorrencias_recentes=recentes[-20:],
+                    )
+                    eventos[indice] = evento_anterior
+                    self._atualizar(
+                        diagnostico_falhas=eventos[-self.limite_eventos:]
+                    )
+                    break
                 sinal = sinal_regressao_por_falha(codigo_limpo, fallback)
                 if (
                     sinal

@@ -19,6 +19,7 @@ def analisar_funcao_comunicativa(texto: str) -> Dict[str, Any]:
     if not base:
         return {}
     regras = (
+        ("correcao", r"^(?:eu\s+)?(?:estou\s+(?:perguntando|falando)|perguntei|falei)\s+(?:sobre|d[aoe])\b[^.!?]{1,180}\bn[aã]o\s+(?:sobre|d[aoe])\b", "reconhecer a correcao de escopo sem confundir contexto com autorizacao"),
         ("encerramento", r"\b(?:era so isso|era só isso|por hoje e so|por hoje é só|ate mais|até mais|falou|depois a gente ve|depois a gente vê)\b", "encerrar o assunto sem retomar contexto antigo"),
         ("correcao", r"^(?:na verdade|nao lay|não lay|eu quis dizer|quis dizer|meu nome n[aã]o|voce (?:ainda )?nao (?:tem|consegue)|você (?:ainda )?não (?:tem|consegue)|ja falei|já falei)\b", "aceitar a correcao e atualizar o entendimento"),
         ("conquista", r"\b(?:consegui|passei|ganhei|venci|tirei nota maxima|tirei nota máxima|deu certo|terminei|fui aprovado|fui aprovada)\b", "reconhecer a conquista antes de perguntar ou aconselhar"),

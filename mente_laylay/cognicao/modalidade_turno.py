@@ -49,7 +49,10 @@ def analisar_protecao_operacional(
     }
     if not t:
         return neutra
-    if re.search(r"^(?:nao|não)\s+\w+.*\b(?:qu[eê]|qual|porque|por que)\b", t):
+    if re.search(
+        r"^(?:nao|não)\s+\w+.*\b(?:(?:o\s+)?qu[eê]|qual|por que)\b",
+        t,
+    ):
         return {
             "bloqueia_execucao": True,
             "modalidade": "pergunta",
@@ -86,13 +89,24 @@ def analisar_protecao_operacional(
             "motivo": "pergunta sobre capacidade; não é autorização",
         }
     if re.search(
+        r"^(?:nao|não|nem)\s+(?:(?:e|é)\s+)?(?:precisa|precise|necessario|necessário)\s+"
+        r"(?:me\s+)?(?:verificar|conferir|consultar|listar|olhar|ver|pesquisar|buscar)\b",
+        t,
+    ):
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "recusa",
+            "natureza_acao": "cancelamento",
+            "motivo": "dispensa operacional explícita",
+        }
+    if re.search(
         r"^(?:nao|não|nunca|jamais)\s+(?:(?:pode|deve|vai)\s+)?(?:me\s+)?"
         r"(?:abre|abra|fecha|feche|liga|ligue|acende|desliga|desligue|toca|"
         r"toque|coloca|coloque|cria|crie|apaga|apague|remove|remova|deleta|"
         r"delete|move|mova|renomeia|renomeie|escreve|escreva|grava|grave|"
         r"adiciona|adicione|acrescenta|acrescente|"
         r"muda|ajusta|deixa|olha|olhe|veja|ver|captura|capture|mostra|"
-        r"mostre|passa|passe|resume|resuma|explique|maximiza|maximize|"
+        r"mostre|lista|liste|passa|passe|resume|resuma|explique|maximiza|maximize|"
         r"organiza|organize|pesquisa|pesquise|busca|busque|encontra|encontre)\b",
         t,
     ):
@@ -225,7 +239,8 @@ def _classificar_modalidade_base(
         return resultado
     if re.search(
         r"^(?:na verdade|eu quis dizer|quis dizer|nao lay|não lay|to falando de|estou falando de|"
-        r"eu (?:nao|não) pedi|(?:nao|não) te pedi|eu te perguntei|eu perguntei|como assim.+eu .*perguntei)\b",
+        r"eu (?:nao|não) (?:pedi|perguntei|solicitei)|(?:nao|não) te pedi|"
+        r"eu te perguntei|eu perguntei|como assim.+eu .*perguntei)\b",
         t,
     ):
         resultado.update(modalidade="correcao", confianca=0.99, motivo="reparação explícita", natureza_acao="correcao")

@@ -21,6 +21,8 @@ class PonteIniciativaAplicacaoRuntime:
         salvar_memoria: Callable[[], Any],
         falar: Callable[[str, str, int], Any],
         env_getter: Callable[[str, str], str],
+        usuario_falando_getter: Callable[[], bool] | None = None,
+        prioridade_interacao_getter: Callable[[], bool] | None = None,
         clock: Callable[[], float] = time.time,
         log: Callable[[str], Any] = print,
     ) -> None:
@@ -33,6 +35,10 @@ class PonteIniciativaAplicacaoRuntime:
         self._salvar_memoria = salvar_memoria
         self._falar = falar
         self._env_getter = env_getter
+        self._usuario_falando_getter = usuario_falando_getter or (lambda: False)
+        self._prioridade_interacao_getter = (
+            prioridade_interacao_getter or (lambda: False)
+        )
         self._clock = clock
         self._log = log
         self._motor: Any | None = None
@@ -47,6 +53,11 @@ class PonteIniciativaAplicacaoRuntime:
         self._porteiro = porteiro
         self._coordenador = coordenador
         self._rede = rede
+
+    def conectar_usuario_falando(self, getter: Callable[[], bool]) -> None:
+        if not callable(getter):
+            raise ValueError("getter de fala do usuário deve ser callable")
+        self._usuario_falando_getter = getter
 
     def _exigir_conexao(self) -> tuple[Any, Any, Any, Any]:
         if any(item is None for item in (
@@ -70,6 +81,14 @@ class PonteIniciativaAplicacaoRuntime:
             str(contexto_sistema.get("title") or ""),
         )).casefold()
         mental = self._estado_mental_getter()
+        try:
+            usuario_falando = bool(self._usuario_falando_getter())
+        except Exception:
+            usuario_falando = False
+        try:
+            interacao_usuario_ativa = bool(self._prioridade_interacao_getter())
+        except Exception:
+            interacao_usuario_ativa = False
         return {
             "modo_chat": bool(self._conversa_getter("modo_chat", False)),
             "conversa_ativa": bool(self._conversa_getter("conversa_ativa", False)),
@@ -80,6 +99,8 @@ class PonteIniciativaAplicacaoRuntime:
             )),
             "ultima_entrada_ts": float(mental.get("ultima_entrada_ts") or 0.0),
             "is_speaking": bool(self._conversa_getter("is_speaking", False)),
+            "usuario_falando": usuario_falando,
+            "interacao_usuario_ativa": interacao_usuario_ativa,
             "assunto": str(contexto_sistema.get("assunto") or ""),
             "titulo_janela": str(contexto_sistema.get("title") or ""),
             "musica_atual_status": str(mental.get("musica_atual_status") or ""),

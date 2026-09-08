@@ -146,6 +146,9 @@ def montar_contexto_inicio_chat_por_grupos(
         "salvar_memoria": execucao.get("salvar_memoria"),
         "listar_programas_abertos": execucao.get("listar_programas_abertos"),
         "observar_programas_abertos": execucao.get("observar_programas_abertos"),
+        "_validar_alvo_app_consulta": execucao.get(
+            "validar_alvo_app_consulta"
+        ),
         "mensagens_append": messages.append if hasattr(messages, "append") else None,
     }
     return contexto
@@ -235,6 +238,9 @@ class ContextoInicioChatRuntime:
                 "salvar_memoria": ns.get("salvar_memoria"),
                 "listar_programas_abertos": ns.get("listar_programas_abertos"),
                 "observar_programas_abertos": ns.get("observar_programas_abertos"),
+                "validar_alvo_app_consulta": ns.get(
+                    "_validar_alvo_app_consulta"
+                ),
             },
         )
         # O refinamento substitui o dicionario mental por um novo retrato.

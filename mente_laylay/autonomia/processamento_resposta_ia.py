@@ -771,7 +771,12 @@ def preparar_resposta_para_execucao(
                     ultima_resposta=ultima_resposta_comunicacao,
                     entrada_usuario_repetida=entrada_usuario_repetida,
                 )
-                if candidata and not comandos_reparo and segunda_avaliacao.get("aceita"):
+                if (
+                    not reparo_modelo_indisponivel
+                    and candidata
+                    and not comandos_reparo
+                    and segunda_avaliacao.get("aceita")
+                ):
                     fala_reparada = candidata
                 elif candidata:
                     registrar_log(
@@ -800,16 +805,23 @@ def preparar_resposta_para_execucao(
                 contrato_reparo=avaliacao_comunicacao.get("contrato_reparo"),
                 falas_evitar=falas_recentes_comunicacao,
             )
-            autoria = criar_fala_autoral(
-                texto,
-                fala_segura,
-                enviar_mensagem=None if reparo_modelo_indisponivel else enviar_mensagem_cb,
-                mensagens=mensagens_comunicacao,
-                foco=avaliacao_comunicacao.get("foco"),
-                contrato_reparo=avaliacao_comunicacao.get("contrato_reparo"),
-            )
+            autoria = None
+            if reparo_modelo_indisponivel:
+                registrar_log(
+                    "🧭 [COMUNICAÇÃO] autoria final não tentada | "
+                    "motivo=reparo_modelo_indisponivel"
+                )
+            else:
+                autoria = criar_fala_autoral(
+                    texto,
+                    fala_segura,
+                    enviar_mensagem=enviar_mensagem_cb,
+                    mensagens=mensagens_comunicacao,
+                    foco=avaliacao_comunicacao.get("foco"),
+                    contrato_reparo=avaliacao_comunicacao.get("contrato_reparo"),
+                )
             fala_limpa = fala_segura
-            if autoria.usada_llm:
+            if autoria is not None and autoria.usada_llm:
                 avaliacao_autoral = avaliar_qualidade_comunicacao(
                     texto,
                     autoria.fala,
@@ -831,7 +843,7 @@ def preparar_resposta_para_execucao(
                             or ["contrato_nao_preservado"]
                         )
                     )
-            else:
+            elif autoria is not None:
                 registrar_log(
                     "⚠️ [COMUNICAÇÃO] autoria final indisponível | "
                     f"motivo={autoria.motivo_fallback or 'desconhecido'}"
@@ -843,7 +855,7 @@ def preparar_resposta_para_execucao(
             estrategia_reparo = str(
                 dict(avaliacao_comunicacao.get("contrato_reparo") or {}).get("estrategia") or ""
             )
-            if autoria.usada_llm and fala_limpa == autoria.fala:
+            if autoria is not None and autoria.usada_llm and fala_limpa == autoria.fala:
                 registrar_log(
                     "🧭 [COMUNICAÇÃO] turno recuperado pela autoria conversacional."
                 )

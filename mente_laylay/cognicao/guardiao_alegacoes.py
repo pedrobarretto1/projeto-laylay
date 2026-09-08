@@ -5,7 +5,14 @@ from __future__ import annotations
 import re
 from typing import Any, Dict
 
+from mente_laylay.cognicao.fundamentacao_factual import (
+    classificar_atualidade_factual,
+)
 from mente_laylay.emocoes.contrato_causal import evento_tem_causa_rastreavel
+from mente_laylay.cognicao.incerteza_observacao import (
+    expressa_incerteza_observacao,
+    estado_sob_pedido_informacao,
+)
 from mente_laylay.memoria_mental.resultado_acao import normalizar_resultado_acao
 
 
@@ -82,6 +89,33 @@ _ESTADO_REAL_FORTE = re.compile(
     r"(?:em\s+)?(?:\d+|ligad[oa]|desligad[oa]|normal|alta|baixo|baixa|est[aá]vel)\b",
     re.IGNORECASE,
 )
+_ALEGACAO_ESTADO_OBSERVAVEL = re.compile(
+    r"\b(?:est[aá]|t[aá]|continua|segue|permanece)\s+"
+    r"(?:abert[oa]s?|fechad[oa]s?|ativ[oa]s?|rodando|em\s+execu[cç][aã]o)\b",
+    re.IGNORECASE,
+)
+_FRONTEIRA_ORACAO_ESTADO = re.compile(
+    r"[,;:!?]|\b(?:mas|por[eé]m|contudo|entretanto|no\s+entanto|e)\b",
+    re.IGNORECASE,
+)
+
+
+def _alega_estado_sem_incerteza_local(frase: str) -> bool:
+    """A ressalva precisa anteceder o estado na mesma oração.
+
+    Não é um parser irrestrito de português. Esta fronteira conservadora evita
+    que uma incerteza sobre X libere uma afirmação independente sobre Y.
+    """
+    for estado in _ALEGACAO_ESTADO_OBSERVAVEL.finditer(frase):
+        prefixo = _FRONTEIRA_ORACAO_ESTADO.split(frase[:estado.start()])[-1]
+        if not (
+            expressa_incerteza_observacao(prefixo)
+            or estado_sob_pedido_informacao(prefixo)
+        ):
+            return True
+    return False
+
+
 _PERSONALIDADE_SEGURA = re.compile(
     r"\b(?:fiquei|estou|t[oô])\s+(?:curiosa|curioso|animada|interessada)|"
     r"\b(?:acho|me\s+parece|soa|eu\s+gostaria)\b",
@@ -185,6 +219,18 @@ def validar_alegacoes_da_fala(
     agendamento_rejeitado = False
     emocao_sem_causa_rejeitada = False
     texto_usuario = str(contrato.get("texto_usuario") or "")
+    atualidade = classificar_atualidade_factual(texto_usuario)
+    consulta_estado_observavel = bool(
+        atualidade.get("depende_atualidade")
+        and atualidade.get("classe") == "estado_observavel"
+    )
+    fundamentacao = contrato.get("fundamentacao_factual")
+    tem_fonte_atual = bool(
+        isinstance(fundamentacao, dict)
+        and fundamentacao.get("confiavel")
+        and fundamentacao.get("evidencia_dentro_validade", True) is not False
+    )
+    tem_leitura_confirmada = bool(confirmados or tem_fonte_atual)
     evento_causal_valido = evento_tem_causa_rastreavel(
         contrato.get("evento_emocional_causal")
         if isinstance(contrato.get("evento_emocional_causal"), dict)
@@ -193,7 +239,19 @@ def validar_alegacoes_da_fala(
     hipotese_emocional_negada = bool(
         _HIPOTESE_EMOCIONAL_NEGADA.search(texto_usuario)
     )
+    estado_atual_rejeitado = False
     for frase in frases:
+        if (
+            origem_ia
+            and consulta_estado_observavel
+            and not tem_leitura_confirmada
+            and not frase.rstrip().endswith("?")
+            and _alega_estado_sem_incerteza_local(frase)
+        ):
+            problemas.append("estado_atual_sem_evidencia")
+            removidas.append(frase)
+            estado_atual_rejeitado = True
+            continue
         if (
             origem_ia
             and hipotese_emocional_negada
@@ -263,7 +321,12 @@ def validar_alegacoes_da_fala(
             continue
         mantidas.append(frase)
     ajustada = " ".join(mantidas).strip()
-    if emocao_sem_causa_rejeitada:
+    if estado_atual_rejeitado:
+        ajustada = (
+            "Não tenho uma leitura atual desse estado para te responder com "
+            "segurança."
+        )
+    elif emocao_sem_causa_rejeitada:
         ajustada = (
             "Você tem razão: isso não é um fato. Não vou tratar essa emoção "
             "como real sem uma causa observável."

@@ -7,6 +7,48 @@ import unicodedata
 from typing import Any
 
 
+_MOLDURA_METALINGUISTICA_RE = re.compile(
+    r"^(?:"
+    r"como\s+(?:eu|voce|você)\s+"
+    r"(?:perguntaria|diria|falaria|pediria|escreveria)\b|"
+    r"(?:a|essa|esta)\s+(?:frase|palavra|express[aã]o|pergunta|forma)\b"
+    r")",
+    re.IGNORECASE,
+)
+_FALA_CITADA_RE = re.compile(
+    r"^se\s+eu\s+(?:disser|falar|perguntar|escrever)\b.*"
+    r"(?:\"[^\"]+\"|“[^”]+”|«[^»]+»)",
+    re.IGNORECASE,
+)
+_EXEMPLO_METALINGUISTICO_RE = re.compile(
+    r"\b(?:[ée]\s+(?:apenas|s[oó])\s+um\s+exemplo|"
+    r"isso\s+[ée]\s+(?:uma?\s+)?(?:consulta|pergunta|frase|comando)|"
+    r"quer\s+dizer\s+o\s+qu[eê])\b",
+    re.IGNORECASE,
+)
+_CITACAO_INTEGRAL_RE = re.compile(
+    r"^\s*(?:\"[^\"]+\"|“[^”]+”|«[^»]+»)(?:\s*[.!?])?\s*$",
+    re.DOTALL,
+)
+
+
+def texto_e_metalinguistico(texto: str) -> bool:
+    """Reconhece quando palavras/frases são o assunto, não seu conteúdo.
+
+    A função apenas descreve a moldura discursiva. Ela não interpreta intenção,
+    não autoriza execução e não decide qual domínio aparece dentro da citação.
+    """
+    bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
+    if not bruto:
+        return False
+    return bool(
+        _CITACAO_INTEGRAL_RE.fullmatch(bruto)
+        or _MOLDURA_METALINGUISTICA_RE.search(bruto)
+        or _FALA_CITADA_RE.search(bruto)
+        or _EXEMPLO_METALINGUISTICO_RE.search(bruto)
+    )
+
+
 CORRECOES_FONETICAS = (
     (r"\bpaly\s*list\b", "playlist"),
     (r"\bplay\s*list\b", "playlist"),

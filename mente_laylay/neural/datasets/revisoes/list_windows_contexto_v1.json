@@ -1,0 +1,95 @@
+{
+  "versao": 1,
+  "fonte": "mente_laylay/neural/datasets/candidatos/list_windows_onda_v2.jsonl",
+  "fonte_sha256": "85a0006d39b1e75a6f24a9089be7a8973c7c8ca214698bcc909f5cbb9ac66fb7",
+  "origem": "REVISAO_MANUAL",
+  "treino_permitido": false,
+  "autoriza_execucao": false,
+  "escopo": "Seis consultas pronominais identificadas no estudo v28. Os demais exemplos não estão certificados por esta revisão.",
+  "decisoes": [
+    {
+      "indice": 370,
+      "texto_sha256": "500858bdff22e51b796411b21ed05e7c4ad493e6a097c6e8184eb00fc68d8d15",
+      "motivo": "Referente não fornecido. A frase pede consulta, mas não comprova domínio de aplicativo ou alvo.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 371,
+      "texto_sha256": "c20f71a79ee32b35af03615d43bfb34a4f29e28548563bb2516b9499b5bf8a5e",
+      "motivo": "Referente não fornecido. A frase pede consulta, mas não comprova domínio de aplicativo ou alvo.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 372,
+      "texto_sha256": "3878a5a3282bf60381adb9dcffe5600487b9d8bb75ee1aca70fde180bf06aed2",
+      "motivo": "Referente não fornecido. A frase pede consulta, mas não comprova domínio de aplicativo ou alvo.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 373,
+      "texto_sha256": "ac979ec5bf15d9116e9f9cd11458bfcce78b3df12c9dfdd9a3544be72720a130",
+      "motivo": "Referente não fornecido. A frase pede consulta, mas não comprova domínio de aplicativo ou alvo.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 374,
+      "texto_sha256": "443839ae79d36f2f7897ab2cc2d94bfcf083d6cc8d4f08ee6f01d59fbb6af679",
+      "motivo": "Referente não fornecido. A frase pede consulta, mas não comprova domínio de aplicativo ou alvo.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    },
+    {
+      "indice": 375,
+      "texto_sha256": "dd4156fae85c143dd11c71366bb55581ab843fbda691418f83ca2980dffbb4fd",
+      "motivo": "Referente não fornecido. A frase pede consulta, mas não comprova domínio de aplicativo ou alvo.",
+      "campos_dependentes": [
+        "intent",
+        "action",
+        "domain",
+        "extension_factors.dominio_app"
+      ],
+      "fatores_textuais": {
+        "ato_consulta": true
+      }
+    }
+  ]
+}

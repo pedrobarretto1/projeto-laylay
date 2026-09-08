@@ -11,6 +11,8 @@ import re
 import unicodedata
 from typing import Any, Dict
 
+from mente_laylay.cognicao.normalizacao_linguagem import texto_e_metalinguistico
+
 
 def _normalizar(texto: str) -> str:
     base = unicodedata.normalize("NFKD", str(texto or "").casefold())
@@ -40,6 +42,13 @@ def analisar_ato_social(
     estado = dict(mente or {})
     if not base:
         return {}
+    if texto_e_metalinguistico(bruto):
+        return {
+            "tipo": "METALINGUAGEM",
+            "confianca": 0.99,
+            "motivo": "a fala discute uma formulação ou citação",
+            "evidencias": ["moldura_metalinguistica"],
+        }
 
     if re.search(r"[,;].+\?\s*$", base):
         return {
@@ -48,8 +57,12 @@ def analisar_ato_social(
             "evidencias": ["mais_de_um_ato"],
         }
 
+    # O estado precisa estar explicitamente atribuído à interlocutora. Tornar
+    # esse referente opcional fazia perguntas metalinguísticas como "Como eu
+    # perguntaria se o Opera está aberto?" virarem WELLBEING apenas porque
+    # continham ``como`` e ``está`` em pontos diferentes da frase.
     pergunta_estado_como = bool(re.search(
-        r"^como\b.*\b(?:voce|tu|lay|laylay|a laylay)?\b.*\b(?:esta|ta)\b",
+        r"^como\b.*\b(?:voce|tu|lay|laylay)\b.*\b(?:esta|ta)\b",
         base,
     ))
     vocabulario_estado = bool(re.search(

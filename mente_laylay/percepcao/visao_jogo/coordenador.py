@@ -5,6 +5,10 @@ from __future__ import annotations
 import time
 from typing import Any, Callable, Dict, Mapping
 
+from mente_laylay.autonomia.diretor_presenca import (
+    decisao_presenca_aceita_para_entrega,
+)
+
 
 class CoordenadorVisaoJogoRuntime:
     """Converte eventos visuais em memória, pendências e presença proativa."""
@@ -97,7 +101,7 @@ class CoordenadorVisaoJogoRuntime:
                 if categoria in {"motivacao", "celebracao"} else "curiosa",
                 "nivel": 2,
             })
-            return str(resultado.get("status") or "") == "emitida"
+            return decisao_presenca_aceita_para_entrega(resultado)
 
         prioridade = str(dados.get("prioridade") or "normal").casefold()
         decisao = self.registrar_oportunidade({

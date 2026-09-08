@@ -390,6 +390,18 @@ def registrar_resultado_execucao(
         if alvo_app:
             estado["ultimo_app_janela"] = alvo_app
             estado["ultimo_alvo"] = alvo_app
+    elif (
+        resultado_promovivel
+        and intent == "LIST_WINDOWS"
+        and status_final == "estado_app_consultado"
+    ):
+        # Uma leitura direcionada e confirmada prova qual app foi consultado,
+        # embora não produza efeito no sistema. Esse receipt pode estabelecer
+        # o referente de "ele/ela"; um inventário plural não pode.
+        alvo_app = str(params.get("alvo") or contrato.alvo or "").strip()
+        if alvo_app:
+            estado["ultimo_app_janela"] = alvo_app
+            estado["ultimo_alvo"] = alvo_app
     elif resultado_promovivel and intent == "ORGANIZAR_DESKTOP":
         esquerda = str(params.get("left") or params.get("esquerda") or "").strip()
         direita = str(params.get("right") or params.get("direita") or "").strip()

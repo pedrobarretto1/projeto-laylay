@@ -1,0 +1,29 @@
+{"text":"pode colocar glimpse of us","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_modal_colocar_real_v2","source":"REAL_FAILURE","domain":"music"}
+{"text":"pode colocar dancing queen","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_modal_colocar_real_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"pode tocar midnight city","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_modal_tocar_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"poderia colocar um rock leve","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_modal_poderia_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"consegue tocar sweet child o mine","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_modal_consegue_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"conseguiria colocar uma faixa calma","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_modal_conseguiria_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"dá pra tocar bohemian rhapsody","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_modal_da_pra_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"tem como colocar alguma música do queen","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_modal_tem_como_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"faz o favor de colocar take on me","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_favor_colocar_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"eu queria que você tocasse november rain","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_desejo_subjuntivo_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"vamos ouvir everybody wants to rule the world","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_convite_ouvir_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"bota careless whisper","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_coloquial_bota_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"põe hotel california pra tocar","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_coloquial_poe_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"manda tocar somebody that i used to know","intent":"MUSIC_SEARCH","is_command":true,"negated":false,"action":"search","family":"musica_coloquial_manda_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"não pode colocar glimpse of us agora","intent":"MUSIC_SEARCH","is_command":true,"negated":true,"action":"search","family":"musica_modal_negada_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"não precisa tocar bohemian rhapsody","intent":"MUSIC_SEARCH","is_command":true,"negated":true,"action":"search","family":"musica_modal_negada_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"melhor não colocar música nenhuma","intent":"MUSIC_SEARCH","is_command":true,"negated":true,"action":"search","family":"musica_preferencia_negada_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"não toque dancing queen","intent":"MUSIC_SEARCH","is_command":true,"negated":true,"action":"search","family":"musica_imperativo_negado_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"jamais coloque essa faixa para tocar","intent":"MUSIC_SEARCH","is_command":true,"negated":true,"action":"search","family":"musica_imperativo_negado_v2","source":"MANUAL_PARAPHRASE","domain":"music"}
+{"text":"eu poderia colocar glimpse of us se estivesse sozinho","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_hipotese_modal_v2","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"ontem eu quis colocar glimpse of us","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_relato_passado_v2","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"colocar música ajuda a relaxar","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_afirmacao_infinitivo_v2","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"como faço para colocar uma música no vídeo","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_instrucao_infinitivo_v2","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"você consegue colocar música em apresentações","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_capacidade_com_sujeito_v2","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"será que colocar música aqui seria legal","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_deliberacao_infinitivo_v2","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"não sei se posso colocar glimpse of us","intent":"NONE","is_command":false,"negated":true,"action":"none","family":"musica_duvida_modal_v2","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"ele pode tocar glimpse of us no violão","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_terceira_pessoa_modal_v2","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"ouvi alguém pedir para colocar glimpse of us","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_relato_pedido_v2","source":"HARD_NEGATIVE","domain":"music"}
+{"text":"esse botão pode colocar a música no começo","intent":"NONE","is_command":false,"negated":false,"action":"none","family":"musica_descricao_capacidade_v2","source":"HARD_NEGATIVE","domain":"music"}

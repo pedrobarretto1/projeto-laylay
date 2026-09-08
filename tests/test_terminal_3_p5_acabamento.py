@@ -91,6 +91,7 @@ def test_trocar_paginas_nao_promove_controles_do_topo_a_janelas(monkeypatch) -> 
 
     for nome in (
         "inicio", "conversa", "automacao", "musica", "memoria", "sistema",
+        "desenvolvedor",
         "configuracoes", "inicio",
     ):
         janela.selecionar_pagina(nome)
@@ -265,7 +266,7 @@ janela = JanelaLaylay(worker, Path.cwd())
 janela.show()
 worker.conectado.emit(True)
 for ciclo in range(4):
-    for pagina in ("inicio", "conversa", "automacao", "musica", "memoria", "sistema", "configuracoes"):
+    for pagina in ("inicio", "conversa", "automacao", "musica", "memoria", "sistema", "desenvolvedor", "configuracoes"):
         janela.selecionar_pagina(pagina)
         janela.resize(1680 if ciclo % 2 == 0 else 760, 940 if ciclo % 2 == 0 else 680)
         app.processEvents()

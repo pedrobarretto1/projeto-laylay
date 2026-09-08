@@ -230,6 +230,28 @@ def test_autoria_pode_personalizar_execucao_parcial_sem_pedir_permissao() -> Non
     assert "confirma antes" not in confirmacao.fala.casefold()
 
 
+def test_fala_de_musica_tocando_ja_confirma_o_resultado_sem_repetir_titulo() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "MUSIC_SEARCH",
+        "params": {
+            "query": "Shiny - Vazio Constante | Bojack, Rick & Clancy",
+        },
+        "alvo": "Shiny - Vazio Constante",
+        "status": "musica_reproduzindo",
+        "executou": True,
+        "confirmado": True,
+        "texto_usuario": "coloca vazio constante shiny_sz",
+    })
+
+    plano = planejar_resposta_acao(
+        resultado,
+        "Shiny - Vazio Constante está tocando agora.",
+    )
+
+    assert plano.fala == "Shiny - Vazio Constante está tocando agora."
+    assert plano.fala.count("Shiny - Vazio Constante") == 1
+
+
 def test_autoria_rejeita_parcial_que_finge_confirmacao_total() -> None:
     resultado = normalizar_resultado_acao({
         "intent": "MUSIC_SEARCH",
@@ -288,6 +310,33 @@ def test_autoria_operacional_se_corrige_antes_de_usar_fala_local() -> None:
     assert len(chamadas) == 2
     assert confirmacao.usada_llm is True
     assert "não repeti" in confirmacao.fala.casefold()
+
+
+def test_autoria_operacional_aceita_fala_pura_sem_redeclarar_receipt_em_json() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "APP_OPEN",
+        "params": {"nome_app": "calculadora"},
+        "alvo": "calculadora",
+        "status": "app_iniciado_focado",
+        "executou": True,
+        "confirmado": True,
+    })
+
+    confirmacao = personalizar_confirmacao_llm(
+        resultado,
+        "Iniciei calculadora e trouxe a nova janela pra frente.",
+        classe="sucesso",
+        emocao="calma",
+        nivel=1,
+        enviar_mensagem=lambda *_args, **_kwargs: (
+            "Iniciei a calculadora e trouxe a janela pra frente."
+        ),
+        contexto={},
+    )
+
+    assert confirmacao.usada_llm is True
+    assert confirmacao.motivo_fallback == ""
+    assert "calculadora" in confirmacao.fala.casefold()
 
 
 def test_autoria_operacional_remove_enxerto_literal_de_contexto_antigo() -> None:

@@ -53,7 +53,7 @@ def test_p1_shell_monta_dashboard_sem_inventar_estado(monkeypatch) -> None:
     assert janela.painel_lateral.isVisible()
     assert set(janela._nav) == {
         "inicio", "conversa", "automacao", "musica", "memoria", "sistema",
-        "configuracoes",
+        "desenvolvedor", "configuracoes",
     }
     assert janela.chip_memoria.texto.text() == "Memória: Aguardando"
     assert all(valor.text() == "—" for valor in janela.painel_lateral.metricas.values())
@@ -169,6 +169,7 @@ def test_p1_navegacao_preserva_indices_legados(monkeypatch) -> None:
         ("conversa", 0),
         ("diagnostico", 2),
         ("sistema", 7),
+        ("desenvolvedor", 8),
         ("configuracoes", 3),
         ("automacao", 4),
         ("musica", 5),

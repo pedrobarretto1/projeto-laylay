@@ -43,6 +43,24 @@ def tamanho_icone() -> QSize:
     return QSize(19, 19)
 
 
+def definir_propriedades_visuais(widget: QWidget, **propriedades: object) -> bool:
+    """Recalcula QSS somente quando uma propriedade dinâmica realmente muda."""
+    alteradas = {
+        nome: valor
+        for nome, valor in propriedades.items()
+        if widget.property(nome) != valor
+    }
+    if not alteradas:
+        return False
+    for nome, valor in alteradas.items():
+        widget.setProperty(nome, valor)
+    estilo = widget.style()
+    estilo.unpolish(widget)
+    estilo.polish(widget)
+    widget.update()
+    return True
+
+
 class FormaOndaMicrofone(QWidget):
     """Waveform efêmero alimentado pelo RMS observado no ouvido canônico."""
 
@@ -61,7 +79,6 @@ class FormaOndaMicrofone(QWidget):
         self._timer = QTimer(self)
         self._timer.setInterval(45)
         self._timer.timeout.connect(self._avancar)
-        self._timer.start()
         self.setAccessibleName("Nível do microfone")
         self.setToolTip("Nível observado pelo microfone da Laylay; não grava áudio na interface")
 
@@ -72,13 +89,31 @@ class FormaOndaMicrofone(QWidget):
             valor = 0.0
         self._alvo = max(0.0, min(1.0, valor)) if ativo else 0.0
         self._ativo = bool(ativo)
+        if self._reduzir_movimento:
+            self._nivel = self._alvo
+            self._amostras.clear()
+            self._amostras.extend([self._nivel] * 31)
+        self._sincronizar_timer()
+        self.update()
+
+    def _sincronizar_timer(self) -> None:
+        animando = self._alvo > 0.001 or self._nivel > 0.003
+        deve_animar = self.isVisible() and animando and not self._reduzir_movimento
+        if deve_animar and not self._timer.isActive():
+            self._timer.start()
+        elif not deve_animar and self._timer.isActive():
+            self._timer.stop()
 
     def _avancar(self) -> None:
+        if not self.isVisible():
+            self._timer.stop()
+            return
         if self._reduzir_movimento:
             self._nivel = self._alvo
             self._amostras.clear()
             self._amostras.extend([self._nivel] * 31)
             self.update()
+            self._timer.stop()
             return
         self._nivel += (self._alvo - self._nivel) * 0.34
         if abs(self._nivel) < 0.003 and self._alvo == 0:
@@ -86,6 +121,16 @@ class FormaOndaMicrofone(QWidget):
         self._fase = (self._fase + 1) % 31
         self._amostras.append(self._nivel)
         self.update()
+        if self._nivel == 0.0 and self._alvo == 0.0:
+            self._timer.stop()
+
+    def showEvent(self, event) -> None:  # noqa: N802 - contrato Qt
+        super().showEvent(event)
+        self._sincronizar_timer()
+
+    def hideEvent(self, event) -> None:  # noqa: N802 - contrato Qt
+        self._timer.stop()
+        super().hideEvent(event)
 
     def paintEvent(self, _event) -> None:  # noqa: N802
         painter = QPainter(self)
@@ -134,8 +179,17 @@ class CapaMusicaGenerica(QWidget):
         self._pixmap = QPixmap()
         self._candidatas = variantes_capa_youtube(url)
         self._indice_candidata = -1
+        personalizado = re.fullmatch(
+            r"laylay-playlist-artwork://([a-f0-9]{24}\.png)", url,
+        )
+        if personalizado:
+            caminho = Path.home() / ".laylay" / "playlist_artwork" / personalizado.group(1)
+            pixmap = QPixmap(str(caminho))
+            if not pixmap.isNull():
+                self._pixmap = pixmap
         self.update()
-        self._tentar_proxima_capa()
+        if self._pixmap.isNull():
+            self._tentar_proxima_capa()
 
     def _tentar_proxima_capa(self) -> None:
         self._indice_candidata += 1
@@ -169,9 +223,11 @@ class CapaMusicaGenerica(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         retangulo = QRectF(0.5, 0.5, self.width() - 1.0, self.height() - 1.0)
+        lado = max(1.0, min(retangulo.width(), retangulo.height()))
+        raio = max(2.0, min(9.0, lado * 0.14))
         if not self._pixmap.isNull():
             caminho = QPainterPath()
-            caminho.addRoundedRect(retangulo, 9, 9)
+            caminho.addRoundedRect(retangulo, raio, raio)
             painter.setClipPath(caminho)
             imagem = self._pixmap.scaled(
                 self.size(), Qt.KeepAspectRatioByExpanding,
@@ -183,13 +239,28 @@ class CapaMusicaGenerica(QWidget):
             painter.setClipping(False)
             painter.setPen(QPen(QColor("#55313B"), 1))
             painter.setBrush(Qt.NoBrush)
-            painter.drawRoundedRect(retangulo, 9, 9)
+            painter.drawRoundedRect(retangulo, raio, raio)
             return
         painter.setPen(QPen(QColor("#55313B"), 1))
         painter.setBrush(QColor("#251A20"))
-        painter.drawRoundedRect(retangulo, 9, 9)
-        painter.setPen(QPen(QColor("#FF5C73"), 2.2, Qt.SolidLine, Qt.RoundCap))
-        centro = self.width() / 2
-        painter.drawEllipse(QRectF(centro - 17, centro - 17, 34, 34))
-        painter.drawEllipse(QRectF(centro - 4, centro - 4, 8, 8))
-        painter.drawLine(int(centro + 15), int(centro - 15), int(centro + 24), int(centro - 23))
+        painter.drawRoundedRect(retangulo, raio, raio)
+        espessura = max(1.1, min(2.2, lado * 0.052))
+        painter.setPen(QPen(QColor("#FF5C73"), espessura, Qt.SolidLine, Qt.RoundCap))
+        centro_x = self.width() / 2.0
+        centro_y = self.height() / 2.0
+        raio_disco = lado * 0.27
+        raio_centro = max(1.5, lado * 0.065)
+        painter.drawEllipse(QRectF(
+            centro_x - raio_disco, centro_y - raio_disco,
+            raio_disco * 2.0, raio_disco * 2.0,
+        ))
+        painter.drawEllipse(QRectF(
+            centro_x - raio_centro, centro_y - raio_centro,
+            raio_centro * 2.0, raio_centro * 2.0,
+        ))
+        haste_inicio = raio_disco * 0.82
+        haste_fim = min(lado * 0.43, raio_disco * 1.42)
+        painter.drawLine(
+            int(centro_x + haste_inicio), int(centro_y - haste_inicio),
+            int(centro_x + haste_fim), int(centro_y - haste_fim),
+        )

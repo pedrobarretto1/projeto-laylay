@@ -1075,6 +1075,9 @@ class CicloComandosRuntime:
             "_resolver_alvo_ambiente": contexto_execucao.get(
                 "_resolver_alvo_ambiente"
             ),
+            "_validar_alvo_app_consulta": contexto_execucao.get(
+                "_validar_alvo_app_consulta"
+            ),
             "falar_com_lipsync": contexto_execucao.get("falar_com_lipsync"),
             "_emitir_resposta_curta": contexto_execucao.get(
                 "_emitir_resposta_curta"
@@ -1471,10 +1474,12 @@ class CicloComandosRuntime:
             # Consultas somente leitura também podem ser a última etapa de uma
             # cadeia. Elas precisam observar o estado já alterado pelas etapas
             # anteriores antes de cair no resolvedor de mutações.
-            tratado_readonly, _ = processar_consulta_sistema_local(
+            tratado_readonly, rota_readonly = processar_consulta_sistema_local(
                 contexto,
                 trecho,
             )
+            if rota_readonly == "falha_observacao":
+                return False
             if tratado_readonly:
                 return True
 

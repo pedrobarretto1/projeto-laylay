@@ -5,7 +5,9 @@ from __future__ import annotations
 import time
 from typing import Any, Callable
 
-from mente_laylay.autonomia.governanca_iniciativa import decisao_permite_emissao
+from mente_laylay.autonomia.diretor_presenca import (
+    decisao_presenca_aceita_para_entrega,
+)
 from mente_laylay.memoria_mental.estado_continuidades import sugestao_pendente_ativa
 
 
@@ -45,9 +47,8 @@ class MonitorJanelasRuntime:
         janela_em_tela_cheia: Callable[[Any], bool],
         detectar_gatilho: Callable[[str, str, str, bool], tuple[str, dict | None]],
         fala_gatilho: Callable[[str], str],
-        falar: Callable[[str, str, int], Any],
+        considerar_presenca: Callable[[dict[str, Any]], Any],
         preparar_sugestao: Callable[[str, dict[str, Any], str], tuple[str, dict[str, Any], str]] | None = None,
-        registrar_oportunidade: Callable[[dict[str, Any]], Any] | None = None,
         atualizar_modo_jogo: Callable[[dict[str, Any], bool], dict[str, Any]] | None = None,
         interacao_iniciada: Callable[[], bool] | None = None,
         clock: Callable[[], float] = time.time,
@@ -70,9 +71,8 @@ class MonitorJanelasRuntime:
         self.janela_em_tela_cheia = janela_em_tela_cheia
         self.detectar_gatilho = detectar_gatilho
         self.fala_gatilho = fala_gatilho
-        self.falar = falar
+        self.considerar_presenca = considerar_presenca
         self.preparar_sugestao = preparar_sugestao
-        self.registrar_oportunidade = registrar_oportunidade
         self.atualizar_modo_jogo = atualizar_modo_jogo
         self.interacao_iniciada = interacao_iniciada or (lambda: True)
         self.clock = clock
@@ -121,40 +121,56 @@ class MonitorJanelasRuntime:
                     self.log(f"⚠️ [MONITOR JANELAS] preferência de sugestão ignorada: {exc}")
             comando_oportunidade = comando
             payload_oportunidade = dict(payload)
-        decisao_iniciativa = {}
-        if callable(self.registrar_oportunidade):
-            try:
-                decisao_iniciativa = dict(self.registrar_oportunidade({
-                    "chave": f"janela:assunto:{assunto}",
-                    "tipo": "contexto_janela",
-                    "origem": "monitor_janelas",
-                    "dominio": "rotina",
-                    "acao_proposta": {
-                        "intent": comando_oportunidade,
-                        "params": payload_oportunidade,
-                    },
-                    "utilidade": 46,
-                    "risco": "baixo",
-                    "executavel": bool(comando_oportunidade),
-                    "reversivel": True,
-                    "validade_s": 300.0,
-                }) or {})
-            except Exception as exc:
-                self.log(f"⚠️ [INICIATIVA] oportunidade de janela ignorada: {exc}")
-        if not decisao_permite_emissao(decisao_iniciativa):
+        def concluir(entregue: bool, _motivo: str) -> None:
+            if not entregue:
+                return
+            if sugestao:
+                self.continuidade_update(
+                    comando_sugerido=comando_oportunidade,
+                    comando_sugerido_payload=payload_oportunidade,
+                    comando_sugerido_estado="PENDING_CONFIRM",
+                    comando_sugerido_ts=agora,
+                    comando_pendente=comando_oportunidade,
+                    comando_pendente_payload=payload_oportunidade,
+                )
+            self.ultimo_proativo_set(agora)
+
+        evento = {
+            "natureza": "evento",
+            "origem": "monitor_janelas",
+            "dominio": "janelas",
+            "categoria": "dica" if sugestao else "companhia",
+            "confianca": 0.92,
+            "fundamentada": True,
+            "momento_seguro": True,
+            "motivo": (
+                f"Pedro permaneceu no contexto {assunto}; há uma oportunidade "
+                "de oferecer apoio contextual sem interromper."
+            ),
+            "evidencias": [
+                f"assunto_confirmado:{assunto}",
+                "permanencia_contextual_confirmada",
+            ],
+            "chave": f"janela:assunto:{assunto}",
+            "timestamp": agora,
+            "validade_s": 300.0,
+            "acao_proposta": {
+                "intent": comando_oportunidade,
+                "params": payload_oportunidade,
+            },
+            "utilidade": 46,
+            "executavel": bool(comando_oportunidade),
+            "reversivel": True,
+            "autoridade_usuario": False,
+            "permissao_execucao": False,
+            "ao_concluir": concluir,
+        }
+        try:
+            decisao = dict(self.considerar_presenca(evento) or {})
+        except Exception as exc:
+            self.log(f"⚠️ [PRESENÇA] evento de janela ignorado: {exc}")
             return False
-        if sugestao:
-            self.continuidade_update(
-                comando_sugerido=comando_oportunidade,
-                comando_sugerido_payload=payload_oportunidade,
-                comando_sugerido_estado="PENDING_CONFIRM",
-                comando_sugerido_ts=agora,
-                comando_pendente=comando_oportunidade,
-                comando_pendente_payload=payload_oportunidade,
-            )
-        self.ultimo_proativo_set(agora)
-        self.falar(fala, "calma", 1)
-        return True
+        return decisao_presenca_aceita_para_entrega(decisao)
 
     def executar_ciclo(self) -> dict[str, Any]:
         retrato = dict(self.capturar_janela() or {})
@@ -226,38 +242,58 @@ class MonitorJanelasRuntime:
                     gatilho, payload, fala = self.preparar_sugestao(gatilho, dict(payload or {}), fala)
                 except Exception as exc:
                     self.log(f"⚠️ [MONITOR JANELAS] preferência de gatilho ignorada: {exc}")
-            decisao_iniciativa = {}
-            if callable(self.registrar_oportunidade):
-                try:
-                    decisao_iniciativa = dict(self.registrar_oportunidade({
-                        "chave": f"janela:gatilho:{gatilho}",
-                        "tipo": "contexto_janela",
-                        "origem": "monitor_janelas",
-                        "dominio": "navegador",
-                        "acao_proposta": {"intent": gatilho, "params": dict(payload or {})},
-                        "utilidade": 55,
-                        "risco": "baixo",
-                        "executavel": bool(gatilho),
-                        "reversivel": gatilho in {"RELOAD_PAGE", "EXPLAIN_ERROR"},
-                        "validade_s": 180.0,
-                    }) or {})
-                except Exception as exc:
-                    self.log(f"⚠️ [INICIATIVA] oportunidade de navegador ignorada: {exc}")
-            if not decisao_permite_emissao(decisao_iniciativa):
+            def concluir(entregue: bool, _motivo: str) -> None:
+                if not entregue:
+                    return
+                self.continuidade_update(
+                    comando_sugerido=gatilho,
+                    comando_sugerido_payload=payload,
+                    comando_sugerido_estado="PENDING_CONFIRM",
+                    comando_sugerido_ts=agora,
+                    comando_pendente=gatilho,
+                    comando_pendente_payload=payload,
+                )
+                self.ultimo_proativo_set(agora)
+
+            evento = {
+                "natureza": "evento",
+                "origem": "monitor_janelas",
+                "dominio": "navegador",
+                "categoria": "dica",
+                "confianca": 0.92,
+                "fundamentada": True,
+                "momento_seguro": True,
+                "motivo": (
+                    f"O contexto do navegador manteve o gatilho {gatilho}; "
+                    "há oportunidade de oferecer uma correção reversível."
+                ),
+                "evidencias": [
+                    f"executavel:{executavel}",
+                    f"titulo:{titulo}",
+                ],
+                "chave": f"janela:gatilho:{gatilho}",
+                "timestamp": agora,
+                "validade_s": 180.0,
+                "acao_proposta": {
+                    "intent": gatilho,
+                    "params": dict(payload or {}),
+                },
+                "utilidade": 55,
+                "executavel": bool(gatilho),
+                "reversivel": gatilho in {"RELOAD_PAGE", "EXPLAIN_ERROR"},
+                "autoridade_usuario": False,
+                "permissao_execucao": False,
+                "ao_concluir": concluir,
+            }
+            try:
+                decisao = dict(self.considerar_presenca(evento) or {})
+            except Exception as exc:
+                self.log(f"⚠️ [PRESENÇA] evento de navegador ignorado: {exc}")
+                decisao = {}
+            if not decisao_presenca_aceita_para_entrega(decisao):
                 self.ultimo_gatilho = ""
                 self.gatilho_inicio_ts = 0.0
                 return {"status": "bloqueado_permissao", "gatilho": gatilho, "retrato": retrato}
-            self.continuidade_update(
-                comando_sugerido=gatilho,
-                comando_sugerido_payload=payload,
-                comando_sugerido_estado="PENDING_CONFIRM",
-                comando_sugerido_ts=agora,
-                comando_pendente=gatilho,
-                comando_pendente_payload=payload,
-            )
-            self.ultimo_proativo_set(agora)
-            if fala:
-                self.falar(fala, "calma", 1)
             self.ultimo_gatilho = ""
             self.gatilho_inicio_ts = 0.0
             return {"status": "sugestao_emitida", "gatilho": gatilho, "retrato": retrato}

@@ -1,0 +1,1014 @@
+{
+  "versao": 1,
+  "tipo": "reserva_relacional_em_auditoria",
+  "origem": "anotacao_manual",
+  "treino_permitido": false,
+  "autoriza_execucao": false,
+  "autoriza_promocao": false,
+  "espaco_offsets": "texto_entrada",
+  "alinhamento_canonico_revisado": false,
+  "casos": [
+    {
+      "id": "res_ind_v1_mus_01",
+      "dominio": "musica",
+      "familia": "res_ind_v1_contraste_selecao",
+      "fenomeno": "contraste_selecao",
+      "texto_entrada": "das duas faixas que citei, coloca rastro de sal pra tocar; chão de vidro fica fora dessa escolha.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "das duas faixas que citei, coloca rastro de sal pra tocar; chão de vidro fica fora dessa escolha.",
+          "acoes": [
+            {
+              "intent": "MUSIC_SEARCH",
+              "action": "search",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 34,
+                  "fim": 47,
+                  "texto": "rastro de sal"
+                }
+              ],
+              "alvos_excluidos": [
+                {
+                  "inicio": 59,
+                  "fim": 72,
+                  "texto": "chão de vidro"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_mus_02",
+      "dominio": "musica",
+      "familia": "res_ind_v1_retificacao_destino",
+      "fenomeno": "retificacao_destino",
+      "texto_entrada": "troquei de ideia sobre o título: desta vez quero ouvir céu de cobre, não estrada miúda.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "troquei de ideia sobre o título: desta vez quero ouvir céu de cobre, não estrada miúda.",
+          "acoes": [
+            {
+              "intent": "MUSIC_SEARCH",
+              "action": "search",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 55,
+                  "fim": 67,
+                  "texto": "céu de cobre"
+                }
+              ],
+              "alvos_excluidos": [
+                {
+                  "inicio": 73,
+                  "fim": 86,
+                  "texto": "estrada miúda"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_mus_03",
+      "dominio": "musica",
+      "familia": "res_ind_v1_titulo_literal",
+      "fenomeno": "titulo_literal",
+      "texto_entrada": "a canção se chama \"não me espere\"; pode reproduzir esse título inteiro.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "a canção se chama \"não me espere\"; pode reproduzir esse título inteiro.",
+          "acoes": [
+            {
+              "intent": "MUSIC_SEARCH",
+              "action": "search",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 19,
+                  "fim": 32,
+                  "texto": "não me espere"
+                }
+              ],
+              "alvos_excluidos": [],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_mus_04",
+      "dominio": "musica",
+      "familia": "res_ind_v1_veto_sem_pedido_alternativo",
+      "fenomeno": "veto_sem_pedido_alternativo",
+      "texto_entrada": "se a busca trouxer ilha de papel, deixa pra lá; essa faixa eu não quero que você reproduza.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "se a busca trouxer ilha de papel, deixa pra lá; essa faixa eu não quero que você reproduza.",
+          "acoes": [
+            {
+              "intent": "MUSIC_SEARCH",
+              "action": "search",
+              "ato": "recusa",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 19,
+                  "fim": 32,
+                  "texto": "ilha de papel"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_mus_05",
+      "dominio": "musica",
+      "familia": "res_ind_v1_escolha_com_exclusao",
+      "fenomeno": "escolha_com_exclusao",
+      "texto_entrada": "escolhe alguma música diferente pra gente ouvir, com uma condição: nada de janela de areia.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "escolhe alguma música diferente pra gente ouvir, com uma condição: nada de janela de areia.",
+          "acoes": [
+            {
+              "intent": "MUSIC_SEARCH",
+              "action": "search",
+              "ato": "pedido",
+              "resolucao_alvo": "alternativa",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 75,
+                  "fim": 90,
+                  "texto": "janela de areia"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_mus_06",
+      "dominio": "musica",
+      "familia": "res_ind_v1_relato_terceiro",
+      "fenomeno": "relato_terceiro",
+      "texto_entrada": "meu irmão escreveu no bilhete que queria escutar trilho azul enquanto estudava.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "meu irmão escreveu no bilhete que queria escutar trilho azul enquanto estudava.",
+          "acoes": [
+            {
+              "intent": "MUSIC_SEARCH",
+              "action": "search",
+              "ato": "relato",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [],
+              "alvos_mencionados": [
+                {
+                  "inicio": 49,
+                  "fim": 60,
+                  "texto": "trilho azul"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_mus_07",
+      "dominio": "musica",
+      "familia": "res_ind_v1_recusa_adiamento",
+      "fenomeno": "recusa_adiamento",
+      "texto_entrada": "chuva de giz pode esperar outro dia; por enquanto não coloque essa música.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "chuva de giz pode esperar outro dia; por enquanto não coloque essa música.",
+          "acoes": [
+            {
+              "intent": "MUSIC_SEARCH",
+              "action": "search",
+              "ato": "recusa",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 0,
+                  "fim": 12,
+                  "texto": "chuva de giz"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_mus_08",
+      "dominio": "musica",
+      "familia": "res_ind_v1_referencia_sem_contexto",
+      "fenomeno": "referencia_sem_contexto",
+      "texto_entrada": "coloca aquela que a gente estava comentando, você lembra qual?",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "coloca aquela que a gente estava comentando, você lembra qual?",
+          "acoes": [
+            {
+              "intent": "MUSIC_SEARCH",
+              "action": "search",
+              "ato": "pedido",
+              "resolucao_alvo": "contextual",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [],
+              "alvos_mencionados": [
+                {
+                  "inicio": 7,
+                  "fim": 13,
+                  "texto": "aquela"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_app_01",
+      "dominio": "apps",
+      "familia": "res_ind_v1_contraste_selecao",
+      "fenomeno": "contraste_selecao",
+      "texto_entrada": "o programa que eu preciso aberto é o kestrel; o azimute não entra nesse pedido.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "o programa que eu preciso aberto é o kestrel; o azimute não entra nesse pedido.",
+          "acoes": [
+            {
+              "intent": "APP_OPEN",
+              "action": "open",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 37,
+                  "fim": 44,
+                  "texto": "kestrel"
+                }
+              ],
+              "alvos_excluidos": [
+                {
+                  "inicio": 48,
+                  "fim": 55,
+                  "texto": "azimute"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_app_02",
+      "dominio": "apps",
+      "familia": "res_ind_v1_retificacao_destino",
+      "fenomeno": "retificacao_destino",
+      "texto_entrada": "eu ia usar o farol, mas mudei o plano: inicia o horizonte pra mim.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "eu ia usar o farol, mas mudei o plano: inicia o horizonte pra mim.",
+          "acoes": [
+            {
+              "intent": "APP_OPEN",
+              "action": "open",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 48,
+                  "fim": 57,
+                  "texto": "horizonte"
+                }
+              ],
+              "alvos_excluidos": [
+                {
+                  "inicio": 13,
+                  "fim": 18,
+                  "texto": "farol"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_app_03",
+      "dominio": "apps",
+      "familia": "res_ind_v1_recusa_adiamento",
+      "fenomeno": "recusa_adiamento",
+      "texto_entrada": "não vale a pena iniciar o mosaico agora; deixa esse programa fechado até eu pedir.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "não vale a pena iniciar o mosaico agora; deixa esse programa fechado até eu pedir.",
+          "acoes": [
+            {
+              "intent": "APP_OPEN",
+              "action": "open",
+              "ato": "recusa",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 26,
+                  "fim": 33,
+                  "texto": "mosaico"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_app_04",
+      "dominio": "apps",
+      "familia": "res_ind_v1_relato_terceiro",
+      "fenomeno": "relato_terceiro",
+      "texto_entrada": "a mensagem do colega dizia que ele ia abrir o tear quando voltasse do almoço.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "a mensagem do colega dizia que ele ia abrir o tear quando voltasse do almoço.",
+          "acoes": [
+            {
+              "intent": "APP_OPEN",
+              "action": "open",
+              "ato": "relato",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [],
+              "alvos_mencionados": [
+                {
+                  "inicio": 46,
+                  "fim": 50,
+                  "texto": "tear"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_app_05",
+      "dominio": "apps",
+      "familia": "res_ind_v1_escolha_com_exclusao",
+      "fenomeno": "escolha_com_exclusao",
+      "texto_entrada": "abre outro editor disponível, só tira o bússola da lista de opções.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "abre outro editor disponível, só tira o bússola da lista de opções.",
+          "acoes": [
+            {
+              "intent": "APP_OPEN",
+              "action": "open",
+              "ato": "pedido",
+              "resolucao_alvo": "alternativa",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 40,
+                  "fim": 47,
+                  "texto": "bússola"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_app_06",
+      "dominio": "apps",
+      "familia": "res_ind_v1_referencia_sem_contexto",
+      "fenomeno": "referencia_sem_contexto",
+      "texto_entrada": "abre esse aí que eu usei antes; esqueci como ele chama.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "abre esse aí que eu usei antes; esqueci como ele chama.",
+          "acoes": [
+            {
+              "intent": "APP_OPEN",
+              "action": "open",
+              "ato": "pedido",
+              "resolucao_alvo": "contextual",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [],
+              "alvos_mencionados": [
+                {
+                  "inicio": 5,
+                  "fim": 12,
+                  "texto": "esse aí"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_app_07",
+      "dominio": "apps",
+      "familia": "res_ind_v1_preservacao_estado",
+      "fenomeno": "preservacao_estado",
+      "texto_entrada": "o programa estaleiro precisa continuar aberto durante a cópia; não encerra ele.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "o programa estaleiro precisa continuar aberto durante a cópia; não encerra ele.",
+          "acoes": [
+            {
+              "intent": "CLOSE_APP",
+              "action": "close",
+              "ato": "preservacao",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 11,
+                  "fim": 20,
+                  "texto": "estaleiro"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_app_08",
+      "dominio": "apps",
+      "familia": "res_ind_v1_encerramento_explicito",
+      "fenomeno": "encerramento_explicito",
+      "texto_entrada": "já terminei o trabalho no casulo, pode encerrar esse aplicativo.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "já terminei o trabalho no casulo, pode encerrar esse aplicativo.",
+          "acoes": [
+            {
+              "intent": "CLOSE_APP",
+              "action": "close",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 26,
+                  "fim": 32,
+                  "texto": "casulo"
+                }
+              ],
+              "alvos_excluidos": [],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_file_01",
+      "dominio": "arquivos",
+      "familia": "res_ind_v1_contraste_selecao",
+      "fenomeno": "contraste_selecao",
+      "texto_entrada": "pra essa leitura use balanco_outono.csv, deixando inventario_verao.csv de fora.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "pra essa leitura use balanco_outono.csv, deixando inventario_verao.csv de fora.",
+          "acoes": [
+            {
+              "intent": "FILE_READ",
+              "action": "read",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 21,
+                  "fim": 39,
+                  "texto": "balanco_outono.csv"
+                }
+              ],
+              "alvos_excluidos": [
+                {
+                  "inicio": 50,
+                  "fim": 70,
+                  "texto": "inventario_verao.csv"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_file_02",
+      "dominio": "arquivos",
+      "familia": "res_ind_v1_retificacao_destino",
+      "fenomeno": "retificacao_destino",
+      "texto_entrada": "falei o nome errado: o conteúdo que quero que você leia está em guia_campo.md, e não em roteiro_trilha.md.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "falei o nome errado: o conteúdo que quero que você leia está em guia_campo.md, e não em roteiro_trilha.md.",
+          "acoes": [
+            {
+              "intent": "FILE_READ",
+              "action": "read",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 64,
+                  "fim": 77,
+                  "texto": "guia_campo.md"
+                }
+              ],
+              "alvos_excluidos": [
+                {
+                  "inicio": 88,
+                  "fim": 105,
+                  "texto": "roteiro_trilha.md"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_file_03",
+      "dominio": "arquivos",
+      "familia": "res_ind_v1_titulo_literal",
+      "fenomeno": "titulo_literal",
+      "texto_entrada": "o nome completo é \"não remover.txt\"; leia esse arquivo, incluindo o não no nome.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "o nome completo é \"não remover.txt\"; leia esse arquivo, incluindo o não no nome.",
+          "acoes": [
+            {
+              "intent": "FILE_READ",
+              "action": "read",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 19,
+                  "fim": 34,
+                  "texto": "não remover.txt"
+                }
+              ],
+              "alvos_excluidos": [],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_file_04",
+      "dominio": "arquivos",
+      "familia": "res_ind_v1_veto_sem_pedido_alternativo",
+      "fenomeno": "veto_sem_pedido_alternativo",
+      "texto_entrada": "o arquivo chaves_oficina.txt fica sem leitura nesta conversa; não consulte o conteúdo dele.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "o arquivo chaves_oficina.txt fica sem leitura nesta conversa; não consulte o conteúdo dele.",
+          "acoes": [
+            {
+              "intent": "FILE_READ",
+              "action": "read",
+              "ato": "recusa",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 10,
+                  "fim": 28,
+                  "texto": "chaves_oficina.txt"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_file_05",
+      "dominio": "arquivos",
+      "familia": "res_ind_v1_escolha_com_exclusao",
+      "fenomeno": "escolha_com_exclusao",
+      "texto_entrada": "pode ler outro documento dessa pasta, desde que o escolhido não seja registro_marco.md.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "pode ler outro documento dessa pasta, desde que o escolhido não seja registro_marco.md.",
+          "acoes": [
+            {
+              "intent": "FILE_READ",
+              "action": "read",
+              "ato": "pedido",
+              "resolucao_alvo": "alternativa",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 69,
+                  "fim": 86,
+                  "texto": "registro_marco.md"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_file_06",
+      "dominio": "arquivos",
+      "familia": "res_ind_v1_relato_terceiro",
+      "fenomeno": "relato_terceiro",
+      "texto_entrada": "no diário de trabalho anotei que ontem o técnico leu mapa_sala.txt antes da visita.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "no diário de trabalho anotei que ontem o técnico leu mapa_sala.txt antes da visita.",
+          "acoes": [
+            {
+              "intent": "FILE_READ",
+              "action": "read",
+              "ato": "relato",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [],
+              "alvos_mencionados": [
+                {
+                  "inicio": 53,
+                  "fim": 66,
+                  "texto": "mapa_sala.txt"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_file_07",
+      "dominio": "arquivos",
+      "familia": "res_ind_v1_referencia_sem_contexto",
+      "fenomeno": "referencia_sem_contexto",
+      "texto_entrada": "lê o segundo daqueles documentos; sem a lista aqui eu não lembro o nome.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "lê o segundo daqueles documentos; sem a lista aqui eu não lembro o nome.",
+          "acoes": [
+            {
+              "intent": "FILE_READ",
+              "action": "read",
+              "ato": "pedido",
+              "resolucao_alvo": "contextual",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [],
+              "alvos_mencionados": [
+                {
+                  "inicio": 3,
+                  "fim": 32,
+                  "texto": "o segundo daqueles documentos"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_file_08",
+      "dominio": "arquivos",
+      "familia": "res_ind_v1_recusa_adiamento",
+      "fenomeno": "recusa_adiamento",
+      "texto_entrada": "deixa a consulta a despesas_julho.csv para depois, agora eu não quero que você leia isso.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "deixa a consulta a despesas_julho.csv para depois, agora eu não quero que você leia isso.",
+          "acoes": [
+            {
+              "intent": "FILE_READ",
+              "action": "read",
+              "ato": "recusa",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 19,
+                  "fim": 37,
+                  "texto": "despesas_julho.csv"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_iot_01",
+      "dominio": "iot",
+      "familia": "res_ind_v1_contraste_selecao",
+      "fenomeno": "contraste_selecao",
+      "texto_entrada": "quero luz na bancada: ligue a luminária da bancada, mas deixe a luminária do corredor fora desse comando.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "quero luz na bancada: ligue a luminária da bancada, mas deixe a luminária do corredor fora desse comando.",
+          "acoes": [
+            {
+              "intent": "IOT_CONTROL",
+              "action": "on",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 30,
+                  "fim": 50,
+                  "texto": "luminária da bancada"
+                }
+              ],
+              "alvos_excluidos": [
+                {
+                  "inicio": 64,
+                  "fim": 85,
+                  "texto": "luminária do corredor"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_iot_02",
+      "dominio": "iot",
+      "familia": "res_ind_v1_preservacao_estado",
+      "fenomeno": "preservacao_estado",
+      "texto_entrada": "a luminária do estúdio tem que continuar acesa enquanto eu desenho; nada de desligar essa luz.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "a luminária do estúdio tem que continuar acesa enquanto eu desenho; nada de desligar essa luz.",
+          "acoes": [
+            {
+              "intent": "IOT_CONTROL",
+              "action": "off",
+              "ato": "preservacao",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 2,
+                  "fim": 22,
+                  "texto": "luminária do estúdio"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_iot_03",
+      "dominio": "iot",
+      "familia": "res_ind_v1_relato_terceiro",
+      "fenomeno": "relato_terceiro",
+      "texto_entrada": "o vizinho contou que desligou a tomada da varanda durante a chuva de ontem.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "o vizinho contou que desligou a tomada da varanda durante a chuva de ontem.",
+          "acoes": [
+            {
+              "intent": "IOT_CONTROL",
+              "action": "off",
+              "ato": "relato",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [],
+              "alvos_mencionados": [
+                {
+                  "inicio": 32,
+                  "fim": 49,
+                  "texto": "tomada da varanda"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_iot_04",
+      "dominio": "iot",
+      "familia": "res_ind_v1_referencia_sem_contexto",
+      "fenomeno": "referencia_sem_contexto",
+      "texto_entrada": "desliga só aquela tomada que mencionei, sem mexer nas demais.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "desliga só aquela tomada que mencionei, sem mexer nas demais.",
+          "acoes": [
+            {
+              "intent": "IOT_CONTROL",
+              "action": "off",
+              "ato": "pedido",
+              "resolucao_alvo": "contextual",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [],
+              "alvos_mencionados": [
+                {
+                  "inicio": 11,
+                  "fim": 24,
+                  "texto": "aquela tomada"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_browser_01",
+      "dominio": "navegador",
+      "familia": "res_ind_v1_preservacao_estado",
+      "fenomeno": "preservacao_estado",
+      "texto_entrada": "estou preenchendo um formulário nesta aba; conserve ela aberta enquanto termino.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "estou preenchendo um formulário nesta aba; conserve ela aberta enquanto termino.",
+          "acoes": [
+            {
+              "intent": "CLOSE_TAB",
+              "action": "close",
+              "ato": "preservacao",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [
+                {
+                  "inicio": 32,
+                  "fim": 41,
+                  "texto": "nesta aba"
+                }
+              ],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_browser_02",
+      "dominio": "navegador",
+      "familia": "res_ind_v1_encerramento_explicito",
+      "fenomeno": "encerramento_explicito",
+      "texto_entrada": "terminei a consulta, já pode fechar a guia do ateliê que ficou aberta.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "terminei a consulta, já pode fechar a guia do ateliê que ficou aberta.",
+          "acoes": [
+            {
+              "intent": "CLOSE_TAB",
+              "action": "close",
+              "ato": "pedido",
+              "resolucao_alvo": "explicito",
+              "alvos_solicitados": [
+                {
+                  "inicio": 38,
+                  "fim": 52,
+                  "texto": "guia do ateliê"
+                }
+              ],
+              "alvos_excluidos": [],
+              "alvos_mencionados": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_browser_03",
+      "dominio": "navegador",
+      "familia": "res_ind_v1_relato_terceiro",
+      "fenomeno": "relato_terceiro",
+      "texto_entrada": "ela me contou que fechou a aba do catálogo por engano durante a reunião.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "ela me contou que fechou a aba do catálogo por engano durante a reunião.",
+          "acoes": [
+            {
+              "intent": "CLOSE_TAB",
+              "action": "close",
+              "ato": "relato",
+              "resolucao_alvo": "nao_aplicavel",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [],
+              "alvos_mencionados": [
+                {
+                  "inicio": 27,
+                  "fim": 42,
+                  "texto": "aba do catálogo"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "res_ind_v1_browser_04",
+      "dominio": "navegador",
+      "familia": "res_ind_v1_referencia_sem_contexto",
+      "fenomeno": "referencia_sem_contexto",
+      "texto_entrada": "fecha aquela das duas abas que eu te mostrei primeiro.",
+      "segmentos": [
+        {
+          "indice": 0,
+          "texto": "fecha aquela das duas abas que eu te mostrei primeiro.",
+          "acoes": [
+            {
+              "intent": "CLOSE_TAB",
+              "action": "close",
+              "ato": "pedido",
+              "resolucao_alvo": "contextual",
+              "alvos_solicitados": [],
+              "alvos_excluidos": [],
+              "alvos_mencionados": [
+                {
+                  "inicio": 6,
+                  "fim": 26,
+                  "texto": "aquela das duas abas"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -10,7 +10,11 @@ import random
 import re
 import threading
 import unicodedata
+import hashlib
+import json
+import os
 from copy import deepcopy
+from pathlib import Path
 from typing import Any, Callable, Dict
 
 from mente_laylay.memoria_mental.playlist_mental import (
@@ -50,6 +54,7 @@ class PlaylistRuntime:
         normalizar_texto_com_apelidos: Callable[[str], str] | None = None,
         sincronizar_playlists_laylay: Callable[[], Any] | None = None,
         log: Callable[[str], None] | None = None,
+        artwork_dir: str | None = None,
     ) -> None:
         self.state_file = state_file
         self.legacy_file = legacy_file
@@ -63,6 +68,10 @@ class PlaylistRuntime:
         self.normalizar_texto_com_apelidos = normalizar_texto_com_apelidos
         self.sincronizar_playlists_laylay = sincronizar_playlists_laylay
         self.log = log or print
+        self.artwork_dir = Path(
+            artwork_dir or (Path.home() / ".laylay" / "playlist_artwork")
+        )
+        self._playlist_metadata_file = f"{self.state_file}.metadata.json"
         self._state_lock = threading.RLock()
 
     def _ultima_playlist(self) -> str:
@@ -150,25 +159,38 @@ class PlaylistRuntime:
         self.playlist_state.pop("last_ended_ts", None)
 
     def _sync_cache(self, data: Dict[str, Any] | None) -> Dict[str, Any]:
-        data = data if isinstance(data, dict) else {}
+        # O cache representa apenas estado já confirmado.
+        #
+        # A fonte precisa ser copiada ANTES de limpar o destino porque
+        # ``data`` pode ser o próprio ``self.cache``. Sem essa barreira,
+        # ``save(self.cache)`` executa clear() na fonte e destrói o estado que
+        # pretendia sincronizar.
+        fonte = deepcopy(data) if isinstance(data, dict) else {}
         try:
             self.cache.clear()
-            self.cache.update(data)
+            self.cache.update(fonte)
         except Exception:
             pass
         return self.cache
 
     def load(self) -> Dict[str, Any]:
+        # Leitura nunca entrega a referência mutável do estado oficial.
+        #
+        # Quem precisa preparar CREATE/ADD/DELETE trabalha em um snapshot
+        # candidato. Só ``save()`` confirmado pode materializar esse candidato
+        # novamente em ``self.cache``.
         data = playlists_load(self.state_file, self.legacy_file)
         if not data and isinstance(self.cache, dict) and self.cache:
             self.log("⚠️ [PLAYLISTS] leitura vazia; mantendo o último cache válido")
-            return self.cache
-        return self._sync_cache(data)
+            return deepcopy(self.cache)
+        self._sync_cache(data)
+        return deepcopy(self.cache)
 
     def catalogo_publico(self) -> list[dict[str, Any]]:
         """Retrato O(1) do catálogo já carregado, sem reler disco na UI."""
         with self._state_lock:
             dados = deepcopy(self.cache) if isinstance(self.cache, dict) else {}
+        metadados = self._carregar_metadados_playlist()
         catalogo: list[dict[str, Any]] = []
         for nome in sorted(dados, key=lambda item: str(item).casefold()):
             nome_limpo = re.sub(r"\s+", " ", str(nome or "")).strip()[:80]
@@ -186,12 +208,483 @@ class PlaylistRuntime:
                 if encontrado:
                     video_id = encontrado.group(1)
                     break
-            catalogo.append({
+            capa = self._capa_publica(
+                nome_limpo, itens, metadados=metadados,
+            )
+            retrato = {
                 "name": nome_limpo,
                 "count": len(itens),
                 "artwork_video_id": video_id,
-            })
+            }
+            # A capa automática já é derivada do ID pela fronteira pública.
+            # Só acrescentamos o novo campo quando existe uma capa controlada,
+            # preservando o contrato exato dos consumidores antigos.
+            if capa.startswith("laylay-playlist-artwork://"):
+                retrato["artwork_url"] = capa
+            catalogo.append(retrato)
         return catalogo
+
+    @staticmethod
+    def _video_id_item(item: Any) -> str:
+        url = str(item.get("url") or "") if isinstance(item, dict) else str(item or "")
+        encontrado = re.search(
+            r"(?:[?&]v=|youtu\.be/|/(?:shorts|embed|live)/)"
+            r"([A-Za-z0-9_-]{11})(?:[^A-Za-z0-9_-]|$)",
+            url,
+        )
+        return encontrado.group(1) if encontrado else ""
+
+    def _carregar_metadados_playlist(self) -> dict[str, Any]:
+        try:
+            with open(self._playlist_metadata_file, "r", encoding="utf-8") as arquivo:
+                bruto = json.load(arquivo)
+            return bruto if isinstance(bruto, dict) else {}
+        except (OSError, ValueError, TypeError):
+            return {}
+
+    def _salvar_metadados_playlist(self, dados: dict[str, Any]) -> bool:
+        return bool(playlists_save(self._playlist_metadata_file, dados))
+
+    def _remover_capa_se_orfa(
+        self,
+        identificador: str,
+        metadados_atuais: dict[str, Any],
+    ) -> None:
+        identificador = str(identificador or "").strip()
+        if not re.fullmatch(r"[a-f0-9]{24}\.png", identificador):
+            return
+        ainda_referenciada = any(
+            isinstance(valor, dict)
+            and str(valor.get("artwork_id") or "") == identificador
+            for valor in metadados_atuais.values()
+        )
+        if ainda_referenciada:
+            return
+        try:
+            (self.artwork_dir / identificador).unlink(missing_ok=True)
+        except OSError:
+            self.log(
+                "⚠️ [PLAYLISTS:CAPA] arquivo órfão não pôde ser removido "
+                f"| id={identificador}"
+            )
+
+    def _capa_publica(
+        self,
+        nome: str,
+        itens: list[Any],
+        *,
+        metadados: dict[str, Any] | None = None,
+    ) -> str:
+        meta = (metadados or self._carregar_metadados_playlist()).get(nome)
+        meta = meta if isinstance(meta, dict) else {}
+        identificador = str(meta.get("artwork_id") or "").strip()
+        if re.fullmatch(r"[a-f0-9]{24}\.png", identificador):
+            arquivo = self.artwork_dir / identificador
+            if arquivo.is_file():
+                return f"laylay-playlist-artwork://{identificador}"
+        video_id = next((self._video_id_item(item) for item in itens if self._video_id_item(item)), "")
+        return f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg" if video_id else ""
+
+    def _revisao_playlist(
+        self,
+        nome: str,
+        itens: list[Any],
+        *,
+        metadados: dict[str, Any] | None = None,
+    ) -> str:
+        meta = (metadados or self._carregar_metadados_playlist()).get(nome)
+        meta = meta if isinstance(meta, dict) else {}
+        serializavel = {
+            "nome": nome,
+            "itens": itens,
+            "artwork_id": str(meta.get("artwork_id") or ""),
+        }
+        bruto = json.dumps(
+            serializavel, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")
+        return hashlib.sha256(bruto).hexdigest()[:24]
+
+    def detalhar(
+        self,
+        nome: str,
+        *,
+        consulta: str = "",
+        deslocamento: int = 0,
+        limite: int = 50,
+    ) -> dict[str, Any]:
+        """Publica uma página sanitizada; URLs brutas nunca atravessam a leitura."""
+        with self._state_lock:
+            dados = deepcopy(self.load())
+            resolvido = resolver_nome_playlist_contextual(
+                nome, dados, self._ultima_playlist(),
+            )
+            itens = dados.get(resolvido) if resolvido else None
+            if not isinstance(itens, list):
+                return {"ok": False, "status": "playlist_not_found", "items": []}
+            metadados = self._carregar_metadados_playlist()
+            revisao = self._revisao_playlist(resolvido, itens, metadados=metadados)
+
+        consulta_norm = unicodedata.normalize("NFKD", str(consulta or "").casefold())
+        consulta_norm = "".join(ch for ch in consulta_norm if not unicodedata.combining(ch))
+        consulta_norm = re.sub(r"\s+", " ", consulta_norm).strip()[:120]
+        filtrados: list[dict[str, Any]] = []
+        duracao_total = 0
+        duracao_completa = True
+        for item in itens:
+            info = item if isinstance(item, dict) else {"url": str(item or "")}
+            video_id = self._video_id_item(info)
+            if not video_id:
+                continue
+            titulo = re.sub(r"\s+", " ", yt_clean_title(str(info.get("titulo") or ""))).strip()[:180]
+            canal = re.sub(r"\s+", " ", str(info.get("canal") or "")).strip()[:120]
+            busca = unicodedata.normalize("NFKD", f"{titulo} {canal}".casefold())
+            busca = "".join(ch for ch in busca if not unicodedata.combining(ch))
+            if consulta_norm and consulta_norm not in busca:
+                continue
+            duracao_bruta = info.get("duracao_segundos")
+            duracao: int | None = None
+            if isinstance(duracao_bruta, (int, float)) and not isinstance(duracao_bruta, bool):
+                candidato = int(duracao_bruta)
+                if 0 < candidato <= 86_400:
+                    duracao = candidato
+            if duracao is None:
+                duracao_completa = False
+            else:
+                duracao_total += duracao
+            filtrados.append({
+                "video_id": video_id,
+                "title": titulo or "Faixa sem título",
+                "channel": canal,
+                "added_at": str(info.get("data") or "").strip()[:10],
+                "duration_seconds": duracao,
+                "artwork_url": f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg",
+            })
+        inicio = max(0, int(deslocamento or 0))
+        tamanho = max(1, min(100, int(limite or 50)))
+        pagina = filtrados[inicio:inicio + tamanho]
+        return {
+            "ok": True,
+            "name": resolvido,
+            "total": len(filtrados),
+            "offset": inicio,
+            "limit": tamanho,
+            "has_more": inicio + len(pagina) < len(filtrados),
+            "revision": revisao,
+            "artwork_url": self._capa_publica(
+                resolvido, itens, metadados=metadados,
+            ),
+            "duration_seconds": duracao_total if duracao_completa and itens else None,
+            "items": pagina,
+        }
+
+    def _localizar_exata(
+        self,
+        dados: dict[str, Any],
+        nome: str,
+        video_id: str,
+        revisao: str,
+    ) -> tuple[str, list[Any], int] | tuple[None, None, None]:
+        resolvido = resolver_nome_playlist_contextual(nome, dados, self._ultima_playlist())
+        itens = dados.get(resolvido) if resolvido else None
+        if not isinstance(itens, list):
+            return None, None, None
+        if self._revisao_playlist(resolvido, itens) != str(revisao or ""):
+            return None, None, -2
+        identidade = str(video_id or "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]{11}", identidade):
+            return None, None, None
+        indices = [i for i, item in enumerate(itens) if self._video_id_item(item) == identidade]
+        if len(indices) != 1:
+            return None, None, None
+        return resolvido, itens, indices[0]
+
+    def tocar_faixa_exata(self, nome: str, video_id: str, revisao: str) -> dict[str, Any]:
+        with self._state_lock:
+            dados = self.load()
+            resolvido, itens, indice = self._localizar_exata(dados, nome, video_id, revisao)
+            if indice == -2:
+                return {"ok": False, "status": "revision_conflict"}
+            if resolvido is None or itens is None or indice is None:
+                return {"ok": False, "status": "track_not_found"}
+            estado_anterior = dict(self.playlist_state)
+            self.playlist_state.update(name=resolvido, index=indice, user_intervened=False)
+            self.playlist_state.pop("shuffle", None)
+            self.playlist_state.pop("shuffle_queue", None)
+            self.playlist_state.pop("shuffle_index", None)
+            if not self._abrir_youtube_item(itens[indice], prefixo_log="Abrindo faixa exata"):
+                self.playlist_state.clear()
+                self.playlist_state.update(estado_anterior)
+                return {"ok": False, "status": "play_failed"}
+            self._set_ultima_playlist(resolvido)
+            return {"ok": True, "status": "track_started", "video_id": video_id}
+
+    def copiar_faixa_exata(
+        self, origem: str, destino: str, video_id: str, revisao: str,
+    ) -> dict[str, Any]:
+        with self._state_lock:
+            dados = deepcopy(self.load())
+            origem_nm, itens, indice = self._localizar_exata(
+                dados, origem, video_id, revisao,
+            )
+            if indice == -2:
+                return {"ok": False, "status": "revision_conflict"}
+            destino_nm = limpar_nome_playlist(destino)
+            if origem_nm is None or itens is None or indice is None or not destino_nm:
+                return {"ok": False, "status": "track_not_found"}
+            destino_itens = dados.setdefault(destino_nm, [])
+            if not isinstance(destino_itens, list):
+                return {"ok": False, "status": "destination_invalid"}
+            if any(self._video_id_item(item) == video_id for item in destino_itens):
+                return {"ok": True, "status": "already_present", "copied": False}
+            destino_itens.append(deepcopy(itens[indice]))
+            if not self.save(dados):
+                return {"ok": False, "status": "save_failed"}
+            return {"ok": True, "status": "copied", "copied": True}
+
+    def distribuir_faixa_exata(
+        self,
+        origem: str,
+        destinos: list[str],
+        video_id: str,
+        revisao: str,
+        *,
+        remover_origem: bool = False,
+    ) -> dict[str, Any]:
+        """Copia para vários destinos com uma única persistência atômica."""
+        with self._state_lock:
+            dados = deepcopy(self.load())
+            origem_nm, itens, indice = self._localizar_exata(
+                dados, origem, video_id, revisao,
+            )
+            if indice == -2:
+                return {"ok": False, "status": "revision_conflict"}
+            if origem_nm is None or itens is None or indice is None:
+                return {"ok": False, "status": "track_not_found"}
+            if not isinstance(destinos, list) or not 1 <= len(destinos) <= 1_000:
+                return {"ok": False, "status": "destinations_invalid"}
+
+            destinos_resolvidos: list[str] = []
+            vistos: set[str] = set()
+            for bruto in destinos:
+                limpo = limpar_nome_playlist(str(bruto or ""))
+                resolvido = (
+                    resolver_nome_playlist_contextual(limpo, dados, "")
+                    if limpo else ""
+                )
+                destino_nm = resolvido or limpo
+                chave = destino_nm.casefold()
+                if (
+                    not destino_nm or chave == origem_nm.casefold()
+                    or chave in vistos
+                ):
+                    continue
+                destino_itens = dados.get(destino_nm)
+                if not isinstance(destino_itens, list):
+                    return {"ok": False, "status": "destination_invalid"}
+                vistos.add(chave)
+                destinos_resolvidos.append(destino_nm)
+            if not destinos_resolvidos:
+                return {"ok": False, "status": "destinations_invalid"}
+
+            item = deepcopy(itens[indice])
+            copiados = 0
+            ja_presentes = 0
+            for destino_nm in destinos_resolvidos:
+                destino_itens = dados[destino_nm]
+                if any(
+                    self._video_id_item(atual) == video_id
+                    for atual in destino_itens
+                ):
+                    ja_presentes += 1
+                    continue
+                destino_itens.append(deepcopy(item))
+                copiados += 1
+
+            if remover_origem:
+                del itens[indice]
+            elif copiados == 0:
+                return {
+                    "ok": True,
+                    "status": "already_present_all",
+                    "destination_count": len(destinos_resolvidos),
+                    "copied_count": 0,
+                    "already_present_count": ja_presentes,
+                }
+            if not self.save(dados):
+                return {"ok": False, "status": "save_failed"}
+            return {
+                "ok": True,
+                "status": "moved_many" if remover_origem else "copied_many",
+                "destination_count": len(destinos_resolvidos),
+                "copied_count": copiados,
+                "already_present_count": ja_presentes,
+                "source_removed": bool(remover_origem),
+            }
+
+    def copiar_faixa_multiplas(
+        self, origem: str, destinos: list[str], video_id: str, revisao: str,
+    ) -> dict[str, Any]:
+        return self.distribuir_faixa_exata(
+            origem, destinos, video_id, revisao,
+        )
+
+    def mover_faixa_multiplas(
+        self, origem: str, destinos: list[str], video_id: str, revisao: str,
+    ) -> dict[str, Any]:
+        return self.distribuir_faixa_exata(
+            origem, destinos, video_id, revisao, remover_origem=True,
+        )
+
+    def mover_faixa_exata(
+        self, origem: str, destino: str, video_id: str, revisao: str,
+    ) -> dict[str, Any]:
+        with self._state_lock:
+            dados = deepcopy(self.load())
+            origem_nm, itens, indice = self._localizar_exata(
+                dados, origem, video_id, revisao,
+            )
+            if indice == -2:
+                return {"ok": False, "status": "revision_conflict"}
+            destino_nm = limpar_nome_playlist(destino)
+            if origem_nm is None or itens is None or indice is None or not destino_nm:
+                return {"ok": False, "status": "track_not_found"}
+            if destino_nm == origem_nm:
+                return {"ok": True, "status": "same_playlist"}
+            destino_itens = dados.setdefault(destino_nm, [])
+            if not isinstance(destino_itens, list):
+                return {"ok": False, "status": "destination_invalid"}
+            item = itens[indice]
+            if not any(self._video_id_item(atual) == video_id for atual in destino_itens):
+                destino_itens.append(deepcopy(item))
+            del itens[indice]
+            if not self.save(dados):
+                return {"ok": False, "status": "save_failed"}
+            return {"ok": True, "status": "moved"}
+
+    def remover_faixa_exata(
+        self, nome: str, video_id: str, revisao: str,
+    ) -> dict[str, Any]:
+        with self._state_lock:
+            dados = deepcopy(self.load())
+            resolvido, itens, indice = self._localizar_exata(
+                dados, nome, video_id, revisao,
+            )
+            if indice == -2:
+                return {"ok": False, "status": "revision_conflict"}
+            if resolvido is None or itens is None or indice is None:
+                return {"ok": False, "status": "track_not_found"}
+            del itens[indice]
+            if not self.save(dados):
+                return {"ok": False, "status": "save_failed"}
+            return {"ok": True, "status": "removed"}
+
+    def adicionar_url_resolvida(
+        self,
+        nome: str,
+        url: str,
+        metadados: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Adiciona somente quando o resolvedor confirma o mesmo vídeo pedido."""
+        video_id = self._video_id_item({"url": url})
+        resolvido_id = str(dict(metadados or {}).get("video_id") or "").strip()
+        titulo = str(dict(metadados or {}).get("title") or "").strip()
+        if not video_id or resolvido_id != video_id or not titulo:
+            return {"ok": False, "status": "metadata_mismatch"}
+        resultado = self.add_and_verify_result(
+            nome, f"https://www.youtube.com/watch?v={video_id}", titulo,
+            str(metadados.get("channel") or ""),
+        )
+        duracao = metadados.get("duration_seconds")
+        if (
+            resultado.get("ok") and resultado.get("added")
+            and isinstance(duracao, (int, float)) and not isinstance(duracao, bool)
+            and 0 < int(duracao) <= 86_400
+        ):
+            with self._state_lock:
+                dados = deepcopy(self.load())
+                nome_resolvido = resolver_nome_playlist_contextual(
+                    nome, dados, self._ultima_playlist(),
+                )
+                itens = dados.get(nome_resolvido)
+                if isinstance(itens, list):
+                    for item in reversed(itens):
+                        if isinstance(item, dict) and self._video_id_item(item) == video_id:
+                            item["duracao_segundos"] = int(duracao)
+                            self.save(dados)
+                            break
+        return resultado
+
+    def definir_capa(
+        self, nome: str, caminho_origem: str, revisao: str,
+    ) -> dict[str, Any]:
+        with self._state_lock:
+            dados = self.load()
+            resolvido = resolver_nome_playlist_contextual(nome, dados, self._ultima_playlist())
+            itens = dados.get(resolvido) if resolvido else None
+            if not isinstance(itens, list):
+                return {"ok": False, "status": "playlist_not_found"}
+            if self._revisao_playlist(resolvido, itens) != str(revisao or ""):
+                return {"ok": False, "status": "revision_conflict"}
+            origem = Path(str(caminho_origem or "")).expanduser()
+            if not origem.is_file() or origem.stat().st_size > 12 * 1024 * 1024:
+                return {"ok": False, "status": "invalid_artwork"}
+            try:
+                from PIL import Image
+                with Image.open(origem) as imagem:
+                    imagem.verify()
+                with Image.open(origem) as imagem:
+                    imagem = imagem.convert("RGB")
+                    imagem.thumbnail((1200, 1200))
+                    self.artwork_dir.mkdir(parents=True, exist_ok=True)
+                    digest = hashlib.sha256(origem.read_bytes()).hexdigest()[:24]
+                    identificador = f"{digest}.png"
+                    temporario = self.artwork_dir / f".{digest}.tmp"
+                    imagem.save(temporario, format="PNG", optimize=True)
+                    os.replace(temporario, self.artwork_dir / identificador)
+            except Exception:
+                return {"ok": False, "status": "invalid_artwork"}
+            metadados = self._carregar_metadados_playlist()
+            anterior = dict(metadados.get(resolvido) or {})
+            identificador_anterior = str(anterior.get("artwork_id") or "")
+            metadados[resolvido] = {**anterior, "artwork_id": identificador}
+            if not self._salvar_metadados_playlist(metadados):
+                if identificador != identificador_anterior:
+                    self._remover_capa_se_orfa(
+                        identificador, self._carregar_metadados_playlist(),
+                    )
+                return {"ok": False, "status": "save_failed"}
+            if identificador_anterior != identificador:
+                self._remover_capa_se_orfa(identificador_anterior, metadados)
+            nova_revisao = self._revisao_playlist(resolvido, itens, metadados=metadados)
+            return {
+                "ok": True,
+                "status": "artwork_updated",
+                "revision": nova_revisao,
+                "artwork_url": f"laylay-playlist-artwork://{identificador}",
+            }
+
+    def restaurar_capa(self, nome: str, revisao: str) -> dict[str, Any]:
+        with self._state_lock:
+            dados = self.load()
+            resolvido = resolver_nome_playlist_contextual(nome, dados, self._ultima_playlist())
+            itens = dados.get(resolvido) if resolvido else None
+            if not isinstance(itens, list):
+                return {"ok": False, "status": "playlist_not_found"}
+            metadados = self._carregar_metadados_playlist()
+            if self._revisao_playlist(resolvido, itens, metadados=metadados) != str(revisao or ""):
+                return {"ok": False, "status": "revision_conflict"}
+            anterior = dict(metadados.get(resolvido) or {})
+            identificador_anterior = str(anterior.get("artwork_id") or "")
+            metadados.pop(resolvido, None)
+            if not self._salvar_metadados_playlist(metadados):
+                return {"ok": False, "status": "save_failed"}
+            self._remover_capa_se_orfa(identificador_anterior, metadados)
+            return {
+                "ok": True,
+                "status": "artwork_restored",
+                "revision": self._revisao_playlist(resolvido, itens, metadados=metadados),
+                "artwork_url": self._capa_publica(resolvido, itens, metadados=metadados),
+            }
 
     def fila_publica(self) -> list[dict[str, Any]]:
         """Expõe as próximas faixas da playlist ativa, sem URLs privadas.
@@ -236,6 +729,62 @@ class PlaylistRuntime:
                 "artwork_video_id": encontrado.group(1) if encontrado else "",
             })
         return fila
+
+    def selecionar_faixa_fila(
+        self, video_id: str, deslocamento: int,
+    ) -> dict[str, Any]:
+        """Salta para uma próxima faixa confirmando o retrato que foi clicado."""
+        identidade = str(video_id or "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]{11}", identidade):
+            return {"ok": False, "status": "queue_item_invalid"}
+        if isinstance(deslocamento, bool):
+            return {"ok": False, "status": "queue_position_invalid"}
+        try:
+            deslocamento = int(deslocamento)
+        except (TypeError, ValueError):
+            return {"ok": False, "status": "queue_position_invalid"}
+        if not 0 <= deslocamento <= 999:
+            return {"ok": False, "status": "queue_position_invalid"}
+
+        with self._state_lock:
+            nome = str(self.playlist_state.get("name") or "").strip()
+            if not nome:
+                return {"ok": False, "status": "playlist_inactive"}
+            aleatoria = bool(
+                self.playlist_state.get("shuffle") is True
+                and isinstance(self.playlist_state.get("shuffle_queue"), list)
+            )
+            if aleatoria:
+                itens = self.playlist_state.get("shuffle_queue") or []
+                chave_indice = "shuffle_index"
+            else:
+                itens = self.cache.get(nome) if isinstance(self.cache, dict) else []
+                chave_indice = "index"
+            if not isinstance(itens, list):
+                return {"ok": False, "status": "playlist_invalid"}
+            indice_atual = max(0, int(self.playlist_state.get(chave_indice) or 0))
+            indice_alvo = indice_atual + 1 + deslocamento
+            if not 0 <= indice_alvo < len(itens):
+                return {"ok": False, "status": "queue_stale"}
+            if self._video_id_item(itens[indice_alvo]) != identidade:
+                return {"ok": False, "status": "queue_stale"}
+
+            self.playlist_state[chave_indice] = indice_alvo
+            self.playlist_state["user_intervened"] = False
+            if not self._abrir_youtube_item(
+                itens[indice_alvo], prefixo_log="Abrindo faixa escolhida na fila",
+            ):
+                self.playlist_state[chave_indice] = indice_atual
+                self.playlist_state["last_advance_status"] = "falha_execucao"
+                return {"ok": False, "status": "play_failed"}
+            self.playlist_state["last_advance_status"] = "ok"
+            self._set_ultima_playlist(nome)
+            return {
+                "ok": True,
+                "status": "queue_track_started",
+                "video_id": identidade,
+                "confirmed": self.playlist_state.get("last_play_confirmed") is True,
+            }
 
     def save(self, data: Dict[str, Any]) -> bool:
         ok = playlists_save(self.state_file, data or {})

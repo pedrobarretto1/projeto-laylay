@@ -65,6 +65,20 @@ class ArbitroModalidadeInteligenteTests(unittest.TestCase):
                 self.assertFalse(turno["autoriza_execucao"])
                 self.assertEqual(turno["texto_operacional"], "")
 
+    def test_recusa_indireta_e_correcao_de_consulta_preservam_a_negacao(self) -> None:
+        casos = (
+            ("Nem precisa verificar se a Calculadora está aberta.", "recusa"),
+            ("Eu não perguntei se o Discord está aberto.", "correcao"),
+            ("Não feche o Opera só porque ele está aberto.", "recusa"),
+            ("Não liste os programas abertos.", "recusa"),
+        )
+        for texto, modalidade in casos:
+            with self.subTest(texto=texto):
+                turno = self.classificar(texto)
+                self.assertEqual(turno["modalidade_geral"], modalidade)
+                self.assertFalse(turno["autoriza_execucao"])
+                self.assertEqual(turno["texto_operacional"], "")
+
     def test_pedido_de_capacidade_ambiguo_pede_esclarecimento(self) -> None:
         ambiguo = self.classificar("você consegue abrir o YouTube?")
         self.assertEqual(ambiguo["modalidade_geral"], "pergunta")

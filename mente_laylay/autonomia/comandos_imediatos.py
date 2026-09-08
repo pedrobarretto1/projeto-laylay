@@ -694,23 +694,22 @@ class ComandosImediatosRuntime:
         # vencer a barreira de mutação, mas apenas pela habilidade read-only já
         # existente. Assim "O Opera continua aberto?" não é confundido com o
         # comando musical "continua".
-        if not turno_tem_veto_execucao(turno_prioritario):
-            try:
-                tratado_readonly_p0, rota_readonly_p0 = processar_consulta_sistema_local(
-                    contexto_prioritario, texto
-                )
-            except Exception as erro:
+        try:
+            tratado_readonly_p0, rota_readonly_p0 = processar_consulta_sistema_local(
+                contexto_prioritario, texto
+            )
+        except Exception as erro:
+            print(
+                "⚠️ [P0:READ-ONLY] consulta local falhou sem liberar mutação | "
+                f"{type(erro).__name__}: {erro}"
+            )
+        else:
+            if tratado_readonly_p0:
                 print(
-                    "⚠️ [P0:READ-ONLY] consulta local falhou sem liberar mutação | "
-                    f"{type(erro).__name__}: {erro}"
+                    "🔎 [P0:READ-ONLY] consulta segura tratada antes da barreira | "
+                    f"rota={rota_readonly_p0 or 'consulta_sistema_local'}"
                 )
-            else:
-                if tratado_readonly_p0:
-                    print(
-                        "🔎 [P0:READ-ONLY] consulta segura tratada antes da barreira | "
-                        f"rota={rota_readonly_p0 or 'consulta_sistema_local'}"
-                    )
-                    return True
+                return True
 
         # P0_CAPACIDADE_READONLY_A1_20260816
         # Perguntas sobre o que a Laylay consegue fazer continuam SEM autorizar
