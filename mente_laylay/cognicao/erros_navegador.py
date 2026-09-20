@@ -16,7 +16,9 @@ def url_sem_dados_sensiveis(url: str) -> str:
         partes = urlsplit(bruto)
         if partes.scheme and partes.netloc:
             caminho = partes.path.rstrip("/")
-            return f"{partes.scheme}://{partes.netloc}{caminho}"[:300]
+            # Userinfo pode carregar senha mesmo sem query ou fragmento.
+            autoridade = partes.netloc.rsplit("@", 1)[-1]
+            return f"{partes.scheme}://{autoridade}{caminho}"[:300]
     except Exception:
         pass
     return re.split(r"[?#]", bruto, maxsplit=1)[0][:300]

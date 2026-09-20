@@ -32,6 +32,65 @@ _CITACAO_INTEGRAL_RE = re.compile(
 )
 
 
+def texto_delimita_relato_explicito(texto: str) -> bool:
+    """Detecta uma moldura final de relato, não a intenção operacional.
+
+    Só a declaração do próprio falante conta; citações e perguntas ficam fora.
+    Outros atos já deliberados devem ser preservados pelo dono do contrato.
+    """
+    bruto = str(texto or "").strip()
+    if "?" in bruto:
+        return False
+    return bool(re.search(
+        r"(?:^|[.;!]\s*)(?:eu\s+)?(?:estou|t[oô])\s+(?:s[oó]|apenas)\s+"
+        r"(?:relatando|contando)(?:\s+(?:isso|o\s+ocorrido))?[.!]?\s*$",
+        bruto, flags=re.IGNORECASE,
+    ))
+
+
+TIPOS_REFERENCIA_TEXTUAL = frozenset({"relato", "texto", "pedido", "exemplo"})
+
+
+def texto_discute_evidencia_textual(texto: str) -> bool:
+    """Descreve a evidência de um texto como assunto, sem decidir autorização."""
+    return bool(re.search(
+        r"^(?:esse|este|o|meu|aquele)\s+(?:relato|pedido|exemplo|texto)\s+"
+        r"(?:informa|prova|confirma|demonstra|mostra|significa)\b",
+        str(texto or "").strip(), flags=re.IGNORECASE,
+    ))
+
+
+def tipo_transformacao_conversacional(texto: str) -> str:
+    """Descreve um ato completo sobre a conversa, sem resolver sua fonte.
+
+    O alvo precisa ser discursivo: resumir um arquivo/página/e-mail continua
+    no domínio operacional. O match integral não absorve atos subsequentes;
+    o classificador canônico permanece dono da segmentação e da autoridade.
+    """
+    t = re.sub(r"\s+", " ", str(texto or "")).strip().casefold()
+    t = "".join(c for c in unicodedata.normalize("NFD", t) if not unicodedata.combining(c))
+    prefixo = r"(?:(?:agora|por favor)[, ]+)*(?:(?:voce )?(?:pode|poderia|consegue) (?:me )?)?"
+    resumo = (
+        r"(?:resuma|resume|resumir|sintetize|sintetiza|sintetizar) "
+        r"(?:(?:a ideia|o tema) d[ae] )?"
+        r"(?:(?:a|essa|esta|nossa|sua|a nossa|a sua) )"
+        r"(?:historia|conversa|distincao|resposta|explicacao|ideia)"
+        r"(?: em (?:uma|duas|tres|poucas|\d+) (?:frases?|palavras?))?"
+        r"(?:[, ]+sem consultar a tela)?[.!?]*"
+    )
+    citado = r'(?:"[^"\n]+"|“[^”\n]+”|«[^»\n]+»|\'[^\'\n]+\')'
+    comparacao = (
+        r"(?:compare|compara|comparar) (?:as |estas |essas )?(?:frases|expressoes) "
+        + citado + r" (?:e|com) " + citado
+        + r"(?:[, ]+sem executar (?:nenhuma|nada|nenhuma delas))?[.!?]*"
+    )
+    if re.fullmatch(prefixo + resumo, t):
+        return "resumo"
+    if re.fullmatch(prefixo + comparacao, t):
+        return "comparacao"
+    return ""
+
+
 def texto_e_metalinguistico(texto: str) -> bool:
     """Reconhece quando palavras/frases são o assunto, não seu conteúdo.
 
@@ -46,6 +105,8 @@ def texto_e_metalinguistico(texto: str) -> bool:
         or _MOLDURA_METALINGUISTICA_RE.search(bruto)
         or _FALA_CITADA_RE.search(bruto)
         or _EXEMPLO_METALINGUISTICO_RE.search(bruto)
+        or texto_discute_evidencia_textual(bruto)
+        or tipo_transformacao_conversacional(bruto) == "comparacao"
     )
 
 

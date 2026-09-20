@@ -8,10 +8,15 @@ from typing import Any, Callable, Dict, List, Tuple
 from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
 
 from mente_laylay.cognicao.contrato_fala import formatar_contrato_fala_para_prompt
+from mente_laylay.cognicao.qualidade_comunicacao import (
+    montar_mensagens_pedido_fonte_textual,
+    montar_mensagens_reconhecimento_limite,
+)
 from mente_laylay.cognicao.guardiao_realidade_pessoal import (
     detectar_experiencia_pessoal_inventada,
 )
 from mente_laylay.memoria_mental.identidade_usuario import contexto_identidade_usuario
+from mente_laylay.personalidade.fala_capacidades import montar_mensagens_explicacao_capacidades
 from mente_laylay.personalidade.perfil_amizade import (
     formatar_postura_para_prompt,
     selecionar_postura_amizade,
@@ -195,14 +200,31 @@ def preparar_contexto_resposta_ia(
     except Exception:
         prompt_com_humor = prompt_com_contexto
 
+    # Contrato, capacidades selecionadas e evidência pertencem ao ato atual,
+    # não à personalidade longa. O catálogo vivo não é um sufixo opcional:
+    # cortá-lo pode transformar disponibilidade/limites em suposição da LLM.
+    # Separá-los permite que preparação e transporte preservem o par
+    # system/user sem interpretar nomes de habilidades ou cortar receipts.
+    trechos_turno = (contexto_contrato_fala, contexto_habilidades, contexto_fundamentacao_prioritaria)
+    instrucao_turno = "\n\n".join(trecho for trecho in trechos_turno if trecho)
+    prompt_principal = prompt_com_humor
+    for trecho in trechos_turno:
+        if trecho:
+            prompt_principal = prompt_principal.replace("\n" + trecho + "\n", "\n", 1)
     if not mensagens:
-        mensagens.append({"role": "system", "content": prompt_com_humor})
+        mensagens.append({"role": "system", "content": prompt_principal})
     else:
         if mensagens[0].get("role") == "system":
-            mensagens[0]["content"] = prompt_com_humor
+            mensagens[0]["content"] = prompt_principal
         else:
-            mensagens.insert(0, {"role": "system", "content": prompt_com_humor})
+            mensagens.insert(0, {"role": "system", "content": prompt_principal})
+    if instrucao_turno:
+        posicao = len(mensagens)
+        if mensagens[-1].get("role") == "user" and mensagens[-1].get("content") == t:
+            posicao -= 1
+        mensagens.insert(posicao, {"role": "system", "content": instrucao_turno})
 
+    # Retorno agregado para diagnóstico de tamanho, não para envio ao modelo.
     return mensagens, prompt_com_humor
 
 
@@ -243,6 +265,15 @@ class ContextoPromptRuntime:
         destino = self._fontes_consultadas if consultada else self._fontes_poupadas
         destino[nome] = int(destino.get(nome) or 0) + 1
 
+    def _contexto_habilidades(self, texto: str, turno: Dict[str, Any]) -> str:
+        """Consulta a mesma fonte viva nas duas rotas, sem resolver comandos."""
+        if not callable(self.mapa_habilidades_prompt):
+            return ""
+        try:
+            return str(self.mapa_habilidades_prompt(texto, turno=turno) or "").strip()
+        except Exception:
+            return ""
+
     def preparar(self, texto: str) -> Tuple[List[Dict[str, Any]], str]:
         try:
             estado = self.estado_getter() or {}
@@ -279,14 +310,9 @@ class ContextoPromptRuntime:
                 + prompt_base_turno
             )
         retrato = "" if lista_factual_materializada else self.resumo_mente_integrada(t)
-        contexto_habilidades = ""
-        if not lista_factual_materializada and callable(self.mapa_habilidades_prompt):
-            try:
-                contexto_habilidades = str(
-                    self.mapa_habilidades_prompt(t, turno=turno_atual) or ""
-                ).strip()
-            except Exception:
-                contexto_habilidades = ""
+        contexto_habilidades = (
+            "" if lista_factual_materializada else self._contexto_habilidades(t, turno_atual)
+        )
         contexto_identidade = (
             ""
             if lista_factual_materializada
@@ -416,6 +442,72 @@ class ContextoPromptRuntime:
             self._falhas += 1
             raise
 
+    def preparar_mensagens_modelo(
+        self, mensagens: List[Dict[str, Any]], *, turno_id: Any,
+    ) -> List[Dict[str, Any]]:
+        return list(self.preparar_envio_modelo(mensagens, turno_id=turno_id).mensagens)
+
+    def preparar_envio_modelo(
+        self, mensagens: List[Dict[str, Any]], *, turno_id: Any,
+    ) -> PacotePrompt:
+        """Projeta só o envio atual; o histórico mantém a utterance original."""
+        try:
+            estado = self.estado_getter() or {}
+        except Exception:
+            estado = {}
+        estado = estado if isinstance(estado, dict) else {}
+        contrato = estado.get("contrato_fala_atual")
+        contrato = contrato if isinstance(contrato, dict) else {}
+        turno = estado.get("turno_atual")
+        turno = turno if isinstance(turno, dict) else {}
+        identidade_atual = bool(turno_id and contrato.get("turno_id") and turno.get("id")) and (
+            str(turno_id) == str(contrato["turno_id"]) == str(turno["id"])
+        )
+        if (
+            identidade_atual
+            and dict(contrato.get("roteiro_concreto") or {}).get("estrategia") == "explicacao_capacidades"
+            and contrato.get("documentacao_capacidades")
+            and turno.get("autoriza_execucao") is False
+            and (turno.get("modalidade_geral") or turno.get("modalidade")) == "pergunta"
+            and len(turno.get("segmentos") or []) <= 1
+            and mensagens and mensagens[-1].get("role") == "user"
+            and mensagens[-1].get("content") == turno.get("texto")
+        ):
+            return PacotePrompt(tuple(montar_mensagens_explicacao_capacidades(
+                str(turno["texto"]), str(contrato["documentacao_capacidades"]),
+            )), contexto_fechado=True)
+        if (
+            identidade_atual
+            and dict(contrato.get("roteiro_concreto") or {}).get("estrategia") == "negacao_operacional_sem_efeito"
+            and turno.get("autoriza_execucao") is False
+            and (turno.get("modalidade_geral") or turno.get("modalidade")) in {"recusa", "correcao"}
+            and len(turno.get("segmentos") or []) <= 1
+            and mensagens and mensagens[-1].get("role") == "user"
+            and mensagens[-1].get("content") == turno.get("texto")
+            # O veto soberano pode colapsar uma cadeia inteira em recusa.
+            # Esta projeção é opcional: coordenação textual fica no caminho
+            # completo, sem reinterpretar nem ampliar a autoridade canônica.
+            and not re.search(
+                r"[;]|\b(?:e|mas|por[eé]m|ent[aã]o|depois|tamb[eé]m)\b",
+                str(turno.get("texto") or ""), re.IGNORECASE,
+            )
+        ):
+            return PacotePrompt(tuple(montar_mensagens_reconhecimento_limite(
+                str(mensagens[-1].get("content") or ""),
+            )), contexto_fechado=True)
+        if (
+            identidade_atual
+            and contrato.get("estado_referencia_textual") == "nao_resolvida"
+            and dict(contrato.get("roteiro_concreto") or {}).get("estrategia") == "analise_evidencia_textual"
+            and not turno.get("autoriza_execucao")
+            and (turno.get("modalidade_geral") or turno.get("modalidade")) != "misto"
+            and len(turno.get("segmentos") or []) <= 1
+        ):
+            return PacotePrompt(tuple(montar_mensagens_pedido_fonte_textual(
+                pedidos_recentes=contrato.get("respostas_recentes_evitar") or (),
+            )), contexto_fechado=True)
+        return PacotePrompt(tuple(dict(item) for item in mensagens))
+
     def preparar_pacote(self, texto: str) -> PacotePrompt:
         mensagens, prompt = self.preparar(texto)
         return PacotePrompt(
@@ -424,7 +516,7 @@ class ContextoPromptRuntime:
         )
 
     def preparar_instrucao_rapida(self, texto: str) -> str:
-        """Entrega somente o contrato do turno para o payload rápido.
+        """Entrega contrato e evidências selecionadas para o payload rápido.
 
         O retorno é efêmero: não contém memória durável, não substitui o
         prompt-base e não autoriza ações. A resposta principal continua sendo
@@ -463,10 +555,15 @@ class ContextoPromptRuntime:
                     or ""
                 ).casefold().startswith("candidatos de ")
             )
+            turno = estado.get("turno_atual")
+            habilidades = (
+                "" if lista_factual_materializada
+                else self._contexto_habilidades(texto, turno if isinstance(turno, dict) else {})
+            )
             trechos_prompt = (
                 (fundamentacao,)
                 if lista_factual_materializada
-                else (contrato, retrato, fundamentacao)
+                else (contrato, retrato, habilidades, fundamentacao)
             )
             instrucao = "\n\n".join(
                 # Quando a pesquisa já materializou candidatos, esse bloco é o

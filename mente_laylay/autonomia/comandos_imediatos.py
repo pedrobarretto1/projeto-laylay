@@ -786,29 +786,12 @@ class ComandosImediatosRuntime:
             flags=re.IGNORECASE,
         ))
         if menciona_iot_p0 and bloqueia_controle_iot_por_modalidade(texto_iot_p0):
-            pergunta_como = bool(re.search(
-                r"^(?:como\s+(?:eu\s+)?(?:faria|faço|faco|posso|poderia)|"
-                r"o\s+que\s+(?:eu\s+)?(?:faria|faço|faco))\b",
-                texto_iot_p0.strip(),
-                flags=re.IGNORECASE,
-            ))
-            if pergunta_como:
-                fala_segura = (
-                    "É só me pedir diretamente para desligar a luz. "
-                    "Como você perguntou apenas como fazer, não alterei nada agora."
-                )
-            elif re.search(r"\btalvez\b", texto_iot_p0, flags=re.IGNORECASE):
-                fala_segura = (
-                    "Pode ser uma boa. Como você falou como possibilidade, deixei a "
-                    "luz como está. Quando quiser executar, é só pedir diretamente."
-                )
-            else:
-                fala_segura = "Pode deixar. Não vou alterar a luz."
-            falar = ns.get("falar_com_lipsync")
-            if callable(falar):
-                falar(fala_segura, "calma", 1)
-            print("🛡️ [P0:IOT] menção respondida; nenhum comando foi criado")
-            return True
+            # Veto de efeito não é autoria de resposta. O turno original segue
+            # ao fluxo compartilhado de conversa/documentação, sem passar pelos
+            # detectores/executores abaixo nem ser marcado como já respondido.
+            # Evita que uma frase fixa substitua ação, dispositivo ou ato de fala.
+            print("🛡️ [P0:IOT] execução bloqueada; autoria segue para a conversa")
+            return False
 
         # Hipóteses e proibições também são atos sem efeito. A resposta local
         # confirma o veto, mas não consulta roteador, executor nem LLM.
@@ -1676,6 +1659,8 @@ class ComandosImediatosRuntime:
             else None
         )
         if isinstance(candidato_iot, dict) and str(candidato_iot.get("intent") or "").upper() == "IOT_STATUS":
+            if turno_tem_veto_execucao(turno_atual):
+                return False
             print("⚡ [PRIORIDADE:IOT] consulta contextual de estado")
             executar = ns.get("executar_intencao")
             if callable(executar):
@@ -1687,6 +1672,8 @@ class ComandosImediatosRuntime:
 
         consulta_iot = detectar_consulta_lista_iot(texto)
         if consulta_iot:
+            if turno_tem_veto_execucao(turno_atual):
+                return False
             print("⚡ [PRIORIDADE:IOT] listagem objetiva de dispositivos")
             executar = ns.get("executar_intencao")
             if not callable(executar):
@@ -1728,6 +1715,8 @@ class ComandosImediatosRuntime:
             if isinstance(leitura_deterministica, dict) else ""
         ).upper().strip()
         if intent_leitura in {"SEARCH", "VISION_QUERY"}:
+            if turno_tem_veto_execucao(turno_atual):
+                return False
             executar = ns.get("executar_intencao")
             if not callable(executar):
                 return False
@@ -1810,6 +1799,12 @@ class ComandosImediatosRuntime:
             and intent_detectada in set(intents_registradas())
             and intent_detectada != "SUGGEST_ACTION"
         ):
+            # O resolvedor mantém seu contrato de autorização; não substituir
+            # sua decisão pela ausência de um bit de mutação em consultas.
+            # Um veto soberano, porém, não pode ser revogado por essa rota.
+            if turno_tem_veto_execucao(turno_atual):
+                print("🛡️ [PRIORIDADE:LINGUAGEM NATURAL] candidato sem autoridade do turno")
+                return False
             # Um comando novo e completo vence a pergunta anterior. Sem essa
             # limpeza, uma resposta curta futura poderia completar uma ação
             # que o usuário já abandonou ao formular o novo pedido.

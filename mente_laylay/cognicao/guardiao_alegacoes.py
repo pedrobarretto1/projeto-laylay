@@ -12,6 +12,7 @@ from mente_laylay.emocoes.contrato_causal import evento_tem_causa_rastreavel
 from mente_laylay.cognicao.incerteza_observacao import (
     expressa_incerteza_observacao,
     estado_sob_pedido_informacao,
+    estado_sob_pergunta_referida,
 )
 from mente_laylay.memoria_mental.resultado_acao import normalizar_resultado_acao
 
@@ -100,17 +101,21 @@ _FRONTEIRA_ORACAO_ESTADO = re.compile(
 )
 
 
-def _alega_estado_sem_incerteza_local(frase: str) -> bool:
+def _alega_estado_sem_incerteza_local(
+    frase: str, padrao: re.Pattern[str] = _ALEGACAO_ESTADO_OBSERVAVEL,
+) -> bool:
     """A ressalva precisa anteceder o estado na mesma oração.
 
     Não é um parser irrestrito de português. Esta fronteira conservadora evita
     que uma incerteza sobre X libere uma afirmação independente sobre Y.
     """
-    for estado in _ALEGACAO_ESTADO_OBSERVAVEL.finditer(frase):
+    for estado in padrao.finditer(frase):
         prefixo = _FRONTEIRA_ORACAO_ESTADO.split(frase[:estado.start()])[-1]
+        prefixo_pedido = _prefixo_pedido_da_alegacao(frase, estado.start())
         if not (
             expressa_incerteza_observacao(prefixo)
-            or estado_sob_pedido_informacao(prefixo)
+            or estado_sob_pedido_informacao(prefixo_pedido)
+            or estado_sob_pergunta_referida(frase[:estado.start()])
         ):
             return True
     return False
@@ -141,10 +146,16 @@ _INTENTS_ANOTACAO = {
 }
 
 
-def _alega_execucao_afirmativa(frase: str) -> bool:
-    """Distingue execução alegada de uma negação explícita."""
+def _alega_execucao_afirmativa(
+    frase: str, padrao: re.Pattern[str] = _EXECUCAO_ALEGADA_SEM_RESULTADO,
+) -> bool:
+    """Distingue execução alegada/prometida de negação local explícita.
+
+    Verifica cada ocorrência: negar uma operação não libera uma promessa
+    afirmativa posterior na mesma frase.
+    """
     texto = str(frase or "")
-    for ocorrencia in _EXECUCAO_ALEGADA_SEM_RESULTADO.finditer(texto):
+    for ocorrencia in padrao.finditer(texto):
         prefixo = texto[:ocorrencia.start()]
         if re.search(
             r"\b(?:não|nao|nunca|jamais|nem)\s+(?:te\s+)?$",
@@ -182,6 +193,129 @@ def _comandos_normalizados(plano: Dict[str, Any]) -> list[Dict[str, Any]]:
 
 def fala_adia_resposta_sem_continuacao(fala: str) -> bool:
     return bool(_ADIAMENTO_RESPOSTA_SEM_CONTINUACAO.search(str(fala or "")))
+
+
+# Isto detecta alegações na saída, não interpreta comandos nem concede autoridade.
+# Negar execução ("não executei") é diferente de alegar tentativa frustrada.
+_FALHA_OPERACIONAL = re.compile(
+    r"\bn[aã]o\s+consegui\s+(?:abrir|fechar|salvar|enviar|apagar|criar|"
+    r"ligar|desligar|executar|agendar|tocar|reproduzir|ler|baixar)\b|"
+    r"\bn[aã]o\s+(?:abriu|fechou|salvou|enviou|apagou|ligou|desligou|"
+    r"executou|agendou|tocou|reproduziu|funcionou|"
+    r"foi\s+(?:salv[oa]|enviad[oa]|apagad[oa]|criad[oa]|abert[oa]|"
+    r"fechad[oa]|agendad[oa]))\b|"
+    r"\b(?:abertura|envio|grava[cç][aã]o|execu[cç][aã]o|opera[cç][aã]o|"
+    r"comando|conex[aã]o|download|agendamento)\s+falhou\b|"
+    r"\b(?:foi|houve|ocorreu|deu)\s+(?:s[oó]\s+)?(?:um\s+)?"
+    r"erro\s+(?:de|na|no|ao)\b",
+    re.IGNORECASE,
+)
+_RESULTADO_NARRADO = re.compile(
+    rf"(?P<falha>{_FALHA_OPERACIONAL.pattern})|"
+    r"(?P<sucesso>\b(?:abriu|fechou|salvou|enviou|apagou|ligou|desligou|"
+    r"(?:tinha|havia|tenho)\s+(?:j[aá]\s+)?(?:aberto|fechado|salvo|enviado|apagado|criado|ligado|desligado)|"
+    r"foi\s+(?:salv[oa]|enviad[oa]|apagad[oa]|criad[oa]|abert[oa]|fechad[oa])|"
+    r"(?:abertura|envio|opera[cç][aã]o|comando)\s+funcionou)\b)|"
+    rf"(?P<estado>{_ALEGACAO_ESTADO_OBSERVAVEL.pattern})", re.I,
+)
+_CITACAO_RESULTADO = re.compile(r'"([^"\n]+)"|“([^”\n]+)”|«([^»\n]+)»')
+_HIPOTESE_RESULTADO = re.compile(r"^\s*(?:se|caso|talvez|suponha\s+que)\b", re.I)
+_ATRIBUICAO_RELATO = re.compile(
+    r"^\s*(?:pelo\s+que\s+voc[eê]\s+(?:contou|disse)|"
+    r"segundo\s+seu\s+relato|voc[eê]\s+(?:contou|disse)\s+que)[,:]?\s*", re.I,
+)
+
+
+def _texto_alegacao(texto: str) -> str:
+    return re.sub(r"\s+", " ", texto).strip(' .!?;:,"“”«»').casefold()
+
+
+def _prefixo_pedido_da_alegacao(frase: str, inicio: int) -> str:
+    """Delimita pelo conjunto de alegações, não só pelo tipo sendo validado.
+
+    Um estado de janela não pode emprestar escopo ao estado de um dispositivo
+    ou a um resultado de arquivo. Reusa os detectores do próprio guardião.
+    """
+    fim_anterior = max((
+        ocorrencia.end()
+        for padrao in (_RESULTADO_NARRADO, _ESTADO_REAL_FORTE)
+        for ocorrencia in padrao.finditer(frase, 0, inicio)
+    ), default=0)
+    return frase[fim_anterior:inicio]
+
+
+def detectar_resultados_operacionais_sem_evidencia(
+    fala: str, *, plano: Dict[str, Any] | None,
+) -> list[str]:
+    """Exige fonte específica para resultado narrado pela LLM, positivo ou não.
+
+    Correspondência textual é deliberadamente conservadora: não infere causa
+    a partir de ``confirmado=False``, não usa histórico da IA como evidência e
+    não empresta o receipt de uma operação para outra. Paráfrases não cobertas
+    seguem para o reparador existente, nunca para um executor.
+    """
+    if not _RESULTADO_NARRADO.search(str(fala or "")):
+        return []
+    contrato = dict(plano or {})
+    usuario = str(contrato.get("texto_usuario") or "")
+    fontes = []
+    for parte in re.split(r"(?<=[.!?])\s+|;", usuario):
+        if (
+            parte and "?" not in parte and not _CITACAO_RESULTADO.search(parte)
+            and not _HIPOTESE_RESULTADO.search(parte)
+            and not expressa_incerteza_observacao(parte)
+        ):
+            fontes.append(_texto_alegacao(parte))
+    fontes_receipt: dict[bool, list[str]] = {True: [], False: []}
+    for item in _comandos_normalizados(contrato):
+        # Os campos de capacidade são documentação, não observações do evento.
+        # Só o detalhe de resultado do executor pode servir de fonte.
+        if item.get("origem") != "executor":
+            continue
+        sucesso = item.get("confirmado") is True
+        falha = not sucesso and bool(re.search(
+            r"(?:^|_)(?:falha|erro)(?:_|$)", str(item.get("status") or ""),
+        ))
+        if sucesso or falha:
+            detalhe = str(item.get("detalhe") or "")
+            fontes_receipt[falha].extend(
+                _texto_alegacao(p) for p in re.split(r"(?<=[.!?])\s+", detalhe) if p
+            )
+
+    def ocultar_citacao(m: re.Match) -> str:
+        trecho = next(grupo for grupo in m.groups() if grupo is not None)
+        # Preserva apenas a citação literal; o resto da frase ainda será checado.
+        return "[citação]" if _texto_alegacao(trecho) in _texto_alegacao(usuario) else m.group(0)
+
+    texto = _CITACAO_RESULTADO.sub(ocultar_citacao, str(fala or ""))
+    for frase in re.split(r"(?<=[.!?])\s+|;", texto):
+        # Um ponto de interrogação não libera pressuposições como "por que falhou?".
+        pergunta_simples = frase.rstrip().endswith("?") and not re.search(
+            r"\b(?:por\s+que|porque|qual\s+(?:foi\s+)?(?:a\s+)?causa)\b|"
+            r"[,—]\s*(?:n[eé]|certo|correto|n[aã]o\s+[ée]|verdade)\s*\?$", frase, re.I,
+        )
+        for ocorrencia in _RESULTADO_NARRADO.finditer(frase):
+            # O objeto pode coordenar nomes, mas não pode emprestar o pedido
+            # anterior a outra alegação de estado/sucesso/falha independente.
+            prefixo_pedido = _prefixo_pedido_da_alegacao(frase, ocorrencia.start())
+            # Consultas explícitas já têm seu owner de evidência/estado abaixo
+            # e o contrato semântico específico. Aqui cobrimos a afirmação
+            # que aparece espontaneamente numa conversa/relato.
+            if ocorrencia.group("estado") is not None:
+                atualidade = classificar_atualidade_factual(usuario)
+                if atualidade.get("classe") == "estado_observavel" and atualidade.get("depende_atualidade"):
+                    continue
+            inicio = list(re.finditer(r"[,;]|\b(?:mas|por[eé]m|contudo|entretanto|e)\b", frase[:ocorrencia.start()], re.I))
+            prefixo = frase[inicio[-1].end() if inicio else 0:ocorrencia.start()]
+            if (pergunta_simples or _HIPOTESE_RESULTADO.search(prefixo)
+                    or expressa_incerteza_observacao(prefixo) or estado_sob_pedido_informacao(prefixo_pedido)
+                    or estado_sob_pergunta_referida(frase[:ocorrencia.start()])):
+                continue
+            alegacao = _texto_alegacao(_ATRIBUICAO_RELATO.sub("", frase))
+            falha = ocorrencia.group("falha") is not None
+            if not any(alegacao == fonte for fonte in fontes + fontes_receipt[falha]):
+                return ["falha_operacional_sem_evidencia" if falha else "resultado_operacional_sem_evidencia"]
+    return []
 
 
 def validar_alegacoes_da_fala(
@@ -296,7 +430,7 @@ def validar_alegacoes_da_fala(
             continue
         if (
             origem_ia
-            and _PROMESSA_OPERACIONAL_SEM_COMANDO.search(frase)
+            and _alega_execucao_afirmativa(frase, _PROMESSA_OPERACIONAL_SEM_COMANDO)
             and not confirmados
         ):
             problemas.append("promessa_operacional_sem_comando")
@@ -312,7 +446,7 @@ def validar_alegacoes_da_fala(
             continue
         if (
             origem_ia
-            and _ESTADO_REAL_FORTE.search(frase)
+            and _alega_estado_sem_incerteza_local(frase, _ESTADO_REAL_FORTE)
             and not confirmados
             and not _PERSONALIDADE_SEGURA.search(frase)
         ):

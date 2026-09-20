@@ -8,7 +8,7 @@ from typing import Any, Dict, Iterable
 
 from mente_laylay.especialistas.coordenador import registrar_resultado_operacional
 from mente_laylay.cognicao.fundamentacao_factual import (
-    extrair_titulos_citados,
+    contem_citacao_destacada,
     reparar_recomendacao_com_evidencia,
     validar_fala_com_fundamentacao,
 )
@@ -415,10 +415,12 @@ def verificar_fala_turno(
         }
 
     fundamentacao = contrato.get("fundamentacao_factual")
-    titulo_citado_na_fala = bool(extrair_titulos_citados(ajustada))
+    # Ensinar um enunciado não cria um título pesquisável, mas também não
+    # dispensa validar fatos independentes que apareçam ao redor da citação.
+    citacao_na_fala = contem_citacao_destacada(ajustada)
     if (
         not (isinstance(fundamentacao, dict) and fundamentacao.get("tema"))
-        and (contrato.get("dominio") == "musica" or titulo_citado_na_fala)
+        and (contrato.get("dominio") == "musica" or citacao_na_fala)
     ):
         referencia = dict(contrato.get("referencia_resolvida") or {})
         tema_fallback = str(referencia.get("nome") or "").strip()
@@ -535,8 +537,11 @@ def verificar_fala_turno(
         possui_comandos=bool(contrato.get("comandos")),
     )
     if ajustada_proporcional != ajustada:
-        problemas.append("resposta_reduzida_a_proporcao_do_turno")
-        ajustada = ajustada_proporcional
+        # O limite de estilo não sabe quais frases contêm respostas, ressalvas
+        # ou dependências. Depois da validação, truncar pode desfazer o contrato
+        # e remover justamente o segundo ato ou uma condição importante.
+        # A geração continua limitada; aqui o excesso é somente diagnóstico.
+        problemas.append("resposta_acima_da_proporcao_do_turno")
 
     if _VAZAMENTO_INTERNO.search(ajustada):
         return {

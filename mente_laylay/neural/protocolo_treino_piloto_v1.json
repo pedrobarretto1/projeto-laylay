@@ -1,0 +1,85 @@
+{
+  "versao": 1,
+  "data": "2026-09-14",
+  "estado": "desenho_fixado_aguardando_dados_e_consumidor",
+  "objetivo": "Comparar encoder congelado e ajustado na identificação de âncora, variante e ato por token literal",
+  "baseline_git": "76aa525ef61fdb4ecfbfdb578adf572c0b83949a",
+  "checkpoint": {
+    "repositorio": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "revisao": "e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+    "pesos_sha256": "eaa086f0ffee582aeb45b36e34cdd1fe2d6de2bef61f8a559a1bbc9bd955917b",
+    "tokenizer_sha256": "2c3387be76557bd40970cec13153b3bbf80407865484b209e655e5e4729076b8",
+    "local_files_only": true
+  },
+  "dados": {
+    "gate_canonico": "protocolo_ajuste_supervisionado.preparar_particao",
+    "particoes": ["treino", "selecao", "calibracao"],
+    "desenvolvimento": "diagnostico_conhecido_sem_selecao_de_epoca_ou_limiar",
+    "reserva": "ausente_nao_fabricar",
+    "origem_rotulo_ia_nao_equivale_humana": true,
+    "linhagem": "componentes_transitivos_de_grupo_id_ancestrais_sem_cruzamento",
+    "leakage": "auditor_canonico_com_limiar_0.9_e_revisao_semantica",
+    "cobertura": "nove_combinacoes_variante_ato_em_cada_particao",
+    "representatividade": "revisar_familias_quantidades_e_origens_antes_de_aprovar; minimos_tecnicos_nao_bastam",
+    "fora_perfil": "conservar_sem_perda_e_sem_score_operacional_automatico",
+    "hashes_de_particoes": null
+  },
+  "pareamento": {
+    "sementes": [27, 53, 89],
+    "condicoes": ["encoder_congelado", "encoder_ajustado"],
+    "mesma_cabeca_inicial_por_semente": true,
+    "mesmo_checkpoint_tokenizer_mapa_e_ordem_de_exemplos": true,
+    "diferenca_entre_condicoes": "somente_requires_grad_do_encoder",
+    "cabeca": "Linear(384,10)",
+    "dropout": "desligado_nas_duas_condicoes",
+    "precisao": "float32",
+    "determinismo": true,
+    "tf32": false
+  },
+  "otimizacao": {
+    "algoritmo": "AdamW",
+    "lr_encoder": 0.00002,
+    "lr_cabeca": 0.001,
+    "betas": [0.9, 0.999],
+    "eps": 0.00000001,
+    "weight_decay": 0.01,
+    "foreach": false,
+    "scheduler": null,
+    "grad_clip_norm": 1.0,
+    "perda": "cross_entropy_media_por_token_literal_por_exemplo",
+    "pesos_de_classe": null,
+    "batch_fisico": 1,
+    "acumulacao": 1,
+    "max_subtokens": 128,
+    "epocas": 8,
+    "max_passos_por_condicao_semente": 4000,
+    "max_passos_totais": 24000,
+    "preflight_orcamento": "exigir 8 * exemplos_treino <= 4000 antes de qualquer fit; se exceder revisar versao antes do fit",
+    "interrupcao": "NaN, OOM, fonte alterada ou falha de determinismo invalidam a corrida; sem fallback de parametros"
+  },
+  "avaliacao": {
+    "predicao": "argmax_dos_dez_logits_em_todos_tokens_literais",
+    "unidade": "id_do_caso_offset_bruto_intent_action",
+    "metricas_canonicas": "comparar_ocorrencias_v4.medir / diagnosticar_head_relacional.medir_acoes",
+    "metrica_adicional": "macro_F1_das_nove_classes_nao_ausente; F1_zero_quando_denominador_zero",
+    "obrigatorias": ["exatidao_por_caso_sem_alvos", "pedidos_inventados", "acoes_extras", "acoes_ausentes", "confusao_por_variante_ato", "macro_F1_nao_ausente", "resultados_por_familia"],
+    "epoca_escolhida_somente_em_selecao": ["menor_pedidos_inventados", "maior_macro_F1_nao_ausente", "maior_exatidao_por_caso", "menor_epoca"],
+    "calibracao": "avaliar_uma_vez_a_epoca_escolhida; nenhum_threshold_ajustado_nesta_versao",
+    "proposta_de_limiar": "requer_outro_protocolo_e_dados_novos_antes_de_experimento",
+    "avanco_experimental": {
+      "cada_semente_ajustada_em_calibracao": {"exatidao_minima": 0.95, "max_pedidos_inventados": 0, "max_acoes_extras": 0},
+      "deltas_pareados_ajustado_menos_congelado": {"mediana_macro_F1_minima": 0.02, "minimo_delta_macro_F1_por_semente": -0.01, "minimo_delta_exatidao_por_semente": -0.01},
+      "significado": "criterio_local_para_estudar_alvos_relacoes_e_runtime; nao_aprovacao_operacional_ou_prova_estatistica"
+    }
+  },
+  "persistencia": {
+    "destino": "diretorio_experimental_novo_por_corrida",
+    "pesos": "safetensors_encoder_e_cabeca_com_metadados_por_epoca",
+    "registro": "hashes_dados_codigo_ambiente_ordem_semente_parametros_metricas_e_falhas",
+    "configuracao_runtime": "nao_alterar"
+  },
+  "pendencias": ["dados_reais_revisados", "particoes_independentes_validadas_e_fixadas_por_hash", "consumidor_do_protocolo_com_guardas_e_testes", "viabilidade_multietapas_com_otimizador_no_orcamento"],
+  "treino_permitido": false,
+  "autoriza_execucao": false,
+  "autoriza_promocao": false
+}

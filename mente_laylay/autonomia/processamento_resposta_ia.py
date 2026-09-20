@@ -29,6 +29,7 @@ from mente_laylay.cognicao.qualidade_comunicacao import (
     avaliar_qualidade_comunicacao,
     contingencia_comunicacao,
     montar_mensagens_reparo_comunicacao,
+    compor_reparo_comunicacao,
 )
 from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
 from mente_laylay.autonomia.higiene_resposta_ia import (
@@ -537,6 +538,21 @@ def preparar_resposta_para_execucao(
         limpar_texto_fala_cb=limpar_texto_fala_cb,
         fallback_fala=fallback_fala,
     )
+    contexto_com = dict(contexto_comunicacao or {})
+    plano_comunicacao = dict(contexto_com.get("plano_turno") or {})
+    # Consumir a decisão do dono do turno ANTES de escolher o caminho de
+    # comunicação. Uma proposta sem autoridade não pode pular o reparo da fala.
+    # Ausência de decisão (ou plano de outra entrada) não equivale a veto.
+    if (
+        comandos
+        and plano_comunicacao.get("autoriza_execucao") is False
+        and str(plano_comunicacao.get("texto_usuario") or "").strip() == texto
+    ):
+        registrar_log(
+            "🛡️ [AUTORIZAÇÃO] propostas descartadas antes da validação da fala "
+            f"| motivo=plano_atual_sem_autorizacao quantidade={len(comandos)}"
+        )
+        comandos = []
     realidade_bloqueada = False
     problemas_realidade = (
         detectar_experiencia_pessoal_inventada(fala_limpa)
@@ -689,8 +705,6 @@ def preparar_resposta_para_execucao(
     # o que prometeu ou abandonou o domínio confirmado, fazemos exatamente uma
     # nova tentativa com contexto curto. O rascunho rejeitado nunca vai para a
     # memória nem para o TTS.
-    contexto_com = dict(contexto_comunicacao or {})
-    plano_comunicacao = dict(contexto_com.get("plano_turno") or {})
     mensagens_comunicacao = list(contexto_com.get("mensagens") or [])
     entrada_usuario_repetida = _entrada_usuario_repetida_no_contexto(
         texto,
@@ -763,6 +777,10 @@ def preparar_resposta_para_execucao(
                     reparada_raw,
                     limpar_texto_fala_cb=limpar_texto_fala_cb,
                     fallback_fala=fallback_fala,
+                )
+                candidata = compor_reparo_comunicacao(
+                    fala_limpa, candidata, avaliacao_comunicacao,
+                    plano=plano_comunicacao,
                 )
                 segunda_avaliacao = avaliar_qualidade_comunicacao(
                     texto,

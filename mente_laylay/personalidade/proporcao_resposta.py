@@ -165,6 +165,7 @@ def limite_tokens_resposta(
     *,
     modo_rapido: bool = False,
     depende_contexto: bool = False,
+    envelope_estruturado: bool = False,
 ) -> int:
     perfil = classificar_proporcao(texto_usuario, "")
     limites = {
@@ -185,4 +186,7 @@ def limite_tokens_resposta(
         # era cortado antes de fechar a leitura emocional, embora a fala ainda
         # parecesse válida para o usuário.
         return 256
-    return limite
+    # Uma fala curta não implica envelope curto: a chamada principal também
+    # precisa fechar seus campos estruturais. Isso reserva espaço, não obriga
+    # o modelo a usá-lo nem garante JSON válido; validação continua externa.
+    return max(limite, 256) if envelope_estruturado else limite

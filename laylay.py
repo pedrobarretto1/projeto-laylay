@@ -938,6 +938,7 @@ _estado_compartilhado_runtime = _criar_estado_compartilhado_runtime_mente(
 _saude_mente_runtime = _criar_saude_mente_runtime()
 _mapa_habilidades_runtime = _criar_mapa_habilidades_runtime(
     saude_getter=_saude_mente_runtime.snapshot,
+    apps_getter=lambda: APPS_MAP,
 )
 _texto_parece_consulta_operacional = _mapa_habilidades_runtime.parece_consulta_operacional
 
@@ -3774,6 +3775,7 @@ _disponibilidade_operacional_runtime = _criar_disponibilidade_operacional_runtim
     area_transferencia_getter=_area_transferencia_runtime.diagnostico,
     caixa_entrada_getter=_caixa_entrada_pessoal_runtime.diagnostico,
     notificacoes_getter=_central_notificacoes_runtime.diagnostico,
+    gmail_getter=lambda: {"configurado": _gmail_runtime.configurado()},
     iot_getter=_registro_iot_runtime.diagnostico,
     avatar_getter=_avatar_runtime.diagnostico,
 )
@@ -3858,6 +3860,17 @@ _processar_comandos_prioritarios = _comandos_imediatos_runtime.processar_priorit
 _contexto_inicio_chat = _contexto_inicio_chat_runtime.montar
 
 
+from mente_laylay.neural.coleta_entradas import ColetaEntradasNeurais as _ColetaEntradasNeurais
+
+_coleta_entradas_neurais = _ColetaEntradasNeurais(
+    os.path.join(PASTA_MEMORIA, "neural", "entradas_prospectivas.jsonl"),
+    estado=_estado_compartilhado_runtime,
+    conversa_getter=_gerenciador_conversas_runtime.id_ativo,
+    teste_getter=lambda: bool(os.environ.get("LAYLAY_DIAGNOSTICO_DIR")),
+    ativo=os.getenv("LAYLAY_NEURAL_COLETA_ENTRADAS", "1").strip() == "1",
+)
+_registro_servicos_aplicacao_runtime.publicar(_coleta_entradas_neurais=_coleta_entradas_neurais)
+
 _composicao_turno_runtime = _criar_composicao_turno_runtime(
     servicos=_registro_servicos_aplicacao_runtime.snapshot(),
 )
@@ -3894,6 +3907,7 @@ _resposta_ia_runtime = _criar_resposta_ia_runtime_mente(
         ),
         "modo_chat_runtime": _modo_chat_runtime,
         "processar_comandos_prioritarios": _processar_comandos_prioritarios,
+        "textos_publicados_turno": _orquestrador_fala_runtime.textos_publicados_turno,
         "modo_chat": _conversa_estado_get("modo_chat", False),
         "conversa_ativa": _conversa_estado_get("conversa_ativa", False),
         "modo_jogo_ativo": lambda: bool(_modo_jogo_runtime.ativo),

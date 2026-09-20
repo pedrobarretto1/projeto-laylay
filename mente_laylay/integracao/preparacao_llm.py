@@ -145,7 +145,8 @@ def _selecionar_historico_com_orcamento(
         ):
             break
         selecionadas_reverso.append(item)
-        usados += custo
+        if not item_atomico_turno:
+            usados += custo
     return list(reversed(selecionadas_reverso))
 
 
@@ -169,6 +170,7 @@ def preparar_payload_llm(
     otimizacao_prompt_ativa: bool = True,
     preservar_ultima_mensagem_sistema: bool = False,
     log: Callable[[str], Any] = print,
+    contexto_fechado: bool = False,
 ) -> dict:
     try:
         limite_tokens = int(max_tokens or 1024)
@@ -193,6 +195,7 @@ def preparar_payload_llm(
         prompt_sistema = originais[0]
         if (
             otimizacao_prompt_ativa
+            and not contexto_fechado
             and modo_rapido
             and isinstance(prompt_sistema, dict)
             and str(prompt_sistema.get("role") or "").casefold() == "system"
@@ -206,7 +209,11 @@ def preparar_payload_llm(
             isinstance(prompt_sistema, dict)
             and _eh_prompt_principal_laylay(str(prompt_sistema.get("content") or ""))
         )
-        if otimizacao_prompt_ativa and prompt_principal:
+        if contexto_fechado:
+            # Pacote já selecionado pelo owner: exemplos e tarefa não são
+            # histórico descartável. Cortar aqui pode deixar pares órfãos.
+            historico = originais[1:]
+        elif otimizacao_prompt_ativa and prompt_principal:
             historico = _selecionar_historico_com_orcamento(
                 originais[1:],
                 limite_chars=1200 if modo_rapido else 2600,
@@ -226,7 +233,7 @@ def preparar_payload_llm(
     )
 
     ultimo_texto_usuario = _ultima_fala_usuario(originais)
-    if not modo_rapido:
+    if not modo_rapido and not contexto_fechado:
         if resumo_do_dia and (
             not otimizacao_prompt_ativa or texto_pede_resumo_diario(ultimo_texto_usuario)
         ):

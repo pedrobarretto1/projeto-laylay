@@ -158,7 +158,13 @@ def test_contexto_da_llm_recebe_mapa_compacto_e_contextual() -> None:
 
     mensagens, prompt = runtime.preparar("apaga essa pasta")
 
-    assert mensagens[0]["content"] == prompt
+    # O agregado é diagnóstico; a evidência viva viaja na instrução efêmera,
+    # não no sufixo opcional da personalidade que o transporte pode cortar.
+    evidencia = mapa.contexto_para_prompt("apaga essa pasta")
+    assert mensagens[0]["content"].startswith("PROMPT BASE calma")
+    assert evidencia not in mensagens[0]["content"]
+    assert mensagens[-1]["role"] == "system"
+    assert mensagens[-1]["content"] == evidencia
     assert "HABILIDADES REAIS RELEVANTES" in prompt
     assert "- arquivos [disponivel]" in prompt
     assert "- musica" not in prompt

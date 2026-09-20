@@ -17,6 +17,7 @@ class PacotePrompt:
 
     mensagens: tuple[dict[str, Any], ...]
     prompt_sistema: str = field(default="", repr=False)
+    contexto_fechado: bool = False
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ class PedidoModelo:
     permitir_durante_interacao: bool = False
     tipo_chamada: str = "principal"
     classe_timeout: str = "normal"
+    contexto_fechado: bool = False
 
     @classmethod
     def criar(
@@ -110,7 +112,7 @@ class RegistroPreparacaoConversa:
         pacote = self.servico.preparar_pacote(texto)
         if not isinstance(pacote, PacotePrompt):
             raise RuntimeError("preparador da conversa devolveu um pacote inválido")
-        return PacotePrompt(_copiar_mensagens(pacote.mensagens), pacote.prompt_sistema)
+        return PacotePrompt(_copiar_mensagens(pacote.mensagens), pacote.prompt_sistema, pacote.contexto_fechado)
 
     def preparar_instrucao_rapida(self, texto: str) -> str:
         preparar = getattr(self.servico, "preparar_instrucao_rapida", None)
@@ -120,6 +122,25 @@ class RegistroPreparacaoConversa:
             # teste e extensões antigas continuam seguros e sem autoridade.
             return ""
         return str(preparar(str(texto or "")) or "").strip()
+
+    def preparar_mensagens_modelo(
+        self, mensagens: list[dict[str, Any]], *, turno_id: Any,
+    ) -> list[dict[str, Any]]:
+        preparar = getattr(self.servico, "preparar_mensagens_modelo", None)
+        if not callable(preparar):
+            return list(_copiar_mensagens(mensagens))
+        return list(_copiar_mensagens(preparar(mensagens, turno_id=turno_id)))
+
+    def preparar_envio_modelo(
+        self, mensagens: list[dict[str, Any]], *, turno_id: Any,
+    ) -> PacotePrompt:
+        preparar = getattr(self.servico, "preparar_envio_modelo", None)
+        if not callable(preparar):
+            return PacotePrompt(tuple(self.preparar_mensagens_modelo(mensagens, turno_id=turno_id)))
+        pacote = preparar(mensagens, turno_id=turno_id)
+        if not isinstance(pacote, PacotePrompt):
+            raise RuntimeError("projeção do modelo devolveu um pacote inválido")
+        return PacotePrompt(_copiar_mensagens(pacote.mensagens), pacote.prompt_sistema, pacote.contexto_fechado)
 
     def diagnostico(self) -> dict[str, Any]:
         bruto = dict(self.servico.diagnostico() or {})
@@ -164,6 +185,7 @@ class RegistroModeloLLM:
             permitir_durante_interacao=bool(opcoes.pop("_permitir_durante_interacao", False)),
             tipo_chamada=str(opcoes.pop("_tipo_chamada", "principal") or "principal"),
             classe_timeout=str(opcoes.pop("_classe_timeout", "normal") or "normal"),
+            contexto_fechado=bool(opcoes.pop("_contexto_fechado", False)),
         )
         return self.executar(pedido).texto
 
@@ -296,12 +318,65 @@ class EstadoConversaRuntime:
         texto_usuario: str,
     ) -> list[dict[str, Any]]:
         """Publica a entrada uma única vez antes de chamar o modelo."""
+        with self._lock:
+            return self._iniciar_turno_na_conversa(
+                turno_id, texto_usuario, self._conversa_ativa_sem_lock(),
+            )
+
+    def preparar_registro_local(
+        self, turno_id: Any, texto_usuario: str,
+    ) -> Callable[[str], bool]:
+        """Vincula uma conclusão local ao chat de origem, sem publicar tentativa.
+
+        O chamador fornece depois somente texto confirmado pelo canal de saída.
+        Reutiliza o mesmo ledger idempotente da conversa com LLM; não registra
+        resultado operacional, fato pessoal durável ou aprendizado.
+        """
         chave = self._chave_turno(turno_id)
         texto = str(texto_usuario or "").strip()
         if not texto:
             raise ValueError("turno da conversa exige texto do usuário")
         with self._lock:
             conversa_id = self._conversa_ativa_sem_lock()
+            mensagens_antes = self._mensagens_sem_lock(conversa_id or None)
+
+        def registrar(fala: str) -> bool:
+            fala = str(fala or "").strip()
+            if not fala:
+                return False
+            with self._lock:
+                atuais = self._mensagens_sem_lock(conversa_id or None)
+                novas = atuais[len(mensagens_antes):]
+                # Ponte para writers locais legados: adota somente pares
+                # acrescentados DESDE o vínculo, no mesmo chat, iguais à saída
+                # confirmada. Uma resposta idêntica de outro turno não conta.
+                if (
+                    chave not in self._turnos
+                    and atuais[:len(mensagens_antes)] == mensagens_antes
+                    and novas and len(novas) % 2 == 0
+                    and all(item == {"role": "user", "content": texto} for item in novas[::2])
+                    and all(item.get("role") == "assistant" for item in novas[1::2])
+                    and "\n".join(str(item.get("content") or "") for item in novas[1::2]) == fala
+                ):
+                    self._turnos[chave] = {
+                        "status": "concluido", "texto_usuario": texto,
+                        "fala_assistente": fala, "conversa_id": conversa_id,
+                    }
+                    self._limitar_turnos()
+                    return True
+                self._iniciar_turno_na_conversa(chave, texto, conversa_id)
+                return self.concluir_turno(chave, fala)
+
+        return registrar
+
+    def _iniciar_turno_na_conversa(
+        self, turno_id: Any, texto_usuario: str, conversa_id: str,
+    ) -> list[dict[str, Any]]:
+        chave = self._chave_turno(turno_id)
+        texto = str(texto_usuario or "").strip()
+        if not texto:
+            raise ValueError("turno da conversa exige texto do usuário")
+        with self._lock:
             existente = self._turnos.get(chave)
             if existente is not None:
                 if existente.get("texto_usuario") != texto:

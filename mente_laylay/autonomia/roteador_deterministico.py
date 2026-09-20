@@ -12,7 +12,10 @@ from mente_laylay.cognicao.referencias_linguagem import (
     texto_pede_aba_anterior,
     valor_e_referencia_contextual,
 )
-from mente_laylay.cognicao.modalidade_turno import analisar_protecao_operacional
+from mente_laylay.cognicao.modalidade_turno import (
+    analisar_protecao_operacional,
+    extrair_nucleo_pedido_operacional,
+)
 from mente_laylay.cognicao.gramatica_operacional import (
     texto_pede_restauracao_contextual,
 )
@@ -75,6 +78,12 @@ def normalizar_pedido_natural(texto_normalizado: str) -> tuple[str, str]:
     protecao = analisar_protecao_operacional(t)
     if protecao.get("modalidade") == "deliberacao":
         return t, "deliberativo"
+
+    # O classificador e o roteador compartilham a mesma moldura. Não manter
+    # outra interpretação privada de "preciso que você" ou do verbo "abri".
+    nucleo = extrair_nucleo_pedido_operacional(t)
+    if nucleo is not None:
+        return nucleo, "pedido"
 
     original = t
     molduras = (
@@ -211,6 +220,9 @@ def extrair_intencao_abrir_app(
         return None
 
     nome_norm = nome.lower()
+    assunto_site = re.fullmatch(r"site\s+sobre\s+(.+)", nome_norm)
+    if assunto_site:
+        return {"intent": "SITE_ENTER", "params": {"tema": assunto_site.group(1).strip()}}
     sites = sites_diretos if isinstance(sites_diretos, dict) else {}
     if nome_norm in sites or nome_norm.startswith("site ") or nome_norm in {"youtube", "google", "spotify", "whatsapp", "chatgpt"}:
         return {"intent": "OPEN_URL", "params": {"alvo": nome_norm.replace("site ", "").strip()}}
@@ -1188,8 +1200,8 @@ def _detectar_abrir_app_ou_site_base_c1d(
     intent_abrir = extrair(bruto)
     if not intent_abrir:
         return None
-    if intent_abrir.get("intent") == "OPEN_URL":
-        return {"intent": "OPEN_URL", "params": params(**intent_abrir.get("params", {}))}
+    if intent_abrir.get("intent") in {"OPEN_URL", "SITE_ENTER"}:
+        return {"intent": intent_abrir["intent"], "params": params(**intent_abrir.get("params", {}))}
 
     params_abrir = dict(intent_abrir.get("params") or {})
     nome_app = str(params_abrir.get("nome_app") or "").strip()

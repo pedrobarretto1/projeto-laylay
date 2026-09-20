@@ -1,6 +1,595 @@
 # Especialista neural de comandos
 
-## Estado atual: sonda semântica melhora, mas não passa segurança — 2026-09-07
+## Estado atual: coleta validada em sessão real controlada — 2026-09-09
+
+`laylay.py` foi iniciado pelo executor oficial com
+`roteiro_neural_coleta_prospectiva_seguro.py`: quatro frases de recusa/relato,
+sem solicitar efeitos externos. Processo encerrou com código 0, quatro
+respostas e zero comandos operacionais nos planos. Voz/microfone, abertura
+do Terminal 2, briefing/presença e modo jogo automático foram desativados
+somente no ambiente desse processo; IoT em modo simulado. Não é validação
+dessas integrações. Serviços regulares ainda puderam produzir notificações.
+
+`validar_coleta_runtime.py` conferiu os quatro registros persistidos contra
+os planos e o roteiro: textos/tamanhos/hashes, IDs únicos, mesma conversa e
+sessão, origem `roteiro_teste`, encadeamento anterior e ausência de rótulos,
+partições ou autorização. **GREEN runtime da coleta**, não da conversa geral.
+29 testes focados passaram (14 do validador e 15 da coleta).
+
+Artefatos: `resultados_testes/roteiro_neural_coleta_prospectiva_seguro-20260909-084143-400566/`
+(`validacao_coleta.json`, `planos.jsonl`, `resumo.json`, `conversa.md`). Coleta
+em `memoria/neural/entradas_prospectivas.jsonl`: quatro amostras de teste,
+zero amostra humana certificada. Contexto contém 0/0/2/4 mensagens; vínculo
+ao turno anterior existe, mas histórico completo não foi certificado.
+
+Falha separada observada no turno 2: resposta afirmou que o Opera não abriu
+e sugeriu erro de conexão, sem evidência desse efeito. O avaliador `sem_comando`
+passou porque não houve comando; isso não avalia fundamentação factual da
+fala. Registrada em `melhorias e planos/erros_encontrados.md`, sem patch de
+personalidade misturado à coleta. Modelo ativo permaneceu intacto em shadow.
+
+Próximo: acompanhar uso cotidiano e revisar procedência/semântica dos novos
+registros antes de formar partições. Não usar os quatro turnos roteirizados
+como revisão humana ou avaliação inédita; investigar a fala inventada em
+fronteira separada de fundamentação da resposta.
+
+## Histórico: coleta prospectiva ligada à composição — 2026-09-09
+
+`coleta_entradas.py` registra entrada literal recebida por
+`ComposicaoTurnoRuntime.iniciar`, antes da revisão intra-turno, independente
+do modelo neural, divergência ou executor. Ao retornar, associa o ID canônico
+do turno; falha de planejamento mantém tipo de erro e ID ausente, sem inventar
+um turno. Reutiliza o writer append-only do buffer existente em arquivo
+separado `memoria/neural/entradas_prospectivas.jsonl`.
+
+A raiz publica o coletor no registro allowlist. A próxima inicialização usa
+`LAYLAY_NEURAL_COLETA_ENTRADAS=1` por padrão; `0` desativa sem apagar dados.
+Sem coleta de eventos estruturados ou texto de origem `presenca`. Registra
+conversa ativa, marcador de sessão do estado compartilhado, origem declarada
+e contexto mínimo anterior (ID do turno e até quatro mensagens user/assistant,
+sem system/tool). Origem humana e vínculo das mensagens à sessão NÃO são
+certificados automaticamente. Roteiro/origem declarada e diagnóstico ativo
+marcam teste, mas ausência desses sinais não prova autoria humana.
+
+Limites explícitos: 16.000 caracteres por entrada, 2.000 por mensagem de
+contexto, com tamanho original/hash e flag de truncamento; arquivo até 64 MiB,
+sem limpeza automática. Falhas são reportadas à observabilidade e não mudam
+decisão ou resposta do turno. Não grava previsões/receipts como rótulos;
+nenhum registro autoriza treino, execução ou promoção. O modelo ativo segue
+em shadow. Captura o que chega à composição, não certifica transcrição de
+voz nem recupera transformações que já ocorreram antes dessa fronteira.
+
+Dois REDs de integração foram reproduzidos antes do wiring: recusa sem
+modelo/executor não chegava à coleta, e original revisado/contexto anterior
+não era preservado. 15 testes focados passaram, incluindo wiring extraído
+da raiz real e executado sobre o harness com componentes canônicos. Isso
+NÃO é execução completa de `laylay.py`; não se anunciou GREEN runtime.
+
+Regressão neural/P0 + composição, presença e revisão intra-turno: **1.306
+passaram em 69,10 s**. Mais 16 testes de registros/composição passaram.
+Compilação e `git diff --check` verdes; hash do modelo configurado preservado.
+Nenhum arquivo prospectivo de produção foi criado pelos testes (usam tmp_path).
+
+Próximo: observar uma sessão real controlada, verificar os registros, origem
+e contexto, então revisar amostras naturais e fechar partições. Coleta nova
+não torna o corpus atual pronto nem elimina revisão humana/grupos independentes.
+
+## Histórico: shadow revisado; identificada lacuna de coleta — 2026-09-09
+
+Extração por `curadoria_shadow_encoder.py`: 132 textos adicionais, com
+referências a 233 eventos e marcação de compactação/truncamento do coletor.
+Curadoria IA concluída: **5 casos compatíveis** (4 pedidos APP_OPEN e 1
+FILE_READ); 127 fora do perfil conservados, sem virar negativos `ausente`.
+101 textos aparecem literalmente nos roteiros verificados. Isso não prova
+a origem de cada evento. Não há revisão humana ou promoção de rótulos.
+
+O auditor de exposição passou a reconhecer linhas dentro de constantes
+multilinha sem executar o roteiro. Dois REDs reproduzidos antes do patch;
+posição no valor decodificado não é confundida com linha física do arquivo.
+
+Acumulado: **209 textos distintos, 8 anotações IA no perfil, só 2 das 9
+combinações variante/ato**. Partições continuam inviáveis. O buffer privilegia
+resultados; o shadow só guarda texto nas divergências. Ambos são insuficientes
+para medir compreensão representativamente. Não iniciar fit para compensar
+essa ausência. Próximo: coleta prospectiva com origem/sessão/turno e contexto,
+independente de sucesso/divergência, reutilizando o caminho canônico.
+
+Artefatos: `memoria/neural/experimentos/curadoria_shadow_encoder_20260909/`
+e `memoria/neural/experimentos/revisao_shadow_encoder_20260909/`. Produção,
+modelo ativo em `shadow` e fontes históricas preservados; nenhum fit.
+
+29 testes focados passaram (11 novos de extração, 18 do revisor, incluindo
+os 2 REDs corrigidos). Regressão neural/P0: **1.260 passaram em 79,59 s**.
+É validação offline; não prova runtime completo ou superioridade linguística.
+
+## Histórico: triagem dos dados concluída; partições ainda insuficientes — 2026-09-09
+
+`revisao_encoder.py` aplica revisão IA explícita à fila de experiências, com
+snapshot fixado por hash e validação canônica das anotações. Os 77 textos
+foram revisados: **3 pedidos APP_OPEN anotados, 74 fora do perfil atual**.
+Esses 74 não viram negativos `ausente` nem são descartados; incluem consultas
+de janelas, outros domínios, referências contextuais e destinos ambíguos.
+Nenhuma anotação foi declarada humana ou promovida no ledger de aprendizado.
+
+56 textos coincidem literalmente com três scripts v27 inspecionados, ligados
+a 619 registros do buffer. Coincidência comprova exposição, não origem de cada
+evento. A revisão não inventa contexto, linhagem ou partição independente.
+Faltam oito das nove combinações do piloto; três pedidos da mesma família não
+sustentam treino/seleção/calibração separados. **Não houve fit nem promoção.**
+
+Saída: `memoria/neural/experimentos/revisao_encoder_20260909/`; entrada revisável
+em `memoria/neural/experimentos/revisao_encoder_20260909_entrada.json`.
+Próxima fonte identificada: log shadow existente, com 132 textos adicionais
+às experiências. Suas divergências não são gold nem amostra representativa;
+precisam de curadoria e procedência. Modelo ativo permanece em `shadow`.
+
+16 testes novos passaram; regressão neural/P0: **1.247 passaram em 71,08 s**.
+Validação offline de curadoria, não prova de compreensão ou runtime completo.
+
+## Histórico: curadoria preparada e prova técnica na GPU concluída — 2026-09-09
+
+`curadoria_encoder.py` organizou 665 registros válidos em **77 textos brutos
+distintos**, com referências aos registros e decisões do ledger. Os textos
+continuam pendentes: receipt não é rótulo de compreensão, e a origem do
+componente não comprova uso cotidiano versus teste/caos. Uma linha inválida
+ficou fora da exportação, sem alteração da fonte. Nenhuma anotação, linhagem
+ou partição foi inventada. Fila: `memoria/neural/experimentos/curadoria_encoder_20260909/`.
+
+Ambiente separado `.venv_neural314`: Python 3.14.6, PyTorch 2.11.0+cu128,
+Transformers 5.16.1 e NumPy 2.5.1. `pip check` passou. Pesos MiniLM e tokenizer
+conferidos por SHA-256 na revisão `e8f8c211226b894fcb81acc59f3b34ba3efd5f42`.
+A `.venv314` de produção não foi alterada.
+
+`sonda_ambiente_encoder.py` executou na GTX 1660 SUPER duas condições pareadas:
+encoder congelado e ajustável, mesma cabeça, pesos e logits iniciais. Um passo
+AdamW com rótulos artificiais confirmou gradientes finitos, alteração da cabeça
+nos dois braços e alteração do encoder somente no ajustável. Picos alocados:
+514,11 MiB e 2.591,36 MiB, respectivamente. O teste usa batch 1, comprimento
+128, float32 e dropout desligado; não dimensiona um treino completo, não mede
+qualidade linguística e não salva pesos ajustados. Protocolo com versões/hashes
+e resultados: `memoria/neural/experimentos/sonda_ambiente_encoder_20260909/`.
+
+20 testes focados novos e **1.231 regressivos neurais/P0 passaram**. Não é
+suíte global, caos ou prova do runtime completo. Modelo configurado e `shadow`
+permanecem intactos; nenhum porteiro, executor ou composição de produção mudou.
+
+Próximo: recuperar procedência/contexto e revisar a fila; fechar partições,
+orçamento e seleção antes do comparativo congelado versus ajustado em três
+sementes. A prova técnica não autoriza promoção. Detalhes no
+[plano do piloto](../../melhorias%20e%20planos/PLANO_PILOTO_ENCODER_SUPERVISIONADO.md).
+
+## Histórico: prontidão do piloto de ajuste supervisionado implementada — 2026-09-08
+
+Direção aprovada: comparar Transformer congelado e ajustado, com mesma base
+treinável, tokenizer e cabeça. Primeiro preparar dados e protocolo; não
+continuar ablações lexicais nem promover o candidato anterior.
+
+`protocolo_ajuste_supervisionado.py` implementa validação de procedência,
+partições, parentesco transitivo, leakage e enquadramento, mais o consumidor
+`preparar_particao`. Reutiliza supervisão v4, projeção de rótulos por token e
+auditor canônico. Casos fora do perfil ficam contabilizados e separados,
+nunca convertidos automaticamente em negativos da perda.
+
+Quatro REDs do contrato novo foram reproduzidos e corrigidos: exposição
+anterior em seleção/calibração; famílias equivalentes por caixa/espaço;
+dependência indevida do alinhador de normalização para preparar texto bruto;
+duplicação interna. O texto original, inclusive maiúsculas, é preservado.
+Nenhum normalizador, porteiro, executor ou script experimental anterior mudou.
+
+Auditoria dos 1.176 casos v4: corpus válido, todos ainda em desenvolvimento
+conhecido, não pronto para preparação de treino. Sem reserva independente
+fabricada; sem fit ou inferência. Artefatos em
+`memoria/neural/experimentos/prontidao_ajuste_supervisionado_20260908/`.
+28 testes focados e **1.211 regressivos neurais/P0 passaram em 74,08 s**;
+compilação e `git diff --check` também passaram. Não é prova de runtime.
+
+Próximo: inventariar experiências/correções, preparar curadoria natural e
+partições; verificar ambiente isolado com forward/backward antes de fechar
+orçamento e iniciar o comparativo. PyTorch/Transformers ausentes da `.venv314`;
+nenhuma instalação realizada. Modelo ativo e configuração `shadow` intactos.
+Detalhes e critérios no
+[plano do piloto](../../melhorias%20e%20planos/PLANO_PILOTO_ENCODER_SUPERVISIONADO.md).
+
+## Histórico: ablação lexical concluída; retirada isolada não resolve o ato de fala — 2026-09-08
+
+`ablar_lexico_ocorrencias_v4.py` repetiu primeiro as quatro dobras do controle
+contextual anterior: métricas de treino/teste e listas de erros individuais
+idênticas, não apenas a média. Só então ajustou a condição que recebe os
+mesmos 384 estados contextuais, sem o bloco explícito de janela lexical,
+sufixos, capitalização e posição. Dados, dobras, encoder, tokenização,
+hiperparâmetros e seed foram mantidos; nenhum alvo ou limite gold foi
+fornecido como entrada. O protocolo registra hashes e aborta se a referência
+divergir. Nenhum modelo operacional foi salvo ou promovido.
+
+| Condição | Casos exatos / 1.176 | Ações ausentes | Ações extras | Pedidos inventados |
+| --- | --- | --- | --- | --- |
+| Contexto + bloco lexical/posição | 653 (55,53%) | 4 | 56 | 310 |
+| Só estados contextuais | 618 (52,55%) | 146 | 12 | 256 |
+
+Esta comparação mede ocorrência/variante/ato, ainda **sem alvos e sem execução**.
+As duas condições continuam abaixo do gate de 95% exatos e zero pedidos
+inventados/ações extras. A média com peso igual por grupo sobe de 49,63% para
+54,69%, enquanto a taxa global cai: não selecionar somente a métrica favorável.
+
+| Família deixada fora do treino | Casos | Exatos com bloco | Exatos sem bloco |
+| --- | --- | --- | --- |
+| alvo_topicalizado | 168 | 166 | 87 |
+| estr_v3_direto (bloco histórico conectado) | 672 | 426 | 334 |
+| instrucao_destacada | 168 | 31 | 138 |
+| sequencia_solicitada | 168 | 30 | 59 |
+
+Os 146 desaparecimentos da condição sem bloco estão na dobra histórica:
+33 pedidos e 113 recusas viram `ausente`. A confusão recusa → pedido cai de
+233 para 80, mas relato → pedido sobe de 76 para 167; pedidos novos fora das
+ocorrências esperadas sobem de 1 para 9. Portanto, retirar os atributos não
+elimina a confusão de autoridade: redistribui os erros entre mecanismos.
+
+Ambas as condições acertam 100% dos respectivos treinos nas quatro dobras,
+sem avisos de ajuste. A condição sem bloco usa 90/101/82/84 iterações,
+contra 31/34/33/33 do controle. Isso não sustenta aumentar épocas como
+resposta imediata ao RED de generalização. Também não prova incapacidade do
+encoder: a ablação muda a dimensão, a quantidade de parâmetros e a
+inicialização efetiva da MLP, apesar da mesma seed. O encoder ainda codifica
+palavras e ordem; “sem léxico” significa sem o bloco explícito adicional.
+
+Próxima fronteira: auditar os contrastes de pedido/recusa/relato nas famílias
+que ganharam e perderam, separando desaparecimento de ocorrência de troca
+de ato. A partir dessa evidência, especificar supervisão de escopo e tempo
+para um controle posterior, sem entregar escopo gold na inferência, criar
+parser paralelo ou avançar ao decoder de alvos com ato ainda RED. Não
+retreinar o modelo ativo nem abrir reservas para escolher esse desenho.
+
+Artefatos: `memoria/neural/experimentos/ablacao_lexico_ocorrencias_v4_20260908/`
+(`protocolo.json`, oito relatórios por dobra e `resultado.json`); execução
+offline em 113,23 s. Nove testes novos protegem a matriz, exclusão efetiva
+do bloco, entradas inválidas, reprodução individual e completude. Os 22
+testes focados passaram; a regressão neural ampliada + P0 autorização,
+modalidade e isolamento terminou com **1.183 testes passando em 69,84 s**.
+Não é suíte global nem caos. Compilação dos dois arquivos novos e
+`git diff --check` também passaram. Modelo ativo e configuração `shadow` conferidos
+intactos; produção, dados e artefatos anteriores não alterados. Este resultado
+não é uma comparação com o parser operacional nem uma prova de runtime real.
+
+## Histórico: contrastes auditados; erros isolados e influência da composição separados — 2026-09-08
+
+`auditar_contrastes_ato_v4.py` analisou os oito relatórios congelados da sonda,
+sem novo fit, inferência de modelo ou mudança de dado/parâmetro. Conferiu os
+hashes de código e as quatro dobras. As previsões implícitas na lista COMPLETA
+de erros foram reconstruídas e as métricas de cada relatório reproduzidas
+integralmente. Uma inconsistência, erro removido ou contagem divergente aborta
+a auditoria; reconstrução de relatório não é nova previsão do modelo.
+
+Foram ligados 1.344 pares de ocorrências compostas às frases isoladas já
+existentes, com texto literal e supervisão equivalentes, na mesma dobra de
+avaliação. Há reutilização da mesma ocorrência isolada em vários pares;
+portanto, não são 1.344 amostras estatisticamente independentes.
+
+Na condição contextual, examinando a âncora esperada:
+
+| Ato verdadeiro | Sozinho: previsto como pedido | Composto: previsto como pedido |
+| --- | --- | --- |
+| Recusa | 69/168 | 164/336 |
+| Relato | 13/168 | 63/336 |
+
+Isso refuta a hipótese de que todos os erros de ato venham de outra ação no
+mesmo turno: 82 ocorrem também em frases isoladas. Por outro lado, **59 pares**
+passam de ato correto isolado a pedido no composto (21 recusas e 38 relatos).
+Composição afeta previsões, mas não prova causa exclusiva no encoder:
+posição relativa, janela lexical e contexto do Transformer variam juntos.
+Nenhuma dessas análises escolheu alvos gold para executar ou refez o treino.
+O único pedido inventado fora das âncoras esperadas continua no relatório
+original; as fatias acima não o transformam em acerto nem substituem o gate.
+
+Também foi demonstrada uma limitação da janela lexical: **seis assinaturas
+de atributos idênticas com rótulos distintos** em três das quatro fatias de
+treino, impondo pelo menos **24 erros de token** por fatia a um classificador
+determinístico que receba só esses atributos. Isso é limite por tokens, não
+por casos, e não explica sozinho todos os erros do controle.
+
+Exemplo concreto: o último `abra` em
+`quero que você abra o aplicativo zafrin; não quero que você abra o aplicativo pelvora`
+e em
+`não quero que você abra o aplicativo pelvora; quero que você abra o aplicativo zafrin`
+tem a mesma janela `que você abra o aplicativo`, mesmos atributos locais e
+mesma posição relativa 0,8, mas um é recusa e o outro pedido. O `não` fica
+fora da janela de duas palavras. Não é corrupção do rótulo: a representação
+removeu a distinção relevante. Essa prova se aplica ao controle lexical;
+o candidato contextual recebe informação adicional e ajustou todo seu treino.
+
+Próximo controle: separar a contribuição lexical/posição da contextual nas
+mesmas dobras, reproduzindo primeiro o controle contextual 653/1.176. Uma
+ablação sem atributos lexicais pode testar dependência desses atalhos, mas
+não é automaticamente uma correção nem deve receber fronteiras gold. Se a
+combinação continuar RED, investigar escopo e tempo com supervisão explícita
+antes de aumentar épocas ou dados. Ainda não há causa única demonstrada para
+a generalização ruim do candidato contextual; não avançar ao decoder de alvos.
+
+Artefato: `memoria/neural/experimentos/auditoria_contrastes_ato_v4_20260908/auditoria.json`,
+incluindo pares, transições, colisões, hashes e flags de isolamento. Sete testes
+novos protegem reconstrução, completude, pareamento na mesma dobra e limites
+da representação. Os 20 testes focados (auditoria + sonda) passaram; regressão
+ampliada: **1.174 passaram em 69,83 s** (`tests/test_neural*.py` + P0 autorização,
+modalidade e isolamento), não suíte global/caos nem runtime completo.
+Modelo ativo, reservas, configuração, scripts e artefatos anteriores intactos;
+apenas auditor offline, testes e documentação adicionados nesta etapa.
+
+## Histórico: comparação por ocorrência executada; ato de fala ainda RED — 2026-09-08
+
+Implementado `comparar_ocorrencias_v4.py`, exclusivamente offline. Nas mesmas
+quatro dobras congeladas, compara duas MLPs de 32 unidades (seed 27, até 1.200
+iterações, mesmos demais parâmetros). Cada uma classifica TODOS os 22.320
+tokens da entrada bruta, inclusive nomes e pontuação: nove combinações
+variante/ato e `ausente`. Nenhum filtro de verbos, âncora gold ou modalidade
+do porteiro determina quais posições serão avaliadas.
+
+- Controle: janela lexical de dois tokens de cada lado, posição e atributos
+  locais reutilizados de `atributos_token`.
+- Candidato: mesmos atributos + 384 estados contextuais do token, extraídos
+  do MiniLM local congelado. Só a MLP é ajustada; não houve fine-tuning do
+  Transformer, download ou uso de serviço externo para os dados.
+
+**É um controle adaptado à tarefa por ocorrência, não o head histórico por
+segmento nem o modelo operacional.** Não se compara diretamente com 112/144
+da sonda anterior: unidade, dados e supervisão mudaram. As duas condições
+atuais compartilham exatamente entrada, rótulos, dobras e medição.
+
+O [model card do MiniLM](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2)
+documenta estados contextuais antes do pooling da frase, e a documentação de
+[Encoding](https://huggingface.co/docs/tokenizers/api/encoding) descreve offsets
+e máscaras. O adaptador offline usa uma instância isolada da sessão existente.
+A projeção para tokens literais é nossa escolha experimental, não garantia de
+compreensão de negação oferecida por essas fontes.
+
+Antes do fit, o mapeamento encontrou 576 incidências de fronteira compartilhada:
+subtokens `\";` e `\",` cobriam dois tokens de pontuação do tokenizador genérico.
+RED focado reproduzido; corrigida a suposição de correspondência um-para-um.
+A média agora é ponderada pela interseção em caracteres e normalizada L2,
+preservando ambas as posições. Cobertura incompleta/vetores inválidos continuam
+abortando, sem descartar tokens. Os 1.176 textos tiveram no máximo 47 tokens
+do encoder, sem truncamento. Codificação completa: 7,02 s; execução válida:
+35,88 s. Não são medidas de latência no runtime da assistente.
+
+| Condição | Casos exatos / 1.176 | Ocorrências ausentes | Extras | Pedidos inventados |
+| --- | --- | --- | --- | --- |
+| Janela lexical | 432 (36,73%) | 16 | 140 | 344 |
+| Janela + contexto por token | 653 (55,53%) | 4 | 56 | 310 |
+
+Média de exatidão entre os quatro grupos: 33,93% e 49,63%, respectivamente.
+São esperadas 1.848 ocorrências, incluindo recusas e relatos, NÃO 1.848 ações
+autorizadas. A medição reutiliza `medir_acoes`; a segunda coordenada nas chaves
+dos erros representa offset bruto da âncora, não índice de segmento.
+
+| Família avaliada | Lexical | Contextual |
+| --- | --- | --- |
+| Alvo topicalizado | 152/168 | 166/168 |
+| Bloco conectado anterior | 272/672 | 426/672 |
+| Instrução destacada | 8/168 | 31/168 |
+| Sequência solicitada | 0/168 | 30/168 |
+
+**As duas condições reprovaram o gate de 95%, zero pedidos inventados e zero
+extras. Não avançamos a vínculos/alvos.** No candidato contextual, os 310
+pedidos inventados são 233 recusas, 76 relatos e uma âncora extra classificados
+como pedido. Outros 221 pedidos esperados viraram recusa (116) ou relato (105).
+Isso localiza uma fronteira importante no ato de fala, não apenas na detecção
+de âncoras. Ainda existem quatro ausências e 56 extras; localização não está
+encerrada. “Inventado” aqui é previsão offline, nunca efeito executado.
+
+A condição contextual acertou todos os próprios casos de treino em cada dobra,
+parando em 31–34 iterações sem avisos. Portanto, falta de ajuste ao treino não
+explica seu RED de generalização. O controle lexical teve 936/1.008 nas três
+dobras maiores e 504/504 na menor; essa diferença também deve ser preservada,
+não escondida pelo resultado composto. Um seed e desenvolvimento sintético
+não demonstram superioridade geral ou sobre o legado Python.
+
+Artefatos válidos:
+`memoria/neural/experimentos/comparacao_ocorrencias_v4_20260908_r1/`, com
+protocolo anterior aos fits, oito relatórios por condição/dobra e resultado.
+A tentativa sem `_r1` ficou incompleta: a publicação do primeiro relatório
+falhou porque `loss_` era `float32`. Ela foi preservada e excluída do resultado.
+A correção converte apenas os escalares dos metadados; nenhum parâmetro,
+rótulo ou partição mudou na repetição. Hashes de código e fontes reconferidos.
+Versões verificadas: sklearn 1.9.0, ONNX Runtime 1.27.0, tokenizers 0.23.1,
+SciPy 1.18.1, Python do ambiente `.venv314`.
+
+**13 testes focados e 1.167 regressivos passaram** (69,55 s na regressão neural
++ P0 autorização/modalidade e isolamento). Incluem ausência de gold na entrada,
+várias ocorrências no mesmo trecho, contagem de pedidos falsos, cobertura de
+subtokens e publicação de metadados float32. Não equivalem a runtime completo
+ou suíte global/caos. Nenhum commit, reserva consultada ou modelo operacional
+salvo/promovido. Configuração e hash do modelo ativo permanecem os mesmos.
+
+Próxima fronteira: analisar os contrastes de escopo/tempo que fazem o candidato
+trocar recusa ou relato por pedido fora da família de treino. Antes de ampliar
+o treino ou ajustar o encoder, formular uma hipótese e controles para esses
+atos, preservando todas as falhas e as quatro divisões como desenvolvimento.
+Vínculos, alvos, comparação operacional e promoção continuam pendentes.
+
+## Histórico: expansão com quatro grupos auditados, comparação ainda não treinada — 2026-09-08
+
+`expandir_relacoes_v4.py` preservou integralmente os 672 casos anteriores e
+acrescentou 504 contrastes: instrução destacada, sequência solicitada e alvo
+mencionado antes do verbo. Mesmos domínios, inversões de nomes/papéis, aspas e
+ordens; rótulos foram definidos nos moldes, sem consultar previsões. São agora
+**1.176 casos e 1.848 ocorrências**, não 1.176 construções independentes.
+O carregamento confere o hash do lote anterior e de suas dependências; nenhuma
+guarda, anotação histórica ou arquivo de produção foi alterado.
+
+O bloco anterior permanece unido. O auditor lexical compartilhado comparou
+todos os pares entre blocos candidatos, mantendo o limiar 0,9: **zero pares
+exatos/quase duplicados entre grupos**. A auditoria de entradas locais também
+não encontrou repetição entre grupos. Irmãos da mesma construção/contraste
+ficam juntos; nenhuma linha foi retirada para passar a divisão.
+
+| Grupo avaliado fora do treino | Treino | Avaliação |
+| --- | --- | --- |
+| Alvo topicalizado | 1.008 | 168 |
+| Bloco conectado anterior | 504 | 672 |
+| Instrução destacada | 1.008 | 168 |
+| Sequência solicitada | 1.008 | 168 |
+
+Cada caso é avaliado uma única vez. Cada fatia de treino e avaliação tem as
+nove combinações ato/variante e as quatro composições em ambas as ordens.
+Essas são divisões de **desenvolvimento**, não uma reserva independente nem
+certificação de independência semântica. A revisão dos moldes continua
+assistida por IA, sem avaliador humano independente. Os textos são conhecidos
+durante o desenho do experimento; não chamar o lote de teste cego.
+
+Verificação adicional somente leitura: as 1.848 âncoras correspondem a tokens
+inteiros no texto canônico. Os 1.176 textos distintos da entrada global/local
+ocupam no máximo 47 tokens no tokenizer local sem truncamento. Isso viabiliza
+a representação, não prova que o modelo consiga predizer as âncoras. Nenhum
+encoder foi ajustado e nenhuma inferência de modelo foi feita nesta etapa.
+
+Artefatos: `memoria/neural/experimentos/expansao_relacoes_v4_20260908/`
+(`protocolo.json`, `lote.json`, `resultado.json`). SHA256 do lote:
+`f389af34b78ecf540ce551867d27e21191d6855e8113410535a106392fb55a07`.
+`divisao_viavel=True` indica somente aprovação estrutural da divisão;
+`treino_permitido`, `autoriza_execucao` e `autoriza_promocao` seguem falsos.
+
+Próximo comparativo, a implementar com protocolo congelado antes de ajustar:
+
+1. Receber só texto e segmentos; não fornecer âncora, trecho anotado, ato,
+   relação ou alvo esperado como atributo. Validar primeiro a detecção de
+   ocorrências/atos, sem mascarar erros com alvos gold.
+2. Usar as mesmas quatro dobras para controle e candidato, preservando o
+   controle anterior. Se as saídas tiverem contratos diferentes, declarar e
+   validar a projeção comum antes de comparar; não apagar recusas/relatos para
+   adaptar o denominador ao head antigo.
+3. Separar métricas por ocorrência, ato, variante, vínculo, alvo e plano
+   completo. Relatar também por grupo e a média entre grupos: o bloco de 672
+   casos não deve esconder uma regressão nas famílias de 168.
+4. Manter 95% de exatidão e zero pedidos inventados/extras como critério de
+   avanço da primeira fronteira, nunca como liberação operacional. Alvos e
+   relações devem ter prova própria antes da comparação com o runtime/legado.
+
+Validação desta etapa: sete testes novos, **26 focados** incluindo supervisão,
+e **1.154 regressivos passaram em 74,00 s** (`tests/test_neural*.py` + P0
+autorização/modalidade e isolamento). Não é suíte global/caos nem runtime
+completo. Sem commits, downloads, consultas a reservas ou novo treino.
+Configuração continua `shadow`; hash do modelo ativo foi reconferido e segue
+`caaa93027eb96451cbbf1c61136389ac8402533226c666225da3a2def356e0cf`.
+
+## Histórico: supervisão por ocorrência implementada; lote sem holdout válido — 2026-09-08
+
+Escopo offline: `supervisao_relacoes_v4.py` e `preparar_relacoes_v4.py`.
+Nenhum consumidor de produção, executor, configuração ou modelo ativo mudou.
+Baseline desta etapa: `76aa525ef61fdb4ecfbfdb578adf572c0b83949a`, worktree já
+continha mudanças no README e o comparador contextual v3 não rastreado.
+
+Fronteira reproduzida antes da implementação: a anotação anterior rejeita
+duas ocorrências da mesma variante no mesmo segmento com
+`consolidar escopo da mesma ação no segmento`. Essa guarda permanece correta
+para o plano consolidado v1/v2 e **não foi removida**. Não houve rerrotulagem
+dos 144 casos nem alteração dos hashes históricos.
+
+O novo perfil separa cada ocorrência com ID, ato, variante, trecho-fonte,
+âncora e alvos. “Abra A; não abra B” conserva pedido e recusa mesmo quando o
+segmentador real devolve um único segmento. A relação anotada `restringe`
+liga uma recusa a um pedido da mesma variante; relato não cria essa relação.
+IDs são referências da supervisão, nunca atributos de inferência. O payload
+de entrada contém apenas texto original e segmentos canônicos.
+
+Reutilizados: classificador/normalizador canônicos, transporte de offsets por
+proveniência, `vincular_plano_manual` e `validar_anotacao_escopo` por ocorrência.
+O novo contrato valida estrutura, não adivinha o sentido de texto livre.
+Alvos literais com negação dentro do nome são preservados. Campos de autoridade,
+relações incompatíveis, spans inválidos e escopos sobrepostos são rejeitados.
+O perfil inicial não cobre escopos aninhados, referências implícitas ou conflitos
+temporais: exigem revisão própria, não fallback nem autorização presumida.
+
+Preparados **672 casos sintéticos e 1.056 ocorrências**: 480 pedidos, 288 recusas
+e 288 relatos. Quatro paradigmas, três domínios, nomes com papéis invertidos,
+com/sem aspas, atos isolados e composições em ambas as ordens. Nenhuma frase
+integral duplicada exata; não são 672 construções semanticamente independentes.
+Toda a grade foi alinhada usando os componentes reais de linguagem, sem abrir
+a Laylay, usar previsão de modelo como rótulo ou executar comandos.
+
+**A comparação ficou bloqueada na independência dos grupos, antes de qualquer
+treino.** O auditor lexical compartilhado, com limiar mantido em 0,9, encontrou
+128 pares entre paradigmas. O fecho transitivo reuniu todos os casos em um
+único grupo: `direto` ↔ `possibilidade` ↔ `necessidade` ↔ `vontade`.
+Não há dobras válidas. A verificação adicional de projeções locais não precisou
+unir mais grupos. Não baixamos o limiar nem redistribuímos os irmãos para criar
+um verde. O identificador `estr_v3_direto` veio do agrupador compartilhado;
+o perfil e a supervisão deste lote são v4.
+
+Artefatos preservados em
+`memoria/neural/experimentos/supervisao_relacoes_v4_20260908/`:
+`lote.json` e `protocolo.json`, com fontes, hashes, composição, auditoria e
+pendências. SHA256 do lote:
+`f0b93360db17042b7c5af3794e44448a39611dfee62c96f135815d6bc074d09b`.
+Flags de treino, execução e promoção permanecem falsas. Nenhuma reserva foi
+consultada. Moldes são assistidos por IA, sem revisão humana independente.
+
+Validação: **19 testes focados e 1.147 regressivos passaram** (72,58 s na
+regressão `tests/test_neural*.py` + P0 autorização/modalidade e isolamento).
+Isso prova contratos offline e integração com linguagem real, não runtime
+completo, superioridade do modelo ou suíte global/caos. O teste novo está
+presente localmente, mas é ignorado pela regra existente do Git para testes;
+essa regra não foi alterada. Nenhum commit criado.
+
+Próxima fronteira: revisar os rótulos e preparar famílias de construção
+independentes desse bloco conectado. Fixar a comparação pareada antes do fit,
+com as mesmas partições para ambos os candidatos e métricas separadas para
+ato, vínculo, alvos e plano completo. Os 672 casos ficam em desenvolvimento,
+não viram teste independente nem justificam liberação. Modelo ativo segue
+`shadow`, com o mesmo hash registrado abaixo.
+
+## Histórico: controles de contexto não resolvem o dono da ação — 2026-09-08
+
+Executado `comparar_dono_contextual_v3.py`, sem alterar produção: mesmos 144
+casos de desenvolvimento, 12 dobras por construção, encoder congelado e MLP
+do comparativo anterior. Protocolo registrado antes dos ajustes. O controle
+global/local reproduziu exatamente o resumo anterior; não houve mudança de
+limiares nem uso das reservas.
+
+| Representação | Casos exatos / 144 | Ações ausentes | Ações extras | Pedidos inventados |
+| --- | --- | --- | --- | --- |
+| Global/local (controle) | 112 | 9 | 15 | 22 |
+| Somente segmento local | 107 | 11 | 15 | 21 |
+| Contexto com segmento marcado + local | 97 | 14 | 16 | 26 |
+
+“Marcado” significa serialização textual em português indicando o segmento
+analisado, não tokens especiais treinados nem fine-tuning do encoder. Os 360
+textos distintos tinham no máximo 79 tokens; nenhum sofreu truncamento.
+Codificação ONNX: 2,94 s no lote; experimento completo: 160,47 s. Esses tempos
+não medem latência de produção.
+
+**Nenhuma condição passou o gate de ação; não avançamos para alvos/BIO.**
+Nas três condições, cada dobra acertou os próprios 132 casos de treino.
+As 12 propostas positivas extras em `pedido_apos_exclusao` persistiram mesmo
+sem vetor global. Portanto, a hipótese de que retirar o contexto global seria
+suficiente foi falsificada neste protocolo; isso não prova que contexto jamais
+contribua para erros. Na família `pedido_escolha`, os três extras locais
+mudaram de pedido para recusa, mas continuaram extras. Relatos transformados
+em pedidos passaram de 7 no controle para 8 no local e 11 no marcado; o local
+também inventou um pedido em cancelamento. Não houve redução geral do risco.
+
+Próxima fronteira: auditar a supervisão e a representação da relação entre
+ato de fala, ação candidata e segmento, começando pelos erros que persistiram
+nas três condições. Essa auditoria deve conferir o texto original, a
+segmentação real e o contrato de anotação antes de propor um head conjunto
+ou ajuste do encoder. Não ampliar dados, ajustar parâmetros ou remover guardas
+para compensar esses erros sem um novo protocolo causal. O resultado ainda
+não compara este candidato com o legado Python ou com o modelo ativo.
+
+Artefatos: `memoria/neural/experimentos/ablacao_dono_contextual_v3_20260908/`
+(`protocolo.json`, `resultado.json`). Nove testes novos protegem isolamento do
+vetor local, controle idêntico, marcação/posição e rejeição de gabarito; os 21
+testes dos dois experimentos passaram. Regressão ampliada: **1.128 passaram
+em 73,78 s** (`tests/test_neural*.py` + P0 autorização/modalidade e isolamento
+de contexto), não suíte global/caos nem validação do runtime real.
+Nenhum modelo operacional foi salvo,
+promovido ou executado. Configuração continua `shadow`; hash do modelo ativo
+permanece `caaa93027eb96451cbbf1c61136389ac8402533226c666225da3a2def356e0cf`.
+
+O protocolo conserva o baseline `a215d9e5e31dd92d2cd9deb9b8622c8f642e6752`.
+Durante a execução, o HEAD externo avançou para
+`76aa525ef61fdb4ecfbfdb578adf572c0b83949a`; todos os hashes de código fixados
+neste protocolo foram reconferidos e permaneceram iguais. Não foi criado
+commit por esta execução, nem regravado o baseline histórico.
+
+## Histórico: sonda semântica melhora, mas não passa segurança — 2026-09-07
 
 Pesquisa técnica e inventário confirmaram que já existe um encoder local:
 `EncoderSemanticoONNX`, MiniLM multilíngue quantizado. Ele foi reutilizado em

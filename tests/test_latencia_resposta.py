@@ -4,6 +4,8 @@ import json
 import threading
 import time
 
+import pytest
+
 from mente_laylay.autonomia.processamento_resposta_ia import preparar_resposta_para_execucao
 from mente_laylay.integracao.llm_http import (
     FALHA_LLM_INDISPONIVEL,
@@ -89,8 +91,54 @@ def test_prompt_rapido_limita_saida_sem_reduzir_resposta_complexa() -> None:
         endpoint_local=True,
     )
 
-    assert rapido["max_tokens"] == 128
+    # O orçamento inclui o JSON estrutural, não somente a fala. O teto de
+    # 256 acompanha limite_tokens_resposta; 128 truncava esse contrato.
+    assert rapido["max_tokens"] == 256
     assert completo["max_tokens"] == 640
+
+
+@pytest.mark.parametrize("endpoint_local", [False, True])
+@pytest.mark.parametrize(
+    "solicitado, esperado", [(64, 64), (128, 128), (256, 256), (640, 256)],
+)
+def test_teto_rapido_nao_aumenta_orcamento_explicito(
+    endpoint_local: bool, solicitado: int, esperado: int,
+) -> None:
+    payload = preparar_payload_llm(
+        [{"role": "user", "content": "oi lay"}],
+        model="teste", max_tokens=solicitado, modo_rapido=True,
+        endpoint_local=endpoint_local,
+    )
+
+    assert payload["max_tokens"] == esperado
+
+
+def test_orcamento_rapido_da_personalidade_chega_inteiro_ao_payload() -> None:
+    limite = limite_tokens_resposta("oi lay", modo_rapido=True)
+    payload = preparar_payload_llm(
+        [{"role": "user", "content": "oi lay"}],
+        model="teste", max_tokens=limite, modo_rapido=True,
+        endpoint_local=True,
+    )
+
+    assert limite == 256
+    assert payload["max_tokens"] == limite
+
+
+@pytest.mark.parametrize(
+    "endpoint_local, solicitado, esperado",
+    [(True, 128, 128), (True, 640, 640), (True, 800, 640), (False, 800, 800)],
+)
+def test_payload_completo_nao_recebe_teto_do_modo_rapido(
+    endpoint_local: bool, solicitado: int, esperado: int,
+) -> None:
+    payload = preparar_payload_llm(
+        [{"role": "user", "content": "Explique o raciocinio completo."}],
+        model="teste", max_tokens=solicitado, modo_rapido=False,
+        endpoint_local=endpoint_local,
+    )
+
+    assert payload["max_tokens"] == esperado
 
 
 def test_compactacao_local_preserva_contrato_e_continuidade_recente() -> None:

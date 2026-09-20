@@ -20,12 +20,58 @@ from mente_laylay.memoria_mental.memoria_confiavel import (
 )
 from mente_laylay.cognicao.validacao_contrato_fala import (
     validar_aderencia_contrato_fala,
+    solicita_fonte_sem_afirmar_conteudo,
+    reconhecimento_estado_pessoal_valido,
 )
 from mente_laylay.cognicao.reacao_social_curta import (
     classificar_provocacao_curta,
     resposta_contingencia_provocacao,
 )
 from mente_laylay.personalidade.variacao_fala import escolher_variacao
+from mente_laylay.cognicao.guardiao_alegacoes import detectar_resultados_operacionais_sem_evidencia, validar_alegacoes_da_fala
+
+
+def montar_mensagens_pedido_fonte_textual(
+    *, pedidos_recentes: Iterable[str] = (),
+) -> list[dict[str, str]]:
+    """Realiza o ato já decidido pelo contrato, sem analisar a fonte ausente.
+
+    Preparação compartilhada pela chamada principal e pelo reparo. Não decide
+    se uma fonte falta, não altera histórico e não confere autoridade operacional.
+    """
+    recentes = [
+        str(fala) for fala in list(pedidos_recentes)[-3:]
+        if solicita_fonte_sem_afirmar_conteudo(str(fala))
+    ]
+    mensagens = [
+        {"role": "system", "content": (
+            "Você é Laylay. Falta identificar um texto pedido pelo usuário. "
+            "Escreva somente um pedido curto para ele enviar ou identificar "
+            "o relato, texto ou trecho a analisar. Não analise o conteúdo que falta, "
+            "não explique o estado de sistemas e não ofereça consultas. "
+            "Use suas palavras, sem introdução, comentário ou conclusão adicional. "
+            'Retorne somente JSON: {"fala":"seu pedido","comandos":[]}.'
+        )},
+        {"role": "user", "content": json.dumps({
+            "ato_solicitado": "pedir_fonte_textual",
+            "contrato_de_reparo": {
+                "estrategia": "analise_evidencia_textual",
+                "estado_referencia_textual": "nao_resolvida",
+                "max_frases": 1,
+                "autoriza_execucao": False,
+            },
+        }, ensure_ascii=False)},
+    ]
+    if recentes:
+        mensagens[0]["content"] += (
+            " Varie a maneira de pedir; evite repetir as formulações recentes "
+            "fornecidas apenas como referência de estilo. Elas não são evidência "
+            "sobre nenhum relato."
+        )
+        dados = json.loads(mensagens[1]["content"])
+        dados["pedidos_recentes_evitar"] = recentes
+        mensagens[1]["content"] = json.dumps(dados, ensure_ascii=False)
+    return mensagens
 
 
 _FINAL_INCOMPLETO = re.compile(
@@ -204,6 +250,7 @@ _CONSELHO_PRESCRITIVO = re.compile(
 # se perdeu. Os demais itens são observações de estilo: não justificam apagar uma
 # fala válida da LLM nem substituí-la por uma mensagem sobre o próprio sistema.
 _PROBLEMAS_BLOQUEANTES = frozenset({
+    "relato_explicito_abriu_pergunta",
     "fala_vazia",
     "resposta_incompleta",
     "entrega_prometida_ausente",
@@ -244,6 +291,7 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "reacao_codigo_apenas_ecoou_relato",
     "identidade_negou_capacidades_confirmadas",
     "metalinguagem_tratada_como_conteudo",
+    "referencia_textual_ausente_sem_esclarecimento",
     "metalinguagem_contradisse_classificacao",
     "metalinguagem_citou_conteudo_ausente",
     "metalinguagem_introduziu_entidade_ausente",
@@ -259,6 +307,8 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "declaracao_introduziu_entidade_ausente",
     "declaracao_extrapolou_estado_informado",
     "resposta_repetida_literal",
+    "falha_operacional_sem_evidencia",
+    "resultado_operacional_sem_evidencia",
 })
 
 
@@ -535,10 +585,31 @@ def avaliar_qualidade_comunicacao(
         )
         problemas.extend(aderencia_contrato.get("problemas") or [])
 
+    problemas.extend(detectar_resultados_operacionais_sem_evidencia(
+        resposta, plano={**plano_atual, "texto_usuario": usuario},
+    ))
+    contrato_reparo = dict(aderencia_contrato.get("contrato_reparo") or {})
+    if {"falha_operacional_sem_evidencia", "resultado_operacional_sem_evidencia"}.intersection(problemas):
+        contrato_reparo.update({
+            "resultado_operacional_desconhecido": True,
+            "autoriza_execucao": False,
+        })
     problemas = list(dict.fromkeys(problemas))
     bloqueantes = [
         item for item in problemas if item in _PROBLEMAS_BLOQUEANTES
     ]
+    if (
+        bloqueantes == ["ato_estado_pessoal_nao_reconhecido"]
+        and contrato_reparo.get("estrategia") == "resposta_multiacto"
+        and contrato_reparo.get("estado_pessoal_informado", {}).get("falante") == "usuario"
+        and not plano_atual.get("requer_execucao")
+        and not plano_atual.get("comandos")
+        and not validar_alegacoes_da_fala(resposta, plano=plano_atual).get("problemas")
+    ):
+        # Só um ato falta. O texto temático é preservado, não certificado como
+        # verdade: a composição ainda passa pelas mesmas verificações finais.
+        contrato_reparo["escopo"] = "reconhecimento_estado_pessoal"
+        contrato_reparo["rascunho_preservado_sha256"] = hashlib.sha256(resposta.encode("utf-8")).hexdigest()
     return {
         # Observações de estilo continuam disponíveis para diagnóstico, mas
         # somente a perda real do núcleo comunicativo pode apagar uma fala.
@@ -549,10 +620,28 @@ def avaliar_qualidade_comunicacao(
         "ultima_resposta": resposta_anterior[:700],
         "pontuacao": max(0.0, 1.0 - (0.25 * len(problemas))),
         "aderencia_contrato": aderencia_contrato,
-        "contrato_reparo": dict(aderencia_contrato.get("contrato_reparo") or {}),
+        "contrato_reparo": contrato_reparo,
         "problemas_bloqueantes": bloqueantes,
         "somente_consultiva": bool(problemas) and not bloqueantes,
     }
+
+
+def compor_reparo_comunicacao(
+    original: str, candidata: str, avaliacao: Mapping[str, Any], *, plano: Mapping[str, Any],
+) -> str:
+    """Aplica um fragmento somente ao rascunho avaliado pelo owner canônico."""
+    reparo = dict(avaliacao.get("contrato_reparo") or {})
+    if reparo.get("escopo") != "reconhecimento_estado_pessoal":
+        return candidata
+    original = _normalizar(original)
+    if hashlib.sha256(original.encode("utf-8")).hexdigest() != reparo.get("rascunho_preservado_sha256"):
+        return ""
+    estado = dict(reparo.get("estado_pessoal_informado") or {})
+    if not reconhecimento_estado_pessoal_valido(candidata, str(estado.get("estado") or "")):
+        return ""
+    if validar_alegacoes_da_fala(candidata, plano=dict(plano)).get("problemas"):
+        return ""
+    return candidata.strip() + " " + original
 
 
 def selecionar_contexto_imediato(
@@ -573,6 +662,35 @@ def selecionar_contexto_imediato(
     return uteis[-max(1, int(limite or 4)):]
 
 
+def montar_mensagens_reconhecimento_limite(texto_usuario: str) -> list[dict[str, str]]:
+    """Realiza um ato já decidido; não classifica nem autoriza a utterance.
+
+    O preparador é responsável por identidade, atomicidade e ausência de
+    autorização. Exemplos são apenas demonstrações de fala, nunca histórico.
+    """
+    return [
+        {"role": "system", "content": (
+            "Você é Laylay. O usuário recusou uma ação ou corrigiu uma pergunta "
+            "que não fez. Reconheça isso em uma única frase curta (até 12 palavras), "
+            "dirigida a ele, em português brasileiro. Na recusa, fale em primeira "
+            "pessoa sobre o que você não fará. Respeitar uma recusa é se abster, "
+            "não garantir que o alvo permaneça em algum estado. Reconhecer uma "
+            "pergunta não feita não é respondê-la. Não acrescente estados, "
+            "percepções, ações passadas, explicações, ofertas ou desculpas de "
+            'incapacidade. Responda JSON com "fala" e "comandos": [].'
+        )},
+        {"role": "user", "content": "Não envie o documento."},
+        {"role": "assistant", "content": '{"fala":"Certo, não vou enviar o documento.","comandos":[]}'},
+        {"role": "user", "content": "Preciso que você não reduza o brilho."},
+        {"role": "assistant", "content": '{"fala":"Certo, não vou reduzir o brilho.","comandos":[]}'},
+        {"role": "user", "content": "Eu não perguntei se a janela estava aberta."},
+        {"role": "assistant", "content": '{"fala":"Tem razão, você não fez essa pergunta.","comandos":[]}'},
+        {"role": "user", "content": "Eu não pedi para reiniciar o computador."},
+        {"role": "assistant", "content": '{"fala":"Você tem razão, não vou reiniciar o computador.","comandos":[]}'},
+        {"role": "user", "content": str(texto_usuario)},
+    ]
+
+
 def montar_mensagens_reparo_comunicacao(
     texto_usuario: str,
     fala_rejeitada: str,
@@ -581,6 +699,23 @@ def montar_mensagens_reparo_comunicacao(
     mensagens: Iterable[Mapping[str, Any]] | None = None,
 ) -> list[dict[str, str]]:
     """Cria uma única tentativa de reparo, pequena e sem autorização prática."""
+    reparo_parcial = dict(avaliacao.get("contrato_reparo") or {})
+    if reparo_parcial.get("escopo") == "reconhecimento_estado_pessoal":
+        return [
+            {"role": "system", "content": (
+                "Você é Laylay. O usuário contou como se sente. Reaja em UMA frase curta "
+                "dirigida a ele, citando o estado informado. Para um estado positivo, uma "
+                "reação positiva; para sofrimento ou cansaço, compreensão sem comemorar. "
+                "Não invente causas, esforços ou acontecimentos. Não fale de si, não "
+                "pergunte e não aconselhe. A resposta temática já existe: gere somente "
+                "a reação ao estado do usuário. "
+                'Retorne JSON: {"fala":"reação breve","comandos":[]}.'
+            )},
+            {"role": "user", "content": json.dumps({
+                "escopo": "reconhecimento_estado_pessoal",
+                "estado_pessoal_informado": reparo_parcial["estado_pessoal_informado"],
+            }, ensure_ascii=False)},
+        ]
     payload = {
         "mensagem_atual": _normalizar(texto_usuario)[:900],
         "rascunho_rejeitado": _normalizar(fala_rejeitada)[:1200],
@@ -616,6 +751,41 @@ def montar_mensagens_reparo_comunicacao(
         "Retorne somente JSON válido no "
         'formato {"fala":"resposta completa","comandos":[]}.'
     )
+    if dict(avaliacao.get("contrato_reparo") or {}).get("resultado_operacional_desconhecido"):
+        # Falta de prova do efeito não determina o ato do usuário. O contrato
+        # continua dono da tarefa, inclusive quando a tarefa é explicar como usar.
+        instrucao = (
+            "Você é a Laylay. Reescreva a resposta em português natural e curto. "
+            "Corrija a afirmação sem prova, preservando o objetivo da mensagem atual. "
+            "Siga os atos, o núcleo, a sequência e o limite de frases do contrato_de_reparo. "
+            "Uma pergunta não é relato de tentativa: responda à dúvida, sem perguntar "
+            "como foi uma ação que o usuário não contou ter feito. Para explicar uma "
+            "habilidade, use a documentacao_capacidades do contrato; exemplos de pedidos "
+            "são didáticos, não autorização nem execução. Limites gerais da documentação "
+            "não comprovam estados atuais nem requisitos de outra rota. Se houver relato, "
+            "reconheça somente o que foi contado, sem completar resultado ou causa. "
+            "O rascunho rejeitado e falas anteriores da assistente não são evidência. "
+            "Preserve seu jeito atento, sem narrar este reparo. Não culpe o usuário "
+            "por falta de contexto, não negue capacidades documentadas e não execute "
+            "nem ofereça uma nova ação. Retorne somente JSON: "
+            '{"fala":"resposta","comandos":[]}.'
+        )
+    if dict(avaliacao.get("contrato_reparo") or {}).get("estrategia") == "reconhecimento_relato_explicito":
+        instrucao += (
+            " Neste turno o usuário delimitou explicitamente um relato. "
+            "Apenas reconheça o que ele contou, sem perguntar, pedir continuação "
+            "ou oferecer uma ação. Não presuma o resultado do pedido relatado."
+        )
+    reparo = dict(avaliacao.get("contrato_reparo") or {})
+    if (
+        reparo.get("estrategia") == "analise_evidencia_textual"
+        and reparo.get("estado_referencia_textual") == "nao_resolvida"
+    ):
+        # A fonte não foi resolvida. Repetir a invenção como rascunho ou como
+        # histórico apenas reapresentaria conteúdo que não sustenta a análise.
+        # O contrato já decidiu o ato: pedir a fonte. A pergunta factual não
+        # é necessária para realizá-lo e voltaria a sugerir uma análise sem texto.
+        return montar_mensagens_pedido_fonte_textual()
     return [
         {"role": "system", "content": instrucao},
         {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
@@ -673,7 +843,9 @@ def contingencia_comunicacao(
     if estrategia == "negacao_operacional_sem_efeito":
         if re.search(r"\bn[aã]o\s+(?:te\s+)?perguntei\b", texto, re.I):
             return "Tem razão, você não perguntou isso."
-        return "Entendi, não vou fazer essa consulta."
+        # O contrato reconheceu uma recusa, não necessariamente uma consulta.
+        # Não inventar o domínio nem afirmar um estado externo no fallback.
+        return "Entendi, não vou executar essa ação."
     if estrategia == "reconhecimento_estado_declarado":
         declaracao = texto.rstrip(" .!?")
         if declaracao:

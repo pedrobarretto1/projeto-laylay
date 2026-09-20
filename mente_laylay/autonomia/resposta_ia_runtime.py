@@ -222,8 +222,33 @@ class RespostaIARuntime:
                 f"motivo={turno.get('motivo_decisao') or turno.get('motivo') or '-'}"
             )
         atualizar_plano = _get(ctx, "atualizar_plano_turno")
+        registrar_turno_local = None
 
-        def marcar_fase(fase: str) -> None:
+        def falha_registro_local(erro: Exception) -> None:
+            self._log(
+                "⚠️ [HISTÓRICO] resposta local sem registro | "
+                f"tipo={type(erro).__name__}"
+            )
+            registrar = _get(ctx, "registrar_falha_diagnostico")
+            if callable(registrar):
+                try:
+                    registrar("historico", "falha_registro_local", erro=erro,
+                              classe="observabilidade", impacto="contexto", fallback="preservar_turno")
+                except Exception:
+                    pass
+
+        def marcar_fase(fase: str, *, conclusao_local: bool = False) -> None:
+            if conclusao_local and callable(registrar_turno_local):
+                textos_publicados = _get(ctx, "textos_publicados_turno")
+                if callable(textos_publicados):
+                    # A fase apenas escolhe a rota. O canal confirma a fala;
+                    # não consultar última_resposta nem o texto planejado.
+                    try:
+                        falas = textos_publicados(turno_conversa_id)
+                        if falas:
+                            registrar_turno_local("\n".join(falas))
+                    except Exception as erro:
+                        falha_registro_local(erro)
             if callable(atualizar_plano):
                 atualizar_plano(fase)
             rotas_fase = {
@@ -259,16 +284,25 @@ class RespostaIARuntime:
                 marcar_fase("tratado_modo_chat")
                 return
 
+            preparar_registro_local = getattr(
+                _get(ctx, "estado_conversa"), "preparar_registro_local", None,
+            )
+            if callable(preparar_registro_local):
+                try:
+                    registrar_turno_local = preparar_registro_local(turno_conversa_id, t)
+                except Exception as erro:
+                    falha_registro_local(erro)
+
             comandos_prioritarios = _get(ctx, "processar_comandos_prioritarios")
             if callable(comandos_prioritarios) and comandos_prioritarios(t):
-                marcar_fase("tratado_prioritario")
+                marcar_fase("tratado_prioritario", conclusao_local=True)
                 return
 
             contexto_inicio_cb = _get(ctx, "contexto_inicio")
             contexto_inicio = contexto_inicio_cb() if callable(contexto_inicio_cb) else {}
             inicio_fluxo = _get(ctx, "processar_inicio_fluxo")
             if callable(inicio_fluxo) and inicio_fluxo(contexto_inicio, t):
-                marcar_fase("tratado_pre_fluxo")
+                marcar_fase("tratado_pre_fluxo", conclusao_local=True)
                 return
 
             if _get(ctx, "modo_chat", False) or _get(ctx, "conversa_ativa", False):
@@ -316,7 +350,7 @@ class RespostaIARuntime:
                         f"{type(erro).__name__}: {erro}"
                     )
                 if tratado_social:
-                    marcar_fase(f"tratado_{rota_social or 'social_jogo'}")
+                    marcar_fase(f"tratado_{rota_social or 'social_jogo'}", conclusao_local=True)
                     self._log("⚡ [CONVERSA:JOGO] resposta social local imediata.")
                     return
 
@@ -419,12 +453,25 @@ class RespostaIARuntime:
                     "content": instrucao_rapida,
                 })
 
+            # A projeção pertence ao preparador canônico e nunca substitui o
+            # histórico: autorização e validação continuam usando a fala real.
+            projetar_envio = getattr(prompt_runtime, "preparar_mensagens_modelo", None)
+            projetar_pacote = getattr(prompt_runtime, "preparar_envio_modelo", None)
+            contexto_fechado = False
+            if callable(projetar_pacote):
+                pacote_envio = projetar_pacote(mensagens_modelo, turno_id=turno_conversa_id)
+                mensagens_modelo = list(pacote_envio.mensagens)
+                contexto_fechado = pacote_envio.contexto_fechado
+            elif callable(projetar_envio):
+                mensagens_modelo = projetar_envio(mensagens_modelo, turno_id=turno_conversa_id)
+
             inicio_llm = time.perf_counter()
             sucesso_llm = False
             limite_tokens = limite_tokens_resposta(
                 t,
                 modo_rapido=modo_rapido,
                 depende_contexto=depende_contexto,
+                envelope_estruturado=True,
             )
             classe_timeout = _classe_timeout_resposta(
                 mensagens_modelo,
@@ -460,6 +507,7 @@ class RespostaIARuntime:
                         prioridade_interativa=True,
                         tipo_chamada="principal",
                         classe_timeout=classe_timeout,
+                        contexto_fechado=contexto_fechado,
                     )
                     resultado_modelo = modelo_llm.executar(pedido_modelo)
                     bot_raw = resultado_modelo.texto
@@ -480,6 +528,7 @@ class RespostaIARuntime:
                         _prioridade_interativa=True,
                         _tipo_chamada="principal",
                         _classe_timeout=classe_timeout,
+                        **({"_contexto_fechado": True} if contexto_fechado else {}),
                     )
                     sucesso_llm = True
             finally:

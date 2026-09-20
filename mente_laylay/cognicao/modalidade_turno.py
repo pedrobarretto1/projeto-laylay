@@ -24,10 +24,24 @@ from mente_laylay.arquivos.nome_natural import (
 
 from mente_laylay.cognicao.normalizacao_linguagem import (
     corrigir_erros_portugues_operacionais,
+    texto_discute_evidencia_textual,
+    tipo_transformacao_conversacional,
 )
 from mente_laylay.cognicao.gramatica_musical import (
     analisar_gramatica_musical,
     texto_tem_relevancia_musical,
+)
+
+
+_MOLDURA_PROCEDIMENTO = re.compile(
+    r"^(?:(?:s[oó]|apenas|somente)\s+)?"
+    r"(?:(?:(?:me|pra\s+mim|para\s+mim)\s+)?"
+    r"(?:explica|explique|ensina|ensine|mostra|mostre)\s+)?"
+    r"como\s+(?:eu\s+)?"
+    r"(?:(?:posso|poderia|consigo|conseguiria)\s+|"
+    r"(?:fa[cç]o|faria|fazer)\s+(?:para|pra)\s+)?"
+    r"[a-zà-öø-ÿ]+(?:ar|er|ir|or)\b",
+    re.IGNORECASE,
 )
 
 
@@ -49,6 +63,13 @@ def analisar_protecao_operacional(
     }
     if not t:
         return neutra
+    if tipo_transformacao_conversacional(texto):
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "conversa",
+            "natureza_acao": "transformacao_conversacional",
+            "motivo": "pedido de transformação da conversa, não de efeito externo",
+        }
     if re.search(
         r"^(?:nao|não)\s+\w+.*\b(?:(?:o\s+)?qu[eê]|qual|por que)\b",
         t,
@@ -71,6 +92,17 @@ def analisar_protecao_operacional(
             "modalidade": "deliberacao",
             "natureza_acao": "hipotetica",
             "motivo": "intenção hipotética ou reflexão",
+        }
+    moldura = _modalidade_moldura_pedido(t)
+    if moldura in {"recusa", "pergunta"}:
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": moldura,
+            "natureza_acao": "cancelamento" if moldura == "recusa" else "capacidade",
+            "motivo": (
+                "negação na oração pedida" if moldura == "recusa"
+                else "pergunta sobre capacidade ou consequência; não é autorização"
+            ),
         }
     if (
         re.search(
@@ -101,13 +133,17 @@ def analisar_protecao_operacional(
         }
     if re.search(
         r"^(?:nao|não|nunca|jamais)\s+(?:(?:pode|deve|vai)\s+)?(?:me\s+)?"
-        r"(?:abre|abra|fecha|feche|liga|ligue|acende|desliga|desligue|toca|"
+        # A mesma base lexical reconhece pedido e recusa. Preservam-se abaixo
+        # as formas legadas adicionais, sem outra lista privada por domínio.
+        rf"(?:{_P0_VERBOS_PEDIDO_DIRETO}|{_P0_VERBOS_INFINITIVO_OPERACIONAL}|"
+        r"abre|abra|fecha|feche|liga|ligue|acende|desliga|desligue|toca|"
         r"toque|coloca|coloque|cria|crie|apaga|apague|remove|remova|deleta|"
         r"delete|move|mova|renomeia|renomeie|escreve|escreva|grava|grave|"
         r"adiciona|adicione|acrescenta|acrescente|"
         r"muda|ajusta|deixa|olha|olhe|veja|ver|captura|capture|mostra|"
         r"mostre|lista|liste|passa|passe|resume|resuma|explique|maximiza|maximize|"
-        r"organiza|organize|pesquisa|pesquise|busca|busque|encontra|encontre)\b",
+        r"organiza|organize|pesquisa|pesquise|busca|busque|encontra|encontre|"
+        r"leia|le|lê|ler|consulte|consulta|consultar|verifique|verifica|verificar)\b",
         t,
     ):
         return {
@@ -115,6 +151,17 @@ def analisar_protecao_operacional(
             "modalidade": "recusa",
             "natureza_acao": "cancelamento",
             "motivo": "negação operacional",
+        }
+    # O pedido de procedimento é um ato discursivo, não uma capacidade do
+    # executor. Reconhecer sua moldura + infinitivo não cadastra o verbo como
+    # comando nem prova disponibilidade. O catálogo continua dono desta última.
+    # Negação, hipótese e transformação acima conservam sua precedência.
+    if _MOLDURA_PROCEDIMENTO.match(t):
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "pergunta",
+            "natureza_acao": "instrucao_ou_explicacao",
+            "motivo": "pedido de procedimento; não é execução",
         }
     if re.search(
         r"^(?:como(?:\s+(?:eu\s+)?)?(?:faria|fa[cç]o|posso|poderia)?|"
@@ -228,8 +275,8 @@ def _classificar_modalidade_base(
         )
         return resultado
     protecao = analisar_protecao_operacional(
-        t,
-        normalizar_texto=lambda valor: str(valor or "").strip(),
+        bruto,
+        normalizar_texto=normalizar_texto,
     )
     if protecao["bloqueia_execucao"] and protecao["motivo"] == "pergunta negativa sobre ação":
         resultado.update(
@@ -557,13 +604,7 @@ def _classificar_modalidade_base(
     ):
         resultado.update(modalidade="pergunta", confianca=0.98, motivo="pergunta sobre conhecimento ou capacidade", natureza_acao="capacidade")
         return resultado
-    pedido_polido = bool(re.search(
-        r"^(?:por favor\s+)?(?:pode|poderia|consegue|conseguiria)\s+(?:me\s+)?"
-        r"(?:abrir|abre|fechar|fecha|ligar|liga|desligar|desliga|tocar|toca|colocar|"
-        r"coloca|criar|apagar|ler|leia|ver|olhar|mostrar|passar|verificar|verifique|resumir|resuma|resume|"
-        r"encontrar|encontra|achar|acha|localizar|localiza)\b",
-        t,
-    ))
+    pedido_polido = _modalidade_moldura_pedido(t) == "comando"
     pedido_para_mim = bool(re.search(
         r"^(?:voce|você)\s+(?:pode|poderia|consegue|conseguiria)\s+.*\b(?:pra|para)\s+mim\b",
         t,
@@ -1095,6 +1136,13 @@ def _classificar_ato_estrutural(
         if (
             bool(protecao_real.get("bloqueia_execucao"))
             or bool(protecao_p0)
+            # A gramática especializada usa "?" como guarda conservadora.
+            # A moldura diretiva pertence ao owner geral, que ainda aplica
+            # todas as proteções do ato antes de conceder autoridade.
+            or (
+                str(getattr(cand, "regra", "")) == "pergunta"
+                and _modalidade_moldura_pedido(texto_estrutural) == "comando"
+            )
         ):
             return _classificar_atomo_geral(
                 texto_estrutural,
@@ -1303,6 +1351,12 @@ def _segmentar_turno_misto(
     if not t:
         return []
 
+    # Citações e a restrição de não executar pertencem ao ato discursivo.
+    # Só um match integral pode preservar o bloco; pedidos mistos seguem
+    # para a segmentação normal abaixo.
+    if tipo_transformacao_conversacional(t):
+        return [t]
+
     # As duas cláusulas formam uma única política: a segunda não é um novo
     # comando independente, e a primeira contém o alvo da execução. Separá-las
     # faria o detector receber apenas ``abre; se já estiver...``.
@@ -1369,7 +1423,7 @@ def _segmentar_turno_misto(
                     direita,
                     normalizar_texto=normalizar_texto,
                 )
-                if (esq_ok and dir_ok) or direita_pergunta:
+                if ((esq_ok or tipo_transformacao_conversacional(esquerda)) and dir_ok) or direita_pergunta:
                     corte = (esquerda, direita)
                     break
 
@@ -1657,12 +1711,14 @@ _P0_VERBOS_PEDIDO_DIRETO = (
     r"toca|toque|coloca|coloque|bota|poe|cria|crie|"
     r"apaga|apague|remove|remova|deleta|delete|move|mova|"
     r"renomeia|renomeie|maximiza|maximize|minimiza|minimize|"
-    r"pausa|pause|retoma|continue|continua|organiza|organize|"
+    r"pausa|pause|despausa|despause|retoma|retome|continue|continua|organiza|organize|"
     r"pesquisa|pesquise|busca|busque|procura|procure|"
     r"encontra|encontre|escreve|escreva|grava|grave|"
     r"adiciona|adicione|acrescenta|acrescente|"
     r"restaura|restaure|recupera|recupere|"
-    r"executa|execute|repete|repita|refaz|refaca|tenta|tente"
+    r"altera|altere|muda|mude|ajusta|ajuste|"
+    r"executa|execute|repete|repita|refaz|refaca|tenta|tente|"
+    r"leia|verifique|resuma|resume|acha|ache|localiza|localize"
     r")"
 )
 
@@ -1670,10 +1726,12 @@ _P0_VERBOS_INFINITIVO_OPERACIONAL = (
     r"(?:"
     r"abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|"
     r"remover|deletar|mover|renomear|maximizar|minimizar|"
-    r"pausar|retomar|continuar|organizar|pesquisar|buscar|"
+    r"pausar|despausar|retomar|continuar|organizar|pesquisar|buscar|"
     r"procurar|encontrar|escrever|gravar|adicionar|acrescentar|"
     r"restaurar|recuperar|"
-    r"executar|repetir|refazer|tentar"
+    r"alterar|mudar|ajustar|"
+    r"executar|repetir|refazer|tentar|"
+    r"ler|ver|olhar|mostrar|passar|verificar|resumir|achar|localizar"
     r")"
 )
 
@@ -1681,12 +1739,56 @@ _P0_PEDIDO_DIRETO_INICIAL = re.compile(
     rf"^(?:por\s+favor\s+)?{_P0_VERBOS_PEDIDO_DIRETO}\b",
     re.IGNORECASE,
 )
-_P0_PEDIDO_POLIDO_SEM_SUJEITO = re.compile(
-    rf"^(?:por\s+favor\s+)?"
-    rf"(?:pode|poderia|consegue|conseguiria)\s+(?:me\s+)?"
-    rf"(?:{_P0_VERBOS_INFINITIVO_OPERACIONAL}|{_P0_VERBOS_PEDIDO_DIRETO})\b",
+_MOLDURA_PEDIDO_OPERACIONAL = re.compile(
+    rf"^(?:por\s+favor[, ]+)?(?:"
+    rf"(?P<necessidade>(?:eu\s+)?preciso\s+que\s+(?:voce|você|tu))|"
+    rf"(?:(?P<sujeito>voce|você|tu)\s+)?(?:pode|poderia|consegue|conseguiria)"
+    rf")\s+(?P<negacao>(?:nao|não|nunca|jamais)\s+)?(?:me\s+)?"
+    rf"(?P<verbo>{_P0_VERBOS_INFINITIVO_OPERACIONAL}|{_P0_VERBOS_PEDIDO_DIRETO}|abri)\b",
     re.IGNORECASE,
 )
+
+
+def _modalidade_moldura_pedido(texto: str) -> str:
+    """Uma só leitura da moldura para classificação e veto P0.
+
+    O verbo precisa estar na oração dirigida à assistente, não apenas em
+    alguma menção posterior. ``abri`` só é tolerado dentro dessa moldura;
+    isolado continua ambíguo entre relato e erro de digitação. Esta função
+    não escolhe intenção/alvo nem substitui as demais proteções do ato.
+    """
+    t = re.sub(r"\s+", " ", str(texto or "").casefold()).strip()
+    moldura = _MOLDURA_PEDIDO_OPERACIONAL.match(t)
+    if not moldura:
+        return ""
+    if moldura.group("negacao"):
+        return "recusa"
+    if moldura.group("sujeito") and not re.search(r"\b(?:pra|para)\s+mim\b", t):
+        return "pergunta"
+    # Em "pode pausar a música causar problemas?", o sujeito de "pode"
+    # é a ação inteira. Não confundir possibilidade com um pedido polido.
+    if re.search(r"\s+(?:causar|provocar|afetar|prejudicar)\b", t[moldura.end():]):
+        return "pergunta"
+    return "comando"
+
+
+def extrair_nucleo_pedido_operacional(texto: str) -> str | None:
+    """Deriva a oração operacional da mesma moldura usada na modalidade.
+
+    Não é permissão de execução: o consumidor continua obrigado a consultar
+    o turno original. Entidades não são corrigidas; apenas ``abri`` no lugar
+    do verbo, dentro de pedido explícito, é convertido em ``abrir``.
+    """
+    t = re.sub(r"\s+", " ", str(texto or "")).strip()
+    if _modalidade_moldura_pedido(t) != "comando" or _protecao_p0_ato_fala(t):
+        return None
+    moldura = _MOLDURA_PEDIDO_OPERACIONAL.match(t)
+    if moldura is None:
+        return None
+    verbo = moldura.group("verbo")
+    if verbo.casefold() == "abri":
+        verbo = "abrir"
+    return verbo + t[moldura.end("verbo"):]
 _P0_PRIMEIRA_PESSOA_NAO_AUTORIZA = re.compile(
     rf"^(?:"
     rf"eu\s+(?:posso|poderia|devo|deveria|consigo|conseguiria|iria|"
@@ -1717,7 +1819,7 @@ def _p0_pergunta_operacional_tem_pedido_explicito(texto_normalizado: str) -> boo
         return False
     if _P0_PEDIDO_DIRETO_INICIAL.search(t):
         return True
-    if _P0_PEDIDO_POLIDO_SEM_SUJEITO.search(t):
+    if _modalidade_moldura_pedido(t) == "comando":
         return True
     if (
         re.match(
@@ -1850,8 +1952,8 @@ def _protecao_p0_ato_fala(
         return None
 
     existente = analisar_protecao_operacional(
-        t,
-        normalizar_texto=lambda valor: _normalizar_p0_ato_fala(valor),
+        texto,
+        normalizar_texto=lambda valor: _normalizar_p0_ato_fala(valor, normalizar_texto),
     )
     if bool(existente.get("bloqueia_execucao")):
         return {
@@ -1861,6 +1963,16 @@ def _protecao_p0_ato_fala(
             "requer_esclarecimento": (
                 str(existente.get("natureza_acao") or "") == "capacidade"
             ),
+        }
+
+    # A evidência de um relato/pedido é o objeto da pergunta, não o estado
+    # do recurso mencionado na oração subordinada. Vale em qualquer domínio.
+    if texto_discute_evidencia_textual(t):
+        return {
+            "modalidade": "pergunta" if "?" in str(texto or "") else "conversa",
+            "natureza_acao": "mencao_operacional",
+            "motivo": "discussão sobre evidência textual, não consulta ao recurso",
+            "requer_esclarecimento": False,
         }
 
     tem_gatilho = bool(_P0_GATILHOS_OPERACIONAIS.search(t))

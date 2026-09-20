@@ -8,7 +8,9 @@ from mente_laylay.integracao.preparacao_llm import (
     preparar_payload_llm,
     texto_pede_resumo_diario,
     texto_pede_contexto_arquivos,
+    texto_pede_contexto_pagina,
 )
+from mente_laylay.cognicao.fundamentacao_factual import classificar_atualidade_factual
 from mente_laylay.integracao.registro_conversa_llm import (
     PedidoModelo,
     RequisicaoTransporteLLM,
@@ -65,15 +67,21 @@ class PreparadorRequisicaoLLMRuntime:
             "",
         )
         precisa_navegador = False
-        if not self.otimizacao_prompt_ativa:
+        if pedido.contexto_fechado:
+            # Decisão do preparador do turno, nunca inferida do texto da LLM.
+            # Não consultar fontes só para descartar seus dados depois.
+            precisa_navegador = False
+        elif not self.otimizacao_prompt_ativa:
             precisa_navegador = True
         else:
-            try:
-                precisa_navegador = bool(
-                    self.contexto_navegador_relevante(ultimo_texto)
-                )
-            except Exception:
-                precisa_navegador = False
+            # O callback legado filtra URLs/logs privados; True significa
+            # conteúdo exibível, não demanda do usuário por contexto visual.
+            # A seleção pertence aos detectores canônicos de consulta atual.
+            atualidade = classificar_atualidade_factual(ultimo_texto)
+            precisa_navegador = texto_pede_contexto_pagina(ultimo_texto) or bool(
+                atualidade.get("classe") == "estado_observavel"
+                and atualidade.get("depende_atualidade")
+            )
         payload = preparar_payload_llm(
             [dict(item) for item in pedido.mensagens],
             model=self.model,
@@ -82,11 +90,13 @@ class PreparadorRequisicaoLLMRuntime:
             endpoint_local=endpoint_local,
             resumo_do_dia=(
                 str(self.resumo_do_dia_getter() or "")
-                if not self.otimizacao_prompt_ativa
-                or texto_pede_resumo_diario(ultimo_texto)
+                if not pedido.contexto_fechado and (
+                    not self.otimizacao_prompt_ativa
+                    or texto_pede_resumo_diario(ultimo_texto)
+                )
                 else ""
             ),
-            data_atual=str(self.data_atual_getter() or ""),
+            data_atual="" if pedido.contexto_fechado else str(self.data_atual_getter() or ""),
             texto_pede_contexto_arquivos=lambda texto: texto_pede_contexto_arquivos(
                 texto, normalizar_texto=self.normalizar_texto,
             ),
@@ -102,6 +112,7 @@ class PreparadorRequisicaoLLMRuntime:
                 pedido.tipo_chamada == "presenca_evento"
             ),
             log=self.log,
+            contexto_fechado=pedido.contexto_fechado,
         )
         return RequisicaoTransporteLLM(
             payload=payload,

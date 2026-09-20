@@ -12,12 +12,24 @@ import threading
 import time
 from typing import Any, Callable, Dict
 from urllib.parse import parse_qs, urlparse
+from mente_laylay.integracao.dev_console_runtime import sanitizar_texto_dev
 
 from mente_laylay.cognicao.erros_navegador import (
     resumir_erro_navegador,
     sanitizar_texto_navegador,
     url_sem_dados_sensiveis,
 )
+
+
+def _log_chrome(texto: str) -> None:
+    """Sanitiza antes de stdout, sem modificar estado ou recibos operacionais."""
+    print(sanitizar_texto_dev(sanitizar_texto_navegador(texto)))
+
+
+def _resumo_evento_log(data: Dict[str, Any]) -> str:
+    # Payload livre pertence ao handler, não ao terminal. Mesmo erros e
+    # eventos desconhecidos podem conter credenciais em campos arbitrários.
+    return f"tipo={data.get('type', '')} action={data.get('action', '')}"
 
 
 def _set_event(entry: Any) -> None:
@@ -655,7 +667,7 @@ def dispatch_event(data: Dict[str, Any], handlers: Dict[str, Callable[[Dict[str,
     # inteiros da página. Ele continua sendo processado, mas não deve inundar
     # o terminal nem expor o payload bruto a cada atualização.
     if nome_handler == "action" and tipo not in {"ping", "PAGE_SNAPSHOT"}:
-        print(f"📥 [DEBUG Chrome] {data}")
+        _log_chrome(f"📥 [DEBUG Chrome] {_resumo_evento_log(data)}")
     return handler(data) if callable(handler) else None
 
 
@@ -813,7 +825,7 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
             updates["aba_titulo_atual"] = aba_titulo_atual
             if callable(percepcao_set):
                 percepcao_set("aba_ativa", {"titulo": aba_titulo_atual, "url": aba_url_atual})
-            print(f"📥 [Chrome] Título atualizado → {aba_titulo_atual}")
+            _log_chrome(f"📥 [Chrome] Título atualizado → {aba_titulo_atual}")
         updates["handled"] = True
         return updates
 
@@ -848,7 +860,7 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
         if mudou:
             if callable(percepcao_set):
                 percepcao_set("aba_ativa", {"titulo": aba_titulo_atual, "url": aba_url_atual})
-            print(f"🧠 [CTX] Aba Ativa -> [{aba_titulo_atual}] {aba_url_atual}")
+            _log_chrome(f"🧠 [CTX] Aba Ativa -> [{aba_titulo_atual}] {aba_url_atual}")
 
             if action == "active_tab_changed":
                 if callable(atualizar_contexto_por_url):
@@ -892,7 +904,7 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
             updates["aba_anterior_id"] = frm
             if isinstance(to, int) and not isinstance(to, bool):
                 updates["aba_ativa_id"] = to
-            print(f"🔄 [Chrome] Troca de aba manual: {ft} ({frm}) → {tt} ({to})")
+            _log_chrome(f"🔄 [Chrome] Troca de aba manual: {ft} ({frm}) → {tt} ({to})")
         updates["handled"] = True
         return updates
 
@@ -914,7 +926,7 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
             threading.Thread(target=musica_registrar_historico, args=(video_title,), daemon=True).start()
         if musica_busca_query and callable(verificar_musica_autonoma):
             threading.Thread(target=verificar_musica_autonoma, args=(video_title,), daemon=True).start()
-        print(f"▶️ [YouTube] Vídeo iniciado: {video_title}")
+        _log_chrome(f"▶️ [YouTube] Vídeo iniciado: {video_title}")
         updates["handled"] = True
         return updates
 
@@ -922,7 +934,7 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
         video_title = data.get("title", "")
         if callable(registrar_musica_atual):
             registrar_musica_atual(video_title, "pausada", str(data.get("url") or aba_url_atual))
-        print(f"⏸️ [YouTube] Vídeo pausado: {video_title}")
+        _log_chrome(f"⏸️ [YouTube] Vídeo pausado: {video_title}")
         updates["handled"] = True
         return updates
 
@@ -930,7 +942,7 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
         video_title = data.get("title", "")
         if callable(registrar_musica_atual):
             registrar_musica_atual(video_title, "tocando", str(data.get("url") or aba_url_atual))
-        print(f"▶️ [YouTube] Vídeo retomado: {video_title}")
+        _log_chrome(f"▶️ [YouTube] Vídeo retomado: {video_title}")
         updates["handled"] = True
         return updates
 
@@ -938,14 +950,14 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
         video_title = data.get("title", "")
         if callable(registrar_musica_atual):
             registrar_musica_atual(video_title, "finalizada", str(data.get("url") or aba_url_atual))
-        print(f"⏹️ [YouTube] Vídeo finalizado: {video_title}")
+        _log_chrome(f"⏹️ [YouTube] Vídeo finalizado: {video_title}")
         updates["handled"] = True
         return updates
 
     if action == "youtube_search_result_clicked":
         query = data.get("query", "")
         title = data.get("title", "")
-        print(f"✅ [YouTube] Resultado de busca clicado para '{query}': {title}")
+        _log_chrome(f"✅ [YouTube] Resultado de busca clicado para '{query}': {title}")
         updates["handled"] = True
         return updates
 
@@ -953,7 +965,7 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
         status = str(data.get("status") or "").strip()
         motivo = str(data.get("motivo") or "").strip()
         if status == "erro_clique":
-            print(f"❌ [AUTO-CLICK] Falhou: {motivo}")
+            _log_chrome(f"❌ [AUTO-CLICK] Falhou: {motivo}")
             if callable(falar_com_lipsync):
                 falar_com_lipsync("Não achei um link orgânico pra clicar.", "calma", 1)
         updates["handled"] = True
@@ -968,7 +980,7 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
 
     if action == "error":
         error_msg = data.get("message", "Erro desconhecido na extensão.")
-        print(f"❌ [Chrome ERRO] {error_msg}")
+        _log_chrome(f"❌ [Chrome ERRO] {error_msg}")
         if callable(falar_com_lipsync):
             falar_com_lipsync(
                 resumir_erro_navegador({"erro": error_msg}), "irritada", 2
@@ -981,7 +993,7 @@ def handle_action(data: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
         return updates
 
     if action:
-        print(f"🤔 [Chrome] Mensagem desconhecida da extensão: {data}")
+        _log_chrome(f"🤔 [Chrome] Mensagem desconhecida da extensão: {_resumo_evento_log(data)}")
         updates["handled"] = True
         return updates
 

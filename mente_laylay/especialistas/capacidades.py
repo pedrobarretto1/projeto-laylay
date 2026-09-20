@@ -225,7 +225,20 @@ _CONTRATO_POR_DOMINIO = {
         "invocacao_natural": ("abre o Opera", "maximiza a janela", "organiza a área de trabalho"),
         "proprietario": "mente_laylay.autonomia.executor_sistema",
         "dependencias": ("sistema operacional", "resolvedor de janelas"),
-        "limites": "só envia ao PC remoto quando versão, saúde e capacidade anunciada são compatíveis",
+        "limites_contextuais": (
+            {
+                "escopo": "controle_local",
+                "quando": "ao controlar programas, janelas ou volume neste computador",
+                "responsavel": "Laylay",
+                "regra": "usa o sistema operacional local; não exige conexão com outro PC",
+            },
+            {
+                "escopo": "envio_pc_remoto",
+                "quando": "somente se o destino da ação for outro PC",
+                "responsavel": "Laylay",
+                "regra": "só envia quando versão, saúde e capacidade anunciada são compatíveis",
+            },
+        ),
     },
     "navegador": {
         "invocacao_natural": ("abre este site", "fecha esta aba", "resume a página atual"),
@@ -261,7 +274,14 @@ _CONTRATO_POR_DOMINIO = {
         "invocacao_natural": ("liga a lâmpada", "como está o ventilador"),
         "proprietario": "mente_laylay.iot.controlador",
         "dependencias": ("Tuya configurada", "dispositivo disponível na rede"),
-        "limites": "confirma controle somente após reler o dispositivo",
+        "limites_contextuais": (
+            {
+                "escopo": "confirmacao_controle",
+                "quando": "ao confirmar o resultado após um comando autorizado",
+                "responsavel": "Laylay",
+                "regra": "deve reler o dispositivo e conferir o estado; essa verificação é interna, não uma etapa pedida ao usuário",
+            },
+        ),
     },
     "area_transferencia": {
         "invocacao_natural": ("o que eu copiei", "coloca isso em maiúsculas"),
@@ -315,6 +335,17 @@ if _INTENTS_CATALOGADAS != set(_CONFIRMACAO_POR_INTENT):
         f"auditoria de confirmação incompleta: faltantes={faltantes}; excedentes={excedentes}"
     )
 
+def _limites_documentais(contrato: dict[str, Any]) -> str:
+    """Compatibilidade textual sem perder condição e responsável da regra."""
+    regras = contrato.get("limites_contextuais") or ()
+    if regras:
+        return "; ".join(
+            f"{regra['quando']}: {regra['responsavel']} {regra['regra']}"
+            for regra in regras
+        )
+    return str(contrato.get("limites") or "")
+
+
 CAPACIDADES: Dict[str, Dict[str, Any]] = {
     intent: {
         "intent": intent,
@@ -336,7 +367,10 @@ CAPACIDADES: Dict[str, Dict[str, Any]] = {
             intent, _CONTRATO_POR_DOMINIO[dominio]["proprietario"]
         ),
         "dependencias": _CONTRATO_POR_DOMINIO[dominio]["dependencias"],
-        "limites": _CONTRATO_POR_DOMINIO[dominio]["limites"],
+        "limites": _limites_documentais(_CONTRATO_POR_DOMINIO[dominio]),
+        "limites_contextuais": tuple(
+            dict(regra) for regra in _CONTRATO_POR_DOMINIO[dominio].get("limites_contextuais", ())
+        ),
     }
     for dominio, intents in _INTENTS_POR_DOMINIO.items()
     for intent in intents

@@ -199,7 +199,7 @@ def test_execucao_musical_confirmada_invalida_copia_local_da_pendencia() -> None
     assert execucoes == []
 
 
-def test_mencao_iot_sem_autorizacao_e_respondida_sem_roteador_nem_llm() -> None:
+def test_mencao_iot_sem_autorizacao_delega_fala_sem_alcancar_roteador() -> None:
     falas = []
     chamadas_roteador = []
     namespace = {
@@ -211,21 +211,20 @@ def test_mencao_iot_sem_autorizacao_e_respondida_sem_roteador_nem_llm() -> None:
         loop_getter=lambda: None,
     )
 
-    assert runtime.processar_prioritarios("como eu faria para desligar a luz?") is True
-    assert "não alterei nada" in falas[-1]
+    # C13: esta porta é dona do veto, não de uma resposta fixa sobre a luz.
+    # A conclusão observável é feita pelo fluxo de conversa, não por tratado=True.
+    assert runtime.processar_prioritarios("como eu faria para desligar a luz?") is False
+    assert falas == []
     assert chamadas_roteador == []
 
-    assert runtime.processar_prioritarios("não desliga a luz") is True
-    assert falas[-1] == "Pode deixar. Não vou alterar a luz."
+    assert runtime.processar_prioritarios("não desliga a luz") is False
+    assert falas == []
     assert chamadas_roteador == []
 
     assert runtime.processar_prioritarios(
         "Talvez fosse legal desligar a luz."
-    ) is True
-    assert "possibilidade" in falas[-1]
-    assert "deixei a luz como está" in falas[-1]
-    assert "desligo" not in falas[-1].casefold()
-    assert "pedir diretamente" in falas[-1].casefold()
+    ) is False
+    assert falas == []
     assert chamadas_roteador == []
 
 

@@ -718,7 +718,18 @@ def _executar_entrar_site(
     texto_original: str,
     ctx: Dict[str, Any],
     deps: DependenciasExecutorNavegador,
+    *,
+    destino: str = "pc_a",
 ) -> ResultadoDespacho:
+    if destino == "pc_b":
+        # O canal remoto não oferece ainda o receipt da seleção do resultado.
+        # Nunca completar uma busca remota clicando em uma aba do PC local.
+        deps.marcar_resultado("falha_execucao", executou=False, confirmado=False)
+        deps.falar_por_status(
+            "falha_execucao", "Não consigo confirmar a abertura de um resultado no outro computador por esta rota.",
+            executou=False, confirmado=False,
+        )
+        return ResultadoDespacho.concluido(False)
     tema = str(
         params.get("tema") or params.get("topic") or params.get("assunto")
         or params.get("query") or ""
@@ -730,17 +741,46 @@ def _executar_entrar_site(
             "Me fala o assunto do site.",
         ]), "debochada", 2)
         return ResultadoDespacho.concluido()
-    url = f"https://www.google.com/search?q={urllib.parse.quote(tema)}&laylay_auto=true"
-    ok = deps.abrir_url_com_validacao(url, alvo=tema, auto_click=True)
-    status = "busca_site_iniciada" if ok else "falha_execucao"
-    deps.marcar_resultado(status, executou=ok)
+    # Busca aberta não prova que um resultado foi escolhido. A segunda etapa
+    # usa o comando canônico com receipt, em vez do autoclique sem conclusão.
+    url = f"https://www.google.com/search?q={urllib.parse.quote(tema)}"
+    busca_ok = deps.abrir_url_com_validacao(url, alvo=tema, auto_click=False)
+    if busca_ok:
+        return _abrir_resultado_pesquisa(tema, ctx, deps)
+    deps.marcar_resultado("falha_execucao", executou=False, confirmado=False)
+    deps.falar_por_status(
+        "falha_execucao", f"Não consegui confirmar a busca por {tema}; não abri um resultado.",
+        alvo=tema, executou=False, confirmado=False,
+    )
+    return ResultadoDespacho.concluido(False)
+
+
+def _abrir_resultado_pesquisa(
+    query: str, ctx: Dict[str, Any], deps: DependenciasExecutorNavegador,
+) -> ResultadoDespacho:
+    """Conclusão compartilhada: abrir resultado observado, nunca inferir sucesso."""
+    navegador = _get(ctx, "_registro_navegador_operacoes_runtime")
+    abrir = getattr(navegador, "abrir_primeiro_resultado", None)
+    try:
+        ok = bool(abrir(query)) if callable(abrir) else False
+    except Exception as erro:
+        relatar_falha_ctx(ctx, "executor_navegador", "falha_abrir_resultado", erro=erro,
+                         impacto="turno", fallback="falha_execucao", dominio="navegador",
+                         fase="abrir_resultado")
+        ok = False
+    status = "resultado_web_aberto" if ok else "falha_execucao"
+    deps.marcar_resultado(
+        status, executou=ok, confirmado=ok,
+        detalhe=("a extensão selecionou e abriu o primeiro resultado orgânico observado"
+                 if ok else "a extensão não confirmou um primeiro resultado observável"),
+    )
     deps.falar_por_status(
         status,
-        f"Vou entrar no melhor site de {tema}."
-        if ok else f"Tentei abrir uma busca de {tema}, mas a rota web falhou.",
-        alvo=tema,
+        f"Abri o primeiro resultado observado da busca por {query}." if ok else
+        "Não consegui confirmar um primeiro resultado nessa busca.",
+        alvo=query, executou=ok, confirmado=ok,
     )
-    return ResultadoDespacho.concluido()
+    return ResultadoDespacho.concluido(ok)
 
 
 def _executar_search(
@@ -824,32 +864,7 @@ def _executar_search(
         and not isinstance(abrir_resultado, bool)
         and abrir_resultado == 1
     ):
-        abrir_primeiro = getattr(
-            navegador_operacoes, "abrir_primeiro_resultado", None,
-        ) if navegador_operacoes is not None else None
-        ok = bool(abrir_primeiro(query)) if callable(abrir_primeiro) else False
-        status = "resultado_web_aberto" if ok else "falha_execucao"
-        deps.marcar_resultado(
-            status,
-            executou=ok,
-            confirmado=ok,
-            detalhe=(
-                "a extensão selecionou e abriu o primeiro resultado orgânico observado"
-                if ok else "a extensão não confirmou um primeiro resultado observável"
-            ),
-        )
-        deps.falar_por_status(
-            status,
-            (
-                f"Abri o primeiro resultado observado da busca por {query}."
-                if ok else
-                "Não consegui confirmar um primeiro resultado nessa busca."
-            ),
-            alvo=query,
-            executou=ok,
-            confirmado=ok,
-        )
-        return ResultadoDespacho.concluido(ok)
+        return _abrir_resultado_pesquisa(query, ctx, deps)
     if engine == "youtube":
         if destino == "pc_b" and callable(enviar_pc_b):
             enviar_pc_b({
@@ -974,5 +989,5 @@ def executar_intencao_navegador(
     if intent == "CLOSE_TAB":
         return _executar_fechar_aba(params, texto_original, destino, ctx, deps)
     if intent == "SITE_ENTER":
-        return _executar_entrar_site(params, texto_original, ctx, deps)
+        return _executar_entrar_site(params, texto_original, ctx, deps, destino=destino)
     return _executar_search(params, texto_original, destino, ctx, deps)

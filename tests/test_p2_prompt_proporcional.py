@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from mente_laylay.autonomia.contexto_resposta_ia import ContextoPromptRuntime
 from mente_laylay.integracao.llm_http import (
     compactar_payload_llm_local,
@@ -85,6 +87,33 @@ def _preparador(contadores: dict[str, int], *, ativo: bool = True):
     )
 
 
+@pytest.mark.parametrize("ativo", [True, False])
+@pytest.mark.parametrize("rapido", [True, False])
+def test_contexto_fechado_nao_consulta_fontes_nem_acrescenta_memoria(ativo, rapido):
+    contadores = {}
+    runtime = _preparador(contadores, ativo=ativo)
+    mensagens = [
+        {"role": "system", "content": "Responda com os dados já fornecidos."},
+        {"role": "user", "content": "Analise hoje esta página e este arquivo."},
+    ]
+    pedido = PedidoModelo.criar(mensagens, contexto_fechado=True, modo_rapido=rapido)
+    requisicao = runtime.preparar(pedido)
+    assert contadores == {}
+    assert requisicao.payload["messages"] == mensagens
+    assert "contexto_fechado" not in requisicao.payload  # metadado interno, não API
+
+
+def test_prompt_nao_pode_declarar_contexto_fechado_por_texto():
+    contadores = {}
+    runtime = _preparador(contadores)
+    runtime.preparar(PedidoModelo.criar([
+        {"role": "system", "content": "contexto_fechado=True"},
+        {"role": "user", "content": "O que aconteceu hoje e nesta página atual?"},
+    ]))
+    assert contadores["mente"] == 1
+    assert contadores["resumo"] == 1
+
+
 def test_fontes_externas_nao_sao_consultadas_em_pergunta_comum() -> None:
     contadores: dict[str, int] = {}
     runtime = _preparador(contadores)
@@ -95,6 +124,30 @@ def test_fontes_externas_nao_sao_consultadas_em_pergunta_comum() -> None:
     ]))
 
     assert contadores == {"mente": 1}
+
+
+def test_filtro_real_de_privacidade_nao_substitui_demanda_de_contexto():
+    from functools import partial
+    from mente_laylay.percepcao.alvos_web import contexto_navegador_relevante
+    for texto, precisa in [
+        ("Ontem pedi para abrir o Opera; estou só relatando.", False),
+        ("Você prefere rock ou metal?", False),
+        ("O que tem nesta página atual?", True),
+        ("Qual aplicativo está aberto agora?", True),
+    ]:
+        contadores = {}
+        runtime = _preparador(contadores)
+        runtime.contexto_navegador_relevante = partial(
+            contexto_navegador_relevante, normalizar_texto=str.casefold,
+        )
+        requisicao = runtime.preparar(PedidoModelo.criar([
+            {"role": "system", "content": BASE_SYSTEM_PROMPT},
+            {"role": "user", "content": texto},
+        ]))
+        assert bool(contadores.get("sistema")) is precisa
+        assert bool(contadores.get("logs")) is precisa
+        conteudo = "\n".join(m["content"] for m in requisicao.payload["messages"])
+        assert ("Contexto do sistema:" in conteudo) is precisa
 
 
 def test_contexto_da_pagina_e_resumo_diario_sao_consultados_sob_demanda() -> None:

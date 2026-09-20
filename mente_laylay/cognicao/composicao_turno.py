@@ -9,6 +9,7 @@ from mente_laylay.cognicao.orquestrador_turno_runtime import (
     concluir_planejamento_evento,
     iniciar_planejamento_turno,
     registrar_leitura_semantica_principal,
+    registrar_falha_opcional,
     verificar_fala_do_turno,
 )
 
@@ -23,6 +24,7 @@ DEPENDENCIAS_ORQUESTRACAO_TURNO = (
     "_atualizar_registro_turno_mente",
     "_classificar_encerramento_assunto_mente",
     "_classificar_modalidade_turno_mente",
+    "_coleta_entradas_neurais",
     "_construir_parecer_especialistas_mente",
     "_construir_retrato_turno_mente",
     "_contexto_horario_atual",
@@ -76,7 +78,37 @@ class ComposicaoTurnoRuntime:
         *,
         origem: str = "desconhecida",
     ) -> dict:
-        return iniciar_planejamento_turno(self._snapshot, entrada, origem=origem)
+        coletor = self._servicos.get("_coleta_entradas_neurais")
+        captura = None
+        if coletor is not None:
+            try:
+                captura = coletor.preparar(entrada, origem)
+            except Exception as erro:
+                self._falha_coleta(erro)
+        turno, falha = None, None
+        try:
+            turno = iniciar_planejamento_turno(self._snapshot, entrada, origem=origem)
+            return turno
+        except Exception as erro:
+            falha = type(erro).__name__
+            raise
+        finally:
+            if coletor is not None and captura is not None:
+                try:
+                    coletor.registrar(captura, turno, erro=falha)
+                except Exception as erro:
+                    self._falha_coleta(erro)
+
+    def _falha_coleta(self, erro: Exception) -> None:
+        registrar_falha_opcional(self._snapshot(), "neural_coleta", "falha_coleta_entrada", erro,
+            classe="observabilidade", impacto="amostra_nao_persistida", fallback="preservar_turno")
+        if self._servicos.get("_observabilidade_mente_runtime") is None:
+            try:
+                logger = self._servicos.get("print")
+                if callable(logger):
+                    logger(f"⚠️ [NEURAL:COLETA] amostra não persistida | tipo={type(erro).__name__}")
+            except Exception:
+                pass
 
     def atualizar(
         self, fase: str, *, comandos=(), erros=(), fala: str = "",

@@ -14,6 +14,9 @@ import unicodedata
 from typing import Any, Dict
 
 from mente_laylay.cognicao.proveniencia_informacao import classificar_proveniencia_informacao
+from mente_laylay.cognicao.normalizacao_linguagem import (
+    texto_discute_evidencia_textual, TIPOS_REFERENCIA_TEXTUAL,
+)
 
 
 VERSAO_REGISTRO = 1
@@ -454,7 +457,9 @@ def resolver_referencia_pontuada(
     t = _normalizar(texto)
     op = _normalizar(operacao)
     dominio = ""
-    if op.startswith("playlist") or op == "musica_do_referente":
+    if texto_discute_evidencia_textual(texto):
+        dominio = "texto"
+    elif op.startswith("playlist") or op == "musica_do_referente":
         dominio = "musica"
     elif op == "iot":
         dominio = "iot"
@@ -478,6 +483,7 @@ def resolver_referencia_pontuada(
         dominio = "app"
 
     tipos = {
+        "texto": TIPOS_REFERENCIA_TEXTUAL,
         "musica": {
             "artista", "cantor", "cantora", "banda", "referencia_nomeada",
             "musica", "playlist", "midia",

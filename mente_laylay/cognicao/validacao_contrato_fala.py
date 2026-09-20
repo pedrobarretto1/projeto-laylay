@@ -10,7 +10,43 @@ from __future__ import annotations
 import re
 import unicodedata
 from typing import Any, Mapping
-from mente_laylay.cognicao.incerteza_observacao import expressa_incerteza_observacao
+from mente_laylay.cognicao.incerteza_observacao import (
+    expressa_incerteza_observacao,
+    estado_sob_pergunta_referida,
+)
+from mente_laylay.cognicao.normalizacao_linguagem import TIPOS_REFERENCIA_TEXTUAL
+
+
+def solicita_fonte_sem_afirmar_conteudo(fala: str) -> bool:
+    """Gramática limitada do ato de pedir uma fonte ainda não resolvida.
+
+    Não é um detector universal de verdade. Aceita apenas um pedido completo,
+    com objeto textual e finalidade de análise; nenhum trecho livre pode
+    acrescentar fatos antes/depois ou dentro de uma oração subordinada.
+    Não é usada para conversa livre nem para fontes já identificadas.
+    """
+    texto = unicodedata.normalize("NFKD", str(fala or "").casefold())
+    texto = "".join(c for c in texto if not unicodedata.combining(c))
+    texto = re.sub(r"\s+", " ", texto).strip()
+    nome = "(?:" + "|".join(sorted(TIPOS_REFERENCIA_TEXTUAL | {"trecho", "conteudo"})) + ")"
+    objeto = rf"(?:(?:o|esse|este|seu|um)\s+)?{nome}(?:\s+(?:do|desse|deste|de)\s+{nome})?(?:\s+(?:completo|integral))?"
+    fonte = rf"{objeto}(?:\s+ou\s+{objeto})?"
+    analisar = r"(?:analisar|analise|analisasse|avaliar|avalie|avaliasse|examinar|entender|dar\s+uma\s+olhada)"
+    finalidade = rf"para\s+(?:eu\s+)?{analisar}(?:\s+o\s+que\s+(?:ele|o\s+relato)\s+(?:comprova|diz|informa))?"
+    contexto = rf"(?:que\s+(?:voce\s+)?(?:quer|deseja|gostaria)\s+(?:que\s+eu\s+)?{analisar}|que\s+(?:voce\s+)?(?:mencionou|citou)|{finalidade})"
+    verbo = (
+        r"(?:(?:voce\s+)?(?:pode|poderia|consegue|conseguiria)\s+(?:me\s+)?"
+        r"(?:mostrar|enviar|mandar|compartilhar|passar|colar)|"
+        r"(?:me\s+)?(?:mostre|mostra|envie|envia|mande|manda|compartilhe|compartilha|passe|passa)|cole|cola)"
+    )
+    pedido = rf"{verbo}\s+(?:aqui\s+)?{fonte}(?:\s+(?:comigo|aqui))?(?:\s+{contexto})?"
+    identificar = rf"(?:qual|que)\s+{fonte}\s+(?:que\s+)?(?:voce\s+)?(?:quer|deseja|gostaria)\s+(?:que\s+eu\s+)?{analisar}"
+    identificar += rf"|a\s+qual\s+{nome}\s+voce\s+se\s+refere"
+    necessidade = rf"preciso\s+(?:do|desse|deste|de)\s+{fonte}(?:\s+{finalidade})?"
+    return bool(re.fullmatch(
+        rf"(?:(?:por\s+favor|entendi|certo)[, ]+)?(?:{pedido}|{identificar}|{necessidade})(?:,?\s+por\s+favor)?[.?!]?",
+        texto,
+    ))
 
 
 _POSICAO = re.compile(
@@ -65,7 +101,8 @@ _FALLBACK_GENERICO = re.compile(
     re.IGNORECASE,
 )
 _MARCADORES_RESPOSTA_METALINGUISTICA = re.compile(
-    r"\b(?:frase|palavra|express[aã]o|formula[cç][aã]o|exemplo|cita[cç][aã]o|voc[eê]\s+citou|"
+    r"\b(?:frases?|palavras?|express(?:[aã]o|[oõ]es)|formula[cç](?:[aã]o|[oõ]es)|"
+    r"exemplos?|cita[cç](?:[aã]o|[oõ]es)|voc[eê]\s+citou|"
     r"voc[eê]\s+(?:pode|poderia)\s+(?:perguntar|dizer|escrever)|"
     r"(?:perguntar|dizer|escrever)\s+(?:exatamente\s+)?assim|"
     r"essa\s+pergunta\s+(?:j[aá]\s+)?funciona)\b",
@@ -79,7 +116,10 @@ _NEGACAO_CAPACIDADE_ESTADO_OBSERVAVEL = re.compile(
 _RECONHECIMENTO_NEGACAO_OPERACIONAL = re.compile(
     r"\b(?:entendi|certo|beleza|pode\s+deixar|tem\s+raz[aã]o|"
     r"voc[eê]\s+n[aã]o\s+(?:pediu|perguntou|solicitou)|"
-    r"n[aã]o\s+vou\s+(?:verificar|conferir|consultar|listar|fechar|abrir|executar))\b",
+    # A abstenção é um ato de primeira pessoa, não uma lista de habilidades.
+    # Negar capacidade (não vou conseguir/poder/saber) não reconhece a decisão.
+    r"(?:n[aã]o|nunca|jamais)\s+(?:(?:vou|irei)\s+"
+    r"(?!(?:conseguir|poder|saber)\b)[^\W\d_]+[aei]r|farei))\b",
     re.IGNORECASE,
 )
 _ALEGACAO_ESTADO_EM_NEGACAO_OPERACIONAL = re.compile(
@@ -324,11 +364,31 @@ def _indice_reconhecimento_estado(texto_usuario: str, resposta: str) -> int:
     raiz = valor[:5] if len(valor) > 5 else valor
     if valor == "bem":
         achado = _ESTADO_POSITIVO.search(resposta)
+        if not achado:
+            # Uma atribuição explícita ao usuário não depende de um bordão.
+            # Não aceitar uma oração que negue ou questione esse estado.
+            for frase in _frases(resposta):
+                if "?" in frase or re.search(r"\b(?:n[aã]o|nem)\b", frase, re.IGNORECASE):
+                    continue
+                explicito = re.search(r"\bvoc[eê]\s+est[aá]\s+bem\b", frase, re.IGNORECASE)
+                if explicito:
+                    return resposta.find(frase) + explicito.start()
     else:
         achado = re.search(rf"\b{re.escape(raiz)}\w*\b", resposta_norm)
         if not achado:
             achado = _RECONHECIMENTO_ESTADO.search(resposta)
     return int(achado.start()) if achado else -1
+
+
+def reconhecimento_estado_pessoal_valido(fala: str, estado: str) -> bool:
+    """Valida só o fragmento de acolhimento, nunca o conteúdo temático restante."""
+    texto = str(fala or "").strip()
+    if not texto or len(texto) > 140 or "?" in texto or len(_frases(texto)) != 1:
+        return False
+    # Não permitir que o reparador inverta o falante do estado informado.
+    if re.search(r"\b(?:eu|estou|t[oô]|ando)\b", texto, re.IGNORECASE):
+        return False
+    return _indice_reconhecimento_estado("estou " + str(estado), texto) >= 0
 
 
 def _resumo_reparo(
@@ -341,12 +401,18 @@ def _resumo_reparo(
             str(item)[:64] for item in list(contrato.get("atos") or [])[:8]
         ],
         "referente": str(contrato.get("referente") or "")[:180],
+        "estado_referencia_textual": str(contrato.get("estado_referencia_textual") or ""),
         "texto_usuario_corrigido": str(contrato.get("texto_usuario_corrigido") or "")[:500],
         "nucleo_primeira_frase": str(roteiro.get("nucleo_resposta") or "")[:320],
         "sequencia": [str(item)[:220] for item in list(roteiro.get("sequencia") or [])[:6]],
         "max_frases": max(1, min(8, int(contrato.get("max_frases") or 3))),
         "permite_metafora": bool(contrato.get("permite_metafora", False)),
         "autoriza_execucao": False,
+        # A fonte já foi selecionada pelo contrato do turno. Reparar uma
+        # explicação não pode obrigar o modelo a reconstruí-la pelo rascunho.
+        **({"documentacao_capacidades": contrato["documentacao_capacidades"]}
+           if roteiro.get("estrategia") == "explicacao_capacidades"
+           and contrato.get("documentacao_capacidades") else {}),
     }
 
 
@@ -379,6 +445,10 @@ def validar_aderencia_contrato_fala(
     partes = _frases(resposta)
     primeira = partes[0] if partes else ""
     problemas: list[str] = []
+
+    if estrategia == "analise_evidencia_textual" and contrato.get("estado_referencia_textual") == "nao_resolvida":
+        if not solicita_fonte_sem_afirmar_conteudo(resposta):
+            problemas.append("referencia_textual_ausente_sem_esclarecimento")
 
     if resposta and _FALLBACK_GENERICO.search(resposta):
         problemas.append("resposta_generica_sem_conteudo")
@@ -448,10 +518,16 @@ def validar_aderencia_contrato_fala(
     if estrategia == "negacao_operacional_sem_efeito":
         if not _RECONHECIMENTO_NEGACAO_OPERACIONAL.search(resposta):
             problemas.append("negacao_operacional_sem_reconhecimento")
-        if _ALEGACAO_ESTADO_EM_NEGACAO_OPERACIONAL.search(resposta):
+        if any(
+            not estado_sob_pergunta_referida(resposta[:ocorrencia.start()])
+            for ocorrencia in _ALEGACAO_ESTADO_EM_NEGACAO_OPERACIONAL.finditer(resposta)
+        ):
             problemas.append("negacao_operacional_alegou_estado")
         if len(partes) > 1:
             problemas.append("negacao_operacional_extrapolou")
+
+    if estrategia == "reconhecimento_relato_explicito" and "?" in resposta:
+        problemas.append("relato_explicito_abriu_pergunta")
 
     if estrategia == "reconhecimento_estado_declarado":
         termos_usuario = _tokens_relevantes(usuario)
@@ -585,6 +661,8 @@ def validar_aderencia_contrato_fala(
 
     problemas = list(dict.fromkeys(problemas))
     nucleares = {
+        "referencia_textual_ausente_sem_esclarecimento",
+        "relato_explicito_abriu_pergunta",
         "saudacao_nao_respondida_no_inicio",
         "saudacao_inventou_vocativo",
         "ato_opiniao_nao_respondido",
@@ -622,6 +700,11 @@ def validar_aderencia_contrato_fala(
         "declaracao_extrapolou_estado_informado",
     }
     contrato_reparo = _resumo_reparo(contrato, roteiro)
+    estado_informado = _ESTADO_USUARIO.search(usuario) if "estado_pessoal" in atos else None
+    if estado_informado:
+        contrato_reparo["estado_pessoal_informado"] = {
+            "falante": "usuario", "estado": estado_informado.group("estado"),
+        }
     if "identidade_negou_capacidades_confirmadas" in problemas:
         contrato_reparo.update(
             reparar_identidade_operacional=True,

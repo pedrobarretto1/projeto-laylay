@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 import re
 from typing import Any, Iterable, Mapping
+from mente_laylay.cognicao.normalizacao_linguagem import texto_discute_evidencia_textual
 
 
 _ABSTRACOES_COMUNS = (
@@ -342,6 +343,28 @@ def construir_roteiro_geracao_concreta(
         exigencias.append(
             "tratar a negação como limite de ação, nunca como evidência sobre o alvo"
         )
+    elif texto_discute_evidencia_textual(bruto):
+        estrategia = "analise_evidencia_textual"
+        ancora = bruto
+        nucleo = (
+            "analisar o que o relato fornecido permite concluir; se o conteúdo "
+            "do relato não estiver disponível, pedir esse conteúdo brevemente"
+        )
+        if dados_contrato.get("estado_referencia_textual") == "nao_resolvida":
+            nucleo = (
+                "pedir brevemente que o usuário identifique ou envie o relato; "
+                "a referência não foi resolvida, portanto não concluir o que ele comprova"
+            )
+        sequencia = (
+            "usar somente o relato fornecido na fala ou explicitamente resolvido no contexto",
+            "distinguir pedido de ação, relato atribuído e resultado confirmado pelo executor",
+            "responder à dúvida sobre evidência, não explicar a formulação da pergunta",
+        )
+        exigencias.extend((
+            "não concluir que nenhum relato pode comprovar algo; avaliar a fonte e o conteúdo concretos",
+            "não inferir acesso ou incapacidade a partir da ausência de consulta neste turno",
+            "não consultar recursos nem inventar o relato ausente para preencher a resposta",
+        ))
     elif estado_observavel_sem_evidencia:
         estrategia = "estado_observavel_sem_evidencia"
         ancora = referente or bruto
@@ -371,6 +394,18 @@ def construir_roteiro_geracao_concreta(
         )
         exigencias.append(
             "marcar explicitamente a diferença entre citar uma pergunta e fazer essa pergunta agora"
+        )
+    elif "relato_explicito" in atos:
+        estrategia = "reconhecimento_relato_explicito"
+        ancora = bruto
+        nucleo = (
+            "acolher brevemente o que o usuário está contando, como relato e não "
+            "como pedido atual, sem completar a história com resultados presumidos"
+        )
+        sequencia = (
+            "reconhecer o conteúdo relatado em palavras próprias e naturais",
+            "encerrar sem perguntar pelo resultado nem pedir mais informação",
+            "não oferecer uma ação nem puxar outro assunto do contexto",
         )
     elif declaracao_estado_observavel:
         estrategia = "reconhecimento_estado_declarado"
@@ -504,6 +539,15 @@ def construir_roteiro_geracao_concreta(
             "mostrar que a cutucada foi compreendida",
             "usar no máximo uma tirada curta ou estabelecer um limite leve",
             "não inventar um assunto anterior para preencher a resposta",
+        )
+    elif dados_contrato.get("documentacao_capacidades"):
+        estrategia = "explicacao_capacidades"
+        ancora = bruto
+        nucleo = "responder à dúvida sobre a habilidade usando a documentação viva do turno"
+        sequencia = (
+            "explicar o que foi perguntado; se for como usar, dar um exemplo de pedido",
+            "respeitar disponibilidade e limites documentados sem inferir estados atuais",
+            "tratar a dúvida com atenção; exemplos didáticos não são ações deste turno",
         )
     else:
         estrategia = "resposta_direta"

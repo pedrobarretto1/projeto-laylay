@@ -7,6 +7,7 @@ ao porteiro, aos roteadores e aos executores determinísticos.
 
 from __future__ import annotations
 
+import json
 import re
 import time
 import unicodedata
@@ -116,7 +117,7 @@ _TERMOS_DOMINIO = {
         "arquivos falam", "imagem que usei",
     ),
     "email": (
-        "email", "gmail", "mensagem nova", "caixa de entrada", "notificacao",
+        "email", "e-mail", "gmail", "mensagem nova", "caixa de entrada", "notificacao",
         "notificacoes", "aviso", "avisos", "alerta", "alertas",
     ),
     "iot": ("luz", "lampada", "ventilador", "tomada", "brilho", "dispositivo"),
@@ -330,12 +331,14 @@ class MapaHabilidadesRuntime:
         *,
         saude_getter: Callable[[], Mapping[str, Any]] | None = None,
         operacional_getter: Callable[[], Mapping[str, Any]] | None = None,
+        apps_getter: Callable[[], Mapping[str, Any]] | None = None,
         relogio: Callable[[], float] = time.time,
         ttl_indisponivel_s: float = 120.0,
         ttl_observacao_s: float = 300.0,
     ) -> None:
         self._saude_getter = saude_getter
         self._operacional_getter = operacional_getter
+        self._apps_getter = apps_getter
         self._relogio = relogio
         self._ttl_indisponivel_s = max(1.0, float(ttl_indisponivel_s))
         self._ttl_observacao_s = max(self._ttl_indisponivel_s, float(ttl_observacao_s))
@@ -552,9 +555,51 @@ class MapaHabilidadesRuntime:
             "fonte": "catalogo_vivo",
             "dominios_confirmados": list(disponiveis),
             "dominios_relevantes": list(relevantes),
+            "dominios_indisponiveis_relevantes": [
+                nome for nome in self.dominios_relevantes(texto, turno=turno)
+                if dict(dominios.get(nome) or {}).get("estado") == "indisponivel"
+            ],
             "possui_capacidades_locais": bool(disponiveis),
+            "documentacao_capacidades": self._documentacao_explicativa(
+                mapa, self.dominios_relevantes(texto, turno=turno),
+            ),
+            "documentacao_texto": str(texto),
+            "documentacao_turno_id": dict(turno or {}).get("id"),
             "autoriza_execucao": False,
         }
+
+    @staticmethod
+    def _documentacao_explicativa(mapa: Mapping[str, Any], relevantes: tuple[str, ...]) -> str:
+        """Projeta documentação, nunca resposta pronta ou resolução de comando.
+
+        Exemplos legados pertencem ao domínio inteiro. Enquanto não houver
+        proveniência por intent, disponibilidade parcial não pode sustentá-los.
+        Nesse caso a consulta permanece no contexto completo existente.
+        """
+        if not relevantes or len(relevantes) > 2:
+            return ""
+        documentos = []
+        for dominio in relevantes:
+            registro = dict(mapa.get("dominios", {}).get(dominio) or {})
+            itens = [c for c in mapa.get("capacidades", {}).values() if c.get("dominio") == dominio]
+            estado = registro.get("estado")
+            if (dominio == "conversa" or not itens or estado not in {"disponivel", "indisponivel"}
+                    or any(c.get("estado") != estado for c in itens)):
+                return ""
+            exemplos = list(dict.fromkeys(
+                exemplo for c in itens for exemplo in c.get("invocacao_natural", ())
+            )) if estado == "disponivel" else []
+            documentos.append({
+                "dominio": dominio, "descricao": registro.get("descricao", ""),
+                "estado": estado, "exemplos": exemplos,
+                "motivo": registro.get("motivo") or ("componente_indisponivel" if estado == "indisponivel" else ""),
+                # O catálogo é dono do alcance e do responsável. Não achatar
+                # uma regra condicional em requisito global na projeção à LLM.
+                **({"limites_contextuais": [dict(r) for r in itens[0]["limites_contextuais"]]}
+                   if itens[0].get("limites_contextuais")
+                   else {"limites": itens[0].get("limites", "")}),
+            })
+        return json.dumps(documentos, ensure_ascii=False)
 
     def dominios_relevantes(
         self,
@@ -566,8 +611,20 @@ class MapaHabilidadesRuntime:
         if any(frase in normalizado for frase in _PEDIDO_CAPACIDADES):
             return tuple(_DESCRICAO_DOMINIO)
         encontrados: list[str] = []
+        # Aliases são referências documentais, não prova de instalação/estado.
+        # Ler a mesma fonte dos executores evita uma lista paralela de apps.
+        try:
+            apps = self._apps_getter() if callable(self._apps_getter) else {}
+            nomes = tuple(apps) if isinstance(apps, Mapping) else ()
+        except Exception:
+            nomes = ()
+        if any(
+            re.search(r"(?<!\w)" + re.escape(_normalizar(nome)) + r"(?!\w)", normalizado)
+            for nome in nomes if isinstance(nome, str) and _normalizar(nome)
+        ):
+            encontrados.append("sistema")
         for dominio, termos in _TERMOS_DOMINIO.items():
-            if any(termo in normalizado for termo in termos):
+            if dominio not in encontrados and any(termo in normalizado for termo in termos):
                 encontrados.append(dominio)
         if (
             re.search(r"\b(?:guardar|guarda|anotar|anota|salvar|salva|registrar|registra)\b", normalizado)

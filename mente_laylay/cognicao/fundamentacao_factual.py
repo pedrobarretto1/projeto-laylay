@@ -510,22 +510,100 @@ def _plataformas_citadas(texto: str) -> set[str]:
     return plataformas
 
 
-def extrair_titulos_citados(texto: str) -> list[str]:
-    """Extrai obras destacadas por aspas ou ênfase Markdown da fala."""
-    bruto = str(texto or "")
-    encontrados = [
-        str(a or b).strip()
-        for a, b in re.findall(
-            r'["“]([^"”]{2,100})["”]|\'([^\']{2,100})\'', bruto,
-        )
-        if str(a or b).strip()
-    ]
-    encontrados.extend(
-        str(item or "").strip()
-        for item in re.findall(r'(?<!\*)\*{1,2}([^*\n]{2,100})\*{1,2}(?!\*)', bruto)
-        if str(item or "").strip()
+_DESTAQUE_CITADO = re.compile(
+    r'["“]([^"”\n]{2,100})["”]|\'([^\'\n]{2,100})\'|‘([^’\n]{2,100})’|'
+    r'(?<!\*)\*{1,2}([^*\n]{2,100})\*{1,2}(?!\*)'
+)
+_INTRODUCAO_ENUNCIADO = re.compile(
+    r"\b(?:diga|dizer|digite|digitar|fale|falar|escreva|escrever|pe[cç]a|pedir|pergunte|perguntar|"
+    r"(?:o|um)\s+comando|(?:a|uma)\s+frase)"
+    r"\s*,?\s*(?:(?:algo\s+)?como|por\s+exemplo|(?:exatamente\s+)?assim)?\s*:?\s*$", re.IGNORECASE,
+)
+_EXEMPLO_PEDIDO_INDIRETO = re.compile(
+    r"\bpedir\s+para\s+[^.!?;\"'“”‘’]{1,100},\s*(?:por\s+exemplo|como)\s*:?\s*$", re.IGNORECASE,
+)
+_REFERENCIA_OPERACIONAL_CITADA = re.compile(
+    r"\b(?:app|aplicativo|arquivo|pasta|aba|janela|dispositivo|playlist)"
+    r"\s+(?:chamad[oa]\s+)?$", re.IGNORECASE,
+)
+_PROGRAMA_OPERACIONAL_CITADO = re.compile(
+    # "Programa" sozinho também pode nomear uma obra de rádio/TV.
+    r"\b(?:abrir|abre|abra|fechar|fecha|feche|executar|instalar|maximizar|minimizar)"
+    r"\s+(?:(?:o|um|esse)\s+)?programa\s+(?:chamado\s+)?$", re.IGNORECASE,
+)
+_EXEMPLO_NOVA_FRASE = re.compile(r"[.!?]\s+por\s+exemplo\s*:\s*$", re.IGNORECASE)
+_ORIENTACAO_PEDIDO = re.compile(
+    r"\b(?:pode|basta|[eé]\s+s[oó])\s+(?:pedir|dizer|digitar|falar|escrever)\b",
+    re.IGNORECASE,
+)
+
+
+def _citacao_didatica(texto: str, destaque: re.Match[str]) -> bool:
+    # Escopo local: "diga 'X'" cita um enunciado; "diga o título 'X'" não.
+    # Não concede confiança à frase inteira nem a outra citação posterior.
+    prefixo = texto[:destaque.start()]
+    if _INTRODUCAO_ENUNCIADO.search(prefixo):
+        return True
+    novo_exemplo = _EXEMPLO_NOVA_FRASE.search(prefixo)
+    frase_anterior = (
+        re.split(r"(?<=[.!?])\s+", prefixo[:novo_exemplo.start()])[-1]
+        if novo_exemplo else ""
     )
-    return list(dict.fromkeys(encontrados))
+    if _EXEMPLO_PEDIDO_INDIRETO.search(prefixo) or (
+        novo_exemplo and _ORIENTACAO_PEDIDO.search(frase_anterior)
+    ):
+        # Reusa a leitura canônica só para reconhecer um exemplo de pedido.
+        # O trecho continua citação da ASSISTENTE, jamais utterance autorizante.
+        from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+        trecho = next(g for g in destaque.groups() if g is not None)
+        leitura = classificar_modalidade_turno(trecho)
+        return leitura.get("natureza_acao") in {"pedido_direto", "consulta"}
+    return False
+
+
+def contem_citacao_destacada(texto: str) -> bool:
+    """Citação pode coexistir com fatos externos mesmo quando não nomeia obra."""
+    return bool(_DESTAQUE_CITADO.search(str(texto or "")))
+
+
+def _destaques_com_papel(texto: str) -> list[tuple[re.Match[str], str]]:
+    destaques = []
+    fim_anterior, anterior_didatico = 0, False
+    for destaque in _DESTAQUE_CITADO.finditer(texto):
+        # Só enumeração direta herda o papel: "diga A ou B". Uma oração
+        # como "e recomendo B" inicia outra relação e será avaliada do zero.
+        enumeracao = anterior_didatico and bool(re.fullmatch(
+            r"\s*,?\s*(?:e|ou)\s+", texto[fim_anterior:destaque.start()], re.IGNORECASE,
+        ))
+        prefixo = texto[:destaque.start()]
+        if (_REFERENCIA_OPERACIONAL_CITADA.search(prefixo)
+                or _PROGRAMA_OPERACIONAL_CITADO.search(prefixo)):
+            papel = "referencia_operacional"
+        elif enumeracao or _citacao_didatica(texto, destaque):
+            papel = "enunciado"
+        else:
+            papel = "obra_candidata"
+        destaques.append((destaque, papel))
+        fim_anterior, anterior_didatico = destaque.end(), papel == "enunciado"
+    return destaques
+
+
+def _sem_enunciados_didaticos(texto: str, *, posicoes: set[int] | None = None) -> str:
+    if posicoes is None:
+        posicoes = {m.start() for m, papel in _destaques_com_papel(texto) if papel == "enunciado"}
+    return _DESTAQUE_CITADO.sub(
+        lambda m: "[enunciado]" if m.start() in posicoes else m.group(0), texto,
+    )
+
+
+def extrair_titulos_citados(texto: str) -> list[str]:
+    """Extrai possíveis obras, distinguindo exemplos explícitos de como falar."""
+    bruto = str(texto or "")
+    return list(dict.fromkeys(
+        next(g for g in m.groups() if g is not None).strip()
+        for m, papel in _destaques_com_papel(bruto)
+        if papel == "obra_candidata"
+    ))
 
 
 def _titulos_citados(texto: str) -> list[str]:
@@ -722,7 +800,18 @@ def validar_fala_com_fundamentacao(
         if _normalizar(item)
     }
 
-    for frase in frases:
+    # O papel é resolvido no texto completo: separar frases não pode apagar a
+    # relação entre uma orientação e seu exemplo na frase imediatamente seguinte.
+    posicoes_didaticas = {m.start() for m, papel in _destaques_com_papel(original) if papel == "enunciado"}
+    fim_frase = 0
+    for frase_original in frases:
+        inicio_frase = original.index(frase_original, fim_frase)
+        fim_frase = inicio_frase + len(frase_original)
+        # Datas/medidas dentro de um exemplo de pedido também são conteúdo
+        # citado, não afirmações factuais. O restante continua sendo validado.
+        frase = _sem_enunciados_didaticos(frase_original, posicoes={
+            p - inicio_frase for p in posicoes_didaticas if inicio_frase <= p < fim_frase
+        })
         explicacao_metalinguistica = bool(
             contexto_metalinguistico
             and _EXPLICACAO_METALINGUISTICA.search(frase)
@@ -783,7 +872,7 @@ def validar_fala_com_fundamentacao(
             or medida_sem_evidencia or plataforma_sem_evidencia
             or familiaridade_inventada or sem_base or descricao_obra_sem_evidencia
         ):
-            rejeitadas.append(frase)
+            rejeitadas.append(frase_original)
             if titulo_sem_evidencia:
                 problemas.append("obra_sem_evidencia")
             if ano_sem_evidencia:

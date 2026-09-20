@@ -83,6 +83,41 @@ def test_chrome_desconectado_nao_aparece_como_navegador_disponivel() -> None:
     ).casefold()
 
 
+def test_central_persistente_nao_prova_disponibilidade_de_leitura_email():
+    operacional = _disponibilidade()
+    mapa = MapaHabilidadesRuntime(operacional_getter=operacional.snapshot)
+    assert mapa.consultar("EMAIL_READ")["disponivel"] is False
+    assert mapa.consultar("EMAIL_SYNC")["disponivel"] is False
+    assert mapa.consultar("NOTIFICATIONS")["disponivel"] is True
+    assert "email" not in mapa.evidencia_conversacional("meus emails")["dominios_confirmados"]
+
+
+def test_configuracao_gmail_viva_chega_ao_contrato_sem_executar_consulta():
+    from mente_laylay.cognicao.contrato_fala import construir_contrato_semantico_fala
+    estado = {"configurado": False}
+    operacional = _disponibilidade(gmail_getter=lambda: dict(estado))
+    mapa = MapaHabilidadesRuntime(operacional_getter=operacional.snapshot)
+    evidencia = mapa.evidencia_conversacional("meus e-mails")
+    assert "email" in evidencia["dominios_indisponiveis_relevantes"]
+    contrato = construir_contrato_semantico_fala(
+        "meus emails", plano={"evidencia_capacidades": evidencia},
+    )
+    assert any("indisponibilidade atual confirmada de: email" in item for item in contrato["conteudos_obrigatorios"])
+    estado["configurado"] = True
+    assert mapa.consultar("EMAIL_READ")["disponivel"]
+    assert not operacional.snapshot()["dominios"]["email"]["evidencia_recente"]
+    assert not operacional.snapshot()["probes_executados"]
+    assert "email" in mapa.evidencia_conversacional("meus emails")["dominios_confirmados"]
+
+
+def test_falha_diagnostico_gmail_nao_habilita_email():
+    def falha():
+        raise RuntimeError("diagnostico indisponivel")
+    mapa = MapaHabilidadesRuntime(operacional_getter=_disponibilidade(gmail_getter=falha).snapshot)
+    assert not mapa.consultar("EMAIL_READ")["disponivel"]
+    assert mapa.consultar("NOTIFICATIONS")["disponivel"]
+
+
 def test_provedor_ou_credencial_ausente_degrada_capacidade_correta() -> None:
     operacional = _disponibilidade(
         conversa_llm_getter=lambda: {

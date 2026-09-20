@@ -22,6 +22,7 @@ class DisponibilidadeOperacionalRuntime:
         area_transferencia_getter: Callable[[], Mapping[str, Any]] | None = None,
         caixa_entrada_getter: Callable[[], Mapping[str, Any]] | None = None,
         notificacoes_getter: Callable[[], Mapping[str, Any]] | None = None,
+        gmail_getter: Callable[[], Mapping[str, Any]] | None = None,
         iot_getter: Callable[[], Mapping[str, Any]] | None = None,
         avatar_getter: Callable[[], Mapping[str, Any]] | None = None,
     ) -> None:
@@ -34,6 +35,7 @@ class DisponibilidadeOperacionalRuntime:
             "area_transferencia": area_transferencia_getter,
             "caixa_entrada": caixa_entrada_getter,
             "notificacoes": notificacoes_getter,
+            "gmail": gmail_getter,
             "iot": iot_getter,
             "avatar": avatar_getter,
         }
@@ -158,11 +160,18 @@ class DisponibilidadeOperacionalRuntime:
 
         notificacoes_brutas = self._ler("notificacoes")
         notificacoes_ok = bool(notificacoes_brutas.get("persistencia_disponivel"))
-        email = self._registro(
+        notificacoes = self._registro(
             "disponivel" if notificacoes_ok else "degradado",
             motivo=("central_notificacoes_persistente" if notificacoes_ok else "central_sem_persistencia_confirmada"),
             ausentes=() if notificacoes_ok else ("persistencia_notificacoes",),
             evidencia_recente=bool(notificacoes_brutas.get("eventos")),
+        )
+        gmail = self._ler("gmail")
+        gmail_configurado = gmail.get("configurado") is True
+        email = self._registro(
+            "disponivel" if gmail_configurado else "indisponivel",
+            motivo="gmail_configurado_sem_probe" if gmail_configurado else "gmail_sem_configuracao_confirmada",
+            ausentes=() if gmail_configurado else ("configuracao_gmail",),
         )
 
         iot_bruto = self._ler("iot")
@@ -217,6 +226,7 @@ class DisponibilidadeOperacionalRuntime:
         }
         capacidades = {
             "RESUMIR_PAGINA": dict(navegador),
+            "NOTIFICATIONS": dict(notificacoes),
         }
         return {
             "dominios": dominios,

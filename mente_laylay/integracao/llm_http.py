@@ -13,6 +13,7 @@ from mente_laylay.cognicao.estado_tecnico_llm import eh_estado_tecnico_llm
 from mente_laylay.cognicao.conversa_sobre_capacidades import resposta_conversa_sobre_capacidade
 from mente_laylay.personalidade.contingencia_natural import fala_contingencia_natural
 from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
+from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT_RAPIDO
 
 
 # Estados do transporte são dados internos. Eles não são frases da Laylay e
@@ -156,7 +157,19 @@ def compactar_payload_llm_local(data: dict) -> dict:
             ),
             sistemas[0] if sistemas else None,
         )
-        auxiliares = [m for m in sistemas if m is not principal][-2:]
+        indice_usuario = next((
+            i for i in range(len(normalizadas) - 1, -1, -1)
+            if normalizadas[i]["role"] == "user"
+        ), -1)
+        usuario_atual = normalizadas[indice_usuario] if indice_usuario >= 0 else None
+        instrucao_atual = (
+            normalizadas[indice_usuario - 1]
+            if indice_usuario > 0
+            and normalizadas[indice_usuario - 1]["role"] == "system"
+            and normalizadas[indice_usuario - 1] is not principal
+            else None
+        )
+        auxiliares = [m for m in sistemas if m is not principal and m is not instrucao_atual][-2:]
 
         def compactar_auxiliar(mensagem: dict[str, str]) -> str:
             conteudo = str(mensagem.get("content") or "")
@@ -204,9 +217,16 @@ def compactar_payload_llm_local(data: dict) -> dict:
 
         mensagens = []
         if principal is not None:
+            # O protocolo canônico termina depois da identidade. Cortar por
+            # caracteres deixava personalidade, mas removia JSON/semântica.
+            # Preserve a base reconhecida inteira; só o sufixo é opcional.
+            tamanho_base = max((
+                len(base) for base in (BASE_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT_RAPIDO)
+                if principal["content"].startswith(base)
+            ), default=0)
             mensagens.append({
                 "role": "system",
-                "content": principal["content"][:limite_principal],
+                "content": principal["content"][:max(limite_principal, tamanho_base)],
             })
         for auxiliar in auxiliares:
             mensagens.append({
@@ -216,18 +236,31 @@ def compactar_payload_llm_local(data: dict) -> dict:
 
         # Reserva o restante para os últimos atos completos. É esse trecho que
         # permite entender continuidades como "por quê?" e "explica isso".
+        # O orçamento limita apenas material opcional. A instrução e a fala
+        # atuais são atômicas, inclusive no retry de 400. Não cortar o fim de
+        # um veto, alvo ou receipt para caber mais personalidade/histórico.
         usados = sum(len(m["content"]) for m in mensagens)
+        if instrucao_atual is not None:
+            usados += len(instrucao_atual["content"])
         recentes_reverso = []
         for msg in reversed(dialogo):
             restante = limite_total - usados
-            if restante <= 0:
+            if restante <= 0 and msg is not usuario_atual:
                 break
-            conteudo = msg["content"][: min(1600, restante)]
+            conteudo = (
+                msg["content"] if msg is usuario_atual
+                else msg["content"][: min(1600, restante)]
+            )
             if not conteudo:
                 continue
-            recentes_reverso.append({"role": msg["role"], "content": conteudo})
+            recentes_reverso.append((
+                {"role": msg["role"], "content": conteudo}, msg is usuario_atual,
+            ))
             usados += len(conteudo)
-        mensagens.extend(reversed(recentes_reverso))
+        for msg, eh_usuario_atual in reversed(recentes_reverso):
+            if instrucao_atual is not None and eh_usuario_atual:
+                mensagens.append(dict(instrucao_atual))
+            mensagens.append(msg)
 
         if not mensagens:
             mensagens = [{"role": "user", "content": "Responda em português, curto e natural."}]

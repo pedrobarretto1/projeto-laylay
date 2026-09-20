@@ -23,6 +23,9 @@ from mente_laylay.cognicao.geracao_concreta import (
 )
 from mente_laylay.cognicao.reacao_social_curta import classificar_provocacao_curta
 from mente_laylay.cognicao.normalizacao_linguagem import (
+    texto_delimita_relato_explicito,
+    texto_discute_evidencia_textual,
+    TIPOS_REFERENCIA_TEXTUAL,
     texto_e_metalinguistico,
     texto_pede_opiniao,
 )
@@ -80,6 +83,7 @@ class ContratoSemanticoFala:
     funcao: str = "informacao"
     atos: tuple[str, ...] = ()
     referente: str = ""
+    estado_referencia_textual: str = ""
     conteudos_obrigatorios: tuple[str, ...] = ()
     inferencias_proibidas: tuple[str, ...] = ()
     estrutura: tuple[str, ...] = (
@@ -95,6 +99,7 @@ class ContratoSemanticoFala:
     texto_usuario_corrigido: str = ""
     respostas_recentes_evitar: tuple[str, ...] = ()
     capacidades_confirmadas: tuple[str, ...] = ()
+    documentacao_capacidades: str = ""
     cooperacao_considerada: bool = False
     roteiro_concreto: Mapping[str, Any] = field(default_factory=dict)
     autoriza_execucao: bool = False
@@ -105,6 +110,7 @@ class ContratoSemanticoFala:
         object.__setattr__(self, "funcao", _texto_curto(self.funcao, 64) or "informacao")
         object.__setattr__(self, "atos", _itens_unicos(self.atos, limite_item=48))
         object.__setattr__(self, "referente", _texto_curto(self.referente, 180))
+        object.__setattr__(self, "estado_referencia_textual", str(self.estado_referencia_textual or ""))
         object.__setattr__(self, "texto_usuario_corrigido", _texto_curto(self.texto_usuario_corrigido, 500))
         object.__setattr__(
             self, "conteudos_obrigatorios",
@@ -379,10 +385,12 @@ def _extrair_referente(texto: str, turno: Mapping[str, Any], plano: Mapping[str,
     for origem in (plano, turno):
         referencia = origem.get("referencia_resolvida")
         if isinstance(referencia, Mapping):
+            if texto_discute_evidencia_textual(texto) and referencia.get("tipo") not in TIPOS_REFERENCIA_TEXTUAL:
+                continue
             nome = _texto_curto(referencia.get("nome"), 180)
             if nome:
                 return nome
-        tema = _texto_curto(origem.get("tema_factual"), 180)
+        tema = "" if texto_discute_evidencia_textual(texto) else _texto_curto(origem.get("tema_factual"), 180)
         if tema:
             return tema
     return ""
@@ -564,8 +572,16 @@ def construir_contrato_semantico_fala(
     )
 
     atos = _atos_base(planejamento)
+    relato_explicito = bool(
+        texto_delimita_relato_explicito(texto)
+        and set(atos).issubset({"conversa", "relato"})
+        and not (metalinguagem or opiniao or esclarecimento)
+        and not planejamento.get("requer_execucao")
+        and not resultado_confirmado
+    )
     for ativo, nome in (
         (metalinguagem, "metalinguagem"),
+        (relato_explicito, "relato_explicito"),
         (saudacao, "saudacao"),
         (estado_pessoal, "estado_pessoal"),
         (pergunta_bem_estar, "bem_estar"),
@@ -584,7 +600,11 @@ def construir_contrato_semantico_fala(
     esperado = _texto_curto(planejamento.get("resposta_esperada"), 240)
     if esperado:
         obrigatorios.append(esperado)
-    if metalinguagem:
+    if texto_discute_evidencia_textual(bruto):
+        obrigatorios.append(
+            "avaliar a evidência do relato disponível; se ele não foi fornecido, pedir seu conteúdo sem inventá-lo"
+        )
+    elif metalinguagem:
         obrigatorios.append(
             "responder sobre a formulação, citação ou exemplo, sem responder o conteúdo embutido como fato atual"
         )
@@ -632,16 +652,32 @@ def construir_contrato_semantico_fala(
         obrigatorios.append(
             "preservar as capacidades locais confirmadas sem transformar essa informação em execução"
         )
+    indisponiveis = _itens_unicos(
+        evidencia_capacidades.get("dominios_indisponiveis_relevantes") or (),
+        limite_item=48,
+    )
+    if indisponiveis:
+        obrigatorios.append(
+            "respeitar a indisponibilidade atual confirmada de: "
+            + ", ".join(indisponiveis)
+            + "; não oferecer essas consultas agora nem tratar o limite como permanente"
+        )
     if estado_observavel_sem_evidencia:
         obrigatorios.append(_OBRIGATORIO_ESTADO_SEM_EVIDENCIA)
     if negacao_operacional_sem_efeito:
         obrigatorios.append(_OBRIGATORIO_NEGACAO_OPERACIONAL)
+    if relato_explicito:
+        obrigatorios.append(
+            "reconhecer brevemente o relato como informação compartilhada, sem pedir continuação"
+        )
     if len(atos) > 1:
         obrigatorios.append("responder a todos os atos da mensagem em uma única fala coesa")
 
     proibidas = [
         "não inventar emoção, intenção, gesto, cena ou situação do usuário",
         "não transformar personalidade em fato nem em confirmação operacional",
+        "pedido não prova tentativa nem resultado: não deduzir sucesso, falha ou causa; responder ao que foi dito",
+        "falas antigas da assistente não são comprovantes; resultados exigem relato atribuído ao usuário ou evidência do executor",
     ]
     if metalinguagem:
         proibidas.extend((
@@ -709,15 +745,38 @@ def construir_contrato_semantico_fala(
     vulneravel = funcao in {"desabafo", "inseguranca", "decepcao", "frustracao"}
     deliberacao = dict(planejamento.get("deliberacao_habilidades") or {})
 
+    documentacao_capacidades = ""
+    if (
+        evidencia_capacidades.get("fonte") == "catalogo_vivo"
+        and evidencia_capacidades.get("documentacao_texto") == str(texto)
+        and leitura.get("id")
+        and str(evidencia_capacidades.get("documentacao_turno_id")) == str(leitura["id"])
+        and leitura.get("autoriza_execucao") is False
+        and (leitura.get("modalidade_geral") or leitura.get("modalidade")) == "pergunta"
+        and leitura.get("natureza_acao") in {"capacidade", "instrucao_ou_explicacao", "informativa_sobre_acao"}
+        # Perguntas informativas de causa/consequência precisam do contexto
+        # completo; "como" seleciona apenas o modo de explicar, não autoridade.
+        and (leitura.get("natureza_acao") != "informativa_sobre_acao" or base.startswith("como "))
+        and len(leitura.get("segmentos") or []) <= 1
+        and set(atos) <= {"pergunta", "pergunta_capacidade"}
+        and not (metalinguagem or esclarecimento or estado_observavel_sem_evidencia)
+        and not re.search(r"[;]|\b(?:e|mas|por[eé]m|ent[aã]o|depois|tamb[eé]m)\b", bruto, re.IGNORECASE)
+    ):
+        documentacao_capacidades = str(evidencia_capacidades.get("documentacao_capacidades") or "")
+
     contrato = ContratoSemanticoFala(
         turno_id=planejamento.get("id") or leitura.get("id"),
         funcao=funcao,
         atos=tuple(atos),
         referente=referente,
+        estado_referencia_textual=(
+            ("identificada_sem_conteudo_validado" if referente else "nao_resolvida")
+            if texto_discute_evidencia_textual(bruto) else ""
+        ),
         conteudos_obrigatorios=tuple(obrigatorios),
         inferencias_proibidas=tuple(proibidas),
         max_frases=max_frases,
-        permite_pergunta=bool(planejamento.get("permite_pergunta", True)),
+        permite_pergunta=bool(planejamento.get("permite_pergunta", True)) and not relato_explicito,
         permite_humor=not (vulneravel or esclarecimento),
         permite_metafora=criativo,
         fala_anterior_relevante=(
@@ -728,6 +787,7 @@ def construir_contrato_semantico_fala(
         texto_usuario_corrigido=texto_usuario_corrigido,
         respostas_recentes_evitar=recentes,
         capacidades_confirmadas=capacidades_confirmadas,
+        documentacao_capacidades=documentacao_capacidades,
         cooperacao_considerada=bool(deliberacao),
         autoriza_execucao=False,
     )
@@ -800,6 +860,8 @@ def formatar_contrato_fala_para_prompt(
         ]
         if referente:
             linhas_compactas.append(f"Referente concreto: {referente}.")
+        if dados.get("estado_referencia_textual"):
+            linhas_compactas.append("Referência textual: " + str(dados["estado_referencia_textual"]) + "; nome não prova conteúdo. Não inventar o relato nem deduzir seu resultado.")
         if obrigatorios:
             linhas_compactas.append("Responda: " + " | ".join(obrigatorios) + ".")
         if proibidas:
@@ -866,6 +928,8 @@ def formatar_contrato_fala_para_prompt(
     referente = _texto_curto(dados.get("referente"), 180)
     if referente:
         linhas.append(f"Referente concreto: {referente}.")
+    if dados.get("estado_referencia_textual"):
+        linhas.append("Referência textual: " + str(dados["estado_referencia_textual"]) + "; nome não prova conteúdo. Não inventar o relato nem deduzir seu resultado.")
     obrigatorios = _itens_unicos(dados.get("conteudos_obrigatorios") or (), limite_item=240)
     if obrigatorios:
         linhas.append("Conteúdo obrigatório: " + " | ".join(obrigatorios) + ".")

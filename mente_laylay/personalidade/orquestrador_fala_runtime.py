@@ -46,6 +46,12 @@ class OrquestradorFalaRuntime:
         }
         self._observadores_fala_final: list[Callable[..., Any]] = []
         self._observadores_texto_final: list[Callable[..., Any]] = []
+        self._textos_publicados_turno: dict[str, list[str]] = {}
+
+    def textos_publicados_turno(self, turno_id: Any) -> tuple[str, ...]:
+        """Texto aceito por canal textual; não é receipt de áudio ou de ação."""
+        with self._lock_confirmacoes:
+            return tuple(self._textos_publicados_turno.get(str(turno_id or ""), ()))
 
     def registrar_observador_texto_final(
         self, observador: Callable[..., Any],
@@ -397,6 +403,13 @@ class OrquestradorFalaRuntime:
                     "⚠️ [TEXTO:OBSERVADOR] consumidor isolado falhou: "
                     f"{type(erro).__name__}"
                 )
+        if texto_publicado and not _proativa and turno_id and fala:
+            with self._lock_confirmacoes:
+                textos = self._textos_publicados_turno.setdefault(turno_id, [])
+                if fala not in textos:
+                    textos.append(fala)
+                while len(self._textos_publicados_turno) > 64:
+                    self._textos_publicados_turno.pop(next(iter(self._textos_publicados_turno)))
         aceita = ns["_voz_runtime"].falar(
             fala, emocao, nivel, wait=wait, _proativa=_proativa,
             _texto_publicado_antecipado=bool(
