@@ -211,9 +211,32 @@ def _preferencia_local(texto: str) -> str:
     )
 
 
+def fala_falha_geracao(motivo_falha: str) -> str:
+    """Conclusão sobre a geração, nunca sobre o efeito de uma habilidade."""
+    conclusoes = {
+        "timeout": "Minha resposta não ficou pronta dentro do tempo disponível.",
+        "indisponivel": "O serviço que gera minha resposta está indisponível agora.",
+        "chamada_nao_disponivel": "A geração desta resposta não está disponível neste momento.",
+        "falha_tecnica": "Houve uma falha ao gerar minha resposta.",
+        "reparo_rejeitado": "Não consegui formular uma resposta confiável desta vez.",
+        "orcamento_limite_chamadas": "Cheguei ao limite de tentativas desta resposta sem conseguir concluí-la.",
+        "orcamento_principal_duplicada": "Uma geração de resposta já foi iniciada neste turno; não iniciei outra.",
+        "orcamento_reparo_duplicado": "Já usei a tentativa de corrigir esta resposta; ela ainda não ficou pronta para entrega.",
+        "orcamento_prazo_esgotado": "O tempo reservado para esta resposta terminou antes de uma nova tentativa.",
+        "orcamento_fatia_secundaria_insuficiente": "O tempo restante desta resposta não permite outra tentativa.",
+        "orcamento_turno_obsoleto": "Essa tentativa pertence a um turno que deixou de ser o atual.",
+        "orcamento_turno_finalizado": "Essa tentativa pertence a um turno já encerrado.",
+        "orcamento_circuito_aberto": "As tentativas de gerar respostas estão temporariamente suspensas após falhas recentes.",
+        "orcamento_probe_em_andamento": "Uma verificação da recuperação do serviço já está em andamento.",
+    }
+    return conclusoes.get(motivo_falha, "")
+
+
 def fala_contingencia_natural(
     texto_usuario: Any,
     contexto: Mapping[str, Any] | None = None,
+    *,
+    motivo_falha: str = "",
 ) -> str:
     """Mantém humanidade sem fingir que a resposta da IA foi concluída."""
     bruto = re.sub(r"\s+", " ", str(texto_usuario or "")).strip()
@@ -292,6 +315,9 @@ def fala_contingencia_natural(
             return f"Ahh, então era isso. Vai terminando {alvo} no seu ritmo — quero ver como fica."
         return f"Aí sim. Continua {acao} {alvo}; quero ver onde essa ideia vai dar."
 
+    conclusao_falha = fala_falha_geracao(motivo_falha)
+    if conclusao_falha:
+        return conclusao_falha
     if "?" in bruto or re.match(
         r"^(?:como|qual|quais|por que|porque|onde|quando|quem|o que|e esse|e essa)\b",
         texto,

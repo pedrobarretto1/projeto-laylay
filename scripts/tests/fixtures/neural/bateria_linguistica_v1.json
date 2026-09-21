@@ -1,0 +1,840 @@
+{
+  "versao": 1,
+  "finalidade": "diagnostico_linguistico_de_desenvolvimento",
+  "treino_permitido": false,
+  "autoriza_execucao": false,
+  "notas": [
+    "Expectativas revisadas manualmente; não são previsões nem permissões para executar comandos.",
+    "dominio_da_fatia organiza cobertura; não deve ser fornecido ao modelo como resposta.",
+    "Referências sem contexto não possuem alvo literal. Resolução contextual pertence à etapa posterior.",
+    "Pedidos citados isoladamente são menções nesta bateria; sua interpretação real pode depender do contexto.",
+    "Os nomes de músicas são alvos sintéticos, não uma afirmação de existência.",
+    "Invariância semântica não exige vetores idênticos. Esta etapa mede preservação, não acurácia do modelo.",
+    "Conjunto de desenvolvimento conhecido; não substitui a reserva list_windows_ato_v1."
+  ],
+  "casos": [
+    {
+      "id": "volume:pedido",
+      "dominio_da_fatia": "volume",
+      "fenomeno": "pedido",
+      "text": "abaixa o volume",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "volume",
+        "acao_pedida": "abaixar"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "volume:polidez",
+      "dominio_da_fatia": "volume",
+      "fenomeno": "polidez",
+      "text": "por favor, abaixa o volume",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "volume",
+        "acao_pedida": "abaixar"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "volume:negacao",
+      "dominio_da_fatia": "volume",
+      "fenomeno": "negacao",
+      "text": "não abaixa o volume",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": true,
+        "requer_contexto": false,
+        "alvo_literal": "volume",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "volume:hipotese",
+      "dominio_da_fatia": "volume",
+      "fenomeno": "hipotese",
+      "text": "se eu abaixasse o volume, daria para ouvir a conversa?",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "volume",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "volume:citacao",
+      "dominio_da_fatia": "volume",
+      "fenomeno": "citacao",
+      "text": "\"abaixa o volume\"",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "volume",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "volume:metalinguagem",
+      "dominio_da_fatia": "volume",
+      "fenomeno": "metalinguagem",
+      "text": "como pedir para alguém fazer isto: \"abaixa o volume\"?",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "volume",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "volume:comentario",
+      "dominio_da_fatia": "volume",
+      "fenomeno": "comentario",
+      "text": "eu abaixei o volume ontem",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "volume",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "volume:correcao",
+      "dominio_da_fatia": "volume",
+      "fenomeno": "correcao",
+      "text": "coloca o volume em 30, não em 50",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "volume",
+        "acao_pedida": "definir",
+        "valor_literal": 30
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "volume:referencia_sem_contexto",
+      "dominio_da_fatia": "volume",
+      "fenomeno": "referencia_sem_contexto",
+      "text": "abaixa ele um pouco",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": true,
+        "alvo_literal": null,
+        "acao_pedida": "abaixar"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "volume:pedido_longo",
+      "dominio_da_fatia": "volume",
+      "fenomeno": "pedido_longo",
+      "text": "por favor antes de responder abaixa o volume e depois me avise aqui",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "volume",
+        "acao_pedida": "abaixar"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "volume:negacao_no_meio",
+      "dominio_da_fatia": "volume",
+      "fenomeno": "negacao_no_meio",
+      "text": "por favor antes de responder não abaixa o volume e depois me avise aqui",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": true,
+        "requer_contexto": false,
+        "alvo_literal": "volume",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "musica:pedido",
+      "dominio_da_fatia": "musica",
+      "fenomeno": "pedido",
+      "text": "toca a música Aurora",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Aurora",
+        "acao_pedida": "tocar"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "musica:polidez",
+      "dominio_da_fatia": "musica",
+      "fenomeno": "polidez",
+      "text": "por favor, toca a música Aurora",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Aurora",
+        "acao_pedida": "tocar"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "musica:negacao",
+      "dominio_da_fatia": "musica",
+      "fenomeno": "negacao",
+      "text": "não toca a música Aurora",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": true,
+        "requer_contexto": false,
+        "alvo_literal": "Aurora",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "musica:hipotese",
+      "dominio_da_fatia": "musica",
+      "fenomeno": "hipotese",
+      "text": "se eu tocasse a música Aurora, você reconheceria?",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Aurora",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "musica:citacao",
+      "dominio_da_fatia": "musica",
+      "fenomeno": "citacao",
+      "text": "\"toca a música Aurora\"",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Aurora",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "musica:metalinguagem",
+      "dominio_da_fatia": "musica",
+      "fenomeno": "metalinguagem",
+      "text": "como pedir para alguém fazer isto: \"toca a música Aurora\"?",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Aurora",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "musica:comentario",
+      "dominio_da_fatia": "musica",
+      "fenomeno": "comentario",
+      "text": "eu ouvi a música Aurora ontem",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Aurora",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "musica:correcao",
+      "dominio_da_fatia": "musica",
+      "fenomeno": "correcao",
+      "text": "toca a música Brisa, não a Aurora",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Brisa",
+        "acao_pedida": "tocar"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "musica:referencia_sem_contexto",
+      "dominio_da_fatia": "musica",
+      "fenomeno": "referencia_sem_contexto",
+      "text": "toca aquela de novo",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": true,
+        "alvo_literal": null,
+        "acao_pedida": "tocar"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "musica:pedido_longo",
+      "dominio_da_fatia": "musica",
+      "fenomeno": "pedido_longo",
+      "text": "por favor antes de responder toca a música Aurora e depois me avise aqui",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Aurora",
+        "acao_pedida": "tocar"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "musica:negacao_no_meio",
+      "dominio_da_fatia": "musica",
+      "fenomeno": "negacao_no_meio",
+      "text": "por favor antes de responder não toca a música Aurora e depois me avise aqui",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": true,
+        "requer_contexto": false,
+        "alvo_literal": "Aurora",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "aplicativos:pedido",
+      "dominio_da_fatia": "aplicativos",
+      "fenomeno": "pedido",
+      "text": "abre o Firefox",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Firefox",
+        "acao_pedida": "abrir"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "aplicativos:polidez",
+      "dominio_da_fatia": "aplicativos",
+      "fenomeno": "polidez",
+      "text": "por favor, abre o Firefox",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Firefox",
+        "acao_pedida": "abrir"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "aplicativos:negacao",
+      "dominio_da_fatia": "aplicativos",
+      "fenomeno": "negacao",
+      "text": "não abre o Firefox",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": true,
+        "requer_contexto": false,
+        "alvo_literal": "Firefox",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "aplicativos:hipotese",
+      "dominio_da_fatia": "aplicativos",
+      "fenomeno": "hipotese",
+      "text": "se eu abrisse o Firefox, gastaria mais memória?",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Firefox",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "aplicativos:citacao",
+      "dominio_da_fatia": "aplicativos",
+      "fenomeno": "citacao",
+      "text": "\"abre o Firefox\"",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Firefox",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "aplicativos:metalinguagem",
+      "dominio_da_fatia": "aplicativos",
+      "fenomeno": "metalinguagem",
+      "text": "como pedir para alguém fazer isto: \"abre o Firefox\"?",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Firefox",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "aplicativos:comentario",
+      "dominio_da_fatia": "aplicativos",
+      "fenomeno": "comentario",
+      "text": "eu abri o Firefox ontem",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Firefox",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "aplicativos:correcao",
+      "dominio_da_fatia": "aplicativos",
+      "fenomeno": "correcao",
+      "text": "abre o Opera, não o Firefox",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Opera",
+        "acao_pedida": "abrir"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "aplicativos:referencia_sem_contexto",
+      "dominio_da_fatia": "aplicativos",
+      "fenomeno": "referencia_sem_contexto",
+      "text": "abre ele de novo",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": true,
+        "alvo_literal": null,
+        "acao_pedida": "abrir"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "aplicativos:pedido_longo",
+      "dominio_da_fatia": "aplicativos",
+      "fenomeno": "pedido_longo",
+      "text": "por favor antes de responder abre o Firefox e depois me avise aqui",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "Firefox",
+        "acao_pedida": "abrir"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "aplicativos:negacao_no_meio",
+      "dominio_da_fatia": "aplicativos",
+      "fenomeno": "negacao_no_meio",
+      "text": "por favor antes de responder não abre o Firefox e depois me avise aqui",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": true,
+        "requer_contexto": false,
+        "alvo_literal": "Firefox",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "arquivos:pedido",
+      "dominio_da_fatia": "arquivos",
+      "fenomeno": "pedido",
+      "text": "abre o arquivo relatório.txt",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "relatório.txt",
+        "acao_pedida": "abrir"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "arquivos:polidez",
+      "dominio_da_fatia": "arquivos",
+      "fenomeno": "polidez",
+      "text": "por favor, abre o arquivo relatório.txt",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "relatório.txt",
+        "acao_pedida": "abrir"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "arquivos:negacao",
+      "dominio_da_fatia": "arquivos",
+      "fenomeno": "negacao",
+      "text": "não abre o arquivo relatório.txt",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": true,
+        "requer_contexto": false,
+        "alvo_literal": "relatório.txt",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "arquivos:hipotese",
+      "dominio_da_fatia": "arquivos",
+      "fenomeno": "hipotese",
+      "text": "se eu abrisse o arquivo relatório.txt, qual programa usaria?",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "relatório.txt",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "arquivos:citacao",
+      "dominio_da_fatia": "arquivos",
+      "fenomeno": "citacao",
+      "text": "\"abre o arquivo relatório.txt\"",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "relatório.txt",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "arquivos:metalinguagem",
+      "dominio_da_fatia": "arquivos",
+      "fenomeno": "metalinguagem",
+      "text": "como pedir para alguém fazer isto: \"abre o arquivo relatório.txt\"?",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "relatório.txt",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "arquivos:comentario",
+      "dominio_da_fatia": "arquivos",
+      "fenomeno": "comentario",
+      "text": "eu abri o arquivo relatório.txt ontem",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "relatório.txt",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "arquivos:correcao",
+      "dominio_da_fatia": "arquivos",
+      "fenomeno": "correcao",
+      "text": "abre o arquivo rascunho.txt, não o relatório.txt",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "rascunho.txt",
+        "acao_pedida": "abrir"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "arquivos:referencia_sem_contexto",
+      "dominio_da_fatia": "arquivos",
+      "fenomeno": "referencia_sem_contexto",
+      "text": "abre aquele que eu mencionei",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": true,
+        "alvo_literal": null,
+        "acao_pedida": "abrir"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "arquivos:pedido_longo",
+      "dominio_da_fatia": "arquivos",
+      "fenomeno": "pedido_longo",
+      "text": "por favor antes de responder abre o arquivo relatório.txt e depois me avise aqui",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": true,
+        "negacao_do_pedido": false,
+        "requer_contexto": false,
+        "alvo_literal": "relatório.txt",
+        "acao_pedida": "abrir"
+      },
+      "autoriza_execucao": false
+    },
+    {
+      "id": "arquivos:negacao_no_meio",
+      "dominio_da_fatia": "arquivos",
+      "fenomeno": "negacao_no_meio",
+      "text": "por favor antes de responder não abre o arquivo relatório.txt e depois me avise aqui",
+      "contexto": null,
+      "esperado": {
+        "pedido_operacional": false,
+        "negacao_do_pedido": true,
+        "requer_contexto": false,
+        "alvo_literal": "relatório.txt",
+        "acao_pedida": null
+      },
+      "autoriza_execucao": false
+    }
+  ],
+  "pares": [
+    {
+      "origem": "volume:pedido",
+      "destino": "volume:polidez",
+      "relacao": "invariancia_semantica"
+    },
+    {
+      "origem": "volume:pedido",
+      "destino": "volume:negacao",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "volume:pedido",
+      "destino": "volume:hipotese",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "volume:pedido",
+      "destino": "volume:citacao",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "volume:pedido",
+      "destino": "volume:metalinguagem",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "volume:pedido",
+      "destino": "volume:comentario",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "volume:pedido",
+      "destino": "volume:correcao",
+      "relacao": "correcao_parametro"
+    },
+    {
+      "origem": "volume:pedido_longo",
+      "destino": "volume:negacao_no_meio",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "musica:pedido",
+      "destino": "musica:polidez",
+      "relacao": "invariancia_semantica"
+    },
+    {
+      "origem": "musica:pedido",
+      "destino": "musica:negacao",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "musica:pedido",
+      "destino": "musica:hipotese",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "musica:pedido",
+      "destino": "musica:citacao",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "musica:pedido",
+      "destino": "musica:metalinguagem",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "musica:pedido",
+      "destino": "musica:comentario",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "musica:pedido",
+      "destino": "musica:correcao",
+      "relacao": "correcao_alvo"
+    },
+    {
+      "origem": "musica:pedido_longo",
+      "destino": "musica:negacao_no_meio",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "aplicativos:pedido",
+      "destino": "aplicativos:polidez",
+      "relacao": "invariancia_semantica"
+    },
+    {
+      "origem": "aplicativos:pedido",
+      "destino": "aplicativos:negacao",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "aplicativos:pedido",
+      "destino": "aplicativos:hipotese",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "aplicativos:pedido",
+      "destino": "aplicativos:citacao",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "aplicativos:pedido",
+      "destino": "aplicativos:metalinguagem",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "aplicativos:pedido",
+      "destino": "aplicativos:comentario",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "aplicativos:pedido",
+      "destino": "aplicativos:correcao",
+      "relacao": "correcao_alvo"
+    },
+    {
+      "origem": "aplicativos:pedido_longo",
+      "destino": "aplicativos:negacao_no_meio",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "arquivos:pedido",
+      "destino": "arquivos:polidez",
+      "relacao": "invariancia_semantica"
+    },
+    {
+      "origem": "arquivos:pedido",
+      "destino": "arquivos:negacao",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "arquivos:pedido",
+      "destino": "arquivos:hipotese",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "arquivos:pedido",
+      "destino": "arquivos:citacao",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "arquivos:pedido",
+      "destino": "arquivos:metalinguagem",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "arquivos:pedido",
+      "destino": "arquivos:comentario",
+      "relacao": "contraste_pedido"
+    },
+    {
+      "origem": "arquivos:pedido",
+      "destino": "arquivos:correcao",
+      "relacao": "correcao_alvo"
+    },
+    {
+      "origem": "arquivos:pedido_longo",
+      "destino": "arquivos:negacao_no_meio",
+      "relacao": "contraste_pedido"
+    }
+  ]
+}

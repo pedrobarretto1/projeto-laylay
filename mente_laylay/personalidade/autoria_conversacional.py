@@ -16,6 +16,7 @@ from mente_laylay.cognicao.guardiao_realidade_pessoal import (
     detectar_experiencia_pessoal_inventada,
 )
 from mente_laylay.integracao.llm_http import eh_estado_tecnico_llm
+from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_llm
 from mente_laylay.personalidade.antirrepeticao import repeticao_estrutural
 from mente_laylay.personalidade.prompt_voz_unica import IDENTIDADE_VOZ_LAYLAY
 
@@ -25,6 +26,7 @@ class FalaAutoral:
     fala: str
     usada_llm: bool
     motivo_fallback: str = ""
+    categoria_falha: str = ""
 
 
 def _extrair_json(valor: Any) -> dict[str, Any]:
@@ -133,12 +135,13 @@ def criar_fala_autoral(
             fallback,
             False,
             f"erro_chamada_{type(erro).__name__.casefold()}",
+            "falha_tecnica",
         )
 
     # Uma chamada bloqueada/falha não produziu fala para julgar. Preserve a
     # distinção técnica sem expor a sentinela ou alterar a contingência segura.
     if eh_estado_tecnico_llm(bruto):
-        return FalaAutoral(fallback, False, "estado_tecnico_llm")
+        return FalaAutoral(fallback, False, "estado_tecnico_llm", categoria_estado_tecnico_llm(bruto))
 
     fala_extraida, comandos = _extrair_fala_autoral(bruto)
     fala = re.sub(r"\s+", " ", fala_extraida).strip()

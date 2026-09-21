@@ -7,7 +7,7 @@ llama-server.log*
 
 # Build outputs
 dist/
-tests/
+# Testes e roteiros são código-fonte; não ignorar essas pastas.
 resultados_testes/
 build/
 _backup_*/
@@ -25,8 +25,8 @@ _backup_regressao_118/
 *.log
 
 
-# logs que queremos preservar dos testes da Laylay
-!resultados_testes/**/terminal.log
+# Capturas podem conter conversas, contexto e dados pessoais.
+# Evidência sanitizada deve ir nos relatórios, não liberar terminal.log aqui.
 
 # Environment files
 .env
@@ -118,3 +118,10 @@ dados/voz_pessoal/
 *.backup
 *.orig
 *.rej
+*.caos-backup
+/.*_backup_*/
+/conversa.md
+
+# Executáveis locais baixados para o runtime (preservar a licença).
+/runtime_llm/cpu/
+/runtime_llm/vulkan/

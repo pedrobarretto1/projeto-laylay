@@ -14,6 +14,7 @@ from mente_laylay.memoria_mental.memoria_confiavel import (
 )
 from mente_laylay.autonomia.porteiro_acoes import texto_tem_comando_explicito
 from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_llm
 from mente_laylay.cognicao.leitura_semantica_turno import normalizar_leitura_semantica
 from mente_laylay.cognicao.guardiao_alegacoes import fala_adia_resposta_sem_continuacao
 from mente_laylay.cognicao.guardiao_realidade_pessoal import (
@@ -456,6 +457,9 @@ def preparar_resposta_para_execucao(
         texto,
     )
     falha_tecnica_llm = _fala_representa_falha_tecnica_llm(bot_raw)
+    categoria_falha = categoria_estado_tecnico_llm(bot_raw)
+    if falha_tecnica_llm and not categoria_falha:
+        categoria_falha = "falha_tecnica"
     if leitura_semantica_original:
         emocional_original = dict(
             leitura_semantica_original.get("leitura_emocional") or {}
@@ -753,6 +757,7 @@ def preparar_resposta_para_execucao(
             avaliacao_comunicacao = {**avaliacao_comunicacao, "requer_reparo": False}
         fala_reparada = ""
         reparo_modelo_indisponivel = False
+        motivo_falha_reparo = "reparo_rejeitado"
         if not somente_consultiva and callable(enviar_mensagem_cb):
             try:
                 reparada_raw = enviar_mensagem_cb(
@@ -773,6 +778,8 @@ def preparar_resposta_para_execucao(
                 reparo_modelo_indisponivel = _fala_representa_falha_tecnica_llm(
                     reparada_raw
                 )
+                if reparo_modelo_indisponivel:
+                    motivo_falha_reparo = categoria_estado_tecnico_llm(reparada_raw) or "falha_tecnica"
                 candidata, comandos_reparo = limpar_resposta_da_ia(
                     reparada_raw,
                     limpar_texto_fala_cb=limpar_texto_fala_cb,
@@ -802,6 +809,8 @@ def preparar_resposta_para_execucao(
                         + ",".join(segunda_avaliacao.get("problemas") or ["motivo_desconhecido"])
                     )
             except Exception as erro:
+                motivo_falha_reparo = "falha_tecnica"
+                reparo_modelo_indisponivel = True
                 registrar_log(
                     "⚠️ [COMUNICAÇÃO] tentativa de reparo falhou: "
                     f"{type(erro).__name__}"
@@ -817,11 +826,13 @@ def preparar_resposta_para_execucao(
             comunicacao_autocorrigida = True
             registrar_log("🧭 [COMUNICAÇÃO] resposta reparada antes da fala e da memória.")
         else:
+            registrar_log(f"🛟 [IA:CONTINGÊNCIA] causa={motivo_falha_reparo} etapa=reparo")
             fala_segura = contingencia_comunicacao(
                 texto,
                 foco=avaliacao_comunicacao.get("foco"),
                 contrato_reparo=avaliacao_comunicacao.get("contrato_reparo"),
                 falas_evitar=falas_recentes_comunicacao,
+                motivo_falha=motivo_falha_reparo,
             )
             autoria = None
             if reparo_modelo_indisponivel:
@@ -862,6 +873,14 @@ def preparar_resposta_para_execucao(
                         )
                     )
             elif autoria is not None:
+                if autoria.categoria_falha:
+                    registrar_log(f"🛟 [IA:CONTINGÊNCIA] causa={autoria.categoria_falha} etapa=autoria_final")
+                    fala_limpa = contingencia_comunicacao(
+                        texto, foco=avaliacao_comunicacao.get("foco"),
+                        contrato_reparo=avaliacao_comunicacao.get("contrato_reparo"),
+                        falas_evitar=falas_recentes_comunicacao,
+                        motivo_falha=autoria.categoria_falha,
+                    )
                 registrar_log(
                     "⚠️ [COMUNICAÇÃO] autoria final indisponível | "
                     f"motivo={autoria.motivo_fallback or 'desconhecido'}"
@@ -904,21 +923,25 @@ def preparar_resposta_para_execucao(
             "⚠️ [IA:REALIDADE] invenção pessoal substituída por contingência contextual."
         )
     elif not comandos and falha_tecnica_llm:
-        fala_limpa = _fala_contingencia_sem_llm(texto, contexto_contingencia)
+        fala_limpa = _fala_contingencia_sem_llm(texto, contexto_contingencia, motivo_falha=categoria_falha)
+        registrar_log(f"🛟 [IA:CONTINGÊNCIA] causa={categoria_falha} etapa=principal")
         registrar_log("🛟 [IA] Contingência conversacional manteve o turno aberto.")
     elif not comandos and not _fala_entregavel(fala_limpa, fallback_fala):
-        fala_reparada = _recuperar_fala_no_mesmo_turno(
+        recuperacao = _recuperar_fala_no_mesmo_turno(
             texto,
             bot_raw,
             enviar_mensagem_cb=enviar_mensagem_cb,
             limpar_texto_fala_cb=limpar_texto_fala_cb,
             fallback_fala=fallback_fala,
         )
-        if fala_reparada:
-            fala_limpa = fala_reparada
+        if recuperacao.fala:
+            fala_limpa = recuperacao.fala
             registrar_log("🛟 [IA] Resposta refeita e concluída no mesmo turno.")
         else:
-            fala_limpa = _fala_contingencia_sem_llm(texto, contexto_contingencia)
+            fala_limpa = _fala_contingencia_sem_llm(
+                texto, contexto_contingencia, motivo_falha=recuperacao.motivo_falha,
+            )
+            registrar_log(f"🛟 [IA:CONTINGÊNCIA] causa={recuperacao.motivo_falha} etapa=recuperacao_vazio")
             registrar_falha_contingencia("saida_nao_entregavel")
             registrar_log("🛟 [IA] Saída vazia; contingência manteve o turno aberto.")
     registrar_log(

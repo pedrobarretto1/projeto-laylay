@@ -28,6 +28,7 @@ from mente_laylay.cognicao.reacao_social_curta import (
     resposta_contingencia_provocacao,
 )
 from mente_laylay.personalidade.variacao_fala import escolher_variacao
+from mente_laylay.personalidade.contingencia_natural import fala_falha_geracao
 from mente_laylay.cognicao.guardiao_alegacoes import detectar_resultados_operacionais_sem_evidencia, validar_alegacoes_da_fala
 
 
@@ -290,6 +291,7 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "metacomentario_quebrou_personagem",
     "reacao_codigo_apenas_ecoou_relato",
     "identidade_negou_capacidades_confirmadas",
+    "capacidade_documentada_negada",
     "metalinguagem_tratada_como_conteudo",
     "referencia_textual_ausente_sem_esclarecimento",
     "metalinguagem_contradisse_classificacao",
@@ -582,6 +584,7 @@ def avaliar_qualidade_comunicacao(
             resposta,
             contrato_fala=plano_atual.get("contrato_fala"),
             ultima_resposta=resposta_anterior,
+            turno_id=plano_atual.get("id"),
         )
         problemas.extend(aderencia_contrato.get("problemas") or [])
 
@@ -725,6 +728,24 @@ def montar_mensagens_reparo_comunicacao(
         "contrato_de_reparo": dict(avaliacao.get("contrato_reparo") or {}),
         "troca_recente": selecionar_contexto_imediato(mensagens),
     }
+    contradicoes = reparo_parcial.get("contradicoes_capacidade") or []
+    if (
+        contradicoes
+        and reparo_parcial.get("estrategia") == "explicacao_capacidades"
+        and reparo_parcial.get("documentacao_capacidades")
+        and reparo_parcial.get("autoriza_execucao") is False
+        and all(isinstance(c, Mapping) and c.get("fonte") == "catalogo_vivo"
+                for c in contradicoes)
+    ):
+        # A formulação refutada serve ao diagnóstico, não à nova autoria.
+        # Ela existia em duas cópias: rascunho e trecho da contradição.
+        # Projetar fonte/ação sem alterar a avaliação completa nem apagar
+        # histórico, pergunta, limites documentados ou autorização.
+        payload.pop("rascunho_rejeitado")
+        payload["contrato_de_reparo"]["contradicoes_capacidade"] = [
+            {chave: c[chave] for chave in ("capacidade", "acao", "fonte") if chave in c}
+            for c in contradicoes
+        ]
     instrucao = (
         "Você está reparando uma resposta da Laylay, não iniciando outro assunto. "
         "Responda à mensagem atual de forma natural, completa e proporcional. Preserve "
@@ -751,7 +772,8 @@ def montar_mensagens_reparo_comunicacao(
         "Retorne somente JSON válido no "
         'formato {"fala":"resposta completa","comandos":[]}.'
     )
-    if dict(avaliacao.get("contrato_reparo") or {}).get("resultado_operacional_desconhecido"):
+    if (dict(avaliacao.get("contrato_reparo") or {}).get("resultado_operacional_desconhecido")
+            or dict(avaliacao.get("contrato_reparo") or {}).get("contradicoes_capacidade")):
         # Falta de prova do efeito não determina o ato do usuário. O contrato
         # continua dono da tarefa, inclusive quando a tarefa é explicar como usar.
         instrucao = (
@@ -798,6 +820,7 @@ def contingencia_comunicacao(
     foco: Mapping[str, Any] | None = None,
     contrato_reparo: Mapping[str, Any] | None = None,
     falas_evitar: Iterable[str] = (),
+    motivo_falha: str = "",
 ) -> str:
     """Último recurso contextual quando a única tentativa de reparo também falha."""
     texto = _normalizar(texto_usuario)
@@ -1084,6 +1107,9 @@ def contingencia_comunicacao(
             "Tá certo, discordar não quebra nada. Só deixa a conversa menos preguiçosa.",
             "Tudo bem. Eu tenho opinião, não contrato de obediência kkk.",
         ], evitar=falas_evitar)
+    conclusao_falha = fala_falha_geracao(motivo_falha)
+    if conclusao_falha:
+        return conclusao_falha
     if "?" in texto:
         return escolher_variacao([
             "Essa eu não consegui fechar sem chutar. Me dá um detalhe a mais?",

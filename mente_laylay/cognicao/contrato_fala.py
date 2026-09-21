@@ -100,6 +100,7 @@ class ContratoSemanticoFala:
     respostas_recentes_evitar: tuple[str, ...] = ()
     capacidades_confirmadas: tuple[str, ...] = ()
     documentacao_capacidades: str = ""
+    predicados_capacidade: tuple[Mapping[str, Any], ...] = ()
     cooperacao_considerada: bool = False
     roteiro_concreto: Mapping[str, Any] = field(default_factory=dict)
     autoriza_execucao: bool = False
@@ -788,6 +789,10 @@ def construir_contrato_semantico_fala(
         respostas_recentes_evitar=recentes,
         capacidades_confirmadas=capacidades_confirmadas,
         documentacao_capacidades=documentacao_capacidades,
+        predicados_capacidade=tuple(
+            dict(p) for p in evidencia_capacidades.get("predicados_capacidade", ())
+            if isinstance(p, Mapping)
+        ) if documentacao_capacidades else (),
         cooperacao_considerada=bool(deliberacao),
         autoriza_execucao=False,
     )

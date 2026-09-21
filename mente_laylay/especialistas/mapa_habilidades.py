@@ -565,6 +565,15 @@ class MapaHabilidadesRuntime:
             ),
             "documentacao_texto": str(texto),
             "documentacao_turno_id": dict(turno or {}).get("id"),
+            # Evidência tipada privada do verificador, do MESMO snapshot.
+            # Não amplia o prompt nem relê disponibilidade durante o reparo.
+            "predicados_capacidade": [
+                {"capacidade": intent, "dominio": capacidade["dominio"], **dict(predicado)}
+                for intent, capacidade in mapa["capacidades"].items()
+                if capacidade.get("estado") == "disponivel"
+                and capacidade["dominio"] in relevantes
+                for predicado in capacidade.get("predicados_capacidade", ())
+            ],
             "autoriza_execucao": False,
         }
 

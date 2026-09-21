@@ -346,9 +346,35 @@ def _limites_documentais(contrato: dict[str, Any]) -> str:
     return str(contrato.get("limites") or "")
 
 
+# Predicados declarativos para confrontar alegações gerais sobre habilidades.
+# Não são exemplos de fala, resolvedores de alvo ou autorização de comandos.
+# Ausência de predicado significa cobertura desconhecida, nunca incapacidade.
+_PREDICADOS_CAPACIDADE = {
+    "MEDIA_CONTROL": (
+        {"acao": "controlar", "presente": ("controlo", "controla"),
+         "objetos": ("musica", "audio", "midia")},
+    ),
+    "APP_OPEN": (
+        {"acao": "abrir", "presente": ("abro", "abre"),
+         "objetos": ("programa", "aplicativo")},
+    ),
+    "IOT_CONTROL": (
+        {"acao": "controlar", "presente": ("controlo", "controla"),
+         "objetos": ("dispositivo inteligente",)},
+    ),
+    "CLOSE_TAB": (
+        {"acao": "fechar", "presente": ("fecho", "fecha"),
+         "objetos": ("aba", "aba do navegador")},
+    ),
+}
+
+
 CAPACIDADES: Dict[str, Dict[str, Any]] = {
     intent: {
         "intent": intent,
+        "predicados_capacidade": tuple(
+            dict(p) for p in _PREDICADOS_CAPACIDADE.get(intent, ())
+        ),
         "dominio": dominio,
         "disponivel": True,
         "exige_confirmacao": intent in _CONFIRMACAO_OBRIGATORIA,

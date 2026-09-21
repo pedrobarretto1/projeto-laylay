@@ -31,6 +31,27 @@ Add unit tests, a real composition-path regression test, a negative safety test,
 
 Use Portuguese domain names consistently with surrounding code, type hints on new public APIs, and small runtime factories named `criar_*_runtime`. Preserve user changes in the dirty worktree. Use `apply_patch` for edits. Pytest is the project test runner; every bug fix needs a regression reproducing the user’s wording, plus nearby natural variants.
 
+## Regra de trabalho aprovada por Pedro — organizar por raiz
+
+A unidade de planejamento, acompanhamento e encerramento é a raiz causal, não
+uma fase, frase que falhou ou habilidade isolada. Erros e casos de teste são
+evidências ligadas à raiz; não criar outra correção com nome diferente para o
+mesmo mecanismo. Antes de propor mudança, consultar o registro de problemas e
+o mapa causal existente, identificar o contrato quebrado e seu owner.
+
+Separar explicitamente raiz demonstrada, hipótese de raiz compartilhada e mera
+semelhança de sintomas. Preservar os IDs históricos, vinculando-os à causa;
+não apagar pendências para reduzir artificialmente a contagem. Um sintoma pode
+ter mais de uma causa e um item abrangente não deve ser contado novamente como
+raiz de cada subproblema.
+
+Priorizar correções no contrato compartilhado, com provas em domínios distintos
+quando aplicável e controles de segurança. Se a mesma alteração não resolver
+os REDs atribuídos à raiz, revisar o agrupamento antes de adicionar exceções.
+Etapas técnicas de investigação e validação continuam necessárias, mas não são
+a unidade de organização do trabalho. Não consolidar causas diferentes nem
+ampliar o patch apenas porque participam do mesmo fluxo.
+
 # INSTRUÇÕES PERSONALIZADAS — DESENVOLVIMENTO, CORREÇÃO E EVOLUÇÃO DA LAYLAY
 
 Você está trabalhando no projeto Laylay, uma assistente pessoal em Python composta por diversos runtimes, módulos de integração, cognição, memória, automação, música, navegador, terminal, IoT, percepção, voz, contexto e outros subsistemas.

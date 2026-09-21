@@ -120,6 +120,13 @@ def carregar_configuracao_roteiro(caminho: str | os.PathLike[str]) -> Configurac
     """Lê somente constantes literais do arquivo Python indicado."""
 
     arquivo = Path(caminho).expanduser().resolve()
+    raiz = Path(__file__).resolve().parents[2]
+    # Compatibilidade somente com o antigo endereço na raiz do projeto.
+    # Um caminho explícito ausente em outra pasta nunca escolhe outro teste.
+    if not arquivo.is_file() and arquivo.parent == raiz:
+        organizado = raiz / "scripts" / "roteiros" / arquivo.name
+        if organizado.is_file():
+            arquivo = organizado
     if not arquivo.is_file():
         raise FileNotFoundError(f"roteiro não encontrado: {arquivo}")
     arvore = ast.parse(arquivo.read_text(encoding="utf-8"), filename=str(arquivo))

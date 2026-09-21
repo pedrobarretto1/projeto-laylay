@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import time
 from typing import Any, Callable
+from mente_laylay.cognicao.estado_tecnico_llm import estado_bloqueio_orcamento_llm
 
 from mente_laylay.integracao.llm_http import (
     FALHA_LLM_OCUPADA,
@@ -119,7 +120,7 @@ class ClienteLLMRuntime:
                     f"tipo={requisicao.tipo_chamada} motivo={decisao_orcamento.motivo}"
                 )
                 return ResultadoModelo(
-                    texto=FALHA_LLM_OCUPADA,
+                    texto=estado_bloqueio_orcamento_llm(decisao_orcamento.motivo),
                     sucesso=False,
                     rota="orcamento_bloqueado",
                 )

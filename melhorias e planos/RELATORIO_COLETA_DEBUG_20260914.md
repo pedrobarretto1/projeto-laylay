@@ -1493,3 +1493,236 @@ SHA256 final (inclui patches anteriores):
 Próxima fronteira proposta: relevância dos limites e das responsabilidades por
 capacidade/rota na documentação (P01), sem enfraquecer a verificação factual.
 Nenhum commit, treino ou promoção neural nesta etapa.
+
+## C16 — 19–20/09: escopo e responsável dos limites documentais
+
+**Bases:** início em `main`, HEAD `76aa525ef61fdb4ecfbfdb578adf572c0b83949a`,
+worktree suja preservada. Após a pausa, HEAD
+`c8b4c26f31deabd21168a458273896f398e2ddf0` ("aprimoramento elevado 0.1"),
+worktree limpa e candidato de produção já incorporado por commit externo.
+Não reapliquei o patch nem alterei travas. A sessão do pytest anterior não
+estava mais acessível; a seleção foi rodada novamente e concluída em 20/09.
+
+**Primeira fronteira:** o contrato central de sistema tinha como único limite
+"só envia ao PC remoto quando versão, saúde e capacidade anunciada são
+compatíveis". A projeção do domínio entregava essa frase indiferenciadamente
+para perguntas de volume e aplicativos locais. A documentação não explicitava
+o alcance da condição. Em IoT, "confirma controle somente após reler o
+dispositivo" não identificava o responsável pela verificação.
+
+**Falsificações:** `executor_audio._executar_volume` distingue `pc_b` de
+callbacks locais; os 12 testes existentes de áudio passaram antes do patch,
+incluindo rotas local/remota. Logo, controle local não depende intrinsecamente
+de PC remoto. No controlador IoT, após `definir_estado`, é o próprio controlador
+que chama `consultar_estado` e confere o alvo; não há uma etapa de releitura
+atribuída ao usuário. O texto remoto já vinha do catálogo canônico, não precisava
+ser inferido do histórico. Não declarar que isso explica toda invenção da LLM.
+
+**Contrato reutilizável:** regra documental tem escopo, condição de aplicação
+e responsável. Não se promove limite de outra rota a requisito universal nem
+se transfere uma verificação interna ao usuário. Documentação descreve como
+usar; não prova estado atual, autorização ou sucesso de ação.
+
+**Candidato mínimo:**
+
+- `especialistas/capacidades.py`: regras contextuais de sistema e IoT no
+  cadastro existente. O texto `limites` legado deriva dessas regras. Limites
+  de outros domínios preservados, sem inventar escopos para eles.
+- `especialistas/mapa_habilidades.py`: projeta as regras estruturadas quando
+  disponíveis, em vez de achatá-las. Mantém a seleção e disponibilidade.
+- `personalidade/fala_capacidades.py`: orientação geral sobre condição e
+  responsável, sem respostas fixas nem novos parsers por habilidade.
+
+Não alterados: roteadores, executores, classificadores, guardiões, reparador,
+rede ou configuração operacional. A disponibilidade negativa continua sem
+exemplos de execução; pergunta segue sem autoridade. Nenhuma nova habilidade.
+
+**RED/GREEN:** nove testes em `tests/test_limites_documentais_contextuais.py`:
+sete REDs causais e dois controles verdes antes do candidato. Com os 12 testes
+de áudio, primeiro resultado foi 7 falhas / 14 aprovados. Após candidato,
+seleção focada com catálogo, composição, autoria, reparo e conexões: 97 aprovados.
+Em 20/09, seleção ampliada incluindo `consultar_capacidade`: **2.829 aprovados,
+14 xfailed preexistentes, 30 subtestes aprovados**, 26,39 s. Não é suíte global.
+O teste novo permanece ignorado pela regra existente de `tests/` (P09).
+
+**Runtime real, sem replay:**
+`roteiro_explicacao_capacidades-20260920-085230-637670`, captura
+`transporte_evidencia-20260920-085228-787217`. Modelo HTTP `qwen3:4b-instruct`.
+O HTTP de calculadora, lâmpada e volume recebeu escopo/condição/responsável;
+a regra remota permaneceu somente no documento de sistema. Geração nova:
+
+- Calculadora/volume: explicitou sistema operacional local, sem exigir outro PC.
+- IoT: Laylay se atribuiu verificar a configuração; não exigiu releitura pelo usuário.
+- Não houve comando operacional. Doze respostas, 11 aprovações mínimas, um
+  alerta; p95 11,363 s, máximo 15,204 s. Sem certificação de qualidade global.
+
+**Limites importantes:** em quatro turnos o verificador voltou a classificar
+exemplos como obras, pesquisar seus títulos e cortar instruções (P10). Entre
+eles, `como em 'abre a calculadora'`, `pedir para mim: 'ligue a lâmpada'` e
+exemplos com vocativo `Laylay, ...`. Em volume, removeu também a frase sobre
+controle local por `plataforma_sem_evidencia`; a fala restante ensinou abrir
+o controle de volume, não apenas pedir o ajuste. Catálogo/projeção validados
+no escopo; **entrega final ainda parcial**. Guardião não foi enfraquecido.
+Esses resultados estão separados em P10/P01 para a próxima investigação.
+
+UI/microfone/voz desligados, IoT simulado, Gmail sem credenciais. A extensão
+Chrome conectou durante a sonda; não houve comando operacional. Observadores,
+persistência e pesquisa temática normais permaneceram ativos (houve inclusive
+consulta equivocada à Wikipédia). Histórico de teste não é treino aprovado.
+Processo concluído e ausência de processos Python conferida ao final.
+
+SHA256 final da produção:
+
+- capacidades: `3a40874359e34235d35b56a0f8578f57a931517b59720fb40479c44cd71a72ec`
+- mapa_habilidades: `323ccb338df928951c448c875120053b12c7eae03d64a715df13891af6574efc`
+- fala_capacidades: `5b83e87612a9920df356eddde71e5a975432cc758c4079ff5006b1d720dbd334`
+
+Nenhum commit criado pelo agente; nenhum treino ou promoção neural.
+
+## C17 — 20/09: exemplo de fala não depende de ser comando executável
+
+Base `main`, HEAD `c8b4c26f31deabd21168a458273896f398e2ddf0`. Antes do patch,
+somente os dois relatórios de C16 estavam modificados; preservados. Produção
+alterada apenas em `cognicao/fundamentacao_factual.py`. Regressões no arquivo
+existente `tests/test_citacao_didatica_nao_e_obra.py`, ignorado pelo Git (P09).
+SHA anterior: `325ad755e42bf88770a327bd8baedfb793f9dbb112c7c243791eb8dca0c6008f`.
+
+**Cadeia causal:** resposta com orientação → extração do papel da citação →
+exemplo vira obra candidata → guardião exige fonte → orquestrador pesquisa
+o suposto título → corta a instrução. Localizada a primeira divergência no
+classificador compartilhado de citações, antes da pesquisa e da fala.
+
+**Falsificações e limites:**
+
+- Falha reproduzida diretamente no extrator, sem LLM, histórico ou rede:
+  não era resultado ruim do provedor de pesquisa nem apenas variação do Qwen.
+- `ligue a lâmpada`, `desligue o ventilador` e `abre a calculadora` já são
+  pedidos canônicos; mesmo assim viravam títulos sob as molduras históricas.
+  Logo, falta de reconhecimento do verbo não explica todos os casos.
+- `aumente o volume`, com ou sem vocativo, retorna natureza `nenhuma`. O
+  verificador de exemplos não deve exigir que a gramática operacional consiga
+  executar qualquer frase citada. Isso não autoriza ampliar a execução aqui.
+- `Abra os Olhos` é lido como pedido pelo classificador; por isso a moldura
+  externa continua indispensável para distinguir título de enunciado.
+
+**Contrato:** o papel da citação vem de sua relação linguística local. Referência
+tipificada entre verbo e exemplo não encerra essa relação; nome de obra ou nova
+frase não relacionada não herda a isenção. Vocativo sob orientação de pedido
+identifica um enunciado, não uma utterance autorizante ou prova de efeito.
+
+**Candidato:** preservar complemento de destinatário; reconhecer conector de
+exemplificação e frase seguinte com orientação; abstrair apenas referências já
+tipificadas ao examinar o prefixo; reutilizar `analisar_identidade_turno` com
+texto normalizado, em vez de cadastrar comandos ou vocativos privados. Pedidos
+cujo objeto é filme/música/livro etc. não ganham escopo de instrução só por
+terem um exemplo depois. Datas, medidas e estados vizinhos continuam verificados.
+Não alterados: gramática operacional, pesquisa, executor, catálogo ou rede.
+
+**Testes:** primeira rodada com 11 REDs causais e 54 aprovados antes da produção.
+Após candidato: 65 aprovados. Acrescentadas três integrações com composição,
+estado compartilhado, verificador e montagem de fundamentação reais; apenas o
+transporte de pesquisa é observado, sem evidência inventada. Elas provam que
+exemplos não disparam pesquisa e título real continua exigindo fonte. Total
+focado: **68 aprovados**. Seleção ampliada final: **2.849 aprovados, 14 xfailed
+preexistentes e 30 subtestes**, 24,40 s. Não é suíte global nem teste de caos.
+
+**Runtime:** Pedro encerrou a sessão após solicitação; o agente não a matou.
+Usado `sonda_transporte_evidencia.py` com o roteiro de 12 perguntas, IoT simulado,
+voz/UI/microfone desligados e Gmail sem credenciais. Observadores e persistência
+normais ativos; Chrome conectou sem receber comando operacional.
+
+- `roteiro_explicacao_capacidades-20260920-090155-946269`, captura
+  `transporte_evidencia-20260920-090154-856571`: replay explícito somente da
+  resposta histórica de lâmpada de 08:52. A instrução “pedir para mim:
+  'ligue a lâmpada'” chegou inteira ao chat; nenhuma pesquisa de obra ou corte.
+  Doze respostas, zero comandos, 12/12 no avaliador mínimo, p95 4,596 s.
+- `roteiro_explicacao_capacidades-20260920-090237-770804`, captura
+  `transporte_evidencia-20260920-090236-732295`: replay explícito somente da
+  resposta histórica de volume. O trecho “Por exemplo: 'Laylay, aumente o
+  volume'” foi preservado. A frase seguinte sobre PC/local ainda foi cortada
+  por `plataforma_sem_evidencia`, fronteira distinta preservada. Doze respostas,
+  zero comandos, 12/12 mínimo, p95 3,608 s; sem pesquisa indevida de citações.
+
+As demais chamadas ao modelo `qwen3:4b-instruct` tiveram geração nova, não replay.
+O placar mínimo não certifica a qualidade geral: ainda houve negação de controle
+de áudio na resposta de retomada e orientação IoT de conferir configuração.
+P01 continua aberto. Nenhuma conclusão sobre títulos emocionais ou todas as
+formas possíveis de citação. Próxima fronteira delimitada: capacidade local
+vs. alegação externa de plataforma, sem retirar a verificação de fatos.
+
+SHA final: `8ca0d0d61d7a505066d898c6c77ca58ee865b0bb11f4a79a990d7370d79ba62c`.
+Nenhum commit, treino, promoção neural ou ação física. Histórico de teste não
+constitui feedback aprovado para treinamento.
+
+## C18 — 20/09: documentação local não é evidência de plataforma externa
+
+Base `main`, HEAD `c8b4c26f31deabd21168a458273896f398e2ddf0`. Worktree já
+continha C17 em `fundamentacao_factual.py` e alterações nos dois relatórios;
+preservadas. Produção alterada nesta etapa somente em `fundamentacao_factual.py`
+e `plano_turno.py`. Novo teste `tests/test_capacidade_local_nao_e_plataforma.py`
+continua ignorado pelo Git conforme P09; não houve mudança de ignore ou commit.
+
+**Primeira fronteira RED:** a resposta de volume continha a frase “Eu vou usar
+o sistema operacional local para ajustar o volume do seu PC, sem precisar de
+conexão com outro dispositivo.” A extração factual classificava PC como
+plataforma, independentemente da relação expressa. O verificador recebia
+fundamentação temática, mas não a documentação de controle local já selecionada
+no contrato de fala. Resultado: `plataforma_sem_evidencia` e retirada da frase.
+
+**Falsificações:** o corte foi reproduzido deterministicamente, sem modelo,
+histórico ou pesquisa; não dependia de nova invenção do Qwen. A documentação
+canônica estava disponível antes da validação, afastando ausência do catálogo.
+Por outro lado, liberar qualquer ocorrência de PC ou misturar o catálogo com
+evidência factual permitiria inferir compatibilidade de jogos sem fonte.
+
+**Contrato e candidato mínimo:** documentação disponível sustenta descrição
+da capacidade, não existência de obra, compatibilidade nem efeito executado.
+O plano só encaminha a fonte quando origem é `mente_unica`, ID e âncora são do
+turno atual, estratégia é explicativa e não há autorização, comando ou execução.
+O validador aceita uma família gramatical delimitada de descrição em primeira
+pessoa do sistema operacional local, somente para recurso presente na regra
+`controle_local`, de responsabilidade da Laylay e disponibilidade positiva.
+Somente o token PC dessa descrição deixa de ser alegação externa de plataforma;
+as demais verificações permanecem. JSON inválido e documentos ausentes, remotos,
+indisponíveis ou de outro turno não concedem essa sustentação.
+
+Não se trata de inferência semântica geral: paráfrases fora da família e recursos
+não documentados conservam o caminho estrito anterior. O princípio é reutilizável
+para recursos documentados; não há exceção para uma pergunta ou número de turno.
+Catálogo, prompt, gramática operacional, executores, rede e pesquisa não alterados.
+
+**Testes:** antes da produção, quatro REDs causais e 20 controles aprovados.
+Após candidato, os 24 contrastes passaram: quatro descrições locais, oito
+documentos inválidos/inadequados, oito alegações externas e quatro outros fatos.
+Com citações e regressões de plataforma: **108 aprovados**. Seleção ampliada:
+**2.873 aprovados, 14 xfailed preexistentes e 30 subtestes**, 24,80 s.
+Sem novos xfails; não é declaração de suíte global ou caos verde.
+
+**Prova no caminho real:**
+
+- Roteiro: `resultados_testes/roteiro_explicacao_capacidades-20260920-163307-753819`.
+- Captura: `resultados_testes/transporte_evidencia-20260920-163305-049150/transporte.jsonl`.
+- Usado `sonda_transporte_evidencia.py --roteiro roteiro_explicacao_capacidades.py`
+  com captura de preparação e replay somente do texto “como eu poderia aumentar
+  o volume?”, vindo de `transporte_evidencia-20260920-085228-787217/transporte.jsonl`.
+- O turno 11 entregou integralmente a mesma resposta histórica, inclusive a
+  frase antes cortada. Isso prova o caminho de validação/entrega sobre a geração
+  capturada, não uma geração nova desse turno. Demais chamadas ao Qwen foram novas.
+- Doze respostas, zero comandos operacionais, 11/12 no avaliador mínimo,
+  zero fallbacks conversacionais registrados, p95 10,27 s.
+- Turno 3 ainda falhou: “A Laylay não controla o áudio diretamente...” ao ensinar
+  retomada. P01 permanece aberto; próxima fronteira é a negativa de capacidade
+  frente ao documento realmente recebido, não remover outro guardião às cegas.
+
+UI/voz/microfone desligados, IoT simulado e Gmail sem credenciais. Chrome conectou;
+observadores e persistência normais permaneceram ativos. Não foram realizados
+comandos operacionais nem testes de efeitos físicos. Processo terminou com
+exit code 0 e ausência de processos Python conferida ao final. A sessão do
+usuário não foi encerrada pelo agente. Histórico da sonda não é treino aprovado.
+
+SHA256 da produção ao validar:
+
+- fundamentacao_factual: `a1d4c679895671156e27cf19ce4bede52bd8bbc1c0ae612f7a9ee8f171a876ea`
+- plano_turno: `3a69de2559ba765d0c8fa6c8dd3d40ee4efb9dcf2c4432432bde6f91107cefd6`
+
+Nenhum commit, treino ou promoção neural nesta etapa.

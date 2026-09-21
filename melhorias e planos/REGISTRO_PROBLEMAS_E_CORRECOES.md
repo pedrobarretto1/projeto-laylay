@@ -1,6 +1,6 @@
 # Laylay — registro de problemas e correções
 
-Atualizado em **19/09/2026**, por Astra, a pedido do Pedro.
+Atualizado em **21/09/2026**, por Astra, a pedido do Pedro.
 
 Este é o índice central dos problemas encontrados enquanto corrigimos outros
 problemas. Serve para não perder achados, não misturar causas e deixar claro o
@@ -36,13 +36,13 @@ Estados usados: **a investigar**, **reproduzido**, **parcial**, **limite não va
 | P06 | Ponto de extensão em nome de arquivo | Reproduzido em teste; xfail conhecido | Interpretação do alvo |
 | P07 | Continuidade na rota exclusivamente de áudio | Limite não validado | Possíveis lacunas de histórico |
 | P08 | Credencial em logs históricos do Chrome | Parcial: saída nova corrigida | Alto: artefatos sensíveis |
-| P09 | Novos testes ficam ignorados pelo Git | Confirmado por configuração | Perda de regressões no versionamento |
-| P10 | Falso positivo de fundamentação em citação | C10/C14 validados para exemplos e recursos tipificados; escopo mais amplo aberto | Proteção não deve apagar instruções válidas |
+| P09 | Novos testes ficam ignorados pelo Git | Regra corrigida e validada em 21/09; sem staging | Revisar fontes antes de versionar; artefatos já rastreados exigem ação separada |
+| P10 | Falso positivo de fundamentação em citação | F1: exemplos com “pedir para” também validados em 21/09; escopo mais amplo aberto | Proteção não deve apagar instruções válidas |
 | P11 | Pedido de informação confundido com afirmação de estado | Validado no escopo; ver C08 | Fallback desnecessário corrigido nos casos cobertos |
 | P12 | Pergunta de procedimento sem natureza operacional reconhecida | Classificação validada no escopo C11; resposta final ainda falha | Reparo posterior separado em P16 |
 | P13 | Nome de aplicativo não recupera seu domínio no catálogo | Recuperação validada no escopo C12 | Resposta final ainda afetada por P10 |
 | P14 | Resposta prioritária IoT troca ação e dispositivo | Corrigido e validado no escopo C13 | Qualidade mais ampla da autoria continua em P01 |
-| P15 | Timeout tratado como pedido ambíguo | Reproduzido no runtime; causa da latência aberta | Pede reformulação de pergunta já clara |
+| P15 | Falha técnica tratada como pedido ambíguo | Validado no escopo de propagação; limites de conclusão registrados | Causa da latência não investigada |
 | P16 | Reparo de explicação presume relato de ação passada | Validado no escopo C15 | Objetivo e fonte preservados; qualidade geral ainda em P01 |
 
 A frente atual é **P01**. O corte do catálogo (C07) e o falso reparo P11 (C08)
@@ -52,8 +52,85 @@ Este índice não altera essas decisões e não promove a rede neural.
 
 ## Pendências detalhadas
 
+### Organização por contratos — diagnóstico de 20/09
+
+O [mapa causal da conversa](MAPA_RAIZES_CONVERSA.md) passa a orientar a próxima
+etapa: F1 significado, F2 capacidade/fonte/escopo e F3 causa técnica. As famílias
+não substituem os IDs nem significam que todos os itens têm uma única raiz.
+P01 é abrangente; evitar contá-lo novamente como causa de cada subproblema.
+
+Nesta auditoria, nenhum patch novo de produção: quatro REDs de negativas falsas
+em música/sistema/IoT/navegador e um RED de exemplos no infinitivo confundidos
+com obras: **cinco REDs, oito controles aprovados** e 261 regressivos anteriores
+aprovados. O bruto da retomada já negava a capacidade; o verificador ainda
+cortou as instruções, agravando a fala. REDs preservados sem xfail no teste
+`test_coerencia_capacidade_documentada.py`. P15 também reproduzido localmente:
+três categorias técnicas chegam à contingência como se faltasse clareza.
+Próxima implementação: coerência documental compartilhada (F2), depois
+propagação da causa técnica (F3), sem novo remendo específico para música.
+
+**Experimento F2, 20/09 às 17:00:** projeção ampliada de contratos operacionais
+testada e retirada por não demonstrar benefício global no runtime. Doze
+respostas, zero comandos; negativas/promessas inadequadas e cortes ainda
+presentes. Dados extras no prompt não corrigiram a conferência da resposta.
+Cinco REDs comportamentais preservados; não declarar outra correção concluída.
+Detalhes e artefatos no mapa causal. A regra de organizar por raiz foi gravada
+no `AGENTS.md`; nenhuma alteração permanente nova em produção nesta rodada.
+
+**F2, 20/09 às 22:10 — conferência validada no escopo, reparo ainda aberto:**
+o mesmo comparador passou nas negativas de música, aplicativos, IoT e abas,
+com predicados do snapshot canônico e sem ampliar o prompt inicial. Disponibilidade
+não virou receipt nem autorização. Seleção ampliada: 2.913 aprovados, um RED
+F1, 14 xfailed preexistentes e 30 subtestes; controles posteriores na seleção
+focada: 58 aprovados e o mesmo RED F1. No replay pelo runtime real, a negativa
+histórica foi detectada; o Qwen repetiu a contradição no reparo, que foi rejeitado.
+A resposta final pediu clareza indevidamente (F3). Portanto, não encerrar P01:
+há prova de bloqueio, não de recuperação da explicação. Próxima fronteira F2:
+isolar influência do rascunho/histórico no reparo, sem empilhar instruções.
+Captura `transporte_evidencia-20260920-221039-790886`; detalhes e escopo no mapa.
+
 ### P01 — Explicações de capacidade e instruções pouco coerentes
 
+- **F2, 20/09 às 22:18:** ablação de 21 chamadas locais isolou duas cópias do
+  conteúdo refutado no reparo (rascunho e trecho de diagnóstico). Retirar só
+  histórico ou só uma cópia não eliminou a negativa; retirar ambas conservando
+  histórico não a repetiu nas três amostras, embora restasse imprecisão.
+  Corrigida a projeção no reparador compartilhado, sem aumentar prompt/orçamento
+  ou alterar os executores. Quatro REDs por domínio passaram com a mesma regra;
+  ampliado: 2.929 aprovados, um RED F1, 14 xfailed e 30 subtestes. Replay real
+  reparou a negativa histórica para uma instrução de retomada, sem fallback ou
+  comandos; 12/12 no avaliador mínimo não significa qualidade global. Captura
+  `transporte_evidencia-20260920-221832-302877`. Paráfrases ainda escapam da
+  conferência, IoT ainda transferiu checagem ao usuário e uma variação de PC
+  foi cortada. Detalhes no mapa causal; P01/F2 continuam parciais. Próxima raiz
+  priorizada: F3, conclusão coerente para falha técnica, não nova expansão neural.
+- **C18, 20/09:** descrição de controle local sustentada pela documentação do
+  turno não é mais confundida com disponibilidade de obra na plataforma PC.
+  Quatro REDs causais passaram; seleção ampliada: 2.873 aprovados e 14 xfailed
+  preexistentes. Replay da resposta histórica de volume no runtime preservou
+  a frase inteira, sem comandos. A sonda terminou com 12 respostas e 11/12 no
+  avaliador mínimo: a geração nova de retomada voltou a negar controle de áudio
+  (turno 3). Próxima investigação: confrontar essa negativa com a documentação
+  efetivamente entregue ao modelo. P01 permanece parcial; a regra C18 cobre uma
+  família gramatical delimitada, não todas as paráfrases nem qualidade global.
+- **Após C17, 20/09:** exemplos de comandos sobreviveram nas duas sondas.
+  Separadamente, o replay de volume ainda teve a frase sobre sistema local/PC
+  removida por `plataforma_sem_evidencia`. A geração nova de retomada chegou a
+  negar controle de áudio apesar do catálogo, e IoT voltou a sugerir conferência
+  manual de configuração. Esses achados impedem encerrar P01 ou usar o 12/12
+  mínimo como prova de qualidade global. Próxima investigação delimitada:
+  distinguir descrição de capacidade local de alegação sobre plataforma externa.
+- **C16, 20/09:** catálogo passa a descrever limites com escopo, condição e
+  responsável. Na projeção para autoria, a regra do envio remoto não é mais
+  o limite textual único do sistema. Controle local e envio a outro PC ficam
+  separados; releitura IoT é responsabilidade interna da Laylay. O formato
+  textual legado é derivado das mesmas regras, sem cadastro duplicado.
+  Sonda com geração nova confirmou documentação no HTTP e respostas de
+  calculadora/volume sem exigir PC remoto. A fala IoT não pediu ao usuário
+  que relesse o dispositivo. **Resultado final ainda parcial:** P10 apagou
+  exemplos didáticos em quatro turnos; a frase sobre controle local de volume
+  também foi cortada por `plataforma_sem_evidencia`. O modelo ensinou abrir o
+  controle de volume, em vez de só pedir o ajuste: precisão geral ainda aberta.
 - **19/09, após C15:** no reparo real de volume, o Qwen manteve a explicação,
   mas ainda acrescentou requisito de PC remoto. O verificador retirou essa frase
   (`plataforma_sem_evidencia`) e preservou a instrução. Na mesma sonda, IoT
@@ -204,6 +281,28 @@ Este índice não altera essas decisões e não promove a rede neural.
   artefatos e dados sensíveis excluídos. Nenhuma regra foi alterada nesta organização.
 - **Fechar quando:** regressões necessárias puderem ser versionadas com segurança,
   sem adicionar arquivos em massa nem expor dados de teste pessoais.
+- **21/09, autorizado por Pedro:** removida a regra ampla `tests/`. Mantidos
+  segredos, playlists, memória, resultados e caches ignorados; adicionados
+  `*.caos-backup`, backups ocultos identificados, `/conversa.md` e diretórios
+  de binários `runtime_llm/cpu/` e `runtime_llm/vulkan/`. Licença preservada.
+  Retirada a exceção inoperante de terminal.log sob diretório ignorado.
+  Doze contrastes `git check-ignore --no-index` provam código/exemplos visíveis
+  e dados locais ignorados. Novos testes ficam visíveis, não adicionados ao Git.
+- **Organização autorizada:** 21 roteiros apagados recuperados de HEAD em
+  `scripts/roteiros/`; o caos restante foi movido da worktree, preservando seu
+  conteúdo. Total 22. Alterações apagadas que não estavam no Git não são
+  recuperáveis por esse procedimento. Loader aceita caminho legado da raiz
+  somente quando ausente; arquivo explícito existente tem prioridade; caminho
+  ausente fora da raiz não é substituído. Sonda usa o caminho novo; imports e
+  caminho da fixture do caos ajustados, sem executar o caos.
+  104 testes de organização/loader/fixture/P15 aprovados. Guia em
+  `scripts/roteiros/README.md`. Outros analisadores/aplicadores apagados não
+  foram restaurados fora do escopo de roteiros.
+- **Limite do ignore:** continuam rastreados 306 arquivos em resultados,
+  103 em runtime_llm, backup de playlists, conversa.md e três backups de código
+  (estes últimos já removidos da worktree pelo usuário). Não houve `git rm`,
+  staging, commit, exclusão de dados locais ou reescrita de histórico. Ignore
+  não desversiona conteúdo existente; revisão do índice é trabalho separado.
 
 ### P10 — Citações confundidas com conteúdo que exige fundamentação
 
@@ -248,6 +347,67 @@ Este índice não altera essas decisões e não promove a rede neural.
   Replay da resposta histórica no processo real chegou inteiro ao chat;
   geração nova também preservou a instrução e manteve verificação de fatos
   adicionais. O caso emocional original de 13/09 não foi revalidado.
+- **Novo limite em 20/09, durante C16:** a sonda
+  `roteiro_explicacao_capacidades-20260920-085230-637670` voltou a pesquisar
+  exemplos como títulos: “como em 'abre a calculadora'”, “pedir para mim:
+  'ligue a lâmpada'”, “Exemplo: 'Laylay, desligue o ventilador'” e “Por exemplo:
+  'Laylay, aumente o volume'”. A primeira frase da explicação da lâmpada foi
+  apagada, restando apenas a condição de configuração. Captura HTTP:
+  `transporte_evidencia-20260920-085228-787217`. Guardião não alterado em C16.
+  Próxima fronteira: distinguir esses exemplos com contexto e vocativo, sem
+  liberar títulos reais ou executar o texto citado; não ampliar listas de
+  frases cegamente nem usar o placar mínimo como prova de resposta boa.
+- **C17, 20/09:** 11 REDs reproduzidos antes do patch. A moldura de destinatário
+  (“pedir para mim”), o conector de exemplo e a referência tipificada entre
+  verbo e exemplo não eram preservados. Além disso, o exemplo citado precisava
+  passar pelo classificador operacional; “aumente o volume” retorna natureza
+  `nenhuma`. Reutilizado o reconhecedor canônico de vocativo, apenas sob moldura
+  didática, sem alterar a gramática de execução ou conceder autorização.
+- **Validação C17:** 68 testes de citação, incluindo três de integração com
+  composição/estado/verificador reais e transporte de pesquisa observado;
+  título real continua sendo pesquisado. Seleção ampliada: 2.849 aprovados,
+  14 xfails anteriores e 30 subtestes. Dois replays no runtime completo (lâmpada
+  e volume) preservaram os exemplos no chat, sem pesquisa de obra; demais
+  chamadas ao Qwen tiveram geração nova. Ambas as sondas: 12 respostas e zero
+  comandos. Plataforma/local é outra fronteira, não corrigida em C17.
+- **F1, 21/09 — conteúdo citado de pedido:** o mesmo extrator não reconhecia
+  a preposição em “pedir para 'tocar a música'”. A primeira fronteira RED era
+  o papel da citação, antes da pesquisa e do corte factual. Treze REDs causais
+  reproduzidos em música, aplicativos, IoT, agenda e verbos não executáveis.
+  Corrigida somente a moldura compartilhada de `pedir/peça para/pra` seguida
+  imediatamente do conteúdo citado; sem lista privada de ações ou autorização.
+  “Pedir para tocar 'Noite Inventada'” continua candidato a título; fatos externos
+  à citação continuam exigindo evidência. Não é liberação de qualquer aspas.
+- **Validação F1:** 142 testes focados aprovados; seleção ampliada **3.002
+  aprovados, 14 xfailed preexistentes e 30 subtestes aprovados**. Trecho
+  instrucional histórico preservado inteiro no runtime:
+  `roteiro_explicacao_capacidades-20260921-092057-398886`, turno 3;
+  captura `transporte_evidencia-20260921-092056-114513`. É replay de recorte
+  controlado, sem a negativa final de F2, não geração nova nesse turno.
+  Doze respostas, zero comandos e 12/12 no avaliador mínimo. Sem pesquisa de
+  títulos ou reparo nessa coleta. Qualidade global e equivalência operacional
+  entre “tocar” e “retomar” não são provadas por preservar o enunciado.
+  Caso emocional de 13/09 permanece pendente; ver mapa causal para limites.
+- **F1 original, revalidação em 21/09 às 09:29:** localizado o turno 4 de
+  `roteiro_reparo_parcial_conversa-20260913-073420-186234`. “Escutar o que você
+  tá pensando — mesmo que seja só um 'estou triste' ou um 'cansado'” ainda era
+  tratado como obra. Dez REDs reproduzidos; candidato no mesmo owner preserva
+  exemplos de conteúdo discursivo, sem exceção para emoção ou título específico.
+  Focado: **133 aprovados**. Ampliado: **3.017 aprovados, uma falha por roteiro
+  ausente, 14 xfailed e 30 subtestes**. **Runtime pendente:** diversos roteiros
+  foram removidos paralelamente durante a tarefa; a sonda não pôde carregar
+  `roteiro_reparo_parcial_conversa.py`. Remoções preservadas, sem restauração.
+  Não encerrar P10 antes da prova real; detalhes e artefatos no mapa causal.
+- **Prova após reposição, 21/09 às 09:41:** sonda
+  `transporte_evidencia-20260921-094144-781221`, roteiro
+  `roteiro_reparo_parcial_conversa-20260921-094145-775708`. Replay integral da
+  resposta histórica no turno 4: conteúdo preservado sem pesquisa de obra ou
+  corte; terminal acrescentou ponto depois do emoji, conversa.md manteve original.
+  Quatro respostas, zero comandos. Seleção ampliada **3.018 aprovados,
+  14 xfailed e 30 subtestes**. P10 histórico validado nesse contrato, não toda F1.
+  Processo retornou código 1 apesar dos relatórios completos e `atexit_concluido`;
+  causa ainda não provada, sem falha nativa registrada. Não declarar encerramento
+  limpo nem encobrir isso com o placar 4/4. Detalhes no mapa causal.
 
 ### P11 — Pedido de informação tratado como estado afirmado
 
@@ -379,6 +539,34 @@ Este índice não altera essas decisões e não promove a rede neural.
 
 ### P15 — Falha técnica pede reformulação de uma pergunta clara
 
+- **F3, 21/09 às 09:07:** recuperação vazia agora devolve fala e motivo
+  separados; o cliente preserva nove razões canônicas de bloqueio em vez de
+  convertê-las todas em OCUPADA. Nove REDs passaram; ampliado 2.974 aprovados,
+  um RED F1, 14 xfailed e 30 subtestes. Controles posteriores: focado 108.
+  Sonda concluída `transporte_evidencia-20260921-090740-395230`: replay + reparo
+  vazio controlado atingiram limite de chamadas **real**, sem novo HTTP; fala
+  informou limite sem pedir clareza. Doze respostas, zero comandos. Primeira
+  tentativa de 20/09 interrompida após seis respostas, preservada como parcial.
+  Limites: log intermediário ainda chama placeholder de reparo; sucesso da
+  recuperação textual não foi reauditado amplamente. Demais categorias têm
+  provas locais, não todas induzidas no runtime. Detalhes no mapa causal.
+- **F3, 20/09 às 22:30:** categoria técnica chega à contingência no caminho
+  principal e no reparo/autoria final, sem substituir conclusões locais válidas
+  (social/observação confirmada). Quinze testes novos verdes; focado 122;
+  ampliado 2.944 aprovados, um RED F1, 14 xfailed e 30 subtestes. Runtime real
+  com timeout/conexão/ocupação **injetados** entregou as três causas sem pedir
+  reformulação ou emitir comandos. Captura `transporte_evidencia-20260920-223000-712393`.
+  Falhas em reparo/autoria ainda validadas localmente, não nessa sonda real.
+  Permanecem na mesma raiz: saída vazia passando por recuperação perde motivo
+  subsequente; orçamento ainda vira OCUPADA no cliente. Não inventar carga ou
+  timeout a partir desse estado genérico. Detalhes no mapa causal. P15 parcial,
+  não encerrado; origem física da latência segue fora desta correção.
+- **Auditoria 20/09:** reprodução local com timeout, serviço indisponível e
+  modelo ocupado confirmou pedidos indevidos de esclarecimento, sem comandos.
+  A sentinela é reduzida a booleano; a chamada à contingência não transmite a
+  categoria técnica. Primeira perda localizada nesse caminho. Origem da latência
+  continua aberta; não confundir diagnóstico da conclusão com causa do timeout.
+  Evidência e plano em [F3](MAPA_RAIZES_CONVERSA.md#f3-perda-de-categoria-de-falha).
 - **Descoberto em:** sonda `roteiro_explicacao_capacidades-20260916-084208-340029`.
 - **Observado:** timeouts de leitura nas duas primeiras chamadas (9 e 19 segundos)
   terminaram em contingências como “Faltou uma peça” e “Peguei o começo”, embora
@@ -450,6 +638,9 @@ Datas e contagens abaixo descrevem cada rodada registrada, não uma suíte globa
 | C13 | Veto IoT delega autoria sem substituir ação/alvo nem consumir o turno | 12 testes novos; 2.780 aprovados na seleção ampliada; duas sondas reais sem comandos, incluindo oito contrastes IoT | Não certifica hardware nem toda qualidade das explicações; P01 aberto |
 | C14 | Papel da citação separa recurso, exemplo e obra; preserva contexto entre frases | 48 testes de citações; 2.801 aprovados na seleção ampliada; replay histórico no runtime e geração nova | Não prova existência/estado de recursos nem resolve toda citação ou P16 |
 | C15 | Reparo preserva objetivo do turno e fonte da explicação | 10 testes novos; 2.811 aprovados na seleção ampliada; reparos novos de volume e aba no runtime | Requisitos indevidos sobre remoto ainda gerados; guardião permanece necessário |
+| C16 | Limites documentados com escopo, condição e responsável | 9 testes novos; 2.829 aprovados na seleção ampliada; geração nova e HTTP real com controle local separado do remoto | Entrega final parcial: P10 ainda corta variantes didáticas; não certifica qualidade global |
+| C17 | Papel de enunciado preservado com destinatário, referência intermediária e vocativo | 68 testes de citações; 2.849 aprovados na seleção ampliada; dois replays reais sem pesquisa indevida | Não amplia comandos executáveis; plataforma e qualidade geral continuam em P01 |
+| C18 | Descrição de controle local usa documentação canônica do turno sem virar prova de fatos externos | 24 contrastes novos; 2.873 aprovados na seleção ampliada; frase histórica preservada no runtime | Família gramatical limitada; negativa indevida de controle de áudio continua em P01 |
 
 Fontes: [rodadas de 14–15/09](RELATORIO_COLETA_DEBUG_20260914.md) e
 [reparo parcial de 13/09](RELATORIO_CORRECOES_CONVERSA_20260912.md).
@@ -511,3 +702,18 @@ por uma declaração de suíte global verde.
   e `validacao_contrato_fala.py`. Classificador, catálogo, guardiões, executores
   e rede preservados. Nenhum commit, treino ou promoção. Próxima fronteira:
   limites por capacidade/rota em P01; não ampliar automaticamente a correção.
+- **19–20/09/2026, C16:** alterados catálogo `capacidades.py`, projeção no
+  `mapa_habilidades.py` e instrução de autoria em `fala_capacidades.py`.
+  Na retomada, o HEAD já era `c8b4c26f31deabd21168a458273896f398e2ddf0`,
+  com o candidato de produção incorporado externamente; nada foi reaplicado
+  ou revertido. Testes novos continuam ignorados pelo Git (P09). Nenhum commit
+  criado pelo agente, promoção neural ou efeito físico. Guardiões preservados.
+- **20/09/2026, C17:** produção alterada somente em `fundamentacao_factual.py`;
+  regressões acrescentadas ao arquivo de testes existente. Execução, catálogo,
+  reparador e rede preservados. A sessão do usuário não foi encerrada pelo
+  agente; sondas iniciadas após Pedro fechar a Laylay. Nenhum commit criado.
+- **20/09/2026, C18:** produção alterada somente em `fundamentacao_factual.py`
+  e `plano_turno.py`, preservando C17. Fonte documental restrita ao contrato
+  explicativo do mesmo turno; nenhum relaxamento de autorização ou receipt.
+  Sonda concluída e ausência de processos Python conferida. Nenhum commit,
+  treino ou promoção neural. Novo teste permanece ignorado pelo Git (P09).

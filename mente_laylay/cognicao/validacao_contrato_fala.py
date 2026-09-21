@@ -7,6 +7,7 @@ possa fazer uma única nova tentativa antes de voz e memória.
 
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from typing import Any, Mapping
@@ -15,6 +16,76 @@ from mente_laylay.cognicao.incerteza_observacao import (
     estado_sob_pergunta_referida,
 )
 from mente_laylay.cognicao.normalizacao_linguagem import TIPOS_REFERENCIA_TEXTUAL
+
+
+def _contradicoes_capacidade(
+    texto_usuario: str, fala: str, contrato: Mapping[str, Any], turno_id: Any,
+) -> list[dict[str, str]]:
+    """Confronta negativas gerais explícitas com fonte do mesmo turno.
+
+    Gramática limitada de alegação, não classificador de comandos. Alvo
+    específico, condição, citação ou predicado não cadastrado ficam fora.
+    A lista de domínios confirmados não basta para atestar qualquer ação.
+    """
+    roteiro = dict(contrato.get("roteiro_concreto") or {})
+    if not (
+        turno_id and str(contrato.get("turno_id")) == str(turno_id)
+        and contrato.get("origem") == "mente_unica"
+        and contrato.get("autoriza_execucao") is False
+        and roteiro.get("estrategia") == "explicacao_capacidades"
+        and roteiro.get("ancora_literal") == texto_usuario
+    ):
+        return []
+    try:
+        documentos = json.loads(contrato.get("documentacao_capacidades") or "")
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(documentos, list):
+        return []
+    dominios = {
+        d.get("dominio") for d in documentos if isinstance(d, dict)
+        and isinstance(d.get("dominio"), str) and d.get("estado") == "disponivel"
+    }
+    if not dominios:
+        return []
+    # Não promover fala citada a alegação própria. O marcador mantém a
+    # fronteira, impedindo que retirar uma citação junte pedaços de frases.
+    sem_citacoes = re.sub(r'"[^"\n]*"|“[^”\n]*”|\x27[^\x27\n]*\x27|‘[^’\n]*’',
+                          " [citacao] ", fala)
+    contradicoes = []
+    for frase in re.split(r"(?<=[.!?;])\s+", sem_citacoes):
+        if "?" in frase:
+            continue
+        # A conclusão causal pode seguir uma alegação completa, mas não
+        # condicionais como 'sem autorização' ou 'se o serviço cair'.
+        trecho = re.split(r",\s*(?:ent[aã]o|por isso)\b", frase, maxsplit=1, flags=re.I)[0]
+        normal = unicodedata.normalize("NFKD", trecho.casefold())
+        normal = "".join(c for c in normal if not unicodedata.combining(c))
+        normal = re.sub(r"\s+", " ", normal).strip().rstrip(".!;")
+        for predicado in contrato.get("predicados_capacidade") or ():
+            if not isinstance(predicado, Mapping) or predicado.get("dominio") not in dominios:
+                continue
+            if (predicado.get("capacidade") and predicado.get("acao")
+                    and predicado.get("presente") and predicado.get("objetos")):
+                intent = str(predicado["capacidade"])
+                acao = re.escape(predicado["acao"])
+                presentes = "|".join(re.escape(v) for v in predicado["presente"])
+                sujeito = rf"(?:(?:eu )?nao (?:consigo|posso) {acao}|(?:eu |a laylay |laylay )nao (?:{presentes}))"
+                objetos = []
+                for objeto in predicado["objetos"]:
+                    objetos.append(" ".join(
+                        re.escape(palavra) + ("s?" if palavra not in {"do", "da", "de"} else "")
+                        for palavra in objeto.split()
+                    ))
+                alvo = "(?:" + "|".join(objetos) + ")"
+                # Só objeto genérico. 'Este programa', alvo nomeado e
+                # outro computador não herdam capacidade geral do catálogo.
+                padrao = (rf"{sujeito} (?:diretamente )?(?:(?:o|a|os|as) )?{alvo}"
+                          r"(?: diretamente)?(?: no seu (?:computador|pc))?")
+                if re.fullmatch(padrao, normal):
+                    contradicoes.append({"capacidade": intent, "acao": predicado["acao"],
+                                          "trecho": trecho.strip(), "fonte": "catalogo_vivo"})
+    return contradicoes
 
 
 def solicita_fonte_sem_afirmar_conteudo(fala: str) -> bool:
@@ -422,6 +493,7 @@ def validar_aderencia_contrato_fala(
     *,
     contrato_fala: Mapping[str, Any] | None,
     ultima_resposta: str = "",
+    turno_id: Any = None,
 ) -> dict[str, Any]:
     """Verifica violações fortes do roteiro sem interpretar comandos."""
     contrato = dict(contrato_fala or {})
@@ -445,6 +517,9 @@ def validar_aderencia_contrato_fala(
     partes = _frases(resposta)
     primeira = partes[0] if partes else ""
     problemas: list[str] = []
+    contradicoes_capacidade = _contradicoes_capacidade(usuario, resposta, contrato, turno_id)
+    if contradicoes_capacidade:
+        problemas.append("capacidade_documentada_negada")
 
     if estrategia == "analise_evidencia_textual" and contrato.get("estado_referencia_textual") == "nao_resolvida":
         if not solicita_fonte_sem_afirmar_conteudo(resposta):
@@ -683,6 +758,7 @@ def validar_aderencia_contrato_fala(
         "metacomentario_quebrou_personagem",
         "reacao_codigo_apenas_ecoou_relato",
         "identidade_negou_capacidades_confirmadas",
+        "capacidade_documentada_negada",
         "metalinguagem_tratada_como_conteudo",
         "metalinguagem_contradisse_classificacao",
         "metalinguagem_citou_conteudo_ausente",
@@ -700,6 +776,8 @@ def validar_aderencia_contrato_fala(
         "declaracao_extrapolou_estado_informado",
     }
     contrato_reparo = _resumo_reparo(contrato, roteiro)
+    if contradicoes_capacidade:
+        contrato_reparo["contradicoes_capacidade"] = contradicoes_capacidade
     estado_informado = _ESTADO_USUARIO.search(usuario) if "estado_pessoal" in atos else None
     if estado_informado:
         contrato_reparo["estado_pessoal_informado"] = {

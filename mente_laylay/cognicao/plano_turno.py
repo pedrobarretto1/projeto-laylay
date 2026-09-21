@@ -444,10 +444,25 @@ def verificar_fala_turno(
     if isinstance(fundamentacao, dict) and fundamentacao.get("tema"):
         contrato_fala = dict(contrato.get("contrato_fala") or {})
         roteiro_fala = dict(contrato_fala.get("roteiro_concreto") or {})
+        documentacao_capacidades = ""
+        if (
+            contrato_fala.get("origem") == "mente_unica"
+            and contrato.get("id")
+            and str(contrato_fala.get("turno_id")) == str(contrato["id"])
+            and roteiro_fala.get("estrategia") == "explicacao_capacidades"
+            and roteiro_fala.get("ancora_literal") == texto_usuario
+            and contrato_fala.get("autoriza_execucao") is False
+            and not contrato.get("requer_execucao")
+            and not contrato.get("comandos")
+        ):
+            # Fonte já selecionada pelo contrato canônico deste turno. Não
+            # recuperar catálogo de outro contexto nem confiar no rascunho.
+            documentacao_capacidades = str(contrato_fala.get("documentacao_capacidades") or "")
         validacao_factual = validar_fala_com_fundamentacao(
             ajustada,
             fundamentacao=fundamentacao,
             texto_usuario=texto_usuario,
+            documentacao_capacidades=documentacao_capacidades,
             contexto_metalinguistico=(
                 str(roteiro_fala.get("estrategia") or "")
                 == "resposta_metalinguistica"

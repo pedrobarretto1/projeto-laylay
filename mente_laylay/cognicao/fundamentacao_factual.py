@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import time
 import unicodedata
@@ -510,17 +511,68 @@ def _plataformas_citadas(texto: str) -> set[str]:
     return plataformas
 
 
+_DESCRICAO_CONTROLE_LOCAL = re.compile(
+    # Papel documental de recurso, não compatibilidade externa. Moldura
+    # fechada: outra oração/predicado não herda a evidência da implementação.
+    r"eu\s+(?:(?:vou|posso)\s+)?(?:usar|uso|utilizar|utilizo)\s+"
+    r"o\s+sistema\s+operacional\s+local\s+para\s+"
+    r"(?:ajustar|controlar|abrir|fechar|maximizar|organizar)\s+"
+    r"(?:o|a|os|as)\s+(?P<recurso>volume|janelas?|programas?)\s+"
+    r"(?:do|no)\s+(?:seu|meu|nosso)\s+pc"
+    r"(?:\s+sem\s+precisar\s+de\s+conexao\s+com\s+outro\s+(?:dispositivo|computador))?\.?",
+)
+
+
+def _recursos_locais_documentados(documentacao: str) -> set[str]:
+    """Lê apenas o escopo do catálogo; não cria evidência de estado ou efeito."""
+    try:
+        documentos = json.loads(documentacao)
+    except (TypeError, ValueError):
+        return set()
+    if not isinstance(documentos, list):
+        return set()
+    recursos: set[str] = set()
+    for documento in documentos:
+        if not isinstance(documento, dict) or documento.get("estado") != "disponivel":
+            continue
+        regras = documento.get("limites_contextuais")
+        if not isinstance(regras, (list, tuple)):
+            continue
+        for regra in regras:
+            if (isinstance(regra, dict) and regra.get("escopo") == "controle_local"
+                    and regra.get("responsavel") == "Laylay"):
+                recursos.update(re.findall(
+                    r"\b(?:volume|janelas?|programas?)\b", _normalizar(regra.get("quando")),
+                ))
+    return recursos
+
+
 _DESTAQUE_CITADO = re.compile(
     r'["“]([^"”\n]{2,100})["”]|\'([^\'\n]{2,100})\'|‘([^’\n]{2,100})’|'
     r'(?<!\*)\*{1,2}([^*\n]{2,100})\*{1,2}(?!\*)'
 )
 _INTRODUCAO_ENUNCIADO = re.compile(
-    r"\b(?:diga|dizer|digite|digitar|fale|falar|escreva|escrever|pe[cç]a|pedir|pergunte|perguntar|"
+    # A preposição pode introduzir o conteúdo citado do pedido. Reconhecer
+    # essa relação não exige reconhecer/executar o verbo dentro da citação.
+    # "pedir para tocar 'X'" não encaixa: tocar está FORA do enunciado citado.
+    r"\b(?:diga|dizer|digite|digitar|fale|falar|escreva|escrever|"
+    r"(?:pe[cç]a|pedir)(?:\s+(?:para|pra))?|pergunte|perguntar|"
     r"(?:o|um)\s+comando|(?:a|uma)\s+frase)"
+    r"(?:\s+(?:para|a)\s+(?:mim|ela|ele|voc[eê]))?"
     r"\s*,?\s*(?:(?:algo\s+)?como|por\s+exemplo|(?:exatamente\s+)?assim)?\s*:?\s*$", re.IGNORECASE,
 )
+_EXEMPLO_CONTEUDO_DISCURSIVO = re.compile(
+    # Exemplo do que o interlocutor pode expressar, não uma obra ou um estado
+    # observado. A relação inteira precisa preceder a citação: ouvir música,
+    # menção de filme e uma nova oração não herdam essa moldura.
+    r"\b(?:escutar|ouvir|ler|entender)\s+o\s+que\s+(?:voc[eê]|tu)\s+"
+    r"(?:(?:est[aá]|t[aá])\s+(?:pensando|sentindo)|pensa|sente|quer\s+dizer)"
+    r"\s*[,—–-]\s*(?:mesmo\s+que|ainda\s+que)\s+seja\s+"
+    r"(?:(?:s[oó]|apenas)\s+)?um\s*$", re.IGNORECASE,
+)
 _EXEMPLO_PEDIDO_INDIRETO = re.compile(
-    r"\bpedir\s+para\s+[^.!?;\"'“”‘’]{1,100},\s*(?:por\s+exemplo|como)\s*:?\s*$", re.IGNORECASE,
+    r"\bpedir\s+para\s+[^.!?;\"'“”‘’]{1,100}[,—–]\s*"
+    r"(?:por\s+exemplo|como(?:\s+em)?)\s*:?\s*$", re.IGNORECASE,
 )
 _REFERENCIA_OPERACIONAL_CITADA = re.compile(
     r"\b(?:app|aplicativo|arquivo|pasta|aba|janela|dispositivo|playlist)"
@@ -531,18 +583,20 @@ _PROGRAMA_OPERACIONAL_CITADO = re.compile(
     r"\b(?:abrir|abre|abra|fechar|fecha|feche|executar|instalar|maximizar|minimizar)"
     r"\s+(?:(?:o|um|esse)\s+)?programa\s+(?:chamado\s+)?$", re.IGNORECASE,
 )
-_EXEMPLO_NOVA_FRASE = re.compile(r"[.!?]\s+por\s+exemplo\s*:\s*$", re.IGNORECASE)
+_EXEMPLO_NOVA_FRASE = re.compile(r"[.!?]\s+(?:por\s+)?exemplo\s*:\s*$", re.IGNORECASE)
 _ORIENTACAO_PEDIDO = re.compile(
-    r"\b(?:pode|basta|[eé]\s+s[oó])\s+(?:pedir|dizer|digitar|falar|escrever)\b",
+    r"\b(?:pode|basta|[eé]\s+s[oó])\s+(?:"
+    r"pedir(?!\s+(?:(?:o|a|um|uma)\s+)?(?:filme|m[uú]sica|livro|s[eé]rie|t[ií]tulo|obra)\b)|"
+    r"dizer|digitar|falar|escrever)\b",
     re.IGNORECASE,
 )
 
 
-def _citacao_didatica(texto: str, destaque: re.Match[str]) -> bool:
+def _citacao_didatica(prefixo: str, trecho: str) -> bool:
     # Escopo local: "diga 'X'" cita um enunciado; "diga o título 'X'" não.
     # Não concede confiança à frase inteira nem a outra citação posterior.
-    prefixo = texto[:destaque.start()]
-    if _INTRODUCAO_ENUNCIADO.search(prefixo):
+    if (_INTRODUCAO_ENUNCIADO.search(prefixo)
+            or _EXEMPLO_CONTEUDO_DISCURSIVO.search(prefixo)):
         return True
     novo_exemplo = _EXEMPLO_NOVA_FRASE.search(prefixo)
     frase_anterior = (
@@ -554,8 +608,14 @@ def _citacao_didatica(texto: str, destaque: re.Match[str]) -> bool:
     ):
         # Reusa a leitura canônica só para reconhecer um exemplo de pedido.
         # O trecho continua citação da ASSISTENTE, jamais utterance autorizante.
+        from mente_laylay.cognicao.identidade_conversacional import analisar_identidade_turno
         from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
-        trecho = next(g for g in destaque.groups() if g is not None)
+        # Um enunciado endereçado à assistente continua exemplo mesmo se o
+        # classificador operacional não souber executar o verbo. A moldura de
+        # pedido acima é necessária: vocativo sozinho não isenta uma obra.
+        identidade = analisar_identidade_turno(_normalizar(trecho), falante="assistente")
+        if identidade["vocativo_laylay"] and identidade["texto_sem_vocativo"]:
+            return True
         leitura = classificar_modalidade_turno(trecho)
         return leitura.get("natureza_acao") in {"pedido_direto", "consulta"}
     return False
@@ -573,13 +633,25 @@ def _destaques_com_papel(texto: str) -> list[tuple[re.Match[str], str]]:
         # Só enumeração direta herda o papel: "diga A ou B". Uma oração
         # como "e recomendo B" inicia outra relação e será avaliada do zero.
         enumeracao = anterior_didatico and bool(re.fullmatch(
-            r"\s*,?\s*(?:e|ou)\s+", texto[fim_anterior:destaque.start()], re.IGNORECASE,
+            r"\s*,?\s*(?:e|ou)\s+(?:um\s+)?", texto[fim_anterior:destaque.start()], re.IGNORECASE,
         ))
         prefixo = texto[:destaque.start()]
+        # Referências já tipificadas podem aparecer entre o verbo de pedir e
+        # seu exemplo. Só essas referências são abstraídas, preservando frases,
+        # títulos e outras citações como fronteiras da relação linguística.
+        prefixo_relacional = prefixo
+        for anterior, papel_anterior in reversed(destaques):
+            if papel_anterior == "referencia_operacional":
+                prefixo_relacional = (
+                    prefixo_relacional[:anterior.start()] + "[recurso]"
+                    + prefixo_relacional[anterior.end():]
+                )
         if (_REFERENCIA_OPERACIONAL_CITADA.search(prefixo)
                 or _PROGRAMA_OPERACIONAL_CITADO.search(prefixo)):
             papel = "referencia_operacional"
-        elif enumeracao or _citacao_didatica(texto, destaque):
+        elif enumeracao or _citacao_didatica(
+            prefixo_relacional, next(g for g in destaque.groups() if g is not None),
+        ):
             papel = "enunciado"
         else:
             papel = "obra_candidata"
@@ -760,6 +832,7 @@ def validar_fala_com_fundamentacao(
     texto_usuario: str = "",
     agora: float | None = None,
     contexto_metalinguistico: bool = False,
+    documentacao_capacidades: str = "",
 ) -> Dict[str, Any]:
     original = re.sub(r"\s+", " ", str(fala or "")).strip()
     base = avaliar_validade_fundamentacao(fundamentacao, agora=agora)
@@ -803,6 +876,7 @@ def validar_fala_com_fundamentacao(
     # O papel é resolvido no texto completo: separar frases não pode apagar a
     # relação entre uma orientação e seu exemplo na frase imediatamente seguinte.
     posicoes_didaticas = {m.start() for m, papel in _destaques_com_papel(original) if papel == "enunciado"}
+    recursos_locais = _recursos_locais_documentados(documentacao_capacidades)
     fim_frase = 0
     for frase_original in frases:
         inicio_frase = original.index(frase_original, fim_frase)
@@ -834,6 +908,12 @@ def validar_fala_com_fundamentacao(
             and _normalizar(_MEDIDA_ESPECIFICA.search(frase).group(0)) not in evidencia_norm
         )
         plataformas_frase = _plataformas_citadas(frase)
+        descricao_local = _DESCRICAO_CONTROLE_LOCAL.fullmatch(_normalizar(frase))
+        if descricao_local and descricao_local.group("recurso") in recursos_locais:
+            # Só o papel de PC nessa descrição é resolvido pelo catálogo.
+            # Não concatenar o catálogo à fonte factual nem isentar a frase
+            # dos outros validadores (datas, medidas, estado e receipts).
+            plataformas_frase.discard("pc")
         plataformas_evidencia = _plataformas_citadas(evidencia)
         plataforma_sem_evidencia = bool(plataformas_frase - plataformas_evidencia)
         familiaridade_inventada = bool(_FAMILIARIDADE_INVENTADA.search(frase))

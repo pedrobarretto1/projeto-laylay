@@ -5,10 +5,12 @@ from __future__ import annotations
 import ast
 import json
 import re
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 from mente_laylay.personalidade.contingencia_natural import fala_contingencia_natural
 from mente_laylay.personalidade.higiene_fala import remover_residuos_operacionais
+from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_llm
 
 
 _PREFIXO_CAMPO_FALA = re.compile(
@@ -524,9 +526,17 @@ def _fala_representa_falha_tecnica_llm(texto: Any) -> bool:
 def _fala_contingencia_sem_llm(
     texto_usuario: str,
     contexto: Mapping[str, Any] | None = None,
+    *,
+    motivo_falha: str = "",
 ) -> str:
     """Mantém o vínculo do turno sem simular uma resposta ou uma execução."""
-    return fala_contingencia_natural(texto_usuario, contexto=contexto)
+    return fala_contingencia_natural(texto_usuario, contexto=contexto, motivo_falha=motivo_falha)
+
+@dataclass(frozen=True)
+class ResultadoRecuperacaoFala:
+    fala: str = ""
+    motivo_falha: str = ""
+
 
 def _recuperar_fala_no_mesmo_turno(
     texto_usuario: str,
@@ -535,14 +545,16 @@ def _recuperar_fala_no_mesmo_turno(
     enviar_mensagem_cb: Optional[Callable[..., Any]],
     limpar_texto_fala_cb: Optional[Callable[[str], str]],
     fallback_fala: str,
-) -> str:
+) -> ResultadoRecuperacaoFala:
     """Faz uma única nova tentativa, sem permitir ações na resposta reparada."""
     if (
         not callable(enviar_mensagem_cb)
         or not str(texto_usuario or "").strip()
         or _fala_representa_falha_tecnica_llm(resposta_anterior)
     ):
-        return ""
+        return ResultadoRecuperacaoFala(motivo_falha=(
+            categoria_estado_tecnico_llm(resposta_anterior) or "reparo_rejeitado"
+        ))
     try:
         reparada = enviar_mensagem_cb(
             [
@@ -573,11 +585,16 @@ def _recuperar_fala_no_mesmo_turno(
             _tipo_chamada="reparo_comunicacao",
             _classe_timeout="rapida",
         )
+        if _fala_representa_falha_tecnica_llm(reparada):
+            return ResultadoRecuperacaoFala(motivo_falha=(
+                categoria_estado_tecnico_llm(reparada) or "falha_tecnica"
+            ))
         fala, _comandos_descartados = limpar_resposta_da_ia(
             reparada,
             limpar_texto_fala_cb=limpar_texto_fala_cb,
             fallback_fala=fallback_fala,
         )
-        return fala if _fala_entregavel(fala, fallback_fala) else ""
+        return (ResultadoRecuperacaoFala(fala=fala) if _fala_entregavel(fala, fallback_fala)
+                else ResultadoRecuperacaoFala(motivo_falha="reparo_rejeitado"))
     except Exception:
-        return ""
+        return ResultadoRecuperacaoFala(motivo_falha="falha_tecnica")
