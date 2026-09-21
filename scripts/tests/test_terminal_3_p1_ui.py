@@ -30,7 +30,7 @@ def _criar_janela(monkeypatch):
 
     app = QApplication.instance() or QApplication([])
     worker = Worker()
-    janela = JanelaLaylay(worker, Path(__file__).parents[1])
+    janela = JanelaLaylay(worker, Path(__file__).parents[2])
     janela.show()
     for _ in range(4):
         app.processEvents()

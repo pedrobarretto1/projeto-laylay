@@ -7,7 +7,7 @@ from mente_laylay.integracao.chrome_ws_handlers import handle_youtube_data
 
 
 def test_extensao_procura_player_audivel_em_todas_as_abas_youtube() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     background = (raiz / "extençao_google" / "background.js").read_text(
         encoding="utf-8",
     )
@@ -27,7 +27,7 @@ def test_extensao_procura_player_audivel_em_todas_as_abas_youtube() -> None:
 
 
 def test_extensao_inspeciona_aba_antiga_sem_depender_do_content_script() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     background = (raiz / "extençao_google" / "background.js").read_text(
         encoding="utf-8",
     )
@@ -40,7 +40,7 @@ def test_extensao_inspeciona_aba_antiga_sem_depender_do_content_script() -> None
 
 
 def test_extensao_descobre_musica_ja_em_reproducao_ao_conectar() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     background = (raiz / "extençao_google" / "background.js").read_text(
         encoding="utf-8",
     )
@@ -56,7 +56,7 @@ def test_extensao_descobre_musica_ja_em_reproducao_ao_conectar() -> None:
 
 
 def test_extensao_renova_um_unico_player_canonico_no_heartbeat() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     background = (raiz / "extençao_google" / "background.js").read_text(
         encoding="utf-8",
     )
@@ -69,7 +69,7 @@ def test_extensao_renova_um_unico_player_canonico_no_heartbeat() -> None:
 
 
 def test_eventos_das_abas_nao_disputam_diretamente_o_player() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     background = (raiz / "extençao_google" / "background.js").read_text(
         encoding="utf-8",
     )
@@ -85,7 +85,7 @@ def test_eventos_das_abas_nao_disputam_diretamente_o_player() -> None:
 
 
 def test_inicio_descarta_player_efemero_restaurado_da_sessao_anterior() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     codigo = (raiz / "laylay.py").read_text(encoding="utf-8")
     bloco = codigo.split(
         'playlist_state = _estado_compartilhado_runtime.vincular_dict(', 1,
@@ -96,7 +96,7 @@ def test_inicio_descarta_player_efemero_restaurado_da_sessao_anterior() -> None:
 
 
 def test_content_script_confirma_reproducao_e_responde_dados_da_aba_escolhida() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     codigo = (raiz / "extençao_google" / "content_script.js").read_text(
         encoding="utf-8",
     )
@@ -115,7 +115,7 @@ def test_content_script_confirma_reproducao_e_responde_dados_da_aba_escolhida() 
 
 
 def test_background_publica_apenas_fila_da_aba_canonica() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     codigo = (raiz / "extençao_google" / "background.js").read_text(
         encoding="utf-8",
     )

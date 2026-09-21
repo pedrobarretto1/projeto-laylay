@@ -121,7 +121,7 @@ def test_memoria_legada_json_migra_em_instalacao_nova(tmp_path: Path) -> None:
 
 
 def test_versionamento_real_nao_rastreia_dados_privados() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
 
     relatorio = auditar_versionamento(raiz)
 
@@ -130,7 +130,7 @@ def test_versionamento_real_nao_rastreia_dados_privados() -> None:
 
 
 def test_build_limpa_saida_anterior_e_separa_memoria_de_credenciais() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     script = (raiz / "empacotamento" / "build_portatil.ps1").read_text(encoding="utf-8")
 
     assert "Remove-Item -LiteralPath $Resolvido -Recurse -Force" in script

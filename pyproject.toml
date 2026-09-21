@@ -1,5 +1,6 @@
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["scripts/tests"]
+pythonpath = [".", "scripts"]
 
 [tool.ruff]
 target-version = "py314"

@@ -9,7 +9,7 @@ from mente_laylay.integracao import chrome_ws_handlers
 from mente_laylay.integracao.desktop_bridge import DesktopBridgeRuntime
 
 
-RAIZ = Path(__file__).resolve().parents[1]
+RAIZ = Path(__file__).resolve().parents[2]
 EXTENSAO = RAIZ / "extençao_google"
 VIDEO_ID = "AAAAAAAAAAA"
 

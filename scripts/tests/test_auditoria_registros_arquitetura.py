@@ -26,7 +26,7 @@ from mente_laylay.personalidade.orquestrador_fala_runtime import (
 )
 
 
-RAIZ = Path(__file__).resolve().parents[1]
+RAIZ = Path(__file__).resolve().parents[2]
 
 
 def test_ponto_entrada_nao_reintroduz_consulta_global_continua() -> None:

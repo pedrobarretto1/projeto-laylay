@@ -26,7 +26,7 @@ def _janela(monkeypatch):
 
     app = QApplication.instance() or QApplication([])
     worker = Worker()
-    janela = JanelaLaylay(worker, Path(__file__).parents[1])
+    janela = JanelaLaylay(worker, Path(__file__).parents[2])
     janela.show()
     app.processEvents()
     return app, worker, janela

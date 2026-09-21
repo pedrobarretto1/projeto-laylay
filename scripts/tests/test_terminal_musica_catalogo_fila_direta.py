@@ -283,7 +283,7 @@ def test_clique_manual_nao_cria_balao_nem_indicador_de_llm(monkeypatch) -> None:
 
     app = QApplication.instance() or QApplication([])
     worker = Worker()
-    janela = JanelaLaylay(worker, Path(__file__).parents[1])
+    janela = JanelaLaylay(worker, Path(__file__).parents[2])
     worker.conectado.emit(True)
     app.processEvents()
 

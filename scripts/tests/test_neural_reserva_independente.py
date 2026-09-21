@@ -9,7 +9,7 @@ from mente_laylay.especialistas.capacidades import intents_registradas
 from mente_laylay.neural.cobertura import carregar_manifesto_variantes
 from mente_laylay.neural import auditar_reserva_independente as auditor
 
-RAIZ = Path(__file__).parents[1]
+RAIZ = Path(__file__).parents[2]
 RESERVA = RAIZ / "mente_laylay/neural/datasets/reserva_relacional_independente_v1.json"
 DADOS = json.loads(RESERVA.read_text(encoding="utf-8"))
 MANIFESTO = carregar_manifesto_variantes(

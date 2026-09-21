@@ -9,7 +9,7 @@ from tests.fakes_navegador import NavegadorOperacoesFake
 
 
 def test_extensao_pula_somente_sob_comando_explicito() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     codigo = (raiz / "extençao_google" / "content_script.js").read_text(encoding="utf-8")
 
     assert "watchForSkippableYouTubeAds" not in codigo
@@ -80,7 +80,7 @@ def test_play_e_pause_recebem_prazo_para_confirmacao_observavel() -> None:
 
 
 def test_content_script_tem_um_unico_executor_de_controle_youtube() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     codigo = (raiz / "extençao_google" / "content_script.js").read_text(
         encoding="utf-8",
     )

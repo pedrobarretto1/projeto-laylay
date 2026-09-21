@@ -2,6 +2,23 @@
 
 Atualizado em **21/09/2026**, por Astra, a pedido do Pedro.
 
+### Continuação após reorganização do repositório, 21/09
+
+- Base `d268a51`, preservada a nova organização. P09: ajustados pytest,
+  imports/caminhos relativos dos testes movidos, sonda e catálogo DEV Console.
+  **60 testes focados aprovados**; seleção ampliada **3.018 aprovados,
+  14 xfailed e 30 subtestes**. Não é certificação da suíte global.
+- Coleta global bloqueada por dependência ausente:
+  `analisar_neural_v27_list_windows_caos`, importada pelo teste homônimo.
+  **6.526 testes coletados e um erro**. Não removido nem enfraquecido o teste;
+  analisador não restaurado sem conferir sua finalidade e versão.
+- Encerramento da sonda: repetição com receipt do processo pai resultou em
+  **código 0 e stderr vazio**. Código 1 histórico não reproduzido, causa aberta;
+  nenhum patch especulativo no lifecycle. O log genérico que anuncia reinício
+  mesmo ao concluir roteiro é impreciso, não prova reinício real.
+- Evidência e limites em `../raiz/MAPA_RAIZES_CONVERSA.md`, seção de
+  infraestrutura após reorganização. Documentos movidos pelo usuário preservados.
+
 Este é o índice central dos problemas encontrados enquanto corrigimos outros
 problemas. Serve para não perder achados, não misturar causas e deixar claro o
 que falta. Os relatórios ligados abaixo preservam o diagnóstico detalhado.

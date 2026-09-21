@@ -69,7 +69,7 @@ def _observar_clipboard(
 
 
 def test_red_p1d_root_clipboard_entra_no_diretor_sem_ponte_de_emissao() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     arvore = ast.parse((raiz / "laylay.py").read_text(encoding="utf-8"))
     keywords: dict[str, str] = {}
     nomes_atribuidos: set[str] = set()

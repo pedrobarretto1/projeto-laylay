@@ -1,12 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
+from pathlib import Path
 
+raiz = Path(SPECPATH).resolve().parent
 
 a = Analysis(
-    ['cliente\\cliente_laylay.py'],
+    [str(raiz / 'cliente' / 'cliente_laylay.py')],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    hiddenimports=['PIL.ImageGrab'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -26,10 +28,10 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

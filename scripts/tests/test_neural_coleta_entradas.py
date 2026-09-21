@@ -163,7 +163,7 @@ def test_binding_da_raiz_publica_coletor_no_registro_e_composicao(tmp_path, monk
         _estado_compartilhado_runtime=h.estado, _gerenciador_conversas_runtime=Conversas(),
         _registro_servicos_aplicacao_runtime=RegistroServicosAplicacaoRuntime(h.turnos._snapshot()),
         _criar_composicao_turno_runtime=composicao_turno.criar_composicao_turno_runtime)
-    raiz = ast.parse((Path(__file__).resolve().parents[1] / "laylay.py").read_text(encoding="utf-8"))
+    raiz = ast.parse((Path(__file__).resolve().parents[2] / "laylay.py").read_text(encoding="utf-8"))
     selecionados = []
     for no in raiz.body:
         if isinstance(no, ast.ImportFrom) and no.module == "mente_laylay.neural.coleta_entradas": selecionados.append(no)

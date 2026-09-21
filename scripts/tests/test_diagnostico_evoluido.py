@@ -460,7 +460,7 @@ def test_inspetor_le_snapshot_do_estado_compartilhado_real_sem_segunda_copia() -
 
 
 def test_composicao_real_entrega_snapshot_completo_ao_inspetor() -> None:
-    fonte = (Path(__file__).resolve().parents[1] / "laylay.py").read_text(
+    fonte = (Path(__file__).resolve().parents[2] / "laylay.py").read_text(
         encoding="utf-8",
     )
 

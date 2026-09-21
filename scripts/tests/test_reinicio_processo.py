@@ -69,7 +69,7 @@ def test_execv_real_abre_script_em_diretorio_com_espacos(tmp_path: Path) -> None
 
     processo = subprocess.run(
         [sys.executable, "-c", codigo, str(script)],
-        cwd=Path(__file__).resolve().parents[1],
+        cwd=Path(__file__).resolve().parents[2],
         capture_output=True,
         text=True,
         timeout=15,

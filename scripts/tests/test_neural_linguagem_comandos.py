@@ -808,7 +808,7 @@ def test_lote_fronteiras_comando_v6_tem_owner_por_intent_sem_autoridade() -> Non
     assert len(grupos_qual_previsao) == 1
 
     base = (
-        __import__("pathlib").Path(__file__).parents[1]
+        __import__("pathlib").Path(__file__).parents[2]
         / "mente_laylay"
         / "neural"
         / "datasets"
@@ -893,7 +893,7 @@ def test_lote_expansao_mecanismos_v7_amplia_fronteiras_sem_copiar_reservados() -
     assert not any("autoriza_execucao" in item for item in exemplos)
 
     base = (
-        __import__("pathlib").Path(__file__).parents[1]
+        __import__("pathlib").Path(__file__).parents[2]
         / "mente_laylay"
         / "neural"
         / "datasets"
@@ -976,7 +976,7 @@ def test_lote_contraste_telegraphico_v8_separa_pedido_de_mencao_sem_leakage() ->
     assert not any("autoriza_execucao" in item for item in exemplos)
 
     base = (
-        __import__("pathlib").Path(__file__).parents[1]
+        __import__("pathlib").Path(__file__).parents[2]
         / "mente_laylay"
         / "neural"
         / "datasets"
@@ -1025,7 +1025,7 @@ def test_lote_contraste_telegraphico_v8_separa_pedido_de_mencao_sem_leakage() ->
 
 def test_volume_v2_atende_meta_combinada_sem_vazar_frozen() -> None:
     base = (
-        __import__("pathlib").Path(__file__).parents[1]
+        __import__("pathlib").Path(__file__).parents[2]
         / "mente_laylay"
         / "neural"
         / "datasets"
@@ -1073,7 +1073,7 @@ def test_volume_v2_atende_meta_combinada_sem_vazar_frozen() -> None:
 
 def test_navegador_v1_atende_quatro_metas_combinadas_sem_vazar_frozen() -> None:
     base = (
-        __import__("pathlib").Path(__file__).parents[1]
+        __import__("pathlib").Path(__file__).parents[2]
         / "mente_laylay"
         / "neural"
         / "datasets"
@@ -1130,7 +1130,7 @@ def test_navegador_v1_atende_quatro_metas_combinadas_sem_vazar_frozen() -> None:
 
 def test_catalogo_completo_atende_18_variantes_sem_vazar_frozen() -> None:
     base = (
-        __import__("pathlib").Path(__file__).parents[1]
+        __import__("pathlib").Path(__file__).parents[2]
         / "mente_laylay"
         / "neural"
         / "datasets"
@@ -3719,7 +3719,7 @@ def test_experiencia_so_entra_no_treino_com_correcao_forte() -> None:
 
 
 def test_dataset_real_dev_e_frozen_nao_compartilham_familias() -> None:
-    base = __import__("pathlib").Path(__file__).parents[1] / "mente_laylay" / "neural" / "datasets"
+    base = __import__("pathlib").Path(__file__).parents[2] / "mente_laylay" / "neural" / "datasets"
     intents = {
         "VOLUME", "APP_OPEN", "CLOSE_APP", "CLOSE_TAB", "SEARCH", "OPEN_URL",
         "MUSIC_SEARCH", "MEDIA_CONTROL", "IOT_CONTROL", "FILE_SEARCH", "FILE_READ",
@@ -3866,7 +3866,7 @@ def test_validacao_semantica_usa_familia_quando_grupo_nao_foi_declarado() -> Non
 
 
 def test_lote_piloto_volume_staged_cumpre_seguranca_sem_contaminar_dev() -> None:
-    base = __import__("pathlib").Path(__file__).parents[1] / "mente_laylay" / "neural" / "datasets"
+    base = __import__("pathlib").Path(__file__).parents[2] / "mente_laylay" / "neural" / "datasets"
     intents = {
         "VOLUME", "APP_OPEN", "CLOSE_APP", "CLOSE_TAB", "SEARCH", "OPEN_URL",
         "MUSIC_SEARCH", "MEDIA_CONTROL", "IOT_CONTROL", "FILE_SEARCH", "FILE_READ",
@@ -3910,7 +3910,7 @@ def test_lote_piloto_volume_staged_cumpre_seguranca_sem_contaminar_dev() -> None
 
 
 def test_onda_balanceada_staged_limita_desvio_sem_contaminar_dev() -> None:
-    base = __import__("pathlib").Path(__file__).parents[1] / "mente_laylay" / "neural" / "datasets"
+    base = __import__("pathlib").Path(__file__).parents[2] / "mente_laylay" / "neural" / "datasets"
     intents = {
         "VOLUME", "APP_OPEN", "CLOSE_APP", "CLOSE_TAB", "SEARCH", "OPEN_URL",
         "MUSIC_SEARCH", "MEDIA_CONTROL", "IOT_CONTROL", "FILE_SEARCH", "FILE_READ",
@@ -3962,7 +3962,7 @@ def test_onda_balanceada_staged_limita_desvio_sem_contaminar_dev() -> None:
 
 
 def test_falha_real_musical_entra_em_staging_com_contrastes_e_sem_leakage() -> None:
-    base = __import__("pathlib").Path(__file__).parents[1] / "mente_laylay" / "neural" / "datasets"
+    base = __import__("pathlib").Path(__file__).parents[2] / "mente_laylay" / "neural" / "datasets"
     intents = {
         "VOLUME", "APP_OPEN", "CLOSE_APP", "CLOSE_TAB", "SEARCH", "OPEN_URL",
         "MUSIC_SEARCH", "MEDIA_CONTROL", "IOT_CONTROL", "FILE_SEARCH", "FILE_READ",
@@ -4102,7 +4102,7 @@ def test_ciclo_sem_dados_novos_nao_substitui_modelo_ativo(tmp_path) -> None:
 
 def test_lote_candidato_e_avaliado_sem_contaminar_dev_ou_promover(tmp_path) -> None:
     dev_path = (
-        __import__("pathlib").Path(__file__).parents[1]
+        __import__("pathlib").Path(__file__).parents[2]
         / "mente_laylay"
         / "neural"
         / "datasets"
@@ -4665,7 +4665,7 @@ def test_catalogo_explicito_revela_variante_planejada_ainda_sem_exemplos() -> No
 
 def test_catalogo_declara_list_windows_apenas_para_cobertura_shadow() -> None:
     base = (
-        __import__("pathlib").Path(__file__).parents[1]
+        __import__("pathlib").Path(__file__).parents[2]
         / "mente_laylay"
         / "neural"
         / "datasets"
@@ -4797,7 +4797,7 @@ def test_auditoria_reprova_familia_compartilhada_mesmo_sem_texto_parecido() -> N
 
 
 def test_dev_e_frozen_reais_nao_possuem_leakage_lexical_detectado() -> None:
-    base = __import__("pathlib").Path(__file__).parents[1] / "mente_laylay" / "neural"
+    base = __import__("pathlib").Path(__file__).parents[2] / "mente_laylay" / "neural"
     catalogo = __import__(
         "mente_laylay.especialistas.capacidades",
         fromlist=["intents_registradas"],

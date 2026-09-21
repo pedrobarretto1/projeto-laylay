@@ -303,7 +303,7 @@ def test_guard_timeout_do_transporte_cobre_verificacao_da_extensao(
 
 
 def test_extensao_prev_aguarda_mudanca_sem_duplo_clique_cego() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     codigo = (raiz / "extençao_google" / "content_script.js").read_text(
         encoding="utf-8",
     )
@@ -320,7 +320,7 @@ def test_extensao_prev_aguarda_mudanca_sem_duplo_clique_cego() -> None:
 
 
 def test_background_restaura_url_confirmada_quando_prev_do_player_nao_existe() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     codigo = (raiz / "extençao_google" / "background.js").read_text(
         encoding="utf-8",
     )

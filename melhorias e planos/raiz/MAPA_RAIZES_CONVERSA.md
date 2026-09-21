@@ -878,3 +878,54 @@ encerramento/observabilidade para futura investigação.
 Estado: P10 original agora tem prova local, integração e replay no runtime
 completo da preservação da citação. Não significa encerramento de toda F1,
 verdade de qualquer citação ou ausência de outros problemas de conversa.
+
+## Infraestrutura após reorganização e saída do processo — 21/09
+
+Base `d268a51d3c751397025c90a5e194c2f070a1504f`, `main`, worktree rastreada
+limpa no início. Commit externo moveu testes a `scripts/tests` e sondas para
+`scripts/roteiros`. Durante a tarefa os documentos também foram reorganizados;
+preservadas as mudanças do usuário, sem restauração nem commit.
+
+Primeira barreira: pytest ainda declarava `tests/`, a sonda procurava laylay.py
+na própria pasta e testes movidos resolviam `scripts/` como raiz. Reproduzidos
+**27 REDs e 14 aprovações** em dois módulos; não são defeitos conversacionais.
+Catálogo DEV também apontava para testes ausentes: **1 RED e 12 aprovados**.
+
+Corrigidos testpaths/pythonpath, raiz/import da sonda e referências mecânicas
+`Path(__file__)...parents[1]` em 57 arquivos movidos, para subir dois níveis.
+Não mudadas expectativas nem outras expressões de pais. Catálogo DEV usa
+`scripts/tests/`, com allowlist ainda bloqueando traversal e roteiros; caminho
+legado `tests/` mantido para suítes programáticas. Guia atualizado. Demais sondas
+não auditadas. Nenhum patch de domínio, executor de habilidades ou lifecycle.
+
+Provas: **60 testes focados aprovados**, incluindo seis controles novos para
+segurança de caminhos e import da sonda fora do cwd. Seleção conversacional:
+**3.018 aprovados, 14 xfailed, 30 subtestes**, 28,01 s, antes dos seis controles
+novos. Coleta global: **6.526 coletados e um erro**: módulo ausente
+`analisar_neural_v27_list_windows_caos`, importado pelo teste homônimo. Busca
+local não encontrou a fonte; ausência anterior à tarefa. Não removido o teste
+nem criada marca xfail. A migração inteira ainda não está certificada.
+
+### Código 1 histórico não reproduzido
+
+Primeira repetição: `resultados_testes/diagnostico_saida-20260921-094851/`,
+stdout/stderr separados, roteiro `roteiro_reparo_parcial_conversa-20260921-094852-618081`.
+Quatro turnos completos e stderr vazio, mas Start-Process não forneceu ExitCode
+ao capturador. Não contado como saída zero.
+
+Segunda repetição: pai Python com `subprocess.run`, pipes e timeout, sem shell;
+roteiro `roteiro_reparo_parcial_conversa-20260921-095026-019758`. Receipt:
+**returncode=0, stderr=""**. Nenhum Python ativo ao fim. Quatro respostas,
+zero comandos; a última resposta usou contingência após reparo rejeitado.
+4/4 mínimo não certifica qualidade social. Gerações novas, sem replay;
+IoT simulado, Gmail vazio, voz/UI/microfone off, persistência/observadores ativos.
+
+Falsificada falha inevitável do wrapper/roteiro. Causa histórica permanece
+aberta, sem atribuição à mudança de pastas posterior ao evento. Sem patch
+especulativo de encerramento. O log “Reinício solicitado pelo Terminal 2.1”
+também é emitido por `deve_encerrar` quando o roteiro conclui; provado por
+código, não prova reinício real nem explica código 1. Precisão desse log fica
+como pendência de observabilidade, separada da causa de saída.
+
+Próximo passo de infraestrutura: localizar/recuperar conscientemente o analisador
+ausente e repetir coleta global; não usar o verde selecionado como verde global.

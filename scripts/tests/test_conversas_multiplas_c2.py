@@ -282,7 +282,7 @@ def _criar_janela(monkeypatch):
 
     app = QApplication.instance() or QApplication([])
     worker = Worker()
-    janela = JanelaLaylay(worker, Path(__file__).parents[1])
+    janela = JanelaLaylay(worker, Path(__file__).parents[2])
     janela.show()
     app.processEvents()
     worker.conectado.emit(True)
@@ -446,7 +446,7 @@ def test_novo_chat_e_uma_aba_lateral_e_permanece_acessivel_recolhido(
 
 
 def test_raiz_compoe_todas_as_portas_c2() -> None:
-    fonte = (Path(__file__).parents[1] / "laylay.py").read_text(encoding="utf-8")
+    fonte = (Path(__file__).parents[2] / "laylay.py").read_text(encoding="utf-8")
     for nome in (
         "conversas_getter", "conversa_ativa_getter", "conversa_criar",
         "conversa_selecionar", "conversa_renomear", "conversa_excluir",

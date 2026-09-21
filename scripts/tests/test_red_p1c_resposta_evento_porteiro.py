@@ -313,7 +313,7 @@ def test_red_p1c_diretor_materializa_somente_depois_do_contrato_cognitivo() -> N
 
 
 def test_red_p1c_root_liga_proposta_ao_runtime_sem_reabrir_bypass_de_voz() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     arvore = ast.parse((raiz / "laylay.py").read_text(encoding="utf-8"))
     keywords: dict[str, str] = {}
     for no in arvore.body:

@@ -1,0 +1,9 @@
+pyinstaller==6.21.0
+websockets==16.1
+AppOpener==1.7
+PyGetWindow==0.0.9
+PyAutoGUI==0.9.54
+pycaw==20251023
+comtypes==1.4.16
+pyperclip==1.11.0
+Pillow==12.3.0

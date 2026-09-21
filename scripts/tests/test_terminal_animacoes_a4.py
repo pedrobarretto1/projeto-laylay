@@ -38,7 +38,7 @@ def _janela(monkeypatch, *, reduzir_movimento: bool = False):
 
     app = QApplication.instance() or QApplication([])
     worker = Worker()
-    janela = JanelaLaylay(worker, Path(__file__).parents[1])
+    janela = JanelaLaylay(worker, Path(__file__).parents[2])
     janela.resize(1000, 700)
     janela.show()
     worker.conectado.emit(True)
@@ -210,4 +210,3 @@ def test_a4_desliga_movimento_continuo_e_rolagem_animada(monkeypatch) -> None:
     assert janela._animacao_scroll is None
     assert barra.value() == barra.maximum()
     janela.close()
-

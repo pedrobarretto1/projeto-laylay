@@ -134,7 +134,7 @@ def test_red_p3b_reproducao_musical_vira_evento_sem_autoplay_ou_permissao(
 
 
 def test_red_p3b_root_conecta_aprendizado_ao_diretor_sem_porta_de_voz() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     arvore = ast.parse((raiz / "laylay.py").read_text(encoding="utf-8"))
     chamada: ast.Call | None = None
     for no in arvore.body:

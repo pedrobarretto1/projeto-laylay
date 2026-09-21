@@ -292,7 +292,7 @@ def test_navegador_e_extensao_transportam_selecao_sem_url_livre() -> None:
             "queue_item_id": ITEM_ID, "queue_index": 3,
         },
     )]
-    raiz = Path(__file__).parents[1]
+    raiz = Path(__file__).parents[2]
     script = (raiz / "extençao_google" / "content_script.js").read_text(
         encoding="utf-8",
     )

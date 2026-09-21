@@ -8,7 +8,7 @@ import subprocess
 import pytest
 
 
-RAIZ = Path(__file__).resolve().parents[1]
+RAIZ = Path(__file__).resolve().parents[2]
 CONTENT = RAIZ / "extençao_google" / "content_script.js"
 BACKGROUND = RAIZ / "extençao_google" / "background.js"
 

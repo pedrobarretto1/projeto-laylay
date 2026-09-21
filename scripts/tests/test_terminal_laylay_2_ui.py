@@ -56,7 +56,7 @@ def _criar_janela_qt(monkeypatch):
 
     app = QApplication.instance() or QApplication([])
     worker = Worker()
-    janela = JanelaLaylay(worker, Path(__file__).parents[1])
+    janela = JanelaLaylay(worker, Path(__file__).parents[2])
     janela.resize(1000, 700)
     janela.show()
     app.processEvents()

@@ -159,7 +159,7 @@ class TestP02ANavegadorV4(unittest.TestCase):
         self.assertEqual(chamadas["socket"], 0)
 
     def test_extensao_publica_identidade_da_aba_ativa_real(self) -> None:
-        raiz = Path(__file__).resolve().parents[1]
+        raiz = Path(__file__).resolve().parents[2]
         fonte = (raiz / "extençao_google" / "background.js").read_text(
             encoding="utf-8",
         )

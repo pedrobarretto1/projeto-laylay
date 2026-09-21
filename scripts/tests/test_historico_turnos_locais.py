@@ -162,7 +162,7 @@ def test_falha_de_historico_nao_impede_execucao_nem_conclusao_local(fronteira):
 def test_composicao_principal_injeta_receipt_do_orquestrador_real():
     import ast
     from pathlib import Path
-    arvore = ast.parse((Path(__file__).resolve().parents[1] / "laylay.py").read_text(encoding="utf-8-sig"))
+    arvore = ast.parse((Path(__file__).resolve().parents[2] / "laylay.py").read_text(encoding="utf-8-sig"))
     atribuicao = next(n for n in arvore.body if isinstance(n, ast.Assign)
                      and any(isinstance(t, ast.Name) and t.id == "_resposta_ia_runtime" for t in n.targets))
     getter = next(k.value for k in atribuicao.value.keywords if k.arg == "contexto_getter")

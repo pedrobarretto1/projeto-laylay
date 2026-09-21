@@ -228,7 +228,7 @@ def test_contexto_da_llm_recebe_apenas_origem_sem_credenciais_ou_query() -> None
 
 
 def test_composicao_principal_nao_republica_callbacks_genericos_do_navegador() -> None:
-    fonte = (Path(__file__).resolve().parents[1] / "laylay.py").read_text(
+    fonte = (Path(__file__).resolve().parents[2] / "laylay.py").read_text(
         encoding="utf-8"
     )
 

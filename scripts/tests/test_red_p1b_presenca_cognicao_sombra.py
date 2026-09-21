@@ -85,7 +85,7 @@ def test_red_p1b_diretor_encaminha_evento_sem_fala_pronta_e_nao_emite() -> None:
 
 
 def test_red_p1b_root_liga_diretor_a_cognicao_e_remove_bypass_de_voz() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     arvore = ast.parse((raiz / "laylay.py").read_text(encoding="utf-8"))
     keywords: dict[str, str] = {}
     for no in arvore.body:

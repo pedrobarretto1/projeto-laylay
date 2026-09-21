@@ -15,7 +15,7 @@ from mente_laylay.integracao.chrome_estado import ChromeEstadoRuntime
 from mente_laylay.integracao.chrome_ws_handlers import handle_action
 
 
-RAIZ = Path(__file__).resolve().parents[1]
+RAIZ = Path(__file__).resolve().parents[2]
 BACKGROUND = RAIZ / "extençao_google" / "background.js"
 
 

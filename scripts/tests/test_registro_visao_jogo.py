@@ -111,7 +111,7 @@ def test_registros_nao_publicam_o_servico_interno_no_repr() -> None:
 
 
 def test_composicao_principal_nao_republica_runtime_visual_bruto() -> None:
-    fonte = (Path(__file__).resolve().parents[1] / "laylay.py").read_text(
+    fonte = (Path(__file__).resolve().parents[2] / "laylay.py").read_text(
         encoding="utf-8"
     )
 

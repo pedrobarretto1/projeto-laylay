@@ -12,7 +12,7 @@ from mente_laylay.neural.datasets.gerar_list_windows_atos_v3 import (
 from mente_laylay.neural.datasets.gerar_list_windows_onda_v2 import _chave_texto
 
 
-DATASETS = Path(__file__).resolve().parents[1] / "mente_laylay/neural/datasets"
+DATASETS = Path(__file__).resolve().parents[2] / "mente_laylay/neural/datasets"
 
 
 def test_complemento_reproduz_staging_sem_command_ou_rotulo_da_propria_previsao():

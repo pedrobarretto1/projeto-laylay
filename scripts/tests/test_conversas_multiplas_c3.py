@@ -367,7 +367,7 @@ def _janela(monkeypatch):
 
     app = QApplication.instance() or QApplication([])
     worker = Worker()
-    janela = JanelaLaylay(worker, Path(__file__).parents[1])
+    janela = JanelaLaylay(worker, Path(__file__).parents[2])
     janela.show()
     worker.conectado.emit(True)
     app.processEvents()
@@ -473,7 +473,7 @@ def test_terminal_inicia_sem_selecionar_ou_reidratar_chat_antigo(
 
 
 def test_raiz_liga_as_portas_c3_sem_regra_de_dominio_na_ui() -> None:
-    raiz = Path(__file__).parents[1] / "laylay.py"
+    raiz = Path(__file__).parents[2] / "laylay.py"
     arvore = ast.parse(raiz.read_text(encoding="utf-8"))
     chamada = next(
         no.value

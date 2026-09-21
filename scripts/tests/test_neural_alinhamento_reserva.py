@@ -9,7 +9,7 @@ from mente_laylay.neural.cobertura import carregar_manifesto_variantes
 from mente_laylay.neural.alinhar_reserva_independente import alinhar_caso, executar
 from mente_laylay.neural.revisar_vinculos_segmentos import vincular_plano_manual
 
-DS = Path(__file__).parents[1] / "mente_laylay/neural/datasets"
+DS = Path(__file__).parents[2] / "mente_laylay/neural/datasets"
 CASOS = json.loads((DS / "reserva_relacional_independente_v1.json").read_text(encoding="utf-8"))["casos"]
 VARIANTES = {(v["intent"], v["action"]) for v in carregar_manifesto_variantes(
     DS / "catalogo_variantes_v0.json", intents_catalogadas=intents_registradas())["variants"]}

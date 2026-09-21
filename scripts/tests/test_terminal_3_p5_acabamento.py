@@ -36,7 +36,7 @@ def _criar_janela(monkeypatch):
 
     app = QApplication.instance() or QApplication([])
     worker = Worker()
-    janela = JanelaLaylay(worker, Path(__file__).parents[1])
+    janela = JanelaLaylay(worker, Path(__file__).parents[2])
     janela.show()
     worker.conectado.emit(True)
     for _ in range(4):
@@ -248,7 +248,7 @@ def test_atalhos_foco_acessivel_e_movimento_reduzido(monkeypatch) -> None:
 def test_ciclo_qt_real_abre_navega_redimensiona_e_fecha_em_dpi(
     escala: str,
 ) -> None:
-    raiz = Path(__file__).parents[1]
+    raiz = Path(__file__).parents[2]
     codigo = r'''
 from pathlib import Path
 from PySide6.QtCore import QObject, Signal

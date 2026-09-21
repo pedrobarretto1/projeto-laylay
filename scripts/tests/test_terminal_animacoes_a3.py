@@ -35,7 +35,7 @@ def _janela(monkeypatch, *, reduzir_movimento: bool = False):
 
     app = QApplication.instance() or QApplication([])
     worker = Worker()
-    janela = JanelaLaylay(worker, Path(__file__).parents[1])
+    janela = JanelaLaylay(worker, Path(__file__).parents[2])
     janela.show()
     worker.conectado.emit(True)
     _processar_por(app, 0.9)

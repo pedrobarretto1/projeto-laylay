@@ -33,7 +33,7 @@ ULTIMA_UTTERANCE_PEDRO = "esse salto é muito fácil"
 
 
 def test_red_p1_evento_presenca_atravessa_cognicao_sem_virar_utterance() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     composicao_oficial = (raiz / "laylay.py").read_text(encoding="utf-8")
     assert (
         "_iniciar_planejamento_turno = _composicao_turno_runtime.iniciar"

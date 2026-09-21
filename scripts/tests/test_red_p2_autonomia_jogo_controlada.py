@@ -404,7 +404,7 @@ def test_red_p2_ouvido_expoe_estado_efemero_sem_expor_audio() -> None:
 
 
 def test_red_p2_root_liga_ouvido_ao_contexto_canonico_de_iniciativa() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     arvore = ast.parse((raiz / "laylay.py").read_text(encoding="utf-8"))
     conexao = ""
     for no in arvore.body:

@@ -167,7 +167,7 @@ def test_ponte_cooperacao_tolera_orquestrador_ainda_nao_montado() -> None:
 
 
 def test_raiz_nao_contem_mais_regras_extraidas_nem_conexoes_globais() -> None:
-    raiz = Path(__file__).resolve().parents[1] / "laylay.py"
+    raiz = Path(__file__).resolve().parents[2] / "laylay.py"
     codigo = raiz.read_text(encoding="utf-8")
 
     assert "def _processar_oferta_area_transferencia_pendente" not in codigo

@@ -14,7 +14,7 @@ VARIANTES = {("MUSIC_SEARCH", "search"), ("APP_OPEN", "open"),
 
 @pytest.fixture(scope="module")
 def piloto():
-    caminho = Path(__file__).parents[1] / "mente_laylay/neural/datasets/escopo_relacional_piloto_v1.json"
+    caminho = Path(__file__).parents[2] / "mente_laylay/neural/datasets/escopo_relacional_piloto_v1.json"
     return auditar_piloto(caminho)["casos"]
 
 

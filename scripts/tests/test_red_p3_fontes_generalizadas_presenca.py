@@ -154,7 +154,7 @@ def test_red_p3_ritmo_publica_evento_iot_sem_promover_relogio_a_permissao() -> N
 
 
 def test_red_p3_root_nao_liga_fontes_generalizadas_direto_a_voz() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     arvore = ast.parse((raiz / "laylay.py").read_text(encoding="utf-8"))
     chamadas: dict[str, dict[str, str]] = {}
     alvos = {"_monitor_janelas_runtime", "_ritmo_circadiano_runtime"}

@@ -26,17 +26,17 @@ SUITES_TESTES_DEV: Mapping[str, SuiteTestesDev] = MappingProxyType({
     "dev_console_focado": SuiteTestesDev(
         id="dev_console_focado",
         titulo="Dev Console focado",
-        argumentos=("tests/test_dev_console_runtime.py", "-q", "--tb=short"),
+        argumentos=("scripts/tests/test_dev_console_runtime.py", "-q", "--tb=short"),
         timeout_s=120.0,
     ),
     "dev_console_regressao": SuiteTestesDev(
         id="dev_console_regressao",
         titulo="Dev Console e integrações",
         argumentos=(
-            "tests/test_dev_console_runtime.py",
-            "tests/test_diagnostico_evoluido.py",
-            "tests/test_desktop_bridge.py",
-            "tests/test_p1_orcamento_llm_turno.py",
+            "scripts/tests/test_dev_console_runtime.py",
+            "scripts/tests/test_diagnostico_evoluido.py",
+            "scripts/tests/test_desktop_bridge.py",
+            "scripts/tests/test_p1_orcamento_llm_turno.py",
             "-q",
             "--tb=short",
         ),
@@ -46,11 +46,11 @@ SUITES_TESTES_DEV: Mapping[str, SuiteTestesDev] = MappingProxyType({
         id="terminal",
         titulo="Terminal Laylay",
         argumentos=(
-            "tests/test_terminal_3_p1_ui.py",
-            "tests/test_terminal_3_p4_paginas.py",
-            "tests/test_terminal_3_p5_acabamento.py",
-            "tests/test_terminal_animacoes_a1.py",
-            "tests/test_dev_console_runtime.py",
+            "scripts/tests/test_terminal_3_p1_ui.py",
+            "scripts/tests/test_terminal_3_p4_paginas.py",
+            "scripts/tests/test_terminal_3_p5_acabamento.py",
+            "scripts/tests/test_terminal_animacoes_a1.py",
+            "scripts/tests/test_dev_console_runtime.py",
             "-q",
             "--tb=short",
         ),
@@ -84,7 +84,7 @@ def _suite_valida(suite: SuiteTestesDev) -> bool:
             continue
         normalizado = item.replace("\\", "/")
         if (
-            not normalizado.startswith("tests/")
+            not normalizado.startswith(("tests/", "scripts/tests/"))
             or not normalizado.endswith(".py")
             or ".." in normalizado.split("/")
             or Path(item).is_absolute()

@@ -68,7 +68,7 @@ def test_instancia_ocupada_nao_pode_fingir_que_roteiro_passou() -> None:
 
 
 def test_fontes_contem_instrumentacao_sem_mudar_lifecycle() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     laylay = (raiz / "laylay.py").read_text(encoding="utf-8")
     assert "P0_DIAGNOSTICO_SENTINELA_LAYLAY_V1_20260815" in laylay
     assert 'os.environ["LAYLAY_DIAGNOSTICO_DIR"]' in laylay

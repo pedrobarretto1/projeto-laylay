@@ -54,7 +54,7 @@ def _dashboard(capacidade_getter=None) -> DashboardTerminalRuntime:
 
 
 def test_raiz_liga_catalogo_vivo_ao_dashboard_e_nao_a_ponte_cooperativa() -> None:
-    raiz = Path(__file__).resolve().parents[1] / "laylay.py"
+    raiz = Path(__file__).resolve().parents[2] / "laylay.py"
     arvore = ast.parse(raiz.read_text(encoding="utf-8"))
     kwargs_por_destino: dict[str, set[str]] = {}
     for no in ast.walk(arvore):
@@ -216,7 +216,7 @@ def _criar_janela(monkeypatch):
 
     app = QApplication.instance() or QApplication([])
     worker = Worker()
-    janela = JanelaLaylay(worker, Path(__file__).parents[1])
+    janela = JanelaLaylay(worker, Path(__file__).parents[2])
     janela.show()
     worker.conectado.emit(True)
     app.processEvents()

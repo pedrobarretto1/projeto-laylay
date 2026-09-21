@@ -280,7 +280,7 @@ def test_rate_limit_e_desconexao_nao_derrubam_runtime() -> None:
 
 
 def test_cliente_nao_importa_roteador_executor_ou_llm() -> None:
-    fonte = (Path(__file__).parents[1] / "cliente" / "terminal_laylay_2.py").read_text(
+    fonte = (Path(__file__).parents[2] / "cliente" / "terminal_laylay_2.py").read_text(
         encoding="utf-8",
     )
     assert "mente_laylay.autonomia" not in fonte
@@ -538,7 +538,7 @@ def test_ponte_serializa_estado_ack_e_resposta_no_mesmo_socket() -> None:
 
 def test_cliente_executado_como_script_enxerga_o_pacote_cliente() -> None:
     """Reproduz o lancamento usado por ``laylay.py`` sem abrir a janela Qt."""
-    script = Path(__file__).parents[1] / "cliente" / "terminal_laylay_2.py"
+    script = Path(__file__).parents[2] / "cliente" / "terminal_laylay_2.py"
     codigo = (
         "import runpy, sys; "
         "runpy.run_path(sys.argv[1], run_name='terminal_laylay_2_import_test')"

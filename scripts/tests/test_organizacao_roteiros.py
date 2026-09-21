@@ -1,12 +1,13 @@
 """Contratos de organização: caminhos compatíveis, fontes visíveis, dados privados."""
 from pathlib import Path
 import subprocess
+import sys
 
 import pytest
 
 from mente_laylay.integracao.roteiro_teste_conversa import carregar_configuracao_roteiro
 
-RAIZ = Path(__file__).resolve().parents[1]
+RAIZ = Path(__file__).resolve().parents[2]
 ROTEIROS = [
     "roteiro_confirmacoes_recusas.py",
     "roteiro_consulta_conteudo_c3.py",
@@ -31,6 +32,21 @@ ROTEIROS = [
     "roteiro_teste_personalidade_viva_p15.py",
     "roteiro_transformacao_conversacional.py"
 ]
+
+
+def test_sonda_organizada_resolve_raiz_e_importa_fora_do_cwd(tmp_path):
+    sonda = RAIZ / "scripts/roteiros/sonda_transporte_evidencia.py"
+    codigo = (
+        "import runpy,sys; from pathlib import Path; "
+        "ns=runpy.run_path(sys.argv[1], run_name='sonda_testada'); "
+        "assert (ns['RAIZ_PROJETO'] / 'laylay.py').is_file(); "
+        "import mente_laylay"
+    )
+    resultado = subprocess.run(
+        [sys.executable, "-c", codigo, str(sonda)], cwd=tmp_path,
+        capture_output=True, text=True, timeout=15, check=False,
+    )
+    assert resultado.returncode == 0, resultado.stderr
 
 
 @pytest.mark.parametrize("nome", ROTEIROS)

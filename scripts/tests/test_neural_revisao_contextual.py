@@ -15,7 +15,7 @@ from mente_laylay.autonomia.pre_fluxo_contextual import _extrair_alvo_consulta_a
 from mente_laylay.memoria_mental.contexto_compartilhado import registrar_resultado_execucao
 
 
-RAIZ = Path(__file__).resolve().parents[1]
+RAIZ = Path(__file__).resolve().parents[2]
 FONTE = RAIZ / "mente_laylay/neural/datasets/candidatos/list_windows_onda_v2.jsonl"
 REVISAO = RAIZ / "mente_laylay/neural/datasets/revisoes/list_windows_contexto_v1.json"
 REVISAO_V2 = REVISAO.with_name("list_windows_contexto_v2.json")

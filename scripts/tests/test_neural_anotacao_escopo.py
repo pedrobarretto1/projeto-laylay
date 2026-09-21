@@ -11,7 +11,7 @@ from mente_laylay.neural.auditar_escopo_manual import auditar_piloto
 from mente_laylay.neural.dataset import validar_exemplo
 from mente_laylay.especialistas.capacidades import intents_registradas
 
-PILOTO = Path(__file__).parents[1] / "mente_laylay/neural/datasets/escopo_relacional_piloto_v1.json"
+PILOTO = Path(__file__).parents[2] / "mente_laylay/neural/datasets/escopo_relacional_piloto_v1.json"
 CASOS = json.loads(PILOTO.read_text(encoding="utf-8"))["casos"]
 
 

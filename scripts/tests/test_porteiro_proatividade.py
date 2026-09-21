@@ -261,7 +261,7 @@ def test_chave_da_voz_e_sincronizada_depois_do_planejamento() -> None:
 
 
 def test_porteiro_e_ligado_ao_runtime_de_voz_e_nao_ao_ritmo() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     arvore = ast.parse((raiz / "laylay.py").read_text(encoding="utf-8"))
     keywords_por_alvo = {}
     for no in arvore.body:

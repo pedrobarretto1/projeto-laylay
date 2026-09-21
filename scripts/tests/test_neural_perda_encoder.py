@@ -10,7 +10,7 @@ try:
 except ImportError as erro:
     raise unittest.SkipTest("executar no ambiente isolado .venv_neural314 com torch") from erro
 
-api = runpy.run_path(str(Path(__file__).resolve().parents[1] / "mente_laylay/neural/perda_encoder.py"))
+api = runpy.run_path(str(Path(__file__).resolve().parents[2] / "mente_laylay/neural/perda_encoder.py"))
 agregar_tokens = api["agregar_tokens"]
 calcular_perda = api["calcular_perda"]
 logits_por_tokens = api["logits_por_tokens"]

@@ -19,7 +19,20 @@ from mente_laylay.integracao.desktop_bridge import (
 from mente_laylay.integracao.executor_testes_dev import (
     ExecutorTestesDevRuntime,
     SuiteTestesDev,
+    _suite_valida,
 )
+
+
+@pytest.mark.parametrize("caminho,valido", [
+    ("scripts/tests/test_dev_console_runtime.py", True),
+    ("tests/test_legado.py", True),
+    ("scripts/tests/../../laylay.py", False),
+    ("scripts/roteiros/roteiro_teste_laylay_caos.py", False),
+    ("scripts/tests_falso/test_algo.py", False),
+])
+def test_caminho_organizado_nao_amplia_catalogo_para_roteiros_ou_escape(caminho, valido):
+    suite = SuiteTestesDev(id="teste", titulo="Teste", argumentos=(caminho,), timeout_s=10)
+    assert _suite_valida(suite) is valido
 
 
 class ProcessoFake:
@@ -340,7 +353,7 @@ def test_bridge_control_entrega_receipt_sanitizado_em_endpoint_proprio() -> None
 
 
 def test_suites_padrao_apontam_somente_para_testes_existentes() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     runtime = ExecutorTestesDevRuntime(raiz_projeto=raiz)
 
     assert set(runtime.suites) == {
@@ -353,7 +366,7 @@ def test_suites_padrao_apontam_somente_para_testes_existentes() -> None:
 
 
 def test_composicao_real_conecta_control_sem_passar_pelo_dev_query() -> None:
-    fonte = (Path(__file__).resolve().parents[1] / "laylay.py").read_text(
+    fonte = (Path(__file__).resolve().parents[2] / "laylay.py").read_text(
         encoding="utf-8",
     )
 

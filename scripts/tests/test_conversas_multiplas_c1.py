@@ -265,7 +265,7 @@ def test_persistencia_principal_migra_e_salva_o_chat_ativo(tmp_path) -> None:
 
 
 def test_composicao_real_liga_conversas_a_persistencia_e_aos_turnos() -> None:
-    raiz = Path(__file__).resolve().parents[1] / "laylay.py"
+    raiz = Path(__file__).resolve().parents[2] / "laylay.py"
     arvore = ast.parse(raiz.read_text(encoding="utf-8"))
     chamadas: dict[str, ast.Call] = {}
     for no in ast.walk(arvore):

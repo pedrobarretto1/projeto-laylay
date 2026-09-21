@@ -49,7 +49,7 @@ class _Evento:
 def test_barra_tk_encerra_sem_async_delete_na_thread_errada() -> None:
     if sys.platform != "win32":
         return
-    raiz = Path(__file__).parents[1]
+    raiz = Path(__file__).parents[2]
     codigo = r'''
 import time
 from mente_laylay.autonomia.barra_comando import BarraComandoRuntime

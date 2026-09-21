@@ -759,7 +759,7 @@ def _criar_janela(monkeypatch):
 
     app = QApplication.instance() or QApplication([])
     worker = Worker()
-    janela = JanelaLaylay(worker, Path(__file__).parents[1])
+    janela = JanelaLaylay(worker, Path(__file__).parents[2])
     janela.resize(1700, 900)
     janela.show()
     app.processEvents()
@@ -909,7 +909,7 @@ def test_ui_contexto_e_memoria_indisponiveis_nao_parecem_vazios_reais(
 
 
 def test_cliente_dashboard_nao_importa_psutil_sqlite_ou_memoria_bruta() -> None:
-    raiz = Path(__file__).parents[1]
+    raiz = Path(__file__).parents[2]
     fontes = "\n".join(
         (raiz / caminho).read_text(encoding="utf-8")
         for caminho in (

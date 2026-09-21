@@ -53,7 +53,7 @@ def test_red_p1g_none_explicito_falha_antes_de_publicar_runtime(campo: str) -> N
 
 
 def test_p1g_catalogo_oficial_so_e_publicado_depois_das_dependencias_tardias() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     arvore = ast.parse((raiz / "laylay.py").read_text(encoding="utf-8"))
     atribuicoes: dict[str, int] = {}
     for no in arvore.body:

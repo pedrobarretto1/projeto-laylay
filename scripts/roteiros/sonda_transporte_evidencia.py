@@ -13,9 +13,14 @@ import argparse
 from urllib.parse import urlsplit
 import requests
 
+# A sonda pode ser iniciada diretamente, inclusive fora da raiz do projeto.
+RAIZ_PROJETO = Path(__file__).resolve().parents[2]
+if __package__ in (None, ""):
+    sys.path.insert(0, str(RAIZ_PROJETO))
+
 
 def main() -> None:
-    raiz = Path(__file__).resolve().parent
+    raiz = RAIZ_PROJETO
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--roteiro", choices=(
         "roteiro_p0_leitura_sem_autorizacao.py", "roteiro_fonte_textual_ausente.py",

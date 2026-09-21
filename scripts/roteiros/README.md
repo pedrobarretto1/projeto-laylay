@@ -20,7 +20,11 @@ Caminhos explícitos ausentes em outras pastas continuam falhando; não há busc
 por nomes parecidos. Os nomes das pastas de resultado e checkpoints permanecem
 baseados no nome do roteiro, não no diretório.
 
-`sonda_transporte_evidencia.py` permanece na raiz e aceita os mesmos nomes em
+`scripts/roteiros/sonda_transporte_evidencia.py` aceita os mesmos nomes em
 `--roteiro`. Capturas e resultados ficam em `resultados_testes/`, ignorados por
-conterem contexto pessoal. Testes em `tests/` e estes roteiros são código-fonte
+conterem contexto pessoal. Testes em `scripts/tests/` e estes roteiros são código-fonte
 e devem ser revisados/versionados; não são artefatos descartáveis.
+
+O pytest usa `scripts/tests` em `pyproject.toml`; os imports de apoio `tests.*`
+continuam resolvidos por `pythonpath = [".", "scripts"]`. Não duplicar a suíte
+na pasta antiga. Referências à raiz em testes movidos precisam subir dois níveis.

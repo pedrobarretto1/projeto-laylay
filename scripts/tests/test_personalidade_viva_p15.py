@@ -432,7 +432,7 @@ def test_catalogo_vivo_nega_autonomia_ao_explicar_exclusao_de_arquivo() -> None:
 
 
 def test_roteiro_dedicado_p15_tem_expectativa_local_em_todos_os_turnos() -> None:
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     configuracao = carregar_configuracao_roteiro(
         raiz / "roteiro_teste_personalidade_viva_p15.py"
     )
