@@ -1,4 +1,4 @@
 {
-  "device_id": "dev_REPLACE_WITH_RANDOM_ID",
-  "device_secret": "REPLACE_WITH_PRIVATE_RANDOM_SECRET"
+  "device_id": "dev_REPLACE_WITH_STABLE_ID",
+  "device_secret_dpapi": "REPLACE_WITH_WINDOWS_DPAPI_BASE64_BLOB"
 }
