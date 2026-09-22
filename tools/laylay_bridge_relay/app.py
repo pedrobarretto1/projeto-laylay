@@ -26,7 +26,7 @@ from pydantic import BaseModel, Field, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-SERVICE_VERSION = "0.5.0"
+SERVICE_VERSION = "0.5.1"
 BRIDGE_TOKEN = os.environ.get("BRIDGE_RECEIPT_TOKEN", "")
 MCP_ACCESS_TOKEN = os.environ.get("MCP_ACCESS_TOKEN", "")
 GITHUB_COMMAND_REPO = os.environ.get(
@@ -44,13 +44,17 @@ ACTIONS = {
     "ping",
     "system_info",
     "list_files",
+    "find_files",
+    "search_text",
     "stat_path",
     "read_text",
+    "read_text_range",
     "write_text",
     "patch_text",
     "create_directory",
     "move_path",
     "delete_file",
+    "check_python_syntax",
     "run_readonly",
 }
 commands: dict[str, dict[str, Any]] = {}
@@ -269,6 +273,44 @@ async def bridge_list_files(device: str, path: str = ".") -> dict[str, Any]:
 
 
 @mcp.tool()
+async def bridge_find_files(
+    device: str,
+    pattern: str,
+    path: str = ".",
+    max_results: int = 100,
+) -> dict[str, Any]:
+    """Find files recursively inside the authorized workspace."""
+    return await _send_and_wait(
+        device,
+        "find_files",
+        {"pattern": pattern, "path": path, "max_results": max_results},
+    )
+
+
+@mcp.tool()
+async def bridge_search_text(
+    device: str,
+    query: str,
+    path: str = ".",
+    file_glob: str = "*.py",
+    max_results: int = 100,
+    case_sensitive: bool = False,
+) -> dict[str, Any]:
+    """Search text recursively inside the authorized workspace."""
+    return await _send_and_wait(
+        device,
+        "search_text",
+        {
+            "query": query,
+            "path": path,
+            "file_glob": file_glob,
+            "max_results": max_results,
+            "case_sensitive": case_sensitive,
+        },
+    )
+
+
+@mcp.tool()
 async def bridge_stat_path(device: str, path: str = ".") -> dict[str, Any]:
     """Return metadata and SHA-256 for a path inside the workspace."""
     return await _send_and_wait(device, "stat_path", {"path": path})
@@ -285,6 +327,21 @@ async def bridge_read_text(
         device,
         "read_text",
         {"path": path, "max_chars": max_chars},
+    )
+
+
+@mcp.tool()
+async def bridge_read_text_range(
+    device: str,
+    path: str,
+    start_line: int = 1,
+    max_lines: int = 200,
+) -> dict[str, Any]:
+    """Read a line range from a UTF-8 text file inside the workspace."""
+    return await _send_and_wait(
+        device,
+        "read_text_range",
+        {"path": path, "start_line": start_line, "max_lines": max_lines},
     )
 
 
@@ -357,6 +414,19 @@ async def bridge_delete_file(
         device,
         "delete_file",
         {"path": path, "expected_sha256": expected_sha256},
+    )
+
+
+@mcp.tool()
+async def bridge_check_python_syntax(
+    device: str,
+    path: str,
+) -> dict[str, Any]:
+    """Validate Python syntax without executing the file."""
+    return await _send_and_wait(
+        device,
+        "check_python_syntax",
+        {"path": path},
     )
 
 
