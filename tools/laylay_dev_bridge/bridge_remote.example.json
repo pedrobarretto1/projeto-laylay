@@ -4,13 +4,14 @@
   "allowed_author": "github-user",
   "device": "MY-PC",
   "relay_url": "https://your-relay.example",
-  "token": "REPLACE_WITH_PRIVATE_TOKEN",
   "poll_seconds": 0.2,
   "workspace_root": "C:\\Users\\YOU\\Projects\\project",
   "command_transport": "relay",
   "machine_access": {
     "enabled": true,
-    "read_roots": ["C:\\"],
+    "read_roots": [
+      "C:\\"
+    ],
     "write_roots": [
       "C:\\Users\\YOU",
       "C:\\Users\\YOU\\Projects\\project"
@@ -32,6 +33,131 @@
       "C:\\Users\\YOU\\LaylayDevBridge\\bridge_remote.json"
     ],
     "allow_process_execution": true,
-    "project_python": "C:\\Path\\To\\Python\\python.exe"
-  }
+    "project_python": "C:\\Path\\To\\Python\\python.exe",
+    "ui_automation": {
+      "enabled": true,
+      "profiles": {
+        "vscode": {
+          "process_names": [
+            "Code.exe"
+          ],
+          "title_contains": [
+            "Visual Studio Code"
+          ],
+          "invoke_control_types": [
+            "Button",
+            "MenuItem",
+            "TabItem",
+            "ListItem",
+            "TreeItem",
+            "CheckBox",
+            "RadioButton"
+          ]
+        },
+        "arduino": {
+          "process_names": [
+            "Arduino IDE.exe"
+          ],
+          "title_contains": [
+            "Arduino IDE"
+          ],
+          "invoke_control_types": [
+            "Button",
+            "MenuItem",
+            "TabItem",
+            "ListItem",
+            "TreeItem",
+            "CheckBox",
+            "RadioButton"
+          ]
+        },
+        "android_studio": {
+          "process_names": [
+            "studio64.exe"
+          ],
+          "title_contains": [
+            "Android Studio"
+          ],
+          "invoke_control_types": [
+            "Button",
+            "MenuItem",
+            "TabItem",
+            "ListItem",
+            "TreeItem",
+            "CheckBox",
+            "RadioButton"
+          ]
+        },
+        "laylay": {
+          "process_names": [
+            "python.exe",
+            "pythonw.exe",
+            "python3.14.exe"
+          ],
+          "title_contains": [
+            "Laylay"
+          ],
+          "invoke_control_types": [
+            "Button",
+            "MenuItem",
+            "TabItem",
+            "ListItem",
+            "TreeItem",
+            "CheckBox",
+            "RadioButton"
+          ]
+        }
+      },
+      "high_risk_keywords": [
+        "delete",
+        "remove",
+        "uninstall",
+        "format",
+        "reset",
+        "discard",
+        "overwrite",
+        "replace",
+        "publish",
+        "deploy",
+        "push",
+        "commit",
+        "merge",
+        "send",
+        "submit",
+        "install",
+        "update",
+        "restart",
+        "shutdown",
+        "terminate",
+        "purchase",
+        "buy",
+        "close",
+        "exit",
+        "yes",
+        "ok",
+        "confirm",
+        "apagar",
+        "excluir",
+        "remover",
+        "desinstalar",
+        "formatar",
+        "redefinir",
+        "descartar",
+        "sobrescrever",
+        "publicar",
+        "implantar",
+        "enviar",
+        "instalar",
+        "atualizar",
+        "reiniciar",
+        "desligar",
+        "fechar",
+        "sair",
+        "sim",
+        "confirmar"
+      ]
+    }
+  },
+  "device_id": "dev_REPLACE_WITH_STABLE_ID",
+  "device_secret": "REPLACE_WITH_PRIVATE_DEVICE_SECRET"
 }
