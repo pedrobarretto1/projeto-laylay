@@ -394,3 +394,132 @@ O volume Railway `relay-data` existe, mas o mount `/data` ainda aparece como uma
 - UI Automation segura ativa;
 - Risk Gate local aplicado antes de qualquer invoke de alto risco;
 - codigo sem segredos versionado na branch `laylay-bridge-relay`.
+
+
+---
+
+## Marco v0.9.1 — 22/09/2026
+
+A v0.9.1 consolida a ponte como agente operacional estavel no PC de casa, sem aumentar o poder bruto sobre o Windows.
+
+### PC de casa
+
+Dispositivo:
+`maquina2`
+
+Bridge:
+`C:\Users\pbarr\Downloads\pasta organizada\programacao\Mano_Chat\LaylayDevBridge`
+
+Workspace da Laylay:
+`C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay`
+
+Ambiente do Bridge:
+`.venv_home` com Python 3.14 e dependencias instaladas localmente, em vez de reutilizar venv copiada de outro PC.
+
+### Instancia unica
+
+A v0.9.1 usa mutex nomeado do Windows por instalacao.
+
+Teste confirmado:
+- primeira instancia: ativa normalmente;
+- tentativa de segunda instancia: bloqueada com `RuntimeError` antes de disputar porta/comandos;
+- porta ativa: `127.0.0.1:8766`.
+
+### Heartbeat e status
+
+Novo arquivo:
+`bridge_status.json`
+
+Campos incluem:
+- versao/PID/uptime;
+- device/device_id;
+- workspace;
+- estado `starting|online|executing|degraded`;
+- transporte e modo de autenticacao;
+- ultimo heartbeat;
+- ultimo comando;
+- ultimo receipt;
+- ultimo tipo/data de erro.
+
+Nova action:
+`bridge_status`
+
+Teste remoto criptografado confirmou a action na v0.9.1 com `auth=device` e receipt associado ao device_id da maquina2.
+
+### Auditoria local
+
+Novo arquivo:
+`bridge_audit.jsonl`
+
+Eventos confirmados:
+- `instance_started`;
+- `remote_error`;
+- `command_received`;
+- `command_result`;
+- `receipt_sent`.
+
+A auditoria grava somente request_id/action/outcome e um conjunto pequeno de metadados autorizados (por exemplo path, session_id, pid, returncode). Nao grava conteudo de arquivo, texto livre, token ou segredo.
+
+Rotacao local:
+- ao exceder aproximadamente 5 MiB, o arquivo atual vira `bridge_audit.jsonl.1`.
+
+### Transporte GitHub rapido
+
+O caminho estavel agora e:
+
+```
+ChatGPT
+ -> GitHub Issue criptografada
+ -> webhook GitHub assinado
+ -> Railway Relay
+ -> long-poll autenticado por device_id
+ -> Laylay Dev Bridge v0.9.1
+ -> receipt
+```
+
+O corpo da Issue continua criptografado com X25519 + HKDF-SHA256 + AES-256-GCM.
+
+Teste da Issue #43:
+- webhook assinado recebido pelo Relay;
+- fila criada para `bridge_status`;
+- chamada do webhook observada em poucos milissegundos no Relay;
+- a maquina2 recebeu o comando pelo long-poll;
+- receipt retornou com sucesso;
+- o workflow antigo chamou `/github/issue/43` depois e foi tratado de forma idempotente, servindo como fallback.
+
+Portanto, o GitHub Actions deixa de ser a etapa critica de latencia para a entrega normal quando o webhook esta saudavel.
+
+### Relay v0.9.1
+
+- `bridge_status` adicionado a allowlist;
+- `DIRECT_DISPATCH_ENABLED=0` explicitamente em producao;
+- controller dispatch experimental desativado por padrao;
+- credencial experimental do controller zerada;
+- signed GitHub webhook mantido como caminho rapido;
+- GitHub issue lookup/workflow permanece como fallback.
+
+### Persistencia Railway
+
+O volume `relay-data` foi auditado como uma unica mudanca e aplicado ao servico Relay em:
+
+`/data`
+
+O Relay persiste:
+- commands;
+- receipts;
+- leases;
+
+em:
+`/data/relay_state.json`
+
+Isso elimina a pendencia anterior em que o mount ainda aparecia somente como staged.
+
+### Codigo preservado
+
+Agente v0.9.1 sem segredos:
+`tools/laylay_dev_bridge/server.py`
+
+Relay v0.9.1:
+`tools/laylay_bridge_relay/app.py`
+
+O Bridge real continua usando arquivos locais nao versionados para configuracao e identidade DPAPI.
