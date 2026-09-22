@@ -8,7 +8,7 @@ Agente Windows local usado pela Laylay/ChatGPT para desenvolvimento remoto contr
 - `bridge_runtime.py`: sessoes de processo, processos do Windows, janelas e screenshot.
 - `requirements.txt`: dependencias do agente.
 - `bridge_remote.example.json`: configuracao sem segredos.
-- `device_identity.example.json`: sidecar local de identidade por PC.
+- `device_identity.example.json`: exemplo do sidecar local de identidade por PC.\n- `enroll_device.py`: cria/reutiliza identidade, protege o segredo com DPAPI e emite somente o registro seguro para o Relay.
 
 ## Capacidades principais
 
@@ -59,7 +59,7 @@ Pastas de sistema, credenciais, perfis de navegador e configuracoes secretas do 
 
 O agente usa long-poll autenticado com o Relay. Comandos publicos via GitHub usam envelopes X25519 + HKDF-SHA256 + AES-256-GCM; o corpo do comando nao fica em plaintext na Issue.
 
-Cada PC pode usar um `device_identity.json` local com `device_id` + `device_secret`. O Relay recebe somente o SHA-256 do segredo em `DEVICE_CREDENTIALS_JSON`, permitindo revogacao individual por dispositivo.
+Cada PC usa um `device_identity.json` local com `device_id` + `device_secret_dpapi`. O segredo real fica protegido pelo Windows DPAPI e e aberto somente em memoria pelo agente. O Relay recebe apenas o SHA-256 em `DEVICE_CREDENTIALS_JSON`, permitindo revogacao individual por dispositivo.
 
 O token global legado continua apenas como fallback de migracao; novos agentes devem preferir identidade por dispositivo.
 
