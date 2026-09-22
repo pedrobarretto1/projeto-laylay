@@ -26,7 +26,7 @@ from pydantic import BaseModel, Field, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-SERVICE_VERSION = "0.4.0"
+SERVICE_VERSION = "0.5.0"
 BRIDGE_TOKEN = os.environ.get("BRIDGE_RECEIPT_TOKEN", "")
 MCP_ACCESS_TOKEN = os.environ.get("MCP_ACCESS_TOKEN", "")
 GITHUB_COMMAND_REPO = os.environ.get(
@@ -44,8 +44,13 @@ ACTIONS = {
     "ping",
     "system_info",
     "list_files",
+    "stat_path",
     "read_text",
     "write_text",
+    "patch_text",
+    "create_directory",
+    "move_path",
+    "delete_file",
     "run_readonly",
 }
 commands: dict[str, dict[str, Any]] = {}
@@ -261,6 +266,14 @@ async def bridge_system_info(device: str) -> dict[str, Any]:
 async def bridge_list_files(device: str, path: str = ".") -> dict[str, Any]:
     """List files inside the authorized workspace on a device."""
     return await _send_and_wait(device, "list_files", {"path": path})
+
+
+@mcp.tool()
+async def bridge_stat_path(device: str, path: str = ".") -> dict[str, Any]:
+    """Return metadata and SHA-256 for a path inside the workspace."""
+    return await _send_and_wait(device, "stat_path", {"path": path})
+
+
 @mcp.tool()
 async def bridge_read_text(
     device: str,
@@ -287,6 +300,63 @@ async def bridge_write_text(
         device,
         "write_text",
         {"path": path, "content": content, "overwrite": overwrite},
+    )
+
+
+@mcp.tool()
+async def bridge_patch_text(
+    device: str,
+    path: str,
+    old_string: str,
+    new_string: str,
+    expected_replacements: int = 1,
+    expected_sha256: str = "",
+) -> dict[str, Any]:
+    """Apply a guarded text replacement inside the authorized workspace."""
+    return await _send_and_wait(
+        device,
+        "patch_text",
+        {
+            "path": path,
+            "old_string": old_string,
+            "new_string": new_string,
+            "expected_replacements": expected_replacements,
+            "expected_sha256": expected_sha256,
+        },
+    )
+
+
+@mcp.tool()
+async def bridge_create_directory(device: str, path: str) -> dict[str, Any]:
+    """Create a directory inside the authorized workspace."""
+    return await _send_and_wait(device, "create_directory", {"path": path})
+
+
+@mcp.tool()
+async def bridge_move_path(
+    device: str,
+    source: str,
+    destination: str,
+) -> dict[str, Any]:
+    """Move or rename a path inside the authorized workspace."""
+    return await _send_and_wait(
+        device,
+        "move_path",
+        {"source": source, "destination": destination},
+    )
+
+
+@mcp.tool()
+async def bridge_delete_file(
+    device: str,
+    path: str,
+    expected_sha256: str = "",
+) -> dict[str, Any]:
+    """Delete one file inside the workspace, optionally guarded by SHA-256."""
+    return await _send_and_wait(
+        device,
+        "delete_file",
+        {"path": path, "expected_sha256": expected_sha256},
     )
 
 
