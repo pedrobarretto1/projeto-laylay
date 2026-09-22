@@ -1,23 +1,43 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
 import hmac
 import json
 import os
 import re
 import secrets
 import time
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from typing import Any
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.x25519 import (
+    X25519PrivateKey, X25519PublicKey,
+)
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.hashes import SHA256
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from mcp.server import MCPServer
 from pydantic import BaseModel, Field, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-SERVICE_VERSION = "0.3.0"
+SERVICE_VERSION = "0.4.0"
 BRIDGE_TOKEN = os.environ.get("BRIDGE_RECEIPT_TOKEN", "")
 MCP_ACCESS_TOKEN = os.environ.get("MCP_ACCESS_TOKEN", "")
+GITHUB_COMMAND_REPO = os.environ.get(
+    "GITHUB_COMMAND_REPO", "pedrobarretto1/projeto-laylay"
+)
+GITHUB_COMMAND_AUTHOR = os.environ.get(
+    "GITHUB_COMMAND_AUTHOR", "pedrobarretto1"
+)
+ENCRYPTED_PROTOCOL = "laylay-bridge-encrypted-v1"
+ISSUE_TITLE_PREFIX = "[LAYLAY-BRIDGE-ENC]"
+ISSUE_MAX_AGE_SECONDS = 600
 REQUEST_RE = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
 PROTOCOL = "laylay-bridge-command-v1"
 ACTIONS = {
@@ -56,6 +76,75 @@ def _utcnow() -> str:
 def _trim(mapping: dict[str, Any], limit: int = 500) -> None:
     while len(mapping) > limit:
         mapping.pop(next(iter(mapping)))
+
+def _b64u_encode(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+
+
+def _b64u_decode(value: str) -> bytes:
+    raw = str(value or "").encode("ascii")
+    raw += b"=" * (-len(raw) % 4)
+    return base64.urlsafe_b64decode(raw)
+
+
+def _command_private_key() -> X25519PrivateKey:
+    if not BRIDGE_TOKEN:
+        raise RuntimeError("BRIDGE_RECEIPT_TOKEN is not configured")
+    seed = hashlib.sha256(
+        b"laylay-github-command-private-v1\x00"
+        + BRIDGE_TOKEN.encode("utf-8")
+    ).digest()
+    return X25519PrivateKey.from_private_bytes(seed)
+
+
+def _command_public_key_b64() -> str:
+    raw = _command_private_key().public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    return _b64u_encode(raw)
+
+
+def _decrypt_envelope(envelope: dict[str, Any]) -> Command:
+    if envelope.get("protocol") != ENCRYPTED_PROTOCOL:
+        raise ValueError("invalid encrypted protocol")
+    request_id = str(envelope.get("request_id") or "")
+    if not REQUEST_RE.fullmatch(request_id):
+        raise ValueError("invalid request_id")
+
+    ephemeral_raw = _b64u_decode(str(envelope.get("ephemeral_public_key") or ""))
+    nonce = _b64u_decode(str(envelope.get("nonce") or ""))
+    ciphertext = _b64u_decode(str(envelope.get("ciphertext") or ""))
+    if len(ephemeral_raw) != 32:
+        raise ValueError("invalid ephemeral public key")
+    if len(nonce) != 12:
+        raise ValueError("invalid nonce")
+    if not ciphertext or len(ciphertext) > 131072:
+        raise ValueError("invalid ciphertext size")
+
+    shared = _command_private_key().exchange(
+        X25519PublicKey.from_public_bytes(ephemeral_raw)
+    )
+    key = HKDF(
+        algorithm=SHA256(),
+        length=32,
+        salt=None,
+        info=b"laylay-github-command-v1\x00" + request_id.encode("ascii"),
+    ).derive(shared)
+    plaintext = AESGCM(key).decrypt(
+        nonce,
+        ciphertext,
+        request_id.encode("ascii"),
+    )
+    decoded = json.loads(plaintext.decode("utf-8"))
+    if not isinstance(decoded, dict):
+        raise ValueError("decrypted payload must be an object")
+    command = Command.model_validate(decoded)
+    if command.request_id != request_id:
+        raise ValueError("request_id mismatch")
+    return command
+
+
 def _bridge_authorized(request: Request) -> bool:
     supplied = request.headers.get("x-bridge-token", "")
     return bool(BRIDGE_TOKEN) and hmac.compare_digest(supplied, BRIDGE_TOKEN)
@@ -70,6 +159,11 @@ def _queue_payload(command: Command) -> tuple[dict[str, Any], bool]:
         raise ValueError("invalid action")
 
     payload = command.model_dump()
+    if command.request_id in receipts:
+        return {
+            "request_id": command.request_id,
+            "completed": True,
+        }, True
     existing = commands.get(command.request_id)
     if existing is not None:
         comparable = dict(existing)
@@ -235,6 +329,121 @@ async def health(_: Request) -> JSONResponse:
             "mcp_configured": bool(MCP_ACCESS_TOKEN),
         }
     )
+
+@mcp.custom_route("/command-key", methods=["GET"])
+async def command_key(_: Request) -> JSONResponse:
+    try:
+        public_key = _command_public_key_b64()
+    except Exception as exc:
+        return JSONResponse(
+            {"detail": f"command key unavailable: {type(exc).__name__}"},
+            status_code=503,
+        )
+    return JSONResponse(
+        {
+            "protocol": ENCRYPTED_PROTOCOL,
+            "curve": "X25519",
+            "kdf": "HKDF-SHA256",
+            "aead": "AES-256-GCM",
+            "public_key": public_key,
+        }
+    )
+
+
+@mcp.custom_route("/github/issue/{issue_number:int}", methods=["POST"])
+async def github_issue_dispatch(request: Request) -> JSONResponse:
+    issue_number = int(request.path_params.get("issue_number") or 0)
+    if issue_number <= 0:
+        return JSONResponse({"detail": "invalid issue number"}, status_code=400)
+
+    url = (
+        "https://api.github.com/repos/"
+        + GITHUB_COMMAND_REPO
+        + f"/issues/{issue_number}"
+    )
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "User-Agent": f"LaylayBridgeRelay/{SERVICE_VERSION}",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            issue = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        return JSONResponse(
+            {"detail": "github issue lookup failed", "status": exc.code},
+            status_code=502,
+        )
+    except Exception as exc:
+        return JSONResponse(
+            {"detail": f"github issue lookup failed: {type(exc).__name__}"},
+            status_code=502,
+        )
+
+    if not isinstance(issue, dict) or "pull_request" in issue:
+        return JSONResponse({"detail": "invalid issue"}, status_code=400)
+    if str(issue.get("state") or "") != "open":
+        return JSONResponse({"detail": "issue is not open"}, status_code=409)
+    if str((issue.get("user") or {}).get("login") or "") != GITHUB_COMMAND_AUTHOR:
+        return JSONResponse({"detail": "issue author not allowed"}, status_code=403)
+    if not str(issue.get("title") or "").startswith(ISSUE_TITLE_PREFIX):
+        return JSONResponse({"detail": "invalid issue title"}, status_code=400)
+
+    created_at = str(issue.get("created_at") or "")
+    try:
+        created = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        age = (datetime.now(timezone.utc) - created).total_seconds()
+    except Exception:
+        return JSONResponse({"detail": "invalid issue timestamp"}, status_code=400)
+    if age < -60 or age > ISSUE_MAX_AGE_SECONDS:
+        return JSONResponse({"detail": "issue outside dispatch window"}, status_code=409)
+
+    try:
+        envelope = json.loads(str(issue.get("body") or ""))
+        if not isinstance(envelope, dict):
+            raise ValueError("issue body must be an object")
+        command = _decrypt_envelope(envelope)
+        if command.request_id in receipts:
+            return JSONResponse(
+                {
+                    "queued": False,
+                    "completed": True,
+                    "request_id": command.request_id,
+                }
+            )
+        _, existing = _queue_payload(command)
+    except ValidationError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=422)
+    except Exception as exc:
+        return JSONResponse(
+            {"detail": f"invalid encrypted command: {type(exc).__name__}"},
+            status_code=400,
+        )
+
+    print(
+        "GITHUB_COMMAND_QUEUED "
+        + json.dumps(
+            {
+                "issue": issue_number,
+                "request_id": command.request_id,
+                "device": command.device,
+                "action": command.action,
+            },
+            sort_keys=True,
+        ),
+        flush=True,
+    )
+    return JSONResponse(
+        {
+            "queued": True,
+            "existing": existing,
+            "request_id": command.request_id,
+        }
+    )
+
+
 @mcp.custom_route("/command", methods=["POST"])
 async def post_command(request: Request) -> JSONResponse:
     if not _bridge_authorized(request):
