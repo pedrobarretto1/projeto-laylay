@@ -27,11 +27,12 @@ from pydantic import BaseModel, Field, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-SERVICE_VERSION = "0.8.0"
+SERVICE_VERSION = "0.9.0"
 BRIDGE_TOKEN = os.environ.get("BRIDGE_RECEIPT_TOKEN", "")
 MCP_ACCESS_TOKEN = os.environ.get("MCP_ACCESS_TOKEN", "")
 DEVICE_CREDENTIALS_RAW = os.environ.get("DEVICE_CREDENTIALS_JSON", "{}")
 CONTROLLER_TOKEN = os.environ.get("CONTROLLER_DISPATCH_TOKEN", "")
+GITHUB_WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
 GITHUB_COMMAND_REPO = os.environ.get(
     "GITHUB_COMMAND_REPO", "pedrobarretto1/projeto-laylay"
 )
@@ -955,6 +956,106 @@ async def controller_receipt(request: Request) -> JSONResponse:
             "request_id": request_id,
             "receipt": receipt,
         }
+    )
+
+
+
+def _verify_github_webhook(raw: bytes, supplied: str) -> bool:
+    if not GITHUB_WEBHOOK_SECRET:
+        return False
+    supplied = str(supplied or "")
+    if not supplied.startswith("sha256="):
+        return False
+    expected = "sha256=" + hmac.new(
+        GITHUB_WEBHOOK_SECRET.encode("utf-8"),
+        raw,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(supplied, expected)
+
+
+@mcp.custom_route("/github/webhook", methods=["POST"])
+async def github_webhook(request: Request) -> JSONResponse:
+    raw = await request.body()
+    signature = request.headers.get("x-hub-signature-256", "")
+    if not _verify_github_webhook(raw, signature):
+        return JSONResponse({"detail": "invalid webhook signature"}, status_code=401)
+
+    event = str(request.headers.get("x-github-event") or "").strip().casefold()
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except Exception:
+        return JSONResponse({"detail": "invalid webhook json"}, status_code=400)
+
+    if event == "ping":
+        return JSONResponse({"ok": True, "event": "ping"})
+
+    if event != "issues":
+        return JSONResponse({"ignored": True, "event": event})
+
+    if not isinstance(payload, dict) or str(payload.get("action") or "") != "opened":
+        return JSONResponse({"ignored": True, "reason": "issue action"})
+
+    repository = payload.get("repository") or {}
+    issue = payload.get("issue") or {}
+    if str(repository.get("full_name") or "") != GITHUB_COMMAND_REPO:
+        return JSONResponse({"detail": "repository not allowed"}, status_code=403)
+    if not isinstance(issue, dict) or "pull_request" in issue:
+        return JSONResponse({"detail": "invalid issue"}, status_code=400)
+    if str(issue.get("state") or "") != "open":
+        return JSONResponse({"detail": "issue is not open"}, status_code=409)
+    if str((issue.get("user") or {}).get("login") or "") != GITHUB_COMMAND_AUTHOR:
+        return JSONResponse({"detail": "issue author not allowed"}, status_code=403)
+    if not str(issue.get("title") or "").startswith(ISSUE_TITLE_PREFIX):
+        return JSONResponse({"ignored": True, "reason": "title prefix"})
+
+    created_at = str(issue.get("created_at") or "")
+    try:
+        created = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        age = (datetime.now(timezone.utc) - created).total_seconds()
+    except Exception:
+        return JSONResponse({"detail": "invalid issue timestamp"}, status_code=400)
+    if age < -60 or age > ISSUE_MAX_AGE_SECONDS:
+        return JSONResponse({"detail": "issue outside dispatch window"}, status_code=409)
+
+    try:
+        envelope = json.loads(str(issue.get("body") or ""))
+        if not isinstance(envelope, dict):
+            raise ValueError("issue body must be an object")
+        command = _decrypt_envelope(envelope)
+        _, existing = _queue_payload(command)
+    except ValidationError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=422)
+    except RuntimeError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=409)
+    except Exception as exc:
+        return JSONResponse(
+            {"detail": f"invalid encrypted command: {type(exc).__name__}"},
+            status_code=400,
+        )
+
+    issue_number = int(issue.get("number") or 0)
+    print(
+        "GITHUB_WEBHOOK_QUEUED "
+        + json.dumps(
+            {
+                "issue": issue_number,
+                "request_id": command.request_id,
+                "device": command.device,
+                "action": command.action,
+            },
+            sort_keys=True,
+        ),
+        flush=True,
+    )
+    return JSONResponse(
+        {
+            "queued": True,
+            "existing": existing,
+            "request_id": command.request_id,
+            "issue": issue_number,
+        },
+        status_code=202,
     )
 
 
