@@ -32,6 +32,7 @@ BASE_DIR = (
     else Path(__file__).resolve().parent
 )
 REMOTE_CONFIG_PATH = BASE_DIR / "bridge_remote.json"
+DEVICE_IDENTITY_PATH = BASE_DIR / "device_identity.json"
 REMOTE_STATE_PATH = BASE_DIR / "bridge_remote_state.json"
 REMOTE_PENDING_PATH = BASE_DIR / "bridge_remote_pending.json"
 
@@ -43,6 +44,19 @@ except Exception:
     _BOOT_CONFIG = {}
 if not isinstance(_BOOT_CONFIG, dict):
     _BOOT_CONFIG = {}
+
+try:
+    _DEVICE_IDENTITY = json.loads(
+        DEVICE_IDENTITY_PATH.read_text(encoding="utf-8-sig")
+    )
+except Exception:
+    _DEVICE_IDENTITY = {}
+if not isinstance(_DEVICE_IDENTITY, dict):
+    _DEVICE_IDENTITY = {}
+for _identity_key in ("device_id", "device_secret"):
+    _identity_value = _DEVICE_IDENTITY.get(_identity_key)
+    if _identity_value:
+        _BOOT_CONFIG[_identity_key] = _identity_value
 
 _workspace_root = str(_BOOT_CONFIG.get("workspace_root") or "").strip()
 _root_value = os.environ.get("LAYLAY_BRIDGE_ROOT") or _workspace_root
@@ -95,6 +109,7 @@ PROTECTED_FILES = _config_paths(
     "protected_files",
     [
         str(REMOTE_CONFIG_PATH),
+        str(DEVICE_IDENTITY_PATH),
         str(BASE_DIR / "mcp_client.json"),
         str(BASE_DIR / "dist" / "bridge_remote.json"),
     ],
@@ -2448,7 +2463,13 @@ def _remote_loop(config: dict[str, Any]) -> None:
 
 def _start_remote_agent() -> None:
     config = _load_json_file(REMOTE_CONFIG_PATH, {})
-    if not isinstance(config, dict) or not config.get("enabled"):
+    if not isinstance(config, dict):
+        config = {}
+    for key in ("device_id", "device_secret"):
+        value = _DEVICE_IDENTITY.get(key)
+        if value:
+            config[key] = value
+    if not config.get("enabled"):
         print("[REMOTE] desabilitado")
         return
     threading.Thread(
