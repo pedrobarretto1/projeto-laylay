@@ -376,7 +376,7 @@ Testes:
 - botao `Close` do VS Code foi classificado como alto risco;
 - `ui_invoke` sem confirmation token foi bloqueado com PermissionError;
 - botao `Minimize` foi aceito localmente como baixo risco e a janela foi restaurada depois;
-- o caminho remoto criptografado confirmou `ui_windows`, `ui_prepare_invoke`, bloqueio de `ui_invoke` e `ui_profiles`.
+- o caminho remoto criptografado confirmou `ui_windows`, `ui_prepare_invoke`, bloqueio de `ui_invoke` e `ui_profiles`.\n- `ui_window_action` remoto minimizou o VS Code e outro comando remoto restaurou a mesma janela com receipts confirmados e `device_id` autenticado.
 
 ### Persistencia do Relay
 
