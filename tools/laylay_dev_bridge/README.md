@@ -1,4 +1,4 @@
-# Laylay Dev Bridge Agent v0.9
+# Laylay Dev Bridge Agent v0.9.1
 
 Agente Windows local usado pela Laylay/ChatGPT para desenvolvimento remoto controlado.
 
@@ -8,7 +8,8 @@ Agente Windows local usado pela Laylay/ChatGPT para desenvolvimento remoto contr
 - `bridge_runtime.py`: sessoes de processo, processos do Windows, janelas e screenshot.
 - `requirements.txt`: dependencias do agente.
 - `bridge_remote.example.json`: configuracao sem segredos.
-- `device_identity.example.json`: exemplo do sidecar local de identidade por PC.\n- `enroll_device.py`: cria/reutiliza identidade, protege o segredo com DPAPI e emite somente o registro seguro para o Relay.
+- `device_identity.example.json`: exemplo do sidecar local de identidade por PC.
+- `enroll_device.py`: cria/reutiliza identidade, protege o segredo com DPAPI e emite somente o registro seguro para o Relay.
 
 ## Capacidades principais
 
@@ -64,3 +65,19 @@ Cada PC usa um `device_identity.json` local com `device_id` + `device_secret_dpa
 O token global legado continua apenas como fallback de migracao; novos agentes devem preferir identidade por dispositivo.
 
 Nunca versione os arquivos reais `bridge_remote.json` ou `device_identity.json`.
+
+
+## Operacao v0.9.1
+
+A v0.9.1 endurece a operacao sem ampliar privilegios:
+
+- mutex de instancia no Windows: uma segunda copia do mesmo Bridge e bloqueada antes de competir por porta/comandos;
+- `bridge_status.json`: heartbeat local com PID, versao, device/device_id, workspace, auth, transport, ultimo comando/receipt/erro e uptime;
+- action `bridge_status`: permite diagnosticar o agente remotamente sem revelar segredos;
+- `bridge_audit.jsonl`: auditoria rotativa (5 MiB) apenas com metadados seguros; conteudo de arquivos, texto digitado e tokens nao sao gravados;
+- o estado muda para `degraded` em erro de transporte e volta para `online` quando o Relay responde;
+- o launcher de casa usa `.venv_home`, criada especificamente para a maquina local.
+
+O transporte estavel permanece GitHub criptografado -> Railway Relay -> Bridge. O GitHub envia um webhook assinado para o Relay quando a Issue criptografada e aberta, reduzindo a latencia de entrega. O workflow de GitHub Actions continua disponivel como fallback/idempotencia.
+
+O endpoint experimental de controller dispatch permanece desativado por padrao (`DIRECT_DISPATCH_ENABLED=0`) e sua credencial nao e necessaria para a operacao estavel.
