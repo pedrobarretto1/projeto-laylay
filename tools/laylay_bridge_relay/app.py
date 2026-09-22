@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-SERVICE_VERSION = "0.6.1"
+SERVICE_VERSION = "0.6.2"
 BRIDGE_TOKEN = os.environ.get("BRIDGE_RECEIPT_TOKEN", "")
 MCP_ACCESS_TOKEN = os.environ.get("MCP_ACCESS_TOKEN", "")
 GITHUB_COMMAND_REPO = os.environ.get(
@@ -74,6 +74,7 @@ ACTIONS = {
     "process_output",
     "process_input",
     "process_stop",
+    "system_status",
     "list_processes",
     "list_windows",
     "focus_window",
