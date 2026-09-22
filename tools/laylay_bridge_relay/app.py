@@ -26,7 +26,7 @@ from pydantic import BaseModel, Field, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-SERVICE_VERSION = "0.5.2"
+SERVICE_VERSION = "0.6.0"
 BRIDGE_TOKEN = os.environ.get("BRIDGE_RECEIPT_TOKEN", "")
 MCP_ACCESS_TOKEN = os.environ.get("MCP_ACCESS_TOKEN", "")
 GITHUB_COMMAND_REPO = os.environ.get(
@@ -53,14 +53,32 @@ ACTIONS = {
     "write_text",
     "patch_text",
     "create_directory",
+    "copy_file",
+    "copy_directory",
     "move_path",
     "delete_file",
+    "delete_directory",
+    "tail_file",
+    "read_binary",
     "check_python_syntax",
     "run_readonly",
+    "run_named_command",
+    "git_diff",
+    "git_log",
+    "run_tests",
+    "process_start",
+    "process_sessions",
+    "process_output",
+    "process_input",
+    "process_stop",
+    "list_processes",
+    "list_windows",
+    "focus_window",
+    "capture_screen",
 }
 commands: dict[str, dict[str, Any]] = {}
 receipts: dict[str, dict[str, Any]] = {}
-devices_seen: dict[str, dict[str, Any]] = {}
+devices_seen: dict[str, dict[str, Any]] = {}\nleases: dict[str, float] = {}
 
 
 class Receipt(BaseModel):
@@ -456,6 +474,18 @@ async def bridge_run_readonly(
     )
 
 
+@mcp.tool()
+async def bridge_action(
+    device: str,
+    action: str,
+    args: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Run any action from the relay's explicit allowlist."""
+    if action not in ACTIONS:
+        raise ValueError(f"unsupported action: {action}")
+    return await _send_and_wait(device, action, dict(args or {}))
+
+
 @mcp.custom_route("/", methods=["GET"])
 async def root(_: Request) -> JSONResponse:
     return JSONResponse(
@@ -629,18 +659,35 @@ async def next_command(request: Request) -> JSONResponse:
     if not device or len(device) > 128:
         return JSONResponse({"detail": "invalid device"}, status_code=400)
 
-    now = time.time()
-    devices_seen[device] = {
-        "last_seen": _utcnow(),
-        "seen_epoch": now,
-    }
-    _trim(devices_seen, 100)
+    try:
+        wait_seconds = float(request.query_params.get("wait_seconds") or 0)
+    except ValueError:
+        wait_seconds = 0.0
+    wait_seconds = max(0.0, min(wait_seconds, 25.0))
+    deadline = time.monotonic() + wait_seconds
 
-    for payload in commands.values():
-        target = str(payload.get("device") or "*")
-        if target in {"*", device}:
+    while True:
+        now = time.time()
+        devices_seen[device] = {
+            "last_seen": _utcnow(),
+            "seen_epoch": now,
+        }
+        _trim(devices_seen, 100)
+
+        for request_id, payload in commands.items():
+            target = str(payload.get("device") or "*")
+            if target not in {"*", device}:
+                continue
+            lease_until = float(leases.get(request_id) or 0.0)
+            if lease_until > now:
+                continue
+            leases[request_id] = now + 30.0
+            _trim(leases, 500)
             return JSONResponse({"command": payload})
-    return JSONResponse({"command": None})
+
+        if time.monotonic() >= deadline:
+            return JSONResponse({"command": None})
+        await asyncio.sleep(0.2)
 
 
 @mcp.custom_route("/devices", methods=["GET"])
