@@ -12,6 +12,7 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from cryptography.hazmat.primitives import serialization
@@ -54,6 +55,8 @@ ACTIONS = {
     "patch_text",
     "create_directory",
     "copy_file",
+    "backup_file",
+    "restore_backup",
     "copy_directory",
     "move_path",
     "delete_file",
@@ -78,7 +81,8 @@ ACTIONS = {
 }
 commands: dict[str, dict[str, Any]] = {}
 receipts: dict[str, dict[str, Any]] = {}
-devices_seen: dict[str, dict[str, Any]] = {}\nleases: dict[str, float] = {}
+devices_seen: dict[str, dict[str, Any]] = {}
+leases: dict[str, float] = {}
 
 
 class Receipt(BaseModel):
