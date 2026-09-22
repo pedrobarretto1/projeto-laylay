@@ -1,4 +1,4 @@
-# Laylay Dev Bridge Agent v0.8
+# Laylay Dev Bridge Agent v0.9
 
 Agente Windows local usado pela Laylay/ChatGPT para desenvolvimento remoto controlado.
 
@@ -8,6 +8,7 @@ Agente Windows local usado pela Laylay/ChatGPT para desenvolvimento remoto contr
 - `bridge_runtime.py`: sessoes de processo, processos do Windows, janelas e screenshot.
 - `requirements.txt`: dependencias do agente.
 - `bridge_remote.example.json`: configuracao sem segredos.
+- `device_identity.example.json`: sidecar local de identidade por PC.
 
 ## Capacidades principais
 
@@ -37,6 +38,8 @@ Windows:
 - CPU/RAM/disco/rede/bateria
 - lista/foco de janelas
 - screenshot JPEG em artefato local
+- UI Automation por perfil autorizado (VS Code, Arduino IDE, Android Studio e Laylay)
+- Risk Gate para controles sensiveis; sem clique por coordenada e sem texto livre
 
 ## Seguranca
 
@@ -56,4 +59,8 @@ Pastas de sistema, credenciais, perfis de navegador e configuracoes secretas do 
 
 O agente usa long-poll autenticado com o Relay. Comandos publicos via GitHub usam envelopes X25519 + HKDF-SHA256 + AES-256-GCM; o corpo do comando nao fica em plaintext na Issue.
 
-Nunca versione o arquivo real `bridge_remote.json`.
+Cada PC pode usar um `device_identity.json` local com `device_id` + `device_secret`. O Relay recebe somente o SHA-256 do segredo em `DEVICE_CREDENTIALS_JSON`, permitindo revogacao individual por dispositivo.
+
+O token global legado continua apenas como fallback de migracao; novos agentes devem preferir identidade por dispositivo.
+
+Nunca versione os arquivos reais `bridge_remote.json` ou `device_identity.json`.
