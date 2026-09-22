@@ -26,7 +26,7 @@ from pydantic import BaseModel, Field, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-SERVICE_VERSION = "0.6.0"
+SERVICE_VERSION = "0.6.1"
 BRIDGE_TOKEN = os.environ.get("BRIDGE_RECEIPT_TOKEN", "")
 MCP_ACCESS_TOKEN = os.environ.get("MCP_ACCESS_TOKEN", "")
 GITHUB_COMMAND_REPO = os.environ.get(
@@ -104,6 +104,68 @@ def _utcnow() -> str:
 def _trim(mapping: dict[str, Any], limit: int = 500) -> None:
     while len(mapping) > limit:
         mapping.pop(next(iter(mapping)))
+
+
+STATE_PATH = Path(os.environ.get("RELAY_STATE_PATH", "/data/relay_state.json"))
+
+
+def _save_state() -> None:
+    try:
+        STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        temp = STATE_PATH.with_suffix(STATE_PATH.suffix + ".tmp")
+        temp.write_text(
+            json.dumps(
+                {
+                    "commands": commands,
+                    "receipts": receipts,
+                    "leases": leases,
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            encoding="utf-8",
+        )
+        temp.replace(STATE_PATH)
+    except Exception as exc:
+        print(
+            f"STATE_SAVE_ERROR {type(exc).__name__}: {exc}",
+            flush=True,
+        )
+
+
+def _load_state() -> None:
+    try:
+        if not STATE_PATH.exists():
+            return
+        data = json.loads(STATE_PATH.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return
+        stored_commands = data.get("commands")
+        stored_receipts = data.get("receipts")
+        stored_leases = data.get("leases")
+        if isinstance(stored_commands, dict):
+            commands.update(stored_commands)
+        if isinstance(stored_receipts, dict):
+            receipts.update(stored_receipts)
+        if isinstance(stored_leases, dict):
+            leases.update(
+                {
+                    str(key): float(value)
+                    for key, value in stored_leases.items()
+                    if isinstance(value, (int, float))
+                }
+            )
+        _trim(commands)
+        _trim(receipts)
+        _trim(leases)
+    except Exception as exc:
+        print(
+            f"STATE_LOAD_ERROR {type(exc).__name__}: {exc}",
+            flush=True,
+        )
+
+
+_load_state()
 
 def _b64u_encode(value: bytes) -> str:
     return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
@@ -202,6 +264,7 @@ def _queue_payload(command: Command) -> tuple[dict[str, Any], bool]:
     payload["queued_at"] = _utcnow()
     commands[command.request_id] = payload
     _trim(commands)
+    _save_state()
     return payload, False
 async def _send_and_wait(
     device: str,
@@ -683,6 +746,7 @@ async def next_command(request: Request) -> JSONResponse:
                 continue
             leases[request_id] = now + 30.0
             _trim(leases, 500)
+            _save_state()
             return JSONResponse({"command": payload})
 
         if time.monotonic() >= deadline:
@@ -720,7 +784,9 @@ async def receipt_route(request: Request) -> JSONResponse:
     payload["received_at"] = _utcnow()
     receipts[request_id] = payload
     commands.pop(request_id, None)
+    leases.pop(request_id, None)
     _trim(receipts)
+    _save_state()
     print(
         "BRIDGE_RECEIPT "
         + json.dumps(payload, ensure_ascii=False, sort_keys=True),
