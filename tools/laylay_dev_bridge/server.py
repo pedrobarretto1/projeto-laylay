@@ -17,6 +17,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+import ctypes
 from pathlib import Path
 from typing import Any
 
@@ -30,7 +31,7 @@ except Exception:
     win32crypt = None
 
 APP_NAME = "Laylay Dev Bridge"
-APP_VERSION = "0.9.0"
+APP_VERSION = "0.9.1"
 BASE_DIR = (
     Path(sys.executable).resolve().parent
     if getattr(sys, "frozen", False)
@@ -40,6 +41,8 @@ REMOTE_CONFIG_PATH = BASE_DIR / "bridge_remote.json"
 DEVICE_IDENTITY_PATH = BASE_DIR / "device_identity.json"
 REMOTE_STATE_PATH = BASE_DIR / "bridge_remote_state.json"
 REMOTE_PENDING_PATH = BASE_DIR / "bridge_remote_pending.json"
+BRIDGE_STATUS_PATH = BASE_DIR / "bridge_status.json"
+BRIDGE_AUDIT_PATH = BASE_DIR / "bridge_audit.jsonl"
 
 try:
     _BOOT_CONFIG = json.loads(
@@ -193,6 +196,7 @@ MAX_COPY_FILES = 10000
 REMOTE_PROTOCOL = "laylay-bridge-command-v1"
 REMOTE_ACTIONS = {
     "ping",
+    "bridge_status",
     "system_info",
     "access_info",
     "list_files",
@@ -238,6 +242,10 @@ REMOTE_ACTIONS = {
     "ui_capture_window",
 }
 REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
+_PROCESS_STARTED_AT = time.time()
+_INSTANCE_MUTEX_HANDLE: int | None = None
+_STATUS_LOCK = threading.RLock()
+_AUDIT_LOCK = threading.RLock()
 
 ROOT.mkdir(parents=True, exist_ok=True)
 
@@ -249,6 +257,164 @@ mcp = MCPServer(
         "Todas as operacoes de arquivo ficam presas ao sandbox configurado."
     ),
 )
+
+
+def _utc_timestamp() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+_BRIDGE_STATUS: dict[str, Any] = {
+    "app": APP_NAME,
+    "version": APP_VERSION,
+    "pid": os.getpid(),
+    "started_at": _utc_timestamp(),
+    "uptime_seconds": 0,
+    "device": str(
+        _BOOT_CONFIG.get("device") or socket.gethostname()
+    ),
+    "device_id": str(_BOOT_CONFIG.get("device_id") or "") or None,
+    "workspace": str(ROOT),
+    "state": "starting",
+    "transport": None,
+    "auth": None,
+    "last_heartbeat": None,
+    "last_command_at": None,
+    "last_command_request_id": None,
+    "last_command_action": None,
+    "last_receipt_at": None,
+    "last_error_at": None,
+    "last_error_type": None,
+}
+
+
+def _write_bridge_status() -> None:
+    with _STATUS_LOCK:
+        _BRIDGE_STATUS["uptime_seconds"] = round(
+            max(0.0, time.time() - _PROCESS_STARTED_AT),
+            1,
+        )
+        payload = dict(_BRIDGE_STATUS)
+    temp = BRIDGE_STATUS_PATH.with_suffix(".json.tmp")
+    temp.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    temp.replace(BRIDGE_STATUS_PATH)
+
+
+def _status_update(**values: Any) -> None:
+    with _STATUS_LOCK:
+        _BRIDGE_STATUS.update(values)
+    try:
+        _write_bridge_status()
+    except Exception:
+        pass
+
+
+def _audit_event(
+    event: str,
+    *,
+    request_id: str = "",
+    action: str = "",
+    outcome: str = "",
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    safe_metadata: dict[str, Any] = {}
+    if isinstance(metadata, dict):
+        allowed = {
+            "path",
+            "source",
+            "destination",
+            "backup_path",
+            "session_id",
+            "pid",
+            "returncode",
+            "ok",
+            "window_action",
+            "profile",
+        }
+        for key in allowed:
+            value = metadata.get(key)
+            if value not in (None, ""):
+                safe_metadata[key] = value
+
+    record = {
+        "timestamp": _utc_timestamp(),
+        "event": str(event),
+        "request_id": str(request_id or ""),
+        "action": str(action or ""),
+        "outcome": str(outcome or ""),
+        "metadata": safe_metadata,
+    }
+    line = json.dumps(
+        record,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    try:
+        with _AUDIT_LOCK:
+            if (
+                BRIDGE_AUDIT_PATH.exists()
+                and BRIDGE_AUDIT_PATH.stat().st_size > 5 * 1024 * 1024
+            ):
+                rotated = BRIDGE_AUDIT_PATH.with_suffix(".jsonl.1")
+                rotated.unlink(missing_ok=True)
+                BRIDGE_AUDIT_PATH.replace(rotated)
+            with BRIDGE_AUDIT_PATH.open(
+                "a",
+                encoding="utf-8",
+            ) as handle:
+                handle.write(line + "\n")
+    except Exception:
+        pass
+
+
+def _acquire_instance_mutex() -> None:
+    global _INSTANCE_MUTEX_HANDLE
+    if os.name != "nt":
+        return
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateMutexW.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_bool,
+        ctypes.c_wchar_p,
+    ]
+    kernel32.CreateMutexW.restype = ctypes.c_void_p
+    kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+    kernel32.CloseHandle.restype = ctypes.c_bool
+
+    identity = hashlib.sha256(
+        str(BASE_DIR).casefold().encode("utf-8")
+    ).hexdigest()[:16]
+    mutex_name = f"Local\\LaylayDevBridge-{identity}"
+    handle = kernel32.CreateMutexW(None, True, mutex_name)
+    if not handle:
+        raise OSError(
+            ctypes.get_last_error(),
+            "Nao foi possivel criar mutex da instancia",
+        )
+    error = ctypes.get_last_error()
+    if error == 183:
+        kernel32.CloseHandle(handle)
+        raise RuntimeError(
+            "Outra instancia do Laylay Dev Bridge ja esta ativa "
+            f"para {BASE_DIR}"
+        )
+    _INSTANCE_MUTEX_HANDLE = int(handle)
+    _audit_event("instance_started", outcome="ok")
+
+
+@mcp.tool()
+def bridge_status() -> dict[str, Any]:
+    """Retorna estado operacional do agente sem segredos."""
+    with _STATUS_LOCK:
+        payload = dict(_BRIDGE_STATUS)
+    payload["uptime_seconds"] = round(
+        max(0.0, time.time() - _PROCESS_STARTED_AT),
+        1,
+    )
+    return _receipt("bridge_status", **payload)
+
 
 
 def _is_within(path: Path, root: Path) -> bool:
@@ -1974,6 +2140,8 @@ def _execute_remote_action(
 ) -> dict[str, Any]:
     if action == "ping":
         return ping()
+    if action == "bridge_status":
+        return bridge_status()
     if action == "system_info":
         return system_info()
     if action == "access_info":
@@ -2402,6 +2570,10 @@ def _poll_relay_once(
         headers=auth_headers,
         timeout=25.0,
     )
+    _status_update(
+        state="online",
+        last_heartbeat=_utc_timestamp(),
+    )
     command = response.get("command") if isinstance(response, dict) else None
     if not isinstance(command, dict):
         return changed
@@ -2423,6 +2595,18 @@ def _poll_relay_once(
     print(
         f"[REMOTE] comando recebido request={request_id} action={action}",
         flush=True,
+    )
+    _status_update(
+        state="executing",
+        last_command_at=_utc_timestamp(),
+        last_command_request_id=request_id,
+        last_command_action=action,
+    )
+    _audit_event(
+        "command_received",
+        request_id=request_id,
+        action=action,
+        outcome="accepted",
     )
     payload = _remote_receipt(action, args)
     data = payload.get("data") if isinstance(payload, dict) else {}
@@ -2447,6 +2631,13 @@ def _poll_relay_once(
             f"[REMOTE] resultado {status} action={action}{suffix}",
             flush=True,
         )
+        _audit_event(
+            "command_result",
+            request_id=request_id,
+            action=action,
+            outcome=status.casefold(),
+            metadata=data,
+        )
     pending[request_id] = payload
     _save_remote_tracking(processed, pending)
     _post_remote_receipt_payload(
@@ -2458,6 +2649,17 @@ def _poll_relay_once(
     processed.add(request_id)
     pending.pop(request_id, None)
     _save_remote_tracking(processed, pending)
+    _status_update(
+        state="online",
+        last_receipt_at=_utc_timestamp(),
+        last_heartbeat=_utc_timestamp(),
+    )
+    _audit_event(
+        "receipt_sent",
+        request_id=request_id,
+        action=action,
+        outcome="ok",
+    )
     print(f"[REMOTE] relay receipt request={request_id} action={action}")
     return True
 
@@ -2478,10 +2680,23 @@ def _remote_loop(config: dict[str, Any]) -> None:
     else:
         transport = "github"
         interval = max(60, int(config.get("poll_seconds") or 65))
+    auth_mode = (
+        "device"
+        if config.get("device_id") and config.get("device_secret")
+        else "legacy"
+        if config.get("token")
+        else "none"
+    )
     print(
         f"[REMOTE] habilitado transport={transport} "
         f"device={config.get('device') or socket.gethostname()} "
         f"interval={interval}s"
+    )
+    _status_update(
+        state="online",
+        transport=transport,
+        auth=auth_mode,
+        last_heartbeat=_utc_timestamp(),
     )
     while True:
         try:
@@ -2492,8 +2707,22 @@ def _remote_loop(config: dict[str, Any]) -> None:
                     REMOTE_STATE_PATH,
                     sorted(processed)[-500:],
                 )
+            _status_update(
+                state="online",
+                last_heartbeat=_utc_timestamp(),
+            )
         except Exception as exc:
-            print(f"[REMOTE] erro: {type(exc).__name__}: {exc}")
+            error_type = type(exc).__name__
+            print(f"[REMOTE] erro: {error_type}: {exc}")
+            _status_update(
+                state="degraded",
+                last_error_at=_utc_timestamp(),
+                last_error_type=error_type,
+            )
+            _audit_event(
+                "remote_error",
+                outcome=error_type,
+            )
         time.sleep(interval)
 
 
@@ -2523,6 +2752,14 @@ def _start_remote_agent() -> None:
         f"device_id={config.get('device_id') or '-'}",
         flush=True,
     )
+    _status_update(
+        state="starting",
+        transport=str(
+            config.get("command_transport") or "github"
+        ).casefold(),
+        auth=auth_mode,
+        last_heartbeat=_utc_timestamp(),
+    )
 
     threading.Thread(
         target=_remote_loop,
@@ -2533,9 +2770,22 @@ def _start_remote_agent() -> None:
 
 
 if __name__ == "__main__":
+    try:
+        _acquire_instance_mutex()
+    except Exception as exc:
+        print(
+            f"[STARTUP] BLOQUEADO: {type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        raise SystemExit(3)
+
     print(f"{APP_NAME} v{APP_VERSION}")
     print(f"Sandbox: {ROOT}")
     print(f"MCP: http://127.0.0.1:{PORT}/mcp")
+    _status_update(
+        state="starting",
+        last_heartbeat=_utc_timestamp(),
+    )
     _start_remote_agent()
     mcp.run(
         transport="streamable-http",
