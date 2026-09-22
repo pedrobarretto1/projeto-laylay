@@ -4,13 +4,13 @@ Atualizado em 2026-09-22.
 
 ## Estado atual
 
-- LaylayDevBridge para Windows: **v0.5.0**
-- Relay Railway: **v0.4.0**
+- LaylayDevBridge para Windows: **v0.9.0**
+- Relay Railway: **v0.7.0**
 - Relay publico: `https://relay-production-e5a6.up.railway.app`
-- Polling do agente: ~3 segundos
+- Transporte agente -> Relay: long-poll de ate ~20 segundos, resposta imediata quando ha comando
 - MCP local do EXE: `http://127.0.0.1:8766/mcp`
 - MCP publico experimental do Relay: `/mcp`
-- Transporte utilizavel pelo ChatGPT atual: GitHub Issue criptografado -> GitHub Actions -> Railway -> EXE
+- Transporte utilizavel pelo ChatGPT atual: GitHub Issue criptografado -> GitHub Actions -> Railway -> agente Python v0.9
 
 ## Caminho funcional sem Desktop Commander
 
@@ -302,3 +302,95 @@ O arquivo real `bridge_remote.json` não deve ser versionado.
 - adicionar identidade/credencial individual por dispositivo antes de escalar para muitos PCs;
 - empacotar/assinar uma distribuição Windows que não seja bloqueada pelo antivírus;
 - manter interação GUI de teclado/mouse restrita até existir uma política que impeça bypass das proteções por meio de terminais/janelas.
+
+
+---
+
+## Marco v0.9.0 — 22/09/2026
+
+A v0.9 adiciona duas camadas centrais: identidade individual por dispositivo e UI Automation segura.
+
+### Identidade por dispositivo
+
+Cada PC pode ter:
+- `device_id` estavel;
+- segredo proprio;
+- registro no Relay contendo somente SHA-256 do segredo;
+- revogacao individual sem trocar a credencial dos demais PCs.
+
+No Windows, o segredo do notebook atual foi migrado para `device_identity.json` usando DPAPI. O arquivo nao guarda mais o segredo em plaintext.
+
+O agente prefere autenticacao por:
+- `X-Bridge-Device-Id`;
+- `X-Bridge-Device-Secret`.
+
+O token global foi removido do `bridge_remote.json` local. O Relay ainda mantem compatibilidade legacy durante a migracao de outros agentes.
+
+Teste confirmado:
+- polling autenticado por dispositivo retornou HTTP 200 sem token global;
+- receipts remotos passaram a registrar `device_id`;
+- comandos podem mirar o `device_id` em vez do hostname.
+
+Helper de provisionamento:
+- `tools/laylay_dev_bridge/enroll_device.py`;
+- gera/reutiliza identidade;
+- protege segredo via Windows DPAPI;
+- imprime somente `device_id`, nome e SHA-256 para registro no Relay.
+
+### UI Automation segura
+
+Perfis atuais:
+- VS Code;
+- Arduino IDE;
+- Android Studio;
+- Laylay.
+
+A UI nao possui:
+- clique arbitrario por coordenadas;
+- `send_keys`;
+- digitacao livre;
+- acesso generico a cmd.exe/PowerShell.
+
+Actions:
+- `ui_profiles`;
+- `ui_windows`;
+- `ui_controls`;
+- `ui_window_action`;
+- `ui_prepare_invoke`;
+- `ui_invoke`;
+- `ui_capture_window`.
+
+A inspecao de controles limita os tipos acionaveis configurados, evitando `Edit` e `Document` por padrao.
+
+### Risk Gate de UI
+
+Controles com palavras de risco como Delete, Remove, Install, Publish, Deploy, Close, Confirm e equivalentes em portugues sao classificados como alto risco.
+
+Fluxo:
+1. `ui_prepare_invoke` inspeciona o controle;
+2. para alto risco, cria challenge de curta duracao ligado ao HWND/PID/titulo/controle;
+3. `ui_invoke` exige o token correspondente;
+4. o token e de uso unico e expira.
+
+Testes:
+- botao `Close` do VS Code foi classificado como alto risco;
+- `ui_invoke` sem confirmation token foi bloqueado com PermissionError;
+- botao `Minimize` foi aceito localmente como baixo risco e a janela foi restaurada depois;
+- o caminho remoto criptografado confirmou `ui_windows`, `ui_prepare_invoke`, bloqueio de `ui_invoke` e `ui_profiles`.
+
+### Persistencia do Relay
+
+O Relay continua com persistencia de commands/receipts/leases implementada em `/data/relay_state.json`.
+
+O volume Railway `relay-data` existe, mas o mount `/data` ainda aparece como uma alteracao staged no service config. Portanto, persistencia apos restart ainda nao deve ser considerada garantida ate esse patch ser auditado e aplicado.
+
+### Estado operacional atual
+
+- agente local: v0.9.0;
+- Relay: v0.7.0;
+- long-poll ativo;
+- autenticacao individual ativa no notebook;
+- token global removido da configuracao local;
+- UI Automation segura ativa;
+- Risk Gate local aplicado antes de qualquer invoke de alto risco;
+- codigo sem segredos versionado na branch `laylay-bridge-relay`.
