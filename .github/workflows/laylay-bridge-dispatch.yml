@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   dispatch:
@@ -20,3 +21,13 @@ jobs:
           curl --fail-with-body --silent --show-error \
             --retry 2 --retry-delay 1 \
             -X POST "${RELAY_URL}/github/issue/${ISSUE_NUMBER}"
+
+      - name: Close dispatched issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue close "${ISSUE_NUMBER}" \
+            --repo "${GH_REPO}" \
+            --reason completed
