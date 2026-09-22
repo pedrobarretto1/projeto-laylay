@@ -1,0 +1,37 @@
+{
+  "enabled": true,
+  "repo": "owner/repository",
+  "allowed_author": "github-user",
+  "device": "MY-PC",
+  "relay_url": "https://your-relay.example",
+  "token": "REPLACE_WITH_PRIVATE_TOKEN",
+  "poll_seconds": 0.2,
+  "workspace_root": "C:\\Users\\YOU\\Projects\\project",
+  "command_transport": "relay",
+  "machine_access": {
+    "enabled": true,
+    "read_roots": ["C:\\"],
+    "write_roots": [
+      "C:\\Users\\YOU",
+      "C:\\Users\\YOU\\Projects\\project"
+    ],
+    "denied_roots": [
+      "C:\\Windows",
+      "C:\\Program Files",
+      "C:\\Program Files (x86)",
+      "C:\\ProgramData",
+      "C:\\Recovery",
+      "C:\\System Volume Information",
+      "C:\\$Recycle.Bin"
+    ],
+    "write_denied_roots": [
+      "C:\\Users\\YOU\\AppData",
+      "C:\\Users\\YOU\\LaylayDevBridge"
+    ],
+    "protected_files": [
+      "C:\\Users\\YOU\\LaylayDevBridge\\bridge_remote.json"
+    ],
+    "allow_process_execution": true,
+    "project_python": "C:\\Path\\To\\Python\\python.exe"
+  }
+}
