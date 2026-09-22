@@ -25,7 +25,7 @@ from mcp.server import MCPServer
 import bridge_runtime
 
 APP_NAME = "Laylay Dev Bridge"
-APP_VERSION = "0.8.0"
+APP_VERSION = "0.9.0"
 BASE_DIR = (
     Path(sys.executable).resolve().parent
     if getattr(sys, "frozen", False)
@@ -113,6 +113,25 @@ PROJECT_PYTHON_COMMAND = (
     else [str(PROJECT_PYTHON)]
 )
 
+_UI_CONFIG = _MACHINE_CONFIG.get("ui_automation") or {}
+if not isinstance(_UI_CONFIG, dict):
+    _UI_CONFIG = {}
+UI_AUTOMATION_ENABLED = bool(_UI_CONFIG.get("enabled", False))
+_ui_profiles_value = _UI_CONFIG.get("profiles") or {}
+UI_PROFILES = (
+    _ui_profiles_value
+    if isinstance(_ui_profiles_value, dict)
+    else {}
+)
+_ui_risk_words = _UI_CONFIG.get("high_risk_keywords") or []
+UI_HIGH_RISK_KEYWORDS = tuple(
+    str(item).strip().casefold()
+    for item in _ui_risk_words
+    if str(item).strip()
+)
+_UI_CHALLENGE_LOCK = threading.RLock()
+_UI_CHALLENGES: dict[str, dict[str, Any]] = {}
+
 PORT = int(os.environ.get("LAYLAY_BRIDGE_PORT", "8766"))
 MAX_TEXT_BYTES = 2 * 1024 * 1024
 MAX_LIST_ENTRIES = 200
@@ -159,6 +178,13 @@ REMOTE_ACTIONS = {
     "list_windows",
     "focus_window",
     "capture_screen",
+    "ui_profiles",
+    "ui_windows",
+    "ui_controls",
+    "ui_window_action",
+    "ui_prepare_invoke",
+    "ui_invoke",
+    "ui_capture_window",
 }
 REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
 
@@ -324,6 +350,13 @@ def access_info() -> dict[str, Any]:
         process_execution=ALLOW_PROCESS_EXECUTION,
         process_profiles=["laylay", "pytest", "vscode"],
         project_python=str(PROJECT_PYTHON),
+        device_id=str(_BOOT_CONFIG.get("device_id") or ""),
+        device_auth=bool(
+            _BOOT_CONFIG.get("device_id")
+            and _BOOT_CONFIG.get("device_secret")
+        ),
+        ui_automation=UI_AUTOMATION_ENABLED,
+        ui_profiles=sorted(str(name) for name in UI_PROFILES),
     )
 
 
@@ -1491,6 +1524,354 @@ def capture_screen(
     return _receipt("capture_screen", **result)
 
 
+def _ui_profile(name: str) -> dict[str, Any]:
+    if not UI_AUTOMATION_ENABLED:
+        raise PermissionError("UI Automation esta desabilitada")
+    key = str(name or "").strip().casefold()
+    if not key:
+        raise ValueError("profile e obrigatorio")
+    for profile_name, value in UI_PROFILES.items():
+        if str(profile_name).casefold() != key:
+            continue
+        if not isinstance(value, dict):
+            break
+        return value
+    raise ValueError(
+        "Perfil UI nao permitido. Opcoes: "
+        + ", ".join(sorted(str(x) for x in UI_PROFILES))
+    )
+
+
+def _ui_authorize_window(
+    profile: str,
+    hwnd: int,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    config = _ui_profile(profile)
+    identity = bridge_runtime.window_identity(int(hwnd))
+    process_name = str(identity.get("process_name") or "").casefold()
+    title = str(identity.get("title") or "")
+    allowed_processes = {
+        str(item).casefold()
+        for item in (config.get("process_names") or [])
+        if str(item).strip()
+    }
+    title_needles = [
+        str(item)
+        for item in (config.get("title_contains") or [])
+        if str(item).strip()
+    ]
+    if allowed_processes and process_name not in allowed_processes:
+        raise PermissionError(
+            f"Processo {identity.get('process_name')} nao autorizado "
+            f"para profile={profile}"
+        )
+    if title_needles and not any(
+        needle.casefold() in title.casefold()
+        for needle in title_needles
+    ):
+        raise PermissionError(
+            f"Titulo da janela nao autorizado para profile={profile}"
+        )
+    if not identity.get("visible"):
+        raise PermissionError("Janela nao esta visivel")
+    return config, identity
+
+
+def _ui_allowed_types(config: dict[str, Any]) -> set[str]:
+    return {
+        str(item)
+        for item in (config.get("invoke_control_types") or [])
+        if str(item).strip()
+    }
+
+
+def _ui_fingerprint(
+    profile: str,
+    identity: dict[str, Any],
+    info: dict[str, Any],
+) -> str:
+    payload = json.dumps(
+        {
+            "profile": str(profile).casefold(),
+            "hwnd": int(identity["hwnd"]),
+            "pid": int(identity["pid"]),
+            "process_name": identity.get("process_name"),
+            "title": identity.get("title"),
+            "control_type": info.get("control_type"),
+            "name": info.get("name"),
+            "automation_id": info.get("automation_id"),
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _ui_risk(
+    identity: dict[str, Any],
+    info: dict[str, Any],
+) -> dict[str, Any]:
+    haystack = " ".join(
+        [
+            str(identity.get("title") or ""),
+            str(info.get("name") or ""),
+            str(info.get("automation_id") or ""),
+        ]
+    ).casefold()
+    matched = [
+        word
+        for word in UI_HIGH_RISK_KEYWORDS
+        if word and word in haystack
+    ]
+    return {
+        "level": "high" if matched else "low",
+        "requires_confirmation": bool(matched),
+        "matched_keywords": sorted(set(matched))[:20],
+    }
+
+
+@mcp.tool()
+def ui_profiles() -> dict[str, Any]:
+    """Lista perfis permitidos para UI Automation."""
+    profiles: list[dict[str, Any]] = []
+    for name, value in sorted(UI_PROFILES.items()):
+        if not isinstance(value, dict):
+            continue
+        profiles.append(
+            {
+                "name": str(name),
+                "process_names": [
+                    str(x) for x in (value.get("process_names") or [])
+                ],
+                "title_contains": [
+                    str(x) for x in (value.get("title_contains") or [])
+                ],
+                "invoke_control_types": [
+                    str(x)
+                    for x in (value.get("invoke_control_types") or [])
+                ],
+            }
+        )
+    return _receipt(
+        "ui_profiles",
+        enabled=UI_AUTOMATION_ENABLED,
+        profiles=profiles,
+        free_text_input=False,
+        coordinate_clicks=False,
+        generic_shell=False,
+    )
+
+
+@mcp.tool()
+def ui_windows(profile: str = "") -> dict[str, Any]:
+    """Lista somente janelas autorizadas pelos perfis UI."""
+    requested = str(profile or "").strip()
+    candidates = bridge_runtime.list_windows(limit=300)
+    result: list[dict[str, Any]] = []
+    profile_names = (
+        [requested]
+        if requested
+        else [str(name) for name in UI_PROFILES]
+    )
+    for item in candidates:
+        for name in profile_names:
+            try:
+                _, identity = _ui_authorize_window(
+                    name,
+                    int(item["hwnd"]),
+                )
+            except Exception:
+                continue
+            record = dict(identity)
+            record["profile"] = name
+            result.append(record)
+            break
+    return _receipt("ui_windows", windows=result)
+
+
+@mcp.tool()
+def ui_controls(
+    profile: str,
+    hwnd: int,
+    max_depth: int = 5,
+    max_items: int = 300,
+) -> dict[str, Any]:
+    """Lista controles UIA acionaveis, sem Document/Edit/texto livre."""
+    config, identity = _ui_authorize_window(profile, int(hwnd))
+    allowed = _ui_allowed_types(config)
+    controls = bridge_runtime.uia_controls(
+        int(hwnd),
+        allowed_types=allowed,
+        max_depth=int(max_depth),
+        max_items=int(max_items),
+    )
+    return _receipt(
+        "ui_controls",
+        profile=profile,
+        window=identity,
+        controls=controls,
+    )
+
+
+@mcp.tool()
+def ui_window_action(
+    profile: str,
+    hwnd: int,
+    window_action: str,
+) -> dict[str, Any]:
+    """Foca, restaura, minimiza ou maximiza janela autorizada."""
+    _ui_authorize_window(profile, int(hwnd))
+    result = bridge_runtime.window_action(
+        int(hwnd),
+        str(window_action),
+    )
+    return _receipt(
+        "ui_window_action",
+        profile=profile,
+        **result,
+    )
+
+
+@mcp.tool()
+def ui_prepare_invoke(
+    profile: str,
+    hwnd: int,
+    control_type: str,
+    name: str = "",
+    automation_id: str = "",
+) -> dict[str, Any]:
+    """Analisa um controle e cria challenge se a acao for de alto risco."""
+    config, identity = _ui_authorize_window(profile, int(hwnd))
+    allowed = _ui_allowed_types(config)
+    if str(control_type) not in allowed:
+        raise PermissionError(
+            f"control_type nao permitido: {control_type}"
+        )
+    info = bridge_runtime.uia_control_info(
+        int(hwnd),
+        control_type=str(control_type),
+        name=str(name or ""),
+        automation_id=str(automation_id or ""),
+    )
+    risk = _ui_risk(identity, info)
+    token = ""
+    expires_at = None
+    if risk["requires_confirmation"]:
+        token = "uic_" + uuid.uuid4().hex
+        expires_at = time.time() + 120.0
+        fingerprint = _ui_fingerprint(profile, identity, info)
+        with _UI_CHALLENGE_LOCK:
+            _UI_CHALLENGES[token] = {
+                "fingerprint": fingerprint,
+                "expires_at": expires_at,
+            }
+            for old_token, value in list(_UI_CHALLENGES.items()):
+                if float(value.get("expires_at") or 0) < time.time():
+                    _UI_CHALLENGES.pop(old_token, None)
+    return _receipt(
+        "ui_prepare_invoke",
+        profile=profile,
+        window=identity,
+        control=info,
+        risk=risk,
+        confirmation_token=token,
+        confirmation_expires_at=expires_at,
+    )
+
+
+@mcp.tool()
+def ui_invoke(
+    profile: str,
+    hwnd: int,
+    control_type: str,
+    name: str = "",
+    automation_id: str = "",
+    confirmation_token: str = "",
+) -> dict[str, Any]:
+    """Invoca controle UIA permitido; alto risco exige challenge valido."""
+    config, identity = _ui_authorize_window(profile, int(hwnd))
+    allowed = _ui_allowed_types(config)
+    if str(control_type) not in allowed:
+        raise PermissionError(
+            f"control_type nao permitido: {control_type}"
+        )
+    info = bridge_runtime.uia_control_info(
+        int(hwnd),
+        control_type=str(control_type),
+        name=str(name or ""),
+        automation_id=str(automation_id or ""),
+    )
+    risk = _ui_risk(identity, info)
+    if risk["requires_confirmation"]:
+        token = str(confirmation_token or "").strip()
+        if not token:
+            raise PermissionError(
+                "Acao UI de alto risco exige confirmation_token "
+                "gerado por ui_prepare_invoke"
+            )
+        fingerprint = _ui_fingerprint(profile, identity, info)
+        with _UI_CHALLENGE_LOCK:
+            challenge = _UI_CHALLENGES.pop(token, None)
+        if not challenge:
+            raise PermissionError("confirmation_token invalido ou usado")
+        if float(challenge.get("expires_at") or 0) < time.time():
+            raise PermissionError("confirmation_token expirado")
+        if challenge.get("fingerprint") != fingerprint:
+            raise PermissionError(
+                "confirmation_token nao corresponde a este controle"
+            )
+
+    invoked = bridge_runtime.invoke_uia_control(
+        int(hwnd),
+        control_type=str(control_type),
+        name=str(name or ""),
+        automation_id=str(automation_id or ""),
+    )
+    return _receipt(
+        "ui_invoke",
+        profile=profile,
+        window=identity,
+        control=invoked,
+        risk=risk,
+    )
+
+
+@mcp.tool()
+def ui_capture_window(
+    profile: str,
+    hwnd: int,
+    quality: int = 60,
+    max_width: int = 1280,
+) -> dict[str, Any]:
+    """Captura apenas uma janela autorizada."""
+    _, identity = _ui_authorize_window(profile, int(hwnd))
+    destination = _safe_path(
+        str(
+            ROOT
+            / ".bridge_artifacts"
+            / "windows"
+            / f"{profile}_{uuid.uuid4().hex[:16]}.jpg"
+        ),
+        "write",
+    )
+    result = bridge_runtime.capture_window(
+        int(hwnd),
+        destination,
+        quality=int(quality),
+        max_width=int(max_width),
+    )
+    result["path"] = _relative(destination)
+    result["sha256"] = hashlib.sha256(
+        destination.read_bytes()
+    ).hexdigest()
+    return _receipt(
+        "ui_capture_window",
+        profile=profile,
+        window=identity,
+        **result,
+    )
+
+
 def _load_json_file(path: Path, default: Any) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8-sig"))
@@ -1720,6 +2101,49 @@ def _execute_remote_action(
             quality=int(args.get("quality") or 60),
             max_width=int(args.get("max_width") or 1280),
         )
+    if action == "ui_profiles":
+        return ui_profiles()
+    if action == "ui_windows":
+        return ui_windows(profile=str(args.get("profile") or ""))
+    if action == "ui_controls":
+        return ui_controls(
+            profile=str(args.get("profile") or ""),
+            hwnd=int(args.get("hwnd") or 0),
+            max_depth=int(args.get("max_depth") or 5),
+            max_items=int(args.get("max_items") or 300),
+        )
+    if action == "ui_window_action":
+        return ui_window_action(
+            profile=str(args.get("profile") or ""),
+            hwnd=int(args.get("hwnd") or 0),
+            window_action=str(args.get("window_action") or ""),
+        )
+    if action == "ui_prepare_invoke":
+        return ui_prepare_invoke(
+            profile=str(args.get("profile") or ""),
+            hwnd=int(args.get("hwnd") or 0),
+            control_type=str(args.get("control_type") or ""),
+            name=str(args.get("name") or ""),
+            automation_id=str(args.get("automation_id") or ""),
+        )
+    if action == "ui_invoke":
+        return ui_invoke(
+            profile=str(args.get("profile") or ""),
+            hwnd=int(args.get("hwnd") or 0),
+            control_type=str(args.get("control_type") or ""),
+            name=str(args.get("name") or ""),
+            automation_id=str(args.get("automation_id") or ""),
+            confirmation_token=str(
+                args.get("confirmation_token") or ""
+            ),
+        )
+    if action == "ui_capture_window":
+        return ui_capture_window(
+            profile=str(args.get("profile") or ""),
+            hwnd=int(args.get("hwnd") or 0),
+            quality=int(args.get("quality") or 60),
+            max_width=int(args.get("max_width") or 1280),
+        )
     raise ValueError(f"Acao remota nao permitida: {action}")
 
 
@@ -1749,9 +2173,23 @@ def _remote_receipt(
         }
 
 
+def _relay_auth_headers(config: dict[str, Any]) -> dict[str, str]:
+    device_id = str(config.get("device_id") or "").strip()
+    device_secret = str(config.get("device_secret") or "")
+    if device_id and device_secret:
+        return {
+            "X-Bridge-Device-Id": device_id,
+            "X-Bridge-Device-Secret": device_secret,
+        }
+    token = str(config.get("token") or "").strip()
+    if token:
+        return {"X-Bridge-Token": token}
+    return {}
+
+
 def _post_remote_receipt_payload(
     relay_url: str,
-    token: str,
+    auth_headers: dict[str, str],
     request_id: str,
     payload: dict[str, Any],
 ) -> None:
@@ -1763,19 +2201,24 @@ def _post_remote_receipt_payload(
         endpoint,
         method="POST",
         payload=payload,
-        headers={"X-Bridge-Token": token},
+        headers=auth_headers,
     )
 
 
 def _post_remote_receipt(
     relay_url: str,
-    token: str,
+    auth_headers: dict[str, str],
     request_id: str,
     action: str,
     args: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = _remote_receipt(action, args)
-    _post_remote_receipt_payload(relay_url, token, request_id, payload)
+    _post_remote_receipt_payload(
+        relay_url,
+        auth_headers,
+        request_id,
+        payload,
+    )
     return payload
 
 
@@ -1783,9 +2226,10 @@ def _poll_remote_once(config: dict[str, Any], processed: set[str]) -> bool:
     repo = str(config.get("repo") or "").strip()
     allowed_author = str(config.get("allowed_author") or "").strip()
     relay_url = str(config.get("relay_url") or "").strip()
-    token = str(config.get("token") or "").strip()
     device = str(config.get("device") or socket.gethostname()).strip()
-    if not all((repo, allowed_author, relay_url, token)):
+    device_id = str(config.get("device_id") or "").strip()
+    auth_headers = _relay_auth_headers(config)
+    if not all((repo, allowed_author, relay_url, device)) or not auth_headers:
         return False
 
     issues_url = (
@@ -1824,13 +2268,18 @@ def _poll_remote_once(config: dict[str, Any], processed: set[str]) -> bool:
             not REQUEST_ID_RE.fullmatch(request_id)
             or request_id in processed
             or action not in REMOTE_ACTIONS
-            or target not in {"*", device, socket.gethostname()}
+            or target not in {
+                "*",
+                device,
+                socket.gethostname(),
+                device_id,
+            }
         ):
             continue
 
         _post_remote_receipt(
             relay_url,
-            token,
+            auth_headers,
             request_id,
             action,
             args,
@@ -1859,12 +2308,14 @@ def _flush_pending_receipts(
     pending: dict[str, dict[str, Any]],
 ) -> bool:
     relay_url = str(config.get("relay_url") or "").strip()
-    token = str(config.get("token") or "").strip()
+    auth_headers = _relay_auth_headers(config)
+    if not auth_headers:
+        return False
     changed = False
     for request_id, payload in list(pending.items()):
         _post_remote_receipt_payload(
             relay_url,
-            token,
+            auth_headers,
             request_id,
             payload,
         )
@@ -1881,18 +2332,23 @@ def _poll_relay_once(
     pending: dict[str, dict[str, Any]],
 ) -> bool:
     relay_url = str(config.get("relay_url") or "").strip()
-    token = str(config.get("token") or "").strip()
     device = str(config.get("device") or socket.gethostname()).strip()
-    if not all((relay_url, token, device)):
+    device_id = str(config.get("device_id") or "").strip()
+    auth_headers = _relay_auth_headers(config)
+    if not all((relay_url, device)) or not auth_headers:
         return False
 
     changed = _flush_pending_receipts(config, processed, pending)
     endpoint = relay_url.rstrip("/") + "/command/next?" + urllib.parse.urlencode(
-        {"device": device, "wait_seconds": 20}
+        {
+            "device": device,
+            "device_id": device_id,
+            "wait_seconds": 20,
+        }
     )
     response = _http_json(
         endpoint,
-        headers={"X-Bridge-Token": token},
+        headers=auth_headers,
         timeout=25.0,
     )
     command = response.get("command") if isinstance(response, dict) else None
@@ -1944,7 +2400,7 @@ def _poll_relay_once(
     _save_remote_tracking(processed, pending)
     _post_remote_receipt_payload(
         relay_url,
-        token,
+        auth_headers,
         request_id,
         payload,
     )
