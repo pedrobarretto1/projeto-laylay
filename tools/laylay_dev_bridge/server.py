@@ -24,6 +24,11 @@ from mcp.server import MCPServer
 
 import bridge_runtime
 
+try:
+    import win32crypt
+except Exception:
+    win32crypt = None
+
 APP_NAME = "Laylay Dev Bridge"
 APP_VERSION = "0.9.0"
 BASE_DIR = (
@@ -53,10 +58,41 @@ except Exception:
     _DEVICE_IDENTITY = {}
 if not isinstance(_DEVICE_IDENTITY, dict):
     _DEVICE_IDENTITY = {}
-for _identity_key in ("device_id", "device_secret"):
-    _identity_value = _DEVICE_IDENTITY.get(_identity_key)
-    if _identity_value:
-        _BOOT_CONFIG[_identity_key] = _identity_value
+
+_identity_device_id = str(
+    _DEVICE_IDENTITY.get("device_id") or ""
+).strip()
+if _identity_device_id:
+    _BOOT_CONFIG["device_id"] = _identity_device_id
+
+_identity_secret = str(
+    _DEVICE_IDENTITY.get("device_secret") or ""
+)
+_identity_dpapi = str(
+    _DEVICE_IDENTITY.get("device_secret_dpapi") or ""
+).strip()
+if not _identity_secret and _identity_dpapi:
+    if win32crypt is None:
+        raise RuntimeError(
+            "Identidade DPAPI configurada, mas win32crypt indisponivel"
+        )
+    try:
+        _identity_blob = base64.b64decode(
+            _identity_dpapi.encode("ascii")
+        )
+        _identity_secret = win32crypt.CryptUnprotectData(
+            _identity_blob,
+            None,
+            None,
+            None,
+            0,
+        )[1].decode("utf-8")
+    except Exception as exc:
+        raise RuntimeError(
+            "Nao foi possivel abrir a identidade DPAPI do dispositivo"
+        ) from exc
+if _identity_secret:
+    _BOOT_CONFIG["device_secret"] = _identity_secret
 
 _workspace_root = str(_BOOT_CONFIG.get("workspace_root") or "").strip()
 _root_value = os.environ.get("LAYLAY_BRIDGE_ROOT") or _workspace_root
@@ -2465,13 +2501,29 @@ def _start_remote_agent() -> None:
     config = _load_json_file(REMOTE_CONFIG_PATH, {})
     if not isinstance(config, dict):
         config = {}
+
     for key in ("device_id", "device_secret"):
-        value = _DEVICE_IDENTITY.get(key)
+        value = _BOOT_CONFIG.get(key)
         if value:
             config[key] = value
+
     if not config.get("enabled"):
         print("[REMOTE] desabilitado")
         return
+
+    auth_mode = (
+        "device"
+        if config.get("device_id") and config.get("device_secret")
+        else "legacy"
+        if config.get("token")
+        else "none"
+    )
+    print(
+        f"[REMOTE] auth={auth_mode} "
+        f"device_id={config.get('device_id') or '-'}",
+        flush=True,
+    )
+
     threading.Thread(
         target=_remote_loop,
         args=(config,),
