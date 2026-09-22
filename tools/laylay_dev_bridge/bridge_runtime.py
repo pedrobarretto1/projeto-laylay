@@ -25,6 +25,11 @@ try:
 except Exception:
     ImageGrab = None
 
+try:
+    from pywinauto import Desktop
+except Exception:
+    Desktop = None
+
 
 _SESSION_LOCK = threading.RLock()
 _SESSIONS: dict[str, dict[str, Any]] = {}
@@ -337,11 +342,17 @@ def list_windows(limit: int = 200) -> list[dict[str, Any]]:
             if not title:
                 return True
             _, pid = win32process.GetWindowThreadProcessId(hwnd)
+            process_name = ""
+            try:
+                process_name = psutil.Process(pid).name()
+            except psutil.Error:
+                process_name = ""
             left, top, right, bottom = win32gui.GetWindowRect(hwnd)
             windows.append(
                 {
                     "hwnd": int(hwnd),
                     "pid": int(pid),
+                    "process_name": process_name,
                     "title": title[:500],
                     "rect": {
                         "left": left,
@@ -382,6 +393,248 @@ def focus_window(hwnd: int) -> dict[str, Any]:
         "hwnd": hwnd,
         "pid": int(pid),
         "title": win32gui.GetWindowText(hwnd),
+    }
+
+
+def window_identity(hwnd: int) -> dict[str, Any]:
+    if win32gui is None or win32process is None:
+        raise RuntimeError("pywin32 indisponivel")
+    hwnd = int(hwnd)
+    if not win32gui.IsWindow(hwnd):
+        raise ValueError("Janela invalida")
+    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+    try:
+        process_name = psutil.Process(pid).name()
+    except psutil.Error:
+        process_name = ""
+    return {
+        "hwnd": hwnd,
+        "pid": int(pid),
+        "process_name": process_name,
+        "title": win32gui.GetWindowText(hwnd).strip(),
+        "visible": bool(win32gui.IsWindowVisible(hwnd)),
+    }
+
+
+def window_action(hwnd: int, action: str) -> dict[str, Any]:
+    if win32gui is None or win32con is None:
+        raise RuntimeError("pywin32 indisponivel")
+    hwnd = int(hwnd)
+    action = str(action or "").strip().casefold()
+    commands = {
+        "focus": win32con.SW_RESTORE,
+        "restore": win32con.SW_RESTORE,
+        "minimize": win32con.SW_MINIMIZE,
+        "maximize": win32con.SW_MAXIMIZE,
+    }
+    if action not in commands:
+        raise ValueError(
+            "Acao de janela nao permitida. Opcoes: "
+            + ", ".join(sorted(commands))
+        )
+    if not win32gui.IsWindow(hwnd):
+        raise ValueError("Janela invalida")
+    win32gui.ShowWindow(hwnd, commands[action])
+    if action in {"focus", "restore", "maximize"}:
+        try:
+            win32gui.SetForegroundWindow(hwnd)
+        except Exception:
+            pass
+    result = window_identity(hwnd)
+    result["window_action"] = action
+    return result
+
+
+def _uia_root(hwnd: int):
+    if Desktop is None:
+        raise RuntimeError("pywinauto/UI Automation indisponivel")
+    hwnd = int(hwnd)
+    return Desktop(backend="uia").window(handle=hwnd).wrapper_object()
+
+
+def _uia_control_record(control: Any) -> dict[str, Any]:
+    info = control.element_info
+    rect = control.rectangle()
+    return {
+        "control_type": str(getattr(info, "control_type", "") or ""),
+        "name": str(getattr(info, "name", "") or "")[:300],
+        "automation_id": str(getattr(info, "automation_id", "") or "")[:300],
+        "class_name": str(getattr(info, "class_name", "") or "")[:200],
+        "enabled": bool(control.is_enabled()),
+        "visible": bool(control.is_visible()),
+        "rect": {
+            "left": int(rect.left),
+            "top": int(rect.top),
+            "right": int(rect.right),
+            "bottom": int(rect.bottom),
+        },
+    }
+
+
+def uia_controls(
+    hwnd: int,
+    *,
+    allowed_types: set[str] | None = None,
+    max_depth: int = 5,
+    max_items: int = 300,
+) -> list[dict[str, Any]]:
+    root = _uia_root(hwnd)
+    allowed = {str(x) for x in (allowed_types or set())}
+    max_depth = max(1, min(int(max_depth), 8))
+    max_items = max(1, min(int(max_items), 800))
+    result: list[dict[str, Any]] = []
+
+    def walk(control: Any, depth: int) -> None:
+        if len(result) >= max_items or depth > max_depth:
+            return
+        try:
+            children = control.children()
+        except Exception:
+            return
+        for child in children:
+            if len(result) >= max_items:
+                return
+            try:
+                record = _uia_control_record(child)
+            except Exception:
+                continue
+            control_type = record["control_type"]
+            if not allowed or control_type in allowed:
+                if record["name"] or record["automation_id"]:
+                    record["depth"] = depth
+                    result.append(record)
+            walk(child, depth + 1)
+
+    walk(root, 1)
+    return result
+
+
+def _find_uia_control(
+    hwnd: int,
+    *,
+    control_type: str,
+    name: str = "",
+    automation_id: str = "",
+) -> Any:
+    root = _uia_root(hwnd)
+    wanted_type = str(control_type or "").strip()
+    wanted_name = str(name or "").strip()
+    wanted_id = str(automation_id or "").strip()
+    if not wanted_type:
+        raise ValueError("control_type e obrigatorio")
+    if not wanted_name and not wanted_id:
+        raise ValueError("Informe name ou automation_id")
+
+    matches: list[Any] = []
+    for control in root.descendants(control_type=wanted_type):
+        try:
+            info = control.element_info
+            current_name = str(getattr(info, "name", "") or "")
+            current_id = str(getattr(info, "automation_id", "") or "")
+            if wanted_name and current_name != wanted_name:
+                continue
+            if wanted_id and current_id != wanted_id:
+                continue
+            if not control.is_visible() or not control.is_enabled():
+                continue
+            matches.append(control)
+            if len(matches) > 1:
+                break
+        except Exception:
+            continue
+
+    if not matches:
+        raise LookupError("Controle UIA nao encontrado")
+    if len(matches) > 1:
+        raise LookupError(
+            "Seletor UIA ambiguo; informe automation_id ou nome mais especifico"
+        )
+    return matches[0]
+
+
+def uia_control_info(
+    hwnd: int,
+    *,
+    control_type: str,
+    name: str = "",
+    automation_id: str = "",
+) -> dict[str, Any]:
+    control = _find_uia_control(
+        hwnd,
+        control_type=control_type,
+        name=name,
+        automation_id=automation_id,
+    )
+    return _uia_control_record(control)
+
+
+def invoke_uia_control(
+    hwnd: int,
+    *,
+    control_type: str,
+    name: str = "",
+    automation_id: str = "",
+) -> dict[str, Any]:
+    control = _find_uia_control(
+        hwnd,
+        control_type=control_type,
+        name=name,
+        automation_id=automation_id,
+    )
+    info = _uia_control_record(control)
+
+    invoked = False
+    for method_name in ("invoke", "select", "toggle"):
+        method = getattr(control, method_name, None)
+        if not callable(method):
+            continue
+        try:
+            method()
+            invoked = True
+            break
+        except Exception:
+            continue
+    if not invoked:
+        raise RuntimeError(
+            "Controle nao oferece uma acao UIA segura suportada"
+        )
+    return info
+
+
+def capture_window(
+    hwnd: int,
+    destination: Path,
+    *,
+    quality: int = 70,
+    max_width: int = 1280,
+) -> dict[str, Any]:
+    if ImageGrab is None or win32gui is None:
+        raise RuntimeError("Captura de janela indisponivel")
+    hwnd = int(hwnd)
+    if not win32gui.IsWindow(hwnd):
+        raise ValueError("Janela invalida")
+    left, top, right, bottom = win32gui.GetWindowRect(hwnd)
+    if right <= left or bottom <= top:
+        raise ValueError("Janela sem area capturavel")
+    quality = max(30, min(int(quality), 95))
+    max_width = max(320, min(int(max_width), 3840))
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    image = ImageGrab.grab(
+        bbox=(left, top, right, bottom),
+        all_screens=True,
+    ).convert("RGB")
+    original_width, original_height = image.size
+    if image.width > max_width:
+        height = max(1, int(image.height * (max_width / image.width)))
+        image = image.resize((max_width, height))
+    image.save(destination, format="JPEG", quality=quality, optimize=True)
+    return {
+        "path": str(destination),
+        "width": image.width,
+        "height": image.height,
+        "original_width": original_width,
+        "original_height": original_height,
+        "bytes": destination.stat().st_size,
     }
 
 
