@@ -26,7 +26,7 @@ from pydantic import BaseModel, Field, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-SERVICE_VERSION = "0.5.1"
+SERVICE_VERSION = "0.5.2"
 BRIDGE_TOKEN = os.environ.get("BRIDGE_RECEIPT_TOKEN", "")
 MCP_ACCESS_TOKEN = os.environ.get("MCP_ACCESS_TOKEN", "")
 GITHUB_COMMAND_REPO = os.environ.get(
@@ -43,6 +43,7 @@ PROTOCOL = "laylay-bridge-command-v1"
 ACTIONS = {
     "ping",
     "system_info",
+    "access_info",
     "list_files",
     "find_files",
     "search_text",
@@ -267,6 +268,12 @@ async def bridge_system_info(device: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+async def bridge_access_info(device: str) -> dict[str, Any]:
+    """Return the active file access policy for a device."""
+    return await _send_and_wait(device, "access_info", {})
+
+
+@mcp.tool()
 async def bridge_list_files(device: str, path: str = ".") -> dict[str, Any]:
     """List files inside the authorized workspace on a device."""
     return await _send_and_wait(device, "list_files", {"path": path})
@@ -394,12 +401,17 @@ async def bridge_move_path(
     device: str,
     source: str,
     destination: str,
+    expected_source_sha256: str = "",
 ) -> dict[str, Any]:
     """Move or rename a path inside the authorized workspace."""
     return await _send_and_wait(
         device,
         "move_path",
-        {"source": source, "destination": destination},
+        {
+            "source": source,
+            "destination": destination,
+            "expected_source_sha256": expected_source_sha256,
+        },
     )
 
 
