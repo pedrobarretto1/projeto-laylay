@@ -27,10 +27,11 @@ from pydantic import BaseModel, Field, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-SERVICE_VERSION = "0.7.0"
+SERVICE_VERSION = "0.8.0"
 BRIDGE_TOKEN = os.environ.get("BRIDGE_RECEIPT_TOKEN", "")
 MCP_ACCESS_TOKEN = os.environ.get("MCP_ACCESS_TOKEN", "")
 DEVICE_CREDENTIALS_RAW = os.environ.get("DEVICE_CREDENTIALS_JSON", "{}")
+CONTROLLER_TOKEN = os.environ.get("CONTROLLER_DISPATCH_TOKEN", "")
 GITHUB_COMMAND_REPO = os.environ.get(
     "GITHUB_COMMAND_REPO", "pedrobarretto1/projeto-laylay"
 )
@@ -42,6 +43,7 @@ ISSUE_TITLE_PREFIX = "[LAYLAY-BRIDGE-ENC]"
 ISSUE_MAX_AGE_SECONDS = 600
 REQUEST_RE = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
 PROTOCOL = "laylay-bridge-command-v1"
+DIRECT_PROTOCOL = "laylay-bridge-direct-v1"
 ACTIONS = {
     "ping",
     "system_info",
@@ -108,6 +110,16 @@ class Command(BaseModel):
     device: str = "*"
     action: str
     args: dict[str, Any] = Field(default_factory=dict)
+
+
+class DirectCommand(BaseModel):
+    protocol: str = DIRECT_PROTOCOL
+    request_id: str
+    device: str
+    action: str
+    args: dict[str, Any] = Field(default_factory=dict)
+    controller_token: str
+    issued_at: int
 
 
 def _utcnow() -> str:
@@ -246,6 +258,69 @@ def _decrypt_envelope(envelope: dict[str, Any]) -> Command:
     if command.request_id != request_id:
         raise ValueError("request_id mismatch")
     return command
+
+
+def _decrypt_direct_envelope(envelope: dict[str, Any]) -> Command:
+    if envelope.get("protocol") != ENCRYPTED_PROTOCOL:
+        raise ValueError("invalid encrypted protocol")
+    request_id = str(envelope.get("request_id") or "")
+    if not REQUEST_RE.fullmatch(request_id):
+        raise ValueError("invalid request_id")
+
+    ephemeral_raw = _b64u_decode(str(envelope.get("ephemeral_public_key") or ""))
+    nonce = _b64u_decode(str(envelope.get("nonce") or ""))
+    ciphertext = _b64u_decode(str(envelope.get("ciphertext") or ""))
+    if len(ephemeral_raw) != 32:
+        raise ValueError("invalid ephemeral public key")
+    if len(nonce) != 12:
+        raise ValueError("invalid nonce")
+    if not ciphertext or len(ciphertext) > 131072:
+        raise ValueError("invalid ciphertext size")
+
+    shared = _command_private_key().exchange(
+        X25519PublicKey.from_public_bytes(ephemeral_raw)
+    )
+    key = HKDF(
+        algorithm=SHA256(),
+        length=32,
+        salt=None,
+        info=b"laylay-github-command-v1\x00" + request_id.encode("ascii"),
+    ).derive(shared)
+    plaintext = AESGCM(key).decrypt(
+        nonce,
+        ciphertext,
+        request_id.encode("ascii"),
+    )
+    decoded = json.loads(plaintext.decode("utf-8"))
+    if not isinstance(decoded, dict):
+        raise ValueError("decrypted payload must be an object")
+
+    direct = DirectCommand.model_validate(decoded)
+    if direct.protocol != DIRECT_PROTOCOL:
+        raise ValueError("invalid direct protocol")
+    if direct.request_id != request_id:
+        raise ValueError("request_id mismatch")
+    if not CONTROLLER_TOKEN:
+        raise RuntimeError("controller dispatch is not configured")
+    if not hmac.compare_digest(
+        direct.controller_token,
+        CONTROLLER_TOKEN,
+    ):
+        raise PermissionError("invalid controller token")
+
+    now = int(time.time())
+    if direct.issued_at < now - 90 or direct.issued_at > now + 30:
+        raise ValueError("direct command outside dispatch window")
+    if direct.action not in ACTIONS:
+        raise ValueError("invalid action")
+
+    return Command(
+        protocol=PROTOCOL,
+        request_id=direct.request_id,
+        device=direct.device,
+        action=direct.action,
+        args=direct.args,
+    )
 
 
 def _bridge_authorized(request: Request) -> bool:
@@ -748,6 +823,137 @@ async def github_issue_dispatch(request: Request) -> JSONResponse:
             "queued": True,
             "existing": existing,
             "request_id": command.request_id,
+        }
+    )
+
+
+
+controller_tickets: dict[str, dict[str, Any]] = {}
+
+
+def _issue_controller_ticket(request_id: str) -> str:
+    token = secrets.token_urlsafe(24)
+    controller_tickets[request_id] = {
+        "token_hash": hashlib.sha256(token.encode("utf-8")).hexdigest(),
+        "expires_at": time.time() + 300.0,
+    }
+    _trim(controller_tickets, 500)
+    return token
+
+
+def _controller_ticket_ok(request_id: str, token: str) -> bool:
+    record = controller_tickets.get(request_id)
+    if not isinstance(record, dict):
+        return False
+    if float(record.get("expires_at") or 0.0) < time.time():
+        controller_tickets.pop(request_id, None)
+        return False
+    expected = str(record.get("token_hash") or "")
+    actual = hashlib.sha256(str(token or "").encode("utf-8")).hexdigest()
+    return bool(expected) and hmac.compare_digest(actual, expected)
+
+
+@mcp.custom_route("/controller/dispatch", methods=["GET"])
+async def controller_dispatch(request: Request) -> JSONResponse:
+    envelope = {
+        "protocol": ENCRYPTED_PROTOCOL,
+        "request_id": str(request.query_params.get("request_id") or ""),
+        "ephemeral_public_key": str(
+            request.query_params.get("ephemeral_public_key") or ""
+        ),
+        "nonce": str(request.query_params.get("nonce") or ""),
+        "ciphertext": str(request.query_params.get("ciphertext") or ""),
+    }
+    try:
+        command = _decrypt_direct_envelope(envelope)
+        _, existing = _queue_payload(command)
+    except PermissionError:
+        return JSONResponse({"detail": "unauthorized"}, status_code=401)
+    except ValidationError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=422)
+    except RuntimeError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=503)
+    except Exception as exc:
+        return JSONResponse(
+            {"detail": f"invalid direct command: {type(exc).__name__}"},
+            status_code=400,
+        )
+
+    print(
+        "CONTROLLER_COMMAND_QUEUED "
+        + json.dumps(
+            {
+                "request_id": command.request_id,
+                "device": command.device,
+                "action": command.action,
+            },
+            sort_keys=True,
+        ),
+        flush=True,
+    )
+
+    try:
+        wait_seconds = float(request.query_params.get("wait_seconds") or 12)
+    except ValueError:
+        wait_seconds = 12.0
+    wait_seconds = max(0.0, min(wait_seconds, 20.0))
+    deadline = time.monotonic() + wait_seconds
+
+    while time.monotonic() < deadline:
+        receipt = receipts.get(command.request_id)
+        if receipt is not None:
+            return JSONResponse(
+                {
+                    "queued": True,
+                    "existing": existing,
+                    "completed": True,
+                    "request_id": command.request_id,
+                    "receipt": receipt,
+                }
+            )
+        await asyncio.sleep(0.1)
+
+    ticket = _issue_controller_ticket(command.request_id)
+    return JSONResponse(
+        {
+            "queued": True,
+            "existing": existing,
+            "completed": False,
+            "request_id": command.request_id,
+            "receipt_token": ticket,
+        },
+        status_code=202,
+    )
+
+
+@mcp.custom_route(
+    "/controller/receipt/{request_id}",
+    methods=["GET"],
+)
+async def controller_receipt(request: Request) -> JSONResponse:
+    request_id = str(request.path_params.get("request_id") or "")
+    token = str(request.query_params.get("token") or "")
+    if not REQUEST_RE.fullmatch(request_id):
+        return JSONResponse({"detail": "invalid request_id"}, status_code=400)
+    if not _controller_ticket_ok(request_id, token):
+        return JSONResponse({"detail": "invalid receipt token"}, status_code=401)
+
+    receipt = receipts.get(request_id)
+    if receipt is None:
+        return JSONResponse(
+            {
+                "completed": False,
+                "request_id": request_id,
+            },
+            status_code=202,
+        )
+
+    controller_tickets.pop(request_id, None)
+    return JSONResponse(
+        {
+            "completed": True,
+            "request_id": request_id,
+            "receipt": receipt,
         }
     )
 
