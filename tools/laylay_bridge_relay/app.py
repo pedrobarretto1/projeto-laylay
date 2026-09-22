@@ -27,9 +27,10 @@ from pydantic import BaseModel, Field, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-SERVICE_VERSION = "0.6.2"
+SERVICE_VERSION = "0.7.0"
 BRIDGE_TOKEN = os.environ.get("BRIDGE_RECEIPT_TOKEN", "")
 MCP_ACCESS_TOKEN = os.environ.get("MCP_ACCESS_TOKEN", "")
+DEVICE_CREDENTIALS_RAW = os.environ.get("DEVICE_CREDENTIALS_JSON", "{}")
 GITHUB_COMMAND_REPO = os.environ.get(
     "GITHUB_COMMAND_REPO", "pedrobarretto1/projeto-laylay"
 )
@@ -79,6 +80,13 @@ ACTIONS = {
     "list_windows",
     "focus_window",
     "capture_screen",
+    "ui_profiles",
+    "ui_windows",
+    "ui_controls",
+    "ui_window_action",
+    "ui_prepare_invoke",
+    "ui_invoke",
+    "ui_capture_window",
 }
 commands: dict[str, dict[str, Any]] = {}
 receipts: dict[str, dict[str, Any]] = {}
@@ -245,6 +253,50 @@ def _bridge_authorized(request: Request) -> bool:
     return bool(BRIDGE_TOKEN) and hmac.compare_digest(supplied, BRIDGE_TOKEN)
 
 
+def _device_credentials() -> dict[str, dict[str, Any]]:
+    try:
+        value = json.loads(DEVICE_CREDENTIALS_RAW)
+    except Exception:
+        return {}
+    if not isinstance(value, dict):
+        return {}
+    return {
+        str(key): dict(record)
+        for key, record in value.items()
+        if isinstance(record, dict)
+    }
+
+
+DEVICE_CREDENTIALS = _device_credentials()
+
+
+def _device_authorized(
+    request: Request,
+    device_id: str,
+) -> tuple[bool, dict[str, Any] | None]:
+    device_id = str(device_id or "").strip()
+    supplied_id = str(
+        request.headers.get("x-bridge-device-id", "")
+    ).strip()
+    supplied_secret = str(
+        request.headers.get("x-bridge-device-secret", "")
+    )
+    if not device_id or not supplied_id or supplied_id != device_id:
+        return False, None
+    record = DEVICE_CREDENTIALS.get(device_id)
+    if not isinstance(record, dict) or not record.get("enabled", True):
+        return False, None
+    expected_hash = str(record.get("secret_sha256") or "").strip().lower()
+    if not expected_hash or not supplied_secret:
+        return False, None
+    actual_hash = hashlib.sha256(
+        supplied_secret.encode("utf-8")
+    ).hexdigest()
+    if not hmac.compare_digest(actual_hash, expected_hash):
+        return False, None
+    return True, record
+
+
 def _queue_payload(command: Command) -> tuple[dict[str, Any], bool]:
     if command.protocol != PROTOCOL:
         raise ValueError("invalid protocol")
@@ -328,17 +380,23 @@ def bridge_devices() -> dict[str, Any]:
     """List devices that have polled the relay and their recent online state."""
     now = time.time()
     items: list[dict[str, Any]] = []
-    for name, info in sorted(devices_seen.items()):
+    for key, info in sorted(devices_seen.items()):
         age = max(0.0, now - float(info["seen_epoch"]))
         items.append(
             {
-                "device": name,
+                "device": info.get("name") or key,
+                "device_id": info.get("device_id"),
+                "auth": info.get("auth") or "legacy",
                 "last_seen": info["last_seen"],
                 "seconds_ago": round(age, 1),
-                "online": age <= 15.0,
+                "online": age <= 30.0,
             }
         )
-    return {"devices": items, "relay_version": SERVICE_VERSION}
+    return {
+        "devices": items,
+        "registered_device_count": len(DEVICE_CREDENTIALS),
+        "relay_version": SERVICE_VERSION,
+    }
 
 
 @mcp.tool()
@@ -721,11 +779,22 @@ async def post_command(request: Request) -> JSONResponse:
     )
 @mcp.custom_route("/command/next", methods=["GET"])
 async def next_command(request: Request) -> JSONResponse:
-    if not _bridge_authorized(request):
-        return JSONResponse({"detail": "invalid bridge token"}, status_code=401)
-    device = str(request.query_params.get("device") or "").strip()
-    if not device or len(device) > 128:
+    device_name = str(request.query_params.get("device") or "").strip()
+    device_id = str(request.query_params.get("device_id") or "").strip()
+    if not device_name or len(device_name) > 128:
         return JSONResponse({"detail": "invalid device"}, status_code=400)
+    if len(device_id) > 128:
+        return JSONResponse({"detail": "invalid device_id"}, status_code=400)
+
+    device_ok, record = _device_authorized(request, device_id)
+    legacy_ok = _bridge_authorized(request)
+    if not device_ok and not legacy_ok:
+        return JSONResponse({"detail": "invalid device credentials"}, status_code=401)
+
+    if device_ok and isinstance(record, dict):
+        expected_name = str(record.get("name") or "").strip()
+        if expected_name and expected_name.casefold() != device_name.casefold():
+            return JSONResponse({"detail": "device name mismatch"}, status_code=403)
 
     try:
         wait_seconds = float(request.query_params.get("wait_seconds") or 0)
@@ -733,18 +802,26 @@ async def next_command(request: Request) -> JSONResponse:
         wait_seconds = 0.0
     wait_seconds = max(0.0, min(wait_seconds, 25.0))
     deadline = time.monotonic() + wait_seconds
+    seen_key = device_id or device_name
 
     while True:
         now = time.time()
-        devices_seen[device] = {
+        devices_seen[seen_key] = {
+            "device_id": device_id or None,
+            "name": device_name,
+            "auth": "device" if device_ok else "legacy",
             "last_seen": _utcnow(),
             "seen_epoch": now,
         }
         _trim(devices_seen, 100)
 
+        accepted_targets = {"*", device_name}
+        if device_id:
+            accepted_targets.add(device_id)
+
         for request_id, payload in commands.items():
             target = str(payload.get("device") or "*")
-            if target not in {"*", device}:
+            if target not in accepted_targets:
                 continue
             lease_until = float(leases.get(request_id) or 0.0)
             if lease_until > now:
@@ -768,24 +845,42 @@ async def devices_route(request: Request) -> JSONResponse:
 
 @mcp.custom_route("/receipt/{request_id}", methods=["GET", "POST"])
 async def receipt_route(request: Request) -> JSONResponse:
-    if not _bridge_authorized(request):
-        return JSONResponse({"detail": "invalid bridge token"}, status_code=401)
     request_id = str(request.path_params.get("request_id") or "")
     if not REQUEST_RE.fullmatch(request_id):
         return JSONResponse({"detail": "invalid request_id"}, status_code=400)
 
     if request.method == "GET":
+        if not _bridge_authorized(request):
+            return JSONResponse({"detail": "invalid bridge token"}, status_code=401)
         payload = receipts.get(request_id)
         if payload is None:
             return JSONResponse({"detail": "receipt not found"}, status_code=404)
         return JSONResponse(payload)
 
+    device_id = str(
+        request.headers.get("x-bridge-device-id", "")
+    ).strip()
+    device_ok, record = _device_authorized(request, device_id)
+    legacy_ok = _bridge_authorized(request)
+    if not device_ok and not legacy_ok:
+        return JSONResponse({"detail": "invalid device credentials"}, status_code=401)
+
     try:
         receipt = Receipt.model_validate(await request.json())
     except ValidationError as exc:
         return JSONResponse({"detail": str(exc)}, status_code=422)
+
+    if device_ok and isinstance(record, dict):
+        expected_name = str(record.get("name") or "").strip()
+        if (
+            expected_name
+            and expected_name.casefold() != receipt.device.casefold()
+        ):
+            return JSONResponse({"detail": "device name mismatch"}, status_code=403)
+
     payload = receipt.model_dump()
-    payload["request_id"] = request_id
+    if device_id:
+        payload["device_id"] = device_id
     payload["received_at"] = _utcnow()
     receipts[request_id] = payload
     commands.pop(request_id, None)
@@ -798,7 +893,6 @@ async def receipt_route(request: Request) -> JSONResponse:
         flush=True,
     )
     return JSONResponse({"stored": True, "request_id": request_id})
-
 
 class MCPBearerMiddleware:
     def __init__(self, inner_app: Any):
