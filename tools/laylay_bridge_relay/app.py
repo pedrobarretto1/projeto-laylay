@@ -27,11 +27,14 @@ from pydantic import BaseModel, Field, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-SERVICE_VERSION = "0.9.0"
+SERVICE_VERSION = "0.9.1"
 BRIDGE_TOKEN = os.environ.get("BRIDGE_RECEIPT_TOKEN", "")
 MCP_ACCESS_TOKEN = os.environ.get("MCP_ACCESS_TOKEN", "")
 DEVICE_CREDENTIALS_RAW = os.environ.get("DEVICE_CREDENTIALS_JSON", "{}")
 CONTROLLER_TOKEN = os.environ.get("CONTROLLER_DISPATCH_TOKEN", "")
+DIRECT_DISPATCH_ENABLED = str(
+    os.environ.get("DIRECT_DISPATCH_ENABLED", "0")
+).strip().casefold() in {"1", "true", "yes", "on"}
 GITHUB_WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
 GITHUB_COMMAND_REPO = os.environ.get(
     "GITHUB_COMMAND_REPO", "pedrobarretto1/projeto-laylay"
@@ -47,6 +50,7 @@ PROTOCOL = "laylay-bridge-command-v1"
 DIRECT_PROTOCOL = "laylay-bridge-direct-v1"
 ACTIONS = {
     "ping",
+    "bridge_status",
     "system_info",
     "access_info",
     "list_files",
@@ -856,6 +860,11 @@ def _controller_ticket_ok(request_id: str, token: str) -> bool:
 
 @mcp.custom_route("/controller/dispatch", methods=["GET"])
 async def controller_dispatch(request: Request) -> JSONResponse:
+    if not DIRECT_DISPATCH_ENABLED:
+        return JSONResponse(
+            {"detail": "direct dispatch disabled"},
+            status_code=404,
+        )
     envelope = {
         "protocol": ENCRYPTED_PROTOCOL,
         "request_id": str(request.query_params.get("request_id") or ""),
@@ -932,6 +941,11 @@ async def controller_dispatch(request: Request) -> JSONResponse:
     methods=["GET"],
 )
 async def controller_receipt(request: Request) -> JSONResponse:
+    if not DIRECT_DISPATCH_ENABLED:
+        return JSONResponse(
+            {"detail": "direct dispatch disabled"},
+            status_code=404,
+        )
     request_id = str(request.path_params.get("request_id") or "")
     token = str(request.query_params.get("token") or "")
     if not REQUEST_RE.fullmatch(request_id):
