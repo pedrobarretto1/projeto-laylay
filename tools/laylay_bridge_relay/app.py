@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 from datetime import datetime, timezone
@@ -8,7 +9,7 @@ from typing import Any
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
-app = FastAPI(title="Laylay Bridge Relay", version="0.1.0")
+app = FastAPI(title="Laylay Bridge Relay", version="0.1.1")
 TOKEN = os.environ.get("BRIDGE_RECEIPT_TOKEN", "")
 REQUEST_RE = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
 receipts: dict[str, dict[str, Any]] = {}
@@ -24,7 +25,7 @@ class Receipt(BaseModel):
 
 @app.get("/")
 def root() -> dict[str, Any]:
-    return {"service": "laylay-bridge-relay", "version": "0.1.0"}
+    return {"service": "laylay-bridge-relay", "version": "0.1.1"}
 
 
 @app.get("/health")
@@ -47,6 +48,11 @@ def post_receipt(
     payload["request_id"] = request_id
     payload["received_at"] = datetime.now(timezone.utc).isoformat()
     receipts[request_id] = payload
+    print(
+        "BRIDGE_RECEIPT "
+        + json.dumps(payload, ensure_ascii=False, sort_keys=True),
+        flush=True,
+    )
     return {"stored": True, "request_id": request_id}
 
 
