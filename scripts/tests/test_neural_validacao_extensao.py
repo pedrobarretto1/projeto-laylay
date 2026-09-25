@@ -1,9 +1,87 @@
 from __future__ import annotations
 
 import pytest
+import joblib
+import numpy as np
 
 from mente_laylay.neural.modelo import treinar_modelo
 from mente_laylay.neural.validacao_extensao import validar_extensao_por_grupos
+
+
+class _EncoderFixoTeste:
+    """Fronteira sintética para testar wiring, não qualidade semântica."""
+
+    def codificar(self, textos):
+        return np.asarray([
+            [float("consulta" in texto), float("app" in texto), 1.0]
+            for texto in textos
+        ])
+
+
+@pytest.mark.parametrize("representacao", ["integral_v1", "semantico_hibrido_base"])
+def test_v29_cv_fatorada_preserva_oof_grupos_e_modelo_base(tmp_path, representacao):
+    modelo = _modelo_base(tmp_path)
+    if representacao == "semantico_hibrido_base":
+        modelo.encoder_semantico = _EncoderFixoTeste()
+    antes = joblib.hash(modelo)
+    r = validar_extensao_por_grupos(
+        modelo, _exemplos_fatorados(), intent="LIST_WINDOWS", action="list",
+        escopo="consulta_ativa", n_splits=2, limiares=(0.5,),
+        representacoes_fatores={"ato_consulta": representacao, "dominio_app": "tfidf"},
+    )
+    assert joblib.hash(modelo) == antes
+    assert not modelo.extensoes_intent
+    assert len(r["previsoes_oof"]) == 16
+    assert all(not f["grupos_compartilhados"] for f in r["folds"])
+    for linha in r["previsoes_oof"]:
+        assert set(linha["fatores"]) == {"ato_consulta", "dominio_app"}
+        assert all(np.isfinite(p) and 0 <= p <= 1 for p in linha["fatores"].values())
+        assert linha["probabilidade"] == min(linha["fatores"].values())
+    assert r["contrato"]["nao_promove_modelo"] is True
+
+
+@pytest.mark.parametrize("fatorada", [False, True])
+def test_v29_sem_encoder_falha_sem_fallback_lexical(tmp_path, fatorada):
+    from mente_laylay.neural.modelo import adicionar_extensao_intent, adicionar_extensao_intent_fatorada
+    modelo = _modelo_base(tmp_path)
+    argumentos = {"representacoes_fatores": {"ato_consulta": "semantico_hibrido_base"}} if fatorada else {
+        "representacao": "semantico_hibrido_base",
+    }
+    funcao = adicionar_extensao_intent_fatorada if fatorada else adicionar_extensao_intent
+    with pytest.raises(ValueError, match="exige encoder semântico"):
+        funcao(modelo, _exemplos_fatorados(), intent="LIST_WINDOWS", action="list", **argumentos)
+    assert not modelo.extensoes_intent
+
+
+@pytest.mark.parametrize("fatorada", [False, True])
+def test_v29_detector_reutiliza_encoder_e_sobrevive_serializacao(tmp_path, fatorada):
+    from mente_laylay.neural.modelo import (
+        DetectorExtensaoEncoderBase, adicionar_extensao_intent, adicionar_extensao_intent_fatorada,
+    )
+    modelo = _modelo_base(tmp_path)
+    modelo.encoder_semantico = _EncoderFixoTeste()
+    antes = joblib.hash(modelo)
+    argumentos = {"representacoes_fatores": {"ato_consulta": "semantico_hibrido_base"}} if fatorada else {
+        "representacao": "semantico_hibrido_base",
+    }
+    funcao = adicionar_extensao_intent_fatorada if fatorada else adicionar_extensao_intent
+    caminho = tmp_path / "candidato.joblib"
+    candidato = funcao(modelo, _exemplos_fatorados(), intent="LIST_WINDOWS", action="list",
+                       caminho=caminho, **argumentos)
+    extensao = candidato.extensoes_intent["LIST_WINDOWS"]
+    detector = extensao.detectores_fatores["ato_consulta"] if fatorada else extensao.detector
+    assert isinstance(detector, DetectorExtensaoEncoderBase)
+    assert detector.encoder is modelo.encoder_semantico
+    textos = ["consulta app", "relato porta"]
+    esperado = detector.predict_proba(textos)
+    recarregado = joblib.load(caminho)
+    ext = recarregado.extensoes_intent["LIST_WINDOWS"]
+    det = ext.detectores_fatores["ato_consulta"] if fatorada else ext.detector
+    np.testing.assert_allclose(det.predict_proba(textos), esperado)
+    np.testing.assert_allclose(det.predict_proba(textos[0]), esperado[:1])
+    assert det.encoder is recarregado.encoder_semantico
+    assert joblib.hash(modelo) == antes
+    assert not modelo.extensoes_intent
 
 
 def _modelo_base(tmp_path):
@@ -21,6 +99,40 @@ def _modelo_base(tmp_path):
     )
 
 
+def test_v30_validacao_distingue_actions_da_mesma_intent(tmp_path) -> None:
+    exemplos = []
+    for grupo in range(4):
+        exemplos.extend((
+            {
+                "text": f"liga a luz {grupo}",
+                "intent": "IOT_CONTROL",
+                "action": "on",
+                "extension_scope": "operacional_literal_v1",
+                "validation_group": f"grupo_{grupo}",
+            },
+            {
+                "text": f"desliga a luz {grupo}",
+                "intent": "IOT_CONTROL",
+                "action": "off",
+                "extension_scope": "operacional_literal_v1",
+                "validation_group": f"grupo_{grupo}",
+            },
+        ))
+
+    relatorio = validar_extensao_por_grupos(
+        _modelo_base(tmp_path),
+        exemplos,
+        intent="IOT_CONTROL",
+        action="on",
+        escopo="operacional_literal_v1",
+        n_splits=2,
+        limiares=(0.5,),
+    )
+
+    assert relatorio["positivos"] == 4
+    assert relatorio["negativos"] == 4
+
+
 def test_validacao_extensao_isola_grupos_e_publica_matriz_por_limiar(
     tmp_path,
 ) -> None:
@@ -31,12 +143,14 @@ def test_validacao_extensao_isola_grupos_e_publica_matriz_por_limiar(
             {
                 "text": f"consulta janela aplicativo {grupo}",
                 "intent": "LIST_WINDOWS",
+                "action": "list",
                 "extension_scope": "consulta_ativa",
                 "validation_group": f"grupo_{grupo}",
             },
             {
                 "text": f"relato janela assunto {grupo}",
                 "intent": "NONE",
+                "action": "none",
                 "extension_scope": "contraste",
                 "validation_group": f"grupo_{grupo}",
             },
@@ -79,6 +193,7 @@ def _exemplos_fatorados():
             itens.append({
                 "text": f"{'consulta' if ato else 'relato'} {'app' if dominio else 'porta'} {grupo}",
                 "intent": "LIST_WINDOWS" if ato and dominio else "NONE",
+                "action": "list" if ato and dominio else "none",
                 "extension_scope": "consulta_ativa" if ato and dominio else "contraste",
                 "validation_group": f"grupo_{grupo}",
                 "validation_entity_group": f"entidade_{grupo}",

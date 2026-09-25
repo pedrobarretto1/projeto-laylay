@@ -35,8 +35,12 @@ EXPECTATIVAS_SEMANTICAS = {
         "nome": "leitura_social_vulneravel_causal",
         "dominio": "personalidade",
         "fala_any": ("trist", "ouvir", "ouvi", "entendo"),
+        "campos_plano_um_de": {
+            "evento_emocional_causal.origem": (
+                "leitura_semantica_principal", "contingencia_lexical_usuario",
+            ),
+        },
         "campos_plano": {
-            "evento_emocional_causal.origem": "leitura_semantica_principal",
             "evento_emocional_causal.natureza_evidencia": "leitura_social",
             "evento_emocional_causal.intensidade": 1,
             "evento_emocional_causal.sensibilidade": "vulneravel",
@@ -54,8 +58,12 @@ EXPECTATIVAS_SEMANTICAS = {
         "nome": "leitura_social_positiva_causal",
         "dominio": "personalidade",
         "fala_any": ("feliz", "projeto", "parab"),
+        "campos_plano_um_de": {
+            "evento_emocional_causal.origem": (
+                "leitura_semantica_principal", "contingencia_lexical_usuario",
+            ),
+        },
         "campos_plano": {
-            "evento_emocional_causal.origem": "leitura_semantica_principal",
             "evento_emocional_causal.natureza_evidencia": "leitura_social",
             "evento_emocional_causal.intensidade": 3,
             "evento_emocional_causal.sensibilidade": "sensivel",
@@ -70,11 +78,18 @@ EXPECTATIVAS_SEMANTICAS = {
     },
     3: {
         "sem_comando": True,
-        "nome": "linguagem_indireta_publica_evento_semantico",
+        "nome": "linguagem_indireta_publica_evento_causal_rastreavel",
         "dominio": "personalidade",
         "fala_any": ("projeto", "entreg", "peso", "semanas"),
+        # O modelo principal pode propor a leitura; quando ele se omite, o
+        # leitor contextual compartilhado usa somente causa e trecho do usuário.
+        # Não atribuir origem de LLM à inferência local.
+        "campos_plano_um_de": {
+            "evento_emocional_causal.origem": (
+                "leitura_semantica_principal", "inferencia_contextual_usuario",
+            ),
+        },
         "campos_plano": {
-            "evento_emocional_causal.origem": "leitura_semantica_principal",
             "evento_emocional_causal.natureza_evidencia": "inferencia",
             "evento_emocional_causal.intensidade": 2,
             "evento_emocional_causal.sensibilidade": "sensivel",

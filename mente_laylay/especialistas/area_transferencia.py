@@ -17,6 +17,9 @@ import unicodedata
 from typing import Any, Callable
 
 from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
+from mente_laylay.memoria_mental.resultado_acao import (
+    interpretar_tratamento_operacional,
+)
 from urllib.parse import urlsplit
 
 try:
@@ -963,13 +966,19 @@ class AreaTransferenciaRuntime:
         else:
             consulta = re.sub(r"\s+", " ", conteudo).strip()[:500]
             resultado = {"intent": "SEARCH", "params": {"query": consulta}}
-        executou = bool(self.executar_intencao(resultado, texto)) if callable(self.executar_intencao) else False
-        if callable(self.registrar_resultado):
+        retorno = (
+            self.executar_intencao(resultado, texto)
+            if callable(self.executar_intencao)
+            else False
+        )
+        tratamento = interpretar_tratamento_operacional(resultado, retorno)
+        sucesso = tratamento.sucesso_habilidade
+        if tratamento.deve_publicar_fallback and callable(self.registrar_resultado):
             try:
                 self.registrar_resultado(
                     resultado,
                     texto,
-                    executou,
+                    tratamento.executou,
                     origem="area_transferencia",
                 )
             except Exception as erro:
@@ -978,10 +987,10 @@ class AreaTransferenciaRuntime:
                     f"{type(erro).__name__}"
                 )
         self._registrar(
-            operacao, sucesso=executou, tamanho=len(conteudo),
+            operacao, sucesso=sucesso, tamanho=len(conteudo),
             texto_usuario=texto,
         )
-        if not executou:
+        if not sucesso:
             self.falar("Entendi o conteúdo copiado, mas não consegui abrir a ação correspondente.", "calma", 1)
         return True
 

@@ -93,9 +93,21 @@ def normalizar_previsao_neural(
         "texto": fala,
         "texto_hash": hashlib.sha256(fala.casefold().encode("utf-8")).hexdigest(),
         "intent": intent,
+        "gate_intent": str(bruto.get("gate_intent") or "").strip().upper()[:80],
         "params": _parametros_seguros(bruto.get("params")),
         "is_command": bool(bruto.get("is_command")),
+        "command_probability": _confianca(bruto.get("command_probability")),
+        "command_head_variant": str(
+            bruto.get("command_head_variant") or ""
+        ).strip().casefold()[:80],
+        "intent_head_variant": str(
+            bruto.get("intent_head_variant") or ""
+        ).strip().casefold()[:80],
         "negated": bool(bruto.get("negated")),
+        "negation_input_variant": str(
+            bruto.get("negation_input_variant") or "legado"
+        ).strip().casefold()[:80],
+        "negation_scope_applied": bool(bruto.get("negation_scope_applied")),
         "ood": ood,
         "ood_calibrated": ood_calibrated,
         "confidence": confiancas,

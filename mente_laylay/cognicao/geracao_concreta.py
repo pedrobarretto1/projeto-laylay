@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass
 import re
 from typing import Any, Iterable, Mapping
 from mente_laylay.cognicao.normalizacao_linguagem import texto_discute_evidencia_textual
+from mente_laylay.personalidade.proporcao_resposta import classificar_proporcao
 
 
 _ABSTRACOES_COMUNS = (
@@ -263,6 +264,9 @@ def construir_roteiro_geracao_concreta(
     especiais = _atos_relevantes(atos)
     referente = _texto_curto(dados_contrato.get("referente"), 180)
     anterior = _texto_curto(dados_contrato.get("fala_anterior_relevante"), 500)
+    pedido_ensino_anterior = _texto_curto(
+        dados_contrato.get("pedido_ensino_anterior"), 500,
+    )
     requer_execucao = bool(planejamento.get("requer_execucao"))
     resultado_confirmado = plano_tem_resultado_confirmado(planejamento)
     atualidade_factual = dict(planejamento.get("atualidade_factual") or {})
@@ -290,8 +294,10 @@ def construir_roteiro_geracao_concreta(
     base_permitida = ["fala atual do usuário"]
     if referente:
         base_permitida.append("referente resolvido no turno atual")
-    if anterior and "esclarecimento" in especiais:
+    if anterior and "esclarecimento" in especiais and not pedido_ensino_anterior:
         base_permitida.append("fala anterior explicitamente vinculada ao esclarecimento")
+    if pedido_ensino_anterior:
+        base_permitida.append("pedido anterior de ensino do usuário, somente como tema")
     if requer_execucao:
         base_permitida.append("resultado operacional publicado pelo executor, quando existir")
     elif resultado_confirmado:
@@ -468,15 +474,31 @@ def construir_roteiro_geracao_concreta(
         nucleo = "responder, na mesma fala, a todos os atos explícitos da mensagem atual"
         sequencia = _sequencia_multiacto(especiais)
     elif "esclarecimento" in especiais:
-        estrategia = "esclarecimento_literal"
-        ancora = anterior or bruto
-        nucleo = "explicar com palavras literais o sentido da fala anterior"
-        sequencia = (
-            "reformular literalmente a ideia anterior",
-            "dar a razão concreta que sustenta essa ideia",
-            "usar no máximo um exemplo simples, somente se ajudar",
-        )
-        exigencias.append("não substituir a explicação por outra metáfora")
+        if pedido_ensino_anterior:
+            estrategia = "reensino_didatico"
+            ancora = pedido_ensino_anterior
+            nucleo = "retomar o tema que o usuário pediu para aprender, corrigindo eventual erro anterior"
+            sequencia = (
+                "reexaminar a definição do conceito sem confiar na explicação anterior",
+                "explicar literalmente o conceito com termos definidos",
+                "dar outro exemplo coerente e concluir por que ele demonstra o conceito",
+            )
+            exigencias.append(
+                "a resposta anterior é uma tentativa a revisar, não uma fonte de fatos; não repetir sua analogia ou definição por inércia"
+            )
+        else:
+            estrategia = "esclarecimento_literal"
+            ancora = anterior or bruto
+            nucleo = "explicar com palavras literais o sentido da fala anterior"
+            sequencia = (
+                "reformular literalmente a ideia anterior",
+                "dar a razão concreta que sustenta essa ideia",
+                "usar no máximo um exemplo simples, somente se ajudar",
+            )
+            exigencias.append("não substituir a explicação por outra metáfora")
+            exigencias.append(
+                "reavaliar a explicação anterior e corrigir eventual erro, em vez de defendê-la ou repetir a mesma formulação"
+            )
     elif "opiniao" in especiais:
         estrategia = "opiniao_com_criterio"
         ancora = referente or bruto
@@ -549,6 +571,22 @@ def construir_roteiro_geracao_concreta(
             "respeitar disponibilidade e limites documentados sem inferir estados atuais",
             "tratar a dúvida com atenção; exemplos didáticos não são ações deste turno",
         )
+    elif classificar_proporcao(bruto) in {"explicativa", "matematica"}:
+        estrategia = "explicacao_didatica"
+        ancora = bruto
+        nucleo = "ensinar a ideia pedida com clareza e chegar à conclusão neste turno"
+        sequencia = (
+            "definir os termos necessários e separar as premissas dadas pelo usuário do que será inferido",
+            "mostrar a relação passo a passo; se houver números comparáveis, comparar valor e limiar com unidades compatíveis",
+            "dar a conclusão que decorre das premissas; se faltar dado essencial, dizer qual falta",
+            "não acrescentar causas, riscos ou efeitos não dados; fala anterior da assistente não é fonte factual",
+        )
+        exigencias.extend((
+            "adaptar vocabulário e profundidade ao nível e objetivo pedidos; sem indicação, começar pelo concreto e definir o jargão",
+            "conferir se exemplo e conclusão concordam; corrigir erros anteriores sem inventar distinções",
+            "se usar uma analogia, explicar o que ela representa e onde deixa de valer",
+            "ensinar procedimentos não significa executá-los; exemplos não autorizam comandos",
+        ))
     else:
         estrategia = "resposta_direta"
         ancora = referente or bruto

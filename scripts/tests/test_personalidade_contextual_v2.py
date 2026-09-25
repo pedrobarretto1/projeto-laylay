@@ -1,5 +1,8 @@
+import time
+
 from mente_laylay.autonomia.contexto_resposta_ia import ContextoPromptRuntime
 from mente_laylay.emocoes.avaliador_eventos import contextualizar_fala_evento
+from mente_laylay.emocoes.contrato_causal import criar_evento_emocional_causal
 from mente_laylay.personalidade.antirrepeticao import (
     assinatura_fala,
     repeticao_estrutural,
@@ -119,12 +122,16 @@ def test_brincadeira_mantem_arco_mas_turno_neutro_respeita_intervalo() -> None:
 
 def test_reacao_causal_varia_sem_apagar_resultado_ou_alvo() -> None:
     resetar_variacoes_para_testes()
-    evento = {
-        "permite_expressao": True,
-        "arco": "provocacao_afetuosa",
-        "repeticoes": 1,
-        "provocacao_usuario": 1,
-    }
+    evento = criar_evento_emocional_causal(
+        origem="resultado_operacional", causa="Opera já estava em foco",
+        evidencia_ref="resultado:opera:confirmado",
+        natureza_evidencia="fato_observado", responsabilidade="usuario",
+        confianca=0.96, relevancia=0.95, novidade=0.8,
+        intensidade=1, sensibilidade="normal", alvo="Opera",
+        permite_expressao=True, emocao="debochada", nivel=1,
+        arco="provocacao_afetuosa", ts=time.time(),
+    )
+    evento.update({"repeticoes": 1, "provocacao_usuario": 1})
     falas = {
         contextualizar_fala_evento(
             "Opera já estava aberto e em foco.",

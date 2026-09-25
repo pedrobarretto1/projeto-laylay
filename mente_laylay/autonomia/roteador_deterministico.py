@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 import unicodedata
 from typing import Any, Callable, Dict
 
@@ -33,6 +34,7 @@ from mente_laylay.autonomia.detectores_playlist import (
 from mente_laylay.memoria_mental.memoria_confiavel import (
     categoria_referencia_preferencia_pessoal,
 )
+from mente_laylay.memoria_mental.continuidade_geral import selecionar_continuidade
 
 
 def texto_pede_clima_atual(texto_normalizado: str) -> bool:
@@ -886,16 +888,26 @@ def detectar_consulta_aprendizados(
     }
 
 
+def texto_questiona_certeza_previsao(texto: str) -> bool:
+    """Objetivo de uma consulta meteorológica, sem decidir local ou horizonte."""
+    t = str(texto or "").casefold()
+    return bool(re.search(r"\b(?:garantia|garantid[oa]|certeza|certeiro|certeira)\b", t))
+
+
 def detectar_clima(
     texto_normalizado: str,
     *,
     params_cb: Callable[..., Dict[str, Any]],
+    estado_mental: Dict[str, Any] | None = None,
 ) -> Dict[str, Any] | None:
     """Reconhece perguntas meteorologicas diretas e preserva a localidade citada."""
     t = str(texto_normalizado or "").strip()
     if not t:
         return None
-    pede_clima = texto_pede_clima_atual(t)
+    certeza = texto_questiona_certeza_previsao(t)
+    pede_clima = texto_pede_clima_atual(t) or (
+        certeza and bool(re.search(r"\b(?:chove|chover|chuva|previs[aã]o)\b", t))
+    )
     if not pede_clima:
         return None
 
@@ -921,6 +933,18 @@ def detectar_clima(
         dia_offset = 1
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
     dados: Dict[str, Any] = {}
+    # Só uma pergunta de aprofundamento pode herdar escopo, do domínio
+    # atualmente ativo e ainda válido. Uma cidade/dia novo vence o anterior.
+    estado = dict(estado_mental or {})
+    if (certeza and not local and not re.search(r"\b(?:hoje|agora|amanh[ãa])\b", t)
+            and dict(estado.get("continuidade_geral") or {}).get("dominio_ativo") == "clima"):
+        anterior = selecionar_continuidade(estado, dominio="clima", ttl_s=300)
+        # Offsets relativos de ontem não podem mudar o dia da previsão.
+        mesmo_dia = anterior and datetime.fromtimestamp(float(anterior["ts"])).date() == datetime.now().date()
+        if (mesmo_dia and anterior.get("intent") == "WEATHER"
+                and anterior.get("status") in {"previsao_consultada", "clima_consultado"}):
+            anteriores = dict(anterior.get("params") or {})
+            dados.update({k: anteriores[k] for k in ("local", "cidade", "day_offset") if k in anteriores})
     if local:
         dados["local"] = local
     if dia_offset:

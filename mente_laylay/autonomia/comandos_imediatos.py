@@ -68,12 +68,59 @@ from mente_laylay.memoria_mental.continuidade_contexto import (
 from mente_laylay.memoria_mental.contexto_compartilhado import (
     intencao_reexecutavel,
 )
+from mente_laylay.memoria_mental.resultado_acao import (
+    ResultadoTratamentoOperacional,
+    interpretar_tratamento_operacional,
+)
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     if isinstance(ctx, dict) and key in ctx:
         return ctx.get(key, default)
     return default
+
+
+def _executar_intencao_com_contrato(
+    ns: Dict[str, Any],
+    resultado: Dict[str, Any],
+    texto: str,
+    *,
+    origem: str,
+    contexto_autoaprimoramento: str = "",
+    origem_autoaprimoramento: str = "",
+) -> ResultadoTratamentoOperacional:
+    executar = ns.get("executar_intencao")
+    if not callable(executar):
+        return ResultadoTratamentoOperacional(
+            tratado=False,
+            executou=False,
+            confirmado=False,
+            status="executor_indisponivel",
+        )
+    retorno = executar(resultado, texto)
+    tratamento = interpretar_tratamento_operacional(resultado, retorno)
+    registrar = ns.get("_registrar_resultado_execucao")
+    if tratamento.deve_publicar_fallback and callable(registrar):
+        registrar(
+            resultado,
+            texto,
+            tratamento.executou,
+            origem=origem,
+        )
+    autoaprimorar = ns.get("_registrar_autoaprimoramento")
+    if (
+        contexto_autoaprimoramento
+        and tratamento.sucesso_habilidade
+        and callable(autoaprimorar)
+    ):
+        autoaprimorar(
+            resultado,
+            texto,
+            True,
+            contexto=contexto_autoaprimoramento,
+            origem=origem_autoaprimoramento or origem,
+        )
+    return tratamento
 
 
 def _candidato_prioritario_autorizado(
@@ -527,26 +574,24 @@ class ComandosImediatosRuntime:
             return False
 
         executar = ns.get("executar_intencao")
-        registrar = ns.get("_registrar_resultado_execucao")
         falar = ns.get("falar_com_lipsync")
         if not callable(executar):
             return False
 
         try:
-            busca_executada = bool(executar(primeira, partes[0]))
+            tratamento_busca = _executar_intencao_com_contrato(
+                ns,
+                primeira,
+                partes[0],
+                origem="prioritario_cooperativo_busca_arquivo:1",
+            )
+            busca_executada = tratamento_busca.sucesso_habilidade
         except Exception as erro:
             print(
                 "⚠️ [PRIORIDADE:ARQUIVOS] busca composta falhou: "
                 f"{type(erro).__name__}: {erro}"
             )
             busca_executada = False
-        if callable(registrar):
-            registrar(
-                primeira,
-                partes[0],
-                busca_executada,
-                origem="prioritario_cooperativo_busca_arquivo:1",
-            )
         if not busca_executada:
             if callable(falar):
                 falar(
@@ -571,20 +616,19 @@ class ComandosImediatosRuntime:
                 )
             return True
         try:
-            abertura_executada = bool(executar(segunda, partes[1]))
+            tratamento_abertura = _executar_intencao_com_contrato(
+                ns,
+                segunda,
+                partes[1],
+                origem="prioritario_cooperativo_busca_arquivo:2",
+            )
+            abertura_executada = tratamento_abertura.sucesso_habilidade
         except Exception as erro:
             print(
                 "⚠️ [PRIORIDADE:ARQUIVOS] abertura composta falhou: "
                 f"{type(erro).__name__}: {erro}"
             )
             abertura_executada = False
-        if callable(registrar):
-            registrar(
-                segunda,
-                partes[1],
-                abertura_executada,
-                origem="prioritario_cooperativo_busca_arquivo:2",
-            )
         print(
             "⚡ [PRIORIDADE:ARQUIVOS] busca+abertura tratadas | "
             f"busca={busca_executada} abertura={abertura_executada}"
@@ -668,21 +712,19 @@ class ComandosImediatosRuntime:
                 executar = ns.get("executar_intencao")
                 if callable(executar):
                     try:
-                        executou = bool(executar(repeticao_canonica, texto))
+                        tratamento = _executar_intencao_com_contrato(
+                            ns,
+                            repeticao_canonica,
+                            texto,
+                            origem="prioritario_repeticao_canonica",
+                        )
+                        executou = tratamento.executou is True
                     except Exception as erro:
                         print(
                             "⚠️ [PRIORIDADE:REPETIÇÃO] execução falhou: "
                             f"{type(erro).__name__}: {erro}"
                         )
                         return True
-                    registrar = ns.get("_registrar_resultado_execucao")
-                    if callable(registrar):
-                        registrar(
-                            repeticao_canonica,
-                            texto,
-                            executou,
-                            origem="prioritario_repeticao_canonica",
-                        )
                     print(
                         "⚡ [PRIORIDADE:REPETIÇÃO] "
                         f"intent={repeticao_canonica.get('intent')}"
@@ -886,21 +928,19 @@ class ComandosImediatosRuntime:
                 executar = ns.get("executar_intencao")
                 if callable(executar):
                     try:
-                        executou = bool(executar(continuidade_aditiva, texto))
+                        tratamento = _executar_intencao_com_contrato(
+                            ns,
+                            continuidade_aditiva,
+                            texto,
+                            origem="prioritario_continuidade_aditiva",
+                        )
+                        executou = tratamento.executou is True
                     except Exception as erro:
                         print(
                             "⚠️ [PRIORIDADE:CONTINUIDADE] falha isolada: "
                             f"{type(erro).__name__}: {erro}"
                         )
                         return True
-                    registrar = ns.get("_registrar_resultado_execucao")
-                    if callable(registrar):
-                        registrar(
-                            continuidade_aditiva,
-                            texto,
-                            executou,
-                            origem="prioritario_continuidade_aditiva",
-                        )
                     print(
                         "⚡ [PRIORIDADE:CONTINUIDADE] "
                         f"intent={continuidade_aditiva.get('intent')}"
@@ -958,21 +998,19 @@ class ComandosImediatosRuntime:
             if not callable(executar):
                 return False
             try:
-                executou = bool(executar(curadoria, texto))
+                tratamento = _executar_intencao_com_contrato(
+                    ns,
+                    curadoria,
+                    texto,
+                    origem="prioritario_curadoria_laylay",
+                )
+                executou = tratamento.executou is True
             except Exception as erro:
                 print(
                     "⚠️ [PRIORIDADE:CURADORIA] execução falhou: "
                     f"{type(erro).__name__}: {erro}"
                 )
                 return True
-            registrar = ns.get("_registrar_resultado_execucao")
-            if callable(registrar):
-                registrar(
-                    curadoria,
-                    texto,
-                    executou,
-                    origem="prioritario_curadoria_laylay",
-                )
             print(
                 "⚡ [PRIORIDADE:CURADORIA] "
                 f"intent={intent_curadoria} executou={executou}"
@@ -1238,21 +1276,19 @@ class ComandosImediatosRuntime:
                 if not callable(executar):
                     return False
                 try:
-                    executou = bool(executar(continuacao_musical, texto))
+                    tratamento = _executar_intencao_com_contrato(
+                        ns,
+                        continuacao_musical,
+                        texto,
+                        origem="prioritario_continuidade_musical",
+                    )
+                    executou = tratamento.executou is True
                 except Exception as erro:
                     print(
                         "⚠️ [PRIORIDADE:MÚSICA] execução contextual falhou: "
                         f"{type(erro).__name__}: {erro}"
                     )
                     return True
-                registrar = ns.get("_registrar_resultado_execucao")
-                if callable(registrar):
-                    registrar(
-                        continuacao_musical,
-                        texto,
-                        executou,
-                        origem="prioritario_continuidade_musical",
-                    )
                 print(
                     "⚡ [PRIORIDADE:MÚSICA] continuidade contextual tratada | "
                     f"intent={intent_musical}"
@@ -1331,15 +1367,12 @@ class ComandosImediatosRuntime:
             if isinstance(comando_notificacao, dict):
                 executar = ns.get("executar_intencao")
                 if callable(executar):
-                    executou = bool(executar(comando_notificacao, texto))
-                    registrar = ns.get("_registrar_resultado_execucao")
-                    if callable(registrar):
-                        registrar(
-                            comando_notificacao,
-                            texto,
-                            executou,
-                            origem="prioritario_central_notificacoes",
-                        )
+                    _executar_intencao_com_contrato(
+                        ns,
+                        comando_notificacao,
+                        texto,
+                        origem="prioritario_central_notificacoes",
+                    )
                     print("⚡ [PRIORIDADE:NOTIFICAÇÕES] pedido tratado pela central")
                     return True
         area_transferencia = ns.get("_area_transferencia_runtime")
@@ -1468,21 +1501,19 @@ class ComandosImediatosRuntime:
             if not callable(executar):
                 return False
             try:
-                executou = bool(executar(candidato_imediato, texto))
+                tratamento = _executar_intencao_com_contrato(
+                    ns,
+                    candidato_imediato,
+                    texto,
+                    origem="prioritario_deterministico_contextual",
+                )
+                executou = tratamento.executou is True
             except Exception as erro:
                 print(
                     "⚠️ [PRIORIDADE:DETERMINÍSTICO] execução falhou: "
                     f"{type(erro).__name__}: {erro}"
                 )
                 return True
-            registrar = ns.get("_registrar_resultado_execucao")
-            if callable(registrar):
-                registrar(
-                    candidato_imediato,
-                    texto,
-                    executou,
-                    origem="prioritario_deterministico_contextual",
-                )
             print(
                 "⚡ [PRIORIDADE:DETERMINÍSTICO] "
                 f"intent={intent_imediato} executou={executou}"
@@ -1552,21 +1583,19 @@ class ComandosImediatosRuntime:
             if not callable(executar):
                 return False
             try:
-                executou = bool(executar(candidato_arquivo, texto))
+                tratamento = _executar_intencao_com_contrato(
+                    ns,
+                    candidato_arquivo,
+                    texto,
+                    origem="prioritario_busca_arquivos",
+                )
+                executou = tratamento.executou is True
             except Exception as erro:
                 print(
                     "⚠️ [PRIORIDADE:ARQUIVOS] busca falhou: "
                     f"{type(erro).__name__}: {erro}"
                 )
                 return True
-            registrar = ns.get("_registrar_resultado_execucao")
-            if callable(registrar):
-                registrar(
-                    candidato_arquivo,
-                    texto,
-                    executou,
-                    origem="prioritario_busca_arquivos",
-                )
             print(
                 "⚡ [PRIORIDADE:ARQUIVOS] operação contextual tratada | "
                 f"intent={str(candidato_arquivo.get('intent') or '').upper()}"
@@ -1614,21 +1643,19 @@ class ComandosImediatosRuntime:
                 if not callable(executar):
                     return False
                 try:
-                    executou = bool(executar(comando_contextual, texto))
+                    tratamento = _executar_intencao_com_contrato(
+                        ns,
+                        comando_contextual,
+                        texto,
+                        origem="prioritario_referencia_tipificada",
+                    )
+                    executou = tratamento.executou is True
                 except Exception as erro:
                     print(
                         "⚠️ [PRIORIDADE:REFERÊNCIA] execução falhou: "
                         f"{type(erro).__name__}: {erro}"
                     )
                     return True
-                registrar = ns.get("_registrar_resultado_execucao")
-                if callable(registrar):
-                    registrar(
-                        comando_contextual,
-                        texto,
-                        executou,
-                        origem="prioritario_referencia_tipificada",
-                    )
                 print(
                     "⚡ [PRIORIDADE:REFERÊNCIA] "
                     f"intent={intent_contextual} executou={executou}"
@@ -1664,10 +1691,12 @@ class ComandosImediatosRuntime:
             print("⚡ [PRIORIDADE:IOT] consulta contextual de estado")
             executar = ns.get("executar_intencao")
             if callable(executar):
-                executou = bool(executar(candidato_iot, texto))
-                registrar = ns.get("_registrar_resultado_execucao")
-                if callable(registrar):
-                    registrar(candidato_iot, texto, executou, origem="prioritario_iot_status")
+                _executar_intencao_com_contrato(
+                    ns,
+                    candidato_iot,
+                    texto,
+                    origem="prioritario_iot_status",
+                )
                 return True
 
         consulta_iot = detectar_consulta_lista_iot(texto)
@@ -1679,18 +1708,18 @@ class ComandosImediatosRuntime:
             if not callable(executar):
                 return False
             try:
-                executou = bool(executar(consulta_iot, texto))
+                _executar_intencao_com_contrato(
+                    ns,
+                    consulta_iot,
+                    texto,
+                    origem="prioritario_iot_lista",
+                )
             except Exception as erro:
                 print(
                     "⚠️ [PRIORIDADE:IOT] falha ao listar: "
                     f"{type(erro).__name__}: {erro}"
                 )
                 return False
-            registrar = ns.get("_registrar_resultado_execucao")
-            if callable(registrar):
-                registrar(
-                    consulta_iot, texto, executou, origem="prioritario_iot_lista",
-                )
             return True
 
         # Web e visão usam os detectores e executores canônicos, mas precisam
@@ -1721,21 +1750,19 @@ class ComandosImediatosRuntime:
             if not callable(executar):
                 return False
             try:
-                executou = bool(executar(leitura_deterministica, texto))
+                tratamento = _executar_intencao_com_contrato(
+                    ns,
+                    leitura_deterministica,
+                    texto,
+                    origem="prioritario_leitura_deterministica",
+                )
+                executou = tratamento.executou is True
             except Exception as erro:
                 print(
                     "⚠️ [PRIORIDADE:LEITURA] execução falhou: "
                     f"{type(erro).__name__}: {erro}"
                 )
                 return True
-            registrar = ns.get("_registrar_resultado_execucao")
-            if callable(registrar):
-                registrar(
-                    leitura_deterministica,
-                    texto,
-                    executou,
-                    origem="prioritario_leitura_deterministica",
-                )
             print(
                 "⚡ [PRIORIDADE:LEITURA] "
                 f"intent={intent_leitura} executou={executou}"
@@ -1824,7 +1851,17 @@ class ComandosImediatosRuntime:
             if not callable(executar):
                 return False
             try:
-                executou = bool(executar(detectada, texto))
+                tratamento = _executar_intencao_com_contrato(
+                    ns,
+                    detectada,
+                    texto,
+                    origem=f"prioritario_linguagem_natural:{rota or 'coordenador'}",
+                    contexto_autoaprimoramento=(
+                        f"linguagem natural:{rota or 'coordenador'}"
+                    ),
+                    origem_autoaprimoramento="prioritario_linguagem_natural",
+                )
+                executou = tratamento.executou is True
             except Exception as erro:
                 print(
                     "⚠️ [PRIORIDADE:LINGUAGEM NATURAL] falha ao executar: "
@@ -1836,23 +1873,6 @@ class ComandosImediatosRuntime:
                 # A frase já foi compreendida; não a devolva à conversa para
                 # inventar incapacidade, sucesso ou um pedido de repetição.
                 return True
-            registrar = ns.get("_registrar_resultado_execucao")
-            if callable(registrar):
-                registrar(
-                    detectada,
-                    texto,
-                    executou,
-                    origem=f"prioritario_linguagem_natural:{rota or 'coordenador'}",
-                )
-            autoaprimorar = ns.get("_registrar_autoaprimoramento")
-            if executou and callable(autoaprimorar):
-                autoaprimorar(
-                    detectada,
-                    texto,
-                    True,
-                    contexto=f"linguagem natural:{rota or 'coordenador'}",
-                    origem="prioritario_linguagem_natural",
-                )
             # Resultado indisponível também é um turno tratado. O executor do
             # domínio é quem relata a falha real, sem fallback conversacional.
             return True

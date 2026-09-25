@@ -503,3 +503,63 @@ def test_consulta_de_caminho_preserva_dado_literal_sem_autoria_operacional() -> 
     assert confirmacao.fala == fala
     assert confirmacao.usada_llm is False
     assert chamadas == []
+
+
+
+def test_fala_incerta_sem_evidencia_de_execucao_nao_afirma_que_enviou_comando() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "APP_OPEN",
+        "alvo": "Chrome",
+        "status": "tratado_sem_receipt",
+        "executou": None,
+        "confirmado": None,
+    })
+
+    plano = planejar_resposta_acao(
+        resultado,
+        "Pronto, abri o Chrome.",
+    )
+
+    assert plano.classe == "incerto"
+    assert "não tenho confirmação" in plano.fala.casefold()
+    assert "enviei o comando" not in plano.fala.casefold()
+    assert "abri o chrome" not in plano.fala.casefold()
+
+
+def test_bloqueio_por_politica_nao_e_descrito_como_tentativa_falha() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "IOT_CONTROL",
+        "alvo": "luz",
+        "status": "nao_executado_por_politica",
+        "executou": False,
+        "confirmado": False,
+    })
+
+    plano = planejar_resposta_acao(
+        resultado,
+        "Não consegui ligar a luz.",
+    )
+
+    assert plano.classe == "nao_executado"
+    assert "não executei" in plano.fala.casefold()
+    assert "não consegui" not in plano.fala.casefold()
+    assert "tentei" not in plano.fala.casefold()
+
+
+
+def test_confirmacao_none_explicita_nao_e_promovida_por_status_otimista() -> None:
+    explicito = normalizar_resultado_acao({
+        "intent": "APP_OPEN",
+        "status": "app_aberto",
+        "executou": True,
+        "confirmado": None,
+    })
+    legado_sem_campo = normalizar_resultado_acao({
+        "intent": "APP_OPEN",
+        "status": "app_aberto",
+        "executou": True,
+    })
+
+    assert explicito.confirmado is None
+    assert explicito.como_dict()["estado_confirmacao"] == "nao_confirmado"
+    assert legado_sem_campo.confirmado is True

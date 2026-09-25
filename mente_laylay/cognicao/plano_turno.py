@@ -463,6 +463,7 @@ def verificar_fala_turno(
             fundamentacao=fundamentacao,
             texto_usuario=texto_usuario,
             documentacao_capacidades=documentacao_capacidades,
+            contexto_obra=contrato.get("dominio") == "musica",
             contexto_metalinguistico=(
                 str(roteiro_fala.get("estrategia") or "")
                 == "resposta_metalinguistica"

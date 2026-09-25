@@ -127,18 +127,46 @@ def _notificacoes(
     alvo = str(params.get("alvo") or params.get("remetente") or params.get("query") or "").strip()
     if acao in {"silenciar_remetente", "silenciar_email", "silenciar_remetente_email"}:
         silenciar = _get(ctx, "_gmail_silenciar_remetente")
-        if alvo and callable(silenciar):
+        if not alvo:
+            deps.marcar_resultado(
+                "alvo_ausente",
+                executou=False,
+                confirmado=False,
+            )
+            deps.falar_por_status(
+                "alvo_ausente",
+                "Não executei o bloqueio porque faltou dizer qual remetente silenciar.",
+                alvo="remetente",
+                executou=False,
+                confirmado=False,
+            )
+            return ResultadoDespacho.concluido(False)
+
+        ok = False
+        if callable(silenciar):
             try:
-                silenciar(alvo)
+                ok = bool(silenciar(alvo))
             except Exception:
-                pass
-        deps.marcar_resultado("remetente_silenciado")
-        deps.falar_por_status(
-            "remetente_silenciado",
-            f"Pronto, silenciei {alvo or 'esse remetente'}.",
-            alvo=alvo or "esse remetente",
+                ok = False
+
+        status = "remetente_silenciado" if ok else "falha_execucao"
+        deps.marcar_resultado(
+            status,
+            executou=ok,
+            confirmado=ok,
         )
-        return ResultadoDespacho.concluido(True)
+        deps.falar_por_status(
+            status,
+            (
+                f"Pronto, silenciei {alvo}."
+                if ok
+                else f"Não consegui confirmar o silenciamento de {alvo}."
+            ),
+            alvo=alvo,
+            executou=ok,
+            confirmado=ok,
+        )
+        return ResultadoDespacho.concluido(ok)
 
     central = _get(ctx, "_central_notificacoes_executar")
     if callable(central):

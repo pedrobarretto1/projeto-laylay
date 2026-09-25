@@ -5,6 +5,8 @@ import time
 
 import mente_laylay.autonomia.coordenador_intencao as coordenador_mod
 from mente_laylay.autonomia.coordenador_intencao import CicloComandosRuntime
+from mente_laylay.emocoes.contrato_causal import criar_evento_emocional_causal
+from mente_laylay.emocoes.estado_emocional import aplicar_evento_emocional
 from mente_laylay.cognicao.linguagem_aprendida import LinguagemAprendidaRuntime
 from mente_laylay.integracao.preparacao_llm import preparar_payload_llm
 from mente_laylay.memoria_mental.diagnostico_mente import (
@@ -14,6 +16,64 @@ from mente_laylay.memoria_mental.diagnostico_mente import (
 )
 from mente_laylay.memoria_mental.observabilidade import ObservabilidadeMenteRuntime
 from mente_laylay.personalidade.voz_runtime import VozRuntime
+
+
+def test_lote_proativo_publica_mesmo_retrato_causal_em_texto_e_voz() -> None:
+    saidas = []
+    leituras = []
+    estado = {"current_emotion": "brava", "emotion_level": 3}
+    runtime = VozRuntime(
+        fallback_fala="fallback",
+        voice="voz",
+        edge_tts_mod=None,
+        sounddevice_mod=None,
+        soundfile_mod=None,
+        pyttsx3_mod=None,
+        limpar_para_voz_cb=lambda texto: texto,
+        formatar_mensagem_cb=lambda texto, **_kwargs: texto,
+        ducking_volume_cb=lambda _ativo: None,
+        modular_audio_params_cb=lambda *_args: ("", "", ""),
+        compor_fala_proativa_cb=lambda _itens: ("Bom dia.", "brava", 3),
+        ajustar_estado_fala_cb=lambda *_args: None,
+        proativa_permitida_cb=lambda: True,
+        interrupt_event=threading.Event(),
+        publicar_texto_proativo_cb=lambda texto, emocao, nivel: saidas.append(
+            ("texto", texto, emocao, nivel)
+        ),
+        log=lambda *_args: None,
+    )
+    runtime.estado_emocional_getter = lambda: leituras.append(True) or estado
+    runtime.falar = lambda texto, emocao, nivel, **_kwargs: saidas.append(
+        ("voz", texto, emocao, nivel)
+    ) or True
+
+    runtime.proativa_buffer = [{"tipo": "briefing", "texto": "Bom dia.", "forcar_inicio": True}]
+    runtime.flush_fala_proativa()
+    assert leituras == [True]
+    assert saidas == [
+        ("texto", "Bom dia.", "calma", 1),
+        ("voz", "Bom dia.", "calma", 1),
+    ]
+
+    evento = criar_evento_emocional_causal(
+        origem="resultado_operacional",
+        causa="resultado confirmado",
+        evidencia_ref="resultado:briefing:1",
+        natureza_evidencia="fato_observado",
+        confianca=0.96,
+        permite_expressao=True,
+        emocao="alegre",
+        nivel=2,
+    )
+    estado = aplicar_evento_emocional({}, evento)
+    saidas.clear()
+    runtime.proativa_buffer = [{"tipo": "briefing", "texto": "Bom dia.", "forcar_inicio": True}]
+    runtime.flush_fala_proativa()
+    assert leituras == [True, True]
+    assert saidas == [
+        ("texto", "Bom dia.", "alegre", 2),
+        ("voz", "Bom dia.", "alegre", 2),
+    ]
 
 
 def _estado_base(mental=None, continuidades=None):

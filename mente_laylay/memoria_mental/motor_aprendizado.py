@@ -375,7 +375,7 @@ class MotorAprendizadoRuntime:
         alvo_limpo = re.sub(r"\s+", " ", str(alvo or "").strip())[:120]
         confianca_evento = max(0.0, min(1.0, float(confianca or 0.0)))
         if evento in {"silencio", "silencio qualificado"} or aceito is None:
-            sinal = 0.15 * confianca_evento
+            sinal = -0.10 * confianca_evento
         elif evento in {"correcao", "repeticao"}:
             sinal = -0.35 * confianca_evento
         else:
@@ -422,6 +422,20 @@ class MotorAprendizadoRuntime:
         if not interpretado:
             return None
         tipo, aceito, confianca = interpretado
+        if evento_norm == "expirada":
+            try:
+                criada_em = float(dados["criada_em"])
+                encerrada_em = float(dados["encerrada_em"])
+            except (KeyError, TypeError, ValueError):
+                return None
+            if (
+                criada_em <= 0.0
+                or encerrada_em - criada_em < 600.0
+                or dados.get("respondida_em")
+                or dados.get("status") != "expirada"
+                or not str(dados.get("pergunta") or "").strip()
+            ):
+                return None
         acao = re.sub(
             r"[_-]+", " ", _normalizar(str(dados.get("acao") or "")),
         ).strip()

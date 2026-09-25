@@ -17,7 +17,10 @@ from mente_laylay.cognicao.normalizacao_linguagem import (
     normalizar_texto_basico as _normalizar,
 )
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
-from mente_laylay.emocoes.contrato_causal import criar_evento_emocional_causal
+from mente_laylay.emocoes.contrato_causal import (
+    criar_evento_emocional_causal,
+    evento_pode_alterar_estado,
+)
 from mente_laylay.personalidade.variacao_fala import escolher_variacao
 
 
@@ -97,7 +100,11 @@ class AvaliadorEventosEmocionaisRuntime:
     def _classe(resultado: ResultadoAcao) -> str:
         status = _normalizar(resultado.status).replace(" ", "_")
         # Um estado já satisfeito é uma não-ação confirmada, não uma falha.
-        if status in _STATUS_REDUNDANCIA_VISIVEL and resultado.confirmado is True:
+        if (
+            status in _STATUS_REDUNDANCIA_VISIVEL
+            and resultado.executou is False
+            and resultado.confirmado is True
+        ):
             return "redundancia_visivel"
         if (
             resultado.executou is False
@@ -360,7 +367,7 @@ def contextualizar_fala_evento(
     """Acrescenta uma reação curta sem alterar o resultado operacional."""
     texto = re.sub(r"\s+", " ", str(fala or "")).strip()
     evento = dict(avaliacao or {})
-    if not texto or not evento.get("permite_expressao") or len(texto) > 210:
+    if not texto or not evento_pode_alterar_estado(evento) or len(texto) > 210:
         return texto
 
     arco = str(evento.get("arco") or "")

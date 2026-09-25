@@ -13,12 +13,35 @@ from mente_laylay.cognicao.leitura_semantica_turno import (
 from mente_laylay.autonomia.pre_fluxo_contextual import turno_tem_pergunta_nova_apos_trecho_social
 from mente_laylay.autonomia.fluxo_resposta_ia import processar_inicio_fluxo_resposta_ia
 from mente_laylay.autonomia.processamento_resposta_ia import extrair_leitura_semantica_da_ia
+from mente_laylay.emocoes.contrato_causal import criar_evento_leitura_semantica_usuario
 from mente_laylay.autonomia.contexto_resposta_ia import criar_contexto_prompt_runtime
 from mente_laylay.cognicao.orquestrador_turno_runtime import registrar_leitura_semantica_principal
 from mente_laylay.personalidade.conversa_natural import classificar_conversa_curta_local
 
 
 class LeituraSemanticaContratoTests(unittest.TestCase):
+    def test_fala_que_sugere_alivio_nao_suplanta_leitura_emocional_sem_causa(self):
+        texto = "Concluí uma tarefa longa e finalmente pude descansar."
+        bruto = json.dumps({
+            "fala": "Que alívio depois de tanto trabalho.",
+            "leitura_turno": ["relato"],
+            "leitura_emocional": {
+                "estado_usuario": "nenhum", "intensidade": 0,
+                "causa_expressa": "", "trecho_evidencia": "",
+                "natureza_evidencia": "inferencia", "confianca": 0.0,
+            },
+            "comandos": [],
+        }, ensure_ascii=False)
+
+        leitura = extrair_leitura_semantica_da_ia(bruto, texto)
+
+        self.assertTrue(leitura["valida"])
+        self.assertFalse(leitura["leitura_emocional"]["valida"])
+        self.assertEqual(
+            criar_evento_leitura_semantica_usuario(leitura, turno_id="seguro"),
+            {},
+        )
+
     def test_normaliza_turno_misto_sem_autorizar_execucao(self):
         leitura = normalizar_leitura_semantica(
             {

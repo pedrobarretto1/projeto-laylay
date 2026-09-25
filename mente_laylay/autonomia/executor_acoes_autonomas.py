@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Callable, Mapping
 
+from mente_laylay.memoria_mental.resultado_acao import (
+    interpretar_tratamento_operacional,
+)
+
 
 class ExecutorAcoesAutonomasRuntime:
     """Executa apenas integrações previamente filtradas pelo motor de iniciativa."""
@@ -221,14 +225,32 @@ class ExecutorAcoesAutonomasRuntime:
             "intent": "MUSIC_SEARCH",
             "params": {"query": query, "origem": "autonomia"},
         }
-        executou = bool(self.executar_intencao(comando, f"toca {query}"))
+        retorno = self.executar_intencao(comando, f"toca {query}")
+        tratamento = interpretar_tratamento_operacional(comando, retorno)
+        confirmado = (
+            tratamento.confirmado is True
+            or (
+                tratamento.legado
+                and tratamento.executou is True
+            )
+        )
+        sucesso = tratamento.sucesso_habilidade
+        status = tratamento.status or (
+            "musica_aberta"
+            if confirmado
+            else (
+                "busca_musical_sem_confirmacao"
+                if sucesso
+                else "falha_busca_musical"
+            )
+        )
         return {
-            "ok": executou,
-            "confirmado": executou,
-            "status": "musica_aberta" if executou else "falha_busca_musical",
+            "ok": sucesso,
+            "confirmado": confirmado,
+            "status": status,
             "desfazer": (
                 {"intent": "MEDIA_CONTROL", "params": {"acao": "pause"}}
-                if executou else {}
+                if confirmado else {}
             ),
         }
 

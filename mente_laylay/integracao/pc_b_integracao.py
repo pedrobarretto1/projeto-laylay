@@ -68,53 +68,113 @@ class PCBRuntime:
         self._pendentes: Dict[str, Dict[str, Any]] = {}
 
     def enviar(self, payload: Dict[str, Any], timeout_s: float = 5.0) -> bool:
-        """Envia e somente retorna sucesso depois do estado final do PC B."""
+        """Compatibilidade booleana; o receipt completo fica em enviar_detalhado."""
+        resultado = self.enviar_detalhado(payload, timeout_s=timeout_s)
+        return bool(resultado.get("sucesso_final"))
+
+    def enviar_detalhado(
+        self,
+        payload: Dict[str, Any],
+        timeout_s: float = 5.0,
+    ) -> Dict[str, Any]:
+        """Envia e preserva o estado final observado pelo cliente remoto."""
+        request_id = str(payload.get("requestId") or uuid.uuid4().hex)
+        acao = str(payload.get("action") or "").strip()
+        base = {
+            "requestId": request_id,
+            "action": acao,
+            "status": "error",
+            "executed": False,
+            "confirmed": False,
+            "final": True,
+            "error": "",
+            "sucesso_final": False,
+        }
         clientes = set(self.clientes_getter() or ())
         loop = self.loop_getter()
         if not clientes or loop is None:
             self.log("[PC B] Nenhum cliente PC B conectado.")
-            return False
-        acao = str(payload.get("action") or "").strip()
+            return {**base, "error": "Nenhum cliente PC B conectado."}
+
         if callable(self.clientes_compativeis_getter):
             compativeis = set(self.clientes_compativeis_getter(acao) or ())
             clientes.intersection_update(compativeis)
             if not clientes:
-                self.log(
-                    f"[PC B] Nenhum cliente saudável anunciou suporte para {acao or 'a ação'}."
+                erro = (
+                    f"Nenhum cliente saudável anunciou suporte para "
+                    f"{acao or 'a ação'}."
                 )
-                return False
-        request_id = str(payload.get("requestId") or uuid.uuid4().hex)
+                self.log(f"[PC B] {erro}")
+                return {**base, "error": erro}
+
         evento = threading.Event()
-        entrada: Dict[str, Any] = {"event": evento, "result": None, "criado_em": time.time()}
+        entrada: Dict[str, Any] = {
+            "event": evento,
+            "result": None,
+            "criado_em": time.time(),
+        }
         with self._lock:
             self._pendentes[request_id] = entrada
         mensagem = dict(payload)
         mensagem["requestId"] = request_id
         mensagem["expectsFinalStatus"] = True
+        enviados = 0
         try:
             texto = json.dumps(mensagem)
-            enviados = 0
             for cliente in list(clientes):
                 futuro = asyncio.run_coroutine_threadsafe(cliente.send(texto), loop)
                 futuro.result(timeout=min(2.0, max(0.2, float(timeout_s))))
                 enviados += 1
             if not enviados:
-                return False
-            self.log(f"[PC B] Solicitação {request_id} enviada; aguardando confirmação final.")
+                return {**base, "error": "Nenhum cliente recebeu a solicitação."}
+
+            self.log(
+                f"[PC B] Solicitação {request_id} enviada; "
+                "aguardando confirmação final."
+            )
             respondeu = evento.wait(max(0.2, float(timeout_s)))
             with self._lock:
                 final = self._pendentes.pop(request_id, None) or entrada
             resultado = final.get("result")
             if not respondeu or not isinstance(resultado, dict):
-                self.log(f"[PC B] Solicitação {request_id} enviada, mas não confirmada.")
-                return False
-            status = str(resultado.get("status") or "").strip().lower()
-            return status in {"ok", "success", "completed", "concluido", "concluído"} and bool(
-                resultado.get("final", True)
+                self.log(
+                    f"[PC B] Solicitação {request_id} enviada, "
+                    "mas não confirmada."
+                )
+                return {
+                    **base,
+                    "status": "timeout_confirmacao",
+                    "executed": True,
+                    "confirmed": None,
+                    "final": False,
+                    "error": "O PC B não confirmou o estado final a tempo.",
+                }
+
+            receipt = dict(resultado)
+            receipt.setdefault("requestId", request_id)
+            receipt.setdefault("action", acao)
+            status = str(receipt.get("status") or "").strip().lower()
+            final_confirmado = bool(receipt.get("final", True))
+            sucesso_final = (
+                status in {
+                    "ok", "success", "completed", "concluido", "concluído",
+                }
+                and final_confirmado
             )
+            receipt.setdefault("executed", sucesso_final)
+            receipt.setdefault("confirmed", None)
+            receipt.setdefault("error", "")
+            receipt["final"] = final_confirmado
+            receipt["sucesso_final"] = sucesso_final
+            return receipt
         except Exception as erro:
             self.log(f"[PC B] Falha na solicitação {request_id}: {erro}")
-            return False
+            return {
+                **base,
+                "executed": bool(enviados),
+                "confirmed": None if enviados else False,
+                "error": f"{type(erro).__name__}: {erro}",
+            }
         finally:
             with self._lock:
                 self._pendentes.pop(request_id, None)

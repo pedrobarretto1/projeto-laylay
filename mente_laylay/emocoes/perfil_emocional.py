@@ -25,7 +25,7 @@ EMO_BEHAVIOR = {
     "debochada": "Postura brincalhona e esperta. Faz comentários leves, mas continua cooperativa.",
     "envergonhada": "Postura tímida e suave. Responde com delicadeza, hesitação leve e carinho discreto.",
     "irritada": "Postura curta e impaciente. Responde seco, reduz floreios e tolera menos rodeios.",
-    "brava": "Postura teimosa e resistente. Pode retrucar, pedir confirmação extra ou recusar comandos opcionais.",
+    "brava": "Postura firme e direta. Pode retrucar ao comportamento comprovado, mas não veta comandos por humor; só o contrato operacional decide não executar.",
     "alegre": "Postura animada e expansiva. Fica mais solta, simpática e positiva.",
     "triste": "Postura sensível e baixa energia. Fica mais contida, cuidadosa e menos expansiva.",
     "surpresa": "Postura alerta e curiosa. Reage mais rápido e presta atenção no detalhe novo.",

@@ -20,6 +20,9 @@ from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_mode
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
+from mente_laylay.memoria_mental.resultado_acao import (
+    interpretar_tratamento_operacional,
+)
 from urllib.parse import urlsplit
 
 from mente_laylay.personalidade.confirmacao_llm import personalizar_informacao_llm
@@ -790,7 +793,7 @@ class CaixaEntradaPessoalRuntime:
             contrato["status"] = str(status or "")
             contrato["executou"] = bool(executou)
             contrato["confirmado"] = (
-                bool(executou) if confirmado is None else bool(confirmado)
+                None if confirmado is None else bool(confirmado)
             )
             self.registrar_resultado(
                 contrato, texto, executou,
@@ -855,7 +858,13 @@ class CaixaEntradaPessoalRuntime:
             "intent": "INBOX_ADD",
             "params": {"nota_id": item["id"], "tipo_nota": tipo, "alvo": conteudo[:180]},
         }
-        self._registrar(resultado, texto, ok, status="nota_guardada" if ok else "falha_execucao")
+        self._registrar(
+            resultado,
+            texto,
+            ok,
+            status="nota_guardada" if ok else "falha_execucao",
+            confirmado=ok,
+        )
         if ok:
             self._ultimo_id = str(item["id"])
             self._ultimo_item_criado_id = str(item["id"])
@@ -944,6 +953,7 @@ class CaixaEntradaPessoalRuntime:
                 texto,
                 True,
                 status="discussao_ja_guardada",
+                confirmado=True,
             )
             self.falar(
                 f"Essa discussão já está guardada como “{duplicada.get('titulo') or 'ideia discutida'}”. Não dupliquei a nota.",
@@ -969,6 +979,7 @@ class CaixaEntradaPessoalRuntime:
             texto,
             ok,
             status="discussao_guardada" if ok else "falha_execucao",
+            confirmado=ok,
         )
         if not ok:
             self.falar("Montei o resumo, mas o arquivo não confirmou a gravação.", "calma", 1)
@@ -1052,7 +1063,13 @@ class CaixaEntradaPessoalRuntime:
     def _listar(self, texto: str) -> bool:
         itens = self._filtrar(texto)
         resultado = {"intent": "INBOX_LIST", "params": {"filtro": _normalizar(texto)[:120]}}
-        self._registrar(resultado, texto, True, status="notas_listadas")
+        self._registrar(
+            resultado,
+            texto,
+            True,
+            status="notas_listadas",
+            confirmado=True,
+        )
         if not itens:
             self.falar("Sua caixa de entrada não tem nada com esse filtro.", "calma", 1)
             return True
@@ -1160,7 +1177,13 @@ class CaixaEntradaPessoalRuntime:
             item["atualizado_em"] = self.agora().isoformat()
             ok = self._salvar(dados)
             resultado = {"intent": "CONFIRM_INBOX_DELETE", "params": {"nota_id": item["id"], "alvo": str(item.get("conteudo"))[:180]}}
-            self._registrar(resultado, texto, ok, status="nota_excluida" if ok else "falha_execucao")
+            self._registrar(
+                resultado,
+                texto,
+                ok,
+                status="nota_excluida" if ok else "falha_execucao",
+                confirmado=ok,
+            )
             self.falar("Enviei a nota para os itens excluídos." if ok else "Não consegui confirmar a exclusão.", "calma", 1)
             return True
 
@@ -1172,8 +1195,27 @@ class CaixaEntradaPessoalRuntime:
             },
         }
         texto_origem = str(metadados.get("texto_origem") or texto)
-        ok = bool(self.executar_intencao(resultado_agenda, texto_origem)) if callable(self.executar_intencao) else False
-        self._registrar(resultado_agenda, texto_origem, ok, status="conversao_iniciada" if ok else "falha_execucao")
+        retorno = (
+            self.executar_intencao(resultado_agenda, texto_origem)
+            if callable(self.executar_intencao)
+            else False
+        )
+        tratamento = interpretar_tratamento_operacional(
+            resultado_agenda,
+            retorno,
+        )
+        ok = tratamento.sucesso_habilidade
+        if tratamento.deve_publicar_fallback:
+            self._registrar(
+                resultado_agenda,
+                texto_origem,
+                tratamento.executou is True,
+                status=(
+                    tratamento.status
+                    or ("conversao_iniciada" if ok else "falha_execucao")
+                ),
+                confirmado=tratamento.confirmado,
+            )
         if not ok:
             self.falar("Não consegui encaminhar essa nota para a agenda.", "calma", 1)
         return True

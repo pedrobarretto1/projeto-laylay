@@ -46,6 +46,8 @@ DEPENDENCIAS_ORQUESTRACAO_TURNO = (
     "_pesquisa_contextual_runtime",
     "_planejar_turno_mente",
     "_registrar_etapa_turno_mente",
+    "_registrar_preferencia_humor",
+    "_carregar_preferencia_humor_duravel",
     "_resolver_repeticao_ultima_acao",
     "_resumo_identidade_turno_mente",
     "_saude_mente_runtime",

@@ -1,0 +1,43 @@
+{
+  "versao": 3,
+  "origem": "revisao_manual_local_separada; nao autenticada como revisao externa",
+  "casos": {
+    "FORNO_E": {
+      "representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [
+        {"referente_id": "forno", "atributo": "temperatura", "operador": ">", "valor": "180", "unidade": "°C", "fonte_id": "regra", "citacao": "forno ficar acima de 180 °C"},
+        {"referente_id": "massa", "atributo": "descanso", "operador": "=", "valor": "20", "unidade": "minutos", "fonte_id": "regra", "citacao": "massa descansar por 20 minutos"}
+      ]
+    },
+    "MUDA_ONLY": {
+      "representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_necessarias",
+      "condicoes": [
+        {"referente_id": "solo", "atributo": "estado", "operador": "=", "valor": "úmido", "unidade": "", "fonte_id": "regra", "citacao": "solo estiver úmido"},
+        {"referente_id": "luz", "atributo": "estado", "operador": "=", "valor": "indireta", "unidade": "", "fonte_id": "regra", "citacao": "luz for indireta"}
+      ]
+    },
+    "VALVULA_OU": {
+      "representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [
+        {"referente_id": "pressao", "atributo": "pressão", "operador": ">", "valor": "5", "unidade": "bar", "fonte_id": "regra", "citacao": "pressão passar de 5 bar"},
+        {"referente_id": "vazao", "atributo": "vazão", "operador": "<", "valor": "2", "unidade": "L/min", "fonte_id": "regra", "citacao": "vazão cair abaixo de 2 L/min"}
+      ]
+    },
+    "PAINEL_IFF": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "equivalencia",
+      "condicoes": [
+        {"referente_id": "autoteste", "atributo": "estado", "operador": "=", "valor": "passar", "unidade": "", "fonte_id": "regra", "citacao": "autoteste passar"}
+      ]
+    },
+    "SENSOR_CAIXA_B": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [
+        {"referente_id": "caixa_b", "atributo": "temperatura", "operador": "=", "valor": "12", "unidade": "°C", "fonte_id": "regra", "citacao": "sensor da caixa B registrar 12 °C"}
+      ]
+    },
+    "FILTRO_MISTO": {
+      "representavel": false,
+      "motivo": "(filtro e bomba) ou operador exige arvore, nao conectivo plano"
+    }
+  }
+}

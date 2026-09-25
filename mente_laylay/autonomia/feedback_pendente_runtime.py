@@ -14,6 +14,9 @@ from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local as _classificar_confirmacao_local,
     normalizar_confirmacao_texto as _normalizar_confirmacao_texto,
 )
+from mente_laylay.memoria_mental.resultado_acao import (
+    interpretar_tratamento_operacional,
+)
 
 
 def _get(ctx: Dict[str, Any], chave: str, default: Any = None) -> Any:
@@ -183,13 +186,17 @@ class FeedbackPendenteRuntime:
                     else (None, "")
                 )
                 if isinstance(intencao, dict) and callable(executar):
-                    executou = bool(executar(intencao, resto))
+                    retorno = executar(intencao, resto)
+                    tratamento = interpretar_tratamento_operacional(
+                        intencao,
+                        retorno,
+                    )
                     registrar = _get(ctx, "registrar_resultado_execucao")
-                    if callable(registrar):
+                    if tratamento.deve_publicar_fallback and callable(registrar):
                         registrar(
                             intencao,
                             resto,
-                            executou,
+                            tratamento.executou,
                             origem=f"feedback_misto:{rota or 'coordenador'}",
                         )
                     return True

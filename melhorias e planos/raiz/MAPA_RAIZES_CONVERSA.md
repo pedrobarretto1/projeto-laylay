@@ -6,6 +6,202 @@ de produção. Mantém os IDs históricos do registro central.
 
 ## Base e escopo
 
+### Adendo de 23/09 — complemento do contrato de entrada no DEV
+
+O texto recebido já aparece na evidência do Pedro, mas o espelho promovia
+prompts vazios de stdin a eventos SYSTEM. Na mesma família de observabilidade,
+separar mensagem recebida de controle de apresentação: filtrar apenas marcadores
+inteiros sem conteúdo em stdout, mantendo a escrita no console e stderr.
+Cinco REDs; 68 testes verdes, incluindo leitor, espelho e ponte autenticada reais.
+Histórico preservado; validação na sessão do Pedro após reinício ainda pendente.
+
+### Adendo de 23/09 — falha ao ler receipt não pode pular a validação
+
+Na fronteira operacional compartilhada, a exceção de serialização virava
+dict vazio, que pulava o guardião mantendo a fala otimista. A mesma leitura
+inválida podia reservar deduplicação usando atributos externos ao receipt.
+Agora um único retrato alimenta validação e deduplicação; ilegível/vazio produz
+incerteza observável e não reserva confirmação. Não se infere falha do executor.
+15 REDs antes do patch; 173 testes verdes depois, com direção e fila reais sem
+áudio físico. Sessão aberta preservada; prova ao vivo ainda pendente.
+
+### Adendo de 23/09 — canal aberto não é ocupação; espera não é cancelamento
+
+Três contratos distintos, sem consolidá-los com P01 ou encerrar P05:
+
+1. Retomada proativa: chat aberto não pode bloquear para sempre. Porteiro e
+   callback de composição usavam flags persistentes em lugar de atividade viva.
+   Quatro REDs reproduzidos; retomada de briefing/e-mails integrada com fila real,
+   preservando prioridade do usuário e bloqueios contextuais.
+2. Briefing: timeout do observador não cancela o trabalho. Pendência e recibo
+   tardio devem sobreviver aos 45s sem gravar sucesso antecipado ou duplicado.
+3. DEV: prompt de teclado não é mensagem recebida. A entrada deve ser registrada
+   no coordenador comum, independentemente de eco da interface, com sanitização.
+
+Estado: GREEN local/integrado (97 testes); sessão real/áudio pendentes. Achado
+operacional de receipt não serializável e avisos LRCLIB/sincronização permanecem
+separados no registro central.
+
+### Adendo de 23/09 — P01, necessidade de desenvolvimento vs rota curta
+
+`classificar_proporcao` reconhecia explicação, mas a escolha de rota ignorava
+esse perfil; pedido curto de passo a passo recebia instrução de duas frases,
+contrato de três e teto rápido de 256 tokens. Falha de composição demonstrada
+por seis REDs; não é prova de insuficiência do Qwen nem de truncamento (o bruto
+histórico parou em 58 tokens por `stop`, mantendo o tema no histórico).
+
+Rota em `fluxos_conversa.py` e orçamento inicial de `contrato_fala.py` agora
+reutilizam o perfil existente. Não alterados pesos, verificador, executor,
+autoridade ou prompt-base. Saudação mantém rota rápida e limites específicos
+continuam soberanos. Duas sondas completas sem replay confirmam instrução
+proporcional no HTTP e entrega de três/cinco passos. Não é avaliação universal:
+erros de contrário/inverso e recusa de `quero im` reapareceram na geração.
+Próxima fronteira de P01 é essa continuação incerta, não mais espaço de tokens
+ou novas exceções no verificador. Evidências e limites no registro central.
+
+### Adendo de 23/09 — P01, ensinar não é reformular a própria fala
+
+Sonda de 21 turnos em sete assuntos provou que a intenção de ensinar e o
+orçamento de resposta chegam ao Qwen, porém traduções, definições e exemplos
+errados nascem na geração. A nota de sucesso do roteiro só cobre ausência de
+comandos/entrega/latência. O contrato anterior de `não entendi` usava a fala
+potencialmente errada da assistente como âncora; agora retoma o pedido recente
+do usuário (`reensino_didatico`), validado nos sete retornos do runtime. Isso
+resolve a referência, **não** a factualidade.
+
+Uma segunda chamada ao mesmo modelo aprovou sete rascunhos como sem erro,
+inclusive falsos exemplos em inglês, física e plantas. Assim, autocrítica
+sem observação independente foi falsificada como guardião. A próxima fronteira
+é uma base de conhecimento observável, com recuperação de fontes, avaliação
+da relevância e conferência das afirmações antes da fala. Cinco fontes são
+um teto de investigação, não um número a preencher com sites fracos. O fluxo
+e seus portões estão em `PLANO_ENSINO_FUNDAMENTADO_LAYLAY.md`; P01 permanece
+aberto até ganho factual comparado no runtime. Interferência IoT por `planta`
+e artefato `nn` são achados separados, não novas causas assumidas de P01.
+
+### Adendo de 23/09 — P01, recuperação não equivale a alegação sustentada
+
+O coletor multifonte foi implementado e leu até cinco sites independentes no
+runtime. As sondas reais de 21 turnos com a evidência no prompt caíram para
+6/21 e 7/21 sem alertas operacionais (base anterior 18/21), com timeout e
+erros de conteúdo ainda visíveis. A primeira fronteira RED não é mais apenas
+"sem página": mesmo quando o trecho define a planta baixa como vista de cima,
+o Qwen a ensinou como vista de baixo. Também inventou exemplo botânico e
+produziu exemplo de `for` semanticamente errado. Contrato faltante: afirmação
+central e exemplo só entram na fala após conferência com a fonte ou com um
+verificador determinístico apropriado. Fonte lida é contexto, não prova da
+fala gerada. A influência multifonte ficou desativada por padrão, sem fechar
+P01. Falha intermitente do buscador e interpretação IoT de `planta` são
+fronteiras separadas.
+
+Prova focal posterior: `validar_fala_com_fundamentacao` aceitou sem problema
+“planta baixa ... de baixo para cima” diante de “vista superior” no próprio
+resumo/fonte. A fonte existe e a geração já chegou falsa ao verificador; não
+atribuir o RED a ausência de busca. Uma checagem semântica independente ainda
+precisa ser medida com controles inéditos antes de integrar ao porteiro.
+Separadamente, o detector IoT pesquisava RGB de `planta` porque “luz” resolvia
+o alias da lâmpada e uma expressão regular genérica aceitava qualquer frase
+como possível ajuste cromático. A consulta livre agora exige ato direto de
+ajuste; GREEN em 34 testes IoT, inclusive o detector registrado na composição
+real. Ainda falta uma conversa fim a fim com geração pelo modelo.
+
+Sonda de auditoria do Qwen com fonte real: sete rótulos factuais corretos,
+somente três com citação literal e índice de fonte consistentes. Isso sustenta
+o uso de uma checagem com evidência como hipótese de trabalho, mas falsifica
+a ideia de publicar com base apenas no rótulo do mesmo modelo.
+
+A repetição no runtime falsificou que o resolvedor de RGB era a única barreira:
+o retrato marcava `operacao_explicita=iot` por qualquer menção de “luz” e
+vetava a pesquisa. Corrigido no owner do retrato pelo ato comunicativo; uma
+nova sonda confirmou fonte no plano e ausência de comando. A busca ainda
+recebia “com um exemplo” como parte do tema; o extrator agora separa formato
+de assunto e a sonda seguinte registrou o tema limpo. Esta última expirou
+na chamada principal ao Qwen (13 s), portanto não valida qualidade da fala.
+
+### Adendo de 22/09 — P10, classificação residual substituída por indícios
+
+O ramo `desconhecido → obra` era a primeira divergência. Agora só relações
+tipificadas nomeiam obras; aspas indeterminadas continuam visíveis aos outros
+verificadores. Papel da citação é resolvido no texto completo e o contexto
+nominal é compartilhado com o chamador de pesquisa, sem virar evidência factual.
+Produção: owner `fundamentacao_factual.py` e passagem de contexto no
+`orquestrador_turno_runtime.py`; sem alteração de geração, rede ou execução.
+
+430 testes selecionados aprovados / 13 xfails preexistentes. Runtime com replay
+explícito do turno 3 preservou as cláusulas que antes eram removidas e não
+pesquisou `o contrário`; código zero. Não certifica a matemática gerada nem
+gramática universal. Sonda `roteiro_ensino_divisao-20260922-173131-509832`.
+Turnos novos voltaram a prometer sem ensinar e recusar esclarecimento como
+comando inválido: defeitos já no HTTP, **P01**, próxima fronteira. Detalhes,
+revisão da expectativa ambígua e limites constam no registro central.
+
+### Adendo de 22/09 — ensino, P10 e P01 não são uma só causa
+
+O passo a passo histórico foi gerado e depois mutilado: pergunta citada e nome
+de método viravam obras no extrator de papéis. P10 ampliado para enunciado
+instrutivo, referência conceitual e retomada explícita da fala do usuário.
+Produção alterada somente em `fundamentacao_factual.py`; 19 testes próprios,
+212 aprovados/13 xfails na seleção e passos preservados em duas gerações reais.
+Fatos externos e títulos vizinhos seguem sob verificação; isso não valida
+automaticamente matemática nem todo método citado.
+
+A classificação residual continua transformando aspas de ênfase e predicados
+em obras: `desfaz`, `o contrário` e perguntas explicativas de outra forma
+reapareceram no runtime. É limite da mesma P10, não novos bugs por palavra.
+Investigar evidência positiva do papel de obra vs papel ainda desconhecido,
+sem liberar todas as citações. Já distinção confusa contrário/inverso e recusa
+de capacidade após `quero im` vieram na geração; P01 permanece separado.
+Placar 4/4 da segunda sonda significa ausência de comandos, não ensino aprovado.
+Artefatos, falsificações e achado de resumo/orçamento no registro central.
+
+### Adendo de 22/09 — P04 é instrumentação, não falha do ADD
+
+Observação independente mostrou `add_and_verify=0` e
+`add_and_verify_result=1`, com a faixa correta persistida. O contador antigo
+observava apenas o wrapper bool, que a operação moderna não usa. Instrumentação
+corrigida no teste composto, preservando a expectativa de exatamente um ADD e
+zero após CREATE falho. Incluída a publicação ausente no harness e asserções
+de receipt antes da fala; não alterado código de produção nesta rodada.
+Quatro testes do composto/medição, 24 focados e 352 regressivos passaram.
+P04 encerrado nesse escopo; P03 continua separado e não foi "resolvido" por
+trocar um contador. Detalhes e falsificações no registro central.
+
+### Adendo de 22/09 — P03, ordem de publicação
+
+P03 é uma raiz operacional, não contaminação P19 nem prova de causa compartilhada
+com o contador P04. O feedback já recebia o callback canônico; chamava-o depois
+da fala. Corrigida a sequência **efeito → publicação → conclusão** em
+`fluxos_conversa.py`, preservando guardião e armazenamento. Ausência/falha do
+publicador não permite confirmação otimista nem repetição automática do efeito.
+16 testes novos, histórico P03 verde e 348 regressivos aprovados; composição
+importada de `laylay.py` grava em disco temporário e observa o receipt antes da
+fala. Isso não certifica sessão completa com áudio/Chrome. P04 ainda falha no
+contador; registro central mantém a evidência separada. Os dois REDs anteriores
+do adaptador já estavam corrigidos pelo trabalho paralelo ao iniciar a rodada.
+
+### Adendo de 22/09 — P18/P19, sem fundir causas
+
+- Base desta investigação: `main`, `bd94bc3e3a29c49906dc603f9ca1540310ca3274`,
+  worktree paralela preservada. A base de 20/09 abaixo continua histórica.
+- **P18 → F1:** horizonte/local descartados na continuidade; aprofundamento
+  recebido como consulta de hoje; objetivo de esclarecer certeza ignorado.
+  Owner: continuidade canônica → detector → executor informativo. Não há
+  evidência de que briefing seja a causa dessa resposta.
+- **P19 → F2:** histórico factual incluído no pedido de autoria de outro
+  receipt; paráfrase passa pela verificação de repetição literal. Owner:
+  `personalizar_confirmacao_llm`, usando o preparo fechado já existente.
+  Reproduzido em playlist, IoT e arquivos; não exige alterar esses executores.
+- Princípios comuns, causas distintas: **preservar escopo para interpretar;
+  restringir evidência para confirmar**. Contexto útil não é fonte irrestrita
+  de fatos de outro domínio. Não aumentar a contagem de raízes apenas porque
+  três habilidades expuseram a mesma vulnerabilidade de autoria.
+- Provas/limites no registro P18/P19: 19 testes próprios verdes, seleção
+  ampliada com 189 aprovados e dois REDs da frente paralela tratado/receipt;
+  runtime meteorológico somente validou comunicação de falha (fontes em
+  timeout), não o sucesso ponta a ponta. Nenhuma promoção neural.
+
+### Base histórica de 20/09
+
 - Branch `main`, HEAD `c8b4c26f31deabd21168a458273896f398e2ddf0`.
 - Worktree inicial modificada: `fundamentacao_factual.py`, `plano_turno.py`,
   `REGISTRO_PROBLEMAS_E_CORRECOES.md` e `RELATORIO_COLETA_DEBUG_20260914.md`.
@@ -929,3 +1125,45 @@ como pendência de observabilidade, separada da causa de saída.
 
 Próximo passo de infraestrutura: localizar/recuperar conscientemente o analisador
 ausente e repetir coleta global; não usar o verde selecionado como verde global.
+
+### Atualização — analisador recuperado e coleta desbloqueada, 21/09
+
+Passo acima concluído. Analisador recuperado de `c8b4c26` em
+`scripts/analises/`, conservando as funções (comparação AST), hashes e finalidade
+histórica. Só adaptados raiz/imports/localização do roteiro. Teste antes falhava
+com módulo ausente; não foi eliminado nem relaxado. Testes de análise, auditoria
+shadow e avaliador de roteiros: **85 aprovados**, 10,85 s. Coleta global:
+**6.537 testes, zero erros**, 5,26 s. Base agora `bd94bc3e`, commit externo
+incorporou a restauração. Não executada a suíte inteira ou a análise dos modelos;
+não houve treino/promoção. Esta infraestrutura não é uma raiz conversacional.
+
+### Nova raiz operacional separada — preservação de foco, P17
+
+Relato novo em `../erros/erros_encontrados.md`: trocar faixa ativa YouTube
+durante os estudos. Transporte Python respeitava `permitir_foco=False` apenas
+no modo jogo. A extensão não recebia `background=True` e ativava aba/janela.
+Não depende de mudar rede, playlist ou da confirmação do áudio: esta já observa
+o player por ID. Contrato: restrição acompanha a operação até o efeito, inclusive
+nos fallbacks. Detalhes, falsificações e limites em P17 do registro central.
+
+RED: 13 falhas e 7 controles verdes. Candidato mínimo no transporte Chrome;
+regressão ampliada **690 aprovados, 1 skipped, 9 subtestes**, 20,29 s. Extração
+do callback real de composição mais runtimes reais, fronteira externa simulada.
+Chrome real ainda pendente: sessão ativa preservada. Não fundir P17 com F1/F2/F3
+nem chamar o verde intermediário de encerramento da raiz. Rota alternativa de
+fallback em `chrome_navegacao.py` registrada para investigar sem remendo local.
+
+### P17 — confirmação de uso e proteção do helper, 21/09
+
+Pedro confirmou o sucesso do teste musical com foco preservado. É evidência
+relatada de uso real; não ampliar para todos os caminhos ou modos sem prova.
+O helper de reuso realmente violava `preservar_foco=True` ao cair no fallback
+sem extensão (dois REDs, URLs de estudo e YouTube). Já a composição atual do
+ambiente usa um callback protegido no modo jogo: falsificada a hipótese de
+outro erro inevitável nessa composição. Guarda mínima no helper torna explícito
+o mesmo contrato, sem depender do callback. Navegação comum não foi redefinida.
+
+Regressão relevante: **697 aprovados, 1 skipped, 9 subtestes**, 10,48 s.
+Nenhuma interferência na sessão/Chrome real; extensão não foi desconectada.
+Sem edição neural ou conflito Git observado com trabalho paralelo nas duas
+checagens. Limites e detalhes no P17 do registro; não criar outro ID por rota.

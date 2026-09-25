@@ -41,7 +41,7 @@ from mente_laylay.integracao.registro_visao_jogo import (
 
 
 _EXECUCAO = (
-    "ajustar_volume_sistema", "falar_com_lipsync",
+    "ajustar_volume_sistema", "obter_volume_sistema", "falar_com_lipsync",
     "abrir_programa", "fechar_programa", "APPS_MAP",
     "ativar_tela_cheia_robusta", "_eh_alvo_site_web",
     "_contexto_aponta_site_web", "is_valid_url", "formatar_url_ou_busca",
@@ -51,7 +51,8 @@ _EXECUCAO = (
 _DISPATCHER_GRUPOS = {
     "base": ("falar_com_lipsync", "salvar_memoria"),
     "navegacao": (
-        "_enviar_pc_b", "interpretar_comando_local_rapido",
+        "_enviar_pc_b", "_enviar_pc_b_detalhado",
+        "interpretar_comando_local_rapido",
         "listar_programas_abertos",
         "organizar_janelas_robusto", "ativar_tela_cheia_robusta",
     ),

@@ -551,7 +551,7 @@ def test_close_app_no_pc_b_preserva_mapeamento_remoto() -> None:
     assert eventos[0] == ("resultado", "app_fechado_pc_b", {"executou": True})
 
 
-def test_fechar_programa_legado_redireciona_para_close_app() -> None:
+def test_fechar_programa_alias_reusa_mesmo_executor_sem_recursao() -> None:
     eventos: list[tuple] = []
     recursivos: list[tuple] = []
 
@@ -559,7 +559,11 @@ def test_fechar_programa_legado_redireciona_para_close_app() -> None:
         "FECHAR_PROGRAMA",
         {"programa": "opera"},
         "pc_a",
-        {},
+        {
+            "APPS_MAP": {"opera": "opera.exe"},
+            "_resolver_alvo_ambiente": lambda _nome: {"programa_aberto": True},
+            "fechar_programa": lambda _nome: True,
+        },
         _dependencias(
             eventos,
             executar=lambda resultado, texto, _ctx: recursivos.append((resultado, texto)) or True,
@@ -568,10 +572,8 @@ def test_fechar_programa_legado_redireciona_para_close_app() -> None:
     )
 
     assert despacho == ResultadoDespacho.concluido()
-    assert recursivos == [(
-        {"intent": "CLOSE_APP", "params": {"nome_app": "opera"}},
-        "fecha o opera",
-    )]
+    assert recursivos == []
+    assert eventos[0] == ("resultado", "app_fechado", {"executou": True})
 
 
 def test_roteador_principal_delega_close_app_e_confirma_releitura() -> None:
@@ -597,3 +599,34 @@ def test_roteador_principal_delega_close_app_e_confirma_releitura() -> None:
 
     assert retorno is True
     assert resultados and resultados[0].status == "app_fechado"
+
+
+
+def test_site_no_pc_b_publica_solicitacao_sem_inventar_confirmacao() -> None:
+    eventos: list[tuple] = []
+    remotos: list[dict] = []
+
+    despacho = executar_intencao_janelas(
+        "APP_OPEN",
+        {"nome_app": "instagram"},
+        "pc_b",
+        {
+            "_enviar_pc_b": remotos.append,
+            "APPS_MAP": {"instagram": "https://www.instagram.com"},
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido()
+    assert remotos == [{
+        "action": "open_url",
+        "url": "https://www.instagram.com",
+    }]
+    assert eventos[0] == (
+        "resultado",
+        "abertura_solicitada",
+        {"executou": True, "confirmado": None},
+    )
+    assert eventos[1][0:2] == ("fala_status", "abertura_solicitada")
+    assert eventos[1][3]["executou"] is True
+    assert eventos[1][3]["confirmado"] is None

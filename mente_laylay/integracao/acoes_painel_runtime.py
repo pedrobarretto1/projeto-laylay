@@ -10,6 +10,10 @@ from __future__ import annotations
 import re
 from typing import Any, Callable, Mapping
 
+from mente_laylay.memoria_mental.resultado_acao import (
+    interpretar_tratamento_operacional,
+)
+
 
 _ACOES_MIDIA = {
     "media_previous": "prev",
@@ -194,4 +198,8 @@ def executar_acao_painel_tipado(
     if comando is None:
         return False
     resultado, texto_auditoria = comando
-    return bool(executar_intencao(resultado, texto_auditoria))
+    retorno = executar_intencao(resultado, texto_auditoria)
+    return interpretar_tratamento_operacional(
+        resultado,
+        retorno,
+    ).sucesso_habilidade

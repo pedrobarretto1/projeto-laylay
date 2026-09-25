@@ -309,8 +309,21 @@ def _executar_abrir_app(
                 url_site = "https://www.instagram.com"
         if url_site:
             enviar_pc_b({"action": "open_url", "url": url_site})
-            deps.marcar_resultado("site_aberto", executou=True)
-            deps.falar_por_status("site_aberto", f"Abrindo {nome} no PC B.", alvo=nome)
+            # O envio ao cliente remoto prova despacho, não prova que a aba
+            # apareceu. Sem receipt do PC B, preserve a incerteza até uma
+            # leitura remota confirmar o estado.
+            deps.marcar_resultado(
+                "abertura_solicitada",
+                executou=True,
+                confirmado=None,
+            )
+            deps.falar_por_status(
+                "abertura_solicitada",
+                f"Pedi para abrir {nome} no PC B, mas ainda não tenho confirmação da aba.",
+                alvo=nome,
+                executou=True,
+                confirmado=None,
+            )
             return ResultadoDespacho.concluido()
         enviar_pc_b({"action": "open_app", "app": mapped, "quantidade": 1})
         deps.marcar_resultado("app_aberto_pc_b", executou=True)
@@ -529,6 +542,7 @@ def _executar_fechar_app(
 def _executar_alias_fechar_programa(
     params: Dict[str, Any],
     texto_original: str,
+    destino: str,
     ctx: Dict[str, Any],
     deps: DependenciasExecutorJanelas,
 ) -> ResultadoDespacho:
@@ -537,20 +551,26 @@ def _executar_alias_fechar_programa(
         or params.get("nome_busca") or ""
     ).strip()
     if not nome:
+        deps.marcar_resultado(
+            "alvo_ausente",
+            executou=False,
+            confirmado=False,
+        )
         _falar(ctx, escolher_fala_variada([
             "Fechar o quê? Me fala o nome do programa direito.",
             "Qual programa eu fecho?",
             "Faltou o nome do app.",
         ]), "debochada", 2)
         return ResultadoDespacho.concluido()
-    if callable(deps.executar_recursivo):
-        retorno = deps.executar_recursivo(
-            {"intent": "CLOSE_APP", "params": {"nome_app": nome}},
-            texto_original,
-            ctx,
-        )
-        return ResultadoDespacho.concluido(retorno)
-    return ResultadoDespacho.nao_tratado()
+
+    # FECHAR_PROGRAMA é somente um alias semântico de CLOSE_APP. Executá-lo
+    # recursivamente criava um segundo dict de intenção: o receipt ficava preso
+    # na chamada interna e o resultado original voltava a parecer legado.
+    # Delegar à mesma habilidade com o mesmo adapter preserva uma única
+    # identidade operacional e um único receipt.
+    params_alias = dict(params)
+    params_alias["nome_app"] = nome
+    return _executar_fechar_app(params_alias, destino, ctx, deps)
 
 
 def executar_intencao_janelas(
@@ -575,4 +595,10 @@ def executar_intencao_janelas(
         return _executar_abrir_app(intent, params, destino, ctx, deps)
     if intent == "CLOSE_APP":
         return _executar_fechar_app(params, destino, ctx, deps)
-    return _executar_alias_fechar_programa(params, texto_original, ctx, deps)
+    return _executar_alias_fechar_programa(
+        params,
+        texto_original,
+        destino,
+        ctx,
+        deps,
+    )

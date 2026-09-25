@@ -81,6 +81,24 @@ def analisar_protecao_operacional(
             "motivo": "pergunta negativa sobre ação",
         }
     if re.search(
+        rf"^(?:nao|não)\s+(?:e|é|eh)\s+(?:para|pra)\s+"
+        rf"(?:{_P0_VERBOS_INFINITIVO_OPERACIONAL})\b",
+        t,
+    ):
+        if "?" in str(texto or ""):
+            return {
+                "bloqueia_execucao": True,
+                "modalidade": "pergunta",
+                "natureza_acao": "informativa_sobre_acao",
+                "motivo": "pergunta sobre orientação operacional negada",
+            }
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "recusa",
+            "natureza_acao": "cancelamento",
+            "motivo": "negação declarativa de ação operacional",
+        }
+    if re.search(
         r"\b(?:acho que (?:eu )?vou|talvez|estou pensando em|to pensando em|"
         r"seria bom|seria legal|quem sabe|tenho vontade de|estou com vontade de|"
         r"to com vontade de|queria saber|se eu (?:pedir|quiser|mandar|falar|disser)|"

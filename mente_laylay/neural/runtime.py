@@ -55,6 +55,7 @@ class EspecialistaNeuralComandosRuntime:
         previsao["latency_ms"] = round(
             (time.perf_counter() - inicio) * 1000.0, 4
         )
+        previsao["model_sha256"] = str(getattr(self.modelo, "sha256", ""))[:64]
         previsao["route"] = (
             "SHADOW" if self.modo == "shadow" else "CANDIDATE"
         )
@@ -149,13 +150,15 @@ class EspecialistaNeuralComandosRuntime:
             self.log(f"⚠️ [NEURAL:COMANDOS] observação isolada: {type(erro).__name__}")
             return {}
         comando_legado = bool(legado.get("autoriza_execucao"))
+        comando_neural_executavel = self._comando_executavel(previsao)
         previsao["comparacao_legado"] = {
             "modalidade": str(
                 legado.get("modalidade_geral") or legado.get("modalidade") or ""
             ),
             "autoriza_execucao": comando_legado,
             "veto_execucao_operacional": bool(legado.get("veto_execucao_operacional")),
-            "divergiu_comando": bool(previsao.get("is_command")) != comando_legado,
+            "comando_neural_executavel": comando_neural_executavel,
+            "divergiu_comando": comando_neural_executavel != comando_legado,
         }
         with self._lock:
             self._previsoes_por_texto[self._chave(texto)] = dict(previsao)

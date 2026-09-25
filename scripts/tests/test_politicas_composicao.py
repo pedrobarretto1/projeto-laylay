@@ -7,9 +7,22 @@ from mente_laylay.integracao.politicas_composicao import (
     recomendar_playlist_real_para_presenca,
     registrar_feedback_agenda,
 )
+from mente_laylay.emocoes.contrato_causal import criar_evento_emocional_causal
 
 
 def test_estado_visual_prioriza_falha_recente_confirmada():
+    evento = criar_evento_emocional_causal(
+        origem="resultado_operacional",
+        causa="falha operacional observada",
+        evidencia_ref="resultado:turno-1:falha",
+        natureza_evidencia="fato_observado",
+        responsabilidade="sistema",
+        confianca=0.96,
+        permite_expressao=True,
+        emocao="irritada",
+        nivel=2,
+        ts=99.0,
+    )
     estado = {
         "audio_playing": False,
         "is_speaking": False,
@@ -17,6 +30,7 @@ def test_estado_visual_prioriza_falha_recente_confirmada():
         "visual_activity_until": 0.0,
         "current_emotion": "irritada",
         "emotion_level": 2,
+        "episodio_emocional": evento,
     }
     visual = construir_estado_visual(
         conversa_get=lambda chave, padrao=None: estado.get(chave, padrao),

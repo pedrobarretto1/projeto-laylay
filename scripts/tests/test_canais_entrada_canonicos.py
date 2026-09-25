@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import threading
+import pytest
 
 from mente_laylay.autonomia.execucao_ia import CoordenadorExecRuntime
 from mente_laylay.autonomia.resposta_ia_runtime import RespostaIARuntime
@@ -10,6 +11,40 @@ from mente_laylay.memoria_mental.diagnostico_mente import (
     construir_diagnostico_mente,
     formatar_diagnostico_terminal,
 )
+
+
+@pytest.mark.parametrize("origem", ["desktop", "terminal", "voz", "barra", "modo_jogo"])
+def test_entrada_processada_aparece_no_dev_sem_depender_do_eco_do_teclado(origem):
+    from types import SimpleNamespace
+    from mente_laylay.integracao.dev_console_runtime import DevConsoleRuntime
+    dev = DevConsoleRuntime()
+    recebidas = []
+    coordenador = CoordenadorExecRuntime(
+        contexto_exec_getter=lambda: None,
+        resposta_ia_getter=lambda: SimpleNamespace(processar=lambda texto, **kw: recebidas.append(texto)),
+        loop_getter=lambda: None, log=dev.registrar_linha,
+    )
+    texto = "pode pausar a música"
+    thread = coordenador.agendar(texto, origem=origem)
+    thread.join(1.0)
+    assert recebidas == [texto]
+    mensagens = [e["message"] for e in dev.snapshot()["events"]]
+    assert sum("Você:" in m and texto in m and origem in m for m in mensagens) == 1
+
+
+def test_registro_de_entrada_protege_segredo_sem_mudar_texto_processado():
+    from types import SimpleNamespace
+    recebidas, logs = [], []
+    coordenador = CoordenadorExecRuntime(
+        contexto_exec_getter=lambda: None,
+        resposta_ia_getter=lambda: SimpleNamespace(processar=lambda texto, **kw: recebidas.append(texto)),
+        loop_getter=lambda: None, log=logs.append,
+    )
+    texto = "meu token=segredo123"
+    coordenador.agendar(texto, origem="desktop").join(1.0)
+    assert recebidas == [texto]
+    assert "segredo123" not in str(logs)
+    assert "[protegido]" in str(logs)
 
 
 def test_coordenador_entrega_terminal_voz_e_jogo_ao_mesmo_runtime() -> None:

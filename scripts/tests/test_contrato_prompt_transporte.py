@@ -88,6 +88,19 @@ def test_entrada_repetida_nao_duplica_instrucao_do_turno():
     assert compacto["messages"][-2]["content"] == CONTRATO
 
 
+def test_prompt_rapido_pede_json_tambem_no_contrato_de_transporte():
+    payload = preparar_payload_llm(
+        [
+            {"role": "system", "content": BASE_SYSTEM_PROMPT_RAPIDO},
+            {"role": "user", "content": "Estou muito feliz porque terminei um projeto."},
+        ],
+        model="qwen3:4b-instruct", modo_rapido=True,
+        max_tokens=256, endpoint_local=True,
+    )
+
+    assert payload["response_format"] == {"type": "json_object"}
+
+
 @pytest.mark.parametrize("limite", [128, 224, 360, 800])
 @pytest.mark.parametrize("base", [BASE_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT_RAPIDO], ids=["normal", "rapido"])
 def test_compactacao_nao_corta_protocolo_permanente_de_saida(base, limite):

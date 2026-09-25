@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import time
 
+import pytest
+
 from mente_laylay.autonomia.contexto_resposta_ia import ContextoPromptRuntime
 from mente_laylay.autonomia.processamento_resposta_ia import (
     preparar_resposta_para_execucao,
@@ -60,6 +62,113 @@ def _plano(*, atos=("conversa",), referente="", execucao=False, permite_pergunta
         "permite_pergunta": permite_pergunta,
         "deliberacao_habilidades": {"decisao": "consenso"},
     }
+
+
+def test_pedido_explicativo_preserva_proporcao_sem_autorizar_efeito() -> None:
+    from mente_laylay.personalidade.proporcao_resposta import LIMITES, classificar_proporcao
+    for texto in ("quero passo a passo usando metodos praticos", "como funciona a fotossíntese?"):
+        contrato = construir_contrato_semantico_fala(texto, plano=_plano())
+        assert contrato["max_frases"] == LIMITES[classificar_proporcao(texto)][0]
+        assert contrato["autoriza_execucao"] is False
+
+
+def test_ensino_tem_roteiro_de_compreensao_independente_do_assunto():
+    for texto in ("me ensina divisão", "me ensina fotossíntese",
+                  "me explica variáveis em Python", "me ensina inglês"):
+        contrato = construir_contrato_semantico_fala(texto, plano=_plano())
+        roteiro = contrato["roteiro_concreto"]
+        assert roteiro["estrategia"] == "explicacao_didatica"
+        assert contrato["max_frases"] >= 7
+        assert roteiro["autoriza_execucao"] is False
+        prompt = formatar_contrato_fala_para_prompt(contrato)
+        assert "exemplo" in prompt
+        assert "conclusão" in prompt
+        assert "corrigir" in prompt
+
+
+@pytest.mark.parametrize("texto", (
+    "me ensina a interpretar essa leitura: se a bomba liga abaixo de 20%, o que acontece?",
+    "me explica por que esta função em Python retorna esse valor",
+    "me ensina a escolher a rega desta flor a partir das condições do exemplo",
+))
+def test_prompt_compacto_de_ensino_exige_premissas_relacao_e_conclusao_sem_inventar(
+    texto: str,
+) -> None:
+    contrato = construir_contrato_semantico_fala(texto, plano=_plano())
+    assert contrato["roteiro_concreto"]["estrategia"] == "explicacao_didatica"
+    compacto = formatar_contrato_fala_para_prompt(contrato, compacto=True).casefold()
+    assert "premissas" in compacto
+    assert "comparar valor e limiar" in compacto
+    assert "conclusão" in compacto
+    assert "fala anterior da assistente" in compacto
+    assert "não acrescentar causas" in compacto
+    assert contrato["autoriza_execucao"] is False
+
+
+def test_prompt_de_ensino_nao_recicla_alegacao_anterior_da_assistente() -> None:
+    texto = "Me ensina a interpretar essa leitura: o que acontece abaixo de 20%?"
+    contrato = construir_contrato_semantico_fala(texto, plano=_plano())
+    contrato["respostas_recentes_evitar"] = [
+        "As plantas estão sem água e vão morrer."
+    ]
+    historico = [
+        {"role": "user", "content": "O sensor leu 15% de umidade."},
+        {"role": "assistant", "content": "As plantas estão sem água e vão morrer."},
+        {"role": "user", "content": texto},
+    ]
+    estado = {
+        "messages": historico,
+        "turno_atual": {"id": 42, "texto": texto, "modalidade": "pergunta",
+                        "autoriza_execucao": False},
+        "contrato_fala_atual": contrato,
+    }
+    runtime = ContextoPromptRuntime(
+        memoria_sqlite=None,
+        resumo_mente_integrada=lambda _texto: "",
+        formatar_playlists=lambda: "",
+        get_status_humor_prompt=lambda: "calma",
+        base_system_prompt="BASE",
+        estado_getter=lambda: estado,
+    )
+    mensagens, _ = runtime.preparar(texto)
+    assert any(m.get("role") == "user" and "15%" in m.get("content", "")
+               for m in mensagens)
+    assert not any(m.get("role") == "assistant" for m in mensagens)
+    assert not any("plantas estão sem água" in str(m.get("content") or "").casefold()
+                   for m in mensagens)
+    assert "plantas estão sem água" not in formatar_contrato_fala_para_prompt(
+        contrato, compacto=False,
+    ).casefold()
+    assert estado["messages"] == historico
+
+    estado["contrato_fala_atual"] = construir_contrato_semantico_fala(
+        "oi laylay", plano=_plano(),
+    )
+    estado["turno_atual"]["texto"] = "oi laylay"
+    conversa, _ = runtime.preparar("oi laylay")
+    assert any(m.get("role") == "assistant" for m in conversa)
+
+
+def test_roteiro_de_ensino_nao_substitui_receipt_ou_documentacao_de_capacidade():
+    from mente_laylay.cognicao.geracao_concreta import construir_roteiro_geracao_concreta
+    texto = "me ensina como ligar a luz"
+    operacional = construir_roteiro_geracao_concreta(texto, plano={"requer_execucao": True})
+    assert operacional["estrategia"] == "resultado_observado"
+    capacidade = construir_roteiro_geracao_concreta(
+        texto, contrato={"documentacao_capacidades": "Luz: use IOT_CONTROL."},
+    )
+    assert capacidade["estrategia"] == "explicacao_capacidades"
+
+
+def test_espaco_para_desenvolvimento_preserva_limites_especificos() -> None:
+    operacional = construir_contrato_semantico_fala(
+        "quero passo a passo", plano=_plano(execucao=True),
+    )
+    assert operacional["max_frases"] == 2
+    assert operacional["autoriza_execucao"] is False
+    matematica = construir_contrato_semantico_fala("resolva 2x+4=12", plano=_plano())
+    # O contrato efêmero já tem teto de oito; não removê-lo junto deste bugfix.
+    assert matematica["max_frases"] == 8
 
 
 def test_saudacao_nao_autoriza_inferencia_oculta() -> None:
@@ -120,6 +229,65 @@ def test_esclarecimento_carrega_fala_anterior_e_bloqueia_nova_metafora() -> None
     ]
 
 
+@pytest.mark.parametrize("pedido", [
+    "me ensina a diferença entre força e energia na engenharia",
+    "me ensina a diferença entre planta baixa e corte na arquitetura",
+    "me ensina a diferença entre plantas anuais e perenes na floricultura",
+])
+def test_reexplicacao_didatica_retoma_pedido_sem_tratar_fala_errada_como_fonte(
+    pedido: str,
+) -> None:
+    anterior = construir_contrato_semantico_fala(
+        pedido,
+        plano=_plano(atos=("pergunta",)),
+        funcao_comunicativa={"funcao": "informacao"},
+    )
+    resposta_errada = "Uma analogia imprecisa que não deve virar fato."
+    contrato = construir_contrato_semantico_fala(
+        "não entendi, explica de outro jeito",
+        plano=_plano(atos=("pergunta",)),
+        funcao_comunicativa={"funcao": "informacao"},
+        mente={
+            "ultima_entrada": pedido,
+            "ultima_entrada_ts": time.time(),
+            "ultima_resposta": resposta_errada,
+            "contrato_fala_atual": anterior,
+        },
+    )
+
+    assert contrato["pedido_ensino_anterior"] == pedido
+    assert contrato["roteiro_concreto"]["estrategia"] == "reensino_didatico"
+    assert contrato["roteiro_concreto"]["ancora_literal"] == pedido
+    assert contrato["max_frases"] >= 6
+    assert contrato["autoriza_execucao"] is False
+    prompt = formatar_contrato_fala_para_prompt(contrato)
+    assert pedido in prompt
+    assert "não é fonte factual" in prompt
+
+
+def test_reexplicacao_nao_herda_pedido_de_ensino_expirado() -> None:
+    pedido = "me ensina a diferença entre força e energia na engenharia"
+    anterior = construir_contrato_semantico_fala(
+        pedido,
+        plano=_plano(atos=("pergunta",)),
+        funcao_comunicativa={"funcao": "informacao"},
+    )
+    contrato = construir_contrato_semantico_fala(
+        "não entendi",
+        plano=_plano(atos=("pergunta",)),
+        funcao_comunicativa={"funcao": "informacao"},
+        mente={
+            "ultima_entrada": pedido,
+            "ultima_entrada_ts": time.time() - 500,
+            "ultima_resposta": "Resposta anterior.",
+            "contrato_fala_atual": anterior,
+        },
+    )
+
+    assert contrato["pedido_ensino_anterior"] == ""
+    assert contrato["roteiro_concreto"]["estrategia"] == "esclarecimento_literal"
+
+
 def test_bem_estar_nao_permita_corpo_fome_ou_sono_inventados() -> None:
     contrato = construir_contrato_semantico_fala(
         "Como você vai?",
@@ -146,6 +314,111 @@ def test_estado_pessoal_exige_reconhecimento_literal_e_sem_deboche() -> None:
     assert contrato["permite_humor"] is False
     assert any("estado que o usuário informou" in item for item in contrato["conteudos_obrigatorios"])
     assert contrato["roteiro_concreto"]["estrategia"] == "acolhimento_literal"
+
+
+@pytest.mark.parametrize(
+    ("texto", "vaga", "ancorada"),
+    [
+        (
+            "Finalmente tirei um peso enorme das costas: entreguei o projeto depois de semanas preso nisso.",
+            "Uau, isso é só o começo do que vai vir — já vai sentir o ar mais leve, né?",
+            "Entregar o projeto depois de semanas preso nele deve dar um alívio enorme.",
+        ),
+        (
+            "Ganhei uma medalha na corrida de hoje.",
+            "Que notícia boa! Você merece comemorar.",
+            "Uma medalha na corrida de hoje! Que conquista boa.",
+        ),
+    ],
+)
+def test_relato_conversacional_exige_ancora_do_fato_atual(
+    texto: str, vaga: str, ancorada: str,
+) -> None:
+    contrato = construir_contrato_semantico_fala(
+        texto, plano=_plano(), funcao_comunicativa={"funcao": "informacao"},
+    )
+    assert contrato["roteiro_concreto"]["estrategia"] == "resposta_direta"
+    ruim = validar_aderencia_contrato_fala(texto, vaga, contrato_fala=contrato)
+    boa = validar_aderencia_contrato_fala(texto, ancorada, contrato_fala=contrato)
+    assert "relato_atual_sem_ancora" in ruim["problemas"]
+    assert ruim["requer_reparo"] is True
+    assert boa["aceita"] is True
+
+
+def test_contrato_compacto_orienta_resposta_ancorada_em_relato() -> None:
+    texto = "Finalmente tirei um peso enorme das costas: entreguei o projeto depois de semanas preso nisso."
+    contrato = construir_contrato_semantico_fala(
+        texto, plano=_plano(), funcao_comunicativa={"funcao": "informacao"},
+    )
+    prompt = formatar_contrato_fala_para_prompt(contrato, compacto=True)
+    assert "fato concreto da fala atual" in prompt
+    assert "não antecipe resultados futuros" in prompt
+    assert "Âncora literal" not in prompt
+
+
+def test_alegria_com_causa_explicita_exige_retomar_o_acontecimento() -> None:
+    texto = "Estou muito feliz porque terminei um projeto."
+    contrato = construir_contrato_semantico_fala(
+        texto, plano=_plano(), funcao_comunicativa={"funcao": "informacao"},
+    )
+    vaga = validar_aderencia_contrato_fala(
+        texto, "Que bom que terminou! Isso parece uma conquista.", contrato_fala=contrato,
+    )
+    ancorada = validar_aderencia_contrato_fala(
+        texto, "Que bom que você terminou um projeto e está feliz!", contrato_fala=contrato,
+    )
+
+    assert "estado_pessoal_causa_omitida" in vaga["problemas"]
+    assert ancorada["aceita"] is True
+
+
+def test_contingencia_de_estado_pessoal_preserva_estado_e_causa() -> None:
+    from mente_laylay.cognicao.qualidade_comunicacao import contingencia_comunicacao
+
+    for texto, funcao in (
+        ("Estou um pouco triste hoje.", "desabafo"),
+        ("Estou muito feliz porque terminei um projeto.", "informacao"),
+    ):
+        contrato = construir_contrato_semantico_fala(
+            texto, plano=_plano(), funcao_comunicativa={"funcao": funcao},
+        )
+        fala = contingencia_comunicacao(texto)
+        avaliacao = validar_aderencia_contrato_fala(texto, fala, contrato_fala=contrato)
+        assert avaliacao["aceita"] is True, (texto, fala, avaliacao["problemas"])
+
+
+def test_estado_do_usuario_nao_vira_emocao_em_primeira_pessoa_da_laylay() -> None:
+    texto = "Estou muito feliz porque terminei um projeto."
+    contrato = construir_contrato_semantico_fala(
+        texto, plano=_plano(), funcao_comunicativa={"funcao": "informacao"},
+    )
+    trocada = validar_aderencia_contrato_fala(
+        texto, "Estou muito feliz porque você terminou um projeto.", contrato_fala=contrato,
+    )
+    correta = validar_aderencia_contrato_fala(
+        texto, "Você está feliz por ter terminado um projeto. Parabéns!", contrato_fala=contrato,
+    )
+
+    assert "estado_pessoal_falante_invertido" in trocada["problemas"]
+    assert correta["aceita"] is True
+
+
+def test_conversa_textual_nao_inventa_aparencia_do_usuario() -> None:
+    texto = "Talvez você esteja irritada comigo; isso não é um fato."
+    contrato = construir_contrato_semantico_fala(
+        texto, plano=_plano(), funcao_comunicativa={"funcao": "informacao"},
+    )
+    inventada = validar_aderencia_contrato_fala(
+        texto, "Não estou irritada. Acho que você está com um olhar de quem viu algo ruim.",
+        contrato_fala=contrato,
+    )
+    cautelosa = validar_aderencia_contrato_fala(
+        texto, "Não estou irritada com você; isso é só uma hipótese, sem causa observada.",
+        contrato_fala=contrato,
+    )
+
+    assert "aparencia_do_usuario_sem_evidencia" in inventada["problemas"]
+    assert cautelosa["aceita"] is True
 
 
 def test_mexendo_no_codigo_da_laylay_exige_clareza_antes_do_deboche() -> None:

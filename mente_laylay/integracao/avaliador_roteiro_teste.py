@@ -534,13 +534,14 @@ def avaliar_turno_roteiro(
             )
 
     campos_plano = expectativa.get("campos_plano") or {}
+    campos_um_de = expectativa.get("campos_plano_um_de") or {}
     campos_presentes = tuple(
         str(x) for x in expectativa.get("campos_plano_presentes") or ()
     )
     campos_ausentes = tuple(
         str(x) for x in expectativa.get("campos_plano_ausentes") or ()
     )
-    if campos_plano or campos_presentes or campos_ausentes:
+    if campos_plano or campos_um_de or campos_presentes or campos_ausentes:
         checagens.append("campos_plano")
     if isinstance(campos_plano, Mapping):
         for caminho, esperado in campos_plano.items():
@@ -558,6 +559,19 @@ def avaliar_turno_roteiro(
                 )
     else:
         erros.append("campos_plano_invalido")
+    if isinstance(campos_um_de, Mapping):
+        for caminho, alternativas in campos_um_de.items():
+            caminho_textual = str(caminho or "").strip()
+            observado = _campo_por_caminho(retrato, caminho_textual)
+            aceitos = tuple(alternativas) if isinstance(alternativas, (list, tuple, set)) else ()
+            if not aceitos or observado is _CAMPO_AUSENTE or observado not in aceitos:
+                observado_texto = "AUSENTE" if observado is _CAMPO_AUSENTE else repr(observado)[:160]
+                erros.append(
+                    f"campo_plano_fora_alternativas:{caminho_textual}:"
+                    f"aceitos={aceitos!r};observado={observado_texto}"
+                )
+    elif campos_um_de:
+        erros.append("campos_plano_um_de_invalido")
     for caminho in campos_presentes:
         if not _campo_presente(_campo_por_caminho(retrato, caminho)):
             erros.append(f"campo_plano_ausente:{caminho}")

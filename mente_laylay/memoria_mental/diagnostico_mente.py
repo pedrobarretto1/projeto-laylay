@@ -7,6 +7,10 @@ import time
 import unicodedata
 from typing import Any, Callable, Mapping
 
+from mente_laylay.emocoes.contrato_causal import (
+    evento_esta_ativo,
+    evento_pode_alterar_estado,
+)
 from mente_laylay.memoria_mental.continuidade_geral import selecionar_continuidade_por_classe
 from mente_laylay.memoria_mental.formatacao_diagnostico import (
     _codigo_seguro,
@@ -125,6 +129,32 @@ def construir_diagnostico_mente(
     dominios = dict(estado or {})
     mental = dict(dominios.get("mental") or {})
     conversa = dict(dominios.get("conversacional") or {})
+    quadro_emocional = dict(mental.get("eventos_emocionais_causais") or {})
+    evento_emocional = dict(quadro_emocional.get("atual") or {})
+    episodio_emocional = dict(conversa.get("episodio_emocional") or {})
+    evento_vigente = evento_esta_ativo(evento_emocional)
+    estado_emocional_causal = {
+        "emocao": _codigo_seguro(conversa.get("current_emotion"), 20),
+        "nivel": int(conversa.get("emotion_level") or 1),
+        "humor_fundo": int(conversa.get("humor_level") or 0),
+        "causa": _codigo_seguro(
+            evento_emocional.get("motivo_expressao") or "sem_evento_causal", 48,
+        ),
+        "origem": _codigo_seguro(evento_emocional.get("origem"), 40),
+        "responsabilidade": _codigo_seguro(
+            evento_emocional.get("responsabilidade") or "ambigua", 16,
+        ),
+        "confianca": float(evento_emocional.get("confianca") or 0.0),
+        "validade": evento_vigente,
+        "expressao": evento_pode_alterar_estado(evento_emocional),
+        "supressao": _codigo_seguro(
+            evento_emocional.get("motivo_expressao") if not evento_vigente else "", 48,
+        ),
+        "episodio_ativo": bool(episodio_emocional) and evento_esta_ativo(episodio_emocional),
+        "transicao": dict(conversa.get("transicao_emocional") or {}),
+        "decisao_comportamental": "execucao_pelo_contrato_operacional",
+        "autoriza_execucao": False,
+    }
     percepcao = dict(dominios.get("percepcao") or {})
     continuidades = dict(dominios.get("continuidades") or {})
     turno = dict(mental.get("turno_atual") or {})
@@ -617,6 +647,7 @@ def construir_diagnostico_mente(
         "plasticidade_amostras": int(plasticidade_rede.get("amostras") or 0),
     }
     diagnostico = {
+        "estado_emocional_causal": estado_emocional_causal,
         "saude": {**totais, "problemas": problemas},
         "interacao": {
             "emocao": conversa.get("current_emotion") or "calma",

@@ -26,6 +26,9 @@ from mente_laylay.autonomia.governanca_cooperacao import GovernancaPlanoCooperat
 
 
 from mente_laylay.autonomia.executor_cooperacao import ExecutorPlanoCooperativoRuntime
+from mente_laylay.memoria_mental.resultado_acao import (
+    interpretar_tratamento_operacional,
+)
 
 
 class OrquestradorCooperativoRuntime:
@@ -249,7 +252,11 @@ class OrquestradorCooperativoRuntime:
         )
 
         def executar_agenda(_etapa: Mapping[str, Any], _plano: Mapping[str, Any]) -> dict[str, Any]:
-            tratado = bool(self.executar_intencao(comando, texto_agenda))
+            retorno = self.executar_intencao(comando, texto_agenda)
+            tratado = interpretar_tratamento_operacional(
+                comando,
+                retorno,
+            ).sucesso_habilidade
             atual = self.quadro.obter_plano(plano_id) or {}
             etapa = next((
                 parte for parte in list(atual.get("etapas") or [])
@@ -585,7 +592,12 @@ class OrquestradorCooperativoRuntime:
         )
         self.governanca.registrar_ciclo(plano, "iniciado")
         params["_plano_cooperativo_id"] = plano_id
-        tratado = bool(self.executar_intencao({"intent": "GAME_VISION", "params": params}, texto))
+        comando_visao = {"intent": "GAME_VISION", "params": params}
+        retorno_visao = self.executar_intencao(comando_visao, texto)
+        tratado = interpretar_tratamento_operacional(
+            comando_visao,
+            retorno_visao,
+        ).sucesso_habilidade
         if tratado:
             self.log(
                 "🤝 [COOPERAÇÃO] análise de item iniciada | "
@@ -877,7 +889,11 @@ class OrquestradorCooperativoRuntime:
                     "plano_cooperativo_id": plano_id,
                 },
             }
-            tratado = bool(self.executar_intencao(resultado, texto))
+            retorno = self.executar_intencao(resultado, texto)
+            tratado = interpretar_tratamento_operacional(
+                resultado,
+                retorno,
+            ).sucesso_habilidade
             estado = dict(self.estado_getter() or {})
             status = str(estado.get("ultima_acao_status") or "").strip().casefold()
             confirmou = bool(
@@ -977,7 +993,11 @@ class OrquestradorCooperativoRuntime:
                     "plano_cooperativo_id": plano_id,
                 },
             }
-            tratado = bool(self.executar_intencao(resultado, texto))
+            retorno = self.executar_intencao(resultado, texto)
+            tratado = interpretar_tratamento_operacional(
+                resultado,
+                retorno,
+            ).sucesso_habilidade
             estado = dict(self.estado_getter() or {})
             status = str(estado.get("ultima_acao_status") or "").strip().casefold()
             confirmou = bool(

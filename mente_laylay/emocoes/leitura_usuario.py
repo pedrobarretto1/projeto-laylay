@@ -12,6 +12,75 @@ import time
 from typing import Any, Callable, Dict
 
 
+_CONCLUSAO_PROPRIA = re.compile(
+    r"\b(?:entreguei|terminei|conclu[ií]|finalizei|acabei|resolvi|encerrei|"
+    r"consegui\s+(?:terminar|concluir|finalizar|resolver|entregar))\b",
+    re.IGNORECASE,
+)
+_DURACAO_CARGA = re.compile(r"\b(?:dias?|semanas?|meses?)\b", re.IGNORECASE)
+_CARGA_ANTERIOR = re.compile(
+    r"\b(?:pres[oa]|prendia|prendendo|consumia|tens[aã]o|atolad[oa]|"
+    r"peso\s+(?:enorme\s+)?(?:d[ae]s?\s+costas))\b",
+    re.IGNORECASE,
+)
+_LIBERACAO = re.compile(
+    r"\b(?:tirei\s+(?:(?:um|esse|aquele)\s+)?peso(?:\s+enorme)?\s+d[ae]s?\s+costas|"
+    r"(?:agora\s+)?(?:posso|pude)\s+respirar|"
+    r"(?:estou|me\s+sinto)\s+livre\s+disso|"
+    r"saiu\s+(?:(?:um|esse|aquele)\s+)?peso)\b",
+    re.IGNORECASE,
+)
+_TRECHO_CITADO = re.compile(r'"[^"\n]*"|“[^”\n]*”|\x27[^\x27\n]*\x27|‘[^’\n]*’')
+_ALVO_CONCLUIDO = re.compile(
+    r"^\s+(?P<alvo>(?:o|a|os|as|um|uma)\s+[^,.!?;:]{2,80}?)"
+    r"(?=\s+(?:depois|ap[oó]s|que|e|mas)\b|[,.!?;:]|$)",
+    re.IGNORECASE,
+)
+
+
+def _inferir_alivio_com_causa(texto: str) -> Dict[str, Any]:
+    """Propõe alívio só quando conclusão, carga anterior e liberação coexistem."""
+    bruto = str(texto or "").strip()
+    # Texto atribuído a outra pessoa não é experiência emocional do usuário.
+    # Na dúvida, uma citação inteira não publica evento.
+    texto_autoral = _TRECHO_CITADO.sub(" ", bruto)
+    base = texto_autoral.casefold()
+    if re.search(
+        r"^(?:escreva|repita|invente|traduza|explique|cite|o que significa)\b|"
+        r"\b(?:se eu|caso eu|se tivesse|talvez|imagina|imagine|suponha)\b|"
+        r"\b(?:treino|academia|halter|anilha|levantamento de peso)\b",
+        base,
+    ):
+        return {}
+    conclusao = _CONCLUSAO_PROPRIA.search(texto_autoral)
+    duracao = _DURACAO_CARGA.search(texto_autoral)
+    carga = _CARGA_ANTERIOR.search(texto_autoral)
+    liberacao = _LIBERACAO.search(texto_autoral)
+    if not all((conclusao, duracao, carga, liberacao)):
+        return {}
+    if re.search(r"\b(?:n[aã]o|nunca)\s+" + re.escape(conclusao.group(0)), base):
+        return {}
+    if re.search(r"\b(?:n[aã]o|nunca|nem)\s*$", base[max(0, liberacao.start()-16):liberacao.start()]):
+        return {}
+    alvo = _ALVO_CONCLUIDO.match(texto_autoral[conclusao.end():])
+    return {
+        "emocao": "alivio",
+        "intensidade": 2,
+        "alvo": "estado_geral",
+        "pedido_implicito": "acolhimento",
+        "necessidade_acao": False,
+        "natureza_evidencia": "inferencia",
+        "causa": f"{conclusao.group(0)} após {duracao.group(0)} de carga relatada",
+        "verbo_conclusao": conclusao.group(0),
+        "alvo_conclusao": alvo.group("alvo").strip() if alvo else "",
+        "periodo_carga": duracao.group(0),
+        "trecho_evidencia": liberacao.group(0),
+        "confianca": 0.82,
+        "texto": bruto,
+        "ts": time.time(),
+    }
+
+
 def analisar_funcao_comunicativa(texto: str) -> Dict[str, Any]:
     """Identifica o papel humano da fala sem decidir comandos."""
     bruto = str(texto or "").strip()
@@ -80,7 +149,7 @@ def analisar_intencao_emocional(
         r"\b(?:nao tem|não tem|tem nada|nao tenho|não tenho)\s+(?:nada\s+)?(?:pra|para)\s+fazer\b",
     )
     if not any(re.search(padrao, base) for padrao in marcadores_pessoais):
-        return {}
+        return _inferir_alivio_com_causa(bruto)
 
     emocoes = (
         ("cansaco", r"\b(?:cansad[oa]|exaust[oa]|esgotad[oa]|sem energia)\b"),
@@ -97,7 +166,7 @@ def analisar_intencao_emocional(
     if not emocao and re.search(r"\b(?:nao|não)\s+aguento\b", base):
         emocao = "esgotamento"
     if not emocao:
-        return {}
+        return _inferir_alivio_com_causa(bruto)
 
     intensidade = 2
     if re.search(r"\b(?:um pouco|meio|meio que|levemente)\b", base):

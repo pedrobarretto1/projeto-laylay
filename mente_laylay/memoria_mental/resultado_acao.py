@@ -10,6 +10,10 @@ from typing import Any, Dict
 # ResultadoAcao nem o plano persistido; apenas prova, para o chamador imediato,
 # que o executor já publicou o contrato oficial daquela invocação.
 CHAVE_RESULTADO_OPERACIONAL_PUBLICADO = "_laylay_resultado_operacional_publicado"
+# Contrato transitório da invocação atual. Diferente do receipt acima, ele
+# também representa "tratei, mas não executei" sem transformar tratamento em
+# efeito. Nunca deve ser persistido como parte do ResultadoAcao.
+CHAVE_TRATAMENTO_OPERACIONAL = "_laylay_tratamento_operacional"
 
 STATUS_RESULTADO_JA_SATISFEITO = {
     "ja_aberto_focado", "site_ja_aberto_focado",
@@ -74,6 +78,107 @@ def inferir_confirmacao(status: str, executou: bool | None) -> bool | None:
     if executou is True and status_norm in STATUS_RESULTADO_CONFIRMADO:
         return True
     return None
+
+
+@dataclass(frozen=True, slots=True)
+class ResultadoTratamentoOperacional:
+    tratado: bool
+    executou: bool | None
+    confirmado: bool | None
+    status: str = ""
+    resultado_publicado: bool = False
+    legado: bool = False
+    retorno_legado: bool = False
+
+    @property
+    def deve_publicar_fallback(self) -> bool:
+        return self.legado and not self.resultado_publicado
+
+    @property
+    def resultado_incerto(self) -> bool:
+        """Houve emissão/tentativa, mas nenhum receipt confirmou o efeito."""
+        return self.executou is True and self.confirmado is None
+
+    @property
+    def sucesso_habilidade(self) -> bool:
+        """Sucesso comprovado; bool legado permanece só como compatibilidade."""
+        if self.confirmado is True:
+            return True
+        if self.legado:
+            return self.executou is True and self.confirmado is not False
+        return False
+
+
+def marcar_tratamento_operacional(
+    resultado: Dict[str, Any] | None,
+    *,
+    tratado: bool,
+    executou: bool | None,
+    confirmado: bool | None,
+    status: str = "",
+    resultado_publicado: bool = False,
+    retorno_legado: bool = False,
+) -> None:
+    if not isinstance(resultado, dict):
+        return
+    resultado[CHAVE_TRATAMENTO_OPERACIONAL] = {
+        "tratado": bool(tratado),
+        "executou": executou if executou is None else bool(executou),
+        "confirmado": confirmado if confirmado is None else bool(confirmado),
+        "status": str(status or "").strip().lower(),
+        "resultado_publicado": bool(resultado_publicado),
+        "retorno_legado": bool(retorno_legado),
+    }
+
+
+def interpretar_tratamento_operacional(
+    resultado: Dict[str, Any] | None,
+    retorno: Any,
+) -> ResultadoTratamentoOperacional:
+    retorno_bool = bool(retorno)
+    if not isinstance(resultado, dict):
+        return ResultadoTratamentoOperacional(
+            tratado=retorno_bool,
+            executou=retorno_bool,
+            confirmado=None,
+            legado=True,
+            retorno_legado=retorno_bool,
+        )
+    publicado = bool(resultado.get(CHAVE_RESULTADO_OPERACIONAL_PUBLICADO))
+    bruto = resultado.get(CHAVE_TRATAMENTO_OPERACIONAL)
+    if not isinstance(bruto, dict):
+        if publicado:
+            return ResultadoTratamentoOperacional(
+                tratado=True,
+                executou=None,
+                confirmado=None,
+                resultado_publicado=True,
+                retorno_legado=retorno_bool,
+            )
+        return ResultadoTratamentoOperacional(
+            tratado=retorno_bool,
+            executou=retorno_bool,
+            confirmado=None,
+            legado=True,
+            retorno_legado=retorno_bool,
+        )
+    return ResultadoTratamentoOperacional(
+        tratado=bool(bruto.get("tratado")),
+        executou=(
+            None if bruto.get("executou") is None
+            else bool(bruto.get("executou"))
+        ),
+        confirmado=(
+            None if bruto.get("confirmado") is None
+            else bool(bruto.get("confirmado"))
+        ),
+        status=str(bruto.get("status") or "").strip().lower(),
+        resultado_publicado=bool(
+            bruto.get("resultado_publicado") or publicado
+        ),
+        legado=False,
+        retorno_legado=bool(bruto.get("retorno_legado", retorno_bool)),
+    )
 
 
 @dataclass(frozen=True)
@@ -208,9 +313,10 @@ def normalizar_resultado_acao(
     )
     executou_final = dados.get("executou") if executou is None else executou
     ok = dados.get("ok")
+    confirmacao_explicita = "confirmado" in dados
     confirmado = dados.get("confirmado")
     status_final = str(status or dados.get("status") or "")
-    if confirmado is None:
+    if not confirmacao_explicita:
         confirmado = inferir_confirmacao(status_final, executou_final)
     return ResultadoAcao(
         intent=intent,

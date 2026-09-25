@@ -47,3 +47,28 @@ def test_interacao_preserva_briefing_e_salva_so_depois_da_entrega() -> None:
 
     callback_adiado[0](True, "entregue")
     assert salvos == [True]
+
+
+def test_timeout_da_espera_nao_abandona_receipt_de_entrega_tardia():
+    from types import SimpleNamespace
+    class SemEspera(threading.Event):
+        def wait(self, timeout=None):
+            return False
+    callbacks, salvos = [], []
+    def agendar(*args, **kwargs):
+        callbacks.append(kwargs["ao_concluir"])
+        return True
+    runtime = OrquestradorFalaRuntime(servicos_iniciais={
+        "_threading": SimpleNamespace(Event=SemEspera, RLock=threading.RLock),
+        "_agendar_fala_proativa": agendar,
+        "_estado_compartilhado_runtime": _Estado(), "print": lambda *_: None,
+    })
+    resultado = runtime.entregar_fala_inicial_confirmada(
+        "briefing", "Resumo", adiar_se_interacao=True,
+        ao_entrega_adiada=lambda: salvos.append(True), detalhar=True,
+    )
+    assert resultado == {"entregue": False, "pendente": True}
+    assert not salvos
+    callbacks[0](True, "entregue")
+    callbacks[0](True, "entregue")
+    assert salvos == [True]

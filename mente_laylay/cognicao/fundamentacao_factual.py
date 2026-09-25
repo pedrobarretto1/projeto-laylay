@@ -459,6 +459,17 @@ def montar_fundamentacao(
         "evidencia_idade_s": idade_s,
         "evidencia_dentro_validade": dentro_validade,
         "evidencia_cache": bool(dados.get("evidencia_cache", False)),
+        "fontes": [
+            {
+                "titulo": str(item.get("titulo") or "")[:160],
+                "url": str(item.get("url") or "")[:500],
+                "dominio": str(item.get("dominio") or "")[:120],
+                "alvo": str(item.get("alvo") or "")[:100],
+                "trecho": re.sub(r"\s+", " ", str(item.get("trecho") or "")).strip()[:850],
+            }
+            for item in list(dados.get("fontes") or [])[:5]
+            if confiavel and isinstance(item, dict) and item.get("url") and item.get("trecho")
+        ],
     }
     fundamentacao["proveniencia"] = classificar_proveniencia_informacao(
         fundamentacao,
@@ -556,9 +567,10 @@ _INTRODUCAO_ENUNCIADO = re.compile(
     # essa relação não exige reconhecer/executar o verbo dentro da citação.
     # "pedir para tocar 'X'" não encaixa: tocar está FORA do enunciado citado.
     r"\b(?:diga|dizer|digite|digitar|fale|falar|escreva|escrever|"
-    r"(?:pe[cç]a|pedir)(?:\s+(?:para|pra))?|pergunte|perguntar|"
-    r"(?:o|um)\s+comando|(?:a|uma)\s+frase)"
-    r"(?:\s+(?:para|a)\s+(?:mim|ela|ele|voc[eê]))?"
+    r"(?:pe[cç]a|pedir)(?:\s+(?:para|pra))?|pergunte|perguntar|pense|pensar|"
+    r"(?:quer|quis|queria)\s+dizer\s+com|"
+    r"(?:o|um)\s+comando|(?:a|uma)\s+(?:frase|pergunta))"
+    r"(?:\s+(?:para|a)\s+(?:mim|ela|ele|voc[eê]|si\s+mesm[oa]))?"
     r"\s*,?\s*(?:(?:algo\s+)?como|por\s+exemplo|(?:exatamente\s+)?assim)?\s*:?\s*$", re.IGNORECASE,
 )
 _EXEMPLO_CONTEUDO_DISCURSIVO = re.compile(
@@ -578,6 +590,12 @@ _REFERENCIA_OPERACIONAL_CITADA = re.compile(
     r"\b(?:app|aplicativo|arquivo|pasta|aba|janela|dispositivo|playlist)"
     r"\s+(?:chamad[oa]\s+)?$", re.IGNORECASE,
 )
+_REFERENCIA_CONCEITUAL_CITADA = re.compile(
+    # Nome de conceito/método não é uma obra. Só tipifica a referência:
+    # não mascara datas, medidas ou alegações feitas sobre esse conceito.
+    r"\b(?:m[eé]todo|conceito|termo)\s+(?:(?:de|do|da)\s+)?$",
+    re.IGNORECASE,
+)
 _PROGRAMA_OPERACIONAL_CITADO = re.compile(
     # "Programa" sozinho também pode nomear uma obra de rádio/TV.
     r"\b(?:abrir|abre|abra|fechar|fecha|feche|executar|instalar|maximizar|minimizar)"
@@ -590,6 +608,45 @@ _ORIENTACAO_PEDIDO = re.compile(
     r"dizer|digitar|falar|escrever)\b",
     re.IGNORECASE,
 )
+_TIPO_OBRA = r"(?:filmes?|livros?|m[uú]sicas?|can[cç][aã]o|can[cç][oõ]es|s[eé]ries?|obras?|t[ií]tulos?|programas?|[aá]lbu(?:m|ns)|jogos?)"
+_MOLDURA_OBRA = re.compile(
+    # Relação nominal/seleção, não mera ocorrência de 'filme' na frase.
+    # 'o filme é "bom"' não nomeia obra; 'o filme chamado "X"' nomeia.
+    rf"\b(?:{_TIPO_OBRA}"
+    r"(?:\s+(?:mais\s+)?(?:famos[oa]s?|conhecid[oa]s?|recentes?|nov[oa]s?))?"
+    r"(?:\s+(?:dele|dela|deles|delas))?"
+    r"(?:\s+(?:chamad[oa]s?|intitulad[oa]s?|se\s+chama))?|"
+    rf"{_TIPO_OBRA}(?:\s+(?:mais\s+)?(?:famos[oa]s?|conhecid[oa]s?|favorit[oa]s?))?"
+    r"\s+(?:dele|dela|deles|delas)\s+(?:[eé]|s[aã]o)|"
+    r"(?:recomendo|recomende|recomendar|sugiro|sugerir|indico|indicar|"
+    r"assista|assistir|leia|ler|ou[cç]a|ouvir|escute|escutar|toque|tocar)"
+    rf"(?:\s+(?:a|ao|o|os|as|um|uma|uns|umas|este|esta|estes|estas))?"
+    rf"(?:\s+(?:algo|{_TIPO_OBRA}))?)"
+    r"\s*(?:[,—–-]\s*)?(?:(?:por\s+exemplo)|"
+    r"(?:mesmo\s+que|ainda\s+que)\s+seja\s+(?:(?:s[oó]|apenas)\s+)?um)?\s*:?\s*$",
+    re.IGNORECASE,
+)
+_TIPO_OBRA_POSPOSTO = re.compile(
+    rf"^\s+[eé]\s+(?:um|uma)\s+{_TIPO_OBRA}\b", re.IGNORECASE,
+)
+_ENUMERACAO_CITADA = re.compile(r"\s*(?:,\s*(?:(?:e|ou)\s+)?|(?:e|ou)\s+)(?:um\s+)?", re.IGNORECASE)
+_APRESENTACAO_DE_OBRA = re.compile(
+    r"\b(?:(?:a[ií]|aqui)\s+)?vai(?:\s+uma)?"
+    r"(?:\s+que\s+eu\s+(?:adoro|gosto))?\s*:\s*$",
+    re.IGNORECASE,
+)
+
+
+def _indicio_de_obra(prefixo: str, sufixo: str, *, contexto_obra: bool = False) -> bool:
+    if _MOLDURA_OBRA.search(prefixo) or _TIPO_OBRA_POSPOSTO.search(sufixo):
+        return True
+    if contexto_obra and _APRESENTACAO_DE_OBRA.search(prefixo):
+        return True
+    exemplo = _EXEMPLO_NOVA_FRASE.search(prefixo)
+    if exemplo:
+        anterior = re.split(r"(?<=[.!?])\s+", prefixo[:exemplo.start()])[-1]
+        return bool(_MOLDURA_OBRA.search(anterior))
+    return False
 
 
 def _citacao_didatica(prefixo: str, trecho: str) -> bool:
@@ -626,15 +683,28 @@ def contem_citacao_destacada(texto: str) -> bool:
     return bool(_DESTAQUE_CITADO.search(str(texto or "")))
 
 
-def _destaques_com_papel(texto: str) -> list[tuple[re.Match[str], str]]:
+def _destaques_com_papel(
+    texto: str, *, texto_usuario: str = "", contexto_obra: bool = False,
+) -> list[tuple[re.Match[str], str]]:
     destaques = []
-    fim_anterior, anterior_didatico = 0, False
+    fim_anterior, papel_anterior = 0, ""
+    # Resposta só de nomes pode herdar o tipo solicitado. Isso não transforma
+    # toda ênfase de uma conversa sobre filmes em título nem concede autoridade.
+    resposta_nominal = bool(
+        re.search(rf"\b{_TIPO_OBRA}\b", texto_usuario, re.IGNORECASE)
+        and _DESTAQUE_CITADO.search(texto)
+        and re.fullmatch(r"[\s,.;:!?\d\-]*(?:(?:e|ou)[\s,.;:!?\d\-]*)*",
+                         _DESTAQUE_CITADO.sub("", texto), re.IGNORECASE)
+    )
+    contexto_obra = contexto_obra or bool(re.search(
+        rf"\b{_TIPO_OBRA}\b", texto_usuario, re.IGNORECASE,
+    ))
     for destaque in _DESTAQUE_CITADO.finditer(texto):
         # Só enumeração direta herda o papel: "diga A ou B". Uma oração
         # como "e recomendo B" inicia outra relação e será avaliada do zero.
-        enumeracao = anterior_didatico and bool(re.fullmatch(
-            r"\s*,?\s*(?:e|ou)\s+(?:um\s+)?", texto[fim_anterior:destaque.start()], re.IGNORECASE,
-        ))
+        papel_enumerado = papel_anterior if _ENUMERACAO_CITADA.fullmatch(
+            texto[fim_anterior:destaque.start()]
+        ) else ""
         prefixo = texto[:destaque.start()]
         # Referências já tipificadas podem aparecer entre o verbo de pedir e
         # seu exemplo. Só essas referências são abstraídas, preservando frases,
@@ -649,14 +719,23 @@ def _destaques_com_papel(texto: str) -> list[tuple[re.Match[str], str]]:
         if (_REFERENCIA_OPERACIONAL_CITADA.search(prefixo)
                 or _PROGRAMA_OPERACIONAL_CITADO.search(prefixo)):
             papel = "referencia_operacional"
-        elif enumeracao or _citacao_didatica(
+        elif _REFERENCIA_CONCEITUAL_CITADA.search(prefixo):
+            papel = "referencia_conceitual"
+        elif papel_enumerado == "enunciado" or _citacao_didatica(
             prefixo_relacional, next(g for g in destaque.groups() if g is not None),
         ):
             papel = "enunciado"
-        else:
+        elif (papel_enumerado == "obra_candidata" or resposta_nominal
+              or _indicio_de_obra(
+                  prefixo, texto[destaque.end():], contexto_obra=contexto_obra,
+              )):
             papel = "obra_candidata"
+        else:
+            # Ausência de tipo não é evidência de obra. Também NÃO isenta
+            # o conteúdo dos demais verificadores: datas/medidas seguem visíveis.
+            papel = "indeterminado"
         destaques.append((destaque, papel))
-        fim_anterior, anterior_didatico = destaque.end(), papel == "enunciado"
+        fim_anterior, papel_anterior = destaque.end(), papel
     return destaques
 
 
@@ -668,12 +747,12 @@ def _sem_enunciados_didaticos(texto: str, *, posicoes: set[int] | None = None) -
     )
 
 
-def extrair_titulos_citados(texto: str) -> list[str]:
-    """Extrai possíveis obras, distinguindo exemplos explícitos de como falar."""
+def extrair_titulos_citados(texto: str, *, texto_usuario: str = "") -> list[str]:
+    """Extrai obras com indício relacional; aspas sozinhas não tipificam obra."""
     bruto = str(texto or "")
     return list(dict.fromkeys(
         next(g for g in m.groups() if g is not None).strip()
-        for m, papel in _destaques_com_papel(bruto)
+        for m, papel in _destaques_com_papel(bruto, texto_usuario=texto_usuario)
         if papel == "obra_candidata"
     ))
 
@@ -833,6 +912,7 @@ def validar_fala_com_fundamentacao(
     agora: float | None = None,
     contexto_metalinguistico: bool = False,
     documentacao_capacidades: str = "",
+    contexto_obra: bool = False,
 ) -> Dict[str, Any]:
     original = re.sub(r"\s+", " ", str(fala or "")).strip()
     base = avaliar_validade_fundamentacao(fundamentacao, agora=agora)
@@ -875,7 +955,10 @@ def validar_fala_com_fundamentacao(
 
     # O papel é resolvido no texto completo: separar frases não pode apagar a
     # relação entre uma orientação e seu exemplo na frase imediatamente seguinte.
-    posicoes_didaticas = {m.start() for m, papel in _destaques_com_papel(original) if papel == "enunciado"}
+    papeis_citados = _destaques_com_papel(
+        original, texto_usuario=texto_usuario, contexto_obra=contexto_obra,
+    )
+    posicoes_didaticas = {m.start() for m, papel in papeis_citados if papel == "enunciado"}
     recursos_locais = _recursos_locais_documentados(documentacao_capacidades)
     fim_frase = 0
     for frase_original in frases:
@@ -890,7 +973,11 @@ def validar_fala_com_fundamentacao(
             contexto_metalinguistico
             and _EXPLICACAO_METALINGUISTICA.search(frase)
         )
-        titulos = _titulos_citados(frase)
+        # Reusar o papel completo, inclusive 'Recomendo um filme. Exemplo: X'.
+        # Reclassificar apenas a segunda frase perderia a relação comprovada.
+        titulos = [next(g for g in m.groups() if g is not None).strip()
+                   for m, papel in papeis_citados
+                   if papel == "obra_candidata" and inicio_frase <= m.start() < fim_frase]
         titulo_sem_evidencia = bool(
             not explicacao_metalinguistica
             and any(_normalizar(titulo) not in evidencia_norm for titulo in titulos)

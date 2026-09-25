@@ -1,6 +1,191 @@
 # Especialista neural de comandos
 
-## Estado atual: coleta validada em sessão real controlada — 2026-09-09
+## Estado atual: v29 — ato semântico selecionado; domínio é a próxima fronteira — 2026-09-21
+
+Base congelada antes da investigação: `main`, HEAD
+`bf9353e2a77bc0ca756932ed56ce97cf4988e1ab`, worktree limpa. O objetivo foi
+a fronteira de ato da extensão `LIST_WINDOWS`; música/player e seus receipts
+ficaram fora deste escopo. Nenhum runtime, gate de autoridade ou modelo ativo
+foi promovido.
+
+A hipótese de perda literal foi testada primeiro. `integral_v1` foi conectada
+somente ao avaliador de extensões e comparada na mesma âncora v28. Em
+`validation_group`, no limiar fixo 0,5, a extensão final ficou em 72,26% de
+precisão, 79,53% de recall e 91 falsos positivos, contra 75,64% / 79,19% / 76
+do controle `estrutura_pontuacao`. Os 64 falsos positivos das quatro famílias
+críticas permaneceram. Portanto, preservar mais texto isoladamente não explica
+a raiz de generalização.
+
+O modelo-base já carrega `EncoderSemanticoHibrido`. Um head experimental
+sobre esse encoder, sem fine-tuning, foi então avaliado com os mesmos folds.
+Com `ato_consulta=semantico_hibrido_base` e `dominio_app=tfidf`, a prova
+oficial DEV ficou em 81,01% de precisão / 91,61% de recall / 64 FP no eixo de
+famílias e 92,62% / 84,23% / 20 FP no eixo de entidades. O fator de ato sozinho
+passou de 64 FP / 44 FN para 50 FP / 5 FN no eixo de famílias.
+
+Nas cinco famílias críticas, `consulta_permanece` passou de 16 FN para zero;
+hipótese de abrir e permanência afirmada passaram de 16 FP para zero; hipótese
+de estado caiu de 16 FP para 2. Metalinguagem permaneceu com 16 FP e é a
+principal lacuna de ato ainda aberta.
+
+Somente depois dessa seleção em DEV, a reserva sintética
+`datasets/reservas/list_windows_ato_v1.json` foi aberta uma vez. O fator de
+ato obteve 11 TP, 1 FN, 1 FP e 11 TN (91,67% de precisão/recall). A conjunção
+final ficou em 70% de precisão, 87,5% de recall e 83,33% de acurácia porque
+`dominio_app=tfidf` marcou seis dos oito exemplos não-app como domínio de
+aplicativo. A reserva está agora consumida: qualquer ajuste posterior exige
+outra prova de confirmação e não pode reutilizá-la como inédita.
+
+Artefatos: `memoria/neural/experimentos/v29_ato_integral_avaliacao/` e
+`memoria/neural/experimentos/v29_ato_semantico_avaliacao/`. O relatório da
+reserva declara `treino_com_reserva=false` e `nao_promove_modelo=true`.
+A regressão focal fechou com 279 testes aprovados; `py_compile` e
+`git diff --check` também passaram. Próxima fronteira isolada: generalização
+de `dominio_app`; não empilhar essa mudança sobre a rodada de ato. O modelo
+configurado continua em shadow.
+
+## Retomada: cobertura do piloto auditada — 2026-09-21
+
+Frente distinta e complementar à extensão LIST_WINDOWS v29 acima. Coleta atual
+exportada pelo componente existente para
+`memoria/neural/experimentos/retomada_prospectiva_20260921/`: 1.096 eventos,
+1.044 declarados de teste e 52 pendentes, sem corrupção ou quarentena.
+Os pendentes são 46 textos distintos em 12 sessões; não certificar autoria
+humana, independência ou rótulos automaticamente.
+
+A triagem por IA mostra uma barreira de cobertura: o piloto de três variantes
+(abrir aplicativo, buscar música, ler arquivo) não representa essas 52 entradas,
+predominantemente IoT, mídia, sistema e conversa. Isso não mede acurácia. A
+curadoria supervisionada anterior permanece preservada. Não descartar os
+casos fora do perfil nem convertê-los em negativos para forçar um treino.
+
+Detalhes e hashes no [relatório de cobertura](../../melhorias%20e%20planos/relatorio/RETOMADA_NEURAL_COBERTURA_20260921.md).
+
+### Perfil diagnóstico ampliado e reconciliação local
+
+`supervisao_operacional_v1.py` valida nove variantes (as três históricas,
+IoT on/off, mídia pause/play/next e volume absoluto set), com pedido/recusa/relato.
+Reutiliza spans e validação v4; o percentual de volume possui dono, unidade e
+evidência literal separados do alvo/ação. Texto bruto é a única entrada; a
+supervisão nunca vira autoridade. Escopo literal/imediato é declaração revisável,
+não detecção semântica automática. Referências contextuais e agendamentos não
+estão representados. Ainda não há integração deste perfil com treino/partições.
+
+Na cópia das frentes, o consumidor novo permaneceu, mas a assinatura ampliada
+de `rotular_ocorrencias` foi perdida: 36 testes falharam com `TypeError`.
+Restituído somente o argumento opcional `rotulos_permitidos`; chamadas históricas
+continuam restritas aos dez rótulos antigos, sem mutação global do catálogo.
+O arquivo `modelo.py` entregue pelo SOL não foi editado nesta reconciliação.
+
+Os testes novos mencionados no handoff v29 não vieram na cópia local. Foram
+escritos seis casos locais em `test_neural_validacao_extensao.py`: OOF/conjunção,
+isolamento por grupos, ausência de encoder sem fallback, identidade do encoder,
+serialização/recarga e preservação da base. Encoder sintético nesses testes
+verifica integração, não qualidade semântica nem reproduz a avaliação v29.
+Junto do perfil operacional: **75 testes aprovados**, 2,24 s.
+
+Não atualizar hashes históricos para liberar testes: o protocolo de
+`supervisao_relacoes_v4_20260908` exige hashes antigos de `modalidade_turno.py`
+e `normalizacao_linguagem.py`. HEAD local e worktree possuem os mesmos hashes
+atuais, ambos distintos do protocolo. É bloqueio histórico separado da junção;
+nenhuma reserva, baseline ou configuração de produção foi reescrita.
+
+Regressão neural ampla desta reconciliação: **1.384 aprovados, 1 skipped,
+6 falhas e 21 erros**, 75,18 s. Quatro falhas eram o caminho antigo da fixture
+em `test_neural_revisao_contextual.py`; corrigido para `scripts/tests/fixtures`,
+sem mudar expectativas, e **32 testes desse módulo passaram**. Os outros dois
+testes que falharam também pararam antes da fronteira desejada na guarda de
+`revalidar_perfil_v4`; junto dos 21 erros, permanecem **23 casos bloqueados por
+compatibilidade histórica**. Não há verde global. Mais **93 testes** de coleta,
+curadoria, revisão e preparação passaram separadamente em 6,05 s.
+
+Próximo passo de infraestrutura neural: revalidar explicitamente o alinhamento
+do corpus histórico contra a linguagem atual e registrar diferenças, antes de
+autorizar outro par de hashes na via de compatibilidade. Nunca substituir os
+hashes do protocolo original. Essa pendência não é evidência de piora semântica
+da v29. A reserva v29 permanece consumida; nenhuma reavaliação/seleção ocorreu.
+
+### Reprojeção explícita do corpus histórico — 2026-09-21
+
+Continuação da pendência acima, não alteração dos resultados da v29. O replay
+refutou equivalência integral: 144 casos mudaram de leitura, dos quais 48
+também mudaram segmentação e coordenadas relativas. Os lotes originais estão
+intactos. Os mesmos 144 casos aparecem nos dois lotes, sem somar cobertura.
+
+`revalidar_perfil_v4` agora oferece `--reprojetar`, exclusivamente offline:
+
+```powershell
+.\.venv314\Scripts\python.exe -m mente_laylay.neural.revalidar_perfil_v4 --reprojetar --destino memoria/neural/experimentos/reprojecao_literal_v4_20260921/relatorio.json
+```
+
+Esse destino já foi produzido e é protegido contra sobrescrita. Para outra
+auditoria, escolher outro destino. A API correspondente é
+`carregar_perfil_revalidado(reprojetar=True)`; a base de 672 casos é acessível
+por `carregar_base_reprojetada()`, passando pelas mesmas guardas.
+
+A nova via verifica integridade dos históricos, dependências revisadas,
+diferenças exatas e igualdade da supervisão em offsets absolutos. Preserva
+atos, alvos, relações, partições e flags falsas. Não aceita deriva futura
+automaticamente; não transforma referência observada em anotação de treino.
+Retorna cópias reprojetadas, sem editar os arquivos históricos. A via padrão
+continua estrita; `carregar_base` e `carregar_perfil` históricos não mudaram.
+
+Prova CLI: 1.176 casos únicos, folds idênticos, supervisão literal preservada,
+**compatibilidade integral falsa**. Modelos e resultados históricos precisam
+de nova avaliação antes de qualquer alegação de qualidade na representação
+atual. Nenhum fit, reserva, promoção ou execução de habilidade nessa prova.
+Os testes de algoritmos atuais usam a nova via explicitamente; as guardas
+históricas permanecem cobertas por testes negativos.
+
+Regressão neural final: **1.425 aprovados, 1 skipped, zero falhas/erros**,
+105,63 s; 5.220 testes fora do recorte. Resolve os 23 bloqueios anteriores,
+sem equivaler a suíte global ou runtime validado. Pesos ativo/v27 e
+`modelo.py` do SOL conservam os hashes anteriores.
+
+Foi registrada separadamente uma divergência entre a anotação de recusa e a
+leitura de “não é para…” em turno misto. A reprojeção conserva essa diferença;
+não certifica a correção semântica ou operacional do interpretador.
+
+### Fechamento da fronteira declarativa “não é para…” — 2026-09-21
+
+A investigação reproduziu o RED em
+`rel_v4_necessidade_apps_e0_t0_q0_recusa_pedido`: a cláusula
+`não é para abrir o aplicativo pelvora` era classificada como `conversa`,
+sem veto de segmento, enquanto `preciso que você abra o aplicativo zafrin`
+seguia como comando autorizado. O consumidor determinístico já usa
+`texto_operacional`, portanto a raiz ficou no owner de modalidade, não no
+executor nem no corpus supervisionado.
+
+`analisar_protecao_operacional` passou a reconhecer, de forma independente
+de domínio, a moldura `não é/eh para|pra + infinitivo operacional`. Sem
+interrogação, ela produz `recusa/cancelamento`; com `?`, permanece pergunta
+informativa sem autorização. Em turno misto, o veto continua pertencendo ao
+segmento recusado: um pedido posterior independente permanece autorizado e
+`texto_operacional` contém somente esse pedido. Não foi criado veto global
+para o turno.
+
+No corpus histórico há 72 nós com essa moldura; todos já possuem gold
+`recusa`. Após a correção, os 72 são lidos como recusa com veto de segmento.
+A nova leitura não foi absorvida atualizando hashes cegamente: a guarda
+histórica bloqueou primeiro, depois um replay integral confirmou supervisão
+literal preservada e quatro dobras idênticas. A reprojeção passou de 144 para
+160 leituras diferentes do snapshot antigo, mantendo 48 resegmentações. Os 16
+novos deltas são recusas isoladas de apps/arquivos que agora se alinham ao gold;
+o snapshot observado antigo não é tratado como gold.
+
+A reprojeção anterior permanece intacta em
+`reprojecao_literal_v4_20260921/`. A revisão v2 foi publicada separadamente em
+`reprojecao_literal_v4_recusa_declarativa_v2_20260921/relatorio.json`, com
+`compatibilidade_no_corpus=false`, supervisão literal preservada,
+classificador não reavaliado e runtime não validado.
+
+Provas: 25 testes focados de autorização/consumidor, 33 de reprojeção,
+76 testes de modalidade/autorização mais 22 subtests (1 skipped), e regressão
+neural completa com **1.426 aprovados, 1 skipped, zero falhas/erros** usando
+`pytest scripts/tests -k neural -q --tb=short`. Nenhum fit de produção,
+promoção, alteração de pesos ou abertura de reserva foi feito.
+
+## Histórico: coleta validada em sessão real controlada — 2026-09-09
 
 `laylay.py` foi iniciado pelo executor oficial com
 `roteiro_neural_coleta_prospectiva_seguro.py`: quatro frases de recusa/relato,

@@ -1,0 +1,61 @@
+{
+  "versao": 1,
+  "origem": "revisao_manual_local; nao autenticada como revisao externa",
+  "casos": {
+    "CAMARA": {
+      "dominio": "refrigeracao",
+      "slots": {"premissa:p_leitura": true, "condicao:r_alarme:0:referente": true, "condicao:r_alarme:0:direcao": true, "efeito:r_alarme": true},
+      "condicoes_completas": true,
+      "regras_revisadas": [{
+        "identificador": "r_alarme",
+        "condicoes": [{"referente_id": "camara", "atributo": "temperatura", "operador": ">", "valor": "5", "unidade": "°C", "fonte_id": "regra", "citacao": "temperatura da câmara ficar acima de 5°C"}],
+        "efeito_referente_id": "alarme", "efeito_atributo": "estado", "efeito_valor": "toca",
+        "fonte_id": "regra", "citacao": "Se a temperatura da câmara ficar acima de 5°C, o alarme toca.",
+        "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes"
+      }],
+      "justificativa": "A leitura de 3°C pertence ao sensor da câmara; a regra cita temperatura da câmara acima de 5°C, não diz que ocorreu."
+    },
+    "CAIXAS": {
+      "dominio": "logistica",
+      "slots": {"premissa:p_peso": false, "condicao:r_selo:0:referente": true, "condicao:r_selo:0:direcao": true, "efeito:r_selo": true},
+      "condicoes_completas": true,
+      "regras_revisadas": [{
+        "identificador": "r_selo",
+        "condicoes": [{"referente_id": "vermelha", "atributo": "peso", "operador": ">", "valor": "7", "unidade": "kg", "fonte_id": "regra", "citacao": "caixa vermelha pesar acima de 7 kg"}],
+        "efeito_referente_id": "selo", "efeito_atributo": "estado", "efeito_valor": "aparece",
+        "fonte_id": "regra", "citacao": "Se a caixa vermelha pesar acima de 7 kg, o selo aparece.",
+        "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes"
+      }],
+      "justificativa": "O 8 kg da frase pertence à caixa azul; a caixa vermelha pesa 5 kg, embora ambas estejam na mesma citação."
+    },
+    "MEDIDOR": {
+      "dominio": "ambiente",
+      "slots": {"premissa:p_temperatura": true, "condicao:r_ventilador:0:referente": true, "condicao:r_ventilador:0:direcao": true, "efeito:r_ventilador": true},
+      "condicoes_completas": true,
+      "regras_revisadas": [{
+        "identificador": "r_ventilador",
+        "condicoes": [{"referente_id": "quarto", "atributo": "temperatura", "operador": ">", "valor": "28", "unidade": "°C", "fonte_id": "regra", "citacao": "temperatura do quarto ficar acima de 28°C"}],
+        "efeito_referente_id": "ventilador", "efeito_atributo": "estado", "efeito_valor": "liga",
+        "fonte_id": "regra", "citacao": "Se a temperatura do quarto ficar acima de 28°C, o ventilador liga.",
+        "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes"
+      }],
+      "justificativa": "O cenário identifica o equipamento da segunda frase como o medidor do quarto; a citação curta não repete esse nome."
+    },
+    "CACHE": {
+      "dominio": "programacao",
+      "slots": {"condicao:r_cache:0:referente": true, "condicao:r_cache:0:direcao": true, "efeito:r_cache": true},
+      "condicoes_completas": false,
+      "regras_revisadas": [{
+        "identificador": "r_cache",
+        "condicoes": [
+          {"referente_id": "chave", "atributo": "estado", "operador": "=", "valor": "coincide", "unidade": "", "fonte_id": "regra", "citacao": "a chave coincide"},
+          {"referente_id": "registro", "atributo": "estado", "operador": "=", "valor": "válido", "unidade": "", "fonte_id": "regra", "citacao": "registro está válido"}
+        ],
+        "efeito_referente_id": "cache", "efeito_atributo": "resultado", "efeito_valor": "devolve",
+        "fonte_id": "regra", "citacao": "O cache devolve a resposta somente quando a chave coincide e o registro está válido.",
+        "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_necessarias"
+      }],
+      "justificativa": "A proposta preserva coincidência da chave, mas omite que o registro ainda deve estar válido."
+    }
+  }
+}

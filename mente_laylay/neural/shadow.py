@@ -359,12 +359,23 @@ class RelatorioShadowNeural:
         evento = {
             "tipo": "comparacao_turno",
             "modelo": str(neural.get("modelo") or "")[:100],
+            "modelo_sha256": str(neural.get("model_sha256") or "")[:64],
             "texto_hash": str(neural.get("texto_hash") or _hash_texto(fala)),
             "neural": {
                 "intent": str(neural.get("intent") or "").upper(),
+                "gate_intent": str(neural.get("gate_intent") or "").upper(),
                 "acao": _acao(neural),
                 "is_command": bool(neural.get("is_command")),
+                "command_probability": float(neural.get("command_probability") or 0.0),
+                "command_head_variant": str(neural.get("command_head_variant") or ""),
+                "intent_head_variant": str(neural.get("intent_head_variant") or ""),
                 "negated": bool(neural.get("negated")),
+                "negation_input_variant": str(
+                    neural.get("negation_input_variant") or "legado"
+                ),
+                "negation_scope_applied": bool(
+                    neural.get("negation_scope_applied")
+                ),
                 "ood": bool(neural.get("ood")),
                 "ood_calibrated": ood_calibrated,
                 "confidence": dict(neural.get("confidence") or {}),
@@ -474,6 +485,7 @@ class RelatorioShadowNeural:
         evento = {
             "tipo": "comparacao_receipt",
             "modelo": str(neural.get("modelo") or "")[:100],
+            "modelo_sha256": str(neural.get("model_sha256") or "")[:64],
             "texto_hash": str(neural.get("texto_hash") or _hash_texto(fala)),
             "neural": {
                 "intent": intent_neural,

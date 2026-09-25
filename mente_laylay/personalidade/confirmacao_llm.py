@@ -14,6 +14,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
+from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
 from mente_laylay.cognicao.normalizacao_linguagem import (
     normalizar_texto_basico as _normalizar,
 )
@@ -597,6 +598,8 @@ def personalizar_confirmacao_llm(
         )
         if chave in evento
     }
+    if not evento_pode_alterar_estado(evento):
+        reacao_causal["permite_expressao"] = False
     contrato = {
         "intent": resultado.intent,
         "status": resultado.status,
@@ -613,12 +616,9 @@ def personalizar_confirmacao_llm(
         "confirmado": resultado.confirmado,
         "classe_resultado": classe,
         "fala_segura": fallback.fala,
-        "ultima_fala_operacional": str(retrato.get("ultima_resposta") or "").strip()[:300],
-        "falas_recentes_a_nao_repetir": [
-            str(item or "").strip()[:220]
-            for item in list(retrato.get("falas_recentes") or [])[-4:]
-            if str(item or "").strip()
-        ],
+        # Histórico permanece apenas no verificador local de repetição.
+        # Mesmo rotulado "não repetir", seu conteúdo factual contaminava a
+        # autoria de outro receipt (clima enxertado em salvar playlist).
         "emocao_atual": str(retrato.get("current_emotion") or fallback.emocao),
         "reacao_causal": reacao_causal,
     }
@@ -662,8 +662,7 @@ def personalizar_confirmacao_llm(
         "acrescente fatos. A primeira frase deve começar pelo resultado e pelo alvo observados; "
         "só depois deles pode vir humor, emoção ou deboche. A personalidade deve continuar na "
         "mesma resposta, mas nunca esconder o status. "
-        "Se ultima_fala_operacional ou falas_recentes_a_nao_repetir estiverem preenchidas, "
-        "não reutilize nenhuma abertura, ordem de ideias ou tirada dessa lista. Varie "
+        "Varie "
         "naturalmente começando pela recusa, pelo resultado, pela observação ou pela tirada, "
         "sem omitir os fatos obrigatórios. "
         "A tirada pode brincar somente com a repetição observada do pedido; não invente celular, "
@@ -688,6 +687,7 @@ def personalizar_confirmacao_llm(
             _permitir_durante_interacao=True,
             _tipo_chamada="autoria_operacional",
             _classe_timeout="rapida",
+            _contexto_fechado=True,
         )
     except Exception as erro:
         return _com_motivo_fallback(
@@ -703,6 +703,13 @@ def personalizar_confirmacao_llm(
             status_declarado=str(dados_candidatos.get("status") or ""),
             alvo_declarado=str(dados_candidatos.get("alvo") or ""),
         )
+        # Números são fatos, não estilo. A fonte é o receipt atual e sua fala
+        # factual, nunca o histórico, mesmo quando a redação antiga era válida.
+        numeros = lambda texto: set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", texto))
+        evidencia = " ".join((fallback.fala, resultado.alvo, resultado.detalhe,
+            json.dumps(contrato["params"], ensure_ascii=False)))
+        if not motivo and not numeros(fala_candidata).issubset(numeros(evidencia)):
+            motivo = "detalhe_numerico_nao_evidenciado"
         historico_contextual = [
             *list(retrato.get("falas_recentes") or [])[-4:],
             str(retrato.get("ultima_resposta") or "").strip(),
@@ -715,15 +722,10 @@ def personalizar_confirmacao_llm(
             motivo = "contexto_antigo_reaproveitado"
         if motivo == "pergunta_na_confirmacao":
             fala_sem_pergunta = _remover_pergunta_opcional(fala_candidata)
-            motivo_sem_pergunta = _motivo_contrato_invalido(
-                fala_sem_pergunta,
-                resultado=resultado,
-                classe=classe,
-                status_declarado=str(dados_candidatos.get("status") or ""),
-                alvo_declarado=str(dados_candidatos.get("alvo") or ""),
-            )
-            if not motivo_sem_pergunta:
-                return fala_sem_pergunta, ""
+            if fala_sem_pergunta and "?" not in fala_sem_pergunta:
+                # Limpeza textual não concede aprovação: a versão limpa
+                # atravessa as mesmas verificações factuais e de histórico.
+                return validar_dados({**dados_candidatos, "fala": fala_sem_pergunta})
         return fala_candidata, motivo
 
     dados = _extrair_dados_autoria(
@@ -764,6 +766,7 @@ def personalizar_confirmacao_llm(
                     else "reparo_factual"
                 ),
                 _classe_timeout="rapida",
+                _contexto_fechado=True,
             )
             dados_corrigidos = _extrair_dados_autoria(
                 resposta_corrigida,

@@ -8,6 +8,9 @@ from mente_laylay.autonomia.diretor_presenca import DiretorPresencaRuntime
 from mente_laylay.integracao.ponte_iniciativa_aplicacao import (
     PonteIniciativaAplicacaoRuntime,
 )
+from mente_laylay.integracao.prioridade_interacao_usuario import (
+    criar_prioridade_interacao_usuario_runtime,
+)
 from mente_laylay.percepcao.ouvido_whisper import OuvidoWhisperRuntime
 
 
@@ -39,6 +42,7 @@ def test_red_p1h3_stt_pendente_ainda_preempta_presenca_autonoma() -> None:
     continuar = [True]
     textos_entregues: list[str] = []
     cognicoes_presenca: list[dict[str, Any]] = []
+    prioridade = criar_prioridade_interacao_usuario_runtime()
 
     def processar_texto(texto: str) -> None:
         textos_entregues.append(texto)
@@ -52,6 +56,7 @@ def test_red_p1h3_stt_pendente_ainda_preempta_presenca_autonoma() -> None:
         modo_jogo_ativo=lambda: True,
         deve_continuar=lambda: continuar[0],
         entrega_assincrona=True,
+        prioridade_interacao=prioridade,
         log=lambda _texto: None,
     )
 
@@ -86,6 +91,7 @@ def test_red_p1h3_stt_pendente_ainda_preempta_presenca_autonoma() -> None:
         falar=lambda _texto, _emocao, _nivel: None,
         env_getter=lambda _nome, padrao: padrao,
         usuario_falando_getter=ouvido.usuario_falando,
+        prioridade_interacao_getter=prioridade.ativa,
         log=lambda _texto: None,
     )
 
@@ -132,11 +138,12 @@ def test_red_p1h3_stt_pendente_ainda_preempta_presenca_autonoma() -> None:
         #     ↓
         # _agendar_entrega(audio)
         ouvido._usuario_falando = True
+        claim_voz = prioridade.adquirir("voz")
 
         assert ouvido.usuario_falando() is True
 
         ouvido._usuario_falando = False
-        ouvido._agendar_entrega(object())
+        ouvido._agendar_entrega(object(), claim_interacao=claim_voz)
 
         # Garante que não estamos simplesmente com um áudio parado na fila:
         # o worker REAL já retirou o áudio e está dentro do STT.
@@ -186,6 +193,7 @@ def test_red_p1h3_stt_pendente_ainda_preempta_presenca_autonoma() -> None:
     # Enquanto o STT estava realmente em andamento, o único sinal
     # publicado hoje para prioridade do usuário já havia caído.
     assert contexto_durante_stt["usuario_falando"] is False
+    assert contexto_durante_stt["interacao_usuario_ativa"] is True
 
     # E confirmamos que era uma utterance real, não ruído de harness:
     # depois que liberamos o STT ela foi entregue à mente.
@@ -202,3 +210,4 @@ def test_red_p1h3_stt_pendente_ainda_preempta_presenca_autonoma() -> None:
     # Se a preempção estiver correta, evento ambiental nem deve adquirir
     # cognição autônoma enquanto a utterance anterior está pendente.
     assert cognicoes_presenca == []
+    assert prioridade.ativa() is False

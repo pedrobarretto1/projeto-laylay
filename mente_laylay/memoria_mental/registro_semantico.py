@@ -11,9 +11,10 @@ import math
 import re
 import time
 import unicodedata
-from typing import Any, Dict
+from typing import Any, Dict, Mapping
 
 from mente_laylay.cognicao.proveniencia_informacao import classificar_proveniencia_informacao
+from mente_laylay.cognicao.referencias_linguagem import qualificador_referencia_nominal
 from mente_laylay.cognicao.normalizacao_linguagem import (
     texto_discute_evidencia_textual, TIPOS_REFERENCIA_TEXTUAL,
 )
@@ -42,6 +43,7 @@ def estado_registro_semantico_inicial() -> Dict[str, Any]:
         "assuntos": [],
         "correcoes": [],
         "entidade_ativa_id": "",
+        "foco_contextual_tipado": {},
         "assunto_ativo_id": "",
         "atualizado_ts": 0.0,
     }
@@ -55,7 +57,52 @@ def _registro(dados: Dict[str, Any] | None) -> Dict[str, Any]:
     base["alegacoes"] = list(base.get("alegacoes") or [])
     base["assuntos"] = list(base.get("assuntos") or [])
     base["correcoes"] = list(base.get("correcoes") or [])
+    foco = base.get("foco_contextual_tipado")
+    base["foco_contextual_tipado"] = dict(foco) if isinstance(foco, Mapping) else {}
     return base
+
+
+def guardar_candidato_foco_contextual(
+    registro: Dict[str, Any] | None,
+    foco: Mapping[str, object] | None,
+    *,
+    agora: float | None = None,
+) -> Dict[str, Any]:
+    """Persiste ou cancela um foco, sem convertê-lo em fato ou autoridade.
+
+    O consumidor deve revalidar origem, escopo, idade e item junto à fonte;
+    esse armazenamento isolado não certifica nenhuma dessas condições.
+    ``foco=None`` cancela uma tentativa explícita de troca sem alvo seguro.
+    """
+    estado = _registro(registro)
+    instante = float(agora if agora is not None else time.time())
+    if not math.isfinite(instante):
+        return estado
+    if foco is None:
+        estado["foco_contextual_tipado"] = {}
+        estado["atualizado_ts"] = instante
+        return estado
+    if not isinstance(foco, Mapping):
+        return estado
+    campos_texto = (
+        "identificador", "origem", "origem_inventario", "escopo", "entidade_id",
+    )
+    campos_numero = ("registrado_em", "ttl_s", "retrato_id")
+    if (any(not isinstance(foco.get(campo), str)
+            or not str(foco[campo]).strip() for campo in campos_texto)
+            or any(type(foco.get(campo)) not in (int, float)
+                   or not math.isfinite(foco[campo]) for campo in campos_numero)
+            or foco["ttl_s"] <= 0):
+        return estado
+    if not 0 <= instante - foco["registrado_em"] <= foco["ttl_s"]:
+        return estado
+    estado["foco_contextual_tipado"] = {
+        campo: str(foco[campo]) for campo in campos_texto
+    } | {
+        campo: foco[campo] for campo in campos_numero
+    }
+    estado["atualizado_ts"] = instante
+    return estado
 
 
 def registrar_entidade(
@@ -359,6 +406,7 @@ def renovar_registro_semantico_sessao(
         assuntos=assuntos[-20:],
         alegacoes=alegacoes[-60:],
         entidade_ativa_id="",
+        foco_contextual_tipado={},
         assunto_ativo_id="",
         ultima_renovacao_motivo=str(motivo or "nova_sessao")[:80],
         atualizado_ts=instante,
@@ -455,6 +503,11 @@ def resolver_referencia_pontuada(
         })
 
     t = _normalizar(texto)
+    tipo_nomeado, qualificador_nomeado = qualificador_referencia_nominal(texto)
+    tipo_nomeado = _normalizar(tipo_nomeado)
+    tokens_qualificador_nomeado = set(_normalizar(qualificador_nomeado).split()) - {
+        "de", "do", "da", "dos", "das",
+    }
     op = _normalizar(operacao)
     dominio = ""
     if texto_discute_evidencia_textual(texto):
@@ -505,6 +558,23 @@ def resolver_referencia_pontuada(
             continue
 
         compativel = not dominio or tipo in permitidos
+        nome_normalizado = _normalizar(entidade.get("nome"))
+        tokens_nome = set(nome_normalizado.split())
+        descricao_registrada = bool(
+            tipo_nomeado
+            and re.search(
+                rf"\b{re.escape(tipo_nomeado)}\s+(?:de|do|da|dos|das)\s+",
+                nome_normalizado,
+            )
+        )
+        # Uma descrição nova não contradiz um título sem atributo registrado
+        # ("jogo de corrida" -> "Forza Horizon"). Quando o nome já especifica
+        # o atributo, porém, "sensor do ar" não pode herdar "sensor do solo".
+        compativel_qualificador = bool(
+            not tokens_qualificador_nomeado
+            or not descricao_registrada
+            or tokens_qualificador_nomeado <= tokens_nome
+        )
         score = 0.15 + (0.35 * math.exp(-3.0 * idade / max(ttl, 1.0)))
         origem = str(entidade.get("origem") or "")
         if origem == "nome_explicito":
@@ -535,7 +605,7 @@ def resolver_referencia_pontuada(
         elif re.search(r"\b(?:abre|fecha|foco|maximiza)\b", t):
             score += 0.25 if tipo in tipos["app"] else -0.15
 
-        if dominio and not compativel:
+        if (dominio and not compativel) or not compativel_qualificador:
             score = 0.0
         score = max(0.0, min(1.0, score))
         candidatos.append({
@@ -547,6 +617,7 @@ def resolver_referencia_pontuada(
             "origem": origem,
             "dominio_restrito": dominio,
             "compativel_dominio": compativel,
+            "compativel_qualificador": compativel_qualificador,
             "entidade": dict(entidade),
         })
 
@@ -554,7 +625,11 @@ def resolver_referencia_pontuada(
         key=lambda item: float(item.get("pontuacao") or 0.0),
         reverse=True,
     )
-    elegiveis = [x for x in candidatos if x.get("compativel_dominio") is not False]
+    elegiveis = [
+        x for x in candidatos
+        if x.get("compativel_dominio") is not False
+        and x.get("compativel_qualificador") is not False
+    ]
     melhor = (
         elegiveis[0]
         if elegiveis and float(elegiveis[0].get("pontuacao") or 0.0) >= 0.45

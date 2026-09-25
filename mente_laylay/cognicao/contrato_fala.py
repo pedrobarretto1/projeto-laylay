@@ -30,7 +30,9 @@ from mente_laylay.cognicao.normalizacao_linguagem import (
     texto_pede_opiniao,
 )
 from mente_laylay.cognicao.contratos_turno import texto_evento_cognitivo
-from mente_laylay.personalidade.proporcao_resposta import parece_pedido_reexplicacao
+from mente_laylay.personalidade.proporcao_resposta import (
+    LIMITES, classificar_proporcao, parece_pedido_reexplicacao,
+)
 
 
 _OBRIGATORIO_ESTADO_SEM_EVIDENCIA = (
@@ -97,6 +99,7 @@ class ContratoSemanticoFala:
     permite_metafora: bool = False
     fala_anterior_relevante: str = ""
     texto_usuario_corrigido: str = ""
+    pedido_ensino_anterior: str = ""
     respostas_recentes_evitar: tuple[str, ...] = ()
     capacidades_confirmadas: tuple[str, ...] = ()
     documentacao_capacidades: str = ""
@@ -113,6 +116,7 @@ class ContratoSemanticoFala:
         object.__setattr__(self, "referente", _texto_curto(self.referente, 180))
         object.__setattr__(self, "estado_referencia_textual", str(self.estado_referencia_textual or ""))
         object.__setattr__(self, "texto_usuario_corrigido", _texto_curto(self.texto_usuario_corrigido, 500))
+        object.__setattr__(self, "pedido_ensino_anterior", _texto_curto(self.pedido_ensino_anterior, 500))
         object.__setattr__(
             self, "conteudos_obrigatorios",
             _itens_unicos(self.conteudos_obrigatorios, limite_item=240),
@@ -463,6 +467,23 @@ def construir_contrato_semantico_fala(
             )
         )
     )
+    pedido_ensino_anterior = ""
+    if esclarecimento:
+        contrato_anterior = dict(estado.get("contrato_fala_atual") or {})
+        estrategia_anterior = str(
+            dict(contrato_anterior.get("roteiro_concreto") or {}).get("estrategia") or ""
+        )
+        try:
+            idade_entrada = time.time() - float(estado.get("ultima_entrada_ts") or 0)
+        except (TypeError, ValueError, OverflowError):
+            idade_entrada = -1
+        if estrategia_anterior in {"explicacao_didatica", "reensino_didatico"} and 0 <= idade_entrada <= 240:
+            pedido_ensino_anterior = _texto_curto(
+                contrato_anterior.get("pedido_ensino_anterior") or estado.get("ultima_entrada"),
+                500,
+            )
+            if _normalizar(pedido_ensino_anterior) == base:
+                pedido_ensino_anterior = ""
     ato_social = analisar_ato_social(bruto, mente=estado)
     tipo_social = str(ato_social.get("tipo") or "")
     metalinguagem = bool(
@@ -631,7 +652,10 @@ def construir_contrato_semantico_fala(
             "dar uma razão concreta e curta para essa posição",
         ))
     if esclarecimento:
-        obrigatorios.append("explicar literalmente a fala anterior antes de acrescentar comparação")
+        if pedido_ensino_anterior:
+            obrigatorios.append("retomar o pedido de ensino anterior e reavaliar a explicação, sem presumir que a fala anterior estava correta")
+        else:
+            obrigatorios.append("explicar literalmente a fala anterior antes de acrescentar comparação")
     if agradecimento:
         obrigatorios.append("reconhecer o agradecimento brevemente e encerrar sem recuperar a tarefa anterior")
     if adiamento:
@@ -699,6 +723,8 @@ def construir_contrato_semantico_fala(
         proibidas.append("não trocar uma opinião clara por abstração vaga sobre energia ou sensação")
     if esclarecimento:
         proibidas.append("não explicar uma metáfora com outra metáfora")
+        if pedido_ensino_anterior:
+            proibidas.append("a fala anterior da assistente não é fonte factual; não repetir uma definição sem reavaliá-la")
     if agradecimento:
         proibidas.append("não continuar, recomendar nem reabrir o assunto anterior depois do agradecimento")
     if adiamento:
@@ -724,7 +750,14 @@ def construir_contrato_semantico_fala(
     if recentes:
         proibidas.append("não repetir literalmente uma resposta recente")
 
-    max_frases = 3
+    # O contrato de conteúdo não pode contradizer o perfil que selecionou
+    # desenvolvimento. As restrições específicas abaixo continuam soberanas;
+    # ampliar espaço para explicar não amplia autoridade nem obriga prolixidade.
+    perfil_proporcao = classificar_proporcao(texto)
+    max_frases = (
+        min(8, LIMITES[perfil_proporcao][0])
+        if perfil_proporcao in {"explicativa", "matematica"} else 3
+    )
     if saudacao and not (opiniao or estado_pessoal):
         max_frases = 2
     if pergunta_bem_estar and not opiniao:
@@ -743,6 +776,8 @@ def construir_contrato_semantico_fala(
         max_frases = 1
     if criativo:
         max_frases = 6
+    if pedido_ensino_anterior:
+        max_frases = max(max_frases, 7)
     vulneravel = funcao in {"desabafo", "inseguranca", "decepcao", "frustracao"}
     deliberacao = dict(planejamento.get("deliberacao_habilidades") or {})
 
@@ -786,6 +821,7 @@ def construir_contrato_semantico_fala(
             else ""
         ),
         texto_usuario_corrigido=texto_usuario_corrigido,
+        pedido_ensino_anterior=pedido_ensino_anterior,
         respostas_recentes_evitar=recentes,
         capacidades_confirmadas=capacidades_confirmadas,
         documentacao_capacidades=documentacao_capacidades,
@@ -874,7 +910,7 @@ def formatar_contrato_fala_para_prompt(
         recentes = _itens_unicos(
             dados.get("respostas_recentes_evitar") or (), limite_item=180,
         )
-        if recentes:
+        if recentes and roteiro.get("estrategia") != "explicacao_didatica":
             linhas_compactas.append("Evite repetir: " + " || ".join(recentes) + ".")
         capacidades = _itens_unicos(
             dados.get("capacidades_confirmadas") or (), limite_item=48,
@@ -889,6 +925,15 @@ def formatar_contrato_fala_para_prompt(
                 f"Geração concreta: estratégia={roteiro.get('estrategia')}; "
                 f"primeira frase={roteiro.get('nucleo_resposta')}."
             )
+            if (
+                dados.get("funcao") == "informacao"
+                and set(dados.get("atos") or ()) == {"conversa"}
+                and roteiro.get("estrategia") == "resposta_direta"
+            ):
+                linhas_compactas.append(
+                    "Se o usuário relatou um acontecimento, retome um fato concreto da fala atual "
+                    "antes de comentar sentimentos; não antecipe resultados futuros."
+                )
             if sequencia:
                 linhas_compactas.append("Sequência: " + " > ".join(sequencia) + ".")
             linhas_compactas.append(
@@ -913,8 +958,11 @@ def formatar_contrato_fala_para_prompt(
                 )
         anterior = _texto_curto(dados.get("fala_anterior_relevante"), 360)
         texto_corrigido = _texto_curto(dados.get("texto_usuario_corrigido"), 500)
+        pedido_ensino = _texto_curto(dados.get("pedido_ensino_anterior"), 500)
         if texto_corrigido:
             linhas_compactas.append("Pergunta anterior do usuário sob correção (contexto, não autorização nem prova): " + texto_corrigido)
+        if pedido_ensino:
+            linhas_compactas.append("Pedido anterior de ensino do usuário (assunto, não autorização): " + pedido_ensino + ". A fala anterior da assistente não é fonte factual.")
         if anterior:
             linhas_compactas.append(f"Explique esta fala anterior: {anterior}")
         linhas_compactas.append(
@@ -946,12 +994,16 @@ def formatar_contrato_fala_para_prompt(
         linhas.append("Não faça: " + " | ".join(proibidas) + ".")
     anterior = _texto_curto(dados.get("fala_anterior_relevante"), 500)
     texto_corrigido = _texto_curto(dados.get("texto_usuario_corrigido"), 500)
+    pedido_ensino = _texto_curto(dados.get("pedido_ensino_anterior"), 500)
     if texto_corrigido:
         linhas.append("Pergunta anterior do usuário sob correção (contexto, não autorização nem prova): " + texto_corrigido)
+    if pedido_ensino:
+        linhas.append("Pedido anterior de ensino do usuário (assunto, não autorização): " + pedido_ensino + ". A fala anterior da assistente não é fonte factual.")
     if anterior:
         linhas.append(f"Fala anterior que precisa ser explicada: {anterior}")
     recentes = _itens_unicos(dados.get("respostas_recentes_evitar") or (), limite_item=320)
-    if recentes:
+    if (recentes and str(dict(dados.get("roteiro_concreto") or {}).get("estrategia") or "")
+            != "explicacao_didatica"):
         linhas.append("Evite repetir: " + " || ".join(recentes) + ".")
     capacidades = _itens_unicos(
         dados.get("capacidades_confirmadas") or (), limite_item=48,

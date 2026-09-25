@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import threading
 from pathlib import Path
 from typing import Any
@@ -34,11 +35,19 @@ class ModeloNeuralPreguicoso:
     def __init__(self, caminho: str | Path) -> None:
         self.caminho = Path(caminho)
         self._modelo: Any = None
+        self._sha256 = ""
         self._lock = threading.RLock()
 
     @property
     def versao(self) -> str:
         return str(getattr(self._modelo, "versao", self.caminho.stem))
+
+    @property
+    def sha256(self) -> str:
+        with self._lock:
+            if not self._sha256 and self.caminho.is_file():
+                self._sha256 = hashlib.sha256(self.caminho.read_bytes()).hexdigest()
+            return self._sha256
 
     def _obter(self) -> Any:
         with self._lock:

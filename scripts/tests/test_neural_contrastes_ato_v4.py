@@ -3,12 +3,13 @@ from copy import deepcopy
 import pytest
 
 from mente_laylay.neural.auditar_contrastes_ato_v4 import comparar_pares, medir_colisoes, reconstruir_previsoes
-from mente_laylay.neural.comparar_ocorrencias_v4 import carregar_perfil, medir, rotular_ocorrencias
+from mente_laylay.neural.comparar_ocorrencias_v4 import medir, rotular_ocorrencias
+from mente_laylay.neural.revalidar_perfil_v4 import carregar_perfil_revalidado
 
 
 @pytest.fixture(scope="module")
 def casos():
-    return carregar_perfil()[0]
+    return carregar_perfil_revalidado(reprojetar=True)[0]
 
 
 def test_reconstrucao_preserva_erro_sem_nova_inferencia(casos):

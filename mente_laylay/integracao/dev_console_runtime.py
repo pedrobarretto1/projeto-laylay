@@ -20,6 +20,7 @@ from mente_laylay.integracao.eventos_dev import classificar_categoria_evento_dev
 
 
 _ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+_PROMPT_TERMINAL_VAZIO_RE = re.compile(r"(?:>\s*)?(?:💬\s*Você:)?")
 _CREDENCIAL_RE = re.compile(
     r"(?i)\b(api[_-]?key|token|senha|password|secret|authorization)"
     r"(\s*[=:]\s*)(?:bearer\s+)?[^\s|,;]+"
@@ -184,6 +185,11 @@ class DevConsoleRuntime:
     ) -> dict[str, Any]:
         mensagem = sanitizar_texto_dev(texto)
         if not mensagem:
+            return {}
+        # Convites de stdin são controles de apresentação, não entradas do
+        # usuário. O espelho já preservou sua escrita no console original.
+        # Só excluir o marcador inteiro em stdout: conteúdo e stderr ficam.
+        if origem == "stdout" and _PROMPT_TERMINAL_VAZIO_RE.fullmatch(mensagem):
             return {}
         origem = origem if origem in {"stdout", "stderr", "runtime"} else "runtime"
         profundidade = (

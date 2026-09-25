@@ -2652,6 +2652,114 @@ def test_extensao_intent_unica_preserva_gates_e_saida_fora_do_escopo(
     }
 
 
+def test_extensao_recalcula_apenas_veto_de_intent_obsoleto(tmp_path) -> None:
+    modelo = _treinar_modelo_base_para_extensao(tmp_path)
+    modelo.extensoes_intent = {
+        "VOLUME::set": modelo_neural.ExtensaoIntentNeural(
+            intent="VOLUME",
+            action="set",
+            detector=_DetectorExtensaoFalso(("volume",)),
+            limiar=0.925,
+            versao="volume-set-teste",
+        )
+    }
+    base = {
+        "intent": "VOLUME",
+        "gate_intent": "NONE",
+        "params": {},
+        "raw_action": "up",
+        "is_command": False,
+        "raw_is_command": True,
+        "command_veto_reason": "intent_desconhecida",
+        "command_probability": 0.91,
+        "command_threshold": 0.65,
+        "command_head_scope": "GLOBAL",
+        "intent_gate_fallback_applied": False,
+        "negated": False,
+        "ood": False,
+        "ood_calibrated": False,
+        "confidence": {
+            "intent": 0.58,
+            "intent_gate": 0.48,
+            "command": 0.91,
+            "negation": 0.98,
+            "action": 0.86,
+        },
+    }
+
+    observado = modelo._aplicar_extensoes_intent(
+        "coloca o volume em 100",
+        base,
+    )
+
+    assert observado["intent"] == "VOLUME"
+    assert observado["gate_intent"] == "VOLUME"
+    assert observado["raw_action"] == "set"
+    assert observado["params"] == {"acao": "set"}
+    assert observado["raw_is_command"] is True
+    assert observado["is_command"] is True
+    assert observado["command_veto_reason"] == ""
+    assert observado["command_gate_recomputed_after_extension"] is True
+
+
+@pytest.mark.parametrize(
+    "raw_is_command,veto,probabilidade,limiar",
+    [
+        (False, "intent_desconhecida", 0.99, 0.65),
+        (True, "confianca_comando_abaixo_limiar", 0.54, 0.65),
+    ],
+)
+def test_extensao_nao_inventa_comando_nem_remove_veto_de_confianca(
+    tmp_path,
+    raw_is_command,
+    veto,
+    probabilidade,
+    limiar,
+) -> None:
+    modelo = _treinar_modelo_base_para_extensao(tmp_path)
+    modelo.extensoes_intent = {
+        "VOLUME::set": modelo_neural.ExtensaoIntentNeural(
+            intent="VOLUME",
+            action="set",
+            detector=_DetectorExtensaoFalso(("volume",)),
+            limiar=0.925,
+        )
+    }
+    base = {
+        "intent": "VOLUME",
+        "gate_intent": "NONE",
+        "params": {},
+        "raw_action": "up",
+        "is_command": False,
+        "raw_is_command": raw_is_command,
+        "command_veto_reason": veto,
+        "command_probability": probabilidade,
+        "command_threshold": limiar,
+        "command_head_scope": "GLOBAL",
+        "intent_gate_fallback_applied": False,
+        "negated": False,
+        "ood": False,
+        "ood_calibrated": False,
+        "confidence": {
+            "intent": 0.58,
+            "intent_gate": 0.48,
+            "command": probabilidade,
+            "negation": 0.98,
+            "action": 0.86,
+        },
+    }
+
+    observado = modelo._aplicar_extensoes_intent(
+        "coloca o volume em 100",
+        base,
+    )
+
+    assert observado["raw_is_command"] is raw_is_command
+    assert observado["is_command"] is False
+    assert observado["command_veto_reason"] == veto
+    assert observado.get("command_gate_recomputed_after_extension") is not True
+
+
 def test_extensoes_intent_ambiguas_falham_fechadas_sem_alterar_base(tmp_path) -> None:
     modelo = _treinar_modelo_base_para_extensao(tmp_path)
     fala = "mostra as janelas abertas"
@@ -2743,12 +2851,12 @@ def test_adicionar_extensao_intent_nao_muta_base_e_persiste_candidato(
     modelo_base = _treinar_modelo_base_para_extensao(tmp_path)
     destino = tmp_path / "modelo-com-extensao.joblib"
     exemplos = [
-        {"text": "o editor está aberto", "intent": "LIST_WINDOWS", "extension_scope": "estado_alvo"},
-        {"text": "a calculadora continua aberta", "intent": "LIST_WINDOWS", "extension_scope": "estado_alvo"},
-        {"text": "mostra as janelas abertas", "intent": "LIST_WINDOWS", "extension_scope": "inventario"},
-        {"text": "abaixa o volume", "intent": "VOLUME"},
-        {"text": "abre o navegador", "intent": "APP_OPEN"},
-        {"text": "como está o clima", "intent": "NONE"},
+        {"text": "o editor está aberto", "intent": "LIST_WINDOWS", "action": "list", "extension_scope": "estado_alvo"},
+        {"text": "a calculadora continua aberta", "intent": "LIST_WINDOWS", "action": "list", "extension_scope": "estado_alvo"},
+        {"text": "mostra as janelas abertas", "intent": "LIST_WINDOWS", "action": "list", "extension_scope": "inventario"},
+        {"text": "abaixa o volume", "intent": "VOLUME", "action": "down"},
+        {"text": "abre o navegador", "intent": "APP_OPEN", "action": "open"},
+        {"text": "como está o clima", "intent": "NONE", "action": "none"},
     ]
 
     candidato = modelo_neural.adicionar_extensao_intent(
@@ -2816,6 +2924,73 @@ def test_adicionar_extensao_intent_fatorada_treina_e_persiste_detectores(
         "ato_consulta", "dominio_app",
     }
     assert recarregado.extensoes_intent["LIST_WINDOWS"].detector is None
+
+
+def test_v30_extensoes_da_mesma_intent_com_actions_diferentes_coexistem(
+    tmp_path,
+) -> None:
+    modelo_base = _treinar_modelo_base_para_extensao(tmp_path)
+    destino = tmp_path / "modelo-iot-multi-action.joblib"
+    exemplos = [
+        {
+            "text": "liga a luz",
+            "intent": "IOT_CONTROL",
+            "action": "on",
+            "extension_scope": "operacional_literal_v1",
+        },
+        {
+            "text": "acende a luz",
+            "intent": "IOT_CONTROL",
+            "action": "on",
+            "extension_scope": "operacional_literal_v1",
+        },
+        {
+            "text": "desliga a luz",
+            "intent": "IOT_CONTROL",
+            "action": "off",
+            "extension_scope": "operacional_literal_v1",
+        },
+        {
+            "text": "apaga a luz",
+            "intent": "IOT_CONTROL",
+            "action": "off",
+            "extension_scope": "operacional_literal_v1",
+        },
+        {"text": "gosto da luz", "intent": "NONE", "action": "none"},
+        {"text": "a sala está clara", "intent": "NONE", "action": "none"},
+    ]
+
+    com_on = modelo_neural.adicionar_extensao_intent(
+        modelo_base,
+        exemplos,
+        intent="IOT_CONTROL",
+        action="on",
+        escopo="operacional_literal_v1",
+    )
+    com_duas = modelo_neural.adicionar_extensao_intent(
+        com_on,
+        exemplos,
+        intent="IOT_CONTROL",
+        action="off",
+        escopo="operacional_literal_v1",
+        caminho=destino,
+    )
+    recarregado = carregar_modelo(destino)
+
+    assert {
+        (extensao.intent, extensao.action)
+        for extensao in com_duas.extensoes_intent.values()
+    } == {
+        ("IOT_CONTROL", "on"),
+        ("IOT_CONTROL", "off"),
+    }
+    assert {
+        (extensao.intent, extensao.action)
+        for extensao in recarregado.extensoes_intent.values()
+    } == {
+        ("IOT_CONTROL", "on"),
+        ("IOT_CONTROL", "off"),
+    }
 
 
 def test_representacao_estrutura_bordas_e_generica_e_independe_de_rotulo() -> None:
@@ -4145,6 +4320,12 @@ def test_lote_candidato_e_avaliado_sem_contaminar_dev_ou_promover(tmp_path) -> N
     assert relatorio["arquitetura_comando"] == "intent_gated"
     assert relatorio["limiares_comando_por_intent"] == {"VOLUME": 0.6}
     assert relatorio["configuracao_experimental"] is True
+    assert relatorio["status_promocao"]["promocao_solicitada"] is False
+    assert relatorio["status_promocao"]["promocao_efetivada"] is False
+    assert relatorio["status_promocao"]["modelo_ativo_alterado"] is False
+    assert relatorio["status_promocao"]["elegivel_metricamente"] == bool(
+        relatorio["decisao"].get("promover")
+    )
     assert relatorio["promovido"] is False
     assert dev_path.read_bytes() == dev_antes
 

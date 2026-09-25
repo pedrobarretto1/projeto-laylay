@@ -15,6 +15,9 @@ from mente_laylay.cognicao.erros_navegador import resumir_erro_navegador
 from mente_laylay.memoria_mental.estado_continuidades import (
     SUGESTAO_SEM_RESPOSTA_TIMEOUT_S,
 )
+from mente_laylay.memoria_mental.resultado_acao import (
+    interpretar_tratamento_operacional,
+)
 
 
 def _get(ctx: Dict[str, Any], chave: str, padrao: Any = None) -> Any:
@@ -749,12 +752,26 @@ def processar_confirmacao_sugestao(ctx: Dict[str, Any], texto: str) -> bool:
 
         if sugestao == "OPEN_SITE_ALT":
             executar_intencao = _get(ctx, "executar_intencao")
-            return bool(executar_intencao({"intent": "OPEN_URL", "params": {"alvo": "https://www.cobasi.com.br"}}, texto)) if callable(executar_intencao) else False
+            if not callable(executar_intencao):
+                return False
+            intent_payload = {
+                "intent": "OPEN_URL",
+                "params": {"alvo": "https://www.cobasi.com.br"},
+            }
+            retorno = executar_intencao(intent_payload, texto)
+            return interpretar_tratamento_operacional(
+                intent_payload,
+                retorno,
+            ).sucesso_habilidade
         if sugestao == "EXECUTE_INTENT":
             executar_intencao = _get(ctx, "executar_intencao")
             intent_payload = original_payload.get("intent") if isinstance(original_payload, dict) else None
             if callable(executar_intencao) and isinstance(intent_payload, dict):
-                return bool(executar_intencao(intent_payload, texto))
+                retorno = executar_intencao(intent_payload, texto)
+                return interpretar_tratamento_operacional(
+                    intent_payload,
+                    retorno,
+                ).sucesso_habilidade
             return False
         return False
 

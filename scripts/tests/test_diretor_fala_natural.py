@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from mente_laylay.emocoes.contrato_causal import criar_evento_emocional_causal
 from mente_laylay.personalidade.diretor_fala import dirigir_fala
 from mente_laylay.personalidade.memoria_sutil import sutilizar_referencia_memoria
 from mente_laylay.personalidade.oralidade import naturalizar_texto_para_fala
@@ -66,14 +67,15 @@ def test_resultado_operacional_nao_recebe_raiva_fabricada() -> None:
 
 def test_resultado_operacional_aceita_irritacao_com_causa_verificada() -> None:
     mente = _mente_social("informacao", operacional=True)
-    mente["avaliacao_emocional_operacional_atual"] = {
-        "emocao": "irritada",
-        "nivel": 2,
-        "responsabilidade": "sistema",
-        "confianca": 0.96,
-        "permite_expressao": True,
-        "ts": 100.0,
-    }
+    mente["avaliacao_emocional_operacional_atual"] = criar_evento_emocional_causal(
+        origem="resultado_operacional", causa="falha repetida do sistema",
+        evidencia_ref="resultado:opera:falha:2",
+        natureza_evidencia="fato_observado", responsabilidade="sistema",
+        confianca=0.96, relevancia=0.95, novidade=0.5,
+        intensidade=2, sensibilidade="normal", alvo="Opera",
+        permite_expressao=True, emocao="irritada", nivel=2,
+        ts=100.0,
+    )
 
     direcao = dirigir_fala(
         "Falhou de novo. Agora isso está oficialmente me irritando.",

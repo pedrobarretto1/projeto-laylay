@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
 from mente_laylay.personalidade.antirrepeticao import assinaturas_recentes
 from mente_laylay.personalidade.perfil_amizade import (
     VERSAO_PERFIL_PERSONALIDADE,
@@ -68,7 +69,7 @@ def construir_retrato_expressivo(
     estrategia, motivo = "nenhum", "turno_literal"
     if operacional:
         evento = dict(estado.get("avaliacao_emocional_operacional_atual") or {})
-        if evento.get("permite_expressao"):
+        if evento_pode_alterar_estado(evento):
             estrategia = str(evento.get("arco") or "reacao_causal")
             motivo = str(evento.get("causa") or "resultado operacional observado")
     elif not sensivel and postura.nome in {"brincalhona", "firme_debochada"}:

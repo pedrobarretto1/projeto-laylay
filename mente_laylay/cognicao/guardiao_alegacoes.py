@@ -8,7 +8,7 @@ from typing import Any, Dict
 from mente_laylay.cognicao.fundamentacao_factual import (
     classificar_atualidade_factual,
 )
-from mente_laylay.emocoes.contrato_causal import evento_tem_causa_rastreavel
+from mente_laylay.emocoes.contrato_causal import evento_esta_ativo
 from mente_laylay.cognicao.incerteza_observacao import (
     expressa_incerteza_observacao,
     estado_sob_pedido_informacao,
@@ -365,7 +365,7 @@ def validar_alegacoes_da_fala(
         and fundamentacao.get("evidencia_dentro_validade", True) is not False
     )
     tem_leitura_confirmada = bool(confirmados or tem_fonte_atual)
-    evento_causal_valido = evento_tem_causa_rastreavel(
+    evento_causal_valido = evento_esta_ativo(
         contrato.get("evento_emocional_causal")
         if isinstance(contrato.get("evento_emocional_causal"), dict)
         else None

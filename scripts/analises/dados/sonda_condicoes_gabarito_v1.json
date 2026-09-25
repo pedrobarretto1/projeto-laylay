@@ -1,0 +1,25 @@
+{
+  "versao": 1,
+  "origem": "revisao_manual_local; nao autenticada como revisao externa",
+  "casos": {
+    "PINTURA_E": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [
+      {"referente_id": "parede", "atributo": "estado", "operador": "=", "valor": "limpa", "unidade": "", "fonte_id": "regra", "citacao": "parede estiver limpa"},
+      {"referente_id": "tinta", "atributo": "estado", "operador": "=", "valor": "seca", "unidade": "", "fonte_id": "regra", "citacao": "tinta estiver seca"}
+    ]},
+    "LOGIN_ONLY": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_necessarias", "condicoes": [
+      {"referente_id": "codigo", "atributo": "estado", "operador": "=", "valor": "coincide", "unidade": "", "fonte_id": "regra", "citacao": "código coincide"},
+      {"referente_id": "conta", "atributo": "estado", "operador": "=", "valor": "ativa", "unidade": "", "fonte_id": "regra", "citacao": "conta está ativa"}
+    ]},
+    "ALARME_OR": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [
+      {"referente_id": "porta", "atributo": "estado", "operador": "=", "valor": "abrir", "unidade": "", "fonte_id": "regra", "citacao": "porta abrir"},
+      {"referente_id": "janela", "atributo": "estado", "operador": "=", "valor": "abrir", "unidade": "", "fonte_id": "regra", "citacao": "janela abrir"}
+    ]},
+    "LUZ_IFF": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "equivalencia", "condicoes": [
+      {"referente_id": "sensor", "atributo": "deteccao", "operador": "=", "valor": "movimento", "unidade": "", "fonte_id": "regra", "citacao": "sensor detecta movimento"}
+    ]},
+    "SENSOR_SOLO": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [
+      {"referente_id": "solo", "atributo": "umidade do solo", "operador": "<", "valor": "25", "unidade": "%", "fonte_id": "regra", "citacao": "umidade do solo ficar abaixo de 25%"}
+    ]},
+    "ALERTA_MISTO": {"representavel": false, "motivo": "(porta e janela) ou botão exige árvore de condições; um único conectivo plano perderia a relação"}
+  }
+}

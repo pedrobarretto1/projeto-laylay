@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict
 
 from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
 from mente_laylay.autonomia.executor_comum import falar_ctx as _falar
+from mente_laylay.autonomia.roteador_deterministico import texto_questiona_certeza_previsao
 from mente_laylay.memoria_mental.memoria_confiavel import normalizar_texto
 from mente_laylay.memoria_mental.identidade_usuario import normalizar_nome_usuario
 from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_variada
@@ -391,6 +392,23 @@ def _consultar_clima(
     sensacao = str(info.get("sensacao_c") or "").strip()
     descricao = str(info.get("descricao") or "").strip()
     umidade = str(info.get("umidade") or "").strip()
+    if texto_questiona_certeza_previsao(texto_original):
+        dia = {0: "hoje", 1: "amanhã", 2: "depois de amanhã"}.get(day_offset, f"daqui a {day_offset} dias")
+        try:
+            chance = max(0, min(100, int(float(info.get("chance_chuva_pct")))))
+        except (TypeError, ValueError, OverflowError):
+            chance = None
+        detalhe = (
+            f"A previsão para {dia} em {cidade_fala} indica até {chance}% de chance de chuva."
+            if chance is not None else
+            f"A fonte não informou a probabilidade de chuva para {dia} em {cidade_fala}."
+        )
+        _falar(ctx, f"Não é garantia; previsão indica probabilidade, não certeza. {detalhe}")
+        deps.marcar_resultado(
+            "previsao_consultada" if day_offset else "clima_consultado",
+            executou=True, confirmado=True,
+        )
+        return ResultadoDespacho.concluido(True)
     if day_offset:
         rotulo_dia = "Amanhã" if day_offset == 1 else "Depois de amanhã"
         maxima = str(info.get("temperatura_max_c") or "").strip()

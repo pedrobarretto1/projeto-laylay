@@ -66,6 +66,8 @@ def test_rt1d_porteiro_do_root_enxerga_owner_canonico():
     porteiro = root._porteiro_proatividade_runtime
     voz = root._voz_runtime
 
+    assert voz.estado_emocional_getter() is root._estado_compartilhado_runtime.conversacional
+
     # A Voz do root precisa realmente consultar o Porteiro do root.
     callback = getattr(voz, "avaliar_proatividade_cb", None)
     assert callable(callback)

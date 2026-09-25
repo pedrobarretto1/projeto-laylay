@@ -8,6 +8,9 @@ from typing import Callable, List, Optional
 from mente_laylay.cognicao.gramatica_operacional import (
     texto_pede_avanco_midia_via_vai,
 )
+from mente_laylay.memoria_mental.resultado_acao import (
+    interpretar_tratamento_operacional,
+)
 
 
 # P0_CADEIA_MULTIETAPAS_V1_20260815
@@ -174,7 +177,14 @@ def executar_comando_em_texto(
     comando_local = interpretar_comando_local_rapido(t) if callable(interpretar_comando_local_rapido) else None
     if comando_local:
         try:
-            return bool(executar_intencao(comando_local, t)) if callable(executar_intencao) else False
+            if not callable(executar_intencao):
+                return False
+            retorno = executar_intencao(comando_local, t)
+            tratamento = interpretar_tratamento_operacional(
+                comando_local,
+                retorno,
+            )
+            return tratamento.sucesso_habilidade
         except Exception as e:
             log(f"⚠️ [COMANDO LOCAL] falha ao executar: {e}")
             return False

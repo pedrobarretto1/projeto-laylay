@@ -134,6 +134,8 @@ def test_feedback_e_cancelado_quando_lista_de_chats_recria_botao(
     monkeypatch,
 ) -> None:
     app, janela = _janela(monkeypatch)
+    janela.resize(1700, 700)
+    app.processEvents()
     from PySide6.QtCore import qInstallMessageHandler
 
     conversa_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
@@ -158,6 +160,7 @@ def test_feedback_e_cancelado_quando_lista_de_chats_recria_botao(
     })
     app.processEvents()
     botao_antigo = janela._botoes_conversas[conversa_id]
+    assert botao_antigo.isVisible()
     identificador = id(botao_antigo)
     erros: list[BaseException] = []
     mensagens_qt: list[str] = []

@@ -1958,8 +1958,7 @@ _voz_runtime = _criar_voz_runtime_mente(
         _estado_compartilhado_runtime.mental.get("nome_usuario") or ""
     ),
     proativa_permitida_cb=lambda: (
-        not bool(_conversa_estado_get("modo_chat", False))
-        and not bool(_conversa_estado_get("conversa_ativa", False))
+        not _prioridade_interacao_usuario_runtime.ativa()
         and time.time() - float(_estado_compartilhado_runtime.mental.get("ultima_entrada_ts") or 0.0) >= 30.0
     ),
     avaliar_proatividade_cb=_porteiro_proatividade_runtime.avaliar,
@@ -1969,6 +1968,7 @@ _voz_runtime = _criar_voz_runtime_mente(
     interrupt_event=interrupt_event,
     registrar_fala_emitida_cb=_registrar_fala_proativa_emitida,
     publicar_texto_proativo_cb=_orquestrador_fala_runtime.publicar_texto_proativo,
+    estado_emocional_getter=lambda: _estado_compartilhado_runtime.conversacional,
     registrar_metrica_cb=_observabilidade_mente_runtime.registrar_metrica,
     trace_context_getter=_observabilidade_mente_runtime.obter_trace_corrente,
     registrar_falha_cb=_observabilidade_mente_runtime.registrar_falha,
@@ -2750,6 +2750,7 @@ _pc_b_runtime = _criar_pc_b_runtime_mente(
     log=print,
 )
 _enviar_pc_b = _pc_b_runtime.enviar
+_enviar_pc_b_detalhado = _pc_b_runtime.enviar_detalhado
 _agenda_enviar_chrome_local = _chrome_comandos_runtime.enviar_payload_bruto
 
 from mente_laylay.autonomia.agenda_windows import sincronizar_despertares_windows as _sincronizar_despertares_windows
@@ -3870,6 +3871,46 @@ _coleta_entradas_neurais = _ColetaEntradasNeurais(
     ativo=os.getenv("LAYLAY_NEURAL_COLETA_ENTRADAS", "1").strip() == "1",
 )
 _registro_servicos_aplicacao_runtime.publicar(_coleta_entradas_neurais=_coleta_entradas_neurais)
+from mente_laylay.cognicao.preferencia_humor import (
+    reconstruir_preferencia_humor_duravel as _reconstruir_preferencia_humor_duravel,
+)
+
+
+def _carregar_preferencia_humor_duravel(contexto: str) -> dict:
+    for escopo in (contexto, "geral"):
+        chave = f"personalidade:tolerancia_humor:{escopo}"
+        try:
+            hipotese = MEMORIA_SQLITE.obter_hipotese_aprendizado(chave)
+            evidencias = MEMORIA_SQLITE.listar_eventos_aprendizado(chave, limit=1)
+        except Exception:
+            continue
+        preferencia = _reconstruir_preferencia_humor_duravel(
+            hipotese, evidencias[0] if evidencias else {},
+        )
+        if preferencia:
+            return preferencia
+    return {}
+
+
+_registro_servicos_aplicacao_runtime.publicar(
+    _carregar_preferencia_humor_duravel=_carregar_preferencia_humor_duravel,
+    _registrar_preferencia_humor=lambda preferencia: (
+        _motor_aprendizado_runtime.registrar_evidencia(
+            chave=f"personalidade:tolerancia_humor:{preferencia['contexto']}",
+            tipo="preferencia_humor_explicita",
+            escopo=str(preferencia['contexto']),
+            valor={
+                "direcao": preferencia['direcao'],
+                "contexto": preferencia['contexto'],
+                "descricao_humana": "preferência explícita de tom da conversa",
+            },
+            sinal=1.0,
+            origem="pedido_explicito_usuario",
+            evidencia=str(preferencia['evidencia_ref']),
+            confirmado_usuario=True,
+        )
+    ),
+)
 
 _composicao_turno_runtime = _criar_composicao_turno_runtime(
     servicos=_registro_servicos_aplicacao_runtime.snapshot(),

@@ -828,6 +828,44 @@ def test_runtime_pesquisa_cor_livre_valida_e_usa_cache():
     assert consultas == ["azul petroleo"]
 
 
+def test_mencao_didatica_da_luz_nao_consulta_cor_nem_dispositivo():
+    consultas = []
+    runtime = RuntimeIoT(
+        memoria_sqlite=MemoriaIoTFalsa(),
+        falar=lambda *_: None,
+        estado_mental_getter=lambda: {},
+        emitir_fala=False,
+        modo="simulado",
+        resolver_cor=lambda nome: consultas.append(nome) or {"rgb": (0, 95, 106)},
+        log=lambda *_: None,
+    )
+
+    assert runtime.detectar("me explica com um exemplo o papel da luz na planta") is None
+    assert runtime.detectar("me ensina a diferença entre luz natural e artificial") is None
+    assert consultas == []
+
+
+def test_composicao_real_nao_pesquisa_cor_para_aula_de_planta(monkeypatch):
+    import importlib
+
+    root = importlib.import_module("laylay")
+    consultas = []
+    monkeypatch.setattr(
+        root._iot_runtime,
+        "resolver_cor",
+        lambda nome: consultas.append(nome) or {"rgb": (0, 95, 106)},
+    )
+
+    assert root._registro_iot_runtime.detectar(
+        "me explica com um exemplo o papel da luz na planta", {}
+    ) is None
+    assert consultas == []
+    assert root._registro_iot_runtime.detectar(
+        "deixa a luz do quarto azul petróleo", {}
+    )["params"]["rgb"] == (0, 95, 106)
+    assert consultas == ["azul petroleo"]
+
+
 def test_horario_da_acao_iot_nao_vira_brilho_e_e_agendado():
     estado = {}
     runtime_iot = RuntimeIoT(

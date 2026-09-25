@@ -93,17 +93,18 @@ def test_atividade_e_modo_animam_sem_mover_layout(monkeypatch) -> None:
     })
     app.processEvents()
 
-    assert janela.status.graphicsEffect() is not None
+    assert janela.presenca_pill.graphicsEffect() is not None
+    assert janela.status.text() == "Pensando"
     assert janela.alternador.graphicsEffect() is not None
-    geometria_status = janela.status.geometry()
+    geometria_status = janela.presenca_pill.geometry()
     geometria_modo = janela.alternador.geometry()
 
     _processar_por(app, 0.12)
-    assert janela.status.geometry() == geometria_status
+    assert janela.presenca_pill.geometry() == geometria_status
     assert janela.alternador.geometry() == geometria_modo
 
     _processar_por(app, 0.3)
-    assert janela.status.graphicsEffect() is None
+    assert janela.presenca_pill.graphicsEffect() is None
     assert janela.alternador.graphicsEffect() is None
     janela.close()
 

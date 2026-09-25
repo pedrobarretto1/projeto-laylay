@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+import time
 from pathlib import Path
 
 from mente_laylay.emocoes.avaliador_eventos import (
@@ -72,7 +73,7 @@ def _evento(**campos):
         "permite_expressao": False,
         "emocao": "calma",
         "nivel": 1,
-        "ts": 100.0,
+        "ts": time.time(),
         "validade_s": 120.0,
     }
     base.update(campos)
@@ -80,7 +81,7 @@ def _evento(**campos):
 
 
 def test_contrato_causal_representa_todos_os_campos_e_nao_autoriza_acao() -> None:
-    evento = _evento()
+    evento = _evento(ts=100.0)
 
     assert _CAMPOS_CAUSAIS.issubset(evento)
     assert evento["validade"] == {
@@ -252,34 +253,35 @@ def test_leitura_emocional_do_usuario_usa_o_mesmo_publicador_causal() -> None:
 
 
 @pytest.mark.parametrize(
-    ("texto", "evento", "marcadores"),
+    ("texto", "campos_evento", "marcadores"),
     (
         (
             "Estou um pouco triste hoje.",
-            _evento(
-                origem="contingencia_lexical_usuario",
-                intensidade=1,
-                sensibilidade="vulneravel",
-            ),
+            {
+                "origem": "contingencia_lexical_usuario",
+                "intensidade": 1,
+                "sensibilidade": "vulneravel",
+            },
             ("trist", "ouvi", "entendo"),
         ),
         (
             "Estou muito feliz porque terminei um projeto.",
-            _evento(
-                origem="contingencia_lexical_usuario",
-                causa="alegria explicitamente relatada no turno atual",
-                intensidade=3,
-                sensibilidade="sensivel",
-            ),
+            {
+                "origem": "contingencia_lexical_usuario",
+                "causa": "alegria explicitamente relatada no turno atual",
+                "intensidade": 3,
+                "sensibilidade": "sensivel",
+            },
             ("feliz", "projeto", "parab"),
         ),
     ),
 )
 def test_contingencia_consumidora_do_evento_causal_reconhece_estado_explicito(
     texto,
-    evento,
+    campos_evento,
     marcadores,
 ) -> None:
+    evento = _evento(**campos_evento)
     resposta = fala_contingencia_natural(
         texto,
         contexto={

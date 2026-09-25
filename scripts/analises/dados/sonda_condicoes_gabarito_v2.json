@@ -1,0 +1,43 @@
+{
+  "versao": 2,
+  "origem": "revisao_manual_local_separada; nao autenticada como revisao externa",
+  "casos": {
+    "IMPORTACAO_E": {
+      "representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [
+        {"referente_id": "arquivo", "atributo": "extensao", "operador": "=", "valor": ".csv", "unidade": "", "fonte_id": "regra", "citacao": "arquivo tiver extensão .csv"},
+        {"referente_id": "cabecalho", "atributo": "coluna", "operador": "=", "valor": "data", "unidade": "", "fonte_id": "regra", "citacao": "cabeçalho contiver a coluna data"}
+      ]
+    },
+    "RELATORIO_ONLY": {
+      "representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_necessarias",
+      "condicoes": [
+        {"referente_id": "revisao", "atributo": "estado", "operador": "=", "valor": "concluída", "unidade": "", "fonte_id": "regra", "citacao": "revisão for concluída"},
+        {"referente_id": "fonte", "atributo": "estado", "operador": "=", "valor": "citada", "unidade": "", "fonte_id": "regra", "citacao": "fonte estiver citada"}
+      ]
+    },
+    "AMBIENTE_OU": {
+      "representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [
+        {"referente_id": "umidade", "atributo": "umidade do ar", "operador": "<", "valor": "30", "unidade": "%", "fonte_id": "regra", "citacao": "umidade do ar cair abaixo de 30%"},
+        {"referente_id": "temperatura", "atributo": "temperatura", "operador": ">", "valor": "35", "unidade": "°C", "fonte_id": "regra", "citacao": "temperatura subir acima de 35 °C"}
+      ]
+    },
+    "MOTOR_IFF": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "equivalencia",
+      "condicoes": [
+        {"referente_id": "interruptor", "atributo": "estado", "operador": "=", "valor": "ligado", "unidade": "", "fonte_id": "regra", "citacao": "interruptor estiver ligado"}
+      ]
+    },
+    "TANQUE_SENSOR": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [
+        {"referente_id": "tanque", "atributo": "volume", "operador": "<", "valor": "10", "unidade": "litros", "fonte_id": "regra", "citacao": "sensor do tanque indicar menos de 10 litros"}
+      ]
+    },
+    "PACOTE_MISTO": {
+      "representavel": false,
+      "motivo": "(revisao e checksum) ou administrador exige arvore, nao conectivo plano"
+    }
+  }
+}

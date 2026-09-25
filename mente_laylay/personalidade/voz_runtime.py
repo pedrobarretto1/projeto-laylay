@@ -14,6 +14,7 @@ from collections import deque
 from queue import Empty, Queue
 from typing import Any, Callable, Mapping, Optional
 
+from mente_laylay.emocoes.estado_emocional import retrato_emocional_expressavel
 from mente_laylay.memoria_mental.implantacao_desempenho import flag_desempenho_ativa
 from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
 from mente_laylay.percepcao.dispositivos_audio import selecionar_dispositivo_audio
@@ -59,6 +60,7 @@ class VozRuntime:
         interrupt_event: Any,
         registrar_fala_emitida_cb: Callable[[str, list], Any] | None = None,
         publicar_texto_proativo_cb: Callable[[str, str, int], Any] | None = None,
+        estado_emocional_getter: Callable[[], Mapping[str, Any]] | None = None,
         registrar_metrica_cb: Callable[[str, float, bool], Any] | None = None,
         trace_context_getter: Callable[[], Mapping[str, Any]] | None = None,
         registrar_falha_cb: Callable[..., Any] | None = None,
@@ -100,6 +102,7 @@ class VozRuntime:
         self.chave_turno_cb = chave_turno_cb
         self.registrar_fala_emitida_cb = registrar_fala_emitida_cb
         self.publicar_texto_proativo_cb = publicar_texto_proativo_cb
+        self.estado_emocional_getter = estado_emocional_getter
         self.registrar_metrica_cb = registrar_metrica_cb
         self.trace_context_getter = trace_context_getter
         self.registrar_falha_cb = registrar_falha_cb
@@ -1344,6 +1347,21 @@ class VozRuntime:
             texto = str(ultimo.get("texto") or self.fallback_fala).strip()
             emocao = str(ultimo.get("emocao") or "calma")
             nivel = int(ultimo.get("nivel") or 1)
+        try:
+            estado_emocional = (
+                self.estado_emocional_getter()
+                if callable(self.estado_emocional_getter)
+                else {}
+            )
+            emocao, nivel = retrato_emocional_expressavel(estado_emocional)
+        except Exception as erro:
+            self._relatar_falha(
+                "falha_retrato_emocional_proativo",
+                erro,
+                fallback="tom_neutro",
+                fase="publicar_fala_proativa",
+            )
+            emocao, nivel = "calma", 1
         try:
             if callable(self.publicar_texto_proativo_cb):
                 try:

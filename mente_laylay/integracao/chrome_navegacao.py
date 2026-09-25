@@ -160,6 +160,11 @@ def abrir_url_reutilizando_aba(
         enviar_comando("open_url", payload)
         return True
 
+    if preservar_foco:
+        # A abertura nativa não garante a preservação da aba/janela atual.
+        # A restrição pertence à operação, não à implementação do callback.
+        return False
+
     try:
         return abrir_fallback(url) is not False
     except Exception:

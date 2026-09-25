@@ -270,6 +270,7 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "relacao_pessoal_formulacao_artificial",
     "morfologia_corrompida",
     "resposta_generica_sem_conteudo",
+    "relato_atual_sem_ancora",
     "saudacao_nao_respondida_no_inicio",
     "saudacao_inventou_vocativo",
     "ato_opiniao_nao_respondido",
@@ -277,6 +278,9 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "esclarecimento_sem_ancora_anterior",
     "esclarecimento_comecou_por_outra_metafora",
     "ato_estado_pessoal_nao_reconhecido",
+    "estado_pessoal_causa_omitida",
+    "estado_pessoal_falante_invertido",
+    "aparencia_do_usuario_sem_evidencia",
     "estado_pessoal_nao_reconhecido",
     "bem_estar_nao_respondido_no_inicio",
     "agradecimento_nao_reconhecido",
@@ -993,9 +997,9 @@ def contingencia_comunicacao(
             ], evitar=falas_evitar)
         if estado.startswith("trist") or estado == "mal":
             return escolher_variacao([
-                "Poxa. Eu ouvi que você não tá bem; não vou tentar cobrir isso com frase bonita.",
-                "Isso parece estar pesado hoje. Não vou jogar positividade vazia em cima.",
-                "Eu entendi que você não tá bem. Posso só ficar com você nessa conversa sem maquiar o momento.",
+                "Poxa, você está triste hoje. Não vou tentar cobrir isso com frase bonita.",
+                "Eu ouvi que você está triste. Não vou jogar positividade vazia em cima.",
+                "Entendo que você está triste. Posso ficar com você nessa conversa sem maquiar o momento.",
             ], evitar=falas_evitar)
         if estado.startswith("preocup") or estado.startswith("ansios"):
             return escolher_variacao([
@@ -1014,7 +1018,7 @@ def contingencia_comunicacao(
                 return escolher_variacao([
                     f"Que bom saber que você está feliz por terminar {alvo}. Parabéns pela conquista.",
                     f"Aí sim: você terminou {alvo} e está feliz. Isso merece comemoração.",
-                    f"Parabéns por terminar {alvo}. Fico feliz de ver essa conquista dando certo.",
+                    f"Parabéns por terminar {alvo} e estar feliz com essa conquista.",
                 ], evitar=falas_evitar)
             return escolher_variacao([
                 "Que bom saber que você está feliz.",

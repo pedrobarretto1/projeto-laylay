@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import pytest
 
 from mente_laylay.autonomia.executor_playlists import _sugerir_criacao
 from mente_laylay.autonomia.feedback_pendente_runtime import FeedbackPendenteRuntime
@@ -66,6 +67,8 @@ def _montar_runtime_red151(tmp_path, *, falhar_create_vmz=False):
     chamadas_llm = []
     comandos_prioritarios = []
     contadores = {"add_final": 0}
+    receipts = []
+    eventos_saida = []
 
     estado_musica = {
         "ultima_playlist": "",
@@ -111,7 +114,6 @@ def _montar_runtime_red151(tmp_path, *, falhar_create_vmz=False):
 
     if falhar_create_vmz:
         original_create = playlist_runtime.create
-        original_add = playlist_runtime.add_and_verify
 
         def create_controlado(nome):
             if str(nome or "").strip().casefold() == "vmz":
@@ -123,27 +125,29 @@ def _montar_runtime_red151(tmp_path, *, falhar_create_vmz=False):
                 }
             return original_create(nome)
 
-        def add_controlado(nome, url, titulo, canal=""):
-            if str(nome or "").strip().casefold() == "vmz":
-                contadores["add_final"] += 1
-            return original_add(nome, url, titulo, canal)
-
         playlist_runtime.create = create_controlado
-        playlist_runtime.add_and_verify = add_controlado
-    else:
-        original_add = playlist_runtime.add_and_verify
 
-        def add_observavel(nome, url, titulo, canal=""):
-            if str(nome or "").strip().casefold() == "vmz":
-                contadores["add_final"] += 1
-            return original_add(nome, url, titulo, canal)
+    # A operação moderna chama a porta detalhada diretamente. Observar só
+    # o wrapper bool contava zero mesmo com persistência confirmada em disco.
+    original_add = playlist_runtime.add_and_verify_result
 
-        playlist_runtime.add_and_verify = add_observavel
+    def add_observavel(nome, url, titulo, canal=""):
+        if str(nome or "").strip().casefold() == "vmz":
+            contadores["add_final"] += 1
+        return original_add(nome, url, titulo, canal)
+
+    playlist_runtime.add_and_verify_result = add_observavel
 
     registro_musical = RegistroOperacoesMusicais.criar(operacoes)
 
     def falar(texto, *_args, **_kwargs):
+        eventos_saida.append("fala")
         falas.append(str(texto))
+
+    def registrar_resultado(receipt, *_args, **_kwargs):
+        # Captura da fronteira: não é substituto do teste do publicador/root.
+        receipts.append(dict(receipt))
+        eventos_saida.append("receipt")
 
     def continuidades_get(chave):
         return continuidades.get(chave)
@@ -159,6 +163,7 @@ def _montar_runtime_red151(tmp_path, *, falhar_create_vmz=False):
             "musica_operacoes": registro_musical,
             "falar_com_lipsync": falar,
             "yt_clean_title": yt_clean_title,
+            "registrar_resultado_execucao": registrar_resultado,
         },
         log=lambda *args, **_kwargs: logs.append(" ".join(str(x) for x in args)),
     )
@@ -257,6 +262,8 @@ def _montar_runtime_red151(tmp_path, *, falhar_create_vmz=False):
         "playlist_state": playlist_state,
         "ultima": ultima,
         "contadores": contadores,
+        "receipts": receipts,
+        "eventos_saida": eventos_saida,
     }
 
 
@@ -302,6 +309,10 @@ def test_red151_c3_runtime_canonico_146_151_cria_salva_responde_sem_llm(tmp_path
 
     assert len(h["falas"]) == falas_antes + 1
     assert str(h["falas"][-1]).strip()
+    assert len(h["receipts"]) == 1
+    assert h["receipts"][0]["confirmado"] is True
+    assert h["receipts"][0]["params"]["url"] == URL_B
+    assert h["eventos_saida"][-2:] == ["receipt", "fala"]
 
 
 def test_red151_c3_runtime_canonico_create_falha_bloqueia_add_e_responde(tmp_path):
@@ -325,3 +336,35 @@ def test_red151_c3_runtime_canonico_create_falha_bloqueia_add_e_responde(tmp_pat
 
     assert len(h["falas"]) == falas_antes + 1
     assert str(h["falas"][-1]).strip()
+    assert len(h["receipts"]) == 1
+    assert h["receipts"][0]["confirmado"] is False
+    assert h["eventos_saida"][-2:] == ["receipt", "fala"]
+
+
+@pytest.mark.parametrize("falhar_create", [False, True])
+def test_contador_observa_a_fronteira_detalhada_real(tmp_path, monkeypatch, falhar_create):
+    h = _montar_runtime_red151(tmp_path, falhar_create_vmz=falhar_create)
+    store = h["playlist_runtime"]
+    chamadas = {"legada": 0, "detalhada": 0}
+    legada = store.add_and_verify
+    detalhada = store.add_and_verify_result
+
+    def observar_legada(*args, **kwargs):
+        chamadas["legada"] += 1
+        return legada(*args, **kwargs)
+
+    def observar_detalhada(*args, **kwargs):
+        chamadas["detalhada"] += 1
+        return detalhada(*args, **kwargs)
+
+    monkeypatch.setattr(store, "add_and_verify", observar_legada)
+    monkeypatch.setattr(store, "add_and_verify_result", observar_detalhada)
+    h["resposta_runtime"].processar("sim", origem="teste_instrumentacao")
+    esperado = 0 if falhar_create else 1
+    # Observação independente prova qual porta executou; não reduz a expectativa.
+    assert chamadas == {"legada": 0, "detalhada": esperado}
+    dados = store.load()
+    assert ("vmz" in dados) is (not falhar_create)
+    if not falhar_create:
+        assert len(dados["vmz"]) == 1
+    assert h["contadores"]["add_final"] == chamadas["detalhada"]

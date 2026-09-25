@@ -7,6 +7,7 @@ import time
 from typing import Any, Dict
 
 from mente_laylay.memoria_mental.registro_semantico import resolver_referencia_pontuada
+from mente_laylay.cognicao.evidencia_operacional import detectar_consulta_lista_iot
 from mente_laylay.cognicao.fundamentacao_factual import classificar_atualidade_factual
 from mente_laylay.memoria_mental.continuidade_contexto import (
     estrutura_arquivo_recente,
@@ -152,7 +153,9 @@ def _entidade_curta_ja_conhecida(
     return {}
 
 
-def _operacao_explicita(texto: str) -> tuple[str, tuple[str, ...]]:
+def _operacao_explicita(
+    texto: str, *, modalidade: str = "",
+) -> tuple[str, tuple[str, ...]]:
     t = str(texto or "").casefold()
     if (
         re.search(r"\b(?:coloca|coloque|bota|toque|toca|põe|poe)\b", t)
@@ -187,7 +190,16 @@ def _operacao_explicita(texto: str) -> tuple[str, tuple[str, ...]]:
             return "playlist_adicionar", ("PLAYLIST_ADD",)
         if re.search(r"\b(?:toca|toque|abre|abra|coloca|coloque|ouvir|escuta)\b", t):
             return "playlist_tocar", ("PLAYLIST_PLAY", "TOCAR_PLAYLIST", "TOCAR_PLAYLIST_SHUFFLE")
-    if re.search(r"\b(?:luz|lampada|lâmpada|ventilador|tomada|dispositivo)\b", t):
+    if (
+        re.search(r"\b(?:luz|lampada|lâmpada|ventilador|tomada|dispositivo)\b", t)
+        and (
+            modalidade == "comando"
+            or detectar_consulta_lista_iot(t) is not None
+        )
+    ):
+        # Entidade mencionada não é uma operação. Uma aula sobre luz mantém
+        # o referente textual, mas não veta a pesquisa factual como se fosse
+        # controle da lâmpada. A modalidade é dona desse limite.
         return "iot", ("IOT_CONTROL", "IOT_STATUS", "IOT_LIST")
     if re.search(r"\b(?:arquivo|pasta|documento)\b", t):
         return "arquivo", (
@@ -311,7 +323,10 @@ def construir_retrato_turno(
         )
 
     t = str(texto or "").casefold()
-    operacao, intents_permitidos = _operacao_explicita(t)
+    operacao, intents_permitidos = _operacao_explicita(
+        t,
+        modalidade=str((turno or {}).get("modalidade_geral") or (turno or {}).get("modalidade") or "").casefold(),
+    )
     # Em ``coloca essa música na playlist X``, ``essa música`` não aponta para
     # uma entidade antiga da conversa: é a fonte operacional "faixa atual".
     # O executor de playlists ainda consulta e valida o player antes de gravar,

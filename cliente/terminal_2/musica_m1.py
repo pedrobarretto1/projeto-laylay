@@ -43,6 +43,7 @@ from cliente.terminal_2.acabamento import (
 )
 from cliente.terminal_2.playlist_detalhe import PlaylistDetalhe
 from cliente.terminal_2.sistema_compacto import CardSistemaCompacto
+from cliente.terminal_2.theme import qss_music_preset
 
 
 def _tempo(segundos: object) -> str:
@@ -328,16 +329,7 @@ class CartaoPlaylist(QFrame):
         layout.addWidget(self.play)
         self.corpo.clicked.connect(self.abrir_solicitado)
         self.play.clicked.connect(self.tocar_solicitado)
-        self.setStyleSheet("""
-            #musicPreset { background: #15191E; border: 1px solid #2B3037; border-radius: 7px; }
-            #musicPreset[activePlaylist="true"] { border-color: #71404C; }
-            #musicPresetBody { background: transparent; border: 0; text-align: left; padding: 0; }
-            #musicPresetBody:hover { background: #20242A; border-radius: 5px; }
-            #musicPresetPlay { background: transparent; border: 1px solid transparent;
-                border-radius: 6px; padding: 0; }
-            #musicPresetPlay:hover { background: #25292F; border-color: #71404C; }
-            #musicPresetPlay:focus { background: #25292F; border: 1px solid #FF7187; }
-        """)
+        self.setStyleSheet(qss_music_preset())
 
     def click(self) -> None:
         """Compatibilidade de automação: click programático continua sendo Play."""
@@ -1835,6 +1827,8 @@ class PaginaMusicaM1(QWidget):
                 1,
             )
         if compacto:
+            self.fila.setMinimumWidth(0)
+            self.fila.setMaximumWidth(16777215)
             linha = 0
             for widget in widgets:
                 self.grade.addWidget(widget, linha, 0)
@@ -1843,6 +1837,8 @@ class PaginaMusicaM1(QWidget):
             self.grade.setColumnStretch(1, 0)
             self.grade.setColumnStretch(2, 0)
         else:
+            self.fila.setMinimumWidth(315)
+            self.fila.setMaximumWidth(390)
             self.grade.addWidget(self.cabecalho, 0, 0, 1, 4)
             self.grade.addWidget(self.player, 1, 0, 1, 2)
             self.grade.addWidget(self.fila, 1, 2)
@@ -3092,10 +3088,38 @@ class PaginaMusicaM1(QWidget):
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
-        compacto = self.width() < 1080
+        largura = self.width()
+        compacto = largura < 980
+        mostrar_rail = largura >= 1280
+
         if compacto != self._modo_compacto:
             self._organizar(compacto)
-            self.detalhe_playlist.definir_compacto(compacto)
+        self.detalhe_playlist.definir_compacto(compacto)
+
+        # O rail da música é contexto secundário; some antes de apertar o player.
+        self.barra_lateral.setVisible(mostrar_rail and not compacto)
+
+        if largura < 620:
+            self.capa.hide()
+            self.volume_slider.hide()
+            self.tela_cheia.hide()
+        elif largura < 900:
+            self.capa.show()
+            self.capa.setFixedSize(150, 150)
+            self.volume_slider.hide()
+            self.tela_cheia.setVisible(largura >= 760)
+        else:
+            self.capa.show()
+            self.capa.setFixedSize(230, 230)
+            self.volume_slider.show()
+            self.tela_cheia.show()
+
+        margem_x = 14 if largura < 760 else 20 if largura < 1180 else 28
+        margem_y = 18 if largura < 760 else 24
+        self.grade.setContentsMargins(
+            margem_x, margem_y, margem_x, 28 if largura < 760 else 32,
+        )
+
         self._organizar_grade_playlists()
         QTimer.singleShot(0, self._organizar_grade_playlists)
 

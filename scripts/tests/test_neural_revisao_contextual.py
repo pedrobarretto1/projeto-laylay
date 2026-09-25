@@ -138,7 +138,7 @@ def test_publicacao_preserva_fonte_e_nao_sobrescreve_relatorio(tmp_path):
 
 @pytest.mark.parametrize("dominio", ["volume", "musica", "aplicativos", "arquivos"])
 def test_revisao_generica_nao_inventa_dominio_a_partir_de_pronome(dominio):
-    bateria = json.loads((RAIZ / "tests/fixtures/neural/bateria_linguistica_v1.json").read_text(encoding="utf-8"))
+    bateria = json.loads((RAIZ / "scripts/tests/fixtures/neural/bateria_linguistica_v1.json").read_text(encoding="utf-8"))
     caso = next(x for x in bateria["casos"] if x["id"] == f"{dominio}:referencia_sem_contexto")
     fonte = json.dumps({"text": caso["text"]}, ensure_ascii=False).encode("utf-8")
     revisao = {

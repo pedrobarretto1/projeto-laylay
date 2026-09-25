@@ -41,6 +41,26 @@ _PEDIDO_ABA_ANTERIOR_ELIPSE_SITE = re.compile(
 )
 
 
+def qualificador_referencia_nominal(texto: str) -> tuple[str, str]:
+    """Lê tipo e qualificador ditos agora, sem resolver a entidade.
+
+    Em "esse sensor do ar", o foco antigo só é compatível se contiver
+    literalmente o tipo e o qualificador. Ausência de ambos não veta a
+    continuidade usual. Esta leitura nunca concede autorização operacional.
+    """
+    achado = re.search(
+        r"\b(?:esse|essa|este|esta|esses|essas|estes|estas|"
+        r"aquele|aquela|o|a|os|as)\s+"
+        r"(?P<tipo>[^\W\d_]+)\s+(?:de|do|da|dos|das)\s+"
+        r"(?P<qualificador>[^\W\d_]+"
+        r"(?:\s+(?:de|do|da|dos|das)\s+[^\W\d_]+){0,3})\b",
+        str(texto or "").casefold(), flags=re.UNICODE,
+    )
+    if not achado:
+        return "", ""
+    return achado.group("tipo"), achado.group("qualificador")
+
+
 def texto_pede_aba_anterior(
     texto: str,
     *,

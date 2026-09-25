@@ -4,6 +4,7 @@ import ast
 from pathlib import Path
 import threading
 import time
+import pytest
 
 from mente_laylay.autonomia.porteiro_proatividade import PorteiroProatividadeRuntime
 from mente_laylay.personalidade.voz_runtime import VozRuntime
@@ -277,3 +278,63 @@ def test_porteiro_e_ligado_ao_runtime_de_voz_e_nao_ao_ritmo() -> None:
 
     assert "avaliar_proatividade_cb" in keywords_por_alvo["_voz_runtime"]
     assert "avaliar_proatividade_cb" not in keywords_por_alvo["_ritmo_circadiano_runtime"]
+
+
+@pytest.mark.parametrize("tipo", ["briefing", "emails", "rotina"])
+def test_chat_aberto_ocioso_nao_impede_retomada_da_entrega(tipo):
+    contexto = {"modo_chat": True, "conversa_ativa": True, "ultima_entrada_ts": 990.0}
+    agora = [1000.0]
+    porteiro = PorteiroProatividadeRuntime(contexto_getter=lambda: contexto, agora=lambda: agora[0])
+    assert porteiro.avaliar(tipo=tipo, texto="Aviso útil", revalidacao_entrega=True)["acao"] == "adiar"
+    agora[0] = 1040.0
+    assert porteiro.avaliar(tipo=tipo, texto="Aviso útil", revalidacao_entrega=True)["acao"] == "emitir"
+    contexto["interacao_usuario_ativa"] = True
+    assert porteiro.avaliar(tipo=tipo, texto="Aviso útil", revalidacao_entrega=True)["acao"] == "adiar"
+
+
+def test_callback_real_de_compatibilidade_nao_veta_chat_ocioso():
+    from types import SimpleNamespace
+    raiz = Path(__file__).resolve().parents[2]
+    arvore = ast.parse((raiz / "laylay.py").read_text(encoding="utf-8"))
+    chamada = next(no.value for no in arvore.body if isinstance(no, ast.Assign)
+                   and any(isinstance(a, ast.Name) and a.id == "_voz_runtime" for a in no.targets))
+    callback = next(k.value for k in chamada.keywords if k.arg == "proativa_permitida_cb")
+    owner = [False]
+    avaliar = eval(compile(ast.Expression(callback), "laylay.py", "eval"), {
+        "_conversa_estado_get": lambda *_: True,
+        "_prioridade_interacao_usuario_runtime": SimpleNamespace(ativa=lambda: owner[0]),
+        "_estado_compartilhado_runtime": SimpleNamespace(mental={"ultima_entrada_ts": 900.0}),
+        "time": SimpleNamespace(time=lambda: 1000.0),
+    })
+    assert avaliar() is True
+    owner[0] = True
+    assert avaliar() is False
+
+
+@pytest.mark.parametrize("tipo", ["briefing", "emails"])
+def test_fila_real_retoma_apos_usuario_liberar_canal(monkeypatch, tipo):
+    agora = [1000.0]
+    monkeypatch.setattr(time, "time", lambda: agora[0])
+    contexto = {"modo_chat": True, "conversa_ativa": True,
+                "interacao_usuario_ativa": True, "ultima_entrada_ts": 999.0}
+    porteiro = PorteiroProatividadeRuntime(contexto_getter=lambda: contexto, agora=lambda: agora[0])
+    runtime = _voz(avaliador=porteiro.avaliar)
+    falas, conclusoes = [], []
+    runtime.falar = lambda texto, *a, **kw: falas.append(texto) or True
+    assert runtime.agendar_fala_proativa(tipo, "Aviso pendente", ao_concluir=lambda *r: conclusoes.append(r))
+    agora[0] += 3.0
+    runtime.flush_fala_proativa()
+    assert not falas and not conclusoes
+    contexto["interacao_usuario_ativa"] = False
+    agora[0] += 40.0
+    runtime.flush_fala_proativa()
+    assert falas == ["Aviso pendente"]
+    assert conclusoes == [(True, "entregue")]
+    runtime.flush_fala_proativa()
+    assert len(falas) == 1
+
+
+@pytest.mark.parametrize("barreira", ["usuario_falando", "interacao_usuario_ativa", "reuniao_ativa", "modo_foco", "modo_jogo_ativo"])
+def test_silencio_nao_remove_barreiras_reais(barreira):
+    porteiro = PorteiroProatividadeRuntime(contexto_getter=lambda: {barreira: True, "modo_chat": True})
+    assert porteiro.avaliar(tipo="emails", texto="Aviso", revalidacao_entrega=True)["acao"] == "adiar"

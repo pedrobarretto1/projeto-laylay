@@ -161,9 +161,31 @@ def evento_tem_causa_rastreavel(evento: Mapping[str, Any] | None) -> bool:
     )
 
 
-def evento_pode_alterar_estado(evento: Mapping[str, Any] | None) -> bool:
+def evento_esta_ativo(
+    evento: Mapping[str, Any] | None,
+    *,
+    agora: float | None = None,
+) -> bool:
+    """Validade temporal é checada no consumo, preservando o registro histórico."""
+    if not evento_tem_causa_rastreavel(evento):
+        return False
+    validade = dict(dict(evento or {}).get("validade") or {})
+    instante = float(time.time() if agora is None else agora)
+    try:
+        inicio = float(validade["inicio_ts"])
+        fim = float(validade["expira_ts"])
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return False
+    return inicio <= instante < fim
+
+
+def evento_pode_alterar_estado(
+    evento: Mapping[str, Any] | None,
+    *,
+    agora: float | None = None,
+) -> bool:
     return bool(
-        evento_tem_causa_rastreavel(evento)
+        evento_esta_ativo(evento, agora=agora)
         and dict(evento or {}).get("permite_expressao") is True
     )
 
@@ -177,19 +199,28 @@ def criar_evento_leitura_emocional_usuario(
     emocao_usuario = str(dados.get("emocao") or "").strip()
     if not emocao_usuario:
         return {}
+    inferida = dados.get("natureza_evidencia") == "inferencia"
+    trecho = str(dados.get("trecho_evidencia") or "").strip()
+    causa = str(dados.get("causa") or "").strip()
+    if inferida and (not trecho or not causa or trecho.casefold() not in str(dados.get("texto") or "").casefold()):
+        return {}
+    assinatura = hashlib.sha256(trecho.casefold().encode("utf-8", errors="replace")).hexdigest()[:16] if inferida else ""
     sensiveis = {
         "tristeza", "ansiedade", "medo", "culpa", "esgotamento",
     }
     return criar_evento_emocional_causal(
-        origem="contingencia_lexical_usuario",
-        causa=(
+        origem="inferencia_contextual_usuario" if inferida else "contingencia_lexical_usuario",
+        causa=causa if inferida else (
             "sinal emocional reconhecido pela contingência lexical "
             "no turno atual"
         ),
-        evidencia_ref=f"turno:{turno_id}:texto_usuario",
-        natureza_evidencia="leitura_social",
+        evidencia_ref=(
+            f"turno:{turno_id}:inferencia:{assinatura}"
+            if inferida else f"turno:{turno_id}:texto_usuario"
+        ),
+        natureza_evidencia="inferencia" if inferida else "leitura_social",
         responsabilidade="usuario",
-        confianca=0.96,
+        confianca=float(dados.get("confianca") or 0.0) if inferida else 0.96,
         relevancia=0.95,
         novidade=0.8,
         intensidade=int(dados.get("intensidade") or 1),

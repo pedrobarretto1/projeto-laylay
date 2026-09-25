@@ -72,6 +72,8 @@ def renovar_contexto_sessao(
             "ultimo_resumo_pagina", "capacidade_futura", "foco_vivo", "focos_por_dominio",
             "conteudo_atual", "turno_atual", "plano_turno_atual", "ultima_decisao_semantica",
             "contrato_fala_atual",
+            "cenario_didatico_inventario", "cenario_didatico_sombra",
+            "auditoria_alegacoes_didaticas_sombra",
             "retrato_turno_atual", "especialistas_turno_atual", "assunto_estruturado_atual",
             "identidade_turno_atual", "identidade_turno_resumo", "funcao_comunicativa_atual",
             "ultima_correcao_conversacional", "ultima_correcao_conversacional_ts",

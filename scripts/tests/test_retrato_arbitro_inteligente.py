@@ -1,8 +1,32 @@
 from __future__ import annotations
 
 from mente_laylay.cognicao.arbitro_turno import CandidatoDecisao, arbitrar_turno
+from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.cognicao.retrato_turno import construir_retrato_turno
 from mente_laylay.memoria_mental.contexto_integrado import resumo_mente_integrada_para_prompt
+
+
+def test_mencao_de_luz_em_aula_nao_vira_operacao_explicita_iot() -> None:
+    for texto in (
+        "me explica com um exemplo o papel da luz na planta",
+        "o que é luz natural?",
+    ):
+        retrato, _ = construir_retrato_turno(
+            texto,
+            turno=classificar_modalidade_turno(texto),
+            mente={}, contexto_perceptivo={}, agora=100.0,
+        )
+        assert retrato["operacao_explicita"] == ""
+
+
+def test_pedido_de_iot_ainda_possui_operacao_no_retrato() -> None:
+    for texto in ("deixa a luz azul petróleo", "como está a luz?"):
+        retrato, _ = construir_retrato_turno(
+            texto,
+            turno=classificar_modalidade_turno(texto),
+            mente={}, contexto_perceptivo={}, agora=100.0,
+        )
+        assert retrato["operacao_explicita"] == "iot"
 
 
 def test_retrato_resolve_esse_jogo_mesmo_com_terminal_em_foco() -> None:

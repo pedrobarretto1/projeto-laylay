@@ -116,7 +116,7 @@ def registrar_autoaprimoramento(
     estado: Dict[str, Any],
     resultado: Dict[str, Any] = None,
     texto: str = "",
-    sucesso: bool = True,
+    sucesso: bool | None = True,
     erro: str = "",
     contexto: str = "",
     origem: str = "",
@@ -129,6 +129,7 @@ def registrar_autoaprimoramento(
     info = dict(habilidades.get(habilidade) or {})
     info.setdefault("sucessos", 0)
     info.setdefault("falhas", 0)
+    info.setdefault("incertos", 0)
     info.setdefault("tentativas", 0)
     info.setdefault("ultima_entrada", "")
     info.setdefault("ultimo_erro", "")
@@ -143,26 +144,29 @@ def registrar_autoaprimoramento(
     erro_limpo = str(erro or "").strip()
     contexto_limpo = str(contexto or "").strip()
     origem_limpa = str(origem or "").strip()
-    if sucesso:
+    if sucesso is True:
         info["sucessos"] += 1
         if contexto_limpo:
             info["ultima_correcao"] = contexto_limpo[:180]
             ult_corr = list(info.get("ultimas_correcoes") or [])
             ult_corr.append(contexto_limpo[:180])
             info["ultimas_correcoes"] = ult_corr[-8:]
-    else:
+    elif sucesso is False:
         info["falhas"] += 1
         if erro_limpo:
             info["ultimo_erro"] = erro_limpo[:220]
             ult_erros = list(info.get("ultimos_erros") or [])
             ult_erros.append(erro_limpo[:220])
             info["ultimos_erros"] = ult_erros[-8:]
+    else:
+        # Tentativa observada sem receipt: não premiar e não punir.
+        info["incertos"] += 1
 
     habilidades[habilidade] = info
     evento = {
         "ts": datetime.now().isoformat(" "),
         "habilidade": habilidade,
-        "sucesso": bool(sucesso),
+        "sucesso": sucesso if sucesso is None else bool(sucesso),
         "texto": str(texto or "").strip()[:180],
         "erro": erro_limpo[:220],
         "contexto": contexto_limpo[:180],
@@ -172,7 +176,7 @@ def registrar_autoaprimoramento(
     estado["habilidades"] = habilidades
     estado["eventos"] = eventos[-40:]
     estado["ultimo_resumo"] = resumir_autoaprimoramento_estado(estado)
-    estado["cookie_reforco"] = int(estado.get("cookie_reforco") or 0) + (1 if sucesso else 0)
+    estado["cookie_reforco"] = int(estado.get("cookie_reforco") or 0) + (1 if sucesso is True else 0)
     return estado
 
 
@@ -189,8 +193,10 @@ def resumir_autoaprimoramento_estado(estado: Dict[str, Any] = None, limit: int =
         tentativas = max(1, int(info.get("tentativas") or 0))
         sucessos = int(info.get("sucessos") or 0)
         falhas = int(info.get("falhas") or 0)
-        taxa = int(round((sucessos / tentativas) * 100))
-        if sucessos == 0 and falhas == 0:
+        incertos = int(info.get("incertos") or 0)
+        avaliadas = sucessos + falhas
+        taxa = int(round((sucessos / avaliadas) * 100)) if avaliadas else 0
+        if sucessos == 0 and falhas == 0 and incertos == 0:
             continue
         detalhe = []
         ultimo_erro = str(info.get("ultimo_erro") or "").strip()
@@ -199,18 +205,21 @@ def resumir_autoaprimoramento_estado(estado: Dict[str, Any] = None, limit: int =
             detalhe.append(f"{falhas} falha(s)")
         if sucessos:
             detalhe.append(f"{sucessos} sucesso(s)")
-        detalhe.append(f"{taxa}%")
+        if incertos:
+            detalhe.append(f"{incertos} sem confirmação")
+        if avaliadas:
+            detalhe.append(f"{taxa}% confirmado")
         if ultima_corr:
             detalhe.append(f"ajuste={ultima_corr[:60]}")
         elif ultimo_erro:
             detalhe.append(f"erro={ultimo_erro[:60]}")
-        itens.append((falhas, sucessos, f"{nome} " + ", ".join(detalhe)))
+        itens.append((falhas, incertos, sucessos, f"{nome} " + ", ".join(detalhe)))
 
     if not itens:
         return "Autoaprimoramento: sem sinais úteis ainda."
 
-    itens.sort(key=lambda x: (x[0], -x[1]), reverse=True)
-    partes = [x[2] for x in itens[:limit]]
+    itens.sort(key=lambda x: (x[0], x[1], -x[2]), reverse=True)
+    partes = [x[3] for x in itens[:limit]]
     return "Autoaprimoramento: " + "; ".join(partes)
 
 

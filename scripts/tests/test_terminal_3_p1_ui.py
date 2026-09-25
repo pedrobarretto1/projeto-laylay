@@ -96,7 +96,7 @@ def test_p1_dashboard_recolhe_colunas_sem_quebrar_chat(monkeypatch) -> None:
     janela.resize(1500, 820)
     _processar(app)
     assert janela.central_inteligente.isVisible()
-    assert not janela.painel_lateral.isVisible()
+    assert janela.painel_lateral.isVisible()
 
     janela.resize(1320, 820)
     _processar(app)

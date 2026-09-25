@@ -467,7 +467,13 @@ def preparar_resposta_para_execucao(
         registrar_log(
             "🧠 [SEMÂNTICA:PRINCIPAL] contrato extraído da resposta original | "
             f"atos={len(leitura_semantica_original.get('atos') or [])} "
-            f"emocional_valida={bool(emocional_original.get('valida'))}"
+            f"emocional_valida={bool(emocional_original.get('valida'))} "
+            f"estado={emocional_original.get('estado_usuario') or '-'} "
+            f"intensidade={emocional_original.get('intensidade') or 0} "
+            f"evidencia_na_fala={bool(emocional_original.get('evidencia_na_fala'))} "
+            f"causa_presente={bool(emocional_original.get('causa_expressa'))} "
+            f"hipotetica={bool(emocional_original.get('hipotetica'))} "
+            f"confianca={float(emocional_original.get('confianca') or 0.0):.2f}"
         )
     elif not falha_tecnica_llm:
         estrutura = "nao_json"

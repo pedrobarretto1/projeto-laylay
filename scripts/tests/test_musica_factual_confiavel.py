@@ -1,5 +1,7 @@
 import time
 
+import pytest
+
 from mente_laylay.autonomia.pre_fluxo_contextual import (
     processar_resposta_pendencia_prioritaria,
 )
@@ -91,6 +93,25 @@ def test_titulos_musicais_sem_evidencia_nao_chegam_a_fala() -> None:
     assert "obra_sem_evidencia" in resultado["problemas"]
     assert "The City" not in resultado["fala"]
     assert "Mystery of Love" not in resultado["fala"]
+
+
+@pytest.mark.parametrize("fala,texto_usuario", [
+    ('Aqui vai: "Canção Inventada".', "quero sim"),
+    ('Vai uma que eu gosto: "Faixa Inexistente".', "me indica uma música?"),
+])
+def test_apresentacao_de_faixa_em_turno_musical_exige_evidencia(fala, texto_usuario) -> None:
+    resultado = verificar_fala_turno(
+        fala, plano={"texto_usuario": texto_usuario, "dominio": "musica"},
+    )
+    assert "obra_sem_evidencia" in resultado["problemas"]
+
+
+def test_apresentacao_generica_citada_sem_contexto_de_obra_permanece_indeterminada() -> None:
+    resultado = validar_fala_com_fundamentacao(
+        'Aqui vai: "uma frase qualquer".', fundamentacao=None,
+        texto_usuario="me dê um exemplo de frase",
+    )
+    assert "obra_sem_evidencia" not in resultado["problemas"]
 
 
 def test_oferta_de_recomendar_faixas_vira_pendencia_musical_com_contexto() -> None:

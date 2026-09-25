@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QProgressBar,
     QPushButton,
     QScrollArea,
@@ -173,7 +174,7 @@ class PainelCentralInteligente(QFrame):
     def __init__(self) -> None:
         super().__init__()
         self.setObjectName("intelligencePanel")
-        # ACABAMENTO FINAL HOME P5
+        # Acabamento visual da Home
         # Proporção mais próxima da referência.
         self.setMinimumWidth(370)
         self.setMaximumWidth(395)
@@ -187,7 +188,7 @@ class PainelCentralInteligente(QFrame):
         cabecalho = QHBoxLayout()
         titulo = QLabel("Central Inteligente")
         titulo.setObjectName("intelligenceTitle")
-        self.estado = QLabel("P3 · conectando")
+        self.estado = QLabel("Conectando")
         self.estado.setObjectName("liveBadge")
         cabecalho.addWidget(titulo)
         cabecalho.addStretch()
@@ -2102,7 +2103,7 @@ class PainelLateralDashboard(QWidget):
 
 
 def _cabecalho_pagina(titulo: str, descricao: str) -> tuple[QLabel, QLabel, QLabel]:
-    etapa = QLabel("TERMINAL 3.0 · P4")
+    etapa = QLabel("LAYLAY · PAINEL LOCAL")
     etapa.setObjectName("eyebrow")
     nome = QLabel(titulo)
     nome.setObjectName("pageTitle")
@@ -2712,10 +2713,12 @@ class PaginaAutomacao(QWidget):
         conteudo = QWidget()
         conteudo.setObjectName("automationPageContent")
         layout = QVBoxLayout(conteudo)
+        self.conteudo_layout = layout
         layout.setContentsMargins(28, 24, 28, 32)
         layout.setSpacing(14)
 
         hero = QFrame()
+        self.hero = hero
         hero.setObjectName("automationHero")
         hero_layout = QHBoxLayout(hero)
         hero_layout.setContentsMargins(22, 18, 22, 18)
@@ -3024,71 +3027,407 @@ class PaginaAutomacao(QWidget):
 
     def resizeEvent(self, event) -> None:  # noqa: N802 - contrato Qt
         super().resizeEvent(event)
-        compacto = self.width() < 1180
-        self.corpo.setDirection(
-            QBoxLayout.TopToBottom if compacto else QBoxLayout.LeftToRight
+        largura = self.width()
+        estreita = largura < 760
+        mostrar_rail = largura >= 1180
+
+        # O rail é contexto secundário: some antes de comprimir os controles.
+        self.rail.setVisible(mostrar_rail)
+        self.corpo.setDirection(QBoxLayout.LeftToRight)
+        self.rail.setMinimumWidth(278 if mostrar_rail else 0)
+        self.rail.setMaximumWidth(310 if mostrar_rail else 0)
+
+        # A arte do hero é decorativa e sai primeiro em janelas menores.
+        self.hero_arte.setVisible(largura >= 900)
+        margem_x = 16 if estreita else 22 if largura < 1180 else 28
+        margem_y = 18 if estreita else 24
+        self.conteudo_layout.setContentsMargins(
+            margem_x, margem_y, margem_x, 28 if estreita else 32,
         )
-        self.rail.setMinimumWidth(0 if compacto else 278)
-        self.rail.setMaximumWidth(16_777_215 if compacto else 310)
-        colunas = 1 if self.width() < 820 else 2
+
+        colunas = 1 if largura < 860 else 2
         for indice, cartao in enumerate(self.iot_dispositivos):
             self.iot_grade.addWidget(cartao, indice // colunas, indice % colunas)
+
+
+class CartaoMemoria(QFrame):
+    """Memória recente com largura fluida e hierarquia própria para contexto."""
+
+    ROTULOS = {
+        "reminder": "Lembrete",
+        "preference": "Preferência",
+        "task": "Ação confirmada",
+    }
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setObjectName("memoryItem")
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.setMinimumHeight(96)
+        self._texto_busca = ""
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setSpacing(7)
+
+        cabecalho = QHBoxLayout()
+        cabecalho.setContentsMargins(0, 0, 0, 0)
+        cabecalho.setSpacing(8)
+        self.tipo = QLabel("Memória")
+        self.tipo.setObjectName("memoryItemType")
+        self.meta = QLabel("recente")
+        self.meta.setObjectName("memoryItemMeta")
+        cabecalho.addWidget(self.tipo)
+        cabecalho.addStretch()
+        cabecalho.addWidget(self.meta)
+        layout.addLayout(cabecalho)
+
+        self.resumo = QLabel()
+        self.resumo.setObjectName("memoryItemSummary")
+        self.resumo.setWordWrap(True)
+        self.resumo.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        layout.addWidget(self.resumo)
+
+        self.detalhe = QLabel()
+        self.detalhe.setObjectName("memoryItemDetail")
+        self.detalhe.setWordWrap(True)
+        self.detalhe.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        layout.addWidget(self.detalhe)
+
+    def aplicar(self, item: dict) -> None:
+        kind = str(item.get("kind") or "").strip().casefold()
+        resumo = str(item.get("summary") or "").strip()
+        detalhe = str(item.get("detail") or "").strip()
+        self.tipo.setText(self.ROTULOS.get(kind, "Memória"))
+        self.meta.setText("recente")
+        self.resumo.setText(resumo or "Memória sem resumo disponível.")
+        self.detalhe.setText(detalhe)
+        self.detalhe.setVisible(bool(detalhe))
+        self.setProperty("memoryKind", kind or "memory")
+        self._texto_busca = " ".join(
+            (kind, self.tipo.text(), resumo, detalhe)
+        ).casefold()
+        self.style().unpolish(self)
+        self.style().polish(self)
+
+    def corresponde(self, consulta: str) -> bool:
+        termo = str(consulta or "").strip().casefold()
+        return not termo or termo in self._texto_busca
 
 
 class PaginaMemoria(QWidget):
     def __init__(self) -> None:
         super().__init__()
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(54, 36, 68, 46)
-        layout.setSpacing(12)
-        for widget in _cabecalho_pagina(
-            "Memória",
-            "Uma projeção mínima da memória canônica, com origem explícita e sem expor dados sensíveis.",
-        ):
-            layout.addWidget(widget)
+        self.setObjectName("memoryPage")
+        self._disponivel = False
+        self._itens_atuais: list[dict] = []
+
+        raiz = QVBoxLayout(self)
+        raiz.setContentsMargins(0, 0, 0, 0)
+        raiz.setSpacing(0)
+
+        self.rolagem = QScrollArea()
+        self.rolagem.setObjectName("memoryScroll")
+        self.rolagem.setWidgetResizable(True)
+        self.rolagem.setFrameShape(QFrame.NoFrame)
+        self.rolagem.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.rolagem.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+
+        self.conteudo = QWidget()
+        self.conteudo.setObjectName("memoryPageContent")
+        self.conteudo.setMaximumWidth(1380)
+        self.conteudo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.layout_principal = QVBoxLayout(self.conteudo)
+        self.layout_principal.setContentsMargins(36, 30, 36, 40)
+        self.layout_principal.setSpacing(14)
+
+        memoria_kicker = QLabel("MEMÓRIA · CONTEXTO LOCAL")
+        memoria_kicker.setObjectName("eyebrow")
+        memoria_titulo = QLabel("Memória")
+        memoria_titulo.setObjectName("pageTitle")
+        memoria_descricao = QLabel(
+            "Contexto que a Laylay pode reutilizar, mostrado de forma resumida e segura."
+        )
+        memoria_descricao.setObjectName("pageDescription")
+        memoria_descricao.setWordWrap(True)
+        self.layout_principal.addWidget(memoria_kicker)
+        self.layout_principal.addWidget(memoria_titulo)
+        self.layout_principal.addWidget(memoria_descricao)
+
+        topo = QHBoxLayout()
+        topo.setContentsMargins(0, 4, 0, 0)
+        topo.setSpacing(10)
+        self.estado_ponto = QLabel("●")
+        self.estado_ponto.setObjectName("memoryStatusDot")
         self.estado = QLabel("Aguardando memória")
-        self.estado.setObjectName("dashboardEmpty")
-        self.itens = [CartaoDashboard("—") for _ in range(3)]
-        layout.addWidget(self.estado)
+        self.estado.setObjectName("memoryStatusValue")
+        self.contagem = QLabel("0 memórias recentes")
+        self.contagem.setObjectName("memoryCount")
+        topo.addWidget(self.estado_ponto)
+        topo.addWidget(self.estado)
+        topo.addStretch()
+        topo.addWidget(self.contagem)
+        self.layout_principal.addLayout(topo)
+
+        self.corpo = QFrame()
+        self.corpo.setObjectName("memoryBody")
+        corpo_lay = QHBoxLayout(self.corpo)
+        corpo_lay.setContentsMargins(0, 0, 0, 0)
+        corpo_lay.setSpacing(14)
+
+        principal = QWidget()
+        principal.setObjectName("memoryMain")
+        principal_lay = QVBoxLayout(principal)
+        principal_lay.setContentsMargins(0, 0, 0, 0)
+        principal_lay.setSpacing(10)
+
+        barra = QFrame()
+        barra.setObjectName("memoryToolbar")
+        barra_lay = QHBoxLayout(barra)
+        barra_lay.setContentsMargins(12, 10, 12, 10)
+        barra_lay.setSpacing(10)
+        self.busca = QLineEdit()
+        self.busca.setObjectName("memorySearch")
+        self.busca.setPlaceholderText("Buscar nas memórias recentes…")
+        self.busca.setClearButtonEnabled(True)
+        self.busca.textChanged.connect(self._aplicar_filtro)
+        self.resultado_busca = QLabel("Tudo")
+        self.resultado_busca.setObjectName("memorySearchCount")
+        barra_lay.addWidget(self.busca, 1)
+        barra_lay.addWidget(self.resultado_busca)
+        principal_lay.addWidget(barra)
+
+        titulo_lista = QLabel("Memórias recentes")
+        titulo_lista.setObjectName("memorySectionTitle")
+        principal_lay.addWidget(titulo_lista)
+
+        self.lista = QVBoxLayout()
+        self.lista.setContentsMargins(0, 0, 0, 0)
+        self.lista.setSpacing(9)
+        self.itens = [CartaoMemoria() for _ in range(8)]
         for cartao in self.itens:
             cartao.hide()
-            layout.addWidget(cartao)
-        layout.addStretch()
+            self.lista.addWidget(cartao)
+        principal_lay.addLayout(self.lista)
+
+        self.vazio = QFrame()
+        self.vazio.setObjectName("memoryEmpty")
+        vazio_lay = QVBoxLayout(self.vazio)
+        vazio_lay.setContentsMargins(22, 28, 22, 28)
+        vazio_lay.setSpacing(6)
+        self.vazio_titulo = QLabel("Aguardando memórias")
+        self.vazio_titulo.setObjectName("memoryEmptyTitle")
+        self.vazio_texto = QLabel(
+            "Quando houver contexto recente disponível, ele aparece aqui."
+        )
+        self.vazio_texto.setObjectName("memoryEmptyText")
+        self.vazio_texto.setWordWrap(True)
+        vazio_lay.addWidget(self.vazio_titulo)
+        vazio_lay.addWidget(self.vazio_texto)
+        principal_lay.addWidget(self.vazio)
+        principal_lay.addStretch()
+
+        self.rail = QFrame()
+        self.rail.setObjectName("memoryRail")
+        self.rail.setMinimumWidth(286)
+        self.rail.setMaximumWidth(310)
+        rail_lay = QVBoxLayout(self.rail)
+        rail_lay.setContentsMargins(0, 0, 0, 0)
+        rail_lay.setSpacing(10)
+
+        status_card = QFrame()
+        status_card.setObjectName("memoryRailCard")
+        status_lay = QVBoxLayout(status_card)
+        status_lay.setContentsMargins(14, 13, 14, 13)
+        status_lay.setSpacing(6)
+        status_titulo = QLabel("Estado")
+        status_titulo.setObjectName("memoryRailTitle")
+        self.estado_detalhe = QLabel("Aguardando projeção segura.")
+        self.estado_detalhe.setObjectName("memoryRailText")
+        self.estado_detalhe.setWordWrap(True)
+        status_lay.addWidget(status_titulo)
+        status_lay.addWidget(self.estado_detalhe)
+        rail_lay.addWidget(status_card)
+
+        categorias_card = QFrame()
+        categorias_card.setObjectName("memoryRailCard")
+        categorias_lay = QVBoxLayout(categorias_card)
+        categorias_lay.setContentsMargins(14, 13, 14, 13)
+        categorias_lay.setSpacing(8)
+        categorias_titulo = QLabel("Categorias")
+        categorias_titulo.setObjectName("memoryRailTitle")
+        categorias_lay.addWidget(categorias_titulo)
+        self.categorias: dict[str, QLabel] = {}
+        for chave, rotulo in (
+            ("preference", "Preferências"),
+            ("reminder", "Lembretes"),
+            ("task", "Ações confirmadas"),
+            ("other", "Outras"),
+        ):
+            linha = QHBoxLayout()
+            nome = QLabel(rotulo)
+            nome.setObjectName("memoryCategoryName")
+            valor = QLabel("0")
+            valor.setObjectName("memoryCategoryValue")
+            linha.addWidget(nome)
+            linha.addStretch()
+            linha.addWidget(valor)
+            categorias_lay.addLayout(linha)
+            self.categorias[chave] = valor
+        rail_lay.addWidget(categorias_card)
+
+        privacidade_card = QFrame()
+        privacidade_card.setObjectName("memoryPrivacyCard")
+        privacidade_lay = QVBoxLayout(privacidade_card)
+        privacidade_lay.setContentsMargins(14, 13, 14, 13)
+        privacidade_lay.setSpacing(6)
+        privacidade_titulo = QLabel("Projeção segura")
+        privacidade_titulo.setObjectName("memoryRailTitle")
+        privacidade_texto = QLabel(
+            "Esta tela mostra apenas resumos enviados pelo runtime; "
+            "não expõe o armazenamento bruto da memória."
+        )
+        privacidade_texto.setObjectName("memoryRailText")
+        privacidade_texto.setWordWrap(True)
+        privacidade_lay.addWidget(privacidade_titulo)
+        privacidade_lay.addWidget(privacidade_texto)
+        rail_lay.addWidget(privacidade_card)
+        rail_lay.addStretch()
+
+        corpo_lay.addWidget(principal, 1)
+        corpo_lay.addWidget(self.rail, 0)
+        self.layout_principal.addWidget(self.corpo, 1)
+        self.layout_principal.addStretch()
+
+        self.rolagem.setWidget(self.conteudo)
+        raiz.addWidget(self.rolagem)
+        self._aplicar_filtro()
 
     def aplicar_dashboard(self, dashboard: dict) -> None:
-        saude = dashboard.get("health") if isinstance(dashboard.get("health"), dict) else {}
-        memoria = saude.get("memory") if isinstance(saude.get("memory"), dict) else {}
-        disponivel = memoria.get("state") != "unavailable" and memoria.get("freshness") != "unavailable"
-        itens = list(dashboard.get("memory_recent") or ())[:3] if disponivel else []
+        saude = (
+            dashboard.get("health")
+            if isinstance(dashboard.get("health"), dict)
+            else {}
+        )
+        memoria = (
+            saude.get("memory")
+            if isinstance(saude.get("memory"), dict)
+            else {}
+        )
+        frescor = str(memoria.get("freshness") or "unavailable")
+        self._disponivel = (
+            memoria.get("state") != "unavailable"
+            and frescor != "unavailable"
+        )
+        itens = [
+            dict(item)
+            for item in list(dashboard.get("memory_recent") or ())
+            if isinstance(item, dict)
+        ][:len(self.itens)] if self._disponivel else []
+        self._itens_atuais = itens
+
         self.estado.setText(
             str(memoria.get("label") or "Memória ativa")
-            if disponivel else "Memória indisponível"
+            if self._disponivel else "Memória indisponível"
         )
-        nomes = {"reminder": "Lembrete", "preference": "Preferência", "task": "Ação confirmada"}
+        self.estado_ponto.setProperty(
+            "state", "online" if self._disponivel else "unavailable"
+        )
+        self.estado_ponto.style().unpolish(self.estado_ponto)
+        self.estado_ponto.style().polish(self.estado_ponto)
+        if not self._disponivel:
+            self.estado_detalhe.setText(
+                "O runtime não forneceu uma projeção de memória disponível."
+            )
+        elif frescor == "stale":
+            self.estado_detalhe.setText(
+                "A projeção disponível está marcada como desatualizada."
+            )
+        else:
+            self.estado_detalhe.setText(
+                "Contexto recente disponível para continuidade."
+            )
+
+        totais = {"preference": 0, "reminder": 0, "task": 0, "other": 0}
+        for item in itens:
+            kind = str(item.get("kind") or "").strip().casefold()
+            chave = kind if kind in {"preference", "reminder", "task"} else "other"
+            totais[chave] += 1
+        for chave, valor in self.categorias.items():
+            valor.setText(str(totais[chave]))
+
+        self.contagem.setText(
+            f"{len(itens)} memória" + ("" if len(itens) == 1 else "s") + " recente"
+            + ("" if len(itens) == 1 else "s")
+        )
+        self.busca.setEnabled(self._disponivel and bool(itens))
         for indice, cartao in enumerate(self.itens):
-            if indice >= len(itens) or not isinstance(itens[indice], dict):
+            if indice < len(itens):
+                cartao.aplicar(itens[indice])
+                cartao.show()
+            else:
                 cartao.hide()
-                continue
-            item = itens[indice]
-            titulo = cartao.layout_principal.itemAt(0).layout().itemAt(0).widget()
-            titulo.setText(nomes.get(str(item.get("kind") or ""), "Memória"))
-            while cartao.layout_principal.count() > 1:
-                filho = cartao.layout_principal.takeAt(1)
-                if filho.widget():
-                    filho.widget().deleteLater()
-            resumo = QLabel(str(item.get("summary") or ""))
-            resumo.setWordWrap(True)
-            detalhe = QLabel(str(item.get("detail") or ""))
-            detalhe.setObjectName("dashboardEmpty")
-            detalhe.setWordWrap(True)
-            cartao.layout_principal.addWidget(resumo)
-            cartao.layout_principal.addWidget(detalhe)
-            cartao.show()
+        self._aplicar_filtro()
+
+    def _aplicar_filtro(self) -> None:
+        consulta = self.busca.text().strip() if hasattr(self, "busca") else ""
+        visiveis = 0
+        for indice, cartao in enumerate(getattr(self, "itens", ())):
+            tem_item = indice < len(self._itens_atuais)
+            mostrar = tem_item and cartao.corresponde(consulta)
+            cartao.setVisible(mostrar)
+            if mostrar:
+                visiveis += 1
+
+        total = len(self._itens_atuais)
+        self.resultado_busca.setText(
+            f"{visiveis} de {total}" if consulta else f"{total} item" + ("s" if total != 1 else "")
+        )
+        vazio = visiveis == 0
+        self.vazio.setVisible(vazio)
+        if not self._disponivel:
+            self.vazio_titulo.setText("Memória indisponível")
+            self.vazio_texto.setText(
+                "Quando o runtime disponibilizar uma projeção segura, ela aparece aqui."
+            )
+        elif consulta and total:
+            self.vazio_titulo.setText("Nenhuma memória encontrada")
+            self.vazio_texto.setText(
+                "Tente outro termo para buscar nas memórias recentes."
+            )
+        elif not total:
+            self.vazio_titulo.setText("Nenhuma memória recente")
+            self.vazio_texto.setText(
+                "A memória está disponível, mas não há itens recentes para mostrar."
+            )
 
     def invalidar(self) -> None:
+        self._disponivel = False
+        self._itens_atuais = []
         self.estado.setText("Aguardando memória")
+        self.estado_detalhe.setText("Aguardando projeção segura.")
+        self.contagem.setText("0 memórias recentes")
+        self.busca.clear()
+        self.busca.setEnabled(False)
+        for valor in self.categorias.values():
+            valor.setText("0")
         for cartao in self.itens:
             cartao.hide()
+        self._aplicar_filtro()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 - contrato Qt
+        super().resizeEvent(event)
+        largura = self.width()
+        if largura < 760:
+            margem_x, topo, base = 16, 20, 24
+        elif largura < 1200:
+            margem_x, topo, base = 24, 26, 32
+        else:
+            margem_x, topo, base = 36, 30, 40
+        self.layout_principal.setContentsMargins(
+            margem_x, topo, margem_x, base,
+        )
+        self.rail.setVisible(largura >= 1180)
 
 
 
@@ -3513,7 +3852,8 @@ class PaginaSistema(QWidget):
         externo = QVBoxLayout(
             self.conteudo
         )
-        externo.setContentsMargins(9, 10, 9, 14)
+        self.conteudo_layout = externo
+        externo.setContentsMargins(18, 18, 18, 22)
         externo.setSpacing(12)
 
         # Cabeçalho.
@@ -3707,9 +4047,9 @@ class PaginaSistema(QWidget):
         corpo.addWidget(self.resumo, 3)
         corpo.addWidget(desempenho, 4)
 
-        # P10.3: corpo será inserido na coluna principal.
+        # O corpo é inserido na coluna principal ao final.
 
-        # P10.1 — Fase 3: Modelo local + armazenamento.
+        # Modelo local + armazenamento.
         self.system_lower_row = QBoxLayout(
             QBoxLayout.LeftToRight
         )
@@ -3901,18 +4241,10 @@ class PaginaSistema(QWidget):
             1,
         )
 
-        # P10.3: linha inferior será inserida
+        # A linha inferior é inserida
         # na coluna principal ao final.
 
-        # P10.2 — Fase 4: áudio, ações e alertas.
-        fase4 = QHBoxLayout()
-        fase4.setObjectName(
-            "systemPhase4Row"
-        )
-        fase4.setContentsMargins(
-            0, 0, 0, 0
-        )
-        fase4.setSpacing(12)
+        # Áudio, ações e alertas.
 
         # ----------------------------------------------
         # Áudio e entrada
@@ -4231,7 +4563,7 @@ class PaginaSistema(QWidget):
             )
             self.atalhos_rail_card.layout_principal.addWidget(botao)
 
-        # P10.3 — Fase 5: workbench principal
+        # Workbench principal.
         # com uma lateral compacta à direita.
         self.system_workbench = QBoxLayout(
             QBoxLayout.LeftToRight
@@ -4285,13 +4617,10 @@ class PaginaSistema(QWidget):
             card_terceira_faixa.setMaximumHeight(140)
         principal.addLayout(self.system_bottom_row, 2)
 
-        lateral = QVBoxLayout()
-        lateral.setObjectName(
-            "systemRightRail"
-        )
-        lateral.setContentsMargins(
-            0, 0, 0, 0
-        )
+        self.system_rail_widget = QWidget()
+        self.system_rail_widget.setObjectName("systemRightRail")
+        lateral = QVBoxLayout(self.system_rail_widget)
+        lateral.setContentsMargins(0, 0, 0, 0)
         lateral.setSpacing(10)
 
         # ----------------------------------------------
@@ -4380,8 +4709,8 @@ class PaginaSistema(QWidget):
             principal,
             1,
         )
-        workbench.addLayout(
-            lateral,
+        workbench.addWidget(
+            self.system_rail_widget,
             0,
         )
 
@@ -4395,56 +4724,51 @@ class PaginaSistema(QWidget):
     def _aplicar_layout_responsivo(
         self,
     ) -> None:
-        largura = max(
-            1,
-            self.width(),
-        )
+        largura = max(1, self.width())
+        mostrar_rail = largura >= 1380
+        empilhar_principal = largura < 1120
+        empilhar_base = largura < 900
 
-        compacto = largura < 1380
-        muito_compacto = largura < 1220
-
-        # Workbench geral:
-        # se faltar largura, a lateral vai para baixo.
+        # O rail repete informação já disponível na página; ele é a primeira
+        # coisa a sair quando a janela perde largura.
         self.system_workbench.setDirection(
-            QBoxLayout.TopToBottom
-            if compacto
-            else QBoxLayout.LeftToRight
+            QBoxLayout.LeftToRight
+            if mostrar_rail
+            else QBoxLayout.TopToBottom
+        )
+        self.system_rail_widget.setVisible(mostrar_rail)
+        largura_rail = max(264, min(300, int(largura * 0.18)))
+        self.system_rail_widget.setFixedWidth(
+            largura_rail if mostrar_rail else 0
         )
 
-        # Resumo + desempenho:
-        # empilha em janelas menores.
         self.system_corpo.setDirection(
             QBoxLayout.TopToBottom
-            if muito_compacto
+            if empilhar_principal
             else QBoxLayout.LeftToRight
         )
-
-        # Modelo local + armazenamento:
-        # também empilha quando apertar.
         self.system_lower_row.setDirection(
             QBoxLayout.TopToBottom
-            if muito_compacto
+            if empilhar_principal
             else QBoxLayout.LeftToRight
         )
         self.system_bottom_row.setDirection(
             QBoxLayout.TopToBottom
-            if muito_compacto
+            if empilhar_base
             else QBoxLayout.LeftToRight
         )
 
-        if muito_compacto:
-            self.resumo.setMinimumWidth(0)
-            self.resumo.setMaximumWidth(16777215)
+        if empilhar_principal:
+            for card in (self.resumo, self.desempenho, self.modelo_local):
+                card.setMinimumWidth(0)
+                card.setMaximumWidth(16777215)
         else:
             self.resumo.setMinimumWidth(290)
             self.resumo.setMaximumWidth(320)
-
-        if compacto:
-            largura_rail_min = 0
-            largura_rail_max = 16777215
-        else:
-            largura_rail_min = 264
-            largura_rail_max = 280
+            self.desempenho.setMinimumWidth(440)
+            self.desempenho.setMaximumWidth(460)
+            self.modelo_local.setMinimumWidth(300)
+            self.modelo_local.setMaximumWidth(330)
 
         for card in (
             self.sistema_rail_card,
@@ -4452,12 +4776,15 @@ class PaginaSistema(QWidget):
             self.atalhos_rail_card,
             self.alertas_card,
         ):
-            card.setMinimumWidth(
-                largura_rail_min
-            )
-            card.setMaximumWidth(
-                largura_rail_max
-            )
+            card.setMinimumWidth(largura_rail if mostrar_rail else 0)
+            card.setMaximumWidth(largura_rail if mostrar_rail else 0)
+
+        margem_x = 10 if largura < 760 else 14 if largura < 1200 else 18
+        margem_topo = 12 if largura < 760 else 18
+        self.conteudo_layout.setContentsMargins(
+            margem_x, margem_topo, margem_x, 18 if largura < 760 else 22,
+        )
+        self.atualizacao.setVisible(largura >= 760)
 
     def resizeEvent(
         self,
@@ -4854,7 +5181,7 @@ class PaginaSistema(QWidget):
                 )
             )
         )
-        # P10.1 — replica somente métricas confirmadas
+        # Replica somente métricas confirmadas.
         # para o card de armazenamento/memória.
         for chave in (
             "disk",
@@ -5288,7 +5615,7 @@ class PaginaModulo(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(54, 42, 68, 50)
         layout.setSpacing(11)
-        etapa = QLabel(f"TERMINAL 3.0 · {fase}")
+        etapa = QLabel("LAYLAY · MÓDULO LOCAL")
         etapa.setObjectName("eyebrow")
         nome = QLabel(titulo)
         nome.setObjectName("pageTitle")

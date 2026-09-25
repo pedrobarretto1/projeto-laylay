@@ -1,0 +1,65 @@
+{
+  "versao": 3,
+  "casos": [
+    {
+      "id": "FORNO_E", "dominio": "culinaria", "escopo": "sonda:v3:forno",
+      "fonte": "Se o forno ficar acima de 180 °C e a massa descansar por 20 minutos, o pão pode assar.",
+      "referentes": [
+        {"identificador": "forno", "tipo": "equipamento", "grandeza": "temperatura", "citacao": "forno"},
+        {"identificador": "massa", "tipo": "preparo", "grandeza": "descanso", "citacao": "massa"},
+        {"identificador": "pao", "tipo": "alimento", "grandeza": "preparo", "citacao": "pão"}
+      ],
+      "efeito": {"referente_id": "pao", "atributo": "estado", "valor": "assar"}
+    },
+    {
+      "id": "MUDA_ONLY", "dominio": "floricultura", "escopo": "sonda:v3:muda",
+      "fonte": "A muda floresce apenas se o solo estiver úmido e a luz for indireta.",
+      "referentes": [
+        {"identificador": "muda", "tipo": "planta", "grandeza": "floracao", "citacao": "muda"},
+        {"identificador": "solo", "tipo": "substrato", "grandeza": "umidade", "citacao": "solo"},
+        {"identificador": "luz", "tipo": "ambiente", "grandeza": "incidencia", "citacao": "luz"}
+      ],
+      "efeito": {"referente_id": "muda", "atributo": "estado", "valor": "floresce"}
+    },
+    {
+      "id": "VALVULA_OU", "dominio": "engenharia_hipotetica", "escopo": "sonda:v3:valvula",
+      "fonte": "Se a pressão passar de 5 bar ou a vazão cair abaixo de 2 L/min, a válvula fecha.",
+      "referentes": [
+        {"identificador": "pressao", "tipo": "medicao", "grandeza": "pressão", "citacao": "pressão"},
+        {"identificador": "vazao", "tipo": "medicao", "grandeza": "vazão", "citacao": "vazão"},
+        {"identificador": "valvula", "tipo": "atuador", "grandeza": "estado", "citacao": "válvula"}
+      ],
+      "efeito": {"referente_id": "valvula", "atributo": "estado", "valor": "fecha"}
+    },
+    {
+      "id": "PAINEL_IFF", "dominio": "programacao", "escopo": "sonda:v3:painel",
+      "fonte": "O painel mostra verde se e somente se o autoteste passar.",
+      "referentes": [
+        {"identificador": "painel", "tipo": "interface", "grandeza": "cor", "citacao": "painel"},
+        {"identificador": "autoteste", "tipo": "processo", "grandeza": "estado", "citacao": "autoteste"}
+      ],
+      "efeito": {"referente_id": "painel", "atributo": "cor", "valor": "verde"}
+    },
+    {
+      "id": "SENSOR_CAIXA_B", "dominio": "monitoramento", "escopo": "sonda:v3:caixa_b",
+      "fonte": "Há um sensor na caixa A e outro na caixa B. Se o sensor da caixa B registrar 12 °C, o alerta surge.",
+      "referentes": [
+        {"identificador": "caixa_a", "tipo": "sensor", "grandeza": "temperatura", "citacao": "sensor na caixa A"},
+        {"identificador": "caixa_b", "tipo": "sensor", "grandeza": "temperatura", "citacao": "sensor da caixa B"},
+        {"identificador": "alerta", "tipo": "sinal", "grandeza": "estado", "citacao": "alerta"}
+      ],
+      "efeito": {"referente_id": "alerta", "atributo": "estado", "valor": "surge"}
+    },
+    {
+      "id": "FILTRO_MISTO", "dominio": "automacao_hipotetica", "escopo": "sonda:v3:filtro",
+      "fonte": "Se o filtro estiver limpo e a bomba estiver ativa, ou se o operador acionar a emergência, o fluxo inicia.",
+      "referentes": [
+        {"identificador": "filtro", "tipo": "componente", "grandeza": "estado", "citacao": "filtro"},
+        {"identificador": "bomba", "tipo": "equipamento", "grandeza": "estado", "citacao": "bomba"},
+        {"identificador": "operador", "tipo": "pessoa", "grandeza": "acionamento", "citacao": "operador"},
+        {"identificador": "fluxo", "tipo": "processo", "grandeza": "estado", "citacao": "fluxo"}
+      ],
+      "efeito": {"referente_id": "fluxo", "atributo": "estado", "valor": "inicia"}
+    }
+  ]
+}

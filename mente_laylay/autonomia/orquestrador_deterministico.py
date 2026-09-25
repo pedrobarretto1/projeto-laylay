@@ -308,6 +308,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     consulta_clima = detectar_clima(
         texto_normalizado_previo,
         params_cb=lambda **kwargs: kwargs,
+        estado_mental=mente_previa,
     )
     if consulta_clima and modalidade_iot != "deliberativo":
         return consulta_clima
@@ -585,7 +586,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
             params_cb=params,
             contexto_email_ativo=contexto_email_ativo,
         ),
-        lambda: detectar_clima(t, params_cb=params),
+        lambda: detectar_clima(t, params_cb=params, estado_mental=mente_atual),
         lambda: detectar_volume_ou_midia(
             t,
             params_cb=params,

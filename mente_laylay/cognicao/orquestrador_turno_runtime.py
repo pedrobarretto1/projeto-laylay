@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 import re
+import os
 from typing import Any, Mapping
 
 from mente_laylay.cognicao.contrato_fala import (
@@ -25,6 +26,17 @@ from mente_laylay.cognicao.intencao_visual_jogo import (
 from mente_laylay.cognicao.fundamentacao_factual import (
     extrair_tema_recomendacao_contextual,
     extrair_titulos_citados,
+)
+from mente_laylay.cognicao.pesquisa_multifonte import (
+    extrair_consulta_didatica,
+    extrair_foco_didatico,
+)
+from mente_laylay.cognicao.inventario_cenario_didatico import (
+    observar_cenario_didatico_sombra,
+)
+from mente_laylay.cognicao.auditoria_alegacoes_didaticas import (
+    auditar_fala_didatica_sombra,
+    fontes_usuario_da_conversa,
 )
 from mente_laylay.cognicao.revisao_turno import resolver_revisao_intra_turno
 from mente_laylay.cognicao.modalidade_turno import (
@@ -54,6 +66,11 @@ from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
 from mente_laylay.emocoes.contrato_causal import (
     criar_evento_leitura_emocional_usuario,
     criar_evento_leitura_semantica_usuario,
+)
+from mente_laylay.cognicao.preferencia_humor import (
+    extrair_preferencia_humor,
+    preferencia_humor_ativa,
+    selecionar_preferencia_humor,
 )
 from mente_laylay.memoria_mental.eventos_emocionais import (
     publicar_evento_emocional_causal,
@@ -856,6 +873,7 @@ def _iniciar_planejamento_turno(
     turno = ns['_classificar_modalidade_turno_mente'](texto_cognitivo, normalizar_texto=ns['_normalizar_texto_com_apelidos'], texto_tem_comando_explicito=ns['_texto_tem_comando_explicito'], confirmacao_contextual_valida=confirmacao_contextual_valida)
     turno = observar_especialista_neural_turno(ns, texto_cognitivo, turno)
     turno['origem_entrada'] = _normalizar_origem_entrada(origem)
+    turno['modo_jogo_ativo'] = bool(getattr(ns.get('_modo_jogo_runtime'), 'ativo', False))
     if revisao_detectada:
         turno['texto_original'] = str(texto or '')[:500]
         turno['texto'] = str(texto or '')[:500]
@@ -1044,6 +1062,39 @@ def _iniciar_planejamento_turno(
         limpeza_pergunta_turno = {chave: mente_limpa.get(chave) for chave in chaves_limpeza if chave in mente_limpa}
         mente_antes_turno = mente_limpa
     registro_semantico = ns['_atualizar_registro_turno_mente'](mente_antes_turno.get('registro_semantico'), texto, retrato=retrato_turno, funcao=funcao_atual, encerramento=encerramento_assunto)
+    campos_cenario_didatico = {}
+    try:
+        origem_cenario = (
+            'usuario' if turno['origem_entrada'] in {
+                'terminal', 'voz', 'modo_jogo', 'barra', 'api',
+            } or str(origem or '').casefold() == 'roteiro_teste'
+            else 'sem_autoridade_usuario'
+        )
+        sombra_cenario = observar_cenario_didatico_sombra(
+            texto_cognitivo,
+            retrato=retrato_turno,
+            registro=registro_semantico,
+            inventario_anterior=mente_antes_turno.get('cenario_didatico_inventario'),
+            origem_texto=origem_cenario,
+            agora=float(retrato_turno.get('ts') or ns['time'].time()),
+        )
+        registro_semantico = dict(sombra_cenario['registro'])
+        campos_cenario_didatico = {
+            'cenario_didatico_inventario': dict(sombra_cenario['inventario']),
+            'cenario_didatico_sombra': dict(sombra_cenario['diagnostico']),
+        }
+        if os.environ.get('LAYLAY_CENARIO_DIDATICO_DEBUG') == '1':
+            diag_cenario = campos_cenario_didatico['cenario_didatico_sombra']
+            ns['print'](
+                '🧩 [CENÁRIO:SOMBRA] '
+                f"estado={diag_cenario.get('estado') or '-'} | "
+                f"cobertura={diag_cenario.get('cobertura') or '-'} | "
+                f"foco={bool(diag_cenario.get('tem_foco'))} | "
+                'compor=False efeito=False'
+            )
+    except Exception as erro:
+        # Observação didática nunca veta a conversa nem muda sua autoridade.
+        ns['print'](f"⚠️ [CENÁRIO:DIDÁTICO] observação isolada falhou: {type(erro).__name__}")
     mente_antes_turno['registro_semantico'] = registro_semantico
     candidatos_referencia = list(retrato_turno.get('referencia_candidatos') or [])
     if candidatos_referencia:
@@ -1056,6 +1107,37 @@ def _iniciar_planejamento_turno(
     tema_factual = ns['_extrair_tema_fundamentacao_mente'](
         texto_cognitivo, retrato=retrato_turno, registro_semantico=registro_semantico,
     )
+    contrato_anterior = dict(mente_antes_turno.get('contrato_fala_atual') or {})
+    estrategia_anterior = str(dict(contrato_anterior.get('roteiro_concreto') or {}).get('estrategia') or '')
+    try:
+        idade_ensino = ns['time'].time() - float(mente_antes_turno.get('ultima_entrada_ts') or 0)
+    except (TypeError, ValueError, OverflowError):
+        idade_ensino = -1
+    fundamento_anterior = dict(mente_antes_turno.get('fundamentacao_factual_turno') or {})
+    tema_ensino_anterior = (
+        str(fundamento_anterior.get('tema') or '')
+        if fundamento_anterior.get('pesquisa_didatica') else ''
+    )
+    pedido_anterior = (
+        str(
+            contrato_anterior.get('pedido_ensino_anterior')
+            or (f'me ensina {tema_ensino_anterior}' if tema_ensino_anterior else '')
+            or mente_antes_turno.get('ultima_entrada') or ''
+        )
+        if (estrategia_anterior in {'explicacao_didatica', 'reensino_didatico'} or tema_ensino_anterior) and 0 <= idade_ensino <= 240
+        else ''
+    )
+    consulta_didatica = extrair_consulta_didatica(
+        texto_cognitivo, pedido_anterior=pedido_anterior,
+    )
+    foco_didatico = extrair_foco_didatico(texto_cognitivo)
+    if not foco_didatico and re.search(r'\bn[aã]o entendi\b', str(texto_cognitivo or ''), re.I):
+        foco_didatico = str(fundamento_anterior.get('foco_didatico') or '')[:100]
+    pesquisa_multifonte_ativa = str(getattr(ns.get('_pesquisa_contextual_runtime'), 'modo_multifonte', 'desativado')) == 'ativo'
+    if consulta_didatica and pesquisa_multifonte_ativa and not retrato_turno.get('operacao_explicita') and str(turno.get('modalidade_geral') or turno.get('modalidade') or '') != 'comando':
+        tema_factual = consulta_didatica
+    else:
+        consulta_didatica = ''
     # Uma declaração pessoal pode ativar memória e pesquisa ao mesmo tempo.
     # A memória guarda a preferência confirmada; a pesquisa apenas enriquece
     # a conversa. Nenhuma das duas substitui a resposta humana do turno.
@@ -1098,6 +1180,7 @@ def _iniciar_planejamento_turno(
         ))
         exige_resposta_factual_agora = bool(
             atualidade_factual.get('depende_atualidade')
+            or consulta_didatica
             or modalidade_pesquisa in {'pergunta', 'misto'}
             or funcao_atual == 'correcao'
             or pedido_recomendacao
@@ -1120,7 +1203,20 @@ def _iniciar_planejamento_turno(
                             tema_factual,
                         )
                 else:
-                    pesquisa_factual = pesquisa_runtime.pesquisar_contexto_tema(tema_factual)
+                    pesquisar_multifonte = getattr(pesquisa_runtime, 'pesquisar_evidencias_multifonte', None)
+                    if pesquisa_multifonte_ativa and callable(pesquisar_multifonte):
+                        pesquisa_factual = pesquisar_multifonte(
+                            tema_factual, foco=foco_didatico if consulta_didatica else '',
+                        )
+                        turno['pesquisa_multifonte'] = {
+                            'motivo': str(pesquisa_factual.get('motivo') or ''),
+                            'fontes_lidas': len(pesquisa_factual.get('fontes') or []),
+                            'ok': bool(pesquisa_factual.get('ok')),
+                        }
+                    else:
+                        pesquisa_factual = {'ok': False, 'motivo': 'multifonte_desativada'}
+                    if not pesquisa_factual.get('ok') and (not consulta_didatica or not pesquisa_multifonte_ativa):
+                        pesquisa_factual = pesquisa_runtime.pesquisar_contexto_tema(tema_factual)
             else:
                 pesquisa_factual = pesquisa_runtime.obter_contexto_cache(tema_factual)
                 if not pesquisa_factual:
@@ -1148,6 +1244,8 @@ def _iniciar_planejamento_turno(
             'papel_cooperativo': 'enriquecimento_auxiliar',
             'nao_substitui_resposta_principal': True,
             'declaracao_pessoal_explicita': bool(aprendizados_explicitos),
+            'pesquisa_didatica': bool(consulta_didatica),
+            'foco_didatico': foco_didatico if consulta_didatica else '',
         })
         ns['print'](f"🔎 [FUNDAMENTAÇÃO] tema={tema_factual!r} | confiavel={fundamentacao_factual.get('confiavel')} | fonte={fundamentacao_factual.get('fonte') or '-'} | confianca={float(fundamentacao_factual.get('confianca') or 0.0):.2f}")
     mente_antes_turno['fundamentacao_factual_turno'] = fundamentacao_factual
@@ -1182,6 +1280,35 @@ def _iniciar_planejamento_turno(
         texto_original=texto,
         texto_operacional_efetivo=texto_efetivo,
         revisao_intra_turno=revisao_intra_turno,
+    )
+    preferencia_humor = extrair_preferencia_humor(
+        texto,
+        turno_id=str(plano.get('id') or turno.get('id') or time.time_ns()),
+        agora=ns['time'].time(),
+    )
+    if preferencia_humor:
+        turno['preferencia_humor'] = dict(preferencia_humor)
+        plano['preferencia_humor'] = dict(preferencia_humor)
+    contexto_humor = 'jogo' if turno.get('modo_jogo_ativo') else 'conversa'
+    preferencias_humor = {
+        str(chave): dict(valor)
+        for chave, valor in dict(
+            mente_antes_turno.get('preferencias_humor_contextuais') or {}
+        ).items()
+        if isinstance(valor, Mapping) and preferencia_humor_ativa(
+            valor, contexto=str(chave),
+        )
+    }
+    if preferencia_humor:
+        preferencias_humor[preferencia_humor['contexto']] = dict(preferencia_humor)
+    if contexto_humor not in preferencias_humor:
+        carregar_humor = ns.get('_carregar_preferencia_humor_duravel')
+        if callable(carregar_humor):
+            aprendida = dict(carregar_humor(contexto_humor) or {})
+            if preferencia_humor_ativa(aprendida, contexto=contexto_humor):
+                preferencias_humor[aprendida['contexto']] = aprendida
+    preferencia_humor_atual = selecionar_preferencia_humor(
+        preferencias_humor, contexto=contexto_humor,
     )
     evento_emocional_causal = criar_evento_leitura_emocional_usuario(
         leitura_emocional_usuario,
@@ -1221,7 +1348,10 @@ def _iniciar_planejamento_turno(
     turno['contrato_fala'] = contrato_fala
     plano['contrato_fala'] = contrato_fala
     turno = finalizar_especialista_neural_turno(ns, texto_cognitivo, turno)
-    atualizacoes_turno = {'ultima_entrada': str(texto or '').strip()[:500], 'ultima_entrada_ts': ns['time'].time(), 'turno_atual': turno, 'plano_turno_atual': plano, 'contrato_fala_atual': contrato_fala, 'identidade_turno_atual': identidade_turno, 'identidade_turno_resumo': ns['_resumo_identidade_turno_mente'](identidade_turno), 'funcao_comunicativa_atual': funcao_comunicativa, 'retrato_turno_atual': retrato_turno, 'entidades_recentes': entidades_recentes, 'especialistas_turno_atual': especialistas, 'assunto_estruturado_atual': assunto_estruturado, 'registro_semantico': registro_semantico, 'fundamentacao_factual_turno': fundamentacao_factual, **limpeza_pergunta_turno}
+    atualizacoes_turno = {'ultima_entrada': str(texto or '').strip()[:500], 'ultima_entrada_ts': ns['time'].time(), 'turno_atual': turno, 'plano_turno_atual': plano, 'contrato_fala_atual': contrato_fala, 'identidade_turno_atual': identidade_turno, 'identidade_turno_resumo': ns['_resumo_identidade_turno_mente'](identidade_turno), 'funcao_comunicativa_atual': funcao_comunicativa, 'retrato_turno_atual': retrato_turno, 'entidades_recentes': entidades_recentes, 'especialistas_turno_atual': especialistas, 'assunto_estruturado_atual': assunto_estruturado, 'registro_semantico': registro_semantico, 'fundamentacao_factual_turno': fundamentacao_factual, 'auditoria_alegacoes_didaticas_sombra': {}, **campos_cenario_didatico, **limpeza_pergunta_turno}
+    atualizacoes_turno['preferencias_humor_contextuais'] = preferencias_humor
+    atualizacoes_turno['preferencia_humor_contextual'] = dict(preferencia_humor_atual)
+    atualizacoes_turno['modo_jogo_ativo'] = bool(turno.get('modo_jogo_ativo'))
     if evento_emocional_causal:
         atualizacoes_turno['eventos_emocionais_causais'] = publicar_evento_emocional_causal(
             mente_antes_turno.get('eventos_emocionais_causais'),
@@ -1245,6 +1375,16 @@ def _iniciar_planejamento_turno(
             except Exception as erro:
                 ns['print'](f"⚠️ [MEMÓRIA] não consegui persistir a correção: {erro}")
     ns['_estado_compartilhado_runtime'].atualizar_campos('mental', **atualizacoes_turno)
+    if preferencia_humor.get('duravel'):
+        registrar_preferencia = ns.get('_registrar_preferencia_humor')
+        if callable(registrar_preferencia):
+            try:
+                registrar_preferencia(preferencia_humor)
+            except Exception as erro:
+                ns['print'](
+                    '⚠️ [APRENDIZADO] não consegui persistir a preferência de humor: '
+                    f'{type(erro).__name__}'
+                )
     ns['print'](f"🧠 [PLANO:TURNO] modalidade={plano.get('modalidade')} | dominio={plano.get('dominio')} | execucao={plano.get('requer_execucao')} | coordenacao={plano.get('modo_coordenacao')} | contexto={plano.get('contexto_necessario')}")
     return turno
 
@@ -1271,6 +1411,17 @@ def registrar_leitura_semantica_principal(namespace_getter, texto: str, leitura:
         semantica,
         turno_id=str(plano.get('id') or turno.get('id') or time.time_ns()),
     )
+    evento_anterior = dict(plano.get('evento_emocional_causal') or {})
+    if (
+        evento
+        and evento_anterior.get('origem') == 'contingencia_lexical_usuario'
+        and evento_anterior.get('natureza_evidencia') == 'leitura_social'
+        and evento.get('natureza_evidencia') == 'inferencia'
+    ):
+        # Sentimento declarado pelo usuário prevalece sobre rótulo inferido
+        # da proposta da LLM. A leitura principal continua observável.
+        semantica['evento_emocional_suprimido'] = 'evidencia_direta_prevalece'
+        evento = {}
     campos_semanticos = {
         'turno_atual': turno,
         'leitura_semantica_turno': semantica,
@@ -1415,7 +1566,9 @@ def verificar_fala_do_turno(namespace_getter, fala: str, *, origem: str='convers
     }
     verificacao = ns['_verificar_fala_turno_mente'](fala, **argumentos)
     problemas_iniciais = set(verificacao.get('problemas') or [])
-    titulos_candidatos = extrair_titulos_citados(fala)
+    titulos_candidatos = extrair_titulos_citados(
+        fala, texto_usuario=str(plano_verificado.get('texto_usuario') or ''),
+    )
     pesquisa_runtime = ns.get('_pesquisa_contextual_runtime')
     montar_fundamentacao = ns.get('_montar_fundamentacao_mente')
     if (
@@ -1485,6 +1638,44 @@ def verificar_fala_do_turno(namespace_getter, fala: str, *, origem: str='convers
             chave = f'problema:{problema}'
             metricas[chave] = int(metricas.get(chave) or 0) + 1
     ns['_estado_compartilhado_runtime'].atualizar_campos('mental', plano_turno_atual=plano, avaliacoes_turno=avaliacoes[-50:], metricas_verificador=metricas)
+    estrategia = str(dict(
+        dict(plano_verificado.get('contrato_fala') or {}).get('roteiro_concreto') or {}
+    ).get('estrategia') or '')
+    if estrategia in {'explicacao_didatica', 'reensino_didatico'} and not plano.get('comandos'):
+        try:
+            estado_runtime = ns['_estado_compartilhado_runtime']
+            mensagens = list(estado_runtime.memoria_conversa.get('messages', []) or [])
+            fontes = fontes_usuario_da_conversa(
+                str(plano_verificado.get('texto_usuario') or ''), mensagens,
+            )
+            fala_candidata = (
+                str(verificacao.get('fala') or fala)
+                if verificacao.get('aceita', True)
+                else str(verificacao.get('fala_contingencia') or '')
+            )
+            auditoria = auditar_fala_didatica_sombra(
+                fala_candidata, fontes=fontes, plano_id=plano.get('id'),
+            )
+            auditoria['verificacao_aceita'] = bool(verificacao.get('aceita', True))
+            estado_runtime.atualizar_campos(
+                'mental', auditoria_alegacoes_didaticas_sombra=auditoria,
+            )
+            if os.environ.get('LAYLAY_AUDITORIA_ENSINO_SOMBRA_DEBUG') == '1':
+                segmentos = list(auditoria['segmentos'])
+                ns['print'](
+                    '🔎 [ENSINO:SOMBRA] '
+                    f"plano_id={plano.get('id')} "
+                    f"segmentos={len(segmentos)} "
+                    f"sem_ancora_literal={sum(not item['fontes_candidatas'] for item in segmentos)} "
+                    f"comparacoes={sum(bool(item['comparacao_aritmetica_confirmada']) for item in segmentos)} "
+                    'compor=False efeito=False'
+                )
+        except Exception as erro:
+            # A observação não altera a fala nem a autoridade do verificador.
+            ns['print'](
+                '⚠️ [ENSINO:SOMBRA] auditoria indisponível | '
+                f'tipo={type(erro).__name__}'
+            )
     referencia_musical = extrair_referencia_musical_verificada(str(verificacao.get('fala') or ''), plano)
     if referencia_musical:
         agora = ns['time'].time()

@@ -9,6 +9,7 @@ from typing import Any, Callable, Mapping
 
 from mente_laylay.cognicao.estado_tecnico_llm import eh_estado_tecnico_llm
 from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
+from mente_laylay.emocoes.estado_emocional import retrato_emocional_expressavel
 from mente_laylay.personalidade.contingencia_natural import fala_contingencia_natural
 
 
@@ -236,7 +237,18 @@ class OrquestradorFalaRuntime:
         ns = self._ns()
         estado = ns["_estado_compartilhado_runtime"]
         mental = dict(estado.mental)
-        chave = self._chave_confirmacao_operacional(resultado, mental)
+        # Um único retrato do receipt alimenta validação e deduplicação.
+        # Falha de leitura não pode virar licença para a fala original nem
+        # reservar uma confirmação usando atributos de um objeto corrompido.
+        dados_resultado: dict[str, Any] = {}
+        try:
+            como_dict = getattr(resultado, "como_dict", None)
+            bruto = como_dict() if callable(como_dict) else resultado
+            if isinstance(bruto, Mapping):
+                dados_resultado = dict(bruto)
+        except Exception:
+            dados_resultado = {}
+        chave = self._chave_confirmacao_operacional(dados_resultado, mental)
         with self._lock_confirmacoes:
             self._metricas_confirmacoes["tentativas"] += 1
             if chave is not None and chave in self._confirmacoes_operacionais:
@@ -252,14 +264,43 @@ class OrquestradorFalaRuntime:
                 self._podar_confirmacoes_operacionais()
 
         try:
-            contexto_resultado = getattr(resultado, "contexto", {})
+            contexto_resultado = dados_resultado.get("contexto", {})
             avaliacao_evento = (
                 dict(contexto_resultado.get("avaliacao_evento") or {})
                 if isinstance(contexto_resultado, Mapping)
                 else {}
             )
+
+            # Última fronteira factual antes do TTS: mesmo que um executor
+            # antigo ou um bug monte uma frase otimista demais, o receipt
+            # recebido aqui decide o que pode ser afirmado. Resultados
+            # confirmados atravessam sem alteração.
+            texto_seguro = str(texto or "").strip()
+            if dados_resultado:
+                guardiao_resultado = validar_alegacoes_da_fala(
+                    texto_seguro,
+                    plano={
+                        "requer_execucao": True,
+                        "comandos": [dados_resultado],
+                    },
+                    origem="canal_voz",
+                )
+                texto_seguro = str(
+                    guardiao_resultado.get("fala") or texto_seguro
+                ).strip()
+                if guardiao_resultado.get("problemas"):
+                    ns["print"](
+                        "🛡️ [GUARDIÃO:RESULTADO] "
+                        f"problemas={guardiao_resultado.get('problemas') or []}"
+                    )
+            else:
+                texto_seguro = "Não consegui validar o resultado dessa ação com segurança."
+                ns["print"](
+                    "🛡️ [GUARDIÃO:RESULTADO] problemas=['recibo_indisponivel_ou_invalido']"
+                )
+
             aceita = self.falar(
-                texto,
+                texto_seguro,
                 emocao,
                 nivel,
                 _avaliacao_evento=avaliacao_evento,
@@ -374,8 +415,17 @@ class OrquestradorFalaRuntime:
             proativa=_proativa, preservar_texto=True,
         )
         fala = str(direcao.get("fala") or fala)
-        emocao = str(direcao.get("emocao") or emocao or "calma")
-        nivel = int(direcao.get("nivel") or nivel or 1)
+        # O diretor sugere estilo, mas só o episódio da mente compartilhada
+        # possui autoridade para emoção e intensidade publicadas em voz/texto.
+        emocao, nivel = retrato_emocional_expressavel(
+            getattr(estado, "conversacional", {}),
+        )
+        direcao = dict(direcao)
+        emocao_proposta = str(direcao.get("emocao") or "").strip().casefold()
+        if str(direcao.get("tom") or "").strip().casefold() == emocao_proposta:
+            direcao["tom"] = emocao
+        direcao["emocao"] = emocao
+        direcao["nivel"] = nivel
         turno_id = str(
             dict(mental_antes.get("turno_atual") or {}).get("id")
             or plano_antes.get("id")
@@ -497,11 +547,25 @@ class OrquestradorFalaRuntime:
         ns = self._ns()
         conclusao = ns["_threading"].Event()
         resultado = {"entregue": False, "motivo": "sem_retorno"}
+        entrega_lock = RLock()
+        espera = {"encerrada": False, "concluida": False}
 
         def ao_concluir(entregue, motivo):
-            resultado["entregue"] = bool(entregue)
-            resultado["motivo"] = str(motivo or "")
-            conclusao.set()
+            with entrega_lock:
+                if espera["concluida"]:
+                    return
+                espera["concluida"] = True
+                resultado["entregue"] = bool(entregue)
+                resultado["motivo"] = str(motivo or "")
+                tardia = espera["encerrada"]
+                conclusao.set()
+            if tardia:
+                if entregue:
+                    ns["print"](f"✅ [FALA INICIAL] {tipo} pendente foi entregue.")
+                    if callable(ao_entrega_adiada):
+                        ao_entrega_adiada()
+                else:
+                    ns["print"](f"⚠️ [FALA INICIAL] entrega pendente de {tipo} falhou: {motivo}")
 
         agendada = ns["_agendar_fala_proativa"](
             tipo, texto, emocao, nivel, ao_concluir=ao_concluir, forcar_inicio=True,
@@ -509,8 +573,12 @@ class OrquestradorFalaRuntime:
         if not agendada:
             return {"entregue": False, "pendente": False} if detalhar else False
         if not conclusao.wait(45.0):
-            ns["print"](f"⚠️ [FALA INICIAL] entrega de {tipo} não foi confirmada em 45s")
-            return {"entregue": False, "pendente": False} if detalhar else False
+            with entrega_lock:
+                pendente = not espera["concluida"]
+                espera["encerrada"] = pendente
+            if pendente:
+                ns["print"](f"🧠 [FALA INICIAL] {tipo} continua pendente após 45s; aguardando recibo de entrega.")
+                return {"entregue": False, "pendente": True} if detalhar else False
         if not resultado["entregue"]:
             ns["print"](f"⚠️ [FALA INICIAL] {tipo} não entregue: {resultado['motivo']}")
             pendente = False

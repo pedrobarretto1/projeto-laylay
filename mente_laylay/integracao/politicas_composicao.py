@@ -6,6 +6,7 @@ import re
 import time
 from typing import Any, Callable, Mapping, Sequence
 
+from mente_laylay.emocoes.estado_emocional import retrato_emocional_expressavel
 
 def construir_estado_visual(
     *,
@@ -48,9 +49,13 @@ def construir_estado_visual(
         atividade = "executing"
     elif idade_plano <= 8.0 and fase in {"planejado", "resposta_planejada", "fala_verificada"}:
         atividade = "thinking"
-    nivel = int(conversa_get("emotion_level", 1) or 1)
+    emocao, nivel = retrato_emocional_expressavel({
+        "current_emotion": conversa_get("current_emotion", "calma"),
+        "emotion_level": conversa_get("emotion_level", 1),
+        "episodio_emocional": conversa_get("episodio_emocional", {}),
+    }, agora=agora)
     return {
-        "emotion": conversa_get("current_emotion", "calma"),
+        "emotion": emocao,
         "level": nivel,
         "speaking": falando,
         "activity": atividade,

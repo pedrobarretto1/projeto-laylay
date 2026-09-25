@@ -1,0 +1,65 @@
+{
+  "versao": 1,
+  "casos": [
+    {
+      "id": "PINTURA_E", "dominio": "pintura", "escopo": "sonda:pintura_e",
+      "fonte": "Se a parede estiver limpa e a tinta estiver seca, a segunda demão pode começar.",
+      "referentes": [
+        {"identificador": "parede", "tipo": "superficie", "grandeza": "limpeza", "citacao": "parede"},
+        {"identificador": "tinta", "tipo": "material", "grandeza": "secagem", "citacao": "tinta"},
+        {"identificador": "demao", "tipo": "etapa", "grandeza": "inicio", "citacao": "segunda demão"}
+      ],
+      "efeito": {"referente_id": "demao", "atributo": "inicio", "valor": "começar"}
+    },
+    {
+      "id": "LOGIN_ONLY", "dominio": "programacao", "escopo": "sonda:login_only",
+      "fonte": "O acesso é liberado somente quando o código coincide e a conta está ativa.",
+      "referentes": [
+        {"identificador": "acesso", "tipo": "permissao", "grandeza": "liberacao", "citacao": "acesso"},
+        {"identificador": "codigo", "tipo": "credencial", "grandeza": "coincidencia", "citacao": "código"},
+        {"identificador": "conta", "tipo": "registro", "grandeza": "atividade", "citacao": "conta"}
+      ],
+      "efeito": {"referente_id": "acesso", "atributo": "estado", "valor": "liberado"}
+    },
+    {
+      "id": "ALARME_OR", "dominio": "automacao_hipotetica", "escopo": "sonda:alarme_or",
+      "fonte": "Se a porta abrir ou a janela abrir, o alarme toca.",
+      "referentes": [
+        {"identificador": "porta", "tipo": "abertura", "grandeza": "estado", "citacao": "porta"},
+        {"identificador": "janela", "tipo": "abertura", "grandeza": "estado", "citacao": "janela"},
+        {"identificador": "alarme", "tipo": "atuador", "grandeza": "estado", "citacao": "alarme"}
+      ],
+      "efeito": {"referente_id": "alarme", "atributo": "estado", "valor": "toca"}
+    },
+    {
+      "id": "LUZ_IFF", "dominio": "logica_de_programa", "escopo": "sonda:luz_iff",
+      "fonte": "A luz acende se e somente se o sensor detecta movimento.",
+      "referentes": [
+        {"identificador": "luz", "tipo": "atuador", "grandeza": "estado", "citacao": "luz"},
+        {"identificador": "sensor", "tipo": "sensor", "grandeza": "deteccao", "citacao": "sensor"}
+      ],
+      "efeito": {"referente_id": "luz", "atributo": "estado", "valor": "acende"}
+    },
+    {
+      "id": "SENSOR_SOLO", "dominio": "irrigacao_hipotetica", "escopo": "sonda:sensor_solo",
+      "fonte": "Há um sensor de umidade do solo e um sensor de umidade do ar. Se a umidade do solo ficar abaixo de 25%, a irrigação inicia.",
+      "referentes": [
+        {"identificador": "solo", "tipo": "sensor", "grandeza": "umidade do solo", "citacao": "sensor de umidade do solo"},
+        {"identificador": "ar", "tipo": "sensor", "grandeza": "umidade do ar", "citacao": "sensor de umidade do ar"},
+        {"identificador": "irrigacao", "tipo": "atuador", "grandeza": "estado", "citacao": "irrigação"}
+      ],
+      "efeito": {"referente_id": "irrigacao", "atributo": "estado", "valor": "inicia"}
+    },
+    {
+      "id": "ALERTA_MISTO", "dominio": "logica_composta", "escopo": "sonda:alerta_misto",
+      "fonte": "Se a porta abrir e a janela abrir, ou se o botão de emergência for pressionado, o alarme toca.",
+      "referentes": [
+        {"identificador": "porta", "tipo": "abertura", "grandeza": "estado", "citacao": "porta"},
+        {"identificador": "janela", "tipo": "abertura", "grandeza": "estado", "citacao": "janela"},
+        {"identificador": "botao", "tipo": "controle", "grandeza": "estado", "citacao": "botão de emergência"},
+        {"identificador": "alarme", "tipo": "atuador", "grandeza": "estado", "citacao": "alarme"}
+      ],
+      "efeito": {"referente_id": "alarme", "atributo": "estado", "valor": "toca"}
+    }
+  ]
+}

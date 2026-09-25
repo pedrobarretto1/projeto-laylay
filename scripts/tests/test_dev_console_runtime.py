@@ -67,6 +67,55 @@ def test_espelho_preserva_terminal_e_reconstitui_linhas_parciais() -> None:
     ]
 
 
+@pytest.mark.parametrize("prompt", ["💬 Você:", ">", "> 💬 Você:", "\x1b[36m💬 Você:\x1b[0m"])
+def test_prompt_sem_entrada_nao_e_evento_dev(prompt):
+    runtime = DevConsoleRuntime()
+    assert runtime.registrar_linha(prompt, origem="stdout") == {}
+    assert runtime.registrar_log_oculto(prompt, origem="stdout") == {}
+    assert runtime.snapshot()["sequence"] == 0
+    assert runtime.snapshot()["events"] == []
+    # Não descartar conteúdo real nem erros por semelhança com um prompt.
+    for texto, origem in [
+        ("💬 Você: 'pode ligar a luz' | origem=desktop", "stdout"),
+        ("> pode ligar a luz", "stdout"),
+        ("Falha ao exibir 💬 Você:", "stdout"),
+        (prompt, "stderr"),
+    ]:
+        assert runtime.registrar_linha(texto, origem=origem)
+
+
+def test_leitor_real_mantem_prompt_no_console_sem_publicar_fala_vazia(monkeypatch):
+    from functools import partial
+    from types import SimpleNamespace
+    from mente_laylay.personalidade.terminal_laylay import (
+        escutar_texto_terminal, ler_linha_terminal_interrompivel,
+    )
+    dev = DevConsoleRuntime()
+    console = io.StringIO()
+    espelho = EspelhoStreamDev(console, dev, origem="stdout")
+    continuar = [True]
+    recebidas = []
+    entrada = SimpleNamespace(isatty=lambda: True)
+    monkeypatch.setattr(sys, "stdin", entrada)
+    def ler(prompt, **kwargs):
+        try:
+            return ler_linha_terminal_interrompivel(
+                prompt, **kwargs,
+                msvcrt_mod=SimpleNamespace(kbhit=lambda: True, getwch=lambda: "\r"),
+            )
+        finally:
+            continuar[0] = False
+    escutar_texto_terminal(
+        estado_ativo=lambda: True, processar_texto=recebidas.append,
+        stdin=entrada,
+        raw_print=partial(print, file=espelho),
+        deve_continuar=lambda: continuar[0], ler_linha_fn=ler,
+    )
+    assert console.getvalue() == "\n💬 Você:\n> \n"
+    assert recebidas == []
+    assert dev.snapshot()["events"] == []
+
+
 def test_instalacao_real_preserva_stdout_stderr_e_seus_canais(monkeypatch) -> None:
     stdout_original = io.StringIO()
     stderr_original = io.StringIO()
@@ -496,6 +545,8 @@ def test_consultas_dev_sao_allowlist_e_nao_terminal_shell() -> None:
 
 def test_ponte_entrega_buffer_live_e_consulta_dev() -> None:
     dev = DevConsoleRuntime(clock=lambda: 10.0)
+    espelho = EspelhoStreamDev(io.StringIO(), dev, origem="stdout")
+    espelho.write("💬 Você:\n> \n")
     dev.registrar_linha("[SYSTEM] evento anterior")
     dev.configurar_estado_getter(lambda: {})
     ponte = DesktopBridgeRuntime(
@@ -518,7 +569,16 @@ def test_ponte_entrega_buffer_live_e_consulta_dev() -> None:
             assert snapshot["dev_console"]["events"][0]["message"] == (
                 "[SYSTEM] evento anterior"
             )
+            assert len(snapshot["dev_console"]["events"]) == 1
 
+            espelho.write(
+                "💬 Você:\n> \n"
+                "💬 Você: 'pode ligar a luz' | origem=desktop\n"
+            )
+            entrada = _ate_tipo(cliente, "dev_events")
+            assert [e["message"] for e in entrada["events"]] == [
+                "💬 Você: 'pode ligar a luz' | origem=desktop"
+            ]
             dev.registrar_linha("[ROUTER] evento ao vivo")
             lote = _ate_tipo(cliente, "dev_events")
             assert lote["events"][-1]["category"] == "ROUTER"

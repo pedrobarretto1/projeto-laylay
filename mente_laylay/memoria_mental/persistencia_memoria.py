@@ -255,11 +255,8 @@ def registrar_autocorrecao_virtual(
     except Exception:
         pass
 
-    if callable(ajustar_humor_cb):
-        try:
-            ajustar_humor_cb(+1, "cookie virtual por autocorreção")
-        except Exception:
-            pass
+    # O cookie registra a autocorreção; esta etapa ainda não possui receipt da
+    # fala publicada. O humor só muda pelo evento causal confirmado do turno.
 
     if callable(registrar_autoaprimoramento_cb):
         try:

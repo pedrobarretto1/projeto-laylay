@@ -52,6 +52,10 @@ from mente_laylay.autonomia.classificacao_habilidade import (
     extrair_alvo_mental,
 )
 from mente_laylay.percepcao.modo_jogo import pedido_foco_explicito
+from mente_laylay.memoria_mental.resultado_acao import (
+    interpretar_tratamento_operacional,
+    marcar_tratamento_operacional,
+)
 
 
 def _get(ctx: Dict[str, Any], nome: str, default=None):
@@ -59,23 +63,9 @@ def _get(ctx: Dict[str, Any], nome: str, default=None):
 
 
 def bloquear_por_emocao(intent: str, texto_original: str, ctx: Dict[str, Any]) -> bool:
-    current_emotion = _get(ctx, "current_emotion", "")
-    emotion_level = _get(ctx, "emotion_level", 1)
-    falar = _get(ctx, "falar_com_lipsync")
-    normalizar = _get(ctx, "_normalizar_texto_com_apelidos")
-    try:
-        nivel = int(emotion_level or 1)
-    except Exception:
-        nivel = 1
-    if str(current_emotion or "").strip().lower() != "brava" or nivel < 3:
-        return False
-    intent = str(intent or "").upper().strip()
-    if intent in {"MUSIC_SEARCH", "PLAYLIST_PLAY"} and callable(falar):
-        fala = "Agora não. Tô brava e não tô a fim de mexer nisso."
-        if callable(normalizar) and "por favor" in normalizar(texto_original):
-            fala = "Nem assim. Depois eu vejo isso."
-        falar(fala, "brava", max(3, nivel))
-        return True
+    # Estado expressivo não é uma autorização para vetar uma ação. Uma recusa
+    # por redundância exige recibo atual do alvo e decisão do owner da ação;
+    # emoção categórica e histórico anterior não provam esse estado agora.
     return False
 
 
@@ -115,11 +105,39 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
     adaptador_resultado = AdaptadorResultadoOperacional(
         resultado, params, texto_original, destino_val, ctx
     )
+
+    def _finalizar_despacho_moderno(despacho) -> bool:
+        """Impede que executor moderno sem receipt seja rebaixado a bool legado."""
+        tratamento = interpretar_tratamento_operacional(
+            resultado,
+            despacho.retorno,
+        )
+        if tratamento.legado:
+            marcar_tratamento_operacional(
+                resultado,
+                tratado=True,
+                executou=None,
+                confirmado=None,
+                status="tratado_sem_receipt",
+                resultado_publicado=False,
+                retorno_legado=bool(despacho.retorno),
+            )
+        return bool(despacho.retorno)
+
     alvo_mental = extrair_alvo_mental(params)
     habilidade = classificar_habilidade_intent(intent)
     _reg(texto_original, "", intent, alvo_mental, destino_val, habilidade)
 
     if callable(bloqueio) and bloqueio(intent, texto_original, ctx):
+        marcar_tratamento_operacional(
+            resultado,
+            tratado=True,
+            executou=False,
+            confirmado=False,
+            status="nao_executado_por_politica",
+            resultado_publicado=False,
+            retorno_legado=True,
+        )
         return True
 
     despacho_janelas = _executar_intencao_janelas(
@@ -139,7 +157,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         texto_original=texto_original,
     )
     if despacho_janelas.tratado:
-        return despacho_janelas.retorno
+        return _finalizar_despacho_moderno(despacho_janelas)
 
     despacho_navegador = _executar_intencao_navegador(
         intent,
@@ -158,7 +176,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         ),
     )
     if despacho_navegador.tratado:
-        return despacho_navegador.retorno
+        return _finalizar_despacho_moderno(despacho_navegador)
 
     despacho_audio = _executar_intencao_audio(
         intent,
@@ -171,7 +189,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         ),
     )
     if despacho_audio.tratado:
-        return despacho_audio.retorno
+        return _finalizar_despacho_moderno(despacho_audio)
 
     despacho_agenda = _executar_intencao_agenda(
         intent,
@@ -184,7 +202,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         ),
     )
     if despacho_agenda.tratado:
-        return despacho_agenda.retorno
+        return _finalizar_despacho_moderno(despacho_agenda)
 
     despacho_informacoes = _executar_intencao_informacoes(
         intent,
@@ -198,7 +216,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         ),
     )
     if despacho_informacoes.tratado:
-        return despacho_informacoes.retorno
+        return _finalizar_despacho_moderno(despacho_informacoes)
 
     despacho_sistema = _executar_intencao_sistema(
         intent,
@@ -211,7 +229,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         ),
     )
     if despacho_sistema.tratado:
-        return despacho_sistema.retorno
+        return _finalizar_despacho_moderno(despacho_sistema)
 
     despacho_musical = _executar_intencao_musical(
         intent,
@@ -256,7 +274,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         ),
     )
     if despacho_cancelamentos.tratado:
-        return despacho_cancelamentos.retorno
+        return _finalizar_despacho_moderno(despacho_cancelamentos)
 
     despacho_integracoes = _executar_intencao_integracoes(
         intent,
@@ -275,7 +293,9 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         ),
     )
     if despacho_integracoes.tratado:
-        return despacho_integracoes.retorno
+        if intent in {"MEDIA_CONTROL", "MUSIC_STATUS"}:
+            return despacho_integracoes.retorno
+        return _finalizar_despacho_moderno(despacho_integracoes)
 
     if intent == "RESUMIR_PAGINA":
         # O resumo assíncrono é iniciado pelo fluxo prioritário, que possui o
@@ -301,4 +321,13 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
             "Não entendi direito. Repete pra mim com outras palavras.",
             "Quase peguei o fio, mas ele escapou. Me fala de novo sem pressa.",
         ]), "calma", 1)
+    marcar_tratamento_operacional(
+        resultado,
+        tratado=True,
+        executou=False,
+        confirmado=False,
+        status="intent_nao_reconhecida",
+        resultado_publicado=False,
+        retorno_legado=True,
+    )
     return True

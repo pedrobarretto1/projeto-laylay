@@ -29,6 +29,9 @@ def main() -> None:
         "roteiro_recomendacao_contextual.py",
         "roteiro_site_por_assunto.py",
         "roteiro_reparo_parcial_conversa.py",
+        "roteiro_ensino_divisao.py",
+        "roteiro_ensino_multidominio.py",
+        "roteiro_ensino_cenario_sensor_sombra.py",
         "roteiro_confirmacoes_recusas.py",
         "roteiro_recusas_autoria.py",
         "roteiro_explicacao_capacidades.py",
@@ -84,6 +87,9 @@ def main() -> None:
         "LAYLAY_MODO_JOGO_AUTO": "0", "LAYLAY_LOG_VERBOSE": "1",
     }.items():
         os.environ[chave] = valor
+    if roteiro == "roteiro_ensino_cenario_sensor_sombra.py":
+        os.environ["LAYLAY_CENARIO_DIDATICO_DEBUG"] = "1"
+        os.environ["LAYLAY_AUDITORIA_ENSINO_SOMBRA_DEBUG"] = "1"
     original = requests.post
     lock = threading.Lock()
     replay_usado = False

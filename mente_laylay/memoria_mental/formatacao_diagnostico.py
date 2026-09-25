@@ -22,6 +22,7 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
     saude_estrutural = dict(diagnostico.get("saude_estrutural") or saude)
     saude_operacional = dict(diagnostico.get("saude_operacional") or {})
     interacao = dict(diagnostico.get("interacao") or {})
+    estado_emocional_causal = dict(diagnostico.get("estado_emocional_causal") or {})
     turno = dict(diagnostico.get("turno") or {})
     contrato_fala = dict(diagnostico.get("contrato_fala") or {})
     verificador_fala = dict(diagnostico.get("verificador_fala") or {})
@@ -94,6 +95,17 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
         (
             f"  interação: emoção={interacao.get('emocao')} nível={interacao.get('nivel')} "
             f"fala_reservada={interacao.get('fala_reservada')} áudio={interacao.get('audio_reproduzindo')}"
+        ),
+        (
+            "  episódio emocional: "
+            f"causa={_codigo_seguro(estado_emocional_causal.get('causa'), 48)} "
+            f"responsabilidade={_codigo_seguro(estado_emocional_causal.get('responsabilidade'), 16)} "
+            f"confiança={round(float(estado_emocional_causal.get('confianca') or 0.0) * 100):.0f}% "
+            f"válido={bool(estado_emocional_causal.get('validade'))} "
+            f"expressão={bool(estado_emocional_causal.get('expressao'))} "
+            f"transição={_codigo_seguro(dict(estado_emocional_causal.get('transicao') or {}).get('de'), 16)}"
+            f"→{_codigo_seguro(dict(estado_emocional_causal.get('transicao') or {}).get('para'), 16)} "
+            "autoriza_execução=False"
         ),
         (
             f"  turno: fase={turno.get('fase')} modalidade={turno.get('modalidade') or '-'} "
@@ -237,6 +249,25 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
                 f"ativas={int(execucao_turno.get('ativas') or 0)} "
                 f"timeouts={int(execucao_turno.get('timeouts') or 0)} "
                 f"falhas={int(execucao_turno.get('falhas') or 0)}"
+            )
+        contrato_execucao = dict(
+            linguagem_natural.get("contrato_execucao") or {}
+        )
+        if contrato_execucao:
+            linhas.append(
+                "  contrato de execução: "
+                f"observados={int(contrato_execucao.get('observados') or 0)} "
+                f"legados={int(contrato_execucao.get('legados') or 0)} "
+                "sem_receipt="
+                f"{int(contrato_execucao.get('tratados_sem_receipt') or 0)} "
+                f"confirmados={int(contrato_execucao.get('confirmados') or 0)} "
+                "não_confirmados="
+                f"{int(contrato_execucao.get('nao_confirmados') or 0)} "
+                f"incertos={int(contrato_execucao.get('incertos') or 0)} "
+                "último_legado="
+                f"{contrato_execucao.get('ultima_intent_legada') or '-'} "
+                "último_sem_receipt="
+                f"{contrato_execucao.get('ultima_intent_sem_receipt') or '-'}"
             )
     if fala_operacional:
         linhas.append(
@@ -657,4 +688,3 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
         ausentes = ",".join(problema.get("ausentes") or []) or "sem detalhe"
         linhas.append(f"  atenção: {problema.get('modulo')}={problema.get('status')} ({ausentes})")
     return "\n".join(linhas)
-

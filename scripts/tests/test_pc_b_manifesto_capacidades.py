@@ -162,6 +162,55 @@ def test_cerebro_envia_somente_para_cliente_compativel_e_aguarda_final(
     assert len(chamadas) == 1
 
 
+def test_cerebro_receipt_detalhado_preserva_estado_observado(monkeypatch) -> None:
+    class _Cliente:
+        async def send(self, _texto):
+            return None
+
+    cliente_ws = _Cliente()
+    runtime = PCBRuntime(
+        clientes_getter=lambda: {cliente_ws},
+        loop_getter=lambda: object(),
+        clientes_compativeis_getter=lambda _acao: {cliente_ws},
+        log=lambda _texto: None,
+    )
+    monkeypatch.setattr(
+        pc_b_integracao.uuid,
+        "uuid4",
+        lambda: SimpleNamespace(hex="pedido-volume"),
+    )
+
+    def executar_coroutine(coroutine, _loop):
+        coroutine.close()
+        runtime.registrar_status({
+            "type": "pc_b_status",
+            "requestId": "pedido-volume",
+            "status": "success",
+            "final": True,
+            "executed": True,
+            "confirmed": True,
+            "volume": 35,
+        })
+        return SimpleNamespace(result=lambda timeout: None)
+
+    monkeypatch.setattr(
+        pc_b_integracao.asyncio,
+        "run_coroutine_threadsafe",
+        executar_coroutine,
+    )
+
+    receipt = runtime.enviar_detalhado(
+        {"action": "set_volume", "nivel": 35},
+        timeout_s=0.01,
+    )
+
+    assert receipt["sucesso_final"] is True
+    assert receipt["executed"] is True
+    assert receipt["confirmed"] is True
+    assert receipt["volume"] == 35
+    assert receipt["requestId"] == "pedido-volume"
+
+
 class _WebSocketSequencial:
     def __init__(self, primeira: dict, mensagens: list[dict]) -> None:
         self._primeira = json.dumps(primeira)

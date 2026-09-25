@@ -47,10 +47,6 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
     ultimo_resultado_getter = _get(ctx, "ultimo_resultado_chrome")
     modo_jogo_ativo = _get(ctx, "modo_jogo_ativo")
     jogo_ativo = bool(modo_jogo_ativo()) if callable(modo_jogo_ativo) else False
-    permitir_foco = bool(payload.get("permitir_foco"))
-    if jogo_ativo and not permitir_foco and action in {"open_tab", "open_url", "youtube_search", "youtube_play"}:
-        payload = {**payload, "background": True}
-        print(f"🎮 [MODO JOGO] {action} será executado em segundo plano, sem roubar o foco.")
 
     def _enviar_extensao(msg: Dict[str, Any]) -> bool:
         acao_msg = str(msg.get("action") or "")
@@ -103,6 +99,23 @@ def validar_e_enviar_comando(ctx: Dict[str, Any], action: str | None = None, pay
     if action not in allowed_actions and action not in ["click", "type", "press"]:
         print(f"❌ [Chrome] Ação não autorizada: {action}")
         return False
+
+    # A restrição acompanha a operação em qualquer contexto, não só em jogos.
+    # Ausência do campo preserva a navegação legada; False explícito não pode
+    # desaparecer ao traduzir o payload para o protocolo da extensão.
+    if action in {"open_tab", "open_url", "youtube_search", "youtube_play"}:
+        preservar_foco = (
+            payload.get("background") is True
+            or payload.get("permitir_foco") is False
+            or (jogo_ativo and not payload.get("permitir_foco"))
+        )
+        if preservar_foco:
+            payload = {**payload, "background": True}
+            if not (ws_loop and connected_extensions and callable(broadcast_command)):
+                # A abertura nativa não confirma preservação de aba/janela.
+                # Não contornar uma restrição explícita por fallback.
+                print("⚠️ [Chrome] Sem extensão, não consigo garantir a operação em segundo plano; nada foi aberto.")
+                return False
 
     if action in ["open_tab", "open_url"]:
         raw = payload.get("url") or payload.get("query") or ""

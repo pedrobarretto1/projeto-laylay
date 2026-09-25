@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 )
 
 from cliente.terminal_2.sistema_compacto import GraficoSistemaCompacto
+from cliente.terminal_2.theme import qss_dev_console
 from mente_laylay.integracao.eventos_dev import (
     CATEGORIAS_DEV,
     classificar_categoria_evento_dev,
@@ -207,6 +208,7 @@ class PaginaDesenvolvedor(QWidget):
         self.telemetria: dict[str, MetricaDevCompacta] = {}
 
         raiz = QHBoxLayout(self)
+        self.raiz_layout = raiz
         raiz.setContentsMargins(13, 10, 13, 12)
         raiz.setSpacing(12)
 
@@ -287,11 +289,11 @@ class PaginaDesenvolvedor(QWidget):
             self.botoes_nivel[nivel] = botao
             linha.addWidget(botao)
 
-        insane = QPushButton("INSANE")
-        insane.setObjectName("devLevelButton")
-        insane.setEnabled(False)
-        insane.setToolTip("Em manutenção")
-        linha.addWidget(insane)
+        self.botao_insane = QPushButton("INSANE")
+        self.botao_insane.setObjectName("devLevelButton")
+        self.botao_insane.setEnabled(False)
+        self.botao_insane.setToolTip("Em manutenção")
+        linha.addWidget(self.botao_insane)
 
         self.botao_live = QPushButton("●  LIVE")
         self.botao_live.setObjectName("devStateButton")
@@ -635,110 +637,42 @@ class PaginaDesenvolvedor(QWidget):
 
     def resizeEvent(self, event) -> None:  # noqa: N802 - contrato Qt
         super().resizeEvent(event)
-        self.rail.setVisible(self.width() >= 1060)
+        largura = self.width()
+
+        mostrar_rail = largura >= 1320
+        self.rail.setVisible(mostrar_rail)
+        if mostrar_rail:
+            largura_rail = max(250, min(286, int(largura * 0.17)))
+            self.rail.setMinimumWidth(largura_rail)
+            self.rail.setMaximumWidth(largura_rail)
+
+        if largura < 820:
+            categorias = {"ALL", "SYSTEM", "IA", "ERRORS"}
+        elif largura < 1120:
+            categorias = {"ALL", "SYSTEM", "IA", "ROUTER", "EVENTS", "ERRORS"}
+        else:
+            categorias = set(self.CATEGORIAS)
+        for nome, botao in self.botoes_categoria.items():
+            botao.setVisible(nome in categorias)
+
+        self.botoes_nivel["normal"].show()
+        self.botoes_nivel["debug"].setVisible(largura >= 760)
+        self.botoes_nivel["trace"].setVisible(largura >= 980)
+        self.botao_insane.setVisible(largura >= 1180)
+
+        self.telemetria["network"].setVisible(largura >= 760)
+        self.telemetria["eventos"].setVisible(largura >= 820)
+        self.telemetria["vram"].setVisible(largura >= 620)
+
+        margem_x = 7 if largura < 760 else 10 if largura < 1180 else 13
+        self.raiz_layout.setContentsMargins(
+            margem_x, 8 if largura < 760 else 10,
+            margem_x, 10 if largura < 760 else 12,
+        )
 
     @staticmethod
     def _estilo() -> str:
-        return """
-        QWidget#developerPage {
-            background: #0c1116;
-            color: #dce1e6;
-            font-family: "Segoe UI";
-        }
-        QFrame#devToolbar, QFrame#devTelemetryBar {
-            background: #10171d;
-            border: 1px solid #253039;
-            border-radius: 11px;
-        }
-        QLabel#devPromptMark { color: #ff5268; font: 700 16px "Cascadia Code"; }
-        QLabel#devTitle { color: #f4f6f8; font: 700 12px "Segoe UI"; }
-        QLabel#devObservedState { color: #7d8790; font: 600 9px "Segoe UI"; }
-        QLabel#devObservedState[connected="true"] { color: #5bd887; }
-        QLabel#devControlLabel { color: #64707a; font: 600 8px "Segoe UI"; }
-        QFrame#devVerticalSeparator { color: #38424a; max-width: 1px; }
-        QPushButton#devFilterButton, QPushButton#devLevelButton,
-        QPushButton#devStateButton {
-            min-height: 25px;
-            padding: 0 10px;
-            border: 1px solid #2b3740;
-            border-radius: 6px;
-            background: #111820;
-            color: #87919a;
-            font: 600 8px "Segoe UI";
-        }
-        QPushButton#devFilterButton:hover, QPushButton#devLevelButton:hover,
-        QPushButton#devStateButton:hover { border-color: #59636b; color: #e8ebee; }
-        QPushButton#devFilterButton:checked, QPushButton#devLevelButton:checked {
-            border-color: #b63c50;
-            color: #ff6177;
-            background: #28151b;
-        }
-        QPushButton#devStateButton:checked {
-            border-color: #394752;
-            color: #ff5b72;
-            background: #172029;
-        }
-        QPushButton#devLevelButton:disabled { color: #48515a; border-color: #202a32; }
-        QFrame#devConsoleFrame {
-            background: #020405;
-            border: 1px solid #354049;
-            border-radius: 10px;
-        }
-        QTextEdit#devConsole {
-            background: #020304;
-            color: #d7dbe0;
-            border: 0;
-            border-radius: 9px 9px 0 0;
-            padding: 12px 15px;
-            selection-background-color: #713443;
-            font: 10pt "Cascadia Code";
-        }
-        QFrame#devCommandBar {
-            background: #070b0e;
-            border: 0;
-            border-top: 1px solid #1d272e;
-            border-radius: 0 0 9px 9px;
-        }
-        QLabel#devCommandPrompt { color: #b8bec4; font: 10pt "Cascadia Code"; }
-        QLineEdit#devCommandInput {
-            color: #e3e7ea;
-            background: transparent;
-            border: 0;
-            padding: 3px;
-            font: 10pt "Cascadia Code";
-        }
-        QLineEdit#devCommandInput:focus { color: #ffffff; }
-        QFrame#devTelemetryCell {
-            background: transparent;
-            border: 0;
-            border-right: 1px solid #2b343c;
-            border-radius: 0;
-        }
-        QLabel#devTelemetryTitle { color: #919ba4; font: 600 8px "Segoe UI"; }
-        QLabel#devTelemetryValue { color: #d9dde1; font: 600 9px "Cascadia Code"; }
-        QLabel#devTelemetryValue[available="false"] { color: #69737c; }
-        QScrollArea#devRail { background: transparent; border: 0; }
-        QWidget#devRailContent { background: transparent; }
-        QFrame#devMaintenanceCard {
-            background: #14171c;
-            border: 1px solid #513039;
-            border-radius: 11px;
-        }
-        QLabel#devMaintenanceIcon { color: #ff6277; font: 700 18px "Segoe UI Symbol"; }
-        QLabel#devMaintenanceTitle { color: #eef0f2; font: 600 10px "Segoe UI"; }
-        QLabel#devMaintenanceDescription { color: #7f878e; font: 8px "Segoe UI"; }
-        QPushButton#devMaintenanceStatus:disabled {
-            min-height: 22px;
-            color: #c76775;
-            background: #26171c;
-            border: 1px solid #61313c;
-            border-radius: 5px;
-            font: 600 8px "Segoe UI";
-        }
-        QScrollBar:vertical { background: #090d10; width: 8px; margin: 0; }
-        QScrollBar::handle:vertical { background: #34404a; min-height: 28px; border-radius: 4px; }
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
-        """
+        return qss_dev_console()
 
 
 __all__ = ["EventoDesenvolvedor", "PaginaDesenvolvedor"]

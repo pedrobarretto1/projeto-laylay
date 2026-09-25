@@ -148,6 +148,24 @@ _ESTADO_USUARIO = re.compile(
     r"feliz|animad[oa]|tranquil[oa])\b",
     re.IGNORECASE,
 )
+_EMOCAO_PROPRIA_NA_FALA = re.compile(
+    r"\b(?:eu\s+)?(?:estou|t[oô]|fiquei)\s+"
+    r"(?:(?:muito|um\s+pouco|meio)\s+)?"
+    r"(?:feliz|triste|ansios[ao]|preocupad[ao]|irritad[ao]|brav[ao]|"
+    r"animad[ao]|cansad[ao])\b",
+    re.IGNORECASE,
+)
+_APARENCIA_USUARIO_AFIRMADA = re.compile(
+    r"\b(?:voc[eê]|tu|pedro)\s+(?:est[aá]|t[aá])\s+com\s+"
+    r"(?:(?:um|uma)\s+)?(?:olhar|cara|rosto|express[aã]o|gesto)\b",
+    re.IGNORECASE,
+)
+_APARENCIA_USUARIO_DECLARADA = re.compile(
+    r"\b(?:eu\s+)?(?:estou|t[oô])\s+com\s+(?:(?:um|uma)\s+)?"
+    r"(?:olhar|cara|rosto|express[aã]o|gesto)\b|"
+    r"\b(?:meu|minha)\s+(?:olhar|cara|rosto|express[aã]o|gesto)\b",
+    re.IGNORECASE,
+)
 _PRIMEIRA_PESSOA = re.compile(
     r"\b(?:eu\s+)?(?:t[oô]|estou|vou|fico)|\bpor\s+aqui\b|\baqui\b|"
     r"\btudo\s+bem\b|\bbem\s+por\s+aqui\b|\btranquil[ao]\b",
@@ -426,6 +444,34 @@ def _termos_ancora(texto: str) -> set[str]:
     }
 
 
+_MARCADORES_DISCURSIVOS_RELATO = {
+    "agora", "ainda", "assim", "enorme", "finalmente", "hoje", "muito",
+    "pouco", "tanto", "voce",
+}
+
+
+def _relato_informativo_sem_ancora(
+    usuario: str, resposta: str, contrato: Mapping[str, Any], roteiro: Mapping[str, Any],
+) -> bool:
+    """Detecta perda literal do assunto em uma reação a relato conversacional.
+
+    É uma prova limitada: falta de termos em comum pede reparo, mas presença
+    deles não atesta que a resposta compreendeu o relato.
+    """
+    if not (
+        contrato.get("funcao") == "informacao"
+        and set(contrato.get("atos") or ()) == {"conversa"}
+        and roteiro.get("estrategia") == "resposta_direta"
+        and roteiro.get("ancora_literal") == usuario
+        and "?" not in usuario
+    ):
+        return False
+    ancora = _termos_ancora(usuario) - _MARCADORES_DISCURSIVOS_RELATO
+    if len(ancora) < 2:
+        return False
+    return not bool(ancora & (_termos_ancora(resposta) - _MARCADORES_DISCURSIVOS_RELATO))
+
+
 def _indice_reconhecimento_estado(texto_usuario: str, resposta: str) -> int:
     estado = _ESTADO_USUARIO.search(texto_usuario)
     resposta_norm = _normalizar(resposta)
@@ -527,6 +573,20 @@ def validar_aderencia_contrato_fala(
 
     if resposta and _FALLBACK_GENERICO.search(resposta):
         problemas.append("resposta_generica_sem_conteudo")
+    if _relato_informativo_sem_ancora(usuario, resposta, contrato, roteiro):
+        problemas.append("relato_atual_sem_ancora")
+    resposta_autoral = _TRECHO_CITADO.sub(" ", resposta)
+    if (
+        "estado_pessoal" in atos
+        and _ESTADO_USUARIO.search(usuario)
+        and _EMOCAO_PROPRIA_NA_FALA.search(resposta_autoral)
+    ):
+        problemas.append("estado_pessoal_falante_invertido")
+    if (
+        _APARENCIA_USUARIO_AFIRMADA.search(resposta_autoral)
+        and not _APARENCIA_USUARIO_DECLARADA.search(usuario)
+    ):
+        problemas.append("aparencia_do_usuario_sem_evidencia")
 
     if (
         estrategia == "resposta_metalinguistica"
@@ -675,6 +735,18 @@ def validar_aderencia_contrato_fala(
             posicao = _POSICAO.search(resposta)
             if posicao and indice_estado >= 0 and indice_estado > posicao.start():
                 problemas.append("ordem_multiacto_invertida")
+        if estrategia == "acolhimento_literal":
+            causa_relato = re.search(r"\bporque\s+([^.!?]+)", usuario, re.IGNORECASE)
+            if causa_relato:
+                termos_causa = (
+                    _termos_ancora(causa_relato.group(1))
+                    - _MARCADORES_DISCURSIVOS_RELATO
+                    - {"certo", "deu", "fiquei", "senti"}
+                )
+                if len(termos_causa) >= 2 and not termos_causa.intersection(
+                    _termos_ancora(resposta)
+                ):
+                    problemas.append("estado_pessoal_causa_omitida")
 
     if estrategia == "reciprocidade_social":
         if not _PRIMEIRA_PESSOA.search(primeira):
@@ -746,9 +818,13 @@ def validar_aderencia_contrato_fala(
         "esclarecimento_sem_ancora_anterior",
         "esclarecimento_comecou_por_outra_metafora",
         "ato_estado_pessoal_nao_reconhecido",
+        "estado_pessoal_causa_omitida",
+        "estado_pessoal_falante_invertido",
+        "aparencia_do_usuario_sem_evidencia",
         "estado_pessoal_nao_veio_na_primeira_frase",
         "bem_estar_nao_respondido_no_inicio",
         "resposta_generica_sem_conteudo",
+        "relato_atual_sem_ancora",
         "agradecimento_nao_reconhecido",
         "agradecimento_retomou_assunto_antigo",
         "agradecimento_abriu_nova_pergunta",

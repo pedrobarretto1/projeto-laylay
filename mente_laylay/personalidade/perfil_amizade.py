@@ -11,6 +11,7 @@ import re
 from dataclasses import asdict, dataclass
 from typing import Any, Mapping
 
+from mente_laylay.cognicao.preferencia_humor import selecionar_preferencia_humor
 from mente_laylay.cognicao.reacao_social_curta import classificar_provocacao_curta
 
 
@@ -103,6 +104,11 @@ POSTURAS = {
         "reconhecer a correção e reparar sem justificar o erro",
         "bloqueado", False, 0, 0, 2, "reparo",
     ),
+    "amiga_suave": PosturaAmizade(
+        "amiga_suave", "caloroso_e_direto",
+        "conversar no ritmo pedido sem deboche",
+        "bloqueado", True, 1, 0, 3, "preferencia_explicita",
+    ),
     "brincalhona": PosturaAmizade(
         "brincalhona", "solto_e_cumplice",
         "acompanhar a brincadeira sem abandonar o assunto real",
@@ -162,12 +168,6 @@ def selecionar_postura_amizade(
         or ""
     ).strip().casefold()
 
-    provocacao = classificar_provocacao_curta(texto)
-    if provocacao:
-        if provocacao.get("tom") == "limite_firme":
-            return POSTURAS["firme_debochada"]
-        return POSTURAS["brincalhona"]
-
     if funcao in {"desabafo", "inseguranca", "decepcao", "frustracao"} or re.search(
         r"\b(?:to|tô|estou)\s+(?:cansad[oa]|triste|mal|preocupad[oa]|ansios[oa])\b|"
         r"\bn[aã]o\s+aguento\b",
@@ -176,6 +176,21 @@ def selecionar_postura_amizade(
         return POSTURAS["acolhedora"]
     if funcao == "correcao" or re.match(r"^(?:n[aã]o,?\s+lay|eu quis dizer|na verdade)", texto):
         return POSTURAS["receptiva"]
+    contexto_humor = "jogo" if mente.get("modo_jogo_ativo") else "conversa"
+    preferencias = dict(mente.get("preferencias_humor_contextuais") or {})
+    preferencia = selecionar_preferencia_humor(
+        {**preferencias, "atual": mente.get("preferencia_humor_contextual")},
+        contexto=contexto_humor,
+    )
+    if preferencia.get("direcao") == "leve":
+        return POSTURAS["amiga_suave"]
+    provocacao = classificar_provocacao_curta(texto)
+    if provocacao:
+        if provocacao.get("tom") == "limite_firme":
+            return POSTURAS["firme_debochada"]
+        return POSTURAS["brincalhona"]
+    if preferencia.get("direcao") == "mais_humor":
+        return POSTURAS["brincalhona"]
     if funcao in {"brincadeira", "elogio", "conquista", "reacao_positiva"} or re.search(
         r"(?:\bkk+k*\b|\brsrs+\b|😂|🤣)", texto,
     ):

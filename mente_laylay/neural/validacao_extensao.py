@@ -25,12 +25,17 @@ def _rotulo_extensao(
     item: Mapping[str, Any],
     *,
     intent: str,
+    action: str,
     escopo: str,
 ) -> bool:
     intent_item = str(item.get("intent") or "NONE").strip().upper()
+    action_item = str(item.get("action") or "none").strip().casefold()
     escopo_item = str(item.get("extension_scope") or "").strip().casefold()
+    if intent_item == intent and action_item == "none":
+        raise ValueError("exemplo da intent alvo exige action explícita")
     return bool(
         intent_item == intent
+        and action_item == action
         and (not escopo or escopo_item == escopo)
     )
 
@@ -89,7 +94,12 @@ def validar_extensao_por_grupos(
     ):
         raise ValueError("limiares precisam ser não vazios e estar em [0.5, 1.0]")
     intent_alvo = str(intent or "").strip().upper()
+    action_alvo = str(action or "").strip().casefold()
     escopo_alvo = str(escopo or "").strip().casefold()
+    if not intent_alvo or intent_alvo == "NONE":
+        raise ValueError("validação exige intent operacional")
+    if not action_alvo or action_alvo == "none":
+        raise ValueError("validação exige action operacional")
     grupos = [str(item.get(agrupamento) or "").strip() for item in itens]
     if any(not grupo for grupo in grupos):
         raise ValueError(f"exemplo sem agrupamento {agrupamento}")
@@ -99,7 +109,12 @@ def validar_extensao_por_grupos(
         raise ValueError("n_splits incompatível com os grupos disponíveis")
 
     esperados = [
-        _rotulo_extensao(item, intent=intent_alvo, escopo=escopo_alvo)
+        _rotulo_extensao(
+            item,
+            intent=intent_alvo,
+            action=action_alvo,
+            escopo=escopo_alvo,
+        )
         for item in itens
     ]
     if len(set(esperados)) < 2:
@@ -137,7 +152,10 @@ def validar_extensao_por_grupos(
             if not isinstance(rotulos, Mapping) or not isinstance(rotulos.get(nome), bool):
                 raise ValueError(f"complemento {indice}: sem fator booleano {nome}")
         if fatores and all(rotulos[nome] for nome in fatores) != _rotulo_extensao(
-            item, intent=intent_alvo, escopo=escopo_alvo,
+            item,
+            intent=intent_alvo,
+            action=action_alvo,
+            escopo=escopo_alvo,
         ):
             raise ValueError(f"complemento {indice}: conjunção diverge do rótulo final")
     probabilidades: list[float | None] = [None] * len(itens)
@@ -169,7 +187,17 @@ def validar_extensao_por_grupos(
                 limiar=0.5, escopo=escopo_alvo, representacao=representacao,
                 versao=f"validacao-extensao-fold-{numero}",
             )
-        extensao = candidato.extensoes_intent[intent_alvo]
+        extensoes_alvo = [
+            extensao
+            for extensao in candidato.extensoes_intent.values()
+            if extensao.intent == intent_alvo
+            and extensao.action == action_alvo
+        ]
+        if len(extensoes_alvo) != 1:
+            raise RuntimeError(
+                "candidato não contém extensão intent/action única"
+            )
+        extensao = extensoes_alvo[0]
         for indice in indices_validacao:
             item = itens[int(indice)]
             probabilidade, evidencias = extensao.avaliar(
@@ -207,6 +235,7 @@ def validar_extensao_por_grupos(
     return {
         "versao": 1,
         "intent": intent_alvo,
+        "action": action_alvo,
         "escopo": escopo_alvo,
         "representacao": "fatorada" if fatores else str(representacao or "").strip().casefold(),
         "representacoes_fatores": fatores,

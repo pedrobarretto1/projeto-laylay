@@ -28,6 +28,9 @@ from mente_laylay.memoria_mental.identidade_usuario import (
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
+from mente_laylay.memoria_mental.resultado_acao import (
+    interpretar_tratamento_operacional,
+)
 from mente_laylay.cognicao.esclarecimento_operacional import (
     detectar_esclarecimento_operacional,
     detectar_esclarecimento_referencia_pessoal,
@@ -1220,10 +1223,16 @@ def executar_resultado_contextual(
     registrar_autoaprimoramento = _get(ctx, "_registrar_autoaprimoramento")
 
     print(f"⚡ [{log_rota}] {resultado}")
-    executou = bool(executar_intencao(resultado, texto_usuario)) if callable(executar_intencao) else False
-    if callable(registrar_resultado_execucao):
-        registrar_resultado_execucao(resultado, texto_usuario, executou, origem=origem_resultado)
-    if executou and callable(registrar_autoaprimoramento):
+    retorno = executar_intencao(resultado, texto_usuario) if callable(executar_intencao) else False
+    tratamento = interpretar_tratamento_operacional(resultado, retorno)
+    if tratamento.deve_publicar_fallback and callable(registrar_resultado_execucao):
+        registrar_resultado_execucao(
+            resultado,
+            texto_usuario,
+            tratamento.executou,
+            origem=origem_resultado,
+        )
+    if tratamento.sucesso_habilidade and callable(registrar_autoaprimoramento):
         registrar_autoaprimoramento(
             resultado,
             texto_usuario,
@@ -1248,10 +1257,16 @@ def executar_comando_local_rapido(ctx: Dict[str, Any], texto_usuario: str) -> Tu
     if not isinstance(comando_local, dict) or not str(comando_local.get("intent") or "").strip():
         return False, None
 
-    executou = bool(executar_intencao(comando_local, texto_usuario)) if callable(executar_intencao) else False
-    if callable(registrar_resultado_execucao):
-        registrar_resultado_execucao(comando_local, texto_usuario, executou, origem="comando_local_rapido")
-    if executou and callable(registrar_autoaprimoramento):
+    retorno = executar_intencao(comando_local, texto_usuario) if callable(executar_intencao) else False
+    tratamento = interpretar_tratamento_operacional(comando_local, retorno)
+    if tratamento.deve_publicar_fallback and callable(registrar_resultado_execucao):
+        registrar_resultado_execucao(
+            comando_local,
+            texto_usuario,
+            tratamento.executou,
+            origem="comando_local_rapido",
+        )
+    if tratamento.sucesso_habilidade and callable(registrar_autoaprimoramento):
         registrar_autoaprimoramento(
             comando_local,
             texto_usuario,

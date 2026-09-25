@@ -1,4 +1,4 @@
-"""Terminal Laylay 2.1 — cliente PySide6 da mente canônica."""
+"""Terminal Laylay 3.0 — cliente PySide6 da mente canônica."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ try:
     )
 except ImportError as erro:  # pragma: no cover
     raise SystemExit(
-        "O Terminal Laylay 2.1 precisa de PySide6. Instale com: pip install PySide6"
+        "O Terminal Laylay 3.0 precisa de PySide6. Instale com: pip install PySide6"
     ) from erro
 
 
@@ -67,24 +67,20 @@ from cliente.terminal_2.volume_mestre_windows import (
     DefinidorVolumeMestreWindows,
 )
 from cliente.terminal_2.desenvolvedor import PaginaDesenvolvedor
-
-
-PALETA = {
-    "fundo": "#0D1014",
-    "sidebar": "#111419",
-    "superficie": "#15191E",
-    "elevada": "#1C2026",
-    "hover": "#242A31",
-    "borda": "#2C3239",
-    "texto": "#F3F2F4",
-    "secundario": "#B4B5BA",
-    "apagado": "#777C84",
-    "violeta": "#FF5C73",
-    "ciano": "#FF7588",
-    "rosa": "#FF5C73",
-    "sucesso": "#68C79A",
-    "erro": "#ED7888",
-}
+from cliente.terminal_2.theme import (
+    PALETA,
+    qss_automation_components,
+    qss_chat_components,
+    qss_chrome_components,
+    qss_context_components,
+    qss_home_refresh,
+    qss_live_presence,
+    qss_memory_refresh,
+    qss_product_polish,
+    qss_settings_refresh,
+    qss_system_components,
+    qss_tabs_refresh,
+)
 
 # Mantém a leitura confortável em janelas desktop sem transformar cada fala em
 # uma faixa de ponta a ponta. Em viewports menores, o QScrollArea e os stretches
@@ -153,6 +149,7 @@ class AroPresenca(QWidget):
         self._cor = QColor(PALETA["violeta"])
         self._pixmap = QPixmap()
         self._ativo = False
+        self._reduzir_movimento = False
         self.setFixedSize(tamanho, tamanho)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._animar)
@@ -173,23 +170,46 @@ class AroPresenca(QWidget):
         return self.raiz / "avatar" / pasta / nome
 
     def atualizar(self, atividade: str, emocao: str) -> None:
-        cores = {
+        cores_emocao = {
             "feliz": PALETA["rosa"], "animada": PALETA["rosa"],
             "irritada": PALETA["erro"], "brava": PALETA["erro"],
             "curiosa": PALETA["ciano"], "triste": "#8290D6",
         }
-        self._cor = QColor(cores.get(emocao, PALETA["violeta"]))
-        self._ativo = atividade in {"thinking", "executing", "speaking", "listening"}
+        cores_atividade = {
+            "listening": PALETA["ciano"],
+            "thinking": PALETA["violeta"],
+            "executing": PALETA["aviso"],
+            "speaking": PALETA["rosa"],
+            "reconnecting": PALETA["erro"],
+        }
+        self._cor = QColor(
+            cores_atividade.get(
+                str(atividade or "idle"),
+                cores_emocao.get(emocao, PALETA["violeta"]),
+            )
+        )
+        self._ativo = atividade in {
+            "thinking", "executing", "speaking", "listening", "reconnecting",
+        }
         pix = QPixmap(str(self._avatar_path(emocao)))
         self._pixmap = pix.scaled(
             self._tamanho - 8, self._tamanho - 8,
             Qt.KeepAspectRatio, Qt.SmoothTransformation,
         ) if not pix.isNull() else QPixmap()
-        if self._ativo and not self.timer.isActive():
-            self.timer.start(65)
-        elif not self._ativo:
+        if self._ativo and not self._reduzir_movimento and not self.timer.isActive():
+            self.timer.start(90)
+        elif not self._ativo or self._reduzir_movimento:
             self.timer.stop()
             self._fase = 0.0
+        self.update()
+
+    def definir_reduzir_movimento(self, reduzir: bool) -> None:
+        self._reduzir_movimento = bool(reduzir)
+        if self._reduzir_movimento:
+            self.timer.stop()
+            self._fase = 0.0
+        elif self._ativo and not self.timer.isActive():
+            self.timer.start(90)
         self.update()
 
     def _animar(self) -> None:
@@ -385,7 +405,7 @@ class MensagemWidget(QFrame):
         self.corpo.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         self.corpo.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
-        # P7.1:
+        # Metadados de entrega da mensagem:
         # Só o texto fica dentro do balão.
         lay.addWidget(self.corpo)
         self.status = QLabel()
@@ -437,17 +457,25 @@ class MensagemWidget(QFrame):
 class IndicadorPensando(QFrame):
     """Presença visual efêmera; nunca entra no histórico nem na porta de fala."""
 
-    def __init__(self, *, reduzir_movimento: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        reduzir_movimento: bool = False,
+        atividade: str = "thinking",
+    ) -> None:
         super().__init__()
         self.setObjectName("thinkingIndicator")
-        self.setMaximumWidth(150)
+        self.setMaximumWidth(220)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         lay = QHBoxLayout(self)
-        lay.setContentsMargins(16, 10, 16, 10)
-        lay.setSpacing(9)
+        lay.setContentsMargins(14, 9, 14, 9)
+        lay.setSpacing(8)
         meta = QLabel("LAYLAY")
         meta.setObjectName("thinkingMeta")
         lay.addWidget(meta)
+        self.estado = QLabel()
+        self.estado.setObjectName("thinkingState")
+        lay.addWidget(self.estado)
         pontos_box = QFrame(self)
         pontos_lay = QHBoxLayout(pontos_box)
         pontos_lay.setContentsMargins(0, 0, 0, 0)
@@ -466,6 +494,7 @@ class IndicadorPensando(QFrame):
             self.pontos.append(ponto)
             self._efeitos_pontos.append(efeito)
         lay.addWidget(pontos_box)
+        self.definir_estado(atividade)
         self._grupo_pontos: QSequentialAnimationGroup | None = None
         if not reduzir_movimento:
             grupo = QSequentialAnimationGroup(self)
@@ -481,6 +510,19 @@ class IndicadorPensando(QFrame):
             grupo.setLoopCount(-1)
             self._grupo_pontos = grupo
             grupo.start()
+
+    def definir_estado(self, atividade: str) -> None:
+        atividade = str(atividade or "thinking").casefold()
+        if atividade not in {"thinking", "executing"}:
+            atividade = "thinking"
+        self.setProperty("activity", atividade)
+        self.estado.setText(
+            "Executando" if atividade == "executing" else "Pensando"
+        )
+        self.estado.setProperty("activity", atividade)
+        for widget in (self, self.estado):
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
 
     def parar(self) -> None:
         grupo = self._grupo_pontos
@@ -603,20 +645,30 @@ class PaginaConfiguracoes(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
+        self.setObjectName("settingsPage")
         self._estado: dict = {}
         self._modelos_por_provedor: dict[str, str] = {}
         self._provedor_atual = ""
         self._preenchendo = False
         externo = QVBoxLayout(self)
         externo.setContentsMargins(0, 0, 0, 0)
+
         scroll = QScrollArea()
+        self.scroll = scroll
+        scroll.setObjectName("settingsScroll")
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+
         conteudo = QWidget()
+        self.conteudo = conteudo
+        conteudo.setObjectName("settingsContent")
+        conteudo.setMaximumWidth(1080)
+        conteudo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.conteudo_lay = QVBoxLayout(conteudo)
         lay = self.conteudo_lay
-        lay.setContentsMargins(54, 42, 68, 52)
+        lay.setContentsMargins(36, 32, 36, 44)
         lay.setSpacing(12)
         kicker = QLabel("CONFIGURAÇÕES")
         kicker.setObjectName("eyebrow")
@@ -830,10 +882,10 @@ class PaginaConfiguracoes(QWidget):
 
     def definir_compacto(self, compacto: bool, *, estreito: bool = False) -> None:
         self.conteudo_lay.setContentsMargins(
-            18 if compacto else 54,
-            24 if compacto else 42,
-            18 if compacto else 68,
-            30 if compacto else 52,
+            16 if estreito else 22 if compacto else 36,
+            20 if estreito else 24 if compacto else 32,
+            16 if estreito else 22 if compacto else 36,
+            26 if estreito else 32 if compacto else 44,
         )
         self.providers["openrouter"].setText(
             "OpenRouter\nAPI" if compacto else "OpenRouter\nAPI protegida"
@@ -1059,12 +1111,42 @@ class PaginaAdiada(QFrame):
         super().__init__()
         self.setObjectName("lazyPage")
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(32, 32, 32, 32)
+        layout.setContentsMargins(28, 28, 28, 28)
         layout.addStretch()
+
+        card = QFrame()
+        card.setObjectName("lazyCard")
+        card.setMaximumWidth(520)
+        card_lay = QVBoxLayout(card)
+        card_lay.setContentsMargins(20, 18, 20, 20)
+        card_lay.setSpacing(10)
+
+        linha = QHBoxLayout()
+        ponto = QLabel("●")
+        ponto.setObjectName("lazyDot")
         estado = QLabel(f"Preparando {titulo}…")
-        estado.setObjectName("dashboardEmpty")
-        estado.setAlignment(Qt.AlignCenter)
-        layout.addWidget(estado)
+        estado.setObjectName("lazyTitle")
+        linha.addWidget(ponto)
+        linha.addWidget(estado)
+        linha.addStretch()
+        card_lay.addLayout(linha)
+
+        detalhe = QLabel(
+            "Carregando somente os componentes necessários desta aba."
+        )
+        detalhe.setObjectName("lazyText")
+        detalhe.setWordWrap(True)
+        card_lay.addWidget(detalhe)
+        card_lay.addSpacing(4)
+
+        for largura in (100, 82, 62):
+            barra = QFrame()
+            barra.setObjectName("lazySkeleton")
+            barra.setFixedHeight(9)
+            barra.setMaximumWidth(int(440 * largura / 100))
+            card_lay.addWidget(barra)
+
+        layout.addWidget(card, 0, Qt.AlignHCenter)
         layout.addStretch()
 
 
@@ -1156,6 +1238,8 @@ class JanelaLaylay(QMainWindow):
         self._fases_envio: dict[str, str] = {}
         self._feed_em_espera = True
         self._ultima_atividade_evento = ""
+        self._feedback_vivo_seq = 0
+        self._estado_vivo_atual = "reconnecting"
         self._limiar_auto_scroll = 96
         self._pagina_principal = "inicio"
         self._provedor_modelo = ""
@@ -1166,7 +1250,7 @@ class JanelaLaylay(QMainWindow):
         ).casefold() in {"1", "true", "sim", "yes", "on"}
         self._sidebar_expandida = bool(self.preferencias.value("sidebar_expandida", True, type=bool))
         titulo_sessao = f" · {self._session_id}" if self._session_id else ""
-        self.setWindowTitle(f"Laylay — Terminal 3.0 · P5{titulo_sessao}")
+        self.setWindowTitle(f"Laylay — Terminal 3.0{titulo_sessao}")
         self.setMinimumSize(375, 620)
         self.resize(1680, 940)
         self._montar()
@@ -1176,7 +1260,7 @@ class JanelaLaylay(QMainWindow):
         self._aplicar_responsividade()
         self._registrar_feedback_botoes()
 
-        # P9.6 — RITMO MODULAR MAIS RÁPIDO
+        # Inicialização modular: adia superfícies pesadas após a primeira pintura.
         # Pequeno respiro antes de começar a carregar os módulos.
         self._preparar_animacao_inicio()
         QTimer.singleShot(
@@ -1202,7 +1286,7 @@ class JanelaLaylay(QMainWindow):
         side.setSpacing(5)
 
         # ======================================================
-        # SIDEBAR P6 — marca compacta no mesmo eixo do topbar
+        # Sidebar — marca compacta no mesmo eixo do topbar
         # ======================================================
         self.sidebar_topo = QFrame(objectName="sidebarBrandBar")
         topo = QHBoxLayout(self.sidebar_topo)
@@ -1212,6 +1296,9 @@ class JanelaLaylay(QMainWindow):
         self.avatar_side = AroPresenca(
             self.raiz,
             34,
+        )
+        self.avatar_side.definir_reduzir_movimento(
+            self._reduzir_movimento
         )
 
         marca_box = QVBoxLayout()
@@ -1488,6 +1575,9 @@ class JanelaLaylay(QMainWindow):
             self.raiz,
             34,
         )
+        self.avatar_profile.definir_reduzir_movimento(
+            self._reduzir_movimento
+        )
 
         profile_textos = QVBoxLayout()
         profile_textos.setContentsMargins(
@@ -1586,7 +1676,7 @@ class JanelaLaylay(QMainWindow):
         self.avancar.hide()
         self.titulo_header.hide()
 
-        # P6.2: os dois lados usam o mesmo fator.
+        # Os dois lados usam o mesmo fator para preservar o centro visual.
         # Isso mantém o conjunto do topo centralizado.
         hlay.addStretch(1)
 
@@ -1606,13 +1696,21 @@ class JanelaLaylay(QMainWindow):
         self.alternador = AlternadorModo()
         self.alternador.modo_solicitado.connect(self.solicitar_modo)
         hlay.addWidget(self.alternador)
+        self.presenca_pill = QFrame(objectName="presencePill")
+        self.presenca_pill.setProperty("activity", "reconnecting")
+        presenca_lay = QHBoxLayout(self.presenca_pill)
+        presenca_lay.setContentsMargins(10, 6, 11, 6)
+        presenca_lay.setSpacing(7)
         self.ponto = QLabel("●")
         self.ponto.setObjectName("connectionDot")
+        self.ponto.setProperty("activity", "reconnecting")
         self.status = QLabel("Reconectando")
         self.status.setObjectName("statusLabel")
-        hlay.addSpacing(10)
-        hlay.addWidget(self.ponto)
-        hlay.addWidget(self.status)
+        self.status.setProperty("activity", "reconnecting")
+        presenca_lay.addWidget(self.ponto)
+        presenca_lay.addWidget(self.status)
+        hlay.addSpacing(8)
+        hlay.addWidget(self.presenca_pill)
         hlay.addStretch(1)
         centro_lay.addWidget(header)
 
@@ -1632,6 +1730,10 @@ class JanelaLaylay(QMainWindow):
         )
         chat_lay.setSpacing(0)
         self.chat_cabecalho = QFrame(objectName="chatHeader")
+        self.chat_cabecalho.setMaximumWidth(920)
+        self.chat_cabecalho.setSizePolicy(
+            QSizePolicy.Expanding, QSizePolicy.Preferred,
+        )
         chat_head_lay = QVBoxLayout(self.chat_cabecalho)
         chat_head_lay.setContentsMargins(
             16, 14, 16, 13
@@ -1639,13 +1741,15 @@ class JanelaLaylay(QMainWindow):
         chat_head_lay.setSpacing(4)
         hora = datetime.now().hour
         saudacao = "Bom dia" if hora < 12 else "Boa tarde" if hora < 18 else "Boa noite"
-        self.chat_saudacao = QLabel(f"{saudacao}!  ✦")
+        self._saudacao_inicio = f"{saudacao}!  ✦"
+        self._subtitulo_inicio = "Como posso te ajudar hoje?"
+        self.chat_saudacao = QLabel(self._saudacao_inicio)
         self.chat_saudacao.setObjectName("chatGreeting")
-        self.chat_subtitulo = QLabel("Como posso te ajudar hoje?")
+        self.chat_subtitulo = QLabel(self._subtitulo_inicio)
         self.chat_subtitulo.setObjectName("chatGreetingSub")
         chat_head_lay.addWidget(self.chat_saudacao)
         chat_head_lay.addWidget(self.chat_subtitulo)
-        chat_lay.addWidget(self.chat_cabecalho)
+        chat_lay.addWidget(self.chat_cabecalho, 0, Qt.AlignHCenter)
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.NoFrame)
@@ -1709,6 +1813,10 @@ class JanelaLaylay(QMainWindow):
         )
         chat_lay.addWidget(self.waveform)
         self.composer = Composer()
+        self.composer.setMaximumWidth(920)
+        self.composer.setSizePolicy(
+            QSizePolicy.Expanding, QSizePolicy.Preferred,
+        )
         self.composer.enviar.connect(self.enviar_texto)
         self.composer.enviar.connect(
             lambda _texto: self._animar_microinteracao(
@@ -1720,7 +1828,7 @@ class JanelaLaylay(QMainWindow):
         self.composer.alternar_voz.connect(
             lambda: self.solicitar_modo("voice" if self._modo == "chat" else "chat")
         )
-        chat_lay.addWidget(self.composer)
+        chat_lay.addWidget(self.composer, 0, Qt.AlignHCenter)
         conversa_lay.addWidget(self.chat_surface, 1)
         self.central_inteligente = PainelCentralInteligente()
         self.central_inteligente.acao_solicitada.connect(
@@ -1728,8 +1836,66 @@ class JanelaLaylay(QMainWindow):
         )
         self.painel_lateral = PainelLateralDashboard()
         self.painel_lateral.acao_solicitada.connect(self.enviar_acao_painel)
-        conversa_lay.addWidget(self.central_inteligente)
-        conversa_lay.addWidget(self.painel_lateral)
+
+        self.inspector_shell = QFrame(objectName="inspectorShell")
+        self.inspector_shell.setMinimumWidth(320)
+        self.inspector_shell.setMaximumWidth(360)
+        inspector_lay = QVBoxLayout(self.inspector_shell)
+        inspector_lay.setContentsMargins(14, 16, 14, 14)
+        inspector_lay.setSpacing(10)
+
+        inspector_header = QFrame(objectName="inspectorHeader")
+        inspector_header_lay = QHBoxLayout(inspector_header)
+        inspector_header_lay.setContentsMargins(2, 0, 2, 4)
+        inspector_header_lay.setSpacing(8)
+        inspector_textos = QVBoxLayout()
+        inspector_textos.setContentsMargins(0, 0, 0, 0)
+        inspector_textos.setSpacing(2)
+        inspector_titulo = QLabel("LAYLAY")
+        inspector_titulo.setObjectName("inspectorTitle")
+        inspector_subtitulo = QLabel("Contexto em tempo real")
+        inspector_subtitulo.setObjectName("inspectorSubtitle")
+        inspector_textos.addWidget(inspector_titulo)
+        inspector_textos.addWidget(inspector_subtitulo)
+        inspector_header_lay.addLayout(inspector_textos)
+        inspector_header_lay.addStretch()
+        self.inspector_status = QLabel("●")
+        self.inspector_status.setObjectName("connectionDot")
+        inspector_header_lay.addWidget(self.inspector_status)
+        inspector_lay.addWidget(inspector_header)
+
+        self.inspector_scroll = QScrollArea()
+        self.inspector_scroll.setObjectName("inspectorScroll")
+        self.inspector_scroll.setWidgetResizable(True)
+        self.inspector_scroll.setFrameShape(QFrame.NoFrame)
+        self.inspector_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        inspector_conteudo = QWidget()
+        inspector_conteudo.setObjectName("inspectorContent")
+        inspector_conteudo_lay = QVBoxLayout(inspector_conteudo)
+        inspector_conteudo_lay.setContentsMargins(0, 0, 0, 0)
+        inspector_conteudo_lay.setSpacing(10)
+        self.central_inteligente.setMinimumWidth(0)
+        self.central_inteligente.setMaximumWidth(320)
+        self.painel_lateral.setMinimumWidth(0)
+        self.painel_lateral.setMaximumWidth(320)
+        titulo_central = self.central_inteligente.findChild(
+            QLabel, "intelligenceTitle",
+        )
+        if titulo_central is not None:
+            titulo_central.hide()
+        self.central_inteligente.estado.hide()
+        self.central_inteligente.setSizePolicy(
+            QSizePolicy.Expanding, QSizePolicy.Maximum,
+        )
+        self.painel_lateral.setSizePolicy(
+            QSizePolicy.Expanding, QSizePolicy.Maximum,
+        )
+        inspector_conteudo_lay.addWidget(self.central_inteligente)
+        inspector_conteudo_lay.addWidget(self.painel_lateral)
+        inspector_conteudo_lay.addStretch()
+        self.inspector_scroll.setWidget(inspector_conteudo)
+        inspector_lay.addWidget(self.inspector_scroll, 1)
+        conversa_lay.addWidget(self.inspector_shell)
         self.paginas.addWidget(conversa)
 
         atividade = QWidget()
@@ -1944,7 +2110,7 @@ class JanelaLaylay(QMainWindow):
 
 
     # =====================================================
-    # P9.3 — INICIALIZAÇÃO MODULAR CINEMATOGRÁFICA
+    # Inicialização visual modular
     # =====================================================
 
     def _preparar_animacao_inicio(self) -> None:
@@ -1963,8 +2129,7 @@ class JanelaLaylay(QMainWindow):
             ("Navegação", self.sidebar),
             ("Barra superior", self.topbar),
             ("Chat", self.chat_surface),
-            ("Central Inteligente", self.central_inteligente),
-            ("Painel lateral", self.painel_lateral),
+            ("Inspector", self.inspector_shell),
         )
 
         self._efeitos_inicio = []
@@ -2013,13 +2178,13 @@ class JanelaLaylay(QMainWindow):
             movimentos = QParallelAnimationGroup(etapa)
 
             opacidade = QPropertyAnimation(efeito, b"opacity", movimentos)
-            opacidade.setDuration(360)
+            opacidade.setDuration(365)
             opacidade.setStartValue(0.08)
             opacidade.setEndValue(1.0)
             opacidade.setEasingCurve(QEasingCurve.OutCubic)
 
             posicao = QPropertyAnimation(widget, b"pos", movimentos)
-            posicao.setDuration(360)
+            posicao.setDuration(365)
             posicao.setStartValue(posicao_final + deslocamento)
             posicao.setEndValue(posicao_final)
             posicao.setEasingCurve(QEasingCurve.OutCubic)
@@ -2181,6 +2346,104 @@ class JanelaLaylay(QMainWindow):
                 continue
             self._registrar_feedback_botao(botao)
 
+    def _aplicar_estado_vivo(
+        self,
+        atividade: str,
+        rotulo: str = "",
+        emocao: str = "calma",
+        *,
+        animar: bool = True,
+        atualizar_avatar: bool = True,
+    ) -> None:
+        atividade = str(atividade or "idle").strip().casefold()
+        permitidos = {
+            "idle", "listening", "thinking", "executing", "speaking",
+            "reconnecting", "success", "warning", "error",
+        }
+        if atividade not in permitidos:
+            atividade = "idle"
+        rotulos_padrao = {
+            "idle": "Pronta",
+            "listening": "Ouvindo",
+            "thinking": "Pensando",
+            "executing": "Executando",
+            "speaking": "Falando",
+            "reconnecting": "Reconectando",
+            "success": "Concluído",
+            "warning": "Atenção",
+            "error": "Falha",
+        }
+        texto = str(rotulo or rotulos_padrao[atividade]).strip()
+        mudou = atividade != self._estado_vivo_atual or self.status.text() != texto
+        self._estado_vivo_atual = atividade
+
+        for widget in (self.presenca_pill, self.ponto, self.status):
+            widget.setProperty("activity", atividade)
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
+        self.status.setText(texto)
+        self.presenca_pill.setToolTip(
+            f"{texto} · emoção {str(emocao or 'calma')}"
+        )
+
+        self.profile_status.setText(f"●  {texto}")
+        self.profile_status.setProperty("state", atividade)
+        self.profile_status.style().unpolish(self.profile_status)
+        self.profile_status.style().polish(self.profile_status)
+        self.marca_status.setText(
+            f"{texto.casefold()} · {str(emocao or 'calma')}"
+        )
+
+        if atualizar_avatar:
+            self.avatar_side.atualizar(atividade, emocao)
+            self.avatar_profile.atualizar(atividade, emocao)
+            self._atualizar_pulso_presenca(atividade)
+
+        if mudou and animar:
+            self._animar_microinteracao(
+                self.presenca_pill,
+                opacidade_minima=0.62,
+                duracao_retorno=180,
+            )
+
+    def _restaurar_estado_vivo(self, sequencia: int) -> None:
+        if sequencia != self._feedback_vivo_seq:
+            return
+        if not self._conectado:
+            self._aplicar_estado_vivo(
+                "reconnecting", "Reconectando", "calma",
+                animar=True,
+            )
+            return
+        estado = dict(self._estado_mais_recente or {})
+        self._aplicar_estado_vivo(
+            str(estado.get("activity") or "idle"),
+            str(estado.get("activity_label") or "Pronta"),
+            str(estado.get("emotion") or "calma"),
+            animar=True,
+        )
+
+    def _mostrar_feedback_vivo(
+        self,
+        atividade: str,
+        rotulo: str,
+        *,
+        duracao_ms: int = 1500,
+    ) -> None:
+        self._feedback_vivo_seq += 1
+        sequencia = self._feedback_vivo_seq
+        self._aplicar_estado_vivo(
+            atividade,
+            rotulo,
+            str(self._estado_mais_recente.get("emotion") or "calma"),
+            animar=True,
+            atualizar_avatar=False,
+        )
+        QTimer.singleShot(
+            max(500, int(duracao_ms)),
+            lambda seq=sequencia: self._restaurar_estado_vivo(seq),
+        )
+
     def _parar_pulso_presenca(self) -> None:
         grupo = self._pulso_presenca
         if grupo is not None:
@@ -2317,3939 +2580,19 @@ class JanelaLaylay(QMainWindow):
             QWidget.setTabOrder(atual, proximo)
 
     def _estilizar(self) -> None:
-            self.setStyleSheet(f"""
-                * {{ font-family: 'Comic Sans MS', 'Comic Sans'; color: {PALETA['texto']}; font-size: 14px; }}
-                #root, #mainSurface, QScrollArea, QScrollArea > QWidget > QWidget {{ background: {PALETA['fundo']}; }}
-                #sidebar {{ background: #11151A; border-right: 1px solid #2B3037; }}
-                #brand {{ font-size: 21px; font-weight: 700; }}
-                #brandCaption {{ color: {PALETA['apagado']}; font-size: 10px; }}
-                #sideSection, #eyebrow {{ color: {PALETA['apagado']}; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; }}
-                QPushButton[nav="true"] {{ background: transparent; border: 0; border-radius: 9px; text-align: left; padding: 12px 14px; min-height: 22px; color: {PALETA['secundario']}; }}
-                QPushButton[nav="true"]:hover {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
-                QPushButton[nav="true"]:checked {{ background: #2A1C22; color: {PALETA['texto']}; }}
-                #navIndicator {{ background: {PALETA['rosa']}; border: 0; border-radius: 1px; }}
-                QPushButton:focus, QToolButton:focus, QTextEdit:focus, QComboBox:focus, QCheckBox:focus {{ border: 1px solid {PALETA['rosa']}; outline: 0; }}
-                #recentItem {{ color: {PALETA['secundario']}; padding: 9px 12px; background: transparent; border: 0; border-radius: 8px; text-align: left; }}
-                #recentItem:hover {{ color: {PALETA['texto']}; background: {PALETA['elevada']}; }}
-                #conversationList, #conversationListContent {{ background: transparent; border: 0; }}
-                #conversationTools {{ background: transparent; border: 0; }}
-                #conversationSearch {{ background: #151A20; border: 1px solid #2B323A; border-radius: 8px; padding: 6px 8px; color: {PALETA['texto']}; font-size: 10px; min-height: 20px; }}
-                #conversationSearch:focus {{ border-color: #6E3C4B; }}
-                #archivedConversationsButton {{ min-width: 30px; max-width: 30px; min-height: 30px; max-height: 30px; border: 1px solid #2B323A; background: #151A20; }}
-                #archivedConversationsButton:checked {{ color: {PALETA['rosa']}; border-color: #6E3C4B; background: #281C22; }}
-                #conversationSection {{ color: {PALETA['apagado']}; font-size: 9px; font-weight: 700; padding: 5px 7px 2px 7px; }}
-                #conversationEmpty {{ color: {PALETA['apagado']}; font-size: 10px; padding: 9px 7px; }}
-                #conversationRow {{ background: transparent; border: 0; border-radius: 8px; }}
-                #conversationRow[active="true"] {{ background: #251B20; }}
-                #conversationRow[archived="true"] {{ background: #12161B; }}
-                #conversationItem {{ color: {PALETA['secundario']}; background: transparent; border: 0; border-radius: 7px; padding: 7px 7px; text-align: left; font-size: 11px; }}
-                #conversationItem:hover {{ color: {PALETA['texto']}; background: #1B2026; }}
-                #conversationItem:checked {{ color: {PALETA['texto']}; font-weight: 650; }}
-                #conversationItem[archived="true"] {{ color: {PALETA['apagado']}; font-style: italic; }}
-                #conversationMenu {{ min-width: 24px; max-width: 24px; min-height: 24px; max-height: 24px; color: {PALETA['apagado']}; }}
-                #mindStatus {{ color: {PALETA['apagado']}; padding: 8px; font-size: 11px; }}
-                #footerSettings {{ background: transparent; border: 0; border-radius: 8px; text-align: left; padding: 10px; color: {PALETA['secundario']}; }}
-                #footerSettings:hover {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
-                #collapseButton, QToolButton {{ background: transparent; border: 1px solid transparent; border-radius: 7px; min-width: 34px; min-height: 32px; color: {PALETA['secundario']}; }}
-                QToolButton:hover {{ background: {PALETA['elevada']}; border-color: {PALETA['borda']}; color: {PALETA['texto']}; }}
-                /* ACABAMENTO FINAL HOME P5 */
-                #topbar {{ background: #0C1014; border-bottom: 1px solid #242A31; min-height: 62px; }}
-                #headerTitle {{ font-weight: 650; }}
-                #statusChip {{ background: #11151A; border: 1px solid {PALETA['borda']}; border-radius: 9px; }}
-                #statusChipText {{ color: {PALETA['secundario']}; font-size: 11px; }}
-                #statusChipDot {{ color: {PALETA['apagado']}; font-size: 9px; }}
-                #statusChipDot[state="online"] {{ color: {PALETA['sucesso']}; }}
-                #statusChipDot[state="error"] {{ color: {PALETA['erro']}; }}
-                #statusChipDot[state="unavailable"] {{ color: #9A7E4C; }}
-                #connectionDot {{ color: {PALETA['erro']}; font-size: 9px; }}
-                #statusLabel {{ color: {PALETA['apagado']}; font-size: 11px; }}
-                #modeSwitch {{ background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 9px; }}
-                QPushButton[segment="true"] {{ background: transparent; border: 0; border-radius: 6px; padding: 6px 12px; color: {PALETA['apagado']}; font-size: 11px; font-weight: 650; }}
-                QPushButton[segment="true"]:checked {{ background: {PALETA['elevada']}; color: {PALETA['texto']}; }}
-                QPushButton[segment="true"]:disabled {{ color: #5E5763; }}
-
-                /* =========================================
-                   P6 — SIDEBAR + TOPBAR REFINADOS
-                   ========================================= */
-
-                #sidebar {{
-                    background: #0F1419;
-                    border-right: 1px solid #252C33;
-                }}
-
-                #sidebarBrandBar {{
-                    background: transparent;
-                    border: 0;
-                    border-bottom: 1px solid #1E252C;
-                }}
-
-                #brand {{
-                    color: #F7F3F5;
-                    font-size: 19px;
-                    font-weight: 720;
-                }}
-
-                #brandCaption {{
-                    color: #747C85;
-                    font-size: 8px;
-                }}
-
-                #collapseButton {{
-                    background: transparent;
-                    border: 1px solid transparent;
-                    border-radius: 9px;
-                    min-width: 30px;
-                    max-width: 30px;
-                    min-height: 30px;
-                    max-height: 30px;
-                }}
-
-                #collapseButton:hover {{
-                    background: #191E23;
-                    border-color: #2D343B;
-                }}
-
-                QPushButton[nav="true"] {{
-                    background: transparent;
-                    border: 0;
-                    border-left: 3px solid transparent;
-                    border-radius: 9px;
-                    text-align: left;
-
-                    padding: 11px 11px;
-                    min-height: 25px;
-
-                    color: #C5C2C5;
-                    font-size: 13px;
-                    font-weight: 500;
-                }}
-
-                QPushButton[nav="true"]:hover {{
-                    background: #181D22;
-                    color: #F5F1F3;
-                }}
-
-                QPushButton[nav="true"]:checked {{
-                    background: qlineargradient(
-                        x1: 0, y1: 0,
-                        x2: 1, y2: 0,
-                        stop: 0 #312027,
-                        stop: 1 #241A1F
-                    );
-
-                    border-left: 3px solid #FF5C73;
-                    color: #F8F4F6;
-                }}
-
-                #sidebarProfile {{
-                    background: #12171C;
-                    border: 1px solid #20272E;
-                    border-radius: 13px;
-                }}
-
-                #profileName {{
-                    background: transparent;
-                    border: 0;
-                    color: #E9E5E7;
-                    font-size: 11px;
-                    font-weight: 650;
-                }}
-
-                #profileStatus {{
-                    background: transparent;
-                    border: 0;
-                    color: #8A929A;
-                    font-size: 8px;
-                }}
-
-                #profileStatus[state="online"] {{
-                    color: #68C79A;
-                }}
-
-                #profileStatus[state="offline"] {{
-                    color: #9A7E4C;
-                }}
-
-                #profileVersion {{
-                    background: transparent;
-                    border: 0;
-                    color: #656D75;
-                    font-size: 8px;
-                }}
-
-                #profileHeart {{
-                    background: transparent;
-                    border: 0;
-                    color: #E44B62;
-                    font-size: 13px;
-                }}
-
-                #topbar {{
-                    background: #0B0F13;
-                    border-bottom: 1px solid #222931;
-                    min-height: 64px;
-                }}
-
-                #statusChip {{
-                    background: #10151A;
-                    border: 1px solid #293038;
-                    border-radius: 10px;
-                }}
-
-                #statusChipText {{
-                    color: #C9C5C8;
-                    font-size: 11px;
-                    font-weight: 520;
-                }}
-
-                #statusChipDot {{
-                    color: #687079;
-                    font-size: 9px;
-                }}
-
-                #modeSwitch {{
-                    background: #11161B;
-                    border: 1px solid #293038;
-                    border-radius: 10px;
-                }}
-
-                QPushButton[segment="true"] {{
-                    background: transparent;
-                    border: 0;
-                    border-radius: 7px;
-
-                    padding: 7px 12px;
-
-                    color: #777F88;
-                    font-size: 10px;
-                    font-weight: 650;
-                }}
-
-                QPushButton[segment="true"]:checked {{
-                    background: #1C2127;
-                    color: #F2EEF0;
-                }}
-
-                #statusLabel {{
-                    color: #858D96;
-                    font-size: 10px;
-                }}
-
-
-                /* =========================================
-                   P6.2 — TOPBAR FINAL
-                   ========================================= */
-
-                #topbar {{
-                    background: #0B0F13;
-                    border-bottom: 1px solid #20272E;
-                    min-height: 66px;
-                }}
-
-                #statusChip {{
-                    background: #10151A;
-                    border: 1px solid #2A3138;
-                    border-radius: 10px;
-                    min-height: 32px;
-                }}
-
-                #statusChipText {{
-                    color: #D0CCD0;
-                    font-size: 11px;
-                    font-weight: 540;
-                }}
-
-                #statusChipDot {{
-                    font-size: 9px;
-                }}
-
-                #modeSwitch {{
-                    background: #10151A;
-                    border: 1px solid #2A3138;
-                    border-radius: 10px;
-                    min-height: 32px;
-                }}
-
-                QPushButton[segment="true"] {{
-                    background: transparent;
-                    border: 0;
-                    border-radius: 7px;
-                    padding: 7px 12px;
-                    color: #777F88;
-                    font-size: 10px;
-                    font-weight: 650;
-                }}
-
-                QPushButton[segment="true"]:checked {{
-                    background: #1D2228;
-                    color: #F4F0F2;
-                }}
-
-                #connectionDot {{
-                    font-size: 8px;
-                }}
-
-                #statusLabel {{
-                    background: transparent;
-                    border: 0;
-                    padding: 0 3px;
-                    color: #858D96;
-                    font-size: 10px;
-                }}
-
-
-                /* =========================================
-                   P8 — PERFIL DO USUÁRIO
-                   ========================================= */
-
-                #settingsProfileCard {{
-                    background: #14191E;
-                    border: 1px solid #2A3138;
-                    border-radius: 13px;
-                }}
-
-                #settingsProfileTitle {{
-                    background: transparent;
-                    border: 0;
-                    color: #F1EDEF;
-                    font-size: 13px;
-                    font-weight: 700;
-                }}
-
-                #settingsProfileHint {{
-                    background: transparent;
-                    border: 0;
-                    color: #777F88;
-                    font-size: 10px;
-                }}
-
-
-                /* =========================================
-                   P8.1 — BOTÃO DE PERFIL ANIMADO
-                   ========================================= */
-
-                #profileAvatarButton {{
-                    background: #15191E;
-                    border: 1px solid #2D333A;
-                    border-radius: 10px;
-
-                    padding: 9px 14px;
-
-                    color: #B4B5BA;
-                    font-size: 11px;
-                    font-weight: 650;
-                }}
-
-                #profileAvatarButton:hover {{
-                    background: #211A1F;
-                    border-color: #713541;
-                    color: #F3F2F4;
-                }}
-
-                #profileAvatarButton:pressed {{
-                    background: #2D1C22;
-                    border-color: #A54355;
-                    color: #FF7588;
-
-                    padding-top: 10px;
-                    padding-bottom: 8px;
-                }}
-
-                #profileAvatarButton:focus {{
-                    border-color: #FF5C73;
-                }}
-
-                #emptyState {{ background: transparent; }}
-                #emptyMark {{ color: {PALETA['violeta']}; font-size: 28px; }}
-                #emptyTitle {{ font-size: 23px; font-weight: 650; }}
-                #emptyCopy {{ color: {PALETA['secundario']}; font-size: 14px; }}
-                /* =========================================
-                HOME — CONVERSA
-                ========================================= */
-
-                #chatSurface {{
-                    background: #0F1317;
-
-                    border: 1px solid #272D34;
-                    border-radius: 18px;
-                }}
-
-                #chatHeader {{
-                    background: transparent;
-
-                    border: 0;
-                    border-bottom: 1px solid #22282F;
-                }}
-
-                #chatGreeting {{
-                    color: #F8F4F6;
-
-                    font-size: 20px;
-                    font-weight: 700;
-                }}
-
-                #chatGreetingSub {{
-                    color: #9DA3AA;
-
-                    font-size: 12px;
-                }}
-
-
-                /* =========================================
-                MENSAGENS
-                ========================================= */
-
-                #messageLaylay {{
-                    background: #1A1F25;
-
-                    border: 1px solid #272E35;
-                    border-radius: 16px;
-                }}
-
-                #messageUser {{
-                    background: #291C22;
-
-                    border: 1px solid #472A32;
-                    border-radius: 16px;
-                }}
-
-                #messageMeta {{
-                    background: transparent;
-                    border: 0;
-
-                    color: #747B84;
-
-                    font-size: 8px;
-                    font-weight: 700;
-
-                    letter-spacing: 1px;
-                }}
-
-                #messageText {{
-                    background: transparent;
-                    border: 0;
-
-                    color: #EDE9EB;
-
-                    font-size: 14px;
-                }}
-
-                #messageStatus {{
-                    background: transparent;
-                    border: 0;
-
-                    color: #686F78;
-
-                    font-size: 9px;
-                }}
-
-                #messageStatus[delivery="pending"] {{
-                    color: #D35A6E;
-                }}
-
-                #messageStatus[delivery="failed"] {{
-                    color: #ED7888;
-                }}
-
-
-
-                /* =========================================
-                   P7 — MENSAGEM DA LAYLAY ESTILO CHAT
-                   ========================================= */
-
-                #messageLaylay {{
-                    background: #1A1F25;
-                    border: 1px solid #272E35;
-                    border-radius: 15px;
-                }}
-
-                #messageTime {{
-                    background: transparent;
-                    border: 0;
-                    padding-left: 5px;
-                    color: #747B84;
-                    font-size: 10px;
-                }}
-
-
-                /* =========================================
-                   P7.1 — MENSAGEM DO USUÁRIO ESTILO CHAT
-                   ========================================= */
-
-                #messageUser {{
-                    background: #291C22;
-                    border: 1px solid #472A32;
-                    border-radius: 15px;
-                }}
-
-                #messageTime[owner="user"] {{
-                    background: transparent;
-                    border: 0;
-                    padding-left: 0;
-                    padding-right: 5px;
-                    color: #747B84;
-                    font-size: 10px;
-                }}
-
-                /* =========================================
-                PENSANDO
-                ========================================= */
-
-                #thinkingIndicator {{
-                    background: #1A1F25;
-
-                    border: 1px solid #2D343B;
-                    border-radius: 15px;
-                }}
-
-                #thinkingMeta {{
-                    color: #737A83;
-
-                    font-size: 8px;
-                    font-weight: 700;
-
-                    letter-spacing: 1px;
-                }}
-
-                #thinkingDots {{
-                    color: #FF5C73;
-
-                    font-size: 18px;
-                    font-weight: 700;
-                }}
-
-
-                /* =========================================
-                WAVEFORM
-                ========================================= */
-
-                #microphoneWaveform {{
-                    background: transparent;
-
-                    border: 0;
-                }}
-
-
-                /* =========================================
-                COMPOSER
-                ========================================= */
-
-                #composer {{
-                    background: #11151A;
-
-                    border: 1px solid #432B33;
-                    border-radius: 18px;
-                }}
-
-                #composer:focus-within {{
-                    border-color: #7A3B48;
-                }}
-
-
-                /* campo central */
-
-                #composerEdit {{
-                    background: #171B20;
-
-                    border: 1px solid #272E35;
-                    border-radius: 14px;
-
-                    padding: 6px 10px;
-
-                    color: #E7E3E5;
-
-                    selection-background-color: #743746;
-
-                    font-size: 14px;
-                }}
-
-                #composerEdit:focus {{
-                    background: #181C21;
-
-                    border-color: #4E333B;
-                }}
-
-
-                /* dica inferior */
-
-                #composerHint {{
-                    background: transparent;
-                    border: 0;
-
-                    color: #686F77;
-
-                    font-size: 9px;
-                }}
-
-
-                /* microfone */
-
-                #composerMic {{
-                    background: #D7445B;
-
-                    border: 1px solid #F06479;
-                    border-radius: 23px;
-                }}
-
-                #composerMic:hover {{
-                    background: #EB536A;
-
-                    border-color: #FF7A8D;
-                }}
-
-                #composerMic:pressed {{
-                    background: #BD384D;
-                }}
-
-
-                /* enviar */
-
-                #sendButton {{
-                    background: #21191E;
-
-                    border: 1px solid #4A3038;
-                    border-radius: 21px;
-                }}
-
-                #sendButton:hover {{
-                    background: #2B1C22;
-
-                    border-color: #85404D;
-                }}
-
-                #sendButton:pressed {{
-                    background: #351D25;
-
-                    border-color: #A94B5D;
-                }}
-
-                #sendButton:disabled {{
-                    background: #171B20;
-
-                    border-color: #292F36;
-                }}
-                #voiceSurface {{ background: #172123; border: 1px solid #2F5559; border-radius: 10px; }}
-                #voiceDot {{ color: {PALETA['ciano']}; font-size: 17px; }}
-                #voiceText {{ color: #B7DCE0; }}
-
-/* =========================================
-   P10 — NOVA ABA SISTEMA
-   ========================================= */
-
-#systemPage {{
-    background: transparent;
-}}
-
-#systemHero {{
-    background: #10151A;
-    border: 1px solid #272E35;
-    border-radius: 14px;
-}}
-
-#systemHeroTitle {{
-    background: transparent;
-    border: 0;
-    color: #F7F3F5;
-    font-size: 24px;
-    font-weight: 720;
-}}
-
-#systemHeroDescription {{
-    background: transparent;
-    border: 0;
-    color: #8D949C;
-    font-size: 11px;
-}}
-
-#systemUpdated {{
-    background: transparent;
-    border: 0;
-    color: #777F88;
-    font-size: 9px;
-    padding: 4px 2px;
-}}
-
-#systemSectionCard {{
-    background: #11161B;
-    border: 1px solid #282F36;
-    border-radius: 13px;
-}}
-
-#systemSectionCard #dashboardCardTitle {{
-    color: #F0ECEE;
-    font-size: 13px;
-    font-weight: 700;
-}}
-
-#systemSectionCard #dashboardCardHint {{
-    background: transparent;
-    border: 0;
-    color: #68717A;
-    font-size: 8px;
-}}
-
-#systemSummaryRow {{
-    background: #151A1F;
-    border: 1px solid #232A31;
-    border-radius: 8px;
-}}
-
-#systemSummaryRow #dashboardMetricLabel {{
-    background: transparent;
-    border: 0;
-    padding: 7px 9px;
-    color: #8D949C;
-    font-size: 9px;
-    font-weight: 600;
-}}
-
-#systemSummaryRow #dashboardMetricValue {{
-    background: transparent;
-    border: 0;
-    padding: 7px 9px;
-    color: #F0ECEE;
-    font-size: 10px;
-    font-weight: 700;
-}}
-
-#systemSummarySeparator {{
-    background: #252C33;
-    border: 0;
-}}
-
-#systemSummarySensor {{
-    background: transparent;
-    border: 0;
-    padding: 2px 3px;
-    color: #BBB7BB;
-    font-size: 10px;
-}}
-
-#systemSummaryState {{
-    background: #171C21;
-    border: 1px solid #292F36;
-    border-radius: 8px;
-    padding: 8px 9px;
-    color: #777F88;
-    font-size: 8px;
-}}
-
-#systemSummaryState[state="ok"] {{
-    border-color: #315242;
-    color: #79CFA4;
-}}
-
-#systemSummaryState[state="partial"] {{
-    border-color: #51452F;
-    color: #C6A05E;
-}}
-
-#systemMetricCard {{
-    background: #151A1F;
-    border: 1px solid #282F36;
-    border-radius: 10px;
-    min-width: 125px;
-}}
-
-#systemMetricCard:hover {{
-    background: #181D22;
-    border-color: #40343A;
-}}
-
-#systemMetricTitle {{
-    background: transparent;
-    border: 0;
-    color: #AAAEB4;
-    font-size: 9px;
-    font-weight: 650;
-}}
-
-#systemMetricValue {{
-    background: transparent;
-    border: 0;
-    color: #F4F0F2;
-    font-size: 15px;
-    font-weight: 720;
-}}
-
-#systemMetricProgress {{
-    background: #242A30;
-    border: 0;
-    border-radius: 2px;
-    min-height: 4px;
-    max-height: 4px;
-}}
-
-#systemMetricProgress::chunk {{
-    background: #D94C63;
-    border-radius: 2px;
-}}
-
-#systemMetricCard[metricTone="gpu"] #systemMetricProgress::chunk {{
-    background: #65B978;
-}}
-
-#systemMetricCard[metricTone="ram"] #systemMetricProgress::chunk {{
-    background: #D68A35;
-}}
-
-#systemMetricCard[metricTone="vram"] #systemMetricProgress::chunk {{
-    background: #9A58D2;
-}}
-
-#systemMetricCard[metricTone="network"] #systemMetricProgress::chunk {{
-    background: #48AFC0;
-}}
-
-#systemMetricCard[metricTone="disk"] #systemMetricProgress::chunk {{
-    background: #4F8CC9;
-}}
-
-#systemMetricSparkline {{
-    background: transparent;
-    border: 0;
-    color: #D94C63;
-    font-family: 'Cascadia Code';
-    font-size: 16px;
-}}
-
-#systemMetricCard[metricTone="gpu"] #systemMetricSparkline {{
-    color: #65B978;
-}}
-
-#systemMetricCard[metricTone="ram"] #systemMetricSparkline {{
-    color: #D68A35;
-}}
-
-#systemMetricCard[metricTone="vram"] #systemMetricSparkline {{
-    color: #9A58D2;
-}}
-
-#systemMetricCard[metricTone="network"] #systemMetricSparkline {{
-    color: #48AFC0;
-}}
-
-#systemMetricCard[metricTone="disk"] #systemMetricSparkline {{
-    color: #4F8CC9;
-}}
-
-#systemMetricFooter {{
-    background: #12171C;
-    border: 1px solid #252C33;
-    border-radius: 7px;
-    padding: 5px 7px;
-    color: #7EABB3;
-    font-size: 8px;
-}}
-
-
-                /* =========================================
-                   P10.1 — SISTEMA FASE 3
-                   ========================================= */
-
-                #systemLowerRow {{
-                    background: transparent;
-                    border: 0;
-                }}
-
-                #systemModelCard,
-                #systemStorageCard {{
-                    background: #11161B;
-                    border: 1px solid #282F36;
-                    border-radius: 13px;
-                }}
-
-                #systemModelCard #dashboardCardTitle,
-                #systemStorageCard #dashboardCardTitle {{
-                    color: #F0ECEE;
-                    font-size: 13px;
-                    font-weight: 700;
-                }}
-
-                #systemModelStatus {{
-                    background: #17201C;
-                    border: 1px solid #294838;
-                    border-radius: 8px;
-                    padding: 7px 9px;
-                    color: #72C99D;
-                    font-size: 9px;
-                    font-weight: 650;
-                }}
-
-                #systemModelStatus[state="pending"] {{
-                    background: #1B1C1C;
-                    border-color: #4E432D;
-                    color: #C5A05D;
-                }}
-
-                #systemModelStatus[state="error"] {{
-                    background: #21171B;
-                    border-color: #5C3039;
-                    color: #E67386;
-                }}
-
-                #systemModelStatus[state="unavailable"] {{
-                    background: #15191D;
-                    border-color: #252B31;
-                    color: #707880;
-                }}
-
-                #systemModelRow {{
-                    background: #151A1F;
-                    border: 1px solid #232A31;
-                    border-radius: 8px;
-                }}
-
-                #systemModelRow #dashboardMetricLabel {{
-                    background: transparent;
-                    border: 0;
-                    padding: 7px 9px;
-                    color: #858D96;
-                    font-size: 9px;
-                    font-weight: 600;
-                }}
-
-                #systemModelRow #dashboardMetricValue {{
-                    background: transparent;
-                    border: 0;
-                    padding: 7px 9px;
-                    color: #ECE8EA;
-                    font-size: 9px;
-                    font-weight: 650;
-                }}
-
-                #systemStorageMetric {{
-                    background: #151A1F;
-                    border: 1px solid #232A31;
-                    border-radius: 9px;
-                }}
-
-                #systemStorageMetricLabel {{
-                    background: transparent;
-                    border: 0;
-                    color: #A5AAB0;
-                    font-size: 9px;
-                    font-weight: 650;
-                }}
-
-                #systemStorageMetricValue {{
-                    background: transparent;
-                    border: 0;
-                    color: #F1EDEF;
-                    font-size: 10px;
-                    font-weight: 700;
-                }}
-
-                #systemStorageProgress {{
-                    background: #242A30;
-                    border: 0;
-                    border-radius: 2px;
-                    min-height: 5px;
-                    max-height: 5px;
-                }}
-
-                #systemStorageProgress::chunk {{
-                    background: #D94C63;
-                    border-radius: 2px;
-                }}
-
-                #systemStorageMetric[resource="ram"]
-                #systemStorageProgress::chunk {{
-                    background: #D68A35;
-                }}
-
-                #systemStorageMetric[resource="vram"]
-                #systemStorageProgress::chunk {{
-                    background: #9A58D2;
-                }}
-
-                #systemStorageHint {{
-                    background: #14191E;
-                    border: 1px solid #252C33;
-                    border-radius: 8px;
-                    padding: 7px 9px;
-                    color: #707881;
-                    font-size: 8px;
-                }}
-
-
-/* =========================================
-   P10.2 — SISTEMA FASE 4
-   ========================================= */
-
-#systemPhase4Row {{
-    background: transparent;
-    border: 0;
-}}
-
-#systemAudioCard,
-#systemActionsCard,
-#systemAlertsCard {{
-    background: #11161B;
-    border: 1px solid #282F36;
-    border-radius: 13px;
-}}
-
-#systemAudioCard #dashboardCardTitle,
-#systemActionsCard #dashboardCardTitle,
-#systemAlertsCard #dashboardCardTitle {{
-    color: #F0ECEE;
-    font-size: 13px;
-    font-weight: 700;
-}}
-
-#systemAudioStatus {{
-    background: #171C21;
-    border: 1px solid #2B3239;
-    border-radius: 8px;
-    padding: 7px 9px;
-    color: #858D96;
-    font-size: 9px;
-    font-weight: 650;
-}}
-
-#systemAudioStatus[state="ok"] {{
-    background: #17201C;
-    border-color: #294838;
-    color: #72C99D;
-}}
-
-#systemAudioStatus[state="pending"] {{
-    background: #1B1C1C;
-    border-color: #4E432D;
-    color: #C5A05D;
-}}
-
-#systemAudioStatus[state="error"] {{
-    background: #21171B;
-    border-color: #5C3039;
-    color: #E67386;
-}}
-
-#systemAudioStatus[state="unavailable"] {{
-    background: #15191D;
-    border-color: #252B31;
-    color: #707880;
-}}
-
-#systemAudioRow {{
-    background: #151A1F;
-    border: 1px solid #232A31;
-    border-radius: 8px;
-}}
-
-#systemAudioRow #dashboardMetricLabel {{
-    background: transparent;
-    border: 0;
-    padding: 6px 8px;
-    color: #858D96;
-    font-size: 8px;
-    font-weight: 600;
-}}
-
-#systemAudioRow #dashboardMetricValue {{
-    background: transparent;
-    border: 0;
-    padding: 6px 8px;
-    color: #ECE8EA;
-    font-size: 9px;
-    font-weight: 650;
-}}
-
-#systemAudioLevelHeader {{
-    background: transparent;
-    border: 0;
-}}
-
-#systemAudioLevelLabel {{
-    background: transparent;
-    border: 0;
-    color: #858D96;
-    font-size: 8px;
-    font-weight: 600;
-}}
-
-#systemAudioLevelValue {{
-    background: transparent;
-    border: 0;
-    color: #F0ECEE;
-    font-size: 9px;
-    font-weight: 700;
-}}
-
-#systemAudioLevel {{
-    background: #242A30;
-    border: 0;
-    border-radius: 2px;
-    min-height: 5px;
-    max-height: 5px;
-}}
-
-#systemAudioLevel::chunk {{
-    background: #68C79A;
-    border-radius: 2px;
-}}
-
-QPushButton[systemQuickAction="true"] {{
-    background: #151A1F;
-    border: 1px solid #292F36;
-    border-radius: 9px;
-    min-height: 34px;
-    padding: 7px 10px;
-    text-align: left;
-    color: #C7C3C6;
-    font-size: 9px;
-    font-weight: 600;
-}}
-
-QPushButton[systemQuickAction="true"]:hover {{
-    background: #241A1F;
-    border-color: #713541;
-    color: #FFF3F5;
-}}
-
-QPushButton[systemQuickAction="true"]:pressed {{
-    background: #2D1C22;
-    border-color: #A54355;
-    color: #FF7588;
-}}
-
-#systemActionsHint {{
-    background: #14191E;
-    border: 1px solid #252C33;
-    border-radius: 8px;
-    padding: 7px 9px;
-    color: #707881;
-    font-size: 8px;
-}}
-
-#systemAlertStatus {{
-    background: #171C21;
-    border: 1px solid #2B3239;
-    border-radius: 8px;
-    padding: 8px 9px;
-    color: #858D96;
-    font-size: 9px;
-    font-weight: 650;
-}}
-
-#systemAlertStatus[state="ok"] {{
-    background: #17201C;
-    border-color: #294838;
-    color: #72C99D;
-}}
-
-#systemAlertStatus[state="warning"] {{
-    background: #201C16;
-    border-color: #59462A;
-    color: #D1A660;
-}}
-
-#systemAlertItem {{
-    background: #151A1F;
-    border: 1px solid #252C33;
-    border-radius: 8px;
-    padding: 7px 9px;
-    color: #A8AEB4;
-    font-size: 8px;
-}}
-
-#systemAlertItem[kind="warning"] {{
-    background: #1E1A16;
-    border-color: #4F402B;
-    color: #C9A15E;
-}}
-
-/* =========================================
-   P10.3 — SISTEMA FASE 5 / RIGHT RAIL
-   ========================================= */
-
-#systemWorkbench {{
-    background: transparent;
-    border: 0;
-}}
-
-#systemMainColumn,
-#systemRightRail {{
-    background: transparent;
-    border: 0;
-}}
-
-#systemLaylayCard {{
-    background: #12161B;
-    border: 1px solid #60313B;
-    border-radius: 14px;
-}}
-
-#systemLaylayCard #dashboardCardTitle {{
-    color: #F4F0F2;
-    font-size: 14px;
-    font-weight: 720;
-}}
-
-#systemLaylayCard #dashboardCardHint {{
-    background: #2A1A20;
-    border: 1px solid #55303A;
-    border-radius: 7px;
-    padding: 3px 6px;
-    color: #E96379;
-    font-size: 8px;
-    font-weight: 700;
-}}
-
-#systemLaylayStatus {{
-    background: #17201C;
-    border: 1px solid #315442;
-    border-radius: 9px;
-    padding: 8px 9px;
-    color: #78CFA4;
-    font-size: 9px;
-    font-weight: 700;
-}}
-
-#systemLaylayStatus[state="partial"] {{
-    background: #201C16;
-    border-color: #59462A;
-    color: #D1A660;
-}}
-
-#systemLaylayStatus[state="unavailable"] {{
-    background: #17191C;
-    border-color: #292F36;
-    color: #747C84;
-}}
-
-#systemLaylayRow {{
-    background: #171C21;
-    border: 1px solid #292F36;
-    border-radius: 8px;
-}}
-
-#systemLaylayRow #dashboardMetricLabel {{
-    background: transparent;
-    border: 0;
-    padding: 6px 8px;
-    color: #818992;
-    font-size: 8px;
-    font-weight: 600;
-}}
-
-#systemLaylayRow #dashboardMetricValue {{
-    background: transparent;
-    border: 0;
-    padding: 6px 8px;
-    color: #ECE8EA;
-    font-size: 9px;
-    font-weight: 650;
-}}
-
-#systemLaylayPulse {{
-    background: #181D22;
-    border: 1px solid #2B3239;
-    border-radius: 9px;
-    padding: 7px 9px;
-    color: #9BA2A9;
-    font-size: 8px;
-}}
-
-#systemRightRail #systemActionsCard,
-#systemRightRail #systemAlertsCard {{
-    background: #12171C;
-    border-color: #292F36;
-}}
-
-#systemRightRail QPushButton[systemQuickAction="true"] {{
-    min-height: 31px;
-    padding: 6px 9px;
-}}
-
-#systemRightRail #systemAlertItem {{
-    padding: 6px 8px;
-}}
-
-#systemMainColumn #systemAudioCard {{
-    min-height: 170px;
-}}
-
-/* =========================================
-   P10.4 — SISTEMA FASE 6 / LEGIBILIDADE
-   ========================================= */
-
-#systemHeroTitle {{
-    font-size: 17px;
-    font-weight: 760;
-    color: #F3EFF1;
-}}
-
-#systemHeroDescription {{
-    font-size: 10px;
-    color: #A7ADB4;
-}}
-
-#systemUpdated {{
-    font-size: 10px;
-    color: #8A919A;
-}}
-
-#systemSectionCard #dashboardCardTitle,
-#systemModelCard #dashboardCardTitle,
-#systemStorageCard #dashboardCardTitle,
-#systemAudioCard #dashboardCardTitle,
-#systemLaylayCard #dashboardCardTitle,
-#systemActionsCard #dashboardCardTitle,
-#systemAlertsCard #dashboardCardTitle {{
-    font-size: 14px;
-    font-weight: 740;
-    color: #F3EFF1;
-}}
-
-#systemSectionCard #dashboardCardHint,
-#systemModelCard #dashboardCardHint,
-#systemStorageCard #dashboardCardHint,
-#systemAudioCard #dashboardCardHint,
-#systemLaylayCard #dashboardCardHint,
-#systemActionsCard #dashboardCardHint,
-#systemAlertsCard #dashboardCardHint {{
-    font-size: 8px;
-    font-weight: 650;
-}}
-
-#systemSummaryRow #dashboardMetricLabel {{
-    font-size: 9px;
-    font-weight: 620;
-    color: #9AA1A9;
-}}
-
-#systemSummaryRow #dashboardMetricValue {{
-    font-size: 10px;
-    font-weight: 700;
-    color: #F1EDF0;
-}}
-
-#systemSummarySensor {{
-    font-size: 10px;
-    color: #A8AFB6;
-    padding-top: 2px;
-}}
-
-#systemSummaryState {{
-    font-size: 9px;
-    line-height: 1.3;
-    padding-top: 5px;
-    color: #99BCA8;
-}}
-
-#systemMetricTitle {{
-    font-size: 9px;
-    font-weight: 700;
-    color: #ADB3BA;
-}}
-
-#systemMetricValue {{
-    font-size: 15px;
-    font-weight: 760;
-    color: #FFF8FA;
-}}
-
-#systemMetricFooter {{
-    font-size: 8px;
-    color: #8F97A0;
-}}
-
-#systemMetricSparkline {{
-    font-size: 9px;
-}}
-
-#systemModelStatus,
-#systemAudioStatus,
-#systemLaylayStatus,
-#systemAlertStatus {{
-    font-size: 10px;
-    font-weight: 700;
-}}
-
-#systemModelRow #dashboardMetricLabel,
-#systemAudioRow #dashboardMetricLabel,
-#systemLaylayRow #dashboardMetricLabel {{
-    font-size: 9px;
-    font-weight: 620;
-    color: #99A0A8;
-}}
-
-#systemModelRow #dashboardMetricValue,
-#systemAudioRow #dashboardMetricValue,
-#systemLaylayRow #dashboardMetricValue {{
-    font-size: 10px;
-    font-weight: 700;
-    color: #F1EDF0;
-}}
-
-#systemStorageMetricLabel {{
-    font-size: 9px;
-    font-weight: 650;
-    color: #A7ADB4;
-}}
-
-#systemStorageMetricValue {{
-    font-size: 10px;
-    font-weight: 740;
-    color: #FFF8FA;
-}}
-
-#systemStorageHint,
-#systemActionsHint,
-#systemLaylayPulse,
-#systemAlertItem {{
-    font-size: 9px;
-    line-height: 1.35;
-}}
-
-#systemAudioLevelLabel {{
-    font-size: 9px;
-    font-weight: 620;
-    color: #A1A8B0;
-}}
-
-#systemAudioLevelValue {{
-    font-size: 10px;
-    font-weight: 720;
-    color: #F4F0F2;
-}}
-
-QPushButton[systemQuickAction="true"] {{
-    min-height: 38px;
-    padding: 8px 11px;
-    font-size: 10px;
-    font-weight: 680;
-}}
-
-#systemRightRail #systemLaylayCard,
-#systemRightRail #systemActionsCard,
-#systemRightRail #systemAlertsCard {{
-    border-radius: 15px;
-}}
-
-#systemRightRail #systemAlertItem {{
-    padding: 8px 9px;
-}}
-
-#systemAudioCard,
-#systemModelCard,
-#systemStorageCard,
-#systemLaylayCard,
-#systemActionsCard,
-#systemAlertsCard,
-#systemSectionCard {{
-    border-radius: 14px;
-}}
-
-/* =========================================
-   P10.4.1 — SISTEMA RESPONSIVO
-   ========================================= */
-
-QScrollArea#systemScroll {{
-    background: transparent;
-    border: 0;
-}}
-
-QScrollArea#systemScroll > QWidget > QWidget {{
-    background: transparent;
-}}
-
-#systemPageContent {{
-    background: transparent;
-}}
-
-#systemHero,
-#systemSectionCard,
-#systemModelCard,
-#systemStorageCard,
-#systemAudioCard,
-#systemLaylayCard,
-#systemActionsCard,
-#systemAlertsCard {{
-    min-height: 0px;
-}}
-
-#systemAudioCard,
-#systemModelCard,
-#systemStorageCard {{
-    min-width: 0px;
-}}
-
-#systemSummarySensor,
-#systemStorageHint,
-#systemActionsHint,
-#systemLaylayPulse,
-#systemAlertItem {{
-    padding-top: 4px;
-    padding-bottom: 4px;
-}}
-
-
-/* =========================================
-   P10.6 — REFINO VISUAL DA ABA SISTEMA
-   ========================================= */
-
-#systemSectionCard[summaryCard="true"] {{
-    background: #11161B;
-    border: 1px solid #2B3239;
-    border-radius: 16px;
-}}
-
-#systemSpecRow {{
-    background: transparent;
-    border: 0;
-    border-bottom: 1px solid #252D35;
-    padding: 0;
-}}
-
-#systemSpecIcon {{
-    background: qlineargradient(
-        x1:0, y1:0, x2:1, y2:1,
-        stop:0 #191F25,
-        stop:1 #14191E
-    );
-    border: 1px solid #2D3540;
-    border-radius: 8px;
-    color: #E7EAEE;
-    font-size: 13px;
-    font-weight: 800;
-}}
-
-#systemSpecTitle {{
-    background: transparent;
-    border: 0;
-    color: #C2C8CF;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.2px;
-}}
-
-#systemSpecValue {{
-    background: transparent;
-    border: 0;
-    color: #F6F7FA;
-    font-size: 11px;
-    font-weight: 760;
-    line-height: 1.15em;
-}}
-
-#systemSpecDetail {{
-    background: transparent;
-    border: 0;
-    color: #8A939D;
-    font-size: 9px;
-    font-weight: 650;
-    line-height: 1.15em;
-}}
-
-#dashboardCardTitle {{
-    color: #F4F0F2;
-    font-size: 13px;
-    font-weight: 780;
-    letter-spacing: 0.15px;
-}}
-
-#dashboardCardDetail,
-#dashboardCardMeta,
-#dashboardSectionMeta {{
-    color: #7C858F;
-    font-size: 9px;
-    font-weight: 650;
-}}
-
-#dashboardInfoRow,
-#dashboardMetricCard,
-#dashboardListRow,
-#dashboardActionRow {{
-    border-radius: 13px;
-}}
-
-#dashboardMetricCard {{
-    min-height: 116px;
-    padding: 2px;
-}}
-
-#dashboardMetricLabel,
-#dashboardSmallLabel,
-#dashboardInfoLabel {{
-    color: #AEB4BC;
-    font-size: 9px;
-    font-weight: 700;
-}}
-
-#dashboardMetricValue,
-#dashboardSmallValue,
-#dashboardInfoValue {{
-    color: #F5F7FA;
-    font-size: 11px;
-    font-weight: 780;
-}}
-
-#dashboardMetricSpark,
-#dashboardSparkline {{
-    font-size: 13px;
-    letter-spacing: 0.2px;
-}}
-
-#dashboardHint,
-#dashboardInfoHint,
-#dashboardEmpty {{
-    color: #7E8791;
-    font-size: 9px;
-    font-weight: 620;
-}}
-
-#dashboardActionButton,
-#dashboardQuickAction,
-#dashboardMiniAction {{
-    min-height: 48px;
-    border-radius: 14px;
-    padding: 0 14px;
-}}
-
-#dashboardActionButton:hover,
-#dashboardQuickAction:hover,
-#dashboardMiniAction:hover {{
-    border-color: #F05D7A;
-    background: rgba(240, 93, 122, 0.10);
-}}
-
-#dashboardStatusBadge,
-#dashboardLiveBadge {{
-    min-height: 24px;
-    padding: 0 10px;
-    border-radius: 11px;
-    font-size: 9px;
-    font-weight: 760;
-}}
-
-#dashboardScrollArea {{
-    background: transparent;
-    border: 0;
-}}
-
-
-
-/* =========================================
-   P10.7 — REFINO DO BLOCO DE DESEMPENHO
-   ========================================= */
-
-#systemPerformanceCard {{
-    background: #11161C;
-    border: 1px solid #2A3138;
-    border-radius: 16px;
-}}
-
-#dashboardMetricCard {{
-    background: qlineargradient(
-        x1:0, y1:0, x2:1, y2:1,
-        stop:0 #1A2027,
-        stop:1 #151A20
-    );
-    border: 1px solid #313944;
-    border-radius: 12px;
-    min-height: 86px;
-    padding: 0px;
-}}
-
-#dashboardMetricCard:hover {{
-    border-color: #434D59;
-}}
-
-#dashboardMetricCard[metricKey="cpu"] {{
-    border-color: #4A343C;
-    background: qlineargradient(
-        x1:0, y1:0, x2:1, y2:1,
-        stop:0 rgba(255, 95, 120, 0.11),
-        stop:1 rgba(255, 95, 120, 0.03)
-    );
-}}
-
-#dashboardMetricCard[metricKey="ram"] {{
-    border-color: #534630;
-    background: qlineargradient(
-        x1:0, y1:0, x2:1, y2:1,
-        stop:0 rgba(255, 170, 36, 0.10),
-        stop:1 rgba(255, 170, 36, 0.03)
-    );
-}}
-
-#dashboardMetricCard[metricKey="gpu"] {{
-    border-color: #2E4A39;
-    background: qlineargradient(
-        x1:0, y1:0, x2:1, y2:1,
-        stop:0 rgba(90, 225, 130, 0.10),
-        stop:1 rgba(90, 225, 130, 0.03)
-    );
-}}
-
-#dashboardMetricCard[metricKey="vram"] {{
-    border-color: #4A3480;
-    background: qlineargradient(
-        x1:0, y1:0, x2:1, y2:1,
-        stop:0 rgba(178, 101, 255, 0.10),
-        stop:1 rgba(178, 101, 255, 0.03)
-    );
-}}
-
-#dashboardMetricCard[metricKey="disk"] {{
-    border-color: #355E8E;
-    background: qlineargradient(
-        x1:0, y1:0, x2:1, y2:1,
-        stop:0 rgba(89, 167, 255, 0.10),
-        stop:1 rgba(89, 167, 255, 0.03)
-    );
-}}
-
-#dashboardMetricCard[metricKey="network"],
-#dashboardMetricCard[metricKey="rede"] {{
-    border-color: #2E666C;
-    background: qlineargradient(
-        x1:0, y1:0, x2:1, y2:1,
-        stop:0 rgba(72, 227, 239, 0.10),
-        stop:1 rgba(72, 227, 239, 0.03)
-    );
-}}
-
-#dashboardMetricLabel {{
-    background: transparent;
-    border: 0;
-    color: #F1F4F7;
-    font-size: 11px;
-    font-weight: 760;
-    letter-spacing: 0.1px;
-}}
-
-#dashboardMetricValue {{
-    background: transparent;
-    border: 0;
-    color: #FFFFFF;
-    font-size: 14px;
-    font-weight: 820;
-}}
-
-#dashboardMetricSpark {{
-    background: transparent;
-    border: 0;
-    color: #C8D0D7;
-    font-size: 15px;
-    line-height: 1.0em;
-}}
-
-#dashboardHint {{
-    background: transparent;
-    border: 0;
-    color: #A5AFB9;
-    font-size: 9px;
-    font-weight: 650;
-}}
-
-#dashboardMetricBar {{
-    background: #27303A;
-    border: 0;
-    border-radius: 2px;
-    min-height: 4px;
-    max-height: 4px;
-}}
-
-#dashboardMetricBar::chunk {{
-    border-radius: 2px;
-}}
-
-#dashboardMetricBar[metricKey="cpu"]::chunk {{
-    background: #FF5B78;
-}}
-
-#dashboardMetricBar[metricKey="ram"]::chunk {{
-    background: #F2A22A;
-}}
-
-#dashboardMetricBar[metricKey="gpu"]::chunk {{
-    background: #67D784;
-}}
-
-#dashboardMetricBar[metricKey="vram"]::chunk {{
-    background: #B46BFF;
-}}
-
-#dashboardMetricBar[metricKey="disk"]::chunk {{
-    background: #64AEFF;
-}}
-
-#dashboardMetricBar[metricKey="network"]::chunk,
-#dashboardMetricBar[metricKey="rede"]::chunk {{
-    background: #58E6EE;
-}}
-
-#systemPerformanceSamples {{
-    color: #7B8692;
-    font-size: 9px;
-    font-weight: 700;
-}}
-
-                #pageTitle {{ font-size: 28px; font-weight: 650; }}
-                #pageDescription {{ color: {PALETA['secundario']}; font-size: 14px; max-width: 700px; }}
-                #sectionTitle {{ font-size: 17px; font-weight: 650; padding-top: 4px; }}
-                #fieldLabel {{ color: {PALETA['secundario']}; font-size: 11px; font-weight: 650; }}
-                QPushButton[provider="true"] {{ background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 10px; padding: 13px 15px; text-align: left; color: {PALETA['secundario']}; }}
-                QPushButton[provider="true"]:hover {{ background: {PALETA['elevada']}; }}
-                QPushButton[provider="true"]:checked {{ background: #292332; border-color: {PALETA['violeta']}; color: {PALETA['texto']}; }}
-                #settingsField {{ background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 8px; padding: 10px 12px; selection-background-color: #5D497A; }}
-                #settingsField:focus {{ border-color: {PALETA['violeta']}; }}
-                #settingsField:read-only {{ color: {PALETA['apagado']}; background: #19171C; }}
-                #keyState {{ color: {PALETA['ciano']}; font-size: 11px; }}
-                #settingsBanner {{ background: #22202A; border-left: 3px solid {PALETA['ciano']}; padding: 11px 13px; color: {PALETA['secundario']}; }}
-                #settingsBanner[kind="success"] {{ border-left-color: {PALETA['sucesso']}; }}
-                #settingsBanner[kind="error"] {{ border-left-color: {PALETA['erro']}; }}
-                #settingsNote {{ color: {PALETA['secundario']}; background: {PALETA['superficie']}; padding: 13px; border-radius: 8px; }}
-                #primaryButton {{ background: {PALETA['violeta']}; color: #161219; border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 700; }}
-                #primaryButton:hover {{ background: #B99AF0; }}
-                #secondaryButton {{ background: {PALETA['elevada']}; border: 1px solid {PALETA['borda']}; border-radius: 8px; padding: 10px 15px; font-weight: 600; }}
-                #diagnosticValue {{ background: {PALETA['superficie']}; border-left: 2px solid {PALETA['ciano']}; padding: 12px 15px; font-family: 'Cascadia Code'; font-size: 12px; }}
-                #eventLog {{ font-family: 'Cascadia Code'; background: {PALETA['superficie']}; border: 1px solid {PALETA['borda']}; border-radius: 9px; color: {PALETA['secundario']}; padding: 14px; font-size: 11px; }}
-                #chatSurface {{ background: #0E1216; border: 1px solid #252C33; border-radius: 17px; }}
-                #chatHeader {{ background: transparent; border-bottom: 1px solid #20262D; }}
-                #chatGreeting {{ font-size: 20px; font-weight: 700; color: #F8F5F7; }}
-                #chatGreetingSub {{ color: {PALETA['secundario']}; font-size: 13px; }}
-                #microphoneWaveform {{ background: transparent; }}
-                /* =========================================
-                CENTRAL INTELIGENTE
-                ========================================= */
-
-                #intelligencePanel {{
-                    background: #11151A;
-
-                    border: 1px solid #6F303B;
-                    border-radius: 18px;
-                }}
-
-                #intelligenceTitle {{
-                    color: #F6F2F4;
-
-                    font-size: 18px;
-                    font-weight: 700;
-                }}
-
-
-                /* indicador vivo */
-
-                #liveBadge {{
-                    background: #321D23;
-
-                    border: 1px solid #64313C;
-                    border-radius: 11px;
-
-                    padding: 4px 9px;
-
-                    color: #FF7186;
-
-                    font-size: 9px;
-                    font-weight: 600;
-                }}
-
-
-                /* seções internas da central */
-
-                #dashboardCard[centralSection="true"] {{
-                    background: transparent;
-
-                    border: 0;
-                    border-radius: 0;
-                }}
-
-                #dashboardCard[centralSection="true"]
-                #dashboardCardTitle {{
-                    color: #F0ECEE;
-
-                    font-size: 13px;
-                    font-weight: 700;
-                }}
-
-
-                /* detalhes tipo "sanitizado" */
-
-                #dashboardCardHint {{
-                    background: transparent;
-                    border: 0;
-
-                    color: #737A83;
-
-                    font-size: 8px;
-                }}
-
-
-                /* =========================================
-                AÇÕES RÁPIDAS
-                ========================================= */
-
-                QPushButton[dashboardAction="true"] {{
-                    background: #191E24;
-
-                    border: 1px solid #30363D;
-                    border-radius: 10px;
-
-                    min-height: 40px;
-
-                    padding: 7px 10px;
-
-                    text-align: left;
-
-                    color: #C9C5C8;
-
-                    font-size: 10px;
-                    font-weight: 550;
-                }}
-
-                QPushButton[dashboardAction="true"]:hover {{
-                    background: #251B20;
-
-                    border-color: #75404B;
-
-                    color: #FFF4F6;
-                }}
-
-                QPushButton[dashboardAction="true"]:pressed {{
-                    background: #301D24;
-
-                    border-color: #954859;
-                }}
-
-                QPushButton[dashboardAction="true"]:disabled {{
-                    background: #15191E;
-
-                    border-color: #252B31;
-
-                    color: #555C64;
-                }}
-
-
-                /* =========================================
-                CONTEXTO ATUAL
-                ========================================= */
-
-                #contextItem {{
-                    background: #191E24;
-
-                    border: 1px solid #2C3239;
-                    border-radius: 9px;
-                }}
-
-                #contextItem:hover {{
-                    background: #1D2228;
-
-                    border-color: #3B343A;
-                }}
-
-                #contextLabel {{
-                    background: transparent;
-                    border: 0;
-
-                    color: #747C85;
-
-                    font-size: 8px;
-                }}
-
-                #contextValue {{
-                    background: transparent;
-                    border: 0;
-
-                    color: #D8D4D7;
-
-                    font-size: 9px;
-                    font-weight: 650;
-                }}
-
-
-                /* =========================================
-                MEMÓRIA / ATIVIDADE
-                ========================================= */
-
-                #dashboardEmpty {{
-                    background: #171C21;
-
-                    border: 1px solid #282F36;
-                    border-radius: 9px;
-
-                    padding: 8px 10px;
-
-                    color: #888F97;
-
-                    font-size: 9px;
-                }}
-
-                #dashboardActivity {{
-                    background: #171C21;
-
-                    border: 1px solid #282F36;
-                    border-radius: 9px;
-
-                    padding: 8px 10px;
-
-                    color: #888F97;
-
-                    font-size: 9px;
-                }}
-
-                /* =========================================
-                   HOME — CARD SISTEMA
-                   ========================================= */
-
-                #dashboardCard[railCard="system"] {{
-                    background: #14191E;
-                    border: 1px solid #2B3239;
-                    border-radius: 14px;
-                }}
-
-                #dashboardCard[railCard="system"] #dashboardCardTitle {{
-                    color: #F3EFF1;
-                    font-size: 13px;
-                    font-weight: 700;
-                }}
-
-                #dashboardCard[railCard="system"] #dashboardCardHint {{
-                    background: #2A1A20;
-                    border: 1px solid #55303A;
-                    border-radius: 7px;
-                    padding: 3px 6px;
-                    color: #E96379;
-                    font-size: 8px;
-                    font-weight: 700;
-                }}
-
-                #railSystemMetric {{
-                    background: #171C21;
-                    border: 1px solid #292F36;
-                    border-radius: 9px;
-                }}
-
-                #railSystemMetric[state="stale"] {{
-                    background: #1C1B1B;
-                    border-color: #54442D;
-                }}
-
-                #railSystemMetric[state="unavailable"] {{
-                    background: #15191D;
-                    border-color: #23292F;
-                }}
-
-                #railSystemMetricLabel {{
-                    background: transparent;
-                    border: 0;
-                    color: #858D96;
-                    font-size: 9px;
-                    font-weight: 600;
-                }}
-
-                #railSystemMetricValue {{
-                    background: transparent;
-                    border: 0;
-                    color: #F0ECEE;
-                    font-size: 11px;
-                    font-weight: 700;
-                }}
-
-                #railSystemMetricValue[state="stale"] {{
-                    color: #D4AE6A;
-                }}
-
-                #railSystemMetricValue[state="unavailable"] {{
-                    color: #5D656D;
-                }}
-
-                #railSystemProgress {{
-                    background: #242A30;
-                    border: 0;
-                    border-radius: 2px;
-                    min-height: 4px;
-                    max-height: 4px;
-                }}
-
-                #railSystemProgress::chunk {{
-                    background: #CF485E;
-                    border-radius: 2px;
-                }}
-
-                #railSystemProgress[available="false"]::chunk {{
-                    background: #343A40;
-                }}
-
-                #railSystemFooter {{
-                    background: #171C21;
-                    border: 1px solid #292F36;
-                    border-radius: 9px;
-                }}
-
-                #railSystemFooter[state="stale"] {{
-                    border-color: #54442D;
-                }}
-
-                #railSystemFooter[state="unavailable"] {{
-                    background: #15191D;
-                    border-color: #23292F;
-                }}
-
-                #railSystemFooterIcon {{
-                    background: #241B20;
-                    border: 1px solid #49313A;
-                    border-radius: 11px;
-                    color: #D35469;
-                    font-size: 10px;
-                }}
-
-                #railSystemStatus {{
-                    background: transparent;
-                    border: 0;
-                    padding: 2px 1px;
-                    color: #737B84;
-                    font-size: 8px;
-                }}
-
-                #railSystemStatus[state="ok"] {{
-                    color: #68C79A;
-                }}
-
-                #railSystemStatus[state="partial"] {{
-                    color: #C6A05E;
-                }}
-
-                #railSystemStatus[state="unavailable"] {{
-                    color: #7A8189;
-                }}
-
-                #railSystemStatus[state="pending"] {{
-                    color: #69717A;
-                }}
-
-
-                /* =========================================
-                   HOME — CARD MÚSICA
-                   ========================================= */
-
-                #dashboardCard[railCard="music"] {{
-                    background: #14191E;
-                    border: 1px solid #2B3239;
-                    border-radius: 14px;
-                }}
-
-                #dashboardCard[railCard="music"][musicState="playing"] {{
-                    border-color: #5A3039;
-                }}
-
-                #dashboardCard[railCard="music"][musicState="stale"] {{
-                    border-color: #54442D;
-                }}
-
-                #dashboardCard[railCard="music"][musicState="unavailable"] {{
-                    border-color: #252B31;
-                }}
-
-                #dashboardCard[railCard="music"] #dashboardCardTitle {{
-                    color: #F3EFF1;
-                    font-size: 13px;
-                    font-weight: 700;
-                }}
-
-                #railMusicBadge {{
-                    background: #20262C;
-                    border: 1px solid #323940;
-                    border-radius: 7px;
-                    padding: 3px 6px;
-                    color: #858D96;
-                    font-size: 8px;
-                    font-weight: 700;
-                }}
-
-                #railMusicBadge[state="playing"] {{
-                    background: #2A1A20;
-                    border-color: #5B303B;
-                    color: #FF6D82;
-                }}
-
-                #railMusicBadge[state="paused"] {{
-                    background: #1B2025;
-                    border-color: #333A42;
-                    color: #A9B0B7;
-                }}
-
-                #railMusicBadge[state="ended"] {{
-                    background: #1B2025;
-                    border-color: #333A42;
-                    color: #8C949C;
-                }}
-
-                #railMusicBadge[state="stale"] {{
-                    background: #272116;
-                    border-color: #5A4827;
-                    color: #D3AA61;
-                }}
-
-                #railMusicBadge[state="unavailable"] {{
-                    background: #181C20;
-                    border-color: #282E34;
-                    color: #646C74;
-                }}
-
-                #railMusicTitle {{
-                    background: transparent;
-                    border: 0;
-                    color: #F1EDEF;
-                    font-size: 11px;
-                    font-weight: 700;
-                }}
-
-                #railMusicMeta {{
-                    background: transparent;
-                    border: 0;
-                    color: #777F88;
-                    font-size: 8px;
-                }}
-
-                #railMusicProgress {{
-                    background: #242A30;
-                    border: 0;
-                    border-radius: 2px;
-                    min-height: 4px;
-                    max-height: 4px;
-                }}
-
-                #railMusicProgress::chunk {{
-                    background: #D24A60;
-                    border-radius: 2px;
-                }}
-
-                #railMusicTime {{
-                    background: transparent;
-                    border: 0;
-                    color: #6F7780;
-                    font-size: 8px;
-                }}
-
-                #dashboardCard[railCard="music"] #railMusicControl {{
-                    background: #191E23;
-                    border: 1px solid #30363D;
-                    border-radius: 17px;
-                    min-width: 34px;
-                    max-width: 34px;
-                    min-height: 34px;
-                    max-height: 34px;
-                }}
-
-                #dashboardCard[railCard="music"] #railMusicControl:hover {{
-                    background: #251C21;
-                    border-color: #69404A;
-                }}
-
-                #dashboardCard[railCard="music"] #railMusicControl:pressed {{
-                    background: #301D24;
-                    border-color: #8D4250;
-                }}
-
-                #dashboardCard[railCard="music"] #railMusicControl:disabled {{
-                    background: #171B1F;
-                    border-color: #252B31;
-                }}
-
-                #dashboardCard[railCard="music"]
-                #railMusicControl[primary="true"] {{
-                    background: #B9384D;
-                    border: 1px solid #EC5A70;
-                    border-radius: 20px;
-                    min-width: 40px;
-                    max-width: 40px;
-                    min-height: 40px;
-                    max-height: 40px;
-                }}
-
-                #dashboardCard[railCard="music"]
-                #railMusicControl[primary="true"]:hover {{
-                    background: #D3455B;
-                    border-color: #FF7488;
-                }}
-
-                #dashboardCard[railCard="music"]
-                #railMusicControl[primary="true"]:disabled {{
-                    background: #221C20;
-                    border-color: #3C3035;
-                }}
-
-
-                /* =========================================
-                   HOME — ROTINAS + MODO JOGO
-                   ========================================= */
-
-                #dashboardCard[railCard="routines"],
-                #dashboardCard[railCard="game"] {{
-                    background: #14191E;
-                    border: 1px solid #2B3239;
-                    border-radius: 14px;
-                }}
-
-                #dashboardCard[railCard="routines"][routineState="active"],
-                #dashboardCard[railCard="game"][gameState="active"] {{
-                    border-color: #57303A;
-                }}
-
-                #dashboardCard[railCard="routines"][routineState="stale"],
-                #dashboardCard[railCard="game"][gameState="stale"] {{
-                    border-color: #574728;
-                }}
-
-                #dashboardCard[railCard="routines"][routineState="unavailable"],
-                #dashboardCard[railCard="game"][gameState="unavailable"] {{
-                    border-color: #252B31;
-                }}
-
-                #dashboardCard[railCard="routines"] #dashboardCardTitle,
-                #dashboardCard[railCard="game"] #dashboardCardTitle {{
-                    color: #F3EFF1;
-                    font-size: 13px;
-                    font-weight: 700;
-                }}
-
-                /* Rotinas */
-
-                #railRoutineBadge {{
-                    background: #20262C;
-                    border: 1px solid #323940;
-                    border-radius: 7px;
-                    padding: 3px 6px;
-                    color: #858D96;
-                    font-size: 8px;
-                    font-weight: 700;
-                }}
-
-                #railRoutineBadge[state="active"] {{
-                    background: #2A1A20;
-                    border-color: #5B303B;
-                    color: #FF6D82;
-                }}
-
-                #railRoutineBadge[state="empty"] {{
-                    background: #1B2025;
-                    border-color: #333A42;
-                    color: #929AA2;
-                }}
-
-                #railRoutineBadge[state="stale"] {{
-                    background: #272116;
-                    border-color: #5A4827;
-                    color: #D3AA61;
-                }}
-
-                #railRoutineBadge[state="unavailable"] {{
-                    background: #181C20;
-                    border-color: #282E34;
-                    color: #646C74;
-                }}
-
-                #railRoutineRow {{
-                    background: #171C21;
-                    border: 1px solid #292F36;
-                    border-radius: 9px;
-                }}
-
-                #railRoutineRow:hover {{
-                    background: #1C2127;
-                    border-color: #3C343A;
-                }}
-
-                #railRoutineIcon {{
-                    background: #241B20;
-                    border: 1px solid #49313A;
-                    border-radius: 12px;
-                    color: #D35469;
-                    font-size: 11px;
-                    font-weight: 700;
-                }}
-
-                #railRoutineName {{
-                    background: transparent;
-                    border: 0;
-                    color: #DDD9DB;
-                    font-size: 9px;
-                    font-weight: 650;
-                }}
-
-                #railRoutineMeta {{
-                    background: transparent;
-                    border: 0;
-                    color: #747C85;
-                    font-size: 8px;
-                }}
-
-                #railRoutineEmpty {{
-                    background: #171C21;
-                    border: 1px solid #292F36;
-                    border-radius: 9px;
-                    padding: 8px 10px;
-                    color: #777F88;
-                    font-size: 8px;
-                }}
-
-                /* Modo jogo */
-
-                #railGamePanel {{
-                    background: #171C21;
-                    border: 1px solid #292F36;
-                    border-radius: 10px;
-                }}
-
-                #railGamePanel[state="active"] {{
-                    background: #20191D;
-                    border-color: #493039;
-                }}
-
-                #railGamePanel[state="stale"] {{
-                    background: #1E1B16;
-                    border-color: #514326;
-                }}
-
-                #railGamePanel[state="unavailable"] {{
-                    background: #15191D;
-                    border-color: #252B31;
-                }}
-
-                #railGameIcon {{
-                    background: #20262C;
-                    border: 1px solid #30373E;
-                    border-radius: 14px;
-                    color: #69717A;
-                    font-size: 12px;
-                    font-weight: 700;
-                }}
-
-                #railGameIcon[state="active"] {{
-                    background: #382027;
-                    border-color: #67313C;
-                    color: #FF7186;
-                }}
-
-                #railGameIcon[state="stale"] {{
-                    background: #342B19;
-                    border-color: #66532D;
-                    color: #D5AD62;
-                }}
-
-                #railGameTitle {{
-                    background: transparent;
-                    border: 0;
-                    color: #E5E1E3;
-                    font-size: 10px;
-                    font-weight: 700;
-                }}
-
-                #railGameMeta {{
-                    background: transparent;
-                    border: 0;
-                    color: #747C85;
-                    font-size: 8px;
-                }}
-
-                #railGameBadge {{
-                    background: #1B2025;
-                    border: 1px solid #323940;
-                    border-radius: 7px;
-                    padding: 3px 6px;
-                    color: #858D96;
-                    font-size: 8px;
-                    font-weight: 700;
-                }}
-
-                #railGameBadge[state="active"] {{
-                    background: #2A1A20;
-                    border-color: #5B303B;
-                    color: #FF6D82;
-                }}
-
-                #railGameBadge[state="inactive"] {{
-                    background: #1B2025;
-                    border-color: #333A42;
-                    color: #8E969E;
-                }}
-
-                #railGameBadge[state="stale"] {{
-                    background: #272116;
-                    border-color: #5A4827;
-                    color: #D3AA61;
-                }}
-
-                #railGameBadge[state="unavailable"] {{
-                    background: #181C20;
-                    border-color: #282E34;
-                    color: #646C74;
-                }}
-
-                #musicTitle {{ font-size: 13px; font-weight: 700; }}
-                #musicControlsPlaceholder {{ color: #5F646B; font-size: 15px; padding: 5px; }}
-                #musicPage, #musicScroll, #musicScroll > QWidget > QWidget,
-                #musicPageBody {{ background: #0D1115; }}
-                #musicPageTitle {{ color: #F8F4F6; font-size: 29px; font-weight: 700; }}
-                #musicPageDescription {{ color: {PALETA['secundario']}; font-size: 15px; }}
-                #musicHeaderButton, #musicMoreButton {{ background: #15191E; border: 1px solid #2D333A; border-radius: 10px; padding: 10px 15px; color: {PALETA['secundario']}; font-size: 12px; }}
-                #musicHeaderButton:hover {{ background: #211A1F; border-color: #713541; color: {PALETA['texto']}; }}
-                #musicHero, #musicModule, #musicQueue, #musicLyrics {{ background: #14191E; border: 1px solid #293039; border-radius: 14px; }}
-                #musicHero {{ min-height: 306px; }}
-                #musicPageTitle, #musicHeroTitle, #musicModuleTitle {{ font-family: 'Segoe UI Variable', 'Segoe UI'; }}
-                #musicHeroTitle {{ color: #F8F4F6; font-size: 27px; font-weight: 700; }}
-                #musicHeroSubtitle {{ color: {PALETA['secundario']}; font-size: 15px; }}
-                #musicNowBadge {{ color: {PALETA['rosa']}; background: #29191E; border: 1px solid #54303A; border-radius: 7px; padding: 5px 9px; font-size: 10px; font-weight: 700; }}
-                #musicVolumeReadout {{ color: {PALETA['apagado']}; font-size: 10px; font-weight: 700; }}
-                #musicVolumeSlider {{ min-width: 22px; max-width: 22px; }}
-                #musicVolumeSlider::groove:vertical {{ background: #2A3037; width: 5px; border-radius: 2px; }}
-                #musicVolumeSlider::sub-page:vertical {{ background: #2A3037; border-radius: 2px; }}
-                #musicVolumeSlider::add-page:vertical {{ background: {PALETA['rosa']}; border-radius: 2px; }}
-                #musicVolumeSlider::handle:vertical {{ background: #F5F1F3; border: 1px solid #C84A5F; height: 15px; margin: 0 -5px; border-radius: 7px; }}
-                #musicVolumeSlider:disabled {{ opacity: 0.45; }}
-                #musicAudioDevice {{
-                    background: #171C21;
-                    border: 1px solid #2A3138;
-                    border-radius: 10px;
-                }}
-
-                #musicAudioDevice[available="true"] {{
-                    background: #181C21;
-                    border-color: #3A3238;
-                }}
-
-                #musicAudioDeviceIcon {{
-                    color: #565E67;
-                    font-size: 10px;
-                }}
-
-                #musicAudioDevice[available="true"] #musicAudioDeviceIcon {{
-                    color: {PALETA['rosa']};
-                }}
-
-                #musicAudioOutput {{
-                    color: #F2EEF0;
-                    background: transparent;
-                    border: 0;
-                    padding: 0;
-                    font-size: 12px;
-                    font-weight: 650;
-                }}
-
-                #musicAudioOutputMeta {{
-                    color: #7E8690;
-                    font-size: 9px;
-                }}
-
-                #musicAudioManage {{
-                    background: transparent;
-                    border: 0;
-                    border-radius: 7px;
-                    padding: 5px 8px;
-                    color: #737B84;
-                    font-size: 10px;
-                }}
-
-                #musicAudioManage:hover {{
-                    background: #221C20;
-                    color: #D9D4D7;
-                }}
-
-                #musicAudioManage:disabled {{
-                    background: transparent;
-                    color: #525960;
-                }}
-                #musicWaveform {{ background: transparent; }}
-                #musicHeroProgress {{ background: #232930; border: 0; border-radius: 2px; min-height: 4px; max-height: 4px; }}
-                #musicHeroProgress::chunk {{ background: {PALETA['rosa']}; border-radius: 2px; }}
-                #musicTime {{ color: {PALETA['apagado']}; font-size: 12px; }}
-                #musicTransportControl {{ background: transparent; border: 0; border-radius: 23px; min-width: 46px; min-height: 46px; }}
-                #musicTransportControl:hover {{ background: #281C22; }}
-                #musicTransportControl[activeControl="true"] {{ background: #321C24; color: {PALETA['rosa']}; border: 1px solid #8D3C4C; }}
-                #musicPrimaryControl {{ background: #B9384D; border: 1px solid #F05B72; border-radius: 29px; min-width: 58px; min-height: 58px; }}
-                #musicPrimaryControl:hover {{ background: #D9455D; }}
-                #musicPrimaryControl:disabled, #musicTransportControl:disabled {{ background: #1B2025; border-color: #30363D; }}
-                #musicObservedState {{ color: {PALETA['apagado']}; font-size: 11px; }}
-                #musicModuleTitle {{
-                    color: #F1EDEF;
-
-                    font-size: 14px;
-                    font-weight: 700;
-                }}
-
-                #musicModuleHint {{ color: {PALETA['apagado']}; font-size: 10px; }}
-                #musicSideRail {{ background: transparent; min-width: 265px; max-width: 315px; }}
-                #musicSideLabel {{ color: {PALETA['secundario']}; font-size: 12px; }}
-                #musicSideValue {{ color: #F4F1F3; font-size: 12px; font-weight: 700; }}
-                #musicFutureState {{ color: #9298A1; font-size: 12px; line-height: 1.4; }}
-                #musicQueuePlaceholder {{ background: #191E24; border: 1px solid #272E35; border-radius: 9px; }}
-                #musicQueueScroll,
-                #musicQueueScroll > QWidget > QWidget,
-                #musicQueueList {{
-                    background: transparent;
-                    border: 0;
-                }}
-
-                #musicQueueNumber {{
-                    color: #777F89;
-                    font-size: 10px;
-                    min-width: 18px;
-                }}
-
-                #musicQueueText {{
-                    color: #E9E6E8;
-                    font-size: 11px;
-                    font-weight: 600;
-                }}
-                #musicFutureButton {{ background: #191E23; border: 1px solid #303740; border-radius: 9px; padding: 10px 12px; color: #9298A1; text-align: left; font-size: 11px; }}
-                #musicFutureButton:hover {{ background: #241D22; border-color: #75404B; color: #E7E1E4; }}
-
-                #musicSessionAction {{
-                background: #151A1F;
-
-                border: 1px solid #30363E;
-                border-radius: 18px;
-
-                min-height: 36px;
-                max-height: 36px;
-
-                padding: 0 12px;
-
-                color: #AEB4BC;
-
-                font-size: 10px;
-                font-weight: 550;
-            }}
-
-            /* indisponíveis */
-
-            #musicSessionAction:disabled {{
-                background: #15191E;
-
-                border-color: #2B2B31;
-
-                color: #686E76;
-            }}
-
-            #musicSessionAction[actionRole="future"]:disabled {{
-                background: transparent;
-
-                border-color: #21272D;
-
-                color: #454C53;
-            }}
-
-            #musicSessionAction[actionRole="primary"] {{
-                background: #1D181C;
-
-                border-color: #4A323A;
-
-                color: #F0EAED;
-            }}
-
-            #musicSessionAction[actionRole="primary"]:hover {{
-                background: #2D1C22;
-
-                border-color: #914553;
-
-                color: #FFF7F9;
-            }}
-
-
-            /* utilitários — quase iguais, mas um pouco mais discretos */
-
-            #musicSessionAction[actionRole="utility"] {{
-                background: #19191E;
-
-                border-color: #393239;
-
-                color: #D0CBD0;
-            }}
-
-            #musicSessionAction[actionRole="utility"]:hover {{
-                background: #291B21;
-
-                border-color: #85404D;
-
-                color: #FFF5F7;
-            }}
-
-
-            /* futuro — continua propositalmente apagado */
-
-            #musicSessionAction[actionRole="future"] {{
-                background: transparent;
-
-                border-color: #252B31;
-
-                color: #555D65;
-            }}
-
-            #musicSessionAction[actionRole="future"]:disabled {{
-                background: transparent;
-
-                border-color: #21272D;
-
-                color: #454C53;
-            }}
-
-
-                /* desabilitados */
-
-                #musicSessionAction:disabled {{
-                    background: #15191E;
-
-                    border-color: #2B2B31;
-
-                    color: #686E76;
-                }}
-
-                #musicSessionAction[actionRole="future"]:disabled {{
-                    background: transparent;
-
-                    border-color: #21272D;
-
-                    color: #454C53;
-                }}
-                #musicPreset {{
-                    background: #171C21;
-                    border: 1px solid #292F36;
-                    border-radius: 9px;
-                    padding: 0;
-                    text-align: left;
-                }}
-
-                #musicPreset:hover {{
-                    background: #1D2228;
-                    border-color: #4A353C;
-                }}
-
-                #musicPreset[activePlaylist="true"] {{
-                    background: #24191E;
-                    border-color: #8B3C4B;
-                }}
-
-                #musicPresetTitle {{
-                    background: transparent;
-                    border: 0;
-
-                    color: #E8E4E6;
-                    font-size: 11px;
-                    font-weight: 650;
-                }}
-
-                #musicPresetTitle[activePlaylist="true"] {{
-                    color: #FF647B;
-                }}
-
-                #musicPresetCount {{
-                    background: transparent;
-                    border: 0;
-
-                    color: #7F8790;
-                    font-size: 9px;
-                }}
-
-                #musicPresetIcon {{
-                    background: transparent;
-                    border: 0;
-
-                    color: #F5F1F3;
-                    font-size: 16px;
-                    font-weight: 700;
-                }}
-
-
-                /* caixas coloridas */
-
-                #musicPresetIconBox[presetTone="0"] {{
-                    background: #472326;
-                    border: 1px solid #713239;
-                    border-radius: 7px;
-                }}
-
-                #musicPresetIconBox[presetTone="1"] {{
-                    background: #302651;
-                    border: 1px solid #55428A;
-                    border-radius: 7px;
-                }}
-
-                #musicPresetIconBox[presetTone="2"] {{
-                    background: #183C2E;
-                    border: 1px solid #28634A;
-                    border-radius: 7px;
-                }}
-
-                #musicPresetIconBox[presetTone="3"] {{
-                    background: #1C2E4B;
-                    border: 1px solid #325387;
-                    border-radius: 7px;
-                }}
-
-                #musicPresetIconBox[presetTone="4"] {{
-                    background: #40243A;
-                    border: 1px solid #6C3B61;
-                    border-radius: 7px;
-                }}
-
-                #musicPresetIconBox[presetTone="5"] {{
-                    background: #46351D;
-                    border: 1px solid #74562A;
-                    border-radius: 7px;
-                }}
-                #musicQueueDetail {{
-                    color: #777F89;
-                    font-size: 9px;
-                }}
-
-                #musicQueueDuration {{
-                    color: #9299A2;
-                    font-size: 10px;
-                    min-width: 31px;
-                }}
-
-                #musicCatalogState {{
-                    color: #89919B;
-                    font-size: 10px;
-                }}
-
-                #musicQueueItem {{
-                    background: transparent;
-                    border: 0;
-                    border-radius: 7px;
-                    text-align: left;
-                    padding: 0;
-                }}
-
-                #musicQueueItem:hover {{
-                    background: #1B2026;
-                    border: 0;
-                }}
-
-                #musicQueueItem:focus {{
-                    background: #211A1F;
-                    border: 0;
-                }}
-
-                #musicQueueItem:disabled {{
-                    background: transparent;
-                    border: 0;
-                }}
-                #musicQueueItem[queueTop="true"] {{
-                    background: #21181D;
-                    border: 0;
-                }}
-
-                #musicQueueItem[queueTop="true"]:hover {{
-                    background: #281B21;
-                }}
-
-                #musicQueueNumber[queueTop="true"] {{
-                    color: {PALETA['rosa']};
-                    font-size: 12px;
-                    font-weight: 700;
-                    letter-spacing: -1px;
-                }}
-                #musicContextSummary {{
-                    background: transparent;
-                    border: 0;
-
-                    color: #9DA4AC;
-                    font-size: 11px;
-
-                    padding: 2px 1px;
-                }}
-
-
-                /* recomendação principal */
-
-                #musicSuggestion {{
-                    background: #21181D;
-
-                    border: 1px solid #4A2B34;
-                    border-radius: 9px;
-
-                    padding: 8px 10px;
-
-                    color: #E88A9A;
-
-                    font-size: 11px;
-                    font-weight: 550;
-                }}
-
-
-                /* área dos chips */
-
-                #musicContextChips {{
-                    background: transparent;
-                    border: 0;
-                }}
-
-
-                #musicContextChip {{
-                    background: #171C21;
-
-                    border: 1px solid #2A3138;
-                    border-radius: 8px;
-
-                    padding: 5px 7px;
-
-                    color: #858D96;
-
-                    font-size: 9px;
-                }}
-                #musicLyrics {{
-                    border-color: #382B31;
-                }}
-
-                #musicLyricsText {{
-                    background: #101519;
-                    border: 1px solid #272E35;
-                    border-radius: 11px;
-                    padding: 21px 26px;
-                    color: #C9C5C8;
-                    selection-background-color: #66313D;
-                }}
-
-                #musicLyricsProgress {{
-                    background: #22282E;
-                    border: 0;
-                    border-radius: 1px;
-                    min-height: 3px;
-                    max-height: 3px;
-                }}
-
-                #musicLyricsProgress::chunk {{
-                    background: #FF5C76;
-                    border: 0;
-                    border-radius: 1px;
-                }}
-
-                #musicLyricsSource {{
-                    color: #747C85;
-                    font-size: 9px;
-                }}
-                #musicAudioDevice {{
-                background: #171C21;
-                border: 1px solid #292F36;
-                border-radius: 9px;
-                }}
-
-                #musicAudioDevice[available="true"] {{
-                    background: #191D22;
-                    border-color: #393139;
-                }}
-
-
-                /* caixinha do ícone */
-
-                #musicAudioIconBox {{
-                    background: #20262C;
-                    border: 1px solid #30373F;
-                    border-radius: 8px;
-                }}
-
-                #musicAudioIconBox[available="true"] {{
-                    background: #2B1C22;
-                    border-color: #67313C;
-                }}
-
-                #musicAudioDeviceIcon {{
-                    background: transparent;
-                    border: 0;
-
-                    color: #737B84;
-                    font-size: 17px;
-                    font-weight: 700;
-                }}
-
-                #musicAudioIconBox[available="true"]
-                #musicAudioDeviceIcon {{
-                    color: #FF647B;
-                }}
-
-
-                /* textos */
-
-                #musicAudioOutput {{
-                    background: transparent;
-                    border: 0;
-                    padding: 0;
-
-                    color: #E9E5E7;
-                    font-size: 11px;
-                    font-weight: 650;
-                }}
-
-                #musicAudioOutputMeta {{
-                    background: transparent;
-                    border: 0;
-
-                    color: #777F88;
-                    font-size: 9px;
-                }}
-
-
-                /* check de selecionado */
-
-                #musicAudioSelected {{
-                    background: #1D2227;
-                    border: 1px solid #30373E;
-                    border-radius: 12px;
-
-                    color: #686F77;
-                    font-size: 11px;
-                    font-weight: 700;
-                }}
-
-                #musicAudioSelected[selected="true"] {{
-                    background: #382027;
-                    border-color: #763746;
-
-                    color: #FF647B;
-                }}
-
-                #musicAudioDeviceList {{
-                    min-height: 30px;
-                    padding: 4px 9px;
-                    background: #171C21;
-                    border: 1px solid #30363D;
-                    border-radius: 7px;
-                    color: #D9D5D7;
-                    font-size: 10px;
-                }}
-
-                #musicAudioDeviceList:hover,
-                #musicAudioDeviceList:focus {{
-                    border-color: #7A3847;
-                    background: #1B1F24;
-                }}
-
-                #musicAudioDeviceList:disabled {{
-                    color: #646B73;
-                    border-color: #292F35;
-                }}
-
-                #musicAudioDeviceList QAbstractItemView {{
-                    background: #171B20;
-                    border: 1px solid #483039;
-                    color: #DDD8DA;
-                    selection-background-color: #3A232A;
-                    selection-color: #FF7388;
-                    outline: 0;
-                }}
-
-
-                /* botão inferior */
-
-                #musicAudioManage {{
-                    background: transparent;
-                    border: 0;
-                    border-radius: 7px;
-
-                    padding: 4px 5px;
-
-                    color: #747C85;
-                    font-size: 9px;
-
-                    text-align: left;
-                }}
-
-                #musicAudioManage:hover {{
-                    background: #1C2025;
-                    color: #C7C2C5;
-                }}
-
-                #musicAudioManage:disabled {{
-                    background: transparent;
-                    color: #555D65;
-                }}
-                #musicSideRail {{
-                background: transparent;
-
-                min-width: 265px;
-                max-width: 315px;
-            }}
-
-
-            /* =========================================
-            SISTEMA
-            ========================================= */
-
-            #musicSystemMetric {{
-                background: transparent;
-                border: 0;
-            }}
-
-            #musicSideLabel {{
-                color: #8E969F;
-                font-size: 10px;
-            }}
-
-            #musicSideValue {{
-                color: #E8E5E7;
-                font-size: 10px;
-                font-weight: 650;
-            }}
-
-            #musicSystemBar {{
-                background: #22282E;
-
-                border: 0;
-                border-radius: 2px;
-
-                min-height: 4px;
-                max-height: 4px;
-            }}
-
-            #musicSystemBar::chunk {{
-                background: #C84C61;
-                border-radius: 2px;
-            }}
-
-            #musicSystemBar[available="false"]::chunk {{
-                background: #343A41;
-            }}
-
-
-            /* =========================================
-            MODO DE AUDIÇÃO
-            ========================================= */
-
-            #musicListeningRow {{
-                background: #171C21;
-
-                border: 1px solid #292F36;
-                border-radius: 8px;
-            }}
-
-            #musicListeningRow[available="true"] {{
-                background: #191D22;
-                border-color: #393139;
-            }}
-
-            #musicListeningIcon {{
-                background: transparent;
-                border: 0;
-
-                color: #B15A6B;
-                font-size: 14px;
-            }}
-
-            #musicListeningName {{
-                background: transparent;
-                border: 0;
-
-                color: #D9D5D8;
-                font-size: 10px;
-                font-weight: 600;
-            }}
-
-            #musicListeningValue {{
-                background: transparent;
-                border: 0;
-
-                color: #FF647B;
-                font-size: 10px;
-                font-weight: 700;
-            }}
-
-            #musicListeningFuture {{
-                background: transparent;
-                border: 0;
-
-                color: #626A73;
-                font-size: 8px;
-            }}
-
-
-            /* =========================================
-            ROTINAS
-            ========================================= */
-
-            #musicRoutineEmpty {{
-                background: transparent;
-                border: 0;
-
-                color: #757D86;
-                font-size: 10px;
-            }}
-
-            #musicRoutineRow {{
-                background: #171C21;
-
-                border: 1px solid #282F35;
-                border-radius: 8px;
-            }}
-
-            #musicRoutineDot {{
-                background: transparent;
-                border: 0;
-
-                color: #BD5366;
-                font-size: 8px;
-            }}
-
-            #musicRoutineName {{
-                background: transparent;
-                border: 0;
-
-                color: #D8D4D7;
-                font-size: 10px;
-            }}
-
-            #musicRoutineTime {{
-                background: #20262C;
-
-                border: 0;
-                border-radius: 6px;
-
-                padding: 2px 5px;
-
-                color: #969DA5;
-                font-size: 8px;
-            }}
-
-
-            /* =========================================
-            LUZES
-            ========================================= */
-
-            #musicLightsDevice {{
-                background: #171C21;
-
-                border: 1px solid #292F36;
-                border-radius: 8px;
-            }}
-
-            #musicLightsDevice[configured="true"] {{
-                background: #1C1B21;
-                border-color: #48323A;
-            }}
-
-            #musicLightsIcon {{
-                background: transparent;
-                border: 0;
-
-                color: #555D65;
-                font-size: 10px;
-            }}
-
-            #musicLightsDevice[configured="true"]
-            #musicLightsIcon {{
-                color: #FF647B;
-            }}
-
-            #musicLightsName {{
-                background: transparent;
-                border: 0;
-
-                color: #DCD8DA;
-                font-size: 10px;
-                font-weight: 600;
-            }}
-
-            #musicLightsState {{
-                background: transparent;
-                border: 0;
-
-                color: #767E87;
-                font-size: 8px;
-            }}
-
-            #musicLightsBadge {{
-                background: #20262C;
-
-                border: 1px solid #30373E;
-                border-radius: 7px;
-
-                padding: 3px 6px;
-
-                color: #696F77;
-                font-size: 8px;
-            }}
-
-            #musicLightsBadge[configured="true"] {{
-                background: #352027;
-                border-color: #69333E;
-
-                color: #FF7186;
-            }}
-
-            /* =========================================
-            MEMÓRIA RECENTE
-            ========================================= */
-
-            #memoryRecentCard {{
-                background: #171C21;
-
-                border: 1px solid #292F36;
-                border-radius: 9px;
-            }}
-
-
-            /* lembrete */
-
-            #memoryRecentCard[memoryKind="reminder"] {{
-                background: #20191D;
-
-                border-color: #493039;
-            }}
-
-
-            /* preferência */
-
-            #memoryRecentCard[memoryKind="preference"] {{
-                background: #1D191E;
-
-                border-color: #40303A;
-            }}
-
-
-            /* tarefa */
-
-            #memoryRecentCard[memoryKind="task"] {{
-                background: #171D1B;
-
-                border-color: #294138;
-            }}
-
-
-            /* ícone */
-
-            #memoryRecentIcon {{
-                background: #20262C;
-
-                border: 1px solid #30373E;
-                border-radius: 14px;
-
-                color: #969DA5;
-
-                font-size: 13px;
-                font-weight: 700;
-            }}
-
-            #memoryRecentCard[memoryKind="reminder"]
-            #memoryRecentIcon {{
-                background: #382027;
-
-                border-color: #67313C;
-
-                color: #FF7186;
-            }}
-
-            #memoryRecentCard[memoryKind="preference"]
-            #memoryRecentIcon {{
-                background: #342029;
-
-                border-color: #623544;
-
-                color: #EE708B;
-            }}
-
-            #memoryRecentCard[memoryKind="task"]
-            #memoryRecentIcon {{
-                background: #192A24;
-
-                border-color: #345746;
-
-                color: #68C79A;
-            }}
-
-
-            /* textos */
-
-            #memoryRecentSummary {{
-                background: transparent;
-                border: 0;
-
-                color: #DCD8DA;
-
-                font-size: 9px;
-                font-weight: 600;
-            }}
-
-            #memoryRecentDetail {{
-                background: transparent;
-                border: 0;
-
-                color: #737B84;
-
-                font-size: 8px;
-            }}
-
-            /* =========================================
-            ATIVIDADE RECENTE
-            ========================================= */
-
-            #activityRecentEmpty {{
-                background: #171C21;
-
-                border: 1px solid #282F36;
-                border-radius: 9px;
-
-                padding: 8px 10px;
-
-                color: #747C85;
-
-                font-size: 9px;
-            }}
-
-
-            /* evento */
-
-            #activityRecentRow {{
-                background: #171C21;
-
-                border: 1px solid #282F36;
-                border-radius: 8px;
-            }}
-
-            #activityRecentRow:hover {{
-                background: #1C2127;
-
-                border-color: #3A343A;
-            }}
-
-
-            /* ponto */
-
-            #activityRecentDot {{
-                background: transparent;
-                border: 0;
-
-                color: #C64E62;
-
-                font-size: 7px;
-            }}
-
-
-            /* texto */
-
-            #activityRecentText {{
-                background: transparent;
-                border: 0;
-
-                color: #D5D1D4;
-
-                font-size: 9px;
-                font-weight: 550;
-            }}
-
-
-            /* horário */
-
-            #activityRecentTime {{
-                background: #20252B;
-
-                border: 0;
-                border-radius: 6px;
-
-                padding: 2px 5px;
-
-                color: #777F88;
-
-                font-size: 8px;
-            }}
-
-                #musicSystemBar {{ background: #252B32; border: 0; border-radius: 3px; min-height: 6px; max-height: 6px; }}
-                #musicSystemBar::chunk {{ background: #C64257; border-radius: 3px; }}
-                #musicSystemBar[available="false"]::chunk {{ background: #343A41; }}
-                #railMusicControl {{ background: transparent; border: 0; border-radius: 18px; min-width: 36px; min-height: 36px; color: {PALETA['texto']}; font-size: 16px; }}
-                #railMusicControl:hover {{ background: #2B2025; color: {PALETA['rosa']}; }}
-                QPushButton[dashboardAction="true"][actionState="sending"],
-                QPushButton[dashboardAction="true"][actionState="received"],
-                QPushButton[dashboardAction="true"][actionState="executing"] {{ background: #241D22; border-color: #8B4352; color: {PALETA['rosa']}; }}
-                QPushButton[dashboardAction="true"][actionState="confirmed"] {{ background: #16231F; border-color: #356E5A; color: {PALETA['sucesso']}; }}
-                QPushButton[dashboardAction="true"][actionState="partial"] {{ background: #282219; border-color: #806233; color: #E5B965; }}
-                QPushButton[dashboardAction="true"][actionState="failed"] {{ background: #28191C; border-color: #7A303B; color: {PALETA['erro']}; }}
-                QProgressBar {{ background: #15191E; border: 1px solid #30363E; border-radius: 4px; min-height: 7px; max-height: 7px; }}
-                QProgressBar::chunk {{ background: {PALETA['violeta']}; border-radius: 3px; }}
-                #systemSparkline {{ color: {PALETA['rosa']}; font-size: 18px; letter-spacing: 1px; }}
-
-                /* Sistema P5.1 — dashboard operacional denso */
-                #systemPageContent {{ background: #0C1116; }}
-                #systemHero {{
-                    background: #10161C;
-                    border: 1px solid #252E36;
-                    border-radius: 14px;
-                }}
-                #systemHeroTitle {{ font-size: 24px; font-weight: 760; color: #F7F3F5; }}
-                #systemHeroDescription {{ font-size: 11px; color: #A2A8AF; }}
-                #systemUpdated {{ font-size: 10px; color: #949BA3; }}
-
-                #systemPerformanceCard,
-                #systemModulesCard,
-                #systemEventsCard,
-                #systemCompactCard,
-                #systemRailActionsCard {{
-                    background: #11171C;
-                    border: 1px solid #283139;
-                    border-radius: 14px;
-                }}
-                #systemPerformanceCard #dashboardCardTitle,
-                #systemModulesCard #dashboardCardTitle,
-                #systemEventsCard #dashboardCardTitle,
-                #systemCompactCard #dashboardCardTitle,
-                #systemRailActionsCard #dashboardCardTitle {{
-                    color: #F3EFF1;
-                    font-size: 14px;
-                    font-weight: 740;
-                }}
-                #systemPerformanceCard #dashboardCardHint,
-                #systemModulesCard #dashboardCardHint,
-                #systemEventsCard #dashboardCardHint,
-                #systemCompactCard #dashboardCardHint,
-                #systemRailActionsCard #dashboardCardHint {{
-                    color: #737D86;
-                    font-size: 8px;
-                }}
-                #systemPerformanceLegend {{
-                    color: #78828B;
-                    font-size: 8px;
-                    background: transparent;
-                    border: 0;
-                }}
-                #systemMetricCard {{
-                    background: #151B21;
-                    border: 1px solid #29323B;
-                    border-radius: 10px;
-                    min-width: 96px;
-                    min-height: 104px;
-                }}
-                #systemMetricProgress {{ min-height: 3px; max-height: 3px; }}
-                #systemMetricSparkline {{ background: transparent; border: 0; }}
-
-                #systemModelCard {{ min-width: 300px; max-width: 330px; }}
-                #systemModelRow {{ min-height: 27px; }}
-                #systemModelRow #dashboardMetricLabel,
-                #systemModelRow #dashboardMetricValue {{ padding: 4px 7px; font-size: 9px; }}
-
-                #systemAudioCard {{ min-width: 220px; }}
-                #systemModulesCard {{ min-width: 340px; }}
-                #systemStorageCard {{ min-width: 250px; }}
-                #systemTableHeader {{
-                    color: #737C85;
-                    font-size: 8px;
-                    font-weight: 700;
-                    background: transparent;
-                    border: 0;
-                }}
-                #systemModuleRow {{
-                    background: #151B20;
-                    border: 1px solid #252E36;
-                    border-radius: 7px;
-                }}
-                #systemModuleName {{ color: #DBD8DA; font-size: 9px; font-weight: 650; }}
-                #systemModuleState {{ color: #879099; font-size: 8px; }}
-                #systemModuleState[state="online"], #systemModuleState[state="ready"] {{ color: #65C891; }}
-                #systemModuleState[state="degraded"] {{ color: #D6A04F; }}
-                #systemModuleState[state="unavailable"] {{ color: #C96573; }}
-                #systemModuleMetric {{ color: #747D85; font-size: 8px; }}
-
-                #systemBottomRow {{ background: transparent; border: 0; }}
-                #systemActionsCard {{ min-width: 300px; }}
-                #systemEventsEmpty {{
-                    color: #737C85;
-                    font-size: 9px;
-                    padding: 16px 8px;
-                }}
-                #systemEventItem {{
-                    background: #151B20;
-                    border: 1px solid #252E36;
-                    border-radius: 8px;
-                    color: #B7BDC3;
-                    font-size: 9px;
-                    padding: 6px 9px;
-                }}
-
-                #systemCompactCard,
-                #systemLaylayCard,
-                #systemRailActionsCard,
-                #systemAlertsCard {{ min-width: 264px; max-width: 280px; }}
-                #systemRailMetric {{ background: transparent; border: 0; min-height: 23px; }}
-                #systemRailMetricName {{ color: #B7BDC3; font-size: 9px; }}
-                #systemRailMetricValue {{ color: #F3EFF1; font-size: 9px; font-weight: 700; }}
-                #systemCompactCard #systemMetricSparkline {{ min-height: 18px; max-height: 23px; }}
-                #systemRailActionsCard QPushButton[systemQuickAction="true"] {{ min-height: 31px; }}
-
-                /* Sistema P5.2 — geometria de três faixas */
-                #systemAudioRow #dashboardMetricLabel,
-                #systemAudioRow #dashboardMetricValue {{ padding: 2px 5px; font-size: 8px; }}
-                #systemAudioStatus {{ padding: 4px 6px; font-size: 9px; }}
-                #systemAudioLevelHeader {{ min-height: 13px; max-height: 16px; }}
-                #systemStorageMetric {{ min-height: 35px; max-height: 40px; }}
-                #systemStorageHint {{ padding: 3px 6px; font-size: 8px; }}
-                #systemModuleRow {{ min-height: 24px; max-height: 28px; }}
-                #systemEventsEmpty {{ padding: 7px 6px; }}
-                #systemRailMetric {{ min-height: 17px; max-height: 19px; }}
-                #systemCompactCard #systemMetricSparkline {{ min-height: 14px; max-height: 17px; }}
-                #systemLaylayRow #dashboardMetricLabel,
-                #systemLaylayRow #dashboardMetricValue {{ padding: 3px 5px; font-size: 8px; }}
-                #systemLaylayStatus {{ padding: 4px 6px; }}
-                #systemLaylayPulse {{ padding: 3px 6px; font-size: 8px; }}
-
-                /* Sistema universal — o mesmo pulso visual em todos os rails */
-                #compactSystemCard {{
-                    background: #11171C;
-                    border: 1px solid #2A333B;
-                    border-radius: 12px;
-                    min-width: 250px;
-                    max-width: 310px;
-                }}
-                #compactSystemTitle {{
-                    background: transparent;
-                    border: 0;
-                    color: #F4F0F2;
-                    font-size: 12px;
-                    font-weight: 740;
-                }}
-                #compactSystemHint {{
-                    background: transparent;
-                    border: 0;
-                    color: #73818B;
-                    font-size: 7px;
-                }}
-                #compactSystemHint[state="dados_antigos"] {{ color: #D39A4A; }}
-                #compactSystemHint[state="indisponível"] {{ color: #69737C; }}
-                #compactSystemMetric {{
-                    background: transparent;
-                    border: 0;
-                    min-height: 18px;
-                    max-height: 18px;
-                }}
-                #compactSystemMetricName {{
-                    background: transparent;
-                    border: 0;
-                    color: #B7C0C8;
-                    font-size: 8px;
-                }}
-                #compactSystemMetricValue {{
-                    background: transparent;
-                    border: 0;
-                    color: #F2EEF0;
-                    font-size: 8px;
-                    font-weight: 700;
-                }}
-                #compactSystemMetric[state="stale"] #compactSystemMetricValue {{
-                    color: #D5A45B;
-                }}
-                #compactSystemMetric[state="unavailable"] #compactSystemMetricValue {{
-                    color: #68737C;
-                }}
-                QWidget[compactSystemGraph="true"],
-                #musicSystemBar[compactSystemGraph="true"],
-                #railSystemProgress[compactSystemGraph="true"] {{
-                    background: transparent;
-                    border: 0;
-                    min-height: 18px;
-                    max-height: 18px;
-                }}
-
-                /* Automação — casa conectada com a linguagem visual da Laylay */
-                #automationPageContent {{ background: #0C1116; }}
-                #automationScroll,
-                #automationScroll > QWidget > QWidget,
-                #automationMainColumn,
-                #automationRail {{ background: transparent; border: 0; }}
-                #automationHero {{
-                    background: qlineargradient(
-                        x1: 0, y1: 0, x2: 1, y2: 0,
-                        stop: 0 #18151B, stop: 0.58 #13171D, stop: 1 #111820
-                    );
-                    border: 1px solid #352D36;
-                    border-radius: 16px;
-                    min-height: 130px;
-                }}
-                #automationHeroArt {{ background: transparent; border: 0; }}
-                #automationHeroEyebrow {{
-                    background: transparent;
-                    color: #D95C75;
-                    font-size: 8px;
-                    font-weight: 800;
-                    letter-spacing: 1.6px;
-                }}
-                #automationHeroTitle {{
-                    background: transparent;
-                    color: #FCF7F9;
-                    font-size: 26px;
-                    font-weight: 780;
-                }}
-                #automationHeroDescription {{
-                    background: transparent;
-                    color: #A9A5AA;
-                    font-size: 10px;
-                }}
-                #automationLiveBadge {{
-                    background: #171E22;
-                    border: 1px solid #2A373A;
-                    border-radius: 9px;
-                    padding: 6px 10px;
-                    color: #9AA4AA;
-                    font-size: 8px;
-                    font-weight: 700;
-                }}
-                #automationLiveBadge[state="confirmed"] {{
-                    background: #17231F;
-                    border-color: #356A58;
-                    color: #69D09B;
-                }}
-                #automationLiveBadge[state="partial"] {{
-                    background: #282219;
-                    border-color: #715A34;
-                    color: #DDB464;
-                }}
-                #automationUpdated {{
-                    background: transparent;
-                    color: #7E858D;
-                    font-size: 8px;
-                }}
-
-                #automationDevicesCard,
-                #automationRoutinesCard,
-                #automationSummaryCard,
-                #automationContextCard,
-                #automationSafetyCard {{
-                    background: #11171C;
-                    border: 1px solid #283139;
-                    border-radius: 14px;
-                }}
-                #automationDevicesCard #dashboardCardTitle,
-                #automationRoutinesCard #dashboardCardTitle,
-                #automationSummaryCard #dashboardCardTitle,
-                #automationContextCard #dashboardCardTitle,
-                #automationSafetyCard #dashboardCardTitle {{
-                    color: #F5F0F3;
-                    font-size: 14px;
-                    font-weight: 760;
-                }}
-                #automationDevicesCard #dashboardCardHint,
-                #automationRoutinesCard #dashboardCardHint,
-                #automationSummaryCard #dashboardCardHint,
-                #automationContextCard #dashboardCardHint,
-                #automationSafetyCard #dashboardCardHint {{
-                    color: #7B838B;
-                    font-size: 8px;
-                    font-weight: 700;
-                    letter-spacing: 0.8px;
-                }}
-                #automationSectionLead {{
-                    background: transparent;
-                    border: 0;
-                    color: #90979E;
-                    font-size: 9px;
-                    padding: 0 1px 4px 1px;
-                }}
-
-                #automationDeviceCard {{
-                    background: qlineargradient(
-                        x1: 0, y1: 0, x2: 1, y2: 1,
-                        stop: 0 #171D23, stop: 1 #13191E
-                    );
-                    border: 1px solid #2A343D;
-                    border-radius: 13px;
-                    min-height: 264px;
-                }}
-                #automationDeviceCard:hover {{ border-color: #4B3A43; }}
-                #automationDeviceCard[deviceState="on"] {{
-                    background: qlineargradient(
-                        x1: 0, y1: 0, x2: 1, y2: 1,
-                        stop: 0 #211920, stop: 0.55 #171B20, stop: 1 #141B1F
-                    );
-                    border-color: #4B3440;
-                }}
-                #automationDeviceCard[deviceState="offline"] {{
-                    background: #15171A;
-                    border-color: #3A3439;
-                }}
-                #automationDeviceCard[actionPending="true"] {{ border-color: #825063; }}
-                #automationDeviceIcon {{
-                    background: transparent;
-                    border: 0;
-                }}
-                #automationDeviceCard[deviceState="on"] #automationDeviceIcon {{
-                    background: transparent;
-                    border: 0;
-                }}
-                #automationDeviceName {{
-                    background: transparent;
-                    color: #F3EFF1;
-                    font-size: 12px;
-                    font-weight: 750;
-                }}
-                #automationDeviceType {{
-                    background: transparent;
-                    color: #777F87;
-                    font-size: 8px;
-                }}
-                #automationRoomBadge {{
-                    background: #1C2228;
-                    border: 1px solid #303942;
-                    border-radius: 8px;
-                    padding: 4px 7px;
-                    color: #8E98A1;
-                    font-size: 7px;
-                    font-weight: 750;
-                    letter-spacing: 0.7px;
-                }}
-                #automationDeviceState {{
-                    background: #1C2227;
-                    border: 1px solid #2B353C;
-                    border-radius: 7px;
-                    padding: 3px 7px;
-                    color: #838C94;
-                    font-size: 8px;
-                    font-weight: 800;
-                    letter-spacing: 0.8px;
-                }}
-                #automationDeviceState[deviceState="on"] {{ color: #67D19D; }}
-                #automationDeviceState[deviceState="off"] {{ color: #C2A1AA; }}
-                #automationDeviceState[deviceState="offline"] {{ color: #CA6B78; }}
-                #automationDeviceObservation {{
-                    background: transparent;
-                    color: #747D85;
-                    font-size: 8px;
-                }}
-                #automationCapabilities {{
-                    background: transparent;
-                    border: 0;
-                    padding: 0;
-                    color: #89929A;
-                    font-size: 8px;
-                }}
-                #automationControlLabel {{
-                    background: transparent;
-                    border: 0;
-                    color: #D7D1D5;
-                    font-size: 9px;
-                    font-weight: 650;
-                }}
-                #automationControlValue {{
-                    background: transparent;
-                    border: 0;
-                    color: #A9A1A7;
-                    font-size: 9px;
-                }}
-                #automationBrightnessControl {{ background: transparent; border: 0; }}
-                #automationBrightnessSlider {{ min-height: 18px; max-height: 18px; }}
-                #automationBrightnessSlider::groove:horizontal {{
-                    background: #31343A;
-                    border: 0;
-                    border-radius: 3px;
-                    height: 5px;
-                }}
-                #automationBrightnessSlider::sub-page:horizontal {{
-                    background: #EC4E76;
-                    border-radius: 3px;
-                }}
-                #automationBrightnessSlider::add-page:horizontal {{
-                    background: #30343A;
-                    border-radius: 3px;
-                }}
-                #automationBrightnessSlider::handle:horizontal {{
-                    background: #FFD3DE;
-                    border: 3px solid #F15B81;
-                    border-radius: 8px;
-                    width: 10px;
-                    margin: -5px 0;
-                }}
-                #automationBrightnessSlider:disabled::sub-page:horizontal {{ background: #67404B; }}
-                #automationBrightnessSlider:disabled::handle:horizontal {{
-                    background: #777D83;
-                    border-color: #43484D;
-                }}
-                #automationPowerButton {{
-                    background: #D94B66;
-                    border: 1px solid #E15C75;
-                    border-radius: 9px;
-                    min-height: 28px;
-                    padding: 0 15px;
-                    color: #FFF8FA;
-                    font-size: 9px;
-                    font-weight: 760;
-                    min-width: 78px;
-                }}
-                #automationPowerButton:hover {{ background: #EB5872; }}
-                #automationPowerButton:disabled {{
-                    background: #24272C;
-                    border-color: #30353B;
-                    color: #666E76;
-                }}
-                #automationRefreshButton {{
-                    background: #191F25;
-                    border: 1px solid #313A43;
-                    border-radius: 9px;
-                    min-height: 28px;
-                    padding: 0 12px;
-                    color: #B3BAC0;
-                    font-size: 9px;
-                    font-weight: 650;
-                    min-width: 128px;
-                }}
-                #automationRefreshButton:hover {{
-                    background: #20272E;
-                    border-color: #5B4550;
-                    color: #EF7990;
-                }}
-                #automationRefreshButton:disabled {{ color: #626A72; border-color: #2A3036; }}
-
-                #automationRoutineRow {{
-                    background: #151B20;
-                    border: 1px solid #29323A;
-                    border-radius: 9px;
-                    min-height: 34px;
-                    padding: 0 11px;
-                    text-align: left;
-                    color: #C7C3C6;
-                    font-size: 9px;
-                }}
-                #automationRoutineEmpty {{
-                    background: #10161B;
-                    border: 1px dashed #3A454E;
-                    border-radius: 11px;
-                    padding: 14px 15px;
-                    color: #A9B0B6;
-                    font-size: 9px;
-                }}
-                #automationRoutineRow:hover {{
-                    background: #211B20;
-                    border-color: #66404E;
-                    color: #EF8297;
-                }}
-                #automationSummaryMetric {{
-                    background: #151B20;
-                    border: 1px solid #252E36;
-                    border-radius: 9px;
-                }}
-                #automationSummaryLabel {{ color: #929AA2; font-size: 9px; }}
-                #automationSummaryValue {{ color: #F1EDF0; font-size: 14px; font-weight: 780; }}
-                #automationContextState {{
-                    background: #181E24;
-                    border: 1px solid #2C363E;
-                    border-radius: 9px;
-                    padding: 8px 10px;
-                    color: #D9D5D7;
-                    font-size: 10px;
-                    font-weight: 700;
-                }}
-                #automationContextHint,
-                #automationSafetyHint {{
-                    background: transparent;
-                    color: #7E878F;
-                    font-size: 8px;
-                }}
-                #automationSafetyFlow {{
-                    background: #211920;
-                    border: 1px solid #523644;
-                    border-radius: 9px;
-                    padding: 8px 9px;
-                    color: #DF6E85;
-                    font-size: 7px;
-                    font-weight: 800;
-                    letter-spacing: 0.5px;
-                }}
-
-                QScrollBar:vertical {{ background: transparent; width: 9px; margin: 2px; }}
-                QScrollBar::handle:vertical {{ background: #49424F; min-height: 32px; border-radius: 4px; }}
-                QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
-                QComboBox QAbstractItemView {{ background: {PALETA['superficie']}; selection-background-color: {PALETA['elevada']}; border: 1px solid {PALETA['borda']}; }}
-                QCheckBox {{ color: {PALETA['secundario']}; spacing: 8px; }}
-            """)
+        self.setStyleSheet(
+            qss_chrome_components()
+            + qss_chat_components()
+            + qss_system_components()
+            + qss_context_components()
+            + qss_automation_components()
+            + qss_home_refresh()
+            + qss_tabs_refresh()
+            + qss_settings_refresh()
+            + qss_memory_refresh()
+            + qss_product_polish()
+            + qss_live_presence()
+        )
 
     @staticmethod
     def _horario(instante: object) -> str | None:
@@ -6374,6 +2717,7 @@ QScrollArea#systemScroll > QWidget > QWidget {{
                 self.conversa_atual.setText(titulo)
                 if self._pagina_principal == "conversa":
                     self.titulo_header.setText(titulo)
+                    self._atualizar_cabecalho_chat()
         else:
             avatar = AroPresenca(self.raiz, 38)
             avatar.atualizar("idle", "calma")
@@ -6430,6 +2774,64 @@ QScrollArea#systemScroll > QWidget > QWidget {{
                 mensagem.setMinimumHeight(altura_minima)
         self.feed_lay.invalidate()
         self.feed.updateGeometry()
+
+    def _ajustar_grid_home(self) -> None:
+        """Mantém cabeçalho, feed e composer no mesmo eixo em qualquer janela."""
+        area = max(0, self.chat_surface.width())
+        if area <= 0:
+            return
+
+        if area >= 1600:
+            alvo = 920
+        elif area >= 1250:
+            alvo = 880
+        elif area >= 1050:
+            alvo = 840
+        elif area >= 850:
+            alvo = 760
+        elif area >= 650:
+            alvo = area - 80
+        else:
+            alvo = area - 28
+        alvo = max(280, min(920, alvo, area - 16))
+
+        for widget in (
+            self.chat_cabecalho,
+            self.voice_surface,
+            self.waveform,
+            self.composer,
+        ):
+            widget.setFixedWidth(alvo)
+            self.chat_surface.layout().setAlignment(widget, Qt.AlignHCenter)
+
+        viewport = max(0, self.scroll.viewport().width())
+        largura_feed = min(alvo, max(260, viewport - 16))
+        margem = max(8, (viewport - largura_feed) // 2)
+        vertical_topo = 18 if self.width() < 760 else 28
+        vertical_base = 18 if self.width() < 760 else 22
+        self.feed_lay.setContentsMargins(
+            margem, vertical_topo, margem, vertical_base,
+        )
+        self._ajustar_larguras_mensagens()
+
+    def _atualizar_cabecalho_chat(self) -> None:
+        """Distingue a Home da conversa sem duplicar a superfície de chat."""
+        if self._pagina_principal == "inicio":
+            titulo = self._saudacao_inicio
+            subtitulo = self._subtitulo_inicio
+            modo_conversa = False
+        else:
+            titulo = str(self.conversa_atual.text() or "").strip()
+            if titulo in {"", "Conversa atual", "Nova conversa", "Nenhuma conversa"}:
+                titulo = "Conversa"
+            subtitulo = "Continue de onde parou com a Laylay."
+            modo_conversa = True
+
+        self.chat_saudacao.setText(titulo)
+        self.chat_subtitulo.setText(subtitulo)
+        self.chat_cabecalho.setProperty("conversationMode", modo_conversa)
+        self.chat_cabecalho.style().unpolish(self.chat_cabecalho)
+        self.chat_cabecalho.style().polish(self.chat_cabecalho)
 
     def _esta_perto_do_final(self) -> bool:
         barra = self.scroll.verticalScrollBar()
@@ -6658,6 +3060,11 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             self._definir_estado_acao_ui(acao_id, "failed", detalhe)
         self._remover_indicador_pensando()
         self.adicionar_evento("Mensagem não entregue", detalhe, "error")
+        self._mostrar_feedback_vivo(
+            "error",
+            "Falha no envio",
+            duracao_ms=1700,
+        )
 
     def _expirar_envio(self, mensagem_id: str) -> None:
         if mensagem_id not in self._envios:
@@ -6672,12 +3079,17 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             ),
         )
 
-    def _mostrar_indicador_pensando(self) -> None:
+    def _mostrar_indicador_pensando(
+        self,
+        atividade: str = "thinking",
+    ) -> None:
         if self._indicador_pensando is not None:
+            self._indicador_pensando.definir_estado(atividade)
             return
         self._encerrar_saida_pensando()
         indicador = IndicadorPensando(
             reduzir_movimento=self._reduzir_movimento,
+            atividade=atividade,
         )
         container = QWidget()
         container.setObjectName("thinkingRow")
@@ -6991,7 +3403,12 @@ QScrollArea#systemScroll > QWidget > QWidget {{
                     timestamp=msg.get("timestamp"),
                     mensagem_id=str(msg.get("id") or mensagem_id),
                 )
-            self.avatar_side.atualizar("speaking", str(msg.get("emotion") or "calma"))
+            emocao_resposta = str(msg.get("emotion") or "calma")
+            atividade_avatar = str(
+                self._estado_mais_recente.get("activity") or "idle"
+            )
+            self.avatar_side.atualizar(atividade_avatar, emocao_resposta)
+            self.avatar_profile.atualizar(atividade_avatar, emocao_resposta)
             self.adicionar_evento(
                 "Resposta entregue",
                 (
@@ -7132,6 +3549,18 @@ QScrollArea#systemScroll > QWidget > QWidget {{
                     titulos[estado_acao], resumo, niveis[estado_acao],
                     atividade_confirmada=estado_acao == "confirmed",
                     categoria="AUTONOMY",
+                )
+                feedbacks = {
+                    "confirmed": ("success", "Ação concluída"),
+                    "partial": ("warning", "Ação parcial"),
+                    "failed": ("error", "Ação falhou"),
+                    "awaiting_confirmation": ("warning", "Confirmação necessária"),
+                }
+                feedback_atividade, feedback_rotulo = feedbacks[estado_acao]
+                self._mostrar_feedback_vivo(
+                    feedback_atividade,
+                    feedback_rotulo,
+                    duracao_ms=1900 if estado_acao == "awaiting_confirmation" else 1400,
                 )
         elif tipo == "mode_state":
             self._modo_pendente = False
@@ -7319,25 +3748,17 @@ QScrollArea#systemScroll > QWidget > QWidget {{
                 self.chip_microfone.definir("Ativo", estado="online")
             else:
                 self.chip_microfone.definir("Pausado no chat", estado="pending")
-        self.status.setText(rotulo)
-        assinatura_microestado = f"{atividade}:{rotulo}"
-        if (
-            self._assinatura_microestado
-            and assinatura_microestado != self._assinatura_microestado
-        ):
-            self._animar_microinteracao(
-                self.status,
-                opacidade_minima=0.42,
-                duracao_retorno=260,
-            )
-        self._assinatura_microestado = assinatura_microestado
-        self.marca_status.setText(f"{rotulo.casefold()} · {emocao}")
+        self._feedback_vivo_seq += 1
+        self._assinatura_microestado = f"{atividade}:{rotulo}"
+        self._aplicar_estado_vivo(
+            atividade,
+            rotulo,
+            emocao,
+            animar=True,
+        )
         self.diag_atividade.setText(f"Atividade\n{rotulo} · emoção {emocao}")
-        self.avatar_side.atualizar(atividade, emocao)
-        self.avatar_profile.atualizar(atividade, emocao)
-        self._atualizar_pulso_presenca(atividade)
         if atividade in {"thinking", "executing"} and self._envios:
-            self._mostrar_indicador_pensando()
+            self._mostrar_indicador_pensando(atividade)
         assinatura_atividade = f"{atividade}:{rotulo}:{emocao}"
         if (
             atividade in {"thinking", "executing", "speaking", "listening", "reconnecting"}
@@ -7409,20 +3830,25 @@ QScrollArea#systemScroll > QWidget > QWidget {{
             if pagina is not None:
                 pagina.definir_conectada(conectado)
         self.configuracoes.definir_conectada(conectado)
-        self.ponto.setStyleSheet(f"color: {PALETA['sucesso'] if conectado else PALETA['erro']};")
-        self.status.setText("Pronta" if conectado else "Reconectando")
+        cor_conexao = PALETA["sucesso"] if conectado else PALETA["erro"]
+        self.inspector_status.setStyleSheet(f"color: {cor_conexao};")
         self.status_mente.setText("●  Mente conectada" if conectado else "●  Reconectando")
-        self.profile_status.setText("●  Online" if conectado else "●  Reconectando")
-        self.profile_status.setProperty(
-            "state",
-            "online" if conectado else "offline",
-        )
-        self.profile_status.style().unpolish(
-            self.profile_status
-        )
-        self.profile_status.style().polish(
-            self.profile_status
-        )
+        self._feedback_vivo_seq += 1
+        if conectado:
+            estado_vivo = dict(self._estado_mais_recente or {})
+            self._aplicar_estado_vivo(
+                str(estado_vivo.get("activity") or "idle"),
+                str(estado_vivo.get("activity_label") or "Pronta"),
+                str(estado_vivo.get("emotion") or "calma"),
+                animar=True,
+            )
+        else:
+            self._aplicar_estado_vivo(
+                "reconnecting",
+                "Reconectando",
+                "calma",
+                animar=True,
+            )
         if conectado and not self._dashboard_recebido:
             self.chip_modelo.definir(
                 f"{self._provedor_modelo} configurado"
@@ -7850,6 +4276,7 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         self.conversa_atual.setText(titulo_ativo)
         if self._pagina_principal == "conversa":
             self.titulo_header.setText(titulo_ativo)
+            self._atualizar_cabecalho_chat()
         if substituir_historico and isinstance(retrato.get("messages"), list):
             self._substituir_historico(
                 list(retrato["messages"]),
@@ -7994,6 +4421,7 @@ QScrollArea#systemScroll > QWidget > QWidget {{
         self.paginas.setCurrentIndex(indice_destino)
         if nome in {"inicio", "conversa"}:
             self._pagina_principal = nome
+            self._atualizar_cabecalho_chat()
         titulos = {
             "inicio": "Início",
             "conversa": self.conversa_atual.text(),
@@ -8110,37 +4538,41 @@ QScrollArea#systemScroll > QWidget > QWidget {{
     def _aplicar_responsividade(self) -> None:
         largura = self.width()
         estreita = largura < 760
-        compacta = largura < 920
+        compacta = largura < 1080
         inicio_ativo = (
             self.paginas.currentIndex() == 0
             and self._pagina_principal == "inicio"
         )
+        mostrar_inspector = inicio_ativo and largura >= 1480
         assinatura = (
             estreita,
             compacta,
             largura >= 980,
             largura >= 1160,
             largura >= 1420,
-            largura >= 1450,
-            largura >= 1650,
+            mostrar_inspector,
             inicio_ativo,
             self._sidebar_expandida,
             bool(self._conversas),
         )
         largura_mudou = largura != self._ultima_largura_responsiva
         self._ultima_largura_responsiva = largura
+        if mostrar_inspector:
+            largura_inspector = max(300, min(360, int(largura * 0.19)))
+            self.inspector_shell.setFixedWidth(largura_inspector)
         if assinatura == self._assinatura_responsividade:
             if largura_mudou:
-                QTimer.singleShot(0, self._ajustar_larguras_mensagens)
+                QTimer.singleShot(0, self._ajustar_grid_home)
             return
         self._assinatura_responsividade = assinatura
-        self.central_inteligente.setVisible(inicio_ativo and largura >= 1450)
-        self.painel_lateral.setVisible(inicio_ativo and largura >= 1650)
+        self.inspector_shell.setVisible(mostrar_inspector)
+        self.central_inteligente.setVisible(True)
+        self.painel_lateral.setVisible(True)
         self.chip_memoria.setVisible(largura >= 1420)
         self.chip_modelo.setVisible(largura >= 1160)
         self.chip_microfone.setVisible(largura >= 980)
         self.menu_compacto.setVisible(estreita)
-        # A P5 não usa navegação histórica no topo. Mantê-los sempre
+        # A navegação histórica não é usada no topo. Mantê-los sempre
         # ocultos também impede que um resize os reexiba fora da composição.
         self.voltar.hide()
         self.avancar.hide()
@@ -8164,14 +4596,8 @@ QScrollArea#systemScroll > QWidget > QWidget {{
                 margem,
                 12 if estreita else 16,
             )
-        self.feed_lay.setContentsMargins(
-            4 if estreita else 26,
-            18 if estreita else 28,
-            4 if estreita else 26,
-            18 if estreita else 22,
-        )
         self.configuracoes.definir_compacto(compacta, estreito=estreita)
-        QTimer.singleShot(0, self._ajustar_larguras_mensagens)
+        QTimer.singleShot(0, self._ajustar_grid_home)
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
@@ -8249,7 +4675,7 @@ def configuracao_ponte() -> tuple[str, int, str]:
         port = 0
     token = os.environ.get("LAYLAY_DESKTOP_TOKEN", "")
     if host not in {"127.0.0.1", "localhost", "::1"} or not port or not token:
-        raise RuntimeError("O Terminal 2.1 deve ser iniciado pela Laylay para receber uma sessão segura.")
+        raise RuntimeError("O Terminal 3.0 deve ser iniciado pela Laylay para receber uma sessão segura.")
     return host, port, token
 
 
@@ -8318,7 +4744,7 @@ def main() -> int:
         parent_pid = 0
     raiz = Path(os.environ.get("LAYLAY_PROJECT_ROOT") or Path(__file__).resolve().parents[1]).resolve()
     app = QApplication(sys.argv)
-    app.setApplicationName("Laylay Terminal 2.1")
+    app.setApplicationName("Laylay Terminal 3.0")
     app.setOrganizationName("Laylay")
     familia = carregar_fontes_interface()
     app.setFont(QFont(familia, 10))

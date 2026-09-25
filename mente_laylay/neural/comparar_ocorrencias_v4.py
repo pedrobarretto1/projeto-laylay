@@ -43,8 +43,9 @@ def representar_tokens(entrada: dict) -> tuple[list, list[dict]]:
     return ts, [atributos_token({}, ts, i, 0, 0) for i in range(len(ts))]
 
 
-def rotular_ocorrencias(caso: dict) -> list[str]:
-    """Gold só para fit/métrica: converte offsets canônicos em offsets brutos."""
+def rotular_ocorrencias(caso: dict, *, rotulos_permitidos: frozenset[str] | None = None) -> list[str]:
+    """Projeta offsets; o perfil histórico continua padrão, sem mutar seu catálogo."""
+    catalogo = ROTULOS if rotulos_permitidos is None else rotulos_permitidos
     entrada = caso["alinhado"]["entrada"]
     ts, _ = representar_tokens(entrada)
     origem = entrada["texto_entrada"]
@@ -61,7 +62,7 @@ def rotular_ocorrencias(caso: dict) -> list[str]:
         if span not in por_span or origem[slice(*span)] != ancora["texto"] or span in vistos:
             raise ValueError("âncora incompatível com o perfil de um token por ocorrência")
         rotulo = f"{n['intent']}|{n['action']}|{n['ato']}"
-        if rotulo not in ROTULOS:
+        if rotulo not in catalogo:
             raise ValueError("variante/ato fora do perfil")
         ys[por_span[span]] = rotulo
         vistos.add(span)

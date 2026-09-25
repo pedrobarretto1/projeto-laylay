@@ -6,6 +6,7 @@ import re
 import time
 from typing import Any, Dict
 
+from mente_laylay.emocoes.contrato_causal import evento_esta_ativo
 from mente_laylay.personalidade.perfil_amizade import (
     PERFIL_PERSONALIDADE,
     selecionar_postura_amizade,
@@ -177,6 +178,7 @@ def dirigir_fala(
     evento_operacional_valido = bool(
         tem_operacao
         and evento_operacional.get("permite_expressao")
+        and evento_esta_ativo(evento_operacional, agora=instante)
         and str(evento_operacional.get("emocao") or "").strip().casefold()
         == str(emocao or "").strip().casefold()
         and instante - float(evento_operacional.get("ts") or 0.0) <= 30.0

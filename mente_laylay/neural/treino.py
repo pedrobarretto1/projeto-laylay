@@ -25,6 +25,7 @@ from .modelo import (
     ARQUITETURAS_ACAO_PERMITIDAS,
     ARQUITETURAS_COMANDO_PERMITIDAS,
     ESTRATEGIAS_PERMITIDAS,
+    FEATURES_COMANDO_PERMITIDAS,
     REPRESENTACOES_PERMITIDAS,
     carregar_modelo,
     treinar_modelo,
@@ -122,6 +123,8 @@ def executar_ciclo_treino(
     limiar_comando: float = 0.5,
     limiares_comando_por_intent: Mapping[str, float] | None = None,
     limiares_fallback_intent_semantica: Mapping[str, float] | None = None,
+    features_comando: str = "legado",
+    features_comando_intents: Iterable[str] = (),
     representacao: str = "tfidf",
     encoder_semantico: Any = None,
     pasta_encoder_semantico: str | Path | None = None,
@@ -135,6 +138,32 @@ def executar_ciclo_treino(
     if representacao_normalizada not in REPRESENTACOES_PERMITIDAS:
         raise ValueError(
             f"representação neural desconhecida: {representacao_normalizada}"
+        )
+    features_comando_normalizadas = str(
+        features_comando or "legado"
+    ).strip().casefold()
+    if features_comando_normalizadas not in FEATURES_COMANDO_PERMITIDAS:
+        raise ValueError(
+            f"features de comando desconhecidas: {features_comando_normalizadas}"
+        )
+    features_comando_intents_normalizadas = tuple(sorted({
+        str(intent or "").strip().upper()
+        for intent in features_comando_intents
+        if str(intent or "").strip()
+    }))
+    if features_comando_normalizadas in {
+        "modalidade_por_intent_v1",
+        "modalidade_por_intent_v2",
+        "modalidade_por_intent_v3",
+        "modalidade_por_intent_v4_sparse",
+    }:
+        if not features_comando_intents_normalizadas:
+            raise ValueError("modalidade por intent exige ao menos uma intent")
+        if "NONE" in features_comando_intents_normalizadas:
+            raise ValueError("features por intent exigem intents operacionais")
+    elif features_comando_intents_normalizadas:
+        raise ValueError(
+            "features_comando_intents exige modo modalidade_por_intent"
         )
     arquitetura_normalizada = str(arquitetura_acao or "").strip().casefold()
     if arquitetura_normalizada not in ARQUITETURAS_ACAO_PERMITIDAS:
@@ -171,6 +200,7 @@ def executar_ciclo_treino(
         or float(limiar_comando) != 0.5
         or bool(limiares_intent_normalizados)
         or bool(limiares_fallback_normalizados)
+        or features_comando_normalizadas != "legado"
         or representacao_normalizada != "tfidf"
     ):
         raise ValueError("configuração experimental não pode promover")
@@ -249,6 +279,15 @@ def executar_ciclo_treino(
             ) or {}
         ).items()
     }
+    features_comando_anteriores = str(
+        relatorio_anterior.get("features_comando")
+        or ("legado" if ativo_path.exists() else "")
+    ).strip().casefold()
+    features_comando_intents_anteriores = tuple(sorted({
+        str(intent or "").strip().upper()
+        for intent in relatorio_anterior.get("features_comando_intents", ())
+        if str(intent or "").strip()
+    }))
     representacao_anterior = str(
         relatorio_anterior.get("representacao")
         or ("tfidf" if ativo_path.exists() else "")
@@ -293,6 +332,14 @@ def executar_ciclo_treino(
         "limiares_fallback_intent_semantica_alterados": bool(
             limiares_fallback_anteriores != limiares_fallback_normalizados
         ),
+        "features_comando_alteradas": bool(
+            features_comando_anteriores
+            and features_comando_normalizadas != features_comando_anteriores
+        ),
+        "features_comando_intents_alteradas": bool(
+            features_comando_intents_anteriores
+            != features_comando_intents_normalizadas
+        ),
         "representacao_alterada": bool(
             representacao_anterior
             and representacao_normalizada != representacao_anterior
@@ -308,6 +355,8 @@ def executar_ciclo_treino(
         limiar_comando=limiar_comando,
         limiares_comando_por_intent=limiares_intent_normalizados,
         limiares_fallback_intent_semantica=limiares_fallback_normalizados,
+        features_comando=features_comando_normalizadas,
+        features_comando_intents=features_comando_intents_normalizadas,
         representacao=representacao_normalizada,
         encoder_semantico=encoder_semantico,
         pasta_encoder_semantico=pasta_encoder_semantico,
@@ -359,6 +408,8 @@ def executar_ciclo_treino(
         "limiares_fallback_intent_semantica": dict(
             sorted(limiares_fallback_normalizados.items())
         ),
+        "features_comando": features_comando_normalizadas,
+        "features_comando_intents": list(features_comando_intents_normalizadas),
         "representacao": representacao_normalizada,
         "encoder_semantico_configurado": bool(
             encoder_semantico is not None or pasta_encoder_semantico is not None
@@ -371,6 +422,7 @@ def executar_ciclo_treino(
             or float(limiar_comando) != 0.5
             or bool(limiares_intent_normalizados)
             or bool(limiares_fallback_normalizados)
+            or features_comando_normalizadas != "legado"
             or representacao_normalizada != "tfidf"
         ),
         "dataset": {
@@ -392,6 +444,12 @@ def executar_ciclo_treino(
         "metricas_modalidade_legada": metricas_modalidade_legada,
         "metricas_estavel": metricas_estavel,
         "decisao": decisao,
+        "status_promocao": {
+            "elegivel_metricamente": bool(decisao.get("promover")),
+            "promocao_solicitada": bool(promover_se_aprovado),
+            "promocao_efetivada": promovido,
+            "modelo_ativo_alterado": promovido,
+        },
         "promovido": promovido,
         "lote_candidato_apenas_avaliacao": bool(candidatos),
         "auditoria_lote": {
@@ -448,6 +506,19 @@ def main() -> int:
         metavar="INTENT=VALOR",
     )
     parser.add_argument(
+        "--features-comando",
+        choices=sorted(FEATURES_COMANDO_PERMITIDAS),
+        default="legado",
+        help="features estruturais usadas apenas pelo command head",
+    )
+    parser.add_argument(
+        "--features-comando-intent",
+        action="append",
+        default=[],
+        metavar="INTENT",
+        help="intent direcionada que recebe features estruturais",
+    )
+    parser.add_argument(
         "--representacao",
         choices=sorted(REPRESENTACOES_PERMITIDAS),
         default="tfidf",
@@ -488,6 +559,8 @@ def main() -> int:
         limiar_comando=args.limiar_comando,
         limiares_comando_por_intent=limiares_por_intent,
         limiares_fallback_intent_semantica=limiares_fallback_semantico,
+        features_comando=args.features_comando,
+        features_comando_intents=args.features_comando_intent,
         representacao=args.representacao,
         pasta_encoder_semantico=args.encoder_semantico or None,
         sha256_encoder_semantico=args.sha256_encoder_semantico,

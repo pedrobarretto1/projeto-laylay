@@ -14,6 +14,7 @@ from mente_laylay.integracao.registro_memoria_pessoas import PortaMemoriaPessoas
 from mente_laylay.integracao.registro_iot import PortaIoT
 from mente_laylay.memoria_mental.resultado_acao import (
     CHAVE_RESULTADO_OPERACIONAL_PUBLICADO,
+    interpretar_tratamento_operacional,
     normalizar_resultado_acao,
 )
 
@@ -82,6 +83,14 @@ class AdaptadoresAplicacaoRuntime:
         status: str = "",
     ) -> None:
         ns = self._ns()
+        tratamento = interpretar_tratamento_operacional(resultado, executou)
+        if not tratamento.legado and not tratamento.resultado_publicado:
+            # A própria invocação conhece melhor seu efeito que o bool legado
+            # do chamador. Nunca permita que "tratado" seja reescrito como
+            # "executou" por uma camada externa.
+            executou = tratamento.executou
+            if not str(status or "").strip() and tratamento.status:
+                status = tratamento.status
         # P0_PUBLICACAO_RESULTADO_PRIORITARIO_V1_20260815
         # Vários atalhos prioritários seguem o contrato legado
         # ``executar_intencao(...) -> registrar(dict original)``. Quando o

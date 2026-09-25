@@ -191,11 +191,21 @@ def test_fala_historica_da_calculadora_chega_inteira_ao_verificador():
 
 @pytest.mark.parametrize("fala", [
     "Você pode pedir para abrir um programa. Recomendo um filme. Por exemplo: 'Abra os Olhos'.",
-    "Você pode pedir para abrir o programa 'Aurora'. Por exemplo: 'Noite Inventada'.",
 ])
 def test_exemplo_sem_pedido_ou_fora_da_frase_seguinte_nao_herda_escopo(fala):
     assert extrair_titulos_citados(fala)
     assert "obra_sem_evidencia" in validar_fala_com_fundamentacao(fala, fundamentacao=None)["problemas"]
+
+
+def test_exemplo_ambiguo_nao_e_obra_nem_enunciado_isento():
+    # Expectativa antiga confundia falta de classificação com prova de obra.
+    # Não há relação musical/editorial aqui; também não há pedido citado que
+    # permita mascarar os fatos do trecho desconhecido.
+    fala = "Você pode pedir para abrir o programa 'Aurora'. Por exemplo: 'Noite Inventada em 2030'."
+    assert extrair_titulos_citados(fala) == []
+    resultado = validar_fala_com_fundamentacao(fala, fundamentacao=None)
+    assert "data_sem_evidencia" in resultado["problemas"]
+    assert "obra_sem_evidencia" not in resultado["problemas"]
 
 
 def test_exemplo_em_frase_separada_nao_isenta_data_posterior():

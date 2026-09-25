@@ -994,6 +994,11 @@ def configurar_auto_startup():
             print(f"⚠️ Erro no startup: {e}")
 
 if __name__ == "__main__":
+    if "--verificar-instalacao" in sys.argv[1:]:
+        # Smoke do executável: imports carregados, sem conexão, configuração,
+        # registro de startup ou execução de ações no computador.
+        print(f"LAYLAY_CLIENTE_INSTALACAO_OK versao={APP_VERSION} protocolo={PC_B_PROTOCOL_VERSION}")
+        raise SystemExit(0)
     print("="*55)
     print(f"🤖 {APP_NAME} v{APP_VERSION}")
     print(f"   {APP_DESCRIPTION}")

@@ -188,6 +188,18 @@ class EncoderSemanticoHibrido:
         _semanticos, hibridos = self.codificar_componentes(textos)
         return hibridos
 
+    def codificar_base(self, textos: Iterable[str]) -> Any:
+        """Codifica somente o embedding semântico-base do wrapper híbrido."""
+        lote = [str(texto or "").strip() for texto in textos]
+        if not lote or any(not texto for texto in lote):
+            raise ValueError("encoder híbrido exige textos não vazios")
+        import numpy as np
+
+        return np.asarray(
+            self.encoder_semantico.codificar(lote),
+            dtype=np.float32,
+        )
+
     def codificar_componentes(self, textos: Iterable[str]) -> tuple[Any, Any]:
         """Retorna base e combinação sem executar o ONNX duas vezes."""
         lote = [str(texto or "").strip() for texto in textos]
@@ -195,10 +207,7 @@ class EncoderSemanticoHibrido:
             raise ValueError("encoder híbrido exige textos não vazios")
         import numpy as np
 
-        semanticos = np.asarray(
-            self.encoder_semantico.codificar(lote),
-            dtype=np.float32,
-        )
+        semanticos = self.codificar_base(lote)
         lexicais = self._vetorizador.transform(lote).toarray().astype(np.float32)
         hibridos = np.hstack((
             semanticos * self.peso_semantico,

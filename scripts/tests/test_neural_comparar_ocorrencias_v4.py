@@ -6,13 +6,15 @@ import numpy as np
 import pytest
 
 from mente_laylay.neural.comparar_ocorrencias_v4 import (
-    alinhar_subtokens, carregar_perfil, medir, representar_tokens, rotular_ocorrencias, estado_ajuste,
+    alinhar_subtokens, medir, representar_tokens, rotular_ocorrencias, estado_ajuste,
 )
+from mente_laylay.neural.revalidar_perfil_v4 import carregar_perfil_revalidado
 
 
 @pytest.fixture(scope="module")
 def casos():
-    return carregar_perfil()[0]
+    # Contratos dos algoritmos atuais, não reprodução do classificador antigo.
+    return carregar_perfil_revalidado(reprojetar=True)[0]
 
 
 def test_loss_float32_do_treino_pode_ser_publicada_em_json():

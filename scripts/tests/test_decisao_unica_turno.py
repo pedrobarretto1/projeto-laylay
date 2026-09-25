@@ -21,6 +21,10 @@ from mente_laylay.memoria_mental.contexto_compartilhado import (
     registrar_resultado_execucao,
     resolver_repeticao_ultima_acao,
 )
+from mente_laylay.memoria_mental.resultado_acao import (
+    interpretar_tratamento_operacional,
+    marcar_tratamento_operacional,
+)
 
 
 def _turno(modalidade: str, *, autoriza: bool) -> dict:
@@ -309,6 +313,38 @@ def test_mesma_acao_so_e_executada_uma_vez_no_mesmo_turno(monkeypatch) -> None:
     assert diagnostico["ativas"] == 0
 
 
+def test_cache_preserva_tratado_sem_efeito_sem_reexecutar(monkeypatch) -> None:
+    chamadas = []
+
+    def executar(resultado, _texto, _contexto):
+        chamadas.append(resultado)
+        marcar_tratamento_operacional(
+            resultado,
+            tratado=True,
+            executou=False,
+            confirmado=False,
+            status="nao_executado_por_politica",
+            retorno_legado=True,
+        )
+        return True
+
+    monkeypatch.setattr(coordenador_intencao, "executar_intencao", executar)
+    ciclo = _ciclo_execucao({"id": 1009})
+    primeiro = {"intent": "APP_OPEN", "params": {"nome_app": "Opera"}}
+    segundo = {"intent": "APP_OPEN", "params": {"nome_app": "Opera"}}
+
+    assert ciclo.executar_intencao(primeiro, "abre o Opera") is True
+    assert ciclo.executar_intencao(segundo, "abre o Opera") is True
+    assert len(chamadas) == 1
+
+    tratamento = interpretar_tratamento_operacional(segundo, True)
+    assert tratamento.tratado is True
+    assert tratamento.executou is False
+    assert tratamento.confirmado is False
+    assert tratamento.status == "nao_executado_por_politica"
+    assert tratamento.legado is False
+
+
 def test_plano_ativo_usa_idempotencia_do_turno_real(monkeypatch) -> None:
     chamadas = []
     monkeypatch.setattr(
@@ -485,3 +521,88 @@ def test_acao_de_background_nao_herda_idempotencia_de_turno_encerrado(monkeypatc
     assert ciclo.executar_intencao(comando, "ação autônoma") is True
     assert ciclo.executar_intencao(comando, "ação autônoma futura") is True
     assert len(chamadas) == 2
+
+
+
+def test_diagnostico_execucao_separa_legado_sem_receipt_e_confirmado(monkeypatch) -> None:
+    ciclo = _ciclo_execucao(_turno("comando", autoriza=True))
+
+    def executor_falso(resultado, _texto, _ctx):
+        intent = str(resultado.get("intent") or "")
+        if intent == "LEGACY_ONLY":
+            return True
+        if intent == "MODERNO_SEM_RECEIPT":
+            marcar_tratamento_operacional(
+                resultado,
+                tratado=True,
+                executou=None,
+                confirmado=None,
+                status="tratado_sem_receipt",
+                retorno_legado=True,
+            )
+            return True
+        if intent == "MODERNO_CONFIRMADO":
+            marcar_tratamento_operacional(
+                resultado,
+                tratado=True,
+                executou=True,
+                confirmado=True,
+                status="confirmado_teste",
+                resultado_publicado=True,
+                retorno_legado=True,
+            )
+            return True
+        raise AssertionError(intent)
+
+    monkeypatch.setattr(coordenador_intencao, "executar_intencao", executor_falso)
+
+    assert ciclo.executar_intencao({"intent": "LEGACY_ONLY"}, "legado") is True
+    assert ciclo.executar_intencao(
+        {"intent": "MODERNO_SEM_RECEIPT"}, "sem receipt"
+    ) is True
+    assert ciclo.executar_intencao(
+        {"intent": "MODERNO_CONFIRMADO"}, "confirmado"
+    ) is True
+
+    contrato = ciclo.diagnostico_linguagem_natural()["contrato_execucao"]
+    assert contrato["observados"] == 3
+    assert contrato["legados"] == 1
+    assert contrato["tratados_sem_receipt"] == 1
+    assert contrato["confirmados"] == 1
+    assert contrato["incertos"] == 0
+    assert contrato["legados_por_intent"] == {"LEGACY_ONLY": 1}
+    assert contrato["sem_receipt_por_intent"] == {"MODERNO_SEM_RECEIPT": 1}
+
+
+
+def test_cadeia_canonica_exige_sucesso_e_para_dependentes(monkeypatch) -> None:
+    chamadas = []
+
+    def fluxo_falso(texto, origem, _ctx, **kwargs):
+        chamadas.append({
+            "texto": texto,
+            "origem": origem,
+            "estrito": kwargs.get("exigir_sucesso_habilidade"),
+        })
+        return False
+
+    monkeypatch.setattr(
+        coordenador_intencao,
+        "executar_fluxo_intencao",
+        fluxo_falso,
+    )
+    ciclo = _ciclo_execucao({
+        "id": 1011,
+        "modalidade": "comando",
+        "autoriza_execucao": True,
+    })
+
+    assert ciclo.processar_cadeia(
+        "abre a Calculadora, maximiza ela",
+        "teste-cadeia-estrita",
+    ) is True
+    assert chamadas == [{
+        "texto": "abre a Calculadora",
+        "origem": "teste-cadeia-estrita-1",
+        "estrito": True,
+    }]

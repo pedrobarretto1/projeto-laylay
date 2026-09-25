@@ -538,6 +538,7 @@ class PesquisaContextualRuntime:
         pasta_downloads: str | None = None,
         clock: Callable[[], float] = time.time,
         orcamento_interativo_s: float = 4.0,
+        modo_multifonte: str | None = None,
         thread_factory: Callable[..., object] = threading.Thread,
         log: Callable[[str], object] = print,
     ) -> None:
@@ -547,6 +548,8 @@ class PesquisaContextualRuntime:
         self.pasta_downloads = pasta_downloads
         self.clock = clock
         self.orcamento_interativo_s = max(0.0, float(orcamento_interativo_s))
+        modo_solicitado = str(modo_multifonte or os.getenv("LAYLAY_PESQUISA_MULTIFONTE_MODO", "desativado")).strip().casefold()
+        self.modo_multifonte = "ativo" if modo_solicitado == "ativo" else "desativado"
         self.thread_factory = thread_factory
         self.log = log
         self._prefetch_lock = threading.RLock()
@@ -609,6 +612,26 @@ class PesquisaContextualRuntime:
             requests_get=self.requests_get,
             clock=self.clock,
         )
+
+    def pesquisar_evidencias_multifonte(self, consulta: str, ttl_s: float = 1800.0, *, foco: str = "") -> dict:
+        """Evidência de páginas lidas, separada do cache de resumos antigos."""
+        from mente_laylay.cognicao.pesquisa_multifonte import pesquisar_evidencias_multifonte
+
+        chave = "multifonte:" + _normalizar_texto_curto_basico(consulta + "|" + foco)
+        agora = float(self.clock())
+        with self._prefetch_lock:
+            item = dict(self.cache_tema.get(chave) or {})
+        if item and agora - float(item.get("ts") or 0.0) < float(item.get("ttl_s") or 0.0):
+            resultado = dict(item.get("data") or {})
+            resultado["evidencia_cache"] = True
+            return resultado
+        resultado = pesquisar_evidencias_multifonte(
+            consulta, foco=foco, requests_get=self.requests_get, clock=self.clock,
+        )
+        validade = min(max(0.0, float(ttl_s)), 1800.0) if resultado.get("ok") else 60.0
+        with self._prefetch_lock:
+            self.cache_tema[chave] = {"ts": agora, "ttl_s": validade, "data": dict(resultado)}
+        return resultado
 
     def _pesquisar_contexto_tema_direto(self, tema: str, ttl_s: float) -> dict:
         return pesquisar_contexto_tema(

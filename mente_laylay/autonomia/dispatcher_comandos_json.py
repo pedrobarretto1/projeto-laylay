@@ -5,6 +5,11 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List
 
+from mente_laylay.memoria_mental.resultado_acao import (
+    interpretar_tratamento_operacional,
+)
+
+
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     if isinstance(ctx, dict) and key in ctx:
         return ctx.get(key, default)
@@ -202,10 +207,19 @@ def executar_comandos_json(
                 erros_execucao.append(f"executor canônico indisponível para a ação '{acao}'.")
                 continue
             try:
-                if executar_intencao(intencao_canonica, texto):
+                retorno = executar_intencao(intencao_canonica, texto)
+                tratamento = interpretar_tratamento_operacional(
+                    intencao_canonica,
+                    retorno,
+                )
+                if tratamento.tratado:
                     fala_emitida_por_acao = True
-                else:
-                    erros_execucao.append(f"intenção canônica não executada: {intencao_canonica.get('intent')}")
+                if not tratamento.sucesso_habilidade:
+                    detalhe = tratamento.status or "efeito_nao_confirmado"
+                    erros_execucao.append(
+                        "intenção canônica sem efeito confirmado: "
+                        f"{intencao_canonica.get('intent')} ({detalhe})"
+                    )
             except Exception as erro_intencao:
                 erros_execucao.append(
                     f"intenção {intencao_canonica.get('intent')}: {type(erro_intencao).__name__} — {erro_intencao}"

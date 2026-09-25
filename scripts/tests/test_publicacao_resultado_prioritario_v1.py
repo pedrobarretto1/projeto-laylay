@@ -6,6 +6,7 @@ from mente_laylay.autonomia.adaptador_resultado import AdaptadorResultadoOperaci
 from mente_laylay.integracao.adaptadores_aplicacao_runtime import AdaptadoresAplicacaoRuntime
 from mente_laylay.memoria_mental.resultado_acao import (
     CHAVE_RESULTADO_OPERACIONAL_PUBLICADO,
+    marcar_tratamento_operacional,
 )
 
 
@@ -151,6 +152,36 @@ def test_fallback_generico_continua_valido_quando_executor_nao_publicou():
     assert comandos[0]["intent"] == "SEARCH"
     assert comandos[0]["executou"] is True
     assert comandos[0]["status"] == ""
+    assert len(base) == 1
+    assert len(motor.resultados) == 1
+    assert len(mapa.resultados) == 1
+    assert logs == []
+
+
+def test_tratamento_explicito_impede_fallback_de_inventar_execucao():
+    runtime, estado, motor, mapa, base, logs = _runtime()
+    pedido = {"intent": "APP_OPEN", "params": {"nome_app": "Opera"}}
+    marcar_tratamento_operacional(
+        pedido,
+        tratado=True,
+        executou=False,
+        confirmado=False,
+        status="nao_executado_por_politica",
+        retorno_legado=True,
+    )
+
+    # Simula consumidor antigo que ainda confunde "tratado" com "executou".
+    runtime.registrar_resultado_execucao(
+        pedido,
+        "abre o Opera",
+        True,
+        origem="prioritario_legado_ambiguo",
+    )
+
+    comando = estado.mental["plano_turno_atual"]["comandos"][0]
+    assert comando["executou"] is False
+    assert comando["confirmado"] is False
+    assert comando["status"] == "nao_executado_por_politica"
     assert len(base) == 1
     assert len(motor.resultados) == 1
     assert len(mapa.resultados) == 1

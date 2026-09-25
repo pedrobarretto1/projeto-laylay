@@ -49,6 +49,9 @@ from mente_laylay.memoria_mental.autoaprimoramento import (
     registrar_autoaprimoramento,
     resumo_autoaprimoramento_para_prompt,
 )
+from mente_laylay.memoria_mental.resultado_acao import (
+    interpretar_tratamento_operacional,
+)
 from mente_laylay.memoria_mental.contexto_integrado import (
     contexto_aponta_descanso,
     interpretar_contexto_vivo,
@@ -62,7 +65,10 @@ from mente_laylay.emocoes.motor_humor import (
     ajustar_humor as ajustar_humor_estado,
     montar_status_humor_prompt,
 )
-from mente_laylay.emocoes.leitura_usuario import registrar_leitura_emocional
+from mente_laylay.emocoes.leitura_usuario import (
+    analisar_funcao_comunicativa,
+    registrar_leitura_emocional,
+)
 from mente_laylay.emocoes.contrato_causal import (
     criar_evento_leitura_emocional_usuario,
     evento_tem_causa_rastreavel,
@@ -475,17 +481,31 @@ class EstadoContextoRuntime:
         self,
         resultado: Dict[str, Any] | None = None,
         texto: str = "",
-        sucesso: bool = True,
+        sucesso: bool | None = True,
         erro: str = "",
         contexto: str = "",
         origem: str = "",
     ) -> None:
+        sucesso_registro = sucesso
+        if sucesso is True and isinstance(resultado, dict):
+            tratamento = interpretar_tratamento_operacional(resultado, sucesso)
+            if not tratamento.legado:
+                if tratamento.sucesso_habilidade:
+                    sucesso_registro = True
+                elif tratamento.resultado_incerto:
+                    # A tentativa existiu, mas não há receipt: não premiar
+                    # nem punir a habilidade no histórico de aprendizado.
+                    sucesso_registro = None
+                else:
+                    # Política, cancelamento ou falha já tratada não podem
+                    # reaparecer como sucesso por causa do bool do chamador.
+                    return
         estado = self._estado()
         estado_atualizado = registrar_autoaprimoramento(
             estado.obter("mental", "autoaprimoramento_estado", {}),
             resultado=resultado,
             texto=texto,
-            sucesso=sucesso,
+            sucesso=sucesso_registro,
             erro=erro,
             contexto=contexto,
             origem=origem,
@@ -515,7 +535,10 @@ class EstadoContextoRuntime:
             print(f"🧹 [CONTEXTO:EXPIRADO] {', '.join(expirados)}")
         avancar_emocao = self._namespace().get("_avancar_emocao_conversacional")
         if callable(avancar_emocao):
-            avancar_emocao(consumir_interacao=True, interaction_key=texto)
+            funcao = analisar_funcao_comunicativa(texto).get("funcao", "")
+            avancar_emocao(
+                consumir_interacao=True, interaction_key=texto, contexto=funcao,
+            )
         dados = extrair_refino_contexto_mental(texto, resultado)
         if not dados.get("texto"):
             return self.registrar_interacao_temporal(texto)
@@ -867,19 +890,11 @@ class EstadoContextoRuntime:
                         int(self._estado().conversacional.get("emotion_level") or 1),
                         "tom usado na fala",
                     )
-                    return
-            campos["current_emotion"] = emocao_nova or "calma"
+            # O setter canônico confirma o evento causal. Sem ele, o tom da
+            # fala não deve sobrescrever o episódio emocional compartilhado.
+            return
         elif chave == "emotion_level":
-            conversa_atual = self._estado().conversacional
-            nivel_atual = int(conversa_atual.get("emotion_level") or 1)
-            nivel_novo = max(1, min(3, int(valor or 1)))
-            if (
-                str(conversa_atual.get("current_emotion") or "calma") != "calma"
-                and int(conversa_atual.get("emotion_interactions_left") or 0) > 0
-                and nivel_novo < nivel_atual
-            ):
-                return
-            campos["emotion_level"] = nivel_novo
+            return
         elif chave == "is_speaking":
             campos["is_speaking"] = bool(valor)
         elif chave == "audio_playing":

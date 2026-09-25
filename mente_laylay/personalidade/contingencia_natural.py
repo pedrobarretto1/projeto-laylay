@@ -6,7 +6,7 @@ import hashlib
 import re
 from typing import Any, Mapping
 
-from mente_laylay.emocoes.contrato_causal import evento_tem_causa_rastreavel
+from mente_laylay.emocoes.contrato_causal import evento_esta_ativo
 from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
 from mente_laylay.personalidade.variacao_fala import escolher_variacao
 
@@ -122,7 +122,39 @@ def _resposta_leitura_emocional_causal(
     if not isinstance(plano, Mapping):
         plano = contexto
     evento = plano.get("evento_emocional_causal")
-    if not isinstance(evento, Mapping) or not evento_tem_causa_rastreavel(evento):
+    if not isinstance(evento, Mapping) or not evento_esta_ativo(evento):
+        return ""
+    texto_turno = re.sub(
+        r"\s+", " ", str(plano.get("texto_usuario") or "")
+    ).strip().casefold()
+    if texto_turno and texto_turno != re.sub(r"\s+", " ", texto).strip().casefold():
+        return ""
+    leitura = analisar_intencao_emocional(texto)
+    if (
+        evento.get("origem") == "inferencia_contextual_usuario"
+        and evento.get("natureza_evidencia") == "inferencia"
+        and leitura.get("natureza_evidencia") == "inferencia"
+        and leitura.get("causa") == evento.get("causa")
+    ):
+        verbos = {
+            "entreguei": "entregou", "terminei": "terminou",
+            "concluí": "concluiu", "conclui": "concluiu",
+            "finalizei": "finalizou", "acabei": "acabou",
+            "resolvi": "resolveu", "encerrei": "encerrou",
+            "consegui terminar": "conseguiu terminar",
+            "consegui concluir": "conseguiu concluir",
+            "consegui finalizar": "conseguiu finalizar",
+            "consegui resolver": "conseguiu resolver",
+            "consegui entregar": "conseguiu entregar",
+        }
+        verbo = verbos.get(str(leitura.get("verbo_conclusao") or "").casefold(), "")
+        alvo = str(leitura.get("alvo_conclusao") or "")
+        periodo = str(leitura.get("periodo_carga") or "")
+        if verbo and alvo and periodo:
+            return (
+                f"Você {verbo} {alvo} depois de {periodo} lidando com isso. "
+                "Dá para entender o alívio."
+            )
         return ""
     if (
         str(evento.get("origem") or "").casefold()
@@ -131,23 +163,24 @@ def _resposta_leitura_emocional_causal(
         != "leitura_social"
     ):
         return ""
-    texto_turno = re.sub(
-        r"\s+", " ", str(plano.get("texto_usuario") or "")
-    ).strip().casefold()
-    if texto_turno and texto_turno != re.sub(r"\s+", " ", texto).strip().casefold():
-        return ""
-    leitura = analisar_intencao_emocional(texto)
     emocao = str(leitura.get("emocao") or "").casefold()
+    if emocao == "alegria":
+        motivo = re.search(r"\bporque\s+([^.!?;]{3,100})", texto, re.IGNORECASE)
+        if motivo:
+            trecho = motivo.group(1).strip(" ,")
+            return escolher_variacao((
+                f"Que bom saber que você está feliz. Você contou: “{trecho}”.",
+                f"Você está feliz, e eu ouvi o motivo: “{trecho}”. Que bom.",
+            ))
+        return escolher_variacao((
+            "Que bom saber que você está feliz.",
+            "Fico contente por você estar feliz.",
+        ))
     respostas = {
         "tristeza": (
             "Eu ouvi que você está triste. Não vou maquiar isso; fico aqui com você.",
             "Entendo que hoje bateu tristeza. Pode falar no seu ritmo, sem cerimônia.",
             "Você está triste, e eu não vou empilhar positividade vazia em cima disso.",
-        ),
-        "alegria": (
-            "Aí sim — você terminou o projeto e está feliz. Parabéns por essa conquista.",
-            "Que notícia boa: projeto terminado e você feliz. Isso merece comemoração.",
-            "Parabéns por terminar o projeto. Dá para sentir o quanto você ficou feliz com isso.",
         ),
         "ansiedade": (
             "Eu ouvi que você está ansioso. Posso ficar com você nessa conversa sem apressar nada.",

@@ -43,6 +43,12 @@ def avaliar_previsoes(
         for esperado, previsto in pares
         if head_aplicavel(esperado, "negation")
     ]
+    pares_execucao_head = [
+        (esperado, previsto)
+        for esperado, previsto in pares
+        if head_aplicavel(esperado, "command")
+        and head_aplicavel(esperado, "negation")
+    ]
     pares_acao_head = [
         (esperado, previsto)
         for esperado, previsto in pares
@@ -73,6 +79,42 @@ def avaliar_previsoes(
     )
     comandos_esperados = sum(
         bool(esperado.get("is_command")) for esperado, _ in pares_comando_head
+    )
+
+    def _comando_executavel_esperado(dados: Mapping[str, Any]) -> bool:
+        return bool(dados.get("is_command")) and not bool(dados.get("negated"))
+
+    def _comando_executavel_previsto(dados: Mapping[str, Any]) -> bool:
+        ood_calibrado = bool(dados.get("ood_calibrated", True))
+        return bool(
+            dados.get("is_command")
+            and not dados.get("negated")
+            and not (dados.get("ood") and ood_calibrado)
+        )
+
+    executaveis_esperados = sum(
+        _comando_executavel_esperado(esperado)
+        for esperado, _ in pares_execucao_head
+    )
+    executaveis_previstos = sum(
+        _comando_executavel_previsto(previsto)
+        for _, previsto in pares_execucao_head
+    )
+    verdadeiros_executaveis = sum(
+        _comando_executavel_esperado(esperado)
+        and _comando_executavel_previsto(previsto)
+        for esperado, previsto in pares_execucao_head
+    )
+    nao_executaveis_esperados = len(pares_execucao_head) - executaveis_esperados
+    falsos_executaveis = sum(
+        not _comando_executavel_esperado(esperado)
+        and _comando_executavel_previsto(previsto)
+        for esperado, previsto in pares_execucao_head
+    )
+    executaveis_perdidos = sum(
+        _comando_executavel_esperado(esperado)
+        and not _comando_executavel_previsto(previsto)
+        for esperado, previsto in pares_execucao_head
     )
     intent_corretas = sum(
         str(esperado.get("intent") or "").upper()
@@ -159,6 +201,20 @@ def avaliar_previsoes(
         "false_command_rate": _dividir(falsos_comandos, negativos),
         "command_precision": _dividir(verdadeiros_comandos, comandos_previstos),
         "command_recall": _dividir(verdadeiros_comandos, comandos_esperados),
+        "executable_evaluation_count": len(pares_execucao_head),
+        "expected_executable_command_count": executaveis_esperados,
+        "predicted_executable_command_count": executaveis_previstos,
+        "false_executable_command_count": falsos_executaveis,
+        "false_executable_command_rate": _dividir(
+            falsos_executaveis, nao_executaveis_esperados
+        ),
+        "missed_executable_command_count": executaveis_perdidos,
+        "executable_command_precision": _dividir(
+            verdadeiros_executaveis, executaveis_previstos
+        ),
+        "executable_command_recall": _dividir(
+            verdadeiros_executaveis, executaveis_esperados
+        ),
         "intent_accuracy": _dividir(intent_corretas, len(pares_intent_head)),
         "negation_accuracy": _dividir(
             negacoes_corretas, len(pares_negacao_head)

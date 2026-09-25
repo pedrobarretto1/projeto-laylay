@@ -394,6 +394,9 @@ def _params_seguros(params: Dict[str, Any] | None) -> Dict[str, Any]:
         "conteudo_ref", "conteudo_hash", "sobrescrever_confirmado",
         "plano_cooperativo_id",
         "limit", "offset", "consulta",
+        # Escopo de uma consulta não é autoridade nem dado observado. Perdê-lo
+        # transforma continuações sobre uma previsão em consultas para hoje.
+        "local", "cidade", "day_offset",
     }
     seguro: Dict[str, Any] = {}
     for chave, valor in dict(params or {}).items():

@@ -279,13 +279,18 @@ class PorteiroProatividadeRuntime:
         ultima_entrada_ts = float(contexto.get("ultima_entrada_ts") or 0.0)
         idade_entrada = agora - ultima_entrada_ts if ultima_entrada_ts else 9999.0
         idade_fala = agora - float(ultima_fala_normal_ts or 0.0) if ultima_fala_normal_ts else 9999.0
+        # Canal aberto não é ocupação: a barreira tem vida limitada pela
+        # atividade real. O owner da interação e o turno continuam soberanos.
+        conversa_em_andamento = (modo_chat or conversa_ativa) and (
+            turno_ativo or idade_entrada < 30.0 or idade_fala < 30.0
+        )
 
         modo_jogo, reuniao_ativa, modo_foco = self._atividade_contextual(contexto)
 
         if turno_ativo and not prioritario:
             pontos -= 48
             motivos.append("resposta do usuário ainda está sendo construída")
-        if (modo_chat or conversa_ativa) and not prioritario and not presenca_jogo:
+        if conversa_em_andamento and not prioritario and not presenca_jogo:
             pontos -= 35
             motivos.append("conversa ativa")
         if idade_entrada < 30.0 and not prioritario:
@@ -315,7 +320,7 @@ class PorteiroProatividadeRuntime:
             # a mesma entrega em uma nova sugestão de baixa pontuação.
             barreira_viva = bool(
                 turno_ativo
-                or ((modo_chat or conversa_ativa) and not presenca_jogo)
+                or (conversa_em_andamento and not presenca_jogo)
                 or idade_entrada < 30.0
                 or idade_fala < 30.0
                 or funcao in _FUNCOES_SENSIVEIS
@@ -340,7 +345,7 @@ class PorteiroProatividadeRuntime:
                 acao = "adiar"
                 adiar_s = 10.0
         elif (
-            ((modo_chat or conversa_ativa) and not presenca_jogo)
+            (conversa_em_andamento and not presenca_jogo)
             or idade_entrada < 30.0
             or idade_fala < 30.0
         ) and not prioritario:

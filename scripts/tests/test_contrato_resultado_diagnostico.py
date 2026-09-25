@@ -290,3 +290,31 @@ def test_diagnostico_conta_ultima_acao_legada_como_contrato_incoerente() -> None
     assert diagnostico["ultima_acao_auditoria"]["coerente"] is False
     assert diagnostico["saude_operacional"]["contratos_incoerentes"] == 1
     assert diagnostico["saude_operacional"]["estado"] == "degradado"
+
+
+
+def test_terminal_expoe_telemetria_do_contrato_de_execucao() -> None:
+    texto = formatar_diagnostico_terminal({
+        "linguagem_natural": {
+            "contrato_execucao": {
+                "observados": 9,
+                "legados": 2,
+                "tratados_sem_receipt": 1,
+                "confirmados": 4,
+                "nao_confirmados": 1,
+                "incertos": 1,
+                "ultima_intent_legada": "LEGACY_ONLY",
+                "ultima_intent_sem_receipt": "CREATE_FOLDER",
+            },
+        },
+    })
+
+    assert "contrato de execução:" in texto
+    assert "observados=9" in texto
+    assert "legados=2" in texto
+    assert "sem_receipt=1" in texto
+    assert "confirmados=4" in texto
+    assert "não_confirmados=1" in texto
+    assert "incertos=1" in texto
+    assert "último_legado=LEGACY_ONLY" in texto
+    assert "último_sem_receipt=CREATE_FOLDER" in texto

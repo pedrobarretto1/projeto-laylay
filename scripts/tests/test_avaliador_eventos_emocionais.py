@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import time
+
 from mente_laylay.emocoes.avaliador_eventos import (
     AvaliadorEventosEmocionaisRuntime,
     contextualizar_fala_evento,
 )
+from mente_laylay.emocoes.contrato_causal import criar_evento_emocional_causal
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
 
 
@@ -30,10 +33,26 @@ def _resultado(
     )
 
 
+def _evento_local(*, arco: str, repeticoes: int, provocacao: int) -> dict:
+    evento = criar_evento_emocional_causal(
+        origem="resultado_operacional", causa="estado do Opera confirmado",
+        evidencia_ref=f"resultado:opera:{repeticoes}",
+        natureza_evidencia="fato_observado", responsabilidade="usuario",
+        confianca=0.96, relevancia=0.95, novidade=0.5,
+        intensidade=2, sensibilidade="normal", alvo="Opera",
+        permite_expressao=True, emocao="debochada", nivel=2,
+        arco=arco, ts=time.time(),
+    )
+    evento.update({"repeticoes": repeticoes, "provocacao_usuario": provocacao})
+    return evento
+
+
 def test_app_visivel_permite_provocacao_ao_usuario_com_evidencia_forte() -> None:
     runtime = AvaliadorEventosEmocionaisRuntime(time_cb=lambda: 100.0)
 
-    avaliacao = runtime.avaliar(_resultado("ja_aberto_focado"))
+    avaliacao = runtime.avaliar(_resultado(
+        "ja_aberto_focado", executou=False,
+    ))
 
     assert avaliacao["responsabilidade"] == "usuario"
     assert avaliacao["confianca"] >= 0.90
@@ -42,16 +61,28 @@ def test_app_visivel_permite_provocacao_ao_usuario_com_evidencia_forte() -> None
     assert avaliacao["permite_expressao"] is True
 
 
+def test_status_ja_satisfeito_sem_receipt_de_nao_acao_nao_culpa_usuario() -> None:
+    runtime = AvaliadorEventosEmocionaisRuntime(time_cb=lambda: 100.0)
+
+    for executou in (True, None):
+        avaliacao = runtime.avaliar(_resultado(
+            "ja_aberto_focado", executou=executou, confirmado=True,
+        ))
+        assert avaliacao["permite_expressao"] is False
+        assert avaliacao["provocacao_usuario"] == 0
+        assert avaliacao["responsabilidade"] != "usuario"
+
+
 def test_repeticao_visivel_escala_ate_bronca_brava_sem_mudar_o_fato() -> None:
     agora = [100.0]
     runtime = AvaliadorEventosEmocionaisRuntime(time_cb=lambda: agora[0])
-    primeira = runtime.avaliar(_resultado("ja_aberto_focado"))
+    primeira = runtime.avaliar(_resultado("ja_aberto_focado", executou=False))
     agora[0] += 2
-    segunda = runtime.avaliar(_resultado("ja_aberto_focado"))
+    segunda = runtime.avaliar(_resultado("ja_aberto_focado", executou=False))
     agora[0] += 2
-    terceira = runtime.avaliar(_resultado("ja_aberto_focado"))
+    terceira = runtime.avaliar(_resultado("ja_aberto_focado", executou=False))
     agora[0] += 2
-    quarta = runtime.avaliar(_resultado("ja_aberto_focado"))
+    quarta = runtime.avaliar(_resultado("ja_aberto_focado", executou=False))
 
     assert primeira["emocao"] == "debochada"
     assert segunda["repeticoes"] == 2
@@ -69,12 +100,7 @@ def test_repeticao_visivel_escala_ate_bronca_brava_sem_mudar_o_fato() -> None:
 def test_bronca_brincalhona_local_fica_mais_forte_na_quarta_repeticao() -> None:
     fala = contextualizar_fala_evento(
         "Opera já estava aberto e em foco.",
-        {
-            "permite_expressao": True,
-            "arco": "bronca_brincalhona",
-            "repeticoes": 4,
-            "provocacao_usuario": 3,
-        },
+        _evento_local(arco="bronca_brincalhona", repeticoes=4, provocacao=3),
     )
 
     assert fala.startswith("Opera já estava aberto e em foco.")
@@ -87,7 +113,7 @@ def test_transcricao_de_baixa_confianca_nao_culpa_usuario() -> None:
     runtime = AvaliadorEventosEmocionaisRuntime(time_cb=lambda: 100.0)
 
     avaliacao = runtime.avaliar(_resultado(
-        "ja_aberto_focado", params={"confianca": 0.72},
+        "ja_aberto_focado", executou=False, params={"confianca": 0.72},
     ))
 
     assert avaliacao["provocacao_usuario"] == 0
@@ -99,7 +125,8 @@ def test_vulnerabilidade_suspende_deboche_mesmo_com_app_visivel() -> None:
     runtime = AvaliadorEventosEmocionaisRuntime(time_cb=lambda: 100.0)
 
     avaliacao = runtime.avaliar(_resultado(
-        "ja_aberto_focado", texto="estou triste, abre o opera para mim",
+        "ja_aberto_focado", executou=False,
+        texto="estou triste, abre o opera para mim",
     ))
 
     assert avaliacao["responsabilidade"] == "usuario"
@@ -178,12 +205,7 @@ def test_responsabilidade_explicita_da_laylay_produz_autorreparo() -> None:
 def test_expressao_preserva_resultado_e_acrescenta_uma_unica_tirada() -> None:
     fala = contextualizar_fala_evento(
         "Opera já estava aberto e em foco.",
-        {
-            "permite_expressao": True,
-            "arco": "provocacao_afetuosa",
-            "repeticoes": 1,
-            "provocacao_usuario": 1,
-        },
+        _evento_local(arco="provocacao_afetuosa", repeticoes=1, provocacao=1),
     )
 
     assert fala.startswith("Opera já estava aberto e em foco.")

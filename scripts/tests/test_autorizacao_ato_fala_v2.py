@@ -5,6 +5,9 @@ from __future__ import annotations
 import pytest
 
 from mente_laylay.autonomia.porteiro_acoes import texto_tem_comando_explicito
+from mente_laylay.autonomia.pre_fluxo_contextual import (
+    processar_execucao_pratica_precoce,
+)
 from mente_laylay.cognicao.modalidade_turno import (
     bloqueia_execucao_operacional_prioritaria,
     classificar_modalidade_turno,
@@ -96,3 +99,79 @@ def test_consultas_read_only_legitimas_nao_sao_bloqueadas(texto: str) -> None:
     turno = _classificar(texto)
     assert turno["autoriza_execucao"] is True
     assert _barreira(texto) is False
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "não é para abrir o aplicativo pelvora",
+        "não é para ler o arquivo pelvora.txt",
+        "não é para ligar a tomada pelvora",
+    ],
+)
+def test_recusa_declarativa_nao_e_para_bloqueia_so_o_ato_negado(texto: str) -> None:
+    turno = _classificar(texto)
+
+    assert turno["modalidade_geral"] == "recusa"
+    assert turno["autoriza_execucao"] is False
+    assert turno["veto_execucao_operacional"] is True
+    assert turno["texto_operacional"] == ""
+    assert turno["segmentos"][0]["modalidade"] == "recusa"
+    assert turno["segmentos"][0]["veto_execucao_operacional"] is True
+    assert _barreira(texto) is True
+
+
+def test_recusa_declarativa_em_turno_misto_preserva_pedido_independente() -> None:
+    texto = (
+        "não é para abrir o aplicativo pelvora; "
+        "preciso que você abra o aplicativo zafrin"
+    )
+    turno = _classificar(texto)
+
+    assert turno["modalidade_geral"] == "misto"
+    assert turno["atos"] == ["recusa", "comando"]
+    assert turno["segmentos"][0]["veto_execucao_operacional"] is True
+    assert turno["segmentos"][0]["autoriza_execucao"] is False
+    assert turno["segmentos"][1]["autoriza_execucao"] is True
+    assert turno["autoriza_execucao"] is True
+    assert turno["veto_execucao_operacional"] is False
+    assert turno["texto_operacional"] == "preciso que você abra o aplicativo zafrin"
+    assert _barreira(texto) is False
+
+
+def test_nao_e_para_em_pergunta_nao_vira_recusa_operacional() -> None:
+    turno = _classificar("não é para abrir o aplicativo pelvora?")
+
+    assert turno["modalidade_geral"] == "pergunta"
+    assert turno["autoriza_execucao"] is False
+    assert turno["texto_operacional"] == ""
+    assert _barreira("não é para abrir o aplicativo pelvora?") is True
+
+
+def test_consumidor_pratico_recebe_so_pedido_do_turno_misto() -> None:
+    texto = (
+        "não é para abrir o aplicativo pelvora; "
+        "preciso que você abra o aplicativo zafrin"
+    )
+    turno = _classificar(texto)
+    chamadas = []
+
+    def processar(deteccao, origem, original):
+        chamadas.append((deteccao, origem, original))
+        return True
+
+    ok, etapa = processar_execucao_pratica_precoce(
+        {
+            "mente_integrada_estado": {"turno_atual": turno},
+            "processar_comando_deterministico": processar,
+        },
+        texto,
+    )
+
+    assert ok is True
+    assert etapa == "comando_deterministico_pre_ia"
+    assert chamadas == [(
+        "preciso que você abra o aplicativo zafrin",
+        "pre-ia",
+        texto,
+    )]

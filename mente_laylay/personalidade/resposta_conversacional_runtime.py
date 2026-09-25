@@ -14,9 +14,12 @@ from mente_laylay.memoria_mental.continuidade_conversa import (
 from mente_laylay.personalidade.falas_variadas import emitir_falha_contextual
 from mente_laylay.personalidade.higiene_fala import remover_residuos_operacionais
 from mente_laylay.emocoes.estado_emocional import (
+    aplicar_evento_emocional,
     aplicar_estado_emocional,
     decair_estado_emocional,
+    retrato_emocional_expressavel,
 )
+from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
 
 
 class RespostaConversacionalRuntime:
@@ -148,11 +151,9 @@ class RespostaConversacionalRuntime:
             if emocao.strip().lower() in {"brava", "irritada", "nervosa", "raivosa"}:
                 conversa = aplicar_estado_emocional(
                     conversa,
-                    "acalmando-se",
+                    "calma",
                     1,
                     causa=motivo or "pedido para se acalmar",
-                    duracao_s=60,
-                    interacoes=2,
                 )
             humor = max(0, int(conversa.get("humor_level") or 0))
             conversa["humor_level"] = humor
@@ -168,12 +169,20 @@ class RespostaConversacionalRuntime:
             emocao_limpa = str(emocao or "calma").strip().lower() or "calma"
             nivel_limpo = max(1, min(3, int(nivel or 1)))
             estado = self.estado_runtime_getter()
-            novo = aplicar_estado_emocional(
-                estado.conversacional,
-                emocao_limpa,
-                nivel_limpo,
-                causa=motivo or "reação da fala",
-            )
+            mente = getattr(estado, "mental", {})
+            quadro = dict(mente.get("eventos_emocionais_causais") or {}) if isinstance(mente, dict) else {}
+            evento = dict(quadro.get("atual") or {})
+            if (
+                evento_pode_alterar_estado(evento)
+                and str(evento.get("emocao") or "").casefold() == emocao_limpa
+                and int(evento.get("nivel") or 1) == nivel_limpo
+                and str(evento.get("causa") or "") == str(motivo or "")
+            ):
+                novo = aplicar_evento_emocional(estado.conversacional, evento)
+            else:
+                # O tom de uma fala e o status de uma habilidade não publicam
+                # por si só um episódio emocional da Laylay.
+                return
             estado.substituir("conversacional", novo)
             if motivo:
                 self.log(f"🎭 [EMOÇÃO] {emocao_limpa} nível {nivel_limpo} | {motivo}")
@@ -185,6 +194,7 @@ class RespostaConversacionalRuntime:
         *,
         consumir_interacao: bool = True,
         interaction_key: str = "",
+        contexto: str = "",
     ) -> None:
         try:
             estado = self.estado_runtime_getter()
@@ -200,6 +210,7 @@ class RespostaConversacionalRuntime:
                 anterior,
                 agora=agora,
                 consumir_interacao=consumir_interacao,
+                contexto=contexto,
             )
             if consumir_interacao and chave:
                 novo["emotion_last_input_key"] = chave[:180]
@@ -219,7 +230,7 @@ class RespostaConversacionalRuntime:
         fala: str,
         *,
         emocao: str = "",
-        nivel: int = 1,
+        nivel: int | None = None,
         habilidade: str = "conversa",
     ) -> bool:
         fala = str(fala or "").strip()
@@ -234,11 +245,15 @@ class RespostaConversacionalRuntime:
                 if not verificacao.get("aceita", True):
                     return False
                 fala = str(verificacao.get("fala") or fala).strip()
-        conversa = estado.conversacional
+        emocao_estado, nivel_estado = retrato_emocional_expressavel(
+            estado.conversacional,
+        )
+        # O chamador escolhe o conteúdo; o episódio compartilhado decide a
+        # expressão. Um tom avulso não pode divergir do avatar nem criar causa.
         fala_aceita = ns["falar_com_lipsync"](
             fala,
-            emocao or conversa.get("current_emotion") or "calma",
-            nivel or conversa.get("emotion_level") or 1,
+            emocao_estado,
+            nivel_estado,
         )
         if fala_aceita is False:
             self.log("🧠 [MEMÓRIA:TURNO] fala descartada não foi registrada")

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+import time
 
 import mente_laylay.autonomia.adaptador_resultado as modulo
+from mente_laylay.emocoes.contrato_causal import criar_evento_emocional_causal
 from mente_laylay.autonomia.adaptador_resultado import AdaptadorResultadoOperacional
 
 
@@ -211,17 +213,19 @@ def test_resultado_visivel_recebe_deboche_causal_sem_mudar_o_fato(monkeypatch) -
     adaptador = _adaptador({
         "falar_com_lipsync": lambda *args: falas.append(args),
         "modo_jogo_ativo": lambda: True,
-        "_avaliar_evento_emocional_operacional": lambda _resultado: {
-            "emocao": "debochada",
-            "nivel": 1,
-            "responsabilidade": "usuario",
-            "confianca": 0.94,
-            "repeticoes": 1,
-            "provocacao_usuario": 1,
-            "permite_expressao": True,
-            "arco": "provocacao_afetuosa",
-            "ts": 100.0,
-        },
+            "_avaliar_evento_emocional_operacional": lambda _resultado: {
+                **criar_evento_emocional_causal(
+                    origem="resultado_operacional", causa="Opera já estava em foco",
+                    evidencia_ref="resultado:opera:ja_aberto_focado",
+                    natureza_evidencia="fato_observado", responsabilidade="usuario",
+                    confianca=0.94, relevancia=0.95, novidade=0.8,
+                    intensidade=1, sensibilidade="normal", alvo="Opera",
+                    permite_expressao=True, emocao="debochada", nivel=1,
+                    arco="provocacao_afetuosa", ts=time.time(),
+                ),
+                "repeticoes": 1,
+                "provocacao_usuario": 1,
+            },
     }, nome_app="Opera")
 
     adaptador.falar_por_status(
@@ -611,3 +615,76 @@ def test_status_iot_confirmado_remove_ancora_de_incerteza_contraditoria(monkeypa
     assert "está desligada" in fala or "está desligado" in fala
     assert "não consegui" not in fala
     assert "nao consegui" not in fala
+
+
+
+def test_fala_por_status_nao_eleva_confirmacao_negada_pelo_contrato() -> None:
+    entregas: list[tuple] = []
+    resultado = {"intent": "APP_OPEN"}
+    adaptador = AdaptadorResultadoOperacional(
+        resultado,
+        {"nome_app": "chrome"},
+        "abre o chrome",
+        "pc_a",
+        {
+            "falar_com_lipsync": lambda *_args: None,
+            "_falar_resultado_operacional": lambda *args: entregas.append(args),
+        },
+    )
+    modulo.marcar_tratamento_operacional(
+        resultado,
+        tratado=True,
+        executou=True,
+        confirmado=False,
+        status="falha_confirmacao_app",
+        resultado_publicado=True,
+        retorno_legado=True,
+    )
+
+    adaptador.falar_por_status(
+        "app_aberto",
+        "Pronto, abri o Chrome.",
+        alvo="chrome",
+    )
+
+    contrato, fala, _emocao, _nivel = entregas[0]
+    assert contrato.executou is True
+    assert contrato.confirmado is False
+    assert "não consegui" in fala.casefold()
+    assert "pronto, abri" not in fala.casefold()
+
+
+def test_fala_por_status_nao_transforma_sem_receipt_em_sucesso() -> None:
+    entregas: list[tuple] = []
+    resultado = {"intent": "APP_OPEN"}
+    adaptador = AdaptadorResultadoOperacional(
+        resultado,
+        {"nome_app": "chrome"},
+        "abre o chrome",
+        "pc_a",
+        {
+            "falar_com_lipsync": lambda *_args: None,
+            "_falar_resultado_operacional": lambda *args: entregas.append(args),
+        },
+    )
+    modulo.marcar_tratamento_operacional(
+        resultado,
+        tratado=True,
+        executou=True,
+        confirmado=None,
+        status="tratado_sem_receipt",
+        resultado_publicado=False,
+        retorno_legado=True,
+    )
+
+    adaptador.falar_por_status(
+        "app_aberto",
+        "Pronto, abri o Chrome.",
+        alvo="chrome",
+    )
+
+    contrato, fala, _emocao, _nivel = entregas[0]
+    assert contrato.executou is True
+    assert contrato.confirmado is None
+    assert "não consegui confirmar" in fala.casefold()
+    assert "pronto, abri" not in fala.casefold()

@@ -8,11 +8,15 @@ from uuid import uuid4
 
 from mente_laylay.memoria_mental.resultado_acao import (
     CHAVE_RESULTADO_OPERACIONAL_PUBLICADO,
+    CHAVE_TRATAMENTO_OPERACIONAL,
     ResultadoAcao,
     STATUS_RESULTADO_JA_SATISFEITO,
     inferir_confirmacao,
+    interpretar_tratamento_operacional,
+    marcar_tratamento_operacional,
 )
 from mente_laylay.emocoes.avaliador_eventos import contextualizar_fala_evento
+from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
 from mente_laylay.personalidade.falas_variadas import fala_por_estado_acao
 from mente_laylay.personalidade.confirmacao_llm import (
     INTENTS_INFORMATIVOS,
@@ -64,6 +68,7 @@ class AdaptadorResultadoOperacional:
         # a ser elegível ao fallback até publicar um novo ResultadoAcao.
         if isinstance(resultado, dict):
             resultado.pop(CHAVE_RESULTADO_OPERACIONAL_PUBLICADO, None)
+            resultado.pop(CHAVE_TRATAMENTO_OPERACIONAL, None)
         id_existente = str(
             self.id_solicitacao
             or resultado.get("id_solicitacao")
@@ -129,6 +134,8 @@ class AdaptadorResultadoOperacional:
         detalhe: str = "",
         alvo_resolvido: str = "",
         params_resolvidos: Dict[str, Any] | None = None,
+        contexto_resultado: Dict[str, Any] | None = None,
+        evidencia_confirmacao: str = "",
     ) -> None:
         """Publica também as resoluções descobertas durante a execução.
 
@@ -173,7 +180,9 @@ class AdaptadorResultadoOperacional:
                 origem="executor",
                 detalhe=detalhe,
                 texto_usuario=self.texto_original,
+                contexto=dict(contexto_resultado or {}),
                 id_solicitacao=self.id_solicitacao,
+                evidencia_confirmacao=str(evidencia_confirmacao or ""),
             )
             registrar(
                 contrato,
@@ -188,6 +197,15 @@ class AdaptadorResultadoOperacional:
                 self.resultado[
                     CHAVE_RESULTADO_OPERACIONAL_PUBLICADO
                 ] = self.id_solicitacao
+                marcar_tratamento_operacional(
+                    self.resultado,
+                    tratado=True,
+                    executou=contrato.executou,
+                    confirmado=contrato.confirmado,
+                    status=contrato.status,
+                    resultado_publicado=True,
+                    retorno_legado=bool(contrato.executou),
+                )
         except Exception:
             pass
 
@@ -205,7 +223,20 @@ class AdaptadorResultadoOperacional:
         if not callable(falar):
             return
         status_norm = str(status or "").strip().lower()
-        if status_norm in STATUS_RESULTADO_JA_SATISFEITO:
+
+        # A fala é consumidora do contrato operacional já publicado, não uma
+        # segunda autoridade sobre o que aconteceu. Se existe tratamento
+        # moderno no mesmo resultado, ele vence qualquer inferência baseada
+        # apenas no nome otimista do status.
+        tratamento_atual = interpretar_tratamento_operacional(
+            self.resultado,
+            False,
+        )
+        tratamento_moderno = not tratamento_atual.legado
+        if tratamento_moderno:
+            executou = tratamento_atual.executou
+            confirmado = tratamento_atual.confirmado
+        elif status_norm in STATUS_RESULTADO_JA_SATISFEITO:
             executou = False
         elif executou is None:
             executou = not any(
@@ -260,9 +291,13 @@ class AdaptadorResultadoOperacional:
             params=self.params,
             executou=executou,
             confirmado=(
-                inferir_confirmacao(status_norm, executou)
-                if confirmado is None
-                else bool(confirmado)
+                confirmado
+                if tratamento_moderno
+                else (
+                    inferir_confirmacao(status_norm, executou)
+                    if confirmado is None
+                    else bool(confirmado)
+                )
             ),
             detalhe=detalhe,
             texto_usuario=self.texto_original,
@@ -281,7 +316,7 @@ class AdaptadorResultadoOperacional:
         if avaliacao_evento:
             contrato.contexto["avaliacao_evento"] = dict(avaliacao_evento)
         emocao_evento = str(avaliacao_evento.get("emocao") or "").strip()
-        expressao_evento = bool(avaliacao_evento.get("permite_expressao"))
+        expressao_evento = evento_pode_alterar_estado(avaliacao_evento)
         emocao_preferida = (
             emocao_evento
             if expressao_evento and emocao_evento

@@ -238,6 +238,32 @@ def test_expectativa_local_verifica_campos_genericos_do_plano_sem_regra_de_habil
     )
 
 
+def test_expectativa_local_aceita_apenas_origens_causais_declaradas():
+    expectativa = {
+        "sem_comando": True,
+        "campos_plano_um_de": {
+            "evento_emocional_causal.origem": (
+                "leitura_semantica_principal", "inferencia_contextual_usuario",
+            ),
+        },
+    }
+    for origem in (
+        "leitura_semantica_principal", "inferencia_contextual_usuario",
+        "contingencia_lexical_usuario",
+    ):
+        resultado = avaliar_turno_roteiro(
+            indice=0, comando="concluí uma tarefa difícil e agora posso respirar",
+            resposta="Que bom que essa pendência terminou.",
+            plano={"fase": "fala_verificada", "comandos": [], "erros": [],
+                   "evento_emocional_causal": {"origem": origem}},
+            respondeu=True, motivo_resultado="execucao_nao_publicada",
+            expectativa_local=expectativa,
+        )
+        assert resultado["resultado_semantico"] == (
+            "falhou" if origem == "contingencia_lexical_usuario" else "passou"
+        )
+
+
 def test_expectativa_local_prova_ausencia_de_campo_para_caso_negativo():
     expectativa = {
         "sem_comando": True,

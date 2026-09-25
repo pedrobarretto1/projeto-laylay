@@ -92,7 +92,9 @@ def test_silenciar_remetente_preserva_integracao_gmail() -> None:
         {"acao": "silenciar_remetente", "remetente": "loja@example.com"},
         "pc_a",
         {
-            "_gmail_silenciar_remetente": silenciados.append,
+            "_gmail_silenciar_remetente": (
+                lambda remetente: silenciados.append(remetente) or True
+            ),
             "falar_com_lipsync": lambda *_args: None,
         },
         _dependencias(eventos),
@@ -100,7 +102,11 @@ def test_silenciar_remetente_preserva_integracao_gmail() -> None:
 
     assert despacho == ResultadoDespacho.concluido()
     assert silenciados == ["loja@example.com"]
-    assert eventos[0] == ("resultado", "remetente_silenciado", {})
+    assert eventos[0] == (
+        "resultado",
+        "remetente_silenciado",
+        {"executou": True, "confirmado": True},
+    )
 
 
 def test_notificacoes_do_windows_continuam_declarando_falta_de_suporte() -> None:
@@ -205,3 +211,75 @@ def test_roteador_principal_delega_captura_ao_executor_sistema() -> None:
 
     assert retorno is True
     assert resultados and resultados[0].status == "captura_solicitada"
+
+
+
+def test_silenciar_remetente_so_confirma_quando_gmail_confirma() -> None:
+    eventos: list[tuple] = []
+
+    despacho = executar_intencao_sistema(
+        "NOTIFICATIONS",
+        {"acao": "silenciar_remetente", "remetente": "loja@example.com"},
+        "pc_a",
+        {
+            "_gmail_silenciar_remetente": lambda _remetente: False,
+            "falar_com_lipsync": lambda *_args: None,
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(False)
+    assert eventos[0] == (
+        "resultado",
+        "falha_execucao",
+        {"executou": False, "confirmado": False},
+    )
+    assert eventos[1][0:2] == ("fala_status", "falha_execucao")
+    assert "silenciei" not in eventos[1][2].casefold()
+
+
+def test_silenciar_remetente_excecao_nao_publica_sucesso() -> None:
+    eventos: list[tuple] = []
+
+    def falhar(_remetente: str) -> bool:
+        raise RuntimeError("estado indisponível")
+
+    despacho = executar_intencao_sistema(
+        "NOTIFICATIONS",
+        {"acao": "silenciar_remetente", "remetente": "loja@example.com"},
+        "pc_a",
+        {
+            "_gmail_silenciar_remetente": falhar,
+            "falar_com_lipsync": lambda *_args: None,
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(False)
+    assert eventos[0] == (
+        "resultado",
+        "falha_execucao",
+        {"executou": False, "confirmado": False},
+    )
+
+
+def test_silenciar_remetente_sem_alvo_nao_publica_sucesso() -> None:
+    eventos: list[tuple] = []
+
+    despacho = executar_intencao_sistema(
+        "NOTIFICATIONS",
+        {"acao": "silenciar_remetente"},
+        "pc_a",
+        {
+            "_gmail_silenciar_remetente": lambda _remetente: True,
+            "falar_com_lipsync": lambda *_args: None,
+        },
+        _dependencias(eventos),
+    )
+
+    assert despacho == ResultadoDespacho.concluido(False)
+    assert eventos[0] == (
+        "resultado",
+        "alvo_ausente",
+        {"executou": False, "confirmado": False},
+    )

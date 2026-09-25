@@ -212,6 +212,14 @@ class CoordenadorExecRuntime:
     ) -> Any:
         assinatura = self._assinatura_entrada(texto)
         try:
+            if assinatura:
+                # O eco do teclado não existe nos canais desktop/voz. Registrar
+                # a entrada no owner comum, sem depender da interface de origem.
+                from mente_laylay.integracao.dev_console_runtime import sanitizar_texto_dev
+                try:
+                    self._log(f"💬 Você: {sanitizar_texto_dev(texto)!r} | origem={origem}")
+                except Exception:
+                    pass  # Observabilidade não pode consumir a entrada.
             return self.processar_entrada(texto, geracao, origem)
         finally:
             claim_interacao = ""

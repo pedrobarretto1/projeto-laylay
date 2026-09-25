@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict
 
 from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto
 from mente_laylay.cognicao.evidencia_operacional import (
+    autoriza_candidato_iot_direto,
     bloqueia_controle_iot_por_modalidade,
     detectar_consulta_lista_iot,
 )
@@ -580,7 +581,10 @@ class RuntimeIoT:
                 encontradas.append((ocorrencia.start(), nome_cor, rgb))
         encontradas.sort(key=lambda item: item[0])
 
-        if alvo_parametro and (pedido_parametro or bool(re.fullmatch(r"(?:em\s+)?[\w\s-]+", t))):
+        # Um alias como "luz" pode ocorrer em uma aula de biologia ou física.
+        # A pesquisa livre de RGB só pertence a uma ordem de ajuste; a forma
+        # genérica de texto nunca é, por si só, autorização operacional.
+        if alvo_parametro and pedido_parametro and autoriza_candidato_iot_direto(texto_operacional):
             if len(encontradas) >= 2:
                 nomes = [item[1] for item in encontradas]
                 rgb_misto = self._misturar_cores([item[2] for item in encontradas])

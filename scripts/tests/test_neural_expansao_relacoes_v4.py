@@ -4,12 +4,13 @@ from copy import deepcopy
 import pytest
 
 from mente_laylay.neural.candidato_relacional import validar_entrada
-from mente_laylay.neural.expandir_relacoes_v4 import carregar_base, expandir, preparar_dobras, auditar_grupos
+from mente_laylay.neural.expandir_relacoes_v4 import expandir, preparar_dobras, auditar_grupos
+from mente_laylay.neural.revalidar_perfil_v4 import carregar_base_reprojetada
 
 
 @pytest.fixture(scope="module")
 def lote():
-    base = carregar_base()
+    base = carregar_base_reprojetada()
     return base, expandir(base)
 
 
@@ -25,7 +26,7 @@ def test_base_conectada_continua_sem_divisao_valida(lote):
 
 def test_expansao_aditiva_preserva_fonte_e_nao_consulta_modelo(lote):
     base, novos = lote
-    assert base == carregar_base()
+    assert base == carregar_base_reprojetada()
     assert len(novos) == 504
     assert len({c["fonte"]["texto_entrada"] for c in base + novos}) == 1176
     for c in novos:

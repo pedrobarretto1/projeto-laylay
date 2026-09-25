@@ -1,0 +1,65 @@
+{
+  "versao": 2,
+  "casos": [
+    {
+      "id": "IMPORTACAO_E", "dominio": "programacao", "escopo": "sonda:v2:importacao",
+      "fonte": "Se o arquivo tiver extensão .csv e o cabeçalho contiver a coluna data, o importador aceita o arquivo.",
+      "referentes": [
+        {"identificador": "arquivo", "tipo": "documento", "grandeza": "extensao", "citacao": "arquivo"},
+        {"identificador": "cabecalho", "tipo": "estrutura", "grandeza": "coluna", "citacao": "cabeçalho"},
+        {"identificador": "importador", "tipo": "software", "grandeza": "aceitacao", "citacao": "importador"}
+      ],
+      "efeito": {"referente_id": "importador", "atributo": "estado", "valor": "aceita"}
+    },
+    {
+      "id": "RELATORIO_ONLY", "dominio": "documentacao", "escopo": "sonda:v2:relatorio",
+      "fonte": "O relatório é publicado apenas se a revisão for concluída e a fonte estiver citada.",
+      "referentes": [
+        {"identificador": "relatorio", "tipo": "documento", "grandeza": "publicacao", "citacao": "relatório"},
+        {"identificador": "revisao", "tipo": "processo", "grandeza": "estado", "citacao": "revisão"},
+        {"identificador": "fonte", "tipo": "referencia", "grandeza": "citacao", "citacao": "fonte"}
+      ],
+      "efeito": {"referente_id": "relatorio", "atributo": "estado", "valor": "publicado"}
+    },
+    {
+      "id": "AMBIENTE_OU", "dominio": "ambiente", "escopo": "sonda:v2:ambiente",
+      "fonte": "Se a umidade do ar cair abaixo de 30% ou a temperatura subir acima de 35 °C, o aviso aparece.",
+      "referentes": [
+        {"identificador": "umidade", "tipo": "medicao", "grandeza": "umidade do ar", "citacao": "umidade do ar"},
+        {"identificador": "temperatura", "tipo": "medicao", "grandeza": "temperatura", "citacao": "temperatura"},
+        {"identificador": "aviso", "tipo": "sinal", "grandeza": "estado", "citacao": "aviso"}
+      ],
+      "efeito": {"referente_id": "aviso", "atributo": "estado", "valor": "aparece"}
+    },
+    {
+      "id": "MOTOR_IFF", "dominio": "eletronica_hipotetica", "escopo": "sonda:v2:motor",
+      "fonte": "O motor gira se e somente se o interruptor estiver ligado.",
+      "referentes": [
+        {"identificador": "motor", "tipo": "atuador", "grandeza": "estado", "citacao": "motor"},
+        {"identificador": "interruptor", "tipo": "controle", "grandeza": "estado", "citacao": "interruptor"}
+      ],
+      "efeito": {"referente_id": "motor", "atributo": "estado", "valor": "gira"}
+    },
+    {
+      "id": "TANQUE_SENSOR", "dominio": "monitoramento", "escopo": "sonda:v2:tanque",
+      "fonte": "Há um sensor do tanque e um sensor da estufa. Se o sensor do tanque indicar menos de 10 litros, o aviso toca.",
+      "referentes": [
+        {"identificador": "tanque", "tipo": "sensor", "grandeza": "volume", "citacao": "sensor do tanque"},
+        {"identificador": "estufa", "tipo": "sensor", "grandeza": "medicao", "citacao": "sensor da estufa"},
+        {"identificador": "aviso", "tipo": "sinal", "grandeza": "estado", "citacao": "aviso"}
+      ],
+      "efeito": {"referente_id": "aviso", "atributo": "estado", "valor": "toca"}
+    },
+    {
+      "id": "PACOTE_MISTO", "dominio": "publicacao", "escopo": "sonda:v2:pacote",
+      "fonte": "Se a revisão e o checksum passarem, ou se o administrador liberar manualmente, o pacote é publicado.",
+      "referentes": [
+        {"identificador": "revisao", "tipo": "processo", "grandeza": "estado", "citacao": "revisão"},
+        {"identificador": "checksum", "tipo": "verificacao", "grandeza": "estado", "citacao": "checksum"},
+        {"identificador": "administrador", "tipo": "pessoa", "grandeza": "liberacao", "citacao": "administrador"},
+        {"identificador": "pacote", "tipo": "artefato", "grandeza": "publicacao", "citacao": "pacote"}
+      ],
+      "efeito": {"referente_id": "pacote", "atributo": "estado", "valor": "publicado"}
+    }
+  ]
+}

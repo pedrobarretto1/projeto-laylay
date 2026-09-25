@@ -9,6 +9,9 @@ from mente_laylay.autonomia.execucao_ia import CoordenadorExecRuntime
 from mente_laylay.integracao.ponte_iniciativa_aplicacao import (
     PonteIniciativaAplicacaoRuntime,
 )
+from mente_laylay.integracao.prioridade_interacao_usuario import (
+    criar_prioridade_interacao_usuario_runtime,
+)
 
 
 class _RespostaRegistrada:
@@ -52,11 +55,13 @@ def test_red_p1h4_entrada_aceita_preempta_presenca_antes_do_turno() -> None:
     liberar_handoff = threading.Event()
 
     resposta = _RespostaRegistrada()
+    prioridade = criar_prioridade_interacao_usuario_runtime()
 
     coordenador = CoordenadorExecRuntime(
         contexto_exec_getter=lambda: None,
         resposta_ia_getter=lambda: resposta,
         loop_getter=lambda: None,
+        prioridade_interacao=prioridade,
         log=lambda *_args: None,
     )
 
@@ -110,6 +115,7 @@ def test_red_p1h4_entrada_aceita_preempta_presenca_antes_do_turno() -> None:
         falar=lambda _texto, _emocao, _nivel: None,
         env_getter=lambda _nome, padrao: padrao,
         usuario_falando_getter=lambda: False,
+        prioridade_interacao_getter=prioridade.ativa,
         log=lambda _texto: None,
     )
 
@@ -178,6 +184,7 @@ def test_red_p1h4_entrada_aceita_preempta_presenca_antes_do_turno() -> None:
 
         assert contexto_handoff["usuario_falando"] is False
         assert contexto_handoff["turno_ativo"] is False
+        assert contexto_handoff["interacao_usuario_ativa"] is True
 
         # Exatamente nessa janela aparece um evento ambiental.
         resultado_presenca = diretor.considerar(
@@ -222,3 +229,4 @@ def test_red_p1h4_entrada_aceita_preempta_presenca_antes_do_turno() -> None:
     # Se a preempção for correta, o evento também não deve adquirir
     # cognição autônoma nessa lacuna.
     assert cognicoes_presenca == []
+    assert prioridade.ativa() is False

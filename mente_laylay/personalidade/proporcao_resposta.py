@@ -55,6 +55,14 @@ def classificar_proporcao(texto_usuario: str, tipo_interacao: str = "") -> str:
         return "matematica"
     if parece_pedido_reexplicacao(texto):
         return "explicativa"
+    # A necessidade de aprender é independente do assunto e do tamanho da
+    # frase. Isso só dimensiona a resposta; não classifica autorização.
+    if re.search(
+        r"\b(?:me\s+(?:ensin[ae]|explique|explica)|"
+        r"(?:quero|preciso|gostaria\s+de)\s+aprender|explique|ensine)\b",
+        base,
+    ):
+        return "explicativa"
     if any(sinal in base for sinal in (
         "explica detalhadamente", "explica melhor", "me explica direito",
         "quero entender", "passo a passo", "com detalhes", "aprofund",

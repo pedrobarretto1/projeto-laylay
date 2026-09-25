@@ -54,6 +54,10 @@ from mente_laylay.memoria_mental.contexto_imediato import (
     referencia_contextual_imediata,
 )
 from mente_laylay.memoria_mental.pendencia_acao import dominio_pendencia
+from mente_laylay.memoria_mental.resultado_acao import (
+    interpretar_tratamento_operacional,
+    marcar_tratamento_operacional,
+)
 from mente_laylay.arquivos.roteador_arquivos import (
     detectar_intencao_arquivos,
     reconciliar_literalidade_filename,
@@ -754,6 +758,7 @@ def executar_fluxo_intencao(
     resolver_cb: Callable[
         [str, str, Dict[str, Any]], Tuple[Dict[str, Any] | None, str]
     ] | None = None,
+    exigir_sucesso_habilidade: bool = False,
 ) -> bool:
     # O pré-fluxo pode entregar em ``texto`` somente o segmento operacional
     # (por exemplo, "desligar a luz"), enquanto ``texto_original`` ainda é
@@ -783,18 +788,39 @@ def executar_fluxo_intencao(
     try:
         texto_execucao = str(texto_original or texto)
         intent_execucao = _preparar_intent_execucao(intent)
-        executou = bool(_call(ctx, "executar_intencao", intent_execucao, texto_execucao, default=False))
-        _call(
+        retorno = _call(
             ctx,
-            "registrar_resultado_execucao",
+            "executar_intencao",
             intent_execucao,
             texto_execucao,
-            executou,
-            origem=f"{rota}:{origem}",
+            default=False,
         )
-        if executou:
-            _call(ctx, "registrar_autoaprimoramento", intent, texto_execucao, True, contexto=f"{rota}:{origem}", origem=origem)
-        return executou
+        tratamento = interpretar_tratamento_operacional(
+            intent_execucao,
+            retorno,
+        )
+        if tratamento.deve_publicar_fallback:
+            _call(
+                ctx,
+                "registrar_resultado_execucao",
+                intent_execucao,
+                texto_execucao,
+                tratamento.executou,
+                origem=f"{rota}:{origem}",
+            )
+        if tratamento.sucesso_habilidade:
+            _call(
+                ctx,
+                "registrar_autoaprimoramento",
+                intent,
+                texto_execucao,
+                True,
+                contexto=f"{rota}:{origem}",
+                origem=origem,
+            )
+        if exigir_sucesso_habilidade:
+            return tratamento.sucesso_habilidade
+        return bool(retorno)
     except Exception as e:
         print(f"⚠️ [ROTEADOR {rota.upper()}] falha ao executar: {e}")
         return False
@@ -851,6 +877,18 @@ class CicloComandosRuntime:
             "aguardadas": 0,
             "timeouts": 0,
             "falhas": 0,
+        }
+        self._metricas_contrato_execucao: Dict[str, Any] = {
+            "observados": 0,
+            "legados": 0,
+            "tratados_sem_receipt": 0,
+            "confirmados": 0,
+            "nao_confirmados": 0,
+            "incertos": 0,
+            "legados_por_intent": {},
+            "sem_receipt_por_intent": {},
+            "ultima_intent_legada": "",
+            "ultima_intent_sem_receipt": "",
         }
         namespace = self.namespace_getter() or {}
         self._servicos_estaticos = {
@@ -943,10 +981,95 @@ class CicloComandosRuntime:
         for chave, _registro in concluidas[: max(0, len(self._execucoes_turno) - 192)]:
             self._execucoes_turno.pop(chave, None)
 
+    @staticmethod
+    def _tratamento_para_cache(tratamento: Any) -> Dict[str, Any]:
+        if tratamento is None:
+            return {}
+        return {
+            "tratado": bool(getattr(tratamento, "tratado", False)),
+            "executou": getattr(tratamento, "executou", None),
+            "confirmado": getattr(tratamento, "confirmado", None),
+            "status": str(getattr(tratamento, "status", "") or ""),
+            "resultado_publicado": bool(
+                getattr(tratamento, "resultado_publicado", False)
+            ),
+            "retorno_legado": bool(
+                getattr(tratamento, "retorno_legado", False)
+            ),
+            "legado": bool(getattr(tratamento, "legado", False)),
+        }
+
+    @staticmethod
+    def _restaurar_tratamento_cache(
+        resultado: Dict[str, Any],
+        registro: Dict[str, Any],
+    ) -> None:
+        tratamento = registro.get("tratamento")
+        if not isinstance(tratamento, dict):
+            return
+        if tratamento.get("legado") is True:
+            # Não "modernize" um bool legado durante deduplicação. Sem
+            # receipt original, a segunda leitura deve continuar explicitamente
+            # compatível com o contrato antigo, não virar sucesso moderno falso.
+            return
+        marcar_tratamento_operacional(
+            resultado,
+            tratado=bool(tratamento.get("tratado")),
+            executou=tratamento.get("executou"),
+            confirmado=tratamento.get("confirmado"),
+            status=str(tratamento.get("status") or ""),
+            resultado_publicado=bool(
+                tratamento.get("resultado_publicado")
+            ),
+            retorno_legado=bool(tratamento.get("retorno_legado")),
+        )
+
+    def _registrar_contrato_execucao(
+        self,
+        intent: str,
+        tratamento: Any,
+    ) -> None:
+        if tratamento is None:
+            return
+        intent_norm = str(intent or "desconhecida").strip().upper() or "DESCONHECIDA"
+        with self._lock_execucao_turno:
+            metricas = self._metricas_contrato_execucao
+            metricas["observados"] = int(metricas.get("observados") or 0) + 1
+            if bool(getattr(tratamento, "legado", False)):
+                metricas["legados"] = int(metricas.get("legados") or 0) + 1
+                por_intent = dict(metricas.get("legados_por_intent") or {})
+                por_intent[intent_norm] = int(por_intent.get(intent_norm) or 0) + 1
+                metricas["legados_por_intent"] = por_intent
+                metricas["ultima_intent_legada"] = intent_norm
+                return
+
+            status = str(getattr(tratamento, "status", "") or "").strip().lower()
+            if status == "tratado_sem_receipt":
+                metricas["tratados_sem_receipt"] = int(
+                    metricas.get("tratados_sem_receipt") or 0
+                ) + 1
+                por_intent = dict(metricas.get("sem_receipt_por_intent") or {})
+                por_intent[intent_norm] = int(por_intent.get(intent_norm) or 0) + 1
+                metricas["sem_receipt_por_intent"] = por_intent
+                metricas["ultima_intent_sem_receipt"] = intent_norm
+                return
+
+            confirmado = getattr(tratamento, "confirmado", None)
+            if confirmado is True:
+                metricas["confirmados"] = int(metricas.get("confirmados") or 0) + 1
+            elif confirmado is False:
+                metricas["nao_confirmados"] = int(
+                    metricas.get("nao_confirmados") or 0
+                ) + 1
+            else:
+                metricas["incertos"] = int(metricas.get("incertos") or 0) + 1
+
     def executar_intencao(self, resultado: Dict[str, Any], texto_original: str) -> bool:
         inicio = time.perf_counter()
         intent = str((resultado or {}).get("intent") or "desconhecida")
         sucesso = False
+        retorno_compatibilidade = False
+        tratamento_atual = None
         try:
             contexto_execucao = self.contexto_intencao_runtime.montar()
         except Exception as erro:
@@ -974,11 +1097,13 @@ class CicloComandosRuntime:
                         evento_existente = registro.get("evento")
                         self._metricas_execucao_turno["aguardadas"] += 1
                     else:
+                        self._restaurar_tratamento_cache(resultado, registro)
                         return bool(registro.get("resultado"))
                 else:
                     self._execucoes_turno[chave_execucao] = {
                         "status": "em_andamento",
                         "resultado": False,
+                        "tratamento": {},
                         "evento": Event(),
                         "thread_id": get_ident(),
                         "ts": time.monotonic(),
@@ -993,19 +1118,34 @@ class CicloComandosRuntime:
                 return False
             with self._lock_execucao_turno:
                 concluida = self._execucoes_turno.get(chave_execucao, {})
+                self._restaurar_tratamento_cache(resultado, concluida)
                 return bool(concluida.get("resultado"))
 
         try:
-            sucesso = bool(executar_intencao(
+            retorno = executar_intencao(
                 resultado,
                 texto_original,
                 contexto_execucao,
-            ))
+            )
+            retorno_compatibilidade = bool(retorno)
+            tratamento_atual = interpretar_tratamento_operacional(
+                resultado,
+                retorno,
+            )
+            self._registrar_contrato_execucao(intent, tratamento_atual)
+            sucesso = tratamento_atual.sucesso_habilidade
             if not sucesso and callable(self.registrar_decisao_cb):
-                self.registrar_decisao_cb(
-                    "execucao", "nao_confirmada", ("executor retornou falso",), categoria=intent,
+                motivo = (
+                    tratamento_atual.status
+                    or "efeito operacional nao confirmado"
                 )
-            return sucesso
+                self.registrar_decisao_cb(
+                    "execucao",
+                    "nao_confirmada",
+                    (motivo,),
+                    categoria=intent,
+                )
+            return retorno_compatibilidade
         except Exception as erro:
             with self._lock_execucao_turno:
                 self._metricas_execucao_turno["falhas"] += 1
@@ -1017,8 +1157,20 @@ class CicloComandosRuntime:
                 with self._lock_execucao_turno:
                     registro = self._execucoes_turno.get(chave_execucao)
                     if registro is not None:
-                        registro["status"] = "concluida" if sucesso else "falhou"
-                        registro["resultado"] = bool(sucesso)
+                        tratado_cache = bool(
+                            getattr(
+                                tratamento_atual,
+                                "tratado",
+                                retorno_compatibilidade,
+                            )
+                        )
+                        registro["status"] = (
+                            "concluida" if tratado_cache else "falhou"
+                        )
+                        registro["resultado"] = bool(retorno_compatibilidade)
+                        registro["tratamento"] = self._tratamento_para_cache(
+                            tratamento_atual
+                        )
                         registro["ts"] = time.monotonic()
                         evento = registro.get("evento")
                         if isinstance(evento, Event):
@@ -1340,6 +1492,14 @@ class CicloComandosRuntime:
                     if str(registro.get("status") or "") == "em_andamento"
                 ),
             }
+            contrato_execucao = dict(self._metricas_contrato_execucao)
+            contrato_execucao["legados_por_intent"] = dict(
+                contrato_execucao.get("legados_por_intent") or {}
+            )
+            contrato_execucao["sem_receipt_por_intent"] = dict(
+                contrato_execucao.get("sem_receipt_por_intent") or {}
+            )
+            metricas["contrato_execucao"] = contrato_execucao
         return metricas
 
     def processar_deterministico(self, texto: str, origem: str = "", texto_original: str = "") -> bool:
@@ -1489,6 +1649,7 @@ class CicloComandosRuntime:
                 contexto,
                 texto_original=texto,
                 resolver_cb=self._resolver_decisao_canonica,
+                exigir_sucesso_habilidade=True,
             )
 
         def relatar_falha(trecho: str, indice: int, concluidas: int) -> None:

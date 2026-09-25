@@ -17,6 +17,7 @@ cliente/gamebar_laylay/bin/
 cliente/gamebar_laylay/obj/
 cliente/gamebar_laylay/AppPackages/
 _backup_regressao_118/
+ABRIR_ARENA_NEURAL.bat
 *.egg-info/
 *.db
 *.sqlite

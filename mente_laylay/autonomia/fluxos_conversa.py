@@ -7,8 +7,7 @@ import time
 from typing import Any, Dict
 from mente_laylay.personalidade.falas_variadas import escolher as _escolher_fala_variada
 from mente_laylay.personalidade.proporcao_resposta import (
-    parece_pedido_reexplicacao,
-    parece_problema_matematico,
+    classificar_proporcao,
 )
 
 
@@ -76,11 +75,10 @@ def usar_modo_rapido_conversa(
     if not t:
         return True
 
-    # Fórmulas são visualmente curtas, mas precisam do prompt completo e de
-    # mais espaço de geração para desenvolver a conta até a conclusão.
-    if parece_problema_matematico(texto):
-        return False
-    if parece_pedido_reexplicacao(texto):
+    # A extensão da entrada não redefine a necessidade da resposta. Reusar o
+    # mesmo perfil que governa o orçamento evita classificar 'passo a passo'
+    # como explicação e depois reduzi-lo ao prompt de uma ou duas frases.
+    if classificar_proporcao(texto) in {"matematica", "explicativa"}:
         return False
     # A decisão semântica central também cobre pronomes, reparos e perguntas
     # elípticas. Nenhuma continuação dependente do turno anterior deve perder
@@ -344,6 +342,7 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
                     receipt_executou = False
                     receipt_confirmado = False
                     receipt_ok = False
+                    criacao = {}
                     info = musica_operacoes.faixa_atual() if musica_operacoes is not None else {}
                     url = str((info or {}).get("url") or "")
                     title = str((info or {}).get("title") or "")
@@ -357,15 +356,12 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
                         receipt_executou = False
                         receipt_confirmado = False
                         receipt_ok = False
-                        if callable(falar_com_lipsync):
-                            falar_com_lipsync(_escolher_fala_variada(["Não achei a música aberta pra salvar agora.", "Não vi música aberta pra guardar.", "Faltou uma aba de música aberta."]), "calma", 1)
                     else:
                         criar_playlist = getattr(
                             musica_operacoes,
                             "criar_playlist",
                             None,
                         )
-                        criacao = {}
                         if callable(criar_playlist):
                             try:
                                 criacao = dict(criar_playlist(pl) or {})
@@ -448,28 +444,13 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
                             receipt_confirmado = False
                             receipt_ok = False
                     if ok:
-
                         musica_operacoes.definir_ultima_playlist(pl)
-                        titulo = yt_clean_title(title) if callable(yt_clean_title) else title
-                        titulo = titulo or "essa música"
-                        if callable(falar_com_lipsync):
-                            falar_com_lipsync(_escolher_fala_variada([
-                                f"Beleza, criei e guardei {titulo} na playlist {pl}.",
-                                f"Pronto, {titulo} foi pra playlist {pl}.",
-                                f"Salvei {titulo} na playlist {pl}.",
-                            ]), "debochada", 2)
-                    else:
-                        if callable(falar_com_lipsync):
-                            falar_com_lipsync(_escolher_fala_variada([
-                                "Não consegui salvar essa música agora.",
-                                "O salvamento falhou por enquanto.",
-                                "Não deu pra guardar a música agora.",
-                            ]), "calma", 1)
 
                     # RED151_C3_RECEIPT_FEEDBACK_PLAYLIST
                     # O feedback simples também executa efeito operacional.
-                    # Portanto ele publica exatamente o mesmo contrato oficial
-                    # consumido pelo restante da mente.
+                    # Publicar antes de falar: o guardião consome esse contrato,
+                    # não a intenção nem a confirmação verbal ainda por emitir.
+                    receipt_publicado = False
                     if (
                         receipt_status
                         and callable(registrar_resultado_execucao)
@@ -498,19 +479,53 @@ def handle_feedback_pendente(contexto: Dict[str, Any], texto: str) -> bool:
                             "detalhe": "confirmacao_feedback_playlist",
                         }
                         try:
-                            registrar_resultado_execucao(
+                            publicacao = registrar_resultado_execucao(
                                 receipt,
                                 texto,
                                 receipt_executou,
                                 origem="feedback_playlist",
                                 status=receipt_status,
                             )
+                            # Registradores canônicos retornam None; False
+                            # explícito é recusa, não confirmação de publicação.
+                            receipt_publicado = publicacao is not False
                         except Exception as erro:
                             print(
                                 "⚠️ [FEEDBACK PLAYLIST] "
                                 "falha ao publicar receipt canônico: "
                                 f"{type(erro).__name__}: {erro}"
                             )
+                    if callable(falar_com_lipsync):
+                        if ok and not receipt_publicado:
+                            # O efeito pode ter ocorrido. Falha de registro não
+                            # autoriza repetir a escrita nem inventar seu fracasso.
+                            falar_com_lipsync(
+                                "A operação retornou confirmação, mas não consegui registrar "
+                                "o resultado. Não vou repetir o salvamento automaticamente.",
+                                "calma", 1,
+                            )
+                        elif ok:
+                            titulo = yt_clean_title(title) if callable(yt_clean_title) else title
+                            titulo = titulo or "essa música"
+                            if receipt_status == "playlist_musica_ja_existia":
+                                fala = f"{titulo} já estava na playlist {pl}; mantive uma só cópia."
+                            else:
+                                variantes = [
+                                    f"Pronto, {titulo} foi pra playlist {pl}.",
+                                    f"Salvei {titulo} na playlist {pl}.",
+                                ]
+                                if criacao.get("criada"):
+                                    variantes.insert(0, f"Beleza, criei e guardei {titulo} na playlist {pl}.")
+                                fala = _escolher_fala_variada(variantes)
+                            falar_com_lipsync(fala, "debochada", 2)
+                        elif receipt_status in {"faixa_atual_indisponivel", "fonte_musical_invalida"}:
+                            falar_com_lipsync("Não achei uma música aberta válida para salvar agora.", "calma", 1)
+                        else:
+                            falar_com_lipsync(_escolher_fala_variada([
+                                "Não consegui salvar essa música agora.",
+                                "O salvamento falhou por enquanto.",
+                                "Não deu pra guardar a música agora.",
+                            ]), "calma", 1)
                 else:
                     if callable(falar_com_lipsync):
                         falar_com_lipsync(_escolher_fala_variada([

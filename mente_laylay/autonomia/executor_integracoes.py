@@ -20,6 +20,7 @@ from mente_laylay.cognicao.evidencia_operacional import (
 from mente_laylay.integracao.registro_iot import PortaIoT
 from mente_laylay.integracao.registro_arquivos import PortaArquivosLeitura
 from mente_laylay.integracao.registro_mutacoes_arquivos import PortaArquivosMutacao
+from mente_laylay.memoria_mental.resultado_acao import marcar_tratamento_operacional
 
 
 INTENCOES_IOT = frozenset({"IOT_CONTROL", "IOT_STATUS", "IOT_LIST"})
@@ -60,6 +61,15 @@ def _executar_sugestao(
 ) -> ResultadoDespacho:
     registrar = _get(ctx, "_registrar_sugestao_indireta")
     retorno = bool(registrar(resultado, texto)) if callable(registrar) else False
+    marcar_tratamento_operacional(
+        resultado,
+        tratado=True,
+        executou=False,
+        confirmado=False,
+        status="sugestao_registrada" if retorno else "sugestao_nao_registrada",
+        resultado_publicado=False,
+        retorno_legado=retorno,
+    )
     return ResultadoDespacho.concluido(retorno)
 
 
@@ -71,9 +81,21 @@ def _executar_iot(
 ) -> ResultadoDespacho:
     executar = getattr(deps.iot, "executar", None)
     if not callable(executar):
+        deps.marcar_resultado(
+            "indisponivel",
+            executou=False,
+            confirmado=False,
+            detalhe="runtime IoT indisponível",
+        )
         return ResultadoDespacho.concluido(False)
     retorno = executar(resultado, texto)
     if not isinstance(retorno, dict) or not retorno.get("handled"):
+        deps.marcar_resultado(
+            "indisponivel",
+            executou=False,
+            confirmado=False,
+            detalhe="runtime IoT não tratou a intenção",
+        )
         return ResultadoDespacho.concluido(False)
 
     deps.marcar_resultado(
@@ -184,6 +206,12 @@ def executar_intencao_integracoes(
             log = _get(ctx, "print") or _get(ctx, "log")
             if callable(log):
                 log("🛡️ [IOT] controle bloqueado pela modalidade da fala original")
+            deps.marcar_resultado(
+                "nao_executado_por_politica",
+                executou=False,
+                confirmado=False,
+                detalhe="modalidade da fala original não autoriza controle IoT",
+            )
             return ResultadoDespacho.concluido(False)
         return _executar_iot(resultado, texto_original, ctx, deps)
     if intent in INTENCOES_ARQUIVOS:

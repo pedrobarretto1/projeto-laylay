@@ -25,6 +25,56 @@ from mente_laylay.cognicao.referencias_linguagem import texto_tem_referencia_con
 from mente_laylay.personalidade.proporcao_resposta import limite_tokens_resposta
 
 
+@pytest.mark.parametrize("texto", [
+    "quero passo a passo usando metodos praticos",
+    "como funciona a divisão?",
+    "como funciona a fotossíntese?",
+    "quero entender a diferença entre esses conceitos",
+    "explique com detalhes",
+    "me ensina divisão",
+    "me ensina fotossíntese",
+    "me explica variáveis em Python",
+    "explique a diferença entre I am e I have",
+    "preciso aprender a usar vírgulas",
+    "quero aprender como organizar um texto",
+    "me ensina planta baixa na arquitetura",
+    "me ensina mecânica na engenharia",
+    "quero aprender floricultura",
+    "me ensina um assunto que você ainda não conhece",
+])
+def test_perfil_explicativo_nao_perde_orcamento_na_rota_rapida(texto):
+    from mente_laylay.personalidade.proporcao_resposta import classificar_proporcao
+    from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT
+
+    assert classificar_proporcao(texto) == "explicativa"
+    rapido = usar_modo_rapido_conversa(texto)
+    assert not rapido  # primeira fronteira: antes de preparar/cortar o payload
+    limite = limite_tokens_resposta(texto, modo_rapido=rapido, envelope_estruturado=True)
+    payload = preparar_payload_llm(
+        [{"role": "system", "content": BASE_SYSTEM_PROMPT},
+         {"role": "user", "content": texto}],
+        model="qwen3:4b-instruct", max_tokens=limite, modo_rapido=rapido, endpoint_local=True,
+    )
+    assert payload["max_tokens"] == 512
+    assert "Use uma ou duas frases" not in payload["messages"][0]["content"]
+    assert payload["messages"][-1]["content"] == texto
+
+
+@pytest.mark.parametrize("texto", ["oi lay", "boa noite", "obrigado", "tudo bem?"])
+def test_conversa_simples_preserva_rota_rapida(texto):
+    assert usar_modo_rapido_conversa(texto)
+    assert limite_tokens_resposta(texto, modo_rapido=True) == 256
+
+
+def test_composicao_principal_injeta_rota_que_respeita_perfil_explicativo():
+    import importlib
+    root = importlib.import_module("laylay")
+    callback = root._resposta_ia_runtime._contexto()["usar_modo_rapido"]
+    assert callback == root._usar_modo_rapido_conversa
+    for texto in ("quero passo a passo usando metodos praticos", "como funciona a fotossíntese?"):
+        assert callback(texto) is False
+
+
 class _MemoriaFalsa:
     def salvar_aprendizados_semanticos(self, itens):
         return list(itens or [])
