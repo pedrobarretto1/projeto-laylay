@@ -1,0 +1,33 @@
+name: Laylay Bridge encrypted dispatch
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  dispatch:
+    if: startsWith(github.event.issue.title, '[LAYLAY-BRIDGE-ENC]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch encrypted envelope
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RELAY_URL: https://relay-production-e5a6.up.railway.app
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --retry 2 --retry-delay 1 \
+            -X POST "${RELAY_URL}/github/issue/${ISSUE_NUMBER}"
+
+      - name: Close dispatched issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue close "${ISSUE_NUMBER}" \
+            --repo "${GH_REPO}" \
+            --reason completed
